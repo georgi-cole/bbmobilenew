@@ -704,7 +704,7 @@ const gameSlice = createSlice({
               sessionSeed: session.seed,
               playerId: id,
               profile: p?.competitionProfile ?? getDefaultCompetitionProfile(),
-            });
+            }).score;
           }
         } else {
           // Generic hybrid resolver for all other score-based games.

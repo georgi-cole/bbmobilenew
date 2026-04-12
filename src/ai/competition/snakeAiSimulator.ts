@@ -3,7 +3,7 @@
  *
  * Runs a complete Snake game session for an AI participant using the same
  * board rules as the playable SnakeGame component (20×20 grid, wall/self
- * collision, higher-is-better scoring).
+ * collision, race-to-1000 scoring).
  *
  * The AI is intentionally imperfect to produce believable human-like scores:
  *  - Safety-first direction selection avoids immediate collisions.
@@ -13,7 +13,7 @@
  *  - Loop/stall detection: if the snake hasn't eaten in too long it "gives up"
  *    and makes a fatal move, modelling human frustration.
  *
- * Results are deterministic: same seed + skill → same food count.
+ * Results are deterministic: same seed + skill → same accumulated score.
  *
  * @module snakeAiSimulator
  */
@@ -26,13 +26,28 @@ import type { CompetitionSkillProfile } from './types';
 /** Board dimension (cells per side). */
 const GRID_SIZE = 20;
 
-/** Points awarded per food item (matches SnakeGame.tsx). */
-const POINTS_PER_FOOD = 10;
+/** Milliseconds per game tick (matches SnakeGame.tsx TICK_MS). */
+const TICK_MS = 150;
 
-/** Raw-score cap before normalisation (matches SnakeGame.tsx). */
-const RAW_SCORE_CAP = 100;
+/** Points awarded for a standard food item (matches SnakeGame.tsx). */
+const POINTS_PER_STANDARD_FOOD = 25;
 
-/** Normalised score scale (matches SnakeGame.tsx). */
+/** Points awarded for a bonus food item (matches SnakeGame.tsx). */
+const POINTS_PER_BONUS_FOOD = 75;
+
+/** Points deducted for a penalty food item (matches SnakeGame.tsx). */
+const POINTS_PER_PENALTY_FOOD = -20;
+
+/** Probability that a newly placed food item is a bonus (matches SnakeGame.tsx). */
+const BONUS_FOOD_CHANCE = 0.15;
+
+/** Probability that a newly placed food item is a penalty (matches SnakeGame.tsx). */
+const PENALTY_FOOD_CHANCE = 0.10;
+
+/** Target score — run ends when accumulated score reaches this (matches SnakeGame.tsx). */
+const TARGET_SCORE = 1000;
+
+/** Normalised score upper bound (matches SnakeGame.tsx SCORE_SCALE). */
 const SCORE_SCALE = 1000;
 
 /** Hard tick ceiling — prevents runaway simulations. */
@@ -186,14 +201,29 @@ function pickDirection(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/** Result of a single simulated Snake run. */
+export interface SnakeAiRunResult {
+  /** Accumulated score at the end of the run (0–TARGET_SCORE). */
+  score: number;
+  /** Total ticks elapsed (for the full run, whether or not the target was reached). */
+  ticks: number;
+  /** True when the run ended by reaching TARGET_SCORE (not a collision). */
+  completed: boolean;
+}
+
 /**
- * Simulate a full Snake run for one AI participant and return the number of
- * food items eaten.
+ * Simulate a full Snake run for one AI participant.
+ *
+ * Uses race-to-1000 scoring:
+ *  - Standard food: +POINTS_PER_STANDARD_FOOD
+ *  - Bonus food:    +POINTS_PER_BONUS_FOOD
+ *  - Penalty food:  POINTS_PER_PENALTY_FOOD (negative)
+ *  - Run ends when accumulated score reaches TARGET_SCORE or on collision.
  *
  * @param seed  - Per-participant deterministic seed.
  * @param skill - Skill level in [0, 1]; higher → fewer mistakes, better survival.
  */
-export function simulateSnakeAiRun(seed: number, skill: number): number {
+export function simulateSnakeAiRun(seed: number, skill: number): SnakeAiRunResult {
   const rng = mulberry32(seed >>> 0);
   const clampedSkill = Math.max(0, Math.min(1, skill));
 
@@ -201,13 +231,23 @@ export function simulateSnakeAiRun(seed: number, skill: number): number {
   let snake: Vec2[] = [{ x: 10, y: 10 }];
   let dir: Vec2 = { x: 1, y: 0 };
   let food: Vec2 = placeFood(snake, rng);
-  let foodEaten = 0;
+  // Assign first food type using RNG (mirrors SnakeGame.tsx placeFood)
+  let foodTypeRoll = rng();
+  let currentFoodType: 'standard' | 'bonus' | 'penalty' =
+    foodTypeRoll < BONUS_FOOD_CHANCE ? 'bonus'
+    : foodTypeRoll < BONUS_FOOD_CHANCE + PENALTY_FOOD_CHANCE ? 'penalty'
+    : 'standard';
+
+  let accumulatedScore = 0;
   let ticksSinceFood = 0;
+  /** Actual tick at which the loop last executed a body iteration. */
+  let lastTick = 0;
 
   // Position fingerprint buffer for loop detection (head position + direction).
   const recentPositions: string[] = [];
 
   for (let tick = 0; tick < MAX_TICKS; tick++) {
+    lastTick = tick + 1; // record every executed tick so early-exit is accurate
     // ── Compute mistake probability ────────────────────────────────────────
     // Probability grows with snake length (simulates mounting pressure) and
     // decreases with skill level.  At skill=1 and length=1 it is ~3%; at
@@ -242,12 +282,29 @@ export function simulateSnakeAiRun(seed: number, skill: number): number {
 
     // ── Food check ─────────────────────────────────────────────────────────
     if (newHead.x === food.x && newHead.y === food.y) {
-      foodEaten++;
+      const points =
+        currentFoodType === 'bonus' ? POINTS_PER_BONUS_FOOD
+        : currentFoodType === 'penalty' ? POINTS_PER_PENALTY_FOOD
+        : POINTS_PER_STANDARD_FOOD;
+
+      // Clamp to TARGET_SCORE (mirrors SnakeGame.tsx — no overshooting)
+      const rawScore = Math.max(0, accumulatedScore + points);
+      accumulatedScore = rawScore >= TARGET_SCORE ? TARGET_SCORE : rawScore;
       ticksSinceFood = 0;
       recentPositions.length = 0; // reset loop detector on food
 
-      if (snake.length >= GRID_SIZE * GRID_SIZE) break; // maximum possible score
+      if (accumulatedScore >= TARGET_SCORE) {
+        return { score: TARGET_SCORE, ticks: tick + 1, completed: true };
+      }
+
+      if (snake.length >= GRID_SIZE * GRID_SIZE) break; // board is full
+
       food = placeFood(snake, rng);
+      foodTypeRoll = rng();
+      currentFoodType =
+        foodTypeRoll < BONUS_FOOD_CHANCE ? 'bonus'
+        : foodTypeRoll < BONUS_FOOD_CHANCE + PENALTY_FOOD_CHANCE ? 'penalty'
+        : 'standard';
     } else {
       snake = snake.slice(0, -1);
       ticksSinceFood++;
@@ -263,7 +320,8 @@ export function simulateSnakeAiRun(seed: number, skill: number): number {
     if (ticksSinceFood > Math.max(40, stallLimit)) break;
   }
 
-  return foodEaten;
+  // Return the actual tick at which the run ended, not the MAX_TICKS ceiling.
+  return { score: accumulatedScore, ticks: lastTick, completed: false };
 }
 
 /**
@@ -294,17 +352,28 @@ function hashPlayerId(id: string): number {
 }
 
 /**
- * Convert a food count to the normalised 0–1000 score used by the store.
- * Matches the `normaliseScore` function in SnakeGame.tsx exactly.
+ * Convert an accumulated score to the normalised 0–1000 value used by the store.
+ * In race-to-1000 mode the score is already in [0, TARGET_SCORE], so this
+ * simply clamps it to [0, SCORE_SCALE].
  */
-export function normaliseSnakeScore(foodEaten: number): number {
-  const raw = Math.min(RAW_SCORE_CAP, foodEaten * POINTS_PER_FOOD);
-  return Math.round((raw / RAW_SCORE_CAP) * SCORE_SCALE);
+export function normaliseSnakeScore(score: number): number {
+  return Math.max(0, Math.min(SCORE_SCALE, score));
+}
+
+/** Result returned by simulateSnakeAiScore. */
+export interface SnakeAiScoreResult {
+  /** Normalised 0–1000 score. */
+  score: number;
+  /**
+   * Completion time in milliseconds (ticks × TICK_MS) when the AI reached
+   * TARGET_SCORE; null if the run ended by collision.
+   */
+  completionMs: number | null;
 }
 
 /**
  * Simulate a Snake AI run for a named participant and return a normalised
- * 0–1000 score.
+ * 0–1000 score together with the completion time (if the target was reached).
  *
  * @param sessionSeed - The competition session seed.
  * @param playerId    - The participant's ID (used to derive a per-player seed).
@@ -318,10 +387,12 @@ export function simulateSnakeAiScore({
   sessionSeed: number;
   playerId: string;
   profile?: CompetitionSkillProfile;
-}): number {
+}): SnakeAiScoreResult {
   const idHash = hashPlayerId(playerId);
   const participantSeed = ((sessionSeed >>> 0) ^ idHash ^ 0xa3f5c1e7) >>> 0;
   const skill = snakeSkillFromProfile(profile);
-  const foodEaten = simulateSnakeAiRun(participantSeed, skill);
-  return normaliseSnakeScore(foodEaten);
+  const result = simulateSnakeAiRun(participantSeed, skill);
+  const score = normaliseSnakeScore(result.score);
+  const completionMs = result.completed ? result.ticks * TICK_MS : null;
+  return { score, completionMs };
 }

@@ -684,7 +684,7 @@ export function simulateMinigameAiScore({
       // deterministic participant-index identifier when no playerId is provided.
       playerId: playerId ?? `participant-${participantIndex ?? 0}`,
       profile,
-    });
+    }).score;
   }
 
   return simulateAiPerformance({

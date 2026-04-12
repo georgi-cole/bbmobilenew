@@ -149,7 +149,8 @@ describe('simulateMinigameAiScore — snake routing', () => {
       gameKey: 'snake', seed: 42, playerId: 'p1',
     });
     const viaDirectCall = simulateSnakeAiScore({ sessionSeed: 42, playerId: 'p1' });
-    expect(viaDispatcher).toBe(viaDirectCall);
+    // simulateMinigameAiScore returns a plain number; simulateSnakeAiScore returns { score, completionMs }
+    expect(viaDispatcher).toBe(viaDirectCall.score);
   });
 });
 
