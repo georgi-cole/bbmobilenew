@@ -305,6 +305,49 @@ describe('TvZone — announcement overlay', () => {
     expect(
       screen.getByRole('dialog', { name: /Announcement: Live Elimination/i }).className,
     ).toContain('tv-announcement--royal-purple');
+    expect(
+      screen.getByRole('dialog', { name: /Announcement: Live Elimination/i }).className,
+    ).toContain('tv-announcement--theme-eviction');
+  });
+
+  it('renders LOH competition announcements with the prestige theme styling', () => {
+    render(
+      <TvAnnouncementOverlay
+        announcement={{
+          key: 'loh_comp_announcement',
+          title: 'LOH Competition',
+          subtitle: 'Power is up for grabs.',
+          isLive: true,
+          autoDismissMs: null,
+        }}
+        onInfo={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('dialog', { name: /Announcement: LOH Competition/i }).className).toContain(
+      'tv-announcement--theme-loh',
+    );
+  });
+
+  it('renders POS announcements with the electric competition theme styling', () => {
+    render(
+      <TvAnnouncementOverlay
+        announcement={{
+          key: 'pos_comp_announcement',
+          title: 'Power of Safety',
+          subtitle: "It's time for the Power of Safety competition!",
+          isLive: true,
+          autoDismissMs: null,
+        }}
+        onInfo={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Power of Safety/i }).className).toContain(
+      'tv-announcement--theme-pos',
+    );
   });
 
   it('shows the POS announcement overlay and restores the public save result after dismissal', () => {

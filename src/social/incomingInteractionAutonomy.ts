@@ -5,26 +5,8 @@
  * ──────────────────
  * On each eligible phase transition, `scheduleIncomingInteractionsForPhase`
  * iterates every non-evicted, non-jury AI houseguest and decides whether they
- * should reach out to the player.  The decision is governed by:
- *
- *   1. **Eligibility** – actor must not be evicted/jury, must not be the player
- *      themselves, must not be on per-AI cooldown, and must not have exceeded
- *      their per-AI active interaction cap.
- *   2. **Global cap** – the total number of unresolved interactions (visible +
- *      scheduled) must be below `incomingInteractionConfig.maxActive`.
- *   3. **Engagement score** – a weighted sum of:
- *        - relationship intensity (|normalized affinity|, weighted 0.25)
- *        - strategic urgency    (phase-based event pressure, weighted 0.5)
- *        - personality factor   (actor-specific modifier, weighted 0.15)
- *        - event pressure       (contextual bonus per phase, weighted 0.1)
- *        plus ±randomVariance jitter.
- *   4. **Score threshold** – actor is only enqueued when score ≥ scoreThreshold.
- *   5. **Interaction type** – chosen deterministically from the actor's
- *      relationship with the player and the current phase context.
- *
- * Config values live in `socialConfig.incomingInteractionConfig`.
- * Stored/display affinity is never modified; `normalizeAffinity` is used
- * locally to convert display-scale values for arithmetic.
+ * should reach out to the player. The decision is governed by eligibility,
+ * engagement scoring, contextual scenario routing, and delivery dedupe.
  */
 
 import { normalizeAffinity } from './affinityUtils';
@@ -49,10 +31,11 @@ import {
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
 import type {
   IncomingInteraction,
-  IncomingInteractionType,
   IncomingInteractionDeliveryState,
+  IncomingInteractionType,
   RelationshipsMap,
   ScheduledIncomingInteraction,
+  SocialMemoryEntry,
   SocialMemoryMap,
 } from './types';
 
@@ -60,6 +43,7 @@ import type {
 
 export interface AutonomyPlayer {
   id: string;
+  name?: string;
   status: string;
   isUser?: boolean;
 }
@@ -70,6 +54,16 @@ export interface AutonomyContext {
   relationships: RelationshipsMap;
   socialMemory?: SocialMemoryMap;
   players: AutonomyPlayer[];
+  lohId?: string | null;
+  nomineeIds?: string[];
+  posWinnerId?: string | null;
+  povSavedId?: string | null;
+  prevHohId?: string | null;
+  votes?: Record<string, string>;
+  recentEvicteeId?: string | null;
+  pendingEvictionId?: string | null;
+  isDoubleEviction?: boolean;
+  specialVeto?: string | null;
   /** Seeded random function (returns value in [0,1)). Defaults to Math.random. */
   random?: () => number;
 }
@@ -88,8 +82,80 @@ export interface AutonomyStore {
     game?: {
       players?: AutonomyPlayer[];
       week?: number;
+      lohId?: string | null;
+      nomineeIds?: string[];
+      posWinnerId?: string | null;
+      povSavedId?: string | null;
+      prevHohId?: string | null;
+      votes?: Record<string, string>;
+      pendingEviction?: { evicteeId: string } | null;
+      doubleEviction?: { weekActive?: boolean };
+      specialVeto?: { activeType?: string | null };
     };
   };
+}
+
+type InteractionScenarioKey =
+  | 'week_start_ally_check_in'
+  | 'week_start_enemy_gossip'
+  | 'week_start_alliance_lock'
+  | 'hoh_congratulations'
+  | 'hoh_safety_request'
+  | 'nominee_hoh_plea'
+  | 'nominee_veto_pitch'
+  | 'nominee_campaign'
+  | 'nomination_aftershock'
+  | 'post_veto_gratitude'
+  | 'post_veto_campaign'
+  | 'live_vote_pitch'
+  | 'survivor_gratitude'
+  | 'betrayal_warning'
+  | 'ignored_warning'
+  | 'targeted_snark'
+  | 'alliance_reassurance'
+  | 'generic_gossip'
+  | 'generic_check_in';
+
+interface InteractionPlan {
+  type: IncomingInteractionType;
+  scenarioKey: InteractionScenarioKey;
+}
+
+interface RelationshipSignals {
+  affinity: number;
+  tags: Set<string>;
+  memoryEntry?: SocialMemoryEntry;
+  gratitudeRatio: number;
+  resentmentRatio: number;
+  neglectRatio: number;
+  trustMomentum: number;
+  isStrongAlly: boolean;
+  isMildAlly: boolean;
+  isStrongEnemy: boolean;
+  isMildEnemy: boolean;
+}
+
+interface ActorConstraints {
+  actor: AutonomyPlayer;
+  playerId: string;
+  playerEntry?: AutonomyPlayer;
+  actorIsNominee: boolean;
+  actorIsCurrentHoh: boolean;
+  actorHasSafetyPower: boolean;
+  playerIsHoh: boolean;
+  playerHasSafetyPower: boolean;
+  actorWasSaved: boolean;
+  actorIsPendingEvictee: boolean;
+  actorSurvivedCurrentVote: boolean;
+}
+
+interface InteractionTextContext {
+  actorName: string;
+  playerName: string;
+  hohName: string;
+  posName: string;
+  nomineesLabel: string;
+  specialVeto: string;
 }
 
 function getPersonalityFactor(actorId: string): number {
@@ -97,115 +163,303 @@ function getPersonalityFactor(actorId: string): number {
   return tuning.personalityFactors[actorId] ?? tuning.defaultPersonalityFactor;
 }
 
-// ── Strategic urgency per phase ────────────────────────────────────────────
-
 function getPhaseUrgency(phase: string): number {
   const tuning = socialConfig.incomingInteractionAutonomyTuning;
   return tuning.phaseUrgency[phase] ?? tuning.defaultPhaseUrgency;
 }
-
-// ── Event pressure ─────────────────────────────────────────────────────────
 
 function getEventPressure(phase: string): number {
   const tuning = socialConfig.incomingInteractionAutonomyTuning;
   return tuning.phaseEventPressure[phase] ?? 0;
 }
 
-// ── Interaction type selection ─────────────────────────────────────────────
+function getPlayerById(context: AutonomyContext, playerId: string): AutonomyPlayer | undefined {
+  return context.players.find((player) => player.id === playerId);
+}
 
-/**
- * Choose the most appropriate interaction type for an actor based on their
- * normalized affinity toward the player and the current phase.
- *
- * This function is pure and testable.
- */
-export function chooseIncomingInteractionType(
+function getPlayerName(context: AutonomyContext, playerId: string | null | undefined, fallback: string): string {
+  if (!playerId) return fallback;
+  return getPlayerById(context, playerId)?.name ?? playerId;
+}
+
+function formatNameList(names: string[]): string {
+  if (names.length === 0) return 'the block';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+function buildRelationshipSignals(
   actorId: string,
-  _playerId: string,
+  playerId: string,
   context: AutonomyContext,
-): IncomingInteractionType {
+): RelationshipSignals {
   const actorRels = context.relationships[actorId] ?? {};
-  // Find the player entry – player is always 'user' in this codebase
-  const playerId = context.players.find((p) => p.isUser)?.id ?? _playerId;
   const relEntry = actorRels[playerId];
   const baseAffinity = relEntry ? normalizeAffinity(relEntry.affinity) : 0;
   const memoryEntry = context.socialMemory?.[actorId]?.[playerId];
   const memoryBias = computeSocialMemoryAffinityBias(memoryEntry);
   const affinity = Math.max(-1, Math.min(1, baseAffinity + memoryBias));
+  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds;
+  const memoryCaps = socialConfig.socialMemoryConfig.caps;
 
-  const phase = context.phase;
-  const { interactionTypeThresholds } = socialConfig.incomingInteractionAutonomyTuning;
+  const gratitudeRatio = memoryCaps.gratitude > 0 ? (memoryEntry?.gratitude ?? 0) / memoryCaps.gratitude : 0;
+  const resentmentRatio = memoryCaps.resentment > 0 ? (memoryEntry?.resentment ?? 0) / memoryCaps.resentment : 0;
+  const neglectRatio = memoryCaps.neglect > 0 ? (memoryEntry?.neglect ?? 0) / memoryCaps.neglect : 0;
+  const trustMomentum = computeTrustMomentumNormalized(memoryEntry);
 
-  // High-urgency phases favour strategic interaction types
-  if (phase === 'live_vote' || phase === 'nominations') {
-    if (affinity >= interactionTypeThresholds.highUrgency.ally) return 'nomination_plea';
-    if (affinity <= interactionTypeThresholds.highUrgency.enemy) return 'snide_remark';
-    return 'deal_offer';
-  }
-
-  if (phase === 'pos_results' || phase === 'pos_ceremony_results') {
-    if (affinity >= interactionTypeThresholds.povResults.ally) return 'alliance_proposal';
-    if (affinity <= interactionTypeThresholds.povResults.enemy) return 'warning';
-    return 'check_in';
-  }
-
-  if (phase === 'loh_results' || phase === 'eviction_results') {
-    if (affinity >= interactionTypeThresholds.lohEviction.strongAlly) return 'alliance_proposal';
-    if (affinity >= interactionTypeThresholds.lohEviction.mildAlly) return 'compliment';
-    if (affinity <= interactionTypeThresholds.lohEviction.strongEnemy) return 'snide_remark';
-    return 'gossip';
-  }
-
-  // Default / social phases
-  if (affinity >= interactionTypeThresholds.social.strongAlly) return 'compliment';
-  if (affinity >= interactionTypeThresholds.social.mildAlly) return 'check_in';
-  if (affinity <= interactionTypeThresholds.social.strongEnemy) return 'snide_remark';
-  if (affinity <= interactionTypeThresholds.social.mildEnemy) return 'gossip';
-  return 'check_in';
+  return {
+    affinity,
+    tags: new Set(relEntry?.tags ?? []),
+    memoryEntry,
+    gratitudeRatio,
+    resentmentRatio,
+    neglectRatio,
+    trustMomentum,
+    isStrongAlly: affinity >= thresholds.strongAlly,
+    isMildAlly: affinity >= thresholds.mildAlly,
+    isStrongEnemy: affinity <= thresholds.strongEnemy,
+    isMildEnemy: affinity <= thresholds.mildEnemy,
+  };
 }
 
-// ── Recency penalty ────────────────────────────────────────────────────────
+function buildActorConstraints(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext,
+): ActorConstraints | null {
+  const actor = getPlayerById(context, actorId);
+  if (!actor) return null;
+  const playerEntry = getPlayerById(context, playerId);
+  const nomineeIds = context.nomineeIds ?? [];
+  const actorIsNominee = nomineeIds.includes(actor.id) || actor.status.includes('nominated');
+  const actorIsCurrentHoh = context.lohId === actor.id || actor.status.includes('loh');
+  const actorHasSafetyPower = context.posWinnerId === actor.id || actor.status.includes('pos');
+  const playerIsHoh = context.lohId === playerId || playerEntry?.status.includes('loh') === true;
+  const playerHasSafetyPower =
+    context.posWinnerId === playerId || playerEntry?.status.includes('pos') === true;
+  const actorWasSaved = context.povSavedId === actor.id;
+  const actorIsPendingEvictee = context.pendingEvictionId === actor.id;
+  const actorSurvivedCurrentVote =
+    context.phase === 'eviction_results' && actorIsNominee && !actorIsPendingEvictee;
+
+  return {
+    actor,
+    playerId,
+    playerEntry,
+    actorIsNominee,
+    actorIsCurrentHoh,
+    actorHasSafetyPower,
+    playerIsHoh,
+    playerHasSafetyPower,
+    actorWasSaved,
+    actorIsPendingEvictee,
+    actorSurvivedCurrentVote,
+  };
+}
+
+function canSendInteractionType(
+  type: IncomingInteractionType,
+  constraints: ActorConstraints,
+  signals: RelationshipSignals,
+): boolean {
+  switch (type) {
+    case 'nomination_plea':
+      return constraints.actorIsNominee && (constraints.playerIsHoh || constraints.playerHasSafetyPower);
+    case 'deal_offer':
+      return !constraints.actorIsCurrentHoh;
+    case 'alliance_proposal':
+      return !signals.tags.has('alliance') && signals.affinity > 0;
+    case 'snide_remark':
+    case 'warning':
+      return !signals.tags.has('alliance') && !constraints.actorSurvivedCurrentVote;
+    case 'compliment':
+      return !signals.tags.has('betrayal') || constraints.actorSurvivedCurrentVote;
+    default:
+      return true;
+  }
+}
+
+function fallbackInteractionPlan(
+  phase: string,
+  constraints: ActorConstraints,
+  signals: RelationshipSignals,
+): InteractionPlan | null {
+  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds;
+  if (constraints.actorIsPendingEvictee) return null;
+  if (constraints.actorSurvivedCurrentVote) {
+    return { type: 'compliment', scenarioKey: 'survivor_gratitude' };
+  }
+  if (
+    signals.tags.has('betrayal') ||
+    (signals.resentmentRatio >= thresholds.resentmentHigh && signals.affinity < 0)
+  ) {
+    return {
+      type: signals.isStrongEnemy ? 'snide_remark' : 'warning',
+      scenarioKey: 'betrayal_warning',
+    };
+  }
+  if (signals.neglectRatio >= thresholds.neglectHigh && !signals.tags.has('alliance')) {
+    return { type: 'warning', scenarioKey: 'ignored_warning' };
+  }
+  if (signals.tags.has('target')) {
+    return {
+      type: signals.isStrongEnemy ? 'snide_remark' : 'gossip',
+      scenarioKey: 'targeted_snark',
+    };
+  }
+  if (signals.tags.has('alliance')) {
+    return {
+      type: signals.isStrongAlly ? 'compliment' : 'check_in',
+      scenarioKey: 'alliance_reassurance',
+    };
+  }
+  if ((phase === 'week_start' || phase === 'social_1' || phase === 'social_2') && signals.isStrongAlly) {
+    return { type: 'check_in', scenarioKey: 'week_start_ally_check_in' };
+  }
+  if (signals.isStrongEnemy || signals.isMildEnemy) {
+    return { type: 'gossip', scenarioKey: 'generic_gossip' };
+  }
+  return { type: 'check_in', scenarioKey: 'generic_check_in' };
+}
+
+function resolveIncomingInteractionPlan(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext,
+): InteractionPlan | null {
+  const constraints = buildActorConstraints(actorId, playerId, context);
+  if (!constraints || constraints.actorIsPendingEvictee) return null;
+
+  const signals = buildRelationshipSignals(actorId, playerId, context);
+  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds;
+  let plan: InteractionPlan | null = null;
+
+  if (context.phase === 'eviction_results' && constraints.actorSurvivedCurrentVote) {
+    if (!signals.tags.has('alliance') && signals.affinity >= thresholds.allianceProposalMinAffinity) {
+      plan = { type: 'alliance_proposal', scenarioKey: 'survivor_gratitude' };
+    } else {
+      plan = { type: 'compliment', scenarioKey: 'survivor_gratitude' };
+    }
+  } else if (
+    context.phase === 'pos_ceremony_results' &&
+    constraints.actorWasSaved &&
+    (constraints.playerIsHoh || constraints.playerHasSafetyPower)
+  ) {
+    if (!signals.tags.has('alliance') && signals.affinity >= thresholds.allianceProposalMinAffinity) {
+      plan = { type: 'alliance_proposal', scenarioKey: 'post_veto_gratitude' };
+    } else {
+      plan = { type: 'compliment', scenarioKey: 'post_veto_gratitude' };
+    }
+  } else if (
+    constraints.actorIsNominee &&
+    (context.phase === 'pos_results' || context.phase === 'pos_ceremony_results') &&
+    constraints.playerHasSafetyPower
+  ) {
+    plan = {
+      type: signals.isMildEnemy ? 'check_in' : 'deal_offer',
+      scenarioKey: 'nominee_veto_pitch',
+    };
+  } else if (
+    constraints.actorIsNominee &&
+    context.phase === 'nominations' &&
+    constraints.playerIsHoh
+  ) {
+    plan = { type: 'nomination_plea', scenarioKey: 'nominee_hoh_plea' };
+  } else if (
+    constraints.actorIsNominee &&
+    (context.phase === 'social_2' || context.phase === 'live_vote')
+  ) {
+    plan = {
+      type: context.phase === 'live_vote' ? 'deal_offer' : 'check_in',
+      scenarioKey: context.phase === 'live_vote' ? 'live_vote_pitch' : 'nominee_campaign',
+    };
+  } else if (
+    (context.phase === 'social_1' || context.phase === 'nominations' || context.phase === 'loh_results') &&
+    constraints.playerIsHoh &&
+    !constraints.actorIsNominee &&
+    !constraints.actorIsCurrentHoh
+  ) {
+    if (signals.isStrongAlly || signals.tags.has('alliance')) {
+      plan = {
+        type: signals.tags.has('alliance') ? 'check_in' : 'compliment',
+        scenarioKey: 'hoh_safety_request',
+      };
+    } else {
+      plan = { type: 'deal_offer', scenarioKey: 'hoh_safety_request' };
+    }
+  } else if (context.phase === 'nomination_results' && constraints.actorIsNominee) {
+    plan = { type: 'check_in', scenarioKey: 'nomination_aftershock' };
+  } else if (context.phase === 'pos_ceremony_results' && constraints.actorIsNominee) {
+    plan = { type: 'check_in', scenarioKey: 'post_veto_campaign' };
+  } else if (context.phase === 'loh_results' && constraints.playerIsHoh) {
+    if (signals.isStrongAlly || signals.tags.has('alliance')) {
+      plan = { type: 'compliment', scenarioKey: 'hoh_congratulations' };
+    } else if (signals.tags.has('betrayal') || signals.isStrongEnemy || signals.tags.has('target')) {
+      plan = {
+        type: signals.isStrongEnemy ? 'warning' : 'gossip',
+        scenarioKey: 'betrayal_warning',
+      };
+    }
+  } else if (
+    (context.phase === 'week_start' || context.phase === 'social_1') &&
+    !signals.tags.has('alliance') &&
+    signals.isStrongAlly
+  ) {
+    plan = { type: 'alliance_proposal', scenarioKey: 'week_start_alliance_lock' };
+  }
+
+  if (!plan) {
+    plan = fallbackInteractionPlan(context.phase, constraints, signals);
+  }
+  if (!plan) return null;
+  if (canSendInteractionType(plan.type, constraints, signals)) {
+    return plan;
+  }
+
+  const fallback = fallbackInteractionPlan(context.phase, constraints, signals);
+  if (fallback && canSendInteractionType(fallback.type, constraints, signals)) {
+    return fallback;
+  }
+
+  if (signals.tags.has('alliance')) {
+    return { type: 'check_in', scenarioKey: 'alliance_reassurance' };
+  }
+  if (signals.isStrongEnemy) {
+    return { type: 'gossip', scenarioKey: 'generic_gossip' };
+  }
+  return { type: 'check_in', scenarioKey: 'generic_check_in' };
+}
 
 /**
- * Look up the most recent unresolved interaction from `actorId` and return a
- * recency penalty in [0, 1].  A cooldown of `cooldownTicks` evaluations with
- * no new interactions yields a penalty of 0; an interaction enqueued very
- * recently yields a penalty close to 1.
- *
- * In this simplified model we use the interaction's `createdWeek` vs the
- * current `week` as a proxy for elapsed time.
+ * Choose the most appropriate interaction type for an actor based on their
+ * relationship, game power state, and current phase.
  */
+export function chooseIncomingInteractionType(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext,
+): IncomingInteractionType {
+  return resolveIncomingInteractionPlan(actorId, playerId, context)?.type ?? 'check_in';
+}
+
 function computeRecencyPenalty(
   actorId: string,
   pendingInteractions: IncomingInteraction[],
   currentWeek: number,
   cooldownTicks: number,
 ): number {
-  // Use all interactions from this actor (resolved or not) so that responding
-  // to a message doesn't immediately reset the cooldown and allow re-spam.
   const lastFromActor = pendingInteractions
-    .filter((i) => i.fromId === actorId)
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
+    .filter((interaction) => interaction.fromId === actorId)
+    .sort((left, right) => right.createdAt - left.createdAt)[0];
 
   if (!lastFromActor) return 0;
 
   const weeksSince = currentWeek - lastFromActor.createdWeek;
   if (weeksSince >= cooldownTicks) return 0;
-  // Linear decay: penalty = 1 when weeksSince===0, 0 when weeksSince===cooldownTicks
   return 1 - weeksSince / cooldownTicks;
 }
 
-// ── Engagement score ───────────────────────────────────────────────────────
-
-/**
- * Compute a weighted engagement score for a given actor → player interaction
- * opportunity.  Score is in approximately [0, 1+randomVariance].
- *
- * Higher score → higher priority for enqueueing.
- *
- * This function is pure and accepts an optional `random` function for
- * deterministic testing.
- */
 export function computeIncomingInteractionEngagementScore(
   actorId: string,
   playerId: string,
@@ -214,30 +468,15 @@ export function computeIncomingInteractionEngagementScore(
 ): number {
   const cfg = socialConfig.incomingInteractionConfig;
   const w = cfg.weights;
+  const signals = buildRelationshipSignals(actorId, playerId, context);
 
-  // ── Relationship intensity ──────────────────────────────────────────────
-  const actorRels = context.relationships[actorId] ?? {};
-  const relEntry = actorRels[playerId];
-  const displayAffinity = relEntry?.affinity ?? 0;
-  const normAffinity = normalizeAffinity(displayAffinity);
-  // Intensity is the absolute value of affinity: both strong allies and strong
-  // enemies are motivated to interact (ally: warmth, enemy: conflict/strategy).
-  const relationshipIntensity = Math.abs(normAffinity);
-
-  // ── Strategic urgency ───────────────────────────────────────────────────
+  const relationshipIntensity = Math.abs(signals.affinity);
   const strategicUrgency = getPhaseUrgency(context.phase);
-
-  // ── Personality ─────────────────────────────────────────────────────────
   const personality = getPersonalityFactor(actorId);
-
-  // ── Event pressure ──────────────────────────────────────────────────────
   const eventPressure = getEventPressure(context.phase);
+  const memoryIntensity = computeSocialMemoryIntensity(signals.memoryEntry);
+  const trustMomentum = signals.trustMomentum;
 
-  const memoryEntry = context.socialMemory?.[actorId]?.[playerId];
-  const memoryIntensity = computeSocialMemoryIntensity(memoryEntry);
-  const trustMomentum = computeTrustMomentumNormalized(memoryEntry);
-
-  // ── Weighted sum ────────────────────────────────────────────────────────
   const baseScore =
     w.relationshipIntensity * relationshipIntensity +
     w.strategicUrgency * strategicUrgency +
@@ -246,7 +485,6 @@ export function computeIncomingInteractionEngagementScore(
     (w.memoryIntensity ?? 0) * memoryIntensity +
     (w.trustMomentum ?? 0) * trustMomentum;
 
-  // ── Recency penalty ─────────────────────────────────────────────────────
   const recencyPenalty = computeRecencyPenalty(
     actorId,
     pendingInteractions,
@@ -255,28 +493,22 @@ export function computeIncomingInteractionEngagementScore(
   );
   const penalised = baseScore * (1 - recencyPenalty);
 
-  // ── Random variance ─────────────────────────────────────────────────────
   const rng = context.random ?? Math.random;
-  const jitter = (rng() * 2 - 1) * cfg.randomVariance; // ±randomVariance
+  const jitter = (rng() * 2 - 1) * cfg.randomVariance;
 
   return Math.max(0, penalised + jitter);
 }
 
-// ── Eligibility and cap guards ─────────────────────────────────────────────
-
 export interface IncomingInteractionEnqueueDecision {
   allowed: boolean;
   reason: string;
+  plan?: InteractionPlan;
   score?: number;
   globalActive?: number;
   perAiActive?: number;
   recencyPenalty?: number;
 }
 
-/**
- * Return a decision object describing eligibility to enqueue an interaction.
- * This is a pure guard; it does not modify state.
- */
 export function evaluateIncomingInteractionEnqueueDecision(
   actorId: string,
   playerId: string,
@@ -284,9 +516,16 @@ export function evaluateIncomingInteractionEnqueueDecision(
   pendingInteractions: IncomingInteraction[],
 ): IncomingInteractionEnqueueDecision {
   const cfg = socialConfig.incomingInteractionConfig;
+  const constraints = buildActorConstraints(actorId, playerId, context);
 
-  // ── Global active cap ───────────────────────────────────────────────────
-  const globalActive = pendingInteractions.filter((i) => !i.resolved).length;
+  if (!constraints) {
+    return { allowed: false, reason: 'blocked_missing_actor' };
+  }
+  if (constraints.actorIsPendingEvictee) {
+    return { allowed: false, reason: 'blocked_pending_eviction' };
+  }
+
+  const globalActive = pendingInteractions.filter((interaction) => !interaction.resolved).length;
   if (globalActive >= cfg.maxActive) {
     if (socialConfig.verbose) {
       console.debug(
@@ -296,9 +535,8 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_by_global_cap', globalActive };
   }
 
-  // ── Per-AI active cap ───────────────────────────────────────────────────
   const perAiActive = pendingInteractions.filter(
-    (i) => i.fromId === actorId && !i.resolved,
+    (interaction) => interaction.fromId === actorId && !interaction.resolved,
   ).length;
   if (perAiActive >= cfg.maxPerAI) {
     if (socialConfig.verbose) {
@@ -309,7 +547,6 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_by_actor_cap', perAiActive };
   }
 
-  // ── Per-AI cooldown ─────────────────────────────────────────────────────
   const recencyPenalty = computeRecencyPenalty(
     actorId,
     pendingInteractions,
@@ -323,13 +560,12 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_by_cooldown', recencyPenalty };
   }
 
-  // ── Engagement score threshold ──────────────────────────────────────────
-  const score = computeIncomingInteractionEngagementScore(
-    actorId,
-    playerId,
-    context,
-    pendingInteractions,
-  );
+  const plan = resolveIncomingInteractionPlan(actorId, playerId, context);
+  if (!plan) {
+    return { allowed: false, reason: 'blocked_by_context_rules' };
+  }
+
+  const score = computeIncomingInteractionEngagementScore(actorId, playerId, context, pendingInteractions);
   if (score < cfg.scoreThreshold) {
     if (socialConfig.verbose) {
       console.debug(
@@ -342,13 +578,9 @@ export function evaluateIncomingInteractionEnqueueDecision(
   if (socialConfig.verbose) {
     console.debug(`[autonomy] enqueue ${actorId}: score=${score.toFixed(3)}`);
   }
-  return { allowed: true, reason: 'eligible', score };
+  return { allowed: true, reason: 'eligible', plan, score };
 }
 
-/**
- * Return true when the actor is eligible to enqueue an interaction right now.
- * This is a pure guard; it does not modify state.
- */
 export function shouldEnqueueInteraction(
   actorId: string,
   playerId: string,
@@ -363,86 +595,161 @@ export function shouldEnqueueInteraction(
   ).allowed;
 }
 
-// ── Interaction text generation ────────────────────────────────────────────
-
-const TYPE_TEMPLATES: Record<IncomingInteractionType, string[]> = {
-  compliment: [
-    "You've been playing really well lately.",
-    'I just wanted to say – respect.',
+const SCENARIO_TEMPLATES: Record<InteractionScenarioKey, string[]> = {
+  week_start_ally_check_in: [
+    'Just checking in, {player} — I want us on the same page this week.',
+    'Fresh week, clean slate. I wanted to touch base with you early, {player}.',
+    'Before the house gets loud, I wanted to make sure you and I are good.',
   ],
-  gossip: [
-    "Have you heard what's going on with the others?",
-    "There's something you should know about the house dynamics.",
+  week_start_enemy_gossip: [
+    'New week, same whispers. People are already circling names.',
+    'You can feel the house shifting already. Nobody is sitting still.',
+    'It did not take long for people to start talking again this week.',
   ],
-  warning: [
-    'Watch your back – people are talking.',
-    "I thought you should know: you're being targeted.",
+  week_start_alliance_lock: [
+    'I trust you more than most people in here. Maybe we should make that official.',
+    'This house is about to fracture. I think you and I should lock something in.',
+    'If we are serious about going deep, this is the week to commit.',
   ],
-  alliance_proposal: [
-    'I think we should work together.',
-    'What do you say – final two?',
+  hoh_congratulations: [
+    'Congrats on the power, {player}. That was a strong win.',
+    'You earned that room this week, {player}. Respect.',
+    'Big win. I figured you should hear that from me directly.',
   ],
-  deal_offer: [
-    'I can keep you safe this week if you do the same for me.',
-    "Let's make a deal.",
+  hoh_safety_request: [
+    'I know you have a lot to weigh, {hoh}. I just want you to know I am not coming after you.',
+    'With you holding power, I wanted to check in early and keep things clear between us.',
+    'If names are flying around, I hope mine is not one of them. I can be good for your game.',
   ],
-  nomination_plea: [
-    "Please don't put me on the block.",
-    "I'm asking you to keep me safe this week.",
+  nominee_hoh_plea: [
+    'I know you have the power this week, {hoh}. Please give me a chance to stay off the block.',
+    'Before you lock anything in, I am asking you to hear me out. I am not the shot you need.',
+    'You decide what happens next, {hoh}. I need you to know I would not come after you.',
   ],
-  check_in: [
-    'Just checking in – how are you holding up?',
-    "Hey, wanted to see where your head's at.",
+  nominee_veto_pitch: [
+    'If you use {specialVeto}, I will remember it. I need that chance right now.',
+    'You hold the power to change my week. I would owe you if you saved me.',
+    'I am asking straight up: if you can help me here, I will not forget it.',
   ],
-  snide_remark: [
-    "Don't think I haven't noticed what you've been doing.",
-    'Interesting move. Bold.',
+  nominee_campaign: [
+    'I know I am vulnerable, but I am still fighting. I hope you will keep me in mind.',
+    'I need calm numbers around me this week. I wanted to see where your head is at.',
+    'Being up there changes everything. I am trying to make sure I still have people.',
   ],
-  other: ['We need to talk.'],
+  nomination_aftershock: [
+    'I am still trying to process seeing my name up there. I needed to talk to someone.',
+    'That ceremony hit hard. I am scrambling a little, if I am honest.',
+    'Now that the block is real, I need to know who I can still trust.',
+  ],
+  post_veto_gratitude: [
+    'You changed my whole week. I needed you to know I see that.',
+    'Getting saved matters. I am not taking that lightly.',
+    'I am breathing again because of that move. Thank you for giving me another shot.',
+  ],
+  post_veto_campaign: [
+    'The veto changed everything, and now I have to rebuild fast.',
+    'Once the ceremony shifted, I knew I needed to start talking immediately.',
+    'The block looks different now, but the danger feels even sharper.',
+  ],
+  live_vote_pitch: [
+    'The vote is here, and I need every conversation I can get. Can we keep this open?',
+    'I am running out of time, so I will be direct: I need your support tonight.',
+    'This is the last stretch before the vote. I hope there is a path for me with you.',
+  ],
+  survivor_gratitude: [
+    'I am still here, and I am not forgetting the people who did not leave me hanging.',
+    'Surviving that vote changed how I see the house. I know who showed up for me.',
+    'After a night like that, gratitude hits harder than anything else.',
+  ],
+  betrayal_warning: [
+    'After everything that happened, I am keeping my eyes open around you.',
+    'I have not forgotten how you moved. Just know that.',
+    'I am not in the mood to pretend that last move did not matter.',
+  ],
+  ignored_warning: [
+    'You have been hard to get a read on lately. That does not go unnoticed.',
+    'I keep reaching out and getting nothing back. That tells me something.',
+    'Silence is still a message in this house, {player}.',
+  ],
+  targeted_snark: [
+    'Interesting how your name keeps coming up whenever people talk strategy.',
+    'You have been moving like nobody is paying attention. That is risky.',
+    'Some of your choices are getting harder for the house to ignore.',
+  ],
+  alliance_reassurance: [
+    'I am not wavering on us. I just wanted to make that clear.',
+    'No matter how loud the house gets, I still see us as solid.',
+    'I needed a quick check-in with you because our connection still matters to me.',
+  ],
+  generic_gossip: [
+    'There is a lot moving underneath the surface right now.',
+    'House dynamics are getting messy, and I thought you should know that.',
+    'The vibe is shifting again. Nobody feels settled.',
+  ],
+  generic_check_in: [
+    'Hey — wanted to check where your head is at.',
+    'Just checking in. This week feels different already.',
+    'I figured it was worth touching base for a second.',
+  ],
 };
 
-function generateInteractionText(
-  type: IncomingInteractionType,
-  rng: () => number = Math.random,
-): string {
-  const templates = TYPE_TEMPLATES[type];
-  return templates[Math.floor(rng() * templates.length)];
+function buildInteractionTextContext(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext,
+): InteractionTextContext {
+  const actorName = getPlayerName(context, actorId, actorId);
+  const playerName = getPlayerName(context, playerId, 'you');
+  const hohName = getPlayerName(context, context.lohId, 'the HOH');
+  const posName = getPlayerName(context, context.posWinnerId, 'the veto holder');
+  const nomineeNames = (context.nomineeIds ?? []).map((nomineeId) => getPlayerName(context, nomineeId, nomineeId));
+  const specialVeto = context.specialVeto ? context.specialVeto.replace(/_/g, ' ') : 'the Power of Safety';
+
+  return {
+    actorName,
+    playerName,
+    hohName,
+    posName,
+    nomineesLabel: formatNameList(nomineeNames),
+    specialVeto,
+  };
 }
 
-// ── ID generator ───────────────────────────────────────────────────────────
+function renderInteractionTemplate(template: string, textContext: InteractionTextContext): string {
+  return template
+    .replace(/\{actor\}/g, textContext.actorName)
+    .replace(/\{player\}/g, textContext.playerName)
+    .replace(/\{hoh\}/g, textContext.hohName)
+    .replace(/\{pos\}/g, textContext.posName)
+    .replace(/\{nominees\}/g, textContext.nomineesLabel)
+    .replace(/\{specialVeto\}/g, textContext.specialVeto);
+}
+
+function generateInteractionText(
+  actorId: string,
+  playerId: string,
+  plan: InteractionPlan,
+  context: AutonomyContext,
+  rng: () => number = Math.random,
+): string {
+  const templates = SCENARIO_TEMPLATES[plan.scenarioKey] ?? SCENARIO_TEMPLATES.generic_check_in;
+  const template = templates[Math.floor(rng() * templates.length)] ?? 'We need to talk.';
+  return renderInteractionTemplate(template, buildInteractionTextContext(actorId, playerId, context));
+}
 
 let _idCounter = 0;
 function generateInteractionId(): string {
   return `ai-int-${Date.now()}-${++_idCounter}`;
 }
 
-// ── Phase eligibility ──────────────────────────────────────────────────────
-
-/**
- * Phases during which the autonomy scheduler will evaluate and potentially
- * enqueue incoming interactions. Guarded behind a set for O(1) lookup.
- */
 export { INCOMING_INTERACTION_PHASE_ORDER };
 
 export const ELIGIBLE_PHASES = INCOMING_INTERACTION_ELIGIBLE_PHASES;
 
-/** Returns true for interaction types that expect an explicit player response. */
 function interactionTypeRequiresResponse(type: IncomingInteractionType): boolean {
   return type === 'alliance_proposal' || type === 'deal_offer' || type === 'nomination_plea';
 }
 
-// ── Main scheduler ─────────────────────────────────────────────────────────
-
-/**
- * Evaluate all AI houseguests and enqueue incoming interactions for the player
- * as appropriate for the given phase.
- *
- * Side-effects: dispatches `scheduleIncomingInteraction` for each chosen actor.
- *
- * @param phase   The current game phase string.
- * @param store   A Redux-compatible store with `dispatch` and `getState`.
- * @param context Optional context override (used in tests to inject RNG etc.).
- */
 export function scheduleIncomingInteractionsForPhase(
   phase: string,
   store: AutonomyStore,
@@ -464,7 +771,6 @@ export function scheduleIncomingInteractionsForPhase(
     return;
   }
 
-  // Pull game state from context override or derive from social state
   const gameState = state.game;
   const players: AutonomyPlayer[] = contextOverride?.players ?? gameState?.players ?? [];
   const week: number = contextOverride?.week ?? (gameState?.week ?? 1);
@@ -473,7 +779,7 @@ export function scheduleIncomingInteractionsForPhase(
   const socialMemory: SocialMemoryMap =
     contextOverride?.socialMemory ?? socialState.socialMemory ?? {};
 
-  const playerEntry = players.find((p) => p.isUser);
+  const playerEntry = players.find((player) => player.isUser);
   if (!playerEntry) {
     if (socialConfig.verbose) {
       console.debug('[autonomy] no player found – skipping');
@@ -481,8 +787,6 @@ export function scheduleIncomingInteractionsForPhase(
     return;
   }
 
-  // Skip scheduling if the user has been evicted or is in jury —
-  // they are no longer in the house and should not receive new interactions.
   if (playerEntry.status === 'evicted' || playerEntry.status === 'jury') {
     if (socialConfig.verbose) {
       console.debug(
@@ -493,18 +797,28 @@ export function scheduleIncomingInteractionsForPhase(
   }
 
   const playerId = playerEntry.id;
-
   const context: AutonomyContext = {
     phase,
     week,
     relationships,
     socialMemory,
     players,
+    lohId: contextOverride?.lohId ?? gameState?.lohId ?? null,
+    nomineeIds: contextOverride?.nomineeIds ?? gameState?.nomineeIds ?? [],
+    posWinnerId: contextOverride?.posWinnerId ?? gameState?.posWinnerId ?? null,
+    povSavedId: contextOverride?.povSavedId ?? gameState?.povSavedId ?? null,
+    prevHohId: contextOverride?.prevHohId ?? gameState?.prevHohId ?? null,
+    votes: contextOverride?.votes ?? gameState?.votes ?? {},
+    recentEvicteeId:
+      contextOverride?.recentEvicteeId ?? gameState?.pendingEviction?.evicteeId ?? null,
+    pendingEvictionId:
+      contextOverride?.pendingEvictionId ?? gameState?.pendingEviction?.evicteeId ?? null,
+    isDoubleEviction:
+      contextOverride?.isDoubleEviction ?? (gameState?.doubleEviction?.weekActive === true),
+    specialVeto: contextOverride?.specialVeto ?? gameState?.specialVeto?.activeType ?? null,
     random: contextOverride?.random,
   };
 
-  // Make a mutable local copy so we can track newly enqueued interactions within
-  // this phase pass without mutating the frozen Redux state array.
   const scheduledQueue = socialState.scheduledIncomingInteractions ?? [];
   const pendingInteractions: IncomingInteraction[] = buildPendingIncomingInteractions(
     socialState.incomingInteractions ?? [],
@@ -517,16 +831,15 @@ export function scheduleIncomingInteractionsForPhase(
       : 0
     : 0;
   const slotCounts = buildDeliverySlotCounts(scheduledQueue, phase, week, deliveredThisPhase);
-  const visibleActiveCount = (socialState.incomingInteractions ?? []).filter((i) => !i.resolved)
+  const visibleActiveCount = (socialState.incomingInteractions ?? []).filter((interaction) => !interaction.resolved)
     .length;
 
-  // Evaluate each AI actor
   const aiActors = players.filter(
-    (p) =>
-      !p.isUser &&
-      p.status !== 'evicted' &&
-      p.status !== 'jury' &&
-      p.id !== playerId,
+    (player) =>
+      !player.isUser &&
+      player.status !== 'evicted' &&
+      player.status !== 'jury' &&
+      player.id !== playerId,
   );
 
   for (const actor of aiActors) {
@@ -548,22 +861,37 @@ export function scheduleIncomingInteractionsForPhase(
       continue;
     }
 
-    const type = chooseIncomingInteractionType(actor.id, playerId, context);
-    const text = generateInteractionText(type, context.random);
+    const plan = decision.plan;
+    if (!plan) {
+      logIncomingInteractionDecision(store.dispatch, {
+        stage: 'generation',
+        reason: 'blocked_by_missing_plan',
+        actorId: actor.id,
+        week,
+        phase,
+      });
+      continue;
+    }
+
     const interaction: IncomingInteraction = {
       id: generateInteractionId(),
       fromId: actor.id,
-      type,
-      text,
+      type: plan.type,
+      text: generateInteractionText(actor.id, playerId, plan, context, context.random),
+      payload: {
+        scenarioKey: plan.scenarioKey,
+        phase,
+        actorStatus: actor.status,
+      },
       createdAt: Date.now(),
       createdWeek: week,
       expiresAtWeek: week + 1,
       read: false,
-      requiresResponse: interactionTypeRequiresResponse(type),
+      requiresResponse: interactionTypeRequiresResponse(plan.type),
       resolved: false,
     };
 
-    const priority = getIncomingInteractionPriority(type);
+    const priority = getIncomingInteractionPriority(plan.type);
     logIncomingInteractionDecision(store.dispatch, {
       stage: 'generation',
       reason: 'generated',
@@ -573,7 +901,10 @@ export function scheduleIncomingInteractionsForPhase(
       priority,
       week,
       phase,
-      detail: decision.score !== undefined ? `score=${decision.score.toFixed(3)}` : undefined,
+      detail:
+        decision.score !== undefined
+          ? `score=${decision.score.toFixed(3)};scenario=${plan.scenarioKey}`
+          : `scenario=${plan.scenarioKey}`,
     });
     const dedupeReason = getInteractionDedupeReason({
       interaction,
@@ -634,7 +965,7 @@ export function scheduleIncomingInteractionsForPhase(
       phase,
       scheduledForWeek: slot.scheduledForWeek,
       scheduledForPhase: slot.scheduledForPhase,
-      detail: slot.deliveryReason,
+      detail: `${slot.deliveryReason ?? 'unknown'};scenario=${plan.scenarioKey}`,
     });
 
     store.dispatch(
@@ -648,8 +979,6 @@ export function scheduleIncomingInteractionsForPhase(
       }),
     );
 
-    // Update our local snapshot so subsequent actors in this same pass see the
-    // updated pending list (prevents over-filling within a single phase pass).
     pendingInteractions.unshift(interaction);
   }
 }

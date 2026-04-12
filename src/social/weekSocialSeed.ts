@@ -26,6 +26,7 @@
  */
 
 import { updateRelationship } from './socialSlice';
+import HOUSEGUESTS from '../data/houseguests';
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown;
@@ -55,6 +56,24 @@ function makeLcg(seed: number): () => number {
   };
 }
 
+const HOUSEGUEST_PROFILE_BY_ID = Object.fromEntries(HOUSEGUESTS.map((houseguest) => [houseguest.id, houseguest]));
+
+function seedStaticRelationshipTags(store: StoreAPI, activePlayerIds: string[]): void {
+  const activeIds = new Set(activePlayerIds);
+  for (const actorId of activePlayerIds) {
+    const profile = HOUSEGUEST_PROFILE_BY_ID[actorId];
+    if (!profile) continue;
+    profile.allies.forEach((targetId) => {
+      if (!activeIds.has(targetId)) return;
+      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: 0, tags: ['alliance'] }));
+    });
+    profile.enemies.forEach((targetId) => {
+      if (!activeIds.has(targetId)) return;
+      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: 0, tags: ['target'] }));
+    });
+  }
+}
+
 /**
  * Seed or refresh relationships at week start.
  *
@@ -75,6 +94,10 @@ export function seedWeekRelationships(store: StoreAPI): void {
   );
 
   if (active.length < 2) return;
+
+  if (week === 1) {
+    seedStaticRelationshipTags(store, active.map((player) => player.id));
+  }
 
   // Mix game seed with week number for per-week variation.
   const rng = makeLcg(gameSeed ^ (week * 2654435761));

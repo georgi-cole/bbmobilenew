@@ -11,21 +11,77 @@
 
 /* ── Full-bleed fill — no card border or shadow ───────────────────────────── */
 .tv-announcement {
+  --announcement-base-top: rgba(10, 18, 34, 0.96);
+  --announcement-base-mid: rgba(14, 28, 52, 0.92);
+  --announcement-base-bottom: rgba(5, 10, 20, 0.98);
+  --announcement-main-glow: rgba(102, 136, 255, 0.24);
+  --announcement-secondary-glow: rgba(76, 98, 190, 0.16);
+  --announcement-edge-left: rgba(70, 110, 255, 0.07);
+  --announcement-edge-right: rgba(132, 86, 230, 0.08);
+  --announcement-horizontal-band: rgba(188, 214, 255, 0.13);
+  --announcement-vignette-strength: 0.74;
+  --announcement-noise-opacity: 0.015;
+  --announcement-main-falloff: 54%;
+  --announcement-secondary-falloff: 42%;
+  --announcement-title-color: #eef2ff;
+  --announcement-title-glow: rgba(99, 102, 241, 0.52);
+  --announcement-title-ambient: rgba(37, 99, 235, 0.22);
+  --announcement-subtitle-color: rgba(224, 231, 255, 0.8);
+  --announcement-info-border: rgba(129, 140, 248, 0.5);
+  --announcement-info-bg: rgba(99, 102, 241, 0.18);
+  --announcement-info-bg-hover: rgba(99, 102, 241, 0.3);
+  --announcement-info-color: #c7d2fe;
+  --announcement-accent-layer:
+    radial-gradient(circle at 52% 46%, rgba(210, 224, 255, 0.06) 0%, rgba(210, 224, 255, 0) 22%);
+  --announcement-overlay-layer:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 34%);
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* Semi-transparent blue gradient — fills the TV viewport */
-  background: linear-gradient(
-    160deg,
-    rgba(8, 24, 72, 0.90) 0%,
-    rgba(16, 48, 128, 0.84) 50%,
-    rgba(8, 24, 72, 0.90) 100%
-  );
+  background:
+    var(--announcement-accent-layer),
+    linear-gradient(
+      90deg,
+      var(--announcement-edge-left) 0%,
+      rgba(255, 255, 255, 0) 22%,
+      rgba(255, 255, 255, 0) 78%,
+      var(--announcement-edge-right) 100%
+    ),
+    radial-gradient(
+      circle at 50% 48%,
+      var(--announcement-main-glow) 0%,
+      rgba(255, 255, 255, 0) var(--announcement-main-falloff)
+    ),
+    radial-gradient(
+      circle at 64% 24%,
+      var(--announcement-secondary-glow) 0%,
+      rgba(255, 255, 255, 0) var(--announcement-secondary-falloff)
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0) 39%,
+      var(--announcement-horizontal-band) 52%,
+      rgba(255, 255, 255, 0) 66%,
+      rgba(255, 255, 255, 0) 100%
+    ),
+    linear-gradient(
+      180deg,
+      var(--announcement-base-top) 0%,
+      var(--announcement-base-mid) 48%,
+      var(--announcement-base-bottom) 100%
+    );
   padding: 20px 16px 16px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 36px rgba(0, 0, 0, 0.35),
+    inset 0 -28px 44px rgba(0, 0, 0, 0.32);
   animation: tvAnnouncementPop 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 @keyframes tvAnnouncementPop {
@@ -38,15 +94,26 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    160deg,
-    rgba(30, 80, 200, 0.18) 0%,
-    rgba(50, 130, 255, 0.28) 50%,
-    rgba(30, 80, 200, 0.18) 100%
-  );
   animation: tvAnnouncementBreathe 6.5s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
+  background:
+    var(--announcement-overlay-layer),
+    radial-gradient(
+      115% 90% at 50% 50%,
+      rgba(255, 255, 255, 0) 42%,
+      rgba(0, 0, 0, var(--announcement-vignette-strength)) 100%
+    ),
+    repeating-linear-gradient(
+      128deg,
+      rgba(255, 255, 255, var(--announcement-noise-opacity)) 0 2px,
+      rgba(255, 255, 255, 0) 2px 10px
+    ),
+    repeating-linear-gradient(
+      -136deg,
+      rgba(0, 0, 0, calc(var(--announcement-noise-opacity) * 0.85)) 0 2px,
+      rgba(0, 0, 0, 0) 2px 11px
+    );
 }
 
 @keyframes tvAnnouncementBreathe {
@@ -55,48 +122,91 @@
 }
 
 .tv-announcement--standard {
-  background:
-    radial-gradient(circle at 18% 12%, rgba(116, 92, 255, 0.16), rgba(116, 92, 255, 0) 26%),
-    linear-gradient(180deg, rgba(21, 29, 42, 0.94) 0%, rgba(9, 14, 22, 0.96) 38%, rgba(4, 8, 14, 0.98) 100%);
+  --announcement-base-top: rgba(12, 20, 36, 0.96);
+  --announcement-base-mid: rgba(16, 28, 48, 0.94);
+  --announcement-base-bottom: rgba(5, 10, 20, 0.98);
+  --announcement-main-glow: rgba(110, 124, 255, 0.2);
+  --announcement-secondary-glow: rgba(82, 110, 220, 0.14);
+  --announcement-edge-left: rgba(74, 108, 210, 0.08);
+  --announcement-edge-right: rgba(136, 90, 220, 0.1);
+  --announcement-horizontal-band: rgba(184, 212, 255, 0.14);
+  --announcement-accent-layer:
+    radial-gradient(circle at 18% 12%, rgba(156, 136, 255, 0.18) 0%, rgba(156, 136, 255, 0) 32%);
+  --announcement-overlay-layer:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.08) 0%, rgba(122, 162, 255, 0.06) 16%, rgba(255, 255, 255, 0) 42%);
 }
 
-.tv-announcement--standard::before {
-  background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.08) 0%, rgba(122, 162, 255, 0.06) 16%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 18% 12%, rgba(156, 136, 255, 0.18) 0%, rgba(156, 136, 255, 0) 42%);
-  opacity: 0.8;
+.tv-announcement--theme-pos {
+  --announcement-base-top: rgba(4, 14, 34, 0.98);
+  --announcement-base-mid: rgba(10, 32, 74, 0.95);
+  --announcement-base-bottom: rgba(3, 9, 24, 0.99);
+  --announcement-main-glow: rgba(72, 146, 255, 0.34);
+  --announcement-secondary-glow: rgba(122, 96, 255, 0.18);
+  --announcement-edge-left: rgba(66, 140, 255, 0.12);
+  --announcement-edge-right: rgba(124, 92, 255, 0.12);
+  --announcement-horizontal-band: rgba(150, 205, 255, 0.17);
+  --announcement-main-falloff: 49%;
+  --announcement-secondary-falloff: 35%;
+  --announcement-title-color: #e6f0ff;
+  --announcement-title-glow: rgba(82, 172, 255, 0.6);
+  --announcement-title-ambient: rgba(123, 97, 255, 0.24);
+  --announcement-accent-layer:
+    linear-gradient(118deg, rgba(110, 168, 255, 0.06) 8%, rgba(110, 168, 255, 0) 24%),
+    repeating-linear-gradient(118deg, rgba(110, 168, 255, 0.035) 0 1px, rgba(110, 168, 255, 0) 1px 44px);
+  --announcement-overlay-layer:
+    radial-gradient(circle at 50% 46%, rgba(180, 226, 255, 0.1) 0%, rgba(180, 226, 255, 0) 20%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 36%);
 }
 
+.tv-announcement--theme-loh {
+  --announcement-base-top: rgba(13, 12, 16, 0.98);
+  --announcement-base-mid: rgba(38, 28, 18, 0.95);
+  --announcement-base-bottom: rgba(10, 10, 14, 0.99);
+  --announcement-main-glow: rgba(240, 190, 96, 0.24);
+  --announcement-secondary-glow: rgba(178, 126, 44, 0.16);
+  --announcement-edge-left: rgba(90, 118, 170, 0.07);
+  --announcement-edge-right: rgba(142, 98, 60, 0.11);
+  --announcement-horizontal-band: rgba(248, 213, 150, 0.15);
+  --announcement-title-color: #f8edd7;
+  --announcement-title-glow: rgba(245, 192, 94, 0.44);
+  --announcement-title-ambient: rgba(176, 124, 42, 0.2);
+  --announcement-subtitle-color: rgba(245, 234, 214, 0.76);
+  --announcement-accent-layer:
+    radial-gradient(circle at 50% 34%, rgba(255, 223, 150, 0.14) 0%, rgba(255, 223, 150, 0) 34%);
+  --announcement-overlay-layer:
+    linear-gradient(180deg, rgba(255, 220, 150, 0.08) 0%, rgba(255, 220, 150, 0) 24%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 150, 0.02) 0 1px, rgba(255, 220, 150, 0) 1px 52px);
+}
+
+.tv-announcement--theme-eviction,
 .tv-announcement--royal-purple {
-  background:
-    radial-gradient(circle at 18% 12%, rgba(190, 160, 255, 0.28), rgba(190, 160, 255, 0) 28%),
-    linear-gradient(160deg, rgba(32, 13, 78, 0.96) 0%, rgba(68, 36, 134, 0.92) 52%, rgba(24, 9, 64, 0.97) 100%);
-}
-
-.tv-announcement--royal-purple::before {
-  background:
-    linear-gradient(160deg, rgba(196, 181, 253, 0.16) 0%, rgba(167, 139, 250, 0.24) 26%, rgba(139, 92, 246, 0.28) 52%, rgba(167, 139, 250, 0.1) 100%),
-    radial-gradient(circle at 18% 12%, rgba(224, 231, 255, 0.3) 0%, rgba(196, 181, 253, 0.18) 18%, rgba(167, 139, 250, 0) 48%);
-  opacity: 0.92;
+  --announcement-base-top: rgba(7, 8, 14, 0.99);
+  --announcement-base-mid: rgba(22, 14, 20, 0.96);
+  --announcement-base-bottom: rgba(4, 5, 10, 1);
+  --announcement-main-glow: rgba(110, 28, 46, 0.18);
+  --announcement-secondary-glow: rgba(62, 80, 122, 0.1);
+  --announcement-edge-left: rgba(72, 88, 130, 0.09);
+  --announcement-edge-right: rgba(104, 28, 48, 0.12);
+  --announcement-horizontal-band: rgba(180, 92, 110, 0.14);
+  --announcement-vignette-strength: 0.82;
+  --announcement-main-falloff: 45%;
+  --announcement-title-color: #f4e5e8;
+  --announcement-title-glow: rgba(171, 61, 82, 0.38);
+  --announcement-title-ambient: rgba(94, 34, 48, 0.22);
+  --announcement-subtitle-color: rgba(230, 214, 218, 0.72);
+  --announcement-accent-layer:
+    radial-gradient(circle at 50% 104%, rgba(136, 28, 42, 0.26) 0%, rgba(136, 28, 42, 0) 40%),
+    radial-gradient(circle at 48% 44%, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 24%);
+  --announcement-overlay-layer:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 28%),
+    linear-gradient(120deg, rgba(120, 36, 52, 0.06) 0%, rgba(120, 36, 52, 0) 32%);
 }
 
 /* ── Battle Back variant (orange spotlight) ──────────────────────────────── */
 .tv-announcement--battle-back {
-  background: linear-gradient(
-    160deg,
-    rgba(120, 52, 16, 0.92) 0%,
-    rgba(255, 138, 32, 0.88) 48%,
-    rgba(140, 58, 16, 0.92) 100%
-  );
-}
-
-.tv-announcement--battle-back::before {
-  background: linear-gradient(
-    160deg,
-    rgba(255, 176, 102, 0.24) 0%,
-    rgba(255, 138, 32, 0.35) 50%,
-    rgba(255, 176, 102, 0.24) 100%
-  );
+  --announcement-title-color: #ffd8a8;
+  --announcement-title-glow: rgba(255, 156, 77, 0.65);
+  --announcement-title-ambient: rgba(255, 110, 48, 0.28);
 }
 
 .tv-announcement--battle-back::after {
@@ -124,23 +234,9 @@
 
 /* ── Double Eviction variant (gold / crimson spotlight) ──────────────────── */
 .tv-announcement--double-eviction {
-  background: linear-gradient(
-    180deg,
-    rgba(28, 2, 8, 0.97) 0%,
-    rgba(78, 8, 16, 0.95) 40%,
-    rgba(116, 16, 28, 0.93) 72%,
-    rgba(44, 4, 10, 0.97) 100%
-  );
-}
-
-.tv-announcement--double-eviction::before {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 142, 142, 0.08) 0%,
-    rgba(164, 18, 36, 0.18) 40%,
-    rgba(255, 188, 104, 0.12) 76%,
-    rgba(90, 10, 18, 0.12) 100%
-  );
+  --announcement-title-color: #fef08a;
+  --announcement-title-glow: rgba(255, 210, 50, 0.9);
+  --announcement-title-ambient: rgba(255, 80, 60, 0.42);
 }
 
 .tv-announcement--double-eviction::after {
@@ -184,20 +280,36 @@
   gap: 5px;
   padding: 2px 9px;
   border-radius: 5px;
-  background: #ef4444;
+  background: #dc2626;
   color: #fff;
   font-size: 0.6rem;
   font-weight: 900;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   margin-bottom: 8px;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+  border: 1px solid rgba(255, 230, 230, 0.22);
+  box-shadow:
+    0 0 10px rgba(220, 38, 38, 0.82),
+    0 0 22px rgba(127, 29, 29, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
   animation: livePulseOverlay 1.4s ease-in-out infinite;
 }
 
 @keyframes livePulseOverlay {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(239, 68, 68, 0.7); }
-  50%       { opacity: 0.75; box-shadow: 0 0 18px rgba(239, 68, 68, 1); }
+  0%, 100% {
+    opacity: 1;
+    box-shadow:
+      0 0 10px rgba(220, 38, 38, 0.82),
+      0 0 22px rgba(127, 29, 29, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+  50% {
+    opacity: 0.82;
+    box-shadow:
+      0 0 16px rgba(239, 68, 68, 0.95),
+      0 0 30px rgba(153, 27, 27, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
 }
 
 .tv-announcement__live-dot {
@@ -226,8 +338,11 @@
   font-size: 1rem;
   font-weight: 900;
   letter-spacing: 0.02em;
-  color: #eef2ff;
-  text-shadow: 0 0 20px rgba(99, 102, 241, 0.8), 0 1px 6px rgba(0, 0, 0, 1);
+  color: var(--announcement-title-color);
+  text-shadow:
+    0 0 24px var(--announcement-title-glow),
+    0 0 44px var(--announcement-title-ambient),
+    0 1px 6px rgba(0, 0, 0, 1);
   text-transform: uppercase;
 }
 
@@ -235,7 +350,7 @@
   margin: 0;
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgba(224, 231, 255, 0.75);
+  color: var(--announcement-subtitle-color);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
@@ -271,9 +386,9 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 1px solid rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.2);
-  color: #c7d2fe;
+  border: 1px solid var(--announcement-info-border);
+  background: var(--announcement-info-bg);
+  color: var(--announcement-info-color);
   font-size: 0.8rem;
   line-height: 1;
   cursor: pointer;
@@ -284,8 +399,8 @@
 }
 
 .tv-announcement__info-btn:hover {
-  background: rgba(99, 102, 241, 0.3);
-  border-color: rgba(99, 102, 241, 0.8);
+  background: var(--announcement-info-bg-hover);
+  border-color: var(--announcement-info-border);
 }
 
 .tv-announcement__info-btn:focus {
@@ -293,32 +408,18 @@
 }
 
 .tv-announcement__info-btn:focus-visible {
-  background: rgba(99, 102, 241, 0.3);
-  border-color: rgba(99, 102, 241, 0.8);
+  background: var(--announcement-info-bg-hover);
+  border-color: var(--announcement-info-border);
   outline: 2px solid #e5e7ff;
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--announcement-info-border) 75%, transparent);
 }
 
 /* ── Double Trouble variant (gold/black premium) ──────────────────────────── */
 .tv-announcement--vip-veto {
-  background: linear-gradient(
-    180deg,
-    rgba(10, 8, 2, 0.97) 0%,
-    rgba(60, 46, 2, 0.95) 40%,
-    rgba(100, 78, 4, 0.93) 72%,
-    rgba(20, 14, 0, 0.97) 100%
-  );
-}
-
-.tv-announcement--vip-veto::before {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 215, 0, 0.08) 0%,
-    rgba(255, 195, 0, 0.20) 40%,
-    rgba(255, 223, 100, 0.12) 76%,
-    rgba(120, 90, 0, 0.10) 100%
-  );
+  --announcement-title-color: #f7d66a;
+  --announcement-title-glow: rgba(255, 215, 0, 0.82);
+  --announcement-title-ambient: rgba(255, 180, 0, 0.38);
 }
 
 .tv-announcement--vip-veto::after {
@@ -354,23 +455,9 @@
 
 /* ── Halo Exchange variant (airy / icy-blue) ──────────────────────────────── */
 .tv-announcement--diamond-pov {
-  background: linear-gradient(
-    180deg,
-    rgba(2, 16, 40, 0.97) 0%,
-    rgba(4, 40, 100, 0.95) 40%,
-    rgba(6, 60, 140, 0.93) 72%,
-    rgba(2, 10, 28, 0.97) 100%
-  );
-}
-
-.tv-announcement--diamond-pov::before {
-  background: linear-gradient(
-    180deg,
-    rgba(180, 220, 255, 0.10) 0%,
-    rgba(100, 180, 255, 0.22) 40%,
-    rgba(160, 220, 255, 0.14) 76%,
-    rgba(40, 80, 140, 0.10) 100%
-  );
+  --announcement-title-color: #b8deff;
+  --announcement-title-glow: rgba(130, 200, 255, 0.9);
+  --announcement-title-ambient: rgba(80, 160, 255, 0.32);
 }
 
 .tv-announcement--diamond-pov::after {
@@ -406,23 +493,9 @@
 
 /* ── Detox variant (dramatic red / purge) ─────────────────────────────────── */
 .tv-announcement--coup-detat {
-  background: linear-gradient(
-    180deg,
-    rgba(20, 2, 2, 0.97) 0%,
-    rgba(80, 6, 6, 0.95) 40%,
-    rgba(140, 10, 10, 0.93) 72%,
-    rgba(30, 2, 2, 0.97) 100%
-  );
-}
-
-.tv-announcement--coup-detat::before {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 60, 60, 0.10) 0%,
-    rgba(220, 20, 20, 0.22) 40%,
-    rgba(255, 100, 80, 0.14) 76%,
-    rgba(100, 6, 6, 0.10) 100%
-  );
+  --announcement-title-color: #ff8080;
+  --announcement-title-glow: rgba(255, 60, 60, 0.9);
+  --announcement-title-ambient: rgba(200, 20, 20, 0.42);
 }
 
 .tv-announcement--coup-detat::after {
@@ -458,23 +531,9 @@
 
 /* ── Force Majeure variant (bright forced-use) ────────────────────────────── */
 .tv-announcement--spotlight-veto {
-  background: linear-gradient(
-    180deg,
-    rgba(8, 24, 40, 0.97) 0%,
-    rgba(20, 60, 100, 0.95) 40%,
-    rgba(40, 100, 160, 0.93) 72%,
-    rgba(8, 20, 36, 0.97) 100%
-  );
-}
-
-.tv-announcement--spotlight-veto::before {
-  background: linear-gradient(
-    180deg,
-    rgba(200, 240, 255, 0.10) 0%,
-    rgba(120, 200, 255, 0.22) 40%,
-    rgba(180, 230, 255, 0.14) 76%,
-    rgba(40, 80, 120, 0.10) 100%
-  );
+  --announcement-title-color: #b0e8ff;
+  --announcement-title-glow: rgba(100, 200, 255, 0.9);
+  --announcement-title-ambient: rgba(60, 160, 220, 0.34);
 }
 
 .tv-announcement--spotlight-veto::after {

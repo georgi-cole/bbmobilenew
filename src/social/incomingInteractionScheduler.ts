@@ -128,9 +128,24 @@ export function getInteractionDedupeReason({
   const { dedupe } = socialConfig.incomingInteractionDeliveryConfig;
   const allFromActor = pendingInteractions.filter((entry) => entry.fromId === interaction.fromId);
   const unresolvedFromActor = allFromActor.filter((entry) => !entry.resolved);
+  const scenarioKey =
+    typeof interaction.payload?.scenarioKey === 'string' ? interaction.payload.scenarioKey : null;
+  const phaseKey = typeof interaction.payload?.phase === 'string' ? interaction.payload.phase : null;
 
   if (dedupe.blockLowPriorityIfActorPending && priority === 'low' && unresolvedFromActor.length > 0) {
     return 'deduped_actor_pending';
+  }
+
+  if (scenarioKey && phaseKey) {
+    const sameScenario = unresolvedFromActor.find(
+      (entry) =>
+        entry.createdWeek === week &&
+        entry.payload?.scenarioKey === scenarioKey &&
+        entry.payload?.phase === phaseKey,
+    );
+    if (sameScenario) {
+      return 'deduped_same_scenario';
+    }
   }
 
   const sameType = allFromActor.find(
