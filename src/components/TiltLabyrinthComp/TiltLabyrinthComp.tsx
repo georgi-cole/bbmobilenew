@@ -7,8 +7,7 @@
  *  - Keyboard controls (arrow keys / WASD)
  *  - Device orientation (tilt) support with graceful permission handling
  *  - Touch drag fallback for mobile devices without tilt access
- *  - Timer HUD (lower time = better score)
- *  - 60-second time limit — DNF recorded as 60 000 ms
+ *  - Finish-time scoring (lower time = better score)
  *  - Results screen with full ranked leaderboard (ascending by time)
  *  - Reduced-motion: tilt controls fall back to keyboard/touch automatically
  *
@@ -67,6 +66,7 @@ const FRICTION = 0.88;
 const KEYBOARD_ACCEL = 0.55;
 const TILT_ACCEL = 0.45;
 const MAX_VEL = 4.5;
+const MAX_COLLISION_STEP_PX = 1.5;
 const HAZARD_COUNT = 4;
 const HAZARD_RADIUS = 7;
 const HAZARD_SPEED = 1.15;
@@ -153,6 +153,26 @@ function clamp(value: number, min: number, max: number): number {
 
 function distance(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
+}
+
+function distanceToSegmentSquared(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  if (dx === 0 && dy === 0) {
+    return (px - x1) ** 2 + (py - y1) ** 2;
+  }
+
+  const t = clamp(((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy), 0, 1);
+  const closestX = x1 + dx * t;
+  const closestY = y1 + dy * t;
+  return (px - closestX) ** 2 + (py - closestY) ** 2;
 }
 
 function cellCenter(col: number, row: number): FeaturePoint {
@@ -475,7 +495,46 @@ function drawMaze(
 
 // ─── Ball–wall collision ──────────────────────────────────────────────────────
 
-function resolveCollisions(
+function circleTouchesMazeWall(
+  maze: MazeCell[][],
+  bx: number,
+  by: number,
+  radius = BALL_RADIUS,
+): boolean {
+  if (bx - radius < 0 || bx + radius > MAZE_W || by - radius < 0 || by + radius > MAZE_H) {
+    return true;
+  }
+
+  const minCol = clamp(Math.floor((bx - radius) / CELL_PX), 0, MAZE_COLS - 1);
+  const maxCol = clamp(Math.floor((bx + radius) / CELL_PX), 0, MAZE_COLS - 1);
+  const minRow = clamp(Math.floor((by - radius) / CELL_PX), 0, MAZE_ROWS - 1);
+  const maxRow = clamp(Math.floor((by + radius) / CELL_PX), 0, MAZE_ROWS - 1);
+  const radiusSq = radius * radius;
+
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      const cell = maze[row][col];
+      const x0 = col * CELL_PX;
+      const y0 = row * CELL_PX;
+      const x1 = x0 + CELL_PX;
+      const y1 = y0 + CELL_PX;
+
+      if (
+        (cell.walls.top && distanceToSegmentSquared(bx, by, x0, y0, x1, y0) < radiusSq) ||
+        (cell.walls.right && distanceToSegmentSquared(bx, by, x1, y0, x1, y1) < radiusSq) ||
+        (cell.walls.bottom && distanceToSegmentSquared(bx, by, x0, y1, x1, y1) < radiusSq) ||
+        (cell.walls.left && distanceToSegmentSquared(bx, by, x0, y0, x0, y1) < radiusSq)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function resolveCollisions(
   maze: MazeCell[][],
   bx: number,
   by: number,
@@ -483,52 +542,45 @@ function resolveCollisions(
   vy: number,
   radius = BALL_RADIUS,
 ): { bx: number; by: number; vx: number; vy: number } {
-  const r = radius;
-  const cp = CELL_PX;
+  const startX = bx - vx;
+  const startY = by - vy;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(vx), Math.abs(vy)) / MAX_COLLISION_STEP_PX));
 
-  const col = Math.floor(bx / cp);
-  const row = Math.floor(by / cp);
+  let nextX = startX;
+  let nextY = startY;
+  let nextVx = vx;
+  let nextVy = vy;
+  let stepX = vx / steps;
+  let stepY = vy / steps;
 
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      const cr = row + dy;
-      const cc = col + dx;
-      if (cr < 0 || cr >= MAZE_ROWS || cc < 0 || cc >= MAZE_COLS) continue;
-
-      const cell = maze[cr][cc];
-      const cx0 = cc * cp;
-      const cy0 = cr * cp;
-      const cx1 = cx0 + cp;
-      const cy1 = cy0 + cp;
-
-      // Top wall
-      if (cell.walls.top && by - r < cy0 && bx > cx0 && bx < cx1) {
-        by = cy0 + r;
-        vy = Math.abs(vy) * 0.3;
-      }
-      // Bottom wall
-      if (cell.walls.bottom && by + r > cy1 && bx > cx0 && bx < cx1) {
-        by = cy1 - r;
-        vy = -Math.abs(vy) * 0.3;
-      }
-      // Left wall
-      if (cell.walls.left && bx - r < cx0 && by > cy0 && by < cy1) {
-        bx = cx0 + r;
-        vx = Math.abs(vx) * 0.3;
-      }
-      // Right wall
-      if (cell.walls.right && bx + r > cx1 && by > cy0 && by < cy1) {
-        bx = cx1 - r;
-        vx = -Math.abs(vx) * 0.3;
+  for (let i = 0; i < steps; i++) {
+    if (stepX !== 0) {
+      const candidateX = nextX + stepX;
+      if (!circleTouchesMazeWall(maze, candidateX, nextY, radius)) {
+        nextX = candidateX;
+      } else {
+        stepX = 0;
+        nextVx = 0;
       }
     }
+
+    if (stepY !== 0) {
+      const candidateY = nextY + stepY;
+      if (!circleTouchesMazeWall(maze, nextX, candidateY, radius)) {
+        nextY = candidateY;
+      } else {
+        stepY = 0;
+        nextVy = 0;
+      }
+    }
+
+    if (stepX === 0 && stepY === 0) break;
   }
 
-  // Clamp to canvas
-  bx = Math.max(r, Math.min(MAZE_W - r, bx));
-  by = Math.max(r, Math.min(MAZE_H - r, by));
+  nextX = clamp(nextX, radius, MAZE_W - radius);
+  nextY = clamp(nextY, radius, MAZE_H - radius);
 
-  return { bx, by, vx, vy };
+  return { bx: nextX, by: nextY, vx: nextVx, vy: nextVy };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -550,8 +602,6 @@ export default function TiltLabyrinthComp({
   const resolvedRef = useRef(false);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
 
-  // Display timer (seconds, 1 decimal)
-  const [displayTime, setDisplayTime] = useState(0);
   const [useTilt, setUseTilt] = useState(false);
   const [hazardHits, setHazardHits] = useState(0);
   const [hasKey, setHasKey] = useState(false);
@@ -689,9 +739,6 @@ export default function TiltLabyrinthComp({
     if (!ctx) return;
 
     let animId = 0;
-    // Track the last displayed tenth-of-a-second to throttle React state updates
-    let lastDisplayedTenth = -1;
-
     const tick = () => {
       const gs = gameRef.current;
       const maze = mazeRef.current;
@@ -699,23 +746,6 @@ export default function TiltLabyrinthComp({
 
       if (!gs.finished) {
         gs.elapsed = performance.now() - gs.startTime;
-
-        // Throttle React state update to once per visible tenth-of-a-second
-        const tenth = Math.floor(Math.min(gs.elapsed, TIME_LIMIT_MS) / 100);
-        if (tenth !== lastDisplayedTenth) {
-          lastDisplayedTenth = tenth;
-          setDisplayTime(Math.min(gs.elapsed, TIME_LIMIT_MS));
-        }
-
-        // Check timeout
-        if (gs.elapsed >= TIME_LIMIT_MS) {
-          gs.finished = true;
-          gs.finishTime = TIME_LIMIT_MS;
-          handleFinish(TIME_LIMIT_MS);
-          // Final frame then stop — no more RAF scheduling
-          drawMaze(ctx, maze, gs, gs.elapsed);
-          return;
-        }
 
         // Compute acceleration
         let ax = 0;
@@ -961,14 +991,20 @@ export default function TiltLabyrinthComp({
   }, [labState]);
 
   if (leaderboard && labState?.phase === 'complete') {
-    const humanEntry = leaderboard.find((e) => e.isHuman);
-    const humanMs = humanEntry?.timeMs ?? TIME_LIMIT_MS;
     const winnerEntry = leaderboard[0];
+    const humanEntry = leaderboard.find((e) => e.isHuman);
+    const continueValue = humanEntry?.timeMs ?? winnerEntry?.timeMs ?? 0;
+    let resultsSummary = 'Final standings recorded.';
+    if (humanEntry) {
+      resultsSummary = `Your time: ${(humanEntry.timeMs / 1000).toFixed(2)}s`;
+    } else if (winnerEntry) {
+      resultsSummary = `${winnerEntry.name} finished in ${(winnerEntry.timeMs / 1000).toFixed(2)}s`;
+    }
 
     return (
       <MinigameCompleteWrapper
         className="tilt-labyrinth-results"
-        onContinue={() => onComplete({ rawValue: humanMs })}
+        onContinue={() => onComplete({ rawValue: continueValue })}
         placementsNode={
           <ol className="tilt-labyrinth-placements" role="list" aria-label="Final standings">
             {leaderboard.map((entry, i) => (
@@ -994,7 +1030,7 @@ export default function TiltLabyrinthComp({
                   )}
                 </span>
                 <span className="tilt-labyrinth-time">
-                  {entry.timeMs >= TIME_LIMIT_MS ? 'DNF' : `${(entry.timeMs / 1000).toFixed(2)}s`}
+                  {(entry.timeMs / 1000).toFixed(2)}s
                 </span>
               </li>
             ))}
@@ -1014,9 +1050,7 @@ export default function TiltLabyrinthComp({
             const rank = leaderboard.findIndex((e) => e.isHuman);
             return (
               <p className="tilt-labyrinth-results-subtitle">
-                {humanMs >= TIME_LIMIT_MS
-                  ? "You didn't finish in time."
-                  : `Your time: ${(humanMs / 1000).toFixed(2)}s`}
+                {resultsSummary}
                 {rank >= 0 && (
                   <span className="tilt-labyrinth-your-rank">
                     {' '}• Rank {rank + 1} of {leaderboard.length}
@@ -1031,9 +1065,6 @@ export default function TiltLabyrinthComp({
   }
 
   // ── Playing screen ────────────────────────────────────────────────────────
-  const remainingMs = Math.max(0, TIME_LIMIT_MS - displayTime);
-  const remainingSec = (remainingMs / 1000).toFixed(1);
-  const timerWarning = remainingMs < 15_000;
   const objectiveText = !hasKey
     ? 'Find the key'
     : !lockOpen
@@ -1043,15 +1074,6 @@ export default function TiltLabyrinthComp({
   return (
     <div className="tilt-labyrinth-host" aria-label="Tilt Labyrinth">
       <div className="tilt-labyrinth-hud">
-        <div
-          className={['tilt-labyrinth-timer', timerWarning ? 'tilt-labyrinth-timer--warning' : '']
-            .filter(Boolean)
-            .join(' ')}
-          aria-live="polite"
-          aria-label={`Time remaining: ${remainingSec} seconds`}
-        >
-          ⏱ {remainingSec}s
-        </div>
         <div className="tilt-labyrinth-controls-hint">
           {useTilt
             ? '📱 Tilt to move • Keys also work'
