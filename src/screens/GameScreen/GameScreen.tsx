@@ -136,11 +136,21 @@ type PendingPublicSaveResult = {
 
 type AiTiebreakStage = 'tie' | 'deciding' | 'decision' | 'result'
 
+type VoteBreakdownSnapshot = {
+  votes: Record<string, string>
+  nomineeIds: string[]
+  evicteeId: string | null
+  week: number
+  phase: Phase
+}
+
 type AiTiebreakContext = {
   lohName: string
   evictee: Player
   resultTitle: string
 }
+
+const BATTLE_BACK_RETRY_LIMIT = 3
 
 /**
  * GameScreen — main gameplay view.
@@ -190,6 +200,7 @@ export default function GameScreen() {
   const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
   const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false)
   const [showVoteBreakdownPrompt, setShowVoteBreakdownPrompt] = useState(false)
+  const [postEvictionVoteBreakdown, setPostEvictionVoteBreakdown] = useState<VoteBreakdownSnapshot | null>(null)
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
@@ -208,13 +219,7 @@ export default function GameScreen() {
   const isPostEvictionConfessionalModeRef = useRef(false)
   // Snapshot of vote data captured at handleVoteResultsDone time for use in
   // unlockVoteBreakdown when game state may have already advanced.
-  const postEvictionVoteSnapshotRef = useRef<{
-    votes: Record<string, string>
-    nomineeIds: string[]
-    evicteeId: string | null
-    week: number
-    phase: Phase
-  } | null>(null)
+  const postEvictionVoteSnapshotRef = useRef<VoteBreakdownSnapshot | null>(null)
   const isMountedRef = useRef(true)
   const postEvictionVoteBreakdownPromptTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const activeConfessionalDecisionKey = activeConfessionalDecision
@@ -248,6 +253,7 @@ export default function GameScreen() {
   }, [activeConfessionalDecisionKey])
 
   const humanPlayer = game.players.find((p) => p.isUser)
+  const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
   const confessionalTvAnnouncement = confessionalPromptTriggered && showConfessionalTvPrompt
     ? {
       key: 'confessional_required',
@@ -1493,11 +1499,20 @@ export default function GameScreen() {
   }, [dispatch, proceedAfterVoteResults, queueVoteBreakdownPrompt])
 
   const unlockVoteBreakdown = useCallback(() => {
+    const wasPostEviction = isPostEvictionConfessionalModeRef.current
     // In post-eviction mode the game has already advanced (pendingEviction is null,
     // phase may be week_end). Use the snapshot captured at vote-results dismiss time
     // to save the correct week/phase and per-voter vote data.
-    const snapshot = postEvictionVoteSnapshotRef.current
-    if (snapshot) {
+    const snapshot = postEvictionVoteSnapshotRef.current ?? {
+      week: game.week,
+      phase: game.phase,
+      votes: { ...(game.votes ?? {}) },
+      nomineeIds: [...game.nomineeIds],
+      evicteeId: game.pendingEviction?.evicteeId ?? null,
+    }
+    if (wasPostEviction && humanPlayerEliminated) {
+      setPostEvictionVoteBreakdown(snapshot)
+    } else {
       saveEvictionVoteBreakdownUnlock({
         week: snapshot.week,
         phase: snapshot.phase,
@@ -1506,21 +1521,11 @@ export default function GameScreen() {
         evicteeId: snapshot.evicteeId,
         status: 'available',
       })
-    } else {
-      saveEvictionVoteBreakdownUnlock({
-        week: game.week,
-        phase: game.phase,
-        votes: { ...(game.votes ?? {}) },
-        nomineeIds: [...game.nomineeIds],
-        evicteeId: game.pendingEviction?.evicteeId ?? null,
-        status: 'available',
-      })
+      dispatch(addTvEvent({
+        text: 'Go to the Confessional before the day is over.',
+        type: 'game',
+      }))
     }
-    dispatch(addTvEvent({
-      text: 'Go to the Confessional before the day is over.',
-      type: 'game',
-    }))
-    const wasPostEviction = isPostEvictionConfessionalModeRef.current
     postEvictionVoteSnapshotRef.current = null
     isPostEvictionConfessionalModeRef.current = false
     setShowVoteBreakdownPrompt(false)
@@ -1537,6 +1542,7 @@ export default function GameScreen() {
     game.phase,
     game.votes,
     game.week,
+    humanPlayerEliminated,
     proceedAfterVoteResults,
   ])
 
@@ -1857,10 +1863,17 @@ export default function GameScreen() {
 
   const battleBack = game.battleBack
   const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
+  const [battleBackAttemptIndex, setBattleBackAttemptIndex] = useState(0)
+  const [battleBackRetryCount, setBattleBackRetryCount] = useState(0)
+  const [battleBackRetryOfferWinnerId, setBattleBackRetryOfferWinnerId] = useState<string | null>(null)
   // Only show the full-screen overlay once competitionActive is true.
   // When battleBack.active && !competitionActive, the TV filler shows the
   // twist announcement; the overlay opens ~5 s later via the effect below.
   const showBattleBack = battleBack?.active === true && battleBack?.competitionActive === true
+  const battleBackAttemptSeed = useMemo(
+    () => ((game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0),
+    [battleBackAttemptIndex, game.seed],
+  )
   const battleBackCandidates = useMemo(
     () => (battleBack?.active ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id)) : []),
     [battleBack?.active, battleBack?.candidates, game.players],
@@ -1869,10 +1882,10 @@ export default function GameScreen() {
   // Pre-compute the deterministic Battle Back winner and spectator variant so
   // the SpectatorView reveal always matches the store write.
   const battleBackWinnerId = useMemo(() => {
-    if (!showBattleBack || battleBackCandidates.length === 0) return undefined;
+    if (!showBattleBack || battleBackRetryOfferWinnerId || battleBackCandidates.length === 0) return undefined;
     const candidateIds = battleBackCandidates.map((p) => p.id);
-    return simulateBattleBackCompetition(candidateIds, game.seed).winnerId;
-  }, [showBattleBack, battleBackCandidates, game.seed]);
+    return simulateBattleBackCompetition(candidateIds, battleBackAttemptSeed).winnerId;
+  }, [showBattleBack, battleBackAttemptSeed, battleBackCandidates, battleBackRetryOfferWinnerId]);
 
   const battleBackReturnPlayer = useMemo(
     () => (battleBackReturnId ? game.players.find((p) => p.id === battleBackReturnId) ?? null : null),
@@ -1882,9 +1895,19 @@ export default function GameScreen() {
 
   const battleBackVariant = useMemo((): SpectatorVariant => {
     const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze'];
-    const rng = mulberry32(((game.seed ^ 0xdeadbeef) >>> 0));
+    const rng = mulberry32(((battleBackAttemptSeed ^ 0xdeadbeef) >>> 0));
     return variants[Math.floor(rng() * variants.length)];
-  }, [game.seed]);
+  }, [battleBackAttemptSeed]);
+
+  useEffect(() => {
+    if (battleBack?.active) {
+      setBattleBackAttemptIndex(0)
+      setBattleBackRetryCount(0)
+      setBattleBackRetryOfferWinnerId(null)
+      return
+    }
+    setBattleBackRetryOfferWinnerId(null)
+  }, [battleBack?.active, battleBack?.weekDecided])
 
   // Auto-open the competition overlay after the TV announcement has had time
   // to display (~5 s, matching the 4.5 s auto-dismiss + a small buffer).
@@ -1897,24 +1920,51 @@ export default function GameScreen() {
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
   // Battle Back completion before showing the return overlay. storeRef is intentionally
   // omitted from deps because refs are stable and shouldn't re-create this callback.
-  const handleBattleBackComplete = useCallback(() => {
-    if (!battleBackWinnerId) {
+  const finalizeBattleBackOutcome = useCallback((winnerId?: string | null) => {
+    if (!winnerId) {
       dispatch(dismissBattleBack())
       dispatch(advance())
       return
     }
 
-    dispatch(completeBattleBack(battleBackWinnerId))
+    dispatch(completeBattleBack(winnerId))
     const updatedBattleBack = storeRef.current.getState().game.battleBack
 
-    if (updatedBattleBack?.active === false && updatedBattleBack.winnerId === battleBackWinnerId) {
-      setBattleBackReturnId(battleBackWinnerId)
+    if (updatedBattleBack?.active === false && updatedBattleBack.winnerId === winnerId) {
+      setBattleBackReturnId(winnerId)
       return
     }
 
     dispatch(dismissBattleBack())
     dispatch(advance())
-  }, [dispatch, battleBackWinnerId])
+  }, [dispatch])
+
+  const handleBattleBackComplete = useCallback(() => {
+    if (!battleBackWinnerId) {
+      finalizeBattleBackOutcome()
+      return
+    }
+
+    const humanCandidateId = humanPlayer?.id ?? null
+    const humanCanRetryBattleBack =
+      !!humanCandidateId &&
+      battleBack?.candidates.includes(humanCandidateId) &&
+      battleBackWinnerId !== humanCandidateId &&
+      battleBackRetryCount < BATTLE_BACK_RETRY_LIMIT
+
+    if (humanCanRetryBattleBack) {
+      setBattleBackRetryOfferWinnerId(battleBackWinnerId)
+      return
+    }
+
+    finalizeBattleBackOutcome(battleBackWinnerId)
+  }, [
+    battleBack?.candidates,
+    battleBackRetryCount,
+    battleBackWinnerId,
+    finalizeBattleBackOutcome,
+    humanPlayer?.id,
+  ])
 
   const handleBattleBackReturnDone = useCallback(() => {
     setBattleBackReturnId(null)
@@ -2083,6 +2133,7 @@ export default function GameScreen() {
     const energyIsZero = userEnergy === 0
     const inSocialPhase = game.phase === 'social_1' || game.phase === 'social_2'
     if (
+      !humanPlayerEliminated &&
       energyIsZero &&
       game.week !== 1 &&
       !isFinal3Week &&
@@ -2106,7 +2157,7 @@ export default function GameScreen() {
       }
       setShowEnergyRechargePrompt(false)
     }
-  }, [userEnergy, humanPlayer, game.week, game.phase, isFinal3Week])
+  }, [userEnergy, humanPlayer, humanPlayerEliminated, game.week, game.phase, isFinal3Week])
 
   // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
   // Show a rewarded prompt when the user's approval drops below 40%
@@ -2121,6 +2172,7 @@ export default function GameScreen() {
     if (!humanPlayer) return
     const todayIsoDate = new Date().toISOString().slice(0, 10)
     if (
+      !humanPlayerEliminated &&
       shouldShowDislikedBoostPrompt(
         userApproval,
         lastDislikedPromptDateRef.current,
@@ -2139,7 +2191,7 @@ export default function GameScreen() {
     if (userApproval > DISLIKED_MAX_APPROVAL) {
       setShowDislikedBoostPrompt(false)
     }
-  }, [userApproval, humanPlayer, adsState?.dailyUsage?.public_meter_disliked_boost])
+  }, [adsState?.dailyUsage?.public_meter_disliked_boost, humanPlayer, humanPlayerEliminated, userApproval])
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel whenever the human player is alive and the game is in
@@ -3049,7 +3101,7 @@ export default function GameScreen() {
       {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
       {showBattleBack && battleBackCandidates.length > 0 && (
         <SpectatorView
-          key={battleBackCandidates.map((p) => p.id).join('-') + '-bb'}
+          key={`${battleBackCandidates.map((p) => p.id).join('-')}-bb-${battleBackAttemptIndex}`}
           competitorIds={battleBackCandidates.map((p) => p.id)}
           variant={battleBackVariant}
           expectedWinnerId={battleBackWinnerId}
@@ -3088,7 +3140,11 @@ export default function GameScreen() {
         <AdPrompt
           icon="🗳️"
           title="Peek Behind the Curtain?"
-          description="Watch a short ad to unlock the Confessional reveal showing who voted for whom after this live eviction."
+          description={
+            isPostEvictionConfessionalModeRef.current
+              ? 'Watch a short ad to unlock the vote reveal showing who voted for whom after this live eviction.'
+              : 'Watch a short ad to unlock the Confessional reveal showing who voted for whom after this live eviction.'
+          }
           watchLabel="Watch Ad to Unlock Vote Reveal"
           skipLabel="Continue"
           onWatch={() => {
@@ -3122,6 +3178,46 @@ export default function GameScreen() {
           }}
           pending={adPending}
         />
+      )}
+
+      {postEvictionVoteBreakdown && (
+        <div className="ad-prompt__backdrop" role="dialog" aria-modal="true" aria-label="Vote Breakdown">
+          <div className="ad-prompt__card game-screen__vote-breakdown-card">
+            <div className="game-screen__vote-breakdown-header">
+              <span className="game-screen__vote-breakdown-eyebrow">Vote Breakdown</span>
+              <strong>Who voted for whom</strong>
+            </div>
+            <div className="game-screen__vote-breakdown-table" role="table" aria-label="Eviction vote breakdown">
+              {Object.entries(postEvictionVoteBreakdown.votes).map(([voterKey, targetId]) => {
+                const voteKeyParts = voterKey.split('__')
+                const voterId = voteKeyParts[0]
+                const extraVoteKey = voteKeyParts.length > 1 ? voteKeyParts[1] : null
+                const voterName = game.players.find((player) => player.id === voterId)?.name ?? voterId
+                const targetName = game.players.find((player) => player.id === targetId)?.name ?? targetId
+                return (
+                  <div key={voterKey} className="game-screen__vote-breakdown-row" role="row">
+                    <span className="game-screen__vote-breakdown-cell" role="cell">
+                      {extraVoteKey === 'dv2' ? `${voterName} (Vote 2)` : voterName}
+                    </span>
+                    <span className="game-screen__vote-breakdown-arrow" aria-hidden="true">→</span>
+                    <span className="game-screen__vote-breakdown-cell game-screen__vote-breakdown-cell--target" role="cell">
+                      {targetName}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="game-screen__vote-breakdown-actions">
+              <button
+                type="button"
+                className="ad-prompt__btn ad-prompt__btn--watch"
+                onClick={() => setPostEvictionVoteBreakdown(null)}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* social_energy_recharge: rewarded prompt when energy hits 0 */}
@@ -3194,6 +3290,48 @@ export default function GameScreen() {
             }
           }}
           onSkip={() => setShowDislikedBoostPrompt(false)}
+          pending={adPending}
+        />
+      )}
+
+      {battleBackRetryOfferWinnerId && (
+        <AdPrompt
+          icon="⚡"
+          title="Second Chance?"
+          description={`Watch a short ad to rerun Battle Back before ${(game.players.find((player) => player.id === battleBackRetryOfferWinnerId)?.name ?? 'the winner')} returns. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
+          watchLabel="Watch Ad to Replay Battle Back"
+          skipLabel="Continue"
+          onWatch={() => {
+            if (adPending) return
+            setAdPending(true)
+            const restartBattleBack = () => {
+              setBattleBackRetryOfferWinnerId(null)
+              setBattleBackRetryCount((current) => current + 1)
+              setBattleBackAttemptIndex((current) => current + 1)
+              setAdPending(false)
+            }
+            const state = storeRef.current.getState()
+            if (!window.GameAds?.showRewarded) {
+              dispatch(recordAdShown('competition_retry'))
+              restartBattleBack()
+              return
+            }
+            const requested = showRewarded(
+              'competition_retry',
+              state,
+              dispatch,
+              () => restartBattleBack(),
+              { isFinal3Week },
+            )
+            if (!requested) {
+              setAdPending(false)
+            }
+          }}
+          onSkip={() => {
+            const winnerId = battleBackRetryOfferWinnerId
+            setBattleBackRetryOfferWinnerId(null)
+            finalizeBattleBackOutcome(winnerId)
+          }}
           pending={adPending}
         />
       )}
