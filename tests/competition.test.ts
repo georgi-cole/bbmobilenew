@@ -20,6 +20,7 @@ import challengeReducer, {
   completeChallenge,
   startChallenge,
 } from '../src/store/challengeSlice';
+import { computeScores } from '../src/minigames/scoring';
 import type { GameState, Player, MinigameSession } from '../src/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -154,6 +155,17 @@ describe('completeMinigame — zero-score guard', () => {
 // ── completeChallenge guard ───────────────────────────────────────────────────
 
 describe('completeChallenge — positive-score winner preference', () => {
+  it('preserves true ordering for raw scores above 100 when no scoringParams are provided', () => {
+    const ranked = computeScores('raw', [
+      { playerId: 'p0', rawValue: 120 },
+      { playerId: 'p1', rawValue: 205 },
+      { playerId: 'p2', rawValue: 160 },
+    ]);
+
+    expect(ranked.map((entry) => entry.playerId)).toEqual(['p1', 'p2', 'p0']);
+    expect(ranked.map((entry) => entry.score)).toEqual([205, 160, 120]);
+  });
+
   it('selects a positive-score winner over zero-score participants', () => {
     const players = makePlayers(3);
     const store = makeStore({ players, phase: 'loh_comp' });
@@ -193,6 +205,30 @@ describe('completeChallenge — positive-score winner preference', () => {
     );
 
     expect(winnerId).toBe('p1');
+  });
+
+  it('completeChallenge picks the true highest raw scorer even when all scores exceed 100', () => {
+    const players = makePlayers(3);
+    const store = makeStore({ players, phase: 'loh_comp' });
+
+    store.dispatch(
+      startChallenge(10, ['p0', 'p1', 'p2'], { forceGameKey: 'quickTap' }),
+    );
+
+    const winnerId = store.dispatch(
+      completeChallenge([
+        { playerId: 'p0', rawValue: 120 },
+        { playerId: 'p1', rawValue: 205 },
+        { playerId: 'p2', rawValue: 160 },
+      ]),
+    );
+
+    expect(winnerId).toBe('p1');
+    expect(store.getState().challenge.history[0]?.canonicalScores).toEqual({
+      p1: 205,
+      p2: 160,
+      p0: 120,
+    });
   });
 
   it('returns a winner even when all scores are zero', () => {

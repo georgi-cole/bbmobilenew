@@ -42,7 +42,7 @@ export interface ChallengeRun {
   participants: string[];
   /** Per-player raw values keyed by player ID. */
   rawScores: Record<string, number>;
-  /** Per-player canonical scores (0-1000). */
+  /** Per-player canonical higher-is-better scores used for ranking; usually 0-1000, but unbounded raw games may exceed it. */
   canonicalScores: Record<string, number>;
   winnerId: string;
   timestamp: number;
