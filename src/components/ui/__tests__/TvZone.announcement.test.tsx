@@ -289,7 +289,7 @@ describe('TvZone — announcement overlay', () => {
     ).toContain('tv-announcement--standard');
   });
 
-  it('renders live eviction announcements with the royal purple major-event styling', () => {
+  it('renders live eviction announcements with the cinematic eviction styling', () => {
     const store = makeStore();
 
     renderTvZone(store, {
@@ -304,7 +304,7 @@ describe('TvZone — announcement overlay', () => {
 
     expect(
       screen.getByRole('dialog', { name: /Announcement: Live Elimination/i }).className,
-    ).toContain('tv-announcement--royal-purple');
+    ).toContain('tv-announcement--cinematic-eviction');
   });
 
   it('shows the POS announcement overlay and restores the public save result after dismissal', () => {
@@ -985,7 +985,9 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     act(() => { store.dispatch(setPhase('loh_comp_announcement')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeDefined();
+    expect(
+      screen.getByRole('dialog', { name: /Announcement: LOH Competition/i }).className,
+    ).toContain('tv-announcement--cinematic-loh');
   });
 
   it('shows Power of Safety overlay when phase transitions to pos_comp_announcement', () => {
@@ -996,7 +998,7 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     expect(
       screen.getByRole('dialog', { name: /Announcement: Power of Safety/i }).className,
-    ).toContain('tv-announcement--cinematic-major');
+    ).toContain('tv-announcement--cinematic-pos');
   });
 
   it('LOH Competition overlay requires manual dismissal (no auto-dismiss)', () => {

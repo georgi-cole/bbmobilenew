@@ -56,11 +56,37 @@
 }
 
 .tv-announcement--cinematic-major {
-  background:
+  --tv-cinematic-bg:
     radial-gradient(circle at 48% 43%, rgba(122, 136, 255, 0.2) 0%, rgba(122, 136, 255, 0.1) 16%, rgba(122, 136, 255, 0) 38%),
     radial-gradient(circle at 50% 31%, rgba(178, 124, 255, 0.11) 0%, rgba(116, 120, 238, 0.06) 22%, rgba(116, 120, 238, 0) 48%),
-    linear-gradient(145deg, rgba(70, 42, 148, 0.14) 0%, rgba(70, 42, 148, 0.06) 34%, rgba(70, 42, 148, 0) 58%),
+    linear-gradient(90deg, rgba(24, 42, 94, 0.16) 0%, rgba(24, 42, 94, 0) 20%, rgba(24, 42, 94, 0) 80%, rgba(94, 48, 138, 0.16) 100%),
     linear-gradient(180deg, rgba(3, 7, 20, 0.99) 0%, rgba(7, 16, 40, 0.98) 24%, rgba(18, 30, 84, 0.95) 52%, rgba(28, 23, 84, 0.93) 68%, rgba(7, 10, 26, 0.99) 100%);
+  --tv-cinematic-overlay:
+    radial-gradient(circle at 49% 44%, rgba(198, 188, 255, 0.28) 0%, rgba(124, 138, 255, 0.22) 15%, rgba(88, 100, 214, 0.08) 31%, rgba(88, 100, 214, 0) 54%),
+    radial-gradient(circle at 51% 29%, rgba(206, 154, 255, 0.12) 0%, rgba(148, 126, 246, 0.06) 22%, rgba(148, 126, 246, 0) 48%),
+    radial-gradient(circle at 45% 46%, rgba(255, 255, 255, 0.014) 0%, rgba(255, 255, 255, 0.008) 12%, rgba(255, 255, 255, 0) 26%),
+    radial-gradient(circle at 56% 39%, rgba(112, 132, 255, 0.028) 0%, rgba(112, 132, 255, 0.01) 14%, rgba(112, 132, 255, 0) 30%),
+    linear-gradient(90deg, rgba(110, 126, 255, 0) 0%, rgba(110, 126, 255, 0.02) 22%, rgba(174, 134, 255, 0.062) 50%, rgba(110, 126, 255, 0.02) 78%, rgba(110, 126, 255, 0) 100%),
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.008) 66%, rgba(255, 255, 255, 0.018) 100%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.016) 0 1px, rgba(255, 255, 255, 0) 1px 18px);
+  --tv-cinematic-vignette:
+    radial-gradient(circle at 8% 10%, rgba(2, 4, 16, 0.44) 0%, rgba(2, 4, 16, 0) 24%),
+    radial-gradient(circle at 92% 12%, rgba(2, 4, 16, 0.38) 0%, rgba(2, 4, 16, 0) 26%),
+    radial-gradient(circle at 12% 92%, rgba(2, 4, 16, 0.56) 0%, rgba(2, 4, 16, 0) 30%),
+    radial-gradient(circle at 88% 90%, rgba(2, 4, 16, 0.56) 0%, rgba(2, 4, 16, 0) 30%),
+    radial-gradient(ellipse at center, rgba(2, 4, 16, 0) 30%, rgba(2, 4, 16, 0.2) 56%, rgba(2, 4, 16, 0.5) 100%),
+    linear-gradient(180deg, rgba(1, 2, 10, 0.32) 0%, rgba(1, 2, 10, 0.1) 18%, rgba(1, 2, 10, 0) 34%, rgba(1, 2, 10, 0.04) 62%, rgba(1, 2, 10, 0.18) 82%, rgba(1, 2, 10, 0.42) 100%);
+  --tv-cinematic-title-color: #eef2ff;
+  --tv-cinematic-title-shadow: 0 0 20px rgba(99, 102, 241, 0.8), 0 1px 6px rgba(0, 0, 0, 1);
+  --tv-cinematic-subtitle-color: rgba(224, 231, 255, 0.75);
+  --tv-cinematic-live-bg: linear-gradient(180deg, rgba(236, 76, 92, 0.98) 0%, rgba(202, 26, 52, 0.96) 100%);
+  --tv-cinematic-live-border: rgba(255, 214, 220, 0.18);
+  --tv-cinematic-live-shadow:
+    0 0 10px rgba(255, 86, 98, 0.3),
+    0 0 20px rgba(255, 86, 98, 0.18),
+    0 0 30px rgba(154, 128, 255, 0.09);
+  --tv-cinematic-live-ambient: radial-gradient(circle at 50% 50%, rgba(148, 132, 255, 0.1) 0%, rgba(148, 132, 255, 0.035) 42%, rgba(148, 132, 255, 0) 78%);
+  background: var(--tv-cinematic-bg);
   box-shadow:
     inset 0 0 96px rgba(1, 3, 12, 0.38),
     inset 0 -42px 96px rgba(1, 3, 14, 0.5),
@@ -71,13 +97,7 @@
    content/inset setup above so the glow and faint texture stay behind text. */
 .tv-announcement--cinematic-major::before {
   z-index: 0;
-  background:
-    radial-gradient(circle at 49% 44%, rgba(198, 188, 255, 0.28) 0%, rgba(124, 138, 255, 0.22) 15%, rgba(88, 100, 214, 0.08) 31%, rgba(88, 100, 214, 0) 54%),
-    radial-gradient(circle at 51% 29%, rgba(206, 154, 255, 0.12) 0%, rgba(148, 126, 246, 0.06) 22%, rgba(148, 126, 246, 0) 48%),
-    radial-gradient(circle at 50% 45%, rgba(20, 28, 76, 0.13) 0%, rgba(20, 28, 76, 0.08) 18%, rgba(20, 28, 76, 0) 42%),
-    linear-gradient(90deg, rgba(110, 126, 255, 0) 0%, rgba(110, 126, 255, 0.018) 22%, rgba(174, 134, 255, 0.055) 50%, rgba(110, 126, 255, 0.018) 78%, rgba(110, 126, 255, 0) 100%),
-    radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 28%, rgba(255, 255, 255, 0.009) 62%, rgba(255, 255, 255, 0.018) 100%),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.016) 0 1px, rgba(255, 255, 255, 0) 1px 18px);
+  background: var(--tv-cinematic-overlay);
   animation: tvAnnouncementStudioGlow 10s ease-in-out infinite;
 }
 
@@ -87,13 +107,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 8% 10%, rgba(2, 4, 16, 0.44) 0%, rgba(2, 4, 16, 0) 24%),
-    radial-gradient(circle at 92% 12%, rgba(2, 4, 16, 0.38) 0%, rgba(2, 4, 16, 0) 26%),
-    radial-gradient(circle at 12% 92%, rgba(2, 4, 16, 0.56) 0%, rgba(2, 4, 16, 0) 30%),
-    radial-gradient(circle at 88% 90%, rgba(2, 4, 16, 0.56) 0%, rgba(2, 4, 16, 0) 30%),
-    radial-gradient(ellipse at center, rgba(2, 4, 16, 0) 30%, rgba(2, 4, 16, 0.2) 56%, rgba(2, 4, 16, 0.5) 100%),
-    linear-gradient(180deg, rgba(1, 2, 10, 0.32) 0%, rgba(1, 2, 10, 0.1) 18%, rgba(1, 2, 10, 0) 34%, rgba(1, 2, 10, 0.04) 62%, rgba(1, 2, 10, 0.18) 82%, rgba(1, 2, 10, 0.42) 100%);
+  background: var(--tv-cinematic-vignette);
   pointer-events: none;
   z-index: 1;
 }
@@ -101,6 +115,88 @@
 @keyframes tvAnnouncementStudioGlow {
   0%, 100% { opacity: 0.8; transform: scale(1) translate3d(0, 0, 0); }
   50% { opacity: 0.94; transform: scale(1.018) translate3d(-0.4%, -1%, 0); }
+}
+
+.tv-announcement--cinematic-pos {
+  --tv-cinematic-bg:
+    radial-gradient(circle at 48% 43%, rgba(122, 152, 255, 0.22) 0%, rgba(122, 152, 255, 0.11) 16%, rgba(122, 152, 255, 0) 38%),
+    radial-gradient(circle at 50% 30%, rgba(196, 126, 255, 0.12) 0%, rgba(122, 130, 242, 0.06) 24%, rgba(122, 130, 242, 0) 50%),
+    radial-gradient(120% 62% at 6% 86%, rgba(108, 150, 255, 0.055) 0%, rgba(108, 150, 255, 0.024) 12%, rgba(108, 150, 255, 0) 34%),
+    radial-gradient(120% 62% at 94% 18%, rgba(168, 112, 255, 0.05) 0%, rgba(168, 112, 255, 0.02) 14%, rgba(168, 112, 255, 0) 36%),
+    linear-gradient(90deg, rgba(20, 40, 110, 0.18) 0%, rgba(20, 40, 110, 0) 24%, rgba(20, 40, 110, 0) 74%, rgba(88, 46, 150, 0.16) 100%),
+    linear-gradient(180deg, rgba(3, 7, 20, 0.99) 0%, rgba(7, 16, 42, 0.98) 24%, rgba(18, 34, 90, 0.95) 52%, rgba(28, 24, 88, 0.93) 70%, rgba(7, 10, 26, 0.99) 100%);
+  --tv-cinematic-overlay:
+    radial-gradient(circle at 49% 44%, rgba(206, 196, 255, 0.3) 0%, rgba(128, 144, 255, 0.23) 15%, rgba(90, 106, 226, 0.09) 31%, rgba(90, 106, 226, 0) 54%),
+    radial-gradient(circle at 51% 28%, rgba(214, 162, 255, 0.13) 0%, rgba(152, 132, 250, 0.065) 24%, rgba(152, 132, 250, 0) 50%),
+    radial-gradient(circle at 45% 46%, rgba(255, 255, 255, 0.016) 0%, rgba(255, 255, 255, 0.009) 11%, rgba(255, 255, 255, 0) 25%),
+    radial-gradient(circle at 56% 39%, rgba(118, 140, 255, 0.03) 0%, rgba(118, 140, 255, 0.011) 14%, rgba(118, 140, 255, 0) 30%),
+    linear-gradient(90deg, rgba(110, 126, 255, 0) 0%, rgba(110, 126, 255, 0.022) 21%, rgba(174, 134, 255, 0.07) 50%, rgba(110, 126, 255, 0.022) 79%, rgba(110, 126, 255, 0) 100%),
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.009) 66%, rgba(255, 255, 255, 0.018) 100%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.017) 0 1px, rgba(255, 255, 255, 0) 1px 18px);
+  --tv-cinematic-title-shadow: 0 0 20px rgba(102, 132, 255, 0.86), 0 0 34px rgba(144, 118, 255, 0.18), 0 1px 6px rgba(0, 0, 0, 1);
+  --tv-cinematic-live-bg: linear-gradient(180deg, rgba(240, 72, 88, 0.99) 0%, rgba(206, 24, 50, 0.97) 100%);
+  --tv-cinematic-live-shadow:
+    0 0 12px rgba(255, 86, 98, 0.34),
+    0 0 24px rgba(255, 86, 98, 0.2),
+    0 0 34px rgba(154, 128, 255, 0.1);
+}
+
+.tv-announcement--cinematic-loh {
+  --tv-cinematic-bg:
+    radial-gradient(circle at 49% 43%, rgba(242, 196, 112, 0.13) 0%, rgba(242, 196, 112, 0.06) 20%, rgba(242, 196, 112, 0) 42%),
+    radial-gradient(circle at 50% 29%, rgba(255, 226, 150, 0.09) 0%, rgba(214, 160, 78, 0.04) 24%, rgba(214, 160, 78, 0) 50%),
+    linear-gradient(90deg, rgba(28, 42, 74, 0.16) 0%, rgba(28, 42, 74, 0) 22%, rgba(28, 42, 74, 0) 76%, rgba(96, 62, 18, 0.16) 100%),
+    linear-gradient(180deg, rgba(4, 7, 16, 0.995) 0%, rgba(10, 14, 26, 0.985) 22%, rgba(20, 26, 46, 0.96) 52%, rgba(38, 28, 16, 0.94) 72%, rgba(10, 8, 6, 0.995) 100%);
+  --tv-cinematic-overlay:
+    radial-gradient(circle at 49% 44%, rgba(255, 234, 182, 0.16) 0%, rgba(228, 184, 106, 0.11) 18%, rgba(144, 108, 38, 0.04) 34%, rgba(144, 108, 38, 0) 58%),
+    radial-gradient(circle at 52% 28%, rgba(255, 238, 188, 0.11) 0%, rgba(226, 180, 98, 0.05) 24%, rgba(226, 180, 98, 0) 50%),
+    radial-gradient(circle at 45% 46%, rgba(255, 242, 214, 0.012) 0%, rgba(255, 242, 214, 0.006) 13%, rgba(255, 242, 214, 0) 28%),
+    linear-gradient(90deg, rgba(236, 194, 102, 0) 0%, rgba(236, 194, 102, 0.014) 22%, rgba(255, 216, 132, 0.048) 50%, rgba(236, 194, 102, 0.014) 78%, rgba(236, 194, 102, 0) 100%),
+    linear-gradient(180deg, rgba(255, 226, 160, 0) 0%, rgba(255, 226, 160, 0.028) 26%, rgba(255, 226, 160, 0.036) 52%, rgba(255, 226, 160, 0.014) 74%, rgba(255, 226, 160, 0) 100%),
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 32%, rgba(255, 238, 204, 0.008) 68%, rgba(255, 238, 204, 0.015) 100%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.014) 0 1px, rgba(255, 255, 255, 0) 1px 18px);
+  --tv-cinematic-vignette:
+    radial-gradient(circle at 8% 10%, rgba(2, 4, 12, 0.48) 0%, rgba(2, 4, 12, 0) 24%),
+    radial-gradient(circle at 92% 12%, rgba(10, 6, 2, 0.38) 0%, rgba(10, 6, 2, 0) 26%),
+    radial-gradient(circle at 12% 92%, rgba(4, 4, 8, 0.58) 0%, rgba(4, 4, 8, 0) 30%),
+    radial-gradient(circle at 88% 90%, rgba(10, 6, 2, 0.58) 0%, rgba(10, 6, 2, 0) 30%),
+    radial-gradient(ellipse at center, rgba(2, 4, 12, 0) 30%, rgba(2, 4, 12, 0.22) 58%, rgba(8, 8, 8, 0.52) 100%),
+    linear-gradient(180deg, rgba(4, 4, 8, 0.34) 0%, rgba(4, 4, 8, 0.1) 18%, rgba(4, 4, 8, 0) 34%, rgba(8, 6, 2, 0.05) 62%, rgba(8, 6, 2, 0.18) 82%, rgba(8, 6, 2, 0.4) 100%);
+  --tv-cinematic-title-color: #fff3d5;
+  --tv-cinematic-title-shadow: 0 0 16px rgba(238, 194, 106, 0.5), 0 0 28px rgba(160, 120, 42, 0.18), 0 1px 6px rgba(0, 0, 0, 1);
+  --tv-cinematic-subtitle-color: rgba(248, 232, 198, 0.76);
+}
+
+.tv-announcement--cinematic-eviction {
+  --tv-cinematic-bg:
+    radial-gradient(circle at 49% 44%, rgba(124, 34, 48, 0.11) 0%, rgba(124, 34, 48, 0.05) 16%, rgba(124, 34, 48, 0) 36%),
+    radial-gradient(circle at 52% 30%, rgba(142, 42, 70, 0.08) 0%, rgba(142, 42, 70, 0.035) 22%, rgba(142, 42, 70, 0) 46%),
+    linear-gradient(90deg, rgba(8, 18, 42, 0.14) 0%, rgba(8, 18, 42, 0) 22%, rgba(8, 18, 42, 0) 76%, rgba(74, 18, 40, 0.14) 100%),
+    linear-gradient(180deg, rgba(2, 4, 12, 1) 0%, rgba(5, 8, 18, 0.99) 24%, rgba(14, 18, 32, 0.975) 50%, rgba(24, 12, 18, 0.965) 70%, rgba(4, 4, 8, 1) 100%);
+  --tv-cinematic-overlay:
+    radial-gradient(circle at 49% 45%, rgba(190, 98, 122, 0.12) 0%, rgba(120, 42, 62, 0.08) 18%, rgba(72, 18, 34, 0.03) 32%, rgba(72, 18, 34, 0) 56%),
+    radial-gradient(circle at 51% 29%, rgba(146, 54, 82, 0.09) 0%, rgba(146, 54, 82, 0.035) 24%, rgba(146, 54, 82, 0) 48%),
+    radial-gradient(circle at 45% 46%, rgba(255, 232, 236, 0.01) 0%, rgba(255, 232, 236, 0.004) 12%, rgba(255, 232, 236, 0) 26%),
+    linear-gradient(90deg, rgba(138, 50, 74, 0) 0%, rgba(138, 50, 74, 0.012) 20%, rgba(154, 66, 88, 0.04) 50%, rgba(138, 50, 74, 0.012) 80%, rgba(138, 50, 74, 0) 100%),
+    linear-gradient(180deg, rgba(164, 54, 72, 0) 54%, rgba(164, 54, 72, 0.024) 74%, rgba(164, 54, 72, 0.05) 100%),
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 34%, rgba(255, 235, 240, 0.006) 70%, rgba(255, 235, 240, 0.014) 100%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.013) 0 1px, rgba(255, 255, 255, 0) 1px 18px);
+  --tv-cinematic-vignette:
+    radial-gradient(circle at 8% 10%, rgba(0, 0, 0, 0.54) 0%, rgba(0, 0, 0, 0) 24%),
+    radial-gradient(circle at 92% 12%, rgba(0, 0, 0, 0.48) 0%, rgba(0, 0, 0, 0) 26%),
+    radial-gradient(circle at 12% 92%, rgba(0, 0, 0, 0.66) 0%, rgba(0, 0, 0, 0) 30%),
+    radial-gradient(circle at 88% 90%, rgba(0, 0, 0, 0.66) 0%, rgba(0, 0, 0, 0) 30%),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 28%, rgba(0, 0, 0, 0.28) 56%, rgba(0, 0, 0, 0.64) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0.12) 18%, rgba(0, 0, 0, 0) 34%, rgba(0, 0, 0, 0.08) 62%, rgba(0, 0, 0, 0.24) 82%, rgba(0, 0, 0, 0.5) 100%);
+  --tv-cinematic-title-color: #f3e9ee;
+  --tv-cinematic-title-shadow: 0 0 18px rgba(154, 66, 88, 0.48), 0 0 28px rgba(82, 24, 42, 0.2), 0 1px 6px rgba(0, 0, 0, 1);
+  --tv-cinematic-subtitle-color: rgba(232, 218, 224, 0.74);
+  --tv-cinematic-live-bg: linear-gradient(180deg, rgba(232, 62, 74, 0.99) 0%, rgba(190, 20, 38, 0.98) 100%);
+  --tv-cinematic-live-shadow:
+    0 0 12px rgba(236, 62, 74, 0.36),
+    0 0 24px rgba(236, 62, 74, 0.22),
+    0 0 34px rgba(122, 44, 70, 0.12);
+  --tv-cinematic-live-ambient: radial-gradient(circle at 50% 50%, rgba(154, 72, 98, 0.12) 0%, rgba(154, 72, 98, 0.045) 42%, rgba(154, 72, 98, 0) 78%);
 }
 
 .tv-announcement--standard {
@@ -258,19 +354,16 @@
 }
 
 .tv-announcement--cinematic-major .tv-announcement__live {
-  background: linear-gradient(180deg, rgba(255, 104, 114, 0.96) 0%, rgba(220, 38, 62, 0.94) 100%);
-  border: 1px solid rgba(255, 216, 223, 0.18);
-  box-shadow:
-    0 0 8px rgba(255, 94, 106, 0.28),
-    0 0 18px rgba(255, 94, 106, 0.18),
-    0 0 28px rgba(148, 122, 255, 0.08);
+  background: var(--tv-cinematic-live-bg);
+  border: 1px solid var(--tv-cinematic-live-border);
+  box-shadow: var(--tv-cinematic-live-shadow);
 }
 
 .tv-announcement--cinematic-major .tv-announcement__live::before {
   content: '';
   position: absolute;
   inset: -8px -12px;
-  background: radial-gradient(circle at 50% 50%, rgba(148, 132, 255, 0.1) 0%, rgba(148, 132, 255, 0.035) 42%, rgba(148, 132, 255, 0) 78%);
+  background: var(--tv-cinematic-live-ambient);
   pointer-events: none;
   z-index: -1;
 }
@@ -298,12 +391,21 @@
   text-transform: uppercase;
 }
 
+.tv-announcement--cinematic-major .tv-announcement__title {
+  color: var(--tv-cinematic-title-color);
+  text-shadow: var(--tv-cinematic-title-shadow);
+}
+
 .tv-announcement__subtitle {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 500;
   color: rgba(224, 231, 255, 0.75);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.tv-announcement--cinematic-major .tv-announcement__subtitle {
+  color: var(--tv-cinematic-subtitle-color);
 }
 
 .tv-announcement__status-icon {

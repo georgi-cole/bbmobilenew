@@ -1,17 +1,32 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import './TvAnnouncementOverlay.css';
 
-const CINEMATIC_MAJOR_KEYS = new Set([
-  'nomination_ceremony',
+const CINEMATIC_POS_KEYS = new Set([
+  'pos_comp_announcement',
   'veto_ceremony',
   'final4',
+  'twist',
+]);
+
+const CINEMATIC_LOH_KEYS = new Set([
+  'nomination_ceremony',
   'final3_announcement',
   'final_hoh',
   'jury',
-  'twist',
   'loh_comp_announcement',
-  'pos_comp_announcement',
 ]);
+
+const CINEMATIC_EVICTION_KEYS = new Set([
+  'live_eviction',
+  'eviction_vote_result',
+]);
+
+function getCinematicTheme(key: string): 'pos' | 'loh' | 'eviction' | null {
+  if (CINEMATIC_POS_KEYS.has(key)) return 'pos';
+  if (CINEMATIC_LOH_KEYS.has(key) || key.startsWith('loh_tiebreak_')) return 'loh';
+  if (CINEMATIC_EVICTION_KEYS.has(key)) return 'eviction';
+  return null;
+}
 
 export interface Announcement {
   key: string;
@@ -54,11 +69,8 @@ export default function TvAnnouncementOverlay({
   const isSpotlightVeto = announcement.key === 'spotlight_veto';
   const isPublicSaveResult = announcement.key === 'public_save_result';
   const isConfessionalRequired = announcement.key === 'confessional_required';
-  const isRoyalPurple =
-    announcement.key === 'live_eviction' ||
-    announcement.key === 'eviction_vote_result' ||
-    announcement.key.startsWith('loh_tiebreak_');
-  const isCinematicMajor = CINEMATIC_MAJOR_KEYS.has(announcement.key);
+  const cinematicTheme = getCinematicTheme(announcement.key);
+  const isCinematicMajor = cinematicTheme !== null;
   const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding';
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
@@ -153,8 +165,10 @@ export default function TvAnnouncementOverlay({
             isCoupDetat ? 'tv-announcement--coup-detat' : '',
             isSpotlightVeto ? 'tv-announcement--spotlight-veto' : '',
             isPublicSaveResult || isConfessionalRequired ? 'tv-announcement--standard' : '',
-            isRoyalPurple ? 'tv-announcement--royal-purple' : '',
             isCinematicMajor ? 'tv-announcement--cinematic-major' : '',
+            cinematicTheme === 'pos' ? 'tv-announcement--cinematic-pos' : '',
+            cinematicTheme === 'loh' ? 'tv-announcement--cinematic-loh' : '',
+            cinematicTheme === 'eviction' ? 'tv-announcement--cinematic-eviction' : '',
           ].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="false"
