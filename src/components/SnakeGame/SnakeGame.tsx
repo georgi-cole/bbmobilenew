@@ -60,6 +60,42 @@ const FAST_FORWARD_RESOLVE_MS = 2_000;
 const FOOD_PULSE_MIN_OPACITY = 0.68;
 const FOOD_PULSE_RANGE = 0.32;
 const FOOD_PULSE_STEP = 0.55;
+/** Age (ms) after which non-standard food starts blinking. */
+const FOOD_EXPIRY_BLINK_MS = 3_000;
+/** Total lifetime (ms) of non-standard food before it auto-disappears. */
+const FOOD_EXPIRY_TOTAL_MS = 6_000;
+/** Monochrome LCD pixel silhouettes per food type — interesting, but still subtly similar. */
+const FOOD_SPRITES: Record<FoodType, readonly string[]> = {
+  // Fruit-ish
+  standard: [
+    '00100',
+    '01110',
+    '11111',
+    '11111',
+    '01110',
+  ],
+  // Heart-ish
+  bonus: [
+    '01010',
+    '11111',
+    '11111',
+    '01110',
+    '00100',
+  ],
+  // Bug-ish
+  penalty: [
+    '01110',
+    '11111',
+    '10101',
+    '11111',
+    '01010',
+  ],
+};
+const FOOD_SPRITE_GRID = 5;
+const FOOD_SPRITE_PIXEL = 2;
+const FOOD_SPRITE_OFFSET = Math.floor((TILE_SIZE - (FOOD_SPRITE_GRID * FOOD_SPRITE_PIXEL)) / 2);
+/** Multiplier applied to foodPulsePhase to drive the faster expiry-blink animation. */
+const BLINK_PHASE_MULTIPLIER = 6;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -101,6 +137,28 @@ interface Props {
 /** Clamp an accumulated score to the valid [0, SCORE_SCALE] range. */
 function normaliseScore(score: number): number {
   return Math.max(0, Math.min(SCORE_SCALE, score));
+}
+
+function drawFoodSprite(
+  ctx: CanvasRenderingContext2D,
+  type: FoodType,
+  position: Vec2,
+): void {
+  const sprite = FOOD_SPRITES[type];
+  const originX = position.x * TILE_SIZE + FOOD_SPRITE_OFFSET;
+  const originY = position.y * TILE_SIZE + FOOD_SPRITE_OFFSET;
+
+  sprite.forEach((row, rowIndex) => {
+    for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+      if (row[columnIndex] !== '1') continue;
+      ctx.fillRect(
+        originX + (columnIndex * FOOD_SPRITE_PIXEL),
+        originY + (rowIndex * FOOD_SPRITE_PIXEL),
+        FOOD_SPRITE_PIXEL,
+        FOOD_SPRITE_PIXEL,
+      );
+    }
+  });
 }
 
 /** Format milliseconds as M:SS.t (e.g. 1:23.4). */
@@ -162,6 +220,11 @@ export default function SnakeGame({
   const foodRef = useRef<Vec2>({ x: 5, y: 5 });
   /** Type of the currently active food item. */
   const foodTypeRef = useRef<FoodType>('standard');
+  /**
+   * Timestamp (Date.now()) when the current non-standard food was placed.
+   * 0 for standard food or before first placement.
+   */
+  const foodSpawnTimeRef = useRef<number>(0);
   const foodEatenRef = useRef(0);
   const currentScoreRef = useRef(0);
   /** Timestamp (Date.now()) when the current run started; null before first start. */
@@ -270,22 +333,30 @@ export default function SnakeGame({
       ctx.fillRect(seg.x * TILE_SIZE, seg.y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
     });
 
-    const foodPulse = gamePhaseRef.current === 'playing'
-      ? FOOD_PULSE_MIN_OPACITY
-        + (((Math.sin(foodPulsePhaseRef.current) + 1) / 2) * FOOD_PULSE_RANGE)
-      : 1;
-    ctx.globalAlpha = foodPulse;
-    // Food color varies by type: bonus (lighter green) / penalty (dark reddish) / standard
-    ctx.fillStyle =
-      foodTypeRef.current === 'bonus' ? '#306010'
-      : foodTypeRef.current === 'penalty' ? '#3d1010'
-      : '#0f380f';
-    ctx.fillRect(
-      foodRef.current.x * TILE_SIZE,
-      foodRef.current.y * TILE_SIZE,
-      TILE_SIZE - 1,
-      TILE_SIZE - 1,
-    );
+    const foodAge =
+      foodTypeRef.current !== 'standard' && foodSpawnTimeRef.current > 0
+        ? Date.now() - foodSpawnTimeRef.current
+        : 0;
+
+    let foodAlpha: number;
+    if (gamePhaseRef.current === 'playing') {
+      if (foodTypeRef.current !== 'standard' && foodAge >= FOOD_EXPIRY_BLINK_MS) {
+        // Fast blink when approaching expiry: use a multiple of the existing
+        // pulse phase so no extra Date.now() call is needed in the render loop.
+        foodAlpha = 0.5 + 0.5 * Math.sin(foodPulsePhaseRef.current * BLINK_PHASE_MULTIPLIER);
+      } else {
+        // Gentle pulse (existing behaviour for all non-blinking food)
+        foodAlpha =
+          FOOD_PULSE_MIN_OPACITY +
+          (((Math.sin(foodPulsePhaseRef.current) + 1) / 2) * FOOD_PULSE_RANGE);
+      }
+    } else {
+      foodAlpha = 1;
+    }
+
+    ctx.globalAlpha = foodAlpha;
+    ctx.fillStyle = '#0f380f';
+    drawFoodSprite(ctx, foodTypeRef.current, foodRef.current);
     ctx.globalAlpha = 1;
   }, []);
 
@@ -307,9 +378,13 @@ export default function SnakeGame({
     foodRef.current = candidate;
     // Assign a food type based on random roll
     const r = Math.random();
-    foodTypeRef.current = r < BONUS_FOOD_CHANCE ? 'bonus'
+    const newType: FoodType =
+      r < BONUS_FOOD_CHANCE ? 'bonus'
       : r < BONUS_FOOD_CHANCE + PENALTY_FOOD_CHANCE ? 'penalty'
       : 'standard';
+    foodTypeRef.current = newType;
+    // Track spawn time so non-standard food can expire
+    foodSpawnTimeRef.current = newType !== 'standard' ? Date.now() : 0;
   }, []);
 
   // ── Game tick ──────────────────────────────────────────────────────────────
@@ -367,6 +442,13 @@ export default function SnakeGame({
       placeFood();
     } else {
       snakeRef.current = snakeRef.current.slice(0, -1);
+      // Food expiry: non-standard food disappears after FOOD_EXPIRY_TOTAL_MS,
+      // ensuring bad food can never block progress indefinitely.
+      if (foodTypeRef.current !== 'standard' && foodSpawnTimeRef.current > 0) {
+        if (Date.now() - foodSpawnTimeRef.current >= FOOD_EXPIRY_TOTAL_MS) {
+          placeFood();
+        }
+      }
     }
 
     // Update live elapsed time display — throttled to every ~250ms to avoid
@@ -519,6 +601,7 @@ export default function SnakeGame({
     lastTimerUpdateRef.current = 0;
     elapsedMsRef.current = 0;
     foodPulsePhaseRef.current = 0;
+    foodSpawnTimeRef.current = 0;
     gameOverRef.current = false;
 
     setCurrentScore(0);
@@ -560,7 +643,7 @@ export default function SnakeGame({
 
   // Initial canvas render
   useEffect(() => {
-    if (canvasRef.current) draw();
+    draw();
   }, [draw]);
 
   // ── Direction handling ─────────────────────────────────────────────────────
