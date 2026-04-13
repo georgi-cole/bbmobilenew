@@ -723,7 +723,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Use arrow keys / WASD or tilt your device to move the ball',
       'Navigate through the maze to reach the 🏁 goal',
       'Fastest time wins — lower is better',
-      'You have 60 seconds before time runs out',
+      'There is no countdown — your finish time is recorded when you reach the goal',
     ],
     metricKind: 'time',
     metricLabel: 'Time (s)',

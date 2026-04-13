@@ -180,6 +180,12 @@ describe('Registry — tiltLabyrinth entry', () => {
   it('has timeLimitMs=0 (self-terminating)', () => {
     expect(getGame('tiltLabyrinth')?.timeLimitMs).toBe(0);
   });
+
+  it('documents that finish time is recorded without a countdown', () => {
+    expect(getGame('tiltLabyrinth')?.instructions).toContain(
+      'There is no countdown — your finish time is recorded when you reach the goal',
+    );
+  });
 });
 
 // ─── AI registry ─────────────────────────────────────────────────────────────
