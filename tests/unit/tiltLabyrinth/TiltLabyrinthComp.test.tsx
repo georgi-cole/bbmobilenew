@@ -1,13 +1,44 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import TiltLabyrinthComp, {
+import type { ReactNode } from 'react';
+import TiltLabyrinthComp from '../../../src/components/TiltLabyrinthComp/TiltLabyrinthComp';
+import {
   resolveCollisions,
-} from '../../../src/components/TiltLabyrinthComp/TiltLabyrinthComp';
+} from '../../../src/components/TiltLabyrinthComp/tiltLabyrinthCollision';
 import tiltLabyrinthReducer from '../../../src/features/tiltLabyrinth/tiltLabyrinthSlice';
 
 vi.mock('../../../src/components/TiltLabyrinthComp/TiltLabyrinthComp.css', () => ({}));
+vi.mock('../../../src/components/MinigameHost/MinigameCompleteWrapper', () => ({
+  default: ({
+    children,
+    placementsNode,
+    onContinue,
+  }: {
+    children: ReactNode;
+    placementsNode: ReactNode;
+    onContinue: () => void;
+  }) => (
+    <div>
+      {children}
+      {placementsNode}
+      <button type="button" onClick={onContinue}>
+        Continue
+      </button>
+    </div>
+  ),
+}));
+
+const COLLISION_CONFIG = {
+  radius: 6,
+  cellPx: 25,
+  mazeCols: 19,
+  mazeRows: 19,
+  mazeWidth: 19 * 25,
+  mazeHeight: 19 * 25,
+  maxCollisionStepPx: 1.5,
+} as const;
 
 function makeMaze() {
   return Array.from({ length: 19 }, () =>
@@ -86,7 +117,7 @@ describe('TiltLabyrinthComp movement hardening', () => {
     const startY = 12.5;
     const velocityX = 40;
 
-    const result = resolveCollisions(maze, startX + velocityX, startY, velocityX, 0);
+    const result = resolveCollisions(maze, startX + velocityX, startY, velocityX, 0, COLLISION_CONFIG);
 
     expect(result.bx).toBeLessThan(19.5);
     expect(result.by).toBe(startY);
@@ -109,6 +140,7 @@ describe('TiltLabyrinthComp movement hardening', () => {
       startY + velocityY,
       velocityX,
       velocityY,
+      COLLISION_CONFIG,
     );
 
     expect(result.bx).toBeLessThan(19.5);
@@ -148,5 +180,57 @@ describe('TiltLabyrinthComp movement hardening', () => {
     expect(screen.queryByLabelText(/time remaining/i)).not.toBeInTheDocument();
     expect(screen.getByText(/arrow keys \/ wasd or drag/i)).toBeInTheDocument();
     expect(screen.getByText(/hits 0/i)).toBeInTheDocument();
+  });
+
+  it('continues with the recorded human finish time even when the leaderboard lacks a human entry', () => {
+    const onComplete = vi.fn();
+    const completedState = {
+      phase: 'complete' as const,
+      competitionType: 'LOH' as const,
+      seed: 42,
+      participants: [{ id: 'ai-1', name: 'Alex', isHuman: false }],
+      humanPlayerId: 'human',
+      aiScores: { 'ai-1': 6000 },
+      humanScore: 4321,
+      finalScores: { 'ai-1': 6000 },
+      winnerId: 'ai-1',
+      lastPlaceId: null,
+      outcomeResolved: true,
+    };
+    const store = configureStore({
+      reducer: {
+        tiltLabyrinth: () => completedState,
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <TiltLabyrinthComp
+          participantIds={['human', 'ai-1']}
+          participants={[
+            {
+              id: 'human',
+              name: 'You',
+              isHuman: true,
+              precomputedScore: 0,
+              previousPR: null,
+            },
+            {
+              id: 'ai-1',
+              name: 'Alex',
+              isHuman: false,
+              precomputedScore: 0,
+              previousPR: null,
+            },
+          ]}
+          prizeType="LOH"
+          seed={42}
+          onComplete={onComplete}
+        />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    expect(onComplete).toHaveBeenCalledWith({ rawValue: 4321 });
   });
 });

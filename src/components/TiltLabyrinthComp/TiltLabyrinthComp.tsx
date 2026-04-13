@@ -13,7 +13,7 @@
  *
  * Competition integration:
  *  - On mount, dispatches initTiltLabyrinth with pre-computed AI completion times.
- *  - On maze solved (or timeout), dispatches setHumanScore then resolveTiltLabyrinthOutcome.
+ *  - On maze solved, dispatches setHumanScore then resolveTiltLabyrinthOutcome.
  *  - After the user taps Continue on the results screen, calls onComplete.
  *
  * Scoring: lower-is-better. Winner = fastest time. Last place = slowest time.
@@ -40,6 +40,10 @@ import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import type { TiltLabyrinthPrizeType } from '../../features/tiltLabyrinth/tiltLabyrinthSlice';
+import {
+  resolveCollisions,
+  type TiltLabyrinthMazeCell as MazeCell,
+} from './tiltLabyrinthCollision';
 import './TiltLabyrinthComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -80,12 +84,6 @@ const GOAL_RADIUS = 10;
 const TIME_LIMIT_MS = 60_000;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface MazeCell {
-  walls: { top: boolean; right: boolean; bottom: boolean; left: boolean };
-}
 
 interface FeaturePoint {
   x: number;
@@ -153,26 +151,6 @@ function clamp(value: number, min: number, max: number): number {
 
 function distance(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
-}
-
-function distanceToSegmentSquared(
-  px: number,
-  py: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  if (dx === 0 && dy === 0) {
-    return (px - x1) ** 2 + (py - y1) ** 2;
-  }
-
-  const t = clamp(((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy), 0, 1);
-  const closestX = x1 + dx * t;
-  const closestY = y1 + dy * t;
-  return (px - closestX) ** 2 + (py - closestY) ** 2;
 }
 
 function cellCenter(col: number, row: number): FeaturePoint {
@@ -493,96 +471,6 @@ function drawMaze(
   ctx.fill();
 }
 
-// ─── Ball–wall collision ──────────────────────────────────────────────────────
-
-function circleTouchesMazeWall(
-  maze: MazeCell[][],
-  bx: number,
-  by: number,
-  radius = BALL_RADIUS,
-): boolean {
-  if (bx - radius < 0 || bx + radius > MAZE_W || by - radius < 0 || by + radius > MAZE_H) {
-    return true;
-  }
-
-  const minCol = clamp(Math.floor((bx - radius) / CELL_PX), 0, MAZE_COLS - 1);
-  const maxCol = clamp(Math.floor((bx + radius) / CELL_PX), 0, MAZE_COLS - 1);
-  const minRow = clamp(Math.floor((by - radius) / CELL_PX), 0, MAZE_ROWS - 1);
-  const maxRow = clamp(Math.floor((by + radius) / CELL_PX), 0, MAZE_ROWS - 1);
-  const radiusSq = radius * radius;
-
-  for (let row = minRow; row <= maxRow; row++) {
-    for (let col = minCol; col <= maxCol; col++) {
-      const cell = maze[row][col];
-      const x0 = col * CELL_PX;
-      const y0 = row * CELL_PX;
-      const x1 = x0 + CELL_PX;
-      const y1 = y0 + CELL_PX;
-
-      if (
-        (cell.walls.top && distanceToSegmentSquared(bx, by, x0, y0, x1, y0) < radiusSq) ||
-        (cell.walls.right && distanceToSegmentSquared(bx, by, x1, y0, x1, y1) < radiusSq) ||
-        (cell.walls.bottom && distanceToSegmentSquared(bx, by, x0, y1, x1, y1) < radiusSq) ||
-        (cell.walls.left && distanceToSegmentSquared(bx, by, x0, y0, x0, y1) < radiusSq)
-      ) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function resolveCollisions(
-  maze: MazeCell[][],
-  bx: number,
-  by: number,
-  vx: number,
-  vy: number,
-  radius = BALL_RADIUS,
-): { bx: number; by: number; vx: number; vy: number } {
-  const startX = bx - vx;
-  const startY = by - vy;
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(vx), Math.abs(vy)) / MAX_COLLISION_STEP_PX));
-
-  let nextX = startX;
-  let nextY = startY;
-  let nextVx = vx;
-  let nextVy = vy;
-  let stepX = vx / steps;
-  let stepY = vy / steps;
-
-  for (let i = 0; i < steps; i++) {
-    if (stepX !== 0) {
-      const candidateX = nextX + stepX;
-      if (!circleTouchesMazeWall(maze, candidateX, nextY, radius)) {
-        nextX = candidateX;
-      } else {
-        stepX = 0;
-        nextVx = 0;
-      }
-    }
-
-    if (stepY !== 0) {
-      const candidateY = nextY + stepY;
-      if (!circleTouchesMazeWall(maze, nextX, candidateY, radius)) {
-        nextY = candidateY;
-      } else {
-        stepY = 0;
-        nextVy = 0;
-      }
-    }
-
-    if (stepX === 0 && stepY === 0) break;
-  }
-
-  nextX = clamp(nextX, radius, MAZE_W - radius);
-  nextY = clamp(nextY, radius, MAZE_H - radius);
-
-  return { bx: nextX, by: nextY, vx: nextVx, vy: nextVy };
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TiltLabyrinthComp({
@@ -788,7 +676,15 @@ export default function TiltLabyrinthComp({
         const ny = gs.ball.y + gs.ball.vy;
 
         // Resolve wall collisions
-        const resolved = resolveCollisions(maze, nx, ny, gs.ball.vx, gs.ball.vy);
+        const resolved = resolveCollisions(maze, nx, ny, gs.ball.vx, gs.ball.vy, {
+          radius: BALL_RADIUS,
+          cellPx: CELL_PX,
+          mazeCols: MAZE_COLS,
+          mazeRows: MAZE_ROWS,
+          mazeWidth: MAZE_W,
+          mazeHeight: MAZE_H,
+          maxCollisionStepPx: MAX_COLLISION_STEP_PX,
+        });
         gs.ball.x = resolved.bx;
         gs.ball.y = resolved.by;
         gs.ball.vx = resolved.vx;
@@ -993,7 +889,7 @@ export default function TiltLabyrinthComp({
   if (leaderboard && labState?.phase === 'complete') {
     const winnerEntry = leaderboard[0];
     const humanEntry = leaderboard.find((e) => e.isHuman);
-    const continueValue = humanEntry?.timeMs ?? winnerEntry?.timeMs ?? 0;
+    const continueValue = labState.humanScore ?? 0;
     let resultsSummary = 'Final standings recorded.';
     if (humanEntry) {
       resultsSummary = `Your time: ${(humanEntry.timeMs / 1000).toFixed(2)}s`;
