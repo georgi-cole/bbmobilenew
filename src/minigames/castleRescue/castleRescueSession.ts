@@ -1,16 +1,18 @@
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { computePlatformerFinalScore } from './castleRescuePlatformerLogic';
+import type {
+  PipeEntryGameState,
+  PlatformerScoreState,
+} from './castleRescuePlatformerLogic';
 
 export type CastleRescueEndReason = 'rescued' | 'timeout' | 'out_of_lives';
 
-interface LifeLossState {
+interface LifeLossState extends PlatformerScoreState {
   hearts: number;
-  score: number;
   startTime: number;
-  princessRescued: boolean;
   finalElapsedMs: number;
   finalScore: number;
-  phase: string;
+  phase: PipeEntryGameState['phase'];
   endReason: CastleRescueEndReason;
 }
 
@@ -26,7 +28,7 @@ export function applyCastleRescueLifeLoss(
   now: number,
   deathPenalty: number,
   outOfLivesPenalty: number,
-  computeFinalScore: (state: Pick<LifeLossState, 'score' | 'princessRescued'>, elapsedMs: number) => number = computePlatformerFinalScore,
+  computeFinalScore: (state: PlatformerScoreState, elapsedMs: number) => number = computePlatformerFinalScore,
 ): boolean {
   gs.hearts = Math.max(0, gs.hearts - 1);
   gs.score = Math.max(0, gs.score - deathPenalty);
