@@ -30,6 +30,7 @@ import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
 import { NATIVE_SFX_MAP, NATIVE_SFX_CONFIG } from '../../platform/cordova/nativeSfxMap';
 import { preloadImage } from '../../utils/preload';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
+import { hasSeenHomeHubSplash, markHomeHubSplashSeen } from './homeHubSplashSession';
 import './HomeHub.css';
 
 /**
@@ -72,7 +73,7 @@ export default function HomeHub() {
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplash());
   // Track whether the hub background has loaded so buttons are never shown
   // on an empty background (background-first ordering).
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -196,12 +197,17 @@ export default function HomeHub() {
     setPreloading(true);
   }
 
+  function handleSplashFinish() {
+    markHomeHubSplashSeen();
+    setSplashDone(true);
+  }
+
   return (
     <>
       {/* Cold-load intro splash — logo only, hub preloads in background.
           Exits automatically after the animation completes (~1.2s). */}
       {!splashDone && (
-        <KolequantSplash onFinish={() => setSplashDone(true)} />
+        <KolequantSplash onFinish={handleSplashFinish} />
       )}
 
       {/* Permission prompts shown after splash exits, over the hub.
