@@ -341,6 +341,10 @@ describe('GlassBridgeComp', () => {
     fireEvent.click(screen.getByRole('button', { name: /playback speed 1x/i }));
     await advance(1_000);
     expect(screen.getByLabelText('Time remaining').textContent).toContain('0:28');
+
+    fireEvent.click(screen.getByRole('button', { name: /playback speed 2x/i }));
+    await advance(500);
+    expect(screen.getByLabelText('Time remaining').textContent).toContain('0:27');
   });
 
   it('auto-scrolls the active row into view on mobile as the player advances', async () => {

@@ -863,33 +863,18 @@ export default function GlassBridgeComp({
     }
 
     const realNow = Date.now();
-    const elapsedMs = Math.max(0, realNow - gb.challengeStartTimeMs);
-    timerScaleRef.current = {
-      anchorRealMs: realNow,
-      elapsedMsAtAnchor: elapsedMs,
-      speed: 1,
-    };
-    setTimerDisplay(Math.max(0, gb.globalTimeLimitMs - elapsedMs));
-  }, [gb.phase, gb.challengeStartTimeMs, gb.globalTimeLimitMs]);
-
-  useEffect(() => {
-    if (gb.phase !== 'playing' || gb.challengeStartTimeMs === null) return;
-
-    const realNow = Date.now();
-    const elapsedMs = getEffectiveElapsedMs(realNow);
+    const previousTimerScale = timerScaleRef.current;
+    const elapsedMs = previousTimerScale
+      ? previousTimerScale.elapsedMsAtAnchor
+        + Math.max(0, realNow - previousTimerScale.anchorRealMs) * previousTimerScale.speed
+      : Math.max(0, realNow - gb.challengeStartTimeMs);
     timerScaleRef.current = {
       anchorRealMs: realNow,
       elapsedMsAtAnchor: elapsedMs,
       speed: effectivePlaybackSpeed,
     };
     setTimerDisplay(Math.max(0, gb.globalTimeLimitMs - elapsedMs));
-  }, [
-    effectivePlaybackSpeed,
-    gb.phase,
-    gb.challengeStartTimeMs,
-    gb.globalTimeLimitMs,
-    getEffectiveElapsedMs,
-  ]);
+  }, [effectivePlaybackSpeed, gb.phase, gb.challengeStartTimeMs, gb.globalTimeLimitMs]);
 
   useEffect(() => {
     if (gb.phase !== 'playing' || gb.challengeStartTimeMs === null) return;
@@ -1217,10 +1202,12 @@ export default function GlassBridgeComp({
       + (hintAreaRef.current?.getBoundingClientRect().height ?? 0);
     const visibleTop = scrollRect.top + floatingOffset + 12;
     const visibleBottom = scrollRect.bottom - 12;
+    const availableHeight = Math.max(1, visibleBottom - visibleTop);
+    const rowHeight = rowRect.bottom - rowRect.top;
 
     if (rowRect.top >= visibleTop && rowRect.bottom <= visibleBottom) return;
 
-    const delta = rowRect.top < visibleTop
+    const delta = rowHeight > availableHeight || rowRect.top < visibleTop
       ? rowRect.top - visibleTop
       : rowRect.bottom - visibleBottom;
     const nextTop = Math.max(0, scrollContainer.scrollTop + delta);
