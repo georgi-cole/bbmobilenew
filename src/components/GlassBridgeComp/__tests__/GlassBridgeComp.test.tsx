@@ -176,6 +176,15 @@ describe('GlassBridgeComp', () => {
   it('generates a fresh session seed on each mount when no explicit seed is provided', async () => {
     const generatedSeeds = [0x12345678, 0x9abcdef0];
     let seedIndex = 0;
+    const originalCryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    const cryptoObject = originalCryptoDescriptor?.value ?? {
+      getRandomValues: <T extends ArrayBufferView | null>(array: T): T => array,
+    };
+
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: cryptoObject,
+    });
 
     const getRandomValuesSpy = vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation((array) => {
       if (array instanceof Uint32Array && array.length > 0) {
@@ -185,42 +194,50 @@ describe('GlassBridgeComp', () => {
       return array;
     });
 
-    const firstStore = makeStore();
-    const firstRender = render(
-      <Provider store={firstStore}>
-        <GlassBridgeComp
-          participantIds={['user', 'ai-1']}
-          participants={[
-            { id: 'user', name: 'You', isHuman: true },
-            { id: 'ai-1', name: 'AI One', isHuman: false },
-          ]}
-        />
-      </Provider>,
-    );
+    try {
+      const firstStore = makeStore();
+      const firstRender = render(
+        <Provider store={firstStore}>
+          <GlassBridgeComp
+            participantIds={['user', 'ai-1']}
+            participants={[
+              { id: 'user', name: 'You', isHuman: true },
+              { id: 'ai-1', name: 'AI One', isHuman: false },
+            ]}
+          />
+        </Provider>,
+      );
 
-    await advance(0);
-    const firstSeed = firstStore.getState().glassBridge.seed;
-    firstRender.unmount();
+      await advance(0);
+      const firstSeed = firstStore.getState().glassBridge.seed;
+      firstRender.unmount();
 
-    const secondStore = makeStore();
-    render(
-      <Provider store={secondStore}>
-        <GlassBridgeComp
-          participantIds={['user', 'ai-1']}
-          participants={[
-            { id: 'user', name: 'You', isHuman: true },
-            { id: 'ai-1', name: 'AI One', isHuman: false },
-          ]}
-        />
-      </Provider>,
-    );
+      const secondStore = makeStore();
+      render(
+        <Provider store={secondStore}>
+          <GlassBridgeComp
+            participantIds={['user', 'ai-1']}
+            participants={[
+              { id: 'user', name: 'You', isHuman: true },
+              { id: 'ai-1', name: 'AI One', isHuman: false },
+            ]}
+          />
+        </Provider>,
+      );
 
-    await advance(0);
-    const secondSeed = secondStore.getState().glassBridge.seed;
+      await advance(0);
+      const secondSeed = secondStore.getState().glassBridge.seed;
 
-    expect(firstSeed).toBe(generatedSeeds[0]);
-    expect(secondSeed).toBe(generatedSeeds[1]);
-    expect(secondSeed).not.toBe(firstSeed);
-    getRandomValuesSpy.mockRestore();
+      expect(firstSeed).toBe(generatedSeeds[0]);
+      expect(secondSeed).toBe(generatedSeeds[1]);
+      expect(secondSeed).not.toBe(firstSeed);
+    } finally {
+      getRandomValuesSpy.mockRestore();
+      if (originalCryptoDescriptor) {
+        Object.defineProperty(globalThis, 'crypto', originalCryptoDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      }
+    }
   });
 });

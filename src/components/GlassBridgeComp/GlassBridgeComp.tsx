@@ -178,10 +178,10 @@ function getTimeoutCollapseDuration(rowsCount: number, noAnimations: boolean): n
 }
 
 /**
- * Compute a probabilistic hint for the player ("The Expert").
+ * Compute the tiered certainty hint shown by The Expert.
  *
  * Returns the integer percentage chance that the LEFT platform will break,
- * biased toward the true outcome.
+ * with stronger repeat requests on the same row becoming increasingly certain.
  *
  * Repeated hints on the same row intentionally become much more certain:
  *  - 1st hint: 65% / 35%
@@ -833,10 +833,13 @@ export default function GlassBridgeComp({
     playNewTurn();
   }, [gb.phase, gb.currentTurnIndex, gb.turnOrder, gb.progress, playNewTurn]);
 
-  // ── 14. Clear hint message when the human moves to a new row or turn ends ──
+  // ── 14. Clear hint state when the human moves to a new row, the turn changes,
+  //        or play exits the active phase. This keeps per-row hint escalation
+  //        scoped to the current decision only.
   useEffect(() => {
     setCurrentHintMessage(null);
-  }, [gb.currentPlayerRow, gb.currentTurnIndex]);
+    setHintRequestsForCurrentRow(0);
+  }, [gb.phase, gb.currentPlayerRow, gb.currentTurnIndex]);
 
   // ── Human actions ─────────────────────────────────────────────────────────
 
@@ -972,11 +975,6 @@ export default function GlassBridgeComp({
     !pendingStep &&
     !gb.timerExpired &&
     hintsRemaining > 0;
-
-  useEffect(() => {
-    setCurrentHintMessage(null);
-    setHintRequestsForCurrentRow(0);
-  }, [gb.phase, activeId, gb.currentPlayerRow]);
 
   const timerClass =
     timerDisplay <= 10_000
