@@ -15,7 +15,7 @@
  *   init(), requestBgm(key, owner), releaseBgm(owner),
  *   play(key, opts?), stop(key),
  *   setCategoryEnabled, setCategoryVolume,
- *   unlockOnUserGesture, unlockAndPlayMusicOnly,
+ *   unlockFromGesture, unlockOnUserGesture, unlockAndPlayMusicOnly,
  *   currentMusicKey, currentBgmOwner
  *
  * Legacy BGM API (backward-compatible wrappers):
@@ -40,6 +40,11 @@ const SFX_POOL_SIZE = 4;
 export interface PlayOptions {
   /** Volume override (0–1).  Defaults to entry volume or 1. */
   volume?: number;
+}
+
+export interface UnlockAudioOptions {
+  /** When true, only the highest-priority desired BGM is started on unlock. */
+  musicOnly?: boolean;
 }
 
 /**
@@ -594,6 +599,40 @@ class _SoundManager {
   // ── User-gesture unlock ─────────────────────────────────────────────────────
 
   /**
+   * Unlock the audio system immediately from inside a user gesture.
+   *
+   * Use this for route-owned gesture handlers so the caller controls exactly
+   * which click/tap unlocks audio without also arming a second global path.
+   */
+  unlockFromGesture(options: UnlockAudioOptions = {}): void {
+    if (typeof document === 'undefined') return;
+    if (this._unlocked) {
+      if (_audioDebug) {
+        console.log('[SoundManager] unlockFromGesture() — already unlocked');
+      }
+      return;
+    }
+
+    this._clearUnlockListeners();
+    this._unlocked = true;
+
+    if (_audioDebug) {
+      console.log(
+        `[SoundManager] audio unlocked via direct gesture — ${options.musicOnly ? 'starting desired BGM only' : 'applying desired BGM, priming SFX pools'}`,
+      );
+    }
+
+    if (options.musicOnly) {
+      this._playQueue = [];
+      this._applyDesiredBgm();
+      this._primeSfxForMobile();
+      return;
+    }
+
+    this._drainQueue();
+  }
+
+  /**
    * Unlock the audio system.
    *
    * - Call from within a user-gesture handler (e.g. a button click) to
@@ -615,9 +654,7 @@ class _SoundManager {
       return;
     }
     this._ensureUnlockListeners();
-
-    // Also try immediately — effective when called from inside a gesture handler
-    this._unlockHandler?.();
+    this.unlockFromGesture();
   }
 
   /**
@@ -633,34 +670,7 @@ class _SoundManager {
    * - Drops all queued SFX so they are never replayed automatically.
    */
   unlockAndPlayMusicOnly(): void {
-    if (typeof document === 'undefined') return;
-    if (this._unlocked) {
-      if (_audioDebug) {
-        console.log('[SoundManager] unlockAndPlayMusicOnly() — already unlocked');
-      }
-      return;
-    }
-
-    // Remove any pending document-level unlock listeners if they were armed.
-    if (this._unlockHandler) {
-      document.removeEventListener('click', this._unlockHandler, true);
-      document.removeEventListener('keydown', this._unlockHandler, true);
-      document.removeEventListener('touchstart', this._unlockHandler, true);
-      this._unlockHandler = null;
-    }
-    this._unlocked = true;
-
-    if (_audioDebug) {
-      console.log('[SoundManager] audio unlocked via unlockAndPlayMusicOnly — starting desired BGM only');
-    }
-
-    // Start the latest desired BGM; discard all queued items (including SFX).
-    this._playQueue = [];
-    this._applyDesiredBgm();
-
-    // Prime after starting music so iOS/Safari uses the gesture budget on the
-    // background track first.
-    this._primeSfxForMobile();
+    this.unlockFromGesture({ musicOnly: true });
   }
 
   private _drainQueue(): void {
@@ -701,6 +711,14 @@ class _SoundManager {
     this._ensureUnlockListeners();
   }
 
+  private _clearUnlockListeners(): void {
+    if (typeof document === 'undefined' || !this._unlockHandler) return;
+    document.removeEventListener('click', this._unlockHandler, true);
+    document.removeEventListener('keydown', this._unlockHandler, true);
+    document.removeEventListener('touchstart', this._unlockHandler, true);
+    this._unlockHandler = null;
+  }
+
   private _ensureUnlockListeners(): void {
     if (typeof document === 'undefined' || this._unlockHandler) return;
     if (_audioDebug) {
@@ -708,17 +726,7 @@ class _SoundManager {
     }
     const handler = () => {
       if (this._unlocked) return;
-      this._unlocked = true;
-      document.removeEventListener('click', handler, true);
-      document.removeEventListener('keydown', handler, true);
-      document.removeEventListener('touchstart', handler, true);
-      this._unlockHandler = null;
-      if (_audioDebug) {
-        console.log(
-          '[SoundManager] audio unlocked — applying desired BGM, priming SFX pools',
-        );
-      }
-      this._drainQueue();
+      this.unlockFromGesture();
     };
     this._unlockHandler = handler;
     document.addEventListener('click', handler, true);
@@ -867,6 +875,8 @@ if (_audioDebug && typeof window !== 'undefined') {
     playMusic: (key: string) => void SoundManager.playMusic(key),
     /** Request BGM with an owner: __audioDebug.requestBgm('music:intro_hub_loop', 'introhub') */
     requestBgm: (key: string, owner: string) => SoundManager.requestBgm(key, owner as BgmOwner),
+    /** Immediately unlock audio from the current gesture. */
+    unlockFromGesture: (musicOnly = false) => SoundManager.unlockFromGesture({ musicOnly }),
     /** Enable all audio categories (useful for quick testing). */
     enableAll: () => {
       for (const cat of ['music', 'ui', 'tv', 'player', 'minigame'] as SoundCategory[]) {
@@ -895,6 +905,7 @@ if (_audioDebug && typeof window !== 'undefined') {
   console.log('  __audioDebug.listKeys()     — list all registered sound keys');
   console.log('  __audioDebug.play(key)      — manually play a sound');
   console.log('  __audioDebug.playMusic(key) — start music');
+  console.log('  __audioDebug.unlockFromGesture() — unlock audio now');
   console.log('  __audioDebug.enableAll()    — enable all categories');
   console.log('  __audioDebug.dump()         — print engine state');
 }

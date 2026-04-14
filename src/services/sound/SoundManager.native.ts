@@ -9,7 +9,7 @@
  * (e.g. react-native-sound or expo-av) when targeting native platforms.
  */
 
-import type { PlayOptions, BgmOwner } from './SoundManager';
+import type { PlayOptions, BgmOwner, UnlockAudioOptions } from './SoundManager';
 import type { SoundCategory, SoundEntry } from './sounds';
 
 class _SoundManagerNative {
@@ -58,6 +58,10 @@ class _SoundManagerNative {
   }
 
   unlockOnUserGesture(): void {
+    // No-op on React Native — no AudioContext unlock required
+  }
+
+  unlockFromGesture(_options?: UnlockAudioOptions): void {
     // No-op on React Native — no AudioContext unlock required
   }
 

@@ -16,7 +16,7 @@ describe('AudioGate', () => {
   });
 
   it('still unlocks audio on the first document click without showing UI', () => {
-    const unlockSpy = vi.spyOn(SoundManager, 'unlockOnUserGesture').mockImplementation(() => {});
+    const unlockSpy = vi.spyOn(SoundManager, 'unlockFromGesture').mockImplementation(() => {});
     const onUnlock = vi.fn();
 
     render(<AudioGate onUnlock={onUnlock} />);

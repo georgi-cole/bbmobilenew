@@ -15,10 +15,6 @@ import type { SoundCategory } from '../services/sound/sounds';
 
 export interface UseSoundReturn {
   play: (key: string, opts?: PlayOptions) => void;
-  /** @deprecated Prefer requestBgm/releaseBgm for centralized BGM ownership. */
-  playMusic: (key: string, opts?: PlayOptions) => void;
-  /** @deprecated Prefer releaseBgm for centralized BGM ownership. */
-  stopMusic: () => void;
   /** Request a background music track with an ownership scope. */
   requestBgm: (key: string | null, owner: BgmOwner) => void;
   /** Release BGM ownership for the given scope. */
@@ -34,14 +30,6 @@ export interface UseSoundReturn {
 export default function useSound(): UseSoundReturn {
   const play = useCallback((key: string, opts?: PlayOptions) => {
     void SoundManager.play(key, opts);
-  }, []);
-
-  const playMusic = useCallback((key: string, opts?: PlayOptions) => {
-    void SoundManager.playMusic(key, opts);
-  }, []);
-
-  const stopMusic = useCallback(() => {
-    SoundManager.stopMusic();
   }, []);
 
   const requestBgm = useCallback((key: string | null, owner: BgmOwner) => {
@@ -66,5 +54,5 @@ export default function useSound(): UseSoundReturn {
     [],
   );
 
-  return { play, playMusic, stopMusic, requestBgm, releaseBgm, setCategoryEnabled, setCategoryVolume };
+  return { play, requestBgm, releaseBgm, setCategoryEnabled, setCategoryVolume };
 }
