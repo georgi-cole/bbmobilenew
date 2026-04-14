@@ -7,7 +7,7 @@
  *  2. MinigameHost (challenge) path: receives `participantIds` + `onFinish`;
  *     reveals a local leaderboard, then calls `onFinish(score)` after Continue.
  *
- * Presentation: Nokia 3310-style retro phone shell with a green LCD display.
+ * Presentation: Retro handheld console shell with a green LCD display.
  * Controls: keyboard (Arrow/WASD) + on-screen D-pad + swipe gestures.
  *
  * Scoring: Race-to-1000 mode. Foods award +25 (standard), +75 (bonus), or
@@ -769,7 +769,7 @@ export default function SnakeGame({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="snake-root" role="dialog" aria-modal="true" aria-label="Snake Competition">
+    <div className="snake-root" role="dialog" aria-modal="true" aria-label="Serpentine Competition">
       {showPhoneShell && (
         <div className="snake-phone">
           {/* LCD area */}
@@ -793,7 +793,7 @@ export default function SnakeGame({
                 height={CANVAS_PX}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
-                aria-label="Snake game board"
+                aria-label="Serpentine game board"
               />
 
               {/* CRT scanlines */}
@@ -802,8 +802,8 @@ export default function SnakeGame({
               {/* Ready overlay */}
               {gamePhase === 'ready' && (
                 <div className="snake-overlay">
-                  <p className="snake-overlay-title" aria-label="Snake">
-                    SNAKE
+                  <p className="snake-overlay-title" aria-label="Serpentine">
+                    SERPENTINE
                   </p>
                   <p className="snake-overlay-hint">Reach 1000 pts to win!</p>
                   <p className="snake-overlay-hint">Arrow keys or D-pad</p>
@@ -832,9 +832,9 @@ export default function SnakeGame({
             </div>
           </div>
 
-          {/* Nokia brand strip */}
+          {/* Retro handheld brand strip */}
           <div className="snake-brand" aria-hidden="true">
-            <span className="snake-brand-text">Nokia</span>
+            <span className="snake-brand-text">RETRO</span>
           </div>
 
           {/* D-pad */}
@@ -884,7 +884,7 @@ export default function SnakeGame({
             This challenge resolves asynchronously. Rankings unlock once every player posts
             their run.
           </p>
-          <div className="snake-mini-shell" role="img" aria-label="Snake activity animation">
+          <div className="snake-mini-shell" role="img" aria-label="Serpentine activity animation">
             <div className="snake-mini-lcd">
               <div className="snake-mini-food" />
               <div className="snake-mini-snake">

@@ -155,7 +155,7 @@ describe('CastleRescueGame — Continue / Play Again button', () => {
 
   it('disables canvas pointer events when the end overlay is visible', async () => {
     await renderCompleted(vi.fn());
-    const canvas = screen.getByLabelText('Castle Rescue platformer game');
+    const canvas = screen.getByLabelText('Find Your Twin platformer game');
     expect(canvas).toHaveStyle({ pointerEvents: 'none' });
   });
 

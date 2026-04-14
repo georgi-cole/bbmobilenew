@@ -578,13 +578,13 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   snake: {
     key: 'snake',
-    title: 'Snake',
+    title: 'Serpentine',
     description: 'Race to 1000 points — navigate food, grab bonuses, dodge penalties!',
     instructions: [
       'Reach 1000 points to complete the run — fastest time wins',
       'Monochrome food silhouettes: fruit +25 pts · heart +75 pts · bug −20 pts',
       'Bonus and penalty food expire after 6 seconds — grab them or let them vanish',
-      'Snake moves continuously — change direction using controls',
+      'Your serpent moves continuously — change direction using controls',
       'Avoid hitting walls or your own tail',
       'Runs resolve asynchronously — start independently, then wait for the full ranking reveal',
     ],
@@ -764,12 +764,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   tetris: {
     key: 'tetris',
-    title: 'Tetris',
-    description: 'Classic falling blocks puzzle',
+    title: 'Fit Me In',
+    description: 'Drop and fit the falling pieces together to clear lines and score big!',
     instructions: [
-      'Blocks fall from the top of the screen',
-      'Move blocks left or right',
-      'Rotate blocks to fit spaces',
+      'Pieces fall from the top of the screen',
+      'Move pieces left or right',
+      'Rotate pieces to fit spaces',
       'Complete horizontal lines to clear them',
       'Hard-drop for bonus points (Space / ⬇ button)',
       'Hold a piece for later (C / HOLD button)',
@@ -1007,15 +1007,15 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   castleRescue: {
     key: 'castleRescue',
-    title: 'Castle Rescue',
-    description: 'Run and jump through the castle, enter the correct pipes in order, and rescue the princess before time runs out!',
+    title: 'Find Your Twin',
+    description: 'Run and jump through the castle, enter the correct pipes in order, and find your twin before time runs out!',
     instructions: [
       'Use Arrow Keys or WASD to run left/right, Up/Space to jump.',
       'Find the 3 correct pipes and enter them in order by pressing ↓.',
       'Wrong pipes send you back — watch out!',
       'Stomp enemies (land on them) for bonus points.',
       'Break bricks by jumping into them from below.',
-      'Collect coins for extra score. Reach the princess to win!',
+      'Collect Eyeoleans for extra score. Reach your twin to win!',
     ],
     metricKind: 'points',
     metricLabel: 'Score',

@@ -6,8 +6,8 @@
  * The player controls a knight navigating a 4-section castle level.  Six
  * physical pipe objects are placed in the world; three of them form a
  * secret route (determined by the seed).  Entering all three correct pipes
- * in sequence (I → II → III) opens a gate to the princess chamber.
- * Rescue her before the 2:30 timer expires.
+ * in sequence (I → II → III) opens a gate to the twin's chamber.
+ * Find your twin before the 2:30 timer expires.
  *
  * Controls
  * ─────────────────────────────────────────────────────────────────────────
@@ -17,11 +17,11 @@
  *
  * Scoring
  * ─────────────────────────────────────────────────────────────────────────
- *  Enemy stomped:    +20       Wrong pipe:       −100
- *  Brick broken:      +5       Enemy hit/pit:     −50
- *  Coin collected:   +25       Time penalty:  −10/s
- *  Checkpoint found: +50
- *  Princess rescued: +1000
+ *  Enemy stomped:      +20       Wrong pipe:         −100
+ *  Brick broken:        +5       Enemy hit/pit:       −50
+ *  Eyeolean collected: +25       Time penalty:    −10/s
+ *  Checkpoint found:   +50
+ *  Twin found:        +1000
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -756,7 +756,7 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
     }
   }
 
-  // Coins (room)
+  // Eyeoleans (room)
   for (const coin of room.coins) {
     if (coin.collected) continue;
     if (overlaps(pR, { x: coin.x-COIN_R, y: coin.y-COIN_R, w: COIN_R*2, h: COIN_R*2 })) {
@@ -900,7 +900,7 @@ function renderGame(
     ctx.fillRect(gs.geom.gateX, GROUND_TOP-220, 16, 220);
   }
 
-  // Princess
+  // Twin figure
   if (!gs.princessRescued) {
     const { princessX: px, princessY: py } = gs.geom;
     ctx.fillStyle = '#ec4899'; ctx.fillRect(px+3, py+12, PW-6, PH-12);
@@ -915,7 +915,7 @@ function renderGame(
     }
   }
 
-  // Coins
+  // Eyeoleans
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const coin of gs.geom.coins) {
     if (coin.collected) continue;
@@ -923,7 +923,7 @@ function renderGame(
     ctx.fillStyle = '#fbbf24';
     ctx.beginPath(); ctx.arc(coin.x, coin.y+wobble, COIN_R, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#78350f'; ctx.font = 'bold 8px sans-serif';
-    ctx.fillText('$', coin.x, coin.y+wobble);
+    ctx.fillText('E', coin.x, coin.y+wobble);
   }
 
   // Enemies
@@ -1069,7 +1069,7 @@ function renderRoom(
   ctx.fillStyle = room.type === 'bonus' ? '#fbbf24' : '#ef4444';
   ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillText(
-    room.type === 'bonus' ? '✨ BONUS ROOM — collect coins & break bricks!' : '⚔️ AMBUSH! Stomp enemies or escape through the exit pipe.',
+    room.type === 'bonus' ? '✨ BONUS ROOM — collect Eyeoleans & break bricks!' : '⚔️ AMBUSH! Stomp enemies or escape through the exit pipe.',
     CW / 2, HUD_H + 4,
   );
 
@@ -1118,7 +1118,7 @@ function renderRoom(
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('EXIT', room.exitX + PIPE_W/2, room.exitY + PIPE_H * 0.62);
 
-  // Coins
+  // Eyeoleans
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const coin of room.coins) {
     if (coin.collected) continue;
@@ -1126,7 +1126,7 @@ function renderRoom(
     ctx.fillStyle = '#fbbf24';
     ctx.beginPath(); ctx.arc(coin.x, coin.y+wobble, COIN_R, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#78350f'; ctx.font = 'bold 8px sans-serif';
-    ctx.fillText('$', coin.x, coin.y+wobble);
+    ctx.fillText('E', coin.x, coin.y+wobble);
   }
 
   // Enemies
@@ -1495,14 +1495,14 @@ export default function CastleRescueGame({
               pointerEvents: phase === 'complete' ? 'none' : 'auto',
             }}
             tabIndex={0}
-            aria-label="Castle Rescue platformer game"
+            aria-label="Find Your Twin platformer game"
           />
 
           {/* End-of-run result — overlaid on the scaled canvas */}
           {phase === 'complete' && endStats && (
             <div style={endOverlayStyle}>
               <p style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>
-                {endStats.rescued ? '👑 Princess Rescued!' : '⏱ Time\'s Up!'}
+                {endStats.rescued ? '🎉 Twin Found!' : '⏱ Time\'s Up!'}
               </p>
               <p style={{ fontSize: 18, fontWeight: 600, color: '#fbbf24', margin: '0 0 12px' }}>
                 Final Score: {endStats.score}

@@ -46,13 +46,13 @@ export const SCORE_ENEMY = 20;
 /** Points awarded for breaking a brick. */
 export const SCORE_BRICK = 5;
 
-/** Points awarded for collecting a coin. */
+/** Points awarded for collecting an Eyeolean. */
 export const SCORE_COIN = 25;
 
 /** Points awarded for activating a checkpoint (explore bonus). */
 export const SCORE_CHECKPOINT = 50;
 
-/** Bonus awarded upon rescuing the princess. */
+/** Bonus awarded upon finding the twin. */
 export const SCORE_RESCUE = 1000;
 
 /** Points deducted each time the player dies (enemy hit or falls into a pit). */
