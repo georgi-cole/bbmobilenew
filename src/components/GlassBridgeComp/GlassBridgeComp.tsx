@@ -1485,7 +1485,7 @@ export default function GlassBridgeComp({
                     : base;
                 })()
               : p?.furthestRowReached
-                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}${hintUses > 0 ? ` • ${formatHintUsage(hintUses)}` : ''}`
+                ? `Row ${p.furthestRowReached}${hintUses > 0 ? ` • ${formatHintUsage(hintUses)}` : ''}`
                 : 'Row 0';
 
             return (
