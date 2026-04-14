@@ -26,6 +26,7 @@ export function useHouseOfCardsAudio(isPlaying: boolean): UseHouseOfCardsAudioRe
     const prevKey = SoundManager.currentMusicKey;
     void SoundManager.playMusic(HOC_MUSIC_KEY);
     return () => {
+      if (SoundManager.currentMusicKey !== HOC_MUSIC_KEY) return;
       SoundManager.stopMusic();
       if (prevKey && prevKey !== HOC_MUSIC_KEY) {
         void SoundManager.playMusic(prevKey);

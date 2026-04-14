@@ -17,6 +17,7 @@ import { HUB_MUSIC_CONSENT_KEY } from '../components/SoundConsentPopup/SoundCons
 
 export default function useIntroHubMusic(): void {
   useEffect(() => {
+    const hubMusicKey = 'music:intro_hub_loop';
     // Only autoplay if the user has previously granted persistent consent.
     // Without consent the SoundConsentPopup will start music via a user gesture.
     let hasConsent = false;
@@ -29,10 +30,12 @@ export default function useIntroHubMusic(): void {
       hasConsent = false;
     }
     if (hasConsent) {
-      void SoundManager.playMusic('music:intro_hub_loop');
+      void SoundManager.playMusic(hubMusicKey);
     }
     return () => {
-      SoundManager.stopMusic();
+      if (SoundManager.currentMusicKey === hubMusicKey) {
+        SoundManager.stopMusic();
+      }
     };
   }, []);
 }

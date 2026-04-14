@@ -31,6 +31,7 @@ function resetSoundManager() {
     _sfxPools: Map<string, HTMLAudioElement[]>;
     _failedKeys: Set<string>;
     _initialised: boolean;
+    _lifecycleListenersBound: boolean;
   };
   sm._unlocked = false;
   sm._unlockHandler = null;
@@ -43,6 +44,7 @@ function resetSoundManager() {
   sm._sfxPools = new Map();
   sm._failedKeys = new Set();
   sm._initialised = false;
+  sm._lifecycleListenersBound = false;
 }
 
 // ── Setup / teardown ──────────────────────────────────────────────────────────
@@ -241,5 +243,54 @@ describe('SoundManager stopMusic() clears queued music', () => {
     SoundManager.stopMusic();
     expect(sm._playQueue).toHaveLength(1);
     expect(sm._playQueue[0]).toMatchObject({ isMusic: false });
+  });
+});
+
+describe('SoundManager autoplay recovery', () => {
+  it('re-queues music and avoids blacklisting when playMusic hits NotAllowedError after unlock', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _playQueue: Array<{ key: string; isMusic: boolean; opts?: unknown }>;
+      _failedKeys: Set<string>;
+    };
+    sm._unlocked = true;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValueOnce(
+      new DOMException('blocked', 'NotAllowedError'),
+    );
+
+    await SoundManager.playMusic('music:intro_hub_loop');
+
+    expect(sm._unlocked).toBe(false);
+    expect(sm._playQueue).toContainEqual({
+      key: 'music:intro_hub_loop',
+      isMusic: true,
+      opts: undefined,
+    });
+    expect(sm._failedKeys.has('music:intro_hub_loop')).toBe(false);
+  });
+
+  it('marks audio as needing a fresh gesture after the page is hidden', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    await SoundManager.init();
+    SoundManager.unlockOnUserGesture();
+    expect(sm._unlocked).toBe(true);
+
+    const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+
+    try {
+      Object.defineProperty(document, 'hidden', {
+        configurable: true,
+        get: () => true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(sm._unlocked).toBe(false);
+    } finally {
+      if (originalHiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+      } else {
+        Reflect.deleteProperty(document, 'hidden');
+      }
+    }
   });
 });

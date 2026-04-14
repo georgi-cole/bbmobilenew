@@ -89,6 +89,7 @@ class _SoundManager {
 
   // Stored unlock handler — ensures only one set of listeners is ever registered
   private _unlockHandler: (() => void) | null = null;
+  private _lifecycleListenersBound = false;
 
   // ── Initialisation ──────────────────────────────────────────────────────────
 
@@ -101,6 +102,7 @@ class _SoundManager {
   async init(): Promise<void> {
     if (this._initialised) return;
     this._initialised = true;
+    this._bindLifecycleListeners();
     if (_audioDebug) {
       console.log('[SoundManager] init() — registry has', Object.keys(SOUND_REGISTRY).length, 'keys');
     }
@@ -225,7 +227,9 @@ class _SoundManager {
         if (_audioDebug) {
           console.log(`[SoundManager] play("${key}") blocked by autoplay policy — re-queued`);
         }
+        this._unlocked = false;
         this._playQueue.push({ key, isMusic: false, opts });
+        this._ensureUnlockListeners();
       } else {
         if (!this._failedKeys.has(key)) {
           console.error(`[SoundManager] play("${key}") failed:`, err);
@@ -326,13 +330,15 @@ class _SoundManager {
       await el.play();
     } catch (err) {
       const domErr = err as DOMException;
-      if (domErr.name === 'NotAllowedError' && !this._unlocked) {
-        // Autoplay blocked before unlock — re-queue for after unlock
+      if (domErr.name === 'NotAllowedError') {
         if (_audioDebug) {
           console.log(`[SoundManager] playMusic("${key}") blocked by autoplay policy — re-queued`);
         }
-        this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-        this._playQueue.push({ key, isMusic: true, opts });
+        this._queueMusicRetry(key, opts);
+        if (this._musicKey === key) {
+          this._musicKey = null;
+          this._musicEl = null;
+        }
       } else if (domErr.name === 'AbortError') {
         // play() was interrupted by a subsequent pause() or src change (e.g.
         // stopMusic() called while this promise was in-flight).  This is
@@ -452,34 +458,7 @@ class _SoundManager {
       }
       return;
     }
-
-    // Only arm document listeners once — subsequent calls simply try to fire
-    // the existing handler immediately without registering duplicate listeners.
-    if (!this._unlockHandler) {
-      if (_audioDebug) {
-        console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
-      }
-      const handler = () => {
-        if (this._unlocked) return;
-        this._unlocked = true;
-        document.removeEventListener('click', handler, true);
-        document.removeEventListener('keydown', handler, true);
-        document.removeEventListener('touchstart', handler, true);
-        this._unlockHandler = null;
-        if (_audioDebug) {
-          console.log(
-            '[SoundManager] audio unlocked — draining queue of',
-            this._playQueue.length,
-            'item(s)',
-          );
-        }
-        this._drainQueue();
-      };
-      this._unlockHandler = handler;
-      document.addEventListener('click', handler, true);
-      document.addEventListener('keydown', handler, true);
-      document.addEventListener('touchstart', handler, true);
-    }
+    this._ensureUnlockListeners();
 
     // Also try immediately — effective when called from inside a gesture handler
     this._unlockHandler?.();
@@ -519,9 +498,6 @@ class _SoundManager {
       console.log('[SoundManager] audio unlocked via unlockAndPlayMusicOnly — draining music queue only');
     }
 
-    // Prime SFX pools in this gesture context so future non-gesture plays work.
-    this._primeSfxForMobile();
-
     // Replay only the queued music items; intentionally drop any queued SFX.
     const queued = this._playQueue.splice(0);
     for (const item of queued) {
@@ -530,6 +506,10 @@ class _SoundManager {
       }
       // SFX items are intentionally discarded.
     }
+
+    // Prime after starting queued music so iOS/Safari uses the gesture budget
+    // on the background track first.
+    this._primeSfxForMobile();
   }
 
   private _drainQueue(): void {
@@ -540,16 +520,88 @@ class _SoundManager {
         q.map((i) => `${i.isMusic ? 'music' : 'sfx'}:${i.key}`),
       );
     }
+    const musicItems: QueuedPlay[] = [];
+    const sfxItems: QueuedPlay[] = [];
+    for (const item of q) {
+      if (item.isMusic) {
+        musicItems.push(item);
+      } else {
+        sfxItems.push(item);
+      }
+    }
+    for (const item of musicItems) {
+      void this._doPlayMusic(item.key, item.opts);
+    }
     // Prime SFX pool elements during this gesture context so that iOS allows
     // future non-gesture plays (e.g. game-state-driven SFX like death/winner).
     this._primeSfxForMobile();
-    for (const item of q) {
-      if (item.isMusic) {
-        void this._doPlayMusic(item.key, item.opts);
-      } else {
-        void this._doPlay(item.key, item.opts);
-      }
+    for (const item of sfxItems) {
+      void this._doPlay(item.key, item.opts);
     }
+  }
+
+  private _queueMusicRetry(key: string, opts?: PlayOptions): void {
+    this._unlocked = false;
+    this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+    this._playQueue.push({ key, isMusic: true, opts });
+    this._ensureUnlockListeners();
+  }
+
+  private _ensureUnlockListeners(): void {
+    if (typeof document === 'undefined' || this._unlockHandler) return;
+    if (_audioDebug) {
+      console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
+    }
+    const handler = () => {
+      if (this._unlocked) return;
+      this._unlocked = true;
+      document.removeEventListener('click', handler, true);
+      document.removeEventListener('keydown', handler, true);
+      document.removeEventListener('touchstart', handler, true);
+      this._unlockHandler = null;
+      if (_audioDebug) {
+        console.log(
+          '[SoundManager] audio unlocked — draining queue of',
+          this._playQueue.length,
+          'item(s)',
+        );
+      }
+      this._drainQueue();
+    };
+    this._unlockHandler = handler;
+    document.addEventListener('click', handler, true);
+    document.addEventListener('keydown', handler, true);
+    document.addEventListener('touchstart', handler, true);
+  }
+
+  private _bindLifecycleListeners(): void {
+    if (typeof document === 'undefined' || this._lifecycleListenersBound) return;
+    this._lifecycleListenersBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this._unlocked = false;
+        return;
+      }
+      if (!this._musicEl || !this._musicKey || !this._musicEl.paused) return;
+      const resumeKey = this._musicKey;
+      const resumeEl = this._musicEl;
+      void resumeEl.play().catch((err: unknown) => {
+        const domErr = err as DOMException;
+        if (domErr.name === 'NotAllowedError') {
+          if (_audioDebug) {
+            console.log(`[SoundManager] resume("${resumeKey}") blocked after visibility restore — re-queued`);
+          }
+          if (this._musicKey === resumeKey) {
+            this._musicKey = null;
+            this._musicEl = null;
+          }
+          this._queueMusicRetry(resumeKey);
+          return;
+        }
+        if (domErr.name === 'AbortError') return;
+        console.error(`[SoundManager] resume("${resumeKey}") failed:`, err);
+      });
+    });
   }
 
   /**
