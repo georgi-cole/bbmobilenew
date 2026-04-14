@@ -346,7 +346,13 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
       const inboxOpen = state.social?.incomingInboxOpen ?? false;
       // Only restore once both the panel and inbox are closed
       if (!panelOpen && !inboxOpen) {
+        // Clear the social-active flag first so _applyPhaseAudio's guards pass.
         _socialMusicActive = false;
+        // Re-apply the current phase audio so the correct phase track is stored
+        // as the desired BGM in the SoundManager BEFORE releasing social.
+        // This ensures that releaseBgm('social') automatically falls back to
+        // the right phase track even if the phase changed while social was open.
+        _applyPhaseAudio(state.game.phase);
         SoundManager.releaseBgm('social');
       }
     }

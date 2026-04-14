@@ -340,7 +340,23 @@ describe('soundMiddleware — social music override guard', () => {
     expect(releaseBgmMock).not.toHaveBeenCalledWith('phase');
   });
 
-  it('phase music starts after social panel closes', () => {
+  it('phase music is re-requested before releaseBgm("social") when social panel closes', () => {
+    // Start in a phase that has associated music so _applyPhaseAudio produces a
+    // requestBgm call (not just a releaseBgm).
+    const store = makeTestStore('loh_comp');
+    store.dispatch({ type: 'social/openSocialPanel' });
+    vi.clearAllMocks();
+    requestBgmMock = vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    releaseBgmMock = vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
+
+    // Close panel: middleware re-applies phase audio first (so the correct
+    // phase track is the SoundManager's fallback target), then releases social.
+    store.dispatch({ type: 'social/closeSocialPanel' });
+    expect(requestBgmMock).toHaveBeenCalledWith('music:hoh_comp_general', 'phase');
+    expect(releaseBgmMock).toHaveBeenCalledWith('social');
+  });
+
+  it('phase music can start after social panel closes (original behaviour preserved)', () => {
     const store = makeTestStore();
     store.dispatch({ type: 'social/openSocialPanel' });
     vi.clearAllMocks();

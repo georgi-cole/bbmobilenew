@@ -46,8 +46,10 @@ export interface PlayOptions {
  * Identifies who currently "owns" the background music channel.
  * Each scope should request/release BGM through requestBgm/releaseBgm so
  * the manager can enforce the single-channel invariant.
+ *
+ * Priority (highest → lowest): minigame > social > spectator > phase > introhub
  */
-export type BgmOwner = 'introhub' | 'social' | 'phase' | 'minigame';
+export type BgmOwner = 'introhub' | 'phase' | 'spectator' | 'social' | 'minigame';
 
 interface CategoryState {
   enabled: boolean;
@@ -91,11 +93,14 @@ class _SoundManager {
   private _musicEl: HTMLAudioElement | null = null;
   private _musicKey: string | null = null;
 
-  // BGM ownership / desired-track tracking (single-owner, latest-wins)
+  // BGM ownership / desired-track tracking (per-owner map with priority fallback)
   private _currentBgmOwner: BgmOwner | null = null;
-  private _desiredBgmKey: string | null = null;
-  private _desiredBgmOwner: BgmOwner | null = null;
-  private _desiredBgmOpts: PlayOptions | undefined = undefined;
+  // Per-owner desired BGM map — allows automatic fallback when an owner releases.
+  // Priority: minigame > social > spectator > phase > introhub (highest wins).
+  private _desiredPerOwner: Partial<Record<BgmOwner, { key: string; opts?: PlayOptions }>> = {};
+  private static readonly _BGM_PRIORITY: readonly BgmOwner[] = [
+    'introhub', 'phase', 'spectator', 'social', 'minigame',
+  ];
 
   // SFX: pool of HTMLAudioElements per key
   private _sfxPools = new Map<string, HTMLAudioElement[]>();
@@ -274,19 +279,35 @@ class _SoundManager {
   }
 
   /**
+   * Returns the highest-priority owner that has a desired BGM entry, together
+   * with its key and opts.  Returns null if no owner has a desired BGM.
+   */
+  private _getTopDesiredEntry(): { key: string; owner: BgmOwner; opts?: PlayOptions } | null {
+    const p = _SoundManager._BGM_PRIORITY;
+    for (let i = p.length - 1; i >= 0; i--) {
+      const owner = p[i];
+      const entry = this._desiredPerOwner[owner];
+      if (entry) return { key: entry.key, owner, opts: entry.opts };
+    }
+    return null;
+  }
+
+  /**
    * Request a background music track with an explicit ownership scope.
    *
-   * - If audio is locked (before user gesture) the request is stored as the
-   *   single desired BGM; any earlier desired BGM is replaced.  Nothing plays
-   *   until unlock — preventing the "flush of accumulated play requests" bug on
-   *   iPhone/Safari.
-   * - If audio is unlocked the current BGM is stopped and the new one starts
-   *   immediately (unless the same key is already allocated/playing).
+   * - Each owner maintains its own desired BGM entry.  The highest-priority
+   *   active owner wins; releasing an owner automatically falls back to the
+   *   next lower-priority owner that still has a desired entry.
+   * - If audio is locked (before user gesture) the request is stored but
+   *   nothing plays until unlock — preventing the "flush of accumulated play
+   *   requests" bug on iPhone/Safari.
+   * - If audio is unlocked the new track starts immediately only if this
+   *   owner is the current highest-priority active owner.
    * - Passing null as key releases BGM for this owner (same as releaseBgm).
    *
-   * All BGM callers (introhub, phase, social, minigame) MUST use this method
-   * rather than calling playMusic/stopMusic directly so the manager can enforce
-   * the single-channel invariant.
+   * All BGM callers (introhub, phase, spectator, social, minigame) MUST use
+   * this method rather than calling playMusic/stopMusic directly so the
+   * manager can enforce the single-channel invariant.
    */
   requestBgm(key: string | null, owner: BgmOwner): void {
     if (_audioDebug) {
@@ -298,18 +319,21 @@ class _SoundManager {
       return;
     }
 
-    // Record desired BGM — replaces any earlier request from any owner
-    this._desiredBgmKey = key;
-    this._desiredBgmOwner = owner;
-    this._desiredBgmOpts = undefined; // opts not used by requestBgm (caller controls volume separately)
+    // Store per-owner desired entry — does NOT overwrite other owners
+    this._desiredPerOwner[owner] = { key };
 
     if (!this._unlocked) {
-      // Locked: store intent only; clear any stale queued music items
+      // Locked: intent stored; clear any stale queued music items
       this._playQueue = this._playQueue.filter((q) => !q.isMusic);
       return;
     }
 
-    // Unlocked: apply immediately
+    // Unlocked: apply only if this owner is now the highest-priority active owner
+    const top = this._getTopDesiredEntry();
+    if (!top || top.owner !== owner) {
+      // A higher-priority owner's track is already playing — no change needed.
+      return;
+    }
     this._currentBgmOwner = owner;
     void this._doPlayMusic(key);
   }
@@ -317,52 +341,67 @@ class _SoundManager {
   /**
    * Release BGM ownership for the given owner.
    *
-   * - Clears the desired BGM if this owner set it.
-   * - Stops the currently-playing BGM if this owner is controlling it.
-   * - No-op if this owner does not currently own the BGM channel.
+   * - Removes this owner's desired BGM entry.
+   * - If this owner was currently playing, automatically falls back to the
+   *   next highest-priority owner that still has a desired entry.
+   * - No-op if this owner does not currently own the BGM channel and has no
+   *   desired entry.
    */
   releaseBgm(owner: BgmOwner): void {
     if (_audioDebug) {
       console.log(`[SoundManager] releaseBgm("${owner}")`);
     }
 
-    // Clear desired if this owner owns the desired slot
-    if (this._desiredBgmOwner === owner) {
-      this._desiredBgmKey = null;
-      this._desiredBgmOwner = null;
-      this._desiredBgmOpts = undefined;
+    const wasActive = this._currentBgmOwner === owner;
+    delete this._desiredPerOwner[owner];
+
+    if (!wasActive) {
+      // This owner was not playing — just remove its desired entry, no restart needed.
+      return;
     }
 
-    // Stop current music and release ownership
-    if (this._currentBgmOwner === owner) {
+    // This owner was playing; find the next best desired owner to fall back to.
+    const top = this._getTopDesiredEntry();
+    if (!top) {
+      // No more desired BGM from any owner — stop music completely.
       this._currentBgmOwner = null;
       this._stopCurrentMusic();
-      // Also discard any queued music so it doesn't restart after unlock
       this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+      return;
     }
+
+    // Fall back to the next desired owner/track automatically.
+    if (_audioDebug) {
+      console.log(`[SoundManager] releaseBgm("${owner}") — falling back to "${top.key}" (owner: ${top.owner})`);
+    }
+    this._currentBgmOwner = top.owner;
+    void this._doPlayMusic(top.key, top.opts);
   }
 
   /**
    * Start a looping music track (legacy wrapper — prefer requestBgm).
-   * Internally records the track as desired BGM (with owner null for backward
-   * compat).  If audio is not yet unlocked the request is stored as the latest
-   * desired BGM and retried after the first user gesture.
+   * Internally stores the track in the 'phase' owner slot for backward
+   * compatibility.  If audio is not yet unlocked the request is stored as the
+   * desired BGM for the 'phase' owner and started after the first user gesture.
    */
   async playMusic(key: string, opts?: PlayOptions): Promise<void> {
     if (!this._unlocked) {
       if (_audioDebug) {
-        console.log(`[SoundManager] playMusic("${key}") queued — not yet unlocked`);
+        console.log(`[SoundManager] playMusic("${key}") stored as phase desired — not yet unlocked`);
       }
-      // Store as desired BGM (latest wins, replacing earlier requests)
-      this._desiredBgmKey = key;
-      this._desiredBgmOwner = null;
-      this._desiredBgmOpts = opts;
-      // Keep queue in sync for backward compat with unlock drain
+      // Store as desired BGM under the 'phase' owner slot
+      this._desiredPerOwner['phase'] = { key, opts };
+      // Discard stale queued music; _applyDesiredBgm reads _desiredPerOwner on drain
       this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-      this._playQueue.push({ key, isMusic: true, opts });
       return;
     }
-    return this._doPlayMusic(key, opts);
+    // Unlocked: only start if 'phase' is the top-priority active owner
+    this._desiredPerOwner['phase'] = { key, opts };
+    const top = this._getTopDesiredEntry();
+    if (top?.owner === 'phase') {
+      this._currentBgmOwner = 'phase';
+      return this._doPlayMusic(key, opts);
+    }
   }
 
   private async _doPlayMusic(key: string, opts?: PlayOptions): Promise<void> {
@@ -475,11 +514,9 @@ class _SoundManager {
     }
     this._stopCurrentMusic();
     this._currentBgmOwner = null;
-    // Also clear any queued/desired music so it doesn't restart after unlock
+    // Clear all per-owner desired entries so nothing restarts after unlock
+    this._desiredPerOwner = {};
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-    this._desiredBgmKey = null;
-    this._desiredBgmOwner = null;
-    this._desiredBgmOpts = undefined;
   }
 
   private _stopCurrentMusic(): void {
@@ -633,27 +670,24 @@ class _SoundManager {
   }
 
   /**
-   * Start the latest desired BGM track if one is set and audio is unlocked.
-   * No-op if no desired BGM or already playing the correct track.
+   * Start the highest-priority desired BGM track if one is set and audio is
+   * unlocked.  No-op if no desired BGM or already playing the correct track.
    */
   private _applyDesiredBgm(): void {
-    const key = this._desiredBgmKey;
-    if (!key) return;
+    const top = this._getTopDesiredEntry();
+    if (!top) return;
     if (_audioDebug) {
-      console.log(`[SoundManager] _applyDesiredBgm() — starting "${key}" (owner: ${this._desiredBgmOwner ?? 'legacy'})`);
+      console.log(`[SoundManager] _applyDesiredBgm() — starting "${top.key}" (owner: ${top.owner})`);
     }
-    this._currentBgmOwner = this._desiredBgmOwner;
-    void this._doPlayMusic(key, this._desiredBgmOpts);
+    this._currentBgmOwner = top.owner;
+    void this._doPlayMusic(top.key, top.opts);
   }
 
-  private _queueMusicRetry(key: string, opts?: PlayOptions): void {
+  private _queueMusicRetry(_key: string, _opts?: PlayOptions): void {
+    // Re-arm the unlock listener so the next user gesture re-applies the top
+    // desired BGM via _applyDesiredBgm().  The queue is not used for music
+    // any more — _drainQueue reads from _desiredPerOwner directly.
     this._unlocked = false;
-    // Use _desiredBgmKey if set (reflects the current intended track, which may
-    // differ from the stale resumeKey from visibility-change handlers).
-    const retryKey = this._desiredBgmKey ?? key;
-    const retryOpts = this._desiredBgmKey ? undefined : opts;
-    this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-    this._playQueue.push({ key: retryKey, isMusic: true, opts: retryOpts });
     this._ensureUnlockListeners();
   }
 
@@ -702,24 +736,15 @@ class _SoundManager {
         const domErr = err as DOMException;
         if (domErr.name === 'NotAllowedError') {
           if (_audioDebug) {
-            console.log(`[SoundManager] resume("${resumeKey}") blocked after visibility restore — re-queued`);
+            console.log(`[SoundManager] resume("${resumeKey}") blocked after visibility restore — re-arming for next gesture`);
           }
           if (this._musicKey === resumeKey) {
             this._musicKey = null;
             this._musicEl = null;
           }
-          // Queue the DESIRED bgm (which reflects current intended state) rather
-          // than the potentially-stale resumeKey.  This prevents a stale track
-          // (e.g. introhub music from a previous screen) from overriding the
-          // correct desired track (e.g. safety-phase music) on next gesture.
-          if (this._desiredBgmKey && this._desiredBgmKey !== resumeKey) {
-            this._unlocked = false;
-            this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-            this._playQueue.push({ key: this._desiredBgmKey, isMusic: true, opts: undefined });
-            this._ensureUnlockListeners();
-          } else {
-            this._queueMusicRetry(resumeKey);
-          }
+          // Re-arm unlock so the next gesture re-applies the top desired BGM
+          // via _applyDesiredBgm() — _desiredPerOwner tracks the correct track.
+          this._queueMusicRetry(resumeKey);
           return;
         }
         if (domErr.name === 'AbortError') return;
@@ -792,7 +817,10 @@ class _SoundManager {
     console.group('[SoundManager] debugDump()');
     console.log('initialised:', this._initialised, '| unlocked:', this._unlocked);
     console.log('currentMusicKey:', this._musicKey ?? '(none)', '| owner:', this._currentBgmOwner ?? '(none)');
-    console.log('desiredBgmKey:', this._desiredBgmKey ?? '(none)', '| desiredOwner:', this._desiredBgmOwner ?? '(none)');
+    const desiredSummary = Object.fromEntries(
+      Object.entries(this._desiredPerOwner).map(([k, v]) => [k, v?.key ?? null]),
+    );
+    console.log('desiredPerOwner:', JSON.stringify(desiredSummary));
     console.log('queue length:', this._playQueue.length);
     console.log('failed keys:', [...this._failedKeys].join(', ') || '(none)');
     console.log('sfx pools:', [...this._sfxPools.keys()].join(', ') || '(none)');

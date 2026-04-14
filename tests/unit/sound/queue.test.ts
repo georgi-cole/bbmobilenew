@@ -33,9 +33,7 @@ function resetSoundManager() {
     _initialised: boolean;
     _lifecycleListenersBound: boolean;
     _currentBgmOwner: string | null;
-    _desiredBgmKey: string | null;
-    _desiredBgmOwner: string | null;
-    _desiredBgmOpts: unknown;
+    _desiredPerOwner: Record<string, unknown>;
   };
   sm._unlocked = false;
   sm._unlockHandler = null;
@@ -50,9 +48,7 @@ function resetSoundManager() {
   sm._initialised = false;
   sm._lifecycleListenersBound = false;
   sm._currentBgmOwner = null;
-  sm._desiredBgmKey = null;
-  sm._desiredBgmOwner = null;
-  sm._desiredBgmOpts = undefined;
+  sm._desiredPerOwner = {};
 }
 
 // ── Setup / teardown ──────────────────────────────────────────────────────────
@@ -110,30 +106,36 @@ describe('SoundManager unlock queue — play()', () => {
   });
 });
 
-// ── 2. playMusic() before unlock queues latest music only ────────────────────
+// ── 2. playMusic() before unlock stores latest desired BGM ───────────────────
 
 describe('SoundManager unlock queue — playMusic()', () => {
-  it('queues music request when not yet unlocked', async () => {
-    const sm = SoundManager as unknown as { _playQueue: Array<{ key: string; isMusic: boolean }> };
+  it('stores the desired BGM in _desiredPerOwner (not _playQueue) when not yet unlocked', async () => {
+    const sm = SoundManager as unknown as {
+      _playQueue: Array<{ key: string; isMusic: boolean }>;
+      _desiredPerOwner: Record<string, { key: string } | undefined>;
+    };
 
     await SoundManager.playMusic('music:intro_hub_loop');
 
-    expect(sm._playQueue).toHaveLength(1);
-    expect(sm._playQueue[0]).toMatchObject({ key: 'music:intro_hub_loop', isMusic: true });
+    // Music is now stored per-owner, not in the play queue
+    expect(sm._desiredPerOwner['phase']).toMatchObject({ key: 'music:intro_hub_loop' });
+    // Queue is empty (no music items)
+    expect(sm._playQueue.filter((q) => q.isMusic)).toHaveLength(0);
   });
 
-  it('only keeps the latest music request in the queue (replaces earlier)', async () => {
-    const sm = SoundManager as unknown as { _playQueue: Array<{ key: string; isMusic: boolean }> };
+  it('only keeps the latest music request (later call overwrites earlier in _desiredPerOwner)', async () => {
+    const sm = SoundManager as unknown as {
+      _desiredPerOwner: Record<string, { key: string } | undefined>;
+    };
 
     await SoundManager.playMusic('music:intro_hub_loop');
     await SoundManager.playMusic('music:gb_main');
 
-    const musicItems = sm._playQueue.filter((q) => q.isMusic);
-    expect(musicItems).toHaveLength(1);
-    expect(musicItems[0].key).toBe('music:gb_main');
+    // Latest call wins — earlier desired is replaced
+    expect(sm._desiredPerOwner['phase']?.key).toBe('music:gb_main');
   });
 
-  it('drains music queue and starts music after unlock', async () => {
+  it('drains desired BGM and starts music after unlock', async () => {
     const doPlayMusic = vi.spyOn(
       SoundManager as unknown as { _doPlayMusic: (key: string, opts?: unknown) => Promise<void> },
       '_doPlayMusic',
@@ -232,38 +234,44 @@ describe('SoundManager unlockOnUserGesture() — idempotent listener registratio
   });
 });
 
-// ── 5. stopMusic() clears queued music ────────────────────────────────────────
+// ── 5. stopMusic() clears desired BGM ─────────────────────────────────────────
 
-describe('SoundManager stopMusic() clears queued music', () => {
-  it('removes a queued music request so it is not started after unlock', async () => {
-    const sm = SoundManager as unknown as { _playQueue: Array<{ key: string; isMusic: boolean }> };
+describe('SoundManager stopMusic() clears desired BGM', () => {
+  it('clears _desiredPerOwner so desired music is not started after unlock', async () => {
+    const sm = SoundManager as unknown as {
+      _desiredPerOwner: Record<string, unknown>;
+    };
 
     await SoundManager.playMusic('music:intro_hub_loop');
-    expect(sm._playQueue.filter((q) => q.isMusic)).toHaveLength(1);
+    expect(sm._desiredPerOwner['phase']).toBeDefined();
 
     SoundManager.stopMusic();
-    expect(sm._playQueue.filter((q) => q.isMusic)).toHaveLength(0);
+    expect(sm._desiredPerOwner['phase']).toBeUndefined();
   });
 
-  it('does not remove queued sfx requests', async () => {
+  it('does not remove queued SFX requests', async () => {
     const sm = SoundManager as unknown as { _playQueue: Array<{ key: string; isMusic: boolean }> };
 
+    // Queue an SFX before unlock, then call playMusic (which stores in _desiredPerOwner, not queue)
     await SoundManager.play('ui:jury_vote');
     await SoundManager.playMusic('music:intro_hub_loop');
-    expect(sm._playQueue).toHaveLength(2);
+    // Only the SFX is in the queue; music is in _desiredPerOwner
+    expect(sm._playQueue.filter((q) => !q.isMusic)).toHaveLength(1);
 
     SoundManager.stopMusic();
+    // SFX survives; only desired BGM is cleared
     expect(sm._playQueue).toHaveLength(1);
     expect(sm._playQueue[0]).toMatchObject({ isMusic: false });
   });
 });
 
 describe('SoundManager autoplay recovery', () => {
-  it('re-queues music and avoids blacklisting when playMusic hits NotAllowedError after unlock', async () => {
+  it('re-arms unlock listener and avoids blacklisting when playMusic hits NotAllowedError after unlock', async () => {
     const sm = SoundManager as unknown as {
       _unlocked: boolean;
       _playQueue: Array<{ key: string; isMusic: boolean; opts?: unknown }>;
       _failedKeys: Set<string>;
+      _unlockHandler: (() => void) | null;
     };
     sm._unlocked = true;
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValueOnce(
@@ -272,13 +280,14 @@ describe('SoundManager autoplay recovery', () => {
 
     await SoundManager.playMusic('music:intro_hub_loop');
 
+    // Audio is re-locked so the next gesture will re-apply the desired BGM
     expect(sm._unlocked).toBe(false);
-    expect(sm._playQueue).toContainEqual({
-      key: 'music:intro_hub_loop',
-      isMusic: true,
-      opts: undefined,
-    });
+    // The key must not be blacklisted so it can be replayed
     expect(sm._failedKeys.has('music:intro_hub_loop')).toBe(false);
+    // Unlock listeners re-armed
+    expect(sm._unlockHandler).not.toBeNull();
+    // Queue has no music items — music is in _desiredPerOwner, not the queue
+    expect(sm._playQueue.filter((q) => q.isMusic)).toHaveLength(0);
   });
 
   it('does NOT reset _unlocked when the page is hidden (prevents stale re-queuing on iOS)', async () => {
