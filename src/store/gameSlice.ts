@@ -3041,7 +3041,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'loh_comp_announcement': {
-          pushEvent(state, `The Leader of the House comp is about to begin! All eligible players will now battle for the title. `, 'game');
+          pushEvent(state, `The Leader of the House comp is about to begin! All eligible players will now battle for the title.`, 'game');
           break;
         }
         case 'loh_comp': {
