@@ -79,7 +79,7 @@ npx playwright test    # or: npm run test:e2e if the script exists
 |------|----------------|
 | `src/` | React + TypeScript app source |
 | `src/types/` | Shared TypeScript interfaces |
-| `src/store/` | GameContext / useReducer state |
+| `src/store/` | Redux Toolkit store setup and slice reducers; `GameContext` is limited-scope/legacy |
 | `src/components/` | Reusable UI and layout components |
 | `src/screens/` | One folder per route/screen |
 | `src/features/` | Self-contained feature slices |
@@ -99,7 +99,7 @@ npx playwright test    # or: npm run test:e2e if the script exists
 - **Match existing conventions.** Naming, file structure, import order, and code style should follow the patterns already present in the area you are editing.
 - **UI changes must include screenshots or a short screen recording** in the PR description so reviewers can verify the visual result without running the app.
 - **Do not commit `.env` or any file containing secrets.** Use `server/.env.example` to document new environment variables.
-- **Add or update tests** for any logic changes. Place unit tests next to the source file (`__tests__/` subdirectory) or under `tests/` for integration/e2e scenarios.
+- **Add or update tests** for any logic changes. Place unit tests next to the source file (`__tests__/` subdirectory), integration tests under `tests/` (for example `tests/integration/`), and Playwright end-to-end tests under `e2e/`.
 
 ---
 

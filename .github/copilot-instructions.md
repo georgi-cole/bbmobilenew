@@ -2,16 +2,16 @@
 
 ## Stack
 
-This is a **React 18 + TypeScript + Vite** single-page application with a nested **Express** server (`server/`) that acts as a proxy for OpenAI and houses diary/season API routes.
+This is a **React 19 + TypeScript + Vite** single-page application with a nested **Express** server (`server/`) that acts as a proxy for OpenAI and houses diary/season API routes.
 
-Key libraries: React Router, Redux Toolkit (social slice), Capacitor (iOS), Vitest, Playwright.
+Key libraries: React Router, Redux Toolkit (game/finale/challenge/settings/social/ui slices), Capacitor (iOS), Vitest, Playwright.
 
 ## Repo layout
 
 ```
 src/            React + TS app source
   types/        Shared interfaces (Player, GameState, Phase, …)
-  store/        GameContext — useReducer, no Redux except socialSlice
+  store/        Redux Toolkit store (store.ts) and slice reducers (game, finale, challenge, settings, social, ui, ads, …); GameContext is limited-scope legacy state
   components/   Reusable UI (ui/, layout/) and feature components
   screens/      One folder per route/screen
   features/     Self-contained feature slices
