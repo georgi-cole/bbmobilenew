@@ -60,13 +60,13 @@ export default function Rules() {
           </div>
           <ul className="rules-list">
             <li>
-              <strong>Leader of the House (LOH):</strong> Win to gain control — nominate two housemates for elimination. Power protects you, but it can also make you a target.
+              <strong>Leader of the House (LOH):</strong> Win to gain control — nominate two players for elimination. Power protects you, but it can also make you a target.
             </li>
             <li>
               <strong>Power of Safety (POS):</strong> Six players compete. The winner can save a nominee, forcing the LOH to name a backup nominee — or keep nominations unchanged.
             </li>
             <li>
-              Scores are influenced by luck, housemate traits, and sometimes Shocks.
+              Scores are influenced by luck, player traits, and sometimes Shocks.
             </li>
           </ul>
         </div>
@@ -79,7 +79,7 @@ export default function Rules() {
             <span className="rules-section__tag">EverWatch Feature</span>
           </div>
           <p>
-            The Public is always watching. Every housemate has a <strong>Public Approval rating</strong> (0–100) that rises and falls based on their actions in the house.
+            The Public is always watching. Every player has a <strong>Public Approval rating</strong> (0–100) that rises and falls based on their actions in the house.
           </p>
           <div className="rules-approval-bands">
             <div className="rules-approval-band rules-approval-band--hated">0–19 · Hated</div>
@@ -93,10 +93,10 @@ export default function Rules() {
             <li><strong>Being nominated</strong> lowers it.</li>
             <li><strong>Social interactions</strong> — positive or negative — move the dial.</li>
             <li>
-              <strong>Public Save (when enabled):</strong> Before the Power of Safety competition, the Public automatically saves the most-approved nominee, reducing the block to two housemates. The saved housemate is immune for that day.
+              <strong>Public Save (when enabled):</strong> Before the Power of Safety competition, the Public automatically saves the most-approved nominee, leaving two players nominated. The saved player is immune for that day.
             </li>
             <li>
-              <strong>Finale:</strong> If the Tribunal vote is tied, the housemate with the higher Public approval wins the game.
+              <strong>Finale:</strong> If the Tribunal vote is tied, the player with the higher Public approval wins the game.
             </li>
           </ul>
         </div>
@@ -124,7 +124,7 @@ export default function Rules() {
           <ul className="rules-list">
             <li>Each day, the house votes to eliminate one of the nominees.</li>
             <li>
-              Once the <strong>Tribunal phase</strong> begins, eliminated housemates join the Tribunal panel instead of going home for good.
+              Once the <strong>Tribunal phase</strong> begins, eliminated players join the Tribunal panel instead of going home for good.
             </li>
             <li>Tribunal judges vote for the winner at the finale — your actions before elimination matter.</li>
           </ul>
@@ -136,7 +136,7 @@ export default function Rules() {
             <span className="rules-section__icon">👑</span>
             <h2 className="rules-section__title">Final Day — Three-Part Competition</h2>
           </div>
-          <p>When only three housemates remain, the endgame begins:</p>
+          <p>When only three players remain, the endgame begins:</p>
           <div className="rules-final-parts">
             <div className="rules-final-part">
               <span className="rules-final-part__num">P1</span>
@@ -151,7 +151,7 @@ export default function Rules() {
               <p>P1 &amp; P2 winners compete. The winner becomes the <strong>Final LOH</strong> and chooses who to eliminate.</p>
             </div>
           </div>
-          <p className="rules-screen__note">The eliminated housemate joins the Tribunal. The Final 2 await the Tribunal&apos;s vote.</p>
+          <p className="rules-screen__note">The eliminated player joins the Tribunal. The Final 2 await the Tribunal&apos;s vote.</p>
         </div>
 
         {/* ── Section 7: Shocks ── */}

@@ -45,6 +45,7 @@ function buildInitialPlayers(): Player[] {
 }
 
 const INITIAL_STATE: GameState = {
+  gameId: crypto.randomUUID(),
   season: 1,
   week: 1,
   phase: 'week_start',

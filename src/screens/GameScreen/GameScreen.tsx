@@ -565,6 +565,14 @@ export default function GameScreen() {
     // don't have that status leak through when parts is empty.
     const statuses = parts.length > 0 ? parts.join('+') : (isAnimatingNominee ? 'active' : (p.status ?? 'active'))
     const isReturning = battleBackReturnId === p.id
+    const nominationCeremonyState: 'loh' | 'danger' | 'locked' | undefined =
+      !isEvicted && showNominationDangerSignals
+        ? game.lohId === p.id
+          ? 'loh'
+          : nominationDangerLockedId === p.id
+            ? 'locked'
+            : 'danger'
+        : undefined
     return {
       id: p.id,
       name: p.name,
@@ -574,6 +582,7 @@ export default function GameScreen() {
       isEvicted,
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
+      nominationCeremonyState,
       layoutId: `avatar-tile-${p.id}`,
       isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || game.evictionOverlayPlayerId === p.id || isReturning,
       onClick: () => handleAvatarSelect(p),
@@ -695,9 +704,17 @@ export default function GameScreen() {
   const showHumanNomAnim = pendingNominees.length > 0
   const showAiNomAnim = aiNomKey !== '' && aiNomKey !== aiNomAnimConsumedKey && !showHumanNomAnim
   const showNomAnim = showHumanNomAnim || showAiNomAnim
+  const showNominationDangerSignals =
+    game.phase === 'nomination_results' &&
+    Boolean(game.awaitingNominations) &&
+    !showNomAnim
   const canUsePublicNomineeRule =
     game.publicModeEnabled === true &&
     game.doubleEviction?.weekActive !== true
+  const nominationDangerLockedId =
+    showNominationDangerSignals && canUsePublicNomineeRule
+      ? (game.lastHohCompFinisherId ?? null)
+      : null
 
   const nomAnimPlayers = useMemo(() => {
     if (showHumanNomAnim) {
@@ -722,6 +739,14 @@ export default function GameScreen() {
   // so we pass a resolver function rather than pre-computed rects (avoids
   // calling document.querySelector during the render phase before DOM is committed).
   const nomCeremonyTileIds = showNomAnim ? nomAnimPlayers.map((p) => p.id) : []
+  const lohCeremonyTileId =
+    showNomAnim && game.lohId && game.players.some((p) => p.id === game.lohId)
+      ? game.lohId
+      : null
+  const shouldShowNominationCeremony =
+    showNomAnim &&
+    nomCeremonyTileIds.length > 0 &&
+    lohCeremonyTileId != null
 
   // ── Human LOH nomination flow (single multi-select modal) ────────────────
   // Shown when the human LOH must pick their two nominees simultaneously.
@@ -886,9 +911,12 @@ export default function GameScreen() {
     const devNominees = eligible.slice(0, 2).map((p) => p.id)
     if (devNominees.length === 2) {
       console.log('DEV: Play Nomination Animation', devNominees)
+      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
+      const fullIds = autoId && !devNominees.includes(autoId) ? [...devNominees, autoId] : devNominees
+      setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
       setPendingNominees(devNominees)
     }
-  }, [alivePlayers, setPendingNominees])
+  }, [alivePlayers, canUsePublicNomineeRule, game.lastHohCompFinisherId, game.week, setPendingNominees])
 
   // ── Human POS holder decision (use veto or not) ──────────────────────────
   const humanIsPosHolder = humanPlayer && game.posWinnerId === humanPlayer.id
@@ -2334,10 +2362,10 @@ export default function GameScreen() {
           ? 'The Big Eye requires your vote in the Confessional.'
           : 'Waiting for your vote.'
       }
-      return 'Houseguests are casting their votes.'
+      return 'Players are casting their votes.'
     }
     if (postVoteAnnouncementDelayActive && game.pendingEviction) {
-      return 'Please wait while the houseguest says their goodbyes.'
+      return 'Please wait while the player says their goodbyes.'
     }
     return undefined
   }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, postVoteAnnouncementDelayActive, game.pendingEviction])
@@ -2439,8 +2467,8 @@ export default function GameScreen() {
           title="Nomination Ceremony"
           subtitle={
             game.doubleEviction?.weekActive
-              ? `${humanPlayer?.name}, choose THREE housemates to nominate — Double Elimination tonight!`
-              : `${humanPlayer?.name}, choose two housemates to nominate for elimination.`
+              ? `${humanPlayer?.name}, choose THREE players to nominate — Double Elimination tonight!`
+              : `${humanPlayer?.name}, choose two players to nominate for elimination.`
           }
           options={nomineeOptions}
           maxSelect={game.doubleEviction?.weekActive ? 3 : 2}
@@ -2452,16 +2480,31 @@ export default function GameScreen() {
 
       {/* ── Nomination ceremony — spotlight cutout with ❓ badges ─────────── */}
       {/* Shown for BOTH human LOH (deferred commit) and AI LOH (already committed). */}
-      {showNomAnim && nomCeremonyTileIds.length > 0 && (
+      {shouldShowNominationCeremony && (
         <CeremonyOverlay
           tiles={[]}
-          resolveTiles={() => nomAnimPlayers.map((p) => ({
-            rect: getTileRect(p.id),
-            badge: '❓',
-            label: nominationLabels[p.id],
-            badgeStart: 'center' as const,
-            badgeLabel: `${p.name} nominated`,
-          }))}
+          resolveTiles={() => {
+            const lohId = lohCeremonyTileId
+            if (!lohId) return []
+            const lohRect = getTileRect(lohId)
+            return [
+              {
+                rect: lohRect,
+                glowTone: 'gold' as const,
+              },
+              ...nomAnimPlayers.map((p) => {
+                const isAutoNominee = nominationLabels[p.id] === 'Last in LOH Comp'
+                return {
+                  rect: getTileRect(p.id),
+                  badge: '❓',
+                  label: nominationLabels[p.id],
+                  glowTone: 'danger' as const,
+                  badgeStart: (isAutoNominee || !lohRect) ? ('center' as const) : lohRect,
+                  badgeLabel: `${p.name} nominated`,
+                }
+              }),
+            ]
+          }}
           caption={
             nomAnimPlayers.length === 1
               ? `${nomAnimPlayers[0].name} has been nominated`
@@ -2662,7 +2705,7 @@ export default function GameScreen() {
       {showTieBreakMultiSelectModal && (
         <TvMultiSelectModal
           title="Double Eviction Tie-Break"
-          subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} houseguests to eliminate.`}
+          subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} players to eliminate.`}
           options={tieBreakOptions}
           maxSelect={doubleEvictionTieBreakSelectCount}
           onConfirm={(ids) => dispatch(submitDoubleEvictionTieBreak(ids))}
@@ -2708,8 +2751,8 @@ export default function GameScreen() {
       {/* ── Final 3 eviction (human Final LOH evicts directly) ──────────── */}
       {showFinal3Modal && (
         <TvDecisionModal
-          title="Final LOH — Eliminate a Housemate"
-          subtitle={`${humanPlayer?.name}, as Final LOH you must directly eliminate one of the remaining housemates.`}
+          title="Final LOH — Eliminate a Player"
+          subtitle={`${humanPlayer?.name}, as Final LOH you must directly eliminate one of the remaining players.`}
           options={final3Options}
           onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
           danger
@@ -3027,10 +3070,10 @@ export default function GameScreen() {
               badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Leader of the House`,
             }]
           }}
-          caption={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A housemate'} wins Leader of the House!`}
+          caption={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A player'} wins Leader of the House!`}
           subtitle="👑"
           onDone={handleAdvanceHohCeremonyDone}
-          ariaLabel={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A housemate'} wins Leader of the House`}
+          ariaLabel={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A player'} wins Leader of the House`}
         />
       )}
 

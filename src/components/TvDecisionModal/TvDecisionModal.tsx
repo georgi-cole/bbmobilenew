@@ -89,7 +89,7 @@ export default function TvDecisionModal({
           <div className="tv-decision-modal__body">
             {options.length === 0 ? (
               <p className="tv-decision-modal__empty">
-                No eligible houseguests available. Use the Debug Panel to fix game state.
+                No eligible players available. Use the Debug Panel to fix game state.
               </p>
             ) : (
               options.map((player) => {

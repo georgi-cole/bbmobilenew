@@ -494,7 +494,7 @@ export default function MajorityRulesComp({
         <div className="majority-rules-badge-row">
           <span className="majority-rules-badge">Round {game.roundNumber}</span>
           <span className="majority-rules-badge majority-rules-badge--cool">
-            {game.activeIds.length} houseguests left
+            {game.activeIds.length} players left
           </span>
           {game.revoteNumber > 0 && (
             <span className="majority-rules-badge majority-rules-badge--warn">
@@ -690,7 +690,7 @@ export default function MajorityRulesComp({
       <div className="majority-rules-footer">
         <p className="majority-rules-copy majority-rules-copy--dim">
           {game.roundHintType === 'followPlayer'
-            ? 'Your answer will copy your chosen houseguest when everyone reveals.'
+            ? 'Your answer will copy your chosen player when everyone reveals.'
             : 'No timer pressure here — take the read you trust most.'}
         </p>
         <button

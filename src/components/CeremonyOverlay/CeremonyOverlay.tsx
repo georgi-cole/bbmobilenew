@@ -27,9 +27,11 @@ export interface CeremonyTile {
   /** Bounding rect of the target tile. null = skip this tile. */
   rect: DOMRect | null;
   /** Badge emoji to animate onto this tile (e.g. '👑', '🛡️', '❓'). */
-  badge: string;
+  badge?: string;
   /** Optional role/context label shown as a pill above the spotlighted tile. */
   label?: string;
+  /** Optional glow tone for the spotlight ring. */
+  glowTone?: 'gold' | 'danger' | 'warning';
   /**
    * Where the badge starts before flying to the tile:
    *   'center' — screen centre (default for winner badges)
@@ -133,6 +135,10 @@ function calculateLabelWidth(label: string, useCompactTileLabels: boolean): numb
   const minWidth = useCompactTileLabels ? MIN_COMPACT_LABEL_WIDTH : MIN_FULL_LABEL_WIDTH;
   const charWidth = useCompactTileLabels ? COMPACT_LABEL_CHAR_WIDTH : FULL_LABEL_CHAR_WIDTH;
   return Math.max(minWidth, label.length * charWidth + LABEL_WIDTH_PADDING);
+}
+
+function isTileBadgeOrigin(badgeStart: CeremonyTile['badgeStart']): badgeStart is DOMRect {
+  return badgeStart != null && badgeStart !== 'center';
 }
 
 type BadgePhase = 'hidden' | 'appearing' | 'flying' | 'landed' | 'holding';
@@ -406,8 +412,9 @@ export default function CeremonyOverlay({
         {cutouts.map((c, i) => (
           <div
             key={i}
-            className="ceremony-overlay__glow"
+            className={`ceremony-overlay__glow ceremony-overlay__glow--${validTiles[i]?.glowTone ?? 'gold'}`}
             style={{ left: c.x, top: c.y, width: c.w, height: c.h }}
+            data-ceremony-tone={validTiles[i]?.glowTone ?? 'gold'}
             aria-hidden="true"
           />
         ))}
@@ -436,21 +443,25 @@ export default function CeremonyOverlay({
       </div>
 
       {/* Animated badges — placed outside the dim container so they render above the mask */}
-      {validTiles.map((t, i) => (
-        <div
-          key={i}
-          className={`ceremony-overlay__badge ${getBadgeClass(badgePhase)}`}
-          style={{
-            ...getBadgeStyle(i),
-            zIndex: 8701,
-            position: 'fixed',
-          }}
-          aria-label={t.badgeLabel ?? `${t.badge} badge`}
-          aria-hidden={badgePhase === 'hidden'}
-        >
-          {t.badge}
-        </div>
-      ))}
+      {validTiles.map((t, i) => {
+        if (!t.badge) return null;
+        return (
+          <div
+            key={i}
+            className={`ceremony-overlay__badge ${getBadgeClass(badgePhase)}`}
+            style={{
+              ...getBadgeStyle(i),
+              zIndex: 8701,
+              position: 'fixed',
+            }}
+            data-badge-origin={isTileBadgeOrigin(t.badgeStart) ? 'tile' : 'center'}
+            aria-label={t.badgeLabel ?? `${t.badge} badge`}
+            aria-hidden={badgePhase === 'hidden'}
+          >
+            {t.badge}
+          </div>
+        );
+      })}
     </>
   );
 }

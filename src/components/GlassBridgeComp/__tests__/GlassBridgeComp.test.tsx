@@ -6,6 +6,7 @@ import glassBridgeReducer, {
   finaliseOrderSelection,
   recordNumberChoice,
   startPlaying,
+  resolveStep,
   HINT_PENALTY_MS,
 } from '../../../features/glassBridge/glassBridgeSlice';
 import GlassBridgeComp from '../GlassBridgeComp';
@@ -14,6 +15,9 @@ const playSafeStep = vi.fn();
 const playDeath = vi.fn();
 const playWinner = vi.fn();
 const playNewTurn = vi.fn();
+const timeoutBannerPattern = /time is over\. the path is collapsing\.|the clock has died — the path is collapsing!|no time remains\. the bridge is breaking apart!/i;
+const helpButtonPattern = /seek guidance|ask the expert|one last whisper/i;
+const exhaustedHelpPattern = /no more aid remains|the expert is silent now|you must face the path alone/i;
 
 vi.mock('../../../hooks/useGlassBridgeAudio', () => ({
   useGlassBridgeAudio: () => ({
@@ -40,6 +44,20 @@ async function advance(ms: number) {
   await act(async () => {
     vi.advanceTimersByTime(ms);
   });
+}
+
+function makeRect(top: number, bottom: number, width = 360): DOMRect {
+  return {
+    top,
+    bottom,
+    left: 0,
+    right: width,
+    width,
+    height: bottom - top,
+    x: 0,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect;
 }
 
 describe('GlassBridgeComp', () => {
@@ -84,7 +102,7 @@ describe('GlassBridgeComp', () => {
 
     await advance(32_250);
 
-    expect(screen.getByText("Time's up! The path is collapsing!")).toBeTruthy();
+    expect(screen.getByText(timeoutBannerPattern)).toBeTruthy();
     expect(screen.queryByText('Path Complete')).toBeNull();
     expect(container.querySelectorAll('.gb-tile-timeout-break').length).toBeGreaterThan(0);
     expect(container.querySelectorAll('.gb-avatar-bar-timeout').length).toBeGreaterThan(0);
@@ -121,15 +139,19 @@ describe('GlassBridgeComp', () => {
 
     // After reveal animation, check the human is going first (turn order with seed 42 may vary;
     // we just verify the Request Help button appears in the playing phase for the human).
-    const helpBtn = screen.queryByRole('button', { name: /request help/i });
+    const helpBtn = screen.queryByRole('button', { name: helpButtonPattern });
     expect(helpBtn).not.toBeNull();
     expect(helpBtn!.textContent).toMatch(/3 left/i);
 
-    const hintArea = container.querySelector('.gb-bridge-container .gb-hint-area');
+    const floatingUi = container.querySelector('.gb-floating-ui');
+    const bridgeContainer = container.querySelector('.gb-bridge-container');
+    const hintArea = container.querySelector('.gb-floating-ui .gb-hint-area');
     const firstRow = container.querySelector('.gb-bridge-container .gb-row');
+    expect(floatingUi).not.toBeNull();
+    expect(bridgeContainer).not.toBeNull();
     expect(hintArea).not.toBeNull();
     expect(firstRow).not.toBeNull();
-    expect(hintArea!.nextElementSibling).toBe(firstRow);
+    expect(floatingUi!.nextElementSibling).toBe(bridgeContainer);
 
     const currentRow = store.getState().glassBridge.currentPlayerRow;
     const currentRowState = store.getState().glassBridge.rows[currentRow - 1];
@@ -146,18 +168,18 @@ describe('GlassBridgeComp', () => {
     let hintMsg = screen.queryByRole('status');
     expect(hintMsg).not.toBeNull();
     observedHints.push(Number(hintMsg!.textContent!.match(/(\d+)%/)?.[1] ?? '0'));
-    expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/2 left/i);
+    expect(screen.getByRole('button', { name: helpButtonPattern }).textContent).toMatch(/2 left/i);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /request help/i }));
+      fireEvent.click(screen.getByRole('button', { name: helpButtonPattern }));
     });
     hintMsg = screen.queryByRole('status');
     expect(hintMsg).not.toBeNull();
     observedHints.push(Number(hintMsg!.textContent!.match(/(\d+)%/)?.[1] ?? '0'));
-    expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/1 left/i);
+    expect(screen.getByRole('button', { name: helpButtonPattern }).textContent).toMatch(/1 left/i);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /request help/i }));
+      fireEvent.click(screen.getByRole('button', { name: helpButtonPattern }));
     });
     hintMsg = screen.queryByRole('status');
     expect(hintMsg).not.toBeNull();
@@ -169,7 +191,7 @@ describe('GlassBridgeComp', () => {
     expect(userProgress?.hintPenaltyMs).toBe(HINT_PENALTY_MS * 3);
     expect(observedHints).toEqual(expectedHints);
 
-    const exhaustedBtn = screen.getByRole('button', { name: /you're on your own/i });
+    const exhaustedBtn = screen.getByRole('button', { name: exhaustedHelpPattern });
     expect(exhaustedBtn).toBeDisabled();
   });
 
@@ -238,6 +260,314 @@ describe('GlassBridgeComp', () => {
       } else {
         Reflect.deleteProperty(globalThis, 'crypto');
       }
+    }
+  });
+
+  it('shows a spectator fast-forward button and cycles 1x, 2x, 3x playback', async () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <GlassBridgeComp
+          participantIds={['user', 'ai-1']}
+          participants={[
+            { id: 'user', name: 'You', isHuman: true },
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+          ]}
+          seed={1}
+        />
+      </Provider>,
+    );
+
+    await advance(0);
+    fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
+
+    await act(async () => {
+      store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
+      store.dispatch(finaliseOrderSelection());
+      store.dispatch(startPlaying({ now: Date.now() }));
+    });
+
+    expect(store.getState().glassBridge.turnOrder[0]).toBe('user');
+
+    const firstRow = store.getState().glassBridge.rows[0];
+    const wrongSide = firstRow.safeSide === 'left' ? 'right' : 'left';
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${wrongSide} tile.*step here`, 'i') }));
+
+    await advance(1_100);
+
+    expect(screen.getByRole('dialog', { name: /eliminated/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue watching/i }));
+
+    let ffwdBtn = screen.getByRole('button', { name: /playback speed 1x/i });
+    expect(ffwdBtn.textContent).toContain('1×');
+
+    fireEvent.click(ffwdBtn);
+    ffwdBtn = screen.getByRole('button', { name: /playback speed 2x/i });
+    expect(ffwdBtn.textContent).toContain('2×');
+
+    fireEvent.click(ffwdBtn);
+    ffwdBtn = screen.getByRole('button', { name: /playback speed 3x/i });
+    expect(ffwdBtn.textContent).toContain('3×');
+  });
+
+  it('accelerates the visible countdown when spectator playback speed increases', async () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <GlassBridgeComp
+          participantIds={['user', 'ai-1']}
+          participants={[
+            { id: 'user', name: 'You', isHuman: true },
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+          ]}
+          seed={1}
+        />
+      </Provider>,
+    );
+
+    await advance(0);
+    fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
+
+    await act(async () => {
+      store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
+      store.dispatch(finaliseOrderSelection());
+      store.dispatch(startPlaying({ now: Date.now() }));
+    });
+
+    const firstRow = store.getState().glassBridge.rows[0];
+    const wrongSide = firstRow.safeSide === 'left' ? 'right' : 'left';
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${wrongSide} tile.*step here`, 'i') }));
+
+    await advance(1_100);
+    fireEvent.click(screen.getByRole('button', { name: /continue watching/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /playback speed 1x/i }));
+    await advance(1_000);
+    expect(screen.getByLabelText('Time remaining').textContent).toContain('0:28');
+
+    fireEvent.click(screen.getByRole('button', { name: /playback speed 2x/i }));
+    await advance(500);
+    expect(screen.getByLabelText('Time remaining').textContent).toContain('0:27');
+  });
+
+  it('auto-scrolls the active row into view on mobile as the player advances', async () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalMatchMedia = window.matchMedia;
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const scrollToSpy = vi.fn();
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 390,
+    });
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(max-width: 640px)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollToSpy,
+    });
+
+    try {
+      const store = makeStore();
+      const { container } = render(
+        <Provider store={store}>
+          <GlassBridgeComp
+            participantIds={['user', 'ai-1']}
+            participants={[
+              { id: 'user', name: 'You', isHuman: true },
+              { id: 'ai-1', name: 'AI One', isHuman: false },
+            ]}
+            seed={1}
+          />
+        </Provider>,
+      );
+
+      await advance(0);
+      fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
+
+      await act(async () => {
+        store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
+        store.dispatch(finaliseOrderSelection());
+        store.dispatch(startPlaying({ now: Date.now() }));
+      });
+
+      const scrollContainer = container.querySelector('.gb-playing') as HTMLDivElement | null;
+      const floatingUi = container.querySelector('.gb-floating-ui') as HTMLDivElement | null;
+      const hintArea = container.querySelector('.gb-floating-ui .gb-hint-area') as HTMLDivElement | null;
+      const rows = Array.from(container.querySelectorAll('.gb-row')) as HTMLDivElement[];
+
+      expect(scrollContainer).not.toBeNull();
+      expect(floatingUi).not.toBeNull();
+      expect(hintArea).not.toBeNull();
+      expect(rows.length).toBeGreaterThan(1);
+
+      Object.defineProperty(scrollContainer!, 'scrollTop', {
+        configurable: true,
+        writable: true,
+        value: 0,
+      });
+      Object.defineProperty(scrollContainer!, 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(0, 240)),
+      });
+      Object.defineProperty(floatingUi!, 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(48, 96)),
+      });
+      Object.defineProperty(rows[0], 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(110, 170)),
+      });
+      Object.defineProperty(rows[1], 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(230, 290)),
+      });
+
+      await act(async () => {
+        const safeSide = store.getState().glassBridge.rows[0].safeSide;
+        store.dispatch(resolveStep({ chosenSide: safeSide, now: Date.now() }));
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({ top: 62, behavior: 'smooth' });
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: originalInnerWidth,
+      });
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: originalMatchMedia,
+      });
+      Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        value: originalScrollTo,
+      });
+    }
+  });
+
+  it('uses instant auto-scroll when animations are disabled', async () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalMatchMedia = window.matchMedia;
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const scrollToSpy = vi.fn();
+
+    document.body.classList.add('no-animations');
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 390,
+    });
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(max-width: 640px)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollToSpy,
+    });
+
+    try {
+      const store = makeStore();
+      const { container } = render(
+        <Provider store={store}>
+          <GlassBridgeComp
+            participantIds={['user', 'ai-1']}
+            participants={[
+              { id: 'user', name: 'You', isHuman: true },
+              { id: 'ai-1', name: 'AI One', isHuman: false },
+            ]}
+            seed={1}
+          />
+        </Provider>,
+      );
+
+      await advance(0);
+      fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
+
+      await act(async () => {
+        store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
+        store.dispatch(finaliseOrderSelection());
+        store.dispatch(startPlaying({ now: Date.now() }));
+      });
+
+      const scrollContainer = container.querySelector('.gb-playing') as HTMLDivElement | null;
+      const floatingUi = container.querySelector('.gb-floating-ui') as HTMLDivElement | null;
+      const rows = Array.from(container.querySelectorAll('.gb-row')) as HTMLDivElement[];
+
+      expect(scrollContainer).not.toBeNull();
+      expect(floatingUi).not.toBeNull();
+      expect(rows.length).toBeGreaterThan(1);
+
+      Object.defineProperty(scrollContainer!, 'scrollTop', {
+        configurable: true,
+        writable: true,
+        value: 0,
+      });
+      Object.defineProperty(scrollContainer!, 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(0, 240)),
+      });
+      Object.defineProperty(floatingUi!, 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(48, 96)),
+      });
+      Object.defineProperty(rows[0], 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(110, 170)),
+      });
+      Object.defineProperty(rows[1], 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(230, 290)),
+      });
+
+      await act(async () => {
+        const safeSide = store.getState().glassBridge.rows[0].safeSide;
+        store.dispatch(resolveStep({ chosenSide: safeSide, now: Date.now() }));
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({ top: 62, behavior: 'auto' });
+    } finally {
+      document.body.classList.remove('no-animations');
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: originalInnerWidth,
+      });
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: originalMatchMedia,
+      });
+      Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        value: originalScrollTo,
+      });
     }
   });
 });

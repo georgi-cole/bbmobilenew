@@ -1,11 +1,16 @@
 /**
- * useIntroHubMusic — plays the looping intro-hub ambient track while the
- * HomeHub screen is mounted, and stops it on unmount.
+ * useIntroHubMusic — requests the looping intro-hub ambient track while the
+ * HomeHub screen is mounted, and releases it on unmount.
+ *
+ * Uses requestBgm/releaseBgm with the 'introhub' owner so the SoundManager can
+ * enforce the single-BGM-channel invariant and prevent overlap with phase music.
  *
  * Autoplay policy:
- *   If the user has previously consented (localStorage 'bb:hubMusicConsent'
- *   === 'granted'), playback is attempted immediately.  Otherwise playback is
- *   deferred to a user gesture (the SoundConsentPopup shown in HomeHub).
+ *   The desired BGM is always registered on mount (safe while audio is locked —
+ *   the SoundManager only stores the intent without playing).  This ensures
+ *   that when the SoundConsentPopup calls unlockAndPlayMusicOnly() for
+ *   first-time visitors, the hub track is already set as the desired BGM and
+ *   will start immediately on unlock.
  *
  * Usage:
  *   // Inside HomeHub component
@@ -13,29 +18,22 @@
  */
 import { useEffect } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
-import { HUB_MUSIC_CONSENT_KEY } from '../components/SoundConsentPopup/SoundConsentPopup';
 
 export default function useIntroHubMusic(): void {
   useEffect(() => {
     const hubMusicKey = 'music:intro_hub_loop';
-    // Only autoplay if the user has previously granted persistent consent.
-    // Without consent the SoundConsentPopup will start music via a user gesture.
-    let hasConsent = false;
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        hasConsent = window.localStorage.getItem(HUB_MUSIC_CONSENT_KEY) === 'granted';
-      }
-    } catch {
-      // Treat any failure to access localStorage (e.g. privacy mode) as "no consent".
-      hasConsent = false;
-    }
-    if (hasConsent) {
-      void SoundManager.playMusic(hubMusicKey);
-    }
+    // Always register the desired BGM on mount — safe while audio is locked
+    // (SoundManager stores the intent without playing).  Covers both paths:
+    //   • Returning visitor (consent already granted): unlockOnUserGesture()
+    //     fired earlier by handlePlay, so requestBgm starts music immediately.
+    //   • First-time visitor (no stored consent): SoundConsentPopup calls
+    //     unlockAndPlayMusicOnly() on tap, which reads _desiredPerOwner and
+    //     starts the hub track in the gesture context.
+    SoundManager.requestBgm(hubMusicKey, 'introhub');
     return () => {
-      if (SoundManager.currentMusicKey === hubMusicKey) {
-        SoundManager.stopMusic();
-      }
+      // Release introhub ownership — stops music if it is playing; removes the
+      // desired BGM entry so it does not restart after unlock if we've navigated away.
+      SoundManager.releaseBgm('introhub');
     };
   }, []);
 }

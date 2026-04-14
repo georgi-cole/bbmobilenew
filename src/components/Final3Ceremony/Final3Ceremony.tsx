@@ -251,17 +251,17 @@ export default function Final3Ceremony() {
         <ChatOverlay
           lines={pleaLines}
           skippable
-          header={{ title: 'Final 3 🏠', subtitle: 'Nominees make their final pleas.' }}
+          header={{ title: 'The Finale 🏠', subtitle: 'Nominees make their final pleas.' }}
           onComplete={handlePleaComplete}
-          ariaLabel="Final 3 plea chat"
+          ariaLabel="The Finale plea chat"
         />
       )}
 
       {/* Human LOH decision modal */}
       {stage === 'decision' && humanIsLoh && (
         <TvDecisionModal
-          title="Final LOH — Eliminate a Housemate"
-          subtitle={`${lohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining housemates.`}
+          title="Final LOH — Eliminate a Player"
+          subtitle={`${lohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining players.`}
           options={nominees}
           onSelect={handleHumanDecision}
           danger
@@ -274,9 +274,9 @@ export default function Final3Ceremony() {
         <ChatOverlay
           lines={announceLines}
           skippable
-          header={{ title: 'Final 3 🚪', subtitle: 'The Final LOH has made their decision.' }}
+          header={{ title: 'The Finale 🚪', subtitle: 'The Final LOH has made their decision.' }}
           onComplete={handleAnnounceComplete}
-          ariaLabel="Final 3 elimination announcement"
+          ariaLabel="The Finale elimination announcement"
         />
       )}
 

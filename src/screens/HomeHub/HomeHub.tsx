@@ -30,6 +30,10 @@ import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
 import { NATIVE_SFX_MAP, NATIVE_SFX_CONFIG } from '../../platform/cordova/nativeSfxMap';
 import { preloadImage } from '../../utils/preload';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
+import {
+  hasSeenHomeHubSplashForGame,
+  markHomeHubSplashSeenForGame,
+} from './homeHubSplashSession';
 import './HomeHub.css';
 
 /**
@@ -69,10 +73,11 @@ function shouldShowSoundConsent(): boolean {
 export default function HomeHub() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const gameId = useAppSelector((state) => state.game.gameId);
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
   // Track whether the hub background has loaded so buttons are never shown
   // on an empty background (background-first ordering).
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -107,10 +112,9 @@ export default function HomeHub() {
 
     // Unlock and prime SFX pools in the gesture context; discard any queued SFX
     // so users don't hear a flood of game sounds when tapping "Enable sounds".
+    // The desired BGM (set by useIntroHubMusic via requestBgm) is started here.
     SoundManager.unlockAndPlayMusicOnly();
 
-    // Start the hub ambient music (idempotent — no-op if already playing).
-    void SoundManager.playMusic('music:intro_hub_loop');
     setSoundConsentHidden(true);
 
     // Kick off native SFX preloads asynchronously in the background.
@@ -196,12 +200,17 @@ export default function HomeHub() {
     setPreloading(true);
   }
 
+  function handleSplashFinish() {
+    markHomeHubSplashSeenForGame(gameId);
+    setSplashDone(true);
+  }
+
   return (
     <>
       {/* Cold-load intro splash — logo only, hub preloads in background.
           Exits automatically after the animation completes (~1.2s). */}
       {!splashDone && (
-        <KolequantSplash onFinish={() => setSplashDone(true)} />
+        <KolequantSplash onFinish={handleSplashFinish} />
       )}
 
       {/* Permission prompts shown after splash exits, over the hub.

@@ -299,7 +299,7 @@ export default function RiskWheelComp({
     playWinnerRevealSound,
     playStopAndBankSound,
     playClickSound,
-  } = useRiskWheelAudio();
+  } = useRiskWheelAudio(rw?.phase != null && rw.phase !== 'idle');
   // Stable ref so the unmount cleanup can call stopWheelSound without it
   // needing to be in the effect's dependency array.
   const stopWheelSoundRef = useRef(stopWheelSound);

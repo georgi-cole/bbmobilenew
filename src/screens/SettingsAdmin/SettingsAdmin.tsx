@@ -623,7 +623,7 @@ export default function SettingsAdmin() {
                 aria-label="Cast size"
               />
               <p className="settings-helper-text">
-                Choose between 4 and 16 houseguests. Grid will show placeholders to preserve layout.
+                Choose between 4 and 16 players. Grid will show placeholders to preserve layout.
               </p>
             </div>
 

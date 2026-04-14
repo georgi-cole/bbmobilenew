@@ -954,7 +954,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeDefined();
   });
 
-  it('shows Final 3 overlay when phase transitions to final3 with exactly 3 alive players', () => {
+  it('shows The Finale overlay when phase transitions to final3 with exactly 3 alive players', () => {
     const store = makeStore();
 
     // Evict players until only 3 remain
@@ -968,7 +968,7 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     act(() => { store.dispatch(setPhase('final3')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Final 3/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: The Finale/i })).toBeDefined();
   });
 
   it('shows Final LOH Decision overlay when phase transitions to final3_decision', () => {

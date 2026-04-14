@@ -173,6 +173,7 @@ export function createInitialGameState(): GameState {
     : loadSeasonArchives(archiveKeyForActiveProfile()) ?? [];
   const season = nextSeasonNumber(seasonArchives);
   return {
+    gameId: crypto.randomUUID(),
     season,
     week: 1,
     phase: 'week_start',
@@ -501,7 +502,7 @@ function applyPosWinner(state: GameState, winnerId: string, alive: Player[]): Ph
       });
       pushEvent(
         state,
-        `Final 4! ${f4Names} are on the block. The POS holder has the sole vote to eliminate. 🏆`,
+        `Final 4! ${f4Names} are nominated. The POS holder has the sole vote to eliminate. 🏆`,
         'game',
       );
       return 'final4_eviction';
@@ -965,7 +966,7 @@ const gameSlice = createSlice({
         state.f3Part1WinnerId = winnerId;
         pushEvent(
           state,
-          `Final 3 Part 1 result: ${winner?.name ?? winnerId} wins and advances directly to Part 3! The other two housemates will compete in Part 2. 🏆`,
+          `Final 3 Part 1 result: ${winner?.name ?? winnerId} wins and advances directly to Part 3! The other two players will compete in Part 2. 🏆`,
           'game',
         );
         state.minigameContext = null;
@@ -1607,7 +1608,7 @@ const gameSlice = createSlice({
 
       if (isFinal4) {
         state.phase = 'final3';
-        pushEvent(state, `Final 3! Three housemates remain. 🏆`, 'game');
+        pushEvent(state, `Final 3! Three players remain. 🏆`, 'game');
       } else if (state.doubleEviction?.pendingSecondEviction) {
         // Double Eviction: promote the second eviction to the main pending slot.
         state.pendingEviction = state.doubleEviction.pendingSecondEviction;
@@ -1848,7 +1849,7 @@ const gameSlice = createSlice({
       const ts = Date.now();
       const event: TvEvent = {
         id: `nominations-w${state.week}-${ts}-de`,
-        text: `⚡ DOUBLE ELIMINATION! Tonight the LOH must nominate THREE housemates. TWO will be eliminated live! ⚡`,
+        text: `⚡ DOUBLE ELIMINATION! Tonight the LOH must nominate THREE players. TWO will be eliminated live! ⚡`,
         type: 'twist',
         timestamp: ts,
         major: 'double_eviction',
@@ -2493,6 +2494,7 @@ const gameSlice = createSlice({
     hydrateGame(_state, action: PayloadAction<GameState>) {
       return {
         ...action.payload,
+        gameId: action.payload.gameId ?? crypto.randomUUID(),
         hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
       };
     },
@@ -2647,7 +2649,7 @@ const gameSlice = createSlice({
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         pushEvent(
           state,
-          `Final 3 Part 1 is underway! All three houseguests compete for the first leg of the Final LOH. 🏁`,
+          `Final 3 Part 1 is underway! All three players compete for the first leg of the Final LOH. 🏁`,
           'game',
         );
 
@@ -2668,7 +2670,7 @@ const gameSlice = createSlice({
 
         pushEvent(
           state,
-          `Final 3 Part 1 result: ${winner.name} wins and advances directly to Part 3! The other two housemates will compete in Part 2. 🏆`,
+          `Final 3 Part 1 result: ${winner.name} wins and advances directly to Part 3! The other two players will compete in Part 2. 🏆`,
           'game',
         );
         state.phase = 'final3_comp2';
@@ -2691,7 +2693,7 @@ const gameSlice = createSlice({
         }
         pushEvent(
           state,
-          `Final 3 Part 2 is underway! The remaining two houseguests battle to join the Part 1 winner in Part 3. 🏁`,
+          `Final 3 Part 2 is underway! The remaining two players battle to join the Part 1 winner in Part 3. 🏁`,
           'game',
         );
 
@@ -3041,7 +3043,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'loh_comp_announcement': {
-          pushEvent(state, `The Leader of the House comp is about to begin! All eligible housemates wil now battle for reign supreme.`, 'game');
+          pushEvent(state, `The Leader of the House comp is about to begin! All eligible players will now battle for the title.`, 'game');
           break;
         }
         case 'loh_comp': {
@@ -3095,7 +3097,7 @@ const gameSlice = createSlice({
             const countWord = isDoubleEviction ? 'three' : 'two';
             pushEvent(
               state,
-              `${lohPlayer.name}, it's time to make your nominations. Choose ${countWord} houseguests to put on the block. 🎯`,
+              `${lohPlayer.name}, it's time to make your nominations. Choose ${countWord} players to nominate. 🎯`,
               'game',
             );
             break;

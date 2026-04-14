@@ -389,6 +389,8 @@ export interface GameHistoryEvent {
 }
 
 export interface GameState {
+  /** Stable unique identifier for this game instance. */
+  gameId: string;
   season: number;
   week: number;
   phase: Phase;

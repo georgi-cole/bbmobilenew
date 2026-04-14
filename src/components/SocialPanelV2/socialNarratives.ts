@@ -40,7 +40,7 @@ const NARRATIVES: Record<string, string[]> = {
     "You dropped a bombshell on {target}: someone has a pre-game alliance.",
     "You suggested to {target} the house is closer to turning than they think.",
     "You told {target} you heard their name come up for a backdoor.",
-    "You whispered to {target} that a certain housemate is obsessed with them — and not in a good way.",
+    "You whispered to {target} that a certain player is obsessed with them — and not in a good way.",
     "You informed {target} that someone in the house has been keeping a diary about everyone.",
     "You told {target} that three people voted against them last week and they don't know who.",
     "You insinuated to {target} that someone is tanking the vote to stay under the radar.",
@@ -104,7 +104,7 @@ const NARRATIVES: Record<string, string[]> = {
     "You turned on {target} and called it game moves to anyone who would listen.",
   ],
   nominate: [
-    "You campaigned quietly to have {target} put on the block this week.",
+    "You campaigned quietly to have {target} nominated this week.",
     "You made it crystal clear to the LOH: {target} is your personal target.",
     "You convinced the LOH that {target} is the single biggest strategic threat in the house.",
     "You planted {target}'s name in every whispered conversation you could find.",

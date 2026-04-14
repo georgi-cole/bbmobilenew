@@ -91,7 +91,7 @@ export default function PublicSaveReveal({
         <div className="psr__heading">
           <span className="psr__heading-eyebrow">Public Save</span>
           <p className="psr__heading-sub">
-            Before safety battle, the housemate with highest public support is saved.
+            Before safety battle, the player with highest public support is saved.
           </p>
         </div>
 

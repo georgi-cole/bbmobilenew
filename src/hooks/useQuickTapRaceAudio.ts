@@ -30,24 +30,17 @@ export interface UseQuickTapRaceAudioReturn {
 
 /**
  * @param isPlaying - true while the Quick Tap Race playing phase is active.
- *   Background music starts on the first true value and stops when it reverts
- *   to false or the component unmounts, then restores whatever was playing.
+ *   Background music is requested while true and released when it reverts to
+ *   false or the component unmounts.
  */
 export function useQuickTapRaceAudio(isPlaying: boolean): UseQuickTapRaceAudioReturn {
-  // Start looping background music when the playing phase begins;
-  // stop it and restore the previous track when the phase ends or on unmount.
+  // Request/release minigame BGM ownership only while the playing phase is
+  // active so the track is tied to the minigame lifecycle, not the phase slot.
   useEffect(() => {
     if (!isPlaying) return;
-    const prevKey = SoundManager.currentMusicKey;
-    void SoundManager.playMusic(QTR_MUSIC_KEY);
+    SoundManager.requestBgm(QTR_MUSIC_KEY, 'minigame');
     return () => {
-      if (SoundManager.currentMusicKey !== QTR_MUSIC_KEY) return;
-      SoundManager.stopMusic();
-      // Restore the track that was playing before QTR started (e.g. LOH comp
-      // general) so phase music continues seamlessly after the minigame.
-      if (prevKey && prevKey !== QTR_MUSIC_KEY) {
-        void SoundManager.playMusic(prevKey);
-      }
+      SoundManager.releaseBgm('minigame');
     };
   }, [isPlaying]);
 

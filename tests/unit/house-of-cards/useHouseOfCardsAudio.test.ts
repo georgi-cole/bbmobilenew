@@ -4,59 +4,47 @@ import { useHouseOfCardsAudio } from '../../../src/hooks/useHouseOfCardsAudio';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
 
 describe('useHouseOfCardsAudio', () => {
-  let currentMusicKey: string | null;
-
   beforeEach(() => {
-    currentMusicKey = null;
-    vi.spyOn(SoundManager, 'playMusic').mockImplementation(async (key: string) => {
-      currentMusicKey = key;
-    });
-    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {
-      currentMusicKey = null;
-    });
+    vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
-    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockImplementation(() => currentMusicKey);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('starts the House of Cards music loop and restores the previous track when inactive', () => {
-    currentMusicKey = 'music:hoh_comp_general';
-
+  it('requests the House of Cards music loop while active and releases minigame ownership when inactive', () => {
     const { rerender, unmount } = renderHook(
       ({ isPlaying }) => useHouseOfCardsAudio(isPlaying),
       { initialProps: { isPlaying: false } },
     );
 
-    expect(SoundManager.playMusic).not.toHaveBeenCalled();
+    expect(SoundManager.requestBgm).not.toHaveBeenCalled();
 
     rerender({ isPlaying: true });
 
-    expect(SoundManager.playMusic).toHaveBeenCalledWith('music:quicktap_main');
+    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:quicktap_main', 'minigame');
 
     rerender({ isPlaying: false });
 
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
-    expect(SoundManager.playMusic).toHaveBeenLastCalledWith('music:hoh_comp_general');
+    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
+    expect(SoundManager.releaseBgm).toHaveBeenLastCalledWith('minigame');
 
     unmount();
 
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
+    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
   });
 
-  it('stops music on unmount while active and restores the previous track once', () => {
-    currentMusicKey = 'music:hoh_comp_general';
-
+  it('releases minigame music on unmount while active', () => {
     const { unmount } = renderHook(() => useHouseOfCardsAudio(true));
 
-    expect(SoundManager.playMusic).toHaveBeenCalledWith('music:quicktap_main');
+    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:quicktap_main', 'minigame');
 
     unmount();
 
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
-    expect(SoundManager.playMusic).toHaveBeenLastCalledWith('music:hoh_comp_general');
+    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
+    expect(SoundManager.releaseBgm).toHaveBeenLastCalledWith('minigame');
   });
 
   it('exposes callbacks for flip, match, mismatch, peek, and completion sounds', () => {

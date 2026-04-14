@@ -9,7 +9,7 @@
  * (e.g. react-native-sound or expo-av) when targeting native platforms.
  */
 
-import type { PlayOptions } from './SoundManager';
+import type { PlayOptions, BgmOwner } from './SoundManager';
 import type { SoundCategory, SoundEntry } from './sounds';
 
 class _SoundManagerNative {
@@ -29,6 +29,18 @@ class _SoundManagerNative {
     return null;
   }
 
+  get currentBgmOwner(): BgmOwner | null {
+    return null;
+  }
+
+  requestBgm(_key: string | null, _owner: BgmOwner): void {
+    // TODO: route BGM request to native audio library
+  }
+
+  releaseBgm(_owner: BgmOwner): void {
+    // TODO: release BGM ownership in native audio library
+  }
+
   async playMusic(_key: string, _opts?: PlayOptions): Promise<void> {
     // TODO: start looping music track via native audio library
   }
@@ -46,6 +58,10 @@ class _SoundManagerNative {
   }
 
   unlockOnUserGesture(): void {
+    // No-op on React Native — no AudioContext unlock required
+  }
+
+  unlockAndPlayMusicOnly(): void {
     // No-op on React Native — no AudioContext unlock required
   }
 }
