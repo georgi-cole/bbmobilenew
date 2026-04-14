@@ -259,6 +259,10 @@ function formatHintUsage(hintUses: number): string {
   return `${hintUses} hint${hintUses === 1 ? '' : 's'}`;
 }
 
+function hasOneBrokenTile(row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'>): boolean {
+  return row.leftBroken !== row.rightBroken;
+}
+
 // ─── Randomized status-bar message pools ─────────────────────────────────────
 
 /** Pick a random element from a non-empty array on each call. */
@@ -300,6 +304,12 @@ const humanClearMessages: ReadonlyArray<(row: number) => string> = [
   row => `You survive row ${row}.`,
   row => `You cross row ${row} unbroken.`,
   row => `Row ${row} yields to you.`,
+];
+
+const brokenPlatformFallMessages: ReadonlyArray<(name: string) => string> = [
+  name => `${name} slips onto the broken platform.`,
+  name => `${name} loses balance and falls through the broken platform.`,
+  name => `${name} stumbles and drops through the hole in the path.`,
 ];
 
 const timesUpMessages: ReadonlyArray<string> = [
@@ -947,6 +957,11 @@ export default function GlassBridgeComp({
 
     const noAnimations = areAnimationsDisabled();
     const collapseDuration = scaleSpectatorDelay(getTimeoutCollapseDuration(gb.rows.length, noAnimations));
+    const activeId = gb.turnOrder[gb.currentTurnIndex] ?? null;
+    const activeRow =
+      activeId && gb.currentPlayerRow > 0 && gb.currentPlayerRow <= gb.rows.length
+        ? gb.rows[gb.currentPlayerRow - 1]
+        : null;
 
     setShowSpectatorModal(false);
     setTimedOutPlayerIds(doomedIds);
@@ -954,6 +969,9 @@ export default function GlassBridgeComp({
     setShowEliminationFlash(true);
     setShowScreenShake(true);
     playDeath();
+    if (activeId && activeRow && hasOneBrokenTile(activeRow)) {
+      flashStatusBanner(pickRandom(brokenPlatformFallMessages)(getName(activeId)), 'danger');
+    }
 
     if (flashResetRef.current !== null) {
       window.clearTimeout(flashResetRef.current);
@@ -966,7 +984,19 @@ export default function GlassBridgeComp({
     timeoutCollapseResolveRef.current = window.setTimeout(() => {
       dispatch(completeGame());
     }, collapseDuration);
-  }, [gb.phase, gb.timerExpired, gb.rows.length, dispatch, playDeath, scaleSpectatorDelay]);
+  }, [
+    gb.currentPlayerRow,
+    gb.currentTurnIndex,
+    gb.phase,
+    gb.rows,
+    gb.timerExpired,
+    gb.turnOrder,
+    dispatch,
+    playDeath,
+    scaleSpectatorDelay,
+    flashStatusBanner,
+    getName,
+  ]);
 
   // ── 8. Detect end-of-game conditions ──────────────────────────────────────
   useEffect(() => {
