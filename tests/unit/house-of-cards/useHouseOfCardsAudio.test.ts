@@ -4,10 +4,18 @@ import { useHouseOfCardsAudio } from '../../../src/hooks/useHouseOfCardsAudio';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
 
 describe('useHouseOfCardsAudio', () => {
+  let currentMusicKey: string | null;
+
   beforeEach(() => {
-    vi.spyOn(SoundManager, 'playMusic').mockResolvedValue();
-    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {});
+    currentMusicKey = null;
+    vi.spyOn(SoundManager, 'playMusic').mockImplementation(async (key: string) => {
+      currentMusicKey = key;
+    });
+    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {
+      currentMusicKey = null;
+    });
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
+    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockImplementation(() => currentMusicKey);
   });
 
   afterEach(() => {
@@ -15,7 +23,7 @@ describe('useHouseOfCardsAudio', () => {
   });
 
   it('starts the House of Cards music loop and restores the previous track when inactive', () => {
-    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue('music:hoh_comp_general');
+    currentMusicKey = 'music:hoh_comp_general';
 
     const { rerender, unmount } = renderHook(
       ({ isPlaying }) => useHouseOfCardsAudio(isPlaying),
@@ -39,7 +47,7 @@ describe('useHouseOfCardsAudio', () => {
   });
 
   it('stops music on unmount while active and restores the previous track once', () => {
-    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue('music:hoh_comp_general');
+    currentMusicKey = 'music:hoh_comp_general';
 
     const { unmount } = renderHook(() => useHouseOfCardsAudio(true));
 

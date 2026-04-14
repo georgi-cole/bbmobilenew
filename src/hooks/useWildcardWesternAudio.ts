@@ -49,6 +49,7 @@ export function useWildcardWesternAudio(shouldPlayMusic: boolean): UseWildcardWe
     const prevKey = SoundManager.currentMusicKey;
     void SoundManager.playMusic(WW_MUSIC_KEY);
     return () => {
+      if (SoundManager.currentMusicKey !== WW_MUSIC_KEY) return;
       SoundManager.stopMusic();
       if (prevKey && prevKey !== WW_MUSIC_KEY) {
         void SoundManager.playMusic(prevKey);

@@ -12,9 +12,12 @@ import { SoundManager } from '../services/sound/SoundManager';
 
 export default function useSpectatorMusic(): void {
   useEffect(() => {
-    void SoundManager.playMusic('music:spectator_loop');
+    const spectatorMusicKey = 'music:spectator_loop';
+    void SoundManager.playMusic(spectatorMusicKey);
     return () => {
-      SoundManager.stopMusic();
+      if (SoundManager.currentMusicKey === spectatorMusicKey) {
+        SoundManager.stopMusic();
+      }
     };
   }, []);
 }

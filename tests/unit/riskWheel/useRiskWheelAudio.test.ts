@@ -5,12 +5,19 @@ import { SoundManager } from '../../../src/services/sound/SoundManager';
 import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds';
 
 describe('useRiskWheelAudio', () => {
+  let currentMusicKey: string | null;
+
   beforeEach(() => {
-    vi.spyOn(SoundManager, 'playMusic').mockResolvedValue();
-    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {});
+    currentMusicKey = null;
+    vi.spyOn(SoundManager, 'playMusic').mockImplementation(async (key: string) => {
+      currentMusicKey = key;
+    });
+    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {
+      currentMusicKey = null;
+    });
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
     vi.spyOn(SoundManager, 'stop').mockImplementation(() => {});
-    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue(null);
+    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockImplementation(() => currentMusicKey);
   });
 
   afterEach(() => {
@@ -29,7 +36,7 @@ describe('useRiskWheelAudio', () => {
   });
 
   it('restores the previous music track on unmount when one was already playing', () => {
-    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue('music:hoh_comp_general');
+    currentMusicKey = 'music:hoh_comp_general';
     const { unmount } = renderHook(() => useRiskWheelAudio());
 
     unmount();

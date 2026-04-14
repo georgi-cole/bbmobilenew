@@ -5,10 +5,18 @@ import { SoundManager } from '../../../src/services/sound/SoundManager';
 import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds';
 
 describe('useGlassBridgeAudio', () => {
+  let currentMusicKey: string | null;
+
   beforeEach(() => {
-    vi.spyOn(SoundManager, 'playMusic').mockResolvedValue();
-    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {});
+    currentMusicKey = null;
+    vi.spyOn(SoundManager, 'playMusic').mockImplementation(async (key: string) => {
+      currentMusicKey = key;
+    });
+    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {
+      currentMusicKey = null;
+    });
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
+    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockImplementation(() => currentMusicKey);
   });
 
   afterEach(() => {

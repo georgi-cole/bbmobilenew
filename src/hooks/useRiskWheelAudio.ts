@@ -38,6 +38,7 @@ export function useRiskWheelAudio(): UseRiskWheelAudioReturn {
     void SoundManager.playMusic(RISK_WHEEL_MUSIC_KEY);
     return () => {
       stopWheelSound();
+      if (SoundManager.currentMusicKey !== RISK_WHEEL_MUSIC_KEY) return;
       SoundManager.stopMusic();
       if (prevKey && prevKey !== RISK_WHEEL_MUSIC_KEY) {
         void SoundManager.playMusic(prevKey);
