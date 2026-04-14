@@ -44,6 +44,7 @@ import {
   type TileSide,
 } from '../../features/glassBridge/glassBridgeSlice';
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { mulberry32 } from '../../store/rng';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { useGlassBridgeAudio } from '../../hooks/useGlassBridgeAudio';
@@ -177,23 +178,24 @@ function getTimeoutCollapseDuration(rowsCount: number, noAnimations: boolean): n
 }
 
 /**
- * Compute a probabilistic hint for the player ("The Expert").
+ * Compute the tiered certainty hint shown by The Expert.
  *
- * Returns the integer percentage chance (20–80) that the LEFT platform will
- * break, biased toward the true outcome using seeded RNG.
+ * Returns the integer percentage chance that the LEFT platform will break,
+ * with stronger repeat requests on the same row becoming increasingly certain.
  *
- * - If right is safe (left will break): value is in the 65–80 range.
- * - If left is safe (left is solid):    value is in the 20–35 range.
- *
- * The value is never 0 or 100 so the hint feels advisory rather than certain.
+ * Repeated hints on the same row intentionally become much more certain:
+ *  - 1st hint: 65% / 35%
+ *  - 2nd hint: 90% / 10%
+ *  - 3rd hint: 99% / 1%
  */
-function computeHintLeftBreakChance(safeSide: TileSide, rng: () => number): number {
-  if (safeSide === 'right') {
-    // Left will break — lean high (65–80).
-    return 65 + Math.floor(rng() * 16);
-  }
-  // Left is safe — lean low (20–35).
-  return 20 + Math.floor(rng() * 16);
+function computeHintLeftBreakChance(safeSide: TileSide, sameRowHintCount: number): number {
+  // Convert the 1-based repeated-hint count into a 0-based tier index
+  // while clamping invalid/overflow values into the three supported tiers.
+  const tierIndex = Math.min(MAX_HINTS_PER_RUN - 1, Math.max(0, sameRowHintCount - 1));
+  const leftBreakChanceByTier = safeSide === 'right'
+    ? [65, 90, 99]
+    : [35, 10, 1];
+  return leftBreakChanceByTier[tierIndex];
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -212,7 +214,7 @@ interface Props {
   participantIds: string[];
   participants?: ParticipantProp[];
   prizeType?: 'LOH' | 'POS';
-  seed: number;
+  seed?: number;
   onComplete?: () => void;
 }
 
@@ -227,6 +229,7 @@ export default function GlassBridgeComp({
 }: Props) {
   const dispatch = useAppDispatch();
   const gb = useAppSelector((s: RootState) => s.glassBridge);
+  const [sessionSeed] = useState<number>(() => (seed !== undefined && seed !== 0 ? seed : cryptoSeed()));
 
   // ── Resolve human player id ───────────────────────────────────────────────
   const humanId = useMemo(() => {
@@ -276,6 +279,8 @@ export default function GlassBridgeComp({
   const [timeoutCollapseActive, setTimeoutCollapseActive] = useState(false);
   /** Current hint message from The Expert (null = no active hint). */
   const [currentHintMessage, setCurrentHintMessage] = useState<string | null>(null);
+  /** Number of hints the human has requested for the current row this turn. */
+  const [hintRequestsForCurrentRow, setHintRequestsForCurrentRow] = useState(0);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const timerIntervalRef = useRef<number | null>(null);
@@ -288,7 +293,13 @@ export default function GlassBridgeComp({
   const deathMarkerClearRef = useRef<number | null>(null);
   const landingTimersRef = useRef<number[]>([]);
   const timeoutCollapseResolveRef = useRef<number | null>(null);
-  const initParamsRef = useRef({ participantIds, prizeType, seed, humanId, participants });
+  const initParamsRef = useRef({
+    participantIds,
+    prizeType,
+    seed: sessionSeed,
+    humanId,
+    participants,
+  });
 
   // ── Order-selection AI pick queue refs (sequential pacing) ───────────────
   /** AI player IDs queued to pick, in participant order (numbers computed lazily). */
@@ -317,9 +328,7 @@ export default function GlassBridgeComp({
   const timeoutSequenceStartedRef = useRef(false);
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
-  const aiRngRef = useRef(mulberry32(seed + 9999));
-  // Stable RNG for hint probability (sub-seed 200 — isolated from layout and AI timing).
-  const hintRngRef = useRef(mulberry32(seed + 200));
+  const aiRngRef = useRef(mulberry32(sessionSeed + 9999));
 
   function clearAllTimers() {
     if (timerIntervalRef.current !== null) {
@@ -407,7 +416,7 @@ export default function GlassBridgeComp({
     }
 
     // Seeded RNG for AI order picks (sub-seed 100 keeps it isolated from bridge layout).
-    const aiRng = mulberry32(seed + 100);
+    const aiRng = mulberry32(sessionSeed + 100);
     // Queue stores AI player IDs only; the actual number is picked lazily at
     // timer-fire time from the live available pool to avoid conflicts when the
     // human picks first.
@@ -824,10 +833,13 @@ export default function GlassBridgeComp({
     playNewTurn();
   }, [gb.phase, gb.currentTurnIndex, gb.turnOrder, gb.progress, playNewTurn]);
 
-  // ── 14. Clear hint message when the human moves to a new row or turn ends ──
+  // ── 14. Clear hint state when the human moves to a new row, the active turn
+  //        index changes, or the game phase changes. This keeps per-row hint
+  //        escalation scoped to the current decision only.
   useEffect(() => {
     setCurrentHintMessage(null);
-  }, [gb.currentPlayerRow, gb.currentTurnIndex]);
+    setHintRequestsForCurrentRow(0);
+  }, [gb.phase, gb.currentPlayerRow, gb.currentTurnIndex]);
 
   // ── Human actions ─────────────────────────────────────────────────────────
 
@@ -935,12 +947,14 @@ export default function GlassBridgeComp({
     //   2. Only execute the code below inside the "ad completed" callback.
     // ──────────────────────────────────────────────────────────────────────
 
-    const chance = computeHintLeftBreakChance(row.safeSide, hintRngRef.current);
+    const sameRowHintCount = hintRequestsForCurrentRow + 1;
+    const chance = computeHintLeftBreakChance(row.safeSide, sameRowHintCount);
     setCurrentHintMessage(
       `The Expert says there is a ${chance}% chance that the left platform is gonna break.`,
     );
+    setHintRequestsForCurrentRow(sameRowHintCount);
     dispatch(recordHintUsed({ playerId: humanId }));
-  }, [humanId, gb.progress, gb.currentPlayerRow, gb.rows, dispatch]);
+  }, [humanId, gb.progress, gb.currentPlayerRow, gb.rows, dispatch, hintRequestsForCurrentRow]);
 
   // ── Derived values ────────────────────────────────────────────────────────
 
@@ -1090,6 +1104,29 @@ export default function GlassBridgeComp({
             {/* LED accent rails — decorative outer edge lighting */}
             <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
             <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
+            {isHumanTurn && !isHumanEliminated && !gb.timerExpired && (
+              <div className="gb-hint-area">
+                {currentHintMessage && (
+                  <div className="gb-hint-message" role="status" aria-live="polite">
+                    🔮 {currentHintMessage}
+                  </div>
+                )}
+                <button
+                  className="gb-btn-help"
+                  onClick={handleRequestHelp}
+                  disabled={!canRequestHelp}
+                  aria-label={
+                    hintsRemaining > 0
+                      ? `Request Help from The Expert (${hintsRemaining} left, +${HINT_PENALTY_MS / 1000}s penalty each)`
+                      : "You're on your own"
+                  }
+                >
+                  {hintsRemaining > 0
+                    ? `🔮 Request Help (${hintsRemaining} left)`
+                    : "You're on your own"}
+                </button>
+              </div>
+            )}
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
               const isCurrentRow = gb.currentPlayerRow === rowNum;
@@ -1267,28 +1304,6 @@ export default function GlassBridgeComp({
             </div>
           )}
 
-          {/* ── Request Help (ad-gated hint) ── */}
-          {isHumanTurn && !isHumanEliminated && !gb.timerExpired && (
-            <div className="gb-hint-area">
-              {currentHintMessage && (
-                <div className="gb-hint-message" role="status" aria-live="polite">
-                  🔮 {currentHintMessage}
-                </div>
-              )}
-              <button
-                className="gb-btn-help"
-                onClick={handleRequestHelp}
-                disabled={!canRequestHelp}
-                aria-label={
-                  hintsRemaining > 0
-                    ? `Request Help from The Expert (${hintsRemaining} left, +${HINT_PENALTY_MS / 1000}s penalty each)`
-                    : 'Request Help — no hints remaining'
-                }
-              >
-                🔮 Request Help {hintsRemaining > 0 ? `(${hintsRemaining} left)` : '(none left)'}
-              </button>
-            </div>
-          )}
         </div>
       )}
 
