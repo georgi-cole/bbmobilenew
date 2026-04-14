@@ -5,6 +5,16 @@ import HomeHub from '../HomeHub';
 
 const mockNavigate = vi.fn();
 const mockDispatch = vi.fn();
+const mockState = {
+  game: {
+    gameId: 'game-A',
+  },
+  profiles: {
+    activeProfileId: null,
+    isGuest: true,
+    profiles: [],
+  },
+};
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -17,13 +27,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../../store/hooks', () => ({
   useAppDispatch: () => mockDispatch,
   useAppSelector: (selector: (state: unknown) => unknown) =>
-    selector({
-      profiles: {
-        activeProfileId: null,
-        isGuest: true,
-        profiles: [],
-      },
-    }),
+    selector(mockState),
 }));
 
 vi.mock('../../../hooks/useBackgroundTheme', () => ({
@@ -94,11 +98,12 @@ describe('HomeHub', () => {
     sessionStorage.clear();
     localStorage.clear();
     localStorage.setItem('bb:hubMusicConsent', 'granted');
+    mockState.game.gameId = 'game-A';
     mockDispatch.mockReset();
     mockNavigate.mockReset();
   });
 
-  it('shows the Kolequant splash only once per session when returning home', async () => {
+  it('shows the Kolequant splash only once per game when returning home mid-game', async () => {
     const firstRender = renderHomeHub();
 
     expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
@@ -110,6 +115,36 @@ describe('HomeHub', () => {
     });
 
     firstRender.unmount();
+
+    renderHomeHub();
+
+    expect(screen.queryByTestId('kolequant-splash')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+  });
+
+  it('shows the Kolequant splash again after a new season starts', async () => {
+    const firstRender = renderHomeHub();
+
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+
+    firstRender.unmount();
+    mockState.game.gameId = 'game-B';
+
+    renderHomeHub();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show the Kolequant splash when the current game was already seen', async () => {
+    localStorage.setItem('bb:kolequantSplashLastGameId', 'game-A');
 
     renderHomeHub();
 

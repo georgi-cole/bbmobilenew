@@ -30,7 +30,10 @@ import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
 import { NATIVE_SFX_MAP, NATIVE_SFX_CONFIG } from '../../platform/cordova/nativeSfxMap';
 import { preloadImage } from '../../utils/preload';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
-import { hasSeenHomeHubSplash, markHomeHubSplashSeen } from './homeHubSplashSession';
+import {
+  hasSeenHomeHubSplashForGame,
+  markHomeHubSplashSeenForGame,
+} from './homeHubSplashSession';
 import './HomeHub.css';
 
 /**
@@ -70,10 +73,11 @@ function shouldShowSoundConsent(): boolean {
 export default function HomeHub() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const gameId = useAppSelector((state) => state.game.gameId);
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
-  const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplash());
+  const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
   // Track whether the hub background has loaded so buttons are never shown
   // on an empty background (background-first ordering).
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -197,7 +201,7 @@ export default function HomeHub() {
   }
 
   function handleSplashFinish() {
-    markHomeHubSplashSeen();
+    markHomeHubSplashSeenForGame(gameId);
     setSplashDone(true);
   }
 

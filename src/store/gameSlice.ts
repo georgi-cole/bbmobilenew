@@ -173,6 +173,7 @@ export function createInitialGameState(): GameState {
     : loadSeasonArchives(archiveKeyForActiveProfile()) ?? [];
   const season = nextSeasonNumber(seasonArchives);
   return {
+    gameId: crypto.randomUUID(),
     season,
     week: 1,
     phase: 'week_start',
@@ -2493,6 +2494,7 @@ const gameSlice = createSlice({
     hydrateGame(_state, action: PayloadAction<GameState>) {
       return {
         ...action.payload,
+        gameId: action.payload.gameId ?? crypto.randomUUID(),
         hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
       };
     },

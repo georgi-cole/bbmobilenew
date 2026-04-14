@@ -1,16 +1,16 @@
-const HOME_HUB_SPLASH_SEEN_KEY = 'bb:homeHubSplashSeen';
+const HOME_HUB_SPLASH_LAST_GAME_KEY = 'bb:kolequantSplashLastGameId';
 
-export function hasSeenHomeHubSplash(): boolean {
+export function hasSeenHomeHubSplashForGame(gameId: string): boolean {
   try {
-    return sessionStorage.getItem(HOME_HUB_SPLASH_SEEN_KEY) === 'true';
+    return localStorage.getItem(HOME_HUB_SPLASH_LAST_GAME_KEY) === gameId;
   } catch {
     return false;
   }
 }
 
-export function markHomeHubSplashSeen(): void {
+export function markHomeHubSplashSeenForGame(gameId: string): void {
   try {
-    sessionStorage.setItem(HOME_HUB_SPLASH_SEEN_KEY, 'true');
+    localStorage.setItem(HOME_HUB_SPLASH_LAST_GAME_KEY, gameId);
   } catch {
     // Ignore storage failures; the splash will replay next mount instead.
   }
