@@ -129,7 +129,7 @@ describe('GlassBridgeComp', () => {
     const firstRow = container.querySelector('.gb-bridge-container .gb-row');
     expect(hintArea).not.toBeNull();
     expect(firstRow).not.toBeNull();
-    expect(hintArea!.compareDocumentPosition(firstRow!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(hintArea!.nextElementSibling).toBe(firstRow);
 
     const currentRow = store.getState().glassBridge.currentPlayerRow;
     const currentRowState = store.getState().glassBridge.rows[currentRow - 1];
