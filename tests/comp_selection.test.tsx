@@ -55,7 +55,7 @@ describe('CompSelection component', () => {
 
     // All mock games should appear as options
     for (const game of MOCK_GAMES) {
-      expect(screen.getByText(`${game.name} (${game.id})`)).toBeTruthy();
+      expect(screen.getByText(game.name)).toBeTruthy();
     }
   });
 

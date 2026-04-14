@@ -36,8 +36,8 @@ export function getConfessionalDecisionPresentation(
       const required = game.doubleEviction?.weekActive ? 3 : 2;
       const alivePlayerIdsCsv = alivePlayers.map((player) => player.id).join(',');
       prompt = required === 3
-        ? 'Choose the three houseguests you want to nominate for the Double Elimination.'
-        : 'Choose the two houseguests you want to nominate.';
+        ? 'Choose the three players you want to nominate for the Double Elimination.'
+        : 'Choose the two players you want to nominate.';
       keyParts.push(
         `required=${required}`,
         `loh=${game.lohId ?? 'none'}`,
@@ -112,7 +112,7 @@ export function getConfessionalDecisionPresentation(
         )
         : 1;
       prompt = multiSelectCount > 1
-        ? `Choose the ${multiSelectCount} houseguests you want to eliminate.`
+        ? `Choose the ${multiSelectCount} players you want to eliminate.`
         : 'Break the tie by choosing who you want to eliminate.';
       keyParts.push(
         `tied=${tiedIds.join(',')}`,

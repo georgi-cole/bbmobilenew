@@ -137,7 +137,7 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
       <p className="cdp-hint">
         {canConfirm
           ? `Ready to confirm ${required} nomination${required > 1 ? 's' : ''}.`
-          : `Choose ${required - selected.length} more houseguest${required - selected.length === 1 ? '' : 's'}.`}
+          : `Choose ${required - selected.length} more player${required - selected.length === 1 ? '' : 's'}.`}
       </p>
       {canConfirm && (
         <button
@@ -567,7 +567,7 @@ function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
           <p className="cdp-hint">
             {selectedIds.length === multiSelectCount
               ? 'All tie-break eliminations are selected.'
-              : `Choose ${multiSelectCount - selectedIds.length} more houseguest${multiSelectCount - selectedIds.length === 1 ? '' : 's'}.`}
+              : `Choose ${multiSelectCount - selectedIds.length} more player${multiSelectCount - selectedIds.length === 1 ? '' : 's'}.`}
           </p>
           {selectedIds.length === multiSelectCount && (
             <button

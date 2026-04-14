@@ -44,7 +44,7 @@ const NARRATIVE_VARIANTS = {
   eviction_underdog_exit: [
     'Even as they walked out the door, a small farewell wave of sympathy followed them out.',
     'Not everyone wanted to see them go — a quiet pocket of viewers is sad to see the end of that storyline.',
-    'That exit earned a surprising amount of goodwill. Even the least popular houseguests get their goodbye moment.',
+    'That exit earned a surprising amount of goodwill. Even the least popular players get their goodbye moment.',
     'The audience is complicated. Some fans are already missing the chaos that person brought.',
     'A small but vocal part of the fanbase is already saying they miss the entertainment value.',
   ],

@@ -108,11 +108,11 @@ describe('social memory integration for incoming interactions', () => {
     expect(socialEvents).toHaveLength(1);
     expect(socialEvents[0].channels).toEqual(['tv', 'mainLog']);
     expect(socialEvents[0].text).toBe(
-      "Several housemates' deal offer and nomination plea went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.",
+      "Several players' deal offer and nomination plea went unanswered yesterday. It was a tough day, but maybe you will be more talkative today.",
     );
   });
 
-  it('uses singular housemate wording when multiple expired interactions came from one sender', () => {
+  it('uses singular player wording when multiple expired interactions came from one sender', () => {
     const store = makeStore();
     const { players, week } = store.getState().game;
     const ai = players.find((p) => !p.isUser)!;
@@ -148,7 +148,7 @@ describe('social memory integration for incoming interactions', () => {
 
     expect(socialEvents).toHaveLength(1);
     expect(socialEvents[0].text).toBe(
-      "One housemate's deal offer and nomination plea went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.",
+      "One player's deal offer and nomination plea went unanswered yesterday. It was a tough one, but maybe you will be more talkative today.",
     );
   });
 });
