@@ -85,17 +85,18 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
             title={badgeLabels}
           >
             {badges.map((b) => (
-              b.imageSrc ? (
-                <img
-                  key={b.code}
-                  className="player-avatar__badge-image"
-                  src={b.imageSrc}
-                  alt=""
-                  aria-hidden="true"
-                />
-              ) : (
-                <span key={b.code}>{b.emoji}</span>
-              )
+              <span key={b.code} className="player-avatar__badge-item" aria-hidden="true">
+                {b.imageSrc ? (
+                  <img
+                    className="player-avatar__badge-image"
+                    src={b.imageSrc}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                ) : (
+                  b.emoji
+                )}
+              </span>
             ))}
           </span>
         )}

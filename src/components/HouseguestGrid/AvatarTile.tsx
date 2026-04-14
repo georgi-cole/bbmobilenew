@@ -266,7 +266,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
                     className={styles.statusBadgeImage}
                   />
                 ) : (
-                  b.emoji
+                  <span aria-hidden="true">{b.emoji}</span>
                 )}
               </span>
             ))}
