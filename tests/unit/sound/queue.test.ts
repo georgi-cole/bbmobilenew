@@ -254,7 +254,7 @@ describe('SoundManager autoplay recovery', () => {
       _failedKeys: Set<string>;
     };
     sm._unlocked = true;
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValueOnce(
       new DOMException('blocked', 'NotAllowedError'),
     );
 

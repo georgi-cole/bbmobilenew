@@ -520,8 +520,15 @@ class _SoundManager {
         q.map((i) => `${i.isMusic ? 'music' : 'sfx'}:${i.key}`),
       );
     }
-    const musicItems = q.filter((item) => item.isMusic);
-    const sfxItems = q.filter((item) => !item.isMusic);
+    const musicItems: QueuedPlay[] = [];
+    const sfxItems: QueuedPlay[] = [];
+    for (const item of q) {
+      if (item.isMusic) {
+        musicItems.push(item);
+      } else {
+        sfxItems.push(item);
+      }
+    }
     for (const item of musicItems) {
       void this._doPlayMusic(item.key, item.opts);
     }
