@@ -19,6 +19,7 @@ import Profile              from './screens/Profile/Profile';
 import EditProfile          from './screens/Profile/EditProfile';
 import ProfilePicker        from './screens/ProfilePicker/ProfilePicker';
 import Leaderboard          from './screens/Leaderboard/Leaderboard';
+import Credits              from './screens/Credits/Credits';
 import Week                 from './screens/Week/Week';
 import CreatePlayer         from './screens/CreatePlayer/CreatePlayer';
 import GameOver             from './screens/GameOver/GameOver';
@@ -30,9 +31,6 @@ import SettingsAdmin        from './screens/SettingsAdmin/SettingsAdmin';
 import NotFound             from './screens/NotFound/NotFound';
 import { lazy, Suspense }   from 'react';
 import GameDebug            from './screens/GameDebug/GameDebug';
-
-// Credits is lazy-loaded so chunk failures are isolated and easier to debug.
-const Credits = lazy(() => import('./screens/Credits/Credits'));
 
 // Dev-only manual QA page — lazy-loaded so production bundles are unaffected.
 // Vite dead-code-eliminates the dynamic import when DEV is false at build time.
@@ -89,7 +87,7 @@ export const router = createHashRouter([
       { path: 'profile-edit',     element: <EditProfile />  },
       { path: 'profile-picker',   element: <ProfilePicker /> },
       { path: 'leaderboard',      element: <Leaderboard />  },
-      { path: 'credits',          element: <Suspense fallback={null}><Credits /></Suspense> },
+      { path: 'credits',          element: <Credits />      },
       { path: 'week',             element: <Week />         },
       { path: 'create-player',    element: <CreatePlayer /> },
       { path: 'game-over',        element: <GameOver />     },
