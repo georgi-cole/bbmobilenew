@@ -833,9 +833,9 @@ export default function GlassBridgeComp({
     playNewTurn();
   }, [gb.phase, gb.currentTurnIndex, gb.turnOrder, gb.progress, playNewTurn]);
 
-  // ── 14. Clear hint state when the human moves to a new row, the turn changes,
-  //        or the game phase changes. This keeps per-row hint escalation scoped
-  //        to the current decision only.
+  // ── 14. Clear hint state when the human moves to a new row, the active turn
+  //        index changes, or the game phase changes. This keeps per-row hint
+  //        escalation scoped to the current decision only.
   useEffect(() => {
     setCurrentHintMessage(null);
     setHintRequestsForCurrentRow(0);
