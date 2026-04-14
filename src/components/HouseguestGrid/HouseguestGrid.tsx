@@ -49,6 +49,7 @@ export type Houseguest = {
    * active, so the shared-layout portrait is the only visible instance.
    */
   isEvicting?: boolean
+  nominationCeremonyState?: 'loh' | 'danger' | 'locked'
 }
 
 type Props = {
@@ -185,6 +186,7 @@ export default function HouseguestGrid({
               showPermanentBadge={hg.showPermanentBadge}
               layoutId={hg.layoutId}
               isEvicting={hg.isEvicting}
+              nominationCeremonyState={hg.nominationCeremonyState}
             />
           </li>
         ))}
