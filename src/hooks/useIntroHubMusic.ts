@@ -23,10 +23,12 @@ export default function useIntroHubMusic(): void {
   useEffect(() => {
     const hubMusicKey = 'music:intro_hub_loop';
     // Always register the desired BGM on mount — safe while audio is locked
-    // (SoundManager stores the intent without playing).  This covers both the
-    // returning-visitor path (consent already granted, audio auto-unlocked) and
-    // the first-time-visitor path (consent popup will call unlockAndPlayMusicOnly,
-    // which starts the stored desired BGM in the gesture context).
+    // (SoundManager stores the intent without playing).  Covers both paths:
+    //   • Returning visitor (consent already granted): unlockOnUserGesture()
+    //     fired earlier by handlePlay, so requestBgm starts music immediately.
+    //   • First-time visitor (no stored consent): SoundConsentPopup calls
+    //     unlockAndPlayMusicOnly() on tap, which reads _desiredPerOwner and
+    //     starts the hub track in the gesture context.
     SoundManager.requestBgm(hubMusicKey, 'introhub');
     return () => {
       // Release introhub ownership — stops music if it is playing; removes the

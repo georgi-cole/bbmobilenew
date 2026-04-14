@@ -96,10 +96,11 @@ class _SoundManager {
   // BGM ownership / desired-track tracking (per-owner map with priority fallback)
   private _currentBgmOwner: BgmOwner | null = null;
   // Per-owner desired BGM map — allows automatic fallback when an owner releases.
-  // Priority: minigame > social > spectator > phase > introhub (highest wins).
+  // Priority order (lowest → highest): introhub < phase < spectator < social < minigame
+  // The last element wins; iterate in reverse to find the highest-priority active owner.
   private _desiredPerOwner: Partial<Record<BgmOwner, { key: string; opts?: PlayOptions }>> = {};
   private static readonly _BGM_PRIORITY: readonly BgmOwner[] = [
-    'introhub', 'phase', 'spectator', 'social', 'minigame',
+    'introhub', 'phase', 'spectator', 'social', 'minigame', // lowest → highest priority
   ];
 
   // SFX: pool of HTMLAudioElements per key
@@ -477,7 +478,7 @@ class _SoundManager {
         if (_audioDebug) {
           console.log(`[SoundManager] playMusic("${key}") blocked by autoplay policy — re-queued`);
         }
-        this._queueMusicRetry(key, opts);
+        this._queueMusicRetry();
         if (this._musicKey === key) {
           this._musicKey = null;
           this._musicEl = null;
@@ -683,7 +684,7 @@ class _SoundManager {
     void this._doPlayMusic(top.key, top.opts);
   }
 
-  private _queueMusicRetry(_key: string, _opts?: PlayOptions): void {
+  private _queueMusicRetry(): void {
     // Re-arm the unlock listener so the next user gesture re-applies the top
     // desired BGM via _applyDesiredBgm().  The queue is not used for music
     // any more — _drainQueue reads from _desiredPerOwner directly.
@@ -744,7 +745,7 @@ class _SoundManager {
           }
           // Re-arm unlock so the next gesture re-applies the top desired BGM
           // via _applyDesiredBgm() — _desiredPerOwner tracks the correct track.
-          this._queueMusicRetry(resumeKey);
+          this._queueMusicRetry();
           return;
         }
         if (domErr.name === 'AbortError') return;
