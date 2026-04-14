@@ -46,9 +46,13 @@ export function useWildcardWesternAudio(shouldPlayMusic: boolean): UseWildcardWe
   // stop it when leaving or on unmount.
   useEffect(() => {
     if (!shouldPlayMusic) return;
+    const prevKey = SoundManager.currentMusicKey;
     void SoundManager.playMusic(WW_MUSIC_KEY);
     return () => {
       SoundManager.stopMusic();
+      if (prevKey && prevKey !== WW_MUSIC_KEY) {
+        void SoundManager.playMusic(prevKey);
+      }
     };
   }, [shouldPlayMusic]);
 

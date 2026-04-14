@@ -34,10 +34,14 @@ export function useRiskWheelAudio(): UseRiskWheelAudioReturn {
 
   // Start background music when the Risk Wheel mounts; stop on unmount.
   useEffect(() => {
+    const prevKey = SoundManager.currentMusicKey;
     void SoundManager.playMusic(RISK_WHEEL_MUSIC_KEY);
     return () => {
       stopWheelSound();
       SoundManager.stopMusic();
+      if (prevKey && prevKey !== RISK_WHEEL_MUSIC_KEY) {
+        void SoundManager.playMusic(prevKey);
+      }
     };
   }, [stopWheelSound]);
 

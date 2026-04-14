@@ -276,6 +276,20 @@ describe('soundMiddleware — game/setPhase / game/forcePhase', () => {
   });
 });
 
+describe('soundMiddleware — resetGame lifecycle cleanup', () => {
+  it('clears stale social-audio override state so phase music can start after reset', () => {
+    const store = makeTestStore();
+
+    store.dispatch({ type: 'social/openSocialPanel' });
+    vi.clearAllMocks();
+
+    store.dispatch({ type: 'game/resetGame' });
+    advanceTo(store, 'nominations');
+
+    expect(playMusicMock).toHaveBeenCalledWith('music:nominations_main');
+  });
+});
+
 // ── 3. Social override guard ──────────────────────────────────────────────────
 
 describe('soundMiddleware — social music override guard', () => {

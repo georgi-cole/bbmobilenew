@@ -9,6 +9,7 @@ describe('useWildcardWesternAudio', () => {
     vi.spyOn(SoundManager, 'playMusic').mockResolvedValue();
     vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
+    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -45,6 +46,16 @@ describe('useWildcardWesternAudio', () => {
     unmount();
 
     expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the previous music track on cleanup when one was already playing', () => {
+    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue('music:nominations_main');
+    const { unmount } = renderHook(() => useWildcardWesternAudio(true));
+
+    unmount();
+
+    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
+    expect(SoundManager.playMusic).toHaveBeenLastCalledWith('music:nominations_main');
   });
 
   it('exposes callbacks for all Wildcard Western sound effects', () => {

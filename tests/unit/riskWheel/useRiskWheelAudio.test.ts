@@ -10,6 +10,7 @@ describe('useRiskWheelAudio', () => {
     vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
     vi.spyOn(SoundManager, 'stop').mockImplementation(() => {});
+    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -25,6 +26,16 @@ describe('useRiskWheelAudio', () => {
 
     expect(SoundManager.stop).toHaveBeenCalledWith('minigame:wheelofluck');
     expect(SoundManager.stopMusic).toHaveBeenCalled();
+  });
+
+  it('restores the previous music track on unmount when one was already playing', () => {
+    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockReturnValue('music:hoh_comp_general');
+    const { unmount } = renderHook(() => useRiskWheelAudio());
+
+    unmount();
+
+    expect(SoundManager.stopMusic).toHaveBeenCalled();
+    expect(SoundManager.playMusic).toHaveBeenLastCalledWith('music:hoh_comp_general');
   });
 
   it('exposes callbacks for all Risk Wheel sound effects', () => {

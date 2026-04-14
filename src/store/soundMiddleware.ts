@@ -304,6 +304,14 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
+  if (type === 'game/resetGame') {
+    const result = next(action);
+    _preSocialMusicKey = null;
+    _socialMusicActive = false;
+    _lastEvictionSfxId = null;
+    return result;
+  }
+
   // ── Finale: jury member casts their vote ──────────────────────────────────
   if (type === 'finale/castVote') {
     const result = next(action);
