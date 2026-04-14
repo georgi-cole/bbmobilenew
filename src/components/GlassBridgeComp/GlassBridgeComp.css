@@ -274,6 +274,7 @@
   flex-direction: column;
   align-items: center;
   overflow-y: auto;
+  scroll-behavior: smooth;
   padding-bottom: 1rem;
   position: relative;
   z-index: 1;
@@ -281,11 +282,16 @@
 
 .gb-active-banner-row {
   width: min(420px, calc(100% - 1rem));
-  margin: 0.8rem auto 0.35rem;
+  margin: 0 auto 0.35rem;
+  padding-top: 0.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: linear-gradient(180deg, rgba(5, 8, 20, 0.96) 0%, rgba(5, 8, 20, 0.82) 78%, rgba(5, 8, 20, 0) 100%);
 }
 
 .gb-active-banner {
@@ -1267,4 +1273,12 @@ body.no-animations .gb-led-rail {
 .gb-btn-help:disabled {
   opacity: 0.38;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .gb-hint-area {
+    position: sticky;
+    top: 4.15rem;
+    z-index: 11;
+  }
 }

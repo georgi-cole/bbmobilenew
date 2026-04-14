@@ -6,6 +6,7 @@ import glassBridgeReducer, {
   finaliseOrderSelection,
   recordNumberChoice,
   startPlaying,
+  resolveStep,
   HINT_PENALTY_MS,
 } from '../../../features/glassBridge/glassBridgeSlice';
 import GlassBridgeComp from '../GlassBridgeComp';
@@ -43,6 +44,20 @@ async function advance(ms: number) {
   await act(async () => {
     vi.advanceTimersByTime(ms);
   });
+}
+
+function makeRect(top: number, bottom: number, width = 360): DOMRect {
+  return {
+    top,
+    bottom,
+    left: 0,
+    right: width,
+    width,
+    height: bottom - top,
+    x: 0,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect;
 }
 
 describe('GlassBridgeComp', () => {
@@ -290,5 +305,155 @@ describe('GlassBridgeComp', () => {
     fireEvent.click(ffwdBtn);
     ffwdBtn = screen.getByRole('button', { name: /playback speed 3x/i });
     expect(ffwdBtn.textContent).toContain('3×');
+  });
+
+  it('accelerates the visible countdown when spectator playback speed increases', async () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <GlassBridgeComp
+          participantIds={['user', 'ai-1']}
+          participants={[
+            { id: 'user', name: 'You', isHuman: true },
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+          ]}
+          seed={1}
+        />
+      </Provider>,
+    );
+
+    await advance(0);
+    fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
+
+    await act(async () => {
+      store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
+      store.dispatch(finaliseOrderSelection());
+      store.dispatch(startPlaying({ now: Date.now() }));
+    });
+
+    const firstRow = store.getState().glassBridge.rows[0];
+    const wrongSide = firstRow.safeSide === 'left' ? 'right' : 'left';
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${wrongSide} tile.*step here`, 'i') }));
+
+    await advance(1_100);
+    fireEvent.click(screen.getByRole('button', { name: /continue watching/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /playback speed 1x/i }));
+    await advance(1_000);
+    expect(screen.getByLabelText('Time remaining').textContent).toContain('0:28');
+  });
+
+  it('auto-scrolls the active row into view on mobile as the player advances', async () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalMatchMedia = window.matchMedia;
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const scrollToSpy = vi.fn();
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 390,
+    });
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(max-width: 640px)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollToSpy,
+    });
+
+    try {
+      const store = makeStore();
+      const { container } = render(
+        <Provider store={store}>
+          <GlassBridgeComp
+            participantIds={['user', 'ai-1']}
+            participants={[
+              { id: 'user', name: 'You', isHuman: true },
+              { id: 'ai-1', name: 'AI One', isHuman: false },
+            ]}
+            seed={1}
+          />
+        </Provider>,
+      );
+
+      await advance(0);
+      fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
+
+      await act(async () => {
+        store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
+        store.dispatch(finaliseOrderSelection());
+        store.dispatch(startPlaying({ now: Date.now() }));
+      });
+
+      const scrollContainer = container.querySelector('.gb-playing') as HTMLDivElement | null;
+      const bannerRow = container.querySelector('.gb-active-banner-row') as HTMLDivElement | null;
+      const hintArea = container.querySelector('.gb-hint-area') as HTMLDivElement | null;
+      const rows = Array.from(container.querySelectorAll('.gb-row')) as HTMLDivElement[];
+
+      expect(scrollContainer).not.toBeNull();
+      expect(bannerRow).not.toBeNull();
+      expect(hintArea).not.toBeNull();
+      expect(rows.length).toBeGreaterThan(1);
+
+      Object.defineProperty(scrollContainer!, 'scrollTop', {
+        configurable: true,
+        writable: true,
+        value: 0,
+      });
+      Object.defineProperty(scrollContainer!, 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(0, 240)),
+      });
+      Object.defineProperty(bannerRow!, 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(0, 48)),
+      });
+      Object.defineProperty(hintArea!, 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(48, 96)),
+      });
+      Object.defineProperty(rows[0], 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(110, 170)),
+      });
+      Object.defineProperty(rows[1], 'getBoundingClientRect', {
+        configurable: true,
+        value: vi.fn(() => makeRect(230, 290)),
+      });
+
+      await act(async () => {
+        const safeSide = store.getState().glassBridge.rows[0].safeSide;
+        store.dispatch(resolveStep({ chosenSide: safeSide, now: Date.now() }));
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({ top: 62, behavior: 'smooth' });
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: originalInnerWidth,
+      });
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: originalMatchMedia,
+      });
+      Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        value: originalScrollTo,
+      });
+    }
   });
 });

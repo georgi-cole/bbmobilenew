@@ -255,6 +255,14 @@ function getNextPlaybackSpeed(currentSpeed: 1 | 2 | 3): 1 | 2 | 3 {
   return 1;
 }
 
+function isMobileViewport(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (typeof window.matchMedia === 'function') {
+    return window.matchMedia('(max-width: 640px)').matches;
+  }
+  return window.innerWidth <= 640;
+}
+
 function formatHintUsage(hintUses: number): string {
   return `${hintUses} hint${hintUses === 1 ? '' : 's'}`;
 }
@@ -504,6 +512,15 @@ export default function GlassBridgeComp({
   const landingTimersRef = useRef<number[]>([]);
   const timeoutCollapseResolveRef = useRef<number | null>(null);
   const statusBannerResetRef = useRef<number | null>(null);
+  const playingScrollRef = useRef<HTMLDivElement | null>(null);
+  const activeBannerRowRef = useRef<HTMLDivElement | null>(null);
+  const hintAreaRef = useRef<HTMLDivElement | null>(null);
+  const rowRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const timerScaleRef = useRef<{
+    anchorRealMs: number;
+    elapsedMsAtAnchor: number;
+    speed: 1 | 2 | 3;
+  } | null>(null);
   const initParamsRef = useRef({
     participantIds,
     prizeType,
@@ -599,6 +616,24 @@ export default function GlassBridgeComp({
   const scaleSpectatorDelay = useCallback(
     (ms: number) => Math.max(0, Math.round(ms / effectivePlaybackSpeed)),
     [effectivePlaybackSpeed],
+  );
+  const getEffectiveElapsedMs = useCallback(
+    (realNow: number = Date.now()) => {
+      if (gb.challengeStartTimeMs === null) return 0;
+      const timerScale = timerScaleRef.current;
+      if (!timerScale) {
+        return Math.max(0, realNow - gb.challengeStartTimeMs);
+      }
+      return timerScale.elapsedMsAtAnchor + Math.max(0, realNow - timerScale.anchorRealMs) * timerScale.speed;
+    },
+    [gb.challengeStartTimeMs],
+  );
+  const getEffectiveNowMs = useCallback(
+    (realNow: number = Date.now()) => {
+      if (gb.challengeStartTimeMs === null) return realNow;
+      return gb.challengeStartTimeMs + getEffectiveElapsedMs(realNow);
+    },
+    [gb.challengeStartTimeMs, getEffectiveElapsedMs],
   );
   const flashStatusBanner = useCallback(
     (message: string, variant: BannerVariant, durationMs = STATUS_FLASH_MS) => {
@@ -819,18 +854,56 @@ export default function GlassBridgeComp({
 
   // ── 5. Global timer display ───────────────────────────────────────────────
   useEffect(() => {
+    if (gb.phase !== 'playing' || gb.challengeStartTimeMs === null) {
+      timerScaleRef.current = null;
+      if (gb.phase !== 'playing') {
+        setTimerDisplay(gb.globalTimeLimitMs);
+      }
+      return;
+    }
+
+    const realNow = Date.now();
+    const elapsedMs = Math.max(0, realNow - gb.challengeStartTimeMs);
+    timerScaleRef.current = {
+      anchorRealMs: realNow,
+      elapsedMsAtAnchor: elapsedMs,
+      speed: 1,
+    };
+    setTimerDisplay(Math.max(0, gb.globalTimeLimitMs - elapsedMs));
+  }, [gb.phase, gb.challengeStartTimeMs, gb.globalTimeLimitMs]);
+
+  useEffect(() => {
+    if (gb.phase !== 'playing' || gb.challengeStartTimeMs === null) return;
+
+    const realNow = Date.now();
+    const elapsedMs = getEffectiveElapsedMs(realNow);
+    timerScaleRef.current = {
+      anchorRealMs: realNow,
+      elapsedMsAtAnchor: elapsedMs,
+      speed: effectivePlaybackSpeed,
+    };
+    setTimerDisplay(Math.max(0, gb.globalTimeLimitMs - elapsedMs));
+  }, [
+    effectivePlaybackSpeed,
+    gb.phase,
+    gb.challengeStartTimeMs,
+    gb.globalTimeLimitMs,
+    getEffectiveElapsedMs,
+  ]);
+
+  useEffect(() => {
     if (gb.phase !== 'playing' || gb.challengeStartTimeMs === null) return;
     if (gb.globalTimeLimitMs <= 0) return;
+    const challengeStartTimeMs = gb.challengeStartTimeMs;
 
     function tick() {
-      const elapsed = Date.now() - (gb.challengeStartTimeMs ?? Date.now());
+      const elapsed = getEffectiveElapsedMs();
       const remaining = Math.max(0, gb.globalTimeLimitMs - elapsed);
       setTimerDisplay(remaining);
 
       const pendingSelectedBeforeExpiry =
         !!pendingStep &&
-        gb.challengeStartTimeMs !== null &&
-        pendingStep.chosenAt < gb.challengeStartTimeMs + gb.globalTimeLimitMs;
+        pendingStep.chosenAt < challengeStartTimeMs + gb.globalTimeLimitMs;
 
       // Preserve the logical selection moment for a tile that was chosen before time expired,
       // even if its suspense animation is still playing.
@@ -849,8 +922,7 @@ export default function GlassBridgeComp({
         timerIntervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gb.phase, gb.challengeStartTimeMs, gb.timerExpired, pendingStep, dispatch]);
+  }, [gb.phase, gb.challengeStartTimeMs, gb.timerExpired, pendingStep, dispatch, gb.globalTimeLimitMs, getEffectiveElapsedMs]);
 
   // ── 5b. Track unfinished players before timer expiry for the collapse sequence ─
   useEffect(() => {
@@ -907,7 +979,7 @@ export default function GlassBridgeComp({
       const chosenSide = willUseHint
         ? chooseSideFromHint(row.safeSide, 1, aiRngRef.current)
         : aiDecideStep(row, aiRngRef.current, participant?.competitionProfile);
-      const now = Date.now();
+      const now = getEffectiveNowMs();
 
       // Check if it's a wrong choice (for animation).
       const isBreak = chosenSide !== row.safeSide;
@@ -969,7 +1041,7 @@ export default function GlassBridgeComp({
         aiStepTimerRef.current = null;
       }
     };
-  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch, playSafeStep, playDeath, scaleSpectatorDelay, flashStatusBanner, getName]);
+  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch, playSafeStep, playDeath, scaleSpectatorDelay, flashStatusBanner, getName, getEffectiveNowMs]);
 
   // ── 7. Timer expiry sequence — collapse the bridge before showing results ─
   useEffect(() => {
@@ -1130,6 +1202,36 @@ export default function GlassBridgeComp({
     setHintRequestsForCurrentRow(0);
   }, [gb.phase, gb.currentPlayerRow, gb.currentTurnIndex]);
 
+  useEffect(() => {
+    if (gb.phase !== 'playing') return;
+    if (!isMobileViewport()) return;
+
+    const scrollContainer = playingScrollRef.current;
+    const currentRowEl = rowRefs.current[gb.currentPlayerRow - 1];
+    if (!scrollContainer || !currentRowEl) return;
+
+    const scrollRect = scrollContainer.getBoundingClientRect();
+    const rowRect = currentRowEl.getBoundingClientRect();
+    const floatingOffset =
+      (activeBannerRowRef.current?.getBoundingClientRect().height ?? 0)
+      + (hintAreaRef.current?.getBoundingClientRect().height ?? 0);
+    const visibleTop = scrollRect.top + floatingOffset + 12;
+    const visibleBottom = scrollRect.bottom - 12;
+
+    if (rowRect.top >= visibleTop && rowRect.bottom <= visibleBottom) return;
+
+    const delta = rowRect.top < visibleTop
+      ? rowRect.top - visibleTop
+      : rowRect.bottom - visibleBottom;
+    const nextTop = Math.max(0, scrollContainer.scrollTop + delta);
+
+    if (typeof scrollContainer.scrollTo === 'function') {
+      scrollContainer.scrollTo({ top: nextTop, behavior: 'smooth' });
+    } else {
+      scrollContainer.scrollTop = nextTop;
+    }
+  }, [gb.phase, gb.currentPlayerRow, gb.currentTurnIndex, humanId, gb.humanSpectating, currentHintMessage]);
+
   // ── Human actions ─────────────────────────────────────────────────────────
 
   const handleHumanNumberPick = useCallback(
@@ -1155,7 +1257,7 @@ export default function GlassBridgeComp({
       const row = gb.rows[rowIdx];
 
       const isBreak = side !== row.safeSide;
-      const chosenAt = Date.now();
+      const chosenAt = getEffectiveNowMs();
       const noAnimations = areAnimationsDisabled();
       const suspenseDelay = noAnimations ? 0 : STEP_SUSPENSE_DELAY_MS;
       const shatterDelay = noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
@@ -1201,7 +1303,7 @@ export default function GlassBridgeComp({
         dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
       }, suspenseDelay);
     },
-    [humanId, gb, dispatch, pendingStep, playSafeStep, playDeath, flashStatusBanner],
+    [humanId, gb, dispatch, pendingStep, playSafeStep, playDeath, flashStatusBanner, getEffectiveNowMs],
   );
 
   const handleContinueWatching = useCallback(() => {
@@ -1411,8 +1513,8 @@ export default function GlassBridgeComp({
 
       {/* ── Playing ── */}
       {gb.phase === 'playing' && (
-        <div className="gb-playing">
-          <div className="gb-active-banner-row">
+        <div className="gb-playing" ref={playingScrollRef}>
+          <div className="gb-active-banner-row" ref={activeBannerRowRef}>
             <div
               className={`gb-active-banner${statusBanner ? ` gb-active-banner-flash gb-active-banner-${statusBanner.variant}` : ''}`}
               aria-live="polite"
@@ -1436,7 +1538,7 @@ export default function GlassBridgeComp({
             <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
             <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
             {isHumanTurn && !isHumanEliminated && !gb.timerExpired && (
-              <div className="gb-hint-area">
+              <div className="gb-hint-area" ref={hintAreaRef}>
                 {currentHintMessage && (
                   <div className="gb-hint-message" role="status" aria-live="polite">
                     🔮 {currentHintMessage}
@@ -1478,6 +1580,9 @@ export default function GlassBridgeComp({
                 <div
                   key={rowIdx}
                   className={`gb-row${isCurrentRow ? ' gb-row-current' : ' gb-row-dimmed'}`}
+                  ref={(node) => {
+                    rowRefs.current[rowIdx] = node;
+                  }}
                   style={{ transform: `scale(${rowDepthScale})`, opacity: isCurrentRow ? 1 : Math.max(0.46, 1 - rowIdx * 0.03) }}
                 >
                   <span className="gb-row-label">{rowNum}</span>
