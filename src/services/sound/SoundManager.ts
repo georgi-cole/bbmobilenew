@@ -2,15 +2,24 @@
  * SoundManager.ts — HTMLAudioElement-based sound manager for bbmobilenew.
  *
  * Architecture:
- * - Music channel: single HTMLAudioElement with loop, replaced on track change.
+ * - BGM channel: single HTMLAudioElement with loop, replaced on track change.
+ *   Ownership is tracked via BgmOwner so only one scope controls BGM at a time.
  * - SFX: small per-key pool (up to SFX_POOL_SIZE) so rapid effects overlap.
- * - Unlock queue: play/playMusic calls made before a user gesture are queued
- *   and replayed automatically after unlock (satisfies browser autoplay policy).
+ * - Desired BGM: when audio is locked (before first user gesture), the manager
+ *   stores only the latest desired BGM track.  On unlock it starts only that
+ *   one track, preventing the "flush of accumulated play requests" bug on
+ *   iPhone/Safari.
  * - Graceful error handling: invalid/missing files are logged once then skipped.
  *
- * Public API (unchanged from previous version):
- *   init(), play(key, opts?), playMusic(key, opts?), stopMusic(), stop(key),
- *   setCategoryEnabled, setCategoryVolume, unlockOnUserGesture, currentMusicKey
+ * Public API:
+ *   init(), requestBgm(key, owner), releaseBgm(owner),
+ *   play(key, opts?), stop(key),
+ *   setCategoryEnabled, setCategoryVolume,
+ *   unlockOnUserGesture, unlockAndPlayMusicOnly,
+ *   currentMusicKey, currentBgmOwner
+ *
+ * Legacy BGM API (backward-compatible wrappers):
+ *   playMusic(key, opts?), stopMusic()
  */
 
 import { SOUND_REGISTRY } from './sounds';
@@ -32,6 +41,15 @@ export interface PlayOptions {
   /** Volume override (0–1).  Defaults to entry volume or 1. */
   volume?: number;
 }
+
+/**
+ * Identifies who currently "owns" the background music channel.
+ * Each scope should request/release BGM through requestBgm/releaseBgm so
+ * the manager can enforce the single-channel invariant.
+ *
+ * Priority (highest → lowest): minigame > social > spectator > phase > introhub
+ */
+export type BgmOwner = 'introhub' | 'phase' | 'spectator' | 'social' | 'minigame';
 
 interface CategoryState {
   enabled: boolean;
@@ -71,9 +89,19 @@ function _makeSfxEl(src: string, volume: number, loop = false): HTMLAudioElement
 class _SoundManager {
   private _categories = new Map<SoundCategory, CategoryState>();
 
-  // Music channel
+  // BGM channel
   private _musicEl: HTMLAudioElement | null = null;
   private _musicKey: string | null = null;
+
+  // BGM ownership / desired-track tracking (per-owner map with priority fallback)
+  private _currentBgmOwner: BgmOwner | null = null;
+  // Per-owner desired BGM map — allows automatic fallback when an owner releases.
+  // Priority order (lowest → highest): introhub < phase < spectator < social < minigame
+  // The last element wins; iterate in reverse to find the highest-priority active owner.
+  private _desiredPerOwner: Partial<Record<BgmOwner, { key: string; opts?: PlayOptions }>> = {};
+  private static readonly _BGM_PRIORITY: readonly BgmOwner[] = [
+    'introhub', 'phase', 'spectator', 'social', 'minigame', // lowest → highest priority
+  ];
 
   // SFX: pool of HTMLAudioElements per key
   private _sfxPools = new Map<string, HTMLAudioElement[]>();
@@ -84,7 +112,7 @@ class _SoundManager {
   private _initialised = false;
   private _unlocked = false;
 
-  // Requests queued before the first user gesture
+  // Requests queued before the first user gesture (music only; SFX are discarded)
   private _playQueue: QueuedPlay[] = [];
 
   // Stored unlock handler — ensures only one set of listeners is ever registered
@@ -239,36 +267,152 @@ class _SoundManager {
     }
   }
 
-  // ── Music ───────────────────────────────────────────────────────────────────
+  // ── Music / BGM ─────────────────────────────────────────────────────────────
 
   /** Returns the key of the currently-playing music track, or null. */
   get currentMusicKey(): string | null {
     return this._musicKey;
   }
 
+  /** Returns the BgmOwner that is currently controlling the BGM channel. */
+  get currentBgmOwner(): BgmOwner | null {
+    return this._currentBgmOwner;
+  }
+
   /**
-   * Start a looping music track.
-   * If audio is not yet unlocked the request is queued (replacing any earlier
-   * queued music request) and retried after the first user gesture.
+   * Returns the highest-priority owner that has a desired BGM entry, together
+   * with its key and opts.  Returns null if no owner has a desired BGM.
+   */
+  private _getTopDesiredEntry(): { key: string; owner: BgmOwner; opts?: PlayOptions } | null {
+    const p = _SoundManager._BGM_PRIORITY;
+    for (let i = p.length - 1; i >= 0; i--) {
+      const owner = p[i];
+      const entry = this._desiredPerOwner[owner];
+      if (entry) return { key: entry.key, owner, opts: entry.opts };
+    }
+    return null;
+  }
+
+  /**
+   * Request a background music track with an explicit ownership scope.
+   *
+   * - Each owner maintains its own desired BGM entry.  The highest-priority
+   *   active owner wins; releasing an owner automatically falls back to the
+   *   next lower-priority owner that still has a desired entry.
+   * - If audio is locked (before user gesture) the request is stored but
+   *   nothing plays until unlock — preventing the "flush of accumulated play
+   *   requests" bug on iPhone/Safari.
+   * - If audio is unlocked the new track starts immediately only if this
+   *   owner is the current highest-priority active owner.
+   * - Passing null as key releases BGM for this owner (same as releaseBgm).
+   *
+   * All BGM callers (introhub, phase, spectator, social, minigame) MUST use
+   * this method rather than calling playMusic/stopMusic directly so the
+   * manager can enforce the single-channel invariant.
+   */
+  requestBgm(key: string | null, owner: BgmOwner): void {
+    if (_audioDebug) {
+      console.log(`[SoundManager] requestBgm("${key}", "${owner}")`);
+    }
+
+    if (!key) {
+      this.releaseBgm(owner);
+      return;
+    }
+
+    // Store per-owner desired entry — does NOT overwrite other owners
+    this._desiredPerOwner[owner] = { key };
+
+    if (!this._unlocked) {
+      // Locked: intent stored; clear any stale queued music items
+      this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+      return;
+    }
+
+    // Unlocked: apply only if this owner is now the highest-priority active owner
+    const top = this._getTopDesiredEntry();
+    if (!top || top.owner !== owner) {
+      // A higher-priority owner's track is already playing — no change needed.
+      return;
+    }
+    this._currentBgmOwner = owner;
+    void this._doPlayMusic(key);
+  }
+
+  /**
+   * Release BGM ownership for the given owner.
+   *
+   * - Removes this owner's desired BGM entry.
+   * - If this owner was currently playing, automatically falls back to the
+   *   next highest-priority owner that still has a desired entry.
+   * - No-op if this owner does not currently own the BGM channel and has no
+   *   desired entry.
+   */
+  releaseBgm(owner: BgmOwner): void {
+    if (_audioDebug) {
+      console.log(`[SoundManager] releaseBgm("${owner}")`);
+    }
+
+    const wasActive = this._currentBgmOwner === owner;
+    delete this._desiredPerOwner[owner];
+
+    if (!wasActive) {
+      // This owner was not playing — just remove its desired entry, no restart needed.
+      return;
+    }
+
+    // This owner was playing; find the next best desired owner to fall back to.
+    const top = this._getTopDesiredEntry();
+    if (!top) {
+      // No more desired BGM from any owner — stop music completely.
+      this._currentBgmOwner = null;
+      this._stopCurrentMusic();
+      this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+      return;
+    }
+
+    // Fall back to the next desired owner/track automatically.
+    if (_audioDebug) {
+      console.log(`[SoundManager] releaseBgm("${owner}") — falling back to "${top.key}" (owner: ${top.owner})`);
+    }
+    this._currentBgmOwner = top.owner;
+    void this._doPlayMusic(top.key, top.opts);
+  }
+
+  /**
+   * Start a looping music track (legacy wrapper — prefer requestBgm).
+   * Internally stores the track in the 'phase' owner slot for backward
+   * compatibility.  If audio is not yet unlocked the request is stored as the
+   * desired BGM for the 'phase' owner and started after the first user gesture.
    */
   async playMusic(key: string, opts?: PlayOptions): Promise<void> {
     if (!this._unlocked) {
       if (_audioDebug) {
-        console.log(`[SoundManager] playMusic("${key}") queued — not yet unlocked`);
+        console.log(`[SoundManager] playMusic("${key}") stored as phase desired — not yet unlocked`);
       }
-      // Keep only the latest music request in the queue
+      // Store as desired BGM under the 'phase' owner slot
+      this._desiredPerOwner['phase'] = { key, opts };
+      // Discard stale queued music; _applyDesiredBgm reads _desiredPerOwner on drain
       this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-      this._playQueue.push({ key, isMusic: true, opts });
       return;
     }
-    return this._doPlayMusic(key, opts);
+    // Unlocked: only start if 'phase' is the top-priority active owner
+    this._desiredPerOwner['phase'] = { key, opts };
+    const top = this._getTopDesiredEntry();
+    if (top?.owner === 'phase') {
+      this._currentBgmOwner = 'phase';
+      return this._doPlayMusic(key, opts);
+    }
   }
 
   private async _doPlayMusic(key: string, opts?: PlayOptions): Promise<void> {
-    // Already playing this track and the element is running — no-op
-    if (this._musicKey === key && this._musicEl && !this._musicEl.paused) {
+    // Already allocated an element for this track — do not interrupt a pending
+    // or active play().  On iOS/Safari play() is async and _musicEl.paused may
+    // still be true while the promise is in-flight; checking only the key is
+    // therefore the correct idempotency guard.
+    if (this._musicKey === key && this._musicEl) {
       if (_audioDebug) {
-        console.log(`[SoundManager] playMusic("${key}") — already playing`);
+        console.log(`[SoundManager] playMusic("${key}") — already allocated/playing`);
       }
       return;
     }
@@ -334,7 +478,7 @@ class _SoundManager {
         if (_audioDebug) {
           console.log(`[SoundManager] playMusic("${key}") blocked by autoplay policy — re-queued`);
         }
-        this._queueMusicRetry(key, opts);
+        this._queueMusicRetry();
         if (this._musicKey === key) {
           this._musicKey = null;
           this._musicEl = null;
@@ -364,13 +508,15 @@ class _SoundManager {
     }
   }
 
-  /** Stop the currently-playing music track. */
+  /** Stop the currently-playing music track (legacy — prefer releaseBgm). */
   stopMusic(): void {
     if (_audioDebug && this._musicKey) {
       console.log(`[SoundManager] stopMusic() — stopping "${this._musicKey}"`);
     }
     this._stopCurrentMusic();
-    // Also clear any queued music so it doesn't restart after unlock
+    this._currentBgmOwner = null;
+    // Clear all per-owner desired entries so nothing restarts after unlock
+    this._desiredPerOwner = {};
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
   }
 
@@ -442,13 +588,14 @@ class _SoundManager {
    * Unlock the audio system.
    *
    * - Call from within a user-gesture handler (e.g. a button click) to
-   *   immediately unlock and drain the play queue.
+   *   immediately unlock and start the desired BGM.
    * - Also arms document-level listeners so any subsequent gesture unlocks
    *   if this is called before any interaction has occurred.
    * - Safe to call multiple times — only one set of document listeners is
    *   ever registered, preventing listener leaks.
    *
-   * After unlock, all queued play/playMusic requests are replayed.
+   * After unlock, only the latest desired BGM is started (stale SFX queue
+   * items are discarded so multiple sounds do not flood the user).
    */
   unlockOnUserGesture(): void {
     if (typeof document === 'undefined') return;
@@ -465,7 +612,7 @@ class _SoundManager {
   }
 
   /**
-   * Unlock audio from a user gesture but only replay queued music items.
+   * Unlock audio from a user gesture but only start the desired BGM.
    *
    * Use this instead of `unlockOnUserGesture()` from the "Enable sounds" handler
    * on the hub screen so that SFX queued during page load are intentionally
@@ -473,7 +620,7 @@ class _SoundManager {
    * consent button.
    *
    * - Primes SFX pool elements so future non-gesture SFX plays work on iOS.
-   * - Replays only queued music items (preserving latest-music semantics).
+   * - Starts only the latest desired BGM (from _desiredBgmKey / queue).
    * - Drops all queued SFX so they are never replayed automatically.
    */
   unlockAndPlayMusicOnly(): void {
@@ -495,55 +642,53 @@ class _SoundManager {
     this._unlocked = true;
 
     if (_audioDebug) {
-      console.log('[SoundManager] audio unlocked via unlockAndPlayMusicOnly — draining music queue only');
+      console.log('[SoundManager] audio unlocked via unlockAndPlayMusicOnly — starting desired BGM only');
     }
 
-    // Replay only the queued music items; intentionally drop any queued SFX.
-    const queued = this._playQueue.splice(0);
-    for (const item of queued) {
-      if (item.isMusic) {
-        void this._doPlayMusic(item.key, item.opts);
-      }
-      // SFX items are intentionally discarded.
-    }
+    // Start the latest desired BGM; discard all queued items (including SFX).
+    this._playQueue = [];
+    this._applyDesiredBgm();
 
-    // Prime after starting queued music so iOS/Safari uses the gesture budget
-    // on the background track first.
+    // Prime after starting music so iOS/Safari uses the gesture budget on the
+    // background track first.
     this._primeSfxForMobile();
   }
 
   private _drainQueue(): void {
-    const q = this._playQueue.splice(0);
-    if (_audioDebug && q.length > 0) {
+    if (_audioDebug) {
       console.log(
-        '[SoundManager] draining queue:',
-        q.map((i) => `${i.isMusic ? 'music' : 'sfx'}:${i.key}`),
+        '[SoundManager] draining queue — starting desired BGM, priming SFX pools',
       );
     }
-    const musicItems: QueuedPlay[] = [];
-    const sfxItems: QueuedPlay[] = [];
-    for (const item of q) {
-      if (item.isMusic) {
-        musicItems.push(item);
-      } else {
-        sfxItems.push(item);
-      }
-    }
-    for (const item of musicItems) {
-      void this._doPlayMusic(item.key, item.opts);
-    }
+    // Discard all queued items (SFX are stale; music is superseded by _desiredBgmKey).
+    // Starting only the latest desired BGM prevents multi-sound flush on iPhone.
+    this._playQueue = [];
+    this._applyDesiredBgm();
+
     // Prime SFX pool elements during this gesture context so that iOS allows
     // future non-gesture plays (e.g. game-state-driven SFX like death/winner).
     this._primeSfxForMobile();
-    for (const item of sfxItems) {
-      void this._doPlay(item.key, item.opts);
-    }
   }
 
-  private _queueMusicRetry(key: string, opts?: PlayOptions): void {
+  /**
+   * Start the highest-priority desired BGM track if one is set and audio is
+   * unlocked.  No-op if no desired BGM or already playing the correct track.
+   */
+  private _applyDesiredBgm(): void {
+    const top = this._getTopDesiredEntry();
+    if (!top) return;
+    if (_audioDebug) {
+      console.log(`[SoundManager] _applyDesiredBgm() — starting "${top.key}" (owner: ${top.owner})`);
+    }
+    this._currentBgmOwner = top.owner;
+    void this._doPlayMusic(top.key, top.opts);
+  }
+
+  private _queueMusicRetry(): void {
+    // Re-arm the unlock listener so the next user gesture re-applies the top
+    // desired BGM via _applyDesiredBgm().  The queue is not used for music
+    // any more — _drainQueue reads from _desiredPerOwner directly.
     this._unlocked = false;
-    this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-    this._playQueue.push({ key, isMusic: true, opts });
     this._ensureUnlockListeners();
   }
 
@@ -561,9 +706,7 @@ class _SoundManager {
       this._unlockHandler = null;
       if (_audioDebug) {
         console.log(
-          '[SoundManager] audio unlocked — draining queue of',
-          this._playQueue.length,
-          'item(s)',
+          '[SoundManager] audio unlocked — applying desired BGM, priming SFX pools',
         );
       }
       this._drainQueue();
@@ -579,9 +722,14 @@ class _SoundManager {
     this._lifecycleListenersBound = true;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        this._unlocked = false;
+        // Do NOT reset _unlocked on hide.  Pre-emptively resetting it would cause
+        // all subsequent BGM/SFX calls (e.g. from phase transitions that happen
+        // while the screen is briefly inactive) to be queued rather than applied
+        // immediately.  The play() error handler already re-queues on
+        // NotAllowedError if iOS actually rejects the next play attempt.
         return;
       }
+      // Page came back to foreground — resume music if it was paused
       if (!this._musicEl || !this._musicKey || !this._musicEl.paused) return;
       const resumeKey = this._musicKey;
       const resumeEl = this._musicEl;
@@ -589,13 +737,15 @@ class _SoundManager {
         const domErr = err as DOMException;
         if (domErr.name === 'NotAllowedError') {
           if (_audioDebug) {
-            console.log(`[SoundManager] resume("${resumeKey}") blocked after visibility restore — re-queued`);
+            console.log(`[SoundManager] resume("${resumeKey}") blocked after visibility restore — re-arming for next gesture`);
           }
           if (this._musicKey === resumeKey) {
             this._musicKey = null;
             this._musicEl = null;
           }
-          this._queueMusicRetry(resumeKey);
+          // Re-arm unlock so the next gesture re-applies the top desired BGM
+          // via _applyDesiredBgm() — _desiredPerOwner tracks the correct track.
+          this._queueMusicRetry();
           return;
         }
         if (domErr.name === 'AbortError') return;
@@ -667,7 +817,11 @@ class _SoundManager {
   debugDump(): void {
     console.group('[SoundManager] debugDump()');
     console.log('initialised:', this._initialised, '| unlocked:', this._unlocked);
-    console.log('currentMusicKey:', this._musicKey ?? '(none)');
+    console.log('currentMusicKey:', this._musicKey ?? '(none)', '| owner:', this._currentBgmOwner ?? '(none)');
+    const desiredSummary = Object.fromEntries(
+      Object.entries(this._desiredPerOwner).map(([k, v]) => [k, v?.key ?? null]),
+    );
+    console.log('desiredPerOwner:', JSON.stringify(desiredSummary));
     console.log('queue length:', this._playQueue.length);
     console.log('failed keys:', [...this._failedKeys].join(', ') || '(none)');
     console.log('sfx pools:', [...this._sfxPools.keys()].join(', ') || '(none)');
@@ -702,6 +856,8 @@ if (_audioDebug && typeof window !== 'undefined') {
     play: (key: string) => void SoundManager.play(key),
     /** Manually start a music track: __audioDebug.playMusic('music:intro_hub_loop') */
     playMusic: (key: string) => void SoundManager.playMusic(key),
+    /** Request BGM with an owner: __audioDebug.requestBgm('music:intro_hub_loop', 'introhub') */
+    requestBgm: (key: string, owner: string) => SoundManager.requestBgm(key, owner as BgmOwner),
     /** Enable all audio categories (useful for quick testing). */
     enableAll: () => {
       for (const cat of ['music', 'ui', 'tv', 'player', 'minigame'] as SoundCategory[]) {
@@ -716,6 +872,9 @@ if (_audioDebug && typeof window !== 'undefined') {
     unlock: () => SoundManager.unlockOnUserGesture(),
     get currentMusic() {
       return SoundManager.currentMusicKey;
+    },
+    get currentOwner() {
+      return SoundManager.currentBgmOwner;
     },
   };
 

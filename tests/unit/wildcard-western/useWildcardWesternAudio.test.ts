@@ -5,64 +5,50 @@ import { SoundManager } from '../../../src/services/sound/SoundManager';
 import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds';
 
 describe('useWildcardWesternAudio', () => {
-  let currentMusicKey: string | null;
-
   beforeEach(() => {
-    currentMusicKey = null;
-    vi.spyOn(SoundManager, 'playMusic').mockImplementation(async (key: string) => {
-      currentMusicKey = key;
-    });
-    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {
-      currentMusicKey = null;
-    });
+    vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
-    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockImplementation(() => currentMusicKey);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('starts background music when the minigame becomes active and stops it when inactive', () => {
-    const { rerender, unmount } = renderHook(
+  it('requests BGM ("minigame" owner) when the minigame becomes active', () => {
+    const { rerender } = renderHook(
       ({ shouldPlayMusic }) => useWildcardWesternAudio(shouldPlayMusic),
       { initialProps: { shouldPlayMusic: false } },
     );
 
-    expect(SoundManager.playMusic).not.toHaveBeenCalled();
+    expect(SoundManager.requestBgm).not.toHaveBeenCalled();
 
     rerender({ shouldPlayMusic: true });
 
-    expect(SoundManager.playMusic).toHaveBeenCalledWith('music:wildcard_western_main');
+    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:wildcard_western_main', 'minigame');
+  });
+
+  it('releases BGM ("minigame" owner) when shouldPlayMusic reverts to false', () => {
+    const { rerender } = renderHook(
+      ({ shouldPlayMusic }) => useWildcardWesternAudio(shouldPlayMusic),
+      { initialProps: { shouldPlayMusic: true } },
+    );
+
+    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:wildcard_western_main', 'minigame');
 
     rerender({ shouldPlayMusic: false });
 
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
-
-    unmount();
-
-    // stopMusic already called by the effect cleanup; should not be called again
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
+    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
   });
 
-  it('stops music on unmount while still active', () => {
+  it('releases BGM on unmount while still active', () => {
     const { unmount } = renderHook(() => useWildcardWesternAudio(true));
 
-    expect(SoundManager.playMusic).toHaveBeenCalledWith('music:wildcard_western_main');
+    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:wildcard_western_main', 'minigame');
 
     unmount();
 
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
-  });
-
-  it('restores the previous music track on cleanup when one was already playing', () => {
-    currentMusicKey = 'music:nominations_main';
-    const { unmount } = renderHook(() => useWildcardWesternAudio(true));
-
-    unmount();
-
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
-    expect(SoundManager.playMusic).toHaveBeenLastCalledWith('music:nominations_main');
+    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
   });
 
   it('exposes callbacks for all Wildcard Western sound effects', () => {

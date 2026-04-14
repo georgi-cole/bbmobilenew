@@ -108,10 +108,9 @@ export default function HomeHub() {
 
     // Unlock and prime SFX pools in the gesture context; discard any queued SFX
     // so users don't hear a flood of game sounds when tapping "Enable sounds".
+    // The desired BGM (set by useIntroHubMusic via requestBgm) is started here.
     SoundManager.unlockAndPlayMusicOnly();
 
-    // Start the hub ambient music (idempotent — no-op if already playing).
-    void SoundManager.playMusic('music:intro_hub_loop');
     setSoundConsentHidden(true);
 
     // Kick off native SFX preloads asynchronously in the background.
