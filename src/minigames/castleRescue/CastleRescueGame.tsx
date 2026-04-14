@@ -819,7 +819,7 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
     // Unlock any locked correct pipe whose key was the room just visited.
     if (gs.lastRoomPipeSlot !== null) {
       const roomPipe = gs.geom.pipes.find(p => p.slotIndex === gs.lastRoomPipeSlot);
-      if (roomPipe?.unlocksSlot !== null && roomPipe?.unlocksSlot !== undefined) {
+      if (roomPipe?.unlocksSlot != null) {
         const gatedPipe = gs.geom.pipes.find(p => p.slotIndex === roomPipe.unlocksSlot);
         if (gatedPipe) gatedPipe.locked = false;
       }
@@ -969,7 +969,7 @@ function renderGame(
     ctx.fillStyle = '#000'; ctx.fillRect(tlogoX+4, tlogoY+2, 2, 2);
     // Head (skin)
     ctx.fillStyle = '#fde68a'; ctx.fillRect(tx+5, ty+2, PW-10, 14);
-    // Hair (lighter brown — slightly different from player to be recognisable)
+    // Hair (amber-brown, visually distinct from the player's darker brown #92400e)
     ctx.fillStyle = '#b45309'; ctx.fillRect(tx+4, ty-2, PW-8, 8);
     // Face eye
     ctx.fillStyle = '#000'; ctx.fillRect(tx+5, ty+5, 4, 4);
