@@ -2493,7 +2493,7 @@ export default function GameScreen() {
                   badge: '❓',
                   label: nominationLabels[p.id],
                   glowTone: 'danger' as const,
-                  badgeStart: isAutoNominee ? ('center' as const) : (lohRect ?? 'center' as const),
+                  badgeStart: (isAutoNominee || !lohRect) ? ('center' as const) : lohRect,
                   badgeLabel: `${p.name} nominated`,
                 }
               }),

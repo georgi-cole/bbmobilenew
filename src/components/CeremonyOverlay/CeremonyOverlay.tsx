@@ -137,6 +137,10 @@ function calculateLabelWidth(label: string, useCompactTileLabels: boolean): numb
   return Math.max(minWidth, label.length * charWidth + LABEL_WIDTH_PADDING);
 }
 
+function isTileBadgeOrigin(badgeStart: CeremonyTile['badgeStart']): badgeStart is DOMRect {
+  return badgeStart != null && badgeStart !== 'center';
+}
+
 type BadgePhase = 'hidden' | 'appearing' | 'flying' | 'landed' | 'holding';
 
 /** Cutout padding (px) around each tile rect */
@@ -450,7 +454,7 @@ export default function CeremonyOverlay({
               zIndex: 8701,
               position: 'fixed',
             }}
-            data-badge-origin={t.badgeStart && t.badgeStart !== 'center' ? 'tile' : 'center'}
+            data-badge-origin={isTileBadgeOrigin(t.badgeStart) ? 'tile' : 'center'}
             aria-label={t.badgeLabel ?? `${t.badge} badge`}
             aria-hidden={badgePhase === 'hidden'}
           >
