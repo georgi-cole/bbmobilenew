@@ -190,8 +190,8 @@ function getTimeoutCollapseDuration(rowsCount: number, noAnimations: boolean): n
  */
 function computeHintLeftBreakChance(safeSide: TileSide, sameRowHintCount: number): number {
   // Convert the 1-based repeated-hint count into a 0-based tier index
-  // while clamping to the three supported certainty tiers.
-  const tierIndex = Math.min(MAX_HINTS_PER_RUN, Math.max(1, sameRowHintCount)) - 1;
+  // while clamping invalid/overflow values into the three supported tiers.
+  const tierIndex = Math.min(MAX_HINTS_PER_RUN - 1, Math.max(0, sameRowHintCount - 1));
   const leftBreakChanceByTier = safeSide === 'right'
     ? [65, 90, 99]
     : [35, 10, 1];

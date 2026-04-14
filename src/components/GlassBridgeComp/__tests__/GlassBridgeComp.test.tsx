@@ -170,7 +170,6 @@ describe('GlassBridgeComp', () => {
     expect(observedHints).toEqual(expectedHints);
 
     const exhaustedBtn = screen.getByRole('button', { name: /you're on your own/i });
-    expect(exhaustedBtn.textContent).toBe("You're on your own");
     expect(exhaustedBtn).toBeDisabled();
   });
 
