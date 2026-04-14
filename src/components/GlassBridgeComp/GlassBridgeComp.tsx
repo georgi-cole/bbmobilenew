@@ -41,6 +41,7 @@ import {
   selectIsGameOver,
   HINT_PENALTY_MS,
   MAX_HINTS_PER_RUN,
+  type BridgeRow,
   type TileSide,
 } from '../../features/glassBridge/glassBridgeSlice';
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
@@ -59,10 +60,12 @@ const ORDER_REVEAL_DELAY_MS = 600;
 const REVEAL_STAGGER_MS = 350;
 /** Auto-advance from reveal to playing (after all items shown). */
 const REVEAL_TO_PLAY_DELAY_MS = 1_800;
-/** Base delay before AI takes a step (ms). */
-const AI_STEP_DELAY_MS = 900;
-/** Additional random delay range for AI (ms). */
-const AI_STEP_JITTER_MS = 800;
+const AI_UNKNOWN_ROW_DELAY_MIN_MS = 100;
+const AI_UNKNOWN_ROW_DELAY_MAX_MS = 3_000;
+const AI_REVEALED_ROW_DELAY_MIN_MS = 350;
+const AI_REVEALED_ROW_DELAY_MAX_MS = 1_750;
+const AI_OBVIOUS_SAFE_DELAY_MIN_MS = 100;
+const AI_OBVIOUS_SAFE_DELAY_MAX_MS = 1_000;
 /** Shatter animation duration (ms). Aligned with CSS animation. */
 const SHATTER_ANIM_MS = 400;
 /** Pause after shatter before advancing turn. */
@@ -85,6 +88,8 @@ const TIMEOUT_ROW_BREAK_STAGGER_MS = 60;
 const TIMEOUT_SIDE_BREAK_OFFSET_MS = 24;
 /** Keeps 1–2 letter initials comfortably inside the circular fallback avatars. */
 const AVATAR_INITIALS_FONT_SIZE_RATIO = 0.42;
+const STATUS_FLASH_MS = 1_900;
+const STATUS_FLASH_SHORT_MS = 950;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -198,6 +203,49 @@ function computeHintLeftBreakChance(safeSide: TileSide, sameRowHintCount: number
   return leftBreakChanceByTier[tierIndex];
 }
 
+function getHintUses(hintPenaltyMs: number | undefined): number {
+  return Math.min(
+    MAX_HINTS_PER_RUN,
+    Math.floor((hintPenaltyMs ?? 0) / HINT_PENALTY_MS),
+  );
+}
+
+function getAiDecisionDelayMs(
+  row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'>,
+  rng: () => number,
+): number {
+  const [minDelay, maxDelay] = row.leftBroken !== row.rightBroken
+    ? [AI_OBVIOUS_SAFE_DELAY_MIN_MS, AI_OBVIOUS_SAFE_DELAY_MAX_MS]
+    : row.revealedSafeSide
+      ? [AI_REVEALED_ROW_DELAY_MIN_MS, AI_REVEALED_ROW_DELAY_MAX_MS]
+      : [AI_UNKNOWN_ROW_DELAY_MIN_MS, AI_UNKNOWN_ROW_DELAY_MAX_MS];
+  return minDelay + Math.floor(rng() * Math.max(1, maxDelay - minDelay));
+}
+
+function shouldAiUseHint(
+  rowIdx: number,
+  rowsCount: number,
+  hintsUsed: number,
+  rng: () => number,
+): boolean {
+  if (hintsUsed >= MAX_HINTS_PER_RUN) return false;
+  const rowPressure = rowIdx / Math.max(1, rowsCount - 1);
+  const chance = Math.min(0.62, 0.18 + rowPressure * 0.34 + hintsUsed * 0.06);
+  return rng() < chance;
+}
+
+function chooseSideFromHint(safeSide: TileSide, sameRowHintCount: number, rng: () => number): TileSide {
+  const leftBreakChance = computeHintLeftBreakChance(safeSide, sameRowHintCount);
+  const safeChance = safeSide === 'left'
+    ? (100 - leftBreakChance) / 100
+    : leftBreakChance / 100;
+  return rng() < safeChance
+    ? safeSide
+    : safeSide === 'left'
+      ? 'right'
+      : 'left';
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface GlassBridgeCompetitionType {
@@ -217,6 +265,8 @@ interface Props {
   seed?: number;
   onComplete?: () => void;
 }
+
+type BannerVariant = 'info' | 'success' | 'danger' | 'record' | 'warning';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -281,6 +331,11 @@ export default function GlassBridgeComp({
   const [currentHintMessage, setCurrentHintMessage] = useState<string | null>(null);
   /** Number of hints the human has requested for the current row this turn. */
   const [hintRequestsForCurrentRow, setHintRequestsForCurrentRow] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2 | 3>(1);
+  const [statusBanner, setStatusBanner] = useState<{
+    message: string;
+    variant: BannerVariant;
+  } | null>(null);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const timerIntervalRef = useRef<number | null>(null);
@@ -293,6 +348,7 @@ export default function GlassBridgeComp({
   const deathMarkerClearRef = useRef<number | null>(null);
   const landingTimersRef = useRef<number[]>([]);
   const timeoutCollapseResolveRef = useRef<number | null>(null);
+  const statusBannerResetRef = useRef<number | null>(null);
   const initParamsRef = useRef({
     participantIds,
     prizeType,
@@ -326,6 +382,7 @@ export default function GlassBridgeComp({
   const unfinishedPlayerIdsRef = useRef<string[]>([]);
   /** One-shot guard for the timer-expiry collapse sequence. */
   const timeoutSequenceStartedRef = useRef(false);
+  const bestFinishTimeRef = useRef<number | null>(null);
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
   const aiRngRef = useRef(mulberry32(sessionSeed + 9999));
@@ -371,6 +428,10 @@ export default function GlassBridgeComp({
       window.clearTimeout(timeoutCollapseResolveRef.current);
       timeoutCollapseResolveRef.current = null;
     }
+    if (statusBannerResetRef.current !== null) {
+      window.clearTimeout(statusBannerResetRef.current);
+      statusBannerResetRef.current = null;
+    }
     for (const t of landingTimersRef.current) window.clearTimeout(t);
     landingTimersRef.current = [];
   }
@@ -378,6 +439,24 @@ export default function GlassBridgeComp({
   // ── Audio ─────────────────────────────────────────────────────────────────
   const { playSafeStep, playDeath, playWinner, playNewTurn } = useGlassBridgeAudio(
     gb.phase !== 'idle',
+  );
+  const effectivePlaybackSpeed = gb.humanSpectating ? playbackSpeed : 1;
+  const scaleSpectatorDelay = useCallback(
+    (ms: number) => Math.max(0, Math.round(ms / effectivePlaybackSpeed)),
+    [effectivePlaybackSpeed],
+  );
+  const flashStatusBanner = useCallback(
+    (message: string, variant: BannerVariant, durationMs = STATUS_FLASH_MS) => {
+      setStatusBanner({ message, variant });
+      if (statusBannerResetRef.current !== null) {
+        window.clearTimeout(statusBannerResetRef.current);
+      }
+      statusBannerResetRef.current = window.setTimeout(() => {
+        setStatusBanner(null);
+        statusBannerResetRef.current = null;
+      }, scaleSpectatorDelay(durationMs));
+    },
+    [scaleSpectatorDelay],
   );
 
   // ── 1. Initialize on mount ────────────────────────────────────────────────
@@ -648,9 +727,16 @@ export default function GlassBridgeComp({
     const progress = gb.progress[activeId];
     if (!progress || progress.eliminated || progress.finishTimeMs !== undefined) return;
 
-    // AI delay: base + jitter.
-    const delay =
-      AI_STEP_DELAY_MS + Math.floor(aiRngRef.current() * AI_STEP_JITTER_MS);
+    const rowIdx = gb.currentPlayerRow - 1;
+    if (rowIdx < 0 || rowIdx >= gb.rows.length) return;
+    const row = gb.rows[rowIdx];
+    const hintsUsed = getHintUses(progress.hintPenaltyMs);
+    const willUseHint =
+      !row.leftBroken &&
+      !row.rightBroken &&
+      !row.revealedSafeSide &&
+      shouldAiUseHint(rowIdx, gb.rowsCount, hintsUsed, aiRngRef.current);
+    const delay = scaleSpectatorDelay(getAiDecisionDelayMs(row, aiRngRef.current));
 
     if (aiStepTimerRef.current !== null) {
       window.clearTimeout(aiStepTimerRef.current);
@@ -660,31 +746,36 @@ export default function GlassBridgeComp({
       // Double-check the game is still in playing state.
       if (gb.phase !== 'playing' || gb.timerExpired) return;
 
-      const rowIdx = gb.currentPlayerRow - 1;
-      if (rowIdx < 0 || rowIdx >= gb.rows.length) return;
-      const row = gb.rows[rowIdx];
-
       // Find the active participant's profile.
       const participant = gb.participants.find(p => p.id === activeId);
 
-      const chosenSide = aiDecideStep(row, aiRngRef.current, participant?.competitionProfile);
+      const chosenSide = willUseHint
+        ? chooseSideFromHint(row.safeSide, hintsUsed + 1, aiRngRef.current)
+        : aiDecideStep(row, aiRngRef.current, participant?.competitionProfile);
       const now = Date.now();
 
       // Check if it's a wrong choice (for animation).
       const isBreak = chosenSide !== row.safeSide;
 
       const noAnimations = areAnimationsDisabled();
-      const suspenseDelay = noAnimations ? 0 : STEP_SUSPENSE_DELAY_MS;
-      const shatterDelay = noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
+      const suspenseDelay = scaleSpectatorDelay(noAnimations ? 0 : STEP_SUSPENSE_DELAY_MS);
+      const shatterDelay = scaleSpectatorDelay(noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS);
 
+      if (willUseHint) {
+        flashStatusBanner(`${getName(activeId)} uses The Expert.`, 'info', STATUS_FLASH_SHORT_MS);
+      }
       setPendingStep({ actorId: activeId, rowIdx, side: chosenSide, isBreak, chosenAt: now });
       pendingStepRef.current = window.setTimeout(() => {
+        if (willUseHint) {
+          dispatch(recordHintUsed({ playerId: activeId }));
+        }
         if (isBreak) {
           setShatteringTile({ rowIdx, side: chosenSide });
           setShowEliminationFlash(true);
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side: chosenSide });
           playDeath();
+          flashStatusBanner(`${getName(activeId)} crashes on row ${rowIdx + 1}.`, 'danger');
           if (flashResetRef.current !== null) {
             window.clearTimeout(flashResetRef.current);
           }
@@ -709,6 +800,9 @@ export default function GlassBridgeComp({
 
         setPendingStep(null);
         playSafeStep();
+        if (rowIdx + 1 < gb.rowsCount) {
+          flashStatusBanner(`${getName(activeId)} clears row ${rowIdx + 1}.`, 'success');
+        }
         dispatch(resolveStep({ chosenSide, now }));
         // Game-over detection is handled by effect #7 which watches gb state.
       }, suspenseDelay);
@@ -720,7 +814,7 @@ export default function GlassBridgeComp({
         aiStepTimerRef.current = null;
       }
     };
-  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch, playSafeStep, playDeath]);
+  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch, playSafeStep, playDeath, scaleSpectatorDelay, flashStatusBanner, getName]);
 
   // ── 7. Timer expiry sequence — collapse the bridge before showing results ─
   useEffect(() => {
@@ -728,6 +822,7 @@ export default function GlassBridgeComp({
       timeoutSequenceStartedRef.current = false;
       setTimeoutCollapseActive(false);
       setTimedOutPlayerIds([]);
+      bestFinishTimeRef.current = null;
       return;
     }
     if (!gb.timerExpired || timeoutSequenceStartedRef.current) return;
@@ -741,7 +836,7 @@ export default function GlassBridgeComp({
     }
 
     const noAnimations = areAnimationsDisabled();
-    const collapseDuration = getTimeoutCollapseDuration(gb.rows.length, noAnimations);
+    const collapseDuration = scaleSpectatorDelay(getTimeoutCollapseDuration(gb.rows.length, noAnimations));
 
     setShowSpectatorModal(false);
     setTimedOutPlayerIds(doomedIds);
@@ -761,7 +856,7 @@ export default function GlassBridgeComp({
     timeoutCollapseResolveRef.current = window.setTimeout(() => {
       dispatch(completeGame());
     }, collapseDuration);
-  }, [gb.phase, gb.timerExpired, gb.rows.length, dispatch, playDeath]);
+  }, [gb.phase, gb.timerExpired, gb.rows.length, dispatch, playDeath, scaleSpectatorDelay]);
 
   // ── 8. Detect end-of-game conditions ──────────────────────────────────────
   useEffect(() => {
@@ -805,6 +900,18 @@ export default function GlassBridgeComp({
           playWinner();
           isFirstFinisher = false;
         }
+        const effectiveFinishTime = p.finishTimeMs + (p.hintPenaltyMs ?? 0);
+        const isRecord =
+          bestFinishTimeRef.current === null || effectiveFinishTime < bestFinishTimeRef.current;
+        if (isRecord) {
+          bestFinishTimeRef.current = effectiveFinishTime;
+        }
+        flashStatusBanner(
+          isRecord
+            ? `${getName(pid)} sets a new record: ${formatElapsed(effectiveFinishTime)}!`
+            : `${getName(pid)} finishes in ${formatElapsed(effectiveFinishTime)}!`,
+          isRecord ? 'record' : 'success',
+        );
         setLandingPlayerIds(prev => [...prev, pid]);
         const t = window.setTimeout(() => {
           setLandingPlayerIds(prev => prev.filter(id => id !== pid));
@@ -813,7 +920,7 @@ export default function GlassBridgeComp({
         landingTimersRef.current.push(t);
       }
     }
-  }, [gb.progress, gb.phase, playWinner]);
+  }, [gb.progress, gb.phase, playWinner, flashStatusBanner, getName]);
 
   // ── 13. New-turn sound — play whenever a new player starts their turn ──────
   useEffect(() => {
@@ -879,6 +986,7 @@ export default function GlassBridgeComp({
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side });
           playDeath();
+          flashStatusBanner(`You crash on row ${rowIdx + 1}.`, 'danger');
 
           // Clear any existing flash/death-marker timeouts before scheduling new ones
           if (flashResetRef.current != null) {
@@ -905,14 +1013,18 @@ export default function GlassBridgeComp({
 
         setPendingStep(null);
         playSafeStep();
+        if (rowIdx + 1 < gb.rowsCount) {
+          flashStatusBanner(`You clear row ${rowIdx + 1}.`, 'success');
+        }
         dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
       }, suspenseDelay);
     },
-    [humanId, gb, dispatch, pendingStep, playSafeStep, playDeath],
+    [humanId, gb, dispatch, pendingStep, playSafeStep, playDeath, flashStatusBanner],
   );
 
   const handleContinueWatching = useCallback(() => {
     setShowSpectatorModal(false);
+    setPlaybackSpeed(1);
     dispatch(setHumanSpectating(true));
   }, [dispatch]);
 
@@ -928,10 +1040,7 @@ export default function GlassBridgeComp({
     if (!humanId) return;
     const humanProgress = gb.progress[humanId];
     if (!humanProgress) return;
-    const hintsUsed = Math.min(
-      MAX_HINTS_PER_RUN,
-      Math.floor((humanProgress.hintPenaltyMs ?? 0) / HINT_PENALTY_MS),
-    );
+    const hintsUsed = getHintUses(humanProgress.hintPenaltyMs);
     if (hintsUsed >= MAX_HINTS_PER_RUN) return;
 
     const rowIdx = gb.currentPlayerRow - 1;
@@ -963,10 +1072,7 @@ export default function GlassBridgeComp({
   const humanProgress = humanId ? gb.progress[humanId] : null;
   const isHumanEliminated = !!humanProgress?.eliminated;
   const pendingActorId = pendingStep?.actorId ?? null;
-  const hintsUsed = Math.min(
-    MAX_HINTS_PER_RUN,
-    Math.floor((humanProgress?.hintPenaltyMs ?? 0) / HINT_PENALTY_MS),
-  );
+  const hintsUsed = getHintUses(humanProgress?.hintPenaltyMs);
   const hintsRemaining = MAX_HINTS_PER_RUN - hintsUsed;
   const canRequestHelp =
     gb.phase === 'playing' &&
@@ -983,6 +1089,26 @@ export default function GlassBridgeComp({
         ? 'gb-timer-warning'
         : '';
   const isTimeoutPlayer = (playerId: string) => timedOutPlayerIds.includes(playerId);
+  const defaultBannerText = timeoutCollapseActive
+    ? "Time's up! The path is collapsing!"
+    : isHumanTurn && !pendingStep
+      ? 'Select a highlighted platform to step.'
+      : activeId
+        ? `${getName(activeId)} is on the path`
+        : 'Path awaiting next player';
+  const bannerText = statusBanner?.message ?? defaultBannerText;
+  const nextPlaybackSpeed = playbackSpeed === 1 ? 2 : playbackSpeed === 2 ? 3 : 1;
+  const canFastForward = gb.humanSpectating && isHumanEliminated && gb.phase === 'playing';
+  const handleTogglePlaybackSpeed = () => {
+    setPlaybackSpeed(nextPlaybackSpeed);
+    flashStatusBanner(
+      nextPlaybackSpeed === 1
+        ? 'Back to normal speed.'
+        : `Watching at ${nextPlaybackSpeed}× speed.`,
+      'info',
+      STATUS_FLASH_SHORT_MS,
+    );
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1090,14 +1216,23 @@ export default function GlassBridgeComp({
       {/* ── Playing ── */}
       {gb.phase === 'playing' && (
         <div className="gb-playing">
-          <div className="gb-active-banner" aria-live="polite">
-            {timeoutCollapseActive
-              ? "Time's up! The path is collapsing!"
-              : isHumanTurn && !pendingStep
-              ? 'Select a highlighted platform to step.'
-              : activeId
-                ? `${getName(activeId)} is on the path`
-                : 'Path awaiting next player'}
+          <div className="gb-active-banner-row">
+            <div
+              className={`gb-active-banner${statusBanner ? ` gb-active-banner-flash gb-active-banner-${statusBanner.variant}` : ''}`}
+              aria-live="polite"
+            >
+              {bannerText}
+            </div>
+            {canFastForward && (
+              <button
+                type="button"
+                className="gb-ffwd-btn"
+                onClick={handleTogglePlaybackSpeed}
+                aria-label={`Playback speed ${playbackSpeed}x. Tap to switch to ${nextPlaybackSpeed}x`}
+              >
+                ⏩ {playbackSpeed}×
+              </button>
+            )}
           </div>
           {/* Bridge */}
           <div className="gb-bridge-container" role="region" aria-label="Crystal path">
@@ -1330,13 +1465,14 @@ export default function GlassBridgeComp({
               ? (() => {
                   const penalty = p.hintPenaltyMs ?? 0;
                   const effective = p.finishTimeMs + penalty;
+                  const hintUses = getHintUses(p.hintPenaltyMs);
                   const base = `Finished ${formatElapsed(effective)}`;
-                  return penalty > 0
-                    ? `${base} (incl. +${penalty / 1000}s hint penalty)`
+                  return hintUses > 0
+                    ? `${base} (${hintUses} hint${hintUses === 1 ? '' : 's'}, +${penalty / 1000}s)`
                     : base;
                 })()
               : p?.furthestRowReached
-                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}`
+                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}${getHintUses(p?.hintPenaltyMs) > 0 ? ` • ${getHintUses(p?.hintPenaltyMs)} hint${getHintUses(p?.hintPenaltyMs) === 1 ? '' : 's'}` : ''}`
                 : 'Row 0';
 
             return (

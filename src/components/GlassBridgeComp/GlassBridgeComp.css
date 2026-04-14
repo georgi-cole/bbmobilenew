@@ -279,9 +279,17 @@
   z-index: 1;
 }
 
+.gb-active-banner-row {
+  width: min(420px, calc(100% - 1rem));
+  margin: 0.8rem auto 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
 .gb-active-banner {
   width: min(360px, calc(100% - 1.5rem));
-  margin: 0.8rem auto 0.35rem;
   padding: 0.6rem 0.85rem;
   border-radius: 999px;
   border: 1px solid rgba(126, 203, 255, 0.28);
@@ -293,6 +301,55 @@
   letter-spacing: 0.04em;
   text-align: center;
   text-transform: uppercase;
+}
+
+.gb-active-banner-flash {
+  animation: gb-pulse 0.34s ease-in-out 2;
+}
+
+.gb-active-banner-info {
+  border-color: rgba(126, 203, 255, 0.45);
+  color: #e4f3ff;
+}
+
+.gb-active-banner-success {
+  border-color: rgba(58, 255, 138, 0.42);
+  color: #d7ffe8;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25), 0 0 18px rgba(58, 255, 138, 0.12);
+}
+
+.gb-active-banner-danger,
+.gb-active-banner-warning {
+  border-color: rgba(255, 96, 96, 0.42);
+  color: #ffd5d5;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25), 0 0 18px rgba(255, 96, 96, 0.12);
+}
+
+.gb-active-banner-record {
+  border-color: rgba(255, 215, 64, 0.52);
+  color: #fff1b3;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25), 0 0 18px rgba(255, 215, 64, 0.14);
+}
+
+.gb-ffwd-btn {
+  flex: 0 0 auto;
+  min-width: 4.4rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(126, 203, 255, 0.35);
+  background: rgba(8, 16, 34, 0.82);
+  color: #d7ecff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.gb-ffwd-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 .gb-bridge-container {

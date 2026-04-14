@@ -44,6 +44,8 @@ export interface BridgeRow {
  */
 export interface GlassBridgePlayerProgress {
   playerId: string;
+  /** Timestamp (Date.now ms) when the player made their first jump onto row 1. */
+  firstStepAtMs?: number;
   /** 1-based row number of the furthest safely-crossed row (0 = none). */
   furthestRowReached: number;
   /** Elapsed ms since challengeStartTimeMs when the player first reached
@@ -367,6 +369,7 @@ const glassBridgeSlice = createSlice({
       for (const id of participantIds) {
         progress[id] = {
           playerId: id,
+          firstStepAtMs: undefined,
           furthestRowReached: 0,
           timeReachedFurthestRowMs: 0,
           eliminated: false,
@@ -486,7 +489,10 @@ const glassBridgeSlice = createSlice({
       const progress = state.progress[activeId];
       if (!progress || progress.eliminated || progress.finishTimeMs !== undefined) return;
 
-      const elapsed = state.challengeStartTimeMs !== null ? now - state.challengeStartTimeMs : 0;
+      if (progress.firstStepAtMs === undefined) {
+        progress.firstStepAtMs = now;
+      }
+      const elapsed = now - progress.firstStepAtMs;
 
       // If the global timer has already expired, do not process any more steps.
       // The component's timer effect is responsible for dispatching expireTimer()/completeGame().

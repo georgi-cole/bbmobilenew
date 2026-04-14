@@ -240,4 +240,52 @@ describe('GlassBridgeComp', () => {
       }
     }
   });
+
+  it('shows a spectator fast-forward button and cycles 1x, 2x, 3x playback', async () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <GlassBridgeComp
+          participantIds={['user', 'ai-1']}
+          participants={[
+            { id: 'user', name: 'You', isHuman: true },
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+          ]}
+          seed={1}
+        />
+      </Provider>,
+    );
+
+    await advance(0);
+    fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
+
+    await act(async () => {
+      store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
+      store.dispatch(finaliseOrderSelection());
+      store.dispatch(startPlaying({ now: Date.now() }));
+    });
+
+    expect(store.getState().glassBridge.turnOrder[0]).toBe('user');
+
+    const firstRow = store.getState().glassBridge.rows[0];
+    const wrongSide = firstRow.safeSide === 'left' ? 'right' : 'left';
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${wrongSide} tile.*step here`, 'i') }));
+
+    await advance(1_100);
+
+    expect(screen.getByRole('dialog', { name: /eliminated/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue watching/i }));
+
+    let ffwdBtn = screen.getByRole('button', { name: /playback speed 1x/i });
+    expect(ffwdBtn.textContent).toContain('1×');
+
+    fireEvent.click(ffwdBtn);
+    ffwdBtn = screen.getByRole('button', { name: /playback speed 2x/i });
+    expect(ffwdBtn.textContent).toContain('2×');
+
+    fireEvent.click(ffwdBtn);
+    ffwdBtn = screen.getByRole('button', { name: /playback speed 3x/i });
+    expect(ffwdBtn.textContent).toContain('3×');
+  });
 });
