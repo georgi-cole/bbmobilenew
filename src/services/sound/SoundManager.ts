@@ -47,9 +47,17 @@ export interface PlayOptions {
  * Each scope should request/release BGM through requestBgm/releaseBgm so
  * the manager can enforce the single-channel invariant.
  *
- * Priority (highest → lowest): minigame > social > spectator > phase > introhub
+ * Priority (highest → lowest):
+ * minigame > cinematic > social > spectator > phase > introhub
  */
-export type BgmOwner = 'introhub' | 'phase' | 'spectator' | 'social' | 'minigame';
+export type BgmOwner =
+  | 'introhub'
+  | 'phase'
+  | 'spectator'
+  | 'social'
+  | 'cinematic'
+  | 'minigame';
+export const CINEMATIC_BGM_OWNER: BgmOwner = 'cinematic';
 
 interface CategoryState {
   enabled: boolean;
@@ -96,11 +104,12 @@ class _SoundManager {
   // BGM ownership / desired-track tracking (per-owner map with priority fallback)
   private _currentBgmOwner: BgmOwner | null = null;
   // Per-owner desired BGM map — allows automatic fallback when an owner releases.
-  // Priority order (lowest → highest): introhub < phase < spectator < social < minigame
+  // Priority order (lowest → highest):
+  // introhub < phase < spectator < social < cinematic < minigame
   // The last element wins; iterate in reverse to find the highest-priority active owner.
   private _desiredPerOwner: Partial<Record<BgmOwner, { key: string; opts?: PlayOptions }>> = {};
   private static readonly _BGM_PRIORITY: readonly BgmOwner[] = [
-    'introhub', 'phase', 'spectator', 'social', 'minigame', // lowest → highest priority
+    'introhub', 'phase', 'spectator', 'social', 'cinematic', 'minigame',
   ];
 
   // SFX: pool of HTMLAudioElements per key
@@ -306,7 +315,7 @@ class _SoundManager {
    *   owner is the current highest-priority active owner.
    * - Passing null as key releases BGM for this owner (same as releaseBgm).
    *
-   * All BGM callers (introhub, phase, spectator, social, minigame) MUST use
+   * All BGM callers (introhub, phase, spectator, social, cinematic, minigame) MUST use
    * this method rather than calling playMusic/stopMusic directly so the
    * manager can enforce the single-channel invariant.
    */

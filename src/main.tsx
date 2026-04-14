@@ -73,9 +73,9 @@ window.toggleIntroHubMusic = function () {
   // Keep Redux settings in sync so mute state is preserved correctly.
   store.dispatch(setAudio({ musicOn: nextMusicOn }));
   if (nextMusicOn) {
-    void SoundManager.playMusic('music:intro_hub_loop');
+    SoundManager.requestBgm('music:intro_hub_loop', 'introhub');
   } else {
-    SoundManager.stopMusic();
+    SoundManager.releaseBgm('introhub');
   }
 };
 window.toggleIntroHubSfx = function () {
