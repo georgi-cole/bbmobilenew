@@ -14,7 +14,7 @@ describe('useHouseOfCardsAudio', () => {
     vi.restoreAllMocks();
   });
 
-  it('starts the House of Cards music loop and restores the previous track when inactive', () => {
+  it('requests the House of Cards music loop while active and releases minigame ownership when inactive', () => {
     const { rerender, unmount } = renderHook(
       ({ isPlaying }) => useHouseOfCardsAudio(isPlaying),
       { initialProps: { isPlaying: false } },
