@@ -468,7 +468,7 @@ export default function CeremonyOverlay({
                 aria-hidden="true"
               />
             ) : (
-              <span aria-hidden="true">{t.badge}</span>
+              <>{t.badge}</>
             )}
           </div>
         );

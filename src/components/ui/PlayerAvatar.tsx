@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { Player } from '../../types';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { getBadgesForPlayer } from '../../utils/statusBadges';
@@ -85,18 +85,17 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
             title={badgeLabels}
           >
             {badges.map((b) => (
-              <span key={b.code} className="player-avatar__badge-item" aria-hidden="true">
+              <Fragment key={b.code}>
                 {b.imageSrc ? (
                   <img
                     className="player-avatar__badge-image"
                     src={b.imageSrc}
                     alt=""
-                    aria-hidden="true"
                   />
                 ) : (
                   b.emoji
                 )}
-              </span>
+              </Fragment>
             ))}
           </span>
         )}

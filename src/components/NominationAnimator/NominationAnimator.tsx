@@ -90,7 +90,7 @@ export default function NominationAnimator({
                 {nominationBadgeSrc ? (
                   <img src={nominationBadgeSrc} alt="" className="nom-anim__badge-image" />
                 ) : (
-                  <span>❓</span>
+                  <>❓</>
                 )}
               </span>
             </div>
