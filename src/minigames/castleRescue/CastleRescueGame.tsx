@@ -47,11 +47,17 @@ import {
   SCORE_COIN    as S_COIN,
   SCORE_CHECKPOINT as S_CHECKPOINT,
   PENALTY_DEATH as P_DEATH,
+  PENALTY_OUT_OF_LIVES as P_OUT_OF_LIVES,
 } from './castleRescueConstants';
 import {
   computePlatformerFinalScore,
   applyPipeEntry,
 } from './castleRescuePlatformerLogic';
+import {
+  applyCastleRescueLifeLoss,
+  resolveCastleRescueRunSeed,
+} from './castleRescueSession';
+import type { CastleRescueEndReason } from './castleRescueSession';
 
 // ═══ Canvas geometry ══════════════════════════════════════════════════════════
 const CW = 800;           // canvas width
@@ -224,6 +230,7 @@ interface GameState {
   finalScore: number;
   /** Non-null while the player is inside a bonus or ambush side-room. */
   room: RoomInstance | null;
+  endReason: CastleRescueEndReason;
   /**
    * Slot index of the pipe used to enter the current side-room, or null when
    * not in a room.  Used by the room-exit handler to unlock any gated correct
@@ -423,9 +430,7 @@ function buildLevel(seed: number): LevelGeom {
 // ═══ Damage player ════════════════════════════════════════════════════════════
 function damagePlayer(gs: GameState, now: number, isPit: boolean): void {
   if (!isPit && now < gs.player.invincibleUntil) return;
-  gs.hearts = Math.max(0, gs.hearts - 1);
-  gs.score  = Math.max(0, gs.score - P_DEATH);
-  if (gs.hearts === 0) { gs.hearts = MAX_HEARTS; } // soft reset hearts
+  if (applyCastleRescueLifeLoss(gs, now, P_DEATH, P_OUT_OF_LIVES)) return;
   gs.player.invincibleUntil = now + INVINCIBLE_MS;
   // Always move player to spawn so they're safe during the pause
   gs.player.x  = gs.spawnX; gs.player.y  = gs.spawnY;
@@ -470,6 +475,7 @@ function updateGame(
   if (elapsed >= timeLimitMs) {
     gs.finalElapsedMs = elapsed;
     gs.finalScore     = computePlatformerFinalScore(gs, elapsed);
+    gs.endReason = 'timeout';
     gs.phase = 'complete';
     return;
   }
@@ -675,6 +681,7 @@ function updateGame(
       const el = now - gs.startTime;
       gs.finalElapsedMs = el;
       gs.finalScore     = computePlatformerFinalScore(gs, el);
+      gs.endReason = 'rescued';
       gs.phase = 'complete';
       return;
     }
@@ -768,9 +775,7 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
 
   // Pit death in room → respawn at room entrance with damage
   if (player.y > PLAY_H + 60) {
-    gs.score  = Math.max(0, gs.score - P_DEATH);
-    gs.hearts = Math.max(0, gs.hearts - 1);
-    if (gs.hearts === 0) gs.hearts = MAX_HEARTS;
+    if (applyCastleRescueLifeLoss(gs, now, P_DEATH, P_OUT_OF_LIVES)) return;
     player.invincibleUntil = now + INVINCIBLE_MS;
     player.x = 40; player.y = GROUND_TOP - PH; player.vx = 0; player.vy = 0;
     return;
@@ -792,9 +797,7 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
         enemy.alive = false; enemy.squishTimer = 500;
         gs.score += S_ENEMY; player.vy = -8;
       } else if (now >= player.invincibleUntil) {
-        gs.score  = Math.max(0, gs.score - P_DEATH);
-        gs.hearts = Math.max(0, gs.hearts - 1);
-        if (gs.hearts === 0) gs.hearts = MAX_HEARTS;
+        if (applyCastleRescueLifeLoss(gs, now, P_DEATH, P_OUT_OF_LIVES)) return;
         player.invincibleUntil = now + INVINCIBLE_MS;
         player.x = 40; player.y = GROUND_TOP - PH; player.vx = 0; player.vy = 0;
         return;
@@ -1304,7 +1307,7 @@ export default function CastleRescueGame({
   const finishedRef = useRef(false);
 
   const [phase, setPhase]       = useState<Phase>('idle');
-  const [endStats, setEndStats] = useState<{ score: number; rescued: boolean } | null>(null);
+  const [endStats, setEndStats] = useState<{ score: number; endReason: CastleRescueEndReason } | null>(null);
 
   // ── Responsive layout ───────────────────────────────────────────────────────
   const [layout, setLayout] = useState<LayoutState>(() =>
@@ -1346,23 +1349,15 @@ export default function CastleRescueGame({
       deathPauseTimer:0,
       princessRescued:false, gateOpen:false, finalScore:0,
       room: null,
+      endReason: 'timeout',
       lastRoomPipeSlot: null,
     };
   }, []);
 
   const startGame = useCallback(() => {
-    // Use caller-supplied seed for deterministic runs (e.g. competitions);
-    // otherwise generate a run-unique seed so each play varies.
-    let runSeed: number;
-    if (seed !== undefined) {
-      runSeed = seed;
-    } else {
-      try {
-        runSeed = (crypto.getRandomValues(new Uint32Array(1))[0] >>> 0);
-      } catch {
-        runSeed = Math.floor(Math.random() * 0x100000000) >>> 0;
-      }
-    }
+    // Follow the minigame-host convention: seed=0 means "no explicit seed",
+    // so hosted replays get a fresh run layout unless a non-zero seed is set.
+    const runSeed = resolveCastleRescueRunSeed(seed);
     finishedRef.current = false;
     stateRef.current = initState(runSeed);
     setPhase('playing');
@@ -1434,7 +1429,7 @@ export default function CastleRescueGame({
         if (!finishedRef.current) {
           finishedRef.current = true;
           setPhase('complete');
-          setEndStats({ score: gs.finalScore, rescued: gs.princessRescued });
+          setEndStats({ score: gs.finalScore, endReason: gs.endReason });
           onFinishRef.current?.(gs.finalScore);
         }
         renderGame(ctx, gs, now, timeLimitMs);
@@ -1581,7 +1576,11 @@ export default function CastleRescueGame({
           {phase === 'complete' && endStats && (
             <div style={endOverlayStyle}>
               <p style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>
-                {endStats.rescued ? '🎉 Twin Found!' : '⏱ Time\'s Up!'}
+                {endStats.endReason === 'rescued'
+                  ? '🎉 Twin Found!'
+                  : endStats.endReason === 'out_of_lives'
+                    ? '💔 Out of lives!'
+                    : '⏱ Time\'s Up!'}
               </p>
               <p style={{ fontSize: 18, fontWeight: 600, color: '#fbbf24', margin: '0 0 12px' }}>
                 Final Score: {endStats.score}

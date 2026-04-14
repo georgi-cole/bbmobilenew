@@ -58,6 +58,9 @@ export const SCORE_RESCUE = 1000;
 /** Points deducted each time the player dies (enemy hit or falls into a pit). */
 export const PENALTY_DEATH = 50;
 
+/** Extra points deducted when the last life is lost and the run ends immediately. */
+export const PENALTY_OUT_OF_LIVES = 250;
+
 /** Total number of pipe slots placed in the level. */
 export const PIPE_SLOT_COUNT = 6;
 
