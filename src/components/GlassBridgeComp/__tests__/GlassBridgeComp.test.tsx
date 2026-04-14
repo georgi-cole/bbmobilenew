@@ -14,6 +14,9 @@ const playSafeStep = vi.fn();
 const playDeath = vi.fn();
 const playWinner = vi.fn();
 const playNewTurn = vi.fn();
+const timeoutBannerPattern = /time is over\. the path is collapsing\.|the clock has died — the path is collapsing!|no time remains\. the bridge is breaking apart!/i;
+const helpButtonPattern = /seek guidance|ask the expert|one last whisper/i;
+const exhaustedHelpPattern = /no more aid remains|the expert is silent now|you must face the path alone/i;
 
 vi.mock('../../../hooks/useGlassBridgeAudio', () => ({
   useGlassBridgeAudio: () => ({
@@ -84,7 +87,7 @@ describe('GlassBridgeComp', () => {
 
     await advance(32_250);
 
-    expect(screen.getByText("Time's up! The path is collapsing!")).toBeTruthy();
+    expect(screen.getByText(timeoutBannerPattern)).toBeTruthy();
     expect(screen.queryByText('Path Complete')).toBeNull();
     expect(container.querySelectorAll('.gb-tile-timeout-break').length).toBeGreaterThan(0);
     expect(container.querySelectorAll('.gb-avatar-bar-timeout').length).toBeGreaterThan(0);
@@ -121,7 +124,7 @@ describe('GlassBridgeComp', () => {
 
     // After reveal animation, check the human is going first (turn order with seed 42 may vary;
     // we just verify the Request Help button appears in the playing phase for the human).
-    const helpBtn = screen.queryByRole('button', { name: /request help/i });
+    const helpBtn = screen.queryByRole('button', { name: helpButtonPattern });
     expect(helpBtn).not.toBeNull();
     expect(helpBtn!.textContent).toMatch(/3 left/i);
 
@@ -146,18 +149,18 @@ describe('GlassBridgeComp', () => {
     let hintMsg = screen.queryByRole('status');
     expect(hintMsg).not.toBeNull();
     observedHints.push(Number(hintMsg!.textContent!.match(/(\d+)%/)?.[1] ?? '0'));
-    expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/2 left/i);
+    expect(screen.getByRole('button', { name: helpButtonPattern }).textContent).toMatch(/2 left/i);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /request help/i }));
+      fireEvent.click(screen.getByRole('button', { name: helpButtonPattern }));
     });
     hintMsg = screen.queryByRole('status');
     expect(hintMsg).not.toBeNull();
     observedHints.push(Number(hintMsg!.textContent!.match(/(\d+)%/)?.[1] ?? '0'));
-    expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/1 left/i);
+    expect(screen.getByRole('button', { name: helpButtonPattern }).textContent).toMatch(/1 left/i);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /request help/i }));
+      fireEvent.click(screen.getByRole('button', { name: helpButtonPattern }));
     });
     hintMsg = screen.queryByRole('status');
     expect(hintMsg).not.toBeNull();
@@ -169,7 +172,7 @@ describe('GlassBridgeComp', () => {
     expect(userProgress?.hintPenaltyMs).toBe(HINT_PENALTY_MS * 3);
     expect(observedHints).toEqual(expectedHints);
 
-    const exhaustedBtn = screen.getByRole('button', { name: /you're on your own/i });
+    const exhaustedBtn = screen.getByRole('button', { name: exhaustedHelpPattern });
     expect(exhaustedBtn).toBeDisabled();
   });
 

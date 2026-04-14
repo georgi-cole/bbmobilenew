@@ -263,6 +263,29 @@ function hasOneBrokenTile(row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'>): b
   return row.leftBroken !== row.rightBroken;
 }
 
+function getCompletionBannerMessage(
+  isHuman: boolean,
+  isRecord: boolean,
+  name: string,
+  time: string,
+): string {
+  if (isHuman) {
+    return isRecord
+      ? pickRandom(humanNewRecordMessages)(time)
+      : pickRandom(humanFinishMessages)(time);
+  }
+
+  return isRecord
+    ? pickRandom(newRecordMessages)(name, time)
+    : pickRandom(finishMessages)(name, time);
+}
+
+function getBrokenPlatformFallMessage(isHuman: boolean, name: string): string {
+  return isHuman
+    ? pickRandom(humanBrokenPlatformFallMessages)
+    : pickRandom(brokenPlatformFallMessages)(name);
+}
+
 // ─── Randomized status-bar message pools ─────────────────────────────────────
 
 /** Pick a random element from a non-empty array on each call. */
@@ -312,6 +335,12 @@ const brokenPlatformFallMessages: ReadonlyArray<(name: string) => string> = [
   name => `${name} stumbles and drops through the hole in the path.`,
 ];
 
+const humanBrokenPlatformFallMessages: ReadonlyArray<string> = [
+  'You slip onto the broken platform.',
+  'You lose balance and fall through the broken platform.',
+  'You stumble and drop through the hole in the path.',
+];
+
 const timesUpMessages: ReadonlyArray<string> = [
   "Time is over. The path is collapsing.",
   "The clock has died — the path is collapsing!",
@@ -342,22 +371,28 @@ const newRecordMessages: ReadonlyArray<(name: string, time: string) => string> =
   (name, time) => `${name} sets a new mark in blood and glass: ${time}!`,
 ];
 
+const humanNewRecordMessages: ReadonlyArray<(time: string) => string> = [
+  time => `You carve a new record: ${time}!`,
+  time => `You write a new legend: ${time}!`,
+  time => `You set a new mark in blood and glass: ${time}!`,
+];
+
 const finishMessages: ReadonlyArray<(name: string, time: string) => string> = [
   (name, time) => `${name} reaches the end in ${time}!`,
   (name, time) => `${name} survives the path in ${time}!`,
   (name, time) => `${name} emerges in ${time}!`,
 ];
 
-const helpButtonLabelMessages: ReadonlyArray<(remaining: number, penalty: number) => string> = [
-  (r, p) => `Seek The Expert (${r} left, +${p}s penalty each)`,
-  (r, p) => `Call upon The Expert (${r} left, +${p}s penalty each)`,
-  (r, p) => `Beg The Expert for guidance (${r} left, +${p}s penalty each)`,
+const humanFinishMessages: ReadonlyArray<(time: string) => string> = [
+  time => `You reach the end in ${time}!`,
+  time => `You survive the path in ${time}!`,
+  time => `You emerge in ${time}!`,
 ];
 
-const helpButtonTextMessages: ReadonlyArray<(remaining: number) => string> = [
-  r => `🔮 Seek Guidance (${r} left)`,
-  r => `🔮 Ask The Expert (${r} left)`,
-  r => `🔮 One Last Whisper (${r} left)`,
+const helpButtonMessages: ReadonlyArray<(remaining: number) => string> = [
+  r => `Seek Guidance (${r} left)`,
+  r => `Ask The Expert (${r} left)`,
+  r => `One Last Whisper (${r} left)`,
 ];
 
 const noHelpMessages: ReadonlyArray<string> = [
@@ -970,7 +1005,10 @@ export default function GlassBridgeComp({
     setShowScreenShake(true);
     playDeath();
     if (activeId && activeRow && hasOneBrokenTile(activeRow)) {
-      flashStatusBanner(pickRandom(brokenPlatformFallMessages)(getName(activeId)), 'danger');
+      flashStatusBanner(
+        getBrokenPlatformFallMessage(activeId === humanId, getName(activeId)),
+        'danger',
+      );
     }
 
     if (flashResetRef.current !== null) {
@@ -996,6 +1034,7 @@ export default function GlassBridgeComp({
     scaleSpectatorDelay,
     flashStatusBanner,
     getName,
+    humanId,
   ]);
 
   // ── 8. Detect end-of-game conditions ──────────────────────────────────────
@@ -1047,9 +1086,12 @@ export default function GlassBridgeComp({
           bestFinishTimeRef.current = effectiveFinishTime;
         }
         flashStatusBanner(
-          isRecord
-            ? pickRandom(newRecordMessages)(getName(pid), formatElapsed(effectiveFinishTime))
-            : pickRandom(finishMessages)(getName(pid), formatElapsed(effectiveFinishTime)),
+          getCompletionBannerMessage(
+            pid === humanId,
+            isRecord,
+            getName(pid),
+            formatElapsed(effectiveFinishTime),
+          ),
           isRecord ? 'record' : 'success',
         );
         setLandingPlayerIds(prev => [...prev, pid]);
@@ -1060,7 +1102,7 @@ export default function GlassBridgeComp({
         landingTimersRef.current.push(t);
       }
     }
-  }, [gb.progress, gb.phase, playWinner, flashStatusBanner, getName]);
+  }, [gb.progress, gb.phase, humanId, playWinner, flashStatusBanner, getName]);
 
   // ── 13. New-turn sound — play whenever a new player starts their turn ──────
   useEffect(() => {
@@ -1236,18 +1278,21 @@ export default function GlassBridgeComp({
   const bannerText = statusBanner?.message ?? defaultBannerText;
   const nextPlaybackSpeed = getNextPlaybackSpeed(playbackSpeed);
   const canFastForward = gb.humanSpectating && isHumanEliminated && gb.phase === 'playing';
-  const helpAriaLabel = useMemo(
-    () => hintsRemaining > 0
-      ? pickRandom(helpButtonLabelMessages)(hintsRemaining, HINT_PENALTY_MS / 1000)
-      : pickRandom(noHelpMessages),
-    [hintsRemaining],
-  );
-  const helpButtonText = useMemo(
-    () => hintsRemaining > 0
-      ? pickRandom(helpButtonTextMessages)(hintsRemaining)
-      : pickRandom(noHelpMessages),
-    [hintsRemaining],
-  );
+  const { helpAriaLabel, helpButtonText } = useMemo(() => {
+    if (hintsRemaining > 0) {
+      const buttonText = pickRandom(helpButtonMessages)(hintsRemaining);
+      return {
+        helpAriaLabel: `${buttonText}. Adds ${HINT_PENALTY_MS / 1000} seconds.`,
+        helpButtonText: `🔮 ${buttonText}`,
+      };
+    }
+
+    const noHelpText = pickRandom(noHelpMessages);
+    return {
+      helpAriaLabel: noHelpText,
+      helpButtonText: noHelpText,
+    };
+  }, [hintsRemaining]);
   const handleTogglePlaybackSpeed = () => {
     setPlaybackSpeed(nextPlaybackSpeed);
     flashStatusBanner(
@@ -1279,7 +1324,9 @@ export default function GlassBridgeComp({
           {gb.phase === 'playing' && (
             <span className="gb-hud-turn" aria-label="Current turn">
               {activeId
-                ? `${getName(activeId)}'s turn`
+                ? activeId === humanId
+                  ? 'Your turn'
+                  : `${getName(activeId)}'s turn`
                 : 'Waiting…'}
             </span>
           )}
