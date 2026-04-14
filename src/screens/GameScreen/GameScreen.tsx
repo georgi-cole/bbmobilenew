@@ -743,6 +743,10 @@ export default function GameScreen() {
     showNomAnim && game.lohId && game.players.some((p) => p.id === game.lohId)
       ? game.lohId
       : null
+  const shouldShowNominationCeremony =
+    showNomAnim &&
+    nomCeremonyTileIds.length > 0 &&
+    lohCeremonyTileId != null
 
   // ── Human LOH nomination flow (single multi-select modal) ────────────────
   // Shown when the human LOH must pick their two nominees simultaneously.
@@ -2476,7 +2480,7 @@ export default function GameScreen() {
 
       {/* ── Nomination ceremony — spotlight cutout with ❓ badges ─────────── */}
       {/* Shown for BOTH human LOH (deferred commit) and AI LOH (already committed). */}
-      {showNomAnim && nomCeremonyTileIds.length > 0 && lohCeremonyTileId && (
+      {shouldShowNominationCeremony && (
         <CeremonyOverlay
           tiles={[]}
           resolveTiles={() => {
