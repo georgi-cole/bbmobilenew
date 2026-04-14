@@ -27,6 +27,8 @@ const _audioDebug =
 
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
+/** Max new SFX elements to prime per gesture to avoid exhausting iOS playback budget. */
+const MAX_SFX_PRIMES_PER_GESTURE = 8;
 
 export interface PlayOptions {
   /** Volume override (0–1).  Defaults to entry volume or 1. */
@@ -227,7 +229,6 @@ class _SoundManager {
         if (_audioDebug) {
           console.log(`[SoundManager] play("${key}") blocked by autoplay policy — re-queued`);
         }
-        this._unlocked = false;
         this._playQueue.push({ key, isMusic: false, opts });
         this._ensureUnlockListeners();
       } else {
@@ -452,7 +453,7 @@ class _SoundManager {
    */
   unlockOnUserGesture(): void {
     if (typeof document === 'undefined') return;
-    if (this._unlocked) {
+    if (this._unlocked && this._playQueue.length === 0) {
       if (_audioDebug) {
         console.log('[SoundManager] unlockOnUserGesture() — already unlocked');
       }
@@ -478,7 +479,7 @@ class _SoundManager {
    */
   unlockAndPlayMusicOnly(): void {
     if (typeof document === 'undefined') return;
-    if (this._unlocked) {
+    if (this._unlocked && this._playQueue.length === 0) {
       if (_audioDebug) {
         console.log('[SoundManager] unlockAndPlayMusicOnly() — already unlocked');
       }
@@ -521,12 +522,12 @@ class _SoundManager {
       );
     }
     const musicItems: QueuedPlay[] = [];
-    const sfxItems: QueuedPlay[] = [];
+    let discardedSfxCount = 0;
     for (const item of q) {
       if (item.isMusic) {
         musicItems.push(item);
       } else {
-        sfxItems.push(item);
+        discardedSfxCount += 1;
       }
     }
     for (const item of musicItems) {
@@ -535,13 +536,12 @@ class _SoundManager {
     // Prime SFX pool elements during this gesture context so that iOS allows
     // future non-gesture plays (e.g. game-state-driven SFX like death/winner).
     this._primeSfxForMobile();
-    for (const item of sfxItems) {
-      void this._doPlay(item.key, item.opts);
+    if (_audioDebug && discardedSfxCount > 0) {
+      console.log('[SoundManager] discarded stale queued SFX item(s):', discardedSfxCount);
     }
   }
 
   private _queueMusicRetry(key: string, opts?: PlayOptions): void {
-    this._unlocked = false;
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
     this._playQueue.push({ key, isMusic: true, opts });
     this._ensureUnlockListeners();
@@ -553,7 +553,7 @@ class _SoundManager {
       console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
     }
     const handler = () => {
-      if (this._unlocked) return;
+      if (this._unlocked && this._playQueue.length === 0) return;
       this._unlocked = true;
       document.removeEventListener('click', handler, true);
       document.removeEventListener('keydown', handler, true);
@@ -613,8 +613,10 @@ class _SoundManager {
    */
   private _primeSfxForMobile(): void {
     if (typeof document === 'undefined') return;
+    let primedThisGesture = 0;
     for (const [key, entry] of Object.entries(SOUND_REGISTRY)) {
       if (entry.category === 'music') continue; // music handled separately
+      if (primedThisGesture >= MAX_SFX_PRIMES_PER_GESTURE) break;
       let pool = this._sfxPools.get(key);
       if (!pool) {
         pool = [];
@@ -636,6 +638,7 @@ class _SoundManager {
           }
         });
         pool.push(el);
+        primedThisGesture += 1;
         // Mute during priming to avoid audible artifacts on mobile browsers.
         // Setting muted=true is more reliable than volume=0 across WebView
         // implementations (some still produce audible noise at volume=0).
@@ -658,6 +661,13 @@ class _SoundManager {
           this._failedKeys.add(key);
         });
       }
+    }
+    if (_audioDebug && primedThisGesture >= MAX_SFX_PRIMES_PER_GESTURE) {
+      console.log(
+        '[SoundManager] SFX priming capped for this gesture at',
+        MAX_SFX_PRIMES_PER_GESTURE,
+        'item(s)',
+      );
     }
   }
 
