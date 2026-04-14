@@ -66,7 +66,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
     tone: 'positive',
     requiresRelated: true,
     build: (p, r) =>
-      `${p} made things right with ${r ?? 'a housemate'} in full view of the cameras, and viewers are calling it the season's best moment.`,
+      `${p} made things right with ${r ?? 'a player'} in full view of the cameras, and viewers are calling it the season's best moment.`,
   },
   {
     key: 'underdog_love',
@@ -101,7 +101,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
     tone: 'positive',
     requiresRelated: true,
     build: (p, r) =>
-      `A heartwarming exchange between ${p} and ${r ?? 'a housemate'} made the highlight reel and fans are melting.`,
+      `A heartwarming exchange between ${p} and ${r ?? 'a player'} made the highlight reel and fans are melting.`,
   },
   {
     key: 'bold_honesty',
@@ -124,7 +124,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
     tone: 'negative',
     requiresRelated: true,
     build: (p, r) =>
-      `The public is outraged after footage surfaced of ${p} talking behind ${r ?? 'a housemate'}'s back. The backlash is immense.`,
+      `The public is outraged after footage surfaced of ${p} talking behind ${r ?? 'a player'}'s back. The backlash is immense.`,
   },
   {
     key: 'rumour_blowup',
@@ -159,7 +159,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
     tone: 'negative',
     requiresRelated: true,
     build: (p, r) =>
-      `Footage of ${p} being needlessly cruel to ${r ?? 'a housemate'} leaked and the public reaction has been furious.`,
+      `Footage of ${p} being needlessly cruel to ${r ?? 'a player'} leaked and the public reaction has been furious.`,
   },
   {
     key: 'broken_promise',
@@ -173,7 +173,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
     tone: 'negative',
     requiresRelated: true,
     build: (p, r) =>
-      `${p} went after fan-favourite ${r ?? 'a beloved housemate'} and the crowd has turned on them in record time.`,
+      `${p} went after fan-favourite ${r ?? 'a beloved player'} and the crowd has turned on them in record time.`,
   },
   {
     key: 'coward_read',
@@ -196,7 +196,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
     tone: 'drama',
     requiresRelated: true,
     build: (p, r) =>
-      `${p} and ${r ?? 'a housemate'} had an explosive confrontation that crashed the live-feed forums. The audience is gripped.`,
+      `${p} and ${r ?? 'a player'} had an explosive confrontation that crashed the live-feed forums. The audience is gripped.`,
   },
   {
     key: 'blindside_play',
@@ -224,7 +224,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
     tone: 'drama',
     requiresRelated: true,
     build: (p, r) =>
-      `${p} spilled the tea on ${r ?? 'a housemate'} in spectacular fashion and the fan community has not moved on since.`,
+      `${p} spilled the tea on ${r ?? 'a player'} in spectacular fashion and the fan community has not moved on since.`,
   },
 ];
 

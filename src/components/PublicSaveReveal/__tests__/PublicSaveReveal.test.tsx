@@ -90,7 +90,7 @@ describe('PublicSaveReveal', () => {
 
     expect(screen.getByText('Public Save')).toBeTruthy();
     expect(
-      screen.getByText('Before safety battle, the housemate with highest public support is saved.'),
+      screen.getByText('Before safety battle, the player with highest public support is saved.'),
     ).toBeTruthy();
     expect(screen.queryByText('The Audience Decides')).toBeNull();
     expect(screen.queryByText('Tap to skip')).toBeNull();

@@ -75,7 +75,7 @@ const SUMMARY_POOL = [
   '{name} had a heart-to-heart with The Big Eye. No cameras allowed.',
   'The Confessional door just closed behind {name}. What was said stays in there.',
   '{name} just left the Confessional looking... thoughtful.',
-  'The Big Eye called {name} to the Confessional. The other housemates noticed.',
+  'The Big Eye called {name} to the Confessional. The other players noticed.',
   '{name} spent some quality time in the Confessional. Drama incoming?',
   'Sources close to the Confessional report {name} was very talkative today.',
   '{name} and The Big Eye had words. The House will never know what.',

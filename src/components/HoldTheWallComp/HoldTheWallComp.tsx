@@ -59,7 +59,7 @@ interface GamePlayer {
 
 const NARRATION = {
   start: [
-    "Alright housemates — grip that wall like your life depends on it! 💪",
+    "Alright players — grip that wall like your life depends on it! 💪",
     "Welcome to the wall of pain. Hope you all had a good breakfast! 🏋️",
     "Let's see who has the strength… and who has the noodle arms! 🍝",
   ],
@@ -81,7 +81,7 @@ const NARRATION = {
   final_two: [
     "We're down to TWO! This is getting intense! 🔥",
     "Mano a mano! Who wants it more?! 💪",
-    "Two housemates, one wall, zero mercy! 😤",
+    "Two players, one wall, zero mercy! 😤",
   ],
   victory: [
     "WE HAVE A WINNER! What an incredible performance! 🏆",

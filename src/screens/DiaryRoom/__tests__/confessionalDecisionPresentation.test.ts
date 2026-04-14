@@ -30,7 +30,7 @@ describe('getConfessionalDecisionPresentation', () => {
       alivePlayers,
     );
 
-    expect(presentation.prompt).toMatch(/choose the two houseguests you want to nominate/i);
+    expect(presentation.prompt).toMatch(/choose the two players you want to nominate/i);
     expect(presentation.key).not.toContain(presentation.prompt);
   });
 

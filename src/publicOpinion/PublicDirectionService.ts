@@ -39,7 +39,7 @@ function buildDescription(
 ): string {
   switch (type) {
     case 'get_closer':
-      return `Get closer to ${relatedName ?? 'a housemate'}`;
+      return `Get closer to ${relatedName ?? 'a player'}`;
     case 'target_player':
       return `Target ${relatedName ?? 'a rival'} for elimination`;
     case 'protect_player':
@@ -59,7 +59,7 @@ function buildDescription(
     case 'show_loyalty':
       return `Show loyalty to ${relatedName ?? 'your allies'}`;
     case 'start_drama':
-      return `Start drama with ${relatedName ?? 'a housemate'}`;
+      return `Start drama with ${relatedName ?? 'a player'}`;
     case 'win_veto':
       return `${playerName}, win the Power of Safety!`;
     case 'flip_vote':
@@ -71,7 +71,7 @@ function buildDescription(
     case 'reinforce_alliance':
       return `Strengthen your bond with ${relatedName ?? 'an ally'}`;
     case 'repair_relationship':
-      return `Repair your relationship with ${relatedName ?? 'a housemate'}`;
+      return `Repair your relationship with ${relatedName ?? 'a player'}`;
     case 'create_chaos':
       return `${playerName}, stir up chaos in the house this week!`;
     default:
