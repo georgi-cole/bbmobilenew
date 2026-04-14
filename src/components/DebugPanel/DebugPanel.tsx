@@ -79,7 +79,7 @@ const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
   warning: ['Be careful — eyes are on your alliances.', 'Watch out for the vote split tonight.'],
   alliance_proposal: ['Want to lock in something solid?', 'Let’s ride this out together.'],
   deal_offer: ['If you keep me safe, I owe you.', 'Let’s make a quiet side deal.'],
-  nomination_plea: ['Please don’t put me on the block.', 'I’ll do anything to stay safe.'],
+  nomination_plea: ['Please don’t nominate me.', 'I’ll do anything to stay safe.'],
   check_in: ['How are you feeling about the week?', 'Checking in — you okay?'],
   snide_remark: ['Nice move… if it actually works.', 'Bold choice. Hope it pays off.'],
   other: ['We need to talk later.', 'Just wanted to say hey.'],

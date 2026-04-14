@@ -2337,7 +2337,7 @@ export default function GameScreen() {
       return 'Houseguests are casting their votes.'
     }
     if (postVoteAnnouncementDelayActive && game.pendingEviction) {
-      return 'Please wait while the houseguest says their goodbyes.'
+      return 'Please wait while the player says their goodbyes.'
     }
     return undefined
   }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, postVoteAnnouncementDelayActive, game.pendingEviction])
@@ -2439,8 +2439,8 @@ export default function GameScreen() {
           title="Nomination Ceremony"
           subtitle={
             game.doubleEviction?.weekActive
-              ? `${humanPlayer?.name}, choose THREE housemates to nominate — Double Elimination tonight!`
-              : `${humanPlayer?.name}, choose two housemates to nominate for elimination.`
+              ? `${humanPlayer?.name}, choose THREE players to nominate — Double Elimination tonight!`
+              : `${humanPlayer?.name}, choose two players to nominate for elimination.`
           }
           options={nomineeOptions}
           maxSelect={game.doubleEviction?.weekActive ? 3 : 2}
@@ -2662,7 +2662,7 @@ export default function GameScreen() {
       {showTieBreakMultiSelectModal && (
         <TvMultiSelectModal
           title="Double Eviction Tie-Break"
-          subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} houseguests to eliminate.`}
+          subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} players to eliminate.`}
           options={tieBreakOptions}
           maxSelect={doubleEvictionTieBreakSelectCount}
           onConfirm={(ids) => dispatch(submitDoubleEvictionTieBreak(ids))}
@@ -2709,7 +2709,7 @@ export default function GameScreen() {
       {showFinal3Modal && (
         <TvDecisionModal
           title="Final LOH — Eliminate a Housemate"
-          subtitle={`${humanPlayer?.name}, as Final LOH you must directly eliminate one of the remaining housemates.`}
+          subtitle={`${humanPlayer?.name}, as Final LOH you must directly eliminate one of the remaining players.`}
           options={final3Options}
           onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
           danger
@@ -3027,10 +3027,10 @@ export default function GameScreen() {
               badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Leader of the House`,
             }]
           }}
-          caption={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A housemate'} wins Leader of the House!`}
+          caption={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A player'} wins Leader of the House!`}
           subtitle="👑"
           onDone={handleAdvanceHohCeremonyDone}
-          ariaLabel={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A housemate'} wins Leader of the House`}
+          ariaLabel={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A player'} wins Leader of the House`}
         />
       )}
 

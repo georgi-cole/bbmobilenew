@@ -268,7 +268,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     instructions: [
       'Press and HOLD the wall panel to stay in the competition.',
       'Releasing the wall means you drop out immediately.',
-      'AI housemates will drop off at random times — outlast them all.',
+      'AI players will drop off at random times — outlast them all.',
       'Last player standing wins the prize.',
     ],
     resultMode: 'placement',
@@ -289,9 +289,9 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     key: 'biographyBlitz',
     title: 'Biography Blitz',
     description:
-      'Trivia competition — answer questions about your housemates\' biographies. Wrong answer and you\'re out!',
+      'Trivia competition — answer questions about player biographies. Wrong answer and you\'re out!',
     instructions: [
-      'Each round a question about a housemate\'s biography is revealed.',
+      'Each round a question about a player\'s biography is revealed.',
       'Tap the correct answer before the timer runs out.',
       'Answer incorrectly and you are eliminated.',
       'Last player standing wins the prize.',
@@ -533,11 +533,11 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   socialStrings: {
     key: 'socialStrings',
     title: 'Social Strings',
-    description: 'Identify housemates in alliances together',
+    description: 'Identify players in alliances together',
     instructions: [
-      'View a network of housemate connections',
+      'View a network of player connections',
       'Identify alliance groups',
-      'Tap or connect housemates in the same alliance',
+      'Tap or connect players in the same alliance',
       'Complete the social network map',
     ],
     metricKind: 'accuracy',

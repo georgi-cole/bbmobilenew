@@ -166,7 +166,7 @@ function EvictionVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (submitting) return;
     setSelectedId(id);
     setSubmitting(true);
-    const name = options.find((player) => player.id === id)?.name ?? 'that houseguest';
+    const name = options.find((player) => player.id === id)?.name ?? 'that player';
     onDecisionCommitted?.(`I choose ${name}.`);
     dispatch(submitHumanVote(id));
   }
@@ -473,7 +473,7 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (submitting) return;
     setSelectedId(id);
     setSubmitting(true);
-    const name = options.find((player) => player.id === id)?.name ?? 'that houseguest';
+    const name = options.find((player) => player.id === id)?.name ?? 'that player';
     onDecisionCommitted?.(`I name ${name} as the replacement nominee.`);
     if (isDiamond) dispatch(submitDiamondReplacement(id));
     else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(id));

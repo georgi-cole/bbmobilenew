@@ -89,7 +89,7 @@ function buildGoodbyeLines(players: Player[], season: number): ChatLine[] {
     id: 'goodbye-host',
     role: 'host',
     player: HOST_PLAYER,
-    text: `Season ${season} gave us blindsides, heartbreak, and a champion. One final message from the housemates.`,
+    text: `Season ${season} gave us blindsides, heartbreak, and a champion. One final message from the players.`,
   };
 
   const playerLines = players.map((player, index) => ({

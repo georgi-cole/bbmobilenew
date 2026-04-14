@@ -37,7 +37,7 @@ type Step = 'voting' | 'winner';
 
 const ELIM_INTERVAL_MS = 3500;
 const TICKER_MSG =
-  "The public is voting for their Favorite Player… One houseguest wins the grand prize! ✦  ";
+  "The public is voting for their Favorite Player… One player wins the grand prize! ✦  ";
 
 function formatEyeoleans(amount: number): string {
   return `${new Intl.NumberFormat('en-US', {

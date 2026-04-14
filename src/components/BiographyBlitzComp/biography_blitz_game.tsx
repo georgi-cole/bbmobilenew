@@ -584,7 +584,7 @@ export default function BiographyBlitzComp({
             <p className="bb-blitz__question-hint">
               {selectedAnswerId
                 ? `Selected: ${getName(selectedAnswerId)} — Press Submit to confirm`
-                : 'Tap the correct housemate, then press Submit!'}
+                : 'Tap the correct player, then press Submit!'}
             </p>
           )}
           {phase === 'reveal' && bb.correctAnswerId && (

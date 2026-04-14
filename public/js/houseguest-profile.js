@@ -447,9 +447,9 @@
           }
           
           if (entry.pov) {
-            details.push('⭐ Won Power of Veto competition');
+            details.push('⭐ Won Power of Safety competition');
           } else if (entry.povCompeted) {
-            details.push('🎯 Competed in Power of Veto');
+            details.push('🎯 Competed in Power of Safety');
           }
           
           // Nomination status
@@ -460,7 +460,7 @@
           
           if (entry.vetoed) {
             const vetoedBy = entry.vetoedBy ? ` by ${entry.vetoedBy}` : '';
-            details.push(`🛡️ Saved with Power of Veto${vetoedBy}`);
+            details.push(`🛡️ Saved with Power of Safety${vetoedBy}`);
           }
           
           // Social gameplay

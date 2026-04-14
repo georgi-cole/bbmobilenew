@@ -186,7 +186,7 @@ export default function CompSelection({
               <option value="">— pick a game —</option>
               {games.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.name} ({g.id})
+                  {g.name}
                 </option>
               ))}
             </select>

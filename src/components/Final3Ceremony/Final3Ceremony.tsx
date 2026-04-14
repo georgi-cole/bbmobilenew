@@ -261,7 +261,7 @@ export default function Final3Ceremony() {
       {stage === 'decision' && humanIsLoh && (
         <TvDecisionModal
           title="Final LOH — Eliminate a Housemate"
-          subtitle={`${lohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining housemates.`}
+          subtitle={`${lohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining players.`}
           options={nominees}
           onSelect={handleHumanDecision}
           danger

@@ -1,7 +1,7 @@
 /**
  * Question bank for the "Biography Blitz" competition.
  *
- * Each question presents a multiple-choice prompt about a housemate's
+ * Each question presents a multiple-choice prompt about a player's
  * biographical details — occupation, hometown, hobbies, etc.  Players must
  * identify the correct answer to survive the round.
  */
@@ -24,7 +24,7 @@ export interface BiographyBlitzQuestion {
 export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   {
     id: 'bb_q01',
-    prompt: 'Which housemate listed "competitive eater" as their hidden talent on their bio?',
+    prompt: 'Which player listed "competitive eater" as their hidden talent on their bio?',
     answers: [
       { id: 'a', text: 'Marcus' },
       { id: 'b', text: 'Delilah' },
@@ -35,7 +35,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q02',
-    prompt: 'According to the housemate bios, which player is a licensed skydiving instructor?',
+    prompt: 'According to the player bios, which player is a licensed skydiving instructor?',
     answers: [
       { id: 'a', text: 'Priya' },
       { id: 'b', text: 'Jordan' },
@@ -46,7 +46,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q03',
-    prompt: 'Which housemate bio says they grew up on a farm in rural Montana?',
+    prompt: 'Which player bio says they grew up on a farm in rural Montana?',
     answers: [
       { id: 'a', text: 'Camille' },
       { id: 'b', text: 'Eli' },
@@ -57,7 +57,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q04',
-    prompt: 'Whose housemate profile lists their occupation as "social media strategist"?',
+    prompt: 'Whose player profile lists their occupation as "social media strategist"?',
     answers: [
       { id: 'a', text: 'Harper' },
       { id: 'b', text: 'Felix' },
@@ -68,7 +68,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q05',
-    prompt: 'Which housemate said their biggest fear in the house was "running out of coffee"?',
+    prompt: 'Which player said their biggest fear in the house was "running out of coffee"?',
     answers: [
       { id: 'a', text: 'Jonah' },
       { id: 'b', text: 'Vivienne' },
@@ -79,7 +79,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q06',
-    prompt: 'According to their bio, which housemate speaks four languages fluently?',
+    prompt: 'According to their bio, which player speaks four languages fluently?',
     answers: [
       { id: 'a', text: 'Desmond' },
       { id: 'b', text: 'Lydia' },
@@ -90,7 +90,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q07',
-    prompt: 'Which housemate listed "former competitive gymnast" as part of their bio?',
+    prompt: 'Which player listed "former competitive gymnast" as part of their bio?',
     answers: [
       { id: 'a', text: 'Theo' },
       { id: 'b', text: 'Zara' },
@@ -112,7 +112,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q09',
-    prompt: 'Which housemate\'s bio reveals they have a twin who also applied for the show?',
+    prompt: 'Which player\'s bio reveals they have a twin who also applied for the show?',
     answers: [
       { id: 'a', text: 'Dax' },
       { id: 'b', text: 'Esme' },
@@ -123,7 +123,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q10',
-    prompt: 'According to their housemate bio, who once trained as a professional chef?',
+    prompt: 'According to their bio, who once trained as a professional chef?',
     answers: [
       { id: 'a', text: 'Serena' },
       { id: 'b', text: 'Orion' },
@@ -134,7 +134,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q11',
-    prompt: 'Which housemate listed "amateur astronomer" as their hobby in their bio?',
+    prompt: 'Which player listed "amateur astronomer" as their hobby in their bio?',
     answers: [
       { id: 'a', text: 'Vera' },
       { id: 'b', text: 'Dash' },
@@ -156,7 +156,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q13',
-    prompt: 'Which housemate listed their hometown as Miami, Florida in their bio?',
+    prompt: 'Which player listed their hometown as Miami, Florida in their bio?',
     answers: [
       { id: 'a', text: 'Soleil' },
       { id: 'b', text: 'Dorian' },
@@ -167,7 +167,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q14',
-    prompt: 'According to their bio, which housemate volunteers at an animal rescue shelter?',
+    prompt: 'According to their bio, which player volunteers at an animal rescue shelter?',
     answers: [
       { id: 'a', text: 'Juno' },
       { id: 'b', text: 'Stellan' },
@@ -178,7 +178,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q15',
-    prompt: 'Which housemate\'s bio says their strategy is "trust nobody, smile at everybody"?',
+    prompt: 'Which player\'s bio says their strategy is "trust nobody, smile at everybody"?',
     answers: [
       { id: 'a', text: 'Maxine' },
       { id: 'b', text: 'Levi' },
@@ -189,7 +189,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q16',
-    prompt: 'Whose housemate bio describes them as a retired professional poker player?',
+    prompt: 'Whose player bio describes them as a retired professional poker player?',
     answers: [
       { id: 'a', text: 'Birdie' },
       { id: 'b', text: 'Casey' },
@@ -200,7 +200,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q17',
-    prompt: 'Which housemate said in their bio they would use their prize money to open a yoga studio?',
+    prompt: 'Which player said in their bio they would use their prize money to open a yoga studio?',
     answers: [
       { id: 'a', text: 'Skye' },
       { id: 'b', text: 'Grant' },
@@ -211,7 +211,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q18',
-    prompt: 'According to their bio, which housemate is afraid of birds?',
+    prompt: 'According to their bio, which player is afraid of birds?',
     answers: [
       { id: 'a', text: 'Leif' },
       { id: 'b', text: 'Bonnie' },
@@ -222,7 +222,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q19',
-    prompt: 'Which housemate\'s bio says they have never watched a full season of The Big Eye before applying?',
+    prompt: 'Which player\'s bio says they have never watched a full season of The Big Eye before applying?',
     answers: [
       { id: 'a', text: 'Pax' },
       { id: 'b', text: 'Indira' },
@@ -244,7 +244,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q21',
-    prompt: 'Which housemate listed "salsa dancing champion" as a fun fact in their bio?',
+    prompt: 'Which player listed "salsa dancing champion" as a fun fact in their bio?',
     answers: [
       { id: 'a', text: 'Elara' },
       { id: 'b', text: 'Soren' },
@@ -266,7 +266,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q23',
-    prompt: 'Which housemate bio mentions they were once a college football captain?',
+    prompt: 'Which player bio mentions they were once a college football captain?',
     answers: [
       { id: 'a', text: 'Devin' },
       { id: 'b', text: 'Opal' },
@@ -277,7 +277,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q24',
-    prompt: 'Whose housemate bio says they were homeschooled and learned everything from YouTube?',
+    prompt: 'Whose player bio says they were homeschooled and learned everything from YouTube?',
     answers: [
       { id: 'a', text: 'Adler' },
       { id: 'b', text: 'Fiona' },
@@ -288,7 +288,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q25',
-    prompt: 'Which housemate listed "competitive knitting" as their most unexpected hobby?',
+    prompt: 'Which player listed "competitive knitting" as their most unexpected hobby?',
     answers: [
       { id: 'a', text: 'Kit' },
       { id: 'b', text: 'Vivaan' },
@@ -299,7 +299,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q26',
-    prompt: 'According to their bio, which housemate is a licensed pilot?',
+    prompt: 'According to their bio, which player is a licensed pilot?',
     answers: [
       { id: 'a', text: 'Piper' },
       { id: 'b', text: 'Stellan' },
@@ -310,7 +310,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q27',
-    prompt: 'Which housemate\'s bio says they grew up speaking Mandarin at home?',
+    prompt: 'Which player\'s bio says they grew up speaking Mandarin at home?',
     answers: [
       { id: 'a', text: 'Wen' },
       { id: 'b', text: 'Harley' },
@@ -332,7 +332,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q29',
-    prompt: 'Which housemate said in their bio they hate losing more than anything in the world?',
+    prompt: 'Which player said in their bio they hate losing more than anything in the world?',
     answers: [
       { id: 'a', text: 'Azura' },
       { id: 'b', text: 'Caspian' },
@@ -343,7 +343,7 @@ export const BIOGRAPHY_BLITZ_QUESTIONS: BiographyBlitzQuestion[] = [
   },
   {
     id: 'bb_q30',
-    prompt: 'According to their bio, which housemate has a background in military intelligence?',
+    prompt: 'According to their bio, which player has a background in military intelligence?',
     answers: [
       { id: 'a', text: 'Stone' },
       { id: 'b', text: 'Ember' },

@@ -101,7 +101,7 @@ export default function TvMultiSelectModal({
           <div className="tv-ms-modal__body">
             {options.length === 0 ? (
               <p className="tv-ms-modal__empty">
-                No eligible houseguests available.
+                No eligible players available.
               </p>
             ) : (
               options.map((player) => {

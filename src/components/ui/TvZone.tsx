@@ -91,14 +91,14 @@ const MAJOR_KEYS = new Set([
 
 /** Maps a major key to its announcement title and subtitle. */
 const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }> = {
-  nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two housemates are going on the block.',                      isLive: true,  autoDismissMs: null },
+  nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two players are nominated for elimination.',                  isLive: true,  autoDismissMs: null },
   veto_ceremony:        { title: 'Safety Ceremony',            subtitle: 'Will the Power of Safety be used?',                            isLive: true,  autoDismissMs: null },
   live_eviction:        { title: 'Live Elimination',            subtitle: 'The house votes to eliminate.',                                isLive: true,  autoDismissMs: null },
   final4:               { title: 'Final 4 — Safety Ceremony', subtitle: 'Only four players remain.',                                    isLive: true,  autoDismissMs: null },
   final3_announcement:  { title: 'Final 3',                    subtitle: 'Three players remain — the three-part Final LOH begins.',      isLive: true,  autoDismissMs: null },
   final_hoh:            { title: 'Final LOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
   jury:                 { title: 'Tribunal Votes',             subtitle: 'The Tribunal decides the winner.',                             isLive: true,  autoDismissMs: null },
-  battle_back:          { title: 'Battle Back',                subtitle: 'Eliminated housemates compete for a second chance.',            isLive: true,  autoDismissMs: null },
+  battle_back:          { title: 'Battle Back',                subtitle: 'Eliminated players compete for a second chance.',              isLive: true,  autoDismissMs: null },
   double_eviction:      { title: 'Double Elimination!',        subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',      isLive: true,  autoDismissMs: null },
   vip_veto:             { title: 'Double Trouble!',            subtitle: 'The holder may use the power twice this ceremony. 👑',            isLive: true,  autoDismissMs: null },
   diamond_pov:          { title: 'Halo Exchange!',             subtitle: 'The holder may name the backup nominee. 😇',                    isLive: true,  autoDismissMs: null },
