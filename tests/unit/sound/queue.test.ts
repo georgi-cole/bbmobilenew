@@ -81,7 +81,7 @@ describe('SoundManager unlock queue — play()', () => {
     expect(sm._playQueue[0]).toMatchObject({ key: 'music:intro_hub_loop', isMusic: false });
   });
 
-  it('drains the queue and plays after unlock', async () => {
+  it('drops queued SFX after unlock instead of replaying stale effects', async () => {
     const doPlay = vi.spyOn(
       SoundManager as unknown as { _doPlay: (key: string) => Promise<void> },
       '_doPlay',
@@ -95,7 +95,7 @@ describe('SoundManager unlock queue — play()', () => {
     // Allow micro-tasks from _drainQueue to resolve
     await Promise.resolve();
 
-    expect(doPlay).toHaveBeenCalledWith('ui:jury_vote', undefined);
+    expect(doPlay).not.toHaveBeenCalled();
   });
 });
 
@@ -146,7 +146,7 @@ describe('SoundManager unlockOnUserGesture()', () => {
     expect(sm._unlocked).toBe(true);
   });
 
-  it('drains mixed sfx + music queue in order', async () => {
+  it('drains queued music but discards queued SFX', async () => {
     const calls: string[] = [];
 
     vi.spyOn(
@@ -166,9 +166,7 @@ describe('SoundManager unlockOnUserGesture()', () => {
     SoundManager.unlockOnUserGesture();
     await Promise.resolve();
 
-    expect(calls).toContain('sfx:ui:jury_vote');
-    expect(calls).toContain('music:music:intro_hub_loop');
-    expect(calls).toContain('sfx:tv:winner_reveal');
+    expect(calls).toEqual(['music:music:intro_hub_loop']);
   });
 
   it('play() after unlock bypasses the queue and calls _doPlay directly', async () => {
@@ -260,13 +258,71 @@ describe('SoundManager autoplay recovery', () => {
 
     await SoundManager.playMusic('music:intro_hub_loop');
 
-    expect(sm._unlocked).toBe(false);
+    expect(sm._unlocked).toBe(true);
     expect(sm._playQueue).toContainEqual({
       key: 'music:intro_hub_loop',
       isMusic: true,
       opts: undefined,
     });
     expect(sm._failedKeys.has('music:intro_hub_loop')).toBe(false);
+  });
+
+  it('retries queued music on the next gesture even if audio stayed unlocked', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _playQueue: Array<{ key: string; isMusic: boolean; opts?: unknown }>;
+      _queueMusicRetry: (key: string) => void;
+    };
+    const doPlayMusic = vi.spyOn(
+      SoundManager as unknown as { _doPlayMusic: (key: string) => Promise<void> },
+      '_doPlayMusic',
+    ).mockResolvedValue(undefined);
+    vi.spyOn(
+      SoundManager as unknown as { _primeSfxForMobile: () => void },
+      '_primeSfxForMobile',
+    ).mockImplementation(() => {});
+
+    sm._unlocked = true;
+    sm._queueMusicRetry('music:intro_hub_loop');
+
+    SoundManager.unlockOnUserGesture();
+    await Promise.resolve();
+
+    expect(sm._unlocked).toBe(true);
+    expect(sm._playQueue).toEqual([]);
+    expect(doPlayMusic).toHaveBeenCalledWith('music:intro_hub_loop', undefined);
+  });
+
+  it('caps SFX priming work per gesture', () => {
+    const realCreateElement = document.createElement.bind(document);
+    let primedAudioCount = 0;
+
+    vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
+      if (tagName !== 'audio') {
+        return realCreateElement(tagName);
+      }
+      primedAudioCount += 1;
+      return {
+        src: '',
+        loop: false,
+        volume: 1,
+        muted: false,
+        preload: 'none',
+        error: null,
+        currentTime: 0,
+        paused: true,
+        ended: false,
+        addEventListener: vi.fn(),
+        pause: vi.fn(),
+        play: vi.fn().mockReturnValue(Promise.resolve()),
+      } as unknown as HTMLAudioElement;
+    }) as typeof document.createElement);
+
+    (
+      SoundManager as unknown as { _primeSfxForMobile: () => void }
+    )._primeSfxForMobile();
+
+    expect(primedAudioCount).toBe(8);
   });
 
   it('marks audio as needing a fresh gesture after the page is hidden', async () => {
