@@ -155,6 +155,7 @@
   aspect-ratio: 1 / 1;
   max-height: 100%;
   object-fit: contain;
+  touch-action: none;
 }
 
 /* ── Status line ────────────────────────────────────────────────────────── */
