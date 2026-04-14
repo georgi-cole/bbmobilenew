@@ -95,9 +95,9 @@ describe('GlassBridgeComp', () => {
     expect(screen.getByText('Path Complete')).toBeTruthy();
   });
 
-  it('shows the Request Help button during human turn and grants a hint on click', async () => {
+  it('moves the help button above the first row and strengthens repeated hints on the same row', async () => {
     const store = makeStore();
-    render(
+    const { container } = render(
       <Provider store={store}>
         <GlassBridgeComp
           participantIds={['user', 'ai-1']}
@@ -125,23 +125,53 @@ describe('GlassBridgeComp', () => {
     expect(helpBtn).not.toBeNull();
     expect(helpBtn!.textContent).toMatch(/3 left/i);
 
-    // Click the hint button.
+    const hintArea = container.querySelector('.gb-bridge-container .gb-hint-area');
+    const firstRow = container.querySelector('.gb-bridge-container .gb-row');
+    expect(hintArea).not.toBeNull();
+    expect(firstRow).not.toBeNull();
+    expect(hintArea!.compareDocumentPosition(firstRow!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    const currentRow = store.getState().glassBridge.currentPlayerRow;
+    const currentRowState = store.getState().glassBridge.rows[currentRow - 1];
+    const expectedHints = currentRowState.safeSide === 'right'
+      ? [65, 90, 99]
+      : [35, 10, 1];
+
+    const observedHints: number[] = [];
+
+    // Click the hint button three times on the same row.
     await act(async () => {
       fireEvent.click(helpBtn!);
     });
-
-    // The Expert hint message should appear.
-    const hintMsg = screen.queryByRole('status');
+    let hintMsg = screen.queryByRole('status');
     expect(hintMsg).not.toBeNull();
-    expect(hintMsg!.textContent).toMatch(/The Expert says there is a \d+% chance/i);
+    observedHints.push(Number(hintMsg!.textContent!.match(/(\d+)%/)?.[1] ?? '0'));
+    expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/2 left/i);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /request help/i }));
+    });
+    hintMsg = screen.queryByRole('status');
+    expect(hintMsg).not.toBeNull();
+    observedHints.push(Number(hintMsg!.textContent!.match(/(\d+)%/)?.[1] ?? '0'));
+    expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/1 left/i);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /request help/i }));
+    });
+    hintMsg = screen.queryByRole('status');
+    expect(hintMsg).not.toBeNull();
+    observedHints.push(Number(hintMsg!.textContent!.match(/(\d+)%/)?.[1] ?? '0'));
 
     // Hint penalty should be recorded in Redux state (30 000 ms).
     const state = store.getState();
     const userProgress = state.glassBridge.progress['user'];
-    expect(userProgress?.hintPenaltyMs).toBe(HINT_PENALTY_MS);
+    expect(userProgress?.hintPenaltyMs).toBe(HINT_PENALTY_MS * 3);
+    expect(observedHints).toEqual(expectedHints);
 
-    // Button should now show 2 hints left.
-    expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/2 left/i);
+    const exhaustedBtn = screen.getByRole('button', { name: /you're on your own/i });
+    expect(exhaustedBtn.textContent).toBe("You're on your own");
+    expect(exhaustedBtn).toBeDisabled();
   });
 
   it('generates a fresh session seed on each mount when no explicit seed is provided', async () => {
