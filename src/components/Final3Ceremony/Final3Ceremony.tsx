@@ -251,9 +251,9 @@ export default function Final3Ceremony() {
         <ChatOverlay
           lines={pleaLines}
           skippable
-          header={{ title: 'Final 3 🏠', subtitle: 'Nominees make their final pleas.' }}
+          header={{ title: 'The Finale 🏠', subtitle: 'Nominees make their final pleas.' }}
           onComplete={handlePleaComplete}
-          ariaLabel="Final 3 plea chat"
+          ariaLabel="The Finale plea chat"
         />
       )}
 
@@ -274,9 +274,9 @@ export default function Final3Ceremony() {
         <ChatOverlay
           lines={announceLines}
           skippable
-          header={{ title: 'Final 3 🚪', subtitle: 'The Final LOH has made their decision.' }}
+          header={{ title: 'The Finale 🚪', subtitle: 'The Final LOH has made their decision.' }}
           onComplete={handleAnnounceComplete}
-          ariaLabel="Final 3 elimination announcement"
+          ariaLabel="The Finale elimination announcement"
         />
       )}
 

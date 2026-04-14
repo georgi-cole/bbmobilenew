@@ -46,13 +46,13 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '4️⃣',
     label: 'FINAL 4',
     category: 'Endgame',
-    body: 'Only four players remain. The stakes are at their highest — every competition, every vote, every conversation could determine who makes it to the Final 3. At this stage there is no longer a traditional safety ceremony; the POS holder is the sole vote to eliminate.',
+    body: 'Only four players remain. The stakes are at their highest — every competition, every vote, every conversation could determine who makes it to the Finale. At this stage there is no longer a traditional safety ceremony; the POS holder is the sole vote to eliminate.',
   },
   final3: {
     icon: '3️⃣',
-    label: 'FINAL 3',
+    label: 'THE FINALE',
     category: 'Endgame',
-    body: 'The Final 3 have earned their place. They now compete in the legendary three-part Leader of the House competition. Part 1 is an endurance battle. Part 2 tests skill and memory. The winners of Parts 1 and 2 face off in Part 3, and the winner becomes the Final Leader of the House.',
+    body: 'The Finale has arrived. Three players remain, and they now compete in the legendary three-part Leader of the House competition. Part 1 is an endurance battle. Part 2 tests skill and memory. The winners of Parts 1 and 2 face off in Part 3, and the winner becomes the Final Leader of the House.',
   },
   final_hoh: {
     icon: '👑',
