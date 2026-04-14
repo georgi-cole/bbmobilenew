@@ -1,13 +1,13 @@
 /**
- * TetrisComp — Modernised native React Tetris competition minigame.
+ * TetrisComp — Modernised native React "Fit Me In" competition minigame.
  *
  * Features:
  *  - Ghost piece (shows where the falling piece will land)
  *  - Hold piece (swap current piece to hold, once per piece)
  *  - Next-piece preview (shows 3 upcoming pieces)
- *  - Standard Tetris 7-bag random piece generation (no repeats within a bag)
+ *  - Standard 7-bag random piece generation (no repeats within a bag)
  *  - Wall-kick rotation (SRS-inspired)
- *  - Standard scoring: 1=100, 2=300, 3=500, 4=800 (Tetris!), × level
+ *  - Standard scoring: 1=100, 2=300, 3=500, 4=800 (four-line clear!), × level
  *  - Soft drop (+1/row) and hard drop (+2/row) bonus
  *  - Level up every 10 lines; speed increases with level
  *  - Visual effects: line-clear flash, level-up pulse, danger state above row 4,
@@ -803,7 +803,7 @@ export default function TetrisComp({
         {/* Board */}
         <div
           className={['tetris-board-wrap', lockFlash ? 'tetris-board-wrap--flash' : ''].filter(Boolean).join(' ')}
-          aria-label="Tetris board"
+          aria-label="Fit Me In board"
           role="img"
         >
           <div

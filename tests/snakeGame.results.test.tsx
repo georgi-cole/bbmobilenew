@@ -108,8 +108,8 @@ describe('SnakeGame competition reveal flow', () => {
     await driveGameToWaiting();
 
     expect(screen.getByText(/Some players still wrapping up/i)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /snake activity animation/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/snake game board/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /serpentine activity animation/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/serpentine game board/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/direction controls/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: /competition results/i })).not.toBeInTheDocument();
 
@@ -165,7 +165,7 @@ describe('SnakeGame competition reveal flow', () => {
     expect(onFinish).toHaveBeenCalledWith(0);
   });
 
-  it('renders a larger Nokia status line for points and time', () => {
+  it('renders a retro handheld status line for points and time', () => {
     const store = makeStore();
     ensureSnakeStylesInjected();
 
