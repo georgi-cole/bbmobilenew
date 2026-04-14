@@ -1460,19 +1460,19 @@ export default function GlassBridgeComp({
             const p = gb.progress[pid];
             const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
             const isYou = pid === humanId;
+            const hintUses = getHintUses(p?.hintPenaltyMs);
 
             const detail: string = p?.finishTimeMs !== undefined
               ? (() => {
                   const penalty = p.hintPenaltyMs ?? 0;
                   const effective = p.finishTimeMs + penalty;
-                  const hintUses = getHintUses(p.hintPenaltyMs);
                   const base = `Finished ${formatElapsed(effective)}`;
                   return hintUses > 0
                     ? `${base} (${hintUses} hint${hintUses === 1 ? '' : 's'}, +${penalty / 1000}s)`
                     : base;
                 })()
               : p?.furthestRowReached
-                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}${getHintUses(p?.hintPenaltyMs) > 0 ? ` • ${getHintUses(p?.hintPenaltyMs)} hint${getHintUses(p?.hintPenaltyMs) === 1 ? '' : 's'}` : ''}`
+                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}${hintUses > 0 ? ` • ${hintUses} hint${hintUses === 1 ? '' : 's'}` : ''}`
                 : 'Row 0';
 
             return (
