@@ -50,6 +50,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
     f3Part2WinnerId: 'p2',
     spectatorActive: null,
     ...overrides,
+    gameId: overrides.gameId ?? 'spectator-test-game',
   };
   return configureStore({ reducer: { game: gameReducer }, preloadedState: { game: base } });
 }
