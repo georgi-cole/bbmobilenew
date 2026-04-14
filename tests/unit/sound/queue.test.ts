@@ -275,12 +275,22 @@ describe('SoundManager autoplay recovery', () => {
     SoundManager.unlockOnUserGesture();
     expect(sm._unlocked).toBe(true);
 
-    Object.defineProperty(document, 'hidden', {
-      configurable: true,
-      get: () => true,
-    });
-    document.dispatchEvent(new Event('visibilitychange'));
+    const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
 
-    expect(sm._unlocked).toBe(false);
+    try {
+      Object.defineProperty(document, 'hidden', {
+        configurable: true,
+        get: () => true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(sm._unlocked).toBe(false);
+    } finally {
+      if (originalHiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+      } else {
+        Reflect.deleteProperty(document, 'hidden');
+      }
+    }
   });
 });
