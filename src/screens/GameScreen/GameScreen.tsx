@@ -2484,7 +2484,9 @@ export default function GameScreen() {
         <CeremonyOverlay
           tiles={[]}
           resolveTiles={() => {
-            const lohRect = getTileRect(lohCeremonyTileId)
+            const lohId = lohCeremonyTileId
+            if (!lohId) return []
+            const lohRect = getTileRect(lohId)
             return [
               {
                 rect: lohRect,
