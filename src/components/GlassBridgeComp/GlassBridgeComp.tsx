@@ -175,6 +175,12 @@ function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations');
 }
 
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 function getTimeoutCollapseDuration(rowsCount: number, noAnimations: boolean): number {
   if (noAnimations) return 0;
   const finalTileDelay = Math.max(0, rowsCount - 1) * TIMEOUT_ROW_BREAK_STAGGER_MS
@@ -513,8 +519,7 @@ export default function GlassBridgeComp({
   const timeoutCollapseResolveRef = useRef<number | null>(null);
   const statusBannerResetRef = useRef<number | null>(null);
   const playingScrollRef = useRef<HTMLDivElement | null>(null);
-  const activeBannerRowRef = useRef<HTMLDivElement | null>(null);
-  const hintAreaRef = useRef<HTMLDivElement | null>(null);
+  const floatingUiRef = useRef<HTMLDivElement | null>(null);
   const rowRefs = useRef<Array<HTMLDivElement | null>>([]);
   const timerScaleRef = useRef<{
     anchorRealMs: number;
@@ -1197,9 +1202,7 @@ export default function GlassBridgeComp({
 
     const scrollRect = scrollContainer.getBoundingClientRect();
     const rowRect = currentRowEl.getBoundingClientRect();
-    const floatingOffset =
-      (activeBannerRowRef.current?.getBoundingClientRect().height ?? 0)
-      + (hintAreaRef.current?.getBoundingClientRect().height ?? 0);
+    const floatingOffset = floatingUiRef.current?.getBoundingClientRect().height ?? 0;
     const visibleTop = scrollRect.top + floatingOffset + 12;
     const visibleBottom = scrollRect.bottom - 12;
     const availableHeight = Math.max(1, visibleBottom - visibleTop);
@@ -1211,9 +1214,10 @@ export default function GlassBridgeComp({
       ? rowRect.top - visibleTop
       : rowRect.bottom - visibleBottom;
     const nextTop = Math.max(0, scrollContainer.scrollTop + delta);
+    const scrollBehavior = areAnimationsDisabled() || prefersReducedMotion() ? 'auto' : 'smooth';
 
     if (typeof scrollContainer.scrollTo === 'function') {
-      scrollContainer.scrollTo({ top: nextTop, behavior: 'smooth' });
+      scrollContainer.scrollTo({ top: nextTop, behavior: scrollBehavior });
     } else {
       scrollContainer.scrollTop = nextTop;
     }
@@ -1501,31 +1505,27 @@ export default function GlassBridgeComp({
       {/* ── Playing ── */}
       {gb.phase === 'playing' && (
         <div className="gb-playing" ref={playingScrollRef}>
-          <div className="gb-active-banner-row" ref={activeBannerRowRef}>
-            <div
-              className={`gb-active-banner${statusBanner ? ` gb-active-banner-flash gb-active-banner-${statusBanner.variant}` : ''}`}
-              aria-live="polite"
-            >
-              {bannerText}
-            </div>
-            {canFastForward && (
-              <button
-                type="button"
-                className="gb-ffwd-btn"
-                onClick={handleTogglePlaybackSpeed}
-                aria-label={`Playback speed ${playbackSpeed}x. Tap to switch to ${nextPlaybackSpeed}x`}
+          <div className="gb-floating-ui" ref={floatingUiRef}>
+            <div className="gb-active-banner-row">
+              <div
+                className={`gb-active-banner${statusBanner ? ` gb-active-banner-flash gb-active-banner-${statusBanner.variant}` : ''}`}
+                aria-live="polite"
               >
-                ⏩ {playbackSpeed}×
-              </button>
-            )}
-          </div>
-          {/* Bridge */}
-          <div className="gb-bridge-container" role="region" aria-label="Crystal path">
-            {/* LED accent rails — decorative outer edge lighting */}
-            <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
-            <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
+                {bannerText}
+              </div>
+              {canFastForward && (
+                <button
+                  type="button"
+                  className="gb-ffwd-btn"
+                  onClick={handleTogglePlaybackSpeed}
+                  aria-label={`Playback speed ${playbackSpeed}x. Tap to switch to ${nextPlaybackSpeed}x`}
+                >
+                  ⏩ {playbackSpeed}×
+                </button>
+              )}
+            </div>
             {isHumanTurn && !isHumanEliminated && !gb.timerExpired && (
-              <div className="gb-hint-area" ref={hintAreaRef}>
+              <div className="gb-hint-area">
                 {currentHintMessage && (
                   <div className="gb-hint-message" role="status" aria-live="polite">
                     🔮 {currentHintMessage}
@@ -1541,6 +1541,12 @@ export default function GlassBridgeComp({
                 </button>
               </div>
             )}
+          </div>
+          {/* Bridge */}
+          <div className="gb-bridge-container" role="region" aria-label="Crystal path">
+            {/* LED accent rails — decorative outer edge lighting */}
+            <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
+            <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
               const isCurrentRow = gb.currentPlayerRow === rowNum;
