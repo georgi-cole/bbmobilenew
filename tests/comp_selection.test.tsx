@@ -50,7 +50,7 @@ describe('CompSelection component', () => {
     });
 
     // Single-game dropdown should be visible and populated from fetchGames
-    const gameSelect = await waitFor(() => screen.getByLabelText('Single game key'));
+    const gameSelect = await waitFor(() => screen.getByLabelText('Select game'));
     expect(gameSelect).toBeTruthy();
 
     // All mock games should appear as options
@@ -80,7 +80,7 @@ describe('CompSelection component', () => {
     });
 
     // Pick a game
-    const gameSelect = await waitFor(() => screen.getByLabelText('Single game key'));
+    const gameSelect = await waitFor(() => screen.getByLabelText('Select game'));
     fireEvent.change(gameSelect, { target: { value: 'tap-race' } });
 
     // Save

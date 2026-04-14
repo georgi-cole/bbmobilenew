@@ -260,7 +260,7 @@ export default function Final3Ceremony() {
       {/* Human LOH decision modal */}
       {stage === 'decision' && humanIsLoh && (
         <TvDecisionModal
-          title="Final LOH — Eliminate a Housemate"
+          title="Final LOH — Eliminate a Player"
           subtitle={`${lohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining players.`}
           options={nominees}
           onSelect={handleHumanDecision}

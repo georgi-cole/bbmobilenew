@@ -171,7 +171,7 @@ export default function CompSelection({
       {mode === 'single-game' && (
         <div className="comp-selection__single-game">
           <label className="comp-selection__single-label">
-            Game key (registry key)
+            Select Game
             <select
               className="comp-selection__single-select"
               value={selectedGameId}
@@ -181,7 +181,7 @@ export default function CompSelection({
                 setSaveSuccess(false);
                 onChange?.(buildPayload(mode, nextSelectedGameId));
               }}
-              aria-label="Single game key"
+              aria-label="Select game"
             >
               <option value="">— pick a game —</option>
               {games.map((g) => (

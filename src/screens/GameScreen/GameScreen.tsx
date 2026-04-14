@@ -2334,7 +2334,7 @@ export default function GameScreen() {
           ? 'The Big Eye requires your vote in the Confessional.'
           : 'Waiting for your vote.'
       }
-      return 'Houseguests are casting their votes.'
+      return 'Players are casting their votes.'
     }
     if (postVoteAnnouncementDelayActive && game.pendingEviction) {
       return 'Please wait while the player says their goodbyes.'
@@ -2708,7 +2708,7 @@ export default function GameScreen() {
       {/* ── Final 3 eviction (human Final LOH evicts directly) ──────────── */}
       {showFinal3Modal && (
         <TvDecisionModal
-          title="Final LOH — Eliminate a Housemate"
+          title="Final LOH — Eliminate a Player"
           subtitle={`${humanPlayer?.name}, as Final LOH you must directly eliminate one of the remaining players.`}
           options={final3Options}
           onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}

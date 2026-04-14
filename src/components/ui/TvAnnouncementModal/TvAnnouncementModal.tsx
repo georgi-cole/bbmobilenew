@@ -22,7 +22,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🎯',
     label: 'NOMINATIONS',
     category: 'Ceremony',
-    body: 'The Leader of the House gathers all players and nominates two contestants for potential elimination. Nominees have the chance to save themselves by winning the Power of Safety. Every speech and every alliance is tested in this moment.',
+    body: 'The Leader of the House gathers all players and nominates two players for potential elimination. Nominees have the chance to save themselves by winning the Power of Safety. Every speech and every alliance is tested in this moment.',
   },
   veto_competition: {
     icon: '🏆',
@@ -100,7 +100,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '⚡',
     label: 'DOUBLE ELIMINATION',
     category: 'Twist',
-    body: 'A Double Elimination has been triggered! Tonight\'s Leader of the House must nominate THREE players for elimination. After a Power of Safety competition and ceremony, the remaining contestants vote to eliminate TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.',
+    body: 'A Double Elimination has been triggered! Tonight\'s Leader of the House must nominate THREE players for elimination. After a Power of Safety competition and ceremony, the remaining players vote to eliminate TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.',
   },
   twist: {
     icon: '🌀',
