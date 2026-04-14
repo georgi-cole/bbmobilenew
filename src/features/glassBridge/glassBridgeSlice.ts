@@ -1,9 +1,9 @@
 /**
- * glassBridgeSlice.ts — Redux slice for "Glass Bridge — Brutal Mode"
+ * glassBridgeSlice.ts — Redux slice for "The Crystal Path"
  *
- * A sequential elimination challenge where players cross a bridge of paired
- * glass tiles one row at a time.  Each row has exactly one safe tile (left or
- * right).  Choosing the wrong tile breaks it and eliminates the player.
+ * A sequential elimination challenge where players cross a path of paired
+ * crystal platforms one row at a time.  Each row has exactly one safe platform
+ * (left or right).  Choosing the wrong platform breaks it and eliminates the player.
  *
  * Phases:
  *   idle           → not started
@@ -53,6 +53,8 @@ export interface GlassBridgePlayerProgress {
   /** Elapsed ms since challengeStartTimeMs when the player finished.
    *  Only set when the player has successfully crossed all rows. */
   finishTimeMs?: number;
+  /** Cumulative penalty in ms added for hint usage (30 000 ms per hint). */
+  hintPenaltyMs: number;
 }
 
 export type GlassBridgePhase =
@@ -136,6 +138,11 @@ export interface GlassBridgeState {
 const DEFAULT_ROWS_COUNT = 16;
 const TIME_LIMIT_PER_PLAYER_MS = 16_000;
 const DEFAULT_TIME_LIMIT_MS = 10 * TIME_LIMIT_PER_PLAYER_MS;
+
+/** Penalty applied to finish time for each hint used by a player (30 seconds). */
+export const HINT_PENALTY_MS = 30_000;
+/** Maximum number of hints a player may use in a single run. */
+export const MAX_HINTS_PER_RUN = 3;
 
 export function buildGlassBridgeTimeLimitMs(participantCount: number): number {
   return Math.max(1, participantCount) * TIME_LIMIT_PER_PLAYER_MS;
@@ -254,10 +261,17 @@ export function buildPlacements(
 ): string[] {
   const players = Object.values(progress);
 
-  // Finished players first, sorted by finishTimeMs ascending.
+  // Finished players first, sorted by effective finish time ascending.
+  // Effective finish time = raw finish time + any hint-usage penalty.
   const finished = players
-    .filter(p => p.finishTimeMs !== undefined)
-    .sort((a, b) => (a.finishTimeMs ?? 0) - (b.finishTimeMs ?? 0));
+    .filter((p): p is GlassBridgePlayerProgress & { finishTimeMs: number } =>
+      p.finishTimeMs !== undefined,
+    )
+    .sort((a, b) => {
+      const aEff = a.finishTimeMs + (a.hintPenaltyMs ?? 0);
+      const bEff = b.finishTimeMs + (b.hintPenaltyMs ?? 0);
+      return aEff - bEff;
+    });
 
   // Non-finishers sorted by progress then time then original turn order.
   const nonFinishers = players
@@ -356,6 +370,7 @@ const glassBridgeSlice = createSlice({
           furthestRowReached: 0,
           timeReachedFurthestRowMs: 0,
           eliminated: false,
+          hintPenaltyMs: 0,
         };
       }
 
@@ -575,6 +590,21 @@ const glassBridgeSlice = createSlice({
       state.humanSpectating = action.payload;
     },
 
+    /**
+     * Record that a player used a hint.
+     * Adds HINT_PENALTY_MS (30 000) to the player's hintPenaltyMs.
+     * No-ops when called for a non-existent player or when the player has
+     * already used MAX_HINTS_PER_RUN hints (enforced at the state level).
+     */
+    recordHintUsed(state, action: PayloadAction<{ playerId: string }>) {
+      const p = state.progress[action.payload.playerId];
+      if (p) {
+        const hintsAlreadyUsed = Math.floor((p.hintPenaltyMs ?? 0) / HINT_PENALTY_MS);
+        if (hintsAlreadyUsed >= MAX_HINTS_PER_RUN) return;
+        p.hintPenaltyMs = (p.hintPenaltyMs ?? 0) + HINT_PENALTY_MS;
+      }
+    },
+
     /** Mark the game outcome as applied to the engine (idempotency guard). */
     markGlassBridgeOutcomeResolved(state) {
       state.outcomeResolved = true;
@@ -597,6 +627,7 @@ export const {
   expireTimer,
   completeGame,
   setHumanSpectating,
+  recordHintUsed,
   markGlassBridgeOutcomeResolved,
   resetGlassBridge,
 } = glassBridgeSlice.actions;
