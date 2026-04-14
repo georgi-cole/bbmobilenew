@@ -19,7 +19,7 @@ interface PlayerAvatarProps {
  * When onSelect is absent: tap toggles the mini popover with name + stats.
  *
  * Badge rendering delegates to getBadgesForPlayer() from statusBadges utility:
- *   'loh' → 👑  'pos' → 🛡️  'nominated' → ❓  'jury' → ⚖️
+ *   'loh' → 👑  'pos' → 🛡️  'nominated' → nomination badge asset  'jury' → ⚖️
  *   finalRank 1/2/3 → 🥇/🥈/🥉
  *
  * Image loading uses a two-step fallback chain:
@@ -84,7 +84,19 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
             aria-label={badgeLabels}
             title={badgeLabels}
           >
-            {badges.map((b) => b.emoji).join('')}
+            {badges.map((b) => (
+              b.imageSrc ? (
+                <img
+                  key={b.code}
+                  className="player-avatar__badge-image"
+                  src={b.imageSrc}
+                  alt=""
+                  aria-hidden="true"
+                />
+              ) : (
+                <span key={b.code}>{b.emoji}</span>
+              )
+            ))}
           </span>
         )}
         {player.isUser && (
