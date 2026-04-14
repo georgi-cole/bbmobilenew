@@ -259,6 +259,148 @@ function formatHintUsage(hintUses: number): string {
   return `${hintUses} hint${hintUses === 1 ? '' : 's'}`;
 }
 
+function hasOneBrokenTile(row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'>): boolean {
+  return row.leftBroken !== row.rightBroken;
+}
+
+function getCompletionBannerMessage(
+  isHuman: boolean,
+  isRecord: boolean,
+  name: string,
+  time: string,
+): string {
+  if (isHuman) {
+    return isRecord
+      ? pickRandom(humanNewRecordMessages)(time)
+      : pickRandom(humanFinishMessages)(time);
+  }
+
+  return isRecord
+    ? pickRandom(newRecordMessages)(name, time)
+    : pickRandom(finishMessages)(name, time);
+}
+
+function getBrokenPlatformFallMessage(isHuman: boolean, name: string): string {
+  return isHuman
+    ? pickRandom(humanBrokenPlatformFallMessages)
+    : pickRandom(brokenPlatformFallMessages)(name);
+}
+
+// ─── Randomized status-bar message pools ─────────────────────────────────────
+
+/** Pick a random element from a non-empty array on each call. */
+function pickRandom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+const expertHintUsedMessages: ReadonlyArray<(name: string) => string> = [
+  name => `${name} consults The Expert.`,
+  name => `${name} calls upon The Expert.`,
+  name => `${name} seeks the oracle's guidance.`,
+];
+
+const hintMessages: ReadonlyArray<(chance: number) => string> = [
+  chance => `The Expert whispers: ${chance}% chance the left platform will shatter.`,
+  chance => `The Expert foresees doom — ${chance}% chance the left side breaks.`,
+  chance => `The crystal oracle warns: ${chance}% chance the left platform collapses.`,
+];
+
+const aiCrashMessages: ReadonlyArray<(name: string, row: number) => string> = [
+  (name, row) => `${name} is swallowed by the void on row ${row}.`,
+  (name, row) => `The path gives way beneath ${name} on row ${row}.`,
+  (name, row) => `${name} falls as the crystal shatters on row ${row}.`,
+];
+
+const aiClearMessages: ReadonlyArray<(name: string, row: number) => string> = [
+  (name, row) => `${name} survives row ${row}.`,
+  (name, row) => `${name} crosses row ${row} unbroken.`,
+  (name, row) => `Row ${row} yields to ${name}.`,
+];
+
+const humanCrashMessages: ReadonlyArray<(row: number) => string> = [
+  row => `You are claimed by the abyss on row ${row}.`,
+  row => `The crystal breaks beneath you on row ${row}.`,
+  row => `You fall as row ${row} shatters.`,
+];
+
+const humanClearMessages: ReadonlyArray<(row: number) => string> = [
+  row => `You survive row ${row}.`,
+  row => `You cross row ${row} unbroken.`,
+  row => `Row ${row} yields to you.`,
+];
+
+const brokenPlatformFallMessages: ReadonlyArray<(name: string) => string> = [
+  name => `${name} slips onto the broken platform.`,
+  name => `${name} loses balance and falls through the broken platform.`,
+  name => `${name} stumbles and drops through the hole in the path.`,
+];
+
+const humanBrokenPlatformFallMessages: ReadonlyArray<string> = [
+  'You slip onto the broken platform.',
+  'You lose balance and fall through the broken platform.',
+  'You stumble and drop through the hole in the path.',
+];
+
+const timesUpMessages: ReadonlyArray<string> = [
+  "Time is over. The path is collapsing.",
+  "The clock has died — the path is collapsing!",
+  "No time remains. The bridge is breaking apart!",
+];
+
+const stepPromptMessages: ReadonlyArray<string> = [
+  "Choose wisely. One step decides the fall.",
+  "Select a platform before the path takes you.",
+  "Step carefully — the crystal remembers every mistake.",
+];
+
+const activePlayerMessages: ReadonlyArray<(name: string) => string> = [
+  name => `${name} stands before the abyss.`,
+  name => `${name} faces the crystal trial.`,
+  name => `${name} walks the path of judgment.`,
+];
+
+const waitingMessages: ReadonlyArray<string> = [
+  "The path waits in silence.",
+  "The crystal stands ready for the next soul.",
+  "Another player must face the bridge.",
+];
+
+const newRecordMessages: ReadonlyArray<(name: string, time: string) => string> = [
+  (name, time) => `${name} carves a new record: ${time}!`,
+  (name, time) => `${name} writes a new legend: ${time}!`,
+  (name, time) => `${name} sets a new mark in blood and glass: ${time}!`,
+];
+
+const humanNewRecordMessages: ReadonlyArray<(time: string) => string> = [
+  time => `You carve a new record: ${time}!`,
+  time => `You write a new legend: ${time}!`,
+  time => `You set a new mark in blood and glass: ${time}!`,
+];
+
+const finishMessages: ReadonlyArray<(name: string, time: string) => string> = [
+  (name, time) => `${name} reaches the end in ${time}!`,
+  (name, time) => `${name} survives the path in ${time}!`,
+  (name, time) => `${name} emerges in ${time}!`,
+];
+
+const humanFinishMessages: ReadonlyArray<(time: string) => string> = [
+  time => `You reach the end in ${time}!`,
+  time => `You survive the path in ${time}!`,
+  time => `You emerge in ${time}!`,
+];
+
+const helpButtonMessages: ReadonlyArray<(remaining: number) => string> = [
+  r => `Seek Guidance (${r} left)`,
+  r => `Ask The Expert (${r} left)`,
+  r => `One Last Whisper (${r} left)`,
+];
+
+const noHelpMessages: ReadonlyArray<string> = [
+  "No more aid remains.",
+  "The Expert is silent now.",
+  "You must face the path alone.",
+];
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface GlassBridgeCompetitionType {
@@ -775,7 +917,7 @@ export default function GlassBridgeComp({
       const shatterDelay = scaleSpectatorDelay(noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS);
 
       if (willUseHint) {
-        flashStatusBanner(`${getName(activeId)} uses The Expert.`, 'info', STATUS_FLASH_SHORT_MS);
+        flashStatusBanner(pickRandom(expertHintUsedMessages)(getName(activeId)), 'info', STATUS_FLASH_SHORT_MS);
       }
       setPendingStep({ actorId: activeId, rowIdx, side: chosenSide, isBreak, chosenAt: now });
       pendingStepRef.current = window.setTimeout(() => {
@@ -788,7 +930,7 @@ export default function GlassBridgeComp({
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side: chosenSide });
           playDeath();
-          flashStatusBanner(`${getName(activeId)} crashes on row ${rowIdx + 1}.`, 'danger');
+          flashStatusBanner(pickRandom(aiCrashMessages)(getName(activeId), rowIdx + 1), 'danger');
           if (flashResetRef.current !== null) {
             window.clearTimeout(flashResetRef.current);
           }
@@ -814,7 +956,7 @@ export default function GlassBridgeComp({
         setPendingStep(null);
         playSafeStep();
         if (rowIdx + 1 < gb.rowsCount) {
-          flashStatusBanner(`${getName(activeId)} clears row ${rowIdx + 1}.`, 'success');
+          flashStatusBanner(pickRandom(aiClearMessages)(getName(activeId), rowIdx + 1), 'success');
         }
         dispatch(resolveStep({ chosenSide, now }));
         // Game-over detection is handled by effect #7 which watches gb state.
@@ -850,6 +992,11 @@ export default function GlassBridgeComp({
 
     const noAnimations = areAnimationsDisabled();
     const collapseDuration = scaleSpectatorDelay(getTimeoutCollapseDuration(gb.rows.length, noAnimations));
+    const activeId = gb.turnOrder[gb.currentTurnIndex] ?? null;
+    const activeRow =
+      activeId && gb.currentPlayerRow > 0 && gb.currentPlayerRow <= gb.rows.length
+        ? gb.rows[gb.currentPlayerRow - 1]
+        : null;
 
     setShowSpectatorModal(false);
     setTimedOutPlayerIds(doomedIds);
@@ -857,6 +1004,12 @@ export default function GlassBridgeComp({
     setShowEliminationFlash(true);
     setShowScreenShake(true);
     playDeath();
+    if (activeId && activeRow && hasOneBrokenTile(activeRow)) {
+      flashStatusBanner(
+        getBrokenPlatformFallMessage(activeId === humanId, getName(activeId)),
+        'danger',
+      );
+    }
 
     if (flashResetRef.current !== null) {
       window.clearTimeout(flashResetRef.current);
@@ -869,7 +1022,20 @@ export default function GlassBridgeComp({
     timeoutCollapseResolveRef.current = window.setTimeout(() => {
       dispatch(completeGame());
     }, collapseDuration);
-  }, [gb.phase, gb.timerExpired, gb.rows.length, dispatch, playDeath, scaleSpectatorDelay]);
+  }, [
+    gb.currentPlayerRow,
+    gb.currentTurnIndex,
+    gb.phase,
+    gb.rows,
+    gb.timerExpired,
+    gb.turnOrder,
+    dispatch,
+    playDeath,
+    scaleSpectatorDelay,
+    flashStatusBanner,
+    getName,
+    humanId,
+  ]);
 
   // ── 8. Detect end-of-game conditions ──────────────────────────────────────
   useEffect(() => {
@@ -920,9 +1086,12 @@ export default function GlassBridgeComp({
           bestFinishTimeRef.current = effectiveFinishTime;
         }
         flashStatusBanner(
-          isRecord
-            ? `${getName(pid)} sets a new record: ${formatElapsed(effectiveFinishTime)}!`
-            : `${getName(pid)} finishes in ${formatElapsed(effectiveFinishTime)}!`,
+          getCompletionBannerMessage(
+            pid === humanId,
+            isRecord,
+            getName(pid),
+            formatElapsed(effectiveFinishTime),
+          ),
           isRecord ? 'record' : 'success',
         );
         setLandingPlayerIds(prev => [...prev, pid]);
@@ -933,7 +1102,7 @@ export default function GlassBridgeComp({
         landingTimersRef.current.push(t);
       }
     }
-  }, [gb.progress, gb.phase, playWinner, flashStatusBanner, getName]);
+  }, [gb.progress, gb.phase, humanId, playWinner, flashStatusBanner, getName]);
 
   // ── 13. New-turn sound — play whenever a new player starts their turn ──────
   useEffect(() => {
@@ -999,7 +1168,7 @@ export default function GlassBridgeComp({
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side });
           playDeath();
-          flashStatusBanner(`You crash on row ${rowIdx + 1}.`, 'danger');
+          flashStatusBanner(pickRandom(humanCrashMessages)(rowIdx + 1), 'danger');
 
           // Clear any existing flash/death-marker timeouts before scheduling new ones
           if (flashResetRef.current != null) {
@@ -1027,7 +1196,7 @@ export default function GlassBridgeComp({
         setPendingStep(null);
         playSafeStep();
         if (rowIdx + 1 < gb.rowsCount) {
-          flashStatusBanner(`You clear row ${rowIdx + 1}.`, 'success');
+          flashStatusBanner(pickRandom(humanClearMessages)(rowIdx + 1), 'success');
         }
         dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
       }, suspenseDelay);
@@ -1071,9 +1240,7 @@ export default function GlassBridgeComp({
 
     const sameRowHintCount = hintRequestsForCurrentRow + 1;
     const chance = computeHintLeftBreakChance(row.safeSide, sameRowHintCount);
-    setCurrentHintMessage(
-      `The Expert says there is a ${chance}% chance that the left platform is gonna break.`,
-    );
+    setCurrentHintMessage(pickRandom(hintMessages)(chance));
     setHintRequestsForCurrentRow(sameRowHintCount);
     dispatch(recordHintUsed({ playerId: humanId }));
   }, [humanId, gb.progress, gb.currentPlayerRow, gb.rows, dispatch, hintRequestsForCurrentRow]);
@@ -1102,16 +1269,30 @@ export default function GlassBridgeComp({
         ? 'gb-timer-warning'
         : '';
   const isTimeoutPlayer = (playerId: string) => timedOutPlayerIds.includes(playerId);
-  const defaultBannerText = timeoutCollapseActive
-    ? "Time's up! The path is collapsing!"
-    : isHumanTurn && !pendingStep
-      ? 'Select a highlighted platform to step.'
-      : activeId
-        ? `${getName(activeId)} is on the path`
-        : 'Path awaiting next player';
+  const defaultBannerText = useMemo(() => {
+    if (timeoutCollapseActive) return pickRandom(timesUpMessages);
+    if (isHumanTurn && !pendingStep) return pickRandom(stepPromptMessages);
+    if (activeId) return pickRandom(activePlayerMessages)(getName(activeId));
+    return pickRandom(waitingMessages);
+  }, [timeoutCollapseActive, isHumanTurn, pendingStep, activeId, getName]);
   const bannerText = statusBanner?.message ?? defaultBannerText;
   const nextPlaybackSpeed = getNextPlaybackSpeed(playbackSpeed);
   const canFastForward = gb.humanSpectating && isHumanEliminated && gb.phase === 'playing';
+  const { helpAriaLabel, helpButtonText } = useMemo(() => {
+    if (hintsRemaining > 0) {
+      const buttonText = pickRandom(helpButtonMessages)(hintsRemaining);
+      return {
+        helpAriaLabel: `${buttonText}. Adds ${HINT_PENALTY_MS / 1000} seconds.`,
+        helpButtonText: `🔮 ${buttonText}`,
+      };
+    }
+
+    const noHelpText = pickRandom(noHelpMessages);
+    return {
+      helpAriaLabel: noHelpText,
+      helpButtonText: noHelpText,
+    };
+  }, [hintsRemaining]);
   const handleTogglePlaybackSpeed = () => {
     setPlaybackSpeed(nextPlaybackSpeed);
     flashStatusBanner(
@@ -1143,7 +1324,9 @@ export default function GlassBridgeComp({
           {gb.phase === 'playing' && (
             <span className="gb-hud-turn" aria-label="Current turn">
               {activeId
-                ? `${getName(activeId)}'s turn`
+                ? activeId === humanId
+                  ? 'Your turn'
+                  : `${getName(activeId)}'s turn`
                 : 'Waiting…'}
             </span>
           )}
@@ -1263,15 +1446,9 @@ export default function GlassBridgeComp({
                   className="gb-btn-help"
                   onClick={handleRequestHelp}
                   disabled={!canRequestHelp}
-                  aria-label={
-                    hintsRemaining > 0
-                      ? `Request Help from The Expert (${hintsRemaining} left, +${HINT_PENALTY_MS / 1000}s penalty each)`
-                      : "You're on your own"
-                  }
+                  aria-label={helpAriaLabel}
                 >
-                  {hintsRemaining > 0
-                    ? `🔮 Request Help (${hintsRemaining} left)`
-                    : "You're on your own"}
+                  {helpButtonText}
                 </button>
               </div>
             )}
