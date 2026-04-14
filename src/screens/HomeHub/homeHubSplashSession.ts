@@ -1,4 +1,4 @@
-const HOME_HUB_SPLASH_LAST_GAME_KEY = 'bb:kolequantSplashLastGameId';
+const HOME_HUB_SPLASH_LAST_GAME_KEY = 'bb:homeHubSplashLastGameId';
 
 export function hasSeenHomeHubSplashForGame(gameId: string): boolean {
   try {

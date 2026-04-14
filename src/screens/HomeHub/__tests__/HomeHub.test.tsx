@@ -144,7 +144,7 @@ describe('HomeHub', () => {
   });
 
   it('does not show the Kolequant splash when the current game was already seen', async () => {
-    localStorage.setItem('bb:kolequantSplashLastGameId', 'game-A');
+    localStorage.setItem('bb:homeHubSplashLastGameId', 'game-A');
 
     renderHomeHub();
 
