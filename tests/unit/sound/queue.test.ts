@@ -81,6 +81,17 @@ describe('SoundManager unlock queue — play()', () => {
     expect(sm._playQueue[0]).toMatchObject({ key: 'music:intro_hub_loop', isMusic: false });
   });
 
+  it('keeps only the latest queued SFX marker while locked', async () => {
+    const sm = SoundManager as unknown as { _playQueue: Array<{ key: string; isMusic: boolean }> };
+
+    await SoundManager.play('ui:jury_vote');
+    await SoundManager.play('tv:winner_reveal');
+
+    const sfxItems = sm._playQueue.filter((q) => !q.isMusic);
+    expect(sfxItems).toHaveLength(1);
+    expect(sfxItems[0]).toMatchObject({ key: 'tv:winner_reveal', isMusic: false });
+  });
+
   it('drops queued SFX after unlock instead of replaying stale effects', async () => {
     const doPlay = vi.spyOn(
       SoundManager as unknown as { _doPlay: (key: string) => Promise<void> },
@@ -265,6 +276,23 @@ describe('SoundManager autoplay recovery', () => {
       opts: undefined,
     });
     expect(sm._failedKeys.has('music:intro_hub_loop')).toBe(false);
+  });
+
+  it('keeps only one queued SFX marker when blocked SFX repeat after unlock', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _playQueue: Array<{ key: string; isMusic: boolean; opts?: unknown }>;
+    };
+    sm._unlocked = true;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(
+      new DOMException('blocked', 'NotAllowedError'),
+    );
+
+    await SoundManager.play('ui:jury_vote');
+    await SoundManager.play('tv:winner_reveal');
+
+    const sfxItems = sm._playQueue.filter((q) => !q.isMusic);
+    expect(sfxItems).toEqual([{ key: 'tv:winner_reveal', isMusic: false, opts: undefined }]);
   });
 
   it('retries queued music on the next gesture even if audio stayed unlocked', async () => {

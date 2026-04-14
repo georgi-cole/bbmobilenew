@@ -129,7 +129,7 @@ class _SoundManager {
       if (_audioDebug) {
         console.log(`[SoundManager] play("${key}") queued — not yet unlocked`);
       }
-      this._playQueue.push({ key, isMusic: false, opts });
+      this._queueSfxMarker(key, opts);
       return;
     }
     return this._doPlay(key, opts);
@@ -224,12 +224,13 @@ class _SoundManager {
     } catch (err) {
       if ((err as DOMException).name === 'NotAllowedError') {
         // Autoplay blocked (either before unlock or iOS blocking a non-gesture
-        // call on a primed element).  Re-queue so it retries on the next gesture
-        // rather than permanently marking the key as failed.
+        // call on a primed element). Queue a single SFX marker so the next
+        // gesture re-runs the unlock drain/priming path without letting
+        // repeated blocked SFX inflate the queue unboundedly.
         if (_audioDebug) {
           console.log(`[SoundManager] play("${key}") blocked by autoplay policy — re-queued`);
         }
-        this._playQueue.push({ key, isMusic: false, opts });
+        this._queueSfxMarker(key, opts);
         this._ensureUnlockListeners();
       } else {
         if (!this._failedKeys.has(key)) {
@@ -449,7 +450,8 @@ class _SoundManager {
    * - Safe to call multiple times — only one set of document listeners is
    *   ever registered, preventing listener leaks.
    *
-   * After unlock, all queued play/playMusic requests are replayed.
+   * After unlock, queued music requests are replayed and queued SFX markers are
+   * discarded after priming the SFX pool for future non-gesture playback.
    */
   unlockOnUserGesture(): void {
     if (typeof document === 'undefined') return;
@@ -545,6 +547,11 @@ class _SoundManager {
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
     this._playQueue.push({ key, isMusic: true, opts });
     this._ensureUnlockListeners();
+  }
+
+  private _queueSfxMarker(key: string, opts?: PlayOptions): void {
+    this._playQueue = this._playQueue.filter((q) => q.isMusic);
+    this._playQueue.push({ key, isMusic: false, opts });
   }
 
   private _ensureUnlockListeners(): void {
