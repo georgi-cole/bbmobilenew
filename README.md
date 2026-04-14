@@ -2,6 +2,21 @@
 
 A React + TypeScript + Vite mobile-first app.
 
+## Before opening a PR
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup, validation commands, and PR expectations.
+
+Quick checklist:
+
+```bash
+npm run lint:ci    # zero ESLint warnings
+npm run typecheck  # TypeScript
+npm test           # Vitest suite
+```
+
+- UI changes → include screenshots in the PR description.
+- New env vars → add to `server/.env.example`, never commit `server/.env`.
+
 ## Dev setup
 
 ```bash
