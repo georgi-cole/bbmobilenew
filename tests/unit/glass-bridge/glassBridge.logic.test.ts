@@ -376,7 +376,7 @@ describe('glassBridgeSlice — resolveStep', () => {
     expect(updatedRow.rightBroken).toBe(false);
   });
 
-  it('records finishTimeMs when the final row is crossed safely', () => {
+  it('records finishTimeMs from the player first jump instead of the global timer', () => {
     // Create a 2-row bridge so we can finish quickly.
     const store = makeStore();
     store.dispatch(
@@ -399,7 +399,8 @@ describe('glassBridgeSlice — resolveStep', () => {
     store.dispatch(resolveStep({ chosenSide: row1.safeSide, now: T0 + 2000 }));
 
     const updated = store.getState().glassBridge;
-    expect(updated.progress['a'].finishTimeMs).toBe(2000);
+    expect(updated.progress['a'].timeReachedFurthestRowMs).toBe(1000);
+    expect(updated.progress['a'].finishTimeMs).toBe(1000);
   });
 });
 
