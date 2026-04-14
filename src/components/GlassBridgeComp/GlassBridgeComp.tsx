@@ -763,7 +763,7 @@ export default function GlassBridgeComp({
       const participant = gb.participants.find(p => p.id === activeId);
 
       const chosenSide = willUseHint
-        ? chooseSideFromHint(row.safeSide, hintsUsed + 1, aiRngRef.current)
+        ? chooseSideFromHint(row.safeSide, 1, aiRngRef.current)
         : aiDecideStep(row, aiRngRef.current, participant?.competitionProfile);
       const now = Date.now();
 
