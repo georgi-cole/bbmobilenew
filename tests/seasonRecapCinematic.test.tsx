@@ -6,8 +6,8 @@ import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/c
 import type { Player } from '../src/types';
 import type { PublicOpinionState } from '../src/publicOpinion/types';
 
-const playMusic = vi.fn();
-const stopMusic = vi.fn();
+const requestBgm = vi.fn();
+const releaseBgm = vi.fn();
 
 vi.mock('framer-motion', async () => {
   const React = await import('react');
@@ -31,8 +31,8 @@ vi.mock('framer-motion', async () => {
 
 vi.mock('../src/hooks/useSound', () => ({
   default: () => ({
-    playMusic,
-    stopMusic,
+    requestBgm,
+    releaseBgm,
   }),
 }));
 
@@ -135,8 +135,8 @@ describe('SeasonRecapCinematic', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    playMusic.mockClear();
-    stopMusic.mockClear();
+    requestBgm.mockClear();
+    releaseBgm.mockClear();
     if (!window.matchMedia) {
       const matchMediaMock = vi.fn<(query: string) => MediaQueryList>().mockImplementation((query: string) => ({
         matches: false,
@@ -191,8 +191,8 @@ describe('SeasonRecapCinematic', () => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(playMusic).toHaveBeenCalledWith('music:season_recap');
-    expect(stopMusic).toHaveBeenCalled();
+    expect(requestBgm).toHaveBeenCalledWith('music:season_recap', 'cinematic');
+    expect(releaseBgm).toHaveBeenCalledWith('cinematic');
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
