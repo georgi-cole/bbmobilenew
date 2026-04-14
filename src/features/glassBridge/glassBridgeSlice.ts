@@ -261,14 +261,17 @@ export function buildPlacements(
 ): string[] {
   const players = Object.values(progress);
 
-  // Effective finish time accounts for hint-usage penalty.
-  const effectiveFinish = (p: GlassBridgePlayerProgress) =>
-    (p.finishTimeMs ?? 0) + (p.hintPenaltyMs ?? 0);
-
   // Finished players first, sorted by effective finish time ascending.
+  // Effective finish time = raw finish time + any hint-usage penalty.
   const finished = players
-    .filter(p => p.finishTimeMs !== undefined)
-    .sort((a, b) => effectiveFinish(a) - effectiveFinish(b));
+    .filter((p): p is GlassBridgePlayerProgress & { finishTimeMs: number } =>
+      p.finishTimeMs !== undefined,
+    )
+    .sort((a, b) => {
+      const aEff = a.finishTimeMs + (a.hintPenaltyMs ?? 0);
+      const bEff = b.finishTimeMs + (b.hintPenaltyMs ?? 0);
+      return aEff - bEff;
+    });
 
   // Non-finishers sorted by progress then time then original turn order.
   const nonFinishers = players
