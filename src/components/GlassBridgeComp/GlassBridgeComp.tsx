@@ -219,7 +219,7 @@ function getAiDecisionDelayMs(
     : row.revealedSafeSide
       ? [AI_REVEALED_ROW_DELAY_MIN_MS, AI_REVEALED_ROW_DELAY_MAX_MS]
       : [AI_UNKNOWN_ROW_DELAY_MIN_MS, AI_UNKNOWN_ROW_DELAY_MAX_MS];
-  return minDelay + Math.floor(rng() * Math.max(1, maxDelay - minDelay));
+  return minDelay + Math.floor(rng() * (maxDelay - minDelay));
 }
 
 function shouldAiUseHint(
@@ -230,6 +230,9 @@ function shouldAiUseHint(
 ): boolean {
   if (hintsUsed >= MAX_HINTS_PER_RUN) return false;
   const rowPressure = rowIdx / Math.max(1, rowsCount - 1);
+  // Base 18% chance, with pressure increasing as the bridge gets deeper and a
+  // small extra bump after prior hint usage. Cap at 62% so AI still guess
+  // naturally instead of over-optimizing every unknown row.
   const chance = Math.min(0.62, 0.18 + rowPressure * 0.34 + hintsUsed * 0.06);
   return rng() < chance;
 }
@@ -244,6 +247,16 @@ function chooseSideFromHint(safeSide: TileSide, sameRowHintCount: number, rng: (
     : safeSide === 'left'
       ? 'right'
       : 'left';
+}
+
+function getNextPlaybackSpeed(currentSpeed: 1 | 2 | 3): 1 | 2 | 3 {
+  if (currentSpeed === 1) return 2;
+  if (currentSpeed === 2) return 3;
+  return 1;
+}
+
+function formatHintUsage(hintUses: number): string {
+  return `${hintUses} hint${hintUses === 1 ? '' : 's'}`;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1097,7 +1110,7 @@ export default function GlassBridgeComp({
         ? `${getName(activeId)} is on the path`
         : 'Path awaiting next player';
   const bannerText = statusBanner?.message ?? defaultBannerText;
-  const nextPlaybackSpeed = playbackSpeed === 1 ? 2 : playbackSpeed === 2 ? 3 : 1;
+  const nextPlaybackSpeed = getNextPlaybackSpeed(playbackSpeed);
   const canFastForward = gb.humanSpectating && isHumanEliminated && gb.phase === 'playing';
   const handleTogglePlaybackSpeed = () => {
     setPlaybackSpeed(nextPlaybackSpeed);
@@ -1468,11 +1481,11 @@ export default function GlassBridgeComp({
                   const effective = p.finishTimeMs + penalty;
                   const base = `Finished ${formatElapsed(effective)}`;
                   return hintUses > 0
-                    ? `${base} (${hintUses} hint${hintUses === 1 ? '' : 's'}, +${penalty / 1000}s)`
+                    ? `${base} (${formatHintUsage(hintUses)}, +${penalty / 1000}s)`
                     : base;
                 })()
               : p?.furthestRowReached
-                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}${hintUses > 0 ? ` • ${hintUses} hint${hintUses === 1 ? '' : 's'}` : ''}`
+                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}${hintUses > 0 ? ` • ${formatHintUsage(hintUses)}` : ''}`
                 : 'Row 0';
 
             return (
