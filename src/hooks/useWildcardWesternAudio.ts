@@ -1,9 +1,16 @@
 /**
  * useWildcardWesternAudio — manages all audio for the Wildcard Western minigame.
  *
- * Background music starts when `shouldPlayMusic` becomes true and stops when it
- * becomes false or the component unmounts.  One-shot SFX callbacks are
- * returned for the caller to invoke at the correct game moments.
+ * Background music starts when `shouldPlayMusic` becomes true and stops (via
+ * releaseBgm) when it becomes false or the component unmounts.  The previous
+ * BGM owner (typically 'phase') retains its desired track and can be re-requested
+ * by the relevant hook/middleware when appropriate.
+ *
+ * Uses requestBgm/releaseBgm with the 'minigame' owner so the SoundManager can
+ * enforce the single-BGM-channel invariant.
+ *
+ * One-shot SFX callbacks are returned for the caller to invoke at the correct
+ * game moments.
  *
  * Usage:
  *   const { playSelect, playDraw, playEliminated, playWinner, playContinue, playNewRound } =
@@ -42,18 +49,12 @@ export interface UseWildcardWesternAudioReturn {
  *   to false or the component unmounts.
  */
 export function useWildcardWesternAudio(shouldPlayMusic: boolean): UseWildcardWesternAudioReturn {
-  // Start looping background music when the minigame becomes active;
-  // stop it when leaving or on unmount.
+  // Request/release BGM ownership when the minigame becomes active or inactive.
   useEffect(() => {
     if (!shouldPlayMusic) return;
-    const prevKey = SoundManager.currentMusicKey;
-    void SoundManager.playMusic(WW_MUSIC_KEY);
+    SoundManager.requestBgm(WW_MUSIC_KEY, 'minigame');
     return () => {
-      if (SoundManager.currentMusicKey !== WW_MUSIC_KEY) return;
-      SoundManager.stopMusic();
-      if (prevKey && prevKey !== WW_MUSIC_KEY) {
-        void SoundManager.playMusic(prevKey);
-      }
+      SoundManager.releaseBgm('minigame');
     };
   }, [shouldPlayMusic]);
 

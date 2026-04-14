@@ -32,6 +32,10 @@ function resetSoundManager() {
     _failedKeys: Set<string>;
     _initialised: boolean;
     _lifecycleListenersBound: boolean;
+    _currentBgmOwner: string | null;
+    _desiredBgmKey: string | null;
+    _desiredBgmOwner: string | null;
+    _desiredBgmOpts: unknown;
   };
   sm._unlocked = false;
   sm._unlockHandler = null;
@@ -45,6 +49,10 @@ function resetSoundManager() {
   sm._failedKeys = new Set();
   sm._initialised = false;
   sm._lifecycleListenersBound = false;
+  sm._currentBgmOwner = null;
+  sm._desiredBgmKey = null;
+  sm._desiredBgmOwner = null;
+  sm._desiredBgmOpts = undefined;
 }
 
 // ── Setup / teardown ──────────────────────────────────────────────────────────
@@ -81,7 +89,9 @@ describe('SoundManager unlock queue — play()', () => {
     expect(sm._playQueue[0]).toMatchObject({ key: 'music:intro_hub_loop', isMusic: false });
   });
 
-  it('drains the queue and plays after unlock', async () => {
+  it('SFX queued before unlock are discarded on drain (not replayed to avoid flood)', async () => {
+    // This is the key iPhone/Safari fix: stale SFX from page-load must NOT
+    // replay when the user first taps a button.
     const doPlay = vi.spyOn(
       SoundManager as unknown as { _doPlay: (key: string) => Promise<void> },
       '_doPlay',
@@ -92,10 +102,11 @@ describe('SoundManager unlock queue — play()', () => {
 
     SoundManager.unlockOnUserGesture();
 
-    // Allow micro-tasks from _drainQueue to resolve
+    // Allow micro-tasks to resolve
     await Promise.resolve();
 
-    expect(doPlay).toHaveBeenCalledWith('ui:jury_vote', undefined);
+    // SFX from before unlock must be discarded — not replayed
+    expect(doPlay).not.toHaveBeenCalled();
   });
 });
 
@@ -124,7 +135,7 @@ describe('SoundManager unlock queue — playMusic()', () => {
 
   it('drains music queue and starts music after unlock', async () => {
     const doPlayMusic = vi.spyOn(
-      SoundManager as unknown as { _doPlayMusic: (key: string) => Promise<void> },
+      SoundManager as unknown as { _doPlayMusic: (key: string, opts?: unknown) => Promise<void> },
       '_doPlayMusic',
     ).mockResolvedValue(undefined);
 
@@ -146,18 +157,20 @@ describe('SoundManager unlockOnUserGesture()', () => {
     expect(sm._unlocked).toBe(true);
   });
 
-  it('drains mixed sfx + music queue in order', async () => {
-    const calls: string[] = [];
+  it('discards SFX and plays only latest music after unlock', async () => {
+    // The key fix for iPhone "flood of sounds": SFX queued before the first
+    // user gesture are discarded on unlock.  Only the latest desired BGM starts.
+    const musicCalls: string[] = [];
 
     vi.spyOn(
       SoundManager as unknown as { _doPlay: (key: string) => Promise<void> },
       '_doPlay',
-    ).mockImplementation(async (key) => { calls.push(`sfx:${key}`); });
+    ).mockImplementation(async (key) => { throw new Error(`SFX ${key} should not be called after unlock`); });
 
     vi.spyOn(
       SoundManager as unknown as { _doPlayMusic: (key: string) => Promise<void> },
       '_doPlayMusic',
-    ).mockImplementation(async (key) => { calls.push(`music:${key}`); });
+    ).mockImplementation(async (key) => { musicCalls.push(key); });
 
     await SoundManager.play('ui:jury_vote');
     await SoundManager.playMusic('music:intro_hub_loop');
@@ -166,9 +179,8 @@ describe('SoundManager unlockOnUserGesture()', () => {
     SoundManager.unlockOnUserGesture();
     await Promise.resolve();
 
-    expect(calls).toContain('sfx:ui:jury_vote');
-    expect(calls).toContain('music:music:intro_hub_loop');
-    expect(calls).toContain('sfx:tv:winner_reveal');
+    // Only the latest desired BGM should have started; SFX discarded
+    expect(musicCalls).toEqual(['music:intro_hub_loop']);
   });
 
   it('play() after unlock bypasses the queue and calls _doPlay directly', async () => {
@@ -269,7 +281,10 @@ describe('SoundManager autoplay recovery', () => {
     expect(sm._failedKeys.has('music:intro_hub_loop')).toBe(false);
   });
 
-  it('marks audio as needing a fresh gesture after the page is hidden', async () => {
+  it('does NOT reset _unlocked when the page is hidden (prevents stale re-queuing on iOS)', async () => {
+    // The fix: we no longer pre-emptively reset _unlocked on visibility-hide.
+    // This prevents phase-transition music requests from being incorrectly queued
+    // while the app is briefly backgrounded on iPhone.
     const sm = SoundManager as unknown as { _unlocked: boolean };
     await SoundManager.init();
     SoundManager.unlockOnUserGesture();
@@ -284,7 +299,8 @@ describe('SoundManager autoplay recovery', () => {
       });
       document.dispatchEvent(new Event('visibilitychange'));
 
-      expect(sm._unlocked).toBe(false);
+      // _unlocked should remain true — no pre-emptive reset on hide
+      expect(sm._unlocked).toBe(true);
     } finally {
       if (originalHiddenDescriptor) {
         Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
