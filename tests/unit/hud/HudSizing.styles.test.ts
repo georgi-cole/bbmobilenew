@@ -94,7 +94,7 @@ describe('HUD sizing styles', () => {
     expect(tvZoneCss).toContain('padding: 7px 11px;');
     expect(tvZoneCss).toContain('.tv-zone__head-chip {');
     expect(tvZoneCss).toContain('min-width: auto;');
-    expect(tvZoneCss).toContain('height: 24px;');
+    expect(tvZoneCss).toContain('height: 22px;');
     expect(tvZoneCss).toContain('padding: 0 10px;');
     expect(tvZoneCss).toContain('font-size: 0.62rem;');
     expect(houseguestGridCss).toContain('padding: 4px 8px 6px;');

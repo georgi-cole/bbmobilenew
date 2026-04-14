@@ -59,12 +59,12 @@
 
 .tv-zone__head-chip {
   min-width: auto;
-  height: 24px;
+  height: 22px;
   padding: 0 10px;
 }
 
 .tv-zone__head-chip::after {
-  top: 5px;
+  top: 4px;
 }
 
 .tv-zone__head-chip .game-top-chip__content {
