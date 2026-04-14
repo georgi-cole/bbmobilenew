@@ -385,12 +385,26 @@ export default function MinigameHost({
               );
             }
             if (game.implementation === 'react' && game.reactComponentKey === 'GlassBridge') {
+              // seed is intentionally NOT forwarded to GlassBridgeComp.
+              // In normal gameplay the challenge seed is a deterministic value derived
+              // from game.seed — passing it would cause the same bridge layout and
+              // number-order shuffle to repeat whenever the same game.seed is active
+              // (e.g. after a page reload or restart).
+              // GlassBridgeComp generates a fresh crypto-random session seed on mount
+              // so each new Crystal Path run stays unpredictable.
+              if (import.meta.env.DEV) {
+                console.log('GLASS_BRIDGE_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
+                });
+              }
               return (
                 <GlassBridgeComp
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as 'LOH' | 'POS' | undefined}
-                  seed={seed}
                   onComplete={handleReactComplete}
                 />
               );

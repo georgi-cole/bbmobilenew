@@ -44,6 +44,7 @@ import {
   type TileSide,
 } from '../../features/glassBridge/glassBridgeSlice';
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { mulberry32 } from '../../store/rng';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { useGlassBridgeAudio } from '../../hooks/useGlassBridgeAudio';
@@ -212,7 +213,7 @@ interface Props {
   participantIds: string[];
   participants?: ParticipantProp[];
   prizeType?: 'LOH' | 'POS';
-  seed: number;
+  seed?: number;
   onComplete?: () => void;
 }
 
@@ -227,6 +228,7 @@ export default function GlassBridgeComp({
 }: Props) {
   const dispatch = useAppDispatch();
   const gb = useAppSelector((s: RootState) => s.glassBridge);
+  const [sessionSeed] = useState<number>(() => (seed !== undefined && seed !== 0 ? seed : cryptoSeed()));
 
   // ── Resolve human player id ───────────────────────────────────────────────
   const humanId = useMemo(() => {
@@ -288,7 +290,13 @@ export default function GlassBridgeComp({
   const deathMarkerClearRef = useRef<number | null>(null);
   const landingTimersRef = useRef<number[]>([]);
   const timeoutCollapseResolveRef = useRef<number | null>(null);
-  const initParamsRef = useRef({ participantIds, prizeType, seed, humanId, participants });
+  const initParamsRef = useRef({
+    participantIds,
+    prizeType,
+    seed: sessionSeed,
+    humanId,
+    participants,
+  });
 
   // ── Order-selection AI pick queue refs (sequential pacing) ───────────────
   /** AI player IDs queued to pick, in participant order (numbers computed lazily). */
@@ -317,9 +325,9 @@ export default function GlassBridgeComp({
   const timeoutSequenceStartedRef = useRef(false);
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
-  const aiRngRef = useRef(mulberry32(seed + 9999));
+  const aiRngRef = useRef(mulberry32(sessionSeed + 9999));
   // Stable RNG for hint probability (sub-seed 200 — isolated from layout and AI timing).
-  const hintRngRef = useRef(mulberry32(seed + 200));
+  const hintRngRef = useRef(mulberry32(sessionSeed + 200));
 
   function clearAllTimers() {
     if (timerIntervalRef.current !== null) {
@@ -407,7 +415,7 @@ export default function GlassBridgeComp({
     }
 
     // Seeded RNG for AI order picks (sub-seed 100 keeps it isolated from bridge layout).
-    const aiRng = mulberry32(seed + 100);
+    const aiRng = mulberry32(sessionSeed + 100);
     // Queue stores AI player IDs only; the actual number is picked lazily at
     // timer-fire time from the live available pool to avoid conflicts when the
     // human picks first.

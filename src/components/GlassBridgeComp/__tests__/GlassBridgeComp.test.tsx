@@ -143,4 +143,55 @@ describe('GlassBridgeComp', () => {
     // Button should now show 2 hints left.
     expect(screen.getByRole('button', { name: /request help/i }).textContent).toMatch(/2 left/i);
   });
+
+  it('generates a fresh session seed on each mount when no explicit seed is provided', async () => {
+    const generatedSeeds = [0x12345678, 0x9abcdef0];
+    let seedIndex = 0;
+
+    const getRandomValuesSpy = vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation((array) => {
+      if (array instanceof Uint32Array && array.length > 0) {
+        array[0] = generatedSeeds[Math.min(seedIndex, generatedSeeds.length - 1)];
+        seedIndex += 1;
+      }
+      return array;
+    });
+
+    const firstStore = makeStore();
+    const firstRender = render(
+      <Provider store={firstStore}>
+        <GlassBridgeComp
+          participantIds={['user', 'ai-1']}
+          participants={[
+            { id: 'user', name: 'You', isHuman: true },
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+          ]}
+        />
+      </Provider>,
+    );
+
+    await advance(0);
+    const firstSeed = firstStore.getState().glassBridge.seed;
+    firstRender.unmount();
+
+    const secondStore = makeStore();
+    render(
+      <Provider store={secondStore}>
+        <GlassBridgeComp
+          participantIds={['user', 'ai-1']}
+          participants={[
+            { id: 'user', name: 'You', isHuman: true },
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+          ]}
+        />
+      </Provider>,
+    );
+
+    await advance(0);
+    const secondSeed = secondStore.getState().glassBridge.seed;
+
+    expect(firstSeed).toBe(generatedSeeds[0]);
+    expect(secondSeed).toBe(generatedSeeds[1]);
+    expect(secondSeed).not.toBe(firstSeed);
+    getRandomValuesSpy.mockRestore();
+  });
 });
