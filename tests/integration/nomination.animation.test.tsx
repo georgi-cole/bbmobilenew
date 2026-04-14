@@ -285,6 +285,9 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="danger"]')).toHaveLength(3);
     expect(document.querySelectorAll('.ceremony-overlay__badge[data-badge-origin="tile"]')).toHaveLength(2);
     expect(document.querySelectorAll('.ceremony-overlay__badge[data-badge-origin="center"]')).toHaveLength(1);
+    expect(
+      document.querySelectorAll('.ceremony-overlay__badge img[src*="nomination_badge.png"]'),
+    ).toHaveLength(3);
   });
 
   it('uses shorter nomination pills on mobile-sized viewports', async () => {

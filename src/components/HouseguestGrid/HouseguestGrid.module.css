@@ -322,6 +322,13 @@
   border: 1px solid rgba(255,255,255,0.1);
 }
 
+.statusBadgeImage {
+  display: block;
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
 /* Per-badge accent colours */
 .badge_hoh       { background: rgba(245, 158, 11, 0.25); border-color: rgba(245, 158, 11, 0.4); }
 .badge_pov       { background: rgba(139,  92, 246, 0.25); border-color: rgba(139, 92, 246, 0.4); }
