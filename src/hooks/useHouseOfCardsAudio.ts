@@ -17,20 +17,15 @@ export interface UseHouseOfCardsAudioReturn {
 }
 
 /**
- * Starts House of Cards music while the minigame is active and returns one-shot
- * callbacks for gameplay events. Previous music is restored on cleanup.
+ * Requests House of Cards music while the minigame is active and returns
+ * one-shot callbacks for gameplay events.
  */
 export function useHouseOfCardsAudio(isPlaying: boolean): UseHouseOfCardsAudioReturn {
   useEffect(() => {
     if (!isPlaying) return;
-    const prevKey = SoundManager.currentMusicKey;
-    void SoundManager.playMusic(HOC_MUSIC_KEY);
+    SoundManager.requestBgm(HOC_MUSIC_KEY, 'minigame');
     return () => {
-      if (SoundManager.currentMusicKey !== HOC_MUSIC_KEY) return;
-      SoundManager.stopMusic();
-      if (prevKey && prevKey !== HOC_MUSIC_KEY) {
-        void SoundManager.playMusic(prevKey);
-      }
+      SoundManager.releaseBgm('minigame');
     };
   }, [isPlaying]);
 
