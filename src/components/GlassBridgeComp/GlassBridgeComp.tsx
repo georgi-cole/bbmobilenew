@@ -916,7 +916,10 @@ export default function GlassBridgeComp({
     if (!humanId) return;
     const humanProgress = gb.progress[humanId];
     if (!humanProgress) return;
-    const hintsUsed = Math.round((humanProgress.hintPenaltyMs ?? 0) / HINT_PENALTY_MS);
+    const hintsUsed = Math.min(
+      MAX_HINTS_PER_RUN,
+      Math.floor((humanProgress.hintPenaltyMs ?? 0) / HINT_PENALTY_MS),
+    );
     if (hintsUsed >= MAX_HINTS_PER_RUN) return;
 
     const rowIdx = gb.currentPlayerRow - 1;
@@ -946,7 +949,10 @@ export default function GlassBridgeComp({
   const humanProgress = humanId ? gb.progress[humanId] : null;
   const isHumanEliminated = !!humanProgress?.eliminated;
   const pendingActorId = pendingStep?.actorId ?? null;
-  const hintsUsed = Math.round((humanProgress?.hintPenaltyMs ?? 0) / HINT_PENALTY_MS);
+  const hintsUsed = Math.min(
+    MAX_HINTS_PER_RUN,
+    Math.floor((humanProgress?.hintPenaltyMs ?? 0) / HINT_PENALTY_MS),
+  );
   const hintsRemaining = MAX_HINTS_PER_RUN - hintsUsed;
   const canRequestHelp =
     gb.phase === 'playing' &&
@@ -1262,7 +1268,7 @@ export default function GlassBridgeComp({
           )}
 
           {/* ── Request Help (ad-gated hint) ── */}
-          {gb.phase === 'playing' && humanId && !isHumanEliminated && !gb.timerExpired && (
+          {isHumanTurn && !isHumanEliminated && !gb.timerExpired && (
             <div className="gb-hint-area">
               {currentHintMessage && (
                 <div className="gb-hint-message" role="status" aria-live="polite">

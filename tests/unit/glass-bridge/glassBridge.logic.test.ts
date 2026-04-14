@@ -37,6 +37,7 @@ import glassBridgeReducer, {
   completeGame,
   setHumanSpectating,
   resetGlassBridge,
+  recordHintUsed,
   generateBridgeRows,
   buildPlacements,
   buildAiNumberChoices,
@@ -44,6 +45,8 @@ import glassBridgeReducer, {
   buildGlassBridgeTimeLimitMs,
   deriveAiObviousSafeAccuracy,
   simulateAiTurn,
+  HINT_PENALTY_MS,
+  MAX_HINTS_PER_RUN,
   type BridgeRow,
   type GlassBridgePlayerProgress,
 } from '../../../src/features/glassBridge/glassBridgeSlice';
@@ -476,6 +479,44 @@ describe('buildPlacements', () => {
     const placements = buildPlacements(progress, ['a', 'b']);
     expect(placements[0]).toBe('b');
     expect(placements[1]).toBe('a');
+  });
+});
+
+describe('recordHintUsed reducer', () => {
+  it('adds HINT_PENALTY_MS to hintPenaltyMs on each use', () => {
+    const store = startGame(['user', 'ai-1'], 42);
+    completeOrderPhase(store, 42);
+
+    store.dispatch(recordHintUsed({ playerId: 'user' }));
+    let gb = store.getState().glassBridge;
+    expect(gb.progress['user'].hintPenaltyMs).toBe(HINT_PENALTY_MS);
+
+    store.dispatch(recordHintUsed({ playerId: 'user' }));
+    gb = store.getState().glassBridge;
+    expect(gb.progress['user'].hintPenaltyMs).toBe(HINT_PENALTY_MS * 2);
+  });
+
+  it('does not exceed MAX_HINTS_PER_RUN * HINT_PENALTY_MS regardless of repeated dispatches', () => {
+    const store = startGame(['user', 'ai-1'], 42);
+    completeOrderPhase(store, 42);
+
+    // Dispatch more times than the allowed max.
+    for (let i = 0; i < MAX_HINTS_PER_RUN + 5; i++) {
+      store.dispatch(recordHintUsed({ playerId: 'user' }));
+    }
+
+    const gb = store.getState().glassBridge;
+    expect(gb.progress['user'].hintPenaltyMs).toBe(MAX_HINTS_PER_RUN * HINT_PENALTY_MS);
+  });
+
+  it('is a no-op for non-existent players', () => {
+    const store = startGame(['user', 'ai-1'], 42);
+    completeOrderPhase(store, 42);
+
+    const before = store.getState().glassBridge.progress;
+    store.dispatch(recordHintUsed({ playerId: 'ghost' }));
+    const after = store.getState().glassBridge.progress;
+    expect(after).toEqual(before);
   });
 });
 

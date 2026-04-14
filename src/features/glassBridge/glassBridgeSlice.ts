@@ -591,13 +591,16 @@ const glassBridgeSlice = createSlice({
     },
 
     /**
-     * Record that the human used a hint.
-     * Adds HINT_PENALTY_MS (30 000) to the human player's hintPenaltyMs.
-     * No-op when called for a non-existent player.
+     * Record that a player used a hint.
+     * Adds HINT_PENALTY_MS (30 000) to the player's hintPenaltyMs.
+     * No-ops when called for a non-existent player or when the player has
+     * already used MAX_HINTS_PER_RUN hints (enforced at the state level).
      */
     recordHintUsed(state, action: PayloadAction<{ playerId: string }>) {
       const p = state.progress[action.payload.playerId];
       if (p) {
+        const hintsAlreadyUsed = Math.floor((p.hintPenaltyMs ?? 0) / HINT_PENALTY_MS);
+        if (hintsAlreadyUsed >= MAX_HINTS_PER_RUN) return;
         p.hintPenaltyMs = (p.hintPenaltyMs ?? 0) + HINT_PENALTY_MS;
       }
     },
