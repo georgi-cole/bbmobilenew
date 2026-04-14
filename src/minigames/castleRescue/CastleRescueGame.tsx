@@ -166,6 +166,14 @@ interface Pipe {
   routeIndex: number; // 0/1/2 if this is correct pipe I/II/III; -1 if wrong
   pipeType: PipeType; // what happens when the player enters this pipe
   done: boolean;      // player has already used this pipe (prevents re-entry)
+  /** When true, this pipe cannot be entered until unlocked by visiting a specific room. */
+  locked: boolean;
+  /**
+   * When non-null, exiting the bonus/ambush room entered via THIS pipe unlocks
+   * the pipe at the given slot index.  Only set on bonus/ambush wrong pipes that
+   * serve as "keys" in the locked-pipe discovery mechanic.
+   */
+  unlocksSlot: number | null;
 }
 
 interface Checkpoint {
@@ -216,6 +224,12 @@ interface GameState {
   finalScore: number;
   /** Non-null while the player is inside a bonus or ambush side-room. */
   room: RoomInstance | null;
+  /**
+   * Slot index of the pipe used to enter the current side-room, or null when
+   * not in a room.  Used by the room-exit handler to unlock any gated correct
+   * pipe whose discovery depends on visiting this room.
+   */
+  lastRoomPipeSlot: number | null;
 }
 
 // ═══ mulberry32 RNG (inline to keep component self-contained) ═════════════════
@@ -245,6 +259,26 @@ function buildLevel(seed: number): LevelGeom {
     [3110, PIPE_GY],   // 5 — Underground
   ];
 
+  // Locked-pipe mechanic: ~50% of runs lock the 3rd correct pipe behind a
+  // specific bonus/ambush room visit, forcing exploration before it appears.
+  const lockRng = rng32((seed ^ 0xF00DCAFE) >>> 0);
+  const shouldLock = lockRng() < 0.5;
+  let lockedSlot: number | null = null;
+  let keySlot: number | null = null;
+
+  if (shouldLock) {
+    // Lock the 3rd correct-route pipe (last in sequence to keep runs fair).
+    const candidateLockedSlot = config.correctPipeSlots[2];
+    // Choose a bonus or ambush wrong pipe as the room that unlocks it.
+    const candidateKeys = Object.keys(config.wrongPipeTypes)
+      .map(Number)
+      .filter(s => config.wrongPipeTypes[s] === 'bonus' || config.wrongPipeTypes[s] === 'ambush');
+    if (candidateKeys.length > 0) {
+      lockedSlot = candidateLockedSlot;
+      keySlot    = candidateKeys[Math.floor(lockRng() * candidateKeys.length)];
+    }
+  }
+
   const pipes: Pipe[] = SLOTS.map(([px, py], idx) => {
     const routeIndex = config.correctPipeSlots.indexOf(idx);
     const pipeType: PipeType = routeIndex >= 0 ? 'correct' : config.wrongPipeTypes[idx];
@@ -257,6 +291,8 @@ function buildLevel(seed: number): LevelGeom {
       routeIndex,
       pipeType,
       done: false,
+      locked: lockedSlot !== null && idx === lockedSlot,
+      unlocksSlot: keySlot !== null && idx === keySlot ? lockedSlot : null,
     };
   });
 
@@ -604,15 +640,25 @@ function updateGame(
         pipe.x, pipe.y, pipe.width, pipe.entryZoneWidth,
       )) continue;
 
+      // Locked pipes cannot be entered — give brief visual feedback only.
+      if (pipe.locked) {
+        gs.pipeFlashType  = 'dead';
+        gs.pipeFlashTimer = PIPE_FLASH_MS;
+        gs.phase = 'pipe_flash';
+        return;
+      }
+
       const result = applyPipeEntry(gs, pipe);
       if (result === 'enter_bonus') {
         // Teleport to the bonus treasure room.
+        gs.lastRoomPipeSlot = pipe.slotIndex;
         gs.room = buildBonusRoom();
         gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
         gs.player.vx = 0; gs.player.vy = 0;
         gs.camera = 0;
       } else if (result === 'enter_ambush') {
         // Teleport to the ambush trap room.
+        gs.lastRoomPipeSlot = pipe.slotIndex;
         gs.room = buildAmbushRoom();
         gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
         gs.player.vx = 0; gs.player.vy = 0;
@@ -770,6 +816,15 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
     player.onGround, player.vy, goDown,
     room.exitX, room.exitY, PIPE_W, PIPE_W,
   )) {
+    // Unlock any locked correct pipe whose key was the room just visited.
+    if (gs.lastRoomPipeSlot !== null) {
+      const roomPipe = gs.geom.pipes.find(p => p.slotIndex === gs.lastRoomPipeSlot);
+      if (roomPipe?.unlocksSlot !== null && roomPipe?.unlocksSlot !== undefined) {
+        const gatedPipe = gs.geom.pipes.find(p => p.slotIndex === roomPipe.unlocksSlot);
+        if (gatedPipe) gatedPipe.locked = false;
+      }
+    }
+    gs.lastRoomPipeSlot = null;
     gs.room = null; // back to main level
     player.x = gs.spawnX; player.y = gs.spawnY; player.vx = 0; player.vy = 0;
     gs.camera = Math.max(0, Math.min(gs.geom.width - CW, gs.spawnX - CW * 0.4));
@@ -849,32 +904,26 @@ function renderGame(
     ctx.stroke();
   }
 
-  // Pipes
+  // Pipes — all the same neutral color so players can't identify correct pipes visually.
   for (const pipe of gs.geom.pipes) {
-    const isRoute = pipe.pipeType === 'correct';
-    const isDone  = pipe.done;
-    // Correct pipes: green while available, dark green when done.
-    // Wrong pipes (any other type): red while available, dark when done.
-    // Players can't see the wrong-pipe sub-type — they all show '?' until entered.
-    ctx.fillStyle = isRoute
-      ? (isDone ? '#1a5c1a' : '#1e7a1e')
-      : (isDone ? '#3a1a1a' : '#7a1e1e');
+    const isDone   = pipe.done;
+    const isLocked = pipe.locked;
+    // Body color: locked = very dark, done = darker neutral, active = neutral teal-slate
+    ctx.fillStyle = isLocked ? '#151c2a' : (isDone ? '#1a3028' : '#1e5045');
     ctx.fillRect(pipe.x+4, pipe.y+14, PIPE_W-8, PIPE_H-14);
-    ctx.fillStyle = isRoute
-      ? (isDone ? '#2a8a2a' : '#28a028')
-      : (isDone ? '#5a2a2a' : '#a02828');
+    // Cap (rim at top)
+    ctx.fillStyle = isLocked ? '#232f45' : (isDone ? '#254038' : '#2a6a5a');
     ctx.fillRect(pipe.x, pipe.y, PIPE_W, 14);
     // Shine
-    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(pipe.x+8, pipe.y+16, 8, PIPE_H-18);
-    // Label: Ⅰ/Ⅱ/Ⅲ for correct pipes (route order visible), '?' for others, '✕' once used
-    ctx.fillStyle = isDone ? '#afffaf' : '#fff';
+    // Label: '🔒' if locked, '?' if unknown, '✓'/'✕' once used
+    ctx.fillStyle = isDone ? '#7dd3c8' : '#fff';
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const routeLabels = ['Ⅰ','Ⅱ','Ⅲ'];
     let pipeLabel: string;
-    if (isRoute)       { pipeLabel = isDone ? '✓' : routeLabels[pipe.routeIndex]; }
-    else if (isDone)   { pipeLabel = '✕'; }
+    if (isLocked)      { pipeLabel = '🔒'; }
+    else if (isDone)   { pipeLabel = pipe.pipeType === 'correct' ? '✓' : '✕'; }
     else               { pipeLabel = '?'; }
     ctx.fillText(pipeLabel, pipe.x + PIPE_W/2, pipe.y + PIPE_H * 0.62);
   }
@@ -902,16 +951,33 @@ function renderGame(
 
   // Twin figure
   if (!gs.princessRescued) {
-    const { princessX: px, princessY: py } = gs.geom;
-    ctx.fillStyle = '#ec4899'; ctx.fillRect(px+3, py+12, PW-6, PH-12);
-    ctx.fillStyle = '#fde68a'; ctx.fillRect(px+4, py-2, PW-8, 16);
-    ctx.fillStyle = '#92400e'; ctx.fillRect(px+4, py-2, PW-8, 6);
-    ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.fillText('👑', px+PW/2, py);
+    const { princessX: tx, princessY: ty } = gs.geom;
+    // Twin — same style as the player (BB contestant) but in a teal shirt
+    // Shoes
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(tx+1, ty+PH-7, 12, 7); ctx.fillRect(tx+PW-13, ty+PH-7, 12, 7);
+    // Legs (dark-blue pants, no animation)
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(tx+2, ty+PH-18, 10, 12); ctx.fillRect(tx+PW-12, ty+PH-18, 10, 12);
+    // Body (teal shirt to distinguish from player's amber shirt)
+    ctx.fillStyle = '#0ea5e9';
+    ctx.fillRect(tx+2, ty+12, PW-4, PH-26);
+    // Eye logo on twin's shirt (pixel-art: white oval → purple iris → black pupil)
+    const tlogoX = tx + PW/2 - 5; const tlogoY = ty + 19;
+    ctx.fillStyle = '#fff'; ctx.fillRect(tlogoX, tlogoY, 10, 6);
+    ctx.fillStyle = '#7c3aed'; ctx.fillRect(tlogoX+2, tlogoY+1, 6, 4);
+    ctx.fillStyle = '#000'; ctx.fillRect(tlogoX+4, tlogoY+2, 2, 2);
+    // Head (skin)
+    ctx.fillStyle = '#fde68a'; ctx.fillRect(tx+5, ty+2, PW-10, 14);
+    // Hair (lighter brown — slightly different from player to be recognisable)
+    ctx.fillStyle = '#b45309'; ctx.fillRect(tx+4, ty-2, PW-8, 8);
+    // Face eye
+    ctx.fillStyle = '#000'; ctx.fillRect(tx+5, ty+5, 4, 4);
+    // Wave animation when gate open
     if (gs.gateOpen) {
       const wave = Math.sin(now * 0.005) * 3;
-      ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(px+PW-2, py+6); ctx.lineTo(px+PW+12, py+wave); ctx.stroke();
+      ctx.strokeStyle = '#0ea5e9'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(tx+PW-2, ty+6); ctx.lineTo(tx+PW+12, ty+wave); ctx.stroke();
     }
   }
 
@@ -943,30 +1009,33 @@ function renderGame(
     }
   }
 
-  // Player
+  // Player — BB contestant style: casual clothes with eye-logo on shirt
   const { player } = gs;
   const blink = now < player.invincibleUntil && Math.floor(now / 100) % 2 === 1;
   if (!blink) {
     const px = player.x; const py = player.y; const fr = player.facingRight;
     const ls = player.onGround && Math.abs(player.vx) > 0.5 ? Math.sin(now * 0.015) * 4 : 0;
-    // Legs
+    // Shoes
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(px+1, py+PH-7, 12, 7+ls);
+    ctx.fillRect(px+PW-13, py+PH-7, 12, 7-ls);
+    // Legs (dark-blue pants with walk animation)
     ctx.fillStyle = '#1e3a8a';
-    ctx.fillRect(px+2,        py+PH-12, 10, 12+ls);
-    ctx.fillRect(px+PW-12,    py+PH-12, 10, 12-ls);
-    // Body (blue armor)
-    ctx.fillStyle = '#2563eb'; ctx.fillRect(px+2, py+14, PW-4, PH-26);
-    ctx.fillStyle = '#3b82f6'; ctx.fillRect(px+4, py+16, 6, PH-28);
-    // Head
+    ctx.fillRect(px+2, py+PH-18, 10, 12+ls);
+    ctx.fillRect(px+PW-12, py+PH-18, 10, 12-ls);
+    // Body (amber/orange t-shirt)
+    ctx.fillStyle = '#f59e0b'; ctx.fillRect(px+2, py+12, PW-4, PH-26);
+    // Eye logo on shirt (centred on the chest — pixel-art: white oval → purple iris → black pupil)
+    const logoX = px + PW/2 - 5; const logoY = py + 19;
+    ctx.fillStyle = '#fff'; ctx.fillRect(logoX, logoY, 10, 6);
+    ctx.fillStyle = '#7c3aed'; ctx.fillRect(logoX+2, logoY+1, 6, 4);
+    ctx.fillStyle = '#000'; ctx.fillRect(logoX+4, logoY+2, 2, 2);
+    // Head (skin tone)
     ctx.fillStyle = '#fde68a'; ctx.fillRect(px+5, py+2, PW-10, 14);
-    // Helmet
-    ctx.fillStyle = '#1e3a8a'; ctx.fillRect(px+3, py-5, PW-6, 11);
-    ctx.fillStyle = '#ef4444'; ctx.fillRect(px+(fr?PW-7:3), py-10, 5, 7);
-    // Eye
-    ctx.fillStyle = '#000'; ctx.fillRect(px+(fr?PW-10:5), py+4, 4, 4);
-    // Shield
-    ctx.fillStyle = '#1d4ed8'; ctx.fillRect(px+(fr?0:PW-8), py+16, 8, 14);
-    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1;
-    ctx.strokeRect(px+(fr?0:PW-8), py+16, 8, 14);
+    // Hair (dark brown)
+    ctx.fillStyle = '#92400e'; ctx.fillRect(px+4, py-2, PW-8, 8);
+    // Face eye (direction-aware)
+    ctx.fillStyle = '#000'; ctx.fillRect(px+(fr?PW-10:5), py+5, 4, 4);
   }
 
   // Pipe flash overlay (correct / setback / dead)
@@ -1146,20 +1215,29 @@ function renderRoom(
     }
   }
 
-  // Player
+  // Player — same BB contestant style as in the main-level renderer
   const blink = now < player.invincibleUntil && Math.floor(now / 100) % 2 === 1;
   if (!blink) {
     const px = player.x; const py = player.y; const fr = player.facingRight;
+    // Shoes
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(px+1, py+PH-7, 12, 7); ctx.fillRect(px+PW-13, py+PH-7, 12, 7);
+    // Legs (dark-blue pants, no walk animation in room)
     ctx.fillStyle = '#1e3a8a';
-    ctx.fillRect(px+2, py+PH-12, 10, 12); ctx.fillRect(px+PW-12, py+PH-12, 10, 12);
-    ctx.fillStyle = '#2563eb'; ctx.fillRect(px+2, py+14, PW-4, PH-26);
-    ctx.fillStyle = '#3b82f6'; ctx.fillRect(px+4, py+16, 6, PH-28);
+    ctx.fillRect(px+2, py+PH-18, 10, 12); ctx.fillRect(px+PW-12, py+PH-18, 10, 12);
+    // Body (amber/orange t-shirt)
+    ctx.fillStyle = '#f59e0b'; ctx.fillRect(px+2, py+12, PW-4, PH-26);
+    // Eye logo on shirt (pixel-art: white oval → purple iris → black pupil)
+    const logoX = px + PW/2 - 5; const logoY = py + 19;
+    ctx.fillStyle = '#fff'; ctx.fillRect(logoX, logoY, 10, 6);
+    ctx.fillStyle = '#7c3aed'; ctx.fillRect(logoX+2, logoY+1, 6, 4);
+    ctx.fillStyle = '#000'; ctx.fillRect(logoX+4, logoY+2, 2, 2);
+    // Head (skin tone)
     ctx.fillStyle = '#fde68a'; ctx.fillRect(px+5, py+2, PW-10, 14);
-    ctx.fillStyle = '#1e3a8a'; ctx.fillRect(px+3, py-5, PW-6, 11);
-    ctx.fillStyle = '#ef4444'; ctx.fillRect(px+(fr?PW-7:3), py-10, 5, 7);
-    ctx.fillStyle = '#000'; ctx.fillRect(px+(fr?PW-10:5), py+4, 4, 4);
-    ctx.fillStyle = '#1d4ed8'; ctx.fillRect(px+(fr?0:PW-8), py+16, 8, 14);
-    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1; ctx.strokeRect(px+(fr?0:PW-8), py+16, 8, 14);
+    // Hair (dark brown)
+    ctx.fillStyle = '#92400e'; ctx.fillRect(px+4, py-2, PW-8, 8);
+    // Face eye (direction-aware)
+    ctx.fillStyle = '#000'; ctx.fillRect(px+(fr?PW-10:5), py+5, 4, 4);
   }
 
   ctx.restore();
@@ -1268,6 +1346,7 @@ export default function CastleRescueGame({
       deathPauseTimer:0,
       princessRescued:false, gateOpen:false, finalScore:0,
       room: null,
+      lastRoomPipeSlot: null,
     };
   }, []);
 
