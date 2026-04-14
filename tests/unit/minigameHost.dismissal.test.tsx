@@ -109,11 +109,11 @@ const PLACEMENT_GAME = {
 
 const GLASS_BRIDGE_GAME = {
   key: 'glass_bridge_brutal',
-  title: 'Glass Bridge — Brutal Mode',
-  description: 'Cross a bridge of paired glass tiles one row at a time. One wrong step and you die.',
+  title: 'The Crystal Path',
+  description: 'Step across a path of paired crystal platforms one row at a time. One wrong step and you are eliminated.',
   instructions: [
-    'Players cross a bridge of glass tiles row by row.',
-    'Each row has two tiles: LEFT and RIGHT. Only one is safe.',
+    'Players cross a glowing crystal path platform by platform.',
+    'Each row has two platforms: LEFT and RIGHT. Only one is solid.',
   ],
   resultMode: 'placement' as const,
   metricKind: 'accuracy' as const,

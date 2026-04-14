@@ -1033,15 +1033,16 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   glass_bridge_brutal: {
     key: 'glass_bridge_brutal',
-    title: 'Glass Bridge — Brutal Mode',
+    title: 'The Crystal Path',
     description:
-      'Cross a bridge of paired glass tiles one row at a time. One wrong step and you die.',
+      'Step across a path of paired crystal platforms one row at a time. One wrong step and you are eliminated.',
     instructions: [
-      'Players cross a bridge of glass tiles row by row.',
-      'Each row has two tiles: LEFT and RIGHT. Only one is safe.',
-      'Choose wrong and the tile shatters — you are eliminated.',
-      'Everyone starts from the beginning; turn order is determined by a number draw.',
-      'The player who crosses fastest — or reaches the furthest row — wins.',
+      'Players cross a glowing crystal path platform by platform.',
+      'Each row has two platforms: LEFT and RIGHT. Only one is solid.',
+      'Choose the wrong platform and it shatters — you are eliminated.',
+      'Everyone starts from the beginning; crossing order is decided by a number draw.',
+      'The player who crosses fastest — or reaches the furthest platform — wins.',
+      'You may use The Expert up to 3 times per run. Each hint adds a 30-second penalty to your final time.',
     ],
     resultMode: 'placement',
     metricKind: 'accuracy',

@@ -1,19 +1,20 @@
 /**
- * GlassBridgeComp — "Glass Bridge — Brutal Mode" elimination minigame.
+ * GlassBridgeComp — "The Crystal Path" elimination minigame.
  *
- * Players cross a bridge of paired glass tiles one row at a time.
- * One wrong choice = elimination.  Broken tiles persist for later players.
+ * Players cross a path of paired crystal platforms one row at a time.
+ * One wrong choice = elimination.  Broken platforms persist for later players.
  * Winner is determined by fastest completion or furthest progress.
  *
  * Phases (driven by Redux state):
  *   order_selection  — Players pick unique numbers; AI auto-picks.
  *   order_reveal     — Shuffled order displayed with animation.
- *   playing          — Sequential turn-based bridge crossing.
+ *   playing          — Sequential turn-based path crossing.
  *   complete         — Final rankings shown; onComplete fires.
  *
  * Human flow:
  *   - Pick a number during order selection.
- *   - During your turn: tap the highlighted tile in the active row to step.
+ *   - During your turn: tap the highlighted platform in the active row to step.
+ *   - Request Help (up to 3×) to get a probabilistic hint from The Expert (+30s penalty each).
  *   - If eliminated: spectator modal offers "Continue Watching" or "Skip to Result".
  *
  * AI flow:
@@ -35,8 +36,11 @@ import {
   setHumanSpectating,
   resetGlassBridge,
   aiDecideStep,
+  recordHintUsed,
   selectActivePlayerId,
   selectIsGameOver,
+  HINT_PENALTY_MS,
+  MAX_HINTS_PER_RUN,
   type TileSide,
 } from '../../features/glassBridge/glassBridgeSlice';
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
@@ -172,6 +176,26 @@ function getTimeoutCollapseDuration(rowsCount: number, noAnimations: boolean): n
   return finalTileDelay + SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
 }
 
+/**
+ * Compute a probabilistic hint for the player ("The Expert").
+ *
+ * Returns the integer percentage chance (20–80) that the LEFT platform will
+ * break, biased toward the true outcome using seeded RNG.
+ *
+ * - If right is safe (left will break): value is in the 65–80 range.
+ * - If left is safe (left is solid):    value is in the 20–35 range.
+ *
+ * The value is never 0 or 100 so the hint feels advisory rather than certain.
+ */
+function computeHintLeftBreakChance(safeSide: TileSide, rng: () => number): number {
+  if (safeSide === 'right') {
+    // Left will break — lean high (65–80).
+    return 65 + Math.floor(rng() * 16);
+  }
+  // Left is safe — lean low (20–35).
+  return 20 + Math.floor(rng() * 16);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface GlassBridgeCompetitionType {
@@ -250,6 +274,8 @@ export default function GlassBridgeComp({
   const [timedOutPlayerIds, setTimedOutPlayerIds] = useState<string[]>([]);
   /** While true, the remaining bridge tiles shatter before results are shown. */
   const [timeoutCollapseActive, setTimeoutCollapseActive] = useState(false);
+  /** Current hint message from The Expert (null = no active hint). */
+  const [currentHintMessage, setCurrentHintMessage] = useState<string | null>(null);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const timerIntervalRef = useRef<number | null>(null);
@@ -292,6 +318,8 @@ export default function GlassBridgeComp({
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
   const aiRngRef = useRef(mulberry32(seed + 9999));
+  // Stable RNG for hint probability (sub-seed 200 — isolated from layout and AI timing).
+  const hintRngRef = useRef(mulberry32(seed + 200));
 
   function clearAllTimers() {
     if (timerIntervalRef.current !== null) {
@@ -796,6 +824,11 @@ export default function GlassBridgeComp({
     playNewTurn();
   }, [gb.phase, gb.currentTurnIndex, gb.turnOrder, gb.progress, playNewTurn]);
 
+  // ── 14. Clear hint message when the human moves to a new row or turn ends ──
+  useEffect(() => {
+    setCurrentHintMessage(null);
+  }, [gb.currentPlayerRow, gb.currentTurnIndex]);
+
   // ── Human actions ─────────────────────────────────────────────────────────
 
   const handleHumanNumberPick = useCallback(
@@ -879,6 +912,33 @@ export default function GlassBridgeComp({
     onComplete?.();
   }, [dispatch, onComplete]);
 
+  const handleRequestHelp = useCallback(() => {
+    if (!humanId) return;
+    const humanProgress = gb.progress[humanId];
+    if (!humanProgress) return;
+    const hintsUsed = Math.round((humanProgress.hintPenaltyMs ?? 0) / HINT_PENALTY_MS);
+    if (hintsUsed >= MAX_HINTS_PER_RUN) return;
+
+    const rowIdx = gb.currentPlayerRow - 1;
+    if (rowIdx < 0 || rowIdx >= gb.rows.length) return;
+    const row = gb.rows[rowIdx];
+
+    // ── Ad-gating placeholder ──────────────────────────────────────────────
+    // TODO: Replace this comment block with real ad-request logic before granting
+    // the hint below.  The hint is intentionally granted unconditionally here so
+    // the mechanic can be tested without a live ad provider.
+    // When real ads are integrated:
+    //   1. Call your ad-provider's showRewardedAd() here.
+    //   2. Only execute the code below inside the "ad completed" callback.
+    // ──────────────────────────────────────────────────────────────────────
+
+    const chance = computeHintLeftBreakChance(row.safeSide, hintRngRef.current);
+    setCurrentHintMessage(
+      `The Expert says there is a ${chance}% chance that the left platform is gonna break.`,
+    );
+    dispatch(recordHintUsed({ playerId: humanId }));
+  }, [humanId, gb.progress, gb.currentPlayerRow, gb.rows, dispatch]);
+
   // ── Derived values ────────────────────────────────────────────────────────
 
   const activeId = selectActivePlayerId(gb);
@@ -886,6 +946,15 @@ export default function GlassBridgeComp({
   const humanProgress = humanId ? gb.progress[humanId] : null;
   const isHumanEliminated = !!humanProgress?.eliminated;
   const pendingActorId = pendingStep?.actorId ?? null;
+  const hintsUsed = Math.round((humanProgress?.hintPenaltyMs ?? 0) / HINT_PENALTY_MS);
+  const hintsRemaining = MAX_HINTS_PER_RUN - hintsUsed;
+  const canRequestHelp =
+    gb.phase === 'playing' &&
+    isHumanTurn &&
+    !isHumanEliminated &&
+    !pendingStep &&
+    !gb.timerExpired &&
+    hintsRemaining > 0;
 
   const timerClass =
     timerDisplay <= 10_000
@@ -901,12 +970,12 @@ export default function GlassBridgeComp({
     <div
       className={`glass-bridge${gb.phase === 'playing' ? ' gb-phase-playing' : ''}${showScreenShake ? ' gb-screen-shake' : ''}`}
       role="main"
-      aria-label="Glass Bridge — Brutal Mode"
+      aria-label="The Crystal Path"
     >
       {/* HUD */}
       {(gb.phase === 'playing' || gb.phase === 'complete') && (
         <div className="gb-hud" role="banner">
-          <span className="gb-hud-title">Glass Bridge</span>
+          <span className="gb-hud-title">The Crystal Path</span>
           {gb.phase === 'playing' && gb.challengeStartTimeMs !== null && gb.globalTimeLimitMs > 0 && (
             <span className={`gb-hud-timer ${timerClass}`} aria-label="Time remaining">
               ⏱ {formatTimeRemaining(timerDisplay)}
@@ -1003,15 +1072,15 @@ export default function GlassBridgeComp({
         <div className="gb-playing">
           <div className="gb-active-banner" aria-live="polite">
             {timeoutCollapseActive
-              ? "Time's up! The bridge is collapsing."
+              ? "Time's up! The path is collapsing!"
               : isHumanTurn && !pendingStep
-              ? 'Select a highlighted tile to step.'
+              ? 'Select a highlighted platform to step.'
               : activeId
-                ? `${getName(activeId)} is on the bridge`
-                : 'Bridge awaiting next player'}
+                ? `${getName(activeId)} is on the path`
+                : 'Path awaiting next player'}
           </div>
           {/* Bridge */}
-          <div className="gb-bridge-container" role="region" aria-label="Glass bridge">
+          <div className="gb-bridge-container" role="region" aria-label="Crystal path">
             {/* LED accent rails — decorative outer edge lighting */}
             <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
             <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
@@ -1188,7 +1257,30 @@ export default function GlassBridgeComp({
 
           {isHumanTurn && !isHumanEliminated && (
             <div className="gb-step-hint" aria-live="polite">
-              Choose directly on the bridge.
+              Choose directly on the path.
+            </div>
+          )}
+
+          {/* ── Request Help (ad-gated hint) ── */}
+          {gb.phase === 'playing' && humanId && !isHumanEliminated && !gb.timerExpired && (
+            <div className="gb-hint-area">
+              {currentHintMessage && (
+                <div className="gb-hint-message" role="status" aria-live="polite">
+                  🔮 {currentHintMessage}
+                </div>
+              )}
+              <button
+                className="gb-btn-help"
+                onClick={handleRequestHelp}
+                disabled={!canRequestHelp}
+                aria-label={
+                  hintsRemaining > 0
+                    ? `Request Help from The Expert (${hintsRemaining} left, +${HINT_PENALTY_MS / 1000}s penalty each)`
+                    : 'Request Help — no hints remaining'
+                }
+              >
+                🔮 Request Help {hintsRemaining > 0 ? `(${hintsRemaining} left)` : '(none left)'}
+              </button>
             </div>
           )}
         </div>
@@ -1214,7 +1306,14 @@ export default function GlassBridgeComp({
             const isYou = pid === humanId;
 
             const detail: string = p?.finishTimeMs !== undefined
-              ? `Finished ${formatElapsed(p.finishTimeMs)}`
+              ? (() => {
+                  const penalty = p.hintPenaltyMs ?? 0;
+                  const effective = p.finishTimeMs + penalty;
+                  const base = `Finished ${formatElapsed(effective)}`;
+                  return penalty > 0
+                    ? `${base} (incl. +${penalty / 1000}s hint penalty)`
+                    : base;
+                })()
               : p?.furthestRowReached
                 ? `Row ${p.furthestRowReached} / ${gb.rowsCount}`
                 : 'Row 0';
@@ -1231,7 +1330,7 @@ export default function GlassBridgeComp({
           })}
         >
           <div className="gb-complete-hero">
-            <h2>Bridge Complete</h2>
+            <h2>Path Complete</h2>
             <div className="gb-winner-badge">🏆</div>
             {gb.winnerId && (
               <div className="gb-winner-name">
@@ -1256,7 +1355,7 @@ export default function GlassBridgeComp({
           <div className="gb-spectator-card">
             <div className="gb-spectator-icon" aria-hidden="true">💀</div>
             <h2>You have been eliminated.</h2>
-            <p>You can continue watching the remaining players cross the bridge.</p>
+            <p>You can continue watching the remaining players cross the path.</p>
             <div className="gb-spectator-actions">
               <button
                 className="gb-btn-watch"
