@@ -28,25 +28,17 @@ export interface UseGlassBridgeAudioReturn {
 
 /**
  * @param shouldPlayMusic - true while the Glass Bridge minigame is active.
- *   Background music starts on the first true value and stops when it reverts
- *   to false or the component unmounts.  The previously-playing music track
- *   (e.g. music:hoh_comp_general) is restored when Glass Bridge music stops.
+ *   Background music is requested while true and released when it reverts to
+ *   false or the component unmounts.
  */
 export function useGlassBridgeAudio(shouldPlayMusic: boolean): UseGlassBridgeAudioReturn {
-  // Start looping background music when the minigame becomes active;
-  // stop it when leaving or on unmount, then restore whatever was playing.
+  // Request/release minigame BGM ownership while Glass Bridge is active so the
+  // track stays attributed to the minigame lifecycle.
   useEffect(() => {
     if (!shouldPlayMusic) return;
-    const prevKey = SoundManager.currentMusicKey;
-    void SoundManager.playMusic(GB_MUSIC_KEY);
+    SoundManager.requestBgm(GB_MUSIC_KEY, 'minigame');
     return () => {
-      if (SoundManager.currentMusicKey !== GB_MUSIC_KEY) return;
-      SoundManager.stopMusic();
-      // Restore the track that was playing before GB started (e.g. LOH comp
-      // general) so phase music continues seamlessly after the minigame.
-      if (prevKey && prevKey !== GB_MUSIC_KEY) {
-        void SoundManager.playMusic(prevKey);
-      }
+      SoundManager.releaseBgm('minigame');
     };
   }, [shouldPlayMusic]);
 

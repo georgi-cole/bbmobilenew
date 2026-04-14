@@ -5,18 +5,10 @@ import { SoundManager } from '../../../src/services/sound/SoundManager';
 import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds';
 
 describe('useGlassBridgeAudio', () => {
-  let currentMusicKey: string | null;
-
   beforeEach(() => {
-    currentMusicKey = null;
-    vi.spyOn(SoundManager, 'playMusic').mockImplementation(async (key: string) => {
-      currentMusicKey = key;
-    });
-    vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {
-      currentMusicKey = null;
-    });
+    vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
-    vi.spyOn(SoundManager, 'currentMusicKey', 'get').mockImplementation(() => currentMusicKey);
   });
 
   afterEach(() => {
@@ -29,19 +21,20 @@ describe('useGlassBridgeAudio', () => {
       { initialProps: { shouldPlayMusic: false } },
     );
 
-    expect(SoundManager.playMusic).not.toHaveBeenCalled();
+    expect(SoundManager.requestBgm).not.toHaveBeenCalled();
 
     rerender({ shouldPlayMusic: true });
 
-    expect(SoundManager.playMusic).toHaveBeenCalledWith('music:gb_main');
+    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:gb_main', 'minigame');
 
     rerender({ shouldPlayMusic: false });
 
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
+    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
+    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
 
     unmount();
 
-    expect(SoundManager.stopMusic).toHaveBeenCalledTimes(1);
+    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
   });
 
   it('exposes callbacks for Glass Bridge step, death, winner, and turn sounds', () => {
