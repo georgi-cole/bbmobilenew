@@ -415,7 +415,7 @@
 
 @media (max-width: 719px) {
   .grid-of-luck {
-    padding: 12px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 12px calc(18px + env(safe-area-inset-bottom, 0));
   }
 
   .grid-of-luck__camera {
@@ -479,9 +479,10 @@
   }
 
   .grid-of-luck__sidebar {
+    /* Keeps the mobile status rail below the sticky title/announcement block. */
     order: -1;
     position: sticky;
-    top: calc(env(safe-area-inset-top, 0px) + 92px);
+    top: calc(env(safe-area-inset-top, 0) + 92px);
     z-index: 3;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
