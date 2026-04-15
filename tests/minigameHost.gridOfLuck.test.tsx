@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
+import { getGame } from '../src/minigames/registry';
 
 vi.mock('../src/components/GridOfLuck/GridOfLuck', () => ({
   default: () => <div data-testid="grid-of-luck-game">Grid of Luck</div>,
@@ -19,24 +20,6 @@ function makeStore() {
   return configureStore({ reducer: { game: gameReducer, settings: settingsReducer } });
 }
 
-const GRID_OF_LUCK_GAME = {
-  key: 'gridOfLuck',
-  title: 'Grid of Luck',
-  description: 'Open sealed boxes in a ritual chamber.',
-  instructions: ['Pick a box.'],
-  metricKind: 'points' as const,
-  metricLabel: 'LP',
-  timeLimitMs: 0,
-  authoritative: true,
-  scoringAdapter: 'authoritative' as const,
-  implementation: 'react' as const,
-  reactComponentKey: 'GridOfLuck',
-  legacy: false,
-  weight: 2,
-  category: 'logic' as const,
-  retired: false,
-};
-
 describe('MinigameHost — Grid of Luck routing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -48,11 +31,14 @@ describe('MinigameHost — Grid of Luck routing', () => {
 
   it('renders the React Grid of Luck component instead of the legacy wrapper', async () => {
     const store = makeStore();
+    const gridOfLuckGame = getGame('gridOfLuck');
+
+    expect(gridOfLuckGame).toBeDefined();
 
     render(
       <Provider store={store}>
         <MinigameHost
-          game={GRID_OF_LUCK_GAME}
+          game={gridOfLuckGame!}
           gameOptions={{ seed: 42 }}
           onDone={vi.fn()}
           skipRules

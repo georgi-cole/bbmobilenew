@@ -182,6 +182,8 @@ const CATEGORY_COLORS: Record<BoxCategory, string> = {
 const ELIMINATION_TYPES = new Set<BoxType>(['execution', 'martyrdom']);
 const HUMAN_PICK_DELAY_MS = 1200;
 const MAX_CHAIN_DEPTH = 4;
+const MAX_GRID_OF_LUCK_PLAYERS = 10;
+const MARTYRDOM_ELIMINATION_DAMAGE = 10_000;
 const BOX_REVEAL_VARIANTS: VariantLabels = ['preOpen', 'crack', 'settle'];
 const SYMBOL_REVEAL_VARIANTS: VariantLabels = ['reveal', 'settle'];
 const FLOAT_BASE_LEFT = 15;
@@ -226,7 +228,7 @@ function cloneBoxes(boxes: GridBox[]): GridBox[] {
 
 function resolveParticipants(props: GenericMinigameProps): ResolvedParticipant[] {
   if (props.participants && props.participants.length > 0) {
-    return props.participants.slice(0, 10).map((participant, index) => ({
+    return props.participants.slice(0, MAX_GRID_OF_LUCK_PLAYERS).map((participant, index) => ({
       id: participant.id,
       name: participant.name,
       isHuman: participant.isHuman,
@@ -235,7 +237,7 @@ function resolveParticipants(props: GenericMinigameProps): ResolvedParticipant[]
     }));
   }
   if (props.participantIds && props.participantIds.length > 0) {
-    return props.participantIds.slice(0, 10).map((id, index) => ({
+    return props.participantIds.slice(0, MAX_GRID_OF_LUCK_PLAYERS).map((id, index) => ({
       id,
       name: index === 0 ? 'You' : `Player ${index + 1}`,
       isHuman: index === 0,
@@ -853,7 +855,7 @@ function applyEffectSelection(
     case 'martyrdom': {
       const blessingId = targetId;
       const curseId = secondTargetId ?? blessingId;
-      const sacrifice = applyLossValue(nextState.players, actorId, 10_000, unopenedAfterReveal);
+      const sacrifice = applyLossValue(nextState.players, actorId, MARTYRDOM_ELIMINATION_DAMAGE, unopenedAfterReveal);
       nextState.players = sacrifice.players;
       if (blessingId) {
         const blessing = applyGain(nextState.players, blessingId, 300);
