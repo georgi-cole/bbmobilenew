@@ -22,7 +22,7 @@ interface TriviaVariantProps {
 const BB_QUESTIONS = [
   {
     q: 'What competition decides weekly nominations?',
-    answers: ['Safety', 'LOH', 'Battle Back', 'Have-Not'],
+    answers: ['Safety', 'LOH', 'Back 2 the Game', 'Have-Not'],
     ai: 1,
   },
   {

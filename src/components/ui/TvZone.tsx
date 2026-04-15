@@ -98,7 +98,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   final3_announcement:  { title: 'The Finale',                subtitle: 'Three players remain — the three-part Final LOH begins.',      isLive: true,  autoDismissMs: null },
   final_hoh:            { title: 'Final LOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
   jury:                 { title: 'Tribunal Votes',             subtitle: 'The Tribunal decides the winner.',                             isLive: true,  autoDismissMs: null },
-  battle_back:          { title: 'Battle Back',                subtitle: 'Eliminated players compete for a second chance.',              isLive: true,  autoDismissMs: null },
+  battle_back:          { title: 'Back 2 the Game',            subtitle: 'Eliminated players compete for a second chance.',              isLive: true,  autoDismissMs: null },
   double_eviction:      { title: 'Double Elimination!',        subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',      isLive: true,  autoDismissMs: null },
   vip_veto:             { title: 'Double Trouble!',            subtitle: 'The holder may use the power twice this ceremony. 👑',            isLive: true,  autoDismissMs: null },
   diamond_pov:          { title: 'Halo Exchange!',             subtitle: 'The holder may name the backup nominee. 😇',                    isLive: true,  autoDismissMs: null },
@@ -116,7 +116,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
  */
 function extractMajorKey(ev: TvEvent): string | null {
   const key = ev.meta?.major ?? ev.major ?? null;
-  const hasBattleBackCopy = ev.type === 'twist' && /battle back/i.test(ev.text);
+  const hasBattleBackCopy = ev.type === 'twist' && /battle back|back 2 the game/i.test(ev.text);
 
   // Legacy Battle Back events may still be tagged as a generic twist (or missing a major).
   if ((key === 'twist' || !key) && hasBattleBackCopy) return 'battle_back';

@@ -464,6 +464,7 @@ describe('advance() — eviction_results with Double Eviction', () => {
     expect(pendingEviction?.evicteeId).toBe('p1');
     expect(doubleEviction?.pendingSecondEviction).not.toBeNull();
     expect(doubleEviction?.pendingSecondEviction?.evicteeId).toBe('p2');
+    expect(doubleEviction?.pendingSecondEviction?.evictionMessage).toContain('eliminated in tonight\'s Double Elimination');
   });
 
   it('stores vote results for popup reveal', () => {
