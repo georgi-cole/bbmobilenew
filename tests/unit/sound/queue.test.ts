@@ -291,8 +291,6 @@ describe('SoundManager autoplay recovery', () => {
     await SoundManager.playMusic('music:intro_hub_loop');
 
     expect(sm._unlocked).toBe(true);
-    // Audio is re-locked so the next gesture will re-apply the desired BGM
-    expect(sm._unlocked).toBe(false);
     // The key must not be blacklisted so it can be replayed
     expect(sm._failedKeys.has('music:intro_hub_loop')).toBe(false);
     // Unlock listeners re-armed
@@ -348,9 +346,6 @@ describe('SoundManager autoplay recovery', () => {
     expect(sm._unlocked).toBe(true);
     expect(sm._playQueue).toEqual([]);
     expect(doPlayMusic).toHaveBeenCalledWith('music:intro_hub_loop', undefined);
-  });
-    // Queue has no music items — music is in _desiredPerOwner, not the queue
-    expect(sm._playQueue.filter((q) => q.isMusic)).toHaveLength(0);
   });
 
   it('does NOT reset _unlocked when the page is hidden (prevents stale re-queuing on iOS)', async () => {

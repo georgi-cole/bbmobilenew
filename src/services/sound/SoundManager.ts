@@ -687,20 +687,7 @@ class _SoundManager {
     }
     if (_audioDebug && discardedMusicMarkerCount > 0) {
       console.log('[SoundManager] discarded queued music retry marker(s):', discardedMusicMarkerCount);
-  }
-
-  /**
-   * Start the highest-priority desired BGM track if one is set and audio is
-   * unlocked.  No-op if no desired BGM or already playing the correct track.
-   */
-  private _applyDesiredBgm(): void {
-    const top = this._getTopDesiredEntry();
-    if (!top) return;
-    if (_audioDebug) {
-      console.log(`[SoundManager] _applyDesiredBgm() — starting "${top.key}" (owner: ${top.owner})`);
     }
-    this._currentBgmOwner = top.owner;
-    void this._doPlayMusic(top.key, top.opts);
   }
 
   /**
@@ -725,11 +712,6 @@ class _SoundManager {
     // even if audio remains marked unlocked.
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
     this._playQueue.push({ key: this._musicKey ?? '__desired-bgm-retry__', isMusic: true });
-  private _queueMusicRetry(): void {
-    // Re-arm the unlock listener so the next user gesture re-applies the top
-    // desired BGM via _applyDesiredBgm().  The queue is not used for music
-    // any more — _drainQueue reads from _desiredPerOwner directly.
-    this._unlocked = false;
     this._ensureUnlockListeners();
   }
 
