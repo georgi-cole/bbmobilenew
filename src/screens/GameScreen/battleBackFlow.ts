@@ -48,11 +48,9 @@ export function isBattleBackReplayEligible(
   retryCount: number,
   retryLimit: number,
 ): boolean {
-  return (
-    !!winnerId &&
+  return !!winnerId &&
     !!humanCandidateId &&
     candidateIds.includes(humanCandidateId) &&
     winnerId !== humanCandidateId &&
     retryCount < retryLimit
-  )
 }
