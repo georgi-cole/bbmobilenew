@@ -155,7 +155,7 @@ class _SoundManager {
       if (_audioDebug) {
         console.log(`[SoundManager] play("${key}") queued — not yet unlocked`);
       }
-      this._playQueue.push({ key, isMusic: false, opts });
+      this._queueSfxMarker(key, opts);
       return;
     }
     return this._doPlay(key, opts);
@@ -250,13 +250,13 @@ class _SoundManager {
     } catch (err) {
       if ((err as DOMException).name === 'NotAllowedError') {
         // Autoplay blocked (either before unlock or iOS blocking a non-gesture
-        // call on a primed element).  Re-queue so it retries on the next gesture
-        // rather than permanently marking the key as failed.
+        // call on a primed element). Queue a single SFX marker so the next
+        // gesture re-runs the unlock drain/priming path without letting
+        // repeated blocked SFX inflate the queue unboundedly.
         if (_audioDebug) {
           console.log(`[SoundManager] play("${key}") blocked by autoplay policy — re-queued`);
         }
-        this._unlocked = false;
-        this._playQueue.push({ key, isMusic: false, opts });
+        this._queueSfxMarker(key, opts);
         this._ensureUnlockListeners();
       } else {
         if (!this._failedKeys.has(key)) {
@@ -594,12 +594,15 @@ class _SoundManager {
    * - Safe to call multiple times — only one set of document listeners is
    *   ever registered, preventing listener leaks.
    *
+   * After unlock, the latest desired BGM is started and queued SFX/music
+   * markers are discarded after priming the SFX pool for future non-gesture
+   * playback.
    * After unlock, only the latest desired BGM is started (stale SFX queue
    * items are discarded so multiple sounds do not flood the user).
    */
   unlockOnUserGesture(): void {
     if (typeof document === 'undefined') return;
-    if (this._unlocked) {
+    if (this._unlocked && this._playQueue.length === 0) {
       if (_audioDebug) {
         console.log('[SoundManager] unlockOnUserGesture() — already unlocked');
       }
@@ -620,12 +623,13 @@ class _SoundManager {
    * consent button.
    *
    * - Primes SFX pool elements so future non-gesture SFX plays work on iOS.
+   * - Starts only the latest desired BGM from the desired-per-owner map.
    * - Starts only the latest desired BGM (from _desiredBgmKey / queue).
    * - Drops all queued SFX so they are never replayed automatically.
    */
   unlockAndPlayMusicOnly(): void {
     if (typeof document === 'undefined') return;
-    if (this._unlocked) {
+    if (this._unlocked && this._playQueue.length === 0) {
       if (_audioDebug) {
         console.log('[SoundManager] unlockAndPlayMusicOnly() — already unlocked');
       }
@@ -655,10 +659,20 @@ class _SoundManager {
   }
 
   private _drainQueue(): void {
+    const q = this._playQueue.splice(0);
     if (_audioDebug) {
       console.log(
         '[SoundManager] draining queue — starting desired BGM, priming SFX pools',
       );
+    }
+    let discardedSfxCount = 0;
+    let discardedMusicMarkerCount = 0;
+    for (const item of q) {
+      if (item.isMusic) {
+        discardedMusicMarkerCount += 1;
+      } else {
+        discardedSfxCount += 1;
+      }
     }
     // Discard all queued items (SFX are stale; music is superseded by _desiredBgmKey).
     // Starting only the latest desired BGM prevents multi-sound flush on iPhone.
@@ -668,6 +682,12 @@ class _SoundManager {
     // Prime SFX pool elements during this gesture context so that iOS allows
     // future non-gesture plays (e.g. game-state-driven SFX like death/winner).
     this._primeSfxForMobile();
+    if (_audioDebug && discardedSfxCount > 0) {
+      console.log('[SoundManager] discarded stale queued SFX item(s):', discardedSfxCount);
+    }
+    if (_audioDebug && discardedMusicMarkerCount > 0) {
+      console.log('[SoundManager] discarded queued music retry marker(s):', discardedMusicMarkerCount);
+    }
   }
 
   /**
@@ -687,9 +707,17 @@ class _SoundManager {
   private _queueMusicRetry(): void {
     // Re-arm the unlock listener so the next user gesture re-applies the top
     // desired BGM via _applyDesiredBgm().  The queue is not used for music
-    // any more — _drainQueue reads from _desiredPerOwner directly.
-    this._unlocked = false;
+    // any more — _drainQueue reads from _desiredPerOwner directly. Keep a
+    // single marker in the queue so a future gesture still triggers a drain
+    // even if audio remains marked unlocked.
+    this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+    this._playQueue.push({ key: this._musicKey ?? '__desired-bgm-retry__', isMusic: true });
     this._ensureUnlockListeners();
+  }
+
+  private _queueSfxMarker(key: string, opts?: PlayOptions): void {
+    this._playQueue = this._playQueue.filter((q) => q.isMusic);
+    this._playQueue.push({ key, isMusic: false, opts });
   }
 
   private _ensureUnlockListeners(): void {
@@ -698,7 +726,7 @@ class _SoundManager {
       console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
     }
     const handler = () => {
-      if (this._unlocked) return;
+      if (this._unlocked && this._playQueue.length === 0) return;
       this._unlocked = true;
       document.removeEventListener('click', handler, true);
       document.removeEventListener('keydown', handler, true);

@@ -85,6 +85,16 @@ describe('SoundManager unlock queue — play()', () => {
     expect(sm._playQueue[0]).toMatchObject({ key: 'music:intro_hub_loop', isMusic: false });
   });
 
+  it('keeps only the latest queued SFX marker while locked', async () => {
+    const sm = SoundManager as unknown as { _playQueue: Array<{ key: string; isMusic: boolean }> };
+
+    await SoundManager.play('ui:jury_vote');
+    await SoundManager.play('tv:winner_reveal');
+
+    const sfxItems = sm._playQueue.filter((q) => !q.isMusic);
+    expect(sfxItems).toHaveLength(1);
+    expect(sfxItems[0]).toMatchObject({ key: 'tv:winner_reveal', isMusic: false });
+  });
   it('SFX queued before unlock are discarded on drain (not replayed to avoid flood)', async () => {
     // This is the key iPhone/Safari fix: stale SFX from page-load must NOT
     // replay when the user first taps a button.
@@ -280,14 +290,62 @@ describe('SoundManager autoplay recovery', () => {
 
     await SoundManager.playMusic('music:intro_hub_loop');
 
-    // Audio is re-locked so the next gesture will re-apply the desired BGM
-    expect(sm._unlocked).toBe(false);
+    expect(sm._unlocked).toBe(true);
     // The key must not be blacklisted so it can be replayed
     expect(sm._failedKeys.has('music:intro_hub_loop')).toBe(false);
     // Unlock listeners re-armed
     expect(sm._unlockHandler).not.toBeNull();
-    // Queue has no music items — music is in _desiredPerOwner, not the queue
-    expect(sm._playQueue.filter((q) => q.isMusic)).toHaveLength(0);
+    expect(sm._playQueue).toContainEqual({
+      key: 'music:intro_hub_loop',
+      isMusic: true,
+    });
+  });
+
+  it('keeps only one queued SFX marker when blocked SFX repeat after unlock', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _playQueue: Array<{ key: string; isMusic: boolean; opts?: unknown }>;
+    };
+    sm._unlocked = true;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(
+      new DOMException('blocked', 'NotAllowedError'),
+    );
+
+    await SoundManager.play('ui:jury_vote');
+    await SoundManager.play('tv:winner_reveal');
+
+    const sfxItems = sm._playQueue.filter((q) => !q.isMusic);
+    expect(sfxItems).toEqual([{ key: 'tv:winner_reveal', isMusic: false, opts: undefined }]);
+  });
+
+  it('retries desired music on the next gesture even if audio stayed unlocked', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _playQueue: Array<{ key: string; isMusic: boolean; opts?: unknown }>;
+      _desiredPerOwner: Record<string, { key: string; opts?: unknown } | undefined>;
+      _queueMusicRetry: () => void;
+    };
+    const doPlayMusic = vi.spyOn(
+      SoundManager as unknown as { _doPlayMusic: (key: string, opts?: unknown) => Promise<void> },
+      '_doPlayMusic',
+    ).mockResolvedValue(undefined);
+    vi.spyOn(
+      SoundManager as unknown as { _primeSfxForMobile: () => void },
+      '_primeSfxForMobile',
+    ).mockImplementation(() => {});
+
+    sm._unlocked = true;
+    sm._desiredPerOwner = {
+      phase: { key: 'music:intro_hub_loop', opts: undefined },
+    };
+    sm._queueMusicRetry();
+
+    SoundManager.unlockOnUserGesture();
+    await Promise.resolve();
+
+    expect(sm._unlocked).toBe(true);
+    expect(sm._playQueue).toEqual([]);
+    expect(doPlayMusic).toHaveBeenCalledWith('music:intro_hub_loop', undefined);
   });
 
   it('does NOT reset _unlocked when the page is hidden (prevents stale re-queuing on iOS)', async () => {
