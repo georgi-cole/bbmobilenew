@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, type FocusEvent } from 'react';
 import './TvAnnouncementOverlay.css';
 
 export interface Announcement {
@@ -88,6 +88,7 @@ export default function TvAnnouncementOverlay({
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
   const hoverPausedRef = useRef(false);
+  const keyboardFocusPauseRef = useRef(false);
   const startTimeRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
@@ -140,6 +141,27 @@ export default function TvAnnouncementOverlay({
     }
   }, [paused, isAuto]); // tickRef is a stable ref object; .current is always fresh
 
+  useEffect(() => {
+    const handleKeyboardInput = () => {
+      keyboardFocusPauseRef.current = true;
+    };
+    const handlePointerInput = () => {
+      keyboardFocusPauseRef.current = false;
+    };
+
+    window.addEventListener('keydown', handleKeyboardInput, true);
+    window.addEventListener('mousedown', handlePointerInput, true);
+    window.addEventListener('pointerdown', handlePointerInput, true);
+    window.addEventListener('touchstart', handlePointerInput, true);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyboardInput, true);
+      window.removeEventListener('mousedown', handlePointerInput, true);
+      window.removeEventListener('pointerdown', handlePointerInput, true);
+      window.removeEventListener('touchstart', handlePointerInput, true);
+    };
+  }, []);
+
   const handleMouseEnter = () => {
     hoverPausedRef.current = true;
     cancelAnimationFrame(rafRef.current);
@@ -152,7 +174,10 @@ export default function TvAnnouncementOverlay({
       rafRef.current = requestAnimationFrame(tickRef.current);
     }
   };
-  const handleFocus = () => {
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (!keyboardFocusPauseRef.current) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
     hoverPausedRef.current = true;
     cancelAnimationFrame(rafRef.current);
   };

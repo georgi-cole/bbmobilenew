@@ -8,6 +8,8 @@
  *      (e.g., A then B then A…) for a more dramatic reveal.
  *   3. After the last vote is revealed, waits `postRevealDelayMs` then:
  *      - If tied → calls `onTiebreakerRequired(tiedNomineeIds)` and does NOT evict.
+ *      - If `publicTiebreak` is provided → replaces the vote tallies with the
+ *        public tie-break view, then resolves automatically after its countdown.
  *      - Otherwise → highlights the losing nominee with a red outline and, in
  *        the modal variant, shows the "EVICTED" label before calling `onDone()`
  *        after `countdownMs`.
@@ -140,6 +142,7 @@ export default function AnimatedVoteResultsModal({
   const [countdown, setCountdown] = useState(Math.ceil(countdownMs / 1000));
   const firedRef = useRef(false);
   const publicResolvedRef = useRef(false);
+  const showVoteStage = !publicTiebreakVisible;
 
   const totalVotes = useMemo(
     () => nominees.reduce((s, t) => s + t.voteCount, 0),
@@ -231,7 +234,7 @@ export default function AnimatedVoteResultsModal({
         onPublicTiebreakResolved?.(publicTiebreak.evicteeIds);
       }
       fire();
-    }, publicTiebreak.countdownMs ?? 2200);
+    }, publicTiebreak.countdownMs ?? 3000);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicTiebreakVisible, publicTiebreak, onPublicTiebreakResolved]);
@@ -260,7 +263,7 @@ export default function AnimatedVoteResultsModal({
           {variant === 'tv' && <span className="avrm__live-badge">Live</span>}
         </header>
 
-        {variant === 'tv' ? (
+        {showVoteStage && variant === 'tv' ? (
           <div className="avrm__tv-stage">
             <div className="avrm__tallies avrm__tallies--tv">
               {nominees.map((t, index) => {
@@ -308,7 +311,7 @@ export default function AnimatedVoteResultsModal({
               })}
             </div>
           </div>
-        ) : (
+        ) : showVoteStage ? (
           <div className="avrm__tallies">
             {nominees.map((t) => {
               const shown = displayedCounts[t.nominee.id] ?? 0;
@@ -346,16 +349,16 @@ export default function AnimatedVoteResultsModal({
               );
             })}
           </div>
-        )}
+        ) : null}
 
-        {outcomeVisible && resolvedEvictee && variant !== 'tv' && (
+        {showVoteStage && outcomeVisible && resolvedEvictee && variant !== 'tv' && (
           <div className="avrm__evictee" role="status">
             <span className="avrm__evictee-label">ELIMINATED</span>
             <span className="avrm__evictee-name">{resolvedEvictee.name}</span>
           </div>
         )}
 
-        {outcomeVisible && variant !== 'tv' && (
+        {showVoteStage && outcomeVisible && variant !== 'tv' && (
           <footer className="avrm__footer">
             <span className="avrm__countdown" aria-live="polite">
               Continuing in {countdown}s&hellip;
@@ -364,7 +367,7 @@ export default function AnimatedVoteResultsModal({
           </footer>
         )}
 
-        {allRevealed && isTied && !outcomeVisible && !publicTiebreak && variant !== 'tv' && (
+        {showVoteStage && allRevealed && isTied && !outcomeVisible && !publicTiebreak && variant !== 'tv' && (
           <div className="avrm__tie-banner" role="status" aria-live="assertive">
             <span className="avrm__tie-icon">⚖️</span>
             <span className="avrm__tie-text">It&rsquo;s a tie! LOH must break the tie.</span>

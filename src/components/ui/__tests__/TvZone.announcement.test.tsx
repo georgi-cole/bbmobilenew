@@ -860,6 +860,48 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     act(() => { fireEvent.mouseLeave(overlay); });
     expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(requestCallsBefore);
   });
+
+  it('does not pause auto-dismiss when focus follows a pointer interaction', () => {
+    const onDismiss = vi.fn();
+    const { getByRole } = render(
+      <TvAnnouncementOverlay
+        announcement={{ key: 'week_start', title: 'New Day', subtitle: '', isLive: false, autoDismissMs: 4500 }}
+        onInfo={() => {}}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    const overlay = getByRole('dialog');
+    const cancelCallsBefore = (window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    act(() => {
+      fireEvent.mouseDown(overlay);
+      fireEvent.focus(overlay);
+    });
+
+    expect((window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(cancelCallsBefore);
+  });
+
+  it('still pauses auto-dismiss for keyboard-driven focus', () => {
+    const onDismiss = vi.fn();
+    const { getByRole } = render(
+      <TvAnnouncementOverlay
+        announcement={{ key: 'week_start', title: 'New Day', subtitle: '', isLive: false, autoDismissMs: 4500 }}
+        onInfo={() => {}}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    const overlay = getByRole('dialog');
+    const cancelCallsBefore = (window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    act(() => {
+      fireEvent.keyDown(window, { key: 'Tab' });
+      fireEvent.focus(overlay);
+    });
+
+    expect((window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(cancelCallsBefore);
+  });
 });
 
 // ── Phase-based announcement trigger tests ────────────────────────────────────
