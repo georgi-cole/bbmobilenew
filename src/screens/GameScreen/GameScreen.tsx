@@ -2895,6 +2895,7 @@ export default function GameScreen() {
               id,
               name: player?.name ?? id,
               isHuman: !!player?.isUser,
+              avatar: player?.avatar,
               precomputedScore: aiScore,
               previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
             };

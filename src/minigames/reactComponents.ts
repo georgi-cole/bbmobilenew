@@ -76,6 +76,7 @@ export interface GenericMinigameProps {
     id: string;
     name: string;
     isHuman: boolean;
+    avatar?: string;
     precomputedScore: number;
     previousPR: number | null;
   }>;

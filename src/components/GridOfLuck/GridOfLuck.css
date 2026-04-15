@@ -1,12 +1,14 @@
 .grid-of-luck {
   position: relative;
   min-height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: clamp(16px, 3vw, 28px);
   background:
     radial-gradient(circle at top, rgba(26, 45, 82, 0.35), transparent 38%),
     linear-gradient(180deg, #040814 0%, #03050d 55%, #010204 100%);
   color: #f5f7ff;
+  overscroll-behavior-y: contain;
 }
 
 .grid-of-luck::before,
@@ -85,6 +87,7 @@
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  min-width: 0;
 }
 
 .grid-of-luck__player-card {
@@ -98,6 +101,7 @@
   color: inherit;
   text-align: left;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 16px 40px rgba(0, 0, 0, 0.34);
+  min-width: 0;
 }
 
 .grid-of-luck__player-card:disabled {
@@ -196,6 +200,7 @@
   display: grid;
   gap: 18px;
   align-items: start;
+  min-width: 0;
 }
 
 .grid-of-luck__grid-shell,
@@ -210,6 +215,7 @@
 
 .grid-of-luck__grid-shell {
   padding: 18px;
+  min-width: 0;
 }
 
 .grid-of-luck__grid {
@@ -301,6 +307,7 @@
 .grid-of-luck__sidebar {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .grid-of-luck__active-card,
@@ -317,6 +324,10 @@
   display: grid;
   gap: 8px;
   color: rgba(224, 231, 255, 0.86);
+}
+
+.grid-of-luck__log-card {
+  min-width: 0;
 }
 
 .grid-of-luck__finish-button {
@@ -404,18 +415,118 @@
 
 @media (max-width: 719px) {
   .grid-of-luck {
-    padding: 14px;
+    padding: 12px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .grid-of-luck__camera {
+    gap: 14px;
+  }
+
+  .grid-of-luck__header {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding: calc(env(safe-area-inset-top, 0px) + 2px) 0 8px;
+    background: linear-gradient(180deg, rgba(4, 8, 20, 0.98), rgba(4, 8, 20, 0.82), rgba(4, 8, 20, 0));
+    backdrop-filter: blur(14px);
+  }
+
+  .grid-of-luck__title {
+    font-size: clamp(1.5rem, 7vw, 2.1rem);
+  }
+
+  .grid-of-luck__announcement {
+    max-width: none;
+    font-size: 0.92rem;
   }
 
   .grid-of-luck__players {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0 6px;
+    margin: 0 -2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .grid-of-luck__players::-webkit-scrollbar {
+    display: none;
+  }
+
+  .grid-of-luck__player-card {
+    flex: 0 0 min(240px, 82vw);
+    scroll-snap-align: start;
+    padding: 12px;
+  }
+
+  .grid-of-luck__avatar-shell {
+    width: 56px;
+    height: 56px;
+  }
+
+  .grid-of-luck__player-name {
+    font-size: 1rem;
+  }
+
+  .grid-of-luck__status-list {
+    min-height: 0;
+  }
+
+  .grid-of-luck__arena {
+    gap: 12px;
+  }
+
+  .grid-of-luck__sidebar {
+    order: -1;
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 92px);
+    z-index: 3;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .grid-of-luck__active-card,
+  .grid-of-luck__reveal-card,
+  .grid-of-luck__log-card {
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .grid-of-luck__log-card {
+    grid-column: 1 / -1;
+  }
+
+  .grid-of-luck__log-card ul {
+    max-height: 120px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .grid-of-luck__finish-button {
+    grid-column: 1 / -1;
   }
 
   .grid-of-luck__grid {
-    gap: 10px;
+    gap: 8px;
   }
 
   .grid-of-luck__box {
-    min-height: 92px;
+    min-height: 84px;
+  }
+
+  .grid-of-luck__box-inner {
+    gap: 6px;
+    padding: 12px;
+  }
+
+  .grid-of-luck__box-symbol {
+    font-size: 1.7rem;
+  }
+
+  .grid-of-luck__box-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.09em;
   }
 }

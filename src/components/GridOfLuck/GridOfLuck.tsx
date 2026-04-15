@@ -262,7 +262,7 @@ function resolveParticipants(props: GenericMinigameProps): ResolvedParticipant[]
       name: participant.name,
       isHuman: participant.isHuman,
       precomputedScore: participant.previousPR ?? participant.precomputedScore ?? Math.max(1, 90 - index * 5),
-      avatar: participant.name.charAt(0).toUpperCase(),
+      avatar: participant.avatar ?? participant.name,
     }));
   }
   if (props.participantIds && props.participantIds.length > 0) {

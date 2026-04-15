@@ -29,4 +29,21 @@ describe('GridOfLuck component', () => {
     expect(screen.getByText(/Last reveal/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /continue ritual/i })).toBeTruthy();
   });
+
+  it('prefers local png avatar candidates for named houseguests', () => {
+    render(
+      <GridOfLuck
+        participants={[
+          { id: 'user', name: 'You', isHuman: true, precomputedScore: 88, previousPR: 88 },
+          { id: 'kian', name: 'Kian', isHuman: false, precomputedScore: 80, previousPR: 80 },
+          { id: 'aria', name: 'Aria', isHuman: false, precomputedScore: 72, previousPR: 72 },
+        ]}
+        seed={7}
+        onFinish={() => {}}
+      />,
+    );
+
+    expect(screen.getByAltText('Kian').getAttribute('src')).toContain('avatars/Kian.png');
+    expect(screen.getByAltText('Aria').getAttribute('src')).toContain('avatars/Aria.png');
+  });
 });
