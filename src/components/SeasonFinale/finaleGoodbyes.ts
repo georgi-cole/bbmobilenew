@@ -380,21 +380,23 @@ function pickSegmentCount(personality: GoodbyePersonality, rng: () => number): 1
 
 function chooseSegmentTypes(
   personality: GoodbyePersonality,
+  player: Player,
   count: number,
   peers: Player[],
   rng: () => number,
 ): GoodbyeSegment[] {
+  const hasShoutoutTarget = peers.some((peer) => peer.id !== player.id);
   const types = new Set<GoodbyeSegment>();
   if (personality === 'strategist') types.add('reflection');
   if (personality === 'emotional') types.add('emotion');
-  if (personality === 'loyal' && peers.length > 0 && count > 1) types.add('shoutout');
+  if (personality === 'loyal' && hasShoutoutTarget && count > 1) types.add('shoutout');
   if (personality === 'quiet' && count === 1 && rng() < 0.65) types.add('closure');
   if (personality === 'chaotic' && count === 3 && rng() < 0.7) types.add('opening');
   if (personality === 'cocky' && count > 1 && rng() < 0.8) types.add('emotion');
 
   const candidates = SEGMENT_ORDER.filter((type) => (
     !types.has(type) &&
-    (type !== 'shoutout' || peers.length > 0) &&
+    (type !== 'shoutout' || hasShoutoutTarget) &&
     !(personality === 'quiet' && type === 'opening' && count === 1)
   ));
 
@@ -418,6 +420,16 @@ function buildShoutoutSegment(
   usedShoutouts: Set<string>,
 ): string {
   const availablePeers = peers.filter((peer) => peer.id !== player.id);
+  if (availablePeers.length === 0) {
+    return pickUniqueText(
+      rng,
+      [
+        ...BASE_SEGMENTS.closure,
+        ...(PERSONALITY_SEGMENTS[personality].closure ?? []),
+      ],
+      usedPhrases,
+    );
+  }
   const unusedTargets = availablePeers.filter((peer) => !usedShoutouts.has(peer.id));
   const targetPool = unusedTargets.length > 0 ? unusedTargets : availablePeers;
   const target = targetPool[Math.floor(rng() * targetPool.length)];
@@ -458,11 +470,24 @@ export function generateFinalGoodbyeMessage(
   personality = inferGoodbyePersonality(player),
 ): FinalGoodbyeMessage {
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const segmentTypes = chooseSegmentTypes(personality, pickSegmentCount(personality, rng), peers, rng);
+    const attemptUsedPhrases = new Set(usedPhrases);
+    const attemptUsedShoutouts = new Set(usedShoutouts);
+    const segmentCount = pickSegmentCount(personality, rng);
+    const segmentTypes = chooseSegmentTypes(personality, player, segmentCount, peers, rng);
     const segments = segmentTypes
-      .map((segment) => buildSegment(segment, personality, player, peers, rng, usedPhrases, usedShoutouts));
+      .map((segment) => buildSegment(
+        segment,
+        personality,
+        player,
+        peers,
+        rng,
+        attemptUsedPhrases,
+        attemptUsedShoutouts,
+      ));
     const text = segments.join(' ');
     if (!usedLines.has(text)) {
+      attemptUsedPhrases.forEach((phrase) => usedPhrases.add(phrase));
+      attemptUsedShoutouts.forEach((targetId) => usedShoutouts.add(targetId));
       usedLines.add(text);
       return {
         player,
@@ -474,7 +499,10 @@ export function generateFinalGoodbyeMessage(
     }
   }
 
-  const fallback = pickUniqueText(rng, FALLBACK_LINES, usedPhrases);
+  const unusedFallbacks = FALLBACK_LINES.filter((line) => !usedLines.has(line) && !usedPhrases.has(line));
+  const fallback = unusedFallbacks.length > 0
+    ? pickUniqueText(rng, unusedFallbacks, usedPhrases)
+    : `Final word from ${player.name}: ${pickUniqueText(rng, FALLBACK_LINES, usedPhrases)}`;
   usedLines.add(fallback);
   return {
     player,
