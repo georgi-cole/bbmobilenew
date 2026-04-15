@@ -159,7 +159,7 @@ describe('PublicFavoriteOverlay', () => {
     rerender(
       <PublicFavoriteOverlay
         candidates={PLAYERS}
-        seed={1}
+        seed={2}
         onComplete={vi.fn()}
       />,
     );
