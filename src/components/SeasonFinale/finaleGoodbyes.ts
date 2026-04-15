@@ -269,6 +269,14 @@ const SHOUTOUT_TEMPLATES: Record<GoodbyePersonality, readonly ((name: string) =>
   ],
 };
 
+const FALLBACK_LINES = [
+  'No regrets. That was real.',
+  'It was a lot, and I am good with how I went through it.',
+  'This house takes something out of you, but it gives something back too.',
+  'I left a piece of myself in this game.',
+  'That is my goodbye, and I mean it.',
+] as const;
+
 function stableHash(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -466,7 +474,7 @@ export function generateFinalGoodbyeMessage(
     }
   }
 
-  const fallback = `${pickUniqueText(rng, BASE_SEGMENTS.reflection, usedPhrases)} ${player.name} meant that.`;
+  const fallback = pickUniqueText(rng, FALLBACK_LINES, usedPhrases);
   usedLines.add(fallback);
   return {
     player,
