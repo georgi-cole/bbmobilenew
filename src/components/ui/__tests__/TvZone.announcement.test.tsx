@@ -517,6 +517,23 @@ describe('TvZone — announcement overlay', () => {
     expect(overlay.className).toContain('tv-announcement--battle-back');
   });
 
+  it('keeps the Battle Back styling for staged Battle Back announcements', () => {
+    const store = makeStore();
+
+    renderTvZone(store, {
+      externalAnnouncement: {
+        key: 'battle_back_challenge',
+        title: 'Battle Back Challenge',
+        subtitle: 'Press play to begin.',
+        isLive: true,
+        autoDismissMs: null,
+      },
+    });
+
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Battle Back Challenge/i });
+    expect(overlay.className).toContain('tv-announcement--battle-back');
+  });
+
   it('falls back to Battle Back styling when a twist event mentions Battle Back without a major key', () => {
     const store = makeStore();
     renderTvZone(store);

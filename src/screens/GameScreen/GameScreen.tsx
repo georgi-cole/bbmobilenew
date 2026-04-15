@@ -111,6 +111,11 @@ import {
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
 import {
+  BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
+  advanceBattleBackAnnouncementStep,
+  shouldOfferBattleBackReplay,
+} from './battleBackFlow'
+import {
   buildEvictionVoteBreakdownPlayerNamesById,
   buildEvictionVoteBreakdownRows,
   isEvictionVoteBreakdownActive,
@@ -1987,6 +1992,7 @@ export default function GameScreen() {
   const battleBack = game.battleBack
   const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
   const [battleBackAttemptIndex, setBattleBackAttemptIndex] = useState(0)
+  const [battleBackAnnouncementStep, setBattleBackAnnouncementStep] = useState<number | null>(null)
   const [battleBackRetryCount, setBattleBackRetryCount] = useState(0)
   const [battleBackRetryOfferWinnerId, setBattleBackRetryOfferWinnerId] = useState<string | null>(null)
   // Only show the full-screen overlay once competitionActive is true.
@@ -2038,13 +2044,30 @@ export default function GameScreen() {
     setBattleBackRetryOfferWinnerId(null)
   }, [battleBack?.active, battleBack?.weekDecided])
 
-  // Auto-open the competition overlay after the TV announcement has had time
-  // to display (~5 s, matching the 4.5 s auto-dismiss + a small buffer).
   useEffect(() => {
-    if (!battleBack?.active || battleBack.competitionActive) return;
-    const id = setTimeout(() => dispatch(openBattleBackCompetition()), 5000);
-    return () => clearTimeout(id);
-  }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
+    if (battleBack?.active && !battleBack.competitionActive) {
+      setBattleBackAnnouncementStep(0)
+      return
+    }
+    setBattleBackAnnouncementStep(null)
+  }, [battleBack?.active, battleBack?.competitionActive, battleBack?.weekDecided])
+
+  useEffect(() => {
+    if (!battleBack?.active || battleBack.competitionActive || battleBackAnnouncementStep == null) return
+
+    const handlePlayPressed = () => {
+      setBattleBackAnnouncementStep((currentStep) => {
+        const { nextStep, shouldOpenCompetition } = advanceBattleBackAnnouncementStep(currentStep)
+        if (shouldOpenCompetition) {
+          dispatch(openBattleBackCompetition())
+        }
+        return nextStep
+      })
+    }
+
+    window.addEventListener('ui:playPressed', handlePlayPressed)
+    return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
+  }, [battleBack?.active, battleBack?.competitionActive, battleBackAnnouncementStep, dispatch])
 
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
   // Battle Back completion before showing the return overlay. storeRef is intentionally
@@ -2074,25 +2097,24 @@ export default function GameScreen() {
       return
     }
 
-    const humanCandidateId = humanPlayer?.id ?? null
-    const humanCanRetryBattleBack =
-      !!humanCandidateId &&
-      battleBack?.candidates.includes(humanCandidateId) &&
-      battleBackWinnerId !== humanCandidateId &&
-      battleBackRetryCount < BATTLE_BACK_RETRY_LIMIT
+    const canReplayBattleBack = shouldOfferBattleBackReplay(
+      battleBackWinnerId,
+      battleBackCandidates.length,
+      battleBackRetryCount,
+      BATTLE_BACK_RETRY_LIMIT,
+    )
 
-    if (humanCanRetryBattleBack) {
+    if (canReplayBattleBack) {
       setBattleBackRetryOfferWinnerId(battleBackWinnerId)
       return
     }
 
     finalizeBattleBackOutcome(battleBackWinnerId)
   }, [
-    battleBack?.candidates,
+    battleBackCandidates.length,
     battleBackRetryCount,
     battleBackWinnerId,
     finalizeBattleBackOutcome,
-    humanPlayer?.id,
   ])
 
   const handleBattleBackReturnDone = useCallback(() => {
@@ -2449,6 +2471,10 @@ export default function GameScreen() {
     }
     return undefined
   }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, postVoteAnnouncementDelayActive, game.pendingEviction])
+  const battleBackTvAnnouncement =
+    battleBack?.active && !battleBack.competitionActive && battleBackAnnouncementStep != null
+      ? BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[battleBackAnnouncementStep] ?? null
+      : null
 
   return (
     <LayoutGroup id="game-layout">
@@ -2465,8 +2491,12 @@ export default function GameScreen() {
           onPublicSaveDone={handlePublicSaveDone}
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
-          externalAnnouncement={preAdAnnouncement}
-          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
+          externalAnnouncement={battleBackTvAnnouncement ?? preAdAnnouncement}
+          onExternalAnnouncementDismiss={
+            battleBackTvAnnouncement
+              ? undefined
+              : handlePreAdAnnouncementDismiss
+          }
           mainLogMaxVisible={compactRosterLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
@@ -2482,8 +2512,12 @@ export default function GameScreen() {
           }}
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
-          externalAnnouncement={preAdAnnouncement}
-          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
+          externalAnnouncement={battleBackTvAnnouncement ?? preAdAnnouncement}
+          onExternalAnnouncementDismiss={
+            battleBackTvAnnouncement
+              ? undefined
+              : handlePreAdAnnouncementDismiss
+          }
           mainLogMaxVisible={compactRosterLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
@@ -2492,13 +2526,16 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
+            battleBackTvAnnouncement ??
             aiTiebreakAnnouncement ??
             postVoteAnnouncement ??
             publicSaveResultAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            aiTiebreakAnnouncement
+            battleBackTvAnnouncement
+              ? undefined
+              : aiTiebreakAnnouncement
               ? handleAiTiebreakAnnouncementDismiss
               : postVoteAnnouncement
                 ? handlePostVoteAnnouncementDismiss
@@ -3484,9 +3521,9 @@ export default function GameScreen() {
       {battleBackRetryOfferWinnerId && (
         <AdPrompt
           icon="⚡"
-          title="Second Chance?"
-          description={`Watch a short ad to rerun Battle Back before ${(battleBackRetryOfferWinner?.name ?? 'the winner')} returns. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
-          watchLabel="Watch Ad to Replay Battle Back"
+          title="Not Happy With That Result?"
+          description={`${battleBackRetryOfferWinner?.name ?? 'The winner'} is about to return. Watch a short ad to rerun Battle Back and see if a different player wins. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
+          watchLabel="Watch Ad to Restart Battle Back"
           skipLabel="Continue"
           onWatch={() => {
             if (adPending) return
