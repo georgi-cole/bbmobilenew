@@ -736,6 +736,12 @@ export interface GameState {
    * Cleared by activateVoteDeductionReward or declineVoteDeduction.
    */
   awaitingVoteDeductionPrompt?: boolean;
+  /**
+   * Secret mission immunity activation prompt.
+   * Set during `pos_ceremony_results` when the player is nominated and has an
+   * eligible stored immunity reward within its activation window.
+   */
+  awaitingMissionImmunityOffer?: boolean;
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────

@@ -20,17 +20,14 @@ import {
   acceptSecretMission,
   reshuffleSecretMission,
   declineSecretMission,
-  updateMissionTaskProgress,
-  addUniqueDayToTask,
   claimMissionReward,
+  recordSecretMissionEasterEgg,
   selectAlivePlayers,
 } from '../../store/gameSlice';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import ConfessionalDecisionPanel from './ConfessionalDecisionPanel';
 import { getConfessionalDecisionPresentation } from './confessionalDecisionPresentation';
-import { applyInfluenceDelta } from '../../social/socialSlice';
-import type { MissionRewardType } from '../../bb/secretMission';
-import { MYSTERY_BOX_POOL, doubleVoteTimingMessage } from '../../bb/secretMission';
+import { getSecretMissionEasterEggByIntent } from '../../bb/secretMissionEasterEggs';
 import {
   createInitialBigEyeState,
   generateBigBrotherReply,
@@ -93,26 +90,11 @@ const RETURNING_VISIT_GREETINGS = [
   'Something tells me you are uneasy.',
 ];
 
-// ─── Mystery box reward messages ──────────────────────────────────────────────
+// ─── Secret immunity reward messages ──────────────────────────────────────────
 
 const REWARD_PENDING_MSG =
   `Well done. You fulfilled the mission — the Big Eye is impressed. ` +
-  `Four mystery boxes await you. Only one is yours. Choose wisely… or rely on luck. 📦`;
-
-const REWARD_MESSAGES: Record<string, string> = {
-  plus1000Influence:
-    `The Big Eye smiles. You have been granted 1 000 units of influence. ` +
-    `Use this wisely — social capital is everything in this house. 🤝✨`,
-  doubleVote:
-    `A rare gift: the power of a Double Vote. When the time is right, ` +
-    `you will cast two votes instead of one. Guard this secret carefully. 🗳️🗳️`,
-  voteDeduction:
-    `Cunning choice. One vote cast against you will vanish without a trace. ` +
-    `The power is yours — stored, ready, waiting. 🪄`,
-  emptyBox:
-    `…The box is empty. Not every mystery holds treasure. ` +
-    `But perhaps the real prize was the courage to open it. 😶‍🌫️ The Big Eye is amused.`,
-};
+  `A temporary shield is waiting for you. Claim it before the window closes. 🛡️`;
 
 const VOTE_BREAKDOWN_DECLINED_TV_MESSAGE = "It's getting quiet in the house. Sandman on the way?";
 
@@ -174,30 +156,9 @@ function pickSummary(name: string, seed: number): string {
   return SUMMARY_POOL[idx].replace('{name}', name);
 }
 
-/**
- * Shuffle the mystery box pool using a seeded Fisher-Yates algorithm so the
- * box order is different each game but reproducible within a session.
- *
- * Note: mutates and returns the input array — always pass a spread copy,
- * e.g. `shuffleMysteryPool([...MYSTERY_BOX_POOL], seed)`.
- */
-function shuffleMysteryPool(pool: MissionRewardType[], seed: number): MissionRewardType[] {
-  let s = ((seed >>> 0) || 1);
-  // Simple seeded LCG
-  const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool;
-}
-
 /** Human-readable labels for each reward type used in the UI. */
 const REWARD_LABELS: Record<string, string> = {
-  plus1000Influence: '+1 000 Influence (applied)',
-  doubleVote: 'Double Vote',
-  voteDeduction: 'Vote Deduction',
-  emptyBox: 'Empty Box',
+  immunity: 'Secret Immunity',
 };
 
 // ─── sessionStorage helpers ───────────────────────────────────────────────────
@@ -443,20 +404,11 @@ export default function DiaryRoom() {
     });
   }, [playerId]);
 
-  // ── Mystery box state (PR 2) ──────────────────────────────────────────────
-  // A shuffled copy of the pool is created once when entering rewardPending so
-  // each visit produces the same ordering within a session but the assignments
-  // are not obvious to the player.
-  const [shuffledBoxes, setShuffledBoxes] = useState<MissionRewardType[]>(() =>
-    shuffleMysteryPool([...MYSTERY_BOX_POOL], seed ?? 0),
-  );
   // Track whether the reward reveal message has been injected this visit.
   const rewardMsgInjectedRef = useRef(false);
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
-  const confessionalLockedRef = useRef(confessionalLocked);
-  useEffect(() => { confessionalLockedRef.current = confessionalLocked; }, [confessionalLocked]);
 
   useEffect(() => {
     if (!confessionalDecisionPending && navigationBlockerState === 'blocked' && resetNavigationBlocker) {
@@ -642,9 +594,6 @@ export default function DiaryRoom() {
     if (rewardMsgInjectedRef.current) return;
     rewardMsgInjectedRef.current = true;
 
-    // Re-shuffle boxes so layout is stable within this visit
-    setShuffledBoxes(shuffleMysteryPool([...MYSTERY_BOX_POOL], seedRef.current ?? 0));
-
     const timeoutId = window.setTimeout(() => {
       const revealMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -661,40 +610,6 @@ export default function DiaryRoom() {
 
     return () => { window.clearTimeout(timeoutId); };
   }, [confessionalLocked]);
-
-  // ── Secret mission: track confessional visit count on unmount ─────────────
-  // Anti-cheese: visits are counted once per unique calendar day (= game week).
-  // Rapidly entering/exiting the Confessional on the same day only credits 1 visit.
-  useEffect(() => {
-    return () => {
-      if (confessionalLockedRef.current) return;
-      const sm = secretMissionRef.current;
-      if (!sm || sm.status !== 'accepted') return;
-      const visitTask = sm.tasks.find((t) => t.type === 'confessional_visits');
-      if (!visitTask || visitTask.completed) return;
-      const day = String(currentWeekRef.current);
-      dispatchRef.current(
-        addUniqueDayToTask({
-          taskId: visitTask.id,
-          day,
-        }),
-      );
-    };
-  }, []); // intentionally runs once on unmount
-
-  // ── Secret mission: passive survive_days task update ──────────────────────
-  // Runs whenever week advances while the mission is accepted.
-  useEffect(() => {
-    if (confessionalLocked) return;
-    const sm = secretMission;
-    if (!sm || sm.status !== 'accepted') return;
-    const surviveTask = sm.tasks.find((t) => t.type === 'survive_days');
-    if (!surviveTask || surviveTask.completed) return;
-    if (currentWeekForMission >= surviveTask.target) {
-      dispatch(updateMissionTaskProgress({ taskId: surviveTask.id, current: currentWeekForMission }));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confessionalLocked, currentWeekForMission]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -778,18 +693,12 @@ export default function DiaryRoom() {
         setShowSelfEvictConfirm(true);
       }
 
-      // Passive mission progress: count conversation turns (1 per exchange = 1 user + 1 BB reply)
-      const smSnap = secretMissionRef.current;
-      if (smSnap?.status === 'accepted') {
-        const turnTask = smSnap.tasks.find((t) => t.type === 'conversation_turns');
-        if (turnTask && !turnTask.completed) {
-          dispatch(
-            updateMissionTaskProgress({
-              taskId: turnTask.id,
-              current: turnTask.current + 1,
-            }),
-          );
-        }
+      const discoveredEgg = getSecretMissionEasterEggByIntent(resp.intent);
+      if (discoveredEgg) {
+        dispatch(recordSecretMissionEasterEgg({
+          eggId: discoveredEgg.id,
+          day: currentWeekForMission,
+        }));
       }
     } catch (err) {
       console.error('The Big Eye AI error:', err);
