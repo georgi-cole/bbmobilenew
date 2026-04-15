@@ -454,6 +454,16 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_LUCK,
     weights: WEIGHTS_LUCK,
   },
+  gridOfLuck: {
+    key: 'gridOfLuck',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: WEIGHTS_LUCK,
+    notes:
+      'Grid of Luck — cinematic elimination board with heavy variance, ' +
+      'but AI still leans on mental/nerve choices for target selection.',
+  },
   wildcardWestern: {
     key: 'wildcardWestern',
     category: 'mental',

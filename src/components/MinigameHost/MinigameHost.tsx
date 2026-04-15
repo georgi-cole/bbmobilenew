@@ -58,6 +58,7 @@ export interface MinigameParticipant {
   id: string;
   name: string;
   isHuman: boolean;
+  avatar?: string;
   /** Pre-computed raw score for AI players; ignored for the human (finalValue is used). */
   precomputedScore: number;
   /** Previous personal-record value for this game, using the game's native metric
