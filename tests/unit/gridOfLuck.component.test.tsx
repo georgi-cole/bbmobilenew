@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import GridOfLuck from '../../src/components/GridOfLuck/GridOfLuck';
 
 describe('GridOfLuck component', () => {
-  it('renders the full box grid and opens a selected box for the human turn', () => {
+  it('renders the full box grid, opens a selected box, and pauses on a continue CTA', () => {
     render(
       <GridOfLuck
         participants={[
@@ -27,5 +27,6 @@ describe('GridOfLuck component', () => {
 
     expect(boxes[0]).not.toHaveTextContent('Sealed');
     expect(screen.getByText(/Last reveal/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /continue ritual/i })).toBeTruthy();
   });
 });

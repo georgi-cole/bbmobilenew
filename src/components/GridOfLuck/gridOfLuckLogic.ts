@@ -1,29 +1,8 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import type { VariantLabels, Variants } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  boxOpenSequence,
-  boxVariants,
-  lpFloatVariants,
-  playerVariants,
-  screenEffects,
-} from '../../animations/gridOfLuckAnimations';
-import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
-import type { GenericMinigameProps } from '../../minigames/reactComponents';
 import { mulberry32 } from '../../store/rng';
-import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
-import './GridOfLuck.css';
 
 type BoxCategory = 'positive' | 'negative' | 'aggressive' | 'strategic' | 'chaos';
 type GamePhase = 'normal' | 'final' | 'finished';
-type TurnMode =
-  | 'box'
-  | 'target'
-  | 'martyr-blessing'
-  | 'martyr-curse'
-  | 'awaiting-continue'
-  | 'spectator-choice'
-  | 'finished';
+type TurnMode = 'box' | 'target' | 'martyr-blessing' | 'martyr-curse' | 'resolving' | 'finished';
 type ScreenMode = 'idle' | 'vignette' | 'zoomIn' | 'flash';
 
 type BoxType =
@@ -191,27 +170,6 @@ const HUMAN_PICK_DELAY_MS = 1200;
 const MAX_CHAIN_DEPTH = 4;
 const MAX_GRID_OF_LUCK_PLAYERS = 10;
 const MARTYRDOM_ELIMINATION_DAMAGE = 10_000;
-const BOX_REVEAL_VARIANTS: VariantLabels = ['preOpen', 'crack', 'settle'];
-const SYMBOL_REVEAL_VARIANTS: VariantLabels = ['reveal', 'settle'];
-const FLOAT_BASE_LEFT = 15;
-const FLOAT_COLUMN_OFFSET = 20;
-const FLOAT_BASE_TOP = 48;
-const FLOAT_ROW_OFFSET = 10;
-const CONTINUE_RITUAL_LABEL = 'Continue Ritual';
-
-const cameraEffects: Variants = {
-  idle: {
-    scale: 1,
-    opacity: 1,
-    transition: { duration: 0.35, ease: 'easeOut' as const },
-  },
-  zoomIn: {
-    scale: 1.03,
-    opacity: 1,
-    transition: { duration: 0.35, ease: 'easeOut' as const },
-  },
-};
-
 function shuffleWithRng<T>(items: readonly T[], rng: () => number): T[] {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -245,28 +203,6 @@ function clonePlayers(players: GridPlayer[]): GridPlayer[] {
 
 function cloneBoxes(boxes: GridBox[]): GridBox[] {
   return boxes.map((box) => ({ ...box }));
-}
-
-function resolveParticipants(props: GenericMinigameProps): ResolvedParticipant[] {
-  if (props.participants && props.participants.length > 0) {
-    return props.participants.slice(0, MAX_GRID_OF_LUCK_PLAYERS).map((participant, index) => ({
-      id: participant.id,
-      name: participant.name,
-      isHuman: participant.isHuman,
-      precomputedScore: participant.previousPR ?? participant.precomputedScore ?? Math.max(1, 90 - index * 5),
-      avatar: participant.name.charAt(0).toUpperCase(),
-    }));
-  }
-  if (props.participantIds && props.participantIds.length > 0) {
-    return props.participantIds.slice(0, MAX_GRID_OF_LUCK_PLAYERS).map((id, index) => ({
-      id,
-      name: index === 0 ? 'You' : `Player ${index + 1}`,
-      isHuman: index === 0,
-      precomputedScore: 90 - index * 5,
-      avatar: index === 0 ? '🜂' : String.fromCharCode(65 + (index % 26)),
-    }));
-  }
-  return FALLBACK_PARTICIPANTS;
 }
 
 function buildPlayers(participants: ResolvedParticipant[]): GridPlayer[] {
@@ -561,41 +497,39 @@ function pickSafeTypeForEarlyTurn(boxes: GridBox[], boxId: number): { boxes: Gri
 function advanceTurn(state: GameState): { state: GameState; message: string } {
   let players = clonePlayers(state.players);
   let nextIndex = state.currentTurnIndex;
-  const skippedPlayerNames = new Set<string>();
-  const maxAttempts = Math.max(state.turnOrder.length * 6, 12);
+  let wrapped = false;
+  let skippedPlayerName = '';
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+  for (let attempt = 0; attempt < state.turnOrder.length; attempt += 1) {
     nextIndex = (nextIndex + 1) % state.turnOrder.length;
     if (nextIndex === 0) {
-      players = players.map((player) => withStatusEffects({
-        ...player,
-        immunityRounds: Math.max(0, player.immunityRounds - 1),
-      }));
+      wrapped = true;
     }
     const candidate = getPlayer(players, state.turnOrder[nextIndex]);
     if (candidate.isEliminated) continue;
     if (candidate.skipTurns > 0) {
       candidate.skipTurns -= 1;
-      skippedPlayerNames.add(candidate.name);
+      skippedPlayerName = candidate.name;
       players = players.map(withStatusEffects);
       continue;
     }
-    const skippedPrefix = skippedPlayerNames.size > 0
-      ? `${Array.from(skippedPlayerNames).join(', ')} ${skippedPlayerNames.size > 1 ? 'lose their turns' : 'loses their turn'}. `
-      : '';
-    return {
-      state: finalizeState({ ...state, players, currentTurnIndex: nextIndex }, `${skippedPrefix}${candidate.name} steps into the spotlight.`),
-      message: `${skippedPrefix}${candidate.name} steps into the spotlight.`,
-    };
+    break;
   }
 
-  const fallback = getAlivePlayers(players)[0] ?? getPlayer(players, state.turnOrder[state.currentTurnIndex]);
-  const skippedPrefix = skippedPlayerNames.size > 0
-    ? `${Array.from(skippedPlayerNames).join(', ')} ${skippedPlayerNames.size > 1 ? 'lose their turns' : 'loses their turn'}. `
-    : '';
-  const message = `${skippedPrefix}${fallback.name} steps into the spotlight.`;
+  if (wrapped) {
+    players = players.map((player) => withStatusEffects({
+      ...player,
+      immunityRounds: Math.max(0, player.immunityRounds - 1),
+    }));
+  }
+
+  const active = getPlayer(players, state.turnOrder[nextIndex]);
+  const message = skippedPlayerName
+    ? `${skippedPlayerName} loses their turn. ${active.name} steps into the spotlight.`
+    : `${active.name} steps into the spotlight.`;
+
   return {
-    state: finalizeState({ ...state, players, currentTurnIndex: state.turnOrder.indexOf(fallback.id) }, message),
+    state: finalizeState({ ...state, players, currentTurnIndex: nextIndex }, message),
     message,
   };
 }
@@ -985,427 +919,42 @@ function resolveBoxSelection(
   return applyEffectSelection(nextState, actorId, effectType, boxId, targetIds, rng, chainDepth + 1, fromForcedOpen);
 }
 
-function getBoxTone(effectType: BoxType): string {
-  return CATEGORY_COLORS[BOX_META[effectType].category];
-}
+export type {
+  BoxCategory,
+  GamePhase,
+  TurnMode,
+  ScreenMode,
+  BoxType,
+  ResolvedParticipant,
+  GridPlayer,
+  GridBox,
+  PendingSelection,
+  FloatingLpBurst,
+  RevealState,
+  GameState,
+  ResolutionOutcome,
+};
 
-function getBoxState(box: GridBox): keyof typeof boxVariants {
-  if (box.isOpened) return 'opened';
-  if (box.isLocked) return 'locked';
-  return 'idle';
-}
-
-function GridOfLuckAvatar({ player }: { player: GridPlayer }) {
-  const candidates = useMemo(
-    () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }),
-    [player.avatar, player.id, player.name],
-  );
-  const [candidateIdx, setCandidateIdx] = useState(0);
-  const [showFallback, setShowFallback] = useState(false);
-
-  if (showFallback) {
-    return (
-      <span className="grid-of-luck__avatar-fallback" aria-hidden="true">
-        {isEmoji(player.avatar) ? player.avatar : player.name.charAt(0).toUpperCase()}
-      </span>
-    );
-  }
-
-  return (
-    <img
-      className="grid-of-luck__avatar"
-      src={candidates[candidateIdx] ?? ''}
-      alt={player.name}
-      onError={() => {
-        if (candidateIdx < candidates.length - 1) {
-          setCandidateIdx((index) => index + 1);
-          return;
-        }
-        setShowFallback(true);
-      }}
-    />
-  );
-}
-
-export default function GridOfLuck(props: GenericMinigameProps) {
-  const resolvedParticipants = useMemo(() => resolveParticipants(props), [props]);
-  const [sessionSeed] = useState<number>(() => (props.seed !== undefined && props.seed !== 0 ? props.seed : cryptoSeed()));
-  const rngRef = useRef<() => number>(mulberry32(sessionSeed >>> 0));
-  const [state, setState] = useState<GameState>(() => createInitialState(resolvedParticipants, sessionSeed));
-  const [turnMode, setTurnMode] = useState<TurnMode>('box');
-  const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
-  const [announcement, setAnnouncement] = useState('Choose a box to begin the ritual.');
-  const [floatingBursts, setFloatingBursts] = useState<FloatingLpBurst[]>([]);
-  const [screenMode, setScreenMode] = useState<ScreenMode>('idle');
-  const [revealState, setRevealState] = useState<RevealState | null>(null);
-  const [completed, setCompleted] = useState(false);
-  const [isSpectatorMode, setIsSpectatorMode] = useState(false);
-  const [showSpectatorChoice, setShowSpectatorChoice] = useState(false);
-
-  const activePlayer = getCurrentPlayer(state);
-  const humanPlayer = useMemo(
-    () => state.players.find((player) => player.isHuman) ?? null,
-    [state.players],
-  );
-  const ranking = useMemo(
-    () => [...state.players].sort((left, right) => {
-      if (right.lp !== left.lp) return right.lp - left.lp;
-      return right.support - left.support;
-    }),
-    [state.players],
-  );
-
-  const validTargets = useMemo(() => {
-    if (!pendingSelection) return [];
-    if (pendingSelection.step === 'martyr-curse') {
-      return getValidTargets(state.players, pendingSelection.actorId, 'steal150').filter(
-        (player) => !pendingSelection.chosenTargets.includes(player.id),
-      );
-    }
-    return getValidTargets(state.players, pendingSelection.actorId, pendingSelection.effectType).filter(
-      (player) => !pendingSelection.chosenTargets.includes(player.id),
-    );
-  }, [pendingSelection, state.players]);
-
-  useEffect(() => {
-    if (screenMode === 'idle') return undefined;
-    const timer = setTimeout(() => setScreenMode('idle'), 650);
-    return () => clearTimeout(timer);
-  }, [screenMode]);
-
-  const resolveOutcome = useCallback((outcome: ResolutionOutcome, boxId: number | null = null) => {
-    setState(outcome.state);
-    setAnnouncement(outcome.message);
-    setPendingSelection(outcome.pendingSelection ?? null);
-    if (outcome.revealedEffectType && boxId !== null) {
-      setRevealState({ boxId, effectType: outcome.revealedEffectType });
-    }
-    setFloatingBursts((current) => [...current, ...outcome.floatingBursts]);
-    if (outcome.screenMode) {
-      setScreenMode(outcome.screenMode);
-    }
-    if (outcome.pendingSelection) {
-      setTurnMode(outcome.pendingSelection.step);
-      return;
-    }
-    if (outcome.state.gamePhase === 'finished') {
-      setTurnMode('finished');
-      return;
-    }
-    const resolvedHuman = outcome.state.players.find((player) => player.isHuman);
-    if (resolvedHuman?.isEliminated && !isSpectatorMode) {
-      setShowSpectatorChoice(true);
-      setAnnouncement("You've been eliminated. Watch the ritual through or skip straight to the results.");
-      setTurnMode('spectator-choice');
-      return;
-    }
-    setTurnMode('awaiting-continue');
-  }, [isSpectatorMode]);
-
-  const handleBoxSelection = useCallback((boxId: number) => {
-    if (turnMode !== 'box' || state.gamePhase === 'finished') return;
-    if (!activePlayer.isHuman) return;
-    const outcome = resolveBoxSelection(state, activePlayer.id, boxId, rngRef.current);
-    resolveOutcome(outcome, boxId);
-  }, [activePlayer.id, activePlayer.isHuman, resolveOutcome, state, turnMode]);
-
-  const handleTargetSelection = useCallback((playerId: string) => {
-    if (!pendingSelection) return;
-    if (!validTargets.some((player) => player.id === playerId)) return;
-    if (pendingSelection.step === 'martyr-blessing') {
-      setPendingSelection({ ...pendingSelection, chosenTargets: [playerId], step: 'martyr-curse' });
-      setTurnMode('martyr-curse');
-      setAnnouncement(`${getPlayer(state.players, pendingSelection.actorId).name} must now choose who loses 200 LP.`);
-      return;
-    }
-    const targetIds = pendingSelection.step === 'martyr-curse'
-      ? [...pendingSelection.chosenTargets, playerId]
-      : [playerId];
-    const outcome = applyEffectSelection(
-      state,
-      pendingSelection.actorId,
-      pendingSelection.effectType,
-      pendingSelection.sourceBoxId,
-      targetIds,
-      rngRef.current,
-    );
-    resolveOutcome(outcome, pendingSelection.sourceBoxId);
-  }, [pendingSelection, resolveOutcome, state, validTargets]);
-
-  useEffect(() => {
-    if (turnMode !== 'box') return undefined;
-    if (state.gamePhase === 'finished') return undefined;
-    if (activePlayer.isHuman) return undefined;
-    const timer = setTimeout(() => {
-      const box = chooseAiBox(state, activePlayer.id, rngRef.current);
-      const outcome = resolveBoxSelection(state, activePlayer.id, box.id, rngRef.current);
-      resolveOutcome(outcome, box.id);
-    }, state.gamePhase === 'final' ? 900 : HUMAN_PICK_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [activePlayer.id, activePlayer.isHuman, resolveOutcome, state, turnMode]);
-
-  useEffect(() => {
-    if (floatingBursts.length === 0) return undefined;
-    const timer = setTimeout(() => {
-      setFloatingBursts((current) => current.slice(1));
-    }, 1300);
-    return () => clearTimeout(timer);
-  }, [floatingBursts]);
-
-  const finishMinigame = useCallback(() => {
-    if (!props.onFinish || completed) return;
-    const winner = ranking[0];
-    if (!winner) return;
-    setCompleted(true);
-    props.onFinish(winner.lp, undefined, {
-      authoritativeWinnerId: winner.id,
-      rawValue: winner.lp,
-      rawResults: Object.fromEntries(ranking.map((player) => [player.id, player.lp])),
-    });
-  }, [completed, props, ranking]);
-
-  const handleContinueTurn = useCallback(() => {
-    if (turnMode !== 'awaiting-continue') return;
-    const advanced = advanceTurn(state);
-    setState(advanced.state);
-    setAnnouncement(advanced.message);
-    setTurnMode('box');
-    setRevealState(null);
-  }, [state, turnMode]);
-
-  const handleContinueSpectating = useCallback(() => {
-    setIsSpectatorMode(true);
-    setShowSpectatorChoice(false);
-    setAnnouncement('You remain in the chamber as a spectator. Continue when ready.');
-    setTurnMode(state.gamePhase === 'finished' ? 'finished' : 'awaiting-continue');
-  }, [state.gamePhase]);
-
-  const handleSkipToResults = useCallback(() => {
-    let simulatedState = state;
-    let latestMessage = announcement;
-    let safety = 320;
-
-    while (simulatedState.gamePhase !== 'finished' && safety > 0) {
-      safety -= 1;
-      const current = getCurrentPlayer(simulatedState);
-      if (current.isEliminated) {
-        const advanced = advanceTurn(simulatedState);
-        simulatedState = advanced.state;
-        latestMessage = advanced.message;
-        continue;
-      }
-      const box = chooseAiBox(simulatedState, current.id, rngRef.current);
-      const outcome = resolveBoxSelection(simulatedState, current.id, box.id, rngRef.current);
-      simulatedState = outcome.state;
-      latestMessage = outcome.message;
-      if (simulatedState.gamePhase === 'finished') break;
-      const advanced = advanceTurn(simulatedState);
-      simulatedState = advanced.state;
-      latestMessage = advanced.message;
-    }
-
-    setShowSpectatorChoice(false);
-    setIsSpectatorMode(true);
-    setRevealState(null);
-    setPendingSelection(null);
-    setState(simulatedState);
-    setAnnouncement(simulatedState.gamePhase === 'finished' ? 'The remaining ritual is resolved. Continue to results.' : latestMessage);
-    setTurnMode(simulatedState.gamePhase === 'finished' ? 'finished' : 'awaiting-continue');
-  }, [announcement, state]);
-
-  return (
-    <motion.div className={`grid-of-luck${state.gamePhase === 'final' ? ' grid-of-luck--final' : ''}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <motion.div className="grid-of-luck__backdrop" animate={screenMode} variants={screenEffects} aria-hidden="true" />
-      <motion.div className="grid-of-luck__camera" animate={screenMode === 'zoomIn' ? 'zoomIn' : 'idle'} variants={cameraEffects}>
-        <motion.header className="grid-of-luck__header" layout>
-          <motion.div className="grid-of-luck__eyebrow">Grid of Luck</motion.div>
-          <motion.h2 className="grid-of-luck__title">
-            {state.gamePhase === 'finished' ? 'Ritual Complete' : state.gamePhase === 'final' ? 'Final Phase' : 'Mystic Chamber'}
-          </motion.h2>
-          <motion.p className="grid-of-luck__announcement">{announcement}</motion.p>
-        </motion.header>
-
-        <motion.section className="grid-of-luck__players" layout>
-          {ranking.map((player, index) => {
-            const isActive = activePlayer.id === player.id && turnMode !== 'finished';
-            const isTargetable = validTargets.some((entry) => entry.id === player.id);
-            const lpPercent = Math.max(0, Math.min(100, (player.lp / 900) * 100));
-            const variant = player.isEliminated
-              ? 'eliminatedPlayer'
-              : isTargetable
-                ? 'targetedPlayer'
-                : isActive
-                  ? 'activePlayer'
-                  : undefined;
-            return (
-              <motion.button
-                key={player.id}
-                className={`grid-of-luck__player-card${player.isEliminated ? ' is-eliminated' : ''}${isTargetable ? ' is-targetable' : ''}${isActive ? ' is-active' : ''}`}
-                type="button"
-                variants={playerVariants}
-                animate={variant}
-                onClick={() => handleTargetSelection(player.id)}
-                disabled={!isTargetable}
-                whileHover={isTargetable ? { scale: 1.02 } : undefined}
-                whileTap={isTargetable ? { scale: 0.985 } : undefined}
-              >
-                <motion.div className="grid-of-luck__player-spotlight" aria-hidden="true" />
-                <motion.div className="grid-of-luck__player-rank">#{index + 1}</motion.div>
-                <motion.div className="grid-of-luck__avatar-shell">
-                  <GridOfLuckAvatar player={player} />
-                </motion.div>
-                <motion.div className="grid-of-luck__player-name">{player.name}</motion.div>
-                <motion.div className="grid-of-luck__lp-row">
-                  <span>{player.lp} LP</span>
-                  <span>{player.isEliminated ? 'Eliminated' : isActive ? 'Active' : 'Alive'}</span>
-                </motion.div>
-                <motion.div className="grid-of-luck__lp-bar">
-                  <motion.div className="grid-of-luck__lp-fill" style={{ width: `${lpPercent}%` }} />
-                </motion.div>
-                <motion.div className="grid-of-luck__status-list">
-                  {player.statusEffects.length > 0 ? player.statusEffects.join(' • ') : player.isEliminated ? 'Cracked in place' : 'No active effects'}
-                </motion.div>
-              </motion.button>
-            );
-          })}
-        </motion.section>
-
-        <motion.section className="grid-of-luck__arena" layout>
-          <motion.div className="grid-of-luck__grid-shell">
-            <motion.div className="grid-of-luck__grid" layout>
-              {state.gridBoxes.map((box) => {
-                const opened = box.isOpened;
-                const effectMeta = BOX_META[box.type];
-                const glow = getBoxTone(box.type);
-                const isCurrentReveal = revealState?.boxId === box.id;
-                const isClickable = turnMode === 'box' && activePlayer.isHuman && !opened && !box.isLocked && state.gamePhase !== 'finished';
-                return (
-                  <motion.button
-                    key={box.id}
-                    className={`grid-of-luck__box${opened ? ' is-opened' : ''}${box.isLocked ? ' is-locked' : ''}${isClickable ? ' is-clickable' : ''}`}
-                    type="button"
-                    data-testid="grid-of-luck-box"
-                    disabled={!isClickable}
-                    variants={{ ...boxVariants, ...boxOpenSequence }}
-                    animate={(isCurrentReveal ? BOX_REVEAL_VARIANTS : getBoxState(box)) as VariantLabels}
-                    initial={false}
-                    whileHover={isClickable ? 'hover' : undefined}
-                    whileTap={isClickable ? 'press' : undefined}
-                    style={{ ['--grid-of-luck-glow' as string]: glow }}
-                    onClick={() => handleBoxSelection(box.id)}
-                  >
-                    <motion.div className="grid-of-luck__box-inner">
-                      <motion.div className="grid-of-luck__box-id">{box.id + 1}</motion.div>
-                      <motion.div className="grid-of-luck__box-whisper" aria-hidden="true" />
-                      <motion.div
-                        className="grid-of-luck__box-symbol"
-                        animate={(opened || isCurrentReveal ? SYMBOL_REVEAL_VARIANTS : undefined) as VariantLabels | undefined}
-                        variants={boxOpenSequence}
-                      >
-                        {opened || box.isPeeked ? effectMeta.symbol : '◌'}
-                      </motion.div>
-                      <motion.div className="grid-of-luck__box-label">
-                        {opened ? effectMeta.label : box.isLocked ? 'Locked' : box.isPeeked ? effectMeta.label : 'Sealed'}
-                      </motion.div>
-                    </motion.div>
-                  </motion.button>
-                );
-              })}
-            </motion.div>
-          </motion.div>
-
-          <motion.aside className="grid-of-luck__sidebar" layout>
-            <motion.div className="grid-of-luck__active-card">
-              <span className="grid-of-luck__sidebar-label">Current turn</span>
-              <strong>{activePlayer.name}</strong>
-              <span>{activePlayer.lp} LP</span>
-            </motion.div>
-            {revealState && (
-              <motion.div className="grid-of-luck__reveal-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <span className="grid-of-luck__sidebar-label">Last reveal</span>
-                <strong>{BOX_META[revealState.effectType].label}</strong>
-                <span>{BOX_META[revealState.effectType].description}</span>
-              </motion.div>
-            )}
-            <motion.div className="grid-of-luck__log-card">
-              <span className="grid-of-luck__sidebar-label">Ritual feed</span>
-              <ul>
-                {state.recentEvents.map((event, index) => (
-                  <li key={`${index}-${event}`}>{event}</li>
-                ))}
-              </ul>
-            </motion.div>
-            {turnMode === 'awaiting-continue' && (
-              <motion.button
-                className="grid-of-luck__finish-button"
-                type="button"
-                onClick={handleContinueTurn}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {isSpectatorMode || humanPlayer?.isEliminated ? 'Continue Watching' : CONTINUE_RITUAL_LABEL}
-              </motion.button>
-            )}
-            {turnMode === 'finished' && (
-              <motion.button className="grid-of-luck__finish-button" type="button" onClick={finishMinigame} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                Continue
-              </motion.button>
-            )}
-          </motion.aside>
-        </motion.section>
-      </motion.div>
-
-      <AnimatePresence>
-        {showSpectatorChoice && (
-          <motion.div
-            className="grid-of-luck__spectator-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="grid-of-luck__spectator-card"
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 12, opacity: 0 }}
-            >
-              <span className="grid-of-luck__sidebar-label">Eliminated</span>
-              <strong>{humanPlayer?.name ?? 'You'} can still watch the chamber or jump to the final results.</strong>
-              <div className="grid-of-luck__spectator-actions">
-                <button type="button" onClick={handleContinueSpectating}>
-                  Stay as Spectator
-                </button>
-                <button type="button" className="is-danger" onClick={handleSkipToResults}>
-                  Skip to Results
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {floatingBursts.map((burst) => {
-          const row = Math.floor(burst.boxId / 4);
-          const column = burst.boxId % 4;
-          return (
-            <motion.div
-              key={burst.id}
-              className={`grid-of-luck__floating-lp is-${burst.tone}`}
-              variants={lpFloatVariants}
-              initial="initial"
-              animate="animate"
-              exit={{ opacity: 0 }}
-              style={{
-                left: `calc(${FLOAT_BASE_LEFT + column * FLOAT_COLUMN_OFFSET}% )`,
-                top: `calc(${FLOAT_BASE_TOP + row * FLOAT_ROW_OFFSET}% )`,
-              }}
-            >
-              {burst.value > 0 ? '+' : ''}{burst.value}
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
+export {
+  BOX_META,
+  CATEGORY_COLORS,
+  ELIMINATION_TYPES,
+  HUMAN_PICK_DELAY_MS,
+  MAX_CHAIN_DEPTH,
+  MAX_GRID_OF_LUCK_PLAYERS,
+  MARTYRDOM_ELIMINATION_DAMAGE,
+  FALLBACK_PARTICIPANTS,
+  BOX_ORDER,
+  createInitialState,
+  getPlayer,
+  getCurrentPlayer,
+  getAlivePlayers,
+  getOpenableBoxes,
+  getValidTargets,
+  chooseAiBox,
+  chooseAiTarget,
+  advanceTurn,
+  resolveAutoTargetIds,
+  resolveBoxSelection,
+  applyEffectSelection,
+};
