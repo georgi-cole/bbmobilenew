@@ -126,7 +126,7 @@ class _SoundManager {
   private _initialised = false;
   private _unlocked = false;
 
-  // Requests queued before the first user gesture (music only; SFX are discarded)
+  // Requests queued before the first user gesture (desired BGM + at most one SFX marker)
   private _playQueue: QueuedPlay[] = [];
 
   // Stored unlock handler — ensures only one set of listeners is ever registered
@@ -732,6 +732,13 @@ class _SoundManager {
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
     this._playQueue.push({ key: this._musicKey ?? '__desired-bgm-retry__', isMusic: true });
     this._ensureUnlockListeners();
+  }
+
+  private _queueSfxMarker(key: string, opts?: PlayOptions): void {
+    // A single queued SFX marker is enough to force the next user gesture down
+    // the drain/priming path. Keep any queued music retry marker intact.
+    this._playQueue = this._playQueue.filter((q) => q.isMusic);
+    this._playQueue.push({ key, isMusic: false, opts });
   }
 
   private _clearUnlockListeners(): void {
