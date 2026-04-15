@@ -39,7 +39,9 @@ export type AdPlacement =
   /** Rewarded: prompt when the user's public meter drops to Disliked; reward = +4–10% approval (once/day). */
   | 'public_meter_disliked_boost'
   /** Rewarded: unlock the confessional vote breakdown after live eviction results. */
-  | 'eviction_vote_breakdown';
+  | 'eviction_vote_breakdown'
+  /** Rewarded: temporary audience momentum boost during Public Favorite Player voting. */
+  | 'favorite_player_audience_surge';
 
 /** Placements that are automatic/interstitial (suppressed by No Ads Pack). */
 export const INTERSTITIAL_PLACEMENTS = new Set<AdPlacement>([
