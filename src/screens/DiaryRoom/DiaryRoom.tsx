@@ -342,10 +342,6 @@ export default function DiaryRoom() {
   const currentWeekForMission = useAppSelector((s) => s.game.week);
   const players = useAppSelector((s) => s.game.players);
   const alivePlayers = useAppSelector(selectAlivePlayers);
-  // PR 3 — read active power states so the Confessional can display status.
-  const awaitingDoubleVoteOffer = useAppSelector((s) => s.game.awaitingDoubleVoteOffer);
-  const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
-  const awaitingVoteDeductionPrompt = useAppSelector((s) => s.game.awaitingVoteDeductionPrompt);
   const confessionalLocked = userPlayer?.status === 'evicted' || userPlayer?.status === 'jury';
 
   // ── Active ceremony decision routed to the confessional ───────────────────
@@ -1054,87 +1050,64 @@ export default function DiaryRoom() {
                   </div>
                 ))}
 
-                {/* ── Mystery box selection (rewardPending) ────────────── */}
+                {/* ── Immunity reward claim (rewardPending) ───────────── */}
                 {secretMission.status === 'rewardPending' && (
-                  <div className="diary-room__mystery-boxes" aria-label="Mystery box selection">
+                  <div className="diary-room__mystery-boxes" aria-label="Secret immunity claim">
                     <p className="diary-room__mystery-boxes-prompt">
-                      🎁 Choose your mystery box:
+                      🛡️ Claim your temporary secret immunity:
                     </p>
-                    <div className="diary-room__mystery-boxes-grid">
-                      {shuffledBoxes.map((rewardType, idx) => (
-                        <button
-                          key={idx}
-                          className="diary-room__mystery-box-btn"
-                          type="button"
-                          aria-label={`Mystery Box ${idx + 1}`}
-                          onClick={() => {
-                            dispatch(claimMissionReward(rewardType));
-                            if (rewardType === 'plus1000Influence' && userPlayer) {
-                              dispatch(applyInfluenceDelta({ playerId: userPlayer.id, delta: 1000 }));
-                            }
-                            const revealMsg: ChatMessage = {
-                              id: crypto.randomUUID(),
-                              role: 'bb',
-                              text: REWARD_MESSAGES[rewardType] ?? REWARD_MESSAGES.emptyBox,
-                              timestamp: Date.now(),
-                            };
-                            const msgs: ChatMessage[] = [revealMsg];
-                            if (rewardType === 'doubleVote') {
-                              msgs.push({
-                                id: crypto.randomUUID(),
-                                role: 'bb',
-                                text: doubleVoteTimingMessage(phase),
-                                timestamp: Date.now() + 50,
-                              });
-                            }
-                            setMessages((prev) => {
-                              const updated = [...prev, ...msgs];
-                              saveChat(playerIdRef.current, updated);
-                              return updated;
-                            });
-                          }}
-                        >
-                          📦 Box {idx + 1}
-                        </button>
-                      ))}
-                    </div>
+                    <button
+                      className="diary-room__mystery-box-btn"
+                      type="button"
+                      aria-label="Claim secret immunity"
+                      onClick={() => {
+                        dispatch(claimMissionReward({ claimDay: currentWeekForMission }));
+                        const revealMsg: ChatMessage = {
+                          id: crypto.randomUUID(),
+                          role: 'bb',
+                          text: `The Big Eye grants you a brief shield. Guard it carefully — it may be used only during the Safety Ceremony while you are nominated.`,
+                          timestamp: Date.now(),
+                        };
+                        setMessages((prev) => {
+                          const updated = [...prev, revealMsg];
+                          saveChat(playerIdRef.current, updated);
+                          return updated;
+                        });
+                      }}
+                    >
+                      🛡️ Claim reward
+                    </button>
                   </div>
                 )}
 
                 {/* ── Claimed reward status (rewardClaimed) ────────────── */}
                 {secretMission.status === 'rewardClaimed' && secretMission.reward && (
                   <div className="diary-room__reward-claimed" aria-label="Claimed reward">
-                    {secretMission.reward.type === 'emptyBox' ? (
-                      <p className="diary-room__reward-claimed-empty">
-                        📭 Empty box — no power granted.
-                      </p>
-                    ) : secretMission.reward.expired ? (
+                    {secretMission.reward.expired ? (
                       <p className="diary-room__reward-claimed-expired">
-                        ⏳ Your power has expired — Final 4 has been reached.
+                        ⏳ Your secret immunity expired before it could be used.
                       </p>
                     ) : secretMission.reward.consumed ? (
                       <p className="diary-room__reward-claimed-used">
-                        ✔️ Power used.
+                        ✔️ Secret immunity used.
                       </p>
                     ) : (
                       <>
                         <p className="diary-room__reward-claimed-active">
                           🔮 Secret power stored:{' '}
                           <strong>{REWARD_LABELS[secretMission.reward.type] ?? secretMission.reward.type}</strong>
+                          {secretMission.reward.type === 'immunity' && secretMission.reward.durationDays
+                            ? ` — ${secretMission.reward.durationDays} day${secretMission.reward.durationDays === 1 ? '' : 's'}`
+                            : ''}
                         </p>
-                        {secretMission.reward.type === 'doubleVote' && awaitingDoubleVoteOffer && (
+                        {secretMission.reward.type === 'immunity' && (
                           <p className="diary-room__reward-active-hint">
-                            📺 The Big Eye is watching. Your Double Vote is ready — return to the game to decide.
+                            Use it during the Safety Ceremony while nominated. Expires after Day {secretMission.reward.activeUntilDay ?? currentWeekForMission}.
                           </p>
                         )}
-                        {secretMission.reward.type === 'doubleVote' && humanDoubleVoteActive && (
+                        {secretMission.reward.type === 'immunity' && activeConfessionalDecision?.type === 'mission_immunity_offer' && (
                           <p className="diary-room__reward-active-hint">
-                            🗳️🗳️ Double Vote activated! Return to the game to cast your two votes.
-                          </p>
-                        )}
-                        {secretMission.reward.type === 'voteDeduction' && awaitingVoteDeductionPrompt && (
-                          <p className="diary-room__reward-active-hint">
-                            📺 The Big Eye has a message for you. Return to the game — your Vote Deduction is waiting.
+                            📺 The Big Eye is ready to ask whether you want to spend it right now.
                           </p>
                         )}
                       </>

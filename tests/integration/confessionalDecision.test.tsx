@@ -492,7 +492,7 @@ describe('DiaryRoom — confessional decision panel', () => {
       players,
     });
     renderDiaryRoom(store);
-    expect(screen.getByText(/Choose the two houseguests you want to nominate/i)).toBeTruthy();
+    expect(screen.getByText(/Choose the two players you want to nominate/i)).toBeTruthy();
   });
 
   it('shows the POS decision prompt inside the chat for pos_decision', () => {

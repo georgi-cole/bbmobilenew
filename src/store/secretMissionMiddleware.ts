@@ -75,7 +75,11 @@ function computePlacement(
   return { placement: index + 1, participantCount: ranked.length };
 }
 
-function updateTaskProgress(dispatch: (action: unknown) => unknown, task: MissionTask, updates: Partial<MissionTask>) {
+function updateTaskProgress(
+  dispatch: (action: ReturnType<typeof syncMissionTask>) => unknown,
+  task: MissionTask,
+  updates: Partial<MissionTask>,
+) {
   dispatch(syncMissionTask({ taskId: task.id, updates }));
 }
 

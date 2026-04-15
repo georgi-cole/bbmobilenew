@@ -60,6 +60,12 @@ export function getConfessionalDecisionPresentation(
       prompt = 'Choose your two eviction votes. You may vote for the same nominee twice.';
       keyParts.push(`nominees=${game.nomineeIds.join(',')}`);
       break;
+    case 'mission_immunity_offer': {
+      const duration = game.secretMission?.reward?.durationDays ?? 1;
+      prompt = `Do you want to use your ${duration}-day secret immunity now?`;
+      keyParts.push(`duration=${duration}`, `nominees=${game.nomineeIds.join(',')}`);
+      break;
+    }
     case 'pos_decision':
       prompt = `Do you want to use ${powerName}?`;
       keyParts.push(

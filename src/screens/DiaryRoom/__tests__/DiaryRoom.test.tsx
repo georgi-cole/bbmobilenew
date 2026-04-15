@@ -308,7 +308,7 @@ describe('DiaryRoom', () => {
   });
 
   it('reshuffles accepted secret mission tasks from the confessional footer', () => {
-    renderDiaryRoom(['/game', '/diary-room'], {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
       setupStore: (store) => {
         store.dispatch(triggerSecretMission(5));
         store.dispatch(offerSecretMission(5));
@@ -316,14 +316,15 @@ describe('DiaryRoom', () => {
       },
     });
 
-    screen.getByText('Visit the Confessional on 3 different days');
-    screen.getByRole('button', { name: /shuffle mission/i });
+    const before = store.getState().game.secretMission!.tasks.map((task) => task.description);
+    expect(screen.getByRole('button', { name: /shuffle mission/i })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /shuffle mission/i }));
 
-    expect(screen.queryByText('Visit the Confessional on 3 different days')).toBeNull();
-    screen.getByText('Survive until Day 9');
-    screen.getByText('Complete 8 exchanges with the Big Eye');
+    const after = store.getState().game.secretMission!.tasks.map((task) => task.description);
+    expect(after).not.toEqual(before);
+    expect(after).toHaveLength(5);
+    expect(after.some((description) => /Survive until Day/i.test(description))).toBe(true);
   });
 
   it('shows only the locked door for eliminated players and leaves secret missions inactive', async () => {

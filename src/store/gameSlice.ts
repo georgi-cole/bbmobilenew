@@ -3992,7 +3992,7 @@ const gameSlice = createSlice({
       const sm = state.secretMission;
       if (!sm || sm.status !== 'rewardPending') return;
       if (typeof action.payload === 'string') {
-        sm.reward = createMissionReward(action.payload);
+        sm.reward = createMissionReward(action.payload as Exclude<MissionRewardType, 'immunity'>);
       } else {
         const duration = action.payload.durationDays
           ?? pickMissionImmunityDuration(sm.triggeredDay, sm.templateId);

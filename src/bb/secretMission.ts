@@ -563,7 +563,7 @@ function resolveAliveCountAndOverride(
     };
   }
   return {
-    aliveCount: aliveCountOrOverride,
+    aliveCount: aliveCountOrOverride ?? null,
     override: overrideMaybe,
   };
 }
