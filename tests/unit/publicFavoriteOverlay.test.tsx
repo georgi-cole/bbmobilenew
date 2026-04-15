@@ -70,6 +70,8 @@ describe('PublicFavoriteOverlay', () => {
     expect(screen.getByText(/audience surge/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /watch to boost jordan/i })).toBeInTheDocument();
     expect(screen.getByText(/results board/i)).toBeInTheDocument();
+    expect(screen.queryByText(/live audience percentages update in real time/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/one player wins the grand prize/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/america/i)).not.toBeInTheDocument();
   });
 

@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
@@ -64,9 +64,6 @@ const CLOCK_INTERVAL_MS = 200;
 const SURGE_SELECTION_WINDOW_MS = 6500;
 const SURGE_DURATION_MS = 7000;
 const ELIMINATION_SPOTLIGHT_MS = 1400;
-const TICKER_MSG =
-  "The public is voting for their Favorite Player… One player wins the grand prize! ✦  ";
-
 function formatEyeoleans(amount: number): string {
   return `${new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -361,10 +358,8 @@ function VoteRankingCard({
   return (
     <motion.button
       type="button"
-      layout
       className={`pf-overlay__rank-card${entry.isLeader ? ' pf-overlay__rank-card--leader' : ''}${entry.surgeActive ? ' pf-overlay__rank-card--surge' : ''}${isSelected ? ' pf-overlay__rank-card--selected' : ''}`}
       onClick={() => onSelect(entry.playerId)}
-      transition={{ layout: { duration: 0.35, ease: 'easeInOut' } }}
       aria-label={`${entry.name}, rank ${entry.rank}, ${entry.percent}%`}
     >
       <span className="pf-overlay__rank-number">#{entry.rank}</span>
@@ -399,25 +394,22 @@ function VoteRankingBoard({
     <section className="pf-overlay__board" aria-label="Public vote ranking board">
       <div className="pf-overlay__board-header">
         <p className="pf-overlay__board-title">Results board</p>
-        <p className="pf-overlay__board-subtitle">Live audience percentages update in real time.</p>
       </div>
-      <LayoutGroup>
-        <motion.div className="pf-overlay__board-list" layout>
-          {entries.map((entry) => {
-            const candidate = candidatesById[entry.playerId];
-            if (!candidate) return null;
-            return (
-              <VoteRankingCard
-                key={entry.playerId}
-                entry={entry}
-                candidate={candidate}
-                isSelected={selectedPlayerId === entry.playerId}
-                onSelect={onSelect}
-              />
-            );
-          })}
-        </motion.div>
-      </LayoutGroup>
+      <div className="pf-overlay__board-list">
+        {entries.map((entry) => {
+          const candidate = candidatesById[entry.playerId];
+          if (!candidate) return null;
+          return (
+            <VoteRankingCard
+              key={entry.playerId}
+              entry={entry}
+              candidate={candidate}
+              isSelected={selectedPlayerId === entry.playerId}
+              onSelect={onSelect}
+            />
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -741,11 +733,6 @@ export default function PublicFavoriteOverlay({
               onSelect={setSelectedSurgeId}
               onActivate={handleActivateSurge}
             />
-
-            <div className="pf-overlay__ticker-wrap" aria-hidden="true">
-              <span className="pf-overlay__ticker">{TICKER_MSG + TICKER_MSG}</span>
-            </div>
-
             <AnimatePresence>{phase === 'intro' && <PublicVoteIntro />}</AnimatePresence>
           </div>
         )}

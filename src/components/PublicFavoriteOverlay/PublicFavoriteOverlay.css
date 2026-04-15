@@ -102,7 +102,6 @@
 
 .pf-overlay__subtitle,
 .pf-overlay__status,
-.pf-overlay__board-subtitle,
 .pf-overlay__surge-description,
 .pf-overlay__sub,
 .pf-overlay__intro-subtitle {
@@ -352,16 +351,11 @@
 }
 
 .pf-overlay__board-title,
-.pf-overlay__board-subtitle,
 .pf-overlay__surge-description,
 .pf-overlay__winner-prize,
 .pf-overlay__sub,
 .pf-overlay__elimination-copy {
   margin: 0;
-}
-
-.pf-overlay__board-subtitle {
-  font-size: 0.8rem;
 }
 
 .pf-overlay__board-list {
@@ -545,28 +539,6 @@
 
 .pf-overlay__elimination-name {
   font-size: 1rem;
-}
-
-.pf-overlay__ticker-wrap {
-  overflow: hidden;
-  border-radius: 999px;
-  padding: 0.42rem 0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.pf-overlay__ticker {
-  display: inline-block;
-  white-space: nowrap;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.62);
-  animation: pfTicker 22s linear infinite;
-}
-
-@keyframes pfTicker {
-  from { transform: translateX(100%); }
-  to { transform: translateX(-100%); }
 }
 
 .pf-overlay__intro {
