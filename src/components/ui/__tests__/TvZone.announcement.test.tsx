@@ -517,6 +517,23 @@ describe('TvZone — announcement overlay', () => {
     expect(overlay.className).toContain('tv-announcement--battle-back');
   });
 
+  it('keeps the Back 2 the Game styling for staged twist announcements', () => {
+    const store = makeStore();
+
+    renderTvZone(store, {
+      externalAnnouncement: {
+        key: 'battle_back_challenge',
+        title: 'Back 2 the Game Challenge',
+        subtitle: 'Press play to begin.',
+        isLive: true,
+        autoDismissMs: null,
+      },
+    });
+
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game Challenge/i });
+    expect(overlay.className).toContain('tv-announcement--battle-back');
+  });
+
   it('falls back to Back 2 the Game styling when a twist event mentions the twist without a major key', () => {
     const store = makeStore();
     renderTvZone(store);

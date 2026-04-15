@@ -96,6 +96,24 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     category: 'Twist',
     body: 'A Back 2 the Game shock has been activated. Recently eliminated players will face off in a special competition for a chance to re-enter The Big Eye. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
   },
+  battle_back_shock: {
+    icon: '🔥',
+    label: 'SHOCK TWIST',
+    category: 'Twist',
+    body: 'Back 2 the Game has been activated. One of the recently eliminated players now has a chance to fight their way back into the house.',
+  },
+  battle_back_rules: {
+    icon: '📜',
+    label: 'BACK 2 THE GAME RULES',
+    category: 'Twist',
+    body: 'The Back 2 the Game field is set. Recently eliminated players will compete head-to-head, and only one winner can earn their return to the game.',
+  },
+  battle_back_challenge: {
+    icon: '🏆',
+    label: 'BACK 2 THE GAME CHALLENGE',
+    category: 'Competition',
+    body: 'The Back 2 the Game challenge is about to begin. Watch the showdown play out to see which eliminated player can claw their way back into The Big Eye.',
+  },
   double_eviction: {
     icon: '⚡',
     label: 'DOUBLE ELIMINATION',

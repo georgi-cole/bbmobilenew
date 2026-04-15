@@ -19,6 +19,8 @@ export interface TvAnnouncementOverlayProps {
 }
 
 function getAnnouncementThemeClass(key: string): string {
+  const isBattleBackAnnouncement = key === 'battle_back' || key.startsWith('battle_back_');
+
   if (
     key === 'pos_comp_announcement' ||
     key === 'veto_ceremony' ||
@@ -26,7 +28,7 @@ function getAnnouncementThemeClass(key: string): string {
     key === 'vip_veto' ||
     key === 'diamond_pov' ||
     key === 'spotlight_veto' ||
-    key === 'battle_back'
+    isBattleBackAnnouncement
   ) {
     return 'tv-announcement--theme-pos';
   }
@@ -70,7 +72,7 @@ export default function TvAnnouncementOverlay({
   paused = false,
 }: TvAnnouncementOverlayProps) {
   const { title, subtitle, isLive, autoDismissMs } = announcement;
-  const isBattleBack = announcement.key === 'battle_back';
+  const isBattleBack = announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_');
   const isDoubleEviction = announcement.key === 'double_eviction';
   const isVipVeto = announcement.key === 'vip_veto';
   const isDiamondPov = announcement.key === 'diamond_pov';
