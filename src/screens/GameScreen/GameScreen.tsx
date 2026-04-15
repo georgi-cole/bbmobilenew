@@ -120,6 +120,7 @@ import {
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import './GameScreen.css'
 
+const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
@@ -1118,7 +1119,7 @@ export default function GameScreen() {
         badge: '❓',
         badgeImageSrc: NOMINATION_BADGE_SRC,
         badgeStart: sourceIsDistinct ? sourceRect : 'center',
-        badgeLabel: `${replacementPlayer.name} nominated as replacement`,
+        badgeLabel: `${replacementPlayer.name} named backup nominee`,
         glowTone: 'danger' as const,
       },
     ]
@@ -2785,7 +2786,7 @@ export default function GameScreen() {
 
       {showTieBreakMultiSelectModal && (
         <TvMultiSelectModal
-          title="Double Eviction Tie-Break"
+          title="Double Elimination Tie-Break"
           subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} players to eliminate.`}
           options={tieBreakOptions}
           maxSelect={doubleEvictionTieBreakSelectCount}
@@ -3090,6 +3091,7 @@ export default function GameScreen() {
             const tiles: CeremonyTile[] = [{
               rect: sourceDomRect,
               badge: winSymbol,
+              badgeImageSrc: isHohComp ? LOH_BADGE_SRC : undefined,
               badgeStart: 'center',
               badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
             }];
@@ -3148,6 +3150,7 @@ export default function GameScreen() {
             return [{
               rect: getTileRect(winnerId),
               badge: '👑',
+              badgeImageSrc: LOH_BADGE_SRC,
               badgeStart: 'center' as const,
               badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Leader of the House`,
             }]
@@ -3194,7 +3197,7 @@ export default function GameScreen() {
                 badge: '❓',
                 badgeImageSrc: NOMINATION_BADGE_SRC,
                 badgeStart: sourceIsDistinct ? sourceRect : 'center' as const,
-                badgeLabel: `${replacementPlayer?.name ?? replacementId} nominated as replacement`,
+                badgeLabel: `${replacementPlayer?.name ?? replacementId} named backup nominee`,
                 glowTone: 'danger' as const,
               },
             ]
@@ -3299,7 +3302,7 @@ export default function GameScreen() {
           competitorIds={battleBackCandidates.map((p) => p.id)}
           variant={battleBackVariant}
           expectedWinnerId={battleBackWinnerId}
-          roundLabel="Battle Back"
+          roundLabel="Back 2 the Game"
           placement="fullscreen"
           onDone={handleBattleBackComplete}
         />
@@ -3485,8 +3488,8 @@ export default function GameScreen() {
         <AdPrompt
           icon="⚡"
           title="Second Chance?"
-          description={`Watch a short ad to rerun Battle Back before ${(battleBackRetryOfferWinner?.name ?? 'the winner')} returns. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
-          watchLabel="Watch Ad to Replay Battle Back"
+          description={`Watch a short ad to rerun Back 2 the Game before ${(battleBackRetryOfferWinner?.name ?? 'the winner')} returns. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
+          watchLabel="Watch Ad to Replay Back 2 the Game"
           skipLabel="Continue"
           onWatch={() => {
             if (adPending) return

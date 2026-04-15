@@ -26,7 +26,7 @@
     { q: 'How many POS competitions occur in a standard week?', a: 1 },
     { q: 'What week does the Tribunal phase typically start?', a: 5 },
     { q: 'How many housemates were in the first season of The Big Eye?', a: 10 },
-    { q: 'How many Battle Back Shocks have occurred in The Big Eye history?', a: 4 },
+    { q: 'How many Back 2 the Game Shocks have occurred in The Big Eye history?', a: 4 },
     
     { q: 'What is 7 x 8?', a: 56 },
     { q: 'What is 12 x 12?', a: 144 },
@@ -51,7 +51,7 @@
     { q: 'How many degrees are in a right angle?', a: 90 },
     
     { q: 'How many LOH wins is considered a record in one season?', a: 13 },
-    { q: 'What season introduced the Battle Back Shock?', a: 18 },
+    { q: 'What season introduced the Back 2 the Game Shock?', a: 18 },
     { q: 'How many days does a typical The Big Eye housemate stay before early elimination?', a: 14 },
     { q: 'How many POS competitions have been won by nominees in The Big Eye history?', a: 9 },
     { q: 'What season featured a twins-based Shock?', a: 17 },

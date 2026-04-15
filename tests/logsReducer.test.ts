@@ -256,7 +256,7 @@ describe('replacement nominee — log entry uniqueness', () => {
 
     expect(uniqueIds.size).toBe(ids.length);
 
-    const replacementEvent = feed.find((e) => e.text.includes('replacement nominee'));
+    const replacementEvent = feed.find((e) => e.text.includes('backup nominee'));
     expect(replacementEvent).toBeDefined();
   });
 });

@@ -104,7 +104,7 @@ describe('activateBattleBack', () => {
     const store = makeStore();
     store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
     const events = store.getState().game.tvFeed;
-    const battleBackEvent = events.find((e) => e.type === 'twist' && /Battle Back/i.test(e.text));
+    const battleBackEvent = events.find((e) => e.type === 'twist' && /Back 2 the Game/i.test(e.text));
     expect(battleBackEvent).toBeDefined();
     expect((battleBackEvent as TvEvent)?.major).toBe('battle_back');
   });

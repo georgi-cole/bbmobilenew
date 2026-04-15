@@ -1105,7 +1105,7 @@ const gameSlice = createSlice({
       }
       pushEvent(
         state,
-        `${lohPlayer.name} named ${player.name} as the replacement nominee. 🎯`,
+        `${lohPlayer.name} named ${player.name} as the backup nominee. 🎯`,
         'game',
       );
     },
@@ -1758,7 +1758,7 @@ const gameSlice = createSlice({
       const ts = Date.now();
       const event = {
         id: `${state.phase}-w${state.week}-${ts}-bb`,
-        text: `🔥 SHOCK: The Tribunal Return / Battle Back is here! Judges will compete for a chance to return! 🏆`,
+        text: `🔥 SHOCK: Back 2 the Game is here! Judges will compete for a chance to return! 🏆`,
         type: 'twist' as const,
         timestamp: ts,
         major: 'battle_back',
@@ -1804,7 +1804,7 @@ const gameSlice = createSlice({
       winner.stats.battleBackWins = (winner.stats.battleBackWins ?? 0) + 1;
       pushEvent(
         state,
-        `🔥 ${winner.name} has survived the Battle Back and RETURNS to The Big Eye house! 🏠✨`,
+        `🔥 ${winner.name} has survived Back 2 the Game and RETURNS to The Big Eye house! 🏠✨`,
         'twist',
       );
 
@@ -1886,7 +1886,7 @@ const gameSlice = createSlice({
 
       const typeLabels: Record<SpecialVetoType, string> = {
         vip: 'DOUBLE TROUBLE! This week, the holder may use the power TWICE! 👑',
-        diamond: 'HALO EXCHANGE! This week, the holder may name the replacement nominee. 😇',
+        diamond: 'HALO EXCHANGE! This week, the holder may name the backup nominee. 😇',
         coup: 'DETOX! This week, the holder may clear both nominees and name two replacements! ⚡',
         spotlight: 'FORCE MAJEURE! This week, the holder is forced to use the power. ✨',
       };
@@ -1933,7 +1933,7 @@ const gameSlice = createSlice({
       state.specialVeto.awaitingHolderReplacement = false;
       pushEvent(
         state,
-        `${povHolder?.name ?? 'The Halo Exchange holder'} named ${player.name} as the replacement nominee. 😇`,
+        `${povHolder?.name ?? 'The Halo Exchange holder'} named ${player.name} as the backup nominee. 😇`,
         'game',
       );
     },
@@ -2883,7 +2883,7 @@ const gameSlice = createSlice({
         const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
         pushEvent(
           state,
-          `${lohPlayer?.name ?? 'The LOH'} is selecting a replacement nominee...`,
+          `${lohPlayer?.name ?? 'The LOH'} is selecting a backup nominee...`,
           'game',
         );
         state.aiReplacementStep = 2;
@@ -3436,7 +3436,7 @@ const gameSlice = createSlice({
             const lohName = state.players.find((pl) => pl.id === state.lohId)?.name ?? 'The LOH';
             pushEvent(
               state,
-              `${savedName} has decided to use the Power of Safety on themself. ${lohName} must now name a replacement nominee.`,
+              `${savedName} has decided to use the Power of Safety on themself. ${lohName} must now name a backup nominee.`,
               'game',
             );
 
@@ -3445,7 +3445,7 @@ const gameSlice = createSlice({
             if (lohPlayer?.isUser) {
               // Human LOH: set flag; UI will render replacement picker; Continue hidden
               state.replacementNeeded = true;
-              pushEvent(state, `${lohPlayer.name} is selecting a replacement nominee...`, 'game');
+              pushEvent(state, `${lohPlayer.name} is selecting a backup nominee...`, 'game');
             } else {
               state.aiReplacementStep = 1;
             }
@@ -3580,7 +3580,7 @@ const gameSlice = createSlice({
               } else {
                 state.doubleEviction.pendingSecondEviction = {
                   evicteeId: secondId,
-                  evictionMessage: `${secondEvictee.name}, you have also been evicted in tonight's Double Eviction! 🚪`,
+                  evictionMessage: `${secondEvictee.name}, you have also been eliminated in tonight's Double Elimination! 🚪`,
                 };
               }
             }

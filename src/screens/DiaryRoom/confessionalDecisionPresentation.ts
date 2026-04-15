@@ -86,10 +86,10 @@ export function getConfessionalDecisionPresentation(
     case 'replacement_nominee': {
       const alivePlayerIdsCsv = alivePlayers.map((player) => player.id).join(',');
       prompt = game.specialVeto?.awaitingCoupReplacement1
-        ? 'Choose the first replacement nominee.'
+        ? 'Choose the first backup nominee.'
         : game.specialVeto?.awaitingCoupReplacement2
-          ? 'Choose the second replacement nominee.'
-          : 'Choose the replacement nominee.';
+          ? 'Choose the second backup nominee.'
+          : 'Choose the backup nominee.';
       keyParts.push(
         `mode=${game.specialVeto?.awaitingCoupReplacement1
           ? 'coup1'

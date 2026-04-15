@@ -155,14 +155,14 @@ describe('Human POS decision', () => {
 
     let state = store.getState().game;
     expect(state.tvFeed[0]?.text).toBe(
-      'Player 2 has decided to use the Power of Safety on themself. Player 1 must now name a replacement nominee.',
+      'Player 2 has decided to use the Power of Safety on themself. Player 1 must now name a backup nominee.',
     );
     expect(state.aiReplacementStep).toBe(1);
 
     store.dispatch(advance());
 
     state = store.getState().game;
-    expect(state.tvFeed[0]?.text).toBe('Player 1 is selecting a replacement nominee...');
+    expect(state.tvFeed[0]?.text).toBe('Player 1 is selecting a backup nominee...');
     expect(state.aiReplacementStep).toBe(2);
   });
 });

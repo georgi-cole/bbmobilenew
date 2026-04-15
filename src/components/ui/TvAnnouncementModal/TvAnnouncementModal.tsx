@@ -92,9 +92,9 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   },
   battle_back: {
     icon: '🔥',
-    label: 'BATTLE BACK',
+    label: 'BACK 2 THE GAME',
     category: 'Twist',
-    body: 'A Battle Back shock has been activated. Recently eliminated players will face off in a special competition for a chance to re-enter The Big Eye. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
+    body: 'A Back 2 the Game shock has been activated. Recently eliminated players will face off in a special competition for a chance to re-enter The Big Eye. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
   },
   double_eviction: {
     icon: '⚡',

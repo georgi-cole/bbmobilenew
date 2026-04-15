@@ -249,6 +249,8 @@ describe('GameScreen – CeremonyOverlay defers LOH/POS store mutations', () => 
     // CeremonyOverlay should be visible with appropriate aria label.
     const statusEl = screen.getByRole('status');
     expect(statusEl.getAttribute('aria-label')).toContain('wins Leader of the House');
+    const badgeImage = document.querySelector<HTMLImageElement>('.ceremony-overlay__badge-image');
+    expect(badgeImage?.getAttribute('src')).toContain('loh_badge.png');
 
     // Advance past default durationMs (2800) + exit animation (350).
     await act(async () => { vi.advanceTimersByTime(2800); });
