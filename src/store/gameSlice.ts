@@ -46,6 +46,7 @@ import {
   canUseDoubleVote,
   canOfferMissionImmunity,
   canUseVoteDeduction,
+  isSecretMissionSuccessful,
   pickMissionImmunityDuration,
   type MissionTask,
   type LegacyMissionRewardType,
@@ -282,7 +283,7 @@ function pushEvent(
 
 function refreshSecretMissionCompletion(secretMission: GameState['secretMission']) {
   if (!secretMission || secretMission.status !== 'accepted') return;
-  const allDone = secretMission.tasks.length > 0 && secretMission.tasks.every((task) => task.completed);
+  const allDone = isSecretMissionSuccessful(secretMission.tasks);
   if (allDone) {
     secretMission.status = 'rewardPending';
   }

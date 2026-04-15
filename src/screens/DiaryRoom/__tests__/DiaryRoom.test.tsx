@@ -8,6 +8,7 @@ import gameReducer, {
   triggerSecretMission,
   offerSecretMission,
   acceptSecretMission,
+  completeMission,
   hydrateGame,
 } from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
@@ -325,6 +326,39 @@ describe('DiaryRoom', () => {
     expect(after).not.toEqual(before);
     expect(after).toHaveLength(5);
     expect(after.some((description) => /Survive until Day/i.test(description))).toBe(true);
+  });
+
+  it('shows four mystery reward boxes once a secret mission is completed', () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (store) => {
+        store.dispatch(triggerSecretMission(5));
+        store.dispatch(offerSecretMission(5));
+        store.dispatch(acceptSecretMission());
+        store.dispatch(completeMission());
+      },
+    });
+
+    expect(screen.getByLabelText(/secret mission reward boxes/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open mystery box 1/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open mystery box 2/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open mystery box 3/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open mystery box 4/i })).toBeTruthy();
+  });
+
+  it('lets the player claim a mystery-box reward from the confessional', () => {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (store) => {
+        store.dispatch(triggerSecretMission(5));
+        store.dispatch(offerSecretMission(5));
+        store.dispatch(acceptSecretMission());
+        store.dispatch(completeMission());
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /open mystery box 4/i }));
+
+    expect(store.getState().game.secretMission?.status).toBe('rewardClaimed');
+    expect(store.getState().game.secretMission?.reward?.type).toBe('immunity');
   });
 
   it('shows only the locked door for eliminated players and leaves secret missions inactive', async () => {

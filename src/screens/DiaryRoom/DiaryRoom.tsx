@@ -29,6 +29,11 @@ import ConfessionalDecisionPanel from './ConfessionalDecisionPanel';
 import { getConfessionalDecisionPresentation } from './confessionalDecisionPresentation';
 import { getSecretMissionEasterEggByIntent } from '../../bb/secretMissionEasterEggs';
 import {
+  SECRET_MISSION_BOX_REWARDS,
+  pickMissionImmunityDuration,
+  type SecretMissionBoxRewardType,
+} from '../../bb/secretMission';
+import {
   createInitialBigEyeState,
   generateBigBrotherReply,
   type BigEyeConversationState,
@@ -158,7 +163,18 @@ function pickSummary(name: string, seed: number): string {
 
 /** Human-readable labels for each reward type used in the UI. */
 const REWARD_LABELS: Record<string, string> = {
+  plus1000Influence: '1,000 Influence',
+  doubleVote: 'Double Vote',
+  voteDeduction: 'Vote Deduction',
   immunity: 'Secret Immunity',
+};
+
+const REWARD_REVEAL_COPY: Record<SecretMissionBoxRewardType, (week: number, durationDays?: number) => string> = {
+  plus1000Influence: () => 'The Big Eye grants you 1,000 Influence. Spend it wisely.',
+  doubleVote: () => 'The Big Eye grants you a Double Vote. It will be offered automatically at your next eligible live vote.',
+  voteDeduction: () => 'The Big Eye grants you Vote Deduction. If you are on the block at an eligible eviction, you may cut one vote from your total.',
+  immunity: (week, durationDays = 1) =>
+    `The Big Eye grants you temporary immunity for ${durationDays} day${durationDays === 1 ? '' : 's'}. It may be used during the Safety Ceremony while nominated and expires after Day ${week + durationDays - 1}.`,
 };
 
 // ─── sessionStorage helpers ───────────────────────────────────────────────────
@@ -1052,31 +1068,43 @@ export default function DiaryRoom() {
 
                 {/* ── Immunity reward claim (rewardPending) ───────────── */}
                 {secretMission.status === 'rewardPending' && (
-                  <div className="diary-room__mystery-boxes" aria-label="Secret immunity claim">
+                  <div className="diary-room__mystery-boxes" aria-label="Secret mission reward boxes">
                     <p className="diary-room__mystery-boxes-prompt">
-                      🛡️ Claim your temporary secret immunity:
+                      🎁 Choose one mystery box:
                     </p>
-                    <button
-                      className="diary-room__mystery-box-btn"
-                      type="button"
-                      aria-label="Claim secret immunity"
-                      onClick={() => {
-                        dispatch(claimMissionReward({ claimDay: currentWeekForMission }));
-                        const revealMsg: ChatMessage = {
-                          id: crypto.randomUUID(),
-                          role: 'bb',
-                          text: `The Big Eye grants you a brief shield. Guard it carefully — it may be used only during the Safety Ceremony while you are nominated.`,
-                          timestamp: Date.now(),
-                        };
-                        setMessages((prev) => {
-                          const updated = [...prev, revealMsg];
-                          saveChat(playerIdRef.current, updated);
-                          return updated;
-                        });
-                      }}
-                    >
-                      🛡️ Claim reward
-                    </button>
+                    <div className="diary-room__mystery-boxes-grid">
+                      {SECRET_MISSION_BOX_REWARDS.map((rewardType, index) => (
+                        <button
+                          key={rewardType}
+                          className="diary-room__mystery-box-btn"
+                          type="button"
+                          aria-label={`Open Mystery Box ${index + 1}`}
+                          onClick={() => {
+                            const durationDays = rewardType === 'immunity'
+                              ? pickMissionImmunityDuration(secretMission.triggeredDay, secretMission.templateId)
+                              : undefined;
+                            if (rewardType === 'immunity') {
+                              dispatch(claimMissionReward({ claimDay: currentWeekForMission, durationDays }));
+                            } else {
+                              dispatch(claimMissionReward(rewardType));
+                            }
+                            const revealMsg: ChatMessage = {
+                              id: crypto.randomUUID(),
+                              role: 'bb',
+                              text: REWARD_REVEAL_COPY[rewardType](currentWeekForMission, durationDays),
+                              timestamp: Date.now(),
+                            };
+                            setMessages((prev) => {
+                              const updated = [...prev, revealMsg];
+                              saveChat(playerIdRef.current, updated);
+                              return updated;
+                            });
+                          }}
+                        >
+                          🎁 Mystery Box {index + 1}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1085,11 +1113,11 @@ export default function DiaryRoom() {
                   <div className="diary-room__reward-claimed" aria-label="Claimed reward">
                     {secretMission.reward.expired ? (
                       <p className="diary-room__reward-claimed-expired">
-                        ⏳ Your secret immunity expired before it could be used.
+                        ⏳ Your secret reward expired before it could be used.
                       </p>
                     ) : secretMission.reward.consumed ? (
                       <p className="diary-room__reward-claimed-used">
-                        ✔️ Secret immunity used.
+                        ✔️ {REWARD_LABELS[secretMission.reward.type] ?? 'Secret reward'} used.
                       </p>
                     ) : (
                       <>
@@ -1103,6 +1131,21 @@ export default function DiaryRoom() {
                         {secretMission.reward.type === 'immunity' && (
                           <p className="diary-room__reward-active-hint">
                             Use it during the Safety Ceremony while nominated. Expires after Day {secretMission.reward.activeUntilDay ?? currentWeekForMission}.
+                          </p>
+                        )}
+                        {secretMission.reward.type === 'doubleVote' && (
+                          <p className="diary-room__reward-active-hint">
+                            It will be offered automatically at your next eligible live vote.
+                          </p>
+                        )}
+                        {secretMission.reward.type === 'voteDeduction' && (
+                          <p className="diary-room__reward-active-hint">
+                            If you are on the block at an eligible eviction, you may remove one vote from your total.
+                          </p>
+                        )}
+                        {secretMission.reward.type === 'plus1000Influence' && (
+                          <p className="diary-room__reward-active-hint">
+                            This reward has been stored as your claimed mystery-box outcome.
                           </p>
                         )}
                         {secretMission.reward.type === 'immunity' && activeConfessionalDecision?.type === 'mission_immunity_offer' && (

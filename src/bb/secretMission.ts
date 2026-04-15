@@ -52,6 +52,10 @@ export interface MissionTask {
   uniqueDays?: string[];
   /** Manual social actions that count for this task. */
   requiredActionIds?: string[];
+  /** When true, each required action only counts once toward the task. */
+  requireDistinctActionIds?: boolean;
+  /** Distinct social actions already credited for this task. */
+  completedActionIds?: string[];
   /** Target player for nomination requirements. */
   targetPlayerId?: string;
   /** Max placement that counts as success (1 = win, 2 = top 2, etc.). */
@@ -69,6 +73,7 @@ export interface MissionTask {
   auditLog?: string[];
   firstSatisfiedDay?: number;
   lastProgressDay?: number;
+  optional?: boolean;
 }
 
 // ── Reward types ──────────────────────────────────────────────────────────────
@@ -81,12 +86,20 @@ export type LegacyMissionRewardType =
 
 export type MissionRewardType = LegacyMissionRewardType | 'immunity';
 export type MissionRewardDuration = 1 | 2 | 3;
+export type SecretMissionBoxRewardType = Exclude<MissionRewardType, 'emptyBox'>;
 
 export const MYSTERY_BOX_POOL: readonly LegacyMissionRewardType[] = [
   'plus1000Influence',
   'doubleVote',
   'voteDeduction',
   'emptyBox',
+] as const;
+
+export const SECRET_MISSION_BOX_REWARDS: readonly SecretMissionBoxRewardType[] = [
+  'plus1000Influence',
+  'doubleVote',
+  'voteDeduction',
+  'immunity',
 ] as const;
 
 export interface SecretMissionReward {
@@ -234,12 +247,44 @@ function pickTargetCandidate(
   return candidates[Math.floor(rng() * candidates.length)] ?? candidates[0];
 }
 
-function formatSocialActionLabel(actionId: string): string {
-  return actionId
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .toLowerCase();
+interface SocialActionTaskBlueprint {
+  description: (params: { endDay: number; targetLabel?: string }) => string;
+  target: number;
+  requiredActionIds: string[];
+  requireDistinctActionIds?: boolean;
+  needsTarget?: boolean;
 }
+
+const SOCIAL_ACTION_TASK_BLUEPRINTS: readonly SocialActionTaskBlueprint[] = [
+  {
+    description: ({ endDay, targetLabel = 'your marked target' }) =>
+      `Form an alliance with ${targetLabel} before Day ${endDay}`,
+    target: 1,
+    requiredActionIds: ['ally', 'proposeAlliance'],
+    needsTarget: true,
+  },
+  {
+    description: ({ endDay, targetLabel = 'your marked target' }) =>
+      `Start a fight with ${targetLabel} before Day ${endDay}`,
+    target: 1,
+    requiredActionIds: ['startFight'],
+    needsTarget: true,
+  },
+  {
+    description: ({ endDay }) =>
+      `Complete this social set before Day ${endDay}: compliment, whisper, and group chat`,
+    target: 3,
+    requiredActionIds: ['compliment', 'whisper', 'group_chat'],
+    requireDistinctActionIds: true,
+  },
+  {
+    description: ({ endDay }) =>
+      `Complete this social set before Day ${endDay}: rumor, vote rally, and favour request`,
+    target: 3,
+    requiredActionIds: ['rumor', 'vote_rally', 'favor_request'],
+    requireDistinctActionIds: true,
+  },
+] as const;
 
 function buildRequirementTask(
   type: SecretMissionRequirementType,
@@ -287,7 +332,7 @@ function buildRequirementTask(
       return {
         id: `public_approval_gain_${context.templateId}`,
         type,
-        description: `Improve your public rating by ${requiredDelta} points before Day ${endDay}`,
+        description: `Improve your public rating by ${requiredDelta} percentage points before Day ${endDay}`,
         target: requiredDelta,
         startDay,
         endDay,
@@ -311,33 +356,37 @@ function buildRequirementTask(
       };
     }
     case 'social_action_count': {
-      const actionSets = [
-        ['compliment', 'whisper', 'group_chat'],
-        ['proposeAlliance', 'compliment', 'whisper'],
-        ['rumor', 'whisper', 'proposeAlliance'],
-      ] as const;
-      const selectedSet = actionSets[Math.floor(rng() * actionSets.length)] ?? actionSets[0];
+      const blueprint = SOCIAL_ACTION_TASK_BLUEPRINTS[Math.floor(rng() * SOCIAL_ACTION_TASK_BLUEPRINTS.length)]
+        ?? SOCIAL_ACTION_TASK_BLUEPRINTS[0];
+      const targetPlayerId = blueprint.needsTarget ? pickTargetCandidate(context, rng) : undefined;
       return {
         id: `social_action_count_${context.templateId}`,
         type,
-        description: `Complete 3 social interactions (${selectedSet.map(formatSocialActionLabel).join(', ')}) before Day ${endDay}`,
-        target: 3,
+        description: blueprint.description({
+          endDay,
+          targetLabel: targetPlayerId ? 'your marked target' : undefined,
+        }),
+        target: blueprint.target,
         startDay,
         endDay,
         targetDay: endDay,
-        requiredActionIds: [...selectedSet],
+        requiredActionIds: [...blueprint.requiredActionIds],
+        requireDistinctActionIds: blueprint.requireDistinctActionIds,
+        completedActionIds: [],
+        targetPlayerId,
       };
     }
     case 'easter_egg_discovery':
       return {
         id: `easter_egg_discovery_${context.templateId}`,
         type,
-        description: 'Discover a hidden Big Eye easter egg',
+        description: 'Discover a hidden Big Eye easter egg (optional bonus objective)',
         target: 1,
         startDay,
         endDay,
         targetDay: endDay,
         discoveredEggIds: [],
+        optional: true,
       };
     case 'incoming_response_streak': {
       const streak = rng() < 0.5 ? 2 : 3;
@@ -492,6 +541,11 @@ export function buildMissionTasks(
     current: 0,
     completed: false,
   }));
+}
+
+export function isSecretMissionSuccessful(tasks: readonly MissionTask[]): boolean {
+  if (tasks.length === 0) return false;
+  return tasks.every((task) => task.completed || task.optional === true);
 }
 
 // ── Trigger odds ──────────────────────────────────────────────────────────────

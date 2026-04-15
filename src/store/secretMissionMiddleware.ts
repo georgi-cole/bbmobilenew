@@ -304,11 +304,30 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
   }
 
   if (actionType === 'social/recordSocialAction') {
-    const entry = (payload as { entry?: { actorId?: string; actionId?: string } } | undefined)?.entry;
+    const entry = (payload as {
+      entry?: { actorId?: string; actionId?: string; targetId?: string };
+    } | undefined)?.entry;
     if (!entry || entry.actorId !== humanId) return result;
     for (const task of tasks) {
       if (task.type !== 'social_action_count') continue;
       if (task.requiredActionIds?.length && !task.requiredActionIds.includes(entry.actionId ?? '')) continue;
+      if (task.targetPlayerId && entry.targetId !== task.targetPlayerId) continue;
+      if (task.requireDistinctActionIds) {
+        const nextCompletedActionIds = Array.from(new Set([
+          ...(task.completedActionIds ?? []),
+          entry.actionId ?? '',
+        ].filter(Boolean)));
+        const nextCurrent = Math.min(task.target, nextCompletedActionIds.length);
+        updateTaskProgress(store.dispatch, task, {
+          current: nextCurrent,
+          completedActionIds: nextCompletedActionIds,
+          completed: nextCurrent >= task.target,
+          lastProgressDay: game.week,
+          firstSatisfiedDay: nextCurrent >= task.target ? (task.firstSatisfiedDay ?? game.week) : task.firstSatisfiedDay,
+          auditLog: appendAudit(task, `Completed social action ${entry.actionId}`),
+        });
+        continue;
+      }
       updateTaskProgress(store.dispatch, task, {
         current: Math.min(task.target, task.current + 1),
         completed: task.current + 1 >= task.target,

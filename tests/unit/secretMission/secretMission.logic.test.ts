@@ -17,8 +17,10 @@ import {
   checkSecretMissionTrigger,
   createSecretMissionState,
   getSecretMissionTriggerChance,
+  isSecretMissionSuccessful,
   MISSION_TEMPLATES,
   pickMissionTemplate,
+  type MissionTemplate,
 } from '../../../src/bb/secretMission';
 
 function makeStore() {
@@ -115,6 +117,54 @@ describe('mission generation', () => {
         expect(task.description).not.toContain('group_chat');
       }
     }
+  });
+
+  it('builds concrete social tasks instead of generic random interaction counts', () => {
+    const template: MissionTemplate = {
+      id: 'social-proof',
+      title: 'Social Proof',
+      description: 'Forces social task generation in the deterministic test path.',
+      daySpan: 3,
+      requirementWeights: {
+        competition_placement: 0,
+        avoid_last_place: 0,
+        public_approval_gain: 0,
+        social_energy_empty_streak: 0,
+        social_action_count: 10,
+        easter_egg_discovery: 0,
+        incoming_response_streak: 0,
+        target_nominated: 0,
+      },
+    };
+    const socialTask = buildMissionTasks(template, 6, {
+      targetCandidateIds: ['alpha', 'beta', 'gamma'],
+    }).find((task) => task.type === 'social_action_count');
+
+    expect(socialTask).toBeDefined();
+    expect(socialTask?.description).not.toContain('Complete 3 social interactions');
+    expect(
+      /Form an alliance|Start a fight|Complete this social set/.test(socialTask?.description ?? ''),
+    ).toBe(true);
+  });
+
+  it('treats the easter egg task as optional once all other tasks are done', () => {
+    const tasks = [
+      { id: '1', type: 'survive_days', description: '', current: 1, target: 1, completed: true },
+      { id: '2', type: 'competition_placement', description: '', current: 1, target: 1, completed: true },
+      { id: '3', type: 'avoid_last_place', description: '', current: 2, target: 2, completed: true },
+      { id: '4', type: 'public_approval_gain', description: '', current: 5, target: 5, completed: true },
+      {
+        id: '5',
+        type: 'easter_egg_discovery',
+        description: '',
+        current: 0,
+        target: 1,
+        completed: false,
+        optional: true,
+      },
+    ] as const;
+
+    expect(isSecretMissionSuccessful(tasks)).toBe(true);
   });
 });
 
