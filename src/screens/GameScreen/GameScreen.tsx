@@ -1995,6 +1995,7 @@ export default function GameScreen() {
   const [battleBackAnnouncementStep, setBattleBackAnnouncementStep] = useState<number | null>(null)
   const [battleBackRetryCount, setBattleBackRetryCount] = useState(0)
   const [battleBackRetryOfferWinnerId, setBattleBackRetryOfferWinnerId] = useState<string | null>(null)
+  const battleBackAnnouncementStepRef = useRef<number | null>(null)
   // Only show the full-screen overlay once competitionActive is true.
   // When battleBack.active && !competitionActive, the TV filler shows the
   // twist announcement; the overlay opens ~5 s later via the effect below.
@@ -2053,21 +2054,30 @@ export default function GameScreen() {
   }, [battleBack?.active, battleBack?.competitionActive, battleBack?.weekDecided])
 
   useEffect(() => {
-    if (!battleBack?.active || battleBack.competitionActive || battleBackAnnouncementStep == null) return
+    battleBackAnnouncementStepRef.current = battleBackAnnouncementStep
+  }, [battleBackAnnouncementStep])
 
-    const handlePlayPressed = () => {
-      const { nextStep, shouldOpenCompetition } =
-        advanceBattleBackAnnouncementStep(battleBackAnnouncementStep)
+  const handleBattleBackAnnouncementPlay = useCallback(() => {
+    if (!battleBack?.active || battleBack.competitionActive) return
 
-      setBattleBackAnnouncementStep(nextStep)
-      if (shouldOpenCompetition) {
-        dispatch(openBattleBackCompetition())
-      }
+    const currentStep = battleBackAnnouncementStepRef.current
+    if (currentStep == null) return
+
+    const { nextStep, shouldOpenCompetition } =
+      advanceBattleBackAnnouncementStep(currentStep)
+
+    setBattleBackAnnouncementStep(nextStep)
+    if (shouldOpenCompetition) {
+      dispatch(openBattleBackCompetition())
     }
+  }, [battleBack?.active, battleBack?.competitionActive, dispatch])
 
-    window.addEventListener('ui:playPressed', handlePlayPressed)
-    return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
-  }, [battleBack?.active, battleBack?.competitionActive, battleBackAnnouncementStep, dispatch])
+  useEffect(() => {
+    if (!battleBack?.active || battleBack.competitionActive) return
+
+    window.addEventListener('ui:playPressed', handleBattleBackAnnouncementPlay)
+    return () => window.removeEventListener('ui:playPressed', handleBattleBackAnnouncementPlay)
+  }, [battleBack?.active, battleBack?.competitionActive, handleBattleBackAnnouncementPlay])
 
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
   // Battle Back completion before showing the return overlay. storeRef is intentionally
