@@ -266,18 +266,19 @@ function AudienceSurgePanel({
           const isSelected = selectedPlayerId === candidate.id;
           const isActive = surgeActive?.playerId === candidate.id;
           return (
-            <button
-              key={candidate.id}
-              type="button"
-              className={`pf-overlay__surge-option${isSelected ? ' pf-overlay__surge-option--selected' : ''}${isActive ? ' pf-overlay__surge-option--active' : ''}`}
-              onClick={() => onSelect(candidate.id)}
-              disabled={!canUseSurge || surgePending}
-              aria-pressed={isSelected}
-            >
-              <PlayerPortrait candidate={candidate} className="pf-overlay__portrait--chip" />
-              <span className="pf-overlay__surge-option-name">{candidate.name}</span>
-              {isActive && <span className="pf-overlay__surge-option-tag">Active</span>}
-            </button>
+            <div key={candidate.id} role="listitem">
+              <button
+                type="button"
+                className={`pf-overlay__surge-option${isSelected ? ' pf-overlay__surge-option--selected' : ''}${isActive ? ' pf-overlay__surge-option--active' : ''}`}
+                onClick={() => onSelect(candidate.id)}
+                disabled={!canUseSurge || surgePending}
+                aria-pressed={isSelected}
+              >
+                <PlayerPortrait candidate={candidate} className="pf-overlay__portrait--chip" />
+                <span className="pf-overlay__surge-option-name">{candidate.name}</span>
+                {isActive && <span className="pf-overlay__surge-option-tag">Active</span>}
+              </button>
+            </div>
           );
         })}
       </div>

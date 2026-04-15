@@ -80,6 +80,10 @@ declare global {
 type RewardHandler = (payload?: Record<string, unknown>) => void;
 const rewardHandlers = new Map<AdPlacement, RewardHandler>();
 
+export function clearRewardHandler(placement: AdPlacement): void {
+  rewardHandlers.delete(placement);
+}
+
 /**
  * Register the `window.onAdRewardGranted` global once.
  * Called by the game at bootstrap (e.g. in main.tsx).

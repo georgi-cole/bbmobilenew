@@ -110,6 +110,7 @@ import {
   DISLIKED_MAX_APPROVAL,
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
+import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import {
   buildEvictionVoteBreakdownPlayerNamesById,
   buildEvictionVoteBreakdownRows,
@@ -2123,38 +2124,13 @@ export default function GameScreen() {
   }, [dispatch]);
 
   const handleFavoriteAudienceSurgeRequest = useCallback((playerId: string) => {
-    if (!playerId || adPending) return Promise.resolve(false)
-
-    setAdPending(true)
-
-    return new Promise<boolean>((resolve) => {
-      let settled = false
-      const finish = (granted: boolean) => {
-        if (settled) return
-        settled = true
-        if (isMountedRef.current) {
-          setAdPending(false)
-        }
-        resolve(granted)
-      }
-
-      const state = storeRef.current.getState()
-      if (!window.GameAds?.showRewarded) {
-        dispatch(recordAdShown('favorite_player_audience_surge'))
-        finish(true)
-        return
-      }
-
-      const requested = showRewarded(
-        'favorite_player_audience_surge',
-        state,
-        dispatch,
-        () => finish(true),
-      )
-
-      if (!requested) {
-        finish(false)
-      }
+    return requestFavoriteAudienceSurge({
+      playerId,
+      adPending,
+      dispatch,
+      getState: () => storeRef.current.getState(),
+      isMounted: () => isMountedRef.current,
+      setAdPending,
     })
   }, [adPending, dispatch]);
   // Shown when a LOH or POS competition is in progress and the human player
