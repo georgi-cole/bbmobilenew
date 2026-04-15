@@ -78,6 +78,13 @@
   animation: nomBadgePulse 0.8s ease infinite alternate;
 }
 
+.nom-anim__badge-image {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 @keyframes nomBadgePulse {
   from { transform: scale(0.85); }
   to   { transform: scale(1.15); }

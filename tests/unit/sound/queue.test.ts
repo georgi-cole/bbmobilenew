@@ -95,7 +95,6 @@ describe('SoundManager unlock queue — play()', () => {
     expect(sfxItems).toHaveLength(1);
     expect(sfxItems[0]).toMatchObject({ key: 'tv:winner_reveal', isMusic: false });
   });
-
   it('SFX queued before unlock are discarded on drain (not replayed to avoid flood)', async () => {
     // This is the key iPhone/Safari fix: stale SFX from page-load must NOT
     // replay when the user first taps a button.
@@ -348,7 +347,6 @@ describe('SoundManager autoplay recovery', () => {
     expect(sm._playQueue).toEqual([]);
     expect(doPlayMusic).toHaveBeenCalledWith('music:intro_hub_loop', undefined);
   });
-
   it('does NOT reset _unlocked when the page is hidden (prevents stale re-queuing on iOS)', async () => {
     // The fix: we no longer pre-emptively reset _unlocked on visibility-hide.
     // This prevents phase-transition music requests from being incorrectly queued

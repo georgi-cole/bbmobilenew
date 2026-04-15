@@ -28,10 +28,12 @@ export interface CeremonyTile {
   rect: DOMRect | null;
   /** Badge emoji to animate onto this tile (e.g. '👑', '🛡️', '❓'). */
   badge?: string;
+  /** Optional badge image source rendered instead of badge text. */
+  badgeImageSrc?: string;
   /** Optional role/context label shown as a pill above the spotlighted tile. */
   label?: string;
   /** Optional glow tone for the spotlight ring. */
-  glowTone?: 'gold' | 'danger' | 'warning';
+  glowTone?: 'gold' | 'danger' | 'warning' | 'success';
   /**
    * Where the badge starts before flying to the tile:
    *   'center' — screen centre (default for winner badges)
@@ -458,7 +460,16 @@ export default function CeremonyOverlay({
             aria-label={t.badgeLabel ?? `${t.badge} badge`}
             aria-hidden={badgePhase === 'hidden'}
           >
-            {t.badge}
+            {t.badgeImageSrc ? (
+              <img
+                className="ceremony-overlay__badge-image"
+                src={t.badgeImageSrc}
+                alt=""
+                aria-hidden="true"
+              />
+            ) : (
+              t.badge
+            )}
           </div>
         );
       })}
