@@ -110,6 +110,7 @@ import {
   DISLIKED_MAX_APPROVAL,
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
+import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
@@ -2156,6 +2157,17 @@ export default function GameScreen() {
     dispatch(awardFavoritePrize());
     dispatch(resumeAfterPublicFavorite({ winnerId }));
   }, [dispatch]);
+
+  const handleFavoriteAudienceSurgeRequest = useCallback((playerId: string) => {
+    return requestFavoriteAudienceSurge({
+      playerId,
+      adPending,
+      dispatch,
+      getState: () => storeRef.current.getState(),
+      isMounted: () => isMountedRef.current,
+      setAdPending,
+    })
+  }, [adPending, dispatch]);
   // Shown when a LOH or POS competition is in progress and the human player
   // is a participant. The Continue button is hidden while the overlay is active.
   const pendingMinigame = game.pendingMinigame
@@ -3364,6 +3376,7 @@ export default function GameScreen() {
           seed={game.seed}
           awardAmount={favoritePlayer.awardAmount}
           onComplete={handleFavoriteComplete}
+          onAudienceSurgeRequest={handleFavoriteAudienceSurgeRequest}
         />
       )}
 

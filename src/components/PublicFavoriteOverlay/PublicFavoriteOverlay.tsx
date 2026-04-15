@@ -1,24 +1,21 @@
 /**
  * PublicFavoriteOverlay — full-screen "Public's Favorite Player" voting overlay.
  *
- * UX flow (2 steps):
- *  1. voting  — live vote simulation: portrait list with vote bars, scrolling
- *               ticker, countdown strip. Lowest candidate eliminated every 3.5 s.
- *  2. winner  — winner reveal with gold glow; tap to close.
+ * UX flow:
+ *  1. intro            — brief live-broadcast sting over the fullscreen board
+ *  2. audience_surge   — optional rewarded-ad hook that boosts temporary momentum
+ *  3. live_results     — animated ranking board and leader spotlight
+ *  4. elimination      — short tension beat when a player drops out
+ *  5. final_reveal     — winner reveal card; tap to close
  *
- * Note: The announcement and info slides have moved to the TvZone TV filler
- * (triggered by the 'twist' major event pushed in `startFavoritePlayerPhase`).
- * This overlay opens ~5 s after that announcement via GameScreen's auto-open
- * effect, so the user has already seen the announcement before arriving here.
- *
- * Props:
- *  candidates   — Player objects eligible for the vote.
- *  seed         — Seeded RNG value for reproducible simulation.
- *  awardAmount  — Prize amount displayed in the winner step.
- *  onComplete   — Called with the winning player ID when the overlay closes.
+ * Note: The core elimination cadence still comes from `useBattleBackVoting`.
+ * This component keeps a single visual clock so the countdown/status copy,
+ * elimination highlight, and surge duration stay synchronized with the real
+ * voting state instead of spawning separate unsynced timers.
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
@@ -31,18 +28,441 @@ interface Props {
   /** Override the elimination interval (ms). Default: 3500. Useful for QA slow-mode. */
   eliminationIntervalMs?: number;
   onComplete: (winnerId: string) => void;
+  onAudienceSurgeRequest?: (playerId: string) => Promise<boolean> | boolean;
 }
 
 type Step = 'voting' | 'winner';
+type PublicVotePhase =
+  | 'intro'
+  | 'audience_surge'
+  | 'live_results'
+  | 'elimination'
+  | 'final_reveal';
+type VoteTrend = 'up' | 'down' | 'stable';
+
+interface SurgeState {
+  playerId: string;
+  startedAt: number;
+  endsAt: number;
+}
+
+interface VoteEntry {
+  playerId: string;
+  name: string;
+  avatarUrl: string;
+  percent: number;
+  rank: number;
+  previousRank: number;
+  trend: VoteTrend;
+  isLeader: boolean;
+  surgeActive: boolean;
+}
 
 const ELIM_INTERVAL_MS = 3500;
-const TICKER_MSG =
-  "The public is voting for their Favorite Player… One player wins the grand prize! ✦  ";
-
+const INTRO_MS = 1600;
+const CLOCK_INTERVAL_MS = 200;
+const SURGE_SELECTION_WINDOW_MS = 6500;
+const SURGE_DURATION_MS = 7000;
+const ELIMINATION_SPOTLIGHT_MS = 1400;
 function formatEyeoleans(amount: number): string {
   return `${new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
   }).format(amount)} Eyeoleans`;
+}
+
+function getTrend(previousRank: number, rank: number): VoteTrend {
+  if (previousRank > rank) return 'up';
+  if (previousRank < rank) return 'down';
+  return 'stable';
+}
+
+function clampCountdown(ms: number): number {
+  return Math.max(0, Math.ceil(ms / 1000));
+}
+
+function getStatusLine(args: {
+  phase: PublicVotePhase;
+  countdown: number;
+  eliminationName: string | null;
+  surgeActive: SurgeState | null;
+  surgePlayerName: string | null;
+  surgePending: boolean;
+  surgeWindowRemaining: number;
+  nowMs: number;
+}): string {
+  const {
+    phase,
+    countdown,
+    eliminationName,
+    surgeActive,
+    surgePlayerName,
+    surgePending,
+    surgeWindowRemaining,
+    nowMs,
+  } = args;
+
+  if (phase === 'final_reveal') {
+    return 'Public favorite locked in';
+  }
+  if (phase === 'intro') {
+    return 'Broadcast feed coming online';
+  }
+  if (phase === 'elimination' && eliminationName) {
+    return `${eliminationName} falls out of the public vote`;
+  }
+  if (surgePending) {
+    return 'Preparing Audience Surge…';
+  }
+  if (surgeActive && surgePlayerName) {
+    return `${surgePlayerName} is riding an Audience Surge · ${clampCountdown(
+      surgeActive.endsAt - nowMs,
+    )}s left`;
+  }
+  if (phase === 'audience_surge' && surgeWindowRemaining > 0) {
+    return `Viewer Spotlight closes in ${surgeWindowRemaining}s`;
+  }
+  return `Next results shift in ${countdown}s`;
+}
+
+function AnimatedPercent({ percent }: { percent: number }) {
+  return (
+    <span className="pf-overlay__percent-wrap" aria-label={`${percent}%`}>
+      <span className="pf-overlay__percent-value">{percent}%</span>
+    </span>
+  );
+}
+
+function VoteAccentRail({ percent, tone = 'default' }: { percent: number; tone?: 'default' | 'leader' }) {
+  const activeSegments = Math.max(1, Math.min(6, Math.round(percent / 17)));
+  return (
+    <div
+      className={`pf-overlay__accent-rail${tone === 'leader' ? ' pf-overlay__accent-rail--leader' : ''}`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 6 }, (_, index) => (
+        <span
+          key={index}
+          className={`pf-overlay__accent-segment${index < activeSegments ? ' pf-overlay__accent-segment--active' : ''}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function VoteTrendChip({ trend, previousRank, rank }: { trend: VoteTrend; previousRank: number; rank: number }) {
+  const symbol = trend === 'up' ? '▲' : trend === 'down' ? '▼' : '•';
+  const label =
+    trend === 'up'
+      ? `Up from rank ${previousRank}`
+      : trend === 'down'
+        ? `Down from rank ${previousRank}`
+        : `Holding at rank ${rank}`;
+
+  return (
+    <span className={`pf-overlay__trend pf-overlay__trend--${trend}`} aria-label={label} title={label}>
+      {symbol}
+    </span>
+  );
+}
+
+function PlayerPortrait({
+  candidate,
+  className = '',
+}: {
+  candidate: Player;
+  className?: string;
+}) {
+  return (
+    <div className={`pf-overlay__portrait ${className}`.trim()}>
+      <img
+        src={resolveAvatar(candidate)}
+        alt={candidate.name}
+        className="pf-overlay__avatar-img"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+    </div>
+  );
+}
+
+function PublicVoteHeader({
+  title,
+  subtitle,
+  statusLine,
+}: {
+  title: string;
+  subtitle: string;
+  statusLine: string;
+}) {
+  return (
+    <header className="pf-overlay__header">
+      <div className="pf-overlay__header-topline">
+        <span className="pf-overlay__live-badge">
+          <span className="pf-overlay__live-dot" />
+          LIVE
+        </span>
+        <p className="pf-overlay__subtitle">{subtitle}</p>
+      </div>
+      <div className="pf-overlay__header-copy">
+        <h2 className="pf-overlay__title">{title}</h2>
+        <p className="pf-overlay__status">{statusLine}</p>
+      </div>
+    </header>
+  );
+}
+
+function PublicVoteIntro() {
+  return (
+    <motion.div
+      className="pf-overlay__intro"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.02 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+    >
+      <span className="pf-overlay__intro-live">LIVE</span>
+      <p className="pf-overlay__intro-title">LIVE PUBLIC VOTE</p>
+      <p className="pf-overlay__intro-subtitle">Broadcast signal locked. Bringing the audience board into focus.</p>
+    </motion.div>
+  );
+}
+
+function AudienceSurgePanel({
+  activePlayers,
+  selectedPlayerId,
+  surgeActive,
+  surgeUsed,
+  surgePending,
+  canUseSurge,
+  onSelect,
+  onActivate,
+}: {
+  activePlayers: Player[];
+  selectedPlayerId: string | null;
+  surgeActive: SurgeState | null;
+  surgeUsed: boolean;
+  surgePending: boolean;
+  canUseSurge: boolean;
+  onSelect: (playerId: string) => void;
+  onActivate: () => void;
+}) {
+  const activeSurgeName = activePlayers.find((candidate) => candidate.id === surgeActive?.playerId)?.name ?? null;
+  const selectedName = activePlayers.find((candidate) => candidate.id === selectedPlayerId)?.name ?? null;
+
+  return (
+    <section className="pf-overlay__surge-panel" aria-label="Audience Surge">
+      <div className="pf-overlay__surge-copy">
+        <p className="pf-overlay__surge-kicker">Audience Surge</p>
+        <p className="pf-overlay__surge-description">
+          {surgeActive && activeSurgeName
+            ? `${activeSurgeName} is getting a temporary Viewer Spotlight boost.`
+            : 'Choose one eligible player and watch to give them a short burst of audience momentum.'}
+        </p>
+      </div>
+
+      <div className="pf-overlay__surge-options" role="list" aria-label="Eligible players for Audience Surge">
+        {activePlayers.map((candidate) => {
+          const isSelected = selectedPlayerId === candidate.id;
+          const isActive = surgeActive?.playerId === candidate.id;
+          return (
+            <div key={candidate.id} role="listitem">
+              <button
+                type="button"
+                className={`pf-overlay__surge-option${isSelected ? ' pf-overlay__surge-option--selected' : ''}${isActive ? ' pf-overlay__surge-option--active' : ''}`}
+                onClick={() => onSelect(candidate.id)}
+                disabled={!canUseSurge || surgePending}
+                aria-pressed={isSelected}
+              >
+                <PlayerPortrait candidate={candidate} className="pf-overlay__portrait--chip" />
+                <span className="pf-overlay__surge-option-name">{candidate.name}</span>
+                {isActive && <span className="pf-overlay__surge-option-tag">Active</span>}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        className="pf-overlay__surge-cta"
+        onClick={onActivate}
+        disabled={!selectedPlayerId || !canUseSurge || surgePending}
+      >
+        {surgePending
+          ? 'Connecting…'
+          : surgeActive
+            ? 'Audience Surge Active'
+            : surgeUsed
+              ? 'Audience Surge Used'
+              : `Watch to Boost${selectedName ? ` ${selectedName}` : ''}`}
+      </button>
+    </section>
+  );
+}
+
+function LeaderSpotlightCard({
+  leader,
+}: {
+  leader: VoteEntry | null;
+}) {
+  if (!leader) return null;
+  return (
+    <motion.section
+      className={`pf-overlay__leader${leader.surgeActive ? ' pf-overlay__leader--surge' : ''}`}
+      layout
+      transition={{ layout: { duration: 0.35, ease: 'easeInOut' } }}
+    >
+      <div className="pf-overlay__leader-copy">
+        <p className="pf-overlay__leader-kicker">Current front-runner</p>
+        <div className="pf-overlay__leader-meta">
+          <span className="pf-overlay__leader-rank">#{leader.rank}</span>
+          <VoteTrendChip trend={leader.trend} previousRank={leader.previousRank} rank={leader.rank} />
+        </div>
+        <h3 className="pf-overlay__leader-name">{leader.name}</h3>
+        <div className="pf-overlay__leader-percent-row">
+          <AnimatedPercent percent={leader.percent} />
+          {leader.surgeActive && <span className="pf-overlay__surge-pill">Audience Surge Active</span>}
+        </div>
+        <VoteAccentRail percent={leader.percent} tone="leader" />
+      </div>
+      <div className="pf-overlay__leader-portrait-wrap">
+        <div className="pf-overlay__leader-glow" aria-hidden="true" />
+        <img src={leader.avatarUrl} alt={leader.name} className="pf-overlay__leader-avatar" />
+      </div>
+    </motion.section>
+  );
+}
+
+function VoteRankingCard({
+  entry,
+  candidate,
+  isSelected,
+  onSelect,
+}: {
+  entry: VoteEntry;
+  candidate: Player;
+  isSelected: boolean;
+  onSelect: (playerId: string) => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      className={`pf-overlay__rank-card${entry.isLeader ? ' pf-overlay__rank-card--leader' : ''}${entry.surgeActive ? ' pf-overlay__rank-card--surge' : ''}${isSelected ? ' pf-overlay__rank-card--selected' : ''}`}
+      onClick={() => onSelect(entry.playerId)}
+      aria-label={`${entry.name}, rank ${entry.rank}, ${entry.percent}%`}
+    >
+      <span className="pf-overlay__rank-number">#{entry.rank}</span>
+      <PlayerPortrait candidate={candidate} />
+      <div className="pf-overlay__rank-copy">
+        <div className="pf-overlay__rank-name-row">
+          <span className="pf-overlay__rank-name">{entry.name}</span>
+          <VoteTrendChip trend={entry.trend} previousRank={entry.previousRank} rank={entry.rank} />
+        </div>
+        <VoteAccentRail percent={entry.percent} />
+      </div>
+      <div className="pf-overlay__rank-tail">
+        <AnimatedPercent percent={entry.percent} />
+        {entry.surgeActive && <span className="pf-overlay__rank-tag">Surge</span>}
+      </div>
+    </motion.button>
+  );
+}
+
+function VoteRankingBoard({
+  entries,
+  candidatesById,
+  selectedPlayerId,
+  onSelect,
+}: {
+  entries: VoteEntry[];
+  candidatesById: Record<string, Player>;
+  selectedPlayerId: string | null;
+  onSelect: (playerId: string) => void;
+}) {
+  return (
+    <section className="pf-overlay__board" aria-label="Public vote ranking board">
+      <div className="pf-overlay__board-header">
+        <p className="pf-overlay__board-title">Results board</p>
+      </div>
+      <div className="pf-overlay__board-list">
+        {entries.map((entry) => {
+          const candidate = candidatesById[entry.playerId];
+          if (!candidate) return null;
+          return (
+            <VoteRankingCard
+              key={entry.playerId}
+              entry={entry}
+              candidate={candidate}
+              isSelected={selectedPlayerId === entry.playerId}
+              onSelect={onSelect}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function EliminationMoment({ player }: { player: Player }) {
+  return (
+    <motion.div
+      className="pf-overlay__elimination"
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.24, ease: 'easeOut' }}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="pf-overlay__elimination-label">Elimination moment</span>
+      <strong className="pf-overlay__elimination-name">{player.name}</strong>
+      <span className="pf-overlay__elimination-copy">loses the audience and drops out.</span>
+    </motion.div>
+  );
+}
+
+function FinalPublicFavoriteReveal({
+  winnerPlayer,
+  awardAmount,
+  onClose,
+}: {
+  winnerPlayer: Player | undefined;
+  awardAmount: number;
+  onClose: () => void;
+}) {
+  return (
+    <motion.div
+      className="pf-overlay__winner-stage"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+    >
+      <span className="pf-overlay__winner-badge">FINAL REVEAL</span>
+      <p className="pf-overlay__eyebrow">Public&apos;s Favorite Player</p>
+      <div className="pf-overlay__winner-avatar-wrap" aria-hidden="true">
+        <div className="pf-overlay__winner-glow" />
+        {winnerPlayer ? (
+          <img
+            src={resolveAvatar(winnerPlayer)}
+            alt={winnerPlayer.name}
+            className="pf-overlay__winner-avatar"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <span className="pf-overlay__winner-fallback">🏆</span>
+        )}
+      </div>
+      <h2 className="pf-overlay__headline">{winnerPlayer?.name ?? 'Unknown'}</h2>
+      <p className="pf-overlay__winner-prize">Wins {formatEyeoleans(awardAmount)}!</p>
+      <p className="pf-overlay__sub">The audience has spoken.</p>
+      <button type="button" className="pf-overlay__winner-cta" onClick={onClose}>
+        Continue
+      </button>
+    </motion.div>
+  );
 }
 
 export default function PublicFavoriteOverlay({
@@ -51,40 +471,163 @@ export default function PublicFavoriteOverlay({
   awardAmount = 25000,
   eliminationIntervalMs = ELIM_INTERVAL_MS,
   onComplete,
+  onAudienceSurgeRequest,
 }: Props) {
   const [step] = useState<Step>('voting');
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [mountedAt] = useState(() => Date.now());
+  const [nextShiftAt, setNextShiftAt] = useState(() => Date.now() + eliminationIntervalMs);
+  const [selectedSurgeId, setSelectedSurgeId] = useState<string | null>(candidates[0]?.id ?? null);
+  const [surgePending, setSurgePending] = useState(false);
+  const [surgeUsed, setSurgeUsed] = useState(false);
+  const [surgeActive, setSurgeActive] = useState<SurgeState | null>(null);
+  const [eliminationMoment, setEliminationMoment] = useState<{ player: Player; startedAt: number } | null>(null);
   const firedRef = useRef(false);
+  const surgeRequestLockRef = useRef(false);
+  const previousRanksRef = useRef<Record<string, number>>({});
+  const previousEliminatedCountRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  // Stable ID list avoids hook dep churn during a single session.
-  const candidateIds = useMemo(() => candidates.map((c) => c.id), [candidates]);
+  const candidateIds = useMemo(() => candidates.map((candidate) => candidate.id), [candidates]);
+  const candidatesById = useMemo(
+    () => Object.fromEntries(candidates.map((candidate) => [candidate.id, candidate])),
+    [candidates],
+  );
 
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
     seed,
     eliminationIntervalMs,
     tickIntervalMs: 400,
+    surgeTargetId: surgeActive?.playerId ?? null,
   });
-
-  // Countdown strip: resets after each elimination.
-  // Use Math.floor(eliminationIntervalMs / 1000) so the displayed countdown
-  // always matches the actual elimination timing even in slow/fast mode.
-  const countdownStart = Math.floor(eliminationIntervalMs / 1000);
-  const [countdown, setCountdown] = useState(countdownStart);
-  useEffect(() => {
-    if (step !== 'voting' || isComplete) return;
-    const resetId = setTimeout(() => setCountdown(countdownStart), 0);
-    const id = setInterval(
-      () => setCountdown((prev) => Math.max(0, prev - 1)),
-      1000,
-    );
-    return () => {
-      clearTimeout(resetId);
-      clearInterval(id);
-    };
-  }, [step, isComplete, eliminated.length, countdownStart]);
-
-  // Derive winner step from isComplete.
   const displayStep: Step = isComplete && step === 'voting' ? 'winner' : step;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (displayStep === 'winner') return;
+    const id = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, CLOCK_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [displayStep]);
+
+  useEffect(() => {
+    if (isComplete) return;
+    setNextShiftAt(Date.now() + eliminationIntervalMs);
+  }, [eliminated.length, eliminationIntervalMs, isComplete]);
+
+  useEffect(() => {
+    if (eliminated.length <= previousEliminatedCountRef.current) {
+      previousEliminatedCountRef.current = eliminated.length;
+      return;
+    }
+
+    const eliminatedId = eliminated[eliminated.length - 1];
+    const player = eliminatedId ? candidatesById[eliminatedId] : null;
+    if (player) {
+      setEliminationMoment({ player, startedAt: Date.now() });
+    }
+    previousEliminatedCountRef.current = eliminated.length;
+  }, [eliminated, candidatesById]);
+
+  useEffect(() => {
+    if (!surgeActive) return;
+    if (surgeActive.endsAt <= nowMs || eliminated.includes(surgeActive.playerId)) {
+      setSurgeActive(null);
+    }
+  }, [surgeActive, nowMs, eliminated]);
+
+  const activePlayers = useMemo(
+    () =>
+      candidates
+        .filter((candidate) => !eliminated.includes(candidate.id))
+        .sort((left, right) => (votes[right.id] ?? 0) - (votes[left.id] ?? 0)),
+    [candidates, eliminated, votes],
+  );
+
+  useEffect(() => {
+    const firstActiveId = activePlayers[0]?.id ?? null;
+    if (!firstActiveId) {
+      setSelectedSurgeId(null);
+      return;
+    }
+    if (!selectedSurgeId || eliminated.includes(selectedSurgeId)) {
+      setSelectedSurgeId(firstActiveId);
+    }
+  }, [activePlayers, selectedSurgeId, eliminated]);
+
+  const elapsedMs = nowMs - mountedAt;
+  const eliminationActive =
+    eliminationMoment && nowMs - eliminationMoment.startedAt < ELIMINATION_SPOTLIGHT_MS
+      ? eliminationMoment
+      : null;
+  const surgeWindowRemaining = clampCountdown(INTRO_MS + SURGE_SELECTION_WINDOW_MS - elapsedMs);
+  const canUseSurge =
+    displayStep === 'voting' &&
+    !isComplete &&
+    !surgeUsed &&
+    !surgePending &&
+    elapsedMs >= INTRO_MS &&
+    elapsedMs < INTRO_MS + SURGE_SELECTION_WINDOW_MS;
+
+  const phase: PublicVotePhase =
+    displayStep === 'winner'
+      ? 'final_reveal'
+      : elapsedMs < INTRO_MS
+        ? 'intro'
+        : eliminationActive
+          ? 'elimination'
+          : canUseSurge || surgePending || surgeActive
+            ? 'audience_surge'
+            : 'live_results';
+
+  const countdown = clampCountdown(nextShiftAt - nowMs);
+  const voteEntries = useMemo<VoteEntry[]>(
+    () =>
+      activePlayers.map((candidate, index) => {
+        const rank = index + 1;
+        const previousRank = previousRanksRef.current[candidate.id] ?? rank;
+        return {
+          playerId: candidate.id,
+          name: candidate.name,
+          avatarUrl: resolveAvatar(candidate),
+          percent: votes[candidate.id] ?? 0,
+          rank,
+          previousRank,
+          trend: getTrend(previousRank, rank),
+          isLeader: rank === 1,
+          surgeActive: surgeActive?.playerId === candidate.id,
+        };
+      }),
+    [activePlayers, votes, surgeActive],
+  );
+
+  useEffect(() => {
+    previousRanksRef.current = Object.fromEntries(
+      activePlayers.map((candidate, index) => [candidate.id, index + 1]),
+    );
+  }, [activePlayers]);
+
+  const leader = voteEntries[0] ?? null;
+  const winnerPlayer = candidates.find((candidate) => candidate.id === winnerId);
+  const surgePlayerName = surgeActive ? candidatesById[surgeActive.playerId]?.name ?? null : null;
+  const statusLine = getStatusLine({
+    phase,
+    countdown,
+    eliminationName: eliminationActive?.player.name ?? null,
+    surgeActive,
+    surgePlayerName,
+    surgePending,
+    surgeWindowRemaining,
+    nowMs,
+  });
 
   const handleClose = useCallback(() => {
     if (firedRef.current || !winnerId) return;
@@ -92,15 +635,46 @@ export default function PublicFavoriteOverlay({
     onComplete(winnerId);
   }, [winnerId, onComplete]);
 
-  // Sort candidates: active first (by vote desc), eliminated last.
-  const sortedCandidates = useMemo(() => {
-    const active = candidates.filter((c) => !eliminated.includes(c.id))
-      .sort((a, b) => (votes[b.id] ?? 0) - (votes[a.id] ?? 0));
-    const elim = eliminated.map((id) => candidates.find((c) => c.id === id)).filter(Boolean) as Player[];
-    return [...active, ...elim];
-  }, [candidates, eliminated, votes]);
+  const handleActivateSurge = useCallback(async () => {
+    if (
+      !selectedSurgeId ||
+      !canUseSurge ||
+      surgePending ||
+      surgeUsed ||
+      surgeRequestLockRef.current ||
+      displayStep !== 'voting'
+    ) return;
 
-  const winnerPlayer = candidates.find((c) => c.id === winnerId);
+    surgeRequestLockRef.current = true;
+    setSurgePending(true);
+    try {
+      const granted = await Promise.resolve(
+        onAudienceSurgeRequest ? onAudienceSurgeRequest(selectedSurgeId) : true,
+      );
+      if (!mountedRef.current || !granted) return;
+      const startedAt = Date.now();
+      setSurgeUsed(true);
+      setSurgeActive({
+        playerId: selectedSurgeId,
+        startedAt,
+        endsAt: startedAt + SURGE_DURATION_MS,
+      });
+    } catch {
+      // Ignore rejected ad requests and leave the CTA available.
+    } finally {
+      surgeRequestLockRef.current = false;
+      if (mountedRef.current) {
+        setSurgePending(false);
+      }
+    }
+  }, [
+    selectedSurgeId,
+    canUseSurge,
+    surgePending,
+    surgeUsed,
+    displayStep,
+    onAudienceSurgeRequest,
+  ]);
 
   return (
     <div
@@ -110,99 +684,57 @@ export default function PublicFavoriteOverlay({
       aria-label="Public's Favorite Player overlay"
     >
       <div className="pf-overlay__dim" />
+      <div className="pf-overlay__stage">
+        <AnimatePresence>
+          {phase !== 'final_reveal' && (
+            <PublicVoteHeader
+              title="LIVE PUBLIC VOTE"
+              subtitle="Public Favorite Player"
+              statusLine={statusLine}
+            />
+          )}
+        </AnimatePresence>
 
-      {/* ── Step 1: Voting ───────────────────────────────────────────────── */}
-      {displayStep === 'voting' && (
-        <div className="pf-overlay__voting">
-          <p className="pf-overlay__voting-title">🗳️ Live Public Vote</p>
-          <p className="pf-overlay__voting-subtitle">
-            Next elimination in {countdown}s
-          </p>
+        <AnimatePresence>
+          {eliminationActive && phase !== 'final_reveal' && (
+            <EliminationMoment player={eliminationActive.player} />
+          )}
+        </AnimatePresence>
 
-          {/* Ticker */}
-          <div className="pf-overlay__ticker-wrap" aria-hidden="true">
-            <span className="pf-overlay__ticker">
-              {TICKER_MSG + TICKER_MSG}
-            </span>
-          </div>
-
-          {/* Candidate list */}
-          <div className="pf-overlay__candidates" role="list">
-            {sortedCandidates.map((candidate) => {
-              const isElim = eliminated.includes(candidate.id);
-              const pct = votes[candidate.id] ?? 0;
-              return (
-                <div
-                  key={candidate.id}
-                  className={`pf-overlay__candidate${isElim ? ' pf-overlay__candidate--eliminated' : ''}`}
-                  role="listitem"
-                  aria-label={`${candidate.name}: ${isElim ? 'eliminated' : `${pct}%`}`}
-                >
-                  <div
-                    className={`pf-overlay__candidate-avatar${isElim ? ' pf-overlay__candidate-avatar--eliminated' : ''}`}
-                  >
-                    <img
-                      src={resolveAvatar(candidate)}
-                      alt={candidate.name}
-                      className="pf-overlay__avatar-img"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  </div>
-                  <div className="pf-overlay__candidate-info">
-                    <p className="pf-overlay__candidate-name">{candidate.name}</p>
-                    <p className="pf-overlay__candidate-pct">
-                      {isElim ? 'Eliminated' : `${pct}%`}
-                    </p>
-                  </div>
-                  {!isElim && (
-                    <div className="pf-overlay__bar-track">
-                      <div
-                        className="pf-overlay__bar-fill"
-                        style={{ width: `${pct}%` }}
-                        role="meter"
-                        aria-valuenow={pct}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 2: Winner ───────────────────────────────────────────────── */}
-      {displayStep === 'winner' && (
-        <div
-          className="pf-overlay__card pf-overlay__card--winner"
-          onClick={handleClose}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClose()}
-        >
-          <p className="pf-overlay__eyebrow">Public's Favorite Player</p>
-          <div className="pf-overlay__winner-avatar" aria-hidden="true">
-            {winnerPlayer ? (
-              <img
-                src={resolveAvatar(winnerPlayer)}
-                alt={winnerPlayer.name}
-                className="pf-overlay__avatar-img pf-overlay__avatar-img--winner"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        {displayStep === 'voting' && (
+          <div className="pf-overlay__broadcast">
+            <div className={`pf-overlay__board-shell pf-overlay__board-shell--${phase}`}>
+              <LeaderSpotlightCard leader={leader} />
+              <VoteRankingBoard
+                entries={voteEntries}
+                candidatesById={candidatesById}
+                selectedPlayerId={selectedSurgeId}
+                onSelect={setSelectedSurgeId}
               />
-            ) : '🏆'}
+            </div>
+
+            <AudienceSurgePanel
+              activePlayers={activePlayers}
+              selectedPlayerId={selectedSurgeId}
+              surgeActive={surgeActive}
+              surgeUsed={surgeUsed}
+              surgePending={surgePending}
+              canUseSurge={canUseSurge}
+              onSelect={setSelectedSurgeId}
+              onActivate={handleActivateSurge}
+            />
+            <AnimatePresence>{phase === 'intro' && <PublicVoteIntro />}</AnimatePresence>
           </div>
-          <h2 className="pf-overlay__headline">
-            {winnerPlayer?.name ?? 'Unknown'}
-          </h2>
-          <p className="pf-overlay__winner-prize">
-            Wins {formatEyeoleans(awardAmount)}!
-          </p>
-          <p className="pf-overlay__sub">Congratulations from the public! 🎉</p>
-          <p className="pf-overlay__tap-hint">Tap to close →</p>
-        </div>
-      )}
+        )}
+
+        {displayStep === 'winner' && (
+          <FinalPublicFavoriteReveal
+            winnerPlayer={winnerPlayer}
+            awardAmount={awardAmount}
+            onClose={handleClose}
+          />
+        )}
+      </div>
     </div>
   );
 }

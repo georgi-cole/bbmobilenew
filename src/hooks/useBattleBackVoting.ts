@@ -33,6 +33,8 @@ interface Options {
   eliminationIntervalMs?: number;
   /** Tick interval for percentage drift in ms. Default: 400. */
   tickIntervalMs?: number;
+  /** Optional temporary momentum boost for a single active candidate. */
+  surgeTargetId?: string | null;
 }
 
 /** Mulberry32 PRNG (inline copy so this hook has no circular imports). */
@@ -75,10 +77,30 @@ function driftPercentages(
   current: number[],
   rng: () => number,
   drift: number,
+  surgeIndex: number | null = null,
 ): number[] {
   if (current.length <= 1) return current;
   const deltas = current.map(() => (rng() - 0.5) * drift * 2);
   const next = current.map((v, i) => Math.max(1, v + deltas[i]));
+
+  if (surgeIndex !== null && surgeIndex >= 0 && surgeIndex < next.length) {
+    const availableHeadroom = Math.max(0, 100 - current[surgeIndex]);
+    const momentumShift = Math.min(0.75, 0.25 + availableHeadroom * 0.003);
+    const donorTotal = next.reduce(
+      (sum, value, index) => (index === surgeIndex ? sum : sum + Math.max(0, value - 1)),
+      0,
+    );
+
+    if (donorTotal > 0) {
+      next[surgeIndex] += momentumShift;
+      for (let index = 0; index < next.length; index += 1) {
+        if (index === surgeIndex) continue;
+        const donorWeight = Math.max(0, next[index] - 1) / donorTotal;
+        next[index] = Math.max(1, next[index] - momentumShift * donorWeight);
+      }
+    }
+  }
+
   return toIntPercentages(next);
 }
 
@@ -133,8 +155,10 @@ export function useBattleBackVoting({
   seed,
   eliminationIntervalMs = 3500,
   tickIntervalMs = 400,
+  surgeTargetId = null,
 }: Options): BattleBackVoteState {
   const rngRef = useRef(mulberry32(seed));
+  const surgeTargetRef = useRef<string | null>(surgeTargetId);
 
   // All mutable voting state in a single reducer so the reset effect only
   // needs one dispatch call (satisfies react-hooks/set-state-in-effect).
@@ -152,6 +176,7 @@ export function useBattleBackVoting({
   useEffect(() => { activeRef.current = state.active; }, [state.active]);
   useEffect(() => { pctsRef.current = state.pcts; }, [state.pcts]);
   useEffect(() => { eliminatedRef.current = state.eliminated; }, [state.eliminated]);
+  useEffect(() => { surgeTargetRef.current = surgeTargetId; }, [surgeTargetId]);
 
   // Reset simulation and re-seed RNG when seed or candidates change.
   // Single dispatch satisfies react-hooks/set-state-in-effect.
@@ -174,7 +199,19 @@ export function useBattleBackVoting({
   useEffect(() => {
     if (state.isComplete) return;
     const id = setInterval(() => {
-      dispatch({ type: 'drift', pcts: driftPercentages(pctsRef.current, rngRef.current, 5) });
+      const currentSurgeId = surgeTargetRef.current;
+      const currentSurgeIndex = currentSurgeId ? activeRef.current.indexOf(currentSurgeId) : -1;
+      dispatch({
+        type: 'drift',
+        // Keep the same interval loop and only bias the active player's drift so
+        // countdowns/eliminations stay on the existing cadence.
+        pcts: driftPercentages(
+          pctsRef.current,
+          rngRef.current,
+          5,
+          currentSurgeIndex >= 0 ? currentSurgeIndex : null,
+        ),
+      });
     }, tickIntervalMs);
     return () => clearInterval(id);
   }, [state.isComplete, tickIntervalMs]);
