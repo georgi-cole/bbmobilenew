@@ -1155,11 +1155,6 @@ export default function DiaryRoom() {
                             If you are on the block at an eligible eviction, you may remove one vote from your total.
                           </p>
                         )}
-                        {secretMission.reward.type === 'plus1000Influence' && (
-                          <p className="diary-room__reward-active-hint">
-                            This reward has been stored as your claimed mystery-box outcome.
-                          </p>
-                        )}
                         {secretMission.reward.type === 'immunity' && activeConfessionalDecision?.type === 'mission_immunity_offer' && (
                           <p className="diary-room__reward-active-hint">
                             📺 The Big Eye is ready to ask whether you want to spend it right now.

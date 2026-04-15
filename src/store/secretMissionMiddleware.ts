@@ -313,10 +313,10 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
       if (task.requiredActionIds?.length && !task.requiredActionIds.includes(entry.actionId ?? '')) continue;
       if (task.targetPlayerId && entry.targetId !== task.targetPlayerId) continue;
       if (task.requireDistinctActionIds) {
-        const nextCompletedActionIds = Array.from(new Set([
-          ...(task.completedActionIds ?? []),
-          entry.actionId ?? '',
-        ].filter(Boolean)));
+        const actionId = entry.actionId ?? '';
+        if (!actionId) continue;
+        if (task.completedActionIds?.includes(actionId)) continue;
+        const nextCompletedActionIds = [...(task.completedActionIds ?? []), actionId];
         const nextCurrent = Math.min(task.target, nextCompletedActionIds.length);
         updateTaskProgress(store.dispatch, task, {
           current: nextCurrent,

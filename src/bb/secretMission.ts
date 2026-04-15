@@ -356,8 +356,7 @@ function buildRequirementTask(
       };
     }
     case 'social_action_count': {
-      const blueprint = SOCIAL_ACTION_TASK_BLUEPRINTS[Math.floor(rng() * SOCIAL_ACTION_TASK_BLUEPRINTS.length)]
-        ?? SOCIAL_ACTION_TASK_BLUEPRINTS[0];
+      const blueprint = SOCIAL_ACTION_TASK_BLUEPRINTS[Math.floor(rng() * SOCIAL_ACTION_TASK_BLUEPRINTS.length)];
       const targetPlayerId = blueprint.needsTarget ? pickTargetCandidate(context, rng) : undefined;
       return {
         id: `social_action_count_${context.templateId}`,
