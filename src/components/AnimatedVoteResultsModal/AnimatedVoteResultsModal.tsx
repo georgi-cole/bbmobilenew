@@ -11,10 +11,10 @@
  *      - If `publicTiebreak` is provided → replaces the vote tallies with the
  *        public tie-break view, then resolves automatically after its countdown.
  *      - Otherwise → highlights the losing nominee with a red outline and, in
- *        the modal variant, shows the "EVICTED" label before calling `onDone()`
+ *        the modal variant, shows the "ELIMINATED" label before calling `onDone()`
  *        after `countdownMs`.
  *   4. The TV variant is presentation-only: it hides the ballot icon, disables
- *      click-to-skip, and omits the inline "EVICTED"/countdown footer UI used
+ *      click-to-skip, and omits the inline "ELIMINATED"/countdown footer UI used
  *      by the modal presentation.
  *
  * Props:
