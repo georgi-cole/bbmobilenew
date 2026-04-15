@@ -83,6 +83,7 @@ import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import { detectDebugMode } from '../../utils/debugMode'
+import { statusBadgeImageSrc } from '../../utils/statusBadges'
 import type { Player, Phase } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
 import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils'
@@ -119,6 +120,7 @@ import {
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import './GameScreen.css'
 
+const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 5000
@@ -214,6 +216,7 @@ export default function GameScreen() {
   const [confessionalPromptTriggered, setConfessionalPromptTriggered] = useState(false)
   const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
   const [pendingPublicSaveResult, setPendingPublicSaveResult] = useState<PendingPublicSaveResult | null>(null)
+  const [publicSaveCeremonyConsumedKey, setPublicSaveCeremonyConsumedKey] = useState('')
   const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
   const [activeAiTiebreakContext, setActiveAiTiebreakContext] = useState<AiTiebreakContext | null>(null)
   // When true, the confessional prompt is shown after the eviction animation
@@ -558,13 +561,38 @@ export default function GameScreen() {
     // playing — otherwise AI-LOH nominees (already in game.nomineeIds) would
     // show the permanent ❓ badge before the animated badge lands.
     const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id)
-    if (Array.isArray(game.nomineeIds) && game.nomineeIds.includes(p.id) && !isAnimatingNominee) parts.push('nominated')
+    const isAnimatingSaveTarget = pendingSaveCeremony?.savedId === p.id
+    const isPublicSaveWinner = pendingPublicSaveResult?.savedId === p.id
+    const isAnimatingReplacementNominee = activeReplacementAnimationTargetId === p.id
+    if (
+      Array.isArray(game.nomineeIds) &&
+      game.nomineeIds.includes(p.id) &&
+      !isAnimatingNominee &&
+      !isAnimatingSaveTarget &&
+      !isPublicSaveWinner &&
+      !isAnimatingReplacementNominee
+    ) {
+      parts.push('nominated')
+    }
     if (p.status === 'jury') parts.push('jury')
     // When suppressing the nominated badge, also guard the p.status fallback so
     // that players whose p.status is already 'nominated' (AI-committed nominees)
     // don't have that status leak through when parts is empty.
-    const statuses = parts.length > 0 ? parts.join('+') : (isAnimatingNominee ? 'active' : (p.status ?? 'active'))
+    const suppressFallbackStatus =
+      isAnimatingNominee ||
+      isAnimatingSaveTarget ||
+      isPublicSaveWinner ||
+      isAnimatingReplacementNominee
+    const statuses = parts.length > 0 ? parts.join('+') : (suppressFallbackStatus ? 'active' : (p.status ?? 'active'))
     const isReturning = battleBackReturnId === p.id
+    const nominationCeremonyState: 'loh' | 'danger' | 'locked' | undefined =
+      !isEvicted && showNominationDangerSignals
+        ? game.lohId === p.id
+          ? 'loh'
+          : nominationDangerLockedId === p.id
+            ? 'locked'
+            : 'danger'
+        : undefined
     return {
       id: p.id,
       name: p.name,
@@ -574,6 +602,7 @@ export default function GameScreen() {
       isEvicted,
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
+      nominationCeremonyState,
       layoutId: `avatar-tile-${p.id}`,
       isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || game.evictionOverlayPlayerId === p.id || isReturning,
       onClick: () => handleAvatarSelect(p),
@@ -695,9 +724,17 @@ export default function GameScreen() {
   const showHumanNomAnim = pendingNominees.length > 0
   const showAiNomAnim = aiNomKey !== '' && aiNomKey !== aiNomAnimConsumedKey && !showHumanNomAnim
   const showNomAnim = showHumanNomAnim || showAiNomAnim
+  const showNominationDangerSignals =
+    game.phase === 'nomination_results' &&
+    Boolean(game.awaitingNominations) &&
+    !showNomAnim
   const canUsePublicNomineeRule =
     game.publicModeEnabled === true &&
     game.doubleEviction?.weekActive !== true
+  const nominationDangerLockedId =
+    showNominationDangerSignals && canUsePublicNomineeRule
+      ? (game.lastHohCompFinisherId ?? null)
+      : null
 
   const nomAnimPlayers = useMemo(() => {
     if (showHumanNomAnim) {
@@ -722,6 +759,14 @@ export default function GameScreen() {
   // so we pass a resolver function rather than pre-computed rects (avoids
   // calling document.querySelector during the render phase before DOM is committed).
   const nomCeremonyTileIds = showNomAnim ? nomAnimPlayers.map((p) => p.id) : []
+  const lohCeremonyTileId =
+    showNomAnim && game.lohId && game.players.some((p) => p.id === game.lohId)
+      ? game.lohId
+      : null
+  const shouldShowNominationCeremony =
+    showNomAnim &&
+    nomCeremonyTileIds.length > 0 &&
+    lohCeremonyTileId != null
 
   // ── Human LOH nomination flow (single multi-select modal) ────────────────
   // Shown when the human LOH must pick their two nominees simultaneously.
@@ -854,6 +899,11 @@ export default function GameScreen() {
       autoDismissMs: PUBLIC_SAVE_RESULT_DELAY_MS,
     }
   }, [game.nomineeIds, game.players, pendingPublicSaveResult])
+  const publicSaveCeremonyKey = pendingPublicSaveResult
+    ? `w${game.week}-public-save-${pendingPublicSaveResult.savedId}`
+    : ''
+  const showPublicSaveCeremony =
+    publicSaveCeremonyKey !== '' && publicSaveCeremonyKey !== publicSaveCeremonyConsumedKey
 
   const handlePublicSaveDone = useCallback(() => {
     if (!publicSaveWinnerId) return
@@ -868,6 +918,10 @@ export default function GameScreen() {
     dispatch(commitPublicSave(pendingPublicSaveResult))
     setPendingPublicSaveResult(null)
   }, [dispatch, pendingPublicSaveResult])
+  const handlePublicSaveCeremonyDone = useCallback(() => {
+    if (!publicSaveCeremonyKey) return
+    setPublicSaveCeremonyConsumedKey(publicSaveCeremonyKey)
+  }, [publicSaveCeremonyKey])
 
   const publicSaveNominees = useMemo(
     () =>
@@ -886,9 +940,12 @@ export default function GameScreen() {
     const devNominees = eligible.slice(0, 2).map((p) => p.id)
     if (devNominees.length === 2) {
       console.log('DEV: Play Nomination Animation', devNominees)
+      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
+      const fullIds = autoId && !devNominees.includes(autoId) ? [...devNominees, autoId] : devNominees
+      setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
       setPendingNominees(devNominees)
     }
-  }, [alivePlayers, setPendingNominees])
+  }, [alivePlayers, canUsePublicNomineeRule, game.lastHohCompFinisherId, game.week, setPendingNominees])
 
   // ── Human POS holder decision (use veto or not) ──────────────────────────
   const humanIsPosHolder = humanPlayer && game.posWinnerId === humanPlayer.id
@@ -916,6 +973,7 @@ export default function GameScreen() {
     tiles: CeremonyTile[]
     caption: string
     subtitle?: string
+    savedId: string
   } | null>(null)
   const pendingSaveDispatchRef = useRef<(() => void) | null>(null)
 
@@ -928,6 +986,7 @@ export default function GameScreen() {
   const handlePovSaveTarget = useCallback((id: string) => {
     const savedPlayer = game.players.find((p) => p.id === id)
     const savedRect = getTileRect(id)
+    const holderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
     const isVipSecondSave = Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
     const submitSaveAction = isVipSecondSave ? submitVipSecondSaveTarget(id) : submitPovSaveTarget(id)
     const saveSubtitle = isVipSecondSave
@@ -947,20 +1006,31 @@ export default function GameScreen() {
     }
 
     console.log('POV_SAVE_ANIM_STARTED', { savedId: id, screen: 'GameScreen' })
-    const tiles: CeremonyTile[] = [{
-      rect: savedRect,
-      badge: '🛡️',
-      badgeStart: 'center',
-      badgeLabel: `${savedPlayer.name} saved by veto`,
-    }]
+    const sourceIsDistinctHolder = holderRect != null && game.posWinnerId != null && game.posWinnerId !== id
+    const tiles: CeremonyTile[] = [
+      ...(sourceIsDistinctHolder
+        ? [{
+            rect: holderRect,
+            glowTone: 'gold' as const,
+          }]
+        : []),
+      {
+        rect: savedRect,
+        badge: '🛡️',
+        badgeStart: sourceIsDistinctHolder ? holderRect : 'center',
+        badgeLabel: `${savedPlayer.name} saved by veto`,
+        glowTone: 'success' as const,
+      },
+    ]
 
     pendingSaveDispatchRef.current = () => dispatch(submitSaveAction)
     setPendingSaveCeremony({
       tiles,
       caption: `${savedPlayer.name} has been saved!`,
       subtitle: saveSubtitle,
+      savedId: id,
     })
-  }, [dispatch, game.players, game.specialVeto?.awaitingVipSecondSaveTarget, activeSpecialVeto, getTileRect])
+  }, [dispatch, game.players, game.specialVeto?.awaitingVipSecondSaveTarget, activeSpecialVeto, getTileRect, game.posWinnerId])
 
   // Hide the save modal while the save ceremony is playing.
   const isAwaitingAnySave =
@@ -1001,6 +1071,7 @@ export default function GameScreen() {
     tiles: CeremonyTile[]
     caption: string
     subtitle?: string
+    replacementId: string
   } | null>(null)
   const pendingReplacementDispatchRef = useRef<(() => void) | null>(null)
 
@@ -1010,37 +1081,70 @@ export default function GameScreen() {
     setPendingReplacementCeremony(null)
   }, [])
 
-  const handleReplacementNominee = useCallback((id: string) => {
+  const startReplacementCeremony = useCallback((
+    id: string,
+    onCommit: () => void,
+  ) => {
     const replacementPlayer = game.players.find((p) => p.id === id)
     const replacementRect = getTileRect(id)
+    const sourceId = game.specialVeto?.activeType === 'diamond' ? game.posWinnerId : game.lohId
+    const sourceRect = sourceId ? getTileRect(sourceId) : null
+    const sourceIsDistinct = sourceRect != null && sourceId != null && sourceId !== id
+    const replacementSubtitle =
+      game.specialVeto?.activeType === 'diamond'
+        ? '😇 Halo Exchange names the backup nominee'
+        : activeSpecialVeto === 'spotlight'
+          ? '✨ Force Majeure names the backup nominee'
+          : activeSpecialVeto === 'vip'
+            ? '👑 Double Trouble changes the block'
+            : '🎯 Nominations are set'
 
+    if (!replacementPlayer || !replacementRect) {
+      onCommit()
+      return
+    }
+
+    console.log('REPLACEMENT_NOM_ANIM_STARTED', { replacementId: id, sourceId, screen: 'GameScreen' })
+
+    const tiles: CeremonyTile[] = [
+      ...(sourceIsDistinct
+        ? [{
+            rect: sourceRect,
+            glowTone: 'gold' as const,
+          }]
+        : []),
+      {
+        rect: replacementRect,
+        badge: '❓',
+        badgeImageSrc: NOMINATION_BADGE_SRC,
+        badgeStart: sourceIsDistinct ? sourceRect : 'center',
+        badgeLabel: `${replacementPlayer.name} nominated as replacement`,
+        glowTone: 'danger' as const,
+      },
+    ]
+
+    pendingReplacementDispatchRef.current = onCommit
+    setPendingReplacementCeremony({
+      tiles,
+      caption: `${replacementPlayer.name} is the backup nominee!`,
+      subtitle: replacementSubtitle,
+      replacementId: id,
+    })
+  }, [game.players, getTileRect, game.specialVeto?.activeType, game.posWinnerId, game.lohId, activeSpecialVeto])
+
+  const handleReplacementNominee = useCallback((id: string) => {
     // Only animate when the veto was actually used (povSavedId is set).
     // If not, commit immediately without animation.
-    if (!game.povSavedId || !replacementPlayer || !replacementRect) {
+    if (!game.povSavedId) {
       // Headless/no-veto fallback: commit immediately.
       dispatch(setReplacementNominee(id))
       return
     }
-
-    // Badge flies from LOH tile → replacement tile (LOH is naming the replacement).
-    const hohRect = game.lohId ? getTileRect(game.lohId) : null
-
-    console.log('REPLACEMENT_NOM_ANIM_STARTED', { replacementId: id, lohId: game.lohId, screen: 'GameScreen' })
-
-    const tiles: CeremonyTile[] = [{
-      rect: replacementRect,
-      badge: '❓',
-      badgeStart: hohRect ?? 'center',
-      badgeLabel: `${replacementPlayer.name} nominated as replacement`,
-    }]
-
-    pendingReplacementDispatchRef.current = () => dispatch(setReplacementNominee(id))
-    setPendingReplacementCeremony({
-      tiles,
-      caption: `${replacementPlayer.name} is the backup nominee!`,
-      subtitle: '🎯 Nominations are set',
-    })
-  }, [dispatch, game.players, game.povSavedId, game.lohId, getTileRect])
+    startReplacementCeremony(id, () => dispatch(setReplacementNominee(id)))
+  }, [dispatch, game.povSavedId, startReplacementCeremony])
+  const handleDiamondReplacementNominee = useCallback((id: string) => {
+    startReplacementCeremony(id, () => dispatch(submitDiamondReplacement(id)))
+  }, [dispatch, startReplacementCeremony])
 
   // Hide the replacement modal while the replacement animation is playing.
   // Also hidden when confessional routing is active.
@@ -1083,6 +1187,10 @@ export default function GameScreen() {
   }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.lohId, game.players, game.povSavedId, game.aiReplacementStep])
 
   const showAiReplacementAnim = aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
+  const activeReplacementAnimationTargetId =
+    showAiReplacementAnim && game.nomineeIds.length > 0
+      ? game.nomineeIds[game.nomineeIds.length - 1]
+      : null
 
   // Acknowledge the step-1 "LOH must name a replacement" announcement so advance() can
   // proceed to step 2. Fires when the step-1 handler has run (aiReplacementStep reaches 2).
@@ -2452,16 +2560,32 @@ export default function GameScreen() {
 
       {/* ── Nomination ceremony — spotlight cutout with ❓ badges ─────────── */}
       {/* Shown for BOTH human LOH (deferred commit) and AI LOH (already committed). */}
-      {showNomAnim && nomCeremonyTileIds.length > 0 && (
+      {shouldShowNominationCeremony && (
         <CeremonyOverlay
           tiles={[]}
-          resolveTiles={() => nomAnimPlayers.map((p) => ({
-            rect: getTileRect(p.id),
-            badge: '❓',
-            label: nominationLabels[p.id],
-            badgeStart: 'center' as const,
-            badgeLabel: `${p.name} nominated`,
-          }))}
+          resolveTiles={() => {
+            const lohId = lohCeremonyTileId
+            if (!lohId) return []
+            const lohRect = getTileRect(lohId)
+            return [
+              {
+                rect: lohRect,
+                glowTone: 'gold' as const,
+              },
+              ...nomAnimPlayers.map((p) => {
+                const isAutoNominee = nominationLabels[p.id] === 'Last in LOH Comp'
+                return {
+                  rect: getTileRect(p.id),
+                  badge: '❓',
+                  badgeImageSrc: NOMINATION_BADGE_SRC,
+                  label: nominationLabels[p.id],
+                  glowTone: 'danger' as const,
+                  badgeStart: (isAutoNominee || !lohRect) ? ('center' as const) : lohRect,
+                  badgeLabel: `${p.name} nominated`,
+                }
+              }),
+            ]
+          }}
           caption={
             nomAnimPlayers.length === 1
               ? `${nomAnimPlayers[0].name} has been nominated`
@@ -2577,7 +2701,7 @@ export default function GameScreen() {
           title="Halo Exchange — Name the Replacement"
           subtitle={`${humanPlayer?.name}, choose the backup nominee.`}
           options={holderReplacementOptions}
-          onSelect={(id) => dispatch(submitDiamondReplacement(id))}
+          onSelect={handleDiamondReplacementNominee}
           stingerMessage="HALO EXCHANGE"
         />
       )}
@@ -2771,6 +2895,7 @@ export default function GameScreen() {
               id,
               name: player?.name ?? id,
               isHuman: !!player?.isUser,
+              avatar: player?.avatar,
               precomputedScore: aiScore,
               previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
             };
@@ -3053,19 +3178,45 @@ export default function GameScreen() {
           tiles={[]}
           resolveTiles={() => {
             const replacementId = game.nomineeIds[game.nomineeIds.length - 1]
-            const hohRect = game.lohId ? getTileRect(game.lohId) : null
+            const sourceId = game.specialVeto?.activeType === 'diamond' ? game.posWinnerId : game.lohId
+            const sourceRect = sourceId ? getTileRect(sourceId) : null
             const replacementPlayer = game.players.find((p) => p.id === replacementId)
-            return [{
-              rect: getTileRect(replacementId),
-              badge: '❓',
-              badgeStart: hohRect ?? 'center' as const,
-              badgeLabel: `${replacementPlayer?.name ?? replacementId} nominated as replacement`,
-            }]
+            const sourceIsDistinct = sourceRect != null && sourceId != null && sourceId !== replacementId
+            return [
+              ...(sourceIsDistinct
+                ? [{
+                    rect: sourceRect,
+                    glowTone: 'gold' as const,
+                  }]
+                : []),
+              {
+                rect: getTileRect(replacementId),
+                badge: '❓',
+                badgeImageSrc: NOMINATION_BADGE_SRC,
+                badgeStart: sourceIsDistinct ? sourceRect : 'center' as const,
+                badgeLabel: `${replacementPlayer?.name ?? replacementId} nominated as replacement`,
+                glowTone: 'danger' as const,
+              },
+            ]
           }}
           caption="Backup nominee named"
-          subtitle="🎯 Nominations are set"
+          subtitle={game.specialVeto?.activeType === 'diamond' ? '😇 Halo Exchange names the backup nominee' : '🎯 Nominations are set'}
           onDone={handleAiReplacementDone}
           ariaLabel="Backup nominee ceremony"
+        />
+      )}
+
+      {showPublicSaveCeremony && pendingPublicSaveResult && (
+        <CeremonyOverlay
+          tiles={[]}
+          resolveTiles={() => [{
+            rect: getTileRect(pendingPublicSaveResult.savedId),
+            glowTone: 'success' as const,
+          }]}
+          caption={`${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe!`}
+          subtitle="🗳️ Saved by the public"
+          onDone={handlePublicSaveCeremonyDone}
+          ariaLabel={`Public save ceremony: ${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe`}
         />
       )}
 

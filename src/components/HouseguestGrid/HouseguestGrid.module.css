@@ -95,6 +95,40 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.nomination_loh {
+  border-color: rgba(255, 215, 96, 0.72);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 215, 120, 0.32),
+    0 0 16px rgba(255, 212, 84, 0.32),
+    inset 0 1px 0 rgba(255, 248, 220, 0.16),
+    inset 0 0 0 1px rgba(255, 215, 96, 0.36);
+  animation: nominationLohGlow 2.8s ease-in-out infinite;
+}
+
+.nomination_danger {
+  border-color: rgba(251, 146, 60, 0.6);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(249, 115, 22, 0.22),
+    0 0 14px rgba(249, 115, 22, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.nomination_danger::before {
+  animation: nominationDangerSweep 2.2s linear infinite;
+}
+
+.nomination_locked {
+  border-color: rgba(239, 68, 68, 0.82);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(239, 68, 68, 0.38),
+    0 0 16px rgba(239, 68, 68, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(248, 113, 113, 0.28);
+}
+
 /* Subtle bottom vignette so the name text reads cleanly on any portrait */
 .avatarWrap::after {
   content: '';
@@ -226,6 +260,40 @@
   to   { opacity: 1; }
 }
 
+@keyframes nominationLohGlow {
+  0%, 100% {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.42),
+      0 0 0 1px rgba(255, 215, 120, 0.28),
+      0 0 14px rgba(255, 212, 84, 0.22),
+      inset 0 1px 0 rgba(255, 248, 220, 0.14),
+      inset 0 0 0 1px rgba(255, 215, 96, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.42),
+      0 0 0 1px rgba(255, 215, 120, 0.4),
+      0 0 18px rgba(255, 212, 84, 0.38),
+      inset 0 1px 0 rgba(255, 248, 220, 0.18),
+      inset 0 0 0 1px rgba(255, 215, 96, 0.42);
+  }
+}
+
+@keyframes nominationDangerSweep {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
+      inset -12px 0 18px rgba(249, 115, 22, 0.3),
+      inset 0 0 16px 5px rgba(12, 17, 27, 0.62);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
+      inset 12px 0 18px rgba(251, 146, 60, 0.34),
+      inset 0 0 16px 5px rgba(12, 17, 27, 0.62);
+  }
+}
+
 /* ── Status badge stack ─────────────────────────────────────────────────────── */
 /* Positioned in the top-left corner; badges stack vertically. */
 .badgeStack {
@@ -252,6 +320,13 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.45);
   /* Subtle border for legibility on any background */
   border: 1px solid rgba(255,255,255,0.1);
+}
+
+.statusBadgeImage {
+  display: block;
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
 }
 
 /* Per-badge accent colours */
@@ -340,4 +415,11 @@
 .compactTwoRows .grid {
   grid-template-columns: repeat(8, minmax(0, 1fr));
   max-height: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nomination_loh,
+  .nomination_danger::before {
+    animation: none !important;
+  }
 }

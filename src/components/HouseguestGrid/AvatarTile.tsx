@@ -58,9 +58,10 @@ type Props = {
    * The tile fades back in after a short delay matching the reverse animation.
    */
   isEvicting?: boolean
+  nominationCeremonyState?: 'loh' | 'danger' | 'locked'
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting, nominationCeremonyState }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -207,8 +208,12 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
       }
     >
       <motion.div
-        className={styles.avatarWrap}
+        className={[
+          styles.avatarWrap,
+          nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
+        ].filter(Boolean).join(' ')}
         layoutId={layoutId}
+        data-nomination-ceremony-state={nominationCeremonyState}
         animate={
           // Only apply opacity animation when layoutId is present (shared-layout path).
           // isEvicting is only ever set to true for tiles participating in the match-cut
@@ -253,7 +258,16 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
                 aria-label={b.label}
                 title={b.label}
               >
-                {b.emoji}
+                {b.imageSrc ? (
+                  <img
+                    src={b.imageSrc}
+                    alt=""
+                    aria-hidden="true"
+                    className={styles.statusBadgeImage}
+                  />
+                ) : (
+                  b.emoji
+                )}
               </span>
             ))}
           </div>

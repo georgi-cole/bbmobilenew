@@ -151,23 +151,8 @@ describe('NominationAnimator wiring in GameScreen', () => {
     const store = makeStore();
     renderWithStore(store);
 
-    // Multi-select modal should be visible (human is LOH, awaitingNominations true)
-    expect(screen.getByText('Nomination Ceremony')).toBeTruthy();
-
-    // Select two eligible players (p1 and p2) and confirm.
-    // getAllByText because the houseguest grid also renders player names.
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Player 1')[0]);
-      fireEvent.click(screen.getAllByText('Player 2')[0]);
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Confirm Nominees'));
-    });
-
-    // The stinger plays and then onConfirm fires — advance past it (default 900 ms)
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
+      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
     });
 
     // The CeremonyOverlay should now be visible with a status role
@@ -180,22 +165,24 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(store.getState().game.nomineeIds).toHaveLength(0);
   });
 
+  it('adds pre-ceremony LOH, danger, and locked warning outlines while nominations are pending', () => {
+    const store = makeStore({
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p5',
+    });
+    renderWithStore(store);
+
+    expect(document.querySelectorAll('[data-nomination-ceremony-state="loh"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-nomination-ceremony-state="locked"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-nomination-ceremony-state="danger"]')).toHaveLength(4);
+  });
+
   it('commits nominees to game state after the animation completes (onDone)', async () => {
     const store = makeStore();
     renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Player 1')[0]);
-      fireEvent.click(screen.getAllByText('Player 2')[0]);
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Confirm Nominees'));
-    });
-
-    // Advance past stinger (default 900 ms)
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
+      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
     });
 
     // After the stinger, nominations should not yet be committed.
@@ -280,6 +267,27 @@ describe('NominationAnimator wiring in GameScreen', () => {
 
     expect(screen.getAllByText('LOH Nominee')).toHaveLength(2);
     expect(screen.getByText('Last in LOH Comp')).toBeTruthy();
+  });
+
+  it('lights the LOH and sends LOH nominee badges from the LOH tile while the auto nominee appears on its own', async () => {
+    const store = makeStore({
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p4',
+    });
+    renderWithStore(store);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
+    });
+
+    expect(screen.getByRole('status')).toBeTruthy();
+    expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="gold"]')).toHaveLength(1);
+    expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="danger"]')).toHaveLength(3);
+    expect(document.querySelectorAll('.ceremony-overlay__badge[data-badge-origin="tile"]')).toHaveLength(2);
+    expect(document.querySelectorAll('.ceremony-overlay__badge[data-badge-origin="center"]')).toHaveLength(1);
+    expect(
+      document.querySelectorAll('.ceremony-overlay__badge img[src*="nomination_badge.png"]'),
+    ).toHaveLength(3);
   });
 
   it('uses shorter nomination pills on mobile-sized viewports', async () => {
@@ -392,19 +400,10 @@ describe('NominationAnimator wiring in GameScreen', () => {
     const view = renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Player 1')[0]);
-      fireEvent.click(screen.getAllByText('Player 2')[0]);
+      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Confirm Nominees'));
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
-    });
-
-    expect(view.container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
+    expect(view.container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(3);
     expect(screen.queryByText('Last in LOH Comp')).toBeNull();
 
     await act(async () => { vi.advanceTimersByTime(2800); });
@@ -422,16 +421,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Player 1')[0]);
-      fireEvent.click(screen.getAllByText('Player 2')[0]);
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Confirm Nominees'));
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
+      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
     });
 
     expect(screen.getAllByText('LOH Nominee')).toHaveLength(2);

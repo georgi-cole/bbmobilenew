@@ -45,6 +45,7 @@ import Minesweeps from '../components/Minesweeps/Minesweeps';
 import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
 import NumberTrivia from '../components/NumberTrivia/NumberTrivia';
 import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
+import GridOfLuck from '../components/GridOfLuck/GridOfLuck';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -75,6 +76,7 @@ export interface GenericMinigameProps {
     id: string;
     name: string;
     isHuman: boolean;
+    avatar?: string;
     precomputedScore: number;
     previousPR: number | null;
   }>;
@@ -98,6 +100,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   HangmanChallenge: HangmanChallengeComp as ComponentType<GenericMinigameProps>,
   NumberTrivia: NumberTrivia as ComponentType<GenericMinigameProps>,
   CodeBreaker: CodeBreakerComp as ComponentType<GenericMinigameProps>,
+  GridOfLuck: GridOfLuck as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;

@@ -2,10 +2,10 @@
  * statusBadges — Unified badge emoji/label mapping for houseguest statuses.
  *
  * Badge code ↔ emoji mapping:
- *   'loh'       → 👑  (Leader of the House)
- *   'pos'       → 🛡️  (Power of Safety holder)
+ *   'loh'       → 👑 / LOH badge asset  (Leader of the House)
+ *   'pos'       → 🛡️ / POS badge asset  (Power of Safety holder)
  *   'veto_safe' → 🔰  (Safe for the rest of the cycle)
- *   'nominated' → ❓  (Nominated for eviction)
+ *   'nominated' → ❓ / nomination badge asset  (Nominated for eviction)
  *   'jury'      → ⚖️  (Jury member)
  *   'evicted'   → (no badge — evictee X overlay used instead)
  *   'first'     → 🥇  (1st place / winner)
@@ -28,6 +28,14 @@ export const STATUS_BADGE_EMOJI: Record<string, string> = {
   third: '🥉',
 };
 
+const BADGE_ASSET_BASE = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '');
+
+export const STATUS_BADGE_IMAGE_SRC: Record<string, string> = {
+  loh: `${BADGE_ASSET_BASE}/assets/avatar_badges/loh_badge.png`,
+  pos: `${BADGE_ASSET_BASE}/assets/avatar_badges/safety_badge.svg`,
+  nominated: `${BADGE_ASSET_BASE}/assets/avatar_badges/nomination_badge.png`,
+};
+
 /** Human-readable label for each badge code (used in aria-label). */
 export const STATUS_BADGE_LABEL: Record<string, string> = {
   loh: 'Leader of the House',
@@ -47,6 +55,10 @@ export function statusBadgeEmoji(status: string): string | undefined {
   return STATUS_BADGE_EMOJI[status];
 }
 
+export function statusBadgeImageSrc(status: string): string | undefined {
+  return STATUS_BADGE_IMAGE_SRC[status];
+}
+
 /**
  * Map a numeric final rank (1 | 2 | 3) to the corresponding medal badge code.
  * Returns undefined for ranks outside 1–3.
@@ -63,6 +75,8 @@ export interface BadgeInfo {
   code: string;
   /** Emoji to display. */
   emoji: string;
+  /** Optional image badge source, used when a status has a custom asset. */
+  imageSrc?: string;
   /** Accessible label for screen readers. */
   label: string;
 }
@@ -89,7 +103,12 @@ export function getBadgesForPlayer(
   for (const part of parts) {
     const emoji = STATUS_BADGE_EMOJI[part];
     if (emoji) {
-      badges.push({ code: part, emoji, label: STATUS_BADGE_LABEL[part] ?? part });
+      badges.push({
+        code: part,
+        emoji,
+        imageSrc: statusBadgeImageSrc(part),
+        label: STATUS_BADGE_LABEL[part] ?? part,
+      });
     }
   }
 

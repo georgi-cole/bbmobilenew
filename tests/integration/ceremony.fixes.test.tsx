@@ -10,7 +10,7 @@
 //     the eviction splash begins.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
@@ -35,6 +35,10 @@ import { loadEvictionVoteBreakdownUnlock } from '../../src/features/evictionVote
 
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
   default: () => null,
+}));
+
+vi.mock('../../src/store/confessionalDecisionSelectors', () => ({
+  selectActiveConfessionalDecision: () => null,
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
@@ -305,6 +309,11 @@ describe('Ceremony fix: public save follow-up announcement', () => {
   beforeEach(() => {
     capturedOnExternalAnnouncementDismiss = null;
     vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 50, y: 100, width: 60, height: 80,
+      top: 100, left: 50, bottom: 180, right: 110,
+      toJSON: () => ({}),
+    } as DOMRect);
   });
 
   afterEach(() => {
@@ -344,6 +353,114 @@ describe('Ceremony fix: public save follow-up announcement', () => {
     });
 
     expect(store.getState().game.phase).toBe('pos_comp_announcement');
+  });
+
+  it('spotlights the public-save winner in green and hides their nomination badge before commit', async () => {
+    const players = makePlayers(6);
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+    players[4].status = 'nominated';
+
+    const store = makeStore({
+      phase: 'pre_veto_public_save',
+      publicModeEnabled: true,
+      awaitingPublicSave: true,
+      nomineeIds: ['p2', 'p3', 'p4'],
+      players,
+    });
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Public save done'));
+    });
+
+    expect(screen.getByRole('status').getAttribute('aria-label')).toBe('Public save ceremony: Player 2 is safe');
+    expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="success"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[title="Nominated"]')).toHaveLength(2);
+  });
+});
+
+describe('Ceremony fix: live badge choreography for save and replacement', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 50, y: 100, width: 60, height: 80,
+      top: 100, left: 50, bottom: 180, right: 110,
+      toJSON: () => ({}),
+    } as DOMRect);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('spotlights the safety holder and transfers the safety badge to the saved nominee', async () => {
+    const players = makePlayers(6);
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+
+    const store = makeStore({
+      phase: 'pos_ceremony_results',
+      lohId: 'p1',
+      posWinnerId: 'p0',
+      nomineeIds: ['p2', 'p3'],
+      awaitingPovSaveTarget: true,
+      players,
+    });
+
+    renderWithStore(store);
+    const saveDialog = screen.getByRole('dialog', { name: /Power of Safety — Save a Nominee/i });
+    await act(async () => {
+      fireEvent.click(within(saveDialog).getByRole('button', { name: /Player 2/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Confirm:\s*Player 2/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByRole('status').getAttribute('aria-label')).toContain('has been saved');
+    expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="gold"]')).toHaveLength(1);
+    expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="success"]')).toHaveLength(1);
+    expect(document.querySelectorAll('.ceremony-overlay__badge[data-badge-origin="tile"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[title="Nominated"]')).toHaveLength(1);
+  });
+
+  it('spotlights the replacement source and sends a nominee badge to the backup nominee', async () => {
+    const players = makePlayers(6);
+    players[2].status = 'nominated';
+
+    const store = makeStore({
+      phase: 'pos_ceremony_results',
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p2'],
+      povSavedId: 'p3',
+      replacementNeeded: true,
+      players,
+    });
+
+    renderWithStore(store);
+    const replacementDialog = screen.getByRole('dialog', { name: /Name a Backup Nominee/i });
+    await act(async () => {
+      fireEvent.click(within(replacementDialog).getByRole('button', { name: /Player 4/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Confirm:\s*Player 4/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByRole('status').getAttribute('aria-label')).toContain('backup nominee');
+    expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="gold"]')).toHaveLength(1);
+    expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="danger"]')).toHaveLength(1);
+    expect(document.querySelectorAll('.ceremony-overlay__badge[data-badge-origin="tile"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[title="Nominated"]')).toHaveLength(1);
   });
 });
 

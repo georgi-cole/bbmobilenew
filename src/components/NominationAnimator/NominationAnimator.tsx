@@ -17,6 +17,7 @@
 import { useState, useEffect } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import { statusBadgeImageSrc } from '../../utils/statusBadges';
 import './NominationAnimator.css';
 
 export interface NominationAnimatorProps {
@@ -36,6 +37,7 @@ export default function NominationAnimator({
   labels,
 }: NominationAnimatorProps) {
   const [animState, setAnimState] = useState<AnimState>('entering');
+  const nominationBadgeSrc = statusBadgeImageSrc('nominated');
 
   // Fast-path: skip animation entirely when the global no-animations class is set.
   useEffect(() => {
@@ -84,7 +86,13 @@ export default function NominationAnimator({
           <div key={player.id} className="nom-anim__nominee">
             <div className="nom-anim__avatar-wrap">
               <PlayerAvatar player={player} size="lg" />
-              <span className="nom-anim__badge" aria-hidden="true">❓</span>
+              <span className="nom-anim__badge" aria-hidden="true">
+                {nominationBadgeSrc ? (
+                  <img src={nominationBadgeSrc} alt="" className="nom-anim__badge-image" />
+                ) : (
+                  '❓'
+                )}
+              </span>
             </div>
             <span className="nom-anim__name">{player.name}</span>
             {labels?.[player.id] && (
