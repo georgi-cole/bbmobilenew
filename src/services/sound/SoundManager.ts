@@ -23,7 +23,7 @@
  *
  * Disabled mode:
  * - Runtime playback/management is intentionally disabled to avoid the
- *   conflicts and racing conditions tracked in the current issue.
+ *   conflicts and race conditions tracked in the current issue.
  * - Ceremony/minigame hooks still call the same public methods, but those
  *   calls are treated as safe no-ops so the hook wiring stays intact.
  */

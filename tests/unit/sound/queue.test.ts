@@ -1,5 +1,5 @@
 /**
- * Tests for the hard-disabled SoundManager runtime.
+ * Tests for the SoundManager runtime when SOUND_MANAGER_DISABLED is true.
  *
  * The public SoundManager API must remain callable so ceremony/minigame hooks
  * do not need to change, but playback/queue/ownership handling should stay off.
