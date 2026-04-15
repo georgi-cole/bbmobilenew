@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
-  shouldOfferBattleBackReplay,
+  isBattleBackReplayEligible,
 } from '../battleBackFlow'
 
 describe('battle back flow helpers', () => {
@@ -31,9 +31,9 @@ describe('battle back flow helpers', () => {
   })
 
   it('offers a replay prompt whenever there is another possible outcome and retries remain', () => {
-    expect(shouldOfferBattleBackReplay('p2', 3, 0, 3)).toBe(true)
-    expect(shouldOfferBattleBackReplay('p2', 1, 0, 3)).toBe(false)
-    expect(shouldOfferBattleBackReplay('p2', 3, 3, 3)).toBe(false)
-    expect(shouldOfferBattleBackReplay(undefined, 3, 0, 3)).toBe(false)
+    expect(isBattleBackReplayEligible('p2', 3, 0, 3)).toBe(true)
+    expect(isBattleBackReplayEligible('p2', 1, 0, 3)).toBe(false)
+    expect(isBattleBackReplayEligible('p2', 3, 3, 3)).toBe(false)
+    expect(isBattleBackReplayEligible(undefined, 3, 0, 3)).toBe(false)
   })
 })

@@ -113,7 +113,7 @@ import {
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
-  shouldOfferBattleBackReplay,
+  isBattleBackReplayEligible,
 } from './battleBackFlow'
 import {
   buildEvictionVoteBreakdownPlayerNamesById,
@@ -2056,13 +2056,13 @@ export default function GameScreen() {
     if (!battleBack?.active || battleBack.competitionActive || battleBackAnnouncementStep == null) return
 
     const handlePlayPressed = () => {
-      setBattleBackAnnouncementStep((currentStep) => {
-        const { nextStep, shouldOpenCompetition } = advanceBattleBackAnnouncementStep(currentStep)
-        if (shouldOpenCompetition) {
-          dispatch(openBattleBackCompetition())
-        }
-        return nextStep
-      })
+      const { nextStep, shouldOpenCompetition } =
+        advanceBattleBackAnnouncementStep(battleBackAnnouncementStep)
+
+      setBattleBackAnnouncementStep(nextStep)
+      if (shouldOpenCompetition) {
+        dispatch(openBattleBackCompetition())
+      }
     }
 
     window.addEventListener('ui:playPressed', handlePlayPressed)
@@ -2097,7 +2097,7 @@ export default function GameScreen() {
       return
     }
 
-    const canReplayBattleBack = shouldOfferBattleBackReplay(
+    const canReplayBattleBack = isBattleBackReplayEligible(
       battleBackWinnerId,
       battleBackCandidates.length,
       battleBackRetryCount,

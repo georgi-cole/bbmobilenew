@@ -41,7 +41,7 @@ export function advanceBattleBackAnnouncementStep(
   return { nextStep, shouldOpenCompetition: false }
 }
 
-export function shouldOfferBattleBackReplay(
+export function isBattleBackReplayEligible(
   winnerId: string | undefined,
   candidateCount: number,
   retryCount: number,
