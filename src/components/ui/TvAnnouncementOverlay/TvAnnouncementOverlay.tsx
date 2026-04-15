@@ -59,8 +59,9 @@ function getAnnouncementThemeClass(key: string): string {
  *
  * - If `autoDismissMs` is a positive number, the overlay auto-dismisses when
  *   the countdown reaches zero (silently — no visible progress bar).
- * - The countdown pauses while the component is hovered, focused, or when
- *   `paused` is true (e.g. while the info modal is open).
+ * - The countdown pauses while the component is hovered, when focus was reached
+ *   via keyboard navigation, or when `paused` is true (e.g. while the info
+ *   modal is open). Pointer/touch-driven focus does not pause the countdown.
  * - The info button calls `onInfo`; `onDismiss` hides the overlay.
  */
 export default function TvAnnouncementOverlay({

@@ -861,7 +861,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(requestCallsBefore);
   });
 
-  it('does not pause auto-dismiss when focus follows a pointer interaction', () => {
+  it('does not pause auto-dismiss when pointer input clears prior keyboard focus mode', () => {
     const onDismiss = vi.fn();
     const { getByRole } = render(
       <TvAnnouncementOverlay
@@ -875,6 +875,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     const cancelCallsBefore = (window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
 
     act(() => {
+      fireEvent.keyDown(window, { key: 'Tab' });
       fireEvent.mouseDown(overlay);
       fireEvent.focus(overlay);
     });
