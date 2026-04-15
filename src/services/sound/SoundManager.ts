@@ -20,6 +20,12 @@
  *
  * Legacy BGM API (backward-compatible wrappers):
  *   playMusic(key, opts?), stopMusic()
+ *
+ * Disabled mode:
+ * - Runtime playback/management is intentionally disabled to avoid the
+ *   conflicts and race conditions tracked in the current issue.
+ * - Ceremony/minigame hooks still call the same public methods, but those
+ *   calls are treated as safe no-ops so the hook wiring stays intact.
  */
 
 import { SOUND_REGISTRY } from './sounds';
@@ -33,6 +39,12 @@ const _audioDebug =
   import.meta.env.VITE_AUDIO_DEBUG === 'true' ||
   (typeof location !== 'undefined' &&
     new URLSearchParams(location.search).get('debugAudio') === '1');
+
+/**
+ * Hard kill-switch for runtime audio playback/management.
+ * Keep public SoundManager calls intact, but suppress all audio handling.
+ */
+const SOUND_MANAGER_DISABLED = true;
 
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
@@ -144,6 +156,7 @@ class _SoundManager {
   async init(): Promise<void> {
     if (this._initialised) return;
     this._initialised = true;
+    if (SOUND_MANAGER_DISABLED) return;
     this._bindLifecycleListeners();
     if (_audioDebug) {
       console.log('[SoundManager] init() — registry has', Object.keys(SOUND_REGISTRY).length, 'keys');
@@ -165,6 +178,7 @@ class _SoundManager {
    * first user gesture.
    */
   async play(key: string, opts?: PlayOptions): Promise<void> {
+    if (SOUND_MANAGER_DISABLED) return;
     if (!this._unlocked) {
       if (_audioDebug) {
         console.log(`[SoundManager] play("${key}") queued — not yet unlocked`);
@@ -334,6 +348,8 @@ class _SoundManager {
       return;
     }
 
+    if (SOUND_MANAGER_DISABLED) return;
+
     // Store per-owner desired entry — does NOT overwrite other owners
     this._desiredPerOwner[owner] = { key };
 
@@ -366,6 +382,8 @@ class _SoundManager {
     if (_audioDebug) {
       console.log(`[SoundManager] releaseBgm("${owner}")`);
     }
+
+    if (SOUND_MANAGER_DISABLED) return;
 
     const wasActive = this._currentBgmOwner === owner;
     delete this._desiredPerOwner[owner];
@@ -400,6 +418,7 @@ class _SoundManager {
    * desired BGM for the 'phase' owner and started after the first user gesture.
    */
   async playMusic(key: string, opts?: PlayOptions): Promise<void> {
+    if (SOUND_MANAGER_DISABLED) return;
     if (!this._unlocked) {
       if (_audioDebug) {
         console.log(`[SoundManager] playMusic("${key}") stored as phase desired — not yet unlocked`);
@@ -524,6 +543,7 @@ class _SoundManager {
 
   /** Stop the currently-playing music track (legacy — prefer releaseBgm). */
   stopMusic(): void {
+    if (SOUND_MANAGER_DISABLED) return;
     if (_audioDebug && this._musicKey) {
       console.log(`[SoundManager] stopMusic() — stopping "${this._musicKey}"`);
     }
@@ -551,6 +571,7 @@ class _SoundManager {
    * No-ops silently if the key is unknown or not playing.
    */
   stop(key: string): void {
+    if (SOUND_MANAGER_DISABLED) return;
     const pool = this._sfxPools.get(key);
     if (!pool) return;
     if (_audioDebug) {
@@ -616,6 +637,11 @@ class _SoundManager {
     this._clearUnlockListeners();
     this._unlocked = true;
 
+    if (SOUND_MANAGER_DISABLED) {
+      this._playQueue = [];
+      return;
+    }
+
     if (_audioDebug) {
       console.log(
         `[SoundManager] audio unlocked via direct gesture — ${options.musicOnly ? 'starting desired BGM only' : 'applying desired BGM, priming SFX pools'}`,
@@ -650,6 +676,10 @@ class _SoundManager {
    */
   unlockOnUserGesture(): void {
     if (typeof document === 'undefined') return;
+    if (SOUND_MANAGER_DISABLED) {
+      this.unlockFromGesture();
+      return;
+    }
     if (this._unlocked && this._playQueue.length === 0) {
       if (_audioDebug) {
         console.log('[SoundManager] unlockOnUserGesture() — already unlocked');
