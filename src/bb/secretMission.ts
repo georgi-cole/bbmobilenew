@@ -353,7 +353,7 @@ function buildRequirementTask(
       return {
         id: `target_nominated_${context.templateId}`,
         type,
-        description: `Get your marked target (${targetPlayerId}) nominated before Day ${endDay}`,
+        description: `Get your marked target nominated before Day ${endDay}`,
         target: 1,
         startDay,
         endDay,

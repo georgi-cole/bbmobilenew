@@ -74,6 +74,8 @@ const PHASE_ORDER: Phase[] = [
   'week_end',
 ];
 
+const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3;
+
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
 // All 22 houseguests in src/data/houseguests.ts have matching avatar images in
 // public/avatars/. This pool is the source for AI opponents each game.
@@ -4053,7 +4055,9 @@ const gameSlice = createSlice({
       );
 
       const aliveNow = state.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury');
-      const seedRng = mulberry32((state.seed ^ 0x51c4f1d3) >>> 0);
+      // Use a dedicated seed modifier so immunity-driven replacement picks stay
+      // deterministic without perturbing the main ceremony RNG stream.
+      const seedRng = mulberry32((state.seed ^ IMMUNITY_REPLACEMENT_SEED_MODIFIER) >>> 0);
       ensureMinimumNominees(state, aliveNow, 2, seedRng);
     },
 

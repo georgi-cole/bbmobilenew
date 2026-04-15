@@ -52,10 +52,22 @@ describe('secret mission v2 follow-up', () => {
   });
 
   it('persists easter egg discoveries and progresses the matching task', () => {
-    const store = setupAcceptedMission();
-    const state = store.getState();
-    const task = state.game.secretMission!.tasks.find((entry) => entry.type === 'easter_egg_discovery');
-    if (!task) return;
+    const store = makeStore();
+    store.dispatch(initializeProfiles(['user']));
+    store.dispatch(triggerSecretMission(3));
+    store.dispatch(offerSecretMission(3));
+    store.dispatch(acceptSecretMission());
+    const task = store.getState().game.secretMission!.tasks[0];
+    store.dispatch(syncMissionTask({
+      taskId: task.id,
+      updates: {
+        type: 'easter_egg_discovery',
+        current: 0,
+        target: 1,
+        completed: false,
+        discoveredEggIds: [],
+      },
+    }));
 
     const egg = getSecretMissionEasterEggByIntent('winner_prediction');
     expect(egg).toBeTruthy();
@@ -71,7 +83,8 @@ describe('secret mission v2 follow-up', () => {
   it('lets the middleware initialize and satisfy public-approval tasks centrally', () => {
     const store = setupAcceptedMission();
     const task = store.getState().game.secretMission!.tasks.find((entry) => entry.type === 'public_approval_gain');
-    if (!task) return;
+    expect(task).toBeTruthy();
+    if (!task) throw new Error('Expected public approval task');
 
     store.dispatch(setMissionTaskBaselineApproval({ taskId: task.id, approval: 50 }));
     store.dispatch(updateApproval({

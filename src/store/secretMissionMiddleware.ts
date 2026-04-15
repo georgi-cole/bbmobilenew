@@ -107,7 +107,7 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
   if (
     game.secretMission.status !== 'rewardClaimed' &&
     game.secretMission.status !== 'expired' &&
-    (aliveCount <= 5 || game.week > game.secretMission.endDay)
+    (aliveCount < 5 || game.week > game.secretMission.endDay)
   ) {
     store.dispatch(expireSecretMission());
     return result;
