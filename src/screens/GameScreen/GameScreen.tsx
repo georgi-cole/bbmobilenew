@@ -133,10 +133,10 @@ const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 5000
 export const POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS = 400
 const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
-const AI_TIE_STAGE_DELAY_MS = 1000
-const AI_TIE_DECIDING_DELAY_MS = 1500
-const AI_TIE_DECISION_DELAY_MS = 1000
-const AI_TIE_RESULT_DELAY_MS = 1500
+const AI_TIE_STAGE_DELAY_MS = 3000
+const AI_TIE_DECIDING_DELAY_MS = 3000
+const AI_TIE_DECISION_DELAY_MS = 3000
+const AI_TIE_RESULT_DELAY_MS = 3000
 const CONFESSIONAL_TV_PROMPT_MESSAGE =
   'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
 
