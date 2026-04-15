@@ -163,7 +163,6 @@ export interface MissionTemplate {
   description: string;
   daySpan: number;
   requirementWeights: Record<WeightedRequirementType, number>;
-  buildTasks: (context: MissionBuildContext) => Omit<MissionTask, 'completed' | 'current'>[];
 }
 
 const EXTRA_REQUIREMENT_TYPES: WeightedRequirementType[] = [
@@ -404,16 +403,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       incoming_response_streak: 3,
       target_nominated: 3,
     },
-    buildTasks: (context) => buildWeightedTaskStack(context, 3, {
-      competition_placement: 3,
-      avoid_last_place: 2,
-      public_approval_gain: 4,
-      social_energy_empty_streak: 2,
-      social_action_count: 4,
-      easter_egg_discovery: 2,
-      incoming_response_streak: 3,
-      target_nominated: 3,
-    }),
   },
   {
     id: 'public_operator',
@@ -430,16 +419,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       incoming_response_streak: 4,
       target_nominated: 3,
     },
-    buildTasks: (context) => buildWeightedTaskStack(context, 4, {
-      competition_placement: 2,
-      avoid_last_place: 1,
-      public_approval_gain: 5,
-      social_energy_empty_streak: 2,
-      social_action_count: 4,
-      easter_egg_discovery: 1,
-      incoming_response_streak: 4,
-      target_nominated: 3,
-    }),
   },
   {
     id: 'pressure_cooker',
@@ -456,16 +435,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       incoming_response_streak: 2,
       target_nominated: 2,
     },
-    buildTasks: (context) => buildWeightedTaskStack(context, 3, {
-      competition_placement: 4,
-      avoid_last_place: 4,
-      public_approval_gain: 2,
-      social_energy_empty_streak: 4,
-      social_action_count: 2,
-      easter_egg_discovery: 1,
-      incoming_response_streak: 2,
-      target_nominated: 2,
-    }),
   },
   {
     id: 'social_engine',
@@ -482,16 +451,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       incoming_response_streak: 5,
       target_nominated: 3,
     },
-    buildTasks: (context) => buildWeightedTaskStack(context, 4, {
-      competition_placement: 1,
-      avoid_last_place: 2,
-      public_approval_gain: 3,
-      social_energy_empty_streak: 3,
-      social_action_count: 5,
-      easter_egg_discovery: 2,
-      incoming_response_streak: 5,
-      target_nominated: 3,
-    }),
   },
   {
     id: 'big_eye_gambit',
@@ -508,16 +467,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       incoming_response_streak: 2,
       target_nominated: 4,
     },
-    buildTasks: (context) => buildWeightedTaskStack(context, 3, {
-      competition_placement: 2,
-      avoid_last_place: 2,
-      public_approval_gain: 3,
-      social_energy_empty_streak: 2,
-      social_action_count: 3,
-      easter_egg_discovery: 5,
-      incoming_response_streak: 2,
-      target_nominated: 4,
-    }),
   },
 ];
 
@@ -526,11 +475,12 @@ export function buildMissionTasks(
   triggeredDay: number,
   options?: Omit<MissionBuildContext, 'triggeredDay' | 'templateId'>,
 ): MissionTask[] {
-  return template.buildTasks({
+  const context: MissionBuildContext = {
     triggeredDay,
     templateId: template.id,
     targetCandidateIds: options?.targetCandidateIds,
-  }).map((task) => ({
+  };
+  return buildWeightedTaskStack(context, template.daySpan, template.requirementWeights).map((task) => ({
     ...task,
     current: 0,
     completed: false,

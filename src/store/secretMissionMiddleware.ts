@@ -1,4 +1,7 @@
 import type { Middleware } from '@reduxjs/toolkit';
+import { getDefaultCompetitionProfile, resolveHybridAiScores } from '../ai/competition';
+import type { CompetitionSkillProfile } from '../ai/competition/types';
+import { simulateSnakeAiScore } from '../ai/competition/snakeAiSimulator';
 import {
   expireMissionReward,
   expireSecretMission,
@@ -7,6 +10,7 @@ import {
   updateMissionTaskProgress,
 } from './gameSlice';
 import type { MissionTask } from '../bb/secretMission';
+import type { CompleteMinigamePayload } from '../types';
 
 interface RootLike {
   game: {
@@ -14,6 +18,13 @@ interface RootLike {
     week: number;
     lohId: string | null;
     nomineeIds: string[];
+    pendingMinigame: {
+      key: string;
+      participants: string[];
+      seed: number;
+      aiScores: Record<string, number>;
+      hybridResolveOnComplete?: boolean;
+    } | null;
     secretMission?: {
       status: string;
       endDay: number;
@@ -24,7 +35,12 @@ interface RootLike {
       };
       tasks: MissionTask[];
     };
-    players: Array<{ id: string; isUser?: boolean; status: string }>;
+    players: Array<{
+      id: string;
+      isUser?: boolean;
+      status: string;
+      competitionProfile?: CompetitionSkillProfile;
+    }>;
   };
   social?: {
     energyBank?: Record<string, number>;
@@ -83,6 +99,60 @@ function updateTaskProgress(
   dispatch(syncMissionTask({ taskId: task.id, updates }));
 }
 
+function resolveCompleteMinigamePlacement(
+  prevState: RootLike,
+  payload: unknown,
+  humanId: string,
+): { placement: number; participantCount: number } | null {
+  const session = prevState.game.pendingMinigame;
+  if (!session) return null;
+
+  const normalizedPayload: CompleteMinigamePayload =
+    typeof payload === 'number'
+      ? { humanScore: payload }
+      : ((payload as CompleteMinigamePayload | undefined) ?? { humanScore: 0 });
+
+  const humanPlayer = prevState.game.players.find((player) => player.id === humanId);
+  let scores: Record<string, number>;
+
+  if (session.hybridResolveOnComplete) {
+    if (session.key === 'snake') {
+      const resolvedAiScores: Record<string, number> = {};
+      for (const id of session.participants) {
+        if (id === humanPlayer?.id) continue;
+        const player = prevState.game.players.find((candidate) => candidate.id === id);
+        resolvedAiScores[id] = simulateSnakeAiScore({
+          sessionSeed: session.seed,
+          playerId: id,
+          profile: player?.competitionProfile ?? getDefaultCompetitionProfile(),
+        }).score;
+      }
+      scores = { ...resolvedAiScores };
+    } else {
+      const aiParticipants = session.participants
+        .filter((id) => id !== humanPlayer?.id)
+        .map((id) => {
+          const player = prevState.game.players.find((candidate) => candidate.id === id);
+          return { id, profile: player?.competitionProfile };
+        });
+      scores = resolveHybridAiScores({
+        gameKey: session.key,
+        humanScore: normalizedPayload.humanScore,
+        aiParticipants,
+        seed: session.seed,
+      });
+    }
+  } else {
+    scores = { ...session.aiScores };
+  }
+
+  if (humanPlayer && session.participants.includes(humanPlayer.id)) {
+    scores[humanPlayer.id] = normalizedPayload.humanScore;
+  }
+
+  return computePlacement(session.participants, scores, humanId);
+}
+
 export const secretMissionMiddleware: Middleware = (store) => (next) => (action) => {
   const prevState = store.getState() as RootLike;
   const prevWeek = prevState.game.week;
@@ -107,7 +177,7 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
   if (
     game.secretMission.status !== 'rewardClaimed' &&
     game.secretMission.status !== 'expired' &&
-    (aliveCount < 5 || game.week > game.secretMission.endDay)
+    (aliveCount <= 5 || game.week > game.secretMission.endDay)
   ) {
     store.dispatch(expireSecretMission());
     return result;
@@ -251,14 +321,19 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
   }
 
   if (actionType === 'game/applyMinigameWinner' || actionType === 'game/completeMinigame') {
-    const maybePayload = (payload as {
-      participants?: string[];
-      scores?: Record<string, number>;
-      winnerId?: string;
-      lastPlaceId?: string;
-    } | undefined) ?? {};
-    const participants = maybePayload.participants ?? [];
-    const placement = computePlacement(participants, maybePayload.scores, humanId);
+    const placement = actionType === 'game/completeMinigame'
+      ? resolveCompleteMinigamePlacement(prevState, payload, humanId)
+      : computePlacement(
+        ((payload as {
+          participants?: string[];
+          scores?: Record<string, number>;
+        } | undefined) ?? {}).participants ?? [],
+        ((payload as {
+          participants?: string[];
+          scores?: Record<string, number>;
+        } | undefined) ?? {}).scores,
+        humanId,
+      );
     if (!placement) return result;
 
     for (const task of tasks) {

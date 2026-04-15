@@ -48,7 +48,7 @@ import {
   canUseVoteDeduction,
   pickMissionImmunityDuration,
   type MissionTask,
-  type MissionRewardType,
+  type LegacyMissionRewardType,
 } from '../bb/secretMission';
 import { calculateRequiredDoubleEvictionSlots } from '../features/twists/doubleEvictionTieUtils';
 import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
@@ -3989,12 +3989,12 @@ const gameSlice = createSlice({
      */
     claimMissionReward(
       state,
-      action: PayloadAction<MissionRewardType | { claimDay: number; durationDays?: 1 | 2 | 3 }>,
+      action: PayloadAction<LegacyMissionRewardType | { claimDay: number; durationDays?: 1 | 2 | 3 }>,
     ) {
       const sm = state.secretMission;
       if (!sm || sm.status !== 'rewardPending') return;
       if (typeof action.payload === 'string') {
-        sm.reward = createMissionReward(action.payload as Exclude<MissionRewardType, 'immunity'>);
+        sm.reward = createMissionReward(action.payload);
       } else {
         const duration = action.payload.durationDays
           ?? pickMissionImmunityDuration(sm.triggeredDay, sm.templateId);
