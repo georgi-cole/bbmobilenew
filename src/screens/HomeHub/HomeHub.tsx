@@ -110,9 +110,8 @@ export default function HomeHub() {
     // HTMLAudio priming (inside unlockAndPlayMusicOnly) calls play() synchronously —
     // awaiting before this call would break that requirement.
 
-    // Unlock and prime SFX pools in the gesture context; discard any queued SFX
-    // so users don't hear a flood of game sounds when tapping "Enable sounds".
-    // The desired BGM (set by useIntroHubMusic via requestBgm) is started here.
+    // Keep the existing consent hook path intact even though SoundManager audio
+    // handling is currently disabled.
     SoundManager.unlockFromGesture({ musicOnly: true });
 
     setSoundConsentHidden(true);
@@ -142,9 +141,7 @@ export default function HomeHub() {
   };
 
   const handlePlay = () => {
-    // Play gesture — always unlock the Web Audio API here so that AudioGate
-    // is not needed on the Intro/Home route.  This satisfies browser autoplay
-    // policy: the first user gesture on the home screen unlocks audio context.
+    // Keep the existing play-gesture hook intact even though runtime audio is disabled.
     SoundManager.unlockFromGesture();
     // Do NOT start music:intro_hub_loop here — we are about to navigate away.
     // Starting it here would cause the track to be queued or briefly played and
