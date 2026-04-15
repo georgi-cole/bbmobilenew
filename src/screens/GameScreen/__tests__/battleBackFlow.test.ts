@@ -6,7 +6,7 @@ import {
 } from '../battleBackFlow'
 
 describe('battle back flow helpers', () => {
-  it('defines a three-step suspense sequence before the challenge begins', () => {
+  it('defines a three-step suspense sequence before Back 2 the Game begins', () => {
     expect(BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.map((step) => step.key)).toEqual([
       'battle_back_shock',
       'battle_back_rules',
@@ -30,10 +30,12 @@ describe('battle back flow helpers', () => {
     })
   })
 
-  it('offers a replay prompt whenever there is another possible outcome and retries remain', () => {
-    expect(isBattleBackReplayEligible('p2', 3, 0, 3)).toBe(true)
-    expect(isBattleBackReplayEligible('p2', 1, 0, 3)).toBe(false)
-    expect(isBattleBackReplayEligible('p2', 3, 3, 3)).toBe(false)
-    expect(isBattleBackReplayEligible(undefined, 3, 0, 3)).toBe(false)
+  it('offers a replay prompt only when the human candidate loses and retries remain', () => {
+    expect(isBattleBackReplayEligible('p2', 'p0', ['p0', 'p1', 'p2'], 0, 3)).toBe(true)
+    expect(isBattleBackReplayEligible('p0', 'p0', ['p0', 'p1', 'p2'], 0, 3)).toBe(false)
+    expect(isBattleBackReplayEligible('p2', null, ['p0', 'p1', 'p2'], 0, 3)).toBe(false)
+    expect(isBattleBackReplayEligible('p2', 'p0', ['p1', 'p2'], 0, 3)).toBe(false)
+    expect(isBattleBackReplayEligible('p2', 'p0', ['p0', 'p1', 'p2'], 3, 3)).toBe(false)
+    expect(isBattleBackReplayEligible(undefined, 'p0', ['p0', 'p1', 'p2'], 0, 3)).toBe(false)
   })
 })

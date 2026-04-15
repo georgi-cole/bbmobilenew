@@ -82,7 +82,7 @@
     { q: 'What is the "Jury Roundtable"?', a: ['Table shape', 'Jury discussion', 'Voting area', 'Final comp'], correct: 1, difficulty: 'medium' },
     
     // Competitions (Medium)
-    { q: 'What is a "Battle Back"?', a: ['Fight', 'Return comp', 'Revenge', 'Backstab'], correct: 1, difficulty: 'medium' },
+    { q: 'What is "Back 2 the Game"?', a: ['Fight', 'Return comp', 'Revenge', 'Backstab'], correct: 1, difficulty: 'medium' },
     { q: 'What type is an endurance comp?', a: ['Quick', 'Long-lasting', 'Mental', 'Physical'], correct: 1, difficulty: 'easy' },
     { q: 'What is a mental comp?', a: ['Days comp', 'Memory test', 'Quiz', 'All of these'], correct: 3, difficulty: 'medium' },
     { q: 'What happens at POS ceremony?', a: ['Nominations', 'Safety decision', 'Elimination', 'Vote'], correct: 1, difficulty: 'easy' },

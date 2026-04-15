@@ -60,7 +60,7 @@ export default function TwistsTestPage() {
 
   function handleBattleBackDone() {
     const winner = MOCK_JURORS.find((p) => p.id === bbWinnerId);
-    setLastResult(`BattleBack winner: ${winner?.name ?? bbWinnerId ?? 'unknown'}`);
+    setLastResult(`Back 2 the Game winner: ${winner?.name ?? bbWinnerId ?? 'unknown'}`);
     setActiveOverlay('none');
   }
 
@@ -73,7 +73,7 @@ export default function TwistsTestPage() {
     <div style={{ padding: '1.5rem', maxWidth: '500px', margin: '0 auto', color: '#fff' }}>
       <h1 style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>🔬 Twists Test Page</h1>
       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-        Manual QA page for BattleBack (competition) and Public's Favorite overlays.
+        Manual QA page for Back 2 the Game (competition) and Public's Favorite overlays.
       </p>
 
       {/* Controls */}
@@ -105,7 +105,7 @@ export default function TwistsTestPage() {
           onClick={() => { setOpenSeed(seed); setLastResult(null); setActiveOverlay('battleBack'); }}
           style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #f97316, #ea580c)', color: '#fff', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontWeight: 700 }}
         >
-          🏆 Test BattleBack Competition
+          🏆 Test Back 2 the Game Competition
         </button>
         <button
           type="button"
@@ -125,7 +125,7 @@ export default function TwistsTestPage() {
 
       {/* Mock player lists */}
       <div style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
-        <p><strong style={{ color: '#f97316' }}>BattleBack candidates ({MOCK_JURORS.length}):</strong> {MOCK_JURORS.map((p) => p.name).join(', ')}</p>
+        <p><strong style={{ color: '#f97316' }}>Back 2 the Game candidates ({MOCK_JURORS.length}):</strong> {MOCK_JURORS.map((p) => p.name).join(', ')}</p>
         <p><strong style={{ color: '#7c3aed' }}>PublicFavorite candidates ({MOCK_ALL_PLAYERS.length}):</strong> {MOCK_ALL_PLAYERS.map((p) => p.name).join(', ')}</p>
       </div>
 
@@ -136,7 +136,7 @@ export default function TwistsTestPage() {
           competitorIds={MOCK_JURORS.map((p) => p.id)}
           variant={bbVariant}
           expectedWinnerId={bbWinnerId}
-          roundLabel="Battle Back"
+          roundLabel="Back 2 the Game"
           placement="fullscreen"
           onDone={handleBattleBackDone}
         />

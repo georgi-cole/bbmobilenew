@@ -125,6 +125,7 @@ import {
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import './GameScreen.css'
 
+const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
@@ -1123,7 +1124,7 @@ export default function GameScreen() {
         badge: '❓',
         badgeImageSrc: NOMINATION_BADGE_SRC,
         badgeStart: sourceIsDistinct ? sourceRect : 'center',
-        badgeLabel: `${replacementPlayer.name} nominated as replacement`,
+        badgeLabel: `${replacementPlayer.name} named backup nominee`,
         glowTone: 'danger' as const,
       },
     ]
@@ -1954,7 +1955,7 @@ export default function GameScreen() {
     (game.phase !== 'final4_eviction' || final4Stage === 'splash')
 
   // After the eviction cinematic completes, commit the pending eviction then
-  // attempt Battle Back activation (normal evictions only) or advance the Final-4
+  // attempt Back 2 the Game activation (normal evictions only) or advance the Final-4
   // local state machine. Also show the confessional prompt if it was queued.
   const handleEvictionSplashDone = useCallback(() => {
     const evicteeId = game.pendingEviction?.evicteeId
@@ -2001,7 +2002,7 @@ export default function GameScreen() {
   // twist announcement; the overlay opens ~5 s later via the effect below.
   const showBattleBack = battleBack?.active === true && battleBack?.competitionActive === true
   const battleBackAttemptSeed = useMemo(
-    // Step each retry through a large odd offset so the seeded Battle Back
+    // Step each retry through a large odd offset so the seeded Back 2 the Game
     // simulation produces a fresh bracket/minigame sequence per replay.
     () => ((game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0),
     [battleBackAttemptIndex, game.seed],
@@ -2011,7 +2012,7 @@ export default function GameScreen() {
     [battleBack?.active, battleBack?.candidates, game.players],
   )
 
-  // Pre-compute the deterministic Battle Back winner and spectator variant so
+  // Pre-compute the deterministic Back 2 the Game winner and spectator variant so
   // the SpectatorView reveal always matches the store write.
   const battleBackWinnerId = useMemo(() => {
     if (!showBattleBack || battleBackRetryOfferWinnerId || battleBackCandidates.length === 0) return undefined;
@@ -2080,7 +2081,7 @@ export default function GameScreen() {
   }, [battleBack?.active, battleBack?.competitionActive, handleBattleBackAnnouncementPlay])
 
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
-  // Battle Back completion before showing the return overlay. storeRef is intentionally
+  // Back 2 the Game completion before showing the return overlay. storeRef is intentionally
   // omitted from deps because refs are stable and shouldn't re-create this callback.
   const finalizeBattleBackOutcome = useCallback((winnerId?: string | null) => {
     if (!winnerId) {
@@ -2109,7 +2110,8 @@ export default function GameScreen() {
 
     const canReplayBattleBack = isBattleBackReplayEligible(
       battleBackWinnerId,
-      battleBackCandidates.length,
+      humanPlayer?.id ?? null,
+      battleBack?.candidates ?? [],
       battleBackRetryCount,
       BATTLE_BACK_RETRY_LIMIT,
     )
@@ -2121,10 +2123,11 @@ export default function GameScreen() {
 
     finalizeBattleBackOutcome(battleBackWinnerId)
   }, [
-    battleBackCandidates.length,
+    battleBack?.candidates,
     battleBackRetryCount,
     battleBackWinnerId,
     finalizeBattleBackOutcome,
+    humanPlayer?.id,
   ])
 
   const handleBattleBackReturnDone = useCallback(() => {
@@ -2832,7 +2835,7 @@ export default function GameScreen() {
 
       {showTieBreakMultiSelectModal && (
         <TvMultiSelectModal
-          title="Double Eviction Tie-Break"
+          title="Double Elimination Tie-Break"
           subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} players to eliminate.`}
           options={tieBreakOptions}
           maxSelect={doubleEvictionTieBreakSelectCount}
@@ -3137,6 +3140,7 @@ export default function GameScreen() {
             const tiles: CeremonyTile[] = [{
               rect: sourceDomRect,
               badge: winSymbol,
+              badgeImageSrc: isHohComp ? LOH_BADGE_SRC : undefined,
               badgeStart: 'center',
               badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
             }];
@@ -3195,6 +3199,7 @@ export default function GameScreen() {
             return [{
               rect: getTileRect(winnerId),
               badge: '👑',
+              badgeImageSrc: LOH_BADGE_SRC,
               badgeStart: 'center' as const,
               badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Leader of the House`,
             }]
@@ -3241,7 +3246,7 @@ export default function GameScreen() {
                 badge: '❓',
                 badgeImageSrc: NOMINATION_BADGE_SRC,
                 badgeStart: sourceIsDistinct ? sourceRect : 'center' as const,
-                badgeLabel: `${replacementPlayer?.name ?? replacementId} nominated as replacement`,
+                badgeLabel: `${replacementPlayer?.name ?? replacementId} named backup nominee`,
                 glowTone: 'danger' as const,
               },
             ]
@@ -3324,7 +3329,7 @@ export default function GameScreen() {
         )}
       </AnimatePresence>
 
-      {/* ── Battle Back return animation (reverse eviction) ─────────────────── */}
+      {/* ── Back 2 the Game return animation (reverse eviction) ─────────────── */}
       <AnimatePresence>
         {showBattleBackReturn && battleBackReturnPlayer && (
           <SpotlightEvictionOverlay
@@ -3339,14 +3344,14 @@ export default function GameScreen() {
         )}
       </AnimatePresence>
 
-      {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
+      {/* ── Back 2 the Game / Jury Return twist overlay ──────────────────── */}
       {showBattleBack && battleBackCandidates.length > 0 && (
         <SpectatorView
           key={`${battleBackCandidates.map((p) => p.id).join('-')}-bb-${battleBackAttemptIndex}`}
           competitorIds={battleBackCandidates.map((p) => p.id)}
           variant={battleBackVariant}
           expectedWinnerId={battleBackWinnerId}
-          roundLabel="Battle Back"
+          roundLabel="Back 2 the Game"
           placement="fullscreen"
           onDone={handleBattleBackComplete}
         />
@@ -3531,9 +3536,9 @@ export default function GameScreen() {
       {battleBackRetryOfferWinnerId && (
         <AdPrompt
           icon="⚡"
-          title="Not Happy With That Result?"
-          description={`${battleBackRetryOfferWinner?.name ?? 'The winner'} is about to return. Watch a short ad to rerun Battle Back and see if a different player wins. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
-          watchLabel="Watch Ad to Restart Battle Back"
+          title="Second Chance?"
+          description={`Watch a short ad to rerun Back 2 the Game before ${(battleBackRetryOfferWinner?.name ?? 'the winner')} returns. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
+          watchLabel="Watch Ad to Replay Back 2 the Game"
           skipLabel="Continue"
           onWatch={() => {
             if (adPending) return

@@ -546,7 +546,7 @@ describe('GameScreen – Battle Back completion guards', () => {
 
     mockBattleBackWinnerId = 'p0';
     await act(async () => {
-      screen.getByRole('button', { name: /watch ad to replay battle back/i }).click();
+      screen.getByRole('button', { name: /watch ad to replay back 2 the game/i }).click();
     });
 
     expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
@@ -591,7 +591,7 @@ describe('GameScreen – Battle Back completion guards', () => {
       await act(async () => { lastSpectatorOnDone?.(); });
       expect(screen.getByRole('dialog', { name: /second chance/i })).toBeTruthy();
       await act(async () => {
-        screen.getByRole('button', { name: /watch ad to replay battle back/i }).click();
+        screen.getByRole('button', { name: /watch ad to replay back 2 the game/i }).click();
       });
       expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
     }

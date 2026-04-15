@@ -474,7 +474,7 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
     setSelectedId(id);
     setSubmitting(true);
     const name = options.find((player) => player.id === id)?.name ?? 'that player';
-    onDecisionCommitted?.(`I name ${name} as the replacement nominee.`);
+    onDecisionCommitted?.(`I name ${name} as the backup nominee.`);
     if (isDiamond) dispatch(submitDiamondReplacement(id));
     else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(id));
     else dispatch(setReplacementNominee(id));

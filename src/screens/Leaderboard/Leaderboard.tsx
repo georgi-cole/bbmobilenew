@@ -96,7 +96,7 @@ export default function Leaderboard() {
                     {bd.posWins > 0 && <li>POS wins: +{bd.posWins}</li>}
                     {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
                     {bd.madeJury > 0 && <li>Made jury: +{bd.madeJury}</li>}
-                    {bd.battleBackWins > 0 && <li>Battle Back win(s): +{bd.battleBackWins}</li>}
+                    {bd.battleBackWins > 0 && <li>Back 2 the Game win(s): +{bd.battleBackWins}</li>}
                     {bd.survivedDoubleEviction > 0 && <li>Survived double eviction: +{bd.survivedDoubleEviction}</li>}
                     {bd.survivedTripleEviction > 0 && <li>Survived triple eviction: +{bd.survivedTripleEviction}</li>}
                     {bd.wonPublicFavorite > 0 && <li>Public's Favorite: +{bd.wonPublicFavorite}</li>}
@@ -146,7 +146,7 @@ export default function Leaderboard() {
                     {bd.posWins > 0 && <li>POS wins: +{bd.posWins}</li>}
                     {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
                     {bd.madeJury > 0 && <li>Made jury: +{bd.madeJury}</li>}
-                    {bd.battleBackWins > 0 && <li>Battle Back win(s): +{bd.battleBackWins}</li>}
+                    {bd.battleBackWins > 0 && <li>Back 2 the Game win(s): +{bd.battleBackWins}</li>}
                     {bd.survivedDoubleEviction > 0 && <li>Survived double eviction: +{bd.survivedDoubleEviction}</li>}
                     {bd.survivedTripleEviction > 0 && <li>Survived triple eviction: +{bd.survivedTripleEviction}</li>}
                     {bd.wonPublicFavorite > 0 && <li>Public's Favorite: +{bd.wonPublicFavorite}</li>}

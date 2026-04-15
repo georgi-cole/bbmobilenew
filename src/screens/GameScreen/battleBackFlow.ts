@@ -4,21 +4,21 @@ export const BATTLE_BACK_ANNOUNCEMENT_SEQUENCE: Announcement[] = [
   {
     key: 'battle_back_shock',
     title: 'Shock Twist',
-    subtitle: 'Battle Back has been activated. A return to the game is now on the table.',
+    subtitle: 'Back 2 the Game has been activated. A return to the game is now on the table.',
     isLive: true,
     autoDismissMs: null,
   },
   {
     key: 'battle_back_rules',
-    title: 'Battle Back Rules',
+    title: 'Back 2 the Game Rules',
     subtitle: 'Recently eliminated players will face off. Only one can win the right to return to the house.',
     isLive: true,
     autoDismissMs: null,
   },
   {
     key: 'battle_back_challenge',
-    title: 'Battle Back Challenge',
-    subtitle: 'The challenge is ready. Press play to begin the Battle Back showdown.',
+    title: 'Back 2 the Game Challenge',
+    subtitle: 'The challenge is ready. Press play to begin the Back 2 the Game showdown.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -43,9 +43,16 @@ export function advanceBattleBackAnnouncementStep(
 
 export function isBattleBackReplayEligible(
   winnerId: string | undefined,
-  candidateCount: number,
+  humanCandidateId: string | null,
+  candidateIds: string[],
   retryCount: number,
   retryLimit: number,
 ): boolean {
-  return !!winnerId && candidateCount > 1 && retryCount < retryLimit
+  return (
+    !!winnerId &&
+    !!humanCandidateId &&
+    candidateIds.includes(humanCandidateId) &&
+    winnerId !== humanCandidateId &&
+    retryCount < retryLimit
+  )
 }

@@ -419,7 +419,7 @@ export default function SettingsAdmin() {
             {settings.sim.enableTwists && (
               <div className="settings-row settings-row--col">
                 <label className="settings-row__label">
-                  Battle Back Chance — {settings.sim.battleBackChance ?? 30}%
+                  Back 2 the Game Chance — {settings.sim.battleBackChance ?? 30}%
                 </label>
                 <input
                   type="range"
@@ -431,7 +431,7 @@ export default function SettingsAdmin() {
                   onChange={(e) =>
                     dispatch(setSim({ battleBackChance: Number(e.target.value) }))
                   }
-                  aria-label="Battle Back chance percentage"
+                  aria-label="Back 2 the Game chance percentage"
                 />
                 <p className="settings-helper-text">
                   Probability that a Jury Return twist activates after each eligible eviction (requires Twists on).
@@ -442,7 +442,7 @@ export default function SettingsAdmin() {
             {settings.sim.enableTwists && (
               <div className="settings-row settings-row--col">
                 <label className="settings-row__label">
-                  Double Eviction Chance — {settings.sim.doubleEvictionChance ?? 35}%
+                  Double Elimination Chance — {settings.sim.doubleEvictionChance ?? 35}%
                 </label>
                 <input
                   type="range"
@@ -454,10 +454,10 @@ export default function SettingsAdmin() {
                   onChange={(e) =>
                     dispatch(setSim({ doubleEvictionChance: Number(e.target.value) }))
                   }
-                  aria-label="Double Eviction chance percentage"
+                  aria-label="Double Elimination chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Per-week chance that a Double Eviction activates (mid-season only, after 5 evictions and above final 5). Up to 2 per season.
+                  Per-week chance that a Double Elimination activates (mid-season only, after 5 evictions and above final 5). Up to 2 per season.
                 </p>
               </div>
             )}
@@ -480,7 +480,7 @@ export default function SettingsAdmin() {
                   aria-label="Special Safety chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Per-week chance (checked during POS results, after 5 evictions, with 6+ players and no Double Eviction) for a season-limited special safety power to activate. Only one special safety may occur per season.
+                  Per-week chance (checked during POS results, after 5 evictions, with 6+ players and no Double Elimination) for a season-limited special safety power to activate. Only one special safety may occur per season.
                 </p>
               </div>
             )}

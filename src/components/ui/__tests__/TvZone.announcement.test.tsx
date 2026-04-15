@@ -497,7 +497,7 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeDefined();
   });
 
-  it('applies the Battle Back styling when the major key is battle_back', () => {
+  it('applies the Back 2 the Game styling when the major key is battle_back', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -506,35 +506,35 @@ describe('TvZone — announcement overlay', () => {
         addTvEvent(
           makeEvent({
             id: 'ev-bb',
-            text: 'Battle Back begins.',
+            text: 'Back 2 the Game begins.',
             major: 'battle_back',
           }),
         ),
       );
     });
 
-    const overlay = screen.getByRole('dialog', { name: /Announcement: Battle Back/i });
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
   });
 
-  it('keeps the Battle Back styling for staged Battle Back announcements', () => {
+  it('keeps the Back 2 the Game styling for staged twist announcements', () => {
     const store = makeStore();
 
     renderTvZone(store, {
       externalAnnouncement: {
         key: 'battle_back_challenge',
-        title: 'Battle Back Challenge',
+        title: 'Back 2 the Game Challenge',
         subtitle: 'Press play to begin.',
         isLive: true,
         autoDismissMs: null,
       },
     });
 
-    const overlay = screen.getByRole('dialog', { name: /Announcement: Battle Back Challenge/i });
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game Challenge/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
   });
 
-  it('falls back to Battle Back styling when a twist event mentions Battle Back without a major key', () => {
+  it('falls back to Back 2 the Game styling when a twist event mentions the twist without a major key', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -543,14 +543,14 @@ describe('TvZone — announcement overlay', () => {
         addTvEvent(
           makeEvent({
             id: 'ev-bb-fallback',
-            text: 'Battle Back begins! Evicted houseguests compete for a second chance.',
+            text: 'Back 2 the Game begins! Evicted houseguests compete for a second chance.',
             type: 'twist',
           }),
         ),
       );
     });
 
-    const overlay = screen.getByRole('dialog', { name: /Announcement: Battle Back/i });
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
   });
 
