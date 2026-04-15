@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { Player } from '../../types';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { getBadgesForPlayer } from '../../utils/statusBadges';
@@ -19,7 +19,7 @@ interface PlayerAvatarProps {
  * When onSelect is absent: tap toggles the mini popover with name + stats.
  *
  * Badge rendering delegates to getBadgesForPlayer() from statusBadges utility:
- *   'loh' → 👑  'pos' → 🛡️  'nominated' → ❓  'jury' → ⚖️
+ *   'loh' → 👑  'pos' → 🛡️  'nominated' → nomination badge asset  'jury' → ⚖️
  *   finalRank 1/2/3 → 🥇/🥈/🥉
  *
  * Image loading uses a two-step fallback chain:
@@ -84,7 +84,19 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
             aria-label={badgeLabels}
             title={badgeLabels}
           >
-            {badges.map((b) => b.emoji).join('')}
+            {badges.map((b) => (
+              <Fragment key={b.code}>
+                {b.imageSrc ? (
+                  <img
+                    className="player-avatar__badge-image"
+                    src={b.imageSrc}
+                    alt=""
+                  />
+                ) : (
+                  b.emoji
+                )}
+              </Fragment>
+            ))}
           </span>
         )}
         {player.isUser && (

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import AvatarTile from '../AvatarTile'
 
 describe('AvatarTile', () => {
-  it('renders the original question-mark badge for nominated players', () => {
+  it('renders the nomination badge asset for nominated players', () => {
     render(
       <AvatarTile
         name="Taylor"
@@ -13,8 +13,10 @@ describe('AvatarTile', () => {
     )
 
     const badge = screen.getByLabelText('Nominated')
+    const badgeImage = badge.querySelector('img')
 
-    expect(badge).toHaveTextContent('❓')
-    expect(badge.querySelector('img')).toBeNull()
+    expect(badge).not.toHaveTextContent('❓')
+    expect(badgeImage).not.toBeNull()
+    expect(badgeImage?.getAttribute('src')).toContain('/assets/avatar_badges/nomination_badge.png')
   })
 })

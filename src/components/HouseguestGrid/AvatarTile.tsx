@@ -258,7 +258,18 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
                 aria-label={b.label}
                 title={b.label}
               >
-                {b.emoji}
+                {b.imageSrc ? (
+                  <>
+                    <img
+                      src={b.imageSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className={styles.statusBadgeImage}
+                    />
+                  </>
+                ) : (
+                  <>{b.emoji}</>
+                )}
               </span>
             ))}
           </div>

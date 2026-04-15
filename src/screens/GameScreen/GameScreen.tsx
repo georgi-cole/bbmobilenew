@@ -83,6 +83,7 @@ import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import { detectDebugMode } from '../../utils/debugMode'
+import { statusBadgeImageSrc } from '../../utils/statusBadges'
 import type { Player, Phase } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
 import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils'
@@ -119,6 +120,7 @@ import {
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import './GameScreen.css'
 
+const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 5000
@@ -1114,6 +1116,7 @@ export default function GameScreen() {
       {
         rect: replacementRect,
         badge: '❓',
+        badgeImageSrc: NOMINATION_BADGE_SRC,
         badgeStart: sourceIsDistinct ? sourceRect : 'center',
         badgeLabel: `${replacementPlayer.name} nominated as replacement`,
         glowTone: 'danger' as const,
@@ -1139,7 +1142,6 @@ export default function GameScreen() {
     }
     startReplacementCeremony(id, () => dispatch(setReplacementNominee(id)))
   }, [dispatch, game.povSavedId, startReplacementCeremony])
-
   const handleDiamondReplacementNominee = useCallback((id: string) => {
     startReplacementCeremony(id, () => dispatch(submitDiamondReplacement(id)))
   }, [dispatch, startReplacementCeremony])
@@ -2575,6 +2577,7 @@ export default function GameScreen() {
                 return {
                   rect: getTileRect(p.id),
                   badge: '❓',
+                  badgeImageSrc: NOMINATION_BADGE_SRC,
                   label: nominationLabels[p.id],
                   glowTone: 'danger' as const,
                   badgeStart: (isAutoNominee || !lohRect) ? ('center' as const) : lohRect,
@@ -3188,6 +3191,7 @@ export default function GameScreen() {
               {
                 rect: getTileRect(replacementId),
                 badge: '❓',
+                badgeImageSrc: NOMINATION_BADGE_SRC,
                 badgeStart: sourceIsDistinct ? sourceRect : 'center' as const,
                 badgeLabel: `${replacementPlayer?.name ?? replacementId} nominated as replacement`,
                 glowTone: 'danger' as const,
