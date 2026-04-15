@@ -545,7 +545,7 @@ export function buildMissionTasks(
 
 export function isSecretMissionSuccessful(tasks: readonly MissionTask[]): boolean {
   if (tasks.length === 0) return false;
-  return tasks.every((task) => task.completed || task.optional === true);
+  return tasks.every((task) => task.completed || task.optional);
 }
 
 // ── Trigger odds ──────────────────────────────────────────────────────────────

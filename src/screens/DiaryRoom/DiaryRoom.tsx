@@ -1080,18 +1080,30 @@ export default function DiaryRoom() {
                           type="button"
                           aria-label={`Open Mystery Box ${index + 1}`}
                           onClick={() => {
-                            const durationDays = rewardType === 'immunity'
-                              ? pickMissionImmunityDuration(secretMission.triggeredDay, secretMission.templateId)
-                              : undefined;
                             if (rewardType === 'immunity') {
+                              const durationDays = pickMissionImmunityDuration(
+                                secretMission.triggeredDay,
+                                secretMission.templateId,
+                              );
                               dispatch(claimMissionReward({ claimDay: currentWeekForMission, durationDays }));
-                            } else {
-                              dispatch(claimMissionReward(rewardType));
+                              const revealMsg: ChatMessage = {
+                                id: crypto.randomUUID(),
+                                role: 'bb',
+                                text: REWARD_REVEAL_COPY[rewardType](currentWeekForMission, durationDays),
+                                timestamp: Date.now(),
+                              };
+                              setMessages((prev) => {
+                                const updated = [...prev, revealMsg];
+                                saveChat(playerIdRef.current, updated);
+                                return updated;
+                              });
+                              return;
                             }
+                            dispatch(claimMissionReward(rewardType));
                             const revealMsg: ChatMessage = {
                               id: crypto.randomUUID(),
                               role: 'bb',
-                              text: REWARD_REVEAL_COPY[rewardType](currentWeekForMission, durationDays),
+                              text: REWARD_REVEAL_COPY[rewardType](currentWeekForMission),
                               timestamp: Date.now(),
                             };
                             setMessages((prev) => {
