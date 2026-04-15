@@ -79,6 +79,10 @@ describe('checkSecretMissionTrigger', () => {
     expect(checkSecretMissionTrigger(makeTriggerContext({ day: 2 }), alwaysReturn(0))).toBe(false);
   });
 
+  it('fires on day 3 for the guaranteed first mission boundary', () => {
+    expect(checkSecretMissionTrigger(makeTriggerContext({ day: 3 }), alwaysReturn(0.99))).toBe(true);
+  });
+
   it('respects alive-count gating', () => {
     expect(checkSecretMissionTrigger(makeTriggerContext({ day: 7, aliveCount: 5 }), alwaysReturn(0))).toBe(false);
     expect(checkSecretMissionTrigger(makeTriggerContext({ day: 7, aliveCount: 6 }), alwaysReturn(0))).toBe(true);

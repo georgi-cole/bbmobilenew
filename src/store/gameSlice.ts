@@ -305,6 +305,12 @@ function canReplaceSecretMissionSlot(secretMission: GameState['secretMission']):
     || reward.type === 'plus1000Influence';
 }
 
+function getSeasonSecretMissionCount(game: Pick<GameState, 'secretMission' | 'secretMissionCount'>): number {
+  if (typeof game.secretMissionCount === 'number') return game.secretMissionCount;
+  if (typeof game.secretMission?.missionNumber === 'number') return game.secretMission.missionNumber;
+  return game.secretMission ? 1 : 0;
+}
+
 function formatNameList(names: string[]): string {
   if (names.length <= 2) return names.join(' and ');
   return names.join(', ');
@@ -4549,7 +4555,7 @@ export const tryActivateSecretMission =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState();
     const aliveCount = game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
-    const seasonMissionCount = game.secretMissionCount ?? (game.secretMission ? 1 : 0);
+    const seasonMissionCount = getSeasonSecretMissionCount(game);
     const secondMissionChanceResolved = game.secretMissionSecondChanceResolved ?? seasonMissionCount >= 2;
 
     if (game.phase !== 'week_start') return false;

@@ -584,7 +584,7 @@ export function getSecretMissionTriggerChance({
   if (override !== null && override !== undefined) {
     return Math.max(0, Math.min(100, override)) / 100;
   }
-  if (seasonMissionCount <= 0) return 1;
+  if (seasonMissionCount === 0) return 1;
   if (seasonMissionCount >= 2 || secondMissionRollResolved) return 0;
   return SECOND_SECRET_MISSION_CHANCE;
 }
@@ -603,7 +603,10 @@ export function pickMissionTemplate(day: number, maxDaySpan?: number): MissionTe
   const eligibleTemplates = typeof maxDaySpan === 'number'
     ? MISSION_TEMPLATES.filter((template) => template.daySpan <= maxDaySpan)
     : MISSION_TEMPLATES;
-  const pool = eligibleTemplates.length > 0 ? eligibleTemplates : MISSION_TEMPLATES;
+  if (eligibleTemplates.length === 0) {
+    throw new Error(`No secret mission template fits within ${maxDaySpan} days`);
+  }
+  const pool = eligibleTemplates;
   const idx = (day * 3) % pool.length;
   return pool[idx];
 }
