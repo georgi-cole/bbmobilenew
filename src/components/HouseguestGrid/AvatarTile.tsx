@@ -259,16 +259,14 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
                 title={b.label}
               >
                 {b.imageSrc ? (
-                  <>
-                    <img
-                      src={b.imageSrc}
-                      alt=""
-                      aria-hidden="true"
-                      className={styles.statusBadgeImage}
-                    />
-                  </>
+                  <img
+                    src={b.imageSrc}
+                    alt=""
+                    aria-hidden="true"
+                    className={styles.statusBadgeImage}
+                  />
                 ) : (
-                  <>{b.emoji}</>
+                  b.emoji
                 )}
               </span>
             ))}

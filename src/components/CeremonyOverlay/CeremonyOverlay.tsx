@@ -33,7 +33,7 @@ export interface CeremonyTile {
   /** Optional role/context label shown as a pill above the spotlighted tile. */
   label?: string;
   /** Optional glow tone for the spotlight ring. */
-  glowTone?: 'gold' | 'danger' | 'warning';
+  glowTone?: 'gold' | 'danger' | 'warning' | 'success';
   /**
    * Where the badge starts before flying to the tile:
    *   'center' — screen centre (default for winner badges)
@@ -468,7 +468,7 @@ export default function CeremonyOverlay({
                 aria-hidden="true"
               />
             ) : (
-              <>{t.badge}</>
+              t.badge
             )}
           </div>
         );
