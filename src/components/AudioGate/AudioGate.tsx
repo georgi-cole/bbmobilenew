@@ -21,16 +21,16 @@ export default function AudioGate({ onUnlock }: AudioGateProps) {
   const handleUnlock = useCallback(() => {
     if (unlocked) return;
     setUnlocked(true);
-    SoundManager.unlockOnUserGesture();
+    SoundManager.unlockFromGesture();
     onUnlock?.();
   }, [unlocked, onUnlock]);
 
   useEffect(() => {
     if (unlocked) {
-      SoundManager.unlockOnUserGesture();
+      SoundManager.unlockFromGesture();
       onUnlock?.();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

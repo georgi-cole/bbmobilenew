@@ -29,8 +29,8 @@ vi.mock('../../src/hooks/useGameMode', () => ({
 vi.mock('../../src/hooks/useSound', () => ({
   default: () => ({
     play: vi.fn(),
-    playMusic: vi.fn(),
-    stopMusic: vi.fn(),
+    requestBgm: vi.fn(),
+    releaseBgm: vi.fn(),
   }),
 }));
 
