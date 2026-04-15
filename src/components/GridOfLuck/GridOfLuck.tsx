@@ -198,6 +198,14 @@ const FLOAT_COLUMN_OFFSET = 20;
 const FLOAT_BASE_TOP = 48;
 const FLOAT_ROW_OFFSET = 10;
 const CONTINUE_RITUAL_LABEL = 'Continue Ritual';
+const CONTINUE_WATCHING_LABEL = 'Continue Watching';
+// Skip counters can stack to 2 and advanceTurn may need to wrap the order more than
+// once while also stepping past eliminated players, so allow several full passes.
+const TURN_ADVANCE_ATTEMPT_MULTIPLIER = 6;
+const MIN_TURN_ADVANCE_ATTEMPTS = 12;
+// Skip-to-results simulates the rest of the chamber using the same deterministic
+// state transitions; 320 steps is ample for a 20-box game with chained effects.
+const MAX_SIMULATION_ITERATIONS = 320;
 
 const cameraEffects: Variants = {
   idle: {
@@ -562,7 +570,10 @@ function advanceTurn(state: GameState): { state: GameState; message: string } {
   let players = clonePlayers(state.players);
   let nextIndex = state.currentTurnIndex;
   const skippedPlayerNames = new Set<string>();
-  const maxAttempts = Math.max(state.turnOrder.length * 6, 12);
+  const maxAttempts = Math.max(
+    state.turnOrder.length * TURN_ADVANCE_ATTEMPT_MULTIPLIER,
+    MIN_TURN_ADVANCE_ATTEMPTS,
+  );
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     nextIndex = (nextIndex + 1) % state.turnOrder.length;
@@ -1183,7 +1194,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
   const handleSkipToResults = useCallback(() => {
     let simulatedState = state;
     let latestMessage = announcement;
-    let safety = 320;
+    let safety = MAX_SIMULATION_ITERATIONS;
 
     while (simulatedState.gamePhase !== 'finished' && safety > 0) {
       safety -= 1;
@@ -1343,7 +1354,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {isSpectatorMode || humanPlayer?.isEliminated ? 'Continue Watching' : CONTINUE_RITUAL_LABEL}
+                {isSpectatorMode || humanPlayer?.isEliminated ? CONTINUE_WATCHING_LABEL : CONTINUE_RITUAL_LABEL}
               </motion.button>
             )}
             {turnMode === 'finished' && (
