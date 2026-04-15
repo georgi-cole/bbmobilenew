@@ -64,6 +64,7 @@ export interface AnimatedVoteResultsModalProps {
 const MIN_BAR_PCT = 4;
 const TV_RING_RADIUS = 42;
 const TV_RING_CIRCUMFERENCE = 2 * Math.PI * TV_RING_RADIUS;
+const DEFAULT_PUBLIC_TIEBREAK_DELAY_MS = 3000;
 
 interface VoteRingAvatarProps {
   player: Player;
@@ -234,7 +235,7 @@ export default function AnimatedVoteResultsModal({
         onPublicTiebreakResolved?.(publicTiebreak.evicteeIds);
       }
       fire();
-    }, publicTiebreak.countdownMs ?? 3000);
+    }, publicTiebreak.countdownMs ?? DEFAULT_PUBLIC_TIEBREAK_DELAY_MS);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicTiebreakVisible, publicTiebreak, onPublicTiebreakResolved]);

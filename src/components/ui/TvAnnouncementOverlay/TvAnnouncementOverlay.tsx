@@ -176,8 +176,7 @@ export default function TvAnnouncementOverlay({
   };
   const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
     if (!keyboardFocusPauseRef.current) return;
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+    if (!(event.target instanceof HTMLElement)) return;
     hoverPausedRef.current = true;
     cancelAnimationFrame(rafRef.current);
   };
