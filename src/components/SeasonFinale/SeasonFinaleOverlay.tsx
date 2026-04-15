@@ -16,6 +16,7 @@ import type { Player } from '../../types';
 import { resolveAvatar } from '../../utils/avatar';
 import { selectSettings } from '../../store/settingsSlice';
 import FinalLightsOutSequence from '../FinalLightsOutSequence/FinalLightsOutSequence';
+import { buildFinalGoodbyeMessages } from './finaleGoodbyes';
 import './SeasonFinaleOverlay.css';
 
 const HOST_PLAYER: Player = {
@@ -46,15 +47,6 @@ const INTERVIEW_BANKS = [
   ],
 ] as const;
 
-const GOODBYE_BANK = [
-  'What a ride. Goodnight, house!',
-  'That is a wrap. See you on finale night!',
-  'Memories made. Lights out!',
-  'From first key to final vote — wow.',
-  'Big moves, big feelings, big finish.',
-  'Game over, story forever.',
-];
-
 function buildInterviewLines(winner: Player, interviewIndex: number): ChatLine[] {
   const script = INTERVIEW_BANKS[interviewIndex];
   return script.flatMap(([question, answer], pairIndex) => ([
@@ -84,7 +76,7 @@ function buildPublicFavoriteSetupLines(): ChatLine[] {
   ];
 }
 
-function buildGoodbyeLines(players: Player[], season: number): ChatLine[] {
+function buildGoodbyeLines(players: Player[], season: number, seed: number): ChatLine[] {
   const hostIntro: ChatLine = {
     id: 'goodbye-host',
     role: 'host',
@@ -92,11 +84,11 @@ function buildGoodbyeLines(players: Player[], season: number): ChatLine[] {
     text: `Season ${season} gave us blindsides, heartbreak, and a champion. One final message from the players.`,
   };
 
-  const playerLines = players.map((player, index) => ({
+  const playerLines = buildFinalGoodbyeMessages(players, season, seed).map(({ player, text }) => ({
     id: `goodbye-${player.id}`,
     role: 'guest',
     player,
-    text: GOODBYE_BANK[(index + season) % GOODBYE_BANK.length],
+    text,
   }));
 
   return [hostIntro, ...playerLines];
@@ -122,8 +114,8 @@ export default function SeasonFinaleOverlay() {
 
   const publicFavoriteSetupLines = useMemo(() => buildPublicFavoriteSetupLines(), []);
   const goodbyeLines = useMemo(
-    () => buildGoodbyeLines(game.players, game.season),
-    [game.players, game.season],
+    () => buildGoodbyeLines(game.players, game.season, game.seed),
+    [game.players, game.season, game.seed],
   );
 
   useEffect(() => {
