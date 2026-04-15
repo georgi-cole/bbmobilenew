@@ -1108,6 +1108,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'logic',
     retired: false,
   },
+
+  gridOfLuck: {
+    key: 'gridOfLuck',
+    title: 'Grid of Luck',
+    description: 'Open ritual boxes to gain LP, trigger chaos, and eliminate rivals in a cinematic chamber.',
+    instructions: [
+      'Every player begins with 500 LP and takes turns opening one sealed box.',
+      'Powers resolve immediately — if a power needs a target, choose a valid player before the ritual continues.',
+      'Shield blocks the next LP damage or elimination effect once.',
+      'If your LP reaches 0, you are eliminated immediately but remain visible in the chamber.',
+      'When only one player remains alive they win instantly; otherwise the highest LP wins when the grid ends.',
+    ],
+    resultMode: 'placement',
+    metricKind: 'points',
+    metricLabel: 'LP',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'GridOfLuck',
+    legacy: false,
+    weight: 2,
+    category: 'logic',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
