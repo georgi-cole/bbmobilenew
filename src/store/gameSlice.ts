@@ -4556,6 +4556,8 @@ export const tryActivateSecretMission =
     const { game, settings } = getState();
     const aliveCount = game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
     const seasonMissionCount = getSeasonSecretMissionCount(game);
+    // Legacy saves may not have `secretMissionSecondChanceResolved`; once two
+    // missions are already counted, treat the second-chance roll as resolved.
     const secondMissionChanceResolved = game.secretMissionSecondChanceResolved ?? seasonMissionCount >= 2;
 
     if (game.phase !== 'week_start') return false;

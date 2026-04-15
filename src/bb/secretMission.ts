@@ -604,7 +604,10 @@ export function pickMissionTemplate(day: number, maxDaySpan?: number): MissionTe
     ? MISSION_TEMPLATES.filter((template) => template.daySpan <= maxDaySpan)
     : MISSION_TEMPLATES;
   if (eligibleTemplates.length === 0) {
-    throw new Error(`No secret mission template fits within ${maxDaySpan} days`);
+    const minRequiredDaySpan = Math.min(...MISSION_TEMPLATES.map((template) => template.daySpan));
+    throw new Error(
+      `No secret mission template fits within ${maxDaySpan} days (minimum required: ${minRequiredDaySpan})`,
+    );
   }
   const pool = eligibleTemplates;
   const idx = (day * 3) % pool.length;
@@ -699,7 +702,7 @@ export function hasVoteDeductionConflict(state: ActivationCheckState): boolean {
   return state.doubleEviction?.weekActive === true || state.awaitingTieBreak === true;
 }
 
-function getActivePlayerCount(players: ActivationCheckState['players']): number {
+function getAlivePlayerCount(players: ActivationCheckState['players']): number {
   return players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
 }
 
@@ -709,7 +712,7 @@ export function canUseDoubleVote(state: ActivationCheckState): boolean {
   if (state.phase !== 'live_vote') return false;
   if (isFinal4OrLater(state.phase)) return false;
   if (hasDoubleVoteConflict(state)) return false;
-  if (getActivePlayerCount(state.players) <= 4) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
 
   const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury') return false;
@@ -725,7 +728,7 @@ export function canUseVoteDeduction(state: ActivationCheckState): boolean {
   if (isFinal4OrLater(state.phase)) return false;
   if (hasVoteDeductionConflict(state)) return false;
   if (!state.voteResults) return false;
-  if (getActivePlayerCount(state.players) <= 4) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
 
   const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer) return false;
@@ -748,7 +751,7 @@ export function canOfferMissionImmunity(state: ActivationCheckState): boolean {
   if (!reward || reward.type !== 'immunity' || !reward.eligible) return false;
   if (state.phase !== 'pos_ceremony_results') return false;
   if (isFinal4OrLater(state.phase)) return false;
-  if (getActivePlayerCount(state.players) <= 4) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
   if (typeof state.week === 'number' && reward.activeUntilDay !== undefined && state.week > reward.activeUntilDay) {
     return false;
   }
