@@ -15,6 +15,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import './FinalLightsOutSequence.css';
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export interface FinalLightsOutSequenceProps {
   publicFavoriteWinnerName?: string;
   onComplete: () => void;
@@ -44,10 +46,13 @@ export default function FinalLightsOutSequence({
 }: FinalLightsOutSequenceProps) {
   const [stage, setStage] = useState(0);
   const [tvViewportRect, setTvViewportRect] = useState<TvViewportRect | null>(null);
+  const [tvZoneRect, setTvZoneRect] = useState<TvViewportRect | null>(null);
   const rafRef = useRef<number>(0);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const observedViewportRef = useRef<HTMLElement | null>(null);
+  const observedZoneRef = useRef<HTMLElement | null>(null);
   const lastMeasuredRectRef = useRef<TvViewportRect | null>(null);
+  const lastMeasuredZoneRectRef = useRef<TvViewportRect | null>(null);
   const [noAnim] = useState(
     () =>
       typeof document !== 'undefined' &&
@@ -75,6 +80,7 @@ export default function FinalLightsOutSequence({
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const getViewport = () => document.querySelector<HTMLElement>('.tv-zone__viewport');
+    const getTvZone = () => document.querySelector<HTMLElement>('.tv-zone');
     const requestFrame =
       typeof window.requestAnimationFrame === 'function'
         ? window.requestAnimationFrame.bind(window)
@@ -90,13 +96,20 @@ export default function FinalLightsOutSequence({
       setTvViewportRect(nextRect);
     };
 
-    const attachResizeObserver = (viewport: HTMLElement | null) => {
-      if (observedViewportRef.current === viewport) return;
+    const setMeasuredZoneRect = (nextRect: TvViewportRect | null) => {
+      if (areViewportRectsEqual(lastMeasuredZoneRectRef.current, nextRect)) return;
+      lastMeasuredZoneRectRef.current = nextRect;
+      setTvZoneRect(nextRect);
+    };
+
+    const attachResizeObserver = (viewport: HTMLElement | null, zone: HTMLElement | null) => {
+      if (observedViewportRef.current === viewport && observedZoneRef.current === zone) return;
 
       resizeObserverRef.current?.disconnect();
       observedViewportRef.current = viewport;
+      observedZoneRef.current = zone;
 
-      if (!viewport || typeof ResizeObserver === 'undefined') {
+      if (typeof ResizeObserver === 'undefined') {
         resizeObserverRef.current = null;
         return;
       }
@@ -104,7 +117,8 @@ export default function FinalLightsOutSequence({
       resizeObserverRef.current = new ResizeObserver(() => {
         scheduleRefresh();
       });
-      resizeObserverRef.current.observe(viewport);
+      if (viewport) resizeObserverRef.current.observe(viewport);
+      if (zone && zone !== viewport) resizeObserverRef.current.observe(zone);
     };
 
     const measureTvViewport = (viewport: HTMLElement | null) => {
@@ -123,10 +137,28 @@ export default function FinalLightsOutSequence({
       return viewport;
     };
 
+    const measureTvZone = (zone: HTMLElement | null) => {
+      if (!zone) {
+        setMeasuredZoneRect(null);
+        return null;
+      }
+
+      const { top, left, width, height } = zone.getBoundingClientRect();
+      if (width <= 0 || height <= 0) {
+        setMeasuredZoneRect(null);
+        return zone;
+      }
+
+      setMeasuredZoneRect({ top, left, width, height });
+      return zone;
+    };
+
     const refreshTvViewportRect = () => {
       const viewport = getViewport();
-      attachResizeObserver(viewport);
+      const zone = getTvZone();
+      attachResizeObserver(viewport, zone);
       measureTvViewport(viewport);
+      measureTvZone(zone);
     };
 
     const scheduleRefresh = () => {
@@ -155,6 +187,7 @@ export default function FinalLightsOutSequence({
     return () => {
       if (rafRef.current) cancelFrame(rafRef.current);
       resizeObserverRef.current?.disconnect();
+      observedZoneRef.current = null;
       mutationObserver?.disconnect();
       window.removeEventListener('resize', scheduleRefresh);
       window.removeEventListener('scroll', scheduleRefresh, true);
@@ -200,6 +233,18 @@ export default function FinalLightsOutSequence({
         ))}
       </div>
 
+      <div
+        className={[
+          'flo-tv-shell',
+          tvZoneRect ? 'flo-tv-shell--anchored' : 'flo-tv-shell--fallback',
+          'flo-tv-shell--active',
+          stage >= 5 ? 'flo-tv-shell--off' : null,
+        ].filter(Boolean).join(' ')}
+        style={tvZoneRect ?? undefined}
+        data-testid="final-lights-off-tv-shell"
+        aria-hidden="true"
+      />
+
       {/* ── Main TV screen area — message appears inside the existing TV viewport ── */}
       <div
         className={[
@@ -214,11 +259,17 @@ export default function FinalLightsOutSequence({
         <div className="flo-tv-screen-inner">
           <div className="flo-tv-scanlines" />
           <div className="flo-tv-content">
-            <span className="flo-tv-logo" aria-hidden="true">👁</span>
+            <span className="flo-tv-logo" aria-hidden="true">
+              <img
+                className="flo-tv-logo-image"
+                src={`${BASE}/assets/avatar_badges/goodbye_eye_vector.svg`}
+                alt=""
+              />
+            </span>
             <p className="flo-tv-message">
-              This is not a Goodbye,<br />
-              it's see you soon<br />
-              <em>from the Big Eye.</em>
+              <span>This is not a Goodbye,</span>
+              <span>it's see you soon</span>
+              <span className="flo-tv-message-signoff">from the Big Eye.</span>
             </p>
             {publicFavoriteWinnerName && (
               <p className="flo-tv-footnote">
