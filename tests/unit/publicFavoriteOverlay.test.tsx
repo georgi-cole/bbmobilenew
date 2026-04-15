@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PublicFavoriteOverlay from '../../src/components/PublicFavoriteOverlay/PublicFavoriteOverlay';
 import type { Player } from '../../src/types';
@@ -131,5 +131,43 @@ describe('PublicFavoriteOverlay', () => {
     expect(screen.getByText("Public's Favorite Player")).toBeInTheDocument();
     expect(screen.getByText('Wins 25,000 Eyeoleans!')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
+
+  it('replaces percentage text cleanly when vote totals update', () => {
+    mockedUseBattleBackVoting
+      .mockReturnValueOnce({
+        votes: { p1: 41, p2: 34, p3: 25 },
+        eliminated: [],
+        winnerId: null,
+        isComplete: false,
+      })
+      .mockReturnValueOnce({
+        votes: { p1: 39, p2: 36, p3: 25 },
+        eliminated: [],
+        winnerId: null,
+        isComplete: false,
+      });
+
+    const { rerender } = render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const resultsBoard = screen.getByRole('region', { name: /public vote ranking board/i });
+
+    expect(within(resultsBoard).getByRole('button', { name: /jordan, rank 1, 39%/i })).toBeInTheDocument();
+    expect(within(resultsBoard).queryByText('41%')).not.toBeInTheDocument();
+    expect(within(resultsBoard).queryByText('34%')).not.toBeInTheDocument();
   });
 });

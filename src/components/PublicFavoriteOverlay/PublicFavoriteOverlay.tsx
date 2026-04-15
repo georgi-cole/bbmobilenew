@@ -127,18 +127,7 @@ function getStatusLine(args: {
 function AnimatedPercent({ percent }: { percent: number }) {
   return (
     <span className="pf-overlay__percent-wrap" aria-label={`${percent}%`}>
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={percent}
-          className="pf-overlay__percent-value"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
-        >
-          {percent}%
-        </motion.span>
-      </AnimatePresence>
+      <span className="pf-overlay__percent-value">{percent}%</span>
     </span>
   );
 }
