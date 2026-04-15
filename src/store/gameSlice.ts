@@ -221,6 +221,8 @@ export function createInitialGameState(): GameState {
     awaitingTieBreak: false,
     tiedNomineeIds: null,
     awaitingMissionImmunityOffer: false,
+    secretMissionCount: 0,
+    secretMissionSecondChanceResolved: false,
     awaitingFinal3Eviction: false,
     awaitingFinal3Plea: false,
     aiReplacementStep: 0,
@@ -287,6 +289,20 @@ function refreshSecretMissionCompletion(secretMission: GameState['secretMission'
   if (allDone) {
     secretMission.status = 'rewardPending';
   }
+}
+
+const MIN_SECRET_MISSION_DAY_SPAN = Math.min(...MISSION_TEMPLATES.map((template) => template.daySpan));
+
+function canReplaceSecretMissionSlot(secretMission: GameState['secretMission']): boolean {
+  if (!secretMission) return true;
+  if (secretMission.status === 'declined' || secretMission.status === 'expired') return true;
+  if (secretMission.status !== 'rewardClaimed') return false;
+  const reward = secretMission.reward;
+  if (!reward) return true;
+  return reward.consumed
+    || reward.expired
+    || !reward.eligible
+    || reward.type === 'plus1000Influence';
 }
 
 function formatNameList(names: string[]): string {
@@ -3778,13 +3794,32 @@ const gameSlice = createSlice({
 
     /**
      * Trigger a new secret mission for the current season.
-     * Idempotent: ignored if a mission already exists (at most one per season).
+     * Supports up to two missions per season when the current slot is recyclable.
      * @param day  The game week / day on which the trigger fires.
      */
-    triggerSecretMission(state, action: PayloadAction<number>) {
-      if (state.secretMission) return; // already triggered this season
-      const day = action.payload;
-      state.secretMission = createSecretMissionState(day);
+    triggerSecretMission(
+      state,
+      action: PayloadAction<number | { day: number; maxDaySpan?: number }>,
+    ) {
+      const missionCount = state.secretMissionCount ?? 0;
+      if (missionCount >= 2) return;
+      if (!canReplaceSecretMissionSlot(state.secretMission)) return;
+
+      const day = typeof action.payload === 'number' ? action.payload : action.payload.day;
+      const maxDaySpan = typeof action.payload === 'number' ? undefined : action.payload.maxDaySpan;
+      const nextMissionNumber = missionCount + 1;
+      state.secretMission = createSecretMissionState(day, {
+        maxDaySpan,
+        missionNumber: nextMissionNumber,
+      });
+      state.secretMissionCount = nextMissionNumber;
+      if (nextMissionNumber >= 2) {
+        state.secretMissionSecondChanceResolved = true;
+      }
+    },
+
+    markSecondSecretMissionChanceResolved(state) {
+      state.secretMissionSecondChanceResolved = true;
     },
 
     /**
@@ -4269,6 +4304,7 @@ export const {
   hydrateGame,
   setHasSeenConfessionalSpotlight,
   triggerSecretMission,
+  markSecondSecretMissionChanceResolved,
   offerSecretMission,
   acceptSecretMission,
   reshuffleSecretMission,
@@ -4500,7 +4536,9 @@ export const startMinigame =
  *
  * Rules:
  *  - Evaluates from Day 3 onward while more than 5 players remain
- *  - At most one mission may trigger per season
+ *  - The first mission is guaranteed on the first eligible week
+ *  - A second mission may trigger later in the season with a single 50% roll
+ *  - The second mission only triggers if its deadline can still land by Final 5
  *  - The testing overrides affect only this calculation
  *  - Uses a twist-specific RNG path so it does not perturb other outcomes
  *
@@ -4511,25 +4549,55 @@ export const tryActivateSecretMission =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState();
     const aliveCount = game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
+    const seasonMissionCount = game.secretMissionCount ?? (game.secretMission ? 1 : 0);
+    const secondMissionChanceResolved = game.secretMissionSecondChanceResolved ?? seasonMissionCount >= 2;
 
     if (game.phase !== 'week_start') return false;
-    if (game.secretMission) return false;
     if (game.week < 3) return false;
     if (aliveCount <= 5) return false;
+    if (seasonMissionCount >= 2) return false;
+    if (!canReplaceSecretMissionSlot(game.secretMission)) return false;
+
+    const maxDaySpan = aliveCount - 5;
+    const isSecondMissionAttempt = seasonMissionCount === 1;
+    if (isSecondMissionAttempt && maxDaySpan < MIN_SECRET_MISSION_DAY_SPAN) {
+      dispatch(markSecondSecretMissionChanceResolved());
+      return false;
+    }
 
     const forcedWeek = settings.sim.secretMissionTriggerWeekOverride;
     if (forcedWeek !== null) {
       if (game.week !== forcedWeek) return false;
-      dispatch(triggerSecretMission(game.week));
+      dispatch(triggerSecretMission(
+        isSecondMissionAttempt
+          ? { day: game.week, maxDaySpan }
+          : game.week,
+      ));
       return true;
     }
 
     const override = settings.sim.secretMissionTriggerOverride;
     const rng = mulberry32((game.seed ^ Math.imul(game.week, 0x9e3779b1)) >>> 0);
 
-    if (!checkSecretMissionTrigger(game.week, rng, aliveCount, override)) return false;
+    const didTrigger = checkSecretMissionTrigger({
+      day: game.week,
+      aliveCount,
+      override,
+      seasonMissionCount,
+      secondMissionRollResolved: secondMissionChanceResolved,
+    }, rng);
+    if (!didTrigger) {
+      if (isSecondMissionAttempt && !secondMissionChanceResolved) {
+        dispatch(markSecondSecretMissionChanceResolved());
+      }
+      return false;
+    }
 
-    dispatch(triggerSecretMission(game.week));
+    dispatch(triggerSecretMission(
+      isSecondMissionAttempt
+        ? { day: game.week, maxDaySpan }
+        : game.week,
+    ));
     return true;
   };
 

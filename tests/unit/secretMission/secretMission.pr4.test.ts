@@ -159,6 +159,33 @@ describe('secret mission v2 follow-up', () => {
     })).toBe(true);
   });
 
+  it('does not offer ceremony immunity once only four active players remain', () => {
+    const store = setupAcceptedMission();
+    store.dispatch(syncMissionTask({
+      taskId: store.getState().game.secretMission!.tasks[0].id,
+      updates: { current: 1, completed: true },
+    }));
+    store.getState().game.secretMission!.tasks.slice(1).forEach((task) => {
+      store.dispatch(syncMissionTask({ taskId: task.id, updates: { current: task.target, completed: true } }));
+    });
+    store.dispatch(claimMissionReward({ claimDay: 5, durationDays: 2 }));
+
+    expect(canOfferMissionImmunity({
+      phase: 'pos_ceremony_results',
+      week: 6,
+      secretMission: store.getState().game.secretMission,
+      nomineeIds: ['user', 'p1'],
+      lohId: 'p0',
+      posWinnerId: 'p2',
+      players: [
+        { id: 'user', isUser: true, status: 'nominated' },
+        { id: 'p0', isUser: false, status: 'loh' },
+        { id: 'p1', isUser: false, status: 'nominated' },
+        { id: 'p2', isUser: false, status: 'pos' },
+      ],
+    })).toBe(false);
+  });
+
   it('consumes immunity, removes the human from the block, and keeps at least two nominees when possible', () => {
     const store = setupAcceptedMission();
     store.dispatch(syncMissionTask({

@@ -93,6 +93,7 @@ function makeCheckState(overrides: Partial<ActivationCheckState> = {}): Activati
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'p2', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'active' },
+      { id: 'spare', isUser: false, status: 'active' },
     ],
     doubleEviction: { weekActive: false },
     voteResults: null,
@@ -218,6 +219,18 @@ describe('canUseDoubleVote — safe contexts', () => {
         ...makeCheckState().secretMission!,
         reward: { type: 'voteDeduction', consumed: false, expired: false, eligible: true },
       },
+    });
+    expect(canUseDoubleVote(state)).toBe(false);
+  });
+
+  it('returns false when only four active players remain', () => {
+    const state = makeCheckState({
+      players: [
+        { id: 'p0', isUser: false, status: 'loh' },
+        { id: 'p1', isUser: false, status: 'nominated' },
+        { id: 'p2', isUser: false, status: 'nominated' },
+        { id: 'user', isUser: true, status: 'active' },
+      ],
     });
     expect(canUseDoubleVote(state)).toBe(false);
   });
@@ -536,6 +549,8 @@ describe('canUseVoteDeduction — availability conditions', () => {
       { id: 'p0', isUser: false, status: 'loh' },
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'nominated' },
+      { id: 's1', isUser: false, status: 'active' },
+      { id: 's2', isUser: false, status: 'active' },
     ],
     doubleEviction: { weekActive: false },
     voteResults: { user: 3, p1: 1 },
@@ -544,6 +559,20 @@ describe('canUseVoteDeduction — availability conditions', () => {
 
   it('returns true in a safe single-eviction context with human on block', () => {
     expect(canUseVoteDeduction(baseVoteDeductionState)).toBe(true);
+  });
+
+  it('returns false when only four active players remain', () => {
+    const state: ActivationCheckState = {
+      ...baseVoteDeductionState,
+      players: [
+        { id: 'p0', isUser: false, status: 'loh' },
+        { id: 'p1', isUser: false, status: 'nominated' },
+        { id: 'user', isUser: true, status: 'nominated' },
+        { id: 'spare', isUser: false, status: 'active' },
+      ],
+      voteResults: { user: 2, p1: 1 },
+    };
+    expect(canUseVoteDeduction(state)).toBe(false);
   });
 
   it('returns false when human is NOT a nominee', () => {

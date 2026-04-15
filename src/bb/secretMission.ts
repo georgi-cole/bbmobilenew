@@ -143,6 +143,7 @@ export function createImmunityReward(
 
 export interface SecretMissionState {
   triggeredDay: number;
+  missionNumber?: number;
   startDay: number;
   endDay: number;
   survivalWindowEndDay: number;
@@ -561,60 +562,61 @@ export const DEFAULT_TRIGGER_CHANCES: Readonly<Record<number, number>> = {
   11: 0.50,
   12: 0.54,
 } as const;
+export const SECOND_SECRET_MISSION_CHANCE = 0.5;
 
-function resolveAliveCountAndOverride(
-  aliveCountOrOverride?: number | null,
-  overrideMaybe?: number | null,
-): { aliveCount: number | null; override: number | null | undefined } {
-  if (overrideMaybe === undefined) {
-    return {
-      aliveCount: null,
-      override: aliveCountOrOverride,
-    };
-  }
-  return {
-    aliveCount: aliveCountOrOverride ?? null,
-    override: overrideMaybe,
-  };
+export interface SecretMissionTriggerContext {
+  day: number;
+  aliveCount?: number | null;
+  override?: number | null;
+  seasonMissionCount?: number;
+  secondMissionRollResolved?: boolean;
 }
 
-export function getSecretMissionTriggerChance(
-  day: number,
-  aliveCountOrOverride?: number | null,
-  overrideMaybe?: number | null,
-): number {
-  const { aliveCount, override } = resolveAliveCountAndOverride(aliveCountOrOverride, overrideMaybe);
+export function getSecretMissionTriggerChance({
+  day,
+  aliveCount = null,
+  override,
+  seasonMissionCount = 0,
+  secondMissionRollResolved = false,
+}: SecretMissionTriggerContext): number {
   if (day < 3) return 0;
   if (aliveCount !== null && aliveCount <= 5) return 0;
   if (override !== null && override !== undefined) {
     return Math.max(0, Math.min(100, override)) / 100;
   }
-  if (day in DEFAULT_TRIGGER_CHANCES) return DEFAULT_TRIGGER_CHANCES[day] ?? 0;
-  return 0.54;
+  if (seasonMissionCount <= 0) return 1;
+  if (seasonMissionCount >= 2 || secondMissionRollResolved) return 0;
+  return SECOND_SECRET_MISSION_CHANCE;
 }
 
 export function checkSecretMissionTrigger(
-  day: number,
+  context: SecretMissionTriggerContext,
   rng: () => number,
-  aliveCountOrOverride?: number | null,
-  overrideMaybe?: number | null,
 ): boolean {
-  const chance = getSecretMissionTriggerChance(day, aliveCountOrOverride, overrideMaybe);
+  const chance = getSecretMissionTriggerChance(context);
   if (chance <= 0) return false;
   if (chance >= 1) return true;
   return rng() < chance;
 }
 
-export function pickMissionTemplate(day: number): MissionTemplate {
-  const idx = (day * 3) % MISSION_TEMPLATES.length;
-  return MISSION_TEMPLATES[idx];
+export function pickMissionTemplate(day: number, maxDaySpan?: number): MissionTemplate {
+  const eligibleTemplates = typeof maxDaySpan === 'number'
+    ? MISSION_TEMPLATES.filter((template) => template.daySpan <= maxDaySpan)
+    : MISSION_TEMPLATES;
+  const pool = eligibleTemplates.length > 0 ? eligibleTemplates : MISSION_TEMPLATES;
+  const idx = (day * 3) % pool.length;
+  return pool[idx];
 }
 
-export function createSecretMissionState(day: number): SecretMissionState {
-  const template = pickMissionTemplate(day);
+export function createSecretMissionState(
+  day: number,
+  options?: { maxDaySpan?: number; missionNumber?: number },
+): SecretMissionState {
+  const template = pickMissionTemplate(day, options?.maxDaySpan);
   const endDay = day + template.daySpan;
   return {
     triggeredDay: day,
+    missionNumber: options?.missionNumber,
     startDay: day,
     endDay,
     survivalWindowEndDay: endDay,
@@ -694,12 +696,17 @@ export function hasVoteDeductionConflict(state: ActivationCheckState): boolean {
   return state.doubleEviction?.weekActive === true || state.awaitingTieBreak === true;
 }
 
+function getActivePlayerCount(players: ActivationCheckState['players']): number {
+  return players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
+}
+
 export function canUseDoubleVote(state: ActivationCheckState): boolean {
   const reward = state.secretMission?.reward;
   if (!reward || reward.type !== 'doubleVote' || !reward.eligible) return false;
   if (state.phase !== 'live_vote') return false;
   if (isFinal4OrLater(state.phase)) return false;
   if (hasDoubleVoteConflict(state)) return false;
+  if (getActivePlayerCount(state.players) <= 4) return false;
 
   const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury') return false;
@@ -715,6 +722,7 @@ export function canUseVoteDeduction(state: ActivationCheckState): boolean {
   if (isFinal4OrLater(state.phase)) return false;
   if (hasVoteDeductionConflict(state)) return false;
   if (!state.voteResults) return false;
+  if (getActivePlayerCount(state.players) <= 4) return false;
 
   const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer) return false;
@@ -737,6 +745,7 @@ export function canOfferMissionImmunity(state: ActivationCheckState): boolean {
   if (!reward || reward.type !== 'immunity' || !reward.eligible) return false;
   if (state.phase !== 'pos_ceremony_results') return false;
   if (isFinal4OrLater(state.phase)) return false;
+  if (getActivePlayerCount(state.players) <= 4) return false;
   if (typeof state.week === 'number' && reward.activeUntilDay !== undefined && state.week > reward.activeUntilDay) {
     return false;
   }

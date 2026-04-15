@@ -12,7 +12,6 @@ import gameReducer, {
 } from '../../../src/store/gameSlice';
 import settingsReducer, { setSim } from '../../../src/store/settingsSlice';
 import {
-  DEFAULT_TRIGGER_CHANCES,
   buildMissionTasks,
   checkSecretMissionTrigger,
   createSecretMissionState,
@@ -20,6 +19,8 @@ import {
   isSecretMissionSuccessful,
   MISSION_TEMPLATES,
   pickMissionTemplate,
+  SECOND_SECRET_MISSION_CHANCE,
+  type SecretMissionTriggerContext,
   type MissionTemplate,
 } from '../../../src/bb/secretMission';
 
@@ -33,40 +34,67 @@ function makeStore() {
 }
 
 const alwaysReturn = (value: number) => () => value;
+const makeTriggerContext = (overrides: Partial<SecretMissionTriggerContext> = {}): SecretMissionTriggerContext => ({
+  day: 3,
+  aliveCount: 8,
+  seasonMissionCount: 0,
+  secondMissionRollResolved: false,
+  ...overrides,
+});
 
 describe('getSecretMissionTriggerChance', () => {
-  it('opens the default trigger window at Day 3', () => {
-    expect(getSecretMissionTriggerChance(2)).toBe(0);
-    expect(getSecretMissionTriggerChance(3)).toBe(DEFAULT_TRIGGER_CHANCES[3]);
-    expect(getSecretMissionTriggerChance(5)).toBe(DEFAULT_TRIGGER_CHANCES[5]);
+  it('guarantees the first mission from the first eligible day', () => {
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 2 }))).toBe(0);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 3, seasonMissionCount: 0 }))).toBe(1);
   });
 
   it('returns 0 when aliveCount is final-5-or-fewer', () => {
-    expect(getSecretMissionTriggerChance(7, 5, null)).toBe(0);
-    expect(getSecretMissionTriggerChance(7, 4, null)).toBe(0);
-    expect(getSecretMissionTriggerChance(7, 6, null)).toBe(DEFAULT_TRIGGER_CHANCES[7]);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 7, aliveCount: 5 }))).toBe(0);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 7, aliveCount: 4 }))).toBe(0);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 7, aliveCount: 6 }))).toBe(1);
+  });
+
+  it('uses a flat 50% chance for the second mission before the roll is resolved', () => {
+    expect(getSecretMissionTriggerChance(makeTriggerContext({
+      day: 7,
+      seasonMissionCount: 1,
+      secondMissionRollResolved: false,
+    }))).toBe(SECOND_SECRET_MISSION_CHANCE);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({
+      day: 7,
+      seasonMissionCount: 1,
+      secondMissionRollResolved: true,
+    }))).toBe(0);
   });
 
   it('uses the debug override when provided', () => {
-    expect(getSecretMissionTriggerChance(7, 8, 100)).toBe(1);
-    expect(getSecretMissionTriggerChance(7, 8, 0)).toBe(0);
-    expect(getSecretMissionTriggerChance(7, 8, 35)).toBe(0.35);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 7, override: 100 }))).toBe(1);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 7, override: 0 }))).toBe(0);
+    expect(getSecretMissionTriggerChance(makeTriggerContext({ day: 7, override: 35 }))).toBe(0.35);
   });
 });
 
 describe('checkSecretMissionTrigger', () => {
   it('never fires before day 3', () => {
-    expect(checkSecretMissionTrigger(2, alwaysReturn(0))).toBe(false);
+    expect(checkSecretMissionTrigger(makeTriggerContext({ day: 2 }), alwaysReturn(0))).toBe(false);
   });
 
   it('respects alive-count gating', () => {
-    expect(checkSecretMissionTrigger(7, alwaysReturn(0), 5, null)).toBe(false);
-    expect(checkSecretMissionTrigger(7, alwaysReturn(0), 6, null)).toBe(true);
+    expect(checkSecretMissionTrigger(makeTriggerContext({ day: 7, aliveCount: 5 }), alwaysReturn(0))).toBe(false);
+    expect(checkSecretMissionTrigger(makeTriggerContext({ day: 7, aliveCount: 6 }), alwaysReturn(0))).toBe(true);
   });
 
   it('uses the computed probability threshold', () => {
-    expect(checkSecretMissionTrigger(5, alwaysReturn(0.25))).toBe(true);
-    expect(checkSecretMissionTrigger(5, alwaysReturn(0.27))).toBe(false);
+    expect(checkSecretMissionTrigger(makeTriggerContext({
+      day: 5,
+      seasonMissionCount: 1,
+      secondMissionRollResolved: false,
+    }), alwaysReturn(0.25))).toBe(true);
+    expect(checkSecretMissionTrigger(makeTriggerContext({
+      day: 5,
+      seasonMissionCount: 1,
+      secondMissionRollResolved: false,
+    }), alwaysReturn(0.75))).toBe(false);
   });
 });
 
@@ -83,6 +111,12 @@ describe('mission generation', () => {
     expect(mission.startDay).toBe(4);
     expect(mission.endDay).toBeGreaterThan(4);
     expect(mission.targetDeadlineDay).toBe(mission.endDay);
+  });
+
+  it('limits template selection to those that fit before final 5 when a max day span is provided', () => {
+    const mission = createSecretMissionState(8, { maxDaySpan: 3, missionNumber: 2 });
+    expect(mission.endDay - mission.startDay).toBeLessThanOrEqual(3);
+    expect(mission.missionNumber).toBe(2);
   });
 
   it('builds exactly five distinct requirement types and always includes survive_days', () => {
@@ -220,11 +254,52 @@ describe('tryActivateSecretMission', () => {
     }));
   }
 
-  it('allows forced triggering from day 3 onward while above final 5', () => {
+  it('guarantees the first mission from day 3 onward while above final 5', () => {
     const store = makeStore();
     setWeek(store, 3, 6);
+    expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+  });
+
+  it('can trigger a second mission after the first one is resolved', () => {
+    const store = makeStore();
+    setWeek(store, 3, 9);
+    expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+
+    const current = store.getState().game;
+    store.dispatch(hydrateGame({
+      ...current,
+      week: 6,
+      phase: 'week_start',
+      secretMissionCount: 1,
+      secretMissionSecondChanceResolved: false,
+      secretMission: {
+        ...current.secretMission!,
+        status: 'expired',
+      },
+    }));
     store.dispatch(setSim({ secretMissionTriggerOverride: 100 }));
     expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+    expect(store.getState().game.secretMissionCount).toBe(2);
+    expect(store.getState().game.secretMission?.missionNumber).toBe(2);
+  });
+
+  it('does not start a second mission if there is not enough runway before final 5', () => {
+    const store = makeStore();
+    setWeek(store, 7, 7);
+    const current = store.getState().game;
+    store.dispatch(hydrateGame({
+      ...current,
+      secretMissionCount: 1,
+      secretMissionSecondChanceResolved: false,
+      secretMission: {
+        ...createSecretMissionState(3),
+        status: 'expired',
+      },
+    }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(false);
+    expect(store.getState().game.secretMissionCount).toBe(1);
+    expect(store.getState().game.secretMissionSecondChanceResolved).toBe(true);
   });
 
   it('blocks activation once the game reaches final 5', () => {
