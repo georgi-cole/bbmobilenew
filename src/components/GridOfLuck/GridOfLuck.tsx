@@ -182,6 +182,12 @@ const CATEGORY_COLORS: Record<BoxCategory, string> = {
 const ELIMINATION_TYPES = new Set<BoxType>(['execution', 'martyrdom']);
 const HUMAN_PICK_DELAY_MS = 1200;
 const MAX_CHAIN_DEPTH = 4;
+const BOX_REVEAL_VARIANTS: VariantLabels = ['preOpen', 'crack', 'settle'];
+const SYMBOL_REVEAL_VARIANTS: VariantLabels = ['reveal', 'settle'];
+const FLOAT_BASE_LEFT = 15;
+const FLOAT_COLUMN_OFFSET = 20;
+const FLOAT_BASE_TOP = 48;
+const FLOAT_ROW_OFFSET = 10;
 
 function shuffleWithRng<T>(items: readonly T[], rng: () => number): T[] {
   const copy = [...items];
@@ -1184,7 +1190,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                     data-testid="grid-of-luck-box"
                     disabled={!isClickable}
                     variants={{ ...boxVariants, ...boxOpenSequence }}
-                    animate={(isCurrentReveal ? ['preOpen', 'crack', 'settle'] : getBoxState(box)) as VariantLabels}
+                    animate={(isCurrentReveal ? BOX_REVEAL_VARIANTS : getBoxState(box)) as VariantLabels}
                     initial={false}
                     whileHover={isClickable ? 'hover' : undefined}
                     whileTap={isClickable ? 'press' : undefined}
@@ -1196,7 +1202,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                       <motion.div className="grid-of-luck__box-whisper" aria-hidden="true" />
                       <motion.div
                         className="grid-of-luck__box-symbol"
-                        animate={(opened || isCurrentReveal ? ['reveal', 'settle'] : undefined) as VariantLabels | undefined}
+                        animate={(opened || isCurrentReveal ? SYMBOL_REVEAL_VARIANTS : undefined) as VariantLabels | undefined}
                         variants={boxOpenSequence}
                       >
                         {opened || box.isPeeked ? effectMeta.symbol : '◌'}
@@ -1254,8 +1260,8 @@ export default function GridOfLuck(props: GenericMinigameProps) {
               animate="animate"
               exit={{ opacity: 0 }}
               style={{
-                left: `calc(${15 + column * 20}% )`,
-                top: `calc(${48 + row * 10}% )`,
+                left: `calc(${FLOAT_BASE_LEFT + column * FLOAT_COLUMN_OFFSET}% )`,
+                top: `calc(${FLOAT_BASE_TOP + row * FLOAT_ROW_OFFSET}% )`,
               }}
             >
               {burst.value > 0 ? '+' : ''}{burst.value}
