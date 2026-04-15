@@ -105,6 +105,17 @@ describe('mission generation', () => {
       expect(targetTask.targetDay).toBeGreaterThanOrEqual(6);
     }
   });
+
+  it('formats generated social action labels without underscores in user-facing task text', () => {
+    for (const template of MISSION_TEMPLATES) {
+      const tasks = buildMissionTasks(template, 6, {
+        targetCandidateIds: ['alpha', 'beta', 'gamma'],
+      });
+      for (const task of tasks) {
+        expect(task.description).not.toContain('group_chat');
+      }
+    }
+  });
 });
 
 describe('game slice mission flow', () => {

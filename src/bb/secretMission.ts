@@ -234,6 +234,13 @@ function pickTargetCandidate(
   return candidates[Math.floor(rng() * candidates.length)] ?? candidates[0];
 }
 
+function formatSocialActionLabel(actionId: string): string {
+  return actionId
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase();
+}
+
 function buildRequirementTask(
   type: SecretMissionRequirementType,
   context: MissionBuildContext,
@@ -313,7 +320,7 @@ function buildRequirementTask(
       return {
         id: `social_action_count_${context.templateId}`,
         type,
-        description: `Complete 3 social interactions (${selectedSet.join(', ')}) before Day ${endDay}`,
+        description: `Complete 3 social interactions (${selectedSet.map(formatSocialActionLabel).join(', ')}) before Day ${endDay}`,
         target: 3,
         startDay,
         endDay,
