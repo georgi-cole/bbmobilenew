@@ -597,6 +597,8 @@ class _SoundManager {
    * After unlock, the latest desired BGM is started and queued SFX/music
    * markers are discarded after priming the SFX pool for future non-gesture
    * playback.
+   * After unlock, only the latest desired BGM is started (stale SFX queue
+   * items are discarded so multiple sounds do not flood the user).
    */
   unlockOnUserGesture(): void {
     if (typeof document === 'undefined') return;
@@ -622,6 +624,7 @@ class _SoundManager {
    *
    * - Primes SFX pool elements so future non-gesture SFX plays work on iOS.
    * - Starts only the latest desired BGM from the desired-per-owner map.
+   * - Starts only the latest desired BGM (from _desiredBgmKey / queue).
    * - Drops all queued SFX so they are never replayed automatically.
    */
   unlockAndPlayMusicOnly(): void {
@@ -671,6 +674,9 @@ class _SoundManager {
         discardedSfxCount += 1;
       }
     }
+    // Discard all queued items (SFX are stale; music is superseded by _desiredBgmKey).
+    // Starting only the latest desired BGM prevents multi-sound flush on iPhone.
+    this._playQueue = [];
     this._applyDesiredBgm();
 
     // Prime SFX pool elements during this gesture context so that iOS allows
@@ -681,7 +687,20 @@ class _SoundManager {
     }
     if (_audioDebug && discardedMusicMarkerCount > 0) {
       console.log('[SoundManager] discarded queued music retry marker(s):', discardedMusicMarkerCount);
+  }
+
+  /**
+   * Start the highest-priority desired BGM track if one is set and audio is
+   * unlocked.  No-op if no desired BGM or already playing the correct track.
+   */
+  private _applyDesiredBgm(): void {
+    const top = this._getTopDesiredEntry();
+    if (!top) return;
+    if (_audioDebug) {
+      console.log(`[SoundManager] _applyDesiredBgm() — starting "${top.key}" (owner: ${top.owner})`);
     }
+    this._currentBgmOwner = top.owner;
+    void this._doPlayMusic(top.key, top.opts);
   }
 
   /**
@@ -706,6 +725,11 @@ class _SoundManager {
     // even if audio remains marked unlocked.
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
     this._playQueue.push({ key: this._musicKey ?? '__desired-bgm-retry__', isMusic: true });
+  private _queueMusicRetry(): void {
+    // Re-arm the unlock listener so the next user gesture re-applies the top
+    // desired BGM via _applyDesiredBgm().  The queue is not used for music
+    // any more — _drainQueue reads from _desiredPerOwner directly.
+    this._unlocked = false;
     this._ensureUnlockListeners();
   }
 
