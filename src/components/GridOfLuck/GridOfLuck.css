@@ -457,7 +457,7 @@
   }
 
   .grid-of-luck__player-card {
-    flex: 0 0 min(180px, 48vw);
+    flex: 0 0 min(190px, 52vw);
     scroll-snap-align: start;
     gap: 6px;
     padding: 10px;
@@ -474,7 +474,7 @@
   }
 
   .grid-of-luck__player-rank {
-    font-size: 0.62rem;
+    font-size: 0.75rem;
     letter-spacing: 0.14em;
   }
 
@@ -489,7 +489,7 @@
 
   .grid-of-luck__status-list {
     min-height: 0;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     line-height: 1.3;
   }
 
