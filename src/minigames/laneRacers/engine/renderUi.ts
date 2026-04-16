@@ -1,5 +1,26 @@
 import type { QuickTapRaceLayout, QuickTapRaceRuntimeState } from './types';
 
+function traceRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): void {
+  const safeRadius = Math.max(0, Math.min(radius, width / 2, height / 2));
+  ctx.moveTo(x + safeRadius, y);
+  ctx.lineTo(x + width - safeRadius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  ctx.lineTo(x + width, y + height - safeRadius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  ctx.lineTo(x + safeRadius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  ctx.lineTo(x, y + safeRadius);
+  ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+  ctx.closePath();
+}
+
 export function drawUiOverlays(
   ctx: CanvasRenderingContext2D,
   state: QuickTapRaceRuntimeState,
@@ -28,7 +49,11 @@ export function drawUiOverlays(
   ctx.strokeStyle = 'rgba(96,165,250,0.45)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(tapZone.x, tapZone.y, tapZone.width, tapZone.height, 26);
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(tapZone.x, tapZone.y, tapZone.width, tapZone.height, 26);
+  } else {
+    traceRoundedRect(ctx, tapZone.x, tapZone.y, tapZone.width, tapZone.height, 26);
+  }
   ctx.fill();
   ctx.stroke();
 
