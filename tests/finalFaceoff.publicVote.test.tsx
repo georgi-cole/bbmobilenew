@@ -11,16 +11,27 @@ import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import { pickPhrase, PUBLIC_JURY_VOTE_LINES } from '../src/utils/juryUtils';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
 
+const mockPlay = vi.fn();
+const mockRequestBgm = vi.fn();
+const mockReleaseBgm = vi.fn();
+
 vi.mock('../src/hooks/useSound', () => ({
   default: () => ({
-    play: vi.fn(),
-    requestBgm: vi.fn(),
-    releaseBgm: vi.fn(),
+    play: mockPlay,
+    requestBgm: mockRequestBgm,
+    releaseBgm: mockReleaseBgm,
   }),
 }));
 
 vi.mock('../src/components/SeasonRecapCinematic/SeasonRecapCinematic', () => ({
-  default: () => <div data-testid="season-recap">Season recap</div>,
+  default: ({ onComplete }: { onComplete: () => void }) => (
+    <div data-testid="season-recap">
+      <span>Season recap</span>
+      <button type="button" onClick={onComplete}>
+        Finish recap
+      </button>
+    </div>
+  ),
 }));
 
 function makeProfile(
@@ -78,9 +89,37 @@ function makeStore() {
   });
 }
 
+async function advanceToRecap() {
+  // The finale flow crosses two exact timeout boundaries:
+  // 1) 3000 ms for each juror clue reveal
+  // 2) 3000 ms of extra hold time after the public vote bubble appears
+  // Splitting 2999 ms + 1 ms keeps the assertions pinned to the edge so we can
+  // prove the recap does not render early.
+  await act(async () => {
+    vi.advanceTimersByTime(2999);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(1);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(3000);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(2999);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(1);
+  });
+}
+
 describe('FinalFaceoff public vote pacing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -98,7 +137,11 @@ describe('FinalFaceoff public vote pacing', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(2999);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
     });
 
     await act(async () => {
@@ -121,5 +164,55 @@ describe('FinalFaceoff public vote pacing', () => {
     });
 
     expect(screen.getByTestId('season-recap')).toBeTruthy();
+  });
+
+  it('reveals post-recap tribunal votes one-by-one before declaring the winner', async () => {
+    const store = makeStore();
+
+    render(
+      <Provider store={store}>
+        <FinalFaceoff />
+      </Provider>,
+    );
+
+    await advanceToRecap();
+
+    expect(screen.getByTestId('season-recap')).toBeTruthy();
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Finish recap' }).click();
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('0 / 2 votes revealed')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Continue 🎉' })).toBeNull();
+    expect(screen.getAllByLabelText('Vote not yet revealed')).toHaveLength(2);
+    expect(screen.getAllByText('0', { selector: '.fo-finalist__votes' })).toHaveLength(2);
+
+    await act(async () => {
+      vi.advanceTimersByTime(799);
+    });
+
+    expect(screen.getByText('0 / 2 votes revealed')).toBeTruthy();
+    expect(screen.getAllByLabelText('Vote not yet revealed')).toHaveLength(2);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+
+    expect(screen.getByText('1 / 2 votes revealed')).toBeTruthy();
+    expect(screen.getAllByLabelText('Vote not yet revealed')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Continue 🎉' })).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(screen.queryByLabelText('Vote not yet revealed')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Continue 🎉' })).toBeTruthy();
+    expect(screen.getByText(/wins The Big Eye!/)).toBeTruthy();
   });
 });
