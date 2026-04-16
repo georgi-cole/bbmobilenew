@@ -794,3 +794,77 @@
     font-size: 0.74rem;
   }
 }
+
+@media (max-width: 430px) {
+  .grid-of-luck__camera {
+    gap: 8px;
+  }
+
+  .grid-of-luck__header {
+    gap: 5px;
+    padding-bottom: 4px;
+  }
+
+  .grid-of-luck__announcement {
+    font-size: 0.8rem;
+  }
+
+  .grid-of-luck__players {
+    gap: 5px;
+  }
+
+  .grid-of-luck__player-card {
+    flex-basis: min(126px, 36vw);
+    padding: 7px;
+  }
+
+  .grid-of-luck__sidebar {
+    gap: 6px;
+  }
+
+  .grid-of-luck__active-card,
+  .grid-of-luck__reveal-card,
+  .grid-of-luck__next-card,
+  .grid-of-luck__log-card {
+    flex-basis: min(248px, 74vw);
+    padding: 10px;
+  }
+
+  .grid-of-luck__grid-shell {
+    padding: 12px;
+  }
+
+  .grid-of-luck__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .grid-of-luck__box {
+    min-height: 62px;
+    border-radius: 13px;
+  }
+
+  .grid-of-luck__box-inner {
+    gap: 2px;
+    padding: 8px 6px;
+  }
+
+  .grid-of-luck__box-symbol {
+    font-size: 1.2rem;
+  }
+
+  .grid-of-luck__box:not(.is-opened):not(.is-peeked):not(.is-locked) .grid-of-luck__box-symbol {
+    font-size: 1.35rem;
+  }
+
+  .grid-of-luck__box-label {
+    font-size: 0.54rem;
+    letter-spacing: 0.06em;
+  }
+
+  .grid-of-luck__box-id {
+    top: 6px;
+    left: 8px;
+    font-size: 0.56rem;
+  }
+}
