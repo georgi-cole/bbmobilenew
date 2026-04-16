@@ -448,9 +448,10 @@ export default function VaultCrackerCanvasGame({
           </div>
           <div className="cb__history-list">
             {[...snapshot.guessHistory].reverse().map((guess, index) => {
-              const attemptNum = snapshot.guessHistory.length - index;
+              const originalIndex = snapshot.guessHistory.length - 1 - index;
+              const attemptNum = originalIndex + 1;
               return (
-                <div key={attemptNum} className="cb__guess-row">
+                <div key={originalIndex} className="cb__guess-row">
                   <div className="cb__guess-main">
                     <span className="cb__guess-meta">Attempt #{attemptNum}</span>
                     <span className="cb__guess-digits">{guess.digits.join(' ')}</span>
