@@ -46,10 +46,11 @@ function resetSoundManager() {
 }
 
 beforeEach(() => {
-  // Mock HTMLAudioElement.prototype.play so _doPlayMusic / _doPlay do not
-  // error out in jsdom (which does not support media elements).
-  vi.spyOn(HTMLAudioElement.prototype, 'play').mockResolvedValue(undefined);
-  vi.spyOn(HTMLAudioElement.prototype, 'pause').mockImplementation(() => {});
+  // Mock HTMLMediaElement.prototype.play/pause — play() and pause() are defined
+  // on HTMLMediaElement (not HTMLAudioElement) so spying on the correct prototype
+  // is more robust across jsdom versions and avoids "not configurable" errors.
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   resetSoundManager();
 });
 
@@ -217,8 +218,17 @@ describe('SoundManager BGM before unlock (locked state)', () => {
     SoundManager.requestBgm('music:hoh_comp_general', 'phase');
     SoundManager.requestBgm('music:risk_wheel_loop', 'minigame');
 
+    // Mock _primeSfxForMobile to a no-op: this test only cares about BGM
+    // application, not SFX pool priming (which would iterate the full registry).
+    const primeSpy = vi.spyOn(
+      SoundManager as unknown as { _primeSfxForMobile: () => void },
+      '_primeSfxForMobile',
+    ).mockImplementation(() => {});
+
     // Unlock
     SoundManager.unlockFromGesture();
+
+    primeSpy.mockRestore();
 
     // The highest-priority (minigame) track should be started
     expect(sm._musicKey).toBe('music:risk_wheel_loop');
@@ -256,10 +266,12 @@ describe('SoundManager SFX queue (locked → unlock)', () => {
 
   it('play() after unlock calls _doPlay directly (no queue)', async () => {
     const sm = SoundManager as unknown as {
+      _unlocked: boolean;
       _playQueue: Array<{ key: string; isMusic: boolean }>;
     };
-    // Unlock the manager
-    SoundManager.unlockFromGesture();
+    // Set the unlocked flag directly to avoid triggering _primeSfxForMobile(),
+    // which iterates the entire SOUND_REGISTRY and is not relevant to this test.
+    sm._unlocked = true;
 
     const doPlay = vi.spyOn(
       SoundManager as unknown as { _doPlay: () => Promise<void> },
@@ -296,16 +308,26 @@ describe('SoundManager category enable / disable', () => {
 // ── init() lifecycle listeners ────────────────────────────────────────────────
 
 describe('SoundManager init() (enabled runtime)', () => {
-  it('init() binds lifecycle listeners (_lifecycleListenersBound = true)', async () => {
+  it('init() sets _initialised and _lifecycleListenersBound via _bindLifecycleListeners', async () => {
     const sm = SoundManager as unknown as {
       _initialised: boolean;
       _lifecycleListenersBound: boolean;
+      _bindLifecycleListeners: () => void;
     };
+
+    // Stub _bindLifecycleListeners to prevent an anonymous visibilitychange
+    // listener from accumulating on document — resetSoundManager() cannot
+    // remove it.  The stub sets the flag so assertions reflect production
+    // behavior without leaking a real listener into subsequent tests.
+    const bindSpy = vi.spyOn(sm, '_bindLifecycleListeners').mockImplementation(() => {
+      sm._lifecycleListenersBound = true;
+    });
 
     await SoundManager.init();
 
     expect(sm._initialised).toBe(true);
     expect(sm._lifecycleListenersBound).toBe(true);
+    expect(bindSpy).toHaveBeenCalledOnce();
   });
 });
 
