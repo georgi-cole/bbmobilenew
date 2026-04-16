@@ -920,6 +920,65 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
 
     expect((window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(cancelCallsBefore);
   });
+
+  it('restarts auto-dismiss when TvZone swaps to a new external announcement with the same duration', () => {
+    const store = makeStore();
+    const announcements = [
+      {
+        key: 'loh_tiebreak_tie',
+        title: "It's a Tie!",
+        subtitle: 'The LOH must break the tie.',
+        isLive: true,
+        autoDismissMs: 3000,
+      },
+      {
+        key: 'loh_tiebreak_deciding',
+        title: 'The LOH is making a decision…',
+        subtitle: 'Please wait while the LOH decides who to evict.',
+        isLive: true,
+        autoDismissMs: 3000,
+      },
+    ] as const;
+
+    function ExternalAnnouncementHarness() {
+      const [index, setIndex] = React.useState(0);
+      const announcement = announcements[index] ?? null;
+
+      return (
+        <Provider store={store}>
+          <MemoryRouter>
+            <TvZone
+              externalAnnouncement={announcement}
+              onExternalAnnouncementDismiss={() => {
+                setIndex((current) => current + 1);
+              }}
+            />
+          </MemoryRouter>
+        </Provider>
+      );
+    }
+
+    render(<ExternalAnnouncementHarness />);
+
+    const advanceAutoDismiss = (ms: number) => {
+      vi.spyOn(window.performance, 'now').mockReturnValue(ms);
+      const cb = rafCallback;
+      rafCallback = null;
+      if (cb) {
+        act(() => {
+          cb(ms);
+        });
+      }
+    };
+
+    expect(screen.getByRole('dialog', { name: /Announcement: It's a Tie!/i })).toBeDefined();
+
+    advanceAutoDismiss(3001);
+    expect(screen.getByRole('dialog', { name: /Announcement: The LOH is making a decision/i })).toBeDefined();
+
+    advanceAutoDismiss(6002);
+    expect(screen.queryByRole('dialog', { name: /Announcement: The LOH is making a decision/i })).toBeNull();
+  });
 });
 
 // ── Phase-based announcement trigger tests ────────────────────────────────────

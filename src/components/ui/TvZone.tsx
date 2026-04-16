@@ -608,6 +608,7 @@ export default function TvZone(props: TvZoneProps) {
             {/* Inline announcement overlay */}
             {activeAnnouncement && (
               <TvAnnouncementOverlay
+                key={activeAnnouncement.key}
                 announcement={activeAnnouncement}
                 onInfo={handleInfo}
                 onDismiss={handleDismiss}
