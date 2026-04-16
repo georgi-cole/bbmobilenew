@@ -519,17 +519,12 @@ export class QuickTapRaceCanvasEngine {
   private renderBoosterPrompt(): void {
     const { ctx, layout } = this;
     const { boosterX, boosterY, boosterWidth, boosterHeight } = layout;
-    const booster = this.visibleBooster!;
-
     const cx = boosterX + boosterWidth / 2;
     const cy = boosterY + boosterHeight / 2;
     const r = 12;
-
-    // Color scheme: green for beneficial, orange-red for harmful.
-    const isBeneficial = booster.beneficial;
-    const borderColor = isBeneficial ? 'rgba(74, 222, 128, 0.85)' : 'rgba(248, 113, 113, 0.85)';
-    const bgColor = isBeneficial ? 'rgba(34, 197, 94, 0.16)' : 'rgba(239, 68, 68, 0.16)';
-    const labelColor = isBeneficial ? '#4ade80' : '#f87171';
+    const pulse = 0.88 + Math.sin(this.gameElapsedMs / 120) * 0.12;
+    const glowAlpha = 0.28 + pulse * 0.12;
+    const accent = this.heatLevel >= 4 ? '#fb923c' : '#60a5fa';
 
     // Draw rounded rectangle.
     ctx.beginPath();
@@ -550,34 +545,37 @@ export class QuickTapRaceCanvasEngine {
     ctx.arcTo(boosterX, boosterY, boosterX + r, boosterY, r);
     ctx.closePath();
 
-    ctx.fillStyle = bgColor;
+    ctx.save();
+    ctx.shadowColor = `rgba(96, 165, 250, ${glowAlpha})`;
+    ctx.shadowBlur = 14 + pulse * 10;
+    ctx.fillStyle = 'rgba(96, 165, 250, 0.14)';
     ctx.fill();
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 1.5;
+    ctx.restore();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.75;
     ctx.stroke();
 
-    // Booster icon.
+    // Mystery icon.
     const iconSize = Math.min(28, Math.round(boosterHeight * 0.44));
     ctx.font = `${iconSize}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(booster.icon, cx - Math.round(boosterWidth * 0.28), cy);
+    ctx.fillText('🎁', cx, cy - Math.round(boosterHeight * 0.16));
 
-    // Booster label (e.g. "2× FRENZY!", "-1× DRAIN").
+    // Keep the pickup mysterious so players still have to gamble on whether to tap.
     const labelSize = Math.max(11, Math.round(boosterHeight * 0.22));
     ctx.font = `900 ${labelSize}px system-ui, -apple-system, sans-serif`;
-    ctx.fillStyle = labelColor;
-    ctx.textAlign = 'left';
+    ctx.fillStyle = accent;
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const labelX = cx - Math.round(boosterWidth * 0.28) + Math.round(iconSize * 0.62);
-    ctx.fillText(booster.label, labelX, cy - Math.round(boosterHeight * 0.1));
+    ctx.fillText('MYSTERY BOOSTER', cx, cy + Math.round(boosterHeight * 0.1));
 
-    // "TAP!" hint below the label.
+    // CTA hint.
     const ctaSize = Math.max(9, Math.round(boosterHeight * 0.16));
     ctx.font = `700 ${ctaSize}px system-ui, -apple-system, sans-serif`;
-    ctx.fillStyle = isBeneficial ? 'rgba(74, 222, 128, 0.75)' : 'rgba(248, 113, 113, 0.75)';
-    ctx.fillText('TAP!', labelX, cy + Math.round(boosterHeight * 0.24));
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+    ctx.fillText('TAP TO GRAB', cx, cy + Math.round(boosterHeight * 0.34));
   }
 
   private renderTapButton(cx: number, cy: number, radius: number): void {
