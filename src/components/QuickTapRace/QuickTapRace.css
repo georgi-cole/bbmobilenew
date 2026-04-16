@@ -82,7 +82,7 @@
 
 .qtr__canvas-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(170px, 220px);
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr) minmax(0, 210px);
   gap: 16px;
   padding: 16px 20px 20px;
   align-items: stretch;
@@ -147,6 +147,8 @@
 .qtr__arena-shell {
   position: relative;
   min-width: 0;
+  /* Keep the canvas tall enough for three zones (track, status, tap lane) while
+     still fitting beneath the HUD on handheld landscape/short-phone screens. */
   min-height: clamp(320px, 52dvh, 620px);
   border-radius: 20px;
   overflow: hidden;
@@ -745,6 +747,8 @@
   }
 
   .qtr__arena-shell {
+    /* Narrow phones need a shorter canvas clamp so the header, metrics, and
+       rankings can remain visible without overlapping or forcing horizontal squeeze. */
     min-height: clamp(280px, 44dvh, 420px);
   }
 }
