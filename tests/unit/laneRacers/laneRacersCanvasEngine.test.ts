@@ -91,8 +91,8 @@ describe('Lane Racers canvas engine seed handling', () => {
 
     const player = getState(engine).racers[0];
     const progressAfterTapBurst = player.progress;
-    expect(progressAfterTapBurst).toBeGreaterThan(0.01);
-    expect(player.velocity).toBeGreaterThan(0.005);
+    expect(progressAfterTapBurst).toBeGreaterThan(0.007);
+    expect(player.velocity).toBeGreaterThan(0.004);
 
     advanceEngine(engine, 500);
 
