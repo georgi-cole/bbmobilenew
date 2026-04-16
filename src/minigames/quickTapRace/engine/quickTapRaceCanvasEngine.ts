@@ -50,6 +50,15 @@ const PARTICLE_LIFE_MS = 700;
 /** Pixels per millisecond for particle velocity magnitude. */
 const PARTICLE_SPEED = 0.16;
 const MAX_PARTICLES = 60;
+const BOOSTER_PROMPT_PULSE_BASE = 0.88;
+const BOOSTER_PROMPT_PULSE_AMPLITUDE = 0.12;
+const BOOSTER_PROMPT_PULSE_PERIOD_MS = 120;
+const BOOSTER_PROMPT_GLOW_BASE_ALPHA = 0.28;
+const BOOSTER_PROMPT_GLOW_PULSE_ALPHA = 0.12;
+const BOOSTER_PROMPT_BASE_COLOR_RGB = '96, 165, 250';
+const BOOSTER_PROMPT_SHADOW_BLUR_BASE = 14;
+const BOOSTER_PROMPT_SHADOW_BLUR_SCALE = 10;
+const HIGH_HEAT_THRESHOLD = 4;
 
 /** Returns the array element at `index`, or the last element if `index` is out of bounds. */
 function atOrLast<T>(arr: T[], index: number): T {
@@ -135,6 +144,9 @@ export class QuickTapRaceCanvasEngine {
 
   /** Accumulated game time during the playing phase (ms). */
   private gameElapsedMs = 0;
+
+  /** Game-relative ms when the last tap occurred — used for tap-press visual feedback. */
+  private lastTapMs = -1000;
 
   private layout: QTRLayout;
 
@@ -249,6 +261,7 @@ export class QuickTapRaceCanvasEngine {
 
   private registerTap(point: { x: number; y: number }): void {
     this.recentTapTimestamps.push(this.gameElapsedMs);
+    this.lastTapMs = this.gameElapsedMs;
 
     const multiplier = this.activeMultiplier ?? 1;
     this.tapCount += 1;
@@ -515,12 +528,17 @@ export class QuickTapRaceCanvasEngine {
   private renderBoosterPrompt(): void {
     const { ctx, layout } = this;
     const { boosterX, boosterY, boosterWidth, boosterHeight } = layout;
-
     const cx = boosterX + boosterWidth / 2;
     const cy = boosterY + boosterHeight / 2;
     const r = 12;
+    const pulse =
+      BOOSTER_PROMPT_PULSE_BASE
+      + Math.sin((this.gameElapsedMs / BOOSTER_PROMPT_PULSE_PERIOD_MS) * Math.PI * 2)
+        * BOOSTER_PROMPT_PULSE_AMPLITUDE;
+    const glowAlpha = BOOSTER_PROMPT_GLOW_BASE_ALPHA + pulse * BOOSTER_PROMPT_GLOW_PULSE_ALPHA;
+    const accent = this.heatLevel >= HIGH_HEAT_THRESHOLD ? '#fb923c' : '#60a5fa';
 
-    // Draw rounded rectangle manually for broader environment compatibility.
+    // Draw rounded rectangle.
     ctx.beginPath();
     ctx.moveTo(boosterX + r, boosterY);
     ctx.lineTo(boosterX + boosterWidth - r, boosterY);
@@ -539,50 +557,63 @@ export class QuickTapRaceCanvasEngine {
     ctx.arcTo(boosterX, boosterY, boosterX + r, boosterY, r);
     ctx.closePath();
 
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.14)';
+    ctx.save();
+    ctx.shadowColor = `rgba(${BOOSTER_PROMPT_BASE_COLOR_RGB}, ${glowAlpha})`;
+    ctx.shadowBlur = BOOSTER_PROMPT_SHADOW_BLUR_BASE + pulse * BOOSTER_PROMPT_SHADOW_BLUR_SCALE;
+    ctx.fillStyle = `rgba(${BOOSTER_PROMPT_BASE_COLOR_RGB}, 0.14)`;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
-    ctx.lineWidth = 1.5;
+    ctx.restore();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.75;
     ctx.stroke();
 
-    // Icon.
-    const iconSize = Math.min(28, Math.round(boosterHeight * 0.46));
+    // Mystery icon.
+    const iconSize = Math.min(28, Math.round(boosterHeight * 0.44));
     ctx.font = `${iconSize}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🎁', cx, cy - Math.round(boosterHeight * 0.14));
+    ctx.fillText('🎁', cx, cy - Math.round(boosterHeight * 0.16));
 
-    // "MYSTERY BOOSTER" label.
-    const labelSize = Math.max(11, Math.round(boosterHeight * 0.2));
+    // Keep the pickup mysterious so players still have to gamble on whether to tap.
+    const labelSize = Math.max(11, Math.round(boosterHeight * 0.22));
     ctx.font = `900 ${labelSize}px system-ui, -apple-system, sans-serif`;
-    ctx.fillStyle = '#60a5fa';
-    ctx.fillText('MYSTERY BOOSTER', cx, cy + Math.round(boosterHeight * 0.14));
+    ctx.fillStyle = accent;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('MYSTERY BOOSTER', cx, cy + Math.round(boosterHeight * 0.1));
 
-    // "TAP TO GRAB!" hint.
-    const ctaSize = Math.max(9, Math.round(boosterHeight * 0.14));
+    // CTA hint.
+    const ctaSize = Math.max(9, Math.round(boosterHeight * 0.16));
     ctx.font = `700 ${ctaSize}px system-ui, -apple-system, sans-serif`;
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.75)';
-    ctx.fillText('TAP TO GRAB!', cx, cy + Math.round(boosterHeight * 0.38));
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+    ctx.fillText('TAP TO GRAB', cx, cy + Math.round(boosterHeight * 0.34));
   }
 
   private renderTapButton(cx: number, cy: number, radius: number): void {
     const { ctx } = this;
     const btnColor = atOrLast(HEAT_BTN_COLORS, this.heatLevel);
 
-    // Outer glow.
+    // Brief press-scale feedback: shrink the button for 120ms after each tap.
+    const msSinceTap = this.gameElapsedMs - this.lastTapMs;
+    const PRESS_DURATION = 120;
+    const pressFraction = msSinceTap < PRESS_DURATION ? 1 - (msSinceTap / PRESS_DURATION) : 0;
+    const displayRadius = radius * (1 - 0.08 * pressFraction);
+
+    // Outer glow — more intense at high heat or when pressed.
     ctx.save();
-    ctx.shadowColor = this.heatLevel >= 4 ? 'rgba(255, 80, 0, 0.5)' : 'rgba(124, 58, 237, 0.45)';
-    ctx.shadowBlur = 16 + this.heatLevel * 8;
+    const glowColor = this.heatLevel >= 4 ? 'rgba(255, 80, 0, 0.5)' : 'rgba(124, 58, 237, 0.45)';
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = (16 + this.heatLevel * 8) * (1 - 0.4 * pressFraction);
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
     ctx.fillStyle = btnColor;
     ctx.fill();
     ctx.restore();
 
     // Button face.
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
     ctx.fillStyle = btnColor;
     ctx.fill();
 
@@ -590,8 +621,8 @@ export class QuickTapRaceCanvasEngine {
     const label = this.heatLevel >= 4 ? '💥' : this.heatLevel >= 2 ? '🔥' : 'TAP!';
     const isEmoji = this.heatLevel >= 2;
     const fontSize = isEmoji
-      ? Math.round(radius * 0.55)
-      : Math.round(radius * 0.38);
+      ? Math.round(displayRadius * 0.55)
+      : Math.round(displayRadius * 0.38);
     ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';

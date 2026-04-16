@@ -56,7 +56,9 @@ interface Props {
   players?: Player[];
   /** MinigameHost path: called with the human's final effective score. */
   onFinish?: (value: number) => void;
-  /** Competition seed. When 0 or undefined a per-session seed is generated. */
+  /** Competition seed. Accepted for GenericMinigameProps interface compatibility but
+   *  intentionally ignored when no session is present — a fresh cryptoSeed() is always
+   *  generated on mount so that challenge retries produce different booster sequences. */
   seed?: number;
   /** When true the ready countdown is skipped. */
   autoStart?: boolean;
@@ -95,7 +97,7 @@ export default function QuickTapRaceCanvasGame({
   session,
   players = EMPTY_PLAYERS,
   onFinish,
-  seed = 0,
+  seed: _seed,
   autoStart = false,
 }: Props) {
   const dispatch = useAppDispatch();
@@ -114,8 +116,14 @@ export default function QuickTapRaceCanvasGame({
   const [appliedModifiers, setAppliedModifiers] = useState<string[]>([]);
   const [canvasError, setCanvasError] = useState<string | null>(null);
 
+  // Always generate a fresh per-session seed when no authoritative session seed is
+  // provided.  Using the prop seed directly (e.g. pendingChallenge.seed from the
+  // challenge slice) would fix the booster sequence to the same values for every
+  // retry/remount within the same week because that seed never changes.
+  // In the LOH/POS path session.seed is already a fresh invocationSeed generated
+  // by startMinigame, so determinism is preserved there.
   const [resolvedSeed] = useState(() =>
-    session?.seed ?? (seed === 0 || seed === undefined ? cryptoSeed() : seed),
+    (session?.seed && session.seed !== 0) ? session.seed : cryptoSeed(),
   );
   const [resolvedDuration] = useState(() => session?.options.timeLimit ?? GAME_DURATION);
   const [resolvedAutoStart] = useState(() => autoStart);
@@ -334,6 +342,8 @@ export default function QuickTapRaceCanvasGame({
   const progressPct = Math.min(100, (timeLeft / resolvedDuration) * 100);
   const currentMultiplier = snapshot.activeMultiplier ?? 1;
   const showHud = snapshot.phase === 'playing';
+  const heatLevel = snapshot.heatLevel;
+  const heatClass = heatLevel >= 2 ? `qtr-canvas--heat-${Math.min(heatLevel, 5)}` : '';
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -410,7 +420,7 @@ export default function QuickTapRaceCanvasGame({
 
   return (
     <div
-      className="qtr-canvas"
+      className={['qtr-canvas', heatClass].filter(Boolean).join(' ')}
       role="dialog"
       aria-modal="true"
       aria-label="Quick Tap Race Competition"
@@ -427,7 +437,7 @@ export default function QuickTapRaceCanvasGame({
             <div className="qtr-canvas__hud">
               <div className="qtr-canvas__score-block">
                 <span
-                  className="qtr-canvas__score-value"
+                  className={['qtr-canvas__score-value', heatClass && 'qtr-canvas__score-value--heat'].filter(Boolean).join(' ')}
                   aria-live="polite"
                   aria-atomic="true"
                 >

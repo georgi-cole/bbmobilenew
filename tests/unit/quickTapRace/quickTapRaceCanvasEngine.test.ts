@@ -246,6 +246,11 @@ describe('QuickTapRaceCanvasEngine', () => {
     const snap = engine.getSnapshot();
     expect(snap.visibleBooster).not.toBeNull();
 
+    // The visible booster must expose the actual booster metadata (not "MYSTERY BOOSTER").
+    expect(snap.visibleBooster!.label).toBeTruthy();
+    expect(snap.visibleBooster!.icon).toBeTruthy();
+    expect(typeof snap.visibleBooster!.beneficial).toBe('boolean');
+
     // Tap the centre of the booster prompt area (boosterX, boosterY from layout).
     // The booster prompt is drawn above the tap button.
     // Layout: tapBtnCy = 400 * 0.7 = 280, tapBtnRadius ≈ min(96, 88, 84) = 84
@@ -258,5 +263,26 @@ describe('QuickTapRaceCanvasEngine', () => {
 
     expect(onBooster).toHaveBeenCalledOnce();
     expect(engine.getSnapshot().visibleBooster).toBeNull();
+  });
+
+  it('multiple pointer IDs within the same frame are each counted as separate taps', async () => {
+    const canvas = makeCanvas();
+    const onTick = vi.fn();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      autoStart: true,
+      onTick,
+      onFinish: vi.fn(),
+    });
+
+    engine.resize(320, 400, 1);
+    engine.start();
+    await vi.advanceTimersByTimeAsync(32); // enter playing
+
+    const beforeTaps = engine.getSnapshot().tapCount;
+    engine.handlePointerDown(1, { x: 160, y: 280 });
+    // A second down with a different pointer id should count as a separate tap.
+    engine.handlePointerDown(2, { x: 160, y: 280 });
+    expect(engine.getSnapshot().tapCount).toBe(beforeTaps + 2);
   });
 });
