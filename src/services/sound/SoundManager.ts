@@ -42,9 +42,10 @@ const _audioDebug =
 
 /**
  * Hard kill-switch for runtime audio playback/management.
- * Keep public SoundManager calls intact, but suppress all audio handling.
+ * Set to false to re-enable all audio; set to true only when debugging
+ * playback/lifecycle regressions to keep the hook wiring intact.
  */
-const SOUND_MANAGER_DISABLED = true;
+const SOUND_MANAGER_DISABLED = false;
 
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
