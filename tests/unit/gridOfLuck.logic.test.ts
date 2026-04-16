@@ -4,6 +4,7 @@ import {
   advanceTurn,
   applyEffectSelection,
   createInitialState,
+  getValidTargets,
   getNextEligiblePlayer,
   getAlivePlayers,
   getCurrentPlayer,
@@ -57,6 +58,14 @@ describe('Grid of Luck logic', () => {
     expect(target?.lp).toBe(500);
   });
 
+  it('allows execution to target the only rival in a two-player game', () => {
+    const state = createInitialState(makeParticipants(2), 13);
+
+    const targets = getValidTargets(state.players, state.players[0]!.id, 'execution');
+
+    expect(targets.map((player) => player.id)).toEqual([state.players[1]!.id]);
+  });
+
   it('keeps at least three players alive until the final two turns', () => {
     let state = createInitialState(makeParticipants(), 17);
     state = updatePlayers(state, (players) => {
@@ -108,6 +117,17 @@ describe('Grid of Luck logic', () => {
     const advanced = advanceTurn(state);
 
     expect(preview?.id).toBe(getCurrentPlayer(advanced.state).id);
+  });
+
+  it('uses a single target prompt for martyrdom in two-player games', () => {
+    const state = createInitialState(makeParticipants(2), 43);
+    state.openedCount = 3;
+    state.gridBoxes[0]!.type = 'martyrdom';
+
+    const outcome = resolveBoxSelection(state, state.players[0]!.id, 0, mulberry32(7));
+
+    expect(outcome.pendingSelection?.step).toBe('target');
+    expect(outcome.message).toMatch(/touched by martyrdom/i);
   });
 
   it('unlocks all unopened boxes if they would all remain locked', () => {

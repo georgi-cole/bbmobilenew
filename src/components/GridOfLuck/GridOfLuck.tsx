@@ -174,12 +174,12 @@ const BOX_META: Record<BoxType, { label: string; symbol: string; category: BoxCa
   forceOpen: { label: 'Force Open', symbol: '⫷', category: 'aggressive', description: 'Compel another player to open immediately.' },
   swapLp: { label: 'Swap LP', symbol: '⇆', category: 'aggressive', description: 'Exchange your fate with another.' },
   removeLeader200: { label: 'Drain Leader', symbol: '♛', category: 'aggressive', description: 'Remove 200 LP from the current leader.' },
-  execution: { label: 'Execution', symbol: '⚚', category: 'aggressive', description: 'Instant elimination — but never the top two LP players.' },
+  execution: { label: 'Execution', symbol: '⚚', category: 'aggressive', description: 'Instantly eliminate any eligible rival.' },
   swapBoxes: { label: 'Swap Boxes', symbol: '⌘', category: 'strategic', description: 'Rearrange two unopened relics.' },
   lockBox: { label: 'Lock Box', symbol: '⛓', category: 'strategic', description: 'Seal one box from selection.' },
   copyLastPower: { label: 'Copy Last Power', symbol: '🜁', category: 'strategic', description: 'Echo the last power used.' },
   gridShuffle: { label: 'Grid Shuffle', symbol: '☄', category: 'chaos', description: 'Unopened powers spin through the chamber.' },
-  martyrdom: { label: 'Martyrdom', symbol: '✠', category: 'chaos', description: 'Die, bless one, and curse another.' },
+  martyrdom: { label: 'Martyrdom', symbol: '✠', category: 'chaos', description: 'Fall, bless one, and curse another — or the same rival in a duel.' },
 };
 
 const CATEGORY_COLORS: Record<BoxCategory, string> = {
@@ -346,23 +346,9 @@ function getOpenableBoxes(boxes: GridBox[]): GridBox[] {
   return boxes.filter((box) => !box.isOpened && !box.isLocked);
 }
 
-function getTopLpIds(players: GridPlayer[]): string[] {
-  return [...getAlivePlayers(players)]
-    .sort((left, right) => {
-      if (right.lp !== left.lp) return right.lp - left.lp;
-      return right.support - left.support;
-    })
-    .slice(0, 2)
-    .map((player) => player.id);
-}
-
 function getValidTargets(players: GridPlayer[], actorId: string, effectType: BoxType): GridPlayer[] {
   const actor = getPlayer(players, actorId);
   const aliveOthers = players.filter((player) => !player.isEliminated && player.id !== actorId && player.immunityRounds <= 0);
-  if (effectType === 'execution') {
-    const blockedIds = new Set(getTopLpIds(players));
-    return aliveOthers.filter((player) => !blockedIds.has(player.id));
-  }
   if (effectType === 'removeLeader200') {
     const leader = [...getAlivePlayers(players)].sort((left, right) => {
       if (right.lp !== left.lp) return right.lp - left.lp;
@@ -905,9 +891,12 @@ function applyEffectSelection(
         nextState.players = curse.players;
         floatingBursts = addBurst(floatingBursts, curseId, sourceBoxId, -curse.applied);
       }
+      const affectsSingleRival = blessingId !== undefined && blessingId === curseId;
       message = sacrifice.spared
         ? `${actor.name} offers martyrdom, but the chamber refuses the death before the endgame.`
-        : `${actor.name} embraces martyrdom and twists the fate of two rivals.`;
+        : affectsSingleRival
+          ? `${actor.name} embraces martyrdom and twists the fate of a lone rival.`
+          : `${actor.name} embraces martyrdom and twists the fate of two rivals.`;
       break;
     }
   }
@@ -962,7 +951,7 @@ function resolveBoxSelection(
     || effectType === 'martyrdom';
   if (requiresTarget && !fromForcedOpen) {
     const validTargets = getValidTargets(nextState.players, actorId, effectType);
-    if (effectType === 'martyrdom' && validTargets.length >= 1 && getPlayer(nextState.players, actorId).isHuman) {
+    if (effectType === 'martyrdom' && validTargets.length >= 2 && getPlayer(nextState.players, actorId).isHuman) {
       return {
         state: nextState,
         pendingSelection: {
@@ -973,6 +962,22 @@ function resolveBoxSelection(
           step: 'martyr-blessing',
         },
         message: `${getPlayer(nextState.players, actorId).name} must choose who is blessed by martyrdom.`,
+        floatingBursts: [],
+        screenMode: 'zoomIn',
+        revealedEffectType: effectType,
+      };
+    }
+    if (effectType === 'martyrdom' && validTargets.length === 1 && getPlayer(nextState.players, actorId).isHuman) {
+      return {
+        state: nextState,
+        pendingSelection: {
+          actorId,
+          effectType,
+          sourceBoxId: boxId,
+          chosenTargets: [],
+          step: 'target',
+        },
+        message: `${getPlayer(nextState.players, actorId).name} must choose the rival touched by martyrdom.`,
         floatingBursts: [],
         screenMode: 'zoomIn',
         revealedEffectType: effectType,
