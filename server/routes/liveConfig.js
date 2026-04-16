@@ -25,7 +25,7 @@ const router = express.Router();
 
 /** Resolve the config file path following the priority order above. */
 function resolveConfigPath() {
-  const serverDir = __dirname;
+  const serverDir = path.join(__dirname, '..');
 
   if (process.env.LIVE_CONFIG_PATH) {
     const customPath = path.isAbsolute(process.env.LIVE_CONFIG_PATH)
@@ -34,10 +34,10 @@ function resolveConfigPath() {
     if (fs.existsSync(customPath)) return customPath;
   }
 
-  const liveConfigPath = path.join(serverDir, '..', 'live-config.json');
+  const liveConfigPath = path.join(serverDir, 'live-config.json');
   if (fs.existsSync(liveConfigPath)) return liveConfigPath;
 
-  const examplePath = path.join(serverDir, '..', 'live-config.example.json');
+  const examplePath = path.join(serverDir, 'live-config.example.json');
   if (fs.existsSync(examplePath)) return examplePath;
 
   return null;

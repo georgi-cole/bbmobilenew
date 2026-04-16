@@ -557,8 +557,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     title: 'Vault Cracker',
     description: 'Crack the 4-digit vault combination with unlimited attempts',
     instructions: [
-      'Use the ▲ / ▼ controls to set each digit of your guess',
-      'Tap "Test Combination" to submit',
+      'Drag each tumbler vertically or tap its upper/lower half to set your 4-digit guess',
+      'Tap the on-canvas "Test Combination" control to submit',
       '🟢 Green pip = right digit, right position',
       '🟡 Gold pip = right digit, wrong position',
       'Higher scores come from solving in fewer attempts and less elapsed time',

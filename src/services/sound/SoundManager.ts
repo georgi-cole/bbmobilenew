@@ -42,9 +42,10 @@ const _audioDebug =
 
 /**
  * Hard kill-switch for runtime audio playback/management.
- * Keep public SoundManager calls intact, but suppress all audio handling.
+ * Set to false to re-enable all audio; set to true only when debugging
+ * playback/lifecycle regressions to keep the hook wiring intact.
  */
-const SOUND_MANAGER_DISABLED = true;
+const SOUND_MANAGER_DISABLED = false;
 
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
@@ -626,7 +627,7 @@ class _SoundManager {
       console.log(`[SoundManager] category "${category}" volume=${newVolume.toFixed(2)}`);
       // Apply volume change to live music immediately
       if (category === 'music' && this._musicEl && this._musicKey) {
-        const entry = SOUND_REGISTRY[this._musicKey];
+        const entry = SOUND_REGISTRY[this._musicKey] ?? this._extraRegistry.get(this._musicKey);
         const baseVol = entry?.volume ?? 1;
         this._musicEl.volume = Math.max(0, Math.min(1, baseVol * newVolume));
       }

@@ -6,11 +6,11 @@
  *   status     – 'idle' | 'loading' | 'ok' | 'error'
  *   fetchedAt  – epoch ms of the last successful fetch, or null
  *
- * The async thunk loadRemoteConfig() is called once at app startup (App.tsx).
- * It dispatches setRemoteConfigStatus('loading') before the fetch, then
- * setRemoteConfig + setRemoteConfigStatus('ok') on success, or
- * setRemoteConfigStatus('error') on failure (the state.config may still hold
- * a cached value loaded by the service layer).
+ * The async thunk loadRemoteConfig() is dispatched once at app startup
+ * (App.tsx). Its pending/fulfilled/rejected lifecycle is handled in
+ * extraReducers, which sets status to 'loading' while fetching, 'ok' on
+ * success, and 'error' on failure. On failure, state.config may still hold
+ * a cached value loaded by the service layer.
  */
 
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';

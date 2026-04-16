@@ -88,9 +88,10 @@ export default function HomeHub() {
   const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
   // Track whether the hub background has loaded so buttons are never shown
   // on an empty background (background-first ordering).
-  const [bgLoaded, setBgLoaded] = useState(false);
+  const [loadedBgUrl, setLoadedBgUrl] = useState<string | null>(null);
+  const bgLoaded = effectiveBgUrl != null && loadedBgUrl === effectiveBgUrl;
   const [preloading, setPreloading] = useState(false);
-  const bgPreloadedRef = useRef(false);
+  const preloadedBgUrlRef = useRef<string | null>(null);
   const [soundConsentHidden, setSoundConsentHidden] = useState(false);
   const [needsSoundConsent] = useState(() => shouldShowSoundConsent());
   const showSoundConsent = splashDone && needsSoundConsent && !soundConsentHidden;
@@ -108,9 +109,19 @@ export default function HomeHub() {
   // Preload background as soon as its URL resolves, so it is ready before
   // the splash dismisses and buttons become visible.
   useEffect(() => {
-    if (!effectiveBgUrl || bgPreloadedRef.current) return;
-    bgPreloadedRef.current = true;
-    preloadImage(effectiveBgUrl).then(() => setBgLoaded(true));
+    if (!effectiveBgUrl || preloadedBgUrlRef.current === effectiveBgUrl) return;
+
+    let cancelled = false;
+    preloadedBgUrlRef.current = effectiveBgUrl;
+
+    preloadImage(effectiveBgUrl).then(() => {
+      if (cancelled || preloadedBgUrlRef.current !== effectiveBgUrl) return;
+      setLoadedBgUrl(effectiveBgUrl);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [effectiveBgUrl]);
 
   const handleSoundConsentEnable = () => {

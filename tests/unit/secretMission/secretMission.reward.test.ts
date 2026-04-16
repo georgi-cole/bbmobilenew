@@ -28,6 +28,7 @@ import gameReducer, {
 import settingsReducer from '../../../src/store/settingsSlice';
 import {
   MYSTERY_BOX_POOL,
+  SECRET_MISSION_BOX_REWARDS,
   createMissionReward,
   type MissionRewardType,
 } from '../../../src/bb/secretMission';
@@ -73,6 +74,17 @@ describe('MYSTERY_BOX_POOL', () => {
   it('has no duplicates', () => {
     const unique = new Set(MYSTERY_BOX_POOL);
     expect(unique.size).toBe(MYSTERY_BOX_POOL.length);
+  });
+});
+
+describe('SECRET_MISSION_BOX_REWARDS', () => {
+  it('contains the 4 live reward-box outcomes with immunity replacing emptyBox', () => {
+    expect(SECRET_MISSION_BOX_REWARDS).toEqual([
+      'plus1000Influence',
+      'doubleVote',
+      'voteDeduction',
+      'immunity',
+    ]);
   });
 });
 

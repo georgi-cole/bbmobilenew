@@ -38,6 +38,7 @@ import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddlewar
 import adsReducer, { loadAdsState, saveAdsState } from './adsSlice';
 import { adsMiddleware } from './adsMiddleware';
 import remoteConfigReducer from '../remoteConfig/remoteConfigSlice';
+import { secretMissionMiddleware } from './secretMissionMiddleware';
 
 export const store = configureStore({
   reducer: {
@@ -74,7 +75,13 @@ export const store = configureStore({
     ads: loadAdsState(),
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(socialMiddleware, soundMiddleware, publicOpinionMiddleware, adsMiddleware),
+    getDefaultMiddleware().concat(
+      socialMiddleware,
+      soundMiddleware,
+      publicOpinionMiddleware,
+      adsMiddleware,
+      secretMissionMiddleware,
+    ),
 });
 
 // Persist settings to localStorage whenever they change

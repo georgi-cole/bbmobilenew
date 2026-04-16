@@ -712,10 +712,14 @@ export interface GameState {
   spectatorActive?: SpectatorActiveState | null;
   /**
    * Active secret mission for this season.
-   * At most one per season; undefined until the mission triggers.
+   * Represents the currently active / most recent secret mission for this season.
    * Managed by secretMission reducers in gameSlice.
    */
   secretMission?: import('../bb/secretMission').SecretMissionState;
+  /** Number of secret missions started this season (capped at 2). */
+  secretMissionCount?: number;
+  /** Tracks whether the optional second-mission 50% roll has already been resolved. */
+  secretMissionSecondChanceResolved?: boolean;
   /**
    * PR 3 — doubleVote activation: set by advance() when the human player
    * enters live_vote with an eligible doubleVote reward and no conflicting
@@ -736,6 +740,12 @@ export interface GameState {
    * Cleared by activateVoteDeductionReward or declineVoteDeduction.
    */
   awaitingVoteDeductionPrompt?: boolean;
+  /**
+   * Secret mission immunity activation prompt.
+   * Set during `pos_ceremony_results` when the player is nominated and has an
+   * eligible stored immunity reward within its activation window.
+   */
+  awaitingMissionImmunityOffer?: boolean;
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────
