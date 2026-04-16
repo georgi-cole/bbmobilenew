@@ -57,6 +57,8 @@ beforeEach(() => {
   vi.spyOn(SoundManager, 'play').mockResolvedValue();
   vi.spyOn(SoundManager, 'playMusic').mockResolvedValue();
   vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {});
+  vi.spyOn(SoundManager, 'setMusicMuted').mockImplementation(() => {});
+  vi.spyOn(SoundManager, 'setMusicVolume').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -70,9 +72,8 @@ afterEach(() => {
 
 describe('SoundManager startup defaults', () => {
   it('initializes with DEFAULT_SETTINGS.audio.musicOn=true → music category enabled', () => {
-    const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
     makeStore(); // DEFAULT_SETTINGS: musicOn=true
-    expect(setCategoryEnabled).toHaveBeenCalledWith('music', true);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(false);
     expect(window._introhubMusicOn).toBe(true);
   });
 
@@ -99,9 +100,8 @@ describe('SoundManager startup with sfxOn=false', () => {
   });
 
   it('does NOT disable music category when only sfxOn is false', () => {
-    const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
     makeStore({ sfxOn: false, musicOn: true });
-    expect(setCategoryEnabled).toHaveBeenCalledWith('music', true);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(false);
   });
 });
 
@@ -109,9 +109,8 @@ describe('SoundManager startup with sfxOn=false', () => {
 
 describe('SoundManager startup with musicOn=false', () => {
   it('disables music category when musicOn is false in settings', () => {
-    const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
     makeStore({ musicOn: false });
-    expect(setCategoryEnabled).toHaveBeenCalledWith('music', false);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(true);
   });
 
   it('does NOT disable SFX categories when only musicOn is false', () => {
@@ -127,9 +126,8 @@ describe('SoundManager startup with musicOn=false', () => {
 
 describe('SoundManager volume sync from settings', () => {
   it('sets music category volume from settings.audio.musicVolume', () => {
-    const setCategoryVolume = vi.spyOn(SoundManager, 'setCategoryVolume');
     makeStore({ musicVolume: 0.5 });
-    expect(setCategoryVolume).toHaveBeenCalledWith('music', 0.5);
+    expect(SoundManager.setMusicVolume).toHaveBeenCalledWith(0.5);
   });
 
   it('sets SFX category volumes from settings.audio.sfxVolume', () => {
@@ -170,11 +168,10 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
 
   it('disabling musicOn via setAudio disables music category', () => {
     const store = makeStore({ musicOn: true });
-    const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
 
     store.dispatch(setAudio({ musicOn: false }));
 
-    expect(setCategoryEnabled).toHaveBeenCalledWith('music', false);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(true);
     expect(window._introhubMusicOn).toBe(false);
   });
 
@@ -202,7 +199,7 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
     // music category should not be disabled by this path
-    expect(setCategoryEnabled).not.toHaveBeenCalledWith('music', false);
+    expect(SoundManager.setMusicMuted).not.toHaveBeenCalledWith(true);
     expect(window._introhubSfxOn).toBe(true);
   });
 });

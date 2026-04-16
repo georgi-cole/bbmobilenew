@@ -23,6 +23,13 @@ function resetSoundManager() {
     _playQueue: unknown[];
     _musicEl: HTMLAudioElement | null;
     _musicKey: string | null;
+    _desiredMusicTrack: string;
+    _desiredMusicOpts?: { volume?: number };
+    _playingMusicTrack: string;
+    _desiredMusicReason: string | null;
+    _musicTransitionId: number;
+    _musicMuted: boolean;
+    _musicVolume: number;
     _sfxPools: Map<string, HTMLAudioElement[]>;
     _failedKeys: Set<string>;
     _categories: Map<SoundCategory, { enabled: boolean; volume: number }>;
@@ -40,6 +47,13 @@ function resetSoundManager() {
     sm._musicEl = null;
   }
   sm._musicKey = null;
+  sm._desiredMusicTrack = 'none';
+  sm._desiredMusicOpts = undefined;
+  sm._playingMusicTrack = 'none';
+  sm._desiredMusicReason = null;
+  sm._musicTransitionId = 0;
+  sm._musicMuted = false;
+  sm._musicVolume = 1;
   sm._sfxPools = new Map();
   sm._failedKeys = new Set();
   sm._categories = new Map();
@@ -330,6 +344,85 @@ describe('SoundManager category enable / disable', () => {
     SoundManager.setCategoryVolume('music', 0.4);
 
     expect(sm._musicEl?.volume).toBeCloseTo(0.2);
+  });
+
+  it('legacy unmapped music keys still play and preserve volume overrides', () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _musicKey: string | null;
+      _musicEl: HTMLAudioElement | null;
+      _playingMusicTrack: string;
+    };
+    sm._unlocked = true;
+
+    SoundManager.requestBgm('music:menu_loop', 'phase', { volume: 0.25 });
+
+    expect(sm._musicKey).toBe('music:menu_loop');
+    expect(sm._playingMusicTrack).toBe('none');
+    expect(sm._musicEl?.volume).toBeCloseTo(0.25);
+  });
+
+  it('re-enabling music resumes the latest desired track', () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _musicKey: string | null;
+    };
+    sm._unlocked = true;
+
+    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
+    SoundManager.setCategoryEnabled('music', false);
+    expect(sm._musicKey).toBeNull();
+
+    SoundManager.setCategoryEnabled('music', true);
+
+    expect(sm._musicKey).toBe('music:hoh_comp_general');
+  });
+});
+
+describe('SoundManager music state machine', () => {
+  it('syncMusic() is idempotent when the desired track has not changed', async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+
+    await SoundManager.setDesiredMusic('competition', 'initial');
+    await SoundManager.syncMusic();
+    await SoundManager.syncMusic();
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(SoundManager.currentMusicTrack).toBe('competition');
+  });
+
+  it('a gesture retry reapplies the current desired music after a NotAllowedError', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _musicKey: string | null;
+      _playQueue: Array<{ key: string; isMusic: boolean }>;
+    };
+    sm._unlocked = true;
+
+    const notAllowed = new DOMException('blocked', 'NotAllowedError');
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play')
+      .mockRejectedValueOnce(notAllowed)
+      .mockResolvedValue(undefined);
+    const primeSpy = vi.spyOn(
+      SoundManager as unknown as { _primeSfxForMobile: () => void },
+      '_primeSfxForMobile',
+    ).mockImplementation(() => {});
+
+    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
+    await Promise.resolve();
+
+    expect(sm._musicKey).toBeNull();
+    expect(sm._playQueue.some((item) => item.isMusic)).toBe(true);
+
+    document.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await Promise.resolve();
+
+    expect(playSpy).toHaveBeenCalledTimes(2);
+    expect(sm._musicKey).toBe('music:hoh_comp_general');
+
+    primeSpy.mockRestore();
   });
 });
 
