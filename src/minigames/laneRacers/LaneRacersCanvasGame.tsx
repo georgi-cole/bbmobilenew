@@ -304,7 +304,7 @@ export default function LaneRacersCanvasGame({
           </div>
 
           <div ref={containerRef} className="qtr__arena-shell">
-            <canvas ref={canvasRef} className="qtr__canvas" aria-label="Lane Racers lanes" />
+            <canvas ref={canvasRef} className="qtr__canvas" aria-label="Lane Racers track" />
             {canvasError && (
               <div className="qtr__canvas-fallback" role="alert">
                 <p>{canvasError}</p>

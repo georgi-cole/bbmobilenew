@@ -30,6 +30,226 @@
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.qtr__card--canvas {
+  max-width: min(1120px, 100%);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.qtr__header--canvas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
+}
+
+.qtr__hud-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.qtr__hud-pill {
+  min-width: 96px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qtr__hud-label,
+.qtr__status-label,
+.qtr__metric-card > span {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #a0a0b8);
+}
+
+.qtr__hud-pill strong,
+.qtr__metric-card strong,
+.qtr__leader-box strong {
+  font-size: 1rem;
+  color: var(--color-text, #fff);
+}
+
+.qtr__canvas-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr) minmax(0, 240px);
+  gap: 16px;
+  padding: 16px 20px 20px;
+  align-items: stretch;
+}
+
+.qtr__canvas-meta,
+.qtr__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.qtr__status-block,
+.qtr__leader-box,
+.qtr__metric-card,
+.qtr__ranking,
+.qtr__results-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+}
+
+.qtr__status-block,
+.qtr__leader-box {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qtr__status-copy {
+  color: var(--color-text, #fff);
+  font-size: 0.96rem;
+  line-height: 1.35;
+}
+
+.qtr__status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.qtr__metric-card {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.qtr__metric-card--wide {
+  grid-column: 1 / -1;
+}
+
+.qtr__metric-card strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qtr__arena-shell {
+  position: relative;
+  min-width: 0;
+  /* Keep the canvas tall enough for three zones (track, status, tap lane) while
+     still fitting beneath the HUD on handheld landscape/short-phone screens. */
+  min-height: clamp(320px, 52dvh, 620px);
+  border-radius: 20px;
+  overflow: hidden;
+  background: #020617;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.qtr__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.qtr__canvas-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  text-align: center;
+  color: var(--color-text, #fff);
+  background: rgba(2, 6, 23, 0.92);
+}
+
+.qtr__rankings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qtr__ranking {
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  color: var(--color-text, #fff);
+}
+
+.qtr__ranking span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qtr__ranking strong {
+  color: #93c5fd;
+}
+
+.qtr__ranking--player {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.qtr__results-panel {
+  margin: 0 20px 20px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.qtr__results-title {
+  margin: 0 0 4px;
+  color: var(--color-text, #fff);
+}
+
+.qtr__results-copy {
+  margin: 0;
+  color: var(--color-text-muted, #a0a0b8);
+}
+
+.qtr__button {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.qtr__button:hover {
+  opacity: 0.92;
+}
+
+.qtr__button:active {
+  transform: scale(0.98);
+}
+
 .qtr--heat-3 .qtr__card { border-color: rgba(255, 100, 0, 0.3); box-shadow: 0 24px 64px rgba(255, 80, 0, 0.25); }
 .qtr--heat-4 .qtr__card { border-color: rgba(255, 60, 0, 0.5); box-shadow: 0 24px 64px rgba(255, 60, 0, 0.4); }
 .qtr--heat-5 .qtr__card {
@@ -477,3 +697,57 @@
 
 .qtr__done-btn:hover { opacity: 0.88; }
 .qtr__done-btn:active { transform: scale(0.97); }
+
+@media (max-width: 960px) {
+  .qtr__canvas-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qtr__arena-shell {
+    order: -1;
+  }
+
+  .qtr__sidebar {
+    order: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .qtr {
+    padding: 10px;
+  }
+
+  .qtr__card--canvas {
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px;
+  }
+
+  .qtr__header--canvas,
+  .qtr__results-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qtr__canvas-layout {
+    padding: 14px;
+  }
+
+  .qtr__hud-cluster {
+    width: 100%;
+  }
+
+  .qtr__hud-pill {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .qtr__status-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qtr__arena-shell {
+    /* Narrow phones need a shorter canvas clamp so the header, metrics, and
+       rankings can remain visible without overlapping or forcing horizontal squeeze. */
+    min-height: clamp(280px, 44dvh, 420px);
+  }
+}

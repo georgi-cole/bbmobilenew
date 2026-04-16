@@ -26,8 +26,15 @@ const FINISH_ANIMATION_MS = 1_500;
 const PROGRESS_EMIT_INTERVAL_MS = 100;
 const FINISH_SCORE = 225;
 const MAX_ACTIVE_EFFECTS = 2;
-const PLAYER_BASE_GAIN = 1.4;
-const AI_SCORE_CALIBRATION_FACTOR = 1.12;
+const PLAYER_TAP_IMPULSE = 0.0062;
+const AI_TAP_IMPULSE = 0.0054;
+const COMBO_IMPULSE_MULTIPLIER = 0.00038;
+const BASE_PLAYER_CRUISE = 0.0058;
+const BASE_AI_CRUISE = 0.0065;
+const AI_TARGET_SCORE_NORMALIZATION = 2250;
+const MAX_SPEED = 0.085;
+const MIN_SPEED = 0.0038;
+const MOMENTUM_DECAY_PER_SECOND = 1.75;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -37,19 +44,9 @@ function normalizeColor(color: string, fallback: string): string {
   return color.trim().length > 0 ? color : fallback;
 }
 
-function formatOrdinal(rank: number): string {
-  const place = rank + 1;
-  if (place === 1) return '1st';
-  if (place === 2) return '2nd';
-  if (place === 3) return '3rd';
-  return `${place}th`;
-}
-
 function buildAiRuntime(seed: number, targetScore: number): QuickTapRaceAiRuntime {
   const rng = mulberry32(seed);
-  // Tune target-score pacing so the visual race lands near the existing competitive
-  // Quick Tap score envelope without forcing identical AI cadence every run.
-  const tapsPerSecond = clamp(targetScore / DEFAULT_DURATION_MS * 1000 / AI_SCORE_CALIBRATION_FACTOR, 3.6, 8.8);
+  const tapsPerSecond = clamp(targetScore / DEFAULT_DURATION_MS * 1000 / 1.05, 3.6, 8.6);
   return {
     baseIntervalMs: 1000 / tapsPerSecond,
     consistency: 0.74 + rng() * 0.22,
@@ -57,17 +54,17 @@ function buildAiRuntime(seed: number, targetScore: number): QuickTapRaceAiRuntim
     nextTapAtMs: 120 + rng() * 240,
     surgeMs: 0,
     stumbleMs: 0,
-    curveExponent: 0.9 + rng() * 0.26,
+    curveExponent: 0.92 + rng() * 0.24,
   };
 }
 
 function buildPickups(seed: number, laneIndex: number): QuickTapRacePickupNode[] {
   const rng = mulberry32(seed ^ ((laneIndex + 1) * 0x9e3779b9));
-  const positions = [0.22 + rng() * 0.1, 0.48 + rng() * 0.08, 0.74 + rng() * 0.12]
-    .map((value) => clamp(value, 0.15, 0.9));
+  const positions = [0.18 + rng() * 0.06, 0.38 + rng() * 0.08, 0.61 + rng() * 0.08, 0.82 + rng() * 0.05]
+    .map((value) => clamp(value, 0.14, 0.92));
 
   return positions.map((progress, pickupIndex) => {
-    const type = pickupIndex === 1 ? 'gift' : rng() > 0.3 ? 'booster' : 'gift';
+    const type = pickupIndex % 2 === 1 ? 'gift' : rng() > 0.28 ? 'booster' : 'gift';
     const effectIds = type === 'gift' ? GIFT_EFFECT_IDS : BOOSTER_EFFECT_IDS;
     const effectId = effectIds[Math.floor(rng() * effectIds.length)];
     return {
@@ -103,8 +100,8 @@ function sortRankings(racers: QuickTapRaceRacerState[]): QuickTapRaceResultEntry
       if (aFinished !== bFinished) {
         return aFinished ? -1 : 1;
       }
-      if (b.score !== a.score) return b.score - a.score;
       if (b.progress !== a.progress) return b.progress - a.progress;
+      if (b.score !== a.score) return b.score - a.score;
       return a.id.localeCompare(b.id);
     });
 }
@@ -137,6 +134,14 @@ function buildSnapshot(state: QuickTapRaceRuntimeState, seed: number): QuickTapR
     result: state.result,
     seed,
   };
+}
+
+function getBaselineCruiseSpeed(racer: Pick<QuickTapRaceRacerState, 'isPlayer' | 'targetScore'>): number {
+  if (racer.isPlayer) {
+    return BASE_PLAYER_CRUISE;
+  }
+
+  return BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_NORMALIZATION, 0, 0.006);
 }
 
 export class QuickTapRaceCanvasEngine {
@@ -173,9 +178,6 @@ export class QuickTapRaceCanvasEngine {
     this.canvas = canvas;
     this.ctx = ctx;
     this.options = options;
-    // Deterministic seed is allowed for tests/debugging, but gameplay defaults to
-    // auto-reseed so each race feels fresh. In this codebase, seed === 0 is also
-    // treated as “no explicit seed”, matching the existing minigame convention.
     this.seed = options.seed === undefined || options.seed === 0 ? cryptoSeed() : options.seed;
     this.rng = mulberry32(this.seed ^ 0x4d595df4);
     this.layout = buildQuickTapRaceLayout(360, 620, 1, options.racers.length);
@@ -200,7 +202,7 @@ export class QuickTapRaceCanvasEngine {
   resume(): void {
     if (this.destroyed || this.state.phase !== 'paused') return;
     this.state.phase = this.state.lastActivePhase;
-    this.state.statusText = this.state.phase === 'active' ? 'Back in the race' : 'Get ready';
+    this.state.statusText = this.state.phase === 'active' ? 'Engines hot again' : 'Get ready';
     this.lastFrameTime = performance.now();
     this.emitProgress();
   }
@@ -227,9 +229,6 @@ export class QuickTapRaceCanvasEngine {
     }
 
     this.layout = buildQuickTapRaceLayout(safeWidth, safeHeight, safeDpr, this.state.racers.length);
-    // CSS controls the displayed canvas size (see QuickTapRaceCanvasGame's bounded
-    // .qtr__arena-shell / .qtr__canvas styles); canvas.width / canvas.height only set
-    // the internal pixel buffer so high-DPI rendering stays crisp without resizing the parent.
     this.canvas.width = Math.round(safeWidth * safeDpr);
     this.canvas.height = Math.round(safeHeight * safeDpr);
   }
@@ -259,33 +258,41 @@ export class QuickTapRaceCanvasEngine {
 
   private createInitialState(): QuickTapRaceRuntimeState {
     const fallbackColors = ['#38bdf8', '#f97316', '#f43f5e', '#22c55e', '#facc15', '#a855f7'];
-    const racers = this.options.racers.map((participant, index) => ({
-      id: participant.id,
-      name: participant.name,
-      isPlayer: participant.isPlayer,
-      color: normalizeColor(participant.color, fallbackColors[index % fallbackColors.length]),
-      laneIndex: index,
-      score: 0,
-      rawTaps: 0,
-      progress: 0,
-      targetProgress: 0,
-      laneDrift: this.rng() * Math.PI * 2,
-      bobPhase: this.rng() * Math.PI * 2,
-      heat: 0,
-      combo: 0,
-      shieldCharges: 0,
-      leadPulse: 0,
-      pickupGlow: 0,
-      surgeGlow: 0,
-      stumbleGlow: 0,
-      lastScoreGain: 0,
-      finishMs: null,
-      activeEffects: [],
-      pickups: buildPickups(this.seed, index),
-      ai: participant.isPlayer ? null : buildAiRuntime(this.seed ^ (index + 17), participant.targetScore ?? 180),
-      profile: participant.profile ?? null,
-      targetScore: participant.targetScore ?? 0,
-    }));
+    const racers = this.options.racers.map((participant, index) => {
+      const baseline = getBaselineCruiseSpeed({
+        isPlayer: participant.isPlayer,
+        targetScore: participant.targetScore ?? 180,
+      });
+      return {
+        id: participant.id,
+        name: participant.name,
+        isPlayer: participant.isPlayer,
+        color: normalizeColor(participant.color, fallbackColors[index % fallbackColors.length]),
+        laneIndex: index,
+        score: 0,
+        rawTaps: 0,
+        progress: 0,
+        velocity: baseline * (0.92 + this.rng() * 0.16),
+        momentum: 0,
+        driftOffset: 0,
+        laneDrift: this.rng() * Math.PI * 2,
+        bobPhase: this.rng() * Math.PI * 2,
+        heat: 0,
+        combo: 0,
+        shieldCharges: 0,
+        leadPulse: 0,
+        pickupGlow: 0,
+        surgeGlow: 0,
+        stumbleGlow: 0,
+        lastScoreGain: 0,
+        finishMs: null,
+        activeEffects: [],
+        pickups: buildPickups(this.seed, index),
+        ai: participant.isPlayer ? null : buildAiRuntime(this.seed ^ (index + 17), participant.targetScore ?? 180),
+        profile: participant.profile ?? null,
+        targetScore: participant.targetScore ?? 0,
+      } satisfies QuickTapRaceRacerState;
+    });
 
     return {
       phase: 'countdown',
@@ -301,7 +308,8 @@ export class QuickTapRaceCanvasEngine {
       screenPulse: 0,
       finishFlash: 0,
       cameraShake: 0,
-      statusText: 'Lights up… racers ready',
+      tension: 0,
+      statusText: 'Lights up… hold for the launch',
       result: null,
       lastPointerId: null,
     };
@@ -334,7 +342,7 @@ export class QuickTapRaceCanvasEngine {
 
     this.state.tapBursts = this.state.tapBursts.filter((burst) => {
       burst.lifeMs -= deltaMs;
-      burst.radius += deltaMs * 0.04;
+      burst.radius += deltaMs * 0.05;
       burst.alpha = Math.max(0, burst.lifeMs / burst.maxLifeMs);
       return burst.lifeMs > 0;
     });
@@ -345,13 +353,13 @@ export class QuickTapRaceCanvasEngine {
     });
 
     this.state.racers.forEach((racer) => {
-      racer.bobPhase += deltaMs * 0.004 + racer.leadPulse * 0.005;
+      racer.bobPhase += deltaMs * 0.004 + racer.velocity * 18;
       racer.pickupGlow = Math.max(0, racer.pickupGlow - deltaMs / 650);
       racer.leadPulse = Math.max(0, racer.leadPulse - deltaMs / 800);
       racer.surgeGlow = Math.max(0, racer.surgeGlow - deltaMs / 900);
       racer.stumbleGlow = Math.max(0, racer.stumbleGlow - deltaMs / 700);
-      racer.heat = Math.max(0, racer.heat - deltaMs / 2400);
-      racer.combo = Math.max(0, racer.combo - deltaMs * 0.00075 * this.getDecayFactor(racer));
+      racer.heat = Math.max(0, racer.heat - deltaMs / 2500);
+      racer.combo = Math.max(0, racer.combo - deltaMs * 0.00072 * this.getDecayFactor(racer));
       racer.activeEffects = racer.activeEffects.filter((effect) => {
         effect.remainingMs -= deltaMs;
         return effect.remainingMs > 0;
@@ -372,22 +380,24 @@ export class QuickTapRaceCanvasEngine {
 
     if (this.state.phase === 'countdown') {
       this.state.countdownMs = Math.max(0, COUNTDOWN_MS - this.state.phaseElapsedMs);
-      this.state.statusText = this.state.countdownMs > 900 ? 'Feel the countdown' : 'Go! Go! Go!';
+      this.state.statusText = this.state.countdownMs > 900 ? 'Engines spooling up' : 'Punch it!';
       if (this.state.phaseElapsedMs >= COUNTDOWN_MS) {
-        this.enterPhase('active', 'Tap rhythm matters immediately');
+        this.enterPhase('active', 'Race live — build momentum');
       }
     } else if (this.state.phase === 'active') {
       this.state.elapsedMs += deltaMs;
       this.state.timeLeftMs = Math.max(0, this.state.raceDurationMs - this.state.elapsedMs);
       this.updateAiRacers(deltaMs);
-      this.updateProgressFromScores();
+      this.updateRacerMotion(deltaMs);
       this.checkLanePickups();
+      this.updateScoresFromRaceState();
       this.updateStatusText();
-      if (this.state.timeLeftMs <= 0) {
+      if (this.state.racers.some((racer) => racer.finishMs !== null) || this.state.timeLeftMs <= 0) {
         this.completeRace();
       }
     } else if (this.state.phase === 'finishAnimating') {
-      this.updateProgressFromScores();
+      this.updateRacerMotion(deltaMs, true);
+      this.updateScoresFromRaceState();
       if (this.state.phaseElapsedMs >= FINISH_ANIMATION_MS) {
         this.enterPhase('completed', 'Results locked');
         this.fireFinishIfNeeded();
@@ -409,9 +419,9 @@ export class QuickTapRaceCanvasEngine {
       ai.stumbleMs = Math.max(0, ai.stumbleMs - deltaMs);
 
       const elapsedRatio = clamp(this.state.elapsedMs / this.state.raceDurationMs, 0, 1);
-      const expectedScore = racer.targetScore * Math.pow(elapsedRatio, ai.curveExponent);
-      const scoreError = expectedScore - racer.score;
-      const desiredCadenceBoost = clamp(scoreError / 24, -0.22, 0.35);
+      const expectedProgress = Math.pow(elapsedRatio, ai.curveExponent);
+      const progressError = expectedProgress - racer.progress;
+      const desiredCadenceBoost = clamp(progressError * 1.8, -0.22, 0.38);
 
       if (ai.surgeMs <= 0 && this.rng() < deltaMs / 5400 * ai.burstBias) {
         ai.surgeMs = 700 + this.rng() * 850;
@@ -429,8 +439,49 @@ export class QuickTapRaceCanvasEngine {
         const interval = ai.baseIntervalMs * (1 - desiredCadenceBoost) * (1 + jitter) * surgeFactor * stumbleFactor;
         ai.nextTapAtMs += clamp(interval, 82, 340);
 
-        const tapGainBase = 0.96 + this.rng() * 0.42 + desiredCadenceBoost * 0.6 + ai.burstBias * 0.1;
-        this.applyScoreGain(racer, tapGainBase, false);
+        const impulse = AI_TAP_IMPULSE
+          + this.rng() * 0.0014
+          + desiredCadenceBoost * 0.0028
+          + ai.burstBias * 0.0005;
+        this.applyDriveImpulse(racer, impulse, false);
+      }
+    }
+  }
+
+  private updateRacerMotion(deltaMs: number, settling = false): void {
+    const deltaSeconds = deltaMs / 1000;
+
+    for (const racer of this.state.racers) {
+      const effectMultiplier = this.getEffectSpeedMultiplier(racer);
+      const instability = this.getInstability(racer);
+      const baseline = getBaselineCruiseSpeed(racer);
+      const comboDrive = clamp(racer.combo * 0.0009, 0, 0.007);
+      const heatDrive = racer.heat * 0.0018;
+      const microVariation = Math.sin(this.state.elapsedMs * 0.0022 + racer.laneDrift) * 0.0014
+        + Math.cos(this.state.elapsedMs * 0.0014 + racer.bobPhase) * 0.0008;
+      const instabilityJitter = instability > 0 ? (this.rng() * 2 - 1) * 0.0025 * instability : 0;
+
+      racer.momentum *= Math.exp(-deltaSeconds * MOMENTUM_DECAY_PER_SECOND * this.getDecayFactor(racer));
+      if (settling) {
+        racer.momentum *= 0.92;
+      }
+
+      const targetVelocity = clamp(
+        (baseline + racer.momentum + comboDrive + heatDrive + microVariation + instabilityJitter) * effectMultiplier,
+        MIN_SPEED,
+        MAX_SPEED,
+      );
+      racer.velocity += (targetVelocity - racer.velocity) * clamp(deltaSeconds * 8.5, 0, 1);
+      racer.progress = clamp(racer.progress + racer.velocity * deltaSeconds, 0, 1);
+
+      const driftTarget = Math.sin(racer.bobPhase) * (2 + racer.velocity * 110 + racer.surgeGlow * 3.5);
+      racer.driftOffset += (driftTarget - racer.driftOffset) * clamp(deltaSeconds * 7, 0, 1);
+
+      if (racer.finishMs === null && racer.progress >= 1) {
+        racer.progress = 1;
+        racer.finishMs = this.state.elapsedMs;
+        racer.surgeGlow = 1;
+        this.state.finishFlash = Math.max(this.state.finishFlash, 0.45);
       }
     }
   }
@@ -440,69 +491,80 @@ export class QuickTapRaceCanvasEngine {
     if (!player) return;
 
     const tapZone = this.layout.tapZoneRect;
+    if (x < tapZone.x || x > tapZone.x + tapZone.width || y < tapZone.y || y > tapZone.y + tapZone.height) {
+      return;
+    }
+
     const tapX = clamp(x, tapZone.x + 24, tapZone.x + tapZone.width - 24);
     const tapY = clamp(y, tapZone.y + 18, tapZone.y + tapZone.height - 18);
 
     player.rawTaps += 1;
-    player.combo = clamp(player.combo + 0.52, 0, 8);
+    player.combo = clamp(player.combo + 0.5, 0, 8);
     player.heat = clamp(player.heat + 0.18, 0, 1);
     player.surgeGlow = Math.max(player.surgeGlow, 0.55);
     player.leadPulse = Math.max(player.leadPulse, 0.18);
     this.state.screenPulse = Math.min(1, this.state.screenPulse + 0.18);
     this.state.cameraShake = Math.min(1, this.state.cameraShake + 0.12);
 
-    const burstColor = player.color;
     this.state.tapBursts.push({
+      kind: 'screen',
       x: tapX,
       y: tapY,
       radius: 12,
+      alpha: 0.7,
+      lifeMs: 260,
+      maxLifeMs: 260,
+      color: player.color,
+    });
+    this.state.tapBursts.push({
+      kind: 'track',
+      laneIndex: player.laneIndex,
+      progress: player.progress,
+      radius: 14,
       alpha: 1,
-      lifeMs: 360,
-      maxLifeMs: 360,
-      color: burstColor,
+      lifeMs: 340,
+      maxLifeMs: 340,
+      color: player.color,
     });
 
-    this.applyScoreGain(player, PLAYER_BASE_GAIN + player.combo * 0.08, true);
-    this.updateProgressFromScores();
+    const comboImpulse = PLAYER_TAP_IMPULSE + player.combo * COMBO_IMPULSE_MULTIPLIER;
+    this.applyDriveImpulse(player, comboImpulse, true);
+    this.updateScoresFromRaceState();
     this.checkLanePickups();
     this.updateStatusText();
     this.emitProgress();
   }
 
-  private applyScoreGain(racer: QuickTapRaceRacerState, baseGain: number, isPlayerTap: boolean): void {
-    const effects = racer.activeEffects;
-    const multiplier = effects.reduce((product, effect) => product * effect.scoreMultiplier, 1);
-    const comboBonus = effects.reduce((sum, effect) => sum + effect.comboBonus, 0);
-    const instability = effects.reduce((sum, effect) => sum + effect.instability, 0);
-    const instabilityFactor = instability > 0 ? 1 + (this.rng() * 2 - 1) * instability : 1;
-    const comboFactor = 1 + clamp(racer.combo * 0.05 + comboBonus * 0.08, 0, 0.65);
-    const gain = Math.max(0.3, baseGain * multiplier * comboFactor * instabilityFactor);
-    racer.score += gain;
-    racer.lastScoreGain = gain;
+  private applyDriveImpulse(racer: QuickTapRaceRacerState, baseImpulse: number, isPlayerTap: boolean): void {
+    const effectMultiplier = this.getEffectSpeedMultiplier(racer);
+    const comboBonus = racer.activeEffects.reduce((sum, effect) => sum + effect.comboBonus, 0);
+    const comboFactor = 1 + clamp(racer.combo * 0.03 + comboBonus * 0.06, 0, 0.5);
+    const impulse = Math.max(0.0015, baseImpulse * effectMultiplier * comboFactor);
+    racer.momentum = clamp(racer.momentum + impulse, 0, 0.11);
+    racer.lastScoreGain = impulse * FINISH_SCORE * 3.4;
 
     if (isPlayerTap) {
       racer.leadPulse = Math.min(1, racer.leadPulse + 0.1);
     }
-
-    const finishThresholdReached = racer.finishMs === null && racer.score >= FINISH_SCORE;
-    if (finishThresholdReached) {
-      racer.finishMs = this.state.elapsedMs;
-      racer.surgeGlow = 1;
-      this.state.finishFlash = Math.max(this.state.finishFlash, 0.45);
-    }
   }
 
-  private updateProgressFromScores(): void {
-    const leaderScore = Math.max(...this.state.racers.map((racer) => racer.score), 1);
+  private updateScoresFromRaceState(): void {
+    const leaderProgress = Math.max(...this.state.racers.map((racer) => racer.progress), 0);
+    const timePressure = clamp(1 - this.state.timeLeftMs / 6_000, 0, 1);
+    this.state.tension = Math.max(clamp((leaderProgress - 0.76) / 0.2, 0, 1), timePressure);
 
     for (const racer of this.state.racers) {
-      const baseTarget = clamp(racer.score / FINISH_SCORE, 0, 1);
-      const extraStretch = racer.finishMs !== null ? 0.04 : 0;
-      racer.targetProgress = clamp(baseTarget + extraStretch, 0, 1.02);
-      const followSpeed = racer.isPlayer ? 0.22 : 0.16;
-      racer.progress += (racer.targetProgress - racer.progress) * followSpeed;
-      racer.progress = clamp(racer.progress, 0, 1.02);
-      racer.leadPulse = leaderScore > 0 ? clamp(racer.score / leaderScore - 0.75, 0, 0.45) + racer.leadPulse : racer.leadPulse;
+      const distanceScore = racer.progress * FINISH_SCORE;
+      const tapBonus = Math.min(34, racer.rawTaps * 0.42);
+      const comboBonus = Math.min(18, racer.combo * 2.6);
+      const finishBonus = racer.finishMs !== null ? 12 : 0;
+      racer.score = Math.max(racer.score, distanceScore + tapBonus + comboBonus + finishBonus);
+      if (leaderProgress > 0) {
+        racer.leadPulse = Math.max(
+          racer.leadPulse,
+          clamp((racer.progress / leaderProgress - 0.88) * 1.5, 0, 0.6),
+        );
+      }
     }
   }
 
@@ -521,29 +583,48 @@ export class QuickTapRaceCanvasEngine {
   private resolvePickup(racer: QuickTapRaceRacerState, pickup: QuickTapRacePickupNode): void {
     const definition = EFFECT_DEFINITIONS[pickup.effectId];
     const blocked = definition.polarity === 'negative' && racer.shieldCharges > 0;
+
     if (blocked) {
       racer.shieldCharges -= 1;
       racer.pickupGlow = 1;
       racer.surgeGlow = Math.max(racer.surgeGlow, 0.35);
+      racer.momentum = clamp(racer.momentum + 0.004, 0, 0.11);
       this.state.statusText = `${racer.name} blocked ${definition.shortLabel}`;
     } else {
       const activeEffect = createActiveEffect(pickup.effectId);
       const instantDelta = definition.instantScoreDelta;
+      let progressDelta = 0;
+      let momentumDelta = 0;
+
       if (instantDelta) {
-        racer.score = Math.max(0, racer.score + instantDelta[0] + this.rng() * (instantDelta[1] - instantDelta[0]));
+        progressDelta += (instantDelta[0] + this.rng() * (instantDelta[1] - instantDelta[0])) / FINISH_SCORE * 0.18;
       }
+
+      if (definition.polarity === 'positive') {
+        momentumDelta += 0.011 + this.rng() * 0.004;
+        progressDelta += 0.012 + this.rng() * 0.012;
+      } else if (definition.polarity === 'negative') {
+        momentumDelta -= 0.009 + this.rng() * 0.004;
+        progressDelta -= 0.015 + this.rng() * 0.01;
+      } else {
+        const lucky = this.rng() > 0.42;
+        momentumDelta += lucky ? 0.01 + this.rng() * 0.004 : -(0.007 + this.rng() * 0.004);
+        progressDelta += lucky ? 0.012 + this.rng() * 0.012 : -(0.01 + this.rng() * 0.01);
+      }
+
+      racer.progress = clamp(racer.progress + progressDelta, 0, 1);
+      racer.momentum = clamp(racer.momentum + momentumDelta, 0, 0.11);
       if (definition.grantsShield) {
         racer.shieldCharges += definition.grantsShield;
       }
       racer.activeEffects = [activeEffect, ...racer.activeEffects].slice(0, MAX_ACTIVE_EFFECTS);
       racer.pickupGlow = 1;
-      racer.surgeGlow = definition.polarity === 'negative' ? racer.surgeGlow : Math.max(racer.surgeGlow, 0.5);
-      racer.stumbleGlow = definition.polarity === 'negative' ? 0.8 : racer.stumbleGlow;
+      racer.surgeGlow = definition.polarity === 'negative' ? racer.surgeGlow : Math.max(racer.surgeGlow, 0.6);
+      racer.stumbleGlow = definition.polarity === 'negative' ? 0.9 : racer.stumbleGlow;
       if (racer.isPlayer) {
-        this.state.statusText =
-          pickup.type === 'gift'
-            ? `${definition.label} revealed!`
-            : `${definition.label} activated!`;
+        this.state.statusText = pickup.type === 'gift'
+          ? `${definition.label} cracked open!`
+          : `${definition.label} engaged!`;
       }
     }
 
@@ -564,11 +645,18 @@ export class QuickTapRaceCanvasEngine {
     this.state.pickupBursts.push(burst);
     this.state.screenPulse = Math.min(1, this.state.screenPulse + 0.22);
     this.state.cameraShake = Math.min(1, this.state.cameraShake + 0.18);
-    this.updateProgressFromScores();
   }
 
   private getDecayFactor(racer: QuickTapRaceRacerState): number {
     return racer.activeEffects.reduce((value, effect) => value * effect.decayFactor, 1);
+  }
+
+  private getEffectSpeedMultiplier(racer: QuickTapRaceRacerState): number {
+    return racer.activeEffects.reduce((value, effect) => value * clamp(effect.scoreMultiplier, 0.72, 1.42), 1);
+  }
+
+  private getInstability(racer: QuickTapRaceRacerState): number {
+    return racer.activeEffects.reduce((sum, effect) => sum + effect.instability, 0);
   }
 
   private updateStatusText(): void {
@@ -577,10 +665,17 @@ export class QuickTapRaceCanvasEngine {
     const playerEntry = rankings.find((entry) => entry.isPlayer) ?? rankings[0];
     const livePlayer = this.state.racers.find((entry) => entry.isPlayer) ?? this.state.racers[0];
     const playerRank = rankings.findIndex((entry) => entry.isPlayer) + 1;
+    const gapMeters = Math.max(0, Math.round(((leader?.progress ?? 0) - playerEntry.progress) * 100));
 
-    if (this.state.timeLeftMs <= 6_000) {
-      const playerPlacement = playerRank === 1 ? 'hold it' : `you are ${formatOrdinal(playerRank - 1)}`;
-      this.state.statusText = `${leader?.name ?? 'Leader'} leads — ${playerPlacement}`;
+    if (leader?.finishMs !== null) {
+      this.state.statusText = leader.id === playerEntry.id ? 'You hit the line first!' : `${leader.name} hit the line first`;
+      return;
+    }
+
+    if (this.state.tension > 0.82) {
+      this.state.statusText = playerRank === 1
+        ? 'Hold the line — finish is right there'
+        : `${leader?.name ?? 'Leader'} is ${gapMeters}m ahead`;
       return;
     }
 
@@ -589,9 +684,14 @@ export class QuickTapRaceCanvasEngine {
       return;
     }
 
-    this.state.statusText = playerRank === 1
-      ? 'You are pacing the field'
-      : `${leader?.name ?? 'Leader'} ahead • ${Math.round((leader?.score ?? 0) - playerEntry.score)} pts gap`;
+    if (playerRank === 1) {
+      const second = rankings[1];
+      const cushion = Math.max(0, Math.round((playerEntry.progress - (second?.progress ?? 0)) * 100));
+      this.state.statusText = cushion > 0 ? `You lead by ${cushion}m` : 'You are pacing the field';
+      return;
+    }
+
+    this.state.statusText = `${leader?.name ?? 'Leader'} ahead • ${gapMeters}m gap`;
   }
 
   private completeRace(): void {

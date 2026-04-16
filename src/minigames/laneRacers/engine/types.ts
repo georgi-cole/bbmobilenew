@@ -69,15 +69,27 @@ export interface QuickTapRacePickupNode {
   flash: number;
 }
 
-export interface QuickTapRaceTapBurst {
-  x: number;
-  y: number;
+interface QuickTapRaceTapBurstBase {
   radius: number;
   alpha: number;
   lifeMs: number;
   maxLifeMs: number;
   color: string;
 }
+
+export interface QuickTapRaceScreenTapBurst extends QuickTapRaceTapBurstBase {
+  kind: 'screen';
+  x: number;
+  y: number;
+}
+
+export interface QuickTapRaceTrackTapBurst extends QuickTapRaceTapBurstBase {
+  kind: 'track';
+  laneIndex: number;
+  progress: number;
+}
+
+export type QuickTapRaceTapBurst = QuickTapRaceScreenTapBurst | QuickTapRaceTrackTapBurst;
 
 export interface QuickTapRacePickupBurst {
   laneIndex: number;
@@ -107,7 +119,9 @@ export interface QuickTapRaceRacerState {
   score: number;
   rawTaps: number;
   progress: number;
-  targetProgress: number;
+  velocity: number;
+  momentum: number;
+  driftOffset: number;
   laneDrift: number;
   bobPhase: number;
   heat: number;
@@ -184,6 +198,7 @@ export interface Rect {
 
 export interface LaneLayout extends Rect {
   centerX: number;
+  centerY: number;
   racerRadius: number;
 }
 
@@ -197,6 +212,8 @@ export interface QuickTapRaceLayout {
   trackRect: Rect;
   tapZoneRect: Rect;
   statusRect: Rect;
+  trackStartX: number;
+  trackFinishX: number;
   laneGap: number;
   laneHeight: number;
   lanes: LaneLayout[];
@@ -216,6 +233,7 @@ export interface QuickTapRaceRuntimeState {
   screenPulse: number;
   finishFlash: number;
   cameraShake: number;
+  tension: number;
   statusText: string;
   result: QuickTapRaceResult | null;
   lastPointerId: number | null;
