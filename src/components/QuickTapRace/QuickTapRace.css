@@ -1,5 +1,3 @@
-/* ── QuickTapRace overlay ─────────────────────────────────────────────────── */
-/* Full-viewport fixed overlay that fills the GameScreen. */
 .qtr {
   position: fixed;
   inset: 0;
@@ -7,473 +5,269 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.85);
-  padding: 16px;
-  transition: background 0.3s ease;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.18), transparent 38%),
+    rgba(2, 6, 23, 0.92);
 }
 
-/* Heat-level background intensification */
-.qtr--heat-2 { background: rgba(10, 0, 0, 0.87); }
-.qtr--heat-3 { background: rgba(20, 5, 0, 0.89); }
-.qtr--heat-4 { background: rgba(30, 8, 0, 0.91); }
-.qtr--heat-5 { background: rgba(40, 10, 0, 0.93); }
-
-/* ── Card ────────────────────────────────────────────────────────────────── */
 .qtr__card {
-  width: 100%;
-  max-width: 440px;
-  background: var(--color-surface, #1e1e2e);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
+  width: min(100%, 520px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 28px;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.qtr--heat-3 .qtr__card { border-color: rgba(255, 100, 0, 0.3); box-shadow: 0 24px 64px rgba(255, 80, 0, 0.25); }
-.qtr--heat-4 .qtr__card { border-color: rgba(255, 60, 0, 0.5); box-shadow: 0 24px 64px rgba(255, 60, 0, 0.4); }
-.qtr--heat-5 .qtr__card {
-  border-color: rgba(255, 30, 0, 0.7);
-  box-shadow: 0 24px 64px rgba(255, 30, 0, 0.6), 0 0 40px rgba(255, 100, 0, 0.3) inset;
-  animation: qtr-shake 0.12s infinite alternate;
+.qtr__card--canvas {
+  min-height: min(92dvh, 860px);
 }
 
-@keyframes qtr-shake {
-  from { transform: translateX(-1px) rotate(-0.3deg); }
-  to   { transform: translateX(1px) rotate(0.3deg); }
-}
-
-/* ── Header ──────────────────────────────────────────────────────────────── */
 .qtr__header {
-  padding: 18px 20px 12px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.qtr__header--canvas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .qtr__title {
   margin: 0 0 4px;
+  color: #f8fafc;
   font-size: 1.2rem;
   font-weight: 900;
-  color: var(--color-text, #fff);
-  letter-spacing: 0.4px;
 }
 
 .qtr__subtitle {
   margin: 0;
-  font-size: 0.8rem;
-  color: var(--color-text-muted, #a0a0b8);
+  color: #94a3b8;
+  font-size: 0.82rem;
 }
 
-/* ── Ready phase ─────────────────────────────────────────────────────────── */
-.qtr__ready {
+.qtr__hud-cluster {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 52px 20px;
-  gap: 12px;
+  gap: 8px;
 }
 
-.qtr__countdown {
-  font-size: 5.5rem;
-  font-weight: 900;
-  color: var(--color-accent, #7c3aed);
-  line-height: 1;
-  animation: qtr-pop 0.3s ease-out;
-}
-
-@keyframes qtr-pop {
-  from { transform: scale(0.7); opacity: 0.4; }
-  to   { transform: scale(1);   opacity: 1;   }
-}
-
-.qtr__hint {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--color-text-muted, #a0a0b8);
-}
-
-/* ── Playing phase ───────────────────────────────────────────────────────── */
-.qtr__playing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px 24px;
-}
-
-/* Stats row */
-.qtr__stats {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.qtr__score-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-
-.qtr__score-value {
-  font-size: 3rem;
-  font-weight: 900;
-  color: var(--color-text, #fff);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  transition: color 0.15s ease;
-}
-
-.qtr--heat-3 .qtr__score-value { color: #ff9444; }
-.qtr--heat-4 .qtr__score-value { color: #ff6020; }
-.qtr--heat-5 .qtr__score-value { color: #ff3000; text-shadow: 0 0 12px rgba(255, 80, 0, 0.8); }
-
-.qtr__raw-taps {
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #a0a0b8);
-  font-variant-numeric: tabular-nums;
-}
-
-.qtr__score-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text-muted, #a0a0b8);
-}
-
-.qtr__time {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--color-text-muted, #a0a0b8);
-  font-variant-numeric: tabular-nums;
-  align-self: center;
-  transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.qtr__time--urgent {
-  color: #ff4444;
-  animation: qtr-pulse-time 0.5s ease-in-out infinite alternate;
-}
-
-@keyframes qtr-pulse-time {
-  from { transform: scale(1);    }
-  to   { transform: scale(1.08); }
-}
-
-/* Progress bar */
-.qtr__progress-bar {
-  width: 100%;
-  height: 7px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.qtr__progress-fill {
-  height: 100%;
-  background: var(--color-accent, #7c3aed);
-  border-radius: 4px;
-  transition: width 0.1s linear, background 0.3s ease;
-}
-
-.qtr--heat-3 .qtr__progress-fill { background: #ff8c00; }
-.qtr--heat-4 .qtr__progress-fill { background: #ff5000; }
-.qtr--heat-5 .qtr__progress-fill { background: linear-gradient(90deg, #ff2000, #ff8000); }
-
-/* Multiplier badge */
-.qtr__multiplier-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  font-weight: 800;
-  animation: qtr-badge-in 0.25s ease-out;
-}
-
-@keyframes qtr-badge-in {
-  from { transform: scale(0.6) translateY(-8px); opacity: 0; }
-  to   { transform: scale(1) translateY(0);      opacity: 1; }
-}
-
-.qtr__multiplier-badge--good {
-  background: rgba(34, 197, 94, 0.18);
-  border: 1px solid rgba(34, 197, 94, 0.5);
-  color: #4ade80;
-}
-
-.qtr__multiplier-badge--bad {
-  background: rgba(239, 68, 68, 0.18);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #f87171;
-}
-
-.qtr__multiplier-icon {
-  font-size: 1.1rem;
-}
-
-.qtr__multiplier-label {
-  letter-spacing: 0.5px;
-}
-
-/* Heat dots */
-.qtr__heat-row {
-  display: flex;
-  gap: 5px;
-}
-
-.qtr__heat-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  transition: background 0.2s ease, transform 0.15s ease;
-}
-
-.qtr__heat-dot--active:nth-child(1) { background: #ff8c00; }
-.qtr__heat-dot--active:nth-child(2) { background: #ff6400; }
-.qtr__heat-dot--active:nth-child(3) { background: #ff4000; transform: scale(1.15); }
-.qtr__heat-dot--active:nth-child(4) { background: #ff2000; transform: scale(1.25); }
-.qtr__heat-dot--active:nth-child(5) { background: #ff0000; transform: scale(1.35); animation: qtr-dot-pulse 0.4s infinite alternate; }
-.qtr__heat-dot--active:nth-child(6) { background: #fff; transform: scale(1.5); animation: qtr-dot-pulse 0.3s infinite alternate; box-shadow: 0 0 6px #ff4400; }
-
-@keyframes qtr-dot-pulse {
-  from { opacity: 0.7; }
-  to   { opacity: 1;   }
-}
-
-/* Booster prompt — appears between heat meter and TAP button */
-.qtr__booster-prompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 10px 20px;
+.qtr__hud-pill {
+  min-width: 72px;
+  padding: 8px 10px;
   border-radius: 16px;
-  border: 2px solid currentColor;
-  cursor: pointer;
-  font-family: inherit;
-  animation: qtr-booster-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-             qtr-booster-pulse 0.8s ease-in-out 0.3s infinite alternate;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  color: #60a5fa;
-  background: rgba(96, 165, 250, 0.14);
+  background: rgba(30, 41, 59, 0.88);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  color: #e2e8f0;
+  text-align: right;
 }
 
-.qtr__booster-prompt:active {
-  transform: scale(0.94);
-}
-
-@keyframes qtr-booster-in {
-  from { transform: scale(0.5) translateY(-12px); opacity: 0; }
-  to   { transform: scale(1)   translateY(0);     opacity: 1; }
-}
-
-@keyframes qtr-booster-pulse {
-  from { transform: scale(1);    box-shadow: 0 0 16px 0px currentColor; }
-  to   { transform: scale(1.04); box-shadow: 0 0 28px 4px currentColor; }
-}
-
-.qtr__booster-icon {
-  font-size: 1.8rem;
-  line-height: 1;
-}
-
-.qtr__booster-label {
+.qtr__hud-pill strong {
+  display: block;
   font-size: 1rem;
-  font-weight: 900;
-  letter-spacing: 0.5px;
 }
 
-.qtr__booster-cta {
-  font-size: 0.65rem;
-  font-weight: 700;
-  opacity: 0.75;
-  letter-spacing: 1px;
+.qtr__hud-label,
+.qtr__status-label {
+  display: block;
+  margin-bottom: 2px;
+  color: #94a3b8;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-/* Tap area (button + particles) */
-.qtr__tap-area {
-  position: relative;
+.qtr__canvas-layout {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 220px;
-  height: 220px;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  min-height: 0;
 }
 
-/* Particles */
-.qtr__particles {
+.qtr__canvas-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qtr__status-block,
+.qtr__leader-box,
+.qtr__sidebar,
+.qtr__metric-card {
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 18px;
+}
+
+.qtr__status-block {
+  padding: 12px 14px;
+}
+
+.qtr__status-copy {
+  color: #f8fafc;
+  font-size: 0.96rem;
+}
+
+.qtr__status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.qtr__metric-card {
+  padding: 10px 12px;
+  color: #cbd5e1;
+  font-size: 0.74rem;
+}
+
+.qtr__metric-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #f8fafc;
+  font-size: 0.9rem;
+}
+
+.qtr__metric-card--wide {
+  grid-column: span 4;
+}
+
+.qtr__arena-shell {
+  position: relative;
+  flex: 1;
+  min-height: 420px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  background: rgba(2, 6, 23, 0.9);
+}
+
+.qtr__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.qtr__canvas-fallback {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-}
-
-.qtr__particle {
-  position: absolute;
-  font-size: 1.3rem;
-  line-height: 1;
-  animation: qtr-particle 0.7s ease-out forwards;
-  transform-origin: center;
-}
-
-@keyframes qtr-particle {
-  0%   { transform: translate(0, 0)   scale(1);    opacity: 1;   }
-  100% { transform: translate(
-    calc((var(--dx, 0) - 0.5) * 80px),
-    calc((var(--dy, 0) - 0.5) * -120px - 40px)
-  ) scale(0.4); opacity: 0; }
-}
-
-/* Give each particle a random drift direction via CSS custom properties */
-.qtr__particle:nth-child(3n)   { --dx: 0.2; --dy: 0.3; }
-.qtr__particle:nth-child(3n+1) { --dx: 0.7; --dy: 0.2; }
-.qtr__particle:nth-child(3n+2) { --dx: 0.4; --dy: 0.8; }
-
-/* TAP button */
-.qtr__tap-btn {
-  position: relative;
-  z-index: 1;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  border: none;
-  background: var(--color-accent, #7c3aed);
-  color: #fff;
-  font-size: 1.9rem;
-  font-weight: 900;
-  letter-spacing: 1px;
-  cursor: pointer;
-  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.55);
-  transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.3s ease;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-}
-
-.qtr__tap-btn:active {
-  transform: scale(0.9);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
-}
-
-.qtr--heat-2 .qtr__tap-btn { background: #b44900; box-shadow: 0 8px 32px rgba(180, 73, 0, 0.55); }
-.qtr--heat-3 .qtr__tap-btn { background: #d43800; box-shadow: 0 8px 40px rgba(212, 56, 0, 0.6); }
-.qtr--heat-4 .qtr__tap-btn { background: #e62000; box-shadow: 0 8px 48px rgba(230, 32, 0, 0.7), 0 0 24px rgba(255, 80, 0, 0.4); animation: qtr-btn-pulse 0.5s ease-in-out infinite alternate; }
-.qtr--heat-5 .qtr__tap-btn { background: radial-gradient(circle, #ff8c00, #ff2000); box-shadow: 0 0 60px rgba(255, 60, 0, 0.8), 0 0 30px rgba(255, 120, 0, 0.5); animation: qtr-btn-pulse 0.3s ease-in-out infinite alternate; }
-
-@keyframes qtr-btn-pulse {
-  from { transform: scale(1);    box-shadow: 0 8px 48px rgba(230, 32, 0, 0.7); }
-  to   { transform: scale(1.04); box-shadow: 0 12px 60px rgba(255, 60, 0, 0.9); }
-}
-
-/* ── Results phase ───────────────────────────────────────────────────────── */
-.qtr__results {
-  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-.qtr__winner-line {
-  margin: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.92);
+  color: #f8fafc;
   text-align: center;
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--color-text, #fff);
 }
 
-.qtr__leaderboard {
-  list-style: none;
+.qtr__sidebar {
+  padding: 12px;
+}
+
+.qtr__leader-box {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  color: #f8fafc;
+}
+
+.qtr__rankings {
   margin: 0;
   padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.qtr__entry {
+.qtr__ranking {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.72);
+  color: #e2e8f0;
+  font-size: 0.84rem;
+}
+
+.qtr__ranking strong {
+  color: #f8fafc;
+}
+
+.qtr__ranking--player {
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(8, 47, 73, 0.72);
+}
+
+.qtr__results-panel {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 0.88rem;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.9);
 }
 
-.qtr__entry--winner {
-  background: rgba(124, 58, 237, 0.18);
-  border: 1px solid rgba(124, 58, 237, 0.35);
+.qtr__results-title {
+  margin: 0 0 4px;
+  color: #f8fafc;
 }
 
-.qtr__entry--you {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.qtr__entry--last {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.qtr__rank {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-  width: 28px;
-  text-align: center;
-}
-
-.qtr__entry-name {
-  flex: 1;
-  font-weight: 700;
-  color: var(--color-text, #fff);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.qtr__you-tag {
-  font-weight: 400;
-  font-size: 0.78rem;
-  color: var(--color-text-muted, #a0a0b8);
-}
-
-.qtr__entry-score {
-  font-weight: 700;
-  color: var(--color-text-muted, #a0a0b8);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.qtr__entry-mods {
-  font-size: 0.85rem;
-}
-
-.qtr__mod-summary {
+.qtr__results-copy {
   margin: 0;
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #a0a0b8);
-  text-align: center;
-  font-style: italic;
+  color: #cbd5e1;
+  font-size: 0.86rem;
 }
 
-/* Continue button */
-.qtr__done-btn {
-  display: block;
-  width: 100%;
-  padding: 14px 0;
-  border: none;
-  border-radius: 12px;
-  background: var(--color-accent, #7c3aed);
-  color: #fff;
-  font-size: 1rem;
+.qtr__button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: #eff6ff;
   font-weight: 800;
-  letter-spacing: 0.6px;
-  cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  font-size: 0.92rem;
 }
 
-.qtr__done-btn:hover { opacity: 0.88; }
-.qtr__done-btn:active { transform: scale(0.97); }
+@media (max-width: 420px) {
+  .qtr__card {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .qtr__header--canvas,
+  .qtr__results-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qtr__hud-cluster {
+    width: 100%;
+  }
+
+  .qtr__hud-pill {
+    flex: 1;
+  }
+
+  .qtr__status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qtr__metric-card--wide {
+    grid-column: span 2;
+  }
+
+  .qtr__arena-shell {
+    min-height: 380px;
+  }
+}
