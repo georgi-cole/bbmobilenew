@@ -152,12 +152,4 @@ export function renderVault(
   state.dialAnimations.forEach((animation, index) => {
     renderDial(ctx, layout.dialSlots[index], state.digits[index], animation.offset, animation.glow);
   });
-
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.fillStyle = 'rgba(138, 172, 214, 0.8)';
-  ctx.font = '600 12px Inter, system-ui, sans-serif';
-  ctx.fillText('DRAG OR TAP TUMBLERS', layout.width / 2, layout.digitRackRect.y - 8);
-  ctx.restore();
 }
