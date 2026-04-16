@@ -3,6 +3,7 @@ import type { LaneLayout, QuickTapRaceLayout } from './types';
 const MIN_LANE_GAP = 4;
 const MAX_LANE_GAP = 12;
 const LANE_GAP_DENSITY_DIVISOR = 11;
+const MIN_LANE_HEIGHT = 24;
 
 export function buildQuickTapRaceLayout(
   width: number,
@@ -57,7 +58,10 @@ export function buildQuickTapRaceLayout(
     MAX_LANE_GAP,
     Math.max(MIN_LANE_GAP, trackRect.height / laneGapDensity),
   );
-  const laneHeight = Math.max(28, (trackRect.height - laneGap * Math.max(0, laneCount - 1)) / Math.max(1, laneCount));
+  const laneHeight = Math.max(
+    MIN_LANE_HEIGHT,
+    (trackRect.height - laneGap * Math.max(0, laneCount - 1)) / Math.max(1, laneCount),
+  );
   const racerRadius = Math.max(9, Math.min(18, laneHeight * 0.19));
 
   const lanes: LaneLayout[] = Array.from({ length: laneCount }, (_, index) => {
