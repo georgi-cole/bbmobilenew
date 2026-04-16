@@ -296,13 +296,24 @@ describe('CodeBreakerComp', () => {
       });
     });
 
+    // Results screen is not yet visible — still in 'solved' transition phase
+    expect(onFinish).not.toHaveBeenCalled();
+
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1_800);
     });
 
+    // Results screen must appear before onFinish is called
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(screen.getByText('🔓 Vault Cracked!')).toBeInTheDocument();
+    expect(screen.getByText('Code was:')).toBeInTheDocument();
+
+    await act(async () => {
+      screen.getByRole('button', { name: /continue/i }).click();
+    });
+
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(onFinish).toHaveBeenCalledWith(computeSolvedScore(2, 15_000));
-    expect(screen.getByText('Vault breached in 2 attempts')).toBeInTheDocument();
   });
 
   it('shows the competition scoreboard before completing the minigame flow', async () => {
@@ -343,5 +354,35 @@ describe('CodeBreakerComp', () => {
     });
 
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a scrollable attempt history for all guesses during gameplay', async () => {
+    renderCodeBreaker();
+    const engine = getMockEngines()[0];
+
+    // No history panel while no guesses have been made
+    expect(screen.queryByText('Attempt History')).not.toBeInTheDocument();
+
+    // Emit three progress snapshots simulating successive guesses
+    const guessHistory = [
+      { digits: [1, 2, 3, 4], bulls: 0, cows: 1 },
+      { digits: [5, 6, 7, 8], bulls: 1, cows: 0 },
+      { digits: [9, 0, 1, 2], bulls: 2, cows: 1 },
+    ];
+
+    await act(async () => {
+      engine.emitProgress(makeSnapshot({ attempts: 3, guessHistory }));
+    });
+
+    // History panel must appear and show all three attempts
+    expect(screen.getByText('Attempt History')).toBeInTheDocument();
+    expect(screen.getByText('3 attempts')).toBeInTheDocument();
+    expect(screen.getByText('Attempt #3')).toBeInTheDocument();
+    expect(screen.getByText('Attempt #2')).toBeInTheDocument();
+    expect(screen.getByText('Attempt #1')).toBeInTheDocument();
+    // Most-recent attempt is first (reversed order)
+    expect(screen.getByText('9 0 1 2')).toBeInTheDocument();
+    expect(screen.getByText('5 6 7 8')).toBeInTheDocument();
+    expect(screen.getByText('1 2 3 4')).toBeInTheDocument();
   });
 });
