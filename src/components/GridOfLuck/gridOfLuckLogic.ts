@@ -271,9 +271,9 @@ function getOpenableBoxes(boxes: GridBox[]): GridBox[] {
 }
 
 function getValidTargets(players: GridPlayer[], actorId: string, effectType: BoxType): GridPlayer[] {
-  const actor = getPlayer(players, actorId);
   const aliveOthers = players.filter((player) => !player.isEliminated && player.id !== actorId && player.immunityRounds <= 0);
   if (effectType === 'removeLeader200') {
+    const actor = getPlayer(players, actorId);
     const leader = [...getAlivePlayers(players)].sort((left, right) => {
       if (right.lp !== left.lp) return right.lp - left.lp;
       return right.support - left.support;
