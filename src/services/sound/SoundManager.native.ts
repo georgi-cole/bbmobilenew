@@ -21,6 +21,9 @@ class _SoundManagerNative {
     // TODO: register asset with the native audio library
   }
 
+  registerDynamic(_entry: SoundEntry): void {
+    // TODO: register dynamic asset with the native audio library
+  }
   async play(_key: string, _opts?: PlayOptions): Promise<void> {
     // TODO: play sound via native audio library
   }

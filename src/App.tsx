@@ -14,6 +14,7 @@ import { store } from './store/store';
 import { router } from './routes';
 import { SoundManager } from './services/sound/SoundManager';
 import AudioGate from './components/AudioGate/AudioGate';
+import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice';
 
 if (import.meta.env.DEV) {
   console.log('[router] bundle:', import.meta.url, '| pathname:', window.location.pathname, '| hash:', window.location.hash);
@@ -37,6 +38,8 @@ export default function App() {
 
   useEffect(() => {
     void SoundManager.init();
+    // Fetch the remote live-config on startup; falls back to cache or defaults.
+    void store.dispatch(loadRemoteConfig());
   }, []);
 
   return (

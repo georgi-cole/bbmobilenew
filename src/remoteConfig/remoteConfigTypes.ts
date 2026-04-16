@@ -1,0 +1,126 @@
+/**
+ * remoteConfigTypes.ts — typed shape of the remote live-config document.
+ *
+ * This config is fetched at app startup from /api/live-config (or an override
+ * endpoint).  It MUST be treated as pure data — no executable code, no eval,
+ * no dynamic imports.  All fields are optional so the app remains functional
+ * when only a subset is provided or the fetch fails entirely.
+ */
+
+import type { CompSelectionMode } from '../components/compSelectionUtils';
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+
+export interface RemoteTheme {
+  /** Override --color-accent CSS variable (any valid CSS color string). */
+  accent?: string;
+  /** Override --color-accent-2 CSS variable. */
+  accent2?: string;
+  /** Override --color-bg CSS variable. */
+  background?: string;
+}
+
+// ─── IntroHub ─────────────────────────────────────────────────────────────────
+
+export interface RemoteIntroHub {
+  /**
+   * Absolute URL of an image to use as the HomeHub background.
+   * Must begin with http:// or https://.
+   */
+  backgroundImageUrl?: string;
+  /**
+   * Opacity (0–1) of a dark overlay placed over the remote background image.
+   * Defaults to 0 (no overlay) when not specified.
+   */
+  overlayOpacity?: number;
+  /** Optional headline text shown on the HomeHub (reserved for future use). */
+  headline?: string;
+}
+
+// ─── Music ────────────────────────────────────────────────────────────────────
+
+export interface RemoteMusic {
+  /**
+   * Remote URL for the intro-hub ambient loop.
+   * Must begin with http:// or https://.
+   * When set, replaces the bundled music:intro_hub_loop track.
+   */
+  introTrackUrl?: string;
+  /**
+   * Remote URL for the main in-game background music loop.
+   * Must begin with http:// or https://.
+   * When set, is registered as music:remote_main and can be referenced by key.
+   */
+  mainTrackUrl?: string;
+}
+
+// ─── Main TV ──────────────────────────────────────────────────────────────────
+
+export interface RemoteMainTv {
+  /**
+   * Headline text shown in the main TV viewport when no live event is active.
+   * Falls back to the built-in welcome message when absent.
+   */
+  headline?: string;
+  /** Optional secondary line (reserved for future expansion). */
+  subtext?: string;
+}
+
+// ─── Challenge scheduling ─────────────────────────────────────────────────────
+
+export interface RemoteChallenge {
+  /**
+   * Override the weekly challenge selection mode.
+   * Accepted values are the same CompSelectionMode values the settings UI uses
+   * (e.g. 'arcade-only', 'single-game', 'user-selection', 'random-games', …).
+   * When absent, the player's own settings are used as normal.
+   */
+  weeklyMode?: CompSelectionMode;
+  /**
+   * Specific game key to force when weeklyMode is 'single-game'.
+   * Must be a known registry key (e.g. 'quickTapRace').
+   * Ignored when weeklyMode is not 'single-game'.
+   */
+  weeklyGameKey?: string;
+  /**
+   * Pool of game keys to draw from when weeklyMode is 'user-selection'.
+   * Ignored when weeklyMode is not 'user-selection'.
+   */
+  weeklyGameKeys?: string[];
+}
+
+// ─── Player overrides ─────────────────────────────────────────────────────────
+
+export interface RemotePlayerOverride {
+  /**
+   * Stable houseguest id (lower-case slug, e.g. 'finn').
+   * Must match a known id in src/data/houseguests.ts.
+   */
+  id: string;
+  /**
+   * Replacement avatar image URL.
+   * Must begin with http:// or https://.
+   */
+  avatarUrl?: string;
+  /** Override display name. Plain text only — no HTML. */
+  name?: string;
+  /** Override bio / story text. Plain text only — no HTML. */
+  bio?: string;
+}
+
+// ─── Root config ─────────────────────────────────────────────────────────────
+
+export interface RemoteConfig {
+  season?: {
+    theme?: RemoteTheme;
+    introHub?: RemoteIntroHub;
+    music?: RemoteMusic;
+    mainTv?: RemoteMainTv;
+  };
+  challenge?: RemoteChallenge;
+  /**
+   * Overrides for individual AI houseguest profiles.
+   * Only entries matching a known houseguest id are applied.
+   */
+  players?: RemotePlayerOverride[];
+}

@@ -7,6 +7,7 @@ import SeasonFinaleOverlay from '../SeasonFinale/SeasonFinaleOverlay';
 import { useAppSelector } from '../../store/hooks';
 import { selectFinale } from '../../store/finaleSlice';
 import { selectSettings } from '../../store/settingsSlice';
+import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice';
 import useGameMode from '../../hooks/useGameMode';
 import './AppShell.css';
 
@@ -34,6 +35,7 @@ export default function AppShell() {
   const finale = useAppSelector(selectFinale);
   const settings = useAppSelector(selectSettings);
   const { display } = settings;
+  const remoteConfig = useAppSelector(selectRemoteConfig);
 
   useGameMode();
 
@@ -42,6 +44,32 @@ export default function AppShell() {
     THEME_PRESETS.forEach((t) => document.body.classList.remove(`theme-${t}`));
     document.body.classList.add(`theme-${display.themePreset}`);
   }, [display.themePreset]);
+
+  // Apply remote theme CSS custom properties (overrides the preset class values).
+  // Properties are cleared when the remote config has no theme section.
+  useEffect(() => {
+    const theme = remoteConfig?.season?.theme;
+    if (theme?.accent) {
+      document.body.style.setProperty('--color-accent', theme.accent);
+    } else {
+      document.body.style.removeProperty('--color-accent');
+    }
+    if (theme?.accent2) {
+      document.body.style.setProperty('--color-accent-2', theme.accent2);
+    } else {
+      document.body.style.removeProperty('--color-accent-2');
+    }
+    if (theme?.background) {
+      document.body.style.setProperty('--color-bg', theme.background);
+    } else {
+      document.body.style.removeProperty('--color-bg');
+    }
+    return () => {
+      document.body.style.removeProperty('--color-accent');
+      document.body.style.removeProperty('--color-accent-2');
+      document.body.style.removeProperty('--color-bg');
+    };
+  }, [remoteConfig?.season?.theme]);
 
   useEffect(() => {
     document.body.classList.toggle('reduce-motion', display.reduceMotion);

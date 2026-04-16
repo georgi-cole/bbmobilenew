@@ -8,6 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
+import type { SoundCategory } from '../../../src/services/sound/sounds';
 
 // ── Audio element mocks ───────────────────────────────────────────────────────
 
@@ -24,6 +25,8 @@ function resetSoundManager() {
     _musicKey: string | null;
     _sfxPools: Map<string, HTMLAudioElement[]>;
     _failedKeys: Set<string>;
+    _categories: Map<SoundCategory, { enabled: boolean; volume: number }>;
+    _extraRegistry: Map<string, unknown>;
     _initialised: boolean;
     _lifecycleListenersBound: boolean;
     _currentBgmOwner: string | null;
@@ -39,6 +42,8 @@ function resetSoundManager() {
   sm._musicKey = null;
   sm._sfxPools = new Map();
   sm._failedKeys = new Set();
+  sm._categories = new Map();
+  sm._extraRegistry = new Map();
   sm._initialised = false;
   sm._lifecycleListenersBound = false;
   sm._currentBgmOwner = null;
@@ -302,6 +307,29 @@ describe('SoundManager category enable / disable', () => {
     SoundManager.setCategoryEnabled('music', false);
 
     expect(sm._musicKey).toBeNull();
+  });
+
+  it('setCategoryVolume("music") respects a dynamically-registered music entry volume', () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _musicEl: HTMLAudioElement | null;
+    };
+    sm._unlocked = true;
+
+    SoundManager.registerDynamic({
+      key: 'music:remote_intro',
+      category: 'music',
+      src: 'https://example.com/intro.mp3',
+      preload: false,
+      volume: 0.5,
+      loop: true,
+    });
+    SoundManager.requestBgm('music:remote_intro', 'introhub');
+
+    expect(sm._musicEl).not.toBeNull();
+    SoundManager.setCategoryVolume('music', 0.4);
+
+    expect(sm._musicEl?.volume).toBeCloseTo(0.2);
   });
 });
 

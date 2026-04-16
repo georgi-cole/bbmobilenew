@@ -100,3 +100,12 @@
 @media (max-width: 420px) {
   .home-hub__title { font-size: 1.8rem; }
 }
+
+/* Remote config overlay — a dark tint layer over the remote background image */
+.homehub-remote-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 1;
+}

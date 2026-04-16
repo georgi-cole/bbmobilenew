@@ -97,6 +97,7 @@ import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
+import { selectRemoteMainTvHeadline } from '../../remoteConfig/remoteConfigSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
 import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import {
@@ -205,6 +206,7 @@ export default function GameScreen() {
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
   const adsState = useAppSelector(selectAdsState)
+  const remoteMainTvHeadline = useAppSelector(selectRemoteMainTvHeadline)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
@@ -2494,8 +2496,9 @@ export default function GameScreen() {
     if (postVoteAnnouncementDelayActive && game.pendingEviction) {
       return 'Please wait while the player says their goodbyes.'
     }
-    return undefined
-  }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, postVoteAnnouncementDelayActive, game.pendingEviction])
+    // Fall back to the remote-config headline when no phase-specific message applies.
+    return remoteMainTvHeadline ?? undefined
+  }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, postVoteAnnouncementDelayActive, game.pendingEviction, remoteMainTvHeadline])
   const battleBackTvAnnouncement =
     battleBack?.active && !battleBack.competitionActive && battleBackAnnouncementStep != null
       ? BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[battleBackAnnouncementStep] ?? null

@@ -1,0 +1,45 @@
+{
+  "_comment": "Copy this file to live-config.json and edit values to control the app centrally.",
+  "_comment2": "All fields are optional. Remove any field to use the built-in default.",
+  "season": {
+    "theme": {
+      "_comment": "Override CSS accent colours. Any valid CSS color string.",
+      "accent": "#7c3aed",
+      "accent2": "#a78bfa",
+      "background": "#08101f"
+    },
+    "introHub": {
+      "_comment": "Remote background image for the Home Hub screen.",
+      "backgroundImageUrl": "https://example.com/images/week-12-bg.jpg",
+      "overlayOpacity": 0.3,
+      "headline": "QuickTap Race Week — All challenges this week are QuickTap!"
+    },
+    "music": {
+      "_comment": "Remote music track URLs (must be http:// or https://).",
+      "introTrackUrl": "https://example.com/audio/intro-week12.mp3",
+      "mainTrackUrl": "https://example.com/audio/main-theme-3.mp3"
+    },
+    "mainTv": {
+      "_comment": "Headline shown in the main game TV viewport when no live event is active.",
+      "headline": "QuickTap Race Week 🏃 Every challenge this week is QuickTap Race!",
+      "subtext": "Stay sharp — speed is everything."
+    }
+  },
+  "challenge": {
+    "_comment": "weeklyMode overrides the player's comp-selection setting for the week.",
+    "_comment2": "Accepted values: random-games, single-game, user-selection, arcade-only, trivia-only, endurance-only, logic-only, retired, misc, unique",
+    "weeklyMode": "single-game",
+    "weeklyGameKey": "quickTapRace",
+    "_comment3": "weeklyGameKeys is used when weeklyMode is user-selection",
+    "weeklyGameKeys": ["quickTapRace", "bullseyeBlitz", "colorMatch"]
+  },
+  "players": [
+    {
+      "_comment": "Override an AI houseguest's avatar and profile text.",
+      "id": "finn",
+      "avatarUrl": "https://example.com/avatars/finn-season2.png",
+      "name": "Finn",
+      "bio": "Returning champion — now playing for redemption."
+    }
+  ]
+}

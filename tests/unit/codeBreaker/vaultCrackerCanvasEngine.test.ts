@@ -108,7 +108,6 @@ describe('VaultCrackerCanvasEngine', () => {
     expect(context.setTransform).toHaveBeenCalledWith(1, 0, 0, 1, 0, 0);
     expect(context.scale).toHaveBeenCalledWith(2, 2);
   });
-
   it('does not reschedule the RAF loop after an onProgress callback pauses the engine', async () => {
     const canvas = document.createElement('canvas');
     let engine: VaultCrackerCanvasEngine | null = null;
