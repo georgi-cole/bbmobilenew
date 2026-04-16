@@ -3,6 +3,7 @@
 // Each entry includes metadata, scoring adapter, and module path for dynamic import.
 
 import { mulberry32 } from '../store/rng';
+import { DEFAULT_LANE_RACERS_DURATION_MS } from './laneRacers/constants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     ],
     metricKind: 'accuracy',
     metricLabel: 'Accuracy %',
-    timeLimitMs: 60_000,
+    timeLimitMs: DEFAULT_LANE_RACERS_DURATION_MS,
     authoritative: false,
     scoringAdapter: 'raw',
     modulePath: 'count-house.js',

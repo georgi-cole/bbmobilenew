@@ -1,5 +1,6 @@
 import { mulberry32 } from '../../../store/rng';
 import { cryptoSeed } from '../../../features/riskWheel/cryptoSpin';
+import { DEFAULT_LANE_RACERS_DURATION_MS } from '../constants';
 import { buildQuickTapRaceLayout } from './layout';
 import { BOOSTER_EFFECT_IDS, createActiveEffect, EFFECT_DEFINITIONS, GIFT_EFFECT_IDS } from './effects';
 import { drawBackground } from './renderBackground';
@@ -20,7 +21,7 @@ import type {
   QuickTapRaceRuntimeState,
 } from './types';
 
-const DEFAULT_DURATION_MS = 60_000;
+const DEFAULT_DURATION_MS = DEFAULT_LANE_RACERS_DURATION_MS;
 const COUNTDOWN_MS = 3_200;
 const FINISH_ANIMATION_MS = 1_500;
 const PROGRESS_EMIT_INTERVAL_MS = 100;
@@ -31,7 +32,8 @@ const AI_TAP_IMPULSE = 0.0031;
 const COMBO_IMPULSE_MULTIPLIER = 0.00038;
 const BASE_PLAYER_CRUISE = 0.0028;
 const BASE_AI_CRUISE = 0.0032;
-const AI_TARGET_SCORE_NORMALIZATION = 60_000;
+const AI_TARGET_SCORE_TIME_SCALE_MS = DEFAULT_LANE_RACERS_DURATION_MS;
+const MAX_AI_CRUISE_BONUS = 0.0036;
 const MAX_SPEED = 0.05;
 const MIN_SPEED = 0.0024;
 const MOMENTUM_DECAY_PER_SECOND = 1.75;
@@ -143,7 +145,7 @@ function getBaselineCruiseSpeed(racer: Pick<QuickTapRaceRacerState, 'isPlayer' |
     return BASE_PLAYER_CRUISE;
   }
 
-  return BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_NORMALIZATION, 0, 0.0036);
+  return BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_TIME_SCALE_MS, 0, MAX_AI_CRUISE_BONUS);
 }
 
 export class QuickTapRaceCanvasEngine {

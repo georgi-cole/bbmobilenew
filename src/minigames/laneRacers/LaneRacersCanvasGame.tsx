@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import { useQuickTapRaceAudio } from '../../hooks/useQuickTapRaceAudio';
+import { DEFAULT_LANE_RACERS_DURATION_MS, DEFAULT_LANE_RACERS_DURATION_SECONDS } from './constants';
 import { attachQuickTapRaceInput } from './engine/input';
 import { QuickTapRaceCanvasEngine } from './engine/quickTapRaceCanvasEngine';
 import type {
@@ -27,13 +28,12 @@ const EMPTY_PLAYERS: Player[] = [];
 const EMPTY_PARTICIPANT_IDS: string[] = [];
 const EMPTY_PARTICIPANTS: MinigameParticipant[] = [];
 const RACER_COLORS = ['#38bdf8', '#f97316', '#f43f5e', '#22c55e', '#facc15', '#a855f7'];
-const DEFAULT_LANE_RACERS_TIME_LIMIT_MS = 60_000;
 
 function createEmptySnapshot(): QuickTapRaceEngineSnapshot {
   return {
     phase: 'countdown',
     countdownText: '3',
-    timeLeftMs: DEFAULT_LANE_RACERS_TIME_LIMIT_MS,
+    timeLeftMs: DEFAULT_LANE_RACERS_DURATION_MS,
     playerScore: 0,
     playerRawTaps: 0,
     playerCombo: 0,
@@ -132,7 +132,7 @@ export default function LaneRacersCanvasGame({
   const humanId = session
     ? players.find((player) => player.isUser)?.id ?? fallbackHumanId
     : participants.find((participant) => participant.isHuman)?.id ?? participantIds[0] ?? fallbackHumanId;
-  const timeLimitMs = (session?.options.timeLimit ?? 60) * 1000;
+  const timeLimitMs = (session?.options.timeLimit ?? DEFAULT_LANE_RACERS_DURATION_SECONDS) * 1000;
   const reducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
