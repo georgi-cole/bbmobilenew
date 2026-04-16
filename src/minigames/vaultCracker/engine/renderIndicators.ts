@@ -37,7 +37,7 @@ export function renderIndicators(
   layout: VaultCrackerLayout,
 ): void {
   const tension = clamp(state.elapsedMs / 90_000 + state.bestBulls * 0.1, 0, 1);
-  const pressure = clamp(state.guessHistory.length / 12 + state.bestBulls * 0.08 + state.elapsedMs / 180_000, 0.06, 1);
+  const pressure = state.pressure;
 
   ctx.save();
   ctx.strokeStyle = 'rgba(59, 94, 140, 0.5)';

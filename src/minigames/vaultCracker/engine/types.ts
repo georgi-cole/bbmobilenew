@@ -97,6 +97,7 @@ export interface VaultCrackerRuntimeState {
   phase: VaultCrackerEnginePhase;
   phaseElapsedMs: number;
   elapsedMs: number;
+  pressure: number;
   digits: number[];
   guessHistory: GuessResult[];
   lastGuess: GuessResult | null;

@@ -284,5 +284,11 @@ describe('CodeBreakerComp', () => {
     expect(
       screen.getByText(`${aiSolveProfiles['ai-2'].attempts} attempts • ${formatElapsed(aiSolveProfiles['ai-2'].elapsedMs)}`),
     ).toBeInTheDocument();
+
+    await act(async () => {
+      screen.getByRole('button', { name: /continue/i }).click();
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });

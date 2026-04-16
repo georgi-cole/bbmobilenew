@@ -48,7 +48,7 @@ describe('VaultCrackerCanvasEngine', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(makeContextStub());
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(makeContextStub() as never);
     window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
       return window.setTimeout(() => callback(performance.now()), 16) as unknown as number;
     });
@@ -90,5 +90,40 @@ describe('VaultCrackerCanvasEngine', () => {
     const requestCallsBeforeDestroyAdvance = (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
     await vi.advanceTimersByTimeAsync(64);
     expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(requestCallsBeforeDestroyAdvance);
+  });
+
+  it('does not reschedule the RAF loop after an onProgress callback pauses the engine', async () => {
+    const canvas = document.createElement('canvas');
+    let engine: VaultCrackerCanvasEngine | null = null;
+    let pauseTriggered = false;
+    engine = new VaultCrackerCanvasEngine(canvas, {
+      seed: 42,
+      onProgress: ({ elapsedMs }) => {
+        if (!pauseTriggered && elapsedMs >= 1_000) {
+          pauseTriggered = true;
+          engine?.pause();
+        }
+      },
+    });
+
+    engine.start();
+    const requestCallsBeforeTick = (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+    const engineInternals = engine as unknown as {
+      lastTimestamp: number;
+      state: {
+        timerStarted: boolean;
+      };
+      tick: (timestamp: number) => void;
+    };
+    engineInternals.state.timerStarted = true;
+    engineInternals.lastTimestamp = 1;
+    engineInternals.tick(1_201);
+    const requestCallsAfterTick = (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(pauseTriggered).toBe(true);
+    expect(engine.getSnapshot().phase).toBe('paused');
+    expect(requestCallsAfterTick).toBe(requestCallsBeforeTick);
+    expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(requestCallsAfterTick);
   });
 });

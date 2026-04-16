@@ -7,6 +7,7 @@ import {
 import { clamp, modulo } from '../utils/math';
 import { createVaultCrackerLayout } from './layout';
 import { hitTestTarget } from './input';
+import { computeVaultCrackerPressure } from './pressure';
 import { renderBackground } from './renderBackground';
 import { renderEffects } from './renderEffects';
 import { renderIndicators } from './renderIndicators';
@@ -59,6 +60,7 @@ function makeInitialState(seed: number, timeLimitMs?: number): VaultCrackerRunti
     phase: 'idle',
     phaseElapsedMs: 0,
     elapsedMs: 0,
+    pressure: 0.06,
     digits: Array(CODE_LENGTH).fill(0),
     guessHistory: [],
     lastGuess: null,
@@ -98,6 +100,8 @@ export class VaultCrackerCanvasEngine {
 
   private lastTimestamp = 0;
 
+  private isRunning = false;
+
   private isDestroyed = false;
 
   private winReported = false;
@@ -124,6 +128,7 @@ export class VaultCrackerCanvasEngine {
     if (this.state.phase === 'idle') {
       setPhase(this.state, 'active');
     }
+    this.isRunning = true;
     this.lastTimestamp = 0;
     this.render();
     this.rafId = window.requestAnimationFrame(this.tick);
@@ -131,6 +136,7 @@ export class VaultCrackerCanvasEngine {
   }
 
   pause(): void {
+    this.isRunning = false;
     if (this.rafId !== 0) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = 0;
@@ -145,11 +151,13 @@ export class VaultCrackerCanvasEngine {
     if (this.state.phase === 'paused') {
       setPhase(this.state, 'active');
     }
+    this.isRunning = true;
     this.lastTimestamp = 0;
     this.rafId = window.requestAnimationFrame(this.tick);
   }
 
   destroy(): void {
+    this.isRunning = false;
     if (this.rafId !== 0) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = 0;
@@ -239,7 +247,10 @@ export class VaultCrackerCanvasEngine {
   }
 
   private readonly tick = (timestamp: number) => {
-    if (this.isDestroyed) return;
+    if (this.isDestroyed || !this.isRunning) {
+      this.rafId = 0;
+      return;
+    }
     if (this.lastTimestamp === 0) {
       this.lastTimestamp = timestamp;
     }
@@ -248,6 +259,10 @@ export class VaultCrackerCanvasEngine {
     this.lastTimestamp = timestamp;
     this.update(dt, rawDt);
     this.render();
+    if (this.isDestroyed || !this.isRunning) {
+      this.rafId = 0;
+      return;
+    }
     this.rafId = window.requestAnimationFrame(this.tick);
   };
 
@@ -263,6 +278,13 @@ export class VaultCrackerCanvasEngine {
         this.failGame();
       }
     }
+
+    state.pressure = computeVaultCrackerPressure({
+      attempts: state.guessHistory.length,
+      bestBulls: state.bestBulls,
+      elapsedMs: state.elapsedMs,
+      timeLimitMs: state.timeLimitMs,
+    });
 
     state.pulse = clamp(state.pulse + dt * 0.00018, 0.2, 1);
     state.rejectPulse = Math.max(0, state.rejectPulse - dt * 0.0032);
@@ -398,15 +420,8 @@ export class VaultCrackerCanvasEngine {
       bestBulls: this.state.bestBulls,
       lastGuess: this.state.lastGuess ? { ...this.state.lastGuess, digits: [...this.state.lastGuess.digits] } : null,
       guessHistory: this.state.guessHistory.map((guess) => ({ ...guess, digits: [...guess.digits] })),
-      pressure: this.computePressure(),
+      pressure: this.state.pressure,
     };
-  }
-
-  private computePressure(): number {
-    if (this.state.timeLimitMs !== null && this.state.timeLimitMs > 0) {
-      return clamp(this.state.elapsedMs / this.state.timeLimitMs, 0.04, 1);
-    }
-    return clamp(this.state.guessHistory.length / 12 + this.state.bestBulls * 0.08 + this.state.elapsedMs / 180_000, 0.06, 1);
   }
 
   private emitProgress(force: boolean): void {
