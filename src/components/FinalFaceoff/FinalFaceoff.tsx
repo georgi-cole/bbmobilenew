@@ -68,12 +68,6 @@ export default function FinalFaceoff() {
   type Phase = 'clues' | 'recap' | 'revealVotes';
   const [phase, setPhase] = useState<Phase>('clues');
   const winnerPersistedRef = useRef(false);
-  const handleRecapComplete = useCallback(() => {
-    // finale_recap_auto interstitial — shown after the season recap completes.
-    const state = store.getState();
-    showInterstitial('finale_recap_auto', state, dispatch);
-    setPhase('revealVotes');
-  }, [store, dispatch]);
 
   const persistWinnerToSeasonFinale = useCallback(() => {
     if (winnerPersistedRef.current) return;
@@ -122,6 +116,14 @@ export default function FinalFaceoff() {
   const [flashingJurorId, setFlashingJurorId] = useState<string | null>(null);
   const voteTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const handleRecapComplete = useCallback(() => {
+    // finale_recap_auto interstitial — shown after the season recap completes.
+    const state = store.getState();
+    showInterstitial('finale_recap_auto', state, dispatch);
+    setVoteVisible({});
+    setFlashingJurorId(null);
+    setPhase('revealVotes');
+  }, [store, dispatch]);
 
   useEffect(
     () => () => {
@@ -140,8 +142,6 @@ export default function FinalFaceoff() {
     if (phase !== 'revealVotes') return;
     if (revealVotesStartedRef.current) return;
     revealVotesStartedRef.current = true;
-    setVoteVisible({});
-    setFlashingJurorId(null);
 
     play('tv:event');
     requestBgm('music:jury_voting_bg', CINEMATIC_BGM_OWNER);

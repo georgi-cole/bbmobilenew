@@ -89,6 +89,33 @@ function makeStore() {
   });
 }
 
+async function advanceToRecap() {
+  // The finale flow crosses two exact timeout boundaries:
+  // 1) 3000 ms for each juror clue reveal
+  // 2) 3000 ms of extra hold time after the public vote bubble appears
+  // Splitting 2999 ms + 1 ms keeps the assertions pinned to the edge so we can
+  // prove the recap does not render early.
+  await act(async () => {
+    vi.advanceTimersByTime(2999);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(1);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(3000);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(2999);
+  });
+
+  await act(async () => {
+    vi.advanceTimersByTime(1);
+  });
+}
+
 describe('FinalFaceoff public vote pacing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -148,25 +175,7 @@ describe('FinalFaceoff public vote pacing', () => {
       </Provider>,
     );
 
-    await act(async () => {
-      vi.advanceTimersByTime(2999);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(2999);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-    });
+    await advanceToRecap();
 
     expect(screen.getByTestId('season-recap')).toBeTruthy();
 
