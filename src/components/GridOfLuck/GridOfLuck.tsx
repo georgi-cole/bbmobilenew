@@ -10,6 +10,7 @@ import {
 } from '../../animations/gridOfLuckAnimations';
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import type { GenericMinigameProps } from '../../minigames/reactComponents';
+import { getNextEligiblePlayer } from './gridOfLuckLogic';
 import { mulberry32 } from '../../store/rng';
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
 import './GridOfLuck.css';
@@ -1070,17 +1071,8 @@ export default function GridOfLuck(props: GenericMinigameProps) {
   );
 
   const nextPlayer = useMemo(() => {
-    if (state.gamePhase === 'finished') return null;
-    const order = state.turnOrder;
-    for (let i = 1; i <= order.length; i++) {
-      const idx = (state.currentTurnIndex + i) % order.length;
-      const candidate = state.players.find((player) => player.id === order[idx]);
-      if (candidate && !candidate.isEliminated && candidate.id !== activePlayer.id) {
-        return candidate;
-      }
-    }
-    return null;
-  }, [activePlayer.id, state]);
+    return getNextEligiblePlayer(state);
+  }, [state]);
 
   const validTargets = useMemo(() => {
     if (!pendingSelection) return [];
@@ -1342,7 +1334,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                 return (
                   <motion.button
                     key={box.id}
-                    className={`grid-of-luck__box${opened ? ' is-opened' : ''}${box.isLocked ? ' is-locked' : ''}${isClickable ? ' is-clickable' : ''}`}
+                    className={`grid-of-luck__box${opened ? ' is-opened' : ''}${box.isPeeked ? ' is-peeked' : ''}${box.isLocked ? ' is-locked' : ''}${isClickable ? ' is-clickable' : ''}`}
                     type="button"
                     data-testid="grid-of-luck-box"
                     disabled={!isClickable}

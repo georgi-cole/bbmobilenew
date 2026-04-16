@@ -361,7 +361,7 @@
 }
 
 /* Question mark on sealed boxes */
-.grid-of-luck__box:not(.is-opened):not(.is-locked) .grid-of-luck__box-symbol {
+.grid-of-luck__box:not(.is-opened):not(.is-peeked):not(.is-locked) .grid-of-luck__box-symbol {
   color: rgba(200, 170, 255, 0.55);
   font-size: 1.7rem;
   font-weight: 700;

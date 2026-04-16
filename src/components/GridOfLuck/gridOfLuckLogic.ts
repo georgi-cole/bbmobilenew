@@ -534,6 +534,37 @@ function advanceTurn(state: GameState): { state: GameState; message: string } {
   };
 }
 
+function getNextEligiblePlayer(state: GameState): GridPlayer | null {
+  if (state.gamePhase === 'finished') return null;
+
+  const order = state.turnOrder;
+  if (order.length === 0) return null;
+
+  const playersById = new Map(state.players.map((player) => [player.id, player]));
+  const simulatedSkipTurns = new Map(
+    state.players.map((player) => [player.id, Math.max(0, player.skipTurns ?? 0)]),
+  );
+  const totalSkips = Array.from(simulatedSkipTurns.values()).reduce((sum, turns) => sum + turns, 0);
+  const maxChecks = order.length + totalSkips;
+
+  for (let i = 1; i <= maxChecks; i += 1) {
+    const idx = (state.currentTurnIndex + i) % order.length;
+    const candidate = playersById.get(order[idx]);
+
+    if (!candidate || candidate.isEliminated) continue;
+
+    const remainingSkips = simulatedSkipTurns.get(candidate.id) ?? 0;
+    if (remainingSkips > 0) {
+      simulatedSkipTurns.set(candidate.id, remainingSkips - 1);
+      continue;
+    }
+
+    return candidate;
+  }
+
+  return null;
+}
+
 function resolveAutoTargetIds(players: GridPlayer[], actorId: string, effectType: BoxType, rng: () => number): string[] {
   if (effectType === 'martyrdom') {
     const blessing = chooseAiTarget(players, actorId, 'steal150', rng);
@@ -954,6 +985,7 @@ export {
   chooseAiBox,
   chooseAiTarget,
   advanceTurn,
+  getNextEligiblePlayer,
   resolveAutoTargetIds,
   resolveBoxSelection,
   applyEffectSelection,

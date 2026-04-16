@@ -4,6 +4,7 @@ import {
   advanceTurn,
   applyEffectSelection,
   createInitialState,
+  getNextEligiblePlayer,
   getAlivePlayers,
   getCurrentPlayer,
   type GameState,
@@ -92,6 +93,21 @@ describe('Grid of Luck logic', () => {
 
     expect(nextPlayer.skipTurns).toBe(0);
     expect(nextPlayer.id).not.toBe(state.players[1]!.id);
+  });
+
+  it('previews the same next eligible player that turn advancement will select', () => {
+    let state = createInitialState(makeParticipants(5), 41);
+    state = updatePlayers(state, (players) => {
+      players[1]!.skipTurns = 1;
+      players[2]!.isEliminated = true;
+      players[2]!.lp = 0;
+      players[3]!.skipTurns = 2;
+    });
+
+    const preview = getNextEligiblePlayer(state);
+    const advanced = advanceTurn(state);
+
+    expect(preview?.id).toBe(getCurrentPlayer(advanced.state).id);
   });
 
   it('unlocks all unopened boxes if they would all remain locked', () => {
