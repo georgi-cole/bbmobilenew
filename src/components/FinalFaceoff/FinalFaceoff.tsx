@@ -45,6 +45,9 @@ import './FinalFaceoff.css';
 const CLUE_AUTO_INTERVAL_MS = 3000;
 const RECAP_TRANSITION_DELAY_MS = 800;
 const PUBLIC_VOTE_RECAP_HOLD_MS = 3000;
+const VOTE_REVEAL_INITIAL_DELAY_MS = 800;
+const VOTE_REVEAL_STAGGER_MS = 2000;
+const WINNER_CINEMATIC_DELAY_MS = 1500;
 
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch();
@@ -137,12 +140,14 @@ export default function FinalFaceoff() {
     if (phase !== 'revealVotes') return;
     if (revealVotesStartedRef.current) return;
     revealVotesStartedRef.current = true;
+    setVoteVisible({});
+    setFlashingJurorId(null);
 
     play('tv:event');
     requestBgm('music:jury_voting_bg', CINEMATIC_BGM_OWNER);
 
     revealed.forEach((r, idx) => {
-      const delay = 800 + idx * 2000;
+      const delay = VOTE_REVEAL_INITIAL_DELAY_MS + idx * VOTE_REVEAL_STAGGER_MS;
       voteTimersRef.current[r.jurorId] = setTimeout(() => {
         delete voteTimersRef.current[r.jurorId];
         setVoteVisible((prev) => ({ ...prev, [r.jurorId]: true }));
@@ -156,10 +161,13 @@ export default function FinalFaceoff() {
     });
   }, [phase, revealed, play, requestBgm]);
 
-  // When finale completes during 'revealVotes' (e.g. skip-all), flash all chips instantly.
+  // When finale completes during 'revealVotes' before all chips are visible
+  // (e.g. via skip-all), reveal the remaining chips instantly.
   useEffect(() => {
     if (!finale.isComplete) return;
     if (phase !== 'revealVotes') return;
+    const hasHiddenVotes = revealed.some((r) => !voteVisible[r.jurorId]);
+    if (!hasHiddenVotes) return;
     for (const timer of Object.values(voteTimersRef.current)) clearTimeout(timer);
     for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
     voteTimersRef.current = {};
@@ -170,7 +178,7 @@ export default function FinalFaceoff() {
     }
     const t = setTimeout(() => setVoteVisible(allVisible), 0);
     return () => clearTimeout(t);
-  }, [finale.isComplete, phase, revealed]);
+  }, [finale.isComplete, phase, revealed, voteVisible]);
 
   // ── Initialise finale on first render ──────────────────────────────────
   useEffect(() => {
@@ -241,28 +249,32 @@ export default function FinalFaceoff() {
     humanIds,
   ]);
 
-  // ── Auto-finalize once all jurors revealed (only after recap) ─────────
-  // We deliberately defer this to 'revealVotes' so that:
-  //   - skipAllJurorsThunk doesn't accidentally skip the recap, and
-  //   - the normal 3-s auto-timer flow also goes through the recap.
+  const visibleVotesMap: Record<string, string> = {};
+  for (const r of revealed) {
+    if (voteVisible[r.jurorId]) {
+      visibleVotesMap[r.jurorId] = r.finalistId;
+    }
+  }
+  const visibleVoteCount = Object.keys(visibleVotesMap).length;
+
+  // ── Auto-finalize once all vote chips have actually been shown ─────────
+  // We deliberately defer this until the reveal animations have completed so
+  // the post-recap tribunal return can pace votes one-by-one.
   useEffect(() => {
     if (phase !== 'revealVotes') return;
-    if (
-      finale.isActive &&
-      finale.revealOrder.length > 0 &&
-      finale.revealedCount >= finale.revealOrder.length &&
-      !finale.isComplete
-    ) {
+    if (!finale.isActive || finale.isComplete) return;
+    if (finale.revealOrder.length === 0 || visibleVoteCount >= revealed.length) {
       dispatch(finalizeFinale({ seed: game.seed }));
     }
   }, [
     phase,
     dispatch,
     finale.isActive,
-    finale.revealedCount,
     finale.revealOrder.length,
     finale.isComplete,
     game.seed,
+    revealed.length,
+    visibleVoteCount,
   ]);
 
   // ── Persist winner to game state once decided ──────────────────────────
@@ -271,11 +283,9 @@ export default function FinalFaceoff() {
   useEffect(() => {
     if (phase === 'clues' || phase === 'recap') return;
     if (finale.isComplete && finale.winnerId && finale.runnerUpId && !winnerPersistedRef.current) {
-      // Wait for all vote chips to animate in before showing the winner.
-      const chipDelay = 800 + revealed.length * 2000 + 1500;
       const t = setTimeout(() => {
         persistWinnerToSeasonFinale();
-      }, chipDelay);
+      }, WINNER_CINEMATIC_DELAY_MS);
       return () => clearTimeout(t);
     }
   }, [
@@ -284,7 +294,6 @@ export default function FinalFaceoff() {
     finale.winnerId,
     finale.runnerUpId,
     persistWinnerToSeasonFinale,
-    revealed.length,
   ]);
 
   // Recovery path: if jury voting already completed and the game is still on the
@@ -355,14 +364,9 @@ export default function FinalFaceoff() {
     if (player) finalists.push(player);
   }
 
-  // Tally only revealed votes, but only show tally during revealVotes phase
-  const revealedVotesMap: Record<string, string> = {};
-  for (const r of revealed) {
-    revealedVotesMap[r.jurorId] = r.finalistId;
-  }
   const tally =
     phase === 'revealVotes'
-      ? (finale.isComplete ? tallyVotes(finale.votes) : tallyVotes(revealedVotesMap))
+      ? tallyVotes(visibleVotesMap)
       : {};
 
   const winner = game.players.find((p) => p.id === finale.winnerId);
@@ -424,7 +428,7 @@ export default function FinalFaceoff() {
               : 'All judges have spoken'
             : finale.isComplete
               ? `${winner ? `${winner.name} wins The Big Eye!` : 'Winner declared!'} 🏆`
-              : `${finale.revealedCount} / ${finale.revealOrder.length} votes revealed`}
+              : `${visibleVoteCount} / ${revealed.length} votes revealed`}
         </p>
       </div>
 
