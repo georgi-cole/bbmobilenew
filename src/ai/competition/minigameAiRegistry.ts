@@ -474,6 +474,22 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Grid of Luck — cinematic elimination board with heavy variance, ' +
       'but AI still leans on mental/nerve choices for target selection.',
   },
+  chainOfGreed: {
+    key: 'chainOfGreed',
+    category: 'mental',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_HYBRID,
+    weights: {
+      physical: 0,
+      mental: 0.4,
+      precision: 0.15,
+      nerve: 0.3,
+      luck: 0.15,
+    },
+    notes:
+      'Chain of Greed — higher/lower pressure game where AI balances risk, ' +
+      'bank timing, and social weakest-link voting.',
+  },
   wildcardWestern: {
     key: 'wildcardWestern',
     category: 'mental',

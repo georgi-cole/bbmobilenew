@@ -1160,6 +1160,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'logic',
     retired: false,
   },
+
+  chainOfGreed: {
+    key: 'chainOfGreed',
+    title: 'Chain of Greed',
+    description: 'Build a shared higher-or-lower chain, bank the pressure points, and survive weakest-link eliminations.',
+    instructions: [
+      'Guess Higher or Lower to grow the shared chain from 50 up to 1300 influence.',
+      'Bank secures only the current chain pot, keeps the same reference number, and resets the chain.',
+      'A wrong guess destroys the active pot. Equal numbers count as a miss.',
+      'Standard rounds end with a weakest-link vote. Final 3 and Final 2 switch to individual scoring.',
+      'Only the final winner receives the entire secured influence total. Everyone else gets 0.',
+    ],
+    resultMode: 'placement',
+    metricKind: 'points',
+    metricLabel: 'Influence',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'ChainOfGreed',
+    legacy: false,
+    weight: 2,
+    category: 'logic',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
