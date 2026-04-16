@@ -115,10 +115,13 @@ export default function QuickTapRaceCanvasGame({
   const [appliedModifiers, setAppliedModifiers] = useState<string[]>([]);
   const [canvasError, setCanvasError] = useState<string | null>(null);
 
-  // Generate a per-session seed when none is explicitly provided.
+  // Generate a per-session seed exactly once on mount. An empty dependency
+  // array is intentional: the seed is generated at construction time and must
+  // not change during a session, just like VaultCrackerCanvasGame.  A new
+  // session seed is generated on the next mount if the component re-mounts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sessionSeed = useMemo(
     () => (seed === 0 || seed === undefined ? cryptoSeed() : seed),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -237,9 +240,9 @@ export default function QuickTapRaceCanvasGame({
       });
       engineRef.current = engine;
 
-      const measureAndResize = (width = container.clientWidth, height = container.clientHeight) => {
-        const nextWidth = Math.round(width);
-        const nextHeight = Math.round(height);
+      const measureAndResize = (width?: number, height?: number) => {
+        const nextWidth = Math.round(width ?? container.clientWidth);
+        const nextHeight = Math.round(height ?? container.clientHeight);
         const nextDpr = Math.max(1, window.devicePixelRatio || 1);
         if (nextWidth <= 0 || nextHeight <= 0) return;
         if (

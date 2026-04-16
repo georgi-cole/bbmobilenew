@@ -51,6 +51,11 @@ const PARTICLE_LIFE_MS = 700;
 const PARTICLE_SPEED = 0.16;
 const MAX_PARTICLES = 60;
 
+/** Returns the array element at `index`, or the last element if `index` is out of bounds. */
+function atOrLast<T>(arr: T[], index: number): T {
+  return arr[Math.min(index, arr.length - 1)];
+}
+
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 function makeLayout(width: number, height: number, dpr: number): QTRLayout {
@@ -455,7 +460,7 @@ export class QuickTapRaceCanvasEngine {
     ctx.clearRect(0, 0, width, height);
 
     // Background — heat-tinted.
-    ctx.fillStyle = HEAT_BG_COLORS[this.heatLevel] ?? HEAT_BG_COLORS[HEAT_BG_COLORS.length - 1];
+    ctx.fillStyle = atOrLast(HEAT_BG_COLORS, this.heatLevel);
     ctx.fillRect(0, 0, width, height);
 
     this.renderHeatDots();
@@ -548,7 +553,7 @@ export class QuickTapRaceCanvasEngine {
 
   private renderTapButton(cx: number, cy: number, radius: number): void {
     const { ctx } = this;
-    const btnColor = HEAT_BTN_COLORS[this.heatLevel] ?? HEAT_BTN_COLORS[HEAT_BTN_COLORS.length - 1];
+    const btnColor = atOrLast(HEAT_BTN_COLORS, this.heatLevel);
 
     // Outer glow.
     ctx.save();

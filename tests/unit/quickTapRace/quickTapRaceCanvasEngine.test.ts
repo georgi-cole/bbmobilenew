@@ -38,7 +38,7 @@ function makeContextStub() {
 
 function makeCanvas(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
-  vi.spyOn(canvas, 'getContext').mockReturnValue(makeContextStub() as never);
+  vi.spyOn(canvas, 'getContext').mockReturnValue(makeContextStub() as unknown as CanvasRenderingContext2D);
   return canvas;
 }
 
