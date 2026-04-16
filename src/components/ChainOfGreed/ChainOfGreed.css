@@ -1,4 +1,5 @@
 .chain-of-greed {
+  --chain-of-greed-rail-card-min-width: 165px;
   position: relative;
   min-height: 100dvh;
   overflow-y: auto;
@@ -298,7 +299,7 @@
 .chain-of-greed__player-rail {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(165px, 74%);
+  grid-auto-columns: minmax(var(--chain-of-greed-rail-card-min-width), 74%);
   gap: 0.65rem;
   overflow-x: auto;
   padding-bottom: 0.2rem;
@@ -589,6 +590,6 @@
   }
 
   .chain-of-greed__player-rail {
-    grid-auto-columns: minmax(165px, 82%);
+    grid-auto-columns: minmax(var(--chain-of-greed-rail-card-min-width), 82%);
   }
 }

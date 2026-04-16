@@ -94,7 +94,7 @@ const FINAL_HELPERS = [
   'One winner takes the entire influence pool.',
 ];
 
-const MOMENT_GLYPHS: Record<Exclude<ChainOfGreedPlayerState['latestMoment'], null>, string> = {
+const momentGlyphs: Record<Exclude<ChainOfGreedPlayerState['latestMoment'], null>, string> = {
   safe: '•',
   correct: '✓',
   wrong: '✕',
@@ -819,7 +819,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             <div className="chain-of-greed__player-rail" data-testid="chain-player-rail">
               {state.players.map((player) => {
                 const isCurrent = currentTurnPlayer?.id === player.id || semifinalPlayer?.id === player.id || finalPlayer?.id === player.id;
-                const latestMoment = player.latestMoment ? MOMENT_GLYPHS[player.latestMoment] : '•';
+                const latestMoment = player.latestMoment ? momentGlyphs[player.latestMoment] : momentGlyphs.safe;
                 return (
                   <article
                     key={player.id}
