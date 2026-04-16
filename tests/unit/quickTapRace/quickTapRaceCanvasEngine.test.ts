@@ -169,9 +169,9 @@ describe('QuickTapRaceCanvasEngine', () => {
     await vi.advanceTimersByTimeAsync(32); // enter playing phase
 
     // Hit the tap button center (layout computed from 320×400 canvas).
-    // tapBtnCx ≈ 160, tapBtnCy ≈ 0.62 * 400 = 248
-    engine.handlePointerDown(1, { x: 160, y: 248 });
-    engine.handlePointerDown(2, { x: 160, y: 248 });
+    // tapBtnCx ≈ 160, tapBtnCy ≈ 0.7 * 400 = 280 with the current layout.
+    engine.handlePointerDown(1, { x: 160, y: 280 });
+    engine.handlePointerDown(2, { x: 160, y: 280 });
 
     const snap = engine.getSnapshot();
     expect(snap.tapCount).toBe(2);
@@ -248,13 +248,13 @@ describe('QuickTapRaceCanvasEngine', () => {
 
     // Tap the centre of the booster prompt area (boosterX, boosterY from layout).
     // The booster prompt is drawn above the tap button.
-    // Layout: tapBtnCy = 400 * 0.62 = 248, tapBtnRadius ≈ min(128, 120, 90) = 90
-    //         boosterHeight ≈ min(68, 400*0.14≈56) = 56
-    //         boosterY = 248 - 90 - 56 - 20 = 82
+    // Layout: tapBtnCy = 400 * 0.7 = 280, tapBtnRadius ≈ min(96, 88, 84) = 84
+    //         boosterHeight ≈ min(64, max(44, 400*0.14≈56)) = 56
+    //         boosterY = 280 - 84 - 56 - 24 = 116
     //         boosterX = (320 - boosterWidth)/2 where boosterWidth = min(320*0.72≈230, 240) = 230
     //         boosterX ≈ 45
-    //         Centre = (45 + 230/2, 82 + 56/2) = (160, 110)
-    engine.handlePointerDown(1, { x: 160, y: 110 });
+    //         Centre = (45 + 230/2, 116 + 56/2) = (160, 144)
+    engine.handlePointerDown(1, { x: 160, y: 144 });
 
     expect(onBooster).toHaveBeenCalledOnce();
     expect(engine.getSnapshot().visibleBooster).toBeNull();

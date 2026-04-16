@@ -59,16 +59,24 @@ function atOrLast<T>(arr: T[], index: number): T {
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 function makeLayout(width: number, height: number, dpr: number): QTRLayout {
-  const tapBtnRadius = Math.min(width * 0.4, height * 0.3, 90);
+  const topPadding = Math.max(20, Math.round(height * 0.08));
+  const bottomPadding = Math.max(20, Math.round(height * 0.08));
+  const boosterGap = Math.max(18, Math.round(height * 0.06));
+  const heatDotsGap = Math.max(18, Math.round(height * 0.05));
+
+  const tapBtnRadius = Math.min(width * 0.3, height * 0.22, 84);
   const tapBtnCx = width * 0.5;
-  const tapBtnCy = height * 0.62;
 
   const boosterWidth = Math.min(width * 0.72, 240);
-  const boosterHeight = Math.min(68, height * 0.14);
+  const boosterHeight = Math.min(64, Math.max(44, height * 0.14));
+  const minTapBtnCy = topPadding + heatDotsGap + boosterHeight + boosterGap + tapBtnRadius;
+  const preferredTapBtnCy = height * 0.7;
+  const maxTapBtnCy = height - tapBtnRadius - bottomPadding;
+  const tapBtnCy = Math.min(maxTapBtnCy, Math.max(minTapBtnCy, preferredTapBtnCy));
   const boosterX = (width - boosterWidth) / 2;
-  const boosterY = tapBtnCy - tapBtnRadius - boosterHeight - 20;
+  const boosterY = tapBtnCy - tapBtnRadius - boosterHeight - boosterGap;
 
-  const heatDotsY = boosterY - 20;
+  const heatDotsY = Math.max(topPadding, boosterY - heatDotsGap);
 
   return {
     width,
