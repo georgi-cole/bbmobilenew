@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
 
@@ -25,6 +25,8 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bank' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
+    expect(screen.getByTestId('chain-player-rail')).toBeInTheDocument();
     expect(screen.getAllByText(/Equal numbers count as a miss/i).length).toBeGreaterThan(0);
   });
 
@@ -37,5 +39,21 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByText(/Equal numbers count as a miss/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close Help' }));
     expect(screen.queryByText(/Bank secures the active pot/i)).not.toBeInTheDocument();
+  });
+
+  it('expands and closes the full ladder sheet from the compact preview card', async () => {
+    render(<ChainOfGreed participants={participants} seed={5} onFinish={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Round' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /View full ladder/i }));
+    expect(screen.getByText('Chain rewards')).toBeInTheDocument();
+    expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Chain rewards')).not.toBeInTheDocument();
+    });
   });
 });
