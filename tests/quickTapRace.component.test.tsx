@@ -1,11 +1,18 @@
+/**
+ * QuickTapRace canvas component tests.
+ *
+ * Since the booster prompt is now rendered on-canvas, this suite tests the
+ * DOM-visible aspects of the component (HUD, canvas presence, fallback path)
+ * and delegates booster / gameplay mechanics to the engine unit tests in
+ * tests/unit/quickTapRace/quickTapRaceCanvasEngine.test.ts.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, within } from '@testing-library/react';
+import { render, screen, act, cleanup } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import QuickTapRace from '../src/components/QuickTapRace/QuickTapRace';
-import { selectBoosterPrompts } from '../src/ai/competition/quickTapSimulation';
 
-vi.mock('../src/components/QuickTapRace/QuickTapRace.css', () => ({}));
 vi.mock('../src/hooks/useQuickTapRaceAudio', () => ({
   useQuickTapRaceAudio: () => ({
     playTap: vi.fn(),
@@ -14,9 +21,38 @@ vi.mock('../src/hooks/useQuickTapRaceAudio', () => ({
   }),
 }));
 
-// autoStart skips the long ready state, then the first Quick Tap booster is
-// scheduled for 6 seconds into play. A small buffer ensures the prompt is visible.
-const FIRST_BOOSTER_PROMPT_MS = 6200;
+// Minimal canvas 2D context stub so the engine can initialize in JSDOM.
+function makeContextStub() {
+  return {
+    clearRect: vi.fn(),
+    fillRect: vi.fn(),
+    beginPath: vi.fn(),
+    closePath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    arc: vi.fn(),
+    arcTo: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    fillText: vi.fn(),
+    setTransform: vi.fn(),
+    scale: vi.fn(),
+    set fillStyle(_v: string) {},
+    set strokeStyle(_v: string) {},
+    set lineWidth(_v: number) {},
+    set globalAlpha(_v: number) {},
+    get globalAlpha() {
+      return 1;
+    },
+    set font(_v: string) {},
+    set textAlign(_v: CanvasTextAlign) {},
+    set textBaseline(_v: CanvasTextBaseline) {},
+    set shadowColor(_v: string) {},
+    set shadowBlur(_v: number) {},
+  };
+}
 
 function renderQuickTapRace() {
   const store = configureStore({
@@ -36,27 +72,59 @@ function renderQuickTapRace() {
   );
 }
 
-describe('QuickTapRace mystery booster prompt', () => {
+describe('QuickTapRace canvas component', () => {
+  const originalRAF = window.requestAnimationFrame;
+  const originalCAF = window.cancelAnimationFrame;
+
+  // Install RAF stubs before each test so the engine's destroy() can call
+  // cancelAnimationFrame during component unmount (which happens inside cleanup).
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      makeContextStub() as unknown as CanvasRenderingContext2D,
+    );
+    window.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(performance.now()), 16) as unknown as number,
+    );
+    window.cancelAnimationFrame = vi.fn((handle: number) => window.clearTimeout(handle));
   });
 
   afterEach(() => {
+    // Unmount before restoring window globals so that engine.destroy() still
+    // has valid RAF functions available during React's passive cleanup phase.
+    cleanup();
+    window.requestAnimationFrame = originalRAF;
+    window.cancelAnimationFrame = originalCAF;
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
-  it('hides the actual booster details until the player taps it', () => {
-    const [firstPrompt] = selectBoosterPrompts(42);
+  it('renders the game canvas with the correct test-id', () => {
+    renderQuickTapRace();
+    expect(screen.getByTestId('quick-tap-race-canvas')).toBeInTheDocument();
+  });
+
+  it('shows the score HUD once the playing phase begins', async () => {
     renderQuickTapRace();
 
-    act(() => {
-      vi.advanceTimersByTime(FIRST_BOOSTER_PROMPT_MS);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
     });
 
-    const boosterButton = screen.getByRole('button', { name: /grab mystery booster/i });
-    expect(boosterButton).toBeInTheDocument();
-    expect(within(boosterButton).getByText('MYSTERY BOOSTER')).toBeInTheDocument();
-    expect(boosterButton).not.toHaveTextContent(firstPrompt.label);
-    expect(boosterButton).not.toHaveTextContent(firstPrompt.icon);
+    // The HUD score (starts at 0) and "taps" label are DOM elements.
+    expect(screen.getByText('taps')).toBeInTheDocument();
+  });
+
+  it('shows the fallback alert when the canvas context is unavailable', async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    renderQuickTapRace();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText(/game arena unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
   });
 });

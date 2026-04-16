@@ -32,7 +32,7 @@ import TiltedLedge from '../components/TiltedLedge/TiltedLedge';
 import ClosestWithoutGoingOverComp from '../components/ClosestWithoutGoingOverComp';
 import HoldTheWallComp from '../components/HoldTheWallComp/HoldTheWallComp';
 import CastleRescueGame from './castleRescue/CastleRescueGame';
-import QuickTapRace from '../components/QuickTapRace/QuickTapRace';
+import QuickTapRace from './quickTapRace/QuickTapRaceCanvasGame';
 import LaneRacers from './laneRacers/LaneRacersCanvasGame';
 import TravelingDots from '../components/TravelingDots/TravelingDots';
 import EstimationGame from '../components/EstimationGame/EstimationGame';
