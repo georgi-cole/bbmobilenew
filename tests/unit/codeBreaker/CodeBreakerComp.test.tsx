@@ -19,6 +19,7 @@ import type {
 
 type MockEngine = {
   options: VaultCrackerEngineOptions;
+  resizeCalls: Array<{ width: number; height: number; dpr: number }>;
   emitProgress: (snapshot: VaultCrackerEngineSnapshot) => void;
   emitWin: (payload: VaultCrackerWinPayload) => void;
 };
@@ -47,6 +48,7 @@ function makeSnapshot(overrides: Partial<VaultCrackerEngineSnapshot> = {}): Vaul
 vi.mock('../../../src/minigames/vaultCracker/engine/vaultCrackerCanvasEngine', () => ({
   VaultCrackerCanvasEngine: class MockVaultCrackerCanvasEngine {
     readonly options: VaultCrackerEngineOptions;
+    readonly resizeCalls: Array<{ width: number; height: number; dpr: number }> = [];
 
     constructor(_canvas: HTMLCanvasElement, options: VaultCrackerEngineOptions) {
       this.options = options;
@@ -73,7 +75,9 @@ vi.mock('../../../src/minigames/vaultCracker/engine/vaultCrackerCanvasEngine', (
 
     destroy() {}
 
-    resize() {}
+    resize(width: number, height: number, dpr: number) {
+      this.resizeCalls.push({ width, height, dpr });
+    }
 
     getSnapshot() {
       return {
@@ -111,37 +115,60 @@ vi.mock('../../../src/minigames/vaultCracker/engine/input', () => ({
 }));
 
 class ResizeObserverMock {
+  static instances: ResizeObserverMock[] = [];
+
   private readonly callback: ResizeObserverCallback;
+
+  private observedTarget: Element | null = null;
+
+  disconnected = false;
 
   constructor(callback: ResizeObserverCallback) {
     this.callback = callback;
+    ResizeObserverMock.instances.push(this);
   }
 
   observe(target: Element) {
-    const rect = {
-      width: 320,
-      height: 540,
-      top: 0,
-      left: 0,
-      right: 320,
-      bottom: 540,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    };
-    Object.defineProperty(target, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => rect,
-    });
-    this.callback(
-      [{ target, contentRect: rect } as ResizeObserverEntry],
-      this as unknown as ResizeObserver,
-    );
+    this.observedTarget = target;
+    this.emit(320, 540);
   }
 
   unobserve() {}
 
-  disconnect() {}
+  disconnect() {
+    this.disconnected = true;
+  }
+
+  emit(width: number, height: number) {
+    if (!this.observedTarget) return;
+    const rect = {
+      width,
+      height,
+      top: 0,
+      left: 0,
+      right: width,
+      bottom: height,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    };
+    Object.defineProperty(this.observedTarget, 'clientWidth', {
+      configurable: true,
+      value: Math.round(width),
+    });
+    Object.defineProperty(this.observedTarget, 'clientHeight', {
+      configurable: true,
+      value: Math.round(height),
+    });
+    Object.defineProperty(this.observedTarget, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => rect,
+    });
+    this.callback(
+      [{ target: this.observedTarget, contentRect: rect } as ResizeObserverEntry],
+      this as unknown as ResizeObserver,
+    );
+  }
 }
 
 function makeStore() {
@@ -186,6 +213,7 @@ describe('CodeBreakerComp', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockRegistry.__vaultCrackerMockEngines = [];
+    ResizeObserverMock.instances = [];
     globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
   });
 
@@ -230,6 +258,31 @@ describe('CodeBreakerComp', () => {
     } finally {
       styleTag.remove();
     }
+  });
+
+  it('only resizes the canvas engine when the observed shell size actually changes', () => {
+    const { unmount } = renderCodeBreaker();
+    const engine = getMockEngines()[0];
+    const observer = ResizeObserverMock.instances[0];
+
+    expect(engine.resizeCalls).toEqual([{ width: 320, height: 540, dpr: 1 }]);
+
+    act(() => {
+      observer.emit(320, 540);
+      observer.emit(320.4, 540.4);
+    });
+    expect(engine.resizeCalls).toHaveLength(1);
+
+    act(() => {
+      observer.emit(320, 560);
+    });
+    expect(engine.resizeCalls).toEqual([
+      { width: 320, height: 540, dpr: 1 },
+      { width: 320, height: 560, dpr: 1 },
+    ]);
+
+    unmount();
+    expect(observer.disconnected).toBe(true);
   });
 
   it('scores a solved run from attempts and elapsed time', async () => {

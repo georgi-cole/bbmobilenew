@@ -791,7 +791,6 @@
   .cb__guess-feedback {
     justify-content: flex-start;
   }
-}
 
 @media (max-height: 720px) {
   .cb {
@@ -839,7 +838,8 @@
 .cb__canvas-shell {
   position: relative;
   width: 100%;
-  min-height: min(68dvh, 620px);
+  height: min(68dvh, 620px);
+  max-height: min(68dvh, 620px);
   border-radius: 28px;
   overflow: hidden;
   border: 1px solid rgba(118, 166, 226, 0.24);

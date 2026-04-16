@@ -29,6 +29,7 @@ function makeContextStub() {
     setLineDash: vi.fn(),
     fillText: vi.fn(),
     setTransform: vi.fn(),
+    scale: vi.fn(),
     createLinearGradient: vi.fn(() => makeGradientStub()),
     createRadialGradient: vi.fn(() => makeGradientStub()),
     set fillStyle(_value: string | CanvasGradient) {},
@@ -92,6 +93,21 @@ describe('VaultCrackerCanvasEngine', () => {
     expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(requestCallsBeforeDestroyAdvance);
   });
 
+  it('keeps layout sizing in CSS while only updating the backing resolution on resize', () => {
+    const context = makeContextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as never);
+    const canvas = document.createElement('canvas');
+    const engine = new VaultCrackerCanvasEngine(canvas, { seed: 42 });
+
+    engine.resize(240, 480, 2);
+
+    expect(canvas.width).toBe(480);
+    expect(canvas.height).toBe(960);
+    expect(canvas.style.width).toBe('');
+    expect(canvas.style.height).toBe('');
+    expect(context.setTransform).toHaveBeenCalledWith(1, 0, 0, 1, 0, 0);
+    expect(context.scale).toHaveBeenCalledWith(2, 2);
+  });
   it('does not reschedule the RAF loop after an onProgress callback pauses the engine', async () => {
     const canvas = document.createElement('canvas');
     let engine: VaultCrackerCanvasEngine | null = null;
