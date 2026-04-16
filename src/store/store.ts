@@ -37,6 +37,7 @@ import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware';
 import adsReducer, { loadAdsState, saveAdsState } from './adsSlice';
 import { adsMiddleware } from './adsMiddleware';
+import { secretMissionMiddleware } from './secretMissionMiddleware';
 
 export const store = configureStore({
   reducer: {
@@ -72,7 +73,13 @@ export const store = configureStore({
     ads: loadAdsState(),
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(socialMiddleware, soundMiddleware, publicOpinionMiddleware, adsMiddleware),
+    getDefaultMiddleware().concat(
+      socialMiddleware,
+      soundMiddleware,
+      publicOpinionMiddleware,
+      adsMiddleware,
+      secretMissionMiddleware,
+    ),
 });
 
 // Persist settings to localStorage whenever they change

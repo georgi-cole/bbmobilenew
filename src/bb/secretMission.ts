@@ -1,35 +1,12 @@
 /**
- * secretMission.ts — Centralized secret mission framework (PR 1 + PR 2 + PR 3).
+ * secretMission.ts — centralized secret mission framework.
  *
- * Responsibilities:
- *  - Types for secret mission state & mission templates
- *  - Default trigger-chance table (Day 5–12)
- *  - getSecretMissionTriggerChance() — pure lookup, easy to test
- *  - checkSecretMissionTrigger()    — pure roll, easy to test
- *  - MISSION_TEMPLATES              — pool of templates for the season
- *  - Reward types, pool, and helpers (PR 2)
- *  - Activation guard helpers: canUseDoubleVote / canUseVoteDeduction (PR 3)
- *
- * What is NOT here:
- *  - Redux reducers (gameSlice.ts)
- *  - UI rendering (DiaryRoom.tsx)
- *
- * Keep this file free of side effects so it can be unit-tested in isolation.
+ * This module intentionally stays side-effect free so reducers, middleware,
+ * and tests can share the same rules.
  */
 
 // ── Status lifecycle ──────────────────────────────────────────────────────────
 
-/**
- * Lifecycle states for a single secret mission.
- *
- *  available     → mission has triggered; Big Eye hasn't offered it yet
- *  offered       → Big Eye offered it in the Confessional; awaiting player response
- *  accepted      → player accepted; checklist is active
- *  declined      → player declined; one re-offer may still be pending
- *  rewardPending → checklist completed; reward selection (mystery boxes) awaiting
- *  rewardClaimed → player selected a box; reward stored in `reward` field
- *  expired       → time window closed without completion
- */
 export type SecretMissionStatus =
   | 'available'
   | 'offered'
@@ -39,13 +16,24 @@ export type SecretMissionStatus =
   | 'rewardClaimed'
   | 'expired';
 
-// ── Task types ─────────────────────────────────────────────────────────────
+// ── Task / requirement types ─────────────────────────────────────────────────
 
-/** Discriminated union of task categories for extensibility. */
-export type MissionTaskType =
+export type LegacyMissionTaskType =
   | 'confessional_visits'
-  | 'conversation_turns'
-  | 'survive_days';
+  | 'conversation_turns';
+
+export type SecretMissionRequirementType =
+  | 'survive_days'
+  | 'competition_placement'
+  | 'avoid_last_place'
+  | 'public_approval_gain'
+  | 'social_energy_empty_streak'
+  | 'social_action_count'
+  | 'easter_egg_discovery'
+  | 'incoming_response_streak'
+  | 'target_nominated';
+
+export type MissionTaskType = LegacyMissionTaskType | SecretMissionRequirementType;
 
 export interface MissionTask {
   /** Unique within a mission instance. */
@@ -55,71 +43,96 @@ export interface MissionTask {
   current: number;
   target: number;
   completed: boolean;
-  /**
-   * Anti-cheese tracking for tasks that must span distinct calendar days.
-   * Only populated for task types that use unique-day gating
-   * (currently `confessional_visits`).  The values are stringified week
-   * numbers (e.g. `"7"`) that have already been credited.
-   */
+  /** Inclusive mission window start / end day. */
+  startDay?: number;
+  endDay?: number;
+  /** Inclusive deadline day for target-style requirements. */
+  targetDay?: number;
+  /** Distinct-day gating for legacy and streak requirements. */
   uniqueDays?: string[];
+  /** Manual social actions that count for this task. */
+  requiredActionIds?: string[];
+  /** When true, each required action only counts once toward the task. */
+  requireDistinctActionIds?: boolean;
+  /** Distinct social actions already credited for this task. */
+  completedActionIds?: string[];
+  /** Target player for nomination requirements. */
+  targetPlayerId?: string;
+  /** Max placement that counts as success (1 = win, 2 = top 2, etc.). */
+  placementThreshold?: number;
+  /** Starting approval captured when the mission is accepted. */
+  baselineApproval?: number;
+  /** Minimum approval increase needed relative to baseline. */
+  requiredDelta?: number;
+  /** Easter eggs discovered so far for this requirement. */
+  discoveredEggIds?: string[];
+  /** Current / best consecutive streak counts. */
+  currentStreak?: number;
+  maxStreak?: number;
+  /** Human-readable audit breadcrumbs. */
+  auditLog?: string[];
+  firstSatisfiedDay?: number;
+  lastProgressDay?: number;
+  optional?: boolean;
 }
 
-// ── Mission state (stored in GameState.secretMission) ────────────────────────
+// ── Reward types ──────────────────────────────────────────────────────────────
 
-// ── Reward types (PR 2) ──────────────────────────────────────────────────────
-
-/**
- * The four possible mystery box outcomes.
- *  - plus1000Influence : immediately add 1 000 influence to the player's bank
- *  - doubleVote        : stored power — cast two votes in a future live vote (PR 3)
- *  - voteDeduction     : stored power — deduct one vote cast against player (PR 3)
- *  - emptyBox          : dud; no power granted
- */
-export type MissionRewardType =
+export type LegacyMissionRewardType =
   | 'plus1000Influence'
   | 'doubleVote'
   | 'voteDeduction'
   | 'emptyBox';
 
-/**
- * Ordered pool: exactly one of each outcome.
- * The UI shuffles a copy of this array at render time so each reveal is
- * unpredictable, but the reducer only ever records the chosen type.
- */
-export const MYSTERY_BOX_POOL: readonly MissionRewardType[] = [
+export type MissionRewardType = LegacyMissionRewardType | 'immunity';
+export type MissionRewardDuration = 1 | 2 | 3;
+export type SecretMissionBoxRewardType = Exclude<MissionRewardType, 'emptyBox'>;
+
+export const MYSTERY_BOX_POOL: readonly LegacyMissionRewardType[] = [
   'plus1000Influence',
   'doubleVote',
   'voteDeduction',
   'emptyBox',
 ] as const;
 
-/**
- * Centralized storage for a claimed mystery-box reward.
- *
- * Design notes for PR 3:
- *  - `consumed` is flipped to true when the power is activated in live gameplay.
- *  - `expired`  is flipped to true when Final 4 is reached before use.
- *  - `eligible` is a derived convenience flag (not consumed AND not expired AND type ≠ emptyBox).
- *    It is recomputed whenever consumed/expired change so PR 3 can read it cheaply.
- */
-export interface SecretMissionReward {
-  type: MissionRewardType;
-  /** True once the power has been activated / used in live gameplay. */
-  consumed: boolean;
-  /** True once the Final 4 week is reached and the reward can no longer be used. */
-  expired: boolean;
-  /**
-   * True when the reward is available for future use.
-   * Equivalent to: !consumed && !expired && type !== 'emptyBox'.
-   */
-  eligible: boolean;
+export const SECRET_MISSION_BOX_REWARDS: readonly SecretMissionBoxRewardType[] = [
+  'plus1000Influence',
+  'doubleVote',
+  'voteDeduction',
+  'immunity',
+] as const;
+
+export function getSecretMissionBoxRewards(
+  mission: Pick<SecretMissionState, 'triggeredDay' | 'templateId' | 'missionNumber'>,
+): SecretMissionBoxRewardType[] {
+  const rewards = [...SECRET_MISSION_BOX_REWARDS];
+  const rng = createSeededRng(
+    hashString(
+      `${mission.templateId}:${mission.triggeredDay}:${mission.missionNumber ?? 1}:reward-boxes`,
+    ),
+  );
+
+  for (let i = rewards.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [rewards[i], rewards[j]] = [rewards[j], rewards[i]];
+  }
+
+  return rewards;
 }
 
-/**
- * Create a fresh SecretMissionReward for the given type.
- * The empty box is never eligible (it is a harmless dud).
- */
-export function createMissionReward(type: MissionRewardType): SecretMissionReward {
+export interface SecretMissionReward {
+  type: MissionRewardType;
+  consumed: boolean;
+  expired: boolean;
+  eligible: boolean;
+  /** Immunity-only fields. */
+  durationDays?: MissionRewardDuration;
+  claimDay?: number;
+  activeUntilDay?: number;
+  usedDay?: number | null;
+}
+
+export function createMissionReward(type: LegacyMissionRewardType): SecretMissionReward {
   return {
     type,
     consumed: false,
@@ -128,297 +141,528 @@ export function createMissionReward(type: MissionRewardType): SecretMissionRewar
   };
 }
 
+export function createImmunityReward(
+  durationDays: MissionRewardDuration,
+  claimDay: number,
+): SecretMissionReward {
+  return {
+    type: 'immunity',
+    consumed: false,
+    expired: false,
+    eligible: true,
+    durationDays,
+    claimDay,
+    activeUntilDay: claimDay + durationDays - 1,
+    usedDay: null,
+  };
+}
+
+// ── Mission state ─────────────────────────────────────────────────────────────
+
 export interface SecretMissionState {
-  /** Which game week (= day) the mission triggered. */
   triggeredDay: number;
-  /** Current lifecycle status. */
+  missionNumber?: number;
+  startDay: number;
+  endDay: number;
+  survivalWindowEndDay: number;
+  targetDeadlineDay: number;
   status: SecretMissionStatus;
-  /** Which day the Confessional offer was first shown; null until offered. */
   offeredDay: number | null;
-  /** How many times the mission has been offered (capped at 2 for re-offer). */
   offerCount: number;
-  /** Which day the player declined the mission; null until declined. */
   declinedDay: number | null;
-  /** Active checklist tasks. Populated when status moves to 'accepted'. */
   tasks: MissionTask[];
-  /** Template identifier used to generate this mission instance. */
   templateId: string;
-  /**
-   * The mystery-box reward claimed after mission completion.
-   * Populated when status transitions to 'rewardClaimed'.
-   * Undefined until the player opens the Confessional and selects a box.
-   */
   reward?: SecretMissionReward;
+  discoveredEasterEggIds?: string[];
 }
 
 // ── Mission templates ────────────────────────────────────────────────────────
 
-export interface MissionTemplate {
-  id: string;
-  /** Short human-readable mission title. */
-  title: string;
-  /** Flavour description shown when the player accepts. */
-  description: string;
-  /**
-   * Factory that produces the task list for this template.
-   * @param triggeredDay  The game week on which the mission triggered, used to
-   *                      compute day-relative targets (e.g. "survive until Day X").
-   */
-  buildTasks: (triggeredDay: number) => Omit<MissionTask, 'completed' | 'current'>[];
+type WeightedRequirementType = Exclude<
+  SecretMissionRequirementType,
+  'survive_days'
+>;
+
+export interface MissionBuildContext {
+  triggeredDay: number;
+  templateId: string;
+  targetCandidateIds?: string[];
 }
 
-/**
- * Mission template pool — five distinct missions that draw on different task
- * combinations so runs feel varied.  Tasks within each mission are designed
- * with anti-cheese rules in mind:
- *   - `confessional_visits` counts UNIQUE DAYS (not raw opens) to prevent
- *     rapid-enter/exit exploitation.
- *   - `survive_days` is always relative to the triggered day.
- *   - `conversation_turns` target is set to a manageable number per visit.
- *
- * `pickMissionTemplate()` cycles through the pool deterministically so the
- * player sees a different layout each trigger day.
- */
+export interface MissionTemplate {
+  id: string;
+  title: string;
+  description: string;
+  daySpan: number;
+  requirementWeights: Record<WeightedRequirementType, number>;
+}
+
+const EXTRA_REQUIREMENT_TYPES: WeightedRequirementType[] = [
+  'competition_placement',
+  'avoid_last_place',
+  'public_approval_gain',
+  'social_energy_empty_streak',
+  'social_action_count',
+  'easter_egg_discovery',
+  'incoming_response_streak',
+  'target_nominated',
+];
+
+function hashString(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createSeededRng(seed: number): () => number {
+  let state = (seed >>> 0) || 1;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+function weightedPickDistinct(
+  weights: Record<WeightedRequirementType, number>,
+  count: number,
+  rng: () => number,
+): WeightedRequirementType[] {
+  const selected: WeightedRequirementType[] = [];
+  const remaining = [...EXTRA_REQUIREMENT_TYPES];
+
+  while (selected.length < count && remaining.length > 0) {
+    const total = remaining.reduce((sum, key) => sum + Math.max(0, weights[key] ?? 0), 0);
+    if (total <= 0) {
+      selected.push(remaining.shift()!);
+      continue;
+    }
+    let roll = rng() * total;
+    let picked: WeightedRequirementType | null = null;
+    for (const key of remaining) {
+      roll -= Math.max(0, weights[key] ?? 0);
+      if (roll <= 0) {
+        picked = key;
+        break;
+      }
+    }
+    const chosen = picked ?? remaining[remaining.length - 1];
+    selected.push(chosen);
+    remaining.splice(remaining.indexOf(chosen), 1);
+  }
+
+  return selected;
+}
+
+function pickTargetCandidate(
+  context: MissionBuildContext,
+  rng: () => number,
+): string {
+  const candidates = context.targetCandidateIds?.length
+    ? context.targetCandidateIds
+    : ['target-a', 'target-b', 'target-c'];
+  return candidates[Math.floor(rng() * candidates.length)] ?? candidates[0];
+}
+
+interface SocialActionTaskBlueprint {
+  description: (params: { endDay: number; targetLabel?: string }) => string;
+  target: number;
+  requiredActionIds: string[];
+  requireDistinctActionIds?: boolean;
+  needsTarget?: boolean;
+}
+
+const SOCIAL_ACTION_TASK_BLUEPRINTS: readonly SocialActionTaskBlueprint[] = [
+  {
+    description: ({ endDay, targetLabel = 'your marked target' }) =>
+      `Form an alliance with ${targetLabel} before Day ${endDay}`,
+    target: 1,
+    requiredActionIds: ['ally', 'proposeAlliance'],
+    needsTarget: true,
+  },
+  {
+    description: ({ endDay, targetLabel = 'your marked target' }) =>
+      `Start a fight with ${targetLabel} before Day ${endDay}`,
+    target: 1,
+    requiredActionIds: ['startFight'],
+    needsTarget: true,
+  },
+  {
+    description: ({ endDay }) =>
+      `Complete this social set before Day ${endDay}: compliment, whisper, and group chat`,
+    target: 3,
+    requiredActionIds: ['compliment', 'whisper', 'group_chat'],
+    requireDistinctActionIds: true,
+  },
+  {
+    description: ({ endDay }) =>
+      `Complete this social set before Day ${endDay}: rumor, vote rally, and favour request`,
+    target: 3,
+    requiredActionIds: ['rumor', 'vote_rally', 'favor_request'],
+    requireDistinctActionIds: true,
+  },
+] as const;
+
+function buildRequirementTask(
+  type: SecretMissionRequirementType,
+  context: MissionBuildContext,
+  endDay: number,
+  rng: () => number,
+): Omit<MissionTask, 'completed' | 'current'> {
+  const startDay = context.triggeredDay;
+  switch (type) {
+    case 'survive_days':
+      return {
+        id: `survive_days_${context.templateId}`,
+        type,
+        description: `Survive until Day ${endDay}`,
+        target: endDay,
+        startDay,
+        endDay,
+        targetDay: endDay,
+      };
+    case 'competition_placement': {
+      const placementThreshold = rng() < 0.5 ? 2 : 3;
+      return {
+        id: `competition_placement_${context.templateId}`,
+        type,
+        description: `Finish in the top ${placementThreshold} of a competition before Day ${endDay}`,
+        target: 1,
+        startDay,
+        endDay,
+        targetDay: endDay,
+        placementThreshold,
+      };
+    }
+    case 'avoid_last_place':
+      return {
+        id: `avoid_last_place_${context.templateId}`,
+        type,
+        description: `Avoid last place in 2 competitions before Day ${endDay}`,
+        target: 2,
+        startDay,
+        endDay,
+        targetDay: endDay,
+      };
+    case 'public_approval_gain': {
+      const requiredDelta = rng() < 0.5 ? 5 : 7;
+      return {
+        id: `public_approval_gain_${context.templateId}`,
+        type,
+        description: `Improve your public rating by ${requiredDelta} percentage points before Day ${endDay}`,
+        target: requiredDelta,
+        startDay,
+        endDay,
+        targetDay: endDay,
+        requiredDelta,
+      };
+    }
+    case 'social_energy_empty_streak': {
+      const streak = rng() < 0.5 ? 2 : 3;
+      return {
+        id: `social_energy_empty_streak_${context.templateId}`,
+        type,
+        description: `Spend all your social energy for ${streak} consecutive days`,
+        target: streak,
+        startDay,
+        endDay,
+        targetDay: endDay,
+        currentStreak: 0,
+        maxStreak: 0,
+        uniqueDays: [],
+      };
+    }
+    case 'social_action_count': {
+      const blueprint = SOCIAL_ACTION_TASK_BLUEPRINTS[Math.floor(rng() * SOCIAL_ACTION_TASK_BLUEPRINTS.length)];
+      const targetPlayerId = blueprint.needsTarget ? pickTargetCandidate(context, rng) : undefined;
+      return {
+        id: `social_action_count_${context.templateId}`,
+        type,
+        description: blueprint.description({
+          endDay,
+          targetLabel: targetPlayerId ? 'your marked target' : undefined,
+        }),
+        target: blueprint.target,
+        startDay,
+        endDay,
+        targetDay: endDay,
+        requiredActionIds: [...blueprint.requiredActionIds],
+        requireDistinctActionIds: blueprint.requireDistinctActionIds,
+        completedActionIds: [],
+        targetPlayerId,
+      };
+    }
+    case 'easter_egg_discovery':
+      return {
+        id: `easter_egg_discovery_${context.templateId}`,
+        type,
+        description: 'Discover a hidden Big Eye easter egg (optional bonus objective)',
+        target: 1,
+        startDay,
+        endDay,
+        targetDay: endDay,
+        discoveredEggIds: [],
+        optional: true,
+      };
+    case 'incoming_response_streak': {
+      const streak = rng() < 0.5 ? 2 : 3;
+      return {
+        id: `incoming_response_streak_${context.templateId}`,
+        type,
+        description: `Respond to every incoming social request for ${streak} consecutive days`,
+        target: streak,
+        startDay,
+        endDay,
+        targetDay: endDay,
+        currentStreak: 0,
+        maxStreak: 0,
+        uniqueDays: [],
+      };
+    }
+    case 'target_nominated': {
+      const targetPlayerId = pickTargetCandidate(context, rng);
+      return {
+        id: `target_nominated_${context.templateId}`,
+        type,
+        description: `Get your marked target nominated before Day ${endDay}`,
+        target: 1,
+        startDay,
+        endDay,
+        targetDay: endDay,
+        targetPlayerId,
+      };
+    }
+    default:
+      return {
+        id: `survive_days_${context.templateId}`,
+        type: 'survive_days',
+        description: `Survive until Day ${endDay}`,
+        target: endDay,
+        startDay,
+        endDay,
+        targetDay: endDay,
+      };
+  }
+}
+
+function buildWeightedTaskStack(
+  context: MissionBuildContext,
+  daySpan: number,
+  weights: Record<WeightedRequirementType, number>,
+): Omit<MissionTask, 'completed' | 'current'>[] {
+  const endDay = context.triggeredDay + daySpan;
+  const rng = createSeededRng(hashString(`${context.templateId}:${context.triggeredDay}:${endDay}`));
+  const chosenTypes = weightedPickDistinct(weights, 4, rng);
+  return [
+    buildRequirementTask('survive_days', context, endDay, rng),
+    ...chosenTypes.map((type) => buildRequirementTask(type, context, endDay, rng)),
+  ];
+}
+
 export const MISSION_TEMPLATES: MissionTemplate[] = [
   {
     id: 'silent_witness',
     title: 'The Silent Witness',
-    description:
-      'The Big Eye has been watching. Return to the Confessional on different days ' +
-      'and keep the conversation going.',
-    buildTasks: (triggeredDay) => [
-      {
-        id: 'confessional_visits',
-        type: 'confessional_visits' as const,
-        description: 'Visit the Confessional on 3 different days',
-        target: 3,
-      },
-      {
-        id: 'conversation_turns',
-        type: 'conversation_turns' as const,
-        description: 'Complete 6 exchanges with the Big Eye',
-        target: 6,
-      },
-      {
-        id: 'survive_days',
-        type: 'survive_days' as const,
-        description: `Survive until Day ${triggeredDay + 3}`,
-        target: triggeredDay + 3,
-      },
-    ],
+    description: 'A balanced stack that rewards survival, public poise, and careful information work.',
+    daySpan: 3,
+    requirementWeights: {
+      competition_placement: 3,
+      avoid_last_place: 2,
+      public_approval_gain: 4,
+      social_energy_empty_streak: 2,
+      social_action_count: 4,
+      easter_egg_discovery: 2,
+      incoming_response_streak: 3,
+      target_nominated: 3,
+    },
   },
   {
-    id: 'long_game',
-    title: 'The Long Game',
-    description:
-      'Patience is a weapon. Endure, observe, and keep the Big Eye company.',
-    buildTasks: (triggeredDay) => [
-      {
-        id: 'survive_days',
-        type: 'survive_days' as const,
-        description: `Survive until Day ${triggeredDay + 4}`,
-        target: triggeredDay + 4,
-      },
-      {
-        id: 'conversation_turns',
-        type: 'conversation_turns' as const,
-        description: 'Complete 8 exchanges with the Big Eye',
-        target: 8,
-      },
-    ],
+    id: 'public_operator',
+    title: 'The Public Operator',
+    description: 'Viewers, social pressure, and timing all matter in this stack.',
+    daySpan: 4,
+    requirementWeights: {
+      competition_placement: 2,
+      avoid_last_place: 1,
+      public_approval_gain: 5,
+      social_energy_empty_streak: 2,
+      social_action_count: 4,
+      easter_egg_discovery: 1,
+      incoming_response_streak: 4,
+      target_nominated: 3,
+    },
   },
   {
-    id: 'social_butterfly',
-    title: 'The Social Butterfly',
-    description:
-      'Charm the Big Eye with words. Visit on separate days and keep talking.',
-    buildTasks: (triggeredDay) => [
-      {
-        id: 'confessional_visits',
-        type: 'confessional_visits' as const,
-        description: 'Visit the Confessional on 2 different days',
-        target: 2,
-      },
-      {
-        id: 'conversation_turns',
-        type: 'conversation_turns' as const,
-        description: 'Complete 10 exchanges with the Big Eye',
-        target: 10,
-      },
-      {
-        id: 'survive_days',
-        type: 'survive_days' as const,
-        description: `Survive until Day ${triggeredDay + 2}`,
-        target: triggeredDay + 2,
-      },
-    ],
+    id: 'pressure_cooker',
+    title: 'The Pressure Cooker',
+    description: 'A tempo-heavy stack built around competition composure and streak maintenance.',
+    daySpan: 3,
+    requirementWeights: {
+      competition_placement: 4,
+      avoid_last_place: 4,
+      public_approval_gain: 2,
+      social_energy_empty_streak: 4,
+      social_action_count: 2,
+      easter_egg_discovery: 1,
+      incoming_response_streak: 2,
+      target_nominated: 2,
+    },
   },
   {
-    id: 'the_strategist',
-    title: 'The Strategist',
-    description:
-      'Strategy takes time. Return across multiple days and weather the storm.',
-    buildTasks: (triggeredDay) => [
-      {
-        id: 'confessional_visits',
-        type: 'confessional_visits' as const,
-        description: 'Visit the Confessional on 4 different days',
-        target: 4,
-      },
-      {
-        id: 'survive_days',
-        type: 'survive_days' as const,
-        description: `Survive until Day ${triggeredDay + 5}`,
-        target: triggeredDay + 5,
-      },
-    ],
+    id: 'social_engine',
+    title: 'The Social Engine',
+    description: 'Built for social maneuvering, inbox discipline, and alliance pressure.',
+    daySpan: 4,
+    requirementWeights: {
+      competition_placement: 1,
+      avoid_last_place: 2,
+      public_approval_gain: 3,
+      social_energy_empty_streak: 3,
+      social_action_count: 5,
+      easter_egg_discovery: 2,
+      incoming_response_streak: 5,
+      target_nominated: 3,
+    },
   },
   {
-    id: 'the_confessor',
-    title: 'The Confessor',
-    description:
-      'Bare your soul to the Big Eye. Words and days are your currency.',
-    buildTasks: (triggeredDay) => [
-      {
-        id: 'conversation_turns',
-        type: 'conversation_turns' as const,
-        description: 'Complete 12 exchanges with the Big Eye',
-        target: 12,
-      },
-      {
-        id: 'confessional_visits',
-        type: 'confessional_visits' as const,
-        description: 'Visit the Confessional on 3 different days',
-        target: 3,
-      },
-      {
-        id: 'survive_days',
-        type: 'survive_days' as const,
-        description: `Survive until Day ${triggeredDay + 3}`,
-        target: triggeredDay + 3,
-      },
-    ],
+    id: 'big_eye_gambit',
+    title: 'The Big Eye Gambit',
+    description: 'A volatile stack mixing hidden Big Eye discoveries with strategic nomination timing.',
+    daySpan: 3,
+    requirementWeights: {
+      competition_placement: 2,
+      avoid_last_place: 2,
+      public_approval_gain: 3,
+      social_energy_empty_streak: 2,
+      social_action_count: 3,
+      easter_egg_discovery: 5,
+      incoming_response_streak: 2,
+      target_nominated: 4,
+    },
   },
 ];
 
-/**
- * Build the initial task list for a given template, with current=0 and completed=false.
- */
-export function buildMissionTasks(template: MissionTemplate, triggeredDay: number): MissionTask[] {
-  return template.buildTasks(triggeredDay).map((t) => ({
-    ...t,
+export function buildMissionTasks(
+  template: MissionTemplate,
+  triggeredDay: number,
+  options?: Omit<MissionBuildContext, 'triggeredDay' | 'templateId'>,
+): MissionTask[] {
+  const context: MissionBuildContext = {
+    triggeredDay,
+    templateId: template.id,
+    targetCandidateIds: options?.targetCandidateIds,
+  };
+  return buildWeightedTaskStack(context, template.daySpan, template.requirementWeights).map((task) => ({
+    ...task,
     current: 0,
     completed: false,
   }));
 }
 
-// ── Default trigger chances ──────────────────────────────────────────────────
-
-/**
- * Default daily trigger probabilities (0–1) for the secret mission window.
- * Only days 5–12 are eligible; earlier and later days always return 0.
- */
-export const DEFAULT_TRIGGER_CHANCES: Readonly<Record<number, number>> = {
-  5:  0.10,
-  6:  0.15,
-  7:  0.20,
-  8:  0.25,
-  9:  0.30,
-  10: 0.40,
-  11: 0.50,
-  12: 0.75,
-} as const;
-
-/**
- * Return the trigger probability for a given day.
- *
- * @param day             Current game week / day number (1-based).
- * @param overridePercent DEBUG-ONLY: when provided (0–100), this percentage is
- *                        used instead of the default table.  Pass null/undefined
- *                        to use default behaviour.  See Settings → Twists.
- * @returns               Probability in [0, 1].
- */
-export function getSecretMissionTriggerChance(
-  day: number,
-  overridePercent?: number | null,
-): number {
-  if (day < 5 || day > 12) return 0;
-  if (overridePercent !== null && overridePercent !== undefined) {
-    return Math.max(0, Math.min(100, overridePercent)) / 100;
-  }
-  return DEFAULT_TRIGGER_CHANCES[day] ?? 0;
+export function isSecretMissionSuccessful(tasks: readonly MissionTask[]): boolean {
+  if (tasks.length === 0) return false;
+  return tasks.every((task) => task.completed || task.optional);
 }
 
-/**
- * Roll to determine whether the secret mission triggers on a given day.
- *
- * Rules:
- *  - Only fires on days 5–12.
- *  - At most one trigger per season (callers must check `secretMission == null`).
- *  - The override at 100 guarantees a trigger on Day 5+; at 0 it never triggers.
- *
- * @param day             Current game week / day.
- * @param rng             A [0,1) pseudo-random number generator.
- * @param overridePercent DEBUG-ONLY override (see getSecretMissionTriggerChance).
- */
+// ── Trigger odds ──────────────────────────────────────────────────────────────
+
+export const DEFAULT_TRIGGER_CHANCES: Readonly<Record<number, number>> = {
+  3: 0.18,
+  4: 0.22,
+  5: 0.26,
+  6: 0.30,
+  7: 0.34,
+  8: 0.38,
+  9: 0.42,
+  10: 0.46,
+  11: 0.50,
+  12: 0.54,
+} as const;
+export const SECOND_SECRET_MISSION_CHANCE = 0.5;
+
+export interface SecretMissionTriggerContext {
+  day: number;
+  aliveCount?: number | null;
+  override?: number | null;
+  seasonMissionCount?: number;
+  secondMissionRollResolved?: boolean;
+}
+
+export function getSecretMissionTriggerChance({
+  day,
+  aliveCount = null,
+  override,
+  seasonMissionCount = 0,
+  secondMissionRollResolved = false,
+}: SecretMissionTriggerContext): number {
+  if (day < 3) return 0;
+  if (aliveCount !== null && aliveCount <= 5) return 0;
+  if (override !== null && override !== undefined) {
+    return Math.max(0, Math.min(100, override)) / 100;
+  }
+  if (seasonMissionCount === 0) return 1;
+  if (seasonMissionCount >= 2 || secondMissionRollResolved) return 0;
+  return SECOND_SECRET_MISSION_CHANCE;
+}
+
 export function checkSecretMissionTrigger(
-  day: number,
+  context: SecretMissionTriggerContext,
   rng: () => number,
-  overridePercent?: number | null,
 ): boolean {
-  const chance = getSecretMissionTriggerChance(day, overridePercent);
+  const chance = getSecretMissionTriggerChance(context);
   if (chance <= 0) return false;
   if (chance >= 1) return true;
   return rng() < chance;
 }
 
-/**
- * Pick a mission template for the given trigger day.
- *
- * The pool has five templates.  We map the trigger day to an index via a small
- * prime-modulo scheme so the sequence of templates across consecutive trigger
- * days cycles through all five without repeating until the pool is exhausted.
- * Using a prime (3) that is co-prime with the pool size (5) guarantees the
- * full pool is visited before any template repeats.
- *
- *   day % 5          → 0 1 2 3 4 0 1 2 3 4 …  (simple cycle)
- *   (day * 3) % 5    → 0 3 1 4 2 0 3 1 4 2 …  (spread cycle — used here)
- */
-export function pickMissionTemplate(day: number): MissionTemplate {
-  const idx = (day * 3) % MISSION_TEMPLATES.length;
-  return MISSION_TEMPLATES[idx];
+export function pickMissionTemplate(day: number, maxDaySpan?: number): MissionTemplate {
+  const eligibleTemplates = typeof maxDaySpan === 'number'
+    ? MISSION_TEMPLATES.filter((template) => template.daySpan <= maxDaySpan)
+    : MISSION_TEMPLATES;
+  if (eligibleTemplates.length === 0) {
+    const minRequiredDaySpan = Math.min(...MISSION_TEMPLATES.map((template) => template.daySpan));
+    throw new Error(
+      `No secret mission template fits within ${maxDaySpan} days (minimum required: ${minRequiredDaySpan})`,
+    );
+  }
+  const pool = eligibleTemplates;
+  const idx = (day * 3) % pool.length;
+  return pool[idx];
 }
 
-/**
- * Build a new SecretMissionState for the given day.
- * The returned object has status 'available' and no tasks yet (tasks are added
- * when the player accepts).
- */
-export function createSecretMissionState(day: number): SecretMissionState {
-  const template = pickMissionTemplate(day);
+export function createSecretMissionState(
+  day: number,
+  options?: { maxDaySpan?: number; missionNumber?: number },
+): SecretMissionState {
+  const template = pickMissionTemplate(day, options?.maxDaySpan);
+  const endDay = day + template.daySpan;
   return {
     triggeredDay: day,
+    missionNumber: options?.missionNumber,
+    startDay: day,
+    endDay,
+    survivalWindowEndDay: endDay,
+    targetDeadlineDay: endDay,
     status: 'available',
     offeredDay: null,
     offerCount: 0,
     declinedDay: null,
     tasks: [],
     templateId: template.id,
+    discoveredEasterEggIds: [],
   };
 }
 
-/**
- * Return a Big Eye message explaining when the `doubleVote` power will be
- * available, based on the current game phase.
- *
- * - During `live_vote`: the power is active right now and the player should
- *   return to the game immediately.
- * - Any other phase: the power will activate automatically at the next live
- *   elimination; this message clears up the "won but not yet usable" confusion.
- *
- * @param currentPhase  The current game phase string (from GameState.phase).
- * @returns             A flavour-text string for Big Eye to deliver.
- */
+export function pickMissionImmunityDuration(
+  triggeredDay: number,
+  templateId: string,
+): MissionRewardDuration {
+  const duration = (hashString(`${templateId}:${triggeredDay}:reward`) % 3) + 1;
+  return duration as MissionRewardDuration;
+}
+
 export function doubleVoteTimingMessage(currentPhase: string): string {
   if (currentPhase === 'live_vote') {
     return (
@@ -434,36 +678,21 @@ export function doubleVoteTimingMessage(currentPhase: string): string {
   );
 }
 
-// ── PR 3: Activation guard helpers ──────────────────────────────────────────
+// ── Activation guards ─────────────────────────────────────────────────────────
 
-/**
- * Minimal game-state shape needed by the activation guard functions.
- * Keeps this file free of circular imports from types/index.ts.
- */
 export interface ActivationCheckState {
   phase: string;
+  week?: number;
   secretMission?: SecretMissionState;
-  /** IDs of players currently nominated (on the block). */
   nomineeIds: readonly string[];
-  /** ID of the current LOH. */
   lohId?: string | null;
-  /** Full player list (only id, isUser, and status are inspected). */
+  posWinnerId?: string | null;
   players: ReadonlyArray<{ id: string; isUser?: boolean; status: string }>;
-  /** Double-eviction twist state — weekActive means double eviction is running. */
   doubleEviction?: { weekActive?: boolean } | null;
-  /**
-   * Vote results tally (nomineeId → vote count).
-   * Set by advance() during eviction_results; null/undefined before that.
-   */
   voteResults?: Record<string, number> | null;
-  /** True when a tie-break decision is pending (used as a conflict guard). */
   awaitingTieBreak?: boolean;
 }
 
-/**
- * Game phases at or beyond the Final 4 cutoff.
- * Secret powers may NOT be used once any of these phases is reached.
- */
 const FINAL4_OR_LATER_PHASES = new Set([
   'final4_eviction',
   'final3',
@@ -479,80 +708,37 @@ const FINAL4_OR_LATER_PHASES = new Set([
   'jury',
 ]);
 
-/**
- * True when the current game phase is Final 4 or beyond.
- * Powers must expire before this point.
- */
 export function isFinal4OrLater(phase: string): boolean {
   return FINAL4_OR_LATER_PHASES.has(phase);
 }
 
-/**
- * True when a twist that conflicts with the doubleVote power is currently active.
- *
- * Conflicts:
- *  - Double Eviction week: the vote tally is modified to evict 2 players at once;
- *    stacking a personal double-vote on top would create ambiguous ballot semantics.
- */
 export function hasDoubleVoteConflict(state: ActivationCheckState): boolean {
   return state.doubleEviction?.weekActive === true;
 }
 
-/**
- * True when a twist that conflicts with the voteDeduction power is currently active.
- *
- * Conflicts:
- *  - Double Eviction week: special tally logic; deduction would be applied to
- *    an already-modified result set.
- *  - Tie-break pending: the vote count is already tied; subtracting a vote
- *    from one nominee would create ambiguous or game-breaking state transitions.
- */
 export function hasVoteDeductionConflict(state: ActivationCheckState): boolean {
   return state.doubleEviction?.weekActive === true || state.awaitingTieBreak === true;
 }
 
-/**
- * Returns true when the stored `doubleVote` reward can be offered for activation
- * in the current game context.
- *
- * All of the following must be true:
- *  1. A secret-mission reward of type `doubleVote` exists and is eligible
- *     (not consumed, not expired).
- *  2. The current phase is `live_vote` — the only moment when a vote can be cast.
- *  3. The human player is an eligible voter (alive, not LOH, not nominated).
- *  4. No conflicting twist is active (e.g. Double Eviction).
- *  5. The game is not at or beyond Final 4.
- */
+function getAlivePlayerCount(players: ActivationCheckState['players']): number {
+  return players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
+}
+
 export function canUseDoubleVote(state: ActivationCheckState): boolean {
   const reward = state.secretMission?.reward;
   if (!reward || reward.type !== 'doubleVote' || !reward.eligible) return false;
   if (state.phase !== 'live_vote') return false;
   if (isFinal4OrLater(state.phase)) return false;
   if (hasDoubleVoteConflict(state)) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
 
-  const humanPlayer = state.players.find((p) => p.isUser);
+  const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury') return false;
-
-  // Human must be an eligible voter: not the LOH and not currently nominated.
   if (humanPlayer.id === state.lohId) return false;
   if (state.nomineeIds.includes(humanPlayer.id)) return false;
-
   return true;
 }
 
-/**
- * Returns true when the stored `voteDeduction` reward can be offered for
- * activation in the current game context.
- *
- * All of the following must be true:
- *  1. A secret-mission reward of type `voteDeduction` exists and is eligible.
- *  2. The current phase is `eviction_results` — the vote tally is now visible.
- *  3. The human player is one of the nominees (on the block).
- *  4. The human player has at least 1 vote against them in `voteResults`.
- *  5. Applying the deduction would NOT create a vote tie (tie-break ambiguity).
- *  6. No conflicting twist is active.
- *  7. The game is not at or beyond Final 4.
- */
 export function canUseVoteDeduction(state: ActivationCheckState): boolean {
   const reward = state.secretMission?.reward;
   if (!reward || reward.type !== 'voteDeduction' || !reward.eligible) return false;
@@ -560,25 +746,36 @@ export function canUseVoteDeduction(state: ActivationCheckState): boolean {
   if (isFinal4OrLater(state.phase)) return false;
   if (hasVoteDeductionConflict(state)) return false;
   if (!state.voteResults) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
 
-  const humanPlayer = state.players.find((p) => p.isUser);
+  const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer) return false;
-
-  // Human must be on the block for this eviction
   if (!state.nomineeIds.includes(humanPlayer.id)) return false;
 
   const humanVoteCount = state.voteResults[humanPlayer.id] ?? 0;
-  if (humanVoteCount <= 0) return false; // nothing to deduct
+  if (humanVoteCount <= 0) return false;
 
-  // Guard: ensure the deduction doesn't create a tie with another nominee.
-  // If afterDeduction ties with any other nominee's count, the outcome becomes
-  // ambiguous (tie-break handling would need to re-run). Skip the offer instead.
   const afterDeduction = humanVoteCount - 1;
-  const otherNomineeCounts = state.nomineeIds
+  const otherCounts = state.nomineeIds
     .filter((id) => id !== humanPlayer.id)
-    .map((id) => state.voteResults![id] ?? 0);
-
-  if (otherNomineeCounts.some((c) => c === afterDeduction)) return false;
+    .map((id) => state.voteResults?.[id] ?? 0);
+  if (otherCounts.some((count) => count === afterDeduction)) return false;
 
   return true;
+}
+
+export function canOfferMissionImmunity(state: ActivationCheckState): boolean {
+  const reward = state.secretMission?.reward;
+  if (!reward || reward.type !== 'immunity' || !reward.eligible) return false;
+  if (state.phase !== 'pos_ceremony_results') return false;
+  if (isFinal4OrLater(state.phase)) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
+  if (typeof state.week === 'number' && reward.activeUntilDay !== undefined && state.week > reward.activeUntilDay) {
+    return false;
+  }
+
+  const humanPlayer = state.players.find((player) => player.isUser);
+  if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury') return false;
+  if (state.posWinnerId && humanPlayer.id === state.posWinnerId) return false;
+  return state.nomineeIds.includes(humanPlayer.id);
 }

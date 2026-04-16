@@ -23,6 +23,7 @@ export type ConfessionalDecisionType =
   | 'eviction_vote'        // Human voter casts single eviction vote
   | 'double_vote_offer'    // Big Eye offers stored Double-Vote power
   | 'double_vote'          // Human casts two eviction votes (atomic)
+  | 'mission_immunity_offer' // Big Eye offers stored secret immunity
   | 'pos_decision'         // Human POS holder decides to use/skip power
   | 'vip_second_use'       // VIP second-use yes/no decision
   | 'pos_save_target'      // Human POS holder picks who to save
@@ -82,6 +83,9 @@ function getActiveConfessionalDecisionFromGame(
   }
 
   // ── POS (Power of Safety) ceremony decisions ─────────────────────────────
+  if (game.awaitingMissionImmunityOffer) {
+    return { type: 'mission_immunity_offer', week, phase };
+  }
   if (game.awaitingPovDecision) {
     return { type: 'pos_decision', week, phase };
   }

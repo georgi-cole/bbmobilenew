@@ -13,6 +13,8 @@ import {
   submitHumanDoubleVote,
   activateDoubleVoteReward,
   declineDoubleVoteReward,
+  activateMissionImmunityReward,
+  declineMissionImmunityReward,
   submitPovDecision,
   submitVipSecondUseDecision,
   submitPovSaveTarget,
@@ -227,6 +229,51 @@ function DoubleVoteOfferPanel({ onDecisionCommitted }: DecisionPanelProps) {
           disabled={submitting}
         >
           ✋ Do not use
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MissionImmunityOfferPanel({ onDecisionCommitted }: DecisionPanelProps) {
+  const dispatch = useAppDispatch();
+  const duration = useAppSelector((state) => state.game.secretMission?.reward?.durationDays ?? 1);
+  const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function submitChoice(nextChoice: 'yes' | 'no') {
+    if (submitting) return;
+    setChoice(nextChoice);
+    setSubmitting(true);
+    onDecisionCommitted?.(
+      nextChoice === 'yes'
+        ? `I will use my ${duration}-day secret immunity now.`
+        : 'I will hold my secret immunity for later.',
+    );
+    if (nextChoice === 'yes') dispatch(activateMissionImmunityReward());
+    else dispatch(declineMissionImmunityReward());
+  }
+
+  return (
+    <div className="cdp-shell" data-testid="confessional-decision-options">
+      <div className="cdp-choice-row" role="group" aria-label="Secret immunity choice">
+        <button
+          className={`cdp-binary-btn${choice === 'yes' ? ' cdp-binary-btn--selected' : ''}`}
+          type="button"
+          onClick={() => submitChoice('yes')}
+          aria-pressed={choice === 'yes'}
+          disabled={submitting}
+        >
+          🛡️ Use immunity
+        </button>
+        <button
+          className={`cdp-binary-btn${choice === 'no' ? ' cdp-binary-btn--selected' : ''}`}
+          type="button"
+          onClick={() => submitChoice('no')}
+          aria-pressed={choice === 'no'}
+          disabled={submitting}
+        >
+          ✋ Save it
         </button>
       </div>
     </div>
@@ -600,6 +647,8 @@ export default function ConfessionalDecisionPanel({ decision, onDecisionCommitte
       return <DoubleVoteOfferPanel onDecisionCommitted={onDecisionCommitted} />;
     case 'double_vote':
       return <DoubleVotePanel onDecisionCommitted={onDecisionCommitted} />;
+    case 'mission_immunity_offer':
+      return <MissionImmunityOfferPanel onDecisionCommitted={onDecisionCommitted} />;
     case 'pos_decision':
       return <PosDecisionPanel onDecisionCommitted={onDecisionCommitted} />;
     case 'vip_second_use':

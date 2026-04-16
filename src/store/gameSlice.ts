@@ -41,11 +41,15 @@ import {
   buildMissionTasks,
   checkSecretMissionTrigger,
   createMissionReward,
+  createImmunityReward,
   MISSION_TEMPLATES,
   canUseDoubleVote,
+  canOfferMissionImmunity,
   canUseVoteDeduction,
+  isSecretMissionSuccessful,
+  pickMissionImmunityDuration,
   type MissionTask,
-  type MissionRewardType,
+  type LegacyMissionRewardType,
 } from '../bb/secretMission';
 import { calculateRequiredDoubleEvictionSlots } from '../features/twists/doubleEvictionTieUtils';
 import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
@@ -71,6 +75,8 @@ const PHASE_ORDER: Phase[] = [
   'week_end',
 ];
 
+const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3;
+
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
 // All 22 houseguests in src/data/houseguests.ts have matching avatar images in
 // public/avatars/. This pool is the source for AI opponents each game.
@@ -85,7 +91,20 @@ type SecretMissionTaskBuildResult = {
   tasks: MissionTask[];
 };
 
+function buildSecretMissionTargetCandidates(state: GameState): string[] {
+  const humanId = state.players.find((player) => player.isUser)?.id;
+  return state.players
+    .filter(
+      (player) =>
+        player.id !== humanId &&
+        player.status !== 'evicted' &&
+        player.status !== 'jury',
+    )
+    .map((player) => player.id);
+}
+
 function buildSecretMissionTasksForTemplate(
+  state: GameState,
   templateId: string,
   triggeredDay: number,
 ): SecretMissionTaskBuildResult {
@@ -93,7 +112,9 @@ function buildSecretMissionTasksForTemplate(
     ?? MISSION_TEMPLATES[0];
   return {
     templateId: template.id,
-    tasks: buildMissionTasks(template, triggeredDay),
+    tasks: buildMissionTasks(template, triggeredDay, {
+      targetCandidateIds: buildSecretMissionTargetCandidates(state),
+    }),
   };
 }
 
@@ -199,6 +220,9 @@ export function createInitialGameState(): GameState {
     awaitingHumanVote: false,
     awaitingTieBreak: false,
     tiedNomineeIds: null,
+    awaitingMissionImmunityOffer: false,
+    secretMissionCount: 0,
+    secretMissionSecondChanceResolved: false,
     awaitingFinal3Eviction: false,
     awaitingFinal3Plea: false,
     aiReplacementStep: 0,
@@ -259,6 +283,34 @@ function pushEvent(
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
 
+function refreshSecretMissionCompletion(secretMission: GameState['secretMission']) {
+  if (!secretMission || secretMission.status !== 'accepted') return;
+  const allDone = isSecretMissionSuccessful(secretMission.tasks);
+  if (allDone) {
+    secretMission.status = 'rewardPending';
+  }
+}
+
+const MIN_SECRET_MISSION_DAY_SPAN = Math.min(...MISSION_TEMPLATES.map((template) => template.daySpan));
+
+function canReplaceSecretMissionSlot(secretMission: GameState['secretMission']): boolean {
+  if (!secretMission) return true;
+  if (secretMission.status === 'declined' || secretMission.status === 'expired') return true;
+  if (secretMission.status !== 'rewardClaimed') return false;
+  const reward = secretMission.reward;
+  if (!reward) return true;
+  return reward.consumed
+    || reward.expired
+    || !reward.eligible
+    || reward.type === 'plus1000Influence';
+}
+
+function getSeasonSecretMissionCount(game: Pick<GameState, 'secretMission' | 'secretMissionCount'>): number {
+  if (typeof game.secretMissionCount === 'number') return game.secretMissionCount;
+  if (typeof game.secretMission?.missionNumber === 'number') return game.secretMission.missionNumber;
+  return game.secretMission ? 1 : 0;
+}
+
 function formatNameList(names: string[]): string {
   if (names.length <= 2) return names.join(' and ');
   return names.join(', ');
@@ -296,6 +348,50 @@ function getReplacementEligiblePlayers(
 function isEligibleReplacementNominee(state: GameState, playerId: string, neededCount = 1): boolean {
   const alivePlayers = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
   return getReplacementEligiblePlayers(state, alivePlayers, neededCount).some((player) => player.id === playerId);
+}
+
+function appendNominee(state: GameState, playerId: string) {
+  if (state.nomineeIds.includes(playerId)) return;
+  state.nomineeIds.push(playerId);
+  const player = state.players.find((candidate) => candidate.id === playerId);
+  if (player) player.status = 'nominated';
+  incrementTimesNominated(state, playerId);
+}
+
+function ensureMinimumNominees(
+  state: GameState,
+  alivePlayers: Player[],
+  minRequired: number,
+  rng: () => number,
+): boolean {
+  while (state.nomineeIds.length < minRequired) {
+    const eligible = getReplacementEligiblePlayers(state, alivePlayers, minRequired - state.nomineeIds.length);
+    if (eligible.length === 0) {
+      pushEvent(
+        state,
+        'There were no eligible replacement nominees available, so the ceremony proceeds with a short block.',
+        'game',
+      );
+      return false;
+    }
+
+    const lohPlayer = state.players.find((player) => player.id === state.lohId);
+    if (lohPlayer?.isUser) {
+      state.replacementNeeded = true;
+      pushEvent(state, `${lohPlayer.name} must name a replacement nominee to restore the block. 🎯`, 'game');
+      return false;
+    }
+
+    const replacement = seededPick(rng, eligible);
+    appendNominee(state, replacement.id);
+    pushEvent(
+      state,
+      `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the replacement nominee. 🎯`,
+      'game',
+    );
+  }
+
+  return true;
 }
 
 function pushPovCompetitionAnnouncement(state: GameState) {
@@ -1657,6 +1753,7 @@ const gameSlice = createSlice({
       state.awaitingPovSaveTarget = false;
       state.awaitingHumanVote = false;
       state.awaitingTieBreak = false;
+      state.awaitingMissionImmunityOffer = false;
       state.tiedNomineeIds = null;
       state.awaitingFinal3Eviction = false;
       state.awaitingFinal3Plea = false;
@@ -2523,6 +2620,7 @@ const gameSlice = createSlice({
           state.nomineeIds.length === 3) ||
         state.awaitingPovDecision ||
         state.awaitingPovSaveTarget ||
+        state.awaitingMissionImmunityOffer ||
         state.awaitingHumanVote ||
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
@@ -3018,6 +3116,7 @@ const gameSlice = createSlice({
           state.awaitingHumanVote = false;
           state.awaitingTieBreak = false;
           state.tiedNomineeIds = null;
+          state.awaitingMissionImmunityOffer = false;
           state.aiReplacementStep = 0;
           state.aiReplacementWaiting = false;
           // Clear per-week special veto ceremony flags (preserve seasonUsed flag)
@@ -3210,6 +3309,30 @@ const gameSlice = createSlice({
             ? state.players.find((p) => p.id === state.posWinnerId) ?? null
             : null;
           const isNominee = posWinner !== null && state.nomineeIds.includes(posWinner.id);
+
+          const missionImmunityCheck = {
+            phase: nextPhase as string,
+            week: state.week,
+            secretMission: state.secretMission,
+            nomineeIds: state.nomineeIds,
+            lohId: state.lohId,
+            posWinnerId: state.posWinnerId,
+            players: state.players,
+            doubleEviction: state.doubleEviction,
+            voteResults: state.voteResults,
+            awaitingTieBreak: state.awaitingTieBreak,
+          };
+          if (canOfferMissionImmunity(missionImmunityCheck)) {
+            state.awaitingMissionImmunityOffer = true;
+            const humanPlayer = state.players.find((player) => player.isUser);
+            const rewardDays = state.secretMission?.reward?.durationDays ?? 1;
+            pushEvent(
+              state,
+              `${humanPlayer?.name ?? 'You'} may use a secret ${rewardDays}-day immunity right now to escape the block before the Safety Ceremony concludes. 🛡️`,
+              'game',
+            );
+            break;
+          }
 
           // ── Force Majeure: mandatory use (no choice) ──────────────────────────
           if (svType === 'spotlight') {
@@ -3677,13 +3800,32 @@ const gameSlice = createSlice({
 
     /**
      * Trigger a new secret mission for the current season.
-     * Idempotent: ignored if a mission already exists (at most one per season).
+     * Supports up to two missions per season when the current slot is recyclable.
      * @param day  The game week / day on which the trigger fires.
      */
-    triggerSecretMission(state, action: PayloadAction<number>) {
-      if (state.secretMission) return; // already triggered this season
-      const day = action.payload;
-      state.secretMission = createSecretMissionState(day);
+    triggerSecretMission(
+      state,
+      action: PayloadAction<number | { day: number; maxDaySpan?: number }>,
+    ) {
+      const missionCount = getSeasonSecretMissionCount(state);
+      if (missionCount >= 2) return;
+      if (!canReplaceSecretMissionSlot(state.secretMission)) return;
+
+      const day = typeof action.payload === 'number' ? action.payload : action.payload.day;
+      const maxDaySpan = typeof action.payload === 'number' ? undefined : action.payload.maxDaySpan;
+      const nextMissionNumber = missionCount + 1;
+      state.secretMission = createSecretMissionState(day, {
+        maxDaySpan,
+        missionNumber: nextMissionNumber,
+      });
+      state.secretMissionCount = nextMissionNumber;
+      if (nextMissionNumber >= 2) {
+        state.secretMissionSecondChanceResolved = true;
+      }
+    },
+
+    markSecondSecretMissionChanceResolved(state) {
+      state.secretMissionSecondChanceResolved = true;
     },
 
     /**
@@ -3708,7 +3850,7 @@ const gameSlice = createSlice({
     acceptSecretMission(state) {
       const sm = state.secretMission;
       if (!sm || sm.status !== 'offered') return;
-      const nextMission = buildSecretMissionTasksForTemplate(sm.templateId, sm.triggeredDay);
+      const nextMission = buildSecretMissionTasksForTemplate(state, sm.templateId, sm.triggeredDay);
       sm.status = 'accepted';
       sm.templateId = nextMission.templateId;
       sm.tasks = nextMission.tasks;
@@ -3726,6 +3868,7 @@ const gameSlice = createSlice({
         ? (currentIndex + 1) % MISSION_TEMPLATES.length
         : 0;
       const nextMission = buildSecretMissionTasksForTemplate(
+        state,
         MISSION_TEMPLATES[nextIndex]?.id ?? MISSION_TEMPLATES[0].id,
         sm.triggeredDay,
       );
@@ -3752,19 +3895,32 @@ const gameSlice = createSlice({
      */
     updateMissionTaskProgress(
       state,
-      action: PayloadAction<{ taskId: string; current: number }>,
+      action: PayloadAction<{
+        taskId: string;
+        current: number;
+        lastProgressDay?: number;
+        firstSatisfiedDay?: number;
+        auditEntry?: string;
+        currentStreak?: number;
+        maxStreak?: number;
+      }>,
     ) {
       const sm = state.secretMission;
       if (!sm || sm.status !== 'accepted') return;
       const task = sm.tasks.find((t) => t.id === action.payload.taskId);
       if (!task) return;
       task.current = action.payload.current;
+      if (typeof action.payload.currentStreak === 'number') task.currentStreak = action.payload.currentStreak;
+      if (typeof action.payload.maxStreak === 'number') task.maxStreak = action.payload.maxStreak;
+      if (typeof action.payload.lastProgressDay === 'number') task.lastProgressDay = action.payload.lastProgressDay;
       task.completed = task.current >= task.target;
-      // Check if all tasks are done
-      const allDone = sm.tasks.length > 0 && sm.tasks.every((t) => t.completed);
-      if (allDone) {
-        sm.status = 'rewardPending';
+      if (task.completed && typeof action.payload.firstSatisfiedDay === 'number') {
+        task.firstSatisfiedDay = action.payload.firstSatisfiedDay;
       }
+      if (action.payload.auditEntry) {
+        task.auditLog = [...(task.auditLog ?? []), action.payload.auditEntry].slice(-12);
+      }
+      refreshSecretMissionCompletion(sm);
     },
 
     /**
@@ -3794,10 +3950,7 @@ const gameSlice = createSlice({
       task.uniqueDays.push(action.payload.day);
       task.current = Math.max(previousCurrent, task.uniqueDays.length);
       task.completed = task.current >= task.target;
-      const allDone = sm.tasks.length > 0 && sm.tasks.every((t) => t.completed);
-      if (allDone) {
-        sm.status = 'rewardPending';
-      }
+      refreshSecretMissionCompletion(sm);
     },
 
     /**
@@ -3812,21 +3965,83 @@ const gameSlice = createSlice({
       sm.status = 'rewardPending';
     },
 
+    syncMissionTask(
+      state,
+      action: PayloadAction<{ taskId: string; updates: Partial<MissionTask> }>,
+    ) {
+      const sm = state.secretMission;
+      if (!sm || sm.status !== 'accepted') return;
+      const task = sm.tasks.find((candidate) => candidate.id === action.payload.taskId);
+      if (!task) return;
+      Object.assign(task, action.payload.updates);
+      task.completed = task.current >= task.target || task.completed === true;
+      refreshSecretMissionCompletion(sm);
+    },
+
+    setMissionTaskBaselineApproval(
+      state,
+      action: PayloadAction<{ taskId: string; approval: number }>,
+    ) {
+      const sm = state.secretMission;
+      if (!sm || sm.status !== 'accepted') return;
+      const task = sm.tasks.find((candidate) => candidate.id === action.payload.taskId);
+      if (!task) return;
+      task.baselineApproval = action.payload.approval;
+    },
+
+    recordSecretMissionEasterEgg(
+      state,
+      action: PayloadAction<{ eggId: string; day: number }>,
+    ) {
+      const sm = state.secretMission;
+      if (!sm) return;
+      const discovered = new Set(sm.discoveredEasterEggIds ?? []);
+      if (discovered.has(action.payload.eggId)) return;
+      discovered.add(action.payload.eggId);
+      sm.discoveredEasterEggIds = [...discovered];
+
+      if (sm.status !== 'accepted') return;
+      const task = sm.tasks.find((candidate) => candidate.type === 'easter_egg_discovery');
+      if (!task) return;
+      const discoveredEggIds = new Set(task.discoveredEggIds ?? []);
+      discoveredEggIds.add(action.payload.eggId);
+      task.discoveredEggIds = [...discoveredEggIds];
+      task.current = task.discoveredEggIds.length;
+      task.lastProgressDay = action.payload.day;
+      task.completed = task.current >= task.target;
+      if (task.completed && task.firstSatisfiedDay == null) {
+        task.firstSatisfiedDay = action.payload.day;
+      }
+      task.auditLog = [...(task.auditLog ?? []), `Discovered ${action.payload.eggId}`].slice(-12);
+      refreshSecretMissionCompletion(sm);
+    },
+
+    expireSecretMission(state) {
+      const sm = state.secretMission;
+      if (!sm) return;
+      if (sm.status === 'rewardClaimed') return;
+      if (sm.status === 'expired') return;
+      sm.status = 'expired';
+    },
+
     /**
-     * Record the mystery-box reward the player selected (status → 'rewardClaimed').
-     * Only valid from 'rewardPending'.
-     *
-     * @param rewardType  The MissionRewardType outcome assigned to the chosen box.
-     *
-     * Note: +1000 influence application is handled separately by the caller
-     * (DiaryRoom) by dispatching applyInfluenceDelta immediately after this.
-     * Vote-related rewards (doubleVote, voteDeduction) are stored here but
-     * not yet wired into live voting — that is PR 3 work.
+     * Claim the reward after mission completion.
+     * New missions use deterministic immunity rewards; legacy reward types are
+     * still accepted for migration/tests.
      */
-    claimMissionReward(state, action: PayloadAction<MissionRewardType>) {
+    claimMissionReward(
+      state,
+      action: PayloadAction<LegacyMissionRewardType | { claimDay: number; durationDays?: 1 | 2 | 3 }>,
+    ) {
       const sm = state.secretMission;
       if (!sm || sm.status !== 'rewardPending') return;
-      sm.reward = createMissionReward(action.payload);
+      if (typeof action.payload === 'string') {
+        sm.reward = createMissionReward(action.payload);
+      } else {
+        const duration = action.payload.durationDays
+          ?? pickMissionImmunityDuration(sm.triggeredDay, sm.templateId);
+        sm.reward = createImmunityReward(duration, action.payload.claimDay);
+      }
       sm.status = 'rewardClaimed';
     },
 
@@ -3845,6 +4060,51 @@ const gameSlice = createSlice({
       if (!sm.reward.eligible) return; // emptyBox or already expired — skip
       sm.reward.expired = true;
       sm.reward.eligible = false;
+    },
+
+    activateMissionImmunityReward(state) {
+      if (!state.awaitingMissionImmunityOffer) return;
+      state.awaitingMissionImmunityOffer = false;
+      const sm = state.secretMission;
+      const reward = sm?.reward;
+      if (
+        !reward ||
+        reward.type !== 'immunity' ||
+        !reward.eligible ||
+        state.phase === 'final4_eviction' ||
+        state.phase === 'final3' ||
+        reward.activeUntilDay === undefined ||
+        state.week > reward.activeUntilDay
+      ) {
+        return;
+      }
+
+      const humanPlayer = state.players.find((player) => player.isUser);
+      if (!humanPlayer || !state.nomineeIds.includes(humanPlayer.id) || state.posWinnerId === humanPlayer.id) return;
+
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== humanPlayer.id);
+      if (humanPlayer.status === 'nominated+pos') humanPlayer.status = 'pos';
+      else humanPlayer.status = 'active';
+      addPovProtectedId(state, humanPlayer.id);
+      reward.consumed = true;
+      reward.eligible = false;
+      reward.usedDay = state.week;
+
+      pushEvent(
+        state,
+        `${humanPlayer.name} used their secret immunity and stepped off the block before the Safety Ceremony could finish! 🛡️`,
+        'game',
+      );
+
+      const aliveNow = state.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury');
+      // Use a dedicated seed modifier so immunity-driven replacement picks stay
+      // deterministic without perturbing the main ceremony RNG stream.
+      const seedRng = mulberry32((state.seed ^ IMMUNITY_REPLACEMENT_SEED_MODIFIER) >>> 0);
+      ensureMinimumNominees(state, aliveNow, 2, seedRng);
+    },
+
+    declineMissionImmunityReward(state) {
+      state.awaitingMissionImmunityOffer = false;
     },
 
     // ── PR 3: doubleVote activation reducers ──────────────────────────────
@@ -4050,15 +4310,22 @@ export const {
   hydrateGame,
   setHasSeenConfessionalSpotlight,
   triggerSecretMission,
+  markSecondSecretMissionChanceResolved,
   offerSecretMission,
   acceptSecretMission,
   reshuffleSecretMission,
   declineSecretMission,
   updateMissionTaskProgress,
+  syncMissionTask,
+  setMissionTaskBaselineApproval,
   addUniqueDayToTask,
+  recordSecretMissionEasterEgg,
   completeMission,
+  expireSecretMission,
   claimMissionReward,
   expireMissionReward,
+  activateMissionImmunityReward,
+  declineMissionImmunityReward,
   activateDoubleVoteReward,
   declineDoubleVoteReward,
   submitHumanDoubleVote,
@@ -4274,8 +4541,10 @@ export const startMinigame =
  * Attempt to trigger the seasonal secret mission for the current day.
  *
  * Rules:
- *  - Evaluates only on Day 5–12 via the centralized chance helper
- *  - At most one mission may trigger per season
+ *  - Evaluates from Day 3 onward while more than 5 players remain
+ *  - The first mission is guaranteed on the first eligible week
+ *  - A second mission may trigger later in the season with a single 50% roll
+ *  - The second mission only triggers if its deadline can still land by Final 5
  *  - The testing overrides affect only this calculation
  *  - Uses a twist-specific RNG path so it does not perturb other outcomes
  *
@@ -4285,23 +4554,58 @@ export const tryActivateSecretMission =
   () =>
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState();
+    const aliveCount = game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
+    const seasonMissionCount = getSeasonSecretMissionCount(game);
+    // Legacy saves may not have `secretMissionSecondChanceResolved`; once two
+    // missions are already counted, treat the second-chance roll as resolved.
+    const secondMissionChanceResolved = game.secretMissionSecondChanceResolved ?? seasonMissionCount >= 2;
 
     if (game.phase !== 'week_start') return false;
-    if (game.secretMission) return false;
+    if (game.week < 3) return false;
+    if (aliveCount <= 5) return false;
+    if (seasonMissionCount >= 2) return false;
+    if (!canReplaceSecretMissionSlot(game.secretMission)) return false;
+
+    const maxDaySpan = aliveCount - 5;
+    const isSecondMissionAttempt = seasonMissionCount === 1;
+    if (isSecondMissionAttempt && maxDaySpan < MIN_SECRET_MISSION_DAY_SPAN) {
+      dispatch(markSecondSecretMissionChanceResolved());
+      return false;
+    }
 
     const forcedWeek = settings.sim.secretMissionTriggerWeekOverride;
     if (forcedWeek !== null) {
       if (game.week !== forcedWeek) return false;
-      dispatch(triggerSecretMission(game.week));
+      dispatch(triggerSecretMission(
+        isSecondMissionAttempt
+          ? { day: game.week, maxDaySpan }
+          : game.week,
+      ));
       return true;
     }
 
     const override = settings.sim.secretMissionTriggerOverride;
     const rng = mulberry32((game.seed ^ Math.imul(game.week, 0x9e3779b1)) >>> 0);
 
-    if (!checkSecretMissionTrigger(game.week, rng, override)) return false;
+    const didTrigger = checkSecretMissionTrigger({
+      day: game.week,
+      aliveCount,
+      override,
+      seasonMissionCount,
+      secondMissionRollResolved: secondMissionChanceResolved,
+    }, rng);
+    if (!didTrigger) {
+      if (isSecondMissionAttempt && !secondMissionChanceResolved) {
+        dispatch(markSecondSecretMissionChanceResolved());
+      }
+      return false;
+    }
 
-    dispatch(triggerSecretMission(game.week));
+    dispatch(triggerSecretMission(
+      isSecondMissionAttempt
+        ? { day: game.week, maxDaySpan }
+        : game.week,
+    ));
     return true;
   };
 

@@ -20,17 +20,21 @@ import {
   acceptSecretMission,
   reshuffleSecretMission,
   declineSecretMission,
-  updateMissionTaskProgress,
-  addUniqueDayToTask,
   claimMissionReward,
+  recordSecretMissionEasterEgg,
   selectAlivePlayers,
 } from '../../store/gameSlice';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import ConfessionalDecisionPanel from './ConfessionalDecisionPanel';
 import { getConfessionalDecisionPresentation } from './confessionalDecisionPresentation';
+import { getSecretMissionEasterEggByIntent } from '../../bb/secretMissionEasterEggs';
+import {
+  SECRET_MISSION_BOX_REWARDS,
+  getSecretMissionBoxRewards,
+  pickMissionImmunityDuration,
+  type SecretMissionBoxRewardType,
+} from '../../bb/secretMission';
 import { applyInfluenceDelta } from '../../social/socialSlice';
-import type { MissionRewardType } from '../../bb/secretMission';
-import { MYSTERY_BOX_POOL, doubleVoteTimingMessage } from '../../bb/secretMission';
 import {
   createInitialBigEyeState,
   generateBigBrotherReply,
@@ -93,26 +97,12 @@ const RETURNING_VISIT_GREETINGS = [
   'Something tells me you are uneasy.',
 ];
 
-// ─── Mystery box reward messages ──────────────────────────────────────────────
+// ─── Secret immunity reward messages ──────────────────────────────────────────
 
 const REWARD_PENDING_MSG =
   `Well done. You fulfilled the mission — the Big Eye is impressed. ` +
-  `Four mystery boxes await you. Only one is yours. Choose wisely… or rely on luck. 📦`;
-
-const REWARD_MESSAGES: Record<string, string> = {
-  plus1000Influence:
-    `The Big Eye smiles. You have been granted 1 000 units of influence. ` +
-    `Use this wisely — social capital is everything in this house. 🤝✨`,
-  doubleVote:
-    `A rare gift: the power of a Double Vote. When the time is right, ` +
-    `you will cast two votes instead of one. Guard this secret carefully. 🗳️🗳️`,
-  voteDeduction:
-    `Cunning choice. One vote cast against you will vanish without a trace. ` +
-    `The power is yours — stored, ready, waiting. 🪄`,
-  emptyBox:
-    `…The box is empty. Not every mystery holds treasure. ` +
-    `But perhaps the real prize was the courage to open it. 😶‍🌫️ The Big Eye is amused.`,
-};
+  `Four reward boxes await. Choose one to reveal a prize such as Secret Immunity, ` +
+  `1,000 Influence, Double Vote, or Vote Deduction before the window closes. 🎁`;
 
 const VOTE_BREAKDOWN_DECLINED_TV_MESSAGE = "It's getting quiet in the house. Sandman on the way?";
 
@@ -174,30 +164,20 @@ function pickSummary(name: string, seed: number): string {
   return SUMMARY_POOL[idx].replace('{name}', name);
 }
 
-/**
- * Shuffle the mystery box pool using a seeded Fisher-Yates algorithm so the
- * box order is different each game but reproducible within a session.
- *
- * Note: mutates and returns the input array — always pass a spread copy,
- * e.g. `shuffleMysteryPool([...MYSTERY_BOX_POOL], seed)`.
- */
-function shuffleMysteryPool(pool: MissionRewardType[], seed: number): MissionRewardType[] {
-  let s = ((seed >>> 0) || 1);
-  // Simple seeded LCG
-  const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool;
-}
-
 /** Human-readable labels for each reward type used in the UI. */
 const REWARD_LABELS: Record<string, string> = {
-  plus1000Influence: '+1 000 Influence (applied)',
+  plus1000Influence: '1,000 Influence',
   doubleVote: 'Double Vote',
   voteDeduction: 'Vote Deduction',
-  emptyBox: 'Empty Box',
+  immunity: 'Secret Immunity',
+};
+
+const REWARD_REVEAL_COPY: Record<SecretMissionBoxRewardType, (week: number, durationDays?: number) => string> = {
+  plus1000Influence: () => 'The Big Eye grants you 1,000 Influence. Spend it wisely.',
+  doubleVote: () => 'The Big Eye grants you a Double Vote. It will be offered automatically at your next eligible live vote.',
+  voteDeduction: () => 'The Big Eye grants you Vote Deduction. If you are on the block at an eligible eviction, you may cut one vote from your total.',
+  immunity: (week, durationDays = 1) =>
+    `The Big Eye grants you temporary immunity for ${durationDays} day${durationDays === 1 ? '' : 's'}. It may be used during the Safety Ceremony while nominated and expires after Day ${week + durationDays - 1}.`,
 };
 
 // ─── sessionStorage helpers ───────────────────────────────────────────────────
@@ -381,10 +361,6 @@ export default function DiaryRoom() {
   const currentWeekForMission = useAppSelector((s) => s.game.week);
   const players = useAppSelector((s) => s.game.players);
   const alivePlayers = useAppSelector(selectAlivePlayers);
-  // PR 3 — read active power states so the Confessional can display status.
-  const awaitingDoubleVoteOffer = useAppSelector((s) => s.game.awaitingDoubleVoteOffer);
-  const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
-  const awaitingVoteDeductionPrompt = useAppSelector((s) => s.game.awaitingVoteDeductionPrompt);
   const confessionalLocked = userPlayer?.status === 'evicted' || userPlayer?.status === 'jury';
 
   // ── Active ceremony decision routed to the confessional ───────────────────
@@ -443,20 +419,14 @@ export default function DiaryRoom() {
     });
   }, [playerId]);
 
-  // ── Mystery box state (PR 2) ──────────────────────────────────────────────
-  // A shuffled copy of the pool is created once when entering rewardPending so
-  // each visit produces the same ordering within a session but the assignments
-  // are not obvious to the player.
-  const [shuffledBoxes, setShuffledBoxes] = useState<MissionRewardType[]>(() =>
-    shuffleMysteryPool([...MYSTERY_BOX_POOL], seed ?? 0),
-  );
-  // Track whether the reward reveal message has been injected this visit.
-  const rewardMsgInjectedRef = useRef(false);
+  // Track which mission already had its reward-pending message injected.
+  const rewardMsgInjectedForMissionRef = useRef<string | null>(null);
+  const rewardMissionKey = secretMission
+    ? `${secretMission.missionNumber ?? 1}:${secretMission.triggeredDay}`
+    : 'none';
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
-  const confessionalLockedRef = useRef(confessionalLocked);
-  useEffect(() => { confessionalLockedRef.current = confessionalLocked; }, [confessionalLocked]);
 
   useEffect(() => {
     if (!confessionalDecisionPending && navigationBlockerState === 'blocked' && resetNavigationBlocker) {
@@ -631,6 +601,11 @@ export default function DiaryRoom() {
     return () => { window.clearTimeout(timeoutId); };
   }, [confessionalLocked]);
 
+  const assignedRewardBoxes = useMemo(
+    () => (secretMission ? getSecretMissionBoxRewards(secretMission) : [...SECRET_MISSION_BOX_REWARDS]),
+    [secretMission],
+  );
+
   // ── Secret mission: inject reward-pending message on mount (PR 2) ─────────
   // When the player returns with a completed mission, Big Eye acknowledges the
   // success and prompts box selection. Also re-runs on lock changes so any
@@ -638,12 +613,12 @@ export default function DiaryRoom() {
   useEffect(() => {
     if (confessionalLocked) return;
     const sm = secretMissionRef.current;
-    if (!sm || sm.status !== 'rewardPending') return;
-    if (rewardMsgInjectedRef.current) return;
-    rewardMsgInjectedRef.current = true;
-
-    // Re-shuffle boxes so layout is stable within this visit
-    setShuffledBoxes(shuffleMysteryPool([...MYSTERY_BOX_POOL], seedRef.current ?? 0));
+    if (!sm || sm.status !== 'rewardPending') {
+      rewardMsgInjectedForMissionRef.current = null;
+      return;
+    }
+    if (rewardMsgInjectedForMissionRef.current === rewardMissionKey) return;
+    rewardMsgInjectedForMissionRef.current = rewardMissionKey;
 
     const timeoutId = window.setTimeout(() => {
       const revealMsg: ChatMessage = {
@@ -660,41 +635,7 @@ export default function DiaryRoom() {
     }, 600);
 
     return () => { window.clearTimeout(timeoutId); };
-  }, [confessionalLocked]);
-
-  // ── Secret mission: track confessional visit count on unmount ─────────────
-  // Anti-cheese: visits are counted once per unique calendar day (= game week).
-  // Rapidly entering/exiting the Confessional on the same day only credits 1 visit.
-  useEffect(() => {
-    return () => {
-      if (confessionalLockedRef.current) return;
-      const sm = secretMissionRef.current;
-      if (!sm || sm.status !== 'accepted') return;
-      const visitTask = sm.tasks.find((t) => t.type === 'confessional_visits');
-      if (!visitTask || visitTask.completed) return;
-      const day = String(currentWeekRef.current);
-      dispatchRef.current(
-        addUniqueDayToTask({
-          taskId: visitTask.id,
-          day,
-        }),
-      );
-    };
-  }, []); // intentionally runs once on unmount
-
-  // ── Secret mission: passive survive_days task update ──────────────────────
-  // Runs whenever week advances while the mission is accepted.
-  useEffect(() => {
-    if (confessionalLocked) return;
-    const sm = secretMission;
-    if (!sm || sm.status !== 'accepted') return;
-    const surviveTask = sm.tasks.find((t) => t.type === 'survive_days');
-    if (!surviveTask || surviveTask.completed) return;
-    if (currentWeekForMission >= surviveTask.target) {
-      dispatch(updateMissionTaskProgress({ taskId: surviveTask.id, current: currentWeekForMission }));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confessionalLocked, currentWeekForMission]);
+  }, [confessionalLocked, rewardMissionKey, secretMission?.status]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -778,18 +719,12 @@ export default function DiaryRoom() {
         setShowSelfEvictConfirm(true);
       }
 
-      // Passive mission progress: count conversation turns (1 per exchange = 1 user + 1 BB reply)
-      const smSnap = secretMissionRef.current;
-      if (smSnap?.status === 'accepted') {
-        const turnTask = smSnap.tasks.find((t) => t.type === 'conversation_turns');
-        if (turnTask && !turnTask.completed) {
-          dispatch(
-            updateMissionTaskProgress({
-              taskId: turnTask.id,
-              current: turnTask.current + 1,
-            }),
-          );
-        }
+      const discoveredEgg = getSecretMissionEasterEggByIntent(resp.intent);
+      if (discoveredEgg) {
+        dispatch(recordSecretMissionEasterEgg({
+          eggId: discoveredEgg.id,
+          day: currentWeekForMission,
+        }));
       }
     } catch (err) {
       console.error('The Big Eye AI error:', err);
@@ -1145,47 +1080,59 @@ export default function DiaryRoom() {
                   </div>
                 ))}
 
-                {/* ── Mystery box selection (rewardPending) ────────────── */}
+                {/* ── Immunity reward claim (rewardPending) ───────────── */}
                 {secretMission.status === 'rewardPending' && (
-                  <div className="diary-room__mystery-boxes" aria-label="Mystery box selection">
+                  <div className="diary-room__mystery-boxes" aria-label="Secret mission reward boxes">
                     <p className="diary-room__mystery-boxes-prompt">
-                      🎁 Choose your mystery box:
+                      🎁 Choose one mystery box:
                     </p>
                     <div className="diary-room__mystery-boxes-grid">
-                      {shuffledBoxes.map((rewardType, idx) => (
+                      {assignedRewardBoxes.map((_, index) => (
                         <button
-                          key={idx}
+                          key={`${rewardMissionKey}:${index}`}
                           className="diary-room__mystery-box-btn"
                           type="button"
-                          aria-label={`Mystery Box ${idx + 1}`}
+                          aria-label={`Open Mystery Box ${index + 1}`}
                           onClick={() => {
-                            dispatch(claimMissionReward(rewardType));
-                            if (rewardType === 'plus1000Influence' && userPlayer) {
-                              dispatch(applyInfluenceDelta({ playerId: userPlayer.id, delta: 1000 }));
+                            const rewardType = assignedRewardBoxes[index];
+                            if (!rewardType) return;
+                            if (rewardType === 'immunity') {
+                              const durationDays = pickMissionImmunityDuration(
+                                secretMission.triggeredDay,
+                                secretMission.templateId,
+                              );
+                              dispatch(claimMissionReward({ claimDay: currentWeekForMission, durationDays }));
+                              const revealMsg: ChatMessage = {
+                                id: crypto.randomUUID(),
+                                role: 'bb',
+                                text: REWARD_REVEAL_COPY[rewardType](currentWeekForMission, durationDays),
+                                timestamp: Date.now(),
+                              };
+                              setMessages((prev) => {
+                                const updated = [...prev, revealMsg];
+                                saveChat(playerIdRef.current, updated);
+                                return updated;
+                              });
+                              return;
                             }
+                            if (rewardType === 'plus1000Influence') {
+                              dispatch(applyInfluenceDelta({ playerId: playerIdRef.current, delta: 1000 }));
+                            }
+                            dispatch(claimMissionReward(rewardType));
                             const revealMsg: ChatMessage = {
                               id: crypto.randomUUID(),
                               role: 'bb',
-                              text: REWARD_MESSAGES[rewardType] ?? REWARD_MESSAGES.emptyBox,
+                              text: REWARD_REVEAL_COPY[rewardType](currentWeekForMission),
                               timestamp: Date.now(),
                             };
-                            const msgs: ChatMessage[] = [revealMsg];
-                            if (rewardType === 'doubleVote') {
-                              msgs.push({
-                                id: crypto.randomUUID(),
-                                role: 'bb',
-                                text: doubleVoteTimingMessage(phase),
-                                timestamp: Date.now() + 50,
-                              });
-                            }
                             setMessages((prev) => {
-                              const updated = [...prev, ...msgs];
+                              const updated = [...prev, revealMsg];
                               saveChat(playerIdRef.current, updated);
                               return updated;
                             });
                           }}
                         >
-                          📦 Box {idx + 1}
+                          🎁 Mystery Box {index + 1}
                         </button>
                       ))}
                     </div>
@@ -1195,37 +1142,41 @@ export default function DiaryRoom() {
                 {/* ── Claimed reward status (rewardClaimed) ────────────── */}
                 {secretMission.status === 'rewardClaimed' && secretMission.reward && (
                   <div className="diary-room__reward-claimed" aria-label="Claimed reward">
-                    {secretMission.reward.type === 'emptyBox' ? (
-                      <p className="diary-room__reward-claimed-empty">
-                        📭 Empty box — no power granted.
-                      </p>
-                    ) : secretMission.reward.expired ? (
+                    {secretMission.reward.expired ? (
                       <p className="diary-room__reward-claimed-expired">
-                        ⏳ Your power has expired — Final 4 has been reached.
+                        ⏳ Your secret reward expired before it could be used.
                       </p>
                     ) : secretMission.reward.consumed ? (
                       <p className="diary-room__reward-claimed-used">
-                        ✔️ Power used.
+                        ✔️ {REWARD_LABELS[secretMission.reward.type] ?? 'Secret reward'} used.
                       </p>
                     ) : (
                       <>
                         <p className="diary-room__reward-claimed-active">
                           🔮 Secret power stored:{' '}
                           <strong>{REWARD_LABELS[secretMission.reward.type] ?? secretMission.reward.type}</strong>
+                          {secretMission.reward.type === 'immunity' && secretMission.reward.durationDays
+                            ? ` — ${secretMission.reward.durationDays} day${secretMission.reward.durationDays === 1 ? '' : 's'}`
+                            : ''}
                         </p>
-                        {secretMission.reward.type === 'doubleVote' && awaitingDoubleVoteOffer && (
+                        {secretMission.reward.type === 'immunity' && (
                           <p className="diary-room__reward-active-hint">
-                            📺 The Big Eye is watching. Your Double Vote is ready — return to the game to decide.
+                            Use it during the Safety Ceremony while nominated. Expires after Day {secretMission.reward.activeUntilDay ?? currentWeekForMission}.
                           </p>
                         )}
-                        {secretMission.reward.type === 'doubleVote' && humanDoubleVoteActive && (
+                        {secretMission.reward.type === 'doubleVote' && (
                           <p className="diary-room__reward-active-hint">
-                            🗳️🗳️ Double Vote activated! Return to the game to cast your two votes.
+                            It will be offered automatically at your next eligible live vote.
                           </p>
                         )}
-                        {secretMission.reward.type === 'voteDeduction' && awaitingVoteDeductionPrompt && (
+                        {secretMission.reward.type === 'voteDeduction' && (
                           <p className="diary-room__reward-active-hint">
-                            📺 The Big Eye has a message for you. Return to the game — your Vote Deduction is waiting.
+                            If you are on the block at an eligible eviction, you may remove one vote from your total.
+                          </p>
+                        )}
+                        {secretMission.reward.type === 'immunity' && activeConfessionalDecision?.type === 'mission_immunity_offer' && (
+                          <p className="diary-room__reward-active-hint">
+                            📺 The Big Eye is ready to ask whether you want to spend it right now.
                           </p>
                         )}
                       </>

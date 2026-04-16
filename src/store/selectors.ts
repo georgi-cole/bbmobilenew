@@ -28,9 +28,10 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
   return (
     Boolean(game.replacementNeeded) ||
     Boolean(game.awaitingNominations) ||
-    Boolean(game.awaitingPovDecision) ||
-    Boolean(game.awaitingPovSaveTarget) ||
-    Boolean(game.awaitingHumanVote) ||
+      Boolean(game.awaitingPovDecision) ||
+      Boolean(game.awaitingPovSaveTarget) ||
+      Boolean(game.awaitingMissionImmunityOffer) ||
+      Boolean(game.awaitingHumanVote) ||
     Boolean(game.awaitingDoubleVoteOffer) ||
     Boolean(game.awaitingVoteDeductionPrompt) ||
     Boolean(game.awaitingTieBreak) ||
