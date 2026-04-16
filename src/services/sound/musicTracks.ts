@@ -9,7 +9,6 @@ export type MusicTrack =
   | 'risk_wheel'
   | 'glass_bridge'
   | 'quick_tap'
-  | 'house_of_cards'
   | 'wildcard_western'
   | 'season_recap'
   | 'jury_voting';
@@ -24,7 +23,6 @@ export const MUSIC_TRACK_SOUND_KEYS: Readonly<Record<Exclude<MusicTrack, 'none'>
   risk_wheel: 'music:risk_wheel_loop',
   glass_bridge: 'music:gb_main',
   quick_tap: 'music:quicktap_main',
-  house_of_cards: 'music:quicktap_main',
   wildcard_western: 'music:wildcard_western_main',
   season_recap: 'music:season_recap',
   jury_voting: 'music:jury_voting_bg',

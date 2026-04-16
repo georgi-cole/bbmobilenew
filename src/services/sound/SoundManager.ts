@@ -592,7 +592,7 @@ class _SoundManager {
 
     try {
       await el.play();
-      if (this._musicTransitionId !== transitionId || this._musicEl !== el || this._musicKey !== key) {
+      if (this._musicTransitionId !== transitionId) {
         el.pause();
         el.currentTime = 0;
         return;
@@ -752,8 +752,8 @@ class _SoundManager {
    */
   unlockFromGesture(options: UnlockAudioOptions = {}): void {
     if (typeof document === 'undefined') return;
-    this._clearUnlockListeners();
     if (this._unlocked) {
+      this._clearUnlockListeners();
       if (_audioDebug) {
         console.log('[SoundManager] unlockFromGesture() — already unlocked');
       }
@@ -767,6 +767,7 @@ class _SoundManager {
       return;
     }
 
+    this._clearUnlockListeners();
     this._unlocked = true;
 
     if (SOUND_MANAGER_DISABLED) {
@@ -1040,6 +1041,7 @@ class _SoundManager {
 
 /** Singleton SoundManager instance. */
 export const SoundManager = new _SoundManager();
+/** Migration alias for the stricter centralized music-state API surface. */
 export const AudioManager = SoundManager;
 
 // ── Window debug object (DEV / ?debugAudio=1) ─────────────────────────────────

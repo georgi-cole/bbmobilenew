@@ -108,4 +108,5 @@ class _SoundManagerNative {
 
 /** Singleton SoundManager instance (React Native stub). */
 export const SoundManager = new _SoundManagerNative();
+/** Migration alias for the stricter centralized music-state API surface. */
 export const AudioManager = SoundManager;
