@@ -136,6 +136,9 @@ export class QuickTapRaceCanvasEngine {
   /** Accumulated game time during the playing phase (ms). */
   private gameElapsedMs = 0;
 
+  /** Game-relative ms when the last tap occurred — used for tap-press visual feedback. */
+  private lastTapMs = -1000;
+
   private layout: QTRLayout;
 
   private rafId = 0;
@@ -249,6 +252,7 @@ export class QuickTapRaceCanvasEngine {
 
   private registerTap(point: { x: number; y: number }): void {
     this.recentTapTimestamps.push(this.gameElapsedMs);
+    this.lastTapMs = this.gameElapsedMs;
 
     const multiplier = this.activeMultiplier ?? 1;
     this.tapCount += 1;
@@ -515,12 +519,19 @@ export class QuickTapRaceCanvasEngine {
   private renderBoosterPrompt(): void {
     const { ctx, layout } = this;
     const { boosterX, boosterY, boosterWidth, boosterHeight } = layout;
+    const booster = this.visibleBooster!;
 
     const cx = boosterX + boosterWidth / 2;
     const cy = boosterY + boosterHeight / 2;
     const r = 12;
 
-    // Draw rounded rectangle manually for broader environment compatibility.
+    // Color scheme: green for beneficial, orange-red for harmful.
+    const isBeneficial = booster.beneficial;
+    const borderColor = isBeneficial ? 'rgba(74, 222, 128, 0.85)' : 'rgba(248, 113, 113, 0.85)';
+    const bgColor = isBeneficial ? 'rgba(34, 197, 94, 0.16)' : 'rgba(239, 68, 68, 0.16)';
+    const labelColor = isBeneficial ? '#4ade80' : '#f87171';
+
+    // Draw rounded rectangle.
     ctx.beginPath();
     ctx.moveTo(boosterX + r, boosterY);
     ctx.lineTo(boosterX + boosterWidth - r, boosterY);
@@ -539,50 +550,60 @@ export class QuickTapRaceCanvasEngine {
     ctx.arcTo(boosterX, boosterY, boosterX + r, boosterY, r);
     ctx.closePath();
 
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.14)';
+    ctx.fillStyle = bgColor;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
+    ctx.strokeStyle = borderColor;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Icon.
-    const iconSize = Math.min(28, Math.round(boosterHeight * 0.46));
+    // Booster icon.
+    const iconSize = Math.min(28, Math.round(boosterHeight * 0.44));
     ctx.font = `${iconSize}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🎁', cx, cy - Math.round(boosterHeight * 0.14));
+    ctx.fillText(booster.icon, cx - Math.round(boosterWidth * 0.28), cy);
 
-    // "MYSTERY BOOSTER" label.
-    const labelSize = Math.max(11, Math.round(boosterHeight * 0.2));
+    // Booster label (e.g. "2× FRENZY!", "-1× DRAIN").
+    const labelSize = Math.max(11, Math.round(boosterHeight * 0.22));
     ctx.font = `900 ${labelSize}px system-ui, -apple-system, sans-serif`;
-    ctx.fillStyle = '#60a5fa';
-    ctx.fillText('MYSTERY BOOSTER', cx, cy + Math.round(boosterHeight * 0.14));
+    ctx.fillStyle = labelColor;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const labelX = cx - Math.round(boosterWidth * 0.28) + Math.round(iconSize * 0.62);
+    ctx.fillText(booster.label, labelX, cy - Math.round(boosterHeight * 0.1));
 
-    // "TAP TO GRAB!" hint.
-    const ctaSize = Math.max(9, Math.round(boosterHeight * 0.14));
+    // "TAP!" hint below the label.
+    const ctaSize = Math.max(9, Math.round(boosterHeight * 0.16));
     ctx.font = `700 ${ctaSize}px system-ui, -apple-system, sans-serif`;
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.75)';
-    ctx.fillText('TAP TO GRAB!', cx, cy + Math.round(boosterHeight * 0.38));
+    ctx.fillStyle = isBeneficial ? 'rgba(74, 222, 128, 0.75)' : 'rgba(248, 113, 113, 0.75)';
+    ctx.fillText('TAP!', labelX, cy + Math.round(boosterHeight * 0.24));
   }
 
   private renderTapButton(cx: number, cy: number, radius: number): void {
     const { ctx } = this;
     const btnColor = atOrLast(HEAT_BTN_COLORS, this.heatLevel);
 
-    // Outer glow.
+    // Brief press-scale feedback: shrink the button for 120ms after each tap.
+    const msSinceTap = this.gameElapsedMs - this.lastTapMs;
+    const PRESS_DURATION = 120;
+    const pressFraction = msSinceTap < PRESS_DURATION ? 1 - (msSinceTap / PRESS_DURATION) : 0;
+    const displayRadius = radius * (1 - 0.08 * pressFraction);
+
+    // Outer glow — more intense at high heat or when pressed.
     ctx.save();
-    ctx.shadowColor = this.heatLevel >= 4 ? 'rgba(255, 80, 0, 0.5)' : 'rgba(124, 58, 237, 0.45)';
-    ctx.shadowBlur = 16 + this.heatLevel * 8;
+    const glowColor = this.heatLevel >= 4 ? 'rgba(255, 80, 0, 0.5)' : 'rgba(124, 58, 237, 0.45)';
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = (16 + this.heatLevel * 8) * (1 - 0.4 * pressFraction);
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
     ctx.fillStyle = btnColor;
     ctx.fill();
     ctx.restore();
 
     // Button face.
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
     ctx.fillStyle = btnColor;
     ctx.fill();
 
@@ -590,8 +611,8 @@ export class QuickTapRaceCanvasEngine {
     const label = this.heatLevel >= 4 ? '💥' : this.heatLevel >= 2 ? '🔥' : 'TAP!';
     const isEmoji = this.heatLevel >= 2;
     const fontSize = isEmoji
-      ? Math.round(radius * 0.55)
-      : Math.round(radius * 0.38);
+      ? Math.round(displayRadius * 0.55)
+      : Math.round(displayRadius * 0.38);
     ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
