@@ -446,7 +446,7 @@ export default function VaultCrackerCanvasGame({
               {snapshot.guessHistory.length} {snapshot.guessHistory.length === 1 ? 'attempt' : 'attempts'}
             </span>
           </div>
-          <div className="cb__history-list" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+          <div className="cb__history-list">
             {[...snapshot.guessHistory].reverse().map((guess, index) => {
               const attemptNum = snapshot.guessHistory.length - index;
               return (
