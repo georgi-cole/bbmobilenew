@@ -74,6 +74,12 @@ describe('drawUiOverlays', () => {
     const ctx = createContextStub();
 
     expect(() => drawUiOverlays(ctx, createState(), createLayout())).not.toThrow();
+    expect(ctx.beginPath).toHaveBeenCalled();
+    expect(ctx.moveTo).toHaveBeenCalled();
+    expect(ctx.lineTo).toHaveBeenCalled();
     expect(ctx.quadraticCurveTo).toHaveBeenCalled();
+    expect(ctx.closePath).toHaveBeenCalled();
+    expect(ctx.fill).toHaveBeenCalled();
+    expect(ctx.stroke).toHaveBeenCalled();
   });
 });
