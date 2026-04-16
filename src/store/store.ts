@@ -37,6 +37,7 @@ import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware';
 import adsReducer, { loadAdsState, saveAdsState } from './adsSlice';
 import { adsMiddleware } from './adsMiddleware';
+import remoteConfigReducer from '../remoteConfig/remoteConfigSlice';
 
 export const store = configureStore({
   reducer: {
@@ -64,6 +65,7 @@ export const store = configureStore({
     memoryColors: memoryColorsReducer,
     publicOpinion: publicOpinionReducer,
     ads: adsReducer,
+    remoteConfig: remoteConfigReducer,
   },
   preloadedState: {
     settings: loadSettings(),

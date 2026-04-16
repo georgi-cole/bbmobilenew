@@ -6,8 +6,8 @@
  * hook assignment remains in place even while the SoundManager runtime is
  * intentionally disabled.
  *
- * The runtime SoundManager is currently disabled, so these calls are safe
- * no-ops that preserve the hook wiring without starting playback.
+ * When the remote live-config provides an introTrackUrl, that remote track
+ * (registered as 'music:remote_intro') is used instead of the bundled loop.
  *
  * Usage:
  *   // Inside HomeHub component
@@ -15,15 +15,19 @@
  */
 import { useEffect } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
+import { useAppSelector } from '../store/hooks';
+import { selectRemoteIntroMusicUrl } from '../remoteConfig/remoteConfigSlice';
 
 export default function useIntroHubMusic(): void {
+  const remoteIntroUrl = useAppSelector(selectRemoteIntroMusicUrl);
+
   useEffect(() => {
-    const hubMusicKey = 'music:intro_hub_loop';
-    // Keep the intro-hub music hook in place even while runtime audio is disabled.
+    // Use the remote key if a URL was provided (and registered), otherwise
+    // fall back to the bundled intro-hub loop.
+    const hubMusicKey = remoteIntroUrl ? 'music:remote_intro' : 'music:intro_hub_loop';
     SoundManager.requestBgm(hubMusicKey, 'introhub');
     return () => {
-      // Release the hook assignment on unmount.
       SoundManager.releaseBgm('introhub');
     };
-  }, []);
+  }, [remoteIntroUrl]);
 }

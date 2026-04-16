@@ -7,6 +7,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const fetch = require('node-fetch');
 const diaryWeeksRouter = require('./routes/diaryWeeks');
+const liveConfigRouter = require('./routes/liveConfig');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
@@ -177,6 +178,9 @@ app.use('/api/', apiLimiter);
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
+
+// ─── Live config endpoint ─────────────────────────────────────────────────────
+app.use('/api', liveConfigRouter);
 
 // ─── Diary Week endpoints ─────────────────────────────────────────────────────
 if (FEATURE_DIARY_WEEK) {

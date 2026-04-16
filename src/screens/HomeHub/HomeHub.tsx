@@ -34,6 +34,10 @@ import {
   hasSeenHomeHubSplashForGame,
   markHomeHubSplashSeenForGame,
 } from './homeHubSplashSession';
+import {
+  selectRemoteIntroHubBg,
+  selectRemoteIntroHubOverlay,
+} from '../../remoteConfig/remoteConfigSlice';
 import './HomeHub.css';
 
 /**
@@ -77,6 +81,10 @@ export default function HomeHub() {
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
+  const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
+  const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
+  // Remote background takes priority over weather/time-of-day background.
+  const effectiveBgUrl = remoteBgUrl ?? bgUrl;
   const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
   // Track whether the hub background has loaded so buttons are never shown
   // on an empty background (background-first ordering).
@@ -100,10 +108,10 @@ export default function HomeHub() {
   // Preload background as soon as its URL resolves, so it is ready before
   // the splash dismisses and buttons become visible.
   useEffect(() => {
-    if (!bgUrl || bgPreloadedRef.current) return;
+    if (!effectiveBgUrl || bgPreloadedRef.current) return;
     bgPreloadedRef.current = true;
-    preloadImage(bgUrl).then(() => setBgLoaded(true));
-  }, [bgUrl]);
+    preloadImage(effectiveBgUrl).then(() => setBgLoaded(true));
+  }, [effectiveBgUrl]);
 
   const handleSoundConsentEnable = () => {
     // MUST remain synchronous so that iOS/Safari recognises the gesture context.
@@ -245,9 +253,18 @@ export default function HomeHub() {
           {/* Dynamic background layer */}
           <div
             className="homehub-intro-bg"
-            style={bgUrl ? { backgroundImage: `url("${bgUrl}")` } : undefined}
+            style={effectiveBgUrl ? { backgroundImage: `url("${effectiveBgUrl}")` } : undefined}
             aria-hidden="true"
           />
+
+          {/* Remote overlay — only rendered when the remote config sets an overlayOpacity */}
+          {remoteOverlayOpacity != null && remoteOverlayOpacity > 0 && (
+            <div
+              className="homehub-remote-overlay"
+              style={{ opacity: remoteOverlayOpacity }}
+              aria-hidden="true"
+            />
+          )}
 
           {/* Foreground content — buttons hidden until background has loaded
               to avoid showing the UI over an empty/transparent background. */}

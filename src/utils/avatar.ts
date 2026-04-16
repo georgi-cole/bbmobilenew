@@ -3,6 +3,32 @@
 
 import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
+import type { RemotePlayerOverride } from '../remoteConfig/remoteConfigTypes';
+
+// ─── Remote override registry ─────────────────────────────────────────────────
+
+/**
+ * Module-level map of houseguest id → remote avatar URL.
+ * Populated at startup (via remoteConfigSlice) and consulted at resolve time.
+ * This avoids threading Redux state through every avatar render site.
+ */
+let _remoteAvatarMap: Map<string, string> = new Map();
+
+/**
+ * Apply remote player avatar overrides from the remote config.
+ * Called once after remoteConfigSlice loads the config.
+ *
+ * @param overrides - Array of RemotePlayerOverride entries from the remote config.
+ */
+export function setRemotePlayerOverrides(overrides: RemotePlayerOverride[]): void {
+  _remoteAvatarMap = new Map(
+    overrides
+      .filter((o): o is RemotePlayerOverride & { avatarUrl: string } =>
+        typeof o.avatarUrl === 'string' && o.avatarUrl.length > 0,
+      )
+      .map((o) => [o.id.toLowerCase(), o.avatarUrl]),
+  );
+}
 
 /**
  * Returns true if the given string is a single emoji grapheme/sequence.
@@ -81,6 +107,13 @@ function capitalize(s: string): string {
  */
 export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'avatar'>): string[] {
   const candidates: string[] = [];
+
+  // Remote config override takes highest priority (if provided for this player id).
+  const hgForRemote = getById(player.id) ?? findByName(player.name);
+  const remoteAvatarUrl = hgForRemote ? _remoteAvatarMap.get(hgForRemote.id) : undefined;
+  if (remoteAvatarUrl) {
+    candidates.push(remoteAvatarUrl);
+  }
 
   // If player.avatar is already a full URL or absolute path, use it first
   if (player.avatar && (player.avatar.startsWith('http') || player.avatar.startsWith('/'))) {

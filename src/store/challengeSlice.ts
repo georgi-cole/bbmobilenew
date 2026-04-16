@@ -202,13 +202,16 @@ export const startChallenge =
       if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`);
       gameEntry = found;
     } else {
-      // Consult the saved Comp Selection setting (if present).
+      // Remote live-config weekly mode takes priority over user settings.
+      const remoteChallenge = state.remoteConfig?.config?.challenge;
+      // Consult the saved Comp Selection setting as a fallback.
       const compSel = state.settings?.gameUX?.compSelection;
-      const mode = compSel?.mode ?? 'random-games';
+      const mode = remoteChallenge?.weeklyMode ?? compSel?.mode ?? 'random-games';
 
       switch (mode) {
         case 'single-game': {
-          const key = compSel?.selectedGameId;
+          // Remote key takes priority over the user's selectedGameId.
+          const key = remoteChallenge?.weeklyGameKey ?? compSel?.selectedGameId;
           const found = key ? getGame(key) : undefined;
           if (found) {
             gameEntry = found;
@@ -220,7 +223,8 @@ export const startChallenge =
         }
 
         case 'user-selection': {
-          const keys = compSel?.selectedGameIds ?? [];
+          // Remote weeklyGameKeys pool takes priority over the user's selectedGameIds.
+          const keys = remoteChallenge?.weeklyGameKeys ?? compSel?.selectedGameIds ?? [];
           const pool = keys
             .map((k) => getGame(k))
             .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired);

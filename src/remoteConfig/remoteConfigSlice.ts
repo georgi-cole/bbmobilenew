@@ -1,0 +1,148 @@
+/**
+ * remoteConfigSlice.ts — Redux slice for the live remote config.
+ *
+ * State shape:
+ *   config     – the validated RemoteConfig or null (before load / on failure)
+ *   status     – 'idle' | 'loading' | 'ok' | 'error'
+ *   fetchedAt  – epoch ms of the last successful fetch, or null
+ *
+ * The async thunk loadRemoteConfig() is called once at app startup (App.tsx).
+ * It dispatches setRemoteConfigStatus('loading') before the fetch, then
+ * setRemoteConfig + setRemoteConfigStatus('ok') on success, or
+ * setRemoteConfigStatus('error') on failure (the state.config may still hold
+ * a cached value loaded by the service layer).
+ */
+
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import type { RootState } from '../store/store';
+import type { RemoteConfig } from './remoteConfigTypes';
+import { fetchRemoteConfig, loadCachedRemoteConfig } from './remoteConfigService';
+import { SoundManager } from '../services/sound/SoundManager';
+import { setRemotePlayerOverrides } from '../utils/avatar';
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+export type RemoteConfigStatus = 'idle' | 'loading' | 'ok' | 'error';
+
+export interface RemoteConfigState {
+  config: RemoteConfig | null;
+  status: RemoteConfigStatus;
+  fetchedAt: number | null;
+}
+
+const _initialConfig = loadCachedRemoteConfig();
+// Apply cached player overrides synchronously at module init so the first
+// render already has the correct avatar URLs, matching the same pattern used
+// to pre-populate initialState.config.  This is intentionally a module-level
+// side effect — it mirrors setRemotePlayerOverrides() called in the thunk
+// but runs before any async fetch completes.
+if (_initialConfig?.players) {
+  setRemotePlayerOverrides(_initialConfig.players);
+}
+
+const initialState: RemoteConfigState = {
+  // Initialise from cache synchronously so the app has content on first render
+  // even before the async fetch completes.
+  config: _initialConfig,
+  status: 'idle',
+  fetchedAt: null,
+};
+
+// ─── Async thunk ──────────────────────────────────────────────────────────────
+
+/**
+ * Fetch the remote live-config at startup.
+ *
+ * Side-effects (outside Redux):
+ *  - Registers any remote audio tracks in SoundManager.registerDynamic so they
+ *    are playable by key without touching the static SOUND_REGISTRY.
+ */
+export const loadRemoteConfig = createAsyncThunk<RemoteConfig | null>(
+  'remoteConfig/load',
+  async () => {
+    const config = await fetchRemoteConfig();
+
+    // Register remote music tracks so they can be requested by key.
+    if (config?.season?.music?.introTrackUrl) {
+      SoundManager.registerDynamic({
+        key: 'music:remote_intro',
+        category: 'music',
+        src: config.season.music.introTrackUrl,
+        preload: false,
+        volume: 0.5,
+        loop: true,
+      });
+    }
+    if (config?.season?.music?.mainTrackUrl) {
+      SoundManager.registerDynamic({
+        key: 'music:remote_main',
+        category: 'music',
+        src: config.season.music.mainTrackUrl,
+        preload: false,
+        volume: 0.5,
+        loop: true,
+      });
+    }
+
+    // Apply player avatar overrides to the module-level registry in avatar.ts.
+    setRemotePlayerOverrides(config?.players ?? []);
+
+    return config;
+  },
+);
+
+const remoteConfigSlice = createSlice({
+  name: 'remoteConfig',
+  initialState,
+  reducers: {
+    /** Directly set the remote config (useful for testing). */
+    setRemoteConfig(state, action: PayloadAction<RemoteConfig | null>) {
+      state.config = action.payload;
+      state.fetchedAt = Date.now();
+      state.status = action.payload ? 'ok' : 'error';
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadRemoteConfig.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(loadRemoteConfig.fulfilled, (state, action) => {
+        state.config = action.payload;
+        state.fetchedAt = Date.now();
+        state.status = action.payload ? 'ok' : 'error';
+      })
+      .addCase(loadRemoteConfig.rejected, (state) => {
+        state.status = 'error';
+      });
+  },
+});
+
+export const { setRemoteConfig } = remoteConfigSlice.actions;
+
+export default remoteConfigSlice.reducer;
+
+// ─── Selectors ────────────────────────────────────────────────────────────────
+
+export const selectRemoteConfig = (s: RootState) => s.remoteConfig?.config ?? null;
+export const selectRemoteConfigStatus = (s: RootState) => s.remoteConfig?.status ?? 'idle';
+
+/** Returns the headline text for the main TV viewport fallback, if any. */
+export const selectRemoteMainTvHeadline = (s: RootState) =>
+  s.remoteConfig?.config?.season?.mainTv?.headline ?? null;
+
+/** Returns the remote intro-hub background image URL, or null. */
+export const selectRemoteIntroHubBg = (s: RootState) =>
+  s.remoteConfig?.config?.season?.introHub?.backgroundImageUrl ?? null;
+
+/** Returns the remote intro-hub overlay opacity (0–1), or null. */
+export const selectRemoteIntroHubOverlay = (s: RootState) =>
+  s.remoteConfig?.config?.season?.introHub?.overlayOpacity ?? null;
+
+/** Returns the remote intro music track URL, or null. */
+export const selectRemoteIntroMusicUrl = (s: RootState) =>
+  s.remoteConfig?.config?.season?.music?.introTrackUrl ?? null;
+
+/** Returns the player overrides array, or an empty array. */
+export const selectRemotePlayerOverrides = (s: RootState) =>
+  s.remoteConfig?.config?.players ?? [];

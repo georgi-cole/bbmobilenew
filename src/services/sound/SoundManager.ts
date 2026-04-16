@@ -135,6 +135,9 @@ class _SoundManager {
   // Keys that have encountered a load/decode/play error — skip on subsequent calls
   private _failedKeys = new Set<string>();
 
+  // Dynamically registered entries (from remote config, etc.)
+  private _extraRegistry = new Map<string, SoundEntry>();
+
   private _initialised = false;
   private _unlocked = false;
 
@@ -170,6 +173,19 @@ class _SoundManager {
     // intentional no-op — SoundEntry metadata lives in SOUND_REGISTRY
   }
 
+  /**
+   * Register a dynamically-provided sound entry (e.g. from remote config).
+   * The entry is stored in an instance-level map and consulted alongside the
+   * static SOUND_REGISTRY.  Calling this with the same key overwrites the
+   * previous entry.  Remote entries must not contain executable code —
+   * only `src` (a validated http/https URL) and scalar metadata are trusted.
+   */
+  registerDynamic(entry: SoundEntry): void {
+    this._extraRegistry.set(entry.key, entry);
+    // Clear any prior failure flag so the newly registered entry gets a chance.
+    this._failedKeys.delete(entry.key);
+  }
+
   // ── Playback ────────────────────────────────────────────────────────────────
 
   /**
@@ -192,7 +208,7 @@ class _SoundManager {
   private async _doPlay(key: string, opts?: PlayOptions): Promise<void> {
     if (this._failedKeys.has(key)) return; // previously failed — silent skip
 
-    const entry = SOUND_REGISTRY[key];
+    const entry = SOUND_REGISTRY[key] ?? this._extraRegistry.get(key);
     if (!entry) {
       console.warn(`[SoundManager] Unknown sound key: "${key}"`);
       return;
@@ -452,7 +468,7 @@ class _SoundManager {
 
     this._stopCurrentMusic();
 
-    const entry = SOUND_REGISTRY[key];
+    const entry = SOUND_REGISTRY[key] ?? this._extraRegistry.get(key);
     if (!entry) {
       console.warn(`[SoundManager] Unknown music key: "${key}"`);
       return;
