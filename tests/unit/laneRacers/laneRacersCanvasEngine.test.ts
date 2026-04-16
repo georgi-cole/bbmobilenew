@@ -71,7 +71,7 @@ describe('Lane Racers canvas engine seed handling', () => {
     expect(cryptoSeed).not.toHaveBeenCalled();
   });
 
-  it('turns taps into continuous forward motion with live racer velocity', () => {
+  it('updates racer velocity and progress from taps', () => {
     const engine = new QuickTapRaceCanvasEngine(createCanvas(), {
       seed: 77,
       racers: [

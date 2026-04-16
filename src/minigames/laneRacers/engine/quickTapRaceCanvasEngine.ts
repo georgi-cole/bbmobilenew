@@ -136,6 +136,14 @@ function buildSnapshot(state: QuickTapRaceRuntimeState, seed: number): QuickTapR
   };
 }
 
+function getBaselineCruiseSpeed(racer: Pick<QuickTapRaceRacerState, 'isPlayer' | 'targetScore'>): number {
+  if (racer.isPlayer) {
+    return BASE_PLAYER_CRUISE;
+  }
+
+  return BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_NORMALIZATION, 0, 0.006);
+}
+
 export class QuickTapRaceCanvasEngine {
   private readonly canvas: HTMLCanvasElement;
 
@@ -251,9 +259,10 @@ export class QuickTapRaceCanvasEngine {
   private createInitialState(): QuickTapRaceRuntimeState {
     const fallbackColors = ['#38bdf8', '#f97316', '#f43f5e', '#22c55e', '#facc15', '#a855f7'];
     const racers = this.options.racers.map((participant, index) => {
-      const baseline = participant.isPlayer
-        ? BASE_PLAYER_CRUISE
-        : BASE_AI_CRUISE + clamp((participant.targetScore ?? 180) / AI_TARGET_SCORE_NORMALIZATION, 0, 0.006);
+      const baseline = getBaselineCruiseSpeed({
+        isPlayer: participant.isPlayer,
+        targetScore: participant.targetScore ?? 180,
+      });
       return {
         id: participant.id,
         name: participant.name,
@@ -445,9 +454,7 @@ export class QuickTapRaceCanvasEngine {
     for (const racer of this.state.racers) {
       const effectMultiplier = this.getEffectSpeedMultiplier(racer);
       const instability = this.getInstability(racer);
-      const baseline = racer.isPlayer
-        ? BASE_PLAYER_CRUISE
-        : BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_NORMALIZATION, 0, 0.006);
+      const baseline = getBaselineCruiseSpeed(racer);
       const comboDrive = clamp(racer.combo * 0.0009, 0, 0.007);
       const heatDrive = racer.heat * 0.0018;
       const microVariation = Math.sin(this.state.elapsedMs * 0.0022 + racer.laneDrift) * 0.0014
