@@ -55,6 +55,9 @@ const BOOSTER_PROMPT_PULSE_AMPLITUDE = 0.12;
 const BOOSTER_PROMPT_PULSE_PERIOD_MS = 120;
 const BOOSTER_PROMPT_GLOW_BASE_ALPHA = 0.28;
 const BOOSTER_PROMPT_GLOW_PULSE_ALPHA = 0.12;
+const BOOSTER_PROMPT_BASE_COLOR_RGB = '96, 165, 250';
+const BOOSTER_PROMPT_SHADOW_BLUR_BASE = 14;
+const BOOSTER_PROMPT_SHADOW_BLUR_SCALE = 10;
 const HIGH_HEAT_THRESHOLD = 4;
 
 /** Returns the array element at `index`, or the last element if `index` is out of bounds. */
@@ -530,7 +533,8 @@ export class QuickTapRaceCanvasEngine {
     const r = 12;
     const pulse =
       BOOSTER_PROMPT_PULSE_BASE
-      + Math.sin(this.gameElapsedMs / BOOSTER_PROMPT_PULSE_PERIOD_MS) * BOOSTER_PROMPT_PULSE_AMPLITUDE;
+      + Math.sin((this.gameElapsedMs / BOOSTER_PROMPT_PULSE_PERIOD_MS) * Math.PI * 2)
+        * BOOSTER_PROMPT_PULSE_AMPLITUDE;
     const glowAlpha = BOOSTER_PROMPT_GLOW_BASE_ALPHA + pulse * BOOSTER_PROMPT_GLOW_PULSE_ALPHA;
     const accent = this.heatLevel >= HIGH_HEAT_THRESHOLD ? '#fb923c' : '#60a5fa';
 
@@ -554,9 +558,9 @@ export class QuickTapRaceCanvasEngine {
     ctx.closePath();
 
     ctx.save();
-    ctx.shadowColor = `rgba(96, 165, 250, ${glowAlpha})`;
-    ctx.shadowBlur = 14 + pulse * 10;
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.14)';
+    ctx.shadowColor = `rgba(${BOOSTER_PROMPT_BASE_COLOR_RGB}, ${glowAlpha})`;
+    ctx.shadowBlur = BOOSTER_PROMPT_SHADOW_BLUR_BASE + pulse * BOOSTER_PROMPT_SHADOW_BLUR_SCALE;
+    ctx.fillStyle = `rgba(${BOOSTER_PROMPT_BASE_COLOR_RGB}, 0.14)`;
     ctx.fill();
     ctx.restore();
     ctx.strokeStyle = accent;
