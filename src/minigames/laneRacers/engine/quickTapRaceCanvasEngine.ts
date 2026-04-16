@@ -28,8 +28,10 @@ const FINISH_SCORE = 225;
 const MAX_ACTIVE_EFFECTS = 2;
 const PLAYER_TAP_IMPULSE = 0.0062;
 const AI_TAP_IMPULSE = 0.0054;
+const COMBO_IMPULSE_MULTIPLIER = 0.00038;
 const BASE_PLAYER_CRUISE = 0.0058;
 const BASE_AI_CRUISE = 0.0065;
+const AI_TARGET_SCORE_NORMALIZATION = 2250;
 const MAX_SPEED = 0.085;
 const MIN_SPEED = 0.0038;
 const MOMENTUM_DECAY_PER_SECOND = 1.75;
@@ -249,7 +251,9 @@ export class QuickTapRaceCanvasEngine {
   private createInitialState(): QuickTapRaceRuntimeState {
     const fallbackColors = ['#38bdf8', '#f97316', '#f43f5e', '#22c55e', '#facc15', '#a855f7'];
     const racers = this.options.racers.map((participant, index) => {
-      const baseline = participant.isPlayer ? BASE_PLAYER_CRUISE : BASE_AI_CRUISE + clamp((participant.targetScore ?? 180) / 2250, 0, 0.006);
+      const baseline = participant.isPlayer
+        ? BASE_PLAYER_CRUISE
+        : BASE_AI_CRUISE + clamp((participant.targetScore ?? 180) / AI_TARGET_SCORE_NORMALIZATION, 0, 0.006);
       return {
         id: participant.id,
         name: participant.name,
@@ -443,7 +447,7 @@ export class QuickTapRaceCanvasEngine {
       const instability = this.getInstability(racer);
       const baseline = racer.isPlayer
         ? BASE_PLAYER_CRUISE
-        : BASE_AI_CRUISE + clamp(racer.targetScore / 2250, 0, 0.006);
+        : BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_NORMALIZATION, 0, 0.006);
       const comboDrive = clamp(racer.combo * 0.0009, 0, 0.007);
       const heatDrive = racer.heat * 0.0018;
       const microVariation = Math.sin(this.state.elapsedMs * 0.0022 + racer.laneDrift) * 0.0014
@@ -496,6 +500,7 @@ export class QuickTapRaceCanvasEngine {
     this.state.cameraShake = Math.min(1, this.state.cameraShake + 0.12);
 
     this.state.tapBursts.push({
+      kind: 'screen',
       x: tapX,
       y: tapY,
       radius: 12,
@@ -505,6 +510,7 @@ export class QuickTapRaceCanvasEngine {
       color: player.color,
     });
     this.state.tapBursts.push({
+      kind: 'track',
       laneIndex: player.laneIndex,
       progress: player.progress,
       radius: 14,
@@ -514,7 +520,7 @@ export class QuickTapRaceCanvasEngine {
       color: player.color,
     });
 
-    const comboImpulse = PLAYER_TAP_IMPULSE + player.combo * 0.00038;
+    const comboImpulse = PLAYER_TAP_IMPULSE + player.combo * COMBO_IMPULSE_MULTIPLIER;
     this.applyDriveImpulse(player, comboImpulse, true);
     this.updateScoresFromRaceState();
     this.checkLanePickups();

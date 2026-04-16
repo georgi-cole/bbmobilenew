@@ -69,17 +69,27 @@ export interface QuickTapRacePickupNode {
   flash: number;
 }
 
-export interface QuickTapRaceTapBurst {
+interface QuickTapRaceTapBurstBase {
   radius: number;
   alpha: number;
   lifeMs: number;
   maxLifeMs: number;
   color: string;
-  x?: number;
-  y?: number;
-  laneIndex?: number;
-  progress?: number;
 }
+
+export interface QuickTapRaceScreenTapBurst extends QuickTapRaceTapBurstBase {
+  kind: 'screen';
+  x: number;
+  y: number;
+}
+
+export interface QuickTapRaceTrackTapBurst extends QuickTapRaceTapBurstBase {
+  kind: 'track';
+  laneIndex: number;
+  progress: number;
+}
+
+export type QuickTapRaceTapBurst = QuickTapRaceScreenTapBurst | QuickTapRaceTrackTapBurst;
 
 export interface QuickTapRacePickupBurst {
   laneIndex: number;

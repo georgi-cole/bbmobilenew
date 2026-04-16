@@ -83,7 +83,7 @@ describe('Lane Racers canvas engine seed handling', () => {
 
     activateEngine(engine);
 
-    for (let index = 0; index < 6; index += 1) {
+    for (let tapCount = 0; tapCount < 6; tapCount += 1) {
       engine.handlePointerTap(1, { x: 180, y: 540 });
       advanceEngine(engine, 90);
       engine.handlePointerRelease(1);

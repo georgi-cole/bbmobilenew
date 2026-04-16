@@ -1,14 +1,27 @@
 import { getLaneCenterY, getTrackX } from './trackMath';
 import type { QuickTapRaceLayout, QuickTapRaceRuntimeState } from './types';
 
+function getBurstPosition(
+  burst: QuickTapRaceRuntimeState['tapBursts'][number],
+  layout: QuickTapRaceLayout,
+) {
+  if (burst.kind === 'screen') {
+    return { x: burst.x, y: burst.y };
+  }
+
+  return {
+    x: getTrackX(layout, burst.progress),
+    y: getLaneCenterY(layout, burst.laneIndex),
+  };
+}
+
 export function drawEffects(
   ctx: CanvasRenderingContext2D,
   state: QuickTapRaceRuntimeState,
   layout: QuickTapRaceLayout,
 ): void {
   state.tapBursts.forEach((burst) => {
-    const x = burst.x ?? (burst.progress !== undefined ? getTrackX(layout, burst.progress) : layout.trackRect.x + layout.trackRect.width * 0.5);
-    const y = burst.y ?? (burst.laneIndex !== undefined ? getLaneCenterY(layout, burst.laneIndex) : layout.trackRect.y + layout.trackRect.height * 0.5);
+    const { x, y } = getBurstPosition(burst, layout);
 
     ctx.save();
     ctx.globalAlpha = burst.alpha;
