@@ -599,38 +599,59 @@
 
 @media (max-width: 719px) {
   .grid-of-luck {
-    padding: 12px 12px calc(18px + env(safe-area-inset-bottom, 0));
+    padding: 10px 10px calc(14px + env(safe-area-inset-bottom, 0));
   }
 
   .grid-of-luck__camera {
-    gap: 14px;
+    gap: 10px;
   }
 
   .grid-of-luck__header {
     position: sticky;
     top: 0;
     z-index: 4;
-    padding: calc(env(safe-area-inset-top, 0px) + 2px) 0 8px;
+    gap: 6px;
+    padding: calc(env(safe-area-inset-top, 0px) + 2px) 0 6px;
     background: linear-gradient(180deg, rgba(14, 5, 32, 0.98), rgba(14, 5, 32, 0.82), rgba(14, 5, 32, 0));
     backdrop-filter: blur(14px);
   }
 
+  .grid-of-luck__eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+  }
+
+  .grid-of-luck__turn-meta {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
   .grid-of-luck__title {
-    font-size: clamp(1.5rem, 7vw, 2.1rem);
+    font-size: clamp(1.25rem, 8.3vw, 1.8rem);
+    letter-spacing: 0.05em;
+    line-height: 0.95;
+  }
+
+  .grid-of-luck__turn-banner {
+    width: min(100%, 320px);
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    line-height: 1.2;
   }
 
   .grid-of-luck__announcement {
     max-width: none;
-    font-size: 0.92rem;
+    font-size: 0.84rem;
+    line-height: 1.35;
   }
 
   .grid-of-luck__players {
     order: 2;
     display: flex;
-    gap: 8px;
+    gap: 6px;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 2px 0 6px;
+    padding: 1px 0 4px;
     margin: 0 -2px;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
@@ -641,98 +662,135 @@
   }
 
   .grid-of-luck__player-card {
-    flex: 0 0 min(190px, 52vw);
+    flex: 0 0 min(142px, 40vw);
     scroll-snap-align: start;
-    gap: 6px;
-    padding: 10px;
-    border-radius: 16px;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 14px;
   }
 
   .grid-of-luck__avatar-shell {
-    width: 42px;
-    height: 42px;
+    width: 34px;
+    height: 34px;
   }
 
   .grid-of-luck__player-name {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
   }
 
   .grid-of-luck__player-rank {
-    font-size: 0.75rem;
-    letter-spacing: 0.14em;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
   }
 
   .grid-of-luck__lp-row {
-    font-size: 0.72rem;
-    gap: 6px;
+    font-size: 0.66rem;
+    gap: 4px;
   }
 
   .grid-of-luck__lp-bar {
-    height: 6px;
+    height: 5px;
   }
 
   .grid-of-luck__status-list {
     min-height: 0;
-    font-size: 0.75rem;
-    line-height: 1.3;
+    font-size: 0.68rem;
+    line-height: 1.2;
   }
 
   .grid-of-luck__arena {
     order: 1;
-    gap: 12px;
+    gap: 10px;
   }
 
   .grid-of-luck__sidebar {
-    /* Keeps the mobile status rail below the sticky title/announcement block. */
     order: -1;
-    position: sticky;
-    top: calc(env(safe-area-inset-top, 0) + 92px);
-    z-index: 3;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    position: static;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    margin: 0 -2px;
+    scrollbar-width: none;
+  }
+
+  .grid-of-luck__sidebar::-webkit-scrollbar {
+    display: none;
   }
 
   .grid-of-luck__active-card,
   .grid-of-luck__reveal-card,
   .grid-of-luck__next-card,
   .grid-of-luck__log-card {
-    padding: 14px;
-    border-radius: 22px;
+    flex: 0 0 min(280px, 78vw);
+    min-width: 0;
+    padding: 12px;
+    border-radius: 18px;
+    align-content: start;
   }
 
   .grid-of-luck__log-card {
-    grid-column: 1 / -1;
+    flex-basis: min(300px, 82vw);
   }
 
   .grid-of-luck__log-card ul {
-    max-height: 120px;
+    max-height: 96px;
     overflow-y: auto;
     padding-right: 4px;
   }
 
   .grid-of-luck__finish-button {
-    grid-column: 1 / -1;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 0.88rem;
   }
 
   .grid-of-luck__grid {
-    gap: 8px;
+    gap: 6px;
   }
 
   .grid-of-luck__box {
-    min-height: 84px;
+    min-height: 72px;
+    border-radius: 15px;
   }
 
   .grid-of-luck__box-inner {
-    gap: 6px;
-    padding: 12px;
+    gap: 4px;
+    padding: 10px;
   }
 
   .grid-of-luck__box-symbol {
-    font-size: 1.7rem;
+    font-size: 1.4rem;
   }
 
   .grid-of-luck__box-label {
-    font-size: 0.68rem;
-    letter-spacing: 0.09em;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
+
+  .grid-of-luck__box-id {
+    top: 8px;
+    left: 10px;
+    font-size: 0.62rem;
+  }
+
+  .grid-of-luck__reveal-header {
+    gap: 10px;
+  }
+
+  .grid-of-luck__reveal-symbol {
+    font-size: 2rem;
+  }
+
+  .grid-of-luck__reveal-label {
+    font-size: 0.98rem;
+  }
+
+  .grid-of-luck__reveal-desc,
+  .grid-of-luck__reveal-message,
+  .grid-of-luck__reveal-delta,
+  .grid-of-luck__active-status {
+    font-size: 0.74rem;
   }
 }
