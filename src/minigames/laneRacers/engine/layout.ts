@@ -14,7 +14,7 @@ export function buildQuickTapRaceLayout(
   const statusHeight = Math.min(62, safeHeight * 0.08);
   const tapZoneHeight = Math.min(150, safeHeight * 0.24);
   const trackHeight = Math.max(
-    220,
+    240,
     safeHeight - paddingY * 2 - headerHeight - statusHeight - tapZoneHeight - 12,
   );
 
@@ -46,9 +46,11 @@ export function buildQuickTapRaceLayout(
     height: tapZoneHeight,
   };
 
-  const laneGap = Math.max(10, trackRect.height * 0.03);
-  const laneHeight = Math.max(44, (trackRect.height - laneGap * (laneCount - 1)) / laneCount);
-  const racerRadius = Math.max(12, Math.min(20, laneHeight * 0.28));
+  const trackStartX = trackRect.x + Math.max(24, trackRect.width * 0.055);
+  const trackFinishX = trackRect.x + trackRect.width - Math.max(28, trackRect.width * 0.065);
+  const laneGap = Math.max(14, trackRect.height * 0.05 / Math.max(1, laneCount));
+  const laneHeight = Math.max(46, (trackRect.height - laneGap * Math.max(0, laneCount - 1)) / Math.max(1, laneCount));
+  const racerRadius = Math.max(13, Math.min(20, laneHeight * 0.23));
 
   const lanes: LaneLayout[] = Array.from({ length: laneCount }, (_, index) => {
     const y = trackRect.y + index * (laneHeight + laneGap);
@@ -58,6 +60,7 @@ export function buildQuickTapRaceLayout(
       width: trackRect.width,
       height: laneHeight,
       centerX: trackRect.x + trackRect.width * 0.5,
+      centerY: y + laneHeight * 0.5,
       racerRadius,
     };
   });
@@ -72,6 +75,8 @@ export function buildQuickTapRaceLayout(
     trackRect,
     tapZoneRect,
     statusRect,
+    trackStartX,
+    trackFinishX,
     laneGap,
     laneHeight,
     lanes,
