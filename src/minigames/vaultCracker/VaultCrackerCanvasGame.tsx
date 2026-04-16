@@ -97,6 +97,7 @@ export default function VaultCrackerCanvasGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<VaultCrackerCanvasEngine | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const lastResizeRef = useRef<{ width: number; height: number; dpr: number } | null>(null);
   const resolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionRef = useRef(false);
 
@@ -203,21 +204,35 @@ export default function VaultCrackerCanvasGame({
       });
       engineRef.current = engine;
       detachInput = attachVaultCrackerInput(canvas, engine);
+      lastResizeRef.current = null;
 
-      const measureAndResize = () => {
-        const rect = container.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return;
-        engine.resize(rect.width, rect.height, window.devicePixelRatio || 1);
+      const measureAndResize = (width = container.clientWidth, height = container.clientHeight) => {
+        const nextWidth = Math.round(width);
+        const nextHeight = Math.round(height);
+        const nextDpr = Math.max(1, window.devicePixelRatio || 1);
+        if (nextWidth <= 0 || nextHeight <= 0) return;
+        if (
+          lastResizeRef.current?.width === nextWidth &&
+          lastResizeRef.current?.height === nextHeight &&
+          lastResizeRef.current?.dpr === nextDpr
+        ) {
+          return;
+        }
+        lastResizeRef.current = { width: nextWidth, height: nextHeight, dpr: nextDpr };
+        engine.resize(nextWidth, nextHeight, nextDpr);
+      };
+      const handleWindowResize = () => {
+        measureAndResize();
       };
 
       if (typeof ResizeObserver !== 'undefined') {
-        resizeObserverRef.current = new ResizeObserver(() => {
-          measureAndResize();
+        resizeObserverRef.current = new ResizeObserver((entries) => {
+          const entry = entries.find((candidate) => candidate.target === container);
+          measureAndResize(entry?.contentRect.width, entry?.contentRect.height);
         });
         resizeObserverRef.current.observe(container);
-      } else {
-        window.addEventListener('resize', measureAndResize);
       }
+      window.addEventListener('resize', handleWindowResize);
 
       measureAndResize();
       engine.start();
@@ -230,7 +245,8 @@ export default function VaultCrackerCanvasGame({
         detachInput?.();
         resizeObserverRef.current?.disconnect();
         resizeObserverRef.current = null;
-        window.removeEventListener('resize', measureAndResize);
+        lastResizeRef.current = null;
+        window.removeEventListener('resize', handleWindowResize);
         engine.destroy();
         engineRef.current = null;
       };

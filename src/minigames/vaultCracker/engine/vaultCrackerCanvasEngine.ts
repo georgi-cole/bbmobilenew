@@ -168,12 +168,14 @@ export class VaultCrackerCanvasEngine {
 
   resize(width: number, height: number, dpr: number): void {
     if (this.isDestroyed || width <= 0 || height <= 0) return;
-    this.layout = createVaultCrackerLayout(width, height, dpr);
-    this.canvas.width = Math.max(1, Math.round(width * dpr));
-    this.canvas.height = Math.max(1, Math.round(height * dpr));
-    this.canvas.style.width = `${width}px`;
-    this.canvas.style.height = `${height}px`;
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pixelRatio = Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
+    this.layout = createVaultCrackerLayout(width, height, pixelRatio);
+    // CSS controls the displayed canvas size; canvas.width/canvas.height only
+    // control the internal rendering resolution for crisp high-DPI drawing.
+    this.canvas.width = Math.max(1, Math.round(width * pixelRatio));
+    this.canvas.height = Math.max(1, Math.round(height * pixelRatio));
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.scale(pixelRatio, pixelRatio);
     this.render();
   }
 
