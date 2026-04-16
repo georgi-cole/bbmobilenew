@@ -50,7 +50,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
 }
 
 .qtr__hud-pill {
@@ -82,7 +82,7 @@
 
 .qtr__canvas-layout {
   display: grid;
-  grid-template-columns: minmax(0, 260px) minmax(0, 1fr) minmax(0, 210px);
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr) minmax(0, 240px);
   gap: 16px;
   padding: 16px 20px 20px;
   align-items: stretch;
@@ -734,7 +734,6 @@
 
   .qtr__hud-cluster {
     width: 100%;
-    justify-content: stretch;
   }
 
   .qtr__hud-pill {
