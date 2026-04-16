@@ -15,6 +15,7 @@ import {
   buildMissionTasks,
   checkSecretMissionTrigger,
   createSecretMissionState,
+  getSecretMissionBoxRewards,
   getSecretMissionTriggerChance,
   isSecretMissionSuccessful,
   MISSION_TEMPLATES,
@@ -121,6 +122,17 @@ describe('mission generation', () => {
     const mission = createSecretMissionState(8, { maxDaySpan: 3, missionNumber: 2 });
     expect(mission.endDay - mission.startDay).toBeLessThanOrEqual(3);
     expect(mission.missionNumber).toBe(2);
+  });
+
+  it('shuffles mystery-box rewards deterministically per mission', () => {
+    const mission = createSecretMissionState(5, { missionNumber: 1 });
+    const laterMission = createSecretMissionState(8, { missionNumber: 2 });
+    const firstOrder = getSecretMissionBoxRewards(mission);
+    const secondOrder = getSecretMissionBoxRewards(mission);
+    const laterOrder = getSecretMissionBoxRewards(laterMission);
+    expect(secondOrder).toEqual(firstOrder);
+    expect(new Set(firstOrder)).toEqual(new Set(['plus1000Influence', 'doubleVote', 'voteDeduction', 'immunity']));
+    expect(laterOrder).not.toEqual(firstOrder);
   });
 
   it('builds exactly five distinct requirement types and always includes survive_days', () => {
@@ -239,6 +251,23 @@ describe('game slice mission flow', () => {
     expect(mission.reward?.type).toBe('immunity');
     expect(mission.reward?.durationDays).toBe(2);
     expect(mission.reward?.activeUntilDay).toBe(6);
+  });
+
+  it('preserves the seasonal mission cap for legacy saves that only retain missionNumber', () => {
+    const store = makeStore();
+    const current = store.getState().game;
+    store.dispatch(hydrateGame({
+      ...current,
+      secretMissionCount: undefined,
+      secretMission: {
+        ...createSecretMissionState(6, { missionNumber: 2 }),
+        status: 'expired',
+      },
+    }));
+
+    store.dispatch(triggerSecretMission(8));
+    expect(store.getState().game.secretMission?.triggeredDay).toBe(6);
+    expect(store.getState().game.secretMissionCount).toBeUndefined();
   });
 });
 

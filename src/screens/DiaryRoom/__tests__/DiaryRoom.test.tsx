@@ -12,7 +12,9 @@ import gameReducer, {
   hydrateGame,
 } from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
+import socialReducer from '../../../social/socialSlice';
 import type { RootState } from '../../../store/store';
+import { getSecretMissionBoxRewards } from '../../../bb/secretMission';
 import {
   loadEvictionVoteBreakdownUnlock,
   saveEvictionVoteBreakdownUnlock,
@@ -26,6 +28,7 @@ function renderDiaryRoom(
     reducer: {
       game: gameReducer,
       settings: settingsReducer,
+      social: socialReducer,
     },
   });
 
@@ -70,6 +73,7 @@ function renderDiaryRoomWithEscapeRoute(
     reducer: {
       game: gameReducer,
       settings: settingsReducer,
+      social: socialReducer,
     },
   });
 
@@ -345,7 +349,7 @@ describe('DiaryRoom', () => {
     expect(screen.getByRole('button', { name: /open mystery box 4/i })).toBeTruthy();
   });
 
-  it('lets the player claim a mystery-box reward from the confessional', () => {
+  it('lets the player claim the box assigned to immunity from the confessional', () => {
     const { store } = renderDiaryRoom(['/game', '/diary-room'], {
       setupStore: (store) => {
         store.dispatch(triggerSecretMission(5));
@@ -355,10 +359,70 @@ describe('DiaryRoom', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /open mystery box 4/i }));
+    const assignedRewards = getSecretMissionBoxRewards(store.getState().game.secretMission!);
+    const immunityBoxIndex = assignedRewards.indexOf('immunity');
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`open mystery box ${immunityBoxIndex + 1}`, 'i') }));
 
     expect(store.getState().game.secretMission?.status).toBe('rewardClaimed');
     expect(store.getState().game.secretMission?.reward?.type).toBe('immunity');
+  });
+
+  it('applies 1,000 Influence when the assigned influence box is claimed', () => {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (store) => {
+        store.dispatch(triggerSecretMission(5));
+        store.dispatch(offerSecretMission(5));
+        store.dispatch(acceptSecretMission());
+        store.dispatch(completeMission());
+      },
+    });
+
+    const assignedRewards = getSecretMissionBoxRewards(store.getState().game.secretMission!);
+    const influenceBoxIndex = assignedRewards.indexOf('plus1000Influence');
+    const userId = store.getState().game.players.find((player) => player.isUser)?.id ?? 'user';
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`open mystery box ${influenceBoxIndex + 1}`, 'i') }));
+
+    expect(store.getState().game.secretMission?.reward?.type).toBe('plus1000Influence');
+    expect(store.getState().social.influenceBank[userId]).toBe(1000);
+  });
+
+  it('uses outcome-neutral reward-pending copy and reinjects it for a later mission', async () => {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (store) => {
+        store.dispatch(triggerSecretMission(5));
+        store.dispatch(offerSecretMission(5));
+        store.dispatch(acceptSecretMission());
+        store.dispatch(completeMission());
+      },
+    });
+
+    await flushConversationTimers();
+    expect(screen.getByText(/four reward boxes await/i)).toBeTruthy();
+    expect(screen.queryByText(/temporary shield is waiting/i)).toBeNull();
+
+    const current = store.getState().game;
+    await act(async () => {
+      store.dispatch(hydrateGame({
+        ...current,
+        week: 8,
+        secretMissionCount: 2,
+        secretMission: {
+          ...current.secretMission!,
+          missionNumber: 2,
+          triggeredDay: 8,
+          startDay: 8,
+          endDay: 11,
+          targetDeadlineDay: 11,
+          survivalWindowEndDay: 11,
+          templateId: 'social_engine',
+          status: 'rewardPending',
+          reward: undefined,
+        },
+      }));
+    });
+
+    await flushConversationTimers();
+    expect(screen.getAllByText(/four reward boxes await/i)).toHaveLength(2);
   });
 
   it('shows only the locked door for eliminated players and leaves secret missions inactive', async () => {

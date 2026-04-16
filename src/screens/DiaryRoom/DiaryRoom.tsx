@@ -30,9 +30,11 @@ import { getConfessionalDecisionPresentation } from './confessionalDecisionPrese
 import { getSecretMissionEasterEggByIntent } from '../../bb/secretMissionEasterEggs';
 import {
   SECRET_MISSION_BOX_REWARDS,
+  getSecretMissionBoxRewards,
   pickMissionImmunityDuration,
   type SecretMissionBoxRewardType,
 } from '../../bb/secretMission';
+import { applyInfluenceDelta } from '../../social/socialSlice';
 import {
   createInitialBigEyeState,
   generateBigBrotherReply,
@@ -99,7 +101,8 @@ const RETURNING_VISIT_GREETINGS = [
 
 const REWARD_PENDING_MSG =
   `Well done. You fulfilled the mission — the Big Eye is impressed. ` +
-  `A temporary shield is waiting for you. Claim it before the window closes. 🛡️`;
+  `Four reward boxes await. Choose one to reveal a prize such as Secret Immunity, ` +
+  `1,000 Influence, Double Vote, or Vote Deduction before the window closes. 🎁`;
 
 const VOTE_BREAKDOWN_DECLINED_TV_MESSAGE = "It's getting quiet in the house. Sandman on the way?";
 
@@ -416,8 +419,11 @@ export default function DiaryRoom() {
     });
   }, [playerId]);
 
-  // Track whether the reward reveal message has been injected this visit.
-  const rewardMsgInjectedRef = useRef(false);
+  // Track which mission already had its reward-pending message injected.
+  const rewardMsgInjectedForMissionRef = useRef<string | null>(null);
+  const rewardMissionKey = secretMission
+    ? `${secretMission.missionNumber ?? 1}:${secretMission.triggeredDay}`
+    : 'none';
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
@@ -595,6 +601,11 @@ export default function DiaryRoom() {
     return () => { window.clearTimeout(timeoutId); };
   }, [confessionalLocked]);
 
+  const assignedRewardBoxes = useMemo(
+    () => (secretMission ? getSecretMissionBoxRewards(secretMission) : [...SECRET_MISSION_BOX_REWARDS]),
+    [secretMission],
+  );
+
   // ── Secret mission: inject reward-pending message on mount (PR 2) ─────────
   // When the player returns with a completed mission, Big Eye acknowledges the
   // success and prompts box selection. Also re-runs on lock changes so any
@@ -602,9 +613,12 @@ export default function DiaryRoom() {
   useEffect(() => {
     if (confessionalLocked) return;
     const sm = secretMissionRef.current;
-    if (!sm || sm.status !== 'rewardPending') return;
-    if (rewardMsgInjectedRef.current) return;
-    rewardMsgInjectedRef.current = true;
+    if (!sm || sm.status !== 'rewardPending') {
+      rewardMsgInjectedForMissionRef.current = null;
+      return;
+    }
+    if (rewardMsgInjectedForMissionRef.current === rewardMissionKey) return;
+    rewardMsgInjectedForMissionRef.current = rewardMissionKey;
 
     const timeoutId = window.setTimeout(() => {
       const revealMsg: ChatMessage = {
@@ -621,7 +635,7 @@ export default function DiaryRoom() {
     }, 600);
 
     return () => { window.clearTimeout(timeoutId); };
-  }, [confessionalLocked]);
+  }, [confessionalLocked, rewardMissionKey, secretMission?.status]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -1073,13 +1087,15 @@ export default function DiaryRoom() {
                       🎁 Choose one mystery box:
                     </p>
                     <div className="diary-room__mystery-boxes-grid">
-                      {SECRET_MISSION_BOX_REWARDS.map((rewardType, index) => (
+                      {assignedRewardBoxes.map((_, index) => (
                         <button
-                          key={rewardType}
+                          key={`${rewardMissionKey}:${index}`}
                           className="diary-room__mystery-box-btn"
                           type="button"
                           aria-label={`Open Mystery Box ${index + 1}`}
                           onClick={() => {
+                            const rewardType = assignedRewardBoxes[index];
+                            if (!rewardType) return;
                             if (rewardType === 'immunity') {
                               const durationDays = pickMissionImmunityDuration(
                                 secretMission.triggeredDay,
@@ -1098,6 +1114,9 @@ export default function DiaryRoom() {
                                 return updated;
                               });
                               return;
+                            }
+                            if (rewardType === 'plus1000Influence') {
+                              dispatch(applyInfluenceDelta({ playerId: playerIdRef.current, delta: 1000 }));
                             }
                             dispatch(claimMissionReward(rewardType));
                             const revealMsg: ChatMessage = {

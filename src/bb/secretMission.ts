@@ -102,6 +102,24 @@ export const SECRET_MISSION_BOX_REWARDS: readonly SecretMissionBoxRewardType[] =
   'immunity',
 ] as const;
 
+export function getSecretMissionBoxRewards(
+  mission: Pick<SecretMissionState, 'triggeredDay' | 'templateId' | 'missionNumber'>,
+): SecretMissionBoxRewardType[] {
+  const rewards = [...SECRET_MISSION_BOX_REWARDS];
+  const rng = createSeededRng(
+    hashString(
+      `${mission.templateId}:${mission.triggeredDay}:${mission.missionNumber ?? 1}:reward-boxes`,
+    ),
+  );
+
+  for (let i = rewards.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [rewards[i], rewards[j]] = [rewards[j], rewards[i]];
+  }
+
+  return rewards;
+}
+
 export interface SecretMissionReward {
   type: MissionRewardType;
   consumed: boolean;

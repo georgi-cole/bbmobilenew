@@ -3807,7 +3807,7 @@ const gameSlice = createSlice({
       state,
       action: PayloadAction<number | { day: number; maxDaySpan?: number }>,
     ) {
-      const missionCount = state.secretMissionCount ?? 0;
+      const missionCount = getSeasonSecretMissionCount(state);
       if (missionCount >= 2) return;
       if (!canReplaceSecretMissionSlot(state.secretMission)) return;
 
