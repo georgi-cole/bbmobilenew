@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import HomeHub from '../HomeHub';
 import { preloadImage } from '../../../utils/preload';
@@ -13,14 +13,16 @@ const mockState: {
     season?: number;
     week?: number;
     phase?: string;
-    players?: Array<{ id: string; isUser?: boolean }>;
-    seasonArchives?: Array<{ seasonId: string }>;
+    players: Array<{ id: string; isUser: boolean }>;
+    seasonArchives: Array<{ seasonId: string }>;
   };
   profiles: { activeProfileId: null; isGuest: boolean; profiles: never[] };
   remoteConfig: { config: RemoteConfig | null };
 } = {
   game: {
     gameId: 'game-A',
+    players: [],
+    seasonArchives: [],
   },
   profiles: {
     activeProfileId: null,
@@ -115,6 +117,7 @@ describe('HomeHub', () => {
   beforeEach(() => {
     sessionStorage.clear();
     localStorage.clear();
+    delete (window as Window & { game?: Record<string, unknown> }).game;
     localStorage.setItem('bb:hubMusicConsent', 'granted');
     mockState.game = {
       gameId: 'game-A',
@@ -126,6 +129,10 @@ describe('HomeHub', () => {
     mockNavigate.mockReset();
     preloadImageMock.mockReset();
     preloadImageMock.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    delete (window as Window & { game?: Record<string, unknown> }).game;
   });
 
   it('shows the Kolequant splash only once per game when returning home mid-game', async () => {
@@ -247,6 +254,7 @@ describe('HomeHub', () => {
         season: 4,
         week: 7,
         phase: 'nominations',
+        players: [{ id: 'user', isUser: true }],
         seasonArchives: [{ seasonId: 'season-3' }],
       });
     });
