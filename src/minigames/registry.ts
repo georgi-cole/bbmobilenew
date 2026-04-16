@@ -3,6 +3,7 @@
 // Each entry includes metadata, scoring adapter, and module path for dynamic import.
 
 import { mulberry32 } from '../store/rng';
+import { DEFAULT_LANE_RACERS_DURATION_MS } from './laneRacers/constants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,14 +148,15 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     description: 'A premium canvas lane sprint where rapid taps power your racer through boosters and mystery gifts.',
     instructions: [
       'A broadcast-style countdown starts before the race goes live',
-      'Tap rapidly in the lower zone to build speed, combo, and momentum',
+      'Tap rapidly in the lower zone or use the TAP button to build speed and momentum',
+      'Use DODGE to skip the next pickup so boosters and gifts are not pure luck',
       'Booster pickups and mystery gifts can trigger short surges, shields, or risky lane effects',
       'AI racers have their own rhythm swings, so leads can change quickly',
       'Highest score at the finish wins the sprint',
     ],
     metricKind: 'count',
     metricLabel: 'Points',
-    timeLimitMs: 30_000,
+    timeLimitMs: DEFAULT_LANE_RACERS_DURATION_MS,
     authoritative: false,
     scoringAdapter: 'raw',
     implementation: 'react' as const,

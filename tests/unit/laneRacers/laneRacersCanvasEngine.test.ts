@@ -91,12 +91,29 @@ describe('Lane Racers canvas engine seed handling', () => {
 
     const player = getState(engine).racers[0];
     const progressAfterTapBurst = player.progress;
-    expect(progressAfterTapBurst).toBeGreaterThan(0.01);
-    expect(player.velocity).toBeGreaterThan(0.005);
+    expect(progressAfterTapBurst).toBeGreaterThan(0.007);
+    expect(player.velocity).toBeGreaterThan(0.004);
 
     advanceEngine(engine, 500);
 
     expect(getState(engine).racers[0].progress).toBeGreaterThan(progressAfterTapBurst);
+  });
+
+  it('keeps a default race running well past 30 seconds before the finish', () => {
+    const engine = new QuickTapRaceCanvasEngine(createCanvas(), {
+      seed: 77,
+      racers: [
+        { id: 'p0', name: 'You', isPlayer: true, color: '#38bdf8' },
+        { id: 'p1', name: 'AI', isPlayer: false, color: '#f97316', targetScore: 180 },
+      ],
+      onFinish: vi.fn(),
+    });
+
+    activateEngine(engine);
+    advanceEngine(engine, 30_000);
+
+    expect(getState(engine).result).toBeNull();
+    expect(getState(engine).timeLeftMs).toBeGreaterThan(25_000);
   });
 
   it('triggers spatial pickups when a racer reaches them on the track', () => {
@@ -121,5 +138,32 @@ describe('Lane Racers canvas engine seed handling', () => {
     expect(firstPickup.triggered).toBe(true);
     expect(player.activeEffects.length + player.shieldCharges).toBeGreaterThan(0);
     expect(state.pickupBursts.length).toBeGreaterThan(0);
+  });
+
+  it('lets the player dodge the next pickup instead of auto-collecting it', () => {
+    const engine = new QuickTapRaceCanvasEngine(createCanvas(), {
+      seed: 91,
+      racers: [{ id: 'p0', name: 'You', isPlayer: true, color: '#38bdf8' }],
+      onFinish: vi.fn(),
+    });
+
+    activateEngine(engine);
+    engine.armPickupDodge();
+
+    const state = getState(engine);
+    const player = state.racers[0];
+    const firstPickup = player.pickups[0];
+
+    player.progress = firstPickup.progress - 0.001;
+    player.momentum = 0.1;
+    player.velocity = 0.08;
+
+    advanceEngine(engine, 120);
+
+    expect(firstPickup.triggered).toBe(true);
+    expect(player.activeEffects).toHaveLength(0);
+    expect(player.shieldCharges).toBe(0);
+    expect(state.playerPickupDodgeMs).toBe(0);
+    expect(state.pickupBursts.at(-1)?.icon).toBe('↷');
   });
 });

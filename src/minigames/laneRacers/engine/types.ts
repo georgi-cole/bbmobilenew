@@ -171,6 +171,7 @@ export interface QuickTapRaceEngineSnapshot {
   playerEffectLabel: string | null;
   playerEffectIcon: string | null;
   playerHeat: number;
+  playerPickupDodgeMs: number;
   statusText: string;
   leadingRacerId: string | null;
   rankings: QuickTapRaceResultEntry[];
@@ -237,4 +238,5 @@ export interface QuickTapRaceRuntimeState {
   statusText: string;
   result: QuickTapRaceResult | null;
   lastPointerId: number | null;
+  playerPickupDodgeMs: number;
 }

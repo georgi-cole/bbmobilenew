@@ -62,13 +62,13 @@ export function drawUiOverlays(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = `900 ${Math.round(Math.min(30, tapZone.height * 0.24))}px system-ui`;
-  ctx.fillText('TAP TO DRIVE', tapZone.x + tapZone.width * 0.5, tapZone.y + tapZone.height * 0.4);
+  ctx.fillText('TAP TO DRIVE', tapZone.x + tapZone.width * 0.5, tapZone.y + tapZone.height * 0.38);
   ctx.font = `600 ${Math.round(Math.min(16, tapZone.height * 0.13))}px system-ui`;
   ctx.fillStyle = 'rgba(191,219,254,0.95)';
   ctx.fillText(
-    'Build momentum, trigger boosts, and slingshot into the finish',
+    'Tap here or use the button below • dodge to skip the next pickup',
     tapZone.x + tapZone.width * 0.5,
-    tapZone.y + tapZone.height * 0.68,
+    tapZone.y + tapZone.height * 0.67,
   );
   ctx.restore();
 
