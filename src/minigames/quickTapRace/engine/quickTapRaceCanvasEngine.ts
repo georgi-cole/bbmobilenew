@@ -27,6 +27,7 @@ const PROGRESS_EMIT_INTERVAL_MS = 100;
 const FINISH_SCORE = 225;
 const MAX_ACTIVE_EFFECTS = 2;
 const PLAYER_BASE_GAIN = 1.4;
+const AI_SCORE_CALIBRATION_FACTOR = 1.12;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -36,9 +37,19 @@ function normalizeColor(color: string, fallback: string): string {
   return color.trim().length > 0 ? color : fallback;
 }
 
+function formatOrdinal(rank: number): string {
+  const place = rank + 1;
+  if (place === 1) return '1st';
+  if (place === 2) return '2nd';
+  if (place === 3) return '3rd';
+  return `${place}th`;
+}
+
 function buildAiRuntime(seed: number, targetScore: number): QuickTapRaceAiRuntime {
   const rng = mulberry32(seed);
-  const tapsPerSecond = clamp(targetScore / DEFAULT_DURATION_MS * 1000 / 1.12, 3.6, 8.8);
+  // Tune target-score pacing so the visual race lands near the existing competitive
+  // Quick Tap score envelope without forcing identical AI cadence every run.
+  const tapsPerSecond = clamp(targetScore / DEFAULT_DURATION_MS * 1000 / AI_SCORE_CALIBRATION_FACTOR, 3.6, 8.8);
   return {
     baseIntervalMs: 1000 / tapsPerSecond,
     consistency: 0.74 + rng() * 0.22,
@@ -215,7 +226,8 @@ export class QuickTapRaceCanvasEngine {
     }
 
     this.layout = buildQuickTapRaceLayout(safeWidth, safeHeight, safeDpr, this.state.racers.length);
-    // CSS controls the displayed canvas size; canvas.width / canvas.height only set
+    // CSS controls the displayed canvas size (see QuickTapRaceCanvasGame's bounded
+    // .qtr__arena-shell / .qtr__canvas styles); canvas.width / canvas.height only set
     // the internal pixel buffer so high-DPI rendering stays crisp without resizing the parent.
     this.canvas.width = Math.round(safeWidth * safeDpr);
     this.canvas.height = Math.round(safeHeight * safeDpr);
@@ -566,7 +578,8 @@ export class QuickTapRaceCanvasEngine {
     const playerRank = rankings.findIndex((entry) => entry.isPlayer) + 1;
 
     if (this.state.timeLeftMs <= 6_000) {
-      this.state.statusText = `${leader?.name ?? 'Leader'} leads — ${playerRank === 1 ? 'hold it' : `you are ${playerRank}${playerRank === 1 ? 'st' : playerRank === 2 ? 'nd' : playerRank === 3 ? 'rd' : 'th'}`}`;
+      const playerPlacement = playerRank === 1 ? 'hold it' : `you are ${formatOrdinal(playerRank - 1)}`;
+      this.state.statusText = `${leader?.name ?? 'Leader'} leads — ${playerPlacement}`;
       return;
     }
 

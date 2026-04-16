@@ -68,7 +68,7 @@ const { engineInstances, MockQuickTapRaceCanvasEngine } = vi.hoisted(() => {
         leadingRacerId: null,
         rankings: [],
         result: null,
-        seed: this.options.seed ?? 0,
+        seed: this.options.seed !== undefined && this.options.seed !== 0 ? this.options.seed : 999,
       };
     }
   }

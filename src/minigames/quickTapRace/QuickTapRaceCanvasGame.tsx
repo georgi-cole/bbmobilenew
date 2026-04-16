@@ -86,6 +86,8 @@ function buildHostedRacers(
     : participantIds.map((id, index) => ({
         id,
         name: id,
+        // Integration note: MinigameHost normally supplies full participant metadata.
+        // When it does not, fall back to treating the first slot as the human lane.
         isHuman: index === 0,
         precomputedScore: 0,
         previousPR: null,
