@@ -50,6 +50,12 @@ const PARTICLE_LIFE_MS = 700;
 /** Pixels per millisecond for particle velocity magnitude. */
 const PARTICLE_SPEED = 0.16;
 const MAX_PARTICLES = 60;
+const BOOSTER_PROMPT_PULSE_BASE = 0.88;
+const BOOSTER_PROMPT_PULSE_AMPLITUDE = 0.12;
+const BOOSTER_PROMPT_PULSE_PERIOD_MS = 120;
+const BOOSTER_PROMPT_GLOW_BASE_ALPHA = 0.28;
+const BOOSTER_PROMPT_GLOW_PULSE_ALPHA = 0.12;
+const HIGH_HEAT_THRESHOLD = 4;
 
 /** Returns the array element at `index`, or the last element if `index` is out of bounds. */
 function atOrLast<T>(arr: T[], index: number): T {
@@ -522,9 +528,11 @@ export class QuickTapRaceCanvasEngine {
     const cx = boosterX + boosterWidth / 2;
     const cy = boosterY + boosterHeight / 2;
     const r = 12;
-    const pulse = 0.88 + Math.sin(this.gameElapsedMs / 120) * 0.12;
-    const glowAlpha = 0.28 + pulse * 0.12;
-    const accent = this.heatLevel >= 4 ? '#fb923c' : '#60a5fa';
+    const pulse =
+      BOOSTER_PROMPT_PULSE_BASE
+      + Math.sin(this.gameElapsedMs / BOOSTER_PROMPT_PULSE_PERIOD_MS) * BOOSTER_PROMPT_PULSE_AMPLITUDE;
+    const glowAlpha = BOOSTER_PROMPT_GLOW_BASE_ALPHA + pulse * BOOSTER_PROMPT_GLOW_PULSE_ALPHA;
+    const accent = this.heatLevel >= HIGH_HEAT_THRESHOLD ? '#fb923c' : '#60a5fa';
 
     // Draw rounded rectangle.
     ctx.beginPath();
