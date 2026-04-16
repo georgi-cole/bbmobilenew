@@ -20,8 +20,8 @@ export function syncIntroHubAudioGlobals(audio: AudioSettings): void {
 }
 
 export function syncSoundManagerAudioSettings(audio: AudioSettings): void {
-  SoundManager.setCategoryEnabled('music', audio.musicOn);
-  SoundManager.setCategoryVolume('music', audio.musicVolume);
+  SoundManager.setMusicMuted(!audio.musicOn);
+  SoundManager.setMusicVolume(audio.musicVolume);
   SFX_SOUND_CATEGORIES.forEach((category) => {
     SoundManager.setCategoryEnabled(category, audio.sfxOn);
     SoundManager.setCategoryVolume(category, audio.sfxVolume);

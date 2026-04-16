@@ -10,6 +10,7 @@
  */
 
 import type { PlayOptions, BgmOwner, UnlockAudioOptions } from './SoundManager';
+import type { MusicTrack } from './musicTracks';
 import type { SoundCategory, SoundEntry } from './sounds';
 
 class _SoundManagerNative {
@@ -32,6 +33,10 @@ class _SoundManagerNative {
     return null;
   }
 
+  get currentMusicTrack(): MusicTrack {
+    return 'none';
+  }
+
   get currentBgmOwner(): BgmOwner | null {
     return null;
   }
@@ -48,8 +53,36 @@ class _SoundManagerNative {
     // TODO: start looping music track via native audio library
   }
 
-  stopMusic(): void {
+  async unlockAudio(): Promise<void> {
+    // No-op on React Native — no AudioContext unlock required
+  }
+
+  async setDesiredMusic(_track: MusicTrack, _reason?: string): Promise<void> {
+    // TODO: route semantic music state through native audio library
+  }
+
+  async syncMusic(): Promise<void> {
+    // TODO: reconcile semantic music state with native audio library
+  }
+
+  stopAllMusic(): void {
+    // TODO: stop all music via native audio library
+  }
+
+  stopMusic(_track?: MusicTrack): void {
     // TODO: stop music via native audio library
+  }
+
+  setMusicMuted(_value: boolean): void {
+    // TODO: mute/unmute music in native audio library
+  }
+
+  setMusicVolume(_value: number): void {
+    // TODO: set music volume in native audio library
+  }
+
+  async playSfx(_key: string, _opts?: PlayOptions): Promise<void> {
+    // TODO: play SFX via native audio library
   }
 
   setCategoryEnabled(_category: SoundCategory, _enabled: boolean): void {
@@ -75,3 +108,4 @@ class _SoundManagerNative {
 
 /** Singleton SoundManager instance (React Native stub). */
 export const SoundManager = new _SoundManagerNative();
+export const AudioManager = SoundManager;

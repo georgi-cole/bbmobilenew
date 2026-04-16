@@ -30,6 +30,11 @@
 
 import { SOUND_REGISTRY } from './sounds';
 import type { SoundCategory, SoundEntry } from './sounds';
+import {
+  MUSIC_TRACK_SOUND_KEYS,
+  musicTrackFromSoundKey,
+} from './musicTracks';
+import type { MusicTrack } from './musicTracks';
 import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
 import { NATIVE_SFX_MAP } from '../../platform/cordova/nativeSfxMap';
 
@@ -59,6 +64,8 @@ export interface UnlockAudioOptions {
   /** When true, only the highest-priority desired BGM is started on unlock. */
   musicOnly?: boolean;
 }
+
+export type { MusicTrack } from './musicTracks';
 
 /**
  * Identifies who currently "owns" the background music channel.
@@ -118,6 +125,12 @@ class _SoundManager {
   // BGM channel
   private _musicEl: HTMLAudioElement | null = null;
   private _musicKey: string | null = null;
+  private _desiredMusicTrack: MusicTrack = 'none';
+  private _playingMusicTrack: MusicTrack = 'none';
+  private _desiredMusicReason: string | null = null;
+  private _musicTransitionId = 0;
+  private _musicMuted = false;
+  private _musicVolume = 1;
 
   // BGM ownership / desired-track tracking (per-owner map with priority fallback)
   private _currentBgmOwner: BgmOwner | null = null;
@@ -185,6 +198,9 @@ class _SoundManager {
     this._extraRegistry.set(entry.key, entry);
     // Clear any prior failure flag so the newly registered entry gets a chance.
     this._failedKeys.delete(entry.key);
+    if (entry.key === 'music:remote_intro' && this._desiredMusicTrack === 'introhub') {
+      void this.syncMusic();
+    }
   }
 
   // ── Playback ────────────────────────────────────────────────────────────────
@@ -319,6 +335,11 @@ class _SoundManager {
     return this._musicKey;
   }
 
+  /** Returns the semantic music track currently allocated to the music channel. */
+  get currentMusicTrack(): MusicTrack {
+    return this._playingMusicTrack;
+  }
+
   /** Returns the BgmOwner that is currently controlling the BGM channel. */
   get currentBgmOwner(): BgmOwner | null {
     return this._currentBgmOwner;
@@ -338,6 +359,84 @@ class _SoundManager {
     return null;
   }
 
+  private _resolveDesiredMusicTrack(): MusicTrack {
+    const top = this._getTopDesiredEntry();
+    return top ? musicTrackFromSoundKey(top.key) : 'none';
+  }
+
+  async unlockAudio(): Promise<void> {
+    this.unlockFromGesture();
+  }
+
+  async setDesiredMusic(track: MusicTrack, reason?: string): Promise<void> {
+    this._desiredMusicTrack = track;
+    this._desiredMusicReason = reason ?? null;
+    await this.syncMusic();
+  }
+
+  async syncMusic(): Promise<void> {
+    if (SOUND_MANAGER_DISABLED) return;
+
+    const desiredTrack = this._desiredMusicTrack;
+    const shouldMute = this._musicMuted || !this._getCategory('music').enabled;
+    if (desiredTrack === 'none' || shouldMute) {
+      this._stopCurrentMusic();
+      return;
+    }
+
+    if (!this._unlocked) {
+      this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+      return;
+    }
+
+    const key = this._resolveMusicKey(desiredTrack);
+    if (!key) {
+      this._stopCurrentMusic();
+      return;
+    }
+
+    if (this._musicKey === key && this._musicEl) {
+      this._playingMusicTrack = desiredTrack;
+      this._applyLiveMusicVolume();
+      return;
+    }
+
+    await this._doPlayMusic(key);
+  }
+
+  stopAllMusic(): void {
+    this._desiredPerOwner = {};
+    this._desiredMusicTrack = 'none';
+    this._desiredMusicReason = null;
+    this._currentBgmOwner = null;
+    this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+    this._stopCurrentMusic();
+  }
+
+  setMusicMuted(value: boolean): void {
+    this._musicMuted = value;
+    const state = this._getCategory('music');
+    state.enabled = !value;
+    this._categories.set('music', state);
+    if (value) {
+      this._stopCurrentMusic();
+      return;
+    }
+    void this.syncMusic();
+  }
+
+  setMusicVolume(value: number): void {
+    this._musicVolume = Math.max(0, Math.min(1, value));
+    const state = this._getCategory('music');
+    state.volume = this._musicVolume;
+    this._categories.set('music', state);
+    this._applyLiveMusicVolume();
+  }
+
+  async playSfx(key: string, options?: PlayOptions): Promise<void> {
+    await this.play(key, options);
+  }
+
   /**
    * Request a background music track with an explicit ownership scope.
    *
@@ -355,7 +454,7 @@ class _SoundManager {
    * this method rather than calling playMusic/stopMusic directly so the
    * manager can enforce the single-channel invariant.
    */
-  requestBgm(key: string | null, owner: BgmOwner): void {
+  requestBgm(key: string | null, owner: BgmOwner, opts?: PlayOptions): void {
     if (_audioDebug) {
       console.log(`[SoundManager] requestBgm("${key}", "${owner}")`);
     }
@@ -368,22 +467,10 @@ class _SoundManager {
     if (SOUND_MANAGER_DISABLED) return;
 
     // Store per-owner desired entry — does NOT overwrite other owners
-    this._desiredPerOwner[owner] = { key };
-
-    if (!this._unlocked) {
-      // Locked: intent stored; clear any stale queued music items
-      this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-      return;
-    }
-
-    // Unlocked: apply only if this owner is now the highest-priority active owner
+    this._desiredPerOwner[owner] = opts ? { key, opts } : { key };
     const top = this._getTopDesiredEntry();
-    if (!top || top.owner !== owner) {
-      // A higher-priority owner's track is already playing — no change needed.
-      return;
-    }
-    this._currentBgmOwner = owner;
-    void this._doPlayMusic(key);
+    this._currentBgmOwner = top?.owner ?? null;
+    void this.setDesiredMusic(this._resolveDesiredMusicTrack(), `requestBgm:${owner}`);
   }
 
   /**
@@ -405,27 +492,21 @@ class _SoundManager {
     const wasActive = this._currentBgmOwner === owner;
     delete this._desiredPerOwner[owner];
 
-    if (!wasActive) {
-      // This owner was not playing — just remove its desired entry, no restart needed.
-      return;
-    }
-
-    // This owner was playing; find the next best desired owner to fall back to.
     const top = this._getTopDesiredEntry();
     if (!top) {
-      // No more desired BGM from any owner — stop music completely.
       this._currentBgmOwner = null;
-      this._stopCurrentMusic();
-      this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+      if (wasActive) {
+        this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+      }
+      void this.setDesiredMusic('none', `releaseBgm:${owner}`);
       return;
     }
 
-    // Fall back to the next desired owner/track automatically.
     if (_audioDebug) {
       console.log(`[SoundManager] releaseBgm("${owner}") — falling back to "${top.key}" (owner: ${top.owner})`);
     }
     this._currentBgmOwner = top.owner;
-    void this._doPlayMusic(top.key, top.opts);
+    void this.setDesiredMusic(this._resolveDesiredMusicTrack(), `releaseBgm:${owner}`);
   }
 
   /**
@@ -436,34 +517,19 @@ class _SoundManager {
    */
   async playMusic(key: string, opts?: PlayOptions): Promise<void> {
     if (SOUND_MANAGER_DISABLED) return;
-    if (!this._unlocked) {
-      if (_audioDebug) {
-        console.log(`[SoundManager] playMusic("${key}") stored as phase desired — not yet unlocked`);
-      }
-      // Store as desired BGM under the 'phase' owner slot
-      this._desiredPerOwner['phase'] = { key, opts };
-      // Discard stale queued music; _applyDesiredBgm reads _desiredPerOwner on drain
-      this._playQueue = this._playQueue.filter((q) => !q.isMusic);
-      return;
-    }
-    // Unlocked: only start if 'phase' is the top-priority active owner
-    this._desiredPerOwner['phase'] = { key, opts };
-    const top = this._getTopDesiredEntry();
-    if (top?.owner === 'phase') {
-      this._currentBgmOwner = 'phase';
-      return this._doPlayMusic(key, opts);
-    }
+    this._desiredPerOwner['phase'] = opts ? { key, opts } : { key };
+    this._currentBgmOwner = this._getTopDesiredEntry()?.owner ?? 'phase';
+    await this.setDesiredMusic(this._resolveDesiredMusicTrack(), 'playMusic');
   }
 
   private async _doPlayMusic(key: string, opts?: PlayOptions): Promise<void> {
-    // Already allocated an element for this track — do not interrupt a pending
-    // or active play().  On iOS/Safari play() is async and _musicEl.paused may
-    // still be true while the promise is in-flight; checking only the key is
-    // therefore the correct idempotency guard.
+    const desiredTrack = musicTrackFromSoundKey(key);
     if (this._musicKey === key && this._musicEl) {
       if (_audioDebug) {
         console.log(`[SoundManager] playMusic("${key}") — already allocated/playing`);
       }
+      this._playingMusicTrack = desiredTrack;
+      this._applyLiveMusicVolume(opts);
       return;
     }
 
@@ -491,15 +557,18 @@ class _SoundManager {
     }
 
     const baseVol = opts?.volume ?? entry.volume ?? 1;
-    const effectiveVol = Math.max(0, Math.min(1, baseVol * cat.volume));
+    const effectiveVol = Math.max(0, Math.min(1, baseVol * this._musicVolume));
 
     const el = _makeMusicEl(entry.src, effectiveVol);
+    const transitionId = ++this._musicTransitionId;
     this._musicEl = el;
     this._musicKey = key;
+    this._playingMusicTrack = desiredTrack;
 
     el.addEventListener(
       'error',
       () => {
+        if (this._musicTransitionId !== transitionId) return;
         if (!this._failedKeys.has(key)) {
           const code = el.error?.code ?? 'unknown';
           console.error(
@@ -511,6 +580,7 @@ class _SoundManager {
         if (this._musicKey === key) {
           this._musicKey = null;
           this._musicEl = null;
+          this._playingMusicTrack = 'none';
         }
       },
       { once: true },
@@ -522,6 +592,11 @@ class _SoundManager {
 
     try {
       await el.play();
+      if (this._musicTransitionId !== transitionId || this._musicEl !== el || this._musicKey !== key) {
+        el.pause();
+        el.currentTime = 0;
+        return;
+      }
     } catch (err) {
       const domErr = err as DOMException;
       if (domErr.name === 'NotAllowedError') {
@@ -532,6 +607,7 @@ class _SoundManager {
         if (this._musicKey === key) {
           this._musicKey = null;
           this._musicEl = null;
+          this._playingMusicTrack = 'none';
         }
       } else if (domErr.name === 'AbortError') {
         // play() was interrupted by a subsequent pause() or src change (e.g.
@@ -544,6 +620,7 @@ class _SoundManager {
         if (this._musicKey === key) {
           this._musicKey = null;
           this._musicEl = null;
+          this._playingMusicTrack = 'none';
         }
       } else {
         if (!this._failedKeys.has(key)) {
@@ -553,33 +630,62 @@ class _SoundManager {
         if (this._musicKey === key) {
           this._musicKey = null;
           this._musicEl = null;
+          this._playingMusicTrack = 'none';
         }
       }
     }
   }
 
   /** Stop the currently-playing music track (legacy — prefer releaseBgm). */
-  stopMusic(): void {
+  stopMusic(track?: MusicTrack): void {
     if (SOUND_MANAGER_DISABLED) return;
+    if (track && this._desiredMusicTrack !== track && this._playingMusicTrack !== track) {
+      return;
+    }
     if (_audioDebug && this._musicKey) {
       console.log(`[SoundManager] stopMusic() — stopping "${this._musicKey}"`);
     }
-    this._stopCurrentMusic();
-    this._currentBgmOwner = null;
-    // Clear all per-owner desired entries so nothing restarts after unlock
-    this._desiredPerOwner = {};
-    this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+    if (!track) {
+      this.stopAllMusic();
+      return;
+    }
+    for (const owner of _SoundManager._BGM_PRIORITY) {
+      if (musicTrackFromSoundKey(this._desiredPerOwner[owner]?.key) === track) {
+        delete this._desiredPerOwner[owner];
+      }
+    }
+    const nextTop = this._getTopDesiredEntry();
+    this._currentBgmOwner = nextTop?.owner ?? null;
+    if (this._playingMusicTrack === track) {
+      this._stopCurrentMusic();
+    }
+    void this.setDesiredMusic(this._resolveDesiredMusicTrack(), `stopMusic:${track}`);
   }
 
   private _stopCurrentMusic(): void {
     if (this._musicEl) {
+      this._musicTransitionId += 1;
       this._musicEl.pause();
-      // Do NOT set src='' here — that triggers an async error event which
-      // would add the key to _failedKeys and permanently prevent restart.
-      // Simply null the reference; the element will be garbage collected.
+      this._musicEl.currentTime = 0;
       this._musicEl = null;
     }
     this._musicKey = null;
+    this._playingMusicTrack = 'none';
+  }
+
+  private _applyLiveMusicVolume(opts?: PlayOptions): void {
+    if (!this._musicEl || !this._musicKey) return;
+    const entry = SOUND_REGISTRY[this._musicKey] ?? this._extraRegistry.get(this._musicKey);
+    const baseVol = opts?.volume ?? entry?.volume ?? 1;
+    this._musicEl.volume = Math.max(0, Math.min(1, baseVol * this._musicVolume));
+  }
+
+  private _resolveMusicKey(track: MusicTrack): string | null {
+    if (track === 'none') return null;
+    if (track === 'introhub' && this._extraRegistry.has('music:remote_intro')) {
+      return 'music:remote_intro';
+    }
+    return MUSIC_TRACK_SOUND_KEYS[track];
   }
 
   /**
@@ -604,6 +710,13 @@ class _SoundManager {
 
   /** Enable or disable all sounds in a category. */
   setCategoryEnabled(category: SoundCategory, enabled: boolean): void {
+    if (category === 'music') {
+      this.setMusicMuted(!enabled);
+      if (_audioDebug) {
+        console.log(`[SoundManager] category "${category}" enabled=${enabled}`);
+      }
+      return;
+    }
     const state = this._getCategory(category);
     const prev = state.enabled;
     state.enabled = enabled;
@@ -611,26 +724,21 @@ class _SoundManager {
     if (prev !== enabled) {
       console.log(`[SoundManager] category "${category}" enabled=${enabled}`);
     }
-    // Stop music immediately when the music category is disabled
-    if (!enabled && category === 'music') {
-      this._stopCurrentMusic();
-    }
   }
 
   /** Set the master volume for a category (0–1). */
   setCategoryVolume(category: SoundCategory, volume: number): void {
+    if (category === 'music') {
+      this.setMusicVolume(volume);
+      console.log(`[SoundManager] category "${category}" volume=${Math.max(0, Math.min(1, volume)).toFixed(2)}`);
+      return;
+    }
     const state = this._getCategory(category);
     const newVolume = Math.max(0, Math.min(1, volume));
     if (state.volume !== newVolume) {
       state.volume = newVolume;
       this._categories.set(category, state);
       console.log(`[SoundManager] category "${category}" volume=${newVolume.toFixed(2)}`);
-      // Apply volume change to live music immediately
-      if (category === 'music' && this._musicEl && this._musicKey) {
-        const entry = SOUND_REGISTRY[this._musicKey] ?? this._extraRegistry.get(this._musicKey);
-        const baseVol = entry?.volume ?? 1;
-        this._musicEl.volume = Math.max(0, Math.min(1, baseVol * newVolume));
-      }
     }
   }
 
@@ -644,14 +752,21 @@ class _SoundManager {
    */
   unlockFromGesture(options: UnlockAudioOptions = {}): void {
     if (typeof document === 'undefined') return;
+    this._clearUnlockListeners();
     if (this._unlocked) {
       if (_audioDebug) {
         console.log('[SoundManager] unlockFromGesture() — already unlocked');
       }
+      if (options.musicOnly) {
+        this._playQueue = [];
+        void this.syncMusic();
+        this._primeSfxForMobile();
+        return;
+      }
+      this._drainQueue();
       return;
     }
 
-    this._clearUnlockListeners();
     this._unlocked = true;
 
     if (SOUND_MANAGER_DISABLED) {
@@ -667,7 +782,7 @@ class _SoundManager {
 
     if (options.musicOnly) {
       this._playQueue = [];
-      this._applyDesiredBgm();
+      void this.syncMusic();
       this._primeSfxForMobile();
       return;
     }
@@ -697,7 +812,7 @@ class _SoundManager {
       this.unlockFromGesture();
       return;
     }
-    if (this._unlocked && this._playQueue.length === 0) {
+    if (this._unlocked && this._playQueue.length === 0 && this._desiredMusicTrack === this._playingMusicTrack) {
       if (_audioDebug) {
         console.log('[SoundManager] unlockOnUserGesture() — already unlocked');
       }
@@ -743,7 +858,7 @@ class _SoundManager {
     // Discard all queued items (SFX are stale; music is superseded by _desiredBgmKey).
     // Starting only the latest desired BGM prevents multi-sound flush on iPhone.
     this._playQueue = [];
-    this._applyDesiredBgm();
+    void this.syncMusic();
 
     // Prime SFX pool elements during this gesture context so that iOS allows
     // future non-gesture plays (e.g. game-state-driven SFX like death/winner).
@@ -754,20 +869,6 @@ class _SoundManager {
     if (_audioDebug && discardedMusicMarkerCount > 0) {
       console.log('[SoundManager] discarded queued music retry marker(s):', discardedMusicMarkerCount);
     }
-  }
-
-  /**
-   * Start the highest-priority desired BGM track if one is set and audio is
-   * unlocked.  No-op if no desired BGM or already playing the correct track.
-   */
-  private _applyDesiredBgm(): void {
-    const top = this._getTopDesiredEntry();
-    if (!top) return;
-    if (_audioDebug) {
-      console.log(`[SoundManager] _applyDesiredBgm() — starting "${top.key}" (owner: ${top.owner})`);
-    }
-    this._currentBgmOwner = top.owner;
-    void this._doPlayMusic(top.key, top.opts);
   }
 
   private _queueMusicRetry(): void {
@@ -802,7 +903,6 @@ class _SoundManager {
       console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
     }
     const handler = () => {
-      if (this._unlocked) return;
       this.unlockFromGesture();
     };
     this._unlockHandler = handler;
@@ -912,6 +1012,7 @@ class _SoundManager {
     console.group('[SoundManager] debugDump()');
     console.log('initialised:', this._initialised, '| unlocked:', this._unlocked);
     console.log('currentMusicKey:', this._musicKey ?? '(none)', '| owner:', this._currentBgmOwner ?? '(none)');
+    console.log('desiredMusicTrack:', this._desiredMusicTrack, '| reason:', this._desiredMusicReason ?? '(none)');
     const desiredSummary = Object.fromEntries(
       Object.entries(this._desiredPerOwner).map(([k, v]) => [k, v?.key ?? null]),
     );
@@ -939,6 +1040,7 @@ class _SoundManager {
 
 /** Singleton SoundManager instance. */
 export const SoundManager = new _SoundManager();
+export const AudioManager = SoundManager;
 
 // ── Window debug object (DEV / ?debugAudio=1) ─────────────────────────────────
 
