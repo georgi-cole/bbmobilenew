@@ -111,6 +111,29 @@ describe('QuickTapRaceCanvasEngine', () => {
     expect(canvas.style.height).toBe('');
   });
 
+  it('keeps a visible GO frame before entering playing in non-autoStart mode', async () => {
+    const onTick = vi.fn();
+    const canvas = makeCanvas();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      onTick,
+      onFinish: vi.fn(),
+    });
+
+    engine.start();
+    await vi.advanceTimersByTimeAsync(3_100);
+
+    expect(onTick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phase: 'countdown',
+        countdown: 0,
+      }),
+    );
+
+    await vi.advanceTimersByTimeAsync(32);
+    expect(engine.getSnapshot().phase).toBe('playing');
+  });
+
   it('stops the RAF loop after destroy with no further callbacks', async () => {
     const canvas = makeCanvas();
     const engine = new QuickTapRaceCanvasEngine(canvas, {

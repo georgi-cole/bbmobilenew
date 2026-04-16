@@ -73,12 +73,15 @@ function renderQuickTapRace() {
 }
 
 describe('QuickTapRace canvas component', () => {
+  const originalRAF = window.requestAnimationFrame;
+  const originalCAF = window.cancelAnimationFrame;
+
   // Install RAF stubs before each test so the engine's destroy() can call
   // cancelAnimationFrame during component unmount (which happens inside cleanup).
   beforeEach(() => {
     vi.useFakeTimers();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
-      makeContextStub() as never,
+      makeContextStub() as unknown as CanvasRenderingContext2D,
     );
     window.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) =>
       window.setTimeout(() => cb(performance.now()), 16) as unknown as number,
@@ -90,6 +93,8 @@ describe('QuickTapRace canvas component', () => {
     // Unmount before restoring window globals so that engine.destroy() still
     // has valid RAF functions available during React's passive cleanup phase.
     cleanup();
+    window.requestAnimationFrame = originalRAF;
+    window.cancelAnimationFrame = originalCAF;
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -110,9 +115,13 @@ describe('QuickTapRace canvas component', () => {
     expect(screen.getByText('taps')).toBeInTheDocument();
   });
 
-  it('shows the fallback alert when the canvas context is unavailable', () => {
+  it('shows the fallback alert when the canvas context is unavailable', async () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     renderQuickTapRace();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByText(/game arena unavailable/i)).toBeInTheDocument();

@@ -100,6 +100,8 @@ export class QuickTapRaceCanvasEngine {
 
   private countdownElapsedMs = 0;
 
+  private countdownGoFramePending = false;
+
   private timeLeftMs: number;
 
   private tapCount = 0;
@@ -370,13 +372,18 @@ export class QuickTapRaceCanvasEngine {
         this.startPlaying();
         return;
       }
+      if (this.countdownGoFramePending) {
+        this.countdownGoFramePending = false;
+        this.startPlaying();
+        return;
+      }
       this.countdownElapsedMs += dt;
       if (this.countdownElapsedMs >= 1000) {
         this.countdownElapsedMs -= 1000;
         this.countdown = Math.max(0, this.countdown - 1);
         this.emitTick();
         if (this.countdown === 0) {
-          this.startPlaying();
+          this.countdownGoFramePending = true;
         }
       }
     } else if (this.phase === 'playing') {

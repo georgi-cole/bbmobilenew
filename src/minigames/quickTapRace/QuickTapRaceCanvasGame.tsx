@@ -20,7 +20,6 @@ import {
   useEffect,
   useRef,
   useCallback,
-  useMemo,
 } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
@@ -115,60 +114,83 @@ export default function QuickTapRaceCanvasGame({
   const [appliedModifiers, setAppliedModifiers] = useState<string[]>([]);
   const [canvasError, setCanvasError] = useState<string | null>(null);
 
-  // Generate a per-session seed exactly once on mount. An empty dependency
-  // array is intentional: the seed is generated at construction time and must
-  // not change during a session, just like VaultCrackerCanvasGame.  A new
-  // session seed is generated on the next mount if the component re-mounts.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const sessionSeed = useMemo(
-    () => (seed === 0 || seed === undefined ? cryptoSeed() : seed),
-    [],
+  const [resolvedSeed] = useState(() =>
+    session?.seed ?? (seed === 0 || seed === undefined ? cryptoSeed() : seed),
   );
-
-  const resolvedSeed = session?.seed ?? sessionSeed;
-  const resolvedDuration = session?.options.timeLimit ?? GAME_DURATION;
+  const [resolvedDuration] = useState(() => session?.options.timeLimit ?? GAME_DURATION);
+  const [resolvedAutoStart] = useState(() => autoStart);
+  const latestFinishContextRef = useRef({
+    session,
+    players,
+    humanId,
+    onFinish,
+  });
+  const latestAudioRef = useRef({
+    playTap: () => {},
+    playBooster: () => {},
+    playHalfTap: () => {},
+  });
 
   // Audio — active only during the playing phase.
   const { playTap, playBooster, playHalfTap } = useQuickTapRaceAudio(
     snapshot.phase === 'playing',
   );
 
+  useEffect(() => {
+    latestFinishContextRef.current = {
+      session,
+      players,
+      humanId,
+      onFinish,
+    };
+  }, [session, players, humanId, onFinish]);
+
+  useEffect(() => {
+    latestAudioRef.current = {
+      playTap,
+      playBooster,
+      playHalfTap,
+    };
+  }, [playBooster, playHalfTap, playTap]);
+
   // ── Finish handler ─────────────────────────────────────────────────────────
 
   const handleEngineFinish = useCallback(
     (finalScore: number, rawTaps: number, modifiers: string[]) => {
+      const { session: currentSession, players: currentPlayers, humanId: currentHumanId, onFinish: currentOnFinish } =
+        latestFinishContextRef.current;
       if (completionRef.current) return;
       completionRef.current = true;
       setAppliedModifiers(modifiers);
 
-      if (session) {
+      if (currentSession) {
         // LOH/POS path — build full leaderboard and transition to results.
         let resolvedAiScores: Record<string, number>;
-        if (session.hybridResolveOnComplete) {
-          const aiParticipants = session.participants
-            .filter((id) => id !== humanId)
+        if (currentSession.hybridResolveOnComplete) {
+          const aiParticipants = currentSession.participants
+            .filter((id) => id !== currentHumanId)
             .map((id) => {
-              const p = players.find((pl) => pl.id === id);
+              const p = currentPlayers.find((pl) => pl.id === id);
               return { id, profile: p?.competitionProfile };
             });
           resolvedAiScores = resolveHybridAiScores({
-            gameKey: session.key,
+            gameKey: currentSession.key,
             humanScore: finalScore,
             aiParticipants,
-            seed: session.seed,
+            seed: currentSession.seed,
           });
         } else {
-          resolvedAiScores = session.aiScores;
+          resolvedAiScores = currentSession.aiScores;
         }
 
         const allScores: Record<string, number> = {
           ...resolvedAiScores,
-          ...(humanId ? { [humanId]: finalScore } : {}),
+          ...(currentHumanId ? { [currentHumanId]: finalScore } : {}),
         };
 
-        const entries: ScoreEntry[] = session.participants.map((id) => {
-          const p = players.find((pl) => pl.id === id);
-          const isHuman = id === humanId;
+        const entries: ScoreEntry[] = currentSession.participants.map((id) => {
+          const p = currentPlayers.find((pl) => pl.id === id);
+          const isHuman = id === currentHumanId;
           return {
             id,
             name: p?.name ?? id,
@@ -183,10 +205,10 @@ export default function QuickTapRaceCanvasGame({
         setUiPhase('results');
       } else {
         // MinigameHost path — report score immediately.
-        onFinish?.(finalScore);
+        currentOnFinish?.(finalScore);
       }
     },
-    [session, humanId, players, onFinish],
+    [],
   );
 
   // ── Done handler (LOH/POS "Continue ▶" button) ─────────────────────────────
@@ -221,20 +243,22 @@ export default function QuickTapRaceCanvasGame({
     let engine: QuickTapRaceCanvasEngine | null = null;
 
     try {
-      engine = new QuickTapRaceCanvasEngine(canvas, {
+        engine = new QuickTapRaceCanvasEngine(canvas, {
         seed: resolvedSeed,
         duration: resolvedDuration,
-        autoStart,
+        autoStart: resolvedAutoStart,
         onTick: (next) => {
           setSnapshot(next);
         },
         onFinish: handleEngineFinish,
-        onTap: playTap,
+        onTap: () => {
+          latestAudioRef.current.playTap();
+        },
         onBoosterActivated: (beneficial) => {
           if (beneficial) {
-            playBooster();
+            latestAudioRef.current.playBooster();
           } else {
-            playHalfTap();
+            latestAudioRef.current.playHalfTap();
           }
         },
       });
@@ -282,13 +306,14 @@ export default function QuickTapRaceCanvasGame({
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Canvas initialization failed.';
-      setCanvasError(message);
-      setUiPhase('fallback');
+      queueMicrotask(() => {
+        setCanvasError(message);
+        setUiPhase('fallback');
+      });
       engine?.destroy();
       return undefined;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleEngineFinish, resolvedAutoStart, resolvedDuration, resolvedSeed]);
 
   // ── Pointer forwarding to engine ───────────────────────────────────────────
 
