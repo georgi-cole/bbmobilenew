@@ -126,6 +126,13 @@ export default function VaultCrackerCanvasGame({
     }
   }, []);
 
+  // Stable ref so the engine's onWin callback always invokes the latest version
+  // of finalizeSolvedRun without requiring the engine to be destroyed/recreated
+  // when dependency-chain re-renders occur (e.g. after applyMinigameWinner).
+  // The no-op default is safe: the ref is updated synchronously in the render
+  // body (below) before the engine useEffect ever runs.
+  const onWinRef = useRef<(payload: VaultCrackerWinPayload) => void>(() => {});
+
   const resolveCompetition = useCallback((score: number) => {
     if (!isCompetitionMode || completionRef.current) return;
     completionRef.current = true;
@@ -169,13 +176,13 @@ export default function VaultCrackerCanvasGame({
     setPhase('solved');
     clearResolveTimeout();
     resolveTimeoutRef.current = setTimeout(() => {
-      if (onFinish) {
-        onFinish(score);
-      } else {
-        setPhase('results');
-      }
+      setPhase('results');
     }, RESULT_DELAY_MS);
-  }, [clearResolveTimeout, onFinish, resolveCompetition]);
+  }, [clearResolveTimeout, resolveCompetition]);
+
+  // Keep the ref up-to-date on every render so the engine always calls the
+  // latest closure without needing to be destroyed and recreated.
+  onWinRef.current = finalizeSolvedRun;
 
   const resolveFallback = useCallback(() => {
     clearResolveTimeout();
@@ -200,7 +207,7 @@ export default function VaultCrackerCanvasGame({
         onProgress: (nextSnapshot) => {
           setSnapshot(nextSnapshot);
         },
-        onWin: finalizeSolvedRun,
+        onWin: (payload) => onWinRef.current(payload),
       });
       engineRef.current = engine;
       detachInput = attachVaultCrackerInput(canvas, engine);
@@ -257,7 +264,7 @@ export default function VaultCrackerCanvasGame({
       detachInput?.();
       return undefined;
     }
-  }, [autoStart, clearResolveTimeout, finalizeSolvedRun, isCompetitionMode, sessionSeed]);
+  }, [autoStart, clearResolveTimeout, isCompetitionMode, sessionSeed]);
 
   useEffect(() => () => {
     clearResolveTimeout();
@@ -270,13 +277,13 @@ export default function VaultCrackerCanvasGame({
       ? `Vault breached in ${attempts} ${attempts === 1 ? 'attempt' : 'attempts'}`
       : snapshot.lastGuess
         ? getAttemptSummary(snapshot.lastGuess)
-        : 'Drag or tap the tumblers, then test the mechanism';
+        : null;
   const hintText =
     phase === 'solved'
       ? `${elapsedLabel} Elapsed • Score ${humanScore}`
       : attempts > 0
         ? `Best alignment so far: ${snapshot.bestBulls}/${CODE_LENGTH} exact`
-        : 'Tap the upper or lower half of a tumbler, or drag vertically for fast dial control.';
+        : null;
 
   const vaultStateLabel =
     canvasError !== null
@@ -370,7 +377,13 @@ export default function VaultCrackerCanvasGame({
               );
             })}
           </ol>
-          <button className="cb__continue-btn" onClick={() => onComplete?.()}>
+          <button className="cb__continue-btn" onClick={() => {
+            if (onFinish) {
+              onFinish(humanScore);
+            } else {
+              onComplete?.();
+            }
+          }}>
             Continue
           </button>
         </div>
@@ -417,11 +430,43 @@ export default function VaultCrackerCanvasGame({
           )}
         </div>
 
-        <div className="cb__status-card" aria-live="polite">
-          <p className="cb__status">{statusText}</p>
-          <p className="cb__hint">{hintText}</p>
-        </div>
+        {(statusText !== null || hintText !== null) && (
+          <div className="cb__status-card" aria-live="polite">
+            {statusText !== null && <p className="cb__status">{statusText}</p>}
+            {hintText !== null && <p className="cb__hint">{hintText}</p>}
+          </div>
+        )}
       </div>
+
+      {snapshot.guessHistory.length > 0 && (
+        <div className="cb__history">
+          <div className="cb__history-head">
+            <span className="cb__history-label">Attempt History</span>
+            <span className="cb__history-count">
+              {snapshot.guessHistory.length} {snapshot.guessHistory.length === 1 ? 'attempt' : 'attempts'}
+            </span>
+          </div>
+          <div className="cb__history-list" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+            {[...snapshot.guessHistory].reverse().map((guess, index) => {
+              const attemptNum = snapshot.guessHistory.length - index;
+              return (
+                <div key={attemptNum} className="cb__guess-row">
+                  <div className="cb__guess-main">
+                    <span className="cb__guess-meta">Attempt #{attemptNum}</span>
+                    <span className="cb__guess-digits">{guess.digits.join(' ')}</span>
+                  </div>
+                  <div className="cb__guess-feedback">
+                    {Array.from({ length: CODE_LENGTH }, (_, i) => {
+                      const type = i < guess.bulls ? 'bull' : i < guess.bulls + guess.cows ? 'cow' : 'miss';
+                      return <span key={i} className={`cb__pip cb__pip--${type}`} />;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -115,10 +115,12 @@ export function renderIndicators(
   ctx.font = '700 12px Inter, system-ui, sans-serif';
   ctx.fillText('ATTEMPT HISTORY', layout.historyRect.x + 16, layout.historyRect.y + 12);
 
-  const recent = state.guessHistory.slice(-4).reverse();
-  ctx.font = '600 13px Inter, system-ui, sans-serif';
+  const rowHeight = 14;
+  const maxRows = Math.max(1, Math.floor((layout.historyRect.height - 34) / rowHeight));
+  const recent = state.guessHistory.slice(-maxRows).reverse();
+  ctx.font = '600 12px Inter, system-ui, sans-serif';
   recent.forEach((guess, index) => {
-    const y = layout.historyRect.y + 34 + index * 18;
+    const y = layout.historyRect.y + 34 + index * rowHeight;
     ctx.fillStyle = '#eff8ff';
     ctx.fillText(`#${state.guessHistory.length - index}  ${guess.digits.join('')}`, layout.historyRect.x + 16, y);
     ctx.textAlign = 'right';
