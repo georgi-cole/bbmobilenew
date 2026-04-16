@@ -35,9 +35,6 @@ interface Props {
   autoStart?: boolean;
 }
 
-const MEDALS = ['🥇', '🥈', '🥉'];
-const RESULT_DELAY_MS = 1_800;
-
 // Stable empty-array sentinels used as default prop values.
 // Defining them at module level ensures the same reference is returned on every
 // render when the caller omits the prop, which prevents unnecessary useMemo /
@@ -45,6 +42,8 @@ const RESULT_DELAY_MS = 1_800;
 // default parameters creating a new array identity on every render.
 const EMPTY_PARTICIPANT_IDS: string[] = [];
 const EMPTY_PARTICIPANTS: MinigameParticipant[] = [];
+const MEDALS = ['🥇', '🥈', '🥉'];
+const RESULT_DELAY_MS = 1_800;
 
 function formatElapsed(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));

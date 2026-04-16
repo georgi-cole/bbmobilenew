@@ -822,3 +822,64 @@
     width: 28px;
   }
 }
+
+
+.cb__canvas-stage {
+  width: 100%;
+  max-width: 430px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px 24px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.cb__canvas-shell {
+  position: relative;
+  width: 100%;
+  min-height: min(68dvh, 620px);
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(118, 166, 226, 0.24);
+  background:
+    radial-gradient(circle at 50% 16%, rgba(110, 163, 255, 0.14), transparent 38%),
+    rgba(2, 8, 18, 0.96);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.cb__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.cb__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(2, 8, 18, 0.9);
+}
+
+.cb__fallback-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cb__fallback-copy {
+  margin: 0;
+  color: #b8cbe4;
+}
