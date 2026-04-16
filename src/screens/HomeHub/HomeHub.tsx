@@ -77,7 +77,8 @@ function shouldShowSoundConsent(): boolean {
 export default function HomeHub() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const gameId = useAppSelector((state) => state.game.gameId);
+  const game = useAppSelector((state) => state.game);
+  const gameId = game.gameId;
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
@@ -100,6 +101,12 @@ export default function HomeHub() {
 
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
+
+  useEffect(() => {
+    const gameWindow = window as Window & { game?: Record<string, unknown> };
+    gameWindow.game = gameWindow.game ?? {};
+    Object.assign(gameWindow.game, game);
+  }, [game]);
 
   // Play the intro hub ambient music while this screen is mounted.
   // The hook only autoplays if persistent consent is stored; otherwise the

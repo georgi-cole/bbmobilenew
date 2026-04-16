@@ -8,7 +8,14 @@ import type { RemoteConfig } from '../../../remoteConfig/remoteConfigTypes';
 const mockNavigate = vi.fn();
 const mockDispatch = vi.fn();
 const mockState: {
-  game: { gameId: string };
+  game: {
+    gameId: string;
+    season?: number;
+    week?: number;
+    phase?: string;
+    players?: Array<{ id: string; isUser?: boolean }>;
+    seasonArchives?: Array<{ seasonId: string }>;
+  };
   profiles: { activeProfileId: null; isGuest: boolean; profiles: never[] };
   remoteConfig: { config: RemoteConfig | null };
 } = {
@@ -109,7 +116,9 @@ describe('HomeHub', () => {
     sessionStorage.clear();
     localStorage.clear();
     localStorage.setItem('bb:hubMusicConsent', 'granted');
-    mockState.game.gameId = 'game-A';
+    mockState.game = {
+      gameId: 'game-A',
+    };
     mockState.remoteConfig.config = null;
     mockDispatch.mockReset();
     mockNavigate.mockReset();
@@ -212,6 +221,32 @@ describe('HomeHub', () => {
     resolveRemoteBg();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+  });
+
+  it('mirrors the current Redux game state onto window.game for the intro hub', async () => {
+    mockState.game = {
+      gameId: 'game-A',
+      season: 4,
+      week: 7,
+      phase: 'nominations',
+      players: [{ id: 'user', isUser: true }],
+      seasonArchives: [{ seasonId: 'season-3' }],
+    };
+    (window as Window & { game?: Record<string, unknown> }).game = {
+      hubNotifications: { news: true },
+    };
+
+    renderHomeHub();
+
+    await waitFor(() => {
+      expect((window as Window & { game?: Record<string, unknown> }).game).toMatchObject({
+        hubNotifications: { news: true },
+        season: 4,
+        week: 7,
+        phase: 'nominations',
+        seasonArchives: [{ seasonId: 'season-3' }],
+      });
     });
   });
 });

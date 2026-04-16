@@ -90,11 +90,15 @@ export default function GameOver() {
     return () => clearInterval(id);
   }, []);
 
-  function startNewSeason() {
+  function archiveCompletedSeason() {
     if (!archivedRef.current) {
       archivedRef.current = true;
       dispatch(archiveSeason(buildArchive(season, summaries)));
     }
+  }
+
+  function startNewSeason() {
+    archiveCompletedSeason();
     // Clear any stale mid-season snapshot so the Play prompt won't offer
     // to resume an outdated save after the season has been completed.
     if (!isGuest && activeProfileId) {
@@ -105,6 +109,7 @@ export default function GameOver() {
   }
 
   function exitToHome() {
+    archiveCompletedSeason();
     navigate('/');
   }
 
