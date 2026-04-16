@@ -20,21 +20,22 @@ import type {
   QuickTapRaceRuntimeState,
 } from './types';
 
-const DEFAULT_DURATION_MS = 30_000;
+const DEFAULT_DURATION_MS = 60_000;
 const COUNTDOWN_MS = 3_200;
 const FINISH_ANIMATION_MS = 1_500;
 const PROGRESS_EMIT_INTERVAL_MS = 100;
 const FINISH_SCORE = 225;
 const MAX_ACTIVE_EFFECTS = 2;
-const PLAYER_TAP_IMPULSE = 0.0062;
-const AI_TAP_IMPULSE = 0.0054;
+const PLAYER_TAP_IMPULSE = 0.0038;
+const AI_TAP_IMPULSE = 0.0031;
 const COMBO_IMPULSE_MULTIPLIER = 0.00038;
-const BASE_PLAYER_CRUISE = 0.0058;
-const BASE_AI_CRUISE = 0.0065;
-const AI_TARGET_SCORE_NORMALIZATION = 2250;
-const MAX_SPEED = 0.085;
-const MIN_SPEED = 0.0038;
+const BASE_PLAYER_CRUISE = 0.0028;
+const BASE_AI_CRUISE = 0.0032;
+const AI_TARGET_SCORE_NORMALIZATION = 60_000;
+const MAX_SPEED = 0.05;
+const MIN_SPEED = 0.0024;
 const MOMENTUM_DECAY_PER_SECOND = 1.75;
+const PICKUP_DODGE_WINDOW_MS = 2_200;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -128,6 +129,7 @@ function buildSnapshot(state: QuickTapRaceRuntimeState, seed: number): QuickTapR
     playerEffectLabel: primaryEffect?.label ?? null,
     playerEffectIcon: primaryEffect?.icon ?? null,
     playerHeat: Math.round((player?.heat ?? 0) * 100) / 100,
+    playerPickupDodgeMs: state.playerPickupDodgeMs,
     statusText: state.statusText,
     leadingRacerId,
     rankings,
@@ -141,7 +143,7 @@ function getBaselineCruiseSpeed(racer: Pick<QuickTapRaceRacerState, 'isPlayer' |
     return BASE_PLAYER_CRUISE;
   }
 
-  return BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_NORMALIZATION, 0, 0.006);
+  return BASE_AI_CRUISE + clamp(racer.targetScore / AI_TARGET_SCORE_NORMALIZATION, 0, 0.0036);
 }
 
 export class QuickTapRaceCanvasEngine {
@@ -256,6 +258,19 @@ export class QuickTapRaceCanvasEngine {
     }
   }
 
+  handleControlTap(): void {
+    if (this.state.phase !== 'active') return;
+    const tapZone = this.layout.tapZoneRect;
+    this.applyPlayerTap(tapZone.x + tapZone.width * 0.5, tapZone.y + tapZone.height * 0.5);
+  }
+
+  armPickupDodge(): void {
+    if (this.state.phase !== 'active') return;
+    this.state.playerPickupDodgeMs = Math.max(this.state.playerPickupDodgeMs, PICKUP_DODGE_WINDOW_MS);
+    this.state.statusText = 'Dodge armed — skip the next pickup';
+    this.emitProgress();
+  }
+
   private createInitialState(): QuickTapRaceRuntimeState {
     const fallbackColors = ['#38bdf8', '#f97316', '#f43f5e', '#22c55e', '#facc15', '#a855f7'];
     const racers = this.options.racers.map((participant, index) => {
@@ -312,6 +327,7 @@ export class QuickTapRaceCanvasEngine {
       statusText: 'Lights up… hold for the launch',
       result: null,
       lastPointerId: null,
+      playerPickupDodgeMs: 0,
     };
   }
 
@@ -338,6 +354,7 @@ export class QuickTapRaceCanvasEngine {
     this.state.screenPulse = Math.max(0, this.state.screenPulse - deltaMs / 700);
     this.state.finishFlash = Math.max(0, this.state.finishFlash - deltaMs / 650);
     this.state.cameraShake = Math.max(0, this.state.cameraShake - deltaMs / 500);
+    this.state.playerPickupDodgeMs = Math.max(0, this.state.playerPickupDodgeMs - deltaMs);
     this.progressEmitElapsed += deltaMs;
 
     this.state.tapBursts = this.state.tapBursts.filter((burst) => {
@@ -572,6 +589,23 @@ export class QuickTapRaceCanvasEngine {
     for (const racer of this.state.racers) {
       for (const pickup of racer.pickups) {
         if (pickup.triggered || racer.progress < pickup.progress) continue;
+        if (racer.isPlayer && this.state.playerPickupDodgeMs > 0) {
+          pickup.triggered = true;
+          pickup.flash = 1;
+          pickup.revealMs = 700;
+          racer.pickupGlow = 1;
+          racer.surgeGlow = Math.max(racer.surgeGlow, 0.25);
+          this.state.playerPickupDodgeMs = 0;
+          this.state.pickupBursts.push({
+            laneIndex: racer.laneIndex,
+            progress: pickup.progress,
+            color: '#e2e8f0',
+            icon: '↷',
+            lifeMs: 650,
+            maxLifeMs: 650,
+          });
+          continue;
+        }
         pickup.triggered = true;
         pickup.flash = 1;
         pickup.revealMs = 1100;
@@ -681,6 +715,11 @@ export class QuickTapRaceCanvasEngine {
 
     if (livePlayer.activeEffects[0]) {
       this.state.statusText = `${livePlayer.activeEffects[0].label} live • ${Math.round(playerEntry.score)} pts`;
+      return;
+    }
+
+    if (this.state.playerPickupDodgeMs > 0) {
+      this.state.statusText = 'Dodge armed • next pickup will be skipped';
       return;
     }
 

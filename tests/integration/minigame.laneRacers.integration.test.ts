@@ -10,6 +10,7 @@ describe('Lane Racers registry wiring', () => {
     expect(entry?.reactComponentKey).toBe('LaneRacers');
     expect(entry?.authoritative).toBe(false);
     expect(entry?.scoringAdapter).toBe('raw');
+    expect(entry?.timeLimitMs).toBe(60_000);
     expect(entry?.instructions.length).toBeGreaterThan(0);
   });
 

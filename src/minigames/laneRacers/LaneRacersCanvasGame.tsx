@@ -27,12 +27,13 @@ const EMPTY_PLAYERS: Player[] = [];
 const EMPTY_PARTICIPANT_IDS: string[] = [];
 const EMPTY_PARTICIPANTS: MinigameParticipant[] = [];
 const RACER_COLORS = ['#38bdf8', '#f97316', '#f43f5e', '#22c55e', '#facc15', '#a855f7'];
+const DEFAULT_LANE_RACERS_TIME_LIMIT_MS = 60_000;
 
 function createEmptySnapshot(): QuickTapRaceEngineSnapshot {
   return {
     phase: 'countdown',
     countdownText: '3',
-    timeLeftMs: 30_000,
+    timeLeftMs: DEFAULT_LANE_RACERS_TIME_LIMIT_MS,
     playerScore: 0,
     playerRawTaps: 0,
     playerCombo: 0,
@@ -40,6 +41,7 @@ function createEmptySnapshot(): QuickTapRaceEngineSnapshot {
     playerEffectLabel: null,
     playerEffectIcon: null,
     playerHeat: 0,
+    playerPickupDodgeMs: 0,
     statusText: 'Loading lanes…',
     leadingRacerId: null,
     rankings: [],
@@ -130,7 +132,7 @@ export default function LaneRacersCanvasGame({
   const humanId = session
     ? players.find((player) => player.isUser)?.id ?? fallbackHumanId
     : participants.find((participant) => participant.isHuman)?.id ?? participantIds[0] ?? fallbackHumanId;
-  const timeLimitMs = (session?.options.timeLimit ?? 30) * 1000;
+  const timeLimitMs = (session?.options.timeLimit ?? 60) * 1000;
   const reducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -256,6 +258,8 @@ export default function LaneRacersCanvasGame({
   const playerEntry = result?.rankings.find((entry) => entry.isPlayer)
     ?? snapshot.rankings.find((entry) => entry.isPlayer)
     ?? null;
+  const controlsDisabled = canvasError !== null || snapshot.phase !== 'active';
+  const dodgeLabel = snapshot.playerPickupDodgeMs > 0 ? 'Dodge armed' : 'Dodge next pickup';
 
   return (
     <div className="qtr" role="dialog" aria-modal="true" aria-label="Lane Racers Competition">
@@ -278,43 +282,45 @@ export default function LaneRacersCanvasGame({
         </header>
 
         <div className="qtr__canvas-layout">
-          <div className="qtr__canvas-meta">
-            <div className="qtr__status-block">
+          <div className="qtr__arena-stack">
+            <div ref={containerRef} className="qtr__arena-shell">
+              <canvas ref={canvasRef} className="qtr__canvas" aria-label="Lane Racers track" />
+              {canvasError && (
+                <div className="qtr__canvas-fallback" role="alert">
+                  <p>{canvasError}</p>
+                  {!session && onFinish && (
+                    <button type="button" className="qtr__button" onClick={() => onFinish(0)}>
+                      Exit race
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="qtr__status-block qtr__status-block--compact">
               <span className="qtr__status-label">Live status</span>
               <strong className="qtr__status-copy">{snapshot.statusText}</strong>
             </div>
-            <div className="qtr__status-grid">
-              <div className="qtr__metric-card">
-                <span>Raw taps</span>
-                <strong>{snapshot.playerRawTaps}</strong>
-              </div>
-              <div className="qtr__metric-card">
-                <span>Combo</span>
-                <strong>{snapshot.playerCombo.toFixed(1)}×</strong>
-              </div>
-              <div className="qtr__metric-card">
-                <span>Shield</span>
-                <strong>{snapshot.playerShieldCharges}</strong>
-              </div>
-              <div className="qtr__metric-card qtr__metric-card--wide">
-                <span>Active effect</span>
-                <strong>{snapshot.playerEffectLabel ? `${snapshot.playerEffectIcon ?? ''} ${snapshot.playerEffectLabel}` : 'None'}</strong>
-              </div>
+            <div className="qtr__control-row">
+              <button
+                type="button"
+                className="qtr__button qtr__button--tap"
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  engineRef.current?.handleControlTap();
+                }}
+                disabled={controlsDisabled}
+              >
+                Tap
+              </button>
+              <button
+                type="button"
+                className="qtr__button qtr__button--secondary"
+                onClick={() => engineRef.current?.armPickupDodge()}
+                disabled={controlsDisabled || snapshot.playerPickupDodgeMs > 0}
+              >
+                {dodgeLabel}
+              </button>
             </div>
-          </div>
-
-          <div ref={containerRef} className="qtr__arena-shell">
-            <canvas ref={canvasRef} className="qtr__canvas" aria-label="Lane Racers track" />
-            {canvasError && (
-              <div className="qtr__canvas-fallback" role="alert">
-                <p>{canvasError}</p>
-                {!session && onFinish && (
-                  <button type="button" className="qtr__button" onClick={() => onFinish(0)}>
-                    Exit race
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           <aside className="qtr__sidebar" aria-live="polite">
