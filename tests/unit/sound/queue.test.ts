@@ -24,6 +24,7 @@ function resetSoundManager() {
     _musicEl: HTMLAudioElement | null;
     _musicKey: string | null;
     _desiredMusicTrack: string;
+    _desiredMusicOpts?: { volume?: number };
     _playingMusicTrack: string;
     _desiredMusicReason: string | null;
     _musicTransitionId: number;
@@ -47,6 +48,7 @@ function resetSoundManager() {
   }
   sm._musicKey = null;
   sm._desiredMusicTrack = 'none';
+  sm._desiredMusicOpts = undefined;
   sm._playingMusicTrack = 'none';
   sm._desiredMusicReason = null;
   sm._musicTransitionId = 0;
@@ -344,6 +346,22 @@ describe('SoundManager category enable / disable', () => {
     expect(sm._musicEl?.volume).toBeCloseTo(0.2);
   });
 
+  it('legacy unmapped music keys still play and preserve volume overrides', () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _musicKey: string | null;
+      _musicEl: HTMLAudioElement | null;
+      _playingMusicTrack: string;
+    };
+    sm._unlocked = true;
+
+    SoundManager.requestBgm('music:menu_loop', 'phase', { volume: 0.25 });
+
+    expect(sm._musicKey).toBe('music:menu_loop');
+    expect(sm._playingMusicTrack).toBe('none');
+    expect(sm._musicEl?.volume).toBeCloseTo(0.25);
+  });
+
   it('re-enabling music resumes the latest desired track', () => {
     const sm = SoundManager as unknown as {
       _unlocked: boolean;
@@ -368,6 +386,7 @@ describe('SoundManager music state machine', () => {
     sm._unlocked = true;
 
     await SoundManager.setDesiredMusic('competition', 'initial');
+    await SoundManager.syncMusic();
     await SoundManager.syncMusic();
 
     expect(playSpy).toHaveBeenCalledTimes(1);

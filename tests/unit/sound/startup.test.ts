@@ -72,9 +72,8 @@ afterEach(() => {
 
 describe('SoundManager startup defaults', () => {
   it('initializes with DEFAULT_SETTINGS.audio.musicOn=true → music category enabled', () => {
-    const setMusicMuted = vi.spyOn(SoundManager, 'setMusicMuted');
     makeStore(); // DEFAULT_SETTINGS: musicOn=true
-    expect(setMusicMuted).toHaveBeenCalledWith(false);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(false);
     expect(window._introhubMusicOn).toBe(true);
   });
 
@@ -101,9 +100,8 @@ describe('SoundManager startup with sfxOn=false', () => {
   });
 
   it('does NOT disable music category when only sfxOn is false', () => {
-    const setMusicMuted = vi.spyOn(SoundManager, 'setMusicMuted');
     makeStore({ sfxOn: false, musicOn: true });
-    expect(setMusicMuted).toHaveBeenCalledWith(false);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(false);
   });
 });
 
@@ -111,9 +109,8 @@ describe('SoundManager startup with sfxOn=false', () => {
 
 describe('SoundManager startup with musicOn=false', () => {
   it('disables music category when musicOn is false in settings', () => {
-    const setMusicMuted = vi.spyOn(SoundManager, 'setMusicMuted');
     makeStore({ musicOn: false });
-    expect(setMusicMuted).toHaveBeenCalledWith(true);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(true);
   });
 
   it('does NOT disable SFX categories when only musicOn is false', () => {
@@ -129,9 +126,8 @@ describe('SoundManager startup with musicOn=false', () => {
 
 describe('SoundManager volume sync from settings', () => {
   it('sets music category volume from settings.audio.musicVolume', () => {
-    const setMusicVolume = vi.spyOn(SoundManager, 'setMusicVolume');
     makeStore({ musicVolume: 0.5 });
-    expect(setMusicVolume).toHaveBeenCalledWith(0.5);
+    expect(SoundManager.setMusicVolume).toHaveBeenCalledWith(0.5);
   });
 
   it('sets SFX category volumes from settings.audio.sfxVolume', () => {
@@ -172,11 +168,10 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
 
   it('disabling musicOn via setAudio disables music category', () => {
     const store = makeStore({ musicOn: true });
-    const setMusicMuted = vi.spyOn(SoundManager, 'setMusicMuted');
 
     store.dispatch(setAudio({ musicOn: false }));
 
-    expect(setMusicMuted).toHaveBeenCalledWith(true);
+    expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(true);
     expect(window._introhubMusicOn).toBe(false);
   });
 
@@ -197,7 +192,6 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
 
     // App starts — settings loaded from bbmobilenew_settings_v1 (which defaults sfxOn=true)
     const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
-    const setMusicMuted = vi.spyOn(SoundManager, 'setMusicMuted');
     makeStore({ sfxOn: true }); // canonical Redux settings say sfxOn=true
 
     // All SFX categories should be enabled regardless of the stale flag
@@ -205,7 +199,7 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
     // music category should not be disabled by this path
-    expect(setMusicMuted).not.toHaveBeenCalledWith(true);
+    expect(SoundManager.setMusicMuted).not.toHaveBeenCalledWith(true);
     expect(window._introhubSfxOn).toBe(true);
   });
 });

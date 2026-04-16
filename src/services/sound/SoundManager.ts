@@ -126,6 +126,7 @@ class _SoundManager {
   private _musicEl: HTMLAudioElement | null = null;
   private _musicKey: string | null = null;
   private _desiredMusicTrack: MusicTrack = 'none';
+  private _desiredMusicOpts?: PlayOptions;
   private _playingMusicTrack: MusicTrack = 'none';
   private _desiredMusicReason: string | null = null;
   private _musicTransitionId = 0;
@@ -370,6 +371,7 @@ class _SoundManager {
 
   async setDesiredMusic(track: MusicTrack, reason?: string): Promise<void> {
     this._desiredMusicTrack = track;
+    this._desiredMusicOpts = undefined;
     this._desiredMusicReason = reason ?? null;
     await this.syncMusic();
   }
@@ -377,9 +379,10 @@ class _SoundManager {
   async syncMusic(): Promise<void> {
     if (SOUND_MANAGER_DISABLED) return;
 
-    const desiredTrack = this._desiredMusicTrack;
+    const desiredRequest = this._getDesiredMusicRequest();
+    const desiredTrack = desiredRequest.track;
     const shouldMute = this._musicMuted || !this._getCategory('music').enabled;
-    if (desiredTrack === 'none' || shouldMute) {
+    if ((!desiredRequest.key && desiredTrack === 'none') || shouldMute) {
       this._stopCurrentMusic();
       return;
     }
@@ -389,24 +392,25 @@ class _SoundManager {
       return;
     }
 
-    const key = this._resolveMusicKey(desiredTrack);
+    const key = desiredRequest.key;
     if (!key) {
       this._stopCurrentMusic();
       return;
     }
 
-    if (this._musicKey === key && this._musicEl) {
+    if (this._isMusicSynced(key)) {
       this._playingMusicTrack = desiredTrack;
-      this._applyLiveMusicVolume();
+      this._applyLiveMusicVolume(desiredRequest.opts);
       return;
     }
 
-    await this._doPlayMusic(key);
+    await this._doPlayMusic(key, desiredRequest.opts);
   }
 
   stopAllMusic(): void {
     this._desiredPerOwner = {};
     this._desiredMusicTrack = 'none';
+    this._desiredMusicOpts = undefined;
     this._desiredMusicReason = null;
     this._currentBgmOwner = null;
     this._playQueue = this._playQueue.filter((q) => !q.isMusic);
@@ -688,6 +692,26 @@ class _SoundManager {
     return MUSIC_TRACK_SOUND_KEYS[track];
   }
 
+  private _getDesiredMusicRequest(): { track: MusicTrack; key: string | null; opts?: PlayOptions } {
+    const top = this._getTopDesiredEntry();
+    if (top) {
+      return {
+        track: musicTrackFromSoundKey(top.key),
+        key: top.key,
+        opts: top.opts,
+      };
+    }
+    return {
+      track: this._desiredMusicTrack,
+      key: this._resolveMusicKey(this._desiredMusicTrack),
+      opts: this._desiredMusicOpts,
+    };
+  }
+
+  private _isMusicSynced(key: string): boolean {
+    return this._musicKey === key && this._musicEl != null;
+  }
+
   /**
    * Stop a specific sound by key without affecting the global music track.
    * Intended for looping SFX (e.g. a wheel-spin loop) played via play().
@@ -729,8 +753,12 @@ class _SoundManager {
   /** Set the master volume for a category (0–1). */
   setCategoryVolume(category: SoundCategory, volume: number): void {
     if (category === 'music') {
-      this.setMusicVolume(volume);
-      console.log(`[SoundManager] category "${category}" volume=${Math.max(0, Math.min(1, volume)).toFixed(2)}`);
+      const newVolume = Math.max(0, Math.min(1, volume));
+      const didChange = this._musicVolume !== newVolume;
+      this.setMusicVolume(newVolume);
+      if (_audioDebug && didChange) {
+        console.log(`[SoundManager] category "${category}" volume=${newVolume.toFixed(2)}`);
+      }
       return;
     }
     const state = this._getCategory(category);

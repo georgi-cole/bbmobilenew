@@ -41,7 +41,7 @@ class _SoundManagerNative {
     return null;
   }
 
-  requestBgm(_key: string | null, _owner: BgmOwner): void {
+  requestBgm(_key: string | null, _owner: BgmOwner, _opts?: PlayOptions): void {
     // TODO: route BGM request to native audio library
   }
 
