@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QuickTapRaceCanvasEngine } from '../../../src/minigames/quickTapRace/engine/quickTapRaceCanvasEngine';
+import { QuickTapRaceCanvasEngine } from '../../../src/minigames/laneRacers/engine/quickTapRaceCanvasEngine';
 import { cryptoSeed } from '../../../src/features/riskWheel/cryptoSpin';
 
 vi.mock('../../../src/features/riskWheel/cryptoSpin', async (importOriginal) => {
@@ -16,7 +16,7 @@ function createCanvas() {
   return canvas;
 }
 
-describe('QuickTapRaceCanvasEngine seed handling', () => {
+describe('Lane Racers canvas engine seed handling', () => {
   beforeEach(() => {
     vi.mocked(cryptoSeed).mockReset();
   });

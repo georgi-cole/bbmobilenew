@@ -167,14 +167,15 @@ export class QuickTapRaceCanvasEngine {
   constructor(canvas: HTMLCanvasElement, options: QuickTapRaceEngineOptions) {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      throw new Error('Canvas 2D context unavailable for Quick Tap Race.');
+      throw new Error('Canvas 2D context unavailable for Lane Racers.');
     }
 
     this.canvas = canvas;
     this.ctx = ctx;
     this.options = options;
     // Deterministic seed is allowed for tests/debugging, but gameplay defaults to
-    // auto-reseed so each race feels fresh.
+    // auto-reseed so each race feels fresh. In this codebase, seed === 0 is also
+    // treated as “no explicit seed”, matching the existing minigame convention.
     this.seed = options.seed === undefined || options.seed === 0 ? cryptoSeed() : options.seed;
     this.rng = mulberry32(this.seed ^ 0x4d595df4);
     this.layout = buildQuickTapRaceLayout(360, 620, 1, options.racers.length);

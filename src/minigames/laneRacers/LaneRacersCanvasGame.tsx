@@ -40,7 +40,7 @@ function createEmptySnapshot(): QuickTapRaceEngineSnapshot {
     playerEffectLabel: null,
     playerEffectIcon: null,
     playerHeat: 0,
-    statusText: 'Loading race…',
+    statusText: 'Loading lanes…',
     leadingRacerId: null,
     rankings: [],
     result: null,
@@ -87,7 +87,8 @@ function buildHostedRacers(
         id,
         name: id,
         // Integration note: MinigameHost normally supplies full participant metadata.
-        // When it does not, fall back to treating the first slot as the human lane.
+        // This fallback only exists for minimal local/test harnesses that pass ids
+        // without participant records, so the first slot becomes the human lane.
         isHuman: index === 0,
         precomputedScore: 0,
         previousPR: null,
@@ -99,14 +100,14 @@ function buildHostedRacers(
     isPlayer: participant.isHuman,
     color: RACER_COLORS[index % RACER_COLORS.length],
     // Integration note: hosted challenge flows already precompute AI scores in
-    // MinigameHost, so we reuse them here to keep the canvas race aligned with
-    // the existing result contract instead of inventing a second score source.
+    // MinigameHost, so reusing them keeps Lane Racers aligned with the host
+    // leaderboard contract instead of drifting against a second score source.
     targetScore: participant.isHuman ? 0 : participant.precomputedScore,
     profile: null,
   }));
 }
 
-export default function QuickTapRaceCanvasGame({
+export default function LaneRacersCanvasGame({
   session,
   players = EMPTY_PLAYERS,
   onFinish,
@@ -257,11 +258,11 @@ export default function QuickTapRaceCanvasGame({
     ?? null;
 
   return (
-    <div className="qtr" role="dialog" aria-modal="true" aria-label="Quick Tap Race Competition">
+    <div className="qtr" role="dialog" aria-modal="true" aria-label="Lane Racers Competition">
       <div className="qtr__card qtr__card--canvas">
         <header className="qtr__header qtr__header--canvas">
           <div>
-            <h2 className="qtr__title">⚡ Quick Tap Race</h2>
+            <h2 className="qtr__title">🏁 Lane Racers</h2>
             <p className="qtr__subtitle">Canvas broadcast mode • touch-first sprint chaos</p>
           </div>
           <div className="qtr__hud-cluster" aria-live="polite">
@@ -303,7 +304,7 @@ export default function QuickTapRaceCanvasGame({
           </div>
 
           <div ref={containerRef} className="qtr__arena-shell">
-            <canvas ref={canvasRef} className="qtr__canvas" aria-label="Quick Tap Race lanes" />
+            <canvas ref={canvasRef} className="qtr__canvas" aria-label="Lane Racers lanes" />
             {canvasError && (
               <div className="qtr__canvas-fallback" role="alert">
                 <p>{canvasError}</p>
