@@ -118,6 +118,8 @@ describe('HomeHub', () => {
     localStorage.setItem('bb:hubMusicConsent', 'granted');
     mockState.game = {
       gameId: 'game-A',
+      players: [],
+      seasonArchives: [],
     };
     mockState.remoteConfig.config = null;
     mockDispatch.mockReset();

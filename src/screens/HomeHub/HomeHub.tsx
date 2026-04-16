@@ -77,8 +77,14 @@ function shouldShowSoundConsent(): boolean {
 export default function HomeHub() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const game = useAppSelector((state) => state.game);
-  const gameId = game.gameId;
+  const gameId = useAppSelector((state) => state.game.gameId);
+  const season = useAppSelector((state) => state.game.season);
+  const week = useAppSelector((state) => state.game.week);
+  const phase = useAppSelector((state) => state.game.phase);
+  const introHubPlayer = useAppSelector(
+    (state) => state.game.players.find((player) => player.isUser) ?? null,
+  );
+  const seasonArchives = useAppSelector((state) => state.game.seasonArchives ?? []);
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
@@ -105,8 +111,16 @@ export default function HomeHub() {
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
     gameWindow.game = gameWindow.game ?? {};
-    Object.assign(gameWindow.game, game);
-  }, [game]);
+    // Legacy IntroHub/achievements scripts still read from window.game, so keep
+    // the specific season fields they depend on in sync while HomeHub is mounted.
+    Object.assign(gameWindow.game, {
+      season,
+      week,
+      phase,
+      players: introHubPlayer ? [introHubPlayer] : [],
+      seasonArchives,
+    });
+  }, [season, week, phase, introHubPlayer, seasonArchives]);
 
   // Play the intro hub ambient music while this screen is mounted.
   // The hook only autoplays if persistent consent is stored; otherwise the
