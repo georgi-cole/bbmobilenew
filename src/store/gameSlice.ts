@@ -429,10 +429,21 @@ function evictedStatus(state: GameState): 'evicted' | 'jury' {
  * Stamp the explicit season placement for a player at the moment they leave
  * the house. This gives finale recap / archive views a reliable ordering
  * source instead of inferring placement from the current array order.
+ * Also records the game week at eviction time so buildSummaries can derive
+ * how long each player survived (weeksAlive).
  */
 function assignSeasonPlacementOnExit(state: GameState, playerId: string) {
   const player = state.players.find((p) => p.id === playerId);
-  if (!player || typeof player.seasonPlacement === 'number') return;
+  if (!player) return;
+
+  // Always stamp the eviction week (even for Battle Back returnees evicted a
+  // second time — their evictedAtWeek is cleared in completeBattleBack so this
+  // captures the second eviction's actual week).
+  player.evictedAtWeek = state.week;
+
+  // Only assign seasonPlacement once; a player who won a Battle Back and was
+  // later evicted a second time keeps their original placement order.
+  if (typeof player.seasonPlacement === 'number') return;
 
   // Count houseguests still in the game at the moment the player leaves.
   // Callers invoke this *before* mutating the player's status, so the exiting
@@ -444,14 +455,23 @@ function assignSeasonPlacementOnExit(state: GameState, playerId: string) {
 }
 
 /**
+ * Guarantee that `player.stats` is initialised and return it.
+ * All callers that need to write to `player.stats` should go through this
+ * helper to avoid duplicating the default-object creation inline.
+ */
+function ensurePlayerStats(player: Player): NonNullable<Player['stats']> {
+  if (!player.stats) player.stats = { lohWins: 0, posWins: 0, timesNominated: 0 };
+  return player.stats;
+}
+
+/**
  * Increment timesNominated for a player by ID.
  * Initializes stats if not already present.
  */
 function incrementTimesNominated(state: GameState, playerId: string) {
   const p = state.players.find((pl) => pl.id === playerId);
   if (p) {
-    if (!p.stats) p.stats = { lohWins: 0, posWins: 0, timesNominated: 0 };
-    p.stats.timesNominated += 1;
+    ensurePlayerStats(p).timesNominated += 1;
   }
 }
 
@@ -1713,6 +1733,12 @@ const gameSlice = createSlice({
         // Both double eviction evictions are done — reset the weekly flag.
         state.doubleEviction.weekActive = false;
         state.twistActive = false;
+        // Mark all surviving players so buildSummaries can set survivedDoubleEviction.
+        state.players.forEach((p) => {
+          if (p.status !== 'evicted' && p.status !== 'jury') {
+            ensurePlayerStats(p).survivedDoubleEviction = true;
+          }
+        });
       }
     },
 
@@ -1897,8 +1923,10 @@ const gameSlice = createSlice({
       }
 
       winner.status = 'active';
-      if (!winner.stats) winner.stats = { lohWins: 0, posWins: 0, timesNominated: 0 };
-      winner.stats.battleBackWins = (winner.stats.battleBackWins ?? 0) + 1;
+      ensurePlayerStats(winner).battleBackWins = (winner.stats!.battleBackWins ?? 0) + 1;
+      // Clear evictedAtWeek so if this player is evicted again, assignSeasonPlacementOnExit
+      // will stamp the correct week of their second eviction.
+      winner.evictedAtWeek = undefined;
       pushEvent(
         state,
         `🔥 ${winner.name} has survived Back 2 the Game and RETURNS to The Big Eye house! 🏠✨`,

@@ -14,7 +14,7 @@ import './GameOver.css';
 const CAROUSEL_INTERVAL_MS = 5000;
 
 /** Build PlayerSeasonSummary array from current player state — pure (no Date.now). */
-function buildSummaries(players: Player[], favoriteWinnerId: string | null): PlayerSeasonSummary[] {
+function buildSummaries(players: Player[], favoriteWinnerId: string | null, week: number): PlayerSeasonSummary[] {
   return players.map((p) => {
     // Only players with status 'jury' are actual jury members.
     // The winner (finalRank=1) and runner-up (finalRank=2) are NOT jury members
@@ -26,6 +26,10 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null): Pla
     const battleBackWins = p.stats?.battleBackWins ?? 0;
     const wonPublicFavorite = favoriteWinnerId != null && p.id === favoriteWinnerId;
     const wonFinalHoh = p.stats?.wonFinalHoh ?? false;
+    // weeksAlive: use the stamped eviction week if available, otherwise fall back
+    // to the current game week (correct for winner/runner-up still in the house).
+    const weeksAlive = p.evictedAtWeek ?? week;
+    const survivedDoubleEviction = p.stats?.survivedDoubleEviction ?? false;
 
     const summary: PlayerSeasonSummary = {
       playerId: p.id,
@@ -41,6 +45,8 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null): Pla
       battleBackWins,
       wonPublicFavorite,
       wonFinalHoh,
+      weeksAlive,
+      survivedDoubleEviction: survivedDoubleEviction ? true : undefined,
       leaderboardScore: 0,
     };
     summary.leaderboardScore = computeLeaderboardScore(summary, DEFAULT_WEIGHTS);
@@ -63,6 +69,7 @@ export default function GameOver() {
   const navigate = useNavigate();
   const players = useAppSelector((s) => s.game.players);
   const season = useAppSelector((s) => s.game.season);
+  const week = useAppSelector((s) => s.game.week);
   const seasonArchives = useAppSelector((s) => s.game.seasonArchives ?? []);
   const favoriteWinnerId = useAppSelector((s) => s.game.favoritePlayer?.winnerId ?? null);
   const activeProfileId = useAppSelector(selectActiveProfileId);
@@ -77,7 +84,7 @@ export default function GameOver() {
   const runnerUp = players.find((p) => p.finalRank === 2);
 
   // Compute per-player summaries (pure — no impure calls)
-  const summaries = buildSummaries(players, favoriteWinnerId);
+  const summaries = buildSummaries(players, favoriteWinnerId, week);
 
   const seasonLeaderboard = computeSeasonLeaderboard(summaries, DEFAULT_WEIGHTS).slice(0, 5);
   const allTimeLeaderboard = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS).slice(0, 5);

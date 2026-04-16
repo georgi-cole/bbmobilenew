@@ -276,4 +276,116 @@ describe('IntroHub side utility buttons', () => {
     expect(dialog?.textContent).toContain('Comp beast ×9');
     expect(dialog?.textContent).toContain('Reward hunter ×3');
   });
+
+  it('shows correct weeksAlive avg survive stat when summaries include weeksAlive', () => {
+    // Regression: buildSummaries now populates weeksAlive (previously missing),
+    // so the "Avg survive" stat should show a number instead of "—".
+    loadIntroHub({
+      season: 3,
+      week: 1,
+      phase: 'week_start',
+      players: [
+        {
+          id: 'user',
+          name: 'You',
+          isUser: true,
+          status: 'active',
+          stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
+        },
+      ],
+      seasonArchives: [
+        {
+          seasonIndex: 2,
+          seasonId: 'season-2',
+          playerSummaries: [
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 1,
+              lohWins: 2,
+              posWins: 1,
+              timesNominated: 2,
+              wonFinalHoh: true,
+              weeksAlive: 10,
+              isEvicted: false,
+              madeJury: false,
+            },
+          ],
+        },
+        {
+          seasonIndex: 1,
+          seasonId: 'season-1',
+          playerSummaries: [
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 5,
+              lohWins: 0,
+              posWins: 1,
+              timesNominated: 3,
+              weeksAlive: 6,
+              isEvicted: true,
+              madeJury: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
+
+    const dialog = document.getElementById('hub-dialog-panel');
+    // Average of 10 and 6 = 8 days
+    expect(dialog?.textContent).toContain('8 days');
+    // Non-zero seasons played / wins
+    expect(dialog?.textContent).toContain('2 seasons entered');
+    // Season wins counter
+    expect(dialog?.textContent).toContain('Season wins');
+    // Comp wins: lohWins 2 + posWins 1 + 0 + 1 = 4
+    expect(dialog?.textContent).toContain('Comp wins');
+  });
+
+  it('shows survivedDoubleEviction stat in achievements when archives include it', () => {
+    // Regression: survivedDoubleEviction was never set in buildSummaries.
+    loadIntroHub({
+      season: 2,
+      week: 1,
+      phase: 'week_start',
+      players: [
+        {
+          id: 'user',
+          name: 'You',
+          isUser: true,
+          status: 'active',
+          stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
+        },
+      ],
+      seasonArchives: [
+        {
+          seasonIndex: 1,
+          seasonId: 'season-1',
+          playerSummaries: [
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 1,
+              lohWins: 1,
+              posWins: 1,
+              timesNominated: 1,
+              survivedDoubleEviction: true,
+              weeksAlive: 9,
+              isEvicted: false,
+              madeJury: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
+
+    const dialog = document.getElementById('hub-dialog-panel');
+    // "Eviction escape artist" badge should appear because survivedDoubleEviction = true
+    expect(dialog?.textContent).toContain('Eviction escape artist');
+  });
 });

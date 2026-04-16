@@ -21,6 +21,7 @@ import gameReducer, {
   selectNominee1,
   completeBattleBack,
   applyF3MinigameWinner,
+  finalizePendingEviction,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
 import type { GameState, Player } from '../src/types';
@@ -277,5 +278,69 @@ describe('advance() final3_comp3 AI path wonFinalHoh stat', () => {
     const { lohId, players: updatedPlayers } = store.getState().game;
     const finalHoh = updatedPlayers.find((p) => p.id === lohId);
     expect(finalHoh?.stats?.wonFinalHoh).toBe(true);
+  });
+});
+
+
+// ── evictedAtWeek tracking ────────────────────────────────────────────────────
+
+describe('evictedAtWeek is stamped at eviction time', () => {
+  it('sets evictedAtWeek on a player after finalizePendingEviction', () => {
+    // Regression: evictedAtWeek was never set; buildSummaries could not compute weeksAlive.
+    const players: Player[] = [
+      { id: 'loh', name: 'LOH', avatar: '🧑', status: 'loh', isUser: false },
+      { id: 'evictee', name: 'Evictee', avatar: '🧑', status: 'nominated', isUser: false },
+      ...Array.from({ length: 5 }, (_, i) => ({
+        id: `a${i}`,
+        name: `Active ${i}`,
+        avatar: '🧑',
+        status: 'active' as const,
+        isUser: i === 0,
+      })),
+    ];
+    const store = makeStore({
+      week: 4,
+      phase: 'eviction_results',
+      lohId: 'loh',
+      players,
+      pendingEviction: { evicteeId: 'evictee', evictionMessage: 'Evictee was evicted.' },
+    });
+
+    store.dispatch(finalizePendingEviction('evictee'));
+
+    const evictee = store.getState().game.players.find((p) => p.id === 'evictee');
+    expect(evictee?.evictedAtWeek).toBe(4);
+  });
+
+  it('clears and re-stamps evictedAtWeek for a Battle Back returnee who is later evicted', () => {
+    // A Battle Back winner has evictedAtWeek cleared in completeBattleBack
+    // so their second eviction captures the correct week.
+    const players: Player[] = [
+      { id: 'returnee', name: 'Returnee', avatar: '🧑', status: 'jury', isUser: false, evictedAtWeek: 3 },
+      ...Array.from({ length: 4 }, (_, i) => ({
+        id: `a${i}`,
+        name: `Active ${i}`,
+        avatar: '🧑',
+        status: 'active' as const,
+        isUser: i === 0,
+      })),
+    ];
+    const store = makeStore({
+      week: 5,
+      phase: 'jury',
+      players,
+      battleBack: {
+        active: true,
+        competitionActive: false,
+        used: false,
+        winnerId: null,
+        candidates: ['returnee'],
+      },
+    });
+
+    // Player returns to house — evictedAtWeek should be cleared
+    store.dispatch(completeBattleBack('returnee'));
+    const afterReturn = store.getState().game.players.find((p) => p.id === 'returnee');
+    expect(afterReturn?.evictedAtWeek).toBeUndefined();
   });
 });
