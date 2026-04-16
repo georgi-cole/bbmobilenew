@@ -5,8 +5,8 @@
   overflow-y: auto;
   padding: clamp(16px, 3vw, 28px);
   background:
-    radial-gradient(circle at top, rgba(26, 45, 82, 0.35), transparent 38%),
-    linear-gradient(180deg, #040814 0%, #03050d 55%, #010204 100%);
+    radial-gradient(circle at top, rgba(102, 16, 242, 0.28), transparent 40%),
+    linear-gradient(180deg, #160826 0%, #0e0520 55%, #08021a 100%);
   color: #f5f7ff;
   overscroll-behavior-y: contain;
 }
@@ -21,11 +21,12 @@
 
 .grid-of-luck::before {
   background:
-    radial-gradient(circle at 20% 20%, rgba(76, 244, 221, 0.12), transparent 18%),
-    radial-gradient(circle at 80% 22%, rgba(255, 75, 94, 0.09), transparent 16%),
-    radial-gradient(circle at 50% 88%, rgba(243, 194, 105, 0.1), transparent 18%);
+    radial-gradient(circle at 15% 20%, rgba(255, 87, 165, 0.22), transparent 22%),
+    radial-gradient(circle at 85% 12%, rgba(87, 224, 255, 0.2), transparent 20%),
+    radial-gradient(circle at 50% 90%, rgba(255, 211, 61, 0.18), transparent 22%),
+    radial-gradient(circle at 28% 68%, rgba(120, 80, 255, 0.14), transparent 18%);
   filter: blur(20px);
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .grid-of-luck::after {
@@ -33,13 +34,13 @@
     linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 84px 84px;
-  opacity: 0.08;
+  opacity: 0.06;
 }
 
 .grid-of-luck--final {
   background:
-    radial-gradient(circle at top, rgba(123, 20, 35, 0.26), transparent 42%),
-    linear-gradient(180deg, #030308 0%, #020206 58%, #000 100%);
+    radial-gradient(circle at top, rgba(200, 40, 80, 0.3), transparent 42%),
+    linear-gradient(180deg, #1a0410 0%, #120210 58%, #050008 100%);
 }
 
 .grid-of-luck__backdrop {
@@ -66,7 +67,35 @@
   letter-spacing: 0.28em;
   text-transform: uppercase;
   font-size: 0.76rem;
-  color: rgba(189, 211, 255, 0.72);
+  color: rgba(200, 180, 255, 0.72);
+}
+
+.grid-of-luck__turn-meta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+
+.grid-of-luck__boxes-remaining {
+  background: rgba(120, 80, 255, 0.2);
+  border: 1px solid rgba(160, 120, 255, 0.3);
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: rgba(210, 190, 255, 0.9);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+}
+
+.grid-of-luck__phase-badge {
+  background: linear-gradient(90deg, rgba(220, 60, 100, 0.3), rgba(255, 140, 60, 0.2));
+  border: 1px solid rgba(255, 120, 80, 0.4);
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: rgba(255, 200, 160, 0.95);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
 }
 
 .grid-of-luck__title {
@@ -74,12 +103,37 @@
   font-size: clamp(1.9rem, 4vw, 3.35rem);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  background: linear-gradient(135deg, #e8d4ff 0%, #c8a8ff 40%, #ffd4b0 80%, #ffe580 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.grid-of-luck__turn-banner {
+  display: inline-block;
+  align-self: center;
+  justify-self: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 5px 18px;
+  border-radius: 999px;
+  background: rgba(100, 60, 200, 0.22);
+  border: 1px solid rgba(160, 120, 255, 0.28);
+  color: rgba(220, 200, 255, 0.92);
+}
+
+.grid-of-luck__turn-banner.is-your-turn {
+  background: linear-gradient(90deg, rgba(255, 211, 61, 0.22), rgba(255, 160, 80, 0.18));
+  border-color: rgba(255, 211, 61, 0.45);
+  color: #ffe580;
+  text-shadow: 0 0 18px rgba(255, 220, 60, 0.45);
 }
 
 .grid-of-luck__announcement {
   margin: 0 auto;
   max-width: 62rem;
-  color: rgba(232, 238, 255, 0.88);
+  color: rgba(232, 220, 255, 0.88);
   line-height: 1.5;
 }
 
@@ -95,12 +149,14 @@
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(160, 120, 255, 0.18);
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(18, 24, 45, 0.86), rgba(7, 11, 24, 0.92));
+  background: linear-gradient(160deg, rgba(38, 18, 72, 0.9), rgba(18, 8, 42, 0.95));
   color: inherit;
   text-align: left;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 16px 40px rgba(0, 0, 0, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 160, 255, 0.1),
+    0 12px 36px rgba(0, 0, 0, 0.45);
   min-width: 0;
 }
 
@@ -110,10 +166,13 @@
 
 .grid-of-luck__player-card.is-targetable {
   cursor: crosshair;
+  border-color: rgba(255, 90, 120, 0.4);
+  background: linear-gradient(160deg, rgba(72, 10, 28, 0.94), rgba(42, 5, 18, 0.97));
 }
 
 .grid-of-luck__player-card.is-eliminated {
-  background: linear-gradient(180deg, rgba(24, 24, 28, 0.86), rgba(9, 9, 11, 0.94));
+  background: linear-gradient(160deg, rgba(20, 15, 30, 0.86), rgba(10, 8, 18, 0.94));
+  border-color: rgba(80, 60, 100, 0.15);
 }
 
 .grid-of-luck__player-spotlight {
@@ -123,7 +182,7 @@
   width: 62%;
   height: 88px;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, rgba(255, 241, 179, 0.28), transparent 80%);
+  background: linear-gradient(180deg, rgba(255, 230, 120, 0.35), transparent 80%);
   filter: blur(12px);
   opacity: 0;
   pointer-events: none;
@@ -138,18 +197,19 @@
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(182, 196, 226, 0.7);
+  color: rgba(190, 170, 230, 0.7);
 }
 
 .grid-of-luck__avatar-shell {
   width: 68px;
   height: 68px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: radial-gradient(circle at 35% 30%, rgba(119, 147, 255, 0.24), rgba(6, 9, 18, 0.96));
+  border: 2px solid rgba(180, 140, 255, 0.25);
+  background: radial-gradient(circle at 35% 30%, rgba(140, 100, 255, 0.3), rgba(30, 10, 60, 0.96));
   overflow: hidden;
   display: grid;
   place-items: center;
+  box-shadow: 0 4px 14px rgba(100, 60, 200, 0.25);
 }
 
 .grid-of-luck__avatar,
@@ -172,28 +232,28 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 0.88rem;
-  color: rgba(235, 240, 255, 0.9);
+  color: rgba(220, 210, 255, 0.9);
 }
 
 .grid-of-luck__lp-bar {
   height: 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(100, 60, 200, 0.18);
   overflow: hidden;
 }
 
 .grid-of-luck__lp-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #4cf4dd, #9fe8ff 70%, #ffffff);
-  box-shadow: 0 0 16px rgba(76, 244, 221, 0.32);
+  background: linear-gradient(90deg, #a855f7, #e879f9 50%, #fb923c 100%);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
 }
 
 .grid-of-luck__status-list {
   min-height: 2.5em;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: rgba(197, 208, 237, 0.76);
+  color: rgba(200, 180, 255, 0.7);
 }
 
 .grid-of-luck__arena {
@@ -206,11 +266,14 @@
 .grid-of-luck__grid-shell,
 .grid-of-luck__active-card,
 .grid-of-luck__reveal-card,
+.grid-of-luck__next-card,
 .grid-of-luck__log-card {
   border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(10, 14, 30, 0.9), rgba(5, 7, 14, 0.94));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 42px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(160, 120, 255, 0.14);
+  background: linear-gradient(160deg, rgba(26, 12, 58, 0.92), rgba(12, 5, 30, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(200, 160, 255, 0.08),
+    0 18px 42px rgba(0, 0, 0, 0.35);
 }
 
 .grid-of-luck__grid-shell {
@@ -224,6 +287,7 @@
   gap: 12px;
 }
 
+/* Unopened box — warm mystery style; no category color here */
 .grid-of-luck__box {
   position: relative;
   min-height: 104px;
@@ -231,23 +295,25 @@
   border: 0;
   border-radius: 18px;
   background:
-    linear-gradient(145deg, rgba(42, 49, 76, 0.94), rgba(8, 10, 18, 0.98)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 30%);
+    linear-gradient(145deg, rgba(55, 30, 100, 0.95), rgba(25, 8, 55, 0.99)),
+    linear-gradient(180deg, rgba(210, 170, 255, 0.1), transparent 35%);
   color: inherit;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 0 20px rgba(255, 255, 255, 0.03),
-    0 12px 22px rgba(0, 0, 0, 0.35);
+    inset 0 1px 0 rgba(210, 170, 255, 0.12),
+    inset 0 0 20px rgba(140, 80, 255, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 2px 0 rgba(140, 80, 255, 0.12);
   transform-style: preserve-3d;
 }
 
+/* Glow ring is now neutral violet for unopened; category color fills after reveal via JS */
 .grid-of-luck__box::before {
   content: '';
   position: absolute;
   inset: 10px;
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--grid-of-luck-glow, #4cf4dd) 36%, transparent);
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--grid-of-luck-glow, #4cf4dd) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--grid-of-luck-glow, rgba(185, 150, 255, 0.75)) 36%, transparent);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--grid-of-luck-glow, rgba(185, 150, 255, 0.75)) 12%, transparent);
   opacity: 0.82;
   pointer-events: none;
 }
@@ -275,14 +341,14 @@
   top: 10px;
   left: 12px;
   font-size: 0.74rem;
-  color: rgba(208, 216, 242, 0.72);
+  color: rgba(200, 170, 255, 0.55);
 }
 
 .grid-of-luck__box-whisper {
   position: absolute;
   inset: 14px;
   border-radius: 16px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--grid-of-luck-glow, #4cf4dd) 12%, transparent), transparent 60%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--grid-of-luck-glow, rgba(185, 150, 255, 0.75)) 12%, transparent), transparent 60%);
   filter: blur(16px);
   opacity: 0.9;
 }
@@ -291,7 +357,14 @@
   position: relative;
   z-index: 1;
   font-size: 2rem;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--grid-of-luck-glow, #4cf4dd) 62%, transparent);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--grid-of-luck-glow, rgba(185, 150, 255, 0.75)) 62%, transparent);
+}
+
+/* Question mark on sealed boxes */
+.grid-of-luck__box:not(.is-opened):not(.is-locked) .grid-of-luck__box-symbol {
+  color: rgba(200, 170, 255, 0.55);
+  font-size: 1.7rem;
+  font-weight: 700;
 }
 
 .grid-of-luck__box-label {
@@ -300,10 +373,11 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(229, 235, 255, 0.88);
+  color: rgba(215, 200, 255, 0.82);
   text-align: center;
 }
 
+/* Sidebar panels */
 .grid-of-luck__sidebar {
   display: grid;
   gap: 12px;
@@ -312,10 +386,119 @@
 
 .grid-of-luck__active-card,
 .grid-of-luck__reveal-card,
+.grid-of-luck__next-card,
 .grid-of-luck__log-card {
   display: grid;
   gap: 8px;
   padding: 16px;
+}
+
+.grid-of-luck__active-status {
+  font-size: 0.76rem;
+  color: rgba(255, 220, 100, 0.85);
+  margin-top: 2px;
+}
+
+/* Reveal card — prominent, category-colored accent */
+.grid-of-luck__reveal-card {
+  border-color: color-mix(in srgb, var(--reveal-color, #a855f7) 40%, transparent);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--reveal-color, #a855f7) 12%, rgba(26, 12, 58, 0.92)),
+    rgba(12, 5, 30, 0.97)
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--reveal-color, #a855f7) 20%, transparent),
+    0 0 24px color-mix(in srgb, var(--reveal-color, #a855f7) 14%, transparent),
+    0 18px 42px rgba(0, 0, 0, 0.35);
+}
+
+.grid-of-luck__reveal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.grid-of-luck__reveal-symbol {
+  font-size: 2.4rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px var(--reveal-color, #a855f7));
+}
+
+.grid-of-luck__reveal-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  display: block;
+  color: color-mix(in srgb, var(--reveal-color, #a855f7) 80%, #ffffff);
+}
+
+.grid-of-luck__reveal-category {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--reveal-color, #a855f7) 60%, rgba(220, 210, 255, 0.7));
+  display: block;
+  margin-top: 2px;
+}
+
+.grid-of-luck__reveal-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(220, 210, 255, 0.82);
+  font-style: italic;
+  line-height: 1.4;
+  padding-top: 4px;
+  border-top: 1px solid rgba(160, 120, 255, 0.12);
+}
+
+.grid-of-luck__reveal-message {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: rgba(235, 225, 255, 0.92);
+}
+
+.grid-of-luck__reveal-deltas {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(160, 120, 255, 0.12);
+}
+
+.grid-of-luck__reveal-delta {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-block;
+  align-self: start;
+}
+
+.grid-of-luck__reveal-delta.is-gain {
+  background: rgba(74, 222, 128, 0.15);
+  color: #86efac;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.grid-of-luck__reveal-delta.is-loss {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+/* Next player preview card */
+.grid-of-luck__next-card {
+  border-color: rgba(255, 211, 61, 0.2);
+  background: linear-gradient(160deg, rgba(60, 35, 10, 0.85), rgba(20, 10, 5, 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 80, 0.1),
+    0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.grid-of-luck__next-card .grid-of-luck__sidebar-label {
+  color: rgba(255, 211, 61, 0.7);
 }
 
 .grid-of-luck__log-card ul {
@@ -323,7 +506,7 @@
   padding-left: 18px;
   display: grid;
   gap: 8px;
-  color: rgba(224, 231, 255, 0.86);
+  color: rgba(210, 200, 255, 0.82);
 }
 
 .grid-of-luck__log-card {
@@ -338,8 +521,9 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #05070f;
-  background: linear-gradient(90deg, #f3c269, #fff0b6);
+  color: #1a0830;
+  background: linear-gradient(90deg, #e879f9, #a855f7 45%, #6366f1 100%);
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4), 0 2px 0 rgba(255, 255, 255, 0.1) inset;
 }
 
 .grid-of-luck__spectator-modal {
@@ -349,7 +533,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(1, 4, 10, 0.72);
+  background: rgba(5, 2, 16, 0.76);
   backdrop-filter: blur(10px);
 }
 
@@ -359,9 +543,9 @@
   gap: 14px;
   padding: 22px;
   border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: linear-gradient(180deg, rgba(16, 20, 34, 0.95), rgba(5, 8, 15, 0.98));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(160, 120, 255, 0.2);
+  background: linear-gradient(160deg, rgba(26, 12, 58, 0.96), rgba(8, 4, 22, 0.99));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
 }
 
 .grid-of-luck__spectator-actions {
@@ -378,11 +562,11 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #f5f7ff;
-  background: linear-gradient(180deg, rgba(88, 112, 174, 0.94), rgba(36, 49, 94, 0.98));
+  background: linear-gradient(160deg, rgba(100, 60, 200, 0.94), rgba(50, 20, 120, 0.98));
 }
 
 .grid-of-luck__spectator-actions button.is-danger {
-  background: linear-gradient(180deg, rgba(196, 64, 84, 0.94), rgba(106, 23, 39, 0.98));
+  background: linear-gradient(160deg, rgba(200, 60, 90, 0.94), rgba(110, 20, 45, 0.98));
 }
 
 .grid-of-luck__floating-lp {
@@ -396,15 +580,15 @@
 }
 
 .grid-of-luck__floating-lp.is-gain {
-  color: #76ffe1;
+  color: #86efac;
 }
 
 .grid-of-luck__floating-lp.is-loss {
-  color: #ff8792;
+  color: #fca5a5;
 }
 
 .grid-of-luck__floating-lp.is-neutral {
-  color: #f5f7ff;
+  color: #e9d5ff;
 }
 
 @media (min-width: 960px) {
@@ -427,7 +611,7 @@
     top: 0;
     z-index: 4;
     padding: calc(env(safe-area-inset-top, 0px) + 2px) 0 8px;
-    background: linear-gradient(180deg, rgba(4, 8, 20, 0.98), rgba(4, 8, 20, 0.82), rgba(4, 8, 20, 0));
+    background: linear-gradient(180deg, rgba(14, 5, 32, 0.98), rgba(14, 5, 32, 0.82), rgba(14, 5, 32, 0));
     backdrop-filter: blur(14px);
   }
 
@@ -510,6 +694,7 @@
 
   .grid-of-luck__active-card,
   .grid-of-luck__reveal-card,
+  .grid-of-luck__next-card,
   .grid-of-luck__log-card {
     padding: 14px;
     border-radius: 22px;
