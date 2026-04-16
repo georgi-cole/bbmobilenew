@@ -140,6 +140,30 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  laneRacers: {
+    key: 'laneRacers',
+    title: 'Lane Racers',
+    description: 'A premium canvas lane sprint where rapid taps power your racer through boosters and mystery gifts.',
+    instructions: [
+      'A broadcast-style countdown starts before the race goes live',
+      'Tap rapidly in the lower zone to build speed, combo, and momentum',
+      'Booster pickups and mystery gifts can trigger short surges, shields, or risky lane effects',
+      'AI racers have their own rhythm swings, so leads can change quickly',
+      'Highest score at the finish wins the sprint',
+    ],
+    metricKind: 'count',
+    metricLabel: 'Points',
+    timeLimitMs: 30_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    implementation: 'react' as const,
+    reactComponentKey: 'LaneRacers',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
   memoryMatch: {
     key: 'memoryMatch',
     title: 'Memory Colors',

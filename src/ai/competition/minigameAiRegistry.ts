@@ -128,6 +128,16 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Routing via simulateMinigameAiScore() ensures both session and challenge flows ' +
       'use the same authoritative scorer.',
   },
+  laneRacers: {
+    key: 'laneRacers',
+    category: 'physical',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_PHYSICAL,
+    weights: WEIGHTS_PHYSICAL_TAP,
+    notes:
+      'Lane Racers shares the Quick Tap band-based simulator so session and ' +
+      'challenge AI scores stay aligned with the canvas race pacing.',
+  },
   memoryMatch: {
     key: 'memoryMatch',
     category: 'mental',
