@@ -1030,10 +1030,7 @@ function getPlayerStatusIcons(player: GridPlayer): string[] {
       normalized.includes('bless')
     ) {
       iconSet.add(STATUS_ICON_GROUPS.buff);
-      return;
-    }
-
-    if (
+    } else if (
       normalized.includes('trap') ||
       normalized.includes('lose') ||
       normalized.includes('curse') ||
@@ -1041,10 +1038,9 @@ function getPlayerStatusIcons(player: GridPlayer): string[] {
       normalized.includes('lock')
     ) {
       iconSet.add(STATUS_ICON_GROUPS.debuff);
-      return;
+    } else {
+      iconSet.add(STATUS_ICON_GROUPS.special);
     }
-
-    iconSet.add(STATUS_ICON_GROUPS.special);
   });
 
   return [...iconSet];
@@ -1393,6 +1389,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                 key={player.id}
                 className={`grid-of-luck__player-card${player.isEliminated ? ' is-eliminated' : ''}${isTargetable ? ' is-targetable' : ''}${isActive ? ' is-active' : ''}`}
                 type="button"
+                aria-label={`${player.name} ${player.lp} LP ${player.isEliminated ? 'Eliminated' : player.statusEffects.length > 0 ? player.statusEffects.join(', ') : 'No active effects'}`}
                 variants={playerVariants}
                 animate={variant}
                 onClick={() => handleTargetSelection(player.id)}
@@ -1408,10 +1405,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                   <motion.div className="grid-of-luck__player-name">{player.name}</motion.div>
                   <motion.div className="grid-of-luck__player-lp">{player.lp} LP</motion.div>
                 </motion.div>
-                <motion.div
-                  className="grid-of-luck__player-effects"
-                  aria-label={statusIcons.length > 0 ? player.statusEffects.join(', ') : player.isEliminated ? 'Eliminated' : undefined}
-                >
+                <motion.div className="grid-of-luck__player-effects">
                   {player.isEliminated ? (
                     <span className="grid-of-luck__player-effect is-eliminated" aria-hidden="true">
                       ☠️

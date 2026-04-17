@@ -28,6 +28,7 @@ describe('GridOfLuck component', () => {
     expect(screen.queryByText(/^Active$/i)).toBeNull();
     expect(screen.queryByText(/^Alive$/i)).toBeNull();
     expect(screen.queryByText(/No active effects/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /You 500 LP No active effects/i })).toBeTruthy();
 
     fireEvent.click(boxes[0]);
 
