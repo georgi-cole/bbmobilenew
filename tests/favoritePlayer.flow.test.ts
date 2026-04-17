@@ -246,8 +246,8 @@ describe('awardFavoritePrize', () => {
 // ── Settings defaults ─────────────────────────────────────────────────────────
 
 describe('Settings: favoritePlayer defaults', () => {
-  it('enableFavoritePlayer defaults to false', () => {
-    expect(DEFAULT_SETTINGS.sim.enableFavoritePlayer).toBe(false);
+  it('enableFavoritePlayer defaults to true', () => {
+    expect(DEFAULT_SETTINGS.sim.enableFavoritePlayer).toBe(true);
   });
 
   it('favoritePlayerAwardAmount defaults to 25000', () => {

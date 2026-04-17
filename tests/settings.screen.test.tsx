@@ -121,10 +121,13 @@ describe('Settings screen', () => {
       expect(screen.getByLabelText(/toggle compact roster/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByLabelText(/toggle compact roster/i));
+    const compactRosterToggle = screen.getByLabelText(/toggle compact roster/i);
+    if (!compactRosterToggle.matches(':checked')) {
+      fireEvent.click(compactRosterToggle);
+    }
 
     await waitFor(() => {
-      expect(screen.getByRole('radiogroup', { name: /compact roster layout/i })).toBeTruthy();
+      expect(screen.getByLabelText(/compact roster layout/i)).toBeTruthy();
     });
 
     expect(screen.getAllByRole('radio')).toHaveLength(3);
@@ -140,14 +143,20 @@ describe('Settings screen', () => {
     renderSettingsAdmin();
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
-    fireEvent.click(screen.getByLabelText(/toggle twists/i));
+    const twistsToggle = screen.getByLabelText(/toggle twists/i);
+    if (!twistsToggle.matches(':checked')) {
+      fireEvent.click(twistsToggle);
+    }
 
     await waitFor(() => {
       expect(screen.getByText(/special safety chance/i)).toBeTruthy();
     });
 
     expect(screen.getByText("Public's Favorite (Public Vote)")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText(/toggle public's favorite player vote/i));
+    const favoritePlayerToggle = screen.getByLabelText(/toggle public's favorite player vote/i);
+    if (!favoritePlayerToggle.matches(':checked')) {
+      fireEvent.click(favoritePlayerToggle);
+    }
     expect(screen.getByText(/award amount — 25000 eyeoleans/i)).toBeTruthy();
     expect(screen.getByText(/eyeolean prize awarded to the public's favorite player/i)).toBeTruthy();
 
@@ -156,6 +165,32 @@ describe('Settings screen', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /the big eye/i })).toBeTruthy();
     });
+  });
+
+  it('loads the requested default Game UX configuration for a fresh store', async () => {
+    renderSettingsAdmin();
+
+    fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/back 2 the game chance — 85%/i)).toBeTruthy();
+    });
+
+    expect(screen.getByLabelText(/toggle confirm major actions/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle show tooltips/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle compact roster/i)).not.toBeChecked();
+    expect(screen.getByLabelText(/toggle haptic feedback/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle animations/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle public mode/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle twists/i)).toBeChecked();
+    expect(screen.getByText(/double elimination chance — 35%/i)).toBeTruthy();
+    expect(screen.getByText(/special safety chance — 75%/i)).toBeTruthy();
+    expect(screen.getByLabelText(/toggle public's favorite player vote/i)).toBeChecked();
+    expect((screen.getByLabelText(/public's favorite award amount/i) as HTMLInputElement).value).toBe('25000');
+    expect(screen.getByLabelText(/toggle spectator mode/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle jury house/i)).toBeChecked();
+    expect((screen.getByLabelText(/cast size/i) as HTMLInputElement).value).toBe('16');
+    expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe('user-selection');
   });
 
   it('lets QA set a forced secret mission week in debug settings', async () => {
