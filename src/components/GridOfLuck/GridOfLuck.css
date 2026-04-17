@@ -60,7 +60,14 @@
 .grid-of-luck__header {
   display: grid;
   gap: 8px;
-  text-align: center;
+}
+
+.grid-of-luck__header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
 }
 
 .grid-of-luck__eyebrow {
@@ -72,10 +79,11 @@
 
 .grid-of-luck__turn-meta {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   gap: 10px;
   font-size: 0.78rem;
+  flex-wrap: wrap;
 }
 
 .grid-of-luck__boxes-remaining {
@@ -100,9 +108,12 @@
 
 .grid-of-luck__title {
   margin: 0;
-  font-size: clamp(1.9rem, 4vw, 3.35rem);
+  flex: 1;
+  min-width: 0;
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  line-height: 1;
   background: linear-gradient(135deg, #e8d4ff 0%, #c8a8ff 40%, #ffd4b0 80%, #ffe580 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -264,6 +275,7 @@
 }
 
 .grid-of-luck__grid-shell,
+.grid-of-luck__event-card,
 .grid-of-luck__active-card,
 .grid-of-luck__reveal-card,
 .grid-of-luck__next-card,
@@ -384,6 +396,7 @@
   min-width: 0;
 }
 
+.grid-of-luck__event-card,
 .grid-of-luck__active-card,
 .grid-of-luck__reveal-card,
 .grid-of-luck__next-card,
@@ -391,6 +404,92 @@
   display: grid;
   gap: 8px;
   padding: 16px;
+}
+
+.grid-of-luck__event-card {
+  border-color: color-mix(in srgb, var(--event-color, #a855f7) 36%, transparent);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--event-color, #a855f7) 10%, rgba(26, 12, 58, 0.92)),
+    rgba(12, 5, 30, 0.97)
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--event-color, #a855f7) 16%, transparent),
+    0 18px 42px rgba(0, 0, 0, 0.35);
+}
+
+.grid-of-luck__event-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.grid-of-luck__event-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--event-color, #a855f7) 20%, rgba(255, 255, 255, 0.04));
+  border: 1px solid color-mix(in srgb, var(--event-color, #a855f7) 40%, transparent);
+  color: #f5f7ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.grid-of-luck__event-meta {
+  font-size: 0.76rem;
+  color: rgba(220, 210, 255, 0.74);
+}
+
+.grid-of-luck__event-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.grid-of-luck__event-symbol {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--event-color, #a855f7) 18%, rgba(255, 255, 255, 0.04));
+  border: 1px solid color-mix(in srgb, var(--event-color, #a855f7) 38%, transparent);
+  font-size: 1.7rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.grid-of-luck__event-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.grid-of-luck__event-title {
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.grid-of-luck__event-message,
+.grid-of-luck__event-detail {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.grid-of-luck__event-message {
+  font-size: 0.9rem;
+  color: rgba(240, 232, 255, 0.94);
+}
+
+.grid-of-luck__event-detail {
+  font-size: 0.8rem;
+  color: rgba(220, 210, 255, 0.72);
 }
 
 .grid-of-luck__active-status {
@@ -610,60 +709,35 @@
     position: sticky;
     top: 0;
     z-index: 4;
-    gap: 6px;
-    padding: calc(env(safe-area-inset-top, 0px) + 2px) 0 6px;
+    gap: 4px;
+    padding: calc(env(safe-area-inset-top, 0px) + 4px) 50px 8px 0;
     background: linear-gradient(180deg, rgba(14, 5, 32, 0.98), rgba(14, 5, 32, 0.82), rgba(14, 5, 32, 0));
     backdrop-filter: blur(14px);
   }
 
-  .grid-of-luck__eyebrow {
-    font-size: 0.68rem;
-    letter-spacing: 0.22em;
-  }
-
   .grid-of-luck__turn-meta {
     gap: 6px;
-    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .grid-of-luck__title {
-    font-size: clamp(1.25rem, 8.3vw, 1.8rem);
-    letter-spacing: 0.05em;
-    line-height: 0.95;
+    font-size: clamp(1.05rem, 4.8vw, 1.32rem);
+    letter-spacing: 0.04em;
   }
 
-  .grid-of-luck__turn-banner {
-    width: min(100%, 320px);
-    padding: 7px 12px;
-    font-size: 0.82rem;
-    line-height: 1.2;
-  }
-
-  .grid-of-luck__announcement {
-    max-width: none;
-    font-size: 0.84rem;
-    line-height: 1.35;
+  .grid-of-luck__boxes-remaining,
+  .grid-of-luck__phase-badge {
+    padding: 3px 10px;
+    font-size: 0.68rem;
   }
 
   .grid-of-luck__players {
     order: 2;
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 1px 0 4px;
-    margin: 0 -2px;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-  }
-
-  .grid-of-luck__players::-webkit-scrollbar {
-    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .grid-of-luck__player-card {
-    flex: 0 0 min(142px, 40vw);
-    scroll-snap-align: start;
     gap: 4px;
     padding: 8px;
     border-radius: 14px;
@@ -706,32 +780,47 @@
   .grid-of-luck__sidebar {
     order: -1;
     position: static;
-    display: flex;
+    display: grid;
     gap: 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 2px;
-    margin: 0 -2px;
-    scrollbar-width: none;
+    overflow: visible;
+    padding-bottom: 0;
+    margin: 0;
   }
 
-  .grid-of-luck__sidebar::-webkit-scrollbar {
-    display: none;
-  }
-
+  .grid-of-luck__event-card,
   .grid-of-luck__active-card,
   .grid-of-luck__reveal-card,
   .grid-of-luck__next-card,
   .grid-of-luck__log-card {
-    flex: 0 0 min(280px, 78vw);
     min-width: 0;
     padding: 12px;
     border-radius: 18px;
     align-content: start;
   }
 
-  .grid-of-luck__log-card {
-    flex-basis: min(300px, 82vw);
+  .grid-of-luck__event-main {
+    gap: 10px;
+  }
+
+  .grid-of-luck__event-symbol {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 1.45rem;
+  }
+
+  .grid-of-luck__event-title {
+    font-size: 0.98rem;
+  }
+
+  .grid-of-luck__event-message {
+    font-size: 0.82rem;
+  }
+
+  .grid-of-luck__event-detail,
+  .grid-of-luck__event-meta,
+  .grid-of-luck__event-badge {
+    font-size: 0.72rem;
   }
 
   .grid-of-luck__log-card ul {
@@ -801,12 +890,7 @@
   }
 
   .grid-of-luck__header {
-    gap: 5px;
-    padding-bottom: 4px;
-  }
-
-  .grid-of-luck__announcement {
-    font-size: 0.8rem;
+    padding-right: 46px;
   }
 
   .grid-of-luck__players {
@@ -814,19 +898,14 @@
   }
 
   .grid-of-luck__player-card {
-    flex-basis: min(126px, 36vw);
     padding: 7px;
   }
 
-  .grid-of-luck__sidebar {
-    gap: 6px;
-  }
-
+  .grid-of-luck__event-card,
   .grid-of-luck__active-card,
   .grid-of-luck__reveal-card,
   .grid-of-luck__next-card,
   .grid-of-luck__log-card {
-    flex-basis: min(248px, 74vw);
     padding: 10px;
   }
 
