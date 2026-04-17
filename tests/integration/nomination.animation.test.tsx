@@ -132,6 +132,7 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
 describe('NominationAnimator wiring in GameScreen', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    localStorage.clear();
     // CeremonyOverlay uses getTileRect → document.querySelector + getBoundingClientRect.
     // In jsdom, getBoundingClientRect returns zero rects → overlay fires onDone immediately.
     // Mock it to return non-zero rects so the overlay actually renders.
@@ -145,6 +146,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    localStorage.clear();
   });
 
   it('shows the CeremonyOverlay after nominees are confirmed', async () => {
@@ -473,5 +475,31 @@ describe('NominationAnimator wiring in GameScreen', () => {
 
     // Nominees remain committed (commitNominees no-op when awaitingNominations=false).
     expect(store.getState().game.nomineeIds).toHaveLength(2);
+  });
+
+  it('does not replay AI LOH nominees after GameScreen remounts', async () => {
+    const store = makeStore({
+      lohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      awaitingNominations: false,
+    });
+    const firstRender = renderWithStore(store);
+
+    await act(async () => {});
+
+    expect(screen.getByRole('status')).toBeTruthy();
+
+    await act(async () => { vi.advanceTimersByTime(2800); });
+    await act(async () => { vi.advanceTimersByTime(500); });
+
+    expect(screen.queryByRole('status')).toBeNull();
+
+    firstRender.unmount();
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(store.getState().game.nomineeIds).toEqual(['p2', 'p3']);
   });
 });
