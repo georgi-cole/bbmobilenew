@@ -30,7 +30,7 @@
   gap: 0.5rem;
   max-width: 32rem;
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top, 0px) + 0.6rem) 0.85rem calc(env(safe-area-inset-bottom, 0px) + 1.8rem);
+  padding: calc(env(safe-area-inset-top, 0px) + 0.6rem) 0.85rem calc(env(safe-area-inset-bottom, 0px) + 0.4rem);
 }
 
 .chain-of-greed h1,
@@ -625,7 +625,7 @@
 
 .chain-of-greed__current-cluster {
   position: absolute;
-  left: calc(50% + 1.55rem);
+  left: calc(50% + 2.35rem);
   top: 50%;
   transform: translateY(-50%);
   display: grid;
@@ -656,7 +656,7 @@
 
 .chain-of-greed__next-cluster {
   position: absolute;
-  left: calc(50% + 1.55rem);
+  left: calc(50% + 2.35rem);
   bottom: calc(100% + 0.15rem);
   display: grid;
   gap: 0.12rem;
@@ -768,7 +768,7 @@
   grid-auto-columns: minmax(var(--rail-card-min-width), 56%);
   gap: 0.35rem;
   overflow-x: auto;
-  padding: 0.05rem 0 0.1rem;
+  padding: 0.05rem 0 0;
   scroll-snap-type: x proximity;
 }
 
