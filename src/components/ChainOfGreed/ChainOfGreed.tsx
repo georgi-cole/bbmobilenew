@@ -642,6 +642,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       isCleared: currentChainStep > step,
       isNext: currentChainStep + 1 === step,
       carriesReference: !isAtStartingPosition && step === referenceRungIndex,
+      labelSide: step === 1 || step === CHAIN_LADDER.length ? 'center' : step % 2 === 0 ? 'left' : 'right',
       tension: step >= 7 ? 'danger' : step >= 4 ? 'surge' : 'base',
     };
   });
@@ -838,7 +839,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               >
                 <div className={`chain-of-greed__number-aura chain-of-greed__number-aura--${heroTone}`} aria-hidden="true" />
                 <ol className="chain-of-greed__ladder-track" aria-label="Current chain ladder">
-                  {ladderSteps.map(({ value, step, badge, isActive, isCleared, isNext, carriesReference, tension }) => (
+                  {ladderSteps.map(({ value, step, badge, isActive, isCleared, isNext, carriesReference, labelSide, tension }) => (
                     <li
                       key={value}
                       className={[
@@ -850,7 +851,10 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                         `chain-of-greed__ladder-node--${tension}`,
                       ].filter(Boolean).join(' ')}
                     >
-                      <span className="chain-of-greed__ladder-step-copy">
+                      <span className={[
+                        'chain-of-greed__ladder-step-copy',
+                        `chain-of-greed__ladder-step-copy--${labelSide}`,
+                      ].join(' ')}>
                         <strong>{value.toLocaleString()}</strong>
                         <small>{badge ?? `Step ${step}`}</small>
                       </span>
@@ -869,9 +873,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                             >
                               {referenceNumber}
                             </motion.span>
-                            <span className="chain-of-greed__ladder-detail chain-of-greed__ladder-detail--pot">
-                              Current pot {currentPotLabel}
-                            </span>
                           </span>
                         )}
                         {isNext && (
@@ -901,9 +902,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                         >
                           {referenceNumber}
                         </motion.span>
-                        <span className="chain-of-greed__ladder-detail chain-of-greed__ladder-detail--pot">
-                          Current pot {currentPotLabel}
-                        </span>
                       </span>
                     </span>
                   </div>

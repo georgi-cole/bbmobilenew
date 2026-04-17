@@ -54,7 +54,7 @@ describe('ChainOfGreed component', () => {
     expect(ladderStage.compareDocumentPosition(higherButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(higherButton.compareDocumentPosition(playerRail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId('chain-current-anchor')).toBeInTheDocument();
-    expect(screen.getByText(/Current pot 0/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Current pot 0/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Open help' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
     expect(screen.getByTestId('chain-ladder-stage')).not.toHaveTextContent(/Next\s+Next/i);
