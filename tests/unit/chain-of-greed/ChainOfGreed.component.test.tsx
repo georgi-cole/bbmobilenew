@@ -28,7 +28,12 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByText('Round starting…')).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(900);
+    });
+    expect(screen.queryByRole('button', { name: 'Higher' })).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(50);
     });
 
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
