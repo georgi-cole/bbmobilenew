@@ -4,7 +4,12 @@ import type { MusicScene } from '../../store/uiSlice';
 
 export interface MusicResolverState {
   game: Pick<RootState['game'], 'phase' | 'spectatorActive'>;
-  challenge: Pick<RootState['challenge'], 'pending'>;
+  challenge: {
+    pending?: {
+      phase?: string | null;
+      game?: { key?: string | null };
+    } | null;
+  };
   social: Pick<RootState['social'], 'panelOpen' | 'incomingInboxOpen'>;
   ui: { musicScene: MusicScene };
 }
@@ -49,7 +54,7 @@ export function resolveDesiredMusic(state: MusicResolverState, hash: string): Mu
 
   const minigameTrack =
     state.challenge.pending?.phase === 'playing'
-      ? trackForMinigame(state.challenge.pending.game.key)
+      ? trackForMinigame(state.challenge.pending.game?.key)
       : 'none';
   if (minigameTrack !== 'none') {
     return minigameTrack;

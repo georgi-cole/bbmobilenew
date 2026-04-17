@@ -67,6 +67,7 @@ let requestBgmMock: ReturnType<typeof vi.spyOn>;
 let releaseBgmMock: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  makeTestStore().store.dispatch({ type: 'game/resetGame' });
   playMock = vi.spyOn(SoundManager, 'play').mockResolvedValue(undefined);
   requestBgmMock = vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
   releaseBgmMock = vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
