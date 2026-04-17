@@ -31,7 +31,10 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Current chain ladder')).toBeInTheDocument();
     expect(screen.getByTestId('chain-player-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('chain-current-anchor')).toBeInTheDocument();
+    expect(screen.getByText(/Current pot 0/i)).toBeInTheDocument();
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('chain-ladder-stage')).not.toHaveTextContent(/Next\s+Next/i);
     expect(screen.getByText(/A miss destroys the active pot/i)).toBeInTheDocument();
   });
 
