@@ -46,7 +46,12 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Next 50/i);
     expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Current chain ladder')).toBeInTheDocument();
-    expect(screen.getByTestId('chain-player-rail')).toBeInTheDocument();
+    const ladderStage = screen.getByTestId('chain-ladder-stage');
+    const higherButton = screen.getByRole('button', { name: 'Higher' });
+    const playerRail = screen.getByTestId('chain-player-rail');
+    expect(playerRail).toBeInTheDocument();
+    expect(ladderStage.compareDocumentPosition(higherButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(higherButton.compareDocumentPosition(playerRail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId('chain-current-anchor')).toBeInTheDocument();
     expect(screen.getByText(/Current pot 0/i)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Open help' }).length).toBeGreaterThan(0);
