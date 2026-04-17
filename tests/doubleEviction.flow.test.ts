@@ -644,6 +644,41 @@ describe('finalizePendingEviction with Double Eviction', () => {
     expect(p1?.status).toMatch(/evicted|jury/);
     expect(p2?.status).toMatch(/evicted|jury/);
   });
+
+  it('stamps evictedAtWeek on each evicted player at the eviction week', () => {
+    // Regression: evictedAtWeek was never set — buildSummaries could not derive weeksAlive.
+    const store = makeFinalizationStore();
+    const gameWeek = store.getState().game.week;
+
+    store.dispatch(finalizePendingEviction('p1'));
+    store.dispatch(finalizePendingEviction('p2'));
+
+    const p1 = store.getState().game.players.find((p) => p.id === 'p1');
+    const p2 = store.getState().game.players.find((p) => p.id === 'p2');
+    expect(p1?.evictedAtWeek).toBe(gameWeek);
+    expect(p2?.evictedAtWeek).toBe(gameWeek);
+  });
+
+  it('marks survivedDoubleEviction on all surviving players after both evictions', () => {
+    // Regression: survivedDoubleEviction was never set on Player.stats.
+    const store = makeFinalizationStore();
+    store.dispatch(finalizePendingEviction('p1'));
+    store.dispatch(finalizePendingEviction('p2'));
+
+    const { players } = store.getState().game;
+    // Every player still in the house (not evicted/jury) should have the flag
+    const survivors = players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+    expect(survivors.length).toBeGreaterThan(0);
+    survivors.forEach((p) => {
+      expect(p.stats?.survivedDoubleEviction).toBe(true);
+    });
+
+    // The evicted players should NOT have the flag
+    const p1 = players.find((p) => p.id === 'p1');
+    const p2 = players.find((p) => p.id === 'p2');
+    expect(p1?.stats?.survivedDoubleEviction).toBeUndefined();
+    expect(p2?.stats?.survivedDoubleEviction).toBeUndefined();
+  });
 });
 
 // ── Non-double-eviction weeks behave normally ─────────────────────────────────

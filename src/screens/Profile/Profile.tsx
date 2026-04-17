@@ -5,6 +5,7 @@ import {
   selectCurrentProfile,
   selectIsGuest,
 } from '../../store/profilesSlice';
+import { findArchiveUserSummary } from '../../store/achievementSummary';
 import StatusPill from '../../components/ui/StatusPill';
 import { imageIdToDataUrl } from '../../utils/imageDb';
 import './Profile.css';
@@ -13,12 +14,13 @@ import './Profile.css';
 function useCareerStats() {
   return useAppSelector((s) => {
     const archives = s.game.seasonArchives ?? [];
+    const userPlayer = s.game.players.find((player) => player.isUser) ?? null;
     let seasons = 0;
     let lohWins = 0;
     let posWins = 0;
     let wins = 0;
     for (const arc of archives) {
-      const me = arc.playerSummaries.find((ps) => ps.playerId === 'user');
+      const me = findArchiveUserSummary(arc, userPlayer);
       if (!me) continue;
       seasons++;
       lohWins += me.lohWins ?? 0;

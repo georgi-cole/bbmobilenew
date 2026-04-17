@@ -276,4 +276,197 @@ describe('IntroHub side utility buttons', () => {
     expect(dialog?.textContent).toContain('Comp beast ×9');
     expect(dialog?.textContent).toContain('Reward hunter ×3');
   });
+
+  it('shows correct weeksAlive avg survive stat when summaries include weeksAlive', () => {
+    // Regression: buildSummaries now populates weeksAlive (previously missing),
+    // so the "Avg survive" stat should show a number instead of "—".
+    loadIntroHub({
+      season: 3,
+      week: 1,
+      phase: 'week_start',
+      players: [
+        {
+          id: 'user',
+          name: 'You',
+          isUser: true,
+          status: 'active',
+          stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
+        },
+      ],
+      seasonArchives: [
+        {
+          seasonIndex: 2,
+          seasonId: 'season-2',
+          playerSummaries: [
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 1,
+              lohWins: 2,
+              posWins: 1,
+              timesNominated: 2,
+              wonFinalHoh: true,
+              weeksAlive: 10,
+              isEvicted: false,
+              madeJury: false,
+            },
+          ],
+        },
+        {
+          seasonIndex: 1,
+          seasonId: 'season-1',
+          playerSummaries: [
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 5,
+              lohWins: 0,
+              posWins: 1,
+              timesNominated: 3,
+              weeksAlive: 6,
+              isEvicted: true,
+              madeJury: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
+
+    const dialog = document.getElementById('hub-dialog-panel');
+    // Average of 10 and 6 = 8 days
+    expect(dialog?.textContent).toContain('8 days');
+    // Non-zero seasons played / wins
+    expect(dialog?.textContent).toContain('2 seasons entered');
+    // Season wins counter
+    expect(dialog?.textContent).toContain('Season wins');
+    // Comp wins: lohWins 2 + posWins 1 + 0 + 1 = 4
+    expect(dialog?.textContent).toContain('Comp wins');
+  });
+
+  it('shows survivedDoubleEviction stat in achievements when archives include it', () => {
+    // Regression: survivedDoubleEviction was never set in buildSummaries.
+    loadIntroHub({
+      season: 2,
+      week: 1,
+      phase: 'week_start',
+      players: [
+        {
+          id: 'user',
+          name: 'You',
+          isUser: true,
+          status: 'active',
+          stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
+        },
+      ],
+      seasonArchives: [
+        {
+          seasonIndex: 1,
+          seasonId: 'season-1',
+          playerSummaries: [
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 1,
+              lohWins: 1,
+              posWins: 1,
+              timesNominated: 1,
+              survivedDoubleEviction: true,
+              weeksAlive: 9,
+              isEvicted: false,
+              madeJury: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
+
+    const dialog = document.getElementById('hub-dialog-panel');
+    // "Eviction escape artist" badge should appear because survivedDoubleEviction = true
+    expect(dialog?.textContent).toContain('Eviction escape artist');
+  });
+
+  it('uses a precomputed achievement summary mirrored from Redux when available', () => {
+    loadIntroHub({
+      achievementSummary: {
+        playerName: 'Jordan',
+        totals: {
+          seasonsPlayed: 9,
+          seasonsWon: 2,
+          publicFavoriteWins: 1,
+          averageDaysSurvived: '8.5 days',
+          totalCompWins: 11,
+          timesNominated: 6,
+          survivedNominations: 4,
+          lohWins: 4,
+          posWins: 5,
+          battleBackWins: 2,
+          finalHohWins: 1,
+          juryAppearances: 3,
+          doubleEvictionSurvivals: 1,
+          tripleEvictionSurvivals: 0,
+          rewardsFound: 2,
+        },
+        quickStats: [
+          { label: 'Seasons', value: '9', icon: '📚' },
+          { label: 'Wins', value: '2', icon: '🏆' },
+          { label: 'Rewards', value: '2', icon: '🥚' },
+        ],
+        featuredStats: [
+          { label: 'Season wins', value: '2', helper: '9 seasons entered', icon: '🏆', tone: 'gold', wide: true },
+          { label: 'Comp wins', value: '11', helper: '4 LOH · 5 POS · 2 BB', icon: '⚔️', tone: 'violet' },
+          { label: 'Avg survive', value: '8.5 days', helper: '4 block escapes', icon: '🛡️', tone: 'emerald' },
+        ],
+        sections: [
+          {
+            title: 'Competitive / Wins',
+            icon: '⚔️',
+            tone: 'violet',
+            stats: [
+              { label: 'LOH wins', value: '4', icon: '👑', tone: 'violet' },
+              { label: 'POS wins', value: '5', icon: '🔑', tone: 'violet' },
+              { label: 'Battle backs', value: '2', icon: '🔄', tone: 'violet' },
+              { label: 'Final LOHs', value: '1', icon: '🎯', tone: 'violet' },
+            ],
+          },
+          {
+            title: 'Recognition / Social',
+            icon: '🌟',
+            tone: 'rose',
+            stats: [
+              { label: 'Fan favorite', value: '1', icon: '🌟', tone: 'rose' },
+              { label: 'Jury runs', value: '3', icon: '⚖️', tone: 'rose' },
+              { label: 'Rewards found', value: '2', icon: '🥚', tone: 'rose' },
+            ],
+          },
+          {
+            title: 'Survival / Endurance',
+            icon: '🛡️',
+            tone: 'emerald',
+            stats: [
+              { label: 'Seasons played', value: '9', icon: '📅', tone: 'emerald' },
+              { label: 'Nominations', value: '6', icon: '🎯', tone: 'emerald' },
+              { label: 'Block escapes', value: '4', icon: '🚪', tone: 'emerald' },
+              { label: 'Double survives', value: '1', icon: '⚡', tone: 'emerald' },
+              { label: 'Triple survives', value: '0', icon: '🔥', tone: 'emerald' },
+            ],
+          },
+        ],
+        highlightBadges: ['🏆 Season champ ×2', '💪 Comp beast ×11'],
+        hasHistory: true,
+      },
+    });
+
+    document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
+
+    const dialog = document.getElementById('hub-dialog-panel');
+    expect(dialog?.textContent).toContain('Jordan');
+    expect(dialog?.textContent).toContain('9');
+    expect(dialog?.textContent).toContain('11');
+    expect(dialog?.textContent).toContain('8.5 days');
+    expect(dialog?.textContent).toContain('Comp beast ×11');
+  });
 });

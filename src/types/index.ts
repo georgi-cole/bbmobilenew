@@ -35,11 +35,20 @@ export interface Player {
     battleBackWins?: number;
     /** True when this player won the Final LOH (Part 3 of the Final 3 competition). */
     wonFinalHoh?: boolean;
+    /** True when this player survived at least one double-eviction week. */
+    survivedDoubleEviction?: boolean;
     /** Personal-record tap count for TapRace competitions. */
     tapRacePR?: number;
     /** Per-game personal-record scores keyed by game key (raw rounded score reported by the game). */
     gamePRs?: Record<string, number>;
   };
+  /**
+   * The game week number when this player was evicted (set by assignSeasonPlacementOnExit).
+   * Undefined for players who were never evicted (winner, runner-up who reaches finale).
+   * Cleared by completeBattleBack so returning players receive a fresh week stamp on
+   * their second eviction.
+   */
+  evictedAtWeek?: number;
   /**
    * Explicit placement captured at elimination time.
    * Uses Big Brother style numbering where 1 = winner, 2 = runner-up,

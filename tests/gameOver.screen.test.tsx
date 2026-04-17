@@ -7,8 +7,9 @@ import GameOver from '../src/screens/GameOver/GameOver';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import profilesReducer from '../src/store/profilesSlice';
+import type { Player } from '../src/types';
 
-function makeStore() {
+function makeStore(gameOverrides: Record<string, unknown> = {}) {
   const baseGame = gameReducer(undefined, { type: '@@INIT' });
   const baseSettings = settingsReducer(undefined, { type: '@@INIT' });
   const baseProfiles = profilesReducer(undefined, { type: '@@INIT' });
@@ -39,6 +40,7 @@ function makeStore() {
         season: 3,
         players,
         seasonArchives: [],
+        ...gameOverrides,
       },
       settings: baseSettings,
       profiles: baseProfiles,
@@ -71,5 +73,124 @@ describe('GameOver screen', () => {
     expect(archives).toHaveLength(1);
     expect(archives[0].seasonIndex).toBe(3);
     expect(archives[0].playerSummaries.some((summary) => summary.playerId === 'user')).toBe(true);
+  });
+
+  it('archives include weeksAlive for all players', async () => {
+    // Game at week 8 — a mid-season snapshot where some players were evicted
+    const baseGame = gameReducer(undefined, { type: '@@INIT' });
+    const baseSettings = settingsReducer(undefined, { type: '@@INIT' });
+    const baseProfiles = profilesReducer(undefined, { type: '@@INIT' });
+
+    const playersWithEvictions: Player[] = baseGame.players.map((p, i) => {
+      if (p.isUser) {
+        // Winner — not evicted, no evictedAtWeek → weeksAlive falls back to game.week
+        return { ...p, finalRank: 1, isWinner: true, stats: { lohWins: 3, posWins: 2, timesNominated: 1 } };
+      }
+      if (i === 1) {
+        // Runner-up
+        return { ...p, finalRank: 2 };
+      }
+      // Evicted players — stamp an eviction week
+      return { ...p, status: 'evicted' as const, evictedAtWeek: i + 1 };
+    });
+
+    const store = configureStore({
+      reducer: { game: gameReducer, settings: settingsReducer, profiles: profilesReducer },
+      preloadedState: {
+        game: { ...baseGame, season: 2, week: 8, players: playersWithEvictions, seasonArchives: [] },
+        settings: baseSettings,
+        profiles: baseProfiles,
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/gameover']}>
+          <Routes>
+            <Route path="/" element={<div>Home</div>} />
+            <Route path="/gameover" element={<GameOver />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /exit to home/i }));
+    await waitFor(() => expect(screen.getByText('Home')).toBeInTheDocument());
+
+    const archives = store.getState().game.seasonArchives ?? [];
+    expect(archives).toHaveLength(1);
+
+    const userSummary = archives[0].playerSummaries.find((s) => s.playerId === 'user');
+    expect(userSummary).toBeDefined();
+    // Winner was never evicted → weeksAlive falls back to game.week (8)
+    expect(userSummary?.weeksAlive).toBe(8);
+    expect(userSummary?.daysAlive).toBe(8);
+    expect(userSummary?.lohWins).toBe(3);
+    expect(userSummary?.posWins).toBe(2);
+    expect(userSummary?.finalPlacement).toBe(1);
+
+    // Evicted players should have their stamped evictedAtWeek as weeksAlive
+    const evictedSummary = archives[0].playerSummaries.find((s) => {
+      const player = playersWithEvictions.find((p) => p.id === s.playerId);
+      return player?.evictedAtWeek !== undefined;
+    });
+    const expectedWeeksAlive = evictedSummary
+      ? playersWithEvictions.find((p) => p.id === evictedSummary.playerId)?.evictedAtWeek
+      : undefined;
+    expect(evictedSummary?.weeksAlive).toBe(expectedWeeksAlive);
+    expect(evictedSummary?.daysAlive).toBe(expectedWeeksAlive);
+  });
+
+  it('archives include survivedDoubleEviction for players who survived a double eviction week', async () => {
+    const baseGame = gameReducer(undefined, { type: '@@INIT' });
+    const baseSettings = settingsReducer(undefined, { type: '@@INIT' });
+    const baseProfiles = profilesReducer(undefined, { type: '@@INIT' });
+
+    // Mark some players as having survived a double eviction
+    const players: Player[] = baseGame.players.map((p, i) => {
+      if (p.isUser) {
+        return {
+          ...p,
+          finalRank: 1,
+          isWinner: true,
+          stats: { lohWins: 1, posWins: 0, timesNominated: 0, survivedDoubleEviction: true },
+        };
+      }
+      if (i === 1) return { ...p, finalRank: 2, stats: { lohWins: 0, posWins: 1, timesNominated: 0, survivedDoubleEviction: true } };
+      return { ...p, status: 'evicted' as const };
+    });
+
+    const store = configureStore({
+      reducer: { game: gameReducer, settings: settingsReducer, profiles: profilesReducer },
+      preloadedState: {
+        game: { ...baseGame, season: 1, week: 10, players, seasonArchives: [] },
+        settings: baseSettings,
+        profiles: baseProfiles,
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/gameover']}>
+          <Routes>
+            <Route path="/" element={<div>Home</div>} />
+            <Route path="/gameover" element={<GameOver />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /exit to home/i }));
+    await waitFor(() => expect(screen.getByText('Home')).toBeInTheDocument());
+
+    const archives = store.getState().game.seasonArchives ?? [];
+    const userSummary = archives[0].playerSummaries.find((s) => s.playerId === 'user');
+    expect(userSummary?.survivedDoubleEviction).toBe(true);
+
+    // Players without the flag should not have survivedDoubleEviction
+    const evictedSummary = archives[0].playerSummaries.find(
+      (s) => s.isEvicted,
+    );
+    expect(evictedSummary?.survivedDoubleEviction).toBeUndefined();
   });
 });
