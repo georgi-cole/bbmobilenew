@@ -30,7 +30,10 @@ function makeTestStore(initialPhase = 'week_start') {
       return { ...state, evictionOverlayPlayerId: action.payload as string | null };
     }
     if (action.type === 'game/clearEvictionOverlay') {
-      return { ...state, evictionOverlayPlayerId: null };
+      if (state.evictionOverlayPlayerId === (action.payload as string)) {
+        return { ...state, evictionOverlayPlayerId: null };
+      }
+      return state;
     }
     if (action.type === '__SET_BATTLE_BACK__') {
       return { ...state, battleBack: action.payload as TestGameState['battleBack'] };
