@@ -1149,22 +1149,6 @@ export default function GridOfLuck(props: GenericMinigameProps) {
       };
     }
 
-    if (revealState) {
-      const revealMeta = BOX_META[revealState.effectType];
-      const nextUp = nextPlayer ? `Up next: ${nextPlayer.name} • ${nextPlayer.lp} LP` : null;
-      return {
-        accent: CATEGORY_COLORS[revealMeta.category],
-        badge: turnMode === 'awaiting-continue' ? 'Turn resolved' : 'Last reveal',
-        eyebrow: revealMeta.category,
-        title: revealMeta.label,
-        message: revealState.message,
-        detail: [revealMeta.description, nextUp].filter(Boolean).join(' • '),
-        meta: `${revealState.actorName} opened box ${revealState.boxId + 1}`,
-        symbol: revealMeta.symbol,
-        deltas: revealState.lpDeltas,
-      };
-    }
-
     if (pendingSelection) {
       const pendingMeta = BOX_META[pendingSelection.effectType];
       const actor = state.players.find((player) => player.id === pendingSelection.actorId);
@@ -1179,6 +1163,22 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         meta: actor ? `${actor.name} is resolving this power` : 'Resolve the chamber effect',
         symbol: pendingMeta.symbol,
         deltas: [] as RevealState['lpDeltas'],
+      };
+    }
+
+    if (revealState) {
+      const revealMeta = BOX_META[revealState.effectType];
+      const nextUp = nextPlayer ? `Up next: ${nextPlayer.name} • ${nextPlayer.lp} LP` : null;
+      return {
+        accent: CATEGORY_COLORS[revealMeta.category],
+        badge: turnMode === 'awaiting-continue' ? 'Turn resolved' : 'Last reveal',
+        eyebrow: revealMeta.category,
+        title: revealMeta.label,
+        message: revealState.message,
+        detail: [revealMeta.description, nextUp].filter(Boolean).join(' • '),
+        meta: `${revealState.actorName} opened box ${revealState.boxId + 1}`,
+        symbol: revealMeta.symbol,
+        deltas: revealState.lpDeltas,
       };
     }
 
