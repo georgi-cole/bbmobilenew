@@ -42,7 +42,7 @@ describe('GridOfLuck component', () => {
 
     const eventCard = screen.getByTestId('grid-of-luck-event-card');
     expect(eventCard).toHaveTextContent(/choice locked/i);
-    expect(eventCard).toHaveTextContent(/reaches for box 1/i);
+    expect(eventCard).toHaveTextContent(/you reach for box 1/i);
     expect(eventCard).toHaveTextContent(/remove 200 lp from the current leader/i);
     expect(screen.queryByRole('button', { name: /continue ritual/i })).toBeNull();
 

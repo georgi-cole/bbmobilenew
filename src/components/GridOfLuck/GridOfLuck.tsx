@@ -670,6 +670,7 @@ function applyEffectSelection(
   let message = '';
   let floatingBursts: FloatingLpBurst[] = [];
   const actor = getPlayer(nextState.players, actorId);
+  const actorPossessive = getActorPossessive(actor);
   const unopenedAfterReveal = nextState.gridBoxes.filter((box) => !box.isOpened).length;
 
   const targetId = targetIds[0] ?? null;
@@ -680,19 +681,19 @@ function applyEffectSelection(
       const gain = applyGain(nextState.players, actorId, 200);
       nextState.players = gain.players;
       floatingBursts = addBurst(floatingBursts, actorId, sourceBoxId, gain.applied);
-      message = `${actor.name} claims +${gain.applied} LP.`;
+      message = actor.isHuman ? `You claim +${gain.applied} LP.` : `${actor.name} claims +${gain.applied} LP.`;
       break;
     }
     case 'shield': {
       getPlayer(nextState.players, actorId).shield = true;
       nextState.players = nextState.players.map(withStatusEffects);
-      message = `${actor.name} is wrapped in a ritual shield.`;
+      message = actor.isHuman ? 'You are wrapped in a ritual shield.' : `${actor.name} is wrapped in a ritual shield.`;
       break;
     }
     case 'doubleGain': {
       getPlayer(nextState.players, actorId).doubleNextGain = true;
       nextState.players = nextState.players.map(withStatusEffects);
-      message = `${actor.name}'s next LP gain will be doubled.`;
+      message = `${actorPossessive} next LP gain will be doubled.`;
       break;
     }
     case 'reveal2': {
@@ -702,14 +703,18 @@ function applyEffectSelection(
         if (targetBox) targetBox.isPeeked = true;
       });
       message = revealTargets.length > 0
-        ? `${actor.name} peeks at ${revealTargets.map((box) => BOX_META[box.type].label).join(' and ')}.`
-        : `${actor.name} reaches for visions, but the chamber offers none.`;
+        ? actor.isHuman
+          ? `You peek at ${revealTargets.map((box) => BOX_META[box.type].label).join(' and ')}.`
+          : `${actor.name} peeks at ${revealTargets.map((box) => BOX_META[box.type].label).join(' and ')}.`
+        : actor.isHuman
+          ? 'You reach for visions, but the chamber offers none.'
+          : `${actor.name} reaches for visions, but the chamber offers none.`;
       break;
     }
     case 'immunity': {
       getPlayer(nextState.players, actorId).immunityRounds = 1;
       nextState.players = nextState.players.map(withStatusEffects);
-      message = `${actor.name} cannot be targeted until the next round turns.`;
+      message = actor.isHuman ? 'You cannot be targeted until the next round turns.' : `${actor.name} cannot be targeted until the next round turns.`;
       break;
     }
     case 'hiddenBonus': {
@@ -717,7 +722,7 @@ function applyEffectSelection(
       const gain = applyGain(nextState.players, actorId, amount);
       nextState.players = gain.players;
       floatingBursts = addBurst(floatingBursts, actorId, sourceBoxId, gain.applied);
-      message = `${actor.name} uncovers a hidden bonus worth +${gain.applied} LP.`;
+      message = actor.isHuman ? `You uncover a hidden bonus worth +${gain.applied} LP.` : `${actor.name} uncovers a hidden bonus worth +${gain.applied} LP.`;
       break;
     }
     case 'lose150': {
@@ -725,16 +730,18 @@ function applyEffectSelection(
       nextState.players = loss.players;
       floatingBursts = addBurst(floatingBursts, actorId, sourceBoxId, -loss.applied);
       message = loss.blocked
-        ? `${actor.name}'s shield devours the curse.`
+        ? actor.isHuman ? 'Your shield devours the curse.' : `${actor.name}'s shield devours the curse.`
         : loss.spared
-          ? `${actor.name} should have fallen, but the chamber spares them for now.`
-          : `${actor.name} loses ${loss.applied} LP.`;
+          ? actor.isHuman ? 'You should have fallen, but the chamber spares you for now.' : `${actor.name} should have fallen, but the chamber spares them for now.`
+          : actor.isHuman ? `You lose ${loss.applied} LP.` : `${actor.name} loses ${loss.applied} LP.`;
       break;
     }
     case 'loseNextTurn': {
       const skip = applySkip(nextState.players, actorId);
       nextState.players = skip.players;
-      message = `${actor.name} will lose ${skip.applied > 1 ? `${skip.applied} turns` : 'their next turn'}.`;
+      message = actor.isHuman
+        ? `You will lose ${skip.applied > 1 ? `${skip.applied} turns` : 'your next turn'}.`
+        : `${actor.name} will lose ${skip.applied > 1 ? `${skip.applied} turns` : 'their next turn'}.`;
       break;
     }
     case 'give100': {
@@ -750,14 +757,18 @@ function applyEffectSelection(
         floatingBursts = addBurst(floatingBursts, targetId, sourceBoxId, transfer.applied);
       }
       message = transfer.spared
-        ? `${actor.name} almost gives away everything, but the chamber keeps them alive for the final turns.`
-        : `${actor.name} grants ${transfer.applied} LP to ${getPlayer(nextState.players, targetId).name}.`;
+        ? actor.isHuman
+          ? 'You almost give away everything, but the chamber keeps you alive for the final turns.'
+          : `${actor.name} almost gives away everything, but the chamber keeps them alive for the final turns.`
+        : actor.isHuman
+          ? `You grant ${transfer.applied} LP to ${getPlayer(nextState.players, targetId).name}.`
+          : `${actor.name} grants ${transfer.applied} LP to ${getPlayer(nextState.players, targetId).name}.`;
       break;
     }
     case 'trap': {
       getPlayer(nextState.players, actorId).trapArmed = true;
       nextState.players = nextState.players.map(withStatusEffects);
-      message = `${actor.name} is marked — the next negative effect will be doubled.`;
+      message = actor.isHuman ? 'You are marked — the next negative effect will be doubled.' : `${actor.name} is marked — the next negative effect will be doubled.`;
       break;
     }
     case 'steal150': {
@@ -775,10 +786,10 @@ function applyEffectSelection(
       floatingBursts = addBurst(floatingBursts, targetId, sourceBoxId, -loss.applied);
       floatingBursts = addBurst(floatingBursts, actorId, sourceBoxId, loss.applied);
       message = loss.blocked
-        ? `${victim.name}'s shield denies ${actor.name} the theft.`
+        ? actor.isHuman ? `${victim.name}'s shield denies you the theft.` : `${victim.name}'s shield denies ${actor.name} the theft.`
         : loss.spared
-          ? `${victim.name} clings to 1 LP as ${actor.name}'s theft almost ends them.`
-          : `${actor.name} steals ${loss.applied} LP from ${victim.name}.`;
+          ? actor.isHuman ? `${victim.name} clings to 1 LP as your theft almost ends them.` : `${victim.name} clings to 1 LP as ${actor.name}'s theft almost ends them.`
+          : actor.isHuman ? `You steal ${loss.applied} LP from ${victim.name}.` : `${actor.name} steals ${loss.applied} LP from ${victim.name}.`;
       break;
     }
     case 'forceOpen': {
@@ -787,7 +798,9 @@ function applyEffectSelection(
       }
       const forced = resolveForcedOpen(nextState, targetId, rng, chainDepth + 1);
       nextState = forced.state;
-      message = `${actor.name} compels ${getPlayer(nextState.players, targetId).name} to open a box. ${forced.message}`;
+      message = actor.isHuman
+        ? `You compel ${getPlayer(nextState.players, targetId).name} to open a box. ${forced.message}`
+        : `${actor.name} compels ${getPlayer(nextState.players, targetId).name} to open a box. ${forced.message}`;
       floatingBursts = [...floatingBursts, ...forced.floatingBursts];
       break;
     }
@@ -798,7 +811,7 @@ function applyEffectSelection(
       const self = getPlayer(nextState.players, actorId);
       const target = getPlayer(nextState.players, targetId);
       [self.lp, target.lp] = [target.lp, self.lp];
-      message = `${self.name} swaps LP totals with ${target.name}.`;
+      message = actor.isHuman ? `You swap LP totals with ${target.name}.` : `${self.name} swaps LP totals with ${target.name}.`;
       break;
     }
     case 'removeLeader200': {
@@ -835,16 +848,16 @@ function applyEffectSelection(
       target.lp = 0;
       target.isEliminated = true;
       nextState.players = nextState.players.map(withStatusEffects);
-      message = `${actor.name} executes ${target.name} instantly.`;
+      message = actor.isHuman ? `You execute ${target.name} instantly.` : `${actor.name} executes ${target.name} instantly.`;
       break;
     }
     case 'swapBoxes': {
       const unopened = shuffleWithRng(nextState.gridBoxes.filter((box) => !box.isOpened), rng);
       if (unopened.length >= 2) {
         nextState.gridBoxes = swapBoxTypes(nextState.gridBoxes, unopened[0].id, unopened[1].id);
-        message = `${actor.name} swaps two dormant boxes in the shadows.`;
+        message = actor.isHuman ? 'You swap two dormant boxes in the shadows.' : `${actor.name} swaps two dormant boxes in the shadows.`;
       } else {
-        message = `${actor.name} tries to shift the grid, but there are not enough unopened boxes.`;
+        message = actor.isHuman ? 'You try to shift the grid, but there are not enough unopened boxes.' : `${actor.name} tries to shift the grid, but there are not enough unopened boxes.`;
       }
       break;
     }
@@ -854,9 +867,9 @@ function applyEffectSelection(
       if (chosen) {
         const target = nextState.gridBoxes.find((box) => box.id === chosen.id);
         if (target) target.isLocked = true;
-        message = `${actor.name} seals one box shut.`;
+        message = actor.isHuman ? 'You seal one box shut.' : `${actor.name} seals one box shut.`;
       } else {
-        message = `${actor.name} reaches for a lock, but every box is already marked.`;
+        message = actor.isHuman ? 'You reach for a lock, but every box is already marked.' : `${actor.name} reaches for a lock, but every box is already marked.`;
       }
       break;
     }
@@ -869,7 +882,7 @@ function applyEffectSelection(
       copiedResolution.state.lastPowerUsed = copied;
       return {
         ...copiedResolution,
-        message: `${actor.name} echoes ${BOX_META[copied].label}. ${copiedResolution.message}`,
+        message: `${actor.isHuman ? 'You echo' : `${actor.name} echoes`} ${BOX_META[copied].label}. ${copiedResolution.message}`,
         revealedEffectType: copied,
       };
     }
@@ -883,7 +896,7 @@ function applyEffectSelection(
           target.isPeeked = false;
         }
       });
-      message = `${actor.name} triggers a grid shuffle.`;
+      message = actor.isHuman ? 'You trigger a grid shuffle.' : `${actor.name} triggers a grid shuffle.`;
       break;
     }
     case 'martyrdom': {
@@ -903,10 +916,10 @@ function applyEffectSelection(
       }
       const affectsSingleRival = blessingId !== undefined && blessingId === curseId;
       message = sacrifice.spared
-        ? `${actor.name} offers martyrdom, but the chamber refuses the death before the endgame.`
+        ? actor.isHuman ? 'You offer martyrdom, but the chamber refuses the death before the endgame.' : `${actor.name} offers martyrdom, but the chamber refuses the death before the endgame.`
         : affectsSingleRival
-          ? `${actor.name} embraces martyrdom and twists the fate of a lone rival.`
-          : `${actor.name} embraces martyrdom and twists the fate of two rivals.`;
+          ? actor.isHuman ? 'You embrace martyrdom and twist the fate of a lone rival.' : `${actor.name} embraces martyrdom and twists the fate of a lone rival.`
+          : actor.isHuman ? 'You embrace martyrdom and twist the fate of two rivals.' : `${actor.name} embraces martyrdom and twists the fate of two rivals.`;
       break;
     }
   }
@@ -1074,6 +1087,14 @@ function getPreviewEffectType(state: GameState, boxId: number): BoxType {
 
 function getRevealTransitionMessage(boxId: number, effectType: BoxType): string {
   return `Box ${boxId + 1} opens and reveals ${BOX_META[effectType].label}.`;
+}
+
+function getActorPossessive(player: GridPlayer): string {
+  return player.isHuman ? 'Your' : `${player.name}'s`;
+}
+
+function describeActorBoxChoice(player: GridPlayer, boxId: number): string {
+  return player.isHuman ? `You reach for box ${boxId + 1}.` : `${player.name} reaches for box ${boxId + 1}.`;
 }
 
 function GridOfLuckAvatar({ player }: { player: GridPlayer }) {
@@ -1313,13 +1334,14 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     const previewEffectType = getPreviewEffectType(sourceState, boxId);
     setPendingSelection(null);
     setTurnMode('animating');
-    setAnnouncement(`${actor.name} reaches for box ${boxId + 1}.`);
+    const boxChoiceMessage = describeActorBoxChoice(actor, boxId);
+    setAnnouncement(boxChoiceMessage);
     setRevealState({
       boxId,
       effectType: previewEffectType,
       actorName: actor.name,
       phase: 'selection',
-      message: `${actor.name} reaches for box ${boxId + 1}.`,
+      message: boxChoiceMessage,
       lpDeltas: [],
     });
     setScreenMode('zoomIn');
