@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -122,15 +122,17 @@ describe('Settings screen', () => {
     });
 
     const compactRosterToggle = screen.getByLabelText(/toggle compact roster/i);
-    if (!compactRosterToggle.matches(':checked')) {
+    if (!(compactRosterToggle as HTMLInputElement).checked) {
       fireEvent.click(compactRosterToggle);
     }
 
+    let compactRosterLayoutGroup: HTMLElement;
     await waitFor(() => {
-      expect(screen.getByLabelText(/compact roster layout/i)).toBeTruthy();
+      compactRosterLayoutGroup = screen.getByLabelText(/compact roster layout/i);
+      expect(compactRosterLayoutGroup).toBeTruthy();
     });
 
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    expect(within(compactRosterLayoutGroup!).getAllByRole('radio')).toHaveLength(3);
 
     fireEvent.click(screen.getByRole('radio', { name: /2 rows of 8 avatars/i }));
 
@@ -144,7 +146,7 @@ describe('Settings screen', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
     const twistsToggle = screen.getByLabelText(/toggle twists/i);
-    if (!twistsToggle.matches(':checked')) {
+    if (!(twistsToggle as HTMLInputElement).checked) {
       fireEvent.click(twistsToggle);
     }
 
@@ -154,7 +156,7 @@ describe('Settings screen', () => {
 
     expect(screen.getByText("Public's Favorite (Public Vote)")).toBeTruthy();
     const favoritePlayerToggle = screen.getByLabelText(/toggle public's favorite player vote/i);
-    if (!favoritePlayerToggle.matches(':checked')) {
+    if (!(favoritePlayerToggle as HTMLInputElement).checked) {
       fireEvent.click(favoritePlayerToggle);
     }
     expect(screen.getByText(/award amount — 25000 eyeoleans/i)).toBeTruthy();
