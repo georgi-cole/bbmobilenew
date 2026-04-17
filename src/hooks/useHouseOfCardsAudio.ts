@@ -15,10 +15,7 @@ export interface UseHouseOfCardsAudioReturn {
   playComplete: () => void;
 }
 
-/**
- * Requests House of Cards music while the minigame is active and returns
- * one-shot callbacks for gameplay events.
- */
+/** Returns one-shot audio callbacks for House of Cards gameplay events. */
 export function useHouseOfCardsAudio(_isPlaying: boolean): UseHouseOfCardsAudioReturn {
   const playFlip = useCallback(() => {
     void SoundManager.play(HOC_FLIP_KEY);

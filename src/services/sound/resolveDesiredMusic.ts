@@ -2,6 +2,13 @@ import type { RootState } from '../../store/store';
 import type { MusicTrack } from './musicTracks';
 import type { MusicScene } from '../../store/uiSlice';
 
+export interface MusicResolverState {
+  game: Pick<RootState['game'], 'phase' | 'spectatorActive'>;
+  challenge: Pick<RootState['challenge'], 'pending'>;
+  social: Pick<RootState['social'], 'panelOpen' | 'incomingInboxOpen'>;
+  ui: { musicScene: MusicScene };
+}
+
 const COMPETITION_PHASES = new Set(['loh_comp', 'loh_results', 'pos_comp', 'pos_results']);
 const NOMINATION_PHASES = new Set(['nominations', 'nomination_results']);
 const VETO_PHASES = new Set(['pos_ceremony', 'pos_ceremony_results']);
@@ -34,7 +41,7 @@ function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
   }
 }
 
-export function resolveDesiredMusic(state: RootState, hash: string): MusicTrack {
+export function resolveDesiredMusic(state: MusicResolverState, hash: string): MusicTrack {
   const sceneTrack = trackForMusicScene(state.ui.musicScene);
   if (sceneTrack !== 'none') {
     return sceneTrack;

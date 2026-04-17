@@ -1,14 +1,6 @@
 /**
- * useQuickTapRaceAudio — manages all audio for the Quick Tap Race minigame.
- *
- * Background music starts when `isPlaying` becomes true and stops (restoring
- * the previous track) when it reverts to false or the component unmounts.
- * One-shot SFX callbacks are returned for the caller to invoke at the correct
- * game moments.
- *
- * Usage:
- *   const { playTap, playBooster, playHalfTap } =
- *     useQuickTapRaceAudio(gamePhase === 'playing');
+ * useQuickTapRaceAudio — returns one-shot SFX callbacks for the Quick Tap Race
+ * minigame. Background music is resolved centrally at the app root.
  */
 
 import { useCallback } from 'react';
@@ -27,11 +19,6 @@ export interface UseQuickTapRaceAudioReturn {
   playHalfTap: () => void;
 }
 
-/**
- * @param isPlaying - true while the Quick Tap Race playing phase is active.
- *   Background music is requested while true and released when it reverts to
- *   false or the component unmounts.
- */
 export function useQuickTapRaceAudio(_isPlaying: boolean): UseQuickTapRaceAudioReturn {
   const playTap = useCallback(() => {
     void SoundManager.play(QTR_TAP_KEY);

@@ -1,10 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useAppSelector } from '../../store/hooks';
+import { useEffect, useMemo, useState } from 'react';
+import { shallowEqual, useSelector } from 'react-redux';
+import type { RootState } from '../../store/store';
 import { SoundManager } from './SoundManager';
 import { resolveDesiredMusic } from './resolveDesiredMusic';
 
 export default function AudioStateSync() {
-  const state = useAppSelector((root) => root);
+  const musicState = useSelector(
+    (root: RootState) => ({
+      gamePhase: root.game.phase,
+      spectatorActive: root.game.spectatorActive,
+      pendingChallenge: root.challenge.pending,
+      socialPanelOpen: root.social.panelOpen,
+      incomingInboxOpen: root.social.incomingInboxOpen,
+      musicScene: root.ui.musicScene,
+    }),
+    shallowEqual,
+  );
   const [hash, setHash] = useState(() => window.location.hash);
 
   useEffect(() => {
@@ -13,10 +24,33 @@ export default function AudioStateSync() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
+  const desiredMusic = useMemo(
+    () =>
+      resolveDesiredMusic(
+        {
+          game: {
+            phase: musicState.gamePhase,
+            spectatorActive: musicState.spectatorActive,
+          },
+          challenge: {
+            pending: musicState.pendingChallenge,
+          },
+          social: {
+            panelOpen: musicState.socialPanelOpen,
+            incomingInboxOpen: musicState.incomingInboxOpen,
+          },
+          ui: {
+            musicScene: musicState.musicScene,
+          },
+        },
+        hash,
+      ),
+    [hash, musicState],
+  );
+
   useEffect(() => {
-    const desiredMusic = resolveDesiredMusic(state, hash);
     void SoundManager.setDesiredMusic(desiredMusic, `resolver:${hash || '#/'}`);
-  }, [hash, state]);
+  }, [desiredMusic, hash]);
 
   return null;
 }

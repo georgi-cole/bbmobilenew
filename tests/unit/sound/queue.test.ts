@@ -12,7 +12,7 @@ function resetSoundManager() {
     _desiredMusicTrack: string;
     _playingMusicTrack: string;
     _desiredMusicReason: string | null;
-    _musicSyncToken: number;
+    _musicPlaybackToken: number;
     _musicMuted: boolean;
     _musicVolume: number;
     _sfxPools: Map<string, HTMLAudioElement[]>;
@@ -35,7 +35,7 @@ function resetSoundManager() {
   sm._desiredMusicTrack = 'none';
   sm._playingMusicTrack = 'none';
   sm._desiredMusicReason = null;
-  sm._musicSyncToken = 0;
+  sm._musicPlaybackToken = 0;
   sm._musicMuted = false;
   sm._musicVolume = 1;
   sm._sfxPools = new Map();
@@ -163,6 +163,22 @@ describe('SoundManager legacy wrappers and SFX queue', () => {
     await Promise.resolve();
 
     expect(warnSpy).toHaveBeenCalledWith('[audio] legacy requestBgm("music:hoh_comp_general", "phase")');
+    expect((SoundManager as unknown as { _desiredMusicTrack: string })._desiredMusicTrack).toBe('competition');
+  });
+
+  it('requestBgm preserves the remote main music mapping', async () => {
+    SoundManager.registerDynamic({
+      key: 'music:remote_main',
+      category: 'music',
+      src: 'https://example.com/main.mp3',
+      preload: false,
+      volume: 0.5,
+      loop: true,
+    });
+
+    SoundManager.requestBgm('music:remote_main', 'phase');
+    await Promise.resolve();
+
     expect((SoundManager as unknown as { _desiredMusicTrack: string })._desiredMusicTrack).toBe('competition');
   });
 

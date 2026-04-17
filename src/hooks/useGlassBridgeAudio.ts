@@ -1,13 +1,6 @@
 /**
- * useGlassBridgeAudio — manages all audio for the Glass Bridge minigame.
- *
- * Background music starts when `shouldPlayMusic` becomes true and stops when it
- * becomes false or the component unmounts.  One-shot SFX callbacks are
- * returned for the caller to invoke at the correct game moments.
- *
- * Usage:
- *   const { playSafeStep, playDeath, playWinner, playNewTurn } =
- *     useGlassBridgeAudio(gb.phase !== 'idle');
+ * useGlassBridgeAudio — returns one-shot SFX callbacks for the Glass Bridge
+ * minigame. Background music is resolved centrally at the app root.
  */
 
 import { useCallback } from 'react';
@@ -25,11 +18,6 @@ export interface UseGlassBridgeAudioReturn {
   playNewTurn: () => void;
 }
 
-/**
- * @param shouldPlayMusic - true while the Glass Bridge minigame is active.
- *   Background music is requested while true and released when it reverts to
- *   false or the component unmounts.
- */
 export function useGlassBridgeAudio(_shouldPlayMusic: boolean): UseGlassBridgeAudioReturn {
   const playSafeStep = useCallback(() => {
     void SoundManager.play(GB_SAFE_STEP_KEY);

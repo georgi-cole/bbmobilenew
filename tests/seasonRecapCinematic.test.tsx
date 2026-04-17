@@ -190,15 +190,29 @@ describe('SeasonRecapCinematic', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(7000);
+      vi.advanceTimersByTime(4500);
     });
 
-    expect(screen.queryByRole('button', { name: 'Skip recap' })).toBeTruthy();
+    expect(screen.getByText(/competitions won/i)).toBeTruthy();
+    expect(screen.getByText(/safeties won/i)).toBeTruthy();
+    expect(screen.getByText(/nominations survived/i)).toBeTruthy();
+    expect(screen.queryByText(/public meter/i)).toBeNull();
+    expect(screen.queryByText(/front page/i)).toBeNull();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
   it('exposes reusable playful headline generation data for the finale newspaper', () => {
     expect(SAMPLE_FINALE_NEWSPAPER_PAGES.length).toBeGreaterThan(0);
-    expect(generatePlayfulHeadline).toBeTypeOf('function');
+    const headlineDraft = generatePlayfulHeadline({
+      id: 'evt-1',
+      week: 8,
+      type: 'chaos',
+      subjectName: 'Avery',
+      detail: 'Avery turned the house upside down overnight.',
+    });
+    expect(headlineDraft.headline).toBeTruthy();
+    expect(headlineDraft.subheadline).toBeTruthy();
+    expect(headlineDraft.category).toBeTruthy();
+    expect(headlineDraft.stamp).toBeTruthy();
   });
 });
