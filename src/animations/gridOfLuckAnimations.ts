@@ -23,15 +23,16 @@ export const boxVariants: Variants = {
     },
   },
   hover: {
-    scale: 1.035,
-    y: -4,
-    boxShadow: '0 0 30px rgba(101, 219, 255, 0.28)',
-    transition: { type: 'spring', stiffness: 240, damping: 18, mass: 0.7 },
+    scale: 1.04,
+    y: -6,
+    boxShadow: '0 0 32px rgba(200, 160, 255, 0.35), 0 14px 36px rgba(0,0,0,0.55)',
+    transition: { type: 'spring', stiffness: 260, damping: 16, mass: 0.65 },
   },
   press: {
-    scale: 0.968,
-    y: 1,
-    transition: { type: 'spring', stiffness: 420, damping: 22, mass: 0.55 },
+    scale: 0.96,
+    y: 2,
+    boxShadow: '0 0 8px rgba(185, 140, 255, 0.18)',
+    transition: { type: 'spring', stiffness: 440, damping: 24, mass: 0.5 },
   },
   locked: {
     opacity: 0.34,

@@ -10,6 +10,7 @@ import {
 } from '../../animations/gridOfLuckAnimations';
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import type { GenericMinigameProps } from '../../minigames/reactComponents';
+import { getNextEligiblePlayer } from './gridOfLuckLogic';
 import { mulberry32 } from '../../store/rng';
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
 import './GridOfLuck.css';
@@ -100,6 +101,9 @@ interface FloatingLpBurst {
 interface RevealState {
   boxId: number;
   effectType: BoxType;
+  actorName: string;
+  message: string;
+  lpDeltas: { playerName: string; delta: number }[];
 }
 
 interface GameState {
@@ -170,12 +174,12 @@ const BOX_META: Record<BoxType, { label: string; symbol: string; category: BoxCa
   forceOpen: { label: 'Force Open', symbol: '⫷', category: 'aggressive', description: 'Compel another player to open immediately.' },
   swapLp: { label: 'Swap LP', symbol: '⇆', category: 'aggressive', description: 'Exchange your fate with another.' },
   removeLeader200: { label: 'Drain Leader', symbol: '♛', category: 'aggressive', description: 'Remove 200 LP from the current leader.' },
-  execution: { label: 'Execution', symbol: '⚚', category: 'aggressive', description: 'Instant elimination — but never the top two LP players.' },
+  execution: { label: 'Execution', symbol: '⚚', category: 'aggressive', description: 'Instantly eliminate any eligible rival.' },
   swapBoxes: { label: 'Swap Boxes', symbol: '⌘', category: 'strategic', description: 'Rearrange two unopened relics.' },
   lockBox: { label: 'Lock Box', symbol: '⛓', category: 'strategic', description: 'Seal one box from selection.' },
   copyLastPower: { label: 'Copy Last Power', symbol: '🜁', category: 'strategic', description: 'Echo the last power used.' },
   gridShuffle: { label: 'Grid Shuffle', symbol: '☄', category: 'chaos', description: 'Unopened powers spin through the chamber.' },
-  martyrdom: { label: 'Martyrdom', symbol: '✠', category: 'chaos', description: 'Die, bless one, and curse another.' },
+  martyrdom: { label: 'Martyrdom', symbol: '✠', category: 'chaos', description: 'Fall, bless one, and curse another — or the same rival in a duel.' },
 };
 
 const CATEGORY_COLORS: Record<BoxCategory, string> = {
@@ -342,24 +346,10 @@ function getOpenableBoxes(boxes: GridBox[]): GridBox[] {
   return boxes.filter((box) => !box.isOpened && !box.isLocked);
 }
 
-function getTopLpIds(players: GridPlayer[]): string[] {
-  return [...getAlivePlayers(players)]
-    .sort((left, right) => {
-      if (right.lp !== left.lp) return right.lp - left.lp;
-      return right.support - left.support;
-    })
-    .slice(0, 2)
-    .map((player) => player.id);
-}
-
 function getValidTargets(players: GridPlayer[], actorId: string, effectType: BoxType): GridPlayer[] {
-  const actor = getPlayer(players, actorId);
   const aliveOthers = players.filter((player) => !player.isEliminated && player.id !== actorId && player.immunityRounds <= 0);
-  if (effectType === 'execution') {
-    const blockedIds = new Set(getTopLpIds(players));
-    return aliveOthers.filter((player) => !blockedIds.has(player.id));
-  }
   if (effectType === 'removeLeader200') {
+    const actor = getPlayer(players, actorId);
     const leader = [...getAlivePlayers(players)].sort((left, right) => {
       if (right.lp !== left.lp) return right.lp - left.lp;
       return right.support - left.support;
@@ -901,9 +891,12 @@ function applyEffectSelection(
         nextState.players = curse.players;
         floatingBursts = addBurst(floatingBursts, curseId, sourceBoxId, -curse.applied);
       }
+      const affectsSingleRival = blessingId !== undefined && blessingId === curseId;
       message = sacrifice.spared
         ? `${actor.name} offers martyrdom, but the chamber refuses the death before the endgame.`
-        : `${actor.name} embraces martyrdom and twists the fate of two rivals.`;
+        : affectsSingleRival
+          ? `${actor.name} embraces martyrdom and twists the fate of a lone rival.`
+          : `${actor.name} embraces martyrdom and twists the fate of two rivals.`;
       break;
     }
   }
@@ -958,7 +951,7 @@ function resolveBoxSelection(
     || effectType === 'martyrdom';
   if (requiresTarget && !fromForcedOpen) {
     const validTargets = getValidTargets(nextState.players, actorId, effectType);
-    if (effectType === 'martyrdom' && validTargets.length >= 1 && getPlayer(nextState.players, actorId).isHuman) {
+    if (effectType === 'martyrdom' && validTargets.length >= 2 && getPlayer(nextState.players, actorId).isHuman) {
       return {
         state: nextState,
         pendingSelection: {
@@ -969,6 +962,22 @@ function resolveBoxSelection(
           step: 'martyr-blessing',
         },
         message: `${getPlayer(nextState.players, actorId).name} must choose who is blessed by martyrdom.`,
+        floatingBursts: [],
+        screenMode: 'zoomIn',
+        revealedEffectType: effectType,
+      };
+    }
+    if (effectType === 'martyrdom' && validTargets.length === 1 && getPlayer(nextState.players, actorId).isHuman) {
+      return {
+        state: nextState,
+        pendingSelection: {
+          actorId,
+          effectType,
+          sourceBoxId: boxId,
+          chosenTargets: [],
+          step: 'target',
+        },
+        message: `${getPlayer(nextState.players, actorId).name} must choose the rival touched by martyrdom.`,
         floatingBursts: [],
         screenMode: 'zoomIn',
         revealedEffectType: effectType,
@@ -1066,6 +1075,10 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     [state.players],
   );
 
+  const nextPlayer = useMemo(() => {
+    return getNextEligiblePlayer(state);
+  }, [state]);
+
   const validTargets = useMemo(() => {
     if (!pendingSelection) return [];
     if (pendingSelection.step === 'martyr-curse') {
@@ -1089,7 +1102,16 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     setAnnouncement(outcome.message);
     setPendingSelection(outcome.pendingSelection ?? null);
     if (outcome.revealedEffectType && boxId !== null) {
-      setRevealState({ boxId, effectType: outcome.revealedEffectType });
+      setRevealState({
+        boxId,
+        effectType: outcome.revealedEffectType,
+        actorName: activePlayer.name,
+        message: outcome.message,
+        lpDeltas: outcome.floatingBursts.map((burst) => ({
+          playerName: outcome.state.players.find((player) => player.id === burst.playerId)?.name ?? '',
+          delta: burst.value,
+        })),
+      });
     }
     setFloatingBursts((current) => [...current, ...outcome.floatingBursts]);
     if (outcome.screenMode) {
@@ -1111,7 +1133,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
       return;
     }
     setTurnMode('awaiting-continue');
-  }, [isSpectatorMode]);
+  }, [activePlayer.name, isSpectatorMode]);
 
   const handleBoxSelection = useCallback((boxId: number) => {
     if (turnMode !== 'box' || state.gamePhase === 'finished') return;
@@ -1151,7 +1173,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
       const box = chooseAiBox(state, activePlayer.id, rngRef.current);
       const outcome = resolveBoxSelection(state, activePlayer.id, box.id, rngRef.current);
       resolveOutcome(outcome, box.id);
-    }, state.gamePhase === 'final' ? 900 : HUMAN_PICK_DELAY_MS);
+    }, state.gamePhase === 'final' ? 700 : state.players.length >= 5 ? 850 : HUMAN_PICK_DELAY_MS);
     return () => clearTimeout(timer);
   }, [activePlayer.id, activePlayer.isHuman, resolveOutcome, state, turnMode]);
 
@@ -1230,9 +1252,33 @@ export default function GridOfLuck(props: GenericMinigameProps) {
       <motion.div className="grid-of-luck__camera" animate={screenMode === 'zoomIn' ? 'zoomIn' : 'idle'} variants={cameraEffects}>
         <motion.header className="grid-of-luck__header" layout>
           <motion.div className="grid-of-luck__eyebrow">Grid of Luck</motion.div>
+          <motion.div className="grid-of-luck__turn-meta">
+            <span className="grid-of-luck__boxes-remaining">
+              {state.gridBoxes.filter((box) => !box.isOpened).length} boxes left
+            </span>
+            {state.gamePhase === 'final' && <span className="grid-of-luck__phase-badge">⚡ Final Phase</span>}
+          </motion.div>
           <motion.h2 className="grid-of-luck__title">
             {state.gamePhase === 'finished' ? 'Ritual Complete' : state.gamePhase === 'final' ? 'Final Phase' : 'Mystic Chamber'}
           </motion.h2>
+          {state.gamePhase !== 'finished' && (
+            <motion.div
+              className={`grid-of-luck__turn-banner${activePlayer.isHuman && turnMode === 'box' ? ' is-your-turn' : ''}`}
+              key={`turn-${activePlayer.id}-${turnMode}`}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {turnMode === 'box' && activePlayer.isHuman
+                ? '🎯 Your turn — pick a box!'
+                : turnMode === 'box'
+                  ? `⏳ ${activePlayer.name} is choosing…`
+                  : turnMode === 'target' || turnMode === 'martyr-blessing' || turnMode === 'martyr-curse'
+                    ? '👆 Choose a target'
+                    : turnMode === 'awaiting-continue'
+                      ? `✅ Turn resolved`
+                      : null}
+            </motion.div>
+          )}
           <motion.p className="grid-of-luck__announcement">{announcement}</motion.p>
         </motion.header>
 
@@ -1274,7 +1320,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                   <motion.div className="grid-of-luck__lp-fill" style={{ width: `${lpPercent}%` }} />
                 </motion.div>
                 <motion.div className="grid-of-luck__status-list">
-                  {player.statusEffects.length > 0 ? player.statusEffects.join(' • ') : player.isEliminated ? 'Cracked in place' : 'No active effects'}
+                  {player.statusEffects.length > 0 ? player.statusEffects.join(' • ') : player.isEliminated ? 'Out of the game' : 'No active effects'}
                 </motion.div>
               </motion.button>
             );
@@ -1287,13 +1333,13 @@ export default function GridOfLuck(props: GenericMinigameProps) {
               {state.gridBoxes.map((box) => {
                 const opened = box.isOpened;
                 const effectMeta = BOX_META[box.type];
-                const glow = getBoxTone(box.type);
+                const glow = opened ? getBoxTone(box.type) : 'rgba(185, 150, 255, 0.75)';
                 const isCurrentReveal = revealState?.boxId === box.id;
                 const isClickable = turnMode === 'box' && activePlayer.isHuman && !opened && !box.isLocked && state.gamePhase !== 'finished';
                 return (
                   <motion.button
                     key={box.id}
-                    className={`grid-of-luck__box${opened ? ' is-opened' : ''}${box.isLocked ? ' is-locked' : ''}${isClickable ? ' is-clickable' : ''}`}
+                    className={`grid-of-luck__box${opened ? ' is-opened' : ''}${box.isPeeked ? ' is-peeked' : ''}${box.isLocked ? ' is-locked' : ''}${isClickable ? ' is-clickable' : ''}`}
                     type="button"
                     data-testid="grid-of-luck-box"
                     disabled={!isClickable}
@@ -1313,7 +1359,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                         animate={(opened || isCurrentReveal ? SYMBOL_REVEAL_VARIANTS : undefined) as VariantLabels | undefined}
                         variants={boxOpenSequence}
                       >
-                        {opened || box.isPeeked ? effectMeta.symbol : '◌'}
+                        {opened || box.isPeeked ? effectMeta.symbol : '?'}
                       </motion.div>
                       <motion.div className="grid-of-luck__box-label">
                         {opened ? effectMeta.label : box.isLocked ? 'Locked' : box.isPeeked ? effectMeta.label : 'Sealed'}
@@ -1330,12 +1376,46 @@ export default function GridOfLuck(props: GenericMinigameProps) {
               <span className="grid-of-luck__sidebar-label">Current turn</span>
               <strong>{activePlayer.name}</strong>
               <span>{activePlayer.lp} LP</span>
+              {activePlayer.statusEffects.length > 0 && (
+                <span className="grid-of-luck__active-status">{activePlayer.statusEffects.join(' • ')}</span>
+              )}
             </motion.div>
             {revealState && (
-              <motion.div className="grid-of-luck__reveal-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+              <motion.div
+                className="grid-of-luck__reveal-card"
+                style={{ ['--reveal-color' as string]: CATEGORY_COLORS[BOX_META[revealState.effectType].category] }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
                 <span className="grid-of-luck__sidebar-label">Last reveal</span>
-                <strong>{BOX_META[revealState.effectType].label}</strong>
-                <span>{BOX_META[revealState.effectType].description}</span>
+                <div className="grid-of-luck__reveal-header">
+                  <span className="grid-of-luck__reveal-symbol">{BOX_META[revealState.effectType].symbol}</span>
+                  <div>
+                    <strong className="grid-of-luck__reveal-label">{BOX_META[revealState.effectType].label}</strong>
+                    <span className="grid-of-luck__reveal-category">{BOX_META[revealState.effectType].category}</span>
+                  </div>
+                </div>
+                <p className="grid-of-luck__reveal-desc">{BOX_META[revealState.effectType].description}</p>
+                <p className="grid-of-luck__reveal-message">{revealState.message}</p>
+                {revealState.lpDeltas.length > 0 && (
+                  <div className="grid-of-luck__reveal-deltas">
+                    {revealState.lpDeltas.map((lpDelta, index) => (
+                      <span
+                        key={`${lpDelta.playerName}-${index}`}
+                        className={`grid-of-luck__reveal-delta${lpDelta.delta > 0 ? ' is-gain' : ' is-loss'}`}
+                      >
+                        {lpDelta.playerName}: {lpDelta.delta > 0 ? '+' : ''}{lpDelta.delta} LP
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+            {nextPlayer && turnMode === 'awaiting-continue' && (
+              <motion.div className="grid-of-luck__next-card" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <span className="grid-of-luck__sidebar-label">Up next</span>
+                <strong>{nextPlayer.name}</strong>
+                <span>{nextPlayer.lp} LP</span>
               </motion.div>
             )}
             <motion.div className="grid-of-luck__log-card">
