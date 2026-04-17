@@ -138,7 +138,7 @@ function getStepBadge(step: number, currentStep: number) {
   return null;
 }
 
-function getRoundTurnStatus(players: ChainOfGreedPlayerState[], turnOrder: string[]) {
+function getPlayerTurnMessage(players: ChainOfGreedPlayerState[], turnOrder: string[]) {
   const firstPlayer = getPlayer(players, turnOrder[0] ?? null);
   return `${firstPlayer?.name ?? 'Player'} to play.`;
 }
@@ -160,7 +160,7 @@ function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
     turnOrder,
     turnIndex: 0,
     turnsRemaining: getStandardRoundTurnCap(activePlayers.length),
-    statusText: 'Round 1. Build the chain. Bank before it breaks.',
+    statusText: `Round 1. Build the chain. Bank before it breaks.`,
     helperText: TURN_HELPERS[0],
     turnHistory: [],
     showHelp: false,
@@ -218,13 +218,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   function setPhase(phase: Phase, partial: Partial<ChainOfGreedState> = {}) {
     setState((previous) => ({ ...previous, phase, ...partial }));
   }
-
-  const beginStandardRound = useCallback(() => {
-    setPhase('playerTurn', {
-      statusText: getRoundTurnStatus(state.players, state.turnOrder),
-      helperText: nextHelper(TURN_HELPERS),
-    });
-  }, [state.players, state.turnOrder]);
 
   function startRound(roundNumber: number, players = state.players) {
     const nextPlayers = players.map((player) => player.isEliminated ? player : applyRoundReset(player));
@@ -564,10 +557,13 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   useEffect(() => {
     if (state.phase !== 'roundIntro') return;
     const timer = window.setTimeout(() => {
-      beginStandardRound();
+      setPhase('playerTurn', {
+        statusText: getPlayerTurnMessage(state.players, state.turnOrder),
+        helperText: nextHelper(TURN_HELPERS),
+      });
     }, 950);
     return () => window.clearTimeout(timer);
-  }, [beginStandardRound, state.phase]);
+  }, [state.phase, state.players, state.turnOrder]);
 
   useEffect(() => {
     if (state.phase !== 'semifinalTurn' || !semifinalPlayer || semifinalPlayer.isHuman) return;
