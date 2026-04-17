@@ -240,6 +240,8 @@
 }
 
 .chain-of-greed__phase-chip--info {
+  display: inline-flex;
+  align-items: center;
   gap: 0.32rem;
   cursor: pointer;
 }
@@ -247,6 +249,12 @@
 .chain-of-greed__phase-chip-icon {
   font-size: 0.82rem;
   line-height: 1;
+}
+
+.chain-of-greed__phase-chip--info:focus-visible {
+  outline: 2px solid rgba(161, 206, 255, 0.9);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px rgba(161, 206, 255, 0.2) inset;
 }
 
 .chain-of-greed__commentary {
