@@ -605,7 +605,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const currentChainStep = activeStep || 0;
   const nextReward = CHAIN_LADDER[Math.min(currentChainStep, CHAIN_LADDER.length - 1)] ?? CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const currentPotLabel = activePot > 0 ? activePot.toLocaleString() : '0';
-  const referenceNumberStep = currentChainStep === 0 ? 1 : currentChainStep;
+  const referenceRungIndex = currentChainStep === 0 ? 1 : currentChainStep;
   const chainStatusText = {
     step: `Step ${currentChainStep}/${CHAIN_LADDER.length}`,
     pot: `Pot ${currentPotLabel}`,
@@ -621,7 +621,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       isActive: currentChainStep === step,
       isCleared: currentChainStep > step,
       isNext: currentChainStep + 1 === step,
-      carriesReference: step === referenceNumberStep,
+      carriesReference: step === referenceRungIndex,
     };
   });
   const lastTurn = state.turnHistory[0] ?? null;

@@ -129,7 +129,6 @@
   gap: 0.55rem;
   padding: 0.9rem 0.85rem 0.95rem;
   border-radius: 1.7rem;
-  border-color: rgba(105, 160, 255, 0.12);
   background:
     radial-gradient(circle at 50% 42%, rgba(82, 169, 255, 0.08), transparent 42%),
     linear-gradient(180deg, rgba(10, 19, 35, 0.74), rgba(5, 10, 20, 0.78));
