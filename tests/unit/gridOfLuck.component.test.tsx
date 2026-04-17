@@ -25,6 +25,9 @@ describe('GridOfLuck component', () => {
     expect(screen.queryByText('Grid of Luck')).toBeNull();
     expect(screen.getByText('Mystic Chamber')).toBeTruthy();
     expect(screen.getByTestId('grid-of-luck-event-card')).toHaveTextContent(/Current turn|Your turn/i);
+    expect(screen.queryByText(/^Active$/i)).toBeNull();
+    expect(screen.queryByText(/^Alive$/i)).toBeNull();
+    expect(screen.queryByText(/No active effects/i)).toBeNull();
 
     fireEvent.click(boxes[0]);
 

@@ -190,6 +190,12 @@ const CATEGORY_COLORS: Record<BoxCategory, string> = {
   chaos: '#f2f5ff',
 };
 
+const STATUS_ICON_GROUPS = {
+  buff: '🔥',
+  debuff: '❄️',
+  special: '⚡',
+} as const;
+
 const ELIMINATION_TYPES = new Set<BoxType>(['execution', 'martyrdom']);
 const HUMAN_PICK_DELAY_MS = 1200;
 const MAX_CHAIN_DEPTH = 4;
@@ -1009,6 +1015,41 @@ function getBoxTone(effectType: BoxType): string {
   return CATEGORY_COLORS[BOX_META[effectType].category];
 }
 
+function getPlayerStatusIcons(player: GridPlayer): string[] {
+  if (player.isEliminated || player.statusEffects.length === 0) return [];
+
+  const iconSet = new Set<string>();
+
+  player.statusEffects.forEach((effect) => {
+    const normalized = effect.toLowerCase();
+    if (
+      normalized.includes('shield') ||
+      normalized.includes('immune') ||
+      normalized.includes('double') ||
+      normalized.includes('bonus') ||
+      normalized.includes('bless')
+    ) {
+      iconSet.add(STATUS_ICON_GROUPS.buff);
+      return;
+    }
+
+    if (
+      normalized.includes('trap') ||
+      normalized.includes('lose') ||
+      normalized.includes('curse') ||
+      normalized.includes('turn lost') ||
+      normalized.includes('lock')
+    ) {
+      iconSet.add(STATUS_ICON_GROUPS.debuff);
+      return;
+    }
+
+    iconSet.add(STATUS_ICON_GROUPS.special);
+  });
+
+  return [...iconSet];
+}
+
 function getBoxState(box: GridBox): keyof typeof boxVariants {
   if (box.isOpened) return 'opened';
   if (box.isLocked) return 'locked';
@@ -1335,10 +1376,11 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         </motion.header>
 
         <motion.section className="grid-of-luck__players" layout>
-          {ranking.map((player, index) => {
+          {ranking.map((player) => {
             const isActive = activePlayer.id === player.id && turnMode !== 'finished';
             const isTargetable = validTargets.some((entry) => entry.id === player.id);
             const lpPercent = Math.max(0, Math.min(100, (player.lp / 900) * 100));
+            const statusIcons = getPlayerStatusIcons(player);
             const variant = player.isEliminated
               ? 'eliminatedPlayer'
               : isTargetable
@@ -1359,20 +1401,31 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                 whileTap={isTargetable ? { scale: 0.985 } : undefined}
               >
                 <motion.div className="grid-of-luck__player-spotlight" aria-hidden="true" />
-                <motion.div className="grid-of-luck__player-rank">#{index + 1}</motion.div>
                 <motion.div className="grid-of-luck__avatar-shell">
                   <GridOfLuckAvatar player={player} />
                 </motion.div>
-                <motion.div className="grid-of-luck__player-name">{player.name}</motion.div>
-                <motion.div className="grid-of-luck__lp-row">
-                  <span>{player.lp} LP</span>
-                  <span>{player.isEliminated ? 'Eliminated' : isActive ? 'Active' : 'Alive'}</span>
+                <motion.div className="grid-of-luck__player-chip-copy">
+                  <motion.div className="grid-of-luck__player-name">{player.name}</motion.div>
+                  <motion.div className="grid-of-luck__player-lp">{player.lp} LP</motion.div>
                 </motion.div>
-                <motion.div className="grid-of-luck__lp-bar">
+                <motion.div
+                  className="grid-of-luck__player-effects"
+                  aria-label={statusIcons.length > 0 ? player.statusEffects.join(', ') : player.isEliminated ? 'Eliminated' : undefined}
+                >
+                  {player.isEliminated ? (
+                    <span className="grid-of-luck__player-effect is-eliminated" aria-hidden="true">
+                      ☠️
+                    </span>
+                  ) : (
+                    statusIcons.map((icon, effectIndex) => (
+                      <span key={`${player.id}-${icon}-${effectIndex}`} className="grid-of-luck__player-effect" aria-hidden="true">
+                        {icon}
+                      </span>
+                    ))
+                  )}
+                </motion.div>
+                <motion.div className="grid-of-luck__lp-bar" aria-hidden="true">
                   <motion.div className="grid-of-luck__lp-fill" style={{ width: `${lpPercent}%` }} />
-                </motion.div>
-                <motion.div className="grid-of-luck__status-list">
-                  {player.statusEffects.length > 0 ? player.statusEffects.join(' • ') : player.isEliminated ? 'Out of the game' : 'No active effects'}
                 </motion.div>
               </motion.button>
             );
