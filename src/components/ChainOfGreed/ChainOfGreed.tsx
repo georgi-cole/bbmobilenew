@@ -605,7 +605,12 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const currentChainStep = activeStep || 0;
   const nextReward = CHAIN_LADDER[Math.min(currentChainStep, CHAIN_LADDER.length - 1)] ?? CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const currentPotLabel = activePot > 0 ? activePot.toLocaleString() : '0';
-  const chainStatusLabel = `Step ${currentChainStep}/${CHAIN_LADDER.length} • Pot ${currentPotLabel} • Next ${nextReward.toLocaleString()}`;
+  const chainStatusText = {
+    step: `Step ${currentChainStep}/${CHAIN_LADDER.length}`,
+    pot: `Pot ${currentPotLabel}`,
+    next: `Next ${nextReward.toLocaleString()}`,
+  };
+  const chainStatusAriaLabel = `Step ${currentChainStep} of ${CHAIN_LADDER.length}, pot ${currentPotLabel}, next reward ${nextReward.toLocaleString()}`;
   const ladderSteps = [...CHAIN_LADDER].reverse().map((value, index) => {
     const step = CHAIN_LADDER.length - index;
     return {
@@ -784,9 +789,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 </AnimatePresence>
                 <div className="chain-of-greed__hero-status">
                   <div className="chain-of-greed__inline-status" data-testid="chain-inline-status">
-                    <span>Step {currentChainStep}/{CHAIN_LADDER.length}</span>
-                    <span>Pot {currentPotLabel}</span>
-                    <span>Next {nextReward.toLocaleString()}</span>
+                    <span aria-label={`Step ${currentChainStep} of ${CHAIN_LADDER.length}`}>{chainStatusText.step}</span>
+                    <span aria-label={`Pot ${currentPotLabel}`}>{chainStatusText.pot}</span>
+                    <span aria-label={`Next reward ${nextReward.toLocaleString()}`}>{chainStatusText.next}</span>
                   </div>
                   <p className="chain-of-greed__helper-line">{state.helperText}</p>
                   <p className="chain-of-greed__prompt">{heroPrompt}</p>
@@ -823,8 +828,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <span className="chain-of-greed__ladder-tap">View full ladder</span>
               </button>
             </div>
-            <div className="chain-of-greed__stage-footer" aria-label={chainStatusLabel}>
-              <span>{chainStatusLabel}</span>
+            <div className="chain-of-greed__stage-footer" aria-label={chainStatusAriaLabel}>
+              <span>{chainStatusText.step} • {chainStatusText.pot} • {chainStatusText.next}</span>
             </div>
           </motion.section>
 

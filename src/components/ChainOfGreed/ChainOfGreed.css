@@ -1,4 +1,5 @@
 .chain-of-greed {
+  --chain-status-separator: '•';
   --rail-card-min-width: 165px;
   position: relative;
   min-height: 100dvh;
@@ -301,7 +302,7 @@
 }
 
 .chain-of-greed__inline-status span:not(:last-child)::after {
-  content: '•';
+  content: var(--chain-status-separator);
   margin-left: 0.38rem;
   color: rgba(123, 209, 255, 0.7);
 }
