@@ -86,6 +86,9 @@ export default function HomeHub() {
     (state) => state.game.players.find((player) => player.isUser) ?? null,
   );
   const seasonArchives = useAppSelector((state) => state.game.seasonArchives ?? []);
+  // `game.week` is the legacy state field name, but in the current game flow it
+  // represents the current in-game day count.
+  const dayCount = week;
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
@@ -95,10 +98,10 @@ export default function HomeHub() {
     () => buildAchievementSummary({
       userPlayer: introHubPlayer,
       seasonArchives,
-      day: week,
+      day: dayCount,
       phase,
     }),
-    [introHubPlayer, phase, seasonArchives, week],
+    [dayCount, introHubPlayer, phase, seasonArchives],
   );
   // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = remoteBgUrl ?? bgUrl;
@@ -125,14 +128,14 @@ export default function HomeHub() {
     // the specific season fields they depend on in sync while HomeHub is mounted.
     Object.assign(gameWindow.game, {
       season,
-      day: week,
+      day: dayCount,
       week,
       phase,
       players: introHubPlayer ? [introHubPlayer] : [],
       seasonArchives,
       achievementSummary,
     });
-  }, [achievementSummary, season, week, phase, introHubPlayer, seasonArchives]);
+  }, [achievementSummary, dayCount, season, week, phase, introHubPlayer, seasonArchives]);
 
   // Play the intro hub ambient music while this screen is mounted.
   // The hook only autoplays if persistent consent is stored; otherwise the
