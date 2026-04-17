@@ -23,10 +23,10 @@ function writeStorage(key: string, value: string | null): void {
   }
 }
 
-export function usePersistedGameScreenKey(scope: string, seed: number): [string, (value: string) => void] {
+export function usePersistedGameScreenKey(scope: string, gameSessionKey: string | number): [string, (value: string) => void] {
   const storageKey = useMemo(
-    () => `${GAME_SCREEN_UI_KEY_PREFIX}${scope}:${seed}`,
-    [scope, seed],
+    () => `${GAME_SCREEN_UI_KEY_PREFIX}${scope}:${String(gameSessionKey)}`,
+    [scope, gameSessionKey],
   )
   const [state, setState] = useState(() => ({
     storageKey,
