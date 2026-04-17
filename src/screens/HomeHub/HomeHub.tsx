@@ -18,7 +18,6 @@ import {
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import useLoadIntroHub from '../../hooks/useLoadIntroHub';
-import useIntroHubMusic from '../../hooks/useIntroHubMusic';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
@@ -137,11 +136,6 @@ export default function HomeHub() {
     });
   }, [achievementSummary, dayCount, season, week, phase, introHubPlayer, seasonArchives]);
 
-  // Play the intro hub ambient music while this screen is mounted.
-  // The hook only autoplays if persistent consent is stored; otherwise the
-  // SoundConsentPopup below provides the required user gesture.
-  useIntroHubMusic();
-
   // Preload background as soon as its URL resolves, so it is ready before
   // the splash dismisses and buttons become visible.
   useEffect(() => {
@@ -162,12 +156,9 @@ export default function HomeHub() {
 
   const handleSoundConsentEnable = () => {
     // MUST remain synchronous so that iOS/Safari recognises the gesture context.
-    // HTMLAudio priming (inside unlockAndPlayMusicOnly) calls play() synchronously —
+    // HTMLAudio priming calls play() synchronously —
     // awaiting before this call would break that requirement.
-
-    // Keep the existing consent hook path intact even though SoundManager audio
-    // handling is currently disabled.
-    SoundManager.unlockFromGesture({ musicOnly: true });
+    SoundManager.unlockFromGesture();
 
     setSoundConsentHidden(true);
 
@@ -196,14 +187,8 @@ export default function HomeHub() {
   };
 
   const handlePlay = () => {
-    // Keep the existing play-gesture hook intact even though runtime audio is disabled.
     SoundManager.unlockFromGesture();
-    // Do NOT start music:intro_hub_loop here — we are about to navigate away.
-    // Starting it here would cause the track to be queued or briefly played and
-    // then stopped by useIntroHubMusic's cleanup on unmount, which can race with
-    // game-phase music and cause overlap (e.g. intro hub loop restarting during
-    // pos_ceremony).  The hub music is managed exclusively by useIntroHubMusic
-    // and handleSoundConsentEnable.
+    SoundManager.panicStopAllMusic();
 
     // Check for a saved in-progress season for the active profile.
     if (!isGuest && activeProfileId) {

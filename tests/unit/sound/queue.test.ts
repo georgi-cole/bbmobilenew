@@ -1,33 +1,18 @@
-/**
- * Tests for the SoundManager enabled runtime — BGM ownership, priority fallback,
- * SFX queue, and lifecycle behaviour.
- *
- * Audio playback is safe-mocked (HTMLAudioElement.prototype.play resolves
- * immediately) so tests run without real media files.
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
 import type { SoundCategory } from '../../../src/services/sound/sounds';
 
-// ── Audio element mocks ───────────────────────────────────────────────────────
-
-/**
- * Reset all private SoundManager state between tests so tests do not bleed
- * into each other via the singleton.
- */
 function resetSoundManager() {
   const sm = SoundManager as unknown as {
     _unlocked: boolean;
     _unlockHandler: (() => void) | null;
-    _playQueue: unknown[];
+    _playQueue: Array<{ key: string; opts?: { volume?: number } }>;
     _musicEl: HTMLAudioElement | null;
     _musicKey: string | null;
     _desiredMusicTrack: string;
-    _desiredMusicOpts?: { volume?: number };
     _playingMusicTrack: string;
     _desiredMusicReason: string | null;
-    _musicTransitionId: number;
+    _musicPlaybackToken: number;
     _musicMuted: boolean;
     _musicVolume: number;
     _sfxPools: Map<string, HTMLAudioElement[]>;
@@ -36,8 +21,8 @@ function resetSoundManager() {
     _extraRegistry: Map<string, unknown>;
     _initialised: boolean;
     _lifecycleListenersBound: boolean;
-    _currentBgmOwner: string | null;
     _desiredPerOwner: Record<string, unknown>;
+    _currentBgmOwner: string | null;
   };
   sm._unlocked = false;
   sm._unlockHandler = null;
@@ -48,10 +33,9 @@ function resetSoundManager() {
   }
   sm._musicKey = null;
   sm._desiredMusicTrack = 'none';
-  sm._desiredMusicOpts = undefined;
   sm._playingMusicTrack = 'none';
   sm._desiredMusicReason = null;
-  sm._musicTransitionId = 0;
+  sm._musicPlaybackToken = 0;
   sm._musicMuted = false;
   sm._musicVolume = 1;
   sm._sfxPools = new Map();
@@ -60,14 +44,11 @@ function resetSoundManager() {
   sm._extraRegistry = new Map();
   sm._initialised = false;
   sm._lifecycleListenersBound = false;
-  sm._currentBgmOwner = null;
   sm._desiredPerOwner = {};
+  sm._currentBgmOwner = null;
 }
 
 beforeEach(() => {
-  // Mock HTMLMediaElement.prototype.play/pause — play() and pause() are defined
-  // on HTMLMediaElement (not HTMLAudioElement) so spying on the correct prototype
-  // is more robust across jsdom versions and avoids "not configurable" errors.
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   resetSoundManager();
@@ -78,312 +59,68 @@ afterEach(() => {
   resetSoundManager();
 });
 
-// ── BGM ownership / desired-per-owner ────────────────────────────────────────
-
-describe('SoundManager BGM ownership (enabled runtime)', () => {
-  it('requestBgm() stores desired entry in _desiredPerOwner', () => {
-    const sm = SoundManager as unknown as {
-      _desiredPerOwner: Record<string, { key: string }>;
-    };
-
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-
-    expect(sm._desiredPerOwner['phase']).toEqual({ key: 'music:hoh_comp_general' });
-  });
-
-  it('requestBgm() with null key calls releaseBgm() and does not store desired entry', () => {
-    const sm = SoundManager as unknown as {
-      _desiredPerOwner: Record<string, { key: string }>;
-    };
-
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    SoundManager.requestBgm(null, 'phase');
-
-    expect(sm._desiredPerOwner['phase']).toBeUndefined();
-  });
-
-  it('releaseBgm() removes the desired entry for the given owner', () => {
-    const sm = SoundManager as unknown as {
-      _desiredPerOwner: Record<string, { key: string }>;
-    };
-
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    SoundManager.releaseBgm('phase');
-
-    expect(sm._desiredPerOwner['phase']).toBeUndefined();
-  });
-
-  it('releaseBgm() with no remaining owners clears currentBgmOwner', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _currentBgmOwner: string | null;
-    };
-
-    // Unlock first so requestBgm / releaseBgm engage the real ownership logic
-    sm._unlocked = true;
-
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    SoundManager.releaseBgm('phase');
-
-    expect(sm._currentBgmOwner).toBeNull();
-  });
-
-  it('higher-priority owner (minigame) overrides lower-priority owner (phase) when unlocked', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _currentBgmOwner: string | null;
-      _musicKey: string | null;
-    };
-
-    sm._unlocked = true;
-
-    // Phase requests BGM first
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    expect(sm._currentBgmOwner).toBe('phase');
-    expect(sm._musicKey).toBe('music:hoh_comp_general');
-
-    // Minigame overrides (higher priority)
-    SoundManager.requestBgm('music:risk_wheel_loop', 'minigame');
-    expect(sm._currentBgmOwner).toBe('minigame');
-    expect(sm._musicKey).toBe('music:risk_wheel_loop');
-  });
-
-  it('releasing minigame BGM falls back to phase track when phase still has a desired entry', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _currentBgmOwner: string | null;
-      _musicKey: string | null;
-    };
-
-    sm._unlocked = true;
-
-    // Phase requests, then minigame overrides
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    SoundManager.requestBgm('music:risk_wheel_loop', 'minigame');
-    expect(sm._currentBgmOwner).toBe('minigame');
-
-    // Minigame releases — should fall back to phase track
-    SoundManager.releaseBgm('minigame');
-    expect(sm._currentBgmOwner).toBe('phase');
-    expect(sm._musicKey).toBe('music:hoh_comp_general');
-  });
-
-  it('releasing social BGM falls back to phase track when phase has a desired entry', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _currentBgmOwner: string | null;
-      _musicKey: string | null;
-    };
-
-    sm._unlocked = true;
-
-    SoundManager.requestBgm('music:nominations_main', 'phase');
-    SoundManager.requestBgm('music:social_module', 'social');
-    expect(sm._currentBgmOwner).toBe('social');
-
-    SoundManager.releaseBgm('social');
-    expect(sm._currentBgmOwner).toBe('phase');
-    expect(sm._musicKey).toBe('music:nominations_main');
-  });
-
-  it('releasing minigame with no other owners clears currentBgmOwner (no stale track)', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _currentBgmOwner: string | null;
-      _musicKey: string | null;
-    };
-
-    sm._unlocked = true;
-
-    // Minigame only — no phase track
-    SoundManager.requestBgm('music:risk_wheel_loop', 'minigame');
-    expect(sm._currentBgmOwner).toBe('minigame');
-
-    SoundManager.releaseBgm('minigame');
-    expect(sm._currentBgmOwner).toBeNull();
-    expect(sm._musicKey).toBeNull();
-  });
-});
-
-// ── Pre-unlock BGM queue behaviour ───────────────────────────────────────────
-
-describe('SoundManager BGM before unlock (locked state)', () => {
-  it('requestBgm() stores desired entry but does NOT call _doPlayMusic while locked', () => {
-    const sm = SoundManager as unknown as {
-      _desiredPerOwner: Record<string, { key: string }>;
-      _musicKey: string | null;
-    };
-    const doPlayMusic = vi.spyOn(
-      SoundManager as unknown as { _doPlayMusic: () => Promise<void> },
-      '_doPlayMusic',
-    );
-
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-
-    // Desired entry stored
-    expect(sm._desiredPerOwner['phase']).toEqual({ key: 'music:hoh_comp_general' });
-    // But no actual playback attempted
-    expect(doPlayMusic).not.toHaveBeenCalled();
-    expect(sm._musicKey).toBeNull();
-  });
-
-  it('upon unlock, highest-priority desired BGM is started via _applyDesiredBgm', () => {
-    const sm = SoundManager as unknown as {
-      _musicKey: string | null;
-      _currentBgmOwner: string | null;
-    };
-
-    // Phase requests while locked, then minigame overrides while still locked
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    SoundManager.requestBgm('music:risk_wheel_loop', 'minigame');
-
-    // Mock _primeSfxForMobile to a no-op: this test only cares about BGM
-    // application, not SFX pool priming (which would iterate the full registry).
-    const primeSpy = vi.spyOn(
-      SoundManager as unknown as { _primeSfxForMobile: () => void },
-      '_primeSfxForMobile',
-    ).mockImplementation(() => {});
-
-    // Unlock
-    SoundManager.unlockFromGesture();
-
-    primeSpy.mockRestore();
-
-    // The highest-priority (minigame) track should be started
-    expect(sm._musicKey).toBe('music:risk_wheel_loop');
-    expect(sm._currentBgmOwner).toBe('minigame');
-  });
-});
-
-// ── SFX queue before unlock ───────────────────────────────────────────────────
-
-describe('SoundManager SFX queue (locked → unlock)', () => {
-  it('play() before unlock queues a single SFX marker', async () => {
-    const sm = SoundManager as unknown as {
-      _playQueue: Array<{ key: string; isMusic: boolean }>;
-    };
-
-    await SoundManager.play('ui:confirm');
-
-    expect(sm._playQueue).toHaveLength(1);
-    expect(sm._playQueue[0].isMusic).toBe(false);
-  });
-
-  it('multiple play() calls before unlock collapse to at most one SFX marker', async () => {
-    const sm = SoundManager as unknown as {
-      _playQueue: Array<{ key: string; isMusic: boolean }>;
-    };
-
-    await SoundManager.play('ui:confirm');
-    await SoundManager.play('ui:navigate');
-    await SoundManager.play('ui:error');
-
-    // Queue should have at most 1 SFX marker
-    const sfxMarkers = sm._playQueue.filter((q) => !q.isMusic);
-    expect(sfxMarkers.length).toBeLessThanOrEqual(1);
-  });
-
-  it('play() after unlock calls _doPlay directly (no queue)', async () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _playQueue: Array<{ key: string; isMusic: boolean }>;
-    };
-    // Set the unlocked flag directly to avoid triggering _primeSfxForMobile(),
-    // which iterates the entire SOUND_REGISTRY and is not relevant to this test.
-    sm._unlocked = true;
-
-    const doPlay = vi.spyOn(
-      SoundManager as unknown as { _doPlay: () => Promise<void> },
-      '_doPlay',
-    );
-
-    await SoundManager.play('ui:confirm');
-
-    expect(doPlay).toHaveBeenCalledWith('ui:confirm', undefined);
-    const sfxMarkers = sm._playQueue.filter((q) => !q.isMusic);
-    expect(sfxMarkers).toHaveLength(0);
-  });
-});
-
-// ── Category enabled / disabled ───────────────────────────────────────────────
-
-describe('SoundManager category enable / disable', () => {
-  it('setCategoryEnabled("music", false) stops current music immediately', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _musicKey: string | null;
-    };
-    sm._unlocked = true;
-
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    expect(sm._musicKey).toBe('music:hoh_comp_general');
-
-    SoundManager.setCategoryEnabled('music', false);
-
-    expect(sm._musicKey).toBeNull();
-  });
-
-  it('setCategoryVolume("music") respects a dynamically-registered music entry volume', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _musicEl: HTMLAudioElement | null;
-    };
-    sm._unlocked = true;
-
-    SoundManager.registerDynamic({
-      key: 'music:remote_intro',
-      category: 'music',
-      src: 'https://example.com/intro.mp3',
-      preload: false,
-      volume: 0.5,
-      loop: true,
-    });
-    SoundManager.requestBgm('music:remote_intro', 'introhub');
-
-    expect(sm._musicEl).not.toBeNull();
-    SoundManager.setCategoryVolume('music', 0.4);
-
-    expect(sm._musicEl?.volume).toBeCloseTo(0.2);
-  });
-
-  it('legacy unmapped music keys still play and preserve volume overrides', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _musicKey: string | null;
-      _musicEl: HTMLAudioElement | null;
-      _playingMusicTrack: string;
-    };
-    sm._unlocked = true;
-
-    SoundManager.requestBgm('music:menu_loop', 'phase', { volume: 0.25 });
-
-    expect(sm._musicKey).toBe('music:menu_loop');
-    expect(sm._playingMusicTrack).toBe('none');
-    expect(sm._musicEl?.volume).toBeCloseTo(0.25);
-  });
-
-  it('re-enabling music resumes the latest desired track', () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _musicKey: string | null;
-    };
-    sm._unlocked = true;
-
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    SoundManager.setCategoryEnabled('music', false);
-    expect(sm._musicKey).toBeNull();
-
-    SoundManager.setCategoryEnabled('music', true);
-
-    expect(sm._musicKey).toBe('music:hoh_comp_general');
-  });
-});
-
 describe('SoundManager music state machine', () => {
-  it('syncMusic() is idempotent when the desired track has not changed', async () => {
-    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+  it('stores only the latest desired music while locked and starts it after unlock', async () => {
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    await SoundManager.setDesiredMusic('risk_wheel', 'minigame');
+
+    expect(SoundManager.currentMusicKey).toBeNull();
+
+    SoundManager.unlockFromGesture();
+    await Promise.resolve();
+
+    expect(SoundManager.currentMusicTrack).toBe('risk_wheel');
+    expect(SoundManager.currentMusicKey).toBe('music:risk_wheel_loop');
+  });
+
+  it('panicStopAllMusic hard-stops the active track and clears references', async () => {
     const sm = SoundManager as unknown as { _unlocked: boolean };
     sm._unlocked = true;
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    expect(SoundManager.currentMusicKey).toBe('music:hoh_comp_general');
+
+    SoundManager.panicStopAllMusic();
+
+    expect(SoundManager.currentMusicKey).toBeNull();
+    expect(SoundManager.currentMusicTrack).toBe('none');
+  });
+
+  it('ignores stale async playback from an older sync token', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+
+    let resolveFirst!: () => void;
+    let resolveSecond!: () => void;
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play')
+      .mockImplementationOnce(
+        () => new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        }),
+      )
+      .mockImplementationOnce(
+        () => new Promise<void>((resolve) => {
+          resolveSecond = resolve;
+        }),
+      );
+
+    const first = SoundManager.setDesiredMusic('competition', 'first');
+    const second = SoundManager.setDesiredMusic('nominations', 'second');
+
+    resolveFirst();
+    await Promise.resolve();
+    resolveSecond();
+    await Promise.all([first, second]);
+
+    expect(playSpy).toHaveBeenCalledTimes(2);
+    expect(SoundManager.currentMusicTrack).toBe('nominations');
+    expect(SoundManager.currentMusicKey).toBe('music:nominations_main');
+  });
+
+  it('is idempotent when syncMusic runs without a desired-track change', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
 
     await SoundManager.setDesiredMusic('competition', 'initial');
     await SoundManager.syncMusic();
@@ -393,14 +130,9 @@ describe('SoundManager music state machine', () => {
     expect(SoundManager.currentMusicTrack).toBe('competition');
   });
 
-  it('a gesture retry reapplies the current desired music after a NotAllowedError', async () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _musicKey: string | null;
-      _playQueue: Array<{ key: string; isMusic: boolean }>;
-    };
+  it('retries only the current desired track after a blocked play on the next gesture', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
     sm._unlocked = true;
-
     const notAllowed = new DOMException('blocked', 'NotAllowedError');
     const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play')
       .mockRejectedValueOnce(notAllowed)
@@ -410,36 +142,88 @@ describe('SoundManager music state machine', () => {
       '_primeSfxForMobile',
     ).mockImplementation(() => {});
 
-    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    await Promise.resolve();
-
-    expect(sm._musicKey).toBeNull();
-    expect(sm._playQueue.some((item) => item.isMusic)).toBe(true);
+    await SoundManager.setDesiredMusic('competition', 'initial');
+    expect(SoundManager.currentMusicKey).toBeNull();
 
     document.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await Promise.resolve();
 
     expect(playSpy).toHaveBeenCalledTimes(2);
-    expect(sm._musicKey).toBe('music:hoh_comp_general');
+    expect(SoundManager.currentMusicKey).toBe('music:hoh_comp_general');
 
     primeSpy.mockRestore();
   });
 });
 
-// ── init() lifecycle listeners ────────────────────────────────────────────────
+describe('SoundManager legacy wrappers and SFX queue', () => {
+  it('requestBgm logs a warning and routes to setDesiredMusic', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-describe('SoundManager init() (enabled runtime)', () => {
-  it('init() sets _initialised and _lifecycleListenersBound via _bindLifecycleListeners', async () => {
+    SoundManager.requestBgm('music:hoh_comp_general', 'phase');
+    await Promise.resolve();
+
+    expect(warnSpy).toHaveBeenCalledWith('[audio] legacy requestBgm("music:hoh_comp_general", "phase")');
+    expect((SoundManager as unknown as { _desiredMusicTrack: string })._desiredMusicTrack).toBe('competition');
+  });
+
+  it('requestBgm preserves the remote main music mapping', async () => {
+    SoundManager.registerDynamic({
+      key: 'music:remote_main',
+      category: 'music',
+      src: 'https://example.com/main.mp3',
+      preload: false,
+      volume: 0.5,
+      loop: true,
+    });
+
+    SoundManager.requestBgm('music:remote_main', 'phase');
+    await Promise.resolve();
+
+    expect((SoundManager as unknown as { _desiredMusicTrack: string })._desiredMusicTrack).toBe('competition');
+  });
+
+  it('releaseBgm logs a warning and clears the desired track', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    SoundManager.releaseBgm('phase');
+    await Promise.resolve();
+
+    expect(warnSpy).toHaveBeenCalledWith('[audio] legacy releaseBgm("phase")');
+    expect((SoundManager as unknown as { _desiredMusicTrack: string })._desiredMusicTrack).toBe('none');
+  });
+
+  it('play() before unlock queues a single SFX marker', async () => {
+    const sm = SoundManager as unknown as {
+      _playQueue: Array<{ key: string; opts?: { volume?: number } }>;
+    };
+
+    await SoundManager.play('ui:confirm');
+
+    expect(sm._playQueue).toEqual([{ key: 'ui:confirm', opts: undefined }]);
+  });
+
+  it('multiple play() calls before unlock collapse to one SFX marker', async () => {
+    const sm = SoundManager as unknown as {
+      _playQueue: Array<{ key: string; opts?: { volume?: number } }>;
+    };
+
+    await SoundManager.play('ui:confirm');
+    await SoundManager.play('ui:navigate');
+    await SoundManager.play('ui:error');
+
+    expect(sm._playQueue).toHaveLength(1);
+  });
+});
+
+describe('SoundManager init + unlock listeners', () => {
+  it('init() marks the manager initialised and binds lifecycle listeners', async () => {
     const sm = SoundManager as unknown as {
       _initialised: boolean;
       _lifecycleListenersBound: boolean;
       _bindLifecycleListeners: () => void;
     };
 
-    // Stub _bindLifecycleListeners to prevent an anonymous visibilitychange
-    // listener from accumulating on document — resetSoundManager() cannot
-    // remove it.  The stub sets the flag so assertions reflect production
-    // behavior without leaking a real listener into subsequent tests.
     const bindSpy = vi.spyOn(sm, '_bindLifecycleListeners').mockImplementation(() => {
       sm._lifecycleListenersBound = true;
     });
@@ -450,12 +234,8 @@ describe('SoundManager init() (enabled runtime)', () => {
     expect(sm._lifecycleListenersBound).toBe(true);
     expect(bindSpy).toHaveBeenCalledOnce();
   });
-});
 
-// ── unlockOnUserGesture registers document listeners ─────────────────────────
-
-describe('SoundManager unlockOnUserGesture() (enabled runtime)', () => {
-  it('registers click/keydown/touchstart listeners on the document', () => {
+  it('unlockOnUserGesture registers document listeners', () => {
     const addSpy = vi.spyOn(document, 'addEventListener');
 
     SoundManager.unlockOnUserGesture();

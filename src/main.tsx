@@ -8,7 +8,6 @@ import { applyDisplayModeClasses } from './utils/displayMode'
 import { store } from './store/store'
 import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
-import { SoundManager } from './services/sound/SoundManager'
 import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
 import { initAdBridge } from './services/ads/adsService'
 import App from './App.tsx'
@@ -72,11 +71,6 @@ window.toggleIntroHubMusic = function () {
   console.debug('[introHub] toggleIntroHubMusic ->', nextMusicOn);
   // Keep Redux settings in sync so mute state is preserved correctly.
   store.dispatch(setAudio({ musicOn: nextMusicOn }));
-  if (nextMusicOn) {
-    SoundManager.requestBgm('music:intro_hub_loop', 'introhub');
-  } else {
-    SoundManager.releaseBgm('introhub');
-  }
 };
 window.toggleIntroHubSfx = function () {
   const nextSfxOn = !store.getState().settings.audio.sfxOn;

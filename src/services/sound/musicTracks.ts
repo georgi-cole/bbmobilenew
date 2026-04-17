@@ -31,6 +31,7 @@ export const MUSIC_TRACK_SOUND_KEYS: Readonly<Record<Exclude<MusicTrack, 'none'>
 const SOUND_KEY_TO_TRACK: Readonly<Record<string, MusicTrack>> = {
   'music:intro_hub_loop': 'introhub',
   'music:remote_intro': 'introhub',
+  'music:remote_main': 'competition',
   'music:spectator_loop': 'spectator',
   'music:social_module': 'social',
   'music:hoh_comp_general': 'competition',

@@ -1,26 +1,11 @@
 /**
- * useWildcardWesternAudio — manages all audio for the Wildcard Western minigame.
- *
- * Background music starts when `shouldPlayMusic` becomes true and stops (via
- * releaseBgm) when it becomes false or the component unmounts.  The previous
- * BGM owner (typically 'phase') retains its desired track and can be re-requested
- * by the relevant hook/middleware when appropriate.
- *
- * Uses requestBgm/releaseBgm with the 'minigame' owner so the SoundManager can
- * enforce the single-BGM-channel invariant.
- *
- * One-shot SFX callbacks are returned for the caller to invoke at the correct
- * game moments.
- *
- * Usage:
- *   const { playSelect, playDraw, playEliminated, playWinner, playContinue, playNewRound } =
- *     useWildcardWesternAudio(ww.phase !== 'idle');
+ * useWildcardWesternAudio — returns one-shot SFX callbacks for the Wildcard
+ * Western minigame. Background music is resolved centrally at the app root.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
 
-const WW_MUSIC_KEY = 'music:wildcard_western_main';
 const WW_SELECT_KEY = 'ui:wildcard_select';
 const WW_DRAW_KEY = 'ui:wildcard_draw';
 const WW_ELIMINATED_KEY = 'player:wildcard_eliminated';
@@ -43,21 +28,7 @@ export interface UseWildcardWesternAudioReturn {
   playNewRound: () => void;
 }
 
-/**
- * @param shouldPlayMusic - true while the Wildcard Western minigame is active.
- *   Background music starts on the first true value and stops when it reverts
- *   to false or the component unmounts.
- */
-export function useWildcardWesternAudio(shouldPlayMusic: boolean): UseWildcardWesternAudioReturn {
-  // Request/release BGM ownership when the minigame becomes active or inactive.
-  useEffect(() => {
-    if (!shouldPlayMusic) return;
-    SoundManager.requestBgm(WW_MUSIC_KEY, 'minigame');
-    return () => {
-      SoundManager.releaseBgm('minigame');
-    };
-  }, [shouldPlayMusic]);
-
+export function useWildcardWesternAudio(_shouldPlayMusic: boolean): UseWildcardWesternAudioReturn {
   const playSelect = useCallback(() => {
     void SoundManager.play(WW_SELECT_KEY);
   }, []);

@@ -5,8 +5,6 @@ import { SoundManager } from '../../../src/services/sound/SoundManager';
 
 describe('useHouseOfCardsAudio', () => {
   beforeEach(() => {
-    vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
-    vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
   });
 
@@ -14,37 +12,21 @@ describe('useHouseOfCardsAudio', () => {
     vi.restoreAllMocks();
   });
 
-  it('requests the House of Cards music loop while active and releases minigame ownership when inactive', () => {
+  it('does not request or release minigame music directly', () => {
+    const requestSpy = vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    const releaseSpy = vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
+
     const { rerender, unmount } = renderHook(
       ({ isPlaying }) => useHouseOfCardsAudio(isPlaying),
       { initialProps: { isPlaying: false } },
     );
 
-    expect(SoundManager.requestBgm).not.toHaveBeenCalled();
-
     rerender({ isPlaying: true });
-
-    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:quicktap_main', 'minigame');
-
     rerender({ isPlaying: false });
-
-    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
-    expect(SoundManager.releaseBgm).toHaveBeenLastCalledWith('minigame');
-
     unmount();
 
-    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
-  });
-
-  it('releases minigame music on unmount while active', () => {
-    const { unmount } = renderHook(() => useHouseOfCardsAudio(true));
-
-    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:quicktap_main', 'minigame');
-
-    unmount();
-
-    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
-    expect(SoundManager.releaseBgm).toHaveBeenLastCalledWith('minigame');
+    expect(requestSpy).not.toHaveBeenCalled();
+    expect(releaseSpy).not.toHaveBeenCalled();
   });
 
   it('exposes callbacks for flip, match, mismatch, peek, and completion sounds', () => {

@@ -6,8 +6,6 @@ import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds'
 
 describe('useGlassBridgeAudio', () => {
   beforeEach(() => {
-    vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
-    vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
   });
 
@@ -15,26 +13,21 @@ describe('useGlassBridgeAudio', () => {
     vi.restoreAllMocks();
   });
 
-  it('starts background music when the minigame becomes active and stops it when inactive', () => {
+  it('does not directly request background music any more', () => {
+    const requestSpy = vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    const releaseSpy = vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
+
     const { rerender, unmount } = renderHook(
       ({ shouldPlayMusic }) => useGlassBridgeAudio(shouldPlayMusic),
       { initialProps: { shouldPlayMusic: false } },
     );
 
-    expect(SoundManager.requestBgm).not.toHaveBeenCalled();
-
     rerender({ shouldPlayMusic: true });
-
-    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:gb_main', 'minigame');
-
     rerender({ shouldPlayMusic: false });
-
-    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
-    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
-
     unmount();
 
-    expect(SoundManager.releaseBgm).toHaveBeenCalledTimes(1);
+    expect(requestSpy).not.toHaveBeenCalled();
+    expect(releaseSpy).not.toHaveBeenCalled();
   });
 
   it('exposes callbacks for Glass Bridge step, death, winner, and turn sounds', () => {
@@ -62,10 +55,6 @@ describe('useGlassBridgeAudio', () => {
   });
 
   it('sound registry src paths use SOUNDS_BASE for production-safe URL resolution', () => {
-    // SOUNDS_BASE is derived from import.meta.env.BASE_URL and ensures that
-    // sound URLs are correctly prefixed with the app's base path (for example,
-    // '/bbmobilenew/assets/sounds/...'). Every src must start with SOUNDS_BASE
-    // to avoid 404s when the app is served from a non-root base URL.
     const gbKeys = [
       'music:gb_main',
       'music:gb_main',
@@ -77,7 +66,6 @@ describe('useGlassBridgeAudio', () => {
     for (const key of gbKeys) {
       expect(SOUND_REGISTRY[key].src.startsWith(SOUNDS_BASE)).toBe(true);
     }
-    // Also verify a sample of global sound keys use the same base
     expect(SOUND_REGISTRY['ui:navigate'].src.startsWith(SOUNDS_BASE)).toBe(true);
     expect(SOUND_REGISTRY['tv:event'].src.startsWith(SOUNDS_BASE)).toBe(true);
     expect(SOUND_REGISTRY['ui:confirm'].src.startsWith(SOUNDS_BASE)).toBe(true);

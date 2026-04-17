@@ -1,7 +1,6 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
 
-const HOC_MUSIC_KEY = 'music:quicktap_main';
 const HOC_FLIP_KEY = 'minigame:quicktap_tap';
 const HOC_MATCH_KEY = 'minigame:quicktap_booster';
 const HOC_MISMATCH_KEY = 'ui:error';
@@ -16,19 +15,8 @@ export interface UseHouseOfCardsAudioReturn {
   playComplete: () => void;
 }
 
-/**
- * Requests House of Cards music while the minigame is active and returns
- * one-shot callbacks for gameplay events.
- */
-export function useHouseOfCardsAudio(isPlaying: boolean): UseHouseOfCardsAudioReturn {
-  useEffect(() => {
-    if (!isPlaying) return;
-    SoundManager.requestBgm(HOC_MUSIC_KEY, 'minigame');
-    return () => {
-      SoundManager.releaseBgm('minigame');
-    };
-  }, [isPlaying]);
-
+/** Returns one-shot audio callbacks for House of Cards gameplay events. */
+export function useHouseOfCardsAudio(_isPlaying: boolean): UseHouseOfCardsAudioReturn {
   const playFlip = useCallback(() => {
     void SoundManager.play(HOC_FLIP_KEY);
   }, []);

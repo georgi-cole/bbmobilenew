@@ -28,10 +28,11 @@ import {
   startWinnerCinematic,
 } from '../../store/gameSlice';
 import { selectSettings } from '../../store/settingsSlice';
+import { setMusicScene } from '../../store/uiSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
 import { selectPublicOpinion } from '../../publicOpinion';
 import { showInterstitial } from '../../services/ads/adsService';
-import { CINEMATIC_BGM_OWNER } from '../../services/sound/SoundManager';
+import { SoundManager } from '../../services/sound/SoundManager';
 import type { RootState } from '../../store/store';
 import { useStore } from 'react-redux';
 import JurorBubble from './JurorBubble';
@@ -57,7 +58,7 @@ export default function FinalFaceoff() {
   const revealed = useAppSelector(selectRevealedJurors);
   const settings = useAppSelector(selectSettings);
   const publicOpinion = useAppSelector(selectPublicOpinion);
-  const { play, requestBgm, releaseBgm } = useSound();
+  const { play } = useSound();
 
   const jurorListRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +85,8 @@ export default function FinalFaceoff() {
       (player) => player.id === finale.runnerUpId && player.finalRank === 2,
     );
 
-    releaseBgm(CINEMATIC_BGM_OWNER);
+    dispatch(setMusicScene('none'));
+    SoundManager.panicStopAllMusic();
     if (!winnerAlreadyMarked || !runnerUpAlreadyMarked) {
       dispatch(
         finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
@@ -106,7 +108,6 @@ export default function FinalFaceoff() {
     game.seed,
     settings.sim.enableFavoritePlayer,
     settings.sim.enableTwists,
-    releaseBgm,
   ]);
 
   // ── Staged vote reveal: tracks which jurors have their chip visible ────
@@ -131,10 +132,23 @@ export default function FinalFaceoff() {
       for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
       voteTimersRef.current = {};
       flashTimersRef.current = {};
-      releaseBgm(CINEMATIC_BGM_OWNER);
+      dispatch(setMusicScene('none'));
+      SoundManager.panicStopAllMusic();
     },
-    [releaseBgm],
+    [dispatch],
   );
+
+  useEffect(() => {
+    if (phase === 'recap') {
+      dispatch(setMusicScene('season_recap'));
+      return;
+    }
+    if (phase === 'revealVotes') {
+      dispatch(setMusicScene('jury_voting'));
+      return;
+    }
+    dispatch(setMusicScene('none'));
+  }, [dispatch, phase]);
 
   // When entering 'revealVotes', stagger vote-chip reveals for all jurors.
   const revealVotesStartedRef = useRef(false);
@@ -144,8 +158,6 @@ export default function FinalFaceoff() {
     revealVotesStartedRef.current = true;
 
     play('tv:event');
-    requestBgm('music:jury_voting_bg', CINEMATIC_BGM_OWNER);
-
     revealed.forEach((r, idx) => {
       const delay = VOTE_REVEAL_INITIAL_DELAY_MS + idx * VOTE_REVEAL_STAGGER_MS;
       voteTimersRef.current[r.jurorId] = setTimeout(() => {
@@ -159,7 +171,7 @@ export default function FinalFaceoff() {
         }, 800);
       }, delay);
     });
-  }, [phase, revealed, play, requestBgm]);
+  }, [phase, revealed, play]);
 
   // When finale completes during 'revealVotes' before all chips are visible
   // (e.g. via skip-all), reveal the remaining chips instantly.
@@ -395,7 +407,8 @@ export default function FinalFaceoff() {
       }
     } else {
       // In revealVotes phase: skip the chip animations and go straight to winner.
-      releaseBgm(CINEMATIC_BGM_OWNER);
+      dispatch(setMusicScene('none'));
+      SoundManager.panicStopAllMusic();
       dispatch(skipAllJurorsThunk(humanIds, game.seed));
     }
   }
@@ -406,7 +419,8 @@ export default function FinalFaceoff() {
   }
 
   function handleDismiss() {
-    releaseBgm(CINEMATIC_BGM_OWNER);
+    dispatch(setMusicScene('none'));
+    SoundManager.panicStopAllMusic();
     dispatch(dismissFinale());
   }
 

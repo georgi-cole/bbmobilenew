@@ -6,8 +6,6 @@ import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds'
 
 describe('useRiskWheelAudio', () => {
   beforeEach(() => {
-    vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
-    vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
     vi.spyOn(SoundManager, 'stop').mockImplementation(() => {});
   });
@@ -16,30 +14,20 @@ describe('useRiskWheelAudio', () => {
     vi.restoreAllMocks();
   });
 
-  it('starts background music only once the minigame becomes active and stops it on cleanup', () => {
+  it('does not directly start or stop background music', () => {
+    const requestSpy = vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    const releaseSpy = vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
+
     const { rerender, unmount } = renderHook(
       ({ shouldPlayMusic }) => useRiskWheelAudio(shouldPlayMusic),
       { initialProps: { shouldPlayMusic: false } },
     );
 
-    expect(SoundManager.requestBgm).not.toHaveBeenCalled();
-
     rerender({ shouldPlayMusic: true });
-
-    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:risk_wheel_loop', 'minigame');
-
     unmount();
 
-    expect(SoundManager.stop).toHaveBeenCalledWith('minigame:wheelofluck');
-    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
-  });
-
-  it('releases minigame ownership when music was active', () => {
-    const { unmount } = renderHook(() => useRiskWheelAudio(true));
-
-    unmount();
-
-    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
+    expect(requestSpy).not.toHaveBeenCalled();
+    expect(releaseSpy).not.toHaveBeenCalled();
   });
 
   it('exposes callbacks for all Risk Wheel sound effects', () => {

@@ -6,8 +6,6 @@ import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds'
 
 describe('useWildcardWesternAudio', () => {
   beforeEach(() => {
-    vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
-    vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
     vi.spyOn(SoundManager, 'play').mockResolvedValue();
   });
 
@@ -15,40 +13,21 @@ describe('useWildcardWesternAudio', () => {
     vi.restoreAllMocks();
   });
 
-  it('requests BGM ("minigame" owner) when the minigame becomes active', () => {
-    const { rerender } = renderHook(
+  it('does not request or release BGM directly any more', () => {
+    const requestSpy = vi.spyOn(SoundManager, 'requestBgm').mockImplementation(() => {});
+    const releaseSpy = vi.spyOn(SoundManager, 'releaseBgm').mockImplementation(() => {});
+
+    const { rerender, unmount } = renderHook(
       ({ shouldPlayMusic }) => useWildcardWesternAudio(shouldPlayMusic),
       { initialProps: { shouldPlayMusic: false } },
     );
 
-    expect(SoundManager.requestBgm).not.toHaveBeenCalled();
-
     rerender({ shouldPlayMusic: true });
-
-    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:wildcard_western_main', 'minigame');
-  });
-
-  it('releases BGM ("minigame" owner) when shouldPlayMusic reverts to false', () => {
-    const { rerender } = renderHook(
-      ({ shouldPlayMusic }) => useWildcardWesternAudio(shouldPlayMusic),
-      { initialProps: { shouldPlayMusic: true } },
-    );
-
-    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:wildcard_western_main', 'minigame');
-
     rerender({ shouldPlayMusic: false });
-
-    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
-  });
-
-  it('releases BGM on unmount while still active', () => {
-    const { unmount } = renderHook(() => useWildcardWesternAudio(true));
-
-    expect(SoundManager.requestBgm).toHaveBeenCalledWith('music:wildcard_western_main', 'minigame');
-
     unmount();
 
-    expect(SoundManager.releaseBgm).toHaveBeenCalledWith('minigame');
+    expect(requestSpy).not.toHaveBeenCalled();
+    expect(releaseSpy).not.toHaveBeenCalled();
   });
 
   it('exposes callbacks for all Wildcard Western sound effects', () => {
