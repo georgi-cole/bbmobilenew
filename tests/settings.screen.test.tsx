@@ -126,13 +126,12 @@ describe('Settings screen', () => {
       fireEvent.click(compactRosterToggle);
     }
 
-    let compactRosterLayoutGroup: HTMLElement;
     await waitFor(() => {
-      compactRosterLayoutGroup = screen.getByLabelText(/compact roster layout/i);
-      expect(compactRosterLayoutGroup).toBeTruthy();
+      expect(screen.getByLabelText(/compact roster layout/i)).toBeTruthy();
     });
 
-    expect(within(compactRosterLayoutGroup!).getAllByRole('radio')).toHaveLength(3);
+    const compactRosterLayoutGroup = screen.getByLabelText(/compact roster layout/i);
+    expect(within(compactRosterLayoutGroup).getAllByRole('radio')).toHaveLength(3);
 
     fireEvent.click(screen.getByRole('radio', { name: /2 rows of 8 avatars/i }));
 
