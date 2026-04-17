@@ -605,8 +605,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const currentChainStep = activeStep || 0;
   const nextReward = CHAIN_LADDER[Math.min(currentChainStep, CHAIN_LADDER.length - 1)] ?? CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const currentPotLabel = activePot > 0 ? activePot.toLocaleString() : '0';
+  const isAtStartingPosition = currentChainStep === 0;
   const referenceRungIndex = currentChainStep === 0 ? 1 : currentChainStep;
-  const currentRewardValue = currentChainStep > 0 ? CHAIN_LADDER[currentChainStep - 1] : null;
+  const lockedRewardValue = currentChainStep > 0 ? CHAIN_LADDER[currentChainStep - 1] : null;
   const nextRewardValueLabel = nextReward.toLocaleString();
   const chainStatusText = {
     step: `Step ${currentChainStep}/${CHAIN_LADDER.length}`,
@@ -623,7 +624,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       isActive: currentChainStep === step,
       isCleared: currentChainStep > step,
       isNext: currentChainStep + 1 === step,
-      carriesReference: currentChainStep > 0 && step === referenceRungIndex,
+      carriesReference: !isAtStartingPosition && step === referenceRungIndex,
       tension: step >= 7 ? 'danger' : step >= 4 ? 'surge' : 'base',
     };
   });
@@ -825,7 +826,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                     </li>
                   ))}
                 </ol>
-                {currentChainStep === 0 && (
+                {isAtStartingPosition && (
                   <div className="chain-of-greed__current-anchor" data-testid="chain-current-anchor">
                     <span className="chain-of-greed__current-anchor-main">
                       <span className="chain-of-greed__ladder-dot chain-of-greed__ladder-dot--anchor" aria-hidden="true" />
@@ -870,8 +871,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               </div>
               <p className="chain-of-greed__prompt">{heroPrompt}</p>
               <p className="chain-of-greed__reward-line">
-                {currentRewardValue !== null
-                  ? `${currentRewardValue.toLocaleString()} locked in on the current rung.`
+                {lockedRewardValue !== null
+                  ? `${lockedRewardValue.toLocaleString()} locked in on the current rung.`
                   : nextRewardCopy}
               </p>
             </div>
