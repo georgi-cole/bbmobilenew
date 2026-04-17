@@ -1198,7 +1198,7 @@ export default function GameScreen() {
   // replacement committed. We detect this and show an animation.
   const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = usePersistedGameScreenKey(
     'ai-replacement-ceremony',
-    game.seed,
+    game.gameId ?? `season-${game.season}`,
   )
 
   const aiReplacementKey = useMemo(() => {
