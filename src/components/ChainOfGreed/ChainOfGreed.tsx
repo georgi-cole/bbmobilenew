@@ -656,7 +656,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             ? 'FINAL SHOWDOWN'
             : state.phase.startsWith('semifinal')
               ? 'SUDDEN CHAIN'
-              : `ROUND ${state.roundNumber} START`;
+              : `ROUND ${state.roundNumber}`;
   const heroPhaseChip = state.phase === 'playerTurn'
     ? 'Shared chain'
     : state.phase === 'semifinalTurn'
