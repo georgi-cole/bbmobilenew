@@ -710,7 +710,7 @@
     top: 0;
     z-index: 4;
     gap: 4px;
-    padding: calc(env(safe-area-inset-top, 0px) + 4px) 50px 8px 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 4px) clamp(44px, 12vw, 56px) 8px 0;
     background: linear-gradient(180deg, rgba(14, 5, 32, 0.98), rgba(14, 5, 32, 0.82), rgba(14, 5, 32, 0));
     backdrop-filter: blur(14px);
   }
@@ -890,7 +890,7 @@
   }
 
   .grid-of-luck__header {
-    padding-right: 46px;
+    padding-right: clamp(42px, 11vw, 50px);
   }
 
   .grid-of-luck__players {
