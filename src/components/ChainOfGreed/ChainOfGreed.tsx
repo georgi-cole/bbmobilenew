@@ -605,7 +605,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const currentChainStep = activeStep || 0;
   const nextReward = CHAIN_LADDER[Math.min(currentChainStep, CHAIN_LADDER.length - 1)] ?? CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const currentPotLabel = activePot > 0 ? activePot.toLocaleString() : '0';
-  const anchoredReferenceStep = currentChainStep === 0 ? 1 : currentChainStep;
+  const referenceNumberStep = currentChainStep === 0 ? 1 : currentChainStep;
   const chainStatusText = {
     step: `Step ${currentChainStep}/${CHAIN_LADDER.length}`,
     pot: `Pot ${currentPotLabel}`,
@@ -621,7 +621,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       isActive: currentChainStep === step,
       isCleared: currentChainStep > step,
       isNext: currentChainStep + 1 === step,
-      carriesReference: step === anchoredReferenceStep,
+      carriesReference: step === referenceNumberStep,
     };
   });
   const lastTurn = state.turnHistory[0] ?? null;
@@ -839,7 +839,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <span aria-label={`Next reward ${nextReward.toLocaleString()}`}>{chainStatusText.next}</span>
               </div>
               <p className="chain-of-greed__prompt">{heroPrompt}</p>
-              <p className="chain-of-greed__helper-line">{nextRewardCopy}</p>
+              <p className="chain-of-greed__reward-line">{nextRewardCopy}</p>
             </div>
             <div className="chain-of-greed__stage-footer" aria-label={chainStatusAriaLabel}>
               <span>{chainStatusText.step} • {chainStatusText.pot} • {chainStatusText.next}</span>

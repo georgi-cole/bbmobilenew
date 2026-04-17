@@ -290,15 +290,14 @@
   color: rgba(123, 209, 255, 0.7);
 }
 
-.chain-of-greed__helper-line,
-.chain-of-greed__reward-tease,
+.chain-of-greed__reward-line,
 .chain-of-greed__prompt,
 .chain-of-greed__stage-footer {
   position: relative;
   z-index: 1;
 }
 
-.chain-of-greed__helper-line {
+.chain-of-greed__reward-line {
   font-size: 0.82rem;
   text-align: center;
   color: rgba(255, 225, 141, 0.84);
