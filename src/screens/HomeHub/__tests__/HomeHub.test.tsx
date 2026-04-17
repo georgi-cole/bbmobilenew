@@ -58,10 +58,6 @@ vi.mock('../../../hooks/useLoadIntroHub', () => ({
   default: () => undefined,
 }));
 
-vi.mock('../../../hooks/useIntroHubMusic', () => ({
-  default: () => undefined,
-}));
-
 vi.mock('../../../utils/preload', () => ({
   preloadImage: vi.fn().mockResolvedValue(undefined),
 }));

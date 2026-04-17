@@ -3,8 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
-import useSound from '../../hooks/useSound';
-import { CINEMATIC_BGM_OWNER } from '../../services/sound/SoundManager';
 import { resolveAvatar } from '../../utils/avatar';
 import FinaleNewspaperMontage from './FinaleNewspaperMontage';
 import {
@@ -661,7 +659,6 @@ export default function SeasonRecapCinematic({
   publicOpinion,
   onComplete,
 }: SeasonRecapProps) {
-  const { requestBgm, releaseBgm } = useSound();
   const prefersReducedMotion = useReducedMotion();
   const noAnimations =
     typeof document !== 'undefined' && document.body.classList.contains('no-animations');
@@ -685,15 +682,9 @@ export default function SeasonRecapCinematic({
     if (didFinishRef.current) return;
     didFinishRef.current = true;
     setVisible(false);
-    releaseBgm(CINEMATIC_BGM_OWNER);
     const timer = setTimeout(() => onComplete(), reducedMotion ? 0 : 420);
     return () => clearTimeout(timer);
-  }, [onComplete, reducedMotion, releaseBgm]);
-
-  useEffect(() => {
-    requestBgm('music:season_recap', CINEMATIC_BGM_OWNER);
-    return () => releaseBgm(CINEMATIC_BGM_OWNER);
-  }, [releaseBgm, requestBgm]);
+  }, [onComplete, reducedMotion]);
 
   useEffect(() => {
     if (sceneIndex >= timings.length) {

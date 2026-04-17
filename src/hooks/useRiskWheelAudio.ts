@@ -1,8 +1,7 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
 import { useWheelOfLuck } from './useWheelOfLuck';
 
-const RISK_WHEEL_MUSIC_KEY = 'music:risk_wheel_loop';
 const RISK_WHEEL_GOOD_KEY = 'minigame:risk_wheel_good';
 const RISK_WHEEL_BAD_KEY = 'minigame:risk_wheel_bad';
 const RISK_WHEEL_666_KEY = 'minigame:risk_wheel_666';
@@ -29,19 +28,8 @@ export interface UseRiskWheelAudioReturn {
   playClickSound: () => void;
 }
 
-export function useRiskWheelAudio(shouldPlayMusic: boolean): UseRiskWheelAudioReturn {
+export function useRiskWheelAudio(_shouldPlayMusic: boolean): UseRiskWheelAudioReturn {
   const { startWheelSound, stopWheelSound } = useWheelOfLuck();
-
-  // Request minigame BGM only once the Risk Wheel has left its idle phase so
-  // the track never starts before the minigame itself is active.
-  useEffect(() => {
-    if (!shouldPlayMusic) return;
-    SoundManager.requestBgm(RISK_WHEEL_MUSIC_KEY, 'minigame');
-    return () => {
-      stopWheelSound();
-      SoundManager.releaseBgm('minigame');
-    };
-  }, [shouldPlayMusic, stopWheelSound]);
 
   const playGoodRewardSound = useCallback(() => {
     void SoundManager.play(RISK_WHEEL_GOOD_KEY);
@@ -77,7 +65,9 @@ export function useRiskWheelAudio(shouldPlayMusic: boolean): UseRiskWheelAudioRe
 
   return {
     startWheelSound,
-    stopWheelSound,
+    stopWheelSound: () => {
+      stopWheelSound();
+    },
     playGoodRewardSound,
     playBadRewardSound,
     play666Sound,

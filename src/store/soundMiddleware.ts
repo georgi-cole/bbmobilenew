@@ -14,30 +14,25 @@
  *   - game/activateBattleBack  → tv:battleback
  *   - finale/castVote          → ui:jury_vote
  *   - game/startWinnerCinematic→ tv:winner_reveal
- *   - social/openSocialPanel   → requestBgm('social') with music:social_module
- *   - social/closeSocialPanel  → releaseBgm('social')
- *   - social/openIncomingInbox → requestBgm('social') with music:social_module
- *   - social/closeIncomingInbox→ releaseBgm('social')
+ *   - social/openSocialPanel   → no music side effects (handled by root resolver)
+ *   - social/closeSocialPanel  → no music side effects (handled by root resolver)
+ *   - social/openIncomingInbox → no music side effects (handled by root resolver)
+ *   - social/closeIncomingInbox→ no music side effects (handled by root resolver)
  *
- * Phase-driven music policy
+ * Phase-driven audio policy
  * ─────────────────────────
- * All phase music is requested/released through requestBgm/releaseBgm with the
- * 'phase' owner.  This ensures the SoundManager enforces the single-BGM-channel
- * invariant and prevents stale tracks from overlapping.
+ * Background music is resolved centrally at the app root from global state.
+ * This middleware is responsible only for one-shot SFX/stingers.
  *
- *   loh_comp / loh_results          → requestBgm('music:hoh_comp_general', 'phase')
- *   pos_comp / pos_results          → requestBgm('music:hoh_comp_general', 'phase')
- *   nominations / nomination_results→ requestBgm('music:nominations_main', 'phase')
- *   pos_ceremony                    → tv:veto_ceremony (stinger, once)
- *                                      + requestBgm('music:veto_phase', 'phase')
- *   pos_ceremony_results            → requestBgm('music:veto_phase', 'phase')
- *   live_vote                       → tv:voting_eviction (stinger)
+ *   loh_results / pos_results       → tv:event
+ *   pos_ceremony                    → tv:veto_ceremony
+ *   live_vote                       → tv:voting_eviction
  *   eviction_results / final4_eviction → (no audio — evicted SFX deferred to
  *                                        game/setEvictionOverlay, see below)
  *   game/setEvictionOverlay(id)     → player:evicted (one-shot, null→id transition
  *                                        only; Battle Back returns are excluded)
  *   game/clearEvictionOverlay       → resets the evicted-SFX idempotency guard
- *   week_start / week_end           → releaseBgm('phase') — clean boundary
+ *   week_start / week_end           → no direct music call
  */
 
 import type { Middleware } from '@reduxjs/toolkit';
@@ -86,14 +81,6 @@ const NOMINATIONS_MUSIC_PHASES = new Set<string>([
 /**
  * Phases where all phase music should be stopped (clean week boundary).
  */
-const MUSIC_STOP_PHASES = new Set<string>(['week_start', 'week_end']);
-
-/**
- * Whether the social module music is currently active.
- * Used to prevent phase BGM requests from overriding social music.
- */
-let _socialMusicActive = false;
-
 /**
  * The player id for which `player:evicted` was most recently played.
  * Used to guard against double-play in two scenarios:
@@ -135,32 +122,17 @@ function _applyPhaseAudio(newPhase: string): void {
     if (newPhase === 'loh_results' || newPhase === 'pos_results') {
       void SoundManager.play('tv:event');
     }
-    if (!_socialMusicActive) {
-      SoundManager.requestBgm('music:hoh_comp_general', 'phase');
-    }
   } else if (NOMINATIONS_MUSIC_PHASES.has(newPhase)) {
-    if (!_socialMusicActive) {
-      SoundManager.requestBgm('music:nominations_main', 'phase');
-    }
+    return;
   } else if (newPhase === 'pos_ceremony') {
     // Play veto ceremony stinger once (on ceremony start only), then start veto loop
     void SoundManager.play('tv:veto_ceremony');
-    if (!_socialMusicActive) {
-      SoundManager.requestBgm('music:veto_phase', 'phase');
-    }
   } else if (newPhase === 'pos_ceremony_results') {
     // Continue veto loop; do NOT replay the stinger
-    if (!_socialMusicActive) {
-      SoundManager.requestBgm('music:veto_phase', 'phase');
-    }
+    return;
   } else if (newPhase === 'live_vote') {
     // Voting ceremony stinger; keep any existing background music
     void SoundManager.play('tv:voting_eviction');
-  } else if (MUSIC_STOP_PHASES.has(newPhase)) {
-    // Clean week boundary — release phase music ownership
-    if (!_socialMusicActive) {
-      SoundManager.releaseBgm('phase');
-    }
   }
   // eviction_results / final4_eviction: player:evicted is triggered by
   // game/setEvictionOverlay (when the cinematic overlay actually begins),
@@ -308,7 +280,6 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
 
   if (type === 'game/resetGame') {
     const result = next(action);
-    _socialMusicActive = false;
     _lastEvictionSfxId = null;
     return result;
   }
@@ -329,36 +300,13 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
 
   // ── Social module opened (outgoing panel or incoming inbox) ───────────────
   if (type === 'social/openSocialPanel' || type === 'social/openIncomingInbox') {
-    const result = next(action);
-    if (!_socialMusicActive) {
-      _socialMusicActive = true;
-      SoundManager.requestBgm('music:social_module', 'social');
-    }
-    return result;
+    return next(action);
   }
 
   // ── Social module closed (outgoing panel or incoming inbox) ───────────────
   if (type === 'social/closeSocialPanel' || type === 'social/closeIncomingInbox') {
-    const result = next(action);
-    if (_socialMusicActive) {
-      const state = api.getState() as StateWithGame;
-      const panelOpen = state.social?.panelOpen ?? false;
-      const inboxOpen = state.social?.incomingInboxOpen ?? false;
-      // Only restore once both the panel and inbox are closed
-      if (!panelOpen && !inboxOpen) {
-        // Clear the social-active flag first so _applyPhaseAudio's guards pass.
-        _socialMusicActive = false;
-        // Re-apply the current phase audio so the correct phase track is stored
-        // as the desired BGM in the SoundManager BEFORE releasing social.
-        // This ensures that releaseBgm('social') automatically falls back to
-        // the right phase track even if the phase changed while social was open.
-        _applyPhaseAudio(state.game.phase);
-        SoundManager.releaseBgm('social');
-      }
-    }
-    return result;
+    return next(action);
   }
 
   return next(action);
 };
-

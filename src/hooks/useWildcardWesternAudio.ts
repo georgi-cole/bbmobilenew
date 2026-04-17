@@ -17,10 +17,9 @@
  *     useWildcardWesternAudio(ww.phase !== 'idle');
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
 
-const WW_MUSIC_KEY = 'music:wildcard_western_main';
 const WW_SELECT_KEY = 'ui:wildcard_select';
 const WW_DRAW_KEY = 'ui:wildcard_draw';
 const WW_ELIMINATED_KEY = 'player:wildcard_eliminated';
@@ -48,16 +47,7 @@ export interface UseWildcardWesternAudioReturn {
  *   Background music starts on the first true value and stops when it reverts
  *   to false or the component unmounts.
  */
-export function useWildcardWesternAudio(shouldPlayMusic: boolean): UseWildcardWesternAudioReturn {
-  // Request/release BGM ownership when the minigame becomes active or inactive.
-  useEffect(() => {
-    if (!shouldPlayMusic) return;
-    SoundManager.requestBgm(WW_MUSIC_KEY, 'minigame');
-    return () => {
-      SoundManager.releaseBgm('minigame');
-    };
-  }, [shouldPlayMusic]);
-
+export function useWildcardWesternAudio(_shouldPlayMusic: boolean): UseWildcardWesternAudioReturn {
   const playSelect = useCallback(() => {
     void SoundManager.play(WW_SELECT_KEY);
   }, []);

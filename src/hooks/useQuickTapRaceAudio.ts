@@ -11,10 +11,9 @@
  *     useQuickTapRaceAudio(gamePhase === 'playing');
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
 
-const QTR_MUSIC_KEY = 'music:quicktap_main';
 const QTR_TAP_KEY = 'minigame:quicktap_tap';
 const QTR_BOOSTER_KEY = 'minigame:quicktap_booster';
 const QTR_HALF_TAP_KEY = 'minigame:quicktap_half_tap';
@@ -33,17 +32,7 @@ export interface UseQuickTapRaceAudioReturn {
  *   Background music is requested while true and released when it reverts to
  *   false or the component unmounts.
  */
-export function useQuickTapRaceAudio(isPlaying: boolean): UseQuickTapRaceAudioReturn {
-  // Request/release minigame BGM ownership only while the playing phase is
-  // active so the track is tied to the minigame lifecycle, not the phase slot.
-  useEffect(() => {
-    if (!isPlaying) return;
-    SoundManager.requestBgm(QTR_MUSIC_KEY, 'minigame');
-    return () => {
-      SoundManager.releaseBgm('minigame');
-    };
-  }, [isPlaying]);
-
+export function useQuickTapRaceAudio(_isPlaying: boolean): UseQuickTapRaceAudioReturn {
   const playTap = useCallback(() => {
     void SoundManager.play(QTR_TAP_KEY);
   }, []);

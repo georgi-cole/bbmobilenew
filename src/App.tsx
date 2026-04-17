@@ -13,6 +13,7 @@ import { RouterProvider } from 'react-router-dom';
 import { store } from './store/store';
 import { router } from './routes';
 import { SoundManager } from './services/sound/SoundManager';
+import AudioStateSync from './services/sound/AudioStateSync';
 import AudioGate from './components/AudioGate/AudioGate';
 import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice';
 
@@ -44,6 +45,7 @@ export default function App() {
 
   return (
     <Provider store={store}>
+      <AudioStateSync />
       {/* AudioGate is suppressed on the Intro/Home route because HomeHub
           unlocks audio via the Play gesture (see HomeHub.handlePlay). */}
       {!isHomeRoute(hash) && <AudioGate />}

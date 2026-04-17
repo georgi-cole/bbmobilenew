@@ -69,6 +69,10 @@ class _SoundManagerNative {
     // TODO: stop all music via native audio library
   }
 
+  panicStopAllMusic(): void {
+    // TODO: force-stop all music via native audio library
+  }
+
   stopMusic(_track?: MusicTrack): void {
     // TODO: stop music via native audio library
   }
@@ -102,7 +106,7 @@ class _SoundManagerNative {
   }
 
   unlockAndPlayMusicOnly(): void {
-    // No-op on React Native — no AudioContext unlock required
+    this.unlockFromGesture();
   }
 }
 
