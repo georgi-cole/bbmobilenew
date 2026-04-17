@@ -252,10 +252,17 @@ describe('HomeHub', () => {
       expect((window as Window & { game?: Record<string, unknown> }).game).toMatchObject({
         hubNotifications: { news: true },
         season: 4,
+        day: 7,
         week: 7,
         phase: 'nominations',
         players: [{ id: 'user', isUser: true }],
         seasonArchives: [{ seasonId: 'season-3' }],
+        achievementSummary: {
+          playerName: 'You',
+          totals: {
+            seasonsPlayed: 1,
+          },
+        },
       });
     });
   });

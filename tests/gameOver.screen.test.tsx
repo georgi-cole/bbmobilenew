@@ -124,6 +124,7 @@ describe('GameOver screen', () => {
     expect(userSummary).toBeDefined();
     // Winner was never evicted → weeksAlive falls back to game.week (8)
     expect(userSummary?.weeksAlive).toBe(8);
+    expect(userSummary?.daysAlive).toBe(8);
     expect(userSummary?.lohWins).toBe(3);
     expect(userSummary?.posWins).toBe(2);
     expect(userSummary?.finalPlacement).toBe(1);
@@ -137,6 +138,7 @@ describe('GameOver screen', () => {
       ? playersWithEvictions.find((p) => p.id === evictedSummary.playerId)?.evictedAtWeek
       : undefined;
     expect(evictedSummary?.weeksAlive).toBe(expectedWeeksAlive);
+    expect(evictedSummary?.daysAlive).toBe(expectedWeeksAlive);
   });
 
   it('archives include survivedDoubleEviction for players who survived a double eviction week', async () => {

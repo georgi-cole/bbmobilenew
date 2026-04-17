@@ -473,6 +473,10 @@
   }
 
   function collectAchievementStats() {
+    if (g.achievementSummary && typeof g.achievementSummary === 'object') {
+      return g.achievementSummary;
+    }
+
     const players = Array.isArray(g.players) ? g.players : [];
     const userPlayer = players.find(function (player) {
       return player && player.isUser;
@@ -522,14 +526,18 @@
       if (summary.madeJury) juryAppearances += 1;
       if (summary.survivedDoubleEviction) doubleEvictionSurvivals += 1;
       if (summary.survivedTripleEviction) tripleEvictionSurvivals += 1;
-      if (typeof summary.weeksAlive === 'number' && summary.weeksAlive > 0) {
-        averageDaysTotal += summary.weeksAlive;
+      const archivedDaysAlive = typeof summary.daysAlive === 'number'
+        ? summary.daysAlive
+        : summary.weeksAlive;
+      if (typeof archivedDaysAlive === 'number' && archivedDaysAlive > 0) {
+        averageDaysTotal += archivedDaysAlive;
         averageDaysSamples += 1;
       }
     });
 
     const liveStats = userPlayer && userPlayer.stats ? userPlayer.stats : null;
-    const currentSeasonActive = !!userPlayer && (toNumber(g.week) > 1 || (g.phase && g.phase !== 'week_start'));
+    const currentDay = toNumber(g.day != null ? g.day : g.week);
+    const currentSeasonActive = !!userPlayer && (currentDay > 1 || (g.phase && g.phase !== 'week_start'));
     if (currentSeasonActive) {
       seasonsPlayed += 1;
       lohWins += toNumber(liveStats && liveStats.lohWins);
@@ -541,8 +549,8 @@
         toNumber(liveStats && liveStats.timesNominated) - (userPlayer.status === 'evicted' || userPlayer.status === 'jury' ? 1 : 0),
         0,
       );
-      if (toNumber(g.week) > 0) {
-        averageDaysTotal += toNumber(g.week);
+      if (currentDay > 0) {
+        averageDaysTotal += currentDay;
         averageDaysSamples += 1;
       }
     }

@@ -32,6 +32,8 @@ export interface PlayerSeasonSummary {
   wonPublicFavorite?: boolean;
   /** True if the player won the Final LOH (Part 3 of the Final 3 competition). */
   wonFinalHoh?: boolean;
+  /** Number of days the player remained in the house (alive). */
+  daysAlive?: number;
   /** Number of weeks the player remained in the house (alive). */
   weeksAlive?: number;
   /** True if the player was evicted at some point (including jury). */

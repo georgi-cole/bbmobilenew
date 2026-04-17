@@ -388,4 +388,85 @@ describe('IntroHub side utility buttons', () => {
     // "Eviction escape artist" badge should appear because survivedDoubleEviction = true
     expect(dialog?.textContent).toContain('Eviction escape artist');
   });
+
+  it('uses a precomputed achievement summary mirrored from Redux when available', () => {
+    loadIntroHub({
+      achievementSummary: {
+        playerName: 'Jordan',
+        totals: {
+          seasonsPlayed: 9,
+          seasonsWon: 2,
+          publicFavoriteWins: 1,
+          averageDaysSurvived: '8.5 days',
+          totalCompWins: 11,
+          timesNominated: 6,
+          survivedNominations: 4,
+          lohWins: 4,
+          posWins: 5,
+          battleBackWins: 2,
+          finalHohWins: 1,
+          juryAppearances: 3,
+          doubleEvictionSurvivals: 1,
+          tripleEvictionSurvivals: 0,
+          rewardsFound: 2,
+        },
+        quickStats: [
+          { label: 'Seasons', value: '9', icon: '📚' },
+          { label: 'Wins', value: '2', icon: '🏆' },
+          { label: 'Rewards', value: '2', icon: '🥚' },
+        ],
+        featuredStats: [
+          { label: 'Season wins', value: '2', helper: '9 seasons entered', icon: '🏆', tone: 'gold', wide: true },
+          { label: 'Comp wins', value: '11', helper: '4 LOH · 5 POS · 2 BB', icon: '⚔️', tone: 'violet' },
+          { label: 'Avg survive', value: '8.5 days', helper: '4 block escapes', icon: '🛡️', tone: 'emerald' },
+        ],
+        sections: [
+          {
+            title: 'Competitive / Wins',
+            icon: '⚔️',
+            tone: 'violet',
+            stats: [
+              { label: 'LOH wins', value: '4', icon: '👑', tone: 'violet' },
+              { label: 'POS wins', value: '5', icon: '🔑', tone: 'violet' },
+              { label: 'Battle backs', value: '2', icon: '🔄', tone: 'violet' },
+              { label: 'Final LOHs', value: '1', icon: '🎯', tone: 'violet' },
+            ],
+          },
+          {
+            title: 'Recognition / Social',
+            icon: '🌟',
+            tone: 'rose',
+            stats: [
+              { label: 'Fan favorite', value: '1', icon: '🌟', tone: 'rose' },
+              { label: 'Jury runs', value: '3', icon: '⚖️', tone: 'rose' },
+              { label: 'Rewards found', value: '2', icon: '🥚', tone: 'rose' },
+            ],
+          },
+          {
+            title: 'Survival / Endurance',
+            icon: '🛡️',
+            tone: 'emerald',
+            stats: [
+              { label: 'Seasons played', value: '9', icon: '📅', tone: 'emerald' },
+              { label: 'Nominations', value: '6', icon: '🎯', tone: 'emerald' },
+              { label: 'Block escapes', value: '4', icon: '🚪', tone: 'emerald' },
+              { label: 'Double survives', value: '1', icon: '⚡', tone: 'emerald' },
+              { label: 'Triple survives', value: '0', icon: '🔥', tone: 'emerald' },
+            ],
+          },
+        ],
+        highlightBadges: ['🏆 Season champ ×2', '💪 Comp beast ×11'],
+        hasHistory: true,
+      },
+    });
+
+    document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
+
+    const dialog = document.getElementById('hub-dialog-panel');
+    expect(dialog?.textContent).toContain('Jordan');
+    expect(dialog?.textContent).toContain('9');
+    expect(dialog?.textContent).toContain('11');
+    expect(dialog?.textContent).toContain('8.5 days');
+    expect(dialog?.textContent).toContain('Comp beast ×11');
+  });
 });

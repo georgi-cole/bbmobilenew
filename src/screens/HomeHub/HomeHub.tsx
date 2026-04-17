@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
@@ -38,6 +38,7 @@ import {
   selectRemoteIntroHubBg,
   selectRemoteIntroHubOverlay,
 } from '../../remoteConfig/remoteConfigSlice';
+import { buildAchievementSummary } from '../../store/achievementSummary';
 import './HomeHub.css';
 
 /**
@@ -90,6 +91,15 @@ export default function HomeHub() {
   const { url: bgUrl } = useBackgroundTheme();
   const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
   const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
+  const achievementSummary = useMemo(
+    () => buildAchievementSummary({
+      userPlayer: introHubPlayer,
+      seasonArchives,
+      day: week,
+      phase,
+    }),
+    [introHubPlayer, phase, seasonArchives, week],
+  );
   // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = remoteBgUrl ?? bgUrl;
   const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
@@ -115,12 +125,14 @@ export default function HomeHub() {
     // the specific season fields they depend on in sync while HomeHub is mounted.
     Object.assign(gameWindow.game, {
       season,
+      day: week,
       week,
       phase,
       players: introHubPlayer ? [introHubPlayer] : [],
       seasonArchives,
+      achievementSummary,
     });
-  }, [season, week, phase, introHubPlayer, seasonArchives]);
+  }, [achievementSummary, season, week, phase, introHubPlayer, seasonArchives]);
 
   // Play the intro hub ambient music while this screen is mounted.
   // The hook only autoplays if persistent consent is stored; otherwise the

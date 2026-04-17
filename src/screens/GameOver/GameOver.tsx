@@ -26,9 +26,10 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null, week
     const battleBackWins = p.stats?.battleBackWins ?? 0;
     const wonPublicFavorite = favoriteWinnerId != null && p.id === favoriteWinnerId;
     const wonFinalHoh = p.stats?.wonFinalHoh ?? false;
-    // weeksAlive: use the stamped eviction week if available, otherwise fall back
-    // to the current game week (correct for winner/runner-up still in the house).
-    const weeksAlive = p.evictedAtWeek ?? week;
+    // The internal `week` counter now represents in-game days, so archive the
+    // survival duration as daysAlive. Keep weeksAlive populated too as a
+    // backwards-compatible fallback for any older consumers still reading it.
+    const daysAlive = p.evictedAtWeek ?? week;
     const survivedDoubleEviction = p.stats?.survivedDoubleEviction ?? false;
 
     const summary: PlayerSeasonSummary = {
@@ -45,7 +46,8 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null, week
       battleBackWins,
       wonPublicFavorite,
       wonFinalHoh,
-      weeksAlive,
+      daysAlive,
+      weeksAlive: daysAlive,
       survivedDoubleEviction: survivedDoubleEviction ? true : undefined,
       leaderboardScore: 0,
     };
