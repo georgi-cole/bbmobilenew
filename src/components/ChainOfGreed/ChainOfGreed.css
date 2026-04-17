@@ -237,6 +237,8 @@
   border: none;
   color: inherit;
   font: inherit;
+  padding: 0;
+  background: transparent;
 }
 
 .chain-of-greed__phase-chip--info {
