@@ -73,6 +73,11 @@ const TimingBarTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/TimingBarTestPage/TimingBarTestPage'))
   : null;
 
+// Dev-only Grid of Luck test page.
+const GridOfLuckTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/GridOfLuckTestPage/GridOfLuckTestPage'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -119,6 +124,9 @@ export const router = createHashRouter([
         : []),
       ...(import.meta.env.DEV && TimingBarTestPage != null
         ? [{ path: 'tb-test', element: <Suspense fallback={null}><TimingBarTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && GridOfLuckTestPage != null
+        ? [{ path: 'gol-test', element: <Suspense fallback={null}><GridOfLuckTestPage /></Suspense> }]
         : []),
       { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },
