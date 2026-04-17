@@ -232,7 +232,7 @@ export default function GameScreen() {
   const [pendingPublicSaveResult, setPendingPublicSaveResult] = useState<PendingPublicSaveResult | null>(null)
   const [publicSaveCeremonyConsumedKey, setPublicSaveCeremonyConsumedKey] = usePersistedGameScreenKey(
     'public-save-ceremony',
-    game.seed,
+    `${game.gameId}:${game.season}`,
   )
   const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
   const [activeAiTiebreakContext, setActiveAiTiebreakContext] = useState<AiTiebreakContext | null>(null)
