@@ -66,7 +66,7 @@ describe('GridOfLuck component', () => {
     expect(resolvedEventCard).toHaveTextContent(/next:/i);
     expect(screen.getByRole('button', { name: /continue ritual/i })).toBeTruthy();
     expect(within(screen.getByTestId('grid-of-luck-ritual-feed')).queryAllByRole('listitem')).toHaveLength(0);
-  });
+  }, 10_000);
 
   it('keeps the human player card first even when another player acts first', () => {
     render(

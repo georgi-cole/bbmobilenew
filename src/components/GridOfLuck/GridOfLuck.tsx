@@ -282,7 +282,7 @@ function toNextUpChipLabel(nextUp: string): string {
   return `Next: ${nextUp}`;
 }
 
-function getResolvedTitle(revealMetaLabel: string, lpDeltas: RevealState['lpDeltas']): string {
+function getResolvedTitleForSingleDelta(revealMetaLabel: string, lpDeltas: RevealState['lpDeltas']): string {
   if (lpDeltas.length !== 1) return revealMetaLabel;
   const [delta] = lpDeltas;
   return `${delta.delta > 0 ? '+' : ''}${delta.delta} LP`;
@@ -1275,7 +1275,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     if (revealState) {
       const revealMeta = BOX_META[revealState.effectType];
       const resolvedTitle = revealState.phase === 'resolved'
-        ? getResolvedTitle(revealMeta.label, revealState.lpDeltas)
+        ? getResolvedTitleForSingleDelta(revealMeta.label, revealState.lpDeltas)
         : revealMeta.label;
       const revealChips: EventCardChip[] = revealState.phase === 'resolved'
         ? [
