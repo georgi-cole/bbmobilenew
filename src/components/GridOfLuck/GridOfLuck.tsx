@@ -19,6 +19,7 @@ type BoxCategory = 'positive' | 'negative' | 'aggressive' | 'strategic' | 'chaos
 type GamePhase = 'normal' | 'final' | 'finished';
 type TurnMode =
   | 'box'
+  | 'animating'
   | 'target'
   | 'martyr-blessing'
   | 'martyr-curse'
@@ -102,6 +103,7 @@ interface RevealState {
   boxId: number;
   effectType: BoxType;
   actorName: string;
+  phase: 'selection' | 'reveal' | 'resolved';
   message: string;
   lpDeltas: { playerName: string; delta: number }[];
 }
@@ -198,6 +200,8 @@ const STATUS_ICON_GROUPS = {
 
 const ELIMINATION_TYPES = new Set<BoxType>(['execution', 'martyrdom']);
 const HUMAN_PICK_DELAY_MS = 1200;
+const BOX_CHOICE_BEAT_MS = 450;
+const BOX_REVEAL_BEAT_MS = 650;
 const MAX_CHAIN_DEPTH = 4;
 const MAX_GRID_OF_LUCK_PLAYERS = 10;
 const MARTYRDOM_ELIMINATION_DAMAGE = 10_000;
@@ -1052,6 +1056,22 @@ function getBoxState(box: GridBox): keyof typeof boxVariants {
   return 'idle';
 }
 
+function getPreviewEffectType(state: GameState, boxId: number): BoxType {
+  const box = state.gridBoxes.find((entry) => entry.id === boxId);
+  if (!box) return 'hiddenBonus';
+
+  let effectType = box.type;
+  if (state.openedCount < 3 && ELIMINATION_TYPES.has(effectType)) {
+    effectType = pickSafeTypeForEarlyTurn(state.gridBoxes, boxId).effectType;
+  }
+
+  if (effectType === 'copyLastPower' && state.lastPowerUsed) {
+    return state.lastPowerUsed;
+  }
+
+  return effectType;
+}
+
 function GridOfLuckAvatar({ player }: { player: GridPlayer }) {
   const candidates = useMemo(
     () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }),
@@ -1088,6 +1108,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
   const resolvedParticipants = useMemo(() => resolveParticipants(props), [props]);
   const [sessionSeed] = useState<number>(() => (props.seed !== undefined && props.seed !== 0 ? props.seed : cryptoSeed()));
   const rngRef = useRef<() => number>(mulberry32(sessionSeed >>> 0));
+  const revealTimerIds = useRef<number[]>([]);
   const [state, setState] = useState<GameState>(() => createInitialState(resolvedParticipants, sessionSeed));
   const [turnMode, setTurnMode] = useState<TurnMode>('box');
   const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
@@ -1115,6 +1136,27 @@ export default function GridOfLuck(props: GenericMinigameProps) {
   const nextPlayer = useMemo(() => {
     return getNextEligiblePlayer(state);
   }, [state]);
+
+  const displayPlayers = useMemo(() => {
+    const turnIndexById = new Map(state.turnOrder.map((playerId, index) => [playerId, index]));
+    const totalTurns = Math.max(1, state.turnOrder.length);
+    const humanId = humanPlayer?.id ?? null;
+
+    return [...state.players].sort((left, right) => {
+      if (left.id === humanId) return -1;
+      if (right.id === humanId) return 1;
+      if (left.isEliminated !== right.isEliminated) return left.isEliminated ? 1 : -1;
+
+      const leftTurnIndex = turnIndexById.get(left.id) ?? 0;
+      const rightTurnIndex = turnIndexById.get(right.id) ?? 0;
+      const leftDistance = (leftTurnIndex - state.currentTurnIndex + totalTurns) % totalTurns;
+      const rightDistance = (rightTurnIndex - state.currentTurnIndex + totalTurns) % totalTurns;
+
+      if (leftDistance !== rightDistance) return leftDistance - rightDistance;
+      if (right.lp !== left.lp) return right.lp - left.lp;
+      return right.support - left.support;
+    });
+  }, [humanPlayer?.id, state.currentTurnIndex, state.players, state.turnOrder]);
 
   const boxesRemaining = useMemo(
     () => state.gridBoxes.filter((box) => !box.isOpened).length,
@@ -1146,6 +1188,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         meta: boxesRemaining === 0 ? 'All boxes opened' : `${boxesRemaining} boxes left`,
         symbol: '✦',
         deltas: [] as RevealState['lpDeltas'],
+        nextUp: null as string | null,
       };
     }
 
@@ -1163,22 +1206,24 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         meta: actor ? `${actor.name} is resolving this power` : 'Resolve the chamber effect',
         symbol: pendingMeta.symbol,
         deltas: [] as RevealState['lpDeltas'],
+        nextUp: null as string | null,
       };
     }
 
     if (revealState) {
       const revealMeta = BOX_META[revealState.effectType];
-      const nextUp = nextPlayer ? `Up next: ${nextPlayer.name} • ${nextPlayer.lp} LP` : null;
+      const revealMetaLine = revealState.phase === 'resolved' ? `${revealState.actorName} opened box ${revealState.boxId + 1}` : `${revealState.actorName} • Box ${revealState.boxId + 1}`;
       return {
         accent: CATEGORY_COLORS[revealMeta.category],
-        badge: turnMode === 'awaiting-continue' ? 'Turn resolved' : 'Last reveal',
-        eyebrow: revealMeta.category,
-        title: revealMeta.label,
+        badge: revealState.phase === 'selection' ? 'Choice locked' : revealState.phase === 'reveal' ? 'Seal opening' : turnMode === 'awaiting-continue' ? 'Turn resolved' : 'Last reveal',
+        eyebrow: revealState.phase === 'selection' ? 'Chosen box' : revealState.phase === 'reveal' ? 'Revealed effect' : 'Effect resolved',
+        title: revealState.phase === 'selection' ? `${revealState.actorName} chose box ${revealState.boxId + 1}` : revealMeta.label,
         message: revealState.message,
-        detail: [revealMeta.description, nextUp].filter(Boolean).join(' • '),
-        meta: `${revealState.actorName} opened box ${revealState.boxId + 1}`,
+        detail: revealState.phase === 'resolved' ? null : revealMeta.description,
+        meta: revealMetaLine,
         symbol: revealMeta.symbol,
-        deltas: revealState.lpDeltas,
+        deltas: revealState.phase === 'resolved' ? revealState.lpDeltas : [],
+        nextUp: revealState.phase === 'resolved' && nextPlayer ? `${nextPlayer.name} • ${nextPlayer.lp} LP` : null,
       };
     }
 
@@ -1197,14 +1242,22 @@ export default function GridOfLuck(props: GenericMinigameProps) {
       meta: `${activePlayer.lp} LP`,
       symbol: activePlayer.isHuman && turnMode === 'box' ? '✦' : '◈',
       deltas: [] as RevealState['lpDeltas'],
+      nextUp: null as string | null,
     };
   }, [activePlayer, announcement, boxesRemaining, nextPlayer, pendingSelection, ranking, revealState, state.players, state.winnerId, turnMode, validTargets.length]);
+
+  const clearRevealTimers = useCallback(() => {
+    revealTimerIds.current.forEach((timerId) => window.clearTimeout(timerId));
+    revealTimerIds.current = [];
+  }, []);
 
   useEffect(() => {
     if (screenMode === 'idle') return undefined;
     const timer = setTimeout(() => setScreenMode('idle'), 650);
     return () => clearTimeout(timer);
   }, [screenMode]);
+
+  useEffect(() => clearRevealTimers, [clearRevealTimers]);
 
   const resolveOutcome = useCallback((outcome: ResolutionOutcome, boxId: number | null = null) => {
     setState(outcome.state);
@@ -1215,6 +1268,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         boxId,
         effectType: outcome.revealedEffectType,
         actorName: activePlayer.name,
+        phase: 'resolved',
         message: outcome.message,
         lpDeltas: outcome.floatingBursts.map((burst) => ({
           playerName: outcome.state.players.find((player) => player.id === burst.playerId)?.name ?? '',
@@ -1244,12 +1298,45 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     setTurnMode('awaiting-continue');
   }, [activePlayer.name, isSpectatorMode]);
 
+  const stageBoxReveal = useCallback((sourceState: GameState, actor: GridPlayer, boxId: number) => {
+    clearRevealTimers();
+
+    const previewEffectType = getPreviewEffectType(sourceState, boxId);
+    setPendingSelection(null);
+    setTurnMode('animating');
+    setAnnouncement(`${actor.name} reaches for box ${boxId + 1}.`);
+    setRevealState({
+      boxId,
+      effectType: previewEffectType,
+      actorName: actor.name,
+      phase: 'selection',
+      message: `${actor.name} reaches for box ${boxId + 1}.`,
+      lpDeltas: [],
+    });
+    setScreenMode('zoomIn');
+
+    revealTimerIds.current.push(window.setTimeout(() => {
+      setRevealState((current) => {
+        if (!current || current.boxId !== boxId) return current;
+        return {
+          ...current,
+          phase: 'reveal',
+          message: `Box ${boxId + 1} opens and reveals ${BOX_META[previewEffectType].label}.`,
+        };
+      });
+      setScreenMode('vignette');
+    }, BOX_CHOICE_BEAT_MS));
+
+    revealTimerIds.current.push(window.setTimeout(() => {
+      resolveOutcome(resolveBoxSelection(sourceState, actor.id, boxId, rngRef.current), boxId);
+    }, BOX_CHOICE_BEAT_MS + BOX_REVEAL_BEAT_MS));
+  }, [clearRevealTimers, resolveOutcome]);
+
   const handleBoxSelection = useCallback((boxId: number) => {
     if (turnMode !== 'box' || state.gamePhase === 'finished') return;
     if (!activePlayer.isHuman) return;
-    const outcome = resolveBoxSelection(state, activePlayer.id, boxId, rngRef.current);
-    resolveOutcome(outcome, boxId);
-  }, [activePlayer.id, activePlayer.isHuman, resolveOutcome, state, turnMode]);
+    stageBoxReveal(state, activePlayer, boxId);
+  }, [activePlayer, stageBoxReveal, state, turnMode]);
 
   const handleTargetSelection = useCallback((playerId: string) => {
     if (!pendingSelection) return;
@@ -1280,11 +1367,10 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     if (activePlayer.isHuman) return undefined;
     const timer = setTimeout(() => {
       const box = chooseAiBox(state, activePlayer.id, rngRef.current);
-      const outcome = resolveBoxSelection(state, activePlayer.id, box.id, rngRef.current);
-      resolveOutcome(outcome, box.id);
+      stageBoxReveal(state, activePlayer, box.id);
     }, state.gamePhase === 'final' ? 700 : state.players.length >= 5 ? 850 : HUMAN_PICK_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [activePlayer.id, activePlayer.isHuman, resolveOutcome, state, turnMode]);
+  }, [activePlayer, stageBoxReveal, state, turnMode]);
 
   useEffect(() => {
     if (floatingBursts.length === 0) return undefined;
@@ -1372,7 +1458,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         </motion.header>
 
         <motion.section className="grid-of-luck__players" layout>
-          {ranking.map((player) => {
+          {displayPlayers.map((player) => {
             const isActive = activePlayer.id === player.id && turnMode !== 'finished';
             const isTargetable = validTargets.some((entry) => entry.id === player.id);
             const lpPercent = Math.max(0, Math.min(100, (player.lp / 900) * 100));
@@ -1389,6 +1475,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                 key={player.id}
                 className={`grid-of-luck__player-card${player.isEliminated ? ' is-eliminated' : ''}${isTargetable ? ' is-targetable' : ''}${isActive ? ' is-active' : ''}`}
                 type="button"
+                data-testid="grid-of-luck-player-card"
                 aria-label={`${player.name} ${player.lp} LP ${player.isEliminated ? 'Eliminated' : player.statusEffects.length > 0 ? player.statusEffects.join(', ') : 'No active effects'}`}
                 variants={playerVariants}
                 animate={variant}
@@ -1504,31 +1591,37 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                   ))}
                 </div>
               )}
+              {(eventCard.nextUp || turnMode === 'awaiting-continue' || turnMode === 'finished') && (
+                <div className="grid-of-luck__event-footer">
+                  {eventCard.nextUp && (
+                    <div className="grid-of-luck__event-next">
+                      <span className="grid-of-luck__sidebar-label">Up next</span>
+                      <strong>{eventCard.nextUp}</strong>
+                    </div>
+                  )}
+                  {turnMode === 'awaiting-continue' && (
+                    <motion.button
+                      className="grid-of-luck__event-action"
+                      type="button"
+                      onClick={handleContinueTurn}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {isSpectatorMode || humanPlayer?.isEliminated ? CONTINUE_WATCHING_LABEL : CONTINUE_RITUAL_LABEL}
+                    </motion.button>
+                  )}
+                  {turnMode === 'finished' && (
+                    <motion.button className="grid-of-luck__event-action" type="button" onClick={finishMinigame} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      Continue
+                    </motion.button>
+                  )}
+                </div>
+              )}
             </motion.div>
-            <motion.div className="grid-of-luck__log-card">
+            <motion.div className="grid-of-luck__log-card" data-testid="grid-of-luck-ritual-feed">
               <span className="grid-of-luck__sidebar-label">Ritual feed</span>
-              <ul>
-                {state.recentEvents.map((event, index) => (
-                  <li key={`${index}-${event}`}>{event}</li>
-                ))}
-              </ul>
+              <p className="grid-of-luck__log-entry">{state.recentEvents[0] ?? 'The chamber waits in silence.'}</p>
             </motion.div>
-            {turnMode === 'awaiting-continue' && (
-              <motion.button
-                className="grid-of-luck__finish-button"
-                type="button"
-                onClick={handleContinueTurn}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {isSpectatorMode || humanPlayer?.isEliminated ? CONTINUE_WATCHING_LABEL : CONTINUE_RITUAL_LABEL}
-              </motion.button>
-            )}
-            {turnMode === 'finished' && (
-              <motion.button className="grid-of-luck__finish-button" type="button" onClick={finishMinigame} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                Continue
-              </motion.button>
-            )}
           </motion.aside>
         </motion.section>
       </motion.div>
