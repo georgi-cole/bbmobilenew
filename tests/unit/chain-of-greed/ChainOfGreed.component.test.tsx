@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
 
@@ -22,7 +22,7 @@ describe('ChainOfGreed component', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
-    expect(screen.getByRole('heading', { name: 'Chain of Greed' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Chain of Greed' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Start Round' })).not.toBeInTheDocument();
     expect(screen.getByText('Round starting…')).toBeInTheDocument();
@@ -39,6 +39,9 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bank' })).toBeInTheDocument();
+    const header = screen.getByRole('banner');
+    expect(within(header).getByText('8 left')).toBeInTheDocument();
+    expect(within(header).getByText('0 secured')).toBeInTheDocument();
     expect(screen.queryByText(/Choose your move/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Bank is safe, but the first correct guess starts the value/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/First correct call starts the climb/i)).not.toBeInTheDocument();
@@ -59,6 +62,28 @@ describe('ChainOfGreed component', () => {
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
     expect(screen.getByTestId('chain-ladder-stage')).not.toHaveTextContent(/Next\s+Next/i);
     expect(screen.queryByText(/Step 0\/8 • Pot 0 • Next 50/i)).not.toBeInTheDocument();
+  });
+
+  it('wraps back to the start of the turn order instead of stalling after every player has acted once', () => {
+    vi.useFakeTimers();
+    render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
+
+    act(() => {
+      vi.advanceTimersByTime(950);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Higher' }));
+
+    for (let turn = 0; turn < participants.length - 1; turn += 1) {
+      act(() => {
+        vi.advanceTimersByTime(950);
+      });
+    }
+
+    expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bank' })).toBeInTheDocument();
+    expect(screen.queryByText(/is reading the board/i)).not.toBeInTheDocument();
   });
 
   it('shows a reusable help overlay with the bank and equal-number rules', () => {
