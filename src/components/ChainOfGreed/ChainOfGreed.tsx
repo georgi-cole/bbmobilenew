@@ -689,7 +689,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const nextRewardCopy = currentChainStep >= CHAIN_LADDER.length
     ? 'The full chain is lit.'
     : currentChainStep === 0
-      ? ''
+      ? null
       : `One more hit reaches ${nextReward.toLocaleString()}.`;
   const stageLabel = state.phase.startsWith('final')
     ? 'Final 2'
@@ -928,7 +928,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <span aria-label={`Pot ${currentPotLabel}`}>{chainStatusText.pot}</span>
                 <span aria-label={`Next reward ${nextReward.toLocaleString()}`}>{chainStatusText.next}</span>
               </div>
-              {(lockedRewardValue !== null || nextRewardCopy !== '') && (
+              {(lockedRewardValue !== null || nextRewardCopy !== null) && (
                 <p className="chain-of-greed__reward-line">
                   {lockedRewardValue !== null
                     ? `${lockedRewardValue.toLocaleString()} locked in on the current rung.`
