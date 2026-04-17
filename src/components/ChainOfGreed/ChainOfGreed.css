@@ -233,6 +233,22 @@
   background: rgba(255, 255, 255, 0.07);
 }
 
+.chain-of-greed__phase-chip {
+  border: none;
+  color: inherit;
+  font: inherit;
+}
+
+.chain-of-greed__phase-chip--info {
+  gap: 0.32rem;
+  cursor: pointer;
+}
+
+.chain-of-greed__phase-chip-icon {
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
 .chain-of-greed__commentary {
   position: relative;
   z-index: 1;
@@ -640,23 +656,6 @@
 
 .chain-of-greed__ladder-detail--next {
   color: rgba(255, 225, 141, 0.96);
-}
-
-.chain-of-greed__ladder-tap {
-  justify-self: center;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(161, 206, 255, 0.86);
-}
-
-.chain-of-greed__stage-footer {
-  display: flex;
-  justify-content: center;
-  text-align: center;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: rgba(225, 234, 255, 0.86);
 }
 
 .chain-of-greed__utility-stack {

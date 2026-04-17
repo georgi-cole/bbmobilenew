@@ -632,7 +632,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     pot: `Pot ${currentPotLabel}`,
     next: `Next ${nextRewardValueLabel}`,
   };
-  const chainStatusAriaLabel = `Step ${currentChainStep} of ${CHAIN_LADDER.length}, pot ${currentPotLabel}, next reward ${nextReward.toLocaleString()}`;
   const ladderSteps = [...CHAIN_LADDER].reverse().map((value, index) => {
     const step = CHAIN_LADDER.length - index;
     return {
@@ -690,7 +689,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const nextRewardCopy = currentChainStep >= CHAIN_LADDER.length
     ? 'The full chain is lit.'
     : currentChainStep === 0
-      ? `First correct call starts the climb at ${nextReward.toLocaleString()}.`
+      ? ''
       : `One more hit reaches ${nextReward.toLocaleString()}.`;
   const stageLabel = state.phase.startsWith('final')
     ? 'Final 2'
@@ -802,7 +801,19 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
           >
             <div className="chain-of-greed__hero-topline">
               <span className="chain-of-greed__status-kicker">{heroKicker}</span>
-              <span className="chain-of-greed__phase-chip">{heroPhaseChip}</span>
+              {state.phase === 'playerTurn' ? (
+                <button
+                  type="button"
+                  className="chain-of-greed__phase-chip chain-of-greed__phase-chip--info"
+                  aria-label="View full ladder"
+                  onClick={() => setIsLadderSheetOpen(true)}
+                >
+                  <span>{heroPhaseChip}</span>
+                  <span className="chain-of-greed__phase-chip-icon" aria-hidden="true">ℹ️</span>
+                </button>
+              ) : (
+                <span className="chain-of-greed__phase-chip">{heroPhaseChip}</span>
+              )}
             </div>
             <p className="chain-of-greed__commentary">{heroCommentary}</p>
             <div className="chain-of-greed__stage-core">
@@ -909,7 +920,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <span className="chain-of-greed__ladder-tap">View full ladder</span>
               </button>
             </div>
             <div className="chain-of-greed__hero-status">
@@ -918,14 +928,13 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <span aria-label={`Pot ${currentPotLabel}`}>{chainStatusText.pot}</span>
                 <span aria-label={`Next reward ${nextReward.toLocaleString()}`}>{chainStatusText.next}</span>
               </div>
-              <p className="chain-of-greed__reward-line">
-                {lockedRewardValue !== null
-                  ? `${lockedRewardValue.toLocaleString()} locked in on the current rung.`
-                  : nextRewardCopy}
-              </p>
-            </div>
-            <div className="chain-of-greed__stage-footer" aria-label={chainStatusAriaLabel}>
-              <span>{chainStatusText.step} • {chainStatusText.pot} • {chainStatusText.next}</span>
+              {(lockedRewardValue !== null || nextRewardCopy) && (
+                <p className="chain-of-greed__reward-line">
+                  {lockedRewardValue !== null
+                    ? `${lockedRewardValue.toLocaleString()} locked in on the current rung.`
+                    : nextRewardCopy}
+                </p>
+              )}
             </div>
           </motion.section>
 

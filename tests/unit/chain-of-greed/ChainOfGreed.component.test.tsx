@@ -41,6 +41,7 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Bank' })).toBeInTheDocument();
     expect(screen.queryByText(/Choose your move/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Bank is safe, but the first correct guess starts the value/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/First correct call starts the climb/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('chain-ladder-stage')).toBeInTheDocument();
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Step 0\/8/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Next 50/i);
@@ -57,6 +58,7 @@ describe('ChainOfGreed component', () => {
     expect(screen.getAllByRole('button', { name: 'Open help' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
     expect(screen.getByTestId('chain-ladder-stage')).not.toHaveTextContent(/Next\s+Next/i);
+    expect(screen.queryByText(/Step 0\/8 • Pot 0 • Next 50/i)).not.toBeInTheDocument();
   });
 
   it('shows a reusable help overlay with the bank and equal-number rules', () => {
