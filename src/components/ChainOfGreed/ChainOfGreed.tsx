@@ -143,7 +143,7 @@ function getPlayerTurnMessage(players: ChainOfGreedPlayerState[], turnOrder: str
 
 function getTurnOrderPlayerId(turnOrder: string[], turnIndex: number) {
   if (turnOrder.length === 0) return null;
-  return turnOrder[((turnIndex % turnOrder.length) + turnOrder.length) % turnOrder.length] ?? null;
+  return turnOrder[turnIndex % turnOrder.length] ?? null;
 }
 
 function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
