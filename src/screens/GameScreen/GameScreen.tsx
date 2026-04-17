@@ -341,7 +341,7 @@ export default function GameScreen() {
   // a spotlight ceremony so the winner reveal is still animated.
   const [advanceHohConsumedKey, setAdvanceHohConsumedKey] = usePersistedGameScreenKey(
     'advance-hoh-ceremony',
-    game.seed,
+    game.season,
   )
 
   const advanceHohKey = useMemo(() => {
