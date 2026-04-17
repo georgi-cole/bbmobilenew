@@ -13,6 +13,7 @@ const TEST_PARTICIPANTS = [
 export default function GridOfLuckTestPage() {
   const [seed, setSeed] = useState(42);
   const [gameKey, setGameKey] = useState(0);
+  const handleFinish = () => {};
 
   return (
     <div
@@ -66,7 +67,7 @@ export default function GridOfLuckTestPage() {
           key={gameKey}
           participants={TEST_PARTICIPANTS}
           seed={seed}
-          onFinish={() => {}}
+          onFinish={handleFinish}
         />
       </div>
     </div>
