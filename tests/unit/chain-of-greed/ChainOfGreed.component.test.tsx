@@ -26,6 +26,8 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bank' })).toBeInTheDocument();
     expect(screen.getByTestId('chain-ladder-stage')).toBeInTheDocument();
+    expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Step 0\/8/i);
+    expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Next 50/i);
     expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Current chain ladder')).toBeInTheDocument();
     expect(screen.getByTestId('chain-player-rail')).toBeInTheDocument();
