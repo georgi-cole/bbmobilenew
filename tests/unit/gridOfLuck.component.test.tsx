@@ -1,9 +1,17 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within, act } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import GridOfLuck from '../../src/components/GridOfLuck/GridOfLuck';
 
 describe('GridOfLuck component', () => {
-  it('renders the full box grid, opens a selected box, and pauses on a continue CTA', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('stages the box reveal before showing the compact ritual update and continue CTA', () => {
     render(
       <GridOfLuck
         participants={[
@@ -30,13 +38,53 @@ describe('GridOfLuck component', () => {
     expect(screen.queryByText(/No active effects/i)).toBeNull();
     expect(screen.getByRole('button', { name: /You 500 LP No active effects/i })).toBeTruthy();
 
-    fireEvent.click(boxes[0]);
+    fireEvent.click(boxes[10]);
 
-    expect(boxes[0]).not.toHaveTextContent('Sealed');
-    expect(screen.queryByText(/Current turn/i)).toBeNull();
-    expect(screen.queryByText(/Last reveal/i)).toBeNull();
-    expect(screen.getByTestId('grid-of-luck-event-card')).toHaveTextContent(/Turn resolved/i);
+    const eventCard = screen.getByTestId('grid-of-luck-event-card');
+    expect(eventCard).toHaveTextContent(/choice locked/i);
+    expect(eventCard).toHaveTextContent(/you reach for box 11/i);
+    expect(eventCard).toHaveTextContent(/random boon/i);
+    expect(screen.queryByRole('button', { name: /continue ritual/i })).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(eventCard).toHaveTextContent(/seal opening/i);
+    expect(eventCard).toHaveTextContent(/box 11 opens and reveals/i);
+
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+
+    expect(boxes[10]).not.toHaveTextContent('Sealed');
+    const resolvedEventCard = screen.getByTestId('grid-of-luck-event-card');
+    expect(resolvedEventCard).not.toHaveTextContent(/turn resolved/i);
+    expect(resolvedEventCard).not.toHaveTextContent(/effect resolved/i);
+    expect(resolvedEventCard).not.toHaveTextContent(/^up next$/i);
+    expect(resolvedEventCard).toHaveTextContent(/\+\d+ lp/i);
+    expect(resolvedEventCard).toHaveTextContent(/next:/i);
     expect(screen.getByRole('button', { name: /continue ritual/i })).toBeTruthy();
+    expect(within(screen.getByTestId('grid-of-luck-ritual-feed')).queryAllByRole('listitem')).toHaveLength(0);
+  }, 10_000);
+
+  it('keeps the human player card first even when another player acts first', () => {
+    render(
+      <GridOfLuck
+        participants={[
+          { id: 'human', name: 'You', isHuman: true, precomputedScore: 40, previousPR: 40 },
+          { id: 'p2', name: 'Nyx', isHuman: false, precomputedScore: 90, previousPR: 90 },
+          { id: 'p3', name: 'Vex', isHuman: false, precomputedScore: 80, previousPR: 80 },
+        ]}
+        seed={11}
+        onFinish={() => {}}
+      />,
+    );
+
+    const playerCards = screen.getAllByTestId('grid-of-luck-player-card');
+    expect(playerCards[0]).toHaveAccessibleName(/you 500 lp/i);
+    expect(playerCards[1]).toHaveAccessibleName(/nyx 500 lp/i);
+    expect(playerCards[2]).toHaveAccessibleName(/vex 500 lp/i);
   });
 
   it('prefers local png avatar candidates for named houseguests', () => {
