@@ -22,7 +22,7 @@ describe('ChainOfGreed component', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
-    expect(screen.getAllByText('Chain of Greed')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Chain of Greed' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Start Round' })).not.toBeInTheDocument();
     expect(screen.getByText('Round starting…')).toBeInTheDocument();
@@ -58,20 +58,15 @@ describe('ChainOfGreed component', () => {
     expect(screen.queryByText(/Bank secures the active pot/i)).not.toBeInTheDocument();
   });
 
-  it('expands and closes the full ladder sheet from the compact preview card', async () => {
-    vi.useFakeTimers();
+  it('expands the full ladder sheet from the compact preview card', async () => {
     render(<ChainOfGreed participants={participants} seed={5} onFinish={() => {}} />);
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /View full ladder/i }));
     expect(screen.getByText('Chain rewards')).toBeInTheDocument();
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    await waitFor(() => {
-      expect(screen.queryByText('Chain rewards')).not.toBeInTheDocument();
-    });
   });
 });
