@@ -22,11 +22,20 @@ describe('GridOfLuck component', () => {
     const boxes = screen.getAllByTestId('grid-of-luck-box');
     expect(boxes).toHaveLength(20);
     expect(boxes[0]).toHaveTextContent('Sealed');
+    expect(screen.queryByText('Grid of Luck')).toBeNull();
+    expect(screen.getByText('Mystic Chamber')).toBeTruthy();
+    expect(screen.getByTestId('grid-of-luck-event-card')).toHaveTextContent(/Current turn|Your turn/i);
+    expect(screen.queryByText(/^Active$/i)).toBeNull();
+    expect(screen.queryByText(/^Alive$/i)).toBeNull();
+    expect(screen.queryByText(/No active effects/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /You 500 LP No active effects/i })).toBeTruthy();
 
     fireEvent.click(boxes[0]);
 
     expect(boxes[0]).not.toHaveTextContent('Sealed');
-    expect(screen.getByText(/Last reveal/i)).toBeTruthy();
+    expect(screen.queryByText(/Current turn/i)).toBeNull();
+    expect(screen.queryByText(/Last reveal/i)).toBeNull();
+    expect(screen.getByTestId('grid-of-luck-event-card')).toHaveTextContent(/Turn resolved/i);
     expect(screen.getByRole('button', { name: /continue ritual/i })).toBeTruthy();
   });
 
