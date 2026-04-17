@@ -25,8 +25,11 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bank' })).toBeInTheDocument();
+    expect(screen.getByTestId('chain-ladder-stage')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Current chain ladder')).toBeInTheDocument();
     expect(screen.getByTestId('chain-player-rail')).toBeInTheDocument();
+    expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Equal numbers count as a miss/i).length).toBeGreaterThan(0);
   });
 

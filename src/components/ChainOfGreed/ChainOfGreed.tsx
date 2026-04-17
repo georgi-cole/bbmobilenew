@@ -131,6 +131,13 @@ function pickHumanVoteTarget(players: ChainOfGreedPlayerState[], humanId: string
   return players.find((player) => !player.isEliminated && player.id !== humanId)?.id ?? null;
 }
 
+function getStepBadge(step: number, currentStep: number) {
+  if (step === currentStep) return 'Current';
+  if (step === currentStep + 1) return 'Next';
+  if (step === CHAIN_LADDER.length) return 'Max';
+  return null;
+}
+
 function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
   const { rng } = createChainOfGreedRng(props.seed);
   const resolvedParticipants = resolveChainOfGreedParticipants(props);
@@ -174,8 +181,8 @@ function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
 
 export default function ChainOfGreed(props: GenericMinigameProps) {
   const [state, setState] = useState<ChainOfGreedState>(() => buildInitialState(props));
-  const [showLadderSheet, setShowLadderSheet] = useState(false);
-  const [showInsightsSheet, setShowInsightsSheet] = useState(false);
+  const [isLadderSheetOpen, setIsLadderSheetOpen] = useState(false);
+  const [isInsightsSheetOpen, setIsInsightsSheetOpen] = useState(false);
   const rngRef = useRef(createChainOfGreedRng(props.seed));
   const helperIndexRef = useRef(0);
   const aiTurnLockRef = useRef<string | null>(null);
@@ -598,6 +605,17 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const currentChainStep = activeStep || 0;
   const nextReward = CHAIN_LADDER[Math.min(currentChainStep, CHAIN_LADDER.length - 1)] ?? CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const currentPotLabel = activePot > 0 ? activePot.toLocaleString() : '0';
+  const ladderSteps = [...CHAIN_LADDER].reverse().map((value, index) => {
+    const step = CHAIN_LADDER.length - index;
+    return {
+      value,
+      step,
+      badge: getStepBadge(step, currentChainStep),
+      isActive: currentChainStep === step,
+      isCleared: currentChainStep > step,
+      isNext: currentChainStep + 1 === step,
+    };
+  });
   const lastTurn = state.turnHistory[0] ?? null;
   const heroKicker = isHumanTurn
     ? 'YOUR TURN'
@@ -646,6 +664,11 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     : currentActor
       ? `${currentActor.name} is weighing the risk.`
       : state.helperText;
+  const nextRewardCopy = currentChainStep >= CHAIN_LADDER.length
+    ? 'The full chain is lit.'
+    : currentChainStep === 0
+      ? `First correct call starts the climb at ${nextReward.toLocaleString()}.`
+      : `One more hit reaches ${nextReward.toLocaleString()}.`;
   const actionHint = isHumanTurn
     ? activePot > 0
       ? `A miss destroys ${activePot.toLocaleString()}. Banking secures it now.`
@@ -704,7 +727,16 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
         <main className="chain-of-greed__main">
           <motion.section
             className={`chain-of-greed__hero-stage chain-of-greed__hero-stage--${heroTone}`}
-            animate={{ scale: heroTone === 'danger' ? [1, 1.018, 1] : 1 }}
+            animate={{
+              scale: heroTone === 'danger' ? [1, 1.018, 1] : heroTone === 'success' ? [1, 1.01, 1] : 1,
+              boxShadow: heroTone === 'danger'
+                ? '0 22px 52px rgba(120, 16, 16, 0.34)'
+                : heroTone === 'bank'
+                  ? '0 22px 52px rgba(129, 90, 12, 0.32)'
+                  : heroTone === 'success'
+                    ? '0 22px 52px rgba(19, 84, 154, 0.32)'
+                    : '0 18px 42px rgba(0, 0, 0, 0.28)',
+            }}
             transition={{ duration: 0.34, ease: 'easeOut' }}
           >
             <div className="chain-of-greed__hero-topline">
@@ -712,82 +744,91 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               <span className="chain-of-greed__phase-chip">{heroPhaseChip}</span>
             </div>
             <p className="chain-of-greed__commentary">{heroCommentary}</p>
-            <motion.strong
-              className="chain-of-greed__number"
-              key={`reference-${referenceNumber}-${state.revealedNumber}`}
-              initial={{ opacity: 0, y: 14, scale: 0.92 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.26, ease: 'easeOut' }}
-            >
-              {referenceNumber}
-            </motion.strong>
-            <AnimatePresence initial={false}>
-              {state.revealedNumber !== null && state.revealedNumber !== referenceNumber && (
-                <motion.div
-                  className={`chain-of-greed__reveal chain-of-greed__reveal--${heroTone}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
+            <div className="chain-of-greed__stage-core">
+              <div className="chain-of-greed__number-stage">
+                <div className={`chain-of-greed__number-aura chain-of-greed__number-aura--${heroTone}`} aria-hidden="true" />
+                <motion.strong
+                  className="chain-of-greed__number"
+                  key={`reference-${referenceNumber}-${state.revealedNumber}`}
+                  initial={{ opacity: 0, y: 14, scale: 0.92 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.26, ease: 'easeOut' }}
                 >
-                  Next reveal <strong>{state.revealedNumber}</strong>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  {referenceNumber}
+                </motion.strong>
+                <AnimatePresence initial={false}>
+                  {state.revealedNumber !== null && state.revealedNumber !== referenceNumber && (
+                    <motion.div
+                      className={`chain-of-greed__reveal chain-of-greed__reveal--${heroTone}`}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                    >
+                      Next reveal <strong>{state.revealedNumber}</strong>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <button
+                  type="button"
+                  className="chain-of-greed__temptation"
+                  onClick={() => setIsLadderSheetOpen(true)}
+                >
+                  <span>Next reward</span>
+                  <strong>{nextReward.toLocaleString()}</strong>
+                  <small>{nextRewardCopy}</small>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="chain-of-greed__ladder-stage"
+                data-testid="chain-ladder-stage"
+                onClick={() => setIsLadderSheetOpen(true)}
+              >
+                <div className="chain-of-greed__ladder-stage-copy">
+                  <span className="chain-of-greed__panel-title">Visible ladder</span>
+                  <span className="chain-of-greed__preview-link">View full ladder</span>
+                </div>
+                <ol className="chain-of-greed__ladder-track" aria-label="Current chain ladder">
+                  {ladderSteps.map(({ value, step, badge, isActive, isCleared, isNext }) => (
+                    <li
+                      key={value}
+                      className={[
+                        'chain-of-greed__ladder-node',
+                        isActive ? 'chain-of-greed__ladder-node--active' : '',
+                        isCleared ? 'chain-of-greed__ladder-node--cleared' : '',
+                        isNext ? 'chain-of-greed__ladder-node--next' : '',
+                      ].filter(Boolean).join(' ')}
+                    >
+                      <span className="chain-of-greed__ladder-rail" aria-hidden="true" />
+                      <span className="chain-of-greed__ladder-dot" aria-hidden="true" />
+                      <span className="chain-of-greed__ladder-step-copy">
+                        <strong>{value.toLocaleString()}</strong>
+                        <small>{badge ?? `Step ${step}`}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </button>
+            </div>
             <div className="chain-of-greed__status-row">
               <div className="chain-of-greed__status-pill">
-                <span>Step</span>
+                <span>Chain step</span>
                 <strong>{currentChainStep} / {CHAIN_LADDER.length}</strong>
               </div>
               <div className="chain-of-greed__status-pill chain-of-greed__status-pill--gold">
-                <span>Current pot</span>
+                <span>Active pot</span>
                 <strong>{currentPotLabel}</strong>
-              </div>
-              <div className="chain-of-greed__status-pill">
-                <span>Next reward</span>
-                <strong>{nextReward.toLocaleString()}</strong>
               </div>
             </div>
             <p className="chain-of-greed__prompt">{heroPrompt}</p>
           </motion.section>
 
           <section className="chain-of-greed__utility-stack">
-            <button type="button" className="chain-of-greed__preview-card chain-of-greed__preview-card--ladder" onClick={() => setShowLadderSheet(true)}>
+            <button type="button" className="chain-of-greed__preview-card chain-of-greed__preview-card--secondary" onClick={() => setIsInsightsSheetOpen(true)}>
               <div className="chain-of-greed__preview-topline">
-                <span className="chain-of-greed__panel-title">Chain ladder</span>
-                <span className="chain-of-greed__preview-link">View full ladder</span>
-              </div>
-              <div className="chain-of-greed__preview-stats">
-                <div>
-                  <span>Current</span>
-                  <strong>{currentChainStep > 0 ? `Step ${currentChainStep}` : 'Not started'}</strong>
-                </div>
-                <div>
-                  <span>Next</span>
-                  <strong>{nextReward.toLocaleString()}</strong>
-                </div>
-                <div>
-                  <span>Max</span>
-                  <strong>{CHAIN_LADDER[CHAIN_LADDER.length - 1].toLocaleString()}</strong>
-                </div>
-              </div>
-              <div className="chain-of-greed__mini-track" aria-hidden="true">
-                {CHAIN_LADDER.map((value, index) => (
-                  <span
-                    key={value}
-                    className={[
-                      'chain-of-greed__mini-track-step',
-                      index < currentChainStep ? 'chain-of-greed__mini-track-step--past' : '',
-                      index + 1 === currentChainStep ? 'chain-of-greed__mini-track-step--active' : '',
-                    ].filter(Boolean).join(' ')}
-                  />
-                ))}
-              </div>
-            </button>
-
-            <button type="button" className="chain-of-greed__preview-card" onClick={() => setShowInsightsSheet(true)}>
-              <div className="chain-of-greed__preview-topline">
-                <span className="chain-of-greed__panel-title">Insights</span>
-                <span className="chain-of-greed__preview-link">Open details</span>
+                <span className="chain-of-greed__panel-title">Round details</span>
+                <span className="chain-of-greed__preview-link">Open insights</span>
               </div>
               <div className="chain-of-greed__preview-stats">
                 <div>
@@ -872,7 +913,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       </div>
 
       <AnimatePresence>
-        {showLadderSheet && (
+        {isLadderSheetOpen && (
           <motion.div className="chain-of-greed__overlay chain-of-greed__overlay--sheet" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="chain-of-greed__modal chain-of-greed__modal--sheet" initial={{ y: 44, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 44, opacity: 0 }}>
               <div className="chain-of-greed__sheet-header">
@@ -880,35 +921,31 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   <div className="chain-of-greed__eyebrow">Full ladder</div>
                   <h2>Chain rewards</h2>
                 </div>
-                <button type="button" className="chain-of-greed__help-button" onClick={() => setShowLadderSheet(false)}>Close</button>
+                <button type="button" className="chain-of-greed__help-button" onClick={() => setIsLadderSheetOpen(false)}>Close</button>
               </div>
               <ol className="chain-of-greed__ladder">
-                {[...CHAIN_LADDER].reverse().map((value, index) => {
-                  const step = CHAIN_LADDER.length - index;
-                  const badge = step === currentChainStep ? 'Current' : step === currentChainStep + 1 ? 'Next' : step === CHAIN_LADDER.length ? 'Max' : null;
-                  return (
-                    <li
-                      key={value}
-                      className={[
-                        'chain-of-greed__ladder-step',
-                        currentChainStep === step ? 'chain-of-greed__ladder-step--active' : '',
-                        currentChainStep > step ? 'chain-of-greed__ladder-step--cleared' : '',
-                      ].filter(Boolean).join(' ')}
-                    >
-                      <div>
-                        <span>Step {step}</span>
-                        {badge && <small className="chain-of-greed__step-tag">{badge}</small>}
-                      </div>
-                      <strong>{value.toLocaleString()}</strong>
-                    </li>
-                  );
-                })}
+                {ladderSteps.map(({ value, step, badge, isActive, isCleared }) => (
+                  <li
+                    key={value}
+                    className={[
+                      'chain-of-greed__ladder-step',
+                      isActive ? 'chain-of-greed__ladder-step--active' : '',
+                      isCleared ? 'chain-of-greed__ladder-step--cleared' : '',
+                    ].filter(Boolean).join(' ')}
+                  >
+                    <div>
+                      <span>Step {step}</span>
+                      {badge && <small className="chain-of-greed__step-tag">{badge}</small>}
+                    </div>
+                    <strong>{value.toLocaleString()}</strong>
+                  </li>
+                ))}
               </ol>
             </motion.div>
           </motion.div>
         )}
 
-        {showInsightsSheet && (
+        {isInsightsSheetOpen && (
           <motion.div className="chain-of-greed__overlay chain-of-greed__overlay--sheet" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="chain-of-greed__modal chain-of-greed__modal--sheet" initial={{ y: 44, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 44, opacity: 0 }}>
               <div className="chain-of-greed__sheet-header">
@@ -916,7 +953,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   <div className="chain-of-greed__eyebrow">Round insight</div>
                   <h2>Review the board</h2>
                 </div>
-                <button type="button" className="chain-of-greed__help-button" onClick={() => setShowInsightsSheet(false)}>Close</button>
+                <button type="button" className="chain-of-greed__help-button" onClick={() => setIsInsightsSheetOpen(false)}>Close</button>
               </div>
               <div className="chain-of-greed__summary-grid">
                 <div><span>Round bank</span><strong>{state.roundSecured.toLocaleString()}</strong></div>
