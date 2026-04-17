@@ -1072,6 +1072,10 @@ function getPreviewEffectType(state: GameState, boxId: number): BoxType {
   return effectType;
 }
 
+function getRevealTransitionMessage(boxId: number, effectType: BoxType): string {
+  return `Box ${boxId + 1} opens and reveals ${BOX_META[effectType].label}.`;
+}
+
 function GridOfLuckAvatar({ player }: { player: GridPlayer }) {
   const candidates = useMemo(
     () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }),
@@ -1108,7 +1112,9 @@ export default function GridOfLuck(props: GenericMinigameProps) {
   const resolvedParticipants = useMemo(() => resolveParticipants(props), [props]);
   const [sessionSeed] = useState<number>(() => (props.seed !== undefined && props.seed !== 0 ? props.seed : cryptoSeed()));
   const rngRef = useRef<() => number>(mulberry32(sessionSeed >>> 0));
-  const revealTimerIds = useRef<number[]>([]);
+  const revealTimerIds = useRef<Array<ReturnType<typeof window.setTimeout>>>([]);
+  const revealSequenceRef = useRef(0);
+  const revealResolutionStateRef = useRef<GameState | null>(null);
   const [state, setState] = useState<GameState>(() => createInitialState(resolvedParticipants, sessionSeed));
   const [turnMode, setTurnMode] = useState<TurnMode>('box');
   const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
@@ -1212,7 +1218,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
 
     if (revealState) {
       const revealMeta = BOX_META[revealState.effectType];
-      const revealMetaLine = revealState.phase === 'resolved' ? `${revealState.actorName} opened box ${revealState.boxId + 1}` : `${revealState.actorName} • Box ${revealState.boxId + 1}`;
+      const revealMetaText = revealState.phase === 'resolved' ? `${revealState.actorName} opened box ${revealState.boxId + 1}` : `${revealState.actorName} • Box ${revealState.boxId + 1}`;
       return {
         accent: CATEGORY_COLORS[revealMeta.category],
         badge: revealState.phase === 'selection' ? 'Choice locked' : revealState.phase === 'reveal' ? 'Seal opening' : turnMode === 'awaiting-continue' ? 'Turn resolved' : 'Last reveal',
@@ -1220,7 +1226,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         title: revealState.phase === 'selection' ? `${revealState.actorName} chose box ${revealState.boxId + 1}` : revealMeta.label,
         message: revealState.message,
         detail: revealState.phase === 'resolved' ? null : revealMeta.description,
-        meta: revealMetaLine,
+        meta: revealMetaText,
         symbol: revealMeta.symbol,
         deltas: revealState.phase === 'resolved' ? revealState.lpDeltas : [],
         nextUp: revealState.phase === 'resolved' && nextPlayer ? `${nextPlayer.name} • ${nextPlayer.lp} LP` : null,
@@ -1300,6 +1306,9 @@ export default function GridOfLuck(props: GenericMinigameProps) {
 
   const stageBoxReveal = useCallback((sourceState: GameState, actor: GridPlayer, boxId: number) => {
     clearRevealTimers();
+    revealSequenceRef.current += 1;
+    const revealSequence = revealSequenceRef.current;
+    revealResolutionStateRef.current = sourceState;
 
     const previewEffectType = getPreviewEffectType(sourceState, boxId);
     setPendingSelection(null);
@@ -1316,19 +1325,21 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     setScreenMode('zoomIn');
 
     revealTimerIds.current.push(window.setTimeout(() => {
+      if (revealSequenceRef.current !== revealSequence) return;
       setRevealState((current) => {
         if (!current || current.boxId !== boxId) return current;
         return {
           ...current,
           phase: 'reveal',
-          message: `Box ${boxId + 1} opens and reveals ${BOX_META[previewEffectType].label}.`,
+          message: getRevealTransitionMessage(boxId, previewEffectType),
         };
       });
       setScreenMode('vignette');
     }, BOX_CHOICE_BEAT_MS));
 
     revealTimerIds.current.push(window.setTimeout(() => {
-      resolveOutcome(resolveBoxSelection(sourceState, actor.id, boxId, rngRef.current), boxId);
+      if (revealSequenceRef.current !== revealSequence) return;
+      resolveOutcome(resolveBoxSelection(revealResolutionStateRef.current ?? sourceState, actor.id, boxId, rngRef.current), boxId);
     }, BOX_CHOICE_BEAT_MS + BOX_REVEAL_BEAT_MS));
   }, [clearRevealTimers, resolveOutcome]);
 

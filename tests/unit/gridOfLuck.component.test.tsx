@@ -43,6 +43,7 @@ describe('GridOfLuck component', () => {
     const eventCard = screen.getByTestId('grid-of-luck-event-card');
     expect(eventCard).toHaveTextContent(/choice locked/i);
     expect(eventCard).toHaveTextContent(/reaches for box 1/i);
+    expect(eventCard).toHaveTextContent(/remove 200 lp from the current leader/i);
     expect(screen.queryByRole('button', { name: /continue ritual/i })).toBeNull();
 
     act(() => {
@@ -76,6 +77,8 @@ describe('GridOfLuck component', () => {
 
     const playerCards = screen.getAllByTestId('grid-of-luck-player-card');
     expect(playerCards[0]).toHaveAccessibleName(/you 500 lp/i);
+    expect(playerCards[1]).toHaveAccessibleName(/nyx 500 lp/i);
+    expect(playerCards[2]).toHaveAccessibleName(/vex 500 lp/i);
   });
 
   it('prefers local png avatar candidates for named houseguests', () => {

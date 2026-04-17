@@ -706,19 +706,6 @@
   color: rgba(232, 220, 255, 0.88);
 }
 
-.grid-of-luck__finish-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 14px 18px;
-  font-size: 0.98rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #1a0830;
-  background: linear-gradient(90deg, #e879f9, #a855f7 45%, #6366f1 100%);
-  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4), 0 2px 0 rgba(255, 255, 255, 0.1) inset;
-}
-
 .grid-of-luck__spectator-modal {
   position: absolute;
   inset: 0;
