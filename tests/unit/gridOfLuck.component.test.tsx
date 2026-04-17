@@ -38,12 +38,12 @@ describe('GridOfLuck component', () => {
     expect(screen.queryByText(/No active effects/i)).toBeNull();
     expect(screen.getByRole('button', { name: /You 500 LP No active effects/i })).toBeTruthy();
 
-    fireEvent.click(boxes[0]);
+    fireEvent.click(boxes[10]);
 
     const eventCard = screen.getByTestId('grid-of-luck-event-card');
     expect(eventCard).toHaveTextContent(/choice locked/i);
-    expect(eventCard).toHaveTextContent(/you reach for box 1/i);
-    expect(eventCard).toHaveTextContent(/remove 200 lp from the current leader/i);
+    expect(eventCard).toHaveTextContent(/you reach for box 11/i);
+    expect(eventCard).toHaveTextContent(/random boon/i);
     expect(screen.queryByRole('button', { name: /continue ritual/i })).toBeNull();
 
     act(() => {
@@ -51,13 +51,19 @@ describe('GridOfLuck component', () => {
     });
 
     expect(eventCard).toHaveTextContent(/seal opening/i);
-    expect(eventCard).toHaveTextContent(/box 1 opens and reveals/i);
+    expect(eventCard).toHaveTextContent(/box 11 opens and reveals/i);
 
     act(() => {
-      vi.advanceTimersByTime(900);
+      vi.advanceTimersByTime(700);
     });
 
-    expect(boxes[0]).not.toHaveTextContent('Sealed');
+    expect(boxes[10]).not.toHaveTextContent('Sealed');
+    const resolvedEventCard = screen.getByTestId('grid-of-luck-event-card');
+    expect(resolvedEventCard).not.toHaveTextContent(/turn resolved/i);
+    expect(resolvedEventCard).not.toHaveTextContent(/effect resolved/i);
+    expect(resolvedEventCard).not.toHaveTextContent(/^up next$/i);
+    expect(resolvedEventCard).toHaveTextContent(/\+\d+ lp/i);
+    expect(resolvedEventCard).toHaveTextContent(/next:/i);
     expect(screen.getByRole('button', { name: /continue ritual/i })).toBeTruthy();
     expect(within(screen.getByTestId('grid-of-luck-ritual-feed')).queryAllByRole('listitem')).toHaveLength(0);
   });

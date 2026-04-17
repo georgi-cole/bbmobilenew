@@ -129,6 +129,23 @@ interface ResolutionOutcome {
   revealedEffectType?: BoxType;
 }
 
+interface EventCardChip {
+  label: string;
+  tone: 'gain' | 'loss' | 'neutral';
+}
+
+interface EventCardState {
+  accent: string;
+  badge: string;
+  eyebrow: string | null;
+  title: string;
+  message: string;
+  detail: string | null;
+  meta: string | null;
+  symbol: string;
+  chips: EventCardChip[];
+}
+
 const FALLBACK_PARTICIPANTS: ResolvedParticipant[] = [
   { id: 'human', name: 'You', isHuman: true, precomputedScore: 88, avatar: '🜂' },
   { id: 'ai-1', name: 'Nyx', isHuman: false, precomputedScore: 82, avatar: '🌙' },
@@ -249,6 +266,14 @@ function pickRandom<T>(rng: () => number, items: readonly T[]): T {
 
 function appendEvent(recentEvents: string[], message: string): string[] {
   return [message, ...recentEvents].slice(0, 7);
+}
+
+function toDeltaChipLabel(delta: RevealState['lpDeltas'][number]): string {
+  return `${delta.playerName}: ${delta.delta > 0 ? '+' : ''}${delta.delta} LP`;
+}
+
+function toNextUpChipLabel(nextUp: string): string {
+  return `Next: ${nextUp}`;
 }
 
 function withStatusEffects(player: GridPlayer): GridPlayer {
@@ -1202,20 +1227,19 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     );
   }, [pendingSelection, state.players]);
 
-  const eventCard = useMemo(() => {
+  const eventCard = useMemo<EventCardState>(() => {
     if (turnMode === 'finished') {
       const winner = state.winnerId ? state.players.find((player) => player.id === state.winnerId) ?? ranking[0] : ranking[0];
       return {
         accent: '#f3c269',
         badge: 'Ritual complete',
-        eyebrow: 'Final result',
+        eyebrow: null,
         title: winner ? `${winner.name} wins the chamber` : 'The ritual is complete',
         message: announcement,
         detail: winner ? `${winner.lp} LP` : null,
         meta: boxesRemaining === 0 ? 'All boxes opened' : `${boxesRemaining} boxes left`,
         symbol: '✦',
-        deltas: [] as RevealState['lpDeltas'],
-        nextUp: null as string | null,
+        chips: [],
       };
     }
 
@@ -1232,25 +1256,34 @@ export default function GridOfLuck(props: GenericMinigameProps) {
         detail: validTargets.length > 0 ? prompt : pendingMeta.description,
         meta: actor ? `${actor.name} is resolving this power` : 'Resolve the chamber effect',
         symbol: pendingMeta.symbol,
-        deltas: [] as RevealState['lpDeltas'],
-        nextUp: null as string | null,
+        chips: [],
       };
     }
 
     if (revealState) {
       const revealMeta = BOX_META[revealState.effectType];
-      const revealMetaText = revealState.phase === 'resolved' ? `${revealState.actorName} opened box ${revealState.boxId + 1}` : `${revealState.actorName} • Box ${revealState.boxId + 1}`;
+      const resolvedTitle = revealState.phase === 'resolved' && revealState.lpDeltas.length === 1
+        ? `${revealState.lpDeltas[0].delta > 0 ? '+' : ''}${revealState.lpDeltas[0].delta} LP`
+        : revealMeta.label;
+      const revealChips: EventCardChip[] = revealState.phase === 'resolved'
+        ? [
+            ...revealState.lpDeltas.map((lpDelta) => ({
+              label: toDeltaChipLabel(lpDelta),
+              tone: lpDelta.delta > 0 ? 'gain' as const : lpDelta.delta < 0 ? 'loss' as const : 'neutral' as const,
+            })),
+            ...(nextPlayer ? [{ label: toNextUpChipLabel(`${nextPlayer.name} · ${nextPlayer.lp} LP`), tone: 'neutral' as const }] : []),
+          ]
+        : [];
       return {
         accent: CATEGORY_COLORS[revealMeta.category],
-        badge: revealState.phase === 'selection' ? 'Choice locked' : revealState.phase === 'reveal' ? 'Seal opening' : turnMode === 'awaiting-continue' ? 'Turn resolved' : 'Last reveal',
-        eyebrow: revealState.phase === 'selection' ? 'Chosen box' : revealState.phase === 'reveal' ? 'Revealed effect' : 'Effect resolved',
-        title: revealState.phase === 'selection' ? `${revealState.actorName} chose box ${revealState.boxId + 1}` : revealMeta.label,
+        badge: revealState.phase === 'selection' ? 'Choice locked' : revealState.phase === 'reveal' ? 'Seal opening' : revealMeta.label,
+        eyebrow: revealState.phase === 'selection' ? 'Chosen box' : revealState.phase === 'reveal' ? 'Revealed effect' : null,
+        title: revealState.phase === 'selection' ? `${revealState.actorName} chose box ${revealState.boxId + 1}` : resolvedTitle,
         message: revealState.message,
         detail: revealState.phase === 'resolved' ? null : revealMeta.description,
-        meta: revealMetaText,
+        meta: `Box ${revealState.boxId + 1}`,
         symbol: revealMeta.symbol,
-        deltas: revealState.phase === 'resolved' ? revealState.lpDeltas : [],
-        nextUp: revealState.phase === 'resolved' && nextPlayer ? `${nextPlayer.name} • ${nextPlayer.lp} LP` : null,
+        chips: revealChips,
       };
     }
 
@@ -1268,8 +1301,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
             : 'Watch the next reveal unfold.',
       meta: `${activePlayer.lp} LP`,
       symbol: activePlayer.isHuman && turnMode === 'box' ? '✦' : '◈',
-      deltas: [] as RevealState['lpDeltas'],
-      nextUp: null as string | null,
+      chips: [],
     };
   }, [activePlayer, announcement, boxesRemaining, nextPlayer, pendingSelection, ranking, revealState, state.players, state.winnerId, turnMode, validTargets.length]);
 
@@ -1601,37 +1633,31 @@ export default function GridOfLuck(props: GenericMinigameProps) {
             >
               <div className="grid-of-luck__event-topline">
                 <span className="grid-of-luck__event-badge">{eventCard.badge}</span>
-                <span className="grid-of-luck__event-meta">{eventCard.meta}</span>
+                {eventCard.meta && <span className="grid-of-luck__event-meta">{eventCard.meta}</span>}
               </div>
               <div className="grid-of-luck__event-main">
                 <span className="grid-of-luck__event-symbol" aria-hidden="true">{eventCard.symbol}</span>
                 <div className="grid-of-luck__event-copy">
-                  <span className="grid-of-luck__sidebar-label">{eventCard.eyebrow}</span>
+                  {eventCard.eyebrow && <span className="grid-of-luck__sidebar-label">{eventCard.eyebrow}</span>}
                   <strong className="grid-of-luck__event-title">{eventCard.title}</strong>
                   <p className="grid-of-luck__event-message">{eventCard.message}</p>
                   {eventCard.detail && <p className="grid-of-luck__event-detail">{eventCard.detail}</p>}
                 </div>
               </div>
-              {eventCard.deltas.length > 0 && (
-                <div className="grid-of-luck__reveal-deltas">
-                  {eventCard.deltas.map((lpDelta, index) => (
+              {eventCard.chips.length > 0 && (
+                <div className="grid-of-luck__event-chips">
+                  {eventCard.chips.map((chip, index) => (
                     <span
-                      key={`${lpDelta.playerName}-${index}`}
-                      className={`grid-of-luck__reveal-delta${lpDelta.delta > 0 ? ' is-gain' : ' is-loss'}`}
+                      key={`${chip.label}-${index}`}
+                      className={`grid-of-luck__event-chip is-${chip.tone}`}
                     >
-                      {lpDelta.playerName}: {lpDelta.delta > 0 ? '+' : ''}{lpDelta.delta} LP
+                      {chip.label}
                     </span>
                   ))}
                 </div>
               )}
-              {(eventCard.nextUp || turnMode === 'awaiting-continue' || turnMode === 'finished') && (
+              {(turnMode === 'awaiting-continue' || turnMode === 'finished') && (
                 <div className="grid-of-luck__event-footer">
-                  {eventCard.nextUp && (
-                    <div className="grid-of-luck__event-next">
-                      <span className="grid-of-luck__sidebar-label">Up next</span>
-                      <strong>{eventCard.nextUp}</strong>
-                    </div>
-                  )}
                   {turnMode === 'awaiting-continue' && (
                     <motion.button
                       className="grid-of-luck__event-action"
