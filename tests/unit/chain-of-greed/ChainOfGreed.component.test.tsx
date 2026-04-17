@@ -39,6 +39,8 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bank' })).toBeInTheDocument();
+    expect(screen.queryByText(/Choose your move/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Bank is safe, but the first correct guess starts the value/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('chain-ladder-stage')).toBeInTheDocument();
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Step 0\/8/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Next 50/i);
@@ -47,9 +49,9 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByTestId('chain-player-rail')).toBeInTheDocument();
     expect(screen.getByTestId('chain-current-anchor')).toBeInTheDocument();
     expect(screen.getByText(/Current pot 0/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Open help' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
     expect(screen.getByTestId('chain-ladder-stage')).not.toHaveTextContent(/Next\s+Next/i);
-    expect(screen.getByText(/A miss destroys the active pot/i)).toBeInTheDocument();
   });
 
   it('shows a reusable help overlay with the bank and equal-number rules', () => {
