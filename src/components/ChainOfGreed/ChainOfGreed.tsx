@@ -141,6 +141,11 @@ function getPlayerTurnMessage(players: ChainOfGreedPlayerState[], turnOrder: str
   return `${firstPlayer?.name ?? 'Player'} to play.`;
 }
 
+function getTurnOrderPlayerId(turnOrder: string[], turnIndex: number) {
+  if (turnOrder.length === 0) return null;
+  return turnOrder[turnIndex % turnOrder.length] ?? null;
+}
+
 function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
   const { rng } = createChainOfGreedRng(props.seed);
   const resolvedParticipants = resolveChainOfGreedParticipants(props);
@@ -195,7 +200,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const activePlayers = useMemo(() => getActivePlayers(state.players), [state.players]);
   const humanPlayer = useMemo(() => state.players.find((player) => player.isHuman) ?? null, [state.players]);
   const currentTurnPlayer = useMemo(
-    () => state.phase === 'playerTurn' ? getPlayer(state.players, state.turnOrder[state.turnIndex] ?? null) : null,
+    () => state.phase === 'playerTurn' ? getPlayer(state.players, getTurnOrderPlayerId(state.turnOrder, state.turnIndex)) : null,
     [state.phase, state.players, state.turnIndex, state.turnOrder],
   );
   const semifinalPlayer = useMemo(
@@ -684,11 +689,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       : lastTurn?.wasCorrect
         ? 'success'
         : 'neutral';
-  const stageLabel = state.phase.startsWith('final')
-    ? 'Final 2'
-    : state.phase.startsWith('semifinal')
-      ? 'Final 3'
-      : `Round ${state.roundNumber}`;
   const playerMetricText = (player: ChainOfGreedPlayerState) => {
     if (state.phase === 'finalTurn' || state.phase === 'finalResult') return `${player.finalScore} final`;
     if (state.phase === 'semifinalTurn' || state.phase === 'semifinalReveal') return `${player.semifinalScore} semi`;
@@ -744,9 +744,13 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       <div className="chain-of-greed__shell">
         <header className="chain-of-greed__header">
           <div className="chain-of-greed__header-row">
-            <div className="chain-of-greed__title-group">
-              <h1>Chain of Greed</h1>
-              <span className="chain-of-greed__header-stage">{stageLabel}</span>
+            <div className="chain-of-greed__hud">
+              <div className="chain-of-greed__status-pill">
+                <strong>{activePlayers.length} left</strong>
+              </div>
+              <div className="chain-of-greed__status-pill chain-of-greed__status-pill--gold">
+                <strong>{state.securedTotal.toLocaleString()} secured</strong>
+              </div>
             </div>
             <div className="chain-of-greed__header-actions">
               <button
@@ -765,14 +769,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               >
                 <span aria-hidden="true">⋯</span>
               </button>
-            </div>
-          </div>
-          <div className="chain-of-greed__hud">
-            <div className="chain-of-greed__status-pill">
-              <strong>{activePlayers.length} left</strong>
-            </div>
-            <div className="chain-of-greed__status-pill chain-of-greed__status-pill--gold">
-              <strong>{state.securedTotal.toLocaleString()} secured</strong>
             </div>
           </div>
         </header>
