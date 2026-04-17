@@ -112,6 +112,10 @@ import {
   DISLIKED_MAX_APPROVAL,
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
+import {
+  usePersistedGameScreenKey,
+  usePersistedPromptDate,
+} from './gameScreenPersistence'
 import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
@@ -226,7 +230,10 @@ export default function GameScreen() {
   const [confessionalPromptTriggered, setConfessionalPromptTriggered] = useState(false)
   const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
   const [pendingPublicSaveResult, setPendingPublicSaveResult] = useState<PendingPublicSaveResult | null>(null)
-  const [publicSaveCeremonyConsumedKey, setPublicSaveCeremonyConsumedKey] = useState('')
+  const [publicSaveCeremonyConsumedKey, setPublicSaveCeremonyConsumedKey] = usePersistedGameScreenKey(
+    'public-save-ceremony',
+    game.seed,
+  )
   const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
   const [activeAiTiebreakContext, setActiveAiTiebreakContext] = useState<AiTiebreakContext | null>(null)
   // When true, the confessional prompt is shown after the eviction animation
@@ -332,7 +339,10 @@ export default function GameScreen() {
   // advance() picks the winner randomly → phase becomes loh_results with
   // lohId set, but no CeremonyOverlay was shown.  Detect this and fire
   // a spotlight ceremony so the winner reveal is still animated.
-  const [advanceHohConsumedKey, setAdvanceHohConsumedKey] = useState<string>('')
+  const [advanceHohConsumedKey, setAdvanceHohConsumedKey] = usePersistedGameScreenKey(
+    'advance-hoh-ceremony',
+    game.seed,
+  )
 
   const advanceHohKey = useMemo(() => {
     if (game.phase !== 'loh_results' || !game.lohId) return ''
@@ -346,7 +356,7 @@ export default function GameScreen() {
 
   const handleAdvanceHohCeremonyDone = useCallback(() => {
     setAdvanceHohConsumedKey(advanceHohKey)
-  }, [advanceHohKey])
+  }, [advanceHohKey, setAdvanceHohConsumedKey])
 
   // ── Track last report ID so re-renders don't trigger duplicate effects ────
   // Social summaries are posted exclusively to the Diary Room via
@@ -718,7 +728,10 @@ export default function GameScreen() {
 
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])
-  const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = useState<string>('')
+  const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = usePersistedGameScreenKey(
+    'ai-nomination-ceremony',
+    game.seed,
+  )
   useEffect(() => {
     pendingNomineesRef.current = pendingNominees
   }, [pendingNominees])
@@ -810,7 +823,7 @@ export default function GameScreen() {
       setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
       setPendingNominees(ids)
     },
-    [humanIsHoH, game.week, canUsePublicNomineeRule, game.lastHohCompFinisherId]
+    [humanIsHoH, game.week, canUsePublicNomineeRule, game.lastHohCompFinisherId, setAiNomAnimConsumedKey]
   )
 
   const handleNomAnimDone = useCallback(() => {
@@ -823,7 +836,7 @@ export default function GameScreen() {
   // AI LOH onDone: mark this key consumed so the animation doesn't replay.
   const handleAiNomAnimDone = useCallback(() => {
     setAiNomAnimConsumedKey(aiNomKey)
-  }, [aiNomKey])
+  }, [aiNomKey, setAiNomAnimConsumedKey])
 
   // ── Nomination labels (LOH Nominee / Last in LOH Comp) ───────────────────
   // Used by the nomination ceremony overlay to show role pills on each nominee tile.
@@ -931,7 +944,7 @@ export default function GameScreen() {
   const handlePublicSaveCeremonyDone = useCallback(() => {
     if (!publicSaveCeremonyKey) return
     setPublicSaveCeremonyConsumedKey(publicSaveCeremonyKey)
-  }, [publicSaveCeremonyKey])
+  }, [publicSaveCeremonyKey, setPublicSaveCeremonyConsumedKey])
 
   const publicSaveNominees = useMemo(
     () =>
@@ -955,7 +968,7 @@ export default function GameScreen() {
       setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
       setPendingNominees(devNominees)
     }
-  }, [alivePlayers, canUsePublicNomineeRule, game.lastHohCompFinisherId, game.week, setPendingNominees])
+  }, [alivePlayers, canUsePublicNomineeRule, game.lastHohCompFinisherId, game.week, setAiNomAnimConsumedKey, setPendingNominees])
 
   // ── Human POS holder decision (use veto or not) ──────────────────────────
   const humanIsPosHolder = humanPlayer && game.posWinnerId === humanPlayer.id
@@ -1177,7 +1190,10 @@ export default function GameScreen() {
   // ── AI replacement nominee animation ───────────────────────────────────
   // When an AI LOH picks a replacement nominee, the store already has the
   // replacement committed. We detect this and show an animation.
-  const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = useState<string>('')
+  const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = usePersistedGameScreenKey(
+    'ai-replacement-ceremony',
+    game.seed,
+  )
 
   const aiReplacementKey = useMemo(() => {
     // Only trigger on pos_ceremony_results phase when nominees just changed (replacement happened)
@@ -1212,7 +1228,7 @@ export default function GameScreen() {
 
   const handleAiReplacementDone = useCallback(() => {
     setAiReplacementConsumedKey(aiReplacementKey)
-  }, [aiReplacementKey])
+  }, [aiReplacementKey, setAiReplacementConsumedKey])
 
   // ── Final 4 cinematic flow ───────────────────────────────────────────────────
   // Stage machine drives the full Final 4 eviction sequence:
@@ -2203,7 +2219,9 @@ export default function GameScreen() {
     const state = storeRef.current.getState()
     return canShowAd('competition_retry', state, { isFinal3Week })
   }, [pendingChallenge, game.phase, isFinal3Week])
-  const lastDislikedPromptDateRef = useRef<string | null>(null)
+  const [lastDislikedPromptDate, setLastDislikedPromptDate] = usePersistedPromptDate(
+    'public_meter_disliked_boost',
+  )
   useEffect(() => {
     if (!adsState?.lastCompLastPlaceType) return
     if (import.meta.env.DEV) {
@@ -2355,13 +2373,13 @@ export default function GameScreen() {
       !humanPlayerEliminated &&
       shouldShowDislikedBoostPrompt(
         userApproval,
-        lastDislikedPromptDateRef.current,
+        lastDislikedPromptDate,
         todayIsoDate,
       )
     ) {
       const state = storeRef.current.getState()
       if (canShowAd('public_meter_disliked_boost', state)) {
-        lastDislikedPromptDateRef.current = todayIsoDate
+        setLastDislikedPromptDate(todayIsoDate)
         setShowDislikedBoostPrompt(true)
       }
     }
@@ -2371,7 +2389,14 @@ export default function GameScreen() {
     if (userApproval > DISLIKED_MAX_APPROVAL) {
       setShowDislikedBoostPrompt(false)
     }
-  }, [adsState?.dailyUsage?.public_meter_disliked_boost, humanPlayer, humanPlayerEliminated, userApproval])
+  }, [
+    adsState?.dailyUsage?.public_meter_disliked_boost,
+    humanPlayer,
+    humanPlayerEliminated,
+    lastDislikedPromptDate,
+    setLastDislikedPromptDate,
+    userApproval,
+  ])
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel whenever the human player is alive and the game is in
