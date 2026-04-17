@@ -138,23 +138,29 @@ function getStepBadge(step: number, currentStep: number) {
   return null;
 }
 
+function getRoundTurnStatus(players: ChainOfGreedPlayerState[], turnOrder: string[]) {
+  const firstPlayer = getPlayer(players, turnOrder[0] ?? null);
+  return `${firstPlayer?.name ?? 'Player'} to play.`;
+}
+
 function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
   const { rng } = createChainOfGreedRng(props.seed);
   const resolvedParticipants = resolveChainOfGreedParticipants(props);
   const players = createChainOfGreedPlayers(resolvedParticipants, rng);
   const activePlayers = getActivePlayers(players);
+  const turnOrder = rotateOrder(activePlayers.map((player) => player.id), 0);
   return {
-    phase: 'intro',
+    phase: 'roundIntro',
     players,
     startingCount: activePlayers.length,
     roundNumber: 1,
     securedTotal: 0,
     roundSecured: 0,
     chain: createInitialChainState(rng),
-    turnOrder: rotateOrder(activePlayers.map((player) => player.id), 0),
+    turnOrder,
     turnIndex: 0,
     turnsRemaining: getStandardRoundTurnCap(activePlayers.length),
-    statusText: 'Build the chain. Bank before it breaks.',
+    statusText: 'Round 1. Build the chain. Bank before it breaks.',
     helperText: TURN_HELPERS[0],
     turnHistory: [],
     showHelp: false,
@@ -213,10 +219,18 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     setState((previous) => ({ ...previous, phase, ...partial }));
   }
 
+  const beginStandardRound = useCallback(() => {
+    setPhase('playerTurn', {
+      statusText: getRoundTurnStatus(state.players, state.turnOrder),
+      helperText: nextHelper(TURN_HELPERS),
+    });
+  }, [state.players, state.turnOrder]);
+
   function startRound(roundNumber: number, players = state.players) {
     const nextPlayers = players.map((player) => player.isEliminated ? player : applyRoundReset(player));
     const livePlayers = getActivePlayers(nextPlayers);
     const nextChain = createInitialChainState(rngRef.current.rng);
+    const turnOrder = rotateOrder(livePlayers.map((player) => player.id), roundNumber - 1);
     emitSoundCue('round-intro-sting');
     setState((previous) => ({
       ...previous,
@@ -225,12 +239,12 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       roundNumber,
       roundSecured: 0,
       chain: nextChain,
-      turnOrder: rotateOrder(livePlayers.map((player) => player.id), roundNumber - 1),
+      turnOrder,
       turnIndex: 0,
       turnsRemaining: getStandardRoundTurnCap(livePlayers.length),
       revealedNumber: nextChain.referenceNumber,
       statusText: `Round ${roundNumber}. Build the chain. Bank before it breaks.`,
-      helperText: nextHelper(TURN_HELPERS),
+      helperText: TURN_HELPERS[0],
       humanVoteTargetId: pickHumanVoteTarget(nextPlayers, humanPlayer?.id ?? null),
       pendingVotes: [],
       revealedVotes: 0,
@@ -548,6 +562,14 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   }, [state.pendingVotes, state.phase, state.revealedVotes]);
 
   useEffect(() => {
+    if (state.phase !== 'roundIntro') return;
+    const timer = window.setTimeout(() => {
+      beginStandardRound();
+    }, 950);
+    return () => window.clearTimeout(timer);
+  }, [beginStandardRound, state.phase]);
+
+  useEffect(() => {
     if (state.phase !== 'semifinalTurn' || !semifinalPlayer || semifinalPlayer.isHuman) return;
     const timer = window.setTimeout(() => {
       const turnsUsed = state.semifinalOrder.slice(0, state.semifinalTurnIndex + 1).filter((id) => id === semifinalPlayer.id).length;
@@ -732,11 +754,77 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               <span>Secured</span>
               <strong>{state.securedTotal.toLocaleString()}</strong>
             </div>
-            <button type="button" className="chain-of-greed__help-button" onClick={() => setState((previous) => ({ ...previous, showHelp: !previous.showHelp }))}>Help</button>
+            <button
+              type="button"
+              className="chain-of-greed__help-button chain-of-greed__help-button--icon"
+              aria-label="Open help"
+              onClick={() => setState((previous) => ({ ...previous, showHelp: !previous.showHelp }))}
+            >
+              <span className="chain-of-greed__help-icon" aria-hidden="true">?</span>
+              <span>Help</span>
+            </button>
           </div>
         </header>
 
+        {showStickyActionBar && (
+          <motion.footer
+            className="chain-of-greed__action-bar"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 }}
+          >
+            <div className="chain-of-greed__action-bar-copy">
+              <span className="chain-of-greed__panel-title">{isHumanTurn ? 'Choose your move' : 'Waiting for AI'}</span>
+              <p>{actionHint}</p>
+            </div>
+            {isHumanTurn ? (
+              <div className="chain-of-greed__buttons">
+                <button type="button" className="chain-of-greed__action chain-of-greed__action--lower" onClick={() => handleAction('lower')}>Lower</button>
+                <button type="button" className="chain-of-greed__action chain-of-greed__action--bank" onClick={() => handleAction('bank')}>Bank</button>
+                <button type="button" className="chain-of-greed__action chain-of-greed__action--higher" onClick={() => handleAction('higher')}>Higher</button>
+              </div>
+            ) : (
+              <div className="chain-of-greed__ai-waiting">
+                <strong>{currentActor?.name ?? 'The house'}</strong>
+                <span>is reading the board…</span>
+              </div>
+            )}
+          </motion.footer>
+        )}
+
         <main className="chain-of-greed__main">
+          <section className="chain-of-greed__rail-section">
+            <div className="chain-of-greed__rail-heading">
+              <span className="chain-of-greed__panel-title">Player rail</span>
+              <span>{currentActor ? `${currentActor.name} highlighted` : 'Track the house'}</span>
+            </div>
+            <div className="chain-of-greed__player-rail" data-testid="chain-player-rail">
+              {state.players.map((player) => {
+                const isCurrent = currentTurnPlayer?.id === player.id || semifinalPlayer?.id === player.id || finalPlayer?.id === player.id;
+                const latestMoment = player.latestMoment ? momentGlyphs[player.latestMoment] : momentGlyphs.safe;
+                return (
+                  <article
+                    key={player.id}
+                    className={[
+                      'chain-of-greed__rail-card',
+                      player.isHuman ? 'chain-of-greed__rail-card--human' : '',
+                      isCurrent ? 'chain-of-greed__rail-card--current' : '',
+                      player.isEliminated ? 'chain-of-greed__rail-card--eliminated' : '',
+                    ].filter(Boolean).join(' ')}
+                    data-testid={`chain-player-${player.id}`}
+                  >
+                    <div className="chain-of-greed__rail-avatar">{player.avatar}</div>
+                    <div className="chain-of-greed__rail-copy">
+                      <strong>{player.name}</strong>
+                      <span>{playerMetricText(player)}</span>
+                    </div>
+                    <span className="chain-of-greed__rail-badge">{player.isEliminated ? 'OUT' : latestMoment}</span>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
           <motion.section
             className={`chain-of-greed__hero-stage chain-of-greed__hero-stage--${heroTone}`}
             animate={{
@@ -903,65 +991,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               </div>
             </button>
           </section>
-
-          <section className="chain-of-greed__rail-section">
-            <div className="chain-of-greed__rail-heading">
-              <span className="chain-of-greed__panel-title">Player rail</span>
-              <span>{currentActor ? `${currentActor.name} highlighted` : 'Track the house'}</span>
-            </div>
-            <div className="chain-of-greed__player-rail" data-testid="chain-player-rail">
-              {state.players.map((player) => {
-                const isCurrent = currentTurnPlayer?.id === player.id || semifinalPlayer?.id === player.id || finalPlayer?.id === player.id;
-                const latestMoment = player.latestMoment ? momentGlyphs[player.latestMoment] : momentGlyphs.safe;
-                return (
-                  <article
-                    key={player.id}
-                    className={[
-                      'chain-of-greed__rail-card',
-                      player.isHuman ? 'chain-of-greed__rail-card--human' : '',
-                      isCurrent ? 'chain-of-greed__rail-card--current' : '',
-                      player.isEliminated ? 'chain-of-greed__rail-card--eliminated' : '',
-                    ].filter(Boolean).join(' ')}
-                    data-testid={`chain-player-${player.id}`}
-                  >
-                    <div className="chain-of-greed__rail-avatar">{player.avatar}</div>
-                    <div className="chain-of-greed__rail-copy">
-                      <strong>{player.name}</strong>
-                      <span>{playerMetricText(player)}</span>
-                    </div>
-                    <span className="chain-of-greed__rail-badge">{player.isEliminated ? 'OUT' : latestMoment}</span>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
         </main>
-
-        {showStickyActionBar && (
-          <motion.footer
-            className="chain-of-greed__action-bar"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 }}
-          >
-            <div className="chain-of-greed__action-bar-copy">
-              <span className="chain-of-greed__panel-title">{isHumanTurn ? 'Choose your move' : 'Waiting for AI'}</span>
-              <p>{actionHint}</p>
-            </div>
-            {isHumanTurn ? (
-              <div className="chain-of-greed__buttons">
-                <button type="button" className="chain-of-greed__action chain-of-greed__action--lower" onClick={() => handleAction('lower')}>Lower</button>
-                <button type="button" className="chain-of-greed__action chain-of-greed__action--bank" onClick={() => handleAction('bank')}>Bank</button>
-                <button type="button" className="chain-of-greed__action chain-of-greed__action--higher" onClick={() => handleAction('higher')}>Higher</button>
-              </div>
-            ) : (
-              <div className="chain-of-greed__ai-waiting">
-                <strong>{currentActor?.name ?? 'The house'}</strong>
-                <span>is reading the board…</span>
-              </div>
-            )}
-          </motion.footer>
-        )}
       </div>
 
       <AnimatePresence>
@@ -1071,41 +1101,13 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
         </div>
       )}
 
-      {state.phase === 'intro' && (
-        <div className="chain-of-greed__overlay">
-          <div className="chain-of-greed__modal chain-of-greed__modal--hero">
-            <div className="chain-of-greed__eyebrow">Premium TV-Style Minigame</div>
-            <h2>Chain of Greed</h2>
-            <p>Build the chain. Bank before it breaks. One player will claim the entire influence pool.</p>
-            <button type="button" className="chain-of-greed__continue" onClick={() => setPhase('rules')}>Continue</button>
-          </div>
-        </div>
-      )}
-
-      {state.phase === 'rules' && (
-        <div className="chain-of-greed__overlay">
-          <div className="chain-of-greed__modal">
-            <div className="chain-of-greed__eyebrow">Rules Reminder</div>
-            <h2>Guess. Bank. Survive the vote.</h2>
-            <ul className="chain-of-greed__rules-list">
-              <li>Higher and Lower reveal a new 1–100 number.</li>
-              <li>Correct guesses climb the ladder. Wrong guesses destroy the active pot.</li>
-              <li>Bank secures the current pot and keeps the same reference number on screen.</li>
-              <li>Equal numbers count as a miss.</li>
-              <li>Only the final winner receives the full secured influence total.</li>
-            </ul>
-            <button type="button" className="chain-of-greed__continue" onClick={() => startRound(1, state.players)}>Start Round</button>
-          </div>
-        </div>
-      )}
-
       {state.phase === 'roundIntro' && (
         <div className="chain-of-greed__overlay">
-          <div className="chain-of-greed__modal">
+          <div className="chain-of-greed__modal chain-of-greed__modal--flash">
             <div className="chain-of-greed__eyebrow">Round {state.roundNumber}</div>
             <h2>Build the chain. Bank before it breaks.</h2>
             <p>{getStandardRoundEliminationCount(state.startingCount, state.roundNumber, activePlayers.length)} player{getStandardRoundEliminationCount(state.startingCount, state.roundNumber, activePlayers.length) === 1 ? '' : 's'} will be eliminated this round.</p>
-            <button type="button" className="chain-of-greed__continue" onClick={() => setPhase('playerTurn', { statusText: `${currentTurnPlayer?.name ?? getPlayer(state.players, state.turnOrder[0] ?? null)?.name ?? 'Player'} to play.`, helperText: nextHelper(TURN_HELPERS) })}>Continue</button>
+            <span className="chain-of-greed__flash-caption">Round starting…</span>
           </div>
         </div>
       )}
@@ -1153,7 +1155,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <ul>{tieBreak.transcript.map((line) => <li key={line}>{line}</li>)}</ul>
               </div>
             ))}
-            <button type="button" className="chain-of-greed__continue" onClick={continueAfterElimination}>Continue</button>
+            <button type="button" className="chain-of-greed__continue" onClick={continueAfterElimination}>
+              {getActivePlayers(state.players).length === 3 ? 'Continue to Final 3' : `Continue to Round ${state.roundNumber + 1}`}
+            </button>
           </div>
         </div>
       )}

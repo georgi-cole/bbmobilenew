@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
 
 const participants = [
@@ -14,13 +14,22 @@ const participants = [
 ];
 
 describe('ChainOfGreed component', () => {
-  it('walks through the intro CTAs into the human turn action panel', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('starts round one automatically after a brief round intro flash', () => {
+    vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
     expect(screen.getAllByText('Chain of Greed')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start Round' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start Round' })).not.toBeInTheDocument();
+    expect(screen.getByText('Round starting…')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
 
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
@@ -41,7 +50,7 @@ describe('ChainOfGreed component', () => {
   it('shows a reusable help overlay with the bank and equal-number rules', () => {
     render(<ChainOfGreed participants={participants} seed={7} onFinish={() => {}} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+    fireEvent.click(screen.getByRole('button', { name: /open help/i }));
 
     expect(screen.getByText(/Bank secures the active pot/i)).toBeInTheDocument();
     expect(screen.getByText(/Equal numbers count as a miss/i)).toBeInTheDocument();
@@ -50,11 +59,12 @@ describe('ChainOfGreed component', () => {
   });
 
   it('expands and closes the full ladder sheet from the compact preview card', async () => {
+    vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={5} onFinish={() => {}} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Start Round' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
 
     fireEvent.click(screen.getByRole('button', { name: /View full ladder/i }));
     expect(screen.getByText('Chain rewards')).toBeInTheDocument();
