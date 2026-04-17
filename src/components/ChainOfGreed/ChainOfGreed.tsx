@@ -647,7 +647,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const heroKicker = isHumanTurn
     ? 'YOUR TURN'
     : currentActor
-      ? `${currentActor.name.toUpperCase()} THINKING`
+      ? `${currentActor.name.toUpperCase()} IS THINKING`
       : state.phase === 'voteReveal'
         ? 'VOTE REVEAL'
         : state.phase === 'voting'
@@ -656,7 +656,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             ? 'FINAL SHOWDOWN'
             : state.phase.startsWith('semifinal')
               ? 'SUDDEN CHAIN'
-              : 'ROUND STARTING';
+              : `ROUND ${state.roundNumber} START`;
   const heroPhaseChip = state.phase === 'playerTurn'
     ? 'Shared chain'
     : state.phase === 'semifinalTurn'
