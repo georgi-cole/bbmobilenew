@@ -259,8 +259,6 @@
 }
 
 .chain-of-greed__hero-impact {
-  position: relative;
-  z-index: 0;
   position: absolute;
   inset: 12% 0 16%;
   border-radius: 1.6rem;
