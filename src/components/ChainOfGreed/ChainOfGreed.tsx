@@ -131,9 +131,7 @@ function pickHumanVoteTarget(players: ChainOfGreedPlayerState[], humanId: string
   return players.find((player) => !player.isEliminated && player.id !== humanId)?.id ?? null;
 }
 
-function getStepBadge(step: number, currentStep: number) {
-  if (step === currentStep) return 'Current';
-  if (step === currentStep + 1) return 'Next';
+function getStepBadge(step: number) {
   if (step === CHAIN_LADDER.length) return 'Max';
   return null;
 }
@@ -625,7 +623,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const currentPotLabel = activePot > 0 ? activePot.toLocaleString() : '0';
   const isAtStartingPosition = currentChainStep === 0;
   const referenceRungIndex = currentChainStep === 0 ? 1 : currentChainStep;
-  const lockedRewardValue = currentChainStep > 0 ? CHAIN_LADDER[currentChainStep - 1] : null;
   const nextRewardValueLabel = nextReward.toLocaleString();
   const chainStatusText = {
     step: `Step ${currentChainStep}/${CHAIN_LADDER.length}`,
@@ -637,7 +634,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     return {
       value,
       step,
-      badge: getStepBadge(step, currentChainStep),
+      badge: getStepBadge(step),
       isActive: currentChainStep === step,
       isCleared: currentChainStep > step,
       isNext: currentChainStep + 1 === step,
@@ -650,7 +647,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const heroKicker = isHumanTurn
     ? 'YOUR TURN'
     : currentActor
-      ? `${currentActor.name.toUpperCase()} IS THINKING`
+      ? `${currentActor.name.toUpperCase()} THINKING`
       : state.phase === 'voteReveal'
         ? 'VOTE REVEAL'
         : state.phase === 'voting'
@@ -659,7 +656,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             ? 'FINAL SHOWDOWN'
             : state.phase.startsWith('semifinal')
               ? 'SUDDEN CHAIN'
-              : `ROUND ${state.roundNumber}`;
+              : 'ROUND STARTING';
   const heroPhaseChip = state.phase === 'playerTurn'
     ? 'Shared chain'
     : state.phase === 'semifinalTurn'
@@ -687,11 +684,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       : lastTurn?.wasCorrect
         ? 'success'
         : 'neutral';
-  const nextRewardCopy = currentChainStep >= CHAIN_LADDER.length
-    ? 'The full chain is lit.'
-    : currentChainStep === 0
-      ? null
-      : `One more hit reaches ${nextReward.toLocaleString()}.`;
   const stageLabel = state.phase.startsWith('final')
     ? 'Final 2'
     : state.phase.startsWith('semifinal')
@@ -800,23 +792,25 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             }}
             transition={{ duration: 0.34, ease: 'easeOut' }}
           >
-            <div className="chain-of-greed__hero-topline">
-              <span className="chain-of-greed__status-kicker">{heroKicker}</span>
-              {state.phase === 'playerTurn' ? (
-                <button
-                  type="button"
-                  className="chain-of-greed__phase-chip chain-of-greed__phase-chip--info"
-                  aria-label="View full ladder"
-                  onClick={() => setIsLadderSheetOpen(true)}
-                >
-                  <span>{heroPhaseChip}</span>
-                  <span className="chain-of-greed__phase-chip-icon" aria-hidden="true">ℹ️</span>
-                </button>
-              ) : (
-                <span className="chain-of-greed__phase-chip">{heroPhaseChip}</span>
-              )}
+            <div className="chain-of-greed__hero-meta">
+              <div className="chain-of-greed__hero-topline">
+                <span className="chain-of-greed__status-kicker">{heroKicker}</span>
+                {state.phase === 'playerTurn' ? (
+                  <button
+                    type="button"
+                    className="chain-of-greed__phase-chip chain-of-greed__phase-chip--info"
+                    aria-label="View full ladder"
+                    onClick={() => setIsLadderSheetOpen(true)}
+                  >
+                    <span>{heroPhaseChip}</span>
+                    <span className="chain-of-greed__phase-chip-icon" aria-hidden="true">ℹ️</span>
+                  </button>
+                ) : (
+                  <span className="chain-of-greed__phase-chip">{heroPhaseChip}</span>
+                )}
+              </div>
+              <p className="chain-of-greed__commentary">{heroCommentary}</p>
             </div>
-            <p className="chain-of-greed__commentary">{heroCommentary}</p>
             <div className="chain-of-greed__stage-core">
               <AnimatePresence initial={false}>
                 {lastTurn && heroTone !== 'neutral' && (
@@ -875,14 +869,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                             </motion.span>
                           </span>
                         )}
-                        {isNext && (
-                          <span className="chain-of-greed__next-cluster">
-                            <span className="chain-of-greed__next-badge">Next</span>
-                            <span className="chain-of-greed__ladder-detail chain-of-greed__ladder-detail--next">
-                              {nextRewardValueLabel}
-                            </span>
-                          </span>
-                        )}
                       </span>
                     </li>
                   ))}
@@ -926,13 +912,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <span aria-label={`Pot ${currentPotLabel}`}>{chainStatusText.pot}</span>
                 <span aria-label={`Next reward ${nextReward.toLocaleString()}`}>{chainStatusText.next}</span>
               </div>
-              {(lockedRewardValue !== null || nextRewardCopy !== null) && (
-                <p className="chain-of-greed__reward-line">
-                  {lockedRewardValue !== null
-                    ? `${lockedRewardValue.toLocaleString()} locked in on the current rung.`
-                    : nextRewardCopy}
-                </p>
-              )}
             </div>
           </motion.section>
 
