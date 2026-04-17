@@ -32,7 +32,7 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByLabelText('Current chain ladder')).toBeInTheDocument();
     expect(screen.getByTestId('chain-player-rail')).toBeInTheDocument();
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Equal numbers count as a miss/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/A miss destroys the active pot/i)).toBeInTheDocument();
   });
 
   it('shows a reusable help overlay with the bank and equal-number rules', () => {

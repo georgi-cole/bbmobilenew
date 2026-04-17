@@ -126,12 +126,14 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 0.7rem;
-  padding: 0.95rem 0.95rem 1rem;
+  gap: 0.55rem;
+  padding: 0.9rem 0.85rem 0.95rem;
   border-radius: 1.7rem;
+  border-color: rgba(105, 160, 255, 0.12);
   background:
-    linear-gradient(180deg, rgba(11, 21, 39, 0.94), rgba(5, 10, 20, 0.96)),
-    radial-gradient(circle at top, rgba(82, 169, 255, 0.15), transparent 55%);
+    radial-gradient(circle at 50% 42%, rgba(82, 169, 255, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(10, 19, 35, 0.74), rgba(5, 10, 20, 0.78));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
 }
 
 .chain-of-greed__hero-stage::before,
@@ -187,33 +189,25 @@
 .chain-of-greed__commentary {
   position: relative;
   z-index: 1;
-  font-size: 0.95rem;
+  font-size: 0.86rem;
   line-height: 1.45;
-  color: rgba(237, 242, 255, 0.95);
+  text-align: center;
+  color: rgba(237, 242, 255, 0.88);
 }
 
 .chain-of-greed__stage-core {
   position: relative;
   z-index: 1;
-  min-height: 19.5rem;
-  padding: 0.1rem 0 0.2rem;
-}
-
-.chain-of-greed__number-stage {
-  position: relative;
+  min-height: 25rem;
   display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 0.6rem;
-  min-height: 19rem;
-  padding: 1.2rem 5.8rem 1rem 0.2rem;
-  text-align: center;
+  place-items: center;
+  padding: 0.35rem 0 0.15rem;
 }
 
 .chain-of-greed__number-aura {
   position: absolute;
-  inset: 12% 1.1rem auto 0.5rem;
-  height: 8rem;
+  inset: 18% 20% auto;
+  height: 12rem;
   border-radius: 999px;
   background: radial-gradient(circle, rgba(77, 168, 255, 0.36), rgba(77, 168, 255, 0));
   filter: blur(28px);
@@ -227,17 +221,6 @@
 
 .chain-of-greed__number-aura--bank {
   background: radial-gradient(circle, rgba(245, 197, 79, 0.36), rgba(245, 197, 79, 0));
-}
-
-.chain-of-greed__number {
-  position: relative;
-  z-index: 1;
-  display: block;
-  text-align: center;
-  font-size: clamp(3.1rem, 17vw, 4.6rem);
-  line-height: 0.96;
-  letter-spacing: 0.02em;
-  text-shadow: 0 0 24px rgba(82, 169, 255, 0.36);
 }
 
 .chain-of-greed__reveal {
@@ -282,9 +265,9 @@
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 0.38rem;
+  gap: 0.3rem;
   width: 100%;
-  max-width: 18rem;
+  justify-items: center;
 }
 
 .chain-of-greed__inline-status {
@@ -317,27 +300,22 @@
 
 .chain-of-greed__helper-line {
   font-size: 0.82rem;
-  color: rgba(196, 218, 255, 0.78);
-}
-
-.chain-of-greed__reward-tease {
-  font-size: 0.82rem;
-  color: rgba(255, 225, 141, 0.9);
+  text-align: center;
+  color: rgba(255, 225, 141, 0.84);
 }
 
 .chain-of-greed__ladder-stage {
   appearance: none;
   border: none;
   cursor: pointer;
-  position: absolute;
-  top: 0.2rem;
-  right: 0;
-  bottom: 0;
-  width: 5.65rem;
+  position: relative;
+  width: min(100%, 19rem);
+  min-height: 24rem;
   display: grid;
   grid-template-rows: 1fr auto;
-  gap: 0.45rem;
-  padding: 0.2rem 0 0;
+  gap: 0.8rem;
+  justify-items: center;
+  padding: 0.35rem 0 0;
   color: inherit;
   background: none;
 }
@@ -351,7 +329,8 @@
   position: relative;
   list-style: none;
   margin: 0;
-  padding: 0.15rem 0 0.2rem;
+  width: 100%;
+  padding: 0.35rem 0 0.2rem;
   display: grid;
   grid-template-rows: repeat(8, minmax(0, 1fr));
   gap: 0;
@@ -361,24 +340,24 @@
 .chain-of-greed__ladder-track::after {
   content: '';
   position: absolute;
-  left: 1.1rem;
+  left: 50%;
   transform: translateX(-50%);
   pointer-events: none;
 }
 
 .chain-of-greed__ladder-track::before {
-  top: 0.65rem;
-  bottom: 0.65rem;
-  width: 4px;
+  top: 0.8rem;
+  bottom: 0.75rem;
+  width: 5px;
   border-radius: 999px;
   background:
     linear-gradient(180deg, rgba(255, 240, 182, 0.32), rgba(113, 195, 255, 0.56) 28%, rgba(64, 123, 255, 0.4) 72%, rgba(255, 255, 255, 0.04));
-  box-shadow: 0 0 18px rgba(87, 202, 255, 0.24);
+  box-shadow: 0 0 22px rgba(87, 202, 255, 0.28);
 }
 
 .chain-of-greed__ladder-track::after {
-  top: 0.65rem;
-  width: 10px;
+  top: 0.75rem;
+  width: 12px;
   height: 22%;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(255, 241, 184, 0), rgba(255, 241, 184, 0.95), rgba(107, 200, 255, 0));
@@ -389,9 +368,10 @@
 .chain-of-greed__ladder-node {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 0.95rem;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 0.48rem;
+  justify-items: center;
+  gap: 0.25rem;
   min-height: 0;
   opacity: 0.34;
 }
@@ -412,13 +392,20 @@
   display: none;
 }
 
+.chain-of-greed__ladder-node-main {
+  position: relative;
+  width: 100%;
+  min-height: 2rem;
+  display: grid;
+  place-items: center;
+}
+
 .chain-of-greed__ladder-dot {
   position: relative;
   z-index: 1;
   width: 0.95rem;
   height: 0.95rem;
   border-radius: 999px;
-  justify-self: end;
   background: rgba(255, 255, 255, 0.12);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
 }
@@ -439,12 +426,18 @@
   animation: chain-of-greed-node-pulse 1.8s ease-in-out infinite;
 }
 
+.chain-of-greed__ladder-node--active .chain-of-greed__ladder-dot,
+.chain-of-greed__ladder-node--reference .chain-of-greed__ladder-dot {
+  width: 1.18rem;
+  height: 1.18rem;
+}
+
 .chain-of-greed__ladder-step-copy {
   display: grid;
   gap: 0.05rem;
-  justify-items: end;
-  text-align: right;
-  padding-right: 0.15rem;
+  justify-items: center;
+  text-align: center;
+  order: -1;
 }
 
 .chain-of-greed__ladder-step-copy strong {
@@ -454,11 +447,54 @@
 
 .chain-of-greed__ladder-node--active .chain-of-greed__ladder-step-copy strong,
 .chain-of-greed__ladder-node--next .chain-of-greed__ladder-step-copy strong {
-  font-size: 0.92rem;
+  font-size: 1rem;
+}
+
+.chain-of-greed__number-tag {
+  position: absolute;
+  left: calc(50% + 1.35rem);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.15rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(8, 17, 34, 0.92), rgba(34, 63, 115, 0.84));
+  box-shadow: 0 0 0 1px rgba(123, 209, 255, 0.18), 0 12px 24px rgba(0, 0, 0, 0.24);
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #f8fbff;
+  text-shadow: 0 0 16px rgba(123, 209, 255, 0.3);
+}
+
+.chain-of-greed__ladder-detail {
+  position: absolute;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chain-of-greed__ladder-detail--pot {
+  right: calc(50% + 1.6rem);
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(225, 236, 255, 0.8);
+}
+
+.chain-of-greed__ladder-detail--next {
+  left: calc(50% + 1.45rem);
+  bottom: calc(100% + 0.2rem);
+  color: rgba(255, 225, 141, 0.96);
 }
 
 .chain-of-greed__ladder-tap {
-  justify-self: end;
+  justify-self: center;
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -477,6 +513,7 @@
 .chain-of-greed__prompt {
   font-size: 0.92rem;
   line-height: 1.42;
+  text-align: center;
   color: rgba(243, 246, 255, 0.94);
 }
 
@@ -860,16 +897,32 @@
   }
 
   .chain-of-greed__stage-core {
-    min-height: 18.25rem;
-  }
-
-  .chain-of-greed__number-stage {
-    min-height: 18rem;
-    padding-right: 5.3rem;
+    min-height: 21.5rem;
   }
 
   .chain-of-greed__ladder-stage {
-    width: 5.1rem;
+    width: min(100%, 16.5rem);
+    min-height: 20.5rem;
+  }
+
+  .chain-of-greed__number-tag {
+    left: calc(50% + 1.15rem);
+    min-width: 2.75rem;
+    min-height: 1.8rem;
+    padding-inline: 0.58rem;
+    font-size: 1.25rem;
+  }
+
+  .chain-of-greed__ladder-detail {
+    font-size: 0.66rem;
+  }
+
+  .chain-of-greed__ladder-detail--pot {
+    right: calc(50% + 1.38rem);
+  }
+
+  .chain-of-greed__ladder-detail--next {
+    left: calc(50% + 1.18rem);
   }
 
   .chain-of-greed__player-rail {
