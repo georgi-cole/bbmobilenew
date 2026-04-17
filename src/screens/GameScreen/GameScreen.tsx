@@ -728,9 +728,15 @@ export default function GameScreen() {
 
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])
+  const aiNomAnimPersistenceScope =
+    'gameId' in game && game.gameId != null
+      ? String(game.gameId)
+      : 'season' in game && game.season != null
+        ? String(game.season)
+        : String(game.seed)
   const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = usePersistedGameScreenKey(
     'ai-nomination-ceremony',
-    game.seed,
+    aiNomAnimPersistenceScope,
   )
   useEffect(() => {
     pendingNomineesRef.current = pendingNominees
