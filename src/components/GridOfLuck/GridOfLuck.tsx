@@ -272,8 +272,20 @@ function toDeltaChipLabel(delta: RevealState['lpDeltas'][number]): string {
   return `${delta.playerName}: ${delta.delta > 0 ? '+' : ''}${delta.delta} LP`;
 }
 
+function getLpDeltaTone(delta: number): EventCardChip['tone'] {
+  if (delta > 0) return 'gain';
+  if (delta < 0) return 'loss';
+  return 'neutral';
+}
+
 function toNextUpChipLabel(nextUp: string): string {
   return `Next: ${nextUp}`;
+}
+
+function getResolvedTitle(revealMetaLabel: string, lpDeltas: RevealState['lpDeltas']): string {
+  if (lpDeltas.length !== 1) return revealMetaLabel;
+  const [delta] = lpDeltas;
+  return `${delta.delta > 0 ? '+' : ''}${delta.delta} LP`;
 }
 
 function withStatusEffects(player: GridPlayer): GridPlayer {
@@ -1262,14 +1274,14 @@ export default function GridOfLuck(props: GenericMinigameProps) {
 
     if (revealState) {
       const revealMeta = BOX_META[revealState.effectType];
-      const resolvedTitle = revealState.phase === 'resolved' && revealState.lpDeltas.length === 1
-        ? `${revealState.lpDeltas[0].delta > 0 ? '+' : ''}${revealState.lpDeltas[0].delta} LP`
+      const resolvedTitle = revealState.phase === 'resolved'
+        ? getResolvedTitle(revealMeta.label, revealState.lpDeltas)
         : revealMeta.label;
       const revealChips: EventCardChip[] = revealState.phase === 'resolved'
         ? [
             ...revealState.lpDeltas.map((lpDelta) => ({
               label: toDeltaChipLabel(lpDelta),
-              tone: lpDelta.delta > 0 ? 'gain' as const : lpDelta.delta < 0 ? 'loss' as const : 'neutral' as const,
+              tone: getLpDeltaTone(lpDelta.delta),
             })),
             ...(nextPlayer ? [{ label: toNextUpChipLabel(`${nextPlayer.name} · ${nextPlayer.lp} LP`), tone: 'neutral' as const }] : []),
           ]

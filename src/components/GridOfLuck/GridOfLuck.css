@@ -773,7 +773,7 @@
 @media (max-width: 719px) {
   .grid-of-luck {
     min-height: auto;
-    padding: 10px 10px calc(72px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 10px calc(72px + env(safe-area-inset-bottom, 0));
   }
 
   .grid-of-luck__camera {
