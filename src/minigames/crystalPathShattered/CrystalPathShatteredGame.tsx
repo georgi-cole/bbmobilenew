@@ -316,30 +316,43 @@ export default function CrystalPathShatteredGame({
   }, [activePlayerId, gb.phase, gb.timerExpired, humanId, participantsById]);
 
   const displayedRemainingMs = gb.phase === 'playing' ? remainingMs : gb.globalTimeLimitMs;
+  const turnLabel = activePlayerId
+    ? activePlayerId === humanId
+      ? 'You'
+      : (participantsById.get(activePlayerId)?.name ?? '—')
+    : '—';
+  const guidanceText = hintText ?? (
+    gb.phase === 'order_selection'
+      ? 'Secure your draw quickly so the bridge remains the focal point.'
+      : gb.phase === 'order_reveal'
+        ? 'The chamber is revealing the crossing order.'
+        : 'The active row breathes with light. Tap a crystal tile when you are ready to commit.'
+  );
+  const showPreludePanel = gb.phase === 'order_selection' || gb.phase === 'order_reveal';
 
   return (
     <div className="crystal-shattered-shell" aria-label="Crystal Path: Shattered">
       <header className="crystal-shattered-header">
-        <div>
+        <div className="crystal-shattered-title-block">
           <p className="crystal-shattered-kicker">Premium Pixi Edition</p>
           <h2>Crystal Path: Shattered</h2>
-          <p className="crystal-shattered-subtitle">Walk the suspended glass path above a cold abyss. One mistake and the chamber takes you.</p>
-        </div>
-        <div className="crystal-shattered-hud-cards">
-          <div className="crystal-shattered-hud-card">
-            <span>Turn</span>
-            <strong>{activePlayerId ? (activePlayerId === humanId ? 'You' : (participantsById.get(activePlayerId)?.name ?? '—')) : '—'}</strong>
-          </div>
-          <div className="crystal-shattered-hud-card">
-            <span>Time</span>
-            <strong aria-label="Time remaining">{formatTimeRemaining(displayedRemainingMs)}</strong>
-          </div>
-          <div className="crystal-shattered-hud-card">
-            <span>Hints</span>
-            <strong>{Math.max(0, 3 - hintUses)} left</strong>
-          </div>
+          <p className="crystal-shattered-subtitle">A glowing crystal bridge hangs over a black abyss. One false step and the chamber takes you.</p>
         </div>
       </header>
+      <div className="crystal-shattered-hud-row" role="group" aria-label="Crystal Path status">
+        <div className="crystal-shattered-hud-pill">
+          <span>Turn</span>
+          <strong>{turnLabel}</strong>
+        </div>
+        <div className="crystal-shattered-hud-pill">
+          <span>Time</span>
+          <strong aria-label="Time remaining">{formatTimeRemaining(displayedRemainingMs)}</strong>
+        </div>
+        <div className="crystal-shattered-hud-pill">
+          <span>Hints</span>
+          <strong>{Math.max(0, 3 - hintUses)} left</strong>
+        </div>
+      </div>
 
       {gb.phase === 'complete' ? (
         <MinigameCompleteWrapper
@@ -373,97 +386,114 @@ export default function CrystalPathShatteredGame({
         </MinigameCompleteWrapper>
       ) : (
         <>
-          <div className="crystal-shattered-status" role="status">{statusText}</div>
-          {gb.phase === 'order_selection' && (
-            <section className="crystal-shattered-number-picker">
-              <div>
-                <h3>Draw your crossing number</h3>
-                <p>Crossing order is determined by a crystal draw. Secure one number before the chamber chooses for everyone else.</p>
-              </div>
-              <div className="crystal-shattered-number-grid">
-                {Array.from({ length: participantIds.length }, (_, index) => index + 1).map((number) => {
-                  const taken = Object.values(gb.chosenNumbers).includes(number);
-                  return (
+          <section className="crystal-shattered-board-layout">
+            {showPreludePanel && (
+              <section className={`crystal-shattered-prelude${gb.phase === 'order_reveal' ? ' is-reveal' : ''}`}>
+                {gb.phase === 'order_selection' ? (
+                  <>
+                    <div className="crystal-shattered-prelude-copy">
+                      <span className="crystal-shattered-prelude-label">Crystal draw</span>
+                      <h3>Choose your crossing number</h3>
+                      <p>Keep the prelude compact — the bridge remains the focal point.</p>
+                    </div>
+                    <div className="crystal-shattered-number-grid">
+                      {Array.from({ length: participantIds.length }, (_, index) => index + 1).map((number) => {
+                        const taken = Object.values(gb.chosenNumbers).includes(number);
+                        return (
+                          <button
+                            key={number}
+                            type="button"
+                            className="crystal-shattered-number"
+                            disabled={taken || !humanId || gb.chosenNumbers[humanId] !== undefined}
+                            onClick={() => handleNumberPick(number)}
+                            aria-label={`Pick number ${number}`}
+                          >
+                            {number}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="crystal-shattered-draw-summary">
+                      {participantIds.map((playerId) => (
+                        <span key={playerId} className="crystal-shattered-draw-pill">
+                          <strong>{playerId === humanId ? 'You' : (participantsById.get(playerId)?.name ?? playerId)}</strong>
+                          <em>{gb.chosenNumbers[playerId] ?? '…'}</em>
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="crystal-shattered-prelude-copy">
+                      <span className="crystal-shattered-prelude-label">Order reveal</span>
+                      <h3>The chamber locks the crossing order</h3>
+                    </div>
+                    <div className="crystal-shattered-order-list">
+                      {gb.turnOrder.map((playerId, index) => (
+                        <div key={playerId} className="crystal-shattered-order-item" style={{ animationDelay: `${index * 90}ms` }}>
+                          <span>{index + 1}</span>
+                          <strong>{playerId === humanId ? 'You' : (participantsById.get(playerId)?.name ?? playerId)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            <section className="crystal-shattered-board-panel">
+              <div className="crystal-shattered-board-chrome">
+                <div className="crystal-shattered-status" role="status">
+                  <span className="crystal-shattered-status-label">Chamber status</span>
+                  <strong>{statusText}</strong>
+                </div>
+                <div className="crystal-shattered-toolbar-actions">
+                  <button
+                    type="button"
+                    className="crystal-shattered-secondary"
+                    onClick={handleHint}
+                    disabled={!isHumanTurn || isResolving || hintUses >= 3 || showSpectatorModal}
+                  >
+                    Seek guidance ({Math.max(0, 3 - hintUses)} left)
+                  </button>
+                  {gb.humanSpectating && (
                     <button
-                      key={number}
                       type="button"
-                      className="crystal-shattered-number"
-                      disabled={taken || !humanId || gb.chosenNumbers[humanId] !== undefined}
-                      onClick={() => handleNumberPick(number)}
-                      aria-label={`Pick number ${number}`}
+                      className="crystal-shattered-secondary"
+                      onClick={() => setPlaybackSpeed((current) => getNextPlaybackSpeed(current))}
                     >
-                      {number}
+                      Spectator {playbackSpeed}×
                     </button>
-                  );
-                })}
+                  )}
+                </div>
               </div>
-              <div className="crystal-shattered-draw-summary">
-                {participantIds.map((playerId) => (
-                  <span key={playerId}>
-                    {(playerId === humanId ? 'You' : (participantsById.get(playerId)?.name ?? playerId))}: {gb.chosenNumbers[playerId] ?? '…'}
-                  </span>
-                ))}
+
+              <CrystalPathShatteredPixiStage
+                phase={gb.phase}
+                rows={gb.rows}
+                rowsCount={gb.rowsCount}
+                currentPlayerRow={gb.currentPlayerRow}
+                currentTurnIndex={gb.currentTurnIndex}
+                turnOrder={gb.turnOrder}
+                participants={gb.participants}
+                progress={gb.progress}
+                humanId={humanId}
+                inputEnabled={inputEnabled}
+                activeAnimation={activeAnimation}
+                onTileSelect={(side) => {
+                  if (!inputEnabled) return;
+                  handleStepChoice(side);
+                }}
+              />
+
+              <div className="crystal-shattered-board-footer">
+                <div className="crystal-shattered-guidance">
+                  <span className="crystal-shattered-guidance-label">Guidance</span>
+                  <p>{guidanceText}</p>
+                </div>
               </div>
             </section>
-          )}
-
-          {gb.phase === 'order_reveal' && (
-            <section className="crystal-shattered-order-reveal">
-              <h3>Crossing Order</h3>
-              <div className="crystal-shattered-order-list">
-                {gb.turnOrder.map((playerId, index) => (
-                  <div key={playerId} className="crystal-shattered-order-item" style={{ animationDelay: `${index * 90}ms` }}>
-                    <span>{index + 1}</span>
-                    <strong>{playerId === humanId ? 'You' : (participantsById.get(playerId)?.name ?? playerId)}</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <div className="crystal-shattered-toolbar">
-            <div>
-              <h3>Chamber Guidance</h3>
-              <p>{hintText ?? 'The active row glows brighter. Tap a crystal platform to commit your step.'}</p>
-            </div>
-            <div className="crystal-shattered-toolbar-actions">
-              <button
-                type="button"
-                className="crystal-shattered-secondary"
-                onClick={handleHint}
-                disabled={!isHumanTurn || isResolving || hintUses >= 3 || showSpectatorModal}
-              >
-                Seek guidance ({Math.max(0, 3 - hintUses)} left)
-              </button>
-              {gb.humanSpectating && (
-                <button
-                  type="button"
-                  className="crystal-shattered-secondary"
-                  onClick={() => setPlaybackSpeed((current) => getNextPlaybackSpeed(current))}
-                >
-                  Spectator speed: {playbackSpeed}×
-                </button>
-              )}
-            </div>
-          </div>
-
-          <CrystalPathShatteredPixiStage
-            phase={gb.phase}
-            rows={gb.rows}
-            rowsCount={gb.rowsCount}
-            currentPlayerRow={gb.currentPlayerRow}
-            currentTurnIndex={gb.currentTurnIndex}
-            turnOrder={gb.turnOrder}
-            participants={gb.participants}
-            progress={gb.progress}
-            humanId={humanId}
-            inputEnabled={inputEnabled}
-            activeAnimation={activeAnimation}
-            onTileSelect={(side) => {
-              if (!inputEnabled) return;
-              handleStepChoice(side);
-            }}
-          />
+          </section>
 
           <section className="crystal-shattered-scoreboard" aria-label="Player standings">
             {gb.participants.map((participant) => {
