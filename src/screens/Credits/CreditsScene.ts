@@ -9,6 +9,7 @@ import {
   Texture,
 } from 'pixi.js';
 import {
+  CREDITS_BIG_EYE_SOURCES,
   CREDITS_CITY_SOURCES,
 } from './creditsAssetPaths';
 import { buildCreditsAssetCandidates } from './creditsAssetPaths';
@@ -34,8 +35,13 @@ const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial R
 
 const KOLEQUANT_LOGO_SOURCES = buildCreditsAssetCandidates('assets/kolequant.png');
 
-/** Beam rotation in radians — about 22° from vertical, angled left from a right-side rooftop. */
-const BEAM_ROTATION = -0.38;
+/** Beam rotation in radians — about 25° from vertical, angled left from a right-side rooftop. */
+const BEAM_ROTATION = -0.44;
+
+/** Duration in seconds for the projector beam to fade in at scene start. */
+const BEAM_INTRO_DURATION = 1.8;
+/** Additional delay after beam before credits text appears. */
+const TEXT_DELAY_AFTER_BEAM = 0.8;
 
 type StarConfig = {
   sprite: Graphics;
@@ -76,6 +82,7 @@ export default class CreditsScene {
   private readonly windowsLayer = new Container();
   private readonly fogLayer = new Container();
   private readonly beamLayer = new Container();
+  private readonly eyeLayer = new Container();
   private readonly textLayer = new Container();
   private readonly logoLayer = new Container();
   private readonly generatedTextures: Texture[] = [];
@@ -85,6 +92,7 @@ export default class CreditsScene {
   private readonly beamOuterBlurFilter = new BlurFilter({ strength: 22, quality: 3 });
   private readonly beamCoreBlurFilter = new BlurFilter({ strength: 12, quality: 2 });
   private readonly sourceGlowFilter = new BlurFilter({ strength: 10, quality: 2 });
+  private readonly eyeGlowFilter = new BlurFilter({ strength: 16, quality: 3 });
   private readonly tick = () => {
     this.update();
   };
@@ -102,6 +110,8 @@ export default class CreditsScene {
   private beamInner!: Sprite;
   private sourceGlow!: Sprite;
   private logoSprite: Sprite | null = null;
+  private eyeSprite: Sprite | null = null;
+  private eyeGlow: Sprite | null = null;
   private creditsText!: Text;
   private exitText!: Text;
   private elapsedSeconds = 0;
@@ -109,6 +119,7 @@ export default class CreditsScene {
   private designScale = 1;
   private beamOriginX = 0;
   private beamOriginY = 0;
+  private beamIntroProgress = 0;
   private destroyed = false;
   private appInitialized = false;
   private appDisposed = false;
@@ -156,6 +167,13 @@ export default class CreditsScene {
       // Logo is optional — scene works without it.
     }
 
+    let eyeTexture: Texture | null = null;
+    try {
+      eyeTexture = await this.loadTexture(CREDITS_BIG_EYE_SOURCES);
+    } catch {
+      // Eye is optional — scene works without it.
+    }
+
     if (this.destroyed) {
       this.disposeApplication();
       return;
@@ -169,6 +187,7 @@ export default class CreditsScene {
       this.windowsLayer,
       this.fogLayer,
       this.beamLayer,
+      this.eyeLayer,
       this.textLayer,
       this.logoLayer,
     );
@@ -179,6 +198,9 @@ export default class CreditsScene {
     this.createWindowLights();
     this.createFog();
     this.createBeam();
+    if (eyeTexture) {
+      this.createEye(eyeTexture);
+    }
     this.createTexts();
     if (logoTexture) {
       this.createLogo(logoTexture);
@@ -361,17 +383,17 @@ export default class CreditsScene {
 
     this.beamOuter = new Sprite(outerTexture);
     this.beamOuter.anchor.set(0.5, 1);
-    this.beamOuter.alpha = 0.12;
+    this.beamOuter.alpha = 0;
     this.beamOuter.filters = [this.beamOuterBlurFilter];
 
     this.beamInner = new Sprite(innerTexture);
     this.beamInner.anchor.set(0.5, 1);
-    this.beamInner.alpha = 0.16;
+    this.beamInner.alpha = 0;
     this.beamInner.filters = [this.beamCoreBlurFilter];
 
     this.sourceGlow = new Sprite(glowTexture);
     this.sourceGlow.anchor.set(0.5);
-    this.sourceGlow.alpha = 0.4;
+    this.sourceGlow.alpha = 0;
     this.sourceGlow.tint = 0xdff0ff;
     this.sourceGlow.filters = [this.sourceGlowFilter];
 
@@ -402,9 +424,10 @@ export default class CreditsScene {
     context.clip();
 
     const verticalFade = context.createLinearGradient(0, canvas.height, 0, 0);
-    verticalFade.addColorStop(0, options.core ? 'rgba(240, 248, 255, 0.6)' : 'rgba(210, 235, 255, 0.35)');
-    verticalFade.addColorStop(0.2, options.core ? 'rgba(230, 244, 255, 0.4)' : 'rgba(205, 230, 250, 0.2)');
-    verticalFade.addColorStop(0.6, options.core ? 'rgba(215, 236, 252, 0.12)' : 'rgba(195, 222, 248, 0.06)');
+    verticalFade.addColorStop(0, options.core ? 'rgba(240, 248, 255, 0.85)' : 'rgba(210, 235, 255, 0.55)');
+    verticalFade.addColorStop(0.15, options.core ? 'rgba(235, 246, 255, 0.65)' : 'rgba(210, 235, 255, 0.4)');
+    verticalFade.addColorStop(0.45, options.core ? 'rgba(220, 240, 252, 0.25)' : 'rgba(200, 228, 250, 0.14)');
+    verticalFade.addColorStop(0.8, options.core ? 'rgba(215, 236, 252, 0.06)' : 'rgba(195, 222, 248, 0.03)');
     verticalFade.addColorStop(1, 'rgba(190, 218, 245, 0)');
     context.fillStyle = verticalFade;
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -415,9 +438,9 @@ export default class CreditsScene {
       canvas.width * 0.01,
       cx,
       canvas.height * 0.7,
-      canvas.width * 0.2,
+      canvas.width * 0.22,
     );
-    horizontalFade.addColorStop(0, options.core ? 'rgba(245, 252, 255, 0.45)' : 'rgba(220, 240, 255, 0.2)');
+    horizontalFade.addColorStop(0, options.core ? 'rgba(245, 252, 255, 0.7)' : 'rgba(220, 240, 255, 0.35)');
     horizontalFade.addColorStop(1, 'rgba(220, 240, 255, 0)');
     context.fillStyle = horizontalFade;
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -457,6 +480,23 @@ export default class CreditsScene {
     const texture = Texture.from(canvas);
     this.generatedTextures.push(texture);
     return texture;
+  }
+
+  private createEye(texture: Texture): void {
+    // Glow behind the eye — a radial gradient sprite
+    const glowTexture = this.createGlowTexture();
+    this.eyeGlow = new Sprite(glowTexture);
+    this.eyeGlow.anchor.set(0.5);
+    this.eyeGlow.alpha = 0;
+    this.eyeGlow.tint = 0xc8e0ff;
+    this.eyeGlow.filters = [this.eyeGlowFilter];
+    this.eyeLayer.addChild(this.eyeGlow);
+
+    // The Big Eye sprite
+    this.eyeSprite = new Sprite(texture);
+    this.eyeSprite.anchor.set(0.5);
+    this.eyeSprite.alpha = 0;
+    this.eyeLayer.addChild(this.eyeSprite);
   }
 
   private createLogo(texture: Texture): void {
@@ -576,12 +616,12 @@ export default class CreditsScene {
     // Beam originates from right-side rooftop, projecting upward and angled left
     this.beamOriginX = width * 0.72;
     this.beamOriginY = cityTop + this.citySprite.height * 0.08;
-    const beamWidth = Math.max(width * 0.38, 150);
-    const beamHeight = Math.max(height * 0.78, 620);
+    const beamWidth = Math.max(width * 0.42, 160);
+    const beamHeight = Math.max(height * 0.82, 650);
 
     this.beamOuter.x = this.beamOriginX;
     this.beamOuter.y = this.beamOriginY;
-    this.beamOuter.width = beamWidth * 1.15;
+    this.beamOuter.width = beamWidth * 1.2;
     this.beamOuter.height = beamHeight;
     this.beamOuter.rotation = BEAM_ROTATION;
 
@@ -593,12 +633,33 @@ export default class CreditsScene {
 
     this.sourceGlow.x = this.beamOriginX;
     this.sourceGlow.y = this.beamOriginY;
-    this.sourceGlow.width = width * 0.15;
-    this.sourceGlow.height = width * 0.15;
+    this.sourceGlow.width = width * 0.18;
+    this.sourceGlow.height = width * 0.18;
 
-    // Text positioned inside the beam path — lower in the scene and slightly right of center
-    const textX = this.beamOriginX + Math.sin(BEAM_ROTATION) * beamHeight * 0.35;
-    const textY = height * 0.5;
+    // Eye positioned in the upper beam area — slightly right of center, ~30% from top
+    const eyeBeamOffset = beamHeight * 0.45;
+    const eyeX = this.beamOriginX + Math.sin(BEAM_ROTATION) * eyeBeamOffset;
+    const eyeY = this.beamOriginY - Math.cos(BEAM_ROTATION) * eyeBeamOffset;
+
+    if (this.eyeSprite) {
+      const eyeSize = Math.min(width * 0.16, 70) * this.designScale;
+      this.eyeSprite.x = eyeX;
+      this.eyeSprite.y = eyeY;
+      this.eyeSprite.width = eyeSize;
+      this.eyeSprite.height = eyeSize;
+    }
+
+    if (this.eyeGlow) {
+      const glowSize = Math.min(width * 0.38, 160) * this.designScale;
+      this.eyeGlow.x = eyeX;
+      this.eyeGlow.y = eyeY;
+      this.eyeGlow.width = glowSize;
+      this.eyeGlow.height = glowSize;
+    }
+
+    // Text positioned below the eye, inside the beam path
+    const textX = this.beamOriginX + Math.sin(BEAM_ROTATION) * beamHeight * 0.32;
+    const textY = height * 0.52;
     this.creditsText.x = textX;
     this.creditsText.y = textY;
     this.creditsText.style.fontSize = Math.max(20, 24 * this.designScale);
@@ -647,18 +708,49 @@ export default class CreditsScene {
     this.fogBack.x = this.app.renderer.screen.width * 0.5 + fogDrift;
     this.fogFront.x = this.app.renderer.screen.width * 0.55 - fogDrift * 0.6;
 
+    // Beam intro — fades in over BEAM_INTRO_DURATION seconds
+    this.beamIntroProgress = Math.min(1, this.elapsedSeconds / BEAM_INTRO_DURATION);
+    const beamIntro = this.beamIntroProgress * this.beamIntroProgress; // easeIn
+
     const beamPulse = (Math.sin(this.elapsedSeconds * 0.35) + 1) * 0.5;
-    this.beamOuter.alpha = 0.08 + beamPulse * 0.04;
-    this.beamInner.alpha = 0.12 + beamPulse * 0.04;
-    this.sourceGlow.alpha = 0.3 + beamPulse * 0.1;
+    this.beamOuter.alpha = beamIntro * (0.22 + beamPulse * 0.06);
+    this.beamInner.alpha = beamIntro * (0.32 + beamPulse * 0.06);
+    this.sourceGlow.alpha = beamIntro * (0.55 + beamPulse * 0.15);
+
+    // Eye — appears after beam is partially visible, with glow and pulsing scale
+    if (this.eyeSprite && this.eyeGlow) {
+      const eyeStart = BEAM_INTRO_DURATION * 0.5;
+      const eyeFadeDuration = 1.2;
+      const eyeProgress = Math.min(1, Math.max(0, (this.elapsedSeconds - eyeStart) / eyeFadeDuration));
+      const eyeAlpha = eyeProgress * eyeProgress;
+      const scalePulse = 1 + Math.sin(this.elapsedSeconds * 0.8) * 0.03;
+
+      this.eyeSprite.alpha = eyeAlpha * 0.85;
+      this.eyeSprite.scale.set(
+        (this.eyeSprite.width / this.eyeSprite.texture.width) * scalePulse,
+        (this.eyeSprite.height / this.eyeSprite.texture.height) * scalePulse,
+      );
+
+      this.eyeGlow.alpha = eyeAlpha * (0.35 + beamPulse * 0.15);
+    }
+
+    // Credits text — only appears after beam + delay
+    const textStartTime = BEAM_INTRO_DURATION + TEXT_DELAY_AFTER_BEAM;
+    const textElapsed = Math.max(0, this.elapsedSeconds - textStartTime);
 
     const totalCycleTime = this.credits.length * CREDIT_CYCLE_SECONDS;
     const logoFlashStart = totalCycleTime;
     const logoFlashDuration = 2.4;
     const fullCycleDuration = totalCycleTime + logoFlashDuration;
-    const loopTime = this.elapsedSeconds % fullCycleDuration;
+    const loopTime = textElapsed % fullCycleDuration;
 
-    if (loopTime < totalCycleTime) {
+    if (textElapsed <= 0) {
+      // Still in beam intro — hide text and logo
+      this.creditsText.alpha = 0;
+      if (this.logoSprite) {
+        this.logoSprite.alpha = 0;
+      }
+    } else if (loopTime < totalCycleTime) {
       // Regular credits cycle
       this.logoFlashTriggered = false;
 
