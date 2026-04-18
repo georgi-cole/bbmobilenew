@@ -44,6 +44,7 @@ const VALID_MODES = new Set<CompSelectionMode>([
   'retired',
   'misc',
   'unique',
+  'bracket-template',
 ]);
 
 // ─── Validation helpers ───────────────────────────────────────────────────────

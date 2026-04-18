@@ -107,6 +107,17 @@ describe('getBracketPoolForContext', () => {
     expect(pool).toContain('majorityRules');
   });
 
+  it('returns an empty pool when player count is below the smallest bracket (e.g. 1 player)', () => {
+    // Below the narrowest bracket (3 players) — no fallback to template[0]
+    const pool = getBracketPoolForContext(1, 'LOH');
+    expect(pool).toEqual([]);
+  });
+
+  it('returns an empty pool when player count is 2 (below the narrowest bracket)', () => {
+    const pool = getBracketPoolForContext(2, 'POS');
+    expect(pool).toEqual([]);
+  });
+
   it('returns a fresh copy each call (mutations do not bleed between calls)', () => {
     const a = getBracketPoolForContext(16, 'LOH');
     const b = getBracketPoolForContext(16, 'LOH');

@@ -8,8 +8,9 @@
  * The DEFAULT_BRACKET_TEMPLATE constant is the single source of truth and is
  * deliberately easy to edit: to adjust a bracket, change the keys array for
  * the relevant band/type entry.  To add a new bracket, insert a new band
- * object and keep the array sorted from highest to lowest `minPlayers` so
- * that `getBracketPoolForContext` resolves the correct band quickly.
+ * object and keep the array sorted from highest to lowest player-count band
+ * (highest `maxPlayers` first) so that `getBracketPoolForContext` resolves
+ * the correct band quickly.
  *
  * Bracket definitions:
  *  - 16–13 players
@@ -157,7 +158,9 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
  *    whose range includes `playerCount`.
  *  - If `playerCount` is above every bracket's `maxPlayers` (unusual edge case)
  *    the first band is returned.
- *  - An empty pool is returned only when no band matches (caller must fall back).
+ *  - If `playerCount` is below every bracket's `minPlayers` (e.g. 1–2 players
+ *    when the narrowest bracket starts at 3), an empty pool is returned so the
+ *    caller can fall back to the standard scheduler.
  *
  * @param playerCount - Number of currently alive players (>= 1).
  * @param compType    - `'LOH'` or `'POS'`.
@@ -178,8 +181,11 @@ export function getBracketPoolForContext(
     }
   }
 
-  // Edge case: player count exceeds the top bracket — use the widest band.
-  if (!matched && template.length > 0) {
+  // Edge case: player count is above every bracket's maxPlayers — use the
+  // widest band.  Do NOT fall back for below-range counts (e.g. 1–2 players
+  // when the smallest bracket starts at 3): return an empty pool so the
+  // caller can fall back to the standard scheduler.
+  if (!matched && template.length > 0 && playerCount > template[0].maxPlayers) {
     matched = template[0];
   }
 

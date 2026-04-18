@@ -292,22 +292,29 @@ export const startChallenge =
 
         case 'bracket-template': {
           // Select from the bracket template pool keyed on alive player count
-          // and competition type (LOH or POS).  Falls back to the standard
-          // scheduler when the bracket pool is empty or the prizeType is unknown.
+          // and competition type (LOH or POS). Falls back to the standard
+          // scheduler when the bracket pool is empty, all keys are retired,
+          // or the prizeType is not a recognised LOH/POS value.
           const bracketCompType =
-            opts.prizeType === 'POS' ? 'POS' : 'LOH';
-          const bracketPlayerCount = activeCompetitorCount > 0 ? activeCompetitorCount : participants.length;
-          const bracketKeys = getBracketPoolForContext(bracketPlayerCount, bracketCompType);
-          if (bracketKeys.length > 0) {
-            const bracketPool = bracketKeys
-              .map((k) => getGame(k))
-              .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired);
-            if (bracketPool.length > 0) {
-              gameEntry = selectFromPool(bracketPool);
-              break;
+            opts.prizeType === 'LOH' || opts.prizeType === 'POS'
+              ? opts.prizeType
+              : undefined;
+          if (bracketCompType) {
+            const bracketPlayerCount = activeCompetitorCount > 0 ? activeCompetitorCount : participants.length;
+            const bracketKeys = getBracketPoolForContext(bracketPlayerCount, bracketCompType);
+            if (bracketKeys.length > 0) {
+              const excluded = new Set(opts.excludeKeys ?? []);
+              const bracketPool = bracketKeys
+                .map((k) => getGame(k))
+                .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && !excluded.has(g.key));
+              if (bracketPool.length > 0) {
+                gameEntry = selectFromPool(bracketPool);
+                break;
+              }
             }
           }
-          // Fallback: pool empty or all keys retired — use standard scheduler.
+          // Fallback: pool empty, all keys retired, excludeKeys exhausted, or
+          // prizeType unknown — use standard scheduler.
           gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           break;
         }
