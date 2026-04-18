@@ -11,12 +11,13 @@ import {
 import {
   CREDITS_CITY_SOURCES,
 } from './creditsAssetPaths';
+import { buildCreditsAssetCandidates } from './creditsAssetPaths';
 
 const BASE_WIDTH = 390;
 const BASE_HEIGHT = 844;
 const STAR_COUNT = 50;
 const WINDOW_LIGHT_COUNT = 60;
-const CREDIT_CYCLE_SECONDS = 4;
+const CREDIT_CYCLE_SECONDS = 4.5;
 const SKY_TEXTURE_WIDTH = 64;
 const SKY_TEXTURE_HEIGHT = 256;
 const BEAM_TEXTURE_WIDTH = 480;
@@ -30,6 +31,11 @@ const SKY_BOTTOM = '#0c2a3c';
 const TEXT_TINT = '#f0f6ff';
 const WARM_WINDOW_COLOR = 0xffe8a3;
 const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial Rounded MT Bold\', \'Montserrat\', sans-serif';
+
+const KOLEQUANT_LOGO_SOURCES = buildCreditsAssetCandidates('assets/kolequant.png');
+
+/** Beam rotation in radians — about 22° from vertical, angled left from a right-side rooftop. */
+const BEAM_ROTATION = -0.38;
 
 type StarConfig = {
   sprite: Graphics;
@@ -71,13 +77,14 @@ export default class CreditsScene {
   private readonly fogLayer = new Container();
   private readonly beamLayer = new Container();
   private readonly textLayer = new Container();
+  private readonly logoLayer = new Container();
   private readonly generatedTextures: Texture[] = [];
   private readonly starConfigs: StarConfig[] = [];
   private readonly windowLightConfigs: WindowLightConfig[] = [];
   private readonly fogBlurFilter = new BlurFilter({ strength: 14, quality: 2 });
-  private readonly beamOuterBlurFilter = new BlurFilter({ strength: 18, quality: 2 });
-  private readonly beamCoreBlurFilter = new BlurFilter({ strength: 10, quality: 2 });
-  private readonly sourceGlowFilter = new BlurFilter({ strength: 8, quality: 2 });
+  private readonly beamOuterBlurFilter = new BlurFilter({ strength: 22, quality: 3 });
+  private readonly beamCoreBlurFilter = new BlurFilter({ strength: 12, quality: 2 });
+  private readonly sourceGlowFilter = new BlurFilter({ strength: 10, quality: 2 });
   private readonly tick = () => {
     this.update();
   };
@@ -94,6 +101,7 @@ export default class CreditsScene {
   private beamOuter!: Sprite;
   private beamInner!: Sprite;
   private sourceGlow!: Sprite;
+  private logoSprite: Sprite | null = null;
   private creditsText!: Text;
   private exitText!: Text;
   private elapsedSeconds = 0;
@@ -105,6 +113,7 @@ export default class CreditsScene {
   private appInitialized = false;
   private appDisposed = false;
   private exitTextFadedIn = false;
+  private logoFlashTriggered = false;
 
   constructor(options: CreditsSceneOptions) {
     this.host = options.host;
@@ -140,6 +149,18 @@ export default class CreditsScene {
       return;
     }
 
+    let logoTexture: Texture | null = null;
+    try {
+      logoTexture = await this.loadTexture(KOLEQUANT_LOGO_SOURCES);
+    } catch {
+      // Logo is optional — scene works without it.
+    }
+
+    if (this.destroyed) {
+      this.disposeApplication();
+      return;
+    }
+
     this.app.stage.addChild(this.root);
     this.root.addChild(
       this.skyLayer,
@@ -149,6 +170,7 @@ export default class CreditsScene {
       this.fogLayer,
       this.beamLayer,
       this.textLayer,
+      this.logoLayer,
     );
 
     this.createSky();
@@ -158,6 +180,9 @@ export default class CreditsScene {
     this.createFog();
     this.createBeam();
     this.createTexts();
+    if (logoTexture) {
+      this.createLogo(logoTexture);
+    }
     this.attachResizeHandling();
     this.layout();
     this.app.ticker.add(this.tick);
@@ -295,12 +320,12 @@ export default class CreditsScene {
 
     this.fogBack = new Sprite(fogTexture);
     this.fogBack.anchor.set(0.5, 1);
-    this.fogBack.alpha = 0.1;
+    this.fogBack.alpha = 0.07;
     this.fogBack.filters = [this.fogBlurFilter];
 
     this.fogFront = new Sprite(fogTexture);
     this.fogFront.anchor.set(0.5, 1);
-    this.fogFront.alpha = 0.14;
+    this.fogFront.alpha = 0.1;
     this.fogFront.filters = [this.fogBlurFilter];
 
     this.fogLayer.addChild(this.fogBack, this.fogFront);
@@ -318,8 +343,8 @@ export default class CreditsScene {
 
     const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, 'rgba(200, 220, 240, 0)');
-    gradient.addColorStop(0.5, 'rgba(200, 220, 240, 0.25)');
-    gradient.addColorStop(1, 'rgba(180, 205, 230, 0.4)');
+    gradient.addColorStop(0.5, 'rgba(200, 220, 240, 0.2)');
+    gradient.addColorStop(1, 'rgba(180, 205, 230, 0.35)');
 
     context.fillStyle = gradient;
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -335,18 +360,18 @@ export default class CreditsScene {
     const glowTexture = this.createGlowTexture();
 
     this.beamOuter = new Sprite(outerTexture);
-    this.beamOuter.anchor.set(0.5, 0);
-    this.beamOuter.alpha = 0.14;
+    this.beamOuter.anchor.set(0.5, 1);
+    this.beamOuter.alpha = 0.12;
     this.beamOuter.filters = [this.beamOuterBlurFilter];
 
     this.beamInner = new Sprite(innerTexture);
-    this.beamInner.anchor.set(0.5, 0);
-    this.beamInner.alpha = 0.18;
+    this.beamInner.anchor.set(0.5, 1);
+    this.beamInner.alpha = 0.16;
     this.beamInner.filters = [this.beamCoreBlurFilter];
 
     this.sourceGlow = new Sprite(glowTexture);
     this.sourceGlow.anchor.set(0.5);
-    this.sourceGlow.alpha = 0.35;
+    this.sourceGlow.alpha = 0.4;
     this.sourceGlow.tint = 0xdff0ff;
     this.sourceGlow.filters = [this.sourceGlowFilter];
 
@@ -363,36 +388,36 @@ export default class CreditsScene {
       throw new Error('Canvas 2D context unavailable for projector beam.');
     }
 
-    const topWidth = options.core ? canvas.width * 0.04 : canvas.width * 0.07;
-    const bottomWidth = options.core ? canvas.width * 0.18 : canvas.width * 0.28;
+    const bottomWidth = options.core ? canvas.width * 0.06 : canvas.width * 0.1;
+    const topWidth = options.core ? canvas.width * 0.22 : canvas.width * 0.32;
     const cx = canvas.width * 0.5;
 
     context.save();
     context.beginPath();
-    context.moveTo(cx - topWidth, 0);
-    context.lineTo(cx - bottomWidth, canvas.height);
-    context.lineTo(cx + bottomWidth, canvas.height);
+    context.moveTo(cx - bottomWidth, canvas.height);
+    context.lineTo(cx - topWidth, 0);
     context.lineTo(cx + topWidth, 0);
+    context.lineTo(cx + bottomWidth, canvas.height);
     context.closePath();
     context.clip();
 
-    const verticalFade = context.createLinearGradient(0, 0, 0, canvas.height);
-    verticalFade.addColorStop(0, options.core ? 'rgba(240, 248, 255, 0.7)' : 'rgba(210, 235, 255, 0.4)');
-    verticalFade.addColorStop(0.3, options.core ? 'rgba(225, 240, 255, 0.35)' : 'rgba(200, 225, 250, 0.18)');
-    verticalFade.addColorStop(0.7, options.core ? 'rgba(210, 232, 250, 0.12)' : 'rgba(190, 218, 245, 0.06)');
+    const verticalFade = context.createLinearGradient(0, canvas.height, 0, 0);
+    verticalFade.addColorStop(0, options.core ? 'rgba(240, 248, 255, 0.6)' : 'rgba(210, 235, 255, 0.35)');
+    verticalFade.addColorStop(0.2, options.core ? 'rgba(230, 244, 255, 0.4)' : 'rgba(205, 230, 250, 0.2)');
+    verticalFade.addColorStop(0.6, options.core ? 'rgba(215, 236, 252, 0.12)' : 'rgba(195, 222, 248, 0.06)');
     verticalFade.addColorStop(1, 'rgba(190, 218, 245, 0)');
     context.fillStyle = verticalFade;
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     const horizontalFade = context.createRadialGradient(
       cx,
-      canvas.height * 0.2,
+      canvas.height * 0.85,
       canvas.width * 0.01,
       cx,
-      canvas.height * 0.35,
-      canvas.width * 0.25,
+      canvas.height * 0.7,
+      canvas.width * 0.2,
     );
-    horizontalFade.addColorStop(0, options.core ? 'rgba(245, 252, 255, 0.5)' : 'rgba(220, 240, 255, 0.2)');
+    horizontalFade.addColorStop(0, options.core ? 'rgba(245, 252, 255, 0.45)' : 'rgba(220, 240, 255, 0.2)');
     horizontalFade.addColorStop(1, 'rgba(220, 240, 255, 0)');
     context.fillStyle = horizontalFade;
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -434,14 +459,21 @@ export default class CreditsScene {
     return texture;
   }
 
+  private createLogo(texture: Texture): void {
+    this.logoSprite = new Sprite(texture);
+    this.logoSprite.anchor.set(0.5);
+    this.logoSprite.alpha = 0;
+    this.logoLayer.addChild(this.logoSprite);
+  }
+
   private createTexts(): void {
     this.creditsText = new Text({
       text: '',
       style: {
         align: 'center',
         dropShadow: {
-          alpha: 0.5,
-          blur: 14,
+          alpha: 0.7,
+          blur: 18,
           color: '#000000',
           distance: 0,
         },
@@ -450,9 +482,9 @@ export default class CreditsScene {
         fontSize: 22,
         fontWeight: '600',
         letterSpacing: 0.9,
-        lineHeight: 30,
+        lineHeight: 36,
         wordWrap: true,
-        wordWrapWidth: 200,
+        wordWrapWidth: 240,
       },
     });
     this.creditsText.anchor.set(0.5);
@@ -541,40 +573,49 @@ export default class CreditsScene {
     this.fogFront.width = width * 1.25;
     this.fogFront.height = height * 0.1;
 
-    this.beamOriginX = width * 0.58;
-    this.beamOriginY = -height * 0.04;
-    const beamWidth = Math.max(width * 0.34, 140);
-    const beamHeight = Math.max(height * 0.72, 580);
-    const beamRotation = 0.06;
+    // Beam originates from right-side rooftop, projecting upward and angled left
+    this.beamOriginX = width * 0.72;
+    this.beamOriginY = cityTop + this.citySprite.height * 0.08;
+    const beamWidth = Math.max(width * 0.38, 150);
+    const beamHeight = Math.max(height * 0.78, 620);
 
     this.beamOuter.x = this.beamOriginX;
     this.beamOuter.y = this.beamOriginY;
-    this.beamOuter.width = beamWidth * 1.1;
+    this.beamOuter.width = beamWidth * 1.15;
     this.beamOuter.height = beamHeight;
-    this.beamOuter.rotation = beamRotation;
+    this.beamOuter.rotation = BEAM_ROTATION;
 
     this.beamInner.x = this.beamOriginX;
     this.beamInner.y = this.beamOriginY;
     this.beamInner.width = beamWidth * 0.7;
     this.beamInner.height = beamHeight * 0.95;
-    this.beamInner.rotation = beamRotation;
+    this.beamInner.rotation = BEAM_ROTATION;
 
     this.sourceGlow.x = this.beamOriginX;
-    this.sourceGlow.y = this.beamOriginY + height * 0.01;
-    this.sourceGlow.width = width * 0.12;
-    this.sourceGlow.height = width * 0.12;
+    this.sourceGlow.y = this.beamOriginY;
+    this.sourceGlow.width = width * 0.15;
+    this.sourceGlow.height = width * 0.15;
 
-    const textX = this.beamOriginX + Math.sin(beamRotation) * beamHeight * 0.42;
-    const textY = height * 0.42;
+    // Text positioned inside the beam path — lower in the scene and slightly right of center
+    const textX = this.beamOriginX + Math.sin(BEAM_ROTATION) * beamHeight * 0.35;
+    const textY = height * 0.5;
     this.creditsText.x = textX;
     this.creditsText.y = textY;
-    this.creditsText.style.fontSize = Math.max(18, 22 * this.designScale);
-    this.creditsText.style.lineHeight = Math.max(24, 30 * this.designScale);
-    this.creditsText.style.wordWrapWidth = Math.max(170, width * 0.42);
+    this.creditsText.style.fontSize = Math.max(20, 24 * this.designScale);
+    this.creditsText.style.lineHeight = Math.max(30, 38 * this.designScale);
+    this.creditsText.style.wordWrapWidth = Math.max(200, width * 0.52);
 
     this.exitText.x = width * 0.5;
     this.exitText.y = height - Math.max(28, 44 * this.designScale);
     this.exitText.style.fontSize = Math.max(11, 13 * this.designScale);
+
+    if (this.logoSprite) {
+      const logoSize = Math.min(width * 0.35, 140) * this.designScale;
+      this.logoSprite.x = width * 0.5;
+      this.logoSprite.y = height * 0.45;
+      this.logoSprite.width = logoSize;
+      this.logoSprite.height = logoSize * (this.logoSprite.texture.height / this.logoSprite.texture.width);
+    }
   }
 
   private update(): void {
@@ -607,24 +648,60 @@ export default class CreditsScene {
     this.fogFront.x = this.app.renderer.screen.width * 0.55 - fogDrift * 0.6;
 
     const beamPulse = (Math.sin(this.elapsedSeconds * 0.35) + 1) * 0.5;
-    this.beamOuter.alpha = 0.1 + beamPulse * 0.04;
-    this.beamInner.alpha = 0.14 + beamPulse * 0.04;
-    this.sourceGlow.alpha = 0.25 + beamPulse * 0.08;
+    this.beamOuter.alpha = 0.08 + beamPulse * 0.04;
+    this.beamInner.alpha = 0.12 + beamPulse * 0.04;
+    this.sourceGlow.alpha = 0.3 + beamPulse * 0.1;
 
-    const cycleIndex = Math.floor(this.elapsedSeconds / CREDIT_CYCLE_SECONDS) % this.credits.length;
-    const cycleProgress = this.elapsedSeconds % CREDIT_CYCLE_SECONDS;
+    const totalCycleTime = this.credits.length * CREDIT_CYCLE_SECONDS;
+    const logoFlashStart = totalCycleTime;
+    const logoFlashDuration = 2.4;
+    const fullCycleDuration = totalCycleTime + logoFlashDuration;
+    const loopTime = this.elapsedSeconds % fullCycleDuration;
 
-    if (cycleIndex !== this.currentCreditIndex) {
-      this.currentCreditIndex = cycleIndex;
-      this.creditsText.text = this.credits[cycleIndex];
-    }
+    if (loopTime < totalCycleTime) {
+      // Regular credits cycle
+      this.logoFlashTriggered = false;
 
-    if (cycleProgress < 1) {
-      this.creditsText.alpha = cycleProgress;
-    } else if (cycleProgress < 3) {
-      this.creditsText.alpha = 1;
+      const cycleIndex = Math.floor(loopTime / CREDIT_CYCLE_SECONDS) % this.credits.length;
+      const cycleProgress = loopTime % CREDIT_CYCLE_SECONDS;
+
+      if (cycleIndex !== this.currentCreditIndex) {
+        this.currentCreditIndex = cycleIndex;
+        this.creditsText.text = this.credits[cycleIndex];
+      }
+
+      if (cycleProgress < 1) {
+        this.creditsText.alpha = cycleProgress;
+      } else if (cycleProgress < 3.5) {
+        this.creditsText.alpha = 1;
+      } else {
+        this.creditsText.alpha = Math.max(0, 1 - (cycleProgress - 3.5) * 2);
+      }
+
+      if (this.logoSprite) {
+        this.logoSprite.alpha = 0;
+      }
     } else {
-      this.creditsText.alpha = Math.max(0, 1 - (cycleProgress - 3));
+      // Kolequant logo flash
+      this.creditsText.alpha = 0;
+      this.currentCreditIndex = -1;
+
+      if (this.logoSprite) {
+        if (!this.logoFlashTriggered) {
+          this.logoFlashTriggered = true;
+        }
+
+        const flashProgress = loopTime - logoFlashStart;
+        const fadeDuration = 0.5;
+
+        if (flashProgress < fadeDuration) {
+          this.logoSprite.alpha = flashProgress / fadeDuration;
+        } else if (flashProgress < logoFlashDuration - fadeDuration) {
+          this.logoSprite.alpha = 1;
+        } else {
+          this.logoSprite.alpha = Math.max(0, 1 - (flashProgress - (logoFlashDuration - fadeDuration)) / fadeDuration);
+        }
+      }
     }
 
     if (!this.exitTextFadedIn && this.elapsedSeconds > 1.5) {

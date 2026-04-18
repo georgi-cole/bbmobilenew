@@ -1,9 +1,9 @@
 export default [
-  { role: 'Creative Director', name: 'Georgi Cole' },
-  { role: 'Lead Developer', name: 'Georgi Cole' },
-  { role: 'Art & Design', name: 'Georgi Cole' },
-  { role: 'Sound Design', name: 'Georgi Cole' },
-  { role: 'QA & Playtest', name: 'QA Team' },
-  { role: 'Special Thanks', name: 'OpenAI / Copilot' },
-  { role: 'Powered By', name: 'React + TypeScript' },
+  'Thank YOU for playing',
+  'Created by:\nGeorgi Cole',
+  'Main Sponsor\nGenestetica LTD.',
+  'Co-producer\nATISTE HOUSE',
+  'Main theme:\nThe Red Collective &\nIndigoe - Move into me',
+  'Life is a subject\nOf Creation',
+  'More is on the way...',
 ];

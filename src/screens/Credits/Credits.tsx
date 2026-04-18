@@ -18,10 +18,7 @@ export default function Credits() {
   const [isExiting, setIsExiting] = useState(false);
 
   const credits = useMemo(
-    () => [
-      ...creditsData.map(({ role, name }) => `${role}\n${name}`),
-      'The Big Eye\nThanks for playing',
-    ],
+    () => [...creditsData],
     [],
   );
 

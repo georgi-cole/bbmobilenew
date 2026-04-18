@@ -62,8 +62,8 @@ describe('Credits', () => {
     expect(creditsSceneMock).toHaveBeenCalledWith(
       expect.objectContaining({
         credits: expect.arrayContaining([
-          'Creative Director\nGeorgi Cole',
-          'The Big Eye\nThanks for playing',
+          'Thank YOU for playing',
+          'Created by:\nGeorgi Cole',
         ]),
       }),
     );
