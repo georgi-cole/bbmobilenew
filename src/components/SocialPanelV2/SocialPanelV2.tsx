@@ -180,8 +180,9 @@ export default function SocialPanelV2() {
 
   // Clear subject whenever action or primary target changes.
   // NOTE: This is done explicitly in the event handlers (handleActionClick and
-  // handleSelectionChange) rather than a useEffect to avoid the synchronous
-  // setState-in-effect anti-pattern.
+  // handleSelectionChange) rather than a useEffect so that subject clears in
+  // the same render as the action/target change, avoiding an extra re-render
+  // cycle and the associated setState-inside-effect ESLint rule violation.
 
   // Handle action selection. Clears the subject so a stale subject from a
   // previous primaryPlusSubject action never leaks into a new action context.

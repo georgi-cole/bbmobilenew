@@ -222,7 +222,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     id: 'confront',
     title: 'Confront',
     icon: '😤',
-    description: 'Directly challenge someone\'s behaviour or motives.',
+    description: 'Directly challenge someone\'s behavior or motives.',
     category: 'aggressive',
     baseCost: 2,
     targetMode: 'primary',
