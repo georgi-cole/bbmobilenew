@@ -148,18 +148,22 @@ export default function CrystalPathShatteredGame({
     }, (wrong ? getWrongSequenceMs() : getSafeSequenceMs()) / playbackSpeed);
   }, [activePlayerId, dispatch, gb.currentPlayerRow, gb.rows, gb.rowsCount, humanId, playDeath, playSafeStep, playWinner, playbackSpeed, queueTimeout]);
 
+  const initConfigRef = useRef({
+    participantIds,
+    participants,
+    competitionType: prizeType,
+    seed: sessionSeed,
+  });
+  const clearTimersRef = useRef(clearTimers);
+  clearTimersRef.current = clearTimers;
+
   useEffect(() => {
-    dispatch(initGlassBridge({
-      participantIds,
-      participants,
-      competitionType: prizeType,
-      seed: sessionSeed,
-    }));
+    dispatch(initGlassBridge(initConfigRef.current));
     return () => {
-      clearTimers();
+      clearTimersRef.current();
       dispatch(resetGlassBridge());
     };
-  }, [clearTimers, dispatch, participantIds, participants, prizeType, sessionSeed]);
+  }, [dispatch]);
 
   useEffect(() => {
     if (gb.phase !== 'order_selection') return undefined;
