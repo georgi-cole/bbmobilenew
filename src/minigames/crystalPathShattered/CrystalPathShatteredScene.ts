@@ -293,6 +293,8 @@ export class CrystalPathShatteredScene {
     );
   }
 
+  private lastRenderKey: string | null = null;
+
   private buildParticles() {
     for (let index = 0; index < PARTICLE_COUNT; index += 1) {
       const sprite = new Sprite(Texture.WHITE);
@@ -323,13 +325,25 @@ export class CrystalPathShatteredScene {
     }
   }
 
+  private getRenderKey(width: number, height: number) {
+    return JSON.stringify({
+      width,
+      height,
+      phase: this.state.phase,
+      rowsCount: this.state.rowsCount,
+      currentPlayerRow: this.state.currentPlayerRow,
+      currentTurnIndex: this.state.currentTurnIndex,
+      inputEnabled: this.state.inputEnabled,
+      rows: this.state.rows,
+      activeAnimation: this.state.activeAnimation,
+    });
+  }
+
   private render() {
     const width = this.app.renderer.width || DEFAULT_SCENE_WIDTH;
     const height = this.app.renderer.height || DEFAULT_SCENE_HEIGHT;
-    this.boardLayer.removeChildren().forEach((child) => child.destroy());
-    this.tokenLayer.removeChildren().forEach((child) => child.destroy());
-    this.fxLayer.removeChildren().forEach((child) => child.destroy());
     const now = Date.now();
+    const renderKey = this.getRenderKey(width, height);
 
     const rowsCount = Math.max(1, this.state.rowsCount);
     const metrics = Array.from({ length: rowsCount }, (_, index) => this.getRowMetrics(index, rowsCount, width, height));
@@ -337,6 +351,15 @@ export class CrystalPathShatteredScene {
     for (const layer of [this.boardLayer, this.tokenLayer, this.fxLayer]) {
       layer.position.set(shake.x, shake.y);
     }
+
+    if (!this.state.activeAnimation && this.lastRenderKey === renderKey) {
+      return;
+    }
+
+    this.lastRenderKey = renderKey;
+    this.boardLayer.removeChildren().forEach((child) => child.destroy());
+    this.tokenLayer.removeChildren().forEach((child) => child.destroy());
+    this.fxLayer.removeChildren().forEach((child) => child.destroy());
 
     for (let rowIndex = rowsCount - 1; rowIndex >= 0; rowIndex -= 1) {
       const row = this.state.rows[rowIndex];
