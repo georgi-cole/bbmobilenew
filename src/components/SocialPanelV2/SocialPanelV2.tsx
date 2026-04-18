@@ -21,7 +21,42 @@ import {
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import RecentActivity from './RecentActivity';
+import type { Player } from '../../types';
+import type { SubjectPool } from '../../social/socialActions';
 import './SocialPanelV2.css';
+
+// ── Subject candidate helpers ─────────────────────────────────────────────
+
+/**
+ * Generate a compact list of contextual subject candidates for primaryPlusSubject
+ * actions. Returns a small set of eligible players based on the subjectPool hint.
+ * The primary target is always excluded to avoid talking to X about X.
+ */
+function getSubjectCandidates(
+  pool: SubjectPool,
+  primaryTargetId: string,
+  players: Player[],
+  actorId: string,
+  relationships: Record<string, Record<string, { affinity: number }>> | undefined,
+): Player[] {
+  const eligible = players.filter(
+    (p) => p.id !== primaryTargetId && p.id !== actorId && p.status !== 'evicted' && p.status !== 'jury',
+  );
+  switch (pool) {
+    case 'nominees':
+      return eligible.filter((p) => p.status === 'nominated');
+    case 'non_nominees':
+      return eligible.filter((p) => p.status !== 'nominated');
+    case 'allies': {
+      const actorRels = relationships?.[actorId] ?? {};
+      return eligible.filter((p) => (actorRels[p.id]?.affinity ?? 0) > 0);
+    }
+    case 'voters':
+    case 'houseguests':
+    default:
+      return eligible;
+  }
+}
 
 /**
  * SocialPanelV2 — full-screen modal overlay for social phases.
@@ -29,19 +64,28 @@ import './SocialPanelV2.css';
  * Visible during non-vote interaction phases (LOH, POS, nomination, pre-vote,
  * and social windows) when the human player is still in the house. Blocked
  * during live_vote and eviction resolution phases.
- * Provides the layout canvas for the interactive social UI; later PRs
- * will implement player cards, action cards, and execute flow.
  *
  * Features:
  *   - Backdrop + bottom-sheet modal
  *   - Header: energy chip for the human player + close button
- *   - Two-column body: Player roster with PlayerList (left) / Action grid placeholder (right)
- *   - Sticky footer: Execute button + cost display placeholders
+ *   - Two-column body: Player roster with PlayerList (left) / Action grid (right)
+ *   - Inline subject picker for primaryPlusSubject actions ("talk to X about Y")
+ *   - Multi-select support for multi-target actions (group_chat etc.)
+ *   - Sticky footer: Execute button + cost display
  *   - FAB-driven open/close; panel does not auto-open on phase changes
  *
+ * Targeting model:
+ *   - 'none'               → no target player required (execute immediately)
+ *   - 'primary'            → one target player required (default)
+ *   - 'primaryPlusSubject' → one primary target + one subject (inline chip picker)
+ *   - 'multi'              → multiple targets (multi-select in PlayerList)
+ *
+ * Bug fix: action state is preserved after a successful execution so the grid
+ * remains stable and the Execute button stays enabled for immediate re-use.
+ * The player can change action/target selection manually between executions.
+ *
  * Open/close logic: opens exclusively when socialPanelOpen (Redux) is true,
- * which is set by the FAB 💬 button. The social engine continues to run in
- * the background; the panel simply won't auto-open anymore.
+ * which is set by the FAB 💬 button.
  */
 export default function SocialPanelV2() {
   const dispatch = useAppDispatch();
@@ -103,9 +147,13 @@ export default function SocialPanelV2() {
   }
 
   // ── Execute flow state ────────────────────────────────────────────────────
-  // Single-target selection: only the most-recently clicked player is kept.
-  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  // Multi-target selection: a Set allows both single (primary) and multi-target modes.
+  // For 'primary' and 'primaryPlusSubject' actions only the last-clicked player is kept.
+  // For 'multi' actions the full Set is preserved.
+  const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  // Subject for primaryPlusSubject actions (the person being talked *about*).
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [successPulse, setSuccessPulse] = useState(false);
   const [executing, setExecuting] = useState(false);
@@ -121,35 +169,71 @@ export default function SocialPanelV2() {
 
   // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
-  const needsTargets = selectedAction?.needsTargets !== false;
-  const canExecute = !!selectedActionId && (!needsTargets || selectedTarget !== null);
+  const targetMode = selectedAction?.targetMode ?? (selectedAction?.needsTargets === false ? 'none' : 'primary');
+  const needsTarget = targetMode !== 'none';
+  const primaryTargetId = selectedTargets.size > 0 ? Array.from(selectedTargets)[selectedTargets.size - 1] : null;
+  const needsSubject = targetMode === 'primaryPlusSubject';
+  const canExecute =
+    !!selectedActionId &&
+    (!needsTarget || primaryTargetId !== null) &&
+    (!needsSubject || selectedSubjectId !== null);
 
-  // Enforce single-selection: take only the last selected player.
-  const handleSelectionChange = useCallback((ids: Set<string>) => {
-    const arr = Array.from(ids);
-    setSelectedTarget(arr[arr.length - 1] ?? null);
+  // Clear subject whenever action or primary target changes.
+  // NOTE: This is done explicitly in the event handlers (handleActionClick and
+  // handleSelectionChange) rather than a useEffect to avoid the synchronous
+  // setState-in-effect anti-pattern.
+
+  // Handle action selection. Clears the subject so a stale subject from a
+  // previous primaryPlusSubject action never leaks into a new action context.
+  const handleActionClick = useCallback((actionId: string) => {
+    setSelectedActionId(actionId);
+    setSelectedSubjectId(null);
   }, []);
+
+  // Handle player selection from PlayerList.
+  // For 'multi' actions the full Set is preserved; for all other modes only the
+  // last-clicked player is kept so the UX stays simple.
+  // Clears the subject whenever the primary target changes.
+  const handleSelectionChange = useCallback((ids: Set<string>) => {
+    if (selectedAction?.targetMode === 'multi') {
+      setSelectedTargets(new Set(ids));
+    } else {
+      // Keep only the most-recently clicked player for single / primaryPlusSubject modes.
+      const arr = Array.from(ids);
+      const last = arr[arr.length - 1];
+      setSelectedTargets(last ? new Set([last]) : new Set());
+    }
+    setSelectedSubjectId(null);
+  }, [selectedAction]);
 
   const handleExecute = useCallback(() => {
     if (!canExecute || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
     isExecutingRef.current = true;
     setExecuting(true);
     setFeedbackMsg(null);
-    // For targetless actions (needsTargets: false), fall back to the human player's
+    // For targetless actions (targetMode 'none'), fall back to the human player's
     // own id so executeAction always receives a valid string.
-    const targetId = selectedTarget ?? humanPlayer.id;
+    const targetId = primaryTargetId ?? humanPlayer.id;
     // Guard: block actions targeting unknown, evicted, or jury players.
     const targetPlayer = game.players.find((p) => p.id === targetId);
     if (!targetPlayer || targetPlayer.status === 'evicted' || targetPlayer.status === 'jury') {
       setFeedbackMsg('Cannot target an eliminated or Tribunal player.');
       isExecutingRef.current = false;
+      setExecuting(false);
       return;
     }
-    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, { source: 'manual' });
+    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, {
+      source: 'manual',
+      subjectId: selectedSubjectId ?? undefined,
+    });
     setFeedbackMsg(result.summary);
     if (result.success) {
-      setSelectedActionId(null);
-      setSelectedTarget(null);
+      // Bug fix: action state is intentionally NOT cleared after success.
+      // This keeps the action grid stable and avoids the "random %" / disappearing-
+      // cards regression where a cleared selectedTarget would leave the preview
+      // popup in an undefined/empty state while previewActionId was still set.
+      // The Execute button stays enabled so the player can immediately repeat or
+      // choose a different action / target without extra clicks.
       setSuccessPulse(true);
       if (successPulseTimerRef.current !== null) clearTimeout(successPulseTimerRef.current);
       successPulseTimerRef.current = setTimeout(() => {
@@ -159,7 +243,7 @@ export default function SocialPanelV2() {
     }
     isExecutingRef.current = false;
     setExecuting(false);
-  }, [canExecute, humanPlayer, selectedActionId, selectedTarget, game.players]);
+  }, [canExecute, humanPlayer, selectedActionId, primaryTargetId, selectedSubjectId, game.players]);
 
   if (!open) return null;
 
@@ -167,7 +251,7 @@ export default function SocialPanelV2() {
   const influence = influenceBank?.[humanPlayer!.id] ?? 0;
   const info = infoBank?.[humanPlayer!.id] ?? 0;
   const energyCost = selectedAction
-    ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTarget ?? humanPlayer!.id)
+    ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, primaryTargetId ?? humanPlayer!.id)
     : null;
 
   // ── Player list for Social module ─────────────────────────────────────────
@@ -201,6 +285,18 @@ export default function SocialPanelV2() {
       }
     }
   }
+
+  // ── Subject candidates for primaryPlusSubject actions ─────────────────────
+  const subjectCandidates =
+    needsSubject && primaryTargetId && selectedAction?.subjectPool
+      ? getSubjectCandidates(
+          selectedAction.subjectPool,
+          primaryTargetId,
+          orderedPlayers,
+          humanPlayer!.id,
+          relationships as Record<string, Record<string, { affinity: number }>> | undefined,
+        )
+      : [];
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -253,7 +349,7 @@ export default function SocialPanelV2() {
               humanPlayerId={humanPlayer!.id}
               relationships={relationships}
               disabledIds={disabledPlayerIds}
-              selectedIds={selectedTarget ? new Set([selectedTarget]) : new Set()}
+              selectedIds={selectedTargets}
               onSelectionChange={handleSelectionChange}
               deltasByTargetId={deltasByTargetId}
             />
@@ -264,8 +360,8 @@ export default function SocialPanelV2() {
             <span className="sp2-column__label">Actions</span>
             <ActionGrid
               selectedId={selectedActionId}
-              onActionClick={setSelectedActionId}
-              selectedTargetIds={selectedTarget ? new Set([selectedTarget]) : undefined}
+              onActionClick={handleActionClick}
+              selectedTargetIds={selectedTargets.size > 0 ? selectedTargets : undefined}
               players={orderedPlayers}
               actorId={humanPlayer!.id}
               actorEnergy={energy}
@@ -275,6 +371,39 @@ export default function SocialPanelV2() {
             />
           </div>
         </div>
+
+        {/* ── Subject picker: compact inline chip row for "talk to X about Y" ── */}
+        {needsSubject && primaryTargetId && (
+          <div className="sp2-subject-picker" aria-label="Choose subject">
+            <span className="sp2-subject-picker__label">
+              Talking about:
+            </span>
+            {subjectCandidates.length === 0 ? (
+              <span className="sp2-subject-picker__empty">No eligible targets</span>
+            ) : (
+              <div className="sp2-subject-picker__chips" role="group" aria-label="Subject candidates">
+                {subjectCandidates.map((candidate) => (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    className={`sp2-subject-chip${selectedSubjectId === candidate.id ? ' sp2-subject-chip--selected' : ''}`}
+                    aria-pressed={selectedSubjectId === candidate.id}
+                    onClick={() =>
+                      setSelectedSubjectId((prev) => (prev === candidate.id ? null : candidate.id))
+                    }
+                  >
+                    {candidate.avatar && (
+                      <span className="sp2-subject-chip__avatar" aria-hidden="true">
+                        {candidate.avatar}
+                      </span>
+                    )}
+                    <span className="sp2-subject-chip__name">{candidate.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Recent Activity – compact fixed-height log above footer ─────── */}
         <div className="sp2-recent" aria-label="Recent Activity log">
