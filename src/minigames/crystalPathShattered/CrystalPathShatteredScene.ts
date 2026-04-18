@@ -73,6 +73,8 @@ const DEFAULT_TOKEN_GLOW_OFFSET = 4;
 const BOARD_TOP_PADDING = 34;
 const BOARD_BOTTOM_PADDING = 30;
 const FALL_TRIGGER_MS = STEP_SUSPENSE_DELAY_MS + WRONG_CRACK_MS + WRONG_SHATTER_MS * 0.65;
+const SHAKE_DURATION_MS = 240;
+const SHAKE_STRENGTH = 5;
 
 export class CrystalPathShatteredScene {
   private readonly app: Application;
@@ -246,7 +248,7 @@ export class CrystalPathShatteredScene {
     const height = this.app.renderer.height || DEFAULT_SCENE_HEIGHT;
     for (let index = 0; index < this.particles.length; index += 1) {
       const particle = this.particles[index];
-      particle.sprite.x = width * (0.34 + (((index * 41) % 32) / 100));
+      particle.sprite.x = width * (0.22 + (((index * 41) % 56) / 100));
       particle.sprite.y = height * (0.46 + (((index * 17) % 52) / 100));
     }
   }
@@ -262,9 +264,9 @@ export class CrystalPathShatteredScene {
     const rowsCount = Math.max(1, this.state.rowsCount);
     const metrics = Array.from({ length: rowsCount }, (_, index) => this.getRowMetrics(index, rowsCount, width, height));
     const shake = this.getCameraShake(now);
-    this.boardLayer.position.set(shake.x, shake.y);
-    this.tokenLayer.position.set(shake.x, shake.y);
-    this.fxLayer.position.set(shake.x, shake.y);
+    for (const layer of [this.boardLayer, this.tokenLayer, this.fxLayer]) {
+      layer.position.set(shake.x, shake.y);
+    }
 
     for (let rowIndex = rowsCount - 1; rowIndex >= 0; rowIndex -= 1) {
       const row = this.state.rows[rowIndex];
@@ -616,10 +618,10 @@ export class CrystalPathShatteredScene {
     const elapsed = now - activeAnimation.startedAt;
     const impactStart = STEP_SUSPENSE_DELAY_MS + WRONG_CRACK_MS + WRONG_SHATTER_MS * 0.18;
     const impactProgress = Math.max(0, elapsed - impactStart);
-    if (impactProgress <= 0 || impactProgress > 240) {
+    if (impactProgress <= 0 || impactProgress > SHAKE_DURATION_MS) {
       return { x: 0, y: 0 };
     }
-    const strength = (1 - impactProgress / 240) * 5;
+    const strength = (1 - impactProgress / SHAKE_DURATION_MS) * SHAKE_STRENGTH;
     return {
       x: Math.sin(impactProgress * 0.18) * strength,
       y: Math.cos(impactProgress * 0.24) * strength * 0.55,
