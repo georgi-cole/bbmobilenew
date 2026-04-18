@@ -302,17 +302,15 @@
 }
 
 .crystal-shattered-stage {
+  position: relative;
   width: 100%;
   min-height: min(75dvh, 700px);
   height: clamp(460px, 68dvh, 700px);
-  border-radius: 18px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
-  border: 1px solid rgba(246, 236, 210, 0.08);
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.32),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    inset 0 0 12px rgba(255, 238, 205, 0.025);
+}
+
+.crystal-shattered-stage canvas {
+  display: block;
 }
 
 .crystal-shattered-guidance {

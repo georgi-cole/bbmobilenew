@@ -9,6 +9,15 @@ import type {
 import { CrystalPathShatteredScene } from './CrystalPathShatteredScene';
 import type { CrystalPathShatteredAnimation } from './crystalPathShatteredLogic';
 
+/**
+ * Rendering boundary note:
+ * - React/DOM owns only the external HUD/chrome around the playfield (status text, timer/hints,
+ *   buttons, guidance, standings, and modal content in CrystalPathShatteredGame).
+ * - Pixi owns the entire playfield mounted here: abyss/background, bridge deck, glass panels,
+ *   lighting, particles, cracks, shatter debris, and in-scene tokens/fall animation.
+ * - Corrected architecture: this host is sizing-only so the playfield no longer relies on DOM/CSS
+ *   borders, backgrounds, or fake panel effects inside the Pixi rendering area.
+ */
 interface ParticipantView {
   id: string;
   name: string;

@@ -88,6 +88,8 @@ const ROW_SPACING_OFFSET = 2.2;
 export class CrystalPathShatteredScene {
   private readonly app: Application;
 
+  // Layer order inside the Pixi playfield: abyss/chamber background, particles, bridge/tile geometry,
+  // in-scene tokens, then transient FX like safe pulses, cracks, shards, and fall trails.
   private readonly root = new Container();
 
   private readonly backgroundLayer = new Container();
