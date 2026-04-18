@@ -1612,7 +1612,6 @@ export default function GlassBridgeComp({
                       let tileClass = 'gb-tile';
                       if (isBroken || isShatterAnim) tileClass += ' gb-tile-broken';
                       if (isShatterAnim) tileClass += ' gb-tile-shatter';
-                      if (isShatterAnim) tileClass += ' gb-tile-cracking';
                       if (timeoutCollapseActive && !isBroken && !isShatterAnim) {
                         tileClass += ' gb-tile-timeout-break';
                       }
