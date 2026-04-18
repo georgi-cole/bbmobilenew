@@ -302,7 +302,6 @@
 }
 
 .crystal-shattered-stage {
-  position: relative;
   width: 100%;
   min-height: min(75dvh, 700px);
   height: clamp(460px, 68dvh, 700px);
