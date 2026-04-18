@@ -1175,3 +1175,202 @@
     grid-auto-columns: minmax(var(--rail-card-min-width), 64%);
   }
 }
+
+/* ── Side callout zone ─────────────────────────────────────────────────────── */
+
+.chain-of-greed__side-callout {
+  position: absolute;
+  left: 0.3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: grid;
+  gap: 0.2rem;
+  max-width: 5.5rem;
+  padding: 0.38rem 0.5rem;
+  border-radius: 0.7rem;
+  background: rgba(8, 16, 31, 0.82);
+  border: 1px solid rgba(123, 209, 255, 0.14);
+  pointer-events: none;
+}
+
+.chain-of-greed__side-callout--success {
+  border-color: rgba(71, 187, 255, 0.28);
+  background: rgba(12, 28, 52, 0.88);
+}
+
+.chain-of-greed__side-callout--danger {
+  border-color: rgba(255, 82, 82, 0.28);
+  background: rgba(28, 8, 8, 0.88);
+}
+
+.chain-of-greed__side-callout--bank {
+  border-color: rgba(245, 197, 79, 0.28);
+  background: rgba(28, 22, 4, 0.88);
+}
+
+.chain-of-greed__side-callout-text {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(220, 232, 255, 0.9);
+  line-height: 1.2;
+}
+
+.chain-of-greed__side-callout-sub {
+  font-size: 0.56rem;
+  color: rgba(190, 210, 255, 0.72);
+  line-height: 1.3;
+}
+
+/* ── Log ticker (one-line collapsed activity feed) ─────────────────────────── */
+
+.chain-of-greed__log-ticker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.42rem 0.65rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  min-height: 2.1rem;
+}
+
+.chain-of-greed__log-ticker-actor {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(219, 229, 255, 0.72);
+  white-space: nowrap;
+}
+
+.chain-of-greed__log-ticker-text {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.74rem;
+  color: rgba(238, 243, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chain-of-greed__log-expand {
+  appearance: none;
+  border: 1px solid rgba(132, 162, 255, 0.22);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(200, 218, 255, 0.82);
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.3rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chain-of-greed__log-history {
+  width: 100%;
+  margin: 0.3rem 0 0;
+  padding-left: 0.8rem;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: rgba(210, 222, 255, 0.78);
+}
+
+/* ── Final countdown timer ─────────────────────────────────────────────────── */
+
+.chain-of-greed__final-timer {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(71, 187, 255, 0.14);
+  border: 1px solid rgba(71, 187, 255, 0.22);
+  margin-top: 0.3rem;
+}
+
+.chain-of-greed__final-timer--urgent {
+  background: rgba(255, 82, 82, 0.18);
+  border-color: rgba(255, 82, 82, 0.32);
+  animation: chain-of-greed-timer-pulse 0.6s ease-in-out infinite;
+}
+
+.chain-of-greed__final-timer-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #eef4ff;
+}
+
+.chain-of-greed__final-timer-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(170, 200, 255, 0.8);
+}
+
+@keyframes chain-of-greed-timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* ── Spectator choice in elimination modal ─────────────────────────────────── */
+
+.chain-of-greed__spectator-choice {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chain-of-greed__spectator-choice p {
+  font-size: 0.88rem;
+  color: rgba(220, 232, 255, 0.82);
+}
+
+.chain-of-greed__spectator-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.chain-of-greed__continue--secondary {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(220, 232, 255, 0.88);
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Tie-break brief note and link button ──────────────────────────────────── */
+
+.chain-of-greed__tie-brief {
+  margin-top: 0.8rem;
+  font-size: 0.82rem;
+  color: rgba(220, 232, 255, 0.78);
+  text-align: center;
+}
+
+.chain-of-greed__link-button {
+  appearance: none;
+  border: none;
+  background: none;
+  color: rgba(123, 209, 255, 0.82);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.25rem 0;
+  display: block;
+  margin: 0.3rem auto 0;
+}
+
+/* ── Action bar safe-area fix ──────────────────────────────────────────────── */
+
+.chain-of-greed__action-bar {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.2rem);
+}
