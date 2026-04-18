@@ -294,7 +294,13 @@ export function executeAction(
   // For primaryPlusSubject actions: apply a lightweight contextual tag from the
   // primary target toward the subject (e.g. HOH now sees the subject as a "target").
   const subjectId = options?.subjectId;
-  if (outcome === 'success' && subjectId && action.outcomeTag) {
+  if (
+    outcome === 'success' &&
+    action.targetMode === 'primaryPlusSubject' &&
+    subjectId &&
+    subjectId !== targetId &&
+    action.outcomeTag
+  ) {
     _store.dispatch(
       updateRelationship({
         source: targetId,

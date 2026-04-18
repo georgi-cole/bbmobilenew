@@ -265,6 +265,12 @@ describe('SocialPanelV2 – execute flow', () => {
     expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('group chat still requires an explicit player target', () => {
+    fireEvent.click(screen.getByRole('button', { name: /Group Chat/i }));
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('execute button is enabled when action and a player are both selected', () => {
     const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
     fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
@@ -277,6 +283,18 @@ describe('SocialPanelV2 – execute flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
     expect(screen.getByRole('status')).toBeDefined();
+  });
+
+  it('targetless actions ignore previously selected non-user targets when executing', () => {
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    const logs = store.getState().social.sessionLogs;
+    expect(logs.at(-1)?.targetId).toBe(humanId);
   });
 
   it('shows "Insufficient energy" when player cannot afford the action', () => {
@@ -312,6 +330,23 @@ describe('SocialPanelV2 – execute flow', () => {
     const grid = screen.getByLabelText('Action grid');
     const cards = grid.querySelectorAll('[data-action-id]');
     expect(cards.length).toBeGreaterThan(0);
+  });
+
+  it('uses the clicked player as the primary target after a reverse shift selection', () => {
+    const players = store.getState().game.players.filter((p) => !p.isUser);
+    const firstTarget = players[0];
+    const secondTarget = players[1];
+
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(secondTarget.name, 'i') })[0]);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: new RegExp(firstTarget.name, 'i') })[0],
+      { shiftKey: true },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    const logs = store.getState().social.sessionLogs;
+    expect(logs.at(-1)?.targetId).toBe(firstTarget.id);
   });
 });
 

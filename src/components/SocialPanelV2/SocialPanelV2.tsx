@@ -70,7 +70,7 @@ function getSubjectCandidates(
  *   - Header: energy chip for the human player + close button
  *   - Two-column body: Player roster with PlayerList (left) / Action grid (right)
  *   - Inline subject picker for primaryPlusSubject actions ("talk to X about Y")
- *   - Multi-select support for multi-target actions (group_chat etc.)
+ *   - Explicit primary-target tracking so execution follows the last interaction
  *   - Sticky footer: Execute button + cost display
  *   - FAB-driven open/close; panel does not auto-open on phase changes
  *
@@ -78,7 +78,7 @@ function getSubjectCandidates(
  *   - 'none'               → no target player required (execute immediately)
  *   - 'primary'            → one target player required (default)
  *   - 'primaryPlusSubject' → one primary target + one subject (inline chip picker)
- *   - 'multi'              → multiple targets (multi-select in PlayerList)
+ *   - 'multi'              → multiple targets (reserved for future multi-execute support)
  *
  * Bug fix: action state is preserved after a successful execution so the grid
  * remains stable and the Execute button stays enabled for immediate re-use.
@@ -147,10 +147,11 @@ export default function SocialPanelV2() {
   }
 
   // ── Execute flow state ────────────────────────────────────────────────────
-  // Multi-target selection: a Set allows both single (primary) and multi-target modes.
-  // For 'primary' and 'primaryPlusSubject' actions only the last-clicked player is kept.
-  // For 'multi' actions the full Set is preserved.
+  // Selection state keeps the visible selection as a Set while tracking the
+  // last interacted target separately. This avoids inferring the "primary"
+  // target from Set iteration order, which can be wrong for shift-click ranges.
   const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
+  const [primaryTargetId, setPrimaryTargetId] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   // Subject for primaryPlusSubject actions (the person being talked *about*).
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -170,12 +171,12 @@ export default function SocialPanelV2() {
   // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
   const targetMode = selectedAction?.targetMode ?? (selectedAction?.needsTargets === false ? 'none' : 'primary');
+  const effectivePrimaryTargetId = targetMode === 'none' ? null : primaryTargetId;
   const needsTarget = targetMode !== 'none';
-  const primaryTargetId = selectedTargets.size > 0 ? Array.from(selectedTargets)[selectedTargets.size - 1] : null;
   const needsSubject = targetMode === 'primaryPlusSubject';
   const canExecute =
     !!selectedActionId &&
-    (!needsTarget || primaryTargetId !== null) &&
+    (!needsTarget || effectivePrimaryTargetId !== null) &&
     (!needsSubject || selectedSubjectId !== null);
 
   // Clear subject whenever action or primary target changes.
@@ -195,14 +196,17 @@ export default function SocialPanelV2() {
   // For 'multi' actions the full Set is preserved; for all other modes only the
   // last-clicked player is kept so the UX stays simple.
   // Clears the subject whenever the primary target changes.
-  const handleSelectionChange = useCallback((ids: Set<string>) => {
+  const handleSelectionChange = useCallback((
+    ids: Set<string>,
+    details: { primaryTargetId: string | null },
+  ) => {
     if (selectedAction?.targetMode === 'multi') {
       setSelectedTargets(new Set(ids));
+      setPrimaryTargetId(details.primaryTargetId);
     } else {
-      // Keep only the most-recently clicked player for single / primaryPlusSubject modes.
-      const arr = Array.from(ids);
-      const last = arr[arr.length - 1];
-      setSelectedTargets(last ? new Set([last]) : new Set());
+      const nextPrimaryTargetId = details.primaryTargetId;
+      setSelectedTargets(nextPrimaryTargetId ? new Set([nextPrimaryTargetId]) : new Set());
+      setPrimaryTargetId(nextPrimaryTargetId);
     }
     setSelectedSubjectId(null);
   }, [selectedAction]);
@@ -212,9 +216,15 @@ export default function SocialPanelV2() {
     isExecutingRef.current = true;
     setExecuting(true);
     setFeedbackMsg(null);
-    // For targetless actions (targetMode 'none'), fall back to the human player's
-    // own id so executeAction always receives a valid string.
-    const targetId = primaryTargetId ?? humanPlayer.id;
+    // targetMode 'none' actions must ignore stale roster selection and execute
+    // against the actor, while targeted actions use the explicit primary target.
+    const targetId = targetMode === 'none' ? humanPlayer.id : effectivePrimaryTargetId;
+    if (!targetId) {
+      setFeedbackMsg('Select a player to continue.');
+      isExecutingRef.current = false;
+      setExecuting(false);
+      return;
+    }
     // Guard: block actions targeting unknown, evicted, or jury players.
     const targetPlayer = game.players.find((p) => p.id === targetId);
     if (!targetPlayer || targetPlayer.status === 'evicted' || targetPlayer.status === 'jury') {
@@ -244,7 +254,7 @@ export default function SocialPanelV2() {
     }
     isExecutingRef.current = false;
     setExecuting(false);
-  }, [canExecute, humanPlayer, selectedActionId, primaryTargetId, selectedSubjectId, game.players]);
+  }, [canExecute, effectivePrimaryTargetId, game.players, humanPlayer, selectedActionId, selectedSubjectId, targetMode]);
 
   if (!open) return null;
 
@@ -252,7 +262,11 @@ export default function SocialPanelV2() {
   const influence = influenceBank?.[humanPlayer!.id] ?? 0;
   const info = infoBank?.[humanPlayer!.id] ?? 0;
   const energyCost = selectedAction
-    ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, primaryTargetId ?? humanPlayer!.id)
+    ? SocialManeuvers.computeActionCost(
+        humanPlayer!.id,
+        selectedAction,
+        effectivePrimaryTargetId ?? humanPlayer!.id,
+      )
     : null;
 
   // ── Player list for Social module ─────────────────────────────────────────
@@ -289,10 +303,10 @@ export default function SocialPanelV2() {
 
   // ── Subject candidates for primaryPlusSubject actions ─────────────────────
   const subjectCandidates =
-    needsSubject && primaryTargetId && selectedAction?.subjectPool
+    needsSubject && effectivePrimaryTargetId && selectedAction?.subjectPool
       ? getSubjectCandidates(
           selectedAction.subjectPool,
-          primaryTargetId,
+          effectivePrimaryTargetId,
           orderedPlayers,
           humanPlayer!.id,
           relationships as Record<string, Record<string, { affinity: number }>> | undefined,
@@ -362,7 +376,9 @@ export default function SocialPanelV2() {
             <ActionGrid
               selectedId={selectedActionId}
               onActionClick={handleActionClick}
-              selectedTargetIds={selectedTargets.size > 0 ? selectedTargets : undefined}
+              selectedTargetIds={
+                targetMode === 'none' || selectedTargets.size === 0 ? undefined : selectedTargets
+              }
               players={orderedPlayers}
               actorId={humanPlayer!.id}
               actorEnergy={energy}
@@ -374,7 +390,7 @@ export default function SocialPanelV2() {
         </div>
 
         {/* ── Subject picker: compact inline chip row for "talk to X about Y" ── */}
-        {needsSubject && primaryTargetId && (
+        {needsSubject && effectivePrimaryTargetId && (
           <div className="sp2-subject-picker" aria-label="Choose subject">
             <span className="sp2-subject-picker__label">
               Talking about:

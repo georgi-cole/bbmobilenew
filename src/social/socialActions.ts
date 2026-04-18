@@ -10,7 +10,7 @@ export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance
 
 /**
  * How many targets an action requires or supports.
- *  - 'none'               — no target player needed (e.g. observe, group_chat)
+ *  - 'none'               — no target player needed (e.g. observe, stay idle)
  *  - 'primary'            — exactly one target player required (default for most actions)
  *  - 'primaryPlusSubject' — one primary target + one lightweight contextual subject
  *                           (e.g. "Pitch Target to HOH about X")
@@ -127,8 +127,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     description: 'Mingle with the house. Build broad goodwill.',
     category: 'friendly',
     baseCost: { energy: 2 },
-    targetMode: 'multi',
-    needsTargets: false,
+    targetMode: 'primary',
     successWeight: 2,
     yields: { influence: 0.03 },
   },

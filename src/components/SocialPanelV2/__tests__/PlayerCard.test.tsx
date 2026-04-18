@@ -276,6 +276,17 @@ describe('PlayerList', () => {
     expect(lastCall.size).toBe(3);
   });
 
+  it('reports the clicked player as primaryTargetId for reverse shift selections', () => {
+    const onSelectionChange = vi.fn();
+    render(<PlayerList players={players} onSelectionChange={onSelectionChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /carol/i }));
+    fireEvent.click(screen.getByRole('button', { name: /alice/i }), { shiftKey: true });
+
+    const details = onSelectionChange.mock.calls.at(-1)?.[1] as { primaryTargetId: string | null };
+    expect(details.primaryTargetId).toBe('a');
+  });
+
   it('arrow key navigation moves focus to the next card', () => {
     render(<PlayerList players={players} />);
     const aliceBtn = screen.getByRole('button', { name: /alice/i });
