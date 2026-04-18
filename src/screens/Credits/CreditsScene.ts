@@ -9,7 +9,6 @@ import {
   Texture,
 } from 'pixi.js';
 import {
-  CREDITS_BIG_EYE_SOURCES,
   CREDITS_CITY_SOURCES,
 } from './creditsAssetPaths';
 import { buildCreditsAssetCandidates } from './creditsAssetPaths';
@@ -24,8 +23,6 @@ const SKY_TEXTURE_HEIGHT = 256;
 const FOG_TEXTURE_WIDTH = 640;
 const FOG_TEXTURE_HEIGHT = 200;
 const GLOW_TEXTURE_SIZE = 256;
-const MAX_EYE_SIZE_PX = 70;
-const MAX_EYE_GLOW_SIZE_PX = 160;
 const SKY_TOP = '#020610';
 const SKY_BOTTOM = '#0c2a3c';
 const TEXT_TINT = '#f0f6ff';
@@ -81,7 +78,6 @@ export default class CreditsScene {
   private readonly windowsLayer = new Container();
   private readonly fogLayer = new Container();
   private readonly beamLayer = new Container();
-  private readonly eyeLayer = new Container();
   private readonly textLayer = new Container();
   private readonly logoLayer = new Container();
   private readonly generatedTextures: Texture[] = [];
@@ -91,7 +87,6 @@ export default class CreditsScene {
   private readonly beamOuterBlurFilter = new BlurFilter({ strength: 22, quality: 3 });
   private readonly beamCoreBlurFilter = new BlurFilter({ strength: 12, quality: 2 });
   private readonly sourceGlowFilter = new BlurFilter({ strength: 10, quality: 2 });
-  private readonly eyeGlowFilter = new BlurFilter({ strength: 16, quality: 3 });
   private readonly tick = () => {
     this.update();
   };
@@ -110,10 +105,6 @@ export default class CreditsScene {
   private beamMask!: Graphics;
   private sourceGlow!: Sprite;
   private logoSprite: Sprite | null = null;
-  private eyeSprite: Sprite | null = null;
-  private eyeGlow: Sprite | null = null;
-  private eyeBaseScaleX = 1;
-  private eyeBaseScaleY = 1;
   private creditsText!: Text;
   private exitText!: Text;
   private elapsedSeconds = 0;
@@ -169,13 +160,6 @@ export default class CreditsScene {
       // Logo is optional — scene works without it.
     }
 
-    let eyeTexture: Texture | null = null;
-    try {
-      eyeTexture = await this.loadTexture(CREDITS_BIG_EYE_SOURCES);
-    } catch {
-      // Eye is optional — scene works without it.
-    }
-
     if (this.destroyed) {
       this.disposeApplication();
       return;
@@ -189,7 +173,6 @@ export default class CreditsScene {
       this.windowsLayer,
       this.fogLayer,
       this.beamLayer,
-      this.eyeLayer,
       this.textLayer,
       this.logoLayer,
     );
@@ -200,9 +183,6 @@ export default class CreditsScene {
     this.createWindowLights();
     this.createFog();
     this.createBeam();
-    if (eyeTexture) {
-      this.createEye(eyeTexture);
-    }
     this.createTexts();
     if (logoTexture) {
       this.createLogo(logoTexture);
@@ -468,23 +448,6 @@ export default class CreditsScene {
     return texture;
   }
 
-  private createEye(texture: Texture): void {
-    // Glow behind the eye — a radial gradient sprite
-    const glowTexture = this.createGlowTexture();
-    this.eyeGlow = new Sprite(glowTexture);
-    this.eyeGlow.anchor.set(0.5);
-    this.eyeGlow.alpha = 0;
-    this.eyeGlow.tint = 0xc8e0ff;
-    this.eyeGlow.filters = [this.eyeGlowFilter];
-    this.eyeLayer.addChild(this.eyeGlow);
-
-    // The Big Eye sprite
-    this.eyeSprite = new Sprite(texture);
-    this.eyeSprite.anchor.set(0.5);
-    this.eyeSprite.alpha = 0;
-    this.eyeLayer.addChild(this.eyeSprite);
-  }
-
   private createLogo(texture: Texture): void {
     this.logoSprite = new Sprite(texture);
     this.logoSprite.anchor.set(0.5);
@@ -638,31 +601,8 @@ export default class CreditsScene {
     this.sourceGlow.width = width * 0.18;
     this.sourceGlow.height = width * 0.18;
 
-    // Eye positioned in the upper beam area — slightly right of center, ~30% from top
-    const eyeBeamOffset = Math.max(height * 0.38, 300);
-    const eyeX = this.beamOriginX + Math.cos(BEAM_ANGLE) * eyeBeamOffset;
-    const eyeY = this.beamOriginY + Math.sin(BEAM_ANGLE) * eyeBeamOffset;
-
-    if (this.eyeSprite) {
-      const eyeSize = Math.min(width * 0.16, MAX_EYE_SIZE_PX) * this.designScale;
-      this.eyeSprite.x = eyeX;
-      this.eyeSprite.y = eyeY;
-      this.eyeSprite.width = eyeSize;
-      this.eyeSprite.height = eyeSize;
-      this.eyeBaseScaleX = eyeSize / this.eyeSprite.texture.width;
-      this.eyeBaseScaleY = eyeSize / this.eyeSprite.texture.height;
-    }
-
-    if (this.eyeGlow) {
-      const glowSize = Math.min(width * 0.38, MAX_EYE_GLOW_SIZE_PX) * this.designScale;
-      this.eyeGlow.x = eyeX;
-      this.eyeGlow.y = eyeY;
-      this.eyeGlow.width = glowSize;
-      this.eyeGlow.height = glowSize;
-    }
-
-    // Text positioned higher in the beam-lit starfield while staying below the eye.
-    const textDistance = Math.max(height * 0.33, 275);
+    // Text positioned further up in the beam-lit starfield to clear the moon area.
+    const textDistance = Math.max(height * 0.43, 360);
     const textX = this.beamOriginX + Math.cos(BEAM_ANGLE) * textDistance;
     const textY = this.beamOriginY + Math.sin(BEAM_ANGLE) * textDistance;
     this.creditsText.x = textX;
@@ -721,23 +661,6 @@ export default class CreditsScene {
     this.beamOuter.alpha = beamIntro * (0.22 + beamPulse * 0.06);
     this.beamInner.alpha = beamIntro * (0.32 + beamPulse * 0.06);
     this.sourceGlow.alpha = beamIntro * (0.55 + beamPulse * 0.15);
-
-    // Eye — appears after beam is partially visible, with glow and pulsing scale
-    if (this.eyeSprite && this.eyeGlow) {
-      const eyeStart = BEAM_INTRO_DURATION * 0.5;
-      const eyeFadeDuration = 1.2;
-      const eyeProgress = Math.min(1, Math.max(0, (this.elapsedSeconds - eyeStart) / eyeFadeDuration));
-      const eyeAlpha = eyeProgress * eyeProgress;
-      const scalePulse = 1 + Math.sin(this.elapsedSeconds * 0.8) * 0.03;
-
-      this.eyeSprite.alpha = eyeAlpha * 0.85;
-      this.eyeSprite.scale.set(
-        this.eyeBaseScaleX * scalePulse,
-        this.eyeBaseScaleY * scalePulse,
-      );
-
-      this.eyeGlow.alpha = eyeAlpha * (0.35 + beamPulse * 0.15);
-    }
 
     // Credits text — only appears after beam + delay
     const textStartTime = BEAM_INTRO_DURATION + TEXT_DELAY_AFTER_BEAM;
