@@ -187,8 +187,13 @@ export default function HomeHub() {
   };
 
   const handlePlay = () => {
+    // Unlock audio in the gesture context.  We intentionally do NOT follow up
+    // with SoundManager.panicStopAllMusic() here — that used to race with the
+    // syncMusic() call inside unlockFromGesture() (play-then-stop glitch) and
+    // also violated the single-source-of-truth rule: BGM state is owned by
+    // AudioStateSync via the resolver, which will transition the track
+    // naturally when the route/phase changes below.
     SoundManager.unlockFromGesture();
-    SoundManager.panicStopAllMusic();
 
     // Check for a saved in-progress season for the active profile.
     if (!isGuest && activeProfileId) {
