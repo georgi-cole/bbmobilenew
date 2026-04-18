@@ -154,16 +154,14 @@ export default function CrystalPathShatteredGame({
     competitionType: prizeType,
     seed: sessionSeed,
   });
-  const clearTimersRef = useRef(clearTimers);
-  clearTimersRef.current = clearTimers;
 
   useEffect(() => {
     dispatch(initGlassBridge(initConfigRef.current));
     return () => {
-      clearTimersRef.current();
+      clearTimers();
       dispatch(resetGlassBridge());
     };
-  }, [dispatch]);
+  }, [clearTimers, dispatch]);
 
   useEffect(() => {
     if (gb.phase !== 'order_selection') return undefined;

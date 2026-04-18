@@ -14,8 +14,8 @@ describe('Crystal Path: Shattered registry wiring', () => {
     expect(entry?.retired).toBe(false);
   });
 
-  it('maps the react component key and AI metadata', () => {
-    expect(reactComponents.CrystalPathShattered).toBeTypeOf('function');
+  it('keeps Crystal Path: Shattered out of the generic react component map and preserves AI metadata', () => {
+    expect(reactComponents.CrystalPathShattered).toBeUndefined();
     expect(getMinigameAiModel('crystal_path_shattered')).toMatchObject({
       key: 'crystal_path_shattered',
       category: 'endurance',
