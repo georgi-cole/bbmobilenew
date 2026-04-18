@@ -1,6 +1,14 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
+import { CHAIN_TURN_PIPELINE_DURATIONS } from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
+
+const TURN_PIPELINE_MS = Object.values(CHAIN_TURN_PIPELINE_DURATIONS).reduce((total, value) => total + value, 0);
+const AFTER_DECISION_MS = CHAIN_TURN_PIPELINE_DURATIONS.decision + 1;
+const AFTER_REVEAL_MS = CHAIN_TURN_PIPELINE_DURATIONS.reveal + 1;
+const AFTER_CONSEQUENCE_MS = CHAIN_TURN_PIPELINE_DURATIONS.consequence + 1;
+const AFTER_ANIMATION_MS = CHAIN_TURN_PIPELINE_DURATIONS.animation + 1;
+const AFTER_SETTLE_MS = CHAIN_TURN_PIPELINE_DURATIONS.settle + 1;
 
 const participants = [
   { id: 'human', name: 'You', isHuman: true, precomputedScore: 75, previousPR: null },
@@ -74,11 +82,9 @@ describe('ChainOfGreed component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Higher' }));
 
-    for (let turn = 0; turn < participants.length - 1; turn += 1) {
-      act(() => {
-        vi.advanceTimersByTime(950);
-      });
-    }
+    act(() => {
+      vi.advanceTimersByTime(participants.length * (TURN_PIPELINE_MS + 2200));
+    });
 
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
@@ -107,5 +113,49 @@ describe('ChainOfGreed component', () => {
     fireEvent.click(screen.getByRole('button', { name: /View full ladder/i }));
     expect(screen.getByText('Chain rewards')).toBeInTheDocument();
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
+  });
+
+  it('locks a bank choice, stages the outcome, and still requires a guess afterward', () => {
+    vi.useFakeTimers();
+    render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
+
+    act(() => {
+      vi.advanceTimersByTime(950);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bank' }));
+
+    expect(screen.getByText('You chose BANK.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Higher' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Lower' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Bank' })).toBeDisabled();
+
+    act(() => {
+      vi.advanceTimersByTime(AFTER_DECISION_MS);
+    });
+
+    expect(screen.getByTestId('chain-turn-reveal')).toHaveTextContent(/Bank secured/i);
+
+    act(() => {
+      vi.advanceTimersByTime(AFTER_REVEAL_MS);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(AFTER_CONSEQUENCE_MS);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(AFTER_ANIMATION_MS);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(AFTER_SETTLE_MS);
+    });
+
+    expect(screen.getByRole('button', { name: 'Banked' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Higher' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Lower' })).toBeEnabled();
+    expect(screen.getAllByText(/You banked 0\./i)).toHaveLength(2);
+    expect(screen.getByTestId('chain-event-log')).toHaveTextContent(/You banked 0./i);
   });
 });

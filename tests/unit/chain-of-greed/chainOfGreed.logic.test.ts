@@ -3,9 +3,11 @@ import {
   buildFinalRawResults,
   CHAIN_LADDER,
   createInitialChainState,
+  decideAiAction,
   getStandardRoundEliminationCount,
   getStandardRoundTurnCap,
   resolveChainAction,
+  resolveVoteElimination,
   type ChainOfGreedPlayerState,
 } from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
 
@@ -95,5 +97,47 @@ describe('chainOfGreedLogic', () => {
     const chain = createInitialChainState(() => 0);
     expect(chain.referenceNumber).toBeGreaterThanOrEqual(18);
     expect(chain.referenceNumber).toBeLessThanOrEqual(83);
+  });
+
+  it('does not create a fake vote tie when one player clearly has the highest tally', () => {
+    const players = [buildPlayer('human'), buildPlayer('ai-1'), buildPlayer('ai-2'), buildPlayer('ai-3')];
+    const elimination = resolveVoteElimination({
+      activePlayers: players,
+      votes: [
+        { voterId: 'human', voterName: 'human', targetId: 'ai-1', targetName: 'ai-1', reason: 'clear miss' },
+        { voterId: 'ai-2', voterName: 'ai-2', targetId: 'ai-1', targetName: 'ai-1', reason: 'clear miss' },
+        { voterId: 'ai-3', voterName: 'ai-3', targetId: 'ai-1', targetName: 'ai-1', reason: 'clear miss' },
+      ],
+      eliminateCount: 1,
+      rng: () => 0.5,
+    });
+
+    expect(elimination.eliminatedIds).toEqual(['ai-1']);
+    expect(elimination.tieBreaks).toEqual([]);
+  });
+
+  it('prevents AI from banking twice in the same turn', () => {
+    const player = {
+      ...buildPlayer('ai-1'),
+      precomputedScore: 88,
+      roundContribution: 40,
+      personality: { aggression: 0.35, caution: 0.92, volatility: 0.1, social: 0.5 },
+    };
+
+    const choice = decideAiAction({
+      player,
+      chain: {
+        step: 4,
+        pot: CHAIN_LADDER[3],
+        referenceNumber: 58,
+        recentNumbers: [24, 39, 58],
+      },
+      remainingTurns: 2,
+      phase: 'standard',
+      activePlayers: [player, buildPlayer('ai-2')],
+      bankAvailable: false,
+    });
+
+    expect(choice).not.toBe('bank');
   });
 });
