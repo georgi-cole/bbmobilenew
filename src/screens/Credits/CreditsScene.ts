@@ -11,7 +11,6 @@ import {
 import {
   CREDITS_BIG_EYE_SOURCES,
   CREDITS_CITY_SOURCES,
-  CREDITS_MOON_SOURCES,
 } from './creditsAssetPaths';
 import { buildCreditsAssetCandidates } from './creditsAssetPaths';
 
@@ -27,8 +26,6 @@ const FOG_TEXTURE_HEIGHT = 200;
 const GLOW_TEXTURE_SIZE = 256;
 const MAX_EYE_SIZE_PX = 70;
 const MAX_EYE_GLOW_SIZE_PX = 160;
-const MAX_MOON_SIZE_PX = 74;
-
 const SKY_TOP = '#020610';
 const SKY_BOTTOM = '#0c2a3c';
 const TEXT_TINT = '#f0f6ff';
@@ -80,9 +77,7 @@ export default class CreditsScene {
   private readonly root = new Container();
   private readonly skyLayer = new Container();
   private readonly starsLayer = new Container();
-  private readonly moonLayer = new Container();
   private readonly cityLayer = new Container();
-  private readonly correctionLayer = new Container();
   private readonly windowsLayer = new Container();
   private readonly fogLayer = new Container();
   private readonly beamLayer = new Container();
@@ -108,9 +103,6 @@ export default class CreditsScene {
   private fallbackResizeHandlerAttached = false;
   private skySprite!: Sprite;
   private citySprite!: Sprite;
-  private moonSprite: Sprite | null = null;
-  private moonGlow: Sprite | null = null;
-  private moonCover: Sprite | null = null;
   private fogBack!: Sprite;
   private fogFront!: Sprite;
   private beamOuter!: Graphics;
@@ -184,13 +176,6 @@ export default class CreditsScene {
       // Eye is optional — scene works without it.
     }
 
-    let moonTexture: Texture | null = null;
-    try {
-      moonTexture = await this.loadTexture(CREDITS_MOON_SOURCES);
-    } catch {
-      // Moon is optional — scene works without it.
-    }
-
     if (this.destroyed) {
       this.disposeApplication();
       return;
@@ -200,9 +185,7 @@ export default class CreditsScene {
     this.root.addChild(
       this.skyLayer,
       this.starsLayer,
-      this.moonLayer,
       this.cityLayer,
-      this.correctionLayer,
       this.windowsLayer,
       this.fogLayer,
       this.beamLayer,
@@ -214,9 +197,6 @@ export default class CreditsScene {
     this.createSky();
     this.createStars();
     this.createCity(cityTexture);
-    if (moonTexture) {
-      this.createMoon(moonTexture);
-    }
     this.createWindowLights();
     this.createFog();
     this.createBeam();
@@ -458,29 +438,6 @@ export default class CreditsScene {
       .fill({ color: 0xffffff, alpha: options.alpha });
   }
 
-  private createMoon(texture: Texture): void {
-    const glowTexture = this.createGlowTexture();
-
-    this.moonGlow = new Sprite(glowTexture);
-    this.moonGlow.anchor.set(0.5);
-    this.moonGlow.alpha = 0.28;
-    this.moonGlow.tint = 0xf3f8ff;
-    this.moonGlow.filters = [this.sourceGlowFilter];
-
-    this.moonSprite = new Sprite(texture);
-    this.moonSprite.anchor.set(0.5);
-    this.moonSprite.alpha = 0.95;
-
-    this.moonCover = new Sprite(glowTexture);
-    this.moonCover.anchor.set(0.5);
-    this.moonCover.alpha = 0.92;
-    this.moonCover.tint = 0x081521;
-    this.moonCover.filters = [this.fogBlurFilter];
-
-    this.moonLayer.addChild(this.moonGlow, this.moonSprite);
-    this.correctionLayer.addChild(this.moonCover);
-  }
-
   private createGlowTexture(): Texture {
     const canvas = document.createElement('canvas');
     canvas.width = GLOW_TEXTURE_SIZE;
@@ -626,26 +583,6 @@ export default class CreditsScene {
     const cityLeft = this.citySprite.x - this.citySprite.width / 2;
     const cityTop = this.citySprite.y - this.citySprite.height;
 
-    if (this.moonSprite && this.moonGlow) {
-      const moonSize = Math.min(width * 0.18, MAX_MOON_SIZE_PX) * this.designScale;
-      this.moonSprite.x = width * 0.2;
-      this.moonSprite.y = height * 0.12;
-      this.moonSprite.width = moonSize;
-      this.moonSprite.height = moonSize;
-
-      this.moonGlow.x = this.moonSprite.x;
-      this.moonGlow.y = this.moonSprite.y;
-      this.moonGlow.width = moonSize * 2.2;
-      this.moonGlow.height = moonSize * 2.2;
-    }
-
-    if (this.moonCover) {
-      this.moonCover.x = cityLeft + this.citySprite.width * 0.24;
-      this.moonCover.y = cityTop + this.citySprite.height * 0.2;
-      this.moonCover.width = this.citySprite.width * 0.2;
-      this.moonCover.height = this.citySprite.width * 0.16;
-    }
-
     for (const windowConfig of this.windowLightConfigs) {
       windowConfig.sprite.scale.set(Math.max(0.8, this.designScale));
       windowConfig.sprite.x = cityLeft + windowConfig.x * this.citySprite.width;
@@ -724,8 +661,8 @@ export default class CreditsScene {
       this.eyeGlow.height = glowSize;
     }
 
-    // Text positioned below the eye, inside the beam path
-    const textDistance = Math.max(height * 0.28, 220);
+    // Text positioned higher in the beam-lit star field while staying below the eye.
+    const textDistance = Math.max(height * 0.33, 275);
     const textX = this.beamOriginX + Math.cos(BEAM_ANGLE) * textDistance;
     const textY = this.beamOriginY + Math.sin(BEAM_ANGLE) * textDistance;
     this.creditsText.x = textX;
@@ -753,10 +690,6 @@ export default class CreditsScene {
     for (const starConfig of this.starConfigs) {
       const shimmer = (Math.sin(this.elapsedSeconds * starConfig.speed + starConfig.phase) + 1) * 0.5;
       starConfig.sprite.alpha = starConfig.baseAlpha + shimmer * starConfig.amplitude;
-    }
-
-    if (this.moonGlow) {
-      this.moonGlow.alpha = 0.22 + (Math.sin(this.elapsedSeconds * 0.22) + 1) * 0.04;
     }
 
     for (const windowConfig of this.windowLightConfigs) {
