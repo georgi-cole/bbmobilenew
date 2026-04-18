@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="eyeStroke" x1="64" y1="256" x2="448" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#eff6ff"/>
+      <stop offset="1" stop-color="#bae6fd"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 256c53.33-78.67 127.33-118 222-118s168.67 39.33 222 118c-53.33 78.67-127.33 118-222 118S85.33 334.67 32 256z" stroke="url(#eyeStroke)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="256" r="72" fill="#dbeafe" fill-opacity="0.85"/>
+  <circle cx="256" cy="256" r="36" fill="#0f172a"/>
+  <circle cx="282" cy="230" r="10" fill="#f8fafc"/>
+</svg>

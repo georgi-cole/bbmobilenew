@@ -5,26 +5,32 @@
   height: 100vh;
   height: 100dvh;
   background: #000;
-  z-index: 1000;
   overflow: hidden;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 420ms ease;
 }
 
-.credits-player {
-  position: relative;
+.credits-container.is-exiting {
+  opacity: 0;
+}
+
+.credits-stage {
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  background: #000;
+  touch-action: manipulation;
+  outline: none;
 }
 
-.credits-video {
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  background: #000;
-  border: 0;
-  object-fit: cover;
+.credits-stage[data-status='ready'] {
+  cursor: pointer;
+}
+
+.credits-stage canvas {
   display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .credits-overlay {
@@ -34,57 +40,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   padding: 24px;
   text-align: center;
   color: #fff;
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(1, 6, 16, 0.78);
+  backdrop-filter: blur(8px);
 }
 
-.credits-sound-toggle,
-.credits-retry {
+.credits-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.credits-action {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-radius: 999px;
   font-size: 14px;
   cursor: pointer;
-}
-
-.credits-sound-toggle {
-  position: absolute;
-  left: 50%;
-  bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px));
-  z-index: 1050;
-  transform: translateX(-50%);
-  backdrop-filter: blur(6px);
-}
-
-/* Skip button top-right */
-.credits-skip {
-  --floating-corner-top-base: 14px;
-  position: absolute;
-  top: var(--floating-corner-top-offset);
-  right: var(--floating-corner-right-offset);
-  z-index: 1100;
-  background: rgba(0,0,0,0.5);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.08);
-  padding: 8px 12px;
-  font-size: 14px;
-  border-radius: 6px;
-  backdrop-filter: blur(4px);
-  cursor: pointer;
-}
-
-/* Make sure the Skip button is usable on small screens */
-@media (max-width: 480px) {
-  .credits-sound-toggle,
-  .credits-skip {
-    --floating-corner-top-base: 10px;
-    --floating-corner-right-base: 10px;
-    padding: 6px 10px;
-    font-size: 13px;
-  }
 }

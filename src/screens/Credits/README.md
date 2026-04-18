@@ -18,16 +18,16 @@ Open DevTools → Console before navigating to `/#/credits`.
 
 | Log message | Meaning |
 |---|---|
-| `[CreditsScene] mounted { url, env }` | Component mounted successfully |
-| `[CreditsScene] canvas init error { message, stack }` | Runtime canvas failure — check the stack trace |
+| `[CreditsScene] canvas init error` | Pixi scene setup failed and the fallback overlay is shown |
 
 ## Editing credits content
 
-Credits data lives in **`src/data/credits.ts`** — each entry has a `role` and `name` field.
+Credits data lives in **`src/data/credits.ts`**. The screen maps each `{ role, name }` pair into a cinematic two-line credit card inside the projector beam.
 
-## If the cinematic scene doesn't appear
+## Required scene assets
 
-1. Check for `[CreditsScene] canvas init error` in the console.
-2. If the fallback UI shows "Credits unavailable", a canvas context error occurred.
-3. Verify your browser supports the Canvas 2D API (all modern browsers do).
-4. Check the network tab for any failed chunk loads (the Credits component is lazy-loaded).
+The Pixi scene loads these public assets through the Pixi `Assets` loader:
+
+- `public/assets/credits/city.png`
+- `public/assets/credits/big-eye.svg`
+- `public/assets/credits/moon.svg`

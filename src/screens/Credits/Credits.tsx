@@ -1,168 +1,127 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CREDITS_POSTER_SOURCES, CREDITS_VIDEO_SOURCES } from './creditsAssetPaths';
+import creditsData from '../../data/credits';
+import CreditsScene from './CreditsScene';
 import './Credits.css';
 
+const EXIT_FADE_MS = 420;
+
+type Status = 'loading' | 'ready' | 'error';
+
 export default function Credits() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const navigate = useNavigate();
-  const [sourceIndex, setSourceIndex] = useState(0);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const exitTimeoutRef = useRef<number | null>(null);
+  const [status, setStatus] = useState<Status>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showSoundPrompt, setShowSoundPrompt] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [isExiting, setIsExiting] = useState(false);
 
-  const currentSource = CREDITS_VIDEO_SOURCES[sourceIndex] ?? CREDITS_VIDEO_SOURCES[CREDITS_VIDEO_SOURCES.length - 1] ?? '';
-  const posterSource = CREDITS_POSTER_SOURCES[sourceIndex] ?? CREDITS_POSTER_SOURCES[CREDITS_POSTER_SOURCES.length - 1] ?? '';
+  const credits = useMemo(
+    () => [
+      ...creditsData.map(({ role, name }) => `${role}\n${name}`),
+      'The Big Eye\nThanks for playing',
+    ],
+    [],
+  );
 
-  function onDone() {
-    navigate('/');
-  }
-
-  /**
-   * Starts credits playback in the most permissive mode for mobile browsers/WebViews:
-   * muted autoplay first, then optional user-initiated unmute to restore sound.
-   */
-  async function tryStartPlayback(options?: { unmute?: boolean }) {
-    const video = videoRef.current;
-
-    if (!video) {
+  const onExit = useCallback(() => {
+    if (isExiting) {
       return;
     }
 
-    const { unmute = false } = options ?? {};
-    video.muted = !unmute;
+    setIsExiting(true);
+    exitTimeoutRef.current = window.setTimeout(() => {
+      navigate('/');
+    }, EXIT_FADE_MS);
+  }, [isExiting, navigate]);
 
-    try {
-      await video.play();
-
-      if (unmute) {
-        setSoundEnabled(true);
-        setShowSoundPrompt(false);
-        return;
-      }
-
-      setShowSoundPrompt(true);
-    } catch (error) {
-      video.muted = true;
-      setSoundEnabled(false);
-      console.warn('[Credits] Playback requires user interaction.', {
-        attemptedSource: currentSource,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      setShowSoundPrompt(true);
-    }
-  }
-
-  function onVideoReady() {
-    setStatus('ready');
-    setErrorMessage(null);
-    void tryStartPlayback();
-  }
-
-  function onVideoError() {
-    const attemptedSource = currentSource;
-    const nextSource = CREDITS_VIDEO_SOURCES[sourceIndex + 1];
-
-    if (nextSource) {
-      console.warn('[Credits] Failed to load video source, retrying fallback source.', {
-        attemptedSource,
-        nextSource,
-      });
-      setStatus('loading');
-      setErrorMessage('Retrying video load…');
-      setSourceIndex((index) => index + 1);
-      return;
-    }
-
-    console.error('[Credits] Failed to load credits video.', {
-      attemptedSource,
-      candidates: CREDITS_VIDEO_SOURCES,
-    });
-    setStatus('error');
-    setErrorMessage('Credits video could not be loaded on this device. You can retry or skip.');
-  }
-
-  function onRetry() {
+  const onRetry = useCallback(() => {
+    setIsExiting(false);
     setStatus('loading');
     setErrorMessage(null);
-    setSourceIndex(0);
-    setReloadKey((key) => key + 1);
-  }
-
-  function onEnableSound() {
-    void tryStartPlayback({ unmute: true });
-  }
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onDone();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setReloadKey((value) => value + 1);
   }, []);
 
   useEffect(() => {
-    if (currentSource) {
-      return;
+    const host = hostRef.current;
+
+    if (!host) {
+      return undefined;
     }
 
-    console.error('[Credits] No video source candidates available.');
-    setStatus('error');
-    setErrorMessage('Credits video source is unavailable. You can retry or skip.');
-  }, [currentSource]);
+    let cancelled = false;
+    const scene = new CreditsScene({ host, credits });
+
+    void scene.init().then(() => {
+      if (cancelled) {
+        return;
+      }
+
+      setStatus('ready');
+    }).catch((error) => {
+      if (cancelled) {
+        return;
+      }
+
+      console.error('[CreditsScene] canvas init error', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      setStatus('error');
+      setErrorMessage('Credits unavailable on this device. You can retry or go back.');
+    });
+
+    return () => {
+      cancelled = true;
+      scene.destroy();
+    };
+  }, [credits, reloadKey]);
+
+  useEffect(() => () => {
+    if (exitTimeoutRef.current != null) {
+      window.clearTimeout(exitTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = true;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        onExit();
+      }
     }
-    setShowSoundPrompt(false);
-    setSoundEnabled(false);
-  }, [currentSource, reloadKey]);
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onExit]);
 
   return (
-    <div className="credits-container">
-      <div className="credits-player" data-status={status}>
-        <video
-          key={`${currentSource}-${reloadKey}`}
-          ref={videoRef}
-          className="credits-video"
-          src={currentSource}
-          poster={posterSource}
-          autoPlay
-          muted={!soundEnabled}
-          controls
-          playsInline
-          preload="metadata"
-          onLoadedMetadata={onVideoReady}
-          onEnded={onDone}
-          onError={onVideoError}
-        />
-        {status !== 'ready' ? (
-          <div className="credits-overlay" role={status === 'error' ? 'alert' : 'status'}>
-            <span>{errorMessage ?? 'Loading credits…'}</span>
-            {status === 'error' ? (
-              <button className="credits-retry" onClick={onRetry}>
-                Retry video
+    <div className={`credits-container${isExiting ? ' is-exiting' : ''}`}>
+      <div
+        ref={hostRef}
+        className="credits-stage"
+        data-status={status}
+        aria-label={status === 'ready' ? 'Tap to exit credits' : 'Animated credits scene'}
+        role={status === 'ready' ? 'button' : 'img'}
+        tabIndex={status === 'ready' ? 0 : -1}
+        onClick={status === 'ready' ? onExit : undefined}
+      />
+      {status !== 'ready' ? (
+        <div className="credits-overlay" role={status === 'error' ? 'alert' : 'status'}>
+          <span>{errorMessage ?? 'Loading credits…'}</span>
+          {status === 'error' ? (
+            <div className="credits-actions">
+              <button className="credits-action" onClick={onRetry} type="button">
+                Retry scene
               </button>
-            ) : null}
-          </div>
-        ) : null}
-        {status === 'ready' && showSoundPrompt && !soundEnabled ? (
-          <button className="credits-sound-toggle" onClick={onEnableSound} type="button">
-            Tap for sound
-          </button>
-        ) : null}
-      </div>
-      <button
-        className="credits-skip"
-        onClick={onDone}
-        aria-label="Skip credits (Esc)"
-      >
-        Skip
-      </button>
+              <button className="credits-action" onClick={onExit} type="button">
+                Back to home
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
