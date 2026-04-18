@@ -11,6 +11,7 @@ import {
 import {
   CREDITS_BIG_EYE_SOURCES,
   CREDITS_CITY_SOURCES,
+  CREDITS_MOON_SOURCES,
 } from './creditsAssetPaths';
 import { buildCreditsAssetCandidates } from './creditsAssetPaths';
 
@@ -21,13 +22,12 @@ const WINDOW_LIGHT_COUNT = 60;
 const CREDIT_CYCLE_SECONDS = 4.5;
 const SKY_TEXTURE_WIDTH = 64;
 const SKY_TEXTURE_HEIGHT = 256;
-const BEAM_TEXTURE_WIDTH = 480;
-const BEAM_TEXTURE_HEIGHT = 960;
 const FOG_TEXTURE_WIDTH = 640;
 const FOG_TEXTURE_HEIGHT = 200;
 const GLOW_TEXTURE_SIZE = 256;
 const MAX_EYE_SIZE_PX = 70;
 const MAX_EYE_GLOW_SIZE_PX = 160;
+const MAX_MOON_SIZE_PX = 74;
 
 const SKY_TOP = '#020610';
 const SKY_BOTTOM = '#0c2a3c';
@@ -37,8 +37,8 @@ const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial R
 
 const KOLEQUANT_LOGO_SOURCES = buildCreditsAssetCandidates('assets/kolequant.png');
 
-/** Beam rotation in radians — about 25° from vertical, angled left from a right-side rooftop. */
-const BEAM_ROTATION = -0.44;
+/** Beam angle in radians from +x, aimed from right rooftop toward upper center-left. */
+const BEAM_ANGLE = -2.18;
 
 /** Duration in seconds for the projector beam to fade in at scene start. */
 const BEAM_INTRO_DURATION = 1.8;
@@ -80,7 +80,9 @@ export default class CreditsScene {
   private readonly root = new Container();
   private readonly skyLayer = new Container();
   private readonly starsLayer = new Container();
+  private readonly moonLayer = new Container();
   private readonly cityLayer = new Container();
+  private readonly correctionLayer = new Container();
   private readonly windowsLayer = new Container();
   private readonly fogLayer = new Container();
   private readonly beamLayer = new Container();
@@ -106,10 +108,14 @@ export default class CreditsScene {
   private fallbackResizeHandlerAttached = false;
   private skySprite!: Sprite;
   private citySprite!: Sprite;
+  private moonSprite: Sprite | null = null;
+  private moonGlow: Sprite | null = null;
+  private moonCover: Sprite | null = null;
   private fogBack!: Sprite;
   private fogFront!: Sprite;
-  private beamOuter!: Sprite;
-  private beamInner!: Sprite;
+  private beamOuter!: Graphics;
+  private beamInner!: Graphics;
+  private beamMask!: Graphics;
   private sourceGlow!: Sprite;
   private logoSprite: Sprite | null = null;
   private eyeSprite: Sprite | null = null;
@@ -178,6 +184,13 @@ export default class CreditsScene {
       // Eye is optional — scene works without it.
     }
 
+    let moonTexture: Texture | null = null;
+    try {
+      moonTexture = await this.loadTexture(CREDITS_MOON_SOURCES);
+    } catch {
+      // Moon is optional — scene works without it.
+    }
+
     if (this.destroyed) {
       this.disposeApplication();
       return;
@@ -187,7 +200,9 @@ export default class CreditsScene {
     this.root.addChild(
       this.skyLayer,
       this.starsLayer,
+      this.moonLayer,
       this.cityLayer,
+      this.correctionLayer,
       this.windowsLayer,
       this.fogLayer,
       this.beamLayer,
@@ -199,6 +214,9 @@ export default class CreditsScene {
     this.createSky();
     this.createStars();
     this.createCity(cityTexture);
+    if (moonTexture) {
+      this.createMoon(moonTexture);
+    }
     this.createWindowLights();
     this.createFog();
     this.createBeam();
@@ -329,7 +347,7 @@ export default class CreditsScene {
       this.windowLightConfigs.push({
         sprite: light,
         x: Math.random(),
-        y: 0.15 + Math.random() * 0.7,
+        y: 0.56 + Math.random() * 0.28,
         width,
         height,
         baseAlpha,
@@ -381,19 +399,18 @@ export default class CreditsScene {
   }
 
   private createBeam(): void {
-    const outerTexture = this.createBeamTexture({ core: false });
-    const innerTexture = this.createBeamTexture({ core: true });
     const glowTexture = this.createGlowTexture();
 
-    this.beamOuter = new Sprite(outerTexture);
-    this.beamOuter.anchor.set(0.5, 1);
+    this.beamOuter = new Graphics();
     this.beamOuter.alpha = 0;
     this.beamOuter.filters = [this.beamOuterBlurFilter];
 
-    this.beamInner = new Sprite(innerTexture);
-    this.beamInner.anchor.set(0.5, 1);
+    this.beamInner = new Graphics();
     this.beamInner.alpha = 0;
     this.beamInner.filters = [this.beamCoreBlurFilter];
+
+    this.beamMask = new Graphics();
+    this.beamMask.alpha = 0.001;
 
     this.sourceGlow = new Sprite(glowTexture);
     this.sourceGlow.anchor.set(0.5);
@@ -401,59 +418,67 @@ export default class CreditsScene {
     this.sourceGlow.tint = 0xdff0ff;
     this.sourceGlow.filters = [this.sourceGlowFilter];
 
-    this.beamLayer.addChild(this.beamOuter, this.beamInner, this.sourceGlow);
+    this.beamLayer.addChild(this.beamOuter, this.beamInner, this.sourceGlow, this.beamMask);
   }
 
-  private createBeamTexture(options: { core: boolean }): Texture {
-    const canvas = document.createElement('canvas');
-    canvas.width = BEAM_TEXTURE_WIDTH;
-    canvas.height = BEAM_TEXTURE_HEIGHT;
-    const context = canvas.getContext('2d');
+  private drawBeamShape(
+    graphic: Graphics,
+    options: {
+      originX: number;
+      originY: number;
+      angle: number;
+      length: number;
+      nearWidth: number;
+      farWidth: number;
+      alpha: number;
+    },
+  ): void {
+    const dx = Math.cos(options.angle);
+    const dy = Math.sin(options.angle);
+    const halfNear = options.nearWidth * 0.5;
+    const halfFar = options.farWidth * 0.5;
 
-    if (!context) {
-      throw new Error('Canvas 2D context unavailable for projector beam.');
-    }
+    const nearLeftX = options.originX - dy * halfNear;
+    const nearLeftY = options.originY + dx * halfNear;
+    const nearRightX = options.originX + dy * halfNear;
+    const nearRightY = options.originY - dx * halfNear;
+    const farCenterX = options.originX + dx * options.length;
+    const farCenterY = options.originY + dy * options.length;
+    const farLeftX = farCenterX - dy * halfFar;
+    const farLeftY = farCenterY + dx * halfFar;
+    const farRightX = farCenterX + dy * halfFar;
+    const farRightY = farCenterY - dx * halfFar;
 
-    const bottomWidth = options.core ? canvas.width * 0.06 : canvas.width * 0.1;
-    const topWidth = options.core ? canvas.width * 0.22 : canvas.width * 0.32;
-    const cx = canvas.width * 0.5;
+    graphic.clear()
+      .moveTo(nearLeftX, nearLeftY)
+      .lineTo(farLeftX, farLeftY)
+      .lineTo(farRightX, farRightY)
+      .lineTo(nearRightX, nearRightY)
+      .closePath()
+      .fill({ color: 0xffffff, alpha: options.alpha });
+  }
 
-    context.save();
-    context.beginPath();
-    context.moveTo(cx - bottomWidth, canvas.height);
-    context.lineTo(cx - topWidth, 0);
-    context.lineTo(cx + topWidth, 0);
-    context.lineTo(cx + bottomWidth, canvas.height);
-    context.closePath();
-    context.clip();
+  private createMoon(texture: Texture): void {
+    const glowTexture = this.createGlowTexture();
 
-    const verticalFade = context.createLinearGradient(0, canvas.height, 0, 0);
-    verticalFade.addColorStop(0, options.core ? 'rgba(240, 248, 255, 0.85)' : 'rgba(210, 235, 255, 0.55)');
-    verticalFade.addColorStop(0.15, options.core ? 'rgba(235, 246, 255, 0.65)' : 'rgba(210, 235, 255, 0.4)');
-    verticalFade.addColorStop(0.45, options.core ? 'rgba(220, 240, 252, 0.25)' : 'rgba(200, 228, 250, 0.14)');
-    verticalFade.addColorStop(0.8, options.core ? 'rgba(215, 236, 252, 0.06)' : 'rgba(195, 222, 248, 0.03)');
-    verticalFade.addColorStop(1, 'rgba(190, 218, 245, 0)');
-    context.fillStyle = verticalFade;
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    this.moonGlow = new Sprite(glowTexture);
+    this.moonGlow.anchor.set(0.5);
+    this.moonGlow.alpha = 0.28;
+    this.moonGlow.tint = 0xf3f8ff;
+    this.moonGlow.filters = [this.sourceGlowFilter];
 
-    const horizontalFade = context.createRadialGradient(
-      cx,
-      canvas.height * 0.85,
-      canvas.width * 0.01,
-      cx,
-      canvas.height * 0.7,
-      canvas.width * 0.22,
-    );
-    horizontalFade.addColorStop(0, options.core ? 'rgba(245, 252, 255, 0.7)' : 'rgba(220, 240, 255, 0.35)');
-    horizontalFade.addColorStop(1, 'rgba(220, 240, 255, 0)');
-    context.fillStyle = horizontalFade;
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    this.moonSprite = new Sprite(texture);
+    this.moonSprite.anchor.set(0.5);
+    this.moonSprite.alpha = 0.95;
 
-    context.restore();
+    this.moonCover = new Sprite(glowTexture);
+    this.moonCover.anchor.set(0.5);
+    this.moonCover.alpha = 0.92;
+    this.moonCover.tint = 0x081521;
+    this.moonCover.filters = [this.fogBlurFilter];
 
-    const texture = Texture.from(canvas);
-    this.generatedTextures.push(texture);
-    return texture;
+    this.moonLayer.addChild(this.moonGlow, this.moonSprite);
+    this.correctionLayer.addChild(this.moonCover);
   }
 
   private createGlowTexture(): Texture {
@@ -532,6 +557,7 @@ export default class CreditsScene {
       },
     });
     this.creditsText.anchor.set(0.5);
+    this.creditsText.mask = this.beamMask;
 
     this.exitText = new Text({
       text: 'Tap to exit',
@@ -600,6 +626,26 @@ export default class CreditsScene {
     const cityLeft = this.citySprite.x - this.citySprite.width / 2;
     const cityTop = this.citySprite.y - this.citySprite.height;
 
+    if (this.moonSprite && this.moonGlow) {
+      const moonSize = Math.min(width * 0.18, MAX_MOON_SIZE_PX) * this.designScale;
+      this.moonSprite.x = width * 0.2;
+      this.moonSprite.y = height * 0.12;
+      this.moonSprite.width = moonSize;
+      this.moonSprite.height = moonSize;
+
+      this.moonGlow.x = this.moonSprite.x;
+      this.moonGlow.y = this.moonSprite.y;
+      this.moonGlow.width = moonSize * 2.2;
+      this.moonGlow.height = moonSize * 2.2;
+    }
+
+    if (this.moonCover) {
+      this.moonCover.x = cityLeft + this.citySprite.width * 0.24;
+      this.moonCover.y = cityTop + this.citySprite.height * 0.2;
+      this.moonCover.width = this.citySprite.width * 0.2;
+      this.moonCover.height = this.citySprite.width * 0.16;
+    }
+
     for (const windowConfig of this.windowLightConfigs) {
       windowConfig.sprite.scale.set(Math.max(0.8, this.designScale));
       windowConfig.sprite.x = cityLeft + windowConfig.x * this.citySprite.width;
@@ -617,23 +663,38 @@ export default class CreditsScene {
     this.fogFront.width = width * 1.25;
     this.fogFront.height = height * 0.1;
 
-    // Beam originates from right-side rooftop, projecting upward and angled left
-    this.beamOriginX = width * 0.72;
-    this.beamOriginY = cityTop + this.citySprite.height * 0.08;
-    const beamWidth = Math.max(width * 0.42, 160);
-    const beamHeight = Math.max(height * 0.82, 650);
+    // Hard-anchor the beam to a right-side rooftop point on the skyline.
+    this.beamOriginX = width * 0.78;
+    this.beamOriginY = this.citySprite.y - this.citySprite.height * 0.55;
+    const beamLength = Math.max(height * 0.86, 720);
 
-    this.beamOuter.x = this.beamOriginX;
-    this.beamOuter.y = this.beamOriginY;
-    this.beamOuter.width = beamWidth * 1.2;
-    this.beamOuter.height = beamHeight;
-    this.beamOuter.rotation = BEAM_ROTATION;
-
-    this.beamInner.x = this.beamOriginX;
-    this.beamInner.y = this.beamOriginY;
-    this.beamInner.width = beamWidth * 0.7;
-    this.beamInner.height = beamHeight * 0.95;
-    this.beamInner.rotation = BEAM_ROTATION;
+    this.drawBeamShape(this.beamOuter, {
+      originX: this.beamOriginX,
+      originY: this.beamOriginY,
+      angle: BEAM_ANGLE,
+      length: beamLength,
+      nearWidth: 8,
+      farWidth: Math.max(width * 0.56, 220),
+      alpha: 0.18,
+    });
+    this.drawBeamShape(this.beamInner, {
+      originX: this.beamOriginX,
+      originY: this.beamOriginY,
+      angle: BEAM_ANGLE,
+      length: beamLength * 0.92,
+      nearWidth: 5,
+      farWidth: Math.max(width * 0.28, 110),
+      alpha: 0.28,
+    });
+    this.drawBeamShape(this.beamMask, {
+      originX: this.beamOriginX,
+      originY: this.beamOriginY,
+      angle: BEAM_ANGLE,
+      length: beamLength * 0.92,
+      nearWidth: 8,
+      farWidth: Math.max(width * 0.42, 168),
+      alpha: 1,
+    });
 
     this.sourceGlow.x = this.beamOriginX;
     this.sourceGlow.y = this.beamOriginY;
@@ -641,9 +702,9 @@ export default class CreditsScene {
     this.sourceGlow.height = width * 0.18;
 
     // Eye positioned in the upper beam area — slightly right of center, ~30% from top
-    const eyeBeamOffset = beamHeight * 0.45;
-    const eyeX = this.beamOriginX + Math.sin(BEAM_ROTATION) * eyeBeamOffset;
-    const eyeY = this.beamOriginY - Math.cos(BEAM_ROTATION) * eyeBeamOffset;
+    const eyeBeamOffset = Math.max(height * 0.38, 300);
+    const eyeX = this.beamOriginX + Math.cos(BEAM_ANGLE) * eyeBeamOffset;
+    const eyeY = this.beamOriginY + Math.sin(BEAM_ANGLE) * eyeBeamOffset;
 
     if (this.eyeSprite) {
       const eyeSize = Math.min(width * 0.16, MAX_EYE_SIZE_PX) * this.designScale;
@@ -664,13 +725,14 @@ export default class CreditsScene {
     }
 
     // Text positioned below the eye, inside the beam path
-    const textX = this.beamOriginX + Math.sin(BEAM_ROTATION) * beamHeight * 0.32;
-    const textY = height * 0.52;
+    const textDistance = Math.max(height * 0.28, 220);
+    const textX = this.beamOriginX + Math.cos(BEAM_ANGLE) * textDistance;
+    const textY = this.beamOriginY + Math.sin(BEAM_ANGLE) * textDistance;
     this.creditsText.x = textX;
     this.creditsText.y = textY;
     this.creditsText.style.fontSize = Math.max(20, 24 * this.designScale);
     this.creditsText.style.lineHeight = Math.max(30, 38 * this.designScale);
-    this.creditsText.style.wordWrapWidth = Math.max(200, width * 0.52);
+    this.creditsText.style.wordWrapWidth = Math.max(170, width * 0.34);
 
     this.exitText.x = width * 0.5;
     this.exitText.y = height - Math.max(28, 44 * this.designScale);
@@ -691,6 +753,10 @@ export default class CreditsScene {
     for (const starConfig of this.starConfigs) {
       const shimmer = (Math.sin(this.elapsedSeconds * starConfig.speed + starConfig.phase) + 1) * 0.5;
       starConfig.sprite.alpha = starConfig.baseAlpha + shimmer * starConfig.amplitude;
+    }
+
+    if (this.moonGlow) {
+      this.moonGlow.alpha = 0.22 + (Math.sin(this.elapsedSeconds * 0.22) + 1) * 0.04;
     }
 
     for (const windowConfig of this.windowLightConfigs) {
@@ -769,11 +835,11 @@ export default class CreditsScene {
       }
 
       if (cycleProgress < 1) {
-        this.creditsText.alpha = cycleProgress;
+        this.creditsText.alpha = cycleProgress * beamIntro;
       } else if (cycleProgress < 3.5) {
-        this.creditsText.alpha = 1;
+        this.creditsText.alpha = beamIntro;
       } else {
-        this.creditsText.alpha = Math.max(0, 1 - (cycleProgress - 3.5) * 2);
+        this.creditsText.alpha = Math.max(0, 1 - (cycleProgress - 3.5) * 2) * beamIntro;
       }
 
       if (this.logoSprite) {
