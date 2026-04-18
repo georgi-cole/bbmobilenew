@@ -12,7 +12,10 @@ interface PlayerListProps {
   /** IDs that should be rendered as disabled (non-selectable). */
   disabledIds?: ReadonlyArray<string>;
   /** Called whenever the selection changes. */
-  onSelectionChange?: (selectedIds: Set<string>) => void;
+  onSelectionChange?: (
+    selectedIds: Set<string>,
+    details: { primaryTargetId: string | null },
+  ) => void;
   /**
    * External controlled selection. When provided, overrides internal selection
    * state for display purposes (controlled mode). If omitted, the component
@@ -56,9 +59,9 @@ export default function PlayerList({
   const displaySelectedIds = controlledSelectedIds ?? internalSelectedIds;
 
   const updateSelection = useCallback(
-    (next: Set<string>) => {
+    (next: Set<string>, primaryTargetId: string | null) => {
       setInternalSelectedIds(next);
-      onSelectionChange?.(next);
+      onSelectionChange?.(next, { primaryTargetId });
     },
     [onSelectionChange],
   );
@@ -76,7 +79,7 @@ export default function PlayerList({
       // Plain tap: select if unselected, deselect (collapse) if already selected.
       next = effectiveSelectedIds.has(playerId) ? new Set<string>() : new Set([playerId]);
     }
-    updateSelection(next);
+    updateSelection(next, next.has(playerId) ? playerId : (Array.from(next).at(-1) ?? null));
   }
 
   function handleShiftSelect(clickedIndex: number) {
@@ -92,7 +95,7 @@ export default function PlayerList({
       .filter((p) => !disabledSet.has(p.id))
       .map((p) => p.id);
     if (rangeIds.length === 0) return;
-    updateSelection(new Set(rangeIds));
+    updateSelection(new Set(rangeIds), clickedPlayer?.id ?? (rangeIds.at(-1) ?? null));
   }
 
   function handleContainerKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {

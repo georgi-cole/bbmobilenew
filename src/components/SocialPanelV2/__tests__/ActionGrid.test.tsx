@@ -24,11 +24,22 @@ import ActionGrid from '../ActionGrid';
 import { SOCIAL_ACTIONS } from '../../../social/socialActions';
 import { normalizeActionCosts } from '../../../social/smExecNormalize';
 
+/** Actions visible in the human-player grid (excludes aiOnly entries). */
+const VISIBLE_ACTIONS = SOCIAL_ACTIONS.filter((a) => !a.aiOnly);
+
 describe('ActionGrid – rendering', () => {
-  it('renders a card for every action in SOCIAL_ACTIONS', () => {
+  it('renders a card for every non-aiOnly action in SOCIAL_ACTIONS', () => {
     render(<ActionGrid />);
-    for (const action of SOCIAL_ACTIONS) {
+    for (const action of VISIBLE_ACTIONS) {
       expect(screen.getByText(action.title)).toBeDefined();
+    }
+  });
+
+  it('does not render aiOnly actions', () => {
+    render(<ActionGrid />);
+    const aiOnlyActions = SOCIAL_ACTIONS.filter((a) => a.aiOnly);
+    for (const action of aiOnlyActions) {
+      expect(screen.queryByRole('button', { name: new RegExp(action.title, 'i') })).toBeNull();
     }
   });
 });
@@ -37,8 +48,8 @@ describe('ActionGrid – interaction', () => {
   it('calls onActionClick with action id when a card is clicked', () => {
     const onActionClick = vi.fn();
     render(<ActionGrid onActionClick={onActionClick} />);
-    // Click the first action card
-    const firstAction = SOCIAL_ACTIONS[0];
+    // Click the first visible action card
+    const firstAction = VISIBLE_ACTIONS[0];
     fireEvent.click(screen.getByRole('button', { name: new RegExp(firstAction.title, 'i') }));
     expect(onActionClick).toHaveBeenCalledWith(firstAction.id);
   });
@@ -46,7 +57,7 @@ describe('ActionGrid – interaction', () => {
   it('calls onPreview with action id when Preview button is clicked', () => {
     const onPreview = vi.fn();
     render(<ActionGrid onPreview={onPreview} />);
-    const firstAction = SOCIAL_ACTIONS[0];
+    const firstAction = VISIBLE_ACTIONS[0];
     fireEvent.click(screen.getByRole('button', { name: `Preview ${firstAction.title}` }));
     expect(onPreview).toHaveBeenCalledWith(firstAction.id);
   });
@@ -54,37 +65,40 @@ describe('ActionGrid – interaction', () => {
 
 describe('ActionGrid – disabled and selected state', () => {
   it('marks cards in disabledIds as disabled', () => {
-    const disabledIds = new Set([SOCIAL_ACTIONS[0].id]);
+    const disabledIds = new Set([VISIBLE_ACTIONS[0].id]);
     render(<ActionGrid disabledIds={disabledIds} />);
     const firstCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     expect(firstCard.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('non-disabled cards are not disabled', () => {
-    const disabledIds = new Set([SOCIAL_ACTIONS[0].id]);
+    const disabledIds = new Set([VISIBLE_ACTIONS[0].id]);
     render(<ActionGrid disabledIds={disabledIds} />);
     const secondCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[1].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[1].title, 'i'),
     });
     expect(secondCard.getAttribute('aria-disabled')).toBe('false');
   });
 
   it('selectedId card has aria-pressed true', () => {
-    const selected = SOCIAL_ACTIONS[2];
+    // Use compliment (index 0) - title is "Compliment", should be unambiguous
+    const selected = VISIBLE_ACTIONS[0];
     render(<ActionGrid selectedId={selected.id} />);
-    const card = screen.getByRole('button', { name: new RegExp(selected.title, 'i') });
-    expect(card.getAttribute('aria-pressed')).toBe('true');
+    const cards = screen.getAllByRole('button', { name: new RegExp(selected.title, 'i') });
+    const card = cards.find((el) => el.getAttribute('data-action-id') === selected.id);
+    expect(card).toBeDefined();
+    expect(card!.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('non-selected cards have aria-pressed false', () => {
-    const selected = SOCIAL_ACTIONS[2];
+    const selected = VISIBLE_ACTIONS[0];
     render(<ActionGrid selectedId={selected.id} />);
-    const otherCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
-    });
-    expect(otherCard.getAttribute('aria-pressed')).toBe('false');
+    const cards = screen.getAllByRole('button', { name: new RegExp(VISIBLE_ACTIONS[1].title, 'i') });
+    const otherCard = cards.find((el) => el.getAttribute('data-action-id') === VISIBLE_ACTIONS[1].id);
+    expect(otherCard).toBeDefined();
+    expect(otherCard!.getAttribute('aria-pressed')).toBe('false');
   });
 });
 
@@ -92,10 +106,10 @@ describe('ActionGrid – keyboard navigation', () => {
   it('ArrowRight moves focus to the next card', () => {
     render(<ActionGrid />);
     const firstCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     const secondCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[1].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[1].title, 'i'),
     });
     firstCard.focus();
     act(() => {
@@ -107,10 +121,10 @@ describe('ActionGrid – keyboard navigation', () => {
   it('ArrowLeft moves focus to the previous card', () => {
     render(<ActionGrid />);
     const firstCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     const secondCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[1].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[1].title, 'i'),
     });
     secondCard.focus();
     act(() => {
@@ -124,7 +138,7 @@ describe('ActionGrid – preview popup', () => {
   it('shows "Select target(s) to preview" when no targets are selected on hover', () => {
     render(<ActionGrid />);
     const firstCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     fireEvent.mouseEnter(firstCard);
     expect(screen.getByText('Select target(s) to preview')).toBeDefined();
@@ -139,7 +153,7 @@ describe('ActionGrid – preview popup', () => {
       />,
     );
     const firstCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     fireEvent.mouseEnter(firstCard);
     expect(screen.getByText('Alice')).toBeDefined();
@@ -148,7 +162,7 @@ describe('ActionGrid – preview popup', () => {
   it('clears the preview when the mouse leaves the grid', () => {
     render(<ActionGrid />);
     const firstCard = screen.getByRole('button', {
-      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+      name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     const grid = firstCard.closest('[role="group"]')!;
     fireEvent.mouseEnter(firstCard);
@@ -159,13 +173,13 @@ describe('ActionGrid – preview popup', () => {
 });
 
 describe('ActionGrid – actorEnergy sorting and availability', () => {
-  it('preserves canonical order when actorEnergy is undefined', () => {
+  it('preserves canonical order (visible actions only) when actorEnergy is undefined', () => {
     render(<ActionGrid />);
     const cards = screen.getAllByRole('button', { name: /./i }).filter(
       (el) => el.hasAttribute('data-action-id'),
     );
     const renderedIds = cards.map((c) => c.getAttribute('data-action-id'));
-    const canonicalIds = SOCIAL_ACTIONS.map((a) => a.id);
+    const canonicalIds = VISIBLE_ACTIONS.map((a) => a.id);
     expect(renderedIds).toEqual(canonicalIds);
   });
 
@@ -177,9 +191,9 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
       (el) => el.hasAttribute('data-action-id'),
     );
     const renderedIds = cards.map((c) => c.getAttribute('data-action-id'));
-    // Compute affordable/unaffordable using the same logic as the component
+    // Compute affordable/unaffordable using the same logic as the component (visible only)
     const actorResources = { energy: 1, influence: 0, info: 0 };
-    const affordableIds = SOCIAL_ACTIONS.filter((a) => {
+    const affordableIds = VISIBLE_ACTIONS.filter((a) => {
       const costs = normalizeActionCosts(a);
       return (
         costs.energy <= actorResources.energy &&
@@ -187,7 +201,7 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
         costs.info <= actorResources.info
       );
     }).map((a) => a.id);
-    const unaffordableIds = SOCIAL_ACTIONS.filter((a) => {
+    const unaffordableIds = VISIBLE_ACTIONS.filter((a) => {
       const costs = normalizeActionCosts(a);
       return !(
         costs.energy <= actorResources.energy &&

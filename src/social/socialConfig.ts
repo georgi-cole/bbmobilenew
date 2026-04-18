@@ -17,6 +17,16 @@ export const socialConfig = {
     betray: 1,
     nominate: 2,
     idle: 1,
+    // Extended weights covering the outgoing social module catalog:
+    compliment: 3,
+    whisper: 2,
+    rumor: 2,
+    proposeAlliance: 1,
+    group_chat: 2,
+    startFight: 1,
+    reassure: 2,
+    share_intel: 1,
+    confront: 1,
   } as Record<string, number>,
   /** Affinity thresholds that classify a relationship as ally or enemy. */
   relationshipThresholds: {
@@ -25,8 +35,16 @@ export const socialConfig = {
   },
   /** Categories used by computeOutcomeDelta to determine delta sign. */
   actionCategories: {
-    friendlyActions: ['ally', 'protect'] as string[],
-    aggressiveActions: ['betray', 'nominate'] as string[],
+    friendlyActions: [
+      'ally', 'protect',
+      // Extended friendly actions for the outgoing social module:
+      'compliment', 'proposeAlliance', 'group_chat', 'reassure', 'share_intel',
+    ] as string[],
+    aggressiveActions: [
+      'betray', 'nominate',
+      // Extended aggressive actions for the outgoing social module:
+      'rumor', 'startFight', 'confront',
+    ] as string[],
   },
   /**
    * Affinity delta magnitudes used for the DISPLAY / relationship storage.
