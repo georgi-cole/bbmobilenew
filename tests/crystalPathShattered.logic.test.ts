@@ -90,7 +90,7 @@ describe('shatteredLogic · mystery cadence', () => {
     for (let i = 1; i < mysteryIndices.length; i += 1) {
       const gap = mysteryIndices[i] - mysteryIndices[i - 1];
       expect(gap).toBeGreaterThanOrEqual(MYSTERY_MIN_GAP);
-      expect(gap).toBeLessThanOrEqual(MYSTERY_MAX_GAP + 1);
+      expect(gap).toBeLessThanOrEqual(MYSTERY_MAX_GAP);
     }
   });
   it('never places a mystery at or past the hidden bridge end', () => {

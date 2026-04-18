@@ -317,8 +317,10 @@ export default function CrystalPathShatteredGame({
       resolveStep(activePlayer.id, side, row);
     }, NEW_TURN_DELAY_MS + thinkMs);
     return () => window.clearTimeout(timer);
+    // The effect intentionally re-runs only on these stable keys; `row`, `activePlayer`,
+    // and the resolver callbacks are captured once per scheduling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePlayerId, phase, isResolving, mysteryPendingStep, currentRowRecord?.index]);
+  }, [activePlayerId, phase, isResolving, mysteryPendingStep, currentRowRecord]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const logMessage = useCallback((msg: string) => {
@@ -463,8 +465,14 @@ export default function CrystalPathShatteredGame({
     if (turnIndex >= alivePlayers.length) setTurnIndex(turnIndex % alivePlayers.length);
   }, [alivePlayers.length, turnIndex]);
 
-  // Survival index assignment when a player becomes eliminated.
+  // Assign survivalIndex (order-of-fall) whenever a new elimination appears.
+  // Stable dep: count of eliminated players without a survivalIndex yet.
+  const pendingSurvivalCount = players.reduce(
+    (acc, p) => acc + (p.eliminated && p.survivalIndex === 0 ? 1 : 0),
+    0,
+  );
   useEffect(() => {
+    if (pendingSurvivalCount === 0) return;
     setPlayers((cur) => {
       const assigned = cur.filter((p) => p.eliminated && p.survivalIndex > 0).length;
       let nextIdx = assigned + 1;
@@ -480,7 +488,7 @@ export default function CrystalPathShatteredGame({
       });
       return changed ? next : cur;
     });
-  }, [players.map((p) => p.eliminated).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendingSurvivalCount]);
 
   // ── Handlers (human UI) ──────────────────────────────────────────────────
   const inputEnabled =
@@ -638,6 +646,7 @@ export default function CrystalPathShatteredGame({
             const anim = activeAnimation && activeAnimation.rowIndex === row.index
               ? activeAnimation
               : null;
+            const blockForMystery = mysteryPendingStep && row.hasMystery;
             return (
               <div
                 key={row.index}
@@ -647,7 +656,7 @@ export default function CrystalPathShatteredGame({
                   type="button"
                   className={`cps-tile cps-tile-left${showHint && row.safeSide === 'left' ? ' is-hinted' : ''}${anim && anim.side === 'left' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
                   onClick={() => handleSelect('left')}
-                  disabled={!isCurrent || !inputEnabled || mysteryPendingStep && row.hasMystery}
+                  disabled={!isCurrent || !inputEnabled || blockForMystery}
                   aria-label={`Row ${row.index + 1} left tile`}
                 />
                 <div className={`cps-center${row.hasMystery ? ' has-mystery' : ''}`}>
@@ -667,7 +676,7 @@ export default function CrystalPathShatteredGame({
                   type="button"
                   className={`cps-tile cps-tile-right${showHint && row.safeSide === 'right' ? ' is-hinted' : ''}${anim && anim.side === 'right' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
                   onClick={() => handleSelect('right')}
-                  disabled={!isCurrent || !inputEnabled || mysteryPendingStep && row.hasMystery}
+                  disabled={!isCurrent || !inputEnabled || blockForMystery}
                   aria-label={`Row ${row.index + 1} right tile`}
                 />
                 <div className="cps-row-label" aria-hidden="true">{row.index + 1}</div>
