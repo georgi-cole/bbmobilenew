@@ -13,7 +13,6 @@ import {
   createInitialChainState,
   decideAiAction,
   FINAL_ROUND_DURATION_MS,
-  FINAL_TURNS_PER_PLAYER,
   formatInfluence,
   getStandardRoundEliminationCount,
   getStandardRoundTurnCap,
