@@ -141,6 +141,7 @@ export class CrystalPathShatteredScene {
 
   destroy() {
     this.app.ticker.remove(this.tick);
+    this.root.removeFromParent();
     this.root.destroy({ children: true });
   }
 
