@@ -6,8 +6,9 @@ import { CHAIN_TURN_PIPELINE_DURATIONS } from '../../../src/components/ChainOfGr
 const TURN_PIPELINE_MS = Object.values(CHAIN_TURN_PIPELINE_DURATIONS).reduce((total, value) => total + value, 0);
 const AFTER_DECISION_MS = CHAIN_TURN_PIPELINE_DURATIONS.decision + 1;
 const AFTER_REVEAL_MS = CHAIN_TURN_PIPELINE_DURATIONS.reveal + 1;
+const AFTER_VERDICT_MS = CHAIN_TURN_PIPELINE_DURATIONS.verdict + 1;
 const AFTER_CONSEQUENCE_MS = CHAIN_TURN_PIPELINE_DURATIONS.consequence + 1;
-const AFTER_ANIMATION_MS = CHAIN_TURN_PIPELINE_DURATIONS.animation + 1;
+const AFTER_LADDERUPDATE_MS = CHAIN_TURN_PIPELINE_DURATIONS.ladderUpdate + 1;
 const AFTER_SETTLE_MS = CHAIN_TURN_PIPELINE_DURATIONS.settle + 1;
 
 const participants = [
@@ -141,11 +142,15 @@ describe('ChainOfGreed component', () => {
     });
 
     act(() => {
+      vi.advanceTimersByTime(AFTER_VERDICT_MS);
+    });
+
+    act(() => {
       vi.advanceTimersByTime(AFTER_CONSEQUENCE_MS);
     });
 
     act(() => {
-      vi.advanceTimersByTime(AFTER_ANIMATION_MS);
+      vi.advanceTimersByTime(AFTER_LADDERUPDATE_MS);
     });
 
     act(() => {

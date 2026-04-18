@@ -7,12 +7,14 @@ export const MAX_STANDARD_PLAYERS = 16;
 export const MIN_STANDARD_PLAYERS = 7;
 export const SEMIFINAL_TURNS_PER_PLAYER = 3;
 export const FINAL_TURNS_PER_PLAYER = 4;
+export const FINAL_ROUND_DURATION_MS = 30000;
 export const CHAIN_TURN_PIPELINE_DURATIONS = {
-  decision: 420,
-  reveal: 850,
-  consequence: 850,
-  animation: 900,
-  settle: 650,
+  decision: 480,
+  reveal: 600,
+  verdict: 750,
+  consequence: 820,
+  ladderUpdate: 900,
+  settle: 600,
 } as const;
 
 export type ChainAction = 'higher' | 'lower' | 'bank';
@@ -160,10 +162,14 @@ export function createChainOfGreedPlayers(
   participants: ChainOfGreedResolvedParticipant[],
   rng: () => number,
 ): ChainOfGreedPlayerState[] {
-  return participants.map((participant) => {
+  return participants.map((participant, index) => {
     const baseSkill = clamp((participant.precomputedScore || 50) / 100, 0.2, 0.95);
-    const aggression = clamp(0.25 + baseSkill * 0.4 + rng() * 0.2, 0.15, 0.9);
-    const caution = clamp(0.95 - aggression + rng() * 0.15, 0.1, 0.9);
+    // Every 4th player cycles through aggressive → safe → moderate-agg → moderate-safe
+    const indexTier = index % 4;
+    const indexBonusMap: Record<number, number> = { 0: 0.14, 1: -0.07, 2: 0.06, 3: -0.13 };
+    const indexBonus = indexBonusMap[indexTier] ?? 0;
+    const aggression = clamp(0.25 + baseSkill * 0.4 + rng() * 0.18 + indexBonus, 0.15, 0.9);
+    const caution = clamp(0.95 - aggression + rng() * 0.14, 0.1, 0.9);
     return {
       ...participant,
       isEliminated: false,
@@ -204,10 +210,13 @@ export function createInitialChainState(rng: () => number): ChainOfGreedChainSta
 }
 
 export function getStandardRoundEliminationCount(startingPlayers: number, roundNumber: number, remainingPlayers: number) {
-  if (remainingPlayers <= 3) return 0;
-  if (startingPlayers >= 12) return roundNumber <= 3 ? 2 : 1;
-  if (startingPlayers >= 9) return roundNumber <= 2 ? 2 : 1;
-  return 1;
+  if (remainingPlayers <= 2) return 0;
+  const base = startingPlayers >= 12
+    ? (roundNumber <= 3 ? 2 : 1)
+    : startingPlayers >= 9
+      ? (roundNumber <= 2 ? 2 : 1)
+      : 1;
+  return Math.min(base, remainingPlayers - 2);
 }
 
 export function getStandardRoundTurnCap(remainingPlayers: number) {
@@ -324,10 +333,15 @@ export function applyRoundReset(player: ChainOfGreedPlayerState): ChainOfGreedPl
 }
 
 function performanceComparator(a: ChainOfGreedPlayerState, b: ChainOfGreedPlayerState) {
+  // Most mistakes first (eliminated first: higher weighted mistakes = worse)
+  const aMistakes = a.roundWrongGuesses + a.roundBusts * 2;
+  const bMistakes = b.roundWrongGuesses + b.roundBusts * 2;
+  if (aMistakes !== bMistakes) return bMistakes - aMistakes;
+  // Least banked contribution
   if (a.roundContribution !== b.roundContribution) return a.roundContribution - b.roundContribution;
+  // Worse efficiency: fewer correct guesses
   if (a.roundCorrectGuesses !== b.roundCorrectGuesses) return a.roundCorrectGuesses - b.roundCorrectGuesses;
-  if (a.roundBanks !== b.roundBanks) return a.roundBanks - b.roundBanks;
-  if (a.roundBusts !== b.roundBusts) return b.roundBusts - a.roundBusts;
+  // Lower total contribution
   if (a.totalContribution !== b.totalContribution) return a.totalContribution - b.totalContribution;
   return 0;
 }
@@ -360,42 +374,44 @@ export function decideAiAction(options: {
   const standingIndex = Math.max(0, standings.findIndex((entry) => entry.id === player.id));
   const pressureFromStanding = standings.length > 1 ? standingIndex / (standings.length - 1) : 0;
   const dangerLevel = clamp(
-    0.35
+    0.28
       + (bestContribution - (player.roundContribution ?? player.totalContribution ?? 0)) / (bestContribution + 1)
-      + player.roundWrongGuesses * 0.1
-      + player.roundBusts * 0.18,
+      + player.roundWrongGuesses * 0.08
+      + player.roundBusts * 0.15,
     0,
     1.3,
   );
   const potPressure = chain.pot / CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const stepPressure = chain.step / CHAIN_LADDER.length;
+  // Deep chains (5+) naturally invite pushing unless the player is safely ahead
+  const deepChainBias = chain.step >= 5 && pressureFromStanding >= 0.4 ? -0.06 : 0;
   const comebackDrive = clamp(
-    pressureFromStanding * 0.7
-      + (phase === 'standard' ? Math.max(0, 0.24 - player.roundContribution / 600) : Math.max(0, -playerScore / 220))
-      + (remainingTurns <= 2 ? 0.18 : 0),
+    pressureFromStanding * 0.75
+      + (phase === 'standard' ? Math.max(0, 0.22 - player.roundContribution / 600) : Math.max(0, -playerScore / 220))
+      + (remainingTurns <= 2 ? 0.20 : 0),
     0,
     1,
   );
   const safetyBias = clamp(
-    player.personality.caution * 0.55
-      + potPressure * 0.4
-      + stepPressure * 0.24
-      + (pressureFromStanding < 0.34 ? 0.18 : 0),
+    player.personality.caution * 0.50
+      + potPressure * 0.38
+      + stepPressure * 0.20
+      + (pressureFromStanding < 0.30 ? 0.14 : 0),
     0,
     1.2,
   );
   const bankUrgency = phase === 'standard'
-    ? 0.16 + safetyBias + dangerLevel * 0.16 - comebackDrive * 0.28
-    : 0.16 + player.personality.caution * 0.24 + potPressure * 0.48 + stepPressure * 0.38 + (remainingTurns <= 1 ? 0.42 : 0) - comebackDrive * 0.24;
+    ? 0.10 + safetyBias + dangerLevel * 0.13 - comebackDrive * 0.32 + deepChainBias
+    : 0.13 + player.personality.caution * 0.22 + potPressure * 0.46 + stepPressure * 0.35 + (remainingTurns <= 1 ? 0.42 : 0) - comebackDrive * 0.26;
 
-  if (bankAvailable && chain.pot > 0 && bankUrgency >= 0.72) return 'bank';
+  if (bankAvailable && chain.pot > 0 && bankUrgency >= 0.78) return 'bank';
   if (bankAvailable && phase !== 'standard' && chain.pot > 0 && playerScore <= 0 && remainingTurns <= 1) return 'bank';
 
   const higherWeight = clamp((100 - chain.referenceNumber) / 100, 0.1, 0.9);
   const lowerWeight = clamp(chain.referenceNumber / 100, 0.1, 0.9);
   const volatilitySwing = (player.personality.volatility - 0.5) * 0.18;
-  const pressureBias = comebackDrive * 0.18 - safetyBias * 0.08;
-  const bias = player.personality.aggression - player.personality.caution * 0.22 + volatilitySwing + pressureBias;
+  const pressureBias = comebackDrive * 0.20 - safetyBias * 0.07;
+  const bias = player.personality.aggression - player.personality.caution * 0.20 + volatilitySwing + pressureBias;
   return higherWeight + bias >= lowerWeight ? 'higher' : 'lower';
 }
 
