@@ -191,7 +191,7 @@ function getTurnVerdict(resolution: ChainActionResolution) {
 
 function getTurnConsequenceText(choice: ChainAction, resolution: ChainActionResolution) {
   if (choice === 'bank') {
-    return `Banked ${Math.max(resolution.securedDelta, resolution.individualDelta).toLocaleString()}. You must still guess.`;
+    return `Banked ${Math.max(resolution.securedDelta, resolution.individualDelta).toLocaleString()}. A guess is still required.`;
   }
   if (resolution.wasCorrect) {
     return `Chain rises to Step ${resolution.updatedChain.step}.`;
@@ -240,6 +240,12 @@ function getAiWaitingText(pendingTurn: PendingTurnPipeline | null, isBankUsedThi
   if (pendingTurn) return 'is resolving the turn…';
   if (isBankUsedThisTurn) return 'must still guess…';
   return 'is reading the board…';
+}
+
+function getBankedHelperText(isHuman: boolean) {
+  return isHuman
+    ? 'Bank is spent for this turn. You still need a higher or lower guess.'
+    : 'Bank is spent for this turn. A higher or lower guess is still required.';
 }
 
 function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
@@ -391,7 +397,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
           securedTotal: nextSecuredTotal,
           revealedNumber: turn.resolution.revealedNumber,
           statusText: getNextTurnStatus(turn.actorName, getPlayer(nextPlayers, turn.actorId)?.isHuman ?? false, turn.choice, turn.resolution),
-          helperText: 'Bank is spent for this turn. You still need a higher or lower guess.',
+          helperText: getBankedHelperText(getPlayer(nextPlayers, turn.actorId)?.isHuman ?? false),
         };
       }
 
@@ -490,7 +496,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
           turnHistory: nextHistory,
           revealedNumber: turn.resolution.revealedNumber,
           statusText: getNextTurnStatus(turn.actorName, getPlayer(nextPlayers, turn.actorId)?.isHuman ?? false, turn.choice, turn.resolution),
-          helperText: 'Bank is spent for this turn. You still need a higher or lower guess.',
+          helperText: getBankedHelperText(getPlayer(nextPlayers, turn.actorId)?.isHuman ?? false),
           ...(turn.kind === 'semifinal'
             ? { semifinalScores: nextScores, semifinalChains: nextChains }
             : { finalScores: nextScores, finalChains: nextChains }),
@@ -1031,7 +1037,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                     aria-label="View full ladder"
                     onClick={() => setIsLadderSheetOpen(true)}
                   >
-                    <span>{heroPhaseChip}</span>
                     <span className="chain-of-greed__phase-chip-icon" aria-hidden="true">ℹ️</span>
                   </button>
                 ) : (

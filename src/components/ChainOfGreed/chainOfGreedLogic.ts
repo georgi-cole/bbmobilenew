@@ -351,17 +351,17 @@ export function decideAiAction(options: {
     bankAvailable = true,
   } = options;
   const livePlayers = activePlayers.filter((entry) => !entry.isEliminated);
-  const bestContribution = Math.max(1, ...livePlayers.map((entry) => entry.roundContribution || entry.totalContribution || 0));
+  const bestContribution = Math.max(1, ...livePlayers.map((entry) => entry.roundContribution ?? entry.totalContribution ?? 0));
   const standings = [...livePlayers].sort((left, right) => {
-    const leftScore = phase === 'standard' ? left.roundContribution || left.totalContribution : (left.id === player.id ? playerScore : (phase === 'semifinal' ? left.semifinalScore : left.finalScore));
-    const rightScore = phase === 'standard' ? right.roundContribution || right.totalContribution : (right.id === player.id ? playerScore : (phase === 'semifinal' ? right.semifinalScore : right.finalScore));
+    const leftScore = phase === 'standard' ? (left.roundContribution ?? left.totalContribution ?? 0) : (left.id === player.id ? playerScore : (phase === 'semifinal' ? left.semifinalScore : left.finalScore));
+    const rightScore = phase === 'standard' ? (right.roundContribution ?? right.totalContribution ?? 0) : (right.id === player.id ? playerScore : (phase === 'semifinal' ? right.semifinalScore : right.finalScore));
     return rightScore - leftScore;
   });
   const standingIndex = Math.max(0, standings.findIndex((entry) => entry.id === player.id));
   const pressureFromStanding = standings.length > 1 ? standingIndex / (standings.length - 1) : 0;
   const dangerLevel = clamp(
     0.35
-      + (bestContribution - (player.roundContribution || player.totalContribution)) / (bestContribution + 1)
+      + (bestContribution - (player.roundContribution ?? player.totalContribution ?? 0)) / (bestContribution + 1)
       + player.roundWrongGuesses * 0.1
       + player.roundBusts * 0.18,
     0,

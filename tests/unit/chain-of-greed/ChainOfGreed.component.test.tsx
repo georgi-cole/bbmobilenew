@@ -4,6 +4,11 @@ import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
 import { CHAIN_TURN_PIPELINE_DURATIONS } from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
 
 const TURN_PIPELINE_MS = Object.values(CHAIN_TURN_PIPELINE_DURATIONS).reduce((total, value) => total + value, 0);
+const AFTER_DECISION_MS = CHAIN_TURN_PIPELINE_DURATIONS.decision + 1;
+const AFTER_REVEAL_MS = CHAIN_TURN_PIPELINE_DURATIONS.reveal + 1;
+const AFTER_CONSEQUENCE_MS = CHAIN_TURN_PIPELINE_DURATIONS.consequence + 1;
+const AFTER_ANIMATION_MS = CHAIN_TURN_PIPELINE_DURATIONS.animation + 1;
+const AFTER_SETTLE_MS = CHAIN_TURN_PIPELINE_DURATIONS.settle + 1;
 
 const participants = [
   { id: 'human', name: 'You', isHuman: true, precomputedScore: 75, previousPR: null },
@@ -126,25 +131,25 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Bank' })).toBeDisabled();
 
     act(() => {
-      vi.advanceTimersByTime(421);
+      vi.advanceTimersByTime(AFTER_DECISION_MS);
     });
 
     expect(screen.getByTestId('chain-turn-reveal')).toHaveTextContent(/Bank secured/i);
 
     act(() => {
-      vi.advanceTimersByTime(850);
+      vi.advanceTimersByTime(AFTER_REVEAL_MS);
     });
 
     act(() => {
-      vi.advanceTimersByTime(850);
+      vi.advanceTimersByTime(AFTER_CONSEQUENCE_MS);
     });
 
     act(() => {
-      vi.advanceTimersByTime(900);
+      vi.advanceTimersByTime(AFTER_ANIMATION_MS);
     });
 
     act(() => {
-      vi.advanceTimersByTime(700);
+      vi.advanceTimersByTime(AFTER_SETTLE_MS);
     });
 
     expect(screen.getByRole('button', { name: 'Banked' })).toBeDisabled();
