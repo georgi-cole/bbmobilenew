@@ -1,54 +1,74 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+/**
+ * Crystal Path: Shattered — lightweight DOM/CSS rework.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * Developer notes — what changed vs. the previous Pixi implementation
+ * ────────────────────────────────────────────────────────────────────────────
+ * Removed (crash/perf hazards):
+ *  - Pixi Application, Scene, Graphics/Container/Sprite/Filter hierarchies
+ *  - Per-frame ticker callbacks, particle layers, crack/shard FX, full-scene
+ *    blur/glow filters, and the large CrystalPathShatteredScene.ts / Stage.tsx
+ *  - Dependency on `glassBridgeSlice` for this variant (the original non-Pixi
+ *    Crystal Path / GlassBridge is untouched and still owns that slice).
+ *
+ * Reused from the prior foundation:
+ *  - MinigameHost integration (`reactComponentKey: 'CrystalPathShattered'`)
+ *  - MinigameCompleteWrapper, applyMinigameWinner, SoundManager SFX hooks
+ *  - cryptoSeed + mulberry32 RNG for deterministic-per-session seeding
+ *
+ * New mechanics (see ./shatteredLogic.ts):
+ *  - SP endurance (300 start, -10/-15/-20 by row band, 0 = elimination)
+ *  - Hint economy (2 starting hints)
+ *  - Mystery center tiles every 3–6 rows with 5-second effects (cap 2 active)
+ *  - Secret 350-row win (season immunity hook placeholder)
+ *  - Ranking by furthest row, then remaining SP, then survival order.
+ *
+ * Rendering: a small sliding window of rows (VISIBLE_ROW_WINDOW) is rendered
+ * with plain divs. The "infinite" bridge illusion is produced by recycling:
+ * once the active player advances past the bottom of the window, we shift the
+ * window forward and pull fresh rows from the row-stream. No Pixi, no GC churn.
+ */
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { CompetitionSkillProfile } from '../../ai/competition/types';
 import { mulberry32 } from '../../store/rng';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import {
-  aiDecideStep,
-  buildAiNumberChoices,
-  completeGame,
-  expireTimer,
-  finaliseOrderSelection,
-  initGlassBridge,
-  recordHintUsed,
-  recordNumberChoice,
-  resetGlassBridge,
-  resolveStep,
-  selectIsGameOver,
-  setHumanSpectating,
-  startPlaying,
-  type TileSide,
-} from '../../features/glassBridge/glassBridgeSlice';
-import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
+import { useAppDispatch } from '../../store/hooks';
+import { applyMinigameWinner } from '../../store/gameSlice';
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { useGlassBridgeAudio } from '../../hooks/useGlassBridgeAudio';
 import MinigameCompleteWrapper from '../../components/MinigameHost/MinigameCompleteWrapper';
-import CrystalPathShatteredPixiStage from './CrystalPathShatteredPixiStage';
 import {
-  chooseSideFromHint,
-  computeHintLeftBreakChance,
-  getPlacementDetail,
-  formatTimeRemaining,
-  getAiDecisionDelayMs,
-  getHintUses,
-  getNextPlaybackSpeed,
-  getSafeSequenceMs,
-  getTimeoutCollapseDuration,
-  getWrongSequenceMs,
-  ORDER_AI_PICK_FAST_MS,
-  ORDER_AI_PICK_SLOW_MS,
-  ORDER_REVEAL_DELAY_MS,
-  REVEAL_STAGGER_MS,
-  REVEAL_TO_PLAY_DELAY_MS,
-  STEP_SUSPENSE_DELAY_MS,
-  type CrystalPathShatteredAnimation,
-} from './crystalPathShatteredLogic';
+  aiPickSide,
+  aiShouldTakeMystery,
+  aiShouldUseHint,
+  applyMysteryEffect,
+  buildSummary,
+  createRowStream,
+  EFFECT_DURATION_MS,
+  formatEffectName,
+  getRowBandDamage,
+  HIDDEN_BRIDGE_LENGTH,
+  isPositiveEffect,
+  mergeEffect,
+  pickAiPersonality,
+  pruneEffects,
+  rankPlayers,
+  resolveWrongTileDelta,
+  rollMysteryEffect,
+  SAFE_STEP_MS,
+  STARTING_HINTS,
+  STARTING_SP,
+  WRONG_STEP_MS,
+  MYSTERY_REVEAL_MS,
+  AI_MIN_THINK_MS,
+  AI_MAX_THINK_MS,
+  NEW_TURN_DELAY_MS,
+  VISIBLE_ROW_WINDOW,
+  type AiPersonality,
+  type BridgeRow,
+  type PlayerState,
+  type TileSide,
+} from './shatteredLogic';
 import './crystalPathShattered.css';
-
-const TIMER_UPDATE_INTERVAL_MS = 250;
-const MIN_TIMER_UPDATE_INTERVAL_MS = 120;
-const AI_HINT_BASE_PROBABILITY = 0.18;
-const AI_HINT_DEPTH_PROGRESSION = 0.34;
-const AI_HINT_MAX_PROBABILITY = 0.62;
 
 interface ParticipantInput {
   id: string;
@@ -65,6 +85,51 @@ interface Props {
   onComplete?: () => void;
 }
 
+type Phase = 'playing' | 'complete';
+
+interface Animation {
+  playerId: string;
+  kind: 'safe' | 'wrong' | 'mystery' | 'fall';
+  side: TileSide | 'center';
+  rowIndex: number;
+  until: number;
+}
+
+// ─── Dev counters (verifies stability per issue PART 1 §9) ──────────────────
+let __sceneInitCount = 0;
+let __timerRegistrationCount = 0;
+if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+  interface DebugGlobal { __crystalShattered?: { sceneInits: number; timers: number } }
+  (window as unknown as DebugGlobal).__crystalShattered = {
+    get sceneInits() { return __sceneInitCount; },
+    get timers()     { return __timerRegistrationCount; },
+  };
+}
+
+function initialPlayers(
+  participantIds: string[],
+  participants: ParticipantInput[] | undefined,
+): PlayerState[] {
+  return participantIds.map((id) => {
+    const p = participants?.find((x) => x.id === id);
+    return {
+      id,
+      name: p?.name ?? id,
+      isHuman: p?.isHuman ?? false,
+      profile: p?.competitionProfile,
+      sp: STARTING_SP,
+      hints: STARTING_HINTS,
+      furthestRow: 0,
+      effects: [],
+      eliminated: false,
+      eliminatedRow: null,
+      finishedAtMs: null,
+      survivalIndex: 0,
+      // personality stored on state via closure
+    } satisfies PlayerState;
+  });
+}
+
 export default function CrystalPathShatteredGame({
   participantIds,
   participants,
@@ -73,479 +138,613 @@ export default function CrystalPathShatteredGame({
   onComplete,
 }: Props) {
   const dispatch = useAppDispatch();
-  const gb = useAppSelector((state) => state.glassBridge);
-  const sessionSeed = useMemo(() => (seed === 0 || seed === undefined ? cryptoSeed() : seed), [seed]);
-  const aiRngRef = useRef(mulberry32(sessionSeed + 2_001));
-  const timersRef = useRef<number[]>([]);
-  const [activeAnimation, setActiveAnimation] = useState<CrystalPathShatteredAnimation | null>(null);
-  const [hintText, setHintText] = useState<string | null>(null);
-  const [showSpectatorModal, setShowSpectatorModal] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2 | 3>(1);
-  const [remainingMs, setRemainingMs] = useState(0);
-  const [rowHintCounts, setRowHintCounts] = useState<Record<string, number>>({});
   const { playSafeStep, playDeath, playWinner, playNewTurn } = useGlassBridgeAudio(true);
 
-  const activePlayerId = gb.turnOrder[gb.currentTurnIndex] ?? null;
-  const activePlayer = gb.participants.find((participant) => participant.id === activePlayerId) ?? null;
-  const humanId = gb.humanPlayerId;
-  const humanProgress = humanId ? gb.progress[humanId] : undefined;
-  const hintUses = getHintUses(humanProgress?.hintPenaltyMs);
-  const isHumanTurn = gb.phase === 'playing' && activePlayerId !== null && Boolean(activePlayer?.isHuman);
-  const isResolving = activeAnimation !== null;
-  const inputEnabled = isHumanTurn && !isResolving && !showSpectatorModal && !gb.timerExpired;
-
-  const participantsById = useMemo(
-    () => new Map(gb.participants.map((participant) => [participant.id, participant])),
-    [gb.participants],
+  // Deterministic-per-session seed (same pattern as GlassBridge).
+  const sessionSeed = useMemo(
+    () => (seed === 0 || seed === undefined ? cryptoSeed() : seed),
+    [seed],
   );
+  const rngRef = useRef(mulberry32(sessionSeed));
+  const rowStreamRef = useRef(createRowStream(rngRef.current));
+  const aiPersonalityRef = useRef<Record<string, AiPersonality>>({});
 
-  const clearTimers = useCallback(() => {
-    timersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+  // Scene-init counter (Part 1 §9).
+  const didInitRef = useRef(false);
+  if (!didInitRef.current) {
+    didInitRef.current = true;
+    __sceneInitCount += 1;
+  }
+
+  // ── State ────────────────────────────────────────────────────────────────
+  const [phase, setPhase] = useState<Phase>('playing');
+  const [players, setPlayers] = useState<PlayerState[]>(() =>
+    initialPlayers(participantIds, participants),
+  );
+  const [turnIndex, setTurnIndex] = useState(0);
+  // Visible rows — the sliding window into the hidden 350-row bridge.
+  const [visibleRows, setVisibleRows] = useState<BridgeRow[]>(() =>
+    rowStreamRef.current.take(VISIBLE_ROW_WINDOW),
+  );
+  // Board origin = absolute row index of visibleRows[0].
+  const [boardOrigin, setBoardOrigin] = useState(0);
+  const [activeAnimation, setActiveAnimation] = useState<Animation | null>(null);
+  const [hintRowIndex, setHintRowIndex] = useState<number | null>(null);
+  const [messageLog, setMessageLog] = useState<string[]>([]);
+  const [mysteryModal, setMysteryModal] = useState<{ effectLabel: string; positive: boolean } | null>(null);
+  const [secretWinBanner, setSecretWinBanner] = useState(false);
+  const [spectating, setSpectating] = useState(false);
+  // Tick for active-effect countdowns.
+  const [, forceTick] = useReducer((x: number) => (x + 1) & 0xffff, 0);
+  // Track which row the current player must still step on after taking mystery.
+  const [mysteryPendingStep, setMysteryPendingStep] = useState(false);
+
+  // Derived
+  const humanId = useMemo(
+    () => (participants ?? []).find((p) => p.isHuman)?.id ?? null,
+    [participants],
+  );
+  const alivePlayers = useMemo(
+    () => players.filter((p) => !p.eliminated && p.finishedAtMs === null),
+    [players],
+  );
+  const activePlayerId = alivePlayers.length > 0
+    ? alivePlayers[turnIndex % alivePlayers.length].id
+    : null;
+  const activePlayer = players.find((p) => p.id === activePlayerId) ?? null;
+  const humanPlayer = humanId ? players.find((p) => p.id === humanId) ?? null : null;
+  const isHumanTurn = !!activePlayer && activePlayer.id === humanId;
+  const isResolving = activeAnimation !== null || mysteryModal !== null;
+
+  // Determine row the active player is currently approaching (0-based into bridge).
+  const currentAbsoluteRow = activePlayer ? activePlayer.furthestRow : 0;
+  const currentRowRecord = useMemo(() => {
+    const offset = currentAbsoluteRow - boardOrigin;
+    return visibleRows[offset] ?? null;
+  }, [currentAbsoluteRow, boardOrigin, visibleRows]);
+
+  // Assign AI personalities once.
+  useEffect(() => {
+    players.forEach((p) => {
+      if (!p.isHuman && !aiPersonalityRef.current[p.id]) {
+        aiPersonalityRef.current[p.id] = pickAiPersonality(p.profile, rngRef.current);
+      }
+    });
+  }, [players]);
+
+  // ── Timers (registered through a single queue for stability) ─────────────
+  const timersRef = useRef<number[]>([]);
+  const queueTimeout = useCallback((cb: () => void, ms: number): number => {
+    __timerRegistrationCount += 1;
+    const id = window.setTimeout(() => {
+      timersRef.current = timersRef.current.filter((t) => t !== id);
+      cb();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+  const clearAllTimers = useCallback(() => {
+    timersRef.current.forEach((t) => window.clearTimeout(t));
     timersRef.current = [];
   }, []);
+  useEffect(() => () => { clearAllTimers(); }, [clearAllTimers]);
 
-  const queueTimeout = useCallback((callback: () => void, delayMs: number) => {
-    const timeoutId = window.setTimeout(callback, delayMs);
-    timersRef.current.push(timeoutId);
-    return timeoutId;
-  }, []);
-
-  const handleStepChoice = useCallback((chosenSide: TileSide, playerId = activePlayerId) => {
-    if (!playerId) return;
-    const rowIndex = gb.currentPlayerRow - 1;
-    const row = gb.rows[rowIndex];
-    if (!row) return;
-    const wrong = chosenSide !== row.safeSide;
-    const startedAt = Date.now();
-
-    setHintText(null);
-    setActiveAnimation({
-      type: wrong ? 'wrong' : 'safe',
-      side: chosenSide,
-      rowIndex,
-      playerId,
-      startedAt,
-    });
-
-    queueTimeout(() => {
-      dispatch(resolveStep({ chosenSide, now: Date.now() }));
-      if (wrong) {
-        playDeath();
-        if (playerId === humanId) {
-          dispatch(setHumanSpectating(true));
-          setShowSpectatorModal(true);
-        }
-      } else {
-        playSafeStep();
-        if (gb.currentPlayerRow >= gb.rowsCount) {
-          playWinner();
-        }
-      }
-    }, STEP_SUSPENSE_DELAY_MS / playbackSpeed);
-
-    queueTimeout(() => {
-      setActiveAnimation(null);
-    }, (wrong ? getWrongSequenceMs() : getSafeSequenceMs()) / playbackSpeed);
-  }, [activePlayerId, dispatch, gb.currentPlayerRow, gb.rows, gb.rowsCount, humanId, playDeath, playSafeStep, playWinner, playbackSpeed, queueTimeout]);
-
-  const initConfigRef = useRef({
-    participantIds,
-    participants,
-    competitionType: prizeType,
-    seed: sessionSeed,
-  });
-
+  // Keep effect-countdown UI ticking (cheap 250ms tick while effects alive).
   useEffect(() => {
-    dispatch(initGlassBridge(initConfigRef.current));
-    return () => {
-      clearTimers();
-      dispatch(resetGlassBridge());
-    };
-  }, [clearTimers, dispatch]);
+    const anyActive = players.some((p) => p.effects.length > 0);
+    if (!anyActive) return undefined;
+    const iv = window.setInterval(() => {
+      setPlayers((cur) => {
+        const now = Date.now();
+        let changed = false;
+        const next = cur.map((p) => {
+          const pruned = pruneEffects(p.effects, now);
+          if (pruned.length !== p.effects.length) changed = true;
+          return pruned.length !== p.effects.length ? { ...p, effects: pruned } : p;
+        });
+        return changed ? next : cur;
+      });
+      forceTick();
+    }, 250);
+    return () => window.clearInterval(iv);
+  }, [players]);
 
+  // Apply over-time effects (regen/drain) every 500ms while active.
   useEffect(() => {
-    if (gb.phase !== 'order_selection') return undefined;
-    const allChosen = Object.keys(gb.chosenNumbers).length === participantIds.length;
-    if (allChosen) {
-      const finalizeDelay = window.setTimeout(() => {
-        dispatch(finaliseOrderSelection());
-      }, ORDER_REVEAL_DELAY_MS);
-      return () => window.clearTimeout(finalizeDelay);
-    }
-
-    const aiChoices = buildAiNumberChoices(
-      participantIds,
-      humanId,
-      gb.chosenNumbers,
-      aiRngRef.current,
+    const needsTick = players.some((p) =>
+      p.effects.some((e) => e.kind === 'regen_5s' || e.kind === 'drain_5s'),
     );
-    const nextAi = Object.entries(aiChoices).find(([playerId]) => gb.chosenNumbers[playerId] === undefined);
-    if (!nextAi) return undefined;
+    if (!needsTick) return undefined;
+    const iv = window.setInterval(() => {
+      setPlayers((cur) => cur.map((p) => {
+        if (p.eliminated) return p;
+        let delta = 0;
+        for (const e of p.effects) {
+          if (e.expiresAt <= Date.now()) continue;
+          if (e.kind === 'regen_5s') delta += 2;
+          if (e.kind === 'drain_5s') delta -= 2;
+        }
+        if (delta === 0) return p;
+        return { ...p, sp: Math.max(0, Math.min(STARTING_SP + 100, p.sp + delta)) };
+      }));
+    }, 500);
+    return () => window.clearInterval(iv);
+  }, [players]);
 
-    const [playerId, choice] = nextAi;
-    const humanHasChosen = humanId ? gb.chosenNumbers[humanId] !== undefined : true;
-    const delay = humanHasChosen ? ORDER_AI_PICK_FAST_MS : ORDER_AI_PICK_SLOW_MS;
-    const timerId = window.setTimeout(() => {
-      dispatch(recordNumberChoice({ playerId, number: choice }));
-    }, delay / playbackSpeed);
-    return () => window.clearTimeout(timerId);
-  }, [dispatch, gb.chosenNumbers, gb.phase, humanId, participantIds, playbackSpeed]);
-
+  // ── Ensure visible window always contains currentRow and 3 rows ahead ────
   useEffect(() => {
-    if (gb.phase !== 'order_reveal') return undefined;
-    const timerId = window.setTimeout(() => {
-      dispatch(startPlaying({ now: Date.now() }));
-    }, (REVEAL_TO_PLAY_DELAY_MS + gb.turnOrder.length * REVEAL_STAGGER_MS) / playbackSpeed);
-    return () => window.clearTimeout(timerId);
-  }, [dispatch, gb.phase, gb.turnOrder.length, playbackSpeed]);
-
-  useEffect(() => {
-    if (gb.phase !== 'playing' || gb.challengeStartTimeMs === null || gb.globalTimeLimitMs <= 0 || gb.timerExpired) return undefined;
-
-    const updateRemaining = () => {
-      const elapsed = Date.now() - gb.challengeStartTimeMs!;
-      const nextRemaining = Math.max(0, gb.globalTimeLimitMs - elapsed);
-      setRemainingMs(nextRemaining);
-      if (nextRemaining <= 0) {
-        dispatch(expireTimer());
-      }
-    };
-
-    updateRemaining();
-    const intervalId = window.setInterval(
-      updateRemaining,
-      Math.max(MIN_TIMER_UPDATE_INTERVAL_MS, TIMER_UPDATE_INTERVAL_MS / playbackSpeed),
-    );
-    return () => window.clearInterval(intervalId);
-  }, [dispatch, gb.challengeStartTimeMs, gb.globalTimeLimitMs, gb.phase, gb.timerExpired, playbackSpeed]);
-
-  useEffect(() => {
-    if (gb.phase === 'playing' && gb.timerExpired && !isResolving) {
-      const timerId = window.setTimeout(() => {
-        dispatch(completeGame());
-      }, getTimeoutCollapseDuration(gb.rowsCount) / playbackSpeed);
-      return () => window.clearTimeout(timerId);
+    if (!activePlayer) return;
+    const targetAhead = 3;
+    const offset = activePlayer.furthestRow - boardOrigin;
+    const needMore = offset + targetAhead + 1 >= visibleRows.length;
+    if (needMore && boardOrigin + visibleRows.length < HIDDEN_BRIDGE_LENGTH) {
+      const toAdd = rowStreamRef.current.take(VISIBLE_ROW_WINDOW);
+      // Drop earliest rows so window stays bounded (recycle).
+      const dropCount = Math.min(
+        Math.max(0, offset - 2),
+        visibleRows.length,
+      );
+      setVisibleRows((cur) => [...cur.slice(dropCount), ...toAdd]);
+      setBoardOrigin((cur) => cur + dropCount);
     }
-    return undefined;
-  }, [dispatch, gb.phase, gb.rowsCount, gb.timerExpired, isResolving, playbackSpeed]);
+  }, [activePlayer, boardOrigin, visibleRows.length]);
 
+  // ── Turn pump / AI driver ────────────────────────────────────────────────
   useEffect(() => {
-    if (gb.phase !== 'playing' || isResolving || gb.timerExpired || !activePlayerId || activePlayer?.isHuman) {
-      return undefined;
-    }
-
-    const row = gb.rows[gb.currentPlayerRow - 1];
+    if (phase !== 'playing' || !activePlayer || isResolving) return undefined;
+    playNewTurn();
+    if (activePlayer.isHuman) return undefined;
+    // AI turn.
+    const personality = aiPersonalityRef.current[activePlayer.id] ?? 'balanced';
+    const row = currentRowRecord;
     if (!row) return undefined;
 
-    const aiProfile = activePlayer?.competitionProfile;
-    const shouldUseHint = activePlayerId in gb.progress
-      && getHintUses(gb.progress[activePlayerId]?.hintPenaltyMs) < 3
-      && row.revealedSafeSide === null
-      && !row.leftBroken
-      && !row.rightBroken
-      && aiRngRef.current() < Math.min(
-        AI_HINT_MAX_PROBABILITY,
-        AI_HINT_BASE_PROBABILITY
-          + ((gb.currentPlayerRow - 1) / Math.max(1, gb.rowsCount - 1)) * AI_HINT_DEPTH_PROGRESSION,
-      );
-
-    const choose = () => {
-      const sameRowHintCount = getHintUses(gb.progress[activePlayerId]?.hintPenaltyMs) + 1;
-      if (shouldUseHint) {
-        dispatch(recordHintUsed({ playerId: activePlayerId }));
-        return chooseSideFromHint(row.safeSide, sameRowHintCount, aiRngRef.current);
+    const thinkMs = AI_MIN_THINK_MS + Math.floor(rngRef.current() * (AI_MAX_THINK_MS - AI_MIN_THINK_MS));
+    const timer = queueTimeout(() => {
+      // Decide mystery first.
+      if (row.hasMystery && !mysteryPendingStep
+          && aiShouldTakeMystery(personality, activePlayer.sp, rngRef.current)) {
+        resolveMystery(activePlayer.id);
+        return;
       }
-      return aiDecideStep(row, aiRngRef.current, aiProfile);
-    };
+      // Use hint?
+      const useHint = aiShouldUseHint(personality, activePlayer.sp, activePlayer.hints, rngRef.current);
+      if (useHint) consumeHint(activePlayer.id);
+      // Pick side (hint biases AI toward safeSide).
+      const side = useHint
+        ? (rngRef.current() < 0.85 ? row.safeSide : (row.safeSide === 'left' ? 'right' : 'left'))
+        : aiPickSide(row, personality, rngRef.current);
+      resolveStep(activePlayer.id, side, row);
+    }, NEW_TURN_DELAY_MS + thinkMs);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlayerId, phase, isResolving, mysteryPendingStep, currentRowRecord?.index]);
 
-    const chosenSide = choose();
-    const delay = getAiDecisionDelayMs(row, aiRngRef.current) / playbackSpeed;
-    const timerId = window.setTimeout(() => {
-      handleStepChoice(chosenSide, activePlayerId);
-    }, delay);
-    return () => window.clearTimeout(timerId);
-  }, [activePlayer, activePlayerId, dispatch, gb.currentPlayerRow, gb.phase, gb.progress, gb.rows, gb.rowsCount, gb.timerExpired, handleStepChoice, isResolving, playbackSpeed]);
+  // ── Actions ──────────────────────────────────────────────────────────────
+  const logMessage = useCallback((msg: string) => {
+    setMessageLog((cur) => [msg, ...cur].slice(0, 4));
+  }, []);
 
-  useEffect(() => {
-    if (gb.phase === 'playing' && !isResolving && !gb.timerExpired && selectIsGameOver(gb)) {
-      dispatch(completeGame());
+  const consumeHint = useCallback((playerId: string) => {
+    setPlayers((cur) => cur.map((p) =>
+      p.id === playerId && p.hints > 0 ? { ...p, hints: p.hints - 1 } : p,
+    ));
+    const row = currentRowRecord;
+    if (row) setHintRowIndex(row.index);
+    // Hint expires on the next step or after 3.5s.
+    queueTimeout(() => setHintRowIndex((r) => (r === row?.index ? null : r)), 3_500);
+  }, [currentRowRecord, queueTimeout]);
+
+  const resolveStep = useCallback((playerId: string, side: TileSide, row: BridgeRow) => {
+    const wrong = side !== row.safeSide;
+    setActiveAnimation({
+      playerId,
+      kind: wrong ? 'wrong' : 'safe',
+      side,
+      rowIndex: row.index,
+      until: Date.now() + (wrong ? WRONG_STEP_MS : SAFE_STEP_MS),
+    });
+    setHintRowIndex(null);
+    setMysteryPendingStep(false);
+
+    if (wrong) {
+      playDeath();
+      const base = getRowBandDamage(row.index + 1);
+      setPlayers((cur) => cur.map((p) => {
+        if (p.id !== playerId) return p;
+        const res = resolveWrongTileDelta(base, p.effects, Date.now());
+        const newSp = Math.max(0, p.sp + res.delta);
+        const eliminated = newSp <= 0;
+        if (res.consumedKind === 'shield_5s') logMessage(`${p.name}: Shield absorbed the damage.`);
+        if (res.consumedKind === 'lucky_5s') logMessage(`${p.name}: Lucky heal ${base > 0 ? `+${base}` : base} SP.`);
+        return {
+          ...p,
+          sp: newSp,
+          effects: res.newEffects,
+          eliminated,
+          eliminatedRow: eliminated ? row.index + 1 : p.eliminatedRow,
+        };
+      }));
+      queueTimeout(() => {
+        setActiveAnimation(null);
+        advanceTurn();
+      }, WRONG_STEP_MS);
+    } else {
+      playSafeStep();
+      setPlayers((cur) => cur.map((p) => {
+        if (p.id !== playerId) return p;
+        const furthest = Math.max(p.furthestRow, row.index + 1);
+        const finished = furthest >= HIDDEN_BRIDGE_LENGTH ? Date.now() : p.finishedAtMs;
+        return { ...p, furthestRow: furthest, finishedAtMs: finished };
+      }));
+      queueTimeout(() => {
+        setActiveAnimation(null);
+        advanceTurn();
+      }, SAFE_STEP_MS);
     }
-  }, [dispatch, gb, isResolving]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logMessage, playDeath, playSafeStep, queueTimeout]);
 
-  useEffect(() => {
-    if (gb.phase === 'playing' && activePlayerId && !isResolving) {
-      playNewTurn();
+  const resolveMystery = useCallback((playerId: string) => {
+    const row = currentRowRecord;
+    if (!row || !row.hasMystery) return;
+    const kind = rollMysteryEffect(rngRef.current);
+    const applied = applyMysteryEffect(kind, Date.now());
+    const positive = isPositiveEffect(kind);
+
+    setActiveAnimation({ playerId, kind: 'mystery', side: 'center', rowIndex: row.index, until: Date.now() + MYSTERY_REVEAL_MS });
+    setPlayers((cur) => cur.map((p) => {
+      if (p.id !== playerId) return p;
+      const now = Date.now();
+      const newSp = Math.max(0, p.sp + applied.spDelta);
+      const newHints = Math.max(0, p.hints + applied.hintDelta);
+      const newEffects = mergeEffect(p.effects, applied.addedEffect, now);
+      const eliminated = newSp <= 0;
+      return {
+        ...p,
+        sp: newSp,
+        hints: newHints,
+        effects: newEffects,
+        eliminated,
+        eliminatedRow: eliminated ? p.furthestRow + 1 : p.eliminatedRow,
+      };
+    }));
+    // Remove mystery marker from this row so it can't be retaken.
+    setVisibleRows((cur) => cur.map((r) => r.index === row.index ? { ...r, hasMystery: false } : r));
+    setMysteryPendingStep(true);
+    logMessage(`${players.find((p) => p.id === playerId)?.name ?? 'Player'} — Mystery: ${applied.label}.`);
+
+    if (players.find((p) => p.id === playerId)?.isHuman) {
+      setMysteryModal({ effectLabel: applied.label, positive });
+      queueTimeout(() => setMysteryModal(null), MYSTERY_REVEAL_MS);
     }
-  }, [activePlayerId, gb.phase, isResolving, playNewTurn]);
+    queueTimeout(() => { setActiveAnimation(null); }, MYSTERY_REVEAL_MS);
+  }, [currentRowRecord, logMessage, players, queueTimeout]);
 
-  const handleNumberPick = useCallback((number: number) => {
-    if (!humanId || gb.phase !== 'order_selection' || gb.chosenNumbers[humanId] !== undefined) return;
-    dispatch(recordNumberChoice({ playerId: humanId, number }));
-  }, [dispatch, gb.chosenNumbers, gb.phase, humanId]);
+  const advanceTurn = useCallback(() => {
+    setTurnIndex((cur) => cur + 1);
+  }, []);
+
+  // ── Completion detection ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const secretWinner = players.find((p) => p.finishedAtMs !== null);
+    const stillAlive = players.filter((p) => !p.eliminated && p.finishedAtMs === null);
+    if (secretWinner || stillAlive.length === 0) {
+      if (secretWinner && !secretWinBanner) {
+        setSecretWinBanner(true);
+        playWinner();
+        // Season-immunity hook placeholder — dispatched as a plain log for now.
+        if (import.meta.env?.DEV) {
+          console.log('[crystalPathShattered] SECRET 350-ROW WIN — season immunity hook', {
+            playerId: secretWinner.id,
+          });
+        }
+      }
+      // Short delay to let animations settle before showing the complete screen.
+      const t = queueTimeout(() => setPhase('complete'), secretWinner ? 1_400 : 600);
+      return () => window.clearTimeout(t);
+    }
+    return undefined;
+  }, [phase, players, playWinner, queueTimeout, secretWinBanner]);
+
+  // Announce human elimination (spectator mode).
+  useEffect(() => {
+    if (!humanPlayer || spectating || phase !== 'playing') return;
+    if (humanPlayer.eliminated) {
+      setSpectating(true);
+      logMessage('You fell. Spectating remaining players.');
+    }
+  }, [humanPlayer, spectating, phase, logMessage]);
+
+  // Reset turnIndex if it wraps past alivePlayers.
+  useEffect(() => {
+    if (alivePlayers.length === 0) return;
+    if (turnIndex >= alivePlayers.length) setTurnIndex(turnIndex % alivePlayers.length);
+  }, [alivePlayers.length, turnIndex]);
+
+  // Survival index assignment when a player becomes eliminated.
+  useEffect(() => {
+    setPlayers((cur) => {
+      const assigned = cur.filter((p) => p.eliminated && p.survivalIndex > 0).length;
+      let nextIdx = assigned + 1;
+      let changed = false;
+      const next = cur.map((p) => {
+        if (p.eliminated && p.survivalIndex === 0) {
+          changed = true;
+          const result = { ...p, survivalIndex: nextIdx };
+          nextIdx += 1;
+          return result;
+        }
+        return p;
+      });
+      return changed ? next : cur;
+    });
+  }, [players.map((p) => p.eliminated).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Handlers (human UI) ──────────────────────────────────────────────────
+  const inputEnabled =
+    isHumanTurn && !isResolving && !spectating && phase === 'playing';
+
+  const handleSelect = useCallback((tile: TileKindChoice) => {
+    if (!inputEnabled || !activePlayer) return;
+    const row = currentRowRecord;
+    if (!row) return;
+    if (tile === 'center') {
+      if (!row.hasMystery || mysteryPendingStep) return;
+      resolveMystery(activePlayer.id);
+      return;
+    }
+    resolveStep(activePlayer.id, tile, row);
+  }, [inputEnabled, activePlayer, currentRowRecord, mysteryPendingStep, resolveMystery, resolveStep]);
 
   const handleHint = useCallback(() => {
-    if (!humanId || !isHumanTurn || isResolving || hintUses >= 3) return;
-    const rowIndex = gb.currentPlayerRow - 1;
-    const row = gb.rows[rowIndex];
-    if (!row) return;
-    const key = `${humanId}:${rowIndex}`;
-    const nextCount = (rowHintCounts[key] ?? 0) + 1;
-    const leftBreakChance = computeHintLeftBreakChance(row.safeSide, nextCount);
-    dispatch(recordHintUsed({ playerId: humanId }));
-    setRowHintCounts((current) => ({ ...current, [key]: nextCount }));
-    setHintText(`The chamber whispers: ${leftBreakChance}% chance the LEFT tile breaks.`);
-  }, [dispatch, gb.currentPlayerRow, gb.rows, hintUses, humanId, isHumanTurn, isResolving, rowHintCounts]);
+    if (!inputEnabled || !activePlayer || activePlayer.hints <= 0) return;
+    consumeHint(activePlayer.id);
+  }, [inputEnabled, activePlayer, consumeHint]);
 
-  const statusText = useMemo(() => {
-    if (gb.timerExpired) {
-      return 'Time has expired. The crystal path is collapsing into the void.';
+  // ── Complete screen wiring ───────────────────────────────────────────────
+  const handleContinue = useCallback(() => {
+    const summary = buildSummary(players);
+    if (summary.winnerId) {
+      // lastPlaceId = first eliminated = smallest survivalIndex among eliminated.
+      const firstOut = [...players]
+        .filter((p) => p.eliminated && p.survivalIndex > 0)
+        .sort((a, b) => a.survivalIndex - b.survivalIndex)[0]?.id
+        ?? null;
+      dispatch(applyMinigameWinner({
+        winnerId: summary.winnerId,
+        lastPlaceId: firstOut,
+        lastPlaceType: 'survival',
+      }));
     }
-    if (gb.phase === 'order_selection') {
-      return 'Draw numbers to decide who steps first.';
-    }
-    if (gb.phase === 'order_reveal') {
-      return 'The draw is locked. The chamber reveals who crosses first.';
-    }
-    if (gb.phase === 'complete') {
-      return 'The chamber has judged the final crossing order.';
-    }
-    if (activePlayerId) {
-      return activePlayerId === humanId
-        ? 'Choose a crystal platform.'
-        : `${participantsById.get(activePlayerId)?.name ?? 'A player'} is choosing.`;
-    }
-    return 'The suspended crystal path hums above the abyss.';
-  }, [activePlayerId, gb.phase, gb.timerExpired, humanId, participantsById]);
+    onComplete?.();
+  }, [dispatch, onComplete, players]);
 
-  const displayedRemainingMs = gb.phase === 'playing' ? remainingMs : gb.globalTimeLimitMs;
-  const turnLabel = activePlayerId
-    ? activePlayerId === humanId
-      ? 'You'
-      : (participantsById.get(activePlayerId)?.name ?? '—')
-    : '—';
-  const guidanceText = hintText ?? (
-    gb.phase === 'order_selection'
-      ? 'Secure your draw quickly so the bridge remains the focal point.'
-      : gb.phase === 'order_reveal'
-        ? 'The chamber is revealing the crossing order.'
-        : 'The active row breathes with light. Tap a crystal tile when you are ready to commit.'
-  );
-  const showPreludePanel = gb.phase === 'order_selection' || gb.phase === 'order_reveal';
+  // ── Render ───────────────────────────────────────────────────────────────
+  const ranked = useMemo(() => rankPlayers(players), [players]);
+  const displayRows = useMemo(() => {
+    // Display a small slice centred on the active player's current row.
+    const absCurrent = activePlayer?.furthestRow ?? 0;
+    const startOffset = Math.max(0, absCurrent - boardOrigin - 1);
+    return visibleRows.slice(startOffset, startOffset + 6);
+  }, [activePlayer, boardOrigin, visibleRows]);
 
-  return (
-    <div className="crystal-shattered-shell" aria-label="Crystal Path: Shattered">
-      <header className="crystal-shattered-header">
-        <div className="crystal-shattered-title-block">
-          <p className="crystal-shattered-kicker">Premium Pixi Edition</p>
-          <h2>Crystal Path: Shattered</h2>
-          <p className="crystal-shattered-subtitle">A glass bridge hangs in a dark theatrical chamber.</p>
-        </div>
-      </header>
-      <div className="crystal-shattered-hud-row" role="group" aria-label="Crystal Path status">
-        <div className="crystal-shattered-hud-pill">
-          <span>Turn</span>
-          <strong>{turnLabel}</strong>
-        </div>
-        <div className="crystal-shattered-hud-pill">
-          <span>Time</span>
-          <strong aria-label="Time remaining">{formatTimeRemaining(displayedRemainingMs)}</strong>
-        </div>
-        <div className="crystal-shattered-hud-pill">
-          <span>Hints</span>
-          <strong>{Math.max(0, 3 - hintUses)} left</strong>
-        </div>
-      </div>
+  const activeEffects = activePlayer ? pruneEffects(activePlayer.effects, Date.now()) : [];
 
-      {gb.phase === 'complete' ? (
+  // Prize label for complete screen.
+  const prizeLabel = prizeType === 'POS' ? 'Power of Safety' : 'Head of Household';
+
+  if (phase === 'complete') {
+    return (
+      <div className="cps-shell" aria-label="Crystal Path: Shattered — complete">
         <MinigameCompleteWrapper
-          className="crystal-shattered-complete"
-          onContinue={() => {
-            dispatch(resolveGlassBridgeOutcome());
-            onComplete?.();
-          }}
-          continueButtonClassName="crystal-shattered-primary"
-          placementsClassName="crystal-shattered-placement-list"
+          className="cps-complete"
+          onContinue={handleContinue}
+          continueButtonClassName="cps-btn cps-btn-primary"
+          placementsClassName="cps-placements"
           placementsRole="list"
-          placementsAriaLabel="Final placements"
-          placementsNode={gb.placements.map((playerId, index) => {
-            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-            const name = playerId === humanId ? 'You' : (participantsById.get(playerId)?.name ?? playerId);
+          placementsAriaLabel="Final standings"
+          placementsNode={ranked.map((p, idx) => {
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+            const detail = p.finishedAtMs !== null
+              ? 'Reached the end of the bridge'
+              : p.eliminated
+                ? `Fell at row ${p.eliminatedRow ?? 0} · ${p.sp} SP`
+                : `Row ${p.furthestRow} · ${p.sp} SP`;
             return (
-              <div key={playerId} className="crystal-shattered-placement" role="listitem">
-                <span>{medal}</span>
-                <span>{name}</span>
-                <span>{getPlacementDetail(gb.progress[playerId])}</span>
+              <div key={p.id} className="cps-placement" role="listitem">
+                <span className="cps-medal">{medal}</span>
+                <span className="cps-name">{p.id === humanId ? 'You' : p.name}</span>
+                <span className="cps-detail">{detail}</span>
               </div>
             );
           })}
         >
-          <div className="crystal-shattered-complete-hero">
-            <p className="crystal-shattered-kicker">Chamber resolved</p>
-            <h2>Path Complete</h2>
-            <div className="crystal-shattered-trophy" aria-hidden="true">💠</div>
-            {gb.winnerId && <p>{gb.winnerId === humanId ? 'You endured the shattered path.' : `${participantsById.get(gb.winnerId)?.name ?? gb.winnerId} endured the shattered path.`}</p>}
+          <div className="cps-complete-hero">
+            <p className="cps-kicker">Crystal Path · Shattered</p>
+            <h2>{secretWinBanner ? 'Hidden Path Discovered!' : `${prizeLabel} decided`}</h2>
+            <div className="cps-trophy" aria-hidden="true">{secretWinBanner ? '🏆' : '💠'}</div>
+            {ranked[0] && (
+              <p>
+                {ranked[0].id === humanId ? 'You' : ranked[0].name}
+                {secretWinBanner
+                  ? ' crossed the entire bridge and uncovered a secret relic.'
+                  : ' endured the longest.'}
+              </p>
+            )}
           </div>
         </MinigameCompleteWrapper>
-      ) : (
-        <>
-          <section className="crystal-shattered-board-layout">
-            {showPreludePanel && (
-              <section className={`crystal-shattered-prelude${gb.phase === 'order_reveal' ? ' is-reveal' : ''}`}>
-                {gb.phase === 'order_selection' ? (
-                  <>
-                    <div className="crystal-shattered-prelude-copy">
-                      <span className="crystal-shattered-prelude-label">Crystal draw</span>
-                      <h3>Choose your crossing number</h3>
-                      <p>Lock your place and cross.</p>
-                    </div>
-                    <div className="crystal-shattered-number-grid">
-                      {Array.from({ length: participantIds.length }, (_, index) => index + 1).map((number) => {
-                        const taken = Object.values(gb.chosenNumbers).includes(number);
-                        return (
-                          <button
-                            key={number}
-                            type="button"
-                            className="crystal-shattered-number"
-                            disabled={taken || !humanId || gb.chosenNumbers[humanId] !== undefined}
-                            onClick={() => handleNumberPick(number)}
-                            aria-label={`Pick number ${number}`}
-                          >
-                            {number}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="crystal-shattered-draw-summary">
-                      {participantIds.map((playerId) => (
-                        <span key={playerId} className="crystal-shattered-draw-pill">
-                          <strong>{playerId === humanId ? 'You' : (participantsById.get(playerId)?.name ?? playerId)}</strong>
-                          <em>{gb.chosenNumbers[playerId] ?? '…'}</em>
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="crystal-shattered-prelude-copy">
-                      <span className="crystal-shattered-prelude-label">Order reveal</span>
-                      <h3>The chamber locks the crossing order</h3>
-                    </div>
-                    <div className="crystal-shattered-order-list">
-                      {gb.turnOrder.map((playerId, index) => (
-                        <div key={playerId} className="crystal-shattered-order-item" style={{ animationDelay: `${index * 90}ms` }}>
-                          <span>{index + 1}</span>
-                          <strong>{playerId === humanId ? 'You' : (participantsById.get(playerId)?.name ?? playerId)}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </section>
-            )}
+      </div>
+    );
+  }
 
-            <section className="crystal-shattered-board-panel">
-              <div className="crystal-shattered-board-chrome">
-                <div className="crystal-shattered-status" role="status">
-                  <span className="crystal-shattered-status-label">Chamber status</span>
-                  <strong>{statusText}</strong>
-                </div>
-                <div className="crystal-shattered-toolbar-actions">
-                  <button
-                    type="button"
-                    className="crystal-shattered-secondary"
-                    onClick={handleHint}
-                    disabled={!isHumanTurn || isResolving || hintUses >= 3 || showSpectatorModal}
-                  >
-                    Seek guidance ({Math.max(0, 3 - hintUses)} left)
-                  </button>
-                  {gb.humanSpectating && (
+  return (
+    <div className="cps-shell" aria-label="Crystal Path: Shattered">
+      {/* Header / HUD */}
+      <header className="cps-header">
+        <div className="cps-title-row">
+          <span className="cps-kicker">Crystal Path</span>
+          <h2>Shattered</h2>
+        </div>
+      </header>
+
+      <div className="cps-hud" role="group" aria-label="Status">
+        <div className="cps-hud-pill">
+          <span>Turn</span>
+          <strong>{activePlayer ? (activePlayer.id === humanId ? 'You' : activePlayer.name) : '—'}</strong>
+        </div>
+        <div className="cps-hud-pill">
+          <span>Row</span>
+          <strong>{(activePlayer?.furthestRow ?? 0) + 1}</strong>
+        </div>
+        <div className="cps-hud-pill cps-hud-pill-sp">
+          <span>SP</span>
+          <strong>{activePlayer?.sp ?? 0}</strong>
+        </div>
+        <div className="cps-hud-pill">
+          <span>Hints</span>
+          <strong>{activePlayer?.hints ?? 0}</strong>
+        </div>
+      </div>
+
+      {/* Active effects — countdown chips */}
+      {activeEffects.length > 0 && (
+        <div className="cps-effects" aria-label="Active effects">
+          {activeEffects.map((e, idx) => {
+            const remaining = Math.max(0, e.expiresAt - Date.now());
+            const pct = Math.min(100, Math.round((remaining / EFFECT_DURATION_MS) * 100));
+            return (
+              <span
+                key={`${e.kind}-${idx}`}
+                className={`cps-effect ${isPositiveEffect(e.kind) ? 'is-pos' : 'is-neg'}`}
+              >
+                <span className="cps-effect-name">{formatEffectName(e.kind)}</span>
+                <span className="cps-effect-timer">{Math.ceil(remaining / 1000)}s</span>
+                <span className="cps-effect-bar" style={{ width: `${pct}%` }} aria-hidden="true" />
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Board */}
+      <section className="cps-board" aria-label="Bridge">
+        <div className="cps-bridge-track">
+          {displayRows.map((row) => {
+            const isCurrent = activePlayer && row.index === activePlayer.furthestRow;
+            const isPast = activePlayer && row.index < activePlayer.furthestRow;
+            const showHint = hintRowIndex === row.index;
+            const anim = activeAnimation && activeAnimation.rowIndex === row.index
+              ? activeAnimation
+              : null;
+            return (
+              <div
+                key={row.index}
+                className={`cps-row${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : ''}`}
+              >
+                <button
+                  type="button"
+                  className={`cps-tile cps-tile-left${showHint && row.safeSide === 'left' ? ' is-hinted' : ''}${anim && anim.side === 'left' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
+                  onClick={() => handleSelect('left')}
+                  disabled={!isCurrent || !inputEnabled || mysteryPendingStep && row.hasMystery}
+                  aria-label={`Row ${row.index + 1} left tile`}
+                />
+                <div className={`cps-center${row.hasMystery ? ' has-mystery' : ''}`}>
+                  {row.hasMystery && !mysteryPendingStep && (
                     <button
                       type="button"
-                      className="crystal-shattered-secondary"
-                      onClick={() => setPlaybackSpeed((current) => getNextPlaybackSpeed(current))}
+                      className={`cps-tile cps-tile-center${anim && anim.side === 'center' ? ' is-mystery' : ''}`}
+                      onClick={() => handleSelect('center')}
+                      disabled={!isCurrent || !inputEnabled}
+                      aria-label={`Row ${row.index + 1} mystery tile`}
                     >
-                      Spectator {playbackSpeed}×
+                      <span aria-hidden="true">?</span>
                     </button>
                   )}
                 </div>
+                <button
+                  type="button"
+                  className={`cps-tile cps-tile-right${showHint && row.safeSide === 'right' ? ' is-hinted' : ''}${anim && anim.side === 'right' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
+                  onClick={() => handleSelect('right')}
+                  disabled={!isCurrent || !inputEnabled || mysteryPendingStep && row.hasMystery}
+                  aria-label={`Row ${row.index + 1} right tile`}
+                />
+                <div className="cps-row-label" aria-hidden="true">{row.index + 1}</div>
               </div>
+            );
+          })}
+        </div>
+      </section>
 
-              <CrystalPathShatteredPixiStage
-                phase={gb.phase}
-                rows={gb.rows}
-                rowsCount={gb.rowsCount}
-                currentPlayerRow={gb.currentPlayerRow}
-                currentTurnIndex={gb.currentTurnIndex}
-                turnOrder={gb.turnOrder}
-                participants={gb.participants}
-                progress={gb.progress}
-                humanId={humanId}
-                inputEnabled={inputEnabled}
-                activeAnimation={activeAnimation}
-                onTileSelect={(side) => {
-                  if (!inputEnabled) return;
-                  handleStepChoice(side);
-                }}
-              />
+      {/* Controls */}
+      <div className="cps-controls">
+        <button
+          type="button"
+          className="cps-btn cps-btn-secondary"
+          onClick={handleHint}
+          disabled={!inputEnabled || (activePlayer?.hints ?? 0) <= 0}
+        >
+          Hint ({activePlayer?.hints ?? 0})
+        </button>
+        <div className="cps-status" role="status">
+          {spectating
+            ? 'Spectating…'
+            : mysteryPendingStep
+              ? 'Now choose LEFT or RIGHT to advance.'
+              : isHumanTurn
+                ? (currentRowRecord?.hasMystery
+                    ? 'Tap LEFT, RIGHT or the ❓ mystery.'
+                    : 'Tap LEFT or RIGHT.')
+                : `${activePlayer?.name ?? '—'} is choosing…`}
+        </div>
+      </div>
 
-              <div className="crystal-shattered-board-footer">
-                <div className="crystal-shattered-guidance">
-                  <span className="crystal-shattered-guidance-label">Guidance</span>
-                  <p>{guidanceText}</p>
-                </div>
-              </div>
-            </section>
-          </section>
+      {/* Message log */}
+      {messageLog.length > 0 && (
+        <div className="cps-log" aria-live="polite">
+          {messageLog.map((m, idx) => <p key={idx}>{m}</p>)}
+        </div>
+      )}
 
-          <section className="crystal-shattered-scoreboard" aria-label="Player standings">
-            {gb.participants.map((participant) => {
-              const progress = gb.progress[participant.id];
-              const isActive = participant.id === activePlayerId;
-              return (
-                <article key={participant.id} className={`crystal-shattered-score-card${isActive ? ' is-active' : ''}`}>
-                  <header>
-                    <strong>{participant.id === humanId ? 'You' : participant.name}</strong>
-                    <span>{progress?.eliminated ? 'Fallen' : progress?.finishTimeMs !== undefined ? 'Finished' : isActive ? 'Acting' : 'Waiting'}</span>
-                  </header>
-                  <p>{getPlacementDetail(progress)}</p>
-                </article>
-              );
-            })}
-          </section>
-
-          {showSpectatorModal && (
-            <div className="crystal-shattered-modal" role="dialog" aria-modal="true" aria-label="Eliminated">
-              <div className="crystal-shattered-modal-card">
-                <div className="crystal-shattered-modal-icon" aria-hidden="true">❄️</div>
-                <h3>You slipped from the crystal path.</h3>
-                <p>Your fall is visible below the broken platform. Keep watching or jump straight to the result.</p>
-                <div className="crystal-shattered-modal-actions">
-                  <button
-                    type="button"
-                    className="crystal-shattered-secondary"
-                    onClick={() => {
-                      setShowSpectatorModal(false);
-                      dispatch(setHumanSpectating(true));
-                    }}
-                  >
-                    Continue watching
-                  </button>
-                  <button
-                    type="button"
-                    className="crystal-shattered-primary"
-                    onClick={() => {
-                      setShowSpectatorModal(false);
-                      dispatch(completeGame());
-                    }}
-                  >
-                    Skip to result
-                  </button>
-                </div>
-              </div>
+      {/* Standings */}
+      <section className="cps-standings" aria-label="Players">
+        {ranked.map((p) => (
+          <article
+            key={p.id}
+            className={`cps-standing${p.id === activePlayerId ? ' is-active' : ''}${p.eliminated ? ' is-out' : ''}`}
+          >
+            <header>
+              <strong>{p.id === humanId ? 'You' : p.name}</strong>
+              <span>{p.eliminated ? 'Fallen' : p.finishedAtMs !== null ? 'Endured' : `Row ${p.furthestRow}`}</span>
+            </header>
+            <div className="cps-sp-bar" aria-label={`${p.sp} SP`}>
+              <div className="cps-sp-fill" style={{ width: `${Math.max(0, Math.min(100, (p.sp / STARTING_SP) * 100))}%` }} />
+              <span>{p.sp} SP · {p.hints}💡</span>
             </div>
-          )}
-        </>
+          </article>
+        ))}
+      </section>
+
+      {/* Mystery reveal modal (brief) */}
+      {mysteryModal && (
+        <div className="cps-modal" role="dialog" aria-modal="true" aria-label="Mystery result">
+          <div className={`cps-modal-card ${mysteryModal.positive ? 'is-pos' : 'is-neg'}`}>
+            <div className="cps-modal-icon" aria-hidden="true">{mysteryModal.positive ? '✨' : '⚠️'}</div>
+            <h3>{mysteryModal.effectLabel}</h3>
+            <p>{mysteryModal.positive ? 'The chamber smiles on you.' : 'The chamber tests you.'}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Secret win banner */}
+      {secretWinBanner && (
+        <div className="cps-secret-banner" role="status">
+          🏆 Hidden path discovered! Season immunity unlocked.
+        </div>
       )}
     </div>
   );
 }
+
+type TileKindChoice = TileSide | 'center';
