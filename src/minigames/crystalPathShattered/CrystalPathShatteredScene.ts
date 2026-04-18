@@ -82,7 +82,6 @@ const PANEL_CORNER_RADIUS = 8;
 const PANEL_THICKNESS_RATIO = 0.18;
 const PANEL_INSET_RATIO = 0.06;
 const REFLECTION_SWEEP_MS = 1100;
-const RIG_BULB_SPACING = 18;
 const ROW_SPACING_OFFSET = 2.2;
 
 export class CrystalPathShatteredScene {
@@ -183,37 +182,49 @@ export class CrystalPathShatteredScene {
         centerX - width * BEAM_BOTTOM_WIDTH_RATIO,
         height * BEAM_HEIGHT_RATIO,
       ])
-      .fill({ color: 0xf9ffff, alpha: 0.06 });
+      .fill({ color: 0xf9ffff, alpha: 0.04 });
+
+    const beamCore = new Graphics()
+      .poly([
+        centerX - width * 0.045,
+        0,
+        centerX + width * 0.045,
+        0,
+        centerX + width * 0.018,
+        height * 0.58,
+        centerX - width * 0.018,
+        height * 0.58,
+      ])
+      .fill({ color: 0xffffff, alpha: 0.045 });
 
     const chamberGlow = new Graphics()
       .ellipse(centerX, height * 0.18, width * 0.18, height * 0.06)
-      .fill({ color: 0x00e5ff, alpha: 0.12 });
+      .fill({ color: 0x00e5ff, alpha: 0.08 });
 
     const rigLines = new Graphics();
-    const rigBulbs = new Graphics();
+    const stageLighting = new Graphics();
     for (const offset of [-0.36, -0.22, -0.1, 0.1, 0.22, 0.36]) {
       rigLines.moveTo(centerX, height * 0.06);
       rigLines.lineTo(centerX + width * offset, height * 0.64);
     }
-    rigLines.stroke({ color: 0xf8f3d8, width: 1, alpha: 0.08 });
+    rigLines.stroke({ color: 0xf8f3d8, width: 1, alpha: 0.06 });
     for (let stringIndex = 0; stringIndex < 3; stringIndex += 1) {
-      const startX = width * (0.1 + stringIndex * 0.04);
-      const endX = width * (0.9 - stringIndex * 0.04);
-      const yBase = height * (0.05 + stringIndex * 0.045);
-      const sag = height * (0.04 + stringIndex * 0.018);
-      const bulbsPerString = Math.max(12, Math.floor((endX - startX) / RIG_BULB_SPACING));
-      for (let bulbIndex = 0; bulbIndex <= bulbsPerString; bulbIndex += 1) {
-        const progress = bulbIndex / bulbsPerString;
-        const x = startX + (endX - startX) * progress;
-        const y = yBase + Math.sin(progress * Math.PI) * sag;
-        rigBulbs.circle(x, y, stringIndex === 0 ? 2.1 : 1.6)
-          .fill({ color: 0xfff7df, alpha: 0.92 - stringIndex * 0.16 });
-      }
+      const inset = stringIndex * 0.05;
+      const startX = width * (0.08 + inset);
+      const endX = width * (0.92 - inset);
+      const y = height * (0.055 + stringIndex * 0.05);
+      const midY = y + height * (0.045 + stringIndex * 0.014);
+      stageLighting.moveTo(startX, y);
+      stageLighting.quadraticCurveTo(centerX, midY, endX, y);
+    }
+    stageLighting.stroke({ color: 0xffefc6, width: 2.2, alpha: 0.12 });
+    for (const anchorX of [width * 0.12, width * 0.22, centerX, width * 0.78, width * 0.88]) {
+      stageLighting.ellipse(anchorX, height * 0.1, width * 0.022, height * 0.012)
+        .fill({ color: 0xfff6db, alpha: anchorX === centerX ? 0.26 : 0.16 });
     }
     for (const x of [width * 0.09, width * 0.91]) {
-      for (let bulbY = height * 0.18; bulbY <= height * 0.82; bulbY += 16) {
-        rigBulbs.circle(x, bulbY, 1.55).fill({ color: 0xfff2cf, alpha: 0.78 });
-      }
+      stageLighting.roundRect(x - 1.3, height * 0.18, 2.6, height * 0.62, 2)
+        .fill({ color: 0xffefcd, alpha: 0.18 });
     }
 
     const chamberShadowLeft = new Graphics()
@@ -230,6 +241,10 @@ export class CrystalPathShatteredScene {
       .ellipse(centerX, height * 0.84, width * 0.28, height * 0.06)
       .fill({ color: 0x4b5970, alpha: 0.02 });
 
+    const abyssFalloff = new Graphics()
+      .rect(0, height * 0.62, width, height * 0.38)
+      .fill({ color: 0x000000, alpha: 0.34 });
+
     const abyss = new Graphics()
       .poly([
         centerX - width * 0.23, height * 0.72,
@@ -243,6 +258,10 @@ export class CrystalPathShatteredScene {
       .ellipse(centerX, height * 0.92, width * 0.22, height * 0.06)
       .fill({ color: 0x000000, alpha: 1 });
 
+    const bridgeMist = new Graphics()
+      .ellipse(centerX, height * 0.74, width * 0.22, height * 0.04)
+      .fill({ color: 0x8b9db4, alpha: 0.03 });
+
     const distantStage = new Graphics()
       .roundRect(width * 0.34, height * 0.16, width * 0.32, height * 0.08, 14)
       .stroke({ color: 0xfff2d6, width: 1.2, alpha: 0.14 });
@@ -254,15 +273,18 @@ export class CrystalPathShatteredScene {
     this.backgroundLayer.addChild(
       base,
       overheadBeam,
+      beamCore,
       chamberGlow,
       rigLines,
-      rigBulbs,
+      stageLighting,
       chamberShadowLeft,
       chamberShadowRight,
       depthFogUpper,
       depthFogLower,
+      abyssFalloff,
       abyss,
       abyssCore,
+      bridgeMist,
       distantStage,
       chamberFrame,
     );
@@ -323,8 +345,8 @@ export class CrystalPathShatteredScene {
       const targetAnimation = this.state.activeAnimation?.rowIndex === rowIndex ? this.state.activeAnimation : null;
 
       this.boardLayer.addChild(this.createLaneBeam(rowMetrics));
-      this.boardLayer.addChild(this.createTile(row, 'left', rowMetrics, selectable, targetAnimation, now));
-      this.boardLayer.addChild(this.createTile(row, 'right', rowMetrics, selectable, targetAnimation, now));
+      this.boardLayer.addChild(this.createTile(row, rowIndex, 'left', rowMetrics, selectable, targetAnimation, now));
+      this.boardLayer.addChild(this.createTile(row, rowIndex, 'right', rowMetrics, selectable, targetAnimation, now));
     }
 
     const activePlayerId = this.state.turnOrder[this.state.currentTurnIndex] ?? null;
@@ -431,6 +453,7 @@ export class CrystalPathShatteredScene {
     const bridgeTop = metrics.y - metrics.tileHeight * 0.38;
     const bridgeHeight = metrics.tileHeight * 0.9;
     const dividerWidth = Math.max(8, metrics.tileWidth * 0.09);
+    const beamFocus = this.getBeamInfluence((metrics.leftX + metrics.rightX) / 2, metrics.y, metrics.tileWidth * 2.3);
     const shadow = new Graphics()
       .roundRect(
         bridgeLeft,
@@ -448,7 +471,16 @@ export class CrystalPathShatteredScene {
         bridgeHeight,
         6,
       )
-      .fill({ color: 0x04070d, alpha: 0.76 });
+      .fill({ color: 0x04070d, alpha: 0.82 });
+    const beamHit = new Graphics()
+      .roundRect(
+        bridgeLeft + bridgeWidth * 0.18,
+        bridgeTop + 1,
+        bridgeWidth * 0.64,
+        Math.max(5, bridgeHeight * 0.34),
+        6,
+      )
+      .fill({ color: 0xeaffff, alpha: 0.03 + beamFocus * 0.07 });
     const divider = new Graphics()
       .roundRect(
         (metrics.leftX + metrics.rightX) / 2 - dividerWidth / 2,
@@ -466,12 +498,13 @@ export class CrystalPathShatteredScene {
       .moveTo(bridgeLeft + bridgeWidth - 2, bridgeTop + 2)
       .lineTo(bridgeLeft + bridgeWidth - 2, bridgeTop + bridgeHeight - 2)
       .stroke({ color: 0xf1e2ff, width: 1.2, alpha: 0.28 + metrics.perspective * 0.12 });
-    beam.addChild(shadow, deck, divider, leftRail, rightRail);
+    beam.addChild(shadow, deck, beamHit, divider, leftRail, rightRail);
     return beam;
   }
 
   private createTile(
     row: BridgeRow,
+    rowIndex: number,
     side: TileSide,
     metrics: RowMetrics,
     selectable: boolean,
@@ -494,6 +527,8 @@ export class CrystalPathShatteredScene {
     const isSafe = row.revealedSafeSide === side;
     const isAnimatingTarget = activeAnimation?.side === side;
     const pulse = selectable ? 0.16 + Math.sin(this.elapsedMs / 340) * 0.06 : isSafe ? 0.12 : 0.02;
+    const tileVariant = this.getTileVariant(rowIndex, side);
+    const beamInfluence = this.getBeamInfluence(x, y, width);
     const panelInset = Math.max(2, width * PANEL_INSET_RATIO);
     const panelWidth = width - panelInset * 2;
     const panelHeight = height * 0.96;
@@ -501,56 +536,61 @@ export class CrystalPathShatteredScene {
     const panelTop = y - panelHeight * 0.5;
     const panelBottom = panelTop + panelHeight;
     const thickness = Math.max(3, height * PANEL_THICKNESS_RATIO);
-    const reflectionXOffset = ((Math.sin(this.elapsedMs / REFLECTION_SWEEP_MS + metrics.perspective * 4) + 1) / 2) * panelWidth;
+    const reflectionXOffset = ((Math.sin(this.elapsedMs / REFLECTION_SWEEP_MS + metrics.perspective * 4 + tileVariant * 5) + 1) / 2) * panelWidth;
     const idleFill = 0x081019;
     const activeFill = 0x0c1d2f;
     const safeFill = 0x1f3e53;
     const fillColor = isSafe ? safeFill : selectable ? activeFill : idleFill;
-    const edgeColor = isSafe ? 0xf7ffff : selectable ? 0xcffbff : 0xb8b7ff;
-    const edgeAlpha = isSafe ? 0.92 : selectable ? 0.78 : 0.46;
+    const edgeColor = isSafe ? 0xf7ffff : selectable ? 0xcffbff : 0xcbd7ee;
+    const edgeAlpha = isSafe ? 0.32 : selectable ? 0.24 : 0.12;
+    const baseAlpha = (isSafe ? 0.34 : selectable ? 0.24 : 0.18) + beamInfluence * 0.05 + tileVariant * 0.02;
 
     if (isBroken || (activeAnimation?.type === 'wrong' && isAnimatingTarget && this.hasAnimationCollapsed(now))) {
       container.addChild(this.createHole(x, y + 2, width, height));
     } else {
-      shadow.ellipse(x, panelBottom + height * 0.24, panelWidth * 0.56, thickness * 1.6).fill({ color: 0x000000, alpha: 0.46 });
+      shadow.ellipse(x, panelBottom + height * 0.28, panelWidth * 0.58, thickness * 1.8).fill({ color: 0x000000, alpha: 0.52 - metrics.perspective * 0.08 });
       underside.roundRect(panelLeft, panelBottom - thickness * 0.35, panelWidth, thickness, 4)
-        .fill({ color: 0x091019, alpha: 0.94 });
+        .fill({ color: 0x091019, alpha: 0.96 });
+      underside.roundRect(panelLeft + 1, panelBottom - thickness * 0.28, panelWidth - 2, thickness * 0.45, 3)
+        .fill({ color: 0xb2c9dd, alpha: 0.06 + beamInfluence * 0.06 });
       glass.roundRect(panelLeft, panelTop, panelWidth, panelHeight, PANEL_CORNER_RADIUS)
-        .fill({ color: fillColor, alpha: isSafe ? 0.42 : selectable ? 0.28 : 0.19 });
+        .fill({ color: fillColor, alpha: baseAlpha });
+      glass.roundRect(panelLeft + 1.5, panelTop + 1.5, panelWidth - 3, panelHeight * (0.34 + tileVariant * 0.04), PANEL_CORNER_RADIUS - 1)
+        .fill({ color: 0xf5fdff, alpha: 0.035 + beamInfluence * 0.06 + (isSafe ? 0.05 : 0) });
       glass.roundRect(panelLeft, panelTop, panelWidth, panelHeight, PANEL_CORNER_RADIUS)
-        .stroke({ color: edgeColor, width: 1.8, alpha: edgeAlpha });
+        .stroke({ color: edgeColor, width: 1.15, alpha: edgeAlpha + beamInfluence * 0.08 });
       paneShade.roundRect(panelLeft + 2, panelTop + 2, panelWidth - 4, panelHeight - 4, PANEL_CORNER_RADIUS - 1)
-        .fill({ color: 0x000000, alpha: isSafe ? 0.08 : 0.14 });
-      edgeGlow.roundRect(panelLeft - 1, panelTop - 1, panelWidth + 2, panelHeight + 2, PANEL_CORNER_RADIUS)
-        .stroke({ color: selectable ? 0xaafaff : isSafe ? 0xffffff : 0xe0d0ff, width: 1.2, alpha: pulse + 0.08 });
+        .fill({ color: 0x000000, alpha: 0.12 + (1 - beamInfluence) * 0.06 });
+      edgeGlow.roundRect(panelLeft + 2, panelTop + 2, panelWidth - 4, panelHeight - 4, PANEL_CORNER_RADIUS - 1)
+        .stroke({ color: selectable ? 0xaafaff : isSafe ? 0xffffff : 0xdce9f5, width: 0.8, alpha: pulse * 0.45 + beamInfluence * 0.08 });
       reflections.poly([
-        panelLeft + panelWidth * 0.12,
+        panelLeft + panelWidth * (0.08 + tileVariant * 0.08),
         panelTop + 1,
-        panelLeft + panelWidth * 0.3,
+        panelLeft + panelWidth * (0.24 + tileVariant * 0.08),
         panelTop + 1,
-        panelLeft + panelWidth * 0.18,
+        panelLeft + panelWidth * (0.15 + tileVariant * 0.05),
         panelBottom - 3,
-        panelLeft + panelWidth * 0.02,
+        panelLeft + panelWidth * (0.01 + tileVariant * 0.03),
         panelBottom - 3,
-      ]).fill({ color: 0xffffff, alpha: isSafe ? 0.12 : 0.08 });
+      ]).fill({ color: 0xffffff, alpha: 0.05 + beamInfluence * 0.07 + (isSafe ? 0.04 : 0) });
       reflections.poly([
-        panelLeft + reflectionXOffset * 0.8,
+        panelLeft + reflectionXOffset * (0.72 + tileVariant * 0.16),
         panelTop + 2,
-        panelLeft + reflectionXOffset * 0.8 + panelWidth * 0.08,
+        panelLeft + reflectionXOffset * (0.72 + tileVariant * 0.16) + panelWidth * (0.06 + tileVariant * 0.02),
         panelTop + 2,
-        panelLeft + reflectionXOffset * 0.8 - panelWidth * 0.02,
+        panelLeft + reflectionXOffset * (0.72 + tileVariant * 0.16) - panelWidth * (0.01 + tileVariant * 0.02),
         panelBottom - 2,
-        panelLeft + reflectionXOffset * 0.8 - panelWidth * 0.1,
+        panelLeft + reflectionXOffset * (0.72 + tileVariant * 0.16) - panelWidth * (0.08 + tileVariant * 0.02),
         panelBottom - 2,
-      ]).fill({ color: 0xffffff, alpha: selectable ? 0.08 : 0.05 });
-      reflections.moveTo(panelLeft + panelWidth * 0.62, panelTop + panelHeight * 0.16);
-      reflections.lineTo(panelLeft + panelWidth * 0.86, panelTop + panelHeight * 0.4);
-      reflections.moveTo(panelLeft + panelWidth * 0.54, panelTop + panelHeight * 0.56);
-      reflections.lineTo(panelLeft + panelWidth * 0.86, panelTop + panelHeight * 0.72);
-      reflections.stroke({ color: 0xe8f9ff, width: 1.05, alpha: isSafe ? 0.24 : 0.14 });
-      highlight.moveTo(panelLeft + 4, panelTop + 1.5);
-      highlight.lineTo(panelLeft + panelWidth - 4, panelTop + 1.5);
-      highlight.stroke({ color: 0xffffff, width: 1.6, alpha: isSafe ? 0.72 : selectable ? 0.54 : 0.22 });
+      ]).fill({ color: 0xffffff, alpha: 0.03 + beamInfluence * 0.06 + (selectable ? 0.02 : 0) });
+      reflections.moveTo(panelLeft + panelWidth * (0.48 + tileVariant * 0.08), panelTop + panelHeight * 0.14);
+      reflections.lineTo(panelLeft + panelWidth * 0.84, panelTop + panelHeight * (0.34 + tileVariant * 0.08));
+      reflections.moveTo(panelLeft + panelWidth * (0.46 - tileVariant * 0.05), panelTop + panelHeight * 0.52);
+      reflections.lineTo(panelLeft + panelWidth * 0.84, panelTop + panelHeight * (0.72 - tileVariant * 0.03));
+      reflections.stroke({ color: 0xe8f9ff, width: 0.9, alpha: 0.08 + beamInfluence * 0.1 + (isSafe ? 0.08 : 0) });
+      highlight.moveTo(panelLeft + 5, panelTop + 2);
+      highlight.lineTo(panelLeft + panelWidth * (0.86 + tileVariant * 0.05), panelTop + 2);
+      highlight.stroke({ color: 0xffffff, width: 1.15, alpha: 0.12 + beamInfluence * 0.18 + (isSafe ? 0.14 : 0) });
       container.addChild(shadow, underside, glass, paneShade, edgeGlow, reflections, highlight);
     }
 
@@ -614,6 +654,25 @@ export class CrystalPathShatteredScene {
       .fill({ color: 0xff7c43, alpha: 0.18 });
     hole.addChild(falloff, voidShape, innerGlow, ember, brokenRim);
     return hole;
+  }
+
+  private getBeamInfluence(x: number, y: number, width: number) {
+    const sceneWidth = this.app.renderer.width || DEFAULT_SCENE_WIDTH;
+    const sceneHeight = this.app.renderer.height || DEFAULT_SCENE_HEIGHT;
+    const centerX = sceneWidth / 2;
+    const beamHalfWidth = this.getBeamHalfWidthAtY(y, sceneWidth, sceneHeight) + width * 0.18;
+    return Math.max(0, 1 - Math.abs(x - centerX) / Math.max(1, beamHalfWidth));
+  }
+
+  private getBeamHalfWidthAtY(y: number, width: number, height: number) {
+    const clampedY = Math.max(0, Math.min(height * BEAM_HEIGHT_RATIO, y));
+    const progress = clampedY / Math.max(1, height * BEAM_HEIGHT_RATIO);
+    return width * (BEAM_TOP_WIDTH_RATIO - (BEAM_TOP_WIDTH_RATIO - BEAM_BOTTOM_WIDTH_RATIO) * progress);
+  }
+
+  private getTileVariant(rowIndex: number, side: TileSide) {
+    const seed = (rowIndex + 1) * 0.173 + (side === 'left' ? 0.11 : 0.31);
+    return (Math.sin(seed * 17.31) + 1) / 2;
   }
 
   private createSparkles(x: number, y: number, width: number, height: number) {
