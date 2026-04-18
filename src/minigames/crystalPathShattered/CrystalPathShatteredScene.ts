@@ -75,6 +75,26 @@ const BOARD_BOTTOM_PADDING = 30;
 const FALL_TRIGGER_MS = STEP_SUSPENSE_DELAY_MS + WRONG_CRACK_MS + WRONG_SHATTER_MS * 0.65;
 const SHAKE_DURATION_MS = 240;
 const SHAKE_STRENGTH = 5;
+const BEAM_TOP_WIDTH_RATIO = 0.08;
+const BEAM_BOTTOM_WIDTH_RATIO = 0.035;
+const BEAM_HEIGHT_RATIO = 0.56;
+const CRYSTAL_TILE_SHAPE = {
+  leftOuterX: 0.5,
+  leftTopX: 0.24,
+  rightTopX: 0.25,
+  topLift: 0.62,
+  topRidgeDrop: 0.06,
+  rightOuterX: 0.5,
+  rightBottomX: 0.33,
+  leftBottomX: 0.3,
+  bottomLip: 0.06,
+  innerLeftOuterX: 0.38,
+  innerLeftTopX: 0.16,
+  innerRightTopX: 0.2,
+  innerRightOuterX: 0.36,
+  innerRightBottomX: 0.22,
+  innerLeftBottomX: 0.24,
+};
 
 export class CrystalPathShatteredScene {
   private readonly app: Application;
@@ -163,14 +183,14 @@ export class CrystalPathShatteredScene {
 
     const overheadBeam = new Graphics()
       .poly([
-        centerX - width * 0.08,
+        centerX - width * BEAM_TOP_WIDTH_RATIO,
         0,
-        centerX + width * 0.08,
+        centerX + width * BEAM_TOP_WIDTH_RATIO,
         0,
-        centerX + width * 0.035,
-        height * 0.56,
-        centerX - width * 0.035,
-        height * 0.56,
+        centerX + width * BEAM_BOTTOM_WIDTH_RATIO,
+        height * BEAM_HEIGHT_RATIO,
+        centerX - width * BEAM_BOTTOM_WIDTH_RATIO,
+        height * BEAM_HEIGHT_RATIO,
       ])
       .fill({ color: 0xf9ffff, alpha: 0.06 });
 
@@ -425,24 +445,24 @@ export class CrystalPathShatteredScene {
     const isSafe = row.revealedSafeSide === side;
     const isAnimatingTarget = activeAnimation?.side === side;
     const pulse = selectable ? 0.26 + Math.sin(this.elapsedMs / 340) * 0.08 : isSafe ? 0.2 : 0.045;
-    const topY = y - height * 0.62;
+    const topY = y - height * CRYSTAL_TILE_SHAPE.topLift;
     const bottomY = y + height * 0.52;
     const inset = width * 0.08;
     const tilePoints = [
-      x - width * 0.5, y - height * 0.08,
-      x - width * 0.24, topY,
-      x + width * 0.25, topY - height * 0.06,
-      x + width * 0.5, y - height * 0.12,
-      x + width * 0.33, bottomY,
-      x - width * 0.3, bottomY + height * 0.06,
+      x - width * CRYSTAL_TILE_SHAPE.leftOuterX, y - height * 0.08,
+      x - width * CRYSTAL_TILE_SHAPE.leftTopX, topY,
+      x + width * CRYSTAL_TILE_SHAPE.rightTopX, topY - height * CRYSTAL_TILE_SHAPE.topRidgeDrop,
+      x + width * CRYSTAL_TILE_SHAPE.rightOuterX, y - height * 0.12,
+      x + width * CRYSTAL_TILE_SHAPE.rightBottomX, bottomY,
+      x - width * CRYSTAL_TILE_SHAPE.leftBottomX, bottomY + height * CRYSTAL_TILE_SHAPE.bottomLip,
     ];
     const innerPoints = [
-      x - width * 0.38, y - height * 0.02,
-      x - width * 0.16, topY + height * 0.1,
-      x + width * 0.2, topY + height * 0.04,
-      x + width * 0.36, y - height * 0.04,
-      x + width * 0.22, bottomY - height * 0.08,
-      x - width * 0.24, bottomY,
+      x - width * CRYSTAL_TILE_SHAPE.innerLeftOuterX, y - height * 0.02,
+      x - width * CRYSTAL_TILE_SHAPE.innerLeftTopX, topY + height * 0.1,
+      x + width * CRYSTAL_TILE_SHAPE.innerRightTopX, topY + height * 0.04,
+      x + width * CRYSTAL_TILE_SHAPE.innerRightOuterX, y - height * 0.04,
+      x + width * CRYSTAL_TILE_SHAPE.innerRightBottomX, bottomY - height * 0.08,
+      x - width * CRYSTAL_TILE_SHAPE.innerLeftBottomX, bottomY,
     ];
     const idleFill = 0x081323;
     const activeFill = 0x0b3251;
