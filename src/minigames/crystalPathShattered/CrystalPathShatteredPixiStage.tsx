@@ -53,6 +53,7 @@ export default function CrystalPathShatteredPixiStage(props: Props) {
   useEffect(() => {
     const host = hostRef.current;
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
 
     async function mount() {
       if (!host) return;
@@ -72,12 +73,18 @@ export default function CrystalPathShatteredPixiStage(props: Props) {
       appRef.current = app;
       sceneRef.current = new CrystalPathShatteredScene(app, latestPropsRef.current);
       sceneRef.current.resize();
+      resizeObserver = new ResizeObserver(() => {
+        sceneRef.current?.resize();
+      });
+      resizeObserver.observe(host);
     }
 
     mount();
 
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
+      resizeObserver = null;
       sceneRef.current?.destroy();
       sceneRef.current = null;
       appRef.current?.destroy(true, { children: true, texture: true });
