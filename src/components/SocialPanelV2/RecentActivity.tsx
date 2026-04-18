@@ -137,14 +137,14 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
             const subjectName = entry.subjectId
               ? playerById.get(entry.subjectId)?.name ?? entry.subjectId
               : null;
-            const narrativeTarget = subjectName
+            const narrativeContext = subjectName
               ? `${targetName} about ${subjectName}`
               : targetName;
             const icon = getResultIcon(entry);
             const resultClass = getResultClass(entry);
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
-            const narrative = getSocialNarrative(entry.actionId, narrativeTarget, entry.timestamp);
+            const narrative = getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp);
             const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}`;
             const isNew = highlightedKeys.has(key);
             return (

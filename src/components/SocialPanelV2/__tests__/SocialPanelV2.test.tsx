@@ -60,11 +60,11 @@ function makeStore(overrides?: {
 
   // Apply per-player status overrides (e.g. set a player to 'loh').
   if (overrides?.playerStatusOverrides) {
-    players = players.map((p) =>
-      overrides.playerStatusOverrides![p.id]
-        ? { ...p, status: overrides.playerStatusOverrides![p.id] }
-        : p,
-    );
+    const statusMap = overrides.playerStatusOverrides;
+    players = players.map((p) => {
+      const newStatus = statusMap[p.id];
+      return newStatus ? { ...p, status: newStatus } : p;
+    });
   }
 
   const preloadedState = {
