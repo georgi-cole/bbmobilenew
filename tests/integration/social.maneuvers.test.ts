@@ -421,6 +421,7 @@ describe('executeAction – happy path', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 300 }));
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
 
     executeAction('p1', 'p2', 'pitch_target', { subjectId: 'p3' });

@@ -6,6 +6,8 @@
  * same log entry always renders the same sentence.
  */
 
+import { getActionById } from '../../social/SocialManeuvers';
+
 // Preset pool of short, playful TV-zone sentences shown when the Social modal closes.
 // One is picked at random so the message stays fresh across sessions.
 // Exported so tests can verify messages are drawn from this pool.
@@ -111,6 +113,76 @@ const NARRATIVES: Record<string, string[]> = {
     "You sat down with the decision-makers and methodically argued why {target} should go.",
     "You built the case against {target} with surgical precision and zero emotion.",
   ],
+  observe: [
+    "You sat quietly and watched the room, picking up on every micro-expression.",
+    "You observed the house dynamics without saying a single word.",
+    "You studied the room like a chess board, cataloguing every conversation.",
+    "You leaned against the wall and just listened — nobody noticed, but you noticed everything.",
+    "You spent the hour gathering intel with your eyes and ears only.",
+  ],
+  group_chat: [
+    "You held court in the living room and got everyone laughing.",
+    "You chatted with the group and built some broad goodwill around the house.",
+    "You mingled with the house and made sure everyone felt seen.",
+    "You joined a big group conversation and steered it toward lighter topics.",
+    "You made the rounds and dropped compliments like confetti.",
+  ],
+  reassure: [
+    "You pulled {target} aside and told them everything is going to be okay.",
+    "You offered {target} a shoulder to lean on when they needed it most.",
+    "You reminded {target} that they have people in this house who care.",
+    "You reassured {target} that their game is stronger than they think.",
+    "You checked in on {target} and made sure they felt safe this week.",
+  ],
+  confront: [
+    "You looked {target} in the eye and demanded answers.",
+    "You confronted {target} about what you heard — and you were not gentle about it.",
+    "You called out {target} directly on their behaviour this week.",
+    "You walked up to {target} and laid it all on the table.",
+    "You told {target} exactly what you think of their game — to their face.",
+  ],
+  share_intel: [
+    "You shared a key piece of intel with {target} to build mutual trust.",
+    "You gave {target} information that could change how they see the house.",
+    "You opened up to {target} about what you know — a calculated risk.",
+    "You traded intel with {target} and both of you walked away sharper.",
+    "You slipped {target} inside knowledge that nobody else has shared.",
+  ],
+  favor_request: [
+    "You called in a favour with {target} — time to see if loyalty is real.",
+    "You reminded {target} of what you did for them and asked for something in return.",
+    "You made a direct ask to {target} and used every ounce of influence you had.",
+    "You asked {target} for a favour and held your breath waiting for the answer.",
+    "You leveraged your relationship with {target} to get what you needed.",
+  ],
+  pitch_target: [
+    "You pitched a nomination target to {target} and laid out your reasoning.",
+    "You sat down with {target} and made the case for who should go on the block.",
+    "You whispered a name into {target}'s ear and explained why it makes sense.",
+    "You suggested a target to {target} and they seemed to be listening.",
+    "You made a strategic pitch to {target} about who deserves to be nominated.",
+  ],
+  suggest_replacement: [
+    "You suggested a replacement nominee to {target} with conviction.",
+    "You pitched {target} on who should go up as a replacement.",
+    "You made a compelling case to {target} for a new name on the block.",
+    "You offered {target} a strategic alternative for the replacement nomination.",
+    "You lobbied {target} about who should replace the saved player.",
+  ],
+  warn_about_player: [
+    "You warned {target} about someone you think is playing both sides.",
+    "You tipped off {target} about a player you find suspicious.",
+    "You gave {target} a heads-up about a potential threat in the house.",
+    "You shared your concerns with {target} about someone's loyalty.",
+    "You flagged a player to {target} who you believe cannot be trusted.",
+  ],
+  rally_votes_against: [
+    "You rallied {target} to vote against a specific nominee this week.",
+    "You made an aggressive pitch to {target} about who should be evicted.",
+    "You worked on {target} to lock in their vote where you need it.",
+    "You campaigned hard with {target} to build a voting bloc.",
+    "You convinced {target} that the right move is to vote your way.",
+  ],
   idle: [
     "You sat back, watched the chaos unfold, and said absolutely nothing.",
     "You decided to do nothing today — and somehow that felt like a power move.",
@@ -135,7 +207,11 @@ export function getSocialNarrative(
   seed: number,
 ): string {
   const pool = NARRATIVES[actionId];
-  if (!pool?.length) return "You performed " + actionId + " targeting " + targetName + ".";
+  if (!pool?.length) {
+    const actionDef = getActionById(actionId);
+    const displayName = actionDef?.title ?? actionId.replace(/_/g, ' ');
+    return "You performed " + displayName + " targeting " + targetName + ".";
+  }
   const phrase = pool[Math.abs(seed) % pool.length];
   return phrase.replace(/\{target\}/g, targetName);
 }

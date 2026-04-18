@@ -196,6 +196,8 @@ export default function SocialPanelV2() {
   // For 'multi' actions the full Set is preserved; for all other modes only the
   // last-clicked player is kept so the UX stays simple.
   // Clears the subject whenever the primary target changes.
+  // Also clears the selected action if the new target's status doesn't satisfy
+  // the action's requiredTargetStatus constraint (e.g. switching away from LOH).
   const handleSelectionChange = useCallback((
     ids: Set<string>,
     details: { primaryTargetId: string | null },
@@ -209,7 +211,17 @@ export default function SocialPanelV2() {
       setPrimaryTargetId(nextPrimaryTargetId);
     }
     setSelectedSubjectId(null);
-  }, [selectedAction]);
+
+    // Clear role-gated action when the new target no longer qualifies.
+    if (selectedAction?.requiredTargetStatus) {
+      const nextTargetStatus = details.primaryTargetId
+        ? game.players.find((p) => p.id === details.primaryTargetId)?.status
+        : null;
+      if (!nextTargetStatus || !selectedAction.requiredTargetStatus.includes(nextTargetStatus)) {
+        setSelectedActionId(null);
+      }
+    }
+  }, [selectedAction, game.players]);
 
   const handleExecute = useCallback(() => {
     if (!canExecute || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
@@ -385,6 +397,11 @@ export default function SocialPanelV2() {
               actorInfluence={influence}
               actorInfo={info}
               relationships={relationships}
+              primaryTargetStatus={
+                primaryTargetId
+                  ? game.players.find((p) => p.id === primaryTargetId)?.status ?? null
+                  : null
+              }
             />
           </div>
         </div>

@@ -48,6 +48,13 @@ export interface ActionGridProps {
    * actor→target affinity bias so previews match execution-time scores.
    */
   relationships?: RelationshipsMap;
+  /**
+   * Status of the currently selected primary target (e.g. 'loh', 'pos', 'active').
+   * When provided, actions with a `requiredTargetStatus` are hidden unless
+   * the target's status matches one of the required values.
+   * When omitted (no target selected), role-gated actions are hidden.
+   */
+  primaryTargetStatus?: string | null;
 }
 
 /**
@@ -78,6 +85,7 @@ export default function ActionGrid({
   actorInfluence,
   actorInfo,
   relationships,
+  primaryTargetStatus,
 }: ActionGridProps) {
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -154,15 +162,22 @@ export default function ActionGrid({
     );
   }
 
+  /** Check whether the current primary target's status satisfies an action's role requirement. */
+  function isRoleEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
+    if (!action.requiredTargetStatus) return true;
+    if (!primaryTargetStatus) return false;
+    return action.requiredTargetStatus.includes(primaryTargetStatus);
+  }
+
   const sortedActions =
     actorEnergy !== undefined
-      ? [...SOCIAL_ACTIONS].filter((a) => !a.aiOnly).sort((a, b) => {
+      ? [...SOCIAL_ACTIONS].filter((a) => !a.aiOnly && isRoleEligible(a)).sort((a, b) => {
           const aAffordable = isActionAffordable(normalizeActionCosts(a));
           const bAffordable = isActionAffordable(normalizeActionCosts(b));
           if (aAffordable === bAffordable) return 0;
           return aAffordable ? -1 : 1;
         })
-      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly);
+      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly && isRoleEligible(a));
 
   /** Returns an availability reason string, or empty string if the action is affordable. */
   function getAvailabilityReason(costs: { energy: number; influence: number; info: number }): string {
