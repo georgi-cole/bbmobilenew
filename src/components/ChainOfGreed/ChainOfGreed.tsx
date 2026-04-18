@@ -729,7 +729,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     const rng = rngRef.current.rng;
     let chain = startChain;
     let score = startScore;
-    const simTurns = 6 + Math.floor(rng() * 7); // 6–12 turns
+    const simTurns = 6 + Math.floor(rng() * 7); // 6–12 representative turns for AI final simulation
     let bankAvailableForSim = true;
     for (let i = 0; i < simTurns; i++) {
       const choice = decideAiAction({
@@ -893,7 +893,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     const currentScore = state.finalScores[finalPlayer.id] ?? 0;
     const timer = window.setTimeout(() => {
       simulateFinalAiRound(finalPlayer, currentChain, currentScore);
-    }, 280);
+    }, CHAIN_TURN_PIPELINE_DURATIONS.settle);
     return () => window.clearTimeout(timer);
   }, [finalPlayer, pendingTurn, simulateFinalAiRound, state.finalChains, state.finalScores, state.finalTimerExpiry, state.finalTurnIndex, state.phase]);
 

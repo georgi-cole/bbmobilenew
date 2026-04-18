@@ -164,9 +164,14 @@ export function createChainOfGreedPlayers(
 ): ChainOfGreedPlayerState[] {
   return participants.map((participant, index) => {
     const baseSkill = clamp((participant.precomputedScore || 50) / 100, 0.2, 0.95);
-    // Every 4th player cycles through aggressive → safe → moderate-agg → moderate-safe
+    // Every 4th player cycles through aggressive (+0.14) → safe (−0.07) → moderate-agg (+0.06) → moderate-safe (−0.13)
     const indexTier = index % 4;
-    const indexBonusMap: Record<number, number> = { 0: 0.14, 1: -0.07, 2: 0.06, 3: -0.13 };
+    const indexBonusMap: Record<number, number> = {
+      0: 0.14,  // aggressive
+      1: -0.07, // cautious / safe
+      2: 0.06,  // moderate-aggressive
+      3: -0.13, // moderate-safe
+    };
     const indexBonus = indexBonusMap[indexTier] ?? 0;
     const aggression = clamp(0.25 + baseSkill * 0.4 + rng() * 0.18 + indexBonus, 0.15, 0.9);
     const caution = clamp(0.95 - aggression + rng() * 0.14, 0.1, 0.9);
