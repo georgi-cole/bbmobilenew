@@ -835,6 +835,8 @@ export default class CreditsScene {
       }
 
       if (cycleProgress < 1) {
+        // Keep text visibility tied to the beam reveal so the credits read as projected light,
+        // not standalone UI floating over the skyline.
         this.creditsText.alpha = cycleProgress * beamIntro;
       } else if (cycleProgress < 3.5) {
         this.creditsText.alpha = beamIntro;
