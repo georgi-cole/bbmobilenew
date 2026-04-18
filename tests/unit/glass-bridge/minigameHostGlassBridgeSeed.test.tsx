@@ -26,11 +26,19 @@ import challengeReducer from '../../../src/store/challengeSlice';
 import MinigameHost from '../../../src/components/MinigameHost/MinigameHost';
 
 let capturedGlassBridgeSeed: number | undefined | 'NOT_RENDERED' = 'NOT_RENDERED';
+let capturedCrystalPathShatteredSeed: number | undefined | 'NOT_RENDERED' = 'NOT_RENDERED';
 
 vi.mock('../../../src/components/GlassBridgeComp/GlassBridgeComp', () => ({
   default: ({ seed }: { seed?: number }) => {
     capturedGlassBridgeSeed = seed;
     return <div data-testid="gb-comp" />;
+  },
+}));
+
+vi.mock('../../../src/minigames/crystalPathShattered/CrystalPathShatteredGame', () => ({
+  default: ({ seed }: { seed?: number }) => {
+    capturedCrystalPathShatteredSeed = seed;
+    return <div data-testid="crystal-shattered-comp" />;
   },
 }));
 
@@ -102,6 +110,25 @@ const CWGO_GAME = {
   retired: false,
 };
 
+const CRYSTAL_PATH_SHATTERED_GAME = {
+  key: 'crystal_path_shattered',
+  title: 'Crystal Path: Shattered',
+  description: 'Premium Pixi version of the crystal bridge.',
+  instructions: ['Cross the shattered crystal path.'],
+  resultMode: 'placement' as const,
+  metricKind: 'accuracy' as const,
+  metricLabel: 'Placement',
+  timeLimitMs: 160_000,
+  authoritative: true,
+  scoringAdapter: 'authoritative' as const,
+  implementation: 'react' as const,
+  reactComponentKey: 'CrystalPathShattered',
+  legacy: false,
+  weight: 1,
+  category: 'endurance' as const,
+  retired: false,
+};
+
 const PARTICIPANTS = [
   { id: 'p0', name: 'Human', isHuman: true, precomputedScore: 0, previousPR: null },
   { id: 'p1', name: 'AI-1', isHuman: false, precomputedScore: 80, previousPR: null },
@@ -115,6 +142,7 @@ describe('MinigameHost — Crystal Path seed isolation', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     capturedGlassBridgeSeed = 'NOT_RENDERED';
+    capturedCrystalPathShatteredSeed = 'NOT_RENDERED';
     capturedCwgoSeed = 'NOT_RENDERED';
   });
 
@@ -159,6 +187,26 @@ describe('MinigameHost — Crystal Path seed isolation', () => {
 
     expect(screen.getByTestId('gb-comp')).toBeTruthy();
     expect(capturedGlassBridgeSeed).toBeUndefined();
+  });
+
+  it('CrystalPathShatteredGame also receives seed=undefined so it can mint a fresh session seed', async () => {
+    render(
+      <Provider store={makeStore()}>
+        <MinigameHost
+          game={CRYSTAL_PATH_SHATTERED_GAME}
+          gameOptions={{ seed: 12345 }}
+          participants={PARTICIPANTS}
+          onDone={vi.fn()}
+          skipRules
+          skipCountdown
+        />
+      </Provider>,
+    );
+
+    await act(async () => { vi.runAllTimers(); });
+
+    expect(screen.getByTestId('crystal-shattered-comp')).toBeTruthy();
+    expect(capturedCrystalPathShatteredSeed).toBeUndefined();
   });
 
   it('ClosestWithoutGoingOver still receives the challenge seed unchanged', async () => {

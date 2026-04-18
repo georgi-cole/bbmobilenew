@@ -1,0 +1,306 @@
+.crystal-shattered-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-height: 100dvh;
+  padding: clamp(0.9rem, 2vw, 1.4rem);
+  color: #eef8ff;
+  background:
+    radial-gradient(circle at top, rgba(76, 142, 255, 0.26), transparent 36%),
+    linear-gradient(180deg, #050817 0%, #071126 42%, #02040b 100%);
+}
+
+.crystal-shattered-header,
+.crystal-shattered-toolbar,
+.crystal-shattered-scoreboard,
+.crystal-shattered-number-picker,
+.crystal-shattered-order-reveal,
+.crystal-shattered-status {
+  position: relative;
+  z-index: 1;
+}
+
+.crystal-shattered-kicker {
+  margin: 0 0 0.3rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: #8adfff;
+}
+
+.crystal-shattered-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.9rem;
+  align-items: flex-start;
+}
+
+.crystal-shattered-header h2,
+.crystal-shattered-complete-hero h2,
+.crystal-shattered-number-picker h3,
+.crystal-shattered-order-reveal h3,
+.crystal-shattered-toolbar h3 {
+  margin: 0;
+}
+
+.crystal-shattered-subtitle,
+.crystal-shattered-toolbar p,
+.crystal-shattered-number-picker p,
+.crystal-shattered-modal-card p,
+.crystal-shattered-complete-hero p {
+  margin: 0.35rem 0 0;
+  color: rgba(230, 244, 255, 0.82);
+}
+
+.crystal-shattered-hud-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(84px, 1fr));
+  gap: 0.65rem;
+  width: min(100%, 420px);
+}
+
+.crystal-shattered-hud-card,
+.crystal-shattered-score-card,
+.crystal-shattered-number-picker,
+.crystal-shattered-order-reveal,
+.crystal-shattered-toolbar,
+.crystal-shattered-status,
+.crystal-shattered-modal-card,
+.crystal-shattered-complete {
+  border: 1px solid rgba(137, 232, 255, 0.16);
+  background: rgba(8, 16, 37, 0.78);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(176, 244, 255, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.crystal-shattered-hud-card {
+  border-radius: 16px;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.crystal-shattered-hud-card span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(202, 234, 255, 0.7);
+}
+
+.crystal-shattered-status,
+.crystal-shattered-toolbar,
+.crystal-shattered-number-picker,
+.crystal-shattered-order-reveal {
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+}
+
+.crystal-shattered-status {
+  color: #dffbff;
+}
+
+.crystal-shattered-number-grid {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  gap: 0.6rem;
+}
+
+.crystal-shattered-number,
+.crystal-shattered-primary,
+.crystal-shattered-secondary {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+}
+
+.crystal-shattered-number,
+.crystal-shattered-secondary {
+  color: #effbff;
+  background: linear-gradient(180deg, rgba(37, 79, 157, 0.95), rgba(12, 26, 65, 0.98));
+  box-shadow: inset 0 0 0 1px rgba(166, 230, 255, 0.18);
+}
+
+.crystal-shattered-primary {
+  color: #03121d;
+  background: linear-gradient(180deg, #bcfbff, #74dcff);
+  box-shadow: 0 10px 26px rgba(94, 231, 255, 0.22);
+}
+
+.crystal-shattered-number:disabled,
+.crystal-shattered-primary:disabled,
+.crystal-shattered-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.crystal-shattered-number:not(:disabled):hover,
+.crystal-shattered-primary:not(:disabled):hover,
+.crystal-shattered-secondary:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.crystal-shattered-draw-summary,
+.crystal-shattered-order-list,
+.crystal-shattered-scoreboard,
+.crystal-shattered-placement-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.crystal-shattered-draw-summary {
+  margin-top: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  color: rgba(218, 239, 255, 0.8);
+}
+
+.crystal-shattered-order-item,
+.crystal-shattered-placement {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 0.85rem;
+  border-radius: 16px;
+  background: rgba(14, 28, 61, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(166, 230, 255, 0.08);
+}
+
+.crystal-shattered-order-item {
+  animation: crystal-order-fade 360ms ease both;
+}
+
+.crystal-shattered-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.crystal-shattered-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.crystal-shattered-stage {
+  width: 100%;
+  min-height: min(72dvh, 620px);
+  height: clamp(420px, 62dvh, 620px);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(138, 223, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(213, 250, 255, 0.06), 0 20px 48px rgba(0, 0, 0, 0.32);
+}
+
+.crystal-shattered-scoreboard {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.crystal-shattered-score-card {
+  border-radius: 18px;
+  padding: 0.8rem 0.9rem;
+}
+
+.crystal-shattered-score-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.crystal-shattered-score-card header span {
+  color: rgba(196, 233, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.crystal-shattered-score-card.is-active {
+  border-color: rgba(133, 235, 255, 0.44);
+  box-shadow: 0 0 0 1px rgba(133, 235, 255, 0.18), 0 20px 40px rgba(27, 97, 159, 0.22);
+}
+
+.crystal-shattered-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(1, 4, 10, 0.72);
+  z-index: 5;
+}
+
+.crystal-shattered-modal-card {
+  width: min(100%, 420px);
+  border-radius: 24px;
+  padding: 1.2rem;
+}
+
+.crystal-shattered-modal-icon,
+.crystal-shattered-trophy {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.85rem;
+  background: radial-gradient(circle, rgba(186, 251, 255, 0.95), rgba(103, 207, 255, 0.42));
+  box-shadow: 0 0 0 8px rgba(123, 222, 255, 0.12);
+}
+
+.crystal-shattered-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.crystal-shattered-complete {
+  border-radius: 24px;
+  padding: 1rem;
+}
+
+.crystal-shattered-complete-hero {
+  display: grid;
+  justify-items: start;
+  gap: 0.35rem;
+}
+
+@keyframes crystal-order-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .crystal-shattered-shell {
+    padding: 0.8rem;
+  }
+
+  .crystal-shattered-stage {
+    height: min(58dvh, 520px);
+    min-height: 360px;
+  }
+
+  .crystal-shattered-order-item,
+  .crystal-shattered-placement {
+    grid-template-columns: 32px 1fr;
+  }
+
+  .crystal-shattered-order-item span:last-child,
+  .crystal-shattered-placement span:last-child {
+    grid-column: 1 / -1;
+    color: rgba(214, 237, 255, 0.78);
+  }
+}

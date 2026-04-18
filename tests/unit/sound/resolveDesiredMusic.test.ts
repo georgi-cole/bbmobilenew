@@ -60,6 +60,19 @@ describe('resolveDesiredMusic', () => {
     expect(resolveDesiredMusic(state, '#/game')).toBe('glass_bridge');
   });
 
+  it('reuses the glass bridge music track for Crystal Path: Shattered', () => {
+    const state = makeState({
+      challenge: {
+        pending: {
+          phase: 'playing',
+          game: { key: 'crystal_path_shattered' },
+        },
+      } as RootState['challenge'],
+    });
+
+    expect(resolveDesiredMusic(state, '#/game')).toBe('glass_bridge');
+  });
+
   it('falls back to social and phase music when no higher-priority scene exists', () => {
     const socialState = makeState({ social: { panelOpen: true, incomingInboxOpen: false } });
     const phaseState = makeState({ game: { phase: 'nominations' } });

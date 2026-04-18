@@ -48,6 +48,7 @@ import NumberTrivia from '../components/NumberTrivia/NumberTrivia';
 import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
 import GridOfLuck from '../components/GridOfLuck/GridOfLuck';
 import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed';
+import CrystalPathShatteredGame from './crystalPathShattered/CrystalPathShatteredGame';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -105,6 +106,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   CodeBreaker: CodeBreakerComp as ComponentType<GenericMinigameProps>,
   GridOfLuck: GridOfLuck as ComponentType<GenericMinigameProps>,
   ChainOfGreed: ChainOfGreed as ComponentType<GenericMinigameProps>,
+  CrystalPathShattered: CrystalPathShatteredGame as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;
