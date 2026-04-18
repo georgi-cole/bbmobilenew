@@ -661,7 +661,7 @@ export default class CreditsScene {
       this.eyeGlow.height = glowSize;
     }
 
-    // Text positioned higher in the beam-lit star field while staying below the eye.
+    // Text positioned higher in the beam-lit starfield while staying below the eye.
     const textDistance = Math.max(height * 0.33, 275);
     const textX = this.beamOriginX + Math.cos(BEAM_ANGLE) * textDistance;
     const textY = this.beamOriginY + Math.sin(BEAM_ANGLE) * textDistance;
