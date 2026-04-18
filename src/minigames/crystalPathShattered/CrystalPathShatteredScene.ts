@@ -23,6 +23,7 @@ import {
   WRONG_FALL_MS,
   WRONG_SHATTER_MS,
 } from './crystalPathShatteredLogic';
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 
 interface ParticipantView {
   id: string;
@@ -102,6 +103,8 @@ export class CrystalPathShatteredScene {
   private readonly fxLayer = new Container();
 
   private readonly particles: Particle[] = [];
+
+  private readonly sceneVariationSeed = cryptoSeed();
 
   private state: SceneState;
 
@@ -671,7 +674,7 @@ export class CrystalPathShatteredScene {
   }
 
   private getTileVariant(rowIndex: number, side: TileSide) {
-    const seed = (rowIndex + 1) * 0.173 + (side === 'left' ? 0.11 : 0.31);
+    const seed = ((this.sceneVariationSeed || 1) % 997) * 0.001 + (rowIndex + 1) * 0.173 + (side === 'left' ? 0.11 : 0.31);
     return (Math.sin(seed * 17.31) + 1) / 2;
   }
 
