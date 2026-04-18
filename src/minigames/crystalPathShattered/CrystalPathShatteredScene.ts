@@ -83,6 +83,7 @@ const PANEL_THICKNESS_RATIO = 0.18;
 const PANEL_INSET_RATIO = 0.06;
 const REFLECTION_SWEEP_MS = 1100;
 const RIG_BULB_SPACING = 18;
+const ROW_SPACING_OFFSET = 2.2;
 
 export class CrystalPathShatteredScene {
   private readonly app: Application;
@@ -198,9 +199,9 @@ export class CrystalPathShatteredScene {
       const endX = width * (0.9 - stringIndex * 0.04);
       const yBase = height * (0.05 + stringIndex * 0.045);
       const sag = height * (0.04 + stringIndex * 0.018);
-      const bulbCount = Math.max(12, Math.floor((endX - startX) / RIG_BULB_SPACING));
-      for (let bulbIndex = 0; bulbIndex <= bulbCount; bulbIndex += 1) {
-        const progress = bulbIndex / bulbCount;
+      const bulbsPerString = Math.max(12, Math.floor((endX - startX) / RIG_BULB_SPACING));
+      for (let bulbIndex = 0; bulbIndex <= bulbsPerString; bulbIndex += 1) {
+        const progress = bulbIndex / bulbsPerString;
         const x = startX + (endX - startX) * progress;
         const y = yBase + Math.sin(progress * Math.PI) * sag;
         rigBulbs.circle(x, y, stringIndex === 0 ? 2.1 : 1.6)
@@ -405,7 +406,7 @@ export class CrystalPathShatteredScene {
     const depth = rowIndex / Math.max(1, rowsCount - 1);
     const perspective = 1 - depth * 0.34;
     const y = boardBottom - Math.pow(depth, 1.05) * usableHeight * 0.9;
-    const rowGap = usableHeight / Math.max(6, rowsCount + 2.2);
+    const rowGap = usableHeight / Math.max(6, rowsCount + ROW_SPACING_OFFSET);
     const laneSpread = width * (0.19 - depth * 0.06);
     const tileWidth = Math.max(64, width * (0.19 + perspective * 0.07));
     const tileHeight = Math.max(18, rowGap * (0.84 + perspective * 0.2));
@@ -498,7 +499,7 @@ export class CrystalPathShatteredScene {
     const panelTop = y - panelHeight * 0.5;
     const panelBottom = panelTop + panelHeight;
     const thickness = Math.max(3, height * PANEL_THICKNESS_RATIO);
-    const shimmerOffset = ((Math.sin(this.elapsedMs / REFLECTION_SWEEP_MS + metrics.perspective * 4) + 1) / 2) * panelWidth;
+    const reflectionXOffset = ((Math.sin(this.elapsedMs / REFLECTION_SWEEP_MS + metrics.perspective * 4) + 1) / 2) * panelWidth;
     const idleFill = 0x081019;
     const activeFill = 0x0c1d2f;
     const safeFill = 0x1f3e53;
@@ -531,13 +532,13 @@ export class CrystalPathShatteredScene {
         panelBottom - 3,
       ]).fill({ color: 0xffffff, alpha: isSafe ? 0.12 : 0.08 });
       reflections.poly([
-        panelLeft + shimmerOffset * 0.8,
+        panelLeft + reflectionXOffset * 0.8,
         panelTop + 2,
-        panelLeft + shimmerOffset * 0.8 + panelWidth * 0.08,
+        panelLeft + reflectionXOffset * 0.8 + panelWidth * 0.08,
         panelTop + 2,
-        panelLeft + shimmerOffset * 0.8 - panelWidth * 0.02,
+        panelLeft + reflectionXOffset * 0.8 - panelWidth * 0.02,
         panelBottom - 2,
-        panelLeft + shimmerOffset * 0.8 - panelWidth * 0.1,
+        panelLeft + reflectionXOffset * 0.8 - panelWidth * 0.1,
         panelBottom - 2,
       ]).fill({ color: 0xffffff, alpha: selectable ? 0.08 : 0.05 });
       reflections.moveTo(panelLeft + panelWidth * 0.62, panelTop + panelHeight * 0.16);
