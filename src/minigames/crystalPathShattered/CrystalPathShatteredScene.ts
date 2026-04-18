@@ -78,23 +78,11 @@ const SHAKE_STRENGTH = 5;
 const BEAM_TOP_WIDTH_RATIO = 0.08;
 const BEAM_BOTTOM_WIDTH_RATIO = 0.035;
 const BEAM_HEIGHT_RATIO = 0.56;
-const CRYSTAL_TILE_SHAPE = {
-  leftOuterX: 0.5,
-  leftTopX: 0.24,
-  rightTopX: 0.25,
-  topLift: 0.62,
-  topRidgeDrop: 0.06,
-  rightOuterX: 0.5,
-  rightBottomX: 0.33,
-  leftBottomX: 0.3,
-  bottomLip: 0.06,
-  innerLeftOuterX: 0.38,
-  innerLeftTopX: 0.16,
-  innerRightTopX: 0.2,
-  innerRightOuterX: 0.36,
-  innerRightBottomX: 0.22,
-  innerLeftBottomX: 0.24,
-};
+const PANEL_CORNER_RADIUS = 8;
+const PANEL_THICKNESS_RATIO = 0.18;
+const PANEL_INSET_RATIO = 0.06;
+const REFLECTION_SWEEP_MS = 1100;
+const RIG_BULB_SPACING = 18;
 
 export class CrystalPathShatteredScene {
   private readonly app: Application;
@@ -198,6 +186,33 @@ export class CrystalPathShatteredScene {
       .ellipse(centerX, height * 0.18, width * 0.18, height * 0.06)
       .fill({ color: 0x00e5ff, alpha: 0.12 });
 
+    const rigLines = new Graphics();
+    const rigBulbs = new Graphics();
+    for (const offset of [-0.36, -0.22, -0.1, 0.1, 0.22, 0.36]) {
+      rigLines.moveTo(centerX, height * 0.06);
+      rigLines.lineTo(centerX + width * offset, height * 0.64);
+    }
+    rigLines.stroke({ color: 0xf8f3d8, width: 1, alpha: 0.08 });
+    for (let stringIndex = 0; stringIndex < 3; stringIndex += 1) {
+      const startX = width * (0.1 + stringIndex * 0.04);
+      const endX = width * (0.9 - stringIndex * 0.04);
+      const yBase = height * (0.05 + stringIndex * 0.045);
+      const sag = height * (0.04 + stringIndex * 0.018);
+      const bulbCount = Math.max(12, Math.floor((endX - startX) / RIG_BULB_SPACING));
+      for (let bulbIndex = 0; bulbIndex <= bulbCount; bulbIndex += 1) {
+        const progress = bulbIndex / bulbCount;
+        const x = startX + (endX - startX) * progress;
+        const y = yBase + Math.sin(progress * Math.PI) * sag;
+        rigBulbs.circle(x, y, stringIndex === 0 ? 2.1 : 1.6)
+          .fill({ color: 0xfff7df, alpha: 0.92 - stringIndex * 0.16 });
+      }
+    }
+    for (const x of [width * 0.09, width * 0.91]) {
+      for (let bulbY = height * 0.18; bulbY <= height * 0.82; bulbY += 16) {
+        rigBulbs.circle(x, bulbY, 1.55).fill({ color: 0xfff2cf, alpha: 0.78 });
+      }
+    }
+
     const chamberShadowLeft = new Graphics()
       .ellipse(width * 0.08, height * 0.5, width * 0.22, height * 0.42)
       .fill({ color: 0x000000, alpha: 0.48 });
@@ -225,6 +240,10 @@ export class CrystalPathShatteredScene {
       .ellipse(centerX, height * 0.92, width * 0.22, height * 0.06)
       .fill({ color: 0x000000, alpha: 1 });
 
+    const distantStage = new Graphics()
+      .roundRect(width * 0.34, height * 0.16, width * 0.32, height * 0.08, 14)
+      .stroke({ color: 0xfff2d6, width: 1.2, alpha: 0.14 });
+
     const chamberFrame = new Graphics()
       .roundRect(width * 0.03, height * 0.03, width * 0.94, height * 0.94, 34)
       .stroke({ color: 0xb4f2ff, width: 1.25, alpha: 0.04 });
@@ -233,12 +252,15 @@ export class CrystalPathShatteredScene {
       base,
       overheadBeam,
       chamberGlow,
+      rigLines,
+      rigBulbs,
       chamberShadowLeft,
       chamberShadowRight,
       depthFogUpper,
       depthFogLower,
       abyss,
       abyssCore,
+      distantStage,
       chamberFrame,
     );
   }
@@ -379,45 +401,69 @@ export class CrystalPathShatteredScene {
   private getRowMetrics(rowIndex: number, rowsCount: number, width: number, height: number): RowMetrics {
     const boardTop = BOARD_TOP_PADDING;
     const boardBottom = height - BOARD_BOTTOM_PADDING;
+    const usableHeight = boardBottom - boardTop;
     const depth = rowIndex / Math.max(1, rowsCount - 1);
-    const perspective = 1 - depth * 0.36;
-    const y = boardBottom - Math.pow(depth, 0.88) * (boardBottom - boardTop);
-    const laneSpread = width * (0.26 - depth * 0.12);
-    const tileWidth = Math.max(58, width * (0.21 + perspective * 0.11));
-    const tileHeight = 15 + perspective * 12;
+    const perspective = 1 - depth * 0.34;
+    const y = boardBottom - Math.pow(depth, 1.05) * usableHeight * 0.9;
+    const rowGap = usableHeight / Math.max(6, rowsCount + 2.2);
+    const laneSpread = width * (0.19 - depth * 0.06);
+    const tileWidth = Math.max(64, width * (0.19 + perspective * 0.07));
+    const tileHeight = Math.max(18, rowGap * (0.84 + perspective * 0.2));
     return {
       y,
       leftX: width / 2 - laneSpread,
       rightX: width / 2 + laneSpread,
       tileWidth,
       tileHeight,
-      laneGlowWidth: laneSpread * 1.85,
-      laneThickness: Math.max(3, 9 * perspective),
+      laneGlowWidth: tileWidth * 2.18 + laneSpread * 0.28,
+      laneThickness: Math.max(5, rowGap * 0.22),
       perspective,
     };
   }
 
   private createLaneBeam(metrics: RowMetrics) {
     const beam = new Container();
+    const bridgeWidth = metrics.laneGlowWidth;
+    const bridgeLeft = (metrics.leftX + metrics.rightX) / 2 - bridgeWidth / 2;
+    const bridgeTop = metrics.y - metrics.tileHeight * 0.38;
+    const bridgeHeight = metrics.tileHeight * 0.9;
+    const dividerWidth = Math.max(8, metrics.tileWidth * 0.09);
     const shadow = new Graphics()
       .roundRect(
-        (metrics.leftX + metrics.rightX) / 2 - metrics.laneGlowWidth / 2,
-        metrics.y + 1,
-        metrics.laneGlowWidth,
+        bridgeLeft,
+        bridgeTop + bridgeHeight * 0.7,
+        bridgeWidth,
         metrics.laneThickness,
-        3,
+        4,
       )
-      .fill({ color: 0x000000, alpha: 0.22 });
-    const light = new Graphics()
+      .fill({ color: 0x000000, alpha: 0.34 });
+    const deck = new Graphics()
       .roundRect(
-        (metrics.leftX + metrics.rightX) / 2 - metrics.laneGlowWidth / 2,
-        metrics.y - 1,
-        metrics.laneGlowWidth,
-        Math.max(2, metrics.laneThickness - 2),
+        bridgeLeft,
+        bridgeTop,
+        bridgeWidth,
+        bridgeHeight,
+        6,
+      )
+      .fill({ color: 0x04070d, alpha: 0.76 });
+    const divider = new Graphics()
+      .roundRect(
+        (metrics.leftX + metrics.rightX) / 2 - dividerWidth / 2,
+        bridgeTop,
+        dividerWidth,
+        bridgeHeight,
         3,
       )
-      .fill({ color: 0xa1eeff, alpha: 0.025 + metrics.perspective * 0.022 });
-    beam.addChild(shadow, light);
+      .fill({ color: 0x05080d, alpha: 0.94 });
+    const leftRail = new Graphics()
+      .moveTo(bridgeLeft + 2, bridgeTop + 2)
+      .lineTo(bridgeLeft + 2, bridgeTop + bridgeHeight - 2)
+      .stroke({ color: 0xf1e2ff, width: 1.2, alpha: 0.28 + metrics.perspective * 0.12 });
+    const rightRail = new Graphics()
+      .moveTo(bridgeLeft + bridgeWidth - 2, bridgeTop + 2)
+      .lineTo(bridgeLeft + bridgeWidth - 2, bridgeTop + bridgeHeight - 2)
+      .stroke({ color: 0xf1e2ff, width: 1.2, alpha: 0.28 + metrics.perspective * 0.12 });
+    beam.addChild(shadow, deck, divider, leftRail, rightRail);
     return beam;
   }
 
@@ -435,68 +481,74 @@ export class CrystalPathShatteredScene {
     const height = metrics.tileHeight;
     const container = new Container();
     const shadow = new Graphics();
-    const underglow = new Graphics();
+    const underside = new Graphics();
     const glass = new Graphics();
-    const core = new Graphics();
-    const edge = new Graphics();
-    const refraction = new Graphics();
-    const streaks = new Graphics();
+    const paneShade = new Graphics();
+    const edgeGlow = new Graphics();
+    const reflections = new Graphics();
+    const highlight = new Graphics();
     const isBroken = side === 'left' ? row.leftBroken : row.rightBroken;
     const isSafe = row.revealedSafeSide === side;
     const isAnimatingTarget = activeAnimation?.side === side;
-    const pulse = selectable ? 0.26 + Math.sin(this.elapsedMs / 340) * 0.08 : isSafe ? 0.2 : 0.045;
-    const topY = y - height * CRYSTAL_TILE_SHAPE.topLift;
-    const bottomY = y + height * 0.52;
-    const inset = width * 0.08;
-    const tilePoints = [
-      x - width * CRYSTAL_TILE_SHAPE.leftOuterX, y - height * 0.08,
-      x - width * CRYSTAL_TILE_SHAPE.leftTopX, topY,
-      x + width * CRYSTAL_TILE_SHAPE.rightTopX, topY - height * CRYSTAL_TILE_SHAPE.topRidgeDrop,
-      x + width * CRYSTAL_TILE_SHAPE.rightOuterX, y - height * 0.12,
-      x + width * CRYSTAL_TILE_SHAPE.rightBottomX, bottomY,
-      x - width * CRYSTAL_TILE_SHAPE.leftBottomX, bottomY + height * CRYSTAL_TILE_SHAPE.bottomLip,
-    ];
-    const innerPoints = [
-      x - width * CRYSTAL_TILE_SHAPE.innerLeftOuterX, y - height * 0.02,
-      x - width * CRYSTAL_TILE_SHAPE.innerLeftTopX, topY + height * 0.1,
-      x + width * CRYSTAL_TILE_SHAPE.innerRightTopX, topY + height * 0.04,
-      x + width * CRYSTAL_TILE_SHAPE.innerRightOuterX, y - height * 0.04,
-      x + width * CRYSTAL_TILE_SHAPE.innerRightBottomX, bottomY - height * 0.08,
-      x - width * CRYSTAL_TILE_SHAPE.innerLeftBottomX, bottomY,
-    ];
-    const idleFill = 0x081323;
-    const activeFill = 0x0b3251;
-    const safeFill = 0x65f3ff;
+    const pulse = selectable ? 0.16 + Math.sin(this.elapsedMs / 340) * 0.06 : isSafe ? 0.12 : 0.02;
+    const panelInset = Math.max(2, width * PANEL_INSET_RATIO);
+    const panelWidth = width - panelInset * 2;
+    const panelHeight = height * 0.96;
+    const panelLeft = x - panelWidth / 2;
+    const panelTop = y - panelHeight * 0.5;
+    const panelBottom = panelTop + panelHeight;
+    const thickness = Math.max(3, height * PANEL_THICKNESS_RATIO);
+    const shimmerOffset = ((Math.sin(this.elapsedMs / REFLECTION_SWEEP_MS + metrics.perspective * 4) + 1) / 2) * panelWidth;
+    const idleFill = 0x081019;
+    const activeFill = 0x0c1d2f;
+    const safeFill = 0x1f3e53;
     const fillColor = isSafe ? safeFill : selectable ? activeFill : idleFill;
-    const edgeColor = isSafe ? 0xffffff : selectable ? 0xbfffff : 0x72b6dd;
-    const edgeAlpha = isSafe ? 0.84 : selectable ? 0.92 : 0.34;
+    const edgeColor = isSafe ? 0xf7ffff : selectable ? 0xcffbff : 0xb8b7ff;
+    const edgeAlpha = isSafe ? 0.92 : selectable ? 0.78 : 0.46;
 
     if (isBroken || (activeAnimation?.type === 'wrong' && isAnimatingTarget && this.hasAnimationCollapsed(now))) {
       container.addChild(this.createHole(x, y + 2, width, height));
     } else {
-      shadow.ellipse(x, y + height * 1.15, width * 0.56, height * 0.62).fill({ color: 0x000000, alpha: 0.48 });
-      underglow.poly(tilePoints).fill({ color: selectable ? 0x00e5ff : isSafe ? 0xd5ffff : 0x3e7bb2, alpha: pulse });
-      glass.poly(tilePoints).fill({ color: fillColor, alpha: isSafe ? 0.32 : selectable ? 0.24 : 0.18 });
-      glass.poly(tilePoints).stroke({ color: edgeColor, width: 2.2, alpha: edgeAlpha });
-      core.poly(innerPoints).fill({ color: isSafe ? 0xffffff : selectable ? 0xbcefff : 0x24435f, alpha: isSafe ? 0.22 : selectable ? 0.14 : 0.08 });
-      edge.moveTo(x - width * 0.24, topY + 1);
-      edge.lineTo(x + width * 0.23, topY - height * 0.04);
-      edge.lineTo(x + width * 0.35, y - height * 0.02);
-      edge.stroke({ color: 0xffffff, width: 2.4, alpha: isSafe ? 0.74 : selectable ? 0.6 : 0.18 });
-      refraction.poly([
-        x - width * 0.05, topY + height * 0.16,
-        x + width * 0.14, y - height * 0.05,
-        x + width * 0.06, bottomY - height * 0.2,
-        x - width * 0.14, y + height * 0.02,
-      ]).fill({ color: 0xffffff, alpha: isSafe ? 0.16 : 0.08 });
-      streaks.moveTo(x - width * 0.22, y - height * 0.06);
-      streaks.lineTo(x - inset * 0.2, y + height * 0.18);
-      streaks.moveTo(x + width * 0.08, topY + height * 0.18);
-      streaks.lineTo(x + width * 0.18, y + height * 0.26);
-      streaks.moveTo(x - width * 0.02, topY + height * 0.1);
-      streaks.lineTo(x + width * 0.06, y + height * 0.14);
-      streaks.stroke({ color: isSafe ? 0xb7ffff : 0x8fdfff, width: 1.4, alpha: isSafe ? 0.22 : 0.12 });
-      container.addChild(shadow, underglow, glass, core, edge, refraction, streaks);
+      shadow.ellipse(x, panelBottom + height * 0.24, panelWidth * 0.56, thickness * 1.6).fill({ color: 0x000000, alpha: 0.46 });
+      underside.roundRect(panelLeft, panelBottom - thickness * 0.35, panelWidth, thickness, 4)
+        .fill({ color: 0x091019, alpha: 0.94 });
+      glass.roundRect(panelLeft, panelTop, panelWidth, panelHeight, PANEL_CORNER_RADIUS)
+        .fill({ color: fillColor, alpha: isSafe ? 0.42 : selectable ? 0.28 : 0.19 });
+      glass.roundRect(panelLeft, panelTop, panelWidth, panelHeight, PANEL_CORNER_RADIUS)
+        .stroke({ color: edgeColor, width: 1.8, alpha: edgeAlpha });
+      paneShade.roundRect(panelLeft + 2, panelTop + 2, panelWidth - 4, panelHeight - 4, PANEL_CORNER_RADIUS - 1)
+        .fill({ color: 0x000000, alpha: isSafe ? 0.08 : 0.14 });
+      edgeGlow.roundRect(panelLeft - 1, panelTop - 1, panelWidth + 2, panelHeight + 2, PANEL_CORNER_RADIUS)
+        .stroke({ color: selectable ? 0xaafaff : isSafe ? 0xffffff : 0xe0d0ff, width: 1.2, alpha: pulse + 0.08 });
+      reflections.poly([
+        panelLeft + panelWidth * 0.12,
+        panelTop + 1,
+        panelLeft + panelWidth * 0.3,
+        panelTop + 1,
+        panelLeft + panelWidth * 0.18,
+        panelBottom - 3,
+        panelLeft + panelWidth * 0.02,
+        panelBottom - 3,
+      ]).fill({ color: 0xffffff, alpha: isSafe ? 0.12 : 0.08 });
+      reflections.poly([
+        panelLeft + shimmerOffset * 0.8,
+        panelTop + 2,
+        panelLeft + shimmerOffset * 0.8 + panelWidth * 0.08,
+        panelTop + 2,
+        panelLeft + shimmerOffset * 0.8 - panelWidth * 0.02,
+        panelBottom - 2,
+        panelLeft + shimmerOffset * 0.8 - panelWidth * 0.1,
+        panelBottom - 2,
+      ]).fill({ color: 0xffffff, alpha: selectable ? 0.08 : 0.05 });
+      reflections.moveTo(panelLeft + panelWidth * 0.62, panelTop + panelHeight * 0.16);
+      reflections.lineTo(panelLeft + panelWidth * 0.86, panelTop + panelHeight * 0.4);
+      reflections.moveTo(panelLeft + panelWidth * 0.54, panelTop + panelHeight * 0.56);
+      reflections.lineTo(panelLeft + panelWidth * 0.86, panelTop + panelHeight * 0.72);
+      reflections.stroke({ color: 0xe8f9ff, width: 1.05, alpha: isSafe ? 0.24 : 0.14 });
+      highlight.moveTo(panelLeft + 4, panelTop + 1.5);
+      highlight.lineTo(panelLeft + panelWidth - 4, panelTop + 1.5);
+      highlight.stroke({ color: 0xffffff, width: 1.6, alpha: isSafe ? 0.72 : selectable ? 0.54 : 0.22 });
+      container.addChild(shadow, underside, glass, paneShade, edgeGlow, reflections, highlight);
     }
 
     if (selectable) {
@@ -528,27 +580,34 @@ export class CrystalPathShatteredScene {
 
   private createHole(x: number, y: number, width: number, height: number) {
     const hole = new Container();
+    const panelInset = Math.max(2, width * PANEL_INSET_RATIO);
+    const panelWidth = width - panelInset * 2;
+    const panelHeight = height * 0.96;
+    const panelLeft = x - panelWidth / 2;
+    const panelTop = y - panelHeight * 0.5;
     const falloff = new Graphics()
       .ellipse(x, y + height * 2.1, width * 0.9, height * 1.5)
       .fill({ color: 0x02030a, alpha: 0.2 });
     const voidShape = new Graphics()
-      .ellipse(x, y + 4, width * 0.54, height * 0.92)
+      .roundRect(panelLeft, panelTop, panelWidth, panelHeight, PANEL_CORNER_RADIUS)
       .fill({ color: 0x000000, alpha: 0.96 });
     const brokenRim = new Graphics()
       .poly([
-        x - width * 0.44, y,
-        x - width * 0.16, y - height * 0.58,
-        x + width * 0.2, y - height * 0.52,
-        x + width * 0.45, y + 2,
-        x + width * 0.22, y + height * 0.58,
-        x - width * 0.26, y + height * 0.52,
+        panelLeft + 3, panelTop + panelHeight * 0.08,
+        panelLeft + panelWidth * 0.24, panelTop,
+        panelLeft + panelWidth * 0.56, panelTop + 3,
+        panelLeft + panelWidth - 3, panelTop + panelHeight * 0.14,
+        panelLeft + panelWidth - 5, panelTop + panelHeight * 0.84,
+        panelLeft + panelWidth * 0.68, panelTop + panelHeight - 2,
+        panelLeft + panelWidth * 0.3, panelTop + panelHeight - 3,
+        panelLeft + 2, panelTop + panelHeight * 0.88,
       ])
       .stroke({ color: 0xd8fbff, width: 2, alpha: 0.38 });
     const innerGlow = new Graphics()
-      .ellipse(x, y + 2, width * 0.36, height * 0.52)
+      .roundRect(panelLeft + 4, panelTop + 4, panelWidth - 8, panelHeight - 8, PANEL_CORNER_RADIUS - 2)
       .fill({ color: 0xff6430, alpha: 0.1 });
     const ember = new Graphics()
-      .ellipse(x, y + height * 0.2, width * 0.18, height * 0.18)
+      .ellipse(x, panelTop + panelHeight * 0.62, width * 0.18, height * 0.18)
       .fill({ color: 0xff7c43, alpha: 0.18 });
     hole.addChild(falloff, voidShape, innerGlow, ember, brokenRim);
     return hole;
@@ -557,25 +616,27 @@ export class CrystalPathShatteredScene {
   private createSparkles(x: number, y: number, width: number, height: number) {
     const sparkles = new Graphics();
     const breath = 0.35 + Math.sin(this.elapsedMs / 380) * 0.15;
-    for (let index = 0; index < 3; index += 1) {
-      const offsetX = (index - 1) * width * 0.22;
-      const offsetY = -height * (0.9 + index * 0.12);
-      sparkles.circle(x + offsetX, y + offsetY, 1.4 + index * 0.4)
-        .fill({ color: 0xffffff, alpha: breath * (0.65 - index * 0.12) });
-    }
+    sparkles.moveTo(x - width * 0.24, y - height * 0.28);
+    sparkles.lineTo(x - width * 0.19, y - height * 0.16);
+    sparkles.moveTo(x - width * 0.24, y - height * 0.16);
+    sparkles.lineTo(x - width * 0.14, y - height * 0.16);
+    sparkles.moveTo(x + width * 0.1, y + height * 0.02);
+    sparkles.lineTo(x + width * 0.18, y + height * 0.1);
+    sparkles.moveTo(x + width * 0.1, y + height * 0.1);
+    sparkles.lineTo(x + width * 0.22, y + height * 0.1);
+    sparkles.stroke({ color: 0xffffff, width: 1.15, alpha: breath * 0.6 });
     return sparkles;
   }
 
   private createStressFlash(x: number, y: number, width: number, height: number, progress: number) {
     return new Graphics()
-      .poly([
-        x - width * 0.48, y - height * 0.08,
-        x - width * 0.22, y - height * 0.62,
-        x + width * 0.26, y - height * 0.68,
-        x + width * 0.48, y - height * 0.14,
-        x + width * 0.3, y + height * 0.54,
-        x - width * 0.28, y + height * 0.6,
-      ])
+      .roundRect(
+        x - width * 0.44,
+        y - height * 0.48,
+        width * 0.88,
+        height * 0.96,
+        PANEL_CORNER_RADIUS,
+      )
       .fill({ color: 0xff6f3c, alpha: 0.08 + progress * 0.18 });
   }
 

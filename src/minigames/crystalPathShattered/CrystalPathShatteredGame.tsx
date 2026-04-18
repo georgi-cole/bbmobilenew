@@ -336,7 +336,7 @@ export default function CrystalPathShatteredGame({
         <div className="crystal-shattered-title-block">
           <p className="crystal-shattered-kicker">Premium Pixi Edition</p>
           <h2>Crystal Path: Shattered</h2>
-          <p className="crystal-shattered-subtitle">A crystal bridge hangs over the void.</p>
+          <p className="crystal-shattered-subtitle">A glass bridge hangs in a dark theatrical chamber.</p>
         </div>
       </header>
       <div className="crystal-shattered-hud-row" role="group" aria-label="Crystal Path status">
