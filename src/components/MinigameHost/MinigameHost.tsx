@@ -30,6 +30,7 @@ import MajorityRulesComp from '../MajorityRulesComp/MajorityRulesComp';
 import type { MajorityRulesCompetitionType } from '../../features/majorityRules/majorityRulesSlice';
 import { buildGlassBridgeTimeLimitMs } from '../../features/glassBridge/glassBridgeSlice';
 import GlassBridgeComp from '../GlassBridgeComp/GlassBridgeComp';
+import CrystalPathShatteredGame from '../../minigames/crystalPathShattered/CrystalPathShatteredGame';
 import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournamentComp';
 import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
 import RiskWheelComp from '../RiskWheelComp/RiskWheelComp';
@@ -403,6 +404,24 @@ export default function MinigameHost({
               }
               return (
                 <GlassBridgeComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as 'LOH' | 'POS' | undefined}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'CrystalPathShattered') {
+              if (import.meta.env.DEV) {
+                console.log('CRYSTAL_PATH_SHATTERED_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
+                });
+              }
+              return (
+                <CrystalPathShatteredGame
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as 'LOH' | 'POS' | undefined}

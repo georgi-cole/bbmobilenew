@@ -1085,6 +1085,33 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  crystal_path_shattered: {
+    key: 'crystal_path_shattered',
+    title: 'Crystal Path: Shattered',
+    description:
+      'A premium Pixi-rendered crystal bridge suspended over the abyss, where each wrong step splinters the path beneath you.',
+    instructions: [
+      'Cross the suspended crystal path one row at a time.',
+      'Each row offers LEFT and RIGHT platforms, but only one will hold.',
+      'Wrong tiles crack, shatter open, and drop the current player into the void.',
+      'Safe tiles glow brighter after they are revealed, helping later turns read the path.',
+      'Order is still decided by a number draw, and placements use the same completion and progress rules.',
+      'You may ask the chamber for up to 3 hints, but each hint adds a 30-second penalty.',
+    ],
+    resultMode: 'placement',
+    metricKind: 'accuracy',
+    metricLabel: 'Placement',
+    timeLimitMs: 160_000,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'CrystalPathShattered',
+    legacy: false,
+    weight: 1,
+    category: 'endurance',
+    retired: false,
+  },
+
   rescueTheKing: {
     key: 'rescueTheKing',
     title: 'Rescue the King',
