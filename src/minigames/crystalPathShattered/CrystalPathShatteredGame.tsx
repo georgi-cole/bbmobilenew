@@ -44,6 +44,12 @@ import {
 } from './crystalPathShatteredLogic';
 import './crystalPathShattered.css';
 
+const TIMER_UPDATE_INTERVAL_MS = 250;
+const MIN_TIMER_UPDATE_INTERVAL_MS = 120;
+const AI_HINT_BASE_PROBABILITY = 0.18;
+const AI_HINT_DEPTH_PROGRESSION = 0.34;
+const AI_HINT_MAX_PROBABILITY = 0.62;
+
 interface ParticipantInput {
   id: string;
   name: string;
@@ -75,7 +81,7 @@ export default function CrystalPathShatteredGame({
   const [hintText, setHintText] = useState<string | null>(null);
   const [showSpectatorModal, setShowSpectatorModal] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2 | 3>(1);
-  const [remainingMs, setRemainingMs] = useState(gb.globalTimeLimitMs);
+  const [remainingMs, setRemainingMs] = useState(0);
   const [rowHintCounts, setRowHintCounts] = useState<Record<string, number>>({});
   const { playSafeStep, playDeath, playWinner, playNewTurn } = useGlassBridgeAudio(true);
 
@@ -204,7 +210,10 @@ export default function CrystalPathShatteredGame({
     };
 
     updateRemaining();
-    const intervalId = window.setInterval(updateRemaining, 250 / playbackSpeed);
+    const intervalId = window.setInterval(
+      updateRemaining,
+      Math.max(MIN_TIMER_UPDATE_INTERVAL_MS, TIMER_UPDATE_INTERVAL_MS / playbackSpeed),
+    );
     return () => window.clearInterval(intervalId);
   }, [dispatch, gb.challengeStartTimeMs, gb.globalTimeLimitMs, gb.phase, gb.timerExpired, playbackSpeed]);
 
@@ -232,7 +241,11 @@ export default function CrystalPathShatteredGame({
       && row.revealedSafeSide === null
       && !row.leftBroken
       && !row.rightBroken
-      && aiRngRef.current() < Math.min(0.62, 0.18 + ((gb.currentPlayerRow - 1) / Math.max(1, gb.rowsCount - 1)) * 0.34);
+      && aiRngRef.current() < Math.min(
+        AI_HINT_MAX_PROBABILITY,
+        AI_HINT_BASE_PROBABILITY
+          + ((gb.currentPlayerRow - 1) / Math.max(1, gb.rowsCount - 1)) * AI_HINT_DEPTH_PROGRESSION,
+      );
 
     const choose = () => {
       const sameRowHintCount = getHintUses(gb.progress[activePlayerId]?.hintPenaltyMs) + 1;

@@ -1,8 +1,10 @@
-import type {
-  BridgeRow,
-  GlassBridgePlayerProgress,
-  GlassBridgeState,
-  TileSide,
+import {
+  HINT_PENALTY_MS,
+  MAX_HINTS_PER_RUN,
+  type BridgeRow,
+  type GlassBridgePlayerProgress,
+  type GlassBridgeState,
+  type TileSide,
 } from '../../features/glassBridge/glassBridgeSlice';
 
 export const ORDER_AI_PICK_SLOW_MS = 2_500;
@@ -39,7 +41,7 @@ export function getSafeSequenceMs(): number {
 }
 
 export function getHintUses(hintPenaltyMs: number | undefined): number {
-  return Math.min(3, Math.floor((hintPenaltyMs ?? 0) / 30_000));
+  return Math.min(MAX_HINTS_PER_RUN, Math.floor((hintPenaltyMs ?? 0) / HINT_PENALTY_MS));
 }
 
 export function computeHintLeftBreakChance(safeSide: TileSide, sameRowHintCount: number): number {

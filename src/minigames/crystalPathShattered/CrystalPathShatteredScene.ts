@@ -55,6 +55,11 @@ interface Particle {
 const TILE_WIDTH_RATIO = 0.3;
 const TOKEN_RADIUS = 15;
 const PARTICLE_COUNT = 26;
+const DEFAULT_SCENE_WIDTH = 360;
+const DEFAULT_SCENE_HEIGHT = 520;
+const ACTIVE_TOKEN_GLOW_OFFSET = 9;
+const FINISHED_TOKEN_GLOW_OFFSET = 7;
+const DEFAULT_TOKEN_GLOW_OFFSET = 5;
 
 export class CrystalPathShatteredScene {
   private readonly app: Application;
@@ -151,8 +156,8 @@ export class CrystalPathShatteredScene {
   }
 
   private buildParticles() {
-    const width = this.app.renderer.width || 360;
-    const height = this.app.renderer.height || 520;
+    const width = this.app.renderer.width || DEFAULT_SCENE_WIDTH;
+    const height = this.app.renderer.height || DEFAULT_SCENE_HEIGHT;
 
     for (let index = 0; index < PARTICLE_COUNT; index += 1) {
       const sprite = new Sprite(Texture.WHITE);
@@ -409,7 +414,16 @@ export class CrystalPathShatteredScene {
   ) {
     const container = new Container();
     const glow = new Graphics()
-      .circle(0, 0, TOKEN_RADIUS + (active ? 9 : finished ? 7 : 5))
+      .circle(
+        0,
+        0,
+        TOKEN_RADIUS
+          + (active
+            ? ACTIVE_TOKEN_GLOW_OFFSET
+            : finished
+              ? FINISHED_TOKEN_GLOW_OFFSET
+              : DEFAULT_TOKEN_GLOW_OFFSET),
+      )
       .fill({ color: finished ? 0xffef8c : active ? 0x89f8ff : 0x33528a, alpha: active ? 0.34 : 0.2 });
     const chip = new Graphics()
       .circle(0, 0, TOKEN_RADIUS)

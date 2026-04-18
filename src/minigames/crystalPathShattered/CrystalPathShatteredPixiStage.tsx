@@ -34,7 +34,12 @@ export default function CrystalPathShatteredPixiStage(props: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<Application | null>(null);
   const sceneRef = useRef<CrystalPathShatteredScene | null>(null);
-  const initialPropsRef = useRef(props);
+  const latestPropsRef = useRef(props);
+
+  useEffect(() => {
+    latestPropsRef.current = props;
+    sceneRef.current?.update(props);
+  }, [props]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -56,7 +61,7 @@ export default function CrystalPathShatteredPixiStage(props: Props) {
       }
       host.appendChild(app.canvas);
       appRef.current = app;
-      sceneRef.current = new CrystalPathShatteredScene(app, initialPropsRef.current);
+      sceneRef.current = new CrystalPathShatteredScene(app, latestPropsRef.current);
       sceneRef.current.resize();
     }
 
@@ -73,10 +78,6 @@ export default function CrystalPathShatteredPixiStage(props: Props) {
       }
     };
   }, []);
-
-  useEffect(() => {
-    sceneRef.current?.update({ ...props });
-  }, [props]);
 
   return <div ref={hostRef} className="crystal-shattered-stage" aria-label="Crystal Path: Shattered board" />;
 }
