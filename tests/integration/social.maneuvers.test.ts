@@ -417,6 +417,29 @@ describe('executeAction – happy path', () => {
     expect(rel?.tags).toContain('conflict');
   });
 
+  it('applies the contextual subject tag only for primaryPlusSubject actions', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
+
+    executeAction('p1', 'p2', 'pitch_target', { subjectId: 'p3' });
+
+    const rel = store.getState().social.relationships['p2']?.['p3'];
+    expect(rel?.tags).toContain('target');
+  });
+
+  it('ignores subjectId for non-primaryPlusSubject actions', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+
+    executeAction('p1', 'p2', 'startFight', { subjectId: 'p3' });
+
+    const rel = store.getState().social.relationships['p2']?.['p3'];
+    expect(rel).toBeUndefined();
+  });
+
   it('multiple executions accumulate session logs', () => {
     const store = makeStore();
     initManeuvers(store);
@@ -510,14 +533,14 @@ describe('executeAction – outcome delta from SocialPolicy', () => {
     expect(result.delta).toBe(socialConfig.affinityDeltas.aggressiveSuccess);
   });
 
-  it('delta for compliment (not yet in socialConfig categories) is 0', () => {
+  it('delta for compliment (friendly action in socialConfig) is positive on success', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
     const result = executeAction('p1', 'p2', 'compliment');
-    // compliment is not in socialConfig.actionCategories so delta = 0
-    expect(result.delta).toBe(0);
+    // compliment is now in socialConfig.actionCategories.friendlyActions
+    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess);
   });
 });
 

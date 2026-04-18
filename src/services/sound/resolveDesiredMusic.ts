@@ -34,6 +34,7 @@ function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
     case 'riskWheel':
       return 'risk_wheel';
     case 'glass_bridge_brutal':
+    case 'crystal_path_shattered':
       return 'glass_bridge';
     case 'quickTap':
     case 'laneRacers':

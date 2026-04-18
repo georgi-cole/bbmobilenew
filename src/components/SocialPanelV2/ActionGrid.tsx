@@ -156,13 +156,13 @@ export default function ActionGrid({
 
   const sortedActions =
     actorEnergy !== undefined
-      ? [...SOCIAL_ACTIONS].sort((a, b) => {
+      ? [...SOCIAL_ACTIONS].filter((a) => !a.aiOnly).sort((a, b) => {
           const aAffordable = isActionAffordable(normalizeActionCosts(a));
           const bAffordable = isActionAffordable(normalizeActionCosts(b));
           if (aAffordable === bAffordable) return 0;
           return aAffordable ? -1 : 1;
         })
-      : SOCIAL_ACTIONS;
+      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly);
 
   /** Returns an availability reason string, or empty string if the action is affordable. */
   function getAvailabilityReason(costs: { energy: number; influence: number; info: number }): string {

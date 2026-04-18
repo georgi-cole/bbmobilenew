@@ -133,6 +133,14 @@ export interface ExecuteActionOptions {
    * Defaults to 'system' when omitted so un-tagged callers are treated conservatively.
    */
   source?: 'manual' | 'system';
+  /**
+   * Optional contextual subject for primaryPlusSubject actions.
+   * Represents the person being talked *about* (as opposed to targetId, which is
+   * the person being talked *to*).
+   * When provided and the action succeeds, a lightweight tag is applied to the
+   * primary target → subject relationship to reflect the conversation.
+   */
+  subjectId?: string;
 }
 
 export interface ExecuteActionResult {
@@ -282,6 +290,28 @@ export function executeAction(
       actionSource: options?.source ?? 'system',
     }),
   );
+
+  // For primaryPlusSubject actions: apply a lightweight contextual tag from the
+  // primary target toward the subject (e.g. HOH now sees the subject as a "target").
+  const subjectId = options?.subjectId;
+  if (
+    outcome === 'success' &&
+    action.targetMode === 'primaryPlusSubject' &&
+    subjectId &&
+    subjectId !== targetId &&
+    action.outcomeTag
+  ) {
+    _store.dispatch(
+      updateRelationship({
+        source: targetId,
+        target: subjectId,
+        delta: 0,
+        tags: [action.outcomeTag],
+        actionSource: options?.source ?? 'system',
+      }),
+    );
+  }
+
   _store.dispatch(recordSocialAction({ entry }));
 
   const verb = outcome === 'failure' ? 'failed' : 'succeeded';

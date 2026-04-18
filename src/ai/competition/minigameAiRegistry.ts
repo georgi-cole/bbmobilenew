@@ -450,6 +450,19 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       luck: 0.05,
     },
   },
+  crystal_path_shattered: {
+    key: 'crystal_path_shattered',
+    category: 'endurance',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_ENDURANCE_BALANCE,
+    weights: {
+      physical: 0.1,
+      mental: 0.3,
+      precision: 0.2,
+      nerve: 0.35,
+      luck: 0.05,
+    },
+  },
   blackjackTournament: {
     key: 'blackjackTournament',
     category: 'luck',
@@ -503,5 +516,21 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PUZZLE,
     weights: WEIGHTS_MENTAL_PRECISION,
+  },
+  trapAuction: {
+    key: 'trapAuction',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: {
+      physical: 0,
+      mental: 0.35,
+      precision: 0.1,
+      nerve: 0.3,
+      luck: 0.25,
+    },
+    notes:
+      'Trap Auction — secret bidding game; AI balances nerve to avoid the ' +
+      'lowest bid while accounting for luck in reading opponent ranges.',
   },
 };

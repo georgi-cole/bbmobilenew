@@ -265,6 +265,12 @@ describe('SocialPanelV2 – execute flow', () => {
     expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('group chat still requires an explicit player target', () => {
+    fireEvent.click(screen.getByRole('button', { name: /Group Chat/i }));
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('execute button is enabled when action and a player are both selected', () => {
     const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
     fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
@@ -279,6 +285,18 @@ describe('SocialPanelV2 – execute flow', () => {
     expect(screen.getByRole('status')).toBeDefined();
   });
 
+  it('targetless actions ignore previously selected non-user targets when executing', () => {
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    const logs = store.getState().social.sessionLogs;
+    expect(logs.at(-1)?.targetId).toBe(humanId);
+  });
+
   it('shows "Insufficient energy" when player cannot afford the action', () => {
     act(() => {
       store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 0 }));
@@ -290,12 +308,45 @@ describe('SocialPanelV2 – execute flow', () => {
     expect(screen.getByRole('status').textContent).toContain('Insufficient resources');
   });
 
-  it('execute button returns to disabled after successful execution', () => {
+  it('execute button stays enabled after a successful execution (action grid remains stable)', () => {
+    // Bug fix regression: after a successful execute the state must NOT be
+    // cleared so that (a) the action grid stays visible and (b) no stray
+    // preview popup "%" appears because selectedTarget became null while
+    // previewActionId was still set.
     fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
-    // After success, selectedActionId is cleared → button disabled again
+    // After success, action stays selected → button remains enabled
     const btn = screen.getByRole('button', { name: 'Execute' });
-    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('action grid remains visible (cards are rendered) after a successful execution', () => {
+    // Regression test: cards must not disappear from the DOM after execute.
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+    // The action grid wrapper should still be present
+    expect(screen.getByLabelText('Action grid')).toBeDefined();
+    // And it must contain at least one action card
+    const grid = screen.getByLabelText('Action grid');
+    const cards = grid.querySelectorAll('[data-action-id]');
+    expect(cards.length).toBeGreaterThan(0);
+  });
+
+  it('uses the clicked player as the primary target after a reverse shift selection', () => {
+    const players = store.getState().game.players.filter((p) => !p.isUser);
+    const firstTarget = players[0];
+    const secondTarget = players[1];
+
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(secondTarget.name, 'i') })[0]);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: new RegExp(firstTarget.name, 'i') })[0],
+      { shiftKey: true },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    const logs = store.getState().social.sessionLogs;
+    expect(logs.at(-1)?.targetId).toBe(firstTarget.id);
   });
 });
 
@@ -387,5 +438,88 @@ describe('SocialPanelV2 – accessibility', () => {
     act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(document.getElementById('sp2-body')).not.toBeNull();
+  });
+});
+
+// ── Subject picker ─────────────────────────────────────────────────────────
+
+describe('SocialPanelV2 – subject picker', () => {
+  let store: ReturnType<typeof makeStore>;
+  let humanId: string;
+
+  beforeEach(() => {
+    store = makeStore({ phase: 'social_1' });
+    humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 10 }));
+    store.dispatch(openSocialPanel());
+    initManeuvers(store);
+    renderPanel(store);
+  });
+
+  it('subject picker is not rendered when no action is selected', () => {
+    expect(screen.queryByLabelText('Choose subject')).toBeNull();
+  });
+
+  it('subject picker is not rendered for primary-mode actions', () => {
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+    expect(screen.queryByLabelText('Choose subject')).toBeNull();
+  });
+
+  it('subject picker appears when a primaryPlusSubject action is selected with a target', () => {
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+    expect(screen.getByLabelText('Choose subject')).toBeDefined();
+  });
+
+  it('execute button is disabled for primaryPlusSubject action without a subject', () => {
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('execute button is enabled once subject is selected for primaryPlusSubject action', () => {
+    const players = store.getState().game.players.filter((p) => !p.isUser);
+    const primaryTarget = players[0];
+    fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(primaryTarget.name, 'i') })[0]);
+    // Pick a subject chip — the chip buttons are inside the subject picker
+    const subjectPicker = screen.getByLabelText('Choose subject');
+    const subjectChips = subjectPicker.querySelectorAll('[aria-pressed]');
+    if (subjectChips.length > 0) {
+      fireEvent.click(subjectChips[0]);
+      const btn = screen.getByRole('button', { name: 'Execute' });
+      expect((btn as HTMLButtonElement).disabled).toBe(false);
+    } else {
+      // If no eligible subjects (e.g. no nominees in test data), verify empty state
+      expect(screen.queryByText('No eligible targets')).not.toBeNull();
+    }
+  });
+
+  it('subject selection is cleared when primary target changes', () => {
+    const players = store.getState().game.players.filter((p) => !p.isUser);
+    if (players.length < 3) return; // need at least 3 non-user players
+    const primaryTarget = players[0];
+    const altTarget = players[1];
+
+    // Select pitch_target, pick primary, pick subject
+    fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(primaryTarget.name, 'i') })[0]);
+    const subjectPicker = screen.getByLabelText('Choose subject');
+    const subjectChips = subjectPicker.querySelectorAll('[aria-pressed]');
+    if (subjectChips.length === 0) return; // no candidates, skip
+
+    fireEvent.click(subjectChips[0]);
+    expect((subjectChips[0] as HTMLElement).getAttribute('aria-pressed')).toBe('true');
+
+    // Switch primary target — subject should clear
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(altTarget.name, 'i') })[0]);
+    // After re-render the chip for what was previously selected should now be unselected
+    const updatedChips = screen.getByLabelText('Choose subject').querySelectorAll('[aria-pressed="true"]');
+    expect(updatedChips.length).toBe(0);
   });
 });

@@ -12,16 +12,19 @@
 /**
  * Selection strategy for the challenge scheduler.
  *
- * - `random-games`    – default; picks any non-retired game (existing behaviour).
- * - `single-game`     – always use the game at `selectedGameId`.
- * - `user-selection`  – pick deterministically from the `selectedGameIds` pool.
- * - `arcade-only`     – restrict to the `arcade` registry category.
- * - `trivia-only`     – restrict to the `trivia` registry category.
- * - `endurance-only`  – restrict to the `endurance` registry category.
- * - `logic-only`      – restrict to the `logic` registry category.
- * - `retired`         – pick from retired games only.
- * - `misc`            – games not matching any of the main categories (fallback).
- * - `unique`          – exclude recently-used games; falls back to random when pool is exhausted.
+ * - `random-games`       – default; picks any non-retired game (existing behaviour).
+ * - `single-game`        – always use the game at `selectedGameId`.
+ * - `user-selection`     – pick deterministically from the `selectedGameIds` pool.
+ * - `arcade-only`        – restrict to the `arcade` registry category.
+ * - `trivia-only`        – restrict to the `trivia` registry category.
+ * - `endurance-only`     – restrict to the `endurance` registry category.
+ * - `logic-only`         – restrict to the `logic` registry category.
+ * - `retired`            – pick from retired games only.
+ * - `misc`               – games not matching any of the main categories (fallback).
+ * - `unique`             – exclude recently-used games; falls back to random when pool is exhausted.
+ * - `bracket-template`   – select from the default bracket template pool for the
+ *                          current player count and competition type (LOH/POS).
+ *                          Falls back to random selection when the bracket pool is empty.
  */
 export type CompSelectionMode =
   | 'random-games'
@@ -33,7 +36,8 @@ export type CompSelectionMode =
   | 'logic-only'
   | 'retired'
   | 'misc'
-  | 'unique';
+  | 'unique'
+  | 'bracket-template';
 
 /** A competition entry returned by fetchGames(). */
 export interface CompGame {
