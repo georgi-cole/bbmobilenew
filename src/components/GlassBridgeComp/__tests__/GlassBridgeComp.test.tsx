@@ -600,6 +600,8 @@ describe('GlassBridgeComp', () => {
     expect(allTiles.every(tile => tile.querySelector('.gb-tile-crystal'))).toBe(true);
     expect(allTiles.every(tile => tile.querySelector('.gb-tile-void'))).toBe(true);
     expect(allTiles.every(tile => tile.querySelector('.gb-tile-shards'))).toBe(true);
+    expect(container.querySelector('.gb-abyss-particles')).not.toBeNull();
+    expect(container.querySelector('.gb-abyss-falloff')).not.toBeNull();
 
     const safeSide = store.getState().glassBridge.rows[0].safeSide;
     await act(async () => {

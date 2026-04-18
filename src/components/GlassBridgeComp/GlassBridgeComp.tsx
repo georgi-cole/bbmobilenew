@@ -1548,6 +1548,8 @@ export default function GlassBridgeComp({
             <div className="gb-abyss-layer gb-abyss-layer-back" aria-hidden="true" />
             <div className="gb-abyss-layer gb-abyss-layer-mid" aria-hidden="true" />
             <div className="gb-abyss-layer gb-abyss-layer-front" aria-hidden="true" />
+            <div className="gb-abyss-particles" aria-hidden="true" />
+            <div className="gb-abyss-falloff" aria-hidden="true" />
             {/* LED accent rails — decorative outer edge lighting */}
             <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
             <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
@@ -1557,7 +1559,8 @@ export default function GlassBridgeComp({
               const maxRowIndex = Math.max(1, gb.rows.length - 1);
               const depthProgress = rowIdx / maxRowIndex;
               const rowDepthScale = 0.76 + depthProgress * 0.3;
-              const rowOffsetY = Math.round((1 - depthProgress) * -10);
+              const rowOffsetY = Math.round((1 - depthProgress) * -16);
+              const rowOffsetX = Math.round((0.5 - depthProgress) * (rowIdx % 2 === 0 ? -8 : 8));
               const isPassedRow = !!row.revealedSafeSide;
               const isUpcomingRow = rowNum > gb.currentPlayerRow && !isPassedRow;
 
@@ -1581,12 +1584,12 @@ export default function GlassBridgeComp({
               return (
                 <div
                   key={rowIdx}
-                  className={`gb-row${isCurrentRow ? ' gb-row-current' : ' gb-row-dimmed'}${isPassedRow ? ' gb-row-passed' : ''}${isUpcomingRow ? ' gb-row-upcoming' : ''}`}
+                  className={`gb-row${isCurrentRow ? ' gb-row-current' : ' gb-row-dimmed'}${isPassedRow ? ' gb-row-passed' : ''}${isUpcomingRow ? ' gb-row-upcoming' : ''}${rowIdx % 2 === 0 ? ' gb-row-lean-left' : ' gb-row-lean-right'}`}
                   ref={(node) => {
                     rowRefs.current[rowIdx] = node;
                   }}
                   style={{
-                    transform: `translateY(${rowOffsetY}px) scale(${rowDepthScale})`,
+                    transform: `translate(${rowOffsetX}px, ${rowOffsetY}px) scale(${rowDepthScale})`,
                     opacity: isCurrentRow ? 1 : 0.4 + depthProgress * 0.42,
                   }}
                 >
@@ -1610,6 +1613,7 @@ export default function GlassBridgeComp({
                         + (side === 'right' ? TIMEOUT_SIDE_BREAK_OFFSET_MS : 0);
 
                       let tileClass = 'gb-tile';
+                      tileClass += side === 'left' ? ' gb-tile-left' : ' gb-tile-right';
                       if (isBroken || isShatterAnim) tileClass += ' gb-tile-broken';
                       if (isShatterAnim) tileClass += ' gb-tile-shatter';
                       if (timeoutCollapseActive && !isBroken && !isShatterAnim) {
