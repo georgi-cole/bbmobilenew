@@ -29,6 +29,7 @@ const SKY_TOP = '#020610';
 const SKY_BOTTOM = '#0c2a3c';
 const TEXT_TINT = '#f0f6ff';
 const WARM_WINDOW_COLOR = 0xffe8a3;
+const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial Rounded MT Bold\', \'Montserrat\', sans-serif';
 
 type StarConfig = {
   sprite: Graphics;
@@ -445,10 +446,10 @@ export default class CreditsScene {
           distance: 0,
         },
         fill: TEXT_TINT,
-        fontFamily: 'Inter, Avenir, Helvetica, Arial, sans-serif',
+        fontFamily: PLAYFUL_FONT_STACK,
         fontSize: 22,
-        fontWeight: '500',
-        letterSpacing: 1.2,
+        fontWeight: '600',
+        letterSpacing: 0.9,
         lineHeight: 30,
         wordWrap: true,
         wordWrapWidth: 200,
@@ -467,10 +468,10 @@ export default class CreditsScene {
           distance: 0,
         },
         fill: '#94a3b8',
-        fontFamily: 'Inter, Avenir, Helvetica, Arial, sans-serif',
+        fontFamily: PLAYFUL_FONT_STACK,
         fontSize: 13,
-        fontWeight: '400',
-        letterSpacing: 1.5,
+        fontWeight: '500',
+        letterSpacing: 1.1,
       },
     });
     this.exitText.anchor.set(0.5);
