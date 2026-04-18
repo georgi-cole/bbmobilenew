@@ -249,6 +249,15 @@ describe('SoundManager init + unlock listeners', () => {
 });
 
 describe('SoundManager SFX dedup window', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function getDoPlaySpy() {
     // Spy on the private post-dedup playback path so we can verify whether
     // `play()` decided to forward the call or drop it, independent of any
@@ -265,6 +274,7 @@ describe('SoundManager SFX dedup window', () => {
     const doPlaySpy = getDoPlaySpy();
 
     await SoundManager.play('ui:confirm');
+    vi.advanceTimersByTime(20);
     await SoundManager.play('ui:confirm');
 
     expect(doPlaySpy).toHaveBeenCalledTimes(1);
@@ -279,10 +289,7 @@ describe('SoundManager SFX dedup window', () => {
     const doPlaySpy = getDoPlaySpy();
 
     await SoundManager.play('ui:confirm');
-    // Rewind the tracked timestamp far into the past.  This is equivalent to
-    // advancing wall-clock time beyond SFX_DEDUP_WINDOW_MS without relying on
-    // fake timers or timing-sensitive setTimeouts in the test.
-    sm._lastPlayedAt.set('ui:confirm', Date.now() - 10_000);
+    vi.advanceTimersByTime(41);
     await SoundManager.play('ui:confirm');
 
     expect(doPlaySpy).toHaveBeenCalledTimes(2);

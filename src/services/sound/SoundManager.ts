@@ -76,7 +76,7 @@ export interface PlayOptions {
   /**
    * When true, bypasses the short per-key SFX dedup window.
    * Use sparingly — only for SFX that are genuinely expected to fire faster
-   * than {@link SFX_DEDUP_WINDOW_MS} (e.g. a looping loop re-start).
+   * than {@link SFX_DEDUP_WINDOW_MS} (e.g. restarting a looping SFX).
    */
   allowDuplicate?: boolean;
 }
