@@ -504,4 +504,20 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_PUZZLE,
     weights: WEIGHTS_MENTAL_PRECISION,
   },
+  trapAuction: {
+    key: 'trapAuction',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: {
+      physical: 0,
+      mental: 0.35,
+      precision: 0.1,
+      nerve: 0.3,
+      luck: 0.25,
+    },
+    notes:
+      'Trap Auction — secret bidding game; AI balances nerve to avoid the ' +
+      'lowest bid while accounting for luck in reading opponent ranges.',
+  },
 };

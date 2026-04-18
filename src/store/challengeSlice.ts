@@ -15,6 +15,7 @@ import {
   simulateMinigameAiScore,
 } from '../ai/competition';
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
+import { getBracketPoolForContext } from '../ai/competition/bracketTemplate';
 import { applyCompetitionSeasonUpdate, selectAlivePlayers } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
@@ -286,6 +287,28 @@ export const startChallenge =
             // Pool exhausted — fall back to unconstrained random.
             gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           }
+          break;
+        }
+
+        case 'bracket-template': {
+          // Select from the bracket template pool keyed on alive player count
+          // and competition type (LOH or POS).  Falls back to the standard
+          // scheduler when the bracket pool is empty or the prizeType is unknown.
+          const bracketCompType =
+            opts.prizeType === 'POS' ? 'POS' : 'LOH';
+          const bracketPlayerCount = activeCompetitorCount > 0 ? activeCompetitorCount : participants.length;
+          const bracketKeys = getBracketPoolForContext(bracketPlayerCount, bracketCompType);
+          if (bracketKeys.length > 0) {
+            const bracketPool = bracketKeys
+              .map((k) => getGame(k))
+              .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired);
+            if (bracketPool.length > 0) {
+              gameEntry = selectFromPool(bracketPool);
+              break;
+            }
+          }
+          // Fallback: pool empty or all keys retired — use standard scheduler.
+          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           break;
         }
 
