@@ -19,6 +19,10 @@ const BASE_HEIGHT = 844;
 const STAR_COUNT = 96;
 const WINDOW_LIGHT_COUNT = 72;
 const CREDIT_CYCLE_SECONDS = 4;
+const SKY_TEXTURE_WIDTH = 64;
+const SKY_TEXTURE_HEIGHT = 256;
+const BEAM_TEXTURE_WIDTH = 320;
+const BEAM_TEXTURE_HEIGHT = 720;
 
 const SKY_TOP = '#040814';
 const SKY_BOTTOM = '#123247';
@@ -219,8 +223,8 @@ export default class CreditsScene {
 
   private createSkyTexture(): Texture {
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 256;
+    canvas.width = SKY_TEXTURE_WIDTH;
+    canvas.height = SKY_TEXTURE_HEIGHT;
     const context = canvas.getContext('2d');
 
     if (!context) {
@@ -332,8 +336,8 @@ export default class CreditsScene {
 
   private createBeamTexture(): Texture {
     const canvas = document.createElement('canvas');
-    canvas.width = 320;
-    canvas.height = 720;
+    canvas.width = BEAM_TEXTURE_WIDTH;
+    canvas.height = BEAM_TEXTURE_HEIGHT;
     const context = canvas.getContext('2d');
 
     if (!context) {

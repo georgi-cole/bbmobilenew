@@ -59,6 +59,14 @@ describe('Credits', () => {
 
     expect(creditsSceneMock).toHaveBeenCalledTimes(1);
     expect(initMock).toHaveBeenCalledTimes(1);
+    expect(creditsSceneMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credits: expect.arrayContaining([
+          'Creative Director\nGeorgi Cole',
+          'The Big Eye\nThanks for playing',
+        ]),
+      }),
+    );
 
     vi.useFakeTimers();
     act(() => {

@@ -85,7 +85,7 @@ export default function Credits() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+      if (event.key === 'Escape') {
         onExit();
       }
     }
@@ -106,6 +106,12 @@ export default function Credits() {
         role={status === 'ready' ? 'button' : 'img'}
         tabIndex={status === 'ready' ? 0 : -1}
         onClick={status === 'ready' ? onExit : undefined}
+        onKeyDown={status === 'ready' ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onExit();
+          }
+        } : undefined}
       />
       {status !== 'ready' ? (
         <div className="credits-overlay" role={status === 'error' ? 'alert' : 'status'}>
