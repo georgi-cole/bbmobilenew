@@ -1544,25 +1544,13 @@ export default function GlassBridgeComp({
           </div>
           {/* Bridge */}
           <div className="gb-bridge-container" role="region" aria-label="Crystal path">
-            <div className="gb-spotlight-beam" aria-hidden="true" />
-            <div className="gb-abyss-layer gb-abyss-layer-back" aria-hidden="true" />
-            <div className="gb-abyss-layer gb-abyss-layer-mid" aria-hidden="true" />
-            <div className="gb-abyss-layer gb-abyss-layer-front" aria-hidden="true" />
-            <div className="gb-abyss-particles" aria-hidden="true" />
-            <div className="gb-abyss-falloff" aria-hidden="true" />
             {/* LED accent rails — decorative outer edge lighting */}
             <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
             <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
               const isCurrentRow = gb.currentPlayerRow === rowNum;
-              const maxRowIndex = Math.max(1, gb.rows.length - 1);
-              const depthProgress = rowIdx / maxRowIndex;
-              const rowDepthScale = 0.76 + depthProgress * 0.3;
-              const rowOffsetY = Math.round((1 - depthProgress) * -16);
-              const rowOffsetX = Math.round((0.5 - depthProgress) * (rowIdx % 2 === 0 ? -8 : 8));
-              const isPassedRow = !!row.revealedSafeSide;
-              const isUpcomingRow = rowNum > gb.currentPlayerRow && !isPassedRow;
+              const rowDepthScale = Math.max(0.82, 1 - rowIdx * 0.015);
 
               // Find players on this row (those who have reached exactly this row and are active).
               const playersOnRow = gb.turnOrder.filter(pid => {
@@ -1584,14 +1572,11 @@ export default function GlassBridgeComp({
               return (
                 <div
                   key={rowIdx}
-                  className={`gb-row${isCurrentRow ? ' gb-row-current' : ' gb-row-dimmed'}${isPassedRow ? ' gb-row-passed' : ''}${isUpcomingRow ? ' gb-row-upcoming' : ''}${rowIdx % 2 === 0 ? ' gb-row-lean-left' : ' gb-row-lean-right'}`}
+                  className={`gb-row${isCurrentRow ? ' gb-row-current' : ' gb-row-dimmed'}`}
                   ref={(node) => {
                     rowRefs.current[rowIdx] = node;
                   }}
-                  style={{
-                    transform: `translate(${rowOffsetX}px, ${rowOffsetY}px) scale(${rowDepthScale})`,
-                    opacity: isCurrentRow ? 1 : 0.4 + depthProgress * 0.42,
-                  }}
+                  style={{ transform: `scale(${rowDepthScale})`, opacity: isCurrentRow ? 1 : Math.max(0.46, 1 - rowIdx * 0.03) }}
                 >
                   <span className="gb-row-label">{rowNum}</span>
                   <div className="gb-tiles">
@@ -1607,13 +1592,11 @@ export default function GlassBridgeComp({
                         !isBroken &&
                         !pendingStep &&
                         !timeoutCollapseActive;
-                      const isRevealedSafe = row.revealedSafeSide === side && !isBroken && !isShatterAnim;
                       const timeoutDelayMs =
                         rowIdx * TIMEOUT_ROW_BREAK_STAGGER_MS
                         + (side === 'right' ? TIMEOUT_SIDE_BREAK_OFFSET_MS : 0);
 
                       let tileClass = 'gb-tile';
-                      tileClass += side === 'left' ? ' gb-tile-left' : ' gb-tile-right';
                       if (isBroken || isShatterAnim) tileClass += ' gb-tile-broken';
                       if (isShatterAnim) tileClass += ' gb-tile-shatter';
                       if (timeoutCollapseActive && !isBroken && !isShatterAnim) {
@@ -1623,7 +1606,6 @@ export default function GlassBridgeComp({
                       if (isCurrentRow) tileClass += ' gb-tile-current-row';
                       if (!isCurrentRow) tileClass += ' gb-tile-inactive';
                       if (isPendingTile) tileClass += ' gb-tile-selected';
-                      if (isRevealedSafe) tileClass += ' gb-tile-safe';
 
                       return (
                         <div
@@ -1652,19 +1634,6 @@ export default function GlassBridgeComp({
                           aria-label={`${side} tile${isBroken ? ' (broken)' : ''}${canActivate ? ' — step here' : ''}`}
                           aria-disabled={isBroken || !canActivate}
                         >
-                          <span className="gb-tile-crystal" aria-hidden="true">
-                            <span className="gb-tile-facet gb-tile-facet-primary" />
-                            <span className="gb-tile-facet gb-tile-facet-secondary" />
-                            <span className="gb-tile-refraction gb-tile-refraction-a" />
-                            <span className="gb-tile-refraction gb-tile-refraction-b" />
-                            <span className="gb-tile-underglow" />
-                          </span>
-                          <span className="gb-tile-void" aria-hidden="true" />
-                          <span className="gb-tile-shards" aria-hidden="true">
-                            <span className="gb-tile-shard gb-tile-shard-a" />
-                            <span className="gb-tile-shard gb-tile-shard-b" />
-                            <span className="gb-tile-shard gb-tile-shard-c" />
-                          </span>
                           <span className="gb-tile-label">{side}</span>
                           {/* Death marker — shown briefly at the tile where a player fell */}
                           {deathMarkerTile?.rowIdx === rowIdx && deathMarkerTile?.side === side && (

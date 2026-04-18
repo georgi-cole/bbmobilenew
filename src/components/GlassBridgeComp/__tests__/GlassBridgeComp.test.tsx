@@ -570,44 +570,4 @@ describe('GlassBridgeComp', () => {
       });
     }
   });
-
-  it('renders crystal visual layers and promotes a safely revealed tile after a correct step', async () => {
-    const store = makeStore();
-    const { container } = render(
-      <Provider store={store}>
-        <GlassBridgeComp
-          participantIds={['user', 'ai-1']}
-          participants={[
-            { id: 'user', name: 'You', isHuman: true },
-            { id: 'ai-1', name: 'AI One', isHuman: false },
-          ]}
-          seed={42}
-        />
-      </Provider>,
-    );
-
-    await advance(0);
-    fireEvent.click(screen.getByRole('button', { name: /pick number 1/i }));
-
-    await act(async () => {
-      store.dispatch(recordNumberChoice({ playerId: 'ai-1', number: 2 }));
-      store.dispatch(finaliseOrderSelection());
-      store.dispatch(startPlaying({ now: Date.now() }));
-    });
-
-    const allTiles = Array.from(container.querySelectorAll('.gb-tile'));
-    expect(allTiles.length).toBeGreaterThan(0);
-    expect(allTiles.every(tile => tile.querySelector('.gb-tile-crystal'))).toBe(true);
-    expect(allTiles.every(tile => tile.querySelector('.gb-tile-void'))).toBe(true);
-    expect(allTiles.every(tile => tile.querySelector('.gb-tile-shards'))).toBe(true);
-    expect(container.querySelector('.gb-abyss-particles')).not.toBeNull();
-    expect(container.querySelector('.gb-abyss-falloff')).not.toBeNull();
-
-    const safeSide = store.getState().glassBridge.rows[0].safeSide;
-    await act(async () => {
-      store.dispatch(resolveStep({ chosenSide: safeSide, now: Date.now() + 1_000 }));
-    });
-
-    expect(container.querySelectorAll('.gb-tile-safe')).toHaveLength(1);
-  });
 });
