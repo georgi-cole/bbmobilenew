@@ -59,6 +59,7 @@ interface RowMetrics {
   tileWidth: number;
   tileHeight: number;
   laneGlowWidth: number;
+  laneThickness: number;
   perspective: number;
 }
 
@@ -160,20 +161,20 @@ export class CrystalPathShatteredScene {
 
     const overheadBeam = new Graphics()
       .poly([
-        centerX - width * 0.17,
+        centerX - width * 0.08,
         0,
-        centerX + width * 0.17,
+        centerX + width * 0.08,
         0,
-        centerX + width * 0.07,
-        height * 0.6,
-        centerX - width * 0.07,
-        height * 0.6,
+        centerX + width * 0.035,
+        height * 0.56,
+        centerX - width * 0.035,
+        height * 0.56,
       ])
-      .fill({ color: 0xe6ffff, alpha: 0.08 });
+      .fill({ color: 0xf9ffff, alpha: 0.06 });
 
     const chamberGlow = new Graphics()
-      .ellipse(centerX, height * 0.24, width * 0.26, height * 0.12)
-      .fill({ color: 0x00e5ff, alpha: 0.15 });
+      .ellipse(centerX, height * 0.18, width * 0.18, height * 0.06)
+      .fill({ color: 0x00e5ff, alpha: 0.12 });
 
     const chamberShadowLeft = new Graphics()
       .ellipse(width * 0.08, height * 0.5, width * 0.22, height * 0.42)
@@ -182,17 +183,29 @@ export class CrystalPathShatteredScene {
       .ellipse(width * 0.92, height * 0.5, width * 0.22, height * 0.42)
       .fill({ color: 0x000000, alpha: 0.48 });
 
-    const fog = new Graphics()
-      .ellipse(centerX, height * 0.75, width * 0.42, height * 0.12)
-      .fill({ color: 0x6d7fa7, alpha: 0.05 });
+    const depthFogUpper = new Graphics()
+      .ellipse(centerX, height * 0.72, width * 0.34, height * 0.09)
+      .fill({ color: 0x50657f, alpha: 0.035 });
+    const depthFogLower = new Graphics()
+      .ellipse(centerX, height * 0.84, width * 0.28, height * 0.06)
+      .fill({ color: 0x4b5970, alpha: 0.02 });
 
     const abyss = new Graphics()
-      .ellipse(centerX, height * 0.92, width * 0.38, height * 0.12)
-      .fill({ color: 0x000000, alpha: 0.92 });
+      .poly([
+        centerX - width * 0.23, height * 0.72,
+        centerX + width * 0.23, height * 0.72,
+        centerX + width * 0.16, height,
+        centerX - width * 0.16, height,
+      ])
+      .fill({ color: 0x000000, alpha: 0.98 });
+
+    const abyssCore = new Graphics()
+      .ellipse(centerX, height * 0.92, width * 0.22, height * 0.06)
+      .fill({ color: 0x000000, alpha: 1 });
 
     const chamberFrame = new Graphics()
       .roundRect(width * 0.03, height * 0.03, width * 0.94, height * 0.94, 34)
-      .stroke({ color: 0xb4f2ff, width: 1.5, alpha: 0.07 });
+      .stroke({ color: 0xb4f2ff, width: 1.25, alpha: 0.04 });
 
     this.backgroundLayer.addChild(
       base,
@@ -200,8 +213,10 @@ export class CrystalPathShatteredScene {
       chamberGlow,
       chamberShadowLeft,
       chamberShadowRight,
-      fog,
+      depthFogUpper,
+      depthFogLower,
       abyss,
+      abyssCore,
       chamberFrame,
     );
   }
@@ -231,8 +246,8 @@ export class CrystalPathShatteredScene {
     const height = this.app.renderer.height || DEFAULT_SCENE_HEIGHT;
     for (let index = 0; index < this.particles.length; index += 1) {
       const particle = this.particles[index];
-      particle.sprite.x = width * (((index * 41) % 100) / 100);
-      particle.sprite.y = height * (((index * 17) % 100) / 100);
+      particle.sprite.x = width * (0.34 + (((index * 41) % 32) / 100));
+      particle.sprite.y = height * (0.46 + (((index * 17) % 52) / 100));
     }
   }
 
@@ -242,9 +257,14 @@ export class CrystalPathShatteredScene {
     this.boardLayer.removeChildren().forEach((child) => child.destroy());
     this.tokenLayer.removeChildren().forEach((child) => child.destroy());
     this.fxLayer.removeChildren().forEach((child) => child.destroy());
+    const now = Date.now();
 
     const rowsCount = Math.max(1, this.state.rowsCount);
     const metrics = Array.from({ length: rowsCount }, (_, index) => this.getRowMetrics(index, rowsCount, width, height));
+    const shake = this.getCameraShake(now);
+    this.boardLayer.position.set(shake.x, shake.y);
+    this.tokenLayer.position.set(shake.x, shake.y);
+    this.fxLayer.position.set(shake.x, shake.y);
 
     for (let rowIndex = rowsCount - 1; rowIndex >= 0; rowIndex -= 1) {
       const row = this.state.rows[rowIndex];
@@ -256,8 +276,8 @@ export class CrystalPathShatteredScene {
       const targetAnimation = this.state.activeAnimation?.rowIndex === rowIndex ? this.state.activeAnimation : null;
 
       this.boardLayer.addChild(this.createLaneBeam(rowMetrics));
-      this.boardLayer.addChild(this.createTile(row, 'left', rowMetrics, selectable, targetAnimation));
-      this.boardLayer.addChild(this.createTile(row, 'right', rowMetrics, selectable, targetAnimation));
+      this.boardLayer.addChild(this.createTile(row, 'left', rowMetrics, selectable, targetAnimation, now));
+      this.boardLayer.addChild(this.createTile(row, 'right', rowMetrics, selectable, targetAnimation, now));
     }
 
     const activePlayerId = this.state.turnOrder[this.state.currentTurnIndex] ?? null;
@@ -299,8 +319,8 @@ export class CrystalPathShatteredScene {
             ? rowMetrics.rightX
             : width / 2
         : width / 2;
-      const baseY = rowMetrics ? rowMetrics.y - rowMetrics.tileHeight * 0.55 : height - 22;
-      const tokenPosition = this.resolveAnimatedTokenPosition(token.playerId, baseX, baseY, metrics, height);
+      const baseY = rowMetrics ? rowMetrics.y - rowMetrics.tileHeight * 0.62 : height - 22;
+      const tokenPosition = this.resolveAnimatedTokenPosition(token.playerId, baseX, baseY, metrics, height, now);
       this.tokenLayer.addChild(
         this.createToken(
           token.name,
@@ -324,7 +344,7 @@ export class CrystalPathShatteredScene {
       const rowMetrics = metrics[activeAnimation.rowIndex];
       if (rowMetrics) {
         const x = activeAnimation.side === 'left' ? rowMetrics.leftX : rowMetrics.rightX;
-        const elapsed = this.elapsedMs - activeAnimation.startedAt;
+        const elapsed = now - activeAnimation.startedAt;
         const pulse = Math.min(1, elapsed / (STEP_SUSPENSE_DELAY_MS + SAFE_CONFIRM_MS));
         const ring = new Graphics()
           .ellipse(x, rowMetrics.y + 3, rowMetrics.tileWidth * (0.28 + pulse * 0.18), rowMetrics.tileHeight * (0.55 + pulse * 0.24))
@@ -338,11 +358,11 @@ export class CrystalPathShatteredScene {
     const boardTop = BOARD_TOP_PADDING;
     const boardBottom = height - BOARD_BOTTOM_PADDING;
     const depth = rowIndex / Math.max(1, rowsCount - 1);
-    const perspective = 1 - depth * 0.3;
-    const y = boardBottom - depth * (boardBottom - boardTop);
-    const laneSpread = width * (0.25 - depth * 0.09);
-    const tileWidth = Math.max(62, width * (0.24 + perspective * 0.08));
-    const tileHeight = 18 + perspective * 10;
+    const perspective = 1 - depth * 0.36;
+    const y = boardBottom - Math.pow(depth, 0.88) * (boardBottom - boardTop);
+    const laneSpread = width * (0.26 - depth * 0.12);
+    const tileWidth = Math.max(58, width * (0.21 + perspective * 0.11));
+    const tileHeight = 15 + perspective * 12;
     return {
       y,
       leftX: width / 2 - laneSpread,
@@ -350,19 +370,32 @@ export class CrystalPathShatteredScene {
       tileWidth,
       tileHeight,
       laneGlowWidth: laneSpread * 1.85,
+      laneThickness: Math.max(3, 9 * perspective),
       perspective,
     };
   }
 
   private createLaneBeam(metrics: RowMetrics) {
-    const beam = new Graphics();
-    beam.roundRect(
-      (metrics.leftX + metrics.rightX) / 2 - metrics.laneGlowWidth / 2,
-      metrics.y - 3,
-      metrics.laneGlowWidth,
-      6,
-      3,
-    ).fill({ color: 0x9beeff, alpha: 0.05 + metrics.perspective * 0.04 });
+    const beam = new Container();
+    const shadow = new Graphics()
+      .roundRect(
+        (metrics.leftX + metrics.rightX) / 2 - metrics.laneGlowWidth / 2,
+        metrics.y + 1,
+        metrics.laneGlowWidth,
+        metrics.laneThickness,
+        3,
+      )
+      .fill({ color: 0x000000, alpha: 0.22 });
+    const light = new Graphics()
+      .roundRect(
+        (metrics.leftX + metrics.rightX) / 2 - metrics.laneGlowWidth / 2,
+        metrics.y - 1,
+        metrics.laneGlowWidth,
+        Math.max(2, metrics.laneThickness - 2),
+        3,
+      )
+      .fill({ color: 0xa1eeff, alpha: 0.025 + metrics.perspective * 0.022 });
+    beam.addChild(shadow, light);
     return beam;
   }
 
@@ -372,48 +405,76 @@ export class CrystalPathShatteredScene {
     metrics: RowMetrics,
     selectable: boolean,
     activeAnimation: CrystalPathShatteredAnimation | null,
+    now: number,
   ) {
     const x = side === 'left' ? metrics.leftX : metrics.rightX;
     const y = metrics.y;
     const width = metrics.tileWidth;
     const height = metrics.tileHeight;
     const container = new Container();
-    const glow = new Graphics();
     const shadow = new Graphics();
+    const underglow = new Graphics();
     const glass = new Graphics();
-    const facet = new Graphics();
-    const rim = new Graphics();
+    const core = new Graphics();
+    const edge = new Graphics();
+    const refraction = new Graphics();
+    const streaks = new Graphics();
     const isBroken = side === 'left' ? row.leftBroken : row.rightBroken;
     const isSafe = row.revealedSafeSide === side;
     const isAnimatingTarget = activeAnimation?.side === side;
-    const pulse = selectable ? 0.24 + Math.sin(this.elapsedMs / 330) * 0.08 : isSafe ? 0.22 : 0.06;
-    const edgeAlpha = selectable ? 0.82 : isSafe ? 0.72 : 0.34;
+    const pulse = selectable ? 0.26 + Math.sin(this.elapsedMs / 340) * 0.08 : isSafe ? 0.2 : 0.045;
+    const topY = y - height * 0.62;
+    const bottomY = y + height * 0.52;
+    const inset = width * 0.08;
+    const tilePoints = [
+      x - width * 0.5, y - height * 0.08,
+      x - width * 0.24, topY,
+      x + width * 0.25, topY - height * 0.06,
+      x + width * 0.5, y - height * 0.12,
+      x + width * 0.33, bottomY,
+      x - width * 0.3, bottomY + height * 0.06,
+    ];
+    const innerPoints = [
+      x - width * 0.38, y - height * 0.02,
+      x - width * 0.16, topY + height * 0.1,
+      x + width * 0.2, topY + height * 0.04,
+      x + width * 0.36, y - height * 0.04,
+      x + width * 0.22, bottomY - height * 0.08,
+      x - width * 0.24, bottomY,
+    ];
+    const idleFill = 0x081323;
+    const activeFill = 0x0b3251;
+    const safeFill = 0x65f3ff;
+    const fillColor = isSafe ? safeFill : selectable ? activeFill : idleFill;
+    const edgeColor = isSafe ? 0xffffff : selectable ? 0xbfffff : 0x72b6dd;
+    const edgeAlpha = isSafe ? 0.84 : selectable ? 0.92 : 0.34;
 
-    if (isBroken || (activeAnimation?.type === 'wrong' && isAnimatingTarget && this.hasAnimationCollapsed())) {
+    if (isBroken || (activeAnimation?.type === 'wrong' && isAnimatingTarget && this.hasAnimationCollapsed(now))) {
       container.addChild(this.createHole(x, y + 2, width, height));
     } else {
-      shadow.ellipse(x, y + height * 0.85, width * 0.5, height * 0.58).fill({ color: 0x000000, alpha: 0.42 });
-      glow.roundRect(x - width / 2 - 7, y - height * 0.64, width + 14, height * 1.32, 16)
-        .fill({ color: selectable ? 0x00e5ff : 0x93f6ff, alpha: pulse });
-      glass.roundRect(x - width / 2, y - height * 0.56, width, height * 1.12, 14)
-        .fill({ color: isSafe ? 0x85f7ff : 0x0d1c34, alpha: isSafe ? 0.48 : 0.34 });
-      glass.roundRect(x - width / 2, y - height * 0.56, width, height * 1.12, 14)
-        .stroke({ color: isSafe ? 0xffffff : 0xa9eeff, width: 2, alpha: edgeAlpha });
-      facet.poly([
-        x - width * 0.34,
-        y - height * 0.16,
-        x - width * 0.08,
-        y - height * 0.42,
-        x + width * 0.3,
-        y - height * 0.26,
-        x + width * 0.18,
-        y + height * 0.2,
-        x - width * 0.24,
-        y + height * 0.26,
-      ]).fill({ color: 0xffffff, alpha: isSafe ? 0.18 : 0.1 });
-      rim.roundRect(x - width / 2 + 10, y - height * 0.44, width - 20, height * 0.24, 10)
-        .fill({ color: 0xffffff, alpha: selectable ? 0.18 : 0.08 });
-      container.addChild(shadow, glow, glass, facet, rim);
+      shadow.ellipse(x, y + height * 1.15, width * 0.56, height * 0.62).fill({ color: 0x000000, alpha: 0.48 });
+      underglow.poly(tilePoints).fill({ color: selectable ? 0x00e5ff : isSafe ? 0xd5ffff : 0x3e7bb2, alpha: pulse });
+      glass.poly(tilePoints).fill({ color: fillColor, alpha: isSafe ? 0.32 : selectable ? 0.24 : 0.18 });
+      glass.poly(tilePoints).stroke({ color: edgeColor, width: 2.2, alpha: edgeAlpha });
+      core.poly(innerPoints).fill({ color: isSafe ? 0xffffff : selectable ? 0xbcefff : 0x24435f, alpha: isSafe ? 0.22 : selectable ? 0.14 : 0.08 });
+      edge.moveTo(x - width * 0.24, topY + 1);
+      edge.lineTo(x + width * 0.23, topY - height * 0.04);
+      edge.lineTo(x + width * 0.35, y - height * 0.02);
+      edge.stroke({ color: 0xffffff, width: 2.4, alpha: isSafe ? 0.74 : selectable ? 0.6 : 0.18 });
+      refraction.poly([
+        x - width * 0.05, topY + height * 0.16,
+        x + width * 0.14, y - height * 0.05,
+        x + width * 0.06, bottomY - height * 0.2,
+        x - width * 0.14, y + height * 0.02,
+      ]).fill({ color: 0xffffff, alpha: isSafe ? 0.16 : 0.08 });
+      streaks.moveTo(x - width * 0.22, y - height * 0.06);
+      streaks.lineTo(x - inset * 0.2, y + height * 0.18);
+      streaks.moveTo(x + width * 0.08, topY + height * 0.18);
+      streaks.lineTo(x + width * 0.18, y + height * 0.26);
+      streaks.moveTo(x - width * 0.02, topY + height * 0.1);
+      streaks.lineTo(x + width * 0.06, y + height * 0.14);
+      streaks.stroke({ color: isSafe ? 0xb7ffff : 0x8fdfff, width: 1.4, alpha: isSafe ? 0.22 : 0.12 });
+      container.addChild(shadow, underglow, glass, core, edge, refraction, streaks);
     }
 
     if (selectable) {
@@ -421,7 +482,7 @@ export class CrystalPathShatteredScene {
     }
 
     if (activeAnimation?.type === 'wrong' && isAnimatingTarget) {
-      const elapsed = this.elapsedMs - activeAnimation.startedAt;
+      const elapsed = now - activeAnimation.startedAt;
       const crackElapsed = Math.max(0, elapsed - STEP_SUSPENSE_DELAY_MS);
       const crackProgress = Math.min(1, crackElapsed / Math.max(1, WRONG_CRACK_MS));
       if (crackProgress > 0) {
@@ -445,8 +506,11 @@ export class CrystalPathShatteredScene {
 
   private createHole(x: number, y: number, width: number, height: number) {
     const hole = new Container();
+    const falloff = new Graphics()
+      .ellipse(x, y + height * 2.1, width * 0.9, height * 1.5)
+      .fill({ color: 0x02030a, alpha: 0.2 });
     const voidShape = new Graphics()
-      .ellipse(x, y + 4, width * 0.48, height * 0.86)
+      .ellipse(x, y + 4, width * 0.54, height * 0.92)
       .fill({ color: 0x000000, alpha: 0.96 });
     const brokenRim = new Graphics()
       .poly([
@@ -457,11 +521,14 @@ export class CrystalPathShatteredScene {
         x + width * 0.22, y + height * 0.58,
         x - width * 0.26, y + height * 0.52,
       ])
-      .stroke({ color: 0xb8f6ff, width: 2, alpha: 0.35 });
+      .stroke({ color: 0xd8fbff, width: 2, alpha: 0.38 });
     const innerGlow = new Graphics()
-      .ellipse(x, y + 2, width * 0.34, height * 0.48)
-      .fill({ color: 0xff5e2b, alpha: 0.07 });
-    hole.addChild(voidShape, innerGlow, brokenRim);
+      .ellipse(x, y + 2, width * 0.36, height * 0.52)
+      .fill({ color: 0xff6430, alpha: 0.1 });
+    const ember = new Graphics()
+      .ellipse(x, y + height * 0.2, width * 0.18, height * 0.18)
+      .fill({ color: 0xff7c43, alpha: 0.18 });
+    hole.addChild(falloff, voidShape, innerGlow, ember, brokenRim);
     return hole;
   }
 
@@ -479,8 +546,15 @@ export class CrystalPathShatteredScene {
 
   private createStressFlash(x: number, y: number, width: number, height: number, progress: number) {
     return new Graphics()
-      .roundRect(x - width / 2, y - height * 0.56, width, height * 1.12, 14)
-      .fill({ color: 0xff6f3c, alpha: 0.1 + progress * 0.16 });
+      .poly([
+        x - width * 0.48, y - height * 0.08,
+        x - width * 0.22, y - height * 0.62,
+        x + width * 0.26, y - height * 0.68,
+        x + width * 0.48, y - height * 0.14,
+        x + width * 0.3, y + height * 0.54,
+        x - width * 0.28, y + height * 0.6,
+      ])
+      .fill({ color: 0xff6f3c, alpha: 0.08 + progress * 0.18 });
   }
 
   private createCracks(x: number, y: number, width: number, height: number, progress: number) {
@@ -494,40 +568,62 @@ export class CrystalPathShatteredScene {
     cracks.moveTo(x - width * 0.08, y - height * 0.08);
     cracks.lineTo(x + width * 0.02, y + height * 0.3);
     cracks.lineTo(x + width * 0.18, y + height * 0.5);
-    cracks.stroke({ color: 0xffffff, width: 2, alpha: 0.26 + progress * 0.5 });
+    cracks.stroke({ color: 0xfdfefe, width: 2, alpha: 0.32 + progress * 0.56 });
     return cracks;
   }
 
   private createShards(x: number, y: number, width: number, elapsed: number) {
     const shards = new Graphics();
-    const progress = Math.min(1, elapsed / Math.max(1, WRONG_SHATTER_MS + WRONG_FALL_MS * 0.42));
-    for (let index = 0; index < 10; index += 1) {
-      const spread = (index - 4.5) * (width * 0.09);
-      const rise = progress < 0.28 ? -26 * progress : 0;
-      const drop = Math.max(0, progress - 0.16) * 110;
-      const cx = x + spread * (0.45 + progress * 0.9);
-      const cy = y + rise + drop + Math.abs(spread) * 0.08;
-      const tint = index % 3 === 0 ? 0xffffff : index % 2 === 0 ? 0xb7fbff : 0xff8250;
+    const progress = Math.min(1, elapsed / Math.max(1, WRONG_SHATTER_MS + WRONG_FALL_MS * 0.54));
+    for (let index = 0; index < 12; index += 1) {
+      const spread = (index - 5.5) * (width * 0.075);
+      const eject = 0.42 + progress * 1.1;
+      const rise = progress < 0.24 ? -30 * progress : -8 + progress * 8;
+      const drop = Math.max(0, progress - 0.12) * 132;
+      const cx = x + spread * eject;
+      const cy = y + rise + drop + Math.abs(spread) * 0.1;
+      const tint = index % 4 === 0 ? 0xffffff : index % 3 === 0 ? 0xff8b5c : 0xb7fbff;
       shards.poly([
         cx - 8,
-        cy - 4,
-        cx + 4,
-        cy - 7,
-        cx + 7,
+        cy - 3,
+        cx + 5,
+        cy - 8,
+        cx + 8,
         cy + 1,
-        cx + 1,
-        cy + 8,
-        cx - 7,
-        cy + 4,
-      ]).fill({ color: tint, alpha: 0.46 * (1 - progress) });
+        cx + 2,
+        cy + 9,
+        cx - 6,
+        cy + 5,
+      ]).fill({ color: tint, alpha: 0.54 * (1 - progress) });
+      if (index < 4) {
+        shards.circle(cx, cy + 12, 1.8 + index * 0.2).fill({ color: 0xff8b5c, alpha: 0.28 * (1 - progress) });
+      }
     }
     return shards;
   }
 
-  private hasAnimationCollapsed() {
+  private hasAnimationCollapsed(now: number) {
     const activeAnimation = this.state.activeAnimation;
     if (!activeAnimation || activeAnimation.type !== 'wrong') return false;
-    return this.elapsedMs - activeAnimation.startedAt > STEP_SUSPENSE_DELAY_MS + WRONG_CRACK_MS + WRONG_SHATTER_MS * 0.45;
+    return now - activeAnimation.startedAt > STEP_SUSPENSE_DELAY_MS + WRONG_CRACK_MS + WRONG_SHATTER_MS * 0.45;
+  }
+
+  private getCameraShake(now: number) {
+    const activeAnimation = this.state.activeAnimation;
+    if (!activeAnimation || activeAnimation.type !== 'wrong') {
+      return { x: 0, y: 0 };
+    }
+    const elapsed = now - activeAnimation.startedAt;
+    const impactStart = STEP_SUSPENSE_DELAY_MS + WRONG_CRACK_MS + WRONG_SHATTER_MS * 0.18;
+    const impactProgress = Math.max(0, elapsed - impactStart);
+    if (impactProgress <= 0 || impactProgress > 240) {
+      return { x: 0, y: 0 };
+    }
+    const strength = (1 - impactProgress / 240) * 5;
+    return {
+      x: Math.sin(impactProgress * 0.18) * strength,
+      y: Math.cos(impactProgress * 0.24) * strength * 0.55,
+    };
   }
 
   private resolveAnimatedTokenPosition(
@@ -536,6 +632,7 @@ export class CrystalPathShatteredScene {
     y: number,
     metrics: RowMetrics[],
     height: number,
+    now: number,
   ) {
     const activeAnimation = this.state.activeAnimation;
     if (!activeAnimation || activeAnimation.playerId !== playerId || activeAnimation.type !== 'wrong') {
@@ -548,28 +645,28 @@ export class CrystalPathShatteredScene {
     }
 
     const targetX = activeAnimation.side === 'left' ? rowMetrics.leftX : rowMetrics.rightX;
-    const targetY = rowMetrics.y - rowMetrics.tileHeight * 0.55;
-    const elapsed = this.elapsedMs - activeAnimation.startedAt;
+    const targetY = rowMetrics.y - rowMetrics.tileHeight * 0.62;
+    const elapsed = now - activeAnimation.startedAt;
     if (elapsed <= FALL_TRIGGER_MS) {
       const tension = Math.min(1, elapsed / Math.max(1, FALL_TRIGGER_MS));
       return {
         x: targetX,
-        y: targetY - tension * 8,
+        y: targetY - tension * 6,
         alpha: 1,
         scale: 1,
-        rotation: -0.16 * tension,
+        rotation: -0.22 * tension,
         trailAlpha: 0,
       };
     }
 
     const fallProgress = Math.min(1, (elapsed - FALL_TRIGGER_MS) / Math.max(1, WRONG_FALL_MS));
     return {
-      x: targetX + Math.sin(fallProgress * Math.PI * 2.1) * 14,
-      y: targetY + fallProgress * fallProgress * (height * 0.56),
-      alpha: fallProgress < 0.62 ? 1 : 1 - (fallProgress - 0.62) / 0.38,
-      scale: 1 - fallProgress * 0.38,
-      rotation: -0.18 + fallProgress * 1.18,
-      trailAlpha: Math.max(0, 0.18 - fallProgress * 0.14),
+      x: targetX + Math.sin(fallProgress * Math.PI * 2.2) * 11,
+      y: targetY + fallProgress * fallProgress * (height * 0.66),
+      alpha: fallProgress < 0.78 ? 1 : 1 - (fallProgress - 0.78) / 0.22,
+      scale: 1 - fallProgress * 0.34,
+      rotation: -0.24 + fallProgress * 1.28,
+      trailAlpha: Math.max(0, 0.24 - fallProgress * 0.15),
     };
   }
 

@@ -2,7 +2,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.42rem;
   min-height: 100dvh;
   padding: clamp(0.65rem, 1.7vw, 1rem);
   color: #eefbff;
@@ -71,8 +71,8 @@
 .crystal-shattered-modal-card p,
 .crystal-shattered-complete-hero p {
   margin: 0;
-  color: rgba(211, 230, 240, 0.72);
-  font-size: 0.89rem;
+  color: rgba(203, 219, 228, 0.62);
+  font-size: 0.82rem;
 }
 
 .crystal-shattered-hud-row {
@@ -89,12 +89,12 @@
 .crystal-shattered-complete,
 .crystal-shattered-order-item,
 .crystal-shattered-placement {
-  border: 1px solid rgba(157, 233, 255, 0.12);
-  background: rgba(8, 12, 20, 0.74);
+  border: 1px solid rgba(157, 233, 255, 0.08);
+  background: rgba(6, 10, 18, 0.58);
   box-shadow:
-    0 20px 44px rgba(0, 0, 0, 0.34),
+    0 16px 36px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
 }
 
 .crystal-shattered-hud-pill {
@@ -102,7 +102,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.55rem 0.7rem;
+  padding: 0.42rem 0.6rem;
   border-radius: 999px;
 }
 
@@ -125,15 +125,16 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.45rem;
   min-height: 0;
 }
 
 .crystal-shattered-prelude {
   display: grid;
-  gap: 0.55rem;
-  padding: 0.7rem 0.8rem;
-  border-radius: 20px;
+  gap: 0.42rem;
+  padding: 0.56rem 0.65rem;
+  border-radius: 18px;
+  background: rgba(4, 7, 13, 0.38);
 }
 
 .crystal-shattered-prelude-copy {
@@ -151,7 +152,7 @@
 .crystal-shattered-primary,
 .crystal-shattered-secondary {
   border: 0;
-  border-radius: 999px;
+  border-radius: 18px;
   font: inherit;
   cursor: pointer;
   transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
@@ -162,8 +163,8 @@
   color: #effbff;
   background: linear-gradient(180deg, rgba(13, 20, 34, 0.96), rgba(5, 9, 18, 0.96));
   box-shadow:
-    inset 0 0 0 1px rgba(165, 228, 255, 0.16),
-    0 10px 18px rgba(0, 0, 0, 0.25);
+    inset 0 0 0 1px rgba(165, 228, 255, 0.1),
+    0 8px 14px rgba(0, 0, 0, 0.18);
 }
 
 .crystal-shattered-number {
@@ -172,11 +173,11 @@
 }
 
 .crystal-shattered-secondary {
-  padding: 0.7rem 0.95rem;
+  padding: 0.56rem 0.82rem;
 }
 
 .crystal-shattered-primary {
-  padding: 0.78rem 1rem;
+  padding: 0.68rem 0.92rem;
   color: #02111a;
   background: linear-gradient(180deg, #f5ffff, #8cebff 48%, #38d4ff);
   box-shadow: 0 14px 26px rgba(0, 229, 255, 0.22);
@@ -213,9 +214,9 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.5rem 0.7rem;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(170, 228, 255, 0.08);
+  border: 1px solid rgba(170, 228, 255, 0.05);
 }
 
 .crystal-shattered-draw-pill strong {
@@ -235,7 +236,7 @@
   gap: 0.6rem;
   align-items: center;
   padding: 0.62rem 0.8rem;
-  border-radius: 18px;
+  border-radius: 14px;
 }
 
 .crystal-shattered-order-item {
@@ -247,30 +248,29 @@
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 0.45rem;
+  gap: 0.32rem;
   flex: 1;
   min-height: 0;
-  padding: 0.6rem;
-  border-radius: 28px;
+  padding: 0.42rem;
+  border-radius: 22px;
   background:
-    radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.12), transparent 24%),
-    linear-gradient(180deg, rgba(5, 8, 16, 0.88), rgba(3, 5, 12, 0.96));
+    linear-gradient(180deg, rgba(4, 6, 12, 0.74), rgba(2, 3, 8, 0.9));
   box-shadow:
-    0 28px 70px rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1px rgba(160, 235, 255, 0.08);
+    0 20px 48px rgba(0, 0, 0, 0.38),
+    inset 0 0 0 1px rgba(160, 235, 255, 0.04);
 }
 
 .crystal-shattered-board-panel::before {
   content: '';
   position: absolute;
-  left: 14%;
-  right: 14%;
+  left: 30%;
+  right: 30%;
   top: 0;
-  height: 28%;
+  height: 24%;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(228, 255, 255, 0.16), rgba(0, 229, 255, 0));
-  filter: blur(18px);
-  opacity: 0.75;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 229, 255, 0));
+  filter: blur(12px);
+  opacity: 0.42;
 }
 
 .crystal-shattered-board-chrome,
@@ -304,14 +304,14 @@
   width: 100%;
   min-height: min(75dvh, 700px);
   height: clamp(460px, 68dvh, 700px);
-  border-radius: 24px;
+  border-radius: 18px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 20%, rgba(0, 229, 255, 0.06), rgba(0, 0, 0, 0));
-  border: 1px solid rgba(182, 241, 255, 0.14);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
+  border: 1px solid rgba(182, 241, 255, 0.08);
   box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.35),
+    0 12px 28px rgba(0, 0, 0, 0.32),
     inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    inset 0 0 38px rgba(0, 229, 255, 0.06);
+    inset 0 0 16px rgba(0, 229, 255, 0.03);
 }
 
 .crystal-shattered-guidance {
@@ -332,8 +332,8 @@
   display: grid;
   gap: 0.3rem;
   border-radius: 999px;
-  padding: 0.58rem 0.85rem;
-  background: rgba(8, 12, 20, 0.84);
+  padding: 0.46rem 0.72rem;
+  background: rgba(6, 10, 18, 0.64);
 }
 
 .crystal-shattered-score-card header {
@@ -351,11 +351,11 @@
 }
 
 .crystal-shattered-score-card.is-active {
-  border-color: rgba(181, 246, 255, 0.32);
+  border-color: rgba(181, 246, 255, 0.2);
   box-shadow:
-    0 0 0 1px rgba(181, 246, 255, 0.14),
-    0 12px 26px rgba(0, 229, 255, 0.12),
-    inset 0 0 24px rgba(0, 229, 255, 0.06);
+    0 0 0 1px rgba(181, 246, 255, 0.08),
+    0 8px 18px rgba(0, 229, 255, 0.08),
+    inset 0 0 14px rgba(0, 229, 255, 0.04);
 }
 
 .crystal-shattered-modal {
@@ -421,8 +421,8 @@
 
 @media (max-width: 640px) {
   .crystal-shattered-shell {
-    gap: 0.45rem;
-    padding: 0.55rem;
+    gap: 0.34rem;
+    padding: 0.48rem;
   }
 
   .crystal-shattered-header h2 {
@@ -430,7 +430,7 @@
   }
 
   .crystal-shattered-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.74rem;
   }
 
   .crystal-shattered-hud-row {
@@ -438,7 +438,7 @@
   }
 
   .crystal-shattered-hud-pill {
-    padding: 0.48rem 0.58rem;
+    padding: 0.36rem 0.48rem;
     gap: 0.3rem;
   }
 
@@ -447,8 +447,8 @@
   }
 
   .crystal-shattered-board-panel {
-    padding: 0.45rem;
-    border-radius: 24px;
+    padding: 0.34rem;
+    border-radius: 18px;
   }
 
   .crystal-shattered-board-chrome,
@@ -467,8 +467,8 @@
   }
 
   .crystal-shattered-stage {
-    min-height: min(74dvh, 620px);
-    height: min(70dvh, 620px);
+    min-height: min(76dvh, 640px);
+    height: min(72dvh, 640px);
   }
 
   .crystal-shattered-order-item,
@@ -484,6 +484,6 @@
 
   .crystal-shattered-score-card {
     flex-basis: min(180px, 72vw);
-    padding: 0.52rem 0.75rem;
+    padding: 0.42rem 0.65rem;
   }
 }

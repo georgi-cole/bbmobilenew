@@ -336,7 +336,7 @@ export default function CrystalPathShatteredGame({
         <div className="crystal-shattered-title-block">
           <p className="crystal-shattered-kicker">Premium Pixi Edition</p>
           <h2>Crystal Path: Shattered</h2>
-          <p className="crystal-shattered-subtitle">A glowing crystal bridge hangs over a black abyss. One false step and the chamber takes you.</p>
+          <p className="crystal-shattered-subtitle">A crystal bridge hangs over the void.</p>
         </div>
       </header>
       <div className="crystal-shattered-hud-row" role="group" aria-label="Crystal Path status">
@@ -394,7 +394,7 @@ export default function CrystalPathShatteredGame({
                     <div className="crystal-shattered-prelude-copy">
                       <span className="crystal-shattered-prelude-label">Crystal draw</span>
                       <h3>Choose your crossing number</h3>
-                      <p>Keep the prelude compact — the bridge remains the focal point.</p>
+                      <p>Lock your place and cross.</p>
                     </div>
                     <div className="crystal-shattered-number-grid">
                       {Array.from({ length: participantIds.length }, (_, index) => index + 1).map((number) => {
