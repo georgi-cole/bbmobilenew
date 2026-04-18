@@ -23,6 +23,7 @@ function resetSoundManager() {
     _lifecycleListenersBound: boolean;
     _desiredPerOwner: Record<string, unknown>;
     _currentBgmOwner: string | null;
+    _lastPlayedAt: Map<string, number>;
   };
   sm._unlocked = false;
   sm._unlockHandler = null;
@@ -46,6 +47,7 @@ function resetSoundManager() {
   sm._lifecycleListenersBound = false;
   sm._desiredPerOwner = {};
   sm._currentBgmOwner = null;
+  sm._lastPlayedAt = new Map();
 }
 
 beforeEach(() => {
@@ -243,5 +245,101 @@ describe('SoundManager init + unlock listeners', () => {
     expect(addSpy).toHaveBeenCalledWith('click', expect.any(Function), true);
     expect(addSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
     expect(addSpy).toHaveBeenCalledWith('touchstart', expect.any(Function), true);
+  });
+});
+
+describe('SoundManager SFX dedup window', () => {
+  function getDoPlaySpy() {
+    // Spy on the private post-dedup playback path so we can verify whether
+    // `play()` decided to forward the call or drop it, independent of any
+    // jsdom media-loading side effects in `_doPlay`.
+    const sm = SoundManager as unknown as {
+      _doPlay: (key: string, opts?: { volume?: number }) => Promise<void>;
+    };
+    return vi.spyOn(sm, '_doPlay').mockResolvedValue(undefined);
+  }
+
+  it('drops a duplicate play() for the same key within the dedup window', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    const doPlaySpy = getDoPlaySpy();
+
+    await SoundManager.play('ui:confirm');
+    await SoundManager.play('ui:confirm');
+
+    expect(doPlaySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows repeated plays for the same key after the dedup window elapses', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _lastPlayedAt: Map<string, number>;
+    };
+    sm._unlocked = true;
+    const doPlaySpy = getDoPlaySpy();
+
+    await SoundManager.play('ui:confirm');
+    // Rewind the tracked timestamp far into the past.  This is equivalent to
+    // advancing wall-clock time beyond SFX_DEDUP_WINDOW_MS without relying on
+    // fake timers or timing-sensitive setTimeouts in the test.
+    sm._lastPlayedAt.set('ui:confirm', Date.now() - 10_000);
+    await SoundManager.play('ui:confirm');
+
+    expect(doPlaySpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not dedup distinct SFX keys against each other', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    const doPlaySpy = getDoPlaySpy();
+
+    await SoundManager.play('ui:confirm');
+    await SoundManager.play('ui:navigate');
+    await SoundManager.play('ui:error');
+
+    expect(doPlaySpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('bypasses the dedup window when opts.allowDuplicate is true', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    const doPlaySpy = getDoPlaySpy();
+
+    await SoundManager.play('ui:confirm', { allowDuplicate: true });
+    await SoundManager.play('ui:confirm', { allowDuplicate: true });
+
+    expect(doPlaySpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('SoundManager unlockFromGesture idempotency', () => {
+  it('does not panic-stop or restart the current track on repeat gestures', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _primeSfxForMobile: () => void;
+    };
+    // Stub the iOS SFX priming path — it is irrelevant to this behavior and
+    // creates many audio elements that pollute the play-spy counters.
+    vi.spyOn(sm, '_primeSfxForMobile').mockImplementation(() => {});
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+
+    // First unlock: should start the desired track exactly once.
+    await SoundManager.setDesiredMusic('competition', 'initial');
+    SoundManager.unlockFromGesture();
+    await Promise.resolve();
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(SoundManager.currentMusicKey).toBe('music:hoh_comp_general');
+
+    const playsAfterFirstUnlock = playSpy.mock.calls.length;
+    const pausesAfterFirstUnlock = pauseSpy.mock.calls.length;
+
+    // Subsequent gesture should be idempotent: no pause, no restart.
+    SoundManager.unlockFromGesture();
+    await Promise.resolve();
+
+    expect(playSpy.mock.calls.length).toBe(playsAfterFirstUnlock);
+    expect(pauseSpy.mock.calls.length).toBe(pausesAfterFirstUnlock);
+    expect(SoundManager.currentMusicKey).toBe('music:hoh_comp_general');
   });
 });

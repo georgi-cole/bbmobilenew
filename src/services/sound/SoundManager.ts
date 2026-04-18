@@ -55,9 +55,30 @@ const SOUND_MANAGER_DISABLED = false;
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
 
+/**
+ * Minimum gap (ms) between two identical SFX triggers.
+ *
+ * Any `play(key)` within this window of the previous `play(key)` is silently
+ * dropped.  This collapses accidental duplicate triggers — e.g. React
+ * StrictMode double-invoking a mount effect, a Redux middleware + component
+ * hook both firing for the same action, or repeated re-renders — into a
+ * single audible SFX instance, preventing the "stacked playback / burst"
+ * artefact called out in the audio issue.
+ *
+ * The window is deliberately short (well below perceptible repeat intervals
+ * for "click" / "tap" style SFX) so genuine rapid-fire plays are unaffected.
+ */
+const SFX_DEDUP_WINDOW_MS = 40;
+
 export interface PlayOptions {
   /** Volume override (0–1).  Defaults to entry volume or 1. */
   volume?: number;
+  /**
+   * When true, bypasses the short per-key SFX dedup window.
+   * Use sparingly — only for SFX that are genuinely expected to fire faster
+   * than {@link SFX_DEDUP_WINDOW_MS} (e.g. a looping loop re-start).
+   */
+  allowDuplicate?: boolean;
 }
 
 export interface UnlockAudioOptions {
@@ -160,6 +181,11 @@ class _SoundManager {
   // Requests queued before the first user gesture (SFX markers only).
   private _playQueue: QueuedPlay[] = [];
 
+  // Per-key timestamp of the most recent accepted play() call, used for the
+  // short dedup window that collapses same-tick duplicate triggers (see
+  // SFX_DEDUP_WINDOW_MS above).
+  private _lastPlayedAt = new Map<string, number>();
+
   // Stored unlock handler — ensures only one set of listeners is ever registered
   private _unlockHandler: (() => void) | null = null;
   private _lifecycleListenersBound = false;
@@ -220,6 +246,24 @@ class _SoundManager {
       }
       this._queueSfxMarker(key, opts);
       return;
+    }
+    // Per-key dedup: drop duplicate triggers within a short window so the SFX
+    // pool isn't forced to stack overlapping instances from accidental double
+    // dispatches (React StrictMode, middleware + hook overlap, rapid
+    // re-renders).  Looping SFX and callers that genuinely need rapid-fire
+    // restart can set `opts.allowDuplicate` to opt out.
+    if (!opts?.allowDuplicate) {
+      const now = Date.now();
+      const lastAt = this._lastPlayedAt.get(key);
+      if (lastAt != null && now - lastAt < SFX_DEDUP_WINDOW_MS) {
+        if (_audioDebug) {
+          console.log(
+            `[SoundManager] play("${key}") deduped (${now - lastAt}ms < ${SFX_DEDUP_WINDOW_MS}ms)`,
+          );
+        }
+        return;
+      }
+      this._lastPlayedAt.set(key, now);
     }
     return this._doPlay(key, opts);
   }
@@ -727,18 +771,25 @@ class _SoundManager {
   /**
    * Unlock the audio system immediately from inside a user gesture.
    *
+   * Idempotent: repeated gestures after the initial unlock do not stop and
+   * restart the current BGM track.  They simply re-run `syncMusic()` so any
+   * previously-blocked play (NotAllowedError from a pre-gesture call) can
+   * retry against the latest desired track, without interrupting a track
+   * that is already playing correctly.
+   *
    * `UnlockAudioOptions.musicOnly` is kept for backward compatibility but no
-   * longer changes behavior; unlock now always clears stale music and syncs only
-   * the current desired track.
+   * longer changes behavior.
    */
   unlockFromGesture(options: UnlockAudioOptions = {}): void {
     if (typeof document === 'undefined') return;
     if (this._unlocked) {
+      // Already unlocked: do NOT panic-stop and restart the currently-playing
+      // track (that produced an audible stop/restart glitch on repeated
+      // taps).  Just clear any armed unlock listeners and let syncMusic()
+      // reconcile — it is a no-op when the desired track is already playing
+      // and will retry a previously-blocked start otherwise.
       this._clearUnlockListeners();
-      this._playQueue = [];
-      this.panicStopAllMusic();
       void this.syncMusic();
-      this._primeSfxForMobile();
       return;
     }
 
@@ -754,8 +805,11 @@ class _SoundManager {
       console.debug('[audio] unlockFromGesture(musicOnly) is deprecated; syncing current desired track');
     }
     _audioLog('unlock');
+    // Drop any pre-unlock SFX marker — it was stored so that repeated
+    // pre-unlock play() calls collapse to at most one, but on the actual
+    // gesture we do NOT want to replay stale events.  Music is re-synced
+    // from the current desired track only.
     this._playQueue = [];
-    this.panicStopAllMusic();
     void this.syncMusic();
     this._primeSfxForMobile();
   }
