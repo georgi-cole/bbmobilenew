@@ -16,11 +16,24 @@
 }
 
 .credits-stage {
+  --floating-corner-top-base: 14px;
+  --floating-corner-right-base: 14px;
+  position: relative;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
   touch-action: manipulation;
   outline: none;
+}
+
+.credits-stage::before {
+  content: '';
+  position: absolute;
+  top: var(--floating-corner-top-offset);
+  right: var(--floating-corner-right-offset);
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 .credits-stage[data-status='ready'] {

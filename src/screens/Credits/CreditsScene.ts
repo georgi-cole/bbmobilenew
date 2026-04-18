@@ -100,6 +100,8 @@ export default class CreditsScene {
   private sourceX = 0;
   private sourceY = 0;
   private destroyed = false;
+  private appInitialized = false;
+  private appDisposed = false;
 
   constructor(options: CreditsSceneOptions) {
     this.host = options.host;
@@ -116,6 +118,12 @@ export default class CreditsScene {
       resizeTo: this.host,
       resolution: Math.min(window.devicePixelRatio || 1, 2),
     });
+    this.appInitialized = true;
+
+    if (this.destroyed) {
+      this.disposeApplication();
+      return;
+    }
 
     this.host.replaceChildren();
     this.host.appendChild(this.app.canvas as HTMLCanvasElement);
@@ -127,6 +135,7 @@ export default class CreditsScene {
     ]);
 
     if (this.destroyed) {
+      this.disposeApplication();
       return;
     }
 
@@ -155,7 +164,10 @@ export default class CreditsScene {
 
   destroy(): void {
     this.destroyed = true;
-    this.app.ticker.remove(this.tick);
+
+    if (this.appInitialized) {
+      this.app.ticker.remove(this.tick);
+    }
 
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -172,6 +184,15 @@ export default class CreditsScene {
     this.starConfigs.length = 0;
     this.windowLightConfigs.length = 0;
     this.host.replaceChildren();
+    this.disposeApplication();
+  }
+
+  private disposeApplication(): void {
+    if (this.appDisposed || !this.appInitialized) {
+      return;
+    }
+
+    this.appDisposed = true;
     this.app.destroy({ removeView: true }, { children: true });
   }
 
