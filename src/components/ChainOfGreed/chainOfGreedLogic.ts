@@ -43,7 +43,7 @@ export interface ChainOfGreedPlayerState extends ChainOfGreedResolvedParticipant
   turnsTakenThisRound: number;
   personality: ChainOfGreedPersonality;
   lastRoundPerformance: number;
-  latestMoment: 'correct' | 'wrong' | 'bank' | 'bust' | 'safe' | null;
+  latestMoment: 'higher' | 'lower' | 'wrong' | 'bank' | 'bust' | 'safe' | null;
 }
 
 export interface ChainOfGreedChainState {
@@ -331,6 +331,7 @@ export function decideAiAction(options: {
   phase: 'standard' | 'semifinal' | 'final';
   activePlayers: ChainOfGreedPlayerState[];
   playerScore?: number;
+  bankAvailable?: boolean;
 }): ChainAction {
   const {
     player,
@@ -339,9 +340,17 @@ export function decideAiAction(options: {
     phase,
     activePlayers,
     playerScore = 0,
+    bankAvailable = true,
   } = options;
   const livePlayers = activePlayers.filter((entry) => !entry.isEliminated);
   const bestContribution = Math.max(1, ...livePlayers.map((entry) => entry.roundContribution || entry.totalContribution || 0));
+  const standings = [...livePlayers].sort((left, right) => {
+    const leftScore = phase === 'standard' ? left.roundContribution || left.totalContribution : (left.id === player.id ? playerScore : (phase === 'semifinal' ? left.semifinalScore : left.finalScore));
+    const rightScore = phase === 'standard' ? right.roundContribution || right.totalContribution : (right.id === player.id ? playerScore : (phase === 'semifinal' ? right.semifinalScore : right.finalScore));
+    return rightScore - leftScore;
+  });
+  const standingIndex = Math.max(0, standings.findIndex((entry) => entry.id === player.id));
+  const pressureFromStanding = standings.length > 1 ? standingIndex / (standings.length - 1) : 0;
   const dangerLevel = clamp(
     0.35
       + (bestContribution - (player.roundContribution || player.totalContribution)) / (bestContribution + 1)
@@ -352,16 +361,33 @@ export function decideAiAction(options: {
   );
   const potPressure = chain.pot / CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const stepPressure = chain.step / CHAIN_LADDER.length;
+  const comebackDrive = clamp(
+    pressureFromStanding * 0.7
+      + (phase === 'standard' ? Math.max(0, 0.24 - player.roundContribution / 600) : Math.max(0, -playerScore / 220))
+      + (remainingTurns <= 2 ? 0.18 : 0),
+    0,
+    1,
+  );
+  const safetyBias = clamp(
+    player.personality.caution * 0.55
+      + potPressure * 0.4
+      + stepPressure * 0.24
+      + (pressureFromStanding < 0.34 ? 0.18 : 0),
+    0,
+    1.2,
+  );
   const bankUrgency = phase === 'standard'
-    ? 0.2 + player.personality.caution * 0.45 + dangerLevel * 0.2 + potPressure * 0.6 + stepPressure * 0.35
-    : 0.18 + player.personality.caution * 0.3 + potPressure * 0.52 + stepPressure * 0.42 + (remainingTurns <= 1 ? 0.45 : 0);
+    ? 0.16 + safetyBias + dangerLevel * 0.16 - comebackDrive * 0.28
+    : 0.16 + player.personality.caution * 0.24 + potPressure * 0.48 + stepPressure * 0.38 + (remainingTurns <= 1 ? 0.42 : 0) - comebackDrive * 0.24;
 
-  if (chain.pot > 0 && bankUrgency >= 0.78) return 'bank';
-  if (phase !== 'standard' && chain.pot > 0 && playerScore <= 0 && remainingTurns <= 1) return 'bank';
+  if (bankAvailable && chain.pot > 0 && bankUrgency >= 0.72) return 'bank';
+  if (bankAvailable && phase !== 'standard' && chain.pot > 0 && playerScore <= 0 && remainingTurns <= 1) return 'bank';
 
   const higherWeight = clamp((100 - chain.referenceNumber) / 100, 0.1, 0.9);
   const lowerWeight = clamp(chain.referenceNumber / 100, 0.1, 0.9);
-  const bias = player.personality.aggression - player.personality.caution * 0.3;
+  const volatilitySwing = (player.personality.volatility - 0.5) * 0.18;
+  const pressureBias = comebackDrive * 0.18 - safetyBias * 0.08;
+  const bias = player.personality.aggression - player.personality.caution * 0.22 + volatilitySwing + pressureBias;
   return higherWeight + bias >= lowerWeight ? 'higher' : 'lower';
 }
 
@@ -499,13 +525,26 @@ export function resolveVoteElimination(options: {
     return performanceComparator(left, right);
   });
 
+  if (eliminateCount <= 0) {
+    return { eliminatedIds: [], updatedPlayers: activePlayers, tieBreaks };
+  }
+
   const ordered: ChainOfGreedPlayerState[] = [];
   let index = 0;
   while (index < candidates.length) {
-    const sameVote = candidates.filter((candidate) => candidate.voteCount === candidates[index]!.voteCount);
+    const sameVoteCount = candidates[index]!.voteCount;
+    const sameVote = candidates.filter((candidate) => candidate.voteCount === sameVoteCount);
+    const affectsElimination = ordered.length < eliminateCount && ordered.length + sameVote.length > eliminateCount;
+    const decisivelyEliminated = ordered.length + sameVote.length <= eliminateCount;
     if (sameVote.length === 1) {
       ordered.push(candidates[index]!);
       index += 1;
+      continue;
+    }
+
+    if (decisivelyEliminated || !affectsElimination) {
+      ordered.push(...sameVote);
+      index += sameVote.length;
       continue;
     }
 

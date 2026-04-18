@@ -6,6 +6,7 @@ import {
   buildAiVoteRecords,
   buildFinalRawResults,
   CHAIN_LADDER,
+  type ChainActionResolution,
   createChainOfGreedPlayers,
   createChainOfGreedRng,
   createInitialChainState,
@@ -45,6 +46,9 @@ type Phase =
   | 'finalTurn'
   | 'finalResult';
 
+type TurnPhaseKind = 'standard' | 'semifinal' | 'final';
+type TurnPipelineStage = 'decision' | 'reveal' | 'consequence' | 'animation' | 'settle';
+
 interface ChainOfGreedState {
   phase: Phase;
   players: ChainOfGreedPlayerState[];
@@ -80,6 +84,24 @@ interface ChainOfGreedState {
   winnerId: string | null;
 }
 
+interface PendingTurnPipeline {
+  actorId: string;
+  actorName: string;
+  kind: TurnPhaseKind;
+  choice: ChainAction;
+  stage: TurnPipelineStage;
+  referenceNumber: number;
+  resolution: ChainActionResolution;
+  historyEntry: ChainOfGreedTurnRecord;
+  verdictText: string;
+  consequenceText: string;
+  tone: 'neutral' | 'success' | 'bank' | 'danger';
+  turnEnds: boolean;
+  turnsRemainingBefore?: number;
+  turnIndexBefore?: number;
+  orderLength?: number;
+}
+
 const TURN_HELPERS = [
   'Build the chain or bank it.',
   'A wrong guess destroys the active pot.',
@@ -96,10 +118,19 @@ const FINAL_HELPERS = [
 
 const momentGlyphs: Record<Exclude<ChainOfGreedPlayerState['latestMoment'], null>, string> = {
   safe: '•',
-  correct: '✓',
+  higher: '↑',
+  lower: '↓',
   wrong: '✕',
-  bank: '◈',
-  bust: '⚠',
+  bank: '💰',
+  bust: '✖',
+};
+
+const TURN_PIPELINE_DURATIONS: Record<TurnPipelineStage, number> = {
+  decision: 420,
+  reveal: 850,
+  consequence: 850,
+  animation: 900,
+  settle: 650,
 };
 
 function emitSoundCue(cue: string) {
@@ -144,6 +175,62 @@ function getPlayerTurnMessage(players: ChainOfGreedPlayerState[], turnOrder: str
 function getTurnOrderPlayerId(turnOrder: string[], turnIndex: number) {
   if (turnOrder.length === 0) return null;
   return turnOrder[turnIndex % turnOrder.length] ?? null;
+}
+
+function getActionVerb(choice: ChainAction) {
+  return choice === 'bank' ? 'BANK' : choice === 'higher' ? 'HIGHER' : 'LOWER';
+}
+
+function getDecisionText(actorName: string, isHuman: boolean, choice: ChainAction) {
+  return `${isHuman ? 'You' : actorName} chose ${getActionVerb(choice)}.`;
+}
+
+function getTurnVerdict(resolution: ChainActionResolution) {
+  if (resolution.revealedNumber === null) return 'Bank secured';
+  return resolution.wasCorrect ? 'Correct' : 'Wrong';
+}
+
+function getTurnConsequenceText(choice: ChainAction, resolution: ChainActionResolution) {
+  if (choice === 'bank') {
+    return `Banked ${Math.max(resolution.securedDelta, resolution.individualDelta).toLocaleString()}. You must still guess.`;
+  }
+  if (resolution.wasCorrect) {
+    return `Chain rises to Step ${resolution.updatedChain.step}.`;
+  }
+  return resolution.equalMiss
+    ? 'Equal reveal — chain breaks. Active pot lost.'
+    : 'Wrong guess — chain breaks. Active pot lost.';
+}
+
+function getTurnHistoryMessage(actorName: string, choice: ChainAction, resolution: ChainActionResolution) {
+  if (choice === 'bank') {
+    return `${actorName} banked ${Math.max(resolution.securedDelta, resolution.individualDelta).toLocaleString()}.`;
+  }
+  const verdict = resolution.wasCorrect ? 'Correct' : 'Wrong';
+  return `${actorName} guessed ${getActionVerb(choice)} — ${verdict}.`;
+}
+
+function getTurnTone(choice: ChainAction, resolution: ChainActionResolution): PendingTurnPipeline['tone'] {
+  if (choice === 'bank') return 'bank';
+  if (resolution.wasCorrect) return 'success';
+  if (resolution.wasCorrect === false) return 'danger';
+  return 'neutral';
+}
+
+function getLatestMoment(choice: ChainAction, resolution: ChainActionResolution): ChainOfGreedPlayerState['latestMoment'] {
+  if (choice === 'bank') return 'bank';
+  if (resolution.wasCorrect) return choice;
+  return resolution.busted ? 'bust' : 'wrong';
+}
+
+function getNextTurnStatus(actorName: string, isHuman: boolean, choice: ChainAction, resolution: ChainActionResolution) {
+  if (choice === 'bank') {
+    return `${isHuman ? 'You' : actorName} banked ${Math.max(resolution.securedDelta, resolution.individualDelta).toLocaleString()}. ${isHuman ? 'Choose' : 'Still needs'} lower or higher next.`;
+  }
+  if (resolution.wasCorrect) {
+    return `${isHuman ? 'You were' : `${actorName} was`} correct.`;
+  }
+  return `${isHuman ? 'You were' : `${actorName} was`} wrong.`;
 }
 
 function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
@@ -192,6 +279,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const [state, setState] = useState<ChainOfGreedState>(() => buildInitialState(props));
   const [isLadderSheetOpen, setIsLadderSheetOpen] = useState(false);
   const [isInsightsSheetOpen, setIsInsightsSheetOpen] = useState(false);
+  const [pendingTurn, setPendingTurn] = useState<PendingTurnPipeline | null>(null);
+  const [bankedTurn, setBankedTurn] = useState<{ actorId: string; kind: TurnPhaseKind } | null>(null);
+  const [isResultCommitted, setIsResultCommitted] = useState(false);
   const rngRef = useRef(createChainOfGreedRng(props.seed));
   const helperIndexRef = useRef(0);
   const aiTurnLockRef = useRef<string | null>(null);
@@ -213,10 +303,10 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   );
   const summary = useMemo(() => summarizeRound(activePlayers), [activePlayers]);
 
-  function nextHelper(pool: string[]) {
+  const nextHelper = useCallback((pool: string[]) => {
     helperIndexRef.current += 1;
     return pool[helperIndexRef.current % pool.length] ?? pool[0] ?? '';
-  }
+  }, []);
 
   function setPhase(phase: Phase, partial: Partial<ChainOfGreedState> = {}) {
     setState((previous) => ({ ...previous, phase, ...partial }));
@@ -227,6 +317,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     const livePlayers = getActivePlayers(nextPlayers);
     const nextChain = createInitialChainState(rngRef.current.rng);
     const turnOrder = rotateOrder(livePlayers.map((player) => player.id), roundNumber - 1);
+    setPendingTurn(null);
+    setBankedTurn(null);
     emitSoundCue('round-intro-sting');
     setState((previous) => ({
       ...previous,
@@ -249,86 +341,85 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     }));
   }
 
-  const resolveStandardAction = useCallback((actorId: string, choice: ChainAction) => {
-    const actor = getPlayer(state.players, actorId);
-    if (!actor) return;
-    const resolution = resolveChainAction(choice, state.chain, rngRef.current.rng);
-    const nextPlayers: ChainOfGreedPlayerState[] = state.players.map((player) => {
-      if (player.id !== actorId) return player;
-      const latestMoment: ChainOfGreedPlayerState['latestMoment'] = choice === 'bank'
-        ? 'bank'
-        : resolution.wasCorrect
-          ? 'correct'
-          : resolution.busted
-            ? 'bust'
-            : 'wrong';
-      return {
-        ...player,
-        turnsTakenThisRound: player.turnsTakenThisRound + 1,
-        roundContribution: player.roundContribution + resolution.securedDelta,
-        totalContribution: player.totalContribution + resolution.securedDelta,
-        roundCorrectGuesses: player.roundCorrectGuesses + (resolution.wasCorrect ? 1 : 0),
-        totalCorrectGuesses: player.totalCorrectGuesses + (resolution.wasCorrect ? 1 : 0),
-        roundWrongGuesses: player.roundWrongGuesses + (resolution.wasCorrect === false ? 1 : 0),
-        totalWrongGuesses: player.totalWrongGuesses + (resolution.wasCorrect === false ? 1 : 0),
-        roundBanks: player.roundBanks + (choice === 'bank' ? 1 : 0),
-        totalBanks: player.totalBanks + (choice === 'bank' ? 1 : 0),
-        roundBusts: player.roundBusts + (resolution.busted ? 1 : 0),
-        totalBusts: player.totalBusts + (resolution.busted ? 1 : 0),
-        latestMoment,
-      };
-    });
-    const message = choice === 'bank'
-      ? `${actor.name} banks ${resolution.securedDelta || 0}. ${resolution.message}`
-      : `${actor.name} calls ${choice}. ${resolution.message}`;
-    const nextHistory: ChainOfGreedTurnRecord[] = [{
-      actorId,
-      actorName: actor.name,
-      choice,
-      referenceNumber: state.chain.referenceNumber,
-      revealedNumber: resolution.revealedNumber,
-      wasCorrect: resolution.wasCorrect,
-      bankedAmount: resolution.securedDelta,
-      lostAmount: resolution.lostAmount,
-      message,
-      phase: 'standard' as const,
-    }, ...state.turnHistory].slice(0, 10);
-    if (choice === 'bank' && resolution.securedDelta > 0) emitSoundCue('bank-secure-chime');
-    if (resolution.wasCorrect) emitSoundCue('correct-guess-tick');
-    if (resolution.wasCorrect === false) emitSoundCue('bust-impact');
+  const commitStandardTurn = useCallback((turn: PendingTurnPipeline) => {
+    if (turn.choice === 'bank' && turn.resolution.securedDelta > 0) emitSoundCue('bank-secure-chime');
+    if (turn.resolution.wasCorrect) emitSoundCue('correct-guess-tick');
+    if (turn.resolution.wasCorrect === false) emitSoundCue('bust-impact');
 
-    const nextTurnsRemaining = state.turnsRemaining - 1;
-    if (nextTurnsRemaining <= 0) {
-      setState((previous) => ({
+    setBankedTurn(turn.choice === 'bank' ? { actorId: turn.actorId, kind: 'standard' } : null);
+
+    setState((previous) => {
+      const nextPlayers: ChainOfGreedPlayerState[] = previous.players.map((player) => {
+        if (player.id !== turn.actorId) return player;
+        return {
+          ...player,
+          turnsTakenThisRound: player.turnsTakenThisRound + (turn.turnEnds ? 1 : 0),
+          roundContribution: player.roundContribution + turn.resolution.securedDelta,
+          totalContribution: player.totalContribution + turn.resolution.securedDelta,
+          roundCorrectGuesses: player.roundCorrectGuesses + (turn.resolution.wasCorrect ? 1 : 0),
+          totalCorrectGuesses: player.totalCorrectGuesses + (turn.resolution.wasCorrect ? 1 : 0),
+          roundWrongGuesses: player.roundWrongGuesses + (turn.resolution.wasCorrect === false ? 1 : 0),
+          totalWrongGuesses: player.totalWrongGuesses + (turn.resolution.wasCorrect === false ? 1 : 0),
+          roundBanks: player.roundBanks + (turn.choice === 'bank' ? 1 : 0),
+          totalBanks: player.totalBanks + (turn.choice === 'bank' ? 1 : 0),
+          roundBusts: player.roundBusts + (turn.resolution.busted ? 1 : 0),
+          totalBusts: player.totalBusts + (turn.resolution.busted ? 1 : 0),
+          latestMoment: getLatestMoment(turn.choice, turn.resolution),
+        };
+      });
+      const nextHistory: ChainOfGreedTurnRecord[] = [turn.historyEntry, ...previous.turnHistory].slice(0, 10);
+      const nextRoundSecured = previous.roundSecured + turn.resolution.securedDelta;
+      const nextSecuredTotal = previous.securedTotal + turn.resolution.securedDelta;
+
+      if (!turn.turnEnds) {
+        return {
+          ...previous,
+          players: nextPlayers,
+          chain: turn.resolution.updatedChain,
+          turnHistory: nextHistory,
+          roundSecured: nextRoundSecured,
+          securedTotal: nextSecuredTotal,
+          revealedNumber: turn.resolution.revealedNumber,
+          statusText: getNextTurnStatus(turn.actorName, getPlayer(nextPlayers, turn.actorId)?.isHuman ?? false, turn.choice, turn.resolution),
+          helperText: 'Bank is spent for this turn. You still need a higher or lower guess.',
+        };
+      }
+
+      const nextTurnsRemaining = (turn.turnsRemainingBefore ?? previous.turnsRemaining) - 1;
+      if (nextTurnsRemaining <= 0) {
+        return {
+          ...previous,
+          players: nextPlayers,
+          chain: turn.resolution.updatedChain,
+          phase: 'roundSummary',
+          turnsRemaining: 0,
+          roundSecured: nextRoundSecured,
+          securedTotal: nextSecuredTotal,
+          turnHistory: nextHistory,
+          revealedNumber: turn.resolution.revealedNumber,
+          statusText: 'Take a moment and review the board.',
+          helperText: 'Performance matters, but house feelings matter too.',
+        };
+      }
+
+      const nextTurnIndex = (turn.turnIndexBefore ?? previous.turnIndex) + 1;
+      const nextPlayer = getPlayer(nextPlayers, getTurnOrderPlayerId(previous.turnOrder, nextTurnIndex));
+      return {
         ...previous,
         players: nextPlayers,
-        chain: resolution.updatedChain,
-        phase: 'roundSummary',
-        roundSecured: previous.roundSecured + resolution.securedDelta,
-        securedTotal: previous.securedTotal + resolution.securedDelta,
+        chain: turn.resolution.updatedChain,
+        phase: 'playerTurn',
+        turnIndex: nextTurnIndex,
+        turnsRemaining: nextTurnsRemaining,
+        roundSecured: nextRoundSecured,
+        securedTotal: nextSecuredTotal,
         turnHistory: nextHistory,
-        revealedNumber: resolution.revealedNumber,
-        statusText: 'Take a moment and review the board.',
-        helperText: 'Performance matters, but house feelings matter too.',
-      }));
-      return;
-    }
-
-    setState((previous) => ({
-      ...previous,
-      players: nextPlayers,
-      chain: resolution.updatedChain,
-      phase: 'playerTurn',
-      turnIndex: previous.turnIndex + 1,
-      turnsRemaining: nextTurnsRemaining,
-      roundSecured: previous.roundSecured + resolution.securedDelta,
-      securedTotal: previous.securedTotal + resolution.securedDelta,
-      turnHistory: nextHistory,
-      revealedNumber: resolution.revealedNumber,
-      statusText: message,
-      helperText: nextHelper(TURN_HELPERS),
-    }));
-  }, [state]);
+        revealedNumber: turn.resolution.revealedNumber,
+        statusText: `${nextPlayer?.name ?? 'Player'} to play.`,
+        helperText: nextHelper(TURN_HELPERS),
+      };
+    });
+  }, [nextHelper]);
 
   const finishVoting = useCallback(() => {
     const votes = buildAiVoteRecords({
@@ -357,91 +448,170 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     }));
   }, [activePlayers, state.humanVoteTargetId, state.roundNumber, state.startingCount]);
 
+  const commitIndividualTurn = useCallback((turn: PendingTurnPipeline) => {
+    if (turn.choice === 'bank' && turn.resolution.securedDelta > 0) emitSoundCue('bank-secure-chime');
+    if (turn.resolution.wasCorrect) emitSoundCue('correct-guess-tick');
+    if (turn.resolution.wasCorrect === false) emitSoundCue('bust-impact');
+
+    setBankedTurn(turn.choice === 'bank' ? { actorId: turn.actorId, kind: turn.kind } : null);
+
+    setState((previous) => {
+      const chainMap = turn.kind === 'semifinal' ? previous.semifinalChains : previous.finalChains;
+      const scoreMap = turn.kind === 'semifinal' ? previous.semifinalScores : previous.finalScores;
+      const nextChains = { ...chainMap, [turn.actorId]: turn.resolution.updatedChain };
+      const nextScores = { ...scoreMap, [turn.actorId]: (scoreMap[turn.actorId] ?? 0) + turn.resolution.individualDelta };
+      const nextPlayers = previous.players.map((player) => {
+        if (player.id !== turn.actorId) return player;
+        const nextScore = nextScores[turn.actorId] ?? 0;
+        return {
+          ...player,
+          latestMoment: getLatestMoment(turn.choice, turn.resolution),
+          ...(turn.kind === 'semifinal'
+            ? { semifinalScore: nextScore }
+            : { finalScore: nextScore }),
+        };
+      });
+      const nextHistory: ChainOfGreedTurnRecord[] = [turn.historyEntry, ...previous.turnHistory].slice(0, 10);
+
+      if (!turn.turnEnds) {
+        return {
+          ...previous,
+          players: nextPlayers,
+          turnHistory: nextHistory,
+          revealedNumber: turn.resolution.revealedNumber,
+          statusText: getNextTurnStatus(turn.actorName, getPlayer(nextPlayers, turn.actorId)?.isHuman ?? false, turn.choice, turn.resolution),
+          helperText: 'Bank is spent for this turn. You still need a higher or lower guess.',
+          ...(turn.kind === 'semifinal'
+            ? { semifinalScores: nextScores, semifinalChains: nextChains }
+            : { finalScores: nextScores, finalChains: nextChains }),
+        };
+      }
+
+      const nextTurnIndex = (turn.turnIndexBefore ?? 0) + 1;
+      if (nextTurnIndex >= (turn.orderLength ?? 0)) {
+        if (turn.kind === 'semifinal') {
+          const invertedScores = Object.fromEntries(Object.entries(nextScores).map(([id, score]) => [id, -score]));
+          const ranking = rankPlayersByScore(invertedScores, nextPlayers, rngRef.current.rng);
+          const eliminated = ranking.ordered[0] ?? null;
+          emitSoundCue('elimination-sting');
+          return {
+            ...previous,
+            players: nextPlayers.map((player) => player.id === eliminated?.id ? { ...player, isEliminated: true } : player),
+            phase: 'semifinalReveal',
+            semifinalScores: nextScores,
+            semifinalChains: nextChains,
+            semifinalTieBreak: ranking.tieBreak,
+            semifinalEliminatedId: eliminated?.id ?? null,
+            turnHistory: nextHistory,
+            revealedNumber: turn.resolution.revealedNumber,
+            statusText: eliminated ? `${eliminated.name} leaves in third place.` : 'Semifinal complete.',
+            helperText: 'Only two remain.',
+          };
+        }
+
+        const ranking = rankPlayersByScore(nextScores, nextPlayers, rngRef.current.rng);
+        emitSoundCue('winner-stinger');
+        return {
+          ...previous,
+          players: nextPlayers,
+          phase: 'finalResult',
+          finalScores: nextScores,
+          finalChains: nextChains,
+          finalTieBreak: ranking.tieBreak,
+          winnerId: ranking.ordered[0]?.id ?? null,
+          turnHistory: nextHistory,
+          revealedNumber: turn.resolution.revealedNumber,
+          statusText: `${ranking.ordered[0]?.name ?? 'A finalist'} wins everything.`,
+          helperText: 'Only one player can claim the influence.',
+        };
+      }
+
+      return {
+        ...previous,
+        players: nextPlayers,
+        turnHistory: nextHistory,
+        revealedNumber: turn.resolution.revealedNumber,
+        statusText: `${getPlayer(nextPlayers, turn.kind === 'semifinal' ? previous.semifinalOrder[nextTurnIndex] ?? null : previous.finalOrder[nextTurnIndex] ?? null)?.name ?? 'Next player'} to play.`,
+        helperText: nextHelper(FINAL_HELPERS),
+        ...(turn.kind === 'semifinal'
+          ? { semifinalScores: nextScores, semifinalChains: nextChains, semifinalTurnIndex: nextTurnIndex }
+          : { finalScores: nextScores, finalChains: nextChains, finalTurnIndex: nextTurnIndex }),
+      };
+    });
+  }, [nextHelper]);
+
+  const resolveStandardAction = useCallback((actorId: string, choice: ChainAction) => {
+    if (pendingTurn) return;
+    const actor = getPlayer(state.players, actorId);
+    if (!actor) return;
+    const resolution = resolveChainAction(choice, state.chain, rngRef.current.rng);
+    setPendingTurn({
+      actorId,
+      actorName: actor.name,
+      kind: 'standard',
+      choice,
+      stage: 'decision',
+      referenceNumber: state.chain.referenceNumber,
+      resolution,
+      verdictText: getTurnVerdict(resolution),
+      consequenceText: getTurnConsequenceText(choice, resolution),
+      tone: getTurnTone(choice, resolution),
+      turnEnds: choice !== 'bank',
+      turnsRemainingBefore: state.turnsRemaining,
+      turnIndexBefore: state.turnIndex,
+      historyEntry: {
+        actorId,
+        actorName: actor.name,
+        choice,
+        referenceNumber: state.chain.referenceNumber,
+        revealedNumber: resolution.revealedNumber,
+        wasCorrect: resolution.wasCorrect,
+        bankedAmount: resolution.securedDelta,
+        lostAmount: resolution.lostAmount,
+        message: getTurnHistoryMessage(actor.name, choice, resolution),
+        phase: 'standard',
+      },
+    });
+  }, [pendingTurn, state]);
+
   const resolveIndividualAction = useCallback((kind: 'semifinal' | 'final', actorId: string, choice: ChainAction) => {
+    if (pendingTurn) return;
     const actor = getPlayer(state.players, actorId);
     const chainMap = kind === 'semifinal' ? state.semifinalChains : state.finalChains;
-    const scoreMap = kind === 'semifinal' ? state.semifinalScores : state.finalScores;
     const turnIndex = kind === 'semifinal' ? state.semifinalTurnIndex : state.finalTurnIndex;
     const order = kind === 'semifinal' ? state.semifinalOrder : state.finalOrder;
     const actorChain = chainMap[actorId];
     if (!actor || !actorChain) return;
 
     const resolution = resolveChainAction(choice, actorChain, rngRef.current.rng);
-    const nextChains = { ...chainMap, [actorId]: resolution.updatedChain };
-    const nextScores = { ...scoreMap, [actorId]: (scoreMap[actorId] ?? 0) + resolution.individualDelta };
-    const nextPlayers = state.players.map((player) => {
-      if (player.id !== actorId) return player;
-      return kind === 'semifinal'
-        ? { ...player, semifinalScore: nextScores[actorId] ?? 0 }
-        : { ...player, finalScore: nextScores[actorId] ?? 0 };
-    });
-
-    const nextHistory: ChainOfGreedTurnRecord[] = [{
+    setPendingTurn({
       actorId,
       actorName: actor.name,
+      kind,
       choice,
+      stage: 'decision',
       referenceNumber: actorChain.referenceNumber,
-      revealedNumber: resolution.revealedNumber,
-      wasCorrect: resolution.wasCorrect,
-      bankedAmount: resolution.individualDelta,
-      lostAmount: resolution.lostAmount,
-      message: `${actor.name} ${choice === 'bank' ? 'banks' : `calls ${choice}`}. ${resolution.message}`,
-      phase: kind,
-    }, ...state.turnHistory].slice(0, 10);
-
-    const nextTurnIndex = turnIndex + 1;
-    if (nextTurnIndex >= order.length) {
-      if (kind === 'semifinal') {
-        const invertedScores = Object.fromEntries(Object.entries(nextScores).map(([id, score]) => [id, -score]));
-        const ranking = rankPlayersByScore(invertedScores, nextPlayers, rngRef.current.rng);
-        const eliminated = ranking.ordered[0] ?? null;
-        emitSoundCue('elimination-sting');
-        setState((previous) => ({
-          ...previous,
-          players: nextPlayers.map((player) => player.id === eliminated?.id ? { ...player, isEliminated: true } : player),
-          phase: 'semifinalReveal',
-          semifinalScores: nextScores,
-          semifinalChains: nextChains,
-          semifinalTieBreak: ranking.tieBreak,
-          semifinalEliminatedId: eliminated?.id ?? null,
-          turnHistory: nextHistory,
-          revealedNumber: resolution.revealedNumber,
-          statusText: eliminated ? `${eliminated.name} leaves in third place.` : 'Semifinal complete.',
-          helperText: 'Only two remain.',
-        }));
-        return;
-      }
-
-      const ranking = rankPlayersByScore(nextScores, nextPlayers, rngRef.current.rng);
-      emitSoundCue('winner-stinger');
-      setState((previous) => ({
-        ...previous,
-        players: nextPlayers,
-        phase: 'finalResult',
-        finalScores: nextScores,
-        finalChains: nextChains,
-        finalTieBreak: ranking.tieBreak,
-        winnerId: ranking.ordered[0]?.id ?? null,
-        turnHistory: nextHistory,
+      resolution,
+      verdictText: getTurnVerdict(resolution),
+      consequenceText: getTurnConsequenceText(choice, resolution),
+      tone: getTurnTone(choice, resolution),
+      turnEnds: choice !== 'bank',
+      turnIndexBefore: turnIndex,
+      orderLength: order.length,
+      historyEntry: {
+        actorId,
+        actorName: actor.name,
+        choice,
+        referenceNumber: actorChain.referenceNumber,
         revealedNumber: resolution.revealedNumber,
-        statusText: `${ranking.ordered[0]?.name ?? 'A finalist'} wins everything.`,
-        helperText: 'Only one player can claim the influence.',
-      }));
-      return;
-    }
-
-    setState((previous) => ({
-      ...previous,
-      players: nextPlayers,
-      turnHistory: nextHistory,
-      revealedNumber: resolution.revealedNumber,
-      statusText: `${actor.name} ${choice === 'bank' ? 'banks' : `calls ${choice}`}. ${resolution.message}`,
-      helperText: nextHelper(FINAL_HELPERS),
-      ...(kind === 'semifinal'
-        ? { semifinalScores: nextScores, semifinalChains: nextChains, semifinalTurnIndex: nextTurnIndex }
-        : { finalScores: nextScores, finalChains: nextChains, finalTurnIndex: nextTurnIndex }),
-    }));
-  }, [state]);
+        wasCorrect: resolution.wasCorrect,
+        bankedAmount: resolution.individualDelta,
+        lostAmount: resolution.lostAmount,
+        message: getTurnHistoryMessage(actor.name, choice, resolution),
+        phase: kind,
+      },
+    });
+  }, [pendingTurn, state]);
 
   function startSemifinal() {
     const finalists = getActivePlayers(state.players);
@@ -449,6 +619,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     const order = buildIndividualOrder(ids, SEMIFINAL_TURNS_PER_PLAYER);
     const chains = Object.fromEntries(ids.map((id) => [id, createInitialChainState(rngRef.current.rng)]));
     const scores = Object.fromEntries(ids.map((id) => [id, 0]));
+    setPendingTurn(null);
+    setBankedTurn(null);
     emitSoundCue('final-showdown-sting');
     setState((previous) => ({
       ...previous,
@@ -471,6 +643,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     const order = buildIndividualOrder(ids, FINAL_TURNS_PER_PLAYER);
     const chains = Object.fromEntries(ids.map((id) => [id, createInitialChainState(rngRef.current.rng)]));
     const scores = Object.fromEntries(ids.map((id) => [id, 0]));
+    setPendingTurn(null);
+    setBankedTurn(null);
     emitSoundCue('final-showdown-sting');
     setState((previous) => ({
       ...previous,
@@ -500,7 +674,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
 
   function finishGame() {
     const winnerId = state.winnerId ?? activePlayers[0]?.id ?? humanPlayer?.id ?? null;
-    if (!winnerId) return;
+    if (!winnerId || isResultCommitted) return;
+    setIsResultCommitted(true);
     const rawResults = buildFinalRawResults(state.players, winnerId, state.securedTotal);
     props.onFinish?.(rawResults[humanPlayer?.id ?? winnerId] ?? state.securedTotal, undefined, {
       authoritativeWinnerId: winnerId,
@@ -510,8 +685,33 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   }
 
   useEffect(() => {
-    if (state.phase !== 'playerTurn' || !currentTurnPlayer || currentTurnPlayer.isHuman) return;
-    const lockKey = `${state.roundNumber}:${state.turnIndex}:${currentTurnPlayer.id}`;
+    if (!pendingTurn) return;
+    const timer = window.setTimeout(() => {
+      if (pendingTurn.stage === 'settle') {
+        if (pendingTurn.kind === 'standard') {
+          commitStandardTurn(pendingTurn);
+        } else {
+          commitIndividualTurn(pendingTurn);
+        }
+        setPendingTurn(null);
+        return;
+      }
+
+      const nextStage: Record<Exclude<TurnPipelineStage, 'settle'>, TurnPipelineStage> = {
+        decision: 'reveal',
+        reveal: 'consequence',
+        consequence: 'animation',
+        animation: 'settle',
+      };
+      setPendingTurn((previous) => previous ? { ...previous, stage: nextStage[previous.stage as Exclude<TurnPipelineStage, 'settle'>] } : previous);
+    }, TURN_PIPELINE_DURATIONS[pendingTurn.stage]);
+    return () => window.clearTimeout(timer);
+  }, [commitIndividualTurn, commitStandardTurn, pendingTurn]);
+
+  useEffect(() => {
+    if (state.phase !== 'playerTurn' || !currentTurnPlayer || currentTurnPlayer.isHuman || pendingTurn) return;
+    const bankAvailable = bankedTurn?.actorId !== currentTurnPlayer.id || bankedTurn.kind !== 'standard';
+    const lockKey = `${state.roundNumber}:${state.turnIndex}:${currentTurnPlayer.id}:${bankAvailable ? 'fresh' : 'banked'}`;
     if (aiTurnLockRef.current === lockKey) return;
     aiTurnLockRef.current = lockKey;
     const timer = window.setTimeout(() => {
@@ -521,10 +721,11 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
         remainingTurns: state.turnsRemaining,
         phase: 'standard',
         activePlayers,
+        bankAvailable,
       }));
-    }, 480 + Math.round(rngRef.current.rng() * 420));
+    }, bankAvailable ? 480 + Math.round(rngRef.current.rng() * 420) : 360);
     return () => window.clearTimeout(timer);
-  }, [activePlayers, currentTurnPlayer, resolveStandardAction, state.chain, state.phase, state.roundNumber, state.turnIndex, state.turnsRemaining]);
+  }, [activePlayers, bankedTurn, currentTurnPlayer, pendingTurn, resolveStandardAction, state.chain, state.phase, state.roundNumber, state.turnIndex, state.turnsRemaining]);
 
   useEffect(() => {
     if (state.phase !== 'voting') return;
@@ -566,10 +767,14 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       });
     }, 950);
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.players, state.turnOrder]);
+  }, [nextHelper, state.phase, state.players, state.turnOrder]);
 
   useEffect(() => {
-    if (state.phase !== 'semifinalTurn' || !semifinalPlayer || semifinalPlayer.isHuman) return;
+    if (state.phase !== 'semifinalTurn' || !semifinalPlayer || semifinalPlayer.isHuman || pendingTurn) return;
+    const bankAvailable = bankedTurn?.actorId !== semifinalPlayer.id || bankedTurn.kind !== 'semifinal';
+    const lockKey = `semi:${state.semifinalTurnIndex}:${semifinalPlayer.id}:${bankAvailable ? 'fresh' : 'banked'}`;
+    if (aiTurnLockRef.current === lockKey) return;
+    aiTurnLockRef.current = lockKey;
     const timer = window.setTimeout(() => {
       const turnsUsed = state.semifinalOrder.slice(0, state.semifinalTurnIndex + 1).filter((id) => id === semifinalPlayer.id).length;
       resolveIndividualAction('semifinal', semifinalPlayer.id, decideAiAction({
@@ -579,13 +784,18 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
         phase: 'semifinal',
         activePlayers,
         playerScore: state.semifinalScores[semifinalPlayer.id] ?? 0,
+        bankAvailable,
       }));
-    }, 500 + Math.round(rngRef.current.rng() * 280));
+    }, bankAvailable ? 500 + Math.round(rngRef.current.rng() * 280) : 360);
     return () => window.clearTimeout(timer);
-  }, [activePlayers, resolveIndividualAction, semifinalPlayer, state.phase, state.semifinalChains, state.semifinalOrder, state.semifinalScores, state.semifinalTurnIndex]);
+  }, [activePlayers, bankedTurn, pendingTurn, resolveIndividualAction, semifinalPlayer, state.phase, state.semifinalChains, state.semifinalOrder, state.semifinalScores, state.semifinalTurnIndex]);
 
   useEffect(() => {
-    if (state.phase !== 'finalTurn' || !finalPlayer || finalPlayer.isHuman) return;
+    if (state.phase !== 'finalTurn' || !finalPlayer || finalPlayer.isHuman || pendingTurn) return;
+    const bankAvailable = bankedTurn?.actorId !== finalPlayer.id || bankedTurn.kind !== 'final';
+    const lockKey = `final:${state.finalTurnIndex}:${finalPlayer.id}:${bankAvailable ? 'fresh' : 'banked'}`;
+    if (aiTurnLockRef.current === lockKey) return;
+    aiTurnLockRef.current = lockKey;
     const timer = window.setTimeout(() => {
       const turnsUsed = state.finalOrder.slice(0, state.finalTurnIndex + 1).filter((id) => id === finalPlayer.id).length;
       resolveIndividualAction('final', finalPlayer.id, decideAiAction({
@@ -595,32 +805,38 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
         phase: 'final',
         activePlayers,
         playerScore: state.finalScores[finalPlayer.id] ?? 0,
+        bankAvailable,
       }));
-    }, 500 + Math.round(rngRef.current.rng() * 280));
+    }, bankAvailable ? 500 + Math.round(rngRef.current.rng() * 280) : 360);
     return () => window.clearTimeout(timer);
-  }, [activePlayers, finalPlayer, resolveIndividualAction, state.finalChains, state.finalOrder, state.finalScores, state.finalTurnIndex, state.phase]);
+  }, [activePlayers, bankedTurn, finalPlayer, pendingTurn, resolveIndividualAction, state.finalChains, state.finalOrder, state.finalScores, state.finalTurnIndex, state.phase]);
 
-  const referenceNumber = state.phase === 'semifinalTurn'
-    ? (semifinalPlayer ? state.semifinalChains[semifinalPlayer.id]?.referenceNumber : 0)
+  const currentActor = currentTurnPlayer ?? semifinalPlayer ?? finalPlayer;
+  const actionTargetId = currentActor?.id ?? null;
+  const actionTargetKind = state.phase === 'playerTurn'
+    ? 'standard'
+    : state.phase === 'semifinalTurn'
+      ? 'semifinal'
+      : state.phase === 'finalTurn'
+        ? 'final'
+        : null;
+  const baseChain = state.phase === 'semifinalTurn'
+    ? (semifinalPlayer ? state.semifinalChains[semifinalPlayer.id] : null)
     : state.phase === 'finalTurn'
-      ? (finalPlayer ? state.finalChains[finalPlayer.id]?.referenceNumber : 0)
-      : state.chain.referenceNumber;
-  const activeStep = state.phase === 'semifinalTurn'
-    ? (semifinalPlayer ? state.semifinalChains[semifinalPlayer.id]?.step : 0)
-    : state.phase === 'finalTurn'
-      ? (finalPlayer ? state.finalChains[finalPlayer.id]?.step : 0)
-      : state.chain.step;
-  const activePot = state.phase === 'semifinalTurn'
-    ? (semifinalPlayer ? state.semifinalChains[semifinalPlayer.id]?.pot : 0)
-    : state.phase === 'finalTurn'
-      ? (finalPlayer ? state.finalChains[finalPlayer.id]?.pot : 0)
-      : state.chain.pot;
+      ? (finalPlayer ? state.finalChains[finalPlayer.id] : null)
+      : state.chain;
+  const showPendingResolvedState = pendingTurn?.stage === 'animation' || pendingTurn?.stage === 'settle';
+  const displayedChain = pendingTurn && showPendingResolvedState ? pendingTurn.resolution.updatedChain : baseChain;
+  const referenceNumber = pendingTurn
+    ? (showPendingResolvedState ? pendingTurn.resolution.updatedChain.referenceNumber : pendingTurn.referenceNumber)
+    : displayedChain?.referenceNumber ?? 0;
+  const activeStep = displayedChain?.step ?? 0;
+  const activePot = displayedChain?.pot ?? 0;
   const revealedVotes = state.pendingVotes.slice(0, state.revealedVotes);
   const winner = getPlayer(state.players, state.winnerId);
   const standardTurnLabels = state.phase === 'playerTurn' && currentTurnPlayer?.isHuman;
   const semifinalTurnLabels = state.phase === 'semifinalTurn' && semifinalPlayer?.isHuman;
   const finalTurnLabels = state.phase === 'finalTurn' && finalPlayer?.isHuman;
-  const currentActor = currentTurnPlayer ?? semifinalPlayer ?? finalPlayer;
   const isHumanTurn = Boolean(standardTurnLabels || semifinalTurnLabels || finalTurnLabels);
   const showStickyActionBar = state.phase === 'playerTurn' || state.phase === 'semifinalTurn' || state.phase === 'finalTurn';
   const currentChainStep = activeStep || 0;
@@ -649,6 +865,14 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     };
   });
   const lastTurn = state.turnHistory[0] ?? null;
+  const turnComparisonSymbol = pendingTurn?.choice === 'higher'
+    ? '↑'
+    : pendingTurn?.choice === 'lower'
+      ? '↓'
+      : pendingTurn?.choice === 'bank'
+        ? '💰'
+        : null;
+  const showTurnReveal = Boolean(pendingTurn && pendingTurn.stage !== 'decision' && (pendingTurn.choice === 'bank' || pendingTurn.resolution.revealedNumber !== null));
   const heroKicker = isHumanTurn
     ? 'YOUR TURN'
     : currentActor
@@ -681,29 +905,39 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   : state.phase.startsWith('semifinal')
                     ? 'Semifinal stage'
                     : 'Broadcast pause';
-  const heroCommentary = lastTurn?.message ?? state.statusText;
-  const heroTone = lastTurn?.message?.toLowerCase().includes('wrong') || lastTurn?.message?.toLowerCase().includes('lost') || lastTurn?.message?.toLowerCase().includes('miss')
-    ? 'danger'
-    : lastTurn?.choice === 'bank'
-      ? 'bank'
-      : lastTurn?.wasCorrect
-        ? 'success'
-        : 'neutral';
+  const heroCommentary = pendingTurn
+    ? (
+      pendingTurn.stage === 'decision'
+        ? getDecisionText(pendingTurn.actorName, getPlayer(state.players, pendingTurn.actorId)?.isHuman ?? false, pendingTurn.choice)
+        : pendingTurn.stage === 'reveal'
+          ? pendingTurn.verdictText
+          : pendingTurn.consequenceText
+    )
+    : lastTurn?.message ?? state.statusText;
+  const heroTone = pendingTurn
+    ? (pendingTurn.stage === 'decision' ? (pendingTurn.choice === 'bank' ? 'bank' : 'neutral') : pendingTurn.tone)
+    : lastTurn?.message?.toLowerCase().includes('wrong') || lastTurn?.message?.toLowerCase().includes('lost') || lastTurn?.message?.toLowerCase().includes('miss')
+      ? 'danger'
+      : lastTurn?.choice === 'bank'
+        ? 'bank'
+        : lastTurn?.wasCorrect
+          ? 'success'
+          : 'neutral';
   const playerMetricText = (player: ChainOfGreedPlayerState) => {
     if (state.phase === 'finalTurn' || state.phase === 'finalResult') return `${player.finalScore} final`;
     if (state.phase === 'semifinalTurn' || state.phase === 'semifinalReveal') return `${player.semifinalScore} semi`;
     return `${player.totalContribution} secured`;
   };
-  const actionTargetId = currentActor?.id ?? null;
-  const actionTargetKind = state.phase === 'playerTurn'
-    ? 'standard'
-    : state.phase === 'semifinalTurn'
-      ? 'semifinal'
-      : state.phase === 'finalTurn'
-        ? 'final'
-        : null;
+  const isBankUsedThisTurn = Boolean(actionTargetId && actionTargetKind && bankedTurn?.actorId === actionTargetId && bankedTurn.kind === actionTargetKind);
+  const isActionLocked = Boolean(pendingTurn);
+  useEffect(() => {
+    if (!bankedTurn) return;
+    if (!actionTargetId || !actionTargetKind || bankedTurn.actorId !== actionTargetId || bankedTurn.kind !== actionTargetKind) {
+      setBankedTurn(null);
+    }
+  }, [actionTargetId, actionTargetKind, bankedTurn]);
   const handleAction = (choice: ChainAction) => {
-    if (!actionTargetId || !actionTargetKind) return;
+    if (!actionTargetId || !actionTargetKind || isActionLocked || (choice === 'bank' && isBankUsedThisTurn)) return;
     if (actionTargetKind === 'standard') {
       resolveStandardAction(actionTargetId, choice);
       return;
@@ -889,7 +1123,34 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   </div>
                 )}
                 <AnimatePresence initial={false}>
-                  {state.revealedNumber !== null && state.revealedNumber !== referenceNumber && (
+                  {showTurnReveal ? (
+                    <motion.div
+                      className={`chain-of-greed__reveal chain-of-greed__reveal--${heroTone}`}
+                      data-testid="chain-turn-reveal"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                    >
+                      {pendingTurn?.choice === 'bank' ? (
+                        <>
+                          <span className="chain-of-greed__reveal-comparison">
+                            <strong>{Math.max(pendingTurn.resolution.securedDelta, pendingTurn.resolution.individualDelta).toLocaleString()}</strong>
+                            <span>{turnComparisonSymbol}</span>
+                          </span>
+                          <span className="chain-of-greed__reveal-verdict">{pendingTurn.verdictText}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="chain-of-greed__reveal-comparison">
+                            <strong>{pendingTurn?.referenceNumber}</strong>
+                            <span>{turnComparisonSymbol}</span>
+                            <strong>{pendingTurn?.resolution.revealedNumber}</strong>
+                          </span>
+                          <span className="chain-of-greed__reveal-verdict">{pendingTurn?.verdictText}</span>
+                        </>
+                      )}
+                    </motion.div>
+                  ) : state.revealedNumber !== null && state.revealedNumber !== referenceNumber && (
                     <motion.div
                       className={`chain-of-greed__reveal chain-of-greed__reveal--${heroTone}`}
                       initial={{ opacity: 0, y: 8 }}
@@ -928,18 +1189,54 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               </button>
               {isHumanTurn ? (
                 <div className="chain-of-greed__buttons">
-                  <button type="button" className="chain-of-greed__action chain-of-greed__action--lower" onClick={() => handleAction('lower')}>Lower</button>
-                  <button type="button" className="chain-of-greed__action chain-of-greed__action--bank" onClick={() => handleAction('bank')}>Bank</button>
-                  <button type="button" className="chain-of-greed__action chain-of-greed__action--higher" onClick={() => handleAction('higher')}>Higher</button>
+                  <button
+                    type="button"
+                    className={['chain-of-greed__action', 'chain-of-greed__action--lower', pendingTurn?.choice === 'lower' ? 'chain-of-greed__action--selected' : ''].filter(Boolean).join(' ')}
+                    disabled={isActionLocked}
+                    onClick={() => handleAction('lower')}
+                  >
+                    Lower
+                  </button>
+                  <button
+                    type="button"
+                    className={['chain-of-greed__action', 'chain-of-greed__action--bank', pendingTurn?.choice === 'bank' ? 'chain-of-greed__action--selected' : '', isBankUsedThisTurn ? 'chain-of-greed__action--spent' : ''].filter(Boolean).join(' ')}
+                    disabled={isActionLocked || isBankUsedThisTurn}
+                    onClick={() => handleAction('bank')}
+                  >
+                    {isBankUsedThisTurn ? 'Banked' : 'Bank'}
+                  </button>
+                  <button
+                    type="button"
+                    className={['chain-of-greed__action', 'chain-of-greed__action--higher', pendingTurn?.choice === 'higher' ? 'chain-of-greed__action--selected' : ''].filter(Boolean).join(' ')}
+                    disabled={isActionLocked}
+                    onClick={() => handleAction('higher')}
+                  >
+                    Higher
+                  </button>
                 </div>
               ) : (
                 <div className="chain-of-greed__ai-waiting">
                   <strong>{currentActor?.name ?? 'The house'}</strong>
-                  <span>is reading the board…</span>
+                  <span>{pendingTurn ? 'is resolving the turn…' : isBankUsedThisTurn ? 'must still guess…' : 'is reading the board…'}</span>
                 </div>
               )}
             </motion.footer>
           )}
+
+          <div className="chain-of-greed__event-log" data-testid="chain-event-log">
+            {state.turnHistory.slice(0, 3).map((entry) => (
+              <div key={`${entry.actorId}-${entry.referenceNumber}-${entry.choice}-${entry.revealedNumber}`} className="chain-of-greed__event-log-entry">
+                <strong>{entry.actorName}</strong>
+                <span>{entry.message}</span>
+              </div>
+            ))}
+            {state.turnHistory.length === 0 && (
+              <div className="chain-of-greed__event-log-entry">
+                <strong>Live feed</strong>
+                <span>No turns yet. The chain is waiting.</span>
+              </div>
+            )}
+          </div>
 
           {playerRail}
         </main>
@@ -1173,7 +1470,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <ul>{state.finalTieBreak.transcript.map((line) => <li key={line}>{line}</li>)}</ul>
               </div>
             )}
-            <button type="button" className="chain-of-greed__continue" onClick={finishGame}>Claim Result</button>
+            <button type="button" className="chain-of-greed__continue" disabled={isResultCommitted} onClick={finishGame}>Claim Result</button>
           </div>
         </div>
       )}

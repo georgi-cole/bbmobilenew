@@ -331,11 +331,28 @@
 .chain-of-greed__reveal {
   position: relative;
   z-index: 1;
+   display: grid;
+   gap: 0.18rem;
+   justify-items: center;
   justify-self: center;
   padding: 0.55rem 0.85rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: #e4ecff;
+}
+
+.chain-of-greed__reveal-comparison {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.chain-of-greed__reveal-verdict {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .chain-of-greed__reveal--danger {
@@ -879,6 +896,12 @@
   box-shadow: 0 0 18px rgba(71, 187, 255, 0.08);
 }
 
+.chain-of-greed__action:disabled,
+.chain-of-greed__continue:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .chain-of-greed__action--lower,
 .chain-of-greed__action--higher {
   background: rgba(255, 255, 255, 0.035);
@@ -892,6 +915,18 @@
   box-shadow: 0 0 22px rgba(244, 197, 91, 0.22);
 }
 
+.chain-of-greed__action--selected {
+  outline: 2px solid rgba(161, 206, 255, 0.9);
+  outline-offset: 1px;
+}
+
+.chain-of-greed__action--spent {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(238, 244, 255, 0.72);
+  transform: none;
+  box-shadow: none;
+}
+
 .chain-of-greed__ai-waiting {
   display: flex;
   align-items: center;
@@ -900,6 +935,31 @@
   padding: 0.1rem 0;
   border-radius: 0;
   background: none;
+}
+
+.chain-of-greed__event-log {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.chain-of-greed__event-log-entry {
+  display: grid;
+  gap: 0.08rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chain-of-greed__event-log-entry strong {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(219, 229, 255, 0.7);
+}
+
+.chain-of-greed__event-log-entry span {
+  font-size: 0.76rem;
+  color: rgba(238, 243, 255, 0.9);
 }
 
 .chain-of-greed__overlay {
