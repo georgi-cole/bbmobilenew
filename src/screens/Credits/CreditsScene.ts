@@ -26,6 +26,8 @@ const BEAM_TEXTURE_HEIGHT = 960;
 const FOG_TEXTURE_WIDTH = 640;
 const FOG_TEXTURE_HEIGHT = 200;
 const GLOW_TEXTURE_SIZE = 256;
+const MAX_EYE_SIZE_PX = 70;
+const MAX_EYE_GLOW_SIZE_PX = 160;
 
 const SKY_TOP = '#020610';
 const SKY_BOTTOM = '#0c2a3c';
@@ -112,6 +114,8 @@ export default class CreditsScene {
   private logoSprite: Sprite | null = null;
   private eyeSprite: Sprite | null = null;
   private eyeGlow: Sprite | null = null;
+  private eyeBaseScaleX = 1;
+  private eyeBaseScaleY = 1;
   private creditsText!: Text;
   private exitText!: Text;
   private elapsedSeconds = 0;
@@ -642,15 +646,17 @@ export default class CreditsScene {
     const eyeY = this.beamOriginY - Math.cos(BEAM_ROTATION) * eyeBeamOffset;
 
     if (this.eyeSprite) {
-      const eyeSize = Math.min(width * 0.16, 70) * this.designScale;
+      const eyeSize = Math.min(width * 0.16, MAX_EYE_SIZE_PX) * this.designScale;
       this.eyeSprite.x = eyeX;
       this.eyeSprite.y = eyeY;
       this.eyeSprite.width = eyeSize;
       this.eyeSprite.height = eyeSize;
+      this.eyeBaseScaleX = eyeSize / this.eyeSprite.texture.width;
+      this.eyeBaseScaleY = eyeSize / this.eyeSprite.texture.height;
     }
 
     if (this.eyeGlow) {
-      const glowSize = Math.min(width * 0.38, 160) * this.designScale;
+      const glowSize = Math.min(width * 0.38, MAX_EYE_GLOW_SIZE_PX) * this.designScale;
       this.eyeGlow.x = eyeX;
       this.eyeGlow.y = eyeY;
       this.eyeGlow.width = glowSize;
@@ -727,8 +733,8 @@ export default class CreditsScene {
 
       this.eyeSprite.alpha = eyeAlpha * 0.85;
       this.eyeSprite.scale.set(
-        (this.eyeSprite.width / this.eyeSprite.texture.width) * scalePulse,
-        (this.eyeSprite.height / this.eyeSprite.texture.height) * scalePulse,
+        this.eyeBaseScaleX * scalePulse,
+        this.eyeBaseScaleY * scalePulse,
       );
 
       this.eyeGlow.alpha = eyeAlpha * (0.35 + beamPulse * 0.15);
