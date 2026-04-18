@@ -7,6 +7,13 @@ export const MAX_STANDARD_PLAYERS = 16;
 export const MIN_STANDARD_PLAYERS = 7;
 export const SEMIFINAL_TURNS_PER_PLAYER = 3;
 export const FINAL_TURNS_PER_PLAYER = 4;
+export const CHAIN_TURN_PIPELINE_DURATIONS = {
+  decision: 420,
+  reveal: 850,
+  consequence: 850,
+  animation: 900,
+  settle: 650,
+} as const;
 
 export type ChainAction = 'higher' | 'lower' | 'bank';
 
@@ -43,6 +50,7 @@ export interface ChainOfGreedPlayerState extends ChainOfGreedResolvedParticipant
   turnsTakenThisRound: number;
   personality: ChainOfGreedPersonality;
   lastRoundPerformance: number;
+  // Tracks the last readable turn result shown in the player rail.
   latestMoment: 'higher' | 'lower' | 'wrong' | 'bank' | 'bust' | 'safe' | null;
 }
 

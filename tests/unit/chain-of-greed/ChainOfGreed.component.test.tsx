@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
+import { CHAIN_TURN_PIPELINE_DURATIONS } from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
 
-const TURN_PIPELINE_MS = 420 + 850 + 850 + 900 + 650;
+const TURN_PIPELINE_MS = Object.values(CHAIN_TURN_PIPELINE_DURATIONS).reduce((total, value) => total + value, 0);
 
 const participants = [
   { id: 'human', name: 'You', isHuman: true, precomputedScore: 75, previousPR: null },
@@ -149,7 +150,7 @@ describe('ChainOfGreed component', () => {
     expect(screen.getByRole('button', { name: 'Banked' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Higher' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeEnabled();
-    expect(screen.getAllByText(/You banked 0\./i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/You banked 0\./i)).toHaveLength(2);
     expect(screen.getByTestId('chain-event-log')).toHaveTextContent(/You banked 0./i);
   });
 });
