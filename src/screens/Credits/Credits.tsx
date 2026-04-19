@@ -6,27 +6,29 @@ import './Credits.css';
 const EXIT_FADE_MS = 420;
 
 const creditsVideoUrl = CREDITS_VIDEO_SOURCES[0];
-let hasPreloadedCreditsVideo = false;
+let creditsVideoPreloader: HTMLVideoElement | null = null;
 
 function ensureCreditsVideoPreload() {
-  if (hasPreloadedCreditsVideo || typeof document === 'undefined' || !creditsVideoUrl) {
+  if (creditsVideoPreloader != null || typeof document === 'undefined' || !creditsVideoUrl) {
     return;
   }
 
-  const existingPreload = document.querySelector<HTMLLinkElement>(
-    `link[rel="preload"][href="${creditsVideoUrl}"]`,
-  );
-  if (existingPreload != null) {
-    hasPreloadedCreditsVideo = true;
+  const existingPreloader = document.querySelector<HTMLVideoElement>('video[data-credits-preload="true"]');
+  if (existingPreloader != null) {
+    creditsVideoPreloader = existingPreloader;
     return;
   }
 
-  const preloadLink = document.createElement('link');
-  preloadLink.rel = 'preload';
-  preloadLink.as = 'fetch';
-  preloadLink.href = creditsVideoUrl;
-  document.head.appendChild(preloadLink);
-  hasPreloadedCreditsVideo = true;
+  const preloadVideo = document.createElement('video');
+  preloadVideo.preload = 'auto';
+  preloadVideo.muted = true;
+  preloadVideo.playsInline = true;
+  preloadVideo.src = creditsVideoUrl;
+  preloadVideo.setAttribute('data-credits-preload', 'true');
+  preloadVideo.setAttribute('aria-hidden', 'true');
+  preloadVideo.style.display = 'none';
+  document.body.appendChild(preloadVideo);
+  creditsVideoPreloader = preloadVideo;
 }
 
 ensureCreditsVideoPreload();
@@ -61,6 +63,9 @@ export default function Credits() {
     video.muted = false;
 
     void video.play().catch(async () => {
+      // Some browsers reject autoplay once the route has mounted outside the
+      // original click gesture. Fall back to muted playback so the credits
+      // still start instantly instead of waiting for a second tap.
       video.defaultMuted = true;
       video.muted = true;
       await video.play().catch(() => {});

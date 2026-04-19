@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Credits from '../Credits';
 
@@ -17,12 +17,17 @@ function renderCredits() {
 }
 
 describe('Credits', () => {
-  const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
-  const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  let playSpy: ReturnType<typeof vi.spyOn>;
+  let pauseSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  });
 
   afterEach(() => {
-    playSpy.mockClear();
-    pauseSpy.mockClear();
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
     vi.useRealTimers();
   });
 
