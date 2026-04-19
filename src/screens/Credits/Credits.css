@@ -79,6 +79,12 @@
   animation: credits-copy-fade var(--credits-cycle-ms, 2450ms) ease-in-out both;
 }
 
+.credits-copy-item--initial {
+  opacity: 1;
+  transform: translateY(0);
+  animation: none;
+}
+
 @keyframes credits-copy-fade {
   0%,
   100% {

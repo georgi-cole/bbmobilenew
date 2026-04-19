@@ -51,9 +51,10 @@ describe('Credits', () => {
     const credits = screen.getByLabelText('Credits');
 
     expect(stage).toHaveStyle({
-      backgroundImage: expect.stringContaining('assets/credits/credits-background.png'),
+      backgroundImage: expect.stringContaining('assets/credits/city skyline reduced.jpg'),
     });
     expect(credits).toHaveTextContent('Thank YOU for playing');
+    expect(credits.querySelector('.credits-copy-item--initial')).not.toBeNull();
     expect(credits).not.toHaveTextContent('Created by: Georgi Cole');
     expect(cinematicAudioMocks.create).toHaveBeenCalledWith(
       expect.stringContaining('assets/sounds/credits_sound.mp3'),
@@ -107,5 +108,27 @@ describe('Credits', () => {
 
     expect(cinematicAudioMocks.fadeOutAndStop).toHaveBeenCalledWith(EXIT_FADE_MS);
     expect(screen.getByText('Home screen')).toBeInTheDocument();
+  });
+
+  it('advances to the next credit after the opening credit hold', () => {
+    vi.useFakeTimers();
+    cinematicAudioMocks.create.mockReturnValue({
+      play: cinematicAudioMocks.play,
+      fadeOutAndStop: cinematicAudioMocks.fadeOutAndStop,
+      dispose: cinematicAudioMocks.dispose,
+    });
+
+    renderCredits();
+
+    const credits = screen.getByLabelText('Credits');
+
+    expect(credits).toHaveTextContent('Thank YOU for playing');
+
+    act(() => {
+      vi.advanceTimersByTime(CREDITS_TOTAL_MS / 7);
+    });
+
+    expect(credits).toHaveTextContent('Created by: Georgi Cole');
+    expect(credits.querySelector('.credits-copy-item--initial')).toBeNull();
   });
 });
