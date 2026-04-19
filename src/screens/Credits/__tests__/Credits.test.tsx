@@ -29,7 +29,7 @@ describe('Credits', () => {
       backgroundImage: expect.stringContaining('assets/credits/credits-background.png'),
     });
     expect(credits).toHaveTextContent('Thank YOU for playing');
-    expect(credits).toHaveTextContent('Created by:\nGeorgi Cole');
+    expect(credits).toHaveTextContent('Created by: Georgi Cole');
 
     vi.useFakeTimers();
     act(() => {
