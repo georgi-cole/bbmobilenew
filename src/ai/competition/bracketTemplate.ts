@@ -138,7 +138,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minPlayers: 3,
     maxPlayers: 3,
     loh: [
-      'biographyBlitz', // Biography Blitz — trivia; strong opening comp of the trilogy
+      'glass_bridge_brutal', // Crystal Path: Infinity — high-stakes sequential choice; strong opening comp of the trilogy
       'chainOfGreed',   // Chain of Greed  — pressure chain; escalating second comp
       'gridOfLuck',     // Grid of Luck    — cinematic finale; dramatic conclusion
     ],
@@ -163,7 +163,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
  *    caller can fall back to the standard scheduler.
  *
  * @param playerCount - Number of currently alive players (>= 1).
- * @param compType    - `'LOH'` or `'POS'`.
+ * @param compType    - 'LOH' or 'POS'.
  * @param template    - Template to query; defaults to DEFAULT_BRACKET_TEMPLATE.
  */
 export function getBracketPoolForContext(
