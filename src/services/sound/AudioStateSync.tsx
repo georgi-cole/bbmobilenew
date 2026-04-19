@@ -3,11 +3,13 @@ import { shallowEqual, useSelector } from 'react-redux';
 import type { RootState } from '../../store/store';
 import { SoundManager } from './SoundManager';
 import { resolveDesiredMusic } from './resolveDesiredMusic';
+import { hasStartedHomeHubGame } from '../../screens/HomeHub/homeHubMusicSession';
 
 export default function AudioStateSync() {
   const musicState = useSelector(
     (root: RootState) => ({
       gamePhase: root.game.phase,
+      gameId: root.game.gameId,
       spectatorActive: root.game.spectatorActive,
       pendingChallengePhase: root.challenge.pending?.phase ?? null,
       pendingChallengeGameKey: root.challenge.pending?.game?.key ?? null,
@@ -31,6 +33,7 @@ export default function AudioStateSync() {
         {
           game: {
             phase: musicState.gamePhase,
+            gameId: musicState.gameId,
             spectatorActive: musicState.spectatorActive,
           },
           challenge: {
@@ -51,6 +54,9 @@ export default function AudioStateSync() {
           },
         },
         hash,
+        {
+          canPlayIntroHubMusic: !hasStartedHomeHubGame(musicState.gameId),
+        },
       ),
     [hash, musicState],
   );

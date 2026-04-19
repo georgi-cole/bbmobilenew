@@ -3,7 +3,7 @@ import type { MusicTrack } from './musicTracks';
 import type { MusicScene } from '../../store/uiSlice';
 
 export interface MusicResolverState {
-  game: Pick<RootState['game'], 'phase' | 'spectatorActive'>;
+  game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'>;
   challenge: {
     pending?: {
       phase?: string | null;
@@ -12,6 +12,10 @@ export interface MusicResolverState {
   };
   social: Pick<RootState['social'], 'panelOpen' | 'incomingInboxOpen'>;
   ui: { musicScene: MusicScene };
+}
+
+export interface ResolveDesiredMusicOptions {
+  canPlayIntroHubMusic?: boolean;
 }
 
 const COMPETITION_PHASES = new Set(['loh_comp', 'loh_results', 'pos_comp', 'pos_results']);
@@ -47,7 +51,12 @@ function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
   }
 }
 
-export function resolveDesiredMusic(state: MusicResolverState, hash: string): MusicTrack {
+export function resolveDesiredMusic(
+  state: MusicResolverState,
+  hash: string,
+  options: ResolveDesiredMusicOptions = {},
+): MusicTrack {
+  const canPlayIntroHubMusic = options.canPlayIntroHubMusic ?? true;
   const sceneTrack = trackForMusicScene(state.ui.musicScene);
   if (sceneTrack !== 'none') {
     return sceneTrack;
@@ -79,7 +88,7 @@ export function resolveDesiredMusic(state: MusicResolverState, hash: string): Mu
     return 'veto';
   }
 
-  if (hash === '' || hash === '#' || hash === '#/') {
+  if (canPlayIntroHubMusic && (hash === '' || hash === '#' || hash === '#/')) {
     return 'introhub';
   }
 
