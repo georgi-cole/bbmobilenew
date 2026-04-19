@@ -86,9 +86,9 @@ export default function FinalFaceoff() {
     );
 
     dispatch(setMusicScene('none'));
-    // stopAllMusic() clears _desiredMusicTrack immediately so that any syncMusic()
-    // triggered before AudioStateSync processes the dispatch (e.g. visibility
-    // change, settings toggle) cannot restart stale music.
+    // stopAllMusic() clears the desired music selection immediately so that any
+    // syncMusic() triggered before AudioStateSync processes the dispatch
+    // (e.g. visibility change, settings toggle) cannot restart stale music.
     SoundManager.stopAllMusic();
     if (!winnerAlreadyMarked || !runnerUpAlreadyMarked) {
       dispatch(
