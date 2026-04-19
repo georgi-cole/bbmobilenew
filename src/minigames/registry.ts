@@ -1087,16 +1087,15 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   crystal_path_shattered: {
     key: 'crystal_path_shattered',
-    title: 'Crystal Path: Shattered',
+    title: 'Crystal Path: Infinity',
     description:
-      'An endurance crossing of a crystal bridge: manage your Stability Points, spend hints wisely, and gamble on mystery tiles to survive.',
+      'Push deeper into the endless crystal runway, trust your instincts, and outlast every other run.',
     instructions: [
-      'Start with 300 SP and 2 hints. Cross the crystal bridge one row at a time.',
-      'Each row has LEFT and RIGHT tiles — only one is safe. Correct tiles cost no SP.',
-      'Wrong tiles drain SP: -10 on rows 1–10, -15 on rows 11–25, -20 from row 26 onward.',
-      'Mystery ❓ center tiles appear occasionally and give temporary 5-second effects — they do NOT advance you.',
-      'Hints briefly highlight the safer tile but are limited.',
-      'You fall only when your SP reaches zero. Furthest row wins — remaining SP breaks ties.',
+      'Everyone makes one uninterrupted run from start to finish — no turn swapping, just momentum.',
+      'Every row is a live call between two crystal tiles, and one bad read can change the whole climb.',
+      'Wrong steps chip away at your stability, so survive the pressure and stay moving as long as you can.',
+      'Mystery crystals and limited visions can flip the run when you need a comeback or a clutch gamble.',
+      'The deepest surviving climb wins, with leftover stability breaking the closest finishes.',
     ],
     resultMode: 'placement',
     metricKind: 'accuracy',
