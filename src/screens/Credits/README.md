@@ -12,22 +12,12 @@ npm run build && npm run preview
 # Then open: http://localhost:4173/#/credits
 ```
 
-## What to look for in the console
-
-Open DevTools → Console before navigating to `/#/credits`.
-
-| Log message | Meaning |
-|---|---|
-| `[CreditsScene] canvas init error` | Pixi scene setup failed and the fallback overlay is shown |
-
 ## Editing credits content
 
-Credits data lives in **`src/data/credits.ts`**. The screen maps each `{ role, name }` pair into a cinematic two-line credit card inside the projector beam.
+Credits data lives in **`src/data/credits.ts`**. The screen renders each entry as a stacked text card over the static background image, positioned above the city skyline on the right.
 
-## Required scene assets
+## Required screen assets
 
-The Pixi scene loads these public assets through the Pixi `Assets` loader:
+The credits screen uses these public assets:
 
-- `public/assets/credits/city.png`
-- `public/assets/credits/big-eye.svg`
-- `public/assets/credits/moon.svg`
+- `public/assets/credits/credits-background.png`
