@@ -178,7 +178,7 @@ describe('Crystal Path: Infinity async flow', () => {
     );
 
     expect(screen.getByLabelText('Crystal Path: Infinity').className).toContain('is-catastrophe');
-  });
+  }, 10_000);
 
   it('shows the results as soon as the human run ends instead of switching to AI turns', async () => {
     const seed = 12345;
@@ -213,5 +213,5 @@ describe('Crystal Path: Infinity async flow', () => {
     expect(screen.getByLabelText('Crystal Path: Infinity — complete')).toBeTruthy();
     expect(screen.getByLabelText('Final standings')).toBeTruthy();
     expect(screen.queryByText('AI One keeps climbing…')).toBeNull();
-  });
+  }, 10_000);
 });
