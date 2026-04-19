@@ -23,7 +23,7 @@ export default function Credits() {
   const displayedCredits = creditsData.length > 0 ? creditsData : DEFAULT_CREDITS;
   const creditCycleMs =
     displayedCredits.length > 0 ? CREDITS_TOTAL_MS / displayedCredits.length : DEFAULT_CREDIT_CYCLE_MS;
-  const backgroundImageUrl = buildCreditsAssetCandidates('assets/credits/credits-background.png')[0];
+  const backgroundImageUrl = buildCreditsAssetCandidates('assets/credits/city skyline reduced.jpg')[0];
   const currentCredit = displayedCredits[activeCreditIndex] ?? '';
 
   const onExit = useCallback(() => {
@@ -132,7 +132,7 @@ export default function Credits() {
         <div className="credits-copy" aria-label="Credits">
           <p
             key={`${activeCreditIndex}-${currentCredit}`}
-            className="credits-copy-item"
+            className={`credits-copy-item${activeCreditIndex === 0 ? ' credits-copy-item--initial' : ''}`}
             style={{ '--credits-cycle-ms': `${creditCycleMs}ms` } as CSSProperties}
           >
             {currentCredit}

@@ -14,10 +14,10 @@ npm run build && npm run preview
 
 ## Editing credits content
 
-Credits data lives in **`src/data/credits.ts`**. The screen now fades one credit in and out at a time for a 19.6 second sequence, positioned above the city skyline on the right, and plays `public/assets/sounds/credits_sound.mp3` during the run.
+Credits data lives in **`src/data/credits.ts`**. The screen now keeps the opening credit visible immediately on first load, then fades later credits in and out across a 19.6 second sequence, positioned above the city skyline on the right, and plays `public/assets/sounds/credits_sound.mp3` during the run.
 
 ## Required screen assets
 
 The credits screen uses these public assets:
 
-- `public/assets/credits/credits-background.png`
+- `public/assets/credits/city skyline reduced.jpg`
