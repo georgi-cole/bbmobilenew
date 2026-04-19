@@ -63,7 +63,7 @@ const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial R
 
 const KOLEQUANT_LOGO_SOURCES = buildCreditsAssetCandidates('assets/kolequant.png');
 
-/** Beam angle in radians from +x, aimed from right rooftop toward upper center-left. */
+/** Beam angle in radians from +x, aimed from the right rooftop toward the upper-left in screen coordinates. */
 const BEAM_ANGLE = -2.03;
 
 /** Duration in seconds for the projector beam to fade in at scene start. */
@@ -611,7 +611,7 @@ export default class CreditsScene {
     const context = canvas.getContext('2d');
 
     if (!context) {
-      throw new Error('Canvas 2D context unavailable for glow texture.');
+      throw new Error('Failed to create 2D canvas context for glow texture generation.');
     }
 
     const gradient = context.createRadialGradient(
@@ -778,7 +778,7 @@ export default class CreditsScene {
     this.fogFront.width = width * 1.25;
     this.fogFront.height = height * 0.1;
 
-    // Hard-anchor the beam to a right-side rooftop point on the skyline.
+    // Hard-anchors the beam to a right-side rooftop point on the skyline.
     this.beamOriginX = width * 0.78;
     this.beamOriginY = this.citySprite.y - this.citySprite.height * 0.55;
     this.refreshCreditLayout();
