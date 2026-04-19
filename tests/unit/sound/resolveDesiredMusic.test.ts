@@ -90,4 +90,42 @@ describe('resolveDesiredMusic', () => {
   it('suppresses introhub music after the current game has already started', () => {
     expect(resolveDesiredMusic(makeState(), '#/', { canPlayIntroHubMusic: false })).toBe('none');
   });
+
+  // ── Finale phase scenes ──────────────────────────────────────────────────────
+
+  it('tribunal_part1 scene maps to the jury_voting music track', () => {
+    const state = makeState({ ui: { musicScene: 'tribunal_part1' } });
+    expect(resolveDesiredMusic(state, '#/game')).toBe('jury_voting');
+  });
+
+  it('tribunal_part1 scene overrides game phase and social music', () => {
+    const state = makeState({
+      ui: { musicScene: 'tribunal_part1' },
+      game: { phase: 'nominations' },
+      social: { panelOpen: true, incomingInboxOpen: false },
+    });
+    expect(resolveDesiredMusic(state, '#/game')).toBe('jury_voting');
+  });
+
+  it('jury_voting scene maps to the jury_voting music track', () => {
+    const state = makeState({ ui: { musicScene: 'jury_voting' } });
+    expect(resolveDesiredMusic(state, '#/game')).toBe('jury_voting');
+  });
+
+  it('public_voting scene resolves to none (no dedicated track yet)', () => {
+    // public_voting has no track assigned — trackForMusicScene returns 'none',
+    // so the resolver falls through to game-phase logic (week_start → 'none').
+    const state = makeState({ ui: { musicScene: 'public_voting' } });
+    expect(resolveDesiredMusic(state, '#/game')).toBe('none');
+  });
+
+  it('public_voting scene does not block a competing game-phase track', () => {
+    // Because public_voting → 'none' the scene is transparent and the resolver
+    // falls through to game-phase logic.
+    const state = makeState({
+      ui: { musicScene: 'public_voting' },
+      game: { phase: 'nominations' },
+    });
+    expect(resolveDesiredMusic(state, '#/game')).toBe('nominations');
+  });
 });

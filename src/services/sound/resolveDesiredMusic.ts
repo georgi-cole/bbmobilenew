@@ -1,3 +1,24 @@
+/**
+ * resolveDesiredMusic.ts — Pure function that resolves the desired background
+ * music track from current application state.
+ *
+ * Resolution priority (highest → lowest):
+ *  1. MusicScene override (ui.musicScene) — covers finale acts and cinematic scenes.
+ *     'tribunal_part1' and 'jury_voting' both return the jury_voting track.
+ *     'season_recap' returns the season_recap track (reserved; currently
+ *      SeasonRecapCinematic handles its own audio via cinematicAudio).
+ *     'public_voting' and 'none' fall through to lower priority.
+ *  2. Active minigame (challenge.pending.phase === 'playing') — per-game track.
+ *  3. Spectator mode active — spectator track.
+ *  4. Social module open (panel or inbox) — social track.
+ *  5. Game phase (loh_comp/results, nominations, pos_ceremony etc.).
+ *  6. Intro-hub (hash === '#/' and canPlayIntroHubMusic === true).
+ *  7. Fallback — 'none' (silence).
+ *
+ * The complete phase model and audio rules are documented in:
+ *   src/services/sound/audioPhases.ts
+ *   docs/AUDIO_PHASE_SYSTEM.md
+ */
 import type { RootState } from '../../store/store';
 import type { MusicTrack } from './musicTracks';
 import type { MusicScene } from '../../store/uiSlice';
@@ -15,19 +36,66 @@ export interface MusicResolverState {
 }
 
 export interface ResolveDesiredMusicOptions {
+  /**
+   * When false the intro-hub music is suppressed even on the '#/' hash.
+   * Set to !hasStartedHomeHubGame(gameId) so that after the user presses
+   * Play the introhub track is permanently blocked for that session.
+   *
+   * Phase rule: once Play is pressed the splash/intro-hub music can never
+   * be re-triggered for the current game, even if the user navigates back
+   * to the HomeHub screen via the home button.
+   */
   canPlayIntroHubMusic?: boolean;
 }
 
+/**
+ * Game phases that use the competition (LOH / HOH general) music track.
+ * Including results screens so the track keeps playing through them without
+ * an abrupt cut when the phase advances.
+ */
 const COMPETITION_PHASES = new Set(['loh_comp', 'loh_results', 'pos_comp', 'pos_results']);
-const NOMINATION_PHASES = new Set(['nominations', 'nomination_results']);
+
+/**
+ * Game phases that use the nominations music track.
+ * Includes nomination_results and pre_veto_public_save so the track is
+ * continuous through the nominations flow before veto.
+ */
+const NOMINATION_PHASES = new Set([
+  'nominations',
+  'nomination_results',
+  'pre_veto_public_save',
+]);
+
+/**
+ * Game phases that use the veto (POS ceremony) music track.
+ * Includes pos_ceremony_results so the track is continuous.
+ */
 const VETO_PHASES = new Set(['pos_ceremony', 'pos_ceremony_results']);
 
+/**
+ * Maps a MusicScene override to the desired MusicTrack.
+ *
+ * 'tribunal_part1'  — FinalFaceoff 'clues' act (hidden votes).  Uses the
+ *                     same jury_voting track as 'revealVotes' so there is no
+ *                     jarring silence while jurors send their cryptic messages.
+ * 'jury_voting'     — FinalFaceoff 'revealVotes' act; vote chips revealed.
+ * 'season_recap'    — Reserved for future centralised use; currently
+ *                     SeasonRecapCinematic manages its own audio via
+ *                     cinematicAudio (final_recap_sound.mp3).
+ * 'public_voting'   — SeasonFinaleOverlay public-favourite flow; silent
+ *                     until a dedicated track is assigned.
+ * 'none'            — No override; resolver falls through to game-phase logic.
+ */
 function trackForMusicScene(scene: MusicScene): MusicTrack {
   switch (scene) {
     case 'season_recap':
       return 'season_recap';
+    case 'tribunal_part1':
+      return 'jury_voting';
     case 'jury_voting':
       return 'jury_voting';
+    case 'public_voting':
+      return 'none';
     default:
       return 'none';
   }
@@ -51,6 +119,18 @@ function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
   }
 }
 
+/**
+ * Resolve the desired background music track from current application state.
+ *
+ * This is a **pure function** with no side effects.  It is called by
+ * AudioStateSync on every relevant state change and the result is forwarded
+ * to SoundManager.setDesiredMusic().
+ *
+ * @param state    Slice of Redux state needed for resolution.
+ * @param hash     Current window.location.hash (used for intro-hub gate).
+ * @param options  Additional resolution options (canPlayIntroHubMusic).
+ * @returns The desired MusicTrack, or 'none' for silence.
+ */
 export function resolveDesiredMusic(
   state: MusicResolverState,
   hash: string,
