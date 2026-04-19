@@ -17,6 +17,7 @@ import {
 describe('FILENAME_ALIAS_MAP', () => {
   const nonPrefixStems = [
     'live_vote',
+    'live_voting',
     'nominations_horror',
     'nominations_main',
     'veto_ceremony',
@@ -24,6 +25,8 @@ describe('FILENAME_ALIAS_MAP', () => {
     'voting_for_eviction_user_and_housguests',
     'Social_module',
     'Hoh_competition_and_general_competition',
+    'loh_competition',
+    'Back_2_the_game',
   ];
 
   it.each(nonPrefixStems)('maps "%s" to a canonical SOUND_REGISTRY key', (stem) => {
@@ -45,6 +48,7 @@ describe('resolveKey()', () => {
 
   it('resolves alias map stems (without .mp3 extension)', () => {
     expect(resolveKey('live_vote')).toBe('tv:live_vote');
+    expect(resolveKey('live_voting')).toBe('tv:live_vote');
     expect(resolveKey('nominations_horror')).toBe('music:nominations_horror');
     expect(resolveKey('nominations_main')).toBe('music:nominations_main');
     expect(resolveKey('veto_ceremony')).toBe('tv:veto_ceremony');
@@ -52,6 +56,8 @@ describe('resolveKey()', () => {
     expect(resolveKey('voting_for_eviction_user_and_housguests')).toBe('tv:voting_eviction');
     expect(resolveKey('Social_module')).toBe('music:social_module');
     expect(resolveKey('Hoh_competition_and_general_competition')).toBe('music:hoh_comp_general');
+    expect(resolveKey('loh_competition')).toBe('music:hoh_comp_general');
+    expect(resolveKey('Back_2_the_game')).toBe('tv:battleback');
   });
 
   it('strips .mp3 extension before alias lookup', () => {
@@ -77,8 +83,8 @@ describe('resolveKey()', () => {
 
 describe('SOUND_REGISTRY — new entries', () => {
   const expectedNewKeys: [string, string][] = [
-    ['music:hoh_comp_general',   'music_hoh_comp_general.mp3'],
-    ['tv:live_vote',             'live_vote.mp3'],
+    ['music:hoh_comp_general',   'loh_competition.mp3'],
+    ['tv:live_vote',             'live_voting.mp3'],
     ['music:nominations_horror', 'nominations_horror.mp3'],
     ['music:nominations_main',   'nominations_main.mp3'],
     ['tv:veto_ceremony',         'veto_ceremony.mp3'],
@@ -122,5 +128,42 @@ describe('SOUND_REGISTRY — new entries', () => {
     for (const entry of Object.values(SOUND_REGISTRY)) {
       expect(entry.preload, `${entry.key} should load on demand`).toBe(false);
     }
+  });
+});
+
+// ── Renamed asset paths ───────────────────────────────────────────────────────
+
+describe('SOUND_REGISTRY — renamed assets', () => {
+  it('"tv:battleback" points to Back_2_the_game.mp3 (Back 2 the Game twist)', () => {
+    const entry = SOUND_REGISTRY['tv:battleback'];
+    expect(entry).toBeDefined();
+    expect(entry.src).toContain('Back_2_the_game.mp3');
+  });
+
+  it('"music:hoh_comp_general" points to loh_competition.mp3 (LOH is new HOH name)', () => {
+    const entry = SOUND_REGISTRY['music:hoh_comp_general'];
+    expect(entry).toBeDefined();
+    expect(entry.src).toContain('loh_competition.mp3');
+  });
+
+  it('"tv:live_vote" points to live_voting.mp3', () => {
+    const entry = SOUND_REGISTRY['tv:live_vote'];
+    expect(entry).toBeDefined();
+    expect(entry.src).toContain('live_voting.mp3');
+  });
+
+  it('Back_2_the_game alias resolves to tv:battleback', () => {
+    expect(resolveKey('Back_2_the_game')).toBe('tv:battleback');
+    expect(resolveKey('Back_2_the_game.mp3')).toBe('tv:battleback');
+  });
+
+  it('loh_competition alias resolves to music:hoh_comp_general', () => {
+    expect(resolveKey('loh_competition')).toBe('music:hoh_comp_general');
+    expect(resolveKey('loh_competition.mp3')).toBe('music:hoh_comp_general');
+  });
+
+  it('live_voting alias resolves to tv:live_vote', () => {
+    expect(resolveKey('live_voting')).toBe('tv:live_vote');
+    expect(resolveKey('live_voting.mp3')).toBe('tv:live_vote');
   });
 });
