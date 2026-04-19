@@ -532,8 +532,8 @@
 
 /* Future rows — smaller, but still readable behind the active spotlight */
 .cps-row:not(.is-current):not(.is-past) {
-  opacity: 0.76;
-  transform: scale(0.95);
+  opacity: 0.58;
+  transform: scale(0.94);
 }
 
 .cps-row.is-current {
@@ -543,8 +543,8 @@
 }
 
 .cps-row.is-past {
-  opacity: 0.42;
-  transform: scale(0.96);
+  opacity: 0.68;
+  transform: scale(0.955);
 }
 
 .cps-row.is-future-0,

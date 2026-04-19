@@ -473,7 +473,7 @@ export default function CrystalPathShatteredGame({
           ...p,
           sp: newSp,
           effects: res.newEffects,
-          furthestRow: progressedRow,
+          furthestRow: eliminated ? progressedRow : p.furthestRow,
           eliminated,
           eliminatedRow: eliminated ? progressedRow : p.eliminatedRow,
         };
@@ -491,7 +491,9 @@ export default function CrystalPathShatteredGame({
             return;
           }
           advanceToNextPlayer(clampedActivePlayerIndex);
+          return;
         }
+        setPlayers((cur) => cur.map((p) => (p.id === playerId ? { ...p, furthestRow: progressedRow } : p)));
       }, WRONG_STEP_MS);
     } else {
       playSafeStep();
