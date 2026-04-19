@@ -34,6 +34,9 @@ import {
   markHomeHubSplashSeenForGame,
 } from './homeHubSplashSession';
 import {
+  markHomeHubGameStarted,
+} from './homeHubMusicSession';
+import {
   selectRemoteIntroHubBg,
   selectRemoteIntroHubOverlay,
 } from '../../remoteConfig/remoteConfigSlice';
@@ -116,9 +119,16 @@ export default function HomeHub() {
   const showSoundConsent = splashDone && needsSoundConsent && !soundConsentHidden;
   // Resume-season prompt state for the Play flow.
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const pendingGameStartRef = useRef(false);
 
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
+
+  useEffect(() => {
+    if (!pendingGameStartRef.current) return;
+    markHomeHubGameStarted(gameId);
+    pendingGameStartRef.current = false;
+  }, [gameId]);
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
@@ -187,6 +197,9 @@ export default function HomeHub() {
   };
 
   const handlePlay = () => {
+    pendingGameStartRef.current = true;
+    markHomeHubGameStarted(gameId);
+
     // Unlock audio in the gesture context.  We intentionally do NOT follow up
     // with SoundManager.panicStopAllMusic() here — that used to race with the
     // syncMusic() call inside unlockFromGesture() (play-then-stop glitch) and

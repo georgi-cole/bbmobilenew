@@ -5,6 +5,7 @@ import { resolveDesiredMusic } from '../../../src/services/sound/resolveDesiredM
 function makeState(overrides: Partial<RootState> = {}): RootState {
   const base = {
     game: {
+      gameId: 'game-1',
       phase: 'week_start',
       spectatorActive: null,
     },
@@ -84,5 +85,9 @@ describe('resolveDesiredMusic', () => {
   it('uses introhub music only on the home route when nothing else is active', () => {
     expect(resolveDesiredMusic(makeState(), '#/')).toBe('introhub');
     expect(resolveDesiredMusic(makeState(), '#/leaderboard')).toBe('none');
+  });
+
+  it('suppresses introhub music after the current game has already started', () => {
+    expect(resolveDesiredMusic(makeState(), '#/', { canPlayIntroHubMusic: false })).toBe('none');
   });
 });
