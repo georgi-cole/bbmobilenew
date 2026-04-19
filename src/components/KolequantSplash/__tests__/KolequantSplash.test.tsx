@@ -11,12 +11,13 @@ describe('KolequantSplash', () => {
     vi.useRealTimers();
   });
 
-  it('renders the centered logo, electric effect shells, and copyright text', () => {
+  it('renders only the logo and trimmed copyright text', () => {
     const { container } = render(<KolequantSplash duration={2400} />);
 
     expect(screen.getByAltText('Kolequant')).toBeInTheDocument();
-    expect(screen.getByText('© 2026 copyright sound')).toBeInTheDocument();
-    expect(container.querySelectorAll('.kq-splash__electric')).toHaveLength(2);
+    expect(screen.getByText('© 2026')).toBeInTheDocument();
+    expect(container.querySelector('.kq-splash__electric')).toBeNull();
+    expect(container.querySelector('.kq-splash__logo-frame')).toBeNull();
     expect(container.firstChild).toHaveStyle({ '--kq-splash-duration': '2400ms' });
   });
 
