@@ -82,7 +82,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
       const newKeys = new Set<string>();
       for (const e of visibleLogs) {
         if (e.timestamp > prevNewestTimestampRef.current) {
-          newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}`);
+          newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}-${e.subjectId ?? ''}`);
         }
       }
       prevNewestTimestampRef.current = newestTimestamp;
@@ -145,7 +145,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
             const narrative = getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp);
-            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}`;
+            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`;
             const isNew = highlightedKeys.has(key);
             return (
               <li key={key} className={`ra-entry${isNew ? ' ra-entry--new' : ''}`}>

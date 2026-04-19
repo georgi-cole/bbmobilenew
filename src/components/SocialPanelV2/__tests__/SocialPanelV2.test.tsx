@@ -460,9 +460,11 @@ describe('SocialPanelV2 – subject picker', () => {
   let lohPlayer: RootState['game']['players'][number];
 
   beforeEach(() => {
-    // Set the first non-user player as LOH so pitch_target is available.
-    const baseStore = configureStore({ reducer: { game: gameReducer, social: socialReducer } });
-    const firstNonUser = baseStore.getState().game.players.find((p) => !p.isUser)!;
+    // Create the store first, then derive the LOH player from the same instance
+    // to avoid player-id mismatches when the roster is randomised across stores.
+    store = makeStore({ phase: 'social_1' });
+    const firstNonUser = store.getState().game.players.find((p) => !p.isUser)!;
+    // Re-create with the LOH override now that we know the correct player id.
     store = makeStore({
       phase: 'social_1',
       playerStatusOverrides: { [firstNonUser.id]: 'loh' },

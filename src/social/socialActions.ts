@@ -6,6 +6,8 @@
  * separate energy and info costs.
  */
 
+import type { PlayerStatus } from '../types';
+
 export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance';
 
 /**
@@ -88,7 +90,7 @@ export interface SocialActionDefinition {
    * Omit (or set to undefined) for actions that are available regardless of
    * the target's status.
    */
-  requiredTargetStatus?: readonly string[];
+  requiredTargetStatus?: readonly PlayerStatus[];
 }
 
 /** Canonical list of social actions available in the game. */

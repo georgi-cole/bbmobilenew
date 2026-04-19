@@ -5,7 +5,7 @@ import { computeOutcomeScore } from '../../social/SocialPolicy';
 import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
 import type { PreviewDeltaEntry } from './PreviewPopup';
-import type { Player } from '../../types';
+import type { Player, PlayerStatus } from '../../types';
 import type { RelationshipsMap } from '../../social/types';
 
 export interface ActionGridProps {
@@ -54,7 +54,7 @@ export interface ActionGridProps {
    * the target's status matches one of the required values.
    * When omitted (no target selected), role-gated actions are hidden.
    */
-  primaryTargetStatus?: string | null;
+  primaryTargetStatus?: PlayerStatus | null;
 }
 
 /**
