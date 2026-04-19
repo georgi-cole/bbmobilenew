@@ -705,6 +705,7 @@
 }
 
 /* Hint active — subtle inner glow (NOT outline) */
+.cps-row.is-current .cps-tile.is-hinted:not(:disabled),
 .cps-tile.is-hinted {
   background:
     radial-gradient(ellipse at 50% 50%, rgba(100, 220, 160, 0.12), transparent 70%),
