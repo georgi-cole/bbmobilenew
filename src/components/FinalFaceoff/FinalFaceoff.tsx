@@ -143,6 +143,17 @@ export default function FinalFaceoff() {
     [dispatch],
   );
 
+  /**
+   * Phase → MusicScene mapping for the finale acts.
+   *
+   * 'clues'       (tribunal_part1) — jurors send hidden-vote messages.
+   *               Uses jury_voting track so the tribunal atmosphere begins
+   *               from the moment the finale opens.
+   * 'recap'       (finale_recap)   — SeasonRecapCinematic manages its own
+   *               audio via createCinematicAudio; SoundManager BGM is stopped.
+   * 'revealVotes' (tribunal_part2) — vote chips revealed, winner crowned.
+   *               Continues jury_voting track.
+   */
   useEffect(() => {
     if (phase === 'recap') {
       dispatch(setMusicScene('none'));
@@ -152,7 +163,8 @@ export default function FinalFaceoff() {
       dispatch(setMusicScene('jury_voting'));
       return;
     }
-    dispatch(setMusicScene('none'));
+    // 'clues' phase: tribunal_part1 — start jury_voting atmosphere immediately
+    dispatch(setMusicScene('tribunal_part1'));
   }, [dispatch, phase]);
 
   // When entering 'revealVotes', stagger vote-chip reveals for all jurors.
