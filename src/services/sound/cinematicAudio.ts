@@ -5,6 +5,7 @@ export interface CinematicAudioController {
 }
 
 const DEFAULT_FADE_STEP_MS = 50;
+const MIN_FADE_INTERVAL_MS = 16;
 
 function clampVolume(volume: number): number {
   return Math.max(0, Math.min(1, volume));
@@ -57,7 +58,7 @@ export function createCinematicAudio(src: string, volume = 1): CinematicAudioCon
 
       const startingVolume = audio.volume;
       const steps = Math.max(1, Math.ceil(durationMs / DEFAULT_FADE_STEP_MS));
-      const intervalMs = Math.max(16, Math.floor(durationMs / steps));
+      const intervalMs = Math.max(MIN_FADE_INTERVAL_MS, Math.floor(durationMs / steps));
       let step = 0;
 
       fadeTimer = window.setInterval(() => {

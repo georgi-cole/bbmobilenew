@@ -8,7 +8,8 @@ import './Credits.css';
 
 const EXIT_FADE_MS = 420;
 const CREDITS_TOTAL_MS = 19_600;
-const CREDIT_CYCLE_MS = creditsData.length > 0 ? CREDITS_TOTAL_MS / creditsData.length : CREDITS_TOTAL_MS;
+const DEFAULT_CREDITS = ['Thank YOU for playing'];
+const DEFAULT_CREDIT_CYCLE_MS = 2_450;
 
 export default function Credits() {
   const navigate = useNavigate();
@@ -19,8 +20,11 @@ export default function Credits() {
   const [activeCreditIndex, setActiveCreditIndex] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
 
+  const displayedCredits = creditsData.length > 0 ? creditsData : DEFAULT_CREDITS;
+  const creditCycleMs =
+    displayedCredits.length > 0 ? CREDITS_TOTAL_MS / displayedCredits.length : DEFAULT_CREDIT_CYCLE_MS;
   const backgroundImageUrl = buildCreditsAssetCandidates('assets/credits/credits-background.png')[0];
-  const currentCredit = creditsData[activeCreditIndex] ?? creditsData[0] ?? '';
+  const currentCredit = displayedCredits[activeCreditIndex] ?? '';
 
   const onExit = useCallback(() => {
     if (isExiting) {
@@ -53,20 +57,20 @@ export default function Credits() {
   }, []);
 
   useEffect(() => {
-    if (isExiting || activeCreditIndex >= creditsData.length - 1) {
+    if (isExiting || activeCreditIndex >= displayedCredits.length - 1) {
       return;
     }
 
     advanceTimeoutRef.current = window.setTimeout(() => {
-      setActiveCreditIndex((current) => Math.min(current + 1, creditsData.length - 1));
-    }, CREDIT_CYCLE_MS);
+      setActiveCreditIndex((current) => Math.min(current + 1, displayedCredits.length - 1));
+    }, creditCycleMs);
 
     return () => {
       if (advanceTimeoutRef.current != null) {
         window.clearTimeout(advanceTimeoutRef.current);
       }
     };
-  }, [activeCreditIndex, isExiting]);
+  }, [activeCreditIndex, creditCycleMs, displayedCredits.length, isExiting]);
 
   useEffect(() => {
     if (isExiting) {
@@ -129,7 +133,7 @@ export default function Credits() {
           <p
             key={`${activeCreditIndex}-${currentCredit}`}
             className="credits-copy-item"
-            style={{ '--credits-cycle-ms': `${CREDIT_CYCLE_MS}ms` } as CSSProperties}
+            style={{ '--credits-cycle-ms': `${creditCycleMs}ms` } as CSSProperties}
           >
             {currentCredit}
           </p>

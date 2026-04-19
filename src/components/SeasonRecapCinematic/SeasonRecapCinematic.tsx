@@ -69,6 +69,7 @@ const DEFAULT_SCENE_TIMINGS: SceneTiming[] = [
   { id: 'drama', durationMs: 6800 },
   { id: 'twists', durationMs: 6800 },
   { id: 'ladder', durationMs: 8400 },
+  // Keep the final beat on screen 5 seconds longer for the requested recap extension.
   { id: 'finale', durationMs: 9400 },
 ];
 
