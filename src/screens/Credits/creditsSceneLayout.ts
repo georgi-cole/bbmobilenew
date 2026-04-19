@@ -6,7 +6,7 @@ const MIN_BEAM_PADDING = 40;
 const MAX_BEAM_PADDING = 56;
 const MIN_TEXT_DISTANCE_RATIO = 0.16;
 const MAX_TEXT_DISTANCE_RATIO = 0.48;
-const TARGET_TEXT_Y_RATIO = 0.61;
+const TARGET_TEXT_Y_RATIO = 0.55;
 const MIN_TEXT_DISTANCE = 120;
 const MAX_TEXT_DISTANCE = 260;
 const PREFERRED_TEXT_WIDTH_RATIO = 0.46;
@@ -16,9 +16,9 @@ const MAX_PREFERRED_TEXT_WIDTH = 208;
 // mask only extends slightly beyond the current credit text.
 const MIN_MASK_TEXT_RATIO = 0.36;
 const MAX_MASK_TEXT_RATIO = 0.9;
-const MIN_MOON_RADIUS = 34;
-const MAX_MOON_RADIUS = 48;
-const MOON_PADDING = 22;
+const MIN_MOON_RADIUS = 36;
+const MAX_MOON_RADIUS = 44;
+const MOON_PADDING = 14;
 
 export type CreditTextPlacement = {
   textX: number;
@@ -79,9 +79,9 @@ export function getBeamWidthAtDistance(
 
 export function getMoonExclusionZone(screenWidth: number, screenHeight: number): MoonExclusionZone {
   return {
-    x: screenWidth * 0.2,
-    y: screenHeight * 0.54,
-    radius: clamp(screenWidth * 0.1, MIN_MOON_RADIUS, MAX_MOON_RADIUS),
+    x: screenWidth * 0.24,
+    y: Math.max(screenHeight * 0.54, 440),
+    radius: clamp(screenWidth * 0.09, MIN_MOON_RADIUS, MAX_MOON_RADIUS),
     padding: MOON_PADDING,
   };
 }

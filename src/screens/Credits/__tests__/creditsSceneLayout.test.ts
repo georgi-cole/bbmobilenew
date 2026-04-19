@@ -8,10 +8,10 @@ import {
   textBlockIntersectsMoonZone,
 } from '../creditsSceneLayout';
 
-const BEAM_ANGLE = -2.18;
+const BEAM_ANGLE = -2;
 
 describe('creditsSceneLayout', () => {
-  it('keeps the projected text lower in the beam and on-screen on mobile portrait', () => {
+  it('keeps the projected text in the mid-beam area and on-screen on mobile portrait', () => {
     const placement = getCreditTextPlacement({
       screenWidth: 390,
       screenHeight: 844,
@@ -22,7 +22,7 @@ describe('creditsSceneLayout', () => {
       beamLength: 658,
     });
 
-    expect(placement.textY).toBeGreaterThanOrEqual(490);
+    expect(placement.textY).toBeGreaterThanOrEqual(460);
     expect(placement.textY).toBeLessThan(632);
     expect(placement.maxTextWidth).toBeGreaterThanOrEqual(180);
     expect(placement.maxTextWidth).toBeLessThanOrEqual(208);
@@ -86,7 +86,10 @@ describe('creditsSceneLayout', () => {
   it('detects when text would overlap the moon exclusion zone', () => {
     const moonZone = getMoonExclusionZone(390, 844);
 
+    expect(moonZone.x).toBeGreaterThanOrEqual(90);
+    expect(moonZone.x).toBeLessThanOrEqual(100);
+    expect(moonZone.y).toBeGreaterThanOrEqual(450);
     expect(textBlockIntersectsMoonZone(moonZone.x, moonZone.y, 140, 80, moonZone)).toBe(true);
-    expect(textBlockIntersectsMoonZone(220, 470, 160, 84, moonZone)).toBe(false);
+    expect(textBlockIntersectsMoonZone(232, 474, 160, 84, moonZone)).toBe(false);
   });
 });
