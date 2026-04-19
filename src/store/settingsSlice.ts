@@ -69,9 +69,8 @@ export interface SettingsState {
 }
 
 function isLegacyEmptyUserSelection(compSelection?: Partial<CompSelectionPayload>): boolean {
-  if (!compSelection || compSelection.mode === undefined) return true;
   return (
-    compSelection.mode === 'user-selection' &&
+    compSelection?.mode === 'user-selection' &&
     (compSelection.selectedGameId ?? '') === '' &&
     (compSelection.selectedGameIds?.length ?? 0) === 0 &&
     (compSelection.enabledIds?.length ?? 0) === 0 &&
@@ -88,7 +87,7 @@ function normalizeCompSelection(
     ...(compSelection ?? {}),
   };
 
-  if (isLegacyEmptyUserSelection(compSelection)) {
+  if (compSelection?.mode === undefined || isLegacyEmptyUserSelection(compSelection)) {
     merged.mode = 'unique';
   }
 
