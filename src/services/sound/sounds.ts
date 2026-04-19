@@ -62,6 +62,19 @@ export const SOUNDS_BASE = `${_viteBase}assets/sounds/`;
  * deployment (local dev or GitHub Pages sub-path).
  */
 export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
+  /**
+   * Intro Hub lounge music — loops while the home hub (#/) is displayed,
+   * before the player presses Play to start a game.
+   * Asset: public/assets/sounds/intro_hub_lounge_music (1).mp3
+   */
+  'music:intro_hub_loop': {
+    key: 'music:intro_hub_loop',
+    category: 'music',
+    src: `${SOUNDS_BASE}intro_hub_lounge_music (1).mp3`,
+    preload: false,
+    volume: 0.5,
+    loop: true,
+  },
   'ui:navigate': {
     key: 'ui:navigate',
     category: 'ui',
@@ -277,10 +290,14 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 1.0,
   },
+  /**
+   * Back 2 the Game stinger — plays when the Back 2 the Game (formerly Battle Back) twist fires.
+   * Asset: public/assets/sounds/Back_2_the_game.mp3
+   */
   'tv:battleback': {
     key: 'tv:battleback',
     category: 'tv',
-    src: `${SOUNDS_BASE}tv_battleback.mp3`,
+    src: `${SOUNDS_BASE}Back_2_the_game.mp3`,
     preload: false,
     volume: 0.9,
   },
@@ -425,13 +442,13 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   // ── Phase / TV event music ────────────────────────────────────────────────
 
   /**
-   * LOH competition and general competition music.
-   * Asset: public/assets/sounds/music_hoh_comp_general.mp3
+   * LOH (formerly HOH) competition and general competition music.
+   * Asset: public/assets/sounds/loh_competition.mp3
    */
   'music:hoh_comp_general': {
     key: 'music:hoh_comp_general',
     category: 'music',
-    src: `${SOUNDS_BASE}music_hoh_comp_general.mp3`,
+    src: `${SOUNDS_BASE}loh_competition.mp3`,
     preload: false,
     volume: 0.6,
     loop: true,
@@ -439,12 +456,12 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
 
   /**
    * Live vote stinger — plays during live voting sequences.
-   * Asset: public/assets/sounds/live_vote.mp3
+   * Asset: public/assets/sounds/live_voting.mp3
    */
   'tv:live_vote': {
     key: 'tv:live_vote',
     category: 'tv',
-    src: `${SOUNDS_BASE}live_vote.mp3`,
+    src: `${SOUNDS_BASE}live_voting.mp3`,
     preload: false,
     volume: 0.85,
   },
@@ -664,11 +681,16 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
 export const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = {
   // Legacy / non-prefix filenames → canonical key
   live_vote:                                             'tv:live_vote',
+  live_voting:                                           'tv:live_vote',
   nominations_horror:                                    'music:nominations_horror',
   nominations_main:                                      'music:nominations_main',
   veto_ceremony:                                         'tv:veto_ceremony',
   veto_phase:                                            'music:veto_phase',
   voting_for_eviction_user_and_housguests:               'tv:voting_eviction',
+  // Back 2 the Game (formerly Battle Back) stinger
+  Back_2_the_game:                                       'tv:battleback',
+  // LOH (formerly HOH) competition music aliases
+  loh_competition:                                       'music:hoh_comp_general',
   // Alternate / previously-used capitalised filenames (resolve safely)
   Social_module:                                         'music:social_module',
   Hoh_competition_and_general_competition:               'music:hoh_comp_general',
