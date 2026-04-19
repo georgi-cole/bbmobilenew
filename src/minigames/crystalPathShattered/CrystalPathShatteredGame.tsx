@@ -737,9 +737,13 @@ export default function CrystalPathShatteredGame({
   const currentSpPct = Math.max(0, Math.min(100, (currentSp / STARTING_SP) * 100));
   const currentSpLevel = spLevel(currentSp);
   const liveFeedHeadline = liveFeed[0] ?? 'Live feed online — the rest of the field is racing in parallel.';
+  const isCatastropheAnimating = activeAnimation?.kind === 'wrong' && !!activePlayer?.eliminated;
 
   return (
-    <div className="cps-shell" aria-label="Crystal Path: Infinity">
+    <div
+      className={`cps-shell${isCatastropheAnimating ? ' is-catastrophe' : ''}`}
+      aria-label="Crystal Path: Infinity"
+    >
       {/* ── Environment (background, not decoration) ─────────────────────── */}
       <div className="cps-depth-fog" aria-hidden="true" />
       <div className="cps-spotlight" aria-hidden="true" />
@@ -813,7 +817,7 @@ export default function CrystalPathShatteredGame({
               return (
                 <div
                   key={row.index}
-                  className={`cps-row${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : !isCurrent ? ` is-future-${row.index % 3}` : ''}`}
+                  className={`cps-row tone-${row.index % 3}${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : !isCurrent ? ` is-future-${row.index % 3}` : ''}`}
                 >
                   <button
                     type="button"

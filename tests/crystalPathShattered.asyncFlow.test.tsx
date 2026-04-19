@@ -101,6 +101,75 @@ describe('Crystal Path: Infinity async flow', () => {
     ).not.toHaveAttribute('disabled');
   });
 
+  it('marks a wrong tile as cracking immediately and leaves it cracked after resolution', async () => {
+    const seed = 12345;
+    const [firstRow] = createRowStream(mulberry32(seed)).take(1);
+    const wrongSide = firstRow.safeSide === 'left' ? 'right' : 'left';
+
+    render(
+      <Provider store={makeStore()}>
+        <CrystalPathShatteredGame
+          participantIds={['ai-1', 'human']}
+          participants={[
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+            { id: 'human', name: 'Human', isHuman: true },
+          ]}
+          seed={seed}
+        />
+      </Provider>,
+    );
+
+    const wrongTile = screen.getByRole('button', { name: `Row 1 ${wrongSide} tile` });
+    fireEvent.click(wrongTile);
+
+    expect(wrongTile.className).toContain('is-wrong');
+
+    await act(async () => {
+      vi.advanceTimersByTime(WRONG_STEP_MS + 20);
+    });
+
+    expect(wrongTile.className).toContain('is-cracked');
+  });
+
+  it('adds the catastrophe shell state when the human is eliminated on a wrong tile', async () => {
+    const seed = 12345;
+    const rows = createRowStream(mulberry32(seed)).take(24);
+
+    render(
+      <Provider store={makeStore()}>
+        <CrystalPathShatteredGame
+          participantIds={['ai-1', 'human']}
+          participants={[
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+            { id: 'human', name: 'Human', isHuman: true },
+          ]}
+          seed={seed}
+        />
+      </Provider>,
+    );
+
+    for (const row of rows.slice(0, -1)) {
+      const wrongSide = row.safeSide === 'left' ? 'right' : 'left';
+      fireEvent.click(
+        screen.getByRole('button', { name: `Row ${row.index + 1} ${wrongSide} tile` }),
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(WRONG_STEP_MS + 20);
+      });
+    }
+
+    const finalRow = rows.at(-1);
+    if (!finalRow) throw new Error('expected lethal row');
+    const lethalSide = finalRow.safeSide === 'left' ? 'right' : 'left';
+
+    fireEvent.click(
+      screen.getByRole('button', { name: `Row ${finalRow.index + 1} ${lethalSide} tile` }),
+    );
+
+    expect(screen.getByLabelText('Crystal Path: Infinity').className).toContain('is-catastrophe');
+  });
+
   it('shows the results as soon as the human run ends instead of switching to AI turns', async () => {
     const seed = 12345;
     const rows = createRowStream(mulberry32(seed)).take(40);
