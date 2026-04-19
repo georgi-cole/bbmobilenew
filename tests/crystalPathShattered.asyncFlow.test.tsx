@@ -60,7 +60,7 @@ describe('Crystal Path: Infinity async flow', () => {
     expect(screen.getByText('Row 2')).toBeTruthy();
     expect(screen.queryByText('AI One keeps climbing…')).toBeNull();
     expect(
-      screen.getByRole('button', { name: `Row 2 ${secondRow.safeSide} tile` }).hasAttribute('disabled'),
-    ).toBe(false);
+      screen.getByRole('button', { name: `Row 2 ${secondRow.safeSide} tile` }),
+    ).not.toHaveAttribute('disabled');
   });
 });

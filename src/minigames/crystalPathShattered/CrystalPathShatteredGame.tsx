@@ -127,7 +127,7 @@ function initialPlayers(
   });
 }
 
-function initialActivePlayerIndex(
+function findHumanPlayerStartIndex(
   participantIds: string[],
   participants: ParticipantInput[] | undefined,
 ): number {
@@ -137,10 +137,10 @@ function initialActivePlayerIndex(
   return idx >= 0 ? idx : 0;
 }
 
-function findNextPlayablePlayerIndex(players: PlayerState[], fromIndex: number): number | null {
+function findNextPlayablePlayerIndex(players: PlayerState[], currentPlayerIndex: number): number | null {
   if (players.length === 0) return null;
   for (let offset = 1; offset <= players.length; offset += 1) {
-    const idx = (fromIndex + offset) % players.length;
+    const idx = (currentPlayerIndex + offset) % players.length;
     const player = players[idx];
     if (player && !player.eliminated && player.finishedAtMs === null) return idx;
   }
@@ -179,7 +179,7 @@ export default function CrystalPathShatteredGame({
     initialPlayers(participantIds, participants),
   );
   const [activePlayerIndex, setActivePlayerIndex] = useState(() =>
-    initialActivePlayerIndex(participantIds, participants),
+    findHumanPlayerStartIndex(participantIds, participants),
   );
   const [bridgeRows, setBridgeRows] = useState<BridgeRow[]>(() =>
     rowStreamRef.current.take(HIDDEN_BRIDGE_LENGTH),
@@ -205,7 +205,10 @@ export default function CrystalPathShatteredGame({
     () => (participants ?? []).find((p) => p.isHuman)?.id ?? null,
     [participants],
   );
-  const activePlayer = players[activePlayerIndex] ?? null;
+  const clampedActivePlayerIndex = players.length === 0
+    ? 0
+    : Math.min(activePlayerIndex, players.length - 1);
+  const activePlayer = players[clampedActivePlayerIndex] ?? null;
   const activePlayerId = activePlayer?.id ?? null;
   const humanPlayer = humanId ? players.find((p) => p.id === humanId) ?? null : null;
   const isHumanTurn = !!activePlayer && activePlayer.id === humanId;
@@ -343,7 +346,8 @@ export default function CrystalPathShatteredGame({
   }, [currentRowRecord, queueTimeout]);
 
   const resolveStep = useCallback((playerId: string, side: TileSide, row: BridgeRow) => {
-    if (!activePlayer || activePlayer.id !== playerId) return;
+    const runner = activePlayer;
+    if (!runner || runner.id !== playerId) return;
     const wrong = side !== row.safeSide;
     const now = Date.now();
     setActiveAnimation({
@@ -359,8 +363,8 @@ export default function CrystalPathShatteredGame({
     if (wrong) {
       playDeath();
       const base = getRowBandDamage(row.index + 1);
-      const res = resolveWrongTileDelta(base, activePlayer.effects, now);
-      const newSp = Math.max(0, activePlayer.sp + res.delta);
+      const res = resolveWrongTileDelta(base, runner.effects, now);
+      const newSp = Math.max(0, runner.sp + res.delta);
       const eliminated = newSp <= 0;
       setPlayers((cur) => cur.map((p) => {
         if (p.id !== playerId) return p;
@@ -376,22 +380,23 @@ export default function CrystalPathShatteredGame({
       }));
       queueTimeout(() => {
         setActiveAnimation(null);
-        if (eliminated) advanceToNextPlayer(activePlayerIndex);
+        if (eliminated) advanceToNextPlayer(clampedActivePlayerIndex);
       }, WRONG_STEP_MS);
     } else {
       playSafeStep();
-      const furthest = Math.max(activePlayer.furthestRow, row.index + 1);
-      const finished = furthest >= HIDDEN_BRIDGE_LENGTH ? now : activePlayer.finishedAtMs;
+      const furthest = Math.max(runner.furthestRow, row.index + 1);
+      const justFinished = runner.finishedAtMs === null && furthest >= HIDDEN_BRIDGE_LENGTH;
+      const finishedAtMs = justFinished ? now : runner.finishedAtMs;
       setPlayers((cur) => cur.map((p) => {
         if (p.id !== playerId) return p;
-        return { ...p, furthestRow: furthest, finishedAtMs: finished };
+        return { ...p, furthestRow: furthest, finishedAtMs };
       }));
       queueTimeout(() => {
         setActiveAnimation(null);
-        if (finished !== null) advanceToNextPlayer(activePlayerIndex);
+        if (justFinished) advanceToNextPlayer(clampedActivePlayerIndex);
       }, SAFE_STEP_MS);
     }
-  }, [activePlayer, activePlayerIndex, advanceToNextPlayer, logMessage, playDeath, playSafeStep, queueTimeout]);
+  }, [activePlayer, advanceToNextPlayer, clampedActivePlayerIndex, logMessage, playDeath, playSafeStep, queueTimeout]);
 
   const resolveMystery = useCallback((playerId: string) => {
     const row = currentRowRecord;
