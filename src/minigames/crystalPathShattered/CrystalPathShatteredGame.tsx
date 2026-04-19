@@ -589,7 +589,7 @@ export default function CrystalPathShatteredGame({
       }
       // Short delay to let animations settle before showing the complete screen.
       const t = queueTimeout(() => setPhase('complete'), secretWinner ? 1_400 : 600);
-       return () => cancelQueuedTimeout(t);
+      return () => cancelQueuedTimeout(t);
     }
     return undefined;
   }, [cancelQueuedTimeout, humanPlayer, isAsyncHumanRun, phase, players, playWinner, queueTimeout, secretWinBanner]);

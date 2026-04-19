@@ -430,7 +430,7 @@ export function normalizeSurvivalIndices(players: PlayerState[]): PlayerState[] 
       const bRow = b.eliminatedRow ?? Number.POSITIVE_INFINITY;
       if (aRow !== bRow) return aRow - bRow;
       if (a.furthestRow !== b.furthestRow) return a.furthestRow - b.furthestRow;
-      if (a.sp !== b.sp) return a.sp - b.sp;
+      if (a.sp !== b.sp) return b.sp - a.sp;
       return a.id.localeCompare(b.id);
     });
 
