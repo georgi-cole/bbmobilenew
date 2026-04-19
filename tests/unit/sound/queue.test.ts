@@ -88,6 +88,58 @@ describe('SoundManager music state machine', () => {
     expect(SoundManager.currentMusicTrack).toBe('none');
   });
 
+  it('panicStopAllMusic does NOT clear _desiredMusicTrack (syncMusic can restart)', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _desiredMusicTrack: string;
+    };
+    sm._unlocked = true;
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    SoundManager.panicStopAllMusic();
+
+    // _desiredMusicTrack is still 'competition' — calling syncMusic() would
+    // restart the track.  This is expected behaviour for panicStop; callers
+    // that need to prevent a restart must use stopAllMusic() instead.
+    expect(sm._desiredMusicTrack).toBe('competition');
+  });
+
+  it('stopAllMusic clears _desiredMusicTrack so syncMusic cannot restart stale music', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _desiredMusicTrack: string;
+    };
+    sm._unlocked = true;
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    expect(SoundManager.currentMusicKey).toBe('music:hoh_comp_general');
+
+    SoundManager.stopAllMusic();
+
+    // Both playback and the desired-track pointer are cleared.
+    expect(SoundManager.currentMusicKey).toBeNull();
+    expect(SoundManager.currentMusicTrack).toBe('none');
+    expect(sm._desiredMusicTrack).toBe('none');
+  });
+
+  it('after stopAllMusic, syncMusic does not restart the previous track', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    expect(playSpy).toHaveBeenCalledTimes(1);
+
+    SoundManager.stopAllMusic();
+    const playsAfterStop = playSpy.mock.calls.length;
+
+    // syncMusic() sees desiredTrack = 'none' → calls panicStopAllMusic, no replay.
+    await SoundManager.syncMusic();
+
+    expect(playSpy.mock.calls.length).toBe(playsAfterStop);
+    expect(SoundManager.currentMusicKey).toBeNull();
+  });
+
   it('ignores stale async playback from an older sync token', async () => {
     const sm = SoundManager as unknown as { _unlocked: boolean };
     sm._unlocked = true;
