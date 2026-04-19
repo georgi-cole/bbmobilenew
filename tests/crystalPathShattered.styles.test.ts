@@ -9,10 +9,11 @@ describe('Crystal Path: Infinity wrong-tile styles', () => {
       'utf8',
     );
 
-    const wrongTileRule = /\.cps-tile\.is-wrong\s*\{[\s\S]*?animation:\s*cps-tile-wrong-shake 0\.46s ease-in-out;[\s\S]*?\}/;
+    const wrongTileRuleMatch = css.match(/\.cps-tile\.is-wrong\s*\{[\s\S]*?\}/);
 
+    expect(wrongTileRuleMatch).not.toBeNull();
     expect(css).toContain('@keyframes cps-tile-wrong-shake {');
-    expect(css).toMatch(wrongTileRule);
-    expect(css).not.toContain('animation: cps-tile-shatter-fall 0.7s ease forwards;');
+    expect(wrongTileRuleMatch?.[0]).toContain('animation: cps-tile-wrong-shake 0.46s ease-in-out;');
+    expect(wrongTileRuleMatch?.[0]).not.toContain('cps-tile-shatter-fall');
   });
 });
