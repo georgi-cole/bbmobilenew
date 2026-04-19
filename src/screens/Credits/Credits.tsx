@@ -4,16 +4,17 @@ import { CREDITS_VIDEO_SOURCES } from './creditsAssetPaths';
 import './Credits.css';
 
 const EXIT_FADE_MS = 420;
+const CREDITS_PRELOAD_SELECTOR = 'video[data-credits-preload="true"]';
 
 const creditsVideoUrl = CREDITS_VIDEO_SOURCES[0];
 let creditsVideoPreloader: HTMLVideoElement | null = null;
 
 function ensureCreditsVideoPreload() {
-  if (creditsVideoPreloader != null || typeof document === 'undefined' || !creditsVideoUrl) {
+  if (!creditsVideoUrl || creditsVideoPreloader != null || typeof document === 'undefined') {
     return;
   }
 
-  const existingPreloader = document.querySelector<HTMLVideoElement>('video[data-credits-preload="true"]');
+  const existingPreloader = document.querySelector<HTMLVideoElement>(CREDITS_PRELOAD_SELECTOR);
   if (existingPreloader != null) {
     creditsVideoPreloader = existingPreloader;
     return;
@@ -68,7 +69,9 @@ export default function Credits() {
       // still start instantly instead of waiting for a second tap.
       video.defaultMuted = true;
       video.muted = true;
-      await video.play().catch(() => {});
+      await video.play().catch((error) => {
+        console.warn('[Credits] Unable to autoplay end credits video.', error);
+      });
     });
 
     return () => {
