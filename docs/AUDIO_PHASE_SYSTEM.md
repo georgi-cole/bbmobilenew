@@ -100,7 +100,7 @@ SoundManager                ← singleton BGM channel + SFX pools
 ╠═══════════════════════════════════════════════════════════════════════╣
 ║  FINALE FLOW                                                          ║
 ║  ─────────────────────────────────────────────────────────────────── ║
-║  finale_pre_voting      ← game.phase === 'jury', antes FinalFaceoff  ║
+║  finale_pre_voting      ← game.phase === 'jury', before FinalFaceoff ║
 ║  tribunal_part1         ← FinalFaceoff 'clues' act (hidden votes)     ║
 ║  finale_recap           ← FinalFaceoff 'recap' act (SeasonRecap)      ║
 ║  tribunal_part2         ← FinalFaceoff 'revealVotes' act              ║
