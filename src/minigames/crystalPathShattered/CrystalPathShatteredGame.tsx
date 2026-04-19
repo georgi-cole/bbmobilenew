@@ -292,14 +292,15 @@ export default function CrystalPathShatteredGame({
     };
   }, [asyncAiPlayers, baseBridgeRows, isAsyncHumanRun, sessionSeed]);
 
-  const scoreboardPlayers = useMemo(() => {
-    if (!isAsyncHumanRun) return players;
+  const asyncScoreboardPlayers = useMemo(() => {
+    if (!isAsyncHumanRun) return null;
     const combined = [
       ...(humanPlayer ? [humanPlayer] : []),
       ...asyncAiPlayers.map((player) => asyncAiSimulation.results.get(player.id) ?? player),
     ];
     return normalizeSurvivalIndices(combined);
-  }, [asyncAiPlayers, asyncAiSimulation.results, humanPlayer, isAsyncHumanRun, players]);
+  }, [asyncAiPlayers, asyncAiSimulation.results, humanPlayer, isAsyncHumanRun]);
+  const scoreboardPlayers = asyncScoreboardPlayers ?? players;
 
   // ── Timers (registered through a single queue for stability) ─────────────
   const timersRef = useRef<number[]>([]);
