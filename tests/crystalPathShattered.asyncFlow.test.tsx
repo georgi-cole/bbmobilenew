@@ -123,11 +123,13 @@ describe('Crystal Path: Infinity async flow', () => {
     fireEvent.click(wrongTile);
 
     expect(wrongTile.className).toContain('is-wrong');
+    expect(wrongTile.className).toContain('is-cracked');
 
     await act(async () => {
       vi.advanceTimersByTime(WRONG_STEP_MS + 20);
     });
 
+    expect(wrongTile.className).not.toContain('is-wrong');
     expect(wrongTile.className).toContain('is-cracked');
   });
 
