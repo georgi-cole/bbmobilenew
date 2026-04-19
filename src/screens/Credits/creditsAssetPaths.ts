@@ -1,5 +1,6 @@
-const CREDITS_VIDEO_PATH = 'assets/endcreditskq.mp4';
-const CREDITS_POSTER_PATH = 'assets/kolequant.png';
+const CREDITS_CITY_PATH = 'assets/credits/city.png';
+const CREDITS_BIG_EYE_PATH = 'assets/credits/big-eye.svg';
+const CREDITS_MOON_PATH = 'assets/credits/moon.svg';
 
 function normalizeCreditsAssetUrl(candidate: string): string {
   if (typeof document === 'undefined') {
@@ -26,5 +27,6 @@ export function buildCreditsAssetCandidates(assetPath: string): string[] {
   return [...candidates];
 }
 
-export const CREDITS_VIDEO_SOURCES = buildCreditsAssetCandidates(CREDITS_VIDEO_PATH);
-export const CREDITS_POSTER_SOURCES = buildCreditsAssetCandidates(CREDITS_POSTER_PATH);
+export const CREDITS_CITY_SOURCES = buildCreditsAssetCandidates(CREDITS_CITY_PATH);
+export const CREDITS_BIG_EYE_SOURCES = buildCreditsAssetCandidates(CREDITS_BIG_EYE_PATH);
+export const CREDITS_MOON_SOURCES = buildCreditsAssetCandidates(CREDITS_MOON_PATH);
