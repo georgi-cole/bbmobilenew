@@ -57,10 +57,14 @@ const COMPETITION_PHASES = new Set(['loh_comp', 'loh_results', 'pos_comp', 'pos_
 
 /**
  * Game phases that use the nominations music track.
- * Includes nomination_results so the track is continuous through the
- * results banner.
+ * Includes nomination_results and pre_veto_public_save so the track is
+ * continuous through the nominations flow before veto.
  */
-const NOMINATION_PHASES = new Set(['nominations', 'nomination_results']);
+const NOMINATION_PHASES = new Set([
+  'nominations',
+  'nomination_results',
+  'pre_veto_public_save',
+]);
 
 /**
  * Game phases that use the veto (POS ceremony) music track.
