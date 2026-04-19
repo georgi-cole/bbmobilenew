@@ -77,17 +77,10 @@
  *  1. The `splash` phase corresponds to the KolequantSplash animation shown
  *     on true app-open (or on first HomeHub mount when the splash has not yet
  *     been dismissed for the current gameId).
- *  2. The intro-hub music (`music:intro_hub_loop`) plays for BOTH `splash` and
- *     `intro_hub` because the same track is appropriate for both.
- *  3. Once the user presses **Play**, `markHomeHubGameStarted(gameId)` is
- *     called.  From that point forward `canPlayIntroHubMusic` resolves to
- *     `false` for the remainder of that game session.  Introhub music is
- *     permanently blocked — navigating back to the HomeHub or visiting
- *     sub-modules does NOT restart it.
- *  4. Intro-hub sub-modules (/rules, /profile, /houseguests) change the URL
- *     hash away from '#/' so they are never eligible for introhub music even
- *     before Play is pressed (the hash check in resolveDesiredMusic fails).
- *  5. If the user returns via the home button during gameplay, they arrive at
+ *  2. Splash and intro-hub phases are intentionally silent.
+ *  3. Intro-hub sub-modules (/rules, /profile, /houseguests) also stay silent
+ *     until gameplay reaches a phase with dedicated audio.
+ *  4. If the user returns via the home button during gameplay, they arrive at
  *     `intro_hub` not `splash` — the splash gate is only crossed once per
  *     session.
  *
@@ -102,8 +95,7 @@
  *  C. PHASE EXIT KILLS OLD MUSIC — when resolveDesiredMusic returns a
  *     different track the SoundManager replaces the BGM element.
  *  D. NO CROSS-PHASE MUSIC REUSE — a track associated with a finished phase
- *     cannot be re-triggered from an unrelated phase.  The canPlayIntroHubMusic
- *     flag enforces this for the splash/intro phases.
+ *     cannot be re-triggered from an unrelated phase.
  *  E. SUBMODULES DO NOT OVERRIDE PHASE MUSIC — houseguests / profile / rules
  *     are intro sub-modules but must not independently start new music.
  *  F. MINIGAME AUDIO IS SUB-PHASE-SCOPED — while challenge.pending.phase ===
@@ -245,8 +237,8 @@ export type AppAudioPhase =
  */
 export const AUDIO_PHASE_MUSIC_MAP: Readonly<Record<AppAudioPhase, MusicTrack>> = {
   // Intro flow
-  splash:                  'introhub',
-  intro_hub:               'introhub',
+  splash:                  'none',
+  intro_hub:               'none',
   intro_hub_rules:         'none',
   intro_hub_profile:       'none',
   intro_hub_houseguests:   'none',
@@ -312,8 +304,7 @@ export const MINIGAME_KEY_TO_AUDIO_PHASE: Readonly<Record<string, AppAudioPhase>
  * | resolveDesiredMusic (pure fn)  | Determines desired MusicTrack from state + hash      |
  * | soundMiddleware (Redux)        | Fires one-shot SFX on specific Redux actions         |
  * | FinalFaceoff (React)           | Dispatches setMusicScene for finale acts             |
- * | HomeHub / handlePlay (React)   | Calls markHomeHubGameStarted → canPlayIntroHubMusic  |
- * | SoundConsentPopup (React)      | Calls SoundManager.unlockFromGesture on consent      |
+ * | HomeHub / handlePlay (React)   | Calls SoundManager.unlockFromGesture before gameplay  |
  * | cinematicAudio (module)        | Manages SeasonRecapCinematic audio outside SoundManager|
  */
 export const _AUDIO_ENTRY_POINTS = undefined; // documentation-only export

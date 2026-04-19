@@ -3,7 +3,6 @@ import { shallowEqual, useSelector } from 'react-redux';
 import type { RootState } from '../../store/store';
 import { SoundManager } from './SoundManager';
 import { resolveDesiredMusic } from './resolveDesiredMusic';
-import { hasStartedHomeHubGame } from '../../screens/HomeHub/homeHubMusicSession';
 
 export default function AudioStateSync() {
   const musicState = useSelector(
@@ -54,9 +53,6 @@ export default function AudioStateSync() {
           },
         },
         hash,
-        {
-          canPlayIntroHubMusic: !hasStartedHomeHubGame(musicState.gameId),
-        },
       ),
     [hash, musicState],
   );

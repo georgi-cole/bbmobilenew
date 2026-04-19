@@ -184,6 +184,18 @@ describe('SoundManager music state machine', () => {
     expect(SoundManager.currentMusicTrack).toBe('competition');
   });
 
+  it('creates music elements with preload disabled so tracks load on demand', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _musicEl: HTMLAudioElement | null;
+    };
+    sm._unlocked = true;
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+
+    expect(sm._musicEl?.preload).toBe('none');
+  });
+
   it('retries only the current desired track after a blocked play on the next gesture', async () => {
     const sm = SoundManager as unknown as { _unlocked: boolean };
     sm._unlocked = true;

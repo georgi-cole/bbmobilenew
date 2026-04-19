@@ -60,8 +60,8 @@ describe('IntroHub side utility buttons', () => {
     loadIntroHub();
 
     expect(document.querySelector('[data-hub-id="news"]')).toBeNull();
-    expect(document.querySelector('[data-hub-id="music"]')).toHaveClass('hub-chip--top-left-2');
-    expect(document.querySelector('[data-hub-id="sounds"]')).toHaveClass('hub-chip--top-left-3');
+    expect(document.querySelector('[data-hub-id="music"]')).toBeNull();
+    expect(document.querySelector('[data-hub-id="sounds"]')).toHaveClass('hub-chip--top-left-2');
     expect(document.querySelector('[data-hub-id="social"]')).toBeNull();
     expect(document.querySelector('[data-hub-id="houseguests"]')).toHaveClass('hub-chip--bottom-left');
     expect(document.querySelector('[data-hub-id="achievements"]')).toHaveClass('hub-chip--bottom-left-2');
@@ -71,6 +71,7 @@ describe('IntroHub side utility buttons', () => {
     expect(document.querySelector('[data-hub-id="share"]')).toHaveClass('hub-chip--bottom-right-3');
     expect(mirroredIntroHubScript).not.toContain("{ id: 'news', label: 'News', icon: 'news', position: 'top-left' }");
     expect(mirroredIntroHubScript).not.toContain("{ id: 'social', label: 'Social', icon: 'social', position: 'top-right' }");
+    expect(mirroredIntroHubScript).not.toContain("{ id: 'music', label: 'Music', icon: 'music', position: 'top-left-2' }");
     expect(mirroredIntroHubScript).toContain(
       "{ id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'bottom-left-3' }",
     );

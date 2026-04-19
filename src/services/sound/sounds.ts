@@ -66,14 +66,14 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     key: 'ui:navigate',
     category: 'ui',
     src: `${SOUNDS_BASE}ui_navigate.mp3`,
-    preload: true,
+    preload: false,
     volume: 0.6,
   },
   'ui:confirm': {
     key: 'ui:confirm',
     category: 'ui',
     src: `${SOUNDS_BASE}ui_confirm.mp3`,
-    preload: true,
+    preload: false,
     volume: 0.7,
   },
   'ui:error': {
@@ -87,7 +87,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     key: 'tv:event',
     category: 'tv',
     src: `${SOUNDS_BASE}tv_event.mp3`,
-    preload: true,
+    preload: false,
     volume: 0.8,
   },
   'player:evicted': {
@@ -246,14 +246,6 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     src: `${SOUNDS_BASE}music_menu_loop.mp3`,
     preload: false,
     volume: 0.5,
-    loop: true,
-  },
-  'music:intro_hub_loop': {
-    key: 'music:intro_hub_loop',
-    category: 'music',
-    src: `${SOUNDS_BASE}music_intro_hub_loop.mp3`,
-    preload: false,
-    volume: 0.45,
     loop: true,
   },
   'music:spectator_loop': {

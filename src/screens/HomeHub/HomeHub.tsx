@@ -21,21 +21,13 @@ import useLoadIntroHub from '../../hooks/useLoadIntroHub';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
-import SoundConsentPopup, {
-  HUB_MUSIC_CONSENT_KEY,
-} from '../../components/SoundConsentPopup/SoundConsentPopup';
 import { SoundManager } from '../../services/sound/SoundManager';
-import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
-import { NATIVE_SFX_MAP, NATIVE_SFX_CONFIG } from '../../platform/cordova/nativeSfxMap';
 import { preloadImage } from '../../utils/preload';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
 import {
   hasSeenHomeHubSplashForGame,
   markHomeHubSplashSeenForGame,
 } from './homeHubSplashSession';
-import {
-  markHomeHubGameStarted,
-} from './homeHubMusicSession';
 import {
   selectRemoteIntroHubBg,
   selectRemoteIntroHubOverlay,
@@ -54,11 +46,8 @@ import './HomeHub.css';
  *   2. Splash fades out after ~1.2s animation completes automatically.
  *   3. IMPORTANT — background loaded first: hub background is preloaded during
  *      the splash so buttons never appear over an empty background.
- *   4. After splash exits, PermissionPrompts appear over the hub (location only;
- *      sound consent is handled separately via SoundConsentPopup).
- *   5. SoundConsentPopup is shown after splash unless the user already gave
- *      persistent consent ('bb:hubMusicConsent' === 'granted').
- *   6. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
+ *   4. After splash exits, PermissionPrompts appear over the hub (location only).
+ *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
   { to: '/game',         label: 'Play',        icon: '▶',  variant: 'primary_large'    },
@@ -67,15 +56,6 @@ const HUB_BUTTONS = [
   { to: '/leaderboard',  label: 'Leaderboard', icon: '🏆', variant: 'secondary_wide'   },
   { to: '/credits',      label: 'Credits',     icon: '🎬', variant: 'secondary_small'  },
 ] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
-
-/** Returns true if the hub music consent popup should be shown. */
-function shouldShowSoundConsent(): boolean {
-  try {
-    return localStorage.getItem(HUB_MUSIC_CONSENT_KEY) !== 'granted';
-  } catch {
-    return true;
-  }
-}
 
 export default function HomeHub() {
   const navigate = useNavigate();
@@ -114,21 +94,11 @@ export default function HomeHub() {
   const bgLoaded = effectiveBgUrl != null && loadedBgUrl === effectiveBgUrl;
   const [preloading, setPreloading] = useState(false);
   const preloadedBgUrlRef = useRef<string | null>(null);
-  const [soundConsentHidden, setSoundConsentHidden] = useState(false);
-  const [needsSoundConsent] = useState(() => shouldShowSoundConsent());
-  const showSoundConsent = splashDone && needsSoundConsent && !soundConsentHidden;
   // Resume-season prompt state for the Play flow.
   const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const pendingGameStartRef = useRef(false);
 
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
-
-  useEffect(() => {
-    if (!pendingGameStartRef.current) return;
-    markHomeHubGameStarted(gameId);
-    pendingGameStartRef.current = false;
-  }, [gameId]);
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
@@ -164,42 +134,7 @@ export default function HomeHub() {
     };
   }, [effectiveBgUrl]);
 
-  const handleSoundConsentEnable = () => {
-    // MUST remain synchronous so that iOS/Safari recognises the gesture context.
-    // HTMLAudio priming calls play() synchronously —
-    // awaiting before this call would break that requirement.
-    SoundManager.unlockFromGesture();
-
-    setSoundConsentHidden(true);
-
-    // Kick off native SFX preloads asynchronously in the background.
-    // These are non-critical — if preloading hasn't finished when a mapped SFX
-    // is triggered, SoundManager will fall back to HTMLAudio automatically.
-    void NativeAudioAdapter.init()
-      .then(() => {
-        if (!NativeAudioAdapter.isAvailable()) return;
-        const nativeKeys = Object.values(NATIVE_SFX_MAP) as Array<keyof typeof NATIVE_SFX_CONFIG>;
-        return Promise.all(
-          nativeKeys.map((nk) => {
-            const { path, volume } = NATIVE_SFX_CONFIG[nk];
-            return NativeAudioAdapter.preloadComplex(nk, path, volume);
-          }),
-        );
-      })
-      .catch((err) => {
-        console.warn('[HomeHub] NativeAudio init/preload failed, falling back to HTMLAudio', err);
-      });
-  };
-
-  const handleSoundConsentDismiss = () => {
-    // Option B: denial is NOT persisted — popup will show again next visit.
-    setSoundConsentHidden(true);
-  };
-
   const handlePlay = () => {
-    pendingGameStartRef.current = true;
-    markHomeHubGameStarted(gameId);
-
     // Unlock audio in the gesture context.  We intentionally do NOT follow up
     // with SoundManager.panicStopAllMusic() here — that used to race with the
     // syncMusic() call inside unlockFromGesture() (play-then-stop glitch) and
@@ -269,19 +204,9 @@ export default function HomeHub() {
       )}
 
       {/* Permission prompts shown after splash exits, over the hub.
-          Sound prompt disabled — sound consent is handled by SoundConsentPopup. */}
+          Sound prompt disabled — audio is unlocked when the player explicitly starts the game. */}
       {splashDone && (
         <PermissionPrompts showSoundPrompt={false} />
-      )}
-
-      {/* Sound consent popup — asks user to enable hub music.
-          Shown after splash unless user already gave persistent consent.
-          "Not now" dismisses without persistence (Option B: ask again next time). */}
-      {showSoundConsent && (
-        <SoundConsentPopup
-          onEnable={handleSoundConsentEnable}
-          onDismiss={handleSoundConsentDismiss}
-        />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
