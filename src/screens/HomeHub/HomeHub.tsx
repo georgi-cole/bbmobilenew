@@ -119,15 +119,16 @@ export default function HomeHub() {
   const showSoundConsent = splashDone && needsSoundConsent && !soundConsentHidden;
   // Resume-season prompt state for the Play flow.
   const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [launchRequested, setLaunchRequested] = useState(false);
+  const pendingGameStartRef = useRef(false);
 
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
 
   useEffect(() => {
-    if (!launchRequested) return;
+    if (!pendingGameStartRef.current) return;
     markHomeHubGameStarted(gameId);
-  }, [gameId, launchRequested]);
+    pendingGameStartRef.current = false;
+  }, [gameId]);
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
@@ -196,7 +197,7 @@ export default function HomeHub() {
   };
 
   const handlePlay = () => {
-    setLaunchRequested(true);
+    pendingGameStartRef.current = true;
     markHomeHubGameStarted(gameId);
 
     // Unlock audio in the gesture context.  We intentionally do NOT follow up
