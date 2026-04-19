@@ -49,7 +49,9 @@ const STAR_GROUPS = [
 const WINDOW_LIGHT_COUNT = 84;
 const CREDIT_CYCLE_SECONDS = 4.5;
 const SCENE_INTRO_DURATION = 1.8;
-const TEXT_DELAY_AFTER_SCENE = 0.6;
+const TEXT_START_DELAY = 0.6;
+const CREDITS_BOB_FREQUENCY = 0.8;
+const CREDITS_BOB_AMPLITUDE = 4;
 const SKY_TEXTURE_WIDTH = 64;
 const SKY_TEXTURE_HEIGHT = 256;
 const FOG_TEXTURE_WIDTH = 640;
@@ -626,7 +628,7 @@ export default class CreditsScene {
     this.moonSprite.alpha = sceneIntro * (0.86 + celestialPulse * 0.1);
     this.eyeSprite.alpha = sceneIntro * (0.78 + celestialPulse * 0.16);
 
-    const textStartTime = TEXT_DELAY_AFTER_SCENE;
+    const textStartTime = TEXT_START_DELAY;
     const textElapsed = Math.max(0, this.elapsedSeconds - textStartTime);
 
     const totalCycleTime = this.credits.length * CREDIT_CYCLE_SECONDS;
@@ -659,7 +661,9 @@ export default class CreditsScene {
       } else {
         this.creditsText.alpha = Math.max(0, 1 - (cycleProgress - 3.5) * 2) * sceneIntro;
       }
-      this.creditsText.y = this.creditsBaseY + Math.sin((this.elapsedSeconds + cycleIndex) * 0.8) * (4 * this.designScale);
+      this.creditsText.y = this.creditsBaseY
+        + Math.sin((this.elapsedSeconds + cycleIndex) * CREDITS_BOB_FREQUENCY)
+        * (CREDITS_BOB_AMPLITUDE * this.designScale);
 
       if (this.logoSprite) {
         this.logoSprite.alpha = 0;
