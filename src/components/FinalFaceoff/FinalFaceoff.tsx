@@ -136,8 +136,8 @@ export default function FinalFaceoff() {
       voteTimersRef.current = {};
       flashTimersRef.current = {};
       dispatch(setMusicScene('none'));
-      // stopAllMusic() clears _desiredMusicTrack so syncMusic() cannot restart
-      // the stale finale track while Redux propagates the scene reset.
+      // Fully stop music immediately so the previous finale track does not
+      // restart while Redux propagates the scene reset.
       SoundManager.stopAllMusic();
     },
     [dispatch],
