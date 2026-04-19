@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import creditsData from '../../data/credits';
@@ -7,7 +8,7 @@ import './Credits.css';
 
 const EXIT_FADE_MS = 420;
 const CREDITS_TOTAL_MS = 19_600;
-const CREDIT_CYCLE_MS = creditsData.length > 0 ? Math.floor(CREDITS_TOTAL_MS / creditsData.length) : CREDITS_TOTAL_MS;
+const CREDIT_CYCLE_MS = creditsData.length > 0 ? CREDITS_TOTAL_MS / creditsData.length : CREDITS_TOTAL_MS;
 
 export default function Credits() {
   const navigate = useNavigate();
@@ -125,7 +126,11 @@ export default function Credits() {
         style={{ backgroundImage: `url("${backgroundImageUrl}")` }}
       >
         <div className="credits-copy" aria-label="Credits">
-          <p key={`${activeCreditIndex}-${currentCredit}`} className="credits-copy-item">
+          <p
+            key={`${activeCreditIndex}-${currentCredit}`}
+            className="credits-copy-item"
+            style={{ '--credits-cycle-ms': `${CREDIT_CYCLE_MS}ms` } as CSSProperties}
+          >
             {currentCredit}
           </p>
         </div>

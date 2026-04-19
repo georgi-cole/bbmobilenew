@@ -76,7 +76,7 @@
   letter-spacing: 0.05em;
   white-space: pre-line;
   text-shadow: 0 4px 16px rgba(0, 0, 0, 0.58);
-  animation: credits-copy-fade 2450ms ease-in-out both;
+  animation: credits-copy-fade var(--credits-cycle-ms, 2450ms) ease-in-out both;
 }
 
 @keyframes credits-copy-fade {

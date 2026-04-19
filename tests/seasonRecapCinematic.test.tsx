@@ -182,7 +182,7 @@ describe('SeasonRecapCinematic', () => {
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
   });
 
-  it('waits for the extra five seconds before completing', async () => {
+  it('completes only after the finale scene gets the extra five seconds', async () => {
     const onComplete = vi.fn();
 
     render(
