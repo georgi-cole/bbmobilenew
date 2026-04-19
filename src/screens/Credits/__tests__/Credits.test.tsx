@@ -3,18 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Credits from '../Credits';
 
-const cinematicAudioMocks = vi.hoisted(() => ({
-  create: vi.fn(),
-  play: vi.fn(),
-  fadeOutAndStop: vi.fn(),
-  dispose: vi.fn(),
-}));
-
-vi.mock('../../../services/sound/cinematicAudio', () => ({
-  createCinematicAudio: cinematicAudioMocks.create,
-}));
-
-const CREDITS_TOTAL_MS = 19_600;
 const EXIT_FADE_MS = 420;
 
 function renderCredits() {
@@ -29,54 +17,31 @@ function renderCredits() {
 }
 
 describe('Credits', () => {
+  const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+  const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+
   afterEach(() => {
-    cinematicAudioMocks.create.mockReset();
-    cinematicAudioMocks.play.mockReset();
-    cinematicAudioMocks.fadeOutAndStop.mockReset();
-    cinematicAudioMocks.dispose.mockReset();
+    playSpy.mockClear();
+    pauseSpy.mockClear();
     vi.useRealTimers();
   });
 
-  it('starts the credits sound and auto-exits after the full run', () => {
-    vi.useFakeTimers();
-    cinematicAudioMocks.create.mockReturnValue({
-      play: cinematicAudioMocks.play,
-      fadeOutAndStop: cinematicAudioMocks.fadeOutAndStop,
-      dispose: cinematicAudioMocks.dispose,
-    });
-
+  it('renders and starts the legacy credits video immediately', () => {
     renderCredits();
 
     const stage = screen.getByRole('button', { name: 'Tap to exit credits' });
-    const credits = screen.getByLabelText('Credits');
+    const video = screen.getByLabelText('Credits video');
 
-    expect(stage).toHaveStyle({
-      backgroundImage: expect.stringContaining('assets/credits/city skyline reduced.jpg'),
-    });
-    expect(credits).toHaveTextContent('Thank YOU for playing');
-    expect(credits.querySelector('.credits-copy-item--initial')).not.toBeNull();
-    expect(credits).not.toHaveTextContent('Created by: Georgi Cole');
-    expect(cinematicAudioMocks.create).toHaveBeenCalledWith(
-      expect.stringContaining('assets/sounds/credits_sound.mp3'),
-    );
-    expect(cinematicAudioMocks.play).toHaveBeenCalledTimes(1);
-    expect(credits).not.toHaveTextContent('Created by: Georgi Cole');
-
-    act(() => {
-      vi.advanceTimersByTime(CREDITS_TOTAL_MS + EXIT_FADE_MS);
-    });
-
-    expect(cinematicAudioMocks.fadeOutAndStop).toHaveBeenCalledWith(EXIT_FADE_MS);
-    expect(screen.getByText('Home screen')).toBeInTheDocument();
+    expect(stage).toBeInTheDocument();
+    expect(video).toHaveAttribute('src', expect.stringContaining('assets/endcreditskq.mp4'));
+    expect(video).toHaveAttribute('autoplay');
+    expect(video).toHaveAttribute('playsinline');
+    expect(video).toHaveAttribute('preload', 'auto');
+    expect(playSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('exits on tap and fades the credits sound out', () => {
+  it('exits on tap and pauses the credits video', () => {
     vi.useFakeTimers();
-    cinematicAudioMocks.create.mockReturnValue({
-      play: cinematicAudioMocks.play,
-      fadeOutAndStop: cinematicAudioMocks.fadeOutAndStop,
-      dispose: cinematicAudioMocks.dispose,
-    });
 
     renderCredits();
 
@@ -87,17 +52,12 @@ describe('Credits', () => {
       vi.advanceTimersByTime(EXIT_FADE_MS);
     });
 
-    expect(cinematicAudioMocks.fadeOutAndStop).toHaveBeenCalledWith(EXIT_FADE_MS);
+    expect(pauseSpy).toHaveBeenCalled();
     expect(screen.getByText('Home screen')).toBeInTheDocument();
   });
 
   it('exits when Escape is pressed', () => {
     vi.useFakeTimers();
-    cinematicAudioMocks.create.mockReturnValue({
-      play: cinematicAudioMocks.play,
-      fadeOutAndStop: cinematicAudioMocks.fadeOutAndStop,
-      dispose: cinematicAudioMocks.dispose,
-    });
 
     renderCredits();
 
@@ -106,29 +66,23 @@ describe('Credits', () => {
       vi.advanceTimersByTime(EXIT_FADE_MS);
     });
 
-    expect(cinematicAudioMocks.fadeOutAndStop).toHaveBeenCalledWith(EXIT_FADE_MS);
+    expect(pauseSpy).toHaveBeenCalled();
     expect(screen.getByText('Home screen')).toBeInTheDocument();
   });
 
-  it('advances to the next credit after the opening credit hold', () => {
+  it('returns home after the credits video finishes', () => {
     vi.useFakeTimers();
-    cinematicAudioMocks.create.mockReturnValue({
-      play: cinematicAudioMocks.play,
-      fadeOutAndStop: cinematicAudioMocks.fadeOutAndStop,
-      dispose: cinematicAudioMocks.dispose,
-    });
 
     renderCredits();
 
-    const credits = screen.getByLabelText('Credits');
-
-    expect(credits).toHaveTextContent('Thank YOU for playing');
+    const video = screen.getByLabelText('Credits video');
 
     act(() => {
-      vi.advanceTimersByTime(CREDITS_TOTAL_MS / 7);
+      fireEvent.ended(video);
+      vi.advanceTimersByTime(EXIT_FADE_MS);
     });
 
-    expect(credits).toHaveTextContent('Created by: Georgi Cole');
-    expect(credits.querySelector('.credits-copy-item--initial')).toBeNull();
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(screen.getByText('Home screen')).toBeInTheDocument();
   });
 });

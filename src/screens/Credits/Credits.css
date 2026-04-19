@@ -16,98 +16,21 @@
 }
 
 .credits-stage {
-  --floating-corner-top-base: 14px;
-  --floating-corner-right-base: 14px;
   position: relative;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  background-color: #030a1a;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
+  display: grid;
+  place-items: center;
+  background: #000;
   touch-action: manipulation;
   outline: none;
   cursor: pointer;
 }
 
-.credits-stage::before {
-  content: '';
-  position: absolute;
-  top: var(--floating-corner-top-offset);
-  right: var(--floating-corner-right-offset);
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.credits-stage::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(2, 8, 22, 0.08) 0%, rgba(2, 8, 22, 0.04) 34%, rgba(2, 8, 22, 0.18) 100%);
-  pointer-events: none;
-}
-
-.credits-copy {
-  position: absolute;
-  top: clamp(180px, 39dvh, 330px);
-  right: clamp(20px, 7vw, 72px);
-  transform: translateY(-50%);
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  width: min(36vw, 320px);
-  max-width: calc(100vw - 32px);
-  min-height: clamp(88px, 12dvh, 132px);
-  text-align: right;
-  color: #f4f0e7;
-  pointer-events: none;
-}
-
-.credits-copy-item {
-  margin: 0;
-  padding: 0;
-  font-size: clamp(22px, 2.5vw, 30px);
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: 0.05em;
-  white-space: pre-line;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.58);
-  animation: credits-copy-fade var(--credits-cycle-ms, 2450ms) ease-in-out both;
-}
-
-.credits-copy-item--initial {
-  opacity: 1;
-  transform: translateY(0);
-  animation: none;
-}
-
-@keyframes credits-copy-fade {
-  0%,
-  100% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  18%,
-  72% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 520px) {
-  .credits-copy {
-    top: clamp(150px, 36dvh, 250px);
-    right: 18px;
-    width: min(52vw, 240px);
-    min-height: 84px;
-  }
-
-  .credits-copy-item {
-    font-size: clamp(17px, 4.7vw, 22px);
-  }
+.credits-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
 }
