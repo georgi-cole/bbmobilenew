@@ -139,6 +139,18 @@ describe('SocialPolicy – chooseTargetsFor', () => {
     };
     expect(chooseTargetsFor('p1', 'ask_use_safety', ctx)).toEqual(['p2', 'p2']);
   });
+
+  it('returns no targets for ask_use_safety when there is no nominee subject to save', () => {
+    const ctx: PolicyContext = {
+      ...BASE_CONTEXT,
+      players: [
+        { id: 'p1', status: 'active' },
+        { id: 'p2', status: 'pos' },
+        { id: 'p3', status: 'active' },
+      ],
+    };
+    expect(chooseTargetsFor('p1', 'ask_use_safety', ctx)).toEqual([]);
+  });
 });
 
 describe('SocialPolicy – computeOutcomeDelta', () => {

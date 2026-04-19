@@ -98,7 +98,10 @@ The main TV feed does **not** receive social summary events; `GameScreen` no lon
 
 ## `normalizeActionCosts(action)`
 
-Returns the complete `{ energy, influence, info }` cost object for any action, with influence/info as integer points scaled by ×100:
+Returns the complete `{ energy, influence, info }` cost object for any action.
+
+- `influence` costs are **denominated** to ×10 (`2.0 → 20`)
+- `info` costs remain in the legacy ×100 bank-point scale (`2.0 → 200`)
 
 ```ts
 import { normalizeActionCosts } from './social/smExecNormalize';
@@ -110,12 +113,12 @@ normalizeActionCosts(getActionById('proposeAlliance')!);
 // → { energy: 3, influence: 0, info: 200 }
 
 normalizeActionCosts(getActionById('vote_rally')!);
-// → { energy: 2, influence: 500, info: 0 }
+// → { energy: 2, influence: 50, info: 0 }
 ```
 
 ## `normalizeActionYields(action)`
 
-Returns the `{ influence, info }` yields for an action as integer points scaled by ×100:
+Returns the `{ influence, info }` yields for an action as integer points scaled by the legacy ×100 bank-point scale:
 
 ```ts
 import { normalizeActionYields } from './social/smExecNormalize';
@@ -131,7 +134,7 @@ normalizeActionYields(getActionById('whisper')!);
 
 Extract a single auxiliary cost field (`'influence'` or `'info'`) **as the raw float value** from a cost value.  
 Returns `0` for plain numbers (energy-only costs) or absent/invalid fields.  
-`normalizeActionCosts` applies the ×100 scaling on top of this.
+`normalizeActionCosts` applies denominated influence scaling (×10) and legacy info scaling (×100) on top of this.
 
 ---
 
@@ -140,7 +143,7 @@ Returns `0` for plain numbers (energy-only costs) or absent/invalid fields.
 | File | Purpose |
 |------|---------|
 | `src/social/socialActions.ts` | Canonical `SOCIAL_ACTIONS` array with action definitions |
-| `src/social/smExecNormalize.ts` | Cost/yield normalization helpers (including ×100 scaling) |
+| `src/social/smExecNormalize.ts` | Cost/yield normalization helpers (denominated influence costs, ×100 yields/info) |
 | `src/social/SocialEnergyBank.ts` | Per-player energy bank backed by Redux |
 | `src/social/SocialManeuvers.ts` | Core API: `getActionById`, `canAfford`, `executeAction`, etc. |
 | `src/social/socialSlice.ts` | Redux reducers and selectors for energy, influence, info, logs, relationships |
@@ -234,4 +237,3 @@ interface ExecuteActionResult {
 - A plain-number `baseCost` is treated as energy; influence and info default to `0`.
 - `normalizeActionCost(action)` (energy-only) is preserved alongside `normalizeActionCosts`.
 - `SocialActionLogEntry.cost` and `SocialActionLogEntry.newEnergy` are preserved.
-

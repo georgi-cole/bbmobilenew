@@ -3,8 +3,8 @@
 // Validates:
 //  1. normalizeAuxCost returns 0 for plain numbers and missing/invalid fields.
 //  2. normalizeAuxCost returns correct field values from cost objects.
-//  3. normalizeActionCosts returns { energy, influence, info } with influence/info
-//     scaled to integer points (×100).
+//  3. normalizeActionCosts returns { energy, influence, info } with denominated
+//     influence costs (×10) and info scaled to integer points (×100).
 //  4. normalizeActionYields scales yields to integer points (×100).
 
 import { describe, it, expect } from 'vitest';

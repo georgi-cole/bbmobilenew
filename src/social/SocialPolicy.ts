@@ -123,7 +123,7 @@ export function chooseTargetsFor(
       (p) => p.id !== posHolder.id && p.status.includes('nominated'),
     );
     if (nomineePool.length === 0) {
-      return [posHolder.id];
+      return [];
     }
 
     const posHolderRels = relationships[posHolder.id] ?? {};
