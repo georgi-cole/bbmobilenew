@@ -11,10 +11,6 @@ export default function Credits() {
   const exitTimeoutRef = useRef<number | null>(null);
   const [isExiting, setIsExiting] = useState(false);
 
-  const credits = useMemo(
-    () => [...creditsData],
-    [],
-  );
   const [backgroundImageUrl] = useMemo(
     () => buildCreditsAssetCandidates('assets/credits/credits-background.png'),
     [],
@@ -67,8 +63,8 @@ export default function Credits() {
         style={{ backgroundImage: `url("${backgroundImageUrl}")` }}
       >
         <div className="credits-copy" aria-label="Credits">
-          {credits.map((credit) => (
-            <p key={credit} className="credits-copy-item">
+          {creditsData.map((credit, index) => (
+            <p key={index} className="credits-copy-item">
               {credit}
             </p>
           ))}
