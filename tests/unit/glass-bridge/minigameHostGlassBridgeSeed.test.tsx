@@ -112,7 +112,7 @@ const CWGO_GAME = {
 
 const CRYSTAL_PATH_SHATTERED_GAME = {
   key: 'crystal_path_shattered',
-  title: 'Crystal Path: Shattered',
+  title: 'Crystal Path: Infinity',
   description: 'Premium Pixi version of the crystal bridge.',
   instructions: ['Cross the shattered crystal path.'],
   resultMode: 'placement' as const,

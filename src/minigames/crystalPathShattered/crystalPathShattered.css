@@ -454,10 +454,10 @@
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-/* Future rows — smaller, more transparent (perspective distance) */
+/* Future rows — smaller, but still readable behind the active spotlight */
 .cps-row:not(.is-current):not(.is-past) {
-  opacity: 0.35;
-  transform: scale(0.92);
+  opacity: 0.62;
+  transform: scale(0.95);
 }
 
 .cps-row.is-current {
@@ -466,7 +466,7 @@
 }
 
 .cps-row.is-past {
-  opacity: 0.18;
+  opacity: 0.42;
   transform: scale(0.96);
 }
 
@@ -477,7 +477,7 @@
   transform: translateY(-50%);
   font-size: 0.48rem;
   letter-spacing: 0.1em;
-  color: rgba(120, 180, 255, 0.25);
+  color: rgba(140, 205, 255, 0.48);
   pointer-events: none;
 }
 
@@ -553,7 +553,7 @@
 
 .cps-tile:disabled {
   cursor: default;
-  opacity: 0.45;
+  opacity: 0.72;
   animation: none;
 }
 
@@ -658,7 +658,7 @@
 .cps-tile-center:disabled {
   cursor: default;
   animation: none;
-  opacity: 0.4;
+  opacity: 0.68;
 }
 
 .cps-tile-center.is-mystery {
