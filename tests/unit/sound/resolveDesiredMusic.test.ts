@@ -82,9 +82,16 @@ describe('resolveDesiredMusic', () => {
     expect(resolveDesiredMusic(phaseState, '#/game')).toBe('nominations');
   });
 
-  it('stays silent on the home route when nothing else is active', () => {
-    expect(resolveDesiredMusic(makeState(), '#/')).toBe('none');
+  it('plays intro hub lounge music on the home route (#/)', () => {
+    expect(resolveDesiredMusic(makeState(), '#/')).toBe('intro_hub');
+    expect(resolveDesiredMusic(makeState(), '')).toBe('intro_hub');
+    expect(resolveDesiredMusic(makeState(), '#')).toBe('intro_hub');
+  });
+
+  it('stays silent on non-home, non-game routes', () => {
     expect(resolveDesiredMusic(makeState(), '#/leaderboard')).toBe('none');
+    expect(resolveDesiredMusic(makeState(), '#/rules')).toBe('none');
+    expect(resolveDesiredMusic(makeState(), '#/profile')).toBe('none');
   });
 
   // ── Finale phase scenes ──────────────────────────────────────────────────────

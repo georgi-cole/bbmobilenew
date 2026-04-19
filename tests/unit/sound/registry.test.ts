@@ -167,3 +167,16 @@ describe('SOUND_REGISTRY — renamed assets', () => {
     expect(resolveKey('live_voting.mp3')).toBe('tv:live_vote');
   });
 });
+
+// ── Intro hub music ───────────────────────────────────────────────────────────
+
+describe('SOUND_REGISTRY — intro hub music', () => {
+  it('"music:intro_hub_loop" is registered and points to intro_hub_lounge_music (1).mp3', () => {
+    const entry = SOUND_REGISTRY['music:intro_hub_loop'];
+    expect(entry).toBeDefined();
+    expect(entry.src).toContain('intro_hub_lounge_music (1).mp3');
+    expect(entry.category).toBe('music');
+    expect(entry.loop).toBe(true);
+    expect(entry.preload).toBe(false);
+  });
+});

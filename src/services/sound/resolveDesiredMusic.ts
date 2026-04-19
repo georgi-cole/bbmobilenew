@@ -12,7 +12,8 @@
  *  3. Spectator mode active — spectator track.
  *  4. Social module open (panel or inbox) — social track.
  *  5. Game phase (loh_comp/results, nominations, pos_ceremony etc.).
- *  6. Fallback — 'none' (silence).
+ *  6. Intro hub — lounge music when the home hub (#/) is visible.
+ *  7. Fallback — 'none' (silence).
  *
  * The complete phase model and audio rules are documented in:
  *   src/services/sound/audioPhases.ts
@@ -112,13 +113,13 @@ function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
  * AudioStateSync on every relevant state change and the result is forwarded
  * to SoundManager.setDesiredMusic().
  *
- * @param state    Slice of Redux state needed for resolution.
- * @param _hash    Current window.location.hash.
+ * @param state  Slice of Redux state needed for resolution.
+ * @param hash   Current window.location.hash.
  * @returns The desired MusicTrack, or 'none' for silence.
  */
 export function resolveDesiredMusic(
   state: MusicResolverState,
-  _hash: string,
+  hash: string,
 ): MusicTrack {
   const sceneTrack = trackForMusicScene(state.ui.musicScene);
   if (sceneTrack !== 'none') {
@@ -149,6 +150,12 @@ export function resolveDesiredMusic(
   }
   if (VETO_PHASES.has(state.game.phase)) {
     return 'veto';
+  }
+
+  // Intro hub lounge music — plays on the home screen (#/) when no game track
+  // is active (i.e. no game has been started yet this session).
+  if (hash === '#/' || hash === '' || hash === '#') {
+    return 'intro_hub';
   }
 
   return 'none';

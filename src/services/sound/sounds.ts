@@ -62,6 +62,19 @@ export const SOUNDS_BASE = `${_viteBase}assets/sounds/`;
  * deployment (local dev or GitHub Pages sub-path).
  */
 export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
+  /**
+   * Intro Hub lounge music — loops while the home hub (#/) is displayed,
+   * before the player presses Play to start a game.
+   * Asset: public/assets/sounds/intro_hub_lounge_music (1).mp3
+   */
+  'music:intro_hub_loop': {
+    key: 'music:intro_hub_loop',
+    category: 'music',
+    src: `${SOUNDS_BASE}intro_hub_lounge_music (1).mp3`,
+    preload: false,
+    volume: 0.5,
+    loop: true,
+  },
   'ui:navigate': {
     key: 'ui:navigate',
     category: 'ui',
