@@ -13,8 +13,11 @@ import {
 } from './creditsAssetPaths';
 import { buildCreditsAssetCandidates } from './creditsAssetPaths';
 import {
-  getCreditBeamDimensions,
   getCreditTextPlacement,
+  getMoonExclusionZone,
+  getTextRevealMaskDimensions,
+  getVisibleBeamDimensions,
+  textBlockIntersectsMoonZone,
 } from './creditsSceneLayout';
 
 const BASE_WIDTH = 390;
@@ -75,6 +78,9 @@ const MIN_CREDIT_FONT_SIZE = 18;
 /** Preserve airy line spacing once credits wrap to multiple lines. */
 const CREDIT_LINE_HEIGHT_RATIO = 1.38;
 const CREDIT_LINE_HEIGHT_PADDING = 8;
+const TEXT_DISTANCE_STEP = 12;
+const MIN_MASK_TRAIL = 92;
+const MAX_TEXT_DISTANCE_CHECKS = 12;
 
 type StarConfig = {
   sprite: Graphics;
@@ -678,12 +684,51 @@ export default class CreditsScene {
       bounds = this.creditsText.getLocalBounds();
     }
 
-    const beamDimensions = getCreditBeamDimensions({
+    let textDistance = placement.textDistance;
+    const dx = Math.cos(BEAM_ANGLE);
+    const dy = Math.sin(BEAM_ANGLE);
+    const moonZone = getMoonExclusionZone(width, height);
+
+    let distanceChecks = 0;
+    while (textDistance > placement.minTextDistance && distanceChecks < MAX_TEXT_DISTANCE_CHECKS) {
+      const candidateX = this.beamOriginX + dx * textDistance;
+      const candidateY = this.beamOriginY + dy * textDistance;
+      const exceedsLeftSafeArea = candidateX - bounds.width * 0.5 < placement.screenMargin;
+      const exceedsRightSafeArea = candidateX + bounds.width * 0.5 > width - placement.screenMargin;
+      const overlapsMoon = textBlockIntersectsMoonZone(
+        candidateX,
+        candidateY,
+        bounds.width,
+        bounds.height,
+        moonZone,
+      );
+
+      if (!exceedsLeftSafeArea && !exceedsRightSafeArea && !overlapsMoon) {
+        break;
+      }
+
+      textDistance = Math.max(placement.minTextDistance, textDistance - TEXT_DISTANCE_STEP);
+      distanceChecks += 1;
+    }
+
+    this.creditsText.x = this.beamOriginX + dx * textDistance;
+    this.creditsText.y = this.beamOriginY + dy * textDistance;
+
+    const maskLength = Math.max(
+      textDistance + Math.max(bounds.height + placement.beamPadding, MIN_MASK_TRAIL),
+      beamLength * 0.48,
+    );
+    const visibleBeamLength = Math.max(
+      Math.min(textDistance + Math.max(bounds.height * 0.45, 74), beamLength * 0.56),
+      beamLength * 0.44,
+    );
+    const visibleBeam = getVisibleBeamDimensions(width);
+    const textRevealMask = getTextRevealMaskDimensions({
       screenWidth: width,
       textWidth: bounds.width,
       textHeight: bounds.height,
-      textDistance: placement.textDistance,
-      beamLength,
+      textDistance,
+      maskLength,
       beamPadding: placement.beamPadding,
     });
 
@@ -691,27 +736,27 @@ export default class CreditsScene {
       originX: this.beamOriginX,
       originY: this.beamOriginY,
       angle: BEAM_ANGLE,
-      length: beamLength,
-      nearWidth: beamDimensions.outerNearWidth,
-      farWidth: beamDimensions.outerFarWidth,
+      length: visibleBeamLength,
+      nearWidth: visibleBeam.outerNearWidth,
+      farWidth: visibleBeam.outerFarWidth,
       alpha: 0.18,
     });
     this.drawBeamShape(this.beamInner, {
       originX: this.beamOriginX,
       originY: this.beamOriginY,
       angle: BEAM_ANGLE,
-      length: beamLength * 0.94,
-      nearWidth: beamDimensions.innerNearWidth,
-      farWidth: beamDimensions.innerFarWidth,
+      length: visibleBeamLength * 0.94,
+      nearWidth: visibleBeam.innerNearWidth,
+      farWidth: visibleBeam.innerFarWidth,
       alpha: 0.28,
     });
     this.drawBeamShape(this.beamMask, {
       originX: this.beamOriginX,
       originY: this.beamOriginY,
       angle: BEAM_ANGLE,
-      length: beamLength * 0.96,
-      nearWidth: beamDimensions.maskNearWidth,
-      farWidth: beamDimensions.maskFarWidth,
+      length: maskLength,
+      nearWidth: textRevealMask.nearWidth,
+      farWidth: textRevealMask.farWidth,
       alpha: 1,
     });
   }

@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   getBeamWidthAtDistance,
-  getCreditBeamDimensions,
   getCreditTextPlacement,
+  getMoonExclusionZone,
+  getTextRevealMaskDimensions,
+  getVisibleBeamDimensions,
+  textBlockIntersectsMoonZone,
 } from '../creditsSceneLayout';
 
 const BEAM_ANGLE = -2.18;
 
 describe('creditsSceneLayout', () => {
-  it('keeps the projected text centered on the beam while staying on-screen on mobile portrait', () => {
+  it('keeps the projected text lower in the beam and on-screen on mobile portrait', () => {
     const placement = getCreditTextPlacement({
       screenWidth: 390,
       screenHeight: 844,
@@ -19,79 +22,71 @@ describe('creditsSceneLayout', () => {
       beamLength: 658,
     });
 
+    expect(placement.textY).toBeGreaterThanOrEqual(490);
     expect(placement.textY).toBeLessThan(632);
-    expect(placement.maxTextWidth).toBeGreaterThanOrEqual(170);
+    expect(placement.maxTextWidth).toBeGreaterThanOrEqual(180);
+    expect(placement.maxTextWidth).toBeLessThanOrEqual(208);
     expect(placement.textX - placement.maxTextWidth / 2).toBeGreaterThanOrEqual(16);
     expect(placement.textX + placement.maxTextWidth / 2).toBeLessThanOrEqual(390 - 16);
-    expect(placement.beamPadding).toBeGreaterThanOrEqual(40);
-    expect(placement.beamPadding).toBeLessThanOrEqual(60);
   });
 
-  it('widens the beam enough to fully cover the measured credit text with a softer reveal mask', () => {
-    const placement = getCreditTextPlacement({
+  it('keeps the visible beam elegant while letting the invisible text mask be wider', () => {
+    const visibleBeam = getVisibleBeamDimensions(390);
+    const textRevealMask = getTextRevealMaskDimensions({
       screenWidth: 390,
-      screenHeight: 844,
-      designScale: 1,
-      beamOriginX: 390 * 0.78,
-      beamOriginY: 632,
-      beamAngle: BEAM_ANGLE,
-      beamLength: 658,
-    });
-    const dimensions = getCreditBeamDimensions({
-      screenWidth: 390,
-      textWidth: 228,
+      textWidth: 196,
       textHeight: 84,
-      textDistance: placement.textDistance,
-      beamLength: 658,
-      beamPadding: placement.beamPadding,
+      textDistance: 188,
+      maskLength: 304,
+      beamPadding: 48,
     });
-
-    const innerWidthAtText = getBeamWidthAtDistance(
-      dimensions.innerNearWidth,
-      dimensions.innerFarWidth,
-      placement.textDistance,
-      658,
-    );
-    const outerWidthAtText = getBeamWidthAtDistance(
-      dimensions.outerNearWidth,
-      dimensions.outerFarWidth,
-      placement.textDistance,
-      658,
+    const visibleWidthAtText = getBeamWidthAtDistance(
+      visibleBeam.outerNearWidth,
+      visibleBeam.outerFarWidth,
+      188,
+      304,
     );
     const maskWidthAtText = getBeamWidthAtDistance(
-      dimensions.maskNearWidth,
-      dimensions.maskFarWidth,
-      placement.textDistance,
-      658,
+      textRevealMask.nearWidth,
+      textRevealMask.farWidth,
+      188,
+      304,
     );
 
-    expect(innerWidthAtText).toBeGreaterThan(228);
-    expect(outerWidthAtText).toBeGreaterThanOrEqual(228 + 40);
-    expect(maskWidthAtText).toBeGreaterThan(outerWidthAtText);
-    expect(dimensions.maskFarWidth).toBeGreaterThan(dimensions.outerFarWidth);
-    expect(dimensions.outerFarWidth).toBeGreaterThan(dimensions.innerFarWidth);
+    expect(visibleBeam.outerFarWidth).toBeLessThanOrEqual(Math.round(390 * 0.35));
+    expect(visibleBeam.outerFarWidth).toBeGreaterThan(visibleBeam.innerFarWidth);
+    expect(maskWidthAtText).toBeGreaterThanOrEqual(196 + 40);
+    expect(maskWidthAtText).toBeGreaterThan(visibleWidthAtText);
   });
 
-  it('expands the far beam width when a longer credit line is measured', () => {
-    const shortTextBeam = getCreditBeamDimensions({
+  it('widens only the reveal mask when a longer credit line is measured', () => {
+    const visibleBeam = getVisibleBeamDimensions(390);
+    const expectedVisibleOuterFarWidth = Math.round(390 * 0.3);
+    const shortMask = getTextRevealMaskDimensions({
       screenWidth: 390,
       textWidth: 150,
       textHeight: 44,
-      textDistance: 280,
-      beamLength: 658,
-      beamPadding: 48,
+      textDistance: 182,
+      maskLength: 280,
+      beamPadding: 44,
     });
-    const longTextBeam = getCreditBeamDimensions({
+    const longMask = getTextRevealMaskDimensions({
       screenWidth: 390,
-      textWidth: 240,
+      textWidth: 210,
       textHeight: 84,
-      textDistance: 280,
-      beamLength: 658,
-      beamPadding: 56,
+      textDistance: 182,
+      maskLength: 302,
+      beamPadding: 52,
     });
 
-    expect(longTextBeam.innerFarWidth).toBeGreaterThan(shortTextBeam.innerFarWidth);
-    expect(longTextBeam.outerFarWidth).toBeGreaterThan(shortTextBeam.outerFarWidth);
-    expect(longTextBeam.maskFarWidth).toBeGreaterThan(shortTextBeam.maskFarWidth);
+    expect(visibleBeam.outerFarWidth).toBe(expectedVisibleOuterFarWidth);
+    expect(longMask.farWidth).toBeGreaterThan(shortMask.farWidth);
+  });
+
+  it('detects when text would overlap the moon exclusion zone', () => {
+    const moonZone = getMoonExclusionZone(390, 844);
+
+    expect(textBlockIntersectsMoonZone(moonZone.x, moonZone.y, 140, 80, moonZone)).toBe(true);
+    expect(textBlockIntersectsMoonZone(220, 470, 160, 84, moonZone)).toBe(false);
   });
 });

@@ -1,31 +1,55 @@
 const MIN_SCREEN_MARGIN = 16;
 const MAX_SCREEN_MARGIN = 24;
-const MIN_TEXT_WIDTH = 170;
+const MIN_TEXT_WIDTH = 176;
 const MIN_TEXT_HALF_WIDTH = MIN_TEXT_WIDTH * 0.5;
 const MIN_BEAM_PADDING = 40;
-const MAX_BEAM_PADDING = 60;
-// Clamp the interpolation ratio so the trapezoid math stays stable even if the
-// text sits very close to the projector source or near the far edge of the beam.
-const MIN_BEAM_TEXT_RATIO = 0.18;
-const MAX_BEAM_TEXT_RATIO = 0.95;
+const MAX_BEAM_PADDING = 56;
+const MIN_TEXT_DISTANCE_RATIO = 0.16;
+const MAX_TEXT_DISTANCE_RATIO = 0.48;
+const TARGET_TEXT_Y_RATIO = 0.61;
+const MIN_TEXT_DISTANCE = 120;
+const MAX_TEXT_DISTANCE = 260;
+const PREFERRED_TEXT_WIDTH_RATIO = 0.46;
+const MIN_PREFERRED_TEXT_WIDTH = 180;
+const MAX_PREFERRED_TEXT_WIDTH = 208;
+// Clamp the interpolation ratio so trapezoid math stays stable even when the
+// mask only extends slightly beyond the current credit text.
+const MIN_MASK_TEXT_RATIO = 0.36;
+const MAX_MASK_TEXT_RATIO = 0.9;
+const MIN_MOON_RADIUS = 34;
+const MAX_MOON_RADIUS = 48;
+const MOON_PADDING = 22;
 
 export type CreditTextPlacement = {
   textX: number;
   textY: number;
   textDistance: number;
+  minTextDistance: number;
+  maxTextDistance: number;
   maxTextWidth: number;
   baseFontSize: number;
   lineHeight: number;
   beamPadding: number;
+  screenMargin: number;
 };
 
-export type CreditBeamDimensions = {
+export type VisibleBeamDimensions = {
   outerNearWidth: number;
   outerFarWidth: number;
   innerNearWidth: number;
   innerFarWidth: number;
-  maskNearWidth: number;
-  maskFarWidth: number;
+};
+
+export type TextRevealMaskDimensions = {
+  nearWidth: number;
+  farWidth: number;
+};
+
+export type MoonExclusionZone = {
+  x: number;
+  y: number;
+  radius: number;
+  padding: number;
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -38,7 +62,7 @@ function solveFarWidth(
   textDistance: number,
   beamLength: number,
 ): number {
-  const distanceRatio = clamp(textDistance / beamLength, MIN_BEAM_TEXT_RATIO, MAX_BEAM_TEXT_RATIO);
+  const distanceRatio = clamp(textDistance / beamLength, MIN_MASK_TEXT_RATIO, MAX_MASK_TEXT_RATIO);
   const requiredWidth = Math.max(requiredWidthAtText, nearWidth + 1);
   return Math.ceil(nearWidth + ((requiredWidth - nearWidth) / distanceRatio));
 }
@@ -53,6 +77,33 @@ export function getBeamWidthAtDistance(
   return nearWidth + (farWidth - nearWidth) * distanceRatio;
 }
 
+export function getMoonExclusionZone(screenWidth: number, screenHeight: number): MoonExclusionZone {
+  return {
+    x: screenWidth * 0.2,
+    y: screenHeight * 0.54,
+    radius: clamp(screenWidth * 0.1, MIN_MOON_RADIUS, MAX_MOON_RADIUS),
+    padding: MOON_PADDING,
+  };
+}
+
+export function textBlockIntersectsMoonZone(
+  textX: number,
+  textY: number,
+  textWidth: number,
+  textHeight: number,
+  moonZone: MoonExclusionZone,
+): boolean {
+  const halfWidth = textWidth * 0.5;
+  const halfHeight = textHeight * 0.5;
+  const nearestX = clamp(moonZone.x, textX - halfWidth, textX + halfWidth);
+  const nearestY = clamp(moonZone.y, textY - halfHeight, textY + halfHeight);
+  const dx = moonZone.x - nearestX;
+  const dy = moonZone.y - nearestY;
+  const radius = moonZone.radius + moonZone.padding;
+  // Compare squared distances to avoid an unnecessary square-root on every layout pass.
+  return (dx * dx) + (dy * dy) < radius * radius;
+}
+
 export function getCreditTextPlacement(options: {
   screenWidth: number;
   screenHeight: number;
@@ -65,9 +116,17 @@ export function getCreditTextPlacement(options: {
   const dx = Math.cos(options.beamAngle);
   const dy = Math.sin(options.beamAngle);
   const screenMargin = clamp(options.screenWidth * 0.05, MIN_SCREEN_MARGIN, MAX_SCREEN_MARGIN);
-  const targetTextY = Math.max(options.screenHeight * 0.46, 308);
-  const minTextDistance = Math.max(options.screenHeight * 0.28, 210);
-  const maxTextDistance = options.beamLength * 0.72;
+  const preferredTextWidth = clamp(
+    options.screenWidth * PREFERRED_TEXT_WIDTH_RATIO,
+    MIN_PREFERRED_TEXT_WIDTH,
+    MAX_PREFERRED_TEXT_WIDTH,
+  );
+  const targetTextY = Math.max(options.screenHeight * TARGET_TEXT_Y_RATIO, 360);
+  const minTextDistance = Math.max(options.screenHeight * MIN_TEXT_DISTANCE_RATIO, MIN_TEXT_DISTANCE);
+  const maxTextDistance = Math.min(
+    options.beamLength * MAX_TEXT_DISTANCE_RATIO,
+    MAX_TEXT_DISTANCE,
+  );
   let textDistance = clamp(
     (targetTextY - options.beamOriginY) / dy,
     minTextDistance,
@@ -96,44 +155,49 @@ export function getCreditTextPlacement(options: {
     textX,
     textY,
     textDistance,
-    maxTextWidth: Math.floor(Math.min(options.screenWidth - screenMargin * 2, availableHalfWidth * 2)),
-    baseFontSize: Math.max(20, Math.round(24 * options.designScale)),
-    lineHeight: Math.max(30, Math.round(38 * options.designScale)),
-    beamPadding: Math.round(clamp(options.screenWidth * 0.14, MIN_BEAM_PADDING, MAX_BEAM_PADDING)),
+    minTextDistance,
+    maxTextDistance,
+    maxTextWidth: Math.floor(Math.min(
+      preferredTextWidth,
+      options.screenWidth - screenMargin * 2,
+      availableHalfWidth * 2,
+    )),
+    baseFontSize: Math.max(19, Math.round(23 * options.designScale)),
+    lineHeight: Math.max(28, Math.round(34 * options.designScale)),
+    beamPadding: Math.round(clamp(options.screenWidth * 0.12, MIN_BEAM_PADDING, MAX_BEAM_PADDING)),
+    screenMargin,
   };
 }
 
-export function getCreditBeamDimensions(options: {
+export function getVisibleBeamDimensions(screenWidth: number): VisibleBeamDimensions {
+  const outerFarWidth = Math.round(clamp(screenWidth * 0.3, 106, screenWidth * 0.33));
+  const innerFarWidth = Math.round(outerFarWidth * 0.54);
+
+  return {
+    outerNearWidth: 8,
+    outerFarWidth,
+    innerNearWidth: 4,
+    innerFarWidth: Math.max(innerFarWidth, 60),
+  };
+}
+
+export function getTextRevealMaskDimensions(options: {
   screenWidth: number;
   textWidth: number;
   textHeight: number;
   textDistance: number;
-  beamLength: number;
+  maskLength: number;
   beamPadding: number;
-}): CreditBeamDimensions {
-  const outerNearWidth = 12;
-  const innerNearWidth = 8;
-  const maskNearWidth = 16;
-  const diagonalAllowance = Math.max(12, Math.min(26, options.textHeight * 0.35));
-  const outerTargetWidth = options.textWidth + options.beamPadding + diagonalAllowance;
-  const innerTargetWidth = options.textWidth + options.beamPadding * 0.66 + diagonalAllowance;
-  const maskTargetWidth = options.textWidth + options.beamPadding + Math.max(24, options.textHeight * 0.45);
+}): TextRevealMaskDimensions {
+  const nearWidth = 16;
+  const diagonalAllowance = Math.max(22, Math.min(34, options.textHeight * 0.42));
+  const targetWidthAtText = options.textWidth + options.beamPadding + diagonalAllowance;
 
   return {
-    outerNearWidth,
-    outerFarWidth: Math.max(
-      Math.ceil(options.screenWidth * 0.64),
-      solveFarWidth(outerNearWidth, outerTargetWidth, options.textDistance, options.beamLength),
-    ),
-    innerNearWidth,
-    innerFarWidth: Math.max(
-      Math.ceil(options.screenWidth * 0.42),
-      solveFarWidth(innerNearWidth, innerTargetWidth, options.textDistance, options.beamLength),
-    ),
-    maskNearWidth,
-    maskFarWidth: Math.max(
-      Math.ceil(options.screenWidth * 0.74),
-      solveFarWidth(maskNearWidth, maskTargetWidth, options.textDistance, options.beamLength),
+    nearWidth,
+    farWidth: Math.max(
+      Math.ceil(options.screenWidth * 0.48),
+      solveFarWidth(nearWidth, targetWidthAtText, options.textDistance, options.maskLength),
     ),
   };
 }
