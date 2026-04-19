@@ -22,15 +22,9 @@ export default function KolequantSplash({ duration = 1200, onFinish }: Props) {
 
   return (
     <div className="kq-splash" style={splashStyle} aria-hidden="true">
-      <div className="kq-splash__center">
-        <span className="kq-splash__electric kq-splash__electric--left" />
-        <div className="kq-splash__logo-frame">
-          <img src={LOGO_SRC} alt="Kolequant" className="kq-splash__logo" draggable={false} decoding="async" />
-        </div>
-        <span className="kq-splash__electric kq-splash__electric--right" />
-      </div>
+      <img src={LOGO_SRC} alt="Kolequant" className="kq-splash__logo" draggable={false} decoding="async" />
       {/* Copyright pinned to the bottom of the splash; animates with the logo */}
-      <div className="kq-splash__copyright">© 2026 copyright sound</div>
+      <div className="kq-splash__copyright">© 2026</div>
     </div>
   );
 }
