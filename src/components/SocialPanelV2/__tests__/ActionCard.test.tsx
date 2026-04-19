@@ -168,24 +168,44 @@ describe('ActionCard – ARIA attributes', () => {
 });
 
 describe('ActionCard – hover / focus preview', () => {
-  it('calls onHoverFocus with action id on mouseEnter', () => {
+  it('calls onHoverFocus with action id on mouse pointer enter', () => {
     const onHoverFocus = vi.fn();
     render(<ActionCard action={baseAction} onHoverFocus={onHoverFocus} />);
-    fireEvent.mouseEnter(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /Compliment/i }), { pointerType: 'mouse' });
     expect(onHoverFocus).toHaveBeenCalledWith('compliment');
   });
 
-  it('calls onHoverFocus with action id on focus', () => {
+  it('does not call onHoverFocus on touch pointer enter', () => {
     const onHoverFocus = vi.fn();
     render(<ActionCard action={baseAction} onHoverFocus={onHoverFocus} />);
-    fireEvent.focus(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /Compliment/i }), { pointerType: 'touch' });
+    expect(onHoverFocus).not.toHaveBeenCalled();
+  });
+
+  it('calls onHoverFocus with action id on focus-visible focus', () => {
+    const onHoverFocus = vi.fn();
+    render(<ActionCard action={baseAction} onHoverFocus={onHoverFocus} />);
+    const card = screen.getByRole('button', { name: /Compliment/i });
+    const matchesSpy = vi.spyOn(card, 'matches').mockImplementation((selector: string) => selector === ':focus-visible');
+    fireEvent.focus(card);
     expect(onHoverFocus).toHaveBeenCalledWith('compliment');
+    matchesSpy.mockRestore();
+  });
+
+  it('does not call onHoverFocus on non-focus-visible focus', () => {
+    const onHoverFocus = vi.fn();
+    render(<ActionCard action={baseAction} onHoverFocus={onHoverFocus} />);
+    const card = screen.getByRole('button', { name: /Compliment/i });
+    const matchesSpy = vi.spyOn(card, 'matches').mockImplementation(() => false);
+    fireEvent.focus(card);
+    expect(onHoverFocus).not.toHaveBeenCalled();
+    matchesSpy.mockRestore();
   });
 
   it('does not call onHoverFocus when the card is disabled', () => {
     const onHoverFocus = vi.fn();
     render(<ActionCard action={baseAction} disabled onHoverFocus={onHoverFocus} />);
-    fireEvent.mouseEnter(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /Compliment/i }), { pointerType: 'mouse' });
     fireEvent.focus(screen.getByRole('button', { name: /Compliment/i }));
     expect(onHoverFocus).not.toHaveBeenCalled();
   });

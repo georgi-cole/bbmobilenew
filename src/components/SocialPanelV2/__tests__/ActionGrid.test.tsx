@@ -161,12 +161,21 @@ describe('ActionGrid – keyboard navigation', () => {
 });
 
 describe('ActionGrid – preview popup', () => {
+  it('does not show the preview popup when an action is clicked', () => {
+    render(<ActionGrid />);
+    const firstCard = screen.getByRole('button', {
+      name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
+    });
+    fireEvent.click(firstCard);
+    expect(screen.queryByText('Select target(s) to preview')).toBeNull();
+  });
+
   it('shows "Select target(s) to preview" when no targets are selected on hover', () => {
     render(<ActionGrid />);
     const firstCard = screen.getByRole('button', {
       name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
-    fireEvent.mouseEnter(firstCard);
+    fireEvent.pointerEnter(firstCard, { pointerType: 'mouse' });
     expect(screen.getByText('Select target(s) to preview')).toBeDefined();
   });
 
@@ -181,7 +190,7 @@ describe('ActionGrid – preview popup', () => {
     const firstCard = screen.getByRole('button', {
       name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
-    fireEvent.mouseEnter(firstCard);
+    fireEvent.pointerEnter(firstCard, { pointerType: 'mouse' });
     expect(screen.getByText('Alice')).toBeDefined();
   });
 
@@ -191,7 +200,7 @@ describe('ActionGrid – preview popup', () => {
       name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     const grid = firstCard.closest('[role="group"]')!;
-    fireEvent.mouseEnter(firstCard);
+    fireEvent.pointerEnter(firstCard, { pointerType: 'mouse' });
     expect(screen.queryByText('Select target(s) to preview')).not.toBeNull();
     fireEvent.mouseLeave(grid);
     expect(screen.queryByText('Select target(s) to preview')).toBeNull();

@@ -128,8 +128,12 @@ export default function ActionCard({
       aria-pressed={selected}
       onClick={handleActivate}
       onKeyDown={handleKeyDown}
-      onMouseEnter={() => !isDisabled && onHoverFocus?.(id)}
-      onFocus={() => !isDisabled && onHoverFocus?.(id)}
+      onPointerEnter={(e) => {
+        if (!isDisabled && e.pointerType === 'mouse') onHoverFocus?.(id);
+      }}
+      onFocus={(e) => {
+        if (!isDisabled && e.currentTarget.matches(':focus-visible')) onHoverFocus?.(id);
+      }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
