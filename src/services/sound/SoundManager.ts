@@ -107,10 +107,9 @@ export type { MusicTrack } from './musicTracks';
  * the manager can enforce the single-channel invariant.
  *
  * Priority (highest → lowest):
- * minigame > cinematic > social > spectator > phase > introhub
+ * minigame > cinematic > social > spectator > phase
  */
 export type BgmOwner =
-  | 'introhub'
   | 'phase'
   | 'spectator'
   | 'social'
@@ -144,7 +143,7 @@ function _makeMusicEl(src: string, volume: number): HTMLAudioElement {
   el.src = src;
   el.loop = true;
   el.volume = Math.max(0, Math.min(1, volume));
-  el.preload = 'auto';
+  el.preload = 'none';
   return el;
 }
 
@@ -176,7 +175,7 @@ class _SoundManager {
   private _currentBgmOwner: BgmOwner | null = null;
   // Per-owner desired BGM map — allows automatic fallback when an owner releases.
   // Priority order (lowest → highest):
-  // introhub < phase < spectator < social < cinematic < minigame
+  // phase < spectator < social < cinematic < minigame
   // The last element wins; iterate in reverse to find the highest-priority active owner.
   private _desiredPerOwner: Partial<Record<BgmOwner, { key: string; opts?: PlayOptions }>> = {};
   // SFX: pool of HTMLAudioElements per key
@@ -239,9 +238,6 @@ class _SoundManager {
     this._extraRegistry.set(entry.key, entry);
     // Clear any prior failure flag so the newly registered entry gets a chance.
     this._failedKeys.delete(entry.key);
-    if (entry.key === 'music:remote_intro' && this._desiredMusicTrack === 'introhub') {
-      void this.syncMusic();
-    }
   }
 
   // ── Playback ────────────────────────────────────────────────────────────────
@@ -699,9 +695,6 @@ class _SoundManager {
 
   private _resolveMusicKey(track: MusicTrack): string | null {
     if (track === 'none') return null;
-    if (track === 'introhub' && this._extraRegistry.has('music:remote_intro')) {
-      return 'music:remote_intro';
-    }
     if (track === 'competition' && this._extraRegistry.has('music:remote_main')) {
       return 'music:remote_main';
     }
@@ -1011,9 +1004,9 @@ if (_audioDebug && typeof window !== 'undefined') {
     listKeys: (): string[] => Object.keys(SOUND_REGISTRY),
     /** Manually play a SFX key: __audioDebug.play('ui:confirm') */
     play: (key: string) => void SoundManager.play(key),
-    /** Manually start a music track: __audioDebug.playMusic('music:intro_hub_loop') */
+    /** Manually start a music track: __audioDebug.playMusic('music:hoh_comp_general') */
     playMusic: (key: string) => void SoundManager.playMusic(key),
-    /** Request BGM with an owner: __audioDebug.requestBgm('music:intro_hub_loop', 'introhub') */
+    /** Request BGM with an owner: __audioDebug.requestBgm('music:hoh_comp_general', 'phase') */
     requestBgm: (key: string, owner: string) => SoundManager.requestBgm(key, owner as BgmOwner),
     /** Immediately unlock audio from the current gesture. */
     unlockFromGesture: (musicOnly = false) => SoundManager.unlockFromGesture({ musicOnly }),

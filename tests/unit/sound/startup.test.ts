@@ -52,7 +52,6 @@ function makeStore(audioOverrides?: Partial<SettingsState['audio']>) {
 beforeEach(() => {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem('introhub_sfx_on');
-  localStorage.removeItem('introhub_music_on');
   syncRuntimeAudioSettings(DEFAULT_SETTINGS.audio);
   vi.spyOn(SoundManager, 'play').mockResolvedValue();
   vi.spyOn(SoundManager, 'playMusic').mockResolvedValue();
@@ -64,7 +63,6 @@ beforeEach(() => {
 afterEach(() => {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem('introhub_sfx_on');
-  localStorage.removeItem('introhub_music_on');
   vi.restoreAllMocks();
 });
 
@@ -74,7 +72,6 @@ describe('SoundManager startup defaults', () => {
   it('initializes with DEFAULT_SETTINGS.audio.musicOn=true → music category enabled', () => {
     makeStore(); // DEFAULT_SETTINGS: musicOn=true
     expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(false);
-    expect(window._introhubMusicOn).toBe(true);
   });
 
   it('initializes with DEFAULT_SETTINGS.audio.sfxOn=true → all SFX categories enabled', () => {
@@ -172,7 +169,6 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
     store.dispatch(setAudio({ musicOn: false }));
 
     expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(true);
-    expect(window._introhubMusicOn).toBe(false);
   });
 
   it('updating sfxVolume via setAudio updates SFX category volumes', () => {

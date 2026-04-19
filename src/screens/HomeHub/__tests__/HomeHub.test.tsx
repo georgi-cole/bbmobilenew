@@ -78,11 +78,6 @@ vi.mock('../../../components/PermissionPrompts/PermissionPrompts', () => ({
   default: () => <div data-testid="permission-prompts" />,
 }));
 
-vi.mock('../../../components/SoundConsentPopup/SoundConsentPopup', () => ({
-  HUB_MUSIC_CONSENT_KEY: 'bb:hubMusicConsent',
-  default: () => <div data-testid="sound-consent-popup" />,
-}));
-
 vi.mock('../../../components/AssetPreloaderOverlay/AssetPreloaderOverlay', () => ({
   default: () => <div data-testid="asset-preloader-overlay" />,
 }));
@@ -114,7 +109,6 @@ describe('HomeHub', () => {
     sessionStorage.clear();
     localStorage.clear();
     delete (window as Window & { game?: Record<string, unknown> }).game;
-    localStorage.setItem('bb:hubMusicConsent', 'granted');
     mockState.game = {
       gameId: 'game-A',
       players: [],

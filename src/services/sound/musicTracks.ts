@@ -1,6 +1,5 @@
 export type MusicTrack =
   | 'none'
-  | 'introhub'
   | 'spectator'
   | 'social'
   | 'competition'
@@ -14,7 +13,6 @@ export type MusicTrack =
   | 'jury_voting';
 
 export const MUSIC_TRACK_SOUND_KEYS: Readonly<Record<Exclude<MusicTrack, 'none'>, string>> = {
-  introhub: 'music:intro_hub_loop',
   spectator: 'music:spectator_loop',
   social: 'music:social_module',
   competition: 'music:hoh_comp_general',
@@ -29,8 +27,6 @@ export const MUSIC_TRACK_SOUND_KEYS: Readonly<Record<Exclude<MusicTrack, 'none'>
 };
 
 const SOUND_KEY_TO_TRACK: Readonly<Record<string, MusicTrack>> = {
-  'music:intro_hub_loop': 'introhub',
-  'music:remote_intro': 'introhub',
   'music:remote_main': 'competition',
   'music:spectator_loop': 'spectator',
   'music:social_module': 'social',

@@ -38,7 +38,6 @@ describe('FILENAME_ALIAS_MAP', () => {
 describe('resolveKey()', () => {
   it('returns canonical key unchanged when already in registry', () => {
     expect(resolveKey('tv:live_vote')).toBe('tv:live_vote');
-    expect(resolveKey('music:intro_hub_loop')).toBe('music:intro_hub_loop');
     expect(resolveKey('ui:navigate')).toBe('ui:navigate');
     expect(resolveKey('music:nominations_main')).toBe('music:nominations_main');
     expect(resolveKey('music:veto_phase')).toBe('music:veto_phase');
@@ -63,7 +62,7 @@ describe('resolveKey()', () => {
   it('auto-derives prefix:rest keys from standard-named stems', () => {
     expect(resolveKey('ui_navigate')).toBe('ui:navigate');
     expect(resolveKey('tv_battleback')).toBe('tv:battleback');
-    expect(resolveKey('music_intro_hub_loop')).toBe('music:intro_hub_loop');
+    expect(resolveKey('music_hoh_comp_general')).toBe('music:hoh_comp_general');
     expect(resolveKey('player_evicted')).toBe('player:evicted');
     expect(resolveKey('minigame_start')).toBe('minigame:start');
   });
@@ -117,5 +116,11 @@ describe('SOUND_REGISTRY — new entries', () => {
     const entry = SOUND_REGISTRY['music:hoh_comp_general'];
     expect(entry.category).toBe('music');
     expect(entry.loop).toBe(true);
+  });
+
+  it('does not mark any sound entry for eager preload', () => {
+    for (const entry of Object.values(SOUND_REGISTRY)) {
+      expect(entry.preload, `${entry.key} should load on demand`).toBe(false);
+    }
   });
 });

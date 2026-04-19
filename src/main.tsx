@@ -46,13 +46,10 @@ window.__store = store
 // SoundManager is fully initialised (calls are no-ops until init resolves).
 declare global {
   interface Window {
-    _introhubMusicOn?: boolean;
     _introhubSfxOn?: boolean;
-    toggleIntroHubMusic?: () => void;
     toggleIntroHubSfx?: () => void;
   }
 }
-const MUSIC_STORAGE_KEY = 'introhub_music_on';
 const SFX_STORAGE_KEY   = 'introhub_sfx_on';
 
 const initAudio = store.getState().settings.audio;
@@ -61,17 +58,6 @@ const initAudio = store.getState().settings.audio;
 // intro-hub localStorage flags can never silently mute the game on startup.
 syncRuntimeAudioSettings(initAudio);
 
-window.toggleIntroHubMusic = function () {
-  const nextMusicOn = !store.getState().settings.audio.musicOn;
-  try {
-    localStorage.setItem(MUSIC_STORAGE_KEY, String(nextMusicOn));
-  } catch (err) {
-    console.warn('[introHub] Failed to persist music toggle state:', err);
-  }
-  console.debug('[introHub] toggleIntroHubMusic ->', nextMusicOn);
-  // Keep Redux settings in sync so mute state is preserved correctly.
-  store.dispatch(setAudio({ musicOn: nextMusicOn }));
-};
 window.toggleIntroHubSfx = function () {
   const nextSfxOn = !store.getState().settings.audio.sfxOn;
   try {

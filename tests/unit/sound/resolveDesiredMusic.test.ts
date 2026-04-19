@@ -82,13 +82,9 @@ describe('resolveDesiredMusic', () => {
     expect(resolveDesiredMusic(phaseState, '#/game')).toBe('nominations');
   });
 
-  it('uses introhub music only on the home route when nothing else is active', () => {
-    expect(resolveDesiredMusic(makeState(), '#/')).toBe('introhub');
+  it('stays silent on the home route when nothing else is active', () => {
+    expect(resolveDesiredMusic(makeState(), '#/')).toBe('none');
     expect(resolveDesiredMusic(makeState(), '#/leaderboard')).toBe('none');
-  });
-
-  it('suppresses introhub music after the current game has already started', () => {
-    expect(resolveDesiredMusic(makeState(), '#/', { canPlayIntroHubMusic: false })).toBe('none');
   });
 
   // ── Finale phase scenes ──────────────────────────────────────────────────────

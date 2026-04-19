@@ -63,16 +63,6 @@ export const loadRemoteConfig = createAsyncThunk<RemoteConfig | null>(
     const config = await fetchRemoteConfig();
 
     // Register remote music tracks so they can be requested by key.
-    if (config?.season?.music?.introTrackUrl) {
-      SoundManager.registerDynamic({
-        key: 'music:remote_intro',
-        category: 'music',
-        src: config.season.music.introTrackUrl,
-        preload: false,
-        volume: 0.5,
-        loop: true,
-      });
-    }
     if (config?.season?.music?.mainTrackUrl) {
       SoundManager.registerDynamic({
         key: 'music:remote_main',
@@ -138,10 +128,6 @@ export const selectRemoteIntroHubBg = (s: RootState) =>
 /** Returns the remote intro-hub overlay opacity (0–1), or null. */
 export const selectRemoteIntroHubOverlay = (s: RootState) =>
   s.remoteConfig?.config?.season?.introHub?.overlayOpacity ?? null;
-
-/** Returns the remote intro music track URL, or null. */
-export const selectRemoteIntroMusicUrl = (s: RootState) =>
-  s.remoteConfig?.config?.season?.music?.introTrackUrl ?? null;
 
 /** Returns the player overrides array, or an empty array. */
 export const selectRemotePlayerOverrides = (s: RootState) =>

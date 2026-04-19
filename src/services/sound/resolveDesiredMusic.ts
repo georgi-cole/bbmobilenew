@@ -12,8 +12,7 @@
  *  3. Spectator mode active — spectator track.
  *  4. Social module open (panel or inbox) — social track.
  *  5. Game phase (loh_comp/results, nominations, pos_ceremony etc.).
- *  6. Intro-hub (hash === '#/' and canPlayIntroHubMusic === true).
- *  7. Fallback — 'none' (silence).
+ *  6. Fallback — 'none' (silence).
  *
  * The complete phase model and audio rules are documented in:
  *   src/services/sound/audioPhases.ts
@@ -33,19 +32,6 @@ export interface MusicResolverState {
   };
   social: Pick<RootState['social'], 'panelOpen' | 'incomingInboxOpen'>;
   ui: { musicScene: MusicScene };
-}
-
-export interface ResolveDesiredMusicOptions {
-  /**
-   * When false the intro-hub music is suppressed even on the '#/' hash.
-   * Set to !hasStartedHomeHubGame(gameId) so that after the user presses
-   * Play the introhub track is permanently blocked for that session.
-   *
-   * Phase rule: once Play is pressed the splash/intro-hub music can never
-   * be re-triggered for the current game, even if the user navigates back
-   * to the HomeHub screen via the home button.
-   */
-  canPlayIntroHubMusic?: boolean;
 }
 
 /**
@@ -127,16 +113,13 @@ function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
  * to SoundManager.setDesiredMusic().
  *
  * @param state    Slice of Redux state needed for resolution.
- * @param hash     Current window.location.hash (used for intro-hub gate).
- * @param options  Additional resolution options (canPlayIntroHubMusic).
+ * @param _hash    Current window.location.hash.
  * @returns The desired MusicTrack, or 'none' for silence.
  */
 export function resolveDesiredMusic(
   state: MusicResolverState,
-  hash: string,
-  options: ResolveDesiredMusicOptions = {},
+  _hash: string,
 ): MusicTrack {
-  const canPlayIntroHubMusic = options.canPlayIntroHubMusic ?? true;
   const sceneTrack = trackForMusicScene(state.ui.musicScene);
   if (sceneTrack !== 'none') {
     return sceneTrack;
@@ -166,10 +149,6 @@ export function resolveDesiredMusic(
   }
   if (VETO_PHASES.has(state.game.phase)) {
     return 'veto';
-  }
-
-  if (canPlayIntroHubMusic && (hash === '' || hash === '#' || hash === '#/')) {
-    return 'introhub';
   }
 
   return 'none';

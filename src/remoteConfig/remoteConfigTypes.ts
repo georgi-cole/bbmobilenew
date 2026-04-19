@@ -41,9 +41,9 @@ export interface RemoteIntroHub {
 
 export interface RemoteMusic {
   /**
-   * Remote URL for the intro-hub ambient loop.
+   * Legacy remote URL for the removed intro-hub ambient loop.
    * Must begin with http:// or https://.
-   * When set, replaces the bundled music:intro_hub_loop track.
+   * Retained for backward-compatible config parsing but ignored at runtime.
    */
   introTrackUrl?: string;
   /**

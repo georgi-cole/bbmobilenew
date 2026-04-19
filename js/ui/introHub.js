@@ -1,7 +1,7 @@
 // MODULE: introHub.js
 // Intro Hub UI — side utility button overlay
 //
-// Chips: Music, Sounds (top-left), Houseguests, Achievements, Feedback (bottom-left),
+// Chips: Sounds (top-left), Houseguests, Achievements, Feedback (bottom-left),
 //        Store, Settings, Share (bottom-right)
 //
 // Notification dots are driven by window.game.hubNotifications (object keyed by chip id).
@@ -28,8 +28,7 @@
   //   Array order does not affect visual stacking — only the position class does.
   const CHIPS = [
     // Top-left corner (stacked top → bottom)
-    { id: 'music', label: 'Music', icon: 'music', position: 'top-left-2' },
-    { id: 'sounds', label: 'Sounds', icon: 'sound', position: 'top-left-3' },
+    { id: 'sounds', label: 'Sounds', icon: 'sound', position: 'top-left-2' },
     // Bottom-left corner (stacked bottom → top)
     { id: 'houseguests', label: 'Houseguests', icon: 'housemates', position: 'bottom-left' },
     { id: 'achievements', label: 'Achievements', icon: 'achievements', position: 'bottom-left-2' },
@@ -1050,9 +1049,6 @@
       case 'houseguests':
         openHouseguests();
         break;
-      case 'music':
-        toggleMusic();
-        break;
       case 'sounds':
         toggleSounds();
         break;
@@ -1111,17 +1107,6 @@
   }
 
   /**
-   * Toggle music on/off via window.toggleIntroHubMusic helper.
-   * Updates chip inactive visual to reflect state.
-   */
-  function toggleMusic() {
-    if (typeof global.toggleIntroHubMusic === 'function') {
-      global.toggleIntroHubMusic();
-    }
-    toggleChipVisual('music', !!global._introhubMusicOn);
-  }
-
-  /**
    * Toggle SFX on/off via window.toggleIntroHubSfx helper.
    * Updates chip inactive visual to reflect state.
    */
@@ -1134,7 +1119,7 @@
 
   /**
    * Toggle the inactive visual state of a chip.
-   * @param {string} id     - Chip id (e.g. 'music', 'sounds')
+   * @param {string} id     - Chip id (e.g. 'sounds')
    * @param {boolean} active - true = active (no overlay), false = inactive (dimmed + slash)
    */
   function toggleChipVisual(id, active) {
@@ -1200,7 +1185,6 @@
     refreshNotifications();
 
     // Apply persisted audio visual state so chips reflect current on/off status
-    toggleChipVisual('music', !!global._introhubMusicOn);
     toggleChipVisual('sounds', !!global._introhubSfxOn);
 
     console.info('[introHub] Initialized with', CHIPS.length, 'chips');
