@@ -473,7 +473,7 @@ export default function CrystalPathShatteredGame({
           ...p,
           sp: newSp,
           effects: res.newEffects,
-          furthestRow: progressedRow,
+          furthestRow: p.furthestRow,
           eliminated,
           eliminatedRow: eliminated ? progressedRow : p.eliminatedRow,
         };
@@ -485,6 +485,7 @@ export default function CrystalPathShatteredGame({
       );
       queueTimeout(() => {
         setActiveAnimation(null);
+        setPlayers((cur) => cur.map((p) => (p.id === playerId ? { ...p, furthestRow: progressedRow } : p)));
         if (eliminated) {
           if (runner.isHuman && isAsyncHumanRun) {
             setPhase('complete');

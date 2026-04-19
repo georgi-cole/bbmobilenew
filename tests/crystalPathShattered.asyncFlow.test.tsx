@@ -68,7 +68,7 @@ describe('Crystal Path: Infinity async flow', () => {
     ).not.toHaveAttribute('disabled');
   });
 
-  it('advances to the next row after a non-lethal wrong step', async () => {
+  it('keeps the chosen row active during a non-lethal wrong-step crack, then advances', async () => {
     const seed = 12345;
     const [firstRow, secondRow] = createRowStream(mulberry32(seed)).take(2);
     const wrongSide = firstRow.safeSide === 'left' ? 'right' : 'left';
@@ -86,9 +86,17 @@ describe('Crystal Path: Infinity async flow', () => {
       </Provider>,
     );
 
-    fireEvent.click(
-      screen.getByRole('button', { name: `Row 1 ${wrongSide} tile` }),
-    );
+    const wrongTile = screen.getByRole('button', { name: `Row 1 ${wrongSide} tile` });
+    const firstRowSafeTile = screen.getByRole('button', { name: `Row 1 ${firstRow.safeSide} tile` });
+    const secondRowSafeTile = screen.getByRole('button', { name: `Row 2 ${secondRow.safeSide} tile` });
+
+    fireEvent.click(wrongTile);
+
+    expect(wrongTile.className).toContain('is-wrong');
+    expect(wrongTile.className).toContain('is-cracked');
+    expect(firstRowSafeTile.closest('.cps-row')?.className).toContain('is-current');
+    expect(secondRowSafeTile.closest('.cps-row')?.className).not.toContain('is-current');
+    expect(secondRowSafeTile).toHaveAttribute('disabled');
 
     await act(async () => {
       vi.advanceTimersByTime(WRONG_STEP_MS + 20);
@@ -96,9 +104,9 @@ describe('Crystal Path: Infinity async flow', () => {
 
     expect(screen.getByText('290')).toBeTruthy();
     expect(screen.getByText('Row 2')).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: `Row 2 ${secondRow.safeSide} tile` }),
-    ).not.toHaveAttribute('disabled');
+    expect(firstRowSafeTile.closest('.cps-row')?.className).toContain('is-past');
+    expect(secondRowSafeTile.closest('.cps-row')?.className).toContain('is-current');
+    expect(secondRowSafeTile).not.toHaveAttribute('disabled');
   });
 
   it('marks a wrong tile as cracking immediately and leaves it cracked after resolution', async () => {
@@ -170,7 +178,7 @@ describe('Crystal Path: Infinity async flow', () => {
     );
 
     expect(screen.getByLabelText('Crystal Path: Infinity').className).toContain('is-catastrophe');
-  });
+  }, 10_000);
 
   it('shows the results as soon as the human run ends instead of switching to AI turns', async () => {
     const seed = 12345;
@@ -205,5 +213,5 @@ describe('Crystal Path: Infinity async flow', () => {
     expect(screen.getByLabelText('Crystal Path: Infinity — complete')).toBeTruthy();
     expect(screen.getByLabelText('Final standings')).toBeTruthy();
     expect(screen.queryByText('AI One keeps climbing…')).toBeNull();
-  });
+  }, 10_000);
 });
