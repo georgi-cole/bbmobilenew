@@ -12,42 +12,10 @@ import {
   CREDITS_CITY_SOURCES,
 } from './creditsAssetPaths';
 import { buildCreditsAssetCandidates } from './creditsAssetPaths';
-import {
-  getCreditTextPlacement,
-  getMoonExclusionZone,
-  getTextRevealMaskDimensions,
-  getVisibleBeamDimensions,
-  textBlockIntersectsMoonZone,
-} from './creditsSceneLayout';
 
 const BASE_WIDTH = 390;
 const BASE_HEIGHT = 844;
-const SMALL_STAR_COUNT = 30;
-const MEDIUM_STAR_COUNT = 14;
-const HERO_STAR_COUNT = 4;
-const STAR_GROUPS = [
-  {
-    count: SMALL_STAR_COUNT,
-    radiusRange: [0.45, 0.9] as const,
-    alphaRange: [0.12, 0.24] as const,
-    amplitudeRange: [0.02, 0.05] as const,
-    speedRange: [0.18, 0.34] as const,
-  },
-  {
-    count: MEDIUM_STAR_COUNT,
-    radiusRange: [0.85, 1.45] as const,
-    alphaRange: [0.22, 0.4] as const,
-    amplitudeRange: [0.04, 0.08] as const,
-    speedRange: [0.22, 0.42] as const,
-  },
-  {
-    count: HERO_STAR_COUNT,
-    radiusRange: [1.5, 2.2] as const,
-    alphaRange: [0.4, 0.62] as const,
-    amplitudeRange: [0.05, 0.1] as const,
-    speedRange: [0.16, 0.32] as const,
-  },
-] as const;
+const STAR_COUNT = 50;
 const WINDOW_LIGHT_COUNT = 60;
 const CREDIT_CYCLE_SECONDS = 4.5;
 const SKY_TEXTURE_WIDTH = 64;
@@ -64,23 +32,12 @@ const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial R
 const KOLEQUANT_LOGO_SOURCES = buildCreditsAssetCandidates('assets/kolequant.png');
 
 /** Beam angle in radians from +x, aimed from right rooftop toward upper center-left. */
-const BEAM_ANGLE = -2.03;
+const BEAM_ANGLE = -2.18;
 
 /** Duration in seconds for the projector beam to fade in at scene start. */
 const BEAM_INTRO_DURATION = 1.8;
 /** Additional delay after beam before credits text appears. */
 const TEXT_DELAY_AFTER_BEAM = 0.8;
-/** Keep projected credits readable on narrow portrait screens. */
-const MIN_CREDIT_FONT_SIZE = 18;
-/** Preserve airy line spacing once credits wrap to multiple lines. */
-const CREDIT_LINE_HEIGHT_RATIO = 1.38;
-const CREDIT_LINE_HEIGHT_PADDING = 8;
-const TEXT_DISTANCE_STEP = 12;
-const MIN_MASK_TRAIL = 92;
-const MAX_TEXT_DISTANCE_CHECKS = 12;
-const CREDIT_WRAP_STEP = 10;
-const MIN_CREDIT_WRAP_WIDTH = 160;
-const MAX_TEXT_FIT_ADJUSTMENTS = 4;
 
 type StarConfig = {
   sprite: Graphics;
@@ -313,23 +270,21 @@ export default class CreditsScene {
   }
 
   private createStars(): void {
-    for (const group of STAR_GROUPS) {
-      for (let index = 0; index < group.count; index += 1) {
-        const radius = group.radiusRange[0] + Math.random() * (group.radiusRange[1] - group.radiusRange[0]);
-        const star = new Graphics();
+    for (let index = 0; index < STAR_COUNT; index += 1) {
+      const radius = 0.5 + Math.random() * 1.2;
+      const star = new Graphics();
 
-        star.circle(0, 0, radius).fill({ color: 0xffffff, alpha: 1 });
-        this.starsLayer.addChild(star);
-        this.starConfigs.push({
-          sprite: star,
-          x: 0.04 + Math.random() * 0.92,
-          y: 0.02 + Math.random() * 0.32,
-          baseAlpha: group.alphaRange[0] + Math.random() * (group.alphaRange[1] - group.alphaRange[0]),
-          amplitude: group.amplitudeRange[0] + Math.random() * (group.amplitudeRange[1] - group.amplitudeRange[0]),
-          speed: group.speedRange[0] + Math.random() * (group.speedRange[1] - group.speedRange[0]),
-          phase: Math.random() * Math.PI * 2,
-        });
-      }
+      star.circle(0, 0, radius).fill({ color: 0xffffff, alpha: 1 });
+      this.starsLayer.addChild(star);
+      this.starConfigs.push({
+        sprite: star,
+        x: 0.04 + Math.random() * 0.92,
+        y: 0.02 + Math.random() * 0.32,
+        baseAlpha: 0.15 + Math.random() * 0.35,
+        amplitude: 0.04 + Math.random() * 0.12,
+        speed: 0.25 + Math.random() * 0.45,
+        phase: Math.random() * Math.PI * 2,
+      });
     }
   }
 
@@ -423,7 +378,7 @@ export default class CreditsScene {
     this.sourceGlow.tint = 0xdff0ff;
     this.sourceGlow.filters = [this.sourceGlowFilter];
 
-    this.beamLayer.addChild(this.beamOuter, this.beamInner, this.sourceGlow);
+    this.beamLayer.addChild(this.beamOuter, this.beamInner, this.sourceGlow, this.beamMask);
   }
 
   private drawBeamShape(
@@ -544,7 +499,7 @@ export default class CreditsScene {
     this.exitText.anchor.set(0.5);
     this.exitText.alpha = 0;
 
-    this.textLayer.addChild(this.beamMask, this.creditsText, this.exitText);
+    this.textLayer.addChild(this.creditsText, this.exitText);
   }
 
   private attachResizeHandling(): void {
@@ -579,7 +534,7 @@ export default class CreditsScene {
     for (const starConfig of this.starConfigs) {
       starConfig.sprite.x = starConfig.x * width;
       starConfig.sprite.y = starConfig.y * height;
-      starConfig.sprite.scale.set(0.78 + this.designScale * 0.22);
+      starConfig.sprite.scale.set(0.8 + this.designScale * 0.25);
     }
 
     const cityWidthScale = width / this.citySprite.texture.width;
@@ -611,12 +566,50 @@ export default class CreditsScene {
     // Hard-anchor the beam to a right-side rooftop point on the skyline.
     this.beamOriginX = width * 0.78;
     this.beamOriginY = this.citySprite.y - this.citySprite.height * 0.55;
-    this.refreshCreditLayout();
+    const beamLength = Math.max(height * 0.86, 720);
+
+    this.drawBeamShape(this.beamOuter, {
+      originX: this.beamOriginX,
+      originY: this.beamOriginY,
+      angle: BEAM_ANGLE,
+      length: beamLength,
+      nearWidth: 8,
+      farWidth: Math.max(width * 0.56, 220),
+      alpha: 0.18,
+    });
+    this.drawBeamShape(this.beamInner, {
+      originX: this.beamOriginX,
+      originY: this.beamOriginY,
+      angle: BEAM_ANGLE,
+      length: beamLength * 0.92,
+      nearWidth: 5,
+      farWidth: Math.max(width * 0.28, 110),
+      alpha: 0.28,
+    });
+    this.drawBeamShape(this.beamMask, {
+      originX: this.beamOriginX,
+      originY: this.beamOriginY,
+      angle: BEAM_ANGLE,
+      length: beamLength * 0.92,
+      nearWidth: 8,
+      farWidth: Math.max(width * 0.42, 168),
+      alpha: 1,
+    });
 
     this.sourceGlow.x = this.beamOriginX;
     this.sourceGlow.y = this.beamOriginY;
     this.sourceGlow.width = width * 0.18;
     this.sourceGlow.height = width * 0.18;
+
+    // Text positioned further up in the beam-lit starfield to clear the moon area.
+    const textDistance = Math.max(height * 0.43, 360);
+    const textX = this.beamOriginX + Math.cos(BEAM_ANGLE) * textDistance;
+    const textY = this.beamOriginY + Math.sin(BEAM_ANGLE) * textDistance;
+    this.creditsText.x = textX;
+    this.creditsText.y = textY;
+    this.creditsText.style.fontSize = Math.max(20, 24 * this.designScale);
+    this.creditsText.style.lineHeight = Math.max(30, 38 * this.designScale);
+    this.creditsText.style.wordWrapWidth = Math.max(170, width * 0.34);
 
     this.exitText.x = width * 0.5;
     this.exitText.y = height - Math.max(28, 44 * this.designScale);
@@ -631,151 +624,12 @@ export default class CreditsScene {
     }
   }
 
-  private refreshCreditLayout(creditText = this.currentCreditIndex >= 0
-    ? this.credits[this.currentCreditIndex]
-    : this.credits[0]): void {
-    const screen = this.app.renderer.screen;
-    const width = screen.width;
-    const height = screen.height;
-
-    if (!width || !height) {
-      return;
-    }
-
-    const beamLength = Math.max(height * 0.78, 540);
-    const placement = getCreditTextPlacement({
-      screenWidth: width,
-      screenHeight: height,
-      designScale: this.designScale,
-      beamOriginX: this.beamOriginX,
-      beamOriginY: this.beamOriginY,
-      beamAngle: BEAM_ANGLE,
-      beamLength,
-    });
-
-    this.creditsText.x = placement.textX;
-    this.creditsText.y = placement.textY;
-    this.creditsText.text = creditText;
-
-    let fontSize = placement.baseFontSize;
-    let lineHeight = placement.lineHeight;
-    let wordWrapWidth = placement.maxTextWidth;
-    this.creditsText.style.fontSize = fontSize;
-    this.creditsText.style.lineHeight = lineHeight;
-    this.creditsText.style.wordWrapWidth = wordWrapWidth;
-
-    let bounds = this.creditsText.getLocalBounds();
-    while (bounds.width > wordWrapWidth && fontSize > MIN_CREDIT_FONT_SIZE) {
-      fontSize -= 1;
-      lineHeight = Math.max(
-        Math.round(fontSize * CREDIT_LINE_HEIGHT_RATIO),
-        fontSize + CREDIT_LINE_HEIGHT_PADDING,
-      );
-      this.creditsText.style.fontSize = fontSize;
-      this.creditsText.style.lineHeight = lineHeight;
-      bounds = this.creditsText.getLocalBounds();
-    }
-
-    let textDistance = placement.textDistance;
-    const dx = Math.cos(BEAM_ANGLE);
-    const dy = Math.sin(BEAM_ANGLE);
-    const moonZone = getMoonExclusionZone(width, height);
-    let fitAdjustments = 0;
-    let distanceChecks = 0;
-    while (textDistance > placement.minTextDistance && distanceChecks < MAX_TEXT_DISTANCE_CHECKS) {
-      const candidateX = this.beamOriginX + dx * textDistance;
-      const candidateY = this.beamOriginY + dy * textDistance;
-      const exceedsLeftSafeArea = candidateX - bounds.width * 0.5 < placement.screenMargin;
-      const exceedsRightSafeArea = candidateX + bounds.width * 0.5 > width - placement.screenMargin;
-      const overlapsMoon = textBlockIntersectsMoonZone(
-        candidateX,
-        candidateY,
-        bounds.width,
-        bounds.height,
-        moonZone,
-      );
-
-      if (!exceedsLeftSafeArea && !exceedsRightSafeArea && !overlapsMoon) {
-        break;
-      }
-
-      if (fitAdjustments < MAX_TEXT_FIT_ADJUSTMENTS && wordWrapWidth > MIN_CREDIT_WRAP_WIDTH) {
-        wordWrapWidth = Math.max(MIN_CREDIT_WRAP_WIDTH, wordWrapWidth - CREDIT_WRAP_STEP);
-        if (fontSize > MIN_CREDIT_FONT_SIZE) {
-          fontSize -= 1;
-        }
-        lineHeight = Math.max(
-          Math.round(fontSize * CREDIT_LINE_HEIGHT_RATIO),
-          fontSize + CREDIT_LINE_HEIGHT_PADDING,
-        );
-        this.creditsText.style.fontSize = fontSize;
-        this.creditsText.style.lineHeight = lineHeight;
-        this.creditsText.style.wordWrapWidth = wordWrapWidth;
-        bounds = this.creditsText.getLocalBounds();
-        fitAdjustments += 1;
-        continue;
-      }
-
-      textDistance = Math.max(placement.minTextDistance, textDistance - TEXT_DISTANCE_STEP);
-      distanceChecks += 1;
-    }
-
-    this.creditsText.x = this.beamOriginX + dx * textDistance;
-    this.creditsText.y = this.beamOriginY + dy * textDistance;
-
-    const maskLength = Math.max(
-      textDistance + Math.max(bounds.height + placement.beamPadding, MIN_MASK_TRAIL),
-      beamLength * 0.48,
-    );
-    const visibleBeamLength = Math.max(
-      Math.min(textDistance + Math.max(bounds.height * 0.58, 96), beamLength * 0.54),
-      beamLength * 0.4,
-    );
-    const visibleBeam = getVisibleBeamDimensions(width);
-    const textRevealMask = getTextRevealMaskDimensions({
-      screenWidth: width,
-      textWidth: bounds.width,
-      textHeight: bounds.height,
-      textDistance,
-      maskLength,
-      beamPadding: placement.beamPadding,
-    });
-
-    this.drawBeamShape(this.beamOuter, {
-      originX: this.beamOriginX,
-      originY: this.beamOriginY,
-      angle: BEAM_ANGLE,
-      length: visibleBeamLength,
-      nearWidth: visibleBeam.outerNearWidth,
-      farWidth: visibleBeam.outerFarWidth,
-      alpha: 0.16,
-    });
-    this.drawBeamShape(this.beamInner, {
-      originX: this.beamOriginX,
-      originY: this.beamOriginY,
-      angle: BEAM_ANGLE,
-      length: visibleBeamLength * 0.94,
-      nearWidth: visibleBeam.innerNearWidth,
-      farWidth: visibleBeam.innerFarWidth,
-      alpha: 0.24,
-    });
-    this.drawBeamShape(this.beamMask, {
-      originX: this.beamOriginX,
-      originY: this.beamOriginY,
-      angle: BEAM_ANGLE,
-      length: maskLength,
-      nearWidth: textRevealMask.nearWidth,
-      farWidth: textRevealMask.farWidth,
-      alpha: 1,
-    });
-  }
-
   private update(): void {
     this.elapsedSeconds += this.app.ticker.deltaMS / 1000;
 
     for (const starConfig of this.starConfigs) {
-      const shimmer = Math.sin(this.elapsedSeconds * starConfig.speed + starConfig.phase);
-      starConfig.sprite.alpha = Math.max(0.06, Math.min(0.95, starConfig.baseAlpha + shimmer * starConfig.amplitude));
+      const shimmer = (Math.sin(this.elapsedSeconds * starConfig.speed + starConfig.phase) + 1) * 0.5;
+      starConfig.sprite.alpha = starConfig.baseAlpha + shimmer * starConfig.amplitude;
     }
 
     for (const windowConfig of this.windowLightConfigs) {
@@ -833,7 +687,7 @@ export default class CreditsScene {
 
       if (cycleIndex !== this.currentCreditIndex) {
         this.currentCreditIndex = cycleIndex;
-        this.refreshCreditLayout(this.credits[cycleIndex]);
+        this.creditsText.text = this.credits[cycleIndex];
       }
 
       if (cycleProgress < 1) {
