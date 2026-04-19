@@ -191,7 +191,7 @@ describe('Settings screen', () => {
     expect(screen.getByLabelText(/toggle spectator mode/i)).toBeChecked();
     expect(screen.getByLabelText(/toggle jury house/i)).toBeChecked();
     expect((screen.getByLabelText(/cast size/i) as HTMLInputElement).value).toBe('16');
-    expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe('user-selection');
+    expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe('unique');
   });
 
   it('lets QA set a forced secret mission week in debug settings', async () => {

@@ -106,7 +106,7 @@ describe('CompSelection component', () => {
       expect(onSave).toHaveBeenCalledTimes(1);
     });
     const [payload] = onSave.mock.calls[0] as [CompSelectionPayload];
-    expect(payload.mode).toBe('random-games');
+    expect(payload.mode).toBe('unique');
     expect(payload.selectedGameId).toBeUndefined();
   });
 
@@ -122,4 +122,3 @@ describe('CompSelection component', () => {
     });
   });
 });
-

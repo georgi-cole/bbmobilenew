@@ -41,7 +41,7 @@ export default function CompSelection({
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [mode, setMode] = useState<CompSelectionMode>(
-    initialPayload?.mode ?? 'random-games',
+    initialPayload?.mode ?? 'unique',
   );
   const [selectedGameId, setSelectedGameId] = useState<string>(
     initialPayload?.selectedGameId ?? '',

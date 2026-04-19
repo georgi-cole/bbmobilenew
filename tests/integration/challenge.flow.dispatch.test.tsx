@@ -19,6 +19,7 @@ import challengeReducer, { startChallenge, recordRun, setPendingChallenge } from
 import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
+import { getBracketPoolForContext } from '../../src/ai/competition/bracketTemplate';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -312,6 +313,21 @@ describe('startChallenge – compSelection modes', () => {
 
     // There are many games in the registry, so the second pick should differ.
     expect(secondKey).not.toBe(firstKey);
+  });
+
+  it('unique: uses the fallback bracket mapping pool when prizeType is known', () => {
+    const store = makeStoreWithCompSelection({ mode: 'unique', enabledIds: [] });
+
+    dispatchThunk(store, startChallenge(42, ['p1', 'p2', 'p3', 'p4'], { prizeType: 'POS' }));
+
+    const alivePlayerCount = store
+      .getState()
+      .game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
+    const expectedPool = getBracketPoolForContext(alivePlayerCount, 'POS');
+    const pending = store.getState().challenge.pending;
+
+    expect(expectedPool.length).toBeGreaterThan(0);
+    expect(expectedPool).toContain(pending?.game.key);
   });
 
   it('random-games: falls back to the existing random selection', () => {
