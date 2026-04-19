@@ -1,6 +1,5 @@
 import { type ReactNode, useState } from 'react';
 import './GameButton.css';
-import { SoundManager } from '../../services/sound/SoundManager';
 
 export type GameButtonVariant =
   | 'primary_large'
@@ -44,17 +43,12 @@ export default function GameButton({
 
   const src = resolveAsset(variant, state);
 
-  function handleClick() {
-    void SoundManager.play('ui:navigate');
-    onClick?.();
-  }
-
   return (
     <button
       className={`game-btn game-btn--${variant}${disabled ? ' game-btn--disabled' : ''}${!disabled && isPressed ? ' game-btn--pressed' : ''}`}
       type="button"
       disabled={disabled}
-      onClick={disabled ? undefined : handleClick}
+      onClick={disabled ? undefined : onClick}
       onMouseEnter={() => { if (!disabled) setIsHovered(true); }}
       onMouseLeave={() => { setIsHovered(false); setIsPressed(false); }}
       onMouseDown={() => { if (!disabled) setIsPressed(true); }}

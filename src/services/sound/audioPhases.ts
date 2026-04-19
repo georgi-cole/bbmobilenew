@@ -238,7 +238,7 @@ export type AppAudioPhase =
 export const AUDIO_PHASE_MUSIC_MAP: Readonly<Record<AppAudioPhase, MusicTrack>> = {
   // Intro flow
   splash:                  'none',
-  intro_hub:               'intro_hub',
+  intro_hub:               'none',
   intro_hub_rules:         'none',
   intro_hub_profile:       'none',
   intro_hub_houseguests:   'none',
