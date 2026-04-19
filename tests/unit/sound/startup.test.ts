@@ -80,6 +80,7 @@ describe('SoundManager startup defaults', () => {
     for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
+    expect(window._introhubMusicOn).toBe(true);
     expect(window._introhubSfxOn).toBe(true);
   });
 });
@@ -108,6 +109,7 @@ describe('SoundManager startup with musicOn=false', () => {
   it('disables music category when musicOn is false in settings', () => {
     makeStore({ musicOn: false });
     expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(true);
+    expect(window._introhubMusicOn).toBe(false);
   });
 
   it('does NOT disable SFX categories when only musicOn is false', () => {
@@ -116,6 +118,7 @@ describe('SoundManager startup with musicOn=false', () => {
     for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
+    expect(window._introhubSfxOn).toBe(true);
   });
 });
 
@@ -169,6 +172,7 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
     store.dispatch(setAudio({ musicOn: false }));
 
     expect(SoundManager.setMusicMuted).toHaveBeenCalledWith(true);
+    expect(window._introhubMusicOn).toBe(false);
   });
 
   it('updating sfxVolume via setAudio updates SFX category volumes', () => {

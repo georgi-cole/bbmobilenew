@@ -46,10 +46,13 @@ window.__store = store
 // SoundManager is fully initialised (calls are no-ops until init resolves).
 declare global {
   interface Window {
+    _introhubMusicOn?: boolean;
     _introhubSfxOn?: boolean;
+    toggleIntroHubMusic?: () => void;
     toggleIntroHubSfx?: () => void;
   }
 }
+const MUSIC_STORAGE_KEY = 'introhub_music_on';
 const SFX_STORAGE_KEY   = 'introhub_sfx_on';
 
 const initAudio = store.getState().settings.audio;
@@ -69,6 +72,17 @@ window.toggleIntroHubSfx = function () {
   // Dispatch to Redux so the store subscriber syncs all SFX categories and
   // persists the new value — Redux is the canonical source of truth.
   store.dispatch(setAudio({ sfxOn: nextSfxOn }));
+};
+
+window.toggleIntroHubMusic = function () {
+  const nextMusicOn = !store.getState().settings.audio.musicOn;
+  try {
+    localStorage.setItem(MUSIC_STORAGE_KEY, String(nextMusicOn));
+  } catch (err) {
+    console.warn('[introHub] Failed to persist music toggle state:', err);
+  }
+  console.debug('[introHub] toggleIntroHubMusic ->', nextMusicOn);
+  store.dispatch(setAudio({ musicOn: nextMusicOn }));
 };
 
 createRoot(document.getElementById('root')!).render(
