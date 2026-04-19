@@ -22,6 +22,32 @@ const BASE_HEIGHT = 844;
 const SMALL_STAR_COUNT = 30;
 const MEDIUM_STAR_COUNT = 14;
 const HERO_STAR_COUNT = 4;
+const STAR_GROUPS = [
+  {
+    count: SMALL_STAR_COUNT,
+    radiusRange: [0.45, 0.9] as const,
+    alphaRange: [0.12, 0.24] as const,
+    amplitudeRange: [0.02, 0.05] as const,
+    speedRange: [0.18, 0.34] as const,
+    scaleAmplitudeRange: [0, 0] as const,
+  },
+  {
+    count: MEDIUM_STAR_COUNT,
+    radiusRange: [0.85, 1.45] as const,
+    alphaRange: [0.22, 0.4] as const,
+    amplitudeRange: [0.04, 0.08] as const,
+    speedRange: [0.22, 0.42] as const,
+    scaleAmplitudeRange: [0, 0] as const,
+  },
+  {
+    count: HERO_STAR_COUNT,
+    radiusRange: [1.5, 2.2] as const,
+    alphaRange: [0.4, 0.62] as const,
+    amplitudeRange: [0.05, 0.1] as const,
+    speedRange: [0.16, 0.32] as const,
+    scaleAmplitudeRange: [0.03, 0.08] as const,
+  },
+] as const;
 const WINDOW_LIGHT_COUNT = 60;
 const CREDIT_CYCLE_SECONDS = 4.5;
 const SKY_TEXTURE_WIDTH = 64;
@@ -44,6 +70,11 @@ const BEAM_ANGLE = -2.18;
 const BEAM_INTRO_DURATION = 1.8;
 /** Additional delay after beam before credits text appears. */
 const TEXT_DELAY_AFTER_BEAM = 0.8;
+/** Keep projected credits readable on narrow portrait screens. */
+const MIN_CREDIT_FONT_SIZE = 18;
+/** Preserve airy line spacing once credits wrap to multiple lines. */
+const CREDIT_LINE_HEIGHT_RATIO = 1.38;
+const CREDIT_LINE_HEIGHT_PADDING = 8;
 
 type StarConfig = {
   sprite: Graphics;
@@ -279,34 +310,7 @@ export default class CreditsScene {
   }
 
   private createStars(): void {
-    const starGroups = [
-      {
-        count: SMALL_STAR_COUNT,
-        radiusRange: [0.45, 0.9] as const,
-        alphaRange: [0.12, 0.24] as const,
-        amplitudeRange: [0.02, 0.05] as const,
-        speedRange: [0.18, 0.34] as const,
-        scaleAmplitudeRange: [0, 0] as const,
-      },
-      {
-        count: MEDIUM_STAR_COUNT,
-        radiusRange: [0.85, 1.45] as const,
-        alphaRange: [0.22, 0.4] as const,
-        amplitudeRange: [0.04, 0.08] as const,
-        speedRange: [0.22, 0.42] as const,
-        scaleAmplitudeRange: [0, 0] as const,
-      },
-      {
-        count: HERO_STAR_COUNT,
-        radiusRange: [1.5, 2.2] as const,
-        alphaRange: [0.4, 0.62] as const,
-        amplitudeRange: [0.05, 0.1] as const,
-        speedRange: [0.16, 0.32] as const,
-        scaleAmplitudeRange: [0.03, 0.08] as const,
-      },
-    ];
-
-    for (const group of starGroups) {
+    for (const group of STAR_GROUPS) {
       for (let index = 0; index < group.count; index += 1) {
         const radius = group.radiusRange[0] + Math.random() * (group.radiusRange[1] - group.radiusRange[0]);
         const star = new Graphics();
@@ -663,9 +667,12 @@ export default class CreditsScene {
     this.creditsText.style.wordWrapWidth = placement.maxTextWidth;
 
     let bounds = this.creditsText.getLocalBounds();
-    while (bounds.width > placement.maxTextWidth && fontSize > 18) {
+    while (bounds.width > placement.maxTextWidth && fontSize > MIN_CREDIT_FONT_SIZE) {
       fontSize -= 1;
-      lineHeight = Math.max(Math.round(fontSize * 1.38), fontSize + 8);
+      lineHeight = Math.max(
+        Math.round(fontSize * CREDIT_LINE_HEIGHT_RATIO),
+        fontSize + CREDIT_LINE_HEIGHT_PADDING,
+      );
       this.creditsText.style.fontSize = fontSize;
       this.creditsText.style.lineHeight = lineHeight;
       bounds = this.creditsText.getLocalBounds();

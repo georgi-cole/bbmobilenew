@@ -4,6 +4,10 @@ const MIN_TEXT_WIDTH = 170;
 const MIN_TEXT_HALF_WIDTH = MIN_TEXT_WIDTH * 0.5;
 const MIN_BEAM_PADDING = 40;
 const MAX_BEAM_PADDING = 60;
+// Clamp the interpolation ratio so the trapezoid math stays stable even if the
+// text sits very close to the projector source or near the far edge of the beam.
+const MIN_BEAM_TEXT_RATIO = 0.18;
+const MAX_BEAM_TEXT_RATIO = 0.95;
 
 export type CreditTextPlacement = {
   textX: number;
@@ -34,7 +38,7 @@ function solveFarWidth(
   textDistance: number,
   beamLength: number,
 ): number {
-  const distanceRatio = clamp(textDistance / beamLength, 0.18, 0.95);
+  const distanceRatio = clamp(textDistance / beamLength, MIN_BEAM_TEXT_RATIO, MAX_BEAM_TEXT_RATIO);
   const requiredWidth = Math.max(requiredWidthAtText, nearWidth + 1);
   return Math.ceil(nearWidth + ((requiredWidth - nearWidth) / distanceRatio));
 }
