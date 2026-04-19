@@ -45,23 +45,23 @@
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(2, 8, 22, 0.12) 0%, rgba(2, 8, 22, 0.05) 32%, rgba(2, 8, 22, 0.22) 100%),
-    linear-gradient(270deg, rgba(2, 8, 22, 0.08) 0%, rgba(2, 8, 22, 0) 36%);
+  background: linear-gradient(180deg, rgba(2, 8, 22, 0.08) 0%, rgba(2, 8, 22, 0.04) 34%, rgba(2, 8, 22, 0.18) 100%);
   pointer-events: none;
 }
 
 .credits-copy {
   position: absolute;
-  top: clamp(88px, 15dvh, 168px);
-  right: clamp(18px, 5vw, 42px);
+  top: clamp(180px, 39dvh, 330px);
+  right: clamp(20px, 7vw, 72px);
+  transform: translateY(-50%);
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: clamp(10px, 1.8dvh, 16px);
-  width: min(42vw, 260px);
+  justify-content: center;
+  width: min(36vw, 320px);
   max-width: calc(100vw - 32px);
+  min-height: clamp(88px, 12dvh, 132px);
   text-align: right;
   color: #f4f0e7;
   pointer-events: none;
@@ -69,29 +69,39 @@
 
 .credits-copy-item {
   margin: 0;
-  padding: 8px 12px;
-  border-radius: 16px;
-  background: rgba(4, 10, 25, 0.34);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-  font-size: clamp(15px, 1.8vw, 18px);
-  font-weight: 600;
+  padding: 0;
+  font-size: clamp(22px, 2.5vw, 30px);
+  font-weight: 700;
   line-height: 1.4;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
   white-space: pre-line;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.58);
+  animation: credits-copy-fade 2450ms ease-in-out both;
+}
+
+@keyframes credits-copy-fade {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  18%,
+  72% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 520px) {
   .credits-copy {
-    top: clamp(72px, 12dvh, 116px);
-    right: 16px;
-    width: min(48vw, 220px);
-    gap: 10px;
+    top: clamp(150px, 36dvh, 250px);
+    right: 18px;
+    width: min(52vw, 240px);
+    min-height: 84px;
   }
 
   .credits-copy-item {
-    padding: 7px 10px;
-    font-size: clamp(13px, 3.5vw, 16px);
+    font-size: clamp(17px, 4.7vw, 22px);
   }
 }

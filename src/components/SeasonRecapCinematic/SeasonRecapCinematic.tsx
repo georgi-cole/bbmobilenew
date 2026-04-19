@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { createCinematicAudio } from '../../services/sound/cinematicAudio';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import { resolveAvatar } from '../../utils/avatar';
@@ -68,13 +69,14 @@ const DEFAULT_SCENE_TIMINGS: SceneTiming[] = [
   { id: 'drama', durationMs: 6800 },
   { id: 'twists', durationMs: 6800 },
   { id: 'ladder', durationMs: 8400 },
-  { id: 'finale', durationMs: 4400 },
+  { id: 'finale', durationMs: 9400 },
 ];
 
 const MAX_LADDER_DISPLAY = 8;
 const MIN_PUBLIC_SHOCK_DELTA = 9;
 const RATINGS_SWING_DELTA = 12;
 const SHOCKWAVE_DELTA = 19;
+const RECAP_EXIT_FADE_MS = 420;
 
 function firstName(player: Player | null | undefined): string {
   return player?.name.split(' ')[0] ?? 'A finalist';
@@ -677,13 +679,32 @@ export default function SeasonRecapCinematic({
   const [sceneIndex, setSceneIndex] = useState(0);
   const [visible, setVisible] = useState(true);
   const didFinishRef = useRef(false);
+  const finishTimeoutRef = useRef<number | null>(null);
+  const audioRef = useRef<ReturnType<typeof createCinematicAudio> | null>(null);
+
+  useEffect(() => {
+    const audio = createCinematicAudio(`${import.meta.env.BASE_URL}assets/sounds/final_recap_sound.mp3`);
+    audioRef.current = audio;
+    audio.play();
+
+    return () => {
+      audioRef.current = null;
+      audio.dispose();
+    };
+  }, []);
+
+  useEffect(() => () => {
+    if (finishTimeoutRef.current != null) {
+      window.clearTimeout(finishTimeoutRef.current);
+    }
+  }, []);
 
   const finish = useCallback(() => {
     if (didFinishRef.current) return;
     didFinishRef.current = true;
+    audioRef.current?.fadeOutAndStop(reducedMotion ? 0 : RECAP_EXIT_FADE_MS);
     setVisible(false);
-    const timer = setTimeout(() => onComplete(), reducedMotion ? 0 : 420);
-    return () => clearTimeout(timer);
+    finishTimeoutRef.current = window.setTimeout(() => onComplete(), reducedMotion ? 0 : RECAP_EXIT_FADE_MS);
   }, [onComplete, reducedMotion]);
 
   useEffect(() => {
