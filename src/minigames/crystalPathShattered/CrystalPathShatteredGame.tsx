@@ -562,7 +562,7 @@ export default function CrystalPathShatteredGame({
   useEffect(() => {
     if (phase !== 'playing') return;
     if (isAsyncHumanRun) {
-      if (humanPlayer?.finishedAtMs === null) return;
+      if (!humanPlayer || humanPlayer.finishedAtMs === null) return;
       if (!secretWinBanner) {
         setSecretWinBanner(true);
         playWinner();
