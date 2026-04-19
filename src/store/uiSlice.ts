@@ -1,12 +1,14 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 /**
- * MusicScene — identifies the "override" music scene currently active.
+ * MusicScene — identifies the music scene currently active.
  *
  * Dispatching ui/setMusicScene from a component is the mechanism for
- * special finale/cinematic phases to take control of the BGM channel.
- * The resolver (resolveDesiredMusic) treats a non-'none' value as the
- * highest-priority source, overriding game phase, minigame, and social.
+ * special finale/cinematic phases to influence the BGM channel.
+ * The resolver (resolveDesiredMusic) only treats a non-'none' value as a
+ * highest-priority override when that scene maps to a real track; scenes
+ * that currently map to 'none' are intentionally transparent and fall
+ * through to game phase, minigame, social, or intro-hub music.
  *
  * Values:
  *  'none'            — no scene override; resolver falls through to game
