@@ -543,197 +543,250 @@ export default function CrystalPathShatteredGame({
   // Prize label for complete screen.
   const prizeLabel = prizeType === 'POS' ? 'Power of Safety' : 'Head of Household';
 
+  // SP color band helper
+  const spLevel = (sp: number): 'is-safe' | 'is-warn' | 'is-danger' => {
+    const pct = sp / STARTING_SP;
+    if (pct > 0.5) return 'is-safe';
+    if (pct > 0.2) return 'is-warn';
+    return 'is-danger';
+  };
+
+  // Environment particles (static array — no re-renders)
+  const particleSlots = useMemo(() => Array.from({ length: 12 }), []);
+
   if (phase === 'complete') {
     return (
       <div className="cps-shell" aria-label="Crystal Path: Shattered — complete">
-        <MinigameCompleteWrapper
-          className="cps-complete"
-          onContinue={handleContinue}
-          continueButtonClassName="cps-btn cps-btn-primary"
-          placementsClassName="cps-placements"
-          placementsRole="list"
-          placementsAriaLabel="Final standings"
-          placementsNode={ranked.map((p, idx) => {
-            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
-            const detail = p.finishedAtMs !== null
-              ? 'Reached the end of the bridge'
-              : p.eliminated
-                ? `Fell at row ${p.eliminatedRow ?? 0} · ${p.sp} SP`
-                : `Row ${p.furthestRow} · ${p.sp} SP`;
-            return (
-              <div key={p.id} className="cps-placement" role="listitem">
-                <span className="cps-medal">{medal}</span>
-                <span className="cps-name">{p.id === humanId ? 'You' : p.name}</span>
-                <span className="cps-detail">{detail}</span>
-              </div>
-            );
-          })}
-        >
-          <div className="cps-complete-hero">
-            <p className="cps-kicker">Crystal Path · Shattered</p>
-            <h2>{secretWinBanner ? 'Hidden Path Discovered!' : `${prizeLabel} decided`}</h2>
-            <div className="cps-trophy" aria-hidden="true">{secretWinBanner ? '🏆' : '💠'}</div>
-            {ranked[0] && (
-              <p>
-                {ranked[0].id === humanId ? 'You' : ranked[0].name}
-                {secretWinBanner
-                  ? ' crossed the entire bridge and uncovered a secret relic.'
-                  : ' endured the longest.'}
-              </p>
-            )}
-          </div>
-        </MinigameCompleteWrapper>
+        {/* Environment */}
+        <div className="cps-depth-fog" aria-hidden="true" />
+        <div className="cps-spotlight" aria-hidden="true" />
+        <div className="cps-particles" aria-hidden="true">
+          {particleSlots.map((_, i) => <span key={i} className="cps-particle" />)}
+        </div>
+
+        <div className="cps-content">
+          <MinigameCompleteWrapper
+            className="cps-complete"
+            onContinue={handleContinue}
+            continueButtonClassName="cps-btn cps-btn-primary"
+            placementsClassName="cps-placements"
+            placementsRole="list"
+            placementsAriaLabel="Final standings"
+            placementsNode={ranked.map((p, idx) => {
+              const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+              const detail = p.finishedAtMs !== null
+                ? 'Reached the end of the bridge'
+                : p.eliminated
+                  ? `Fell at row ${p.eliminatedRow ?? 0} · ${p.sp} SP`
+                  : `Row ${p.furthestRow} · ${p.sp} SP`;
+              return (
+                <div key={p.id} className="cps-placement" role="listitem">
+                  <span className="cps-medal">{medal}</span>
+                  <span className="cps-name">{p.id === humanId ? 'You' : p.name}</span>
+                  <span className="cps-detail">{detail}</span>
+                </div>
+              );
+            })}
+          >
+            <div className="cps-complete-hero">
+              <p className="cps-kicker">Crystal Path · Shattered</p>
+              <h2>{secretWinBanner ? 'Hidden Path Discovered!' : `${prizeLabel} decided`}</h2>
+              <div className="cps-trophy" aria-hidden="true">{secretWinBanner ? '🏆' : '💠'}</div>
+              {ranked[0] && (
+                <p>
+                  {ranked[0].id === humanId ? 'You' : ranked[0].name}
+                  {secretWinBanner
+                    ? ' crossed the entire bridge and uncovered a secret relic.'
+                    : ' endured the longest.'}
+                </p>
+              )}
+            </div>
+          </MinigameCompleteWrapper>
+        </div>
       </div>
     );
   }
 
+  const currentSp = activePlayer?.sp ?? 0;
+  const currentSpPct = Math.max(0, Math.min(100, (currentSp / STARTING_SP) * 100));
+  const currentSpLevel = spLevel(currentSp);
+
   return (
     <div className="cps-shell" aria-label="Crystal Path: Shattered">
-      {/* Header / HUD */}
-      <header className="cps-header">
-        <div className="cps-title-row">
-          <span className="cps-kicker">Crystal Path</span>
-          <h2>Shattered</h2>
-        </div>
-      </header>
-
-      <div className="cps-hud" role="group" aria-label="Status">
-        <div className="cps-hud-pill">
-          <span>Turn</span>
-          <strong>{activePlayer ? (activePlayer.id === humanId ? 'You' : activePlayer.name) : '—'}</strong>
-        </div>
-        <div className="cps-hud-pill">
-          <span>Row</span>
-          <strong>{(activePlayer?.furthestRow ?? 0) + 1}</strong>
-        </div>
-        <div className="cps-hud-pill cps-hud-pill-sp">
-          <span>SP</span>
-          <strong>{activePlayer?.sp ?? 0}</strong>
-        </div>
-        <div className="cps-hud-pill">
-          <span>Hints</span>
-          <strong>{activePlayer?.hints ?? 0}</strong>
-        </div>
+      {/* ── Environment (background, not decoration) ─────────────────────── */}
+      <div className="cps-depth-fog" aria-hidden="true" />
+      <div className="cps-spotlight" aria-hidden="true" />
+      <div className="cps-edge-light-left" aria-hidden="true" />
+      <div className="cps-edge-light-right" aria-hidden="true" />
+      <div className="cps-particles" aria-hidden="true">
+        {particleSlots.map((_, i) => <span key={i} className="cps-particle" />)}
+      </div>
+      <div className="cps-light-shafts" aria-hidden="true">
+        <div className="cps-light-shaft" />
+        <div className="cps-light-shaft" />
+        <div className="cps-light-shaft" />
       </div>
 
-      {/* Active effects — countdown chips */}
-      {activeEffects.length > 0 && (
-        <div className="cps-effects" aria-label="Active effects">
-          {activeEffects.map((e, idx) => {
-            const remaining = Math.max(0, e.expiresAt - Date.now());
-            const pct = Math.min(100, Math.round((remaining / EFFECT_DURATION_MS) * 100));
-            return (
-              <span
-                key={`${e.kind}-${idx}`}
-                className={`cps-effect ${isPositiveEffect(e.kind) ? 'is-pos' : 'is-neg'}`}
-              >
-                <span className="cps-effect-name">{formatEffectName(e.kind)}</span>
-                <span className="cps-effect-timer">{Math.ceil(remaining / 1000)}s</span>
-                <span className="cps-effect-bar" style={{ width: `${pct}%` }} aria-hidden="true" />
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Board */}
-      <section className="cps-board" aria-label="Bridge">
-        <div className="cps-bridge-track">
-          {displayRows.map((row) => {
-            const isCurrent = activePlayer && row.index === activePlayer.furthestRow;
-            const isPast = activePlayer && row.index < activePlayer.furthestRow;
-            const showHint = hintRowIndex === row.index;
-            const anim = activeAnimation && activeAnimation.rowIndex === row.index
-              ? activeAnimation
-              : null;
-            const blockForMystery = mysteryPendingStep && row.hasMystery;
-            return (
-              <div
-                key={row.index}
-                className={`cps-row${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : ''}`}
-              >
-                <button
-                  type="button"
-                  className={`cps-tile cps-tile-left${showHint && row.safeSide === 'left' ? ' is-hinted' : ''}${anim && anim.side === 'left' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
-                  onClick={() => handleSelect('left')}
-                  disabled={!isCurrent || !inputEnabled || blockForMystery}
-                  aria-label={`Row ${row.index + 1} left tile`}
-                />
-                <div className={`cps-center${row.hasMystery ? ' has-mystery' : ''}`}>
-                  {row.hasMystery && !mysteryPendingStep && (
-                    <button
-                      type="button"
-                      className={`cps-tile cps-tile-center${anim && anim.side === 'center' ? ' is-mystery' : ''}`}
-                      onClick={() => handleSelect('center')}
-                      disabled={!isCurrent || !inputEnabled}
-                      aria-label={`Row ${row.index + 1} mystery tile`}
-                    >
-                      <span aria-hidden="true">?</span>
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className={`cps-tile cps-tile-right${showHint && row.safeSide === 'right' ? ' is-hinted' : ''}${anim && anim.side === 'right' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
-                  onClick={() => handleSelect('right')}
-                  disabled={!isCurrent || !inputEnabled || blockForMystery}
-                  aria-label={`Row ${row.index + 1} right tile`}
-                />
-                <div className="cps-row-label" aria-hidden="true">{row.index + 1}</div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Controls */}
-      <div className="cps-controls">
-        <button
-          type="button"
-          className="cps-btn cps-btn-secondary"
-          onClick={handleHint}
-          disabled={!inputEnabled || (activePlayer?.hints ?? 0) <= 0}
-        >
-          Hint ({activePlayer?.hints ?? 0})
-        </button>
-        <div className="cps-status" role="status">
-          {spectating
-            ? 'Spectating…'
-            : mysteryPendingStep
-              ? 'Now choose LEFT or RIGHT to advance.'
-              : isHumanTurn
-                ? (currentRowRecord?.hasMystery
-                    ? 'Tap LEFT, RIGHT or the ❓ mystery.'
-                    : 'Tap LEFT or RIGHT.')
-                : `${activePlayer?.name ?? '—'} is choosing…`}
-        </div>
-      </div>
-
-      {/* Message log */}
-      {messageLog.length > 0 && (
-        <div className="cps-log" aria-live="polite">
-          {messageLog.map((m, idx) => <p key={idx}>{m}</p>)}
-        </div>
-      )}
-
-      {/* Standings */}
-      <section className="cps-standings" aria-label="Players">
-        {ranked.map((p) => (
-          <article
-            key={p.id}
-            className={`cps-standing${p.id === activePlayerId ? ' is-active' : ''}${p.eliminated ? ' is-out' : ''}`}
-          >
-            <header>
-              <strong>{p.id === humanId ? 'You' : p.name}</strong>
-              <span>{p.eliminated ? 'Fallen' : p.finishedAtMs !== null ? 'Endured' : `Row ${p.furthestRow}`}</span>
-            </header>
-            <div className="cps-sp-bar" aria-label={`${p.sp} SP`}>
-              <div className="cps-sp-fill" style={{ width: `${Math.max(0, Math.min(100, (p.sp / STARTING_SP) * 100))}%` }} />
-              <span>{p.sp} SP · {p.hints}💡</span>
+      {/* ── Content (above environment) ──────────────────────────────────── */}
+      <div className="cps-content">
+        {/* Header — simplified left/right split */}
+        <header className="cps-header">
+          <div className="cps-header-left">
+            <span className="cps-player-name">
+              {activePlayer ? (activePlayer.id === humanId ? 'You' : activePlayer.name) : '—'}
+            </span>
+            <span className="cps-row-display">Row {(activePlayer?.furthestRow ?? 0) + 1}</span>
+          </div>
+          <div className="cps-header-right">
+            <div className="cps-sp-display">
+              <span className="cps-sp-label">SP</span>
+              <span className={`cps-sp-value ${currentSpLevel}`}>{currentSp}</span>
             </div>
-          </article>
-        ))}
-      </section>
+            <span className="cps-hints-display">{activePlayer?.hints ?? 0}💡</span>
+          </div>
+        </header>
+
+        {/* SP bar — color-shifting shimmer */}
+        <div className={`cps-sp-bar-main${currentSp <= STARTING_SP * 0.2 ? ' is-low' : ''}`} aria-label={`${currentSp} SP`}>
+          <div className={`cps-sp-bar-fill ${currentSpLevel}`} style={{ width: `${currentSpPct}%` }} />
+        </div>
+
+        {/* Active effects — countdown chips */}
+        {activeEffects.length > 0 && (
+          <div className="cps-effects" aria-label="Active effects">
+            {activeEffects.map((e, idx) => {
+              const remaining = Math.max(0, e.expiresAt - Date.now());
+              const pct = Math.min(100, Math.round((remaining / EFFECT_DURATION_MS) * 100));
+              return (
+                <span
+                  key={`${e.kind}-${idx}`}
+                  className={`cps-effect ${isPositiveEffect(e.kind) ? 'is-pos' : 'is-neg'}`}
+                >
+                  <span className="cps-effect-name">{formatEffectName(e.kind)}</span>
+                  <span className="cps-effect-timer">{Math.ceil(remaining / 1000)}s</span>
+                  <span className="cps-effect-bar" style={{ width: `${pct}%` }} aria-hidden="true" />
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Board — 3D perspective runway */}
+        <section className="cps-board" aria-label="Bridge">
+          <div className="cps-bridge-track">
+            {displayRows.map((row) => {
+              const isCurrent = activePlayer && row.index === activePlayer.furthestRow;
+              const isPast = activePlayer && row.index < activePlayer.furthestRow;
+              const showHint = hintRowIndex === row.index;
+              const anim = activeAnimation && activeAnimation.rowIndex === row.index
+                ? activeAnimation
+                : null;
+              const blockForMystery = mysteryPendingStep && row.hasMystery;
+              return (
+                <div
+                  key={row.index}
+                  className={`cps-row${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className={`cps-tile cps-tile-left${showHint && row.safeSide === 'left' ? ' is-hinted' : ''}${anim && anim.side === 'left' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
+                    onClick={() => handleSelect('left')}
+                    disabled={!isCurrent || !inputEnabled || blockForMystery}
+                    aria-label={`Row ${row.index + 1} left tile`}
+                  />
+                  <div className={`cps-center${row.hasMystery ? ' has-mystery' : ''}`}>
+                    {row.hasMystery && !mysteryPendingStep && (
+                      <button
+                        type="button"
+                        className={`cps-tile cps-tile-center${anim && anim.side === 'center' ? ' is-mystery' : ''}`}
+                        onClick={() => handleSelect('center')}
+                        disabled={!isCurrent || !inputEnabled}
+                        aria-label={`Row ${row.index + 1} mystery tile`}
+                      >
+                        <span aria-hidden="true">?</span>
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className={`cps-tile cps-tile-right${showHint && row.safeSide === 'right' ? ' is-hinted' : ''}${anim && anim.side === 'right' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
+                    onClick={() => handleSelect('right')}
+                    disabled={!isCurrent || !inputEnabled || blockForMystery}
+                    aria-label={`Row ${row.index + 1} right tile`}
+                  />
+                  <div className="cps-row-label" aria-hidden="true">{row.index + 1}</div>
+                </div>
+              );
+            })}
+
+            {/* Reflection — mirrored faint bridge beneath */}
+            <div className="cps-bridge-reflection" aria-hidden="true">
+              {displayRows.slice(0, 3).map((row) => (
+                <div key={`ref-${row.index}`} className="cps-row">
+                  <div className="cps-tile" />
+                  <div className="cps-center" />
+                  <div className="cps-tile" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Controls */}
+        <div className="cps-controls">
+          <div className="cps-status" role="status">
+            {spectating
+              ? 'Spectating…'
+              : mysteryPendingStep
+                ? 'Now choose LEFT or RIGHT to advance.'
+                : isHumanTurn
+                  ? (currentRowRecord?.hasMystery
+                      ? 'Tap LEFT, RIGHT or the ❓ mystery.'
+                      : 'Tap LEFT or RIGHT.')
+                  : `${activePlayer?.name ?? '—'} is choosing…`}
+          </div>
+          <button
+            type="button"
+            className="cps-hint-btn"
+            onClick={handleHint}
+            disabled={!inputEnabled || (activePlayer?.hints ?? 0) <= 0}
+            aria-label={`Use hint (${activePlayer?.hints ?? 0} remaining)`}
+          >
+            👁
+            <span className="cps-hint-count">{activePlayer?.hints ?? 0}</span>
+          </button>
+        </div>
+
+        {/* Message log */}
+        {messageLog.length > 0 && (
+          <div className="cps-log" aria-live="polite">
+            {messageLog.map((m, idx) => <p key={idx}>{m}</p>)}
+          </div>
+        )}
+
+        {/* Standings */}
+        <section className="cps-standings" aria-label="Players">
+          {ranked.map((p) => {
+            const pSpPct = Math.max(0, Math.min(100, (p.sp / STARTING_SP) * 100));
+            const pSpLevel = spLevel(p.sp);
+            return (
+              <article
+                key={p.id}
+                className={`cps-standing${p.id === activePlayerId ? ' is-active' : ''}${p.eliminated ? ' is-out' : ''}`}
+              >
+                <header>
+                  <strong>{p.id === humanId ? 'You' : p.name}</strong>
+                  <span>{p.eliminated ? 'Fallen' : p.finishedAtMs !== null ? 'Endured' : `Row ${p.furthestRow}`}</span>
+                </header>
+                <div className="cps-sp-bar" aria-label={`${p.sp} SP`}>
+                  <div className={`cps-sp-fill ${pSpLevel}`} style={{ width: `${pSpPct}%` }} />
+                  <span>{p.sp} SP · {p.hints}💡</span>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      </div>
 
       {/* Mystery reveal modal (brief) */}
       {mysteryModal && (
