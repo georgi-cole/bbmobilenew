@@ -86,7 +86,10 @@ export default function FinalFaceoff() {
     );
 
     dispatch(setMusicScene('none'));
-    SoundManager.panicStopAllMusic();
+    // stopAllMusic() clears _desiredMusicTrack immediately so that any syncMusic()
+    // triggered before AudioStateSync processes the dispatch (e.g. visibility
+    // change, settings toggle) cannot restart stale music.
+    SoundManager.stopAllMusic();
     if (!winnerAlreadyMarked || !runnerUpAlreadyMarked) {
       dispatch(
         finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
@@ -133,7 +136,9 @@ export default function FinalFaceoff() {
       voteTimersRef.current = {};
       flashTimersRef.current = {};
       dispatch(setMusicScene('none'));
-      SoundManager.panicStopAllMusic();
+      // stopAllMusic() clears _desiredMusicTrack so syncMusic() cannot restart
+      // the stale finale track while Redux propagates the scene reset.
+      SoundManager.stopAllMusic();
     },
     [dispatch],
   );
@@ -408,7 +413,7 @@ export default function FinalFaceoff() {
     } else {
       // In revealVotes phase: skip the chip animations and go straight to winner.
       dispatch(setMusicScene('none'));
-      SoundManager.panicStopAllMusic();
+      SoundManager.stopAllMusic();
       dispatch(skipAllJurorsThunk(humanIds, game.seed));
     }
   }
@@ -420,7 +425,7 @@ export default function FinalFaceoff() {
 
   function handleDismiss() {
     dispatch(setMusicScene('none'));
-    SoundManager.panicStopAllMusic();
+    SoundManager.stopAllMusic();
     dispatch(dismissFinale());
   }
 

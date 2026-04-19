@@ -11,15 +11,28 @@
  *   iPhone/Safari.
  * - Graceful error handling: invalid/missing files are logged once then skipped.
  *
- * Public API:
- *   init(), requestBgm(key, owner), releaseBgm(owner),
- *   play(key, opts?), stop(key),
+ * Public API (centralized — prefer these):
+ *   init(), setDesiredMusic(track, reason?), syncMusic()
+ *   play(key, opts?), stop(key), stopAllMusic()
  *   setCategoryEnabled, setCategoryVolume,
  *   unlockFromGesture, unlockOnUserGesture, unlockAndPlayMusicOnly,
- *   currentMusicKey, currentBgmOwner
+ *   currentMusicKey, currentMusicTrack, currentBgmOwner
  *
- * Legacy BGM API (backward-compatible wrappers):
- *   playMusic(key, opts?), stopMusic()
+ * Legacy BGM API (deprecated — do NOT call from components):
+ *   requestBgm(key, owner), releaseBgm(owner), playMusic(key, opts?), stopMusic()
+ *   These wrappers are kept for test compatibility only.  All runtime BGM
+ *   selection must flow through AudioStateSync → resolveDesiredMusic →
+ *   setDesiredMusic so there is exactly one source of truth.
+ *
+ * IMPORTANT — stopAllMusic vs panicStopAllMusic:
+ *   stopAllMusic()      clears _desiredMusicTrack = 'none' AND stops playback.
+ *                       Use this when you also need to prevent a syncMusic()
+ *                       triggered by visibility-change, settings toggle, etc.
+ *                       from restarting stale music before the next Redux
+ *                       render cycle updates AudioStateSync.
+ *   panicStopAllMusic() stops playback but does NOT update _desiredMusicTrack.
+ *                       Only safe when the desired track has already been set
+ *                       to 'none' by the caller or will be set synchronously.
  *
  * Disabled mode:
  * - Runtime playback/management is intentionally disabled to avoid the

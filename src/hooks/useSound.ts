@@ -2,23 +2,22 @@
  * useSound.ts — React hook that exposes the SoundManager API.
  *
  * Usage:
- *   const { play, requestBgm, releaseBgm, setCategoryEnabled, setCategoryVolume } = useSound();
+ *   const { play, setCategoryEnabled, setCategoryVolume } = useSound();
  *   play('ui:confirm');
- *   requestBgm('music:intro_hub_loop', 'introhub');
- *   releaseBgm('introhub');
+ *
+ * BGM (background music) is NOT managed through this hook.
+ * Background music is controlled exclusively by AudioStateSync via the
+ * centralized resolveDesiredMusic() resolver.  Do not call requestBgm or
+ * releaseBgm from components — those are legacy APIs no longer in use.
  */
 
 import { useCallback } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
-import type { PlayOptions, BgmOwner } from '../services/sound/SoundManager';
+import type { PlayOptions } from '../services/sound/SoundManager';
 import type { SoundCategory } from '../services/sound/sounds';
 
 export interface UseSoundReturn {
   play: (key: string, opts?: PlayOptions) => void;
-  /** Request a background music track with an ownership scope. */
-  requestBgm: (key: string | null, owner: BgmOwner) => void;
-  /** Release BGM ownership for the given scope. */
-  releaseBgm: (owner: BgmOwner) => void;
   setCategoryEnabled: (category: SoundCategory, enabled: boolean) => void;
   setCategoryVolume: (category: SoundCategory, volume: number) => void;
 }
@@ -26,18 +25,13 @@ export interface UseSoundReturn {
 /**
  * Returns stable callbacks that delegate to the singleton SoundManager.
  * The hook does not manage any state — it is a thin ergonomic wrapper.
+ *
+ * Background music must be driven through AudioStateSync / resolveDesiredMusic,
+ * not through direct SoundManager BGM calls.
  */
 export default function useSound(): UseSoundReturn {
   const play = useCallback((key: string, opts?: PlayOptions) => {
     void SoundManager.play(key, opts);
-  }, []);
-
-  const requestBgm = useCallback((key: string | null, owner: BgmOwner) => {
-    SoundManager.requestBgm(key, owner);
-  }, []);
-
-  const releaseBgm = useCallback((owner: BgmOwner) => {
-    SoundManager.releaseBgm(owner);
   }, []);
 
   const setCategoryEnabled = useCallback(
@@ -54,5 +48,5 @@ export default function useSound(): UseSoundReturn {
     [],
   );
 
-  return { play, requestBgm, releaseBgm, setCategoryEnabled, setCategoryVolume };
+  return { play, setCategoryEnabled, setCategoryVolume };
 }
