@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import creditsData from '../../data/credits';
 import { buildCreditsAssetCandidates } from './creditsAssetPaths';
@@ -11,10 +11,7 @@ export default function Credits() {
   const exitTimeoutRef = useRef<number | null>(null);
   const [isExiting, setIsExiting] = useState(false);
 
-  const [backgroundImageUrl] = useMemo(
-    () => buildCreditsAssetCandidates('assets/credits/credits-background.png'),
-    [],
-  );
+  const backgroundImageUrl = buildCreditsAssetCandidates('assets/credits/credits-background.png')[0];
 
   const onExit = useCallback(() => {
     if (isExiting) {
@@ -64,7 +61,7 @@ export default function Credits() {
       >
         <div className="credits-copy" aria-label="Credits">
           {creditsData.map((credit, index) => (
-            <p key={index} className="credits-copy-item">
+            <p key={`${index}-${credit}`} className="credits-copy-item">
               {credit}
             </p>
           ))}
