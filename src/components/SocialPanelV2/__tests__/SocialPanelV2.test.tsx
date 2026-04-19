@@ -27,11 +27,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../../store/gameSlice';
-import socialReducer, { setEnergyBankEntry, openSocialPanel } from '../../../social/socialSlice';
+import socialReducer, { setEnergyBankEntry, setInfluenceBankEntry, openSocialPanel } from '../../../social/socialSlice';
 import { initManeuvers } from '../../../social/SocialManeuvers';
 import SocialPanelV2 from '../SocialPanelV2';
 import type { RootState } from '../../../store/store';
@@ -539,5 +539,33 @@ describe('SocialPanelV2 – subject picker', () => {
     // After switching to a non-LOH target, pitch_target is no longer available
     // and the subject picker should no longer be rendered.
     expect(screen.queryByLabelText('Choose subject')).toBeNull();
+  });
+
+  it('counts nominated+pos players as nominee subjects for Ask to Use Safety', () => {
+    const basePlayers = store.getState().game.players.filter((p) => !p.isUser);
+    if (basePlayers.length < 2) return;
+
+    const posHolder = basePlayers[0];
+    const nomineeWithPos = basePlayers[1];
+    cleanup();
+    store = makeStore({
+      phase: 'social_1',
+      playerStatusOverrides: {
+        [posHolder.id]: 'pos',
+        [nomineeWithPos.id]: 'nominated+pos',
+      },
+    });
+    humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 10 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: humanId, value: 20 }));
+    store.dispatch(openSocialPanel());
+    initManeuvers(store);
+    renderPanel(store);
+
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(posHolder.name, 'i') })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /Ask to Use Safety/i }));
+
+    const subjectPicker = screen.getByLabelText('Choose subject');
+    expect(subjectPicker).toHaveTextContent(nomineeWithPos.name);
   });
 });

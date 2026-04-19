@@ -64,19 +64,28 @@ export function normalizeAuxCost(value: CostValue, field: 'influence' | 'info'):
   return 0;
 }
 
+const BANK_POINT_SCALE = 100;
+const DENOMINATED_INFLUENCE_COST_SCALE = 10;
+
 /**
- * Convert a float resource value to integer points (×100, rounded).
- * e.g. 1.0 → 100, 0.02 → 2, 2.0 → 200.
+ * Convert a float resource value to integer points using the provided scale.
+ * e.g. scale 100: 1.0 → 100, 0.02 → 2, 2.0 → 200.
  */
-function toIntPts(v: number): number {
-  return Math.round(v * 100);
+function toScaledIntPts(v: number, scale: number): number {
+  return Math.round(v * scale);
 }
 
 /**
  * Return the full { energy, influence, info } cost object for a social action.
  * energy defaults to 1 if unspecified; influence and info default to 0.
- * Influence and info are returned as integer points scaled by 100
- * (i.e. 1.00 float == 100 integer pts).
+ *
+ * Cost units are intentionally asymmetric:
+ * - influence costs are authored in whole influence units and denominated to ×10
+ *   (e.g. 2.0 → 20) so requirements match the single-digit influence economy
+ * - info costs remain in the legacy bank-point scale ×100 (e.g. 2.0 → 200)
+ *
+ * Influence yields are normalized separately by normalizeActionYields and remain
+ * authored in legacy fractional bank units (e.g. 0.02 → +2).
  */
 export function normalizeActionCosts(action: SocialActionDefinition): {
   energy: number;
@@ -85,14 +94,14 @@ export function normalizeActionCosts(action: SocialActionDefinition): {
 } {
   return {
     energy: normalizeCost(action.baseCost),
-    influence: toIntPts(normalizeAuxCost(action.baseCost, 'influence')),
-    info: toIntPts(normalizeAuxCost(action.baseCost, 'info')),
+    influence: toScaledIntPts(normalizeAuxCost(action.baseCost, 'influence'), DENOMINATED_INFLUENCE_COST_SCALE),
+    info: toScaledIntPts(normalizeAuxCost(action.baseCost, 'info'), BANK_POINT_SCALE),
   };
 }
 
 /**
  * Return the { influence, info } yields for a social action as integer points
- * scaled by 100.  Absent or zero yields return 0.
+ * scaled by the legacy bank-point scale ×100. Absent or zero yields return 0.
  */
 export function normalizeActionYields(action: SocialActionDefinition): {
   influence: number;
@@ -100,7 +109,7 @@ export function normalizeActionYields(action: SocialActionDefinition): {
 } {
   const y = action.yields ?? {};
   return {
-    influence: toIntPts(y.influence ?? 0),
-    info: toIntPts(y.info ?? 0),
+    influence: toScaledIntPts(y.influence ?? 0, BANK_POINT_SCALE),
+    info: toScaledIntPts(y.info ?? 0, BANK_POINT_SCALE),
   };
 }

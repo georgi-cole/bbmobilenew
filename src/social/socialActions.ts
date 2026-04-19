@@ -41,11 +41,17 @@ export interface SocialActionDefinition {
    * `socialConfig.actionCategories.friendlyActions` / `aggressiveActions`.
    */
   category: ActionCategory;
-  /** Energy cost as a plain number or a multi-resource cost-shape object. */
+  /**
+   * Energy cost as a plain number or a multi-resource cost-shape object.
+   * Influence costs are authored in whole influence units (2.0 → cost 20);
+   * info costs remain in the legacy bank-point scale (2.0 → cost 200).
+   */
   baseCost: number | { energy?: number; influence?: number; info?: number };
   /**
    * Optional resource yields granted to the actor on a successful execution.
-   * Dispatches applyInfluenceDelta / applyInfoDelta with positive deltas.
+   * Influence yields remain authored in legacy fractional bank units
+   * (0.02 → +2). Dispatches applyInfluenceDelta / applyInfoDelta with
+   * positive deltas.
    */
   yields?: { influence?: number; info?: number };
   /** Emoji icon shown on the action card. */
@@ -249,7 +255,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: { energy: 1, influence: 2.0 },
     targetMode: 'primary',
     successWeight: 2,
-    availabilityHint: 'Requires 200 influence',
+    availabilityHint: 'Requires 20 influence',
     yields: { influence: 0.03 },
   },
   // ── primaryPlusSubject contextual actions ─────────────────────────────────
@@ -285,6 +291,20 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Requires LOH or POS holder',
     yields: { influence: 0.04 },
     requiredTargetStatus: ['loh', 'loh+pos', 'pos', 'nominated+pos'],
+  },
+  {
+    id: 'ask_use_safety',
+    title: 'Ask to Use Safety',
+    icon: '🛡️',
+    description: 'Ask the POS holder to use safety on a nominee.',
+    category: 'strategic',
+    baseCost: { energy: 2, influence: 1.0 },
+    targetMode: 'primaryPlusSubject',
+    subjectPool: 'nominees',
+    successWeight: 1,
+    outcomeTag: 'protection',
+    availabilityHint: 'Talk to POS about a nominee',
+    requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
   },
   {
     id: 'warn_about_player',
@@ -347,7 +367,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: { energy: 2, influence: 5.0 },
     targetMode: 'primary',
     successWeight: 1,
-    availabilityHint: 'Requires 500 influence',
+    availabilityHint: 'Requires 50 influence',
     yields: { influence: 0.04 },
     aiOnly: true,
   },

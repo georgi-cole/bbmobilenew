@@ -106,6 +106,34 @@ export function chooseTargetsFor(
   );
   if (eligible.length === 0) return [];
 
+  if (actionId === 'ask_use_safety') {
+    const posHolder = eligible.find((p) => p.status.includes('pos'));
+    if (!posHolder) return [];
+
+    if (posHolder.status.includes('nominated')) {
+      return [posHolder.id, posHolder.id];
+    }
+
+    const actor = players.find((p) => p.id === playerId);
+    if (actor?.status.includes('nominated')) {
+      return [posHolder.id, playerId];
+    }
+
+    const nomineePool = players.filter(
+      (p) => p.id !== posHolder.id && p.status.includes('nominated'),
+    );
+    if (nomineePool.length === 0) {
+      return [];
+    }
+
+    const posHolderRels = relationships[posHolder.id] ?? {};
+    const preferredNominee = [...nomineePool].sort(
+      (a, b) => (posHolderRels[b.id]?.affinity ?? 0) - (posHolderRels[a.id]?.affinity ?? 0),
+    )[0];
+
+    return [posHolder.id, preferredNominee.id];
+  }
+
   const { allyThreshold, enemyThreshold } = socialConfig.relationshipThresholds;
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
   const rels = relationships[playerId] ?? {};

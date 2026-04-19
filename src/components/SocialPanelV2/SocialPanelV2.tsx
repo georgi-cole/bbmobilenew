@@ -27,6 +27,10 @@ import './SocialPanelV2.css';
 
 // ── Subject candidate helpers ─────────────────────────────────────────────
 
+function isNomineeStatus(status: Player['status']): boolean {
+  return status.includes('nominated');
+}
+
 /**
  * Generate a compact list of contextual subject candidates for primaryPlusSubject
  * actions. Returns a small set of eligible players based on the subjectPool hint.
@@ -44,9 +48,9 @@ function getSubjectCandidates(
   );
   switch (pool) {
     case 'nominees':
-      return eligible.filter((p) => p.status === 'nominated');
+      return eligible.filter((p) => isNomineeStatus(p.status));
     case 'non_nominees':
-      return eligible.filter((p) => p.status !== 'nominated');
+      return eligible.filter((p) => !isNomineeStatus(p.status));
     case 'allies': {
       const actorRels = relationships?.[actorId] ?? {};
       return eligible.filter((p) => (actorRels[p.id]?.affinity ?? 0) > 0);

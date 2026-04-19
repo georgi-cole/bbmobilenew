@@ -102,7 +102,7 @@ describe('socialAIDriver – canAfford gating', () => {
     store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }));
     // influenceBank left empty (0)
 
-    // Force the AI to always choose vote_rally ({ energy:2, influence:500 })
+    // Force the AI to always choose vote_rally ({ energy:2, influence:50 })
     vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('vote_rally');
 
     start();
@@ -183,5 +183,17 @@ describe('normalizeActionCosts + canAfford integration', () => {
     const costs = normalizeActionCosts(action);
     expect(costs).toEqual({ energy: 2, influence: 0, info: 100 });
     expect(canAfford('p1', costs)).toBe(false);
+  });
+
+  it('favor_request is affordable once denominated influence is provisioned (20+ pts)', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 20 }));
+
+    const action = getActionById('favor_request')!;
+    const costs = normalizeActionCosts(action);
+    expect(costs).toEqual({ energy: 1, influence: 20, info: 0 });
+    expect(canAfford('p1', costs)).toBe(true);
   });
 });
