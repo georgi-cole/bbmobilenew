@@ -27,10 +27,31 @@ import { normalizeActionCosts } from '../../../social/smExecNormalize';
 /** Actions visible in the human-player grid (excludes aiOnly entries). */
 const VISIBLE_ACTIONS = SOCIAL_ACTIONS.filter((a) => !a.aiOnly);
 
+/** Actions visible without any target selected (also excludes role-gated). */
+const DEFAULT_VISIBLE_ACTIONS = VISIBLE_ACTIONS.filter((a) => !a.requiredTargetStatus);
+
 describe('ActionGrid – rendering', () => {
-  it('renders a card for every non-aiOnly action in SOCIAL_ACTIONS', () => {
+  it('renders a card for every non-aiOnly, non-role-gated action in SOCIAL_ACTIONS', () => {
     render(<ActionGrid />);
-    for (const action of VISIBLE_ACTIONS) {
+    for (const action of DEFAULT_VISIBLE_ACTIONS) {
+      expect(screen.getByText(action.title)).toBeDefined();
+    }
+  });
+
+  it('hides role-gated actions when no primaryTargetStatus is provided', () => {
+    render(<ActionGrid />);
+    const roleGatedActions = VISIBLE_ACTIONS.filter((a) => a.requiredTargetStatus);
+    for (const action of roleGatedActions) {
+      expect(screen.queryByRole('button', { name: new RegExp(action.title, 'i') })).toBeNull();
+    }
+  });
+
+  it('shows role-gated actions when primaryTargetStatus matches', () => {
+    render(<ActionGrid primaryTargetStatus="loh" />);
+    const lohActions = VISIBLE_ACTIONS.filter(
+      (a) => a.requiredTargetStatus?.includes('loh'),
+    );
+    for (const action of lohActions) {
       expect(screen.getByText(action.title)).toBeDefined();
     }
   });
@@ -179,7 +200,7 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
       (el) => el.hasAttribute('data-action-id'),
     );
     const renderedIds = cards.map((c) => c.getAttribute('data-action-id'));
-    const canonicalIds = VISIBLE_ACTIONS.map((a) => a.id);
+    const canonicalIds = DEFAULT_VISIBLE_ACTIONS.map((a) => a.id);
     expect(renderedIds).toEqual(canonicalIds);
   });
 
@@ -191,9 +212,10 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
       (el) => el.hasAttribute('data-action-id'),
     );
     const renderedIds = cards.map((c) => c.getAttribute('data-action-id'));
-    // Compute affordable/unaffordable using the same logic as the component (visible only)
+    // Compute affordable/unaffordable using the same logic as the component
+    // (visible only, excluding role-gated actions since no target status is set)
     const actorResources = { energy: 1, influence: 0, info: 0 };
-    const affordableIds = VISIBLE_ACTIONS.filter((a) => {
+    const affordableIds = DEFAULT_VISIBLE_ACTIONS.filter((a) => {
       const costs = normalizeActionCosts(a);
       return (
         costs.energy <= actorResources.energy &&
@@ -201,7 +223,7 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
         costs.info <= actorResources.info
       );
     }).map((a) => a.id);
-    const unaffordableIds = VISIBLE_ACTIONS.filter((a) => {
+    const unaffordableIds = DEFAULT_VISIBLE_ACTIONS.filter((a) => {
       const costs = normalizeActionCosts(a);
       return !(
         costs.energy <= actorResources.energy &&

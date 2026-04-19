@@ -43,18 +43,29 @@ function makeStore(overrides?: {
   energyBank?: Record<string, number>;
   hasHuman?: boolean;
   humanStatus?: RootState['game']['players'][number]['status'];
+  /** Override status for specific players by id. */
+  playerStatusOverrides?: Record<string, RootState['game']['players'][number]['status']>;
 }) {
   const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } });
   const defaultState = base.getState() as RootState;
 
   // Build the preloaded state by patching the default game state.
-  const players = overrides?.hasHuman === false
+  let players = overrides?.hasHuman === false
     ? defaultState.game.players.map((p) => ({ ...p, isUser: false }))
     : defaultState.game.players.map((player) =>
         player.isUser && overrides?.humanStatus
           ? { ...player, status: overrides.humanStatus }
           : player,
       );
+
+  // Apply per-player status overrides (e.g. set a player to 'loh').
+  if (overrides?.playerStatusOverrides) {
+    const statusMap = overrides.playerStatusOverrides;
+    players = players.map((p) => {
+      const newStatus = statusMap[p.id];
+      return newStatus ? { ...p, status: newStatus } : p;
+    });
+  }
 
   const preloadedState = {
     game: {
@@ -446,10 +457,20 @@ describe('SocialPanelV2 – accessibility', () => {
 describe('SocialPanelV2 – subject picker', () => {
   let store: ReturnType<typeof makeStore>;
   let humanId: string;
+  let lohPlayer: RootState['game']['players'][number];
 
   beforeEach(() => {
+    // Create the store first, then derive the LOH player from the same instance
+    // to avoid player-id mismatches when the roster is randomised across stores.
     store = makeStore({ phase: 'social_1' });
+    const firstNonUser = store.getState().game.players.find((p) => !p.isUser)!;
+    // Re-create with the LOH override now that we know the correct player id.
+    store = makeStore({
+      phase: 'social_1',
+      playerStatusOverrides: { [firstNonUser.id]: 'loh' },
+    });
     humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    lohPlayer = store.getState().game.players.find((p) => p.id === firstNonUser.id)!;
     store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 10 }));
     store.dispatch(openSocialPanel());
     initManeuvers(store);
@@ -468,25 +489,22 @@ describe('SocialPanelV2 – subject picker', () => {
   });
 
   it('subject picker appears when a primaryPlusSubject action is selected with a target', () => {
-    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    // First select the LOH player, then select Pitch Target action
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(lohPlayer.name, 'i') })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
     expect(screen.getByLabelText('Choose subject')).toBeDefined();
   });
 
   it('execute button is disabled for primaryPlusSubject action without a subject', () => {
-    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(lohPlayer.name, 'i') })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
     const btn = screen.getByRole('button', { name: 'Execute' });
     expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('execute button is enabled once subject is selected for primaryPlusSubject action', () => {
-    const players = store.getState().game.players.filter((p) => !p.isUser);
-    const primaryTarget = players[0];
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(lohPlayer.name, 'i') })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(primaryTarget.name, 'i') })[0]);
     // Pick a subject chip — the chip buttons are inside the subject picker
     const subjectPicker = screen.getByLabelText('Choose subject');
     const subjectChips = subjectPicker.querySelectorAll('[aria-pressed]');
@@ -503,12 +521,10 @@ describe('SocialPanelV2 – subject picker', () => {
   it('subject selection is cleared when primary target changes', () => {
     const players = store.getState().game.players.filter((p) => !p.isUser);
     if (players.length < 3) return; // need at least 3 non-user players
-    const primaryTarget = players[0];
-    const altTarget = players[1];
 
-    // Select pitch_target, pick primary, pick subject
+    // Select LOH player first so pitch_target appears
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(lohPlayer.name, 'i') })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Pitch Target/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(primaryTarget.name, 'i') })[0]);
     const subjectPicker = screen.getByLabelText('Choose subject');
     const subjectChips = subjectPicker.querySelectorAll('[aria-pressed]');
     if (subjectChips.length === 0) return; // no candidates, skip
@@ -516,10 +532,12 @@ describe('SocialPanelV2 – subject picker', () => {
     fireEvent.click(subjectChips[0]);
     expect((subjectChips[0] as HTMLElement).getAttribute('aria-pressed')).toBe('true');
 
-    // Switch primary target — subject should clear
+    // Switch primary target to another non-LOH player — action should be cleared
+    // because the new target doesn't have LOH status, so pitch_target disappears.
+    const altTarget = players.find((p) => p.id !== lohPlayer.id)!;
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(altTarget.name, 'i') })[0]);
-    // After re-render the chip for what was previously selected should now be unselected
-    const updatedChips = screen.getByLabelText('Choose subject').querySelectorAll('[aria-pressed="true"]');
-    expect(updatedChips.length).toBe(0);
+    // After switching to a non-LOH target, pitch_target is no longer available
+    // and the subject picker should no longer be rendered.
+    expect(screen.queryByLabelText('Choose subject')).toBeNull();
   });
 });

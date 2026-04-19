@@ -6,6 +6,8 @@
  * separate energy and info costs.
  */
 
+import type { PlayerStatus } from '../types';
+
 export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance';
 
 /**
@@ -13,7 +15,7 @@ export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance
  *  - 'none'               — no target player needed (e.g. observe, stay idle)
  *  - 'primary'            — exactly one target player required (default for most actions)
  *  - 'primaryPlusSubject' — one primary target + one lightweight contextual subject
- *                           (e.g. "Pitch Target to HOH about X")
+ *                           (e.g. "Pitch Target to LOH about X")
  *  - 'multi'              — multiple target players supported (e.g. group actions)
  */
 export type TargetMode = 'none' | 'primary' | 'primaryPlusSubject' | 'multi';
@@ -81,6 +83,14 @@ export interface SocialActionDefinition {
    * as the contextual subject. Used by the UI to generate candidate chips.
    */
   subjectPool?: SubjectPool;
+  /**
+   * When set, this action is only available when the selected primary target
+   * has one of the listed statuses.  For example, `['loh', 'loh+pos']` means
+   * the action only appears when talking to the current Leader of the House.
+   * Omit (or set to undefined) for actions that are available regardless of
+   * the target's status.
+   */
+  requiredTargetStatus?: readonly PlayerStatus[];
 }
 
 /** Canonical list of social actions available in the game. */
@@ -189,6 +199,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     targetMode: 'primary',
     successWeight: 2,
     outcomeTag: 'intel',
+    availabilityHint: 'Requires 200 info',
     yields: { info: 1.0, influence: 0.04 },
   },
   // ── Aggressive / competitive actions ─────────────────────────────────────
@@ -238,7 +249,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: { energy: 1, influence: 2.0 },
     targetMode: 'primary',
     successWeight: 2,
-    availabilityHint: 'Requires 2.0 influence',
+    availabilityHint: 'Requires 200 influence',
     yields: { influence: 0.03 },
   },
   // ── primaryPlusSubject contextual actions ─────────────────────────────────
@@ -249,29 +260,31 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     id: 'pitch_target',
     title: 'Pitch Target',
     icon: '🎯',
-    description: 'Suggest to the HOH who they should nominate.',
+    description: 'Suggest to the LOH who they should nominate.',
     category: 'strategic',
-    baseCost: { energy: 2, info: 1.0 },
+    baseCost: { energy: 2, influence: 1.0, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'houseguests',
     successWeight: 1,
     outcomeTag: 'target',
-    availabilityHint: 'Talk to HOH about a target',
+    availabilityHint: 'Talk to LOH about a target',
     yields: { influence: 0.04 },
+    requiredTargetStatus: ['loh', 'loh+pos'],
   },
   {
     id: 'suggest_replacement',
     title: 'Suggest Replacement',
     icon: '🔄',
-    description: 'Pitch a replacement nominee to the POV holder or HOH.',
+    description: 'Pitch a replacement nominee to the POS holder or LOH.',
     category: 'strategic',
-    baseCost: { energy: 2, info: 1.0 },
+    baseCost: { energy: 2, influence: 1.0, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'non_nominees',
     successWeight: 1,
     outcomeTag: 'target',
-    availabilityHint: 'Suggest a replacement nominee',
+    availabilityHint: 'Requires LOH or POS holder',
     yields: { influence: 0.04 },
+    requiredTargetStatus: ['loh', 'loh+pos', 'pos', 'nominated+pos'],
   },
   {
     id: 'warn_about_player',

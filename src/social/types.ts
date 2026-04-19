@@ -48,6 +48,12 @@ export interface SocialActionLogEntry {
   actionId: string;
   actorId: string;
   targetId: string;
+  /**
+   * For primaryPlusSubject actions: the player being talked *about*.
+   * When present, the narrative should reference this player rather than
+   * (or in addition to) targetId.
+   */
+  subjectId?: string;
   /** Energy deducted (backward-compatible; prefer `costs.energy`). */
   cost: number;
   delta: number;

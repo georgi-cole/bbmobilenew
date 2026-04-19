@@ -259,10 +259,13 @@ export function executeAction(
     info: stateAfter.social.infoBank[actorId] ?? 0,
   };
 
+  const subjectId = options?.subjectId;
+
   const entry: SocialActionLogEntry = {
     actionId,
     actorId,
     targetId,
+    ...(subjectId ? { subjectId } : {}),
     cost: costs.energy,
     costs,
     delta,
@@ -292,8 +295,7 @@ export function executeAction(
   );
 
   // For primaryPlusSubject actions: apply a lightweight contextual tag from the
-  // primary target toward the subject (e.g. HOH now sees the subject as a "target").
-  const subjectId = options?.subjectId;
+  // primary target toward the subject (e.g. LOH now sees the subject as a "target").
   if (
     outcome === 'success' &&
     action.targetMode === 'primaryPlusSubject' &&

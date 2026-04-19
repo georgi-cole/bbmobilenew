@@ -60,8 +60,12 @@ yields: { influence: 0.06 }    // earns 6 pts influence on success
 | `observe` | 1 | — | — | info +100 pts | Targetless; watch and listen |
 | `proposeAlliance` | 3 | — | 200 pts | influence +6 pts | Tags relationship 'alliance' |
 | `group_chat` | 2 | — | — | influence +3 pts | Targetless; broad goodwill |
+| `share_intel` | 1 | — | 200 pts | info +100, influence +4 pts | Requires 200 info |
+| `pitch_target` | 2 | 100 pts | 100 pts | influence +4 pts | LOH only; primaryPlusSubject |
+| `suggest_replacement` | 2 | 100 pts | 100 pts | influence +4 pts | LOH/POS only; primaryPlusSubject |
 | `vote_rally` | 2 | 500 pts | — | influence +4 pts | Requires high influence |
-| `favor_request` | 1 | 200 pts | — | influence +3 pts | Call in a favour |
+| `favor_request` | 1 | 200 pts | — | influence +3 pts | Requires 200 influence |
+| `rally_votes_against` | 2 | 200 pts | — | influence +3 pts | Requires nominees on the block |
 | `rumor` | 2 | — | 100 pts | influence +5 pts | Tags 'rumor'; aggressive |
 | `startFight` | 3 | — | — | influence +4 pts | Tags 'conflict'; aggressive |
 | `betray` | 3 | — | — | influence +4 pts | Tags 'betrayal'; aggressive |

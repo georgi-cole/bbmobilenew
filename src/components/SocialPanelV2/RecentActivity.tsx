@@ -82,7 +82,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
       const newKeys = new Set<string>();
       for (const e of visibleLogs) {
         if (e.timestamp > prevNewestTimestampRef.current) {
-          newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}`);
+          newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}-${e.subjectId ?? ''}`);
         }
       }
       prevNewestTimestampRef.current = newestTimestamp;
@@ -130,14 +130,22 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
         <ul className="ra-list" ref={listRef} aria-label="Recent actions">
           {visibleLogs.map((entry) => {
             const action = getActionById(entry.actionId);
-            const actionTitle = action?.title ?? entry.actionId;
+            const actionTitle = action?.title ?? entry.actionId.replace(/_/g, ' ');
             const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
+            // For primaryPlusSubject actions, show the subject in the narrative
+            // since the subject is the person being talked *about*.
+            const subjectName = entry.subjectId
+              ? playerById.get(entry.subjectId)?.name ?? entry.subjectId
+              : null;
+            const narrativeContext = subjectName
+              ? `${targetName} about ${subjectName}`
+              : targetName;
             const icon = getResultIcon(entry);
             const resultClass = getResultClass(entry);
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
-            const narrative = getSocialNarrative(entry.actionId, targetName, entry.timestamp);
-            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}`;
+            const narrative = getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp);
+            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`;
             const isNew = highlightedKeys.has(key);
             return (
               <li key={key} className={`ra-entry${isNew ? ' ra-entry--new' : ''}`}>
