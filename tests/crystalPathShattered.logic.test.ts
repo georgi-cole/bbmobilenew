@@ -17,9 +17,11 @@ import {
   rankPlayers,
   resolveWrongTileDelta,
   rollMysteryEffect,
+  simulateAiRun,
   STARTING_HINTS,
   STARTING_SP,
   type ActiveEffect,
+  type BridgeRow,
   type PlayerState,
 } from '../src/minigames/crystalPathShattered/shatteredLogic';
 
@@ -146,6 +148,22 @@ describe('shatteredLogic · ranking', () => {
     const b = mkPlayer({ id: 'b', furthestRow: HIDDEN_BRIDGE_LENGTH, sp: 10, finishedAtMs: 5 });
     const ranked = rankPlayers([a, b]);
     expect(ranked[0].id).toBe('b');
+  });
+});
+
+describe('shatteredLogic · async AI simulation', () => {
+  it('keeps moving to the next row after a wrong tile if SP remains', () => {
+    const rows: BridgeRow[] = [{ index: 0, safeSide: 'left', hasMystery: false }];
+    const result = simulateAiRun(
+      mkPlayer({ id: 'ai', name: 'AI', isHuman: false }),
+      rows,
+      'gambler',
+      () => 0.99,
+    );
+
+    expect(result.player.furthestRow).toBe(1);
+    expect(result.player.sp).toBe(STARTING_SP - 10);
+    expect(result.player.eliminated).toBe(false);
   });
 });
 

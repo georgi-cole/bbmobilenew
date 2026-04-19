@@ -42,6 +42,7 @@ import {
   formatEffectName,
   getRowBandDamage,
   HIDDEN_BRIDGE_LENGTH,
+  type AiLiveFeedEvent,
   isPositiveEffect,
   mergeEffect,
   pickAiPersonality,
@@ -50,6 +51,7 @@ import {
   resolveWrongTileDelta,
   rollMysteryEffect,
   SAFE_STEP_MS,
+  simulateAiRun,
   STARTING_HINTS,
   STARTING_SP,
   WRONG_STEP_MS,
@@ -102,6 +104,7 @@ if (typeof window !== 'undefined' && import.meta.env?.DEV) {
 
 /** Fixed-length array for environment particle slots (avoids per-render allocation). */
 const PARTICLE_SLOTS = Array.from({ length: 12 });
+const MAX_FEED_ITEMS = 4;
 
 function initialPlayers(
   participantIds: string[],
@@ -162,9 +165,18 @@ export default function CrystalPathShatteredGame({
     () => (seed === 0 || seed === undefined ? cryptoSeed() : seed),
     [seed],
   );
-  const rngRef = useRef(mulberry32(sessionSeed));
-  const rowStreamRef = useRef(createRowStream(rngRef.current));
+  const humanId = useMemo(
+    () => (participants ?? []).find((p) => p.isHuman)?.id ?? null,
+    [participants],
+  );
+  const isAsyncHumanRun = humanId !== null;
+  const rngRef = useRef(mulberry32(sessionSeed ^ 0x9e3779b9));
   const aiPersonalityRef = useRef<Record<string, AiPersonality>>({});
+  const baseBridgeRows = useMemo(
+    () => createRowStream(mulberry32(sessionSeed)).take(HIDDEN_BRIDGE_LENGTH),
+    [sessionSeed],
+  );
+  const runStartedAtRef = useRef(Date.now());
 
   // Scene-init counter (Part 1 §9).
   const didInitRef = useRef(false);
@@ -181,19 +193,25 @@ export default function CrystalPathShatteredGame({
   const [activePlayerIndex, setActivePlayerIndex] = useState(() =>
     findHumanPlayerStartIndex(participantIds, participants),
   );
-  const [bridgeRows, setBridgeRows] = useState<BridgeRow[]>(() =>
-    rowStreamRef.current.take(HIDDEN_BRIDGE_LENGTH),
-  );
+  const [bridgeRows, setBridgeRows] = useState<BridgeRow[]>(() => baseBridgeRows);
   const [activeAnimation, setActiveAnimation] = useState<Animation | null>(null);
   const [hintRowIndex, setHintRowIndex] = useState<number | null>(null);
   const [messageLog, setMessageLog] = useState<string[]>([]);
   const [mysteryModal, setMysteryModal] = useState<{ effectLabel: string; positive: boolean } | null>(null);
   const [secretWinBanner, setSecretWinBanner] = useState(false);
-  const [spectating, setSpectating] = useState(false);
+  const [liveFeed, setLiveFeed] = useState<string[]>([]);
+  const [resolvedRows, setResolvedRows] = useState<Record<number, { side: TileSide; wrong: boolean }>>({});
   // Tick for active-effect countdowns.
   const [, forceTick] = useReducer((x: number) => (x + 1) & 0xffff, 0);
   // Track which row the current player must still step on after taking mystery.
   const [mysteryPendingStep, setMysteryPendingStep] = useState(false);
+
+  useEffect(() => {
+    setBridgeRows(baseBridgeRows);
+    setResolvedRows({});
+    setLiveFeed([]);
+    runStartedAtRef.current = Date.now();
+  }, [baseBridgeRows]);
 
   // Derived
   const playersRef = useRef(players);
@@ -201,16 +219,14 @@ export default function CrystalPathShatteredGame({
     playersRef.current = players;
   }, [players]);
 
-  const humanId = useMemo(
-    () => (participants ?? []).find((p) => p.isHuman)?.id ?? null,
-    [participants],
-  );
   const clampedActivePlayerIndex = players.length === 0
     ? 0
     : Math.min(activePlayerIndex, players.length - 1);
-  const activePlayer = players[clampedActivePlayerIndex] ?? null;
-  const activePlayerId = activePlayer?.id ?? null;
   const humanPlayer = humanId ? players.find((p) => p.id === humanId) ?? null : null;
+  const activePlayer = isAsyncHumanRun
+    ? humanPlayer
+    : players[clampedActivePlayerIndex] ?? null;
+  const activePlayerId = activePlayer?.id ?? null;
   const isHumanTurn = !!activePlayer && activePlayer.id === humanId;
   const isResolving = activeAnimation !== null || mysteryModal !== null;
 
@@ -228,6 +244,69 @@ export default function CrystalPathShatteredGame({
       }
     });
   }, [players]);
+
+  const asyncAiSimulation = useMemo(() => {
+    if (!isAsyncHumanRun) {
+      return {
+        results: new Map<string, PlayerState>(),
+        events: [] as AiLiveFeedEvent[],
+      };
+    }
+
+    const aiRng = mulberry32(sessionSeed ^ 0x85ebca6b);
+    const results = new Map<string, PlayerState>();
+    const events: AiLiveFeedEvent[] = [];
+
+    players.forEach((player) => {
+      if (player.isHuman) return;
+      const personality = aiPersonalityRef.current[player.id]
+        ?? pickAiPersonality(player.profile, aiRng);
+      aiPersonalityRef.current[player.id] = personality;
+      const simulated = simulateAiRun(
+        {
+          ...player,
+          sp: STARTING_SP,
+          hints: STARTING_HINTS,
+          furthestRow: 0,
+          effects: [],
+          eliminated: false,
+          eliminatedRow: null,
+          finishedAtMs: null,
+          survivalIndex: 0,
+        },
+        baseBridgeRows,
+        personality,
+        aiRng,
+      );
+      results.set(player.id, simulated.player);
+      events.push(...simulated.feed);
+    });
+
+    [...results.values()]
+      .filter((player) => player.eliminated)
+      .sort((a, b) => {
+        const aRow = a.eliminatedRow ?? Number.POSITIVE_INFINITY;
+        const bRow = b.eliminatedRow ?? Number.POSITIVE_INFINITY;
+        if (aRow !== bRow) return aRow - bRow;
+        return a.sp - b.sp;
+      })
+      .forEach((player, idx) => {
+        player.survivalIndex = idx + 1;
+      });
+
+    return {
+      results,
+      events: events.sort((a, b) => a.atMs - b.atMs),
+    };
+  }, [baseBridgeRows, isAsyncHumanRun, players, sessionSeed]);
+
+  const scoreboardPlayers = useMemo(() => {
+    if (!isAsyncHumanRun) return players;
+    return players.map((player) => {
+      if (player.isHuman) return player;
+      return asyncAiSimulation.results.get(player.id) ?? player;
+    });
+  }, [asyncAiSimulation.results, isAsyncHumanRun, players]);
 
   // ── Timers (registered through a single queue for stability) ─────────────
   const timersRef = useRef<number[]>([]);
@@ -300,7 +379,7 @@ export default function CrystalPathShatteredGame({
 
   // ── Turn pump / AI driver ────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'playing' || !activePlayer || isResolving) return undefined;
+    if (isAsyncHumanRun || phase !== 'playing' || !activePlayer || isResolving) return undefined;
     if (activePlayer.isHuman) return undefined;
     // AI turn.
     const personality = aiPersonalityRef.current[activePlayer.id] ?? 'balanced';
@@ -328,12 +407,28 @@ export default function CrystalPathShatteredGame({
     // The effect intentionally re-runs only on these stable keys; `row`, `activePlayer`,
     // and the resolver callbacks are captured once per scheduling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePlayer, activePlayerId, phase, isResolving, mysteryPendingStep, currentRowRecord]);
+  }, [activePlayer, activePlayerId, isAsyncHumanRun, phase, isResolving, mysteryPendingStep, currentRowRecord]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const logMessage = useCallback((msg: string) => {
     setMessageLog((cur) => [msg, ...cur].slice(0, 4));
   }, []);
+
+  useEffect(() => {
+    if (!isAsyncHumanRun || phase !== 'playing' || asyncAiSimulation.events.length === 0) return undefined;
+
+    const startAt = asyncAiSimulation.events[0]?.atMs ?? 0;
+    const scheduled = asyncAiSimulation.events.slice(0, 24).map((event) => queueTimeout(() => {
+      setLiveFeed((cur) => {
+        if (cur[0] === event.message) return cur;
+        return [event.message, ...cur.filter((entry) => entry !== event.message)].slice(0, MAX_FEED_ITEMS);
+      });
+    }, Math.max(900, Math.round((event.atMs - startAt) * 0.18) + 900)));
+
+    return () => {
+      scheduled.forEach((timerId) => window.clearTimeout(timerId));
+    };
+  }, [asyncAiSimulation.events, isAsyncHumanRun, phase, queueTimeout]);
 
   const consumeHint = useCallback((playerId: string) => {
     setPlayers((cur) => cur.map((p) =>
@@ -350,6 +445,7 @@ export default function CrystalPathShatteredGame({
     if (!runner || runner.id !== playerId) return;
     const wrong = side !== row.safeSide;
     const now = Date.now();
+    const progressedRow = row.index + 1;
     setActiveAnimation({
       playerId,
       kind: wrong ? 'wrong' : 'safe',
@@ -359,13 +455,18 @@ export default function CrystalPathShatteredGame({
     });
     setHintRowIndex(null);
     setMysteryPendingStep(false);
+    setResolvedRows((cur) => ({
+      ...cur,
+      [row.index]: { side, wrong },
+    }));
 
     if (wrong) {
-      playDeath();
       const base = getRowBandDamage(row.index + 1);
       const res = resolveWrongTileDelta(base, runner.effects, now);
       const newSp = Math.max(0, runner.sp + res.delta);
       const eliminated = newSp <= 0;
+      if (eliminated) playDeath();
+      else playSafeStep();
       setPlayers((cur) => cur.map((p) => {
         if (p.id !== playerId) return p;
         if (res.consumedKind === 'shield_5s') logMessage(`${p.name}: Shield absorbed the damage.`);
@@ -374,29 +475,44 @@ export default function CrystalPathShatteredGame({
           ...p,
           sp: newSp,
           effects: res.newEffects,
+          furthestRow: progressedRow,
           eliminated,
-          eliminatedRow: eliminated ? row.index + 1 : p.eliminatedRow,
+          eliminatedRow: eliminated ? progressedRow : p.eliminatedRow,
         };
       }));
+      logMessage(
+        eliminated
+          ? `${runner.name} broke the crystal at row ${progressedRow} and fell.`
+          : `${runner.name} cracked the wrong tile at row ${progressedRow} (${res.delta > 0 ? `+${res.delta}` : res.delta} SP) and kept moving.`,
+      );
       queueTimeout(() => {
         setActiveAnimation(null);
-        if (eliminated) advanceToNextPlayer(clampedActivePlayerIndex);
+        if (eliminated) {
+          if (runner.isHuman && isAsyncHumanRun) {
+            setPhase('complete');
+            return;
+          }
+          advanceToNextPlayer(clampedActivePlayerIndex);
+        }
       }, WRONG_STEP_MS);
     } else {
       playSafeStep();
-      const furthest = Math.max(runner.furthestRow, row.index + 1);
+      const furthest = Math.max(runner.furthestRow, progressedRow);
       const justFinished = runner.finishedAtMs === null && furthest >= HIDDEN_BRIDGE_LENGTH;
-      const finishedAtMs = justFinished ? now : runner.finishedAtMs;
+      const finishedAtMs = justFinished ? now - runStartedAtRef.current : runner.finishedAtMs;
       setPlayers((cur) => cur.map((p) => {
         if (p.id !== playerId) return p;
         return { ...p, furthestRow: furthest, finishedAtMs };
       }));
+      if (furthest > 0 && furthest % 25 === 0) {
+        logMessage(`${runner.name} hit row ${furthest}.`);
+      }
       queueTimeout(() => {
         setActiveAnimation(null);
         if (justFinished) advanceToNextPlayer(clampedActivePlayerIndex);
       }, SAFE_STEP_MS);
     }
-  }, [activePlayer, advanceToNextPlayer, clampedActivePlayerIndex, logMessage, playDeath, playSafeStep, queueTimeout]);
+  }, [activePlayer, advanceToNextPlayer, clampedActivePlayerIndex, isAsyncHumanRun, logMessage, playDeath, playSafeStep, queueTimeout]);
 
   const resolveMystery = useCallback((playerId: string) => {
     const row = currentRowRecord;
@@ -404,6 +520,8 @@ export default function CrystalPathShatteredGame({
     const kind = rollMysteryEffect(rngRef.current);
     const applied = applyMysteryEffect(kind, Date.now());
     const positive = isPositiveEffect(kind);
+    const targetPlayer = players.find((p) => p.id === playerId) ?? null;
+    const eliminatedByMystery = targetPlayer !== null && targetPlayer.sp + applied.spDelta <= 0;
 
     setActiveAnimation({ playerId, kind: 'mystery', side: 'center', rowIndex: row.index, until: Date.now() + MYSTERY_REVEAL_MS });
     setPlayers((cur) => cur.map((p) => {
@@ -426,17 +544,38 @@ export default function CrystalPathShatteredGame({
     setBridgeRows((cur) => cur.map((r) => r.index === row.index ? { ...r, hasMystery: false } : r));
     setMysteryPendingStep(true);
     logMessage(`${players.find((p) => p.id === playerId)?.name ?? 'Player'} — Mystery: ${applied.label}.`);
+    if (eliminatedByMystery) playDeath();
 
-    if (players.find((p) => p.id === playerId)?.isHuman) {
+    if (targetPlayer?.isHuman) {
       setMysteryModal({ effectLabel: applied.label, positive });
       queueTimeout(() => setMysteryModal(null), MYSTERY_REVEAL_MS);
     }
-    queueTimeout(() => { setActiveAnimation(null); }, MYSTERY_REVEAL_MS);
-  }, [currentRowRecord, logMessage, players, queueTimeout]);
+    queueTimeout(() => {
+      setActiveAnimation(null);
+      if (eliminatedByMystery && targetPlayer?.isHuman && isAsyncHumanRun) {
+        setPhase('complete');
+      }
+    }, MYSTERY_REVEAL_MS);
+  }, [currentRowRecord, isAsyncHumanRun, logMessage, playDeath, players, queueTimeout]);
 
   // ── Completion detection ─────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== 'playing') return;
+    if (isAsyncHumanRun) {
+      if (humanPlayer?.finishedAtMs === null) return;
+      if (!secretWinBanner) {
+        setSecretWinBanner(true);
+        playWinner();
+        if (import.meta.env?.DEV) {
+          console.log('[crystalPathShattered] SECRET 350-ROW WIN — season immunity hook', {
+            playerId: humanPlayer.id,
+          });
+        }
+      }
+      const t = queueTimeout(() => setPhase('complete'), 1_400);
+      return () => window.clearTimeout(t);
+    }
+
     const secretWinner = players.find((p) => p.finishedAtMs !== null);
     const stillAlive = players.filter((p) => !p.eliminated && p.finishedAtMs === null);
     if (secretWinner || stillAlive.length === 0) {
@@ -455,16 +594,7 @@ export default function CrystalPathShatteredGame({
       return () => window.clearTimeout(t);
     }
     return undefined;
-  }, [phase, players, playWinner, queueTimeout, secretWinBanner]);
-
-  // Announce human elimination (spectator mode).
-  useEffect(() => {
-    if (!humanPlayer || spectating || phase !== 'playing') return;
-    if (humanPlayer.eliminated) {
-      setSpectating(true);
-      logMessage('You fell. Spectating remaining players.');
-    }
-  }, [humanPlayer, spectating, phase, logMessage]);
+  }, [humanPlayer, isAsyncHumanRun, phase, players, playWinner, queueTimeout, secretWinBanner]);
 
   // Assign survivalIndex (order-of-fall) whenever a new elimination appears.
   // Stable dep: count of eliminated players without a survivalIndex yet.
@@ -493,7 +623,7 @@ export default function CrystalPathShatteredGame({
 
   // ── Handlers (human UI) ──────────────────────────────────────────────────
   const inputEnabled =
-    isHumanTurn && !isResolving && !spectating && phase === 'playing';
+    isHumanTurn && !isResolving && phase === 'playing';
 
   const handleSelect = useCallback((tile: TileKindChoice) => {
     if (!inputEnabled || !activePlayer) return;
@@ -514,10 +644,10 @@ export default function CrystalPathShatteredGame({
 
   // ── Complete screen wiring ───────────────────────────────────────────────
   const handleContinue = useCallback(() => {
-    const summary = buildSummary(players);
+    const summary = buildSummary(scoreboardPlayers);
     if (summary.winnerId) {
       // lastPlaceId = first eliminated = smallest survivalIndex among eliminated.
-      const firstOut = [...players]
+      const firstOut = [...scoreboardPlayers]
         .filter((p) => p.eliminated && p.survivalIndex > 0)
         .sort((a, b) => a.survivalIndex - b.survivalIndex)[0]?.id
         ?? null;
@@ -528,10 +658,10 @@ export default function CrystalPathShatteredGame({
       }));
     }
     onComplete?.();
-  }, [dispatch, onComplete, players]);
+  }, [dispatch, onComplete, scoreboardPlayers]);
 
   // ── Render ───────────────────────────────────────────────────────────────
-  const ranked = useMemo(() => rankPlayers(players), [players]);
+  const ranked = useMemo(() => rankPlayers(scoreboardPlayers), [scoreboardPlayers]);
   const displayRows = useMemo(() => {
     const absCurrent = activePlayer?.furthestRow ?? 0;
     const startOffset = Math.max(0, absCurrent - 1);
@@ -607,6 +737,7 @@ export default function CrystalPathShatteredGame({
   const currentSp = activePlayer?.sp ?? 0;
   const currentSpPct = Math.max(0, Math.min(100, (currentSp / STARTING_SP) * 100));
   const currentSpLevel = spLevel(currentSp);
+  const liveFeedHeadline = liveFeed[0] ?? 'Live feed online — the rest of the field is racing in parallel.';
 
   return (
     <div className="cps-shell" aria-label="Crystal Path: Infinity">
@@ -675,6 +806,7 @@ export default function CrystalPathShatteredGame({
               const isCurrent = activePlayer && row.index === activePlayer.furthestRow;
               const isPast = activePlayer && row.index < activePlayer.furthestRow;
               const showHint = hintRowIndex === row.index;
+              const resolved = resolvedRows[row.index];
               const anim = activeAnimation && activeAnimation.rowIndex === row.index
                 ? activeAnimation
                 : null;
@@ -682,11 +814,11 @@ export default function CrystalPathShatteredGame({
               return (
                 <div
                   key={row.index}
-                  className={`cps-row${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : ''}`}
+                  className={`cps-row${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : !isCurrent ? ` is-future-${row.index % 3}` : ''}`}
                 >
                   <button
                     type="button"
-                    className={`cps-tile cps-tile-left${showHint && row.safeSide === 'left' ? ' is-hinted' : ''}${anim && anim.side === 'left' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
+                    className={`cps-tile cps-tile-left${showHint && row.safeSide === 'left' ? ' is-hinted' : ''}${resolved?.side === 'left' ? (resolved.wrong ? ' is-cracked' : ' is-cleared') : ''}${anim && anim.side === 'left' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
                     onClick={() => handleSelect('left')}
                     disabled={!isCurrent || !inputEnabled || blockForMystery}
                     aria-label={`Row ${row.index + 1} left tile`}
@@ -706,7 +838,7 @@ export default function CrystalPathShatteredGame({
                   </div>
                   <button
                     type="button"
-                    className={`cps-tile cps-tile-right${showHint && row.safeSide === 'right' ? ' is-hinted' : ''}${anim && anim.side === 'right' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
+                    className={`cps-tile cps-tile-right${showHint && row.safeSide === 'right' ? ' is-hinted' : ''}${resolved?.side === 'right' ? (resolved.wrong ? ' is-cracked' : ' is-cleared') : ''}${anim && anim.side === 'right' ? (anim.kind === 'wrong' ? ' is-wrong' : ' is-safe') : ''}`}
                     onClick={() => handleSelect('right')}
                     disabled={!isCurrent || !inputEnabled || blockForMystery}
                     aria-label={`Row ${row.index + 1} right tile`}
@@ -732,15 +864,13 @@ export default function CrystalPathShatteredGame({
         {/* Controls */}
         <div className="cps-controls">
           <div className="cps-status" role="status">
-            {spectating
-              ? 'Spectating…'
-              : mysteryPendingStep
-                ? 'Now choose LEFT or RIGHT to advance.'
-                : isHumanTurn
-                  ? (currentRowRecord?.hasMystery
-                      ? 'Keep climbing — choose LEFT, RIGHT, or take the ❓ detour.'
-                      : 'Keep climbing — choose LEFT or RIGHT.')
-                  : `${activePlayer?.name ?? '—'} keeps climbing…`}
+            {mysteryPendingStep
+              ? 'Wrong tiles only cost SP now — choose LEFT or RIGHT to move on.'
+              : isHumanTurn
+                ? (currentRowRecord?.hasMystery
+                    ? 'Choose LEFT, RIGHT, or risk the ❓ mystery tile.'
+                    : 'Choose LEFT or RIGHT — cracked tiles stay behind you.')
+                : `${activePlayer?.name ?? '—'} keeps climbing…`}
           </div>
           <button
             type="button"
@@ -761,27 +891,21 @@ export default function CrystalPathShatteredGame({
           </div>
         )}
 
-        {/* Standings */}
-        <section className="cps-standings" aria-label="Players">
-          {ranked.map((p) => {
-            const pSpPct = Math.max(0, Math.min(100, (p.sp / STARTING_SP) * 100));
-            const pSpLevel = spLevel(p.sp);
-            return (
-              <article
-                key={p.id}
-                className={`cps-standing${p.id === activePlayerId ? ' is-active' : ''}${p.eliminated ? ' is-out' : ''}`}
-              >
-                <header>
-                  <strong>{p.id === humanId ? 'You' : p.name}</strong>
-                  <span>{p.eliminated ? 'Fallen' : p.finishedAtMs !== null ? 'Endured' : `Row ${p.furthestRow}`}</span>
-                </header>
-                <div className="cps-sp-bar" aria-label={`${p.sp} SP`}>
-                  <div className={`cps-sp-fill ${pSpLevel}`} style={{ width: `${pSpPct}%` }} />
-                  <span>{p.sp} SP · {p.hints}💡</span>
-                </div>
-              </article>
-            );
-          })}
+        <section className="cps-live-feed" aria-label="Live feed">
+          <div className="cps-live-feed-bar" role="status" aria-live="polite">
+            <span className="cps-live-feed-label">Live feed</span>
+            <strong>{liveFeedHeadline}</strong>
+            {ranked[0] && (
+              <span className="cps-live-feed-meta">
+                Projected leader: {ranked[0].id === humanId ? 'You' : ranked[0].name} · row {ranked[0].furthestRow}
+              </span>
+            )}
+          </div>
+          {liveFeed.length > 1 && (
+            <div className="cps-live-feed-list" aria-hidden="true">
+              {liveFeed.slice(1).map((entry) => <p key={entry}>{entry}</p>)}
+            </div>
+          )}
         </section>
       </div>
 
