@@ -299,7 +299,7 @@ export default function CrystalPathShatteredGame({
       ...asyncAiPlayers.map((player) => asyncAiSimulation.results.get(player.id) ?? player),
     ];
     return normalizeSurvivalIndices(combined);
-  }, [asyncAiPlayers, asyncAiSimulation.results, humanPlayer, isAsyncHumanRun]);
+  }, [asyncAiPlayers, asyncAiSimulation.results, humanPlayer, isAsyncHumanRun, players]);
 
   // ── Timers (registered through a single queue for stability) ─────────────
   const timersRef = useRef<number[]>([]);
