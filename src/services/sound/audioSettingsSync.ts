@@ -5,6 +5,7 @@ import type { SoundCategory } from './sounds';
 type AudioSettings = SettingsState['audio'];
 
 type IntroHubAudioWindow = Window & {
+  _introhubMusicOn?: boolean;
   _introhubSfxOn?: boolean;
 };
 
@@ -14,6 +15,7 @@ export function syncIntroHubAudioGlobals(audio: AudioSettings): void {
   if (typeof window === 'undefined') return;
 
   const introHubWindow = window as IntroHubAudioWindow;
+  introHubWindow._introhubMusicOn = audio.musicOn;
   introHubWindow._introhubSfxOn = audio.sfxOn;
 }
 

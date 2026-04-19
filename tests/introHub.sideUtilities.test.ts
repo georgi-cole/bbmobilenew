@@ -33,6 +33,10 @@ afterEach(() => {
   document.body.innerHTML = '';
   delete (window as Window & { game?: unknown }).game;
   delete (window as Window & { game?: unknown }).HouseguestsModal;
+  delete (window as Window & { _introhubMusicOn?: boolean })._introhubMusicOn;
+  delete (window as Window & { _introhubSfxOn?: boolean })._introhubSfxOn;
+  delete (window as Window & { toggleIntroHubMusic?: () => void }).toggleIntroHubMusic;
+  delete (window as Window & { toggleIntroHubSfx?: () => void }).toggleIntroHubSfx;
   setNavigatorShare(undefined);
   vi.restoreAllMocks();
 });
@@ -42,6 +46,7 @@ describe('IntroHub side utility buttons', () => {
     loadIntroHub();
 
     expect(document.querySelector('[data-hub-id="houseguests"] .hub-chip__icon--housemates')).not.toBeNull();
+    expect(document.querySelector('[data-hub-id="music"] .hub-chip__icon--music')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="sounds"] .hub-chip__icon--sound')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="store"] .hub-chip__icon--shop')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="feedback"] .hub-chip__icon--feedback')).not.toBeNull();
@@ -60,7 +65,7 @@ describe('IntroHub side utility buttons', () => {
     loadIntroHub();
 
     expect(document.querySelector('[data-hub-id="news"]')).toBeNull();
-    expect(document.querySelector('[data-hub-id="music"]')).toBeNull();
+    expect(document.querySelector('[data-hub-id="music"]')).toHaveClass('hub-chip--top-left');
     expect(document.querySelector('[data-hub-id="sounds"]')).toHaveClass('hub-chip--top-left-2');
     expect(document.querySelector('[data-hub-id="social"]')).toBeNull();
     expect(document.querySelector('[data-hub-id="houseguests"]')).toHaveClass('hub-chip--bottom-left');
@@ -71,7 +76,9 @@ describe('IntroHub side utility buttons', () => {
     expect(document.querySelector('[data-hub-id="share"]')).toHaveClass('hub-chip--bottom-right-3');
     expect(mirroredIntroHubScript).not.toContain("{ id: 'news', label: 'News', icon: 'news', position: 'top-left' }");
     expect(mirroredIntroHubScript).not.toContain("{ id: 'social', label: 'Social', icon: 'social', position: 'top-right' }");
-    expect(mirroredIntroHubScript).not.toContain("{ id: 'music', label: 'Music', icon: 'music', position: 'top-left-2' }");
+    expect(mirroredIntroHubScript).toContain(
+      "{ id: 'music', label: 'Music', icon: 'music', position: 'top-left' }",
+    );
     expect(mirroredIntroHubScript).toContain(
       "{ id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'bottom-left-3' }",
     );
@@ -81,6 +88,37 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubScript).toContain(
       "{ id: 'share', label: 'Share', icon: 'share', position: 'bottom-right-3' }",
     );
+  });
+
+  it('toggles the music and sounds chips via the legacy intro hub helpers', () => {
+    const toggleIntroHubMusic = vi.fn(() => {
+      (window as Window & { _introhubMusicOn?: boolean })._introhubMusicOn =
+        !(window as Window & { _introhubMusicOn?: boolean })._introhubMusicOn;
+    });
+    const toggleIntroHubSfx = vi.fn(() => {
+      (window as Window & { _introhubSfxOn?: boolean })._introhubSfxOn =
+        !(window as Window & { _introhubSfxOn?: boolean })._introhubSfxOn;
+    });
+    (window as Window & { _introhubMusicOn?: boolean })._introhubMusicOn = true;
+    (window as Window & { _introhubSfxOn?: boolean })._introhubSfxOn = true;
+    (window as Window & { toggleIntroHubMusic?: () => void }).toggleIntroHubMusic = toggleIntroHubMusic;
+    (window as Window & { toggleIntroHubSfx?: () => void }).toggleIntroHubSfx = toggleIntroHubSfx;
+
+    loadIntroHub();
+
+    const musicChip = document.querySelector<HTMLButtonElement>('[data-hub-id="music"]');
+    const soundsChip = document.querySelector<HTMLButtonElement>('[data-hub-id="sounds"]');
+
+    expect(musicChip).not.toHaveClass('hub-chip--inactive');
+    expect(soundsChip).not.toHaveClass('hub-chip--inactive');
+
+    musicChip?.click();
+    soundsChip?.click();
+
+    expect(toggleIntroHubMusic).toHaveBeenCalledTimes(1);
+    expect(toggleIntroHubSfx).toHaveBeenCalledTimes(1);
+    expect(musicChip).toHaveClass('hub-chip--inactive');
+    expect(soundsChip).toHaveClass('hub-chip--inactive');
   });
 
   it('styles the IntroHub chips with side utility shell and badge assets', () => {
