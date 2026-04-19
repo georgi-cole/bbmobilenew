@@ -145,7 +145,7 @@ export default function FinalFaceoff() {
 
   useEffect(() => {
     if (phase === 'recap') {
-      dispatch(setMusicScene('season_recap'));
+      dispatch(setMusicScene('none'));
       return;
     }
     if (phase === 'revealVotes') {

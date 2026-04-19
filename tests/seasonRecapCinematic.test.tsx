@@ -6,6 +6,13 @@ import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/c
 import type { Player } from '../src/types';
 import type { PublicOpinionState } from '../src/publicOpinion/types';
 
+const cinematicAudioMocks = vi.hoisted(() => ({
+  create: vi.fn(),
+  play: vi.fn(),
+  fadeOutAndStop: vi.fn(),
+  dispose: vi.fn(),
+}));
+
 vi.mock('framer-motion', async () => {
   const React = await import('react');
 
@@ -25,6 +32,10 @@ vi.mock('framer-motion', async () => {
     useReducedMotion: () => false,
   };
 });
+
+vi.mock('../src/services/sound/cinematicAudio', () => ({
+  createCinematicAudio: cinematicAudioMocks.create,
+}));
 
 const PLAYERS: Player[] = [
   {
@@ -90,9 +101,20 @@ const PUBLIC_OPINION: PublicOpinionState = {
 
 describe('SeasonRecapCinematic', () => {
   const PREVIOUS_TOTAL_RECAP_DURATION_MS = 2200 + 3000 + 3400 + 3400 + 4200 + 2200 + 420;
+  const ORIGINAL_FINALE_AND_EXIT_DURATION_MS = 4400 + 420;
+  const EXTENSION_DURATION_MS = 5000;
 
   beforeEach(() => {
     vi.useFakeTimers();
+    cinematicAudioMocks.create.mockReturnValue({
+      play: cinematicAudioMocks.play,
+      fadeOutAndStop: cinematicAudioMocks.fadeOutAndStop,
+      dispose: cinematicAudioMocks.dispose,
+    });
+    cinematicAudioMocks.create.mockClear();
+    cinematicAudioMocks.play.mockClear();
+    cinematicAudioMocks.fadeOutAndStop.mockClear();
+    cinematicAudioMocks.dispose.mockClear();
     if (!window.matchMedia) {
       const matchMediaMock = vi.fn<(query: string) => MediaQueryList>().mockImplementation((query: string) => ({
         matches: false,
@@ -121,6 +143,10 @@ describe('SeasonRecapCinematic', () => {
 
     expect(screen.getByText('The Road to the Finale')).toBeTruthy();
     expect(screen.getByText('12 weeks of chaos. One last decision.')).toBeTruthy();
+    expect(cinematicAudioMocks.create).toHaveBeenCalledWith(
+      expect.stringContaining('assets/sounds/final_recap_sound.mp3'),
+    );
+    expect(cinematicAudioMocks.play).toHaveBeenCalledTimes(1);
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -137,6 +163,7 @@ describe('SeasonRecapCinematic', () => {
       vi.advanceTimersByTime(500);
     });
 
+    expect(cinematicAudioMocks.fadeOutAndStop).toHaveBeenCalledWith(420);
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -153,6 +180,50 @@ describe('SeasonRecapCinematic', () => {
 
     expect(onComplete).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
+  });
+
+  it('completes only after the finale scene gets the extra five seconds', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} onComplete={onComplete} />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4400);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6800);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6800);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8400);
+    });
+
+    expect(screen.getByText('The tribunal decides.')).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ORIGINAL_FINALE_AND_EXIT_DURATION_MS);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(EXTENSION_DURATION_MS);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it('shows public meter and newspaper montage coverage when public data exists', async () => {

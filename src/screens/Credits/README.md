@@ -14,7 +14,7 @@ npm run build && npm run preview
 
 ## Editing credits content
 
-Credits data lives in **`src/data/credits.ts`**. The screen renders each entry as a stacked text card over the static background image, positioned above the city skyline on the right.
+Credits data lives in **`src/data/credits.ts`**. The screen now fades one credit in and out at a time for a 19.6 second sequence, positioned above the city skyline on the right, and plays `public/assets/sounds/credits_sound.mp3` during the run.
 
 ## Required screen assets
 
