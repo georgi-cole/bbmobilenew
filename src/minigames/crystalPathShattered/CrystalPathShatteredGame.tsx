@@ -106,6 +106,9 @@ if (typeof window !== 'undefined' && import.meta.env?.DEV) {
   };
 }
 
+/** Fixed-length array for environment particle slots (avoids per-render allocation). */
+const PARTICLE_SLOTS = Array.from({ length: 12 });
+
 function initialPlayers(
   participantIds: string[],
   participants: ParticipantInput[] | undefined,
@@ -551,9 +554,6 @@ export default function CrystalPathShatteredGame({
     return 'is-danger';
   };
 
-  // Environment particles (static array — no re-renders)
-  const particleSlots = useMemo(() => Array.from({ length: 12 }), []);
-
   if (phase === 'complete') {
     return (
       <div className="cps-shell" aria-label="Crystal Path: Shattered — complete">
@@ -561,7 +561,7 @@ export default function CrystalPathShatteredGame({
         <div className="cps-depth-fog" aria-hidden="true" />
         <div className="cps-spotlight" aria-hidden="true" />
         <div className="cps-particles" aria-hidden="true">
-          {particleSlots.map((_, i) => <span key={i} className="cps-particle" />)}
+          {PARTICLE_SLOTS.map((_, i) => <span key={i} className="cps-particle" />)}
         </div>
 
         <div className="cps-content">
@@ -619,7 +619,7 @@ export default function CrystalPathShatteredGame({
       <div className="cps-edge-light-left" aria-hidden="true" />
       <div className="cps-edge-light-right" aria-hidden="true" />
       <div className="cps-particles" aria-hidden="true">
-        {particleSlots.map((_, i) => <span key={i} className="cps-particle" />)}
+        {PARTICLE_SLOTS.map((_, i) => <span key={i} className="cps-particle" />)}
       </div>
       <div className="cps-light-shafts" aria-hidden="true">
         <div className="cps-light-shaft" />
