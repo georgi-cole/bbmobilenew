@@ -56,6 +56,11 @@ describe('ActionGrid – rendering', () => {
     }
   });
 
+  it('shows POS-gated actions when primaryTargetStatus matches the POS holder', () => {
+    render(<ActionGrid primaryTargetStatus="pos" />);
+    expect(screen.getByText('Ask to Use Safety')).toBeDefined();
+  });
+
   it('does not render aiOnly actions', () => {
     render(<ActionGrid />);
     const aiOnlyActions = SOCIAL_ACTIONS.filter((a) => a.aiOnly);
@@ -253,4 +258,3 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
     expect(screen.queryByText(/Need 💡/)).toBeNull();
   });
 });
-

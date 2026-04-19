@@ -26,6 +26,7 @@ export const socialConfig = {
     startFight: 1,
     reassure: 2,
     share_intel: 1,
+    ask_use_safety: 1,
     confront: 1,
   } as Record<string, number>,
   /** Affinity thresholds that classify a relationship as ally or enemy. */
@@ -38,7 +39,7 @@ export const socialConfig = {
     friendlyActions: [
       'ally', 'protect',
       // Extended friendly actions for the outgoing social module:
-      'compliment', 'proposeAlliance', 'group_chat', 'reassure', 'share_intel',
+      'compliment', 'proposeAlliance', 'group_chat', 'reassure', 'share_intel', 'ask_use_safety',
     ] as string[],
     aggressiveActions: [
       'betray', 'nominate',

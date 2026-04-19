@@ -65,7 +65,7 @@ describe('normalizeAuxCost', () => {
   });
 });
 
-// ── normalizeActionCosts — integer-point scaling (×100) ───────────────────
+// ── normalizeActionCosts — denominated influence + integer info scaling ────
 
 describe('normalizeActionCosts', () => {
   it('returns { energy: baseCost, influence: 0, info: 0 } for a plain-number cost', () => {
@@ -88,14 +88,14 @@ describe('normalizeActionCosts', () => {
     expect(normalizeActionCosts(action)).toEqual({ energy: 1, influence: 0, info: 0 });
   });
 
-  it('scales influence and info to integer points (×100)', () => {
+  it('denominates influence costs and scales info costs to integer points', () => {
     const action: SocialActionDefinition = {
       id: 'test',
       title: 'Test',
       category: 'strategic',
       baseCost: { energy: 2, influence: 1.0, info: 3.0 },
     };
-    expect(normalizeActionCosts(action)).toEqual({ energy: 2, influence: 100, info: 300 });
+    expect(normalizeActionCosts(action)).toEqual({ energy: 2, influence: 10, info: 300 });
   });
 
   it('scales fractional float values correctly', () => {
@@ -105,7 +105,7 @@ describe('normalizeActionCosts', () => {
       category: 'strategic',
       baseCost: { energy: 1, influence: 0.02, info: 1.5 },
     };
-    expect(normalizeActionCosts(action)).toEqual({ energy: 1, influence: 2, info: 150 });
+    expect(normalizeActionCosts(action)).toEqual({ energy: 1, influence: 0, info: 150 });
   });
 
   it('defaults influence and info to 0 when not in the object', () => {
@@ -138,14 +138,19 @@ describe('normalizeActionCosts', () => {
     expect(normalizeActionCosts(action)).toEqual({ energy: 2, influence: 0, info: 100 });
   });
 
-  it('vote_rally ({ energy: 2, influence: 5.0 }) has energy=2, influence=500, info=0', () => {
+  it('vote_rally ({ energy: 2, influence: 5.0 }) has energy=2, influence=50, info=0', () => {
     const action = SOCIAL_ACTIONS.find((a) => a.id === 'vote_rally')!;
-    expect(normalizeActionCosts(action)).toEqual({ energy: 2, influence: 500, info: 0 });
+    expect(normalizeActionCosts(action)).toEqual({ energy: 2, influence: 50, info: 0 });
   });
 
-  it('favor_request ({ energy: 1, influence: 2.0 }) has energy=1, influence=200, info=0', () => {
+  it('favor_request ({ energy: 1, influence: 2.0 }) has energy=1, influence=20, info=0', () => {
     const action = SOCIAL_ACTIONS.find((a) => a.id === 'favor_request')!;
-    expect(normalizeActionCosts(action)).toEqual({ energy: 1, influence: 200, info: 0 });
+    expect(normalizeActionCosts(action)).toEqual({ energy: 1, influence: 20, info: 0 });
+  });
+
+  it('ask_use_safety ({ energy: 2, influence: 1.0 }) has energy=2, influence=10, info=0', () => {
+    const action = SOCIAL_ACTIONS.find((a) => a.id === 'ask_use_safety')!;
+    expect(normalizeActionCosts(action)).toEqual({ energy: 2, influence: 10, info: 0 });
   });
 
   it('idle (baseCost: 0) has energy=0, influence=0, info=0', () => {
@@ -209,4 +214,3 @@ describe('normalizeActionYields', () => {
     expect(normalizeActionYields(action)).toEqual({ influence: 4, info: 0 });
   });
 });
-

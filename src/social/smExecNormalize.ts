@@ -75,8 +75,9 @@ function toIntPts(v: number): number {
 /**
  * Return the full { energy, influence, info } cost object for a social action.
  * energy defaults to 1 if unspecified; influence and info default to 0.
- * Influence and info are returned as integer points scaled by 100
- * (i.e. 1.00 float == 100 integer pts).
+ * Influence costs are denominated to tenths (1.00 float == 10 integer pts)
+ * so action requirements align with the single-digit influence bank.
+ * Info costs remain scaled by 100 (1.00 float == 100 integer pts).
  */
 export function normalizeActionCosts(action: SocialActionDefinition): {
   energy: number;
@@ -85,7 +86,7 @@ export function normalizeActionCosts(action: SocialActionDefinition): {
 } {
   return {
     energy: normalizeCost(action.baseCost),
-    influence: toIntPts(normalizeAuxCost(action.baseCost, 'influence')),
+    influence: Math.round(normalizeAuxCost(action.baseCost, 'influence') * 10),
     info: toIntPts(normalizeAuxCost(action.baseCost, 'info')),
   };
 }

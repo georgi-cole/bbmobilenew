@@ -115,6 +115,30 @@ describe('SocialPolicy – chooseTargetsFor', () => {
     };
     expect(chooseTargetsFor('p1', 'ally', ctx)).toEqual([]);
   });
+
+  it('targets the POS holder and the nominated actor for ask_use_safety', () => {
+    const ctx: PolicyContext = {
+      ...BASE_CONTEXT,
+      players: [
+        { id: 'p1', status: 'nominated' },
+        { id: 'p2', status: 'pos' },
+        { id: 'p3', status: 'nominated' },
+      ],
+    };
+    expect(chooseTargetsFor('p1', 'ask_use_safety', ctx)).toEqual(['p2', 'p1']);
+  });
+
+  it('targets the POS holder themself when they are also nominated', () => {
+    const ctx: PolicyContext = {
+      ...BASE_CONTEXT,
+      players: [
+        { id: 'p1', status: 'active' },
+        { id: 'p2', status: 'nominated+pos' },
+        { id: 'p3', status: 'nominated' },
+      ],
+    };
+    expect(chooseTargetsFor('p1', 'ask_use_safety', ctx)).toEqual(['p2', 'p2']);
+  });
 });
 
 describe('SocialPolicy – computeOutcomeDelta', () => {

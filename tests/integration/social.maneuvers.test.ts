@@ -325,8 +325,8 @@ describe('getAvailableActions', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 100 }));
-    // vote_rally costs influence 500, favor_request costs influence 200 → need 500+
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
+    // vote_rally costs influence 50, favor_request costs influence 20 → need 50+
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 60 }));
     // proposeAlliance costs info 200, rumor costs info 100 → need 200+
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
     expect(getAvailableActions('p1').length).toBe(SOCIAL_ACTIONS.length);
@@ -626,7 +626,7 @@ describe('getAvailableActions – multi-resource filtering', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    // No influence → vote_rally (energy:2, influence:500) and favor_request (energy:1, influence:200) must be excluded
+    // No influence → vote_rally (energy:2, influence:50) and favor_request (energy:1, influence:20) must be excluded
     const available = getAvailableActions('p1');
     const ids = available.map((a) => a.id);
     expect(ids).not.toContain('vote_rally');
@@ -648,8 +648,8 @@ describe('getAvailableActions – multi-resource filtering', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    // vote_rally needs influence 500; favor_request needs influence 200
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
+    // vote_rally needs influence 50; favor_request needs influence 20
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 60 }));
     // proposeAlliance needs info 200; rumor needs info 100
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
     const available = getAvailableActions('p1');
@@ -673,15 +673,15 @@ describe('executeAction – multi-resource deductions', () => {
     expect(store.getState().social.infoBank['p1']).toBe(50); // 150 - 100
   });
 
-  it('deducts influence cost when executing vote_rally (influence cost 500 pts)', () => {
+  it('deducts influence cost when executing vote_rally (influence cost 50 pts)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 60 }));
 
     // Force failure so no yield is applied — isolates the cost deduction
     executeAction('p1', 'p2', 'vote_rally', { outcome: 'failure' });
-    expect(store.getState().social.influenceBank['p1']).toBe(100); // 600 - 500
+    expect(store.getState().social.influenceBank['p1']).toBe(10); // 60 - 50
   });
 
   it('returns failure when info is insufficient for rumor', () => {
@@ -784,18 +784,18 @@ describe('executeAction – balancesAfter in sessionLogs', () => {
     expect(entry.yieldsApplied).toBeUndefined();
   });
 
-  it('selectInfluenceBank and selectInfoBank after vote_rally deduction (influence -500)', () => {
+  it('selectInfluenceBank and selectInfoBank after vote_rally deduction (influence -50)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 60 }));
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 0 }));
 
     executeAction('p1', 'p2', 'vote_rally');
     const influenceBank = selectInfluenceBank(store.getState());
     const infoBank = selectInfoBank(store.getState());
-    // vote_rally costs influence 500; on success yields influence +4
-    expect(influenceBank['p1']).toBe(104); // 600 - 500 + 4
+    // vote_rally costs influence 50; on success yields influence +4
+    expect(influenceBank['p1']).toBe(14); // 60 - 50 + 4
     expect(infoBank['p1']).toBe(0); // unchanged
   });
 

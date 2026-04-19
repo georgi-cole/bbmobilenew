@@ -168,12 +168,16 @@ function _tick(): void {
     const targets = chooseTargetsFor(player.id, actionId, context);
     if (targets.length === 0) continue;
 
-    const result = executeAction(player.id, targets[0], actionId, { source: 'system' });
+    const [targetId, subjectId] = targets;
+    const result = executeAction(player.id, targetId, actionId, {
+      source: 'system',
+      subjectId,
+    });
     if (result.success) {
       _actionsExecuted++;
       if (socialConfig.verbose) {
         console.debug(
-          `[socialAIDriver] ${player.id} → ${actionId} on ${targets[0]} ` +
+          `[socialAIDriver] ${player.id} → ${actionId} on ${targetId} ` +
             `(energy: ${result.newEnergy}, delta: ${result.delta})`,
         );
       }
