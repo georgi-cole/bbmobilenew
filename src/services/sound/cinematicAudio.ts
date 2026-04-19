@@ -37,6 +37,7 @@ export function createCinematicAudio(src: string, volume = 1): CinematicAudioCon
 
   let fadeTimer: number | null = null;
   let retryHandler: (() => void) | null = null;
+  let playAttemptToken = 0;
 
   const clearFadeTimer = () => {
     if (fadeTimer != null) {
@@ -46,8 +47,11 @@ export function createCinematicAudio(src: string, volume = 1): CinematicAudioCon
   };
 
   const clearRetryHandler = () => {
-    if (retryHandler == null || typeof document === 'undefined') {
+    if (typeof document === 'undefined') {
       retryHandler = null;
+      return;
+    }
+    if (retryHandler == null) {
       return;
     }
     for (const eventName of RETRY_EVENTS) {
@@ -57,11 +61,15 @@ export function createCinematicAudio(src: string, volume = 1): CinematicAudioCon
   };
 
   const attemptPlay = () => {
+    const attemptToken = ++playAttemptToken;
     clearFadeTimer();
     clearRetryHandler();
     audio.currentTime = 0;
     audio.volume = baseVolume;
     void audio.play().catch((error: unknown) => {
+      if (attemptToken !== playAttemptToken) {
+        return;
+      }
       if (isAutoplayBlocked(error) && typeof document !== 'undefined') {
         if (retryHandler != null) {
           return;
