@@ -806,7 +806,7 @@ export default function CrystalPathShatteredGame({
         <section className="cps-board" aria-label="Bridge">
           <div className="cps-bridge-track">
             {displayRows.map((row) => {
-              const rowToneClass = ` tone-${row.index % 3}`;
+              const rowToneClass = `tone-${row.index % 3}`;
               const isCurrent = activePlayer && row.index === activePlayer.furthestRow;
               const isPast = activePlayer && row.index < activePlayer.furthestRow;
               const showHint = hintRowIndex === row.index;
@@ -818,7 +818,7 @@ export default function CrystalPathShatteredGame({
               return (
                 <div
                   key={row.index}
-                  className={`cps-row${rowToneClass}${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : !isCurrent ? ` is-future-${row.index % 3}` : ''}`}
+                  className={`cps-row ${rowToneClass}${isCurrent ? ' is-current' : ''}${isPast ? ' is-past' : !isCurrent ? ` is-future-${row.index % 3}` : ''}`}
                 >
                   <button
                     type="button"
