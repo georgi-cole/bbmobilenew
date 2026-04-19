@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import creditsData from '../../data/credits';
-import CreditsScene from './CreditsScene';
+import { buildCreditsAssetCandidates } from './creditsAssetPaths';
 import './Credits.css';
 
 const EXIT_FADE_MS = 420;
 
-type Status = 'loading' | 'ready' | 'error';
-
 export default function Credits() {
   const navigate = useNavigate();
-  const hostRef = useRef<HTMLDivElement | null>(null);
   const exitTimeoutRef = useRef<number | null>(null);
-  const [status, setStatus] = useState<Status>('loading');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
 
   const credits = useMemo(
     () => [...creditsData],
+    [],
+  );
+  const [backgroundImageUrl] = useMemo(
+    () => buildCreditsAssetCandidates('assets/credits/credits-background.png'),
     [],
   );
 
@@ -32,47 +30,6 @@ export default function Credits() {
       navigate('/');
     }, EXIT_FADE_MS);
   }, [isExiting, navigate]);
-
-  const onRetry = useCallback(() => {
-    setIsExiting(false);
-    setStatus('loading');
-    setErrorMessage(null);
-    setReloadKey((value) => value + 1);
-  }, []);
-
-  useEffect(() => {
-    const host = hostRef.current;
-
-    if (!host) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    const scene = new CreditsScene({ host, credits });
-
-    void scene.init().then(() => {
-      if (cancelled) {
-        return;
-      }
-
-      setStatus('ready');
-    }).catch((error) => {
-      if (cancelled) {
-        return;
-      }
-
-      console.error('[CreditsScene] canvas init error', {
-        message: error instanceof Error ? error.message : String(error),
-      });
-      setStatus('error');
-      setErrorMessage('Credits unavailable on this device. You can retry or go back.');
-    });
-
-    return () => {
-      cancelled = true;
-      scene.destroy();
-    };
-  }, [credits, reloadKey]);
 
   useEffect(() => () => {
     if (exitTimeoutRef.current != null) {
@@ -96,35 +53,27 @@ export default function Credits() {
   return (
     <div className={`credits-container${isExiting ? ' is-exiting' : ''}`}>
       <div
-        ref={hostRef}
         className="credits-stage"
-        data-status={status}
-        aria-label={status === 'ready' ? 'Tap to exit credits' : 'Animated credits scene'}
-        role={status === 'ready' ? 'button' : 'img'}
-        tabIndex={status === 'ready' ? 0 : -1}
-        onClick={status === 'ready' ? onExit : undefined}
-        onKeyDown={status === 'ready' ? (event) => {
+        role="button"
+        tabIndex={0}
+        aria-label="Tap to exit credits"
+        onClick={onExit}
+        onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             onExit();
           }
-        } : undefined}
-      />
-      {status !== 'ready' ? (
-        <div className="credits-overlay" role={status === 'error' ? 'alert' : 'status'}>
-          <span>{errorMessage ?? 'Loading credits…'}</span>
-          {status === 'error' ? (
-            <div className="credits-actions">
-              <button className="credits-action" onClick={onRetry} type="button">
-                Retry scene
-              </button>
-              <button className="credits-action" onClick={onExit} type="button">
-                Back to home
-              </button>
-            </div>
-          ) : null}
+        }}
+        style={{ backgroundImage: `url("${backgroundImageUrl}")` }}
+      >
+        <div className="credits-copy" aria-label="Credits">
+          {credits.map((credit) => (
+            <p key={credit} className="credits-copy-item">
+              {credit}
+            </p>
+          ))}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
