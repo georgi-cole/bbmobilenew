@@ -48,7 +48,6 @@ const STAR_GROUPS = [
     speedRange: [0.16, 0.32] as const,
   },
 ] as const;
-const WINDOW_LIGHT_COUNT = 60;
 const CREDIT_CYCLE_SECONDS = 4.5;
 const SKY_TEXTURE_WIDTH = 64;
 const SKY_TEXTURE_HEIGHT = 256;
@@ -59,11 +58,12 @@ const SKY_TOP = '#020610';
 const SKY_BOTTOM = '#0c2a3c';
 const TEXT_TINT = '#f0f6ff';
 const WARM_WINDOW_COLOR = 0xffe8a3;
+const WATER_LIGHT_COLOR = 0xc8dcff;
 const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial Rounded MT Bold\', \'Montserrat\', sans-serif';
 
 const KOLEQUANT_LOGO_SOURCES = buildCreditsAssetCandidates('assets/kolequant.png');
 
-/** Beam angle in radians from +x, aimed from right rooftop toward upper center-left. */
+/** Beam angle in radians from +x, aimed from the right rooftop toward the upper-left in screen coordinates. */
 const BEAM_ANGLE = -2.03;
 
 /** Duration in seconds for the projector beam to fade in at scene start. */
@@ -81,6 +81,57 @@ const MAX_TEXT_DISTANCE_CHECKS = 12;
 const CREDIT_WRAP_STEP = 10;
 const MIN_CREDIT_WRAP_WIDTH = 160;
 const MAX_TEXT_FIT_ADJUSTMENTS = 4;
+const WINDOW_TOGGLE_MIN_DELAY = 2;
+const WINDOW_TOGGLE_MAX_DELAY = 6;
+const WINDOW_TOGGLE_PROBABILITY = 0.08;
+const WATERLINE_RATIO = 0.74;
+const WATER_REFLECTION_ALPHA = 0.26;
+const WATER_REFLECTION_SWAY = 1.8;
+const WATER_REFLECTION_DRIFT_SPEED = 0.32;
+const LAMP_PULSE_MIN_SECONDS = 3;
+const LAMP_PULSE_MAX_SECONDS = 5;
+
+const BUILDING_WINDOW_ZONES = [
+  {
+    x: 0.532, y: 0.605, width: 0.045, height: 0.118, paddingX: 0.006, paddingY: 0.008, stepX: 0.012, stepY: 0.022, windowSize: 2,
+  },
+  {
+    x: 0.588, y: 0.57, width: 0.055, height: 0.152, paddingX: 0.007, paddingY: 0.01, stepX: 0.013, stepY: 0.023, windowSize: 2,
+  },
+  {
+    x: 0.652, y: 0.545, width: 0.055, height: 0.188, paddingX: 0.007, paddingY: 0.01, stepX: 0.013, stepY: 0.024, windowSize: 2,
+  },
+  {
+    x: 0.714, y: 0.488, width: 0.064, height: 0.255, paddingX: 0.008, paddingY: 0.012, stepX: 0.014, stepY: 0.026, windowSize: 2,
+  },
+  {
+    x: 0.79, y: 0.56, width: 0.055, height: 0.162, paddingX: 0.007, paddingY: 0.01, stepX: 0.013, stepY: 0.024, windowSize: 2,
+  },
+  {
+    x: 0.852, y: 0.49, width: 0.064, height: 0.246, paddingX: 0.008, paddingY: 0.012, stepX: 0.014, stepY: 0.026, windowSize: 2,
+  },
+  {
+    x: 0.923, y: 0.522, width: 0.053, height: 0.212, paddingX: 0.007, paddingY: 0.01, stepX: 0.013, stepY: 0.025, windowSize: 2,
+  },
+  {
+    x: 0.962, y: 0.575, width: 0.034, height: 0.142, paddingX: 0.004, paddingY: 0.008, stepX: 0.011, stepY: 0.022, windowSize: 1.8,
+  },
+] as const;
+
+const STREET_LAMP_CONFIG = {
+  x: 0.128,
+  y: 0.454,
+  size: 0.09,
+  alpha: 0.28,
+} as const;
+
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+function nextWindowToggleTime(now: number): number {
+  return now + randomBetween(WINDOW_TOGGLE_MIN_DELAY, WINDOW_TOGGLE_MAX_DELAY);
+}
 
 type StarConfig = {
   sprite: Graphics;
@@ -94,15 +145,37 @@ type StarConfig = {
 
 type WindowLightConfig = {
   sprite: Graphics;
+  reflectionSprite: Graphics;
   baseAlpha: number;
+  activeAlpha: number;
   targetAlpha: number;
   currentAlpha: number;
   fadeSpeed: number;
   nextChangeAt: number;
+  reflectionBaseX: number;
+  reflectionBaseY: number;
+  reflectionBaseHeight: number;
+  reflectionAlphaScale: number;
+  isOn: boolean;
   x: number;
   y: number;
   width: number;
   height: number;
+  phase: number;
+};
+
+type LampGlowConfig = {
+  sprite: Sprite;
+  reflectionSprite: Graphics;
+  x: number;
+  y: number;
+  size: number;
+  baseAlpha: number;
+  pulseDuration: number;
+  phase: number;
+  reflectionBaseX: number;
+  reflectionBaseY: number;
+  reflectionBaseHeight: number;
 };
 
 type CreditsSceneOptions = {
@@ -117,8 +190,10 @@ export default class CreditsScene {
   private readonly root = new Container();
   private readonly skyLayer = new Container();
   private readonly starsLayer = new Container();
+  private readonly lampGlowLayer = new Container();
   private readonly cityLayer = new Container();
   private readonly windowsLayer = new Container();
+  private readonly waterLayer = new Container();
   private readonly fogLayer = new Container();
   private readonly beamLayer = new Container();
   private readonly textLayer = new Container();
@@ -126,10 +201,13 @@ export default class CreditsScene {
   private readonly generatedTextures: Texture[] = [];
   private readonly starConfigs: StarConfig[] = [];
   private readonly windowLightConfigs: WindowLightConfig[] = [];
+  private readonly lampGlowConfigs: LampGlowConfig[] = [];
   private readonly fogBlurFilter = new BlurFilter({ strength: 14, quality: 2 });
   private readonly beamOuterBlurFilter = new BlurFilter({ strength: 22, quality: 3 });
   private readonly beamCoreBlurFilter = new BlurFilter({ strength: 12, quality: 2 });
   private readonly sourceGlowFilter = new BlurFilter({ strength: 10, quality: 2 });
+  private readonly lampGlowFilter = new BlurFilter({ strength: 18, quality: 3 });
+  private readonly waterBlurFilter = new BlurFilter({ strength: 6, quality: 2 });
   private readonly tick = () => {
     this.update();
   };
@@ -212,8 +290,10 @@ export default class CreditsScene {
     this.root.addChild(
       this.skyLayer,
       this.starsLayer,
+      this.lampGlowLayer,
       this.cityLayer,
       this.windowsLayer,
+      this.waterLayer,
       this.fogLayer,
       this.beamLayer,
       this.textLayer,
@@ -224,6 +304,7 @@ export default class CreditsScene {
     this.createStars();
     this.createCity(cityTexture);
     this.createWindowLights();
+    this.createStreetLampGlow();
     this.createFog();
     this.createBeam();
     this.createTexts();
@@ -256,6 +337,7 @@ export default class CreditsScene {
     this.generatedTextures.length = 0;
     this.starConfigs.length = 0;
     this.windowLightConfigs.length = 0;
+    this.lampGlowConfigs.length = 0;
     this.host.replaceChildren();
     this.disposeApplication();
   }
@@ -340,28 +422,87 @@ export default class CreditsScene {
   }
 
   private createWindowLights(): void {
-    for (let index = 0; index < WINDOW_LIGHT_COUNT; index += 1) {
-      const width = 2 + Math.floor(Math.random() * 2);
-      const height = 2 + Math.floor(Math.random() * 3);
-      const light = new Graphics();
+    for (const building of BUILDING_WINDOW_ZONES) {
+      const maxX = building.x + building.width - building.paddingX - building.windowSize;
+      const maxY = building.y + building.height - building.paddingY - building.windowSize;
 
-      light.rect(0, 0, width, height).fill({ color: WARM_WINDOW_COLOR, alpha: 1 });
-      this.windowsLayer.addChild(light);
+      for (
+        let windowY = building.y + building.paddingY;
+        windowY <= maxY;
+        windowY += building.stepY
+      ) {
+        for (
+          let windowX = building.x + building.paddingX;
+          windowX <= maxX;
+          windowX += building.stepX
+        ) {
+          const light = new Graphics();
+          const reflection = new Graphics();
+          const width = building.windowSize;
+          const height = building.windowSize;
+          const baseAlpha = randomBetween(0.04, 0.12);
+          const activeAlpha = randomBetween(0.68, 0.92);
+          const startsOn = Math.random() > 0.55;
 
-      const baseAlpha = 0.15 + Math.random() * 0.3;
-      this.windowLightConfigs.push({
-        sprite: light,
-        x: Math.random(),
-        y: 0.56 + Math.random() * 0.28,
-        width,
-        height,
-        baseAlpha,
-        targetAlpha: baseAlpha,
-        currentAlpha: baseAlpha,
-        fadeSpeed: 0.5 + Math.random() * 0.8,
-        nextChangeAt: Math.random() * 3,
-      });
+          light.rect(0, 0, width, height).fill({ color: WARM_WINDOW_COLOR, alpha: 1 });
+          reflection.rect(0, 0, Math.max(1, width * 0.9), Math.max(5, height * randomBetween(3.6, 6.4)))
+            .fill({ color: WATER_LIGHT_COLOR, alpha: 1 });
+          reflection.filters = [this.waterBlurFilter];
+
+          this.windowsLayer.addChild(light);
+          this.waterLayer.addChild(reflection);
+
+          this.windowLightConfigs.push({
+            sprite: light,
+            reflectionSprite: reflection,
+            x: windowX,
+            y: windowY,
+            width,
+            height,
+            baseAlpha,
+            activeAlpha,
+            targetAlpha: startsOn ? activeAlpha : baseAlpha,
+            currentAlpha: startsOn ? activeAlpha : baseAlpha,
+            fadeSpeed: randomBetween(0.18, 0.34),
+            nextChangeAt: nextWindowToggleTime(Math.random() * WINDOW_TOGGLE_MAX_DELAY),
+            reflectionBaseX: 0,
+            reflectionBaseY: 0,
+            reflectionBaseHeight: reflection.height,
+            reflectionAlphaScale: randomBetween(0.72, 1.08),
+            isOn: startsOn,
+            phase: Math.random() * Math.PI * 2,
+          });
+        }
+      }
     }
+  }
+
+  private createStreetLampGlow(): void {
+    const glow = new Sprite(this.createGlowTexture());
+    glow.anchor.set(0.5);
+    glow.tint = 0xbfe6ff;
+    glow.alpha = STREET_LAMP_CONFIG.alpha;
+    glow.filters = [this.lampGlowFilter];
+    this.lampGlowLayer.addChild(glow);
+
+    const reflection = new Graphics();
+    reflection.rect(0, 0, 8, 40).fill({ color: WATER_LIGHT_COLOR, alpha: 1 });
+    reflection.filters = [this.waterBlurFilter];
+    this.waterLayer.addChild(reflection);
+
+    this.lampGlowConfigs.push({
+      sprite: glow,
+      reflectionSprite: reflection,
+      x: STREET_LAMP_CONFIG.x,
+      y: STREET_LAMP_CONFIG.y,
+      size: STREET_LAMP_CONFIG.size,
+      baseAlpha: STREET_LAMP_CONFIG.alpha,
+      pulseDuration: randomBetween(LAMP_PULSE_MIN_SECONDS, LAMP_PULSE_MAX_SECONDS),
+      phase: Math.random() * Math.PI * 2,
+      reflectionBaseX: 0,
+      reflectionBaseY: 0,
+      reflectionBaseHeight: reflection.height,
+    });
   }
 
   private createFog(): void {
@@ -470,7 +611,7 @@ export default class CreditsScene {
     const context = canvas.getContext('2d');
 
     if (!context) {
-      throw new Error('Canvas 2D context unavailable for glow texture.');
+      throw new Error('Failed to create 2D canvas context for glow texture generation.');
     }
 
     const gradient = context.createRadialGradient(
@@ -590,11 +731,40 @@ export default class CreditsScene {
 
     const cityLeft = this.citySprite.x - this.citySprite.width / 2;
     const cityTop = this.citySprite.y - this.citySprite.height;
+    const waterlineY = cityTop + this.citySprite.height * WATERLINE_RATIO;
 
     for (const windowConfig of this.windowLightConfigs) {
       windowConfig.sprite.scale.set(Math.max(0.8, this.designScale));
       windowConfig.sprite.x = cityLeft + windowConfig.x * this.citySprite.width;
       windowConfig.sprite.y = cityTop + windowConfig.y * this.citySprite.height;
+
+      const reflectionX = windowConfig.sprite.x + windowConfig.width * 0.5;
+      const reflectionDistance = Math.max(0, waterlineY - windowConfig.sprite.y);
+      windowConfig.reflectionBaseX = reflectionX;
+      windowConfig.reflectionBaseY = waterlineY + reflectionDistance * 0.22;
+      windowConfig.reflectionBaseHeight = Math.max(6, reflectionDistance * 0.18);
+      windowConfig.reflectionSprite.x = reflectionX;
+      windowConfig.reflectionSprite.y = windowConfig.reflectionBaseY;
+      windowConfig.reflectionSprite.width = Math.max(1, windowConfig.width * Math.max(0.8, this.designScale * 0.8));
+      windowConfig.reflectionSprite.height = windowConfig.reflectionBaseHeight;
+      windowConfig.reflectionSprite.pivot.set(windowConfig.reflectionSprite.width * 0.5, 0);
+    }
+
+    for (const lampGlowConfig of this.lampGlowConfigs) {
+      lampGlowConfig.sprite.x = cityLeft + lampGlowConfig.x * this.citySprite.width;
+      lampGlowConfig.sprite.y = cityTop + lampGlowConfig.y * this.citySprite.height;
+      const lampSize = this.citySprite.width * lampGlowConfig.size;
+      lampGlowConfig.sprite.width = lampSize;
+      lampGlowConfig.sprite.height = lampSize;
+
+      lampGlowConfig.reflectionBaseX = lampGlowConfig.sprite.x;
+      lampGlowConfig.reflectionBaseY = waterlineY + Math.max(10, (waterlineY - lampGlowConfig.sprite.y) * 0.16);
+      lampGlowConfig.reflectionBaseHeight = Math.max(20, lampSize * 0.55);
+      lampGlowConfig.reflectionSprite.x = lampGlowConfig.reflectionBaseX;
+      lampGlowConfig.reflectionSprite.y = lampGlowConfig.reflectionBaseY;
+      lampGlowConfig.reflectionSprite.width = Math.max(3, lampSize * 0.08);
+      lampGlowConfig.reflectionSprite.height = lampGlowConfig.reflectionBaseHeight;
+      lampGlowConfig.reflectionSprite.pivot.set(lampGlowConfig.reflectionSprite.width * 0.5, 0);
     }
 
     const fogHorizonY = cityTop + this.citySprite.height * 0.1;
@@ -608,7 +778,7 @@ export default class CreditsScene {
     this.fogFront.width = width * 1.25;
     this.fogFront.height = height * 0.1;
 
-    // Hard-anchor the beam to a right-side rooftop point on the skyline.
+    // Hard-anchors the beam to a right-side rooftop point on the skyline.
     this.beamOriginX = width * 0.78;
     this.beamOriginY = this.citySprite.y - this.citySprite.height * 0.55;
     this.refreshCreditLayout();
@@ -780,9 +950,12 @@ export default class CreditsScene {
 
     for (const windowConfig of this.windowLightConfigs) {
       if (this.elapsedSeconds >= windowConfig.nextChangeAt) {
-        windowConfig.targetAlpha = windowConfig.baseAlpha * (0.3 + Math.random() * 1.2);
-        windowConfig.fadeSpeed = 0.5 + Math.random() * 0.8;
-        windowConfig.nextChangeAt = this.elapsedSeconds + 0.8 + Math.random() * 2;
+        if (Math.random() < WINDOW_TOGGLE_PROBABILITY) {
+          windowConfig.isOn = !windowConfig.isOn;
+          windowConfig.targetAlpha = windowConfig.isOn ? windowConfig.activeAlpha : windowConfig.baseAlpha;
+          windowConfig.fadeSpeed = randomBetween(0.16, 0.3);
+        }
+        windowConfig.nextChangeAt = nextWindowToggleTime(this.elapsedSeconds);
       }
 
       const delta = windowConfig.targetAlpha - windowConfig.currentAlpha;
@@ -793,6 +966,32 @@ export default class CreditsScene {
         windowConfig.currentAlpha += Math.sign(delta) * step;
       }
       windowConfig.sprite.alpha = windowConfig.currentAlpha;
+
+      const shimmer = Math.sin(
+        this.elapsedSeconds * WATER_REFLECTION_DRIFT_SPEED
+        + windowConfig.phase
+        + windowConfig.x * 16,
+      );
+      windowConfig.reflectionSprite.alpha = windowConfig.currentAlpha
+        * WATER_REFLECTION_ALPHA
+        * windowConfig.reflectionAlphaScale
+        * (0.84 + (shimmer + 1) * 0.08);
+      windowConfig.reflectionSprite.x = windowConfig.reflectionBaseX + shimmer * WATER_REFLECTION_SWAY * this.designScale;
+      windowConfig.reflectionSprite.y = windowConfig.reflectionBaseY + shimmer * 1.4 * this.designScale;
+      windowConfig.reflectionSprite.scale.x = 0.92 + ((shimmer + 1) * 0.5) * 0.12;
+    }
+
+    for (const lampGlowConfig of this.lampGlowConfigs) {
+      const pulsePhase = (this.elapsedSeconds / lampGlowConfig.pulseDuration) * Math.PI * 2 + lampGlowConfig.phase;
+      const pulse = (Math.sin(pulsePhase) + 1) * 0.5;
+      lampGlowConfig.sprite.alpha = lampGlowConfig.baseAlpha * (0.92 + pulse * 0.16);
+      lampGlowConfig.sprite.scale.set(1 + pulse * 0.05);
+
+      const reflectionWave = Math.sin(this.elapsedSeconds * 0.24 + lampGlowConfig.phase);
+      lampGlowConfig.reflectionSprite.alpha = lampGlowConfig.baseAlpha * 0.5 * (0.82 + pulse * 0.14);
+      lampGlowConfig.reflectionSprite.x = lampGlowConfig.reflectionBaseX + reflectionWave * WATER_REFLECTION_SWAY * this.designScale;
+      lampGlowConfig.reflectionSprite.y = lampGlowConfig.reflectionBaseY + reflectionWave * 1.6 * this.designScale;
+      lampGlowConfig.reflectionSprite.scale.x = 0.95 + pulse * 0.08;
     }
 
     const fogDrift = Math.sin(this.elapsedSeconds * 0.06) * (10 * this.designScale);
