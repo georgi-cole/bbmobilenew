@@ -3,7 +3,11 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import CrystalPathShatteredGame from '../src/minigames/crystalPathShattered/CrystalPathShatteredGame';
-import { SAFE_STEP_MS, createRowStream } from '../src/minigames/crystalPathShattered/shatteredLogic';
+import {
+  SAFE_STEP_MS,
+  WRONG_STEP_MS,
+  createRowStream,
+} from '../src/minigames/crystalPathShattered/shatteredLogic';
 import gameReducer from '../src/store/gameSlice';
 import { mulberry32 } from '../src/store/rng';
 
@@ -62,5 +66,73 @@ describe('Crystal Path: Infinity async flow', () => {
     expect(
       screen.getByRole('button', { name: `Row 2 ${secondRow.safeSide} tile` }),
     ).not.toHaveAttribute('disabled');
+  });
+
+  it('advances to the next row after a non-lethal wrong step', async () => {
+    const seed = 12345;
+    const [firstRow, secondRow] = createRowStream(mulberry32(seed)).take(2);
+    const wrongSide = firstRow.safeSide === 'left' ? 'right' : 'left';
+
+    render(
+      <Provider store={makeStore()}>
+        <CrystalPathShatteredGame
+          participantIds={['ai-1', 'human']}
+          participants={[
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+            { id: 'human', name: 'Human', isHuman: true },
+          ]}
+          seed={seed}
+        />
+      </Provider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: `Row 1 ${wrongSide} tile` }),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(WRONG_STEP_MS + 20);
+    });
+
+    expect(screen.getByText('290')).toBeTruthy();
+    expect(screen.getByText('Row 2')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: `Row 2 ${secondRow.safeSide} tile` }),
+    ).not.toHaveAttribute('disabled');
+  });
+
+  it('shows the results as soon as the human run ends instead of switching to AI turns', async () => {
+    const seed = 12345;
+    const rows = createRowStream(mulberry32(seed)).take(40);
+
+    render(
+      <Provider store={makeStore()}>
+        <CrystalPathShatteredGame
+          participantIds={['ai-1', 'human']}
+          participants={[
+            { id: 'ai-1', name: 'AI One', isHuman: false },
+            { id: 'human', name: 'Human', isHuman: true },
+          ]}
+          seed={seed}
+        />
+      </Provider>,
+    );
+
+    for (const row of rows) {
+      const wrongSide = row.safeSide === 'left' ? 'right' : 'left';
+      fireEvent.click(
+        screen.getByRole('button', { name: `Row ${row.index + 1} ${wrongSide} tile` }),
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(WRONG_STEP_MS + 20);
+      });
+
+      if (screen.queryByLabelText('Crystal Path: Infinity — complete')) break;
+    }
+
+    expect(screen.getByLabelText('Crystal Path: Infinity — complete')).toBeTruthy();
+    expect(screen.getByLabelText('Final standings')).toBeTruthy();
+    expect(screen.queryByText('AI One keeps climbing…')).toBeNull();
   });
 });

@@ -105,6 +105,14 @@ export interface ShatteredGameSummary {
   furthestRow: Record<string, number>;
 }
 
+export interface AiLiveFeedEvent {
+  playerId: string;
+  playerName: string;
+  row: number;
+  atMs: number;
+  message: string;
+}
+
 // ─── Row generation (deterministic via provided rng) ────────────────────────
 
 /**
@@ -311,6 +319,128 @@ export function aiShouldUseHint(
   if (personality === 'cautious') return lowSp || rng() < 0.35;
   if (personality === 'gambler')  return lowSp && rng() < 0.4;
   return lowSp ? rng() < 0.75 : rng() < 0.2;
+}
+
+export interface SimulatedAiRun {
+  player: PlayerState;
+  feed: AiLiveFeedEvent[];
+}
+
+export function simulateAiRun(
+  player: PlayerState,
+  rows: BridgeRow[],
+  personality: AiPersonality,
+  rng: () => number,
+): SimulatedAiRun {
+  const state: PlayerState = {
+    ...player,
+    effects: [...player.effects],
+  };
+  const feed: AiLiveFeedEvent[] = [];
+  let elapsedMs = NEW_TURN_DELAY_MS;
+
+  while (!state.eliminated && state.finishedAtMs === null && state.furthestRow < HIDDEN_BRIDGE_LENGTH) {
+    const row = rows[state.furthestRow];
+    if (!row) break;
+
+    elapsedMs += AI_MIN_THINK_MS + Math.floor(rng() * (AI_MAX_THINK_MS - AI_MIN_THINK_MS));
+
+    if (row.hasMystery && aiShouldTakeMystery(personality, state.sp, rng)) {
+      const mystery = applyMysteryEffect(rollMysteryEffect(rng), elapsedMs);
+      state.sp = Math.max(0, state.sp + mystery.spDelta);
+      state.hints = Math.max(0, state.hints + mystery.hintDelta);
+      state.effects = mergeEffect(state.effects, mystery.addedEffect, elapsedMs);
+      if (state.sp <= 0) {
+        state.eliminated = true;
+        state.eliminatedRow = row.index + 1;
+        feed.push({
+          playerId: state.id,
+          playerName: state.name,
+          row: row.index + 1,
+          atMs: elapsedMs + MYSTERY_REVEAL_MS,
+          message: `${state.name} cracked at row ${row.index + 1} after a mystery tile backfired.`,
+        });
+        break;
+      }
+      elapsedMs += MYSTERY_REVEAL_MS;
+    }
+
+    const useHint = aiShouldUseHint(personality, state.sp, state.hints, rng);
+    if (useHint) state.hints -= 1;
+
+    const chosenSide = useHint
+      ? (rng() < 0.85 ? row.safeSide : (row.safeSide === 'left' ? 'right' : 'left'))
+      : aiPickSide(row, personality, rng);
+    const wrong = chosenSide !== row.safeSide;
+    const stepMs = wrong ? WRONG_STEP_MS : SAFE_STEP_MS;
+
+    if (wrong) {
+      const resolved = resolveWrongTileDelta(getRowBandDamage(row.index + 1), state.effects, elapsedMs);
+      state.sp = Math.max(0, state.sp + resolved.delta);
+      state.effects = resolved.newEffects;
+    }
+
+    state.furthestRow = row.index + 1;
+    elapsedMs += stepMs;
+
+    if (state.furthestRow % 25 === 0) {
+      feed.push({
+        playerId: state.id,
+        playerName: state.name,
+        row: state.furthestRow,
+        atMs: elapsedMs,
+        message: `${state.name} just reached row ${state.furthestRow}.`,
+      });
+    }
+
+    if (state.sp <= 0) {
+      state.eliminated = true;
+      state.eliminatedRow = row.index + 1;
+      feed.push({
+        playerId: state.id,
+        playerName: state.name,
+        row: row.index + 1,
+        atMs: elapsedMs,
+        message: `${state.name} crashed at row ${row.index + 1} and sank into the void.`,
+      });
+      break;
+    }
+
+    if (state.furthestRow >= HIDDEN_BRIDGE_LENGTH) {
+      state.finishedAtMs = elapsedMs;
+      feed.push({
+        playerId: state.id,
+        playerName: state.name,
+        row: state.furthestRow,
+        atMs: elapsedMs,
+        message: `${state.name} found the hidden end of the crystal path.`,
+      });
+      break;
+    }
+  }
+
+  return { player: state, feed };
+}
+
+export function normalizeSurvivalIndices(players: PlayerState[]): PlayerState[] {
+  const order = [...players]
+    .filter((player) => player.eliminated)
+    .sort((a, b) => {
+      const aRow = a.eliminatedRow ?? Number.POSITIVE_INFINITY;
+      const bRow = b.eliminatedRow ?? Number.POSITIVE_INFINITY;
+      if (aRow !== bRow) return aRow - bRow;
+      if (a.furthestRow !== b.furthestRow) return a.furthestRow - b.furthestRow;
+      if (a.sp !== b.sp) return b.sp - a.sp;
+      return a.id.localeCompare(b.id);
+    });
+
+  const indexById = new Map(order.map((player, idx) => [player.id, idx + 1]));
+
+  return players.map((player) => {
+    if (!player.eliminated) return player;
+    const survivalIndex = indexById.get(player.id) ?? player.survivalIndex;
+    return player.survivalIndex === survivalIndex ? player : { ...player, survivalIndex };
+  });
 }
 
 // ─── Ranking ────────────────────────────────────────────────────────────────
