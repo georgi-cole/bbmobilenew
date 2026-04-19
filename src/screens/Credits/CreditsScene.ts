@@ -64,7 +64,7 @@ const PLAYFUL_FONT_STACK = '\'Trebuchet MS\', \'Avenir Next Rounded\', \'Arial R
 const KOLEQUANT_LOGO_SOURCES = buildCreditsAssetCandidates('assets/kolequant.png');
 
 /** Beam angle in radians from +x, aimed from right rooftop toward upper center-left. */
-const BEAM_ANGLE = -2;
+const BEAM_ANGLE = -2.03;
 
 /** Duration in seconds for the projector beam to fade in at scene start. */
 const BEAM_INTRO_DURATION = 1.8;
@@ -728,8 +728,8 @@ export default class CreditsScene {
       beamLength * 0.48,
     );
     const visibleBeamLength = Math.max(
-      Math.min(textDistance + Math.max(bounds.height * 0.45, 74), beamLength * 0.56),
-      beamLength * 0.44,
+      Math.min(textDistance + Math.max(bounds.height * 0.58, 96), beamLength * 0.54),
+      beamLength * 0.4,
     );
     const visibleBeam = getVisibleBeamDimensions(width);
     const textRevealMask = getTextRevealMaskDimensions({
@@ -748,7 +748,7 @@ export default class CreditsScene {
       length: visibleBeamLength,
       nearWidth: visibleBeam.outerNearWidth,
       farWidth: visibleBeam.outerFarWidth,
-      alpha: 0.18,
+      alpha: 0.16,
     });
     this.drawBeamShape(this.beamInner, {
       originX: this.beamOriginX,
@@ -757,7 +757,7 @@ export default class CreditsScene {
       length: visibleBeamLength * 0.94,
       nearWidth: visibleBeam.innerNearWidth,
       farWidth: visibleBeam.innerFarWidth,
-      alpha: 0.28,
+      alpha: 0.24,
     });
     this.drawBeamShape(this.beamMask, {
       originX: this.beamOriginX,

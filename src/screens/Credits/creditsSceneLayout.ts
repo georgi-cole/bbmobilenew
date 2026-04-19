@@ -6,12 +6,12 @@ const MIN_BEAM_PADDING = 40;
 const MAX_BEAM_PADDING = 56;
 const MIN_TEXT_DISTANCE_RATIO = 0.16;
 const MAX_TEXT_DISTANCE_RATIO = 0.48;
-const TARGET_TEXT_Y_RATIO = 0.55;
+const TARGET_TEXT_Y_RATIO = 0.47;
 const MIN_TEXT_DISTANCE = 120;
-const MAX_TEXT_DISTANCE = 260;
-const PREFERRED_TEXT_WIDTH_RATIO = 0.46;
-const MIN_PREFERRED_TEXT_WIDTH = 180;
-const MAX_PREFERRED_TEXT_WIDTH = 208;
+const MAX_TEXT_DISTANCE = 286;
+const PREFERRED_TEXT_WIDTH_RATIO = 0.42;
+const MIN_PREFERRED_TEXT_WIDTH = 168;
+const MAX_PREFERRED_TEXT_WIDTH = 196;
 // Clamp the interpolation ratio so trapezoid math stays stable even when the
 // mask only extends slightly beyond the current credit text.
 const MIN_MASK_TEXT_RATIO = 0.36;
@@ -170,14 +170,14 @@ export function getCreditTextPlacement(options: {
 }
 
 export function getVisibleBeamDimensions(screenWidth: number): VisibleBeamDimensions {
-  const outerFarWidth = Math.round(clamp(screenWidth * 0.3, 106, screenWidth * 0.33));
-  const innerFarWidth = Math.round(outerFarWidth * 0.54);
+  const outerFarWidth = Math.round(clamp(screenWidth * 0.28, 98, screenWidth * 0.31));
+  const innerFarWidth = Math.round(outerFarWidth * 0.5);
 
   return {
-    outerNearWidth: 8,
+    outerNearWidth: 6,
     outerFarWidth,
-    innerNearWidth: 4,
-    innerFarWidth: Math.max(innerFarWidth, 60),
+    innerNearWidth: 2,
+    innerFarWidth: Math.max(innerFarWidth, 52),
   };
 }
 

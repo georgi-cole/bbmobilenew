@@ -8,10 +8,10 @@ import {
   textBlockIntersectsMoonZone,
 } from '../creditsSceneLayout';
 
-const BEAM_ANGLE = -2;
+const BEAM_ANGLE = -2.03;
 
 describe('creditsSceneLayout', () => {
-  it('keeps the projected text in the mid-beam area and on-screen on mobile portrait', () => {
+  it('keeps the projected text in the upper-middle beam area and on-screen on mobile portrait', () => {
     const placement = getCreditTextPlacement({
       screenWidth: 390,
       screenHeight: 844,
@@ -22,10 +22,11 @@ describe('creditsSceneLayout', () => {
       beamLength: 658,
     });
 
-    expect(placement.textY).toBeGreaterThanOrEqual(460);
+    expect(placement.textY).toBeGreaterThanOrEqual(380);
+    expect(placement.textY).toBeLessThanOrEqual(420);
     expect(placement.textY).toBeLessThan(632);
-    expect(placement.maxTextWidth).toBeGreaterThanOrEqual(180);
-    expect(placement.maxTextWidth).toBeLessThanOrEqual(208);
+    expect(placement.maxTextWidth).toBeGreaterThanOrEqual(168);
+    expect(placement.maxTextWidth).toBeLessThanOrEqual(196);
     expect(placement.textX - placement.maxTextWidth / 2).toBeGreaterThanOrEqual(16);
     expect(placement.textX + placement.maxTextWidth / 2).toBeLessThanOrEqual(390 - 16);
   });
@@ -54,6 +55,7 @@ describe('creditsSceneLayout', () => {
     );
 
     expect(visibleBeam.outerFarWidth).toBeLessThanOrEqual(Math.round(390 * 0.35));
+    expect(visibleBeam.outerNearWidth).toBeLessThan(visibleBeam.innerFarWidth * 0.15);
     expect(visibleBeam.outerFarWidth).toBeGreaterThan(visibleBeam.innerFarWidth);
     expect(maskWidthAtText).toBeGreaterThanOrEqual(196 + 40);
     expect(maskWidthAtText).toBeGreaterThan(visibleWidthAtText);
@@ -61,7 +63,7 @@ describe('creditsSceneLayout', () => {
 
   it('widens only the reveal mask when a longer credit line is measured', () => {
     const visibleBeam = getVisibleBeamDimensions(390);
-    const expectedVisibleOuterFarWidth = Math.round(390 * 0.3);
+    const expectedVisibleOuterFarWidth = Math.round(390 * 0.28);
     const shortMask = getTextRevealMaskDimensions({
       screenWidth: 390,
       textWidth: 150,
