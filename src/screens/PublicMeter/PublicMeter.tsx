@@ -224,8 +224,7 @@ export default function PublicMeter() {
         </div>
         <div className="public-meter__empty">
           <p>
-            Public opinion data is not available yet. Start a game to see how the public views the
-            houseguests!
+            Public opinion data is not available yet. Start a game to see how the public views you and the rest!
           </p>
         </div>
       </div>
@@ -322,7 +321,7 @@ export default function PublicMeter() {
       <div className="public-meter__section">
         <div className="public-meter__section-heading">
           <h2 className="public-meter__section-title">Public Rankings</h2>
-          <span className="public-meter__section-caption">Evicted houseguests stay frozen at their last live rating.</span>
+          <span className="public-meter__section-caption">Check below what's your approval in the outside world.</span>
         </div>
         <div className="ranking-list">
           {rankedProfiles.map((profile, index) => {
@@ -358,7 +357,7 @@ export default function PublicMeter() {
       <div className="public-meter__section">
         <div className="public-meter__section-heading">
           <h2 className="public-meter__section-title">Public Feed</h2>
-          <span className="public-meter__section-caption">Read the mood, not the exact formula.</span>
+          <span className="public-meter__section-caption">Your every action has reprecussions.</span>
         </div>
         {feed.length === 0 ? (
           <p className="public-meter__empty-note">No public activity yet this season.</p>
@@ -389,7 +388,7 @@ export default function PublicMeter() {
       <div className="public-meter__section">
         <div className="public-meter__section-heading">
           <h2 className="public-meter__section-title">Public Requests</h2>
-          <span className="public-meter__section-caption">Only active houseguests receive new requests.</span>
+          <span className="public-meter__section-caption">Only players still in the house receive public requests.</span>
         </div>
         {directionGroups.every((group) => group.items.length === 0) ? (
           <p className="public-meter__empty-note">No public requests yet.</p>
