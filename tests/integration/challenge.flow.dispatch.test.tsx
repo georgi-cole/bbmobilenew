@@ -315,7 +315,7 @@ describe('startChallenge – compSelection modes', () => {
     expect(secondKey).not.toBe(firstKey);
   });
 
-  it('unique: uses the fallback bracket mapping pool when prizeType is known', () => {
+  it('unique: uses the bracket template pool when prizeType is known', () => {
     const store = makeStoreWithCompSelection({ mode: 'unique', enabledIds: [] });
 
     dispatchThunk(store, startChallenge(42, ['p1', 'p2', 'p3', 'p4'], { prizeType: 'POS' }));

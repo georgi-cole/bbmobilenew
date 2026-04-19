@@ -68,7 +68,7 @@ export interface SettingsState {
   };
 }
 
-function shouldUseMappedChallengeDefault(compSelection?: Partial<CompSelectionPayload>): boolean {
+function isLegacyEmptyUserSelection(compSelection?: Partial<CompSelectionPayload>): boolean {
   if (!compSelection || compSelection.mode === undefined) return true;
   return (
     compSelection.mode === 'user-selection' &&
@@ -88,7 +88,7 @@ function normalizeCompSelection(
     ...(compSelection ?? {}),
   };
 
-  if (shouldUseMappedChallengeDefault(compSelection)) {
+  if (isLegacyEmptyUserSelection(compSelection)) {
     merged.mode = 'unique';
   }
 
