@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import './KolequantSplash.css';
 
 interface Props {
@@ -16,13 +16,21 @@ export default function KolequantSplash({ duration = 1200, onFinish }: Props) {
     return () => clearTimeout(t);
   }, [duration, onFinish]);
 
+  const splashStyle = {
+    '--kq-splash-duration': `${duration}ms`,
+  } as CSSProperties;
+
   return (
-    <div className="kq-splash" aria-hidden="true">
+    <div className="kq-splash" style={splashStyle} aria-hidden="true">
       <div className="kq-splash__center">
-        <img src={LOGO_SRC} alt="Kolequant" className="kq-splash__logo" draggable={false} decoding="async" />
+        <span className="kq-splash__electric kq-splash__electric--left" />
+        <div className="kq-splash__logo-frame">
+          <img src={LOGO_SRC} alt="Kolequant" className="kq-splash__logo" draggable={false} decoding="async" />
+        </div>
+        <span className="kq-splash__electric kq-splash__electric--right" />
       </div>
       {/* Copyright pinned to the bottom of the splash; animates with the logo */}
-      <div className="kq-splash__copyright">© 2026</div>
+      <div className="kq-splash__copyright">© 2026 copyright sound</div>
     </div>
   );
 }
