@@ -422,6 +422,27 @@ export function simulateAiRun(
   return { player: state, feed };
 }
 
+export function normalizeSurvivalIndices(players: PlayerState[]): PlayerState[] {
+  const order = [...players]
+    .filter((player) => player.eliminated)
+    .sort((a, b) => {
+      const aRow = a.eliminatedRow ?? Number.POSITIVE_INFINITY;
+      const bRow = b.eliminatedRow ?? Number.POSITIVE_INFINITY;
+      if (aRow !== bRow) return aRow - bRow;
+      if (a.furthestRow !== b.furthestRow) return a.furthestRow - b.furthestRow;
+      if (a.sp !== b.sp) return a.sp - b.sp;
+      return a.id.localeCompare(b.id);
+    });
+
+  const indexById = new Map(order.map((player, idx) => [player.id, idx + 1]));
+
+  return players.map((player) => {
+    if (!player.eliminated) return player;
+    const survivalIndex = indexById.get(player.id) ?? player.survivalIndex;
+    return player.survivalIndex === survivalIndex ? player : { ...player, survivalIndex };
+  });
+}
+
 // ─── Ranking ────────────────────────────────────────────────────────────────
 
 /**

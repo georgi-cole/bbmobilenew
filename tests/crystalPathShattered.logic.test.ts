@@ -14,6 +14,7 @@ import {
   MYSTERY_MAX_GAP,
   MYSTERY_MIN_GAP,
   mergeEffect,
+  normalizeSurvivalIndices,
   rankPlayers,
   resolveWrongTileDelta,
   rollMysteryEffect,
@@ -148,6 +149,34 @@ describe('shatteredLogic · ranking', () => {
     const b = mkPlayer({ id: 'b', furthestRow: HIDDEN_BRIDGE_LENGTH, sp: 10, finishedAtMs: 5 });
     const ranked = rankPlayers([a, b]);
     expect(ranked[0].id).toBe('b');
+  });
+  it('normalizes eliminated players to a shared survival ordering', () => {
+    const human = mkPlayer({
+      id: 'human',
+      isHuman: true,
+      eliminated: true,
+      eliminatedRow: 12,
+      furthestRow: 12,
+      survivalIndex: 99,
+    });
+    const aiEarly = mkPlayer({
+      id: 'ai-early',
+      eliminated: true,
+      eliminatedRow: 5,
+      furthestRow: 5,
+    });
+    const aiLate = mkPlayer({
+      id: 'ai-late',
+      eliminated: true,
+      eliminatedRow: 20,
+      furthestRow: 20,
+    });
+
+    const normalized = normalizeSurvivalIndices([human, aiLate, aiEarly]);
+
+    expect(normalized.find((player) => player.id === 'ai-early')?.survivalIndex).toBe(1);
+    expect(normalized.find((player) => player.id === 'human')?.survivalIndex).toBe(2);
+    expect(normalized.find((player) => player.id === 'ai-late')?.survivalIndex).toBe(3);
   });
 });
 

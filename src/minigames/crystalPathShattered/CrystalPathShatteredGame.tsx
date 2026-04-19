@@ -45,6 +45,7 @@ import {
   type AiLiveFeedEvent,
   isPositiveEffect,
   mergeEffect,
+  normalizeSurvivalIndices,
   pickAiPersonality,
   pruneEffects,
   rankPlayers,
@@ -222,6 +223,10 @@ export default function CrystalPathShatteredGame({
   const clampedActivePlayerIndex = players.length === 0
     ? 0
     : Math.min(activePlayerIndex, players.length - 1);
+  const asyncAiPlayers = useMemo(
+    () => initialPlayers(participantIds, participants).filter((player) => !player.isHuman),
+    [participantIds, participants],
+  );
   const humanPlayer = humanId ? players.find((p) => p.id === humanId) ?? null : null;
   const activePlayer = isAsyncHumanRun
     ? humanPlayer
@@ -238,12 +243,12 @@ export default function CrystalPathShatteredGame({
 
   // Assign AI personalities once.
   useEffect(() => {
-    players.forEach((p) => {
+    asyncAiPlayers.forEach((p) => {
       if (!p.isHuman && !aiPersonalityRef.current[p.id]) {
         aiPersonalityRef.current[p.id] = pickAiPersonality(p.profile, rngRef.current);
       }
     });
-  }, [players]);
+  }, [asyncAiPlayers]);
 
   const asyncAiSimulation = useMemo(() => {
     if (!isAsyncHumanRun) {
@@ -257,8 +262,7 @@ export default function CrystalPathShatteredGame({
     const results = new Map<string, PlayerState>();
     const events: AiLiveFeedEvent[] = [];
 
-    players.forEach((player) => {
-      if (player.isHuman) return;
+    asyncAiPlayers.forEach((player) => {
       const personality = aiPersonalityRef.current[player.id]
         ?? pickAiPersonality(player.profile, aiRng);
       aiPersonalityRef.current[player.id] = personality;
@@ -282,31 +286,20 @@ export default function CrystalPathShatteredGame({
       events.push(...simulated.feed);
     });
 
-    [...results.values()]
-      .filter((player) => player.eliminated)
-      .sort((a, b) => {
-        const aRow = a.eliminatedRow ?? Number.POSITIVE_INFINITY;
-        const bRow = b.eliminatedRow ?? Number.POSITIVE_INFINITY;
-        if (aRow !== bRow) return aRow - bRow;
-        return a.sp - b.sp;
-      })
-      .forEach((player, idx) => {
-        player.survivalIndex = idx + 1;
-      });
-
     return {
-      results,
+      results: new Map(normalizeSurvivalIndices([...results.values()]).map((player) => [player.id, player])),
       events: events.sort((a, b) => a.atMs - b.atMs),
     };
-  }, [baseBridgeRows, isAsyncHumanRun, players, sessionSeed]);
+  }, [asyncAiPlayers, baseBridgeRows, isAsyncHumanRun, sessionSeed]);
 
   const scoreboardPlayers = useMemo(() => {
     if (!isAsyncHumanRun) return players;
-    return players.map((player) => {
-      if (player.isHuman) return player;
-      return asyncAiSimulation.results.get(player.id) ?? player;
-    });
-  }, [asyncAiSimulation.results, isAsyncHumanRun, players]);
+    const combined = [
+      ...(humanPlayer ? [humanPlayer] : []),
+      ...asyncAiPlayers.map((player) => asyncAiSimulation.results.get(player.id) ?? player),
+    ];
+    return normalizeSurvivalIndices(combined);
+  }, [asyncAiPlayers, asyncAiSimulation.results, humanPlayer, isAsyncHumanRun]);
 
   // ── Timers (registered through a single queue for stability) ─────────────
   const timersRef = useRef<number[]>([]);
@@ -318,6 +311,10 @@ export default function CrystalPathShatteredGame({
     }, ms);
     timersRef.current.push(id);
     return id;
+  }, []);
+  const cancelQueuedTimeout = useCallback((id: number) => {
+    window.clearTimeout(id);
+    timersRef.current = timersRef.current.filter((t) => t !== id);
   }, []);
   const clearAllTimers = useCallback(() => {
     timersRef.current.forEach((t) => window.clearTimeout(t));
@@ -403,11 +400,11 @@ export default function CrystalPathShatteredGame({
         : aiPickSide(row, personality, rngRef.current);
       resolveStep(activePlayer.id, side, row);
     }, NEW_TURN_DELAY_MS + thinkMs);
-    return () => window.clearTimeout(timer);
+    return () => cancelQueuedTimeout(timer);
     // The effect intentionally re-runs only on these stable keys; `row`, `activePlayer`,
     // and the resolver callbacks are captured once per scheduling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePlayer, activePlayerId, isAsyncHumanRun, phase, isResolving, mysteryPendingStep, currentRowRecord]);
+  }, [activePlayer, activePlayerId, cancelQueuedTimeout, isAsyncHumanRun, phase, isResolving, mysteryPendingStep, currentRowRecord]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const logMessage = useCallback((msg: string) => {
@@ -426,9 +423,9 @@ export default function CrystalPathShatteredGame({
     }, Math.max(900, Math.round((event.atMs - startAt) * 0.18) + 900)));
 
     return () => {
-      scheduled.forEach((timerId) => window.clearTimeout(timerId));
+      scheduled.forEach((timerId) => cancelQueuedTimeout(timerId));
     };
-  }, [asyncAiSimulation.events, isAsyncHumanRun, phase, queueTimeout]);
+  }, [asyncAiSimulation.events, cancelQueuedTimeout, isAsyncHumanRun, phase, queueTimeout]);
 
   const consumeHint = useCallback((playerId: string) => {
     setPlayers((cur) => cur.map((p) =>
@@ -573,7 +570,7 @@ export default function CrystalPathShatteredGame({
         }
       }
       const t = queueTimeout(() => setPhase('complete'), 1_400);
-      return () => window.clearTimeout(t);
+      return () => cancelQueuedTimeout(t);
     }
 
     const secretWinner = players.find((p) => p.finishedAtMs !== null);
@@ -591,10 +588,10 @@ export default function CrystalPathShatteredGame({
       }
       // Short delay to let animations settle before showing the complete screen.
       const t = queueTimeout(() => setPhase('complete'), secretWinner ? 1_400 : 600);
-      return () => window.clearTimeout(t);
+       return () => cancelQueuedTimeout(t);
     }
     return undefined;
-  }, [humanPlayer, isAsyncHumanRun, phase, players, playWinner, queueTimeout, secretWinBanner]);
+  }, [cancelQueuedTimeout, humanPlayer, isAsyncHumanRun, phase, players, playWinner, queueTimeout, secretWinBanner]);
 
   // Assign survivalIndex (order-of-fall) whenever a new elimination appears.
   // Stable dep: count of eliminated players without a survivalIndex yet.
@@ -603,6 +600,7 @@ export default function CrystalPathShatteredGame({
     0,
   );
   useEffect(() => {
+    if (isAsyncHumanRun) return;
     if (pendingSurvivalCount === 0) return;
     setPlayers((cur) => {
       const assigned = cur.filter((p) => p.eliminated && p.survivalIndex > 0).length;
@@ -619,7 +617,7 @@ export default function CrystalPathShatteredGame({
       });
       return changed ? next : cur;
     });
-  }, [pendingSurvivalCount]);
+  }, [isAsyncHumanRun, pendingSurvivalCount]);
 
   // ── Handlers (human UI) ──────────────────────────────────────────────────
   const inputEnabled =
