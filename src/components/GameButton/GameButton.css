@@ -5,7 +5,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  isolation: isolate;
   cursor: pointer;
   border: none;
   background: transparent;
@@ -48,7 +47,6 @@
   object-fit: contain;
   position: absolute;
   inset: 0;
-  z-index: 0;
   pointer-events: none;
   user-select: none;
   /* Ensure img covers full button area */
@@ -59,7 +57,6 @@
 /* Content (icon + label) overlays above the SVG */
 .btn-content {
   position: relative;
-  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,97 +104,6 @@
 .game-btn--secondary_small {
   width: min(72%, 220px);
   min-height: 48px;
-}
-
-.game-btn--play-shimmer {
-  overflow: hidden;
-  border-radius: 18px;
-}
-
-.game-btn--play-shimmer::before,
-.game-btn--play-shimmer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.game-btn--play-shimmer::before {
-  top: -170%;
-  left: -48%;
-  width: 34%;
-  height: 440%;
-  inset: auto;
-  transform: rotate(24deg);
-  z-index: 1;
-  opacity: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(165, 214, 255, 0.08) 38%,
-    rgba(255, 255, 255, 0.42) 50%,
-    rgba(165, 214, 255, 0.14) 62%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  filter: blur(3px);
-  animation: game-btn-play-shine 3.4s cubic-bezier(0.33, 0, 0.2, 1) infinite;
-}
-
-.game-btn--play-shimmer::after {
-  z-index: 1;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(132, 191, 255, 0.16), transparent 68%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
-  opacity: 0.08;
-  animation: game-btn-play-glow 4.4s ease-in-out infinite;
-}
-
-@keyframes game-btn-play-shine {
-  0% {
-    left: -52%;
-    opacity: 0;
-  }
-
-  12% {
-    opacity: 0.58;
-  }
-
-  48% {
-    left: 118%;
-    opacity: 0.72;
-  }
-
-  60%,
-  100% {
-    left: 118%;
-    opacity: 0;
-  }
-}
-
-@keyframes game-btn-play-glow {
-  0%,
-  100% {
-    opacity: 0.06;
-  }
-
-  50% {
-    opacity: 0.18;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .game-btn--play-shimmer::before,
-  .game-btn--play-shimmer::after {
-    animation: none;
-  }
-
-  .game-btn--play-shimmer::before {
-    opacity: 0;
-  }
-
-  .game-btn--play-shimmer::after {
-    opacity: 0.1;
-  }
 }
 
 @media (max-width: 420px) {

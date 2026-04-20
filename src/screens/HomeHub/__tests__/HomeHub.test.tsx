@@ -86,13 +86,11 @@ vi.mock('../../../components/GameButton/GameButton', () => ({
   default: ({
     label,
     onClick,
-    className,
   }: {
     label: string;
     onClick: () => void;
-    className?: string;
   }) => (
-    <button className={className} onClick={onClick} type="button">
+    <button onClick={onClick} type="button">
       {label}
     </button>
   ),
@@ -223,19 +221,6 @@ describe('HomeHub', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
-  });
-
-  it('adds the premium shimmer class only to the Play button', async () => {
-    renderHomeHub();
-
-    fireEvent.click(screen.getByTestId('kolequant-splash'));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole('button', { name: 'Play' })).toHaveClass('game-btn--play-shimmer');
-    expect(screen.getByRole('button', { name: 'Rules' })).not.toHaveClass('game-btn--play-shimmer');
   });
 
   it('auto-starts the game preloader when returning from Game Over with autoStartGame state', async () => {
