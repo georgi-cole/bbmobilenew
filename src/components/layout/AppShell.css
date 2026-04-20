@@ -22,10 +22,14 @@
 
 @media (min-width: 768px) and (pointer: fine) {
   .app-shell {
-    width: min(calc(100vw - 48px), 390px);
+    --desktop-shell-frame-inset: 48px;
+    --desktop-shell-width: 390px;
+    --desktop-shell-height: 844px;
+    --desktop-shell-ratio: 390 / 844;
+    width: min(calc(100vw - var(--desktop-shell-frame-inset)), var(--desktop-shell-width));
     height: auto;
-    max-height: min(calc(100dvh - 48px), 844px);
-    aspect-ratio: 390 / 844;
+    max-height: min(calc(100dvh - var(--desktop-shell-frame-inset)), var(--desktop-shell-height));
+    aspect-ratio: var(--desktop-shell-ratio);
     margin: 0;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 32px;
