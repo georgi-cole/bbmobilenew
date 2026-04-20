@@ -21,9 +21,9 @@ describe('desktop app shell framing styles', () => {
 
     expect(appShellCss).toContain('@media (min-width: 768px) and (pointer: fine) {');
     expect(appShellCss).toContain('--desktop-shell-frame-inset: 48px;');
-    expect(appShellCss).toContain('--desktop-shell-width: 390px;');
-    expect(appShellCss).toContain('--desktop-shell-height: 844px;');
-    expect(appShellCss).toContain('--desktop-shell-ratio: 390 / 844;');
+    expect(appShellCss).toContain('--desktop-shell-width: 393px;');
+    expect(appShellCss).toContain('--desktop-shell-height: 852px;');
+    expect(appShellCss).toContain('--desktop-shell-ratio: 393 / 852;');
     expect(appShellCss).toContain(
       'width: min(calc(100vw - var(--desktop-shell-frame-inset)), var(--desktop-shell-width));',
     );
@@ -32,6 +32,7 @@ describe('desktop app shell framing styles', () => {
       'max-height: min(calc(100dvh - var(--desktop-shell-frame-inset)), var(--desktop-shell-height));',
     );
     expect(appShellCss).toContain('aspect-ratio: var(--desktop-shell-ratio);');
-    expect(appShellCss).toContain('border-radius: 32px;');
+    expect(appShellCss).not.toContain('border-radius: 32px;');
+    expect(appShellCss).not.toContain('box-shadow: 0 24px 72px rgba(0, 0, 0, 0.45);');
   });
 });
