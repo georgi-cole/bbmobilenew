@@ -65,13 +65,13 @@ yields: { influence: 0.06 }    // earns 6 pts influence on success
 
 Each action has an optional `kind` field that declares its role in the resource economy.  The `kind` is informational metadata — it does not gate execution, but documents the intended cost/yield contract.
 
-| Kind            | Primary cost       | Primary yield      | Purpose |
-|-----------------|--------------------|--------------------|---------|
-| `rapport`       | energy             | influence (small)  | Build goodwill / improve relationship state |
-| `intel_gain`    | energy             | info               | Observe, eavesdrop, gather intelligence |
-| `intel_spend`   | energy + info      | influence          | Convert intel into social leverage (info → influence) |
-| `political_spend`| energy + influence| influence / tags   | Spend capital on board position |
-| `aggressive`    | energy             | influence / tags   | Disrupt, damage, or escalate |
+| Kind            | Primary cost                  | Primary yield      | Purpose |
+|-----------------|-------------------------------|--------------------|---------|
+| `rapport`       | energy                        | influence (small)  | Build goodwill / improve relationship state |
+| `intel_gain`    | energy                        | info               | Observe, eavesdrop, gather intelligence |
+| `intel_spend`   | energy + info                 | influence          | Convert intel into social leverage (info → influence) |
+| `political_spend`| energy + influence and/or info| influence / tags   | Spend social or intel capital on board position |
+| `aggressive`    | energy                        | influence / tags   | Disrupt, damage, or escalate |
 
 > **Design rule:** an action should not both *cost* and *yield* the same resource unless the conversion is intentional and documented.
 
