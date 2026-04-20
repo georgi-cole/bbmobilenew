@@ -93,7 +93,7 @@ function makeStore() {
   });
 }
 
-async function advanceToRecap() {
+async function advanceToRecapBoundary() {
   // The finale flow crosses two exact timeout boundaries:
   // 1) 3000 ms for each juror clue reveal
   // 2) 3000 ms of extra hold time after the public vote bubble appears
@@ -114,6 +114,10 @@ async function advanceToRecap() {
   await act(async () => {
     vi.advanceTimersByTime(2999);
   });
+}
+
+async function advanceToRecap() {
+  await advanceToRecapBoundary();
 
   await act(async () => {
     vi.advanceTimersByTime(1);
@@ -182,21 +186,7 @@ describe('FinalFaceoff public vote pacing', () => {
       </Provider>,
     );
 
-    await act(async () => {
-      vi.advanceTimersByTime(2999);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(2999);
-    });
+    await advanceToRecapBoundary();
 
     expect(stopAllMusicSpy).not.toHaveBeenCalled();
 
