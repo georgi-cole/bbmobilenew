@@ -209,6 +209,11 @@ describe('normalizeActionYields', () => {
     expect(normalizeActionYields(action)).toEqual({ influence: 6, info: 0 });
   });
 
+  it('vote_rally yields influence: 4 pts (0.04 × 100)', () => {
+    const action = SOCIAL_ACTIONS.find((a) => a.id === 'vote_rally')!;
+    expect(normalizeActionYields(action)).toEqual({ influence: 4, info: 0 });
+  });
+
   it('share_intel (intel_spend) yields influence only — no info refund (0.06 × 100 = 6)', () => {
     const action = SOCIAL_ACTIONS.find((a) => a.id === 'share_intel')!;
     expect(normalizeActionYields(action)).toEqual({ influence: 6, info: 0 });
