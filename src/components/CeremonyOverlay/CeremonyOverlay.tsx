@@ -101,6 +101,10 @@ const LABEL_HEIGHT = 24;
 const LABEL_STACKED_THRESHOLD = 18;
 const LABEL_VERTICAL_OFFSET_STEP = 28;
 const LABEL_VERTICAL_OFFSET_MAX = 56;
+// Extraction motion lifts the badge just above the tile without jumping into
+// the TV chrome near the top edge on compact mobile layouts.
+const BADGE_EXTRACT_Y_OFFSET = 28;
+const BADGE_EXTRACT_MIN_TOP = 12;
 // Safe small-screen fallback dimensions for non-browser/SSR rendering paths.
 const SSR_VIEWPORT_WIDTH = 390;
 const SSR_VIEWPORT_HEIGHT = 844;
@@ -288,13 +292,12 @@ export default function CeremonyOverlay({
 
     let startX: number;
     let startY: number;
-    const endX = targetX;
     let endY = targetY;
 
     if (t.badgeMotion === 'extract') {
       startX = targetX;
       startY = targetY;
-      endY = Math.max(12, targetY - 28);
+      endY = Math.max(BADGE_EXTRACT_MIN_TOP, targetY - BADGE_EXTRACT_Y_OFFSET);
     } else if (t.badgeStart && t.badgeStart !== 'center' && 'left' in t.badgeStart) {
       // Transfer from another tile
       startX = t.badgeStart.left + t.badgeStart.width / 2;
@@ -304,7 +307,7 @@ export default function CeremonyOverlay({
       startX = viewportWidth / 2;
       startY = viewportHeight / 2;
     }
-    return { startX, startY, targetX, targetY, endX, endY };
+    return { startX, startY, targetX, targetY, endY };
   });
 
   // Badge current position based on phase
@@ -318,13 +321,13 @@ export default function CeremonyOverlay({
         return { left: pos.startX, top: pos.startY };
       case 'flying':
         if (badgeMotion === 'extract') {
-          return { left: pos.endX, top: pos.endY };
+          return { left: pos.targetX, top: pos.endY };
         }
         return { left: pos.targetX, top: pos.targetY };
       case 'landed':
       case 'holding':
         if (badgeMotion === 'extract') {
-          return { left: pos.endX, top: pos.endY };
+          return { left: pos.targetX, top: pos.endY };
         }
         return { left: pos.targetX, top: pos.targetY };
       default:

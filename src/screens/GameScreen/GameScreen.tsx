@@ -3320,7 +3320,7 @@ export default function GameScreen() {
             badgeMotion: 'extract' as const,
             glowTone: 'success' as const,
           }]}
-          caption=""
+          caption={`${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe!`}
           onDone={handlePublicSaveCeremonyDone}
           ariaLabel={`Public save ceremony: ${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe`}
           showDim={false}
