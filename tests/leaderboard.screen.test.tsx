@@ -62,7 +62,7 @@ describe('Leaderboard screen', () => {
           seasonIndex: 3,
           seasonId: 'season-3',
           playerSummaries: [
-            { playerId: 'p1', displayName: 'Georgi', finalPlacement: 1 },
+            { playerId: 'p1', displayName: 'Georgi Cole', finalPlacement: 1 },
             { playerId: 'p2', displayName: 'Mimi', finalPlacement: 2 },
           ],
         },
@@ -74,7 +74,30 @@ describe('Leaderboard screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
 
     expect(screen.getByText('Season 3')).toBeInTheDocument();
-    expect(screen.getByText('Georgi')).toBeInTheDocument();
+    expect(screen.getByText('Georgi Cole')).toBeInTheDocument();
+    expect(screen.getByText('7.7/10')).toBeInTheDocument();
+  });
+
+  it('shows only the first name when the winner has no last name', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 4,
+          seasonId: 'season-4',
+          playerSummaries: [
+            { playerId: 'p1', displayName: 'Mimi', finalPlacement: 1 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 4')).toBeInTheDocument();
+    expect(screen.getByText('Mimi')).toBeInTheDocument();
+    expect(screen.getByText('8.8/10')).toBeInTheDocument();
   });
 
   it('shows N/A when an archived season has no recorded winner', () => {

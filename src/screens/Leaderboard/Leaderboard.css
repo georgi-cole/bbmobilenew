@@ -79,6 +79,14 @@
   cursor: default;
 }
 
+.leaderboard-screen__winner-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .leaderboard-screen__rank {
   font-size: 0.75rem;
   font-weight: 700;
@@ -90,6 +98,14 @@
   flex: 1;
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.leaderboard-screen__subtext {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .leaderboard-screen__score {

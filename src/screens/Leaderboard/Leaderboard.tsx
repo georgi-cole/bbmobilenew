@@ -8,6 +8,19 @@ import './Leaderboard.css';
 
 type Tab = 'season' | 'alltime' | 'pastWinners';
 
+function formatWinnerName(name: string | undefined): string {
+  if (!name) return 'N/A';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'N/A';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
+function buildMockSeasonRating(seasonIndex: number): string {
+  const rating = 6.9 + (((seasonIndex * 11) % 25) / 10);
+  return `${rating.toFixed(1)}/10`;
+}
+
 export default function Leaderboard() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('season');
@@ -39,8 +52,10 @@ export default function Leaderboard() {
     .map((archive) => ({
       seasonId: archive.seasonId,
       seasonIndex: archive.seasonIndex,
-      winnerName:
-        archive.playerSummaries.find((summary) => summary.finalPlacement === 1)?.displayName ?? 'N/A',
+      winnerName: formatWinnerName(
+        archive.playerSummaries.find((summary) => summary.finalPlacement === 1)?.displayName,
+      ),
+      seasonRating: buildMockSeasonRating(archive.seasonIndex),
     }));
 
   const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
@@ -182,8 +197,11 @@ export default function Leaderboard() {
           {pastWinners.map((archive) => (
             <li key={archive.seasonId} className="leaderboard-screen__row">
               <div className="leaderboard-screen__row-main leaderboard-screen__row-main--static">
-                <span className="leaderboard-screen__name">Season {archive.seasonIndex}</span>
-                <span className="leaderboard-screen__score">{archive.winnerName}</span>
+                <div className="leaderboard-screen__winner-meta">
+                  <span className="leaderboard-screen__name">Season {archive.seasonIndex}</span>
+                  <span className="leaderboard-screen__subtext">{archive.winnerName}</span>
+                </div>
+                <span className="leaderboard-screen__score">{archive.seasonRating}</span>
               </div>
             </li>
           ))}
