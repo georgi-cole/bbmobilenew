@@ -159,14 +159,14 @@ export default function FinalFaceoff() {
     if (phase === 'recap') {
       // Fade out the jury_voting atmosphere before starting the recap track so
       // there is no abrupt cut at the clues → recap boundary.
-      void SoundManager.fadeOutMusic(400).then(() => {
+      SoundManager.fadeOutMusic(400).then(() => {
         dispatch(setMusicScene('season_recap'));
       });
       return;
     }
     if (phase === 'revealVotes') {
       // Fade out the recap track before resuming the jury_voting atmosphere.
-      void SoundManager.fadeOutMusic(400).then(() => {
+      SoundManager.fadeOutMusic(400).then(() => {
         dispatch(setMusicScene('jury_voting'));
       });
       return;
