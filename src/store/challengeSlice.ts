@@ -292,9 +292,7 @@ export const startChallenge =
         }
 
         case 'unique': {
-          const recentKeys = new Set(
-            (state.challenge?.history ?? []).map((r) => r.gameKey),
-          );
+          const recentKeys = new Set(historyGameKeys);
           const bracketPool = getBracketTemplatePool(opts.excludeKeys);
           const uniqueBracketPool = bracketPool.filter((game) => !recentKeys.has(game.key));
           if (uniqueBracketPool.length > 0) {
@@ -306,7 +304,7 @@ export const startChallenge =
             break;
           }
 
-          const exclude = [...recentKeys, ...(opts.excludeKeys ?? [])];
+          const exclude = Array.from(new Set([...recentKeys, ...(opts.excludeKeys ?? [])]));
           const uniquePool = getPoolByFilter({
             retired: false,
             category: opts.category,

@@ -12,7 +12,7 @@
 /**
  * Selection strategy for the challenge scheduler.
  *
- * - `random-games`       – default; picks any non-retired game (existing behaviour).
+ * - `random-games`       – picks any non-retired game (existing behaviour).
  * - `single-game`        – always use the game at `selectedGameId`.
  * - `user-selection`     – pick deterministically from the `selectedGameIds` pool.
  * - `arcade-only`        – restrict to the `arcade` registry category.
@@ -57,7 +57,7 @@ export interface CompGame {
 
 /** Shape of the save payload sent to onSave(). */
 export interface CompSelectionPayload {
-  /** Selection strategy for the challenge scheduler. Defaults to `'random-games'`. */
+  /** Selection strategy for the challenge scheduler. Defaults to `'unique'`. */
   mode?: CompSelectionMode;
   /**
    * Registry key of the single game to always use.

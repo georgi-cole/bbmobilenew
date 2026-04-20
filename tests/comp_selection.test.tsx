@@ -99,7 +99,7 @@ describe('CompSelection component', () => {
 
     await waitFor(() => screen.getByLabelText('Selection mode'));
 
-    // Default mode is random-games — just click Save
+    // Default mode is unique — just click Save
     fireEvent.click(screen.getByText('Save Selection'));
 
     await waitFor(() => {
