@@ -138,10 +138,10 @@ function _audioLog(message: string, ...args: unknown[]): void {
 
 // ── HTMLAudio factory helpers ─────────────────────────────────────────────────
 
-function _makeMusicEl(src: string, volume: number, loop = true): HTMLAudioElement {
+function _makeMusicEl(src: string, volume: number): HTMLAudioElement {
   const el = document.createElement('audio');
   el.src = src;
-  el.loop = loop;
+  el.loop = true;
   el.volume = Math.max(0, Math.min(1, volume));
   el.preload = 'none';
   return el;
@@ -572,7 +572,7 @@ class _SoundManager {
     const baseVol = entry.volume ?? 1;
     const effectiveVol = Math.max(0, Math.min(1, baseVol * this._musicVolume));
 
-    const el = _makeMusicEl(entry.src, effectiveVol, entry.loop ?? true);
+    const el = _makeMusicEl(entry.src, effectiveVol);
     _liveMusicElements.clear();
     _liveMusicElements.add(el);
     this._musicEl = el;
