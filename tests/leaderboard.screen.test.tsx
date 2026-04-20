@@ -78,14 +78,14 @@ describe('Leaderboard screen', () => {
     expect(screen.getByText('4.8M viewers')).toBeInTheDocument();
   });
 
-  it('shows only the first name when the winner has no last name', () => {
+  it('uses the canonical houseguest full name for archived winners when available', () => {
     const store = makeStore({
       seasonArchives: [
         {
           seasonIndex: 4,
           seasonId: 'season-4',
           playerSummaries: [
-            { playerId: 'p1', displayName: 'Mimi', finalPlacement: 1 },
+            { playerId: 'mimi', displayName: 'Mimi', finalPlacement: 1 },
           ],
         },
       ],
@@ -96,8 +96,30 @@ describe('Leaderboard screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
 
     expect(screen.getByText('Season 4')).toBeInTheDocument();
-    expect(screen.getByText('Mimi')).toBeInTheDocument();
+    expect(screen.getByText('Mimi Tanaka')).toBeInTheDocument();
     expect(screen.getByText('6.1M viewers')).toBeInTheDocument();
+  });
+
+  it('shows only the first name when the winner has no last name', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 5,
+          seasonId: 'season-5',
+          playerSummaries: [
+            { playerId: 'p1', displayName: 'Mononym', finalPlacement: 1 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 5')).toBeInTheDocument();
+    expect(screen.getByText('Mononym')).toBeInTheDocument();
+    expect(screen.getByText('7.4M viewers')).toBeInTheDocument();
   });
 
   it('shows N/A when an archived season has no recorded winner', () => {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
+import { findByName, getById } from '../../data/houseguests';
 import { computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
 import { DEFAULT_WEIGHTS } from '../../scoring/weights';
@@ -19,6 +20,13 @@ function formatWinnerName(name: string | undefined): string {
 function buildMockSeasonViewership(seasonIndex: number): string {
   const viewers = 4.2 + (((seasonIndex * 13) % 33) / 10);
   return `${viewers.toFixed(1)}M viewers`;
+}
+
+function resolveWinnerName(playerId: string | undefined, displayName: string | undefined): string {
+  const fullName = (playerId ? getById(playerId)?.fullName : undefined)
+    ?? (displayName ? findByName(displayName)?.fullName : undefined)
+    ?? displayName;
+  return formatWinnerName(fullName);
 }
 
 export default function Leaderboard() {
@@ -49,14 +57,15 @@ export default function Leaderboard() {
   const allTimeEntries = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS);
   const pastWinners = [...seasonArchives]
     .sort((a, b) => (b.seasonIndex ?? 0) - (a.seasonIndex ?? 0))
-    .map((archive) => ({
-      seasonId: archive.seasonId,
-      seasonIndex: archive.seasonIndex,
-      winnerName: formatWinnerName(
-        archive.playerSummaries.find((summary) => summary.finalPlacement === 1)?.displayName,
-      ),
-      seasonViewership: buildMockSeasonViewership(archive.seasonIndex),
-    }));
+    .map((archive) => {
+      const winner = archive.playerSummaries.find((summary) => summary.finalPlacement === 1);
+      return {
+        seasonId: archive.seasonId,
+        seasonIndex: archive.seasonIndex,
+        winnerName: resolveWinnerName(winner?.playerId, winner?.displayName),
+        seasonViewership: buildMockSeasonViewership(archive.seasonIndex),
+      };
+    });
 
   const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
 
