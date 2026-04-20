@@ -19,3 +19,17 @@
   /* Push content above bottom safe area */
   padding-bottom: var(--safe-area-inset-bottom);
 }
+
+@media (min-width: 768px) and (pointer: fine) {
+  .app-shell {
+    width: min(calc(100vw - 48px), 390px);
+    max-width: 390px;
+    height: auto;
+    max-height: min(calc(100dvh - 48px), 844px);
+    aspect-ratio: 390 / 844;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 32px;
+    box-shadow: 0 24px 72px rgba(0, 0, 0, 0.45);
+  }
+}
