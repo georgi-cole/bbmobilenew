@@ -2,13 +2,44 @@
  * Social action definitions for the SocialManeuvers subsystem.
  *
  * Each entry describes a social action a player can perform during a social
- * phase. baseCost can be a plain number (energy units) or an object with
- * separate energy and info costs.
+ * phase. `baseCost` can be a plain number (energy units) or an object with
+ * separate `energy`, `influence`, and/or `info` costs.
+ *
+ * ## Resource roles
+ * - **energy**    — action stamina; always spent to perform an action.
+ * - **influence** — social/political capital; earned from rapport actions,
+ *                   spent on political-leverage actions.
+ * - **info**      — intelligence capital; earned by observing/whispering,
+ *                   spent on intel-sensitive actions.
+ *
+ * ## Relationship state (not a spendable resource)
+ * affinity, trust, resentment, and tags (alliance, betrayal, target, etc.)
+ * are stored in `state.social.relationships` and drive AI targeting, veto
+ * bias, nomination preference, and outcome modifiers.  They are separate
+ * from the banked resources above.
  */
 
 import type { PlayerStatus } from '../types';
 
 export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance';
+
+/**
+ * Semantic role of a social action.
+ *
+ * | Kind               | Primary cost       | Primary yield      | Purpose                              |
+ * |--------------------|--------------------|--------------------|--------------------------------------|
+ * | rapport            | energy             | influence (small)  | Build goodwill / relationship state  |
+ * | intel_gain         | energy             | info               | Observe, eavesdrop, gather intel     |
+ * | intel_spend        | energy + info      | influence          | Convert intel into social leverage   |
+ * | political_spend    | energy + influence | influence / tags   | Spend capital on board position      |
+ * | aggressive         | energy             | influence / tags   | Disrupt, damage, or escalate         |
+ */
+export type SocialActionKind =
+  | 'rapport'
+  | 'intel_gain'
+  | 'intel_spend'
+  | 'political_spend'
+  | 'aggressive';
 
 /**
  * How many targets an action requires or supports.
@@ -41,6 +72,12 @@ export interface SocialActionDefinition {
    * `socialConfig.actionCategories.friendlyActions` / `aggressiveActions`.
    */
   category: ActionCategory;
+  /**
+   * Semantic role of this action in the resource economy.
+   * Used for action-catalog documentation and future AI weighting.
+   * Does not gate execution — see `baseCost` and `yields` for runtime behaviour.
+   */
+  kind?: SocialActionKind;
   /**
    * Energy cost as a plain number or a multi-resource cost-shape object.
    * Influence costs are authored in whole influence units (2.0 → cost 20);
@@ -108,6 +145,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '✨',
     description: 'Give genuine praise to build rapport.',
     category: 'friendly',
+    kind: 'rapport',
     baseCost: 1,
     targetMode: 'primary',
     successWeight: 3,
@@ -119,6 +157,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🤫',
     description: 'Share private intel to gain trust.',
     category: 'strategic',
+    kind: 'intel_gain',
     baseCost: { energy: 1 },
     targetMode: 'primary',
     successWeight: 2,
@@ -130,6 +169,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '👁️',
     description: 'Watch and listen. Costs only energy.',
     category: 'strategic',
+    kind: 'intel_gain',
     baseCost: { energy: 1 },
     targetMode: 'none',
     needsTargets: false,
@@ -142,6 +182,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🗣️',
     description: 'Mingle with the house. Build broad goodwill.',
     category: 'friendly',
+    kind: 'rapport',
     baseCost: { energy: 2 },
     targetMode: 'primary',
     successWeight: 2,
@@ -154,6 +195,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🤝',
     description: 'Propose a formal alliance. Success creates a lasting bond.',
     category: 'alliance',
+    kind: 'intel_spend',
     baseCost: { energy: 3, info: 2.0 },
     targetMode: 'primary',
     successWeight: 1,
@@ -167,6 +209,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🛡️',
     description: 'Promise safety to a vulnerable player.',
     category: 'friendly',
+    kind: 'rapport',
     baseCost: 2,
     targetMode: 'primary',
     successWeight: 2,
@@ -177,6 +220,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🗡️',
     description: 'Break an existing alliance for personal gain.',
     category: 'aggressive',
+    kind: 'aggressive',
     baseCost: 3,
     targetMode: 'primary',
     successWeight: 1,
@@ -190,6 +234,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🤗',
     description: 'Offer emotional support. Builds trust and goodwill.',
     category: 'friendly',
+    kind: 'rapport',
     baseCost: 1,
     targetMode: 'primary',
     successWeight: 2,
@@ -199,14 +244,15 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     id: 'share_intel',
     title: 'Share Intel',
     icon: '📋',
-    description: 'Share valuable intel to build trust and mutual advantage.',
+    description: 'Trade your intelligence for social leverage. Converts info into influence.',
     category: 'strategic',
+    kind: 'intel_spend',
     baseCost: { energy: 1, info: 2.0 },
     targetMode: 'primary',
     successWeight: 2,
     outcomeTag: 'intel',
     availabilityHint: 'Requires 200 info',
-    yields: { info: 1.0, influence: 0.04 },
+    yields: { influence: 0.06 },
   },
   // ── Aggressive / competitive actions ─────────────────────────────────────
   {
@@ -215,6 +261,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '💬',
     description: 'Plant a damaging rumor about a player.',
     category: 'aggressive',
+    kind: 'aggressive',
     baseCost: { energy: 2, info: 1.0 },
     targetMode: 'primary',
     successWeight: 2,
@@ -227,6 +274,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '💥',
     description: 'Escalate tension. Risky — may backfire.',
     category: 'aggressive',
+    kind: 'aggressive',
     baseCost: 3,
     targetMode: 'primary',
     successWeight: 1,
@@ -240,6 +288,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '😤',
     description: 'Directly challenge someone\'s behavior or motives.',
     category: 'aggressive',
+    kind: 'aggressive',
     baseCost: 2,
     targetMode: 'primary',
     successWeight: 2,
@@ -252,6 +301,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🙏',
     description: 'Call in a favour from your network.',
     category: 'strategic',
+    kind: 'political_spend',
     baseCost: { energy: 1, influence: 2.0 },
     targetMode: 'primary',
     successWeight: 2,
@@ -268,6 +318,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🎯',
     description: 'Suggest to the LOH who they should nominate.',
     category: 'strategic',
+    kind: 'political_spend',
     baseCost: { energy: 2, influence: 1.0, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'houseguests',
@@ -283,6 +334,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🔄',
     description: 'Pitch a replacement nominee to the POS holder or LOH.',
     category: 'strategic',
+    kind: 'political_spend',
     baseCost: { energy: 2, influence: 1.0, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'non_nominees',
@@ -298,6 +350,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🛡️',
     description: 'Ask the POS holder to use safety on a nominee.',
     category: 'strategic',
+    kind: 'political_spend',
     baseCost: { energy: 2, influence: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'nominees',
@@ -312,12 +365,13 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '⚠️',
     description: 'Warn an ally about a player you find suspicious.',
     category: 'strategic',
+    kind: 'intel_spend',
     baseCost: { energy: 1, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'houseguests',
     successWeight: 2,
     outcomeTag: 'warning',
-    yields: { info: 0.5 },
+    yields: { influence: 0.02 },
   },
   {
     id: 'rally_votes_against',
@@ -325,6 +379,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '📣',
     description: 'Rally a voter to evict a specific nominee.',
     category: 'strategic',
+    kind: 'political_spend',
     baseCost: { energy: 2, influence: 2.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'nominees',
@@ -341,6 +396,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🤝',
     description: 'Propose a formal alliance with another player.',
     category: 'alliance',
+    kind: 'rapport',
     baseCost: 3,
     targetMode: 'primary',
     successWeight: 1,
@@ -353,6 +409,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🎯',
     description: 'Strategically name a target for elimination.',
     category: 'strategic',
+    kind: 'political_spend',
     baseCost: { energy: 1 },
     targetMode: 'primary',
     successWeight: 2,
@@ -364,6 +421,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '📣',
     description: 'Rally votes using your influence. High influence required.',
     category: 'strategic',
+    kind: 'political_spend',
     baseCost: { energy: 2, influence: 5.0 },
     targetMode: 'primary',
     successWeight: 1,

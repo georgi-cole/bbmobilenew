@@ -213,4 +213,14 @@ describe('normalizeActionYields', () => {
     const action = SOCIAL_ACTIONS.find((a) => a.id === 'vote_rally')!;
     expect(normalizeActionYields(action)).toEqual({ influence: 4, info: 0 });
   });
+
+  it('share_intel (intel_spend) yields influence only — no info refund (0.06 × 100 = 6)', () => {
+    const action = SOCIAL_ACTIONS.find((a) => a.id === 'share_intel')!;
+    expect(normalizeActionYields(action)).toEqual({ influence: 6, info: 0 });
+  });
+
+  it('warn_about_player (intel_spend) yields influence only — no info refund (0.02 × 100 = 2)', () => {
+    const action = SOCIAL_ACTIONS.find((a) => a.id === 'warn_about_player')!;
+    expect(normalizeActionYields(action)).toEqual({ influence: 2, info: 0 });
+  });
 });

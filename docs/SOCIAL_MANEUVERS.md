@@ -2,19 +2,29 @@
 
 The Social Maneuvers subsystem provides the core data and APIs for executing social actions during a Big Brother phase, deducting player resources, computing affinity outcomes, and persisting everything to Redux state.
 
+## Resource Roles
+
+The social economy uses three distinct **banked resources** and a separate **relationship state**.
+
+### Banked resources
+
+| Resource  | Bank field                  | Slice reducers                               | Role |
+|-----------|-----------------------------|----------------------------------------------|------|
+| Energy    | `state.social.energyBank`   | `setEnergyBankEntry`, `applyEnergyDelta`     | Action stamina — always spent to perform any social action. |
+| Influence | `state.social.influenceBank`| `setInfluenceBankEntry`, `applyInfluenceDelta`| Social/political capital — earned from rapport actions; spent on political-leverage actions. |
+| Info      | `state.social.infoBank`     | `setInfoBankEntry`, `applyInfoDelta`          | Intelligence capital — earned by observing/whispering; spent on intel-sensitive actions. |
+
+### Relationship state (not a spendable resource)
+
+`affinity`, `trust`, `resentment`, and relationship **tags** (`alliance`, `betrayal`, `target`, etc.) live in `state.social.relationships` and are managed by `updateRelationship`.  They are **not** currencies — they drive AI targeting, veto bias, nomination preference, and outcome modifiers.  Banked resources and relationship state are intentionally separate.
+
 ## Multi-Resource Costs
 
-Actions can cost **energy**, **influence**, and **info** — all tracked separately in Redux:
-
-| Resource | Bank field | Slice reducers |
-|---|---|---|
-| Energy | `state.social.energyBank` | `setEnergyBankEntry`, `applyEnergyDelta` |
-| Influence | `state.social.influenceBank` | `setInfluenceBankEntry`, `applyInfluenceDelta` |
-| Info | `state.social.infoBank` | `setInfoBankEntry`, `applyInfoDelta` |
+Actions can cost **energy**, **influence**, and **info** — all tracked separately in Redux (see table above).
 
 ## Integer-Point Scale
 
-Influence and Info are stored as **integer points scaled by 100** (i.e. 1.00 influence == 100 pts).  
+Influence is stored as **integer points scaled by 10** (i.e. 1.00 influence == 10 pts). Info is stored as integer points scaled by 100.  
 Action definitions use **fractional floats for readability**; conversion to integer points happens at runtime via `normalizeActionCosts` and `normalizeActionYields`.
 
 | Human-readable | Integer pts |
@@ -51,28 +61,43 @@ yields: { info: 1.0 }          // earns 100 pts info on success
 yields: { influence: 0.06 }    // earns 6 pts influence on success
 ```
 
+## Action Kind
+
+Each action has an optional `kind` field that declares its role in the resource economy.  The `kind` is informational metadata — it does not gate execution, but documents the intended cost/yield contract.
+
+| Kind            | Primary cost                  | Primary yield      | Purpose |
+|-----------------|-------------------------------|--------------------|---------|
+| `rapport`       | energy                        | influence (small)  | Build goodwill / improve relationship state |
+| `intel_gain`    | energy                        | info               | Observe, eavesdrop, gather intelligence |
+| `intel_spend`   | energy + info                 | influence          | Convert intel into social leverage (info → influence) |
+| `political_spend`| energy + influence and/or info| influence / tags   | Spend social or intel capital on board position |
+| `aggressive`    | energy                        | influence / tags   | Disrupt, damage, or escalate |
+
+> **Design rule:** an action should not both *cost* and *yield* the same resource unless the conversion is intentional and documented.
+
 ## Action Catalog
 
-| Action | Energy | Influence cost | Info cost | Yields (on success) | Notes |
-|---|---|---|---|---|---|
-| `compliment` | 1 | — | — | influence +2 pts | Friendly; no resource cost beyond energy |
-| `whisper` | 1 | — | — | info +100 pts | Gives info, costs only energy |
-| `observe` | 1 | — | — | info +100 pts | Targetless; watch and listen |
-| `proposeAlliance` | 3 | — | 200 pts | influence +6 pts | Tags relationship 'alliance' |
-| `group_chat` | 2 | — | — | influence +3 pts | Targetless; broad goodwill |
-| `share_intel` | 1 | — | 200 pts | info +100, influence +4 pts | Requires 200 info |
-| `pitch_target` | 2 | 100 pts | 100 pts | influence +4 pts | LOH only; primaryPlusSubject |
-| `suggest_replacement` | 2 | 100 pts | 100 pts | influence +4 pts | LOH/POS only; primaryPlusSubject |
-| `vote_rally` | 2 | 500 pts | — | influence +4 pts | Requires high influence |
-| `favor_request` | 1 | 200 pts | — | influence +3 pts | Requires 200 influence |
-| `rally_votes_against` | 2 | 200 pts | — | influence +3 pts | Requires nominees on the block |
-| `rumor` | 2 | — | 100 pts | influence +5 pts | Tags 'rumor'; aggressive |
-| `startFight` | 3 | — | — | influence +4 pts | Tags 'conflict'; aggressive |
-| `betray` | 3 | — | — | influence +4 pts | Tags 'betrayal'; aggressive |
-| `ally` | 3 | — | — | — | Tags 'alliance' |
-| `protect` | 2 | — | — | — | Friendly |
-| `nominate` | 1 | — | — | — | Strategic |
-| `idle` | 0 | — | — | — | Targetless; costs nothing |
+| Action | Kind | Energy | Influence cost | Info cost | Yields (on success) | Notes |
+|---|---|---|---|---|---|---|
+| `compliment` | rapport | 1 | — | — | influence +2 pts | Friendly; no resource cost beyond energy |
+| `whisper` | intel_gain | 1 | — | — | info +100 pts | Gives info, costs only energy |
+| `observe` | intel_gain | 1 | — | — | info +100 pts | Targetless; watch and listen |
+| `proposeAlliance` | political_spend | 3 | — | 200 pts | influence +6 pts | Tags relationship 'alliance' |
+| `group_chat` | rapport | 2 | — | — | influence +3 pts | Targetless; broad goodwill |
+| `share_intel` | intel_spend | 1 | — | 200 pts | influence +6 pts | Converts info → influence; no info refund |
+| `pitch_target` | political_spend | 2 | 10 pts | 100 pts | influence +4 pts | LOH only; primaryPlusSubject |
+| `suggest_replacement` | political_spend | 2 | 10 pts | 100 pts | influence +4 pts | LOH/POS only; primaryPlusSubject |
+| `vote_rally` | political_spend | 2 | 50 pts | — | influence +4 pts | Requires high influence |
+| `favor_request` | political_spend | 1 | 20 pts | — | influence +3 pts | Requires 20 influence |
+| `rally_votes_against` | political_spend | 2 | 20 pts | — | influence +3 pts | Requires nominees on the block |
+| `warn_about_player` | intel_spend | 1 | — | 100 pts | influence +2 pts | Converts info → influence; no info refund |
+| `rumor` | aggressive | 2 | — | 100 pts | influence +5 pts | Tags 'rumor'; aggressive |
+| `startFight` | aggressive | 3 | — | — | influence +4 pts | Tags 'conflict'; aggressive |
+| `betray` | aggressive | 3 | — | — | influence +4 pts | Tags 'betrayal'; aggressive |
+| `ally` | rapport | 3 | — | — | — | Tags 'alliance'; AI only; energy-only cost (no influence required) |
+| `protect` | rapport | 2 | — | — | — | Friendly |
+| `nominate` | political_spend | 1 | — | — | — | Strategic; AI only |
+| `idle` | — | 0 | — | — | — | Targetless; costs nothing; no-op |
 
 ## Event Deltas
 
@@ -128,6 +153,9 @@ normalizeActionYields(getActionById('compliment')!);
 
 normalizeActionYields(getActionById('whisper')!);
 // → { influence: 0, info: 100 }
+
+normalizeActionYields(getActionById('share_intel')!);
+// → { influence: 6, info: 0 }   // intel_spend: converts info → influence only
 ```
 
 ## `normalizeAuxCost(value, field)`
