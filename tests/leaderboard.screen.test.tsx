@@ -21,6 +21,18 @@ function makeStore(overrides: Record<string, unknown> = {}) {
   });
 }
 
+function renderLeaderboard(store = makeStore()) {
+  return render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={['/leaderboard']}>
+        <Routes>
+          <Route path="/leaderboard" element={<Leaderboard />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
 describe('Leaderboard screen', () => {
   it('uses the back button to return to the previous route', async () => {
     const store = makeStore();
@@ -43,7 +55,7 @@ describe('Leaderboard screen', () => {
     });
   });
 
-  it('shows archived past winners and falls back to N/A when no winner was recorded', () => {
+  it('shows archived past winners', () => {
     const store = makeStore({
       seasonArchives: [
         {
@@ -54,6 +66,20 @@ describe('Leaderboard screen', () => {
             { playerId: 'p2', displayName: 'Mimi', finalPlacement: 2 },
           ],
         },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 3')).toBeInTheDocument();
+    expect(screen.getByText('Georgi')).toBeInTheDocument();
+  });
+
+  it('shows N/A when an archived season has no recorded winner', () => {
+    const store = makeStore({
+      seasonArchives: [
         {
           seasonIndex: 2,
           seasonId: 'season-2',
@@ -65,20 +91,10 @@ describe('Leaderboard screen', () => {
       ],
     });
 
-    render(
-      <Provider store={store}>
-        <MemoryRouter initialEntries={['/leaderboard']}>
-          <Routes>
-            <Route path="/leaderboard" element={<Leaderboard />} />
-          </Routes>
-        </MemoryRouter>
-      </Provider>,
-    );
+    renderLeaderboard(store);
 
     fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
 
-    expect(screen.getByText('Season 3')).toBeInTheDocument();
-    expect(screen.getByText('Georgi')).toBeInTheDocument();
     expect(screen.getByText('Season 2')).toBeInTheDocument();
     expect(screen.getByText('N/A')).toBeInTheDocument();
   });
