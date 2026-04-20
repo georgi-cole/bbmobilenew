@@ -257,6 +257,7 @@ export default function HomeHub() {
                     label={label}
                     icon={icon}
                     variant={variant}
+                    className={to === '/game' ? 'game-btn--play-shimmer' : undefined}
                     onClick={to === '/game' ? handlePlay : () => navigate(to)}
                   />
                 ))}
