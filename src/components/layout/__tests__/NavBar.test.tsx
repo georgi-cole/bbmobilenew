@@ -39,4 +39,14 @@ describe('NavBar', () => {
 
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
   });
+
+  it('disables bottom navigation buttons on the game-over route', () => {
+    renderNavBar('/game-over');
+
+    expect(screen.getByRole('button', { name: 'HOME' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'RULES' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'SETTINGS' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'BOARD' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'USER' })).toBeDisabled();
+  });
 });

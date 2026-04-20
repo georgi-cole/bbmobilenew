@@ -16,6 +16,7 @@ export default function NavBar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const isGameOverRoute = pathname.startsWith('/game-over');
 
   // Heuristic: treat the game as "active/in-progress" when either we're past
   // week 1 or the phase is not the initial 'week_start'. This mirrors the
@@ -57,6 +58,7 @@ export default function NavBar() {
   return (
     <GameBottomNav
       activeTab={getActiveTab()}
+      disabled={isGameOverRoute}
       onHomeClick={handleHomeClick}
       onRulesClick={() => navigate('/rules')}
       onSettingsClick={() => navigate('/settings')}

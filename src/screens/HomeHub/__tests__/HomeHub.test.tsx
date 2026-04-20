@@ -98,9 +98,9 @@ vi.mock('../../../components/GameButton/GameButton', () => ({
   ),
 }));
 
-function renderHomeHub() {
+function renderHomeHub(initialEntry: string | { pathname: string; state?: unknown } = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <HomeHub />
     </MemoryRouter>,
   );
@@ -236,6 +236,16 @@ describe('HomeHub', () => {
 
     expect(screen.getByRole('button', { name: 'Play' })).toHaveClass('game-btn--play-shimmer');
     expect(screen.getByRole('button', { name: 'Rules' })).not.toHaveClass('game-btn--play-shimmer');
+  });
+
+  it('auto-starts the game preloader when returning from Game Over with autoStartGame state', async () => {
+    renderHomeHub({ pathname: '/', state: { autoStartGame: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('asset-preloader-overlay')).toBeInTheDocument();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('mirrors the current Redux game state onto window.game for the intro hub', async () => {

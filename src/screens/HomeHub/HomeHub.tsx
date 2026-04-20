@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
 import { hydrateFinale } from '../../store/finaleSlice';
@@ -58,6 +58,8 @@ const HUB_BUTTONS = [
 ] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
 
 export default function HomeHub() {
+  const location = useLocation();
+  const autoStartGame = (location.state as { autoStartGame?: boolean } | null)?.autoStartGame === true;
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const gameId = useAppSelector((state) => state.game.gameId);
@@ -92,7 +94,10 @@ export default function HomeHub() {
   // on an empty background (background-first ordering).
   const [loadedBgUrl, setLoadedBgUrl] = useState<string | null>(null);
   const bgLoaded = effectiveBgUrl != null && loadedBgUrl === effectiveBgUrl;
-  const [preloading, setPreloading] = useState(false);
+  // Seed preloading from transient route state so "Start New Season" can
+  // reuse the existing Play → preloader → /game flow without setting state in
+  // an effect on mount.
+  const [preloading, setPreloading] = useState(autoStartGame);
   const preloadedBgUrlRef = useRef<string | null>(null);
   // Resume-season prompt state for the Play flow.
   const [showResumePrompt, setShowResumePrompt] = useState(false);
@@ -115,6 +120,13 @@ export default function HomeHub() {
       achievementSummary,
     });
   }, [achievementSummary, dayCount, season, week, phase, introHubPlayer, seasonArchives]);
+
+  useEffect(() => {
+    if (!autoStartGame) return;
+    // Clear the transient route state after mount so browser back/refresh
+    // doesn't auto-start another season from the same history entry.
+    navigate('/', { replace: true });
+  }, [autoStartGame, navigate]);
 
   // Preload background as soon as its URL resolves, so it is ready before
   // the splash dismisses and buttons become visible.
