@@ -6,12 +6,31 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Leaderboard from '../src/screens/Leaderboard/Leaderboard';
 import gameReducer from '../src/store/gameSlice';
 
-function makeStore() {
+function makeStore(overrides: Record<string, unknown> = {}) {
+  const initialGameState = gameReducer(undefined, { type: '@@INIT' });
   return configureStore({
     reducer: {
       game: gameReducer,
     },
+    preloadedState: {
+      game: {
+        ...initialGameState,
+        ...overrides,
+      },
+    },
   });
+}
+
+function renderLeaderboard(store = makeStore()) {
+  return render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={['/leaderboard']}>
+        <Routes>
+          <Route path="/leaderboard" element={<Leaderboard />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
 }
 
 describe('Leaderboard screen', () => {
@@ -34,5 +53,116 @@ describe('Leaderboard screen', () => {
     await waitFor(() => {
       expect(screen.getByText('Game route')).toBeInTheDocument();
     });
+  });
+
+  it('shows archived past winners', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 3,
+          seasonId: 'season-3',
+          playerSummaries: [
+            { playerId: 'p1', displayName: 'Georgi Cole', finalPlacement: 1 },
+            { playerId: 'p2', displayName: 'Mimi', finalPlacement: 2 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 3')).toBeInTheDocument();
+    expect(screen.getByText('Georgi Cole')).toBeInTheDocument();
+    expect(screen.getByText('4.8M viewers')).toBeInTheDocument();
+  });
+
+  it('uses the canonical houseguest full name for archived winners when available', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 4,
+          seasonId: 'season-4',
+          playerSummaries: [
+            { playerId: 'mimi', displayName: 'Mimi', finalPlacement: 1 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 4')).toBeInTheDocument();
+    expect(screen.getByText('Mimi Tanaka')).toBeInTheDocument();
+    expect(screen.getByText('6.1M viewers')).toBeInTheDocument();
+  });
+
+  it('shows only the first name when the winner has no last name', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 5,
+          seasonId: 'season-5',
+          playerSummaries: [
+            { playerId: 'p1', displayName: 'Mononym', finalPlacement: 1 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 5')).toBeInTheDocument();
+    expect(screen.getByText('Mononym')).toBeInTheDocument();
+    expect(screen.getByText('7.4M viewers')).toBeInTheDocument();
+  });
+
+  it('shows N/A when an archived season has no recorded winner', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 2,
+          seasonId: 'season-2',
+          playerSummaries: [
+            { playerId: 'p3', displayName: 'Rune', finalPlacement: 2 },
+            { playerId: 'p4', displayName: 'Ash', finalPlacement: 3 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 2')).toBeInTheDocument();
+    expect(screen.getByText('N/A')).toBeInTheDocument();
+  });
+
+  it('shows N/A when winner lookups fail and the archived winner has no display name', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 6,
+          seasonId: 'season-6',
+          playerSummaries: [
+            { playerId: 'unknown-player', displayName: undefined, finalPlacement: 1 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 6')).toBeInTheDocument();
+    expect(screen.getByText('N/A')).toBeInTheDocument();
+    expect(screen.getByText('5.4M viewers')).toBeInTheDocument();
   });
 });

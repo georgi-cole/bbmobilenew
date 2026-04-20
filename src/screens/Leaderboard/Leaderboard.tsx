@@ -1,12 +1,33 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
+import { findByName, getById } from '../../data/houseguests';
 import { computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
 import { DEFAULT_WEIGHTS } from '../../scoring/weights';
 import './Leaderboard.css';
 
-type Tab = 'season' | 'alltime';
+type Tab = 'season' | 'alltime' | 'pastWinners';
+
+function formatWinnerName(name: string | undefined): string {
+  if (!name) return 'N/A';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'N/A';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
+function buildMockSeasonViewership(seasonIndex: number): string {
+  const viewers = 4.2 + (((seasonIndex * 13) % 33) / 10);
+  return `${viewers.toFixed(1)}M viewers`;
+}
+
+function resolveWinnerName(playerId: string | undefined, displayName: string | undefined): string {
+  const fullNameById = playerId ? getById(playerId)?.fullName : undefined;
+  const fullNameByDisplayName = displayName ? findByName(displayName)?.fullName : undefined;
+  const fullName = fullNameById ?? fullNameByDisplayName ?? displayName;
+  return formatWinnerName(fullName);
+}
 
 export default function Leaderboard() {
   const navigate = useNavigate();
@@ -34,6 +55,17 @@ export default function Leaderboard() {
 
   const seasonEntries = computeSeasonLeaderboard(liveSummaries, DEFAULT_WEIGHTS);
   const allTimeEntries = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS);
+  const pastWinners = [...seasonArchives]
+    .sort((a, b) => (b.seasonIndex ?? 0) - (a.seasonIndex ?? 0))
+    .map((archive) => {
+      const winner = archive.playerSummaries.find((summary) => summary.finalPlacement === 1);
+      return {
+        seasonId: archive.seasonId,
+        seasonIndex: archive.seasonIndex,
+        winnerName: resolveWinnerName(winner?.playerId, winner?.displayName),
+        seasonViewership: buildMockSeasonViewership(archive.seasonIndex),
+      };
+    });
 
   const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
 
@@ -62,6 +94,12 @@ export default function Leaderboard() {
           onClick={() => setTab('alltime')}
         >
           All-Time
+        </button>
+        <button
+          className={`leaderboard-screen__tab${tab === 'pastWinners' ? ' leaderboard-screen__tab--active' : ''}`}
+          onClick={() => setTab('pastWinners')}
+        >
+          Past Winners
         </button>
       </div>
 
@@ -157,6 +195,25 @@ export default function Leaderboard() {
               </li>
             );
           })}
+        </ul>
+      )}
+
+      {tab === 'pastWinners' && (
+        <ul className="leaderboard-screen__list">
+          {pastWinners.length === 0 && (
+            <li className="leaderboard-screen__empty">No archived seasons yet.</li>
+          )}
+          {pastWinners.map((archive) => (
+            <li key={archive.seasonId} className="leaderboard-screen__row">
+              <div className="leaderboard-screen__row-main leaderboard-screen__row-main--static">
+                <div className="leaderboard-screen__winner-meta">
+                  <span className="leaderboard-screen__name">Season {archive.seasonIndex}</span>
+                  <span className="leaderboard-screen__subtext">{archive.seasonViewership}</span>
+                </div>
+                <span className="leaderboard-screen__score">{archive.winnerName}</span>
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </div>
