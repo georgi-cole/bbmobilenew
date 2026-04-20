@@ -16,9 +16,9 @@ function formatWinnerName(name: string | undefined): string {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
-function buildMockSeasonRating(seasonIndex: number): string {
-  const rating = 6.9 + (((seasonIndex * 11) % 25) / 10);
-  return `${rating.toFixed(1)}/10`;
+function buildMockSeasonViewership(seasonIndex: number): string {
+  const viewers = 4.2 + (((seasonIndex * 13) % 33) / 10);
+  return `${viewers.toFixed(1)}M viewers`;
 }
 
 export default function Leaderboard() {
@@ -55,7 +55,7 @@ export default function Leaderboard() {
       winnerName: formatWinnerName(
         archive.playerSummaries.find((summary) => summary.finalPlacement === 1)?.displayName,
       ),
-      seasonRating: buildMockSeasonRating(archive.seasonIndex),
+      seasonViewership: buildMockSeasonViewership(archive.seasonIndex),
     }));
 
   const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
@@ -199,9 +199,9 @@ export default function Leaderboard() {
               <div className="leaderboard-screen__row-main leaderboard-screen__row-main--static">
                 <div className="leaderboard-screen__winner-meta">
                   <span className="leaderboard-screen__name">Season {archive.seasonIndex}</span>
-                  <span className="leaderboard-screen__subtext">{archive.winnerName}</span>
+                  <span className="leaderboard-screen__subtext">{archive.seasonViewership}</span>
                 </div>
-                <span className="leaderboard-screen__score">{archive.seasonRating}</span>
+                <span className="leaderboard-screen__score">{archive.winnerName}</span>
               </div>
             </li>
           ))}

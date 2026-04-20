@@ -75,7 +75,7 @@ describe('Leaderboard screen', () => {
 
     expect(screen.getByText('Season 3')).toBeInTheDocument();
     expect(screen.getByText('Georgi Cole')).toBeInTheDocument();
-    expect(screen.getByText('7.7/10')).toBeInTheDocument();
+    expect(screen.getByText('4.8M viewers')).toBeInTheDocument();
   });
 
   it('shows only the first name when the winner has no last name', () => {
@@ -97,7 +97,7 @@ describe('Leaderboard screen', () => {
 
     expect(screen.getByText('Season 4')).toBeInTheDocument();
     expect(screen.getByText('Mimi')).toBeInTheDocument();
-    expect(screen.getByText('8.8/10')).toBeInTheDocument();
+    expect(screen.getByText('6.1M viewers')).toBeInTheDocument();
   });
 
   it('shows N/A when an archived season has no recorded winner', () => {
