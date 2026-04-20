@@ -94,6 +94,9 @@ export default function HomeHub() {
   // on an empty background (background-first ordering).
   const [loadedBgUrl, setLoadedBgUrl] = useState<string | null>(null);
   const bgLoaded = effectiveBgUrl != null && loadedBgUrl === effectiveBgUrl;
+  // Seed preloading from transient route state so "Start New Season" can
+  // reuse the existing Play → preloader → /game flow without setting state in
+  // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
   const preloadedBgUrlRef = useRef<string | null>(null);
   // Resume-season prompt state for the Play flow.
@@ -120,6 +123,8 @@ export default function HomeHub() {
 
   useEffect(() => {
     if (!autoStartGame) return;
+    // Clear the transient route state after mount so browser back/refresh
+    // doesn't auto-start another season from the same history entry.
     navigate('/', { replace: true });
   }, [autoStartGame, navigate]);
 
