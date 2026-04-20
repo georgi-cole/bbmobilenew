@@ -99,14 +99,14 @@ describe('CompSelection component', () => {
 
     await waitFor(() => screen.getByLabelText('Selection mode'));
 
-    // Default mode is random-games — just click Save
+    // Default mode is unique — just click Save
     fireEvent.click(screen.getByText('Save Selection'));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledTimes(1);
     });
     const [payload] = onSave.mock.calls[0] as [CompSelectionPayload];
-    expect(payload.mode).toBe('random-games');
+    expect(payload.mode).toBe('unique');
     expect(payload.selectedGameId).toBeUndefined();
   });
 
@@ -122,4 +122,3 @@ describe('CompSelection component', () => {
     });
   });
 });
-

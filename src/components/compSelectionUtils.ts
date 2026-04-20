@@ -12,7 +12,7 @@
 /**
  * Selection strategy for the challenge scheduler.
  *
- * - `random-games`       – default; picks any non-retired game (existing behaviour).
+ * - `random-games`       – picks any non-retired game (existing behaviour).
  * - `single-game`        – always use the game at `selectedGameId`.
  * - `user-selection`     – pick deterministically from the `selectedGameIds` pool.
  * - `arcade-only`        – restrict to the `arcade` registry category.
@@ -21,7 +21,9 @@
  * - `logic-only`         – restrict to the `logic` registry category.
  * - `retired`            – pick from retired games only.
  * - `misc`               – games not matching any of the main categories (fallback).
- * - `unique`             – exclude recently-used games; falls back to random when pool is exhausted.
+ * - `unique`             – default mapped mode; uses the order/type bracket template
+ *                          when available, avoids recent repeats within that mapped pool,
+ *                          and only falls back to broader scheduling when no mapping applies.
  * - `bracket-template`   – select from the default bracket template pool for the
  *                          current player count and competition type (LOH/POS).
  *                          Falls back to random selection when the bracket pool is empty.
@@ -55,7 +57,7 @@ export interface CompGame {
 
 /** Shape of the save payload sent to onSave(). */
 export interface CompSelectionPayload {
-  /** Selection strategy for the challenge scheduler. Defaults to `'random-games'`. */
+  /** Selection strategy for the challenge scheduler. Defaults to `'unique'`. */
   mode?: CompSelectionMode;
   /**
    * Registry key of the single game to always use.

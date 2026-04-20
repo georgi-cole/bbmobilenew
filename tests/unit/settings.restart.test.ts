@@ -17,6 +17,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { resetGame, createInitialGameState } from '../../src/store/gameSlice';
 import settingsReducer, {
   DEFAULT_SETTINGS,
+  loadSettings,
   saveSettings,
   STORAGE_KEY,
   setGameUX,
@@ -347,6 +348,24 @@ describe('getRestartRelevantSnapshot() (localStorage wrapper)', () => {
   it('falls back to DEFAULT_SETTINGS when localStorage is empty', () => {
     const snapshot = getRestartRelevantSnapshot();
     expect(snapshot.gameUX.castSize).toBe(DEFAULT_SETTINGS.gameUX.castSize);
+  });
+
+  it('migrates the old empty user-selection default to the mapped unique mode', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        gameUX: {
+          compSelection: {
+            mode: 'user-selection',
+            enabledIds: [],
+            weeklyLimit: null,
+            filterCategory: null,
+          },
+        },
+      }),
+    );
+
+    expect(loadSettings().gameUX.compSelection.mode).toBe('unique');
   });
 });
 

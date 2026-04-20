@@ -68,6 +68,32 @@ export interface SettingsState {
   };
 }
 
+function isLegacyEmptyUserSelection(compSelection?: Partial<CompSelectionPayload>): boolean {
+  return (
+    compSelection?.mode === 'user-selection' &&
+    (compSelection.selectedGameId ?? '') === '' &&
+    (compSelection.selectedGameIds?.length ?? 0) === 0 &&
+    (compSelection.enabledIds?.length ?? 0) === 0 &&
+    (compSelection.weeklyLimit ?? null) === null &&
+    (compSelection.filterCategory ?? null) === null
+  );
+}
+
+function normalizeCompSelection(
+  compSelection?: Partial<CompSelectionPayload>,
+): CompSelectionPayload {
+  const merged: CompSelectionPayload = {
+    ...DEFAULT_SETTINGS.gameUX.compSelection,
+    ...(compSelection ?? {}),
+  };
+
+  if (compSelection?.mode === undefined || isLegacyEmptyUserSelection(compSelection)) {
+    merged.mode = 'unique';
+  }
+
+  return merged;
+}
+
 export const DEFAULT_SETTINGS: SettingsState = {
   audio: {
     musicOn: true,
@@ -90,7 +116,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     spectatorMode: true,
     castSize: 16,
     compSelection: {
-      mode: 'user-selection' as const,
+      mode: 'unique' as const,
       enabledIds: [],
       weeklyLimit: null,
       filterCategory: null,
@@ -144,10 +170,7 @@ export function loadSettings(): SettingsState {
     const mergedSim = { ...DEFAULT_SETTINGS.sim, ...normalizedSim };
     // compSelection is a nested object — deep-merge so partial stored values
     // (e.g. from an older schema version) inherit any newly-added defaults.
-    mergedGameUX.compSelection = {
-      ...DEFAULT_SETTINGS.gameUX.compSelection,
-      ...(parsed.gameUX?.compSelection ?? {}),
-    };
+    mergedGameUX.compSelection = normalizeCompSelection(parsed.gameUX?.compSelection);
     return {
       audio:   { ...DEFAULT_SETTINGS.audio,   ...parsed.audio },
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
@@ -206,10 +229,7 @@ const settingsSlice = createSlice({
       const mergedGameUX = { ...DEFAULT_SETTINGS.gameUX, ...action.payload.gameUX };
       // compSelection is a nested object — deep-merge so partial imported values
       // inherit any newly-added defaults.
-      mergedGameUX.compSelection = {
-        ...DEFAULT_SETTINGS.gameUX.compSelection,
-        ...(action.payload.gameUX?.compSelection ?? {}),
-      };
+      mergedGameUX.compSelection = normalizeCompSelection(action.payload.gameUX?.compSelection);
       return {
         audio:   { ...DEFAULT_SETTINGS.audio,   ...action.payload.audio },
         display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },

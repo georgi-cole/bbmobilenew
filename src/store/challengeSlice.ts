@@ -196,6 +196,23 @@ export const startChallenge =
       if (pool.length > 0) return selectFromPool(pool);
       return pickRandomGame(gameSeed, { category, excludeKeys });
     };
+    const getBracketTemplatePool = (excludeKeys?: string[]) => {
+      const bracketCompType =
+        opts.prizeType === 'LOH' || opts.prizeType === 'POS'
+          ? opts.prizeType
+          : undefined;
+      if (!bracketCompType) return [];
+
+      const bracketPlayerCount =
+        activeCompetitorCount > 0 ? activeCompetitorCount : participants.length;
+      const bracketKeys = getBracketPoolForContext(bracketPlayerCount, bracketCompType);
+      if (bracketKeys.length === 0) return [];
+
+      const excluded = new Set(excludeKeys ?? []);
+      return bracketKeys
+        .map((k) => getGame(k))
+        .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && !excluded.has(g.key));
+    };
 
     let gameEntry: GameRegistryEntry;
     if (forceKey) {
@@ -207,7 +224,7 @@ export const startChallenge =
       const remoteChallenge = state.remoteConfig?.config?.challenge;
       // Consult the saved Comp Selection setting as a fallback.
       const compSel = state.settings?.gameUX?.compSelection;
-      const mode = remoteChallenge?.weeklyMode ?? compSel?.mode ?? 'random-games';
+      const mode = remoteChallenge?.weeklyMode ?? compSel?.mode ?? 'unique';
 
       switch (mode) {
         case 'single-game': {
@@ -275,46 +292,38 @@ export const startChallenge =
         }
 
         case 'unique': {
-          // Exclude recently-used games; fall back to normal selection when pool is empty.
-          const recentKeys = new Set(
-            (state.challenge?.history ?? []).map((r) => r.gameKey),
-          );
-          const exclude = [...recentKeys, ...(opts.excludeKeys ?? [])];
-          const uniquePool = getPoolByFilter({ retired: false, category: opts.category, excludeKeys: exclude });
+          const recentKeys = new Set(historyGameKeys);
+          const bracketPool = getBracketTemplatePool(opts.excludeKeys);
+          const uniqueBracketPool = bracketPool.filter((game) => !recentKeys.has(game.key));
+          if (uniqueBracketPool.length > 0) {
+            gameEntry = selectFromPool(uniqueBracketPool);
+            break;
+          }
+          if (bracketPool.length > 0) {
+            gameEntry = selectFromPool(bracketPool);
+            break;
+          }
+
+          const exclude = Array.from(new Set([...recentKeys, ...(opts.excludeKeys ?? [])]));
+          const uniquePool = getPoolByFilter({
+            retired: false,
+            category: opts.category,
+            excludeKeys: exclude,
+          });
           if (uniquePool.length > 0) {
             gameEntry = selectFromPool(uniquePool);
           } else {
-            // Pool exhausted — fall back to unconstrained random.
             gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           }
           break;
         }
 
         case 'bracket-template': {
-          // Select from the bracket template pool keyed on alive player count
-          // and competition type (LOH or POS). Falls back to the standard
-          // scheduler when the bracket pool is empty, all keys are retired,
-          // or the prizeType is not a recognised LOH/POS value.
-          const bracketCompType =
-            opts.prizeType === 'LOH' || opts.prizeType === 'POS'
-              ? opts.prizeType
-              : undefined;
-          if (bracketCompType) {
-            const bracketPlayerCount = activeCompetitorCount > 0 ? activeCompetitorCount : participants.length;
-            const bracketKeys = getBracketPoolForContext(bracketPlayerCount, bracketCompType);
-            if (bracketKeys.length > 0) {
-              const excluded = new Set(opts.excludeKeys ?? []);
-              const bracketPool = bracketKeys
-                .map((k) => getGame(k))
-                .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && !excluded.has(g.key));
-              if (bracketPool.length > 0) {
-                gameEntry = selectFromPool(bracketPool);
-                break;
-              }
-            }
+          const bracketPool = getBracketTemplatePool(opts.excludeKeys);
+          if (bracketPool.length > 0) {
+            gameEntry = selectFromPool(bracketPool);
+            break;
           }
-          // Fallback: pool empty, all keys retired, excludeKeys exhausted, or
-          // prizeType unknown — use standard scheduler.
           gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           break;
         }
