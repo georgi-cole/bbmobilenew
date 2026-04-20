@@ -203,9 +203,7 @@ export type AppAudioPhase =
   | 'tribunal_part1'
   /**
    * FinalFaceoff 'recap' act: SeasonRecapCinematic plays.
-   * Background music is managed inline by SeasonRecapCinematic via
-   * createCinematicAudio (final_recap_sound.mp3).  SoundManager BGM is
-   * stopped while this phase is active (musicScene = 'none').
+   * Uses the dedicated season recap background track.
    */
   | 'finale_recap'
   /**
@@ -217,10 +215,10 @@ export type AppAudioPhase =
   /**
    * SeasonFinaleOverlay public favourite vote flow
    * (publicFavoriteSetup / publicFavoriteFlow phases).
-   * No dedicated BGM track — silent or ambient only.
+   * Uses the dedicated public-voting background track.
    */
   | 'public_voting'
-  /** Season fully complete; heading to the game-over screen. */
+  /** Season fully complete; game-over screen uses the final modal cue. */
   | 'season_complete';
 
 // ─── Phase → MusicTrack map ───────────────────────────────────────────────────
@@ -267,10 +265,10 @@ export const AUDIO_PHASE_MUSIC_MAP: Readonly<Record<AppAudioPhase, MusicTrack>> 
   // Finale flow
   finale_pre_voting:       'jury_voting',
   tribunal_part1:          'jury_voting',
-  finale_recap:            'none',   // SeasonRecapCinematic handles its own audio
+  finale_recap:            'season_recap',
   tribunal_part2:          'jury_voting',
-  public_voting:           'none',
-  season_complete:         'none',
+  public_voting:           'public_voting',
+  season_complete:         'final_modal',
 };
 
 // ─── Minigame sub-phase → audio track ─────────────────────────────────────────

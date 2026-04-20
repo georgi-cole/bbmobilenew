@@ -296,12 +296,12 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
 
   /**
    * Season recap cinematic background music — loops during the season recap.
-   * Asset: public/assets/sounds/tribunal_phase/season_recap_music.mp3
+   * Asset: public/assets/sounds/tribunal_phase/season_recap_music_new.mp3
    */
   'music:season_recap': {
     key: 'music:season_recap',
     category: 'music',
-    src: `${SOUNDS_BASE}tribunal_phase/season_recap_music.mp3`,
+    src: `${SOUNDS_BASE}tribunal_phase/season_recap_music_new.mp3`,
     preload: false,
     volume: 0.7,
     loop: true,
@@ -315,6 +315,20 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     key: 'music:jury_voting_bg',
     category: 'music',
     src: `${SOUNDS_BASE}tribunal_phase/Jury_voting_backgound_music.mp3`,
+    preload: false,
+    volume: 0.6,
+    loop: true,
+  },
+
+  /**
+   * Public voting background music — loops throughout the public-favourite
+   * voting animation until the winner modal is dismissed.
+   * Asset: public/assets/sounds/Public voting music.mp3
+   */
+  'music:public_voting': {
+    key: 'music:public_voting',
+    category: 'music',
+    src: `${SOUNDS_BASE}Public voting music.mp3`,
     preload: false,
     volume: 0.6,
     loop: true,
@@ -342,6 +356,20 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     src: `${SOUNDS_BASE}tribunal_phase/Final_modal_winner_play once.mp3`,
     preload: false,
     volume: 1.0,
+  },
+
+  /**
+   * Final modal music — plays on the game-over winner/runner-up screen until
+   * the user leaves or the cue finishes.
+   * Asset: public/assets/sounds/Final modal sound.mp3
+   */
+  'music:final_modal': {
+    key: 'music:final_modal',
+    category: 'music',
+    src: `${SOUNDS_BASE}Final modal sound.mp3`,
+    preload: false,
+    volume: 0.7,
+    loop: false,
   },
 
   // ── Social module music ───────────────────────────────────────────────────

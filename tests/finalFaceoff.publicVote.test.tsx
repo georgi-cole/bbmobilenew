@@ -7,6 +7,7 @@ import FinalFaceoff from '../src/components/FinalFaceoff/FinalFaceoff';
 import gameReducer from '../src/store/gameSlice';
 import finaleReducer from '../src/store/finaleSlice';
 import settingsReducer from '../src/store/settingsSlice';
+import uiReducer from '../src/store/uiSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import { pickPhrase, PUBLIC_JURY_VOTE_LINES } from '../src/utils/juryUtils';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
@@ -61,6 +62,7 @@ function makeStore() {
       game: gameReducer,
       finale: finaleReducer,
       settings: settingsReducer,
+      ui: uiReducer,
       publicOpinion: publicOpinionReducer,
     },
     preloadedState: {
@@ -78,6 +80,7 @@ function makeStore() {
       },
       finale: baseFinale,
       settings: baseSettings,
+      ui: uiReducer(undefined, { type: '@@INIT' }),
       publicOpinion: {
         ...basePublicOpinion,
         profiles: {
@@ -164,6 +167,7 @@ describe('FinalFaceoff public vote pacing', () => {
     });
 
     expect(screen.getByTestId('season-recap')).toBeTruthy();
+    expect(store.getState().ui.musicScene).toBe('season_recap');
   });
 
   it('reveals post-recap tribunal votes one-by-one before declaring the winner', async () => {
@@ -187,6 +191,7 @@ describe('FinalFaceoff public vote pacing', () => {
       await Promise.resolve();
     });
 
+    expect(store.getState().ui.musicScene).toBe('jury_voting');
     expect(screen.getByText('0 / 2 votes revealed')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Continue 🎉' })).toBeNull();
     expect(screen.getAllByLabelText('Vote not yet revealed')).toHaveLength(2);

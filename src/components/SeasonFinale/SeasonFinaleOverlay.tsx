@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ChatOverlay, { type ChatLine } from '../ChatOverlay/ChatOverlay';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -15,6 +15,7 @@ import {
 import type { Player } from '../../types';
 import { resolveAvatar } from '../../utils/avatar';
 import { selectSettings } from '../../store/settingsSlice';
+import { setMusicScene } from '../../store/uiSlice';
 import FinalLightsOutSequence from '../FinalLightsOutSequence/FinalLightsOutSequence';
 import { buildFinalGoodbyeMessages } from './finaleGoodbyes';
 import './SeasonFinaleOverlay.css';
@@ -111,6 +112,7 @@ export default function SeasonFinaleOverlay() {
     () => (winner && finale ? buildInterviewLines(winner, finale.interviewIndex) : []),
     [finale, winner],
   );
+  const wasPublicVotingPhaseRef = useRef(false);
 
   const publicFavoriteSetupLines = useMemo(() => buildPublicFavoriteSetupLines(), []);
   const goodbyeLines = useMemo(
@@ -127,6 +129,25 @@ export default function SeasonFinaleOverlay() {
       }),
     );
   }, [dispatch, finale?.phase, game.favoritePlayer, game.players, settings.sim.favoritePlayerAwardAmount]);
+
+  useEffect(() => {
+    const isPublicVotingPhase =
+      finale?.phase === 'publicFavoriteSetup' || finale?.phase === 'publicFavoriteFlow';
+    if (isPublicVotingPhase) {
+      wasPublicVotingPhaseRef.current = true;
+      dispatch(setMusicScene('public_voting'));
+      return;
+    }
+    if (!wasPublicVotingPhaseRef.current) return;
+    wasPublicVotingPhaseRef.current = false;
+    dispatch(setMusicScene('none'));
+  }, [dispatch, finale?.phase]);
+
+  useEffect(() => () => {
+    if (!wasPublicVotingPhaseRef.current) return;
+    wasPublicVotingPhaseRef.current = false;
+    dispatch(setMusicScene('none'));
+  }, [dispatch]);
 
   useEffect(() => {
     if (finale?.phase !== 'seasonComplete' || location.pathname === '/game-over') return;

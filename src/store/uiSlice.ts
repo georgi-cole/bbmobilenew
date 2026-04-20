@@ -13,15 +13,14 @@ import { createSlice } from '@reduxjs/toolkit';
  * Values:
  *  'none'            — no scene override; resolver falls through to game
  *                      phase / minigame / social / intro-hub logic
- *  'season_recap'    — SeasonRecapCinematic BGM (currently managed inline
- *                      by that component via cinematicAudio; this value is
- *                      reserved for future centralised use)
+ *  'season_recap'    — FinalFaceoff recap act; maps to the dedicated
+ *                      season recap music track.
  *  'tribunal_part1'  — FinalFaceoff 'clues' act: jurors send hidden-vote
  *                      messages.  Maps to the jury_voting music track.
  *  'jury_voting'     — FinalFaceoff 'revealVotes' act: vote chips revealed,
  *                      tally shown, winner crowned.  Maps to jury_voting track.
  *  'public_voting'   — SeasonFinaleOverlay public-favourite vote flow.
- *                      No dedicated BGM (silent) until a track is assigned.
+ *                      Maps to the dedicated public-voting track.
  */
 export type MusicScene =
   | 'none'

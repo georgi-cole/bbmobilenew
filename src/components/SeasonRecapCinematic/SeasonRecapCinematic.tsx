@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { createCinematicAudio } from '../../services/sound/cinematicAudio';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import { resolveAvatar } from '../../utils/avatar';
@@ -681,19 +680,6 @@ export default function SeasonRecapCinematic({
   const [visible, setVisible] = useState(true);
   const didFinishRef = useRef(false);
   const finishTimeoutRef = useRef<number | null>(null);
-  const audioRef = useRef<ReturnType<typeof createCinematicAudio> | null>(null);
-
-  useEffect(() => {
-    const audio = createCinematicAudio(`${import.meta.env.BASE_URL}assets/sounds/final_recap_sound.mp3`);
-    audioRef.current = audio;
-    audio.play();
-
-    return () => {
-      audioRef.current = null;
-      audio.dispose();
-    };
-  }, []);
-
   useEffect(() => () => {
     if (finishTimeoutRef.current != null) {
       window.clearTimeout(finishTimeoutRef.current);
@@ -703,7 +689,6 @@ export default function SeasonRecapCinematic({
   const finish = useCallback(() => {
     if (didFinishRef.current) return;
     didFinishRef.current = true;
-    audioRef.current?.fadeOutAndStop(reducedMotion ? 0 : RECAP_EXIT_FADE_MS);
     setVisible(false);
     finishTimeoutRef.current = window.setTimeout(() => onComplete(), reducedMotion ? 0 : RECAP_EXIT_FADE_MS);
   }, [onComplete, reducedMotion]);
