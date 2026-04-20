@@ -12,6 +12,9 @@ describe('desktop app shell framing styles', () => {
     const appShellCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/layout/AppShell.css'), 'utf8'),
     );
+    const homeHubCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/screens/HomeHub/HomeHub.css'), 'utf8'),
+    );
 
     expect(globalCss).toContain('@media (min-width: 768px) and (pointer: fine) {');
     expect(globalCss).toContain('body { min-height: 100dvh; }');
@@ -34,5 +37,14 @@ describe('desktop app shell framing styles', () => {
     expect(appShellCss).toContain('aspect-ratio: var(--desktop-shell-ratio);');
     expect(appShellCss).not.toContain('border-radius: 32px;');
     expect(appShellCss).not.toContain('box-shadow: 0 24px 72px rgba(0, 0, 0, 0.45);');
+
+    expect(homeHubCss).toContain(
+      '.homehub-shell { position: relative; min-height: 100%; height: 100%; overflow: hidden;',
+    );
+    expect(homeHubCss).toContain(
+      '.homehub-frame { position: relative; width: 100%; max-width: 480px; min-height: 100%; height: 100%;',
+    );
+    expect(homeHubCss).not.toContain('min-height: 100dvh;');
+    expect(homeHubCss).not.toContain('height: 100dvh;');
   });
 });
