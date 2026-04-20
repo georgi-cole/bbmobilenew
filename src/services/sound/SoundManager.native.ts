@@ -69,6 +69,10 @@ class _SoundManagerNative {
     // TODO: stop all music via native audio library
   }
 
+  async fadeOutMusic(_durationMs?: number): Promise<void> {
+    // TODO: fade out music via native audio library
+  }
+
   panicStopAllMusic(): void {
     // TODO: force-stop all music via native audio library
   }

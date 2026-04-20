@@ -176,8 +176,10 @@ describe('FinalFaceoff public vote pacing', () => {
     expect(store.getState().ui.musicScene).toBe('season_recap');
   });
 
-  it('stops the tribunal music before the season recap starts', async () => {
-    const stopAllMusicSpy = vi.spyOn(SoundManager, 'stopAllMusic').mockImplementation(() => {});
+  it('fades out the tribunal music before the season recap starts', async () => {
+    const fadeOutMusicSpy = vi
+      .spyOn(SoundManager, 'fadeOutMusic')
+      .mockResolvedValue(undefined);
     const store = makeStore();
 
     render(
@@ -188,14 +190,16 @@ describe('FinalFaceoff public vote pacing', () => {
 
     await advanceToRecapBoundary();
 
-    expect(stopAllMusicSpy).not.toHaveBeenCalled();
+    expect(fadeOutMusicSpy).not.toHaveBeenCalled();
 
     await act(async () => {
       vi.advanceTimersByTime(1);
     });
 
-    expect(stopAllMusicSpy).toHaveBeenCalledTimes(1);
+    expect(fadeOutMusicSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('season-recap')).toBeTruthy();
+    // With the mock returning a resolved Promise, the .then() dispatch fires as
+    // a microtask which act() flushes — musicScene must already be 'season_recap'.
     expect(store.getState().ui.musicScene).toBe('season_recap');
   });
 

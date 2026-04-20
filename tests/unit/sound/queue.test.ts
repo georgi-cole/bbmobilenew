@@ -426,3 +426,176 @@ describe('SoundManager unlockFromGesture idempotency', () => {
     expect(SoundManager.currentMusicKey).toBe('music:hoh_comp_general');
   });
 });
+
+describe('SoundManager fadeOutMusic', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('resolves immediately and clears state when no music is playing', async () => {
+    const sm = SoundManager as unknown as { _desiredMusicTrack: string };
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    // Desired is set but audio is locked (no play yet), so musicEl is null.
+    expect(SoundManager.currentMusicKey).toBeNull();
+
+    await SoundManager.fadeOutMusic(400);
+
+    expect(SoundManager.currentMusicKey).toBeNull();
+    expect(SoundManager.currentMusicTrack).toBe('none');
+    expect(sm._desiredMusicTrack).toBe('none');
+  });
+
+  it('clears _desiredMusicTrack immediately before the fade completes', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _desiredMusicTrack: string;
+    };
+    sm._unlocked = true;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    // Keep the element "playing" so fadeOutMusic enters the fade path.
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLAudioElement) {
+      Object.defineProperty(this, 'paused', { value: true, configurable: true });
+    });
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+
+    const fadePromise = SoundManager.fadeOutMusic(400);
+
+    // _desiredMusicTrack must be 'none' synchronously before any interval ticks.
+    expect(sm._desiredMusicTrack).toBe('none');
+
+    await vi.runAllTimersAsync();
+    await fadePromise;
+  });
+
+  it('fades volume to zero then stops the element', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _musicEl: HTMLAudioElement | null;
+    };
+    sm._unlocked = true;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    expect(sm._musicEl).not.toBeNull();
+
+    const fadePromise = SoundManager.fadeOutMusic(400);
+    await vi.runAllTimersAsync();
+    await fadePromise;
+
+    // Element should be paused and SoundManager state cleared.
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(SoundManager.currentMusicKey).toBeNull();
+    expect(SoundManager.currentMusicTrack).toBe('none');
+  });
+
+  it('after fadeOutMusic, syncMusic does not restart the previous track', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    const playsAfterStart = playSpy.mock.calls.length;
+
+    const fadePromise = SoundManager.fadeOutMusic(400);
+    await vi.runAllTimersAsync();
+    await fadePromise;
+
+    // syncMusic() should be a no-op because desiredTrack is 'none'.
+    await SoundManager.syncMusic();
+
+    expect(playSpy.mock.calls.length).toBe(playsAfterStart);
+    expect(SoundManager.currentMusicKey).toBeNull();
+  });
+});
+
+describe('SoundManager BGM debug logging', () => {
+  it('logs [audio:bgm] requested with track name and resolved src on setDesiredMusic', async () => {
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+
+    // At least one [audio:bgm] requested line must appear with the semantic
+    // track name and the asset path.
+    const bgmCalls = debugSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].startsWith('[audio:bgm] requested'),
+    );
+    expect(bgmCalls.length).toBeGreaterThan(0);
+    const logLine = bgmCalls[0][0] as string;
+    expect(logLine).toContain('track="competition"');
+    expect(logLine).toContain('src=');
+    // The resolved src must reference an actual audio file, not '(none)'.
+    expect(logLine).not.toContain('src="(none)"');
+  });
+
+  it('logs [audio:bgm] sync with the resolved file path when the BGM track changes', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+
+    const syncCalls = debugSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].startsWith('[audio:bgm] sync'),
+    );
+    expect(syncCalls.length).toBeGreaterThan(0);
+    const logLine = syncCalls[0][0] as string;
+    expect(logLine).toContain('track="competition"');
+    // src must resolve to the actual hoh_comp_general file.
+    expect(logLine).toContain('hoh_comp_general');
+  });
+
+  it('logs [audio:bgm] playing after the element starts without an error', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+
+    const playingCalls = debugSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].startsWith('[audio:bgm] playing'),
+    );
+    expect(playingCalls.length).toBeGreaterThan(0);
+    const logLine = playingCalls[0][0] as string;
+    expect(logLine).toContain('track="competition"');
+    expect(logLine).toContain('src=');
+  });
+
+  it('logs [audio:bgm] fading-out with track and src when fadeOutMusic is called', async () => {
+    const sm = SoundManager as unknown as { _unlocked: boolean };
+    sm._unlocked = true;
+    vi.useFakeTimers();
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
+
+    await SoundManager.setDesiredMusic('competition', 'phase');
+
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const fadePromise = SoundManager.fadeOutMusic(400);
+    await vi.runAllTimersAsync();
+    await fadePromise;
+    vi.useRealTimers();
+
+    const fadeCalls = debugSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].startsWith('[audio:bgm] fading-out'),
+    );
+    expect(fadeCalls.length).toBeGreaterThan(0);
+    const logLine = fadeCalls[0][0] as string;
+    expect(logLine).toContain('track="competition"');
+    expect(logLine).toContain('src=');
+    expect(logLine).not.toContain('src="(none)"');
+  });
+});

@@ -13,7 +13,7 @@
  *
  * Public API (centralized — prefer these):
  *   init(), setDesiredMusic(track, reason?), syncMusic()
- *   play(key, opts?), stop(key), stopAllMusic()
+ *   play(key, opts?), stop(key), stopAllMusic(), fadeOutMusic(durationMs?)
  *   setCategoryEnabled, setCategoryVolume,
  *   unlockFromGesture, unlockOnUserGesture, unlockAndPlayMusicOnly,
  *   currentMusicKey, currentMusicTrack, currentBgmOwner
@@ -134,6 +134,21 @@ const _liveMusicElements = new Set<HTMLAudioElement>();
 function _audioLog(message: string, ...args: unknown[]): void {
   if (!_audioDebug) return;
   console.debug(`[audio] ${message}`, ...args);
+}
+
+/**
+ * Structured BGM-only log line emitted for every background-music lifecycle
+ * event (request, sync, loading, playing, fading-out).  Each line includes
+ * both the semantic track name and the resolved audio asset source URL so
+ * developers can trace the full path from Redux state → file.
+ *
+ * Gated behind the same `_audioDebug` flag as `_audioLog` — produces no
+ * output in production builds where neither DEV mode nor `VITE_AUDIO_DEBUG`
+ * is active.
+ */
+function _bgmLog(event: string, track: string, src: string): void {
+  if (!_audioDebug) return;
+  console.debug(`[audio:bgm] ${event} | track="${track}" | src="${src}"`);
 }
 
 // ── HTMLAudio factory helpers ─────────────────────────────────────────────────
@@ -407,6 +422,13 @@ class _SoundManager {
   async setDesiredMusic(track: MusicTrack, reason?: string): Promise<void> {
     if (this._desiredMusicTrack !== track || this._desiredMusicReason !== (reason ?? null)) {
       _audioLog(`desired -> ${track} reason=${reason ?? 'unknown'}`);
+      // BGM log: include the resolved asset path so it's visible in the console
+      // even before the AudioElement is created.
+      const key = this._resolveMusicKey(track);
+      const src = key
+        ? (SOUND_REGISTRY[key] ?? this._extraRegistry.get(key))?.src ?? key
+        : '(none)';
+      _bgmLog('requested', track, src);
     }
     this._desiredMusicTrack = track;
     this._desiredMusicReason = reason ?? null;
@@ -439,6 +461,10 @@ class _SoundManager {
       return;
     }
 
+    // Log the resolved file path every time the BGM channel switches tracks.
+    const syncEntry = SOUND_REGISTRY[key] ?? this._extraRegistry.get(key);
+    _bgmLog('sync', desiredTrack, syncEntry?.src ?? key);
+
     const playbackToken = ++this._musicPlaybackToken;
     await this._doPlayMusic(key, playbackToken);
   }
@@ -448,6 +474,88 @@ class _SoundManager {
     this._desiredMusicReason = null;
     this._currentBgmOwner = null;
     this._desiredPerOwner = {};
+    for (const liveEl of _liveMusicElements) {
+      liveEl.pause();
+      liveEl.currentTime = 0;
+    }
+    _liveMusicElements.clear();
+    this._stopCurrentMusic();
+  }
+
+  /**
+   * Fade out the currently-playing music track over `durationMs` milliseconds,
+   * then stop it.
+   *
+   * Like `stopAllMusic()`, this immediately clears `_desiredMusicTrack` so that
+   * any visibility-change or settings-driven `syncMusic()` during the fade
+   * cannot restart stale music.
+   *
+   * If no music is currently playing the returned Promise resolves immediately.
+   *
+   * @param durationMs Fade duration in ms (default 400).
+   */
+  async fadeOutMusic(durationMs = 400): Promise<void> {
+    // Clear desired-track pointer synchronously so syncMusic() cannot restart
+    // stale music while the fade is in progress (same guarantee as stopAllMusic).
+    this._desiredMusicTrack = 'none';
+    this._desiredMusicReason = null;
+    this._currentBgmOwner = null;
+    this._desiredPerOwner = {};
+
+    if (SOUND_MANAGER_DISABLED) return;
+
+    const el = this._musicEl;
+    if (!el || el.paused) {
+      // Nothing audible to fade; clean up and return.
+      this._stopCurrentMusic();
+      for (const liveEl of _liveMusicElements) {
+        liveEl.pause();
+        liveEl.currentTime = 0;
+      }
+      _liveMusicElements.clear();
+      return;
+    }
+
+    // Invalidate any concurrent async playback so a stale _doPlayMusic that
+    // resolves after us does not re-set the music element.
+    this._musicPlaybackToken += 1;
+
+    if (durationMs <= 0) {
+      for (const liveEl of _liveMusicElements) {
+        liveEl.pause();
+        liveEl.currentTime = 0;
+      }
+      _liveMusicElements.clear();
+      this._stopCurrentMusic();
+      return;
+    }
+
+    _audioLog(`fade-out ${this._playingMusicTrack} over ${durationMs}ms`);
+    // Resolve the source URL for the BGM log before the element is nulled.
+    const fadeSrc = this._musicKey
+      ? (SOUND_REGISTRY[this._musicKey] ?? this._extraRegistry.get(this._musicKey))?.src
+          ?? this._musicKey
+      : '(none)';
+    _bgmLog('fading-out', this._playingMusicTrack, fadeSrc);
+
+    const startVolume = el.volume;
+    const FADE_STEP_MS = 50;
+    const MIN_INTERVAL_MS = 16;
+    const steps = Math.max(1, Math.ceil(durationMs / FADE_STEP_MS));
+    const intervalMs = Math.max(MIN_INTERVAL_MS, Math.floor(durationMs / steps));
+    let step = 0;
+
+    await new Promise<void>((resolve) => {
+      const timer = window.setInterval(() => {
+        step += 1;
+        el.volume = Math.max(0, startVolume * (1 - step / steps));
+        if (step >= steps) {
+          window.clearInterval(timer);
+          resolve();
+        }
+      }, intervalMs);
+    });
+
     for (const liveEl of _liveMusicElements) {
       liveEl.pause();
       liveEl.currentTime = 0;
@@ -601,6 +709,7 @@ class _SoundManager {
     );
 
     _audioLog(`play ${desiredTrack}`);
+    _bgmLog('loading', desiredTrack, entry.src);
 
     try {
       await el.play();
@@ -616,6 +725,8 @@ class _SoundManager {
         }
         return;
       }
+      // Confirmed playing (not stale, not blocked).
+      _bgmLog('playing', desiredTrack, entry.src);
     } catch (err) {
       const domErr = err as DOMException;
       if (domErr.name === 'NotAllowedError') {

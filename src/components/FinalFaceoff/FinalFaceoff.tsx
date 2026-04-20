@@ -87,10 +87,9 @@ export default function FinalFaceoff() {
     );
 
     dispatch(setMusicScene('none'));
-    // stopAllMusic() clears the desired music selection immediately so that any
-    // syncMusic() triggered before AudioStateSync processes the dispatch
-    // (e.g. visibility change, settings toggle) cannot restart stale music.
-    SoundManager.stopAllMusic();
+    // fadeOutMusic() clears _desiredMusicTrack immediately (same as stopAllMusic)
+    // then gracefully fades the current track rather than hard-cutting it.
+    void SoundManager.fadeOutMusic(400);
     if (!winnerAlreadyMarked || !runnerUpAlreadyMarked) {
       dispatch(
         finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
@@ -155,20 +154,25 @@ export default function FinalFaceoff() {
    *               Continues jury_voting track.
    */
   useEffect(() => {
-    const previousPhase = previousPhaseRef.current;
     previousPhaseRef.current = phase;
+    let cancelled = false;
 
-if (phase === 'recap') {
-  dispatch(setMusicScene('season_recap'));
-  return;
-}
-if (phase === 'revealVotes') {
-  dispatch(setMusicScene('jury_voting'));
-  return;
-}
+    if (phase === 'recap') {
+      // Fade out the jury_voting atmosphere before starting the recap track so
+      // there is no abrupt cut at the clues → recap boundary.
+      // `cancelled` prevents the dispatch if the effect cleans up (phase changes
+      // again or the component unmounts) before the fade resolves.
+      SoundManager.fadeOutMusic(400).then(() => {
+        if (!cancelled) dispatch(setMusicScene('season_recap'));
+      });
+      return () => { cancelled = true; };
+    }
     if (phase === 'revealVotes') {
-      dispatch(setMusicScene('jury_voting'));
-      return;
+      // Fade out the recap track before resuming the jury_voting atmosphere.
+      SoundManager.fadeOutMusic(400).then(() => {
+        if (!cancelled) dispatch(setMusicScene('jury_voting'));
+      });
+      return () => { cancelled = true; };
     }
     // 'clues' phase: tribunal_part1 — start jury_voting atmosphere immediately
     dispatch(setMusicScene('tribunal_part1'));
@@ -432,7 +436,7 @@ if (phase === 'revealVotes') {
     } else {
       // In revealVotes phase: skip the chip animations and go straight to winner.
       dispatch(setMusicScene('none'));
-      SoundManager.stopAllMusic();
+      void SoundManager.fadeOutMusic(400);
       dispatch(skipAllJurorsThunk(humanIds, game.seed));
     }
   }
@@ -444,7 +448,7 @@ if (phase === 'revealVotes') {
 
   function handleDismiss() {
     dispatch(setMusicScene('none'));
-    SoundManager.stopAllMusic();
+    void SoundManager.fadeOutMusic(400);
     dispatch(dismissFinale());
   }
 
