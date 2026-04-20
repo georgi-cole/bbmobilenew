@@ -158,13 +158,17 @@ export default function FinalFaceoff() {
     const previousPhase = previousPhaseRef.current;
     previousPhaseRef.current = phase;
 
-    if (phase === 'recap' && previousPhase !== 'recap') {
-      SoundManager.stopAllMusic();
-    }
-    if (phase === 'recap') {
-      dispatch(setMusicScene('season_recap'));
-      return;
-    }
+if (phase === 'recap') {
+  SoundManager.stopAllMusic();
+  window.setTimeout(() => {
+    dispatch(setMusicScene('season_recap'));
+  }, 50);
+  return;
+}
+if (phase === 'revealVotes') {
+  dispatch(setMusicScene('jury_voting'));
+  return;
+}
     if (phase === 'revealVotes') {
       dispatch(setMusicScene('jury_voting'));
       return;
