@@ -143,4 +143,26 @@ describe('Leaderboard screen', () => {
     expect(screen.getByText('Season 2')).toBeInTheDocument();
     expect(screen.getByText('N/A')).toBeInTheDocument();
   });
+
+  it('shows N/A when winner lookups fail and the archived winner has no display name', () => {
+    const store = makeStore({
+      seasonArchives: [
+        {
+          seasonIndex: 6,
+          seasonId: 'season-6',
+          playerSummaries: [
+            { playerId: 'unknown-player', displayName: undefined, finalPlacement: 1 },
+          ],
+        },
+      ],
+    });
+
+    renderLeaderboard(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+
+    expect(screen.getByText('Season 6')).toBeInTheDocument();
+    expect(screen.getByText('N/A')).toBeInTheDocument();
+    expect(screen.getByText('5.4M viewers')).toBeInTheDocument();
+  });
 });
