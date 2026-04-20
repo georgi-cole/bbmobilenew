@@ -112,6 +112,19 @@
 .game-btn--play-shimmer {
   overflow: hidden;
   border-radius: 18px;
+  --game-btn-play-clip-path: polygon(
+    3.5% 11.5%,
+    6.5% 6.5%,
+    85.6% 6.5%,
+    92.5% 15.5%,
+    97.2% 50%,
+    91.6% 89.7%,
+    84.7% 96.2%,
+    8.1% 94.9%,
+    2.8% 83.3%,
+    1.6% 53.8%,
+    1.9% 42.3%
+  );
 }
 
 .game-btn--play-shimmer::before,
@@ -120,6 +133,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  clip-path: var(--game-btn-play-clip-path);
 }
 
 .game-btn--play-shimmer::before {
