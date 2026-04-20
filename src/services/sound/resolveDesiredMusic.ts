@@ -7,12 +7,13 @@
  *     'tribunal_part1' and 'jury_voting' both return the jury_voting track.
  *     'season_recap' returns the season_recap track (reserved; currently
  *      SeasonRecapCinematic handles its own audio via cinematicAudio).
- *     'public_voting' and 'none' fall through to lower priority.
- *  2. Active minigame (challenge.pending.phase === 'playing') — per-game track.
- *  3. Spectator mode active — spectator track.
- *  4. Social module open (panel or inbox) — social track.
- *  5. Game phase (loh_comp/results, nominations, pos_ceremony etc.).
- *  6. Fallback — 'none' (silence).
+ *     'public_voting' returns the dedicated public-voting track.
+ *  2. `#/game-over` route — final modal music on the season results screen.
+ *  3. Active minigame (challenge.pending.phase === 'playing') — per-game track.
+ *  4. Spectator mode active — spectator track.
+ *  5. Social module open (panel or inbox) — social track.
+ *  6. Game phase (loh_comp/results, nominations, pos_ceremony etc.).
+ *  7. Fallback — 'none' (silence).
  *
  * The complete phase model and audio rules are documented in:
  *   src/services/sound/audioPhases.ts
@@ -68,8 +69,7 @@ const VETO_PHASES = new Set(['pos_ceremony', 'pos_ceremony_results']);
  * 'season_recap'    — Reserved for future centralised use; currently
  *                     SeasonRecapCinematic manages its own audio via
  *                     cinematicAudio (final_recap_sound.mp3).
- * 'public_voting'   — SeasonFinaleOverlay public-favourite flow; silent
- *                     until a dedicated track is assigned.
+ * 'public_voting'   — SeasonFinaleOverlay public-favourite flow.
  * 'none'            — No override; resolver falls through to game-phase logic.
  */
 function trackForMusicScene(scene: MusicScene): MusicTrack {
@@ -81,10 +81,14 @@ function trackForMusicScene(scene: MusicScene): MusicTrack {
     case 'jury_voting':
       return 'jury_voting';
     case 'public_voting':
-      return 'none';
+      return 'public_voting';
     default:
       return 'none';
   }
+}
+
+function isGameOverHash(hash: string): boolean {
+  return /^#\/game-?over(?:[/?#]|$)/.test(hash);
 }
 
 function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
@@ -123,6 +127,10 @@ export function resolveDesiredMusic(
   const sceneTrack = trackForMusicScene(state.ui.musicScene);
   if (sceneTrack !== 'none') {
     return sceneTrack;
+  }
+
+  if (isGameOverHash(_hash)) {
+    return 'final_modal';
   }
 
   const minigameTrack =

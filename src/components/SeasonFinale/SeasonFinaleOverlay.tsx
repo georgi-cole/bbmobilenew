@@ -15,6 +15,7 @@ import {
 import type { Player } from '../../types';
 import { resolveAvatar } from '../../utils/avatar';
 import { selectSettings } from '../../store/settingsSlice';
+import { setMusicScene } from '../../store/uiSlice';
 import FinalLightsOutSequence from '../FinalLightsOutSequence/FinalLightsOutSequence';
 import { buildFinalGoodbyeMessages } from './finaleGoodbyes';
 import './SeasonFinaleOverlay.css';
@@ -127,6 +128,12 @@ export default function SeasonFinaleOverlay() {
       }),
     );
   }, [dispatch, finale?.phase, game.favoritePlayer, game.players, settings.sim.favoritePlayerAwardAmount]);
+
+  useEffect(() => {
+    const isPublicVotingPhase =
+      finale?.phase === 'publicFavoriteSetup' || finale?.phase === 'publicFavoriteFlow';
+    dispatch(setMusicScene(isPublicVotingPhase ? 'public_voting' : 'none'));
+  }, [dispatch, finale?.phase]);
 
   useEffect(() => {
     if (finale?.phase !== 'seasonComplete' || location.pathname === '/game-over') return;

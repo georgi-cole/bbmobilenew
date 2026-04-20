@@ -361,9 +361,9 @@ The finale uses two mechanisms to signal the audio phase:
 |-------|-------|
 | **Purpose** | `SeasonFinaleOverlay` public-favourite vote flow — audience votes for their favourite houseguest. |
 | **Screens / modules** | `SeasonFinaleOverlay` (`publicFavoriteSetup`, `publicFavoriteFlow` phases). |
-| **Audio track** | `none` — no dedicated BGM track assigned yet. |
-| **Entry trigger** | `SeasonFinaleOverlay` enters `publicFavoriteSetup` phase → dispatches `setMusicScene('public_voting')`. *(Note: Currently not yet dispatched — reserved for future use.)* |
-| **Notes** | To assign music to this phase in the future, add a track to `musicTracks.ts`, update `resolveDesiredMusic.ts`, and dispatch `setMusicScene('public_voting')` from `SeasonFinaleOverlay`. |
+| **Audio track** | `public_voting` (`music:public_voting`) |
+| **Entry trigger** | `SeasonFinaleOverlay` enters `publicFavoriteSetup` or `publicFavoriteFlow` → dispatches `setMusicScene('public_voting')`. |
+| **Notes** | Music continues through the winner reveal card and stops when the public-favourite modal is dismissed. |
 
 ---
 
@@ -373,8 +373,8 @@ The finale uses two mechanisms to signal the audio phase:
 |-------|-------|
 | **Purpose** | Season fully complete; app navigates to game-over screen. |
 | **Screens / modules** | `GameOver` screen at `/game-over`. |
-| **Audio track** | `none` |
-| **Notes** | The GameOver screen may play its own audio if needed — currently uses default silence. |
+| **Audio track** | `final_modal` (`music:final_modal`) while the URL hash is `#/game-over`. |
+| **Notes** | The cue stops when the player leaves the game-over screen or when the non-looping track finishes. |
 
 ---
 
