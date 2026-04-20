@@ -9,6 +9,7 @@ import type { SeasonArchive, PlayerSeasonSummary } from '../../store/seasonArchi
 import { computeLeaderboardScore, computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
 import { DEFAULT_WEIGHTS } from '../../scoring/weights';
+import { SoundManager } from '../../services/sound/SoundManager';
 import './GameOver.css';
 
 const CAROUSEL_INTERVAL_MS = 5000;
@@ -114,7 +115,8 @@ export default function GameOver() {
       clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
     }
     dispatch(resetGame());
-    navigate('/');
+    SoundManager.unlockFromGesture();
+    navigate('/', { state: { autoStartGame: true } });
   }
 
   function exitToHome() {
