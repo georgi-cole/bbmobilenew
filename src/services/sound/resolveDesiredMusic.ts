@@ -23,7 +23,9 @@ import type { MusicTrack } from './musicTracks';
 import type { MusicScene } from '../../store/uiSlice';
 
 export interface MusicResolverState {
-  game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'>;
+  game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'> & {
+    seasonFinale?: { phase?: string | null } | null;
+  };
   challenge: {
     pending?: {
       phase?: string | null;
@@ -125,6 +127,10 @@ export function resolveDesiredMusic(
   const sceneTrack = trackForMusicScene(state.ui.musicScene);
   if (sceneTrack !== 'none') {
     return sceneTrack;
+  }
+
+  if (state.game.seasonFinale?.phase === 'seasonComplete') {
+    return 'final_modal';
   }
 
   if (isGameOverHash(_hash)) {

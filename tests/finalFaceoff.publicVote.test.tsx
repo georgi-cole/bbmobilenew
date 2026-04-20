@@ -9,6 +9,7 @@ import finaleReducer from '../src/store/finaleSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import uiReducer from '../src/store/uiSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
+import { SoundManager } from '../src/services/sound/SoundManager';
 import { pickPhrase, PUBLIC_JURY_VOTE_LINES } from '../src/utils/juryUtils';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
 
@@ -126,6 +127,7 @@ describe('FinalFaceoff public vote pacing', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -166,6 +168,43 @@ describe('FinalFaceoff public vote pacing', () => {
       vi.advanceTimersByTime(1);
     });
 
+    expect(screen.getByTestId('season-recap')).toBeTruthy();
+    expect(store.getState().ui.musicScene).toBe('season_recap');
+  });
+
+  it('stops the tribunal music before the season recap starts', async () => {
+    const stopAllMusicSpy = vi.spyOn(SoundManager, 'stopAllMusic').mockImplementation(() => {});
+    const store = makeStore();
+
+    render(
+      <Provider store={store}>
+        <FinalFaceoff />
+      </Provider>,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(2999);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2999);
+    });
+
+    expect(stopAllMusicSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+
+    expect(stopAllMusicSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('season-recap')).toBeTruthy();
     expect(store.getState().ui.musicScene).toBe('season_recap');
   });

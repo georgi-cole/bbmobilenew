@@ -6,6 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import SeasonFinaleOverlay from '../src/components/SeasonFinale/SeasonFinaleOverlay';
 import gameReducer, {
+  openFavoritePlayerVoting,
   resumeAfterPublicFavorite,
   startPublicFavorite,
 } from '../src/store/gameSlice';
@@ -52,7 +53,7 @@ function makeStore() {
 }
 
 describe('SeasonFinaleOverlay audio scenes', () => {
-  it('keeps public voting music active through the public-favorite flow and clears it on resume', async () => {
+  it('starts public voting music only when the voting overlay opens and clears it on resume', async () => {
     const store = makeStore();
     const winnerId = store.getState().game.seasonFinale?.winnerId;
 
@@ -65,11 +66,21 @@ describe('SeasonFinaleOverlay audio scenes', () => {
     );
 
     await waitFor(() => {
-      expect(store.getState().ui.musicScene).toBe('public_voting');
+      expect(store.getState().ui.musicScene).toBe('none');
     });
 
     act(() => {
       store.dispatch(startPublicFavorite());
+    });
+
+    await waitFor(() => {
+      expect(store.getState().game.favoritePlayer?.active).toBe(true);
+      expect(store.getState().game.favoritePlayer?.votingStarted).toBe(false);
+      expect(store.getState().ui.musicScene).toBe('none');
+    });
+
+    act(() => {
+      store.dispatch(openFavoritePlayerVoting());
     });
 
     await waitFor(() => {

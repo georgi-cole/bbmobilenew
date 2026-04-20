@@ -132,7 +132,7 @@ export default function SeasonFinaleOverlay() {
 
   useEffect(() => {
     const isPublicVotingPhase =
-      finale?.phase === 'publicFavoriteSetup' || finale?.phase === 'publicFavoriteFlow';
+      finale?.phase === 'publicFavoriteFlow' && game.favoritePlayer?.votingStarted === true;
     if (isPublicVotingPhase) {
       wasPublicVotingPhaseRef.current = true;
       dispatch(setMusicScene('public_voting'));
@@ -141,7 +141,7 @@ export default function SeasonFinaleOverlay() {
     if (!wasPublicVotingPhaseRef.current) return;
     wasPublicVotingPhaseRef.current = false;
     dispatch(setMusicScene('none'));
-  }, [dispatch, finale?.phase]);
+  }, [dispatch, finale?.phase, game.favoritePlayer?.votingStarted]);
 
   useEffect(() => () => {
     if (!wasPublicVotingPhaseRef.current) return;

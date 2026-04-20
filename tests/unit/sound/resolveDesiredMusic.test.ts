@@ -125,4 +125,16 @@ describe('resolveDesiredMusic', () => {
     expect(resolveDesiredMusic(makeState(), '#/game-over')).toBe('final_modal');
     expect(resolveDesiredMusic(makeState(), '#/gameover')).toBe('final_modal');
   });
+
+  it('seasonComplete finale phase maps to the final_modal music track before navigation finishes', () => {
+    const state = makeState({
+      game: {
+        seasonFinale: {
+          phase: 'seasonComplete',
+        },
+      } as RootState['game'],
+    });
+
+    expect(resolveDesiredMusic(state, '#/game')).toBe('final_modal');
+  });
 });

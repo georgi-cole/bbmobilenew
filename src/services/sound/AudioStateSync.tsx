@@ -10,6 +10,7 @@ export default function AudioStateSync() {
       gamePhase: root.game.phase,
       gameId: root.game.gameId,
       spectatorActive: root.game.spectatorActive,
+      seasonFinalePhase: root.game.seasonFinale?.phase ?? null,
       pendingChallengePhase: root.challenge.pending?.phase ?? null,
       pendingChallengeGameKey: root.challenge.pending?.game?.key ?? null,
       socialPanelOpen: root.social.panelOpen,
@@ -34,6 +35,10 @@ export default function AudioStateSync() {
             phase: musicState.gamePhase,
             gameId: musicState.gameId,
             spectatorActive: musicState.spectatorActive,
+            seasonFinale:
+              musicState.seasonFinalePhase != null
+                ? { phase: musicState.seasonFinalePhase }
+                : null,
           },
           challenge: {
             pending:
