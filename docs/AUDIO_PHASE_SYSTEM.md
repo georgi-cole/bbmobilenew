@@ -335,10 +335,10 @@ The finale uses two mechanisms to signal the audio phase:
 |-------|-------|
 | **Purpose** | FinalFaceoff **'recap' act** — `SeasonRecapCinematic` plays, showing "Road to the Final" highlights. |
 | **Screens / modules** | `SeasonRecapCinematic` component within `FinalFaceoff`. |
-| **Audio track** | `none` via SoundManager — `SeasonRecapCinematic` manages its own audio using `createCinematicAudio('final_recap_sound.mp3')`. |
-| **Entry trigger** | All clue timers done → `setPhase('recap')` → dispatches `setMusicScene('none')`. |
+| **Audio track** | `season_recap` (`music:season_recap` → `tribunal_phase/season_recap_music_new.mp3`) |
+| **Entry trigger** | All clue timers done → `setPhase('recap')` → dispatches `setMusicScene('season_recap')`. |
 | **Exit trigger** | `SeasonRecapCinematic.onComplete` fires → `setPhase('revealVotes')`. |
-| **Notes** | `music:season_recap` (`tribunal_phase/season_recap_music.mp3`) is defined in sounds.ts and reserved for future SoundManager-based use, but is currently unused — SeasonRecapCinematic uses `final_recap_sound.mp3` directly. |
+| **Notes** | `music:season_recap` (`tribunal_phase/season_recap_music_new.mp3`) is resolved centrally via `ui.musicScene = 'season_recap'`, so the recap plays only that track and replaces any prior phase music. |
 
 ---
 
@@ -390,8 +390,8 @@ The following table lists every component, hook, or module that interacts with t
 | `FinalFaceoff` | `src/components/FinalFaceoff/FinalFaceoff.tsx` | Dispatches `setMusicScene` when switching between finale acts. |
 | `HomeHub / handlePlay` | `src/screens/HomeHub/HomeHub.tsx` | Calls `markHomeHubGameStarted(gameId)` → sets `canPlayIntroHubMusic = false` permanently for this session. Also calls `SoundManager.unlockFromGesture()` on Play. |
 | `SoundConsentPopup` | `src/components/SoundConsentPopup/SoundConsentPopup.tsx` | Calls `SoundManager.unlockFromGesture()` when the user grants sound consent. |
-| `cinematicAudio` | `src/services/sound/cinematicAudio.ts` | Provides `createCinematicAudio()` for inline audio (outside SoundManager). Used by `SeasonRecapCinematic`. |
-| `SeasonRecapCinematic` | `src/components/SeasonRecapCinematic/SeasonRecapCinematic.tsx` | Uses `createCinematicAudio('final_recap_sound.mp3')` for recap BGM. Independent of SoundManager. |
+| `cinematicAudio` | `src/services/sound/cinematicAudio.ts` | Provides `createCinematicAudio()` for inline audio helpers outside SoundManager. |
+| `SeasonRecapCinematic` | `src/components/SeasonRecapCinematic/SeasonRecapCinematic.tsx` | Renders the recap visuals; recap music now comes from SoundManager via `ui.musicScene = 'season_recap'`. |
 | `audioSettingsSync` | `src/services/sound/audioSettingsSync.ts` | Syncs Redux settings (music enabled/volume) to SoundManager. |
 | `useSound` | `src/hooks/useSound.ts` | Hook that exposes `play()`, `requestBgm()`, `releaseBgm()` to components. Components should use this hook rather than importing SoundManager directly. |
 
@@ -498,15 +498,15 @@ The `_lastEvictionSfxId` variable in `soundMiddleware` ensures the SFX fires onl
 
 ---
 
-### SeasonRecapCinematic Audio Independence
+### SeasonRecapCinematic Audio Routing
 
-`SeasonRecapCinematic` plays `final_recap_sound.mp3` via `createCinematicAudio` — outside the SoundManager pipeline. During the 'recap' act, `FinalFaceoff` dispatches `setMusicScene('none')` which stops SoundManager BGM; the cinematic's own audio then plays uninterrupted. When the recap completes, `setMusicScene('jury_voting')` restores the BGM channel.
+During the 'recap' act, `FinalFaceoff` dispatches `setMusicScene('season_recap')`. `resolveDesiredMusic` maps that to `music:season_recap`, which plays `tribunal_phase/season_recap_music_new.mp3`. When the recap completes, `setMusicScene('jury_voting')` restores the tribunal BGM channel.
 
 ---
 
-### `music:season_recap` is Currently Unused
+### `music:season_recap` is Active at Runtime
 
-The sound key `music:season_recap` (`tribunal_phase/season_recap_music.mp3`) is defined in `sounds.ts` and the `MusicScene` value `'season_recap'` is mapped in `resolveDesiredMusic.ts`, but `setMusicScene('season_recap')` is never dispatched in the current runtime code. This asset is reserved for future use (e.g. if the recap cinematic is refactored to route its audio through SoundManager).
+The sound key `music:season_recap` (`tribunal_phase/season_recap_music_new.mp3`) is defined in `sounds.ts`, mapped by `resolveDesiredMusic.ts`, and dispatched by `FinalFaceoff` while the recap cinematic is active.
 
 ---
 
@@ -530,5 +530,5 @@ When the social panel closes, no explicit "resume" call is needed. `resolveDesir
 | `glass_bridge` | `music:gb_main` | `glassbridge/glass bridge main 1.mp3` | minigame (glass_bridge_*, crystal_path_*) |
 | `quick_tap` | `music:quicktap_main` | `quicktap_main.mp3` | minigame (quickTap, laneRacers, memoryMatch) |
 | `wildcard_western` | `music:wildcard_western_main` | `wildcard_western_main.mp3` | minigame (wildcardWestern) |
-| `season_recap` | `music:season_recap` | `tribunal_phase/season_recap_music.mp3` | *reserved — currently unused at runtime* |
+| `season_recap` | `music:season_recap` | `tribunal_phase/season_recap_music_new.mp3` | finale_recap |
 | `jury_voting` | `music:jury_voting_bg` | `tribunal_phase/Jury_voting_backgound_music.mp3` | tribunal_part1, tribunal_part2, finale_pre_voting |

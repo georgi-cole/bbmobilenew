@@ -5,8 +5,7 @@
  * Resolution priority (highest → lowest):
  *  1. MusicScene override (ui.musicScene) — covers finale acts and cinematic scenes.
  *     'tribunal_part1' and 'jury_voting' both return the jury_voting track.
- *     'season_recap' returns the season_recap track (reserved; currently
- *      SeasonRecapCinematic handles its own audio via cinematicAudio).
+ *     'season_recap' returns the dedicated season recap track.
  *     'public_voting' returns the dedicated public-voting track.
  *  2. `#/game-over` route — final modal music on the season results screen.
  *  3. Active minigame (challenge.pending.phase === 'playing') — per-game track.
@@ -66,9 +65,8 @@ const VETO_PHASES = new Set(['pos_ceremony', 'pos_ceremony_results']);
  *                     same jury_voting track as 'revealVotes' so there is no
  *                     jarring silence while jurors send their cryptic messages.
  * 'jury_voting'     — FinalFaceoff 'revealVotes' act; vote chips revealed.
- * 'season_recap'    — Reserved for future centralised use; currently
- *                     SeasonRecapCinematic manages its own audio via
- *                     cinematicAudio (final_recap_sound.mp3).
+ * 'season_recap'    — FinalFaceoff 'recap' act; plays the dedicated
+ *                     season recap music track.
  * 'public_voting'   — SeasonFinaleOverlay public-favourite flow.
  * 'none'            — No override; resolver falls through to game-phase logic.
  */

@@ -6,13 +6,6 @@ import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/c
 import type { Player } from '../src/types';
 import type { PublicOpinionState } from '../src/publicOpinion/types';
 
-const cinematicAudioMocks = vi.hoisted(() => ({
-  create: vi.fn(),
-  play: vi.fn(),
-  fadeOutAndStop: vi.fn(),
-  dispose: vi.fn(),
-}));
-
 vi.mock('framer-motion', async () => {
   const React = await import('react');
 
@@ -32,10 +25,6 @@ vi.mock('framer-motion', async () => {
     useReducedMotion: () => false,
   };
 });
-
-vi.mock('../src/services/sound/cinematicAudio', () => ({
-  createCinematicAudio: cinematicAudioMocks.create,
-}));
 
 const PLAYERS: Player[] = [
   {
@@ -106,15 +95,6 @@ describe('SeasonRecapCinematic', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    cinematicAudioMocks.create.mockReturnValue({
-      play: cinematicAudioMocks.play,
-      fadeOutAndStop: cinematicAudioMocks.fadeOutAndStop,
-      dispose: cinematicAudioMocks.dispose,
-    });
-    cinematicAudioMocks.create.mockClear();
-    cinematicAudioMocks.play.mockClear();
-    cinematicAudioMocks.fadeOutAndStop.mockClear();
-    cinematicAudioMocks.dispose.mockClear();
     if (!window.matchMedia) {
       const matchMediaMock = vi.fn<(query: string) => MediaQueryList>().mockImplementation((query: string) => ({
         matches: false,
@@ -143,10 +123,6 @@ describe('SeasonRecapCinematic', () => {
 
     expect(screen.getByText('The Road to the Finale')).toBeTruthy();
     expect(screen.getByText('12 weeks of chaos. One last decision.')).toBeTruthy();
-    expect(cinematicAudioMocks.create).toHaveBeenCalledWith(
-      expect.stringContaining('assets/sounds/final_recap_sound.mp3'),
-    );
-    expect(cinematicAudioMocks.play).toHaveBeenCalledTimes(1);
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -163,7 +139,6 @@ describe('SeasonRecapCinematic', () => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(cinematicAudioMocks.fadeOutAndStop).toHaveBeenCalledWith(420);
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 

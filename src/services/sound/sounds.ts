@@ -296,12 +296,12 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
 
   /**
    * Season recap cinematic background music — loops during the season recap.
-   * Asset: public/assets/sounds/tribunal_phase/season_recap_music.mp3
+   * Asset: public/assets/sounds/tribunal_phase/season_recap_music_new.mp3
    */
   'music:season_recap': {
     key: 'music:season_recap',
     category: 'music',
-    src: `${SOUNDS_BASE}tribunal_phase/season_recap_music.mp3`,
+    src: `${SOUNDS_BASE}tribunal_phase/season_recap_music_new.mp3`,
     preload: false,
     volume: 0.7,
     loop: true,
