@@ -2,8 +2,8 @@
  * Social action definitions for the SocialManeuvers subsystem.
  *
  * Each entry describes a social action a player can perform during a social
- * phase. baseCost can be a plain number (energy units) or an object with
- * separate energy and info costs.
+ * phase. `baseCost` can be a plain number (energy units) or an object with
+ * separate `energy`, `influence`, and/or `info` costs.
  *
  * ## Resource roles
  * - **energy**    — action stamina; always spent to perform an action.
