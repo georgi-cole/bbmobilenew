@@ -24,7 +24,7 @@ Actions can cost **energy**, **influence**, and **info** — all tracked separat
 
 ## Integer-Point Scale
 
-Influence and Info are stored as **integer points scaled by 100** (i.e. 1.00 influence == 100 pts).  
+Influence is stored as **integer points scaled by 10** (i.e. 1.00 influence == 10 pts). Info is stored as integer points scaled by 100.  
 Action definitions use **fractional floats for readability**; conversion to integer points happens at runtime via `normalizeActionCosts` and `normalizeActionYields`.
 
 | Human-readable | Integer pts |
@@ -85,11 +85,11 @@ Each action has an optional `kind` field that declares its role in the resource 
 | `proposeAlliance` | political_spend | 3 | — | 200 pts | influence +6 pts | Tags relationship 'alliance' |
 | `group_chat` | rapport | 2 | — | — | influence +3 pts | Targetless; broad goodwill |
 | `share_intel` | intel_spend | 1 | — | 200 pts | influence +6 pts | Converts info → influence; no info refund |
-| `pitch_target` | political_spend | 2 | 100 pts | 100 pts | influence +4 pts | LOH only; primaryPlusSubject |
-| `suggest_replacement` | political_spend | 2 | 100 pts | 100 pts | influence +4 pts | LOH/POS only; primaryPlusSubject |
-| `vote_rally` | political_spend | 2 | 500 pts | — | influence +4 pts | Requires high influence |
-| `favor_request` | political_spend | 1 | 200 pts | — | influence +3 pts | Requires 200 influence |
-| `rally_votes_against` | political_spend | 2 | 200 pts | — | influence +3 pts | Requires nominees on the block |
+| `pitch_target` | political_spend | 2 | 10 pts | 100 pts | influence +4 pts | LOH only; primaryPlusSubject |
+| `suggest_replacement` | political_spend | 2 | 10 pts | 100 pts | influence +4 pts | LOH/POS only; primaryPlusSubject |
+| `vote_rally` | political_spend | 2 | 50 pts | — | influence +4 pts | Requires high influence |
+| `favor_request` | political_spend | 1 | 20 pts | — | influence +3 pts | Requires 20 influence |
+| `rally_votes_against` | political_spend | 2 | 20 pts | — | influence +3 pts | Requires nominees on the block |
 | `warn_about_player` | intel_spend | 1 | — | 100 pts | influence +2 pts | Converts info → influence; no info refund |
 | `rumor` | aggressive | 2 | — | 100 pts | influence +5 pts | Tags 'rumor'; aggressive |
 | `startFight` | aggressive | 3 | — | — | influence +4 pts | Tags 'conflict'; aggressive |
