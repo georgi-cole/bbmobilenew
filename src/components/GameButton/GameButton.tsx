@@ -15,6 +15,7 @@ interface GameButtonProps {
   variant: GameButtonVariant;
   disabled?: boolean;
   onClick?: () => void;
+  className?: string;
 }
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -29,6 +30,7 @@ export default function GameButton({
   variant,
   disabled = false,
   onClick,
+  className,
 }: GameButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -45,7 +47,7 @@ export default function GameButton({
 
   return (
     <button
-      className={`game-btn game-btn--${variant}${disabled ? ' game-btn--disabled' : ''}${!disabled && isPressed ? ' game-btn--pressed' : ''}`}
+      className={`game-btn game-btn--${variant}${disabled ? ' game-btn--disabled' : ''}${!disabled && isPressed ? ' game-btn--pressed' : ''}${className ? ` ${className}` : ''}`}
       type="button"
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
