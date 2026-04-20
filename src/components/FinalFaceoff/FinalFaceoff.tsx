@@ -159,10 +159,7 @@ export default function FinalFaceoff() {
     previousPhaseRef.current = phase;
 
 if (phase === 'recap') {
-  SoundManager.stopAllMusic();
-  window.setTimeout(() => {
-    dispatch(setMusicScene('season_recap'));
-  }, 50);
+  dispatch(setMusicScene('season_recap'));
   return;
 }
 if (phase === 'revealVotes') {
