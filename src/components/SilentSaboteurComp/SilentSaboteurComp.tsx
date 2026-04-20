@@ -1322,11 +1322,11 @@ export default function SilentSaboteurComp({
               />
             )}
             <ProgressMeter
-              label="Jury Votes"
+              label="Tribunal Votes"
               participantIds={eliminatedIds}
               submissions={juryVotes}
               getName={getName}
-              noun="jury votes"
+              noun="tribunal votes"
             />
           </div>
         </div>
@@ -1337,7 +1337,7 @@ export default function SilentSaboteurComp({
         <div className="ss-stage ss-stage--centered">
           <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-verdict-locked">
             <p className="ss-phase-eyebrow">⚖️ Verdict Locked</p>
-            <h2 className="ss-phase-label">The jury has spoken.</h2>
+            <h2 className="ss-phase-label">The tribunal has spoken.</h2>
             <p className="ss-hint">The votes are sealed. The truth is about to be revealed.</p>
             <Final2FinalistsMuted
               finalistIds={final2FinalistIdsRef.current}
@@ -1366,7 +1366,7 @@ export default function SilentSaboteurComp({
             {!final2RevealDone ? (
               <>
                 <h2 className="ss-phase-label">
-                  {juryAccusedId ? 'The jury accused…' : 'The jury could not agree…'}
+                  {juryAccusedId ? 'The tribunal accused…' : 'The tribunal could not agree…'}
                 </h2>
                 <Final2FinalistsReveal
                   finalistIds={final2FinalistIdsRef.current}
@@ -1392,17 +1392,17 @@ export default function SilentSaboteurComp({
                 />
                 {juryAccusedId === final2SaboteurId ? (
                   <p className="ss-hint">
-                    The jury exposed <strong>{getName(final2SaboteurId ?? '')}</strong>.{' '}
+                    The tribunal exposed <strong>{getName(final2SaboteurId ?? '')}</strong>.{' '}
                     <strong>{getName(final2VictimId ?? '')}</strong> wins.
                   </p>
                 ) : juryAccusedId ? (
                   <p className="ss-hint">
-                    The jury accused <strong>{getName(juryAccusedId)}</strong>, but the saboteur stayed hidden.{' '}
+                    The tribunal accused <strong>{getName(juryAccusedId)}</strong>, but the saboteur stayed hidden.{' '}
                     <strong>{getName(winnerId ?? '')}</strong> wins.
                   </p>
                 ) : (
                   <p className="ss-hint">
-                    The jury split their vote. The majority failed to expose the saboteur, so{' '}
+                    The tribunal split their vote. The majority failed to expose the saboteur, so{' '}
                     <strong>{getName(winnerId ?? '')}</strong> wins.
                   </p>
                 )}

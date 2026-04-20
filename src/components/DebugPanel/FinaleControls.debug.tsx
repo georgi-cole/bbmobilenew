@@ -32,7 +32,7 @@ export default function FinaleDebugControls() {
 
   return (
     <section className="dbg-section">
-      <h3 className="dbg-section__title">Finale / Jury</h3>
+      <h3 className="dbg-section__title">Finale / Tribunal</h3>
 
       <dl className="dbg-grid">
         <dt>Active</dt>     <dd>{finale.isActive ? 'yes' : 'no'}</dd>
@@ -101,7 +101,7 @@ export default function FinaleDebugControls() {
               )
             }
           >
-            Re-roll Jury Seed 🎲
+            Re-roll Tribunal Seed 🎲
           </button>
         </div>
       )}

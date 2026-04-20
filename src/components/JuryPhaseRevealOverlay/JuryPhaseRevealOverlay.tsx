@@ -264,11 +264,11 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
                   type="button"
                   onClick={handleSpyJury}
                 >
-                  Spy Jury
+                  Spy Tribunal
                 </button>
                 {showSpyHint && (
                   <p className="jpro__spy-hint" role="status" aria-live="polite">
-                    Jury House coming soon.
+                    Tribunal House coming soon.
                   </p>
                 )}
               </>

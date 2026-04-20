@@ -286,7 +286,7 @@ export default function PublicMeter() {
             </div>
             {isInactivePlayer(userPlayer) && (
               <span className="public-meter__status-pill public-meter__status-pill--inactive">
-                {userPlayer.status === 'jury' ? 'Jury phase' : 'Out of game'}
+                {userPlayer.status === 'jury' ? 'Tribunal phase' : 'Out of game'}
               </span>
             )}
           </div>
