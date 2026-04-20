@@ -461,10 +461,7 @@ describe('SoundManager fadeOutMusic', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLAudioElement) {
       Object.defineProperty(this, 'paused', { value: true, configurable: true });
     });
-    Object.defineProperty(HTMLMediaElement.prototype, 'paused', {
-      configurable: true,
-      get() { return false; },
-    });
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
 
     await SoundManager.setDesiredMusic('competition', 'phase');
 
@@ -485,10 +482,7 @@ describe('SoundManager fadeOutMusic', () => {
     sm._unlocked = true;
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
     const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
-    Object.defineProperty(HTMLMediaElement.prototype, 'paused', {
-      configurable: true,
-      get() { return false; },
-    });
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
 
     await SoundManager.setDesiredMusic('competition', 'phase');
     expect(sm._musicEl).not.toBeNull();
@@ -508,10 +502,7 @@ describe('SoundManager fadeOutMusic', () => {
     sm._unlocked = true;
     const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
-    Object.defineProperty(HTMLMediaElement.prototype, 'paused', {
-      configurable: true,
-      get() { return false; },
-    });
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
 
     await SoundManager.setDesiredMusic('competition', 'phase');
     const playsAfterStart = playSpy.mock.calls.length;
@@ -588,10 +579,7 @@ describe('SoundManager BGM debug logging', () => {
     vi.useFakeTimers();
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
-    Object.defineProperty(HTMLMediaElement.prototype, 'paused', {
-      configurable: true,
-      get() { return false; },
-    });
+    vi.spyOn(HTMLMediaElement.prototype, 'paused', 'get').mockReturnValue(false);
 
     await SoundManager.setDesiredMusic('competition', 'phase');
 

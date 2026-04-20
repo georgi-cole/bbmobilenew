@@ -155,21 +155,24 @@ export default function FinalFaceoff() {
    */
   useEffect(() => {
     previousPhaseRef.current = phase;
+    let cancelled = false;
 
     if (phase === 'recap') {
       // Fade out the jury_voting atmosphere before starting the recap track so
       // there is no abrupt cut at the clues → recap boundary.
+      // `cancelled` prevents the dispatch if the effect cleans up (phase changes
+      // again or the component unmounts) before the fade resolves.
       SoundManager.fadeOutMusic(400).then(() => {
-        dispatch(setMusicScene('season_recap'));
+        if (!cancelled) dispatch(setMusicScene('season_recap'));
       });
-      return;
+      return () => { cancelled = true; };
     }
     if (phase === 'revealVotes') {
       // Fade out the recap track before resuming the jury_voting atmosphere.
       SoundManager.fadeOutMusic(400).then(() => {
-        dispatch(setMusicScene('jury_voting'));
+        if (!cancelled) dispatch(setMusicScene('jury_voting'));
       });
-      return;
+      return () => { cancelled = true; };
     }
     // 'clues' phase: tribunal_part1 — start jury_voting atmosphere immediately
     dispatch(setMusicScene('tribunal_part1'));
