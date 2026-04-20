@@ -10,7 +10,9 @@ export type MusicTrack =
   | 'quick_tap'
   | 'wildcard_western'
   | 'season_recap'
-  | 'jury_voting';
+  | 'jury_voting'
+  | 'public_voting'
+  | 'final_modal';
 
 export const MUSIC_TRACK_SOUND_KEYS: Readonly<Record<Exclude<MusicTrack, 'none'>, string>> = {
   spectator: 'music:spectator_loop',
@@ -24,6 +26,8 @@ export const MUSIC_TRACK_SOUND_KEYS: Readonly<Record<Exclude<MusicTrack, 'none'>
   wildcard_western: 'music:wildcard_western_main',
   season_recap: 'music:season_recap',
   jury_voting: 'music:jury_voting_bg',
+  public_voting: 'music:public_voting',
+  final_modal: 'music:final_modal',
 };
 
 const SOUND_KEY_TO_TRACK: Readonly<Record<string, MusicTrack>> = {
@@ -39,6 +43,8 @@ const SOUND_KEY_TO_TRACK: Readonly<Record<string, MusicTrack>> = {
   'music:wildcard_western_main': 'wildcard_western',
   'music:season_recap': 'season_recap',
   'music:jury_voting_bg': 'jury_voting',
+  'music:public_voting': 'public_voting',
+  'music:final_modal': 'final_modal',
 };
 
 export function musicTrackFromSoundKey(key: string | null | undefined): MusicTrack {

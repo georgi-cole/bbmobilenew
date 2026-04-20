@@ -217,10 +217,10 @@ export type AppAudioPhase =
   /**
    * SeasonFinaleOverlay public favourite vote flow
    * (publicFavoriteSetup / publicFavoriteFlow phases).
-   * No dedicated BGM track — silent or ambient only.
+   * Uses the dedicated public-voting background track.
    */
   | 'public_voting'
-  /** Season fully complete; heading to the game-over screen. */
+  /** Season fully complete; game-over screen uses the final modal cue. */
   | 'season_complete';
 
 // ─── Phase → MusicTrack map ───────────────────────────────────────────────────
@@ -269,8 +269,8 @@ export const AUDIO_PHASE_MUSIC_MAP: Readonly<Record<AppAudioPhase, MusicTrack>> 
   tribunal_part1:          'jury_voting',
   finale_recap:            'none',   // SeasonRecapCinematic handles its own audio
   tribunal_part2:          'jury_voting',
-  public_voting:           'none',
-  season_complete:         'none',
+  public_voting:           'public_voting',
+  season_complete:         'final_modal',
 };
 
 // ─── Minigame sub-phase → audio track ─────────────────────────────────────────

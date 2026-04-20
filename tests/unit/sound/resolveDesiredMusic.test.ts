@@ -108,20 +108,21 @@ describe('resolveDesiredMusic', () => {
     expect(resolveDesiredMusic(state, '#/game')).toBe('jury_voting');
   });
 
-  it('public_voting scene resolves to none (no dedicated track yet)', () => {
-    // public_voting has no track assigned — trackForMusicScene returns 'none',
-    // so the resolver falls through to game-phase logic (week_start → 'none').
+  it('public_voting scene maps to the public_voting music track', () => {
     const state = makeState({ ui: { musicScene: 'public_voting' } });
-    expect(resolveDesiredMusic(state, '#/game')).toBe('none');
+    expect(resolveDesiredMusic(state, '#/game')).toBe('public_voting');
   });
 
-  it('public_voting scene does not block a competing game-phase track', () => {
-    // Because public_voting → 'none' the scene is transparent and the resolver
-    // falls through to game-phase logic.
+  it('public_voting scene overrides a competing game-phase track', () => {
     const state = makeState({
       ui: { musicScene: 'public_voting' },
       game: { phase: 'nominations' },
     });
-    expect(resolveDesiredMusic(state, '#/game')).toBe('nominations');
+    expect(resolveDesiredMusic(state, '#/game')).toBe('public_voting');
+  });
+
+  it('game-over route maps to the final_modal music track', () => {
+    expect(resolveDesiredMusic(makeState(), '#/game-over')).toBe('final_modal');
+    expect(resolveDesiredMusic(makeState(), '#/gameover')).toBe('final_modal');
   });
 });
