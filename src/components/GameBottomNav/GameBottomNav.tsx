@@ -14,6 +14,7 @@ const NAV_ITEMS: { tab: NavTab; glyph: string; label: string }[] = [
 
 export interface GameBottomNavProps {
   activeTab: NavTab | null;
+  disabled?: boolean;
   onHomeClick?: () => void;
   onRulesClick?: () => void;
   onSettingsClick?: () => void;
@@ -33,6 +34,7 @@ export interface GameBottomNavProps {
  */
 export default function GameBottomNav({
   activeTab,
+  disabled = false,
   onHomeClick,
   onRulesClick,
   onSettingsClick,
@@ -74,6 +76,7 @@ export default function GameBottomNav({
                 className={`game-bottom-nav__item${isActive ? ' game-bottom-nav__item--active' : ''}`}
                 aria-label={label}
                 aria-current={isActive ? 'page' : undefined}
+                disabled={disabled}
                 onClick={handlers[tab]}
               >
                 <img

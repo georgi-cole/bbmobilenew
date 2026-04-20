@@ -75,6 +75,37 @@ describe('GameOver screen', () => {
     expect(archives[0].playerSummaries.some((summary) => summary.playerId === 'user')).toBe(true);
   });
 
+  it('resets the current game before starting a new season', async () => {
+    const store = makeStore({
+      week: 7,
+      phase: 'nominations',
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/gameover']}>
+          <Routes>
+            <Route path="/" element={<div>Home route</div>} />
+            <Route path="/gameover" element={<GameOver />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /start new season/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Home route')).toBeInTheDocument();
+    });
+
+    expect(store.getState().game.week).toBe(1);
+    expect(store.getState().game.phase).toBe('week_start');
+
+    const archives = store.getState().game.seasonArchives ?? [];
+    expect(archives).toHaveLength(1);
+    expect(archives[0].seasonIndex).toBe(3);
+  });
+
   it('archives include weeksAlive for all players', async () => {
     // Game at week 8 — a mid-season snapshot where some players were evicted
     const baseGame = gameReducer(undefined, { type: '@@INIT' });
