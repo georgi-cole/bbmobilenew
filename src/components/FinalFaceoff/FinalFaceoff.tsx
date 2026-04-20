@@ -68,6 +68,7 @@ export default function FinalFaceoff() {
   // 'revealVotes' → vote chips + tally animate in
   type Phase = 'clues' | 'recap' | 'revealVotes';
   const [phase, setPhase] = useState<Phase>('clues');
+  const previousPhaseRef = useRef<Phase>('clues');
   const winnerPersistedRef = useRef(false);
 
   const persistWinnerToSeasonFinale = useCallback(() => {
@@ -154,6 +155,12 @@ export default function FinalFaceoff() {
    *               Continues jury_voting track.
    */
   useEffect(() => {
+    const previousPhase = previousPhaseRef.current;
+    previousPhaseRef.current = phase;
+
+    if (phase === 'recap' && previousPhase !== 'recap') {
+      SoundManager.stopAllMusic();
+    }
     if (phase === 'recap') {
       dispatch(setMusicScene('season_recap'));
       return;

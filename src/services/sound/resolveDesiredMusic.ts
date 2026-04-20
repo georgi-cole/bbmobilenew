@@ -7,12 +7,14 @@
  *     'tribunal_part1' and 'jury_voting' both return the jury_voting track.
  *     'season_recap' returns the dedicated season recap track.
  *     'public_voting' returns the dedicated public-voting track.
- *  2. `#/game-over` route — final modal music on the season results screen.
- *  3. Active minigame (challenge.pending.phase === 'playing') — per-game track.
- *  4. Spectator mode active — spectator track.
- *  5. Social module open (panel or inbox) — social track.
- *  6. Game phase (loh_comp/results, nominations, pos_ceremony etc.).
- *  7. Fallback — 'none' (silence).
+ *  2. seasonFinale.phase === 'seasonComplete' — final modal music as soon as
+ *     the finale fully completes, even before navigation finishes.
+ *  3. `#/game-over` route — final modal music on the season results screen.
+ *  4. Active minigame (challenge.pending.phase === 'playing') — per-game track.
+ *  5. Spectator mode active — spectator track.
+ *  6. Social module open (panel or inbox) — social track.
+ *  7. Game phase (loh_comp/results, nominations, pos_ceremony etc.).
+ *  8. Fallback — 'none' (silence).
  *
  * The complete phase model and audio rules are documented in:
  *   src/services/sound/audioPhases.ts
@@ -23,7 +25,9 @@ import type { MusicTrack } from './musicTracks';
 import type { MusicScene } from '../../store/uiSlice';
 
 export interface MusicResolverState {
-  game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'>;
+  game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'> & {
+    seasonFinale?: Pick<NonNullable<RootState['game']['seasonFinale']>, 'phase'> | null;
+  };
   challenge: {
     pending?: {
       phase?: string | null;
@@ -125,6 +129,10 @@ export function resolveDesiredMusic(
   const sceneTrack = trackForMusicScene(state.ui.musicScene);
   if (sceneTrack !== 'none') {
     return sceneTrack;
+  }
+
+  if (state.game.seasonFinale?.phase === 'seasonComplete') {
+    return 'final_modal';
   }
 
   if (isGameOverHash(_hash)) {
