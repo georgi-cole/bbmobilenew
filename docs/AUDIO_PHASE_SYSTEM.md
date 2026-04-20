@@ -298,7 +298,7 @@ The finale uses two mechanisms to signal the audio phase:
 |---|---|---|
 | `finale_pre_voting` | `game.phase === 'jury'` (before FinalFaceoff starts) | Handled by game-phase flow |
 | `tribunal_part1` | `ui.musicScene` | `'tribunal_part1'` |
-| `finale_recap` | `ui.musicScene` | `'none'` (SeasonRecapCinematic inline) |
+| `finale_recap` | `ui.musicScene` | `'season_recap'` |
 | `tribunal_part2` | `ui.musicScene` | `'jury_voting'` |
 | `public_voting` | `ui.musicScene` | `'public_voting'` |
 
@@ -324,7 +324,7 @@ The finale uses two mechanisms to signal the audio phase:
 | **Screens / modules** | `FinalFaceoff` component, internal `phase === 'clues'`. |
 | **Audio track** | `jury_voting` (`music:jury_voting_bg`) |
 | **Entry trigger** | `FinalFaceoff` mounts and `phase === 'clues'` → dispatches `setMusicScene('tribunal_part1')`. |
-| **Exit trigger** | All clues revealed → `phase` advances to `'recap'` → dispatches `setMusicScene('none')`. |
+| **Exit trigger** | All clues revealed → `phase` advances to `'recap'` → dispatches `setMusicScene('season_recap')`. |
 | **Notes** | Previously this act had no music (`setMusicScene('none')`). The `tribunal_part1` scene was added to provide atmospheric continuity from finale entry through to the vote reveal. |
 
 ---

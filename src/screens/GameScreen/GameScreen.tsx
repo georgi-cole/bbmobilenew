@@ -3314,12 +3314,17 @@ export default function GameScreen() {
           tiles={[]}
           resolveTiles={() => [{
             rect: getTileRect(pendingPublicSaveResult.savedId),
+            badge: '❓',
+            badgeImageSrc: NOMINATION_BADGE_SRC,
+            badgeLabel: `${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} public save extraction`,
+            badgeMotion: 'extract' as const,
             glowTone: 'success' as const,
           }]}
           caption={`${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe!`}
-          subtitle="🗳️ Saved by the public"
           onDone={handlePublicSaveCeremonyDone}
           ariaLabel={`Public save ceremony: ${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe`}
+          showDim={false}
+          showCaption={false}
         />
       )}
 

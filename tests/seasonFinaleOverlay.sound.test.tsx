@@ -52,7 +52,7 @@ function makeStore() {
 }
 
 describe('SeasonFinaleOverlay audio scenes', () => {
-  it('keeps public voting music active through the public-favorite flow and clears it on dismissal', async () => {
+  it('keeps public voting music active through the public-favorite flow and clears it on resume', async () => {
     const store = makeStore();
     const winnerId = store.getState().game.seasonFinale?.winnerId;
 

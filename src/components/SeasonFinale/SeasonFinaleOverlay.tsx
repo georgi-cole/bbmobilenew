@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ChatOverlay, { type ChatLine } from '../ChatOverlay/ChatOverlay';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -113,11 +113,6 @@ export default function SeasonFinaleOverlay() {
     [finale, winner],
   );
   const wasPublicVotingPhaseRef = useRef(false);
-  const clearPublicVotingScene = useCallback(() => {
-    if (!wasPublicVotingPhaseRef.current) return;
-    wasPublicVotingPhaseRef.current = false;
-    dispatch(setMusicScene('none'));
-  }, [dispatch]);
 
   const publicFavoriteSetupLines = useMemo(() => buildPublicFavoriteSetupLines(), []);
   const goodbyeLines = useMemo(
@@ -143,10 +138,16 @@ export default function SeasonFinaleOverlay() {
       dispatch(setMusicScene('public_voting'));
       return;
     }
-    clearPublicVotingScene();
-  }, [clearPublicVotingScene, dispatch, finale?.phase]);
+    if (!wasPublicVotingPhaseRef.current) return;
+    wasPublicVotingPhaseRef.current = false;
+    dispatch(setMusicScene('none'));
+  }, [dispatch, finale?.phase]);
 
-  useEffect(() => clearPublicVotingScene, [clearPublicVotingScene]);
+  useEffect(() => () => {
+    if (!wasPublicVotingPhaseRef.current) return;
+    wasPublicVotingPhaseRef.current = false;
+    dispatch(setMusicScene('none'));
+  }, [dispatch]);
 
   useEffect(() => {
     if (finale?.phase !== 'seasonComplete' || location.pathname === '/game-over') return;
