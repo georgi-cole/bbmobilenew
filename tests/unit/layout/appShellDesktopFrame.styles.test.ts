@@ -21,7 +21,6 @@ describe('desktop app shell framing styles', () => {
 
     expect(appShellCss).toContain('@media (min-width: 768px) and (pointer: fine) {');
     expect(appShellCss).toContain('width: min(calc(100vw - 48px), 390px);');
-    expect(appShellCss).toContain('max-width: 390px;');
     expect(appShellCss).toContain('height: auto;');
     expect(appShellCss).toContain('max-height: min(calc(100dvh - 48px), 844px);');
     expect(appShellCss).toContain('aspect-ratio: 390 / 844;');

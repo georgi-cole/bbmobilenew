@@ -23,7 +23,6 @@
 @media (min-width: 768px) and (pointer: fine) {
   .app-shell {
     width: min(calc(100vw - 48px), 390px);
-    max-width: 390px;
     height: auto;
     max-height: min(calc(100dvh - 48px), 844px);
     aspect-ratio: 390 / 844;
