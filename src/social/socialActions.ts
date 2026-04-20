@@ -195,7 +195,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🤝',
     description: 'Propose a formal alliance. Success creates a lasting bond.',
     category: 'alliance',
-    kind: 'political_spend',
+    kind: 'intel_spend',
     baseCost: { energy: 3, info: 2.0 },
     targetMode: 'primary',
     successWeight: 1,
