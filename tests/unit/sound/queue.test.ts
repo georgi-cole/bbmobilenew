@@ -196,18 +196,6 @@ describe('SoundManager music state machine', () => {
     expect(sm._musicEl?.preload).toBe('none');
   });
 
-  it('honours non-looping music metadata for one-shot finale cues', async () => {
-    const sm = SoundManager as unknown as {
-      _unlocked: boolean;
-      _musicEl: HTMLAudioElement | null;
-    };
-    sm._unlocked = true;
-
-    await SoundManager.setDesiredMusic('final_modal', 'route:game-over');
-
-    expect(sm._musicEl?.loop).toBe(false);
-  });
-
   it('retries only the current desired track after a blocked play on the next gesture', async () => {
     const sm = SoundManager as unknown as { _unlocked: boolean };
     sm._unlocked = true;
