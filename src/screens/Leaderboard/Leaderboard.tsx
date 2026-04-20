@@ -23,9 +23,9 @@ function buildMockSeasonViewership(seasonIndex: number): string {
 }
 
 function resolveWinnerName(playerId: string | undefined, displayName: string | undefined): string {
-  const fullName = (playerId ? getById(playerId)?.fullName : undefined)
-    ?? (displayName ? findByName(displayName)?.fullName : undefined)
-    ?? displayName;
+  const fullNameById = playerId ? getById(playerId)?.fullName : undefined;
+  const fullNameByDisplayName = displayName ? findByName(displayName)?.fullName : undefined;
+  const fullName = fullNameById ?? fullNameByDisplayName ?? displayName;
   return formatWinnerName(fullName);
 }
 
