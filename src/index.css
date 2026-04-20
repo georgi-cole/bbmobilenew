@@ -90,20 +90,6 @@ html, body {
   height: 100%;
 }
 
-@media (min-width: 768px) and (pointer: fine) {
-  body {
-    min-height: 100dvh;
-  }
-
-  #root {
-    min-height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
-}
-
 html.is-capacitor,
 html.is-chrome-android {
   --app-safe-area-top-fallback: 16px;
