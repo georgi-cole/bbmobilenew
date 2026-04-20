@@ -19,3 +19,17 @@
   /* Push content above bottom safe area */
   padding-bottom: var(--safe-area-inset-bottom);
 }
+
+@media (min-width: 768px) and (pointer: fine) {
+  .app-shell {
+    --desktop-shell-frame-inset: 48px;
+    --desktop-shell-width: 393px;
+    --desktop-shell-height: 852px;
+    --desktop-shell-ratio: 393 / 852;
+    width: min(calc(100vw - var(--desktop-shell-frame-inset)), var(--desktop-shell-width));
+    height: auto;
+    max-height: min(calc(100dvh - var(--desktop-shell-frame-inset)), var(--desktop-shell-height));
+    aspect-ratio: var(--desktop-shell-ratio);
+    margin: 0;
+  }
+}
