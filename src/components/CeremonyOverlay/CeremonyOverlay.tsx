@@ -42,6 +42,8 @@ export interface CeremonyTile {
   badgeStart?: 'center' | DOMRect;
   /** Optional ARIA label for the badge */
   badgeLabel?: string;
+  /** Optional badge motion style. Defaults to landing onto the tile. */
+  badgeMotion?: 'land' | 'extract';
 }
 
 export interface CeremonyOverlayProps {
@@ -57,6 +59,10 @@ export interface CeremonyOverlayProps {
   durationMs?: number;
   /** ARIA label for the overlay */
   ariaLabel?: string;
+  /** When false, skips rendering the dim cutout layer. Defaults to true. */
+  showDim?: boolean;
+  /** When false, skips rendering the caption/subtitle block. Defaults to true. */
+  showCaption?: boolean;
   /**
    * Optional callback to resolve tile rects lazily (after DOM commit).
    * When provided, called once on mount and the returned tiles replace
@@ -156,6 +162,8 @@ export default function CeremonyOverlay({
   onDone,
   durationMs = 2800,
   ariaLabel,
+  showDim = true,
+  showCaption = true,
   resolveTiles,
 }: CeremonyOverlayProps) {
   const [visible, setVisible] = useState(true);
@@ -280,7 +288,14 @@ export default function CeremonyOverlay({
 
     let startX: number;
     let startY: number;
-    if (t.badgeStart && t.badgeStart !== 'center' && 'left' in t.badgeStart) {
+    const endX = targetX;
+    let endY = targetY;
+
+    if (t.badgeMotion === 'extract') {
+      startX = targetX;
+      startY = targetY;
+      endY = Math.max(12, targetY - 28);
+    } else if (t.badgeStart && t.badgeStart !== 'center' && 'left' in t.badgeStart) {
       // Transfer from another tile
       startX = t.badgeStart.left + t.badgeStart.width / 2;
       startY = t.badgeStart.top;
@@ -289,20 +304,28 @@ export default function CeremonyOverlay({
       startX = viewportWidth / 2;
       startY = viewportHeight / 2;
     }
-    return { startX, startY, targetX, targetY };
+    return { startX, startY, targetX, targetY, endX, endY };
   });
 
   // Badge current position based on phase
   const getBadgeStyle = (idx: number): React.CSSProperties => {
     const pos = badgePositions[idx];
+    const badgeMotion = validTiles[idx]?.badgeMotion ?? 'land';
     switch (badgePhase) {
       case 'hidden':
         return { left: pos.startX, top: pos.startY, opacity: 0 };
       case 'appearing':
         return { left: pos.startX, top: pos.startY };
       case 'flying':
+        if (badgeMotion === 'extract') {
+          return { left: pos.endX, top: pos.endY };
+        }
+        return { left: pos.targetX, top: pos.targetY };
       case 'landed':
       case 'holding':
+        if (badgeMotion === 'extract') {
+          return { left: pos.endX, top: pos.endY };
+        }
         return { left: pos.targetX, top: pos.targetY };
       default:
         return { left: pos.startX, top: pos.startY };
@@ -380,35 +403,37 @@ export default function CeremonyOverlay({
         aria-label={ariaLabel ?? caption}
       >
         {/* SVG dim layer with mask cutouts */}
-        <div className="ceremony-overlay__dim">
-          <svg xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <mask id="ceremony-cutout-mask">
-                {/* White fill = fully dimmed */}
-                <rect width="100%" height="100%" fill="white" />
-                {/* Black rects = cutout holes (transparent in the dim) */}
-                {cutouts.map((c, i) => (
-                  <rect
-                    key={i}
-                    x={c.x}
-                    y={c.y}
-                    width={c.w}
-                    height={c.h}
-                    rx={CUTOUT_RADIUS}
-                    ry={CUTOUT_RADIUS}
-                    fill="black"
-                  />
-                ))}
-              </mask>
-            </defs>
-            <rect
-              width="100%"
-              height="100%"
-              fill="rgba(0,0,0,0.78)"
-              mask="url(#ceremony-cutout-mask)"
-            />
-          </svg>
-        </div>
+        {showDim && (
+          <div className="ceremony-overlay__dim">
+            <svg xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <mask id="ceremony-cutout-mask">
+                  {/* White fill = fully dimmed */}
+                  <rect width="100%" height="100%" fill="white" />
+                  {/* Black rects = cutout holes (transparent in the dim) */}
+                  {cutouts.map((c, i) => (
+                    <rect
+                      key={i}
+                      x={c.x}
+                      y={c.y}
+                      width={c.w}
+                      height={c.h}
+                      rx={CUTOUT_RADIUS}
+                      ry={CUTOUT_RADIUS}
+                      fill="black"
+                    />
+                  ))}
+                </mask>
+              </defs>
+              <rect
+                width="100%"
+                height="100%"
+                fill="rgba(0,0,0,0.78)"
+                mask="url(#ceremony-cutout-mask)"
+              />
+            </svg>
+          </div>
+        )}
 
         {/* Glow rings around cutout tiles */}
         {cutouts.map((c, i) => (
@@ -434,14 +459,16 @@ export default function CeremonyOverlay({
         ))}
 
         {/* Caption text */}
-        <div
-          className={`ceremony-overlay__caption ${visible ? 'ceremony-overlay__caption--visible' : ''}`}
-          style={{ top: captionTop }}
-          aria-hidden="true"
-        >
-          <p className="ceremony-overlay__caption-text">{caption}</p>
-          {subtitle && <p className="ceremony-overlay__caption-sub">{subtitle}</p>}
-        </div>
+        {showCaption && (
+          <div
+            className={`ceremony-overlay__caption ${visible ? 'ceremony-overlay__caption--visible' : ''}`}
+            style={{ top: captionTop }}
+            aria-hidden="true"
+          >
+            <p className="ceremony-overlay__caption-text">{caption}</p>
+            {subtitle && <p className="ceremony-overlay__caption-sub">{subtitle}</p>}
+          </div>
+        )}
       </div>
 
       {/* Animated badges — placed outside the dim container so they render above the mask */}
@@ -457,6 +484,7 @@ export default function CeremonyOverlay({
               position: 'fixed',
             }}
             data-badge-origin={isTileBadgeOrigin(t.badgeStart) ? 'tile' : 'center'}
+            data-badge-motion={t.badgeMotion ?? 'land'}
             aria-label={t.badgeLabel ?? `${t.badge} badge`}
             aria-hidden={badgePhase === 'hidden'}
           >

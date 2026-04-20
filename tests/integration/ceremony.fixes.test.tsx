@@ -355,7 +355,7 @@ describe('Ceremony fix: public save follow-up announcement', () => {
     expect(store.getState().game.phase).toBe('pos_comp_announcement');
   });
 
-  it('spotlights the public-save winner in green and hides their nomination badge before commit', async () => {
+  it('keeps the public-save ceremony to a green glow while extracting the nomination badge', async () => {
     const players = makePlayers(6);
     players[2].status = 'nominated';
     players[3].status = 'nominated';
@@ -375,9 +375,17 @@ describe('Ceremony fix: public save follow-up announcement', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Public save done'));
     });
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+    });
 
     expect(screen.getByRole('status').getAttribute('aria-label')).toBe('Public save ceremony: Player 2 is safe');
     expect(document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="success"]')).toHaveLength(1);
+    expect(document.querySelector('.ceremony-overlay__dim')).toBeNull();
+    expect(document.querySelector('.ceremony-overlay__caption')).toBeNull();
+    expect(screen.queryByText('Player 2 is safe!')).toBeNull();
+    expect(screen.queryByText('🗳️ Saved by the public')).toBeNull();
+    expect(document.querySelectorAll('.ceremony-overlay__badge[data-badge-motion="extract"]')).toHaveLength(1);
     expect(document.querySelectorAll('[title="Nominated"]')).toHaveLength(2);
   });
 });
