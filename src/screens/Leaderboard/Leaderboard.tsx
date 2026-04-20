@@ -6,7 +6,7 @@ import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
 import { DEFAULT_WEIGHTS } from '../../scoring/weights';
 import './Leaderboard.css';
 
-type Tab = 'season' | 'alltime';
+type Tab = 'season' | 'alltime' | 'pastWinners';
 
 export default function Leaderboard() {
   const navigate = useNavigate();
@@ -34,6 +34,14 @@ export default function Leaderboard() {
 
   const seasonEntries = computeSeasonLeaderboard(liveSummaries, DEFAULT_WEIGHTS);
   const allTimeEntries = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS);
+  const pastWinners = [...seasonArchives]
+    .sort((a, b) => (b.seasonIndex ?? 0) - (a.seasonIndex ?? 0))
+    .map((archive) => ({
+      seasonId: archive.seasonId,
+      seasonIndex: archive.seasonIndex,
+      winnerName:
+        archive.playerSummaries.find((summary) => summary.finalPlacement === 1)?.displayName ?? 'N/A',
+    }));
 
   const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
 
@@ -62,6 +70,12 @@ export default function Leaderboard() {
           onClick={() => setTab('alltime')}
         >
           All-Time
+        </button>
+        <button
+          className={`leaderboard-screen__tab${tab === 'pastWinners' ? ' leaderboard-screen__tab--active' : ''}`}
+          onClick={() => setTab('pastWinners')}
+        >
+          Past Winners
         </button>
       </div>
 
@@ -157,6 +171,22 @@ export default function Leaderboard() {
               </li>
             );
           })}
+        </ul>
+      )}
+
+      {tab === 'pastWinners' && (
+        <ul className="leaderboard-screen__list">
+          {pastWinners.length === 0 && (
+            <li className="leaderboard-screen__empty">No archived seasons yet.</li>
+          )}
+          {pastWinners.map((archive) => (
+            <li key={archive.seasonId} className="leaderboard-screen__row">
+              <div className="leaderboard-screen__row-main leaderboard-screen__row-main--static">
+                <span className="leaderboard-screen__name">Season {archive.seasonIndex}</span>
+                <span className="leaderboard-screen__score">{archive.winnerName}</span>
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </div>

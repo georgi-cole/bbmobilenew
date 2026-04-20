@@ -15,6 +15,7 @@
 
 .leaderboard-screen__tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -72,6 +73,10 @@
   padding: 10px 14px;
   text-align: left;
   font-family: inherit;
+}
+
+.leaderboard-screen__row-main--static {
+  cursor: default;
 }
 
 .leaderboard-screen__rank {
