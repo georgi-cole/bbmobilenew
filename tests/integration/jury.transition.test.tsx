@@ -110,14 +110,14 @@ describe('Jury phase transition', () => {
     expect(screen.getByRole('button', { name: /Skip sequence/i })).toBeTruthy()
   })
 
-  it('reveals Enter Jury Vote and Spy Jury after skipping the sequence', async () => {
+  it('reveals Enter Tribunal Vote and Spy Tribunal after skipping the sequence', async () => {
     const store = makeStore()
     renderGameScreen(store)
     await act(async () => {})
 
     fireEvent.click(screen.getByRole('button', { name: /Skip sequence/i }))
     expect(screen.getByRole('button', { name: /Enter Tribunal Vote/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Spy Jury/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Spy Tribunal/i })).toBeTruthy()
   })
 
   it('auto-advances to jury phase when animations are disabled (body.no-animations)', async () => {

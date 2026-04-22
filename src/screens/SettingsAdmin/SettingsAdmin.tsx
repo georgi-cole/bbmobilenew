@@ -434,7 +434,7 @@ export default function SettingsAdmin() {
                   aria-label="Back 2 the Game chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Probability that a Jury Return twist activates after each eligible eviction (requires Twists on).
+                  Probability that a Tribunal Return twist activates after each eligible eviction (requires Twists on).
                 </p>
               </div>
             )}
@@ -593,13 +593,13 @@ export default function SettingsAdmin() {
             </div>
 
             <div className="settings-row">
-              <label className="settings-row__label">Jury House</label>
+              <label className="settings-row__label">Tribunal House</label>
               <input
                 type="checkbox"
                 className="settings-toggle"
                 checked={settings.sim.enableJuryHouse}
                 onChange={(e) => dispatch(setSim({ enableJuryHouse: e.target.checked }))}
-                aria-label="Toggle jury house"
+                aria-label="Toggle tribunal house"
               />
             </div>
 
