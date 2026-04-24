@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, type FocusEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, type FocusEvent, type RefObject } from 'react';
 import './TvAnnouncementOverlay.css';
 
 export interface Announcement {
@@ -16,6 +16,8 @@ export interface TvAnnouncementOverlayProps {
   onDismiss: () => void;
   /** When true, the auto-dismiss countdown is paused (e.g. while info modal is open). */
   paused?: boolean;
+  /** Optional ref forwarded to the ℹ️ info button for external spotlight targeting. */
+  infoButtonRef?: RefObject<HTMLButtonElement | null>;
 }
 
 function getAnnouncementThemeClass(key: string): string {
@@ -71,6 +73,7 @@ export default function TvAnnouncementOverlay({
   onInfo,
   onDismiss,
   paused = false,
+  infoButtonRef,
 }: TvAnnouncementOverlayProps) {
   const { title, subtitle, isLive, autoDismissMs } = announcement;
   const isBattleBack = announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_');
@@ -237,6 +240,7 @@ export default function TvAnnouncementOverlay({
           className="tv-announcement__info-btn"
           onClick={onInfo}
           aria-label={`More info about ${title}`}
+          ref={infoButtonRef}
         >
           ℹ️
         </button>
