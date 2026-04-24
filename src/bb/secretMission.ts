@@ -563,7 +563,14 @@ export function buildMissionTasks(
 
 export function isSecretMissionSuccessful(tasks: readonly MissionTask[]): boolean {
   if (tasks.length === 0) return false;
-  return tasks.every((task) => task.completed || task.optional);
+  const incompleteRequiredTasks = tasks.filter((task) => !task.completed && !task.optional);
+  if (incompleteRequiredTasks.length === 0) return true;
+
+  const hasCompletedOptionalEasterEggTask = tasks.some(
+    (task) => task.type === 'easter_egg_discovery' && task.optional && task.completed,
+  );
+
+  return hasCompletedOptionalEasterEggTask && incompleteRequiredTasks.length === 1;
 }
 
 // ── Trigger odds ──────────────────────────────────────────────────────────────

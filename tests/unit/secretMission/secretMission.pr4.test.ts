@@ -80,6 +80,32 @@ describe('secret mission v2 follow-up', () => {
     expect(updatedTask.completed).toBe(true);
   });
 
+  it('marks the mission successful when a completed easter egg covers one unfinished task', () => {
+    const store = setupAcceptedMission();
+    const [firstTask, secondTask, thirdTask, fourthTask, fifthTask] = store.getState().game.secretMission!.tasks;
+    const egg = getSecretMissionEasterEggByIntent('winner_prediction');
+    expect(egg).toBeTruthy();
+    if (!egg) throw new Error('Expected easter egg fixture');
+
+    store.dispatch(syncMissionTask({
+      taskId: firstTask.id,
+      updates: {
+        type: 'easter_egg_discovery',
+        current: 1,
+        target: 1,
+        completed: true,
+        discoveredEggIds: [egg.id],
+        optional: true,
+      },
+    }));
+    store.dispatch(syncMissionTask({ taskId: secondTask.id, updates: { current: secondTask.target, completed: true } }));
+    store.dispatch(syncMissionTask({ taskId: thirdTask.id, updates: { current: thirdTask.target, completed: true } }));
+    store.dispatch(syncMissionTask({ taskId: fourthTask.id, updates: { current: fourthTask.target, completed: true } }));
+    store.dispatch(syncMissionTask({ taskId: fifthTask.id, updates: { current: 0, completed: false } }));
+
+    expect(store.getState().game.secretMission?.status).toBe('rewardPending');
+  });
+
   it('lets the middleware initialize and satisfy public-approval tasks centrally', () => {
     const store = setupAcceptedMission();
     const task = store.getState().game.secretMission!.tasks.find((entry) => entry.type === 'public_approval_gain');
