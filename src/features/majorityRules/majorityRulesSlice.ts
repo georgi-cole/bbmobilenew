@@ -5,9 +5,11 @@ import {
   buildPollEstimate,
   countAnswerDistribution,
   initializeDiceDuel,
+  initializeThreeWayDice,
   pickAiDuelNumber,
   pickMajorityRulesQuestion,
   resolveDiceDuelRoll,
+  resolveThreeWayDiceRoll,
   resolveMajorityRulesBallot,
   simulateMajorityRulesBallot,
   type MajorityRulesBallotResolution,
@@ -16,6 +18,7 @@ import {
   type MajorityRulesHintPreview,
   type MajorityRulesHintType,
   type MajorityRulesQuestion,
+  type MajorityRulesThreeWayDiceState,
 } from './helpers';
 
 export type MajorityRulesCompetitionType = 'LOH' | 'POS';
@@ -25,6 +28,8 @@ export type MajorityRulesPhase =
   | 'intro'
   | 'question'
   | 'reveal'
+  | 'three_way_duel_pick'
+  | 'three_way_duel_roll'
   | 'final_duel_pick'
   | 'final_duel_roll'
   | 'winner'
@@ -58,6 +63,7 @@ export interface MajorityRulesState {
   roundHintPollEstimate: Record<string, number> | null;
   roundHintPeekedAnswers: Record<string, string> | null;
   revealState: MajorityRulesRevealState | null;
+  threeWayDuel: MajorityRulesThreeWayDiceState | null;
   finalDuel: MajorityRulesDiceDuelState | null;
   winnerId: string | null;
   outcomeResolved: boolean;
@@ -86,6 +92,7 @@ const initialState: MajorityRulesState = {
   roundHintPollEstimate: null,
   roundHintPeekedAnswers: null,
   revealState: null,
+  threeWayDuel: null,
   finalDuel: null,
   winnerId: null,
   outcomeResolved: false,
@@ -95,10 +102,11 @@ function buildHintInventories(participantIds: string[]) {
   return Object.fromEntries(
     participantIds.map((id) => [
       id,
-      {
-        peekTwoUsed: false,
-        followPlayerUsed: false,
-      } satisfies MajorityRulesHintInventory,
+        {
+          pollHintUsed: false,
+          peekTwoUsed: false,
+          followPlayerUsed: false,
+        } satisfies MajorityRulesHintInventory,
     ]),
   );
 }
@@ -166,9 +174,46 @@ function ensureAiFinalDuelPicks(state: MajorityRulesState) {
 function advanceToFinalDuel(state: MajorityRulesState) {
   const finalists = getFinalists(state);
   if (!finalists) return;
+  state.threeWayDuel = null;
   state.finalDuel = initializeDiceDuel(finalists);
   state.phase = 'final_duel_pick';
   ensureAiFinalDuelPicks(state);
+}
+
+function ensureAiThreeWayDuelPicks(state: MajorityRulesState) {
+  if (!state.threeWayDuel) return;
+  for (const finalistId of state.threeWayDuel.finalists) {
+    if (finalistId === state.humanPlayerId) continue;
+    if (state.threeWayDuel.chosenNumbers[finalistId] != null) continue;
+    const takenNumbers = Object.values(state.threeWayDuel.chosenNumbers).filter(
+      (value): value is number => value != null,
+    );
+    state.threeWayDuel.chosenNumbers[finalistId] = pickAiDuelNumber(state.seed, finalistId, takenNumbers);
+  }
+  const allPicked = state.threeWayDuel.finalists.every(
+    (finalistId) => state.threeWayDuel?.chosenNumbers[finalistId] != null,
+  );
+  if (allPicked && state.phase === 'three_way_duel_pick') {
+    state.phase = 'three_way_duel_roll';
+  }
+}
+
+function advanceToThreeWayDuel(state: MajorityRulesState) {
+  if (state.activeIds.length !== 3) return;
+  state.currentQuestion = null;
+  state.draftAnswers = {};
+  state.revealState = null;
+  state.blockedAnswers = {};
+  state.revoteNumber = 0;
+  clearRoundHintState(state);
+  state.finalDuel = null;
+  state.threeWayDuel = initializeThreeWayDice([
+    state.activeIds[0],
+    state.activeIds[1],
+    state.activeIds[2],
+  ]);
+  state.phase = 'three_way_duel_pick';
+  ensureAiThreeWayDuelPicks(state);
 }
 
 function seedOpeningFinalDuel(state: MajorityRulesState) {
@@ -219,6 +264,7 @@ const majorityRulesSlice = createSlice({
         previousDistribution: null,
         hintInventories: buildHintInventories(participantIds),
         revealState: null,
+        threeWayDuel: null,
         finalDuel: null,
         winnerId: null,
         outcomeResolved: false,
@@ -269,11 +315,14 @@ const majorityRulesSlice = createSlice({
 
       const inventory = state.hintInventories[playerId];
       if (!inventory) return;
-      if (hintType === 'peekTwo' && inventory.peekTwoUsed && state.roundHintType !== 'peekTwo') return;
+      const sameHintAsCurrentRound =
+        state.roundHintUsedBy === playerId && state.roundHintType === hintType;
+      if (hintType === 'pollHint' && inventory.pollHintUsed && !sameHintAsCurrentRound) return;
+      if (hintType === 'peekTwo' && inventory.peekTwoUsed && !sameHintAsCurrentRound) return;
       if (
         hintType === 'followPlayer' &&
         inventory.followPlayerUsed &&
-        state.roundHintType !== 'followPlayer'
+        !sameHintAsCurrentRound
       ) {
         return;
       }
@@ -299,6 +348,9 @@ const majorityRulesSlice = createSlice({
       state.roundHintPeekedAnswers = null;
 
       if (hintType === 'pollHint') {
+        if (state.roundHintType !== 'pollHint' || !inventory.pollHintUsed) {
+          inventory.pollHintUsed = true;
+        }
         state.roundHintPollEstimate = buildPollEstimate(
           countAnswerDistribution(baseAiAnswers, state.currentQuestion.options),
           state.seed,
@@ -359,6 +411,7 @@ const majorityRulesSlice = createSlice({
         state.roundHintPeekedAnswers = simulation.aiHintDecision.peekedAnswers ?? null;
         const inventory = state.hintInventories[simulation.aiHintDecision.playerId];
         if (inventory) {
+          if (simulation.aiHintDecision.type === 'pollHint') inventory.pollHintUsed = true;
           if (simulation.aiHintDecision.type === 'peekTwo') inventory.peekTwoUsed = true;
           if (simulation.aiHintDecision.type === 'followPlayer') inventory.followPlayerUsed = true;
         }
@@ -384,6 +437,10 @@ const majorityRulesSlice = createSlice({
       state.previousDistribution = result.distribution;
 
       if (result.kind === 'revote') {
+        if (state.activeIds.length === 3 && state.revoteNumber >= 2) {
+          advanceToThreeWayDuel(state);
+          return;
+        }
         state.phase = 'question';
         state.revoteNumber += 1;
         state.blockedAnswers = { ...result.answers };
@@ -453,6 +510,26 @@ const majorityRulesSlice = createSlice({
       ensureAiFinalDuelPicks(state);
     },
 
+    setThreeWayDuelPick(
+      state,
+      action: PayloadAction<{
+        playerId: string;
+        value: number;
+      }>,
+    ) {
+      if (state.phase !== 'three_way_duel_pick' || !state.threeWayDuel) {
+        return;
+      }
+      const { playerId, value } = action.payload;
+      if (!state.threeWayDuel.finalists.includes(playerId) || value < 1 || value > 6) return;
+      const takenByOther = state.threeWayDuel.finalists.some(
+        (id) => id !== playerId && state.threeWayDuel?.chosenNumbers[id] === value,
+      );
+      if (takenByOther) return;
+      state.threeWayDuel.chosenNumbers[playerId] = value;
+      ensureAiThreeWayDuelPicks(state);
+    },
+
     rollFinalDuel(state) {
       if (state.phase !== 'final_duel_roll' || !state.finalDuel) return;
       const allPicked = state.finalDuel.finalists.every(
@@ -464,6 +541,28 @@ const majorityRulesSlice = createSlice({
       if (result.winnerId) {
         state.winnerId = result.winnerId;
         state.phase = 'winner';
+      }
+    },
+
+    rollThreeWayDuel(state) {
+      if (state.phase !== 'three_way_duel_roll' || !state.threeWayDuel) return;
+      const allPicked = state.threeWayDuel.finalists.every(
+        (finalistId) => state.threeWayDuel?.chosenNumbers[finalistId] != null,
+      );
+      if (!allPicked) return;
+      const result = resolveThreeWayDiceRoll(state.threeWayDuel, state.seed);
+      state.threeWayDuel = result.duel;
+      if (result.winnerId) {
+        state.winnerId = result.winnerId;
+        state.phase = 'winner';
+        return;
+      }
+      if (result.eliminatedId && result.advancingIds) {
+        if (!state.eliminatedIds.includes(result.eliminatedId)) {
+          state.eliminatedIds.push(result.eliminatedId);
+        }
+        state.activeIds = state.activeIds.filter((playerId) => playerId !== result.eliminatedId);
+        advanceToFinalDuel(state);
       }
     },
 
@@ -489,7 +588,9 @@ export const {
   useHint,
   lockRound,
   advanceReveal,
+  setThreeWayDuelPick,
   setFinalDuelPick,
+  rollThreeWayDuel,
   rollFinalDuel,
   advanceWinner,
   markMajorityRulesOutcomeResolved,

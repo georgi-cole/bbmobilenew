@@ -11,7 +11,9 @@ import {
   advanceWinner,
   initMajorityRules,
   lockRound,
+  rollThreeWayDuel,
   rollFinalDuel,
+  setThreeWayDuelPick,
   setFinalDuelPick,
   setHumanAnswer,
   useHint as applyMajorityRulesHint,
@@ -461,6 +463,13 @@ export default function MajorityRulesComp({
   }, [dispatch, game.finalDuel, game.humanPlayerId, game.phase]);
 
   useEffect(() => {
+    if (game.phase !== 'three_way_duel_roll' || !game.threeWayDuel) return undefined;
+    if (game.threeWayDuel.currentRollerId === game.humanPlayerId) return undefined;
+    const timeout = window.setTimeout(() => dispatch(rollThreeWayDuel()), AI_DUEL_DELAY_MS);
+    return () => window.clearTimeout(timeout);
+  }, [dispatch, game.humanPlayerId, game.phase, game.threeWayDuel]);
+
+  useEffect(() => {
     const humanIsStillActive =
       game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId);
     if (game.phase !== 'reveal' || humanIsStillActive) return undefined;
@@ -480,6 +489,14 @@ export default function MajorityRulesComp({
 
   const activeHumanId =
     game.humanPlayerId && game.activeIds.includes(game.humanPlayerId) ? game.humanPlayerId : null;
+  const humanHintInventory = activeHumanId ? game.hintInventories[activeHumanId] : null;
+  const remainingHints = humanHintInventory
+    ? 3 -
+      Number(humanHintInventory.pollHintUsed) -
+      Number(humanHintInventory.peekTwoUsed) -
+      Number(humanHintInventory.followPlayerUsed)
+    : 0;
+  const threeWayFinalists: string[] = game.threeWayDuel?.finalists ?? [];
   const finalists: string[] = game.finalDuel?.finalists ?? [];
   const selectedHumanOption = activeHumanId ? game.draftAnswers[activeHumanId] : null;
   const useActiveStatusRail = shouldUseRosterRail(game.activeIds);
@@ -567,38 +584,41 @@ export default function MajorityRulesComp({
         <div className="majority-rules-hints">
           <div className="majority-rules-section-title">
             <h3>Use one hint this round</h3>
-            <span>Spend information, not luck.</span>
+            <span>{remainingHints} of 3 total left.</span>
           </div>
           <div className="majority-rules-hint-actions">
             <button
               type="button"
               className={game.roundHintType === 'pollHint' ? 'majority-rules-pill majority-rules-pill--active' : 'majority-rules-pill'}
-              disabled={!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId}
+              disabled={
+                (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
+                !!humanHintInventory?.pollHintUsed
+              }
               onClick={() =>
                 dispatch(applyMajorityRulesHint({ playerId: activeHumanId, hintType: 'pollHint' }))
               }
             >
-              📊 Poll Hint
+              📊 Poll Hint{humanHintInventory?.pollHintUsed ? ' • Used' : ''}
             </button>
             <button
               type="button"
               className={game.roundHintType === 'peekTwo' ? 'majority-rules-pill majority-rules-pill--active' : 'majority-rules-pill'}
               disabled={
                 (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
-                !!game.hintInventories[activeHumanId]?.peekTwoUsed
+                !!humanHintInventory?.peekTwoUsed
               }
               onClick={() =>
                 dispatch(applyMajorityRulesHint({ playerId: activeHumanId, hintType: 'peekTwo' }))
               }
             >
-              🕵️ Peek Two
+              🕵️ Peek Two{humanHintInventory?.peekTwoUsed ? ' • Used' : ''}
             </button>
             <button
               type="button"
               className={game.roundHintType === 'followPlayer' ? 'majority-rules-pill majority-rules-pill--active' : 'majority-rules-pill'}
               disabled={
                 (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
-                !!game.hintInventories[activeHumanId]?.followPlayerUsed
+                !!humanHintInventory?.followPlayerUsed
               }
               onClick={() =>
                 dispatch(
@@ -613,7 +633,7 @@ export default function MajorityRulesComp({
                 )
               }
             >
-              🪞 Follow Player
+              🪞 Follow Player{humanHintInventory?.followPlayerUsed ? ' • Used' : ''}
             </button>
           </div>
 
@@ -939,6 +959,123 @@ export default function MajorityRulesComp({
     </motion.div>
   );
 
+  const renderThreeWayDuel = () => (
+    <motion.div
+      key={game.phase}
+      className="majority-rules-card majority-rules-card--duel"
+      {...(motionEnabled ? PHASE_MOTION : {})}
+    >
+      <div className="majority-rules-glow majority-rules-glow--duel" aria-hidden="true" />
+      <div className="majority-rules-badge-row">
+        <span className="majority-rules-badge majority-rules-badge--danger">3-Way Dice Tiebreak</span>
+        {game.threeWayDuel?.roundCount ? (
+          <span className="majority-rules-badge majority-rules-badge--warn">
+            Round {game.threeWayDuel.roundCount + 1}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="majority-rules-header-copy">
+        <span className="majority-rules-kicker">Three straight draws. Dice decide it.</span>
+        <h2 className="majority-rules-question">Pick a number and hit it. Ties drop the player who misses.</h2>
+        <p className="majority-rules-copy">
+          If one player lands their number, they win immediately. If two players land it, the third is eliminated and the last two go to the final duel.
+        </p>
+      </div>
+
+      <PlayerRoster
+        ids={threeWayFinalists}
+        getPlayer={getPlayer}
+        compact={false}
+        selectedId={game.phase === 'three_way_duel_pick' ? activeHumanId : game.threeWayDuel?.currentRollerId}
+        pulseId={game.phase === 'three_way_duel_roll' ? game.threeWayDuel?.currentRollerId : null}
+        badgeMode="turn"
+      />
+
+      <div className="majority-rules-finalists">
+        {threeWayFinalists.map((playerId) => (
+          <div key={playerId} className="majority-rules-finalist">
+            <span>{getName(playerId)}</span>
+            <strong>{game.threeWayDuel?.chosenNumbers[playerId] ?? '—'}</strong>
+          </div>
+        ))}
+      </div>
+
+      {game.phase === 'three_way_duel_pick' &&
+        activeHumanId &&
+        threeWayFinalists.includes(activeHumanId) && (
+          <div className="majority-rules-number-picker">
+            {[1, 2, 3, 4, 5, 6].map((value) => {
+              const takenByOther = threeWayFinalists.some(
+                (playerId) =>
+                  playerId !== activeHumanId && game.threeWayDuel?.chosenNumbers[playerId] === value,
+              );
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  className={[
+                    'majority-rules-number-button',
+                    game.threeWayDuel?.chosenNumbers[activeHumanId] === value
+                      ? 'majority-rules-number-button--active'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  disabled={takenByOther}
+                  onClick={() => dispatch(setThreeWayDuelPick({ playerId: activeHumanId, value }))}
+                >
+                  {value}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+      {game.phase === 'three_way_duel_roll' && (
+        <>
+          <p className="majority-rules-copy">
+            <strong>{getName(game.threeWayDuel?.currentRollerId ?? '')}</strong> is rolling now.
+          </p>
+          {game.threeWayDuel?.lastRoll && (
+            <div className="majority-rules-hint-panel">
+              <div className="majority-rules-peek-row">
+                <span>Last roll</span>
+                <strong>
+                  {getName(game.threeWayDuel.lastRoll.playerId)} rolled {game.threeWayDuel.lastRoll.value}
+                </strong>
+              </div>
+              <div className="majority-rules-peek-row">
+                <span>Status</span>
+                <strong>{game.threeWayDuel.lastRoll.hitTarget ? 'Hit their number' : 'Missed'}</strong>
+              </div>
+              {game.threeWayDuel.lastRoundResult && (
+                <div className="majority-rules-peek-row">
+                  <span>Round result</span>
+                  <strong>
+                    {game.threeWayDuel.lastRoundResult.winnerId
+                      ? `${getName(game.threeWayDuel.lastRoundResult.winnerId)} wins`
+                      : game.threeWayDuel.lastRoundResult.eliminatedId
+                        ? `${getName(game.threeWayDuel.lastRoundResult.eliminatedId)} is eliminated`
+                        : 'No winner yet — roll again'}
+                  </strong>
+                </div>
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            className="majority-rules-primary"
+            onClick={() => dispatch(rollThreeWayDuel())}
+            disabled={game.threeWayDuel?.currentRollerId !== activeHumanId}
+          >
+            Roll die
+          </button>
+        </>
+      )}
+    </motion.div>
+  );
+
   const renderWinner = () => {
     const winner = getPlayer(game.winnerId ?? '');
     return (
@@ -994,6 +1131,8 @@ export default function MajorityRulesComp({
         )}
         {game.phase === 'question' && renderQuestion()}
         {game.phase === 'reveal' && renderReveal()}
+        {(game.phase === 'three_way_duel_pick' || game.phase === 'three_way_duel_roll') &&
+          renderThreeWayDuel()}
         {(game.phase === 'final_duel_pick' || game.phase === 'final_duel_roll') && renderFinalDuel()}
         {game.phase === 'winner' && renderWinner()}
         {game.phase === 'complete' && (

@@ -17,6 +17,7 @@ export interface MajorityRulesQuestion {
 }
 
 export interface MajorityRulesHintInventory {
+  pollHintUsed: boolean;
   peekTwoUsed: boolean;
   followPlayerUsed: boolean;
 }
@@ -68,6 +69,33 @@ export interface MajorityRulesDiceDuelState {
 export interface MajorityRulesDiceRollResult {
   duel: MajorityRulesDiceDuelState;
   winnerId: string | null;
+}
+
+export interface MajorityRulesThreeWayDiceState {
+  finalists: [string, string, string];
+  chosenNumbers: Record<string, number | null>;
+  currentRoundRolls: Record<string, number | null>;
+  currentRollerId: string;
+  roundCount: number;
+  turnCount: number;
+  lastRoll: {
+    playerId: string;
+    value: number;
+    hitTarget: boolean;
+  } | null;
+  lastRoundResult: {
+    rolls: Record<string, number>;
+    successfulIds: string[];
+    eliminatedId: string | null;
+    winnerId: string | null;
+  } | null;
+}
+
+export interface MajorityRulesThreeWayDiceRollResult {
+  duel: MajorityRulesThreeWayDiceState;
+  winnerId: string | null;
+  eliminatedId: string | null;
+  advancingIds: [string, string] | null;
 }
 
 const AI_MINORITY_CHANCE = 0.13;
@@ -350,12 +378,18 @@ function chooseAiHintDecision(params: {
 
   for (const playerId of activeIds) {
     if (playerId === humanPlayerId) continue;
-    const rng = seededRng(seed, 'ai-hint', roundNumber, playerId, question.id);
-    if (rng() >= AI_HINT_USAGE_CHANCE) continue;
-    const inventory = inventories[playerId] ?? { peekTwoUsed: false, followPlayerUsed: false };
-    const availableTypes: MajorityRulesHintType[] = ['pollHint'];
+    const inventory = inventories[playerId] ?? {
+      pollHintUsed: false,
+      peekTwoUsed: false,
+      followPlayerUsed: false,
+    };
+    const availableTypes: MajorityRulesHintType[] = [];
+    if (!inventory.pollHintUsed) availableTypes.push('pollHint');
     if (!inventory.peekTwoUsed) availableTypes.push('peekTwo');
     if (!inventory.followPlayerUsed) availableTypes.push('followPlayer');
+    if (availableTypes.length === 0) continue;
+    const rng = seededRng(seed, 'ai-hint', roundNumber, playerId, question.id);
+    if (rng() >= AI_HINT_USAGE_CHANCE) continue;
     const type = availableTypes[Math.floor(rng() * availableTypes.length)] ?? 'pollHint';
 
     if (type === 'pollHint') {
@@ -681,6 +715,29 @@ export function initializeDiceDuel(finalists: [string, string]): MajorityRulesDi
   };
 }
 
+export function initializeThreeWayDice(
+  finalists: [string, string, string],
+): MajorityRulesThreeWayDiceState {
+  return {
+    finalists,
+    chosenNumbers: {
+      [finalists[0]]: null,
+      [finalists[1]]: null,
+      [finalists[2]]: null,
+    },
+    currentRoundRolls: {
+      [finalists[0]]: null,
+      [finalists[1]]: null,
+      [finalists[2]]: null,
+    },
+    currentRollerId: finalists[0],
+    roundCount: 0,
+    turnCount: 0,
+    lastRoll: null,
+    lastRoundResult: null,
+  };
+}
+
 export function pickAiDuelNumber(
   seed: number,
   playerId: string,
@@ -749,6 +806,82 @@ export function resolveDiceDuelRoll(
         value,
         hitTarget,
         cancelled,
+        winnerId,
+      },
+    },
+  };
+}
+
+export function resolveThreeWayDiceRoll(
+  duel: MajorityRulesThreeWayDiceState,
+  seed: number,
+): MajorityRulesThreeWayDiceRollResult {
+  const rollerId = duel.currentRollerId;
+  const target = duel.chosenNumbers[rollerId];
+  if (target == null) {
+    return { duel, winnerId: null, eliminatedId: null, advancingIds: null };
+  }
+
+  const rng = seededRng(seed, 'three-way-duel-roll', duel.turnCount, duel.roundCount, rollerId);
+  const value = Math.floor(rng() * 6) + 1;
+  const hitTarget = value === target;
+  const currentRoundRolls = {
+    ...duel.currentRoundRolls,
+    [rollerId]: value,
+  };
+
+  const remainingRollers = duel.finalists.filter((playerId) => currentRoundRolls[playerId] == null);
+  if (remainingRollers.length > 0) {
+    return {
+      winnerId: null,
+      eliminatedId: null,
+      advancingIds: null,
+      duel: {
+        ...duel,
+        currentRoundRolls,
+        currentRollerId: remainingRollers[0],
+        turnCount: duel.turnCount + 1,
+        lastRoll: {
+          playerId: rollerId,
+          value,
+          hitTarget,
+        },
+      },
+    };
+  }
+
+  const successfulIds = duel.finalists.filter(
+    (playerId) => currentRoundRolls[playerId] === duel.chosenNumbers[playerId],
+  );
+  const winnerId = successfulIds.length === 1 ? successfulIds[0] : null;
+  const advancingIds =
+    successfulIds.length === 2 ? (successfulIds as [string, string]) : null;
+  const eliminatedId =
+    advancingIds != null ? duel.finalists.find((playerId) => !advancingIds.includes(playerId)) ?? null : null;
+
+  return {
+    winnerId,
+    eliminatedId,
+    advancingIds,
+    duel: {
+      ...duel,
+      currentRoundRolls: {
+        [duel.finalists[0]]: null,
+        [duel.finalists[1]]: null,
+        [duel.finalists[2]]: null,
+      },
+      currentRollerId: duel.finalists[0],
+      roundCount: duel.roundCount + 1,
+      turnCount: duel.turnCount + 1,
+      lastRoll: {
+        playerId: rollerId,
+        value,
+        hitTarget,
+      },
+      lastRoundResult: {
+        rolls: currentRoundRolls as Record<string, number>,
+        successfulIds,
+        eliminatedId,
         winnerId,
       },
     },
