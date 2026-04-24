@@ -11,7 +11,7 @@ export const BATTLE_BACK_ANNOUNCEMENT_SEQUENCE: Announcement[] = [
   {
     key: 'battle_back_rules',
     title: 'Back 2 the Game Rules',
-    subtitle: 'Recently eliminated players will face off. Only one can win the right to return to the house.',
+    subtitle: 'Tribunal members will face off. Only one can win the right to return to the house.',
     isLive: true,
     autoDismissMs: null,
   },

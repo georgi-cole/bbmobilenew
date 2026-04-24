@@ -187,6 +187,33 @@ describe('completeBattleBack', () => {
     const events = store.getState().game.tvFeed;
     expect(events.some((e) => e.type === 'twist' && /returns/i.test(e.text))).toBe(true);
   });
+
+  it('spectator completion: valid tribunal member wins, game phase advances after complete+advance', () => {
+    // Simulates the full spectator flow:
+    // 1. Battle back activates with a jury (tribunal) member as the only candidate.
+    // 2. The competition completes (as if the spectator overlay resolved).
+    // 3. completeBattleBack succeeds → battleBack.active = false.
+    // 4. advance() is now unblocked and transitions the phase.
+    const players = makePlayers(5);
+    players[3].status = 'jury';
+    players[4].status = 'jury';
+    const store = makeStore({ players, phase: 'week_end' });
+    store.dispatch(activateBattleBack({ candidates: ['p3'], week: 3 }));
+
+    // Competition ends — spectator overlay calls completeBattleBack with the winner.
+    store.dispatch(completeBattleBack('p3'));
+
+    const bb = store.getState().game.battleBack;
+    expect(bb!.active).toBe(false);
+    expect(bb!.winnerId).toBe('p3');
+    const winner = store.getState().game.players.find((p) => p.id === 'p3');
+    expect(winner?.status).toBe('active'); // player has returned
+
+    // advance() must now be unblocked and the game must NOT stay unchanged.
+    const phaseBefore = store.getState().game.phase;
+    store.dispatch(advance());
+    expect(store.getState().game.phase).not.toBe(phaseBefore);
+  });
 });
 
 describe('dismissBattleBack', () => {
@@ -303,6 +330,28 @@ describe('tryActivateBattleBack thunk', () => {
     expect(activated).toBe(true);
     expect(store.getState().game.battleBack?.active).toBe(true);
     expect(store.getState().game.battleBack?.candidates).toHaveLength(3);
+  });
+
+  it('stores only tribunal (jury) members as candidates — never evicted or active players', () => {
+    const players = makePlayers(12);
+    // Mix of statuses — only jury members should end up in candidates.
+    players[0].status = 'active';
+    players[1].status = 'evicted';
+    players[9].status = 'jury';
+    players[10].status = 'jury';
+    players[11].status = 'jury';
+    const store = makeStore(
+      { players, phase: 'eviction_results', seed: 1234 },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, battleBackChance: 100 } },
+    );
+    store.dispatch(tryActivateBattleBack() as Parameters<typeof store.dispatch>[0]);
+    const candidates = store.getState().game.battleBack?.candidates ?? [];
+    expect(candidates).toHaveLength(3);
+    // Each candidate must be a current jury member.
+    candidates.forEach((id) => {
+      const player = store.getState().game.players.find((p) => p.id === id);
+      expect(player?.status).toBe('jury');
+    });
   });
 
   it('does not activate when chance is 0', () => {

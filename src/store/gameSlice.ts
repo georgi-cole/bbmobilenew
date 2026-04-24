@@ -1881,7 +1881,7 @@ const gameSlice = createSlice({
       const ts = Date.now();
       const event = {
         id: `${state.phase}-w${state.week}-${ts}-bb`,
-        text: `🔥 SHOCK: Back 2 the Game is here! Judges will compete for a chance to return! 🏆`,
+        text: `🔥 SHOCK: Back 2 the Game is here! Tribunal members will compete for a chance to return! 🏆`,
         type: 'twist' as const,
         timestamp: ts,
         major: 'battle_back',
