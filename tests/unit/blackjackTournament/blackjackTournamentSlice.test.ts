@@ -260,12 +260,31 @@ describe('aiPickFighters', () => {
     expect([result!.fighterAId, result!.fighterBId].sort()).toEqual(['alice', 'bob']);
   });
 
+  it('avoids selecting the controller when two opponents can fight instead', () => {
+    const result = aiPickFighters(42, 0, 'alice', ['alice', 'bob', 'carol']);
+    expect(result).not.toBeNull();
+    expect(result!.fighterAId).not.toBe('alice');
+    expect(result!.fighterBId).not.toBe('alice');
+    expect([result!.fighterAId, result!.fighterBId].sort()).toEqual(['bob', 'carol']);
+  });
+
   it('both fighters are from remainingPlayerIds', () => {
     const remaining = ['alice', 'bob', 'carol', 'dave'];
     for (let seed = 0; seed < 10; seed++) {
       const result = aiPickFighters(seed, 0, 'alice', remaining);
       expect(remaining).toContain(result!.fighterAId);
       expect(remaining).toContain(result!.fighterBId);
+    }
+  });
+
+  it('selects two distinct opponents when more than two players remain', () => {
+    const remaining = ['alice', 'bob', 'carol', 'dave'];
+    for (let seed = 0; seed < 10; seed++) {
+      const result = aiPickFighters(seed, 0, 'alice', remaining);
+      expect(result).not.toBeNull();
+      expect(result!.fighterAId).not.toBe('alice');
+      expect(result!.fighterBId).not.toBe('alice');
+      expect(result!.fighterAId).not.toBe(result!.fighterBId);
     }
   });
 });

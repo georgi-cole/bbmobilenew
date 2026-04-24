@@ -307,9 +307,9 @@ export function aiDecisionRng(
 
 /**
  * AI picks two fighters for the controlling player.
- * By default the controller includes themselves as fighterA and picks a random
- * opponent as fighterB — preserving the same competitive dynamic as before
- * while conforming to the new two-slot selection model.
+ * When possible, the controller sends two opponents into the duel instead of
+ * risking themselves. If only one opponent remains, the controller must duel
+ * that player directly.
  * Returns null when no valid pair can be formed.
  */
 export function aiPickFighters(
@@ -320,12 +320,16 @@ export function aiPickFighters(
 ): { fighterAId: string; fighterBId: string } | null {
   const opponents = remainingPlayerIds.filter((id) => id !== controllingPlayerId);
   if (opponents.length === 0) return null;
-  const fighterAId = controllingPlayerId;
-  if (opponents.length === 1) return { fighterAId, fighterBId: opponents[0] };
+  if (opponents.length === 1) {
+    return { fighterAId: controllingPlayerId, fighterBId: opponents[0] };
+  }
   const idHash = fnv1a32(controllingPlayerId);
   const s = ((masterSeed >>> 0) ^ (((duelIndex + 1) * DUEL_SEED_MULT) >>> 0) ^ idHash ^ 0xcafebabe) >>> 0;
   const rng = mulberry32(s);
-  const fighterBId = opponents[Math.floor(rng() * opponents.length)];
+  const fighterAIndex = Math.floor(rng() * opponents.length);
+  const fighterAId = opponents[fighterAIndex];
+  const remainingOpponents = opponents.filter((_, idx) => idx !== fighterAIndex);
+  const fighterBId = remainingOpponents[Math.floor(rng() * remainingOpponents.length)];
   return { fighterAId, fighterBId };
 }
 
