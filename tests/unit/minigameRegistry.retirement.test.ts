@@ -5,6 +5,7 @@ const RETIRED_GAME_KEYS = [
   'countHouse',
   'triviaPulse',
   'wordAnagram',
+  'laneRacers',
   'tiltedLedge',
   'rainBarrelBalance',
   'memoryZipline',

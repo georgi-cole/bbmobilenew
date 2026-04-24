@@ -62,7 +62,7 @@ describe('getBracketPoolForContext', () => {
   it('returns the 16–13 POS pool for 13 players', () => {
     const pool = getBracketPoolForContext(13, 'POS');
     expect(pool).toContain('quickTap');
-    expect(pool).toContain('laneRacers');
+    expect(pool).toContain('holdWall');
   });
 
   it('returns the 12–10 LOH pool for 10 players', () => {
@@ -96,7 +96,7 @@ describe('getBracketPoolForContext', () => {
 
   it('returns the final-3 LOH pool for 3 players', () => {
     const pool = getBracketPoolForContext(3, 'LOH');
-    expect(pool).toContain('biographyBlitz');
+    expect(pool).toContain('glass_bridge_brutal');
     expect(pool).toContain('chainOfGreed');
     expect(pool).toContain('gridOfLuck');
   });
