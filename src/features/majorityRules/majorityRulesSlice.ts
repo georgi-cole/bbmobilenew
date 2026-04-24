@@ -517,10 +517,7 @@ const majorityRulesSlice = createSlice({
         value: number;
       }>,
     ) {
-      if (
-        (state.phase !== 'three_way_duel_pick' && state.phase !== 'three_way_duel_roll') ||
-        !state.threeWayDuel
-      ) {
+      if (state.phase !== 'three_way_duel_pick' || !state.threeWayDuel) {
         return;
       }
       const { playerId, value } = action.payload;
