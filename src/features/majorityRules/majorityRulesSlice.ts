@@ -315,12 +315,14 @@ const majorityRulesSlice = createSlice({
 
       const inventory = state.hintInventories[playerId];
       if (!inventory) return;
-      if (hintType === 'pollHint' && inventory.pollHintUsed && state.roundHintType !== 'pollHint') return;
-      if (hintType === 'peekTwo' && inventory.peekTwoUsed && state.roundHintType !== 'peekTwo') return;
+      const sameHintAsCurrentRound =
+        state.roundHintUsedBy === playerId && state.roundHintType === hintType;
+      if (hintType === 'pollHint' && inventory.pollHintUsed && !sameHintAsCurrentRound) return;
+      if (hintType === 'peekTwo' && inventory.peekTwoUsed && !sameHintAsCurrentRound) return;
       if (
         hintType === 'followPlayer' &&
         inventory.followPlayerUsed &&
-        state.roundHintType !== 'followPlayer'
+        !sameHintAsCurrentRound
       ) {
         return;
       }

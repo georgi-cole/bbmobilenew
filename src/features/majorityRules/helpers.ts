@@ -378,8 +378,6 @@ function chooseAiHintDecision(params: {
 
   for (const playerId of activeIds) {
     if (playerId === humanPlayerId) continue;
-    const rng = seededRng(seed, 'ai-hint', roundNumber, playerId, question.id);
-    if (rng() >= AI_HINT_USAGE_CHANCE) continue;
     const inventory = inventories[playerId] ?? {
       pollHintUsed: false,
       peekTwoUsed: false,
@@ -390,6 +388,8 @@ function chooseAiHintDecision(params: {
     if (!inventory.peekTwoUsed) availableTypes.push('peekTwo');
     if (!inventory.followPlayerUsed) availableTypes.push('followPlayer');
     if (availableTypes.length === 0) continue;
+    const rng = seededRng(seed, 'ai-hint', roundNumber, playerId, question.id);
+    if (rng() >= AI_HINT_USAGE_CHANCE) continue;
     const type = availableTypes[Math.floor(rng() * availableTypes.length)] ?? 'pollHint';
 
     if (type === 'pollHint') {
