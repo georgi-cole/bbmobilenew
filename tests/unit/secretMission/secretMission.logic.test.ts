@@ -216,6 +216,46 @@ describe('mission generation', () => {
 
     expect(isSecretMissionSuccessful(tasks)).toBe(true);
   });
+
+  it('lets a completed easter egg task substitute for one incomplete required task', () => {
+    const tasks = [
+      { id: '1', type: 'survive_days', description: '', current: 1, target: 1, completed: true },
+      { id: '2', type: 'competition_placement', description: '', current: 0, target: 1, completed: false },
+      { id: '3', type: 'avoid_last_place', description: '', current: 2, target: 2, completed: true },
+      { id: '4', type: 'public_approval_gain', description: '', current: 5, target: 5, completed: true },
+      {
+        id: '5',
+        type: 'easter_egg_discovery',
+        description: '',
+        current: 1,
+        target: 1,
+        completed: true,
+        optional: true,
+      },
+    ] as const;
+
+    expect(isSecretMissionSuccessful(tasks)).toBe(true);
+  });
+
+  it('does not let the easter egg cover more than one incomplete required task', () => {
+    const tasks = [
+      { id: '1', type: 'survive_days', description: '', current: 0, target: 1, completed: false },
+      { id: '2', type: 'competition_placement', description: '', current: 0, target: 1, completed: false },
+      { id: '3', type: 'avoid_last_place', description: '', current: 2, target: 2, completed: true },
+      { id: '4', type: 'public_approval_gain', description: '', current: 5, target: 5, completed: true },
+      {
+        id: '5',
+        type: 'easter_egg_discovery',
+        description: '',
+        current: 1,
+        target: 1,
+        completed: true,
+        optional: true,
+      },
+    ] as const;
+
+    expect(isSecretMissionSuccessful(tasks)).toBe(false);
+  });
 });
 
 describe('game slice mission flow', () => {
