@@ -12,7 +12,7 @@
 //  9. Redux selectors selectEnergyBank and selectSessionLogs are correct.
 // 10. updateRelationship reducer merges affinity and tags.
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import socialReducer, {
   selectEnergyBank,
@@ -450,6 +450,28 @@ describe('executeAction – happy path', () => {
     executeAction('p1', 'p2', 'compliment');
     expect(store.getState().social.sessionLogs).toHaveLength(2);
   });
+
+  it('can backfire on the third repeated beneficial action against the same target', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 0 }));
+
+    executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
+    executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const result = executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
+    randomSpy.mockRestore();
+
+    expect(result.delta).toBe(-socialConfig.affinityDeltas.friendlySuccess);
+    expect(result.summary).toBe('Compliment backfired (-5 affinity)');
+    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(5);
+    expect(store.getState().social.influenceBank['p1']).toBe(2);
+    expect((store.getState().social.sessionLogs[2] as SocialActionLogEntry).yieldsApplied).toEqual({
+      influence: -2,
+    });
+  });
 });
 
 describe('executeAction – failure cases', () => {
@@ -723,6 +745,25 @@ describe('executeAction – multi-resource deductions', () => {
 
     executeAction('p1', 'p2', 'compliment', { outcome: 'failure' });
     expect(store.getState().social.influenceBank['p1']).toBe(0); // no yield on failure
+  });
+
+  it('can reverse positive resource yields after repeated use', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 0 }));
+
+    executeAction('p1', 'p2', 'whisper', { outcome: 'success' });
+    executeAction('p1', 'p2', 'whisper', { outcome: 'success' });
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    executeAction('p1', 'p2', 'whisper', { outcome: 'success' });
+    randomSpy.mockRestore();
+
+    expect(store.getState().social.infoBank['p1']).toBe(100);
+    expect((store.getState().social.sessionLogs[2] as SocialActionLogEntry).yieldsApplied).toEqual({
+      info: -100,
+    });
   });
 });
 

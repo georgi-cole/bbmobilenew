@@ -15,7 +15,7 @@ import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
 import { normalizeActionCost, normalizeActionCosts, normalizeActionYields } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
-import { computeOutcomeDelta, evaluateOutcome } from './SocialPolicy';
+import { computeOutcomeDelta, evaluateOutcome, OUTCOME_THRESHOLDS } from './SocialPolicy';
 import { recordSocialAction, updateRelationship, applyInfluenceDelta, applyInfoDelta } from './socialSlice';
 import type { SocialActionLogEntry, SocialState } from './types';
 
@@ -46,6 +46,41 @@ interface StateForManeuvers {
 }
 
 let _store: StoreAPI | null = null;
+const REPETITION_BACKFIRE_THRESHOLD = 2;
+const REPETITION_BACKFIRE_CHANCE = 0.5;
+
+function countPriorRepeatedActions(
+  logs: SocialActionLogEntry[],
+  actorId: string,
+  targetId: string,
+  actionId: string,
+): number {
+  return logs.filter(
+    (entry) =>
+      entry.actorId === actorId &&
+      entry.targetId === targetId &&
+      entry.actionId === actionId,
+  ).length;
+}
+
+function isRepeatSensitiveAction(
+  action: SocialActionDefinition,
+  delta: number,
+  yields: { influence: number; info: number },
+): boolean {
+  if (action.targetMode === 'none' || action.needsTargets === false) {
+    return false;
+  }
+
+  return delta > 0 || yields.influence > 0 || yields.info > 0;
+}
+
+function scoreToLabel(score: number): 'Bad' | 'Unmoved' | 'Good' | 'Great' {
+  if (score <= OUTCOME_THRESHOLDS.bad) return 'Bad';
+  if (score < OUTCOME_THRESHOLDS.unmoved) return 'Unmoved';
+  if (score < OUTCOME_THRESHOLDS.good) return 'Good';
+  return 'Great';
+}
 
 /**
  * Wire the Redux store for SocialManeuvers (and SocialEnergyBank internally).
@@ -196,11 +231,19 @@ export function executeAction(
   }
 
   const outcome = options?.outcome ?? 'success';
-  const delta = computeOutcomeDelta(actionId, actorId, targetId, outcome);
+  const state = _store.getState() as { social: SocialState };
+  const scaledYields = normalizeActionYields(action);
+  const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
+  const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, outcome);
+  const didBackfire =
+    outcome === 'success' &&
+    priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
+    isRepeatSensitiveAction(action, baseDelta, scaledYields) &&
+    Math.random() < REPETITION_BACKFIRE_CHANCE;
+  const delta = didBackfire ? -Math.abs(baseDelta) : baseDelta;
 
   // Evaluate outcome score and label using the SocialPolicy evaluator.
   const mode = options?.previewOnly ? 'preview' : 'execute';
-  const state = _store.getState() as { social: SocialState };
   const outcomeResult = evaluateOutcome({
     actionId,
     actorId,
@@ -209,6 +252,8 @@ export function executeAction(
     outcome,
     relationships: state.social.relationships,
   });
+  const finalScore = didBackfire ? -Math.abs(outcomeResult.score) : outcomeResult.score;
+  const finalLabel = didBackfire ? scoreToLabel(finalScore) : outcomeResult.label;
 
   // previewOnly: return outcome without mutating state.
   if (options?.previewOnly) {
@@ -222,8 +267,8 @@ export function executeAction(
       delta,
       newEnergy: currentEnergy,
       summary: previewSummary,
-      score: outcomeResult.score,
-      label: outcomeResult.label,
+      score: finalScore,
+      label: finalLabel,
     };
   }
 
@@ -240,14 +285,29 @@ export function executeAction(
     _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -infoSpend }));
   }
 
-  // Apply yields (success only — yields are not granted on failure)
-  const scaledYields = normalizeActionYields(action);
+  // Apply yields (successful actions grant yields; repeated beneficial actions may backfire)
+  const yieldDelta = {
+    influence: didBackfire ? -scaledYields.influence : scaledYields.influence,
+    info: didBackfire ? -scaledYields.info : scaledYields.info,
+  };
   if (outcome === 'success') {
-    if (scaledYields.influence > 0) {
-      _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: scaledYields.influence }));
+    if (yieldDelta.influence !== 0) {
+      const adjustedInfluenceDelta = yieldDelta.influence < 0
+        ? -Math.min(Math.abs(yieldDelta.influence), currentInfluence - influenceSpend)
+        : yieldDelta.influence;
+      if (adjustedInfluenceDelta !== 0) {
+        _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: adjustedInfluenceDelta }));
+      }
+      yieldDelta.influence = adjustedInfluenceDelta;
     }
-    if (scaledYields.info > 0) {
-      _store.dispatch(applyInfoDelta({ playerId: actorId, delta: scaledYields.info }));
+    if (yieldDelta.info !== 0) {
+      const adjustedInfoDelta = yieldDelta.info < 0
+        ? -Math.min(Math.abs(yieldDelta.info), currentInfo - infoSpend)
+        : yieldDelta.info;
+      if (adjustedInfoDelta !== 0) {
+        _store.dispatch(applyInfoDelta({ playerId: actorId, delta: adjustedInfoDelta }));
+      }
+      yieldDelta.info = adjustedInfoDelta;
     }
   }
 
@@ -273,14 +333,14 @@ export function executeAction(
     newEnergy,
     balancesAfter,
     timestamp: Date.now(),
-    score: outcomeResult.score,
-    label: outcomeResult.label,
+    score: finalScore,
+    label: finalLabel,
     source: options?.source ?? 'system',
   };
-  if (outcome === 'success' && (scaledYields.influence > 0 || scaledYields.info > 0)) {
+  if (outcome === 'success' && (yieldDelta.influence !== 0 || yieldDelta.info !== 0)) {
     entry.yieldsApplied = {
-      ...(scaledYields.influence > 0 ? { influence: scaledYields.influence } : {}),
-      ...(scaledYields.info > 0 ? { info: scaledYields.info } : {}),
+      ...(yieldDelta.influence !== 0 ? { influence: yieldDelta.influence } : {}),
+      ...(yieldDelta.info !== 0 ? { info: yieldDelta.info } : {}),
     };
   }
 
@@ -316,14 +376,14 @@ export function executeAction(
 
   _store.dispatch(recordSocialAction({ entry }));
 
-  const verb = outcome === 'failure' ? 'failed' : 'succeeded';
+  const verb = didBackfire ? 'backfired' : outcome === 'failure' ? 'failed' : 'succeeded';
   const sign = delta > 0 ? '+' : '';
   const summary =
     delta !== 0
       ? `${action.title} ${verb} (${sign}${delta} affinity)`
       : `${action.title} ${verb}`;
 
-  return { success: true, delta, newEnergy, summary, score: outcomeResult.score, label: outcomeResult.label };
+  return { success: true, delta, newEnergy, summary, score: finalScore, label: finalLabel };
 }
 
 // ── Named export for convenience ──────────────────────────────────────────
