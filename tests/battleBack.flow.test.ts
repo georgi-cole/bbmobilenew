@@ -19,10 +19,15 @@ import gameReducer, {
   dismissBattleBack,
   tryActivateBattleBack,
   openBattleBackCompetition,
+  clearBlockingFlags,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
 import type { GameState, Player, TvEvent } from '../src/types';
 import { simulateBattleBackCompetition } from '../src/features/twists/battleBackCompetition';
+import {
+  advanceBattleBackAnnouncementStep,
+  BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
+} from '../src/screens/GameScreen/battleBackFlow';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -372,5 +377,88 @@ describe('simulateBattleBackCompetition', () => {
     const result = simulateBattleBackCompetition(['p1'], 42);
     expect(result.winnerId).toBe('p1');
     expect(result.rounds).toHaveLength(0);
+  });
+});
+
+// ── Regression: clearBlockingFlags must not bypass the Battle Back gate ───────
+
+describe('clearBlockingFlags does not bypass Battle Back gate', () => {
+  it('does not clear battleBack.active', () => {
+    const store = makeStore();
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
+    expect(store.getState().game.battleBack?.active).toBe(true);
+
+    store.dispatch(clearBlockingFlags());
+
+    // battleBack.active must still be true after clearBlockingFlags.
+    expect(store.getState().game.battleBack?.active).toBe(true);
+  });
+
+  it('does not clear twistActive', () => {
+    const store = makeStore();
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
+    expect(store.getState().game.twistActive).toBe(true);
+
+    store.dispatch(clearBlockingFlags());
+
+    expect(store.getState().game.twistActive).toBe(true);
+  });
+
+  it('advance() is still blocked after clearBlockingFlags when battleBack is active', () => {
+    const store = makeStore({ phase: 'week_end' });
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
+
+    const phaseBefore = store.getState().game.phase;
+    store.dispatch(clearBlockingFlags());
+    store.dispatch(advance());
+
+    // Phase must not change — Battle Back gate still holds.
+    expect(store.getState().game.phase).toBe(phaseBefore);
+  });
+
+  it('advance() is unblocked after explicit dismissBattleBack following clearBlockingFlags', () => {
+    const store = makeStore({ phase: 'eviction_results' });
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
+
+    store.dispatch(clearBlockingFlags());
+    // Explicit cancel — twist was deliberately dismissed.
+    store.dispatch(dismissBattleBack());
+    store.dispatch(advance());
+
+    // After explicit dismiss, advance() can run.
+    expect(store.getState().game.phase).not.toBe('eviction_results');
+    expect(store.getState().game.battleBack?.active).toBe(false);
+  });
+});
+
+// ── advanceBattleBackAnnouncementStep ─────────────────────────────────────────
+
+describe('advanceBattleBackAnnouncementStep', () => {
+  const TOTAL = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.length; // 3
+
+  it('returns shouldOpenCompetition=false for intermediate steps', () => {
+    for (let step = 0; step < TOTAL - 1; step++) {
+      const result = advanceBattleBackAnnouncementStep(step);
+      expect(result.shouldOpenCompetition).toBe(false);
+      expect(result.nextStep).toBe(step + 1);
+    }
+  });
+
+  it('returns shouldOpenCompetition=true and nextStep=null on the last step', () => {
+    const result = advanceBattleBackAnnouncementStep(TOTAL - 1);
+    expect(result.shouldOpenCompetition).toBe(true);
+    expect(result.nextStep).toBeNull();
+  });
+
+  it('returns shouldOpenCompetition=false and nextStep=null when currentStep is null', () => {
+    const result = advanceBattleBackAnnouncementStep(null);
+    expect(result.shouldOpenCompetition).toBe(false);
+    expect(result.nextStep).toBeNull();
+  });
+
+  it('each step maps to a distinct announcement key', () => {
+    const keys = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.map((a) => a.key);
+    const uniqueKeys = new Set(keys);
+    expect(uniqueKeys.size).toBe(TOTAL);
   });
 });
