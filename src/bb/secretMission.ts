@@ -566,11 +566,11 @@ export function isSecretMissionSuccessful(tasks: readonly MissionTask[]): boolea
   const incompleteRequiredTasks = tasks.filter((task) => !task.completed && !task.optional);
   if (incompleteRequiredTasks.length === 0) return true;
 
-  const hasCompletedEasterEggTask = tasks.some(
-    (task) => task.type === 'easter_egg_discovery' && task.completed,
+  const hasCompletedOptionalEasterEggTask = tasks.some(
+    (task) => task.type === 'easter_egg_discovery' && task.optional && task.completed,
   );
 
-  return hasCompletedEasterEggTask && incompleteRequiredTasks.length === 1;
+  return hasCompletedOptionalEasterEggTask && incompleteRequiredTasks.length === 1;
 }
 
 // ── Trigger odds ──────────────────────────────────────────────────────────────

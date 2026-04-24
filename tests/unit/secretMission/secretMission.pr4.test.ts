@@ -83,6 +83,9 @@ describe('secret mission v2 follow-up', () => {
   it('marks the mission successful when a completed easter egg covers one unfinished task', () => {
     const store = setupAcceptedMission();
     const [firstTask, secondTask, thirdTask, fourthTask, fifthTask] = store.getState().game.secretMission!.tasks;
+    const egg = getSecretMissionEasterEggByIntent('winner_prediction');
+    expect(egg).toBeTruthy();
+    if (!egg) throw new Error('Expected easter egg fixture');
 
     store.dispatch(syncMissionTask({
       taskId: firstTask.id,
@@ -91,7 +94,7 @@ describe('secret mission v2 follow-up', () => {
         current: 1,
         target: 1,
         completed: true,
-        discoveredEggIds: ['winner_prediction'],
+        discoveredEggIds: [egg.id],
         optional: true,
       },
     }));
