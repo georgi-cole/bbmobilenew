@@ -73,7 +73,6 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     ],
     pos: [
       'quickTap',   // Quick Tap Race — fast, fair, packed leaderboard
-      'laneRacers', // Lane Racers    — race spectacle; alive with many competitors
       'holdWall',   // Hold the Wall  — endurance; every dropout is visible
       'colorMatch', // Color Match    — precision slider; easy to compare across cast
     ],

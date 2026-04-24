@@ -12,6 +12,7 @@ describe('Lane Racers registry wiring', () => {
     expect(entry?.scoringAdapter).toBe('raw');
     expect(entry?.timeLimitMs).toBe(60_000);
     expect(entry?.instructions.length).toBeGreaterThan(0);
+    expect(entry?.retired).toBe(true);
   });
 
   it('maps the react component key to the Lane Racers component', () => {
