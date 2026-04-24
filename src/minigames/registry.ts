@@ -396,9 +396,10 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     instructions: [
       'Every round a social question appears with 3 answer options.',
       'Everyone locks in an answer at the same time.',
+      'You get 3 hints for the whole game, and each hint can only be used once.',
       'Players in the minority are eliminated.',
       'If everyone picks the same answer, nobody leaves and the next round starts fresh.',
-      "If all 3 answers are split evenly, everyone re-votes until there's a clear majority and minority.",
+      "If all 3 answers are split evenly, everyone re-votes up to 3 times before a 3-way dice tiebreaker.",
       'If multiple minority answers tie beneath the majority, every tied minority player is eliminated.',
       'At the Final 2, the game becomes a dice duel.',
     ],
