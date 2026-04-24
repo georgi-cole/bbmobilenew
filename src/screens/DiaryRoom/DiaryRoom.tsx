@@ -1069,7 +1069,7 @@ export default function DiaryRoom() {
                     : ''}
                 </p>
                 {secretMission.tasks.map((task) => {
-                  const targetName = task.type === 'target_nominated' && task.targetPlayerId
+                  const targetName = task.targetPlayerId
                     ? playerNameById.get(task.targetPlayerId)
                     : undefined;
                   const displayDesc = targetName
