@@ -609,4 +609,55 @@ describe('DiaryRoom — secret mission checklist target_nominated', () => {
     renderDiaryRoom(store);
     expect(screen.getByText(/your marked target/i)).toBeTruthy();
   });
+
+  it('shows the actual target player name in a social_action_count task description', () => {
+    const players = buildPlayers();
+    // p3 will be the marked target
+    const secretMission = buildMission({
+      tasks: [
+        {
+          id: 'social_action_count_big_eye_gambit',
+          type: 'social_action_count',
+          description: 'Form an alliance with your marked target before Day 8',
+          current: 0,
+          target: 1,
+          completed: false,
+          targetPlayerId: 'p3',
+          startDay: 3,
+          endDay: 8,
+          targetDay: 8,
+          requiredActionIds: ['ally', 'proposeAlliance'],
+        },
+      ],
+    });
+    const store = makeStore({ players, secretMission });
+    renderDiaryRoom(store);
+    // Should show the real name instead of the generic "your marked target"
+    expect(screen.getByText(/Form an alliance with Player 3 before Day 8/i)).toBeTruthy();
+    expect(screen.queryByText(/your marked target/i)).toBeNull();
+  });
+
+  it('falls back to original description for social_action_count when targetPlayerId is unresolvable', () => {
+    const players = buildPlayers();
+    const secretMission = buildMission({
+      tasks: [
+        {
+          id: 'social_action_count_big_eye_gambit',
+          type: 'social_action_count',
+          description: 'Form an alliance with your marked target before Day 8',
+          current: 0,
+          target: 1,
+          completed: false,
+          targetPlayerId: 'unknown-id',
+          startDay: 3,
+          endDay: 8,
+          targetDay: 8,
+          requiredActionIds: ['ally', 'proposeAlliance'],
+        },
+      ],
+    });
+    const store = makeStore({ players, secretMission });
+    renderDiaryRoom(store);
+    expect(screen.getByText(/your marked target/i)).toBeTruthy();
+  });
 });
