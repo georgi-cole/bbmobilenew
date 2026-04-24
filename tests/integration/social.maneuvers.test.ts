@@ -459,6 +459,8 @@ describe('executeAction – happy path', () => {
 
     executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
     executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
+    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(10);
+    expect(store.getState().social.influenceBank['p1']).toBe(4);
 
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const result = executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
@@ -471,6 +473,25 @@ describe('executeAction – happy path', () => {
     expect((store.getState().social.sessionLogs[2] as SocialActionLogEntry).yieldsApplied).toEqual({
       influence: -2,
     });
+  });
+
+  it('does not backfire on the third repeated action when the roll misses', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 0 }));
+
+    executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
+    executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.9);
+    const result = executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
+    randomSpy.mockRestore();
+
+    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess);
+    expect(result.summary).toBe('Compliment succeeded (+5 affinity)');
+    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(15);
+    expect(store.getState().social.influenceBank['p1']).toBe(6);
   });
 });
 

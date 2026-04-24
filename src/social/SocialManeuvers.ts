@@ -82,6 +82,10 @@ function scoreToLabel(score: number): 'Bad' | 'Unmoved' | 'Good' | 'Great' {
   return 'Great';
 }
 
+function clampResourceAdjustment(delta: number, availableBalance: number): number {
+  return delta < 0 ? -Math.min(Math.abs(delta), availableBalance) : delta;
+}
+
 /**
  * Wire the Redux store for SocialManeuvers (and SocialEnergyBank internally).
  * Should be called once at bootstrap, typically from SocialEngine.init().
@@ -276,38 +280,43 @@ export function executeAction(
   const newEnergy = SocialEnergyBank.add(actorId, -costs.energy);
   const currentInfluence = state.social.influenceBank[actorId] ?? 0;
   const influenceSpend = Math.min(costs.influence, currentInfluence);
+  const postSpendInfluenceBalance = currentInfluence - influenceSpend;
   if (influenceSpend > 0) {
     _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -influenceSpend }));
   }
   const currentInfo = state.social.infoBank[actorId] ?? 0;
   const infoSpend = Math.min(costs.info, currentInfo);
+  const postSpendInfoBalance = currentInfo - infoSpend;
   if (infoSpend > 0) {
     _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -infoSpend }));
   }
 
   // Apply yields (successful actions grant yields; repeated beneficial actions may backfire)
-  const yieldDelta = {
+  const intendedYields = {
     influence: didBackfire ? -scaledYields.influence : scaledYields.influence,
     info: didBackfire ? -scaledYields.info : scaledYields.info,
   };
+  const appliedYields = { influence: 0, info: 0 };
   if (outcome === 'success') {
-    if (yieldDelta.influence !== 0) {
-      const adjustedInfluenceDelta = yieldDelta.influence < 0
-        ? -Math.min(Math.abs(yieldDelta.influence), currentInfluence - influenceSpend)
-        : yieldDelta.influence;
-      if (adjustedInfluenceDelta !== 0) {
-        _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: adjustedInfluenceDelta }));
+    if (intendedYields.influence !== 0) {
+      const appliedInfluenceDelta = clampResourceAdjustment(
+        intendedYields.influence,
+        postSpendInfluenceBalance,
+      );
+      if (appliedInfluenceDelta !== 0) {
+        _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: appliedInfluenceDelta }));
       }
-      yieldDelta.influence = adjustedInfluenceDelta;
+      appliedYields.influence = appliedInfluenceDelta;
     }
-    if (yieldDelta.info !== 0) {
-      const adjustedInfoDelta = yieldDelta.info < 0
-        ? -Math.min(Math.abs(yieldDelta.info), currentInfo - infoSpend)
-        : yieldDelta.info;
-      if (adjustedInfoDelta !== 0) {
-        _store.dispatch(applyInfoDelta({ playerId: actorId, delta: adjustedInfoDelta }));
+    if (intendedYields.info !== 0) {
+      const appliedInfoDelta = clampResourceAdjustment(
+        intendedYields.info,
+        postSpendInfoBalance,
+      );
+      if (appliedInfoDelta !== 0) {
+        _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedInfoDelta }));
       }
-      yieldDelta.info = adjustedInfoDelta;
+      appliedYields.info = appliedInfoDelta;
     }
   }
 
@@ -337,10 +346,10 @@ export function executeAction(
     label: finalLabel,
     source: options?.source ?? 'system',
   };
-  if (outcome === 'success' && (yieldDelta.influence !== 0 || yieldDelta.info !== 0)) {
+  if (outcome === 'success' && (appliedYields.influence !== 0 || appliedYields.info !== 0)) {
     entry.yieldsApplied = {
-      ...(yieldDelta.influence !== 0 ? { influence: yieldDelta.influence } : {}),
-      ...(yieldDelta.info !== 0 ? { info: yieldDelta.info } : {}),
+      ...(appliedYields.influence !== 0 ? { influence: appliedYields.influence } : {}),
+      ...(appliedYields.info !== 0 ? { info: appliedYields.info } : {}),
     };
   }
 
