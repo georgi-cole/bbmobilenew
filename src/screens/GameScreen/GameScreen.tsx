@@ -2496,8 +2496,6 @@ export default function GameScreen() {
     showEvictionSplash ||
     showBattleBackReturn ||
     showBattleBack ||
-    // Also block while the twist is pending TV announcement (active but overlay not yet open).
-    (game.battleBack?.active === true && game.battleBack?.competitionActive !== true) ||
     showFavoriteVoting ||
     (game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true) ||
     showMinigameHost ||
