@@ -4,12 +4,19 @@
  * Portal-mounted on document.body so it covers everything.
  * z-index 10 500 sits above the confessional spotlight (1 400) and the DE backdrop
  * (9 998) so the stinger is always the topmost layer.
+ *
+ * The z-index value is deliberately kept local to this component — it owns the
+ * top of the stacking order during shock sequences.
  */
+
+:root {
+  --shock-intro-z: 10500;
+}
 
 .shock-intro {
   position: fixed;
   inset: 0;
-  z-index: 10500;
+  z-index: var(--shock-intro-z);
   display: flex;
   align-items: center;
   justify-content: center;

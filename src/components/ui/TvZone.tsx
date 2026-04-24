@@ -514,8 +514,10 @@ export default function TvZone(props: TvZoneProps) {
     if (shockInfoSpotlightActive) {
       startTransition(() => setShockInfoSpotlightActive(false));
     }
-    if (activeAnnouncement) setModalAnnouncementKey(activeAnnouncement.key);
-    setModalOpen(true);
+    if (activeAnnouncement) {
+      setModalAnnouncementKey(activeAnnouncement.key);
+      setModalOpen(true);
+    }
   }, [activeAnnouncement, shockInfoSpotlightActive]);
 
   // Listen for central FAB 'tv:announcement-dismiss' events
