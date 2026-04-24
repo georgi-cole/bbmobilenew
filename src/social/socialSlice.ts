@@ -181,6 +181,30 @@ const socialSlice = createSlice({
       entry.resolvedWeek = action.payload.resolvedWeek;
       entry.resolvedWith = 'dismiss';
     },
+    /** Resolve invalidated interactions and remove matching scheduled entries. */
+    invalidateIncomingInteractions(
+      state,
+      action: PayloadAction<{ interactionIds: string[]; resolvedAt?: number; resolvedWeek?: number }>,
+    ) {
+      const { interactionIds, resolvedAt, resolvedWeek } = action.payload;
+      if (interactionIds.length === 0) return;
+      const ids = new Set(interactionIds);
+      const resolvedTimestamp = resolvedAt ?? Date.now();
+
+      state.incomingInteractions.forEach((interaction) => {
+        if (!interaction.resolved && ids.has(interaction.id)) {
+          interaction.resolved = true;
+          interaction.read = true;
+          interaction.resolvedAt = resolvedTimestamp;
+          interaction.resolvedWeek = resolvedWeek;
+          interaction.resolvedWith = 'dismiss';
+        }
+      });
+
+      state.scheduledIncomingInteractions = state.scheduledIncomingInteractions.filter(
+        (entry) => !ids.has(entry.interaction.id),
+      );
+    },
     /**
      * Drain all social resources for a player who has been evicted.
      *
@@ -377,6 +401,7 @@ export const {
   markAllIncomingInteractionsRead,
   resolveIncomingInteraction,
   dismissIncomingInteraction,
+  invalidateIncomingInteractions,
   drainEvictedPlayerSocial,
   resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,

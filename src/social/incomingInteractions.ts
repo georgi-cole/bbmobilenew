@@ -3,11 +3,13 @@ import type { AppDispatch, RootState } from '../store/store';
 import { socialConfig } from './socialConfig';
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
 import {
+  dismissIncomingInteraction,
   resolveExpiredIncomingInteractionsForWeek,
   resolveIncomingInteraction,
   updateRelationship,
   updateSocialMemory,
 } from './socialSlice';
+import { isIncomingInteractionInvalidated } from './incomingInteractionValidity';
 import {
   buildSocialMemoryDeltaForResponse,
   buildSocialMemoryEvent,
@@ -130,11 +132,22 @@ export function respondToIncomingInteraction({
     if (!interaction || interaction.resolved) return;
     const humanPlayer = state.game.players.find((player) => player.isUser);
     if (!humanPlayer) return;
+    const currentWeek = state.game.week ?? 1;
+    const resolvedAt = Date.now();
+
+    if (isIncomingInteractionInvalidated(interaction, state.game)) {
+      dispatch(
+        dismissIncomingInteraction({
+          interactionId,
+          resolvedAt,
+          resolvedWeek: currentWeek,
+        }),
+      );
+      return;
+    }
 
     const fromPlayer = state.game.players.find((player) => player.id === interaction.fromId);
     const fromName = fromPlayer?.name ?? interaction.fromId;
-    const resolvedAt = Date.now();
-    const currentWeek = state.game.week ?? 1;
 
     dispatch(
       resolveIncomingInteraction({
