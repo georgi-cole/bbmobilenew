@@ -2034,7 +2034,7 @@ export default function GameScreen() {
     [battleBackAttemptIndex, game.seed],
   )
   const battleBackCandidates = useMemo(
-    () => (battleBack?.active ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id)) : []),
+    () => (battleBack?.active ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id) && p.status === 'jury') : []),
     [battleBack?.active, battleBack?.candidates, game.players],
   )
 
@@ -2105,6 +2105,16 @@ export default function GameScreen() {
     window.addEventListener('ui:playPressed', handleBattleBackAnnouncementPlay)
     return () => window.removeEventListener('ui:playPressed', handleBattleBackAnnouncementPlay)
   }, [battleBack?.active, battleBack?.competitionActive, handleBattleBackAnnouncementPlay])
+
+  // Safety net: if battleBack is active but there are no valid tribunal (jury) candidates
+  // — e.g. state was loaded with stale/corrupted candidates — auto-dismiss so the game
+  // does not get permanently stuck with advance() blocked and no overlay rendered.
+  useEffect(() => {
+    if (!battleBack?.active) return
+    if (battleBackCandidates.length > 0) return
+    dispatch(dismissBattleBack())
+    dispatch(advance())
+  }, [battleBack?.active, battleBackCandidates.length, dispatch])
 
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
   // Back 2 the Game completion before showing the return overlay. storeRef is intentionally

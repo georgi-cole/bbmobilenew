@@ -471,7 +471,9 @@ describe('GameScreen – Battle Back completion guards', () => {
     expect(store.getState().game.battleBack?.active).toBe(false);
   });
 
-  it('dismisses and advances when Battle Back completion fails validation', async () => {
+  it('auto-dismisses and advances when no valid tribunal candidates remain (non-jury candidates filtered out)', async () => {
+    // Candidates are non-jury (active) — the tribunal-only filter strips them all out.
+    // GameScreen should auto-dismiss via the safety-net useEffect so the game never gets stuck.
     const players = makePlayers(6);
     players[1].status = 'active';
     players[2].status = 'active';
@@ -497,12 +499,9 @@ describe('GameScreen – Battle Back completion guards', () => {
         </MemoryRouter>
       </Provider>,
     );
+    // No SpectatorView renders because all candidates are filtered out by the jury check.
+    // The safety-net useEffect should fire dismiss + advance automatically.
     await act(async () => {});
-
-    dispatchSpy.mockClear();
-    expect(typeof lastSpectatorOnDone).toBe('function');
-
-    await act(async () => { lastSpectatorOnDone?.(); });
 
     expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/dismissBattleBack')).toBe(true);
     expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/advance')).toBe(true);
