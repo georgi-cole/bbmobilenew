@@ -30,6 +30,7 @@ import { selectActiveConfessionalDecision } from '../../src/store/confessionalDe
 import { selectConfessionalAlertCount } from '../../src/store/selectors';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 import DiaryRoom from '../../src/screens/DiaryRoom/DiaryRoom';
+import type { SecretMissionState } from '../../src/bb/secretMission';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -523,5 +524,89 @@ describe('DiaryRoom — confessional decision panel', () => {
     });
     renderDiaryRoom(store);
     expect(screen.getByText(/Choose your two eviction votes/i)).toBeTruthy();
+  });
+});
+
+// ── DiaryRoom: secret mission checklist target_nominated display ───────────
+
+describe('DiaryRoom — secret mission checklist target_nominated', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    sessionStorage.clear();
+    localStorage.clear();
+    Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function buildMission(overrides: Partial<SecretMissionState> = {}): SecretMissionState {
+    return {
+      triggeredDay: 3,
+      startDay: 3,
+      endDay: 8,
+      survivalWindowEndDay: 8,
+      targetDeadlineDay: 8,
+      status: 'accepted',
+      offeredDay: 3,
+      offerCount: 1,
+      declinedDay: null,
+      templateId: 'big_eye_gambit',
+      discoveredEasterEggIds: [],
+      tasks: [],
+      ...overrides,
+    };
+  }
+
+  it('shows the actual target player name in a target_nominated task description', () => {
+    const players = buildPlayers();
+    // p2 will be the marked target
+    const secretMission = buildMission({
+      tasks: [
+        {
+          id: 'target_nominated_big_eye_gambit',
+          type: 'target_nominated',
+          description: 'Get your marked target nominated before Day 8',
+          current: 0,
+          target: 1,
+          completed: false,
+          targetPlayerId: 'p2',
+          startDay: 3,
+          endDay: 8,
+          targetDay: 8,
+        },
+      ],
+    });
+    const store = makeStore({ players, secretMission });
+    renderDiaryRoom(store);
+    // Should show the real name instead of the generic "your marked target"
+    expect(screen.getByText(/Get Player 2 nominated before Day 8/i)).toBeTruthy();
+    expect(screen.queryByText(/your marked target/i)).toBeNull();
+  });
+
+  it('falls back to the original description when targetPlayerId does not match any player', () => {
+    const players = buildPlayers();
+    const secretMission = buildMission({
+      tasks: [
+        {
+          id: 'target_nominated_big_eye_gambit',
+          type: 'target_nominated',
+          description: 'Get your marked target nominated before Day 8',
+          current: 0,
+          target: 1,
+          completed: false,
+          targetPlayerId: 'unknown-id',
+          startDay: 3,
+          endDay: 8,
+          targetDay: 8,
+        },
+      ],
+    });
+    const store = makeStore({ players, secretMission });
+    renderDiaryRoom(store);
+    expect(screen.getByText(/your marked target/i)).toBeTruthy();
   });
 });

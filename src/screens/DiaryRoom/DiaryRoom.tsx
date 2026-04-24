@@ -396,6 +396,11 @@ export default function DiaryRoom() {
     ? buildEvictionVoteBreakdownRows(activeVoteBreakdown.votes, voteBreakdownPlayerNamesById)
     : [];
 
+  const playerNameById = useMemo(
+    () => new Map(players.map((p) => [p.id, p.name])),
+    [players],
+  );
+
   const activeDecisionPresentation = useMemo(() => {
     if (!activeConfessionalDecision) return null;
     return getConfessionalDecisionPresentation(
@@ -1063,7 +1068,14 @@ export default function DiaryRoom() {
                     ? ' — Complete!'
                     : ''}
                 </p>
-                {secretMission.tasks.map((task) => (
+                {secretMission.tasks.map((task) => {
+                  const targetName = task.type === 'target_nominated' && task.targetPlayerId
+                    ? playerNameById.get(task.targetPlayerId)
+                    : undefined;
+                  const displayDesc = targetName
+                    ? task.description.replace('your marked target', targetName)
+                    : task.description;
+                  return (
                   <div
                     key={task.id}
                     className={`diary-room__mission-task${task.completed ? ' diary-room__mission-task--done' : ''}`}
@@ -1071,14 +1083,15 @@ export default function DiaryRoom() {
                     <span className="diary-room__mission-task-icon">
                       {task.completed ? '✅' : '⬜'}
                     </span>
-                    <span className="diary-room__mission-task-desc">{task.description}</span>
+                    <span className="diary-room__mission-task-desc">{displayDesc}</span>
                     {!task.completed && (
                       <span className="diary-room__mission-task-progress">
                         {task.current}/{task.target}
                       </span>
                     )}
                   </div>
-                ))}
+                  );
+                })}
 
                 {/* ── Immunity reward claim (rewardPending) ───────────── */}
                 {secretMission.status === 'rewardPending' && (
