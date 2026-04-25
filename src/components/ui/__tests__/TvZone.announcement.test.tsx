@@ -90,6 +90,7 @@ function makePlayer(id: string, name: string): Player {
 }
 
 const POST_DISMISS_SETTLE_MS = 400;
+const SHOCK_INTRO_SETTLE_MS = 2320;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -498,6 +499,7 @@ describe('TvZone — announcement overlay', () => {
   });
 
   it('applies the Back 2 the Game styling when the major key is battle_back', () => {
+    vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
@@ -513,11 +515,17 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
     const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
+    vi.useRealTimers();
   });
 
   it('keeps the Back 2 the Game styling for staged twist announcements', () => {
+    vi.useFakeTimers();
     const store = makeStore();
 
     renderTvZone(store, {
@@ -530,11 +538,17 @@ describe('TvZone — announcement overlay', () => {
       },
     });
 
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
     const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game Challenge/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
+    vi.useRealTimers();
   });
 
   it('falls back to Back 2 the Game styling when a twist event mentions the twist without a major key', () => {
+    vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
@@ -550,8 +564,13 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
     const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
+    vi.useRealTimers();
   });
 
   it('does NOT show the overlay for events without a recognised major key', () => {
@@ -1005,6 +1024,7 @@ describe('TvZone — phase-based announcement triggers', () => {
   });
 
   it('upgrades the nominations phase overlay to Double Eviction when the twist activates in-place', () => {
+    vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
@@ -1014,16 +1034,58 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(activateDoubleEviction()); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeNull();
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
     expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
+    vi.useRealTimers();
   });
 
-  it('plays a short Double Eviction spotlight intro, then returns the surrounding UI to normal', () => {
+  it('keeps shock announcements fullscreen before rolling them back into the main TV', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('nominations')); });
     act(() => { store.dispatch(activateDoubleEviction()); });
+
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
+    expect(document.body.querySelector('.shock-intro .tv-announcement')).not.toBeNull();
+    expect(document.body.querySelector('.tv-zone__viewport .tv-announcement')).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
+    expect(document.body.querySelector('.tv-zone__viewport .tv-announcement')).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(320);
+    });
+
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
+    expect(document.body.querySelector('.tv-zone__viewport .tv-announcement')).not.toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('plays the Double Eviction TV spotlight after the fullscreen shock intro completes, then returns the surrounding UI to normal', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('nominations')); });
+    act(() => { store.dispatch(activateDoubleEviction()); });
+
+    expect(document.body.querySelector('.tv-zone-de-backdrop')).toBeNull();
+    expect(screen.getByLabelText('Game action zone').className).not.toContain('tv-zone--de-spotlight');
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
 
     expect(document.body.querySelector('.tv-zone-de-backdrop')).not.toBeNull();
     expect(screen.getByLabelText('Game action zone').className).toContain('tv-zone--de-spotlight');

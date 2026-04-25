@@ -25,7 +25,7 @@ describe('ShockIntroOverlay', () => {
       <ShockIntroOverlay active shockKey="double_eviction" onComplete={onComplete} />,
     );
 
-    vi.advanceTimersByTime(1099);
+    vi.advanceTimersByTime(2319);
     expect(onComplete).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(1);
