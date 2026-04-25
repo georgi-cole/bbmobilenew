@@ -407,7 +407,11 @@ function appendNominee(state: GameState, playerId: string) {
   if (state.nomineeIds.includes(playerId)) return;
   state.nomineeIds.push(playerId);
   const player = state.players.find((candidate) => candidate.id === playerId);
-  if (player) player.status = 'nominated';
+  if (player) {
+    if (player.id === state.lohId) player.status = 'loh';
+    else if (player.id === state.posWinnerId) player.status = 'nominated+pos';
+    else player.status = 'nominated';
+  }
   incrementTimesNominated(state, playerId);
 }
 
@@ -2246,7 +2250,9 @@ const gameSlice = createSlice({
       if (!alive.some((p) => p.id === id)) return;
 
       state.nomineeIds.push(id);
-      player.status = 'nominated';
+      if (player.id === state.lohId) player.status = 'loh';
+      else if (player.id === state.posWinnerId) player.status = 'nominated+pos';
+      else player.status = 'nominated';
       incrementTimesNominated(state, id);
       state.specialVeto.awaitingHolderReplacement = false;
       pushEvent(
@@ -2282,7 +2288,7 @@ const gameSlice = createSlice({
         const rep1Id = state.specialVeto.coupReplacement1Id;
         if (id === state.posWinnerId || id === rep1Id || state.nomineeIds.includes(id)) return;
         if (!alive.some((p) => p.id === id)) return;
-        const availableSecondChoices = getReplacementEligiblePlayers(state, alive, 1, { allowLoh: true })
+        const availableSecondChoices = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true })
           .filter((player) => player.id !== rep1Id);
         if (!availableSecondChoices.some((player) => player.id === id)) return;
 
@@ -2290,11 +2296,8 @@ const gameSlice = createSlice({
         const rep2 = state.players.find((p) => p.id === id);
         if (!rep1 || !rep2) return;
 
-        [rep1, rep2].forEach((r) => {
-          state.nomineeIds.push(r.id);
-          r.status = 'nominated';
-          incrementTimesNominated(state, r.id);
-        });
+        appendNominee(state, rep1.id);
+        appendNominee(state, rep2.id);
         state.specialVeto.awaitingCoupReplacement2 = false;
         state.specialVeto.coupReplacement1Id = null;
         pushEvent(
@@ -3676,7 +3679,13 @@ const gameSlice = createSlice({
           if (svType === 'coup') {
             if (isNominee && posWinner !== null) {
               const oldNominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
-              oldNominees.forEach((n) => { n.status = 'active'; });
+              oldNominees.forEach((n) => {
+                if (n.id === posWinner.id) {
+                  n.status = state.lohId === n.id ? 'loh+pos' : 'pos';
+                } else {
+                  n.status = 'active';
+                }
+              });
               state.nomineeIds = [];
               state.povSavedId = null;
               state.povProtectedIds = oldNominees.map((nominee) => nominee.id);

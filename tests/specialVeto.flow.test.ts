@@ -593,6 +593,33 @@ describe('Detox — Human POS holder names two replacements', () => {
     expect(state.specialVeto?.awaitingCoupReplacement2).toBe(true);
   });
 
+  it('submitCoupReplacement allows a protected fallback on the second pick when the first pick is the LOH', () => {
+    const players = makePlayers(4, 1);
+    players[2].status = 'evicted';
+    const store = makeStore({
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: [],
+      players,
+      povProtectedIds: ['p3'],
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'coup',
+        awaitingCoupReplacement2: true,
+        coupReplacement1Id: 'p0',
+      },
+    });
+
+    store.dispatch(submitCoupReplacement('p3'));
+
+    const state = store.getState().game;
+    expect(state.nomineeIds).toEqual(['p0', 'p3']);
+    expect(state.players.find((p) => p.id === 'p0')?.status).toBe('loh');
+    expect(state.players.find((p) => p.id === 'p3')?.status).toBe('nominated');
+    expect(state.specialVeto?.awaitingCoupReplacement2).toBe(false);
+  });
+
   it('AI nominee auto-uses Detox and can throw the outgoing LOH onto the block', () => {
     const players = makePlayers(8);
     players[0].status = 'loh';
@@ -617,6 +644,8 @@ describe('Detox — Human POS holder names two replacements', () => {
     expect(state.nomineeIds).not.toContain('p2');
     expect([...state.nomineeIds].sort()).toEqual(['p0', 'p4']);
     expect(state.povProtectedIds).toEqual(expect.arrayContaining(['p2', 'p3']));
+    expect(state.players.find((p) => p.id === 'p0')?.status).toBe('loh');
+    expect(state.players.find((p) => p.id === 'p2')?.status).toBe('pos');
     expect(state.tvFeed[0].text).toMatch(/named Player 0 and Player 4 as the new nominees|named Player 4 and Player 0 as the new nominees/i);
   });
 });
