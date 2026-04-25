@@ -67,6 +67,11 @@ const SOUND_MANAGER_DISABLED = false;
 
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
+const FINALE_AUTOPLAY_PRIMED_MUSIC_KEYS = new Set([
+  'music:season_recap',
+  'music:public_voting',
+  'music:final_modal',
+]);
 
 /**
  * Minimum gap (ms) between two identical SFX triggers.
@@ -185,6 +190,7 @@ class _SoundManager {
   private _musicPlaybackToken = 0;
   private _musicMuted = false;
   private _musicVolume = 1;
+  private _primedMusicEls = new Map<string, HTMLAudioElement>();
 
   // BGM ownership / desired-track tracking (per-owner map with priority fallback)
   private _currentBgmOwner: BgmOwner | null = null;
@@ -680,7 +686,7 @@ class _SoundManager {
     const baseVol = entry.volume ?? 1;
     const effectiveVol = Math.max(0, Math.min(1, baseVol * this._musicVolume));
 
-    const el = _makeMusicEl(entry.src, effectiveVol, entry.loop ?? true);
+    const el = this._getOrCreateMusicEl(key, entry.src, effectiveVol, entry.loop ?? true);
     _liveMusicElements.clear();
     _liveMusicElements.add(el);
     this._musicEl = el;
@@ -927,6 +933,7 @@ class _SoundManager {
     // gesture we do NOT want to replay stale events.  Music is re-synced
     // from the current desired track only.
     this._playQueue = [];
+    this._primeMusicForMobile();
     void this.syncMusic();
     this._primeSfxForMobile();
   }
@@ -1012,6 +1019,67 @@ class _SoundManager {
     });
   }
 
+  private _getOrCreateMusicEl(
+    key: string,
+    src: string,
+    volume: number,
+    loop: boolean,
+  ): HTMLAudioElement {
+    const primed = this._primedMusicEls.get(key);
+    if (primed) {
+      primed.pause();
+      primed.loop = loop;
+      primed.volume = Math.max(0, Math.min(1, volume));
+      primed.preload = 'none';
+      primed.muted = false;
+      try {
+        primed.currentTime = 0;
+      } catch {
+        // Ignore browsers that reject currentTime resets while the element
+        // is still settling; playback will still start from the primed source.
+      }
+      return primed;
+    }
+    return _makeMusicEl(src, volume, loop);
+  }
+
+  private _primeMusicForMobile(): void {
+    if (typeof document === 'undefined') return;
+    for (const [key, entry] of Object.entries(SOUND_REGISTRY)) {
+      if (entry.category !== 'music') continue;
+      if (!FINALE_AUTOPLAY_PRIMED_MUSIC_KEYS.has(key)) continue;
+      if (this._primedMusicEls.has(key)) continue;
+      const el = _makeMusicEl(entry.src, 0, entry.loop ?? true);
+      this._primedMusicEls.set(key, el);
+      el.muted = true;
+      const playResult = el.play();
+      const resetPrimedElement = () => {
+        if (this._primedMusicEls.get(key) !== el || this._musicEl === el) {
+          return;
+        }
+        el.pause();
+        try {
+          el.currentTime = 0;
+        } catch {
+          // Ignore browsers that reject currentTime resets while the element
+          // is still settling after priming.
+        }
+        el.muted = false;
+        el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
+      };
+      if (playResult && typeof playResult.then === 'function') {
+        playResult.then(resetPrimedElement).catch((err) => {
+          if (_audioDebug) {
+            console.warn(`[SoundManager] music priming play() failed for "${key}":`, err);
+          }
+          this._primedMusicEls.delete(key);
+        });
+      } else {
+        resetPrimedElement();
+      }
+    }
+  }
+
   /**
    * Pre-create and "prime" one pool element per registered SFX key during a
    * user-gesture context.  On iOS/Safari, calling `.play()` on a new
@@ -1051,20 +1119,25 @@ class _SoundManager {
         // Call play() synchronously in the gesture context — iOS cares about
         // the synchronous call, not the promise resolution.  Immediately pause
         // and restore real volume/unmute in the callback.
-        // Use optional chaining: test envs may return undefined from play().
-        el.play()?.then(() => {
+        const playResult = el.play();
+        const resetPrimedElement = () => {
           el.pause();
           el.currentTime = 0;
           el.muted = false;
           el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
-        }).catch((err) => {
-          // Log priming failures in debug builds and mark the key as failed
-          // so we don't keep reusing a broken element.
-          if (_audioDebug) {
-            console.warn(`[SoundManager] SFX priming play() failed for "${key}":`, err);
-          }
-          this._failedKeys.add(key);
-        });
+        };
+        if (playResult && typeof playResult.then === 'function') {
+          playResult.then(resetPrimedElement).catch((err) => {
+            // Log priming failures in debug builds and mark the key as failed
+            // so we don't keep reusing a broken element.
+            if (_audioDebug) {
+              console.warn(`[SoundManager] SFX priming play() failed for "${key}":`, err);
+            }
+            this._failedKeys.add(key);
+          });
+        } else {
+          resetPrimedElement();
+        }
       }
     }
   }
