@@ -11,7 +11,7 @@
 .shock-intro {
   position: fixed;
   inset: 0;
-  width: 100vw;
+  width: 100dvw;
   height: 100dvh;
   z-index: var(--shock-intro-z);
   overflow: hidden;
@@ -27,7 +27,7 @@
 .shock-intro__vision-stage {
   position: absolute;
   inset: 0;
-  width: 100vw;
+  width: 100dvw;
   height: 100dvh;
   display: flex;
   overflow: hidden;
@@ -44,7 +44,7 @@
 }
 
 .shock-intro__vision-stage .tv-announcement {
-  width: 100vw;
+  width: 100dvw;
   min-height: 100dvh;
   animation: none;
   padding:
