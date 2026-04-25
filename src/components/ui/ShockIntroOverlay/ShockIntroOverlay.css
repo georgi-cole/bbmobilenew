@@ -20,7 +20,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  pointer-events: auto;
+  touch-action: none;
+  overscroll-behavior: none;
   /* Default (amber) radial glow */
   background:
     radial-gradient(

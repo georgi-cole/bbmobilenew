@@ -17,6 +17,9 @@ const SHOCK_STINGER_CONFIG: Record<string, { icon: string; title: string; theme:
   coup_detat:       { icon: '⚡', title: 'DETOX',              theme: 'red' },
   spotlight_veto:   { icon: '✨', title: 'FORCE MAJEURE',      theme: 'amber' },
   battle_back:      { icon: '🔥', title: 'BACK 2 THE GAME',    theme: 'orange' },
+  battle_back_shock: { icon: '🔥', title: 'BACK 2 THE GAME',   theme: 'orange' },
+  battle_back_rules: { icon: '🔥', title: 'BACK 2 THE GAME',   theme: 'orange' },
+  battle_back_challenge: { icon: '🔥', title: 'BACK 2 THE GAME', theme: 'orange' },
 };
 
 const FALLBACK_STINGER = { icon: '🌀', title: 'SHOCK ALERT', theme: 'amber' };
@@ -47,7 +50,7 @@ export default function ShockIntroOverlay({ active, shockKey, onComplete }: Shoc
     const duration = prefersReducedMotion ? SHOCK_INTRO_REDUCED_DURATION_MS : SHOCK_INTRO_DURATION_MS;
     const timer = window.setTimeout(onComplete, duration);
     return () => window.clearTimeout(timer);
-  }, [active, onComplete, prefersReducedMotion]);
+  }, [active, shockKey, onComplete, prefersReducedMotion]);
 
   if (!active || typeof document === 'undefined') return null;
 

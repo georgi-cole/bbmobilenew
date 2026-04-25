@@ -128,8 +128,11 @@
   margin-bottom: 0;
 }
 
+.tv-ann-modal__body p.tv-ann-modal__shock-detail {
+  margin: 12px 0 0;
+}
+
 .tv-ann-modal__shock-detail {
-  margin-top: 12px !important;
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(245, 158, 11, 0.07);

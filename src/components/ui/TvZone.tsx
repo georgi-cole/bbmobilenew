@@ -181,6 +181,9 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'coup_detat',
   'spotlight_veto',
   'battle_back',
+  'battle_back_shock',
+  'battle_back_rules',
+  'battle_back_challenge',
 ]);
 
 type TvZonePublicSaveReveal = {
