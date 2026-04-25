@@ -1,11 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useReducedMotion } from 'framer-motion';
 import TvAnnouncementOverlay, { type Announcement } from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import './ShockIntroOverlay.css';
 
+/** Fullscreen hold time (ms) before the cinematic rolls back to the TV. */
+const SHOCK_INTRO_FULLSCREEN_HOLD_MS = 2000;
+/** Rollback duration (ms) from fullscreen back into the TV viewport. */
+const SHOCK_INTRO_HANDOFF_DURATION_MS = 320;
 /** Duration (ms) for the full-motion stinger. */
-const SHOCK_INTRO_DURATION_MS = 1100;
+const SHOCK_INTRO_DURATION_MS = SHOCK_INTRO_FULLSCREEN_HOLD_MS + SHOCK_INTRO_HANDOFF_DURATION_MS;
 /** Duration (ms) for reduced-motion users — brief flash, no elaborate animation. */
 const SHOCK_INTRO_REDUCED_DURATION_MS = 400;
 
@@ -41,7 +45,8 @@ export interface ShockIntroOverlayProps {
  * shock/twist announcement sequence.
  *
  * - Mounts via React portal to `document.body`.
- * - Runs for ~1.1s (reduced to ~0.4s for `prefers-reduced-motion` users).
+ * - Runs for ~2.3s with a longer fullscreen hold (reduced to ~0.4s for
+ *   `prefers-reduced-motion` users).
  * - Calls `onComplete` when the timer fires so the parent can transition to the
  *   next phase (TV announcement + info-button spotlight).
  */
@@ -52,13 +57,13 @@ export default function ShockIntroOverlay({
   onComplete,
 }: ShockIntroOverlayProps) {
   const prefersReducedMotion = useReducedMotion();
+  const duration = prefersReducedMotion ? SHOCK_INTRO_REDUCED_DURATION_MS : SHOCK_INTRO_DURATION_MS;
 
   useEffect(() => {
     if (!active) return;
-    const duration = prefersReducedMotion ? SHOCK_INTRO_REDUCED_DURATION_MS : SHOCK_INTRO_DURATION_MS;
     const timer = window.setTimeout(onComplete, duration);
     return () => window.clearTimeout(timer);
-  }, [active, shockKey, onComplete, prefersReducedMotion]);
+  }, [active, duration, shockKey, onComplete]);
 
   if (!active || typeof document === 'undefined') return null;
 
@@ -72,6 +77,7 @@ export default function ShockIntroOverlay({
       className={['shock-intro', prefersReducedMotion ? 'shock-intro--reduced' : ''].filter(Boolean).join(' ')}
       aria-hidden="true"
       data-testid="shock-intro-overlay"
+      style={{ '--shock-intro-duration-ms': `${duration}ms` } as CSSProperties}
     >
       <div className="shock-intro__vision-stage">
         <TvAnnouncementOverlay

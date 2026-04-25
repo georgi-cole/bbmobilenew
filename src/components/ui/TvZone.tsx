@@ -358,6 +358,9 @@ export default function TvZone(props: TvZoneProps) {
   // Active announcement precedence: priorityAnnouncement, then externalAnnouncement,
   // then phaseAnnouncement, then eventAnnouncement.
   const activeAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
+  const isShockAnnouncement =
+    activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
+  const showInlineAnnouncement = activeAnnouncement != null && !(shockIntroActive && isShockAnnouncement);
   const suppressStaleLiveVotePitchMessage =
     latestEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
     gameState.phase !== 'social_2';
@@ -447,22 +450,22 @@ export default function TvZone(props: TvZoneProps) {
   // Play a short TV-only spotlight intro for Double Eviction announcements,
   // then return the surrounding UI to normal while keeping the announcement visible.
   useEffect(() => {
-    if (activeAnnouncement?.key !== 'double_eviction') {
-      const isSpecialVetoAnnouncement =
-        activeAnnouncement?.key === 'vip_veto' ||
-        activeAnnouncement?.key === 'diamond_pov' ||
-        activeAnnouncement?.key === 'coup_detat' ||
-        activeAnnouncement?.key === 'spotlight_veto';
-      if (!isSpecialVetoAnnouncement) {
-        startTransition(() => {
-          setDeSpotlightActive(false);
-        });
-        if (deSpotlightTimerRef.current !== null) {
-          clearTimeout(deSpotlightTimerRef.current);
-          deSpotlightTimerRef.current = null;
-        }
-        return;
+    const isSpecialAnnouncement =
+      activeAnnouncement?.key === 'double_eviction' ||
+      activeAnnouncement?.key === 'vip_veto' ||
+      activeAnnouncement?.key === 'diamond_pov' ||
+      activeAnnouncement?.key === 'coup_detat' ||
+      activeAnnouncement?.key === 'spotlight_veto';
+
+    if (!isSpecialAnnouncement || !showInlineAnnouncement) {
+      startTransition(() => {
+        setDeSpotlightActive(false);
+      });
+      if (deSpotlightTimerRef.current !== null) {
+        clearTimeout(deSpotlightTimerRef.current);
+        deSpotlightTimerRef.current = null;
       }
+      return;
     }
 
     startTransition(() => {
@@ -482,7 +485,7 @@ export default function TvZone(props: TvZoneProps) {
         deSpotlightTimerRef.current = null;
       }
     };
-  }, [activeAnnouncement?.key]);
+  }, [activeAnnouncement?.key, showInlineAnnouncement]);
 
   // ── Shock intro sequence ──────────────────────────────────────────────────────
   // Fires whenever the active announcement key changes.
@@ -712,7 +715,7 @@ export default function TvZone(props: TvZoneProps) {
             )}
 
             {/* Inline announcement overlay */}
-            {activeAnnouncement && (
+            {showInlineAnnouncement && activeAnnouncement && (
               <TvAnnouncementOverlay
                 key={activeAnnouncement.key}
                 announcement={activeAnnouncement}
