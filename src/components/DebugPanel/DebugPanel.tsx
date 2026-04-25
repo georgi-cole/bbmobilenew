@@ -17,8 +17,6 @@ import {
   startMinigame,
   queueForcedShock,
   clearForcedShock,
-  tryActivatePendingForcedDoubleEviction,
-  tryActivatePendingForcedSpecialVeto,
 } from '../../store/gameSlice';
 import {
   clearIncomingInteractionLogs,
@@ -263,11 +261,6 @@ export default function DebugPanel() {
 
   function handleQueueForcedShock() {
     dispatch(queueForcedShock(selectedForcedShock));
-    if (selectedForcedShock === 'doubleEviction') {
-      dispatch(tryActivatePendingForcedDoubleEviction());
-      return;
-    }
-    dispatch(tryActivatePendingForcedSpecialVeto());
   }
 
   return (

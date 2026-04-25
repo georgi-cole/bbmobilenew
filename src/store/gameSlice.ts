@@ -2120,6 +2120,7 @@ const gameSlice = createSlice({
       state.pendingForcedShock = null;
     },
 
+    /** Clear a queued debug shock after it has been successfully consumed. */
     consumeForcedShock(state) {
       state.pendingForcedShock = null;
     },
