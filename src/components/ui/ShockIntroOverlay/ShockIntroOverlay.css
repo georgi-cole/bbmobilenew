@@ -151,19 +151,25 @@
 
 /* ── Keyframes ───────────────────────────────────────────────────────────────── */
 
+/*
+ * Revised exit: after the display phase (0–68%), the overlay contracts toward
+ * the TV viewport area (upper-centre of the screen) rather than simply fading
+ * to opacity-0.  The scale collapses to ~10% and a slight upward translate
+ * mimics the stinger "flying back into" the bezel.
+ */
 @keyframes shockIntroFade {
-  0%   { opacity: 0; }
-  10%  { opacity: 1; }
-  72%  { opacity: 1; }
-  100% { opacity: 0; }
+  0%    { opacity: 0;   transform: scale(1)    translateY(0); }
+  10%   { opacity: 1;   transform: scale(1)    translateY(0); }
+  68%   { opacity: 1;   transform: scale(1)    translateY(0); }
+  100%  { opacity: 0;   transform: scale(0.1)  translateY(-22%); }
 }
 
 @keyframes shockContentReveal {
   0%   { opacity: 0; transform: scale(0.84); }
   16%  { opacity: 1; transform: scale(1.04); }
   36%  { transform: scale(1); }
-  72%  { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.96); }
+  68%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.18); }
 }
 
 @keyframes shockIconPulse {
@@ -171,8 +177,8 @@
   20%  { transform: scale(1.12); }
   34%  { transform: scale(0.96); }
   50%  { transform: scale(1.04); }
-  72%  { transform: scale(1); }
-  100% { transform: scale(0.92); }
+  68%  { transform: scale(1); }
+  100% { transform: scale(0.18); }
 }
 
 @keyframes shockFlashSweep {

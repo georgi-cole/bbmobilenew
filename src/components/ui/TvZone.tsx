@@ -28,6 +28,7 @@ import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay';
 import ConfessionalSpotlightOverlay from '../FloatingActionBar/ConfessionalSpotlightOverlay';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
+import './ShockDangerMode.css';
 
 const NOOP = () => {};
 
@@ -531,6 +532,46 @@ export default function TvZone(props: TvZoneProps) {
   }, [handleDismiss]);
 
   const handleModalClose = useCallback(() => setModalOpen(false), []);
+
+  // ── Shock danger-mode body classes ───────────────────────────────────────────
+  // body--shock-active: applied for the full shock pipeline duration, shifts the
+  //   app theme from purple to dark-red danger mode.
+  // app--shock-shake: added briefly at stinger start on <html> to drive the
+  //   CSS shake animation on .game-screen-shell; removed after 600 ms (longer
+  //   than the 480 ms animation so the class is always present for the full shake).
+  const shockShakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive;
+    if (shockSequenceActive) {
+      document.body.classList.add('body--shock-active');
+    } else {
+      document.body.classList.remove('body--shock-active');
+    }
+    return () => {
+      document.body.classList.remove('body--shock-active');
+    };
+  }, [shockIntroActive, shockInfoSpotlightActive]);
+
+  useEffect(() => {
+    if (!shockIntroActive) return;
+    // Add shake class; animation is 480 ms — remove after 600 ms.
+    document.documentElement.classList.add('app--shock-shake');
+    if (shockShakeTimerRef.current !== null) clearTimeout(shockShakeTimerRef.current);
+    shockShakeTimerRef.current = setTimeout(() => {
+      document.documentElement.classList.remove('app--shock-shake');
+      shockShakeTimerRef.current = null;
+    }, 600);
+  }, [shockIntroActive]);
+
+  // Clean up shake class and danger mode on unmount.
+  useEffect(() => {
+    return () => {
+      if (shockShakeTimerRef.current !== null) clearTimeout(shockShakeTimerRef.current);
+      document.documentElement.classList.remove('app--shock-shake');
+      document.body.classList.remove('body--shock-active');
+    };
+  }, []);
 
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
   const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start';

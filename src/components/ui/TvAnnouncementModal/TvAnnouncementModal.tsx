@@ -104,18 +104,21 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     label: 'SHOCK TWIST',
     category: 'Twist',
     body: 'Back 2 the Game has been activated. One of the recently eliminated players now has a chance to fight their way back into the house.',
+    shockDetail: 'This is not a standard elimination week. The Back 2 the Game shock changes the trajectory of the game by giving a previously eliminated player a route back in. All current alliance plans, targets, and strategies must account for a possible new returnee.',
   },
   battle_back_rules: {
     icon: '📜',
     label: 'BACK 2 THE GAME RULES',
     category: 'Twist',
     body: 'The Back 2 the Game field is set. Recently eliminated players will compete head-to-head, and only one winner can earn their return to the game.',
+    shockDetail: 'Only Tribunal members who have been eliminated are eligible to compete. Each player faces off in a single-elimination bracket or direct challenge format chosen by Big Eye. The winner earns immediate, full re-entry: eligible for all competitions, nominations, and votes from the next phase onward.',
   },
   battle_back_challenge: {
     icon: '🏆',
     label: 'BACK 2 THE GAME CHALLENGE',
     category: 'Competition',
     body: 'The Back 2 the Game challenge is about to begin. Watch the showdown play out to see which eliminated player can claw their way back into The Big Eye.',
+    shockDetail: 'The challenge is live and in progress. Eliminated players are competing for the right to re-enter the house. The winner will be announced shortly — and once re-entered, they are immediately a full player again with no special protections or restrictions.',
   },
   double_eviction: {
     icon: '⚡',

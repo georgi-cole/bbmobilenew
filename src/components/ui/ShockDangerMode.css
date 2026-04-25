@@ -1,0 +1,103 @@
+/**
+ * ShockDangerMode.css
+ *
+ * Global styles applied while any shock announcement sequence is active.
+ *
+ * A `body--shock-active` class is added to <body> by TvZone for the duration
+ * of the shock pipeline (stinger → TV announcement → info-button spotlight).
+ * Separately, `app--shock-shake` on <html> triggers the brief phone-shake at
+ * the very start of the stinger.
+ *
+ * All overrides here are scoped to the active class so they have zero impact
+ * on non-shock gameplay.
+ */
+
+/* ── App-shell shake ─────────────────────────────────────────────────────────── */
+
+/*
+ * A premium but controlled shake: three diminishing oscillations over ~480 ms.
+ * Deliberately avoids aggressive multi-axis chaos — the goal is "this changed
+ * the game" not "device malfunction".
+ */
+@keyframes shockShakeShell {
+  0%    { transform: translateX(0)     rotate(0deg); }
+  8%    { transform: translateX(-9px)  rotate(-0.6deg); }
+  18%   { transform: translateX(9px)   rotate(0.6deg); }
+  28%   { transform: translateX(-6px)  rotate(-0.4deg); }
+  38%   { transform: translateX(6px)   rotate(0.4deg); }
+  50%   { transform: translateX(-3px)  rotate(-0.15deg); }
+  62%   { transform: translateX(3px)   rotate(0.15deg); }
+  76%   { transform: translateX(-1px); }
+  88%   { transform: translateX(1px); }
+  100%  { transform: translateX(0)     rotate(0deg); }
+}
+
+/* Applied to <html> for the brief shake window at shock start. */
+.app--shock-shake .game-screen-shell {
+  animation: shockShakeShell 0.48s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* ── Danger-mode theme override ─────────────────────────────────────────────── */
+
+/*
+ * While `body--shock-active` is set, the entire app shifts from the normal
+ * indigo/purple palette to a stylish dark-red danger sensation.
+ *
+ * Only a targeted set of CSS custom properties is overridden — enough to
+ * recolour buttons, borders, glows, and chips without re-theming every element.
+ */
+body.body--shock-active {
+  --color-accent:   #c0162a;
+  --color-accent-2: #991b1b;
+
+  /* Danger tint for card surfaces / subtle ambient fill */
+  --color-card:     #1c0f0f;
+  --color-card-2:   #221212;
+
+  /* Re-tint the line/divider colour */
+  --color-line:     rgba(255, 60, 60, 0.1);
+}
+
+/* Shock-state badge (the SHOCK corner ribbon on the TV viewport) */
+body.body--shock-active .tv-zone__twist-badge {
+  background: rgba(180, 20, 30, 0.82);
+  border-color: rgba(255, 80, 80, 0.45);
+  color: #fca5a5;
+  text-shadow: 0 0 8px rgba(220, 38, 38, 0.7);
+}
+
+/* Shift the head-chip accent pill border & glow */
+body.body--shock-active .tv-zone__head-chip {
+  border-color: rgba(220, 38, 38, 0.4);
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.18);
+}
+
+/* Override the TV announcement colours while shock is active so the
+   broadcast stinger inside the bezel inherits the danger palette. */
+body.body--shock-active .tv-announcement {
+  --announcement-main-glow:       rgba(220, 38, 38, 0.22);
+  --announcement-secondary-glow:  rgba(180, 20, 20, 0.14);
+  --announcement-edge-left:       rgba(200, 40, 40, 0.07);
+  --announcement-edge-right:      rgba(160, 30, 30, 0.08);
+  --announcement-title-glow:      rgba(220, 38, 38, 0.55);
+  --announcement-title-ambient:   rgba(190, 30, 30, 0.2);
+  --announcement-info-border:     rgba(252, 165, 165, 0.5);
+  --announcement-info-bg:         rgba(220, 38, 38, 0.18);
+  --announcement-info-bg-hover:   rgba(220, 38, 38, 0.3);
+  --announcement-info-color:      #fca5a5;
+}
+
+/* LIVE badge accent during danger mode */
+body.body--shock-active .tv-zone__live-badge {
+  background: rgba(180, 20, 30, 0.78);
+  border-color: rgba(255, 80, 80, 0.35);
+  color: #fca5a5;
+}
+
+/* ── Reduced-motion guard ─────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .app--shock-shake .game-screen-shell {
+    animation: none;
+  }
+}
