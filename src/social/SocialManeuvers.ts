@@ -53,6 +53,7 @@ const REPETITION_BACKFIRE_CHANCE = 0.5;
 const ALLIANCE_REJECTION_DELTA = -6;
 const ALLIANCE_GASLIGHT_DELTA = -10;
 const ALLIANCE_BETRAYAL_DELTA = -8;
+const ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD = 0;
 
 function countPriorRepeatedActions(
   logs: SocialActionLogEntry[],
@@ -109,6 +110,28 @@ function getAllianceBetrayalChance(affinity: number): number {
   if (normalizedAffinity < -0.15) return 0.35;
   if (normalizedAffinity < 0.2) return 0.16;
   return 0.04;
+}
+
+function getAllianceFailureDelta(gaslightOccurred: boolean): number {
+  return gaslightOccurred ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA;
+}
+
+function getOutcomeVerb({
+  betrayalOccurred,
+  gaslightOccurred,
+  didBackfire,
+  outcome,
+}: {
+  betrayalOccurred: boolean;
+  gaslightOccurred: boolean;
+  didBackfire: boolean;
+  outcome: 'success' | 'failure';
+}): string {
+  if (betrayalOccurred) return 'was accepted, but they may be playing both sides';
+  if (gaslightOccurred) return 'made things worse';
+  if (didBackfire) return 'backfired';
+  if (outcome === 'failure') return 'failed';
+  return 'succeeded';
 }
 
 /**
@@ -290,21 +313,22 @@ export function executeAction(
   const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
   const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
   let outcome = options?.outcome ?? 'success';
-  let willBetrayAlliance = false;
-  let willGaslightAlliance = false;
+  let betrayalOccurred = false;
+  let gaslightOccurred = false;
   if (actionId === 'proposeAlliance' && !options?.outcome) {
     const acceptChance = getAllianceAcceptChance(existingAffinity, priorRepeats);
     const accepted = Math.random() < acceptChance;
     if (!accepted) {
       outcome = 'failure';
-      willGaslightAlliance = existingAffinity < 0 && priorRepeats > 0;
+      gaslightOccurred =
+        existingAffinity < ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD && priorRepeats > 0;
     } else {
-      willBetrayAlliance = Math.random() < getAllianceBetrayalChance(existingAffinity);
+      betrayalOccurred = Math.random() < getAllianceBetrayalChance(existingAffinity);
     }
   }
   const baseDelta =
     actionId === 'proposeAlliance' && outcome === 'failure'
-      ? willGaslightAlliance ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA
+      ? getAllianceFailureDelta(gaslightOccurred)
       : computeOutcomeDelta(actionId, actorId, targetId, outcome);
   const didBackfire =
     outcome === 'success' &&
@@ -442,7 +466,7 @@ export function executeAction(
         actionSource: options?.source ?? 'system',
       }),
     );
-    if (willBetrayAlliance) {
+    if (betrayalOccurred) {
       _store.dispatch(
         updateRelationship({
           source: targetId,
@@ -477,11 +501,7 @@ export function executeAction(
 
   _store.dispatch(recordSocialAction({ entry }));
 
-  const verb = willBetrayAlliance
-    ? 'was accepted, but they may be playing both sides'
-    : willGaslightAlliance
-      ? 'made things worse'
-      : didBackfire ? 'backfired' : outcome === 'failure' ? 'failed' : 'succeeded';
+  const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome });
   const sign = delta > 0 ? '+' : '';
   const summary =
     delta !== 0
