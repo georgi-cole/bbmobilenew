@@ -108,6 +108,10 @@ import { selectRemoteMainTvHeadline } from '../../remoteConfig/remoteConfigSlice
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
 import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import {
+  getBlockedSocialModuleAnnouncementMessage,
+  type SocialModuleAvailability,
+} from '../../social/socialModuleAvailability'
+import {
   showInterstitial,
   showRewarded,
   canShowAd,
@@ -153,6 +157,7 @@ const CONFESSIONAL_TV_PROMPT_MESSAGE =
   'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
 const PUBLIC_MODE_STORE_PROMPT =
   'If you want to activate public mode, go to the store in the home hub.'
+const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
 
 type PendingPublicSaveResult = {
   savedId: string
@@ -304,6 +309,7 @@ export default function GameScreen() {
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
   const [publicMeterUnavailableAnnouncement, setPublicMeterUnavailableAnnouncement] = useState<Announcement | null>(null)
+  const [socialModuleUnavailableAnnouncement, setSocialModuleUnavailableAnnouncement] = useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
   // Post-vote eviction message shown on the main TV
   // for 3 s after vote results dismiss and before the eviction animation plays.
@@ -2665,6 +2671,19 @@ export default function GameScreen() {
     })
   }
 
+  function handleSocialModuleBlocked(availability: SocialModuleAvailability) {
+    const message = getBlockedSocialModuleAnnouncementMessage(availability)
+    if (!message) return
+
+    setSocialModuleUnavailableAnnouncement({
+      key: 'social_module_unavailable',
+      title: message,
+      subtitle: '',
+      isLive: false,
+      autoDismissMs: SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS,
+    })
+  }
+
   return (
     <LayoutGroup id="game-layout">
     <div
@@ -2681,12 +2700,15 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
+            socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
             battleBackTvAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            publicMeterUnavailableAnnouncement
+            socialModuleUnavailableAnnouncement
+              ? () => setSocialModuleUnavailableAnnouncement(null)
+              : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : battleBackTvAnnouncement
               ? undefined
@@ -2708,12 +2730,15 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
+            socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
             battleBackTvAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            publicMeterUnavailableAnnouncement
+            socialModuleUnavailableAnnouncement
+              ? () => setSocialModuleUnavailableAnnouncement(null)
+              : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : battleBackTvAnnouncement
               ? undefined
@@ -2727,6 +2752,7 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
+            socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
             battleBackTvAnnouncement ??
             aiTiebreakAnnouncement ??
@@ -2735,7 +2761,9 @@ export default function GameScreen() {
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            publicMeterUnavailableAnnouncement
+            socialModuleUnavailableAnnouncement
+              ? () => setSocialModuleUnavailableAnnouncement(null)
+              : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : battleBackTvAnnouncement
               ? undefined
@@ -3829,7 +3857,10 @@ export default function GameScreen() {
 
       {/* ── Floating Action Bar ───────────────────────────────────────────── */}
       {!awaitingHumanDecision && (
-        <FloatingActionBar onPublicMeterBlocked={handlePublicMeterBlocked} />
+        <FloatingActionBar
+          onPublicMeterBlocked={handlePublicMeterBlocked}
+          onSocialModuleBlocked={handleSocialModuleBlocked}
+        />
       )}
 
       {/* ── Houseguest grid (alive + evicted in one grid) ────────────────── */}

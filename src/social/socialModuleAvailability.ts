@@ -24,6 +24,11 @@ export interface SocialModuleAvailability {
   humanStatus: PlayerStatus | null;
 }
 
+export const SOCIAL_MODULE_BLOCKED_IN_GAME_MESSAGE =
+  'Everybody is currently waiting to vote or be voted, so no time for chit-chat now.';
+export const SOCIAL_MODULE_BLOCKED_OUT_OF_GAME_MESSAGE =
+  'You are no longer in the house. But maybe try telepathy?';
+
 export function getSocialModuleAvailability(game: GameLike): SocialModuleAvailability {
   const phase = game.phase ?? null;
   const humanPlayer = game.players?.find((player) => player.isUser) ?? null;
@@ -84,4 +89,22 @@ export function logBlockedSocialModuleOpen(
       ...availability,
     },
   );
+}
+
+export function getBlockedSocialModuleAnnouncementMessage(
+  availability: SocialModuleAvailability,
+): string | null {
+  if (availability.canOpen) {
+    return null;
+  }
+
+  if (
+    availability.humanStatus === 'evicted' ||
+    availability.humanStatus === 'jury' ||
+    availability.humanPlayerId === null
+  ) {
+    return SOCIAL_MODULE_BLOCKED_OUT_OF_GAME_MESSAGE;
+  }
+
+  return SOCIAL_MODULE_BLOCKED_IN_GAME_MESSAGE;
 }
