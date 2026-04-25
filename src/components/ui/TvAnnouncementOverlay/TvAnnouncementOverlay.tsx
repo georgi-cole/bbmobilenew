@@ -12,12 +12,14 @@ export interface Announcement {
 
 export interface TvAnnouncementOverlayProps {
   announcement: Announcement;
-  onInfo: () => void;
-  onDismiss: () => void;
+  onInfo?: () => void;
+  onDismiss?: () => void;
   /** When true, the auto-dismiss countdown is paused (e.g. while info modal is open). */
   paused?: boolean;
   /** Optional ref forwarded to the ℹ️ info button for external spotlight targeting. */
   infoButtonRef?: RefObject<HTMLButtonElement | null>;
+  /** When false, the info button is not rendered. */
+  showInfoButton?: boolean;
 }
 
 function getAnnouncementThemeClass(key: string): string {
@@ -74,6 +76,7 @@ export default function TvAnnouncementOverlay({
   onDismiss,
   paused = false,
   infoButtonRef,
+  showInfoButton = true,
 }: TvAnnouncementOverlayProps) {
   const { title, subtitle, isLive, autoDismissMs } = announcement;
   const isBattleBack = announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_');
@@ -120,7 +123,7 @@ export default function TvAnnouncementOverlay({
       const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current);
 
       if (remaining <= 0) {
-        onDismiss();
+        onDismiss?.();
         return;
       }
       rafRef.current = requestAnimationFrame(tickRef.current);
@@ -236,14 +239,16 @@ export default function TvAnnouncementOverlay({
           {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
         </div>
 
-        <button
-          className="tv-announcement__info-btn"
-          onClick={onInfo}
-          aria-label={`More info about ${title}`}
-          ref={infoButtonRef}
-        >
-          ℹ️
-        </button>
+        {showInfoButton && (
+          <button
+            className="tv-announcement__info-btn"
+            onClick={onInfo}
+            aria-label={`More info about ${title}`}
+            ref={infoButtonRef}
+          >
+            ℹ️
+          </button>
+        )}
       </div>
     </div>
   );

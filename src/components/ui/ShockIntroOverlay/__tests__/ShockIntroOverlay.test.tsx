@@ -32,11 +32,33 @@ describe('ShockIntroOverlay', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('uses the Back 2 the Game title for staged battle back announcement keys', () => {
+  it('uses the staged Back 2 the Game announcement copy for battle back shock keys', () => {
     render(
       <ShockIntroOverlay active shockKey="battle_back_shock" onComplete={vi.fn()} />,
     );
 
-    expect(screen.getByText('BACK 2 THE GAME')).toBeTruthy();
+    expect(screen.getByText('Shock Twist')).toBeTruthy();
+    expect(screen.getByText(/Back 2 the Game has been activated/i)).toBeTruthy();
+  });
+
+  it('renders the provided TV announcement copy and hides the info button', () => {
+    render(
+      <ShockIntroOverlay
+        active
+        shockKey="double_eviction"
+        announcement={{
+          key: 'double_eviction',
+          title: 'Double Elimination!',
+          subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',
+          isLive: true,
+          autoDismissMs: null,
+        }}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i, hidden: true })).toBeTruthy();
+    expect(screen.getByText(/Tonight the LOH nominates three/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /More info/i })).toBeNull();
   });
 });
