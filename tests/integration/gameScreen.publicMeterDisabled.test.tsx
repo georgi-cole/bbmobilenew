@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
@@ -20,9 +21,7 @@ vi.mock('../../src/store/confessionalDecisionSelectors', () => ({
   selectActiveConfessionalDecision: () => null,
 }))
 
-vi.mock('../../src/components/ui/TvZone', async () => {
-  const React = await import('react')
-
+vi.mock('../../src/components/ui/TvZone', () => {
   return {
     default: function TvZoneMock({
       externalAnnouncement,
