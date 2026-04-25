@@ -321,8 +321,8 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   },
 
   /**
-   * Public voting background music — loops throughout the public-favourite
-   * voting animation until the winner modal is dismissed.
+   * Public voting background music — plays once during the public-favourite
+   * voting animation.
    * Asset: public/assets/sounds/Public voting music.mp3
    */
   'music:public_voting': {
@@ -331,7 +331,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     src: `${SOUNDS_BASE}Public voting music.mp3`,
     preload: false,
     volume: 0.6,
-    loop: true,
+    loop: false,
   },
 
   /**
@@ -359,8 +359,8 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   },
 
   /**
-   * Final modal music — plays on the game-over winner/runner-up screen until
-   * the user leaves or the cue finishes.
+   * Final modal music — loops on the game-over winner/runner-up screen until
+   * the user leaves.
    * Asset: public/assets/sounds/Final modal sound.mp3
    */
   'music:final_modal': {
@@ -369,7 +369,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     src: `${SOUNDS_BASE}Final modal sound.mp3`,
     preload: false,
     volume: 0.7,
-    loop: false,
+    loop: true,
   },
 
   // ── Social module music ───────────────────────────────────────────────────

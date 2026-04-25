@@ -68,6 +68,7 @@ const SOUND_MANAGER_DISABLED = false;
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
 const FINALE_AUTOPLAY_PRIMED_MUSIC_KEYS = new Set([
+  'music:jury_voting_bg',
   'music:season_recap',
   'music:public_voting',
   'music:final_modal',

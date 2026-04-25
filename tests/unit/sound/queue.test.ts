@@ -210,8 +210,19 @@ describe('SoundManager music state machine', () => {
     await Promise.resolve();
 
     expect(sm._primedMusicEls.has('music:season_recap')).toBe(true);
+    expect(sm._primedMusicEls.has('music:jury_voting_bg')).toBe(true);
     expect(sm._primedMusicEls.has('music:public_voting')).toBe(true);
     expect(sm._primedMusicEls.has('music:final_modal')).toBe(true);
+
+    createSpy.mockClear();
+
+    await SoundManager.setDesiredMusic('jury_voting', 'finale:revealVotes');
+
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(SoundManager.currentMusicKey).toBe('music:jury_voting_bg');
+    expect(sm._primedMusicEls.get('music:jury_voting_bg')).toBe(
+      (SoundManager as unknown as { _musicEl: HTMLAudioElement | null })._musicEl,
+    );
 
     createSpy.mockClear();
 
@@ -263,16 +274,20 @@ describe('SoundManager music state machine', () => {
     expect(SoundManager.currentMusicKey).toBe('music:final_modal');
   });
 
-  it('honours non-looping music metadata for one-shot finale cues', async () => {
+  it('honours finale music loop metadata for public voting and the final modal', async () => {
     const sm = SoundManager as unknown as {
       _unlocked: boolean;
       _musicEl: HTMLAudioElement | null;
     };
     sm._unlocked = true;
 
-    await SoundManager.setDesiredMusic('final_modal', 'route:game-over');
+    await SoundManager.setDesiredMusic('public_voting', 'finale:publicFavorite');
 
     expect(sm._musicEl?.loop).toBe(false);
+
+    await SoundManager.setDesiredMusic('final_modal', 'route:game-over');
+
+    expect(sm._musicEl?.loop).toBe(true);
   });
 
   it('retries only the current desired track after a blocked play on the next gesture', async () => {
