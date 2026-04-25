@@ -1041,17 +1041,23 @@ class _SoundManager {
       const el = _makeMusicEl(entry.src, 0, entry.loop ?? true);
       this._primedMusicEls.set(key, el);
       el.muted = true;
-      el.play()?.then(() => {
+      const playResult = el.play();
+      const resetPrimedElement = () => {
         el.pause();
         el.currentTime = 0;
         el.muted = false;
         el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
-      }).catch((err) => {
-        if (_audioDebug) {
-          console.warn(`[SoundManager] music priming play() failed for "${key}":`, err);
-        }
-        this._primedMusicEls.delete(key);
-      });
+      };
+      if (playResult && typeof playResult.then === 'function') {
+        playResult.then(resetPrimedElement).catch((err) => {
+          if (_audioDebug) {
+            console.warn(`[SoundManager] music priming play() failed for "${key}":`, err);
+          }
+          this._primedMusicEls.delete(key);
+        });
+      } else {
+        resetPrimedElement();
+      }
     }
   }
 
@@ -1094,20 +1100,25 @@ class _SoundManager {
         // Call play() synchronously in the gesture context — iOS cares about
         // the synchronous call, not the promise resolution.  Immediately pause
         // and restore real volume/unmute in the callback.
-        // Use optional chaining: test envs may return undefined from play().
-        el.play()?.then(() => {
+        const playResult = el.play();
+        const resetPrimedElement = () => {
           el.pause();
           el.currentTime = 0;
           el.muted = false;
           el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
-        }).catch((err) => {
-          // Log priming failures in debug builds and mark the key as failed
-          // so we don't keep reusing a broken element.
-          if (_audioDebug) {
-            console.warn(`[SoundManager] SFX priming play() failed for "${key}":`, err);
-          }
-          this._failedKeys.add(key);
-        });
+        };
+        if (playResult && typeof playResult.then === 'function') {
+          playResult.then(resetPrimedElement).catch((err) => {
+            // Log priming failures in debug builds and mark the key as failed
+            // so we don't keep reusing a broken element.
+            if (_audioDebug) {
+              console.warn(`[SoundManager] SFX priming play() failed for "${key}":`, err);
+            }
+            this._failedKeys.add(key);
+          });
+        } else {
+          resetPrimedElement();
+        }
       }
     }
   }
