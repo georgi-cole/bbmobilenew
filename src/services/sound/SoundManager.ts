@@ -185,6 +185,7 @@ class _SoundManager {
   private _musicPlaybackToken = 0;
   private _musicMuted = false;
   private _musicVolume = 1;
+  private _primedMusicEls = new Map<string, HTMLAudioElement>();
 
   // BGM ownership / desired-track tracking (per-owner map with priority fallback)
   private _currentBgmOwner: BgmOwner | null = null;
@@ -680,7 +681,7 @@ class _SoundManager {
     const baseVol = entry.volume ?? 1;
     const effectiveVol = Math.max(0, Math.min(1, baseVol * this._musicVolume));
 
-    const el = _makeMusicEl(entry.src, effectiveVol, entry.loop ?? true);
+    const el = this._getOrCreateMusicEl(key, entry.src, effectiveVol, entry.loop ?? true);
     _liveMusicElements.clear();
     _liveMusicElements.add(el);
     this._musicEl = el;
@@ -927,6 +928,7 @@ class _SoundManager {
     // gesture we do NOT want to replay stale events.  Music is re-synced
     // from the current desired track only.
     this._playQueue = [];
+    this._primeMusicForMobile();
     void this.syncMusic();
     this._primeSfxForMobile();
   }
@@ -1010,6 +1012,47 @@ class _SoundManager {
       }
       void this.syncMusic();
     });
+  }
+
+  private _getOrCreateMusicEl(
+    key: string,
+    src: string,
+    volume: number,
+    loop: boolean,
+  ): HTMLAudioElement {
+    const primed = this._primedMusicEls.get(key);
+    if (primed) {
+      primed.src = src;
+      primed.loop = loop;
+      primed.volume = Math.max(0, Math.min(1, volume));
+      primed.preload = 'none';
+      primed.currentTime = 0;
+      primed.muted = false;
+      return primed;
+    }
+    return _makeMusicEl(src, volume, loop);
+  }
+
+  private _primeMusicForMobile(): void {
+    if (typeof document === 'undefined') return;
+    for (const [key, entry] of Object.entries(SOUND_REGISTRY)) {
+      if (entry.category !== 'music') continue;
+      if (this._primedMusicEls.has(key)) continue;
+      const el = _makeMusicEl(entry.src, 0, entry.loop ?? true);
+      this._primedMusicEls.set(key, el);
+      el.muted = true;
+      el.play()?.then(() => {
+        el.pause();
+        el.currentTime = 0;
+        el.muted = false;
+        el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
+      }).catch((err) => {
+        if (_audioDebug) {
+          console.warn(`[SoundManager] music priming play() failed for "${key}":`, err);
+        }
+        this._primedMusicEls.delete(key);
+      });
+    }
   }
 
   /**
