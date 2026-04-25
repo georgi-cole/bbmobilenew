@@ -372,10 +372,11 @@ function getReplacementEligiblePlayers(
   state: GameState,
   alivePlayers: Player[],
   neededCount = 1,
+  options: { allowLoh?: boolean } = {},
 ): Player[] {
   const baseEligible = alivePlayers.filter(
     (pl) =>
-      pl.id !== state.lohId &&
+      (options.allowLoh === true || pl.id !== state.lohId) &&
       pl.id !== state.posWinnerId &&
       !state.nomineeIds.includes(pl.id),
   );
@@ -384,9 +385,15 @@ function getReplacementEligiblePlayers(
   return nonProtected.length >= neededCount ? nonProtected : baseEligible;
 }
 
-function isEligibleReplacementNominee(state: GameState, playerId: string, neededCount = 1): boolean {
+function isEligibleReplacementNominee(
+  state: GameState,
+  playerId: string,
+  neededCount = 1,
+  options: { allowLoh?: boolean } = {},
+): boolean {
   const alivePlayers = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-  return getReplacementEligiblePlayers(state, alivePlayers, neededCount).some((player) => player.id === playerId);
+  return getReplacementEligiblePlayers(state, alivePlayers, neededCount, options)
+    .some((player) => player.id === playerId);
 }
 
 function appendNominee(state: GameState, playerId: string) {
@@ -395,6 +402,87 @@ function appendNominee(state: GameState, playerId: string) {
   const player = state.players.find((candidate) => candidate.id === playerId);
   if (player) player.status = 'nominated';
   incrementTimesNominated(state, playerId);
+}
+
+function getAiThreatScore(
+  state: GameState,
+  player: Player,
+  options: { preferLoh?: boolean } = {},
+): number {
+  const lohWins = player.stats?.lohWins ?? 0;
+  const posWins = player.stats?.posWins ?? 0;
+  const timesNominated = player.stats?.timesNominated ?? 0;
+  let score = 0;
+  if (player.isUser) score += 6;
+  if (player.id === state.lohId) score += options.preferLoh === true ? 6 : 2;
+  if (player.status === 'loh' || player.status === 'loh+pos') score += 2;
+  score += lohWins * 4;
+  score += posWins * 3;
+  score += timesNominated === 0 ? 1 : 0;
+  return score;
+}
+
+function pickStrategicAiPlayer(
+  state: GameState,
+  candidates: Player[],
+  rng: () => number,
+  mode: 'highest' | 'lowest',
+  options: { preferLoh?: boolean } = {},
+): Player | null {
+  if (candidates.length === 0) return null;
+  const scored = candidates.map((player) => ({
+    player,
+    score: getAiThreatScore(state, player, options),
+  }));
+  const targetScore = mode === 'highest'
+    ? Math.max(...scored.map((entry) => entry.score))
+    : Math.min(...scored.map((entry) => entry.score));
+  const tied = scored
+    .filter((entry) => entry.score === targetScore)
+    .map((entry) => entry.player);
+  return seededPick(rng, tied);
+}
+
+function pickStrategicAiPlayers(
+  state: GameState,
+  candidates: Player[],
+  count: number,
+  rng: () => number,
+  options: { preferLoh?: boolean } = {},
+): Player[] {
+  const remaining = [...candidates];
+  const picks: Player[] = [];
+  while (picks.length < count && remaining.length > 0) {
+    const pick = pickStrategicAiPlayer(state, remaining, rng, 'highest', options);
+    if (!pick) break;
+    picks.push(pick);
+    const idx = remaining.findIndex((player) => player.id === pick.id);
+    if (idx >= 0) remaining.splice(idx, 1);
+  }
+  return picks;
+}
+
+function shouldAiUseTargetedSafetyPower(
+  state: GameState,
+  currentNominees: Player[],
+  eligibleReplacements: Player[],
+  options: { replacementCount?: number; preferLoh?: boolean } = {},
+): boolean {
+  const replacementCount = Math.max(1, options.replacementCount ?? 1);
+  if (eligibleReplacements.length === 0 || currentNominees.length === 0) return false;
+  const currentScores = currentNominees
+    .map((player) => getAiThreatScore(state, player, options))
+    .sort((a, b) => a - b);
+  const replacementScores = eligibleReplacements
+    .map((player) => getAiThreatScore(state, player, options))
+    .sort((a, b) => b - a);
+  const currentValue = currentScores
+    .slice(0, Math.min(replacementCount, currentScores.length))
+    .reduce((sum, score) => sum + score, 0);
+  const replacementValue = replacementScores
+    .slice(0, Math.min(replacementCount, replacementScores.length))
+    .reduce((sum, score) => sum + score, 0);
+  return replacementValue > currentValue;
 }
 
 function ensureMinimumNominees(
@@ -2166,8 +2254,8 @@ const gameSlice = createSlice({
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
 
       if (state.specialVeto.awaitingCoupReplacement1) {
-        if (id === state.lohId || id === state.posWinnerId || state.nomineeIds.includes(id)) return;
-        if (!alive.some((p) => p.id === id)) return;
+        if (id === state.posWinnerId || state.nomineeIds.includes(id)) return;
+        if (!isEligibleReplacementNominee(state, id, 2, { allowLoh: true })) return;
         state.specialVeto.coupReplacement1Id = id;
         state.specialVeto.awaitingCoupReplacement1 = false;
         state.specialVeto.awaitingCoupReplacement2 = true;
@@ -2179,8 +2267,11 @@ const gameSlice = createSlice({
         );
       } else if (state.specialVeto.awaitingCoupReplacement2) {
         const rep1Id = state.specialVeto.coupReplacement1Id;
-        if (id === state.lohId || id === state.posWinnerId || id === rep1Id || state.nomineeIds.includes(id)) return;
+        if (id === state.posWinnerId || id === rep1Id || state.nomineeIds.includes(id)) return;
         if (!alive.some((p) => p.id === id)) return;
+        const availableSecondChoices = getReplacementEligiblePlayers(state, alive, 1, { allowLoh: true })
+          .filter((player) => player.id !== rep1Id);
+        if (!availableSecondChoices.some((player) => player.id === id)) return;
 
         const rep1 = state.players.find((p) => p.id === rep1Id);
         const rep2 = state.players.find((p) => p.id === id);
@@ -3119,14 +3210,11 @@ const gameSlice = createSlice({
         const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
         const eligible = getReplacementEligiblePlayers(state, aliveNow);
         if (eligible.length > 0) {
-          const replacement = seededPick(rng, eligible);
-          state.nomineeIds.push(replacement.id);
-          const rp = state.players.find((pl) => pl.id === replacement.id);
-          if (rp) rp.status = 'nominated';
-          incrementTimesNominated(state, replacement.id);
+          const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest');
+          if (replacement) appendNominee(state, replacement.id);
           pushEvent(
             state,
-            `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`,
+            `${lohPlayer?.name ?? 'The LOH'} named ${replacement?.name ?? 'a backup nominee'} as the backup nominee. 🎯`,
             'game',
           );
         }
@@ -3164,9 +3252,17 @@ const gameSlice = createSlice({
           const seedRng2 = mulberry32(state.seed);
           state.seed = (seedRng2() * 0x100000000) >>> 0;
           const rng2 = mulberry32(state.seed);
-          const useSecond = rng2() < 0.70;
+          const eligible = getReplacementEligiblePlayers(
+            state,
+            state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury'),
+          );
+          const useSecond = shouldAiUseTargetedSafetyPower(state, nominees, eligible);
           if (useSecond && nominees.length > 0) {
-            const nominee2 = seededPick(rng2, nominees);
+            const nominee2 = pickStrategicAiPlayer(state, nominees, rng2, 'lowest');
+            if (!nominee2) {
+              state.specialVeto.vipUseStage = -1;
+              return;
+            }
             state.nomineeIds = state.nomineeIds.filter((id) => id !== nominee2.id);
             const savedP = state.players.find((p) => p.id === nominee2.id);
             if (savedP) savedP.status = 'active';
@@ -3472,12 +3568,11 @@ const gameSlice = createSlice({
               } else {
                 const eligible = getReplacementEligiblePlayers(state, alive);
                 if (eligible.length > 0) {
-                  const replacement = seededPick(rng, eligible);
-                  state.nomineeIds.push(replacement.id);
-                  const rp = state.players.find((pl) => pl.id === replacement.id);
-                  if (rp) rp.status = 'nominated';
-                  incrementTimesNominated(state, replacement.id);
-                  pushEvent(state, `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`, 'game');
+                  const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest');
+                  if (replacement) {
+                    appendNominee(state, replacement.id);
+                    pushEvent(state, `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`, 'game');
+                  }
                 }
               }
             } else if (posWinner?.isUser) {
@@ -3488,7 +3583,8 @@ const gameSlice = createSlice({
               // AI: pick one nominee to save
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
               if (nominees.length > 0) {
-                const nomineeToSave = seededPick(rng, nominees);
+                const nomineeToSave = pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+                if (!nomineeToSave) break;
                 const savedName = nomineeToSave.name;
                 state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
                 const savedP = state.players.find((p) => p.id === nomineeToSave.id);
@@ -3524,37 +3620,36 @@ const gameSlice = createSlice({
               } else {
                 const eligible = getReplacementEligiblePlayers(state, alive);
                 if (eligible.length > 0) {
-                  const replacement = seededPick(rng, eligible);
-                  state.nomineeIds.push(replacement.id);
-                  const rp = state.players.find((pl) => pl.id === replacement.id);
-                  if (rp) rp.status = 'nominated';
-                  incrementTimesNominated(state, replacement.id);
-                  pushEvent(state, `${posWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`, 'game');
+                  const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest');
+                  if (replacement) {
+                    appendNominee(state, replacement.id);
+                    pushEvent(state, `${posWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`, 'game');
+                  }
                 }
               }
             } else if (posWinner?.isUser) {
               state.awaitingPovDecision = true;
               pushEvent(state, `${posWinner.name}, will you use Halo Exchange? 😇`, 'game');
             } else {
-              const useIt = rng() < 0.70;
+              const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+              const eligible = getReplacementEligiblePlayers(state, alive);
+              const useIt = shouldAiUseTargetedSafetyPower(state, nominees, eligible);
               if (useIt) {
-                const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
                 if (nominees.length > 0) {
-                  const nomineeToSave = seededPick(rng, nominees);
+                  const nomineeToSave = pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+                  if (!nomineeToSave) break;
                   state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
                   const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                   if (savedP) savedP.status = 'active';
                   state.povSavedId = nomineeToSave.id;
                   addPovProtectedId(state, nomineeToSave.id);
                   pushEvent(state, `${posWinner?.name ?? 'The Halo Exchange holder'} used Halo Exchange on ${nomineeToSave.name}! 😇`, 'game');
-                  const eligible = getReplacementEligiblePlayers(state, alive);
                   if (eligible.length > 0) {
-                    const replacement = seededPick(rng, eligible);
-                    state.nomineeIds.push(replacement.id);
-                    const rp = state.players.find((pl) => pl.id === replacement.id);
-                    if (rp) rp.status = 'nominated';
-                    incrementTimesNominated(state, replacement.id);
-                    pushEvent(state, `${posWinner?.name ?? 'The Halo Exchange holder'} named ${replacement.name} as the backup nominee. 😇`, 'game');
+                    const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest');
+                    if (replacement) {
+                      appendNominee(state, replacement.id);
+                      pushEvent(state, `${posWinner?.name ?? 'The Halo Exchange holder'} named ${replacement.name} as the backup nominee. 😇`, 'game');
+                    }
                   }
                 }
               } else {
@@ -3566,7 +3661,31 @@ const gameSlice = createSlice({
 
           // ── Detox: removes both nominees, holder names both replacements ────────
           if (svType === 'coup') {
-            if (posWinner?.isUser) {
+            if (isNominee && posWinner !== null) {
+              const oldNominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+              oldNominees.forEach((n) => { n.status = 'active'; });
+              state.nomineeIds = [];
+              state.povSavedId = null;
+              state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
+              const removedNames = oldNominees.map((n) => n.name).join(' and ');
+              pushEvent(state, `${posWinner.name} used Detox and cleared ${removedNames} from the block! ⚡`, 'game');
+              const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true });
+              const replacements = pickStrategicAiPlayers(
+                state,
+                eligible,
+                Math.min(2, eligible.length),
+                rng,
+                { preferLoh: true },
+              );
+              if (replacements.length > 0) {
+                replacements.forEach((replacement) => appendNominee(state, replacement.id));
+                pushEvent(
+                  state,
+                  `${posWinner.name} named ${replacements.map((replacement) => replacement.name).join(' and ')} as the new nominees. ⚡`,
+                  'game',
+                );
+              }
+            } else if (posWinner?.isUser) {
               state.awaitingPovDecision = true;
               pushEvent(
                 state,
@@ -3574,7 +3693,12 @@ const gameSlice = createSlice({
                 'game',
               );
             } else {
-              const useIt = rng() < 0.65;
+              const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+              const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true });
+              const useIt = shouldAiUseTargetedSafetyPower(state, nominees, eligible, {
+                replacementCount: Math.min(2, nominees.length),
+                preferLoh: true,
+              });
               if (useIt) {
                 const oldNominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
                 oldNominees.forEach((n) => { n.status = 'active'; });
@@ -3583,23 +3707,16 @@ const gameSlice = createSlice({
                 state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
                 const removedNames = oldNominees.map((n) => n.name).join(' and ');
                 pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`, 'game');
-                const eligible = getReplacementEligiblePlayers(state, alive, 2);
                 if (eligible.length >= 2) {
-                  const replacements = seededPickN(rng, eligible, 2);
+                  const replacements = pickStrategicAiPlayers(state, eligible, 2, rng, { preferLoh: true });
                   replacements.forEach((r) => {
-                    state.nomineeIds.push(r.id);
-                    const rp = state.players.find((pl) => pl.id === r.id);
-                    if (rp) rp.status = 'nominated';
-                    incrementTimesNominated(state, r.id);
+                    appendNominee(state, r.id);
                   });
                   const repNames = replacements.map((r) => r.name).join(' and ');
                   pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${repNames} as the new nominees. ⚡`, 'game');
                 } else if (eligible.length === 1) {
                   const r = eligible[0];
-                  state.nomineeIds.push(r.id);
-                  const rp = state.players.find((pl) => pl.id === r.id);
-                  if (rp) rp.status = 'nominated';
-                  incrementTimesNominated(state, r.id);
+                  appendNominee(state, r.id);
                   pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${r.name} as the only available replacement. ⚡`, 'game');
                 }
               } else {
@@ -3635,11 +3752,16 @@ const gameSlice = createSlice({
                 'game',
               );
             } else {
-              const useIt = rng() < 0.85;
+              const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+              const eligible = getReplacementEligiblePlayers(state, alive);
+              const useIt = shouldAiUseTargetedSafetyPower(state, nominees, eligible);
               if (useIt) {
-                const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
                 if (nominees.length > 0) {
-                  const nomineeToSave = seededPick(rng, nominees);
+                  const nomineeToSave = pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+                  if (!nomineeToSave) {
+                    state.specialVeto!.vipUseStage = -1;
+                    break;
+                  }
                   state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
                   const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                   if (savedP) savedP.status = 'active';
