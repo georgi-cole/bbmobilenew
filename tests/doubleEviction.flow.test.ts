@@ -18,7 +18,9 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   activateDoubleEviction,
+  queueForcedShock,
   tryActivateDoubleEviction,
+  tryActivatePendingForcedDoubleEviction,
   commitNominees,
   finalizePendingEviction,
   submitTieBreak,
@@ -284,6 +286,44 @@ describe('tryActivateDoubleEviction', () => {
     );
     const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
     expect(result).toBe(false);
+  });
+});
+
+describe('forced double eviction queue', () => {
+  it('queues for the current week when nominations have not happened yet', () => {
+    const store = makeStore({ phase: 'social_1', week: 4 });
+    store.dispatch(queueForcedShock('doubleEviction'));
+
+    expect(store.getState().game.pendingForcedShock).toEqual({
+      type: 'doubleEviction',
+      requestedWeek: 4,
+      earliestWeek: 4,
+    });
+  });
+
+  it('queues for the next week when nominations already passed', () => {
+    const store = makeStore({ phase: 'pos_results', week: 4 });
+    store.dispatch(queueForcedShock('doubleEviction'));
+
+    expect(store.getState().game.pendingForcedShock?.earliestWeek).toBe(5);
+  });
+
+  it('activates the queued shock at nominations even when normal twist settings would block it', () => {
+    const store = makeStore(
+      {
+        phase: 'nominations',
+        week: 4,
+        players: makePlayers(8),
+      },
+      { sim: { enableTwists: false, doubleEvictionChance: 0 } },
+    );
+
+    store.dispatch(queueForcedShock('doubleEviction'));
+    const result = store.dispatch(tryActivatePendingForcedDoubleEviction()) as unknown as boolean;
+
+    expect(result).toBe(true);
+    expect(store.getState().game.doubleEviction?.weekActive).toBe(true);
+    expect(store.getState().game.pendingForcedShock).toBeNull();
   });
 });
 

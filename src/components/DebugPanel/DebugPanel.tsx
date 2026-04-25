@@ -15,6 +15,8 @@ import {
   skipMinigame,
   fastForwardToEviction,
   startMinigame,
+  queueForcedShock,
+  clearForcedShock,
 } from '../../store/gameSlice';
 import {
   clearIncomingInteractionLogs,
@@ -29,7 +31,7 @@ import { INCOMING_INTERACTION_PHASE_ORDER } from '../../social/incomingInteracti
 import { socialConfig } from '../../social/socialConfig';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
-import type { Phase } from '../../types';
+import type { ForcedShockType, Phase } from '../../types';
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
 import './DebugPanel.css';
 
@@ -86,6 +88,13 @@ const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
 };
 
 const INCOMING_BATCH_SIZE = 6;
+const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
+  { value: 'doubleEviction', label: 'Double Elimination' },
+  { value: 'vip', label: 'Double Trouble Safety' },
+  { value: 'diamond', label: 'Halo Exchange Safety' },
+  { value: 'coup', label: 'Detox Safety' },
+  { value: 'spotlight', label: 'Force Majeure Safety' },
+];
 
 let incomingSeedCounter = 0;
 
@@ -153,6 +162,7 @@ export default function DebugPanel() {
   const [nominee2, setNominee2] = useState('');
   const [selectedPov, setSelectedPov] = useState('');
   const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
+  const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
 
   if (!isDebug) return null;
 
@@ -247,6 +257,10 @@ export default function DebugPanel() {
 
   function handleClearInteractionLogs() {
     dispatch(clearIncomingInteractionLogs());
+  }
+
+  function handleQueueForcedShock() {
+    dispatch(queueForcedShock(selectedForcedShock));
   }
 
   return (
@@ -413,6 +427,41 @@ export default function DebugPanel() {
                   Set
                 </button>
               </div>
+
+              <div className="dbg-row">
+                <label className="dbg-label">Force Shock</label>
+                <select
+                  className="dbg-select"
+                  value={selectedForcedShock}
+                  onChange={(e) => setSelectedForcedShock(e.target.value as ForcedShockType)}
+                >
+                  {FORCED_SHOCK_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <button className="dbg-btn" onClick={handleQueueForcedShock}>
+                  Queue
+                </button>
+                <button
+                  className="dbg-btn"
+                  onClick={() => dispatch(clearForcedShock())}
+                  disabled={!game.pendingForcedShock}
+                >
+                  Clear
+                </button>
+              </div>
+
+              {game.pendingForcedShock && (
+                <div className="dbg-row">
+                  <span className="dbg-label">Queued Shock</span>
+                  <span>
+                    {FORCED_SHOCK_OPTIONS.find((option) => option.value === game.pendingForcedShock?.type)?.label
+                      ?? game.pendingForcedShock.type}
+                    {' '}
+                    (earliest Day {game.pendingForcedShock.earliestWeek})
+                  </span>
+                </div>
+              )}
 
               <div className="dbg-row">
                 <button

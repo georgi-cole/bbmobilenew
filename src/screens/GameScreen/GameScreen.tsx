@@ -30,7 +30,9 @@ import {
   tryActivateSecretMission,
   openBattleBackCompetition,
   tryActivateDoubleEviction,
+  tryActivatePendingForcedDoubleEviction,
   tryActivateSpecialVeto,
+  tryActivatePendingForcedSpecialVeto,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -757,29 +759,34 @@ export default function GameScreen() {
   // human LOH's commitNominees call lands and nomineeIds becomes non-empty.
 
   // ── Double Eviction activation on nominations phase entry ────────────────
-  // Fire tryActivateDoubleEviction once per week when the game enters the
-  // nominations phase.  The thunk checks eligibility and probability, then
-  // dispatches activateDoubleEviction() which pushes the TV overlay event.
-  const doubleEvictionActivationWeekRef = useRef<number | null>(null)
+  // Fire tryActivateDoubleEviction when the game enters nominations, and also
+  // when a queued debug shock changes while already on that phase. The thunk
+  // checks eligibility and probability, then dispatches activateDoubleEviction()
+  // which pushes the TV overlay event.
+  const doubleEvictionActivationKeyRef = useRef<string | null>(null)
   useEffect(() => {
     if (game.phase !== 'nominations') return
-    // Only attempt once per week to prevent repeated rolls on re-renders.
-    if (doubleEvictionActivationWeekRef.current === game.week) return
-    doubleEvictionActivationWeekRef.current = game.week
+    const activationKey = `${game.week}:${game.pendingForcedShock?.type ?? 'none'}:${game.pendingForcedShock?.earliestWeek ?? 'none'}`
+    if (doubleEvictionActivationKeyRef.current === activationKey) return
+    doubleEvictionActivationKeyRef.current = activationKey
+    if (dispatch(tryActivatePendingForcedDoubleEviction())) return
     dispatch(tryActivateDoubleEviction())
-  }, [game.phase, game.week, dispatch])
+  }, [game.phase, game.week, game.pendingForcedShock?.type, game.pendingForcedShock?.earliestWeek, dispatch])
 
   // ── Special Veto activation on POS-results entry ─────────────────────────
-  // Fire tryActivateSpecialVeto once per week when the game enters pos_results.
-  // The thunk checks eligibility and probability, then dispatches
-  // activateSpecialVeto() which pushes the TV overlay event.
-  const specialVetoActivationWeekRef = useRef<number | null>(null)
+  // Fire tryActivateSpecialVeto when the game enters pos_results, and also when
+  // a queued debug shock changes while already on that phase. The thunk checks
+  // eligibility and probability, then dispatches activateSpecialVeto() which
+  // pushes the TV overlay event.
+  const specialVetoActivationKeyRef = useRef<string | null>(null)
   useEffect(() => {
     if (game.phase !== 'pos_results') return
-    if (specialVetoActivationWeekRef.current === game.week) return
-    specialVetoActivationWeekRef.current = game.week
+    const activationKey = `${game.week}:${game.pendingForcedShock?.type ?? 'none'}:${game.pendingForcedShock?.earliestWeek ?? 'none'}`
+    if (specialVetoActivationKeyRef.current === activationKey) return
+    specialVetoActivationKeyRef.current = activationKey
+    if (dispatch(tryActivatePendingForcedSpecialVeto())) return
     dispatch(tryActivateSpecialVeto())
-  }, [game.phase, game.week, dispatch])
+  }, [game.phase, game.week, game.pendingForcedShock?.type, game.pendingForcedShock?.earliestWeek, dispatch])
 
   // ── Secret Mission activation on week-start entry ───────────────────────
   // Fire tryActivateSecretMission once per day when the game enters week_start.

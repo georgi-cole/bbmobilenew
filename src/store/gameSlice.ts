@@ -12,6 +12,7 @@ import type {
   SpectatorActiveState,
   SeasonFinaleState,
   SpecialVetoType,
+  ForcedShockType,
 } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import {
@@ -79,6 +80,40 @@ const PHASE_ORDER: Phase[] = [
 ];
 
 const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3;
+
+function getPhaseOrderIndex(phase: Phase): number {
+  return PHASE_ORDER.indexOf(phase);
+}
+
+function getForcedShockActivationWeek(
+  state: Pick<GameState, 'phase' | 'week' | 'twistActivatedThisWeek' | 'doubleEviction' | 'specialVeto'>,
+  safePhase: Phase,
+): number {
+  const currentIndex = getPhaseOrderIndex(state.phase);
+  const safeIndex = getPhaseOrderIndex(safePhase);
+  const phaseWindowPassed = currentIndex === -1 || safeIndex === -1 || currentIndex > safeIndex;
+  const currentWeekBlocked = state.twistActivatedThisWeek === true
+    || state.doubleEviction?.weekActive === true
+    || state.specialVeto?.activeType != null;
+  return phaseWindowPassed || currentWeekBlocked ? state.week + 1 : state.week;
+}
+
+function formatForcedShockLabel(type: ForcedShockType): string {
+  switch (type) {
+    case 'doubleEviction':
+      return 'Double Elimination';
+    case 'vip':
+      return 'Double Trouble';
+    case 'diamond':
+      return 'Halo Exchange';
+    case 'coup':
+      return 'Detox';
+    case 'spotlight':
+      return 'Force Majeure';
+    default:
+      return type;
+  }
+}
 
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
 // All 22 houseguests in src/data/houseguests.ts have matching avatar images in
@@ -260,6 +295,7 @@ export function createInitialGameState(): GameState {
       awaitingVipSecondUseDecision: false,
       awaitingVipSecondSaveTarget: false,
     },
+    pendingForcedShock: null,
   };
 }
 
@@ -2056,6 +2092,37 @@ const gameSlice = createSlice({
         timestamp: ts,
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+    },
+
+    queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
+      const type = action.payload;
+      const safePhase: Phase = type === 'doubleEviction' ? 'nominations' : 'pos_results';
+      const earliestWeek = getForcedShockActivationWeek(state, safePhase);
+      state.pendingForcedShock = {
+        type,
+        requestedWeek: state.week,
+        earliestWeek,
+      };
+      pushEvent(
+        state,
+        `[DEBUG] ${formatForcedShockLabel(type)} queued for the next safe shock window (earliest Day ${earliestWeek}). ⚡`,
+        'game',
+      );
+    },
+
+    clearForcedShock(state) {
+      if (!state.pendingForcedShock) return;
+      pushEvent(
+        state,
+        `[DEBUG] Cleared queued ${formatForcedShockLabel(state.pendingForcedShock.type)} shock. ⚡`,
+        'game',
+      );
+      state.pendingForcedShock = null;
+    },
+
+    /** Clear a queued debug shock after it has been successfully consumed. */
+    consumeForcedShock(state) {
+      state.pendingForcedShock = null;
     },
 
     /**
@@ -4338,6 +4405,9 @@ export const {
   openBattleBackCompetition,
   activateDoubleEviction,
   activateSpecialVeto,
+  queueForcedShock,
+  clearForcedShock,
+  consumeForcedShock,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -4731,6 +4801,7 @@ export const tryActivateDoubleEviction =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState();
 
+    if (game.pendingForcedShock) return false;
     if (!settings.sim.enableTwists) return false;
     if (game.phase !== 'nominations') return false;
     // Don't activate twice in the same week
@@ -4766,6 +4837,27 @@ export const tryActivateDoubleEviction =
     return true;
   };
 
+export const tryActivatePendingForcedDoubleEviction =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState();
+
+    if (game.pendingForcedShock?.type !== 'doubleEviction') return false;
+    if (game.phase !== 'nominations') return false;
+    if (game.week < game.pendingForcedShock.earliestWeek) return false;
+    if (game.doubleEviction?.weekActive) return false;
+    if (game.twistActivatedThisWeek) return false;
+
+    const alive = game.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+    if (alive.length <= 5) return false;
+
+    dispatch(activateDoubleEviction());
+    dispatch(consumeForcedShock());
+    return true;
+  };
+
 /**
  * Attempt to activate a special safety twist after the POS winner is determined.
  *
@@ -4791,6 +4883,7 @@ export const tryActivateSpecialVeto =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState();
 
+    if (game.pendingForcedShock) return false;
     if (!settings.sim.enableTwists) return false;
     if (game.phase !== 'pos_results') return false;
     if (game.doubleEviction?.weekActive) return false;
@@ -4824,5 +4917,27 @@ export const tryActivateSpecialVeto =
     const chosenType = types[Math.floor(typeRoll * types.length)];
 
     dispatch(activateSpecialVeto({ type: chosenType, week: game.week }));
+    return true;
+  };
+
+export const tryActivatePendingForcedSpecialVeto =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState();
+    const pending = game.pendingForcedShock;
+
+    if (!pending || pending.type === 'doubleEviction') return false;
+    if (game.phase !== 'pos_results') return false;
+    if (game.week < pending.earliestWeek) return false;
+    if (game.doubleEviction?.weekActive) return false;
+    if (game.twistActivatedThisWeek) return false;
+
+    const alive = game.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+    if (alive.length <= 5) return false;
+
+    dispatch(activateSpecialVeto({ type: pending.type, week: game.week }));
+    dispatch(consumeForcedShock());
     return true;
   };

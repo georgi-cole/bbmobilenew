@@ -332,6 +332,17 @@ export interface SpecialVetoState {
   awaitingVipSecondSaveTarget: boolean;
 }
 
+export type ForcedShockType = 'doubleEviction' | SpecialVetoType;
+
+export interface ForcedShockState {
+  /** Shock that should be triggered from the debug menu at the next safe chance. */
+  type: ForcedShockType;
+  /** Week when the debug force request was queued. */
+  requestedWeek: number;
+  /** Earliest week when the shock is allowed to begin. */
+  earliestWeek: number;
+}
+
 // ─── Public's Favorite voting twist ──────────────────────────────────────────
 
 /**
@@ -615,6 +626,8 @@ export interface GameState {
    * Undefined on legacy saved games created before this feature was added.
    */
   specialVeto?: SpecialVetoState;
+  /** Debug-only queued shock that should fire at the next safe activation window. */
+  pendingForcedShock?: ForcedShockState | null;
   /**
    * Public's Favorite Player voting state.
    * Undefined until `startFavoritePlayerPhase` is dispatched.
