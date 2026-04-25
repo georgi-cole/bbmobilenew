@@ -321,9 +321,9 @@
 }
 
 .tv-zone__now--detox-stream {
-  border: 1px solid rgba(248, 113, 113, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   text-shadow:
-    0 0 18px rgba(220, 38, 38, 0.26),
+    0 0 14px rgba(255, 255, 255, 0.05),
     0 0 16px rgba(0, 0, 0, 1),
     0 1px 4px rgba(0, 0, 0, 1);
 }
@@ -540,6 +540,20 @@
 @keyframes twistBadgeIn {
   from { opacity: 0; transform: scale(0.8) translateY(4px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes twistBadgeDelicatePulse {
+  0%,
+  100% {
+    opacity: 0.96;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+    filter: brightness(1.05);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

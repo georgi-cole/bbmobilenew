@@ -64,6 +64,13 @@ body.body--shock-active .tv-zone__twist-badge {
   border-color: rgba(255, 80, 80, 0.45);
   color: #fca5a5;
   text-shadow: 0 0 8px rgba(220, 38, 38, 0.7);
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 80, 80, 0.26),
+    0 0 12px rgba(220, 38, 38, 0.16);
+  animation:
+    twistBadgeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both,
+    twistBadgeDelicatePulse 2.4s ease-in-out infinite 0.3s;
 }
 
 /* Shift the head-chip accent pill border & glow */
@@ -98,6 +105,10 @@ body.body--shock-active .tv-zone__live-badge {
 
 @media (prefers-reduced-motion: reduce) {
   .app--shock-shake .game-screen-shell {
+    animation: none;
+  }
+
+  body.body--shock-active .tv-zone__twist-badge {
     animation: none;
   }
 }
