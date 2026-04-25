@@ -87,7 +87,11 @@ import { detectDebugMode } from '../../utils/debugMode'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
 import type { Player, Phase } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
-import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils'
+import {
+  buildDoubleEvictionTieResolutionMessage,
+  calculateRequiredDoubleEvictionSlots,
+  formatDoubleEvictionNameList,
+} from '../../features/twists/doubleEvictionTieUtils'
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
@@ -168,6 +172,79 @@ type AiTiebreakContext = {
 }
 
 const BATTLE_BACK_RETRY_LIMIT = 3
+
+function buildDoubleEvictionPostVoteAnnouncement(options: {
+  voteResults: Record<string, number>
+  pendingEvictionId: string
+  pendingSecondEvictionId: string | null
+  lohName: string
+  players: Player[]
+  publicModeEnabled: boolean
+}): { title: string; subtitle: string } {
+  const {
+    voteResults,
+    pendingEvictionId,
+    pendingSecondEvictionId,
+    lohName,
+    players,
+    publicModeEnabled,
+  } = options
+  const firstEvictee = players.find((player) => player.id === pendingEvictionId) ?? null
+  const secondEvictee = pendingSecondEvictionId
+    ? players.find((player) => player.id === pendingSecondEvictionId) ?? null
+    : null
+
+  if (!firstEvictee || !secondEvictee) {
+    return {
+      title: 'Double Elimination Results',
+      subtitle: `${firstEvictee?.name ?? 'The evictee'}, please say your goodbyes and leave through the Confessional's special exit.`,
+    }
+  }
+
+  const boundaryVoteCount = voteResults[secondEvictee.id] ?? 0
+  const nomineeIds = Object.keys(voteResults)
+  const guaranteedIds = nomineeIds.filter((id) => (voteResults[id] ?? 0) > boundaryVoteCount)
+  const tiedBoundaryIds = nomineeIds.filter((id) => (voteResults[id] ?? 0) === boundaryVoteCount)
+  const remainingBoundarySlots = Math.max(0, 2 - guaranteedIds.length)
+  const ambiguousBoundaryTie =
+    tiedBoundaryIds.length > remainingBoundarySlots && remainingBoundarySlots > 0
+  const eliminatedNames = formatDoubleEvictionNameList([firstEvictee.name, secondEvictee.name])
+  const goodbyes = `${eliminatedNames}, please say your goodbyes and leave through the Confessional's special exit.`
+
+  if (!ambiguousBoundaryTie) {
+    return {
+      title: 'Double Elimination Results',
+      subtitle: goodbyes,
+    }
+  }
+
+  const tiedNames = tiedBoundaryIds
+    .map((id) => players.find((player) => player.id === id)?.name)
+    .filter((name): name is string => Boolean(name))
+
+  if (guaranteedIds.length > 0) {
+    return {
+      title: 'Double Elimination Results',
+      subtitle: `${firstEvictee.name} is the first player eliminated tonight. ${buildDoubleEvictionTieResolutionMessage({
+        deciderName: lohName,
+        tiedNames,
+        selectedNames: [secondEvictee.name],
+        publicModeEnabled,
+        secondEvictionOnly: true,
+      })} ${goodbyes}`,
+    }
+  }
+
+  return {
+    title: 'Double Elimination Results',
+    subtitle: `${buildDoubleEvictionTieResolutionMessage({
+      deciderName: lohName,
+      tiedNames,
+      selectedNames: [firstEvictee.name, secondEvictee.name],
+      publicModeEnabled,
+    })} ${goodbyes}`,
+  }
+}
 
 /**
  * GameScreen — main gameplay view.
@@ -1568,20 +1645,40 @@ export default function GameScreen() {
         }
       }
 
-      const evicteeVotes = game.voteResults?.[evictee.id] ?? 0
-      const hasTwoNominees = Object.keys(game.voteResults ?? {}).length === 2
-      const otherVotes = Object.entries(game.voteResults ?? {}).reduce(
-        (s, [id, count]) => (id !== evictee.id ? s + count : s),
-        0,
-      )
-      const voteResultTitle = hasTwoNominees
-        ? `By a vote of ${evicteeVotes} to ${otherVotes}`
-        : `With ${evicteeVotes} vote${evicteeVotes === 1 ? '' : 's'}`
+      const secondPendingEvictionId = game.doubleEviction?.pendingSecondEviction?.evicteeId ?? null
+      const lohName = game.players.find((player) => player.id === game.lohId)?.name ?? 'The LOH'
+      const defaultAnnouncement = (() => {
+        const evicteeVotes = game.voteResults?.[evictee.id] ?? 0
+        const hasTwoNominees = Object.keys(game.voteResults ?? {}).length === 2
+        const otherVotes = Object.entries(game.voteResults ?? {}).reduce(
+          (s, [id, count]) => (id !== evictee.id ? s + count : s),
+          0,
+        )
+        return {
+          title: hasTwoNominees
+            ? `By a vote of ${evicteeVotes} to ${otherVotes}`
+            : `With ${evicteeVotes} vote${evicteeVotes === 1 ? '' : 's'}`,
+          subtitle: `${evictee.name}, please say your goodbyes and leave through the Confessional's special exit.`,
+        }
+      })()
+      const voteAnnouncement =
+        game.doubleEviction?.weekActive &&
+        game.voteResults &&
+        secondPendingEvictionId
+          ? buildDoubleEvictionPostVoteAnnouncement({
+            voteResults: game.voteResults,
+            pendingEvictionId: game.pendingEviction.evicteeId,
+            pendingSecondEvictionId: secondPendingEvictionId,
+            lohName,
+            players: game.players,
+            publicModeEnabled: Boolean(game.publicModeEnabled),
+          })
+          : defaultAnnouncement
       setPostVoteAnnouncementDelayActive(false)
       setPostVoteAnnouncement({
         key: 'eviction_vote_result',
-        title: voteResultTitle,
-        subtitle: `${evictee.name}, please say your goodbyes and leave through the Confessional's special exit.`,
+        title: voteAnnouncement.title,
+        subtitle: voteAnnouncement.subtitle,
         isLive: true,
         autoDismissMs: POST_VOTE_ANNOUNCEMENT_DELAY_MS,
       })
@@ -1595,11 +1692,14 @@ export default function GameScreen() {
     proceedAfterVoteResults()
   }, [
     canOfferVoteBreakdown,
+    game.doubleEviction,
     game.awaitingVoteDeductionPrompt,
+    game.lohId,
     game.nomineeIds,
     game.pendingEviction,
     game.phase,
     game.players,
+    game.publicModeEnabled,
     game.votes,
     game.voteResults,
     game.week,

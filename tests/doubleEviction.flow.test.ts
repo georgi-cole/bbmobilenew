@@ -549,6 +549,12 @@ describe('advance() — eviction_results with Double Eviction', () => {
     expect(awaitingTieBreak).toBe(false);
     expect(pendingEviction?.evicteeId).toBe('p1');
     expect(doubleEviction?.pendingSecondEviction?.evicteeId).toBe('p2');
+    expect(doubleEviction?.pendingSecondEviction?.evictionMessage).toContain(
+      'There was a tie between Nominee 2 and Nominee 3 for the second eviction.',
+    );
+    expect(doubleEviction?.pendingSecondEviction?.evictionMessage).toContain(
+      'Public approval had to decide between Nominee 2 and Nominee 3 and chose to eliminate Nominee 2.',
+    );
   });
 
   it('submitDoubleEvictionTieBreak queues both evictions when all three nominees are tied', () => {
@@ -563,6 +569,12 @@ describe('advance() — eviction_results with Double Eviction', () => {
     expect(awaitingTieBreak).toBe(false);
     expect(pendingEviction?.evicteeId).toBe('p3');
     expect(doubleEviction?.pendingSecondEviction?.evicteeId).toBe('p2');
+    expect(pendingEviction?.evictionMessage).toContain(
+      'There was a tie between Nominee 1, Nominee 2, and Nominee 3.',
+    );
+    expect(pendingEviction?.evictionMessage).toContain(
+      'Public approval had to decide between Nominee 1, Nominee 2, and Nominee 3 and chose to eliminate Nominee 3 and Nominee 2.',
+    );
   });
 });
 
