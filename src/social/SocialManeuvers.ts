@@ -290,21 +290,21 @@ export function executeAction(
   const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
   const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
   let outcome = options?.outcome ?? 'success';
-  let allianceBetrayed = false;
-  let allianceGaslit = false;
+  let willBetrayAlliance = false;
+  let willGaslightAlliance = false;
   if (actionId === 'proposeAlliance' && !options?.outcome) {
     const acceptChance = getAllianceAcceptChance(existingAffinity, priorRepeats);
     const accepted = Math.random() < acceptChance;
     if (!accepted) {
       outcome = 'failure';
-      allianceGaslit = existingAffinity < 0 && priorRepeats > 0;
+      willGaslightAlliance = existingAffinity < 0 && priorRepeats > 0;
     } else {
-      allianceBetrayed = Math.random() < getAllianceBetrayalChance(existingAffinity);
+      willBetrayAlliance = Math.random() < getAllianceBetrayalChance(existingAffinity);
     }
   }
   const baseDelta =
     actionId === 'proposeAlliance' && outcome === 'failure'
-      ? allianceGaslit ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA
+      ? willGaslightAlliance ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA
       : computeOutcomeDelta(actionId, actorId, targetId, outcome);
   const didBackfire =
     outcome === 'success' &&
@@ -442,7 +442,7 @@ export function executeAction(
         actionSource: options?.source ?? 'system',
       }),
     );
-    if (allianceBetrayed) {
+    if (willBetrayAlliance) {
       _store.dispatch(
         updateRelationship({
           source: targetId,
@@ -477,9 +477,9 @@ export function executeAction(
 
   _store.dispatch(recordSocialAction({ entry }));
 
-  const verb = allianceBetrayed
+  const verb = willBetrayAlliance
     ? 'was accepted, but they may be playing both sides'
-    : allianceGaslit
+    : willGaslightAlliance
       ? 'made things worse'
       : didBackfire ? 'backfired' : outcome === 'failure' ? 'failed' : 'succeeded';
   const sign = delta > 0 ? '+' : '';
