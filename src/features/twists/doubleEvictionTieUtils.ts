@@ -33,7 +33,7 @@ export function buildDoubleEvictionTieResolutionMessage({
   const tiedList = formatDoubleEvictionNameList(tiedNames);
   const selectedList = formatDoubleEvictionNameList(selectedNames);
   const actor = publicModeEnabled ? 'Public approval' : deciderName;
-  const action = publicModeEnabled ? 'chose to eliminate' : 'chose to evict';
+  const action = 'chose to eliminate';
   const tieIntro = `There was a tie between ${tiedList}${secondEvictionOnly ? ' for the second eviction' : ''}.`;
   const decision = `${actor} had to decide between ${tiedList} and ${action} ${selectedList}.`;
 

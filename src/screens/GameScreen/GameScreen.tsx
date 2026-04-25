@@ -1692,7 +1692,8 @@ export default function GameScreen() {
     proceedAfterVoteResults()
   }, [
     canOfferVoteBreakdown,
-    game.doubleEviction,
+    game.doubleEviction?.pendingSecondEviction?.evicteeId,
+    game.doubleEviction?.weekActive,
     game.awaitingVoteDeductionPrompt,
     game.lohId,
     game.nomineeIds,
