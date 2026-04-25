@@ -615,7 +615,7 @@ describe('Detox — Human POS holder names two replacements', () => {
 
     const state = store.getState().game;
     expect(state.nomineeIds).not.toContain('p2');
-    expect(state.nomineeIds).toEqual(expect.arrayContaining(['p0', 'p4']));
+    expect([...state.nomineeIds].sort()).toEqual(['p0', 'p4']);
     expect(state.povProtectedIds).toEqual(expect.arrayContaining(['p2', 'p3']));
     expect(state.tvFeed[0].text).toMatch(/named Player 0 and Player 4 as the new nominees|named Player 4 and Player 0 as the new nominees/i);
   });

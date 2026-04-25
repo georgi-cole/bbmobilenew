@@ -80,6 +80,13 @@ const PHASE_ORDER: Phase[] = [
 ];
 
 const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3;
+const AI_USER_THREAT_WEIGHT = 6;
+const AI_LOH_REVENGE_THREAT_WEIGHT = 6;
+const AI_LOH_BASE_THREAT_WEIGHT = 2;
+const AI_LOH_WIN_THREAT_WEIGHT = 4;
+const AI_POS_WIN_THREAT_WEIGHT = 3;
+const AI_NEVER_NOMINATED_THREAT_WEIGHT = 1;
+const AI_CURRENT_LOH_POWER_THREAT_WEIGHT = 2;
 
 function getPhaseOrderIndex(phase: Phase): number {
   return PHASE_ORDER.indexOf(phase);
@@ -413,12 +420,18 @@ function getAiThreatScore(
   const posWins = player.stats?.posWins ?? 0;
   const timesNominated = player.stats?.timesNominated ?? 0;
   let score = 0;
-  if (player.isUser) score += 6;
-  if (player.id === state.lohId) score += options.preferLoh === true ? 6 : 2;
-  if (player.status === 'loh' || player.status === 'loh+pos') score += 2;
-  score += lohWins * 4;
-  score += posWins * 3;
-  score += timesNominated === 0 ? 1 : 0;
+  if (player.isUser) score += AI_USER_THREAT_WEIGHT;
+  if (player.id === state.lohId) {
+    score += options.preferLoh === true
+      ? AI_LOH_REVENGE_THREAT_WEIGHT
+      : AI_LOH_BASE_THREAT_WEIGHT;
+  }
+  if (player.status === 'loh' || player.status === 'loh+pos') {
+    score += AI_CURRENT_LOH_POWER_THREAT_WEIGHT;
+  }
+  score += lohWins * AI_LOH_WIN_THREAT_WEIGHT;
+  score += posWins * AI_POS_WIN_THREAT_WEIGHT;
+  score += timesNominated === 0 ? AI_NEVER_NOMINATED_THREAT_WEIGHT : 0;
   return score;
 }
 
