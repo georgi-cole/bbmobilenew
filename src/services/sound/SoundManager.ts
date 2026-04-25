@@ -67,6 +67,11 @@ const SOUND_MANAGER_DISABLED = false;
 
 /** Max simultaneous instances per SFX key. */
 const SFX_POOL_SIZE = 4;
+const FINALE_AUTOPLAY_PRIMED_MUSIC_KEYS = new Set([
+  'music:season_recap',
+  'music:public_voting',
+  'music:final_modal',
+]);
 
 /**
  * Minimum gap (ms) between two identical SFX triggers.
@@ -1016,27 +1021,33 @@ class _SoundManager {
 
   private _getOrCreateMusicEl(
     key: string,
-    src: string,
+    _src: string,
     volume: number,
     loop: boolean,
   ): HTMLAudioElement {
     const primed = this._primedMusicEls.get(key);
     if (primed) {
-      primed.src = src;
+      primed.pause();
       primed.loop = loop;
       primed.volume = Math.max(0, Math.min(1, volume));
       primed.preload = 'none';
-      primed.currentTime = 0;
       primed.muted = false;
+      try {
+        primed.currentTime = 0;
+      } catch {
+        // Ignore browsers that reject currentTime resets while the element
+        // is still settling; playback will still start from the primed source.
+      }
       return primed;
     }
-    return _makeMusicEl(src, volume, loop);
+    return _makeMusicEl(_src, volume, loop);
   }
 
   private _primeMusicForMobile(): void {
     if (typeof document === 'undefined') return;
     for (const [key, entry] of Object.entries(SOUND_REGISTRY)) {
       if (entry.category !== 'music') continue;
+      if (!FINALE_AUTOPLAY_PRIMED_MUSIC_KEYS.has(key)) continue;
       if (this._primedMusicEls.has(key)) continue;
       const el = _makeMusicEl(entry.src, 0, entry.loop ?? true);
       this._primedMusicEls.set(key, el);
