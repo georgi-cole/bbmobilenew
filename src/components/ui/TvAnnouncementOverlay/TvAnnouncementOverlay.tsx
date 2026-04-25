@@ -12,8 +12,8 @@ export interface Announcement {
 
 export interface TvAnnouncementOverlayProps {
   announcement: Announcement;
-  onInfo: () => void;
-  onDismiss: () => void;
+  onInfo?: () => void;
+  onDismiss?: () => void;
   /** When true, the auto-dismiss countdown is paused (e.g. while info modal is open). */
   paused?: boolean;
   /** Optional ref forwarded to the ℹ️ info button for external spotlight targeting. */
@@ -123,7 +123,7 @@ export default function TvAnnouncementOverlay({
       const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current);
 
       if (remaining <= 0) {
-        onDismiss();
+        onDismiss?.();
         return;
       }
       rafRef.current = requestAnimationFrame(tickRef.current);

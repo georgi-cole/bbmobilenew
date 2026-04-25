@@ -76,8 +76,6 @@ export default function ShockIntroOverlay({
       <div className="shock-intro__vision-stage">
         <TvAnnouncementOverlay
           announcement={displayAnnouncement}
-          onInfo={() => {}}
-          onDismiss={() => {}}
           paused
           showInfoButton={false}
         />
