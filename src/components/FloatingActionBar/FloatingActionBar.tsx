@@ -18,6 +18,7 @@ import {
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import {
   getSocialModuleAvailability,
+  type SocialModuleAvailability,
   logBlockedSocialModuleOpen,
 } from '../../social/socialModuleAvailability';
 import GameControlDock from '../GameControlDock/GameControlDock';
@@ -28,6 +29,8 @@ const CONFESSIONAL_FLASH_DURATION_MS = 1800;
 type FloatingActionBarProps = {
   /** Called when the player activates Public Meter while public mode is disabled. */
   onPublicMeterBlocked?: () => void;
+  /** Called when the player activates a blocked social module. */
+  onSocialModuleBlocked?: (availability: SocialModuleAvailability) => void;
 };
 
 /**
@@ -41,7 +44,10 @@ type FloatingActionBarProps = {
  * - Left side: Social module + incoming social actions.
  * - Right side: Public Meter hook + Diary Room shortcut.
  */
-export default function FloatingActionBar({ onPublicMeterBlocked }: FloatingActionBarProps) {
+export default function FloatingActionBar({
+  onPublicMeterBlocked,
+  onSocialModuleBlocked,
+}: FloatingActionBarProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const canAdvance = useAppSelector(selectAdvanceEnabled);
@@ -144,10 +150,11 @@ export default function FloatingActionBar({ onPublicMeterBlocked }: FloatingActi
         socialModuleAvailability,
         'FloatingActionBar chat button',
       );
+      onSocialModuleBlocked?.(socialModuleAvailability);
       return;
     }
     dispatch(openSocialPanel());
-  }, [canUseSocialModules, dispatch, socialModuleAvailability]);
+  }, [canUseSocialModules, dispatch, onSocialModuleBlocked, socialModuleAvailability]);
 
   const handleIncomingRequestsClick = useCallback(() => {
     if (!canUseSocialModules) {
@@ -156,10 +163,11 @@ export default function FloatingActionBar({ onPublicMeterBlocked }: FloatingActi
         socialModuleAvailability,
         'FloatingActionBar incoming requests button',
       );
+      onSocialModuleBlocked?.(socialModuleAvailability);
       return;
     }
     dispatch(openIncomingInbox());
-  }, [canUseSocialModules, dispatch, socialModuleAvailability]);
+  }, [canUseSocialModules, dispatch, onSocialModuleBlocked, socialModuleAvailability]);
 
   const dispatchPlayPressedEvent = useCallback(() => {
     try {

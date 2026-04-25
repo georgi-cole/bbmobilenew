@@ -20,19 +20,43 @@ vi.mock('../../src/store/confessionalDecisionSelectors', () => ({
   selectActiveConfessionalDecision: () => null,
 }))
 
-vi.mock('../../src/components/ui/TvZone', () => ({
-  default: ({ externalAnnouncement }: { externalAnnouncement?: { title?: string } | null }) => {
-    return (
-      <div data-testid="tv-zone">
-        {externalAnnouncement?.title ? (
-          <p data-testid="tv-zone-announcement">{externalAnnouncement.title}</p>
-        ) : null}
-      </div>
-    )
-  },
-}))
+vi.mock('../../src/components/ui/TvZone', async () => {
+  const React = await import('react')
 
-function makeStore() {
+  return {
+    default: function TvZoneMock({
+      externalAnnouncement,
+      onExternalAnnouncementDismiss,
+    }: {
+      externalAnnouncement?: { title?: string; autoDismissMs?: number | null } | null
+      onExternalAnnouncementDismiss?: (() => void) | undefined
+    }) {
+      React.useEffect(() => {
+        if (!externalAnnouncement?.autoDismissMs || !onExternalAnnouncementDismiss) {
+          return
+        }
+
+        const timer = window.setTimeout(() => {
+          onExternalAnnouncementDismiss()
+        }, externalAnnouncement.autoDismissMs)
+
+        return () => {
+          window.clearTimeout(timer)
+        }
+      }, [externalAnnouncement, onExternalAnnouncementDismiss])
+
+      return (
+        <div data-testid="tv-zone">
+          {externalAnnouncement?.title ? (
+            <p data-testid="tv-zone-announcement">{externalAnnouncement.title}</p>
+          ) : null}
+        </div>
+      )
+    },
+  }
+})
+
+function makeStore(gameOverrides: Partial<ReturnType<typeof gameReducer>> = {}) {
   const gameState = gameReducer(undefined, { type: '@@INIT' })
 
   return configureStore({
@@ -49,6 +73,7 @@ function makeStore() {
       game: {
         ...gameState,
         publicModeEnabled: false,
+        ...gameOverrides,
       },
     },
   })
@@ -67,9 +92,11 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
 describe('GameScreen public meter gating', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
@@ -91,5 +118,56 @@ describe('GameScreen public meter gating', () => {
       'If you want to activate public mode, go to the store in the home hub.',
     )
     expect(store.getState().game.tvFeed).toEqual(initialFeed)
+  })
+
+  it('shows the in-house social gating announcement without adding log entries during live vote', async () => {
+    const store = makeStore({ phase: 'live_vote' })
+    const initialFeed = store.getState().game.tvFeed
+    renderGameScreen(store)
+
+    await act(async () => {})
+
+    act(() => {
+      screen.getByRole('button', { name: 'Social' }).click()
+    })
+
+    expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
+      'Everybody is currently waiting to vote or be voted, so no time for chit-chat now.',
+    )
+    expect(store.getState().game.tvFeed).toEqual(initialFeed)
+
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
+  })
+
+  it('shows the out-of-house social gating announcement without adding log entries', async () => {
+    const baseGameState = gameReducer(undefined, { type: '@@INIT' })
+    const store = makeStore({
+      players: baseGameState.players.map((player) =>
+        player.isUser ? { ...player, status: 'evicted' } : player,
+      ),
+    })
+    const initialFeed = store.getState().game.tvFeed
+    renderGameScreen(store)
+
+    await act(async () => {})
+
+    act(() => {
+      screen.getByRole('button', { name: 'Social' }).click()
+    })
+
+    expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
+      'You are no longer in the house. But maybe try telepathy?',
+    )
+    expect(store.getState().game.tvFeed).toEqual(initialFeed)
+
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
   })
 })
