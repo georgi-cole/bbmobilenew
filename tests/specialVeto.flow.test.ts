@@ -378,6 +378,30 @@ describe('Force Majeure — AI POS holder (not nominee)', () => {
     const savedId = state.povSavedId;
     expect(['p2', 'p3']).toContain(savedId);
   });
+
+  it('saves the weaker nominee to keep the bigger threat on the block', () => {
+    const players = makePlayers(8);
+    players[0].status = 'loh';
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+    players[2].stats = { lohWins: 2, posWins: 0, timesNominated: 0 };
+    players[3].stats = { lohWins: 0, posWins: 0, timesNominated: 3 };
+    const store = makeStore({
+      phase: 'pos_ceremony',
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      players,
+      specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true, activeType: 'spotlight', activatedWeek: 3 },
+    });
+
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.povSavedId).toBe('p3');
+    expect(state.nomineeIds).toContain('p2');
+    expect(state.nomineeIds).not.toContain('p3');
+  });
 });
 
 describe('Force Majeure — Human POS holder (not nominee)', () => {
@@ -452,6 +476,32 @@ describe('Diamond POS — Human POS holder names replacement', () => {
     expect(store.getState().game.nomineeIds).not.toContain('p0');
     expect(store.getState().game.specialVeto?.awaitingHolderReplacement).toBe(true);
   });
+
+  it('AI uses Halo Exchange when it can upgrade the block and targets the strongest replacement', () => {
+    const players = makePlayers(8);
+    players[0].status = 'loh';
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+    players[2].stats = { lohWins: 2, posWins: 1, timesNominated: 0 };
+    players[3].stats = { lohWins: 0, posWins: 0, timesNominated: 4 };
+    players[4].stats = { lohWins: 3, posWins: 1, timesNominated: 0 };
+
+    const store = makeStore({
+      phase: 'pos_ceremony',
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      players,
+      specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true, activeType: 'diamond', activatedWeek: 3 },
+    });
+
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.povSavedId).toBe('p3');
+    expect(state.nomineeIds).toEqual(expect.arrayContaining(['p2', 'p4']));
+    expect(state.nomineeIds).not.toContain('p3');
+  });
 });
 
 // ── Detox ─────────────────────────────────────────────────────────────────────
@@ -519,6 +569,84 @@ describe('Detox — Human POS holder names two replacements', () => {
     store.dispatch(submitCoupReplacement('p2')); // same as first pick
     expect(store.getState().game.nomineeIds).not.toContain('p2');
     expect(store.getState().game.specialVeto?.awaitingCoupReplacement2).toBe(true);
+  });
+
+  it('submitCoupReplacement allows the outgoing LOH to be nominated', () => {
+    const players = makePlayers(8, 1);
+    const store = makeStore({
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: [],
+      players,
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'coup',
+        awaitingCoupReplacement1: true,
+      },
+    });
+
+    store.dispatch(submitCoupReplacement('p0'));
+
+    const state = store.getState().game;
+    expect(state.specialVeto?.coupReplacement1Id).toBe('p0');
+    expect(state.specialVeto?.awaitingCoupReplacement2).toBe(true);
+  });
+
+  it('submitCoupReplacement allows a protected fallback on the second pick when the first pick is the LOH', () => {
+    const players = makePlayers(4, 1);
+    players[2].status = 'evicted';
+    const store = makeStore({
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: [],
+      players,
+      povProtectedIds: ['p3'],
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'coup',
+        awaitingCoupReplacement2: true,
+        coupReplacement1Id: 'p0',
+      },
+    });
+
+    store.dispatch(submitCoupReplacement('p3'));
+
+    const state = store.getState().game;
+    expect(state.nomineeIds).toEqual(['p0', 'p3']);
+    expect(state.players.find((p) => p.id === 'p0')?.status).toBe('loh');
+    expect(state.players.find((p) => p.id === 'p3')?.status).toBe('nominated');
+    expect(state.specialVeto?.awaitingCoupReplacement2).toBe(false);
+  });
+
+  it('AI nominee auto-uses Detox and can throw the outgoing LOH onto the block', () => {
+    const players = makePlayers(8);
+    players[0].status = 'loh';
+    players[1].status = 'active';
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+    players[0].stats = { lohWins: 1, posWins: 0, timesNominated: 0 };
+    players[4].stats = { lohWins: 2, posWins: 1, timesNominated: 0 };
+
+    const store = makeStore({
+      phase: 'pos_ceremony',
+      lohId: 'p0',
+      posWinnerId: 'p2',
+      nomineeIds: ['p2', 'p3'],
+      players,
+      specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true, activeType: 'coup', activatedWeek: 3 },
+    });
+
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.nomineeIds).not.toContain('p2');
+    expect([...state.nomineeIds].sort()).toEqual(['p0', 'p4']);
+    expect(state.povProtectedIds).toEqual(expect.arrayContaining(['p2', 'p3']));
+    expect(state.players.find((p) => p.id === 'p0')?.status).toBe('loh');
+    expect(state.players.find((p) => p.id === 'p2')?.status).toBe('pos');
+    expect(state.tvFeed[0].text).toMatch(/named Player 0 and Player 4 as the new nominees|named Player 4 and Player 0 as the new nominees/i);
   });
 });
 
@@ -650,6 +778,36 @@ describe('Double Trouble — second use decision (human POS holder)', () => {
     const state = store.getState().game;
     expect(state.replacementNeeded).toBe(false);
     expect(state.nomineeIds).toEqual(['p2', 'p3']);
+  });
+
+  it('AI uses the second save only when it can improve the final block', () => {
+    const players = makePlayers(8);
+    players[0].status = 'loh';
+    players[4].status = 'nominated';
+    players[4].stats = { lohWins: 2, posWins: 1, timesNominated: 0 };
+    players[5].stats = { lohWins: 0, posWins: 0, timesNominated: 4 };
+
+    const store = makeStore({
+      phase: 'pos_ceremony_results',
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p4'],
+      players,
+      povProtectedIds: ['p2', 'p3'],
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'vip',
+        vipUseStage: 2,
+      },
+    });
+
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.specialVeto?.vipUseStage).toBe(-1);
+    expect(state.nomineeIds).toEqual(['p4']);
+    expect(state.tvFeed[0].text).toMatch(/chose not to use Double Trouble a second time/i);
   });
 });
 
