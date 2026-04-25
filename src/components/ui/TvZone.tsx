@@ -24,6 +24,8 @@ import type { TvEvent } from '../../types';
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
 import { getViewportMessageKey } from './tvZoneKeys';
 import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents';
+import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay';
+import ConfessionalSpotlightOverlay from '../FloatingActionBar/ConfessionalSpotlightOverlay';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
 
@@ -165,6 +167,25 @@ const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
   'loh_tiebreak_decision',
 ]);
 
+/**
+ * Announcement keys that trigger the cinematic shock intro sequence:
+ *   1. Full-screen stinger (ShockIntroOverlay)
+ *   2. TV announcement (existing TvAnnouncementOverlay)
+ *   3. Info-button spotlight (ConfessionalSpotlightOverlay reused)
+ */
+const SHOCK_ANNOUNCEMENT_KEYS = new Set([
+  'twist',
+  'double_eviction',
+  'vip_veto',
+  'diamond_pov',
+  'coup_detat',
+  'spotlight_veto',
+  'battle_back',
+  'battle_back_shock',
+  'battle_back_rules',
+  'battle_back_challenge',
+]);
+
 type TvZonePublicSaveReveal = {
   nominees: Player[];
   approvals: Record<string, number>;
@@ -276,6 +297,14 @@ export default function TvZone(props: TvZoneProps) {
   useLayoutEffect(() => {
     latestEventRef.current = latestEvent;
   });
+
+  // ── Shock announcement sequence state ────────────────────────────────────────
+  // Phase A: full-screen shock stinger (ShockIntroOverlay).
+  const [shockIntroActive, setShockIntroActive] = useState(false);
+  // Phase C: info-button spotlight (ConfessionalSpotlightOverlay reused).
+  const [shockInfoSpotlightActive, setShockInfoSpotlightActive] = useState(false);
+  // Ref forwarded to the TvAnnouncementOverlay info button for spotlight targeting.
+  const announcementInfoButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
@@ -454,6 +483,46 @@ export default function TvZone(props: TvZoneProps) {
     };
   }, [activeAnnouncement?.key]);
 
+  // ── Shock intro sequence ──────────────────────────────────────────────────────
+  // Fires whenever the active announcement key changes.
+  // - Shock key  → start the stinger (phase A); spotlight cleared.
+  // - Non-shock  → clear both phases (handles dismissal mid-sequence).
+  useEffect(() => {
+    const key = activeAnnouncement?.key ?? null;
+    const isShock = key !== null && SHOCK_ANNOUNCEMENT_KEYS.has(key);
+    startTransition(() => {
+      if (isShock) {
+        setShockIntroActive(true);
+        setShockInfoSpotlightActive(false);
+      } else {
+        setShockIntroActive(false);
+        setShockInfoSpotlightActive(false);
+      }
+    });
+  }, [activeAnnouncement?.key]);
+
+  const handleShockIntroComplete = useCallback(() => {
+    startTransition(() => {
+      setShockIntroActive(false);
+      setShockInfoSpotlightActive(true);
+    });
+  }, []);
+
+  const handleShockSpotlightComplete = useCallback(() => {
+    startTransition(() => setShockInfoSpotlightActive(false));
+  }, []);
+
+  // When the user opens the info modal during the spotlight, complete the spotlight cleanly.
+  const handleInfo = useCallback(() => {
+    if (shockInfoSpotlightActive) {
+      startTransition(() => setShockInfoSpotlightActive(false));
+    }
+    if (activeAnnouncement) {
+      setModalAnnouncementKey(activeAnnouncement.key);
+      setModalOpen(true);
+    }
+  }, [activeAnnouncement, shockInfoSpotlightActive]);
+
   // Listen for central FAB 'tv:announcement-dismiss' events
   useEffect(() => {
     const handler = () => handleDismiss();
@@ -461,10 +530,6 @@ export default function TvZone(props: TvZoneProps) {
     return () => window.removeEventListener('tv:announcement-dismiss', handler);
   }, [handleDismiss]);
 
-  const handleInfo = useCallback(() => {
-    if (activeAnnouncement) setModalAnnouncementKey(activeAnnouncement.key);
-    setModalOpen(true);
-  }, [activeAnnouncement]);
   const handleModalClose = useCallback(() => setModalOpen(false), []);
 
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
@@ -613,6 +678,7 @@ export default function TvZone(props: TvZoneProps) {
                 onInfo={handleInfo}
                 onDismiss={handleDismiss}
                 paused={modalOpen}
+                infoButtonRef={announcementInfoButtonRef}
               />
             )}
 
@@ -657,6 +723,22 @@ export default function TvZone(props: TvZoneProps) {
           onClose={handleModalClose}
         />
       )}
+
+      {/* ── Shock announcement sequence ───────────────────────────────────── */}
+      {/* Phase A: full-screen cinematic stinger */}
+      <ShockIntroOverlay
+        active={shockIntroActive}
+        shockKey={activeAnnouncement?.key ?? ''}
+        onComplete={handleShockIntroComplete}
+      />
+      {/* Phase C: info-button spotlight — reuses the same visual language as the
+           confessional prompt spotlight. The target ref is forwarded to the ℹ️
+           button inside TvAnnouncementOverlay. */}
+      <ConfessionalSpotlightOverlay
+        active={shockInfoSpotlightActive}
+        targetRef={announcementInfoButtonRef}
+        onComplete={handleShockSpotlightComplete}
+      />
 
       {/* ── Save feedback dialog ──────────────────────────────────────────── */}
       <ConfirmExitModal
