@@ -20,6 +20,7 @@ import {
   hasSocialMemoryDelta,
   type SocialMemoryDelta,
 } from './socialMemory';
+import { ALLIANCE_TAG, tagsAfterAllianceDecay } from './socialAlliance';
 
 const socialSlice = createSlice({
   name: 'social',
@@ -278,6 +279,7 @@ const socialSlice = createSlice({
       }>,
     ) {
       const { source, target, delta, tags } = action.payload;
+      const preserveIncomingAlliance = tags?.includes(ALLIANCE_TAG) ?? false;
       if (!state.relationships[source]) {
         state.relationships[source] = {};
       }
@@ -287,6 +289,7 @@ const socialSlice = createSlice({
         if (tags) {
           rel.tags = Array.from(new Set([...rel.tags, ...tags]));
         }
+        rel.tags = tagsAfterAllianceDecay(rel.tags, rel.affinity, preserveIncomingAlliance);
       } else {
         // Avoid creating zero-information relationships (no affinity change, no tags).
         if (delta === 0 && (!tags || tags.length === 0)) {

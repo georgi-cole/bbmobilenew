@@ -5,6 +5,7 @@ import socialReducer, {
   markAllIncomingInteractionsRead,
   resolveIncomingInteraction,
   resolveExpiredIncomingInteractionsForWeek,
+  updateRelationship,
   selectActiveIncomingInteractions,
   selectIncomingInteractions,
   selectPendingIncomingInteractionCount,
@@ -120,5 +121,22 @@ describe('socialSlice incoming interactions', () => {
     ) as SocialState;
     const boundary = updated.incomingInteractions.find((entry) => entry.id === 'i-boundary');
     expect(boundary?.resolved).toBe(false);
+  });
+
+  it('removes alliance tags when affinity decays below the ally threshold', () => {
+    const initial = socialReducer(undefined, { type: 'init' }) as SocialState;
+    const allied = socialReducer(
+      initial,
+      updateRelationship({ source: 'user', target: 'p2', delta: 5, tags: ['alliance'] }),
+    ) as SocialState;
+
+    const decayed = socialReducer(
+      allied,
+      updateRelationship({ source: 'user', target: 'p2', delta: -5 }),
+    ) as SocialState;
+
+    const relationship = decayed.relationships.user?.p2;
+    expect(relationship?.affinity).toBe(0);
+    expect(relationship?.tags).not.toContain('alliance');
   });
 });

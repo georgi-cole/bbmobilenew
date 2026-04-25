@@ -178,6 +178,35 @@ describe('IncomingInteractionsInbox', () => {
     expect(store.getState().game.tvFeed[0]?.text).toMatch(/encouraged/i);
   });
 
+  it('marks both players as allies when accepting an alliance proposal', () => {
+    const store = makeStore();
+    store.dispatch(openIncomingInbox());
+    const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    const otherPlayer = getNonUserPlayer(store);
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'alliance-proposal',
+        fromId: otherPlayer.id,
+        type: 'alliance_proposal',
+        text: 'Want to lock this in?',
+        createdAt: 320,
+        createdWeek: 1,
+        expiresAtWeek: 1,
+        read: false,
+        requiresResponse: true,
+        resolved: false,
+      }),
+    );
+
+    renderInbox(store);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+
+    const socialState = store.getState().social;
+    expect(socialState.relationships[otherPlayer.id]?.[humanId]?.tags).toContain('alliance');
+    expect(socialState.relationships[humanId]?.[otherPlayer.id]?.tags).toContain('alliance');
+  });
+
   it('renders contextual responses and tone labels', () => {
     const store = makeStore();
     store.dispatch(openIncomingInbox());

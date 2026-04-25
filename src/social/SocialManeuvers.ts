@@ -13,10 +13,12 @@
 
 import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
+import { socialConfig } from './socialConfig';
 import { normalizeActionCost, normalizeActionCosts, normalizeActionYields } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta, evaluateOutcome, OUTCOME_THRESHOLDS } from './SocialPolicy';
 import { recordSocialAction, updateRelationship, applyInfluenceDelta, applyInfoDelta } from './socialSlice';
+import { ALLIANCE_TAG, BETRAYAL_TAG, hasAllianceBetween } from './socialAlliance';
 import type { SocialActionLogEntry, SocialState } from './types';
 
 // ── Internal store reference ──────────────────────────────────────────────
@@ -37,7 +39,7 @@ type PartialSocialState = {
   energyBank: Record<string, number>;
   influenceBank?: Record<string, number>;
   infoBank?: Record<string, number>;
-  relationships: Record<string, unknown>;
+  relationships: SocialState['relationships'];
   sessionLogs: unknown[];
 };
 
@@ -48,6 +50,9 @@ interface StateForManeuvers {
 let _store: StoreAPI | null = null;
 const REPETITION_BACKFIRE_THRESHOLD = 2;
 const REPETITION_BACKFIRE_CHANCE = 0.5;
+const ALLIANCE_REJECTION_DELTA = -6;
+const ALLIANCE_GASLIGHT_DELTA = -10;
+const ALLIANCE_BETRAYAL_DELTA = -8;
 
 function countPriorRepeatedActions(
   logs: SocialActionLogEntry[],
@@ -84,6 +89,26 @@ function scoreToLabel(score: number): 'Bad' | 'Unmoved' | 'Good' | 'Great' {
 
 function clampResourceAdjustment(delta: number, availableBalance: number): number {
   return delta < 0 ? -Math.min(Math.abs(delta), availableBalance) : delta;
+}
+
+function normalizeAffinityForAlliance(affinity: number): number {
+  return Math.max(-1, Math.min(1, Math.abs(affinity) <= 1 ? affinity : affinity / 100));
+}
+
+function getAllianceAcceptChance(affinity: number, priorRepeats: number): number {
+  const normalizedAffinity = normalizeAffinityForAlliance(affinity);
+  const baseChance =
+    affinity >= socialConfig.relationshipThresholds.allyThreshold
+      ? 0.9
+      : 0.5 + normalizedAffinity * 0.45;
+  return Math.max(0.08, Math.min(0.96, baseChance - priorRepeats * 0.12));
+}
+
+function getAllianceBetrayalChance(affinity: number): number {
+  const normalizedAffinity = normalizeAffinityForAlliance(affinity);
+  if (normalizedAffinity < -0.15) return 0.35;
+  if (normalizedAffinity < 0.2) return 0.16;
+  return 0.04;
 }
 
 /**
@@ -139,8 +164,23 @@ export function canAfford(
 export function getAvailableActions(
   actorId: string,
   state?: StateForManeuvers,
+  targetId?: string,
 ): SocialActionDefinition[] {
-  return SOCIAL_ACTIONS.filter((a) => canAfford(actorId, normalizeActionCosts(a), state));
+  const socialState = state?.social ?? (_store?.getState() as { social: SocialState } | null)?.social;
+  return SOCIAL_ACTIONS.filter((action) => {
+    if (!canAfford(actorId, normalizeActionCosts(action), state)) {
+      return false;
+    }
+    if (
+      targetId &&
+      action.id === 'proposeAlliance' &&
+      socialState &&
+      hasAllianceBetween(socialState.relationships, actorId, targetId)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 /**
@@ -229,16 +269,43 @@ export function executeAction(
 
   const costs = normalizeActionCosts(action);
   const currentEnergy = SocialEnergyBank.get(actorId);
+  const state = _store.getState() as { social: SocialState };
+
+  if (actionId === 'proposeAlliance' && hasAllianceBetween(state.social.relationships, actorId, targetId)) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: 'Already allied',
+      score: 0,
+      label: 'Unmoved',
+    };
+  }
 
   if (!canAfford(actorId, costs)) {
     return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient resources', score: 0, label: 'Unmoved' };
   }
 
-  const outcome = options?.outcome ?? 'success';
-  const state = _store.getState() as { social: SocialState };
   const scaledYields = normalizeActionYields(action);
   const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
-  const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, outcome);
+  const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
+  let outcome = options?.outcome ?? 'success';
+  let allianceBetrayed = false;
+  let allianceGaslit = false;
+  if (actionId === 'proposeAlliance' && !options?.outcome) {
+    const acceptChance = getAllianceAcceptChance(existingAffinity, priorRepeats);
+    const accepted = Math.random() < acceptChance;
+    if (!accepted) {
+      outcome = 'failure';
+      allianceGaslit = existingAffinity < 0 && priorRepeats > 0;
+    } else {
+      allianceBetrayed = Math.random() < getAllianceBetrayalChance(existingAffinity);
+    }
+  }
+  const baseDelta =
+    actionId === 'proposeAlliance' && outcome === 'failure'
+      ? allianceGaslit ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA
+      : computeOutcomeDelta(actionId, actorId, targetId, outcome);
   const didBackfire =
     outcome === 'success' &&
     priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
@@ -353,15 +420,40 @@ export function executeAction(
     };
   }
 
+  const relationshipTags = outcome === 'success' && action.outcomeTag ? [action.outcomeTag] : undefined;
+
   _store.dispatch(
     updateRelationship({
       source: actorId,
       target: targetId,
       delta,
-      tags: action.outcomeTag ? [action.outcomeTag] : undefined,
+      tags: relationshipTags,
       actionSource: options?.source ?? 'system',
     }),
   );
+
+  if (actionId === 'proposeAlliance' && outcome === 'success') {
+    _store.dispatch(
+      updateRelationship({
+        source: targetId,
+        target: actorId,
+        delta,
+        tags: [ALLIANCE_TAG],
+        actionSource: options?.source ?? 'system',
+      }),
+    );
+    if (allianceBetrayed) {
+      _store.dispatch(
+        updateRelationship({
+          source: targetId,
+          target: actorId,
+          delta: ALLIANCE_BETRAYAL_DELTA,
+          tags: [BETRAYAL_TAG],
+          actionSource: options?.source ?? 'system',
+        }),
+      );
+    }
+  }
 
   // For primaryPlusSubject actions: apply a lightweight contextual tag from the
   // primary target toward the subject (e.g. LOH now sees the subject as a "target").
@@ -370,14 +462,14 @@ export function executeAction(
     action.targetMode === 'primaryPlusSubject' &&
     subjectId &&
     subjectId !== targetId &&
-    action.outcomeTag
+    relationshipTags
   ) {
     _store.dispatch(
       updateRelationship({
         source: targetId,
         target: subjectId,
         delta: 0,
-        tags: [action.outcomeTag],
+        tags: relationshipTags,
         actionSource: options?.source ?? 'system',
       }),
     );
@@ -385,7 +477,11 @@ export function executeAction(
 
   _store.dispatch(recordSocialAction({ entry }));
 
-  const verb = didBackfire ? 'backfired' : outcome === 'failure' ? 'failed' : 'succeeded';
+  const verb = allianceBetrayed
+    ? 'was accepted, but they may be playing both sides'
+    : allianceGaslit
+      ? 'made things worse'
+      : didBackfire ? 'backfired' : outcome === 'failure' ? 'failed' : 'succeeded';
   const sign = delta > 0 ? '+' : '';
   const summary =
     delta !== 0
