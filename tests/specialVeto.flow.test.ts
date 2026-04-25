@@ -17,8 +17,10 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   activateSpecialVeto,
+  queueForcedShock,
   setReplacementNominee,
   tryActivateSpecialVeto,
+  tryActivatePendingForcedSpecialVeto,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -290,6 +292,45 @@ describe('tryActivateSpecialVeto eligibility', () => {
     );
     store.dispatch(tryActivateSpecialVeto());
     expect(store.getState().game.twistActivatedThisWeek).toBe(true);
+  });
+});
+
+describe('forced safety shock queue', () => {
+  it('queues for the current week when POS results have not happened yet', () => {
+    const store = makeStore({ phase: 'pos_comp', week: 4 });
+    store.dispatch(queueForcedShock('spotlight'));
+
+    expect(store.getState().game.pendingForcedShock).toEqual({
+      type: 'spotlight',
+      requestedWeek: 4,
+      earliestWeek: 4,
+    });
+  });
+
+  it('queues for the next week when POS results already passed', () => {
+    const store = makeStore({ phase: 'social_2', week: 4 });
+    store.dispatch(queueForcedShock('diamond'));
+
+    expect(store.getState().game.pendingForcedShock?.earliestWeek).toBe(5);
+  });
+
+  it('activates the queued safety shock at pos_results even when normal guards would block it', () => {
+    const store = makeStore(
+      {
+        phase: 'pos_results',
+        week: 4,
+        players: makePlayers(8),
+        specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true },
+      },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: false, specialSafetyChance: 0 } },
+    );
+
+    store.dispatch(queueForcedShock('diamond'));
+    const result = store.dispatch(tryActivatePendingForcedSpecialVeto());
+
+    expect(result).toBe(true);
+    expect(store.getState().game.specialVeto?.activeType).toBe('diamond');
+    expect(store.getState().game.pendingForcedShock).toBeNull();
   });
 });
 

@@ -30,7 +30,9 @@ import {
   tryActivateSecretMission,
   openBattleBackCompetition,
   tryActivateDoubleEviction,
+  tryActivatePendingForcedDoubleEviction,
   tryActivateSpecialVeto,
+  tryActivatePendingForcedSpecialVeto,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -766,6 +768,7 @@ export default function GameScreen() {
     // Only attempt once per week to prevent repeated rolls on re-renders.
     if (doubleEvictionActivationWeekRef.current === game.week) return
     doubleEvictionActivationWeekRef.current = game.week
+    if (dispatch(tryActivatePendingForcedDoubleEviction())) return
     dispatch(tryActivateDoubleEviction())
   }, [game.phase, game.week, dispatch])
 
@@ -778,6 +781,7 @@ export default function GameScreen() {
     if (game.phase !== 'pos_results') return
     if (specialVetoActivationWeekRef.current === game.week) return
     specialVetoActivationWeekRef.current = game.week
+    if (dispatch(tryActivatePendingForcedSpecialVeto())) return
     dispatch(tryActivateSpecialVeto())
   }, [game.phase, game.week, dispatch])
 
