@@ -537,6 +537,36 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
   });
 
+  it('announces both evictees on the main TV during a double eviction', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3', 'p4'],
+      voteResults: { p2: 5, p3: 3, p4: 1 },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+      doubleEviction: {
+        usedCount: 1,
+        weekActive: true,
+        pendingSecondEviction: {
+          evicteeId: 'p3',
+          evictionMessage: 'Player 3 has also been eliminated. 🚪',
+        },
+      },
+      players: makePlayers(7),
+    });
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    act(() => {
+      screen.getByText('Done').click();
+    });
+
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Double Elimination Results');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent(
+      "Player 2 and Player 3, please say your goodbyes and leave through the Confessional's special exit.",
+    );
+  });
+
   it('shows the unlocked vote breakdown in a modal when the evicted player is the human user', async () => {
     const players = makePlayers(6);
     const store = makeStore({

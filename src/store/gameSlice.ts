@@ -51,7 +51,10 @@ import {
   type MissionTask,
   type LegacyMissionRewardType,
 } from '../bb/secretMission';
-import { calculateRequiredDoubleEvictionSlots } from '../features/twists/doubleEvictionTieUtils';
+import {
+  buildDoubleEvictionTieResolutionMessage,
+  calculateRequiredDoubleEvictionSlots,
+} from '../features/twists/doubleEvictionTieUtils';
 import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
@@ -1580,6 +1583,18 @@ const gameSlice = createSlice({
       state.tiedNomineeIds = null;
       state.votes = {};
 
+      const tiedNames = tied
+        .map((id) => state.players.find((player) => player.id === id)?.name)
+        .filter((name): name is string => Boolean(name));
+      const tieBreakMessage = buildDoubleEvictionTieResolutionMessage({
+        deciderName: lohPlayer?.name ?? 'The LOH',
+        tiedNames,
+        selectedNames: [evictee.name],
+        publicModeEnabled: state.publicModeEnabled,
+        secondEvictionOnly: true,
+        includeEliminationClause: true,
+      });
+
       if (
         state.doubleEviction?.weekActive &&
         state.pendingEviction &&
@@ -1587,9 +1602,7 @@ const gameSlice = createSlice({
       ) {
         state.doubleEviction.pendingSecondEviction = {
           evicteeId: nomineeId,
-          evictionMessage: state.publicModeEnabled
-            ? `${evictee.name} had the lower public approval and has been eliminated from The Big Eye house. 📉`
-            : `${lohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🗳️`,
+          evictionMessage: tieBreakMessage,
         };
         return;
       }
@@ -1629,28 +1642,40 @@ const gameSlice = createSlice({
       state.tiedNomineeIds = null;
       state.votes = {};
 
-      const buildMessage = (player: Player) =>
+      const tiedNames = tied
+        .map((id) => state.players.find((player) => player.id === id)?.name)
+        .filter((name): name is string => Boolean(name));
+      const selectedNames = selectedPlayers.map((player) => player.name);
+      const tieResolutionMessage = buildDoubleEvictionTieResolutionMessage({
+        deciderName: lohPlayer?.name ?? 'The LOH',
+        tiedNames,
+        selectedNames,
+        publicModeEnabled: state.publicModeEnabled,
+        secondEvictionOnly: Boolean(state.pendingEviction),
+        includeEliminationClause: true,
+      });
+      const buildFollowUpMessage = (player: Player) =>
         state.publicModeEnabled
           ? `${player.name} had the lower public approval and has been eliminated from The Big Eye house. 📉`
-          : `${lohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${player.name}. ${player.name} has been eliminated from The Big Eye house. 🗳️`;
+          : `Following the tie-break, ${player.name} has also been eliminated from The Big Eye house. 🗳️`;
 
       if (state.pendingEviction && !state.doubleEviction.pendingSecondEviction) {
         state.doubleEviction.pendingSecondEviction = {
           evicteeId: selectedPlayers[0].id,
-          evictionMessage: buildMessage(selectedPlayers[0]),
+          evictionMessage: tieResolutionMessage,
         };
         return;
       }
 
       state.pendingEviction = {
         evicteeId: selectedPlayers[0].id,
-        evictionMessage: buildMessage(selectedPlayers[0]),
+        evictionMessage: tieResolutionMessage,
       };
 
       if (selectedPlayers[1]) {
         state.doubleEviction.pendingSecondEviction = {
           evicteeId: selectedPlayers[1].id,
-          evictionMessage: buildMessage(selectedPlayers[1]),
+          evictionMessage: buildFollowUpMessage(selectedPlayers[1]),
         };
       }
     },
