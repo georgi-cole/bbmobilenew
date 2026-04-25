@@ -329,6 +329,10 @@ function pushEvent(
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
 
+function pushDetoxEvent(state: GameState, text: string) {
+  pushEvent(state, text, 'game', { sequence: 'detox_safety' });
+}
+
 function refreshSecretMissionCompletion(secretMission: GameState['secretMission']) {
   if (!secretMission || secretMission.status !== 'accepted') return;
   const allDone = isSecretMissionSuccessful(secretMission.tasks);
@@ -1570,12 +1574,15 @@ const gameSlice = createSlice({
           state.nomineeIds = [];
           state.povSavedId = null;
           state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
-          pushEvent(
+          pushDetoxEvent(
+            state,
+            `${posWinner?.name ?? 'The Detox holder'} has decided to use Detox. ⚡`,
+          );
+          pushDetoxEvent(
             state,
             `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`,
-            'game',
           );
-          pushEvent(state, `${posWinner?.name ?? 'The Detox holder'}, name your two backup nominees. ⚡`, 'game');
+          pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'}, name your two backup nominees. ⚡`);
           state.specialVeto!.awaitingCoupReplacement1 = true;
         } else {
           // Standard / VIP / Diamond / Spotlight: set awaitingPovSaveTarget
@@ -2279,10 +2286,9 @@ const gameSlice = createSlice({
         state.specialVeto.awaitingCoupReplacement1 = false;
         state.specialVeto.awaitingCoupReplacement2 = true;
         const player = state.players.find((p) => p.id === id);
-        pushEvent(
+        pushDetoxEvent(
           state,
           `${povHolder?.name ?? 'The Detox holder'} selects ${player?.name ?? id} as the first replacement. Choose a second. ⚡`,
-          'game',
         );
       } else if (state.specialVeto.awaitingCoupReplacement2) {
         const rep1Id = state.specialVeto.coupReplacement1Id;
@@ -2300,10 +2306,9 @@ const gameSlice = createSlice({
         appendNominee(state, rep2.id);
         state.specialVeto.awaitingCoupReplacement2 = false;
         state.specialVeto.coupReplacement1Id = null;
-        pushEvent(
+        pushDetoxEvent(
           state,
           `${povHolder?.name ?? 'The Detox holder'} named ${rep1.name} and ${rep2.name} as the new nominees. ⚡`,
-          'game',
         );
       }
     },
@@ -3690,7 +3695,8 @@ const gameSlice = createSlice({
               state.povSavedId = null;
               state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
               const removedNames = oldNominees.map((n) => n.name).join(' and ');
-              pushEvent(state, `${posWinner.name} used Detox and cleared ${removedNames} from the block! ⚡`, 'game');
+              pushDetoxEvent(state, `${posWinner.name} has decided to use Detox. ⚡`);
+              pushDetoxEvent(state, `${posWinner.name} used Detox and cleared ${removedNames} from the block! ⚡`);
               const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true });
               const replacements = pickStrategicAiPlayers(
                 state,
@@ -3701,10 +3707,9 @@ const gameSlice = createSlice({
               );
               if (replacements.length > 0) {
                 replacements.forEach((replacement) => appendNominee(state, replacement.id));
-                pushEvent(
+                pushDetoxEvent(
                   state,
                   `${posWinner.name} named ${replacements.map((replacement) => replacement.name).join(' and ')} as the new nominees. ⚡`,
-                  'game',
                 );
               }
             } else if (posWinner?.isUser) {
@@ -3728,18 +3733,19 @@ const gameSlice = createSlice({
                 state.povSavedId = null;
                 state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
                 const removedNames = oldNominees.map((n) => n.name).join(' and ');
-                pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`, 'game');
+                pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'} has decided to use Detox. ⚡`);
+                pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`);
                 if (eligible.length >= 2) {
                   const replacements = pickStrategicAiPlayers(state, eligible, 2, rng, { preferLoh: true });
                   replacements.forEach((r) => {
                     appendNominee(state, r.id);
                   });
                   const repNames = replacements.map((r) => r.name).join(' and ');
-                  pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${repNames} as the new nominees. ⚡`, 'game');
+                  pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${repNames} as the new nominees. ⚡`);
                 } else if (eligible.length === 1) {
                   const r = eligible[0];
                   appendNominee(state, r.id);
-                  pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${r.name} as the only available replacement. ⚡`, 'game');
+                  pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${r.name} as the only available replacement. ⚡`);
                 }
               } else {
                 pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} chose not to use Detox. ⚡`, 'game');

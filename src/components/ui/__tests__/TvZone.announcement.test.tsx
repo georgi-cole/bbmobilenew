@@ -104,6 +104,7 @@ describe('TvZone — announcement overlay', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -181,6 +182,63 @@ describe('TvZone — announcement overlay', () => {
     });
 
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+  });
+
+  it('streams Detox safety beats on the main TV before the final nominee message', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'detox-decision',
+            text: 'Aria has decided to use Detox. ⚡',
+            meta: { sequence: 'detox_safety' },
+          }),
+        ),
+      );
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'detox-clear',
+            text: 'Aria used Detox and cleared Aria and Ivy from the block! ⚡',
+            meta: { sequence: 'detox_safety' },
+          }),
+        ),
+      );
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'detox-final',
+            text: 'Aria named Echo and Georgi as the new nominees. ⚡',
+            meta: { sequence: 'detox_safety' },
+          }),
+        ),
+      );
+    });
+
+    const nowMessage = () => document.querySelector('.tv-zone__now')?.textContent;
+    expect(nowMessage()).toBe('Aria has decided to use Detox. ⚡');
+    expect(screen.getByLabelText('Game action zone').className).toContain('tv-zone--detox-stream');
+    expect(document.body.classList.contains('body--shock-active')).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(nowMessage()).toBe('Aria used Detox and cleared Aria and Ivy from the block! ⚡');
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(nowMessage()).toBe('Aria named Echo and Georgi as the new nominees. ⚡');
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(screen.getByLabelText('Game action zone').className).not.toContain('tv-zone--detox-stream');
+    vi.useRealTimers();
   });
 
   it('renders the vote results reveal inside the main tv viewport', () => {

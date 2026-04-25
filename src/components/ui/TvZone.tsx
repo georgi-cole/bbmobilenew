@@ -138,6 +138,10 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
   return { key, ...meta };
 }
 
+function isDetoxSequenceEvent(event: TvEvent | undefined): event is TvEvent {
+  return event?.meta?.sequence === 'detox_safety';
+}
+
 /**
  * Derive an announcement key from the current game phase and alive player count.
  * Only the phases explicitly listed here will trigger an overlay — all others
@@ -162,6 +166,7 @@ function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictio
 // preventing jarring text transitions between the overlay disappearing and new text.
 const POST_DISMISS_FADE_MS = 300;
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
+const DETOX_MESSAGE_HOLD_MS = 1500;
 const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
   'loh_tiebreak_tie',
   'loh_tiebreak_deciding',
@@ -286,9 +291,13 @@ export default function TvZone(props: TvZoneProps) {
   // Save feedback dialog — shows a mobile-friendly confirmation after save.
   const [saveFeedbackOpen, setSaveFeedbackOpen] = useState(false);
   const [saveFeedbackIsError, setSaveFeedbackIsError] = useState(false);
+  const [detoxMessageQueue, setDetoxMessageQueue] = useState<TvEvent[]>([]);
+  const [detoxMessageIndex, setDetoxMessageIndex] = useState(0);
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detoxMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detoxSequenceLatestIdRef = useRef<string | null>(null);
   // Tracks the previous phase to detect phase transitions.
   const previousPhaseRef = useRef<Phase | null>(null);
   // Stable ref so phase-transition effect always reads the latest latestEvent.
@@ -298,6 +307,10 @@ export default function TvZone(props: TvZoneProps) {
   useLayoutEffect(() => {
     latestEventRef.current = latestEvent;
   });
+
+  const sequencedDetoxEvent = detoxMessageQueue[detoxMessageIndex];
+  const displayedEvent = sequencedDetoxEvent ?? latestEvent;
+  const detoxMessageActive = Boolean(sequencedDetoxEvent);
 
   // ── Shock announcement sequence state ────────────────────────────────────────
   // Phase A: full-screen shock stinger (ShockIntroOverlay).
@@ -362,7 +375,7 @@ export default function TvZone(props: TvZoneProps) {
     activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
   const showInlineAnnouncement = activeAnnouncement != null && !(shockIntroActive && isShockAnnouncement);
   const suppressStaleLiveVotePitchMessage =
-    latestEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
+    displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
     gameState.phase !== 'social_2';
   const hasFallbackViewportMessage = Boolean(props.viewportFallbackMessage);
   const hideViewportMessage =
@@ -376,16 +389,61 @@ export default function TvZone(props: TvZoneProps) {
   const viewportDisplayText =
     (suppressStaleLiveVotePitchMessage && hasFallbackViewportMessage)
       ? props.viewportFallbackMessage
-      : latestEvent?.text ?? props.viewportFallbackMessage ?? 'Welcome to The Big Eye – AI Edition 🏠';
-  const viewportMessageKey = getViewportMessageKey(latestEvent);
+      : displayedEvent?.text ?? props.viewportFallbackMessage ?? 'Welcome to The Big Eye – AI Edition 🏠';
+  const viewportMessageKey = `${getViewportMessageKey(displayedEvent)}-${detoxMessageIndex}`;
   let mainTvMessage: string | undefined;
   if (activeAnnouncement) {
     mainTvMessage = activeAnnouncement.title;
   } else if (suppressStaleLiveVotePitchMessage) {
     mainTvMessage = hasFallbackViewportMessage ? props.viewportFallbackMessage : undefined;
   } else {
-    mainTvMessage = latestEvent?.text;
+    mainTvMessage = displayedEvent?.text;
   }
+
+  useEffect(() => {
+    const latestVisibleId = tvVisibleFeed[0]?.id ?? null;
+    const previousLatestId = detoxSequenceLatestIdRef.current;
+    detoxSequenceLatestIdRef.current = latestVisibleId;
+
+    if (previousLatestId === null || latestVisibleId === previousLatestId) return;
+
+    const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId);
+    const newEvents = tvVisibleFeed.slice(0, previousIndex === -1 ? 1 : previousIndex);
+    const detoxEvents = newEvents.filter(isDetoxSequenceEvent);
+    if (detoxEvents.length === 0) return;
+
+    startTransition(() => {
+      setDetoxMessageQueue(detoxEvents.reverse());
+      setDetoxMessageIndex(0);
+    });
+  }, [tvVisibleFeed]);
+
+  useEffect(() => {
+    if (detoxMessageTimerRef.current !== null) {
+      clearTimeout(detoxMessageTimerRef.current);
+      detoxMessageTimerRef.current = null;
+    }
+    if (detoxMessageQueue.length === 0) return;
+
+    detoxMessageTimerRef.current = setTimeout(() => {
+      startTransition(() => {
+        if (detoxMessageIndex < detoxMessageQueue.length - 1) {
+          setDetoxMessageIndex((index) => index + 1);
+        } else {
+          setDetoxMessageQueue([]);
+          setDetoxMessageIndex(0);
+        }
+      });
+      detoxMessageTimerRef.current = null;
+    }, DETOX_MESSAGE_HOLD_MS);
+
+    return () => {
+      if (detoxMessageTimerRef.current !== null) {
+        clearTimeout(detoxMessageTimerRef.current);
+        detoxMessageTimerRef.current = null;
+      }
+    };
+  }, [detoxMessageIndex, detoxMessageQueue]);
 
   const handleDismiss = useCallback(() => {
     const currentAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
@@ -545,7 +603,7 @@ export default function TvZone(props: TvZoneProps) {
   const shockShakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive;
+    const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive || detoxMessageActive;
     if (shockSequenceActive) {
       document.body.classList.add('body--shock-active');
     } else {
@@ -554,7 +612,7 @@ export default function TvZone(props: TvZoneProps) {
     return () => {
       document.body.classList.remove('body--shock-active');
     };
-  }, [shockIntroActive, shockInfoSpotlightActive]);
+  }, [shockIntroActive, shockInfoSpotlightActive, detoxMessageActive]);
 
   useEffect(() => {
     if (!shockIntroActive) return;
@@ -571,6 +629,7 @@ export default function TvZone(props: TvZoneProps) {
   useEffect(() => {
     return () => {
       if (shockShakeTimerRef.current !== null) clearTimeout(shockShakeTimerRef.current);
+      if (detoxMessageTimerRef.current !== null) clearTimeout(detoxMessageTimerRef.current);
       document.documentElement.classList.remove('app--shock-shake');
       document.body.classList.remove('body--shock-active');
     };
@@ -637,6 +696,7 @@ export default function TvZone(props: TvZoneProps) {
         'tv-zone',
         isDeSpotlight ? 'tv-zone--de-spotlight' : '',
         isLiveVoteFocus ? 'tv-zone--live-vote-focus' : '',
+        detoxMessageActive ? 'tv-zone--detox-stream' : '',
       ].filter(Boolean).join(' ')}
       aria-label="Game action zone"
       style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
@@ -700,7 +760,11 @@ export default function TvZone(props: TvZoneProps) {
             <p
               key={viewportMessageKey}
               aria-hidden={hideViewportMessage}
-              className={['tv-zone__now', hideViewportMessage ? 'tv-zone__now--hidden' : ''].filter(Boolean).join(' ')}
+              className={[
+                'tv-zone__now',
+                detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
+                hideViewportMessage ? 'tv-zone__now--hidden' : '',
+              ].filter(Boolean).join(' ')}
               style={hideViewportMessage ? { opacity: 0 } : undefined}
             >
               {viewportDisplayText}
