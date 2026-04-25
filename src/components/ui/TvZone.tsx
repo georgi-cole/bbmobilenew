@@ -770,6 +770,7 @@ export default function TvZone(props: TvZoneProps) {
       <ShockIntroOverlay
         active={shockIntroActive}
         shockKey={activeAnnouncement?.key ?? ''}
+        announcement={activeAnnouncement}
         onComplete={handleShockIntroComplete}
       />
       {/* Phase C: info-button spotlight — reuses the same visual language as the

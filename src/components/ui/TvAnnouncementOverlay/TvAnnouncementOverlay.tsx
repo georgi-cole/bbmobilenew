@@ -18,6 +18,8 @@ export interface TvAnnouncementOverlayProps {
   paused?: boolean;
   /** Optional ref forwarded to the ℹ️ info button for external spotlight targeting. */
   infoButtonRef?: RefObject<HTMLButtonElement | null>;
+  /** When false, the info button is not rendered. */
+  showInfoButton?: boolean;
 }
 
 function getAnnouncementThemeClass(key: string): string {
@@ -74,6 +76,7 @@ export default function TvAnnouncementOverlay({
   onDismiss,
   paused = false,
   infoButtonRef,
+  showInfoButton = true,
 }: TvAnnouncementOverlayProps) {
   const { title, subtitle, isLive, autoDismissMs } = announcement;
   const isBattleBack = announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_');
@@ -236,14 +239,16 @@ export default function TvAnnouncementOverlay({
           {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
         </div>
 
-        <button
-          className="tv-announcement__info-btn"
-          onClick={onInfo}
-          aria-label={`More info about ${title}`}
-          ref={infoButtonRef}
-        >
-          ℹ️
-        </button>
+        {showInfoButton && (
+          <button
+            className="tv-announcement__info-btn"
+            onClick={onInfo}
+            aria-label={`More info about ${title}`}
+            ref={infoButtonRef}
+          >
+            ℹ️
+          </button>
+        )}
       </div>
     </div>
   );
