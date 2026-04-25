@@ -32,12 +32,15 @@ import {
   applyInfluenceDelta,
   decaySocialMemory,
   drainEvictedPlayerSocial,
+  invalidateIncomingInteractions,
   setEnergyBankEntry,
 } from './socialSlice';
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
 import { scheduleIncomingInteractionsForPhase, ELIGIBLE_PHASES } from './incomingInteractionAutonomy';
 import type { AutonomyStore } from './incomingInteractionAutonomy';
 import { deliverScheduledIncomingInteractionsForPhase } from './incomingInteractionScheduler';
+import { collectInvalidIncomingInteractionIds } from './incomingInteractionValidity';
+import type { IncomingInteraction, ScheduledIncomingInteraction } from './types';
 import { seedWeekRelationships } from './weekSocialSeed';
 import { DEFAULT_ENERGY } from './constants';
 
@@ -53,6 +56,8 @@ interface GameState {
   posWinnerId: string | null;
   povSavedId?: string | null;
   nomineeIds: string[];
+  awaitingPovDecision?: boolean;
+  awaitingPovSaveTarget?: boolean;
   votes?: Record<string, string>;
   pendingEviction?: { evicteeId: string; evictionMessage: string } | null;
   doubleEviction?: { weekActive?: boolean };
@@ -62,7 +67,11 @@ interface GameState {
 
 interface StateWithGame {
   game: GameState;
-  social?: { energyBank?: Record<string, number> };
+  social?: {
+    energyBank?: Record<string, number>;
+    incomingInteractions?: IncomingInteraction[];
+    scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
+  };
 }
 
 type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown };
@@ -163,6 +172,26 @@ function applySurvivedNomBonus(api: MiddlewareAPI, newPhase: string, state: Stat
   }
 }
 
+function syncInvalidIncomingInteractions(api: MiddlewareAPI): void {
+  const state = api.getState() as StateWithGame;
+  if (!state.social || !state.game) return;
+
+  const interactionIds = collectInvalidIncomingInteractionIds({
+    incomingInteractions: state.social.incomingInteractions ?? [],
+    scheduledIncomingInteractions: state.social.scheduledIncomingInteractions ?? [],
+    game: state.game,
+  });
+  if (interactionIds.length === 0) return;
+
+  api.dispatch(
+    invalidateIncomingInteractions({
+      interactionIds,
+      resolvedAt: Date.now(),
+      resolvedWeek: state.game.week,
+    }),
+  );
+}
+
 export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   if (typeof action !== 'object' || action === null || !('type' in action)) {
     return next(action);
@@ -193,6 +222,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     if (nextPhase !== 'week_start' && prevPhase !== nextPhase && ELIGIBLE_PHASES.has(nextPhase)) {
       handleAutonomyPhase(api as unknown as AutonomyStore, nextPhase);
     }
+    syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
 
     return result;
   }
@@ -282,6 +312,14 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       grantEnergy(api as unknown as MiddlewareAPI, saveId, 2);
     }
 
+    syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
+
+    return result;
+  }
+
+  if (type === 'game/submitPovDecision') {
+    const result = next(action);
+    syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
     return result;
   }
 
@@ -337,6 +375,8 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       }
     }
 
+    syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
+
     return result;
   }
 
@@ -380,6 +420,20 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       api.dispatch(drainEvictedPlayerSocial({ playerId: evicteeId, week }));
     }
 
+    syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
+
+    return result;
+  }
+
+  if (
+    type === 'game/finalizeNominations' ||
+    type === 'game/commitNominees' ||
+    type === 'game/setReplacementNominee' ||
+    type === 'game/hydrateGame' ||
+    type === 'social/hydrateSocial'
+  ) {
+    const result = next(action);
+    syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
     return result;
   }
 

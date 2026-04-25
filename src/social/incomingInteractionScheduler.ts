@@ -2,6 +2,7 @@ import { socialConfig } from './socialConfig';
 import { INCOMING_INTERACTION_PHASE_ORDER } from './incomingInteractionPhases';
 import { applyScheduledIncomingInteractionDelivery } from './socialSlice';
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
+import { isIncomingInteractionInvalidated } from './incomingInteractionValidity';
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -30,6 +31,13 @@ interface SchedulerStore {
     };
     game?: {
       week?: number;
+      phase?: string;
+      lohId?: string | null;
+      posWinnerId?: string | null;
+      nomineeIds?: string[];
+      awaitingPovDecision?: boolean;
+      awaitingPovSaveTarget?: boolean;
+      players?: Array<{ id: string; status: string; isUser?: boolean }>;
     };
   };
 }
@@ -332,6 +340,10 @@ export function deliverScheduledIncomingInteractionsForPhase(
   };
 
   for (const entry of scheduled) {
+    if (isIncomingInteractionInvalidated(entry.interaction, state.game ?? {})) {
+      logDecision(entry, 'expiration', 'invalidated_before_delivery');
+      continue;
+    }
     if (entry.interaction.expiresAtWeek < week) {
       logDecision(entry, 'expiration', 'expired_before_delivery');
       continue;
