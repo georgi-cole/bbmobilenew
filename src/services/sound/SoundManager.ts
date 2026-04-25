@@ -1021,7 +1021,7 @@ class _SoundManager {
 
   private _getOrCreateMusicEl(
     key: string,
-    _src: string,
+    src: string,
     volume: number,
     loop: boolean,
   ): HTMLAudioElement {
@@ -1040,7 +1040,7 @@ class _SoundManager {
       }
       return primed;
     }
-    return _makeMusicEl(_src, volume, loop);
+    return _makeMusicEl(src, volume, loop);
   }
 
   private _primeMusicForMobile(): void {
@@ -1054,8 +1054,16 @@ class _SoundManager {
       el.muted = true;
       const playResult = el.play();
       const resetPrimedElement = () => {
+        if (this._primedMusicEls.get(key) !== el || this._musicEl === el) {
+          return;
+        }
         el.pause();
-        el.currentTime = 0;
+        try {
+          el.currentTime = 0;
+        } catch {
+          // Ignore browsers that reject currentTime resets while the element
+          // is still settling after priming.
+        }
         el.muted = false;
         el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
       };

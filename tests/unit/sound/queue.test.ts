@@ -224,6 +224,45 @@ describe('SoundManager music state machine', () => {
     );
   });
 
+  it('does not let a late priming callback pause a reused finale track', async () => {
+    const sm = SoundManager as unknown as {
+      _unlocked: boolean;
+      _primeMusicForMobile: () => void;
+      _primedMusicEls: Map<string, HTMLAudioElement>;
+    };
+    sm._unlocked = true;
+
+    let finalModalPlayCount = 0;
+    let resolvePrimingPlay!: () => void;
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLAudioElement) {
+      const src = this.getAttribute('src') ?? this.src ?? '';
+      if (/Final(?:%20| )modal sound\.mp3/.test(src)) {
+        finalModalPlayCount += 1;
+        if (finalModalPlayCount === 1) {
+          return new Promise<void>((resolve) => {
+            resolvePrimingPlay = resolve;
+          });
+        }
+      }
+      return Promise.resolve();
+    });
+
+    sm._primeMusicForMobile();
+    const primedFinalModalEl = sm._primedMusicEls.get('music:final_modal');
+    expect(primedFinalModalEl).toBeTruthy();
+
+    await SoundManager.setDesiredMusic('final_modal', 'route:game-over');
+    expect(SoundManager.currentMusicKey).toBe('music:final_modal');
+    primedFinalModalEl!.currentTime = 12;
+
+    resolvePrimingPlay();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(primedFinalModalEl!.currentTime).toBe(12);
+    expect(SoundManager.currentMusicKey).toBe('music:final_modal');
+  });
+
   it('honours non-looping music metadata for one-shot finale cues', async () => {
     const sm = SoundManager as unknown as {
       _unlocked: boolean;
