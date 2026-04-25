@@ -26,6 +26,7 @@ import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay';
 const CONFESSIONAL_FLASH_DURATION_MS = 1800;
 
 type FloatingActionBarProps = {
+  /** Called when the player taps Public Meter while public mode is disabled. */
   onPublicMeterBlocked?: () => void;
 };
 

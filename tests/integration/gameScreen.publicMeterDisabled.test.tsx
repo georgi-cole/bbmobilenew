@@ -12,10 +12,6 @@ import settingsReducer from '../../src/store/settingsSlice'
 import socialReducer from '../../src/social/socialSlice'
 import uiReducer from '../../src/store/uiSlice'
 
-const tvZoneState: { externalAnnouncementTitle: string | null } = {
-  externalAnnouncementTitle: null,
-}
-
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
   default: () => null,
 }))
@@ -26,7 +22,6 @@ vi.mock('../../src/store/confessionalDecisionSelectors', () => ({
 
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: ({ externalAnnouncement }: { externalAnnouncement?: { title?: string } | null }) => {
-    tvZoneState.externalAnnouncementTitle = externalAnnouncement?.title ?? null
     return (
       <div data-testid="tv-zone">
         {externalAnnouncement?.title ? (
@@ -71,7 +66,7 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
 
 describe('GameScreen public meter gating', () => {
   beforeEach(() => {
-    tvZoneState.externalAnnouncementTitle = null
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -93,9 +88,6 @@ describe('GameScreen public meter gating', () => {
     })
 
     expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
-      'If you want to activate public mode, go to the store in the home hub.',
-    )
-    expect(tvZoneState.externalAnnouncementTitle).toBe(
       'If you want to activate public mode, go to the store in the home hub.',
     )
     expect(store.getState().game.tvFeed).toEqual(initialFeed)
