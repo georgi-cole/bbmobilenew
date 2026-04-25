@@ -49,8 +49,20 @@ function makeStore(gameOverrides: Record<string, unknown> = {}) {
 }
 
 describe('GameOver screen', () => {
-  it('archives the completed season before exiting home', async () => {
-    const store = makeStore();
+  it('archives the completed season and resets finale state before exiting home', async () => {
+    const store = makeStore({
+      week: 8,
+      phase: 'jury',
+      seasonFinale: {
+        phase: 'seasonComplete',
+        winnerId: 'user',
+        interviewIndex: 0,
+        goodbyeIndex: 0,
+        isChatOpen: false,
+        isLightsOffAnimating: false,
+        publicFavoriteEnabled: true,
+      },
+    });
 
     render(
       <Provider store={store}>
@@ -73,6 +85,8 @@ describe('GameOver screen', () => {
     expect(archives).toHaveLength(1);
     expect(archives[0].seasonIndex).toBe(3);
     expect(archives[0].playerSummaries.some((summary) => summary.playerId === 'user')).toBe(true);
+    expect(store.getState().game.phase).toBe('week_start');
+    expect(store.getState().game.seasonFinale).toBeNull();
   });
 
   it('resets the current game before starting a new season', async () => {

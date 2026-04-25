@@ -121,6 +121,12 @@ export default function GameOver() {
 
   function exitToHome() {
     archiveCompletedSeason();
+    // Clear any stale mid-season snapshot so HomeHub does not offer to resume
+    // a season that has already been completed.
+    if (!isGuest && activeProfileId) {
+      clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
+    }
+    dispatch(resetGame());
     navigate('/');
   }
 
