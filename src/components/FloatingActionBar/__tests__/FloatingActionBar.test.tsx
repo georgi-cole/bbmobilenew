@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import type { ComponentProps } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import gameReducer, { hydrateGame, triggerSecretMission } from '../../../store/gameSlice';
 import socialReducer, {
@@ -88,11 +89,15 @@ function LocationDisplay() {
   return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
 }
 
-function renderFAB(store: ReturnType<typeof makeStore>, initialEntry = '/game') {
+function renderFAB(
+  store: ReturnType<typeof makeStore>,
+  initialEntry = '/game',
+  props: Partial<ComponentProps<typeof FloatingActionBar>> = {},
+) {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Provider store={store}>
-        <FloatingActionBar />
+        <FloatingActionBar {...props} />
         <LocationDisplay />
       </Provider>
     </MemoryRouter>,
@@ -307,6 +312,19 @@ describe('FloatingActionBar – navigation buttons', () => {
       screen.getByRole('button', { name: /public meter \(2\)/i }).click();
     });
     expect(screen.getByTestId('location').textContent).toBe('/public-meter?tab=requests');
+  });
+
+  it('does not navigate to public meter when public mode is disabled', async () => {
+    const onPublicMeterBlocked = vi.fn();
+    const store = makeStore(true, { publicModeEnabled: false });
+    renderFAB(store, '/game', { onPublicMeterBlocked });
+
+    act(() => {
+      screen.getByRole('button', { name: 'Public meter' }).click();
+    });
+
+    expect(screen.getByTestId('location').textContent).toBe('/game');
+    expect(onPublicMeterBlocked).toHaveBeenCalledTimes(1);
   });
 
   it('navigates to diary room when the Confessional button is clicked', async () => {
