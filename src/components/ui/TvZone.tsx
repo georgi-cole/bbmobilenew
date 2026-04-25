@@ -308,9 +308,9 @@ export default function TvZone(props: TvZoneProps) {
     latestEventRef.current = latestEvent;
   });
 
-  const sequencedDetoxEvent = detoxMessageQueue[detoxMessageIndex];
-  const displayedEvent = sequencedDetoxEvent ?? latestEvent;
-  const detoxMessageActive = Boolean(sequencedDetoxEvent);
+  const activeDetoxEvent = detoxMessageQueue[detoxMessageIndex];
+  const displayedEvent = activeDetoxEvent ?? latestEvent;
+  const detoxMessageActive = Boolean(activeDetoxEvent);
 
   // ── Shock announcement sequence state ────────────────────────────────────────
   // Phase A: full-screen shock stinger (ShockIntroOverlay).
@@ -390,7 +390,10 @@ export default function TvZone(props: TvZoneProps) {
     (suppressStaleLiveVotePitchMessage && hasFallbackViewportMessage)
       ? props.viewportFallbackMessage
       : displayedEvent?.text ?? props.viewportFallbackMessage ?? 'Welcome to The Big Eye – AI Edition 🏠';
-  const viewportMessageKey = `${getViewportMessageKey(displayedEvent)}-${detoxMessageIndex}`;
+  const baseViewportMessageKey = getViewportMessageKey(displayedEvent);
+  const viewportMessageKey = detoxMessageActive
+    ? `${baseViewportMessageKey}-${detoxMessageIndex}`
+    : baseViewportMessageKey;
   let mainTvMessage: string | undefined;
   if (activeAnnouncement) {
     mainTvMessage = activeAnnouncement.title;
@@ -408,7 +411,8 @@ export default function TvZone(props: TvZoneProps) {
     if (previousLatestId === null || latestVisibleId === previousLatestId) return;
 
     const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId);
-    const newEvents = tvVisibleFeed.slice(0, previousIndex === -1 ? 1 : previousIndex);
+    const newEventCount = previousIndex === -1 ? 1 : previousIndex;
+    const newEvents = tvVisibleFeed.slice(0, newEventCount);
     const detoxEvents = newEvents.filter(isDetoxSequenceEvent);
     if (detoxEvents.length === 0) return;
 
