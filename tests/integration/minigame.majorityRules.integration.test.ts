@@ -13,8 +13,6 @@ import majorityRulesReducer, {
 import { resolveMajorityRulesOutcome } from '../../src/features/majorityRules/thunks';
 import {
   MAJORITY_RULES_QUESTIONS,
-  initializeThreeWayDice,
-  resolveThreeWayDiceRoll,
 } from '../../src/features/majorityRules/helpers';
 import { getGame } from '../../src/minigames/registry';
 
