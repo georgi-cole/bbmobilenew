@@ -2547,7 +2547,7 @@ export default function GameScreen() {
     battleBack?.active && !battleBack.competitionActive && battleBackAnnouncementStep != null
       ? BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[battleBackAnnouncementStep] ?? null
       : null
-  const handlePublicMeterBlocked = useCallback(() => {
+  function handlePublicMeterBlocked() {
     setPublicMeterUnavailableAnnouncement({
       key: 'public_meter_unavailable',
       title: PUBLIC_MODE_STORE_PROMPT,
@@ -2555,7 +2555,7 @@ export default function GameScreen() {
       isLive: false,
       autoDismissMs: 3500,
     })
-  }, [])
+  }
 
   return (
     <LayoutGroup id="game-layout">
