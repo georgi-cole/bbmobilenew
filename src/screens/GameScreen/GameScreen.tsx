@@ -145,6 +145,8 @@ const AI_TIE_DECISION_DELAY_MS = 3000
 const AI_TIE_RESULT_DELAY_MS = 3000
 const CONFESSIONAL_TV_PROMPT_MESSAGE =
   'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
+const PUBLIC_MODE_STORE_PROMPT =
+  'If you want to activate public mode, go to the store in the home hub.'
 
 type PendingPublicSaveResult = {
   savedId: string
@@ -222,6 +224,7 @@ export default function GameScreen() {
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
+  const [publicMeterUnavailableAnnouncement, setPublicMeterUnavailableAnnouncement] = useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
   // Post-vote eviction message shown on the main TV
   // for 3 s after vote results dismiss and before the eviction animation plays.
@@ -2544,6 +2547,15 @@ export default function GameScreen() {
     battleBack?.active && !battleBack.competitionActive && battleBackAnnouncementStep != null
       ? BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[battleBackAnnouncementStep] ?? null
       : null
+  function handlePublicMeterBlocked() {
+    setPublicMeterUnavailableAnnouncement({
+      key: 'public_meter_unavailable',
+      title: PUBLIC_MODE_STORE_PROMPT,
+      subtitle: '',
+      isLive: false,
+      autoDismissMs: 3500,
+    })
+  }
 
   return (
     <LayoutGroup id="game-layout">
@@ -2560,9 +2572,15 @@ export default function GameScreen() {
           onPublicSaveDone={handlePublicSaveDone}
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
-          externalAnnouncement={battleBackTvAnnouncement ?? preAdAnnouncement}
+          externalAnnouncement={
+            publicMeterUnavailableAnnouncement ??
+            battleBackTvAnnouncement ??
+            preAdAnnouncement
+          }
           onExternalAnnouncementDismiss={
-            battleBackTvAnnouncement
+            publicMeterUnavailableAnnouncement
+              ? () => setPublicMeterUnavailableAnnouncement(null)
+              : battleBackTvAnnouncement
               ? undefined
               : handlePreAdAnnouncementDismiss
           }
@@ -2581,9 +2599,15 @@ export default function GameScreen() {
           }}
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
-          externalAnnouncement={battleBackTvAnnouncement ?? preAdAnnouncement}
+          externalAnnouncement={
+            publicMeterUnavailableAnnouncement ??
+            battleBackTvAnnouncement ??
+            preAdAnnouncement
+          }
           onExternalAnnouncementDismiss={
-            battleBackTvAnnouncement
+            publicMeterUnavailableAnnouncement
+              ? () => setPublicMeterUnavailableAnnouncement(null)
+              : battleBackTvAnnouncement
               ? undefined
               : handlePreAdAnnouncementDismiss
           }
@@ -2595,6 +2619,7 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
+            publicMeterUnavailableAnnouncement ??
             battleBackTvAnnouncement ??
             aiTiebreakAnnouncement ??
             postVoteAnnouncement ??
@@ -2602,7 +2627,9 @@ export default function GameScreen() {
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            battleBackTvAnnouncement
+            publicMeterUnavailableAnnouncement
+              ? () => setPublicMeterUnavailableAnnouncement(null)
+              : battleBackTvAnnouncement
               ? undefined
               : aiTiebreakAnnouncement
               ? handleAiTiebreakAnnouncementDismiss
@@ -3693,7 +3720,9 @@ export default function GameScreen() {
       )}
 
       {/* ── Floating Action Bar ───────────────────────────────────────────── */}
-      {!awaitingHumanDecision && <FloatingActionBar />}
+      {!awaitingHumanDecision && (
+        <FloatingActionBar onPublicMeterBlocked={handlePublicMeterBlocked} />
+      )}
 
       {/* ── Houseguest grid (alive + evicted in one grid) ────────────────── */}
       <HouseguestGrid

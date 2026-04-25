@@ -25,6 +25,11 @@ import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay';
 
 const CONFESSIONAL_FLASH_DURATION_MS = 1800;
 
+type FloatingActionBarProps = {
+  /** Called when the player activates Public Meter while public mode is disabled. */
+  onPublicMeterBlocked?: () => void;
+};
+
 /**
  * FloatingActionBar — BitLife-style mobile FAB for the Game screen.
  *
@@ -36,7 +41,7 @@ const CONFESSIONAL_FLASH_DURATION_MS = 1800;
  * - Left side: Social module + incoming social actions.
  * - Right side: Public Meter hook + Diary Room shortcut.
  */
-export default function FloatingActionBar() {
+export default function FloatingActionBar({ onPublicMeterBlocked }: FloatingActionBarProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const canAdvance = useAppSelector(selectAdvanceEnabled);
@@ -192,15 +197,21 @@ export default function FloatingActionBar() {
     navigate('/diary-room');
   }, [completeConfessionalSpotlight, confessionalSpotlightEligible, navigate]);
 
+  const handlePublicMeterClick = useCallback(() => {
+    if (game.publicModeEnabled !== true) {
+      onPublicMeterBlocked?.();
+      return;
+    }
+    navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter');
+  }, [game.publicModeEnabled, navigate, onPublicMeterBlocked, publicRequestCount]);
+
   return (
     <>
       <GameControlDock
         onChatClick={handleChatClick}
         onIncomingRequestsClick={handleIncomingRequestsClick}
         onPrimaryActionClick={handlePrimaryActionClick}
-        onPublicMeterClick={() =>
-          navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
-        }
+        onPublicMeterClick={handlePublicMeterClick}
         onToolClick={handleToolClick}
         primaryDisabled={primaryDisabled}
         chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
