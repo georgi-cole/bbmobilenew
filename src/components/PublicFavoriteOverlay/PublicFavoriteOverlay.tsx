@@ -271,7 +271,7 @@ function AudienceSurgePanel({
                 type="button"
                 className={`pf-overlay__surge-option${isSelected ? ' pf-overlay__surge-option--selected' : ''}${isActive ? ' pf-overlay__surge-option--active' : ''}`}
                 onClick={() => onSelect(candidate.id)}
-                disabled={!canUseSurge || surgePending}
+                disabled={surgePending}
                 aria-pressed={isSelected}
               >
                 <PlayerPortrait candidate={candidate} className="pf-overlay__portrait--chip" />
@@ -478,6 +478,7 @@ export default function PublicFavoriteOverlay({
   const [mountedAt] = useState(() => Date.now());
   const [nextShiftAt, setNextShiftAt] = useState(() => Date.now() + eliminationIntervalMs);
   const [selectedSurgeId, setSelectedSurgeId] = useState<string | null>(candidates[0]?.id ?? null);
+  const [introSkipBoostMs, setIntroSkipBoostMs] = useState(0);
   const [surgePending, setSurgePending] = useState(false);
   const [surgeUsed, setSurgeUsed] = useState(false);
   const [surgeActive, setSurgeActive] = useState<SurgeState | null>(null);
@@ -563,7 +564,7 @@ export default function PublicFavoriteOverlay({
     }
   }, [activePlayers, selectedSurgeId, eliminated]);
 
-  const elapsedMs = nowMs - mountedAt;
+  const elapsedMs = nowMs - mountedAt + introSkipBoostMs;
   const eliminationActive =
     eliminationMoment && nowMs - eliminationMoment.startedAt < ELIMINATION_SPOTLIGHT_MS
       ? eliminationMoment
@@ -635,6 +636,14 @@ export default function PublicFavoriteOverlay({
     onComplete(winnerId);
   }, [winnerId, onComplete]);
 
+  const handleSkipIntro = useCallback(() => {
+    if (introSkipBoostMs !== 0) return;
+    const remainingIntroMs = Math.max(0, INTRO_MS - elapsedMs);
+    if (remainingIntroMs === 0) return;
+    setIntroSkipBoostMs(remainingIntroMs);
+    setNowMs(Date.now());
+  }, [elapsedMs, introSkipBoostMs]);
+
   const handleActivateSurge = useCallback(async () => {
     if (
       !selectedSurgeId ||
@@ -685,6 +694,17 @@ export default function PublicFavoriteOverlay({
     >
       <div className="pf-overlay__dim" />
       <div className="pf-overlay__stage">
+        {displayStep === 'voting' && phase === 'intro' && (
+          <button
+            type="button"
+            className="pf-overlay__skip"
+            onClick={handleSkipIntro}
+            aria-label="Skip animation"
+          >
+            Skip
+          </button>
+        )}
+
         <AnimatePresence>
           {phase !== 'final_reveal' && (
             <PublicVoteHeader
