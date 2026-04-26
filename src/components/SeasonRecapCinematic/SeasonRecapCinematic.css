@@ -334,7 +334,7 @@
 
 .src-scene--category::before {
   background:
-    radial-gradient(circle at 78% 58%, color-mix(in srgb, var(--cat-accent, #8b5cf6) 32%, transparent), transparent 34%),
+    radial-gradient(circle at 78% 58%, rgba(139, 92, 246, 0.28), transparent 34%),
     linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 68%);
 }
 
@@ -394,10 +394,10 @@
   z-index: -1;
   border-radius: 45% 45% 1.8rem 1.8rem;
   background:
-    radial-gradient(ellipse at 50% 34%, color-mix(in srgb, var(--cat-accent, #8b5cf6) 34%, transparent), transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--cat-accent, #8b5cf6) 16%, transparent), transparent 78%);
+    radial-gradient(ellipse at 50% 34%, var(--cat-accent, #8b5cf6), transparent 58%),
+    linear-gradient(180deg, rgba(139, 92, 246, 0.24), transparent 78%);
   filter: blur(8px);
-  opacity: 0.9;
+  opacity: 0.34;
 }
 
 .src-cat-winner__cutout {
@@ -409,7 +409,7 @@
   object-position: bottom center;
   filter:
     drop-shadow(0 18px 34px rgba(0, 0, 0, 0.58))
-    drop-shadow(0 0 10px color-mix(in srgb, var(--cat-accent, #8b5cf6) 58%, transparent));
+    drop-shadow(0 0 10px var(--cat-accent, rgba(139, 92, 246, 0.58)));
   display: block;
 }
 
@@ -419,7 +419,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1.1rem;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--cat-accent, #8b5cf6) 24%, transparent), rgba(2, 4, 13, 0.74)),
+    linear-gradient(135deg, rgba(139, 92, 246, 0.24), rgba(2, 4, 13, 0.74)),
     rgba(2, 4, 13, 0.82);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
   padding: 0.72rem 0.7rem 0.62rem;

@@ -427,10 +427,12 @@ function buildTabloidRecap(
   const tabloidPages = seasonEvents.map((event, index) => {
     const subject = players.find((player) => player.name === event.subjectName) ?? null;
     const secondary = players.find((player) => player.name === event.secondaryName) ?? null;
+    const secondaryFallback =
+      secondary ?? (playerPool.length > 0 ? playerPool[(index + 1) % playerPool.length] : null);
     return createNewspaperFrontPage(event, index, {
       featuredImage: tabloidImageFor(subject),
       featuredImageAlt: subject?.name ?? event.subjectName ?? 'Featured housemate',
-      secondaryImage: tabloidImageFor(secondary ?? playerPool[(index + 1) % Math.max(playerPool.length, 1)]),
+      secondaryImage: tabloidImageFor(secondaryFallback),
       secondaryImageAlt: secondary?.name ?? 'Housemate reaction',
       issueDate: `Week ${event.week} Recap`,
       issueNumber: `Finale File ${index + 1}`,
