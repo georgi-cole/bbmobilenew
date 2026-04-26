@@ -13,6 +13,11 @@ import { SoundManager } from '../src/services/sound/SoundManager';
 import { pickPhrase, PUBLIC_JURY_VOTE_LINES } from '../src/utils/juryUtils';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
 
+const PHRASE_TYPING_START_DELAY_MS = 600;
+const PHRASE_TYPING_CHAR_INTERVAL_MS = 35;
+const PUBLIC_VOTE_HOLD_BEFORE_RECAP_MS = 3000;
+const PUBLIC_VOTE_VISIBLE_PREFIX_LENGTH = 12;
+
 const mockPlay = vi.fn();
 const mockRequestBgm = vi.fn();
 const mockReleaseBgm = vi.fn();
@@ -138,9 +143,12 @@ describe('FinalFaceoff public vote pacing', () => {
   it('keeps the public vote message on screen for 3 seconds before switching to the recap', async () => {
     const store = makeStore();
     const expectedPublicPhrase = pickPhrase(PUBLIC_JURY_VOTE_LINES, 42, 1);
-    const visiblePublicPhrase = expectedPublicPhrase.slice(0, 12).trimEnd();
-    const phraseLeadInMs = 600 + (visiblePublicPhrase.length * 35);
-    const remainingHoldMs = Math.max(0, 2999 - phraseLeadInMs);
+    const visiblePublicPhrase = expectedPublicPhrase
+      .slice(0, PUBLIC_VOTE_VISIBLE_PREFIX_LENGTH)
+      .trimEnd();
+    const phraseLeadInMs = PHRASE_TYPING_START_DELAY_MS
+      + (visiblePublicPhrase.length * PHRASE_TYPING_CHAR_INTERVAL_MS);
+    const remainingHoldMs = Math.max(0, (PUBLIC_VOTE_HOLD_BEFORE_RECAP_MS - 1) - phraseLeadInMs);
 
     render(
       <Provider store={store}>
