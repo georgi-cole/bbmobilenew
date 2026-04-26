@@ -377,7 +377,7 @@ function buildTabloidRecap(
   beats: RecapBeat[],
   publicOpinion?: PublicOpinionState | null,
 ): { tabloidPages: NewspaperFrontPageData[]; tabloidNotes: FinaleMontageNote[] } {
-  const playerPool = players.length > 0 ? players : [];
+  const playerPool = players;
   const topComp = beats[0]?.subject ?? playerPool[0] ?? null;
   const mostNom = beats[1]?.subject ?? playerPool[1] ?? topComp;
   const topVeto = beats[2]?.subject ?? playerPool[2] ?? mostNom;
@@ -392,7 +392,7 @@ function buildTabloidRecap(
       const subject = findPlayerById(players, post.playerId);
       return {
         id: `public-${post.id}`,
-        week: post.week || Math.max(1, week - 2 + index),
+        week: post.week ?? Math.max(1, week - 2 + index),
         type: post.delta < 0 ? 'backlash' : 'fan-favorite',
         subjectName: subject?.name,
         detail: post.text,
