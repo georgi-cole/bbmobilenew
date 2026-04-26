@@ -8,8 +8,9 @@
  * Layout:
  *   - Dark, vignette backdrop with studio-light glow behind the cutout.
  *   - Juror name plate animates in above the cutout.
- *   - Cryptic phrase animates in below the cutout, simulating them
- *     "addressing the audience" before casting their hidden vote.
+ *   - Cryptic phrase animates in inside a comic speech balloon coming from the
+ *     cutout, simulating them "addressing the audience" before casting their
+ *     hidden vote.
  *   - A row of small portrait chips at the bottom keeps a visual record of
  *     previously revealed jurors.
  *   - Human vote prompt slides in when it is the viewer's turn.
@@ -78,7 +79,6 @@ function PhraseTyper({ phrase }: { phrase: string }) {
   return (
     <p className="tms-phrase">
       {phrase.slice(0, visibleChars)}
-      <span className="tms-phrase__cursor" aria-hidden="true">|</span>
     </p>
   );
 }
@@ -147,6 +147,11 @@ export default function TribunalMemberStage({
       {/* ── Full-body cutout ─────────────────────────────────────────── */}
       {current && (
         <div className="tms-cutout-wrap" key={`cutout-${currentAnimationKey}`}>
+          {trimmedCurrentPhrase && (
+            <div className="tms-speech-bubble" key={`phrase-${phraseAnimationKey}`}>
+              <PhraseTyper phrase={currentPhrase} />
+            </div>
+          )}
           {formalSrc ? (
             <img
               className="tms-cutout"
@@ -167,13 +172,6 @@ export default function TribunalMemberStage({
             </div>
           )}
           <div className="tms-cutout-glow" aria-hidden="true" />
-        </div>
-      )}
-
-      {/* ── Cryptic phrase ───────────────────────────────────────────── */}
-      {current && (
-        <div className="tms-phrase-wrap" key={`phrase-${phraseAnimationKey}`}>
-          <PhraseTyper phrase={currentPhrase} />
         </div>
       )}
 
