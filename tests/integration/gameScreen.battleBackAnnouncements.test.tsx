@@ -106,7 +106,7 @@ describe('GameScreen Back 2 the Game follow-up announcements', () => {
 
     expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
 
-    for (const announcement of BATTLE_BACK_ANNOUNCEMENT_SEQUENCE) {
+    for (const [index, announcement] of BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.entries()) {
       const expectedMessage = buildBattleBackFeedMessage(announcement)
       const existingCount = store
         .getState()
@@ -121,6 +121,9 @@ describe('GameScreen Back 2 the Game follow-up announcements', () => {
       expect(insertedEvents).toHaveLength(existingCount + 1)
       expect(insertedEvents[0]?.type).toBe('game')
       expect(insertedEvents[0]?.major).toBeUndefined()
+      expect(store.getState().game.battleBack?.competitionActive).toBe(
+        index === BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.length - 1,
+      )
       expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
     }
 
