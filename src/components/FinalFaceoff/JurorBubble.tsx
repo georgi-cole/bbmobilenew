@@ -46,7 +46,10 @@ export default function JurorBubble({ juror, finalist, reveal, voteVisible = tru
 
         {/* Phase-2 vote reveal: "X cast a vote for Y" */}
         {voteVisible && finalist ? (
-          <span className={`jb-vote-statement${isPublic ? ' jb-vote-statement--public' : ''}`}>
+          <span
+            className={`jb-vote-statement${isPublic ? ' jb-vote-statement--public' : ''}`}
+            aria-label={`${juror.name} cast a vote for ${finalist.name}`}
+          >
             cast a vote for{' '}
             <span className="jb-vote-statement__finalist">
               <PlayerAvatar player={finalist} size="sm" showRelationshipOutline={false} />

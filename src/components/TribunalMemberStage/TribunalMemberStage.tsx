@@ -77,11 +77,11 @@ export default function TribunalMemberStage({
     if (typingRef.current) clearTimeout(typingRef.current);
     setDisplayedPhrase('');
     if (!currentPhrase) return;
-    let i = 0;
+    let charIndex = 0;
     function type() {
-      i += 1;
-      setDisplayedPhrase(currentPhrase.slice(0, i));
-      if (i < currentPhrase.length) {
+      charIndex += 1;
+      setDisplayedPhrase(currentPhrase.slice(0, charIndex));
+      if (charIndex < currentPhrase.length) {
         typingRef.current = setTimeout(type, 35);
       }
     }
