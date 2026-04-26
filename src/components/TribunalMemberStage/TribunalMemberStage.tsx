@@ -22,6 +22,9 @@ import { resolveFormalCutout } from '../../utils/avatar';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './TribunalMemberStage.css';
 
+const PHRASE_TYPING_START_DELAY_MS = 600;
+const PHRASE_TYPING_CHAR_INTERVAL_MS = 35;
+
 interface JurorEntry {
   juror: Player;
   reveal: JurorReveal;
@@ -58,12 +61,12 @@ function PhraseTyper({ phrase }: { phrase: string }) {
         charIndex += 1;
         setVisibleChars(charIndex);
         if (charIndex < phrase.length) {
-          typingTimeout = setTimeout(typeNext, 35);
+          typingTimeout = setTimeout(typeNext, PHRASE_TYPING_CHAR_INTERVAL_MS);
         }
       };
 
       typeNext();
-    }, 600);
+    }, PHRASE_TYPING_START_DELAY_MS);
 
     return () => {
       clearTimeout(startDelay);
