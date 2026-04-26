@@ -15,13 +15,16 @@ describe('FullSizeCutoutImage', () => {
     expect(image.getAttribute('src')).toBe('assets/Informal_attires/Mimi_informal.png');
 
     fireEvent.error(image);
+    expect(image.getAttribute('src')).toBe('assets/skins/Mimi_avatar.webp');
+
+    fireEvent.error(image);
 
     await waitFor(() => {
       expect(image.getAttribute('src')).toBe('assets/silhouette_female - Copy.webp');
     });
   });
 
-  it('uses the silhouette immediately when no dedicated cutout exists', () => {
+  it('tries the regular avatar before using the silhouette when no cutout exists', async () => {
     render(
       <FullSizeCutoutImage
         player={{ id: 'dex', name: 'Dex', avatar: '🧑' }}
@@ -29,8 +32,13 @@ describe('FullSizeCutoutImage', () => {
       />,
     );
 
-    expect(screen.getByAltText('Dex').getAttribute('src')).toBe(
-      'assets/silhouette_male - Copy.webp',
-    );
+    const image = screen.getByAltText('Dex');
+    expect(image.getAttribute('src')).toBe('assets/skins/Dex_avatar.webp');
+
+    fireEvent.error(image);
+
+    await waitFor(() => {
+      expect(image.getAttribute('src')).toBe('assets/silhouette_male - Copy.webp');
+    });
   });
 });

@@ -232,19 +232,35 @@ export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): stri
   return joinPublicAssetPath(`assets/Informal_attires/${stem}.png`);
 }
 
-export function resolveFullSizeCutoutFallback(
-  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
+export function resolveSilhouetteFallback(
+  player?: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
 ): string {
+  if (!player) {
+    return joinPublicAssetPath('assets/silhouette_male - Copy.webp');
+  }
   const hg = getById(player.id) ?? findByName(player.name);
   const isFemale = hg?.sex?.toLowerCase() === 'female' || player.avatar === '👩';
   const file = isFemale ? 'silhouette_female - Copy.webp' : 'silhouette_male - Copy.webp';
   return joinPublicAssetPath(`assets/${file}`);
 }
 
+export function resolveFullSizeCutoutFallback(
+  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
+): string {
+  return resolveSilhouetteFallback(player);
+}
+
 export function resolveInformalCutoutCandidates(
   player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
 ): string[] {
   const cutout = resolveInformalCutout(player);
-  const fallback = resolveFullSizeCutoutFallback(player);
-  return cutout ? [cutout, fallback] : [fallback];
+  const avatarFallback = resolveAvatarCandidates({
+    ...player,
+    avatar: player.avatar ?? player.name,
+  }).find((candidate) => !candidate.includes('api.dicebear.com'));
+  const silhouetteFallback = resolveSilhouetteFallback(player);
+  return [cutout, avatarFallback, silhouetteFallback].filter(
+    (candidate, index, all): candidate is string =>
+      Boolean(candidate) && all.indexOf(candidate) === index,
+  );
 }

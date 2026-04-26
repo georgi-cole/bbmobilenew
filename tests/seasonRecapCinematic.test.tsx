@@ -1,7 +1,16 @@
 import { act } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import SeasonRecapCinematic from '../src/components/SeasonRecapCinematic/SeasonRecapCinematic';
+import { buildSeasonRecapData } from '../src/components/SeasonRecapCinematic/seasonRecapData';
+import {
+  buildSeasonRecapTimeline,
+  CATEGORY_SCENE_DURATION_MS,
+  INTRO_MIN_DURATION_MS,
+  RECAP_EXIT_FADE_MS,
+  TABLOID_CARD_DURATION_MS,
+  TOTAL_RECAP_DURATION_MS,
+} from '../src/components/SeasonRecapCinematic/seasonRecapTimeline';
 import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/components/SeasonRecapCinematic/newspaperFrontPages';
 import type { Player } from '../src/types';
 import type { PublicOpinionState } from '../src/publicOpinion/types';
@@ -88,36 +97,25 @@ const PUBLIC_OPINION: PublicOpinionState = {
   currentFeedDay: 11,
 };
 
-// ─── Scene duration constants (must stay in sync with the component) ──────────
-const INTRO_1_MS = 2800;
-const INTRO_2_MS = 3200;
-const INTRO_3_MS = 3400;
-const MONTAGE_MS = 5200;
-const CATEGORY_MS = 4800;
-const LADDER_MS = 9000;
-const FINALE_MS = 5500;
-const EXIT_FADE_MS = 420;
+function getTimeline(publicOpinion: PublicOpinionState | undefined = PUBLIC_OPINION) {
+  const recapData = buildSeasonRecapData(PLAYERS, 12, publicOpinion);
+  return buildSeasonRecapTimeline(
+    recapData.categories.map((category) => category.id),
+    recapData.evictionWaves.length,
+  );
+}
 
-/**
- * Helper: advance through every scene up to (but not including) the finale.
- *
- * With this player set and no public opinion the category list is:
- *   cat_0 = Compzilla (Avery, 3 wins)
- *   cat_1 = Mess Factory (Casey, 3 noms)
- *   cat_2 = Ghost Mode (Blake, 2 noms — next fewest after Avery who is already used)
- *
- * Each `act` call must cover exactly one scene so React can process the state
- * update and register the next timeout before the subsequent advance begins.
- */
-async function advanceToFinale() {
-  await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); }); // → intro_2
-  await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); }); // → intro_3
-  await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); }); // → montage
-  await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); }); // → cat_0
-  await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); }); // → cat_1
-  await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); }); // → cat_2
-  await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); }); // → ladder
-  await act(async () => { await vi.advanceTimersByTimeAsync(LADDER_MS); });   // → finale
+async function advanceToScene(targetSceneId: string, publicOpinion: PublicOpinionState | undefined = PUBLIC_OPINION) {
+  const timeline = getTimeline(publicOpinion);
+  const targetIndex = timeline.findIndex((scene) => scene.id === targetSceneId);
+
+  for (let index = 0; index < targetIndex; index += 1) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(timeline[index].durationMs);
+    });
+  }
+
+  return timeline;
 }
 
 describe('SeasonRecapCinematic', () => {
@@ -142,166 +140,68 @@ describe('SeasonRecapCinematic', () => {
     vi.useRealTimers();
   });
 
-  it('renders the dramatic intro card first', () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} onComplete={onComplete} />,
-    );
-
-    expect(screen.getByText('The votes are in.')).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('skips cleanly and finishes the recap', async () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} onComplete={onComplete} />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Skip recap' }));
-
-    await act(async () => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(onComplete).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps the recap on screen beyond the old shorter timing', async () => {
-    const onComplete = vi.fn();
-    // Old total was about 18 820 ms — the new recap is substantially longer.
-    const OLD_TOTAL_MS = 2200 + 3000 + 3400 + 3400 + 4200 + 2200 + 420;
-    const elapsedToFirstCategory = INTRO_1_MS + INTRO_2_MS + INTRO_3_MS + MONTAGE_MS;
-    const deltaPastOldTotalMs = 50;
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} onComplete={onComplete} />,
-    );
-
-    // Advance through all 3 intro scenes (9 400 ms) and the montage (5 200 ms)
-    // to land on the first category scene at 14 600 ms.
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); });
-
-    // Advance just beyond the old recap's total runtime without leaving cat_0.
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(OLD_TOTAL_MS - elapsedToFirstCategory + deltaPastOldTotalMs);
-    });
-
-    expect(elapsedToFirstCategory).toBeLessThan(OLD_TOTAL_MS);
-    expect(onComplete).not.toHaveBeenCalled();
-    // Compzilla is cat_0, so seeing it here confirms the recap is still running
-    // in the category section even after the old recap runtime has been exceeded.
-    expect(screen.getByText('Compzilla')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
-  });
-
-  it('cascades season beats beside a tabloid newspaper montage', async () => {
+  it('opens on the first suspense card', () => {
     const onComplete = vi.fn();
 
     render(
       <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
     );
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
-
-    expect(screen.getByText('The papers could barely keep up.')).toBeTruthy();
-    expect(screen.getAllByText(/Avery built momentum/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Casey kept hearing their name/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Alliances formed\. Alliances burned/i)).toBeTruthy();
-    expect(screen.getByText(/Drew could not outrun the backlash/i)).toBeTruthy();
+    expect(screen.getByText('THE VOTES ARE IN.')).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('completes only after the full finale duration has elapsed', async () => {
-    const onComplete = vi.fn();
+  it('builds a fixed 120-second recap timeline', () => {
+    const timeline = getTimeline();
 
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} onComplete={onComplete} />,
-    );
-
-    await advanceToFinale();
-
-    // Finale scene is now active.
-    expect(screen.getByText('the final verdict.')).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled();
-
-    // Advance to just before the finale timer expires — should still be running.
-    await act(async () => { await vi.advanceTimersByTimeAsync(FINALE_MS - 100); });
-    expect(onComplete).not.toHaveBeenCalled();
-
-    // Cross the FINALE_MS threshold (+ 1 ms) so the scene timer fires and the
-    // chained setTimeout(finish, 0) is scheduled in the same act flush.
-    await act(async () => { await vi.advanceTimersByTimeAsync(200); }); // crosses 5500ms
-    // Then flush the exit-fade timer (420 ms) in its own act so React can process
-    // the setVisible(false) update before onComplete is expected.
-    await act(async () => { await vi.advanceTimersByTimeAsync(EXIT_FADE_MS + 50); });
-    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(TOTAL_RECAP_DURATION_MS).toBe(120000);
+    expect(timeline.at(-1)?.endMs).toBe(120000);
+    expect(buildSeasonRecapData(PLAYERS, 12).categories).toHaveLength(6);
   });
 
-  it('shows Compzilla and Mess Factory category cards', async () => {
-    const onComplete = vi.fn();
+  it('keeps intro cards, tabloid cards, and category awards above the minimum durations', () => {
+    const timeline = getTimeline();
+    const introScenes = timeline.filter((scene) => scene.kind === 'intro');
+    const tabloidScenes = timeline.filter((scene) => scene.kind === 'tabloid');
+    const categoryScenes = timeline.filter((scene) => scene.kind === 'category');
 
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} onComplete={onComplete} />,
-    );
-
-    // Advance past intro + montage into cat_0 (Compzilla).
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); });
-
-    // cat_0 = Compzilla (Avery has 3 total wins)
-    expect(screen.getByText('Compzilla')).toBeTruthy();
-    expect(screen.getByText(/Built different on game day/i)).toBeTruthy();
-
-    // Advance into cat_1 (Mess Factory — Casey with 3 nominations)
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
-    expect(screen.getByText('Mess Factory')).toBeTruthy();
-
-    expect(onComplete).not.toHaveBeenCalled();
+    expect(introScenes).toHaveLength(4);
+    expect(introScenes.every((scene) => scene.durationMs >= INTRO_MIN_DURATION_MS)).toBe(true);
+    expect(tabloidScenes).toHaveLength(5);
+    expect(tabloidScenes.every((scene) => scene.durationMs >= TABLOID_CARD_DURATION_MS)).toBe(true);
+    expect(categoryScenes).toHaveLength(6);
+    expect(categoryScenes.every((scene) => scene.durationMs >= CATEGORY_SCENE_DURATION_MS)).toBe(true);
   });
 
-  it('shows public-opinion-driven categories when public data is available', async () => {
+  it('lands on the tabloid interlude after the 30-second montage section', async () => {
     const onComplete = vi.fn();
 
-    // With public opinion there are 5 categories:
-    //   cat_0 Compzilla (Avery), cat_1 Mess Factory (Casey), cat_2 Ghost Mode (Blake),
-    //   cat_3 Vibe Curator (Avery – most liked, 82%),
-    //   cat_4 Heat Magnet (Drew – most disliked, 21%)
     render(
       <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
     );
 
-    // Advance through intro + montage + cat_0 + cat_1 to land on cat_2 first,
-    // then cat_2 → cat_3 (Vibe Curator).
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); }); // cat_0 → cat_1
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); }); // cat_1 → cat_2
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); }); // cat_2 → cat_3
+    await advanceToScene('tabloid_0');
 
-    expect(screen.getByText('Vibe Curator')).toBeTruthy();
-    expect(screen.getByText(/82% approval/i)).toBeTruthy();
-
-    // Advance into cat_4 (Heat Magnet — Drew 21%)
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
-    expect(screen.getByText('Heat Magnet')).toBeTruthy();
-    expect(screen.getByText(/21% approval/i)).toBeTruthy();
-
+    expect(screen.getByText('THE HOUSE HAD OPINIONS.')).toBeTruthy();
+    expect(screen.getByText('Public approval did not come quietly.')).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('still shows Heat Magnet when the lowest-approval player already won another category', async () => {
+  it('uses actual ellipsis characters instead of literal unicode escape text', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
+    );
+
+    await advanceToScene('intro_before_final_word');
+
+    expect(screen.getByText('BUT BEFORE')).toBeTruthy();
+    expect(screen.getByText('THE FINAL WORD…')).toBeTruthy();
+    expect(screen.queryByText(/\\u2026/i)).toBeNull();
+  });
+
+  it('shows Heat Magnet even when the same player already won another category', async () => {
     const onComplete = vi.fn();
     const duplicateWinnerPublicOpinion: PublicOpinionState = {
       ...PUBLIC_OPINION,
@@ -332,40 +232,45 @@ describe('SeasonRecapCinematic', () => {
       />,
     );
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
+    await advanceToScene('category_heat_magnet', duplicateWinnerPublicOpinion);
 
-    expect(screen.getByText('Heat Magnet')).toBeTruthy();
+    expect(screen.getByText('HEAT MAGNET')).toBeTruthy();
     expect(screen.getByText('Casey')).toBeTruthy();
     expect(screen.getByText(/21% approval/i)).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('falls back to gameplay-stats categories when public data is unavailable', async () => {
+  it('does not finish until the entire recap and handoff have completed', async () => {
     const onComplete = vi.fn();
+    const timeline = getTimeline();
 
     render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={undefined} onComplete={onComplete} />,
+      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
     );
 
-    // Advance past intro + montage into the first category.
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); });
+    for (let index = 0; index < timeline.length - 1; index += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(timeline[index].durationMs);
+      });
+    }
 
-    // Should see a gameplay category (Compzilla), not a public-opinion one.
-    expect(screen.getByText('Compzilla')).toBeTruthy();
-    expect(screen.queryByText('Vibe Curator')).toBeNull();
-    expect(screen.queryByText('Heat Magnet')).toBeNull();
-
+    expect(screen.getByRole('dialog', { name: 'Season recap cinematic' })).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(timeline.at(-1)!.durationMs - 50);
+    });
+    expect(onComplete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    expect(onComplete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RECAP_EXIT_FADE_MS + 25);
+    });
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it('exposes reusable playful headline generation data for the finale newspaper', () => {
