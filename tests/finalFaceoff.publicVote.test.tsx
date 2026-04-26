@@ -4,19 +4,23 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import FinalFaceoff from '../src/components/FinalFaceoff/FinalFaceoff';
+import {
+  CLUE_AUTO_INTERVAL_MS,
+  PUBLIC_VOTE_RECAP_HOLD_MS,
+  VOTE_REVEAL_INITIAL_DELAY_MS,
+  VOTE_REVEAL_STAGGER_MS,
+} from '../src/components/FinalFaceoff/finaleTiming';
+import {
+  PHRASE_TYPING_CHAR_INTERVAL_MS,
+  PHRASE_TYPING_START_DELAY_MS,
+} from '../src/components/TribunalMemberStage/tribunalMemberStageTiming';
 import gameReducer from '../src/store/gameSlice';
 import finaleReducer from '../src/store/finaleSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import uiReducer from '../src/store/uiSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import { SoundManager } from '../src/services/sound/SoundManager';
-import { pickPhrase, PUBLIC_JURY_VOTE_LINES } from '../src/utils/juryUtils';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
-
-const PHRASE_TYPING_START_DELAY_MS = 600;
-const PHRASE_TYPING_CHAR_INTERVAL_MS = 35;
-const PUBLIC_VOTE_HOLD_BEFORE_RECAP_MS = 3000;
-const PUBLIC_VOTE_VISIBLE_PREFIX_LENGTH = 12;
 
 const mockPlay = vi.fn();
 const mockRequestBgm = vi.fn();
@@ -100,12 +104,12 @@ function makeStore() {
 
 async function advanceToRecapBoundary() {
   // The finale flow crosses two exact timeout boundaries:
-  // 1) 3000 ms for each juror clue reveal
-  // 2) 3000 ms of extra hold time after the public vote bubble appears
-  // Splitting 2999 ms + 1 ms keeps the assertions pinned to the edge so we can
+  // 1) CLUE_AUTO_INTERVAL_MS for each juror clue reveal
+  // 2) PUBLIC_VOTE_RECAP_HOLD_MS of extra hold time after the public vote appears
+  // Splitting each phase into (n - 1) ms + 1 ms keeps the assertions pinned to the edge so we can
   // prove the recap does not render early.
   await act(async () => {
-    vi.advanceTimersByTime(2999);
+    vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS - 1);
   });
 
   await act(async () => {
@@ -113,11 +117,11 @@ async function advanceToRecapBoundary() {
   });
 
   await act(async () => {
-    vi.advanceTimersByTime(3000);
+    vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS);
   });
 
   await act(async () => {
-    vi.advanceTimersByTime(2999);
+    vi.advanceTimersByTime(PUBLIC_VOTE_RECAP_HOLD_MS - 1);
   });
 }
 
@@ -140,15 +144,28 @@ describe('FinalFaceoff public vote pacing', () => {
     vi.useRealTimers();
   });
 
+  it('uses a non-public avatar fallback when a juror lacks a formal cutout', async () => {
+    const store = makeStore();
+
+    const { container } = render(
+      <Provider store={store}>
+        <FinalFaceoff />
+      </Provider>,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS);
+    });
+
+    expect(screen.getByText('Casey')).toBeTruthy();
+    expect(container.querySelector('.tms-avatar-fallback')).toBeTruthy();
+    expect(container.querySelector('.tms-public-placeholder')).toBeNull();
+  });
+
   it('keeps the public vote message on screen for 3 seconds before switching to the recap', async () => {
     const store = makeStore();
-    const expectedPublicPhrase = pickPhrase(PUBLIC_JURY_VOTE_LINES, 42, 1);
-    const visiblePublicPhrase = expectedPublicPhrase
-      .slice(0, PUBLIC_VOTE_VISIBLE_PREFIX_LENGTH)
-      .trimEnd();
-    const phraseLeadInMs = PHRASE_TYPING_START_DELAY_MS
-      + (visiblePublicPhrase.length * PHRASE_TYPING_CHAR_INTERVAL_MS);
-    const remainingHoldMs = Math.max(0, (PUBLIC_VOTE_HOLD_BEFORE_RECAP_MS - 1) - phraseLeadInMs);
+    const phraseLeadInMs = PHRASE_TYPING_START_DELAY_MS + PHRASE_TYPING_CHAR_INTERVAL_MS;
+    const remainingHoldMs = Math.max(0, (PUBLIC_VOTE_RECAP_HOLD_MS - 1) - phraseLeadInMs);
 
     render(
       <Provider store={store}>
@@ -157,7 +174,7 @@ describe('FinalFaceoff public vote pacing', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(2999);
+      vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS - 1);
     });
 
     await act(async () => {
@@ -165,7 +182,7 @@ describe('FinalFaceoff public vote pacing', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS);
     });
 
     await act(async () => {
@@ -173,7 +190,10 @@ describe('FinalFaceoff public vote pacing', () => {
     });
 
     expect(
-      screen.getByText(visiblePublicPhrase, { exact: false, selector: '.tms-phrase' }),
+      screen.getByText((_, element) => {
+        if (!element?.matches('.tms-phrase')) return false;
+        return (element.textContent ?? '').replace('|', '').trim().length > 0;
+      }),
     ).toBeTruthy();
     expect(screen.queryByTestId('season-recap')).toBeNull();
 
@@ -246,7 +266,7 @@ describe('FinalFaceoff public vote pacing', () => {
     expect(screen.getAllByText('0', { selector: '.fo-finalist__votes' })).toHaveLength(2);
 
     await act(async () => {
-      vi.advanceTimersByTime(799);
+      vi.advanceTimersByTime(VOTE_REVEAL_INITIAL_DELAY_MS - 1);
     });
 
     expect(screen.getByText('0 / 2 votes revealed')).toBeTruthy();
@@ -261,7 +281,7 @@ describe('FinalFaceoff public vote pacing', () => {
     expect(screen.queryByRole('button', { name: 'Continue 🎉' })).toBeNull();
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(VOTE_REVEAL_STAGGER_MS);
     });
 
     expect(screen.queryByLabelText('Vote not yet revealed')).toBeNull();

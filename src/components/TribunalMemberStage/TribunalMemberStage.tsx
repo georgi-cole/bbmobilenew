@@ -20,10 +20,11 @@ import type { JurorReveal } from '../../store/finaleSlice';
 import { PUBLIC_JUROR_ID } from '../../store/finaleSlice';
 import { resolveFormalCutout } from '../../utils/avatar';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import {
+  PHRASE_TYPING_CHAR_INTERVAL_MS,
+  PHRASE_TYPING_START_DELAY_MS,
+} from './tribunalMemberStageTiming';
 import './TribunalMemberStage.css';
-
-const PHRASE_TYPING_START_DELAY_MS = 600;
-const PHRASE_TYPING_CHAR_INTERVAL_MS = 35;
 
 interface JurorEntry {
   juror: Player;
@@ -100,9 +101,19 @@ export default function TribunalMemberStage({
 
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
   const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null;
+  const currentAnnouncement = current
+    ? `${isPublic ? 'The Public' : current.juror.name}. ${currentPhrase}`.trim()
+    : awaitingHumanPlayer
+      ? `${awaitingHumanPlayer.name}, cast your Tribunal vote.`
+      : '';
 
   return (
-    <div className="tms-stage" aria-live="polite">
+    <div className="tms-stage">
+      {currentAnnouncement && (
+        <div className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+          {currentAnnouncement}
+        </div>
+      )}
       {/* ── Atmosphere ──────────────────────────────────────────────── */}
       <div className="tms-bg-vignette" aria-hidden="true" />
       <div className="tms-spotlight" aria-hidden="true" />
@@ -140,8 +151,17 @@ export default function TribunalMemberStage({
               alt={current.juror.name}
               draggable={false}
             />
-          ) : (
+          ) : isPublic ? (
             <PublicCutoutPlaceholder />
+          ) : (
+            <div className="tms-avatar-fallback" aria-hidden="true">
+              <PlayerAvatar
+                player={current.juror}
+                size="lg"
+                showRelationshipOutline={false}
+                showEvictedStyle={false}
+              />
+            </div>
           )}
           <div className="tms-cutout-glow" aria-hidden="true" />
         </div>

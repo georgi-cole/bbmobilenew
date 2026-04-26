@@ -41,15 +41,15 @@ import FinaleControls from './FinaleControls';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic';
 import TribunalMemberStage from '../TribunalMemberStage/TribunalMemberStage';
+import {
+  CLUE_AUTO_INTERVAL_MS,
+  PUBLIC_VOTE_RECAP_HOLD_MS,
+  RECAP_TRANSITION_DELAY_MS,
+  VOTE_REVEAL_INITIAL_DELAY_MS,
+  VOTE_REVEAL_STAGGER_MS,
+  WINNER_CINEMATIC_DELAY_MS,
+} from './finaleTiming';
 import './FinalFaceoff.css';
-
-/** Delay between automatic juror clue reveals (ms). */
-const CLUE_AUTO_INTERVAL_MS = 3000;
-const RECAP_TRANSITION_DELAY_MS = 800;
-const PUBLIC_VOTE_RECAP_HOLD_MS = 3000;
-const VOTE_REVEAL_INITIAL_DELAY_MS = 800;
-const VOTE_REVEAL_STAGGER_MS = 2000;
-const WINNER_CINEMATIC_DELAY_MS = 1500;
 
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch();
