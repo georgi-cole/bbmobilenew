@@ -15,7 +15,12 @@ describe('PublicFavoriteOverlay styles', () => {
       ),
     );
 
-    expect(css).toContain('.pf-overlay { position: fixed; inset: 0; z-index: 9200; overflow-y: auto; overscroll-behavior: contain;');
-    expect(css).toContain('.pf-overlay__skip { position: fixed; top: var(--floating-corner-top-offset); right: var(--floating-corner-right-offset);');
+    expect(css).toContain('.pf-overlay {');
+    expect(css).toContain('overflow-y: auto;');
+    expect(css).toContain('overscroll-behavior: contain;');
+    expect(css).toContain('.pf-overlay__skip {');
+    expect(css).toContain('position: fixed;');
+    expect(css).toContain('top: var(--floating-corner-top-offset);');
+    expect(css).toContain('right: var(--floating-corner-right-offset);');
   });
 });

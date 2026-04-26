@@ -637,11 +637,12 @@ export default function PublicFavoriteOverlay({
   }, [winnerId, onComplete]);
 
   const handleSkipIntro = useCallback(() => {
+    if (introSkipBoostMs !== 0) return;
     const remainingIntroMs = Math.max(0, INTRO_MS - elapsedMs);
     if (remainingIntroMs === 0) return;
-    setIntroSkipBoostMs((current) => current || remainingIntroMs);
+    setIntroSkipBoostMs(remainingIntroMs);
     setNowMs(Date.now());
-  }, [elapsedMs]);
+  }, [elapsedMs, introSkipBoostMs]);
 
   const handleActivateSurge = useCallback(async () => {
     if (
