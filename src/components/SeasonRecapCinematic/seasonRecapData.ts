@@ -492,15 +492,15 @@ export function buildSeasonRecapData(
         },
         seasonPlacement: 1,
       }];
-   const tabloidPhotoEntries = listTabloidPhotoEntries();
-   const tabloidPhotoSources = tabloidPhotoEntries.map((entry) => entry.source);
-   const evictionLadder = buildEvictionList(safePlayers);
+  const tabloidPhotoEntries = listTabloidPhotoEntries();
+  const tabloidPhotoSources = tabloidPhotoEntries.map((entry) => entry.source);
+  const evictionLadder = buildEvictionList(safePlayers);
 
   return {
     montageBeats: buildMontageBeats(safePlayers),
     montageFragments: buildMontageFragments(safePlayers, week),
     categories: buildCategories(safePlayers, publicOpinion),
-     tabloidCards: buildTabloidCards(safePlayers, publicOpinion, tabloidPhotoEntries),
+    tabloidCards: buildTabloidCards(safePlayers, publicOpinion, tabloidPhotoEntries),
     evictionWaves: buildEvictionWaves(evictionLadder),
     evictionLadder,
     finalists: buildFinalists(safePlayers),
