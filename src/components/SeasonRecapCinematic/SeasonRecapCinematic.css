@@ -300,6 +300,7 @@
 }
 
 .src-scene--montage .src-news-montage__stage {
+  min-height: min(48vh, 25rem);
   min-height: min(48dvh, 25rem);
 }
 
@@ -378,6 +379,7 @@
   position: relative;
   align-self: center;
   width: min(70vw, 21rem);
+  max-height: min(58vh, 31rem);
   max-height: min(58dvh, 31rem);
   z-index: 2;
   display: flex;
@@ -403,6 +405,7 @@
 .src-cat-winner__cutout {
   width: auto;
   max-width: 100%;
+  max-height: calc(min(58vh, 31rem) - 3.8rem);
   max-height: calc(min(58dvh, 31rem) - 3.8rem);
   height: auto;
   object-fit: contain;
@@ -603,6 +606,7 @@
   }
 
   .src-scene--montage .src-news-montage__stage {
+    min-height: min(38vh, 19rem);
     min-height: min(38dvh, 19rem);
   }
 
@@ -636,6 +640,7 @@
   }
 
   .src-scene--montage .src-news-montage__stage {
+    min-height: min(34vh, 18rem);
     min-height: min(34dvh, 18rem);
   }
 
@@ -645,10 +650,12 @@
 
   .src-cat-winner {
     width: min(66vw, 18rem);
+    max-height: min(55vh, 27rem);
     max-height: min(55dvh, 27rem);
   }
 
   .src-cat-winner__cutout {
+    max-height: calc(min(55vh, 27rem) - 3.6rem);
     max-height: calc(min(55dvh, 27rem) - 3.6rem);
   }
 }

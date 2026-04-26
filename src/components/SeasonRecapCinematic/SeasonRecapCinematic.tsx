@@ -367,7 +367,7 @@ function findPlayerById(players: Player[], playerId: string | undefined): Player
   return players.find((player) => player.id === playerId) ?? null;
 }
 
-function tabloidImageFor(player: Player | null | undefined): string {
+function resolveTabloidImage(player: Player | null | undefined): string {
   return player ? resolveAvatar(player) : '/assets/houseguests/houseguest-1.jpg';
 }
 
@@ -381,6 +381,8 @@ function buildTabloidRecap(
   const topComp = beats[0]?.subject ?? playerPool[0] ?? null;
   const mostNom = beats[1]?.subject ?? playerPool[1] ?? topComp;
   const topVeto = beats[2]?.subject ?? playerPool[2] ?? mostNom;
+  const topVetoName = firstName(topVeto);
+  const mostNomName = firstName(mostNom);
   const finalists = buildFinalists(players);
 
   const publicHeadlineEvents: NewspaperSeasonEvent[] = (publicOpinion?.feed ?? [])
@@ -403,14 +405,14 @@ function buildTabloidRecap(
       week: Math.max(1, week - 3),
       type: 'veto',
       subjectName: topVeto?.name,
-      detail: `${firstName(topVeto)} turned one ceremony into a full-house scramble.`,
+      detail: `${topVetoName} turned one ceremony into a full-house scramble.`,
     },
     {
       id: 'recap-underdog',
       week: Math.max(1, week - 2),
       type: 'underdog',
       subjectName: mostNom?.name,
-      detail: `${firstName(mostNom)} survived the spotlight long enough to become headline material.`,
+      detail: `${mostNomName} survived the spotlight long enough to become headline material.`,
     },
     {
       id: 'recap-finale',
@@ -430,9 +432,9 @@ function buildTabloidRecap(
     const secondaryFallback =
       secondary ?? (playerPool.length > 0 ? playerPool[(index + 1) % playerPool.length] : null);
     return createNewspaperFrontPage(event, index, {
-      featuredImage: tabloidImageFor(subject),
+      featuredImage: resolveTabloidImage(subject),
       featuredImageAlt: subject?.name ?? event.subjectName ?? 'Featured housemate',
-      secondaryImage: tabloidImageFor(secondaryFallback),
+      secondaryImage: resolveTabloidImage(secondaryFallback),
       secondaryImageAlt: secondary?.name ?? 'Housemate reaction',
       issueDate: `Week ${event.week} Recap`,
       issueNumber: `Finale File ${index + 1}`,
