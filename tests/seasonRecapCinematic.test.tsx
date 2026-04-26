@@ -153,10 +153,18 @@ describe('SeasonRecapCinematic', () => {
 
   it('builds a fixed 120-second recap timeline', () => {
     const timeline = getTimeline();
+    const categoryIds = buildSeasonRecapData(PLAYERS, 12).categories.map((category) => category.id);
 
     expect(TOTAL_RECAP_DURATION_MS).toBe(120000);
     expect(timeline.at(-1)?.endMs).toBe(120000);
-    expect(buildSeasonRecapData(PLAYERS, 12).categories).toHaveLength(6);
+    expect(categoryIds).toEqual([
+      'compzilla',
+      'head_honcho',
+      'mess_factory',
+      'ghost_mode',
+      'vibe_curator',
+      'heat_magnet',
+    ]);
   });
 
   it('keeps intro cards, tabloid cards, and category awards above the minimum durations', () => {

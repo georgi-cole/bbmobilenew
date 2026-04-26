@@ -94,6 +94,15 @@ function joinPublicAssetPath(path: string): string {
   return path;
 }
 
+function isDicebearCandidate(candidate: string): boolean {
+  try {
+    const parsed = new URL(candidate, typeof window !== 'undefined' ? window.location.origin : 'https://bbmobilenew.local');
+    return parsed.hostname === 'api.dicebear.com';
+  } catch {
+    return false;
+  }
+}
+
 /** Capitalises the first letter of a string and lowercases the rest. */
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -257,7 +266,7 @@ export function resolveInformalCutoutCandidates(
   const avatarFallback = resolveAvatarCandidates({
     ...player,
     avatar: player.avatar ?? player.name,
-  }).find((candidate) => !candidate.includes('api.dicebear.com'));
+  }).find((candidate) => !isDicebearCandidate(candidate));
   const silhouetteFallback = resolveSilhouetteFallback(player);
   return [cutout, avatarFallback, silhouetteFallback].filter(
     (candidate, index, all): candidate is string =>

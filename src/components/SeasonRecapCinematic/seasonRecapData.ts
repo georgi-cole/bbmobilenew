@@ -154,9 +154,7 @@ function selectLowest(players: Player[], score: (player: Player) => number): Pla
 }
 
 function listTabloidPhotos(): string[] {
-  return Object.values(TABLOID_PHOTO_MODULES)
-    .filter((path) => !path.toLowerCase().endsWith('/readme.md'))
-    .sort((a, b) => a.localeCompare(b));
+  return Object.values(TABLOID_PHOTO_MODULES).sort((a, b) => a.localeCompare(b));
 }
 
 function uniqueSources(sources: Array<string | null | undefined>): string[] {
@@ -168,12 +166,21 @@ function uniqueSources(sources: Array<string | null | undefined>): string[] {
   });
 }
 
+function isDicebearCandidate(candidate: string): boolean {
+  try {
+    const parsed = new URL(candidate, typeof window !== 'undefined' ? window.location.origin : 'https://bbmobilenew.local');
+    return parsed.hostname === 'api.dicebear.com';
+  } catch {
+    return false;
+  }
+}
+
 export function resolveRecapCutoutSources(player: Player): string[] {
   return uniqueSources(resolveInformalCutoutCandidates(player));
 }
 
 export function resolveRecapTabloidSources(player: Player, preferredPhoto?: string | null): string[] {
-  const primaryAvatar = resolveAvatarCandidates(player).find((candidate) => !candidate.includes('api.dicebear.com'));
+  const primaryAvatar = resolveAvatarCandidates(player).find((candidate) => !isDicebearCandidate(candidate));
   return uniqueSources([
     preferredPhoto,
     resolveInformalCutout(player),
@@ -389,7 +396,20 @@ export function buildSeasonRecapData(
   week: number,
   publicOpinion?: PublicOpinionState | null,
 ): RecapData {
-  const safePlayers = players.length > 0 ? players : [{ id: 'placeholder', name: `Week ${week}`, avatar: '', status: 'evicted' as const }];
+  const safePlayers = players.length > 0
+    ? players
+    : [{
+        id: 'placeholder',
+        name: `Week ${week}`,
+        avatar: '',
+        status: 'evicted' as const,
+        stats: {
+          lohWins: 0,
+          posWins: 0,
+          timesNominated: 0,
+        },
+        seasonPlacement: 1,
+      }];
   const tabloidPhotoSources = listTabloidPhotos();
   const evictionLadder = buildEvictionList(safePlayers);
 
