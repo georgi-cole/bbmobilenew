@@ -266,4 +266,25 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
     expect(screen.queryByText(/Need 🤝/)).toBeNull();
     expect(screen.queryByText(/Need 💡/)).toBeNull();
   });
+
+  it('disables propose alliance when the selected target is already allied', () => {
+    render(
+      <ActionGrid
+        actorId="user"
+        actorEnergy={100}
+        actorInfluence={1000}
+        actorInfo={1000}
+        selectedTargetIds={new Set(['p2'])}
+        relationships={{
+          user: {
+            p2: { affinity: 5, tags: ['alliance'] },
+          },
+        }}
+      />,
+    );
+
+    const card = screen.getByRole('button', { name: /Propose Alliance/i });
+    expect(card.getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByText('Already allied')).toBeDefined();
+  });
 });

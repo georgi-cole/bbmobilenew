@@ -23,13 +23,12 @@ export default function SocialPanel({ actorId }: Props) {
 
   const energy = energyBank?.[actorId] ?? 0;
   const targets = alivePlayers.filter((p) => p.id !== actorId);
-  const availableActions = socialState
-    ? getAvailableActions(actorId, { social: socialState })
-    : [];
-
   const [selectedTarget, setSelectedTarget] = useState('');
   const [selectedAction, setSelectedAction] = useState('');
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const availableActions = socialState
+    ? getAvailableActions(actorId, { social: socialState }, selectedTarget || undefined)
+    : [];
 
   function handleExecute() {
     if (!selectedTarget || !selectedAction) return;

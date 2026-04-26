@@ -14,6 +14,7 @@ import {
   buildSocialMemoryDeltaForResponse,
   buildSocialMemoryEvent,
 } from './socialMemory';
+import { ALLIANCE_TAG } from './socialAlliance';
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
@@ -159,15 +160,29 @@ export function respondToIncomingInteraction({
     );
 
     const delta = getResponseDelta(responseType);
+    const acceptedAlliance =
+      interaction.type === 'alliance_proposal' && responseType === 'accept';
     if (delta !== 0 && interaction.fromId !== humanPlayer.id) {
       dispatch(
         updateRelationship({
           source: interaction.fromId,
           target: humanPlayer.id,
           delta,
+          tags: acceptedAlliance ? [ALLIANCE_TAG] : undefined,
           actionSource: 'manual',
         }),
       );
+      if (acceptedAlliance) {
+        dispatch(
+          updateRelationship({
+            source: humanPlayer.id,
+            target: interaction.fromId,
+            delta,
+            tags: [ALLIANCE_TAG],
+            actionSource: 'system',
+          }),
+        );
+      }
     }
 
     if (interaction.fromId !== humanPlayer.id) {

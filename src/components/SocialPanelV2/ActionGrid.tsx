@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
 import { normalizeActionCosts } from '../../social/smExecNormalize';
 import { computeOutcomeScore } from '../../social/SocialPolicy';
+import { hasAllianceBetween } from '../../social/socialAlliance';
 import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
 import type { PreviewDeltaEntry } from './PreviewPopup';
@@ -169,6 +170,17 @@ export default function ActionGrid({
     return action.requiredTargetStatus.includes(primaryTargetStatus);
   }
 
+  function getRelationshipUnavailableReason(actionId: string): string {
+    if (actionId !== 'proposeAlliance' || !relationships || !actorId || !selectedTargetIds) {
+      return '';
+    }
+    const [targetId] = Array.from(selectedTargetIds);
+    if (!targetId || selectedTargetIds.size !== 1) {
+      return '';
+    }
+    return hasAllianceBetween(relationships, actorId, targetId) ? 'Already allied' : '';
+  }
+
   const sortedActions =
     actorEnergy !== undefined
       ? [...SOCIAL_ACTIONS].filter((a) => !a.aiOnly && isRoleEligible(a)).sort((a, b) => {
@@ -206,14 +218,16 @@ export default function ActionGrid({
       >
         {sortedActions.map((action) => {
           const costs = normalizeActionCosts(action);
-          const availabilityReason = getAvailabilityReason(costs);
+          const relationshipUnavailableReason = getRelationshipUnavailableReason(action.id);
+          const availabilityReason = relationshipUnavailableReason || getAvailabilityReason(costs);
+          const isDisabled = disabledIds.has(action.id) || !!relationshipUnavailableReason;
           const isAvailable = actorEnergy !== undefined && !availabilityReason;
           return (
             <ActionCard
               key={action.id}
               action={action}
               selected={selectedId === action.id}
-              disabled={disabledIds.has(action.id)}
+              disabled={isDisabled}
               availabilityReason={availabilityReason}
               available={actorEnergy !== undefined ? isAvailable : undefined}
               onClick={onActionClick}
