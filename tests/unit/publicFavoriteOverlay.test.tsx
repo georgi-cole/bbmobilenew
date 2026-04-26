@@ -77,6 +77,37 @@ describe('PublicFavoriteOverlay', () => {
     expect(screen.queryByText(/america/i)).not.toBeInTheDocument();
   });
 
+  it('shows a skip control during the intro and lets the user select a boost target immediately', () => {
+    mockedUseBattleBackVoting.mockReturnValue({
+      votes: { p1: 41, p2: 34, p3: 25 },
+      eliminated: [],
+      winnerId: null,
+      isComplete: false,
+    });
+
+    render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /skip animation/i })).toBeInTheDocument();
+
+    const surgeList = screen.getByRole('list', { name: /eligible players for audience surge/i });
+    const taylorChip = within(surgeList).getByRole('button', { name: /taylor/i });
+
+    expect(taylorChip).toBeEnabled();
+    fireEvent.click(taylorChip);
+    expect(screen.getByRole('button', { name: /watch to boost taylor/i })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /skip animation/i }));
+
+    expect(screen.queryByRole('button', { name: /skip animation/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /watch to boost taylor/i })).toBeEnabled();
+  });
+
   it('requests audience surge only once and shows the active state', async () => {
     mockedUseBattleBackVoting.mockReturnValue({
       votes: { p1: 38, p2: 35, p3: 27 },
