@@ -458,27 +458,28 @@ export function executeAction(
     }),
   );
 
-  if (actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred) {
-    _store.dispatch(
-      updateRelationship({
-        source: targetId,
-        target: actorId,
-        delta,
-        tags: [ALLIANCE_TAG],
-        actionSource: 'system',
-      }),
-    );
-  }
-  if (actionId === 'proposeAlliance' && outcome === 'success' && betrayalOccurred) {
-    _store.dispatch(
-      updateRelationship({
-        source: targetId,
-        target: actorId,
-        delta: ALLIANCE_BETRAYAL_DELTA,
-        tags: [BETRAYAL_TAG],
-        actionSource: options?.source ?? 'system',
-      }),
-    );
+  if (actionId === 'proposeAlliance' && outcome === 'success') {
+    if (betrayalOccurred) {
+      _store.dispatch(
+        updateRelationship({
+          source: targetId,
+          target: actorId,
+          delta: ALLIANCE_BETRAYAL_DELTA,
+          tags: [BETRAYAL_TAG],
+          actionSource: options?.source ?? 'system',
+        }),
+      );
+    } else {
+      _store.dispatch(
+        updateRelationship({
+          source: targetId,
+          target: actorId,
+          delta,
+          tags: [ALLIANCE_TAG],
+          actionSource: 'system',
+        }),
+      );
+    }
   }
 
   // For primaryPlusSubject actions: apply a lightweight contextual tag from the
