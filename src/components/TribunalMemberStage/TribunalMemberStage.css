@@ -1,0 +1,324 @@
+/* ─── TribunalMemberStage — Cinematic Juror Reveal ──────────────────────────
+   Full-bleed backdrop that takes over the juror list area in FinalFaceoff
+   during the 'clues' (phase 1) act.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Stage container ─────────────────────────────────────────────────────── */
+.tms-stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+  min-height: 0;
+  /* enough height for the cutout to breathe */
+  padding-bottom: 0.5rem;
+}
+
+/* ── Background & atmosphere ─────────────────────────────────────────────── */
+.tms-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 110%, rgba(99, 102, 241, 0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 100% 50% at 50% 0%, rgba(0, 0, 0, 0.55) 0%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tms-spotlight {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  height: 300px;
+  background: radial-gradient(ellipse 80% 90% at 50% 100%,
+    rgba(180, 170, 255, 0.20) 0%,
+    rgba(99, 102, 241, 0.08) 40%,
+    transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+  animation: tms-spotlight-pulse 3s ease-in-out infinite;
+}
+
+@keyframes tms-spotlight-pulse {
+  0%, 100% { opacity: 0.8; }
+  50%       { opacity: 1; }
+}
+
+/* ── Previous jurors strip ───────────────────────────────────────────────── */
+.tms-previous {
+  position: absolute;
+  top: 0.4rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 0.75rem;
+  z-index: 2;
+  animation: tms-fadein 0.4s ease;
+}
+
+.tms-prev-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(20, 24, 44, 0.75);
+  border: 1px solid rgba(165, 180, 252, 0.25);
+  border-radius: 99px;
+  padding: 0.15rem 0.5rem 0.15rem 0.2rem;
+  backdrop-filter: blur(4px);
+}
+
+.tms-prev-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(165, 180, 252, 0.8);
+  white-space: nowrap;
+}
+
+/* ── Name plate ──────────────────────────────────────────────────────────── */
+.tms-nameplate {
+  position: absolute;
+  top: 2.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  z-index: 3;
+  animation: tms-nameplate-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  white-space: nowrap;
+}
+
+@keyframes tms-nameplate-enter {
+  from { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.tms-nameplate__eyebrow {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(165, 180, 252, 0.6);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.1rem 0.6rem;
+  border-radius: 99px;
+  backdrop-filter: blur(3px);
+}
+
+.tms-nameplate__name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(99, 102, 241, 0.6), 0 0 4px rgba(0, 0, 0, 0.8);
+  background: linear-gradient(135deg, #e0e7ff 0%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.tms-nameplate__public-badge {
+  font-size: 1rem;
+  -webkit-text-fill-color: initial;
+}
+
+/* ── Cutout image ────────────────────────────────────────────────────────── */
+.tms-cutout-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Takes most of the stage height */
+  height: 62%;
+  max-height: 340px;
+  animation: tms-cutout-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+}
+
+@keyframes tms-cutout-enter {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.93);
+    filter: brightness(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+.tms-cutout {
+  height: 100%;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  object-position: bottom;
+  filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.35))
+          drop-shadow(0 0 8px rgba(0, 0, 0, 0.6));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.tms-cutout-glow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 80px;
+  background: radial-gradient(ellipse 100% 100% at 50% 100%,
+    rgba(139, 92, 246, 0.35) 0%,
+    transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+  animation: tms-glow-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes tms-glow-pulse {
+  0%, 100% { opacity: 0.7; transform: translateX(-50%) scaleX(1); }
+  50%       { opacity: 1;   transform: translateX(-50%) scaleX(1.15); }
+}
+
+/* Public vote globe placeholder */
+.tms-public-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 240px;
+}
+
+.tms-public-globe {
+  font-size: 5rem;
+  filter: drop-shadow(0 4px 16px rgba(212, 175, 55, 0.5));
+  animation: tms-globe-spin 8s linear infinite;
+}
+
+@keyframes tms-globe-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Cryptic phrase ──────────────────────────────────────────────────────── */
+.tms-phrase-wrap {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  padding: 0.4rem 1.25rem 0;
+  text-align: center;
+  animation: tms-fadein 0.5s ease 0.3s both;
+  flex-shrink: 0;
+}
+
+.tms-phrase {
+  margin: 0;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: rgba(196, 181, 253, 0.9);
+  line-height: 1.5;
+  letter-spacing: 0.015em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  min-height: 2.5em;
+}
+
+.tms-phrase__cursor {
+  display: inline-block;
+  color: rgba(165, 180, 252, 0.7);
+  animation: tms-cursor-blink 0.7s step-end infinite;
+  margin-left: 1px;
+}
+
+@keyframes tms-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Human vote prompt ───────────────────────────────────────────────────── */
+.tms-vote-prompt {
+  position: relative;
+  z-index: 4;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%);
+  border-top: 1px solid rgba(99, 102, 241, 0.4);
+  backdrop-filter: blur(8px);
+  animation: tms-vote-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+}
+
+@keyframes tms-vote-enter {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tms-vote-prompt__text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text);
+  justify-content: center;
+}
+
+.tms-vote-choices {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.tms-vote-choice {
+  flex: 1;
+  max-width: 9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.65rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  color: var(--color-text);
+  transition: border-color 0.18s, background 0.18s, transform 0.14s, box-shadow 0.18s;
+}
+
+.tms-vote-choice:hover {
+  border-color: rgba(99, 102, 241, 0.65);
+  background: rgba(99, 102, 241, 0.18);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.28);
+}
+
+.tms-vote-choice:active {
+  transform: scale(0.97);
+}
+
+.tms-vote-choice__name {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* ── Shared helpers ──────────────────────────────────────────────────────── */
+@keyframes tms-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

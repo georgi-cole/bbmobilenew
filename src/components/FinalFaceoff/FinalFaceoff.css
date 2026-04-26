@@ -389,6 +389,31 @@
   font-style: italic;
   line-height: 1.4;
 }
+.jb-vote-statement {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #a5b4fc;
+  font-weight: 600;
+  animation: jb-vote-reveal 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  line-height: 1.4;
+}
+.jb-vote-statement--public {
+  color: #d4af37;
+}
+.jb-vote-statement__finalist {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 800;
+  color: #e0e7ff;
+}
+.jb-vote-statement--public .jb-vote-statement__finalist {
+  color: #f0c060;
+}
+
 .jb-vote {
   display: flex;
   align-items: center;
