@@ -15,6 +15,7 @@ const TABLOID_PHOTO_MODULES = import.meta.glob('../../../public/assets/tabloid_p
 interface TabloidPhotoEntry {
   id: string;
   matchToken: string;
+  extension: string;
   source: string;
 }
 
@@ -164,19 +165,45 @@ function normalizePhotoToken(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
+function tabloidPhotoExtensionPriority(extension: string): number {
+  switch (extension.toLowerCase()) {
+    case 'webp':
+      return 0;
+    case 'png':
+      return 1;
+    case 'jpg':
+    case 'jpeg':
+      return 2;
+    case 'avif':
+      return 3;
+    case 'jxl':
+      return 4;
+    default:
+      return 5;
+  }
+}
+
 function listTabloidPhotoEntries(): TabloidPhotoEntry[] {
   return Object.entries(TABLOID_PHOTO_MODULES)
     .map(([path, source]) => {
       const filename = path.split('/').pop() ?? path;
+      const extension = filename.split('.').pop() ?? '';
       const basename = filename.replace(/\.[^.]+$/, '');
       const matchBase = basename.replace(/_tabloid\d*$/i, '');
       return {
         id: basename,
         matchToken: normalizePhotoToken(matchBase),
+        extension,
         source,
       };
     })
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => {
+      if (a.matchToken !== b.matchToken) return a.matchToken.localeCompare(b.matchToken);
+      const extensionPriorityDifference =
+        tabloidPhotoExtensionPriority(a.extension) - tabloidPhotoExtensionPriority(b.extension);
+      if (extensionPriorityDifference !== 0) return extensionPriorityDifference;
+      return a.id.localeCompare(b.id);
+    });
 }
 
 function uniqueSources(sources: Array<string | null | undefined>): string[] {

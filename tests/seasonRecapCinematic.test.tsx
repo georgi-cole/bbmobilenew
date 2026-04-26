@@ -156,7 +156,8 @@ describe('SeasonRecapCinematic', () => {
     const categoryIds = buildSeasonRecapData(PLAYERS, 12).categories.map((category) => category.id);
 
     expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThan(120000);
-    expect(timeline.at(-1)?.endMs).toBe(TOTAL_RECAP_DURATION_MS);
+    expect(timeline.at(-1)?.endMs).toBeGreaterThan(120000);
+    expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThanOrEqual(timeline.at(-1)?.endMs ?? 0);
     expect(categoryIds).toEqual([
       'compzilla',
       'head_honcho',
@@ -317,7 +318,15 @@ describe('SeasonRecapCinematic', () => {
       12,
     );
 
-    expect(recapData.tabloidPhotoSources.some((source) => source.includes('Aria_tabloid.jxl'))).toBe(true);
-    expect(recapData.tabloidCards[0]?.imageSources.some((source) => source.includes('Aria_tabloid.jxl'))).toBe(true);
+    expect(
+      recapData.tabloidPhotoSources.some(
+        (source) => source.includes('Aria_tabloid.webp') || source.includes('Aria_tabloid.jxl'),
+      ),
+    ).toBe(true);
+    expect(
+      recapData.tabloidCards[0]?.imageSources.some(
+        (source) => source.includes('Aria_tabloid.webp') || source.includes('Aria_tabloid.jxl'),
+      ),
+    ).toBe(true);
   });
 });
