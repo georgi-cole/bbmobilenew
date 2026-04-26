@@ -19,12 +19,10 @@ export interface SeasonRecapProps {
 
 const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
   intro_votes_in: { line: 'THE VOTES ARE IN.' },
-  intro_verdict_locked: { line: 'THE VERDICT IS LOCKED.' },
   intro_before_final_word: {
     line: 'BUT BEFORE THE FINAL WORD…',
     lines: ['BUT BEFORE', 'THE FINAL WORD…'],
   },
-  intro_rewind_chaos: { line: 'LET’S REWIND THE CHAOS.' },
 };
 
 const LADDER_ARCHIVE_LIMIT = 6;
@@ -191,6 +189,7 @@ function TabloidCardScene({
                   loading="eager"
                 />
               </div>
+              <p className="src-tabloid-card__article">{card.articleText}</p>
               {isActive && activeIndex === cards.length - 1 && (
                 <div className="src-tabloid-card__stamp">SEASON FILES: CLASSIFIED</div>
               )}
@@ -297,24 +296,61 @@ function LadderIntroScene({ archivePlayers }: { archivePlayers: Player[] }) {
   );
 }
 
-function LadderWaveScene({ players, caption }: { players: Player[]; caption: string }) {
+function LadderWaveScene({
+  players,
+  ladder,
+  caption,
+}: {
+  players: Player[];
+  ladder: Player[];
+  caption: string;
+}) {
+  const highlightedPlayer = players[players.length - 1] ?? ladder[0];
+
   return (
     <SceneFrame className="src-scene--ladder-wave">
-      <div className="src-ladder-wave-grid">
-        {players.map((player, index) => (
-          <motion.article
-            key={player.id}
-            className="src-ladder-wave-card"
-            initial={{ opacity: 0, x: 24, y: 12 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 0.45, delay: index * 0.18 }}
-          >
-            <div className="src-ladder-wave-card__placement">
-              {placementLabel(player, players.length - index + 2)}
+      <div className="src-ladder-wave-layout">
+        <motion.article
+          className="src-ladder-focus-card"
+          initial={{ opacity: 0, x: -28, y: 14 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {highlightedPlayer && (
+            <FullSizeCutoutImage
+              player={highlightedPlayer}
+              alt={highlightedPlayer.name}
+              className="src-ladder-focus-card__image"
+              loading="eager"
+            />
+          )}
+          {highlightedPlayer && (
+            <div className="src-ladder-focus-card__plate">
+              <span className="src-ladder-focus-card__placement">{placementLabel(highlightedPlayer, 3)}</span>
+              <span className="src-ladder-focus-card__name">{highlightedPlayer.name}</span>
             </div>
-            <div className="src-ladder-wave-card__name">{player.name}</div>
-          </motion.article>
-        ))}
+          )}
+        </motion.article>
+
+        <div className="src-ladder-wave-grid">
+          {ladder.map((player, index) => {
+            const isHighlighted = players.some((highlightedPlayer) => highlightedPlayer.id === player.id);
+            return (
+              <motion.article
+                key={player.id}
+                className={`src-ladder-wave-card${isHighlighted ? ' src-ladder-wave-card--active' : ''}`}
+                initial={{ opacity: 0, x: 24, y: 12 }}
+                animate={{ opacity: isHighlighted ? 1 : 0.64, x: 0, y: 0, scale: isHighlighted ? 1 : 0.98 }}
+                transition={{ duration: 0.45, delay: index * 0.06 }}
+              >
+                <div className="src-ladder-wave-card__placement">
+                  {placementLabel(player, ladder.length - index + 2)}
+                </div>
+                <div className="src-ladder-wave-card__name">{player.name}</div>
+              </motion.article>
+            );
+          })}
+        </div>
       </div>
       <p className="src-ladder-wave-caption">{caption}</p>
     </SceneFrame>
@@ -324,6 +360,10 @@ function LadderWaveScene({ players, caption }: { players: Player[]; caption: str
 function LadderFinalistsScene({ finalists }: { finalists: Player[] }) {
   return (
     <SceneFrame className="src-scene--ladder-finalists">
+      <div className="src-finalists-equal__title-wrap">
+        <p className="src-ladder-copy__eyebrow">ROAD TO THE FINALISTS</p>
+        <h2 className="src-ladder-copy__title">FINAL TWO.</h2>
+      </div>
       <div className="src-finalists-equal">
         {finalists.map((player) => (
           <div key={player.id} className="src-finalists-equal__card">
@@ -477,7 +517,12 @@ export default function SeasonRecapCinematic({
           />
         )}
         {currentScene?.kind === 'ladder_wave' && activeWave && (
-          <LadderWaveScene key={currentScene.id} players={activeWave.players} caption={activeWave.caption} />
+          <LadderWaveScene
+            key={currentScene.id}
+            players={activeWave.players}
+            ladder={recapData.evictionLadder}
+            caption={activeWave.caption}
+          />
         )}
         {currentScene?.kind === 'ladder_finalists' && (
           <LadderFinalistsScene key={currentScene.id} finalists={recapData.finalists} />

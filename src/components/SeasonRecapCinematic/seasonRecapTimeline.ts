@@ -27,83 +27,79 @@ function seconds(value: number): number {
   return Math.round(value * SECOND);
 }
 
-function buildScene(
-  id: string,
-  kind: RecapSceneKind,
-  startSeconds: number,
-  endSeconds: number,
-  extra: Partial<RecapTimelineScene> = {},
-): RecapTimelineScene {
-  return {
-    id,
-    kind,
-    startMs: seconds(startSeconds),
-    endMs: seconds(endSeconds),
-    durationMs: seconds(endSeconds - startSeconds),
-    ...extra,
-  };
-}
-
-export const CATEGORY_SCENE_DURATION_MS = seconds(8);
-export const TABLOID_CARD_DURATION_MS = seconds(3.5);
-export const INTRO_MIN_DURATION_MS = seconds(2.5);
-export const HANDOFF_END_BUFFER_MS = seconds(2);
+export const CATEGORY_SCENE_DURATION_MS = seconds(9.5);
+export const TABLOID_CARD_DURATION_MS = seconds(5);
+export const INTRO_MIN_DURATION_MS = seconds(4.5);
+export const HANDOFF_END_BUFFER_MS = seconds(2.5);
 export const RECAP_EXIT_FADE_MS = 420;
+
+const MONTAGE_SCENE_DURATION_MS = seconds(4.5);
+const LADDER_INTRO_DURATION_MS = seconds(3.5);
+const LADDER_WAVE_DURATION_MS = seconds(4.25);
+const LADDER_FINALISTS_DURATION_MS = seconds(7);
+const HANDOFF_AND_NOW_DURATION_MS = seconds(3.5);
+const HANDOFF_FINAL_VERDICT_DURATION_MS = seconds(4);
 
 export function buildSeasonRecapTimeline(categoryIds: string[], evictionWaveCount: number): RecapTimelineScene[] {
   const safeWaveCount = Math.max(evictionWaveCount, 1);
-  const waveDurationSeconds = 8 / safeWaveCount;
+  let cursorMs = 0;
+
+  const pushScene = (
+    id: string,
+    kind: RecapSceneKind,
+    durationMs: number,
+    extra: Partial<RecapTimelineScene> = {},
+  ) => {
+    const scene = {
+      id,
+      kind,
+      startMs: cursorMs,
+      endMs: cursorMs + durationMs,
+      durationMs,
+      ...extra,
+    } satisfies RecapTimelineScene;
+    cursorMs += durationMs;
+    return scene;
+  };
 
   const timeline: RecapTimelineScene[] = [
-    // ACT 1 — THE VOTES ARE LOCKED (0.0s–14.0s)
-    buildScene('intro_votes_in', 'intro', 0.0, 4.0),
-    buildScene('intro_verdict_locked', 'intro', 4.0, 7.2),
-    buildScene('intro_before_final_word', 'intro', 7.2, 10.5),
-    buildScene('intro_rewind_chaos', 'intro', 10.5, 14.0),
-
-    // ACT 2 — SEASON PULSE MONTAGE (14.0s–30.0s)
-    buildScene('montage_0', 'montage', 14.0, 18.0, { montageBeatIndex: 0 }),
-    buildScene('montage_1', 'montage', 18.0, 22.0, { montageBeatIndex: 1 }),
-    buildScene('montage_2', 'montage', 22.0, 26.0, { montageBeatIndex: 2 }),
-    buildScene('montage_3', 'montage', 26.0, 30.0, { montageBeatIndex: 3 }),
-
-    // ACT 3 — TABLOID INTERLUDE (30.0s–48.0s)
-    buildScene('tabloid_0', 'tabloid', 30.0, 33.5, { tabloidCardIndex: 0 }),
-    buildScene('tabloid_1', 'tabloid', 33.5, 37.0, { tabloidCardIndex: 1 }),
-    buildScene('tabloid_2', 'tabloid', 37.0, 40.5, { tabloidCardIndex: 2 }),
-    buildScene('tabloid_3', 'tabloid', 40.5, 44.0, { tabloidCardIndex: 3 }),
-    buildScene('tabloid_4', 'tabloid', 44.0, 48.0, { tabloidCardIndex: 4 }),
+    pushScene('intro_votes_in', 'intro', INTRO_MIN_DURATION_MS),
+    pushScene('intro_before_final_word', 'intro', INTRO_MIN_DURATION_MS),
+    pushScene('montage_0', 'montage', MONTAGE_SCENE_DURATION_MS, { montageBeatIndex: 0 }),
+    pushScene('montage_1', 'montage', MONTAGE_SCENE_DURATION_MS, { montageBeatIndex: 1 }),
+    pushScene('montage_2', 'montage', MONTAGE_SCENE_DURATION_MS, { montageBeatIndex: 2 }),
+    pushScene('montage_3', 'montage', MONTAGE_SCENE_DURATION_MS, { montageBeatIndex: 3 }),
+    pushScene('tabloid_0', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 0 }),
+    pushScene('tabloid_1', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 1 }),
+    pushScene('tabloid_2', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 2 }),
+    pushScene('tabloid_3', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 3 }),
+    pushScene('tabloid_4', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 4 }),
   ];
 
-  // ACT 4 — CATEGORY AWARDS (48.0s–96.0s)
-  categoryIds.forEach((categoryId, index) => {
-    const startSeconds = 48 + index * 8;
+  categoryIds.forEach((categoryId) => {
     timeline.push(
-      buildScene(`category_${categoryId}`, 'category', startSeconds, startSeconds + 8, {
+      pushScene(`category_${categoryId}`, 'category', CATEGORY_SCENE_DURATION_MS, {
         categoryId,
       }),
     );
   });
 
-  // ACT 5 — ROAD TO THE FINALISTS / EVICTION LADDER (96.0s–112.0s)
-  timeline.push(buildScene('ladder_intro', 'ladder_intro', 96.0, 98.5));
+  timeline.push(pushScene('ladder_intro', 'ladder_intro', LADDER_INTRO_DURATION_MS));
   for (let index = 0; index < safeWaveCount; index += 1) {
-    const startSeconds = 98.5 + index * waveDurationSeconds;
     timeline.push(
-      buildScene(`ladder_wave_${index}`, 'ladder_wave', startSeconds, startSeconds + waveDurationSeconds, {
+      pushScene(`ladder_wave_${index}`, 'ladder_wave', LADDER_WAVE_DURATION_MS, {
         ladderWaveIndex: index,
       }),
     );
   }
-  timeline.push(buildScene('ladder_finalists', 'ladder_finalists', 106.5, 112.0));
+  timeline.push(pushScene('ladder_finalists', 'ladder_finalists', LADDER_FINALISTS_DURATION_MS));
 
-  // ACT 6 — FINAL HANDOFF (112.0s–120.0s)
   timeline.push(
-    buildScene('handoff_and_now', 'handoff', 112.0, 114.8, { handoffVariant: 'and_now' }),
-    buildScene('handoff_final_verdict', 'handoff', 114.8, 118.0, {
+    pushScene('handoff_and_now', 'handoff', HANDOFF_AND_NOW_DURATION_MS, { handoffVariant: 'and_now' }),
+    pushScene('handoff_final_verdict', 'handoff', HANDOFF_FINAL_VERDICT_DURATION_MS, {
       handoffVariant: 'final_verdict',
     }),
-    buildScene('handoff_fade_out', 'handoff', 118.0, 120.0, { handoffVariant: 'fade_out' }),
+    pushScene('handoff_fade_out', 'handoff', HANDOFF_END_BUFFER_MS, { handoffVariant: 'fade_out' }),
   );
 
   return timeline;
