@@ -173,23 +173,28 @@ describe('SeasonRecapCinematic', () => {
     const onComplete = vi.fn();
     // Old total was about 18 820 ms — the new recap is substantially longer.
     const OLD_TOTAL_MS = 2200 + 3000 + 3400 + 3400 + 4200 + 2200 + 420;
+    const elapsedToFirstCategory = INTRO_1_MS + INTRO_2_MS + INTRO_3_MS + MONTAGE_MS;
+    const deltaPastOldTotalMs = 50;
 
     render(
       <SeasonRecapCinematic season={9} week={12} players={PLAYERS} onComplete={onComplete} />,
     );
 
-    // Advance through all 3 intro scenes (9 400 ms) and the montage (5 200 ms).
-    // After 14 600 ms the new recap is still in the category section
-    // — well below the old total of 18 820 ms and nowhere near the new total.
+    // Advance through all 3 intro scenes (9 400 ms) and the montage (5 200 ms)
+    // to land on the first category scene at 14 600 ms.
     await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
     await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
     await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
     await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); });
 
-    // We have more elapsed time than the intro+montage block, and the new recap
-    // still has all category + ladder + finale scenes left — it must still be running.
-    expect(INTRO_1_MS + INTRO_2_MS + INTRO_3_MS + MONTAGE_MS).toBeLessThan(OLD_TOTAL_MS);
+    // Advance just beyond the old recap's total runtime without leaving cat_0.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(OLD_TOTAL_MS - elapsedToFirstCategory + deltaPastOldTotalMs);
+    });
+
+    expect(elapsedToFirstCategory).toBeLessThan(OLD_TOTAL_MS);
     expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByText('Compzilla')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
   });
 
@@ -272,6 +277,52 @@ describe('SeasonRecapCinematic', () => {
     expect(screen.getByText('Heat Magnet')).toBeTruthy();
     expect(screen.getByText(/21% approval/i)).toBeTruthy();
 
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('still shows Heat Magnet when the lowest-approval player already won another category', async () => {
+    const onComplete = vi.fn();
+    const duplicateWinnerPublicOpinion: PublicOpinionState = {
+      ...PUBLIC_OPINION,
+      profiles: {
+        ...PUBLIC_OPINION.profiles,
+        j1: {
+          ...PUBLIC_OPINION.profiles.j1,
+          approval: 21,
+          previousApproval: 32,
+          seasonApprovals: [50, 44, 32, 21],
+        },
+        e1: {
+          ...PUBLIC_OPINION.profiles.e1,
+          approval: 34,
+          previousApproval: 41,
+          seasonApprovals: [50, 46, 41, 34],
+        },
+      },
+    };
+
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={duplicateWinnerPublicOpinion}
+        onComplete={onComplete}
+      />,
+    );
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(MONTAGE_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(CATEGORY_MS); });
+
+    expect(screen.getByText('Heat Magnet')).toBeTruthy();
+    expect(screen.getByText('Casey')).toBeTruthy();
+    expect(screen.getByText(/21% approval/i)).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
   });
 

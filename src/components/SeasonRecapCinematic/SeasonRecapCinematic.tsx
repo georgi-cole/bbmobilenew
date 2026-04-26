@@ -280,7 +280,6 @@ function buildCategories(
     if (
       mostHated &&
       mostHated.player.id !== mostLiked?.player.id &&
-      !used.has(mostHated.player.id) &&
       categories.length < MAX_CATEGORIES
     ) {
       categories.push({
@@ -729,7 +728,7 @@ export default function SeasonRecapCinematic({
         )}
 
         {/* Category award reveals */}
-        {currentScene?.id.startsWith('cat_') &&
+        {currentScene?.id?.startsWith('cat_') &&
           (() => {
             const catIdx = parseInt(currentScene.id.replace('cat_', ''), 10);
             const cat = recapData.categories[catIdx];
