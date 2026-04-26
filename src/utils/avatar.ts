@@ -177,3 +177,53 @@ export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): s
   }
   return candidates[0];
 }
+
+/**
+ * Maps canonical houseguest ids to their full-body transparent cutout filename stems
+ * located in `public/assets/Informal_attires/`.
+ */
+const INFORMAL_CUTOUT_MAP: Record<string, string> = {
+  aria: 'Aria_informal',
+  ash: 'Ash_informal',
+  bea: 'Bea_informal',
+  blue: 'Blue_informal',
+  echo: 'echo_informal',
+  finn: 'Finn_informal',
+  ivy: 'Ivy_informal',
+  jax: 'Jax_informal',
+  kai: 'Kai_informal',
+  kian: 'Kian_informal2',
+  lia: 'Lia_informal',
+  lux: 'Lux_informal',
+  mimi: 'Mimi_informal',
+  noa: 'Noa_informal',
+  nova: 'Nova_informal',
+  pax: 'Pax_informal',
+  quinn: 'Quinn_informal',
+  rae: 'Rae_informal',
+  remy: 'Remy_informal',
+  rey: 'Rey_informal',
+  rune: 'Rune_informal',
+  sol: 'Sol_informal',
+  vee: 'Vee_informal',
+  zed: 'Zed_informal',
+};
+
+/**
+ * Returns the URL for a housemate's full-body transparent cutout from
+ * `public/assets/Informal_attires/`, or `null` when no cutout exists for this player.
+ *
+ * Usage in a component:
+ *   const cutoutSrc = resolveInformalCutout(player) ?? resolveAvatar(player);
+ */
+export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): string | null {
+  const hg = getById(player.id) ?? findByName(player.name);
+  if (!hg) return null;
+  const stem = INFORMAL_CUTOUT_MAP[hg.id];
+  if (!stem) return null;
+  const base = getBase();
+  if (base && base !== '/') {
+    return `${base}/assets/Informal_attires/${stem}.png`;
+  }
+  return `assets/Informal_attires/${stem}.png`;
+}
