@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
-import { resolveAvatar, resolveInformalCutout } from '../../utils/avatar';
+import { resolveAvatar } from '../../utils/avatar';
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import './SeasonRecapCinematic.css';
 
 export interface SeasonRecapProps {
@@ -449,7 +450,6 @@ function MontageScene({ beats }: { beats: RecapBeat[] }) {
 // ─── Category reveal scene ────────────────────────────────────────────────────
 
 function CategoryScene({ category }: { category: AwardCategory }) {
-  const cutout = resolveInformalCutout(category.winner) ?? resolveAvatar(category.winner);
   const accentStyle: CatAccentStyle = {
     '--cat-accent': category.accentColor,
     '--cat-gradient': category.bgGradient,
@@ -491,8 +491,8 @@ function CategoryScene({ category }: { category: AwardCategory }) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.65, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <img
-          src={cutout}
+        <FullSizeCutoutImage
+          player={category.winner}
           alt={category.winner.name}
           className="src-cat-winner__cutout"
           loading="eager"
@@ -600,21 +600,22 @@ function FinaleScene({ finalists }: { finalists: Player[] }) {
         </motion.h2>
       </div>
       <div className="src-finalists-band">
-        {finalists.map((finalist, i) => {
-          const cutout = resolveInformalCutout(finalist) ?? resolveAvatar(finalist);
-          return (
-            <motion.div
-              key={finalist.id}
-              className="src-finalist-portrait"
-              initial={{ opacity: 0, y: 40, scale: 0.88 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.65, delay: 0.7 + i * 0.18, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <img src={cutout} alt={finalist.name} className="src-finalist-portrait__img" />
-              <span className="src-finalist-portrait__name">{finalist.name}</span>
-            </motion.div>
-          );
-        })}
+        {finalists.map((finalist, i) => (
+          <motion.div
+            key={finalist.id}
+            className="src-finalist-portrait"
+            initial={{ opacity: 0, y: 40, scale: 0.88 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.65, delay: 0.7 + i * 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <FullSizeCutoutImage
+              player={finalist}
+              alt={finalist.name}
+              className="src-finalist-portrait__img"
+            />
+            <span className="src-finalist-portrait__name">{finalist.name}</span>
+          </motion.div>
+        ))}
       </div>
     </SceneFrame>
   );

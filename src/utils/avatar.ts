@@ -86,6 +86,14 @@ function joinAvatarPath(file: string): string {
   return `assets/skins/${file}`;
 }
 
+function joinPublicAssetPath(path: string): string {
+  const base = getBase();
+  if (base && base !== '/') {
+    return `${base}/${path}`;
+  }
+  return path;
+}
+
 /** Capitalises the first letter of a string and lowercases the rest. */
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -221,9 +229,22 @@ export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): stri
   if (!hg) return null;
   const stem = INFORMAL_CUTOUT_MAP[hg.id];
   if (!stem) return null;
-  const base = getBase();
-  if (base && base !== '/') {
-    return `${base}/assets/Informal_attires/${stem}.png`;
-  }
-  return `assets/Informal_attires/${stem}.png`;
+  return joinPublicAssetPath(`assets/Informal_attires/${stem}.png`);
+}
+
+export function resolveFullSizeCutoutFallback(
+  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
+): string {
+  const hg = getById(player.id) ?? findByName(player.name);
+  const isFemale = hg?.sex?.toLowerCase() === 'female' || player.avatar === '👩';
+  const file = isFemale ? 'silhouette_female - Copy.webp' : 'silhouette_male - Copy.webp';
+  return joinPublicAssetPath(`assets/${file}`);
+}
+
+export function resolveInformalCutoutCandidates(
+  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
+): string[] {
+  const cutout = resolveInformalCutout(player);
+  const fallback = resolveFullSizeCutoutFallback(player);
+  return cutout ? [cutout, fallback] : [fallback];
 }
