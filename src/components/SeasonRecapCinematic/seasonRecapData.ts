@@ -169,14 +169,14 @@ function tabloidPhotoExtensionPriority(extension: string): number {
   switch (extension.toLowerCase()) {
     case 'webp':
       return 0;
-    case 'png':
+    case 'jxl':
       return 1;
+    case 'png':
+      return 2;
     case 'jpg':
     case 'jpeg':
-      return 2;
-    case 'avif':
       return 3;
-    case 'jxl':
+    case 'avif':
       return 4;
     default:
       return 5;

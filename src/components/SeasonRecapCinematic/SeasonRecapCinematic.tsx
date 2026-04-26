@@ -305,7 +305,7 @@ function LadderWaveScene({
   ladder: Player[];
   caption: string;
 }) {
-  const focusPlayer = players[players.length - 1] ?? ladder[0];
+  const highlightedPlayer = players[players.length - 1] ?? ladder[0];
 
   return (
     <SceneFrame className="src-scene--ladder-wave">
@@ -316,18 +316,18 @@ function LadderWaveScene({
           animate={{ opacity: 1, x: 0, y: 0 }}
           transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
         >
-          {focusPlayer && (
+          {highlightedPlayer && (
             <FullSizeCutoutImage
-              player={focusPlayer}
-              alt={focusPlayer.name}
+              player={highlightedPlayer}
+              alt={highlightedPlayer.name}
               className="src-ladder-focus-card__image"
               loading="eager"
             />
           )}
-          {focusPlayer && (
+          {highlightedPlayer && (
             <div className="src-ladder-focus-card__plate">
-              <span className="src-ladder-focus-card__placement">{placementLabel(focusPlayer, 3)}</span>
-              <span className="src-ladder-focus-card__name">{focusPlayer.name}</span>
+              <span className="src-ladder-focus-card__placement">{placementLabel(highlightedPlayer, 3)}</span>
+              <span className="src-ladder-focus-card__name">{highlightedPlayer.name}</span>
             </div>
           )}
         </motion.article>
