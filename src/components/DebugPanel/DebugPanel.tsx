@@ -90,6 +90,7 @@ const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
 const INCOMING_BATCH_SIZE = 6;
 const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'doubleEviction', label: 'Double Elimination' },
+  { value: 'battleBack', label: 'Back 2 the Game' },
   { value: 'vip', label: 'Double Trouble Safety' },
   { value: 'diamond', label: 'Halo Exchange Safety' },
   { value: 'coup', label: 'Detox Safety' },

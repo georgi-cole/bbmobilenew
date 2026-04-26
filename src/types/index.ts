@@ -332,7 +332,7 @@ export interface SpecialVetoState {
   awaitingVipSecondSaveTarget: boolean;
 }
 
-export type ForcedShockType = 'doubleEviction' | SpecialVetoType;
+export type ForcedShockType = 'doubleEviction' | 'battleBack' | SpecialVetoType;
 
 export interface ForcedShockState {
   /** Shock that should be triggered from the debug menu at the next safe chance. */
