@@ -207,7 +207,8 @@
 .src-scene--montage {
   justify-content: space-between;
   background:
-    radial-gradient(circle at 30% 20%, rgba(70, 20, 140, 0.28), transparent 46%),
+    radial-gradient(circle at 24% 16%, rgba(249, 115, 22, 0.2), transparent 34%),
+    radial-gradient(circle at 76% 24%, rgba(70, 20, 140, 0.32), transparent 42%),
     radial-gradient(circle at 80% 75%, rgba(15, 80, 180, 0.18), transparent 40%);
 }
 
@@ -217,7 +218,7 @@
 
 .src-montage-header {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .src-montage-tag {
@@ -232,15 +233,46 @@
   padding: 0.28rem 0.75rem;
 }
 
-.src-montage-beat {
+.src-montage-title {
+  max-width: 18rem;
+  margin: 0.7rem 0 0;
+  font-size: clamp(1.8rem, 7.6vw, 3.2rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 34px rgba(247, 211, 138, 0.22);
+}
+
+.src-montage-recap {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  gap: clamp(0.75rem, 2.6vw, 1.4rem);
+  align-items: center;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.7rem;
-  padding: 1.5rem 0;
+  min-height: 0;
+  padding: 0.65rem 0 0;
+}
+
+.src-montage-beat-stack {
+  display: grid;
+  gap: 0.52rem;
+  align-content: center;
+}
+
+.src-montage-beat {
+  position: relative;
+  padding: 0.62rem 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025)),
+    rgba(6, 8, 18, 0.42);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
 }
 
 .src-montage-beat__kicker {
@@ -254,12 +286,29 @@
 
 .src-montage-beat__line {
   margin: 0;
-  font-size: clamp(1.5rem, 7vw, 2.4rem);
+  font-size: clamp(0.94rem, 3.3vw, 1.38rem);
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.12;
   letter-spacing: -0.04em;
   color: #f8f5ff;
   text-shadow: 0 0 28px rgba(161, 119, 255, 0.22);
+}
+
+.src-scene--montage .src-news-montage {
+  min-width: 0;
+  gap: 0;
+}
+
+.src-scene--montage .src-news-montage__stage {
+  min-height: min(48dvh, 25rem);
+}
+
+.src-scene--montage .src-news-montage__paper {
+  width: min(48vw, 19rem);
+}
+
+.src-scene--montage .src-news-montage__notes {
+  display: none;
 }
 
 .src-montage-flash {
@@ -278,19 +327,22 @@
 /* ── Category award reveal ─────────────────────────────────────────────────── */
 
 .src-scene--category {
-  justify-content: flex-start;
+  justify-content: space-between;
   overflow: hidden;
   background: var(--cat-gradient, linear-gradient(160deg, rgba(2,4,13,0.96) 0%, rgba(2,4,13,0.96) 100%));
 }
 
 .src-scene--category::before {
-  background: none;
+  background:
+    radial-gradient(circle at 78% 58%, color-mix(in srgb, var(--cat-accent, #8b5cf6) 32%, transparent), transparent 34%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 68%);
 }
 
 .src-cat-header {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   padding-top: 0.4rem;
+  max-width: min(78vw, 23rem);
 }
 
 .src-cat-emoji {
@@ -323,35 +375,57 @@
 }
 
 .src-cat-winner {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(76%, 20rem);
-  z-index: 1;
+  position: relative;
+  align-self: center;
+  width: min(70vw, 21rem);
+  max-height: min(58dvh, 31rem);
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  isolation: isolate;
+}
+
+.src-cat-winner__halo {
+  position: absolute;
+  inset: 10% 1.2rem 0;
+  z-index: -1;
+  border-radius: 45% 45% 1.8rem 1.8rem;
+  background:
+    radial-gradient(ellipse at 50% 34%, color-mix(in srgb, var(--cat-accent, #8b5cf6) 34%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--cat-accent, #8b5cf6) 16%, transparent), transparent 78%);
+  filter: blur(8px);
+  opacity: 0.9;
 }
 
 .src-cat-winner__cutout {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: calc(min(58dvh, 31rem) - 3.8rem);
   height: auto;
   object-fit: contain;
   object-position: bottom center;
   filter:
-    drop-shadow(0 0 28px var(--cat-accent, rgba(255,255,255,0.3)))
-    drop-shadow(0 8px 24px rgba(0, 0, 0, 0.55));
+    drop-shadow(0 18px 34px rgba(0, 0, 0, 0.58))
+    drop-shadow(0 0 10px color-mix(in srgb, var(--cat-accent, #8b5cf6) 58%, transparent));
   display: block;
 }
 
 .src-cat-winner__info {
   width: 100%;
   text-align: center;
-  background: linear-gradient(0deg, rgba(2, 4, 13, 0.92) 55%, transparent 100%);
-  padding: 0.9rem 0.5rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--cat-accent, #8b5cf6) 24%, transparent), rgba(2, 4, 13, 0.74)),
+    rgba(2, 4, 13, 0.82);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
+  padding: 0.72rem 0.7rem 0.62rem;
   position: relative;
   z-index: 3;
+  backdrop-filter: blur(14px);
 }
 
 .src-cat-winner__name {
@@ -524,6 +598,18 @@
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 360px) {
+  .src-montage-recap {
+    grid-template-columns: 1fr;
+  }
+
+  .src-scene--montage .src-news-montage__stage {
+    min-height: min(38dvh, 19rem);
+  }
+
+  .src-scene--montage .src-news-montage__paper {
+    width: min(72vw, 15rem);
+  }
+
   .src-ladder-stage {
     grid-template-columns: 1fr;
   }
@@ -531,6 +617,39 @@
   .src-ladder-portrait {
     max-width: 9rem;
     margin: 0 auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .src-montage-recap {
+    grid-template-columns: 1fr;
+    align-content: center;
+  }
+
+  .src-montage-beat-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .src-montage-beat {
+    padding: 0.5rem 0.58rem;
+  }
+
+  .src-scene--montage .src-news-montage__stage {
+    min-height: min(34dvh, 18rem);
+  }
+
+  .src-scene--montage .src-news-montage__paper {
+    width: min(62vw, 16rem);
+  }
+
+  .src-cat-winner {
+    width: min(66vw, 18rem);
+    max-height: min(55dvh, 27rem);
+  }
+
+  .src-cat-winner__cutout {
+    max-height: calc(min(55dvh, 27rem) - 3.6rem);
   }
 }
 

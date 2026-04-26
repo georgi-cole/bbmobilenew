@@ -200,6 +200,25 @@ describe('SeasonRecapCinematic', () => {
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
   });
 
+  it('cascades season beats beside a tabloid newspaper montage', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
+    );
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_1_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_2_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(INTRO_3_MS); });
+
+    expect(screen.getByText('The papers could barely keep up.')).toBeTruthy();
+    expect(screen.getAllByText(/Avery built momentum/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Casey kept hearing their name/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Alliances formed\. Alliances burned/i)).toBeTruthy();
+    expect(screen.getByText(/Drew could not outrun the backlash/i)).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   it('completes only after the full finale duration has elapsed', async () => {
     const onComplete = vi.fn();
 

@@ -5,6 +5,8 @@ import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import { resolveAvatar } from '../../utils/avatar';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
+import FinaleNewspaperMontage, { type FinaleMontageNote } from './FinaleNewspaperMontage';
+import { createNewspaperFrontPage, type NewspaperFrontPageData, type NewspaperSeasonEvent } from './newspaperFrontPages';
 import './SeasonRecapCinematic.css';
 
 export interface SeasonRecapProps {
@@ -73,6 +75,8 @@ interface AwardCategory {
 
 interface RecapData {
   dramaBeats: RecapBeat[];
+  tabloidPages: NewspaperFrontPageData[];
+  tabloidNotes: FinaleMontageNote[];
   categories: AwardCategory[];
   evictionLadder: Player[];
   finalists: Player[];
@@ -346,13 +350,102 @@ function buildRecapData(
   ];
 
   const categories = buildCategories(players, publicOpinion);
+  const { tabloidPages, tabloidNotes } = buildTabloidRecap(players, week, dramaBeats, publicOpinion);
 
   return {
     dramaBeats,
+    tabloidPages,
+    tabloidNotes,
     categories,
     evictionLadder,
     finalists,
   };
+}
+
+function findPlayerById(players: Player[], playerId: string | undefined): Player | null {
+  if (!playerId) return null;
+  return players.find((player) => player.id === playerId) ?? null;
+}
+
+function tabloidImageFor(player: Player | null | undefined): string {
+  return player ? resolveAvatar(player) : '/assets/houseguests/houseguest-1.jpg';
+}
+
+function buildTabloidRecap(
+  players: Player[],
+  week: number,
+  beats: RecapBeat[],
+  publicOpinion?: PublicOpinionState | null,
+): { tabloidPages: NewspaperFrontPageData[]; tabloidNotes: FinaleMontageNote[] } {
+  const playerPool = players.length > 0 ? players : [];
+  const topComp = beats[0]?.subject ?? playerPool[0] ?? null;
+  const mostNom = beats[1]?.subject ?? playerPool[1] ?? topComp;
+  const topVeto = beats[2]?.subject ?? playerPool[2] ?? mostNom;
+  const finalists = buildFinalists(players);
+
+  const publicHeadlineEvents: NewspaperSeasonEvent[] = (publicOpinion?.feed ?? [])
+    .filter((post) => post.isHeadline)
+    .slice(0, 2)
+    .map((post, index) => {
+      const subject = findPlayerById(players, post.playerId);
+      return {
+        id: `public-${post.id}`,
+        week: post.week || Math.max(1, week - 2 + index),
+        type: post.delta < 0 ? 'backlash' : 'fan-favorite',
+        subjectName: subject?.name,
+        detail: post.text,
+      };
+    });
+
+  const fallbackEvents: NewspaperSeasonEvent[] = [
+    {
+      id: 'recap-power-shift',
+      week: Math.max(1, week - 3),
+      type: 'veto',
+      subjectName: topVeto?.name,
+      detail: `${firstName(topVeto)} turned one ceremony into a full-house scramble.`,
+    },
+    {
+      id: 'recap-underdog',
+      week: Math.max(1, week - 2),
+      type: 'underdog',
+      subjectName: mostNom?.name,
+      detail: `${firstName(mostNom)} survived the spotlight long enough to become headline material.`,
+    },
+    {
+      id: 'recap-finale',
+      week,
+      type: 'finale',
+      subjectName: finalists[0]?.name ?? topComp?.name,
+      secondaryName: finalists[1]?.name ?? mostNom?.name,
+      detail: 'The jury, the crowd, and every camera are pointed at one last decision.',
+    },
+  ];
+
+  const seasonEvents: NewspaperSeasonEvent[] = [...publicHeadlineEvents, ...fallbackEvents].slice(0, 4);
+
+  const tabloidPages = seasonEvents.map((event, index) => {
+    const subject = players.find((player) => player.name === event.subjectName) ?? null;
+    const secondary = players.find((player) => player.name === event.secondaryName) ?? null;
+    return createNewspaperFrontPage(event, index, {
+      featuredImage: tabloidImageFor(subject),
+      featuredImageAlt: subject?.name ?? event.subjectName ?? 'Featured housemate',
+      secondaryImage: tabloidImageFor(secondary ?? playerPool[(index + 1) % Math.max(playerPool.length, 1)]),
+      secondaryImageAlt: secondary?.name ?? 'Housemate reaction',
+      issueDate: `Week ${event.week} Recap`,
+      issueNumber: `Finale File ${index + 1}`,
+      edition: index % 2 === 0 ? 'Flashback Edition' : 'Late Feed Edition',
+      headlineHighlight: event.subjectName ?? 'Season Recap',
+      layoutVariant: index % 3 === 0 ? 'headline' : index % 3 === 1 ? 'collage' : 'hero',
+    });
+  });
+
+  const tabloidNotes = beats.slice(0, 3).map((beat) => ({
+    kicker: beat.kicker,
+    line: beat.line,
+  }));
+
+  return { tabloidPages, tabloidNotes };
 }
 
 // ─── Scene frame wrapper ──────────────────────────────────────────────────────
@@ -410,38 +503,47 @@ function CinematicIntroScene({ sceneId }: { sceneId: string }) {
 
 // ─── Montage scene ────────────────────────────────────────────────────────────
 
-function MontageScene({ beats }: { beats: RecapBeat[] }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    if (beats.length <= 1) return;
-    const stepMs = Math.floor(SCENE_DURATIONS.montage / beats.length);
-    const timer = setInterval(() => {
-      setActiveIndex((i) => (i >= beats.length - 1 ? i : i + 1));
-    }, stepMs);
-    return () => clearInterval(timer);
-  }, [beats.length]);
-
-  const beat = beats[activeIndex] ?? beats[0];
-
+function MontageScene({
+  beats,
+  tabloidPages,
+  tabloidNotes,
+  durationMs,
+  reducedMotion,
+}: {
+  beats: RecapBeat[];
+  tabloidPages: NewspaperFrontPageData[];
+  tabloidNotes: FinaleMontageNote[];
+  durationMs: number;
+  reducedMotion: boolean;
+}) {
   return (
     <SceneFrame className="src-scene--montage">
       <div className="src-montage-header">
         <span className="src-montage-tag">This season</span>
+        <h2 className="src-montage-title">The papers could barely keep up.</h2>
       </div>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeIndex}
-          className="src-montage-beat"
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -16 }}
-          transition={{ duration: 0.38 }}
-        >
-          <span className="src-montage-beat__kicker">{beat.kicker}</span>
-          <p className="src-montage-beat__line">{beat.line}</p>
-        </motion.div>
-      </AnimatePresence>
+      <div className="src-montage-recap">
+        <div className="src-montage-beat-stack" aria-label="Season story beats">
+          {beats.map((beat, index) => (
+            <motion.article
+              key={beat.kicker}
+              className="src-montage-beat"
+              initial={{ opacity: 0, x: -24, y: 16 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              transition={{ duration: 0.48, delay: 0.18 + index * 0.18, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <span className="src-montage-beat__kicker">{beat.kicker}</span>
+              <p className="src-montage-beat__line">{beat.line}</p>
+            </motion.article>
+          ))}
+        </div>
+        <FinaleNewspaperMontage
+          pages={tabloidPages}
+          notes={tabloidNotes}
+          durationMs={durationMs}
+          reducedMotion={reducedMotion}
+        />
+      </div>
       <div className="src-montage-flash" aria-hidden="true" />
     </SceneFrame>
   );
@@ -491,6 +593,7 @@ function CategoryScene({ category }: { category: AwardCategory }) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.65, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
+        <div className="src-cat-winner__halo" aria-hidden="true" />
         <FullSizeCutoutImage
           player={category.winner}
           alt={category.winner.name}
@@ -725,7 +828,14 @@ export default function SeasonRecapCinematic({
 
         {/* Season montage burst */}
         {currentScene?.id === 'montage' && (
-          <MontageScene key="montage" beats={recapData.dramaBeats} />
+          <MontageScene
+            key="montage"
+            beats={recapData.dramaBeats}
+            tabloidPages={recapData.tabloidPages}
+            tabloidNotes={recapData.tabloidNotes}
+            durationMs={currentScene.durationMs}
+            reducedMotion={reducedMotion}
+          />
         )}
 
         {/* Category award reveals */}
