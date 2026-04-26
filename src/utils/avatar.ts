@@ -74,16 +74,16 @@ function getBase(): string {
 }
 
 /**
- * Joins a filename under the avatars directory, prefixing the repo base when available.
- * When a non-root base is set, returns `{base}/avatars/{file}`.
- * Otherwise returns `avatars/{file}` (relative path, no leading slash).
+ * Joins a filename under the assets/skins directory, prefixing the repo base when available.
+ * When a non-root base is set, returns `{base}/assets/skins/{file}`.
+ * Otherwise returns `assets/skins/{file}` (relative path, no leading slash).
  */
 function joinAvatarPath(file: string): string {
   const base = getBase();
   if (base && base !== '/') {
-    return `${base}/avatars/${file}`;
+    return `${base}/assets/skins/${file}`;
   }
-  return `avatars/${file}`;
+  return `assets/skins/${file}`;
 }
 
 /** Capitalises the first letter of a string and lowercases the rest. */
@@ -98,12 +98,12 @@ function capitalize(s: string): string {
  * Resolution order:
  *  1. player.avatar if already a full URL or absolute path
  *  2. Stable houseguest id candidates (matched by player.id then player.name):
- *       avatars/{HgId}.png, avatars/{hgId}.png, avatars/{HgId}.jpg, avatars/{hgId}.jpg
- *  3. Name-based candidates: avatars/CapitalizedName.png, avatars/lowercasename.png,
- *       avatars/{id}.png, avatars/{id}.jpg, avatars/CapitalizedName.jpg, avatars/lowercasename.jpg
+ *       assets/skins/{HgId}_avatar.webp, assets/skins/{hgId}_avatar.webp
+ *  3. Name-based candidates: assets/skins/CapitalizedName_avatar.webp,
+ *       assets/skins/lowercasename_avatar.webp, assets/skins/{id}_avatar.webp
  *  4. Dicebear SVG fallback
  *
- * For numeric ids with no houseguest match, candidates are: avatars/{id}.png, avatars/{id}.jpg
+ * For numeric ids with no houseguest match, candidates are: assets/skins/{id}_avatar.webp
  */
 export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'avatar'>): string[] {
   const candidates: string[] = [];
@@ -130,25 +130,20 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
     const hgId = hg.id; // lowercase stable slug, e.g. 'finn'
     const hgIdCap = capitalize(hgId); // e.g. 'Finn'
     candidates.push(
-      joinAvatarPath(`${hgIdCap}.png`),
-      joinAvatarPath(`${hgId}.png`),
-      joinAvatarPath(`${hgIdCap}.jpg`),
-      joinAvatarPath(`${hgId}.jpg`),
+      joinAvatarPath(`${hgIdCap}_avatar.webp`),
+      joinAvatarPath(`${hgId}_avatar.webp`),
     );
   }
 
   if (isNumeric) {
-    candidates.push(joinAvatarPath(`${id}.png`), joinAvatarPath(`${id}.jpg`));
+    candidates.push(joinAvatarPath(`${id}_avatar.webp`));
   } else {
     const cap = capitalize(player.name);
     const lower = player.name.toLowerCase();
     candidates.push(
-      joinAvatarPath(`${cap}.png`),
-      joinAvatarPath(`${lower}.png`),
-      joinAvatarPath(`${id}.png`),
-      joinAvatarPath(`${id}.jpg`),
-      joinAvatarPath(`${cap}.jpg`),
-      joinAvatarPath(`${lower}.jpg`),
+      joinAvatarPath(`${cap}_avatar.webp`),
+      joinAvatarPath(`${lower}_avatar.webp`),
+      joinAvatarPath(`${id}_avatar.webp`),
     );
   }
 
@@ -169,7 +164,7 @@ export const getAvatarCandidatesFor = resolveAvatarCandidates;
  *
  * Returns the first candidate from resolveAvatarCandidates() so the
  * initial <img src> points to a path that resolves correctly under the
- * app's base (e.g. /bbmobilenew/avatars/Finn.png on GitHub Pages).
+ * app's base (e.g. /bbmobilenew/assets/skins/Finn_avatar.webp on GitHub Pages).
  *
  * The caller is responsible for chaining fallbacks at render time:
  *  - First onError: swap src to getDicebear(player.name)

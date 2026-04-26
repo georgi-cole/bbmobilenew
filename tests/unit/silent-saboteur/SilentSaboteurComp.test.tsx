@@ -72,7 +72,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
 
     const victimId = state.activeIds.find((id) => id !== state.saboteurId)!;
     const victimName = PARTICIPANTS.find((p) => p.id === victimId)?.name ?? victimId;
-    const expectedPortrait = `avatars/${victimName}.png`;
+    const expectedPortrait = `assets/skins/${victimName}_avatar.webp`;
 
     await act(async () => {
       store.dispatch(selectVictim({ victimId }));

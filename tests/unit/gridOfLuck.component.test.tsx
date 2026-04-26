@@ -100,7 +100,7 @@ describe('GridOfLuck component', () => {
       />,
     );
 
-    expect(screen.getByAltText('Kian').getAttribute('src')).toContain('avatars/Kian.png');
-    expect(screen.getByAltText('Aria').getAttribute('src')).toContain('avatars/Aria.png');
+    expect(screen.getByAltText('Kian').getAttribute('src')).toContain('assets/skins/Kian_avatar.webp');
+    expect(screen.getByAltText('Aria').getAttribute('src')).toContain('assets/skins/Aria_avatar.webp');
   });
 });
