@@ -94,6 +94,7 @@ export default function TribunalMemberStage({
 
   const currentJurorId = current?.juror.id ?? null;
   const currentPhrase = current?.reveal.phrase ?? '';
+  const trimmedCurrentPhrase = currentPhrase.trim();
   const currentAnimationKey = currentJurorId ?? 'pending';
   const phraseAnimationKey = `${currentAnimationKey}-${currentPhrase}`;
 
@@ -102,7 +103,9 @@ export default function TribunalMemberStage({
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
   const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null;
   const currentAnnouncement = current
-    ? `${isPublic ? 'The Public' : current.juror.name}. ${currentPhrase}`.trim()
+    ? trimmedCurrentPhrase
+      ? `${isPublic ? 'The Public' : current.juror.name}. ${trimmedCurrentPhrase}`
+      : (isPublic ? 'The Public' : current.juror.name)
     : awaitingHumanPlayer
       ? `${awaitingHumanPlayer.name}, cast your Tribunal vote.`
       : '';
