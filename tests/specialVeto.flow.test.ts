@@ -22,6 +22,7 @@ import gameReducer, {
   tryActivateSpecialVeto,
   tryActivatePendingForcedSpecialVeto,
   submitDiamondReplacement,
+  submitPovDecision,
   submitCoupReplacement,
   submitVipSecondUseDecision,
   submitVipSecondSaveTarget,
@@ -507,6 +508,32 @@ describe('Diamond POS — Human POS holder names replacement', () => {
 // ── Detox ─────────────────────────────────────────────────────────────────────
 
 describe('Detox — Human POS holder names two replacements', () => {
+  it('submitPovDecision(true) queues Detox decision and block-clear beats before replacement picks', () => {
+    const players = makePlayers(8, 1);
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+    const store = makeStore({
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      players,
+      awaitingPovDecision: true,
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'coup',
+      },
+    });
+
+    store.dispatch(submitPovDecision(true));
+
+    const state = store.getState().game;
+    expect(state.tvFeed[2].text).toBe('Player 1 has decided to use Detox. ⚡');
+    expect(state.tvFeed[1].text).toBe('Player 1 used Detox! Player 2 and Player 3 are cleared from the block! ⚡');
+    expect(state.tvFeed[0].text).toBe('Player 1, name your two backup nominees. ⚡');
+    expect(state.tvFeed.slice(0, 3).every((event) => event.meta?.sequence === 'detox_safety')).toBe(true);
+  });
+
   it('submitCoupReplacement first pick sets coupReplacement1Id and advances to pick 2', () => {
     const players = makePlayers(8, 1);
     const store = makeStore({
@@ -647,6 +674,9 @@ describe('Detox — Human POS holder names two replacements', () => {
     expect(state.players.find((p) => p.id === 'p0')?.status).toBe('loh');
     expect(state.players.find((p) => p.id === 'p2')?.status).toBe('pos');
     expect(state.tvFeed[0].text).toMatch(/named Player 0 and Player 4 as the new nominees|named Player 4 and Player 0 as the new nominees/i);
+    expect(state.tvFeed[2].text).toBe('Player 2 has decided to use Detox. ⚡');
+    expect(state.tvFeed[1].text).toBe('Player 2 used Detox and cleared Player 2 and Player 3 from the block! ⚡');
+    expect(state.tvFeed.slice(0, 3).every((event) => event.meta?.sequence === 'detox_safety')).toBe(true);
   });
 });
 

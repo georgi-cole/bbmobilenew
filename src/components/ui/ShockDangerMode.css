@@ -47,29 +47,159 @@
  * recolour buttons, borders, glows, and chips without re-theming every element.
  */
 body.body--shock-active {
-  --color-accent:   #c0162a;
-  --color-accent-2: #991b1b;
+  --color-accent:   #d97706;
+  --color-accent-2: #b91c1c;
 
   /* Danger tint for card surfaces / subtle ambient fill */
-  --color-card:     #1c0f0f;
-  --color-card-2:   #221212;
+  --color-card:     #1f1012;
+  --color-card-2:   #271316;
 
   /* Re-tint the line/divider colour */
-  --color-line:     rgba(255, 60, 60, 0.1);
+  --color-line:     rgba(245, 158, 11, 0.14);
+}
+
+body.body--shock-active .tv-zone {
+  border-color: rgba(245, 158, 11, 0.24);
+  background:
+    linear-gradient(180deg, rgba(41, 17, 20, 0.96) 0%, rgba(17, 8, 11, 0.99) 100%);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 24px rgba(192, 36, 51, 0.14);
+}
+
+body.body--shock-active .tv-zone__head {
+  background:
+    linear-gradient(180deg, rgba(60, 20, 24, 0.9) 0%, rgba(23, 11, 15, 0.96) 100%);
+  border-bottom-color: rgba(245, 158, 11, 0.14);
+  box-shadow: inset 0 -1px 0 rgba(255, 237, 213, 0.06);
 }
 
 /* Shock-state badge (the SHOCK corner ribbon on the TV viewport) */
 body.body--shock-active .tv-zone__twist-badge {
-  background: rgba(180, 20, 30, 0.82);
-  border-color: rgba(255, 80, 80, 0.45);
-  color: #fca5a5;
-  text-shadow: 0 0 8px rgba(220, 38, 38, 0.7);
+  background:
+    linear-gradient(135deg, rgba(145, 24, 32, 0.95) 0%, rgba(217, 119, 6, 0.95) 100%);
+  border-color: rgba(255, 237, 213, 0.26);
+  color: #fff7ed;
+  text-shadow:
+    0 0 10px rgba(217, 119, 6, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(245, 158, 11, 0.18),
+    0 0 14px rgba(217, 119, 6, 0.18);
+  animation:
+    twistBadgeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both,
+    twistBadgeDelicatePulse 2.4s ease-in-out infinite 0.3s;
 }
 
 /* Shift the head-chip accent pill border & glow */
 body.body--shock-active .tv-zone__head-chip {
-  border-color: rgba(220, 38, 38, 0.4);
-  box-shadow: 0 0 6px rgba(220, 38, 38, 0.18);
+  background:
+    linear-gradient(135deg, rgba(122, 28, 37, 0.98) 0%, rgba(189, 66, 31, 0.96) 58%, rgba(245, 158, 11, 0.94) 100%);
+  border-color: rgba(255, 237, 213, 0.28);
+  box-shadow:
+    0 0 14px rgba(192, 36, 51, 0.18),
+    inset 0 1px 0 rgba(255, 244, 214, 0.18);
+}
+
+body.body--shock-active .tv-zone__head-chip::after {
+  background: rgba(255, 247, 237, 0.22);
+}
+
+body.body--shock-active .tv-zone__head-chip .game-top-chip__label {
+  color: #fff7ed;
+  text-shadow: 0 0 8px rgba(120, 53, 15, 0.24);
+}
+
+/* Warm the utility-button shell art into the amber/crimson shock palette
+   without swapping the underlying shared image assets. */
+body.body--shock-active .tv-zone__head-actions .top-utility-btn__shell {
+  filter: sepia(1) saturate(1.8) hue-rotate(-18deg) brightness(0.92);
+}
+
+body.body--shock-active .tv-zone__head-actions .top-utility-btn__glyph {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)) brightness(0.95);
+}
+
+body.body--shock-active .tv-zone__head-actions .top-utility-btn--active .top-utility-btn__glyph {
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.62)) brightness(1.18);
+}
+
+/* Inactive buttons keep the same warm tint, just flatter/dimmer so the active
+   one remains the visual focal point. */
+body.body--shock-active .tv-zone__head-actions .top-utility-btn--inactive .top-utility-btn__shell {
+  opacity: 0.7;
+  filter: sepia(0.75) saturate(1.2) hue-rotate(-18deg) brightness(0.78);
+}
+
+body.body--shock-active .tv-zone__bezel {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.22), rgba(245, 158, 11, 0) 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+}
+
+body.body--shock-active .tv-zone__bezel-frame {
+  border-color: #281412;
+  background:
+    linear-gradient(180deg, rgba(255, 244, 214, 0.06), rgba(255, 255, 255, 0) 16%),
+    linear-gradient(180deg, #190d11 0%, #090507 100%);
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.5),
+    0 6px 24px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(185, 28, 28, 0.16),
+    0 0 58px rgba(120, 53, 15, 0.2);
+}
+
+body.body--shock-active .tv-zone__bezel-brand {
+  background: rgba(45, 16, 20, 0.72);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+body.body--shock-active .tv-zone__bezel-brand__text {
+  color: #ffedd5;
+}
+
+body.body--shock-active .tv-zone--detox-stream .tv-zone__viewport {
+  background:
+    radial-gradient(circle at 16% 14%, rgba(245, 158, 11, 0.13), rgba(245, 158, 11, 0) 28%),
+    radial-gradient(circle at 82% 78%, rgba(185, 28, 28, 0.12), rgba(185, 28, 28, 0) 34%),
+    linear-gradient(180deg, rgba(46, 18, 22, 0.9) 0%, rgba(16, 10, 16, 0.94) 38%, rgba(7, 5, 9, 0.99) 100%);
+  box-shadow:
+    inset 0 0 34px rgba(0, 0, 0, 0.64),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -32px 42px rgba(0, 0, 0, 0.5),
+    0 0 24px rgba(192, 36, 51, 0.14);
+}
+
+body.body--shock-active .tv-zone__now--detox-stream {
+  background:
+    linear-gradient(180deg, rgba(79, 22, 27, 0.34) 0%, rgba(26, 12, 16, 0.52) 100%);
+  border-color: rgba(251, 191, 36, 0.14);
+  box-shadow:
+    0 0 24px rgba(192, 36, 51, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  text-shadow:
+    0 0 14px rgba(245, 158, 11, 0.08),
+    0 0 16px rgba(0, 0, 0, 1),
+    0 1px 4px rgba(0, 0, 0, 1);
+}
+
+body.body--shock-active .tv-zone__feed {
+  border-top-color: rgba(245, 158, 11, 0.12);
+  background:
+    linear-gradient(180deg, rgba(37, 16, 20, 0.72) 0%, rgba(20, 10, 14, 0.82) 100%);
+}
+
+body.body--shock-active .tv-zone__feed-item:first-child {
+  background:
+    linear-gradient(90deg, rgba(185, 28, 28, 0.16) 0%, rgba(245, 158, 11, 0.08) 100%);
+}
+
+body.body--shock-active .tv-zone__feed-item--game {
+  border-left-color: rgba(245, 158, 11, 0.82);
 }
 
 /* Override the TV announcement colours while shock is active so the
@@ -89,15 +219,20 @@ body.body--shock-active .tv-announcement {
 
 /* LIVE badge accent during danger mode */
 body.body--shock-active .tv-zone__live-badge {
-  background: rgba(180, 20, 30, 0.78);
-  border-color: rgba(255, 80, 80, 0.35);
-  color: #fca5a5;
+  background:
+    linear-gradient(135deg, rgba(145, 24, 32, 0.92) 0%, rgba(217, 119, 6, 0.88) 100%);
+  border-color: rgba(255, 237, 213, 0.22);
+  color: #fff7ed;
 }
 
 /* ── Reduced-motion guard ─────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .app--shock-shake .game-screen-shell {
+    animation: none;
+  }
+
+  body.body--shock-active .tv-zone__twist-badge {
     animation: none;
   }
 }
