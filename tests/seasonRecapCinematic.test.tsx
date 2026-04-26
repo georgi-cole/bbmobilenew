@@ -194,6 +194,8 @@ describe('SeasonRecapCinematic', () => {
 
     expect(elapsedToFirstCategory).toBeLessThan(OLD_TOTAL_MS);
     expect(onComplete).not.toHaveBeenCalled();
+    // Compzilla is cat_0, so seeing it here confirms the recap is still running
+    // in the category section even after the old recap runtime has been exceeded.
     expect(screen.getByText('Compzilla')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
   });
