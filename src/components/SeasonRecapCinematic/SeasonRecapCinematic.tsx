@@ -26,6 +26,16 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
 };
 
 const LADDER_ARCHIVE_LIMIT = 6;
+const TABLOID_PHOTO_TILT_LEFT_DEG = -1.15;
+const TABLOID_PHOTO_TILT_RIGHT_DEG = 1.4;
+const TABLOID_BODY_COPY = {
+  rumorMillFollowup:
+    'By sunrise, the rumor mill had already stretched it into the kind of splash that follows every room switch, whisper campaign, and late vote count.',
+  finalEdition:
+    'Finale night squeezed every side-eye, scramble, and saved promise into one last crowded edition before the verdict hit the presses.',
+  editionWrap: (editionNumber: number) =>
+    `Edition ${editionNumber} kept the presses busy, turning veto chatter, hallway glances, and shaky promises into another stack of messy receipts.`,
+} as const;
 
 function placementLabel(player: Player, fallbackPlacement: number): string {
   const placement = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
@@ -139,6 +149,41 @@ function MontageBeatScene({ beat, fragments }: { beat: RecapBeat; fragments: str
   );
 }
 
+function buildTabloidBodyParagraphs(card: TabloidCard, activeIndex: number): string[] {
+  return [
+    card.articleText,
+    `${card.subhead} ${TABLOID_BODY_COPY.rumorMillFollowup}`,
+    activeIndex === 4 ? TABLOID_BODY_COPY.finalEdition : TABLOID_BODY_COPY.editionWrap(activeIndex + 1),
+  ];
+}
+
+function buildTabloidBriefLines(card: TabloidCard, hasRealPhotos: boolean): Array<{ label: string; text: string }> {
+  const subject = card.imageAlt || 'House file';
+  const printHeadline = card.headline.replace(/[.?]/g, '').toLowerCase();
+
+  return [
+    {
+      label: 'Print run',
+      text: hasRealPhotos
+        ? 'Real tabloid photography cleared the front page for this edition.'
+        : 'House-feed fallback art stepped in while the photo desk kept the presses moving.',
+    },
+    {
+      label: 'Rumor mill',
+      text: card.subhead,
+    },
+    {
+      label: 'City desk',
+      text: `${subject} stayed pinned to the board while the edition closed around ${printHeadline}.`,
+    },
+  ];
+}
+
+function buildTabloidCaption(card: TabloidCard): string {
+  const subject = card.imageAlt || 'House file';
+  return `${subject} lands on the splash page as the season’s messiest beat keeps bleeding into print.`;
+}
+
 function TabloidCardScene({
   activeIndex,
   cards,
@@ -160,6 +205,10 @@ function TabloidCardScene({
         {spreadCards.map((card, index) => {
           const depth = spreadCards.length - index - 1;
           const isActive = card.id === activeCard.id;
+          const bodyParagraphs = buildTabloidBodyParagraphs(card, activeIndex);
+          const briefLines = buildTabloidBriefLines(card, hasRealPhotos);
+          const photoOnRight = (activeIndex + index) % 2 === 1;
+          const photoTilt = photoOnRight ? TABLOID_PHOTO_TILT_RIGHT_DEG : TABLOID_PHOTO_TILT_LEFT_DEG;
           return (
             <motion.article
               key={card.id}
@@ -173,26 +222,54 @@ function TabloidCardScene({
                 scale: isActive ? 1 : 1 - depth * 0.03,
               }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              style={{ zIndex: 12 - depth }}
+              style={
+                {
+                  zIndex: 12 - depth,
+                  '--tabloid-photo-tilt': `${photoTilt}deg`,
+                } as CSSProperties
+              }
             >
               <div className="src-tabloid-card__meta">
                 <span>FLASHBACK EDITION</span>
                 <span>{hasRealPhotos ? 'PHOTO FILE' : 'HOUSE FEED'}</span>
               </div>
-              <h2 className="src-tabloid-card__headline">{card.headline}</h2>
-              <p className="src-tabloid-card__subhead">{card.subhead}</p>
-              <div className="src-tabloid-card__photo-frame">
-                <RecapImage
-                  sources={card.imageSources}
-                  alt={card.imageAlt}
-                  className="src-tabloid-card__photo"
-                  loading="eager"
-                />
+              <div className="src-tabloid-card__grid">
+                <h2 className="src-tabloid-card__headline">{card.headline}</h2>
+                <p className="src-tabloid-card__subhead">{card.subhead}</p>
+                <div className="src-tabloid-card__rule" aria-hidden="true" />
+                <figure className={`src-tabloid-card__figure${photoOnRight ? ' src-tabloid-card__figure--right' : ''}`}>
+                  <div className="src-tabloid-card__photo-wrap">
+                    <RecapImage
+                      sources={card.imageSources}
+                      alt={card.imageAlt}
+                      className="src-tabloid-card__photo"
+                      loading="eager"
+                    />
+                  </div>
+                  <figcaption className="src-tabloid-card__caption">
+                    <span className="src-tabloid-card__caption-label">Captured on the record</span>
+                    <span>{buildTabloidCaption(card)}</span>
+                  </figcaption>
+                </figure>
+                <div className={`src-tabloid-card__brief${photoOnRight ? ' src-tabloid-card__brief--left' : ''}`}>
+                  {briefLines.map((line) => (
+                    <div key={line.label} className="src-tabloid-card__brief-item">
+                      <span className="src-tabloid-card__brief-label">{line.label}</span>
+                      <p className="src-tabloid-card__brief-text">{line.text}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="src-tabloid-card__body">
+                  {bodyParagraphs.map((paragraph, paragraphIndex) => (
+                    <p key={`paragraph-${paragraphIndex}-${paragraph.slice(0, 24)}`} className="src-tabloid-card__body-paragraph">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+                {isActive && activeIndex === cards.length - 1 && (
+                  <div className="src-tabloid-card__stamp">SEASON FILES: CLASSIFIED</div>
+                )}
               </div>
-              <p className="src-tabloid-card__article">{card.articleText}</p>
-              {isActive && activeIndex === cards.length - 1 && (
-                <div className="src-tabloid-card__stamp">SEASON FILES: CLASSIFIED</div>
-              )}
             </motion.article>
           );
         })}
