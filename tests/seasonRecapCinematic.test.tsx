@@ -192,8 +192,25 @@ describe('SeasonRecapCinematic', () => {
     await advanceToScene('tabloid_0');
 
     expect(screen.getByText('THE HOUSE HAD OPINIONS.')).toBeTruthy();
-    expect(screen.getByText('Public approval did not come quietly.')).toBeTruthy();
+    expect(screen.getAllByText('Public approval did not come quietly.').length).toBeGreaterThan(0);
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('renders the active tabloid as a denser newspaper page with a captioned photo and editorial briefs', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
+    );
+
+    await advanceToScene('tabloid_0');
+
+    const activeCard = document.querySelector('.src-tabloid-card--active');
+
+    expect(activeCard?.querySelector('.src-tabloid-card__figure')).toBeTruthy();
+    expect(activeCard?.querySelector('.src-tabloid-card__caption')?.textContent).toContain('Captured on the record');
+    expect(activeCard?.querySelectorAll('.src-tabloid-card__brief-item')).toHaveLength(3);
+    expect(activeCard?.querySelectorAll('.src-tabloid-card__body-paragraph')).toHaveLength(3);
   });
 
   it('uses actual ellipsis characters instead of literal unicode escape text', async () => {
