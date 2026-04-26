@@ -261,7 +261,7 @@ function TabloidCardScene({
                 </div>
                 <div className="src-tabloid-card__body">
                   {bodyParagraphs.map((paragraph, paragraphIndex) => (
-                    <p key={`paragraph-${paragraphIndex}`} className="src-tabloid-card__body-paragraph">
+                    <p key={`paragraph-${paragraphIndex}-${paragraph.slice(0, 24)}`} className="src-tabloid-card__body-paragraph">
                       {paragraph}
                     </p>
                   ))}
