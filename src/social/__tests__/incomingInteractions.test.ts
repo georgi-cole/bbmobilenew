@@ -123,20 +123,38 @@ describe('socialSlice incoming interactions', () => {
     expect(boundary?.resolved).toBe(false);
   });
 
-  it('removes alliance tags when affinity decays below the ally threshold', () => {
+  it('removes alliance tags when display-scale affinity decays below the ally threshold', () => {
     const initial = socialReducer(undefined, { type: 'init' }) as SocialState;
     const allied = socialReducer(
       initial,
-      updateRelationship({ source: 'user', target: 'p2', delta: 5, tags: ['alliance'] }),
+      updateRelationship({ source: 'user', target: 'p2', delta: 60, tags: ['alliance'] }),
     ) as SocialState;
 
     const decayed = socialReducer(
       allied,
-      updateRelationship({ source: 'user', target: 'p2', delta: -5 }),
+      updateRelationship({ source: 'user', target: 'p2', delta: -11 }),
     ) as SocialState;
 
     const relationship = decayed.relationships.user?.p2;
-    expect(relationship?.affinity).toBe(0);
+    expect(relationship?.affinity).toBe(49);
     expect(relationship?.tags).not.toContain('alliance');
+  });
+
+  it('removes alliance tags when betrayal is recorded', () => {
+    const initial = socialReducer(undefined, { type: 'init' }) as SocialState;
+    const allied = socialReducer(
+      initial,
+      updateRelationship({ source: 'user', target: 'p2', delta: 80, tags: ['alliance'] }),
+    ) as SocialState;
+
+    const betrayed = socialReducer(
+      allied,
+      updateRelationship({ source: 'user', target: 'p2', delta: -8, tags: ['betrayal'] }),
+    ) as SocialState;
+
+    const relationship = betrayed.relationships.user?.p2;
+    expect(relationship?.affinity).toBe(72);
+    expect(relationship?.tags).not.toContain('alliance');
+    expect(relationship?.tags).toContain('betrayal');
   });
 });

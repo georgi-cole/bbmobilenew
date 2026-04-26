@@ -14,6 +14,7 @@
 import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
 import { socialConfig } from './socialConfig';
+import { normalizeAffinity } from './affinityUtils';
 import { normalizeActionCost, normalizeActionCosts, normalizeActionYields } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta, evaluateOutcome, OUTCOME_THRESHOLDS } from './SocialPolicy';
@@ -92,21 +93,17 @@ function clampResourceAdjustment(delta: number, availableBalance: number): numbe
   return delta < 0 ? -Math.min(Math.abs(delta), availableBalance) : delta;
 }
 
-function normalizeAffinityForAlliance(affinity: number): number {
-  return Math.max(-1, Math.min(1, Math.abs(affinity) <= 1 ? affinity : affinity / 100));
-}
-
 function getAllianceAcceptChance(affinity: number, priorRepeats: number): number {
-  const normalizedAffinity = normalizeAffinityForAlliance(affinity);
+  const normalizedAffinity = normalizeAffinity(affinity);
   const baseChance =
-    affinity >= socialConfig.relationshipThresholds.allyThreshold
+    normalizedAffinity >= socialConfig.relationshipThresholds.allyThreshold
       ? 0.9
       : 0.5 + normalizedAffinity * 0.45;
   return Math.max(0.08, Math.min(0.96, baseChance - priorRepeats * 0.12));
 }
 
 function getAllianceBetrayalChance(affinity: number): number {
-  const normalizedAffinity = normalizeAffinityForAlliance(affinity);
+  const normalizedAffinity = normalizeAffinity(affinity);
   if (normalizedAffinity < -0.15) return 0.35;
   if (normalizedAffinity < 0.2) return 0.16;
   return 0.04;
@@ -444,7 +441,12 @@ export function executeAction(
     };
   }
 
-  const relationshipTags = outcome === 'success' && action.outcomeTag ? [action.outcomeTag] : undefined;
+  const relationshipTags =
+    outcome === 'success' &&
+    action.outcomeTag &&
+    !(actionId === 'proposeAlliance' && betrayalOccurred)
+      ? [action.outcomeTag]
+      : undefined;
 
   _store.dispatch(
     updateRelationship({
@@ -456,27 +458,27 @@ export function executeAction(
     }),
   );
 
-  if (actionId === 'proposeAlliance' && outcome === 'success') {
+  if (actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred) {
     _store.dispatch(
       updateRelationship({
         source: targetId,
         target: actorId,
         delta,
         tags: [ALLIANCE_TAG],
+        actionSource: 'system',
+      }),
+    );
+  }
+  if (actionId === 'proposeAlliance' && outcome === 'success' && betrayalOccurred) {
+    _store.dispatch(
+      updateRelationship({
+        source: targetId,
+        target: actorId,
+        delta: ALLIANCE_BETRAYAL_DELTA,
+        tags: [BETRAYAL_TAG],
         actionSource: options?.source ?? 'system',
       }),
     );
-    if (betrayalOccurred) {
-      _store.dispatch(
-        updateRelationship({
-          source: targetId,
-          target: actorId,
-          delta: ALLIANCE_BETRAYAL_DELTA,
-          tags: [BETRAYAL_TAG],
-          actionSource: options?.source ?? 'system',
-        }),
-      );
-    }
   }
 
   // For primaryPlusSubject actions: apply a lightweight contextual tag from the

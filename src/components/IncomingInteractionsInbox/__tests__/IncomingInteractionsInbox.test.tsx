@@ -10,10 +10,18 @@ import socialReducer, {
   updateSocialMemory,
 } from '../../../social/socialSlice';
 import IncomingInteractionsInbox from '../IncomingInteractionsInbox';
+import { socialMiddleware } from '../../../social/socialMiddleware';
 
 function makeStore() {
   return configureStore({
     reducer: { game: gameReducer, social: socialReducer },
+  });
+}
+
+function makeStoreWithSocialMiddleware() {
+  return configureStore({
+    reducer: { game: gameReducer, social: socialReducer },
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
   });
 }
 
@@ -179,7 +187,7 @@ describe('IncomingInteractionsInbox', () => {
   });
 
   it('marks both players as allies when accepting an alliance proposal', () => {
-    const store = makeStore();
+    const store = makeStoreWithSocialMiddleware();
     store.dispatch(openIncomingInbox());
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     const otherPlayer = getNonUserPlayer(store);
@@ -205,6 +213,10 @@ describe('IncomingInteractionsInbox', () => {
     const socialState = store.getState().social;
     expect(socialState.relationships[otherPlayer.id]?.[humanId]?.tags).toContain('alliance');
     expect(socialState.relationships[humanId]?.[otherPlayer.id]?.tags).toContain('alliance');
+    expect(socialState.energyBank[humanId]).toBe(2);
+    expect(socialState.energyBank[otherPlayer.id]).toBe(2);
+    expect(socialState.influenceBank[humanId]).toBe(200);
+    expect(socialState.influenceBank[otherPlayer.id]).toBe(200);
   });
 
   it('renders contextual responses and tone labels', () => {

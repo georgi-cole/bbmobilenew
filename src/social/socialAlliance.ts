@@ -1,4 +1,5 @@
 import { socialConfig } from './socialConfig';
+import { normalizeAffinity } from './affinityUtils';
 import type { RelationshipEntry, RelationshipsMap } from './types';
 
 export const ALLIANCE_TAG = 'alliance';
@@ -20,7 +21,7 @@ export function hasAllianceBetween(
 }
 
 export function shouldDropAllianceTag(affinity: number): boolean {
-  return affinity < socialConfig.relationshipThresholds.allyThreshold;
+  return normalizeAffinity(affinity) < socialConfig.relationshipThresholds.allyThreshold;
 }
 
 export function tagsAfterAllianceDecay(
@@ -28,7 +29,13 @@ export function tagsAfterAllianceDecay(
   affinity: number,
   preserveIncomingAlliance: boolean,
 ): string[] {
-  if (preserveIncomingAlliance || !tags.includes(ALLIANCE_TAG) || !shouldDropAllianceTag(affinity)) {
+  if (!tags.includes(ALLIANCE_TAG)) {
+    return tags;
+  }
+  if (tags.includes(BETRAYAL_TAG)) {
+    return tags.filter((tag) => tag !== ALLIANCE_TAG);
+  }
+  if (preserveIncomingAlliance || !shouldDropAllianceTag(affinity)) {
     return tags;
   }
   return tags.filter((tag) => tag !== ALLIANCE_TAG);

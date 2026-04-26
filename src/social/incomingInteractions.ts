@@ -179,7 +179,7 @@ export function respondToIncomingInteraction({
             target: interaction.fromId,
             delta,
             tags: [ALLIANCE_TAG],
-            actionSource: 'manual',
+            actionSource: 'system',
           }),
         );
       }

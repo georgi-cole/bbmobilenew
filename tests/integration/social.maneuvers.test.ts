@@ -41,6 +41,7 @@ import {
   canAfford,
   executeAction,
 } from '../../src/social/SocialManeuvers';
+import { socialMiddleware } from '../../src/social/socialMiddleware';
 import { socialConfig } from '../../src/social/socialConfig';
 import type { SocialActionLogEntry } from '../../src/social/types';
 
@@ -48,6 +49,13 @@ import type { SocialActionLogEntry } from '../../src/social/types';
 
 function makeStore() {
   return configureStore({ reducer: { social: socialReducer } });
+}
+
+function makeStoreWithSocialMiddleware() {
+  return configureStore({
+    reducer: { social: socialReducer },
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+  });
 }
 
 // ── socialActions ──────────────────────────────────────────────────────────
@@ -812,6 +820,21 @@ describe('executeAction – multi-resource deductions', () => {
     expect(store.getState().social.relationships.p2?.p1?.tags).toContain('alliance');
   });
 
+  it('grants alliance formation resources only once for a reciprocal alliance', () => {
+    const store = makeStoreWithSocialMiddleware();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 0 }));
+
+    executeAction('p1', 'p2', 'proposeAlliance', { outcome: 'success', source: 'manual' });
+
+    expect(store.getState().social.energyBank.p1).toBe(9);
+    expect(store.getState().social.energyBank.p2).toBe(2);
+    expect(store.getState().social.influenceBank.p1).toBe(206);
+    expect(store.getState().social.influenceBank.p2).toBe(200);
+  });
+
   it('blocks proposing an alliance while the relationship is already allied', () => {
     const store = makeStore();
     initManeuvers(store);
@@ -842,7 +865,7 @@ describe('executeAction – multi-resource deductions', () => {
 
     expect(result.success).toBe(true);
     expect(result.summary).toMatch(/playing both sides/);
-    expect(store.getState().social.relationships.p1?.p2?.tags).toContain('alliance');
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).not.toContain('alliance');
     expect(store.getState().social.relationships.p2?.p1?.tags).toContain('betrayal');
     expect(store.getState().social.relationships.p2?.p1?.tags).not.toContain('alliance');
   });
