@@ -151,12 +151,12 @@ describe('SeasonRecapCinematic', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('builds a fixed 120-second recap timeline', () => {
+  it('builds a longer recap timeline from the configured scene durations', () => {
     const timeline = getTimeline();
     const categoryIds = buildSeasonRecapData(PLAYERS, 12).categories.map((category) => category.id);
 
-    expect(TOTAL_RECAP_DURATION_MS).toBe(120000);
-    expect(timeline.at(-1)?.endMs).toBe(120000);
+    expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThan(120000);
+    expect(timeline.at(-1)?.endMs).toBe(TOTAL_RECAP_DURATION_MS);
     expect(categoryIds).toEqual([
       'compzilla',
       'head_honcho',
@@ -173,7 +173,7 @@ describe('SeasonRecapCinematic', () => {
     const tabloidScenes = timeline.filter((scene) => scene.kind === 'tabloid');
     const categoryScenes = timeline.filter((scene) => scene.kind === 'category');
 
-    expect(introScenes).toHaveLength(4);
+    expect(introScenes).toHaveLength(2);
     expect(introScenes.every((scene) => scene.durationMs >= INTRO_MIN_DURATION_MS)).toBe(true);
     expect(tabloidScenes).toHaveLength(5);
     expect(tabloidScenes.every((scene) => scene.durationMs >= TABLOID_CARD_DURATION_MS)).toBe(true);
@@ -181,7 +181,7 @@ describe('SeasonRecapCinematic', () => {
     expect(categoryScenes.every((scene) => scene.durationMs >= CATEGORY_SCENE_DURATION_MS)).toBe(true);
   });
 
-  it('lands on the tabloid interlude after the 30-second montage section', async () => {
+  it('lands on the tabloid interlude after the shorter two-card intro and montage section', async () => {
     const onComplete = vi.fn();
 
     render(
@@ -294,5 +294,30 @@ describe('SeasonRecapCinematic', () => {
     expect(headlineDraft.subheadline).toBeTruthy();
     expect(headlineDraft.category).toBeTruthy();
     expect(headlineDraft.stamp).toBeTruthy();
+  });
+
+  it('prefers a matching tabloid photo asset for players when one exists', () => {
+    const recapData = buildSeasonRecapData(
+      [
+        {
+          id: 'aria',
+          name: 'Aria',
+          status: 'active',
+          avatar: '😀',
+          stats: { lohWins: 1, posWins: 0, timesNominated: 1 },
+        },
+        {
+          id: 'kai',
+          name: 'Kai',
+          status: 'active',
+          avatar: '😎',
+          stats: { lohWins: 0, posWins: 1, timesNominated: 2 },
+        },
+      ],
+      12,
+    );
+
+    expect(recapData.tabloidPhotoSources.some((source) => source.includes('Aria_tabloid.jxl'))).toBe(true);
+    expect(recapData.tabloidCards[0]?.imageSources.some((source) => source.includes('Aria_tabloid.jxl'))).toBe(true);
   });
 });

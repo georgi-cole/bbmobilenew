@@ -7,10 +7,16 @@ import {
   resolveSilhouetteFallback,
 } from '../../utils/avatar';
 
-const TABLOID_PHOTO_MODULES = import.meta.glob('../../../public/assets/tabloid_photos/*.{png,jpg,jpeg,webp,avif}', {
+const TABLOID_PHOTO_MODULES = import.meta.glob('../../../public/assets/tabloid_photos/*.{png,jpg,jpeg,jxl,webp,avif}', {
   eager: true,
   import: 'default',
 }) as Record<string, string>;
+
+interface TabloidPhotoEntry {
+  id: string;
+  matchToken: string;
+  source: string;
+}
 
 export type AwardCategoryId =
   | 'compzilla'
@@ -44,6 +50,7 @@ export interface TabloidCard {
   id: string;
   headline: string;
   subhead: string;
+  articleText: string;
   imageSources: string[];
   imageAlt: string;
 }
@@ -153,8 +160,23 @@ function selectLowest(players: Player[], score: (player: Player) => number): Pla
   return [...players].sort((a, b) => score(a) - score(b))[0] ?? players[0];
 }
 
-function listTabloidPhotos(): string[] {
-  return Object.values(TABLOID_PHOTO_MODULES).sort((a, b) => a.localeCompare(b));
+function normalizePhotoToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function listTabloidPhotoEntries(): TabloidPhotoEntry[] {
+  return Object.entries(TABLOID_PHOTO_MODULES)
+    .map(([path, source]) => {
+      const filename = path.split('/').pop() ?? path;
+      const basename = filename.replace(/\.[^.]+$/, '');
+      const matchBase = basename.replace(/_tabloid\d*$/i, '');
+      return {
+        id: basename,
+        matchToken: normalizePhotoToken(matchBase),
+        source,
+      };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function uniqueSources(sources: Array<string | null | undefined>): string[] {
@@ -187,6 +209,30 @@ export function resolveRecapTabloidSources(player: Player, preferredPhoto?: stri
     primaryAvatar,
     resolveSilhouetteFallback(player),
   ]);
+}
+
+function pickTabloidPhoto(
+  player: Player | undefined,
+  tabloidPhotos: TabloidPhotoEntry[],
+  usedPhotoIds: Set<string>,
+): string | null {
+  if (tabloidPhotos.length === 0) return null;
+
+  const firstName = player?.name.split(' ')[0] ?? '';
+  const fullName = player?.name ?? '';
+  const desiredTokens = uniqueSources([firstName, fullName]).map(normalizePhotoToken);
+
+  const matchedPhoto = tabloidPhotos.find(
+    (entry) => !usedPhotoIds.has(entry.id) && desiredTokens.includes(entry.matchToken),
+  );
+  if (matchedPhoto) {
+    usedPhotoIds.add(matchedPhoto.id);
+    return matchedPhoto.source;
+  }
+
+  const unusedFallback = tabloidPhotos.find((entry) => !usedPhotoIds.has(entry.id)) ?? tabloidPhotos[0];
+  usedPhotoIds.add(unusedFallback.id);
+  return unusedFallback.source;
 }
 
 function buildMontageFragments(players: Player[], week: number): string[] {
@@ -322,7 +368,7 @@ function buildCategories(players: Player[], publicOpinion?: PublicOpinionState |
 function buildTabloidCards(
   players: Player[],
   publicOpinion: PublicOpinionState | null | undefined,
-  tabloidPhotos: string[],
+  tabloidPhotos: TabloidPhotoEntry[],
 ): TabloidCard[] {
   const publicWinner = selectHighest(players, (player) => deriveApproval(player, publicOpinion));
   const chaosPlayer = selectHighest(players, nominations, { allowZero: true });
@@ -330,41 +376,50 @@ function buildTabloidCards(
   const finalists = buildFinalists(players);
   const defaultPlayer = players[0] ?? publicWinner;
   const subjects = [publicWinner, compPlayer, chaosPlayer, finalists[0] ?? defaultPlayer, finalists[1] ?? defaultPlayer];
+  const usedPhotoIds = new Set<string>();
 
   return [
     {
       id: 'opinions',
       headline: 'THE HOUSE HAD OPINIONS.',
       subhead: 'Public approval did not come quietly.',
-      imageSources: resolveRecapTabloidSources(subjects[0], tabloidPhotos[0]),
+      articleText: `${firstName(subjects[0])} owned the season’s loudest headlines while every vote swing sent the crowd back to the comments.`,
+      imageSources: resolveRecapTabloidSources(subjects[0], pickTabloidPhoto(subjects[0], tabloidPhotos, usedPhotoIds)),
       imageAlt: subjects[0]?.name ?? 'Season tabloid cover',
     },
     {
       id: 'saved_again',
       headline: 'SAVED AGAIN?',
       subhead: 'Some exits were postponed by pure chaos.',
-      imageSources: resolveRecapTabloidSources(subjects[1], tabloidPhotos[1]),
+      articleText: `${firstName(subjects[1])} kept turning crisis weeks into survival stories, leaving the rest of the house to rework the plan overnight.`,
+      imageSources: resolveRecapTabloidSources(subjects[1], pickTabloidPhoto(subjects[1], tabloidPhotos, usedPhotoIds)),
       imageAlt: subjects[1]?.name ?? 'Housemate reaction',
     },
     {
       id: 'alliances',
       headline: 'ALLIANCES AGED LIKE MILK.',
       subhead: 'Yesterday’s promise became today’s nomination.',
-      imageSources: resolveRecapTabloidSources(subjects[2], tabloidPhotos[2]),
+      articleText: `${firstName(subjects[2])} stood at the center of whispered deals, broken promises, and the kind of fallout tabloids print in bold.`,
+      imageSources: resolveRecapTabloidSources(subjects[2], pickTabloidPhoto(subjects[2], tabloidPhotos, usedPhotoIds)),
       imageAlt: subjects[2]?.name ?? 'Alliance fallout',
     },
     {
       id: 'block_called',
       headline: 'THE BLOCK CALLED.',
       subhead: 'And some people kept answering.',
-      imageSources: resolveRecapTabloidSources(subjects[3], tabloidPhotos[3]),
+      articleText: `${firstName(subjects[3])} felt the pressure, wore it, and still made it through the season’s messiest stretches.`,
+      imageSources: resolveRecapTabloidSources(subjects[3], pickTabloidPhoto(subjects[3], tabloidPhotos, usedPhotoIds)),
       imageAlt: subjects[3]?.name ?? 'Nomination fallout',
     },
     {
       id: 'classified',
       headline: 'SEASON FILES: CLASSIFIED',
       subhead: 'Until tonight.',
-      imageSources: resolveRecapTabloidSources(subjects[4] ?? subjects[3], tabloidPhotos[4] ?? tabloidPhotos[3]),
+      articleText: `${firstName(subjects[4] ?? subjects[3])} made the final chapter, where every headline shrinks down to one last verdict.`,
+      imageSources: resolveRecapTabloidSources(
+        subjects[4] ?? subjects[3],
+        pickTabloidPhoto(subjects[4] ?? subjects[3], tabloidPhotos, usedPhotoIds),
+      ),
       imageAlt: subjects[4]?.name ?? 'Finale file',
     },
   ];
@@ -376,7 +431,7 @@ function buildEvictionWaves(evictionLadder: Player[]): EvictionWave[] {
     return [{ id: 'wave-0', players: [], caption: captions[0] }];
   }
 
-  const waveCount = Math.max(1, Math.min(5, Math.ceil(evictionLadder.length / 2)));
+  const waveCount = Math.max(1, Math.min(7, Math.ceil(evictionLadder.length / 2)));
   const chunkSize = Math.max(1, Math.ceil(evictionLadder.length / waveCount));
   const waves: EvictionWave[] = [];
 
@@ -410,14 +465,15 @@ export function buildSeasonRecapData(
         },
         seasonPlacement: 1,
       }];
-  const tabloidPhotoSources = listTabloidPhotos();
-  const evictionLadder = buildEvictionList(safePlayers);
+   const tabloidPhotoEntries = listTabloidPhotoEntries();
+   const tabloidPhotoSources = tabloidPhotoEntries.map((entry) => entry.source);
+   const evictionLadder = buildEvictionList(safePlayers);
 
   return {
     montageBeats: buildMontageBeats(safePlayers),
     montageFragments: buildMontageFragments(safePlayers, week),
     categories: buildCategories(safePlayers, publicOpinion),
-    tabloidCards: buildTabloidCards(safePlayers, publicOpinion, tabloidPhotoSources),
+     tabloidCards: buildTabloidCards(safePlayers, publicOpinion, tabloidPhotoEntries),
     evictionWaves: buildEvictionWaves(evictionLadder),
     evictionLadder,
     finalists: buildFinalists(safePlayers),
