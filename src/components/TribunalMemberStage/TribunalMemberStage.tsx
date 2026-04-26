@@ -14,7 +14,7 @@
  *     previously revealed jurors.
  *   - Human vote prompt slides in when it is the viewer's turn.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Player } from '../../types';
 import type { JurorReveal } from '../../store/finaleSlice';
 import { PUBLIC_JUROR_ID } from '../../store/finaleSlice';
@@ -45,6 +45,40 @@ function PublicCutoutPlaceholder() {
   );
 }
 
+function PhraseTyper({ phrase }: { phrase: string }) {
+  const [visibleChars, setVisibleChars] = useState(0);
+
+  useEffect(() => {
+    if (!phrase) return undefined;
+
+    let charIndex = 0;
+    let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+    const startDelay = setTimeout(() => {
+      const typeNext = () => {
+        charIndex += 1;
+        setVisibleChars(charIndex);
+        if (charIndex < phrase.length) {
+          typingTimeout = setTimeout(typeNext, 35);
+        }
+      };
+
+      typeNext();
+    }, 600);
+
+    return () => {
+      clearTimeout(startDelay);
+      if (typingTimeout) clearTimeout(typingTimeout);
+    };
+  }, [phrase]);
+
+  return (
+    <p className="tms-phrase">
+      {phrase.slice(0, visibleChars)}
+      <span className="tms-phrase__cursor" aria-hidden="true">|</span>
+    </p>
+  );
+}
+
 export default function TribunalMemberStage({
   revealedJurors,
   awaitingHumanPlayer,
@@ -56,39 +90,8 @@ export default function TribunalMemberStage({
 
   const currentJurorId = current?.juror.id ?? null;
   const currentPhrase = current?.reveal.phrase ?? '';
-
-  // Re-trigger entrance animation whenever the current juror changes.
-  const [animKey, setAnimKey] = useState(0);
-  const prevJurorIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!currentJurorId) return;
-    if (currentJurorId !== prevJurorIdRef.current) {
-      prevJurorIdRef.current = currentJurorId;
-      setAnimKey((k) => k + 1);
-    }
-  }, [currentJurorId]);
-
-  // Phrase typing effect — reveals characters one by one.
-  const [displayedPhrase, setDisplayedPhrase] = useState('');
-  const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (typingRef.current) clearTimeout(typingRef.current);
-    setDisplayedPhrase('');
-    if (!currentPhrase) return;
-    let charIndex = 0;
-    function type() {
-      charIndex += 1;
-      setDisplayedPhrase(currentPhrase.slice(0, charIndex));
-      if (charIndex < currentPhrase.length) {
-        typingRef.current = setTimeout(type, 35);
-      }
-    }
-    // Small entrance delay before typing starts.
-    typingRef.current = setTimeout(type, 600);
-    return () => { if (typingRef.current) clearTimeout(typingRef.current); };
-  }, [animKey, currentPhrase]);
+  const currentAnimationKey = currentJurorId ?? 'pending';
+  const phraseAnimationKey = `${currentAnimationKey}-${currentPhrase}`;
 
   if (!current && !awaitingHumanPlayer) return null;
 
@@ -115,7 +118,7 @@ export default function TribunalMemberStage({
 
       {/* ── Name plate ──────────────────────────────────────────────── */}
       {current && (
-        <div className="tms-nameplate" key={`name-${animKey}`}>
+        <div className="tms-nameplate" key={`name-${currentAnimationKey}`}>
           <span className="tms-nameplate__eyebrow">TRIBUNAL MEMBER</span>
           <span className="tms-nameplate__name">
             {isPublic ? 'The Public' : current.juror.name}
@@ -126,7 +129,7 @@ export default function TribunalMemberStage({
 
       {/* ── Full-body cutout ─────────────────────────────────────────── */}
       {current && (
-        <div className="tms-cutout-wrap" key={`cutout-${animKey}`}>
+        <div className="tms-cutout-wrap" key={`cutout-${currentAnimationKey}`}>
           {formalSrc ? (
             <img
               className="tms-cutout"
@@ -143,11 +146,8 @@ export default function TribunalMemberStage({
 
       {/* ── Cryptic phrase ───────────────────────────────────────────── */}
       {current && (
-        <div className="tms-phrase-wrap" key={`phrase-${animKey}`}>
-          <p className="tms-phrase">
-            {displayedPhrase}
-            <span className="tms-phrase__cursor" aria-hidden="true">|</span>
-          </p>
+        <div className="tms-phrase-wrap" key={`phrase-${phraseAnimationKey}`}>
+          <PhraseTyper phrase={currentPhrase} />
         </div>
       )}
 

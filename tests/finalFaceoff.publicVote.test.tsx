@@ -138,6 +138,9 @@ describe('FinalFaceoff public vote pacing', () => {
   it('keeps the public vote message on screen for 3 seconds before switching to the recap', async () => {
     const store = makeStore();
     const expectedPublicPhrase = pickPhrase(PUBLIC_JURY_VOTE_LINES, 42, 1);
+    const visiblePublicPhrase = expectedPublicPhrase.slice(0, 12).trimEnd();
+    const phraseLeadInMs = 600 + (visiblePublicPhrase.length * 35);
+    const remainingHoldMs = Math.max(0, 2999 - phraseLeadInMs);
 
     render(
       <Provider store={store}>
@@ -157,13 +160,17 @@ describe('FinalFaceoff public vote pacing', () => {
       vi.advanceTimersByTime(3000);
     });
 
+    await act(async () => {
+      vi.advanceTimersByTime(phraseLeadInMs);
+    });
+
     expect(
-      screen.getByText(expectedPublicPhrase, { exact: false, selector: '.jb-phrase' }),
+      screen.getByText(visiblePublicPhrase, { exact: false, selector: '.tms-phrase' }),
     ).toBeTruthy();
     expect(screen.queryByTestId('season-recap')).toBeNull();
 
     await act(async () => {
-      vi.advanceTimersByTime(2999);
+      vi.advanceTimersByTime(remainingHoldMs);
     });
 
     expect(screen.queryByTestId('season-recap')).toBeNull();

@@ -492,7 +492,7 @@ export default function FinalFaceoff() {
             const juror = publicJuror ?? game.players.find((p) => p.id === r.jurorId);
             return juror ? { juror, reveal: r } : null;
           }).filter((e): e is NonNullable<typeof e> => e !== null)}
-          awaitingHumanPlayer={!finale.isComplete ? awaitingHumanPlayer : null}
+          awaitingHumanPlayer={!finale.isComplete ? (awaitingHumanPlayer ?? null) : null}
           finalists={finalists}
           onCastVote={handleCastVote}
         />

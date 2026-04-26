@@ -85,7 +85,7 @@
 /* ── Name plate ──────────────────────────────────────────────────────────── */
 .tms-nameplate {
   position: absolute;
-  top: 2.8rem;
+  top: clamp(3rem, 7dvh, 4.2rem);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -142,9 +142,8 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  /* Takes most of the stage height */
-  height: 62%;
-  max-height: 340px;
+  /* Scales up on taller screens so the reveal doesn't float too low. */
+  height: clamp(320px, 72%, 460px);
   animation: tms-cutout-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
   flex-shrink: 0;
 }
@@ -165,7 +164,7 @@
 .tms-cutout {
   height: 100%;
   width: auto;
-  max-width: 200px;
+  max-width: min(240px, 48vw);
   object-fit: contain;
   object-position: bottom;
   filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.35))
