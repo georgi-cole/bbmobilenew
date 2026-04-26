@@ -124,6 +124,17 @@ function formatForcedShockLabel(type: ForcedShockType): string {
   }
 }
 
+function getForcedShockSafePhase(type: ForcedShockType): Phase {
+  switch (type) {
+    case 'doubleEviction':
+      return 'nominations';
+    case 'battleBack':
+      return 'eviction_results';
+    default:
+      return 'pos_results';
+  }
+}
+
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
 // All 22 houseguests in src/data/houseguests.ts have matching avatar images in
 // public/avatars/. This pool is the source for AI opponents each game.
@@ -2210,13 +2221,7 @@ const gameSlice = createSlice({
 
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
       const type = action.payload;
-      const safePhase: Phase =
-        type === 'doubleEviction'
-          ? 'nominations'
-          : type === 'battleBack'
-            ? 'eviction_results'
-            : 'pos_results';
-      const earliestWeek = getForcedShockActivationWeek(state, safePhase);
+      const earliestWeek = getForcedShockActivationWeek(state, getForcedShockSafePhase(type));
       state.pendingForcedShock = {
         type,
         requestedWeek: state.week,

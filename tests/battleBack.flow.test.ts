@@ -418,7 +418,7 @@ describe('forced battle back queue', () => {
     );
 
     store.dispatch(queueForcedShock('battleBack'));
-    const result = store.dispatch(tryActivatePendingForcedBattleBack() as Parameters<typeof store.dispatch>[0]);
+    const result = store.dispatch(tryActivatePendingForcedBattleBack());
 
     expect(result).toBe(true);
     expect(store.getState().game.battleBack?.active).toBe(true);

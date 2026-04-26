@@ -38,14 +38,11 @@ describe('DebugPanel forced shock controls', () => {
       </Provider>,
     )
 
-    const forceShockSelect = screen
-      .getAllByRole('combobox')
-      .find((select) => Array.from(select.querySelectorAll('option')).some((option) => option.textContent === 'Back 2 the Game'))
+    const forceShockSelect = screen.getByRole('combobox', { name: 'Force Shock' })
 
-    expect(forceShockSelect).toBeTruthy()
     expect(screen.getByRole('option', { name: 'Back 2 the Game' })).toBeDefined()
 
-    await user.selectOptions(forceShockSelect!, 'battleBack')
+    await user.selectOptions(forceShockSelect, 'battleBack')
     await user.click(screen.getByRole('button', { name: 'Queue' }))
 
     expect(store.getState().game.pendingForcedShock?.type).toBe('battleBack')

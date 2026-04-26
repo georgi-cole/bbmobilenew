@@ -432,6 +432,7 @@ export default function DebugPanel() {
               <div className="dbg-row">
                 <label className="dbg-label">Force Shock</label>
                 <select
+                  aria-label="Force Shock"
                   className="dbg-select"
                   value={selectedForcedShock}
                   onChange={(e) => setSelectedForcedShock(e.target.value as ForcedShockType)}

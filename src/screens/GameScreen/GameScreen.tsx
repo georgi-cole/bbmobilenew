@@ -2114,11 +2114,9 @@ export default function GameScreen() {
       // Final-4: advance the local stage machine; no battle back check needed.
       setFinal4Stage('done')
     } else {
-      const activated = (
-        dispatch(tryActivatePendingForcedBattleBack()) as unknown as boolean
-      ) || (
-        dispatch(tryActivateBattleBack()) as unknown as boolean
-      )
+      const activated =
+        dispatch(tryActivatePendingForcedBattleBack()) ||
+        dispatch(tryActivateBattleBack())
       if (!activated) {
         dispatch(advance())
       }
