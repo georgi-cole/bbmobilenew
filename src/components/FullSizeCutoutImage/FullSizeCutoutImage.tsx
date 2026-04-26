@@ -3,7 +3,7 @@ import type { Player } from '../../types';
 import { resolveInformalCutoutCandidates } from '../../utils/avatar';
 
 interface FullSizeCutoutImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> {
-  player: Pick<Player, 'id' | 'name' | 'avatar'>;
+  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>;
 }
 
 export default function FullSizeCutoutImage({
