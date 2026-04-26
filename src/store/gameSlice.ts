@@ -109,6 +109,8 @@ function formatForcedShockLabel(type: ForcedShockType): string {
   switch (type) {
     case 'doubleEviction':
       return 'Double Elimination';
+    case 'battleBack':
+      return 'Back 2 the Game';
     case 'vip':
       return 'Double Trouble';
     case 'diamond':
@@ -119,6 +121,17 @@ function formatForcedShockLabel(type: ForcedShockType): string {
       return 'Force Majeure';
     default:
       return type;
+  }
+}
+
+function getForcedShockSafePhase(type: ForcedShockType): Phase {
+  switch (type) {
+    case 'doubleEviction':
+      return 'nominations';
+    case 'battleBack':
+      return 'eviction_results';
+    default:
+      return 'pos_results';
   }
 }
 
@@ -2208,8 +2221,7 @@ const gameSlice = createSlice({
 
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
       const type = action.payload;
-      const safePhase: Phase = type === 'doubleEviction' ? 'nominations' : 'pos_results';
-      const earliestWeek = getForcedShockActivationWeek(state, safePhase);
+      const earliestWeek = getForcedShockActivationWeek(state, getForcedShockSafePhase(type));
       state.pendingForcedShock = {
         type,
         requestedWeek: state.week,
@@ -4927,6 +4939,30 @@ export const tryActivateBattleBack =
     return true;
   };
 
+export const tryActivatePendingForcedBattleBack =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState();
+
+    if (game.pendingForcedShock?.type !== 'battleBack') return false;
+    if (game.phase !== 'eviction_results') return false;
+    if (game.week < game.pendingForcedShock.earliestWeek) return false;
+    if (game.battleBack?.used) return false;
+    if (game.twistActivatedThisWeek) return false;
+
+    const jurors = game.players.filter((p) => p.status === 'jury');
+    const active = game.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+
+    if (jurors.length < 3) return false;
+    if (active.length < 5) return false;
+
+    dispatch(activateBattleBack({ candidates: jurors.map((p) => p.id), week: game.week }));
+    dispatch(consumeForcedShock());
+    return true;
+  };
+
 /**
  * Attempt to activate the Double Eviction twist for the current week.
  *
@@ -5076,7 +5112,7 @@ export const tryActivatePendingForcedSpecialVeto =
     const { game } = getState();
     const pending = game.pendingForcedShock;
 
-    if (!pending || pending.type === 'doubleEviction') return false;
+    if (!pending || pending.type === 'doubleEviction' || pending.type === 'battleBack') return false;
     if (game.phase !== 'pos_results') return false;
     if (game.week < pending.earliestWeek) return false;
     if (game.doubleEviction?.weekActive) return false;

@@ -24,6 +24,10 @@ export const BATTLE_BACK_ANNOUNCEMENT_SEQUENCE: Announcement[] = [
   },
 ]
 
+export function buildBattleBackFeedMessage(announcement: Announcement): string {
+  return `${announcement.title}: ${announcement.subtitle}`
+}
+
 export function advanceBattleBackAnnouncementStep(
   currentStep: number | null,
   totalSteps = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.length,

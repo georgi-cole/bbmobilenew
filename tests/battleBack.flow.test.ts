@@ -17,7 +17,9 @@ import gameReducer, {
   activateBattleBack,
   completeBattleBack,
   dismissBattleBack,
+  queueForcedShock,
   tryActivateBattleBack,
+  tryActivatePendingForcedBattleBack,
   openBattleBackCompetition,
   clearBlockingFlags,
 } from '../src/store/gameSlice';
@@ -378,6 +380,49 @@ describe('tryActivateBattleBack thunk', () => {
     );
     const activated = store.dispatch(tryActivateBattleBack() as Parameters<typeof store.dispatch>[0]);
     expect(activated).toBe(false);
+  });
+});
+
+describe('forced battle back queue', () => {
+  it('queues for the current week when eviction results have not happened yet', () => {
+    const store = makeStore({ phase: 'social_2', week: 4 });
+    store.dispatch(queueForcedShock('battleBack'));
+
+    expect(store.getState().game.pendingForcedShock).toEqual({
+      type: 'battleBack',
+      requestedWeek: 4,
+      earliestWeek: 4,
+    });
+  });
+
+  it('queues for the next week when eviction results already passed', () => {
+    const store = makeStore({ phase: 'week_end', week: 4 });
+    store.dispatch(queueForcedShock('battleBack'));
+
+    expect(store.getState().game.pendingForcedShock?.earliestWeek).toBe(5);
+  });
+
+  it('activates the queued shock at eviction_results even when normal twist settings would block it', () => {
+    const players = makePlayers(8);
+    players[1].status = 'jury';
+    players[2].status = 'jury';
+    players[3].status = 'jury';
+
+    const store = makeStore(
+      {
+        phase: 'eviction_results',
+        week: 4,
+        players,
+      },
+      { sim: { enableTwists: false, battleBackChance: 0 } },
+    );
+
+    store.dispatch(queueForcedShock('battleBack'));
+    const result = store.dispatch(tryActivatePendingForcedBattleBack());
+
+    expect(result).toBe(true);
+    expect(store.getState().game.battleBack?.active).toBe(true);
+    expect(store.getState().game.pendingForcedShock).toBeNull();
   });
 });
 

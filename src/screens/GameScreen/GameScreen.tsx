@@ -27,6 +27,7 @@ import {
   completeBattleBack,
   dismissBattleBack,
   tryActivateBattleBack,
+  tryActivatePendingForcedBattleBack,
   tryActivateSecretMission,
   openBattleBackCompetition,
   tryActivateDoubleEviction,
@@ -130,6 +131,7 @@ import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
+  buildBattleBackFeedMessage,
   isBattleBackReplayEligible,
 } from './battleBackFlow'
 import {
@@ -2112,7 +2114,9 @@ export default function GameScreen() {
       // Final-4: advance the local stage machine; no battle back check needed.
       setFinal4Stage('done')
     } else {
-      const activated = dispatch(tryActivateBattleBack()) as unknown as boolean
+      const activated =
+        dispatch(tryActivatePendingForcedBattleBack()) ||
+        dispatch(tryActivateBattleBack())
       if (!activated) {
         dispatch(advance())
       }
@@ -2206,10 +2210,17 @@ export default function GameScreen() {
 
     const currentStep = battleBackAnnouncementStepRef.current
     if (currentStep == null) return
+    const announcement = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[currentStep]
 
     const { nextStep, shouldOpenCompetition } =
       advanceBattleBackAnnouncementStep(currentStep)
 
+    if (announcement) {
+      dispatch(addTvEvent({
+        text: buildBattleBackFeedMessage(announcement),
+        type: 'game',
+      }))
+    }
     setBattleBackAnnouncementStep(nextStep)
     if (shouldOpenCompetition) {
       dispatch(openBattleBackCompetition())
@@ -2657,10 +2668,6 @@ export default function GameScreen() {
     // Fall back to the remote-config headline when no phase-specific message applies.
     return remoteMainTvHeadline ?? undefined
   }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, postVoteAnnouncementDelayActive, game.pendingEviction, remoteMainTvHeadline])
-  const battleBackTvAnnouncement =
-    battleBack?.active && !battleBack.competitionActive && battleBackAnnouncementStep != null
-      ? BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[battleBackAnnouncementStep] ?? null
-      : null
   function handlePublicMeterBlocked() {
     setPublicMeterUnavailableAnnouncement({
       key: 'public_meter_unavailable',
@@ -2702,7 +2709,6 @@ export default function GameScreen() {
           externalAnnouncement={
             socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
-            battleBackTvAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
@@ -2710,8 +2716,6 @@ export default function GameScreen() {
               ? () => setSocialModuleUnavailableAnnouncement(null)
               : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
-              : battleBackTvAnnouncement
-              ? undefined
               : handlePreAdAnnouncementDismiss
           }
           mainLogMaxVisible={compactRosterLogRows}
@@ -2732,7 +2736,6 @@ export default function GameScreen() {
           externalAnnouncement={
             socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
-            battleBackTvAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
@@ -2740,8 +2743,6 @@ export default function GameScreen() {
               ? () => setSocialModuleUnavailableAnnouncement(null)
               : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
-              : battleBackTvAnnouncement
-              ? undefined
               : handlePreAdAnnouncementDismiss
           }
           mainLogMaxVisible={compactRosterLogRows}
@@ -2754,7 +2755,6 @@ export default function GameScreen() {
           externalAnnouncement={
             socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
-            battleBackTvAnnouncement ??
             aiTiebreakAnnouncement ??
             postVoteAnnouncement ??
             publicSaveResultAnnouncement ??
@@ -2765,8 +2765,6 @@ export default function GameScreen() {
               ? () => setSocialModuleUnavailableAnnouncement(null)
               : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
-              : battleBackTvAnnouncement
-              ? undefined
               : aiTiebreakAnnouncement
               ? handleAiTiebreakAnnouncementDismiss
               : postVoteAnnouncement

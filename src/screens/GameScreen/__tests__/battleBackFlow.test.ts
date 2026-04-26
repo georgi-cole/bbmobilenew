@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
+  buildBattleBackFeedMessage,
   isBattleBackReplayEligible,
 } from '../battleBackFlow'
 
@@ -28,6 +29,14 @@ describe('battle back flow helpers', () => {
       nextStep: null,
       shouldOpenCompetition: true,
     })
+  })
+
+  it('formats staged Back 2 the Game follow-ups as regular TV feed messages', () => {
+    expect(BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.map(buildBattleBackFeedMessage)).toEqual([
+      'Shock Twist: Back 2 the Game has been activated. A return to the game is now on the table.',
+      'Back 2 the Game Rules: Tribunal members will face off. Only one can win the right to return to the house.',
+      'Back 2 the Game Challenge: The challenge is ready. Press play to begin the Back 2 the Game showdown.',
+    ])
   })
 
   it('offers a replay prompt only when the human candidate loses and retries remain', () => {
