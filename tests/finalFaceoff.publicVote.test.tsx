@@ -22,6 +22,8 @@ import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import { SoundManager } from '../src/services/sound/SoundManager';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
 
+const MIN_TYPED_CHARS_VISIBLE = 1;
+
 const mockPlay = vi.fn();
 const mockRequestBgm = vi.fn();
 const mockReleaseBgm = vi.fn();
@@ -133,6 +135,10 @@ async function advanceToRecap() {
   });
 }
 
+function getTypedPhraseText(element: Element | null): string {
+  return (element?.textContent ?? '').replace(/\|/g, '').trim();
+}
+
 describe('FinalFaceoff public vote pacing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -164,7 +170,10 @@ describe('FinalFaceoff public vote pacing', () => {
 
   it('keeps the public vote message on screen for 3 seconds before switching to the recap', async () => {
     const store = makeStore();
-    const phraseLeadInMs = PHRASE_TYPING_START_DELAY_MS + PHRASE_TYPING_CHAR_INTERVAL_MS;
+    // One typed character is enough to prove the public line is visibly rendering
+    // before the recap hold window expires.
+    const phraseLeadInMs =
+      PHRASE_TYPING_START_DELAY_MS + (MIN_TYPED_CHARS_VISIBLE * PHRASE_TYPING_CHAR_INTERVAL_MS);
     const remainingHoldMs = Math.max(0, (PUBLIC_VOTE_RECAP_HOLD_MS - 1) - phraseLeadInMs);
 
     render(
@@ -192,7 +201,7 @@ describe('FinalFaceoff public vote pacing', () => {
     expect(
       screen.getByText((_, element) => {
         if (!element?.matches('.tms-phrase')) return false;
-        return (element.textContent ?? '').replace('|', '').trim().length > 0;
+        return getTypedPhraseText(element).length >= MIN_TYPED_CHARS_VISIBLE;
       }),
     ).toBeTruthy();
     expect(screen.queryByTestId('season-recap')).toBeNull();
