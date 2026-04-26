@@ -188,6 +188,46 @@ export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): s
 
 /**
  * Maps canonical houseguest ids to their full-body transparent cutout filename stems
+ * located in `public/assets/formal_attires/`.
+ */
+const FORMAL_CUTOUT_MAP: Record<string, string> = {
+  ivy: 'Ivy_formal',
+  jax: 'Jax_formal',
+  kai: 'Kai_formal',
+  kian: 'Kian_formal',
+  lia: 'Lia_formal',
+  lux: 'Lux_formal',
+  mimi: 'Mimi_formal',
+  nico: 'Nico_formal',
+  noa: 'Noa_formal',
+  nova: 'Nova_formal',
+  pax: 'Pax_formal',
+  quinn: 'Quinn_formal',
+  rae: 'Rae_formal',
+  remy: 'Remy_formal',
+  rune: 'Rune_formal',
+  vee: 'Vee_formal',
+  zed: 'Zed_formal',
+};
+
+/**
+ * Returns the URL for a housemate's full-body formal cutout from
+ * `public/assets/formal_attires/`, or `null` when no cutout exists for this player.
+ */
+export function resolveFormalCutout(player: Pick<Player, 'id' | 'name'>): string | null {
+  const hg = getById(player.id) ?? findByName(player.name);
+  if (!hg) return null;
+  const stem = FORMAL_CUTOUT_MAP[hg.id];
+  if (!stem) return null;
+  const base = getBase();
+  if (base && base !== '/') {
+    return `${base}/assets/formal_attires/${stem}.png`;
+  }
+  return `assets/formal_attires/${stem}.png`;
+}
+
+/**
+ * Maps canonical houseguest ids to their full-body transparent cutout filename stems
  * located in `public/assets/Informal_attires/`.
  */
 const INFORMAL_CUTOUT_MAP: Record<string, string> = {

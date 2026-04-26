@@ -40,15 +40,16 @@ import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic';
+import TribunalMemberStage from '../TribunalMemberStage/TribunalMemberStage';
+import {
+  CLUE_AUTO_INTERVAL_MS,
+  PUBLIC_VOTE_RECAP_HOLD_MS,
+  RECAP_TRANSITION_DELAY_MS,
+  VOTE_REVEAL_INITIAL_DELAY_MS,
+  VOTE_REVEAL_STAGGER_MS,
+  WINNER_CINEMATIC_DELAY_MS,
+} from './finaleTiming';
 import './FinalFaceoff.css';
-
-/** Delay between automatic juror clue reveals (ms). */
-const CLUE_AUTO_INTERVAL_MS = 3000;
-const RECAP_TRANSITION_DELAY_MS = 800;
-const PUBLIC_VOTE_RECAP_HOLD_MS = 3000;
-const VOTE_REVEAL_INITIAL_DELAY_MS = 800;
-const VOTE_REVEAL_STAGGER_MS = 2000;
-const WINNER_CINEMATIC_DELAY_MS = 1500;
 
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch();
@@ -466,8 +467,8 @@ export default function FinalFaceoff() {
         <p className="fo-subtitle">
           {isCluesPhase
             ? cluesRemaining > 0
-              ? `The judges deliberate… (${finale.revealedCount} / ${finale.revealOrder.length})`
-              : 'All judges have spoken'
+              ? `The Tribunal deliberates… (${finale.revealedCount} / ${finale.revealOrder.length})`
+              : 'All members have spoken'
             : finale.isComplete
               ? `${winner ? `${winner.name} wins The Big Eye!` : 'Winner declared!'} 🏆`
               : `${visibleVoteCount} / ${revealed.length} votes revealed`}
@@ -481,90 +482,77 @@ export default function FinalFaceoff() {
         </div>
       )}
 
-      {/* Finalists — vote counter only shown during revealVotes */}
-      <div className="fo-finalists">
-        {finalists.map((f) => (
-          <div
-            key={f.id}
-            className={`fo-finalist${finale.winnerId === f.id ? ' fo-finalist--winner' : ''}`}
-          >
-            {finale.winnerId === f.id && <span className="fo-winner-badge">WINNER</span>}
-            <PlayerAvatar player={f} size="md" showRelationshipOutline={false} />
-            <span className="fo-finalist__name">{f.name}</span>
-            {phase === 'revealVotes' && (
-              <span className="fo-finalist__votes">{tally[f.id] ?? 0}</span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Juror reveal list */}
-      <div className="fo-jurors" ref={jurorListRef}>
-        {revealed.map((r) => {
-          // During clues phase vote chips are always hidden
-          const chipVisible = isCluesPhase ? false : (voteVisible[r.jurorId] ?? false);
-          if (r.jurorId === PUBLIC_JUROR_ID) {
-            const publicJuror = {
-              id: PUBLIC_JUROR_ID,
-              name: 'The Public 🌐',
-              avatar: '🌐',
-              status: 'jury' as const,
-            };
-            return (
-              <JurorBubble
-                key={PUBLIC_JUROR_ID}
-                juror={publicJuror}
-                finalist={game.players.find((p) => p.id === r.finalistId)}
-                reveal={r}
-                voteVisible={chipVisible}
-                isFlashing={!isCluesPhase && flashingJurorId === PUBLIC_JUROR_ID}
-              />
-            );
-          }
-          const juror = game.players.find((p) => p.id === r.jurorId);
-          if (!juror) return null;
-          return (
-            <JurorBubble
-              key={r.jurorId}
-              juror={juror}
-              finalist={game.players.find((p) => p.id === r.finalistId)}
-              reveal={r}
-              voteVisible={chipVisible}
-              isFlashing={!isCluesPhase && flashingJurorId === r.jurorId}
-            />
-          );
-        })}
-      </div>
-
-      {/* Tally panel — only during revealVotes */}
-      {phase === 'revealVotes' && (
-        <FinalTallyPanel finalists={finalists} tally={tally} />
-      )}
-
-      {/* Human vote UI — only in clues phase when awaiting */}
-      {awaitingHumanPlayer && !finale.isComplete && phase === 'clues' && (
-        <div className="fo-human-vote">
-          <span className="fo-human-vote__prompt">
-            <PlayerAvatar player={awaitingHumanPlayer} size="sm" showRelationshipOutline={false} />
-            <span className="fo-human-vote__prompt-text">
-              {awaitingHumanPlayer.name}, cast your jury vote:
-            </span>
-          </span>
-          <div className="fo-human-vote__choices">
+      {/* Phase 1 (clues): cinematic full-body cutout stage ──────────────── */}
+      {isCluesPhase ? (
+        <TribunalMemberStage
+          revealedJurors={revealed.map((r) => {
+            const publicJuror = r.jurorId === PUBLIC_JUROR_ID
+              ? { id: PUBLIC_JUROR_ID, name: 'The Public 🌐', avatar: '🌐', status: 'jury' as const }
+              : null;
+            const juror = publicJuror ?? game.players.find((p) => p.id === r.jurorId);
+            return juror ? { juror, reveal: r } : null;
+          }).filter((e): e is NonNullable<typeof e> => e !== null)}
+          awaitingHumanPlayer={!finale.isComplete ? (awaitingHumanPlayer ?? null) : null}
+          finalists={finalists}
+          onCastVote={handleCastVote}
+        />
+      ) : (
+        <>
+          {/* Phase 2 (revealVotes): finalists row with vote counters ─────── */}
+          <div className="fo-finalists">
             {finalists.map((f) => (
-              <button
+              <div
                 key={f.id}
-                type="button"
-                className="fo-human-vote__choice"
-                aria-label={`Cast Tribunal vote for ${f.name}`}
-                onClick={() => handleCastVote(f.id)}
+                className={`fo-finalist${finale.winnerId === f.id ? ' fo-finalist--winner' : ''}`}
               >
-                <PlayerAvatar player={f} size="sm" showRelationshipOutline={false} />
-                <span className="fo-human-vote__choice-name">{f.name}</span>
-              </button>
+                {finale.winnerId === f.id && <span className="fo-winner-badge">WINNER</span>}
+                <PlayerAvatar player={f} size="md" showRelationshipOutline={false} />
+                <span className="fo-finalist__name">{f.name}</span>
+                <span className="fo-finalist__votes">{tally[f.id] ?? 0}</span>
+              </div>
             ))}
           </div>
-        </div>
+
+          {/* Phase 2: vote reveal list — "X cast a vote for Y" ─────────── */}
+          <div className="fo-jurors" ref={jurorListRef}>
+            {revealed.map((r) => {
+              const chipVisible = voteVisible[r.jurorId] ?? false;
+              if (r.jurorId === PUBLIC_JUROR_ID) {
+                const publicJuror = {
+                  id: PUBLIC_JUROR_ID,
+                  name: 'The Public 🌐',
+                  avatar: '🌐',
+                  status: 'jury' as const,
+                };
+                return (
+                  <JurorBubble
+                    key={PUBLIC_JUROR_ID}
+                    juror={publicJuror}
+                    finalist={game.players.find((p) => p.id === r.finalistId)}
+                    reveal={r}
+                    voteVisible={chipVisible}
+                    isFlashing={flashingJurorId === PUBLIC_JUROR_ID}
+                  />
+                );
+              }
+              const juror = game.players.find((p) => p.id === r.jurorId);
+              if (!juror) return null;
+              return (
+                <JurorBubble
+                  key={r.jurorId}
+                  juror={juror}
+                  finalist={game.players.find((p) => p.id === r.finalistId)}
+                  reveal={r}
+                  voteVisible={chipVisible}
+                  isFlashing={flashingJurorId === r.jurorId}
+                />
+              );
+            })}
+          </div>
+
+          {/* Tally panel */}
+          <FinalTallyPanel finalists={finalists} tally={tally} />
+        </>
       )}
 
       {/* Controls */}

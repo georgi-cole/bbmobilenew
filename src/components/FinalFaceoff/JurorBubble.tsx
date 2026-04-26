@@ -1,11 +1,14 @@
 /**
  * JurorBubble — one juror's vote reveal tile.
  *
- * Supports a staged reveal:
- *   - Phase 1: juror card slides in with the clue message only.
- *   - Phase 2: vote chip (finalist) fades/scales in after `voteVisible` is true.
- *   - `isFlashing` triggers a brief highlight when the vote is attributed.
- *   - `isPublic` applies special public-vote gold/global styling.
+ * Used in the 'revealVotes' (phase 2) act of FinalFaceoff.
+ *
+ * When `voteVisible` is false the vote line is replaced with a pending
+ * indicator.  Once the vote is revealed the tile shows the clean format:
+ *   "[Juror name] cast a vote for [Finalist name]"
+ *
+ * - `isFlashing` triggers a brief highlight when the vote is attributed.
+ * - `isPublic` applies special public-vote gold/global styling.
  */
 import type { Player } from '../../types';
 import type { JurorReveal } from '../../store/finaleSlice';
@@ -16,7 +19,7 @@ interface Props {
   juror: Player;
   finalist: Player | undefined;
   reveal: JurorReveal;
-  /** When true the vote chip (finalist name) is shown. */
+  /** When true the vote is shown. */
   voteVisible?: boolean;
   /** When true a flash/highlight ring fires to mark attribution. */
   isFlashing?: boolean;
@@ -40,14 +43,20 @@ export default function JurorBubble({ juror, finalist, reveal, voteVisible = tru
           {juror.name}
           {isPublic && <span className="jb-public-badge">Public Vote</span>}
         </span>
-        <span className="jb-phrase">&ldquo;{reveal.phrase}&rdquo;</span>
-        {finalist && voteVisible && (
-          <span className={`jb-vote${isPublic ? ' jb-vote--public' : ''}`}>
-            <PlayerAvatar player={finalist} size="sm" showRelationshipOutline={false} />
-            <strong>{finalist.name}</strong>
+
+        {/* Phase-2 vote reveal: "X cast a vote for Y" */}
+        {voteVisible && finalist ? (
+          <span
+            className={`jb-vote-statement${isPublic ? ' jb-vote-statement--public' : ''}`}
+            aria-label={`${juror.name} cast a vote for ${finalist.name}`}
+          >
+            cast a vote for{' '}
+            <span className="jb-vote-statement__finalist">
+              <PlayerAvatar player={finalist} size="sm" showRelationshipOutline={false} />
+              <strong>{finalist.name}</strong>
+            </span>
           </span>
-        )}
-        {!voteVisible && (
+        ) : (
           <span className="jb-vote-pending" aria-label="Vote not yet revealed">
             ···
           </span>
