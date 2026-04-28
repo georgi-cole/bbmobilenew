@@ -49,6 +49,12 @@ import {
   submitHumanDoubleVote,
   activateVoteDeductionReward,
   declineVoteDeduction,
+  tryActivateDemocracia,
+  tryActivatePendingForcedDemocracia,
+  submitDemocraciaVote,
+  resolveDemocraciaPublicBreaker,
+  submitCoLohNomination,
+  submitPosTieBreak,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -808,6 +814,43 @@ export default function GameScreen() {
     dispatch(tryActivateSecretMission())
   }, [game.phase, game.week, dispatch])
 
+  // ── Democracia activation on loh_comp_announcement entry ─────────────────
+  // Fire tryActivatePendingForcedDemocracia (debug) or tryActivateDemocracia
+  // (auto-rule) when the game enters loh_comp_announcement. The thunk checks
+  // day/alive-count eligibility, preventing double-activation within a day.
+  const democraciaActivationKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (game.phase !== 'loh_comp_announcement') return
+    const activationKey = `${game.week}:${game.pendingForcedShock?.type ?? 'none'}:${game.pendingForcedShock?.earliestWeek ?? 'none'}`
+    if (democraciaActivationKeyRef.current === activationKey) return
+    democraciaActivationKeyRef.current = activationKey
+    if (dispatch(tryActivatePendingForcedDemocracia())) return
+    dispatch(tryActivateDemocracia())
+  }, [game.phase, game.week, game.pendingForcedShock?.type, game.pendingForcedShock?.earliestWeek, dispatch])
+
+  // ── Democracia public-breaker resolution ─────────────────────────────────
+  // When a final ballotage tie occurs in public mode, awaitingPublicBreaker is
+  // set. Reuse the shared public-pick resolver so approval ties are broken
+  // deterministically the same way as other public-opinion flows.
+  useEffect(() => {
+    if (!game.democracia?.awaitingPublicBreaker) return
+    const candidateIds = game.democracia.candidateIds
+    if (candidateIds.length === 0) return
+    const { savedId: winnerId } = resolvePublicSaveNominee({
+      nomineeIds: candidateIds,
+      profiles: publicOpinionProfiles,
+    })
+    if (!winnerId) {
+      if (import.meta.env.DEV) {
+        console.warn('[democracia] public tie-break resolver returned no winner', {
+          candidateIds,
+        })
+      }
+      return
+    }
+    dispatch(resolveDemocraciaPublicBreaker({ winnerId }))
+  }, [game.democracia?.awaitingPublicBreaker, game.democracia?.candidateIds, publicOpinionProfiles, dispatch])
+
   // ── Secret Mission Final 4 expiry (PR 2) ──────────────────────────────────
   // When the game reaches final4_eviction, expire any stored eligible reward
   // because powers can only be used BEFORE Final 4 week.
@@ -1562,9 +1605,11 @@ export default function GameScreen() {
   // Shown when the live vote ended in a tie and the human is LOH.
   // Only shown after the vote results modal has been dismissed (voteResults cleared),
   // so the house votes are always seen before the LOH is asked to break the tie.
+  // Not shown on co-LOH Democracia days (awaitingPosTieBreak) — that uses a separate modal.
   const showTieBreakModal =
     game.phase === 'eviction_results' &&
     Boolean(game.awaitingTieBreak) &&
+    !game.awaitingPosTieBreak &&
     humanIsHoH &&
     !game.voteResults &&
     !activeConfessionalDecision
@@ -1582,6 +1627,41 @@ export default function GameScreen() {
     showTieBreakModal &&
     game.doubleEviction?.weekActive === true &&
     doubleEvictionTieBreakSelectCount > 1
+
+  // ── Co-LOH Democracia POS-holder tie-break ────────────────────────────────
+  // On co-LOH Democracia days, the POS holder breaks the eviction tie.
+  const showPosTieBreakModal =
+    game.phase === 'eviction_results' &&
+    Boolean(game.awaitingTieBreak) &&
+    Boolean(game.awaitingPosTieBreak) &&
+    Boolean(humanIsPosHolder) &&
+    !game.voteResults &&
+    !activeConfessionalDecision
+
+  // ── Democracia vote modal ─────────────────────────────────────────────────
+  // Shown when the human player must cast a Democracia vote.
+  const showDemocraciaVoteModal =
+    game.phase === 'democracia_vote' &&
+    Boolean(game.democracia?.awaitingHumanVote) &&
+    humanPlayer != null &&
+    Boolean(game.democracia?.eligibleVoterIds?.includes(humanPlayer.id))
+  const democraciaVoteOptions = alivePlayers.filter(
+    (p) => (game.democracia?.candidateIds ?? []).includes(p.id) && p.id !== humanPlayer?.id,
+  )
+
+  // ── Co-LOH nomination modal ───────────────────────────────────────────────
+  // Shown when the human co-LOH must pick their nomination.
+  const humanCoLohId =
+    humanPlayer && (game.coLohIds ?? []).includes(humanPlayer.id) ? humanPlayer.id : null
+  const showCoLohNominationModal =
+    Boolean(game.awaitingCoLohNomination) &&
+    humanCoLohId != null &&
+    !activeConfessionalDecision
+  const coLohNomOptions = alivePlayers.filter(
+    (p) =>
+      !(game.coLohIds ?? []).includes(p.id) &&
+      !game.nomineeIds.includes(p.id),
+  )
 
   // ── Final 3 human Final LOH eviction ─────────────────────────────────────
   // Shown when phase is final3_decision and the human player is the Final LOH.
@@ -3047,6 +3127,41 @@ export default function GameScreen() {
           onSelect={(id) => dispatch(submitTieBreak(id))}
           danger
           stingerMessage="TIE BREAKER CAST"
+        />
+      )}
+
+      {/* ── Co-LOH POS holder tie-break ──────────────────────────────────── */}
+      {showPosTieBreakModal && (
+        <TvDecisionModal
+          title="Tie-Break — POS Holder Casts the Deciding Vote"
+          subtitle={`${humanPlayer?.name}, the vote is tied! As POS holder, you break the tie as a special exception.`}
+          options={tieBreakOptions}
+          onSelect={(id) => dispatch(submitPosTieBreak(id))}
+          danger
+          stingerMessage="TIE BREAKER CAST"
+        />
+      )}
+
+      {/* ── Democracia vote modal ──────────────────────────────────────────── */}
+      {showDemocraciaVoteModal && (
+        <TvDecisionModal
+          title="🗳️ Democracia — Cast Your Vote"
+          subtitle={`${humanPlayer?.name}, vote for the houseguest you want to become Leader of the House. You cannot vote for yourself.`}
+          options={democraciaVoteOptions}
+          onSelect={(id) => dispatch(submitDemocraciaVote(id))}
+          stingerMessage="VOTE CAST"
+        />
+      )}
+
+      {/* ── Co-LOH nomination modal ────────────────────────────────────────── */}
+      {showCoLohNominationModal && humanCoLohId && (
+        <TvDecisionModal
+          title="Co-LOH Nomination"
+          subtitle={`${humanPlayer?.name}, as co-Leader of the House, nominate one houseguest for elimination. You cannot nominate yourself or the other co-LOH.`}
+          options={coLohNomOptions}
+          onSelect={(id) => dispatch(submitCoLohNomination({ coLohId: humanCoLohId, nomineeId: id }))}
+          danger
+          stingerMessage="NOMINATION LOCKED IN"
         />
       )}
 

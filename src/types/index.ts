@@ -146,6 +146,17 @@ export type Phase =
   | 'loh_comp_announcement'
   | 'loh_comp'
   | 'loh_results'
+  /**
+   * Democracia twist: active houseguests vote to elect the LOH.
+   * Entered instead of loh_comp when Democracia is active for this day.
+   * Loops back to itself during ballotage rounds.
+   */
+  | 'democracia_vote'
+  /**
+   * Democracia twist: vote results resolved; transitions to social_1.
+   * Entered after a winner (single or co-LOH) is determined.
+   */
+  | 'democracia_results'
   | 'social_1'
   | 'nominations'
   | 'nomination_results'
@@ -300,6 +311,36 @@ export interface DoubleEvictionState {
 
 export type SpecialVetoType = 'vip' | 'diamond' | 'coup' | 'spotlight';
 
+// ─── Democracia twist ─────────────────────────────────────────────────────────
+
+/**
+ * State for the Democracia twist — a seasonal event where active houseguests
+ * vote to elect the Leader of the House instead of a competition.
+ *
+ * Replaces the LOH competition on eligible days (5, 7, or 9, odd alive count,
+ * hard cutoff day 10).  Supports single-winner, ballotage, and co-LOH outcomes.
+ */
+export interface DemocraciaState {
+  /** True once Democracia has been activated/used this season. */
+  usedThisSeason: boolean;
+  /** True while the Democracia vote flow is active for the current day. */
+  active: boolean;
+  /** The day (week) Democracia was activated, or null before activation. */
+  activatedDay: number | null;
+  /** Current voting round (1 = initial vote, 2+ = ballotage). */
+  round: number;
+  /** IDs of players eligible to become LOH this round. */
+  candidateIds: string[];
+  /** IDs of players who may vote this round. */
+  eligibleVoterIds: string[];
+  /** Maps voter player ID → chosen candidate ID for the current round. */
+  votesByVoterId: Record<string, string>;
+  /** True when the human player must cast a Democracia vote before advance() continues. */
+  awaitingHumanVote: boolean;
+  /** True after a ballotage final tie when public-mode is ON and the UI must pick by approval. */
+  awaitingPublicBreaker: boolean;
+}
+
 export interface SpecialVetoState {
   /** Whether any special veto has been used this season (once true, no more can activate). */
   seasonUsed: boolean;
@@ -332,7 +373,7 @@ export interface SpecialVetoState {
   awaitingVipSecondSaveTarget: boolean;
 }
 
-export type ForcedShockType = 'doubleEviction' | 'battleBack' | SpecialVetoType;
+export type ForcedShockType = 'doubleEviction' | 'battleBack' | SpecialVetoType | 'democracia';
 
 export interface ForcedShockState {
   /** Shock that should be triggered from the debug menu at the next safe chance. */
@@ -628,6 +669,35 @@ export interface GameState {
   specialVeto?: SpecialVetoState;
   /** Debug-only queued shock that should fire at the next safe activation window. */
   pendingForcedShock?: ForcedShockState | null;
+  /**
+   * Democracia twist state.
+   * Undefined on legacy saved games created before this feature was added.
+   */
+  democracia?: DemocraciaState;
+  /**
+   * When Democracia resolves to a tie with public mode OFF, both tied players
+   * become co-LOHs.  This array holds their IDs; null on normal days.
+   * On co-LOH days, lohId is set to coLohIds[0] for compatibility but
+   * coLohIds is the authoritative source for the dual-leadership state.
+   */
+  coLohIds?: string[] | null;
+  /**
+   * When true, a human co-LOH must pick their nomination nominee via a modal.
+   * Blocks advance() until the human submits via submitCoLohNomination.
+   */
+  awaitingCoLohNomination?: boolean;
+  /**
+   * Maps co-LOH player ID → their chosen nominee ID.
+   * Populated during co-LOH nomination; cleared on week reset.
+   */
+  coLohNomineeByCoLohId?: Record<string, string> | null;
+  /**
+   * On co-LOH Democracia days, if the eviction vote ties, the POS holder breaks
+   * the tie instead of the LOH.  When true and the POS holder is human, a
+   * dedicated tie-break modal is shown.
+   * Cleared by submitPosTieBreak or deterministic AI resolution.
+   */
+  awaitingPosTieBreak?: boolean;
   /**
    * Public's Favorite Player voting state.
    * Undefined until `startFavoritePlayerPhase` is dispatched.
