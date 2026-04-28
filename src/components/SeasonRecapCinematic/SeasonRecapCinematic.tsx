@@ -316,12 +316,14 @@ function LadderWaveScene({
             animate={{ opacity: 1, x: 0, y: 0 }}
             transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
           >
-            <FullSizeCutoutImage
-              player={highlightedPlayer}
-              alt={highlightedPlayer.name}
-              className="src-ladder-focus-card__image"
-              loading="eager"
-            />
+            <div className="src-ladder-focus-card__stage">
+              <FullSizeCutoutImage
+                player={highlightedPlayer}
+                alt={highlightedPlayer.name}
+                className="src-ladder-focus-card__image"
+                loading="eager"
+              />
+            </div>
             <div className="src-ladder-focus-card__plate">
               <span className="src-ladder-focus-card__placement">{placementLabel(highlightedPlayer, 3)}</span>
               <span className="src-ladder-focus-card__name">{highlightedPlayer.name}</span>
