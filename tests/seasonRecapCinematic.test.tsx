@@ -8,7 +8,6 @@ import {
   CATEGORY_SCENE_DURATION_MS,
   INTRO_MIN_DURATION_MS,
   RECAP_EXIT_FADE_MS,
-  TABLOID_CARD_DURATION_MS,
   TOTAL_RECAP_DURATION_MS,
 } from '../src/components/SeasonRecapCinematic/seasonRecapTimeline';
 import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/components/SeasonRecapCinematic/newspaperFrontPages';
@@ -101,7 +100,6 @@ function getTimeline(publicOpinion: PublicOpinionState | undefined = PUBLIC_OPIN
   const recapData = buildSeasonRecapData(PLAYERS, 12, publicOpinion);
   return buildSeasonRecapTimeline(
     recapData.categories.map((category) => category.id),
-    recapData.evictionWaves.length,
   );
 }
 
@@ -151,12 +149,12 @@ describe('SeasonRecapCinematic', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('builds a longer recap timeline from the configured scene durations', () => {
+  it('builds a recap timeline from the configured scene durations', () => {
     const timeline = getTimeline();
     const categoryIds = buildSeasonRecapData(PLAYERS, 12).categories.map((category) => category.id);
 
-    expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThan(120000);
-    expect(timeline.at(-1)?.endMs).toBeGreaterThan(120000);
+    expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThan(0);
+    expect(timeline.at(-1)?.endMs).toBeGreaterThan(0);
     expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThanOrEqual(timeline.at(-1)?.endMs ?? 0);
     expect(categoryIds).toEqual([
       'compzilla',
@@ -168,49 +166,93 @@ describe('SeasonRecapCinematic', () => {
     ]);
   });
 
-  it('keeps intro cards, tabloid cards, and category awards above the minimum durations', () => {
+  it('keeps intro and category award scenes above the minimum durations', () => {
     const timeline = getTimeline();
     const introScenes = timeline.filter((scene) => scene.kind === 'intro');
-    const tabloidScenes = timeline.filter((scene) => scene.kind === 'tabloid');
     const categoryScenes = timeline.filter((scene) => scene.kind === 'category');
 
     expect(introScenes).toHaveLength(2);
     expect(introScenes.every((scene) => scene.durationMs >= INTRO_MIN_DURATION_MS)).toBe(true);
-    expect(tabloidScenes).toHaveLength(5);
-    expect(tabloidScenes.every((scene) => scene.durationMs >= TABLOID_CARD_DURATION_MS)).toBe(true);
     expect(categoryScenes).toHaveLength(6);
     expect(categoryScenes.every((scene) => scene.durationMs >= CATEGORY_SCENE_DURATION_MS)).toBe(true);
   });
 
-  it('lands on the tabloid interlude after the shorter two-card intro and montage section', async () => {
+  it('includes two lightweight media screens before categories', () => {
+    const timeline = getTimeline();
+    const headlineScene = timeline.find((scene) => scene.kind === 'headline_girls');
+    const phoneScene = timeline.find((scene) => scene.kind === 'phone_post_boys');
+    const firstCategory = timeline.find((scene) => scene.kind === 'category');
+
+    expect(headlineScene).toBeTruthy();
+    expect(phoneScene).toBeTruthy();
+    expect(headlineScene!.endMs).toBeLessThanOrEqual(firstCategory!.startMs);
+    expect(phoneScene!.endMs).toBeLessThanOrEqual(firstCategory!.startMs);
+  });
+
+  it('ends with a single moment-of-truth scene after categories', () => {
+    const timeline = getTimeline();
+    const lastScene = timeline.at(-1);
+    const categoryScenes = timeline.filter((scene) => scene.kind === 'category');
+    const lastCategory = categoryScenes.at(-1);
+
+    expect(lastScene?.kind).toBe('moment_of_truth');
+    expect(lastScene?.startMs).toBeGreaterThanOrEqual(lastCategory!.endMs);
+  });
+
+  it('does not contain any tabloid, ladder, or handoff scenes', () => {
+    const timeline = getTimeline();
+    const removed = timeline.filter(
+      (scene) =>
+        scene.kind === ('tabloid' as string) ||
+        scene.kind === ('ladder_intro' as string) ||
+        scene.kind === ('ladder_wave' as string) ||
+        scene.kind === ('ladder_finalists' as string) ||
+        scene.kind === ('handoff' as string),
+    );
+    expect(removed).toHaveLength(0);
+  });
+
+  it('renders the headline-girls screen with the expected image', async () => {
     const onComplete = vi.fn();
 
     render(
       <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
     );
 
-    await advanceToScene('tabloid_0');
+    await advanceToScene('headline_girls');
 
-    expect(screen.getByText('THE HOUSE HAD OPINIONS.')).toBeTruthy();
-    expect(screen.getAllByText('Public approval did not come quietly.').length).toBeGreaterThan(0);
+    const img = document.querySelector('.src-headline-media__image') as HTMLImageElement | null;
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute('src')).toBe('/assets/skins/thegirls.webp');
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('renders the active tabloid as a denser newspaper page with a captioned photo and editorial briefs', async () => {
+  it('renders the phone-post-boys screen with the expected image', async () => {
     const onComplete = vi.fn();
 
     render(
       <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
     );
 
-    await advanceToScene('tabloid_0');
+    await advanceToScene('phone_post_boys');
 
-    const activeCard = document.querySelector('.src-tabloid-card--active');
+    const img = document.querySelector('.src-phone-post__image') as HTMLImageElement | null;
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute('src')).toBe('/assets/skins/the boys.webp');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
 
-    expect(activeCard?.querySelector('.src-tabloid-card__figure')).toBeTruthy();
-    expect(activeCard?.querySelector('.src-tabloid-card__caption')?.textContent).toContain('Captured on the record');
-    expect(activeCard?.querySelectorAll('.src-tabloid-card__brief-item')).toHaveLength(3);
-    expect(activeCard?.querySelectorAll('.src-tabloid-card__body-paragraph')).toHaveLength(3);
+  it('renders the moment-of-truth screen with finalist cutouts', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
+    );
+
+    await advanceToScene('moment_of_truth');
+
+    expect(screen.getByText('AND NOW THE MOMENT OF TRUTH')).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   it('uses actual ellipsis characters instead of literal unicode escape text', async () => {
@@ -312,38 +354,5 @@ describe('SeasonRecapCinematic', () => {
     expect(headlineDraft.subheadline).toBeTruthy();
     expect(headlineDraft.category).toBeTruthy();
     expect(headlineDraft.stamp).toBeTruthy();
-  });
-
-  it('prefers a matching tabloid photo asset for players when one exists', () => {
-    const recapData = buildSeasonRecapData(
-      [
-        {
-          id: 'aria',
-          name: 'Aria',
-          status: 'active',
-          avatar: '😀',
-          stats: { lohWins: 1, posWins: 0, timesNominated: 1 },
-        },
-        {
-          id: 'kai',
-          name: 'Kai',
-          status: 'active',
-          avatar: '😎',
-          stats: { lohWins: 0, posWins: 1, timesNominated: 2 },
-        },
-      ],
-      12,
-    );
-
-    expect(
-      recapData.tabloidPhotoSources.some(
-        (source) => source.includes('Aria_tabloid.webp') || source.includes('Aria_tabloid.jxl'),
-      ),
-    ).toBe(true);
-    expect(
-      recapData.tabloidCards[0]?.imageSources.some(
-        (source) => source.includes('Aria_tabloid.webp') || source.includes('Aria_tabloid.jxl'),
-      ),
-    ).toBe(true);
   });
 });

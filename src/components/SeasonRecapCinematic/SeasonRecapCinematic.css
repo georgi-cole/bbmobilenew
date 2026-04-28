@@ -789,3 +789,100 @@
     animation: none;
   }
 }
+
+/* ── Headline Girls scene ── */
+.src-scene--headline-girls {
+  display: grid;
+  place-items: center;
+}
+
+.src-headline-media {
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  width: min(100%, 380px);
+  padding: 0 1rem;
+}
+
+.src-headline-media__paper-wrap {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.src-headline-media__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(64dvh, 520px);
+  object-fit: cover;
+}
+
+.src-headline-media__kicker {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+/* ── Phone Post Boys scene ── */
+.src-scene--phone-post-boys {
+  display: grid;
+  place-items: center;
+}
+
+.src-phone-post {
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+}
+
+.src-phone-post__device {
+  width: min(200px, 52vw);
+  border-radius: 28px;
+  background: #111;
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  padding: 10px;
+}
+
+.src-phone-post__screen {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.src-phone-post__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(60dvh, 480px);
+  object-fit: cover;
+}
+
+.src-phone-post__caption {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+/* ── Moment of Truth scene ── */
+.src-scene--moment-of-truth {
+  display: grid;
+  place-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+}
+
+.src-mot-eyebrow {
+  font-size: clamp(0.82rem, 3.5vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.35;
+}
