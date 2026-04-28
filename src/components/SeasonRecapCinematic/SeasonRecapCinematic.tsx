@@ -24,6 +24,19 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
   },
 };
 
+const LADDER_ARCHIVE_LIMIT = 6;
+
+function placementLabel(player: Player, fallbackPlacement: number): string {
+  const placement = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
+  const mod100 = placement % 100;
+  const mod10 = placement % 10;
+  if (mod100 >= 11 && mod100 <= 13) return `${placement}TH`;
+  if (mod10 === 1) return `${placement}ST`;
+  if (mod10 === 2) return `${placement}ND`;
+  if (mod10 === 3) return `${placement}RD`;
+  return `${placement}TH`;
+}
+
 function SceneFrame({
   children,
   className,
@@ -264,6 +277,85 @@ function CategoryScene({ category }: { category: AwardCategory }) {
   );
 }
 
+function LadderIntroScene({ archivePlayers }: { archivePlayers: Player[] }) {
+  return (
+    <SceneFrame className="src-scene--ladder-intro">
+      <div className="src-ladder-archive" aria-hidden="true">
+        {archivePlayers.map((player) => (
+          <span key={player.id} className="src-ladder-archive__chip">
+            {player.name}
+          </span>
+        ))}
+      </div>
+      <div className="src-ladder-copy">
+        <p className="src-ladder-copy__eyebrow">ROAD TO THE FINALISTS</p>
+        <h2 className="src-ladder-copy__title">ONE BY ONE…</h2>
+      </div>
+    </SceneFrame>
+  );
+}
+
+function LadderWaveScene({
+  players,
+  ladder,
+  caption,
+}: {
+  players: Player[];
+  ladder: Player[];
+  caption: string;
+}) {
+  const highlightedPlayer = players[players.length - 1] ?? ladder[0];
+
+  return (
+    <SceneFrame className="src-scene--ladder-wave">
+      <div className="src-ladder-wave-layout">
+        <motion.article
+          className="src-ladder-focus-card"
+          initial={{ opacity: 0, x: -28, y: 14 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {highlightedPlayer && (
+            <FullSizeCutoutImage
+              player={highlightedPlayer}
+              alt={highlightedPlayer.name}
+              className="src-ladder-focus-card__image"
+              loading="eager"
+            />
+          )}
+          {highlightedPlayer && (
+            <div className="src-ladder-focus-card__plate">
+              <span className="src-ladder-focus-card__placement">{placementLabel(highlightedPlayer, 3)}</span>
+              <span className="src-ladder-focus-card__name">{highlightedPlayer.name}</span>
+            </div>
+          )}
+        </motion.article>
+
+        <div className="src-ladder-wave-grid">
+          {ladder.map((player, index) => {
+            const isHighlighted = players.some((highlightedPlayer) => highlightedPlayer.id === player.id);
+            return (
+              <motion.article
+                key={player.id}
+                className={`src-ladder-wave-card${isHighlighted ? ' src-ladder-wave-card--active' : ''}`}
+                initial={{ opacity: 0, x: 24, y: 12 }}
+                animate={{ opacity: isHighlighted ? 1 : 0.64, x: 0, y: 0, scale: isHighlighted ? 1 : 0.98 }}
+                transition={{ duration: 0.45, delay: index * 0.06 }}
+              >
+                <div className="src-ladder-wave-card__placement">
+                  {placementLabel(player, ladder.length - index + 2)}
+                </div>
+                <div className="src-ladder-wave-card__name">{player.name}</div>
+              </motion.article>
+            );
+          })}
+        </div>
+      </div>
+      <p className="src-ladder-wave-caption">{caption}</p>
+    </SceneFrame>
+  );
+}
+
 function MomentOfTruthScene({ finalists }: { finalists: Player[] }) {
   return (
     <SceneFrame className="src-scene--moment-of-truth">
@@ -307,11 +399,12 @@ export default function SeasonRecapCinematic({
   const timeline = useMemo(() => {
     const base = buildSeasonRecapTimeline(
       recapData.categories.map((category) => category.id),
+      recapData.evictionWaves.length,
     );
     return reducedMotion
       ? base.map((scene) => ({ ...scene, durationMs: Math.min(scene.durationMs, 250) }))
       : base;
-  }, [recapData.categories, reducedMotion]);
+  }, [recapData.categories, recapData.evictionWaves.length, reducedMotion]);
 
   const [sceneIndex, setSceneIndex] = useState(0);
   const [visible, setVisible] = useState(true);
@@ -353,6 +446,10 @@ export default function SeasonRecapCinematic({
   const activeBeat =
     currentScene?.kind === 'montage'
       ? recapData.montageBeats[currentScene.montageBeatIndex ?? 0]
+      : null;
+  const activeWave =
+    currentScene?.kind === 'ladder_wave'
+      ? recapData.evictionWaves[currentScene.ladderWaveIndex ?? 0]
       : null;
 
   return (
@@ -396,6 +493,20 @@ export default function SeasonRecapCinematic({
         )}
         {currentScene?.kind === 'category' && activeCategory && (
           <CategoryScene key={currentScene.id} category={activeCategory} />
+        )}
+        {currentScene?.kind === 'ladder_intro' && (
+          <LadderIntroScene
+            key={currentScene.id}
+            archivePlayers={recapData.evictionLadder.slice(0, LADDER_ARCHIVE_LIMIT)}
+          />
+        )}
+        {currentScene?.kind === 'ladder_wave' && activeWave && (
+          <LadderWaveScene
+            key={currentScene.id}
+            players={activeWave.players}
+            ladder={recapData.evictionLadder}
+            caption={activeWave.caption}
+          />
         )}
         {currentScene?.kind === 'moment_of_truth' && (
           <MomentOfTruthScene key={currentScene.id} finalists={recapData.finalists} />

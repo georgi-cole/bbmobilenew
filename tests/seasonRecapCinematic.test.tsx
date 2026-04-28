@@ -100,6 +100,7 @@ function getTimeline(publicOpinion: PublicOpinionState | undefined = PUBLIC_OPIN
   const recapData = buildSeasonRecapData(PLAYERS, 12, publicOpinion);
   return buildSeasonRecapTimeline(
     recapData.categories.map((category) => category.id),
+    recapData.evictionWaves.length,
   );
 }
 
@@ -189,24 +190,27 @@ describe('SeasonRecapCinematic', () => {
     expect(phoneScene!.endMs).toBeLessThanOrEqual(firstCategory!.startMs);
   });
 
-  it('ends with a single moment-of-truth scene after categories', () => {
+  it('runs the eviction ladder after categories and before the moment-of-truth scene', () => {
     const timeline = getTimeline();
-    const lastScene = timeline.at(-1);
     const categoryScenes = timeline.filter((scene) => scene.kind === 'category');
     const lastCategory = categoryScenes.at(-1);
+    const ladderIntro = timeline.find((scene) => scene.kind === 'ladder_intro');
+    const ladderWaves = timeline.filter((scene) => scene.kind === 'ladder_wave');
+    const lastScene = timeline.at(-1);
 
+    expect(ladderIntro).toBeTruthy();
+    expect(ladderWaves.length).toBeGreaterThan(0);
+    expect(ladderIntro!.startMs).toBeGreaterThanOrEqual(lastCategory!.endMs);
+    expect(ladderWaves[0]!.startMs).toBeGreaterThanOrEqual(ladderIntro!.endMs);
     expect(lastScene?.kind).toBe('moment_of_truth');
-    expect(lastScene?.startMs).toBeGreaterThanOrEqual(lastCategory!.endMs);
+    expect(lastScene?.startMs).toBeGreaterThanOrEqual(ladderWaves.at(-1)!.endMs);
   });
 
-  it('does not contain any tabloid, ladder, or handoff scenes', () => {
+  it('does not contain any tabloid or handoff scenes', () => {
     const timeline = getTimeline();
     const removed = timeline.filter(
       (scene) =>
         scene.kind === ('tabloid' as string) ||
-        scene.kind === ('ladder_intro' as string) ||
-        scene.kind === ('ladder_wave' as string) ||
-        scene.kind === ('ladder_finalists' as string) ||
         scene.kind === ('handoff' as string),
     );
     expect(removed).toHaveLength(0);
@@ -252,6 +256,21 @@ describe('SeasonRecapCinematic', () => {
     await advanceToScene('moment_of_truth');
 
     expect(screen.getByText('AND NOW THE MOMENT OF TRUTH')).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('renders the restored eviction ladder with placements before the final moment', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
+    );
+
+    await advanceToScene('ladder_wave_0');
+
+    expect(document.querySelector('.src-ladder-wave-layout')).toBeTruthy();
+    expect(screen.getByText('4TH')).toBeTruthy();
+    expect(screen.getAllByText('3RD').length).toBeGreaterThan(1);
     expect(onComplete).not.toHaveBeenCalled();
   });
 
