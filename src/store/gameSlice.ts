@@ -5620,6 +5620,8 @@ export const tryActivatePendingForcedDemocracia =
     if (game.phase !== 'loh_comp_announcement') return false;
     if (game.week < pending.earliestWeek) return false;
     if (game.twistActivatedThisWeek) return false;
+    if (game.doubleEviction?.weekActive) return false;
+    if (game.specialVeto?.activeType != null) return false;
     if (game.democracia?.active) return false;
 
     dispatch(activateDemocracia());

@@ -33,7 +33,6 @@ import gameReducer, {
   resolveDemocraciaPublicBreaker,
   submitCoLohNomination,
   submitPosTieBreak,
-  submitTieBreak,
   queueForcedShock,
   tryActivateDemocracia,
   tryActivatePendingForcedDemocracia,
@@ -487,51 +486,8 @@ describe('Democracia twist', () => {
   // ── 7. Ballotage final tie — public mode OFF (co-LOH) ─────────────────────
 
   describe('ballotage final tie — public mode OFF — co-LOHs', () => {
-    function makeFinalTieStore(publicMode = false) {
-      const players = makePlayers(5);
-      return makeStore({
-        week: 5,
-        phase: 'democracia_vote',
-        players,
-        publicModeEnabled: publicMode,
-        democracia: {
-          ...DEFAULT_DEMOCRACIA,
-          active: true,
-          activatedDay: 5,
-          round: 2, // already in ballotage
-          candidateIds: ['p0', 'p1'],
-          eligibleVoterIds: ['p2', 'p3', 'p4'],
-          votesByVoterId: { p2: 'p0', p3: 'p1', p4: 'p0' }, // p0 wins 2-1 … not a tie actually
-          awaitingHumanVote: false,
-          awaitingPublicBreaker: false,
-        },
-      });
-    }
-
     it('creates co-LOHs when ballotage final tie and public mode OFF', () => {
-      const players = makePlayers(5);
-      const store = makeStore({
-        week: 5,
-        phase: 'democracia_vote',
-        players,
-        publicModeEnabled: false,
-        democracia: {
-          ...DEFAULT_DEMOCRACIA,
-          active: true,
-          activatedDay: 5,
-          round: 2, // already in ballotage → final tie resolution
-          candidateIds: ['p0', 'p1'],
-          eligibleVoterIds: ['p2', 'p3', 'p4'],
-          votesByVoterId: { p2: 'p0', p3: 'p1', p4: 'p1' }, // 1-2 wait no: p0=1, p1=2 → p1 wins
-          awaitingHumanVote: false,
-          awaitingPublicBreaker: false,
-        },
-      });
-      // Actually make it a true tie: p0=1, p1=1, p4 votes need to tie
-      // Let me make equal votes: p2→p0, p3→p1, p4→p0 → p0=2, p1=1 → not a tie
-      // I need equal: 2 voters each. Let me use 4 voters:
-      // Actually the store above has votesByVoterId that gives p1 2 votes → not a tie.
-      // Let me create a true tie store:
+      // True final-round tie should create co-LOHs when public mode is disabled.
       const tieStore = makeStore({
         week: 5,
         phase: 'democracia_vote',

@@ -830,20 +830,23 @@ export default function GameScreen() {
 
   // ── Democracia public-breaker resolution ─────────────────────────────────
   // When a final ballotage tie occurs in public mode, awaitingPublicBreaker is
-  // set. The UI auto-resolves it by picking the tied candidate with higher
-  // approval rating from publicOpinionProfiles.
+  // set. Reuse the shared public-pick resolver so approval ties are broken
+  // deterministically the same way as other public-opinion flows.
   useEffect(() => {
     if (!game.democracia?.awaitingPublicBreaker) return
     const candidateIds = game.democracia.candidateIds
     if (candidateIds.length === 0) return
-    let winnerId = candidateIds[0]
-    let highestApproval = publicOpinionProfiles[candidateIds[0]]?.approval ?? 50
-    for (const id of candidateIds) {
-      const approval = publicOpinionProfiles[id]?.approval ?? 50
-      if (approval > highestApproval) {
-        highestApproval = approval
-        winnerId = id
+    const { savedId: winnerId } = resolvePublicSaveNominee({
+      nomineeIds: candidateIds,
+      profiles: publicOpinionProfiles,
+    })
+    if (!winnerId) {
+      if (import.meta.env.DEV) {
+        console.warn('[democracia] public tie-break resolver returned no winner', {
+          candidateIds,
+        })
       }
+      return
     }
     dispatch(resolveDemocraciaPublicBreaker({ winnerId }))
   }, [game.democracia?.awaitingPublicBreaker, game.democracia?.candidateIds, publicOpinionProfiles, dispatch])

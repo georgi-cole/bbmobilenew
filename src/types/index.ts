@@ -321,7 +321,7 @@ export type SpecialVetoType = 'vip' | 'diamond' | 'coup' | 'spotlight';
  * hard cutoff day 10).  Supports single-winner, ballotage, and co-LOH outcomes.
  */
 export interface DemocraciaState {
-  /** True once Democracia has been used or conclusively skipped this season. */
+  /** True once Democracia has been activated/used this season. */
   usedThisSeason: boolean;
   /** True while the Democracia vote flow is active for the current day. */
   active: boolean;
