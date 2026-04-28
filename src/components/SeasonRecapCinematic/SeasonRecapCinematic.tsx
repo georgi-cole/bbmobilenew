@@ -309,27 +309,25 @@ function LadderWaveScene({
   return (
     <SceneFrame className="src-scene--ladder-wave">
       <div className="src-ladder-wave-layout">
-        <motion.article
-          className="src-ladder-focus-card"
-          initial={{ opacity: 0, x: -28, y: 14 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {highlightedPlayer && (
+        {highlightedPlayer && (
+          <motion.article
+            className="src-ladder-focus-card"
+            initial={{ opacity: 0, x: -28, y: 14 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
+          >
             <FullSizeCutoutImage
               player={highlightedPlayer}
               alt={highlightedPlayer.name}
               className="src-ladder-focus-card__image"
               loading="eager"
             />
-          )}
-          {highlightedPlayer && (
             <div className="src-ladder-focus-card__plate">
               <span className="src-ladder-focus-card__placement">{placementLabel(highlightedPlayer, 3)}</span>
               <span className="src-ladder-focus-card__name">{highlightedPlayer.name}</span>
             </div>
-          )}
-        </motion.article>
+          </motion.article>
+        )}
 
         <div className="src-ladder-wave-grid">
           {ladder.map((player, index) => {

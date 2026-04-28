@@ -270,7 +270,7 @@ describe('SeasonRecapCinematic', () => {
 
     expect(document.querySelector('.src-ladder-wave-layout')).toBeTruthy();
     expect(screen.getByText('4TH')).toBeTruthy();
-    expect(screen.getAllByText('3RD').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('3RD')).toHaveLength(2);
     expect(onComplete).not.toHaveBeenCalled();
   });
 
