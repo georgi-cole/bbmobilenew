@@ -1,6 +1,6 @@
-/* Centered HomeHub, narrower asymmetric buttons, stronger glass look (updated) */
+/* HomeHub — narrower asymmetric buttons, stronger glass look */
 
-/* Shell centered in viewport so content sits vertically centered */
+/* Shell fills the viewport */
 .homehub-shell {
   position: relative;
   min-height: 100vh;
@@ -23,7 +23,7 @@
   margin: 0 auto;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;  /* anchor content to the lower portion of the frame */
+  align-items: center;    /* vertically center the button stack in the frame */
   justify-content: center;
   /* Safe-area insets so content clears status bar and home indicator */
   padding-top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
@@ -62,7 +62,7 @@
   pointer-events: none;
 }
 
-/* Foreground content container: anchored to bottom of frame */
+/* Foreground content container: centered in the frame */
 .homehub-content {
   position: relative;
   z-index: 2;
@@ -70,7 +70,7 @@
   max-width: 480px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   flex-direction: column;
 }
 
