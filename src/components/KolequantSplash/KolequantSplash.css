@@ -4,16 +4,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Top padding for status-bar / notch */
+  padding-top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
   min-height: 100dvh;
   background: #000; /* pure black */
   overflow: hidden;
   z-index: 99999;
   pointer-events: none;
+  /* Container fades out in sync with the logo so the hub behind it is
+     revealed smoothly — no hard cut from black to hub background. */
+  animation: kq-splash-out var(--kq-splash-duration, 1.2s) ease forwards;
+}
+
+/* Subtle ambient glow centred behind the logo — premium launch feel */
+.kq-splash::before {
+  content: '';
+  position: absolute;
+  width: min(72vmin, 360px);
+  height: min(72vmin, 360px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(80, 50, 200, 0.22) 0%, transparent 68%);
+  opacity: 0;
+  animation: kq-fade var(--kq-splash-duration, 1.2s) ease forwards;
+  pointer-events: none;
 }
 
 .kq-splash__logo {
-  width: min(44vmin, 220px);
-  max-width: 280px;
+  width: min(52vmin, 240px);
+  max-width: 300px;
   opacity: 0;
   transform: scale(0.96) translateY(8px);
   animation: kq-logo-in var(--kq-splash-duration, 1.2s) ease forwards;
@@ -22,7 +40,7 @@
 /* Copyright pinned to the bottom of the splash overlay, fades with the logo */
 .kq-splash__copyright {
   position: absolute;
-  bottom: max(24px, env(safe-area-inset-bottom, 24px));
+  bottom: max(28px, env(safe-area-inset-bottom, 28px));
   left: 0;
   right: 0;
   text-align: center;
@@ -33,14 +51,22 @@
   opacity: 0;
   animation: kq-fade var(--kq-splash-duration, 1.2s) ease forwards;
 }
+
+/* Container: fades out at the same time as the logo so the hub is
+   revealed through the dissolving splash rather than snapping in. */
+@keyframes kq-splash-out {
+  0%   { opacity: 1; }
+  78%  { opacity: 1; }
+  100% { opacity: 0; }
+}
 /* Logo: slides up while fading in, then fades out */
 @keyframes kq-logo-in {
-  0%   { opacity: 0; transform: scale(0.96) translateY(8px); }
-  22%  { opacity: 1; transform: scale(1)    translateY(0);   }
-  78%  { opacity: 1; transform: scale(1)    translateY(0);   }
-  100% { opacity: 0; transform: scale(0.98) translateY(-4px); }
+  0%   { opacity: 0; transform: scale(0.96) translateY(10px); }
+  22%  { opacity: 1; transform: scale(1)    translateY(0);    }
+  78%  { opacity: 1; transform: scale(1)    translateY(0);    }
+  100% { opacity: 0; transform: scale(0.98) translateY(-5px); }
 }
-/* Copyright: simple fade in / hold / fade out matching the logo timing */
+/* Copyright + glow: simple fade in / hold / fade out matching the logo timing */
 @keyframes kq-fade {
   0%   { opacity: 0; }
   22%  { opacity: 1; }
@@ -49,7 +75,7 @@
 }
 
 @media (max-width: 420px) {
-  .kq-splash__logo { width: 56vmin; }
+  .kq-splash__logo { width: 60vmin; }
   .kq-splash__copyright {
     letter-spacing: 0.16em;
     font-size: 0.68rem;

@@ -23,8 +23,12 @@
   margin: 0 auto;
   overflow: hidden;
   display: flex;
-  align-items: center;
+  align-items: flex-end;  /* anchor content to the lower portion of the frame */
   justify-content: center;
+  /* Safe-area insets so content clears status bar and home indicator */
+  padding-top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
 }
 
 /* Full-screen dynamic background */
@@ -39,15 +43,35 @@
   pointer-events: none;
 }
 
-/* Foreground content container: centered stack */
+/* Bottom scrim gradient — deepens behind the button stack so text/icons
+   remain legible against any background image */
+.homehub-intro-bg::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 72%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.80) 0%,
+    rgba(0, 0, 0, 0.50) 32%,
+    rgba(0, 0, 0, 0.18) 62%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Foreground content container: anchored to bottom of frame */
 .homehub-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: 100%;
   max-width: 480px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  flex-direction: column;
 }
 
 /* Main hub container uses vertical centering */
@@ -57,7 +81,7 @@
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  padding: 10px;
+  padding: 10px 10px 36px;
   box-sizing: border-box;
 }
 
@@ -79,14 +103,21 @@
   text-shadow: 0 6px 18px rgba(0,0,0,0.6);
 }
 
-/* Buttons stack: centered but buttons size to content */
+/* Buttons stack: centered, with entrance animation on first render */
 .home-hub__buttons {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
   align-items: center;
   padding: 8px 4px;
+  /* Slide up + fade in — gives a native app "hub reveal" feel */
+  animation: hub-nav-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hub-nav-enter {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
 
 /* Footer note */
@@ -99,6 +130,7 @@
 /* Responsive: smaller screens */
 @media (max-width: 420px) {
   .home-hub__title { font-size: 1.8rem; }
+  .home-hub { padding-bottom: 28px; }
 }
 
 /* Remote config overlay — a dark tint layer over the remote background image */
