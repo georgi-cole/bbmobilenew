@@ -7,8 +7,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Top padding clears the status bar / notch on native mobile */
+  padding-top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
   background: #000;
-  cursor: pointer;
+  /* Not user-dismissable — auto-dismiss only (native app behaviour) */
+  pointer-events: none;
 
   /* Fade in, then hold */
   animation: intro-splash-fadein 400ms ease both;
@@ -17,7 +20,6 @@
 /* Fade-out class applied by parent before unmounting */
 .intro-splash--exit {
   animation: intro-splash-fadeout 350ms ease both;
-  pointer-events: none;
 }
 
 @keyframes intro-splash-fadein {

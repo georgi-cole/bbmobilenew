@@ -9,7 +9,7 @@ interface Props {
 // Logo lives at public/assets/kolequant.png — use BASE_URL so it works with any Vite base path.
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
 
-export default function KolequantSplash({ duration = 1200, onFinish }: Props) {
+export default function KolequantSplash({ duration = 2000, onFinish }: Props) {
   // Animation sequence: fade in (300ms), hold (duration - 600ms), fade out (300ms)
   useEffect(() => {
     const t = setTimeout(() => onFinish && onFinish(), duration);

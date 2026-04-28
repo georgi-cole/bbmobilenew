@@ -140,20 +140,11 @@ export default function IntroSplash({
     setLogoSettled(true);
   }, []);
 
-  const handleTap = useCallback(() => {
-    timerDoneRef.current = true;
-    setLogoSettled(true);
-  }, []);
-
   return (
     <div
       ref={containerRef}
       className="intro-splash"
-      role="button"
-      aria-label="Skip intro"
-      tabIndex={0}
-      onClick={handleTap}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTap(); }}
+      aria-hidden="true"
     >
       {/* Logo: image with inline SVG fallback on error */}
       {logoError ? (
