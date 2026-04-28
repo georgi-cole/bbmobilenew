@@ -95,6 +95,7 @@ const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'diamond', label: 'Halo Exchange Safety' },
   { value: 'coup', label: 'Detox Safety' },
   { value: 'spotlight', label: 'Force Majeure Safety' },
+  { value: 'democracia', label: 'Democracia' },
 ];
 
 let incomingSeedCounter = 0;

@@ -93,7 +93,7 @@ function getPhaseOrderIndex(phase: Phase): number {
 }
 
 function getForcedShockActivationWeek(
-  state: Pick<GameState, 'phase' | 'week' | 'twistActivatedThisWeek' | 'doubleEviction' | 'specialVeto'>,
+  state: Pick<GameState, 'phase' | 'week' | 'twistActivatedThisWeek' | 'doubleEviction' | 'specialVeto' | 'democracia'>,
   safePhase: Phase,
 ): number {
   const currentIndex = getPhaseOrderIndex(state.phase);
@@ -101,7 +101,8 @@ function getForcedShockActivationWeek(
   const phaseWindowPassed = currentIndex === -1 || safeIndex === -1 || currentIndex > safeIndex;
   const currentWeekBlocked = state.twistActivatedThisWeek === true
     || state.doubleEviction?.weekActive === true
-    || state.specialVeto?.activeType != null;
+    || state.specialVeto?.activeType != null
+    || state.democracia?.active === true;
   return phaseWindowPassed || currentWeekBlocked ? state.week + 1 : state.week;
 }
 
@@ -119,6 +120,8 @@ function formatForcedShockLabel(type: ForcedShockType): string {
       return 'Detox';
     case 'spotlight':
       return 'Force Majeure';
+    case 'democracia':
+      return 'Democracia';
     default:
       return type;
   }
@@ -130,6 +133,8 @@ function getForcedShockSafePhase(type: ForcedShockType): Phase {
       return 'nominations';
     case 'battleBack':
       return 'eviction_results';
+    case 'democracia':
+      return 'loh_comp_announcement';
     default:
       return 'pos_results';
   }
@@ -316,6 +321,21 @@ export function createInitialGameState(): GameState {
       awaitingVipSecondSaveTarget: false,
     },
     pendingForcedShock: null,
+    democracia: {
+      usedThisSeason: false,
+      active: false,
+      activatedDay: null,
+      round: 0,
+      candidateIds: [],
+      eligibleVoterIds: [],
+      votesByVoterId: {},
+      awaitingHumanVote: false,
+      awaitingPublicBreaker: false,
+    },
+    coLohIds: null,
+    awaitingCoLohNomination: false,
+    coLohNomineeByCoLohId: null,
+    awaitingPosTieBreak: false,
   };
 }
 
@@ -1841,6 +1861,151 @@ const gameSlice = createSlice({
       }
     },
 
+    // ── Democracia twist reducers ─────────────────────────────────────────────
+
+    /**
+     * Activate the Democracia twist for the current day.
+     * Sets the Democracia state to active and pushes the TV announcement.
+     * Called by tryActivateDemocracia / tryActivatePendingForcedDemocracia thunks.
+     */
+    activateDemocracia(state) {
+      if (!state.democracia) {
+        state.democracia = {
+          usedThisSeason: false,
+          active: false,
+          activatedDay: null,
+          round: 0,
+          candidateIds: [],
+          eligibleVoterIds: [],
+          votesByVoterId: {},
+          awaitingHumanVote: false,
+          awaitingPublicBreaker: false,
+        };
+      }
+      state.democracia.usedThisSeason = true;
+      state.democracia.active = true;
+      state.democracia.activatedDay = state.week;
+      state.democracia.round = 0;
+      state.democracia.candidateIds = [];
+      state.democracia.eligibleVoterIds = [];
+      state.democracia.votesByVoterId = {};
+      state.democracia.awaitingHumanVote = false;
+      state.democracia.awaitingPublicBreaker = false;
+      state.twistActive = true;
+      state.twistActivatedThisWeek = true;
+      const ts = Date.now();
+      const event: TvEvent = {
+        id: `democracia-w${state.week}-${ts}`,
+        text: `🗳️ DEMOCRACIA! Today, instead of a Leader of the House competition, the house will elect its leader by popular vote!`,
+        type: 'twist',
+        major: 'democracia',
+        timestamp: ts,
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+    },
+
+    /**
+     * Human player casts their Democracia vote.
+     * Validates: voter is eligible, target is a candidate, no self-vote.
+     * Clears awaitingHumanVote when accepted.
+     */
+    submitDemocraciaVote(state, action: PayloadAction<string>) {
+      const dem = state.democracia;
+      if (!dem?.awaitingHumanVote) return;
+      const targetId = action.payload;
+      const humanPlayer = state.players.find((p) => p.isUser);
+      if (!humanPlayer) return;
+      if (targetId === humanPlayer.id) return; // no self-vote
+      if (!dem.candidateIds.includes(targetId)) return; // must be a candidate
+      if (!dem.eligibleVoterIds.includes(humanPlayer.id)) return; // must be eligible voter
+      dem.votesByVoterId[humanPlayer.id] = targetId;
+      dem.awaitingHumanVote = false;
+    },
+
+    /**
+     * Resolve the Democracia ballotage final tie when public mode is ON.
+     * The UI picks the tied candidate with higher public approval and dispatches this action.
+     * Applies the winner as LOH and advances to democracia_results.
+     */
+    resolveDemocraciaPublicBreaker(state, action: PayloadAction<{ winnerId: string }>) {
+      const dem = state.democracia;
+      if (!dem?.awaitingPublicBreaker) return;
+      const { winnerId } = action.payload;
+      if (!dem.candidateIds.includes(winnerId)) return;
+      const winnerName = state.players.find((p) => p.id === winnerId)?.name ?? winnerId;
+      pushEvent(
+        state,
+        `🗳️ The public has spoken! ${winnerName} wins the tie-break with higher approval! 👑`,
+        'game',
+      );
+      applyLohWinner(state, winnerId, '[democracia/public_breaker]');
+      dem.awaitingPublicBreaker = false;
+      dem.active = false;
+      state.phase = 'democracia_results';
+    },
+
+    /**
+     * Human co-LOH submits their nomination on a Democracia co-LOH day.
+     * Validates eligibility (not self, not other co-LOH, not already nominated, must be alive).
+     * Clears awaitingCoLohNomination when accepted.
+     */
+    submitCoLohNomination(state, action: PayloadAction<{ coLohId: string; nomineeId: string }>) {
+      const { coLohId, nomineeId } = action.payload;
+      if (!state.awaitingCoLohNomination) return;
+      if (!state.coLohIds?.includes(coLohId)) return;
+      const coLoh = state.players.find((p) => p.id === coLohId);
+      if (!coLoh?.isUser) return; // only human co-LOH submits via this action
+      // Validate the nominated player
+      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+      if (!alive.some((p) => p.id === nomineeId)) return;
+      if (nomineeId === coLohId) return; // no self-nomination
+      const otherCoLohIds = state.coLohIds.filter((id) => id !== coLohId);
+      if (otherCoLohIds.includes(nomineeId)) return; // can't nominate other co-LOH
+      if (state.nomineeIds.includes(nomineeId)) return; // already nominated
+      // Apply nomination
+      state.nomineeIds.push(nomineeId);
+      const np = state.players.find((pl) => pl.id === nomineeId);
+      if (np) np.status = 'nominated';
+      incrementTimesNominated(state, nomineeId);
+      if (!state.coLohNomineeByCoLohId) state.coLohNomineeByCoLohId = {};
+      state.coLohNomineeByCoLohId[coLohId] = nomineeId;
+      state.awaitingCoLohNomination = false;
+      const allNomineeNames = state.nomineeIds
+        .map((id) => state.players.find((p) => p.id === id)?.name)
+        .filter(Boolean)
+        .join(' and ');
+      pushEvent(state, `${allNomineeNames} have been nominated for elimination. 🎯`, 'game');
+    },
+
+    /**
+     * Human POS holder breaks an eviction tie on a co-LOH Democracia day.
+     * On co-LOH days, the POS holder acts as tiebreaker instead of the LOH.
+     * Clears awaitingTieBreak and awaitingPosTieBreak, queues the eviction.
+     */
+    submitPosTieBreak(state, action: PayloadAction<string>) {
+      const nomineeId = action.payload;
+      if (!state.awaitingPosTieBreak || !state.awaitingTieBreak) return;
+      const tied = state.tiedNomineeIds ?? state.nomineeIds;
+      if (!tied.includes(nomineeId)) return;
+      const evictee = state.players.find((p) => p.id === nomineeId);
+      const posHolder = state.players.find((p) => p.id === state.posWinnerId);
+      if (!evictee) return;
+      state.awaitingTieBreak = false;
+      state.awaitingPosTieBreak = false;
+      state.tiedNomineeIds = null;
+      state.votes = {};
+      // voteResults was already shown before the tie-break prompt; clear it now.
+      state.voteResults = null;
+      // Defer the eviction commit until the cinematic overlay completes.
+      state.pendingEviction = {
+        evicteeId: nomineeId,
+        evictionMessage: `${posHolder?.name ?? 'The POS holder'} breaks the tie as a special exception, voting to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🗳️`,
+      };
+      // Push the week-end banner.
+      pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game');
+      state.phase = 'week_end';
+    },
+
     /**
      * Dismiss the vote results popup after the player has viewed it.
      * Clears `voteResults`; the eviction cinematic is driven separately
@@ -2878,7 +3043,11 @@ const gameSlice = createSlice({
         state.battleBack?.active ||
         state.favoritePlayer?.active ||
         (state.seasonFinale != null && state.seasonFinale.phase !== 'seasonComplete') ||
-        state.spectatorActive
+        state.spectatorActive ||
+        state.democracia?.awaitingHumanVote ||
+        state.democracia?.awaitingPublicBreaker ||
+        state.awaitingCoLohNomination ||
+        state.awaitingPosTieBreak
       ) {
         return;
       }
@@ -3327,6 +3496,152 @@ const gameSlice = createSlice({
         return;
       }
 
+      // ── Democracia special-phase handlers ──────────────────────────────────────
+      // These phases are outside PHASE_ORDER and must be handled explicitly.
+      if (state.phase === 'democracia_vote') {
+        const dem = state.democracia;
+        // Safety: if Democracia state is missing or public-breaker pending, bail.
+        if (!dem || dem.awaitingPublicBreaker) return;
+
+        // Advance seed
+        const dSeedRng = mulberry32(state.seed);
+        state.seed = (dSeedRng() * 0x100000000) >>> 0;
+        const dRng = mulberry32(state.seed);
+
+        // Tally votes
+        const dVoteCounts: Record<string, number> = {};
+        for (const cId of dem.candidateIds) dVoteCounts[cId] = 0;
+        for (const targetId of Object.values(dem.votesByVoterId)) {
+          if (targetId in dVoteCounts) dVoteCounts[targetId]++;
+        }
+
+        // Determine top candidates
+        let dMaxVotes = -1;
+        for (const cnt of Object.values(dVoteCounts)) {
+          if (cnt > dMaxVotes) dMaxVotes = cnt;
+        }
+        const dTopCandidates = dem.candidateIds.filter((id) => (dVoteCounts[id] ?? 0) === dMaxVotes);
+
+        if (dTopCandidates.length === 1) {
+          // Clear winner
+          const winnerId = dTopCandidates[0];
+          const winnerName = state.players.find((p) => p.id === winnerId)?.name ?? winnerId;
+          pushEvent(
+            state,
+            `🗳️ The votes are in! ${winnerName} has been elected Leader of the House! 👑`,
+            'game',
+          );
+          applyLohWinner(state, winnerId, '[advance/democracia_vote]');
+          dem.active = false;
+          state.phase = 'democracia_results';
+        } else {
+          // Tie
+          const dAliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+          const dBallotageVoters = dAliveNow.filter((p) => !dTopCandidates.includes(p.id));
+          const dTiedNames = dTopCandidates
+            .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
+            .join(' and ');
+
+          if (dem.round >= 2) {
+            // Already had ballotage — still tied → resolve by public or co-LOH
+            if (state.publicModeEnabled) {
+              // Signal UI to pick by approval rating
+              dem.awaitingPublicBreaker = true;
+              pushEvent(
+                state,
+                `🗳️ Even after the ballotage, ${dTiedNames} are still tied! The public will decide by approval rating! 📊`,
+                'game',
+              );
+            } else {
+              // No public mode → both become co-LOHs
+              state.coLohIds = [...dTopCandidates];
+              for (const id of dTopCandidates) {
+                const cp = state.players.find((pl) => pl.id === id);
+                if (cp) {
+                  cp.status = 'loh';
+                  ensurePlayerStats(cp).lohWins += 1;
+                }
+              }
+              // Keep lohId pointing to first co-LOH for compatibility
+              state.lohId = dTopCandidates[0];
+              pushEvent(
+                state,
+                `🗳️ The votes remain tied! ${dTiedNames} will BOTH serve as co-Leaders of the House! 👑👑`,
+                'game',
+              );
+              dem.active = false;
+              state.phase = 'democracia_results';
+            }
+          } else if (dBallotageVoters.length === 0) {
+            // No eligible ballotage voters — deterministic fallback
+            pushEvent(
+              state,
+              `⚠️ No eligible voters available for ballotage. The winner is decided by chance!`,
+              'game',
+            );
+            const dFbRng = mulberry32((state.seed ^ 0xdec0de) >>> 0);
+            const fallbackId = dTopCandidates[Math.floor(dFbRng() * dTopCandidates.length)];
+            const fallbackName = state.players.find((p) => p.id === fallbackId)?.name ?? fallbackId;
+            pushEvent(
+              state,
+              `🗳️ ${fallbackName} has been elected Leader of the House! 👑`,
+              'game',
+            );
+            applyLohWinner(state, fallbackId, '[advance/democracia_vote/ballotage_fallback]');
+            dem.active = false;
+            state.phase = 'democracia_results';
+          } else {
+            // Go to ballotage round
+            pushEvent(
+              state,
+              `🗳️ It's a tie between ${dTiedNames}! We go to BALLOTAGE! All other houseguests must revote between the tied candidates. 🗳️`,
+              'game',
+            );
+            dem.round += 1;
+            dem.candidateIds = [...dTopCandidates];
+            dem.eligibleVoterIds = dBallotageVoters.map((p) => p.id);
+            dem.votesByVoterId = {};
+            // Cast AI votes for ballotage
+            for (const voter of dBallotageVoters) {
+              if (!voter.isUser) {
+                // Use per-voter seed for determinism
+                const vSeed = (state.seed ^ (voter.id.charCodeAt(0) * 31 + voter.id.charCodeAt(voter.id.length - 1))) >>> 0;
+                const vRng = mulberry32(vSeed);
+                const voteIdx = Math.floor(vRng() * dTopCandidates.length);
+                dem.votesByVoterId[voter.id] = dTopCandidates[voteIdx];
+              }
+            }
+            // Block if human is a ballotage voter
+            const humanIsVoter = dBallotageVoters.some((p) => p.isUser);
+            if (humanIsVoter) {
+              dem.awaitingHumanVote = true;
+            }
+            // Stay at democracia_vote — do NOT call dRng, seed already advanced above
+            void dRng; // suppress unused warning
+          }
+        }
+        return;
+      }
+
+      if (state.phase === 'democracia_results') {
+        // democracia_results → social_1
+        if (state.coLohIds && state.coLohIds.length > 0) {
+          const coNames = state.coLohIds
+            .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
+            .join(' and ');
+          pushEvent(
+            state,
+            `${coNames} are now co-Leaders of the House! 👑👑 Alliances are already forming…`,
+            'social',
+          );
+        } else {
+          const hohName = state.players.find((p) => p.id === state.lohId)?.name ?? 'The new LOH';
+          pushEvent(state, `Housemates congratulate ${hohName}. Alliances are already forming… 💬`, 'social');
+        }
+        state.phase = 'social_1';
+        return;
+      }
+
       const currentIdx = PHASE_ORDER.indexOf(state.phase);
       const nextIdx = (currentIdx + 1) % PHASE_ORDER.length;
       let nextPhase: Phase = PHASE_ORDER[nextIdx];
@@ -3387,6 +3702,22 @@ const gameSlice = createSlice({
               p.status = 'active';
             }
           });
+          // Clear Democracia per-day state (preserve usedThisSeason flag)
+          if (state.democracia) {
+            state.democracia.active = false;
+            state.democracia.activatedDay = null;
+            state.democracia.round = 0;
+            state.democracia.candidateIds = [];
+            state.democracia.eligibleVoterIds = [];
+            state.democracia.votesByVoterId = {};
+            state.democracia.awaitingHumanVote = false;
+            state.democracia.awaitingPublicBreaker = false;
+          }
+          // Clear co-LOH state
+          state.coLohIds = null;
+          state.awaitingCoLohNomination = false;
+          state.coLohNomineeByCoLohId = null;
+          state.awaitingPosTieBreak = false;
           pushEvent(state, `Day ${state.week} begins! 🏠 It's time for the LOH competition.`, 'game');
           break;
         }
@@ -3395,6 +3726,38 @@ const gameSlice = createSlice({
           break;
         }
         case 'loh_comp': {
+          // Democracia: redirect to democratic vote instead of LOH competition
+          if (state.democracia?.active && state.democracia.activatedDay === state.week) {
+            const demAlive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+            state.democracia.round = 1;
+            state.democracia.candidateIds = demAlive.map((p) => p.id);
+            state.democracia.eligibleVoterIds = demAlive.map((p) => p.id);
+            state.democracia.votesByVoterId = {};
+            // Cast AI votes (no self-vote)
+            for (const voter of demAlive) {
+              if (!voter.isUser) {
+                const candidates = demAlive.filter((c) => c.id !== voter.id);
+                if (candidates.length > 0) {
+                  const vSeed = (state.seed ^ (voter.id.charCodeAt(0) * 31 + voter.id.charCodeAt(voter.id.length - 1))) >>> 0;
+                  const vRng = mulberry32(vSeed);
+                  const voteIdx = Math.floor(vRng() * candidates.length);
+                  state.democracia.votesByVoterId[voter.id] = candidates[voteIdx].id;
+                }
+              }
+            }
+            // Block if human needs to vote
+            const humanIsVoter = demAlive.some((p) => p.isUser);
+            if (humanIsVoter) {
+              state.democracia.awaitingHumanVote = true;
+            }
+            pushEvent(
+              state,
+              `🗳️ Today's Leader of the House will be chosen by popular vote! Cast your votes now.`,
+              'game',
+            );
+            nextPhase = 'democracia_vote';
+            break;
+          }
           pushEvent(state, `The Leader of the House competition has begun! 🏆 Who will win power today?`, 'game');
           break;
         }
@@ -3427,6 +3790,53 @@ const gameSlice = createSlice({
           break;
         }
         case 'nomination_results': {
+          // ── Co-LOH Democracia day path ───────────────────────────────────────
+          // When there are co-LOHs (Democracia tie), each nominates exactly 1 person.
+          // Standard 2-nominee block produced; no public save / no auto-third-nominee.
+          if (state.coLohIds != null && state.coLohIds.length >= 2) {
+            const coLohIds = state.coLohIds;
+            const coAlive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+            state.coLohNomineeByCoLohId = {};
+            // AI co-LOHs nominate first
+            for (const coLohId of coLohIds) {
+              const coLoh = state.players.find((p) => p.id === coLohId);
+              if (coLoh?.isUser) continue; // human handled below
+              const coPool = coAlive.filter(
+                (p) => p.id !== coLohId && !coLohIds.includes(p.id) && !state.nomineeIds.includes(p.id),
+              );
+              if (coPool.length > 0) {
+                const nominee = pickStrategicAiPlayer(state, coPool, rng, 'highest') ?? seededPick(rng, coPool);
+                state.nomineeIds.push(nominee.id);
+                const np = state.players.find((pl) => pl.id === nominee.id);
+                if (np) np.status = 'nominated';
+                incrementTimesNominated(state, nominee.id);
+                state.coLohNomineeByCoLohId[coLohId] = nominee.id;
+                pushEvent(state, `${coLoh?.name ?? coLohId} nominates ${nominee.name}. 🎯`, 'game');
+              }
+            }
+            // Human co-LOH must nominate via modal
+            const humanCoLohId = coLohIds.find((id) => state.players.find((p) => p.id === id)?.isUser);
+            if (humanCoLohId) {
+              const humanCoLoh = state.players.find((p) => p.id === humanCoLohId);
+              state.awaitingCoLohNomination = true;
+              pushEvent(
+                state,
+                `${humanCoLoh?.name ?? 'You'}, as co-Leader of the House, you must nominate one houseguest for elimination. 🎯`,
+                'game',
+              );
+            } else {
+              // All AI co-LOHs: log final block
+              const coNomNames = state.nomineeIds
+                .map((id) => state.players.find((p) => p.id === id)?.name)
+                .filter(Boolean)
+                .join(' and ');
+              if (coNomNames) {
+                pushEvent(state, `${coNomNames} have been nominated for elimination. 🎯`, 'game');
+              }
+            }
+            break;
+          }
+
           // Double Eviction week: LOH nominates 3; otherwise 2.
           const isDoubleEviction = state.doubleEviction?.weekActive === true;
           const publicModeEnabled = state.publicModeEnabled === true;
@@ -4035,34 +4445,55 @@ const gameSlice = createSlice({
               }
             }
           } else {
-            // Tie — LOH breaks the tie
-            const lohPlayer = state.players.find((p) => p.id === state.lohId);
-            if (lohPlayer?.isUser) {
-              // Human LOH: show vote results first, then the tie-break modal
+            // Tie — on co-LOH Democracia days, POS holder breaks it; otherwise LOH breaks it.
+            const isCoLohDay = Array.isArray(state.coLohIds) && state.coLohIds.length >= 2;
+            const tieBreakerPlayerId = isCoLohDay ? state.posWinnerId : state.lohId;
+            const tieBreakerPlayer = state.players.find((p) => p.id === tieBreakerPlayerId);
+            const tiedNames = topNominees
+              .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
+              .join(' and ');
+            if (tieBreakerPlayer?.isUser) {
+              // Human POS holder (co-LOH day) or human LOH (normal day): show tie-break modal
               state.voteResults = { ...voteCounts };
               state.awaitingTieBreak = true;
+              if (isCoLohDay) state.awaitingPosTieBreak = true;
               state.tiedNomineeIds = topNominees;
-              const tiedNames = topNominees
-                .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
-                .join(' and ');
-              pushEvent(
-                state,
-                `It's a tie between ${tiedNames}! ${lohPlayer.name}, as LOH you must break the tie. 🗳️`,
-                'game',
-              );
-            } else {
-              // AI LOH: deterministically pick among tied nominees — defer commit
+              if (isCoLohDay) {
+                pushEvent(
+                  state,
+                  `It's a tie between ${tiedNames}! ${tieBreakerPlayer.name}, as POS holder, you must break the tie as a special exception. 🗳️`,
+                  'game',
+                );
+              } else {
+                pushEvent(
+                  state,
+                  `It's a tie between ${tiedNames}! ${tieBreakerPlayer.name}, as LOH you must break the tie. 🗳️`,
+                  'game',
+                );
+              }
+            } else if (tieBreakerPlayer) {
+              // AI tiebreaker: deterministically pick among tied nominees — defer commit
               const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
               const evicteeId = topNominees[Math.floor(aiRng() * topNominees.length)];
               const evicted = state.players.find((p) => p.id === evicteeId);
               if (evicted) {
-                // Store vote results for popup reveal, then queue the pending eviction.
-                // Do NOT clear state.votes — preserve per-voter mapping for the
-                // post-eviction confessional unlock (same as the clear-winner path).
+                state.voteResults = { ...voteCounts };
+                const breakerLabel = isCoLohDay ? 'The POS holder' : 'The LOH';
+                state.pendingEviction = {
+                  evicteeId: evicted.id,
+                  evictionMessage: `${tieBreakerPlayer.name ?? breakerLabel} breaks the tie, voting to eliminate ${evicted.name}. ${evicted.name} has been eliminated from The Big Eye house. 🗳️`,
+                };
+              }
+            } else {
+              // Fallback: tiebreaker unavailable — deterministic seeded pick to prevent deadlock
+              const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
+              const evicteeId = topNominees[Math.floor(aiRng() * topNominees.length)];
+              const evicted = state.players.find((p) => p.id === evicteeId);
+              if (evicted) {
                 state.voteResults = { ...voteCounts };
                 state.pendingEviction = {
                   evicteeId: evicted.id,
-                  evictionMessage: `${lohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${evicted.name}. ${evicted.name} has been eliminated from The Big Eye house. 🗳️`,
+                  evictionMessage: `${evicted.name} has been eliminated from The Big Eye house. 🚪`,
                 };
               }
             }
@@ -4616,6 +5047,11 @@ export const {
   submitHumanDoubleVote,
   activateVoteDeductionReward,
   declineVoteDeduction,
+  activateDemocracia,
+  submitDemocraciaVote,
+  resolveDemocraciaPublicBreaker,
+  submitCoLohNomination,
+  submitPosTieBreak,
 } = gameSlice.actions;
 export default gameSlice.reducer;
 
@@ -5112,7 +5548,7 @@ export const tryActivatePendingForcedSpecialVeto =
     const { game } = getState();
     const pending = game.pendingForcedShock;
 
-    if (!pending || pending.type === 'doubleEviction' || pending.type === 'battleBack') return false;
+    if (!pending || pending.type === 'doubleEviction' || pending.type === 'battleBack' || pending.type === 'democracia') return false;
     if (game.phase !== 'pos_results') return false;
     if (game.week < pending.earliestWeek) return false;
     if (game.doubleEviction?.weekActive) return false;
@@ -5124,6 +5560,69 @@ export const tryActivatePendingForcedSpecialVeto =
     if (alive.length <= 5) return false;
 
     dispatch(activateSpecialVeto({ type: pending.type, week: game.week }));
+    dispatch(consumeForcedShock());
+    return true;
+  };
+
+// ─── Democracia thunks ────────────────────────────────────────────────────────
+
+/**
+ * Attempt to automatically activate Democracia on the current day.
+ *
+ * Eligibility conditions:
+ *  - Simulation twists are enabled in settings
+ *  - Current day (week) is 5, 7, 9, or 10 (hard cutoff)
+ *  - Alive count is odd
+ *  - Democracia has not been used this season
+ *  - No other twist is already active this day
+ *  - Phase must be 'loh_comp_announcement' (the LOH competition window)
+ */
+export const tryActivateDemocracia =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState();
+
+    if (!settings.sim.enableTwists) return false;
+    if (game.democracia?.usedThisSeason) return false;
+    if (game.phase !== 'loh_comp_announcement') return false;
+    if (game.twistActivatedThisWeek) return false;
+    if (game.doubleEviction?.weekActive) return false;
+    if (game.specialVeto?.activeType != null) return false;
+    if (game.democracia?.active) return false;
+
+    // Day eligibility: 5, 7, 9 (with fallback up to 10)
+    const day = game.week;
+    const ELIGIBLE_DAYS = [5, 7, 9, 10];
+    if (!ELIGIBLE_DAYS.includes(day)) return false;
+    if (day > 10) return false;
+
+    const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+    if (alive.length % 2 === 0) return false; // must be odd alive count
+
+    dispatch(activateDemocracia());
+    return true;
+  };
+
+/**
+ * Attempt to activate a debug-forced Democracia shock.
+ *
+ * Bypasses normal day/alive-count eligibility checks.
+ * Fires when the pending forced shock type is 'democracia' and the
+ * current phase is 'loh_comp_announcement' at or after the earliest week.
+ */
+export const tryActivatePendingForcedDemocracia =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState();
+    const pending = game.pendingForcedShock;
+
+    if (!pending || pending.type !== 'democracia') return false;
+    if (game.phase !== 'loh_comp_announcement') return false;
+    if (game.week < pending.earliestWeek) return false;
+    if (game.twistActivatedThisWeek) return false;
+    if (game.democracia?.active) return false;
+
+    dispatch(activateDemocracia());
     dispatch(consumeForcedShock());
     return true;
   };
