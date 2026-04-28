@@ -109,6 +109,7 @@ export default function useGameMode(): void {
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
         void requestWakeLock();
+        void lockOrientation();
       } else {
         void releaseWakeLock();
       }

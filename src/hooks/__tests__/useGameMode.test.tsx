@@ -117,6 +117,42 @@ describe('useGameMode', () => {
     });
   });
 
+  it('re-locks portrait orientation when the document becomes visible again', async () => {
+    const lock = vi.fn().mockResolvedValue(undefined);
+    const unlock = vi.fn();
+    const request = vi
+      .fn()
+      .mockResolvedValue({ release: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() });
+
+    Object.defineProperty(navigator, 'wakeLock', {
+      configurable: true,
+      value: { request },
+    });
+    Object.defineProperty(screen, 'orientation', {
+      configurable: true,
+      value: { lock, unlock },
+    });
+
+    render(<GameModeHarness />);
+
+    await waitFor(() => {
+      expect(lock).toHaveBeenCalledWith('portrait');
+    });
+
+    const initialLockCount = lock.mock.calls.length;
+
+    setVisibilityState('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    setVisibilityState('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    await waitFor(() => {
+      expect(lock.mock.calls.length).toBeGreaterThan(initialLockCount);
+    });
+    expect(lock).toHaveBeenLastCalledWith('portrait');
+  });
+
   it('re-requests wake lock after an unexpected release while still visible', async () => {
     const firstAddEventListener = vi.fn();
     const request = vi
