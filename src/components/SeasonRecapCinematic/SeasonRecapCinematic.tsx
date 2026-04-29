@@ -7,7 +7,7 @@ import { resolveAvatarCandidates } from '../../utils/avatar';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import EvictionLadder from './EvictionLadder';
 import { buildSeasonRecapData, type AwardCategory, type RecapBeat } from './seasonRecapData';
-import type { EvictionLadderEntry } from './evictionLadder';
+import type { EvictionLadderEntry } from './evictionLadderModel';
 import { buildSeasonRecapTimeline, RECAP_EXIT_FADE_MS, type RecapTimelineScene } from './seasonRecapTimeline';
 import './SeasonRecapCinematic.css';
 
@@ -30,6 +30,7 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
 const LADDER_ARCHIVE_LIMIT = 6;
 const DICEBEAR_HOST = 'api.dicebear.com';
 const URL_PARSE_BASE = 'https://bbmobilenew.local';
+const RECAP_SKINS_BASE = `${import.meta.env.BASE_URL}assets/skins/`;
 
 function isDicebearAvatar(candidate: string): boolean {
   try {
@@ -49,7 +50,7 @@ function toEvictionLadderEntry(player: Player, fallbackPlacement: number): Evict
   const rank = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
   const status =
     player.isWinner || rank === 1
-      ? 'lastHouseguest'
+      ? 'winner'
       : rank <= 3
         ? 'finalist'
         : 'evicted';
@@ -175,7 +176,7 @@ function HeadlineGirlsScene() {
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
           <img
-            src="/assets/skins/thegirls.webp"
+            src={`${RECAP_SKINS_BASE}thegirls.webp`}
             alt="The girls season newspaper"
             className="src-headline-media__image"
             loading="eager"
@@ -206,7 +207,7 @@ function PhonePostBoysScene() {
         >
           <div className="src-phone-post__screen">
             <img
-              src="/assets/skins/the boys.webp"
+              src={`${RECAP_SKINS_BASE}the boys.webp`}
               alt="The boys season post"
               className="src-phone-post__image"
               loading="eager"

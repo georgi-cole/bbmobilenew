@@ -1,14 +1,14 @@
 import { useMemo, useState, type CSSProperties, type SyntheticEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { resolveSilhouetteFallback } from '../../utils/avatar';
-import type { EvictionLadderEntry, EvictionLadderProps } from './evictionLadder';
+import type { EvictionLadderEntry, EvictionLadderProps } from './evictionLadderModel';
 import {
   deriveEvictionLadderStatus,
   formatEvictionRank,
   getEvictionLadderStatusIcon,
   getEvictionLadderStatusLabel,
   sortEvictionLadderEntries,
-} from './evictionLadder';
+} from './evictionLadderModel';
 import './EvictionLadder.css';
 
 function resolveAvatarSources(entry: EvictionLadderEntry): string[] {
@@ -105,11 +105,11 @@ export default function EvictionLadder({
             const translateX = index % 2 === 0 ? -8 + orderWeight * 8 : 8 - orderWeight * 8;
 
             return (
-              <motion.article
+              <div
                 key={entry.id}
-                className={`eviction-ladder__card eviction-ladder__card--${status}${highlighted ? ' eviction-ladder__card--highlighted' : ''}`}
                 role="listitem"
                 data-current-user={entry.id === currentUserId ? 'true' : undefined}
+                className="eviction-ladder__card-shell"
                 style={
                   {
                     '--entry-scale': scale.toFixed(3),
@@ -117,47 +117,51 @@ export default function EvictionLadder({
                     '--entry-translate-x': `${translateX}px`,
                   } as CSSProperties
                 }
-                initial={{ opacity: 0, y: 30, scale: 0.94 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: reducedMotion ? 0 : 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="eviction-ladder__card-inner">
-                  <div className="eviction-ladder__copy">
-                    <div className="eviction-ladder__meta">
-                      <motion.span
-                        className="eviction-ladder__rank"
-                        initial={{ opacity: 0, scale: 0.92 }}
-                        animate={{ opacity: 1, scale: [1, highlighted ? 1.08 : 1.04, 1] }}
-                        transition={{ duration: reducedMotion ? 0 : 0.42, delay: delay + 0.06 }}
-                      >
-                        {formatEvictionRank(entry.rank)}
-                      </motion.span>
-                      <span className="eviction-ladder__divider" aria-hidden="true" />
-                      <span className="eviction-ladder__status">
-                        <span className="eviction-ladder__status-icon" aria-hidden="true">
-                          {getEvictionLadderStatusIcon(entry)}
+                <motion.article
+                  className={`eviction-ladder__card eviction-ladder__card--${status}${highlighted ? ' eviction-ladder__card--highlighted' : ''}`}
+                  initial={{ opacity: 0, y: 30, scale: 0.94 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: reducedMotion ? 0 : 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <div className="eviction-ladder__card-inner">
+                    <div className="eviction-ladder__copy">
+                      <div className="eviction-ladder__meta">
+                        <motion.span
+                          className="eviction-ladder__rank"
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: [1, highlighted ? 1.08 : 1.04, 1] }}
+                          transition={{ duration: reducedMotion ? 0 : 0.42, delay: delay + 0.06 }}
+                        >
+                          {formatEvictionRank(entry.rank)}
+                        </motion.span>
+                        <span className="eviction-ladder__divider" aria-hidden="true" />
+                        <span className="eviction-ladder__status">
+                          <span className="eviction-ladder__status-icon" aria-hidden="true">
+                            {getEvictionLadderStatusIcon(entry)}
+                          </span>
+                          {getEvictionLadderStatusLabel(entry)}
                         </span>
-                        {getEvictionLadderStatusLabel(entry)}
-                      </span>
+                      </div>
+
+                      <h3 className="eviction-ladder__name">{entry.name}</h3>
+
+                      {entry.id === currentUserId && (
+                        <span className="eviction-ladder__you-badge">You</span>
+                      )}
                     </div>
 
-                    <h3 className="eviction-ladder__name">{entry.name}</h3>
-
-                    {entry.id === currentUserId && (
-                      <span className="eviction-ladder__you-badge">You</span>
-                    )}
+                    <motion.div
+                      className="eviction-ladder__avatar-wrap"
+                      initial={{ opacity: 0, scale: 0.84 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: reducedMotion ? 0 : 0.36, delay: delay + 0.12 }}
+                    >
+                      <LadderAvatar entry={entry} highlighted={highlighted} />
+                    </motion.div>
                   </div>
-
-                  <motion.div
-                    className="eviction-ladder__avatar-wrap"
-                    initial={{ opacity: 0, scale: 0.84 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: reducedMotion ? 0 : 0.36, delay: delay + 0.12 }}
-                  >
-                    <LadderAvatar entry={entry} highlighted={highlighted} />
-                  </motion.div>
-                </div>
-              </motion.article>
+                </motion.article>
+              </div>
             );
           })}
         </div>

@@ -34,7 +34,7 @@ export function formatEvictionRank(rank: number): string {
 
 export function deriveEvictionLadderStatus(entry: EvictionLadderEntry): EvictionLadderStatus {
   if (entry.status) return entry.status;
-  if (entry.rank === 1) return 'lastHouseguest';
+  if (entry.rank === 1) return 'winner';
   if (entry.rank <= 3) return 'finalist';
   return 'evicted';
 }

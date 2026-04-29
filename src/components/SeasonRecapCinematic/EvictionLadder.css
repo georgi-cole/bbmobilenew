@@ -134,14 +134,14 @@
   max-height: min(54dvh, 540px);
 }
 
-.eviction-ladder__card {
+.eviction-ladder__card-shell {
   position: relative;
   width: 100%;
   transform: translateX(var(--entry-translate-x)) scale(var(--entry-scale));
   opacity: var(--entry-opacity);
 }
 
-.eviction-ladder__card::before {
+.eviction-ladder__card-shell::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -156,6 +156,10 @@
     0 0 0 4px rgba(147, 121, 255, 0.12),
     0 0 18px rgba(147, 121, 255, 0.24);
   transform: translate(-50%, -50%);
+}
+
+.eviction-ladder__card {
+  position: relative;
 }
 
 .eviction-ladder__card-inner {
