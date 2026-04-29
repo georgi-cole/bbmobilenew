@@ -38,6 +38,8 @@ const PHASE_LABELS: Record<string, string> = {
   loh_comp_announcement:    'LOH COMP',
   loh_comp:                 'LOH COMP',
   loh_results:              'LOH RESULTS',
+  democracia_vote:          'DEMOCRACIA',
+  democracia_results:       'DEMO RESULT',
   social_1:             'SOCIAL',
   nominations:          'NOMS',
   nomination_results:       'NOMS RESULTS',
@@ -83,6 +85,7 @@ const MAJOR_KEYS = new Set([
   'jury',
   'battle_back',
   'double_eviction',
+  'democracia',
   'vip_veto',
   'diamond_pov',
   'coup_detat',
@@ -108,6 +111,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   coup_detat:           { title: 'Detox!',                     subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',    isLive: true,  autoDismissMs: null },
   spotlight_veto:       { title: 'Force Majeure!',             subtitle: 'The holder is forced to use the power this ceremony. ✨',        isLive: true,  autoDismissMs: null },
   twist:                { title: 'Shock Alert!',               subtitle: 'The Big Eye has a surprise.',                                  isLive: true,  autoDismissMs: null },
+  democracia:           { title: 'Democracia!',                subtitle: 'The house will elect the new Leader of the House by secret vote.', isLive: true, autoDismissMs: null },
   loh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
   pos_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
 };
@@ -205,6 +209,10 @@ type TvZoneVoteResultsReveal = {
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
   onDone: () => void;
+  title?: string;
+  liveLabel?: string;
+  outcomeLabel?: string;
+  outcomeTone?: 'eviction' | 'winner';
 };
 
 type TvZoneProps = {
@@ -328,7 +336,10 @@ export default function TvZone(props: TvZoneProps) {
     const currentPhase = gameState.phase;
     const prevPhase = previousPhaseRef.current;
     previousPhaseRef.current = currentPhase;
-    const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
+    const key =
+      currentPhase === 'loh_comp_announcement' && gameState.democracia?.active
+        ? 'democracia'
+        : getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
     const keyChangedInPlace =
       prevPhase === currentPhase &&
       currentPhase === 'nominations' &&
@@ -358,7 +369,7 @@ export default function TvZone(props: TvZoneProps) {
         setPhaseAnnouncement(null);
       }
     });
-  }, [gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
+  }, [gameState.democracia?.active, gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {
@@ -517,7 +528,8 @@ export default function TvZone(props: TvZoneProps) {
       activeAnnouncement?.key === 'vip_veto' ||
       activeAnnouncement?.key === 'diamond_pov' ||
       activeAnnouncement?.key === 'coup_detat' ||
-      activeAnnouncement?.key === 'spotlight_veto';
+      activeAnnouncement?.key === 'spotlight_veto' ||
+      activeAnnouncement?.key === 'democracia';
 
     if (!isSpecialAnnouncement || !showInlineAnnouncement) {
       startTransition(() => {
@@ -813,6 +825,10 @@ export default function TvZone(props: TvZoneProps) {
                 onDone={props.voteResultsReveal.onDone}
                 variant="tv"
                 countdownMs={3000}
+                title={props.voteResultsReveal.title}
+                liveLabel={props.voteResultsReveal.liveLabel}
+                outcomeLabel={props.voteResultsReveal.outcomeLabel}
+                outcomeTone={props.voteResultsReveal.outcomeTone}
               />
             )}
           </div>

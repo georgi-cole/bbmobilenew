@@ -39,6 +39,11 @@ function getAnnouncementThemeClass(key: string): string {
 
   if (
     key === 'loh_comp_announcement' ||
+    key === 'democracia' ||
+    key === 'democracia_ballotage' ||
+    key === 'democracia_results' ||
+    key === 'democracia_co_loh' ||
+    key === 'democracia_public_breaker' ||
     key === 'nomination_ceremony' ||
     key === 'final3_announcement' ||
     key === 'final_hoh' ||

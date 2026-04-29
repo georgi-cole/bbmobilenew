@@ -128,6 +128,32 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
   });
 
+  it('shows the dedicated Democracia shock announcement and opens its info modal', async () => {
+    const user = userEvent.setup();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-democracia',
+            text: 'Democracia has been activated.',
+            type: 'twist',
+            meta: { major: 'democracia' },
+          }),
+        ),
+      );
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Democracia!/i })).toBeDefined();
+
+    await user.click(screen.getByRole('button', { name: /More info about Democracia!/i }));
+
+    expect(screen.getByRole('dialog', { name: /Phase info: Democracia/i })).toBeDefined();
+    expect(screen.getByText(/The usual Leader of the House competition has been replaced/i)).toBeTruthy();
+  });
+
   it('renders the public save reveal inside the main tv viewport', () => {
     const store = makeStore();
     const nominees = [
