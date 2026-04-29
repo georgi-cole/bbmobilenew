@@ -184,16 +184,7 @@ const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
  *   3. Info-button spotlight (ConfessionalSpotlightOverlay reused)
  */
 const SHOCK_ANNOUNCEMENT_KEYS = new Set([
-  'twist',
-  'double_eviction',
-  'vip_veto',
-  'diamond_pov',
-  'coup_detat',
-  'spotlight_veto',
-  'battle_back',
-  'battle_back_shock',
-  'battle_back_rules',
-  'battle_back_challenge',
+  'democracia',
 ]);
 
 type TvZonePublicSaveReveal = {
@@ -524,13 +515,7 @@ export default function TvZone(props: TvZoneProps) {
   // Play a short TV-only spotlight intro for Double Eviction announcements,
   // then return the surrounding UI to normal while keeping the announcement visible.
   useEffect(() => {
-    const isSpecialAnnouncement =
-      activeAnnouncement?.key === 'double_eviction' ||
-      activeAnnouncement?.key === 'vip_veto' ||
-      activeAnnouncement?.key === 'diamond_pov' ||
-      activeAnnouncement?.key === 'coup_detat' ||
-      activeAnnouncement?.key === 'spotlight_veto' ||
-      activeAnnouncement?.key === 'democracia';
+    const isSpecialAnnouncement = activeAnnouncement?.key === 'democracia';
 
     if (!isSpecialAnnouncement || !showInlineAnnouncement) {
       startTransition(() => {

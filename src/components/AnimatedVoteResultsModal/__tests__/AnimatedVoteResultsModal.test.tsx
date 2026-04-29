@@ -163,7 +163,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the TV variant as a duel layout with circular vote rings and vote shares', async () => {
+  it('renders the TV variant as a duel layout with circular vote rings and vote shares only', async () => {
     const { container } = render(
       <AnimatedVoteResultsModal
         nominees={[
@@ -188,10 +188,10 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(container.querySelectorAll('.avrm__tv-vote-ring')).toHaveLength(2);
     expect(container.querySelectorAll('.avrm__tv-vote-ring-track')).toHaveLength(2);
     expect(container.querySelector('.avrm__tv-vote-ring-fill')?.getAttribute('stroke-dasharray')).toBeTruthy();
-    expect(container.querySelector('.avrm__tally-count[aria-label="1 vote"]')).toBeTruthy();
     expect(screen.getByText('Live')).toBeTruthy();
     expect(container.querySelector('.avrm__commentary--tv')).toBeNull();
     expect(container.querySelectorAll('.avrm__tv-vote-share')).toHaveLength(2);
+    expect(container.querySelector('.avrm__tally--tv .avrm__tally-count')).toBeNull();
     expect(container.querySelector('.avrm__tally--tv .avrm__tally-name')).toBeNull();
     expect(screen.getByText('Nominee 1')).toHaveClass('visually-hidden');
     expect(screen.queryByText(/has been eliminated\./i)).toBeNull();

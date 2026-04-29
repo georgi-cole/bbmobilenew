@@ -316,12 +316,6 @@ export default function AnimatedVoteResultsModal({
                         tone={isLeading ? 'leading' : 'trailing'}
                       />
                       <span className="visually-hidden">{t.nominee.name}</span>
-                      <span
-                        className="avrm__tally-count"
-                        aria-label={`${shown} vote${shown === 1 ? '' : 's'}`}
-                      >
-                        {shown}
-                      </span>
                       <span className="avrm__tv-vote-share">
                         {`${calculateRoundedPercentage(shown, totalVotes)}%`}
                       </span>

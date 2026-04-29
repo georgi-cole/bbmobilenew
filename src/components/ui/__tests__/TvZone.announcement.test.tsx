@@ -129,7 +129,7 @@ describe('TvZone — announcement overlay', () => {
   });
 
   it('shows the dedicated Democracia shock announcement and opens its info modal', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
@@ -146,12 +146,20 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Democracia!/i })).toBeDefined();
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
 
-    await user.click(screen.getByRole('button', { name: /More info about Democracia!/i }));
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Democracia!/i })).toBeDefined();
+    expect(document.body.querySelector('.tv-zone-de-backdrop')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /More info about Democracia!/i }));
 
     expect(screen.getByRole('dialog', { name: /Phase info: Democracia/i })).toBeDefined();
     expect(screen.getByText(/The usual Leader of the House competition has been replaced/i)).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it('renders the public save reveal inside the main tv viewport', () => {
@@ -1118,23 +1126,29 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(activateDoubleEviction()); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeNull();
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
-    });
-
     expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
+    expect(document.body.querySelector('.tv-zone-de-backdrop')).toBeNull();
     vi.useRealTimers();
   });
 
-  it('keeps shock announcements fullscreen before rolling them back into the main TV', () => {
+  it('keeps Democracia fullscreen before rolling it back into the main TV', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('nominations')); });
-    act(() => { store.dispatch(activateDoubleEviction()); });
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-democracia-fullscreen',
+            text: 'Democracia has been activated.',
+            type: 'twist',
+            meta: { major: 'democracia' },
+          }),
+        ),
+      );
+    });
 
     expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
     expect(document.body.querySelector('.shock-intro .tv-announcement')).not.toBeNull();
@@ -1156,13 +1170,23 @@ describe('TvZone — phase-based announcement triggers', () => {
     vi.useRealTimers();
   });
 
-  it('plays the Double Eviction TV spotlight after the fullscreen shock intro completes, then returns the surrounding UI to normal', () => {
+  it('plays the Democracia TV spotlight after the fullscreen shock intro completes, then returns the surrounding UI to normal', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('nominations')); });
-    act(() => { store.dispatch(activateDoubleEviction()); });
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-democracia-spotlight',
+            text: 'Democracia has been activated.',
+            type: 'twist',
+            meta: { major: 'democracia' },
+          }),
+        ),
+      );
+    });
 
     expect(document.body.querySelector('.tv-zone-de-backdrop')).toBeNull();
     expect(screen.getByLabelText('Game action zone').className).not.toContain('tv-zone--de-spotlight');
