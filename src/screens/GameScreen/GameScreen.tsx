@@ -2988,7 +2988,7 @@ export default function GameScreen() {
         <TvZone
           voteResultsReveal={{
             nominees: democraciaTallies,
-            evictee: democraciaRevealWinner,
+            outcomePlayer: democraciaRevealWinner,
             onTiebreakerRequired: handleDemocraciaTiebreakRequired,
             onDone: handleDemocraciaRevealDone,
             title: democraciaRevealTitle,

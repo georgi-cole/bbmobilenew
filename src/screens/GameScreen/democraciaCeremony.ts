@@ -1,13 +1,10 @@
 import type { VoteTally } from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import type { Player } from '../../types'
+import { calculateRoundedPercentage } from '../../utils/percentage'
 
 type DemocraciaStanding = VoteTally & {
   votePercent: number
-}
-
-function roundPercent(value: number) {
-  return Math.round(value)
 }
 
 export function buildDemocraciaVoteTallies(
@@ -30,7 +27,7 @@ export function buildDemocraciaVoteTallies(
       return {
         nominee,
         voteCount,
-        votePercent: totalVotes > 0 ? roundPercent((voteCount / totalVotes) * 100) : 0,
+        votePercent: calculateRoundedPercentage(voteCount, totalVotes),
       }
     })
     .filter((entry): entry is DemocraciaStanding => entry !== null)

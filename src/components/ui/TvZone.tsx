@@ -205,6 +205,7 @@ type TvZonePublicSaveReveal = {
 type TvZoneVoteResultsReveal = {
   nominees: VoteTally[];
   evictee?: Player | null;
+  outcomePlayer?: Player | null;
   onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
@@ -819,6 +820,7 @@ export default function TvZone(props: TvZoneProps) {
               <AnimatedVoteResultsModal
                 nominees={props.voteResultsReveal.nominees}
                 evictee={props.voteResultsReveal.evictee}
+                outcomePlayer={props.voteResultsReveal.outcomePlayer}
                 onTiebreakerRequired={props.voteResultsReveal.onTiebreakerRequired}
                 publicTiebreak={props.voteResultsReveal.publicTiebreak}
                 onPublicTiebreakResolved={props.voteResultsReveal.onPublicTiebreakResolved}

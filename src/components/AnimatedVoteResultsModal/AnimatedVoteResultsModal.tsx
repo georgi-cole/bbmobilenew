@@ -31,6 +31,7 @@
 import { Fragment, useState, useEffect, useRef, useMemo } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import { calculateRoundedPercentage } from '../../utils/percentage';
 import './AnimatedVoteResultsModal.css';
 
 export interface VoteTally {
@@ -51,6 +52,8 @@ export interface AnimatedVoteResultsModalProps {
   nominees: VoteTally[];
   /** Pre-determined evictee; pass null to let the component detect ties. */
   evictee?: Player | null;
+  /** Generic alias used by election/result flows that are not evictions. */
+  outcomePlayer?: Player | null;
   onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
@@ -132,6 +135,7 @@ function buildVoteSequence(tallies: VoteTally[]): string[] {
 export default function AnimatedVoteResultsModal({
   nominees,
   evictee: evicteeProp = null,
+  outcomePlayer = null,
   onTiebreakerRequired,
   publicTiebreak = null,
   onPublicTiebreakResolved,
@@ -177,7 +181,7 @@ export default function AnimatedVoteResultsModal({
   // Detect tie from final tallies when evictee prop is null.
   const { resolvedEvictee, tiedIds } = useMemo(() => {
     if (nominees.length === 0) return { resolvedEvictee: null, tiedIds: [] as string[] };
-    if (evicteeProp) return { resolvedEvictee: evicteeProp, tiedIds: [] as string[] };
+    if (outcomePlayer ?? evicteeProp) return { resolvedEvictee: outcomePlayer ?? evicteeProp, tiedIds: [] as string[] };
 
     const maxVotes = Math.max(...nominees.map((n) => n.voteCount));
     const topNominees = nominees.filter((n) => n.voteCount === maxVotes);
@@ -185,7 +189,7 @@ export default function AnimatedVoteResultsModal({
       return { resolvedEvictee: null, tiedIds: topNominees.map((n) => n.nominee.id) };
     }
     return { resolvedEvictee: topNominees[0].nominee, tiedIds: [] as string[] };
-  }, [nominees, evicteeProp]);
+  }, [nominees, evicteeProp, outcomePlayer]);
 
   const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length;
   const isTied = tiedIds.length > 1;
@@ -319,7 +323,7 @@ export default function AnimatedVoteResultsModal({
                         {shown}
                       </span>
                       <span className="avrm__tv-vote-share">
-                        {totalVotes > 0 ? `${Math.round((shown / totalVotes) * 100)}%` : '0%'}
+                        {`${calculateRoundedPercentage(shown, totalVotes)}%`}
                       </span>
                     </div>
                   </Fragment>
@@ -353,7 +357,7 @@ export default function AnimatedVoteResultsModal({
                       style={{
                         width: shown > 0
                           ? `${Math.max(
-                            totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0,
+                            calculateRoundedPercentage(shown, totalVotes),
                             MIN_BAR_PCT,
                           )}%`
                           : '0%',
