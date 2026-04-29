@@ -1115,7 +1115,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
   });
 
-  it('upgrades the nominations phase overlay to Double Eviction when the twist activates in-place', () => {
+  it('upgrades the nominations phase overlay to Double Eviction when the twist activates in-place without triggering Democracia shock effects', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);

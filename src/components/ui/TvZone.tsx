@@ -183,9 +183,7 @@ const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
  *   2. TV announcement (existing TvAnnouncementOverlay)
  *   3. Info-button spotlight (ConfessionalSpotlightOverlay reused)
  */
-const SHOCK_ANNOUNCEMENT_KEYS = new Set([
-  'democracia',
-]);
+const SHOCK_ANNOUNCEMENT_KEY = 'democracia';
 
 type TvZonePublicSaveReveal = {
   nominees: Player[];
@@ -375,7 +373,7 @@ export default function TvZone(props: TvZoneProps) {
   // then phaseAnnouncement, then eventAnnouncement.
   const activeAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
   const isShockAnnouncement =
-    activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
+    activeAnnouncement?.key === SHOCK_ANNOUNCEMENT_KEY;
   const showInlineAnnouncement = activeAnnouncement != null && !(shockIntroActive && isShockAnnouncement);
   const suppressStaleLiveVotePitchMessage =
     displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
@@ -553,7 +551,7 @@ export default function TvZone(props: TvZoneProps) {
   // - Non-shock  → clear both phases (handles dismissal mid-sequence).
   useEffect(() => {
     const key = activeAnnouncement?.key ?? null;
-    const isShock = key !== null && SHOCK_ANNOUNCEMENT_KEYS.has(key);
+    const isShock = key === SHOCK_ANNOUNCEMENT_KEY;
     startTransition(() => {
       if (isShock) {
         setShockIntroActive(true);
