@@ -69,6 +69,7 @@ export function getEvictionLadderStatusIcon(entry: EvictionLadderEntry): string 
   }
 }
 
+// Removes duplicate ids before sorting earlier evictions above later placements.
 export function sortEvictionLadderEntries(entries: EvictionLadderEntry[]): EvictionLadderEntry[] {
   const seen = new Set<string>();
   return [...entries]

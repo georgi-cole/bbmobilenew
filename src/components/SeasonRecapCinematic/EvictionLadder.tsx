@@ -11,7 +11,7 @@ import {
 } from './evictionLadder';
 import './EvictionLadder.css';
 
-function buildAvatarSources(entry: EvictionLadderEntry): string[] {
+function resolveAvatarSources(entry: EvictionLadderEntry): string[] {
   const fallback = resolveSilhouetteFallback({ id: entry.id, name: entry.name });
   return [entry.avatarUrl, fallback].filter(
     (source, index, all): source is string => Boolean(source) && all.indexOf(source) === index,
@@ -25,7 +25,7 @@ function LadderAvatar({
   entry: EvictionLadderEntry;
   highlighted: boolean;
 }) {
-  const sources = useMemo(() => buildAvatarSources(entry), [entry]);
+  const sources = useMemo(() => resolveAvatarSources(entry), [entry]);
   const [sourceIndex, setSourceIndex] = useState(0);
 
   function handleError(_event: SyntheticEvent<HTMLImageElement, Event>) {
@@ -60,7 +60,7 @@ export default function EvictionLadder({
   const reducedMotion = useReducedMotion();
   const orderedEntries = useMemo(() => sortEvictionLadderEntries(entries), [entries]);
   const visibleEntries = useMemo(
-    () => orderedEntries.slice(0, revealCount == null ? orderedEntries.length : Math.max(revealCount, 0)),
+    () => orderedEntries.slice(0, Math.max(revealCount ?? orderedEntries.length, 0)),
     [orderedEntries, revealCount],
   );
   const highlightedIds = useMemo(

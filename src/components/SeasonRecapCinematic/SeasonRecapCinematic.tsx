@@ -30,8 +30,18 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
 const LADDER_ARCHIVE_LIMIT = 6;
 const DICEBEAR_HOST = 'api.dicebear.com';
 
+function isDicebearAvatar(candidate: string): boolean {
+  try {
+    return new URL(candidate, 'https://bbmobilenew.local').hostname === DICEBEAR_HOST;
+  } catch {
+    return false;
+  }
+}
+
 function resolveRecapAvatarUrl(player: Player): string | undefined {
-  return resolveAvatarCandidates(player).find((candidate) => !candidate.includes(DICEBEAR_HOST));
+  // Prefer project assets in the recap so the ladder stays on-brand and does not
+  // depend on a remote DiceBear fetch inside the cinematic.
+  return resolveAvatarCandidates(player).find((candidate) => !isDicebearAvatar(candidate));
 }
 
 function toEvictionLadderEntry(player: Player, fallbackPlacement: number): EvictionLadderEntry {
