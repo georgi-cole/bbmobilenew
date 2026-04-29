@@ -40,7 +40,7 @@ export function deriveEvictionLadderStatus(entry: EvictionLadderEntry): Eviction
 }
 
 export function getEvictionLadderStatusLabel(entry: EvictionLadderEntry): string {
-  if (entry.subtitle) return entry.subtitle.toUpperCase();
+  if (entry.subtitle?.trim()) return entry.subtitle.toUpperCase();
 
   switch (deriveEvictionLadderStatus(entry)) {
     case 'winner':

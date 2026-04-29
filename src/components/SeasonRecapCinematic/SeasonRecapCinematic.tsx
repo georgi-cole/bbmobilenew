@@ -29,10 +29,11 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
 
 const LADDER_ARCHIVE_LIMIT = 6;
 const DICEBEAR_HOST = 'api.dicebear.com';
+const URL_PARSE_BASE = 'https://bbmobilenew.local';
 
 function isDicebearAvatar(candidate: string): boolean {
   try {
-    return new URL(candidate, 'https://bbmobilenew.local').hostname === DICEBEAR_HOST;
+    return new URL(candidate, URL_PARSE_BASE).hostname === DICEBEAR_HOST;
   } catch {
     return false;
   }

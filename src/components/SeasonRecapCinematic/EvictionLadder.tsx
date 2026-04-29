@@ -13,9 +13,7 @@ import './EvictionLadder.css';
 
 function resolveAvatarSources(entry: EvictionLadderEntry): string[] {
   const fallback = resolveSilhouetteFallback({ id: entry.id, name: entry.name });
-  return [entry.avatarUrl, fallback].filter(
-    (source, index, all): source is string => Boolean(source) && all.indexOf(source) === index,
-  );
+  return Array.from(new Set([entry.avatarUrl, fallback].filter((source): source is string => Boolean(source))));
 }
 
 function LadderAvatar({
