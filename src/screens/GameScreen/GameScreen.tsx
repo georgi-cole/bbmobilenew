@@ -152,6 +152,7 @@ import {
   buildDemocraciaBallotageAnnouncement,
   buildDemocraciaCoLohAnnouncement,
   buildDemocraciaPublicBreakerAnnouncement,
+  buildDemocraciaPublicWinnerAnnouncement,
   buildDemocraciaVoteTallies,
   buildDemocraciaWinnerAnnouncement,
   getDemocraciaTopCandidateIds,
@@ -353,8 +354,8 @@ export default function GameScreen() {
   }, [])
   const handleDemocraciaStageAnnouncementDismiss = useCallback(() => {
     if (!democraciaStageAnnouncement) return
-    democraciaStageAnnouncement.onDismiss?.()
     setDemocraciaStageAnnouncement(null)
+    democraciaStageAnnouncement.onDismiss?.()
   }, [democraciaStageAnnouncement])
   const activeDemocraciaStageAnnouncement = democraciaStageAnnouncement?.announcement ?? null
   // When true, the confessional prompt is shown after the eviction animation
@@ -893,20 +894,17 @@ export default function GameScreen() {
       announcement: buildDemocraciaPublicBreakerAnnouncement({ tiedCandidates }),
       onDismiss: () => {
         dispatch(resolveDemocraciaPublicBreaker({ winnerId }))
-        const announcement = buildDemocraciaWinnerAnnouncement({
-          tallies: tiedCandidates.map((candidate) => ({
-            nominee: candidate.nominee,
-            voteCount: candidate.approval,
-            votePercent: candidate.approval,
-          })),
-          winnerId,
-          publicBreaker: true,
+        const winner = tiedCandidates.find((candidate) => candidate.nominee.id === winnerId)
+        if (!winner) return
+        queueDemocraciaStageAnnouncement({
+          announcement: {
+            ...buildDemocraciaPublicWinnerAnnouncement({
+              winner: winner.nominee,
+              approval: winner.approval,
+            }),
+            autoDismissMs: DEMOCRACIA_RESULTS_DELAY_MS,
+          },
         })
-        if (announcement) {
-          window.setTimeout(() => {
-            setDemocraciaStageAnnouncement({ announcement: { ...announcement, autoDismissMs: DEMOCRACIA_RESULTS_DELAY_MS } })
-          }, 0)
-        }
       },
     })
   }, [

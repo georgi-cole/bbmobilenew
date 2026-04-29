@@ -15,6 +15,7 @@ export function buildDemocraciaVoteTallies(
   candidateIds: string[],
   votesByVoterId: Record<string, string>,
 ): DemocraciaStanding[] {
+  const candidateOrder = new Map(candidateIds.map((id, index) => [id, index]))
   const counts = Object.fromEntries(candidateIds.map((id) => [id, 0]))
   for (const targetId of Object.values(votesByVoterId)) {
     if (targetId in counts) counts[targetId] += 1
@@ -22,7 +23,7 @@ export function buildDemocraciaVoteTallies(
   const totalVotes = Object.values(counts).reduce((sum, value) => sum + value, 0)
 
   return candidateIds
-    .map((id, index) => {
+    .map((id) => {
       const nominee = players.find((player) => player.id === id)
       if (!nominee) return null
       const voteCount = counts[id] ?? 0
@@ -30,12 +31,14 @@ export function buildDemocraciaVoteTallies(
         nominee,
         voteCount,
         votePercent: totalVotes > 0 ? roundPercent((voteCount / totalVotes) * 100) : 0,
-        index,
       }
     })
-    .filter((entry): entry is DemocraciaStanding & { index: number } => entry !== null)
-    .sort((a, b) => b.voteCount - a.voteCount || a.index - b.index)
-    .map(({ index: _index, ...standing }) => standing)
+    .filter((entry): entry is DemocraciaStanding => entry !== null)
+    .sort(
+      (a, b) =>
+        b.voteCount - a.voteCount ||
+        (candidateOrder.get(a.nominee.id) ?? 0) - (candidateOrder.get(b.nominee.id) ?? 0),
+    )
 }
 
 export function getDemocraciaTopCandidateIds(tallies: VoteTally[]) {
@@ -90,6 +93,19 @@ export function buildDemocraciaWinnerAnnouncement(options: {
     key: 'democracia_results',
     title: 'Democracia Result',
     subtitle,
+    isLive: true,
+    autoDismissMs: 4500,
+  }
+}
+
+export function buildDemocraciaPublicWinnerAnnouncement(options: {
+  winner: Player
+  approval: number
+}): Announcement {
+  return {
+    key: 'democracia_results',
+    title: 'Democracia Result',
+    subtitle: `${options.winner.name} wins the public tie-break with ${options.approval}% approval and is crowned Leader of the House.`,
     isLive: true,
     autoDismissMs: 4500,
   }

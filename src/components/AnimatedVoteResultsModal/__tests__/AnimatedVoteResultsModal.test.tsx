@@ -163,7 +163,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the TV variant as a duel layout with circular vote rings', async () => {
+  it('renders the TV variant as a duel layout with circular vote rings and vote shares', async () => {
     const { container } = render(
       <AnimatedVoteResultsModal
         nominees={[
