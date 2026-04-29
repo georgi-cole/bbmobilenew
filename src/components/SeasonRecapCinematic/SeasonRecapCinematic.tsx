@@ -3,8 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
+import { resolveAvatarCandidates } from '../../utils/avatar';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
+import EvictionLadder from './EvictionLadder';
 import { buildSeasonRecapData, type AwardCategory, type RecapBeat } from './seasonRecapData';
+import type { EvictionLadderEntry } from './evictionLadder';
 import { buildSeasonRecapTimeline, RECAP_EXIT_FADE_MS, type RecapTimelineScene } from './seasonRecapTimeline';
 import './SeasonRecapCinematic.css';
 
@@ -25,16 +28,28 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
 };
 
 const LADDER_ARCHIVE_LIMIT = 6;
+const DICEBEAR_HOST = 'api.dicebear.com';
 
-function placementLabel(player: Player, fallbackPlacement: number): string {
-  const placement = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
-  const mod100 = placement % 100;
-  const mod10 = placement % 10;
-  if (mod100 >= 11 && mod100 <= 13) return `${placement}TH`;
-  if (mod10 === 1) return `${placement}ST`;
-  if (mod10 === 2) return `${placement}ND`;
-  if (mod10 === 3) return `${placement}RD`;
-  return `${placement}TH`;
+function resolveRecapAvatarUrl(player: Player): string | undefined {
+  return resolveAvatarCandidates(player).find((candidate) => !candidate.includes(DICEBEAR_HOST));
+}
+
+function toEvictionLadderEntry(player: Player, fallbackPlacement: number): EvictionLadderEntry {
+  const rank = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
+  const status =
+    player.isWinner || rank === 1
+      ? 'lastHouseguest'
+      : rank <= 3
+        ? 'finalist'
+        : 'evicted';
+
+  return {
+    id: player.id,
+    name: player.name,
+    rank,
+    avatarUrl: resolveRecapAvatarUrl(player),
+    status,
+  };
 }
 
 function SceneFrame({
@@ -304,54 +319,24 @@ function LadderWaveScene({
   ladder: Player[];
   caption: string;
 }) {
-  const highlightedPlayer = players[players.length - 1] ?? ladder[0];
+  const highlightedIds = players.map((player) => player.id);
+  const lastHighlightedPlayer = players[players.length - 1];
+  const revealCount = lastHighlightedPlayer
+    ? Math.max(1, ladder.findIndex((player) => player.id === lastHighlightedPlayer.id) + 1)
+    : ladder.length;
+  const entries = ladder.map((player, index) => toEvictionLadderEntry(player, ladder.length - index + 2));
 
   return (
     <SceneFrame className="src-scene--ladder-wave">
-      <div className="src-ladder-wave-layout">
-        {highlightedPlayer && (
-          <motion.article
-            className="src-ladder-focus-card"
-            initial={{ opacity: 0, x: -28, y: 14 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="src-ladder-focus-card__stage">
-              <FullSizeCutoutImage
-                player={highlightedPlayer}
-                alt={highlightedPlayer.name}
-                className="src-ladder-focus-card__image"
-                loading="eager"
-              />
-            </div>
-            <div className="src-ladder-focus-card__plate">
-              <span className="src-ladder-focus-card__placement">{placementLabel(highlightedPlayer, 3)}</span>
-              <span className="src-ladder-focus-card__name">{highlightedPlayer.name}</span>
-            </div>
-          </motion.article>
-        )}
-
-        <div className="src-ladder-wave-grid">
-          {ladder.map((player, index) => {
-            const isHighlighted = players.some((highlightedPlayer) => highlightedPlayer.id === player.id);
-            return (
-              <motion.article
-                key={player.id}
-                className={`src-ladder-wave-card${isHighlighted ? ' src-ladder-wave-card--active' : ''}`}
-                initial={{ opacity: 0, x: 24, y: 12 }}
-                animate={{ opacity: isHighlighted ? 1 : 0.64, x: 0, y: 0, scale: isHighlighted ? 1 : 0.98 }}
-                transition={{ duration: 0.45, delay: index * 0.06 }}
-              >
-                <div className="src-ladder-wave-card__placement">
-                  {placementLabel(player, ladder.length - index + 2)}
-                </div>
-                <div className="src-ladder-wave-card__name">{player.name}</div>
-              </motion.article>
-            );
-          })}
-        </div>
-      </div>
-      <p className="src-ladder-wave-caption">{caption}</p>
+      <EvictionLadder
+        entries={entries}
+        caption={caption}
+        revealCount={revealCount}
+        highlightedEntryIds={highlightedIds}
+        compact={entries.length >= 6}
+        animationDelayMs={220}
+        stepDelayMs={130}
+      />
     </SceneFrame>
   );
 }

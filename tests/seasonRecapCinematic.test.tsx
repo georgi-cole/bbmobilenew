@@ -268,9 +268,12 @@ describe('SeasonRecapCinematic', () => {
 
     await advanceToScene('ladder_wave_0');
 
-    expect(document.querySelector('.src-ladder-wave-layout')).toBeTruthy();
+    expect(document.querySelector('.eviction-ladder')).toBeTruthy();
+    expect(screen.getByText('Eviction Ladder')).toBeTruthy();
+    expect(screen.getByText('In order of eviction')).toBeTruthy();
     expect(screen.getByText('4TH')).toBeTruthy();
-    expect(screen.getAllByText('3RD')).toHaveLength(2);
+    expect(screen.getByText('3RD')).toBeTruthy();
+    expect(screen.getByText('FINALIST')).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
   });
 

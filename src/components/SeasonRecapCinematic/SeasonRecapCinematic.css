@@ -597,8 +597,7 @@
   opacity: 0.28;
 }
 
-.src-ladder-archive__chip,
-.src-ladder-wave-card {
+.src-ladder-archive__chip {
   border: 1px solid rgba(188, 197, 233, 0.2);
   border-radius: 24px;
   background: linear-gradient(180deg, rgba(32, 38, 66, 0.92), rgba(22, 26, 47, 0.94));
@@ -612,145 +611,6 @@
   margin: 0 auto;
   text-align: center;
 }
-
-.src-ladder-wave-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.src-ladder-wave-layout {
-  display: grid;
-  gap: 1.2rem;
-  width: min(100%, 760px);
-  margin: 0 auto;
-}
-
-.src-ladder-focus-card {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 0.4rem;
-  padding: 1.1rem 1.1rem 1rem;
-  overflow: hidden;
-  border: 1px solid rgba(190, 198, 235, 0.2);
-  border-radius: 32px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(146, 120, 255, 0.12), transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%),
-    linear-gradient(180deg, rgba(34, 36, 53, 0.96), rgba(15, 17, 33, 0.98));
-  box-shadow:
-    0 28px 60px rgba(0, 0, 0, 0.34),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset;
-  backdrop-filter: blur(14px);
-}
-
-.src-ladder-focus-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 18%),
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
-}
-
-.src-ladder-focus-card__stage {
-  position: relative;
-  display: grid;
-  place-items: end center;
-  width: 100%;
-  min-height: min(34dvh, 320px);
-  padding: 1.35rem 1rem 0.65rem;
-  overflow: hidden;
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.03), transparent 36%),
-    linear-gradient(180deg, rgba(8, 10, 24, 0.84), rgba(10, 11, 28, 0.98));
-}
-
-.src-ladder-focus-card__stage::after {
-  content: '';
-  position: absolute;
-  inset: 14% 12% auto;
-  height: 46%;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(33, 37, 76, 0.34), transparent 72%);
-  filter: blur(10px);
-  pointer-events: none;
-}
-
-.src-ladder-focus-card__image {
-  position: relative;
-  z-index: 1;
-  width: min(100%, 200px);
-  height: min(30dvh, 260px);
-  object-fit: contain;
-  object-position: center bottom;
-  filter: drop-shadow(0 20px 28px rgba(0, 0, 0, 0.34));
-}
-
-.src-ladder-focus-card__plate {
-  display: grid;
-  gap: 0.08rem;
-  padding-bottom: 0.12rem;
-  text-align: center;
-}
-
-.src-ladder-focus-card__placement {
-  font-size: 0.86rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  color: rgba(176, 187, 246, 0.82);
-  text-transform: uppercase;
-}
-
-.src-ladder-focus-card__name {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(1.9rem, 7vw, 2.5rem);
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-shadow: 0 10px 18px rgba(0, 0, 0, 0.28);
-}
-
-.src-ladder-wave-card {
-  padding: 1.15rem 1.4rem 1.2rem;
-  border-radius: 28px;
-}
-
-.src-ladder-wave-card--active {
-  border-color: rgba(194, 203, 239, 0.28);
-  background:
-    linear-gradient(180deg, rgba(38, 45, 79, 0.96), rgba(29, 34, 61, 0.98));
-  box-shadow:
-    0 20px 36px rgba(0, 0, 0, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
-}
-
-.src-ladder-wave-card__placement {
-  font-size: 0.86rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  color: rgba(177, 189, 245, 0.84);
-}
-
-.src-ladder-wave-card__name {
-  margin-top: 0.34rem;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(1.6rem, 6.2vw, 2rem);
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.src-ladder-wave-caption {
-  width: min(100%, 760px);
-  margin: 0.5rem auto 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(1rem, 4.4vw, 1.35rem);
-  color: rgba(248, 238, 235, 0.94);
- }
 
 .src-finalists-equal {
   display: grid;
@@ -841,11 +701,6 @@
 }
 
 @media (min-width: 700px) {
-  .src-ladder-wave-layout {
-    grid-template-columns: minmax(220px, 0.95fr) minmax(0, 1.2fr);
-    align-items: end;
-  }
-
   .src-finalists-equal {
     gap: 2rem;
   }
