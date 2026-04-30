@@ -43,6 +43,7 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
     Boolean(sv?.awaitingVipSecondSaveTarget) ||
     Boolean(game.democracia?.awaitingHumanVote) ||
     Boolean(game.democracia?.awaitingPublicBreaker) ||
+    Boolean(game.democracia?.resultDisplay) ||
     Boolean(game.awaitingCoLohNomination) ||
     Boolean(game.awaitingPosTieBreak)
   );

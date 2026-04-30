@@ -26,6 +26,7 @@ import { getViewportMessageKey } from './tvZoneKeys';
 import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents';
 import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay';
 import ConfessionalSpotlightOverlay from '../FloatingActionBar/ConfessionalSpotlightOverlay';
+import DemocraciaResultsReveal from './DemocraciaResultsReveal/DemocraciaResultsReveal';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
 import './ShockDangerMode.css';
@@ -107,6 +108,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   diamond_pov:          { title: 'Halo Exchange!',             subtitle: 'The holder may name the backup nominee. 😇',                    isLive: true,  autoDismissMs: null },
   coup_detat:           { title: 'Detox!',                     subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',    isLive: true,  autoDismissMs: null },
   spotlight_veto:       { title: 'Force Majeure!',             subtitle: 'The holder is forced to use the power this ceremony. ✨',        isLive: true,  autoDismissMs: null },
+  democracia:           { title: 'DEMOCRACIA!',                subtitle: 'The house will elect the new Leader of the House by secret vote.', isLive: true,  autoDismissMs: null },
   twist:                { title: 'Shock Alert!',               subtitle: 'The Big Eye has a surprise.',                                  isLive: true,  autoDismissMs: null },
   loh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
   pos_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
@@ -149,8 +151,13 @@ function isDetoxSequenceEvent(event: TvEvent | undefined): event is TvEvent {
  * Note: loh_comp_announcement and pos_comp_announcement DO trigger overlays;
  * loh_comp and pos_comp themselves do not (they enter the actual minigame flow).
  */
-function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictionActive: boolean): string | null {
+function getPhaseAnnouncementKey(
+  phase: Phase,
+  aliveCount: number,
+  doubleEvictionActive: boolean,
+): string | null {
   if (phase === 'loh_comp_announcement') return 'loh_comp_announcement';
+  if (phase === 'democracia_vote') return 'democracia';
   if (phase === 'pos_comp_announcement') return 'pos_comp_announcement';
   if (phase === 'pos_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
   if (phase === 'nominations')     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony';
@@ -190,6 +197,7 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'battle_back_shock',
   'battle_back_rules',
   'battle_back_challenge',
+  'democracia',
 ]);
 
 type TvZonePublicSaveReveal = {
@@ -207,10 +215,22 @@ type TvZoneVoteResultsReveal = {
   onDone: () => void;
 };
 
+type TvZoneDemocraciaResultsReveal = {
+  mode: 'winner' | 'tie' | 'message';
+  title: string;
+  subtitle: string;
+  participants: Array<{
+    player: Player;
+    voteCount: number;
+  }>;
+  onDone: () => void;
+};
+
 type TvZoneProps = {
   publicSaveReveal?: TvZonePublicSaveReveal | null;
   onPublicSaveDone?: () => void;
   voteResultsReveal?: TvZoneVoteResultsReveal | null;
+  democraciaResultsReveal?: TvZoneDemocraciaResultsReveal | null;
   mainLogMaxVisible?: number;
   priorityAnnouncement?: Announcement | null;
   onPriorityAnnouncementDismiss?: () => void;
@@ -261,6 +281,7 @@ export default function TvZone(props: TvZoneProps) {
   const latestEvent = tvVisibleFeed[0];
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
   const voteResultsRevealActive = Boolean(props.voteResultsReveal);
+  const democraciaResultsRevealActive = Boolean(props.democraciaResultsReveal);
   const priorityAnnouncement = props.priorityAnnouncement ?? null;
   const externalAnnouncement = props.externalAnnouncement ?? null;
 
@@ -383,7 +404,8 @@ export default function TvZone(props: TvZoneProps) {
     (suppressStaleLiveVotePitchMessage && !hasFallbackViewportMessage) ||
     !!activeAnnouncement ||
     publicSaveRevealActive ||
-    voteResultsRevealActive;
+    voteResultsRevealActive ||
+    democraciaResultsRevealActive;
   // When the stale pitch message is suppressed but a fallback is available, use the
   // fallback instead of the suppressed event text so the viewport stays meaningful.
   const viewportDisplayText =
@@ -803,6 +825,15 @@ export default function TvZone(props: TvZoneProps) {
               />
             )}
 
+            {props.democraciaResultsReveal && (
+              <DemocraciaResultsReveal
+                mode={props.democraciaResultsReveal.mode}
+                title={props.democraciaResultsReveal.title}
+                subtitle={props.democraciaResultsReveal.subtitle}
+                participants={props.democraciaResultsReveal.participants}
+                onDone={props.democraciaResultsReveal.onDone}
+              />
+            )}
             {props.voteResultsReveal && (
               <AnimatedVoteResultsModal
                 nominees={props.voteResultsReveal.nominees}

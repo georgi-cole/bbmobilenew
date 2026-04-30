@@ -1,6 +1,7 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import type {
+  DemocraciaResultDisplay,
   GameState,
   Player,
   Phase,
@@ -125,6 +126,29 @@ function formatForcedShockLabel(type: ForcedShockType): string {
     default:
       return type;
   }
+}
+
+function formatDemocraciaResultNames(state: GameState, candidateIds: string[]): string {
+  return candidateIds
+    .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
+    .join(candidateIds.length === 2 ? ' and ' : ', ');
+}
+
+function buildDemocraciaResultDisplay(
+  state: GameState,
+  mode: DemocraciaResultDisplay['mode'],
+  participantIds: string[],
+  voteCountsByCandidateId: Record<string, number>,
+  title: string,
+  subtitle: string,
+): DemocraciaResultDisplay {
+  return {
+    mode,
+    participantIds,
+    voteCountsByCandidateId,
+    title,
+    subtitle,
+  };
 }
 
 function getForcedShockSafePhase(type: ForcedShockType): Phase {
@@ -331,6 +355,7 @@ export function createInitialGameState(): GameState {
       votesByVoterId: {},
       awaitingHumanVote: false,
       awaitingPublicBreaker: false,
+      resultDisplay: null,
     },
     coLohIds: null,
     awaitingCoLohNomination: false,
@@ -1880,6 +1905,7 @@ const gameSlice = createSlice({
           votesByVoterId: {},
           awaitingHumanVote: false,
           awaitingPublicBreaker: false,
+          resultDisplay: null,
         };
       }
       state.democracia.usedThisSeason = true;
@@ -1891,6 +1917,7 @@ const gameSlice = createSlice({
       state.democracia.votesByVoterId = {};
       state.democracia.awaitingHumanVote = false;
       state.democracia.awaitingPublicBreaker = false;
+      state.democracia.resultDisplay = null;
       state.twistActive = true;
       state.twistActivatedThisWeek = true;
       const ts = Date.now();
@@ -1920,6 +1947,11 @@ const gameSlice = createSlice({
       if (!dem.eligibleVoterIds.includes(humanPlayer.id)) return; // must be eligible voter
       dem.votesByVoterId[humanPlayer.id] = targetId;
       dem.awaitingHumanVote = false;
+    },
+
+    dismissDemocraciaResultDisplay(state) {
+      if (!state.democracia) return;
+      state.democracia.resultDisplay = null;
     },
 
     /**
@@ -3498,8 +3530,8 @@ const gameSlice = createSlice({
 
       // ── Democracia special-phase handlers ──────────────────────────────────────
       // These phases are outside PHASE_ORDER and must be handled explicitly.
-      if (state.phase === 'democracia_vote') {
-        const dem = state.democracia;
+        if (state.phase === 'democracia_vote') {
+          const dem = state.democracia;
         // Safety: if Democracia state is missing or public-breaker pending, bail.
         if (!dem || dem.awaitingPublicBreaker) return;
 
@@ -3520,16 +3552,25 @@ const gameSlice = createSlice({
         for (const cnt of Object.values(dVoteCounts)) {
           if (cnt > dMaxVotes) dMaxVotes = cnt;
         }
-        const dTopCandidates = dem.candidateIds.filter((id) => (dVoteCounts[id] ?? 0) === dMaxVotes);
+          const dTopCandidates = dem.candidateIds.filter((id) => (dVoteCounts[id] ?? 0) === dMaxVotes);
+          const dTopNames = formatDemocraciaResultNames(state, dTopCandidates);
 
-        if (dTopCandidates.length === 1) {
-          // Clear winner
-          const winnerId = dTopCandidates[0];
-          const winnerName = state.players.find((p) => p.id === winnerId)?.name ?? winnerId;
-          pushEvent(
-            state,
-            `🗳️ The votes are in! ${winnerName} has been elected Leader of the House! 👑`,
-            'game',
+          if (dTopCandidates.length === 1) {
+            // Clear winner
+            const winnerId = dTopCandidates[0];
+            const winnerName = state.players.find((p) => p.id === winnerId)?.name ?? winnerId;
+            dem.resultDisplay = buildDemocraciaResultDisplay(
+              state,
+              'winner',
+              [winnerId],
+              dVoteCounts,
+              'DEMOCRACIA WINNER',
+              `${winnerName} wins the vote with ${dVoteCounts[winnerId] ?? 0} vote${(dVoteCounts[winnerId] ?? 0) === 1 ? '' : 's'}.`,
+            );
+            pushEvent(
+              state,
+              `🗳️ The votes are in! ${winnerName} has been elected Leader of the House! 👑`,
+              'game',
           );
           applyLohWinner(state, winnerId, '[advance/democracia_vote]');
           dem.active = false;
@@ -3538,18 +3579,25 @@ const gameSlice = createSlice({
           // Tie
           const dAliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
           const dBallotageVoters = dAliveNow.filter((p) => !dTopCandidates.includes(p.id));
-          const dTiedNames = dTopCandidates
-            .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
-            .join(' and ');
 
           if (dem.round >= 2) {
             // Already had ballotage — still tied → resolve by public or co-LOH
             if (state.publicModeEnabled) {
               // Signal UI to pick by approval rating
               dem.awaitingPublicBreaker = true;
+              dem.resultDisplay = buildDemocraciaResultDisplay(
+                state,
+                dTopCandidates.length > 3 ? 'message' : 'tie',
+                dTopCandidates.length > 3 ? [] : [...dTopCandidates],
+                dVoteCounts,
+                dTopCandidates.length > 3 ? 'DEMOCRACIA TIE' : 'FINAL TIE',
+                dTopCandidates.length > 3
+                  ? `${dTopNames} remain tied. The public will decide the winner by approval rating.`
+                  : `${dTopNames} are still tied. The public will decide the winner by approval rating.`,
+              );
               pushEvent(
                 state,
-                `🗳️ Even after the ballotage, ${dTiedNames} are still tied! The public will decide by approval rating! 📊`,
+                `🗳️ Even after the ballotage, ${dTopNames} are still tied! The public will decide by approval rating! 📊`,
                 'game',
               );
             } else {
@@ -3564,9 +3612,19 @@ const gameSlice = createSlice({
               }
               // Keep lohId pointing to first co-LOH for compatibility
               state.lohId = dTopCandidates[0];
+              dem.resultDisplay = buildDemocraciaResultDisplay(
+                state,
+                dTopCandidates.length > 3 ? 'message' : 'tie',
+                dTopCandidates.length > 3 ? [] : [...dTopCandidates],
+                dVoteCounts,
+                dTopCandidates.length > 3 ? 'DEMOCRACIA TIE' : 'CO-LEADERS ELECTED',
+                dTopCandidates.length > 3
+                  ? `${dTopNames} remain tied after the ballotage and will serve together as co-Leaders of the House.`
+                  : `${dTopNames} remain tied and will serve together as co-Leaders of the House.`,
+              );
               pushEvent(
                 state,
-                `🗳️ The votes remain tied! ${dTiedNames} will BOTH serve as co-Leaders of the House! 👑👑`,
+                `🗳️ The votes remain tied! ${dTopNames} will BOTH serve as co-Leaders of the House! 👑👑`,
                 'game',
               );
               dem.active = false;
@@ -3582,6 +3640,14 @@ const gameSlice = createSlice({
             const dFbRng = mulberry32((state.seed ^ 0xdec0de) >>> 0);
             const fallbackId = dTopCandidates[Math.floor(dFbRng() * dTopCandidates.length)];
             const fallbackName = state.players.find((p) => p.id === fallbackId)?.name ?? fallbackId;
+            dem.resultDisplay = buildDemocraciaResultDisplay(
+              state,
+              'winner',
+              [fallbackId],
+              dVoteCounts,
+              'DEMOCRACIA WINNER',
+              `${fallbackName} wins the tiebreak by chance after no eligible ballotage voters remained.`,
+            );
             pushEvent(
               state,
               `🗳️ ${fallbackName} has been elected Leader of the House! 👑`,
@@ -3592,9 +3658,19 @@ const gameSlice = createSlice({
             state.phase = 'democracia_results';
           } else {
             // Go to ballotage round
+            dem.resultDisplay = buildDemocraciaResultDisplay(
+              state,
+              dTopCandidates.length > 3 ? 'message' : 'tie',
+              dTopCandidates.length > 3 ? [] : [...dTopCandidates],
+              dVoteCounts,
+              dTopCandidates.length > 3 ? 'REVOTE REQUIRED' : 'TIED VOTE',
+              dTopCandidates.length > 3
+                ? `${dTopNames} are tied. The house must revote among the tied candidates.`
+                : `${dTopNames} are tied at ${dMaxVotes} vote${dMaxVotes === 1 ? '' : 's'}. The house must revote.`,
+            );
             pushEvent(
               state,
-              `🗳️ It's a tie between ${dTiedNames}! We go to BALLOTAGE! All other houseguests must revote between the tied candidates. 🗳️`,
+              `🗳️ It's a tie between ${dTopNames}! We go to BALLOTAGE! All other houseguests must revote between the tied candidates. 🗳️`,
               'game',
             );
             dem.round += 1;
@@ -3712,6 +3788,7 @@ const gameSlice = createSlice({
             state.democracia.votesByVoterId = {};
             state.democracia.awaitingHumanVote = false;
             state.democracia.awaitingPublicBreaker = false;
+            state.democracia.resultDisplay = null;
           }
           // Clear co-LOH state
           state.coLohIds = null;
@@ -3733,6 +3810,7 @@ const gameSlice = createSlice({
             state.democracia.candidateIds = demAlive.map((p) => p.id);
             state.democracia.eligibleVoterIds = demAlive.map((p) => p.id);
             state.democracia.votesByVoterId = {};
+            state.democracia.resultDisplay = null;
             // Cast AI votes (no self-vote)
             for (const voter of demAlive) {
               if (!voter.isUser) {
