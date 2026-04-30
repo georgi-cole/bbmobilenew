@@ -148,15 +148,6 @@ import {
   saveEvictionVoteBreakdownUnlock,
 } from '../../features/evictionVoteBreakdownStorage'
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
-import {
-  buildDemocraciaBallotageAnnouncement,
-  buildDemocraciaCoLohAnnouncement,
-  buildDemocraciaPublicBreakerAnnouncement,
-  buildDemocraciaPublicWinnerAnnouncement,
-  buildDemocraciaVoteTallies,
-  buildDemocraciaWinnerAnnouncement,
-  getDemocraciaTopCandidateIds,
-} from './democraciaCeremony'
 import './GameScreen.css'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
@@ -170,7 +161,6 @@ const AI_TIE_STAGE_DELAY_MS = 3000
 const AI_TIE_DECIDING_DELAY_MS = 3000
 const AI_TIE_DECISION_DELAY_MS = 3000
 const AI_TIE_RESULT_DELAY_MS = 3000
-const DEMOCRACIA_RESULTS_DELAY_MS = 4000
 const CONFESSIONAL_TV_PROMPT_MESSAGE =
   'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
 const PUBLIC_MODE_STORE_PROMPT =
@@ -180,11 +170,6 @@ const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
 type PendingPublicSaveResult = {
   savedId: string
   supportPercent?: number
-}
-
-type StagedAnnouncement = {
-  announcement: Announcement
-  onDismiss?: () => void
 }
 
 type AiTiebreakStage = 'tie' | 'deciding' | 'decision' | 'result'
@@ -347,17 +332,6 @@ export default function GameScreen() {
   )
   const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
   const [activeAiTiebreakContext, setActiveAiTiebreakContext] = useState<AiTiebreakContext | null>(null)
-  const [democraciaStageAnnouncement, setDemocraciaStageAnnouncement] = useState<StagedAnnouncement | null>(null)
-  const consumedDemocraciaRevealKeysRef = useRef<Set<string>>(new Set())
-  const queueDemocraciaStageAnnouncement = useCallback((stage: StagedAnnouncement) => {
-    setDemocraciaStageAnnouncement(stage)
-  }, [])
-  const handleDemocraciaStageAnnouncementDismiss = useCallback(() => {
-    if (!democraciaStageAnnouncement) return
-    setDemocraciaStageAnnouncement(null)
-    democraciaStageAnnouncement.onDismiss?.()
-  }, [democraciaStageAnnouncement])
-  const activeDemocraciaStageAnnouncement = democraciaStageAnnouncement?.announcement ?? null
   // When true, the confessional prompt is shown after the eviction animation
   // instead of inline with the vote results (post-eviction mode).
   const isPostEvictionConfessionalModeRef = useRef(false)
@@ -379,11 +353,6 @@ export default function GameScreen() {
       }
     }
   }, [])
-
-  useEffect(() => {
-    consumedDemocraciaRevealKeysRef.current.clear()
-    setDemocraciaStageAnnouncement(null)
-  }, [game.gameId, game.season])
 
   useEffect(() => {
     if (!activeConfessionalDecisionKey) {
@@ -867,17 +836,6 @@ export default function GameScreen() {
     if (!game.democracia?.awaitingPublicBreaker) return
     const candidateIds = game.democracia.candidateIds
     if (candidateIds.length === 0) return
-    if (activeDemocraciaStageAnnouncement?.key === 'democracia_public_breaker') return
-    const tiedCandidates = candidateIds
-      .map((id) => {
-        const nominee = game.players.find((player) => player.id === id)
-        if (!nominee) return null
-        return {
-          nominee,
-          approval: publicOpinionProfiles[id]?.approval ?? 50,
-        }
-      })
-      .filter((entry): entry is { nominee: Player; approval: number } => entry !== null)
     const { savedId: winnerId } = resolvePublicSaveNominee({
       nomineeIds: candidateIds,
       profiles: publicOpinionProfiles,
@@ -890,32 +848,8 @@ export default function GameScreen() {
       }
       return
     }
-    queueDemocraciaStageAnnouncement({
-      announcement: buildDemocraciaPublicBreakerAnnouncement({ tiedCandidates }),
-      onDismiss: () => {
-        dispatch(resolveDemocraciaPublicBreaker({ winnerId }))
-        const winner = tiedCandidates.find((candidate) => candidate.nominee.id === winnerId)
-        if (!winner) return
-        queueDemocraciaStageAnnouncement({
-          announcement: {
-            ...buildDemocraciaPublicWinnerAnnouncement({
-              winner: winner.nominee,
-              approval: winner.approval,
-            }),
-            autoDismissMs: DEMOCRACIA_RESULTS_DELAY_MS,
-          },
-        })
-      },
-    })
-  }, [
-    activeDemocraciaStageAnnouncement,
-    dispatch,
-    game.democracia?.awaitingPublicBreaker,
-    game.democracia?.candidateIds,
-    game.players,
-    publicOpinionProfiles,
-    queueDemocraciaStageAnnouncement,
-  ])
+    dispatch(resolveDemocraciaPublicBreaker({ winnerId }))
+  }, [game.democracia?.awaitingPublicBreaker, game.democracia?.candidateIds, publicOpinionProfiles, dispatch])
 
   // ── Secret Mission Final 4 expiry (PR 2) ──────────────────────────────────
   // When the game reaches final4_eviction, expire any stored eligible reward
@@ -1163,116 +1097,6 @@ export default function GameScreen() {
         .filter((p): p is Player => p != null),
     [game.nomineeIds, game.players],
   )
-
-  const democraciaTallies = useMemo(
-    () => (
-      game.democracia
-        ? buildDemocraciaVoteTallies(
-          game.players,
-          game.democracia.candidateIds,
-          game.democracia.votesByVoterId,
-        )
-        : []
-    ),
-    [game.democracia, game.players],
-  )
-  const democraciaTopCandidateIds = useMemo(
-    () => getDemocraciaTopCandidateIds(democraciaTallies),
-    [democraciaTallies],
-  )
-  const democraciaRevealKey = useMemo(() => {
-    if (game.phase !== 'democracia_vote' || !game.democracia) return null
-    if (game.democracia.awaitingHumanVote || game.democracia.awaitingPublicBreaker) return null
-    if (game.democracia.candidateIds.length < 2) return null
-    if (Object.keys(game.democracia.votesByVoterId).length === 0) return null
-    const voteSignature = Object.entries(game.democracia.votesByVoterId)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([voterId, targetId]) => `${voterId}:${targetId}`)
-      .join('|')
-    return `${game.week}:${game.democracia.round}:${voteSignature}`
-  }, [game.democracia, game.phase, game.week])
-  const showDemocraciaVoteReveal =
-    democraciaRevealKey != null &&
-    !consumedDemocraciaRevealKeysRef.current.has(democraciaRevealKey) &&
-    !democraciaStageAnnouncement
-  const democraciaRevealWinner =
-    democraciaTopCandidateIds.length === 1
-      ? democraciaTallies.find((tally) => tally.nominee.id === democraciaTopCandidateIds[0])?.nominee ?? null
-      : null
-  const democraciaRevealTitle =
-    (game.democracia?.round ?? 1) > 1 ? 'BALLOTAGE RESULTS' : 'DEMOCRACIA RESULTS'
-
-  const markDemocraciaRevealConsumed = useCallback((key: string | null) => {
-    if (!key) return
-    consumedDemocraciaRevealKeysRef.current.add(key)
-  }, [])
-
-  const handleDemocraciaRevealDone = useCallback(() => {
-    if (!democraciaRevealKey || democraciaTopCandidateIds.length !== 1) return
-    markDemocraciaRevealConsumed(democraciaRevealKey)
-    dispatch(advance())
-    const announcement = buildDemocraciaWinnerAnnouncement({
-      tallies: democraciaTallies,
-      winnerId: democraciaTopCandidateIds[0],
-    })
-    if (announcement) {
-      queueDemocraciaStageAnnouncement({ announcement })
-    }
-  }, [
-    democraciaRevealKey,
-    democraciaTallies,
-    democraciaTopCandidateIds,
-    dispatch,
-    markDemocraciaRevealConsumed,
-    queueDemocraciaStageAnnouncement,
-  ])
-
-  const handleDemocraciaTiebreakRequired = useCallback((tiedIds: string[]) => {
-    if (!democraciaRevealKey || tiedIds.length < 2) return
-    markDemocraciaRevealConsumed(democraciaRevealKey)
-    const currentRound = game.democracia?.round ?? 1
-    const ballotageVoterCount = alivePlayers.filter((player) => !tiedIds.includes(player.id)).length
-    dispatch(advance())
-    if (currentRound < 2 && ballotageVoterCount === 0) {
-      const winnerId = storeRef.current.getState().game.lohId
-      const announcement = winnerId
-        ? buildDemocraciaWinnerAnnouncement({
-          tallies: democraciaTallies,
-          winnerId,
-          decidedByChance: true,
-        })
-        : null
-      if (announcement) {
-        queueDemocraciaStageAnnouncement({ announcement })
-      }
-      return
-    }
-    if (currentRound >= 2 && !game.publicModeEnabled) {
-      queueDemocraciaStageAnnouncement({
-        announcement: buildDemocraciaCoLohAnnouncement({
-          tallies: democraciaTallies,
-          tiedCandidateIds: tiedIds,
-        }),
-      })
-      return
-    }
-    if (currentRound >= 2 && game.publicModeEnabled) return
-    queueDemocraciaStageAnnouncement({
-      announcement: buildDemocraciaBallotageAnnouncement({
-        tallies: democraciaTallies,
-        tiedCandidateIds: tiedIds,
-      }),
-    })
-  }, [
-    alivePlayers,
-    democraciaRevealKey,
-    democraciaTallies,
-    dispatch,
-    game.democracia?.round,
-    game.publicModeEnabled,
-    markDemocraciaRevealConsumed,
-    queueDemocraciaStageAnnouncement,
-  ])
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
@@ -1820,9 +1644,7 @@ export default function GameScreen() {
     game.phase === 'democracia_vote' &&
     Boolean(game.democracia?.awaitingHumanVote) &&
     humanPlayer != null &&
-    Boolean(game.democracia?.eligibleVoterIds?.includes(humanPlayer.id)) &&
-    !showDemocraciaVoteReveal &&
-    !democraciaStageAnnouncement
+    Boolean(game.democracia?.eligibleVoterIds?.includes(humanPlayer.id))
   const democraciaVoteOptions = alivePlayers.filter(
     (p) => (game.democracia?.candidateIds ?? []).includes(p.id) && p.id !== humanPlayer?.id,
   )
@@ -2887,7 +2709,6 @@ export default function GameScreen() {
     showFinal3Modal ||
     showFinal3Ceremony ||
     (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') ||
-    showDemocraciaVoteReveal ||
     showVoteResults ||
     showVoteDeductionOffer ||
     showEvictionSplash ||
@@ -2901,7 +2722,6 @@ export default function GameScreen() {
     showQuickTapRace ||
     showBullseyeBlitz ||
     showTravelingDots ||
-    Boolean(democraciaStageAnnouncement) ||
     aiTiebreakStage !== null ||
     spectatorF3Active ||
     spectatorLegacyActive
@@ -2967,47 +2787,12 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
-            activeDemocraciaStageAnnouncement ??
             socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            democraciaStageAnnouncement
-              ? handleDemocraciaStageAnnouncementDismiss
-              : socialModuleUnavailableAnnouncement
-              ? () => setSocialModuleUnavailableAnnouncement(null)
-              : publicMeterUnavailableAnnouncement
-              ? () => setPublicMeterUnavailableAnnouncement(null)
-              : handlePreAdAnnouncementDismiss
-          }
-          mainLogMaxVisible={compactRosterLogRows}
-          viewportFallbackMessage={tvViewportFallbackMessage}
-        />
-      ) : showDemocraciaVoteReveal ? (
-        <TvZone
-          voteResultsReveal={{
-            nominees: democraciaTallies,
-            outcomePlayer: democraciaRevealWinner,
-            onTiebreakerRequired: handleDemocraciaTiebreakRequired,
-            onDone: handleDemocraciaRevealDone,
-            title: democraciaRevealTitle,
-            liveLabel: (game.democracia?.round ?? 1) > 1 ? 'Ballotage' : 'Election',
-            outcomeLabel: 'Elected LOH',
-            outcomeTone: 'winner',
-          }}
-          priorityAnnouncement={confessionalTvAnnouncement}
-          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
-          externalAnnouncement={
-            activeDemocraciaStageAnnouncement ??
-            socialModuleUnavailableAnnouncement ??
-            publicMeterUnavailableAnnouncement ??
-            preAdAnnouncement
-          }
-          onExternalAnnouncementDismiss={
-            democraciaStageAnnouncement
-              ? handleDemocraciaStageAnnouncementDismiss
-              : socialModuleUnavailableAnnouncement
+            socialModuleUnavailableAnnouncement
               ? () => setSocialModuleUnavailableAnnouncement(null)
               : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
@@ -3029,15 +2814,12 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
-            activeDemocraciaStageAnnouncement ??
             socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            democraciaStageAnnouncement
-              ? handleDemocraciaStageAnnouncementDismiss
-              : socialModuleUnavailableAnnouncement
+            socialModuleUnavailableAnnouncement
               ? () => setSocialModuleUnavailableAnnouncement(null)
               : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)
@@ -3051,7 +2833,6 @@ export default function GameScreen() {
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
-            activeDemocraciaStageAnnouncement ??
             socialModuleUnavailableAnnouncement ??
             publicMeterUnavailableAnnouncement ??
             aiTiebreakAnnouncement ??
@@ -3060,9 +2841,7 @@ export default function GameScreen() {
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            democraciaStageAnnouncement
-              ? handleDemocraciaStageAnnouncementDismiss
-              : socialModuleUnavailableAnnouncement
+            socialModuleUnavailableAnnouncement
               ? () => setSocialModuleUnavailableAnnouncement(null)
               : publicMeterUnavailableAnnouncement
               ? () => setPublicMeterUnavailableAnnouncement(null)

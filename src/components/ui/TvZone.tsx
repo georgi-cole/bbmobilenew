@@ -38,8 +38,6 @@ const PHASE_LABELS: Record<string, string> = {
   loh_comp_announcement:    'LOH COMP',
   loh_comp:                 'LOH COMP',
   loh_results:              'LOH RESULTS',
-  democracia_vote:          'DEMOCRACIA',
-  democracia_results:       'DEMO RESULT',
   social_1:             'SOCIAL',
   nominations:          'NOMS',
   nomination_results:       'NOMS RESULTS',
@@ -85,7 +83,6 @@ const MAJOR_KEYS = new Set([
   'jury',
   'battle_back',
   'double_eviction',
-  'democracia',
   'vip_veto',
   'diamond_pov',
   'coup_detat',
@@ -111,7 +108,6 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   coup_detat:           { title: 'Detox!',                     subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',    isLive: true,  autoDismissMs: null },
   spotlight_veto:       { title: 'Force Majeure!',             subtitle: 'The holder is forced to use the power this ceremony. ✨',        isLive: true,  autoDismissMs: null },
   twist:                { title: 'Shock Alert!',               subtitle: 'The Big Eye has a surprise.',                                  isLive: true,  autoDismissMs: null },
-  democracia:           { title: 'Democracia!',                subtitle: 'The house will elect the new Leader of the House by secret vote.', isLive: true, autoDismissMs: null },
   loh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
   pos_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
 };
@@ -183,7 +179,18 @@ const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
  *   2. TV announcement (existing TvAnnouncementOverlay)
  *   3. Info-button spotlight (ConfessionalSpotlightOverlay reused)
  */
-const SHOCK_ANNOUNCEMENT_KEY = 'democracia';
+const SHOCK_ANNOUNCEMENT_KEYS = new Set([
+  'twist',
+  'double_eviction',
+  'vip_veto',
+  'diamond_pov',
+  'coup_detat',
+  'spotlight_veto',
+  'battle_back',
+  'battle_back_shock',
+  'battle_back_rules',
+  'battle_back_challenge',
+]);
 
 type TvZonePublicSaveReveal = {
   nominees: Player[];
@@ -194,15 +201,10 @@ type TvZonePublicSaveReveal = {
 type TvZoneVoteResultsReveal = {
   nominees: VoteTally[];
   evictee?: Player | null;
-  outcomePlayer?: Player | null;
   onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
   onDone: () => void;
-  title?: string;
-  liveLabel?: string;
-  outcomeLabel?: string;
-  outcomeTone?: 'eviction' | 'winner';
 };
 
 type TvZoneProps = {
@@ -326,10 +328,7 @@ export default function TvZone(props: TvZoneProps) {
     const currentPhase = gameState.phase;
     const prevPhase = previousPhaseRef.current;
     previousPhaseRef.current = currentPhase;
-    const key =
-      currentPhase === 'loh_comp_announcement' && gameState.democracia?.active
-        ? 'democracia'
-        : getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
+    const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
     const keyChangedInPlace =
       prevPhase === currentPhase &&
       currentPhase === 'nominations' &&
@@ -359,7 +358,7 @@ export default function TvZone(props: TvZoneProps) {
         setPhaseAnnouncement(null);
       }
     });
-  }, [gameState.democracia?.active, gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
+  }, [gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {
@@ -373,7 +372,7 @@ export default function TvZone(props: TvZoneProps) {
   // then phaseAnnouncement, then eventAnnouncement.
   const activeAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
   const isShockAnnouncement =
-    activeAnnouncement?.key === SHOCK_ANNOUNCEMENT_KEY;
+    activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
   const showInlineAnnouncement = activeAnnouncement != null && !(shockIntroActive && isShockAnnouncement);
   const suppressStaleLiveVotePitchMessage =
     displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
@@ -513,7 +512,12 @@ export default function TvZone(props: TvZoneProps) {
   // Play a short TV-only spotlight intro for Double Eviction announcements,
   // then return the surrounding UI to normal while keeping the announcement visible.
   useEffect(() => {
-    const isSpecialAnnouncement = activeAnnouncement?.key === 'democracia';
+    const isSpecialAnnouncement =
+      activeAnnouncement?.key === 'double_eviction' ||
+      activeAnnouncement?.key === 'vip_veto' ||
+      activeAnnouncement?.key === 'diamond_pov' ||
+      activeAnnouncement?.key === 'coup_detat' ||
+      activeAnnouncement?.key === 'spotlight_veto';
 
     if (!isSpecialAnnouncement || !showInlineAnnouncement) {
       startTransition(() => {
@@ -551,7 +555,7 @@ export default function TvZone(props: TvZoneProps) {
   // - Non-shock  → clear both phases (handles dismissal mid-sequence).
   useEffect(() => {
     const key = activeAnnouncement?.key ?? null;
-    const isShock = key === SHOCK_ANNOUNCEMENT_KEY;
+    const isShock = key !== null && SHOCK_ANNOUNCEMENT_KEYS.has(key);
     startTransition(() => {
       if (isShock) {
         setShockIntroActive(true);
@@ -803,17 +807,12 @@ export default function TvZone(props: TvZoneProps) {
               <AnimatedVoteResultsModal
                 nominees={props.voteResultsReveal.nominees}
                 evictee={props.voteResultsReveal.evictee}
-                outcomePlayer={props.voteResultsReveal.outcomePlayer}
                 onTiebreakerRequired={props.voteResultsReveal.onTiebreakerRequired}
                 publicTiebreak={props.voteResultsReveal.publicTiebreak}
                 onPublicTiebreakResolved={props.voteResultsReveal.onPublicTiebreakResolved}
                 onDone={props.voteResultsReveal.onDone}
                 variant="tv"
                 countdownMs={3000}
-                title={props.voteResultsReveal.title}
-                liveLabel={props.voteResultsReveal.liveLabel}
-                outcomeLabel={props.voteResultsReveal.outcomeLabel}
-                outcomeTone={props.voteResultsReveal.outcomeTone}
               />
             )}
           </div>
