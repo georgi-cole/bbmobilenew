@@ -594,95 +594,22 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  opacity: 0.22;
+  opacity: 0.28;
 }
 
-.src-ladder-archive__chip,
-.src-ladder-wave-card {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  background: rgba(11, 14, 27, 0.54);
+.src-ladder-archive__chip {
+  border: 1px solid rgba(188, 197, 233, 0.2);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(32, 38, 66, 0.92), rgba(22, 26, 47, 0.94));
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
 .src-ladder-copy {
-  width: min(100%, 340px);
-}
-
-.src-ladder-wave-grid {
-  display: grid;
-  gap: 0.72rem;
-}
-
-.src-ladder-wave-layout {
-  display: grid;
-  gap: 1rem;
-}
-
-.src-ladder-focus-card {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  padding: 1rem 1rem 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%),
-    rgba(11, 14, 27, 0.72);
-}
-
-.src-ladder-focus-card__image {
-  width: min(100%, 168px);
-  height: min(32dvh, 280px);
-  object-fit: contain;
-  object-position: center bottom;
-  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.34));
-}
-
-.src-ladder-focus-card__plate {
-  display: grid;
-  gap: 0.18rem;
-  margin-top: -0.25rem;
+  width: min(100%, 380px);
+  margin: 0 auto;
   text-align: center;
-}
-
-.src-ladder-focus-card__placement {
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  color: rgba(222, 210, 255, 0.76);
-  text-transform: uppercase;
-}
-
-.src-ladder-focus-card__name {
-  font-size: 1.08rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.src-ladder-wave-card {
-  padding: 0.9rem 1rem;
-}
-
-.src-ladder-wave-card--active {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(28, 35, 58, 0.92);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
-}
-
-.src-ladder-wave-card__placement {
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: rgba(216, 205, 255, 0.7);
-}
-
-.src-ladder-wave-card__name {
-  margin-top: 0.2rem;
-  font-size: 1.2rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .src-finalists-equal {
@@ -774,11 +701,6 @@
 }
 
 @media (min-width: 700px) {
-  .src-ladder-wave-layout {
-    grid-template-columns: minmax(220px, 0.95fr) minmax(0, 1.2fr);
-    align-items: end;
-  }
-
   .src-finalists-equal {
     gap: 2rem;
   }
@@ -788,4 +710,101 @@
   .src-particle {
     animation: none;
   }
+}
+
+/* ── Headline Girls scene ── */
+.src-scene--headline-girls {
+  display: grid;
+  place-items: center;
+}
+
+.src-headline-media {
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  width: min(100%, 380px);
+  padding: 0 1rem;
+}
+
+.src-headline-media__paper-wrap {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.src-headline-media__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(64dvh, 520px);
+  object-fit: cover;
+}
+
+.src-headline-media__kicker {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+/* ── Phone Post Boys scene ── */
+.src-scene--phone-post-boys {
+  display: grid;
+  place-items: center;
+}
+
+.src-phone-post {
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+}
+
+.src-phone-post__device {
+  width: min(200px, 52vw);
+  border-radius: 28px;
+  background: #111;
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  padding: 10px;
+}
+
+.src-phone-post__screen {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.src-phone-post__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(60dvh, 480px);
+  object-fit: cover;
+}
+
+.src-phone-post__caption {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+/* ── Moment of Truth scene ── */
+.src-scene--moment-of-truth {
+  display: grid;
+  place-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+}
+
+.src-mot-eyebrow {
+  font-size: clamp(0.82rem, 3.5vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.35;
 }

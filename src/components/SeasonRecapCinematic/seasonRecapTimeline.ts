@@ -1,12 +1,12 @@
 export type RecapSceneKind =
   | 'intro'
   | 'montage'
-  | 'tabloid'
+  | 'headline_girls'
+  | 'phone_post_boys'
   | 'category'
   | 'ladder_intro'
   | 'ladder_wave'
-  | 'ladder_finalists'
-  | 'handoff';
+  | 'moment_of_truth';
 
 export interface RecapTimelineScene {
   id: string;
@@ -16,9 +16,7 @@ export interface RecapTimelineScene {
   durationMs: number;
   categoryId?: string;
   montageBeatIndex?: number;
-  tabloidCardIndex?: number;
   ladderWaveIndex?: number;
-  handoffVariant?: 'and_now' | 'final_verdict' | 'fade_out';
 }
 
 const SECOND = 1000;
@@ -28,17 +26,15 @@ function seconds(value: number): number {
 }
 
 export const CATEGORY_SCENE_DURATION_MS = seconds(9.5);
-export const TABLOID_CARD_DURATION_MS = seconds(5);
 export const INTRO_MIN_DURATION_MS = seconds(4.5);
-export const HANDOFF_END_BUFFER_MS = seconds(2.5);
 export const RECAP_EXIT_FADE_MS = 420;
 
 const MONTAGE_SCENE_DURATION_MS = seconds(4.5);
+const HEADLINE_GIRLS_DURATION_MS = seconds(4);
+const PHONE_POST_BOYS_DURATION_MS = seconds(4);
 const LADDER_INTRO_DURATION_MS = seconds(3.5);
 const LADDER_WAVE_DURATION_MS = seconds(4.25);
-const LADDER_FINALISTS_DURATION_MS = seconds(7);
-const HANDOFF_AND_NOW_DURATION_MS = seconds(3.5);
-const HANDOFF_FINAL_VERDICT_DURATION_MS = seconds(4);
+const MOMENT_OF_TRUTH_DURATION_MS = seconds(6);
 
 export function buildSeasonRecapTimeline(categoryIds: string[], evictionWaveCount: number): RecapTimelineScene[] {
   const safeWaveCount = Math.max(evictionWaveCount, 1);
@@ -69,11 +65,8 @@ export function buildSeasonRecapTimeline(categoryIds: string[], evictionWaveCoun
     pushScene('montage_1', 'montage', MONTAGE_SCENE_DURATION_MS, { montageBeatIndex: 1 }),
     pushScene('montage_2', 'montage', MONTAGE_SCENE_DURATION_MS, { montageBeatIndex: 2 }),
     pushScene('montage_3', 'montage', MONTAGE_SCENE_DURATION_MS, { montageBeatIndex: 3 }),
-    pushScene('tabloid_0', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 0 }),
-    pushScene('tabloid_1', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 1 }),
-    pushScene('tabloid_2', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 2 }),
-    pushScene('tabloid_3', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 3 }),
-    pushScene('tabloid_4', 'tabloid', TABLOID_CARD_DURATION_MS, { tabloidCardIndex: 4 }),
+    pushScene('headline_girls', 'headline_girls', HEADLINE_GIRLS_DURATION_MS),
+    pushScene('phone_post_boys', 'phone_post_boys', PHONE_POST_BOYS_DURATION_MS),
   ];
 
   categoryIds.forEach((categoryId) => {
@@ -85,6 +78,7 @@ export function buildSeasonRecapTimeline(categoryIds: string[], evictionWaveCoun
   });
 
   timeline.push(pushScene('ladder_intro', 'ladder_intro', LADDER_INTRO_DURATION_MS));
+
   for (let index = 0; index < safeWaveCount; index += 1) {
     timeline.push(
       pushScene(`ladder_wave_${index}`, 'ladder_wave', LADDER_WAVE_DURATION_MS, {
@@ -92,15 +86,8 @@ export function buildSeasonRecapTimeline(categoryIds: string[], evictionWaveCoun
       }),
     );
   }
-  timeline.push(pushScene('ladder_finalists', 'ladder_finalists', LADDER_FINALISTS_DURATION_MS));
 
-  timeline.push(
-    pushScene('handoff_and_now', 'handoff', HANDOFF_AND_NOW_DURATION_MS, { handoffVariant: 'and_now' }),
-    pushScene('handoff_final_verdict', 'handoff', HANDOFF_FINAL_VERDICT_DURATION_MS, {
-      handoffVariant: 'final_verdict',
-    }),
-    pushScene('handoff_fade_out', 'handoff', HANDOFF_END_BUFFER_MS, { handoffVariant: 'fade_out' }),
-  );
+  timeline.push(pushScene('moment_of_truth', 'moment_of_truth', MOMENT_OF_TRUTH_DURATION_MS));
 
   return timeline;
 }

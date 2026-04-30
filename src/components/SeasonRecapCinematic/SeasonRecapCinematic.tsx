@@ -3,9 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
+import { resolveAvatarCandidates } from '../../utils/avatar';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
-import RecapImage from './RecapImage';
-import { buildSeasonRecapData, type AwardCategory, type RecapBeat, type TabloidCard } from './seasonRecapData';
+import EvictionLadder from './EvictionLadder';
+import { buildSeasonRecapData, type AwardCategory, type RecapBeat } from './seasonRecapData';
+import type { EvictionLadderEntry } from './evictionLadderModel';
 import { buildSeasonRecapTimeline, RECAP_EXIT_FADE_MS, type RecapTimelineScene } from './seasonRecapTimeline';
 import './SeasonRecapCinematic.css';
 
@@ -26,26 +28,40 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
 };
 
 const LADDER_ARCHIVE_LIMIT = 6;
-const TABLOID_PHOTO_TILT_LEFT_DEG = -1.15;
-const TABLOID_PHOTO_TILT_RIGHT_DEG = 1.4;
-const TABLOID_BODY_COPY = {
-  rumorMillFollowup:
-    'By sunrise, the rumor mill had already stretched it into the kind of splash that follows every room switch, whisper campaign, and late vote count.',
-  finalEdition:
-    'Finale night squeezed every side-eye, scramble, and saved promise into one last crowded edition before the verdict hit the presses.',
-  editionWrap: (editionNumber: number) =>
-    `Edition ${editionNumber} kept the presses busy, turning veto chatter, hallway glances, and shaky promises into another stack of messy receipts.`,
-} as const;
+const DICEBEAR_HOST = 'api.dicebear.com';
+const URL_PARSE_BASE = 'https://bbmobilenew.local';
+const RECAP_SKINS_BASE = `${import.meta.env.BASE_URL}assets/skins/`;
 
-function placementLabel(player: Player, fallbackPlacement: number): string {
-  const placement = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
-  const mod100 = placement % 100;
-  const mod10 = placement % 10;
-  if (mod100 >= 11 && mod100 <= 13) return `${placement}TH`;
-  if (mod10 === 1) return `${placement}ST`;
-  if (mod10 === 2) return `${placement}ND`;
-  if (mod10 === 3) return `${placement}RD`;
-  return `${placement}TH`;
+function isDicebearAvatar(candidate: string): boolean {
+  try {
+    return new URL(candidate, URL_PARSE_BASE).hostname === DICEBEAR_HOST;
+  } catch {
+    return false;
+  }
+}
+
+function resolveRecapAvatarUrl(player: Player): string | undefined {
+  // Prefer project assets in the recap so the ladder stays on-brand and does not
+  // depend on a remote DiceBear fetch inside the cinematic.
+  return resolveAvatarCandidates(player).find((candidate) => !isDicebearAvatar(candidate));
+}
+
+function toEvictionLadderEntry(player: Player, fallbackPlacement: number): EvictionLadderEntry {
+  const rank = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
+  const status =
+    player.isWinner || rank === 1
+      ? 'winner'
+      : rank <= 3
+        ? 'finalist'
+        : 'evicted';
+
+  return {
+    id: player.id,
+    name: player.name,
+    rank,
+    avatarUrl: resolveRecapAvatarUrl(player),
+    status,
+  };
 }
 
 function SceneFrame({
@@ -149,130 +165,63 @@ function MontageBeatScene({ beat, fragments }: { beat: RecapBeat; fragments: str
   );
 }
 
-function buildTabloidBodyParagraphs(card: TabloidCard, activeIndex: number): string[] {
-  return [
-    card.articleText,
-    `${card.subhead} ${TABLOID_BODY_COPY.rumorMillFollowup}`,
-    activeIndex === 4 ? TABLOID_BODY_COPY.finalEdition : TABLOID_BODY_COPY.editionWrap(activeIndex + 1),
-  ];
-}
-
-function buildTabloidBriefLines(card: TabloidCard, hasRealPhotos: boolean): Array<{ label: string; text: string }> {
-  const subject = card.imageAlt || 'House file';
-  const printHeadline = card.headline.replace(/[.?]/g, '').toLowerCase();
-
-  return [
-    {
-      label: 'Print run',
-      text: hasRealPhotos
-        ? 'Real tabloid photography cleared the front page for this edition.'
-        : 'House-feed fallback art stepped in while the photo desk kept the presses moving.',
-    },
-    {
-      label: 'Rumor mill',
-      text: card.subhead,
-    },
-    {
-      label: 'City desk',
-      text: `${subject} stayed pinned to the board while the edition closed around ${printHeadline}.`,
-    },
-  ];
-}
-
-function buildTabloidCaption(card: TabloidCard): string {
-  const subject = card.imageAlt || 'House file';
-  return `${subject} lands on the splash page as the season’s messiest beat keeps bleeding into print.`;
-}
-
-function TabloidCardScene({
-  activeIndex,
-  cards,
-  hasRealPhotos,
-}: {
-  activeIndex: number;
-  cards: TabloidCard[];
-  hasRealPhotos: boolean;
-}) {
-  const activeCard = cards[activeIndex] ?? cards[0];
-  const spreadCards = activeIndex === cards.length - 1 ? cards : cards.slice(Math.max(0, activeIndex - 2), activeIndex + 1);
-
-  if (!activeCard) return null;
-
+function HeadlineGirlsScene() {
   return (
-    <SceneFrame className="src-scene--tabloid">
-      <div className="src-tabloid-desk" aria-hidden="true" />
-      <div className="src-tabloid-stack" aria-label="Season tabloids">
-        {spreadCards.map((card, index) => {
-          const depth = spreadCards.length - index - 1;
-          const isActive = card.id === activeCard.id;
-          const bodyParagraphs = buildTabloidBodyParagraphs(card, activeIndex);
-          const briefLines = buildTabloidBriefLines(card, hasRealPhotos);
-          const photoOnRight = (activeIndex + index) % 2 === 1;
-          const photoTilt = photoOnRight ? TABLOID_PHOTO_TILT_RIGHT_DEG : TABLOID_PHOTO_TILT_LEFT_DEG;
-          return (
-            <motion.article
-              key={card.id}
-              className={`src-tabloid-card${isActive ? ' src-tabloid-card--active' : ''}`}
-              initial={{ opacity: 0, x: 30, y: 26, rotate: 6 }}
-              animate={{
-                opacity: isActive ? 1 : 0.68,
-                x: depth * -18,
-                y: depth * 18,
-                rotate: isActive ? (activeIndex % 2 === 0 ? -3 : 3) : depth * -2.5,
-                scale: isActive ? 1 : 1 - depth * 0.03,
-              }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              style={
-                {
-                  zIndex: 12 - depth,
-                  '--tabloid-photo-tilt': `${photoTilt}deg`,
-                } as CSSProperties
-              }
-            >
-              <div className="src-tabloid-card__meta">
-                <span>FLASHBACK EDITION</span>
-                <span>{hasRealPhotos ? 'PHOTO FILE' : 'HOUSE FEED'}</span>
-              </div>
-              <div className="src-tabloid-card__grid">
-                <h2 className="src-tabloid-card__headline">{card.headline}</h2>
-                <p className="src-tabloid-card__subhead">{card.subhead}</p>
-                <div className="src-tabloid-card__rule" aria-hidden="true" />
-                <figure className={`src-tabloid-card__figure${photoOnRight ? ' src-tabloid-card__figure--right' : ''}`}>
-                  <div className="src-tabloid-card__photo-wrap">
-                    <RecapImage
-                      sources={card.imageSources}
-                      alt={card.imageAlt}
-                      className="src-tabloid-card__photo"
-                      loading="eager"
-                    />
-                  </div>
-                  <figcaption className="src-tabloid-card__caption">
-                    <span className="src-tabloid-card__caption-label">Captured on the record</span>
-                    <span>{buildTabloidCaption(card)}</span>
-                  </figcaption>
-                </figure>
-                <div className={`src-tabloid-card__brief${photoOnRight ? ' src-tabloid-card__brief--left' : ''}`}>
-                  {briefLines.map((line) => (
-                    <div key={line.label} className="src-tabloid-card__brief-item">
-                      <span className="src-tabloid-card__brief-label">{line.label}</span>
-                      <p className="src-tabloid-card__brief-text">{line.text}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="src-tabloid-card__body">
-                  {bodyParagraphs.map((paragraph, paragraphIndex) => (
-                    <p key={`paragraph-${paragraphIndex}-${paragraph.slice(0, 24)}`} className="src-tabloid-card__body-paragraph">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-                {isActive && activeIndex === cards.length - 1 && (
-                  <div className="src-tabloid-card__stamp">SEASON FILES: CLASSIFIED</div>
-                )}
-              </div>
-            </motion.article>
-          );
-        })}
+    <SceneFrame className="src-scene--headline-girls">
+      <div className="src-headline-media">
+        <motion.div
+          className="src-headline-media__paper-wrap"
+          initial={{ opacity: 0, y: 18, scale: 1.04 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <img
+            src={`${RECAP_SKINS_BASE}thegirls.webp`}
+            alt="The girls season newspaper"
+            className="src-headline-media__image"
+            loading="eager"
+          />
+        </motion.div>
+        <motion.p
+          className="src-headline-media__kicker"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+        >
+          FINAL EDITION
+        </motion.p>
+      </div>
+    </SceneFrame>
+  );
+}
+
+function PhonePostBoysScene() {
+  return (
+    <SceneFrame className="src-scene--phone-post-boys">
+      <div className="src-phone-post">
+        <motion.div
+          className="src-phone-post__device"
+          initial={{ opacity: 0, y: 22, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="src-phone-post__screen">
+            <img
+              src={`${RECAP_SKINS_BASE}the boys.webp`}
+              alt="The boys season post"
+              className="src-phone-post__image"
+              loading="eager"
+            />
+          </div>
+        </motion.div>
+        <motion.p
+          className="src-phone-post__caption"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+        >
+          THE FINAL SCROLL
+        </motion.p>
       </div>
     </SceneFrame>
   );
@@ -382,65 +331,39 @@ function LadderWaveScene({
   ladder: Player[];
   caption: string;
 }) {
-  const highlightedPlayer = players[players.length - 1] ?? ladder[0];
+  const highlightedIds = players.map((player) => player.id);
+  const lastHighlightedPlayer = players[players.length - 1];
+  const revealCount = lastHighlightedPlayer
+    ? Math.max(1, ladder.findIndex((player) => player.id === lastHighlightedPlayer.id) + 1)
+    : ladder.length;
+  const entries = ladder.map((player, index) => toEvictionLadderEntry(player, ladder.length - index + 2));
 
   return (
     <SceneFrame className="src-scene--ladder-wave">
-      <div className="src-ladder-wave-layout">
-        <motion.article
-          className="src-ladder-focus-card"
-          initial={{ opacity: 0, x: -28, y: 14 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {highlightedPlayer && (
-            <FullSizeCutoutImage
-              player={highlightedPlayer}
-              alt={highlightedPlayer.name}
-              className="src-ladder-focus-card__image"
-              loading="eager"
-            />
-          )}
-          {highlightedPlayer && (
-            <div className="src-ladder-focus-card__plate">
-              <span className="src-ladder-focus-card__placement">{placementLabel(highlightedPlayer, 3)}</span>
-              <span className="src-ladder-focus-card__name">{highlightedPlayer.name}</span>
-            </div>
-          )}
-        </motion.article>
-
-        <div className="src-ladder-wave-grid">
-          {ladder.map((player, index) => {
-            const isHighlighted = players.some((highlightedPlayer) => highlightedPlayer.id === player.id);
-            return (
-              <motion.article
-                key={player.id}
-                className={`src-ladder-wave-card${isHighlighted ? ' src-ladder-wave-card--active' : ''}`}
-                initial={{ opacity: 0, x: 24, y: 12 }}
-                animate={{ opacity: isHighlighted ? 1 : 0.64, x: 0, y: 0, scale: isHighlighted ? 1 : 0.98 }}
-                transition={{ duration: 0.45, delay: index * 0.06 }}
-              >
-                <div className="src-ladder-wave-card__placement">
-                  {placementLabel(player, ladder.length - index + 2)}
-                </div>
-                <div className="src-ladder-wave-card__name">{player.name}</div>
-              </motion.article>
-            );
-          })}
-        </div>
-      </div>
-      <p className="src-ladder-wave-caption">{caption}</p>
+      <EvictionLadder
+        entries={entries}
+        caption={caption}
+        revealCount={revealCount}
+        highlightedEntryIds={highlightedIds}
+        compact={entries.length >= 6}
+        animationDelayMs={220}
+        stepDelayMs={130}
+      />
     </SceneFrame>
   );
 }
 
-function LadderFinalistsScene({ finalists }: { finalists: Player[] }) {
+function MomentOfTruthScene({ finalists }: { finalists: Player[] }) {
   return (
-    <SceneFrame className="src-scene--ladder-finalists">
-      <div className="src-finalists-equal__title-wrap">
-        <p className="src-ladder-copy__eyebrow">ROAD TO THE FINALISTS</p>
-        <h2 className="src-ladder-copy__title">FINAL TWO.</h2>
-      </div>
+    <SceneFrame className="src-scene--moment-of-truth">
+      <motion.p
+        className="src-mot-eyebrow"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.2 }}
+      >
+        AND NOW THE MOMENT OF TRUTH
+      </motion.p>
       <div className="src-finalists-equal">
         {finalists.map((player) => (
           <div key={player.id} className="src-finalists-equal__card">
@@ -449,22 +372,6 @@ function LadderFinalistsScene({ finalists }: { finalists: Player[] }) {
           </div>
         ))}
       </div>
-      <p className="src-finalists-equal__caption">Until only two remained.</p>
-    </SceneFrame>
-  );
-}
-
-function HandoffScene({ variant, finalists }: { variant: 'and_now' | 'final_verdict' | 'fade_out'; finalists: Player[] }) {
-  return (
-    <SceneFrame className={`src-scene--handoff src-scene--handoff-${variant}`}>
-      <div className="src-handoff-finalists" aria-hidden="true">
-        {finalists.map((player) => (
-          <FullSizeCutoutImage key={player.id} player={player} alt={player.name} className="src-handoff-finalists__silhouette" />
-        ))}
-      </div>
-      {variant === 'and_now' && <p className="src-handoff-lead">AND NOW…</p>}
-      {variant === 'final_verdict' && <h2 className="src-handoff-title">THE FINAL VERDICT.</h2>}
-      {variant === 'fade_out' && <div className="src-handoff-fade" />}
     </SceneFrame>
   );
 }
@@ -537,7 +444,6 @@ export default function SeasonRecapCinematic({
     currentScene?.kind === 'montage'
       ? recapData.montageBeats[currentScene.montageBeatIndex ?? 0]
       : null;
-  const activeTabloidIndex = currentScene?.kind === 'tabloid' ? currentScene.tabloidCardIndex ?? 0 : -1;
   const activeWave =
     currentScene?.kind === 'ladder_wave'
       ? recapData.evictionWaves[currentScene.ladderWaveIndex ?? 0]
@@ -576,13 +482,11 @@ export default function SeasonRecapCinematic({
         {currentScene?.kind === 'montage' && activeBeat && (
           <MontageBeatScene key={currentScene.id} beat={activeBeat} fragments={recapData.montageFragments} />
         )}
-        {currentScene?.kind === 'tabloid' && (
-          <TabloidCardScene
-            key={currentScene.id}
-            activeIndex={activeTabloidIndex}
-            cards={recapData.tabloidCards}
-            hasRealPhotos={recapData.tabloidPhotoSources.length > 0}
-          />
+        {currentScene?.kind === 'headline_girls' && (
+          <HeadlineGirlsScene key={currentScene.id} />
+        )}
+        {currentScene?.kind === 'phone_post_boys' && (
+          <PhonePostBoysScene key={currentScene.id} />
         )}
         {currentScene?.kind === 'category' && activeCategory && (
           <CategoryScene key={currentScene.id} category={activeCategory} />
@@ -601,15 +505,8 @@ export default function SeasonRecapCinematic({
             caption={activeWave.caption}
           />
         )}
-        {currentScene?.kind === 'ladder_finalists' && (
-          <LadderFinalistsScene key={currentScene.id} finalists={recapData.finalists} />
-        )}
-        {currentScene?.kind === 'handoff' && currentScene.handoffVariant && (
-          <HandoffScene
-            key={currentScene.id}
-            variant={currentScene.handoffVariant}
-            finalists={recapData.finalists}
-          />
+        {currentScene?.kind === 'moment_of_truth' && (
+          <MomentOfTruthScene key={currentScene.id} finalists={recapData.finalists} />
         )}
       </AnimatePresence>
     </motion.div>
