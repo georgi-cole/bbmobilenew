@@ -462,8 +462,14 @@ function buildEvictionWaves(evictionLadder: Player[]): EvictionWave[] {
     return [{ id: 'wave-0', players: evictionLadder, caption: captions[0] }];
   }
 
-  const earlyEvictions = evictionLadder.filter((player) => (getPlacementValue(player) ?? 0) >= 10);
-  const lateEvictions = evictionLadder.filter((player) => (getPlacementValue(player) ?? 0) < 10);
+  const [earlyEvictions, lateEvictions] = evictionLadder.reduce<[Player[], Player[]]>(
+    (groups, player) => {
+      const target = (getPlacementValue(player) ?? 0) >= 10 ? 0 : 1;
+      groups[target].push(player);
+      return groups;
+    },
+    [[], []],
+  );
   const groupedWaves =
     earlyEvictions.length > 0 && lateEvictions.length > 0
       ? [earlyEvictions, lateEvictions]

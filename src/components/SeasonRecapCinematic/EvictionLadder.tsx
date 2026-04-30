@@ -93,7 +93,10 @@ export default function EvictionLadder({
     }
 
     const interval = window.setInterval(() => {
-      setActiveEntryIndex((current) => (current + 1) % cycleEntries.length);
+      setActiveEntryIndex((current) => {
+        if (cycleEntries.length === 0) return 0;
+        return (current + 1) % cycleEntries.length;
+      });
     }, Math.max(stepDelayMs * HIGHLIGHT_CYCLE_STEP_MULTIPLIER, MIN_HIGHLIGHT_CYCLE_INTERVAL_MS));
 
     return () => window.clearInterval(interval);
@@ -102,7 +105,7 @@ export default function EvictionLadder({
   const activeEntry =
     cycleEntries.length > 0
       ? cycleEntries[activeEntryIndex % cycleEntries.length]
-      : visibleEntries[0];
+      : visibleEntries[0] ?? null;
   const activeEntryId = activeEntry?.id;
   const activeEntryStatus = activeEntry ? deriveEvictionLadderStatus(activeEntry) : null;
   const activeEntryStatusLabel = activeEntry ? getEvictionLadderStatusLabel(activeEntry) : '';
