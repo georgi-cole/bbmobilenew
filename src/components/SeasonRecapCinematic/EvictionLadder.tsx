@@ -11,6 +11,9 @@ import {
 } from './evictionLadderModel';
 import './EvictionLadder.css';
 
+const HIGHLIGHT_CYCLE_STEP_MULTIPLIER = 3;
+const MIN_HIGHLIGHT_CYCLE_INTERVAL_MS = 560;
+
 function resolveAvatarSources(entry: EvictionLadderEntry): string[] {
   const fallback = resolveSilhouetteFallback({ id: entry.id, name: entry.name });
   return Array.from(new Set([entry.avatarUrl, fallback].filter((source): source is string => Boolean(source))));
@@ -91,12 +94,15 @@ export default function EvictionLadder({
 
     const interval = window.setInterval(() => {
       setActiveEntryIndex((current) => (current + 1) % cycleEntries.length);
-    }, Math.max(stepDelayMs * 3, 560));
+    }, Math.max(stepDelayMs * HIGHLIGHT_CYCLE_STEP_MULTIPLIER, MIN_HIGHLIGHT_CYCLE_INTERVAL_MS));
 
     return () => window.clearInterval(interval);
   }, [autoPlay, cycleEntries, reducedMotion, stepDelayMs]);
 
-  const activeEntry = cycleEntries[Math.min(activeEntryIndex, Math.max(cycleEntries.length - 1, 0))] ?? visibleEntries[0];
+  const activeEntry =
+    cycleEntries.length > 0
+      ? cycleEntries[activeEntryIndex % cycleEntries.length]
+      : visibleEntries[0];
   const activeEntryId = activeEntry?.id;
   const activeEntryStatus = activeEntry ? deriveEvictionLadderStatus(activeEntry) : null;
   const activeEntryStatusLabel = activeEntry ? getEvictionLadderStatusLabel(activeEntry) : '';

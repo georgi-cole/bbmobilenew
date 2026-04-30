@@ -183,7 +183,7 @@ describe('SeasonRecapCinematic', () => {
   it('drops the extra montage text scenes before the media reveal', () => {
     const timeline = getTimeline();
 
-    expect(timeline.filter((scene) => scene.kind === ('montage' as string))).toHaveLength(0);
+    expect(timeline.filter((scene) => scene.id.startsWith('montage_'))).toHaveLength(0);
     expect(timeline[0]?.id).toBe('intro_votes_in');
     expect(timeline[1]?.id).toBe('intro_before_final_word');
     expect(timeline[2]?.id).toBe('headline_girls');
