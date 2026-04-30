@@ -31,7 +31,6 @@
 import { Fragment, useState, useEffect, useRef, useMemo } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import { calculateRoundedPercentage } from '../../utils/percentage';
 import './AnimatedVoteResultsModal.css';
 
 export interface VoteTally {
@@ -52,8 +51,6 @@ export interface AnimatedVoteResultsModalProps {
   nominees: VoteTally[];
   /** Pre-determined evictee; pass null to let the component detect ties. */
   evictee?: Player | null;
-  /** Generic alias used by election/result flows that are not evictions. */
-  outcomePlayer?: Player | null;
   onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
@@ -62,10 +59,6 @@ export interface AnimatedVoteResultsModalProps {
   postRevealDelayMs?: number;
   countdownMs?: number;
   variant?: 'modal' | 'tv';
-  title?: string;
-  liveLabel?: string;
-  outcomeLabel?: string;
-  outcomeTone?: 'eviction' | 'winner';
 }
 
 const MIN_BAR_PCT = 4;
@@ -135,7 +128,6 @@ function buildVoteSequence(tallies: VoteTally[]): string[] {
 export default function AnimatedVoteResultsModal({
   nominees,
   evictee: evicteeProp = null,
-  outcomePlayer = null,
   onTiebreakerRequired,
   publicTiebreak = null,
   onPublicTiebreakResolved,
@@ -144,10 +136,6 @@ export default function AnimatedVoteResultsModal({
   postRevealDelayMs = 1000,
   countdownMs = 4000,
   variant = 'modal',
-  title = 'VOTE RESULTS',
-  liveLabel = 'Live',
-  outcomeLabel = 'ELIMINATED',
-  outcomeTone = 'eviction',
 }: AnimatedVoteResultsModalProps) {
   const [revealStep, setRevealStep] = useState(0);
   const [outcomeVisible, setOutcomeVisible] = useState(false);
@@ -181,7 +169,7 @@ export default function AnimatedVoteResultsModal({
   // Detect tie from final tallies when evictee prop is null.
   const { resolvedEvictee, tiedIds } = useMemo(() => {
     if (nominees.length === 0) return { resolvedEvictee: null, tiedIds: [] as string[] };
-    if (outcomePlayer ?? evicteeProp) return { resolvedEvictee: outcomePlayer ?? evicteeProp, tiedIds: [] as string[] };
+    if (evicteeProp) return { resolvedEvictee: evicteeProp, tiedIds: [] as string[] };
 
     const maxVotes = Math.max(...nominees.map((n) => n.voteCount));
     const topNominees = nominees.filter((n) => n.voteCount === maxVotes);
@@ -189,7 +177,7 @@ export default function AnimatedVoteResultsModal({
       return { resolvedEvictee: null, tiedIds: topNominees.map((n) => n.nominee.id) };
     }
     return { resolvedEvictee: topNominees[0].nominee, tiedIds: [] as string[] };
-  }, [nominees, evicteeProp, outcomePlayer]);
+  }, [nominees, evicteeProp]);
 
   const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length;
   const isTied = tiedIds.length > 1;
@@ -272,8 +260,8 @@ export default function AnimatedVoteResultsModal({
       <div className={`avrm__card${variant === 'tv' ? ' avrm__card--tv' : ''}`}>
         <header className="avrm__header">
           {variant !== 'tv' && <span className="avrm__header-icon">🗳️</span>}
-          <h2 className="avrm__title">{title}</h2>
-          {variant === 'tv' && <span className="avrm__live-badge">{liveLabel}</span>}
+          <h2 className="avrm__title">VOTE RESULTS</h2>
+          {variant === 'tv' && <span className="avrm__live-badge">Live</span>}
         </header>
 
         {showVoteStage && variant === 'tv' ? (
@@ -299,11 +287,7 @@ export default function AnimatedVoteResultsModal({
                         'avrm__tally--visible',
                         'avrm__tally--tv',
                         nominees.length > 2 ? 'avrm__tally--tv-triple' : '',
-                        isEvictee && outcomeVisible
-                          ? outcomeTone === 'winner'
-                            ? 'avrm__tally--winner'
-                            : 'avrm__tally--evictee'
-                          : '',
+                        isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
                         isLeading ? 'avrm__tally--leading' : '',
                         isPulsing ? 'avrm__tally--pulse' : '',
                       ]
@@ -316,8 +300,11 @@ export default function AnimatedVoteResultsModal({
                         tone={isLeading ? 'leading' : 'trailing'}
                       />
                       <span className="visually-hidden">{t.nominee.name}</span>
-                      <span className="avrm__tv-vote-share">
-                        {`${calculateRoundedPercentage(shown, totalVotes)}%`}
+                      <span
+                        className="avrm__tally-count"
+                        aria-label={`${shown} vote${shown === 1 ? '' : 's'}`}
+                      >
+                        {shown}
                       </span>
                     </div>
                   </Fragment>
@@ -351,7 +338,7 @@ export default function AnimatedVoteResultsModal({
                       style={{
                         width: shown > 0
                           ? `${Math.max(
-                            calculateRoundedPercentage(shown, totalVotes),
+                            totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0,
                             MIN_BAR_PCT,
                           )}%`
                           : '0%',
@@ -367,7 +354,7 @@ export default function AnimatedVoteResultsModal({
 
         {showVoteStage && outcomeVisible && resolvedEvictee && variant !== 'tv' && (
           <div className="avrm__evictee" role="status">
-            <span className="avrm__evictee-label">{outcomeLabel}</span>
+            <span className="avrm__evictee-label">ELIMINATED</span>
             <span className="avrm__evictee-name">{resolvedEvictee.name}</span>
           </div>
         )}

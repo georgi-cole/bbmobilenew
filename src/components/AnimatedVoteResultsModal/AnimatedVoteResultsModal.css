@@ -289,19 +289,8 @@
   box-shadow: none;
 }
 
-.avrm__tally--winner {
-  border-color: rgba(255, 214, 102, 0.5);
-  background: rgba(255, 214, 102, 0.12);
-  box-shadow: 0 0 0 2px rgba(255, 214, 102, 0.18), 0 0 12px rgba(255, 214, 102, 0.12);
-}
-
-.avrm__tally--tv.avrm__tally--winner {
-  box-shadow: none;
-}
-
 .avrm__tally--leading .avrm__tv-vote-ring-shell,
-.avrm__tally--tv.avrm__tally--evictee .avrm__tv-vote-ring-shell,
-.avrm__tally--tv.avrm__tally--winner .avrm__tv-vote-ring-shell {
+.avrm__tally--tv.avrm__tally--evictee .avrm__tv-vote-ring-shell {
   filter: drop-shadow(0 0 16px rgba(255, 116, 100, 0.22));
 }
 
@@ -355,18 +344,6 @@
 }
 
 .avrm__tally--evictee .avrm__tally-count { color: #ff8080; }
-
-.avrm__tally--winner .avrm__tally-count { color: #ffd966; }
-
-.avrm__tv-vote-share {
-  min-width: 0;
-  font-size: clamp(0.46rem, 1.8vw, 0.62rem);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(244, 247, 255, 0.72);
-}
 
 .avrm__tv-duel-divider {
   display: flex;
