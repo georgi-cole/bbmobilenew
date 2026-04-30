@@ -453,24 +453,29 @@ function buildTabloidCards(
 }
 
 function buildEvictionWaves(evictionLadder: Player[]): EvictionWave[] {
-  const captions = ['the house got smaller.', 'the noise got louder.', 'the end got closer.'];
+  const captions = ['the early exits.', 'then the race tightened.'];
   if (evictionLadder.length === 0) {
     return [{ id: 'wave-0', players: [], caption: captions[0] }];
   }
 
-  const waveCount = Math.max(1, Math.min(7, Math.ceil(evictionLadder.length / 2)));
-  const chunkSize = Math.max(1, Math.ceil(evictionLadder.length / waveCount));
-  const waves: EvictionWave[] = [];
-
-  for (let index = 0; index < evictionLadder.length; index += chunkSize) {
-    waves.push({
-      id: `wave-${waves.length}`,
-      players: evictionLadder.slice(index, index + chunkSize),
-      caption: captions[waves.length % captions.length],
-    });
+  if (evictionLadder.length <= 7) {
+    return [{ id: 'wave-0', players: evictionLadder, caption: captions[0] }];
   }
 
-  return waves;
+  const earlyEvictions = evictionLadder.filter((player) => (getPlacementValue(player) ?? 0) >= 10);
+  const lateEvictions = evictionLadder.filter((player) => (getPlacementValue(player) ?? 0) < 10);
+  const groupedWaves =
+    earlyEvictions.length > 0 && lateEvictions.length > 0
+      ? [earlyEvictions, lateEvictions]
+      : [evictionLadder.slice(0, Math.ceil(evictionLadder.length / 2)), evictionLadder.slice(Math.ceil(evictionLadder.length / 2))];
+
+  return groupedWaves
+    .filter((players) => players.length > 0)
+    .map((players, index) => ({
+      id: `wave-${index}`,
+      players,
+      caption: captions[index % captions.length],
+    }));
 }
 
 export function buildSeasonRecapData(

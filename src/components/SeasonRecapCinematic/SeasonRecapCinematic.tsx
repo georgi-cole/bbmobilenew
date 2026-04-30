@@ -6,7 +6,7 @@ import type { PublicOpinionState } from '../../publicOpinion/types';
 import { resolveAvatarCandidates } from '../../utils/avatar';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import EvictionLadder from './EvictionLadder';
-import { buildSeasonRecapData, type AwardCategory, type RecapBeat } from './seasonRecapData';
+import { buildSeasonRecapData, type AwardCategory } from './seasonRecapData';
 import type { EvictionLadderEntry } from './evictionLadderModel';
 import { buildSeasonRecapTimeline, RECAP_EXIT_FADE_MS, type RecapTimelineScene } from './seasonRecapTimeline';
 import './SeasonRecapCinematic.css';
@@ -122,108 +122,85 @@ function IntroScene({ scene }: { scene: RecapTimelineScene }) {
   );
 }
 
-function MontageBeatScene({ beat, fragments }: { beat: RecapBeat; fragments: string[] }) {
+function FullscreenPhotoScene({
+  className,
+  imageSrc,
+  imageAlt,
+  eyebrow,
+  title,
+  imageClassName,
+}: {
+  className: string;
+  imageSrc: string;
+  imageAlt: string;
+  eyebrow: string;
+  title: string;
+  imageClassName: string;
+}) {
   return (
-    <SceneFrame className={`src-scene--montage src-scene--montage-${beat.visual}`}>
-      <div className="src-montage-wall" aria-hidden="true">
-        {fragments.slice(0, 12).map((fragment) => (
-          <span key={fragment} className="src-montage-wall__fragment">
-            {fragment}
-          </span>
-        ))}
+    <SceneFrame className={className}>
+      <div className="src-photoshoot">
+        <motion.img
+          src={imageSrc}
+          alt={imageAlt}
+          className={['src-photoshoot__image', imageClassName].join(' ')}
+          loading="eager"
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        />
+        <div className="src-photoshoot__wash" aria-hidden="true" />
       </div>
-      <div className="src-montage-copy">
+      <motion.div
+        className="src-photoshoot__copy"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.2 }}
+      >
         <motion.p
-          className="src-montage-eyebrow"
-          initial={{ opacity: 0, x: -18 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
+          className="src-photoshoot__eyebrow"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.35 }}
         >
-          ROAD SO FAR
+          {eyebrow}
         </motion.p>
         <motion.h2
-          className="src-montage-title"
+          className="src-photoshoot__title"
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.65, delay: 0.44, ease: [0.22, 1, 0.36, 1] }}
         >
-          {beat.title}
+          {title}
         </motion.h2>
-        <motion.p
-          className="src-montage-support"
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.7 }}
-        >
-          {beat.support}
-        </motion.p>
-      </div>
-      <div className="src-montage-visuals" aria-hidden="true">
-        <span className="src-montage-stamp">{beat.visual === 'block' ? 'ON THE BLOCK' : 'RECAP FILES'}</span>
-      </div>
+      </motion.div>
     </SceneFrame>
   );
 }
 
 function HeadlineGirlsScene() {
   return (
-    <SceneFrame className="src-scene--headline-girls">
-      <div className="src-headline-media">
-        <motion.div
-          className="src-headline-media__paper-wrap"
-          initial={{ opacity: 0, y: 18, scale: 1.04 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <img
-            src={`${RECAP_SKINS_BASE}thegirls.webp`}
-            alt="The girls season newspaper"
-            className="src-headline-media__image"
-            loading="eager"
-          />
-        </motion.div>
-        <motion.p
-          className="src-headline-media__kicker"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-        >
-          FINAL EDITION
-        </motion.p>
-      </div>
-    </SceneFrame>
+    <FullscreenPhotoScene
+      className="src-scene--headline-girls"
+      imageSrc={`${RECAP_SKINS_BASE}thegirls.webp`}
+      imageAlt="The girls season photoshoot"
+      eyebrow="Final photoshoot"
+      title="The Girls"
+      imageClassName="src-headline-media__image"
+    />
   );
 }
 
 function PhonePostBoysScene() {
   return (
-    <SceneFrame className="src-scene--phone-post-boys">
-      <div className="src-phone-post">
-        <motion.div
-          className="src-phone-post__device"
-          initial={{ opacity: 0, y: 22, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="src-phone-post__screen">
-            <img
-              src={`${RECAP_SKINS_BASE}the boys.webp`}
-              alt="The boys season post"
-              className="src-phone-post__image"
-              loading="eager"
-            />
-          </div>
-        </motion.div>
-        <motion.p
-          className="src-phone-post__caption"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-        >
-          THE FINAL SCROLL
-        </motion.p>
-      </div>
-    </SceneFrame>
+    <FullscreenPhotoScene
+      className="src-scene--phone-post-boys"
+      imageSrc={`${RECAP_SKINS_BASE}the boys.webp`}
+      imageAlt="The boys season photoshoot"
+      eyebrow="Final photoshoot"
+      title="The Boys"
+      imageClassName="src-phone-post__image"
+    />
   );
 }
 
@@ -324,27 +301,18 @@ function LadderIntroScene({ archivePlayers }: { archivePlayers: Player[] }) {
 
 function LadderWaveScene({
   players,
-  ladder,
   caption,
 }: {
   players: Player[];
-  ladder: Player[];
   caption: string;
 }) {
-  const highlightedIds = players.map((player) => player.id);
-  const lastHighlightedPlayer = players[players.length - 1];
-  const revealCount = lastHighlightedPlayer
-    ? Math.max(1, ladder.findIndex((player) => player.id === lastHighlightedPlayer.id) + 1)
-    : ladder.length;
-  const entries = ladder.map((player, index) => toEvictionLadderEntry(player, ladder.length - index + 2));
+  const entries = players.map((player, index) => toEvictionLadderEntry(player, players.length - index + 2));
 
   return (
     <SceneFrame className="src-scene--ladder-wave">
       <EvictionLadder
         entries={entries}
         caption={caption}
-        revealCount={revealCount}
-        highlightedEntryIds={highlightedIds}
         compact={entries.length >= 6}
         animationDelayMs={220}
         stepDelayMs={130}
@@ -440,10 +408,6 @@ export default function SeasonRecapCinematic({
     currentScene?.kind === 'category'
       ? recapData.categories.find((category) => category.id === currentScene.categoryId)
       : null;
-  const activeBeat =
-    currentScene?.kind === 'montage'
-      ? recapData.montageBeats[currentScene.montageBeatIndex ?? 0]
-      : null;
   const activeWave =
     currentScene?.kind === 'ladder_wave'
       ? recapData.evictionWaves[currentScene.ladderWaveIndex ?? 0]
@@ -479,9 +443,6 @@ export default function SeasonRecapCinematic({
 
       <AnimatePresence mode="wait">
         {currentScene?.kind === 'intro' && <IntroScene key={currentScene.id} scene={currentScene} />}
-        {currentScene?.kind === 'montage' && activeBeat && (
-          <MontageBeatScene key={currentScene.id} beat={activeBeat} fragments={recapData.montageFragments} />
-        )}
         {currentScene?.kind === 'headline_girls' && (
           <HeadlineGirlsScene key={currentScene.id} />
         )}
@@ -501,7 +462,6 @@ export default function SeasonRecapCinematic({
           <LadderWaveScene
             key={currentScene.id}
             players={activeWave.players}
-            ladder={recapData.evictionLadder}
             caption={activeWave.caption}
           />
         )}

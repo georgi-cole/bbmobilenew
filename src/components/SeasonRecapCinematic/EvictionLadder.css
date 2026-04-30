@@ -1,42 +1,31 @@
 .eviction-ladder {
-  --ladder-bg: linear-gradient(180deg, rgba(10, 8, 24, 0.94), rgba(5, 6, 18, 0.98));
-  --ladder-panel: linear-gradient(180deg, rgba(32, 31, 58, 0.78), rgba(13, 15, 31, 0.9));
-  --ladder-border: rgba(180, 170, 255, 0.25);
-  --ladder-purple: #9d8cff;
+  --ladder-bg: linear-gradient(180deg, rgba(11, 10, 28, 0.96), rgba(5, 7, 18, 0.98));
+  --ladder-panel: rgba(15, 18, 34, 0.84);
+  --ladder-panel-strong: rgba(21, 24, 43, 0.94);
+  --ladder-border: rgba(179, 170, 255, 0.2);
+  --ladder-text-muted: rgba(232, 228, 255, 0.72);
   --ladder-gold: #f6d16f;
-  --ladder-muted: rgba(232, 228, 255, 0.72);
-  --ladder-glow: rgba(143, 118, 255, 0.28);
+  --ladder-violet: #a694ff;
+  --ladder-glow: rgba(144, 118, 255, 0.2);
   position: relative;
   display: grid;
   gap: 1rem;
-  width: min(100%, 420px);
+  width: min(100%, 560px);
   margin: 0 auto;
-  padding: 1rem 0 0.25rem;
-}
-
-.eviction-ladder::before,
-.eviction-ladder::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
+  padding: 0.5rem 0 0.25rem;
 }
 
 .eviction-ladder::before {
-  inset: 2% -12% 22%;
-  border-radius: 50%;
+  content: '';
+  position: absolute;
+  inset: 4% -12% auto;
+  height: 56%;
   background:
-    radial-gradient(circle at 50% 18%, rgba(162, 129, 255, 0.24), transparent 30%),
-    radial-gradient(circle at 50% 76%, rgba(53, 32, 116, 0.28), transparent 36%);
-  filter: blur(22px);
-}
-
-.eviction-ladder::after {
-  inset: 12% 10% auto;
-  height: 42%;
-  background:
-    linear-gradient(140deg, transparent 0 38%, rgba(255, 255, 255, 0.1) 50%, transparent 62%),
-    linear-gradient(220deg, transparent 0 40%, rgba(167, 138, 255, 0.12) 50%, transparent 60%);
-  opacity: 0.4;
+    radial-gradient(circle at 22% 32%, rgba(163, 129, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 72% 24%, rgba(246, 209, 111, 0.14), transparent 18%),
+    radial-gradient(circle at 52% 82%, rgba(94, 70, 211, 0.22), transparent 28%);
+  filter: blur(18px);
+  pointer-events: none;
 }
 
 .eviction-ladder__header {
@@ -76,205 +65,292 @@
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(1.4rem, 5.8vw, 2.1rem);
   font-weight: 700;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
 }
 
 .eviction-ladder__subhead {
   font-size: clamp(0.68rem, 2.6vw, 0.82rem);
   font-weight: 700;
   letter-spacing: 0.26em;
-  color: var(--ladder-muted);
+  color: var(--ladder-text-muted);
 }
 
 .eviction-ladder__stage {
   position: relative;
-  display: grid;
-  min-height: min(56dvh, 560px);
-  padding: 0.3rem 0 1.5rem;
-}
-
-.eviction-ladder__spine,
-.eviction-ladder__podium {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.eviction-ladder__spine {
-  top: 0;
-  bottom: 1.2rem;
-  width: clamp(6px, 1.8vw, 10px);
-  border-radius: 999px;
-  transform-origin: top center;
-  background:
-    linear-gradient(180deg, rgba(246, 209, 111, 0.32), rgba(157, 140, 255, 0.85) 36%, rgba(108, 84, 221, 0.5) 100%);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 24px rgba(144, 114, 255, 0.42),
-    0 0 72px rgba(91, 69, 202, 0.32);
-  opacity: 0.9;
-}
-
-.eviction-ladder__spine::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.58), transparent 24%);
-}
-
-.eviction-ladder__entries {
-  position: relative;
   z-index: 1;
   display: grid;
-  gap: 0.72rem;
-  align-content: start;
-  width: 100%;
-  max-height: min(54dvh, 540px);
+  grid-template-columns: minmax(0, 1.08fr) minmax(132px, 0.92fr);
+  gap: 0.85rem;
+  align-items: stretch;
 }
 
-.eviction-ladder__card-shell {
-  position: relative;
-  width: 100%;
-  transform: translateX(var(--entry-translate-x)) scale(var(--entry-scale));
-  opacity: var(--entry-opacity);
+.eviction-ladder__spotlight,
+.eviction-ladder__rankings {
+  min-height: min(52dvh, 520px);
 }
 
-.eviction-ladder__card-shell::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: clamp(14px, 4vw, 18px);
-  height: clamp(14px, 4vw, 18px);
-  border: 2px solid rgba(228, 221, 255, 0.78);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.9), rgba(155, 132, 255, 0.28) 42%, rgba(7, 9, 20, 0) 70%);
-  box-shadow:
-    0 0 0 4px rgba(147, 121, 255, 0.12),
-    0 0 18px rgba(147, 121, 255, 0.24);
-  transform: translate(-50%, -50%);
-}
-
-.eviction-ladder__card {
-  position: relative;
-}
-
-.eviction-ladder__card-inner {
+.eviction-ladder__spotlight {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-content: end;
   gap: 0.9rem;
-  padding: 0.92rem 0.92rem 0.92rem 1.1rem;
+  padding: 0.9rem;
   border: 1px solid var(--ladder-border);
-  border-radius: 32px;
+  border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 24%),
-    radial-gradient(circle at 18% 18%, rgba(171, 147, 255, 0.14), transparent 34%),
-    var(--ladder-panel);
+    radial-gradient(circle at 50% 18%, rgba(171, 147, 255, 0.16), transparent 30%),
+    var(--ladder-bg);
   box-shadow:
-    0 24px 44px rgba(0, 0, 0, 0.26),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    inset 0 0 32px rgba(126, 104, 223, 0.09);
-  backdrop-filter: blur(18px);
+    0 28px 54px rgba(0, 0, 0, 0.34),
+    inset 0 0 38px rgba(125, 103, 223, 0.12);
   overflow: hidden;
 }
 
-.eviction-ladder__card-inner::before {
+.eviction-ladder__spotlight::before {
   content: '';
   position: absolute;
-  inset: 1px;
-  border-radius: calc(32px - 1px);
+  inset: 0;
   background:
-    linear-gradient(120deg, rgba(255, 255, 255, 0.12), transparent 26%, transparent 72%, rgba(255, 255, 255, 0.08)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 20%),
+    linear-gradient(125deg, transparent 0 42%, rgba(255, 255, 255, 0.1) 50%, transparent 58%);
   pointer-events: none;
 }
 
-.eviction-ladder__card--highlighted .eviction-ladder__card-inner {
-  box-shadow:
-    0 28px 52px rgba(0, 0, 0, 0.34),
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    inset 0 0 40px rgba(146, 120, 255, 0.14),
-    0 0 24px rgba(145, 118, 255, 0.16);
+.eviction-ladder__spotlight--winner,
+.eviction-ladder__spotlight--finalist {
+  border-color: rgba(246, 209, 111, 0.28);
 }
 
-.eviction-ladder__card--finalist .eviction-ladder__card-inner,
-.eviction-ladder__card--winner .eviction-ladder__card-inner,
-.eviction-ladder__card--lastHouseguest .eviction-ladder__card-inner {
-  border-color: rgba(246, 209, 111, 0.34);
+.eviction-ladder__spotlight-photo {
+  position: relative;
+  display: grid;
+  align-items: end;
+  min-height: min(40dvh, 420px);
 }
 
-.eviction-ladder__card--winner .eviction-ladder__card-inner,
-.eviction-ladder__card--lastHouseguest .eviction-ladder__card-inner {
+.eviction-ladder__spotlight-photo-frame {
+  position: relative;
+  min-height: min(40dvh, 420px);
+  border-radius: 24px;
+  overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 244, 211, 0.14), transparent 18%),
-    radial-gradient(circle at 18% 18%, rgba(246, 209, 111, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(42, 33, 58, 0.88), rgba(19, 16, 30, 0.96));
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(49, 48, 85, 0.86), rgba(11, 13, 26, 0.98));
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.34),
+    inset 0 0 24px rgba(172, 148, 255, 0.16);
 }
 
-.eviction-ladder__copy {
+.eviction-ladder__spotlight-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 24%),
+    linear-gradient(120deg, transparent 0 34%, rgba(255, 255, 255, 0.08) 50%, transparent 66%);
+  pointer-events: none;
+}
+
+.eviction-ladder__spotlight-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: min(40dvh, 420px);
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.eviction-ladder__spotlight-copy {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 0.36rem;
-  min-width: 0;
+  gap: 0.35rem;
 }
 
-.eviction-ladder__meta {
-  display: flex;
-  align-items: center;
-  gap: 0.52rem;
-  min-width: 0;
-}
-
+.eviction-ladder__spotlight-rank,
 .eviction-ladder__rank,
 .eviction-ladder__status,
 .eviction-ladder__you-badge {
   text-transform: uppercase;
 }
 
-.eviction-ladder__rank {
-  font-size: clamp(0.78rem, 2.9vw, 0.98rem);
+.eviction-ladder__spotlight-rank {
+  justify-self: start;
+  padding: 0.34rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(246, 209, 111, 0.24);
+  font-size: 0.7rem;
   font-weight: 900;
-  letter-spacing: 0.18em;
-  color: rgba(200, 194, 255, 0.96);
+  letter-spacing: 0.14em;
+  color: rgba(255, 246, 220, 0.96);
+  background: rgba(246, 209, 111, 0.08);
 }
 
-.eviction-ladder__divider {
-  flex: 0 0 clamp(18px, 5vw, 26px);
-  height: 1px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.68), transparent);
+.eviction-ladder__spotlight-name {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.eviction-ladder__status {
+.eviction-ladder__spotlight-status {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
-  min-width: 0;
-  font-size: clamp(0.64rem, 2.4vw, 0.8rem);
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
-  color: var(--ladder-muted);
-  white-space: nowrap;
+  letter-spacing: 0.16em;
+  color: var(--ladder-text-muted);
 }
 
-.eviction-ladder__status-icon {
-  color: rgba(246, 209, 111, 0.92);
+.eviction-ladder__rankings {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.eviction-ladder__ranking {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.72rem 0.74rem 0.72rem 0.82rem;
+  border: 1px solid rgba(175, 167, 255, 0.14);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 24%),
+    var(--ladder-panel);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    inset 0 0 22px rgba(109, 86, 212, 0.06);
+  opacity: 0.68;
+  transform: scale(0.98);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.eviction-ladder__ranking::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), transparent 24%, transparent 74%, rgba(255, 255, 255, 0.04));
+  pointer-events: none;
+}
+
+.eviction-ladder__ranking--winner,
+.eviction-ladder__ranking--finalist {
+  border-color: rgba(246, 209, 111, 0.18);
+}
+
+.eviction-ladder__ranking--active {
+  opacity: 1;
+  transform: scale(1);
+  border-color: rgba(246, 209, 111, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 244, 211, 0.12), transparent 26%),
+    var(--ladder-panel-strong);
+  box-shadow:
+    0 22px 36px rgba(0, 0, 0, 0.3),
+    inset 0 0 28px rgba(132, 108, 240, 0.12),
+    0 0 24px rgba(145, 118, 255, 0.12);
+}
+
+.eviction-ladder__ranking-main {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.eviction-ladder__ranking-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.eviction-ladder__rank {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: rgba(205, 198, 255, 0.92);
 }
 
 .eviction-ladder__name {
   margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(1.32rem, 5vw, 1.92rem);
+  font-size: clamp(1rem, 4vw, 1.24rem);
   font-weight: 700;
-  line-height: 0.94;
-  letter-spacing: 0.08em;
+  line-height: 1;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   text-wrap: balance;
+}
+
+.eviction-ladder__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  min-width: 0;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--ladder-text-muted);
+  white-space: nowrap;
+}
+
+.eviction-ladder__status-icon {
+  color: rgba(246, 209, 111, 0.9);
+}
+
+.eviction-ladder__avatar-shell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(54px, 14vw, 64px);
+  height: clamp(54px, 14vw, 64px);
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(31, 30, 51, 0.96), rgba(10, 11, 24, 0.98));
+  border: 1px solid rgba(202, 195, 255, 0.18);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.26),
+    inset 0 0 18px rgba(156, 129, 255, 0.1);
+}
+
+.eviction-ladder__avatar-shell::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.eviction-ladder__avatar-shell--highlighted {
+  border-color: rgba(246, 209, 111, 0.28);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.3),
+    inset 0 0 20px rgba(156, 129, 255, 0.14),
+    0 0 18px rgba(246, 209, 111, 0.12);
+}
+
+.eviction-ladder__avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 24%;
 }
 
 .eviction-ladder__you-badge {
@@ -287,63 +363,6 @@
   letter-spacing: 0.16em;
   color: rgba(246, 209, 111, 0.94);
   background: rgba(246, 209, 111, 0.08);
-}
-
-.eviction-ladder__avatar-wrap {
-  position: relative;
-  z-index: 1;
-}
-
-.eviction-ladder__avatar-shell {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: clamp(64px, 18vw, 84px);
-  height: clamp(64px, 18vw, 84px);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(31, 30, 51, 0.96), rgba(10, 11, 24, 0.98));
-  border: 1px solid rgba(202, 195, 255, 0.24);
-  box-shadow:
-    0 16px 28px rgba(0, 0, 0, 0.28),
-    inset 0 0 20px rgba(156, 129, 255, 0.12);
-  overflow: hidden;
-}
-
-.eviction-ladder__avatar-shell::before {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  border-radius: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.eviction-ladder__avatar-shell--highlighted {
-  border-color: rgba(246, 209, 111, 0.32);
-  box-shadow:
-    0 16px 28px rgba(0, 0, 0, 0.32),
-    inset 0 0 20px rgba(156, 129, 255, 0.16),
-    0 0 22px rgba(246, 209, 111, 0.14);
-}
-
-.eviction-ladder__avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 24%;
-}
-
-.eviction-ladder__podium {
-  bottom: 0;
-  width: min(86%, 320px);
-  height: 22px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at center, rgba(246, 209, 111, 0.26), rgba(121, 93, 244, 0.06) 52%, transparent 76%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
-  filter: blur(2px);
-  box-shadow: 0 0 42px rgba(246, 209, 111, 0.12);
 }
 
 .eviction-ladder__caption {
@@ -359,39 +378,60 @@
   text-wrap: balance;
 }
 
-.eviction-ladder--compact {
-  gap: 0.8rem;
-}
-
 .eviction-ladder--compact .eviction-ladder__stage {
-  min-height: min(52dvh, 500px);
+  gap: 0.7rem;
 }
 
-.eviction-ladder--compact .eviction-ladder__entries {
-  gap: 0.56rem;
-  max-height: min(50dvh, 480px);
+.eviction-ladder--compact .eviction-ladder__spotlight,
+.eviction-ladder--compact .eviction-ladder__rankings {
+  min-height: min(48dvh, 470px);
 }
 
-.eviction-ladder--compact .eviction-ladder__card-inner {
-  padding: 0.72rem 0.78rem 0.72rem 0.94rem;
-  border-radius: 28px;
+.eviction-ladder--compact .eviction-ladder__spotlight {
+  padding: 0.78rem;
+  border-radius: 26px;
 }
 
-.eviction-ladder--compact .eviction-ladder__card-inner::before {
-  border-radius: calc(28px - 1px);
+.eviction-ladder--compact .eviction-ladder__spotlight-photo,
+.eviction-ladder--compact .eviction-ladder__spotlight-photo-frame,
+.eviction-ladder--compact .eviction-ladder__spotlight-image {
+  min-height: min(36dvh, 360px);
 }
 
-.eviction-ladder--compact .eviction-ladder__name {
-  font-size: clamp(1.08rem, 4.5vw, 1.52rem);
+.eviction-ladder--compact .eviction-ladder__ranking {
+  padding: 0.62rem 0.68rem 0.62rem 0.74rem;
 }
 
 .eviction-ladder--compact .eviction-ladder__avatar-shell {
-  width: clamp(56px, 15vw, 72px);
-  height: clamp(56px, 15vw, 72px);
+  width: clamp(50px, 13vw, 58px);
+  height: clamp(50px, 13vw, 58px);
 }
 
-@media (min-width: 768px) {
-  .eviction-ladder {
-    width: min(100%, 500px);
+@media (max-width: 520px) {
+  .eviction-ladder__stage {
+    grid-template-columns: minmax(0, 1fr) 148px;
+  }
+}
+
+@media (max-width: 390px) {
+  .eviction-ladder__stage {
+    grid-template-columns: minmax(0, 1fr) 136px;
+    gap: 0.62rem;
+  }
+
+  .eviction-ladder__spotlight,
+  .eviction-ladder__rankings {
+    min-height: min(46dvh, 440px);
+  }
+
+  .eviction-ladder__spotlight-photo,
+  .eviction-ladder__spotlight-photo-frame,
+  .eviction-ladder__spotlight-image {
+    min-height: min(34dvh, 320px);
+  }
+
+  .eviction-ladder__ranking {
+    padding: 0.56rem 0.6rem 0.56rem 0.66rem;
+    gap: 0.56rem;
   }
 }
