@@ -156,8 +156,9 @@ function getPhaseAnnouncementKey(
   phase: Phase,
   aliveCount: number,
   doubleEvictionActive: boolean,
+  democraciaActive: boolean,
 ): string | null {
-  if (phase === 'loh_comp_announcement') return 'loh_comp_announcement';
+  if (phase === 'loh_comp_announcement') return democraciaActive ? 'democracia' : 'loh_comp_announcement';
   if (phase === 'democracia_vote') return 'democracia';
   if (phase === 'pos_comp_announcement') return 'pos_comp_announcement';
   if (phase === 'pos_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
@@ -350,7 +351,12 @@ export default function TvZone(props: TvZoneProps) {
     const currentPhase = gameState.phase;
     const prevPhase = previousPhaseRef.current;
     previousPhaseRef.current = currentPhase;
-    const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
+    const key = getPhaseAnnouncementKey(
+      currentPhase,
+      alivePlayers.length,
+      doubleEvictionActive,
+      Boolean(gameState.democracia?.active && gameState.democracia.activatedDay === gameState.week),
+    );
     const keyChangedInPlace =
       prevPhase === currentPhase &&
       currentPhase === 'nominations' &&
@@ -380,7 +386,16 @@ export default function TvZone(props: TvZoneProps) {
         setPhaseAnnouncement(null);
       }
     });
-  }, [gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
+  }, [
+    gameState.phase,
+    gameState.week,
+    gameState.democracia?.active,
+    gameState.democracia?.activatedDay,
+    alivePlayers.length,
+    dismissedPhase,
+    doubleEvictionActive,
+    phaseAnnouncement?.key,
+  ]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {

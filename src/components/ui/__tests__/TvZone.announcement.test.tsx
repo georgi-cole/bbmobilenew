@@ -24,7 +24,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
-import gameReducer, { activateDoubleEviction, addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
+import gameReducer, { activateDemocracia, activateDoubleEviction, addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
 import socialReducer from '../../../social/socialSlice';
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
@@ -1294,6 +1294,26 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(setPhase('loh_comp_announcement')); });
 
     expect(screen.getByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeDefined();
+  });
+
+  it('replaces the LOH Competition overlay with the Democracia shock sequence when Democracia is active', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(activateDemocracia()); });
+    act(() => { store.dispatch(setPhase('loh_comp_announcement')); });
+
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
+    expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: DEMOCRACIA!/i })).toBeDefined();
+    expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
+    vi.useRealTimers();
   });
 
   it('shows Power of Safety overlay when phase transitions to pos_comp_announcement', () => {
