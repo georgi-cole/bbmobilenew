@@ -91,6 +91,10 @@ function getPlacementValue(player: Player): number | null {
   return null;
 }
 
+export function deriveEvictionFallbackPlacement(evictionLadderLength: number, ladderIndex: number): number {
+  return evictionLadderLength - ladderIndex + 2;
+}
+
 function isFinalistStatus(status: Player['status']): boolean {
   return (
     status === 'active' ||
@@ -464,7 +468,7 @@ function buildEvictionWaves(evictionLadder: Player[]): EvictionWave[] {
 
   const [earlyEvictions, lateEvictions] = evictionLadder.reduce<[Player[], Player[]]>(
     (groups, player, index) => {
-      const placementValue = getPlacementValue(player) ?? (evictionLadder.length - index + 2);
+      const placementValue = getPlacementValue(player) ?? deriveEvictionFallbackPlacement(evictionLadder.length, index);
       const target = placementValue >= 10 ? 0 : 1;
       groups[target].push(player);
       return groups;

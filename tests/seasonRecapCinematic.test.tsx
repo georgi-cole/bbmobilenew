@@ -337,7 +337,9 @@ describe('SeasonRecapCinematic', () => {
       });
     }
 
+    expect(document.querySelector('.eviction-ladder__spotlight-name')?.textContent).toBe('Evictee 1');
     expect(screen.getAllByText('10TH')).toHaveLength(2);
+    expect(screen.getAllByText('Evictee 1')).toHaveLength(2);
     expect(onComplete).not.toHaveBeenCalled();
   });
 

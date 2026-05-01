@@ -6,7 +6,7 @@ import type { PublicOpinionState } from '../../publicOpinion/types';
 import { resolveAvatarCandidates } from '../../utils/avatar';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import EvictionLadder from './EvictionLadder';
-import { buildSeasonRecapData, type AwardCategory } from './seasonRecapData';
+import { buildSeasonRecapData, deriveEvictionFallbackPlacement, type AwardCategory } from './seasonRecapData';
 import type { EvictionLadderEntry } from './evictionLadderModel';
 import { buildSeasonRecapTimeline, RECAP_EXIT_FADE_MS, type RecapTimelineScene } from './seasonRecapTimeline';
 import './SeasonRecapCinematic.css';
@@ -308,9 +308,11 @@ function LadderWaveScene({
   ladder: Player[];
   caption: string;
 }) {
+  const ladderIndexesById = new Map(ladder.map((player, index) => [player.id, index]));
   const entries = players.map((player) => {
-    const ladderIndex = ladder.findIndex((ladderPlayer) => ladderPlayer.id === player.id);
-    const fallbackPlacement = ladderIndex >= 0 ? ladder.length - ladderIndex + 2 : players.length + 2;
+    const ladderIndex = ladderIndexesById.get(player.id);
+    const fallbackPlacement =
+      ladderIndex != null ? deriveEvictionFallbackPlacement(ladder.length, ladderIndex) : players.length + 2;
     return toEvictionLadderEntry(player, fallbackPlacement);
   });
 
