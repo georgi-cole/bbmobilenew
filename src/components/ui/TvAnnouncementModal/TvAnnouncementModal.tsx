@@ -127,6 +127,13 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     body: 'A Double Elimination has been triggered! Tonight\'s Leader of the House must nominate THREE players for elimination. After a Power of Safety competition and ceremony, the remaining players vote to eliminate TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.',
     shockDetail: 'The Double Elimination runs as a compressed, fast-paced week: three nominees are put up, a Safety competition determines who can be saved, and after the Safety Ceremony the house votes out two players in one sitting. Strategic timelines are cut short — every conversation and every alliance decision must happen immediately.',
   },
+  democracia: {
+    icon: '🗳️',
+    label: 'DEMOCRACIA',
+    category: 'Shock',
+    body: 'Democracia has been activated. Instead of competing for power, the house will elect the next Leader of the House by secret vote.',
+    shockDetail: 'Every active player becomes part of the election. If there is a tie for first place, the tied candidates stay in contention and the remaining eligible houseguests revote until the result is resolved.',
+  },
   twist: {
     icon: '🌀',
     label: 'SHOCK',

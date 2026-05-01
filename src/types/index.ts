@@ -339,6 +339,16 @@ export interface DemocraciaState {
   awaitingHumanVote: boolean;
   /** True after a ballotage final tie when public-mode is ON and the UI must pick by approval. */
   awaitingPublicBreaker: boolean;
+  /** Transient TV payload used to reveal Democracia vote outcomes before play continues. */
+  resultDisplay: DemocraciaResultDisplay | null;
+}
+
+export interface DemocraciaResultDisplay {
+  mode: 'winner' | 'tie' | 'message';
+  participantIds: string[];
+  voteCountsByCandidateId: Record<string, number>;
+  title: string;
+  subtitle: string;
 }
 
 export interface SpecialVetoState {

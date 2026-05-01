@@ -21,6 +21,7 @@ import {
   submitHumanVote,
   submitTieBreak,
   submitDoubleEvictionTieBreak,
+  dismissDemocraciaResultDisplay,
   dismissVoteResults,
   aiReplacementRendered,
   advance,
@@ -851,6 +852,16 @@ export default function GameScreen() {
     dispatch(resolveDemocraciaPublicBreaker({ winnerId }))
   }, [game.democracia?.awaitingPublicBreaker, game.democracia?.candidateIds, publicOpinionProfiles, dispatch])
 
+  const democraciaAwaitingVoteRef = useRef(Boolean(game.democracia?.awaitingHumanVote))
+  useEffect(() => {
+    const wasAwaitingVote = democraciaAwaitingVoteRef.current
+    const isAwaitingVote = Boolean(game.democracia?.awaitingHumanVote)
+    democraciaAwaitingVoteRef.current = isAwaitingVote
+    if (game.phase !== 'democracia_vote') return
+    if (!wasAwaitingVote || isAwaitingVote) return
+    dispatch(advance())
+  }, [dispatch, game.democracia?.awaitingHumanVote, game.phase])
+
   // ── Secret Mission Final 4 expiry (PR 2) ──────────────────────────────────
   // When the game reaches final4_eviction, expire any stored eligible reward
   // because powers can only be used BEFORE Final 4 week.
@@ -1643,6 +1654,7 @@ export default function GameScreen() {
   const showDemocraciaVoteModal =
     game.phase === 'democracia_vote' &&
     Boolean(game.democracia?.awaitingHumanVote) &&
+    !game.democracia?.resultDisplay &&
     humanPlayer != null &&
     Boolean(game.democracia?.eligibleVoterIds?.includes(humanPlayer.id))
   const democraciaVoteOptions = alivePlayers.filter(
@@ -1670,6 +1682,27 @@ export default function GameScreen() {
     game.awaitingFinal3Eviction === true && game.phase === 'final3_decision' && humanIsFinalHoh
 
   const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
+  const democraciaResultDisplay = game.democracia?.resultDisplay ?? null
+  const showDemocraciaResults = democraciaResultDisplay !== null
+  const democraciaResultsParticipants = useMemo(() => (
+    (democraciaResultDisplay?.participantIds ?? [])
+      .map((id) => {
+        const player = game.players.find((entry) => entry.id === id)
+        if (!player) return null
+        return {
+          player,
+          voteCount: democraciaResultDisplay?.voteCountsByCandidateId[id] ?? 0,
+        }
+      })
+      .filter((entry): entry is { player: Player; voteCount: number } => entry !== null)
+  ), [democraciaResultDisplay, game.players])
+  const handleDemocraciaResultsDone = useCallback(() => {
+    dispatch(dismissDemocraciaResultDisplay())
+    if (game.phase === 'democracia_results') {
+      dispatch(advance())
+    }
+  }, [dispatch, game.phase])
 
   // ── Vote Results Popup ────────────────────────────────────────────────────
   // Show vote results whenever they are available, including during a tie-break
@@ -2706,6 +2739,7 @@ export default function GameScreen() {
     showDoubleVoteModal ||
     showLiveVoteModal ||
     showTieBreakModal ||
+    showDemocraciaResults ||
     showFinal3Modal ||
     showFinal3Ceremony ||
     (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') ||
@@ -2784,6 +2818,32 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
+          priorityAnnouncement={confessionalTvAnnouncement}
+          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
+          externalAnnouncement={
+            socialModuleUnavailableAnnouncement ??
+            publicMeterUnavailableAnnouncement ??
+            preAdAnnouncement
+          }
+          onExternalAnnouncementDismiss={
+            socialModuleUnavailableAnnouncement
+              ? () => setSocialModuleUnavailableAnnouncement(null)
+              : publicMeterUnavailableAnnouncement
+              ? () => setPublicMeterUnavailableAnnouncement(null)
+              : handlePreAdAnnouncementDismiss
+          }
+          mainLogMaxVisible={compactRosterLogRows}
+          viewportFallbackMessage={tvViewportFallbackMessage}
+        />
+      ) : showDemocraciaResults && democraciaResultDisplay ? (
+        <TvZone
+          democraciaResultsReveal={{
+            mode: democraciaResultDisplay.mode,
+            title: democraciaResultDisplay.title,
+            subtitle: democraciaResultDisplay.subtitle,
+            participants: democraciaResultsParticipants,
+            onDone: handleDemocraciaResultsDone,
+          }}
           priorityAnnouncement={confessionalTvAnnouncement}
           onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
