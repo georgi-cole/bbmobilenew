@@ -712,84 +712,83 @@
   }
 }
 
-/* ── Headline Girls scene ── */
-.src-scene--headline-girls {
-  display: grid;
-  place-items: center;
-}
-
-.src-headline-media {
-  display: grid;
-  place-items: center;
-  gap: 1rem;
-  width: min(100%, 380px);
-  padding: 0 1rem;
-}
-
-.src-headline-media__paper-wrap {
-  width: 100%;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-}
-
-.src-headline-media__image {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: min(64dvh, 520px);
-  object-fit: cover;
-}
-
-.src-headline-media__kicker {
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  opacity: 0.72;
-}
-
-/* ── Phone Post Boys scene ── */
+/* ── Fullscreen photoshoot scenes ── */
+.src-scene--headline-girls,
 .src-scene--phone-post-boys {
-  display: grid;
-  place-items: center;
+  padding: 0;
 }
 
-.src-phone-post {
-  display: grid;
-  place-items: center;
-  gap: 1rem;
-}
-
-.src-phone-post__device {
-  width: min(200px, 52vw);
-  border-radius: 28px;
-  background: #111;
-  border: 3px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
-  overflow: hidden;
-  padding: 10px;
-}
-
-.src-phone-post__screen {
-  border-radius: 20px;
+.src-photoshoot {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
-.src-phone-post__image {
+.src-photoshoot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 18, 0.3), transparent 24%, transparent 62%, rgba(4, 6, 14, 0.82)),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 30%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.src-photoshoot__image {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: min(60dvh, 480px);
+  height: 100%;
   object-fit: cover;
+  object-position: center 18%;
+  filter: saturate(0.92) contrast(1.04) brightness(0.94);
 }
 
-.src-phone-post__caption {
+.src-photoshoot__wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.14), transparent 24%),
+    radial-gradient(circle at 50% 78%, rgba(111, 89, 220, 0.24), transparent 32%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.src-photoshoot__copy {
+  position: absolute;
+  right: 24px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
+  left: 24px;
+  z-index: 2;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+
+.src-photoshoot__eyebrow {
+  margin: 0;
+  padding: 0.38rem 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(5, 8, 18, 0.48);
   font-size: 0.72rem;
   font-weight: 900;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  opacity: 0.72;
+  color: rgba(246, 244, 255, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.src-photoshoot__title {
+  margin: 0;
+  max-width: min(68vw, 240px);
+  font-size: clamp(2.7rem, 14vw, 5rem);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+  color: #f6f4ff;
+  text-shadow: 0 16px 34px rgba(0, 0, 0, 0.42);
 }
 
 /* ── Moment of Truth scene ── */

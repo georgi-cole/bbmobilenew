@@ -180,6 +180,15 @@ describe('SeasonRecapCinematic', () => {
     expect(categoryScenes.every((scene) => scene.durationMs >= CATEGORY_SCENE_DURATION_MS)).toBe(true);
   });
 
+  it('drops the extra montage text scenes before the media reveal', () => {
+    const timeline = getTimeline();
+
+    expect(timeline.filter((scene) => scene.id.startsWith('montage_'))).toHaveLength(0);
+    expect(timeline[0]?.id).toBe('intro_votes_in');
+    expect(timeline[1]?.id).toBe('intro_before_final_word');
+    expect(timeline[2]?.id).toBe('headline_girls');
+  });
+
   it('includes two lightweight media screens before categories', () => {
     const timeline = getTimeline();
     const headlineScene = timeline.find((scene) => scene.kind === 'headline_girls');
@@ -261,7 +270,7 @@ describe('SeasonRecapCinematic', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('renders the restored eviction ladder with placements before the final moment', async () => {
+  it('renders the redesigned eviction ladder with a spotlight and ranking rail before the final moment', async () => {
     const onComplete = vi.fn();
 
     render(
@@ -271,11 +280,82 @@ describe('SeasonRecapCinematic', () => {
     await advanceToScene('ladder_wave_0');
 
     expect(document.querySelector('.eviction-ladder')).toBeTruthy();
+    expect(document.querySelector('.eviction-ladder__spotlight')).toBeTruthy();
+    expect(document.querySelector('.eviction-ladder__rankings')).toBeTruthy();
     expect(screen.getByText('Eviction Ladder')).toBeTruthy();
     expect(screen.getByText('In order of eviction')).toBeTruthy();
-    expect(screen.getByText('4TH')).toBeTruthy();
+    expect(screen.getAllByText('4TH')).toHaveLength(2);
     expect(screen.getByText('3RD')).toBeTruthy();
     expect(screen.getByText('FINALIST')).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('keeps ladder wave grouping and displayed fallback ranks stable when placements are missing', async () => {
+    const onComplete = vi.fn();
+    const playersWithMissingPlacements: Player[] = [
+      {
+        id: 'f1',
+        name: 'Avery',
+        status: 'active',
+        avatar: '😀',
+        stats: { lohWins: 2, posWins: 1, timesNominated: 1 },
+      },
+      {
+        id: 'f2',
+        name: 'Blake',
+        status: 'active',
+        avatar: '😎',
+        stats: { lohWins: 1, posWins: 2, timesNominated: 2 },
+      },
+      ...Array.from({ length: 8 }, (_, index) => ({
+        id: `e${index + 1}`,
+        name: `Evictee ${index + 1}`,
+        status: index % 2 === 0 ? ('evicted' as const) : ('jury' as const),
+        avatar: '🙂',
+        stats: { lohWins: 0, posWins: 0, timesNominated: 1 + index },
+      })),
+    ];
+
+    const recapData = buildSeasonRecapData(playersWithMissingPlacements, 12);
+    expect(recapData.evictionWaves).toHaveLength(2);
+    expect(recapData.evictionWaves[0]?.players.map((player) => player.id)).toEqual(['e1']);
+    expect(recapData.evictionWaves[1]?.players.map((player) => player.id)).toEqual([
+      'e2',
+      'e3',
+      'e4',
+      'e5',
+      'e6',
+      'e7',
+      'e8',
+    ]);
+
+    const timeline = buildSeasonRecapTimeline(
+      recapData.categories.map((category) => category.id),
+      recapData.evictionWaves.length,
+    );
+    const targetIndex = timeline.findIndex((scene) => scene.id === 'ladder_wave_0');
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={playersWithMissingPlacements} onComplete={onComplete} />,
+    );
+
+    for (let index = 0; index < targetIndex; index += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(timeline[index].durationMs);
+      });
+    }
+
+    expect(document.querySelector('.eviction-ladder__spotlight-name')?.textContent).toBe('Evictee 1');
+    expect(screen.getAllByText('10TH')).toHaveLength(2);
+    expect(screen.getAllByText('Evictee 1')).toHaveLength(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(timeline[targetIndex].durationMs);
+    });
+
+    expect(document.querySelector('.eviction-ladder__spotlight-name')?.textContent).toBe('Evictee 2');
+    expect(screen.getAllByText('9TH')).toHaveLength(2);
+    expect(screen.getAllByText('Evictee 2')).toHaveLength(2);
     expect(onComplete).not.toHaveBeenCalled();
   });
 
