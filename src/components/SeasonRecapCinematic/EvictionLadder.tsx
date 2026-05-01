@@ -173,29 +173,32 @@ export default function EvictionLadder({
             const status = deriveEvictionLadderStatus(entry);
 
             return (
-              <motion.article
+              <motion.div
                 key={entry.id}
                 role="listitem"
-                data-current-user={entry.id === currentUserId ? 'true' : undefined}
-                className={`eviction-ladder__ranking eviction-ladder__ranking--${status}${highlighted ? ' eviction-ladder__ranking--active' : ''}`}
                 initial={{ opacity: 0, x: 24 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: reducedMotion ? 0 : 0.36, delay: baseDelay + 0.16 + index * 0.06, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="eviction-ladder__ranking-main">
-                  <span className="eviction-ladder__rank">{formatEvictionRank(entry.rank)}</span>
-                  <div className="eviction-ladder__ranking-copy">
-                    <h4 className="eviction-ladder__name">{entry.name}</h4>
-                    <span className="eviction-ladder__status">
-                      <span className="eviction-ladder__status-icon" aria-hidden="true">
-                        {getEvictionLadderStatusIcon(entry)}
+                <article
+                  data-current-user={entry.id === currentUserId ? 'true' : undefined}
+                  className={`eviction-ladder__ranking eviction-ladder__ranking--${status}${highlighted ? ' eviction-ladder__ranking--active' : ''}`}
+                >
+                  <div className="eviction-ladder__ranking-main">
+                    <span className="eviction-ladder__rank">{formatEvictionRank(entry.rank)}</span>
+                    <div className="eviction-ladder__ranking-copy">
+                      <h4 className="eviction-ladder__name">{entry.name}</h4>
+                      <span className="eviction-ladder__status">
+                        <span className="eviction-ladder__status-icon" aria-hidden="true">
+                          {getEvictionLadderStatusIcon(entry)}
+                        </span>
+                        {getEvictionLadderStatusLabel(entry)}
                       </span>
-                      {getEvictionLadderStatusLabel(entry)}
-                    </span>
+                    </div>
                   </div>
-                </div>
-                <LadderAvatar entry={entry} highlighted={highlighted} />
-              </motion.article>
+                  <LadderAvatar entry={entry} highlighted={highlighted} />
+                </article>
+              </motion.div>
             );
           })}
         </div>

@@ -290,6 +290,57 @@ describe('SeasonRecapCinematic', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
+  it('keeps ladder wave grouping and displayed fallback ranks stable when placements are missing', async () => {
+    const onComplete = vi.fn();
+    const playersWithMissingPlacements: Player[] = [
+      {
+        id: 'f1',
+        name: 'Avery',
+        status: 'active',
+        avatar: '😀',
+        stats: { lohWins: 2, posWins: 1, timesNominated: 1 },
+      },
+      {
+        id: 'f2',
+        name: 'Blake',
+        status: 'active',
+        avatar: '😎',
+        stats: { lohWins: 1, posWins: 2, timesNominated: 2 },
+      },
+      ...Array.from({ length: 8 }, (_, index) => ({
+        id: `e${index + 1}`,
+        name: `Evictee ${index + 1}`,
+        status: index % 2 === 0 ? ('evicted' as const) : ('jury' as const),
+        avatar: '🙂',
+        stats: { lohWins: 0, posWins: 0, timesNominated: 1 + index },
+      })),
+    ];
+
+    const recapData = buildSeasonRecapData(playersWithMissingPlacements, 12);
+    expect(recapData.evictionWaves).toHaveLength(2);
+    expect(recapData.evictionWaves[0]?.players.map((player) => player.id)).toEqual(['e1']);
+    expect(recapData.evictionWaves[1]?.players[0]?.id).toBe('e2');
+
+    const timeline = buildSeasonRecapTimeline(
+      recapData.categories.map((category) => category.id),
+      recapData.evictionWaves.length,
+    );
+    const targetIndex = timeline.findIndex((scene) => scene.id === 'ladder_wave_0');
+
+    render(
+      <SeasonRecapCinematic season={9} week={12} players={playersWithMissingPlacements} onComplete={onComplete} />,
+    );
+
+    for (let index = 0; index < targetIndex; index += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(timeline[index].durationMs);
+      });
+    }
+
+    expect(screen.getAllByText('10TH')).toHaveLength(2);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   it('uses actual ellipsis characters instead of literal unicode escape text', async () => {
     const onComplete = vi.fn();
 

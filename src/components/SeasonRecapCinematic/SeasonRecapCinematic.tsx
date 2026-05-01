@@ -301,12 +301,18 @@ function LadderIntroScene({ archivePlayers }: { archivePlayers: Player[] }) {
 
 function LadderWaveScene({
   players,
+  ladder,
   caption,
 }: {
   players: Player[];
+  ladder: Player[];
   caption: string;
 }) {
-  const entries = players.map((player, index) => toEvictionLadderEntry(player, players.length - index + 2));
+  const entries = players.map((player) => {
+    const ladderIndex = ladder.findIndex((ladderPlayer) => ladderPlayer.id === player.id);
+    const fallbackPlacement = ladderIndex >= 0 ? ladder.length - ladderIndex + 2 : players.length + 2;
+    return toEvictionLadderEntry(player, fallbackPlacement);
+  });
 
   return (
     <SceneFrame className="src-scene--ladder-wave">
@@ -462,6 +468,7 @@ export default function SeasonRecapCinematic({
           <LadderWaveScene
             key={currentScene.id}
             players={activeWave.players}
+            ladder={recapData.evictionLadder}
             caption={activeWave.caption}
           />
         )}
