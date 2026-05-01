@@ -556,6 +556,32 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeDefined();
   });
 
+  it('shows the Democracia shock overlay when the latest event major is democracia', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-democracia',
+            text: 'Democracia takes over the LOH comp.',
+            type: 'twist',
+            major: 'democracia',
+          }),
+        ),
+      );
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: DEMOCRACIA!/i })).toBeDefined();
+    vi.useRealTimers();
+  });
+
   it('applies the Back 2 the Game styling when the major key is battle_back', () => {
     vi.useFakeTimers();
     const store = makeStore();

@@ -88,6 +88,7 @@ const MAJOR_KEYS = new Set([
   'diamond_pov',
   'coup_detat',
   'spotlight_veto',
+  'democracia',
   'twist',
   'loh_comp_announcement',
   'pos_comp_announcement',

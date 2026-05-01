@@ -20,6 +20,7 @@ import { getSocialModuleAvailability } from '../social/socialModuleAvailability'
  * - tie-break (eviction_results)
  * - Final 4 solo eviction vote (awaitingPovDecision set after plea sequence)
  * - Final 3 LOH eviction (awaitingFinal3Eviction)
+ * - timed Democracia results reveal before play resumes
  */
 export const selectIsWaitingForInput = (state: RootState): boolean => {
   const game = state.game;

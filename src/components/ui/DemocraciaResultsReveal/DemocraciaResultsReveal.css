@@ -11,6 +11,7 @@
     linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(10, 14, 24, 0.98));
   color: #fff7ed;
   text-align: center;
+  z-index: 21;
 }
 
 .democracia-results__badge {

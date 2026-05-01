@@ -29,6 +29,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   activateDemocracia,
+  dismissDemocraciaResultDisplay,
   submitDemocraciaVote,
   resolveDemocraciaPublicBreaker,
   submitCoLohNomination,
@@ -38,6 +39,7 @@ import gameReducer, {
   tryActivatePendingForcedDemocracia,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
+import { selectIsWaitingForInput } from '../src/store/selectors';
 import type { GameState, Player, DemocraciaState } from '../src/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -62,6 +64,7 @@ const DEFAULT_DEMOCRACIA: DemocraciaState = {
   votesByVoterId: {},
   awaitingHumanVote: false,
   awaitingPublicBreaker: false,
+  resultDisplay: null,
 };
 
 function makeStore(
@@ -365,6 +368,10 @@ describe('Democracia twist', () => {
       expect(store.getState().game.phase).toBe('democracia_results');
       expect(store.getState().game.lohId).toBe('p1');
       expect(store.getState().game.democracia?.active).toBe(false);
+      expect(store.getState().game.democracia?.resultDisplay).toMatchObject({
+        mode: 'winner',
+        participantIds: ['p1'],
+      });
       // Advance from democracia_results → social_1
       store.dispatch(advance());
       expect(store.getState().game.phase).toBe('social_1');
@@ -405,6 +412,10 @@ describe('Democracia twist', () => {
       expect(dem.round).toBe(2);
       expect(dem.candidateIds).toEqual(expect.arrayContaining(['p0', 'p1']));
       expect(dem.candidateIds).toHaveLength(2);
+      expect(dem.resultDisplay).toMatchObject({
+        mode: 'tie',
+        participantIds: ['p0', 'p1'],
+      });
     });
 
     it('tied candidates do NOT vote in ballotage', () => {
@@ -510,6 +521,11 @@ describe('Democracia twist', () => {
       expect(state.coLohIds).toEqual(expect.arrayContaining(['p0', 'p1']));
       expect(state.coLohIds).toHaveLength(2);
       expect(state.phase).toBe('democracia_results');
+      expect(state.democracia?.resultDisplay).toMatchObject({
+        mode: 'tie',
+        participantIds: ['p0', 'p1'],
+        title: 'CO-LEADERS ELECTED',
+      });
       // Both players should have loh status
       const p0 = state.players.find((p) => p.id === 'p0')!;
       const p1 = state.players.find((p) => p.id === 'p1')!;
@@ -543,6 +559,11 @@ describe('Democracia twist', () => {
       store.dispatch(advance());
       expect(store.getState().game.democracia?.awaitingPublicBreaker).toBe(true);
       expect(store.getState().game.coLohIds).toBeNull();
+      expect(store.getState().game.democracia?.resultDisplay).toMatchObject({
+        mode: 'tie',
+        participantIds: ['p0', 'p1'],
+        title: 'FINAL TIE',
+      });
     });
 
     it('resolveDemocraciaPublicBreaker applies winner and transitions to democracia_results', () => {
@@ -628,6 +649,32 @@ describe('Democracia twist', () => {
       if (state.phase === 'democracia_results') {
         expect(state.lohId).toMatch(/^p[01]$/);
       }
+    });
+  });
+
+  describe('Democracia result display state', () => {
+    it('dismissDemocraciaResultDisplay clears the reveal and selector gating', () => {
+      const store = makeStore({
+        phase: 'democracia_results',
+        democracia: {
+          ...DEFAULT_DEMOCRACIA,
+          active: false,
+          resultDisplay: {
+            mode: 'winner',
+            participantIds: ['p1'],
+            voteCountsByCandidateId: { p1: 4 },
+            title: 'DEMOCRACIA WINNER',
+            subtitle: 'Player 1 wins.',
+          },
+        },
+      });
+
+      expect(selectIsWaitingForInput(store.getState() as ReturnType<typeof store.getState>)).toBe(true);
+
+      store.dispatch(dismissDemocraciaResultDisplay());
+
+      expect(store.getState().game.democracia?.resultDisplay).toBeNull();
+      expect(selectIsWaitingForInput(store.getState() as ReturnType<typeof store.getState>)).toBe(false);
     });
   });
 
@@ -927,6 +974,7 @@ describe('Democracia twist', () => {
       expect(dem.active).toBe(false);
       expect(dem.activatedDay).toBeNull();
       expect(dem.round).toBe(0);
+      expect(dem.resultDisplay).toBeNull();
       expect(state.coLohIds).toBeNull();
       expect(state.awaitingCoLohNomination).toBe(false);
       expect(state.coLohNomineeByCoLohId).toBeNull();

@@ -135,7 +135,6 @@ function formatDemocraciaResultNames(state: GameState, candidateIds: string[]): 
 }
 
 function buildDemocraciaResultDisplay(
-  state: GameState,
   mode: DemocraciaResultDisplay['mode'],
   participantIds: string[],
   voteCountsByCandidateId: Record<string, number>,
@@ -3560,7 +3559,6 @@ const gameSlice = createSlice({
             const winnerId = dTopCandidates[0];
             const winnerName = state.players.find((p) => p.id === winnerId)?.name ?? winnerId;
             dem.resultDisplay = buildDemocraciaResultDisplay(
-              state,
               'winner',
               [winnerId],
               dVoteCounts,
@@ -3586,7 +3584,6 @@ const gameSlice = createSlice({
               // Signal UI to pick by approval rating
               dem.awaitingPublicBreaker = true;
               dem.resultDisplay = buildDemocraciaResultDisplay(
-                state,
                 dTopCandidates.length > 3 ? 'message' : 'tie',
                 dTopCandidates.length > 3 ? [] : [...dTopCandidates],
                 dVoteCounts,
@@ -3613,7 +3610,6 @@ const gameSlice = createSlice({
               // Keep lohId pointing to first co-LOH for compatibility
               state.lohId = dTopCandidates[0];
               dem.resultDisplay = buildDemocraciaResultDisplay(
-                state,
                 dTopCandidates.length > 3 ? 'message' : 'tie',
                 dTopCandidates.length > 3 ? [] : [...dTopCandidates],
                 dVoteCounts,
@@ -3641,7 +3637,6 @@ const gameSlice = createSlice({
             const fallbackId = dTopCandidates[Math.floor(dFbRng() * dTopCandidates.length)];
             const fallbackName = state.players.find((p) => p.id === fallbackId)?.name ?? fallbackId;
             dem.resultDisplay = buildDemocraciaResultDisplay(
-              state,
               'winner',
               [fallbackId],
               dVoteCounts,
@@ -3659,7 +3654,6 @@ const gameSlice = createSlice({
           } else {
             // Go to ballotage round
             dem.resultDisplay = buildDemocraciaResultDisplay(
-              state,
               dTopCandidates.length > 3 ? 'message' : 'tie',
               dTopCandidates.length > 3 ? [] : [...dTopCandidates],
               dVoteCounts,
@@ -5127,6 +5121,7 @@ export const {
   declineVoteDeduction,
   activateDemocracia,
   submitDemocraciaVote,
+  dismissDemocraciaResultDisplay,
   resolveDemocraciaPublicBreaker,
   submitCoLohNomination,
   submitPosTieBreak,
