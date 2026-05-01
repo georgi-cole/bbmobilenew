@@ -319,7 +319,15 @@ describe('SeasonRecapCinematic', () => {
     const recapData = buildSeasonRecapData(playersWithMissingPlacements, 12);
     expect(recapData.evictionWaves).toHaveLength(2);
     expect(recapData.evictionWaves[0]?.players.map((player) => player.id)).toEqual(['e1']);
-    expect(recapData.evictionWaves[1]?.players[0]?.id).toBe('e2');
+    expect(recapData.evictionWaves[1]?.players.map((player) => player.id)).toEqual([
+      'e2',
+      'e3',
+      'e4',
+      'e5',
+      'e6',
+      'e7',
+      'e8',
+    ]);
 
     const timeline = buildSeasonRecapTimeline(
       recapData.categories.map((category) => category.id),
@@ -340,6 +348,14 @@ describe('SeasonRecapCinematic', () => {
     expect(document.querySelector('.eviction-ladder__spotlight-name')?.textContent).toBe('Evictee 1');
     expect(screen.getAllByText('10TH')).toHaveLength(2);
     expect(screen.getAllByText('Evictee 1')).toHaveLength(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(timeline[targetIndex].durationMs);
+    });
+
+    expect(document.querySelector('.eviction-ladder__spotlight-name')?.textContent).toBe('Evictee 2');
+    expect(screen.getAllByText('9TH')).toHaveLength(2);
+    expect(screen.getAllByText('Evictee 2')).toHaveLength(2);
     expect(onComplete).not.toHaveBeenCalled();
   });
 

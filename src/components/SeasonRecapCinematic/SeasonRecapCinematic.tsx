@@ -28,6 +28,7 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
 };
 
 const LADDER_ARCHIVE_LIMIT = 6;
+const FINALISTS_RANK_OFFSET = 2;
 const DICEBEAR_HOST = 'api.dicebear.com';
 const URL_PARSE_BASE = 'https://bbmobilenew.local';
 const RECAP_SKINS_BASE = `${import.meta.env.BASE_URL}assets/skins/`;
@@ -312,7 +313,9 @@ function LadderWaveScene({
   const entries = players.map((player) => {
     const ladderIndex = ladderIndexesById.get(player.id);
     const fallbackPlacement =
-      ladderIndex != null ? deriveEvictionFallbackPlacement(ladder.length, ladderIndex) : players.length + 2;
+      ladderIndex != null
+        ? deriveEvictionFallbackPlacement(ladder.length, ladderIndex)
+        : players.length + FINALISTS_RANK_OFFSET;
     return toEvictionLadderEntry(player, fallbackPlacement);
   });
 
