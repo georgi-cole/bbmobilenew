@@ -94,15 +94,6 @@ function joinPublicAssetPath(path: string): string {
   return path;
 }
 
-function isDicebearCandidate(candidate: string): boolean {
-  try {
-    const parsed = new URL(candidate, typeof window !== 'undefined' ? window.location.origin : 'https://bbmobilenew.local');
-    return parsed.hostname === 'api.dicebear.com';
-  } catch {
-    return false;
-  }
-}
-
 /** Capitalises the first letter of a string and lowercases the rest. */
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -294,21 +285,39 @@ export function resolveSilhouetteFallback(
 }
 
 export function resolveFullSizeCutoutFallback(
-  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
+  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>> & {
+    gender?: string;
+    sex?: string;
+  },
 ): string {
-  return resolveSilhouetteFallback(player);
+  const hg = getById(player.id) ?? findByName(player.name);
+  const gender = (player.gender ?? player.sex ?? hg?.sex ?? '').toLowerCase();
+
+  if (gender.includes('female') || gender.includes('woman')) {
+    return joinPublicAssetPath('assets/full_body_fallback_female.png');
+  }
+
+  if (gender.includes('male') || gender.includes('man')) {
+    return joinPublicAssetPath('assets/full_body_fallback_male.png');
+  }
+
+  if (player.avatar === '👩') {
+    return joinPublicAssetPath('assets/full_body_fallback_female.png');
+  }
+
+  if (player.avatar === '👨') {
+    return joinPublicAssetPath('assets/full_body_fallback_male.png');
+  }
+
+  return joinPublicAssetPath('assets/full_body_fallback_neutral.png');
 }
 
 export function resolveInformalCutoutCandidates(
   player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
 ): string[] {
   const cutout = resolveInformalCutout(player);
-  const avatarFallback = resolveAvatarCandidates({
-    ...player,
-    avatar: player.avatar ?? player.name,
-  }).find((candidate) => !isDicebearCandidate(candidate));
-  const silhouetteFallback = resolveSilhouetteFallback(player);
-  return [cutout, avatarFallback, silhouetteFallback].filter(
+  const fullSizeFallback = resolveFullSizeCutoutFallback(player);
+  return [cutout, fullSizeFallback].filter(
     (candidate, index, all): candidate is string =>
       Boolean(candidate) && all.indexOf(candidate) === index,
   );
