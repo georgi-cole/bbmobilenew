@@ -63,7 +63,8 @@
 .pf-overlay__board-shell,
 .pf-overlay__surge-panel,
 .pf-overlay__winner-stage,
-.pf-overlay__intro {
+.pf-overlay__intro,
+.pf-overlay__spotlight {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
 }
@@ -196,6 +197,7 @@
 }
 
 .pf-overlay__leader,
+.pf-overlay__spotlight,
 .pf-overlay__surge-panel,
 .pf-overlay__rank-card,
 .pf-overlay__winner-stage,
@@ -205,7 +207,8 @@
   overflow: hidden;
 }
 
-.pf-overlay__leader {
+.pf-overlay__leader,
+.pf-overlay__spotlight {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 1rem;
@@ -216,6 +219,7 @@
 }
 
 .pf-overlay__leader::after,
+.pf-overlay__spotlight::after,
 .pf-overlay__surge-panel::after,
 .pf-overlay__winner-stage::after,
 .pf-overlay__intro::after {
@@ -275,6 +279,14 @@
   font-size: clamp(1.4rem, 5vw, 2rem);
   font-weight: 900;
   line-height: 1.05;
+}
+
+.pf-overlay__spotlight-fact {
+  margin: 0;
+  color: rgba(246, 239, 222, 0.86);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.42;
 }
 
 .pf-overlay__percent-wrap {
@@ -641,7 +653,8 @@
     padding-inline: 0.7rem;
   }
 
-  .pf-overlay__leader {
+  .pf-overlay__leader,
+  .pf-overlay__spotlight {
     grid-template-columns: minmax(0, 1fr);
   }
 

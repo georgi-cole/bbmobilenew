@@ -203,4 +203,131 @@ describe('PublicFavoriteOverlay', () => {
     expect(within(resultsBoard).queryByText('41%')).not.toBeInTheDocument();
     expect(within(resultsBoard).queryByText('34%')).not.toBeInTheDocument();
   });
+
+  it('keeps the houseguest spotlight decoupled from vote ranking changes', () => {
+    mockedUseBattleBackVoting
+      .mockReturnValueOnce({
+        votes: { p1: 10, p2: 70, p3: 20 },
+        eliminated: [],
+        winnerId: null,
+        isComplete: false,
+      })
+      .mockReturnValueOnce({
+        votes: { p1: 5, p2: 15, p3: 80 },
+        eliminated: [],
+        winnerId: null,
+        isComplete: false,
+      });
+
+    const { rerender } = render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
+    expect(within(spotlight).queryByText(/current front-runner/i)).not.toBeInTheDocument();
+
+    rerender(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={2}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /morgan, rank 1, 80%/i })).toBeInTheDocument();
+  });
+
+  it('rotates the spotlight on its own calm timer and skips eliminated candidates', () => {
+    mockedUseBattleBackVoting.mockReturnValue({
+      votes: { p1: 10, p2: 70, p3: 20 },
+      eliminated: [],
+      winnerId: null,
+      isComplete: false,
+    });
+
+    render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3999);
+    });
+    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
+  });
+
+  it('removes vote-eliminated players from the spotlight pool and marks the final two', () => {
+    mockedUseBattleBackVoting.mockReturnValue({
+      votes: { p1: 0, p2: 55, p3: 45 },
+      eliminated: ['p1'],
+      winnerId: null,
+      isComplete: false,
+    });
+
+    render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByText(/final two: Taylor vs Morgan/i)).toBeInTheDocument();
+    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
+    expect(within(spotlight).queryByRole('heading', { name: 'Jordan' })).not.toBeInTheDocument();
+  });
+
+  it('uses a different biography fact when the spotlight pool cycles back', () => {
+    mockedUseBattleBackVoting.mockReturnValue({
+      votes: { finn: 34, mimi: 33, rae: 33 },
+      eliminated: [],
+      winnerId: null,
+      isComplete: false,
+    });
+    const profilePlayers: Player[] = [
+      { id: 'finn', name: 'Finn', avatar: '🧑', status: 'active' },
+      { id: 'mimi', name: 'Mimi', avatar: '🧑', status: 'active' },
+      { id: 'rae', name: 'Rae', avatar: '🧑', status: 'active' },
+    ];
+
+    render(
+      <PublicFavoriteOverlay
+        candidates={profilePlayers}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    const firstFinnFact = within(spotlight).getByText(/marine architect/i).textContent;
+
+    act(() => {
+      vi.advanceTimersByTime(12000);
+    });
+
+    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Finn' })).toBeInTheDocument();
+    expect(spotlight.textContent).not.toContain(firstFinnFact);
+  });
 });
