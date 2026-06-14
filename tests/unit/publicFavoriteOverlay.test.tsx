@@ -276,6 +276,56 @@ describe('PublicFavoriteOverlay', () => {
     expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
   });
 
+  it('does not restart the spotlight timer when vote eliminations change the active pool', () => {
+    let votingState = {
+      votes: { p1: 10, p2: 70, p3: 20 },
+      eliminated: [] as string[],
+      winnerId: null,
+      isComplete: false,
+    };
+    mockedUseBattleBackVoting.mockImplementation(() => votingState);
+
+    const { rerender } = render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3500);
+    });
+
+    votingState = {
+      votes: { p1: 0, p2: 62, p3: 38 },
+      eliminated: ['p1'],
+      winnerId: null,
+      isComplete: false,
+    };
+
+    rerender(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={2}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByRole('heading', { name: 'Morgan' })).toBeInTheDocument();
+  });
+
   it('removes vote-eliminated players from the spotlight pool and marks the final two', () => {
     mockedUseBattleBackVoting.mockReturnValue({
       votes: { p1: 0, p2: 55, p3: 45 },
