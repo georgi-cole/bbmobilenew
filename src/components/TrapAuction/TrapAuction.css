@@ -1101,3 +1101,16 @@
     height: 130px;
   }
 }
+
+/* ── Rematch banner (complete-tie replay) ───────────────────────────────── */
+.ta-rematch-banner {
+  margin: 0 auto 12px;
+  padding: 10px 16px;
+  max-width: 480px;
+  text-align: center;
+  font-weight: 700;
+  color: #fff3c4;
+  background: rgba(180, 83, 9, 0.35);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  border-radius: 12px;
+}

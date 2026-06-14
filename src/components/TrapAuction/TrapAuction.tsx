@@ -120,6 +120,7 @@ function buildInitialState(
     fastForward: false,
     prizeType,
     seed,
+    rematchCount: 0,
   };
 }
 
@@ -370,6 +371,13 @@ export default function TrapAuction({
 
     return (
       <div className="ta-bid-phase">
+        {/* Rematch notice — shown when the previous round was a complete tie */}
+        {(state.rematchCount ?? 0) > 0 && (
+          <div className="ta-rematch-banner" role="status">
+            🔁 It's a tie! Everyone bid the same — rematch! Bid again to settle it.
+          </div>
+        )}
+
         {/* Player grid (compact) */}
         {renderPlayerGrid(state.players, true)}
 

@@ -21,8 +21,30 @@ import {
   eliminatePlayers,
   getWinner,
   nextPlacementFor,
+  isCompleteTie,
+  isUnbreakableTie,
+  resolveTieWinner,
+  clearBidsForRematch,
 } from './trapAuctionHelpers';
 import { mulberry32 } from '../../store/rng';
+
+/**
+ * Safety cap on consecutive rematches for a single round. A rematch replays the
+ * round with a fresh seed, so AI bids vary and a tie almost always breaks within
+ * a couple of attempts. The cap guarantees the game always terminates.
+ */
+const MAX_REMATCHES = 8;
+
+/** Derives a deterministic per-round seed, salted by the rematch attempt. */
+function deriveRoundSeed(seed: number, round: number, rematchCount: number): number {
+  return (
+    (mulberry32(
+      (seed ^ (round * 0x9e3779b9) ^ ((rematchCount + 1) * 0x85ebca6b)) >>> 0,
+    )() *
+      0x100000000) >>>
+    0
+  );
+}
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
@@ -71,8 +93,9 @@ export function trapAuctionReducer(
         p.isHuman && p.isAlive ? { ...p, currentBid: action.bid } : p,
       );
 
-      // Derive a deterministic per-round seed
-      const roundSeed = (mulberry32((state.seed ^ (state.round * 0x9e3779b9)) >>> 0)() * 0x100000000) >>> 0;
+      // Derive a deterministic per-round seed (salted by rematch attempts so a
+      // replayed tie round produces different AI bids).
+      const roundSeed = deriveRoundSeed(state.seed, state.round, state.rematchCount ?? 0);
 
       // Compute AI bids
       const withAllBids = computeAiBids(withHumanBid, { round: state.round, players: withHumanBid }, roundSeed);
@@ -150,6 +173,50 @@ export function trapAuctionReducer(
         state.phase === 'reveal' && state.revealIndex >= state.roundReveals.length;
       if (!readyFromReveal) return state;
 
+      // ── Complete-tie rematch ────────────────────────────────────────────────
+      // If every alive player tied for the lowest bid, eliminating the lowest
+      // bidder(s) would wipe out the whole field and crown an arbitrary winner.
+      // Instead replay the round (no costs charged) until the tie breaks — this
+      // is the "rematch until a winner is crowned" rule. A safety fallback
+      // crowns a deterministic winner if the tie can never break (all bankrupt)
+      // or the rematch cap is reached.
+      if (isCompleteTie(state.players)) {
+        const rematchCount = state.rematchCount ?? 0;
+        const mustStop =
+          isUnbreakableTie(state.players) || rematchCount + 1 >= MAX_REMATCHES;
+
+        if (mustStop) {
+          const tieWinner = resolveTieWinner(
+            applyBidCosts(state.players, state.round),
+            state.seed ^ ((rematchCount + 1) * 0x27d4eb2f),
+          );
+          if (tieWinner) {
+            const withWinner = state.players.map((p) =>
+              p.id === tieWinner.id ? { ...p, placement: 1 } : p,
+            );
+            return {
+              ...state,
+              players: withWinner,
+              winner: { ...tieWinner, placement: 1 },
+              rematchCount: 0,
+              phase: 'complete',
+            };
+          }
+        }
+
+        // Void the round and re-bid with a fresh seed.
+        return {
+          ...state,
+          players: clearBidsForRematch(state.players),
+          roundReveals: [],
+          revealIndex: 0,
+          lastEliminatedIds: [],
+          lastHighestBidderId: null,
+          rematchCount: rematchCount + 1,
+          phase: 'bid',
+        };
+      }
+
       const lowestIds = findLowestBidders(state.players);
       const highestId = findHighestBidder(state.players);
 
@@ -173,6 +240,7 @@ export function trapAuctionReducer(
         lastEliminatedIds: lowestIds,
         lastHighestBidderId: highestId,
         humanEliminated: state.humanEliminated || humanEliminated,
+        rematchCount: 0,
         phase: 'elimination',
       };
     }
@@ -226,6 +294,7 @@ export function trapAuctionReducer(
         revealIndex: 0,
         lastEliminatedIds: [],
         lastHighestBidderId: null,
+        rematchCount: 0,
         phase: 'bid',
       };
     }
@@ -277,11 +346,40 @@ function simulateToCompletion(state: TrapAuctionState): TrapAuctionState {
       };
     }
 
-    // Simulate all bids for this round
-    const roundSeed = (mulberry32((s.seed ^ (s.round * 0x9e3779b9)) >>> 0)() * 0x100000000) >>> 0;
+    // Simulate all bids for this round, retrying with fresh seeds on a complete
+    // tie so the simulation mirrors the live rematch rule instead of wiping the
+    // whole field and crowning an arbitrary winner.
+    let withBids = s.players;
+    let attempt = 0;
+    while (attempt < MAX_REMATCHES) {
+      const roundSeed = deriveRoundSeed(s.seed, s.round, attempt);
+      withBids = computeAiBids(
+        clearBidsForRematch(s.players),
+        { round: s.round, players: s.players },
+        roundSeed,
+      );
+      if (!isCompleteTie(withBids) || isUnbreakableTie(withBids)) break;
+      attempt++;
+    }
 
-    // Use the same AI bid computation as in real rounds to preserve determinism
-    const withBids = computeAiBids(s.players, { round: s.round, players: s.players }, roundSeed);
+    // Permanent tie that no rematch can break: crown a deterministic winner.
+    if (isCompleteTie(withBids)) {
+      const tieWinner = resolveTieWinner(
+        applyBidCosts(withBids, s.round),
+        s.seed ^ ((attempt + 1) * 0x27d4eb2f),
+      );
+      if (tieWinner) {
+        const withWinner = s.players.map((p) =>
+          p.id === tieWinner.id ? { ...p, placement: 1 } : p,
+        );
+        return {
+          ...s,
+          players: withWinner,
+          winner: { ...tieWinner, placement: 1 },
+          phase: 'complete',
+        };
+      }
+    }
 
     const lowestIds = findLowestBidders(withBids);
     const highestId = findHighestBidder(withBids);
