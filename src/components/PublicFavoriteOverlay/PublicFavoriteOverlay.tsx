@@ -4,7 +4,7 @@
  * UX flow:
  *  1. intro            — brief live-broadcast sting over the fullscreen board
  *  2. audience_surge   — optional rewarded-ad hook that boosts temporary momentum
- *  3. live_results     — animated ranking board and leader spotlight
+ *  3. live_results     — animated ranking board and timed houseguest trivia spotlight
  *  4. elimination      — short tension beat when a player drops out
  *  5. final_reveal     — winner reveal card; tap to close
  *
@@ -19,6 +19,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
+import {
+  SPOTLIGHT_ROTATION_MS,
+  buildHouseguestSpotlightItems,
+  getActiveSpotlightPlayers,
+  selectSpotlightItem,
+} from './publicFavoriteSpotlight';
 import './PublicFavoriteOverlay.css';
 
 interface Props {
@@ -301,34 +307,51 @@ function AudienceSurgePanel({
   );
 }
 
-function LeaderSpotlightCard({
-  leader,
+function HouseguestSpotlightCard({
+  spotlight,
+  finalTwoNames,
 }: {
-  leader: VoteEntry | null;
+  spotlight: ReturnType<typeof selectSpotlightItem>;
+  finalTwoNames: string | null;
 }) {
-  if (!leader) return null;
+  if (!spotlight) return null;
+  const { item, fact } = spotlight;
+  const { player } = item;
+
   return (
-    <motion.section
-      className={`pf-overlay__leader${leader.surgeActive ? ' pf-overlay__leader--surge' : ''}`}
-      layout
-      transition={{ layout: { duration: 0.35, ease: 'easeInOut' } }}
-    >
+    <motion.section className="pf-overlay__spotlight" aria-label="Houseguest Spotlight" layout>
       <div className="pf-overlay__leader-copy">
-        <p className="pf-overlay__leader-kicker">Current front-runner</p>
-        <div className="pf-overlay__leader-meta">
-          <span className="pf-overlay__leader-rank">#{leader.rank}</span>
-          <VoteTrendChip trend={leader.trend} previousRank={leader.previousRank} rank={leader.rank} />
-        </div>
-        <h3 className="pf-overlay__leader-name">{leader.name}</h3>
-        <div className="pf-overlay__leader-percent-row">
-          <AnimatedPercent percent={leader.percent} />
-          {leader.surgeActive && <span className="pf-overlay__surge-pill">Audience Surge Active</span>}
-        </div>
-        <VoteAccentRail percent={leader.percent} tone="leader" />
+        <p className="pf-overlay__leader-kicker">
+          {finalTwoNames ? `Final two · ${finalTwoNames}` : 'Houseguest Spotlight'}
+        </p>
+        <h3 className="pf-overlay__leader-name">{player.name}</h3>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={`${player.id}-${fact}`}
+            className="pf-overlay__spotlight-fact"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.32, ease: 'easeOut' }}
+          >
+            {fact}
+          </motion.p>
+        </AnimatePresence>
       </div>
       <div className="pf-overlay__leader-portrait-wrap">
         <div className="pf-overlay__leader-glow" aria-hidden="true" />
-        <img src={leader.avatarUrl} alt={leader.name} className="pf-overlay__leader-avatar" />
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={player.id}
+            src={resolveAvatar(player)}
+            alt={player.name}
+            className="pf-overlay__leader-avatar"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.32, ease: 'easeOut' }}
+          />
+        </AnimatePresence>
       </div>
     </motion.section>
   );
@@ -488,6 +511,7 @@ export default function PublicFavoriteOverlay({
   const previousRanksRef = useRef<Record<string, number>>({});
   const previousEliminatedCountRef = useRef(0);
   const mountedRef = useRef(true);
+  const [spotlightRotation, setSpotlightRotation] = useState(0);
 
   const candidateIds = useMemo(() => candidates.map((candidate) => candidate.id), [candidates]);
   const candidatesById = useMemo(
@@ -546,12 +570,35 @@ export default function PublicFavoriteOverlay({
   }, [surgeActive, nowMs, eliminated]);
 
   const activePlayers = useMemo(
-    () =>
-      candidates
-        .filter((candidate) => !eliminated.includes(candidate.id))
-        .sort((left, right) => (votes[right.id] ?? 0) - (votes[left.id] ?? 0)),
-    [candidates, eliminated, votes],
+    () => getActiveSpotlightPlayers(candidates, eliminated),
+    [candidates, eliminated],
   );
+  const rankedPlayers = useMemo(
+    () => [...activePlayers].sort((left, right) => (votes[right.id] ?? 0) - (votes[left.id] ?? 0)),
+    [activePlayers, votes],
+  );
+  const spotlightItems = useMemo(() => buildHouseguestSpotlightItems(activePlayers), [activePlayers]);
+  const spotlightPoolKey = useMemo(
+    () => activePlayers.map((candidate) => candidate.id).join('|'),
+    [activePlayers],
+  );
+  const spotlight = selectSpotlightItem(spotlightItems, spotlightRotation);
+  const finalTwoNames =
+    activePlayers.length === 2
+      ? `${activePlayers[0].name} vs ${activePlayers[1].name}`
+      : null;
+
+  useEffect(() => {
+    setSpotlightRotation(0);
+  }, [spotlightPoolKey]);
+
+  useEffect(() => {
+    if (displayStep !== 'voting' || spotlightItems.length === 0) return;
+    const id = window.setInterval(() => {
+      setSpotlightRotation((rotation) => rotation + 1);
+    }, SPOTLIGHT_ROTATION_MS);
+    return () => window.clearInterval(id);
+  }, [displayStep, spotlightPoolKey, spotlightItems.length]);
 
   useEffect(() => {
     const firstActiveId = activePlayers[0]?.id ?? null;
@@ -592,7 +639,7 @@ export default function PublicFavoriteOverlay({
   const countdown = clampCountdown(nextShiftAt - nowMs);
   const voteEntries = useMemo<VoteEntry[]>(
     () =>
-      activePlayers.map((candidate, index) => {
+      rankedPlayers.map((candidate, index) => {
         const rank = index + 1;
         const previousRank = previousRanksRef.current[candidate.id] ?? rank;
         return {
@@ -607,16 +654,15 @@ export default function PublicFavoriteOverlay({
           surgeActive: surgeActive?.playerId === candidate.id,
         };
       }),
-    [activePlayers, votes, surgeActive],
+    [rankedPlayers, votes, surgeActive],
   );
 
   useEffect(() => {
     previousRanksRef.current = Object.fromEntries(
-      activePlayers.map((candidate, index) => [candidate.id, index + 1]),
+      rankedPlayers.map((candidate, index) => [candidate.id, index + 1]),
     );
-  }, [activePlayers]);
+  }, [rankedPlayers]);
 
-  const leader = voteEntries[0] ?? null;
   const winnerPlayer = candidates.find((candidate) => candidate.id === winnerId);
   const surgePlayerName = surgeActive ? candidatesById[surgeActive.playerId]?.name ?? null : null;
   const statusLine = getStatusLine({
@@ -724,7 +770,7 @@ export default function PublicFavoriteOverlay({
         {displayStep === 'voting' && (
           <div className="pf-overlay__broadcast">
             <div className={`pf-overlay__board-shell pf-overlay__board-shell--${phase}`}>
-              <LeaderSpotlightCard leader={leader} />
+              <HouseguestSpotlightCard spotlight={spotlight} finalTwoNames={finalTwoNames} />
               <VoteRankingBoard
                 entries={voteEntries}
                 candidatesById={candidatesById}
