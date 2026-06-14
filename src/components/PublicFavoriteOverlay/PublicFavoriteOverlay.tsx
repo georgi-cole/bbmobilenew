@@ -19,6 +19,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
+import { enrichPlayer } from '../../utils/houseguestLookup';
 import './PublicFavoriteOverlay.css';
 
 interface Props {
@@ -39,6 +40,7 @@ type PublicVotePhase =
   | 'elimination'
   | 'final_reveal';
 type VoteTrend = 'up' | 'down' | 'stable';
+type SpotlightCategory = 'At Risk' | 'Profile' | 'Quote' | 'Trivia' | 'Story' | 'Relationship' | 'Resume';
 
 interface SurgeState {
   playerId: string;
@@ -58,9 +60,31 @@ interface VoteEntry {
   surgeActive: boolean;
 }
 
+interface SpotlightFact {
+  category: SpotlightCategory;
+  text: string;
+}
+
+interface SpotlightCandidate {
+  playerId: string;
+  name: string;
+  avatarUrl: string;
+  rank: number;
+  percent: number;
+  isLeader: boolean;
+  surgeActive: boolean;
+  facts: SpotlightFact[];
+}
+
+interface SpotlightState {
+  cursor: number;
+  factIndexes: Record<string, number>;
+}
+
 const ELIM_INTERVAL_MS = 3500;
 const INTRO_MS = 1600;
 const CLOCK_INTERVAL_MS = 200;
+const SPOTLIGHT_ROTATION_MS = 5000;
 const SURGE_SELECTION_WINDOW_MS = 6500;
 const SURGE_DURATION_MS = 7000;
 const ELIMINATION_SPOTLIGHT_MS = 1400;
@@ -78,6 +102,116 @@ function getTrend(previousRank: number, rank: number): VoteTrend {
 
 function clampCountdown(ms: number): number {
   return Math.max(0, Math.ceil(ms / 1000));
+}
+
+function compactSentences(text: string, maxLength = 170): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  const sentenceMatch = normalized.match(/[^.!?]+[.!?]+/g);
+  const compact = sentenceMatch?.slice(0, 2).join(' ').trim() ?? normalized;
+  if (compact.length <= maxLength) return compact;
+  return `${compact.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function appendFact(facts: SpotlightFact[], category: SpotlightCategory, text?: string | null) {
+  const compact = text ? compactSentences(text) : '';
+  if (!compact || facts.some((fact) => fact.text === compact)) return;
+  facts.push({ category, text: compact });
+}
+
+function buildSpotlightFacts(candidate: Player, entry: VoteEntry): SpotlightFact[] {
+  const profile = enrichPlayer(candidate);
+  const facts: SpotlightFact[] = [];
+  const stats = candidate.stats;
+
+  appendFact(
+    facts,
+    'At Risk',
+    entry.isLeader
+      ? `${entry.name} is setting the pace at ${entry.percent}%, but the public vote can still shift.`
+      : `${entry.name} is ranked #${entry.rank} with ${entry.percent}% of the vote and needs every fan watching.`,
+  );
+  appendFact(
+    facts,
+    'Profile',
+    profile.profession && profile.location
+      ? `${entry.name} is a ${profile.profession} from ${profile.location}.`
+      : profile.profession
+        ? `${entry.name} brings a ${profile.profession} mindset into the spotlight.`
+        : profile.location
+          ? `${entry.name} represents ${profile.location} in the public vote.`
+          : null,
+  );
+  appendFact(facts, 'Quote', profile.motto ? `“${profile.motto}.”` : null);
+  appendFact(facts, 'Trivia', profile.funFact);
+  appendFact(facts, 'Story', profile.story);
+  appendFact(
+    facts,
+    'Relationship',
+    profile.allies?.length
+      ? `${entry.name}'s closest listed allies: ${profile.allies.slice(0, 2).join(' and ')}.`
+      : profile.enemies?.length
+        ? `${entry.name} has unresolved tension with ${profile.enemies.slice(0, 2).join(' and ')}.`
+        : null,
+  );
+  appendFact(
+    facts,
+    'Resume',
+    stats
+      ? `${entry.name}'s season résumé: ${stats.lohWins} LOH win${stats.lohWins === 1 ? '' : 's'}, ${stats.posWins} POS win${stats.posWins === 1 ? '' : 's'}, and ${stats.timesNominated} nomination${stats.timesNominated === 1 ? '' : 's'}.`
+      : null,
+  );
+  appendFact(
+    facts,
+    'Resume',
+    stats?.battleBackWins
+      ? `${entry.name} already fought back once with ${stats.battleBackWins} Battle Back win${stats.battleBackWins === 1 ? '' : 's'}.`
+      : null,
+  );
+
+  if (facts.length === 1) {
+    appendFact(
+      facts,
+      'Resume',
+      `${entry.name} is ${entry.isLeader ? 'protecting the top spot' : `trying to climb from rank #${entry.rank}`} as percentages keep moving.`,
+    );
+  }
+
+  return facts;
+}
+
+function buildWeightedSpotlightPool(candidates: SpotlightCandidate[]): SpotlightCandidate[] {
+  if (candidates.length <= 1) return candidates;
+
+  const finalStage = candidates.length <= 3;
+  const ordered = finalStage ? candidates : [...candidates].reverse();
+  const weights = new Map<string, number>();
+  ordered.forEach((candidate, index) => {
+    weights.set(candidate.playerId, finalStage ? ordered.length - index : candidate.rank);
+  });
+
+  const maxWeight = Math.max(...ordered.map((candidate) => weights.get(candidate.playerId) ?? 1));
+  const pool: SpotlightCandidate[] = [];
+  for (let pass = 0; pass < maxWeight; pass += 1) {
+    ordered.forEach((candidate) => {
+      if ((weights.get(candidate.playerId) ?? 1) > pass) {
+        pool.push(candidate);
+      }
+    });
+  }
+  return pool;
+}
+
+function nextSpotlightCursor(pool: SpotlightCandidate[], previousCursor: number): number {
+  if (pool.length <= 1) return 0;
+  const previousPlayerId = pool[previousCursor]?.playerId;
+  for (let offset = 1; offset <= pool.length; offset += 1) {
+    const nextCursor = (previousCursor + offset) % pool.length;
+    if (pool[nextCursor]?.playerId !== previousPlayerId) {
+      return nextCursor;
+    }
+  }
+  return (previousCursor + 1) % pool.length;
 }
 
 function getStatusLine(args: {
@@ -301,35 +435,46 @@ function AudienceSurgePanel({
   );
 }
 
-function LeaderSpotlightCard({
-  leader,
+function HouseguestSpotlightCard({
+  spotlight,
+  fact,
 }: {
-  leader: VoteEntry | null;
+  spotlight: SpotlightCandidate | null;
+  fact: SpotlightFact | null;
 }) {
-  if (!leader) return null;
+  if (!spotlight || !fact) return null;
   return (
     <motion.section
-      className={`pf-overlay__leader${leader.surgeActive ? ' pf-overlay__leader--surge' : ''}`}
+      className={`pf-overlay__leader${spotlight.surgeActive ? ' pf-overlay__leader--surge' : ''}${spotlight.isLeader ? ' pf-overlay__leader--contender' : ''}`}
       layout
       transition={{ layout: { duration: 0.35, ease: 'easeInOut' } }}
+      aria-label="Houseguest Spotlight"
     >
-      <div className="pf-overlay__leader-copy">
-        <p className="pf-overlay__leader-kicker">Current front-runner</p>
-        <div className="pf-overlay__leader-meta">
-          <span className="pf-overlay__leader-rank">#{leader.rank}</span>
-          <VoteTrendChip trend={leader.trend} previousRank={leader.previousRank} rank={leader.rank} />
+      <motion.div
+        key={`${spotlight.playerId}-${fact.category}-${fact.text}`}
+        className="pf-overlay__spotlight-content"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: 'easeOut' }}
+      >
+        <div className="pf-overlay__leader-copy">
+          <div className="pf-overlay__spotlight-topline">
+            <p className="pf-overlay__leader-kicker">Houseguest Spotlight</p>
+            <span className="pf-overlay__leader-rank">#{spotlight.rank}</span>
+          </div>
+          <h3 className="pf-overlay__leader-name">{spotlight.name}</h3>
+          <div className="pf-overlay__spotlight-category-row">
+            <span className="pf-overlay__spotlight-category">{fact.category}</span>
+            {spotlight.surgeActive && <span className="pf-overlay__surge-pill">Audience Surge Active</span>}
+          </div>
+          <p className="pf-overlay__spotlight-text">{fact.text}</p>
+          <VoteAccentRail percent={spotlight.percent} tone="leader" />
         </div>
-        <h3 className="pf-overlay__leader-name">{leader.name}</h3>
-        <div className="pf-overlay__leader-percent-row">
-          <AnimatedPercent percent={leader.percent} />
-          {leader.surgeActive && <span className="pf-overlay__surge-pill">Audience Surge Active</span>}
+        <div className="pf-overlay__leader-portrait-wrap">
+          <div className="pf-overlay__leader-glow" aria-hidden="true" />
+          <img src={spotlight.avatarUrl} alt={spotlight.name} className="pf-overlay__leader-avatar" />
         </div>
-        <VoteAccentRail percent={leader.percent} tone="leader" />
-      </div>
-      <div className="pf-overlay__leader-portrait-wrap">
-        <div className="pf-overlay__leader-glow" aria-hidden="true" />
-        <img src={leader.avatarUrl} alt={leader.name} className="pf-overlay__leader-avatar" />
-      </div>
+      </motion.div>
     </motion.section>
   );
 }
@@ -483,6 +628,7 @@ export default function PublicFavoriteOverlay({
   const [surgeUsed, setSurgeUsed] = useState(false);
   const [surgeActive, setSurgeActive] = useState<SurgeState | null>(null);
   const [eliminationMoment, setEliminationMoment] = useState<{ player: Player; startedAt: number } | null>(null);
+  const [spotlightState, setSpotlightState] = useState<SpotlightState>({ cursor: 0, factIndexes: {} });
   const firedRef = useRef(false);
   const surgeRequestLockRef = useRef(false);
   const previousRanksRef = useRef<Record<string, number>>({});
@@ -616,7 +762,37 @@ export default function PublicFavoriteOverlay({
     );
   }, [activePlayers]);
 
-  const leader = voteEntries[0] ?? null;
+  const spotlightCandidates = useMemo<SpotlightCandidate[]>(() => {
+    const candidatesWithFacts = voteEntries.reduce<SpotlightCandidate[]>((acc, entry) => {
+      const candidate = candidatesById[entry.playerId];
+      if (!candidate) return acc;
+      acc.push({
+        playerId: entry.playerId,
+        name: entry.name,
+        avatarUrl: entry.avatarUrl,
+        rank: entry.rank,
+        percent: entry.percent,
+        isLeader: entry.isLeader,
+        surgeActive: entry.surgeActive,
+        facts: buildSpotlightFacts(candidate, entry),
+      });
+      return acc;
+    }, []);
+    return buildWeightedSpotlightPool(candidatesWithFacts);
+  }, [voteEntries, candidatesById]);
+  const spotlightPlayerKey = useMemo(
+    () => spotlightCandidates.map((candidate) => candidate.playerId).join('|'),
+    [spotlightCandidates],
+  );
+  const spotlightCandidatesRef = useRef(spotlightCandidates);
+  spotlightCandidatesRef.current = spotlightCandidates;
+  const currentSpotlight = spotlightCandidates[spotlightState.cursor] ?? spotlightCandidates[0] ?? null;
+  const currentSpotlightFactIndex = currentSpotlight
+    ? spotlightState.factIndexes[currentSpotlight.playerId] ?? 0
+    : 0;
+  const currentSpotlightFact = currentSpotlight
+    ? currentSpotlight.facts[currentSpotlightFactIndex % currentSpotlight.facts.length]
+    : null;
   const winnerPlayer = candidates.find((candidate) => candidate.id === winnerId);
   const surgePlayerName = surgeActive ? candidatesById[surgeActive.playerId]?.name ?? null : null;
   const statusLine = getStatusLine({
@@ -629,6 +805,58 @@ export default function PublicFavoriteOverlay({
     surgeWindowRemaining,
     nowMs,
   });
+
+  useEffect(() => {
+    setSpotlightState((previous) => {
+      const nextSpotlightCandidates = spotlightCandidatesRef.current;
+      const nextCursor = Math.min(previous.cursor, Math.max(nextSpotlightCandidates.length - 1, 0));
+      const activeIds = new Set(nextSpotlightCandidates.map((candidate) => candidate.playerId));
+      const factIndexes = Object.fromEntries(
+        Object.entries(previous.factIndexes).filter(([playerId]) => activeIds.has(playerId)),
+      );
+      const currentPlayerId = nextSpotlightCandidates[nextCursor]?.playerId;
+      if (currentPlayerId && factIndexes[currentPlayerId] === undefined) {
+        factIndexes[currentPlayerId] = 0;
+      }
+      if (
+        previous.cursor === nextCursor &&
+        Object.keys(previous.factIndexes).length === Object.keys(factIndexes).length &&
+        Object.entries(factIndexes).every(([playerId, factIndex]) => previous.factIndexes[playerId] === factIndex)
+      ) {
+        return previous;
+      }
+      return { cursor: nextCursor, factIndexes };
+    });
+  }, [spotlightPlayerKey]);
+
+  useEffect(() => {
+    if (displayStep !== 'voting' || phase === 'intro' || spotlightCandidates.length <= 1) return;
+
+    const id = window.setInterval(() => {
+      setSpotlightState((previous) => {
+        const nextSpotlightCandidates = spotlightCandidatesRef.current;
+        const nextCursor = nextSpotlightCursor(nextSpotlightCandidates, previous.cursor);
+        const nextSpotlight = nextSpotlightCandidates[nextCursor];
+        if (!nextSpotlight) return { cursor: 0, factIndexes: {} };
+        const previousFactIndex = previous.factIndexes[nextSpotlight.playerId];
+        const nextFactIndex =
+          previousFactIndex === undefined
+            ? 0
+            : nextSpotlight.facts.length > 1
+              ? (previousFactIndex + 1) % nextSpotlight.facts.length
+              : 0;
+        return {
+          cursor: nextCursor,
+          factIndexes: {
+            ...previous.factIndexes,
+            [nextSpotlight.playerId]: nextFactIndex,
+          },
+        };
+      });
+    }, SPOTLIGHT_ROTATION_MS);
+
+    return () => window.clearInterval(id);
+  }, [displayStep, phase, spotlightCandidates.length, spotlightPlayerKey]);
 
   const handleClose = useCallback(() => {
     if (firedRef.current || !winnerId) return;
@@ -724,7 +952,7 @@ export default function PublicFavoriteOverlay({
         {displayStep === 'voting' && (
           <div className="pf-overlay__broadcast">
             <div className={`pf-overlay__board-shell pf-overlay__board-shell--${phase}`}>
-              <LeaderSpotlightCard leader={leader} />
+              <HouseguestSpotlightCard spotlight={currentSpotlight} fact={currentSpotlightFact} />
               <VoteRankingBoard
                 entries={voteEntries}
                 candidatesById={candidatesById}
