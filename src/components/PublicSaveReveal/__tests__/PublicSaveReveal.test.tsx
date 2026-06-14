@@ -83,6 +83,31 @@ describe('PublicSaveReveal', () => {
     expect(screen.getByText('50%')).toBeTruthy();
   });
 
+  it('nudges exact saved approval ties so the saved nominee displays highest', () => {
+    render(
+      <PublicSaveReveal
+        nominees={nominees}
+        approvals={{
+          p1: 25,
+          p2: 50,
+          p3: 50,
+        }}
+        savedId="p3"
+        onDone={vi.fn()}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.getByText('25%')).toBeTruthy();
+    expect(screen.getByText('49.9%')).toBeTruthy();
+    expect(screen.getByText('50.1%')).toBeTruthy();
+    expect(screen.getByLabelText('Kian approval: 49.9%')).toBeTruthy();
+    expect(screen.getByLabelText('Georgi approval: 50.1%')).toBeTruthy();
+  });
+
   it('highlights the saved nominee before auto-dismiss', () => {
     render(
       <PublicSaveReveal
