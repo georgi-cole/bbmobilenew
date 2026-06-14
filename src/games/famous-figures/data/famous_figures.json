@@ -81,7 +81,7 @@
       "First name: Daisy. Last name starts with 'D'."
     ],
     "baseClueFact": "A stylish Disney duck associated with Donald Duck.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Disney"
   },
@@ -104,7 +104,7 @@
       "First name: Scrooge. Last name starts with 'M'."
     ],
     "baseClueFact": "A very rich Disney duck who loves his money bin.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Disney"
   },
@@ -148,7 +148,7 @@
       "Name: Pluto."
     ],
     "baseClueFact": "Mickey Mouse's pet dog.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Disney"
   },
@@ -278,7 +278,7 @@
       "Name: Mufasa."
     ],
     "baseClueFact": "The noble lion king from The Lion King.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Disney"
   },
@@ -433,7 +433,7 @@
       "Name: Maui."
     ],
     "baseClueFact": "The shapeshifting demigod from Moana.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Disney"
   },
@@ -477,7 +477,7 @@
       "First name: Tinker. Last name starts with 'B'."
     ],
     "baseClueFact": "A tiny fairy associated with Peter Pan.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Disney"
   },
@@ -498,7 +498,7 @@
       "Name: Pinocchio."
     ],
     "baseClueFact": "A wooden puppet whose nose grows when he lies.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Literature"
   },
@@ -544,7 +544,7 @@
       "Name: Tigger."
     ],
     "baseClueFact": "The bouncing tiger from Winnie the Pooh.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Literature"
   },
@@ -590,7 +590,7 @@
       "First name: Patrick. Last name starts with 'S'."
     ],
     "baseClueFact": "SpongeBob's pink starfish best friend.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Nickelodeon"
   },
@@ -613,7 +613,7 @@
       "First name: Squidward. Last name starts with 'T'."
     ],
     "baseClueFact": "SpongeBob's grumpy neighbor.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Nickelodeon"
   },
@@ -705,7 +705,7 @@
       "First name: Marge. Last name starts with 'S'."
     ],
     "baseClueFact": "The blue-haired mother from The Simpsons.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Television"
   },
@@ -751,7 +751,7 @@
       "First name: Daffy. Last name starts with 'D'."
     ],
     "baseClueFact": "A chaotic black duck from Looney Tunes.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Looney Tunes"
   },
@@ -774,7 +774,7 @@
       "Name: Tweety."
     ],
     "baseClueFact": "A small yellow bird chased by Sylvester.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Looney Tunes"
   },
@@ -799,7 +799,7 @@
       "First name: Tom. Last name starts with 'C'."
     ],
     "baseClueFact": "The cat from Tom and Jerry.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Animation"
   },
@@ -824,7 +824,7 @@
       "First name: Jerry. Last name starts with 'M'."
     ],
     "baseClueFact": "The mouse from Tom and Jerry.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Animation"
   },
@@ -870,7 +870,7 @@
       "First name: Shaggy. Last name starts with 'R'."
     ],
     "baseClueFact": "Scooby-Doo's hungry and nervous best friend.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Animation"
   },
@@ -893,7 +893,7 @@
       "First name: Fred. Last name starts with 'F'."
     ],
     "baseClueFact": "The Stone Age father from The Flintstones.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Animation"
   },
@@ -914,7 +914,7 @@
       "Name: Garfield."
     ],
     "baseClueFact": "The lasagna-loving orange cat who hates Mondays.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Comics"
   },
@@ -937,7 +937,7 @@
       "Name: Popeye."
     ],
     "baseClueFact": "The spinach-powered cartoon sailor.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Comics"
   },
@@ -983,7 +983,7 @@
       "Name: Luigi."
     ],
     "baseClueFact": "Mario's taller green-clad brother.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -1006,7 +1006,7 @@
       "First name: Princess. Last name starts with 'P'."
     ],
     "baseClueFact": "The pink-dressed princess of the Mushroom Kingdom.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -1029,7 +1029,7 @@
       "Name: Bowser."
     ],
     "baseClueFact": "Mario's fire-breathing turtle-like enemy.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -1052,7 +1052,7 @@
       "First name: Sonic. Last name starts with 'H'."
     ],
     "baseClueFact": "The blue hedgehog famous for speed.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -1096,7 +1096,7 @@
       "First name: Ash. Last name starts with 'K'."
     ],
     "baseClueFact": "The Pokémon trainer with Pikachu.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Anime"
   },
@@ -1140,7 +1140,7 @@
       "Name: Ken."
     ],
     "baseClueFact": "Barbie's famous male companion.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Toy"
   },
@@ -1280,7 +1280,7 @@
       "First name: Captain. Last name starts with 'A'."
     ],
     "baseClueFact": "The patriotic Marvel hero with a shield.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "superhero",
     "era": "Comics"
   },
@@ -1305,7 +1305,7 @@
       "Name: Hulk."
     ],
     "baseClueFact": "The green Marvel hero powered by anger.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "superhero",
     "era": "Comics"
   },
@@ -1328,7 +1328,7 @@
       "Name: Thor."
     ],
     "baseClueFact": "The hammer-wielding god of thunder.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "superhero",
     "era": "Comics"
   },
@@ -1353,7 +1353,7 @@
       "First name: Black. Last name starts with 'P'."
     ],
     "baseClueFact": "The king of Wakanda and Marvel superhero.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "superhero",
     "era": "Comics"
   },
@@ -1376,7 +1376,7 @@
       "Name: Wolverine."
     ],
     "baseClueFact": "The clawed X-Men mutant.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "superhero",
     "era": "Comics"
   },
@@ -1399,7 +1399,7 @@
       "Name: Deadpool."
     ],
     "baseClueFact": "The sarcastic Marvel antihero in a red suit.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "superhero",
     "era": "Comics"
   },
@@ -1516,7 +1516,7 @@
       "First name: Princess. Last name starts with 'L'."
     ],
     "baseClueFact": "The Rebel princess from Star Wars.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Star Wars"
   },
@@ -1560,7 +1560,7 @@
       "Name: Chewbacca."
     ],
     "baseClueFact": "The tall Wookiee from Star Wars.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Star Wars"
   },
@@ -1585,7 +1585,7 @@
       "First name: R2. Last name starts with 'D'."
     ],
     "baseClueFact": "The small blue-and-white droid from Star Wars.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Star Wars"
   },
@@ -1610,7 +1610,7 @@
       "First name: C. Last name starts with '3'."
     ],
     "baseClueFact": "The golden protocol droid from Star Wars.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Star Wars"
   },
@@ -1677,7 +1677,7 @@
       "First name: Ron. Last name starts with 'W'."
     ],
     "baseClueFact": "Harry Potter's loyal red-haired best friend.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Fantasy"
   },
@@ -1702,7 +1702,7 @@
       "First name: Lord. Last name starts with 'V'."
     ],
     "baseClueFact": "The dark wizard villain of Harry Potter.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "villain",
     "era": "Fantasy"
   },
@@ -1725,7 +1725,7 @@
       "First name: Frodo. Last name starts with 'B'."
     ],
     "baseClueFact": "The hobbit who carries the One Ring.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Fantasy"
   },
@@ -1750,7 +1750,7 @@
       "Name: Gandalf."
     ],
     "baseClueFact": "The wise wizard from The Lord of the Rings.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Fantasy"
   },
@@ -1775,7 +1775,7 @@
       "Name: Gollum."
     ],
     "baseClueFact": "The ring-obsessed creature who says 'my precious'.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Fantasy"
   },
@@ -1821,7 +1821,7 @@
       "Name: Dracula."
     ],
     "baseClueFact": "The famous vampire from Transylvania.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Literature"
   },
@@ -1846,7 +1846,7 @@
       "First name: Frankensteins. Last name starts with 'M'."
     ],
     "baseClueFact": "The tragic creature from Mary Shelley's novel.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Literature"
   },
@@ -1894,7 +1894,7 @@
       "First name: Indiana. Last name starts with 'J'."
     ],
     "baseClueFact": "The whip-carrying archaeologist adventurer.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Film"
   },
@@ -1917,7 +1917,7 @@
       "First name: Rocky. Last name starts with 'B'."
     ],
     "baseClueFact": "The underdog boxer from Philadelphia.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Film"
   },
@@ -1940,7 +1940,7 @@
       "First name: Forrest. Last name starts with 'G'."
     ],
     "baseClueFact": "The film character who says life is like a box of chocolates.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Film"
   },
@@ -1984,7 +1984,7 @@
       "Name: Donkey."
     ],
     "baseClueFact": "Shrek's loud and loyal best friend.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Animation"
   },
@@ -2053,7 +2053,7 @@
       "First name: Captain. Last name starts with 'S'."
     ],
     "baseClueFact": "The pirate captain of the Black Pearl.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Film"
   },
@@ -2076,7 +2076,7 @@
       "First name: Wednesday. Last name starts with 'A'."
     ],
     "baseClueFact": "The gothic girl from The Addams Family.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Television"
   },
@@ -2099,7 +2099,7 @@
       "First name: Morticia. Last name starts with 'A'."
     ],
     "baseClueFact": "The elegant gothic mother from The Addams Family.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Television"
   },
@@ -2122,7 +2122,7 @@
       "First name: Gomez. Last name starts with 'A'."
     ],
     "baseClueFact": "The passionate father from The Addams Family.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Television"
   },
@@ -2145,7 +2145,7 @@
       "First name: The. Last name starts with 'G'."
     ],
     "baseClueFact": "The green character who tries to steal Christmas.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Christmas"
   },
@@ -2237,7 +2237,7 @@
       "First name: Robin. Last name starts with 'H'."
     ],
     "baseClueFact": "The outlaw who steals from the rich and gives to the poor.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "legendary figure",
     "era": "Folklore"
   },
@@ -2258,7 +2258,7 @@
       "Name: Tarzan."
     ],
     "baseClueFact": "The jungle hero raised by apes.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Literature"
   },
@@ -2279,7 +2279,7 @@
       "First name: King. Last name starts with 'K'."
     ],
     "baseClueFact": "The giant ape from classic monster movies.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Film"
   },
@@ -2348,7 +2348,7 @@
       "Name: Neo."
     ],
     "baseClueFact": "The chosen hacker hero from The Matrix.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Film"
   },
@@ -2371,7 +2371,7 @@
       "Name: Morpheus."
     ],
     "baseClueFact": "The mentor who offers the red pill.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Film"
   },
@@ -2419,7 +2419,7 @@
       "First name: Rose. Last name starts with 'B'."
     ],
     "baseClueFact": "The heroine of Titanic.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Film"
   },
@@ -2442,7 +2442,7 @@
       "First name: Hannibal. Last name starts with 'L'."
     ],
     "baseClueFact": "The brilliant and terrifying cannibal psychiatrist.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "villain",
     "era": "Film"
   },
@@ -2490,7 +2490,7 @@
       "First name: Lara. Last name starts with 'C'."
     ],
     "baseClueFact": "The adventurer heroine of Tomb Raider.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -2513,7 +2513,7 @@
       "First name: Pac. Last name starts with 'M'."
     ],
     "baseClueFact": "The yellow arcade character who eats dots.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -2534,7 +2534,7 @@
       "First name: Donkey. Last name starts with 'K'."
     ],
     "baseClueFact": "The famous Nintendo gorilla.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -2557,7 +2557,7 @@
       "Name: Link."
     ],
     "baseClueFact": "The sword-carrying hero from The Legend of Zelda.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -2580,7 +2580,7 @@
       "Name: Zelda."
     ],
     "baseClueFact": "The princess from The Legend of Zelda.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "video game character",
     "era": "Video games"
   },
@@ -2601,7 +2601,7 @@
       "First name: Master. Last name starts with 'C'."
     ],
     "baseClueFact": "The armored hero of Halo.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "video game character",
     "era": "Video games"
   },
@@ -2622,7 +2622,7 @@
       "Name: Kratos."
     ],
     "baseClueFact": "The warrior hero from God of War.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "video game character",
     "era": "Video games"
   },
@@ -2647,7 +2647,7 @@
       "Name: Luffy."
     ],
     "baseClueFact": "The straw-hat pirate from One Piece.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "anime character",
     "era": "Anime"
   },
@@ -2670,7 +2670,7 @@
       "First name: Naruto. Last name starts with 'U'."
     ],
     "baseClueFact": "The ninja hero who wants to become Hokage.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "anime character",
     "era": "Anime"
   },
@@ -2716,7 +2716,7 @@
       "First name: Sailor. Last name starts with 'M'."
     ],
     "baseClueFact": "The magical girl heroine with a moon theme.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "anime character",
     "era": "Anime"
   },
@@ -2739,7 +2739,7 @@
       "Name: Totoro."
     ],
     "baseClueFact": "The gentle forest spirit from Studio Ghibli.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "anime character",
     "era": "Anime"
   },
@@ -2762,7 +2762,7 @@
       "First name: Dora. Last name starts with 'E'."
     ],
     "baseClueFact": "The children's cartoon explorer with Boots.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Animation"
   },
@@ -2806,7 +2806,7 @@
       "First name: Hello. Last name starts with 'K'."
     ],
     "baseClueFact": "The cute Japanese character with a bow.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "fictional character",
     "era": "Toy"
   },
@@ -2827,7 +2827,7 @@
       "Name: Maleficent."
     ],
     "baseClueFact": "The dark fairy villain from Sleeping Beauty.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "villain",
     "era": "Disney"
   },
@@ -2850,7 +2850,7 @@
       "First name: Cruella. Last name starts with 'V'."
     ],
     "baseClueFact": "The Disney villain obsessed with dalmatian puppies.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "villain",
     "era": "Disney"
   },
@@ -2873,7 +2873,7 @@
       "Name: Ursula."
     ],
     "baseClueFact": "The sea witch from The Little Mermaid.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "villain",
     "era": "Disney"
   },
@@ -2917,7 +2917,7 @@
       "Name: Hercules."
     ],
     "baseClueFact": "The legendary strong hero from Greek mythology.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "mythological figure",
     "era": "Mythology"
   },
@@ -2938,7 +2938,7 @@
       "Name: Zeus."
     ],
     "baseClueFact": "The king of the Greek gods.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "mythological figure",
     "era": "Mythology"
   },
@@ -2959,7 +2959,7 @@
       "Name: Athena."
     ],
     "baseClueFact": "The Greek goddess of wisdom.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "mythological figure",
     "era": "Mythology"
   },
@@ -2980,7 +2980,7 @@
       "Name: Medusa."
     ],
     "baseClueFact": "The mythological woman with snakes for hair.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "mythological figure",
     "era": "Mythology"
   },
@@ -3005,7 +3005,7 @@
       "First name: Michael. Last name starts with 'J'."
     ],
     "baseClueFact": "The King of Pop known for Thriller and the moonwalk.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3026,7 +3026,7 @@
       "First name: Whitney. Last name starts with 'H'."
     ],
     "baseClueFact": "The singer known as The Voice.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3047,7 +3047,7 @@
       "First name: Mariah. Last name starts with 'C'."
     ],
     "baseClueFact": "The pop diva famous for high notes and a Christmas hit.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3068,7 +3068,7 @@
       "Name: Shakira."
     ],
     "baseClueFact": "The Colombian singer famous for Hips Don't Lie.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3089,7 +3089,7 @@
       "Name: Cher."
     ],
     "baseClueFact": "The Goddess of Pop known for Believe.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "singer",
     "era": "Modern"
   },
@@ -3112,7 +3112,7 @@
       "Name: Madonna."
     ],
     "baseClueFact": "The Queen of Pop known for constant reinvention.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3158,7 +3158,7 @@
       "First name: Lady. Last name starts with 'G'."
     ],
     "baseClueFact": "A theatrical pop star known for Poker Face and Bad Romance.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3200,7 +3200,7 @@
       "Name: Rihanna."
     ],
     "baseClueFact": "The Barbadian singer and Fenty founder.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3221,7 +3221,7 @@
       "First name: Britney. Last name starts with 'S'."
     ],
     "baseClueFact": "The Princess of Pop famous for Baby One More Time.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3267,7 +3267,7 @@
       "First name: Freddie. Last name starts with 'M'."
     ],
     "baseClueFact": "The Queen frontman with a legendary voice.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "20th Century"
   },
@@ -3288,7 +3288,7 @@
       "First name: Elton. Last name starts with 'J'."
     ],
     "baseClueFact": "The British singer-pianist famous for Rocket Man.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3309,7 +3309,7 @@
       "Name: Adele."
     ],
     "baseClueFact": "The British singer known for emotional ballads.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3332,7 +3332,7 @@
       "First name: Celine. Last name starts with 'D'."
     ],
     "baseClueFact": "The Canadian singer famous for Titanic's main song.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "singer",
     "era": "Modern"
   },
@@ -3353,7 +3353,7 @@
       "First name: Tina. Last name starts with 'T'."
     ],
     "baseClueFact": "The Queen of Rock 'n' Roll.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "20th Century"
   },
@@ -3374,7 +3374,7 @@
       "First name: Dolly. Last name starts with 'P'."
     ],
     "baseClueFact": "The country icon famous for Jolene and 9 to 5.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "singer",
     "era": "Modern"
   },
@@ -3395,7 +3395,7 @@
       "Name: Prince."
     ],
     "baseClueFact": "The music icon famous for Purple Rain.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "singer",
     "era": "20th Century"
   },
@@ -3416,7 +3416,7 @@
       "First name: Bob. Last name starts with 'M'."
     ],
     "baseClueFact": "The Jamaican reggae icon.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "singer",
     "era": "20th Century"
   },
@@ -3462,7 +3462,7 @@
       "First name: Snoop. Last name starts with 'D'."
     ],
     "baseClueFact": "The laid-back West Coast rapper.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "rapper",
     "era": "Modern"
   },
@@ -3487,7 +3487,7 @@
       "First name: Tupac. Last name starts with 'S'."
     ],
     "baseClueFact": "The legendary 1990s rapper also known as 2Pac.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "rapper",
     "era": "20th Century"
   },
@@ -3508,7 +3508,7 @@
       "Name: Drake."
     ],
     "baseClueFact": "The Canadian rapper behind Hotline Bling.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "rapper",
     "era": "Modern"
   },
@@ -3533,7 +3533,7 @@
       "First name: The. Last name starts with 'W'."
     ],
     "baseClueFact": "The Canadian singer known for Blinding Lights.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3554,7 +3554,7 @@
       "First name: Billie. Last name starts with 'E'."
     ],
     "baseClueFact": "The pop star known for Bad Guy.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3575,7 +3575,7 @@
       "First name: Ariana. Last name starts with 'G'."
     ],
     "baseClueFact": "The pop singer known for high vocals and ponytail.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3596,7 +3596,7 @@
       "First name: Justin. Last name starts with 'B'."
     ],
     "baseClueFact": "The Canadian pop star discovered on YouTube.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3617,7 +3617,7 @@
       "First name: Ed. Last name starts with 'S'."
     ],
     "baseClueFact": "The British singer-songwriter behind Shape of You.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3642,7 +3642,7 @@
       "First name: Jennifer. Last name starts with 'L'."
     ],
     "baseClueFact": "The singer, dancer, and actress known as J.Lo.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3663,7 +3663,7 @@
       "First name: Katy. Last name starts with 'P'."
     ],
     "baseClueFact": "The pop singer known for Firework and Roar.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3684,7 +3684,7 @@
       "First name: Bruno. Last name starts with 'M'."
     ],
     "baseClueFact": "The pop and funk performer known for Uptown Funk.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3705,7 +3705,7 @@
       "First name: Dua. Last name starts with 'L'."
     ],
     "baseClueFact": "The British-Albanian pop singer behind Levitating.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "singer",
     "era": "Modern"
   },
@@ -3726,7 +3726,7 @@
       "First name: Miley. Last name starts with 'C'."
     ],
     "baseClueFact": "The singer and actress who played Hannah Montana.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3747,7 +3747,7 @@
       "First name: Hannah. Last name starts with 'M'."
     ],
     "baseClueFact": "The Disney Channel pop-star alter ego.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "fictional character",
     "era": "Television"
   },
@@ -3768,7 +3768,7 @@
       "First name: Harry. Last name starts with 'S'."
     ],
     "baseClueFact": "The British singer who was in One Direction.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "singer",
     "era": "Modern"
   },
@@ -3791,7 +3791,7 @@
       "Name: BTS."
     ],
     "baseClueFact": "The globally famous South Korean boy band.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "music group",
     "era": "Modern"
   },
@@ -3833,7 +3833,7 @@
       "First name: Brad. Last name starts with 'P'."
     ],
     "baseClueFact": "The Hollywood actor known for Fight Club and Troy.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -3854,7 +3854,7 @@
       "First name: Angelina. Last name starts with 'J'."
     ],
     "baseClueFact": "The actress known for Tomb Raider and humanitarian work.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -3898,7 +3898,7 @@
       "First name: Johnny. Last name starts with 'D'."
     ],
     "baseClueFact": "The actor known for Captain Jack Sparrow.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -3921,7 +3921,7 @@
       "First name: Dwayne. Last name starts with 'J'."
     ],
     "baseClueFact": "The actor and former wrestler known as The Rock.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -3942,7 +3942,7 @@
       "First name: Will. Last name starts with 'S'."
     ],
     "baseClueFact": "The actor and rapper from Men in Black and Fresh Prince.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -3963,7 +3963,7 @@
       "First name: Morgan. Last name starts with 'F'."
     ],
     "baseClueFact": "The actor famous for his deep voice.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -3984,7 +3984,7 @@
       "First name: Marilyn. Last name starts with 'M'."
     ],
     "baseClueFact": "The classic Hollywood icon with the white dress image.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "20th Century"
   },
@@ -4007,7 +4007,7 @@
       "First name: Charlie. Last name starts with 'C'."
     ],
     "baseClueFact": "The silent-film comedy icon with a cane and bowler hat.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "actor",
     "era": "20th Century"
   },
@@ -4055,7 +4055,7 @@
       "First name: Oprah. Last name starts with 'W'."
     ],
     "baseClueFact": "The famous TV host and media mogul.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "TV personality",
     "era": "Modern"
   },
@@ -4076,7 +4076,7 @@
       "First name: Kim. Last name starts with 'K'."
     ],
     "baseClueFact": "The reality TV star and businesswoman.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "celebrity",
     "era": "Modern"
   },
@@ -4099,7 +4099,7 @@
       "First name: Arnold. Last name starts with 'S'."
     ],
     "baseClueFact": "The actor, bodybuilder, and former governor famous for Terminator.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -4122,7 +4122,7 @@
       "First name: Sylvester. Last name starts with 'S'."
     ],
     "baseClueFact": "The actor known for Rocky and Rambo.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -4164,7 +4164,7 @@
       "First name: Jim. Last name starts with 'C'."
     ],
     "baseClueFact": "The comic actor known for The Mask and Ace Ventura.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -4185,7 +4185,7 @@
       "First name: Robin. Last name starts with 'W'."
     ],
     "baseClueFact": "The beloved comic actor who voiced the Genie.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -4206,7 +4206,7 @@
       "First name: Harrison. Last name starts with 'F'."
     ],
     "baseClueFact": "The actor known for Han Solo and Indiana Jones.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -4227,7 +4227,7 @@
       "First name: Meryl. Last name starts with 'S'."
     ],
     "baseClueFact": "The actress known for many Oscar nominations.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "actor",
     "era": "Modern"
   },
@@ -4248,7 +4248,7 @@
       "First name: Julia. Last name starts with 'R'."
     ],
     "baseClueFact": "The actress known for Pretty Woman.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "actor",
     "era": "Modern"
   },
@@ -4269,7 +4269,7 @@
       "First name: Jennifer. Last name starts with 'A'."
     ],
     "baseClueFact": "The actress known for playing Rachel in Friends.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "actor",
     "era": "Modern"
   },
@@ -4294,7 +4294,7 @@
       "First name: Lady. Last name starts with 'D'."
     ],
     "baseClueFact": "The People's Princess.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "royal",
     "era": "Modern"
   },
@@ -4386,7 +4386,7 @@
       "First name: Vladimir. Last name starts with 'P'."
     ],
     "baseClueFact": "A long-serving Russian leader.",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "category": "politician",
     "era": "Modern"
   },
@@ -4411,7 +4411,7 @@
       "First name: Volodymyr. Last name starts with 'Z'."
     ],
     "baseClueFact": "The Ukrainian president and former comedian.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "politician",
     "era": "Modern"
   },
@@ -4434,7 +4434,7 @@
       "First name: Pope. Last name starts with 'F'."
     ],
     "baseClueFact": "A globally known pope from Argentina.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "religious figure",
     "era": "Modern"
   },
@@ -4480,7 +4480,7 @@
       "First name: Mona. Last name starts with 'L'."
     ],
     "baseClueFact": "The woman in Leonardo da Vinci's most famous painting.",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "category": "artwork figure",
     "era": "Renaissance"
   },

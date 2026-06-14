@@ -17,4 +17,10 @@ describe('Famous Figures replacement data bank', () => {
       expect(figure.hints).toHaveLength(5);
     }
   });
+
+  it('preserves easy, medium, and hard difficulty bands for AI balancing', () => {
+    expect(FAMOUS_FIGURES.some((figure) => figure.difficulty === 'easy')).toBe(true);
+    expect(FAMOUS_FIGURES.some((figure) => figure.difficulty === 'medium')).toBe(true);
+    expect(FAMOUS_FIGURES.some((figure) => figure.difficulty === 'hard')).toBe(true);
+  });
 });
