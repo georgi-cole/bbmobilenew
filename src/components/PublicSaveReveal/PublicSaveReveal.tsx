@@ -30,6 +30,27 @@ const REVEAL_VALUES_MS = 5000;
 const SHOW_SAVED_MS = 7600;
 const EXIT_MS = 9300;
 const DONE_MS = 10000;
+const MAX_APPROVAL_DISPLAY_PRECISION = 3;
+
+function getApprovalDisplayPrecision(approval: number, allApprovals: number[]): number {
+  const roundedApproval = approval.toFixed(0);
+  const tiedRoundedApprovals = allApprovals.filter((value) => value.toFixed(0) === roundedApproval);
+
+  if (tiedRoundedApprovals.length <= 1) return 0;
+
+  for (let precision = 1; precision <= MAX_APPROVAL_DISPLAY_PRECISION; precision += 1) {
+    const formattedApprovals = tiedRoundedApprovals.map((value) => value.toFixed(precision));
+    if (new Set(formattedApprovals).size === tiedRoundedApprovals.length) {
+      return precision;
+    }
+  }
+
+  return MAX_APPROVAL_DISPLAY_PRECISION;
+}
+
+function formatApproval(approval: number, allApprovals: number[]): string {
+  return `${approval.toFixed(getApprovalDisplayPrecision(approval, allApprovals))}%`;
+}
 
 export default function PublicSaveReveal({
   nominees,
@@ -73,10 +94,12 @@ export default function PublicSaveReveal({
     return clearTimers;
   }, [clearTimers, fireDone]);
 
-  const approvalLabel = (player: Player, approval: number) =>
-    `${player.name} approval: ${valuesRevealed ? `${Math.round(approval)}%` : 'pending reveal'}`;
+  const nomineeApprovals = nominees.map((player) => approvals[player.id] ?? 50);
 
-  const approvalText = (approval: number) => (valuesRevealed ? `${Math.round(approval)}%` : '?? %');
+  const approvalLabel = (player: Player, approval: number) =>
+    `${player.name} approval: ${valuesRevealed ? formatApproval(approval, nomineeApprovals) : 'pending reveal'}`;
+
+  const approvalText = (approval: number) => (valuesRevealed ? formatApproval(approval, nomineeApprovals) : '?? %');
 
   const barWidth = (approval: number) => `${Math.max(0, Math.min(100, approval))}%`;
 
