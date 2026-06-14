@@ -1,29 +1,16 @@
 /**
  * Hint ladder utilities for Famous Figures.
  *
- * Hint ladder (0-based index):
- *   0  →  dataset hints[0]  — big content clue
- *   1  →  dataset hints[1]  — another big content clue
- *   2  →  generated          — "First name starts with 'X'"
- *   3  →  generated          — "Last name starts with 'Y'" (mononym fallback)
- *   4  →  generated          — "First name: Marie. Last name starts with 'C'."
- *                               Reveals the full first name and last-name initial
- *                               so players can narrow down their final guess.
+ * Dataset hints are curated from broad to specific for all five reveal steps.
+ * Older or incomplete rows can still fall back to generated name clues.
  */
 import type { FigureRow } from './model';
 
-// ─── Suffix stripping ─────────────────────────────────────────────────────────
-
-/**
- * Common generational/honorific suffixes that should not be treated as the
- * last name (e.g. "Martin Luther King Jr" → last = "King").
- */
 const KNOWN_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v', 'vi']);
 
 /**
  * Parses a canonical name into first / last components.
- * Handles mononyms (e.g. "Cleopatra"), regnal names (e.g. "Louis XIV"),
- * and names with generational suffixes (e.g. "Martin Luther King Jr").
+ * Handles mononyms, regnal names, and names with generational suffixes.
  */
 function parseNameParts(canonicalName: string): {
   first: string;
@@ -32,7 +19,6 @@ function parseNameParts(canonicalName: string): {
 } {
   const raw = canonicalName.trim().split(/\s+/);
 
-  // Drop a trailing suffix so we don't mistake "Jr" / "III" for the last name.
   const lastToken = raw[raw.length - 1] ?? '';
   const parts =
     raw.length > 1 && KNOWN_SUFFIXES.has(lastToken.toLowerCase().replace(/\.$/, ''))
@@ -45,21 +31,18 @@ function parseNameParts(canonicalName: string): {
   return { first: parts[0], last: parts[parts.length - 1], isMononym: false };
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 /**
  * Returns the display text for the hint at `hintIndex` (0-based).
- *
- * Indices 0 and 1 return the dataset hints directly.
- * Indices 2–4 are generated from the figure's canonical name.
  */
 export function getHintText(figure: FigureRow, hintIndex: number): string {
   if (hintIndex < 0 || hintIndex > 4) {
-    throw new RangeError(`getHintText: hintIndex must be 0–4, got ${hintIndex}`);
+    throw new RangeError(`getHintText: hintIndex must be 0-4, got ${hintIndex}`);
   }
 
-  if (hintIndex === 0) return figure.hints[0];
-  if (hintIndex === 1) return figure.hints[1];
+  const datasetHint = figure.hints[hintIndex];
+  if (typeof datasetHint === 'string' && datasetHint.trim().length > 0) {
+    return datasetHint;
+  }
 
   const { first, last, isMononym } = parseNameParts(figure.canonicalName);
   const firstInitial = (first[0] ?? '?').toUpperCase();
@@ -78,11 +61,7 @@ export function getHintText(figure: FigureRow, hintIndex: number): string {
     return `Last name starts with '${lastInitial}'`;
   }
 
-  // hintIndex === 4  (Hint 5)
-  // Reveal the full first name and the last-name initial so players can narrow
-  // down the answer from prior clues.
   if (isMononym) {
-    // Single-name figures: reveal the full name directly.
     return `Name: ${first}`;
   }
   const lastInitial = (last[0] ?? '?').toUpperCase();

@@ -53,11 +53,11 @@ Hints are revealed one at a time; requesting more reduces the points available.
 |-------|--------|---------|
 | 0 | Dataset `hints[0]` | Vague — no direct identifying information |
 | 1 | Dataset `hints[1]` | General field or era |
-| 2 | Generated | First-name initial: `"First name starts with 'X'."` |
-| 3 | Generated | Last-name initial (or letter count for mononyms): `"Last name starts with 'Y'."` |
-| 4 | Generated | **Name reveal** — full first name + last-name initial for two-part names (`"First name: Marie. Last name starts with 'C'."`) or full name for mononyms (`"Name: Cleopatra"`) |
+| 2 | Dataset `hints[2]` | More specific behavior, role, or relationship |
+| 3 | Dataset `hints[3]` | Strong signature trait, object, catchphrase, or context |
+| 4 | Dataset `hints[4]` | Near-giveaway clue such as a rival, companion, title link, or final identifying detail |
 
-> **Note:** `hints[2]`, `hints[3]`, and `hints[4]` in the dataset JSON are **ignored at runtime** — indices 2–4 are always generated from `canonicalName`.
+> **Note:** All five dataset hints are shown at runtime. `getHintText` only falls back to generated name clues if an older row is missing a late hint.
 
 ---
 
@@ -74,9 +74,9 @@ Each figure in `src/games/famous-figures/data/famous_figures.json` follows this 
   "hints": [
     "Hint 1 — vague, no direct identifying info",
     "Hint 2 — general field or era",
-    "(ignored — hint 3 is generated from canonicalName)",
-    "(ignored — hint 4 is generated from canonicalName)",
-    "(ignored — hint 5 is generated from canonicalName)"
+    "Hint 3 - more specific behavior or relationship",
+    "Hint 4 - strong signature trait or context",
+    "Hint 5 - near-giveaway final clue"
   ],
   "baseClueFact": "A single sentence shown as the initial clue.",
   "difficulty": "easy",
@@ -93,7 +93,7 @@ Each figure in `src/games/famous-figures/data/famous_figures.json` follows this 
 | `normalizedName` | `string` | Output of `normalizeForMatching(canonicalName)` |
 | `acceptedAliases` | `string[]` | Alternative names players might use |
 | `normalizedAliases` | `string[]` | `normalizeForMatching` applied to each alias |
-| `hints` | `[string, string, string, string, string]` | Exactly 5 entries; only `hints[0]` and `hints[1]` are shown at runtime — indices 2–4 are generated |
+| `hints` | `[string, string, string, string, string]` | Exactly 5 entries, shown at runtime from broad to specific |
 | `baseClueFact` | `string` | Opening clue shown before any hint is requested |
 | `difficulty` | `"easy" \| "medium" \| "hard"` | Affects AI correct-answer probability |
 | `category` | `string` | Free-form (artist, scientist, ruler, leader, etc.) |
@@ -159,7 +159,7 @@ Full **Damerau-Levenshtein** distance (not restricted). Transpositions count as 
    import { normalizeForMatching } from 'src/games/famous-figures/fuzzy';
    console.log(normalizeForMatching('Joan of Arc')); // → "joan arc"
    ```
-4. Write 2 hints of increasing specificity for `hints[0]` and `hints[1]`. The remaining three entries (`hints[2–4]`) are ignored at runtime but must still be present for schema compliance; use placeholder strings.
+4. Write all five hints as a gradual ladder: broad category, general relationship or world, behavior or role, strong signature trait, then a near-giveaway final clue.
 5. Run tests: `npm run test:famous-figures`
 
 ---
@@ -171,7 +171,7 @@ Figures known by a single name (e.g. Michelangelo, Mozart, Cleopatra):
 - The `canonicalName` is the mononym and is **always a direct match target** — you do not need to add it to `acceptedAliases`.
 - Only add the mononym to `acceptedAliases` / `normalizedAliases` if you also want to list alternative spellings or variants of the mononym itself.
 - Short mononyms (≤4 chars) are matched by **exact** spelling only (no fuzzy distance allowed).
-- Hint 4 (index 4) for mononyms shows the full single name: `"Name: Cleopatra"`.
+- Mononym entries still need five curated hints; generated name clues are only a fallback for incomplete legacy rows.
 
 ### Regnal and title names
 - Caesar (alias for Julius Caesar), Gandhi (for Mahatma Gandhi).
