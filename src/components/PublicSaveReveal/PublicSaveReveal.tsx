@@ -48,7 +48,7 @@ function formatApprovals(allApprovals: number[], savedIndex: number): string[] {
     });
   }
 
-  const precisions = allApprovals.map(() => 0);
+  const precisions = displayApprovals.map(() => 0);
   const approvalIndexesByRoundedValue = new Map<string, number[]>();
 
   displayApprovals.forEach((approval, index) => {
