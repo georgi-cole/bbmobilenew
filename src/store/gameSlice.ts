@@ -2299,8 +2299,9 @@ const gameSlice = createSlice({
       const isCandidate = bb.candidates.includes(winnerId);
       const winner = state.players.find((p) => p.id === winnerId);
 
-      // Require the winner to be a current juror in the candidates list.
-      if (!isCandidate || !winner || winner.status !== 'jury') {
+      // Require the winner to be an exited stored candidate. Older/edge flows can
+      // carry a valid Battle Back candidate as 'evicted' instead of 'jury'.
+      if (!isCandidate || !winner || (winner.status !== 'jury' && winner.status !== 'evicted')) {
         return;
       }
 
