@@ -19,7 +19,7 @@ import { useEffect, useState } from 'react';
 import type { Player } from '../../types';
 import type { JurorReveal } from '../../store/finaleSlice';
 import { PUBLIC_JUROR_ID } from '../../store/finaleSlice';
-import { resolveFormalCutout } from '../../utils/avatar';
+import { resolveFormalCutout, resolveFullSizeCutoutFallback } from '../../utils/avatar';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import {
   PHRASE_TYPING_CHAR_INTERVAL_MS,
@@ -97,11 +97,18 @@ export default function TribunalMemberStage({
   const trimmedCurrentPhrase = currentPhrase.trim();
   const currentAnimationKey = currentJurorId ?? 'pending';
   const phraseAnimationKey = `${currentAnimationKey}-${currentPhrase}`;
+  const [failedCutoutId, setFailedCutoutId] = useState<string | null>(null);
 
   if (!current && !awaitingHumanPlayer) return null;
 
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
   const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null;
+  const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null;
+  const cutoutSrc = current && !isPublic && fallbackSrc
+    ? failedCutoutId === current.juror.id || !formalSrc
+      ? fallbackSrc
+      : formalSrc
+    : null;
   const currentAnnouncement = current
     ? trimmedCurrentPhrase
       ? `${isPublic ? 'The Public' : current.juror.name}. ${trimmedCurrentPhrase}`
@@ -152,24 +159,22 @@ export default function TribunalMemberStage({
               <PhraseTyper phrase={currentPhrase} />
             </div>
           )}
-          {formalSrc ? (
+          {isPublic ? (
+            <PublicCutoutPlaceholder />
+          ) : cutoutSrc ? (
             <img
               className="tms-cutout"
-              src={formalSrc}
+              src={cutoutSrc}
               alt={current.juror.name}
               draggable={false}
+              onError={() => {
+                if (formalSrc && cutoutSrc !== fallbackSrc) {
+                  setFailedCutoutId(current.juror.id);
+                }
+              }}
             />
-          ) : isPublic ? (
-            <PublicCutoutPlaceholder />
           ) : (
-            <div className="tms-avatar-fallback" aria-hidden="true">
-              <PlayerAvatar
-                player={current.juror}
-                size="lg"
-                showRelationshipOutline={false}
-                showEvictedStyle={false}
-              />
-            </div>
+            null
           )}
           <div className="tms-cutout-glow" aria-hidden="true" />
         </div>

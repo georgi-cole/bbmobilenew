@@ -94,15 +94,6 @@ function joinPublicAssetPath(path: string): string {
   return path;
 }
 
-function isDicebearCandidate(candidate: string): boolean {
-  try {
-    const parsed = new URL(candidate, typeof window !== 'undefined' ? window.location.origin : 'https://bbmobilenew.local');
-    return parsed.hostname === 'api.dicebear.com';
-  } catch {
-    return false;
-  }
-}
-
 /** Capitalises the first letter of a string and lowercases the rest. */
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -266,6 +257,9 @@ const INFORMAL_CUTOUT_MAP: Record<string, string> = {
   zed: 'Zed_informal',
 };
 
+const FEMALE_AVATAR_EMOJI = '👩';
+const MALE_AVATAR_EMOJI = '👨';
+
 /**
  * Returns the URL for a housemate's full-body transparent cutout from
  * `public/assets/Informal_attires/`, or `null` when no cutout exists for this player.
@@ -293,22 +287,46 @@ export function resolveSilhouetteFallback(
   return joinPublicAssetPath(`assets/${file}`);
 }
 
-export function resolveFullSizeCutoutFallback(
-  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
-): string {
-  return resolveSilhouetteFallback(player);
+type FullSizeCutoutFallbackPlayer = Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>> & {
+  gender?: string;
+  sex?: string;
+};
+
+export function resolveFullSizeCutoutFallback(player: FullSizeCutoutFallbackPlayer): string {
+  const hg = getById(player.id) ?? findByName(player.name);
+  const rawGender = (player.gender ?? player.sex ?? hg?.sex ?? '').toLowerCase().trim();
+
+  if (rawGender.includes('female') || rawGender.includes('woman')) {
+    return joinPublicAssetPath('assets/full_body_fallback_female.png');
+  }
+
+  if (rawGender.includes('male') || rawGender.includes('man')) {
+    return joinPublicAssetPath('assets/full_body_fallback_male.png');
+  }
+
+  // If any explicit gender/sex is provided (including non-binary / prefer-not-to-say / unknown),
+  // do not override it by inferring from avatar emoji.
+  if (rawGender.length > 0) {
+    return joinPublicAssetPath('assets/full_body_fallback_neutral.png');
+  }
+
+  if (player.avatar === FEMALE_AVATAR_EMOJI) {
+    return joinPublicAssetPath('assets/full_body_fallback_female.png');
+  }
+
+  if (player.avatar === MALE_AVATAR_EMOJI) {
+    return joinPublicAssetPath('assets/full_body_fallback_male.png');
+  }
+
+  return joinPublicAssetPath('assets/full_body_fallback_neutral.png');
 }
 
 export function resolveInformalCutoutCandidates(
-  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
+  player: FullSizeCutoutFallbackPlayer,
 ): string[] {
   const cutout = resolveInformalCutout(player);
-  const avatarFallback = resolveAvatarCandidates({
-    ...player,
-    avatar: player.avatar ?? player.name,
-  }).find((candidate) => !isDicebearCandidate(candidate));
-  const silhouetteFallback = resolveSilhouetteFallback(player);
-  return [cutout, avatarFallback, silhouetteFallback].filter(
+  const fullSizeFallback = resolveFullSizeCutoutFallback(player);
+  return [cutout, fullSizeFallback].filter(
     (candidate, index, all): candidate is string =>
       Boolean(candidate) && all.indexOf(candidate) === index,
   );
