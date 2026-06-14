@@ -176,19 +176,32 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     });
 
     expect(ss(store).phase).toBe('round_transition');
-    expect(screen.getByTestId('ss-round-transition-continue-btn')).toBeInTheDocument();
 
-    await act(async () => {
-      vi.advanceTimersByTime(5000);
-    });
+    // If this seed evicted the human, the round-summary Continue is auto-pressed
+    // so the spectating player isn't forced to click through AI-only rounds.
+    // Otherwise (human still active) the round summary waits for a manual click.
+    const humanEvicted = ss(store).eliminatedIds.includes('user');
 
-    expect(ss(store).phase).toBe('round_transition');
+    if (humanEvicted) {
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(ss(store).phase).toBe('select_victim');
+    } else {
+      expect(screen.getByTestId('ss-round-transition-continue-btn')).toBeInTheDocument();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('ss-round-transition-continue-btn'));
-    });
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
 
-    expect(ss(store).phase).toBe('select_victim');
+      expect(ss(store).phase).toBe('round_transition');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('ss-round-transition-continue-btn'));
+      });
+
+      expect(ss(store).phase).toBe('select_victim');
+    }
   });
 
   it('keeps the non-Final-2 winner screen on screen until Continue is clicked', async () => {
