@@ -293,7 +293,7 @@ describe('PublicFavoriteOverlay', () => {
     );
 
     const spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByText(/final two · Taylor vs Morgan/i)).toBeInTheDocument();
+    expect(within(spotlight).getByText(/final two: Taylor vs Morgan/i)).toBeInTheDocument();
     expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
     expect(within(spotlight).queryByRole('heading', { name: 'Jordan' })).not.toBeInTheDocument();
   });

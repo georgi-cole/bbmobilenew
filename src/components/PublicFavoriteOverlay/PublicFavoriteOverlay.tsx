@@ -322,21 +322,18 @@ function HouseguestSpotlightCard({
     <motion.section className="pf-overlay__spotlight" aria-label="Houseguest Spotlight" layout>
       <div className="pf-overlay__leader-copy">
         <p className="pf-overlay__leader-kicker">
-          {finalTwoNames ? `Final two · ${finalTwoNames}` : 'Houseguest Spotlight'}
+          {finalTwoNames ? `Final two: ${finalTwoNames}` : 'Houseguest Spotlight'}
         </p>
         <h3 className="pf-overlay__leader-name">{player.name}</h3>
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={`${player.id}-${fact}`}
-            className="pf-overlay__spotlight-fact"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.32, ease: 'easeOut' }}
-          >
-            {fact}
-          </motion.p>
-        </AnimatePresence>
+        <motion.p
+          key={`${player.id}-${fact}`}
+          className="pf-overlay__spotlight-fact"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, ease: 'easeOut' }}
+        >
+          {fact}
+        </motion.p>
       </div>
       <div className="pf-overlay__leader-portrait-wrap">
         <div className="pf-overlay__leader-glow" aria-hidden="true" />

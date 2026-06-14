@@ -39,13 +39,15 @@ function buildProfileFacts(profile: Houseguest): string[] {
   facts.push(`${name} comes from ${profile.location} and works as a ${profile.profession}.`);
 
   if (profile.education) {
-    facts.push(`${name} studied ${profile.education}, a detail that follows them into the pressure cooker of the house.`);
+    facts.push(
+      `${name} studied ${profile.education}, a detail that follows them into the pressure cooker of the house.`,
+    );
   }
   if (profile.funFact) {
     facts.push(profile.funFact.endsWith('.') ? profile.funFact : `${profile.funFact}.`);
   }
   if (profile.motto) {
-    facts.push(`Their motto is “${profile.motto}.”`);
+    facts.push(`Their motto is "${profile.motto}."`);
   }
   if (profile.pets && profile.pets !== 'None') {
     facts.push(`${name} has ${profile.pets.toLowerCase()}, a softer side the cameras rarely miss.`);
