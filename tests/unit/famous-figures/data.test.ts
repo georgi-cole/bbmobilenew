@@ -7,7 +7,7 @@ describe('Famous Figures replacement data bank', () => {
     expect(FAMOUS_FIGURES).toHaveLength(200);
     expect(FAMOUS_FIGURES[0].canonicalName).toBe('Mickey Mouse');
     expect(FAMOUS_FIGURES.at(-1)?.canonicalName).toBe('Cristiano Ronaldo');
-    expect(FAMOUS_FIGURES.some((figure) => figure.canonicalName === 'Leonardo da Vinci')).toBe(false);
+    expect(FAMOUS_FIGURES.some((figure) => figure.category === 'fictional character')).toBe(true);
   });
 
   it('keeps matching fields in sync with the game normalizer', () => {
