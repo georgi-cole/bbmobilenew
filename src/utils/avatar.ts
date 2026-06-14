@@ -284,12 +284,12 @@ export function resolveSilhouetteFallback(
   return joinPublicAssetPath(`assets/${file}`);
 }
 
-export function resolveFullSizeCutoutFallback(
-  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>> & {
-    gender?: string;
-    sex?: string;
-  },
-): string {
+type FullSizeCutoutFallbackPlayer = Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>> & {
+  gender?: string;
+  sex?: string;
+};
+
+export function resolveFullSizeCutoutFallback(player: FullSizeCutoutFallbackPlayer): string {
   const hg = getById(player.id) ?? findByName(player.name);
   const gender = (player.gender ?? player.sex ?? hg?.sex ?? '').toLowerCase();
 
@@ -313,7 +313,7 @@ export function resolveFullSizeCutoutFallback(
 }
 
 export function resolveInformalCutoutCandidates(
-  player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>,
+  player: FullSizeCutoutFallbackPlayer,
 ): string[] {
   const cutout = resolveInformalCutout(player);
   const fullSizeFallback = resolveFullSizeCutoutFallback(player);
