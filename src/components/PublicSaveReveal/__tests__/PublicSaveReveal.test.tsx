@@ -60,6 +60,29 @@ describe('PublicSaveReveal', () => {
     expect(screen.getByText('50%')).toBeTruthy();
   });
 
+  it('adds decimal places only when rounded approval percentages tie', () => {
+    render(
+      <PublicSaveReveal
+        nominees={nominees}
+        approvals={{
+          p1: 42.141,
+          p2: 42.149,
+          p3: 50.4,
+        }}
+        savedId="p3"
+        onDone={vi.fn()}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.getByText('42.14%')).toBeTruthy();
+    expect(screen.getByText('42.15%')).toBeTruthy();
+    expect(screen.getByText('50%')).toBeTruthy();
+  });
+
   it('highlights the saved nominee before auto-dismiss', () => {
     render(
       <PublicSaveReveal

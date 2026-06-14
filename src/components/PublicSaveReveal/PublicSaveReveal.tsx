@@ -30,6 +30,39 @@ const REVEAL_VALUES_MS = 5000;
 const SHOW_SAVED_MS = 7600;
 const EXIT_MS = 9300;
 const DONE_MS = 10000;
+const MAX_APPROVAL_DISPLAY_PRECISION = 3;
+
+function formatApprovals(allApprovals: number[]): string[] {
+  const precisions = allApprovals.map(() => 0);
+  const approvalIndexesByRoundedValue = new Map<string, number[]>();
+
+  allApprovals.forEach((approval, index) => {
+    const roundedApproval = approval.toFixed(0);
+    approvalIndexesByRoundedValue.set(
+      roundedApproval,
+      [...(approvalIndexesByRoundedValue.get(roundedApproval) ?? []), index],
+    );
+  });
+
+  approvalIndexesByRoundedValue.forEach((indexes) => {
+    if (indexes.length <= 1) return;
+
+    for (let precision = 1; precision <= MAX_APPROVAL_DISPLAY_PRECISION; precision += 1) {
+      const formattedApprovals = indexes.map((index) => allApprovals[index].toFixed(precision));
+      if (
+        new Set(formattedApprovals).size === indexes.length ||
+        precision === MAX_APPROVAL_DISPLAY_PRECISION
+      ) {
+        indexes.forEach((index) => {
+          precisions[index] = precision;
+        });
+        return;
+      }
+    }
+  });
+
+  return allApprovals.map((approval, index) => `${approval.toFixed(precisions[index])}%`);
+}
 
 export default function PublicSaveReveal({
   nominees,
@@ -73,10 +106,13 @@ export default function PublicSaveReveal({
     return clearTimers;
   }, [clearTimers, fireDone]);
 
-  const approvalLabel = (player: Player, approval: number) =>
-    `${player.name} approval: ${valuesRevealed ? `${Math.round(approval)}%` : 'pending reveal'}`;
+  const nomineeApprovals = nominees.map((player) => approvals[player.id] ?? 50);
+  const formattedApprovals = formatApprovals(nomineeApprovals);
 
-  const approvalText = (approval: number) => (valuesRevealed ? `${Math.round(approval)}%` : '?? %');
+  const approvalLabel = (player: Player, formattedApproval: string) =>
+    `${player.name} approval: ${valuesRevealed ? formattedApproval : 'pending reveal'}`;
+
+  const approvalText = (formattedApproval: string) => (valuesRevealed ? formattedApproval : '?? %');
 
   const barWidth = (approval: number) => `${Math.max(0, Math.min(100, approval))}%`;
 
@@ -99,6 +135,7 @@ export default function PublicSaveReveal({
           {nominees.map((player, idx) => {
             const isSaved = player.id === savedId;
             const approval = approvals[player.id] ?? 50;
+            const formattedApproval = formattedApprovals[idx];
             return (
               <div
                 key={player.id}
@@ -131,12 +168,12 @@ export default function PublicSaveReveal({
                       style={{
                         width: phase === 'entering' ? '0%' : valuesRevealed ? barWidth(approval) : 'var(--pending-width)',
                       }}
-                      aria-label={approvalLabel(player, approval)}
+                      aria-label={approvalLabel(player, formattedApproval)}
                     />
                   </div>
                 </div>
                 <span className="psr__approval-value">
-                  {approvalText(approval)}
+                  {approvalText(formattedApproval)}
                 </span>
               </div>
             );
