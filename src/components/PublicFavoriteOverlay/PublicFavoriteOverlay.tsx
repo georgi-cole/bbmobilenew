@@ -575,10 +575,7 @@ export default function PublicFavoriteOverlay({
     [activePlayers, votes],
   );
   const spotlightItems = useMemo(() => buildHouseguestSpotlightItems(activePlayers), [activePlayers]);
-  const spotlightPoolKey = useMemo(
-    () => activePlayers.map((candidate) => candidate.id).join('|'),
-    [activePlayers],
-  );
+  const hasSpotlightItems = spotlightItems.length > 0;
   const spotlight = selectSpotlightItem(spotlightItems, spotlightRotation);
   const finalTwoNames =
     activePlayers.length === 2
@@ -587,15 +584,15 @@ export default function PublicFavoriteOverlay({
 
   useEffect(() => {
     setSpotlightRotation(0);
-  }, [spotlightPoolKey]);
+  }, [candidateIds]);
 
   useEffect(() => {
-    if (displayStep !== 'voting' || spotlightItems.length === 0) return;
+    if (displayStep !== 'voting' || !hasSpotlightItems) return;
     const id = window.setInterval(() => {
       setSpotlightRotation((rotation) => rotation + 1);
     }, SPOTLIGHT_ROTATION_MS);
     return () => window.clearInterval(id);
-  }, [displayStep, spotlightPoolKey, spotlightItems.length]);
+  }, [displayStep, hasSpotlightItems]);
 
   useEffect(() => {
     const firstActiveId = activePlayers[0]?.id ?? null;
