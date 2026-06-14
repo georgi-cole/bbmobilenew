@@ -2268,7 +2268,9 @@ export default function GameScreen() {
     [battleBackAttemptIndex, game.seed],
   )
   const battleBackCandidates = useMemo(
-    () => (battleBack?.active ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id) && p.status === 'jury') : []),
+    () => (battleBack?.active
+      ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id) && (p.status === 'jury' || p.status === 'evicted'))
+      : []),
     [battleBack?.active, battleBack?.candidates, game.players],
   )
 

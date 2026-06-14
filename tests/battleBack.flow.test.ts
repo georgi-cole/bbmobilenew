@@ -169,6 +169,21 @@ describe('completeBattleBack', () => {
     expect(bb!.active).toBe(true);
   });
 
+  it('allows a stored candidate marked evicted to return', () => {
+    const players = makePlayers(10);
+    players[1].status = 'evicted';
+    const store = makeStore({ players });
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
+    store.dispatch(completeBattleBack('p1'));
+
+    const p1 = store.getState().game.players.find((p) => p.id === 'p1');
+    const bb = store.getState().game.battleBack;
+    expect(p1?.status).toBe('active');
+    expect(bb!.used).toBe(true);
+    expect(bb!.active).toBe(false);
+    expect(bb!.winnerId).toBe('p1');
+  });
+
   it('is a no-op when winnerId is not in candidates', () => {
     const players = makePlayers(10);
     players[2].status = 'jury';
