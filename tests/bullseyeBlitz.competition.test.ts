@@ -27,6 +27,8 @@ import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player, CompleteMinigamePayload } from '../src/types';
 import {
   buildRankedLeaderboard,
+  BULLSEYE_AI_ROUND_BANDS,
+  bullseyeAiBandForRound,
   getBullseyeEliminationCount,
   getBullseyeRoundConfig,
   pickTargetKind,
@@ -539,6 +541,56 @@ describe('Bullseye Blitz — tournament helpers', () => {
     expect(average).toBeGreaterThan(weak);
     // Strong AI should score noticeably more than weak — at least 80 pts higher.
     expect(strong - weak).toBeGreaterThan(80);
+  });
+
+  it('AI scores land in the human-competitive band so the field is not a runaway', () => {
+    // Regression for the "AIs have no chance" report: a fast human clears 40+
+    // targets in round 1 (~755 pts).  The AI field must reach the same scoring
+    // range — across the baseScore envelope every round-1 score should sit inside
+    // the round band (with the ±7 % swing) rather than clustering near ~120-160.
+    const [bandMin, bandMax] = bullseyeAiBandForRound(1);
+    const lowerBound = Math.floor(bandMin * 0.93) - 1;
+    const upperBound = Math.ceil(bandMax * 1.07) + 1;
+
+    for (const base of [80, 160, 240, 300, 380, 460, 500]) {
+      for (const seed of [1, 7, 42, 99, 256]) {
+        const score = simulateBullseyeAiRoundScore(base, 1, seed, `ai-${base}-${seed}`);
+        expect(score).toBeGreaterThanOrEqual(lowerBound);
+        expect(score).toBeLessThanOrEqual(upperBound);
+      }
+    }
+
+    // Even the weakest AI should comfortably clear the old ~150 ceiling.
+    const weakest = simulateBullseyeAiRoundScore(80, 1, 42, 'weakest');
+    expect(weakest).toBeGreaterThan(250);
+  });
+
+  it('AI round bands taper across rounds so later rounds score a little lower', () => {
+    // Each round's band ceiling and floor should be <= the previous round's, so
+    // a fixed-skill contestant trends downward as the arena speeds up.
+    expect(BULLSEYE_AI_ROUND_BANDS).toHaveLength(5);
+    for (let i = 1; i < BULLSEYE_AI_ROUND_BANDS.length; i += 1) {
+      const [prevMin, prevMax] = BULLSEYE_AI_ROUND_BANDS[i - 1];
+      const [curMin, curMax] = BULLSEYE_AI_ROUND_BANDS[i];
+      expect(curMin).toBeLessThanOrEqual(prevMin);
+      expect(curMax).toBeLessThanOrEqual(prevMax);
+    }
+
+    // Peak-skill cumulative total across the first four rounds stays in a
+    // believable tournament range (~2000-2100).
+    const peakFourRoundTotal = BULLSEYE_AI_ROUND_BANDS
+      .slice(0, 4)
+      .reduce((sum, [, max]) => sum + max, 0);
+    expect(peakFourRoundTotal).toBeGreaterThanOrEqual(2000);
+    expect(peakFourRoundTotal).toBeLessThanOrEqual(2100);
+  });
+
+  it('bullseyeAiBandForRound clamps out-of-range rounds to the presets', () => {
+    expect(bullseyeAiBandForRound(0)).toEqual(BULLSEYE_AI_ROUND_BANDS[0]);
+    expect(bullseyeAiBandForRound(1)).toEqual(BULLSEYE_AI_ROUND_BANDS[0]);
+    expect(bullseyeAiBandForRound(99)).toEqual(
+      BULLSEYE_AI_ROUND_BANDS[BULLSEYE_AI_ROUND_BANDS.length - 1],
+    );
   });
 
   it('AI scores decrease in harder rounds reflecting genuine difficulty', () => {

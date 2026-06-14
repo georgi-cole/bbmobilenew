@@ -115,13 +115,50 @@ export const BULLSEYE_CHALLENGE_ROUNDS = ROUND_PRESETS.length;
  *   baseScore 300 → skill ≈ 0.469 (mid-field — respectable but beatable)
  *   baseScore 400 → skill ≈ 0.625 (strong — a genuine threat)
  *   baseScore 640 → skill = 1.000 (theoretical ceiling)
- *
- * A higher ceiling (640 vs 500) widens the useful skill gradient so the
- * reaction-penalty cascade (missed targets fill the screen, blocking future
- * spawns) kicks in at different rates across the skill range, naturally
- * producing the right score distribution without inflating base traits.
  */
 const AI_SCORE_MAX = 640;
+
+/**
+ * Lowest baseScore the hybrid score resolver emits for this minigame
+ * (`targetPractice.minScore`).  Used to anchor the AI band floor: a contestant
+ * at this baseScore is the weakest realistic AI and scores `bandMin`.
+ */
+const MIN_BASE_SCORE = 80;
+
+/**
+ * Per-round AI score bands `[min, max]` mapped against a contestant's 0–1 skill
+ * level (skill 0 → min, skill 1 → max).
+ *
+ * A fast human realistically clears 40+ targets in the opening round (e.g.
+ * 27 × 🎯 + 20 × ⭐ ≈ 755 pts).  The earlier gameplay simulation was structurally
+ * capped at roughly one spawn per spawn-interval tick (~320 pts at peak skill),
+ * so the AI field clustered around 120–160 and the human ran away with every
+ * round — the result was a foregone conclusion the moment round one ended.
+ *
+ * These bands lift the AI field into the human-competitive range so a strong
+ * human still tends to win but is no longer guaranteed to, and a mediocre human
+ * round can genuinely place mid-pack.  The bands taper slightly each round (the
+ * arena speeds up and the hazard share climbs), so with the same skill a later
+ * round scores a little lower than an earlier one.  Summed across the first four
+ * rounds the peak-skill ceiling lands near ~2060, keeping cumulative totals in a
+ * believable tournament range.
+ */
+export const BULLSEYE_AI_ROUND_BANDS: ReadonlyArray<readonly [number, number]> = [
+  [320, 560], // Round 1 — opening round
+  [305, 520], // Round 2 — speeds up
+  [295, 500], // Round 3 — pressure round
+  [285, 480], // Round 4 — semi-final
+  [275, 460], // Round 5 — final sprint
+] as const;
+
+/**
+ * Resolve the AI score band for a round, clamping out-of-range round numbers to
+ * the first/last preset so the function never returns `undefined`.
+ */
+export function bullseyeAiBandForRound(roundNumber: number): readonly [number, number] {
+  const index = Math.min(Math.max(roundNumber - 1, 0), BULLSEYE_AI_ROUND_BANDS.length - 1);
+  return BULLSEYE_AI_ROUND_BANDS[index];
+}
 
 /**
  * Select a random target kind using weighted distribution.
@@ -243,120 +280,7 @@ function hashTournamentSeed(seed: number, participantId: string, roundNumber: nu
 }
 
 /**
- * Simulate one complete Bullseye Blitz round for an AI player.
- *
- * The simulation advances in steps of `spawnIntervalMs` (matching the real
- * spawner tick) and maintains an active-target list with per-target expiry
- * timestamps.  This mirrors the real spawner's maxTargets gate: when the
- * screen is full of un-tapped targets the spawner skips a tick, exactly as
- * `BullseyeBlitz.tsx` does with `if (prev.length >= currentRoundConfig.maxTargets) return prev`.
- *
- * Skill traits derived from `skillLevel` (0–1):
- *   - reactionSpeed:   reduces the effective tap window for short-lived targets
- *   - hitAccuracy:     probability of successfully tapping a reachable target
- *   - bonusFocusRatio: extra difficulty modifier for the short-lived bonus targets
- *   - hazardAvoidance: probability of NOT accidentally tapping a hazard target
- *
- * @param config     Round configuration (spawn rate, lifetimes, weights, penalties)
- * @param skillLevel Composite 0–1 AI skill (0 = weakest, 1 = near-perfect)
- * @param rng        Seeded RNG for deterministic, per-player results
- */
-function runBullseyeAiRound(
-  config: BullseyeRoundConfig,
-  skillLevel: number,
-  rng: () => number,
-): number {
-  // Skill-to-trait mapping — original competitive calibration:
-  //   skill 0 → slow reactions, low accuracy, frequently hits hazards
-  //   skill 1 → fast reactions, near-perfect accuracy, rarely hits hazards
-  //
-  // These ranges are intentionally NOT raised to their absolute maximums so
-  // that even top-skilled AI still make occasional believable mistakes, while
-  // the reaction-penalty multiplier (1050 ms) drives the cascade that
-  // differentiates skill levels far more than trait floors alone.
-  const reactionSpeed   = 0.30 + skillLevel * 0.60; // 0.30–0.90
-  const hitAccuracy     = 0.40 + skillLevel * 0.50; // 0.40–0.90
-  const bonusFocusRatio = 0.70 + skillLevel * 0.30; // 0.70–1.00
-  const hazardAvoidance = 0.55 + skillLevel * 0.40; // 0.55–0.95
-
-  // Reaction-time penalty determines how much of a target's visible lifetime
-  // is consumed by the AI "noticing" it.  A larger multiplier means short-lived
-  // targets (bonus: 1300 ms) are much harder to reach for slow AI.
-  //
-  // At skill 0: reactionSpeed=0.30 → penalty = 0.70 × 1050 = 735 ms
-  //   → bonus reachable fraction ≈ (1300−735)/1300 ≈ 0.43  (over half missed!)
-  // At skill 1: reactionSpeed=0.90 → penalty = 0.10 × 1050 = 105 ms
-  //   → bonus reachable fraction ≈ (1300−105)/1300 ≈ 0.92  (nearly all reached)
-  //
-  // The multiplicative cascade: missed targets fill the maxTargets slot, the
-  // spawner skips the next tick, and fewer scoring opportunities arise — so
-  // the same 33 % miss-rate at moderate skill compresses into a 50 %+ reduction
-  // in achievable score, creating natural separation between tiers.
-  const reactionPenaltyMs = (1 - reactionSpeed) * 1050;
-
-  const standardReachable = Math.max(0.05, Math.min(1,
-    (config.targetLifetimes.standard - reactionPenaltyMs) / config.targetLifetimes.standard,
-  ));
-  const bonusReachable = Math.max(0.05, Math.min(1,
-    (config.targetLifetimes.bonus - reactionPenaltyMs) / config.targetLifetimes.bonus,
-  ));
-
-  const durationMs = config.durationSeconds * 1000;
-
-  // Active targets on-screen, represented by their expiry timestamps.
-  // Missed/ignored targets stay here until they expire, potentially blocking
-  // future spawns when the screen reaches maxTargets — same as the real spawner.
-  const activeExpiries: number[] = [];
-
-  let nowMs = 0;
-  let score = 0;
-
-  while (nowMs < durationMs) {
-    // Expire any targets whose lifetime has elapsed at this tick.
-    // Filter is O(n) and avoids mutating the array mid-iteration.
-    const beforeLength = activeExpiries.length;
-    let writeIdx = 0;
-    for (let i = 0; i < beforeLength; i++) {
-      if (activeExpiries[i] > nowMs) activeExpiries[writeIdx++] = activeExpiries[i];
-    }
-    activeExpiries.length = writeIdx;
-
-    // Spawn gating: real spawner skips this tick when the screen is full.
-    if (activeExpiries.length < config.maxTargets) {
-      const kind = pickTargetKind(rng(), config.targetWeights);
-      const expiresAt = nowMs + config.targetLifetimes[kind];
-
-      if (kind === 'hazard') {
-        // AI either accidentally taps the hazard (score deducted, slot freed)
-        // or ignores it (slot occupied until expiry).
-        if (rng() > hazardAvoidance) {
-          score += config.hazardPenalty;
-        } else {
-          activeExpiries.push(expiresAt);
-        }
-      } else {
-        const hitRate = kind === 'standard'
-          ? hitAccuracy * standardReachable
-          : hitAccuracy * bonusFocusRatio * bonusReachable;
-
-        if (rng() < hitRate) {
-          score += TARGET_CONFIGS[kind].points;
-          // Tapped target clears its slot immediately.
-        } else {
-          // Missed target stays on screen and may block future spawns.
-          activeExpiries.push(expiresAt);
-        }
-      }
-    }
-
-    nowMs += config.spawnIntervalMs;
-  }
-
-  return Math.max(0, score);
-}
-
-/**
- * Simulate a single Bullseye Blitz round score for an AI participant.
+ * Resolve a single Bullseye Blitz round score for an AI participant.
  *
  * The `baseScore` parameter is the AI's per-round capacity produced by the
  * hybrid score resolver.  It spans the full targetPractice envelope (80–500)
@@ -367,16 +291,12 @@ function runBullseyeAiRound(
  *   baseScore 400 → skill ≈ 0.625 (strong — a genuine threat)
  *   baseScore 640 → skill = 1.000 (theoretical ceiling)
  *
- * The normalised skill feeds `runBullseyeAiRound`, which uses the real round
- * mechanics (spawn intervals, maxTargets cap, target lifetimes, point values,
- * hazard penalties) to produce a final score.
- *
- * Human-like mistakes are modelled via per-target RNG rolls:
- *   - reaction delays that cause some short-lived targets to be missed
- *   - imperfect hit accuracy on standard and bonus targets
- *   - occasional accidental hazard taps (more frequent for low-skill AI)
- *   - missed targets fill the screen, triggering the maxTargets cap and
- *     suppressing future spawns (exactly as in the live game)
+ * The normalised skill is interpolated across the round's competitive band
+ * (`BULLSEYE_AI_ROUND_BANDS`) so the AI field lands in the same scoring range a
+ * human reaches, keeping the tournament suspenseful instead of a runaway.  A
+ * deterministic ±7 % per-player swing is layered on top so a contestant can
+ * have an off (or hot) round — driving genuine drama around the eliminations —
+ * without ever reordering clearly different skill tiers.
  *
  * Results are deterministic: same (baseScore, roundNumber, seed, participantId)
  * inputs always produce the same output.
@@ -387,18 +307,26 @@ export function simulateBullseyeAiRoundScore(
   seed: number,
   participantId: string,
 ): number {
-  const rng    = mulberry32(hashTournamentSeed(seed, participantId, roundNumber));
-  const config = getBullseyeRoundConfig(roundNumber);
+  const rng = mulberry32(hashTournamentSeed(seed, participantId, roundNumber));
+  const [bandMin, bandMax] = bullseyeAiBandForRound(roundNumber);
 
   // Normalise baseScore against the envelope ceiling so the full 80–500 range
   // maps to distinct skill levels.  Values outside [0, AI_SCORE_MAX] are clamped.
-  const rawSkill = Math.max(0, baseScore) / AI_SCORE_MAX;
+  const skill = Math.min(1, Math.max(0, baseScore) / AI_SCORE_MAX);
 
-  // Add ±5 % per-player, per-round variance so contestants never produce identical
-  // scores even when they share the same baseScore, while keeping results
-  // deterministic for the same inputs.
-  const jitter     = (rng() - 0.5) * 0.10;
-  const skillLevel = Math.min(1, Math.max(0, rawSkill + jitter));
+  // The realistic hybrid-resolver envelope starts at baseScore 80 (skill ≈ 0.125),
+  // which anchors the band floor.  Map skill across the band continuously so:
+  //   skill 0      → 0        (a non-competing entry scores nothing)
+  //   skill 0.125  → bandMin  (weakest realistic AI)
+  //   skill 1      → bandMax  (theoretical ceiling)
+  const minRealisticSkill = MIN_BASE_SCORE / AI_SCORE_MAX;
+  const bandScore = skill <= minRealisticSkill
+    ? (skill / minRealisticSkill) * bandMin
+    : bandMin + (bandMax - bandMin) * ((skill - minRealisticSkill) / (1 - minRealisticSkill));
 
-  return runBullseyeAiRound(config, skillLevel, rng);
+  // ±7 % per-player, per-round swing for believable off/hot rounds.  Bounded so
+  // it never flips clearly separated skill tiers (the band gap dwarfs the swing).
+  const swing = 1 + (rng() - 0.5) * 0.14;
+
+  return Math.max(0, Math.round(bandScore * swing));
 }

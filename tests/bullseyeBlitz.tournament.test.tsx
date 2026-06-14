@@ -235,25 +235,24 @@ describe('BullseyeBlitz tournament flow', () => {
       participants: players.map((player) => player.id),
       seed: 12,
       options: { timeLimit: 20 },
-      // All AI have negative base scores → skill ≈ 0. The 1-second test window
-      // (2 ticks) runs the full simulation with the real round config. In this
-      // specific seed the human (0 pts) and p5 tie at 0; p5 is eliminated by
-      // participant-index tie-break (index 5 > index 0), so the human advances.
-      // The full ordering for seed=12 is deterministic:
-      // p1=75, p6=40, p2=25, p4=20, p3=5, p0=0, p5=0(OUT).
+      // All AI have non-positive base scores → skill 0 → a round score of 0, the
+      // same as the human (0 pts) in this timer-only window. With the whole field
+      // tied at 0 the deterministic participant-index tie-break (lower index wins)
+      // ranks them p0..p6, so the highest index — p6 — is the single elimination
+      // and the human (index 0) advances.
       aiScores: { p1: -20, p2: -20, p3: -100, p4: -100, p5: -100, p6: -100 },
     };
 
     renderTournament(session, players);
-    // Human advances (p5 eliminated by tie-break) → game shows "continue to round 2".
+    // Human advances (p6 eliminated by tie-break) → game shows "continue to round 2".
     await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
 
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
     expect(
-      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 1, Player 6, Player 2, Player 4, Player 3, and Player 0 (You).'),
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 0 (You), Player 1, Player 2, Player 3, Player 4, and Player 5.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByText((_content, node) => node?.textContent?.trim() === 'Out this round: Player 5.'),
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Out this round: Player 6.'),
     ).toBeInTheDocument();
     expect(screen.getByText(/Up next: Things speed up — and the bombs get cheekier\./i)).toBeInTheDocument();
     // Spawn-speed preview is suppressed by the test mock (all rounds share the same
