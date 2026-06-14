@@ -23,6 +23,9 @@ import reducer, {
   advanceFromRoundSummary,
   computeEliminationCount,
   computeEliminatedPlayers,
+  getRoundCap,
+  EXTENDED_MAX_ROUNDS,
+  MAX_ROUNDS,
   assignAiPersonality,
   aiDecisionRng,
   computeAiRiskDesire,
@@ -121,6 +124,62 @@ describe('computeEliminationCount', () => {
     it('eliminates floor(13/2)=6 from 13 active', () => {
       expect(computeEliminationCount(13, 1, 13)).toBe(6);
     });
+
+    describe('tapered later rounds (≥5 players)', () => {
+      it('removes a halving percentage of the active field each round', () => {
+        // Round 1 = 50%, round 2 ≈ 25%, round 3 ≈ 12.5%, round 4 ≈ 6.25%.
+        expect(computeEliminationCount(8, 1, 8)).toBe(4); // 50% of 8
+        expect(computeEliminationCount(8, 2, 4)).toBe(1); // 25% of 4
+        expect(computeEliminationCount(8, 3, 3)).toBe(1); // 12.5% of 3 → floor 0, min 1
+      });
+
+      it('always removes at least one player while more than one remains', () => {
+        expect(computeEliminationCount(8, 5, 2)).toBe(1);
+        expect(computeEliminationCount(8, 4, 2)).toBe(1);
+      });
+
+      it('never removes the entire field in a single round', () => {
+        expect(computeEliminationCount(8, 2, 2)).toBe(1);
+        expect(computeEliminationCount(8, 1, 2)).toBe(1);
+      });
+
+      it('returns 0 once a single player remains', () => {
+        expect(computeEliminationCount(8, 3, 1)).toBe(0);
+      });
+
+      it('tapers gently to a single winner over multiple rounds', () => {
+        // Simulate a 10-player field through the tapered schedule.
+        let active = 10;
+        let round = 1;
+        const removedPerRound: number[] = [];
+        while (active > 1 && round <= 20) {
+          const out = computeEliminationCount(10, round, active);
+          removedPerRound.push(out);
+          active -= out;
+          round += 1;
+        }
+        expect(active).toBe(1);
+        // Round 1 removes the most; later rounds taper down.
+        expect(removedPerRound[0]).toBe(5);
+        expect(removedPerRound[1]).toBeLessThan(removedPerRound[0]);
+        // Game lasts more than the 3-round small-field cap.
+        expect(removedPerRound.length).toBeGreaterThan(3);
+      });
+    });
+  });
+});
+
+// ─── getRoundCap ──────────────────────────────────────────────────────────────
+
+describe('getRoundCap', () => {
+  it('keeps small fields (2–4 players) at MAX_ROUNDS', () => {
+    expect(getRoundCap(2)).toBe(MAX_ROUNDS);
+    expect(getRoundCap(3)).toBe(MAX_ROUNDS);
+    expect(getRoundCap(4)).toBe(MAX_ROUNDS);
+  });
+  it('allows larger fields (≥5 players) up to EXTENDED_MAX_ROUNDS', () => {
+    expect(getRoundCap(5)).toBe(EXTENDED_MAX_ROUNDS);
+    expect(getRoundCap(10)).toBe(EXTENDED_MAX_ROUNDS);
   });
 });
 
@@ -719,6 +778,31 @@ describe('round progression', () => {
     const s = getState(store);
     expect(s.phase).toBe('complete');
     expect(s.winnerId).not.toBeNull();
+  });
+
+  it('large field (≥5) tapers over more than 3 rounds to a single winner', () => {
+    const store = makeStore();
+    init(store, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'], 999);
+
+    let maxRound = 1;
+    let safety = 0;
+    while (getState(store).phase !== 'complete' && safety++ < 500) {
+      const s = getState(store);
+      maxRound = Math.max(maxRound, s.round);
+      if (s.phase === 'round_summary') {
+        store.dispatch(advanceFromRoundSummary());
+      } else {
+        runRoundQuickly(store);
+      }
+    }
+
+    const s = getState(store);
+    expect(s.phase).toBe('complete');
+    expect(s.winnerId).not.toBeNull();
+    // The game narrows to a single winner via play rather than an abrupt
+    // score tiebreak, and lasts longer than the 3-round small-field cap.
+    expect(s.activePlayerIds).toHaveLength(1);
+    expect(maxRound).toBeGreaterThan(3);
   });
 
   it('winner is highest scorer among active after round 3', () => {

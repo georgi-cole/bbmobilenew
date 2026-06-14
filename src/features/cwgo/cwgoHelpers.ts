@@ -27,11 +27,15 @@ export interface CwgoResult {
  * Generate a deterministic AI guess for a CWGO round.
  *
  * Strategy:
- *  - aiSkill ∈ [0, 1] (values outside this range are clamped). Higher skill
- *    → guess biased closer to the answer from below.
- *  - At low skill the distribution is wide and can easily exceed the answer;
- *    at high skill the guess is tighter but can still go over due to the
- *    random component — going over is always possible regardless of skill.
+ *  - aiSkill ∈ [0, 1] (values outside this range are clamped). Higher skill →
+ *    a tighter spread aimed just under the answer (a strong "closest without
+ *    going over" competitor). Lower skill → a wide spread aimed well under the
+ *    answer, so the guess is often far off or goes over.
+ *  - Going over is always possible regardless of skill due to the random
+ *    component.
+ *  - Skill is derived per-round from the question difficulty (see
+ *    {@link aiSkillRangeForDifficulty}); easy questions yield weak AI so a
+ *    human who knows the answer wins ~95% of the time.
  *  - Uses mulberry32 seeded RNG so results are reproducible.
  *
  * @param answer  The true answer for the question.
@@ -44,20 +48,61 @@ export function generateAIGuess(answer: number, aiSkill: number, seed: number): 
   // Clamp skill to [0, 1]
   const skill = Math.max(0, Math.min(1, aiSkill));
 
-  // Range of the answer to determine spread
-  // Use a fraction of the answer as spread (at least 1)
-  const spread = Math.max(1, Math.round(answer * 0.4));
+  // High skill → tight spread; low skill → wide, sloppy spread.
+  const spread = Math.max(1, answer * (0.02 + 0.45 * (1 - skill)));
 
-  // Random offset in [-spread, spread], biased toward positive (under answer) by skill
-  const rawOffset = (rng() * 2 - 1) * spread;
+  // Aim under the answer. A skilled AI sits just below it; a weak AI aims much
+  // lower (and, with the wide spread, frequently overshoots or lands far off).
+  const margin = answer * (0.02 + 0.2 * (1 - skill));
+  const target = answer - margin;
 
-  // At high skill: bias negative (guess under), at low skill: allow going over
-  const biasedOffset = rawOffset - skill * spread * 0.5;
-
-  const rawGuess = Math.round(answer + biasedOffset);
+  const rawGuess = Math.round(target + (rng() * 2 - 1) * spread);
 
   // Return at minimum 0 (no negative guesses)
   return Math.max(0, rawGuess);
+}
+
+// ─── AI Skill Calibration ─────────────────────────────────────────────────────
+
+/**
+ * Map a question's 1–5 difficulty rating to an AI skill band (min/max in [0, 1]).
+ *
+ * Lower-difficulty ("easy") questions yield a weaker AI band so a human who
+ * knows the answer wins the round ~95% of the time; higher-difficulty
+ * ("hard") questions yield a stronger band so the AI is genuinely competitive.
+ * The per-player skill is later sampled uniformly from the returned band.
+ *
+ * Buckets: difficulty 1 → easy, 2–3 → medium, 4–5 → hard.
+ *
+ * @param difficulty Question difficulty (1–5). Values outside the range are clamped.
+ */
+export function aiSkillRangeForDifficulty(difficulty: number): { min: number; max: number } {
+  const d = Math.max(1, Math.min(5, Math.round(difficulty)));
+  switch (d) {
+    case 1:
+      // Easy: AI plays loosely so a correct human almost always wins.
+      return { min: 0, max: 0.15 };
+    case 2:
+      return { min: 0.1, max: 0.4 };
+    case 3:
+      return { min: 0.25, max: 0.6 };
+    case 4:
+      return { min: 0.45, max: 0.85 };
+    default:
+      // Hard: AI is sharp and competitive.
+      return { min: 0.6, max: 1 };
+  }
+}
+
+/**
+ * Map a question's 1–5 difficulty rating to a player-facing label.
+ * Buckets match {@link aiSkillRangeForDifficulty}: 1 → Easy, 2–3 → Medium, 4–5 → Hard.
+ */
+export function difficultyLabel(difficulty: number): 'Easy' | 'Medium' | 'Hard' {
+  const d = Math.max(1, Math.min(5, Math.round(difficulty)));
+  if (d <= 1) return 'Easy';
+  if (d <= 3) return 'Medium';
+  return 'Hard';
 }
 
 // ─── Winner Computation ───────────────────────────────────────────────────────

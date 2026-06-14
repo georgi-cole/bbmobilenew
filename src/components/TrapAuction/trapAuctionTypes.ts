@@ -169,4 +169,10 @@ export interface TrapAuctionState {
   fastForward: boolean;
   prizeType: TrapAuctionPrizeType;
   seed: number;
+  /**
+   * Number of times the current round has been replayed because every alive
+   * player tied for the lowest bid. Reset to 0 once a round resolves normally.
+   * Optional for backward compatibility with persisted/legacy states.
+   */
+  rematchCount?: number;
 }

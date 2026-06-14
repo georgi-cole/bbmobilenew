@@ -678,6 +678,20 @@ export default function EstimationGame({
                 </div>
               ))}
             </div>
+            {!isLastRound && (
+              <div className="eg__next-preview">
+                <p className="eg__next-preview-label">
+                  Up next · {ROUND_CONFIG[roundIndex + 1].label}
+                </p>
+                <p className="eg__next-preview-task">
+                  {ROUND_CONFIG[roundIndex + 1].instruction}
+                </p>
+                <p className="eg__next-preview-time">
+                  Reveal time:{' '}
+                  <strong>{(ROUND_CONFIG[roundIndex + 1].exposureMs / 1000).toFixed(1)}s</strong>
+                </p>
+              </div>
+            )}
             <button className="eg__next-btn" type="button" onClick={handleNextRound}>
               {isLastRound ? 'See Final Results →' : 'Next Round →'}
             </button>

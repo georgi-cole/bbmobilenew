@@ -185,34 +185,36 @@ describe('simulateQuickTapAiScore — realism and competitiveness', () => {
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: `p${seed}`, profile: DEFAULT_PROFILE }),
     );
-    // Absolute minimum is the lowest band (135) minus max jitter (4) minus max slump (14) = 117.
-    // Absolute maximum is the highest band (265) plus max jitter (4) plus max hot-streak bonus (18) = 287.
-    expect(Math.min(...scores)).toBeGreaterThanOrEqual(100);
+    // Bands reduced 15% (issue #951). Absolute minimum is the lowest band (89)
+    // minus max jitter (4) minus max slump (14) = 71. Absolute maximum is the
+    // highest band (264) plus max jitter (4) plus max hot-streak bonus (18) = 286.
+    expect(Math.min(...scores)).toBeGreaterThanOrEqual(60);
     expect(Math.max(...scores)).toBeLessThanOrEqual(300);
   });
 
-  it('competitive zone scores dominate — majority fall in the 161–265 range', () => {
+  it('competitive zone scores dominate — majority fall in the competitive range', () => {
     const seeds = Array.from({ length: 1000 }, (_, i) => i + 1);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'distribution-check', profile: DEFAULT_PROFILE }),
     );
 
-    // Bands from minigameAiBalance.ts (mutually exclusive, mirroring configured ranges):
-    //   band1: ≤160        →  8% nominal
-    //   band2: 161–185     → 22% nominal
-    //   band3: 186–210     → 32% nominal
-    //   band4: 211–235     → 25% nominal
-    //   band5: ≥236        → 13% nominal
+    // Bands from minigameAiBalance.ts, reduced 15% (issue #951). Grouped to the
+    // configured (scaled) band edges so each range maps to its nominal chance:
+    //   band1: ≤118        →  8% nominal
+    //   band2: 119–157     → 22% nominal
+    //   band3: 158–187     → 32% nominal
+    //   band4: 188–225     → 25% nominal
+    //   band5: ≥226        → 13% nominal
     //
     // Jitter (±4) and hot-streak/slump (±6–18) can shift individual scores across
     // band edges, so tolerances are intentionally wider than the nominal percentage.
     // Counts sum to exactly 1000 because the ranges are mutually exclusive and exhaustive.
     const counts = {
-      band1: scores.filter((s) => s <= 160).length,
-      band2: scores.filter((s) => s >= 161 && s <= 185).length,
-      band3: scores.filter((s) => s >= 186 && s <= 210).length,
-      band4: scores.filter((s) => s >= 211 && s <= 235).length,
-      band5: scores.filter((s) => s >= 236).length,
+      band1: scores.filter((s) => s <= 118).length,
+      band2: scores.filter((s) => s >= 119 && s <= 157).length,
+      band3: scores.filter((s) => s >= 158 && s <= 187).length,
+      band4: scores.filter((s) => s >= 188 && s <= 225).length,
+      band5: scores.filter((s) => s >= 226).length,
     };
 
     // Sanity: all 1000 scores are captured (exhaustive + non-overlapping).

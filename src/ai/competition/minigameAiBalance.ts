@@ -59,20 +59,24 @@ function validateBandChances(key: string, tuning: MinigameAiTuning): void {
  * Per-minigame AI balance configuration.
  *
  * Quick Tap target behaviour (humans routinely score 175–220):
- *   - Most AI results land around 180–235 (competitive zone).
- *   - Occasional standout AI performances reach 240–265.
- *   - Some weaker outcomes exist (135–160) so results don't feel scripted.
+ *   - AI score bands were reduced by 15% (issue #951) so the field is easier
+ *     for the player to catch up to.
+ *   - Most AI results land around 155–190 (competitive zone).
+ *   - Occasional standout AI performances reach ~205–225.
+ *   - Some weaker outcomes exist (~115–135) so results don't feel scripted.
  *   - Hot-streak / slump modifiers add extra variance without being identity-locked.
  */
 export const minigameAiBalance: Record<string, MinigameAiTuning> = {
   quickTap: {
     scoringModel: 'bands',
+    // Bands reduced by 15% vs the original tuning (issue #951, item 6) to make
+    // Quick Tap Race easier for the player to catch up to.
     scoreBands: [
-      { chance: 0.08, min: 105, max: 139 },
-      { chance: 0.22, min: 140, max: 185 },
-      { chance: 0.32, min: 186, max: 220 },
-      { chance: 0.25, min: 220, max: 265 },
-      { chance: 0.13, min: 266, max: 310 },
+      { chance: 0.08, min: 89, max: 118 },
+      { chance: 0.22, min: 119, max: 157 },
+      { chance: 0.32, min: 158, max: 187 },
+      { chance: 0.25, min: 187, max: 225 },
+      { chance: 0.13, min: 226, max: 264 },
     ],
     jitter: 4,
     hotStreakChance: 0.10,

@@ -334,7 +334,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: false,
     weight: 1,
     category: 'trivia',
-    retired: false,
+    retired: true,
   },
 
   famousFigures: {
@@ -836,7 +836,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: false,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   minesweeps: {

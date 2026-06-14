@@ -13,6 +13,19 @@ import type {
 const READY_COUNT = 3;
 const DEFAULT_DURATION = 30;
 
+/**
+ * Maximum delivery latency (ms) a pointer-down may have before it is treated as
+ * a stale, backlogged tap and ignored. When the main thread janks during very
+ * fast tapping, the browser can buffer a burst of pointer events and deliver
+ * them late — after the player has already lifted their finger (e.g. to collect
+ * a mystery box). Dropping these late events stops taps from "catching up"
+ * after release (issue #951, item 6). The upper bound guards against user-agents
+ * whose event timestamps use a different epoch than `performance.now()`, in
+ * which case the computed latency is nonsensical and filtering is skipped.
+ */
+const STALE_TAP_MIN_LATENCY_MS = 120;
+const STALE_TAP_MAX_LATENCY_MS = 5000;
+
 /** Emoji pools for each heat level 0–5. */
 const HEAT_EMOJIS: string[][] = [
   ['👆', '✨'],
@@ -230,8 +243,23 @@ export class QuickTapRaceCanvasEngine {
    * Forward a pointer-down event (CSS pixel coordinates relative to canvas origin)
    * to the engine for hit testing against the tap button and booster prompt.
    */
-  handlePointerDown(_pointerId: number, point: { x: number; y: number }): void {
+  handlePointerDown(
+    _pointerId: number,
+    point: { x: number; y: number },
+    eventTimeStampMs?: number,
+    nowMs: number = performance.now(),
+  ): void {
     if (this.isDestroyed || this.phase !== 'playing') return;
+
+    // Ignore stale, backlogged taps that the browser delivered late after a
+    // main-thread jank, so old taps don't "catch up" once the player has lifted
+    // their finger (e.g. to collect a mystery box). See STALE_TAP_*_LATENCY_MS.
+    if (typeof eventTimeStampMs === 'number') {
+      const latency = nowMs - eventTimeStampMs;
+      if (latency > STALE_TAP_MIN_LATENCY_MS && latency < STALE_TAP_MAX_LATENCY_MS) {
+        return;
+      }
+    }
 
     // Booster prompt hit test (takes priority so an accidental tap on the button
     // edge beneath the prompt still activates the booster, not the tap target).

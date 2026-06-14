@@ -101,12 +101,13 @@ describe('simulateMinigameAiScore — quickTap routing', () => {
     expect(a).toBe(b);
   });
 
-  it('quickTap scores via dispatcher fall in the competitive zone [100, 300]', () => {
+  it('quickTap scores via dispatcher fall in the competitive zone [85, 300]', () => {
     const seeds = Array.from({ length: 200 }, (_, i) => i + 1);
     const scores = seeds.map((seed) =>
       simulateMinigameAiScore({ gameKey: 'quickTap', seed, playerId: `p${seed}` }),
     );
-    expect(Math.min(...scores)).toBeGreaterThanOrEqual(100);
+    // Bands reduced 15% (issue #951): lowest band 89 − jitter/slump ≈ 71.
+    expect(Math.min(...scores)).toBeGreaterThanOrEqual(60);
     expect(Math.max(...scores)).toBeLessThanOrEqual(300);
   });
 
@@ -130,12 +131,13 @@ describe('simulateMinigameAiScore — quickTap routing', () => {
     expect(score60).toBeGreaterThan(score30);
   });
 
-  it('majority of 1000 quickTap dispatcher scores fall in the competitive zone (161–265)', () => {
+  it('majority of 1000 quickTap dispatcher scores fall in the competitive zone (119–264)', () => {
     const seeds = Array.from({ length: 1000 }, (_, i) => i + 1);
     const scores = seeds.map((seed) =>
       simulateMinigameAiScore({ gameKey: 'quickTap', seed, playerId: 'test-player' }),
     );
-    const competitive = scores.filter((s) => s >= 161 && s <= 265);
+    // Bands reduced 15% (issue #951): the competitive zone (bands 2–5) is 119–264.
+    const competitive = scores.filter((s) => s >= 119 && s <= 264);
     // 22%+32%+25%+13% = 92% targeted at this range; tolerate ≥ 700 out of 1000
     expect(competitive.length).toBeGreaterThanOrEqual(700);
   });
@@ -192,12 +194,12 @@ describe('startMinigame — quickTap uses competitive scoring via shared dispatc
     for (const pid of ['p1', 'p2', 'p3']) {
       const score = session?.aiScores?.[pid];
       expect(typeof score).toBe('number');
-      expect(score).toBeGreaterThanOrEqual(100);
+      expect(score).toBeGreaterThanOrEqual(60);
       expect(score).toBeLessThanOrEqual(300);
     }
   });
 
-  it('AI scores are well above the old stale maxScore (120) for quickTap', () => {
+  it('AI scores are well above the old stale maxScore (102) for quickTap', () => {
     // Confirm the new competitive band scoring model is used. Call
     // simulateMinigameAiScore directly with fixed seeds so the test is
     // fully deterministic and not affected by startMinigame's random
@@ -217,9 +219,9 @@ describe('startMinigame — quickTap uses competitive scoring via shared dispatc
       }
     }
 
-    // At least 85% of scores should be above 120 (old stale maxScore).
-    // The new band1 is only 8% probable, so the vast majority should exceed 120.
-    const aboveOldMax = allScores.filter((s) => s > 120);
+    // At least 85% of scores should be above 102 (old stale maxScore 120, −15%).
+    // The new band1 is only 8% probable, so the vast majority should exceed 102.
+    const aboveOldMax = allScores.filter((s) => s > 102);
     expect(aboveOldMax.length).toBeGreaterThan(allScores.length * 0.85);
   });
 });
@@ -227,7 +229,7 @@ describe('startMinigame — quickTap uses competitive scoring via shared dispatc
 // ── 5. Challenge flow (startChallenge) — same quickTap scoring path ───────────
 
 describe('startChallenge — quickTap uses the same shared dispatcher as startMinigame', () => {
-  it('AI scores in the challenge flow are in the competitive zone [100, 300]', () => {
+  it('AI scores in the challenge flow are in the competitive zone [60, 300]', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
 
@@ -241,13 +243,13 @@ describe('startChallenge — quickTap uses the same shared dispatcher as startMi
     for (const pid of ['p1', 'p2', 'p3']) {
       const score = pending?.aiScores?.[pid];
       if (typeof score === 'number') {
-        expect(score).toBeGreaterThanOrEqual(100);
+        expect(score).toBeGreaterThanOrEqual(60);
         expect(score).toBeLessThanOrEqual(300);
       }
     }
   });
 
-  it('challenge quickTap scores are above the old stale maxScore of 120', () => {
+  it('challenge quickTap scores are above the old stale maxScore of 102', () => {
     const players = makePlayers(4);
     const allScores: number[] = [];
 
@@ -263,8 +265,8 @@ describe('startChallenge — quickTap uses the same shared dispatcher as startMi
       }
     }
 
-    // All scores should be above the old stale maxScore (120)
-    const aboveOldMax = allScores.filter((s) => s > 120);
+    // All scores should be above the old stale maxScore (120 → 102 after −15%).
+    const aboveOldMax = allScores.filter((s) => s > 102);
     expect(aboveOldMax.length).toBeGreaterThan(allScores.length * 0.9);
   });
 });

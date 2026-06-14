@@ -27,6 +27,8 @@ import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player, CompleteMinigamePayload } from '../src/types';
 import {
   buildRankedLeaderboard,
+  BULLSEYE_AI_ROUND_BANDS,
+  bullseyeAiBandForRound,
   getBullseyeEliminationCount,
   getBullseyeRoundConfig,
   pickTargetKind,
@@ -497,8 +499,8 @@ describe('Bullseye Blitz — tournament helpers', () => {
 
     // Average should be solidly above the old 50–70 placeholder range,
     // reflecting genuine mid-round performance.
-    expect(average).toBeGreaterThan(100);
-    expect(average).toBeLessThan(500);
+    expect(average).toBeGreaterThan(500);
+    expect(average).toBeLessThan(800);
   });
 
   it('higher baseScore yields higher expected score than lower baseScore', () => {
@@ -515,16 +517,17 @@ describe('Bullseye Blitz — tournament helpers', () => {
     expect(strongWins).toBeGreaterThanOrEqual(6);
   });
 
-  it('strong AI can reach a score that would beat a typical human round', () => {
-    // Goal: at least one seed should produce a score above 220 for a near-peak
-    // baseScore (380), representing an AI that can genuinely outperform the human.
-    // This validates that AI contestants create real suspense rather than padding.
+  it('strong AI can reach a score that would beat a strong human round', () => {
+    // Regression for the screenshot where the human posted 755 in round 1: a
+    // strong AI must have a real path past that score so the outcome is not known
+    // immediately.  baseScore 500 is the top realistic targetPractice resolver
+    // output before the theoretical 640 ceiling used for clamping.
     const seeds = [1, 5, 13, 42, 99];
     const scores = seeds.map((seed) =>
-      simulateBullseyeAiRoundScore(380, 1, seed, 'threat'),
+      simulateBullseyeAiRoundScore(500, 1, seed, 'threat'),
     );
     const maxScore = Math.max(...scores);
-    expect(maxScore).toBeGreaterThan(220);
+    expect(maxScore).toBeGreaterThan(755);
   });
 
   it('AI score spread covers a wide range across different skill levels', () => {
@@ -541,14 +544,66 @@ describe('Bullseye Blitz — tournament helpers', () => {
     expect(strong - weak).toBeGreaterThan(80);
   });
 
-  it('AI scores decrease in harder rounds reflecting genuine difficulty', () => {
-    // With the same baseScore the simulation should produce lower (or at most
-    // equal) scores in later harder rounds than in the opening round.
+  it('AI scores land in the human-competitive band so the field is not a runaway', () => {
+    // Regression for the "AIs have no chance" report: a fast human clears 40+
+    // targets in round 1 (~755 pts).  The AI field must reach and exceed that
+    // scoring range — across the baseScore envelope every round-1 score should
+    // sit inside the round band (with the ±7 % swing) rather than clustering near
+    // ~120-160.
+    const [bandMin, bandMax] = bullseyeAiBandForRound(1);
+    const lowerBound = Math.floor(bandMin * 0.93) - 1;
+    const upperBound = Math.ceil(bandMax * 1.07) + 1;
+
+    for (const base of [80, 160, 240, 300, 380, 460, 500]) {
+      for (const seed of [1, 7, 42, 99, 256]) {
+        const score = simulateBullseyeAiRoundScore(base, 1, seed, `ai-${base}-${seed}`);
+        expect(score).toBeGreaterThanOrEqual(lowerBound);
+        expect(score).toBeLessThanOrEqual(upperBound);
+      }
+    }
+
+    // Even the weakest AI should comfortably clear the old ~150 ceiling.
+    // baseScore 80 maps to bandMin (450); with the −7 % swing the floor is ~419,
+    // so 400 is a safe lower bound that still proves we left the old cluster behind.
+    const weakest = simulateBullseyeAiRoundScore(80, 1, 42, 'weakest');
+    expect(weakest).toBeGreaterThan(400);
+  });
+
+  it('AI round bands rise across rounds so cumulative ceilings stay above a strong human', () => {
+    // Later rounds spawn faster, so the AI ceiling should keep climbing rather
+    // than falling behind a strong human's accumulated total.
+    expect(BULLSEYE_AI_ROUND_BANDS).toHaveLength(5);
+    for (let i = 1; i < BULLSEYE_AI_ROUND_BANDS.length; i += 1) {
+      const [prevMin, prevMax] = BULLSEYE_AI_ROUND_BANDS[i - 1];
+      const [curMin, curMax] = BULLSEYE_AI_ROUND_BANDS[i];
+      expect(curMin).toBeGreaterThanOrEqual(prevMin);
+      expect(curMax).toBeGreaterThanOrEqual(prevMax);
+    }
+
+    const cumulativeAiCeilings = BULLSEYE_AI_ROUND_BANDS.map((_, index) =>
+      BULLSEYE_AI_ROUND_BANDS
+        .slice(0, index + 1)
+        .reduce((sum, [, max]) => sum + max, 0),
+    );
+
+    cumulativeAiCeilings.forEach((ceiling, index) => {
+      const strongHumanCumulative = 755 * (index + 1);
+      expect(ceiling).toBeGreaterThan(strongHumanCumulative);
+    });
+  });
+
+  it('bullseyeAiBandForRound clamps out-of-range rounds to the presets', () => {
+    expect(bullseyeAiBandForRound(0)).toEqual(BULLSEYE_AI_ROUND_BANDS[0]);
+    expect(bullseyeAiBandForRound(1)).toEqual(BULLSEYE_AI_ROUND_BANDS[0]);
+    expect(bullseyeAiBandForRound(99)).toEqual(
+      BULLSEYE_AI_ROUND_BANDS[BULLSEYE_AI_ROUND_BANDS.length - 1],
+    );
+  });
+
+  it('AI score ceilings increase in later rounds to preserve comeback pressure', () => {
     const r1 = simulateBullseyeAiRoundScore(250, 1, 77, 'player');
     const r5 = simulateBullseyeAiRoundScore(250, 5, 77, 'player');
-    // Round 5 has far more hazards (38 % vs 15 %) and much shorter target
-    // lifetimes, so the score should drop significantly.
-    expect(r5).toBeLessThan(r1);
+    expect(r5).toBeGreaterThan(r1);
   });
 });
 

@@ -232,13 +232,33 @@
 }
 
 .minesweeps__results {
+  /* Render as a fixed, scrollable overlay so the scoreboard and Continue
+     button are always reachable. The host's playing area is
+     `position: absolute; inset: 0; overflow: hidden`, which previously clipped
+     this panel off-screen when it rendered below a full-height board — leaving
+     the player with no way to continue after the game ended. */
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow-y: auto;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(4px);
+}
+
+.minesweeps__results-card {
   display: grid;
   gap: 1rem;
-  margin: 0 1rem 1rem;
-  padding: 1rem;
+  width: min(100%, 30rem);
+  margin: auto;
+  padding: 1.25rem;
   border-radius: 1.2rem;
-  border: 1px solid rgba(125, 211, 252, 0.18);
-  background: rgba(2, 6, 23, 0.62);
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.96));
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.6);
+  animation: minesweeps-pop 160ms ease-out;
 }
 
 .minesweeps__results-eyebrow {

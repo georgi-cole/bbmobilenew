@@ -17,10 +17,14 @@
  *         └─ advanceFromTurnComplete ─────────────────────→ awaiting_spin (next player)
  *                                                          └─ round_summary (all done)
  *              └─ advanceFromRoundSummary ──────────────→ awaiting_spin (round N+1)
- *                                                        └─ complete (after round 3)
+ *                                                        └─ complete (field narrowed to a winner)
  *
- * Rounds: 3. Scores reset each round. Eliminate based on round scores.
- * After Round 3, highest scorer among remaining players wins.
+ * Rounds: small fields (2–4 players) are decided in MAX_ROUNDS (3) rounds via
+ * fixed elimination schedules. Larger fields (≥5 players) use a tapering
+ * elimination schedule and may run up to EXTENDED_MAX_ROUNDS rounds so the game
+ * does not end abruptly. Scores reset each round; eliminate based on round
+ * scores. The game ends as soon as a single player remains, or when the round
+ * cap is reached (highest scorer among remaining players wins).
  *
  * Seeded RNG: mulberry32 from src/store/rng.ts. A sequential rngCallCount
  * drives the main spin RNG; a separate aiDecisionCallCount drives AI decisions
@@ -39,6 +43,13 @@ const AI_DECISION_INDEX_SALT = 0xc2b2ae35;
 const AI_NOISE_CHANNEL = 0;
 const AI_THRESHOLD_CHANNEL = 1;
 export const MAX_ROUNDS = 3;
+/**
+ * Larger fields (≥5 players) use a tapered elimination schedule and are allowed
+ * to run more rounds so the game does not end abruptly. This is the safety cap
+ * on the number of rounds for those fields; the game still ends as soon as a
+ * single player remains.
+ */
+export const EXTENDED_MAX_ROUNDS = 8;
 export const MAX_SPINS_PER_TURN = 3;
 const MAX_SCORE_REFERENCE = 1000;
 const AI_NOISE_MAGNITUDE = 0.15;
@@ -266,14 +277,28 @@ export function resolve666Effect(seed: number, callCount: number): 'add' | 'subt
 }
 
 /**
- * Compute how many players to eliminate at the end of `round`, given the
+ * Maximum number of rounds for a given field size. Small fields (2–4 players)
+ * are decided in {@link MAX_ROUNDS} rounds via their fixed schedules; larger
+ * fields taper their eliminations and are allowed up to
+ * {@link EXTENDED_MAX_ROUNDS} rounds so the game does not end abruptly. In both
+ * cases the game still ends as soon as a single player remains.
+ */
+export function getRoundCap(initialPlayerCount: number): number {
+  return initialPlayerCount >= 5 ? EXTENDED_MAX_ROUNDS : MAX_ROUNDS;
+}
+
+/**
  * original `initialPlayerCount` at game start and current `activeCount`.
  *
  * Special rules:
  *   4 players: R1 → 1, R2 → 1, R3 → 0 (winner = highest score)
  *   3 players: R1 → 1, R2 → 0, R3 → 1 (winner remains)
  *   2 players: R1 → 0, R2 → 0, R3 → 1 (winner remains)
- *   ≥5 players: eliminate floor(activeCount / 2) each round
+ *   ≥5 players: tapering elimination so the game does not end abruptly:
+ *     R1 → floor(activeCount / 2)  (~50%)
+ *     R2+ → the per-round percentage halves each round (≈25%, 12%, 6%, …),
+ *           always removing at least one player while more than one remains so
+ *           the field narrows gradually to a single winner.
  */
 export function computeEliminationCount(
   initialPlayerCount: number,
@@ -293,8 +318,17 @@ export function computeEliminationCount(
     if (round < 3) return 0;
     return 1;
   }
-  // Default (≥5 players): eliminate bottom 50% rounded down
-  return Math.floor(activeCount / 2);
+  // Default (≥5 players): tapering elimination.
+  if (activeCount <= 1) return 0;
+  // Round 1 removes half the field (unchanged); subsequent rounds remove a
+  // halving percentage of the *active* field (25%, 12.5%, 6.25%, …), but always
+  // at least one player so the game keeps progressing toward a single winner.
+  if (round <= 1) {
+    return Math.floor(activeCount / 2);
+  }
+  const fraction = 0.5 / 2 ** (round - 1);
+  const tapered = Math.round(activeCount * fraction);
+  return Math.min(activeCount - 1, Math.max(1, tapered));
 }
 
 /**
@@ -895,7 +929,7 @@ const riskWheelSlice = createSlice({
         }
       }
 
-      if (state.round >= MAX_ROUNDS || state.activePlayerIds.length <= 1) {
+      if (state.round >= getRoundCap(state.initialPlayerCount) || state.activePlayerIds.length <= 1) {
         // Game over
         if (state.activePlayerIds.length === 1) {
           state.winnerId = state.activePlayerIds[0];

@@ -147,11 +147,19 @@ export function chooseAiBid(
   if (min >= max) return min;
 
   const rng = mulberry32(roundSeed >>> 0);
-  const range = max - min;
   const aliveCount = state.players.filter((p) => p.isAlive).length;
   const bankFraction = player.bank / TRAP_AUCTION_CONFIG.startingBank;
   // Round pressure: later rounds are more dangerous (more to lose)
   const roundPressure = Math.min(1, state.round / 8);
+
+  // ── Budget-aware sizing ───────────────────────────────────────────────────
+  // The core smartness fix: bids are sized relative to a *sustainable* per-round
+  // budget rather than the full remaining bank. Roughly one player is eliminated
+  // each round, so a player should plan to survive ~(aliveCount - 1) more rounds.
+  // Spending bank / roundsLeft each round keeps a player solvent to the endgame
+  // instead of blowing most of their bank in the opening round.
+  const roundsLeft = Math.max(1, aliveCount - 1);
+  const sustainable = Math.max(1, player.bank / roundsLeft);
 
   // ── Survival floor ────────────────────────────────────────────────────────
   // AI bids 1 ONLY when bank === 1 (that is literally all they have left).
@@ -176,61 +184,53 @@ export function chooseAiBid(
         ),
       );
 
-  let raw: number;
+  // Each personality picks a multiple of the sustainable per-round budget.
+  // Cautious spends well under budget; dominant/desperate overspend (but bounded)
+  // so they no longer empty their bank in a single round.
+  let multiplier: number;
 
   switch (player.personality) {
     case 'cautious': {
-      // Bid near the low end; add a small safety buffer over min
-      // Safety buffer grows slightly with round pressure but stays modest
-      const buffer = Math.floor(range * (0.10 + roundPressure * 0.15));
-      const jitter = Math.floor(rng() * Math.max(1, Math.floor(range * 0.15)));
-      raw = min + buffer + jitter;
-      // Cautious players actively avoid the top — cap at 65% of max
-      raw = Math.min(raw, min + Math.floor(range * 0.65));
+      // Spends roughly half of the sustainable budget; rarely the top bidder.
+      multiplier = 0.35 + rng() * 0.30;
       break;
     }
     case 'balanced': {
-      // Mid-range with mild pressure scaling
-      const center = min + Math.floor(range * (0.4 + roundPressure * 0.2));
-      const jitter = Math.floor((rng() * 2 - 1) * range * 0.12);
-      raw = center + jitter;
+      // Centred on the sustainable budget, scaling slightly with round pressure.
+      multiplier = 0.75 + roundPressure * 0.15 + rng() * 0.35;
       break;
     }
     case 'desperate': {
-      // High bids; fear of being lowest dominates
-      const base = min + Math.floor(range * (0.6 + roundPressure * 0.2));
-      const jitter = Math.floor(rng() * range * 0.18);
-      raw = base + jitter;
+      // Overbids out of fear, but capped so it cannot bankrupt itself instantly.
+      multiplier = 1.2 + roundPressure * 0.25 + rng() * 0.4;
       break;
     }
     case 'chaotic': {
-      // Full random in range — sometimes shockingly low, sometimes high
-      raw = min + Math.floor(rng() * (range + 1));
+      // Wildly variable around the budget — sometimes stingy, sometimes reckless.
+      multiplier = 0.3 + rng() * 1.5;
       break;
     }
     case 'dominant': {
-      // Near-maximum; accepts exposure as a power signal
-      const base = min + Math.floor(range * (0.75 + bankFraction * 0.1));
-      const jitter = Math.floor(rng() * range * 0.12);
-      raw = base + jitter;
+      // Consistently spends well above budget to project power.
+      multiplier = 1.6 + bankFraction * 0.2 + rng() * 0.4;
       break;
     }
     case 'strategic': {
-      // Adapts to field size: fewer alive → higher stakes → higher bid
-      // Also reduces if bank is getting low
-      const fieldPressure = aliveCount <= 3 ? 0.25 : aliveCount <= 5 ? 0.15 : 0;
-      const bankPenalty = bankFraction < 0.3 ? -0.1 : 0;
-      const center = min + Math.floor(range * (0.45 + roundPressure * 0.2 + fieldPressure + bankPenalty));
-      const jitter = Math.floor((rng() * 2 - 1) * range * 0.10);
-      raw = center + jitter;
+      // Reads the field: fewer rivals → higher stakes → spend more of the budget.
+      // Pulls back when the bank is getting dangerously low.
+      const fieldPressure = aliveCount <= 3 ? 0.5 : aliveCount <= 5 ? 0.25 : 0;
+      const bankPenalty = bankFraction < 0.3 ? -0.2 : 0;
+      multiplier = 0.85 + roundPressure * 0.2 + fieldPressure + bankPenalty + rng() * 0.25;
       break;
     }
     default:
-      raw = min + Math.floor(rng() * (range + 1));
+      multiplier = 0.5 + rng();
   }
 
+  const raw = Math.round(sustainable * Math.max(0, multiplier));
+
   const clamped = Math.max(min, Math.min(max, raw));
-  return Math.max(survivalFloor, clamped);
+  return Math.max(min, Math.min(max, Math.max(survivalFloor, clamped)));
 }
 
 // ─── findLowestBidders ────────────────────────────────────────────────────────
@@ -360,6 +360,62 @@ export function eliminatePlayers(
 export function getWinner(players: TrapAuctionPlayer[]): TrapAuctionPlayer | null {
   const alive = players.filter((p) => p.isAlive);
   return alive.length === 1 ? alive[0] : null;
+}
+
+// ─── isCompleteTie ────────────────────────────────────────────────────────────
+
+/**
+ * Returns true when *every* alive player submitted the same (lowest) bid, so
+ * eliminating the lowest bidder(s) would wipe out the entire remaining field.
+ * In that situation the round must be replayed (a "rematch") rather than
+ * crowning an arbitrary winner.
+ */
+export function isCompleteTie(players: TrapAuctionPlayer[]): boolean {
+  const alive = players.filter((p) => p.isAlive && p.currentBid !== null);
+  if (alive.length < 2) return false;
+  const lowest = findLowestBidders(players);
+  return lowest.length >= alive.length;
+}
+
+/**
+ * Returns true when no rematch could ever break a complete tie because every
+ * alive player is bankrupt (cannot bid above the floor), so the tie is
+ * permanent. Used as a safety valve to guarantee the game terminates.
+ */
+export function isUnbreakableTie(players: TrapAuctionPlayer[]): boolean {
+  const alive = players.filter((p) => p.isAlive);
+  if (alive.length < 2) return false;
+  return alive.every((p) => p.bank < TRAP_AUCTION_CONFIG.minBid + 1);
+}
+
+/**
+ * Deterministically crowns a winner from the alive field when a tie cannot be
+ * resolved by replaying the round (safety fallback only). Prefers the player
+ * with the largest remaining bank; ties on bank are broken by a seeded RNG.
+ */
+export function resolveTieWinner(
+  players: TrapAuctionPlayer[],
+  seed: number,
+): TrapAuctionPlayer | null {
+  const alive = players.filter((p) => p.isAlive);
+  if (alive.length === 0) return null;
+  const maxBank = Math.max(...alive.map((p) => p.bank));
+  const topBank = alive.filter((p) => p.bank === maxBank);
+  if (topBank.length === 1) return topBank[0];
+  const rng = mulberry32(seed >>> 0);
+  return topBank[Math.floor(rng() * topBank.length)] ?? topBank[0];
+}
+
+/**
+ * Clears the current round's bids for all alive players so the round can be
+ * replayed. Banks are untouched — a rematch round is "void" and costs nothing.
+ */
+export function clearBidsForRematch(players: TrapAuctionPlayer[]): TrapAuctionPlayer[] {
+  return players.map((p) =>
+    p.isAlive
+      ? { ...p, currentBid: null, bidRevealed: false, isExposed: false }
+      : p,
+  );
 }
 
 // ─── buildRoundReveals ────────────────────────────────────────────────────────

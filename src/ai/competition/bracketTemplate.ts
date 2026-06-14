@@ -88,7 +88,6 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     ],
     pos: [
       'castleRescue',  // Find Your Twin  — platformer; spotlight per run at mid-size
-      'travelingDots', // Traveling Dots  — route planning; better with fewer players
       'logicLocks',    // Vault Cracker   — logic puzzle; watchable at mid-cast
     ],
   },

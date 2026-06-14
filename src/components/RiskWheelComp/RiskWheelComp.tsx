@@ -28,6 +28,7 @@ import {
   advanceFromRoundSummary,
   WHEEL_SECTORS,
   computeEliminationCount,
+  getRoundCap,
   pickSectorIndex,
   type RiskWheelCompetitionType,
 } from '../../features/riskWheel/riskWheelSlice';
@@ -616,7 +617,9 @@ export default function RiskWheelComp({
     const sortedActive = [...activePlayerIds].sort(
       (a, b) => (roundScores[b] ?? 0) - (roundScores[a] ?? 0),
     );
-    const isLastRound = round >= 3;
+    const isLastRound =
+      round >= getRoundCap(initialPlayerCount) ||
+      activePlayerIds.length - eliminatedThisRound.length <= 1;
     return (
       <div className="rw-root rw-round-summary">
         <div className="rw-summary-header">
@@ -667,6 +670,7 @@ export default function RiskWheelComp({
 
   // ── Phase: active turn ───────────────────────────────────────────────────
   const elimCount = computeEliminationCount(initialPlayerCount, round, activePlayerIds.length);
+  const roundCap = getRoundCap(initialPlayerCount);
   const isDevil = phase === 'six_six_six';
 
   // Build score summary for non-current players (mini scoreboard)
@@ -677,8 +681,8 @@ export default function RiskWheelComp({
       {/* Header */}
       <header className="rw-header">
         <div className="rw-header-left">
-          <span className="rw-round-badge" aria-label={`Round ${round} of 3`}>
-            R{round}/3
+          <span className="rw-round-badge" aria-label={`Round ${round} of ${roundCap}`}>
+            R{round}/{roundCap}
           </span>
           <span className="rw-prize-badge">{prizeType}</span>
         </div>

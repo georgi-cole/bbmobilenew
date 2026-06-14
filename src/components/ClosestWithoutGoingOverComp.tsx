@@ -29,6 +29,7 @@ import { CWGO_QUESTIONS } from '../features/cwgo/cwgoQuestions';
 import { mulberry32 } from '../store/rng';
 import type { CwgoPrizeType, CwgoState } from '../features/cwgo/cwgoCompetitionSlice';
 import type { CwgoResult } from '../features/cwgo/cwgoHelpers';
+import { difficultyLabel } from '../features/cwgo/cwgoHelpers';
 import { resolveAvatar, getDicebear } from '../utils/avatar';
 import './ClosestWithoutGoingOverComp.css';
 
@@ -292,7 +293,16 @@ export default function ClosestWithoutGoingOverComp({
 
       {showQuestion && question && (
         <div className="cwgo__question">
-          <p className="cwgo__question-label">Question</p>
+          <p className="cwgo__question-label">
+            Question
+            <span
+              className={`cwgo__difficulty cwgo__difficulty--${difficultyLabel(
+                question.difficulty,
+              ).toLowerCase()}`}
+            >
+              {difficultyLabel(question.difficulty)}
+            </span>
+          </p>
           <p className="cwgo__question-text">{question.prompt}</p>
           {question.unit && (
             <p className="cwgo__question-unit">Answer in: {question.unit}</p>

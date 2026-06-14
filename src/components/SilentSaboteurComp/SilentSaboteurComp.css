@@ -563,6 +563,17 @@ body.no-animations .ss-vote-board__tile--pulse {
   margin: 0;
 }
 
+.ss-reveal-body--stay {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffe9a8;
+  background: rgba(255, 196, 64, 0.12);
+  border: 1px solid rgba(255, 196, 64, 0.35);
+}
+
 .ss-reveal-detail,
 .ss-vote-breakdown {
   font-size: 0.88rem;

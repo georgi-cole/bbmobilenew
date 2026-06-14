@@ -241,6 +241,24 @@ describe('chooseAiBid', () => {
 
     expect(Math.min(...bids)).toBeGreaterThanOrEqual(3);
   });
+
+  it('paces spending in the opening round instead of emptying the bank', () => {
+    // With a full bank and a large field, no personality should blow most of
+    // its bank in round 1 — the budget-aware AI spreads spend across rounds.
+    const personalities = ['cautious', 'balanced', 'desperate', 'chaotic', 'dominant', 'strategic'] as const;
+    const players = personalities.map((personality, i) => {
+      const [pl] = makePlayers(1, [{ personality, id: `ai${i}` }]);
+      return pl;
+    });
+    const state = makeState({ players });
+    players.forEach((p, i) => {
+      const bids = Array.from({ length: 12 }, (_, k) => chooseAiBid(p, state, i * 1000 + k * 13 + 1));
+      const avg = bids.reduce((a, b) => a + b, 0) / bids.length;
+      // Even the most aggressive personality averages under half the bank in
+      // round 1 of a 6-player field (sustainable budget ≈ bank / 5).
+      expect(avg).toBeLessThan(TRAP_AUCTION_CONFIG.startingBank * 0.5);
+    });
+  });
 });
 
 // ─── findLowestBidders ───────────────────────────────────────────────────────
@@ -724,8 +742,9 @@ describe('trapAuctionReducer', () => {
       expect(complete.winner).not.toBeNull();
     });
 
-    it('handles complete-tie (all players eliminated simultaneously) gracefully', () => {
-      // 2 players both bid the same amount → both eliminated → game must still complete
+    it('replays the round (rematch) when every alive player ties for lowest', () => {
+      // 2 players both bid the same amount → complete tie → rematch, not an
+      // arbitrary winner. No one is eliminated and banks are untouched.
       const players = makePlayers(2, [
         { bank: 50 },
         { bank: 80 },
@@ -746,16 +765,52 @@ describe('trapAuctionReducer', () => {
         fastForward: false,
         prizeType: 'LOH',
         seed: 42,
+        rematchCount: 0,
       };
-      const elimination = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
-      // After ADVANCE_TO_ELIMINATION, both players are eliminated (tied for lowest)
-      expect(elimination.lastEliminatedIds).toHaveLength(2);
+      const rematch = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
+      // Round is replayed: back to bid phase, rematch counter bumped, no eviction.
+      expect(rematch.phase).toBe('bid');
+      expect(rematch.rematchCount).toBe(1);
+      expect(rematch.lastEliminatedIds).toHaveLength(0);
+      expect(rematch.players.every((p) => p.isAlive)).toBe(true);
+      // Banks are untouched — a rematch round is void.
+      expect(rematch.players.map((p) => p.bank)).toEqual([50, 80]);
+      // Bids are cleared so players can bid again.
+      expect(rematch.players.every((p) => p.currentBid === null)).toBe(true);
+    });
 
-      const complete = trapAuctionReducer(elimination, { type: 'CONTINUE_AFTER_ELIMINATION' });
-      // Game must resolve to complete, not get stuck in bid with 0 players
-      expect(complete.phase).toBe('complete');
-      // Tiebreaker winner selected (player with most bank remaining after bids)
-      expect(complete.winner).not.toBeNull();
+    it('eventually crowns a winner when a complete tie cannot be broken', () => {
+      // Two bankrupt players (bank 1) can only ever bid 1 → permanent tie.
+      // The reducer must still resolve to a single crowned winner.
+      const players = makePlayers(2, [
+        { bank: 1, isHuman: false },
+        { bank: 1, isHuman: false },
+      ]);
+      const playersWithBids = players.map((p) => ({ ...p, currentBid: 1 }));
+      const reveals = buildRoundReveals(playersWithBids);
+      const state: TrapAuctionState = {
+        phase: 'reveal',
+        round: 1,
+        players: playersWithBids,
+        roundReveals: reveals,
+        revealIndex: reveals.length,
+        lastEliminatedIds: [],
+        lastHighestBidderId: null,
+        winner: null,
+        humanEliminated: false,
+        spectating: false,
+        fastForward: false,
+        prizeType: 'LOH',
+        seed: 42,
+        rematchCount: 0,
+      };
+      const result = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
+      expect(result.phase).toBe('complete');
+      expect(result.winner).not.toBeNull();
+      expect(result.players.every((p) => p.currentBid === null)).toBe(true);
+      expect(result.players.every((p) => p.placement !== null)).toBe(true);
+      expect(result.players.filter((p) => p.placement === 1)).toHaveLength(1);
+      expect(result.players.find((p) => p.id === result.winner?.id)).toEqual(result.winner);
     });
   });
 
@@ -791,6 +846,20 @@ describe('trapAuctionReducer', () => {
       const state = makeState({ players, humanEliminated: true, phase: 'elimination' });
       const next = trapAuctionReducer(state, { type: 'SKIP_TO_RESULTS' });
       expect(next.winner).not.toBeNull();
+    });
+
+    it('keeps fallback tie standings consistent when skipping to results', () => {
+      const players = makePlayers(2, [
+        { bank: 1, isHuman: false },
+        { bank: 1, isHuman: false },
+      ]);
+      const state = makeState({ players, humanEliminated: true, phase: 'elimination' });
+      const next = trapAuctionReducer(state, { type: 'SKIP_TO_RESULTS' });
+      expect(next.phase).toBe('complete');
+      expect(next.winner).not.toBeNull();
+      expect(next.players.every((p) => p.currentBid === null)).toBe(true);
+      expect(next.players.every((p) => p.placement !== null)).toBe(true);
+      expect(next.players.find((p) => p.id === next.winner?.id)).toEqual(next.winner);
     });
   });
 });

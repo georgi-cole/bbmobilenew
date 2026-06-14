@@ -48,9 +48,9 @@ const SILENT_SABOTEUR_TIMINGS = {
   /** Human saboteur timeout fallback. */
   SELECT_VICTIM_TIMEOUT_MS: 10_000,
   /** AI voting stagger window minimum. */
-  AI_VOTE_STAGGER_MIN_MS: 3200,
+  AI_VOTE_STAGGER_MIN_MS: 4200,
   /** AI voting stagger window maximum. */
-  AI_VOTE_STAGGER_MAX_MS: 5000,
+  AI_VOTE_STAGGER_MAX_MS: 6500,
   /** Voting phase shared timer — 120 seconds. */
   VOTING_TIMER_MS: 120_000,
   /** Jury vote shared timer — 120 seconds. */
@@ -63,6 +63,8 @@ const SILENT_SABOTEUR_TIMINGS = {
   ELIMINATION_HOLD_MS: 2800,
   /** Round transition hold. */
   ROUND_TRANSITION_MS: 2000,
+  /** Auto-advance delay for an eliminated (spectating) human between beats. */
+  AUTO_SPECTATOR_CONTINUE_MS: 2200,
   /** Countdown ticker interval. */
   TIMER_TICK_MS: 250,
 } as const;
@@ -854,6 +856,40 @@ export default function SilentSaboteurComp({
     dispatch(startNextRound());
   }, [dispatch, majorBeatActionLocked]);
 
+  // Auto-advance round beats for an eliminated (spectating) human so they don't
+  // have to click Continue through AI-only rounds after being evicted. The
+  // human still manually acknowledges their own elimination card (which shows
+  // the "stay for the Final 2" message) and still casts their Tribunal vote.
+  useEffect(() => {
+    if (!isHumanJuror || majorBeatActionLocked) return;
+    let action: (() => void) | null = null;
+    if (phase === 'voting' && bombRevealVisible) {
+      action = handleBombRevealContinue;
+    } else if (phase === 'reveal' && revealInfo && revealInfo.eliminatedId !== humanPlayerId) {
+      if (revealStage === 'accusationResult') action = handleRevealAccusationContinue;
+      else if (revealStage === 'elimination') action = handleRevealEliminationContinue;
+    } else if (phase === 'round_transition') {
+      action = handleRoundTransitionContinue;
+    }
+    if (!action) return;
+    const delay = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.AUTO_SPECTATOR_CONTINUE_MS;
+    const t = setTimeout(action, delay);
+    return () => clearTimeout(t);
+  }, [
+    isHumanJuror,
+    majorBeatActionLocked,
+    phase,
+    bombRevealVisible,
+    revealStage,
+    revealInfo,
+    humanPlayerId,
+    animationsDisabled,
+    handleBombRevealContinue,
+    handleRevealAccusationContinue,
+    handleRevealEliminationContinue,
+    handleRoundTransitionContinue,
+  ]);
+
   // ── Final-2 cinematic handlers ─────────────────────────────────────────────
 
   const handleFinal2ProceedToVoting = useCallback(() => {
@@ -1015,7 +1051,7 @@ export default function SilentSaboteurComp({
             <h2 className="ss-phase-label">🗳️ Round {round + 1} — Investigation</h2>
             <p className="ss-hint">
               {isHumanActive && votes[humanPlayerId!] === undefined
-                ? 'Study the room and accuse the saboteur. You may also abstain.'
+                ? 'Study the room and accuse the saboteur.'
                 : isHumanActive
                 ? '✅ Vote locked. Waiting for others or timer to expire…'
                 : 'You are watching the investigation unfold.'}
@@ -1168,6 +1204,11 @@ export default function SilentSaboteurComp({
                     ? 'The saboteur has been removed from the game. The house survives another round.'
                     : `The sabotage succeeds. ${getName(revealInfo.victimId)} is gone.`}
                 </p>
+                {revealInfo.eliminatedId === humanPlayerId && (
+                  <p className="ss-reveal-body ss-reveal-body--stay" data-testid="ss-stay-for-final-msg">
+                    You&rsquo;re out of the game — but stay! As a member of the Tribunal you&rsquo;ll cast a deciding vote in the Final 2.
+                  </p>
+                )}
                 <ActionFooter>
                   <button
                     className="ss-btn ss-action-btn"
