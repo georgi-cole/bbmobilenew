@@ -104,10 +104,11 @@ export default function TribunalMemberStage({
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
   const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null;
   const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null;
-  let cutoutSrc: string | null = null;
-  if (current && !isPublic) {
-    cutoutSrc = failedCutoutId === current.juror.id || !formalSrc ? fallbackSrc : formalSrc;
-  }
+  const cutoutSrc = current && !isPublic && fallbackSrc
+    ? failedCutoutId === current.juror.id || !formalSrc
+      ? fallbackSrc
+      : formalSrc
+    : null;
   const currentAnnouncement = current
     ? trimmedCurrentPhrase
       ? `${isPublic ? 'The Public' : current.juror.name}. ${trimmedCurrentPhrase}`
@@ -158,7 +159,9 @@ export default function TribunalMemberStage({
               <PhraseTyper phrase={currentPhrase} />
             </div>
           )}
-          {cutoutSrc ? (
+          {isPublic ? (
+            <PublicCutoutPlaceholder />
+          ) : cutoutSrc ? (
             <img
               className="tms-cutout"
               src={cutoutSrc}
@@ -170,10 +173,8 @@ export default function TribunalMemberStage({
                 }
               }}
             />
-          ) : isPublic ? (
-            <PublicCutoutPlaceholder />
           ) : (
-            <PublicCutoutPlaceholder />
+            null
           )}
           <div className="tms-cutout-glow" aria-hidden="true" />
         </div>

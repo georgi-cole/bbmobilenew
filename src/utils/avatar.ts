@@ -257,6 +257,9 @@ const INFORMAL_CUTOUT_MAP: Record<string, string> = {
   zed: 'Zed_informal',
 };
 
+const FEMALE_AVATAR_EMOJI = '👩';
+const MALE_AVATAR_EMOJI = '👨';
+
 /**
  * Returns the URL for a housemate's full-body transparent cutout from
  * `public/assets/Informal_attires/`, or `null` when no cutout exists for this player.
@@ -301,11 +304,11 @@ export function resolveFullSizeCutoutFallback(player: FullSizeCutoutFallbackPlay
     return joinPublicAssetPath('assets/full_body_fallback_male.png');
   }
 
-  if (player.avatar === '👩') {
+  if (player.avatar === FEMALE_AVATAR_EMOJI) {
     return joinPublicAssetPath('assets/full_body_fallback_female.png');
   }
 
-  if (player.avatar === '👨') {
+  if (player.avatar === MALE_AVATAR_EMOJI) {
     return joinPublicAssetPath('assets/full_body_fallback_male.png');
   }
 
