@@ -161,6 +161,25 @@ export function bullseyeAiBandForRound(roundNumber: number): readonly [number, n
 }
 
 /**
+ * Map a 0–1 skill level onto a round's `[bandMin, bandMax]` score band.
+ *
+ * The realistic hybrid-resolver envelope starts at baseScore 80, i.e.
+ * `minRealisticSkill = 80 / AI_SCORE_MAX ≈ 0.125`, which anchors the band floor.
+ * Interpolation is continuous in two phases:
+ *   skill 0               → 0        (a non-competing entry scores nothing)
+ *   skill minRealisticSkill → bandMin  (weakest realistic AI)
+ *   skill 1               → bandMax  (theoretical ceiling)
+ */
+function interpolateSkillToBand(skill: number, bandMin: number, bandMax: number): number {
+  const minRealisticSkill = MIN_BASE_SCORE / AI_SCORE_MAX;
+  if (skill <= minRealisticSkill) {
+    return (skill / minRealisticSkill) * bandMin;
+  }
+  const realisticProgress = (skill - minRealisticSkill) / (1 - minRealisticSkill);
+  return bandMin + (bandMax - bandMin) * realisticProgress;
+}
+
+/**
  * Select a random target kind using weighted distribution.
  * Defaults to:
  *  standard:  60 %
@@ -314,15 +333,9 @@ export function simulateBullseyeAiRoundScore(
   // maps to distinct skill levels.  Values outside [0, AI_SCORE_MAX] are clamped.
   const skill = Math.min(1, Math.max(0, baseScore) / AI_SCORE_MAX);
 
-  // The realistic hybrid-resolver envelope starts at baseScore 80 (skill ≈ 0.125),
-  // which anchors the band floor.  Map skill across the band continuously so:
-  //   skill 0      → 0        (a non-competing entry scores nothing)
-  //   skill 0.125  → bandMin  (weakest realistic AI)
-  //   skill 1      → bandMax  (theoretical ceiling)
-  const minRealisticSkill = MIN_BASE_SCORE / AI_SCORE_MAX;
-  const bandScore = skill <= minRealisticSkill
-    ? (skill / minRealisticSkill) * bandMin
-    : bandMin + (bandMax - bandMin) * ((skill - minRealisticSkill) / (1 - minRealisticSkill));
+  // Interpolate the skill across the round's competitive band (skill 0 → 0,
+  // skill 0.125 → bandMin, skill 1 → bandMax).
+  const bandScore = interpolateSkillToBand(skill, bandMin, bandMax);
 
   // ±7 % per-player, per-round swing for believable off/hot rounds.  Bounded so
   // it never flips clearly separated skill tiers (the band gap dwarfs the swing).

@@ -561,6 +561,8 @@ describe('Bullseye Blitz — tournament helpers', () => {
     }
 
     // Even the weakest AI should comfortably clear the old ~150 ceiling.
+    // baseScore 80 maps to bandMin (~320); with the −7 % swing the floor is ~298,
+    // so 250 is a safe lower bound that still proves we left the old cluster behind.
     const weakest = simulateBullseyeAiRoundScore(80, 1, 42, 'weakest');
     expect(weakest).toBeGreaterThan(250);
   });
