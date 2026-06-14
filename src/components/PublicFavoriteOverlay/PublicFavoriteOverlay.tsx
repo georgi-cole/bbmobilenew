@@ -78,6 +78,7 @@ interface SpotlightCandidate {
 
 interface SpotlightState {
   cursor: number;
+  playerId: string | null;
   factIndexes: Record<string, number>;
 }
 
@@ -212,6 +213,17 @@ function nextSpotlightCursor(pool: SpotlightCandidate[], previousCursor: number)
     }
   }
   return (previousCursor + 1) % pool.length;
+}
+
+function spotlightCursorForPlayer(
+  pool: SpotlightCandidate[],
+  playerId: string | null,
+  fallbackCursor: number,
+): number {
+  if (!pool.length) return 0;
+  const playerCursor = playerId ? pool.findIndex((candidate) => candidate.playerId === playerId) : -1;
+  if (playerCursor >= 0) return playerCursor;
+  return Math.min(fallbackCursor, pool.length - 1);
 }
 
 function getStatusLine(args: {
@@ -628,7 +640,11 @@ export default function PublicFavoriteOverlay({
   const [surgeUsed, setSurgeUsed] = useState(false);
   const [surgeActive, setSurgeActive] = useState<SurgeState | null>(null);
   const [eliminationMoment, setEliminationMoment] = useState<{ player: Player; startedAt: number } | null>(null);
-  const [spotlightState, setSpotlightState] = useState<SpotlightState>({ cursor: 0, factIndexes: {} });
+  const [spotlightState, setSpotlightState] = useState<SpotlightState>({
+    cursor: 0,
+    playerId: null,
+    factIndexes: {},
+  });
   const firedRef = useRef(false);
   const surgeRequestLockRef = useRef(false);
   const previousRanksRef = useRef<Record<string, number>>({});
@@ -786,7 +802,12 @@ export default function PublicFavoriteOverlay({
   );
   const spotlightCandidatesRef = useRef(spotlightCandidates);
   spotlightCandidatesRef.current = spotlightCandidates;
-  const currentSpotlight = spotlightCandidates[spotlightState.cursor] ?? spotlightCandidates[0] ?? null;
+  const currentSpotlightCursor = spotlightCursorForPlayer(
+    spotlightCandidates,
+    spotlightState.playerId,
+    spotlightState.cursor,
+  );
+  const currentSpotlight = spotlightCandidates[currentSpotlightCursor] ?? null;
   const currentSpotlightFactIndex = currentSpotlight
     ? spotlightState.factIndexes[currentSpotlight.playerId] ?? 0
     : 0;
@@ -809,23 +830,28 @@ export default function PublicFavoriteOverlay({
   useEffect(() => {
     setSpotlightState((previous) => {
       const nextSpotlightCandidates = spotlightCandidatesRef.current;
-      const nextCursor = Math.min(previous.cursor, Math.max(nextSpotlightCandidates.length - 1, 0));
+      const nextCursor = spotlightCursorForPlayer(
+        nextSpotlightCandidates,
+        previous.playerId,
+        previous.cursor,
+      );
       const activeIds = new Set(nextSpotlightCandidates.map((candidate) => candidate.playerId));
       const factIndexes = Object.fromEntries(
         Object.entries(previous.factIndexes).filter(([playerId]) => activeIds.has(playerId)),
       );
-      const currentPlayerId = nextSpotlightCandidates[nextCursor]?.playerId;
+      const currentPlayerId = nextSpotlightCandidates[nextCursor]?.playerId ?? null;
       if (currentPlayerId && factIndexes[currentPlayerId] === undefined) {
         factIndexes[currentPlayerId] = 0;
       }
       if (
         previous.cursor === nextCursor &&
+        previous.playerId === currentPlayerId &&
         Object.keys(previous.factIndexes).length === Object.keys(factIndexes).length &&
         Object.entries(factIndexes).every(([playerId, factIndex]) => previous.factIndexes[playerId] === factIndex)
       ) {
         return previous;
       }
-      return { cursor: nextCursor, factIndexes };
+      return { cursor: nextCursor, playerId: currentPlayerId, factIndexes };
     });
   }, [spotlightPlayerKey]);
 
@@ -835,9 +861,14 @@ export default function PublicFavoriteOverlay({
     const id = window.setInterval(() => {
       setSpotlightState((previous) => {
         const nextSpotlightCandidates = spotlightCandidatesRef.current;
-        const nextCursor = nextSpotlightCursor(nextSpotlightCandidates, previous.cursor);
+        const currentCursor = spotlightCursorForPlayer(
+          nextSpotlightCandidates,
+          previous.playerId,
+          previous.cursor,
+        );
+        const nextCursor = nextSpotlightCursor(nextSpotlightCandidates, currentCursor);
         const nextSpotlight = nextSpotlightCandidates[nextCursor];
-        if (!nextSpotlight) return { cursor: 0, factIndexes: {} };
+        if (!nextSpotlight) return { cursor: 0, playerId: null, factIndexes: {} };
         const previousFactIndex = previous.factIndexes[nextSpotlight.playerId];
         const nextFactIndex =
           previousFactIndex === undefined
@@ -847,6 +878,7 @@ export default function PublicFavoriteOverlay({
               : 0;
         return {
           cursor: nextCursor,
+          playerId: nextSpotlight.playerId,
           factIndexes: {
             ...previous.factIndexes,
             [nextSpotlight.playerId]: nextFactIndex,

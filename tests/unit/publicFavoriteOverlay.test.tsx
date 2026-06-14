@@ -209,7 +209,40 @@ describe('PublicFavoriteOverlay', () => {
     expect(within(resultsBoard).queryByText('34%')).not.toBeInTheDocument();
   });
 
-  it('spotlights the lowest-ranked active player first and rotates to a new fact when they reappear', () => {
+  it('keeps the same spotlighted player when vote drift reorders the pool', () => {
+    mockedUseBattleBackVoting.mockReturnValue({
+      votes: { p1: 40, p2: 30, p3: 20, p4: 10 },
+      eliminated: [],
+      winnerId: null,
+      isComplete: false,
+    });
+
+    const { rerender } = render(
+      <PublicFavoriteOverlay
+        candidates={SPOTLIGHT_PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByText('Casey')).toBeInTheDocument();
+
+    mockedUseBattleBackVoting.mockReturnValue({
+      votes: { p1: 25, p2: 15, p3: 10, p4: 50 },
+      eliminated: [],
+      winnerId: null,
+      isComplete: false,
+    });
+
+    rerender(<PublicFavoriteOverlay candidates={SPOTLIGHT_PLAYERS} seed={2} onComplete={vi.fn()} />);
+
+    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    expect(within(spotlight).getByText('Casey')).toBeInTheDocument();
+    expect(within(spotlight).queryByText('Morgan')).not.toBeInTheDocument();
+  });
+
+  it('spotlights the lowest-ranked eligible vote entry first and rotates to a new fact when they reappear', () => {
     mockedUseBattleBackVoting.mockReturnValue({
       votes: { p1: 40, p2: 30, p3: 20, p4: 10 },
       eliminated: [],
