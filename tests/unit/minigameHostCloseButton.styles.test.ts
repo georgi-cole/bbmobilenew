@@ -10,11 +10,10 @@ import { describe, expect, it } from 'vitest';
  */
 describe('MinigameHost close button layering', () => {
   function readRuleBody(css: string, selector: string): string {
-    const start = css.indexOf(`${selector} {`);
-    expect(start).toBeGreaterThanOrEqual(0);
-    const end = css.indexOf('}', start);
-    expect(end).toBeGreaterThan(start);
-    return css.slice(start, end);
+    const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = css.match(new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\}`));
+    expect(match).not.toBeNull();
+    return match![1];
   }
 
   function readZIndex(body: string): number {

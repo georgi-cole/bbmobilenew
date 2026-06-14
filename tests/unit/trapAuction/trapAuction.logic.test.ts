@@ -807,7 +807,10 @@ describe('trapAuctionReducer', () => {
       const result = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
       expect(result.phase).toBe('complete');
       expect(result.winner).not.toBeNull();
+      expect(result.players.every((p) => p.currentBid === null)).toBe(true);
+      expect(result.players.every((p) => p.placement !== null)).toBe(true);
       expect(result.players.filter((p) => p.placement === 1)).toHaveLength(1);
+      expect(result.players.find((p) => p.id === result.winner?.id)).toEqual(result.winner);
     });
   });
 
@@ -843,6 +846,20 @@ describe('trapAuctionReducer', () => {
       const state = makeState({ players, humanEliminated: true, phase: 'elimination' });
       const next = trapAuctionReducer(state, { type: 'SKIP_TO_RESULTS' });
       expect(next.winner).not.toBeNull();
+    });
+
+    it('keeps fallback tie standings consistent when skipping to results', () => {
+      const players = makePlayers(2, [
+        { bank: 1, isHuman: false },
+        { bank: 1, isHuman: false },
+      ]);
+      const state = makeState({ players, humanEliminated: true, phase: 'elimination' });
+      const next = trapAuctionReducer(state, { type: 'SKIP_TO_RESULTS' });
+      expect(next.phase).toBe('complete');
+      expect(next.winner).not.toBeNull();
+      expect(next.players.every((p) => p.currentBid === null)).toBe(true);
+      expect(next.players.every((p) => p.placement !== null)).toBe(true);
+      expect(next.players.find((p) => p.id === next.winner?.id)).toEqual(next.winner);
     });
   });
 });

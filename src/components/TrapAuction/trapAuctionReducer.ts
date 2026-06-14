@@ -46,6 +46,36 @@ function deriveRoundSeed(seed: number, round: number, rematchCount: number): num
   );
 }
 
+function finalizeForcedTiePlayers(
+  players: TrapAuctionState['players'],
+  winnerId: string,
+  round: number,
+): TrapAuctionState['players'] {
+  const alivePlayers = players
+    .map((player, index) => ({ player, index }))
+    .filter(({ player }) => player.isAlive);
+
+  const placementById = new Map<string, number>([[winnerId, 1]]);
+  let nextPlacement = 2;
+
+  for (const { player } of alivePlayers
+    .filter(({ player }) => player.id !== winnerId)
+    .sort((a, b) => b.player.bank - a.player.bank || a.index - b.index)) {
+    placementById.set(player.id, nextPlacement++);
+  }
+
+  return players.map((player) => {
+    const placement = placementById.get(player.id);
+    if (placement == null) return player;
+    return {
+      ...player,
+      isAlive: player.id === winnerId,
+      eliminatedRound: player.id === winnerId ? player.eliminatedRound : round,
+      placement,
+    };
+  });
+}
+
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
 export type TrapAuctionAction =
@@ -186,18 +216,17 @@ export function trapAuctionReducer(
           isUnbreakableTie(state.players) || rematchCount + 1 >= MAX_REMATCHES;
 
         if (mustStop) {
+          const afterCosts = applyBidCosts(state.players, state.round);
           const tieWinner = resolveTieWinner(
-            applyBidCosts(state.players, state.round),
+            afterCosts,
             state.seed ^ ((rematchCount + 1) * 0x27d4eb2f),
           );
           if (tieWinner) {
-            const withWinner = state.players.map((p) =>
-              p.id === tieWinner.id ? { ...p, placement: 1 } : p,
-            );
+            const withWinner = finalizeForcedTiePlayers(afterCosts, tieWinner.id, state.round);
             return {
               ...state,
               players: withWinner,
-              winner: { ...tieWinner, placement: 1 },
+              winner: withWinner.find((p) => p.id === tieWinner.id) ?? { ...tieWinner, placement: 1 },
               rematchCount: 0,
               phase: 'complete',
             };
@@ -364,18 +393,17 @@ function simulateToCompletion(state: TrapAuctionState): TrapAuctionState {
 
     // Permanent tie that no rematch can break: crown a deterministic winner.
     if (isCompleteTie(withBids)) {
+      const afterCosts = applyBidCosts(withBids, s.round);
       const tieWinner = resolveTieWinner(
-        applyBidCosts(withBids, s.round),
+        afterCosts,
         s.seed ^ ((attempt + 1) * 0x27d4eb2f),
       );
       if (tieWinner) {
-        const withWinner = s.players.map((p) =>
-          p.id === tieWinner.id ? { ...p, placement: 1 } : p,
-        );
+        const withWinner = finalizeForcedTiePlayers(afterCosts, tieWinner.id, s.round);
         return {
           ...s,
           players: withWinner,
-          winner: { ...tieWinner, placement: 1 },
+          winner: withWinner.find((p) => p.id === tieWinner.id) ?? { ...tieWinner, placement: 1 },
           phase: 'complete',
         };
       }
