@@ -1,10 +1,10 @@
 # Famous Figures
 
-A Big Brother-style trivia minigame where players identify famous historical figures from progressive clues. Sister game to **Biography Blitz**.
+A Big Brother-style trivia minigame where players identify famous pop-culture figures and characters from progressive clues. Sister game to **Biography Blitz**.
 
 ## Game Rules
 
-1. A famous historical figure is hidden — you see only an initial "clue" sentence.
+1. A famous figure or character is hidden — you see only an initial "clue" sentence.
 2. You can request up to **5 hints**, each more specific than the last.
 3. Type your guess at any time — fuzzy matching accepts reasonable spelling variants.
 4. **Scoring:** fewer hints used = higher score.
@@ -67,10 +67,10 @@ Each figure in `src/games/famous-figures/data/famous_figures.json` follows this 
 
 ```json
 {
-  "canonicalName": "Leonardo da Vinci",
-  "normalizedName": "leonardo vinci",
-  "acceptedAliases": ["Da Vinci", "Leonardo", "Leonardo da Vinci"],
-  "normalizedAliases": ["vinci", "leonardo", "leonardo vinci"],
+  "canonicalName": "Mickey Mouse",
+  "normalizedName": "mickey mouse",
+  "acceptedAliases": ["Mickey", "Mickey Mouse"],
+  "normalizedAliases": ["mickey", "mickey mouse"],
   "hints": [
     "Hint 1 — vague, no direct identifying info",
     "Hint 2 — general field or era",
@@ -187,7 +187,7 @@ The normaliser strips all combining diacritics via NFD decomposition. `Cleopâtr
 
 ## Admin Fallback Notes
 
-- The 20-figure dataset is embedded in the bundle; no server fetch is required.
+- The 200-figure dataset is embedded in the bundle; no server fetch is required.
 - If a figure at index N is somehow missing (programming error), the relevant `submitPlayerGuess` call silently no-ops.
 - Seed-based figure shuffling ensures reproducible round order across page reloads.
 - Per-player queues are built with `mulberry32(seed ^ fnv1a32(playerId))` — reproducible but unique per player.
@@ -216,7 +216,7 @@ npm run start:famous-figures
 | `src/games/famous-figures/model.ts` | TypeScript types (`FigureRow`, `MatchStatus`, …) |
 | `src/games/famous-figures/fuzzy.ts` | Normalisation + Damerau-Levenshtein matching |
 | `src/games/famous-figures/hints.ts` | Hint generation (`getHintText`) |
-| `src/games/famous-figures/data/famous_figures.json` | 20-figure dataset |
+| `src/games/famous-figures/data/famous_figures.json` | 200-figure dataset |
 | `src/features/famousFigures/famousFiguresSlice.ts` | Redux slice (state machine) |
 | `src/features/famousFigures/thunks.ts` | Outcome resolution thunk |
 | `src/components/FamousFiguresComp/FamousFiguresComp.tsx` | React UI component |
