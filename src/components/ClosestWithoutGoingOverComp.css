@@ -40,6 +40,33 @@
   margin: 0 0 6px;
 }
 
+.cwgo__difficulty {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 1;
+  vertical-align: middle;
+}
+
+.cwgo__difficulty--easy {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+
+.cwgo__difficulty--medium {
+  background: rgba(234, 179, 8, 0.18);
+  color: #facc15;
+}
+
+.cwgo__difficulty--hard {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+}
+
 .cwgo__question-text {
   font-size: 1.05rem;
   font-weight: 700;

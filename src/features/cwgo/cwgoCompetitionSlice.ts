@@ -11,6 +11,7 @@ import { mulberry32 } from '../../store/rng';
 import { CWGO_QUESTIONS } from './cwgoQuestions';
 import {
   generateAIGuess,
+  aiSkillRangeForDifficulty,
   computeWinnerClosestWithoutGoingOver,
   computeMassElimination,
   computeSortedResultsForReveal,
@@ -133,13 +134,16 @@ function fillAIGuesses(
   answer: number,
   seed: number,
   round: number,
+  difficulty: number,
 ): Record<string, number> {
   const updated = { ...guesses };
+  const skillRange = aiSkillRangeForDifficulty(difficulty);
   let aiSeed = (seed ^ (round * 0x5851f42d)) >>> 0;
   for (const id of aliveIds) {
     if (!humanIds.has(id) && updated[id] === undefined) {
-      // Derive a per-player skill from the seeded RNG so AI performance varies.
-      const aiSkill = mulberry32(aiSeed)();
+      // Derive a per-player skill from the seeded RNG, scaled into the band the
+      // question's difficulty allows (easy questions → weaker AI).
+      const aiSkill = skillRange.min + mulberry32(aiSeed)() * (skillRange.max - skillRange.min);
       // Advance seed before generating the guess so skill and guess use independent RNG sequences.
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
       updated[id] = generateAIGuess(answer, aiSkill, aiSeed);
@@ -218,6 +222,7 @@ const cwgoSlice = createSlice({
         question.answer,
         state.seed,
         state.round,
+        question.difficulty,
       );
     },
 
