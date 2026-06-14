@@ -236,7 +236,9 @@
   position: absolute;
   top: var(--floating-corner-top-offset);
   right: var(--floating-corner-right-offset);
-  z-index: 200;
+  /* Must stay above full-viewport minigame roots (e.g. Bullseye Blitz uses a
+     fixed overlay at z-index 200) so the exit button is always reachable. */
+  z-index: 9600;
   width: 36px;
   height: 36px;
   background: rgba(255, 255, 255, 0.1);
