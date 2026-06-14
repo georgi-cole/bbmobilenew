@@ -150,7 +150,7 @@ describe('FinalFaceoff public vote pacing', () => {
     vi.useRealTimers();
   });
 
-  it('uses a non-public avatar fallback when a juror lacks a formal cutout', async () => {
+  it('uses a non-public full-body fallback when a juror lacks a formal cutout', async () => {
     const store = makeStore();
 
     const { container } = render(
@@ -164,7 +164,7 @@ describe('FinalFaceoff public vote pacing', () => {
     });
 
     expect(screen.getByText('Casey')).toBeTruthy();
-    expect(container.querySelector('.tms-avatar-fallback')).toBeTruthy();
+    expect(screen.getByAltText('Casey').getAttribute('src')).toBe('assets/full_body_fallback_neutral.png');
     expect(container.querySelector('.tms-public-placeholder')).toBeNull();
   });
 

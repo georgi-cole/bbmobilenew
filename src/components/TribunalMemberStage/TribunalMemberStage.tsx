@@ -99,10 +99,6 @@ export default function TribunalMemberStage({
   const phraseAnimationKey = `${currentAnimationKey}-${currentPhrase}`;
   const [failedCutoutId, setFailedCutoutId] = useState<string | null>(null);
 
-  useEffect(() => {
-    setFailedCutoutId(null);
-  }, [currentJurorId]);
-
   if (!current && !awaitingHumanPlayer) return null;
 
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
