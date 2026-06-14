@@ -285,4 +285,47 @@ describe('QuickTapRaceCanvasEngine', () => {
     engine.handlePointerDown(2, { x: 160, y: 280 });
     expect(engine.getSnapshot().tapCount).toBe(beforeTaps + 2);
   });
+
+  it('ignores stale backlogged taps delivered long after they occurred', async () => {
+    const canvas = makeCanvas();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      autoStart: true,
+      onTick: vi.fn(),
+      onFinish: vi.fn(),
+    });
+
+    engine.resize(320, 400, 1);
+    engine.start();
+    await vi.advanceTimersByTimeAsync(32); // enter playing
+
+    const beforeTaps = engine.getSnapshot().tapCount;
+    // A tap whose delivery latency exceeds the stale threshold is dropped.
+    engine.handlePointerDown(1, { x: 160, y: 280 }, 0, 500);
+    expect(engine.getSnapshot().tapCount).toBe(beforeTaps);
+
+    // A promptly-delivered fast tap is still counted.
+    engine.handlePointerDown(2, { x: 160, y: 280 }, 500, 510);
+    expect(engine.getSnapshot().tapCount).toBe(beforeTaps + 1);
+  });
+
+  it('does not filter taps when timestamp epochs are mismatched (huge latency)', async () => {
+    const canvas = makeCanvas();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      autoStart: true,
+      onTick: vi.fn(),
+      onFinish: vi.fn(),
+    });
+
+    engine.resize(320, 400, 1);
+    engine.start();
+    await vi.advanceTimersByTimeAsync(32); // enter playing
+
+    const beforeTaps = engine.getSnapshot().tapCount;
+    // Latency beyond the sane upper bound implies a different timestamp epoch,
+    // so filtering is skipped (fail-open) and the tap still counts.
+    engine.handlePointerDown(1, { x: 160, y: 280 }, 0, 1_700_000_000_000);
+    expect(engine.getSnapshot().tapCount).toBe(beforeTaps + 1);
+  });
 });

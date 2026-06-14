@@ -332,7 +332,7 @@ export default function QuickTapRaceCanvasGame({
     engineRef.current.handlePointerDown(e.pointerId, {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
-    });
+    }, e.timeStamp);
   }, []);
 
   // ── Derived HUD values ─────────────────────────────────────────────────────
