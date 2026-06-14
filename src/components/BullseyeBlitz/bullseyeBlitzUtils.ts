@@ -135,20 +135,20 @@ const MIN_BASE_SCORE = 80;
  * so the AI field clustered around 120–160 and the human ran away with every
  * round — the result was a foregone conclusion the moment round one ended.
  *
- * These bands lift the AI field into the human-competitive range so a strong
- * human still tends to win but is no longer guaranteed to, and a mediocre human
- * round can genuinely place mid-pack.  The bands taper slightly each round (the
- * arena speeds up and the hazard share climbs), so with the same skill a later
- * round scores a little lower than an earlier one.  Summed across the first four
- * rounds the peak-skill ceiling lands near ~2060, keeping cumulative totals in a
- * believable tournament range.
+ * These bands lift the AI field into the human-competitive range with ceilings
+ * above a strong human round (round one starts around 450–900), so the cumulative
+ * leaderboard can always include at least one AI path that catches or beats the
+ * player.  The bands rise a little each round as targets spawn faster and score
+ * opportunities increase, while the floor remains high enough that even weaker
+ * AIs stay relevant instead of clustering hundreds of points behind after round
+ * one.
  */
 export const BULLSEYE_AI_ROUND_BANDS: ReadonlyArray<readonly [number, number]> = [
-  [320, 560], // Round 1 — opening round
-  [305, 520], // Round 2 — speeds up
-  [295, 500], // Round 3 — pressure round
-  [285, 480], // Round 4 — semi-final
-  [275, 460], // Round 5 — final sprint
+  [450, 900], // Round 1 — opening round
+  [500, 975], // Round 2 — speeds up
+  [550, 1050], // Round 3 — pressure round
+  [600, 1125], // Round 4 — semi-final
+  [650, 1200], // Round 5 — final sprint
 ] as const;
 
 /**
