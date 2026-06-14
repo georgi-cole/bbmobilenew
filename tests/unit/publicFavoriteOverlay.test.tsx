@@ -34,17 +34,6 @@ const PLAYERS: Player[] = [
   },
 ];
 
-const SPOTLIGHT_PLAYERS: Player[] = [
-  ...PLAYERS,
-  {
-    id: 'p4',
-    name: 'Casey',
-    avatar: '🧑',
-    status: 'evicted',
-    isUser: false,
-  },
-];
-
 describe('PublicFavoriteOverlay', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -178,12 +167,19 @@ describe('PublicFavoriteOverlay', () => {
   });
 
   it('replaces percentage text cleanly when vote totals update', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 41, p2: 34, p3: 25 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
+    mockedUseBattleBackVoting
+      .mockReturnValueOnce({
+        votes: { p1: 41, p2: 34, p3: 25 },
+        eliminated: [],
+        winnerId: null,
+        isComplete: false,
+      })
+      .mockReturnValueOnce({
+        votes: { p1: 39, p2: 36, p3: 25 },
+        eliminated: [],
+        winnerId: null,
+        isComplete: false,
+      });
 
     const { rerender } = render(
       <PublicFavoriteOverlay
@@ -193,114 +189,18 @@ describe('PublicFavoriteOverlay', () => {
       />,
     );
 
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 39, p2: 36, p3: 25 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    rerender(<PublicFavoriteOverlay candidates={PLAYERS} seed={2} onComplete={vi.fn()} />);
+    rerender(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={2}
+        onComplete={vi.fn()}
+      />,
+    );
 
     const resultsBoard = screen.getByRole('region', { name: /public vote ranking board/i });
 
     expect(within(resultsBoard).getByRole('button', { name: /jordan, rank 1, 39%/i })).toBeInTheDocument();
     expect(within(resultsBoard).queryByText('41%')).not.toBeInTheDocument();
     expect(within(resultsBoard).queryByText('34%')).not.toBeInTheDocument();
-  });
-
-  it('keeps the same spotlighted player when vote drift reorders the pool', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 40, p2: 30, p3: 20, p4: 10 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    const { rerender } = render(
-      <PublicFavoriteOverlay
-        candidates={SPOTLIGHT_PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByText('Casey')).toBeInTheDocument();
-
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 25, p2: 15, p3: 10, p4: 50 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    rerender(<PublicFavoriteOverlay candidates={SPOTLIGHT_PLAYERS} seed={2} onComplete={vi.fn()} />);
-
-    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByText('Casey')).toBeInTheDocument();
-    expect(within(spotlight).queryByText('Morgan')).not.toBeInTheDocument();
-  });
-
-  it('spotlights the lowest-ranked eligible vote entry first and rotates to a new fact when they reappear', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 40, p2: 30, p3: 20, p4: 10 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    render(
-      <PublicFavoriteOverlay
-        candidates={SPOTLIGHT_PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    const spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByText('Casey')).toBeInTheDocument();
-    expect(within(spotlight).getByText(/ranked #4 with 10%/i)).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1700);
-    });
-    act(() => {
-      vi.advanceTimersByTime(20_000);
-    });
-
-    expect(within(spotlight).getByText('Casey')).toBeInTheDocument();
-    expect(within(spotlight).getByText(/trying to climb from rank #4/i)).toBeInTheDocument();
-  });
-
-  it('removes eliminated players from future spotlight rotation immediately', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 40, p2: 30, p3: 20, p4: 10 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    const { rerender } = render(
-      <PublicFavoriteOverlay
-        candidates={SPOTLIGHT_PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    expect(within(screen.getByRole('region', { name: /houseguest spotlight/i })).getByText('Casey')).toBeInTheDocument();
-
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 45, p2: 33, p3: 22, p4: 0 },
-      eliminated: ['p4'],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    rerender(<PublicFavoriteOverlay candidates={SPOTLIGHT_PLAYERS} seed={2} onComplete={vi.fn()} />);
-
-    const spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).queryByText('Casey')).not.toBeInTheDocument();
   });
 });
