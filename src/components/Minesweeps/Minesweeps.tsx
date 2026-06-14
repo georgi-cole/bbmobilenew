@@ -312,6 +312,7 @@ export default function Minesweeps({
 
         {phase === 'finished' && finalScore !== null && results.length > 0 && (
           <section className="minesweeps__results" aria-label="Competition results">
+            <div className="minesweeps__results-card">
             <div>
               <p className="minesweeps__results-eyebrow">Scoreboard locked</p>
               <h3 className="minesweeps__results-title">Competition results</h3>
@@ -351,6 +352,7 @@ export default function Minesweeps({
                 Continue
               </button>
             )}
+            </div>
           </section>
         )}
       </div>
