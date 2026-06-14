@@ -81,8 +81,6 @@
 .pf-overlay__leader-meta,
 .pf-overlay__rank-name-row,
 .pf-overlay__leader-percent-row,
-.pf-overlay__spotlight-topline,
-.pf-overlay__spotlight-category-row,
 .pf-overlay__board-header,
 .pf-overlay__header-copy {
   display: flex;
@@ -208,6 +206,10 @@
 }
 
 .pf-overlay__leader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
   padding: 1rem;
   border-radius: 1.3rem;
   background: linear-gradient(135deg, rgba(34, 39, 63, 0.94), rgba(18, 19, 30, 0.95));
@@ -239,21 +241,6 @@
     0 0 24px rgba(251, 191, 36, 0.16);
 }
 
-.pf-overlay__leader--contender {
-  background:
-    radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.14), transparent 38%),
-    linear-gradient(135deg, rgba(34, 39, 63, 0.94), rgba(18, 19, 30, 0.95));
-}
-
-.pf-overlay__spotlight-content {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: center;
-}
-
 .pf-overlay__leader-copy {
   display: flex;
   flex-direction: column;
@@ -279,32 +266,6 @@
   color: rgba(255, 244, 214, 0.72);
   font-weight: 800;
   font-size: 0.78rem;
-}
-
-.pf-overlay__spotlight-category {
-  display: inline-flex;
-  width: fit-content;
-  border-radius: 999px;
-  padding: 0.25rem 0.6rem;
-  background: rgba(168, 85, 247, 0.18);
-  color: #efd9ff;
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.pf-overlay__spotlight-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  min-height: 3.45rem;
-  margin: 0;
-  overflow: hidden;
-  color: rgba(246, 248, 255, 0.84);
-  font-size: 0.9rem;
-  font-weight: 650;
-  line-height: 1.28;
 }
 
 .pf-overlay__leader-name,
