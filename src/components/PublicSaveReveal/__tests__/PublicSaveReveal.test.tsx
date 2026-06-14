@@ -104,6 +104,8 @@ describe('PublicSaveReveal', () => {
     expect(screen.getByText('25%')).toBeTruthy();
     expect(screen.getByText('49.9%')).toBeTruthy();
     expect(screen.getByText('50.1%')).toBeTruthy();
+    expect(screen.getByLabelText('Kian approval: 49.9%')).toBeTruthy();
+    expect(screen.getByLabelText('Georgi approval: 50.1%')).toBeTruthy();
     expect(screen.queryByText('50.0000%')).toBeNull();
   });
 
