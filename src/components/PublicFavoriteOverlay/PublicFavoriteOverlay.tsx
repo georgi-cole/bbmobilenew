@@ -856,7 +856,7 @@ export default function PublicFavoriteOverlay({
     }, SPOTLIGHT_ROTATION_MS);
 
     return () => window.clearInterval(id);
-  }, [displayStep, phase, spotlightCandidates.length, spotlightPlayerKey]);
+  }, [displayStep, phase, spotlightCandidates.length]);
 
   const handleClose = useCallback(() => {
     if (firedRef.current || !winnerId) return;
