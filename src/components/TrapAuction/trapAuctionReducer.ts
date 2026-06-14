@@ -34,6 +34,7 @@ import { mulberry32 } from '../../store/rng';
  * a couple of attempts. The cap guarantees the game always terminates.
  */
 const MAX_REMATCHES = 8;
+const TIE_WINNER_SEED_SALT = 0x27d4eb2f;
 
 /** Derives a deterministic per-round seed, salted by the rematch attempt. */
 function deriveRoundSeed(seed: number, round: number, rematchCount: number): number {
@@ -46,6 +47,12 @@ function deriveRoundSeed(seed: number, round: number, rematchCount: number): num
   );
 }
 
+/**
+ * Finalizes a forced complete-tie resolution after bid costs have been applied.
+ * The winner receives placement 1, and the remaining alive players are ranked
+ * by remaining bank (breaking ties by original participant index) for the rest
+ * of the standings so the complete-state player list stays internally consistent.
+ */
 function finalizeForcedTiePlayers(
   players: TrapAuctionState['players'],
   winnerId: string,
@@ -219,7 +226,7 @@ export function trapAuctionReducer(
           const afterCosts = applyBidCosts(state.players, state.round);
           const tieWinner = resolveTieWinner(
             afterCosts,
-            state.seed ^ ((rematchCount + 1) * 0x27d4eb2f),
+            state.seed ^ ((rematchCount + 1) * TIE_WINNER_SEED_SALT),
           );
           if (tieWinner) {
             const withWinner = finalizeForcedTiePlayers(afterCosts, tieWinner.id, state.round);
@@ -396,7 +403,7 @@ function simulateToCompletion(state: TrapAuctionState): TrapAuctionState {
       const afterCosts = applyBidCosts(withBids, s.round);
       const tieWinner = resolveTieWinner(
         afterCosts,
-        s.seed ^ ((attempt + 1) * 0x27d4eb2f),
+        s.seed ^ ((attempt + 1) * TIE_WINNER_SEED_SALT),
       );
       if (tieWinner) {
         const withWinner = finalizeForcedTiePlayers(afterCosts, tieWinner.id, s.round);
