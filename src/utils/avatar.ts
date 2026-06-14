@@ -294,14 +294,20 @@ type FullSizeCutoutFallbackPlayer = Pick<Player, 'id' | 'name'> & Partial<Pick<P
 
 export function resolveFullSizeCutoutFallback(player: FullSizeCutoutFallbackPlayer): string {
   const hg = getById(player.id) ?? findByName(player.name);
-  const gender = (player.gender ?? player.sex ?? hg?.sex ?? '').toLowerCase();
+  const rawGender = (player.gender ?? player.sex ?? hg?.sex ?? '').toLowerCase().trim();
 
-  if (gender.includes('female') || gender.includes('woman')) {
+  if (rawGender.includes('female') || rawGender.includes('woman')) {
     return joinPublicAssetPath('assets/full_body_fallback_female.png');
   }
 
-  if (gender.includes('male') || gender.includes('man')) {
+  if (rawGender.includes('male') || rawGender.includes('man')) {
     return joinPublicAssetPath('assets/full_body_fallback_male.png');
+  }
+
+  // If any explicit gender/sex is provided (including non-binary / prefer-not-to-say / unknown),
+  // do not override it by inferring from avatar emoji.
+  if (rawGender.length > 0) {
+    return joinPublicAssetPath('assets/full_body_fallback_neutral.png');
   }
 
   if (player.avatar === FEMALE_AVATAR_EMOJI) {
