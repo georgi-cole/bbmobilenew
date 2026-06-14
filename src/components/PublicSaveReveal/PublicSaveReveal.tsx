@@ -31,12 +31,27 @@ const SHOW_SAVED_MS = 7600;
 const EXIT_MS = 9300;
 const DONE_MS = 10000;
 const MAX_APPROVAL_DISPLAY_PRECISION = 3;
+const DISPLAY_TIE_DELTA = 0.1;
 
-function formatApprovals(allApprovals: number[]): string[] {
+function formatApprovals(allApprovals: number[], savedIndex: number): string[] {
+  const displayApprovals = [...allApprovals];
+  const savedApproval = allApprovals[savedIndex];
+  const tiedSavedApprovalIndexes = allApprovals
+    .map((approval, index) => ({ approval, index }))
+    .filter(({ approval, index }) => index !== savedIndex && approval === savedApproval)
+    .map(({ index }) => index);
+
+  if (tiedSavedApprovalIndexes.length > 0) {
+    displayApprovals[savedIndex] = Math.min(100, savedApproval + DISPLAY_TIE_DELTA);
+    tiedSavedApprovalIndexes.forEach((index) => {
+      displayApprovals[index] = Math.max(0, allApprovals[index] - DISPLAY_TIE_DELTA);
+    });
+  }
+
   const precisions = allApprovals.map(() => 0);
   const approvalIndexesByRoundedValue = new Map<string, number[]>();
 
-  allApprovals.forEach((approval, index) => {
+  displayApprovals.forEach((approval, index) => {
     const roundedApproval = approval.toFixed(0);
     approvalIndexesByRoundedValue.set(
       roundedApproval,
@@ -48,7 +63,7 @@ function formatApprovals(allApprovals: number[]): string[] {
     if (indexes.length <= 1) return;
 
     for (let precision = 1; precision <= MAX_APPROVAL_DISPLAY_PRECISION; precision += 1) {
-      const formattedApprovals = indexes.map((index) => allApprovals[index].toFixed(precision));
+      const formattedApprovals = indexes.map((index) => displayApprovals[index].toFixed(precision));
       if (
         new Set(formattedApprovals).size === indexes.length ||
         precision === MAX_APPROVAL_DISPLAY_PRECISION
@@ -61,7 +76,7 @@ function formatApprovals(allApprovals: number[]): string[] {
     }
   });
 
-  return allApprovals.map((approval, index) => `${approval.toFixed(precisions[index])}%`);
+  return displayApprovals.map((approval, index) => `${approval.toFixed(precisions[index])}%`);
 }
 
 export default function PublicSaveReveal({
@@ -107,7 +122,10 @@ export default function PublicSaveReveal({
   }, [clearTimers, fireDone]);
 
   const nomineeApprovals = nominees.map((player) => approvals[player.id] ?? 50);
-  const formattedApprovals = formatApprovals(nomineeApprovals);
+  const formattedApprovals = formatApprovals(
+    nomineeApprovals,
+    nominees.findIndex((player) => player.id === savedId),
+  );
 
   const approvalLabel = (player: Player, formattedApproval: string) =>
     `${player.name} approval: ${valuesRevealed ? formattedApproval : 'pending reveal'}`;
