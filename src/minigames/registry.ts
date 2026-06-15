@@ -790,6 +790,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  capitalization: {
+    key: 'capitalization',
+    title: 'Capitalization',
+    description: 'A rotating-globe capital city tournament across three continents.',
+    instructions: [
+      'The globe spins and lands on one of three randomly selected continents.',
+      'Answer the capital city for three countries on that continent.',
+      'You have unlimited attempts, but faster first-try answers score much higher.',
+      'You may skip any country for zero points.',
+      'After questions 3 and 6, roughly 30% of the lowest-scoring AI players are eliminated.',
+      'Question 9 is the finale, and the highest surviving score is crowned LOH.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'raw',
+    implementation: 'react',
+    reactComponentKey: 'Capitalization',
+    legacy: false,
+    weight: 1,
+    category: 'trivia',
+    retired: false,
+  },
+
   tetris: {
     key: 'tetris',
     title: 'Fit Me In',

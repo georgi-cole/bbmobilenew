@@ -589,6 +589,29 @@ export default function MinigameHost({
                 />
               );
             }
+            if (game.implementation === 'react' && game.reactComponentKey === 'Capitalization') {
+              // Capitalization should draw a fresh geography set for each hosted run.
+              // The challenge seed is stable for a pending challenge, so forwarding it
+              // makes repeated app/browser starts land on the same first country.
+              const CapitalizationComp = reactComponents.Capitalization;
+              return (
+                <CapitalizationComp
+                  autoStart={true}
+                  participantIds={participantIds}
+                  participants={participants}
+                  onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
+                    if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
+                      onDone(value, false, completion);
+                      return;
+                    }
+                    setFinalValue(value);
+                    setFinalTiebreakerMs(tiebreakerMs ?? null);
+                    setWasPartial(false);
+                    setPhase('results');
+                  }}
+                />
+              );
+            }
             if (game.implementation === 'react') {
               const key = game.reactComponentKey;
               if (!key) {
