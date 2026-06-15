@@ -90,6 +90,7 @@ import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/feature
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
+import Capitalization from '../../components/Capitalization/Capitalization'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
@@ -97,6 +98,12 @@ import { detectDebugMode } from '../../utils/debugMode'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
 import type { Player, Phase } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
+import {
+  getCompetitionSeasonState,
+  getDefaultCompetitionProfile,
+  getMinigameAiModel,
+  simulateMinigameAiScore,
+} from '../../ai/competition'
 import {
   buildDoubleEvictionTieResolutionMessage,
   calculateRequiredDoubleEvictionSlots,
@@ -140,6 +147,7 @@ import {
   advanceBattleBackAnnouncementStep,
   buildBattleBackFeedMessage,
   isBattleBackReplayEligible,
+  shouldUseBattleBackMinigame,
 } from './battleBackFlow'
 import {
   buildEvictionVoteBreakdownPlayerNamesById,
@@ -2273,14 +2281,59 @@ export default function GameScreen() {
       : []),
     [battleBack?.active, battleBack?.candidates, game.players],
   )
+  const battleBackCandidateIds = useMemo(
+    () => battleBackCandidates.map((player) => player.id),
+    [battleBackCandidates],
+  )
+  const humanBattleBackCandidateId = useMemo(() => {
+    if (!humanPlayer?.id) return null
+    return battleBackCandidateIds.includes(humanPlayer.id) ? humanPlayer.id : null
+  }, [battleBackCandidateIds, humanPlayer?.id])
+  const useBattleBackMinigame = useMemo(
+    () => shouldUseBattleBackMinigame(humanBattleBackCandidateId, battleBackCandidateIds),
+    [battleBackCandidateIds, humanBattleBackCandidateId],
+  )
+  const capitalizationAiModel = useMemo(
+    () => getMinigameAiModel('capitalization'),
+    [],
+  )
+  const battleBackCapitalizationParticipants = useMemo(() => (
+    battleBackCandidates.map((player, index) => ({
+      id: player.id,
+      name: player.name,
+      isHuman: !!player.isUser,
+      avatar: player.avatar,
+      precomputedScore: player.isUser
+        ? 0
+        : simulateMinigameAiScore({
+          gameKey: 'capitalization',
+          minigameModel: capitalizationAiModel,
+          seed: battleBackAttemptSeed,
+          playerId: player.id,
+          participantIndex: index,
+          profile: player.competitionProfile ?? getDefaultCompetitionProfile(),
+          seasonState: getCompetitionSeasonState(game.competitionSeasonStateByPlayerId, player.id),
+        }),
+      previousPR: player.stats?.gamePRs?.capitalization ?? null,
+    }))
+  ), [battleBackAttemptSeed, battleBackCandidates, capitalizationAiModel, game.competitionSeasonStateByPlayerId])
+  const showBattleBackOverlay =
+    showBattleBack &&
+    battleBackCandidates.length > 0 &&
+    !battleBackRetryOfferWinnerId
 
   // Pre-compute the deterministic Back 2 the Game winner and spectator variant so
   // the SpectatorView reveal always matches the store write.
   const battleBackWinnerId = useMemo(() => {
-    if (!showBattleBack || battleBackRetryOfferWinnerId || battleBackCandidates.length === 0) return undefined;
-    const candidateIds = battleBackCandidates.map((p) => p.id);
-    return simulateBattleBackCompetition(candidateIds, battleBackAttemptSeed).winnerId;
-  }, [showBattleBack, battleBackAttemptSeed, battleBackCandidates, battleBackRetryOfferWinnerId]);
+    if (!showBattleBackOverlay || useBattleBackMinigame || battleBackCandidates.length === 0) return undefined;
+    return simulateBattleBackCompetition(battleBackCandidateIds, battleBackAttemptSeed).winnerId;
+  }, [
+    battleBackAttemptSeed,
+    battleBackCandidateIds,
+    battleBackCandidates.length,
+    showBattleBackOverlay,
+    useBattleBackMinigame,
+  ]);
 
   const battleBackReturnPlayer = useMemo(
     () => (battleBackReturnId ? game.players.find((p) => p.id === battleBackReturnId) ?? null : null),
@@ -2381,14 +2434,16 @@ export default function GameScreen() {
     dispatch(advance())
   }, [dispatch])
 
-  const handleBattleBackComplete = useCallback(() => {
-    if (!battleBackWinnerId) {
+  const handleBattleBackComplete = useCallback((winnerId?: string | null) => {
+    const resolvedWinnerId = winnerId ?? battleBackWinnerId
+
+    if (!resolvedWinnerId) {
       finalizeBattleBackOutcome()
       return
     }
 
     const canReplayBattleBack = isBattleBackReplayEligible(
-      battleBackWinnerId,
+      resolvedWinnerId,
       humanPlayer?.id ?? null,
       battleBack?.candidates ?? [],
       battleBackRetryCount,
@@ -2396,11 +2451,11 @@ export default function GameScreen() {
     )
 
     if (canReplayBattleBack) {
-      setBattleBackRetryOfferWinnerId(battleBackWinnerId)
+      setBattleBackRetryOfferWinnerId(resolvedWinnerId)
       return
     }
 
-    finalizeBattleBackOutcome(battleBackWinnerId)
+    finalizeBattleBackOutcome(resolvedWinnerId)
   }, [
     battleBack?.candidates,
     battleBackRetryCount,
@@ -3747,15 +3802,27 @@ export default function GameScreen() {
       </AnimatePresence>
 
       {/* ── Back 2 the Game / Jury Return twist overlay ──────────────────── */}
-      {showBattleBack && battleBackCandidates.length > 0 && (
+      {showBattleBackOverlay && useBattleBackMinigame && (
+        <Capitalization
+          key={`${battleBackCandidateIds.join('-')}-bb-cap-${battleBackAttemptIndex}`}
+          context="battleBack"
+          participantIds={battleBackCandidateIds}
+          participants={battleBackCapitalizationParticipants}
+          seed={battleBackAttemptSeed}
+          onFinish={(_value, _tiebreakerMs, completion) => {
+            handleBattleBackComplete(completion?.authoritativeWinnerId ?? null)
+          }}
+        />
+      )}
+      {showBattleBackOverlay && !useBattleBackMinigame && (
         <SpectatorView
-          key={`${battleBackCandidates.map((p) => p.id).join('-')}-bb-${battleBackAttemptIndex}`}
-          competitorIds={battleBackCandidates.map((p) => p.id)}
+          key={`${battleBackCandidateIds.join('-')}-bb-${battleBackAttemptIndex}`}
+          competitorIds={battleBackCandidateIds}
           variant={battleBackVariant}
           expectedWinnerId={battleBackWinnerId}
           roundLabel="Back 2 the Game"
           placement="fullscreen"
-          onDone={handleBattleBackComplete}
+          onDone={() => handleBattleBackComplete()}
         />
       )}
 

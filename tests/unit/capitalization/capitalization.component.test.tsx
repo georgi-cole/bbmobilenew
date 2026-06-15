@@ -95,4 +95,33 @@ describe('Capitalization component', () => {
       rawResults: expect.any(Object),
     });
   });
+
+  it('uses battle back copy on the final scoreboard when mounted in battle back mode', () => {
+    const onFinish = vi.fn();
+    render(
+      <Capitalization
+        seed={44}
+        participants={participants}
+        onFinish={onFinish}
+        context="battleBack"
+      />,
+    );
+
+    for (let question = 1; question <= 9; question += 1) {
+      act(() => {
+        vi.advanceTimersByTime(2700);
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Continue',
+        }),
+      );
+    }
+
+    expect(screen.queryByText('Crown LOH')).not.toBeInTheDocument();
+    expect(screen.getByText(/won the right to return to the game/i)).toBeInTheDocument();
+    expect(onFinish).toHaveBeenCalledTimes(1);
+  });
 });
