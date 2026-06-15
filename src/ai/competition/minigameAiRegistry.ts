@@ -348,6 +348,18 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_TRIVIA,
     weights: WEIGHTS_MENTAL,
   },
+  capitalization: {
+    key: 'capitalization',
+    category: 'mental',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_TRIVIA,
+    weights: WEIGHTS_MENTAL_PRECISION,
+    minScore: 45,
+    maxScore: 95,
+    notes:
+      'Capitalization uses this 45-95 skill band as the AI knowledge baseline; ' +
+      'the React component converts it into per-question accuracy, speed, and attempts.',
+  },
   tetris: {
     key: 'tetris',
     category: 'precision',

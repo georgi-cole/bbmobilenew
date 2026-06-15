@@ -45,6 +45,7 @@ import TimingBar from '../components/TimingBar/TimingBar';
 import Minesweeps from '../components/Minesweeps/Minesweeps';
 import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
 import NumberTrivia from '../components/NumberTrivia/NumberTrivia';
+import Capitalization from '../components/Capitalization/Capitalization';
 import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
 import GridOfLuck from '../components/GridOfLuck/GridOfLuck';
 import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed';
@@ -102,6 +103,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   Minesweeps: Minesweeps as ComponentType<GenericMinigameProps>,
   HangmanChallenge: HangmanChallengeComp as ComponentType<GenericMinigameProps>,
   NumberTrivia: NumberTrivia as ComponentType<GenericMinigameProps>,
+  Capitalization: Capitalization as ComponentType<GenericMinigameProps>,
   CodeBreaker: CodeBreakerComp as ComponentType<GenericMinigameProps>,
   GridOfLuck: GridOfLuck as ComponentType<GenericMinigameProps>,
   ChainOfGreed: ChainOfGreed as ComponentType<GenericMinigameProps>,
