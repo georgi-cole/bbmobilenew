@@ -30,6 +30,11 @@ import './Capitalization.css';
 const SPIN_DURATION_MS = 2600;
 
 type CapitalizationPhase = 'spinning' | 'question' | 'answerReview' | 'scoreboard';
+type CapitalizationContext = 'loh' | 'battleBack';
+
+interface CapitalizationProps extends GenericMinigameProps {
+  context?: CapitalizationContext;
+}
 
 interface CapitalizationScoreboard {
   question: CapitalizationQuestion;
@@ -78,7 +83,8 @@ export default function Capitalization({
   participantIds,
   participants,
   seed,
-}: GenericMinigameProps) {
+  context = 'loh',
+}: CapitalizationProps) {
   const resolvedParticipants = useMemo(
     () => resolveParticipants(participantIds, participants),
     [participantIds, participants],
@@ -277,6 +283,7 @@ export default function Capitalization({
   const inputDisabled = phase !== 'question';
   const showCheckpoint = phase === 'scoreboard' && scoreboard;
   const showGlobe = phase === 'spinning';
+  const isBattleBackContext = context === 'battleBack';
   const rootClassName = [
     'capitalization',
     `capitalization--${phase}`,
@@ -287,7 +294,9 @@ export default function Capitalization({
       <div className="capitalization__shell">
         <header className="capitalization__header">
           <div>
-            <p className="capitalization__eyebrow">Capitalization</p>
+            <p className="capitalization__eyebrow">
+              {isBattleBackContext ? 'Back 2 the Game' : 'Capitalization'}
+            </p>
             <h2 className="capitalization__title">
               {phase === 'spinning'
                 ? 'Globe spin'
@@ -312,6 +321,7 @@ export default function Capitalization({
             scoreboard={scoreboard}
             winner={winner}
             onContinue={continueFromScoreboard}
+            context={context}
           />
         ) : (
           <section
@@ -447,10 +457,12 @@ function Scoreboard({
   scoreboard,
   winner,
   onContinue,
+  context,
 }: {
   scoreboard: CapitalizationScoreboard;
   winner: CapitalizationStanding | null;
   onContinue: () => void;
+  context: CapitalizationContext;
 }) {
   const eliminatedNames = scoreboard.eliminatedIds
     .map(
@@ -459,6 +471,10 @@ function Scoreboard({
           ?.participantName ?? id,
     )
     .join(', ');
+  const isBattleBackContext = context === 'battleBack';
+  const finalWinnerSummary = isBattleBackContext
+    ? `${winner?.participantName ?? 'A player'} has won the right to return to the game.`
+    : `${winner?.participantName ?? 'A player'} is ready to be crowned LOH.`;
 
   return (
     <section
@@ -472,7 +488,7 @@ function Scoreboard({
         <h3>{scoreboard.question.capital}</h3>
         <p>
           {scoreboard.final
-            ? `${winner?.participantName ?? 'A player'} is ready to be crowned LOH.`
+            ? finalWinnerSummary
             : eliminatedNames
               ? `Eliminated before the next continent: ${eliminatedNames}.`
               : 'No elimination before the next continent.'}
@@ -484,7 +500,7 @@ function Scoreboard({
           const eliminatedNow = scoreboard.eliminatedIds.includes(standing.participantId);
           const eliminated = standing.eliminatedAfterQuestion !== null;
           const status = scoreboard.final && index === 0
-            ? 'LOH'
+            ? isBattleBackContext ? 'Winner' : 'LOH'
             : eliminatedNow
               ? 'Eliminated'
               : eliminated
@@ -520,11 +536,13 @@ function Scoreboard({
       <div className="capitalization__footer">
         <span>
           {scoreboard.final
-            ? `${winner?.participantName ?? 'Winner'} leads the final board.`
+            ? isBattleBackContext
+              ? `${winner?.participantName ?? 'Winner'} tops the final board.`
+              : `${winner?.participantName ?? 'Winner'} leads the final board.`
             : 'Next globe spin starts when you continue.'}
         </span>
         <button type="button" onClick={onContinue}>
-          {scoreboard.final ? 'Crown LOH' : 'Continue'}
+          {scoreboard.final && !isBattleBackContext ? 'Crown LOH' : 'Continue'}
         </button>
       </div>
     </section>

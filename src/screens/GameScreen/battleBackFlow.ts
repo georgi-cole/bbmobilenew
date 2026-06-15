@@ -58,3 +58,10 @@ export function isBattleBackReplayEligible(
     winnerId !== humanCandidateId &&
     retryCount < retryLimit
 }
+
+export function shouldUseBattleBackMinigame(
+  humanCandidateId: string | null,
+  candidateIds: string[],
+): boolean {
+  return !!humanCandidateId && candidateIds.includes(humanCandidateId)
+}
