@@ -5,7 +5,7 @@ import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
 import type { RemotePlayerOverride } from '../remoteConfig/remoteConfigTypes';
 
-// ─── Remote override registry ─────────────────────────────────────────────────
+// ─── Remote override registry ────────────────────────────────────────────────
 
 /**
  * Module-level map of houseguest id → remote avatar URL.
@@ -187,8 +187,21 @@ export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): s
 }
 
 /**
- * Maps canonical houseguest ids to their full-body transparent cutout filename stems
- * located in `public/assets/formal_attires/`.
+ * Formal cutouts are stored in `public/assets/formal_attires/`.
+ * Some players have a non-.png source file in that folder, so we search the
+ * folder contents first before falling back to the historical stem map.
+ */
+const FORMAL_CUTOUT_MODULES = import.meta.glob(
+  '../../../public/assets/formal_attires/*.{png,jpg,jpeg,jxl,webp,avif,wp2}',
+  {
+    eager: true,
+    import: 'default',
+  },
+) as Record<string, string>;
+
+/**
+ * Maps canonical houseguest ids to their historical formal-cutout stems.
+ * These are used as a fallback if the folder scan does not find a direct match.
  */
 const FORMAL_CUTOUT_MAP: Record<string, string> = {
   ivy: 'Ivy_formal',
@@ -210,11 +223,53 @@ const FORMAL_CUTOUT_MAP: Record<string, string> = {
   zed: 'Zed_formal',
 };
 
+function normalizeNameToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function listFormalCutoutCandidates(): Array<{ basename: string; source: string }> {
+  return Object.entries(FORMAL_CUTOUT_MODULES).map(([path, source]) => {
+    const filename = path.split('/').pop() ?? path;
+    const basename = filename.replace(/\.[^.]+$/, '');
+    return { basename, source };
+  });
+}
+
+function resolveFormalCutoutFromFolder(player: Pick<Player, 'id' | 'name'>): string | null {
+  const hg = getById(player.id) ?? findByName(player.name);
+  if (!hg) return null;
+
+  const targetTokens = [hg.id, hg.name, player.id, player.name]
+    .filter(Boolean)
+    .map(normalizeNameToken);
+
+  const candidates = listFormalCutoutCandidates();
+
+  const exactMatch = candidates.find(({ basename }) => {
+    const token = normalizeNameToken(basename.replace(/_formal.*$/i, ''));
+    return targetTokens.includes(token);
+  });
+  if (exactMatch) return exactMatch.source;
+
+  const fuzzyMatch = candidates.find(({ basename }) => {
+    const token = normalizeNameToken(basename);
+    return targetTokens.some((target) => token.includes(target) || target.includes(token));
+  });
+  if (fuzzyMatch) return fuzzyMatch.source;
+
+  return null;
+}
+
 /**
  * Returns the URL for a housemate's full-body formal cutout from
  * `public/assets/formal_attires/`, or `null` when no cutout exists for this player.
  */
 export function resolveFormalCutout(player: Pick<Player, 'id' | 'name'>): string | null {
+  const folderMatch = resolveFormalCutoutFromFolder(player);
+  if (folderMatch) {
+    return folderMatch;
+  }
+
   const hg = getById(player.id) ?? findByName(player.name);
   if (!hg) return null;
   const stem = FORMAL_CUTOUT_MAP[hg.id];
