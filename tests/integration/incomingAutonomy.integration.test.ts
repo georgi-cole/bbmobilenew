@@ -213,7 +213,7 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       ],
       week: 3,
       relationships: {
-        ai1: { user: { affinity: 20, tags: [] } },
+        ai1: { user: { affinity: -50, tags: ['betrayal'] } },
       },
       phase: 'loh_results',
     });

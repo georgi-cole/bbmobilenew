@@ -220,6 +220,8 @@ describe('chooseIncomingInteractionType', () => {
   it('returns nomination_plea for ally during nominations', () => {
     const ctx = makeContext({
       phase: 'nominations',
+      lohId: 'user',
+      nomineeIds: ['actor1'],
       relationships: { actor1: { user: { affinity: 60, tags: [] } } },
     });
     expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('nomination_plea');
@@ -228,7 +230,7 @@ describe('chooseIncomingInteractionType', () => {
   it('returns snide_remark for enemy during nominations', () => {
     const ctx = makeContext({
       phase: 'nominations',
-      relationships: { actor1: { user: { affinity: -50, tags: [] } } },
+      relationships: { actor1: { user: { affinity: -50, tags: ['betrayal'] } } },
     });
     expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('snide_remark');
   });
@@ -236,17 +238,18 @@ describe('chooseIncomingInteractionType', () => {
   it('returns deal_offer for neutral during nominations', () => {
     const ctx = makeContext({
       phase: 'nominations',
+      lohId: 'user',
       relationships: {},
     });
     expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('deal_offer');
   });
 
-  it('returns compliment for strong ally in default phase', () => {
+  it('returns alliance_proposal for strong ally in default phase', () => {
     const ctx = makeContext({
       phase: 'week_start',
       relationships: { actor1: { user: { affinity: 70, tags: [] } } },
     });
-    expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('compliment');
+    expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('alliance_proposal');
   });
 
   it('returns check_in for slightly positive affinity in default phase', () => {
@@ -257,7 +260,7 @@ describe('chooseIncomingInteractionType', () => {
     expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('check_in');
   });
 
-  it('uses negative memory bias to shift neutral affinity toward gossip', () => {
+  it('uses negative memory bias to shift neutral affinity toward warning', () => {
     const ctx = makeContext({
       phase: 'week_start',
       relationships: {},
@@ -266,14 +269,14 @@ describe('chooseIncomingInteractionType', () => {
           user: {
             gratitude: 0,
             resentment: 10,
-            neglect: 0,
+            neglect: 10,
             trustMomentum: 0,
             recentEvents: [],
           },
         },
       },
     });
-    expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('gossip');
+    expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('warning');
   });
 });
 

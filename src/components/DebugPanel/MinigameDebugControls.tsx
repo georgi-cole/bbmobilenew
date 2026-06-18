@@ -1,5 +1,6 @@
 // MODULE: src/components/DebugPanel/MinigameDebugControls.tsx
-// Debug controls for the minigame pool. Shown only when ?debug=1 is in the URL.
+// Debug controls for the minigame pool. Shown only when debug access is granted
+// (debug=1, with qa=1 required on production hosts).
 // Allows force-selecting a game, setting seed, skipping rules, and fast-forwarding.
 
 import { useState } from 'react';

@@ -189,7 +189,7 @@ describe('Settings screen', () => {
     expect(screen.getByLabelText(/toggle public's favorite player vote/i)).toBeChecked();
     expect((screen.getByLabelText(/public's favorite award amount/i) as HTMLInputElement).value).toBe('25000');
     expect(screen.getByLabelText(/toggle spectator mode/i)).toBeChecked();
-    expect(screen.getByLabelText(/toggle jury house/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle tribunal house/i)).toBeChecked();
     expect((screen.getByLabelText(/cast size/i) as HTMLInputElement).value).toBe('16');
     expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe('unique');
   });

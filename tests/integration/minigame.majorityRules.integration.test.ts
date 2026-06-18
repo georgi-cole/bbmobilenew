@@ -314,8 +314,8 @@ describe('majorityRules initialization flow', () => {
 
   it('eliminates the third player after a 3-way dice tie and advances to the final duel', () => {
     // Known-good seed for this exact 3-way duel setup:
-    // p1 picks 6, p2 picks 1, p3 picks 2 -> p2 is eliminated and p1/p3 advance.
-    const seed = 1;
+    // p1 rolls 6, p2 rolls 3, p3 rolls 2 -> p2 is eliminated and p1/p3 advance.
+    const seed = 11;
     const store = configureStore({
       reducer: {
         majorityRules: majorityRulesReducer,

@@ -32,7 +32,7 @@ describe('DebugPanel forced shock controls', () => {
 
     render(
       <Provider store={store}>
-        <MemoryRouter initialEntries={['/game?debug=1']}>
+        <MemoryRouter initialEntries={['/game?debug=1&qa=1']}>
           <DebugPanel />
         </MemoryRouter>
       </Provider>,
