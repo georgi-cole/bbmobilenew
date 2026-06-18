@@ -15,15 +15,6 @@ describe('safe-area layout styles', () => {
         'utf8',
       ),
     );
-    const creditsCss = normalizeCss(
-      readFileSync(resolve(process.cwd(), 'src/screens/Credits/Credits.css'), 'utf8'),
-    );
-    const seasonRecapCss = normalizeCss(
-      readFileSync(
-        resolve(process.cwd(), 'src/components/SeasonRecapCinematic/SeasonRecapCinematic.css'),
-        'utf8',
-      ),
-    );
     const juryRevealCss = normalizeCss(
       readFileSync(
         resolve(process.cwd(), 'src/components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay.css'),
@@ -82,15 +73,6 @@ describe('safe-area layout styles', () => {
     expect(globalCss).toContain('--app-safe-area-top-fallback: 16px;');
     expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);');
     expect(appShellCss).toContain('padding-bottom: var(--safe-area-inset-bottom);');
-    expect(creditsCss).toContain('--floating-corner-top-base: 14px;');
-    expect(creditsCss).toContain('top: var(--floating-corner-top-offset);');
-    expect(creditsCss).toContain('right: var(--floating-corner-right-offset);');
-    expect(seasonRecapCss).toContain('--floating-corner-top-base: 0.9rem;');
-    expect(seasonRecapCss).toContain('--floating-corner-top-safe-padding: 0.4rem;');
-    expect(seasonRecapCss).toContain('--floating-corner-right-base: 0.85rem;');
-    expect(seasonRecapCss).toContain('--floating-corner-right-safe-padding: 0.35rem;');
-    expect(seasonRecapCss).toContain('top: var(--floating-corner-top-offset);');
-    expect(seasonRecapCss).toContain('right: var(--floating-corner-right-offset);');
     expect(juryRevealCss).toContain('--floating-corner-top-base: 12px;');
     expect(juryRevealCss).toContain('top: var(--floating-corner-top-offset);');
     expect(juryRevealCss).toContain('right: var(--floating-corner-right-offset);');

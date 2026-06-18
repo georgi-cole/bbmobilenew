@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { mulberry32 } from '../../store/rng';
 import { getAllGames } from '../../minigames/registry';
 import type { GameRegistryEntry, GameCategory, ScoringAdapterName } from '../../minigames/registry';
@@ -19,6 +19,7 @@ import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
 import MinigameHost from '../../components/MinigameHost/MinigameHost';
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
+import { detectDebugMode } from '../../utils/debugMode';
 import './GameDebug.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -119,6 +120,8 @@ function runDebugSimulation(
 
 export default function GameDebug() {
   const navigate = useNavigate();
+  const isDebug = detectDebugMode();
+
 
   // ── Game list & filters ──────────────────────────────────────────────────
   const baseGames = useMemo(() => getAllGames(), []);
@@ -273,6 +276,10 @@ export default function GameDebug() {
   }, []);
 
   // ─── Render ───────────────────────────────────────────────────────────────
+
+  if (!isDebug) {
+    return <Navigate to="/game" replace />;
+  }
 
   return (
     <div className="gd-screen">

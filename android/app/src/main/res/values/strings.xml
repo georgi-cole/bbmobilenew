@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">The Big Eye</string>
+    <string name="title_activity_main">The Big Eye</string>
+    <string name="package_name">com.bbmobilenew.app</string>
+    <string name="custom_url_scheme">com.bbmobilenew.app</string>
+</resources>

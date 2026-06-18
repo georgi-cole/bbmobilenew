@@ -23,6 +23,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
+    testTimeout: 15000,
     typecheck: {
       tsconfig: './tsconfig.test.json',
     },

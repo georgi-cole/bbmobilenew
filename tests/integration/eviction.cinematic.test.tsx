@@ -26,6 +26,13 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 let lastSpectatorOnDone: (() => void) | null = null;
 let mockBattleBackWinnerId: string | undefined = 'p2';
 let spectatorRenderedWinnerIds: Array<string | undefined> = [];
+type CapitalizationFinish = (
+  value: number,
+  tiebreakerMs?: number,
+  completion?: { authoritativeWinnerId?: string | null },
+) => void;
+let lastCapitalizationOnFinish: CapitalizationFinish | null = null;
+let capitalizationRenderedParticipantIds: string[][] = [];
 const getMockBattleBackWinnerId = () => mockBattleBackWinnerId;
 
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
@@ -47,6 +54,20 @@ vi.mock('../../src/components/ui/SpectatorView', () => ({
     lastSpectatorOnDone = onDone ?? null;
     spectatorRenderedWinnerIds.push(expectedWinnerId);
     return <div data-testid="spectator-view" />;
+  },
+}));
+
+vi.mock('../../src/components/Capitalization/Capitalization', () => ({
+  default: ({
+    onFinish,
+    participantIds,
+  }: {
+    onFinish?: CapitalizationFinish;
+    participantIds?: string[];
+  }) => {
+    lastCapitalizationOnFinish = onFinish ?? null;
+    capitalizationRenderedParticipantIds.push(participantIds ?? []);
+    return <div data-testid="battle-back-minigame" />;
   },
 }));
 
@@ -419,8 +440,10 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
 describe('GameScreen – Battle Back completion guards', () => {
   beforeEach(() => {
     lastSpectatorOnDone = null;
+    lastCapitalizationOnFinish = null;
     mockBattleBackWinnerId = 'p2';
     spectatorRenderedWinnerIds = [];
+    capitalizationRenderedParticipantIds = [];
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       x: 0, y: 0, width: 60, height: 80,
       top: 0, left: 0, bottom: 80, right: 60,
@@ -537,21 +560,24 @@ describe('GameScreen – Battle Back completion guards', () => {
     );
     await act(async () => {});
 
-    expect(spectatorRenderedWinnerIds.at(-1)).toBe('p1');
+    expect(screen.getByTestId('battle-back-minigame')).toBeTruthy();
+    expect(capitalizationRenderedParticipantIds.at(-1)).toEqual(['p0', 'p1', 'p2']);
 
-    await act(async () => { lastSpectatorOnDone?.(); });
+    await act(async () => {
+      lastCapitalizationOnFinish?.(0, undefined, { authoritativeWinnerId: 'p1' });
+    });
 
     expect(screen.getByRole('dialog', { name: /second chance/i })).toBeTruthy();
 
-    mockBattleBackWinnerId = 'p0';
     await act(async () => {
       screen.getByRole('button', { name: /watch ad to replay back 2 the game/i }).click();
     });
 
     expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
-    expect(spectatorRenderedWinnerIds.at(-1)).toBe('p0');
 
-    await act(async () => { lastSpectatorOnDone?.(); });
+    await act(async () => {
+      lastCapitalizationOnFinish?.(0, undefined, { authoritativeWinnerId: 'p0' });
+    });
 
     expect(store.getState().game.battleBack?.winnerId).toBe('p0');
     expect(store.getState().game.players.find((player) => player.id === 'p0')?.status).toBe('active');
@@ -587,7 +613,9 @@ describe('GameScreen – Battle Back completion guards', () => {
     await act(async () => {});
 
     for (let retry = 0; retry < 3; retry += 1) {
-      await act(async () => { lastSpectatorOnDone?.(); });
+      await act(async () => {
+        lastCapitalizationOnFinish?.(0, undefined, { authoritativeWinnerId: 'p1' });
+      });
       expect(screen.getByRole('dialog', { name: /second chance/i })).toBeTruthy();
       await act(async () => {
         screen.getByRole('button', { name: /watch ad to replay back 2 the game/i }).click();
@@ -595,7 +623,9 @@ describe('GameScreen – Battle Back completion guards', () => {
       expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
     }
 
-    await act(async () => { lastSpectatorOnDone?.(); });
+    await act(async () => {
+      lastCapitalizationOnFinish?.(0, undefined, { authoritativeWinnerId: 'p1' });
+    });
 
     expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
     expect(store.getState().game.battleBack?.winnerId).toBe('p1');

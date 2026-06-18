@@ -31,6 +31,7 @@ import { INCOMING_INTERACTION_PHASE_ORDER } from '../../social/incomingInteracti
 import { socialConfig } from '../../social/socialConfig';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
+import { isDebugAccessGranted } from '../../utils/debugMode';
 import type { ForcedShockType, Phase } from '../../types';
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
 import './DebugPanel.css';
@@ -151,13 +152,14 @@ function buildScheduledInteraction(
 
 export default function DebugPanel() {
   const [searchParams] = useSearchParams();
-  const isDebug = searchParams.get('debug') === '1';
+  const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true;
+  const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname);
 
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
   const incomingLogs = useAppSelector(selectIncomingInteractionLogs);
 
-  const [isOpen, setIsOpen] = useState(() => searchParams.get('debug') === '1');
+  const [isOpen, setIsOpen] = useState(() => isDebug);
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
   const [selectedHoH, setSelectedHoH] = useState('');
   const [nominee1, setNominee1] = useState('');

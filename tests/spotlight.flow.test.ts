@@ -14,7 +14,13 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer, { commitNominees, setReplacementNominee, advance, submitPovSaveTarget } from '../src/store/gameSlice';
+import gameReducer, {
+  aiReplacementRendered,
+  commitNominees,
+  setReplacementNominee,
+  advance,
+  submitPovSaveTarget,
+} from '../src/store/gameSlice';
 import type { GameState, Player } from '../src/types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -260,12 +266,25 @@ describe('spotlight flow — AI LOH replacement keeps povSavedId for animation d
     // AI LOH picks replacement.
     store.dispatch(advance());
 
-    const state = store.getState().game;
+    let state = store.getState().game;
     expect(state.phase).toBe('pos_ceremony_results');
     // p3 auto-saved themselves, so they should NOT be in nomineeIds.
     expect(state.nomineeIds).not.toContain('p3');
-    // A replacement should have been picked.
+    expect(state.nomineeIds).toHaveLength(1);
+    expect(state.aiReplacementStep).toBe(1);
+    expect(state.povSavedId).toBe('p3');
+
+    store.dispatch(advance());
+    state = store.getState().game;
+    expect(state.aiReplacementStep).toBe(2);
+
+    store.dispatch(aiReplacementRendered());
+    store.dispatch(advance());
+
+    state = store.getState().game;
+    // A replacement should have been picked after the staged AI LOH ceremony.
     expect(state.nomineeIds).toHaveLength(2);
+    expect(state.nomineeIds).not.toContain('p3');
 
     // CRITICAL: povSavedId should still be set for animation detection.
     expect(state.povSavedId).toBe('p3');

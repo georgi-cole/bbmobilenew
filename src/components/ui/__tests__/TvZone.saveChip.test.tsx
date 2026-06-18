@@ -37,7 +37,7 @@ describe('TvZone save chip', () => {
     const saveChip = screen.getByRole('button', { name: /no active profile selected/i });
     expect(saveChip).toBeDefined();
     expect((saveChip as HTMLButtonElement).disabled).toBe(true);
-    expect(saveChip.textContent).toContain('💾');
+    expect(saveChip.querySelector('img[aria-hidden="true"]')).toBeTruthy();
     expect(saveChip.textContent).not.toContain('Save');
     expect(screen.queryByRole('button', { name: /open diary room/i })).toBeNull();
   });
