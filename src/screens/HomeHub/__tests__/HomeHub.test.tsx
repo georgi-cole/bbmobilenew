@@ -223,6 +223,35 @@ describe('HomeHub', () => {
     });
   });
 
+  it('shows the hub loading overlay until the full hub bundle is ready', async () => {
+    const pendingResolvers: Array<() => void> = [];
+    preloadImageMock.mockImplementation(() => new Promise<void>((resolve) => {
+      pendingResolvers.push(resolve);
+    }));
+
+    const view = renderHomeHub();
+
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
+
+    expect(screen.getByRole('status', { name: /Loading intro hub\.\.\./ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
+
+    while (pendingResolvers.length > 0) {
+      pendingResolvers.splice(0).forEach((resolve) => resolve());
+      await Promise.resolve();
+    }
+    view.rerender(
+      <MemoryRouter>
+        <HomeHub />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+  });
+
   it('auto-starts the game preloader when returning from Game Over with autoStartGame state', async () => {
     renderHomeHub({ pathname: '/', state: { autoStartGame: true } });
 
