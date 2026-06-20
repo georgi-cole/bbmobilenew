@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import './Rules.css';
 
 /**
- * Rules — game rules screen.
+ * Rules - game rules screen.
  */
 export default function Rules() {
   const navigate = useNavigate();
@@ -12,24 +12,40 @@ export default function Rules() {
       <div className="rules-screen__hero">
         <div className="rules-screen__logo">BE</div>
         <h1 className="rules-screen__title">How to Play</h1>
-        <p className="rules-screen__subtitle">The Big Eye — Always Watching</p>
+        <p className="rules-screen__subtitle">The Big Eye - Always Watching</p>
+        <p className="rules-screen__note">
+          A quick guide to the round flow, the important choices, and the twists that can change a
+          week.
+        </p>
       </div>
 
       <div className="rules-screen__body">
+        <div className="rules-section">
+          <div className="rules-section__header">
+            <span className="rules-section__icon">🎯</span>
+            <h2 className="rules-section__title">Your Goal</h2>
+          </div>
+          <p>
+            You play one contestant. Stay in the game, keep your relationships working for you,
+            and make it to the final vote.
+          </p>
+          <ul className="rules-list">
+            <li>Stay off the block when you can.</li>
+            <li>Win the key rounds that matter.</li>
+            <li>Reach the end and earn the final panel's vote.</li>
+          </ul>
+        </div>
 
-        {/* ── Section 1: Daily Cycle ── */}
         <div className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon">🔄</span>
-            <h2 className="rules-section__title">The Daily Cycle</h2>
+            <h2 className="rules-section__title">Round Flow</h2>
           </div>
-          <p>
-            Each day follows the same rhythm — compete, nominate, compete again, then vote:
-          </p>
+          <p>Most rounds follow the same order - compete, nominate, protect, then vote.</p>
           <div className="rules-cycle">
             <div className="rules-cycle__step">
               <span className="rules-cycle__badge rules-cycle__badge--loh">LOH</span>
-              <span className="rules-cycle__label">Leader of the House Competition</span>
+              <span className="rules-cycle__label">Leader of the House</span>
             </div>
             <span className="rules-cycle__arrow">→</span>
             <div className="rules-cycle__step">
@@ -44,138 +60,95 @@ export default function Rules() {
             <span className="rules-cycle__arrow">→</span>
             <div className="rules-cycle__step">
               <span className="rules-cycle__badge rules-cycle__badge--elim">VOTE</span>
-              <span className="rules-cycle__label">House Vote &amp; Elimination</span>
+              <span className="rules-cycle__label">Live vote</span>
             </div>
           </div>
           <p className="rules-screen__note">
-            The system handles competitions and votes — social dynamics shape the outcomes.
+            Watch the TV feed between steps. It tells you when something changes.
           </p>
         </div>
 
-        {/* ── Section 2: Competitions ── */}
-        <div className="rules-section">
-          <div className="rules-section__header">
-            <span className="rules-section__icon">🏆</span>
-            <h2 className="rules-section__title">Competitions</h2>
-          </div>
-          <ul className="rules-list">
-            <li>
-              <strong>Leader of the House (LOH):</strong> Win to gain control — nominate two players for elimination. Power protects you, but it can also make you a target.
-            </li>
-            <li>
-              <strong>Power of Safety (POS):</strong> Six players compete. The winner can save a nominee, forcing the LOH to name a backup nominee — or keep nominations unchanged.
-            </li>
-            <li>
-              Scores are influenced by luck, player traits, and sometimes Shocks.
-            </li>
-          </ul>
-        </div>
-
-        {/* ── Section 3: Public Meter ── */}
-        <div className="rules-section rules-section--highlight">
-          <div className="rules-section__header">
-            <span className="rules-section__icon">📊</span>
-            <h2 className="rules-section__title">The Public Meter</h2>
-            <span className="rules-section__tag">Big Eye Feature</span>
-          </div>
-          <p>
-            The Public is always watching. Every player has a <strong>Public Approval rating</strong> (0–100) that rises and falls based on their actions in the house.
-          </p>
-          <div className="rules-approval-bands">
-            <div className="rules-approval-band rules-approval-band--hated">0–19 · Hated</div>
-            <div className="rules-approval-band rules-approval-band--disliked">20–39 · Disliked</div>
-            <div className="rules-approval-band rules-approval-band--mixed">40–59 · Mixed</div>
-            <div className="rules-approval-band rules-approval-band--liked">60–79 · Liked</div>
-            <div className="rules-approval-band rules-approval-band--beloved">80–100 · Beloved</div>
-          </div>
-          <ul className="rules-list">
-            <li><strong>Winning competitions</strong> boosts your approval.</li>
-            <li><strong>Being nominated</strong> lowers it.</li>
-            <li><strong>Social interactions</strong> — positive or negative — move the dial.</li>
-            <li>
-              <strong>Public Save (when enabled):</strong> Before the Power of Safety competition, the Public automatically saves the most-approved nominee, leaving two players nominated. The saved player is immune for that day.
-            </li>
-            <li>
-              <strong>Finale:</strong> If the Tribunal vote is tied, the player with the higher Public approval wins the game.
-            </li>
-          </ul>
-        </div>
-
-        {/* ── Section 4: Social Interactions ── */}
-        <div className="rules-section">
-          <div className="rules-section__header">
-            <span className="rules-section__icon">🤝</span>
-            <h2 className="rules-section__title">Social Interactions</h2>
-          </div>
-          <ul className="rules-list">
-            <li>Housemates form friendships, rivalries, and alliances that shift day to day.</li>
-            <li>Votes reflect these relationships — they are not random.</li>
-            <li>Even a weak competitor can survive through strong social bonds.</li>
-            <li>Your social energy is limited each day — spend it wisely.</li>
-          </ul>
-        </div>
-
-        {/* ── Section 5: Elimination & Tribunal ── */}
-        <div className="rules-section">
-          <div className="rules-section__header">
-            <span className="rules-section__icon">🚪</span>
-            <h2 className="rules-section__title">Elimination &amp; The Tribunal</h2>
-          </div>
-          <ul className="rules-list">
-            <li>Each day, the house votes to eliminate one of the nominees.</li>
-            <li>
-              Once the <strong>Tribunal phase</strong> begins, eliminated players join the Tribunal panel instead of going home for good.
-            </li>
-            <li>Tribunal judges vote for the winner at the finale — your actions before elimination matter.</li>
-          </ul>
-        </div>
-
-        {/* ── Section 6: Final Day ── */}
         <div className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon">👑</span>
-            <h2 className="rules-section__title">Final Day — Three-Part Competition</h2>
-          </div>
-          <p>When only three players remain, the endgame begins:</p>
-          <div className="rules-final-parts">
-            <div className="rules-final-part">
-              <span className="rules-final-part__num">P1</span>
-              <p>All three compete. Top scorer advances to Part 3.</p>
-            </div>
-            <div className="rules-final-part">
-              <span className="rules-final-part__num">P2</span>
-              <p>The remaining two face off. Winner advances to Part 3.</p>
-            </div>
-            <div className="rules-final-part">
-              <span className="rules-final-part__num">P3</span>
-              <p>P1 &amp; P2 winners compete. The winner becomes the <strong>Final LOH</strong> and chooses who to eliminate.</p>
-            </div>
-          </div>
-          <p className="rules-screen__note">The eliminated player joins the Tribunal. The Final 2 await the Tribunal&apos;s vote.</p>
-        </div>
-
-        {/* ── Section 7: Shocks ── */}
-        <div className="rules-section">
-          <div className="rules-section__header">
-            <span className="rules-section__icon">⚡</span>
-            <h2 className="rules-section__title">Shocks &amp; Surprises</h2>
-          </div>
-          <p>Expect Shocks that can change the course of the game — double eliminations, special powers, and more. Eliminated? Some Shocks can bring players back.</p>
-        </div>
-
-        {/* ── Section 8: Progress ── */}
-        <div className="rules-section">
-          <div className="rules-section__header">
-            <span className="rules-section__icon">📈</span>
-            <h2 className="rules-section__title">Progress &amp; Settings</h2>
+            <h2 className="rules-section__title">Control and Safety</h2>
           </div>
           <ul className="rules-list">
-            <li>Finishing a game adds to your scoreboard. Higher scores unlock new levels and extra Shocks.</li>
-            <li>Customize the cast and adjust settings — competition randomness, difficulty, and enabled Shocks — before starting.</li>
-            <li>Once the game starts, sit back and watch the story unfold.</li>
+            <li>
+              <strong>Leader of the House:</strong> The LOH wins the round and controls the
+              nominations. On a normal round, the LOH names two players.
+            </li>
+            <li>
+              <strong>Power of Safety:</strong> The winner can save a nominee. If the winner is on
+              the block, they have to use it on themselves. If they are safe, they can choose
+              whether to use it.
+            </li>
+            <li>
+              <strong>Replacement nominee:</strong> When a save happens, the LOH names a backup
+              nominee if the round needs one.
+            </li>
+            <li>
+              <strong>Public-influence seasons:</strong> Some seasons add a public save before the
+              safety round, which can change the nominee count.
+            </li>
           </ul>
         </div>
 
+        <div className="rules-section rules-section--highlight">
+          <div className="rules-section__header">
+            <span className="rules-section__icon">🤝</span>
+            <h2 className="rules-section__title">Read the Room</h2>
+          </div>
+          <p>
+            This is a social game first. Alliances, promises, and rivalries matter just as much as
+            competition wins.
+          </p>
+          <ul className="rules-list">
+            <li>Talk to people often and keep your options open.</li>
+            <li>The private room is where messages, missions, and special prompts show up.</li>
+            <li>Public approval can help in seasons with public influence and can break the final tie.</li>
+          </ul>
+        </div>
+
+        <div className="rules-section">
+          <div className="rules-section__header">
+            <span className="rules-section__icon">🚪</span>
+            <h2 className="rules-section__title">Voting and Elimination</h2>
+          </div>
+          <ul className="rules-list">
+            <li>Nominees fight to stay in the game at the live vote.</li>
+            <li>When the vote is tied, the LOH usually breaks it.</li>
+            <li>Players who leave usually join the final panel, which votes for the winner at the end.</li>
+          </ul>
+        </div>
+
+        <div className="rules-section">
+          <div className="rules-section__header">
+            <span className="rules-section__icon">⚡</span>
+            <h2 className="rules-section__title">Special Events</h2>
+          </div>
+          <ul className="rules-list">
+            <li>Democracia can replace the normal LOH competition with a group vote.</li>
+            <li>Double Eviction can remove two players in one week.</li>
+            <li>Battle Back can bring a recent elimination back into play.</li>
+            <li>Secret missions can reward powers like Double Vote or Vote Deduction.</li>
+          </ul>
+          <p className="rules-screen__note">
+            When a twist appears, the TV feed and on-screen prompts tell you what to do next.
+          </p>
+        </div>
+
+        <div className="rules-section">
+          <div className="rules-section__header">
+            <span className="rules-section__icon">👑</span>
+            <h2 className="rules-section__title">Finale</h2>
+          </div>
+          <ul className="rules-list">
+            <li>Final 4: the safety winner makes the last eviction choice.</li>
+            <li>Final 3: three parts decide the Final LOH and the last eviction.</li>
+            <li>Final 2: the final panel votes for the winner.</li>
+          </ul>
+        </div>
       </div>
 
       <button
