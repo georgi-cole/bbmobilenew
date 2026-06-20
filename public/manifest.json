@@ -1,7 +1,7 @@
 {
   "name": "The Big Eye",
   "short_name": "The Big Eye",
-  "description": "Big Brother mobile companion app",
+  "description": "The Big Eye mobile companion app",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
@@ -9,7 +9,7 @@
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }
