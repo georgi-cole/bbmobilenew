@@ -10,9 +10,9 @@ export default function Rules() {
   return (
     <div className="placeholder-screen rules-screen">
       <div className="rules-screen__hero">
-        <div className="rules-screen__logo">EW</div>
+        <div className="rules-screen__logo">BE</div>
         <h1 className="rules-screen__title">How to Play</h1>
-        <p className="rules-screen__subtitle">EverWatch — Always Watching</p>
+        <p className="rules-screen__subtitle">The Big Eye — Always Watching</p>
       </div>
 
       <div className="rules-screen__body">
@@ -76,7 +76,7 @@ export default function Rules() {
           <div className="rules-section__header">
             <span className="rules-section__icon">📊</span>
             <h2 className="rules-section__title">The Public Meter</h2>
-            <span className="rules-section__tag">EverWatch Feature</span>
+            <span className="rules-section__tag">Big Eye Feature</span>
           </div>
           <p>
             The Public is always watching. Every player has a <strong>Public Approval rating</strong> (0–100) that rises and falls based on their actions in the house.

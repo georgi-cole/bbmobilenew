@@ -321,8 +321,20 @@ export function createInitialGameState(): GameState {
     players: freshPlayers,
     competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
     tvFeed: [
-      { id: 'e0', text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`, type: 'game', timestamp: Date.now() },
-      { id: 'e1', text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`, type: 'game', timestamp: Date.now() },
+      {
+        id: 'e0',
+        text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`,
+        type: 'game',
+        timestamp: Date.now(),
+        meta: { phase: 'week_start', week: 1 },
+      },
+      {
+        id: 'e1',
+        text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`,
+        type: 'game',
+        timestamp: Date.now(),
+        meta: { phase: 'week_start', week: 1 },
+      },
     ],
     isLive: false,
     hasSeenConfessionalSpotlight: false,
@@ -369,6 +381,17 @@ const initialState: GameState = createInitialGameState();
 /** Monotonic counter to guarantee unique event IDs within the same millisecond. */
 let _pushEventCounter = 0;
 
+function buildTvMeta(
+  state: Pick<GameState, 'phase' | 'week'>,
+  meta?: TvEvent['meta'],
+): NonNullable<TvEvent['meta']> {
+  return {
+    phase: state.phase,
+    week: state.week,
+    ...(meta ?? {}),
+  };
+}
+
 function pushEvent(
   state: GameState,
   text: string,
@@ -381,7 +404,7 @@ function pushEvent(
     text,
     type,
     timestamp: ts,
-    ...(meta ? { meta } : {}),
+    meta: buildTvMeta(state, meta),
   };
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
@@ -936,6 +959,7 @@ const gameSlice = createSlice({
         ...action.payload,
         id: crypto.randomUUID(),
         timestamp: Date.now(),
+        meta: buildTvMeta(state, action.payload.meta),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -952,6 +976,7 @@ const gameSlice = createSlice({
         timestamp: now,
         channels: ['dr'],
         source: 'manual',
+        meta: buildTvMeta(state, { week: action.payload.week }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -1925,6 +1950,7 @@ const gameSlice = createSlice({
         text: `🗳️ DEMOCRACIA! Today, instead of a Leader of the House competition, the house will elect its leader by popular vote!`,
         type: 'twist',
         major: 'democracia',
+        meta: buildTvMeta(state, { major: 'democracia' }),
         timestamp: ts,
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
@@ -2267,6 +2293,7 @@ const gameSlice = createSlice({
         type: 'twist' as const,
         timestamp: ts,
         major: 'battle_back',
+        meta: buildTvMeta(state, { major: 'battle_back' }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -2361,6 +2388,7 @@ const gameSlice = createSlice({
         type: 'twist',
         timestamp: ts,
         major: 'double_eviction',
+        meta: buildTvMeta(state, { major: 'double_eviction' }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -2410,7 +2438,7 @@ const gameSlice = createSlice({
         text: typeLabels[type],
         type: 'twist',
         major: majorKeys[type],
-        meta: { major: majorKeys[type], week },
+        meta: buildTvMeta(state, { major: majorKeys[type] }),
         timestamp: ts,
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
@@ -2622,6 +2650,7 @@ const gameSlice = createSlice({
         type: 'twist' as const,
         timestamp: ts,
         major: 'twist',
+        meta: buildTvMeta(state, { major: 'twist' }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
       // Append a start event to game history
@@ -3014,12 +3043,14 @@ const gameSlice = createSlice({
           text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`,
           type: 'game' as const,
           timestamp: Date.now(),
+          meta: { phase: fresh.phase, week: fresh.week },
         },
         {
           id: 'e1',
           text: `[Rules] Public mode: ${fresh.publicModeEnabled === true ? 'ON' : 'OFF'}`,
           type: 'game' as const,
           timestamp: Date.now(),
+          meta: { phase: fresh.phase, week: fresh.week },
         },
       ];
       return fresh;

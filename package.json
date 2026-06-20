@@ -21,6 +21,7 @@
     "cap:open:ios": "npx cap open ios",
     "lint": "eslint .",
     "lint:ci": "eslint . --max-warnings=0",
+    "audit:release": "vitest run tests/release-readiness.audit.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b",
