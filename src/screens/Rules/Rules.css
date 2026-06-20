@@ -1,6 +1,6 @@
-/* ═══════════════════════════════════════════════════════════════
-   Rules Screen — The Big Eye
-   ═══════════════════════════════════════════════════════════════ */
+/* -------------------------------------------------------------------------
+   Rules Screen - The Big Eye
+   ------------------------------------------------------------------------- */
 
 .rules-screen {
   max-width: 680px;
@@ -48,6 +48,15 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin: 0;
+}
+
+.rules-screen__hero .rules-screen__note {
+  width: min(100%, 36rem);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  text-align: center;
+  font-style: normal;
 }
 
 /* ── Body ── */
