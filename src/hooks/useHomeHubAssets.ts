@@ -26,15 +26,12 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
 
   const assetUrls = useMemo(() => getHomeHubAssetUrls(effectiveBgUrl), [effectiveBgUrl]);
   const [imagesLoaded, setImagesLoaded] = useState(0);
-  const [imagesReady, setImagesReady] = useState(assetUrls.length === 0);
+  const [imagesReady, setImagesReady] = useState(() => assetUrls.length === 0);
   const [fontsReady, setFontsReady] = useState(() => !hasFontFaceSet());
   const [runtimeReady, setRuntimeReady] = useState(() => hasIntroHubChips());
 
   useEffect(() => {
     let cancelled = false;
-
-    setImagesLoaded(0);
-    setImagesReady(assetUrls.length === 0);
 
     if (assetUrls.length === 0) {
       return () => {
@@ -74,12 +71,10 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
 
   useEffect(() => {
     if (!hasFontFaceSet()) {
-      setFontsReady(true);
       return;
     }
 
     let cancelled = false;
-    setFontsReady(false);
 
     document.fonts.ready
       .then(() => {
@@ -108,20 +103,21 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
       return;
     }
 
+    let cancelled = false;
     const syncRuntime = () => {
-      if (container.querySelector('.hub-chip')) {
+      if (!cancelled && container.querySelector('.hub-chip')) {
         setRuntimeReady(true);
       }
     };
 
-    syncRuntime();
-    if (hasIntroHubChips()) {
-      return;
-    }
+    Promise.resolve().then(syncRuntime);
 
     const observer = new MutationObserver(syncRuntime);
     observer.observe(container, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
   }, [runtimeReady]);
 
   const totalSteps = assetUrls.length + 2;
