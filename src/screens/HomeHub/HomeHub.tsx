@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
@@ -17,13 +17,13 @@ import {
 } from '../../store/saveStatePersistence';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
-import useLoadIntroHub from '../../hooks/useLoadIntroHub';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
+import HubLoadingOverlay from '../../components/HubLoadingOverlay/HubLoadingOverlay';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
 import { SoundManager } from '../../services/sound/SoundManager';
-import { preloadImage } from '../../utils/preload';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
+import useHomeHubAssets from '../../hooks/useHomeHubAssets';
 import {
   hasSeenHomeHubSplashForGame,
   markHomeHubSplashSeenForGame,
@@ -43,10 +43,11 @@ import './HomeHub.css';
  *
  * Load ordering:
  *   1. KolequantSplash shown — logo only, no dialogs, hub preloads in background.
- *   2. Splash fades out after ~1.2s animation completes automatically.
- *   3. IMPORTANT — background loaded first: hub background is preloaded during
- *      the splash so buttons never appear over an empty background.
- *   4. After splash exits, PermissionPrompts appear over the hub (location only).
+ *   2. Hub assets preload during the splash: background, buttons, fonts, and
+ *      the intro-hub runtime are all loaded before the screen is revealed.
+ *   3. If the splash finishes first, a loading overlay stays up until the full
+ *      hub bundle is ready so the UI never appears half-built.
+ *   4. After the hub is ready, PermissionPrompts appear over the hub (location only).
  *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
@@ -90,20 +91,15 @@ export default function HomeHub() {
   // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = remoteBgUrl ?? bgUrl;
   const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
-  // Track whether the hub background has loaded so buttons are never shown
-  // on an empty background (background-first ordering).
-  const [loadedBgUrl, setLoadedBgUrl] = useState<string | null>(null);
-  const bgLoaded = effectiveBgUrl != null && loadedBgUrl === effectiveBgUrl;
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
-  const preloadedBgUrlRef = useRef<string | null>(null);
   // Resume-season prompt state for the Play flow.
   const [showResumePrompt, setShowResumePrompt] = useState(false);
 
-  // Load the intro hub overlay assets only while HomeHub is mounted.
-  useLoadIntroHub();
+  const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
+    useHomeHubAssets(effectiveBgUrl);
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
@@ -127,24 +123,6 @@ export default function HomeHub() {
     // doesn't auto-start another season from the same history entry.
     navigate('/', { replace: true });
   }, [autoStartGame, navigate]);
-
-  // Preload background as soon as its URL resolves, so it is ready before
-  // the splash dismisses and buttons become visible.
-  useEffect(() => {
-    if (!effectiveBgUrl || preloadedBgUrlRef.current === effectiveBgUrl) return;
-
-    let cancelled = false;
-    preloadedBgUrlRef.current = effectiveBgUrl;
-
-    preloadImage(effectiveBgUrl).then(() => {
-      if (cancelled || preloadedBgUrlRef.current !== effectiveBgUrl) return;
-      setLoadedBgUrl(effectiveBgUrl);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [effectiveBgUrl]);
 
   const handlePlay = () => {
     // Unlock audio in the gesture context.  We intentionally do NOT follow up
@@ -217,8 +195,13 @@ export default function HomeHub() {
 
       {/* Permission prompts shown after splash exits, over the hub.
           Sound prompt disabled — audio is unlocked when the player explicitly starts the game. */}
-      {splashDone && (
+      {splashDone && homeHubReady && (
         <PermissionPrompts showSoundPrompt={false} />
+      )}
+
+      {/* Hub loading overlay — shown if the splash finishes before all hub assets are ready. */}
+      {splashDone && !homeHubReady && (
+        <HubLoadingOverlay progress={homeHubLoadProgress} status={homeHubLoadStatus} />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
@@ -253,15 +236,14 @@ export default function HomeHub() {
             />
           )}
 
-          {/* Foreground content — buttons hidden until background has loaded
-              to avoid showing the UI over an empty/transparent background. */}
+          {/* Foreground content — hidden until the full hub asset bundle is ready. */}
           <div className="homehub-content home-hub">
             {/* Hero / icon area (no branding text — logo is shown in the splash) */}
             <div className="home-hub__hero" aria-hidden="true" />
 
-            {/* Button stack: only rendered once background is ready AND splash has dismissed,
-                to prevent accidental clicks through the pointer-events: none splash overlay. */}
-            {splashDone && bgLoaded && (
+            {/* Button stack: only rendered once the splash has dismissed and the
+                full hub bundle is ready. */}
+            {splashDone && homeHubReady && (
               <nav className="home-hub__buttons" aria-label="Main menu">
                 {HUB_BUTTONS.map(({ to, label, icon, variant }) => (
                   <GameButton
