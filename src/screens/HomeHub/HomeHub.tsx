@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
 import { hydrateFinale } from '../../store/finaleSlice';
@@ -58,57 +58,6 @@ const HUB_BUTTONS = [
   { to: '/credits',      label: 'Credits',     icon: '🎬', variant: 'secondary_small'  },
 ] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
 
-interface HomeHubAssetLayerProps {
-  splashDone: boolean;
-  effectiveBgUrl: string | null;
-  onPlay: () => void;
-  onNavigate: NavigateFunction;
-}
-
-function HomeHubAssetLayer({
-  splashDone,
-  effectiveBgUrl,
-  onPlay,
-  onNavigate,
-}: HomeHubAssetLayerProps) {
-  const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
-    useHomeHubAssets(effectiveBgUrl);
-
-  return (
-    <>
-      {splashDone && homeHubReady && (
-        <PermissionPrompts showSoundPrompt={false} />
-      )}
-
-      {splashDone && !homeHubReady && (
-        <HubLoadingOverlay progress={homeHubLoadProgress} status={homeHubLoadStatus} />
-      )}
-
-      {/* Foreground content — hidden until the full hub asset bundle is ready. */}
-      <div className="homehub-content home-hub">
-        {/* Hero / icon area (no branding text — logo is shown in the splash) */}
-        <div className="home-hub__hero" aria-hidden="true" />
-
-        {/* Button stack: only rendered once the splash has dismissed and the
-            full hub bundle is ready. */}
-        {splashDone && homeHubReady && (
-          <nav className="home-hub__buttons" aria-label="Main menu">
-            {HUB_BUTTONS.map(({ to, label, icon, variant }) => (
-              <GameButton
-                key={to}
-                label={label}
-                icon={icon}
-                variant={variant}
-                onClick={to === '/game' ? onPlay : () => onNavigate(to)}
-              />
-            ))}
-          </nav>
-        )}
-      </div>
-    </>
-  );
-}
-
 export default function HomeHub() {
   const location = useLocation();
   const autoStartGame = (location.state as { autoStartGame?: boolean } | null)?.autoStartGame === true;
@@ -148,6 +97,9 @@ export default function HomeHub() {
   const [preloading, setPreloading] = useState(autoStartGame);
   // Resume-season prompt state for the Play flow.
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+
+  const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
+    useHomeHubAssets(effectiveBgUrl);
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
@@ -241,6 +193,17 @@ export default function HomeHub() {
         <KolequantSplash onFinish={handleSplashFinish} />
       )}
 
+      {/* Permission prompts shown after splash exits, over the hub.
+          Sound prompt disabled — audio is unlocked when the player explicitly starts the game. */}
+      {splashDone && homeHubReady && (
+        <PermissionPrompts showSoundPrompt={false} />
+      )}
+
+      {/* Hub loading overlay — shown if the splash finishes before all hub assets are ready. */}
+      {splashDone && !homeHubReady && (
+        <HubLoadingOverlay progress={homeHubLoadProgress} status={homeHubLoadStatus} />
+      )}
+
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
       {preloading && <AssetPreloaderOverlay />}
 
@@ -273,14 +236,27 @@ export default function HomeHub() {
             />
           )}
 
-          <HomeHubAssetLayer
-            key={effectiveBgUrl ?? 'default'}
-            splashDone={splashDone}
-            effectiveBgUrl={effectiveBgUrl}
-            onPlay={handlePlay}
-            onNavigate={navigate}
-          />
+          {/* Foreground content — hidden until the full hub asset bundle is ready. */}
+          <div className="homehub-content home-hub">
+            {/* Hero / icon area (no branding text — logo is shown in the splash) */}
+            <div className="home-hub__hero" aria-hidden="true" />
 
+            {/* Button stack: only rendered once the splash has dismissed and the
+                full hub bundle is ready. */}
+            {splashDone && homeHubReady && (
+              <nav className="home-hub__buttons" aria-label="Main menu">
+                {HUB_BUTTONS.map(({ to, label, icon, variant }) => (
+                  <GameButton
+                    key={to}
+                    label={label}
+                    icon={icon}
+                    variant={variant}
+                    onClick={to === '/game' ? handlePlay : () => navigate(to)}
+                  />
+                ))}
+              </nav>
+            )}
+          </div>
           {/* Intro hub overlay — chips rendered only while HomeHub is mounted */}
           <div id="intro-hub" />
         </div>

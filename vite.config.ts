@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+
+const { version: appVersion } = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+) as { version: string }
 
 // https://vite.dev/config/
 //
@@ -9,6 +14,9 @@ import react from '@vitejs/plugin-react'
 //                                                   required for Capacitor/WKWebView)
 export default defineConfig({
   base: '/bbmobilenew/',
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+  },
   plugins: [react()],
   server: {
     proxy: {
