@@ -24,6 +24,7 @@ export const AUTHORITATIVE_COMPONENT_KEYS: Set<string> = new Set([
   'GridOfLuck',
   'ChainOfGreed',
   'TrapAuction',
+  'HouseOfCards',
 ]);
 
 export type HostStubProps = {
