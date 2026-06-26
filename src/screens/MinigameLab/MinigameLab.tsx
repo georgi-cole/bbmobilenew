@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 
 import MinigameHost, { type MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
 import { getPoolByFilter, type GameRegistryEntry } from '../../minigames/registry';
@@ -72,23 +72,41 @@ export default function MinigameLab() {
   const participants = useMemo(() => buildParticipants(playerCount), [playerCount]);
   const previewKey = `${selectedGame?.key ?? 'unknown'}:${seed}:${playerCount}:${skipRules ? 1 : 0}:${skipCountdown ? 1 : 0}:${previewNonce}`;
 
-  useEffect(() => {
+  const clearLastResult = () => {
     setLastResult(null);
-  }, [previewKey]);
+  };
 
   const handleGameChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedGameKey(event.currentTarget.value);
     setPreviewNonce(0);
+    clearLastResult();
   };
 
   const handleSeedChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextSeed = event.currentTarget.valueAsNumber;
     setSeed(Number.isFinite(nextSeed) ? clamp(nextSeed, MIN_SEED, MAX_SEED) : DEFAULT_SEED);
+    clearLastResult();
   };
 
   const handlePlayerChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextPlayers = event.currentTarget.valueAsNumber;
     setPlayerCount(Number.isFinite(nextPlayers) ? clamp(nextPlayers, MIN_PLAYERS, MAX_PLAYERS) : DEFAULT_PLAYERS);
+    clearLastResult();
+  };
+
+  const handleSkipRulesChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSkipRules(event.currentTarget.checked);
+    clearLastResult();
+  };
+
+  const handleSkipCountdownChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSkipCountdown(event.currentTarget.checked);
+    clearLastResult();
+  };
+
+  const handleRestartPreview = () => {
+    setPreviewNonce((current) => current + 1);
+    clearLastResult();
   };
 
   return (
@@ -150,7 +168,7 @@ export default function MinigameLab() {
             <input
               type="checkbox"
               checked={skipRules}
-              onChange={(event) => setSkipRules(event.currentTarget.checked)}
+              onChange={handleSkipRulesChange}
             />
             <span>Skip rules</span>
           </label>
@@ -159,7 +177,7 @@ export default function MinigameLab() {
             <input
               type="checkbox"
               checked={skipCountdown}
-              onChange={(event) => setSkipCountdown(event.currentTarget.checked)}
+              onChange={handleSkipCountdownChange}
             />
             <span>Skip countdown</span>
           </label>
@@ -167,7 +185,7 @@ export default function MinigameLab() {
           <button
             type="button"
             className="minigame-lab__restart"
-            onClick={() => setPreviewNonce((current) => current + 1)}
+            onClick={handleRestartPreview}
           >
             Restart preview
           </button>
