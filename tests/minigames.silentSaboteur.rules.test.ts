@@ -26,7 +26,8 @@ describe('Silent Saboteur rules', () => {
     expect(activeIds).toContain(victim);
     expect(victim).not.toBe(saboteur);
 
-    expect(pickVoteForAi(21, 3, 'a', activeIds, 'c')).toBe('b');
+    const voteActiveIds = ['a', 'b', 'c'];
+    expect(pickVoteForAi(21, 3, 'a', voteActiveIds, 'c')).toBe('b');
     expect(pickVoteForAiOrAbstain(21, 3, 'a', ['a', 'c'], 'c')).toBeNull();
   });
 
