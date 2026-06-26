@@ -9,6 +9,11 @@ const ROOT = join(process.cwd());
 const PUBLIC_DIR = join(ROOT, 'public');
 const SRC_DIR = join(ROOT, 'src');
 const INDEX_HTML = join(ROOT, 'index.html');
+const PACKAGE_JSON = join(ROOT, 'package.json');
+const CAPACITOR_CONFIG = join(ROOT, 'capacitor.config.ts');
+const IOS_PRIVACY_MANIFEST = join(ROOT, 'ios', 'App', 'App', 'PrivacyInfo.xcprivacy');
+const SKIN_ICON_192 = join(PUBLIC_DIR, 'assets', 'skins', 'icon-192.png');
+const SKIN_ICON_512 = join(PUBLIC_DIR, 'assets', 'skins', 'icon-512.png');
 const MANIFEST_JSON = join(PUBLIC_DIR, 'manifest.json');
 const RULES_TSX = join(SRC_DIR, 'screens', 'Rules', 'Rules.tsx');
 const RULES_CSS = join(SRC_DIR, 'screens', 'Rules', 'Rules.css');
@@ -319,6 +324,34 @@ describe('release readiness branding', () => {
     expect(manifest).toContain('"description": "The Big Eye mobile companion app"');
     expect(manifest).toContain('"src": "/favicon.svg"');
     expect(combined).not.toMatch(/Everwatch/i);
+  });
+});
+
+describe('release readiness metadata', () => {
+  it('uses a real app version and the release bundle identifier', () => {
+    const packageJson = JSON.parse(readText(PACKAGE_JSON)) as { version?: string };
+    const capacitorConfig = readText(CAPACITOR_CONFIG);
+
+    expect(packageJson.version).toBeTruthy();
+    expect(packageJson.version).not.toBe('0.0.0');
+    expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(capacitorConfig).toContain("appId: 'com.georgicole.thebigeye'");
+    expect(capacitorConfig).not.toContain('com.bbmobilenew.app');
+  });
+
+  it('includes the iOS privacy manifest in the app target', () => {
+    expect(existsSync(IOS_PRIVACY_MANIFEST)).toBe(true);
+
+    const privacyManifest = readText(IOS_PRIVACY_MANIFEST);
+    expect(privacyManifest).toContain('<key>NSPrivacyTracking</key>');
+    expect(privacyManifest).toContain('<false/>');
+    expect(privacyManifest).toContain('<key>NSPrivacyCollectedDataTypes</key>');
+    expect(privacyManifest).toContain('<key>NSPrivacyAccessedAPITypes</key>');
+  });
+
+  it('does not keep the broken auth-error skin placeholders in public assets', () => {
+    expect(existsSync(SKIN_ICON_192)).toBe(false);
+    expect(existsSync(SKIN_ICON_512)).toBe(false);
   });
 });
 

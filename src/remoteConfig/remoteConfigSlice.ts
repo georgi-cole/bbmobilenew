@@ -89,7 +89,7 @@ const remoteConfigSlice = createSlice({
     setRemoteConfig(state, action: PayloadAction<RemoteConfig | null>) {
       state.config = action.payload;
       state.fetchedAt = Date.now();
-      state.status = action.payload ? 'ok' : 'error';
+      state.status = 'ok';
     },
   },
   extraReducers: (builder) => {
@@ -100,7 +100,9 @@ const remoteConfigSlice = createSlice({
       .addCase(loadRemoteConfig.fulfilled, (state, action) => {
         state.config = action.payload;
         state.fetchedAt = Date.now();
-        state.status = action.payload ? 'ok' : 'error';
+        // Remote config is optional. A fulfilled load with null payload means
+        // "no remote config available", not a hard app error.
+        state.status = 'ok';
       })
       .addCase(loadRemoteConfig.rejected, (state) => {
         state.status = 'error';

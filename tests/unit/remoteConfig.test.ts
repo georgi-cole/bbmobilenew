@@ -9,13 +9,14 @@
  *  5. sanitiseRemoteConfig drops invalid weeklyMode values.
  *  6. sanitiseRemoteConfig accepts valid weeklyMode values.
  *  7. sanitiseRemoteConfig sanitises player overrides.
- *  8. remoteConfigSlice setRemoteConfig updates state.
- *  9. loadRemoteConfig.fulfilled updates state correctly.
- * 10. loadRemoteConfig.pending sets status to 'loading'.
- * 11. loadRemoteConfig.rejected sets status to 'error'.
- * 12. selectRemoteMainTvHeadline returns headline or null.
- * 13. selectRemoteIntroHubBg returns background URL or null.
- * 14. selectRemotePlayerOverrides returns overrides or empty array.
+ *  8. shouldFetchRemoteConfig enforces dev/prod URL policy.
+ *  9. remoteConfigSlice setRemoteConfig updates state.
+ * 10. loadRemoteConfig.fulfilled updates state correctly.
+ * 11. loadRemoteConfig.pending sets status to 'loading'.
+ * 12. loadRemoteConfig.rejected sets status to 'error'.
+ * 13. selectRemoteMainTvHeadline returns headline or null.
+ * 14. selectRemoteIntroHubBg returns background URL or null.
+ * 15. selectRemotePlayerOverrides returns overrides or empty array.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -28,7 +29,10 @@ import remoteConfigReducer, {
   selectRemoteIntroHubBg,
   selectRemotePlayerOverrides,
 } from '../../src/remoteConfig/remoteConfigSlice';
-import { sanitiseRemoteConfig } from '../../src/remoteConfig/remoteConfigService';
+import {
+  sanitiseRemoteConfig,
+  shouldFetchRemoteConfig,
+} from '../../src/remoteConfig/remoteConfigService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -172,6 +176,23 @@ describe('sanitiseRemoteConfig', () => {
   });
 });
 
+// ─── remote config endpoint policy ────────────────────────────────────────────
+
+describe('shouldFetchRemoteConfig', () => {
+  it('allows the dev proxy path during development', () => {
+    expect(shouldFetchRemoteConfig('/api/live-config', true)).toBe(true);
+  });
+
+  it('skips the relative proxy path in production', () => {
+    expect(shouldFetchRemoteConfig('/api/live-config', false)).toBe(false);
+  });
+
+  it('allows absolute http and https endpoints in production', () => {
+    expect(shouldFetchRemoteConfig('https://cdn.example.com/live-config.json', false)).toBe(true);
+    expect(shouldFetchRemoteConfig('http://localhost:4000/live-config.json', false)).toBe(true);
+  });
+});
+
 // ─── remoteConfigSlice ───────────────────────────────────────────────────────
 
 describe('remoteConfigSlice', () => {
@@ -196,11 +217,11 @@ describe('remoteConfigSlice', () => {
     expect(state.fetchedAt).toBeGreaterThan(0);
   });
 
-  it('setRemoteConfig with null sets status to error', () => {
+  it('setRemoteConfig with null clears the config but stays healthy', () => {
     store.dispatch(setRemoteConfig(null));
     const state = store.getState().remoteConfig;
     expect(state.config).toBeNull();
-    expect(state.status).toBe('error');
+    expect(state.status).toBe('ok');
   });
 
   it('loadRemoteConfig.pending sets status to loading', () => {
@@ -214,6 +235,13 @@ describe('remoteConfigSlice', () => {
     store.dispatch({ type: loadRemoteConfig.fulfilled.type, payload: config, meta: { requestId: '1', requestStatus: 'fulfilled' } });
     const state = store.getState().remoteConfig;
     expect(state.config).toEqual(config);
+    expect(state.status).toBe('ok');
+  });
+
+  it('loadRemoteConfig.fulfilled with null keeps the slice healthy', () => {
+    store.dispatch({ type: loadRemoteConfig.fulfilled.type, payload: null, meta: { requestId: '1', requestStatus: 'fulfilled' } });
+    const state = store.getState().remoteConfig;
+    expect(state.config).toBeNull();
     expect(state.status).toBe('ok');
   });
 

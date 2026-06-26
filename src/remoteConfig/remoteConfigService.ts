@@ -6,6 +6,8 @@
  *  - Cache the last successful response in localStorage so the app
  *    starts with content even when offline.
  *  - Validate the response shape (strings are strings, URLs are http/https).
+ *  - Skip the relative dev proxy path in packaged builds so native releases
+ *    never surface a broken fetch error just because the server route is gone.
  *  - Return null on any failure so callers fall back gracefully.
  *
  * SECURITY NOTE: Remote config is treated as pure data.  No field is ever
@@ -25,6 +27,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 /**
  * Default endpoint for the live-config document.
  * Can be overridden at build time via VITE_REMOTE_CONFIG_URL.
+ * Relative endpoints are only fetched in dev, where the Vite proxy exists.
  */
 export const DEFAULT_REMOTE_CONFIG_URL: string =
   (typeof import.meta !== 'undefined' && (import.meta as { env?: { VITE_REMOTE_CONFIG_URL?: string } }).env?.VITE_REMOTE_CONFIG_URL) ||
@@ -69,6 +72,28 @@ function safeStr(value: unknown): string | undefined {
 function safeOpacity(value: unknown): number | undefined {
   if (typeof value !== 'number' || !isFinite(value)) return undefined;
   return Math.max(0, Math.min(1, value));
+}
+
+/** Returns true when the URL is an absolute http(s) URL. */
+function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns true when remote config should be fetched from the given URL.
+ *
+ * Development builds allow the relative `/api/live-config` proxy path.
+ * Packaged/native builds only fetch absolute http(s) URLs.
+ */
+export function shouldFetchRemoteConfig(url: string, isDev = import.meta.env.DEV): boolean {
+  const trimmed = url.trim();
+  if (trimmed.length === 0) return false;
+  return isDev || isAbsoluteHttpUrl(trimmed);
 }
 
 /** Validates and sanitises a single player-override entry. */
@@ -226,7 +251,10 @@ export function saveCachedRemoteConfig(config: RemoteConfig): void {
  *  4. If no cache exists, return null (callers use built-in defaults).
  */
 export async function fetchRemoteConfig(): Promise<RemoteConfig | null> {
-  const url = DEFAULT_REMOTE_CONFIG_URL;
+  const url = DEFAULT_REMOTE_CONFIG_URL.trim();
+  if (!shouldFetchRemoteConfig(url)) {
+    return loadCachedRemoteConfig();
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);

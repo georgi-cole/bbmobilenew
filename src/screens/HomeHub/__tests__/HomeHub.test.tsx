@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useEffect as reactUseEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import HomeHub from '../HomeHub';
@@ -55,7 +56,25 @@ vi.mock('../../../hooks/useBackgroundTheme', () => ({
 }));
 
 vi.mock('../../../hooks/useLoadIntroHub', () => ({
-  default: () => undefined,
+  default: () => {
+    reactUseEffect(() => {
+      const timer = window.setTimeout(() => {
+        const container = document.getElementById('intro-hub');
+        if (!container || container.querySelector('.hub-chip')) {
+          return;
+        }
+
+        const chip = document.createElement('button');
+        chip.className = 'hub-chip';
+        chip.type = 'button';
+        container.appendChild(chip);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }, []);
+  },
 }));
 
 vi.mock('../../../utils/preload', () => ({
@@ -219,6 +238,35 @@ describe('HomeHub', () => {
 
     resolveRemoteBg();
     await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+  });
+
+  it('shows the hub loading overlay until the full hub bundle is ready', async () => {
+    const pendingResolvers: Array<() => void> = [];
+    preloadImageMock.mockImplementation(() => new Promise<void>((resolve) => {
+      pendingResolvers.push(resolve);
+    }));
+
+    const view = renderHomeHub();
+
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
+
+    expect(screen.getByRole('status', { name: /Loading intro hub\.\.\./ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
+
+    while (pendingResolvers.length > 0) {
+      pendingResolvers.splice(0).forEach((resolve) => resolve());
+      await Promise.resolve();
+    }
+    view.rerender(
+      <MemoryRouter>
+        <HomeHub />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).toBeNull();
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
   });

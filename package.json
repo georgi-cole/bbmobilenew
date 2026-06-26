@@ -1,10 +1,10 @@
 {
   "name": "bbmobilenew",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "scripts": {
     "bootstrap": "npm ci && cd server && npm ci",
