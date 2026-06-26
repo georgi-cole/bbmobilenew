@@ -45,7 +45,6 @@ test.describe('Minigame Lab smoke', () => {
         pageErrors.push(error.message);
       });
 
-      await page.setViewportSize({ width: page.viewportSize()?.width ?? 1280, height: page.viewportSize()?.height ?? 720 });
       await openLab(page, game);
 
       await expect(page.getByTestId('minigame-lab')).toBeVisible();
