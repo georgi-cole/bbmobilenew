@@ -37,6 +37,7 @@ import LaneRacers from './laneRacers/LaneRacersCanvasGame';
 import TravelingDots from '../components/TravelingDots/TravelingDots';
 import EstimationGame from '../components/EstimationGame/EstimationGame';
 import BullseyeBlitz from '../components/BullseyeBlitz/BullseyeBlitz';
+import PressurePlank from '../components/PressurePlank/PressurePlank';
 import ColorMatchComp from '../components/ColorMatchComp/ColorMatchComp';
 import SnakeGame from '../components/SnakeGame/SnakeGame';
 import RescueTheKingGame from './rescueTheKing/RescueTheKingGame';
@@ -95,6 +96,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   TravelingDots: TravelingDots as ComponentType<GenericMinigameProps>,
   EstimationGame: EstimationGame as ComponentType<GenericMinigameProps>,
   BullseyeBlitz: BullseyeBlitz as ComponentType<GenericMinigameProps>,
+  PressurePlank: PressurePlank as ComponentType<GenericMinigameProps>,
   ColorMatch: ColorMatchComp as ComponentType<GenericMinigameProps>,
   SnakeGame: SnakeGame as ComponentType<GenericMinigameProps>,
   RescueTheKing: RescueTheKingGame as ComponentType<GenericMinigameProps>,

@@ -84,6 +84,11 @@ const GridOfLuckTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/GridOfLuckTestPage/GridOfLuckTestPage'))
   : null;
 
+// Dev-only minigame lab for registry-backed QA.
+const MinigameLab = import.meta.env.DEV
+  ? lazy(() => import('./screens/MinigameLab/MinigameLab'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -135,6 +140,9 @@ export const router = createHashRouter([
         : []),
       ...(import.meta.env.DEV && GridOfLuckTestPage != null
         ? [{ path: 'gol-test', element: <Suspense fallback={null}><GridOfLuckTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && MinigameLab != null
+        ? [{ path: 'minigame-lab', element: <Suspense fallback={null}><MinigameLab /></Suspense> }]
         : []),
       ...(GameDebug != null
         ? [{ path: 'gamedebug', element: <Suspense fallback={null}><GameDebug /></Suspense> }]
