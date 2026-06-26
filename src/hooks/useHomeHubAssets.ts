@@ -19,7 +19,7 @@ type ImagesAction =
   | { type: 'imageLoaded' }
   | { type: 'allReady' };
 
-function imagesReducer(_state: ImagesState, action: ImagesAction): ImagesState {
+function imagesReducer(state: ImagesState, action: ImagesAction): ImagesState {
   switch (action.type) {
     case 'reset':
       return {
@@ -28,16 +28,16 @@ function imagesReducer(_state: ImagesState, action: ImagesAction): ImagesState {
       };
     case 'imageLoaded':
       return {
-        loaded: _state.loaded + 1,
-        ready: _state.ready,
+        loaded: state.loaded + 1,
+        ready: state.ready,
       };
     case 'allReady':
       return {
-        loaded: _state.loaded,
+        loaded: state.loaded,
         ready: true,
       };
     default:
-      return _state;
+      return state;
   }
 }
 
@@ -139,20 +139,21 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
       return;
     }
 
+    let cancelled = false;
     const syncRuntime = () => {
-      if (container.querySelector('.hub-chip')) {
+      if (!cancelled && container.querySelector('.hub-chip')) {
         setRuntimeReady(true);
       }
     };
 
-    syncRuntime();
-    if (hasIntroHubChips()) {
-      return;
-    }
+    Promise.resolve().then(syncRuntime);
 
     const observer = new MutationObserver(syncRuntime);
     observer.observe(container, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
   }, [runtimeReady]);
 
   const totalSteps = assetUrls.length + 2;

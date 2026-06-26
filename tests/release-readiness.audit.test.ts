@@ -311,7 +311,7 @@ beforeEach(() => {
 });
 
 describe('release readiness branding', () => {
-  it('removes Everwatch and Vite placeholder references from the user-facing shell', () => {
+  it('keeps the user-facing shell branded and the rules guide readable', () => {
     const indexHtml = readText(INDEX_HTML);
     const manifest = readText(MANIFEST_JSON);
     const rulesTsx = readText(RULES_TSX);
@@ -324,6 +324,28 @@ describe('release readiness branding', () => {
     expect(manifest).toContain('"description": "The Big Eye mobile companion app"');
     expect(manifest).toContain('"src": "/favicon.svg"');
     expect(combined).not.toMatch(/Everwatch/i);
+    expect(rulesTsx).not.toMatch(/[\u2014\u2013]/);
+    expect(rulesCss).not.toMatch(/[\u2014\u2013]/);
+    expect(rulesTsx).toContain('Your Goal');
+    expect(rulesTsx).toContain('Weekly Loop');
+    expect(rulesTsx).toContain('Challenges and Ranking');
+    expect(rulesTsx).toContain('Control and Safety');
+    expect(rulesTsx).toContain('Social Game and Public Mode');
+    expect(rulesTsx).toContain('Private Room');
+    expect(rulesTsx).toContain('Elimination and Finale');
+    expect(rulesTsx).toContain('Power of Safety');
+    expect(rulesTsx).toMatch(/confessional/i);
+    expect(rulesTsx).toMatch(/public mode/i);
+    expect(rulesTsx).toMatch(/approval meter/i);
+    expect(rulesTsx).not.toContain('Diary Room');
+    expect(rulesTsx).not.toContain('houseguest');
+    expect(rulesTsx).not.toContain('Progress & Settings');
+    expect(rulesTsx).not.toContain('The Public Meter');
+    expect(rulesTsx).not.toContain('Always Watching');
+    expect(rulesTsx).not.toContain('Read the Room');
+    expect(rulesTsx).not.toContain('Special Events');
+    expect(rulesTsx).not.toContain('twist');
+    expect(rulesTsx).not.toContain('shock');
   });
 });
 

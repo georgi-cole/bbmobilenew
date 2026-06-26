@@ -1,14 +1,12 @@
-/* ═══════════════════════════════════════════════════════════════
-   Rules Screen — The Big Eye
-   ═══════════════════════════════════════════════════════════════ */
+/* Rules Screen - The Big Eye */
 
 .rules-screen {
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
   padding-bottom: 40px;
 }
 
-/* ── Hero ── */
+/* Hero */
 .rules-screen__hero {
   display: flex;
   flex-direction: column;
@@ -31,7 +29,7 @@
   font-weight: 900;
   letter-spacing: 0.04em;
   color: #64b4ff;
-  box-shadow: 0 0 18px rgba(100, 180, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow: 0 0 18px rgba(100, 180, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .rules-screen__title {
@@ -39,24 +37,33 @@
   font-weight: 800;
   color: var(--color-text);
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .rules-screen__subtitle {
   font-size: 0.78rem;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255, 255, 255, 0.55);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin: 0;
 }
 
-/* ── Body ── */
+.rules-screen__hero .rules-screen__note {
+  width: min(100%, 38rem);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  text-align: center;
+  font-style: normal;
+}
+
+/* Body */
 .rules-screen__body {
   display: flex;
   flex-direction: column;
   gap: 12px;
   color: var(--color-text);
-  font-size: 0.91rem;
+  font-size: 0.92rem;
   line-height: 1.65;
 }
 
@@ -66,12 +73,12 @@
 
 .rules-screen__note {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.55);
+  color: rgba(255, 255, 255, 0.55);
   font-style: italic;
   margin: 0;
 }
 
-/* ── Sections ── */
+/* Sections */
 .rules-section {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -95,8 +102,20 @@
 }
 
 .rules-section__icon {
-  font-size: 1.1rem;
-  line-height: 1;
+  min-width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #64b4ff;
+  background: rgba(100, 180, 255, 0.12);
+  border: 1px solid rgba(100, 180, 255, 0.25);
+  font-variant-numeric: tabular-nums;
 }
 
 .rules-section__title {
@@ -107,19 +126,7 @@
   flex: 1;
 }
 
-.rules-section__tag {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: #64b4ff;
-  background: rgba(100, 180, 255, 0.12);
-  border: 1px solid rgba(100, 180, 255, 0.25);
-  border-radius: 20px;
-  padding: 2px 8px;
-}
-
-/* ── Cycle diagram ── */
+/* Weekly loop diagram */
 .rules-cycle {
   display: flex;
   flex-wrap: wrap;
@@ -144,26 +151,51 @@
   white-space: nowrap;
 }
 
-.rules-cycle__badge--loh  { background: rgba(255, 200, 80,  0.2); color: #ffc850; border: 1px solid rgba(255,200,80,0.3); }
-.rules-cycle__badge--nom  { background: rgba(255, 100, 100, 0.2); color: #ff8080; border: 1px solid rgba(255,100,100,0.3); }
-.rules-cycle__badge--pos  { background: rgba(100, 220, 140, 0.2); color: #64dc8c; border: 1px solid rgba(100,220,140,0.3); }
-.rules-cycle__badge--elim { background: rgba(180, 120, 255, 0.2); color: #c080ff; border: 1px solid rgba(180,120,255,0.3); }
+.rules-cycle__badge--loh {
+  background: rgba(255, 200, 80, 0.2);
+  color: #ffc850;
+  border: 1px solid rgba(255, 200, 80, 0.3);
+}
+
+.rules-cycle__badge--nom {
+  background: rgba(255, 100, 100, 0.2);
+  color: #ff8080;
+  border: 1px solid rgba(255, 100, 100, 0.3);
+}
+
+.rules-cycle__badge--public {
+  background: rgba(80, 170, 255, 0.2);
+  color: #8ad0ff;
+  border: 1px solid rgba(80, 170, 255, 0.3);
+}
+
+.rules-cycle__badge--pos {
+  background: rgba(100, 220, 140, 0.2);
+  color: #64dc8c;
+  border: 1px solid rgba(100, 220, 140, 0.3);
+}
+
+.rules-cycle__badge--elim {
+  background: rgba(180, 120, 255, 0.2);
+  color: #c080ff;
+  border: 1px solid rgba(180, 120, 255, 0.3);
+}
 
 .rules-cycle__label {
   font-size: 0.67rem;
-  color: rgba(255,255,255,0.55);
+  color: rgba(255, 255, 255, 0.55);
   text-align: center;
-  max-width: 72px;
+  max-width: 88px;
   line-height: 1.3;
 }
 
 .rules-cycle__arrow {
-  font-size: 0.9rem;
-  color: rgba(255,255,255,0.3);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.3);
   margin-bottom: 14px;
 }
 
-/* ── List ── */
+/* Lists */
 .rules-list {
   margin: 0;
   padding-left: 18px;
@@ -177,69 +209,7 @@
   line-height: 1.55;
 }
 
-/* ── Approval bands ── */
-.rules-approval-bands {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.rules-approval-band {
-  flex: 1;
-  min-width: 80px;
-  text-align: center;
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 5px 6px;
-  border-radius: 8px;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-.rules-approval-band--hated    { background: rgba(180, 40,  40,  0.3); color: #ff8080; }
-.rules-approval-band--disliked { background: rgba(200, 120, 40,  0.3); color: #ffb060; }
-.rules-approval-band--mixed    { background: rgba(200, 180, 40,  0.3); color: #ffe060; }
-.rules-approval-band--liked    { background: rgba(60,  160, 80,  0.3); color: #80e090; }
-.rules-approval-band--beloved  { background: rgba(60,  140, 220, 0.3); color: #80c8ff; }
-
-/* ── Final 3 parts ── */
-.rules-final-parts {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.rules-final-part {
-  flex: 1;
-  min-width: 140px;
-  background: rgba(255, 220, 139, 0.06);
-  border: 1px solid rgba(255, 220, 139, 0.15);
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rules-final-part__num {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  color: #ffdc8b;
-  background: rgba(255, 220, 139, 0.12);
-  border-radius: 6px;
-  padding: 2px 8px;
-  align-self: flex-start;
-}
-
-.rules-final-part p {
-  font-size: 0.83rem;
-  color: rgba(255,255,255,0.75);
-  line-height: 1.45;
-  margin: 0;
-}
-
-/* ── Back button ── */
+/* Back button */
 .rules-screen__back {
   align-self: flex-start;
   margin-top: 20px;
@@ -261,12 +231,3 @@
   background: rgba(255, 255, 255, 0.18);
   outline: none;
 }
-
-/* ── Legacy class (kept for backward compat) ── */
-.rules-screen__heading {
-  margin: 16px 0 4px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #ffdc8b;
-}
-
