@@ -111,7 +111,11 @@ function installViewportShim(): void {
 function installResizeObservers(): void {
   if (typeof globalThis.ResizeObserver !== 'function') {
     class ResizeObserverMock implements ResizeObserver {
-      constructor(private readonly callback: ResizeObserverCallback) {}
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
 
       observe(target: Element): void {
         this.callback(
@@ -146,8 +150,11 @@ function installResizeObservers(): void {
       readonly root: Element | Document | null = null;
       readonly rootMargin = '0px';
       readonly thresholds: ReadonlyArray<number> = [0];
+      private readonly callback: IntersectionObserverCallback;
 
-      constructor(private readonly callback: IntersectionObserverCallback) {}
+      constructor(callback: IntersectionObserverCallback) {
+        this.callback = callback;
+      }
 
       observe(target: Element): void {
         this.callback(
