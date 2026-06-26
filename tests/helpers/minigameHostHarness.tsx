@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useRef } from 'react';
 
 export const AUTHORITATIVE_COMPONENT_KEYS: Set<string> = new Set([
