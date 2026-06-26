@@ -33,6 +33,7 @@ const SPECIAL_CASE_COMPONENT_KEYS = new Set([
   'MemoryColors',
   'TrapAuction',
   'TiltLabyrinth',
+  'HouseOfCards',
 ]);
 
 describe('minigame registry audit', () => {
