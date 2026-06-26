@@ -15,6 +15,7 @@ import {
   randomStartColor,
   rankColorMatchCompetitionStandings,
   resolveColorMatchCompetitionRound,
+  rgbToHex,
   seededPick,
   simulateColorMatchAiRoundScore,
   type ColorMatchCompetitionParticipant,
@@ -115,6 +116,3 @@ describe('Color Match rules', () => {
     expect(resultsState.ctaLabel).toBe('See Results →');
   });
 });
-function rgbToHex({ r, g, b }: RGB): string {
-  return `#${[r, g, b].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
-}
