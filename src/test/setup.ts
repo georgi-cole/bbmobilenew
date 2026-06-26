@@ -50,7 +50,261 @@ function resetStorage(): void {
   installStorage('sessionStorage', new MemoryStorage());
 }
 
+function installMatchMedia(): void {
+  if (typeof window === 'undefined' || typeof window.matchMedia === 'function') return;
+
+  const createList = (query: string): MediaQueryList => ({
+    media: query,
+    matches: false,
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => true,
+  } as unknown as MediaQueryList);
+
+  Object.defineProperty(globalThis, 'matchMedia', {
+    value: (query: string) => createList(query),
+    configurable: true,
+    writable: true,
+  });
+
+  Object.defineProperty(window, 'matchMedia', {
+    value: (query: string) => createList(query),
+    configurable: true,
+    writable: true,
+  });
+}
+
+function installViewportShim(): void {
+  if (typeof window === 'undefined') return;
+
+  const viewport = {
+    width: 1280,
+    height: 720,
+    scale: 1,
+    offsetLeft: 0,
+    offsetTop: 0,
+    pageLeft: 0,
+    pageTop: 0,
+    onresize: null,
+    onscroll: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => true,
+  } as VisualViewport;
+
+  Object.defineProperty(globalThis, 'visualViewport', {
+    value: viewport,
+    configurable: true,
+    writable: true,
+  });
+
+  Object.defineProperty(window, 'visualViewport', {
+    value: viewport,
+    configurable: true,
+    writable: true,
+  });
+}
+
+function installResizeObservers(): void {
+  if (typeof globalThis.ResizeObserver !== 'function') {
+    class ResizeObserverMock implements ResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe(target: Element): void {
+        this.callback(
+          [
+            {
+              target,
+              contentRect: target.getBoundingClientRect(),
+            } as ResizeObserverEntry,
+          ],
+          this,
+        );
+      }
+
+      unobserve(): void {
+        return undefined;
+      }
+
+      disconnect(): void {
+        return undefined;
+      }
+    }
+
+    Object.defineProperty(globalThis, 'ResizeObserver', {
+      value: ResizeObserverMock,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof globalThis.IntersectionObserver !== 'function') {
+    class IntersectionObserverMock implements IntersectionObserver {
+      readonly root: Element | Document | null = null;
+      readonly rootMargin = '0px';
+      readonly thresholds: ReadonlyArray<number> = [0];
+
+      constructor(private readonly callback: IntersectionObserverCallback) {}
+
+      observe(target: Element): void {
+        this.callback(
+          [
+            {
+              target,
+              isIntersecting: true,
+              intersectionRatio: 1,
+              time: performance.now(),
+              boundingClientRect: target.getBoundingClientRect(),
+              intersectionRect: target.getBoundingClientRect(),
+              rootBounds: null,
+            } as IntersectionObserverEntry,
+          ],
+          this,
+        );
+      }
+
+      unobserve(): void {
+        return undefined;
+      }
+
+      disconnect(): void {
+        return undefined;
+      }
+
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    }
+
+    Object.defineProperty(globalThis, 'IntersectionObserver', {
+      value: IntersectionObserverMock,
+      configurable: true,
+      writable: true,
+    });
+  }
+}
+
+function installAnimationFrameFallback(): void {
+  if (typeof window === 'undefined') return;
+
+  if (typeof window.requestAnimationFrame !== 'function') {
+    Object.defineProperty(window, 'requestAnimationFrame', {
+      value: (cb: FrameRequestCallback) => window.setTimeout(() => cb(performance.now()), 16),
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof window.cancelAnimationFrame !== 'function') {
+    Object.defineProperty(window, 'cancelAnimationFrame', {
+      value: (handle: number) => window.clearTimeout(handle),
+      configurable: true,
+      writable: true,
+    });
+  }
+}
+
+function installDomHelpers(): void {
+  if (typeof window === 'undefined') return;
+
+  if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView !== 'function') {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: () => undefined,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof window.scrollTo !== 'function') {
+    Object.defineProperty(window, 'scrollTo', {
+      value: () => undefined,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof window.scrollBy !== 'function') {
+    Object.defineProperty(window, 'scrollBy', {
+      value: () => undefined,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate !== 'function') {
+    Object.defineProperty(navigator, 'vibrate', {
+      value: () => false,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.getContext !== 'function') {
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      value: () => ({
+        canvas: null,
+        clearRect: () => undefined,
+        fillRect: () => undefined,
+        getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+        putImageData: () => undefined,
+        createImageData: () => ({ data: new Uint8ClampedArray(4) }),
+        setTransform: () => undefined,
+        drawImage: () => undefined,
+        save: () => undefined,
+        fillText: () => undefined,
+        restore: () => undefined,
+        beginPath: () => undefined,
+        moveTo: () => undefined,
+        lineTo: () => undefined,
+        closePath: () => undefined,
+        stroke: () => undefined,
+        translate: () => undefined,
+        scale: () => undefined,
+        rotate: () => undefined,
+        arc: () => undefined,
+        fill: () => undefined,
+        measureText: () => ({ width: 0 } as TextMetrics),
+        transform: () => undefined,
+        rect: () => undefined,
+        clip: () => undefined,
+      }),
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof HTMLDialogElement !== 'undefined') {
+    if (typeof HTMLDialogElement.prototype.showModal !== 'function') {
+      Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+        value: () => undefined,
+        configurable: true,
+        writable: true,
+      });
+    }
+
+    if (typeof HTMLDialogElement.prototype.close !== 'function') {
+      Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+        value: () => undefined,
+        configurable: true,
+        writable: true,
+      });
+    }
+  }
+}
+
+function installBrowserShims(): void {
+  installMatchMedia();
+  installViewportShim();
+  installResizeObservers();
+  installAnimationFrameFallback();
+  installDomHelpers();
+}
+
 resetStorage();
+installBrowserShims();
 
 if (typeof HTMLMediaElement !== 'undefined') {
   Object.defineProperty(HTMLMediaElement.prototype, 'play', {
