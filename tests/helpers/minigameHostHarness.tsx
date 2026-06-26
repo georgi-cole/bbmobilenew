@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export const AUTHORITATIVE_COMPONENT_KEYS = new Set([
+export const AUTHORITATIVE_COMPONENT_KEYS: Set<string> = new Set([
   'ClosestWithoutGoingOver',
   'HoldTheWall',
   'BiographyBlitz',
@@ -24,7 +24,7 @@ export const AUTHORITATIVE_COMPONENT_KEYS = new Set([
   'GridOfLuck',
   'ChainOfGreed',
   'TrapAuction',
-] as const);
+]);
 
 export type HostStubProps = {
   onFinish?: (
@@ -53,14 +53,14 @@ function makeHostStub(name: string, callbackKind: 'finish' | 'complete') {
       if (didRunRef.current) return;
       didRunRef.current = true;
 
-      const authoritative = AUTHORITATIVE_COMPONENT_KEYS.has(name as never);
+      const authoritative = AUTHORITATIVE_COMPONENT_KEYS.has(name);
       const rawValue = authoritative ? 88 : 37;
       const completion = authoritative
         ? {
             authoritativeWinnerId: 'player-1',
             rawValue,
             rawResults: { 'player-1': rawValue },
-            tiebreakerMs: authoritative ? 1234 : undefined,
+            tiebreakerMs: 1234,
           }
         : undefined;
 
