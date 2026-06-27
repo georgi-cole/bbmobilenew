@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Settings from '../src/screens/Settings/Settings';
 import SettingsAdmin from '../src/screens/SettingsAdmin/SettingsAdmin';
+import { APP_VERSION } from '../src/appVersion';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import { restartApp } from '../src/utils/restartApp';
@@ -166,6 +167,7 @@ describe('Settings screen', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /the big eye/i })).toBeTruthy();
     });
+    expect(screen.getByText(`Version ${APP_VERSION}`)).toBeTruthy();
   });
 
   it('loads the requested default Game UX configuration for a fresh store', async () => {

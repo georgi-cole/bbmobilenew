@@ -9,6 +9,11 @@ const ROOT = join(process.cwd());
 const PUBLIC_DIR = join(ROOT, 'public');
 const SRC_DIR = join(ROOT, 'src');
 const INDEX_HTML = join(ROOT, 'index.html');
+const PACKAGE_JSON = join(ROOT, 'package.json');
+const CAPACITOR_CONFIG = join(ROOT, 'capacitor.config.ts');
+const IOS_PRIVACY_MANIFEST = join(ROOT, 'ios', 'App', 'App', 'PrivacyInfo.xcprivacy');
+const SKIN_ICON_192 = join(PUBLIC_DIR, 'assets', 'skins', 'icon-192.png');
+const SKIN_ICON_512 = join(PUBLIC_DIR, 'assets', 'skins', 'icon-512.png');
 const MANIFEST_JSON = join(PUBLIC_DIR, 'manifest.json');
 const RULES_TSX = join(SRC_DIR, 'screens', 'Rules', 'Rules.tsx');
 const RULES_CSS = join(SRC_DIR, 'screens', 'Rules', 'Rules.css');
@@ -321,17 +326,24 @@ describe('release readiness branding', () => {
     expect(combined).not.toMatch(/Everwatch/i);
     expect(rulesTsx).not.toMatch(/[\u2014\u2013]/);
     expect(rulesCss).not.toMatch(/[\u2014\u2013]/);
-    expect(rulesTsx).toContain('Your Goal');
+    expect(rulesTsx).toContain('How to Play');
     expect(rulesTsx).toContain('Weekly Loop');
     expect(rulesTsx).toContain('Challenges and Ranking');
     expect(rulesTsx).toContain('Control and Safety');
     expect(rulesTsx).toContain('Social Game and Public Mode');
-    expect(rulesTsx).toContain('Private Room');
-    expect(rulesTsx).toContain('Elimination and Finale');
+    expect(rulesTsx).toContain('Confessional');
+    expect(rulesTsx).toContain('Special Weeks');
+    expect(rulesTsx).toContain('Finale');
     expect(rulesTsx).toContain('Power of Safety');
+    expect(rulesTsx).toContain('public approval meter');
     expect(rulesTsx).toMatch(/confessional/i);
     expect(rulesTsx).toMatch(/public mode/i);
-    expect(rulesTsx).toMatch(/approval meter/i);
+    expect(rulesTsx).toMatch(/approval/i);
+    expect(rulesTsx).toMatch(/leaderboard/i);
+    expect(rulesTsx).toMatch(/minigame/i);
+    expect(rulesTsx).toMatch(/final 4/i);
+    expect(rulesTsx).toMatch(/final 2/i);
+    expect(rulesTsx).not.toMatch(/Big Brother/i);
     expect(rulesTsx).not.toContain('Diary Room');
     expect(rulesTsx).not.toContain('houseguest');
     expect(rulesTsx).not.toContain('Progress & Settings');
@@ -341,6 +353,34 @@ describe('release readiness branding', () => {
     expect(rulesTsx).not.toContain('Special Events');
     expect(rulesTsx).not.toContain('twist');
     expect(rulesTsx).not.toContain('shock');
+  });
+});
+
+describe('release readiness metadata', () => {
+  it('uses a real app version and the release bundle identifier', () => {
+    const packageJson = JSON.parse(readText(PACKAGE_JSON)) as { version?: string };
+    const capacitorConfig = readText(CAPACITOR_CONFIG);
+
+    expect(packageJson.version).toBeTruthy();
+    expect(packageJson.version).not.toBe('0.0.0');
+    expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(capacitorConfig).toContain("appId: 'com.georgicole.thebigeye'");
+    expect(capacitorConfig).not.toContain('com.bbmobilenew.app');
+  });
+
+  it('includes the iOS privacy manifest in the app target', () => {
+    expect(existsSync(IOS_PRIVACY_MANIFEST)).toBe(true);
+
+    const privacyManifest = readText(IOS_PRIVACY_MANIFEST);
+    expect(privacyManifest).toContain('<key>NSPrivacyTracking</key>');
+    expect(privacyManifest).toContain('<false/>');
+    expect(privacyManifest).toContain('<key>NSPrivacyCollectedDataTypes</key>');
+    expect(privacyManifest).toContain('<key>NSPrivacyAccessedAPITypes</key>');
+  });
+
+  it('does not keep the broken auth-error skin placeholders in public assets', () => {
+    expect(existsSync(SKIN_ICON_192)).toBe(false);
+    expect(existsSync(SKIN_ICON_512)).toBe(false);
   });
 });
 
