@@ -14,6 +14,7 @@ import {
   rerollSeed,
   skipMinigame,
   fastForwardToEviction,
+  simulateImmediateEliminationCycle,
   startMinigame,
   queueForcedShock,
   clearForcedShock,
@@ -350,6 +351,12 @@ export default function DebugPanel() {
                 </button>
                 <button className="dbg-btn dbg-btn--wide" onClick={() => dispatch(fastForwardToEviction())}>
                   Fast-fwd → Eviction
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(simulateImmediateEliminationCycle())}
+                >
+                  Simulate Elimination Cycle
                 </button>
               </div>
 

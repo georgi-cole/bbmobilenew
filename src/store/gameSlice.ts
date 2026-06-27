@@ -15,6 +15,7 @@ import type {
   SpecialVetoType,
   ForcedShockType,
 } from '../types';
+import type { IncomingInteraction, SocialActionLogEntry } from '../social/types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import {
   getCompetitionSeasonState,
@@ -38,6 +39,19 @@ import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import type { SeasonArchive } from './seasonArchive';
 import { loadSeasonArchives } from './archivePersistence';
 import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService';
+import {
+  addDirection,
+  resetDailyFeedBudget,
+  updateApproval,
+} from '../publicOpinion/publicOpinionSlice';
+import {
+  decaySocialMemory,
+  pushIncomingInteraction,
+  recordSocialAction,
+  snapshotWeekRelationships,
+  updateRelationship,
+  updateSocialMemory,
+} from '../social/socialSlice';
 import {
   createSecretMissionState,
   buildMissionTasks,
@@ -5224,7 +5238,407 @@ export const selectF3Part2PredictedWinnerId = (state: RootState): string | null 
   return seededPick(rng, losers).id;
 };
 
+function pickDebugAlivePlayer(
+  state: GameState,
+  rng: () => number,
+  excludeIds: Set<string> = new Set(),
+  mode: 'highest' | 'lowest' = 'highest',
+): Player | null {
+  const alive = state.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury' && !excludeIds.has(player.id),
+  );
+  if (alive.length === 0) return null;
+  return pickStrategicAiPlayer(state, alive, rng, mode) ?? seededPick(rng, alive);
+}
+
+function buildDebugIncomingInteraction(
+  fromId: string,
+  week: number,
+  rng: () => number,
+): IncomingInteraction {
+  const types: IncomingInteraction['type'][] = [
+    'compliment',
+    'gossip',
+    'warning',
+    'alliance_proposal',
+    'deal_offer',
+    'nomination_plea',
+    'check_in',
+    'snide_remark',
+    'other',
+  ];
+  const type = seededPick(rng, types);
+  const now = Date.now();
+  const requiresResponse = ['alliance_proposal', 'deal_offer', 'nomination_plea'].includes(type);
+  const textByType: Record<IncomingInteraction['type'], string[]> = {
+    compliment: ['You are still the one to beat.', 'That move was pretty iconic.'],
+    gossip: ['People are already reading the week as a power shift.', 'There is a new whisper chain in the house.'],
+    warning: ['The house is noticing your numbers.', 'Someone thinks your name is coming up soon.'],
+    alliance_proposal: ['Want to keep the line steady this week?', 'We should make this official while we still can.'],
+    deal_offer: ['Keep me off the block and I will return the favor.', 'There is a quiet deal to be made here.'],
+    nomination_plea: ['I need one more week to survive.', 'Please, not me this time.'],
+    check_in: ['Just checking in on the vibe.', 'Wanted to see where your head is at.'],
+    snide_remark: ['Bold plan. Hope it works.', 'Interesting strategy if you like chaos.'],
+    other: ['We need to talk later.', 'Something feels off this week.'],
+  };
+  const text = seededPick(rng, textByType[type]);
+
+  return {
+    id: `dbg-interaction-${week}-${fromId}-${Math.floor(now % 1_000_000)}-${Math.floor(rng() * 1_000)}`,
+    fromId,
+    type,
+    text,
+    createdAt: now,
+    createdWeek: week,
+    expiresAtWeek: week + 1,
+    read: false,
+    requiresResponse,
+    resolved: false,
+  };
+}
+
 // ─── Debug thunks ─────────────────────────────────────────────────────────────
+function seedDebugCycleNoise(
+  dispatch: AppDispatch,
+  rootState: RootState,
+  rng: () => number,
+): void {
+  const { game, publicOpinion } = rootState;
+  const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+  if (alive.length === 0) return;
+
+  dispatch(resetDailyFeedBudget({ week: game.week }));
+  dispatch(snapshotWeekRelationships());
+  dispatch(decaySocialMemory());
+
+  const beatCount = Math.min(3, alive.length);
+  const actors = seededPickN(rng, alive, beatCount);
+  const socialSummaryParts: string[] = [];
+
+  actors.forEach((actor, index) => {
+    const targets = alive.filter((p) => p.id !== actor.id);
+    if (targets.length === 0) return;
+
+    const target =
+      pickStrategicAiPlayer(game, targets, rng, index % 2 === 0 ? 'highest' : 'lowest') ??
+      seededPick(rng, targets);
+    const approvalDelta = rng() < 0.5 ? 2 : -2;
+    const relationshipDelta = approvalDelta > 0 ? 2 : -2;
+    const memoryDeltas = approvalDelta > 0
+      ? { gratitude: 1, trustMomentum: 1 }
+      : { resentment: 1, trustMomentum: -1 };
+    const timestamp = Date.now();
+
+    dispatch(
+      updateRelationship({
+        source: actor.id,
+        target: target.id,
+        delta: relationshipDelta,
+        actionSource: 'system',
+      }),
+    );
+    dispatch(
+      updateSocialMemory({
+        actorId: actor.id,
+        targetId: target.id,
+        deltas: memoryDeltas,
+        event: {
+          type: 'debug_cycle_noise',
+          actorId: actor.id,
+          targetId: target.id,
+          week: game.week,
+          timestamp,
+        },
+      }),
+    );
+    dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: `dbg-social-${game.week}-${actor.id}-${target.id}-${timestamp}`,
+          actorId: actor.id,
+          targetId: target.id,
+          cost: 0,
+          delta: relationshipDelta,
+          outcome: approvalDelta > 0 ? 'success' : 'failure',
+          newEnergy: publicOpinion?.profiles?.[actor.id]?.approval ?? 0,
+          timestamp,
+          score: approvalDelta > 0 ? 1 : -1,
+          label: approvalDelta > 0 ? 'Warm' : 'Messy',
+          source: 'system',
+          costs: { energy: 0, influence: 0, info: 0 },
+          balancesAfter: { energy: 0, influence: 0, info: 0 },
+        } satisfies SocialActionLogEntry,
+      }),
+    );
+    dispatch(pushIncomingInteraction(buildDebugIncomingInteraction(actor.id, game.week, rng)));
+    dispatch(
+      updateApproval({
+        playerId: target.id,
+        delta: approvalDelta,
+        reason: 'debug_week_noise',
+        week: game.week,
+        eventType: 'debug_week_noise',
+        attributedToId: actor.id,
+      }),
+    );
+
+    socialSummaryParts.push(
+      `${actor.name} stirred things up with ${target.name} (${approvalDelta > 0 ? '+' : ''}${approvalDelta})`,
+    );
+  });
+
+  if (socialSummaryParts.length > 0) {
+    dispatch(
+      addDirection({
+        id: `dbg-direction-${game.week}-${Date.now()}`,
+        type: rng() < 0.5 ? 'start_drama' : 'reinforce_alliance',
+        playerId: actors[0]?.id ?? alive[0].id,
+        relatedPlayerId: actors[1]?.id,
+        description: socialSummaryParts.join(' | '),
+        status: 'active',
+        createdWeek: game.week,
+        expiresAtWeek: game.week + 1,
+        approvalDelta: rng() < 0.5 ? -2 : 2,
+        progressPercent: 25,
+      }),
+    );
+  }
+
+  dispatch(
+    addSocialSummary({
+      summary:
+        socialSummaryParts.length > 0
+          ? socialSummaryParts.join(' | ')
+          : `Quiet week for the house — ${alive[0]?.name ?? 'the house'} kept things contained.`,
+      week: game.week,
+    }),
+  );
+}
+
+function resolveDebugBlockers(
+  dispatch: AppDispatch,
+  rootState: RootState,
+  rng: () => number,
+): boolean {
+  const { game, publicOpinion } = rootState;
+  const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+
+  if (game.pendingEviction) {
+    dispatch(finalizePendingEviction(game.pendingEviction.evicteeId));
+    return true;
+  }
+
+  if (game.spectatorActive) {
+    dispatch(closeSpectator());
+    return true;
+  }
+
+  if (game.battleBack?.active) {
+    const candidates = game.battleBack.candidates
+      .map((id) => game.players.find((p) => p.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const winner = candidates.find((player) => player.status === 'jury' || player.status === 'evicted') ?? null;
+    if (winner) {
+      dispatch(completeBattleBack(winner.id));
+    } else {
+      dispatch(dismissBattleBack());
+    }
+    return true;
+  }
+
+  if (game.favoritePlayer?.active) {
+    const winner = pickDebugAlivePlayer(game, rng) ?? alive[0] ?? null;
+    if (winner) {
+      dispatch(resolveFavoritePlayerWinner(winner.id));
+      dispatch(awardFavoritePrize());
+    }
+    return true;
+  }
+
+  if (game.replacementNeeded) {
+    const exclude = new Set<string>([game.lohId ?? '', game.posWinnerId ?? '']);
+    game.nomineeIds.forEach((id) => exclude.add(id));
+    if (game.povSavedId) exclude.add(game.povSavedId);
+    const replacement = pickDebugAlivePlayer(game, rng, exclude, 'highest');
+    if (replacement) {
+      dispatch(setReplacementNominee(replacement.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingPublicSave && game.phase === 'pre_veto_public_save' && game.nomineeIds.length === 3) {
+    const savedId =
+      resolvePublicSaveNominee({
+        nomineeIds: game.nomineeIds,
+        profiles: publicOpinion?.profiles ?? {},
+      }).savedId || game.nomineeIds[0];
+    dispatch(
+      commitPublicSave({
+        savedId,
+        supportPercent: publicOpinion?.profiles?.[savedId]?.approval,
+      }),
+    );
+    return true;
+  }
+
+  if (game.awaitingPovDecision) {
+    const nominees = game.nomineeIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const eligible = getReplacementEligiblePlayers(
+      game,
+      alive,
+      game.specialVeto?.activeType === 'coup' ? 2 : 1,
+      { allowLoh: true },
+    );
+    const usePower = shouldAiUseTargetedSafetyPower(game, nominees, eligible, {
+      replacementCount: game.specialVeto?.activeType === 'coup' ? 2 : 1,
+      preferLoh: true,
+    });
+
+    dispatch(submitPovDecision(usePower));
+    return true;
+  }
+
+  if (game.awaitingPovSaveTarget) {
+    const nominees = game.nomineeIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const nomineeToSave = pickStrategicAiPlayer(game, nominees, rng, 'lowest');
+    if (nomineeToSave) {
+      dispatch(submitPovSaveTarget(nomineeToSave.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingHolderReplacement) {
+    const eligible = getReplacementEligiblePlayers(game, alive);
+    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest');
+    if (replacement) {
+      dispatch(submitDiamondReplacement(replacement.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) {
+    const eligible = getReplacementEligiblePlayers(game, alive, 2, { allowLoh: true });
+    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest', { preferLoh: true });
+    if (replacement) {
+      dispatch(submitCoupReplacement(replacement.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingVipSecondUseDecision) {
+    const nominees = game.players.filter((player) => game.nomineeIds.includes(player.id));
+    const eligible = getReplacementEligiblePlayers(game, alive);
+    const useSecond = shouldAiUseTargetedSafetyPower(game, nominees, eligible, { preferLoh: true });
+    dispatch(submitVipSecondUseDecision(useSecond));
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingVipSecondSaveTarget) {
+    const nominees = game.nomineeIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const nomineeToSave = pickStrategicAiPlayer(game, nominees, rng, 'lowest');
+    if (nomineeToSave) {
+      dispatch(submitVipSecondSaveTarget(nomineeToSave.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingMissionImmunityOffer) {
+    dispatch(declineMissionImmunityReward());
+    return true;
+  }
+
+  if (game.awaitingDoubleVoteOffer) {
+    dispatch(declineDoubleVoteReward());
+    return true;
+  }
+
+  if (game.awaitingVoteDeductionPrompt) {
+    dispatch(declineVoteDeduction());
+    return true;
+  }
+
+  if (game.awaitingHumanVote && game.phase === 'live_vote') {
+    const target = pickStrategicAiPlayer(
+      game,
+      game.players.filter((player) => game.nomineeIds.includes(player.id)),
+      rng,
+      'highest',
+    );
+    if (target) {
+      dispatch(submitHumanVote(target.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingTieBreak) {
+    const tiedIds = game.tiedNomineeIds ?? game.nomineeIds;
+    const tiedPlayers = tiedIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const chosen = pickStrategicAiPlayer(game, tiedPlayers, rng, 'highest');
+    if (chosen) {
+      if (game.awaitingPosTieBreak) {
+        dispatch(submitPosTieBreak(chosen.id));
+      } else {
+        dispatch(submitTieBreak(chosen.id));
+      }
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingCoLohNomination) {
+    const excluded = new Set<string>([...(game.coLohIds ?? []), ...game.nomineeIds]);
+    const nominee = pickDebugAlivePlayer(game, rng, excluded, 'highest');
+    const coLohId = game.coLohIds?.find((id) => game.players.find((player) => player.id === id)?.isUser);
+    if (coLohId && nominee) {
+      dispatch(submitCoLohNomination({ coLohId, nomineeId: nominee.id }));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingFinal3Plea || game.awaitingFinal3Eviction) {
+    const hohWinnerId = game.lohId ?? pickDebugAlivePlayer(game, rng)?.id ?? null;
+    const nominee = pickStrategicAiPlayer(
+      game,
+      game.nomineeIds
+        .map((id) => game.players.find((player) => player.id === id))
+        .filter((player): player is Player => Boolean(player)),
+      rng,
+      'highest',
+    );
+    if (hohWinnerId && nominee) {
+      dispatch(finalizeFinal3Decision({ hohWinnerId, evicteeId: nominee.id }));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  return false;
+}
+
 /** Dispatch advance() repeatedly until the phase reaches 'eviction_results' (debug only). */
 export const fastForwardToEviction =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
@@ -5256,6 +5670,54 @@ export const fastForwardToEviction =
       } else {
         dispatch(advance());
       }
+      steps++;
+    }
+  };
+
+/**
+ * Simulate a full elimination cycle with debug-friendly social/public noise.
+ * Advances through blocker states, commits pending evictions, and continues
+ * until the game stabilises on the next week or a terminal endgame beat.
+ */
+export const simulateImmediateEliminationCycle =
+  () => (dispatch: AppDispatch, getState: () => RootState) => {
+    const initialWeek = getState().game.week;
+    const cycleSeed = (
+      (getState().game.seed ^ ((initialWeek + 1) * 0x9e3779b9) ^ (getState().game.players.length << 8)) >>> 0
+    );
+    const rng = mulberry32(cycleSeed);
+
+    seedDebugCycleNoise(dispatch, getState(), rng);
+
+    let steps = 0;
+    const maxSteps = PHASE_ORDER.length * 24;
+    while (steps < maxSteps) {
+      const rootState = getState();
+      const game = rootState.game;
+
+      if (game.phase === 'jury' || game.seasonFinale?.phase === 'seasonComplete') {
+        break;
+      }
+
+      if (game.week > initialWeek && game.phase === 'week_start') {
+        break;
+      }
+
+      if (resolveDebugBlockers(dispatch, rootState, rng)) {
+        steps++;
+        continue;
+      }
+
+      const prevPhase = game.phase;
+      const prevWeek = game.week;
+      dispatch(advance());
+
+      const nextState = getState().game;
+      if (nextState.phase === prevPhase && nextState.week === prevWeek && !nextState.pendingEviction) {
+        dispatch(clearBlockingFlags());
+        break;
+      }
+
       steps++;
     }
   };
