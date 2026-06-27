@@ -24,8 +24,10 @@ This repository now has layered automated coverage for minigames.
    - `tests/minigames.minesweeps.rules.test.ts`
    - `tests/minigames.colorMatch.rules.test.ts`
    - `tests/minigames.trapAuction.rules.test.ts`
+   - `tests/minigames.chainOfGreed.rules.test.ts`
+   - `tests/minigames.gridOfLuck.rules.test.ts`
    - `tests/minigames.tetris.rules.test.ts`
-   - These exercise the real helper functions and reducers that define the games' rules.
+   - These exercise the real helper functions and reducers that define the games' rules, including the chain-vote and grid-chaos engines.
 
 5. Visual smoke
    - `e2e/playwright/minigameLab.smoke.spec.ts`
