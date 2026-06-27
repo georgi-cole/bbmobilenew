@@ -218,6 +218,25 @@ flatten `border-radius` on `<button>` elements, and ignore custom shadows.
 4. Inspect element styles and verify `html.is-standalone` class is present and
    the standalone-specific CSS rules are applied.
 
+### PO / QA: Fast elimination cycle
+
+Use the Debug Panel when you want to jump through a full elimination cycle without
+clicking every phase manually.
+
+1. Open the app with debug access enabled.
+2. Open the Debug Panel.
+3. Press `Simulate Elimination Cycle`.
+4. Check that the game advances through one full cycle and lands on the next stable week state.
+
+What this button does:
+
+- seeds social noise, incoming interactions, approval shifts, and relationship updates
+- resolves blocker states like save prompts, veto prompts, vote prompts, tie-breaks, and pending evictions
+- finalizes the elimination so you can continue testing the next phase immediately
+
+Use it for quick end-to-end sanity checks of old and new games, especially when you want to
+verify that the cycle still behaves realistically without manually playing through each step.
+
 
 
 The **Weekly Diary Room Log** feature lets admins record and publish a
