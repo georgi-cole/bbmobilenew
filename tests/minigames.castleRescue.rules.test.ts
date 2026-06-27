@@ -33,12 +33,12 @@ describe('Castle Rescue rules', () => {
     expect(initial.status).toBe('idle');
     expect(initial.outcomeResolved).toBe(false);
 
-    const map = { source: { x: 12, y: 34 } } as any;
+    const map = { source: { x: 12, y: 34 } } as Parameters<typeof startRun>[1];
     const started = startRun(initial, map, 1_000);
     expect(started.status).toBe('active');
     expect(started.currentHeadPos).toEqual({ x: 12, y: 34 });
 
-    const secondStart = startRun(started, { source: { x: 1, y: 2 } } as any, 2_000);
+    const secondStart = startRun(started, { source: { x: 1, y: 2 } } as Parameters<typeof startRun>[1], 2_000);
     expect(secondStart.currentHeadPos).toEqual({ x: 12, y: 34 });
 
     const finalised = finalizeRunState(started, 5_000);
@@ -59,7 +59,7 @@ describe('Castle Rescue rules', () => {
     const level = {
       pipes: [pipe],
       platforms: [makePlatform('ceiling', 100, 170, 80, 20)],
-    } as any;
+    } as Parameters<typeof validateAndFixPipeClearance>[0];
     validateAndFixPipeClearance(level);
     expect(level.platforms[0].y).toBeLessThan(170);
 
@@ -87,23 +87,23 @@ describe('Castle Rescue rules', () => {
       pipeFlashTimer: 0,
       phase: 'idle',
       gateOpen: false,
-    } as any;
+    } as Parameters<typeof applyPipeEntry>[0];
 
-    const correctPipe = { done: false, pipeType: 'correct', routeIndex: 0 } as any;
+    const correctPipe = { done: false, pipeType: 'correct', routeIndex: 0 } as Parameters<typeof applyPipeEntry>[1];
     expect(applyPipeEntry(state, correctPipe)).toBe('handled');
     expect(state.pipesComplete).toBe(1);
     expect(correctPipe.done).toBe(true);
     expect(state.phase).toBe('pipe_flash');
 
-    const setbackPipe = { done: false, pipeType: 'setback', routeIndex: 1 } as any;
+    const setbackPipe = { done: false, pipeType: 'setback', routeIndex: 1 } as Parameters<typeof applyPipeEntry>[1];
     expect(applyPipeEntry(state, setbackPipe)).toBe('handled');
     expect(state.wrongPipes).toBeGreaterThan(0);
     expect(state.score).toBeLessThan(100);
 
-    const bonusPipe = { done: false, pipeType: 'bonus', routeIndex: 2 } as any;
+    const bonusPipe = { done: false, pipeType: 'bonus', routeIndex: 2 } as Parameters<typeof applyPipeEntry>[1];
     expect(applyPipeEntry(state, bonusPipe)).toBe('enter_bonus');
 
-    const ambushPipe = { done: false, pipeType: 'ambush', routeIndex: 2 } as any;
+    const ambushPipe = { done: false, pipeType: 'ambush', routeIndex: 2 } as Parameters<typeof applyPipeEntry>[1];
     expect(applyPipeEntry(state, ambushPipe)).toBe('enter_ambush');
 
     const surface = { x: 0, y: 10, w: 100, h: 10 };
