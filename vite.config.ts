@@ -9,6 +9,7 @@ import react from '@vitejs/plugin-react'
 //                                                   required for Capacitor/WKWebView)
 export default defineConfig({
   base: '/bbmobilenew/',
+  assetsInclude: ['**/*.wp2'],
   plugins: [react()],
   server: {
     proxy: {

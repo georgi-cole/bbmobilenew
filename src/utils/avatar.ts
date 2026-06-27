@@ -115,6 +115,7 @@ function capitalize(s: string): string {
  */
 export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'avatar'>): string[] {
   const candidates: string[] = [];
+  const lookupTokens = collectAssetLookupTokens(player);
 
   // Remote config override takes highest priority (if provided for this player id).
   const hgForRemote = getById(player.id) ?? findByName(player.name);
@@ -126,6 +127,14 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
   // If player.avatar is already a full URL or absolute path, use it first
   if (player.avatar && (player.avatar.startsWith('http') || player.avatar.startsWith('/'))) {
     candidates.push(player.avatar);
+  }
+
+  const folderAvatar = listAvatarAssetCandidates().find(({ basename }) => {
+    const token = normalizeNameToken(basename.replace(/_avatar$/i, ''));
+    return lookupTokens.includes(token) || lookupTokens.some((target) => token.includes(target) || target.includes(token));
+  });
+  if (folderAvatar) {
+    candidates.push(folderAvatar.source);
   }
 
   const id = player.id;
@@ -192,7 +201,23 @@ export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): s
  * folder contents first before falling back to the historical stem map.
  */
 const FORMAL_CUTOUT_MODULES = import.meta.glob(
-  '../../../public/assets/formal_attires/*.{png,jpg,jpeg,jxl,webp,avif,wp2}',
+  '../../public/assets/formal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
+  {
+    eager: true,
+    import: 'default',
+  },
+) as Record<string, string>;
+
+const INFORMAL_CUTOUT_MODULES = import.meta.glob(
+  '../../public/assets/Informal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
+  {
+    eager: true,
+    import: 'default',
+  },
+) as Record<string, string>;
+
+const AVATAR_ASSET_MODULES = import.meta.glob(
+  '../../public/assets/skins/*.{png,webp,svg,jpg,jpeg,wp2}',
   {
     eager: true,
     import: 'default',
@@ -227,6 +252,14 @@ function normalizeNameToken(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
+function collectAssetLookupTokens(player: Pick<Player, 'id' | 'name'>): string[] {
+  const hg = getById(player.id) ?? findByName(player.name);
+
+  return [hg?.id, hg?.name, player.id, player.name]
+    .filter((value): value is string => Boolean(value))
+    .map(normalizeNameToken);
+}
+
 function listFormalCutoutCandidates(): Array<{ basename: string; source: string }> {
   return Object.entries(FORMAL_CUTOUT_MODULES).map(([path, source]) => {
     const filename = path.split('/').pop() ?? path;
@@ -235,13 +268,25 @@ function listFormalCutoutCandidates(): Array<{ basename: string; source: string 
   });
 }
 
-function resolveFormalCutoutFromFolder(player: Pick<Player, 'id' | 'name'>): string | null {
-  const hg = getById(player.id) ?? findByName(player.name);
-  if (!hg) return null;
+function listInformalCutoutCandidates(): Array<{ basename: string; source: string }> {
+  return Object.entries(INFORMAL_CUTOUT_MODULES).map(([path, source]) => {
+    const filename = path.split('/').pop() ?? path;
+    const basename = filename.replace(/\.[^.]+$/, '');
+    return { basename, source };
+  });
+}
 
-  const targetTokens = [hg.id, hg.name, player.id, player.name]
-    .filter(Boolean)
-    .map(normalizeNameToken);
+function listAvatarAssetCandidates(): Array<{ basename: string; source: string }> {
+  return Object.entries(AVATAR_ASSET_MODULES).map(([path, source]) => {
+    const filename = path.split('/').pop() ?? path;
+    const basename = filename.replace(/\.[^.]+$/, '');
+    return { basename, source };
+  });
+}
+
+function resolveFormalCutoutFromFolder(player: Pick<Player, 'id' | 'name'>): string | null {
+  const targetTokens = collectAssetLookupTokens(player);
+  if (targetTokens.length === 0) return null;
 
   const candidates = listFormalCutoutCandidates();
 
@@ -323,9 +368,17 @@ const MALE_AVATAR_EMOJI = '👨';
  *   const cutoutSrc = resolveInformalCutout(player) ?? resolveAvatar(player);
  */
 export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): string | null {
+  const targetTokens = collectAssetLookupTokens(player);
+  if (targetTokens.length === 0) return null;
+
+  const folderMatch = listInformalCutoutCandidates().find(({ basename }) => {
+    const token = normalizeNameToken(basename.replace(/_informal.*$/i, ''));
+    return targetTokens.includes(token);
+  });
+  if (folderMatch) return folderMatch.source;
+
   const hg = getById(player.id) ?? findByName(player.name);
-  if (!hg) return null;
-  const stem = INFORMAL_CUTOUT_MAP[hg.id];
+  const stem = hg ? INFORMAL_CUTOUT_MAP[hg.id] : null;
   if (!stem) return null;
   return joinPublicAssetPath(`assets/Informal_attires/${stem}.png`);
 }
