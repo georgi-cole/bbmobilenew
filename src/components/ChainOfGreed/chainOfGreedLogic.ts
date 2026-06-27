@@ -593,7 +593,13 @@ export function resolveVoteElimination(options: {
         message: 'Tie-break duel begins.',
         transcript: duel.transcript,
       });
-      ordered.push(...duel.orderedIds.map((id) => unresolved.find((candidate) => candidate.id === id)!).filter(Boolean));
+      // Sudden death returns best-to-worst, but elimination needs worst-first.
+      ordered.push(
+        ...duel.orderedIds
+          .map((id) => unresolved.find((candidate) => candidate.id === id)!)
+          .filter(Boolean)
+          .reverse(),
+      );
     }
     index += sameVote.length;
   }
