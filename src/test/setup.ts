@@ -317,3 +317,4 @@ if (typeof HTMLMediaElement !== 'undefined') {
     configurable: true,
     value: () => Promise.resolve(),
   });
+}
