@@ -1,5 +1,4 @@
 import '@testing-library/jest-dom';
-import { beforeEach } from 'vitest';
 
 class MemoryStorage implements Storage {
   private store = new Map<string, string>();
