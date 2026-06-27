@@ -1,5 +1,7 @@
 // API service helper for challenge submissions. Adapt to your app's fetch/axios wrapper.
 
+import { apiUrl } from '../utils/apiBase';
+
 type EndurancePayload = {
   challengeId: string;
   elapsed_seconds: number;
@@ -7,7 +9,7 @@ type EndurancePayload = {
 };
 
 export async function submitEnduranceResult(payload: EndurancePayload): Promise<unknown> {
-  const res = await fetch('/api/challenges/endurance', {
+  const res = await fetch(apiUrl('/api/challenges/endurance'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

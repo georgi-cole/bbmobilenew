@@ -17,6 +17,7 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
+  assetsInclude: ['**/*.wp2'],
   plugins: [react()],
   server: {
     proxy: {

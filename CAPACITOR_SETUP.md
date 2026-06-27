@@ -11,7 +11,7 @@ using [Capacitor](https://capacitorjs.com/), and how to continue from here.
 | File / change | Purpose |
 |---|---|
 | `capacitor.config.ts` | Capacitor configuration (bundle ID, app name, web dir) |
-| `package.json` — new scripts | `build:capacitor`, `cap:sync`, `cap:open` |
+| `package.json` — new scripts | `build:capacitor`, `build:android`, `build:ios`, `cap:sync`, `cap:open` |
 | `vite.config.ts` — base path | `build:capacitor` passes `--base ./`; web/GitHub Pages build keeps `/bbmobilenew/` |
 | `src/utils/displayMode.ts` | Detects `window.Capacitor` and adds `is-capacitor` / `is-standalone` CSS classes |
 | `index.html` — title | Changed from `bbmobilenew` to `The Big Eye` |
@@ -93,6 +93,23 @@ Or use the convenience script:
 npm run cap:sync    # runs build:capacitor + cap sync ios
 npm run cap:open    # opens Xcode
 ```
+
+### Android / iOS API base URLs
+
+Use platform-specific env files for release builds:
+
+- `.env.android` with `VITE_ANDROID_API_BASE_URL=https://your-android-backend.example`
+- `.env.ios` with `VITE_IOS_API_BASE_URL=https://your-ios-backend.example`
+
+Then build with:
+
+```bash
+npm run build:android
+npm run build:ios
+```
+
+These scripts load the matching Vite mode so the mobile app does not depend on
+`localhost` at runtime.
 
 ---
 

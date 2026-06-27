@@ -16,6 +16,7 @@
 
 import type { RemoteConfig, RemotePlayerOverride } from './remoteConfigTypes';
 import type { CompSelectionMode } from '../components/compSelectionUtils';
+import { apiUrl } from '../utils/apiBase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
  */
 export const DEFAULT_REMOTE_CONFIG_URL: string =
   (typeof import.meta !== 'undefined' && (import.meta as { env?: { VITE_REMOTE_CONFIG_URL?: string } }).env?.VITE_REMOTE_CONFIG_URL) ||
-  '/api/live-config';
+  apiUrl('/api/live-config');
 
 const FETCH_TIMEOUT_MS = 8000;
 
