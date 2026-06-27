@@ -1,5 +1,4 @@
 import '@testing-library/jest-dom';
-import { beforeEach } from 'vitest';
 
 class MemoryStorage implements Storage {
   private store = new Map<string, string>();
@@ -111,7 +110,7 @@ function installViewportShim(): void {
 function installResizeObservers(): void {
   if (typeof globalThis.ResizeObserver !== 'function') {
     class ResizeObserverMock implements ResizeObserver {
-      private readonly callback: ResizeObserverCallback;
+      callback: ResizeObserverCallback;
 
       constructor(callback: ResizeObserverCallback) {
         this.callback = callback;
@@ -147,10 +146,10 @@ function installResizeObservers(): void {
 
   if (typeof globalThis.IntersectionObserver !== 'function') {
     class IntersectionObserverMock implements IntersectionObserver {
-      readonly root: Element | Document | null = null;
-      readonly rootMargin = '0px';
-      readonly thresholds: ReadonlyArray<number> = [0];
-      private readonly callback: IntersectionObserverCallback;
+      root: Element | Document | null = null;
+      rootMargin = '0px';
+      thresholds: ReadonlyArray<number> = [0];
+      callback: IntersectionObserverCallback;
 
       constructor(callback: IntersectionObserverCallback) {
         this.callback = callback;
@@ -318,10 +317,4 @@ if (typeof HTMLMediaElement !== 'undefined') {
     configurable: true,
     value: () => Promise.resolve(),
   });
-  Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
-    configurable: true,
-    value: () => undefined,
-  });
 }
-
-beforeEach(resetStorage);

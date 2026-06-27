@@ -22,7 +22,7 @@ describe('Tetris rules', () => {
   };
 
   it('initialises the competition with the supplied participant roster', () => {
-    const initial = tetrisReducer(undefined, { type: '@@INIT' } as any);
+    const initial = tetrisReducer(undefined, { type: '@@INIT' });
     const started = tetrisReducer(initial, initTetris(payload));
 
     expect(started.phase).toBe('playing');
@@ -33,7 +33,7 @@ describe('Tetris rules', () => {
   });
 
   it('derives the winner and last place from the final score map', () => {
-    const initial = tetrisReducer(undefined, { type: '@@INIT' } as any);
+    const initial = tetrisReducer(undefined, { type: '@@INIT' });
     const started = tetrisReducer(initial, initTetris(payload));
     const completed = tetrisReducer(started, setHumanScore(400));
 
