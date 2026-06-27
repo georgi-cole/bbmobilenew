@@ -39,6 +39,23 @@ npm run build      # output in dist/
 npm run preview    # preview the production build
 ```
 
+### Mobile builds
+
+For native Android/iOS builds, set the matching API base URL in:
+
+- `.env.android` using `VITE_ANDROID_API_BASE_URL`
+- `.env.ios` using `VITE_IOS_API_BASE_URL`
+
+Then build with:
+
+```bash
+npm run build:android
+npm run build:ios
+```
+
+These modes keep local development on `http://localhost:4000` but switch the
+packaged app to the real backend.
+
 ## GitHub Pages deployment
 
 Pushes to `main` trigger the **Build and deploy Pages** workflow, which runs
