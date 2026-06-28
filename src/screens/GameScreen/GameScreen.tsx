@@ -2817,30 +2817,8 @@ export default function GameScreen() {
     spectatorF3Active ||
     spectatorLegacyActive
 
-  const [isCompactMobileViewport, setIsCompactMobileViewport] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return (window.visualViewport?.width ?? window.innerWidth) <= 480
-  })
-
-  useEffect(() => {
-    function updateCompactMobileViewport() {
-      const viewportWidth = window.visualViewport?.width ?? window.innerWidth
-      setIsCompactMobileViewport(viewportWidth <= 480)
-    }
-
-    updateCompactMobileViewport()
-    window.addEventListener('resize', updateCompactMobileViewport)
-    window.visualViewport?.addEventListener('resize', updateCompactMobileViewport)
-
-    return () => {
-      window.removeEventListener('resize', updateCompactMobileViewport)
-      window.visualViewport?.removeEventListener('resize', updateCompactMobileViewport)
-    }
-  }, [])
-
-  const usesCompactRosterBalance = settings.gameUX.compactRoster || isCompactMobileViewport
-  const compactRosterLayout = settings.gameUX.compactRoster ? settings.gameUX.compactRosterLayout : 'small'
-  const compactRosterLogRows = settings.gameUX.compactRoster ? 6 : isCompactMobileViewport ? 3 : 2
+  const expandsTvForCompactRoster = settings.gameUX.compactRoster
+  const compactRosterLogRows = expandsTvForCompactRoster ? 6 : 2
 
   // ── Viewport fallback message for blank-TV states ────────────────────────
   // Provides a meaningful holding message during states where no fresh TV event
@@ -2887,7 +2865,7 @@ export default function GameScreen() {
   return (
     <LayoutGroup id="game-layout">
     <div
-      className={`game-screen game-screen-shell${usesCompactRosterBalance ? ' game-screen--compact-roster-balance' : ''}`}
+      className={`game-screen game-screen-shell${expandsTvForCompactRoster ? ' game-screen--compact-roster-balance' : ''}`}
     >
       {showPublicSaveReveal && publicSaveWinnerId ? (
         <TvZone
@@ -4133,8 +4111,8 @@ export default function GameScreen() {
         headerSelector=".tv-zone"
         footerSelector=".nav-bar"
         overlaySelector=".game-control-dock"
-          compact={usesCompactRosterBalance}
-          compactLayout={compactRosterLayout}
+        compact={settings.gameUX.compactRoster}
+        compactLayout={settings.gameUX.compactRosterLayout}
         occupancyLabel={`${alivePlayers.length}/${game.players.length}`}
       />
       {previewPlayer && <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />}
