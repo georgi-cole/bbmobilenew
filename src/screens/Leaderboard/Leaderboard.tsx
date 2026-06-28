@@ -72,31 +72,35 @@ export default function Leaderboard() {
   return (
     <div className="placeholder-screen leaderboard-screen">
       <button
-        className="leaderboard-screen__back"
+        className="leaderboard-screen__back game-button game-button--ghost game-button--back"
         type="button"
         aria-label="Go back"
         onClick={() => navigate(-1)}
       >
-        ← Back
+        <span aria-hidden="true">←</span>
+        <span>Back</span>
       </button>
 
       <h1 className="placeholder-screen__title">🏆 Leaderboard</h1>
 
       <div className="leaderboard-screen__tabs">
         <button
-          className={`leaderboard-screen__tab${tab === 'season' ? ' leaderboard-screen__tab--active' : ''}`}
+          type="button"
+          className={`leaderboard-screen__tab game-button game-button--menu game-button--ghost${tab === 'season' ? ' leaderboard-screen__tab--active' : ''}`}
           onClick={() => setTab('season')}
         >
           This Season
         </button>
         <button
-          className={`leaderboard-screen__tab${tab === 'alltime' ? ' leaderboard-screen__tab--active' : ''}`}
+          type="button"
+          className={`leaderboard-screen__tab game-button game-button--menu game-button--ghost${tab === 'alltime' ? ' leaderboard-screen__tab--active' : ''}`}
           onClick={() => setTab('alltime')}
         >
           All-Time
         </button>
         <button
-          className={`leaderboard-screen__tab${tab === 'pastWinners' ? ' leaderboard-screen__tab--active' : ''}`}
+          type="button"
+          className={`leaderboard-screen__tab game-button game-button--menu game-button--ghost${tab === 'pastWinners' ? ' leaderboard-screen__tab--active' : ''}`}
           onClick={() => setTab('pastWinners')}
         >
           Past Winners
@@ -115,6 +119,7 @@ export default function Leaderboard() {
                 className={`leaderboard-screen__row${isUser ? ' leaderboard-screen__row--you' : ''}`}
               >
                 <button
+                  type="button"
                   className="leaderboard-screen__row-main"
                   onClick={() => toggleExpand(entry.playerId)}
                   aria-expanded={isExpanded}
@@ -163,6 +168,7 @@ export default function Leaderboard() {
                 className={`leaderboard-screen__row${isUser ? ' leaderboard-screen__row--you' : ''}`}
               >
                 <button
+                  type="button"
                   className="leaderboard-screen__row-main"
                   onClick={() => toggleExpand(`at-${entry.playerId}`)}
                   aria-expanded={isExpanded}

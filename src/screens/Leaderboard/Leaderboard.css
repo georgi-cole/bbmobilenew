@@ -1,16 +1,7 @@
 /* Leaderboard */
 .leaderboard-screen__back {
   align-self: flex-start;
-  padding: 8px 14px;
   margin-bottom: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .leaderboard-screen__tabs {
@@ -21,19 +12,11 @@
 }
 
 .leaderboard-screen__tab {
-  padding: 7px 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.05);
   color: var(--color-text-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
 }
 
 .leaderboard-screen__tab--active {
-  background: var(--color-accent);
+  background: linear-gradient(135deg, rgba(92, 100, 255, 0.96), rgba(136, 84, 255, 0.96));
   color: var(--color-text);
   border-color: transparent;
 }

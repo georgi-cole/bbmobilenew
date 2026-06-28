@@ -13,9 +13,9 @@
   transition: transform 150ms ease, opacity 150ms ease;
   -webkit-user-select: none;
   user-select: none;
-  /* Sized to be secondary/small — matches existing audio button footprint */
-  width: 30px;
-  height: 30px;
+  /* Enlarge to a reliable touch target while keeping the shell compact. */
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
 }
 
@@ -50,8 +50,8 @@
 .top-utility-btn__glyph {
   position: relative;
   z-index: 1;
-  width: 52%;
-  height: 52%;
+  width: 56%;
+  height: 56%;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
