@@ -719,34 +719,36 @@ export default function MinigameHost({
             </p>
           )}
 
-          {activeCompetitionRetry && (
-            <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
-              <p className="minigame-host-results-retry-copy">
-                Finished last? Watch a short ad to retry before the result is locked in.
-              </p>
-              <button
-                className="minigame-host-results-btn minigame-host-results-btn--retry"
-                onClick={() => activeCompetitionRetry.onWatch(handleRetryRestart)}
-                disabled={activeCompetitionRetry.pending}
-                autoFocus
-              >
-                {activeCompetitionRetry.pending ? 'Opening Ad…' : 'Watch Ad to Retry'}
-              </button>
-            </div>
-          )}
+          <div className="minigame-host-results-actions">
+            {activeCompetitionRetry && (
+              <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
+                <p className="minigame-host-results-retry-copy">
+                  Finished last? Watch a short ad to retry before the result is locked in.
+                </p>
+                <button
+                  className="minigame-host-results-btn minigame-host-results-btn--retry"
+                  onClick={() => activeCompetitionRetry.onWatch(handleRetryRestart)}
+                  disabled={activeCompetitionRetry.pending}
+                  autoFocus
+                >
+                  {activeCompetitionRetry.pending ? 'Opening Ad…' : 'Watch Ad to Retry'}
+                </button>
+              </div>
+            )}
 
-          <button
-            className="minigame-host-results-btn"
-            onClick={() => {
-              if (showCompetitionRetry) {
-                competitionRetry?.onContinueWithoutRetry?.();
-              }
-              handleContinue();
-            }}
-            {...(!showCompetitionRetry ? { autoFocus: true } : {})}
-          >
-            {showCompetitionRetry ? 'No Thanks — Continue ▶' : 'Continue ▶'}
-          </button>
+            <button
+              className="minigame-host-results-btn"
+              onClick={() => {
+                if (showCompetitionRetry) {
+                  competitionRetry?.onContinueWithoutRetry?.();
+                }
+                handleContinue();
+              }}
+              {...(!showCompetitionRetry ? { autoFocus: true } : {})}
+            >
+              {showCompetitionRetry ? 'No Thanks — Continue ▶' : 'Continue ▶'}
+            </button>
+          </div>
         </div>
       )}
     </div>
