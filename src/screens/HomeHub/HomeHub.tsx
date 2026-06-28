@@ -24,6 +24,7 @@ import PermissionPrompts from '../../components/PermissionPrompts/PermissionProm
 import { SoundManager } from '../../services/sound/SoundManager';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
 import useHomeHubAssets from '../../hooks/useHomeHubAssets';
+import useIntroHubBackground from '../../hooks/useIntroHubBackground';
 import {
   hasSeenHomeHubSplashForGame,
   markHomeHubSplashSeenForGame,
@@ -61,6 +62,7 @@ const HUB_BUTTONS = [
 interface HomeHubAssetLayerProps {
   splashDone: boolean;
   effectiveBgUrl: string | null;
+  backgroundReady: boolean;
   onPlay: () => void;
   onNavigate: NavigateFunction;
 }
@@ -68,20 +70,23 @@ interface HomeHubAssetLayerProps {
 function HomeHubAssetLayer({
   splashDone,
   effectiveBgUrl,
+  backgroundReady,
   onPlay,
   onNavigate,
 }: HomeHubAssetLayerProps) {
   const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
     useHomeHubAssets(effectiveBgUrl);
+  const assetReady = backgroundReady && homeHubReady;
+  const status = backgroundReady ? homeHubLoadStatus : 'Checking background...';
 
   return (
     <>
-      {splashDone && homeHubReady && (
+      {splashDone && assetReady && (
         <PermissionPrompts showSoundPrompt={false} />
       )}
 
-      {splashDone && !homeHubReady && (
-        <HubLoadingOverlay progress={homeHubLoadProgress} status={homeHubLoadStatus} />
+      {splashDone && !assetReady && (
+        <HubLoadingOverlay progress={homeHubLoadProgress} status={status} />
       )}
 
       {/* Foreground content — hidden until the full hub asset bundle is ready. */}
@@ -130,6 +135,7 @@ export default function HomeHub() {
   const { url: bgUrl } = useBackgroundTheme();
   const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
   const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
+  const { url: introHubBgUrl, ready: introHubBgReady } = useIntroHubBackground(remoteBgUrl, bgUrl);
   const achievementSummary = useMemo(
     () => buildAchievementSummary({
       userPlayer: introHubPlayer,
@@ -140,7 +146,7 @@ export default function HomeHub() {
     [dayCount, introHubPlayer, phase, seasonArchives],
   );
   // Remote background takes priority over weather/time-of-day background.
-  const effectiveBgUrl = remoteBgUrl ?? bgUrl;
+  const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl;
   const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
@@ -277,6 +283,7 @@ export default function HomeHub() {
             key={effectiveBgUrl ?? 'default'}
             splashDone={splashDone}
             effectiveBgUrl={effectiveBgUrl}
+            backgroundReady={introHubBgReady}
             onPlay={handlePlay}
             onNavigate={navigate}
           />
