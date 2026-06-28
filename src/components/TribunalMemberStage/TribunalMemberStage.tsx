@@ -19,7 +19,7 @@ import { useEffect, useState } from 'react';
 import type { Player } from '../../types';
 import type { JurorReveal } from '../../store/finaleSlice';
 import { PUBLIC_JUROR_ID } from '../../store/finaleSlice';
-import { resolveFormalCutout, resolveFullSizeCutoutFallback } from '../../utils/avatar';
+import { resolveFormalCutout, resolveSilhouetteFallback } from '../../utils/avatar';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import {
   PHRASE_TYPING_CHAR_INTERVAL_MS,
@@ -47,6 +47,17 @@ function PublicCutoutPlaceholder() {
     <div className="tms-public-placeholder" aria-hidden="true">
       <span className="tms-public-globe">🌐</span>
     </div>
+  );
+}
+
+function SilhouetteAvatar({ player }: { player: Player }) {
+  return (
+    <img
+      className="tms-vote-prompt__avatar"
+      src={resolveSilhouetteFallback(player)}
+      alt={player.name}
+      draggable={false}
+    />
   );
 }
 
@@ -103,7 +114,7 @@ export default function TribunalMemberStage({
 
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
   const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null;
-  const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null;
+  const fallbackSrc = current && !isPublic ? resolveSilhouetteFallback(current.juror) : null;
   const cutoutSrc = current && !isPublic && fallbackSrc
     ? failedCutoutId === current.juror.id || !formalSrc
       ? fallbackSrc
@@ -184,11 +195,7 @@ export default function TribunalMemberStage({
       {awaitingHumanPlayer && (
         <div className="tms-vote-prompt">
           <span className="tms-vote-prompt__text">
-            <PlayerAvatar
-              player={awaitingHumanPlayer}
-              size="sm"
-              showRelationshipOutline={false}
-            />
+            <SilhouetteAvatar player={awaitingHumanPlayer} />
             {awaitingHumanPlayer.name}, cast your Tribunal vote:
           </span>
           <div className="tms-vote-choices">

@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
+import { resolveAvatarCandidates, resolveSilhouetteFallback, isEmoji } from '../../utils/avatar';
 import './ChatOverlay.css';
 
 export interface ChatLine {
@@ -259,7 +259,15 @@ export default function ChatOverlay({
             >
               {showAvatars && line.player && (
                 <div className="chat-overlay__avatar">
-                  {renderAvatar(line.player)}
+                  {line.role === 'host' || line.role === 'user' ? (
+                    <img
+                      className="chat-overlay__avatar-img"
+                      src={resolveSilhouetteFallback(line.player)}
+                      alt={line.player.name}
+                    />
+                  ) : (
+                    renderAvatar(line.player)
+                  )}
                 </div>
               )}
               <div className="chat-overlay__bubble">

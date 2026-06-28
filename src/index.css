@@ -35,12 +35,16 @@
   --tv-surface:        #0b121a;
 
   /* Safe-area layout */
-  --safe-area-inset-top: env(safe-area-inset-top, 0px);
-  --safe-area-inset-left: env(safe-area-inset-left, 0px);
-  --safe-area-inset-right: env(safe-area-inset-right, 0px);
-  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-top: var(--safe-top);
+  --safe-area-inset-left: var(--safe-left);
+  --safe-area-inset-right: var(--safe-right);
+  --safe-area-inset-bottom: var(--safe-bottom);
   --app-safe-area-top-fallback: 0px;
-  --app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-area-inset-top));
+  --app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-top));
   --app-safe-area-top-extra: max(0px, calc(var(--app-safe-area-top) - 16px));
   --floating-corner-top-base: 12px;
   --floating-corner-top-safe-padding: 8px;
@@ -54,11 +58,11 @@
   );
   --floating-corner-left-offset: max(
     var(--floating-corner-left-base),
-    calc(var(--safe-area-inset-left) + var(--floating-corner-left-safe-padding))
+    calc(var(--safe-left) + var(--floating-corner-left-safe-padding))
   );
   --floating-corner-right-offset: max(
     var(--floating-corner-right-base),
-    calc(var(--safe-area-inset-right) + var(--floating-corner-right-safe-padding))
+    calc(var(--safe-right) + var(--floating-corner-right-safe-padding))
   );
 
   /* Typography */

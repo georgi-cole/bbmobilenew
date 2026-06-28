@@ -1,7 +1,7 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
   position: relative;
-  height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));
+  height: calc(var(--nav-bar-height, 60px) + var(--safe-bottom));
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 18px 18px 28px 28px / 12px 12px 24px 24px;

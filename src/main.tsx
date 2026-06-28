@@ -28,8 +28,8 @@ const initEnableZoom = store.getState().settings.visual?.enableZoom ?? false;
 const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
 if (viewportMeta) {
   viewportMeta.content = initEnableZoom
-    ? 'width=device-width, initial-scale=1.0'
-    : 'width=device-width, initial-scale=1.0, user-scalable=no';
+    ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
+    : 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
 }
 
 // Initialize the Social Engine with the Redux store so it can dispatch actions

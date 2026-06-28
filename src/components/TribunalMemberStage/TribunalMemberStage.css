@@ -325,6 +325,16 @@
   justify-content: center;
 }
 
+.tms-vote-prompt__avatar {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(224, 231, 255, 0.45);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+  flex-shrink: 0;
+}
+
 .tms-vote-choices {
   display: flex;
   gap: 0.6rem;

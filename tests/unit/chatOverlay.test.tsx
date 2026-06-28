@@ -129,6 +129,33 @@ describe('ChatOverlay', () => {
     expect(screen.getByText('Blake')).toBeInTheDocument();
   });
 
+  it('uses silhouette fallbacks for host and user speakers', async () => {
+    render(
+      <ChatOverlay
+        lines={[
+          {
+            id: 'host-line',
+            role: 'host',
+            player: { id: 'host', name: 'Host', avatar: '🎤', status: 'active' },
+            text: 'Welcome back.',
+          },
+          {
+            id: 'user-line',
+            role: 'user',
+            player: { id: 'user', name: 'You', avatar: '🧑', status: 'active', isUser: true },
+            text: 'I am ready.',
+          },
+        ]}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /skip/i }));
+
+    expect(screen.getByAltText('Host').getAttribute('src')).toContain('silhouette_');
+    expect(screen.getByAltText('You').getAttribute('src')).toContain('silhouette_');
+  });
+
   it('renders header title and subtitle when provided', () => {
     render(
       <ChatOverlay

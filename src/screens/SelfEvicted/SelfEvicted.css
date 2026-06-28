@@ -1,15 +1,17 @@
 /* SelfEvicted — dedicated screen for mid-game self-eviction. */
 .self-evicted-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: radial-gradient(ellipse at 50% 40%, #0d1230 0%, #05080f 70%);
-  padding: 20px;
+  padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom));
   color: var(--color-text);
   font-family: inherit;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .self-evicted-card {
