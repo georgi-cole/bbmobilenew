@@ -6,14 +6,16 @@
   padding: 12px 12px calc(var(--nav-bar-height) + 10px + var(--safe-bottom));
 }
 
-.game-screen--compact-roster-balance {
-  box-sizing: border-box;
-  min-height: calc(100dvh - 84px);
-}
+@media (min-width: 640px) and (min-height: 760px) {
+  .game-screen--compact-roster-balance {
+    box-sizing: border-box;
+    min-height: calc(100dvh - 84px);
+  }
 
-.game-screen--compact-roster-balance > .tv-zone {
-  flex: 1 1 auto;
-  min-height: 0;
+  .game-screen--compact-roster-balance > .tv-zone {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
 }
 
 /* Gameplay background shell */

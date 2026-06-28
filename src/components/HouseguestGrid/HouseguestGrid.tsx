@@ -93,10 +93,12 @@ export default function HouseguestGrid({
 
   useEffect(() => {
     function setAvailableHeight() {
-      const viewportHeight = window.innerHeight
+      const visualViewport = window.visualViewport
+      const viewportHeight = visualViewport?.height ?? window.innerHeight
+      const viewportTop = visualViewport?.offsetTop ?? 0
       let listTop = 0
       let footerH = DEFAULT_FOOTER_HEIGHT
-      let bottomBoundary = viewportHeight - footerH
+      let bottomBoundary = viewportTop + viewportHeight - footerH
 
       const footerEl = document.querySelector(footerSelector)
       const overlayEl = overlaySelector ? document.querySelector(overlaySelector) : null
@@ -134,7 +136,13 @@ export default function HouseguestGrid({
 
     setAvailableHeight()
     window.addEventListener('resize', setAvailableHeight)
-    return () => window.removeEventListener('resize', setAvailableHeight)
+    window.visualViewport?.addEventListener('resize', setAvailableHeight)
+    window.visualViewport?.addEventListener('scroll', setAvailableHeight)
+    return () => {
+      window.removeEventListener('resize', setAvailableHeight)
+      window.visualViewport?.removeEventListener('resize', setAvailableHeight)
+      window.visualViewport?.removeEventListener('scroll', setAvailableHeight)
+    }
   }, [headerSelector, footerSelector, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
