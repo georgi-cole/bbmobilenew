@@ -51,6 +51,7 @@ export default function useIntroHubBackground(
     }
 
     const cacheFallback = fallbackUrl ?? null;
+    // Keep the fallback visible while we probe the preferred URL.
     setState({ url: cacheFallback ?? preferredUrl, ready: false });
 
     void loadImage(preferredUrl).then((ok) => {
