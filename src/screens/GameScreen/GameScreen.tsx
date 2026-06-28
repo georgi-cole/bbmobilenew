@@ -176,15 +176,6 @@ const PUBLIC_MODE_STORE_PROMPT =
   'If you want to activate public mode, go to the store in the home hub.'
 const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
 
-function canExpandCompactRosterViewport(): boolean {
-  if (typeof window === 'undefined') return false
-  const isLargeByDimensions = window.innerWidth >= 640 && window.innerHeight >= 760
-  if (typeof window.matchMedia !== 'function') {
-    return isLargeByDimensions
-  }
-  return window.matchMedia('(min-width: 640px) and (min-height: 760px)').matches || isLargeByDimensions
-}
-
 type PendingPublicSaveResult = {
   savedId: string
   supportPercent?: number
@@ -2826,8 +2817,7 @@ export default function GameScreen() {
     spectatorF3Active ||
     spectatorLegacyActive
 
-  const expandsTvForCompactRoster =
-    settings.gameUX.compactRoster && canExpandCompactRosterViewport()
+  const expandsTvForCompactRoster = settings.gameUX.compactRoster
   const compactRosterLogRows = expandsTvForCompactRoster ? 6 : 2
 
   // ── Viewport fallback message for blank-TV states ────────────────────────

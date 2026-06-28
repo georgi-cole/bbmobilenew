@@ -56,7 +56,7 @@ describe('GameScreen compact roster balancing', () => {
     expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '6')
   })
 
-  it('keeps the roster balance off on narrow viewports', () => {
+  it('keeps the roster balance active on narrow viewports so the TV log stays visible', () => {
     const store = makeStore()
 
     store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
@@ -65,7 +65,7 @@ describe('GameScreen compact roster balancing', () => {
 
     const { container } = renderGameScreen(store)
 
-    expect(container.firstElementChild).not.toHaveClass('game-screen--compact-roster-balance')
-    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '2')
+    expect(container.firstElementChild).toHaveClass('game-screen--compact-roster-balance')
+    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '6')
   })
 })
