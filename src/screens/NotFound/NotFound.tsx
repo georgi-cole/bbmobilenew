@@ -13,10 +13,10 @@ export default function NotFound() {
         <code>{pathname}</code>
       </p>
       <div className="not-found__actions">
-        <button className="not-found__btn not-found__btn--primary" onClick={() => navigate('/')}>
+        <button type="button" className="not-found__btn game-button game-button--primary" onClick={() => navigate('/')}>
           🏠 Go Home
         </button>
-        <button className="not-found__btn" onClick={() => navigate(-1)}>
+        <button type="button" className="not-found__btn game-button game-button--secondary" onClick={() => navigate(-1)}>
           ← Back
         </button>
       </div>

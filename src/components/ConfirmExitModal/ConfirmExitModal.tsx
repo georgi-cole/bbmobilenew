@@ -62,11 +62,11 @@ export default function ConfirmExitModal({
         {description && <p id={descId} className="confirm-modal__desc">{description}</p>}
         <div className="confirm-modal__actions">
           {showCancel && (
-            <button type="button" className="confirm-modal__btn confirm-modal__btn--ghost" onClick={onCancel}>
+            <button type="button" className="confirm-modal__btn game-button game-button--ghost" onClick={onCancel}>
               {cancelLabel}
             </button>
           )}
-          <button type="button" className="confirm-modal__btn confirm-modal__btn--primary" onClick={onConfirm}>
+          <button type="button" className="confirm-modal__btn game-button game-button--primary" onClick={onConfirm}>
             {confirmLabel}
           </button>
         </div>

@@ -155,7 +155,7 @@ export default function Profile() {
         </div>
         <button
           type="button"
-          className="profile-screen__switch-btn"
+          className="profile-screen__switch-btn game-button game-button--secondary"
           onClick={() => navigate('/profile-picker')}
         >
           👥 Select Profile
@@ -173,7 +173,7 @@ export default function Profile() {
         </p>
         <button
           type="button"
-          className="profile-screen__switch-btn"
+          className="profile-screen__switch-btn game-button game-button--secondary"
           onClick={() => navigate('/profile-picker')}
           style={{ marginBottom: 12 }}
         >
@@ -206,7 +206,7 @@ export default function Profile() {
         <div className="profile-screen__header-btns">
           <button
             type="button"
-            className="profile-screen__icon-btn"
+            className="profile-screen__icon-btn game-button game-button--menu game-button--ghost"
             onClick={() => navigate('/profile-edit')}
             aria-label="Edit profile"
           >
@@ -214,7 +214,7 @@ export default function Profile() {
           </button>
           <button
             type="button"
-            className="profile-screen__icon-btn"
+            className="profile-screen__icon-btn game-button game-button--menu game-button--ghost"
             onClick={() => navigate('/profile-picker')}
             aria-label="Switch profile"
           >

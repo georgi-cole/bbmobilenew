@@ -60,13 +60,6 @@
 }
 
 .profile-screen__icon-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
 }
 
@@ -196,13 +189,6 @@
 /* Switch profile button */
 .profile-screen__switch-btn {
   width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.88rem;
-  cursor: pointer;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
 }
 
