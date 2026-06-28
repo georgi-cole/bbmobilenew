@@ -1,5 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEffect as reactUseEffect } from 'react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import HomeHub from '../HomeHub';
@@ -55,27 +54,28 @@ vi.mock('../../../hooks/useBackgroundTheme', () => ({
   default: () => ({ url: '/assets/background.jpg' }),
 }));
 
-vi.mock('../../../hooks/useLoadIntroHub', () => ({
-  default: () => {
-    reactUseEffect(() => {
-      const timer = window.setTimeout(() => {
+vi.mock('../../../hooks/useLoadIntroHub', async () => {
+  const { useEffect } = await import('react');
+
+  return {
+    default: function useLoadIntroHubMock() {
+      useEffect(() => {
         const container = document.getElementById('intro-hub');
         if (!container || container.querySelector('.hub-chip')) {
-          return;
+          return () => {};
         }
 
-        const chip = document.createElement('button');
+        const chip = document.createElement('div');
         chip.className = 'hub-chip';
-        chip.type = 'button';
         container.appendChild(chip);
-      }, 0);
 
-      return () => {
-        window.clearTimeout(timer);
-      };
-    }, []);
-  },
-}));
+        return () => {
+          chip.remove();
+        };
+      }, []);
+    },
+  };
+});
 
 vi.mock('../../../utils/preload', () => ({
   preloadImage: vi.fn().mockResolvedValue(undefined),
@@ -196,6 +196,18 @@ describe('HomeHub', () => {
   });
 
   it('preloads a later remote background before showing buttons again', async () => {
+    const OriginalImage = window.Image;
+    class ReadyImage {
+      onload: null | (() => void) = null;
+      onerror: null | (() => void) = null;
+      set src(_value: string) {
+        queueMicrotask(() => {
+          this.onload?.();
+        });
+      }
+    }
+    window.Image = ReadyImage as unknown as typeof Image;
+
     let resolveInitialBg = () => {};
     let resolveRemoteBg = () => {};
     preloadImageMock.mockImplementation((url: string) => new Promise<void>((resolve) => {
@@ -210,36 +222,86 @@ describe('HomeHub', () => {
       resolve();
     }));
 
-    const view = renderHomeHub();
+    try {
+      const view = renderHomeHub();
 
-    fireEvent.click(screen.getByTestId('kolequant-splash'));
-    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
+      fireEvent.click(screen.getByTestId('kolequant-splash'));
+      expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
 
-    resolveInitialBg();
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
-    });
+      await act(async () => {
+        resolveInitialBg();
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+      });
 
-    mockState.remoteConfig.config = {
-      season: {
-        introHub: {
-          backgroundImageUrl: 'https://example.com/remote-bg.jpg',
+      mockState.remoteConfig.config = {
+        season: {
+          introHub: {
+            backgroundImageUrl: 'https://example.com/remote-bg.jpg',
+          },
         },
-      },
-    };
-    view.rerender(
-      <MemoryRouter>
-        <HomeHub />
-      </MemoryRouter>,
-    );
+      };
+      view.rerender(
+        <MemoryRouter>
+          <HomeHub />
+        </MemoryRouter>,
+      );
 
-    expect(preloadImageMock).toHaveBeenCalledWith('https://example.com/remote-bg.jpg');
-    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
+      await waitFor(() => {
+        expect(preloadImageMock).toHaveBeenCalledWith('https://example.com/remote-bg.jpg');
+      });
+      expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
 
-    resolveRemoteBg();
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
-    });
+      await act(async () => {
+        resolveRemoteBg();
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+      });
+    } finally {
+      window.Image = OriginalImage;
+    }
+  });
+
+  it('falls back to the local background when the remote intro-hub image fails to load', async () => {
+    const OriginalImage = window.Image;
+    class ErrorImage {
+      onload: null | (() => void) = null;
+      onerror: null | (() => void) = null;
+      set src(_value: string) {
+        queueMicrotask(() => {
+          this.onerror?.();
+        });
+      }
+    }
+    window.Image = ErrorImage as unknown as typeof Image;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      mockState.remoteConfig.config = {
+        season: {
+          introHub: {
+            backgroundImageUrl: 'https://example.com/remote-bg.webp',
+          },
+        },
+      };
+
+      renderHomeHub();
+
+      fireEvent.click(screen.getByTestId('kolequant-splash'));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+      });
+
+      const bgLayer = document.querySelector<HTMLElement>('.homehub-intro-bg');
+      expect(bgLayer?.style.backgroundImage).toContain('/assets/background.jpg');
+      expect(bgLayer?.style.backgroundImage).not.toContain('remote-bg.webp');
+    } finally {
+      warnSpy.mockRestore();
+      window.Image = OriginalImage;
+    }
   });
 
   it('shows the hub loading overlay until the full hub bundle is ready', async () => {
@@ -255,10 +317,12 @@ describe('HomeHub', () => {
     expect(screen.getByRole('status', { name: /Loading intro hub\.\.\./ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
 
-    while (pendingResolvers.length > 0) {
-      pendingResolvers.splice(0).forEach((resolve) => resolve());
-      await Promise.resolve();
-    }
+    await act(async () => {
+      while (pendingResolvers.length > 0) {
+        pendingResolvers.splice(0).forEach((resolve) => resolve());
+        await Promise.resolve();
+      }
+    });
     view.rerender(
       <MemoryRouter>
         <HomeHub />
