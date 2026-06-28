@@ -55,4 +55,17 @@ describe('GameScreen compact roster balancing', () => {
     expect(container.firstElementChild).toHaveClass('game-screen--compact-roster-balance')
     expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '6')
   })
+
+  it('keeps the roster balance off on narrow viewports', () => {
+    const store = makeStore()
+
+    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
+    vi.stubGlobal('innerWidth', 390)
+    vi.stubGlobal('innerHeight', 844)
+
+    const { container } = renderGameScreen(store)
+
+    expect(container.firstElementChild).not.toHaveClass('game-screen--compact-roster-balance')
+    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '2')
+  })
 })
