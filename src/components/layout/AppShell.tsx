@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import NavBar from './NavBar';
 import DebugPanel from '../DebugPanel/DebugPanel';
 import FinalFaceoff from '../FinalFaceoff/FinalFaceoff';
@@ -30,6 +30,7 @@ const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean'];
  * The nav bar automatically picks it up from its own LINKS array.
  */
 export default function AppShell() {
+  const { pathname } = useLocation();
   const phase = useAppSelector((s) => s.game.phase);
   const seasonFinale = useAppSelector((s) => s.game.seasonFinale);
   const finale = useAppSelector(selectFinale);
@@ -83,9 +84,13 @@ export default function AppShell() {
     document.body.classList.toggle('no-animations', !settings.gameUX.animations);
   }, [settings.gameUX.animations]);
 
+  const screenOwnsScroll =
+    pathname.startsWith('/game') ||
+    pathname.startsWith('/diary-room');
+
   return (
     <div className="app-shell">
-      <main className="app-shell__main">
+      <main className={`app-shell__main${screenOwnsScroll ? ' app-shell__main--screen-owned-scroll' : ''}`}>
         <Outlet />
       </main>
       <NavBar />
