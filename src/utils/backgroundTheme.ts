@@ -17,7 +17,7 @@ const VITE_BASE: string = import.meta.env.BASE_URL ?? '/';
 export const ASSETS_BASE = `${VITE_BASE.replace(/\/$/, '')}/assets/skins/`;
 
 /** Ultimate fallback filename when no candidate can be found. */
-const DEFAULT_FILE = 'daily-background.png';
+export const DEFAULT_FILE = 'daily-background.png';
 
 export interface BackgroundEntry {
   file: string;
