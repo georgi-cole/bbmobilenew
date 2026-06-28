@@ -5,6 +5,11 @@ interface IntroHubBackgroundState {
   ready: boolean;
 }
 
+interface ValidationState {
+  resolvedFor: string | null;
+  url: string | null;
+}
+
 function loadImage(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const image = new Image();
@@ -28,37 +33,21 @@ export default function useIntroHubBackground(
   preferredUrl: string | null,
   fallbackUrl: string | null,
 ): IntroHubBackgroundState {
-  const [state, setState] = useState<IntroHubBackgroundState>(() => ({
-    url: fallbackUrl ?? preferredUrl,
-    ready: preferredUrl == null || preferredUrl === fallbackUrl,
-  }));
+  const isBypassed = preferredUrl == null || preferredUrl === fallbackUrl;
+  const [validation, setValidation] = useState<ValidationState>({ resolvedFor: null, url: null });
 
   useEffect(() => {
+    if (isBypassed || !preferredUrl) {
+      return;
+    }
+
     let cancelled = false;
-
-    if (!preferredUrl) {
-      setState({ url: fallbackUrl, ready: true });
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (preferredUrl === fallbackUrl) {
-      setState({ url: preferredUrl, ready: true });
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const cacheFallback = fallbackUrl ?? null;
-    // Keep the known-good fallback visible while we probe the preferred URL.
-    setState({ url: cacheFallback ?? preferredUrl, ready: false });
 
     void loadImage(preferredUrl).then((ok) => {
       if (cancelled) return;
 
       if (ok) {
-        setState({ url: preferredUrl, ready: true });
+        setValidation({ resolvedFor: preferredUrl, url: preferredUrl });
         return;
       }
 
@@ -66,13 +55,23 @@ export default function useIntroHubBackground(
         console.warn('[HomeHub] Preferred intro background failed to load; using fallback', preferredUrl);
       }
 
-      setState({ url: cacheFallback ?? preferredUrl, ready: true });
+      setValidation({ resolvedFor: preferredUrl, url: fallbackUrl ?? preferredUrl });
     });
 
     return () => {
       cancelled = true;
     };
-  }, [fallbackUrl, preferredUrl]);
+  }, [fallbackUrl, isBypassed, preferredUrl]);
 
-  return state;
+  if (isBypassed) {
+    return {
+      url: fallbackUrl ?? preferredUrl,
+      ready: true,
+    };
+  }
+
+  return {
+    url: validation.resolvedFor === preferredUrl ? validation.url : (fallbackUrl ?? preferredUrl),
+    ready: validation.resolvedFor === preferredUrl,
+  };
 }

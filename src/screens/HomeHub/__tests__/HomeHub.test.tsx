@@ -58,7 +58,7 @@ vi.mock('../../../hooks/useLoadIntroHub', async () => {
   const { useEffect } = await import('react');
 
   return {
-    default: () => {
+    default: function useLoadIntroHubMock() {
       useEffect(() => {
         const container = document.getElementById('intro-hub');
         if (!container || container.querySelector('.hub-chip')) {
