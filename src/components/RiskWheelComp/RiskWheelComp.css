@@ -3,14 +3,18 @@
 .rw-root {
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
   min-height: 100dvh;
   /* Fallback first; prefer dynamic viewport units when supported. */
   max-height: 100vh;
   max-height: 100dvh;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
   background: linear-gradient(160deg, #0a0a20 0%, #0f0f25 60%, #150a20 100%);
   color: #eef2ff;
   font-family: inherit;
   position: relative;
+  box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;

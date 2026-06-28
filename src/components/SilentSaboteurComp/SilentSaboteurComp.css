@@ -13,7 +13,11 @@
   max-height: 100dvh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 1rem 1rem 1.5rem;
+  padding:
+    calc(1rem + var(--safe-top))
+    calc(1rem + var(--safe-right))
+    calc(1.5rem + var(--safe-bottom))
+    calc(1rem + var(--safe-left));
   background:
     radial-gradient(circle at top, rgba(140, 27, 49, 0.18), transparent 32%),
     linear-gradient(180deg, #0b0b15 0%, #111223 100%);
@@ -30,8 +34,8 @@
 }
 
 .ss-stage--centered {
-  min-height: calc(100vh - 2.5rem);
-  min-height: calc(100dvh - 2.5rem);
+  min-height: calc(100vh - 2.5rem - var(--safe-top) - var(--safe-bottom));
+  min-height: calc(100dvh - 2.5rem - var(--safe-top) - var(--safe-bottom));
   align-items: center;
 }
 

@@ -75,7 +75,12 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 1.5rem 1rem 5rem;
+  min-height: 100dvh;
+  padding:
+    calc(1.5rem + var(--safe-top))
+    calc(1rem + var(--safe-right))
+    calc(5rem + var(--safe-bottom))
+    calc(1rem + var(--safe-left));
   background: linear-gradient(135deg, #0b0f1a 0%, #1a2540 50%, #0f1e35 100%);
   color: #f0e6d3;
   font-family: inherit;
