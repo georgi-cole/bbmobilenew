@@ -2,8 +2,12 @@
 .game-screen {
   display: flex;
   flex-direction: column;
+  min-height: 100%;
+  height: 100%;
   gap: 6px;
   padding: 12px 12px calc(var(--nav-bar-height) + 10px + var(--safe-bottom));
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .game-screen--compact-roster-balance {
