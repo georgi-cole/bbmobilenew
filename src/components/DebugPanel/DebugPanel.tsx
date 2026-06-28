@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   advance,
@@ -156,6 +156,7 @@ export default function DebugPanel() {
   const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true;
   const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname);
 
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
   const incomingLogs = useAppSelector(selectIncomingInteractionLogs);
@@ -601,6 +602,20 @@ export default function DebugPanel() {
                   onClick={() => dispatch(resetGame())}
                 >
                   Reset Season
+                </button>
+              </div>
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() =>
+                    navigate({
+                      pathname: '/settingsatiste',
+                      search: searchParams.toString() ? `?${searchParams.toString()}` : '',
+                    })
+                  }
+                >
+                  Open Advanced Settings
                 </button>
               </div>
             </section>

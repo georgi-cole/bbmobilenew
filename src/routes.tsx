@@ -28,10 +28,11 @@ import Rules                from './screens/Rules/Rules';
 import PublicMeter          from './screens/PublicMeter/PublicMeter';
 import Settings             from './screens/Settings/Settings';
 import NotFound             from './screens/NotFound/NotFound';
+import { canAccessSpecialSettings } from './utils/debugMode';
 import { lazy, Suspense }   from 'react';
 
-// Dev-only admin/debug screens stay out of production bundles entirely.
-const SettingsAdmin = import.meta.env.DEV
+// Admin/debug screens stay hidden unless the current session has QA debug access.
+const SettingsAdmin = import.meta.env.DEV || canAccessSpecialSettings()
   ? lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'))
   : null;
 const GameDebug = import.meta.env.DEV
