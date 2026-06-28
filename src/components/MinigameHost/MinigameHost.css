@@ -248,6 +248,7 @@
   gap: 12px;
   width: 100%;
   max-width: 460px;
+  height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
   max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
   padding:
     var(--minigame-safe-padding-top)
@@ -255,6 +256,7 @@
     max(32px, var(--minigame-safe-padding-bottom))
     max(24px, var(--minigame-safe-padding-left));
   box-sizing: border-box;
+  overflow: hidden;
   animation: fadeIn 0.3s ease;
 }
 
@@ -263,11 +265,14 @@
   font-weight: 700;
   color: #e94560;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .minigame-host-results-score {
   font-size: 1.1rem;
   color: #ccc;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .minigame-host-results-winner {
@@ -276,6 +281,7 @@
   font-weight: 800;
   color: #fff;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .minigame-host-leaderboard {
@@ -289,6 +295,30 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+}
+
+.minigame-host-results-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.minigame-host-results-retry {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.minigame-host-results-retry-copy {
+  margin: 0;
+  color: #ccc;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .minigame-host-leaderboard-entry {
@@ -348,7 +378,6 @@
 }
 
 .minigame-host-results-btn {
-  margin-top: 8px;
   width: 100%;
   padding: 14px 32px;
   background: #e94560;
