@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Start dev server
         run: npm run dev -- --port 3000 &
@@ -43,7 +43,7 @@ jobs:
           echo "Dev server is up."
 
       - name: Run Playwright e2e tests
-        run: npx playwright test e2e/playwright/
+        run: npm run test:e2e
         env:
           E2E_BASE_URL: http://localhost:3000/bbmobilenew
 

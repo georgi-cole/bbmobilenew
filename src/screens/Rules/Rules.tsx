@@ -1,6 +1,221 @@
 import { useNavigate } from 'react-router-dom';
 import './Rules.css';
 
+type Tile = {
+  kicker: string;
+  title: string;
+  copy: string;
+};
+
+const HERO_TILES: Tile[] = [
+  {
+    kicker: '1',
+    title: 'Win control',
+    copy: 'Take the weekly lead, shape the block, and keep the vote moving in your favor.',
+  },
+  {
+    kicker: '2',
+    title: 'Use public mode',
+    copy: 'When public mode is on, the public approval meter can reshape the block before safety locks in.',
+  },
+  {
+    kicker: '3',
+    title: 'Play the social layer',
+    copy: 'Energy, Influence, and Info power the social layer and change relationships over time.',
+  },
+  {
+    kicker: '4',
+    title: 'Finish the season',
+    copy: 'Make it to the endgame, then earn the final panel vote.',
+  },
+];
+
+const WEEK_STEPS: Tile[] = [
+  {
+    kicker: 'LOH',
+    title: 'Compete for the lead',
+    copy: 'Everyone still in the game can compete for weekly control. The winner becomes the weekly leader and starts the week in charge.',
+  },
+  {
+    kicker: 'NOMS',
+    title: 'Set the block',
+    copy: 'The LOH names the nominees. Most weeks start with two people on the block, and public mode can add a third before safety.',
+  },
+  {
+    kicker: 'POS',
+    title: 'Decide safety',
+    copy: 'The Power of Safety winner can save one nominee. If they are on the block, self-save is allowed but never forced.',
+  },
+  {
+    kicker: 'VOTE',
+    title: 'Live vote',
+    copy: 'The remaining players vote to remove someone from the game. Some special weeks replace this with a different eviction step, and the broadcast says when that happens.',
+  },
+];
+
+const RESULT_MODES: Tile[] = [
+  {
+    kicker: 'SCORE',
+    title: 'Score',
+    copy: 'Highest number wins.',
+  },
+  {
+    kicker: 'TIME',
+    title: 'Time',
+    copy: 'Fastest time wins.',
+  },
+  {
+    kicker: 'RANK',
+    title: 'Placement',
+    copy: 'The leaderboard order is the result, not just the raw number.',
+  },
+  {
+    kicker: 'WIN',
+    title: 'Direct result',
+    copy: 'Some games decide the winner directly and show that outcome on the results screen.',
+  },
+];
+
+const SOCIAL_RESOURCES: Tile[] = [
+  {
+    kicker: 'ENERGY',
+    title: 'Energy',
+    copy: 'Your action budget for the social windows and one-off pushes.',
+  },
+  {
+    kicker: 'INFLUENCE',
+    title: 'Influence',
+    copy: 'Used by stronger social moves and sharper pushes when you want to swing a room.',
+  },
+  {
+    kicker: 'INFO',
+    title: 'Info',
+    copy: 'Used by more specific or better timed social moves and reads.',
+  },
+  {
+    kicker: 'APPROVAL',
+    title: 'Approval',
+    copy: 'The public approval meter that matters when public mode is active and can decide who gets saved.',
+  },
+];
+
+const APPROVAL_BANDS: Tile[] = [
+  {
+    kicker: 'LOW',
+    title: 'Low approval',
+    copy: 'You are vulnerable and easy to target.',
+  },
+  {
+    kicker: 'MID',
+    title: 'Mixed approval',
+    copy: 'You are visible, but not fully protected.',
+  },
+  {
+    kicker: 'HIGH',
+    title: 'Liked',
+    copy: 'You have momentum and better public standing.',
+  },
+  {
+    kicker: 'TOP',
+    title: 'Beloved',
+    copy: 'You are in a strong public position.',
+  },
+];
+
+const CONFESSIONAL_DECISIONS: Tile[] = [
+  {
+    kicker: '01',
+    title: 'Nomination picks',
+    copy: 'The game asks you to name the block when it is your turn to lead, and the choice is immediate.',
+  },
+  {
+    kicker: '02',
+    title: 'Safety decisions',
+    copy: 'The game asks whether to use the Power of Safety and who it should protect.',
+  },
+  {
+    kicker: '03',
+    title: 'Replacement picks',
+    copy: 'If a save changes the block, a replacement nominee has to be named right away.',
+  },
+  {
+    kicker: '04',
+    title: 'Tie-breaks',
+    copy: 'When the house is deadlocked, the deciding choice lands here.',
+  },
+  {
+    kicker: '05',
+    title: 'Mission offers',
+    copy: 'The confessional also handles one-off prompts and mission offers when they appear.',
+  },
+];
+
+const SPECIAL_WEEK_NOTES: Tile[] = [
+  {
+    kicker: 'SHIFT',
+    title: 'Compressed week',
+    copy: 'The schedule can move faster than normal and some steps may land closer together.',
+  },
+  {
+    kicker: 'RETURN',
+    title: 'Return round',
+    copy: 'A recently eliminated player can get a path back into the season.',
+  },
+  {
+    kicker: 'SWAP',
+    title: 'Rule swap',
+    copy: 'The week can change shape, but the broadcast explains the new rule when it happens.',
+  },
+  {
+    kicker: 'EVIC',
+    title: 'Special eviction',
+    copy: 'Some weeks skip the usual vote and end with a one-off eviction decision instead.',
+  },
+];
+
+const FINALE_STEPS: Tile[] = [
+  {
+    kicker: 'F4',
+    title: 'Final 4',
+    copy: 'The safety winner makes the last eviction choice before the final three are set.',
+  },
+  {
+    kicker: 'P1',
+    title: 'Part 1',
+    copy: 'All three finalists compete, and the winner moves straight to the last part.',
+  },
+  {
+    kicker: 'P2',
+    title: 'Part 2',
+    copy: 'The other two finalists battle for the second spot in the final round.',
+  },
+  {
+    kicker: 'P3',
+    title: 'Part 3',
+    copy: 'The last winner becomes the final leader and chooses the Final 2.',
+  },
+  {
+    kicker: 'F2',
+    title: 'Final 2',
+    copy: 'The final panel votes for the winner.',
+  },
+  {
+    kicker: 'BONUS',
+    title: 'Public favorite',
+    copy: 'If enabled, the season can end with one more public result after the winner is revealed.',
+  },
+];
+
+function renderTile(tile: Tile, className = '') {
+  return (
+    <article className={['rules-tile', className].filter(Boolean).join(' ')}>
+      <span className="rules-tile__kicker">{tile.kicker}</span>
+      <h3 className="rules-tile__title">{tile.title}</h3>
+      <p className="rules-tile__copy">{tile.copy}</p>
+    </article>
+  );
+}
+
 /**
  * Rules - player guide screen.
  */
@@ -9,173 +224,182 @@ export default function Rules() {
 
   return (
     <div className="placeholder-screen rules-screen">
-      <div className="rules-screen__hero">
+      <header className="rules-screen__hero">
         <div className="rules-screen__logo">BE</div>
         <h1 className="rules-screen__title">How to Play</h1>
         <p className="rules-screen__subtitle">The Big Eye - Player Guide</p>
-        <p className="rules-screen__note">
-          A player guide for the weekly loop, the challenge ranking, and the decisions that matter
-          most. Surprise weeks are explained when they happen.
+        <p className="rules-screen__lede">
+          Learn the loop, read the meters, and know what each screen is asking before the season
+          starts moving fast.
         </p>
-      </div>
+        <div className="rules-screen__summary-grid">
+          {HERO_TILES.map((tile) => renderTile(tile, 'rules-tile--hero'))}
+        </div>
+      </header>
 
-      <div className="rules-screen__body">
-        <div className="rules-section">
+      <main className="rules-screen__body">
+        <section className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon" aria-hidden="true">01</span>
-            <h2 className="rules-section__title">Your Goal</h2>
+            <h2 className="rules-section__title">The Weekly Loop</h2>
           </div>
-          <p>
-            Stay in the game, build real relationships, and reach the final vote with the right
-            mix of wins, timing, and social control.
+          <p className="rules-section__intro">
+            The game is built around a repeatable rhythm. Once you know the order, every week makes
+            more sense: win the lead, set the block, use safety, then survive the vote.
           </p>
-          <ul className="rules-list">
-            <li>Keep your name off the nominee list when you can.</li>
-            <li>Win the moments that matter most.</li>
-            <li>Make the endgame with enough support to finish the job.</li>
-          </ul>
-        </div>
+          <div className="rules-step-grid">
+            {WEEK_STEPS.map((tile) => renderTile(tile, 'rules-step-card'))}
+          </div>
+          <p className="rules-section__note">
+            Public mode can add a third nominee before safety, and special weeks can change the
+            order. The broadcast explains the live rule when it appears.
+          </p>
+        </section>
 
-        <div className="rules-section">
+        <section className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon" aria-hidden="true">02</span>
-            <h2 className="rules-section__title">Weekly Loop</h2>
-          </div>
-          <p>
-            Most weeks follow the same rhythm: compete, nominate, save, then vote. The TV feed
-            and on-screen prompts tell you when the next step starts.
-          </p>
-          <div className="rules-cycle">
-            <div className="rules-cycle__step">
-              <span className="rules-cycle__badge rules-cycle__badge--loh">LOH</span>
-              <span className="rules-cycle__label">Lead the week</span>
-            </div>
-            <span className="rules-cycle__arrow">-&gt;</span>
-            <div className="rules-cycle__step">
-              <span className="rules-cycle__badge rules-cycle__badge--nom">NOMS</span>
-              <span className="rules-cycle__label">Nominees named</span>
-            </div>
-            <span className="rules-cycle__arrow">-&gt;</span>
-            <div className="rules-cycle__step">
-              <span className="rules-cycle__badge rules-cycle__badge--public">PUBLIC</span>
-              <span className="rules-cycle__label">Public mode only</span>
-            </div>
-            <span className="rules-cycle__arrow">-&gt;</span>
-            <div className="rules-cycle__step">
-              <span className="rules-cycle__badge rules-cycle__badge--pos">POS</span>
-              <span className="rules-cycle__label">Safety is decided</span>
-            </div>
-            <span className="rules-cycle__arrow">-&gt;</span>
-            <div className="rules-cycle__step">
-              <span className="rules-cycle__badge rules-cycle__badge--elim">VOTE</span>
-              <span className="rules-cycle__label">Live vote</span>
-            </div>
-          </div>
-          <p className="rules-screen__note">
-            Public mode adds an extra approval step before safety.
-          </p>
-        </div>
-
-        <div className="rules-section">
-          <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">03</span>
             <h2 className="rules-section__title">Challenges and Ranking</h2>
           </div>
-          <p>
-            Each challenge opens with its own rules card. Read it before you start, because the
-            result can be a score, a time, or a placement ladder.
-          </p>
-          <ul className="rules-list">
-            <li>Some challenges reward the highest score.</li>
-            <li>Some reward the fastest time or the best survival run.</li>
-            <li>Some show a ranked leaderboard where placement is the result.</li>
-            <li>When the game says ranking, the order on the board is what counts.</li>
-          </ul>
-        </div>
+          <div className="rules-split">
+            <div className="rules-split__main">
+              <p className="rules-section__intro">
+                Every minigame opens with its own rules card before the countdown starts. That card
+                tells you exactly what matters, whether the round is about score, speed,
+                placement, or a direct result.
+              </p>
+              <p className="rules-section__intro">
+                If a game shows a leaderboard, the order on that board matters. If it says
+                placement, rank is the result. If it says score or time, the metric on the card
+                tells you what wins.
+              </p>
+            </div>
+            <div className="rules-split__aside">
+              <div className="rules-mode-grid">
+                {RESULT_MODES.map((tile) => renderTile(tile, 'rules-mode-card'))}
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <div className="rules-section">
+        <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">04</span>
+            <span className="rules-section__icon" aria-hidden="true">03</span>
             <h2 className="rules-section__title">Control and Safety</h2>
           </div>
-          <p>
-            The Leader of the House controls the nominees. The Power of Safety winner can save one
-            nominee, including themselves if they are nominated, but that choice is never required.
+          <p className="rules-section__intro">
+            The weekly leader controls the nominations. The Power of Safety winner controls
+            whether the block stays the same or gets reshaped, and if the holder is nominated,
+            self-save is allowed but never forced.
           </p>
-          <ul className="rules-list">
-            <li>
-              <strong>Leader of the House:</strong> The LOH wins the round and names the nominees
-              for the week.
-            </li>
-            <li>
-              <strong>Power of Safety:</strong> The winner can save one nominee. If they are
-              nominated, saving themselves is allowed but not mandatory.
-            </li>
-            <li>
-              <strong>Replacement nominee:</strong> When a save happens, the LOH names a backup
-              nominee if the week needs one.
-            </li>
-            <li>
-              <strong>Public seasons:</strong> A public save can happen before safety and can
-              change who goes into the next step.
-            </li>
-          </ul>
-        </div>
+          <div className="rules-step-grid">
+            {[
+              {
+                kicker: 'LOH',
+                title: 'Weekly leader',
+                copy: 'Wins the weekly competition and names the nominees for the week.',
+              },
+              {
+                kicker: 'POS',
+                title: 'Power of Safety',
+                copy: 'Can save one nominee. If the holder is nominated, self-save is allowed but never required.',
+              },
+              {
+                kicker: 'BACKUP',
+                title: 'Replacement nominee',
+                copy: 'If a save changes the block, the LOH names a backup nominee right away.',
+              },
+              {
+                kicker: 'PUBLIC',
+                title: 'Public seasons',
+                copy: 'When public mode is on, the week can add a public save before safety and adjust the block again.',
+              },
+            ].map((tile) => renderTile(tile, 'rules-step-card'))}
+          </div>
+        </section>
 
-        <div className="rules-section rules-section--highlight">
+        <section className="rules-section rules-section--highlight">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">05</span>
+            <span className="rules-section__icon" aria-hidden="true">04</span>
             <h2 className="rules-section__title">Social Game and Public Mode</h2>
           </div>
-          <p>
-            The social module is your day-to-day move set. Use it during social windows to spend
-            energy, influence, and info, shape relationships, and set up future moves.
+          <p className="rules-section__intro">
+            The social module is the quiet engine under the season. Use it during social windows to
+            spend resources, shape relationships, and set up the next vote before anyone sees it
+            coming.
           </p>
-          <ul className="rules-list">
-            <li>Public mode adds a public approval meter for each player.</li>
-            <li>Approval moves with wins, nominations, saves, and public tasks.</li>
-            <li>Strong approval can help in a public save, influence public tie-breaks, and matter at the end of the season.</li>
-            <li>If public mode is off, the season plays on the standard private rules.</li>
-          </ul>
-        </div>
+          <div className="rules-resource-grid">
+            {SOCIAL_RESOURCES.map((tile) => renderTile(tile, 'rules-resource-card'))}
+          </div>
+          <div className="rules-band-row">
+            {APPROVAL_BANDS.map((tile) => renderTile(tile, 'rules-band'))}
+          </div>
+          <p className="rules-section__note">
+            Public approval is not just flavor. It is a real meter that can help when the public
+            saves a nominee, decides a close call, or weighs the season at the end.
+          </p>
+        </section>
 
-        <div className="rules-section">
+        <section className="rules-section">
+          <div className="rules-section__header">
+            <span className="rules-section__icon" aria-hidden="true">05</span>
+            <h2 className="rules-section__title">Confessional</h2>
+          </div>
+          <p className="rules-section__intro">
+            This is the private decision room. When the game needs a direct answer, it sends you
+            here and waits for a choice.
+          </p>
+          <p className="rules-section__intro">
+            This is where nomination picks, safety decisions, replacement picks, tie-breaks, and
+            mission offers appear in a clean, no-distraction format.
+          </p>
+          <div className="rules-confessional-grid">
+            {CONFESSIONAL_DECISIONS.map((tile) => renderTile(tile, 'rules-confessional-card'))}
+          </div>
+        </section>
+
+        <section className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon" aria-hidden="true">06</span>
-            <h2 className="rules-section__title">Private Room</h2>
+            <h2 className="rules-section__title">Special Weeks</h2>
           </div>
-          <p>
-            The confessional is the private decision room. When the game needs a direct answer,
-            this is where it sends you.
+          <p className="rules-section__intro">
+            Not every week follows the standard script. Some weeks speed up, some weeks bring
+            someone back, and some weeks swap out part of the normal order.
           </p>
-          <ul className="rules-list">
-            <li>Nomination picks.</li>
-            <li>Safety decisions.</li>
-            <li>Replacement choices.</li>
-            <li>Tie-breaks.</li>
-            <li>Mission offers and one-off prompts.</li>
-          </ul>
-        </div>
+          <div className="rules-split">
+            <div className="rules-split__main">
+              <p className="rules-section__intro">
+                The important part is simple: you do not need to memorize every variation ahead of
+                time. When a special week happens, the broadcast explains the new rule on the spot.
+              </p>
+            </div>
+            <div className="rules-split__aside">
+              <div className="rules-special-grid">
+                {SPECIAL_WEEK_NOTES.map((tile) => renderTile(tile, 'rules-special-card'))}
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <div className="rules-section">
+        <section className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon" aria-hidden="true">07</span>
-            <h2 className="rules-section__title">Elimination and Finale</h2>
+            <h2 className="rules-section__title">Finale</h2>
           </div>
-          <p>
-            Nominees face the live vote, and the loser leaves the game. Most ties go to the
-            Leader of the House unless the current week says otherwise.
+          <p className="rules-section__intro">
+            The endgame is a sequence, not a single vote. Each step narrows the field and changes
+            who still has control over the season.
           </p>
-          <ul className="rules-list">
-            <li>Some weeks are compressed or reshaped with special elimination formats, return rounds, or double exits.</li>
-            <li>You do not need to memorize every surprise ahead of time. The game explains the change when it appears.</li>
-            <li>Final 4: the safety winner makes the last elimination choice.</li>
-            <li>Final 3: three parts decide the Final Leader of the House and the last eviction.</li>
-            <li>Final 2: the final panel votes for the winner.</li>
-            <li>If public favorite is enabled, it appears after the champion is revealed.</li>
-          </ul>
-        </div>
-      </div>
+          <p className="rules-section__intro">
+            The final stretch moves from a special eviction at Final 4 into the three-part final
+            lead race, then into the final panel vote.
+          </p>
+          <div className="rules-finale-grid">
+            {FINALE_STEPS.map((tile) => renderTile(tile, 'rules-finale-card'))}
+          </div>
+        </section>
+      </main>
 
       <button
         className="rules-screen__back"

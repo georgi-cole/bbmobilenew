@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import useLoadIntroHub from './useLoadIntroHub';
 import { preloadImage } from '../utils/preload';
 import { getHomeHubAssetUrls } from '../screens/HomeHub/homeHubAssets';
@@ -7,6 +7,38 @@ interface HomeHubAssetsState {
   ready: boolean;
   progress: number;
   status: string;
+}
+
+interface ImagesState {
+  loaded: number;
+  ready: boolean;
+}
+
+type ImagesAction =
+  | { type: 'reset'; total: number }
+  | { type: 'imageLoaded' }
+  | { type: 'allReady' };
+
+function imagesReducer(state: ImagesState, action: ImagesAction): ImagesState {
+  switch (action.type) {
+    case 'reset':
+      return {
+        loaded: 0,
+        ready: action.total === 0,
+      };
+    case 'imageLoaded':
+      return {
+        loaded: state.loaded + 1,
+        ready: state.ready,
+      };
+    case 'allReady':
+      return {
+        loaded: state.loaded,
+        ready: true,
+      };
+    default:
+      return state;
+  }
 }
 
 function hasIntroHubChips(): boolean {
@@ -25,13 +57,17 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
   useLoadIntroHub();
 
   const assetUrls = useMemo(() => getHomeHubAssetUrls(effectiveBgUrl), [effectiveBgUrl]);
-  const [imagesLoaded, setImagesLoaded] = useState(0);
-  const [imagesReady, setImagesReady] = useState(() => assetUrls.length === 0);
+  const [imagesState, dispatchImages] = useReducer(imagesReducer, {
+    loaded: 0,
+    ready: assetUrls.length === 0,
+  });
   const [fontsReady, setFontsReady] = useState(() => !hasFontFaceSet());
   const [runtimeReady, setRuntimeReady] = useState(() => hasIntroHubChips());
 
   useEffect(() => {
     let cancelled = false;
+
+    dispatchImages({ type: 'reset', total: assetUrls.length });
 
     if (assetUrls.length === 0) {
       return () => {
@@ -44,21 +80,21 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
 
       await preloadImage(first);
       if (cancelled) return;
-      setImagesLoaded((count) => count + 1);
+      dispatchImages({ type: 'imageLoaded' });
 
       if (rest.length > 0) {
         await Promise.all(
           rest.map((url) =>
             preloadImage(url).then(() => {
               if (cancelled) return;
-              setImagesLoaded((count) => count + 1);
+              dispatchImages({ type: 'imageLoaded' });
             }),
           ),
         );
       }
 
       if (!cancelled) {
-        setImagesReady(true);
+        dispatchImages({ type: 'allReady' });
       }
     };
 
@@ -121,12 +157,12 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
   }, [runtimeReady]);
 
   const totalSteps = assetUrls.length + 2;
-  const completedSteps = imagesLoaded + (fontsReady ? 1 : 0) + (runtimeReady ? 1 : 0);
+  const completedSteps = imagesState.loaded + (fontsReady ? 1 : 0) + (runtimeReady ? 1 : 0);
   const progress = totalSteps > 0 ? Math.min(100, Math.round((completedSteps / totalSteps) * 100)) : 100;
-  const ready = imagesReady && fontsReady && runtimeReady;
+  const ready = imagesState.ready && fontsReady && runtimeReady;
   const status = ready
     ? 'Intro hub ready'
-    : !runtimeReady && imagesReady && fontsReady
+    : !runtimeReady && imagesState.ready && fontsReady
     ? 'Finalizing intro hub...'
     : 'Loading intro hub...';
 

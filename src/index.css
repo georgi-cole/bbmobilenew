@@ -182,3 +182,24 @@ body.no-animations .backdrop,
 body.no-animations .modal-backdrop {
   display: none !important;
 }
+
+/* ── Visual freeze mode ───────────────────────────────────────────────────── */
+html[data-visual-freeze='true'],
+html[data-visual-freeze='true'] body {
+  scroll-behavior: auto;
+}
+
+html[data-visual-freeze='true'] *,
+html[data-visual-freeze='true'] *::before,
+html[data-visual-freeze='true'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-visual-freeze='true'] .tv-ann-modal__backdrop,
+html[data-visual-freeze='true'] .overlay-backdrop,
+html[data-visual-freeze='true'] .backdrop,
+html[data-visual-freeze='true'] .modal-backdrop {
+  display: none !important;
+}
