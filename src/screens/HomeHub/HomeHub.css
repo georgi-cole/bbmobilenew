@@ -5,12 +5,15 @@
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: calc(100% + var(--app-safe-area-top, 0px) + var(--safe-bottom, 0px));
   overflow: hidden;
   background: transparent;
   display: flex;
   align-items: center;    /* vertically center */
   justify-content: center;/* horizontally center */
   padding: 0;
+  margin-top: calc(-1 * var(--app-safe-area-top, 0px));
+  margin-bottom: calc(-1 * var(--safe-bottom, 0px));
   box-sizing: border-box;
 }
 
