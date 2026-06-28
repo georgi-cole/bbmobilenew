@@ -15,6 +15,7 @@ import CompSelection from '../../components/CompSelection';
 import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
 import { getAllGames, type GameCategory } from '../../minigames/registry';
 import { restartApp } from '../../utils/restartApp';
+import { APP_VERSION } from '../../appVersion';
 import './SettingsAdmin.css';
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
@@ -651,7 +652,7 @@ export default function SettingsAdmin() {
           <section className="settings-section settings-section--about">
             <div className="settings-about__hero" aria-hidden="true">📺</div>
             <h2 className="settings-about__name">The Big Eye</h2>
-            <p className="settings-about__version">Version 0.0.0</p>
+            <p className="settings-about__version">Version {APP_VERSION}</p>
             <p className="settings-about__tagline">AI Edition — React + TypeScript + Vite</p>
 
             <button

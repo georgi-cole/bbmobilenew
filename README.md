@@ -1,4 +1,4 @@
-# bbmobilenew — Big Brother AI Edition
+# The Big Eye
 
 A React + TypeScript + Vite mobile-first app.
 
@@ -240,7 +240,7 @@ verify that the cycle still behaves realistically without manually playing throu
 
 
 The **Weekly Diary Room Log** feature lets admins record and publish a
-structured summary of each Big Brother game week. Guests can view published
+structured summary of each The Big Eye week. Guests can view published
 weeks; only admins may create, edit, or export unpublished drafts.
 
 ### Feature flag

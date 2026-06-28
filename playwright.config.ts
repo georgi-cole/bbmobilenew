@@ -22,8 +22,16 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'], channel: 'msedge' },
+      name: 'desktop-chromium',
+      use: { browserName: 'chromium', ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'mobile-chromium',
+      use: { browserName: 'chromium', ...devices['Pixel 7'] },
+    },
+    {
+      name: 'mobile-webkit',
+      use: { browserName: 'webkit', ...devices['iPhone 13'] },
     },
   ],
 });

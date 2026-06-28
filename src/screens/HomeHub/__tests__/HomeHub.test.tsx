@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useEffect as reactUseEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import HomeHub from '../HomeHub';
@@ -55,7 +56,25 @@ vi.mock('../../../hooks/useBackgroundTheme', () => ({
 }));
 
 vi.mock('../../../hooks/useLoadIntroHub', () => ({
-  default: () => undefined,
+  default: () => {
+    reactUseEffect(() => {
+      const timer = window.setTimeout(() => {
+        const container = document.getElementById('intro-hub');
+        if (!container || container.querySelector('.hub-chip')) {
+          return;
+        }
+
+        const chip = document.createElement('button');
+        chip.className = 'hub-chip';
+        chip.type = 'button';
+        container.appendChild(chip);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }, []);
+  },
 }));
 
 vi.mock('../../../utils/preload', () => ({

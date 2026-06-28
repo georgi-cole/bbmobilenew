@@ -27,10 +27,16 @@ import SelfEvicted          from './screens/SelfEvicted/SelfEvicted';
 import Rules                from './screens/Rules/Rules';
 import PublicMeter          from './screens/PublicMeter/PublicMeter';
 import Settings             from './screens/Settings/Settings';
-import SettingsAdmin        from './screens/SettingsAdmin/SettingsAdmin';
 import NotFound             from './screens/NotFound/NotFound';
 import { lazy, Suspense }   from 'react';
-import GameDebug            from './screens/GameDebug/GameDebug';
+
+// Dev-only admin/debug screens stay out of production bundles entirely.
+const SettingsAdmin = import.meta.env.DEV
+  ? lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'))
+  : null;
+const GameDebug = import.meta.env.DEV
+  ? lazy(() => import('./screens/GameDebug/GameDebug'))
+  : null;
 
 // Dev-only manual QA page — lazy-loaded so production bundles are unaffected.
 // Vite dead-code-eliminates the dynamic import when DEV is false at build time.
@@ -78,6 +84,11 @@ const GridOfLuckTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/GridOfLuckTestPage/GridOfLuckTestPage'))
   : null;
 
+// Dev-only minigame lab for registry-backed QA.
+const MinigameLab = import.meta.env.DEV
+  ? lazy(() => import('./screens/MinigameLab/MinigameLab'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -100,7 +111,9 @@ export const router = createHashRouter([
       { path: 'rules',            element: <Rules />        },
       { path: 'public-meter',     element: <PublicMeter />  },
       { path: 'settings',         element: <Settings />     },
-      { path: 'settingsatiste',   element: <SettingsAdmin /> },
+      ...(SettingsAdmin != null
+        ? [{ path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> }]
+        : []),
       ...(import.meta.env.DEV && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
         : []),
@@ -128,7 +141,12 @@ export const router = createHashRouter([
       ...(import.meta.env.DEV && GridOfLuckTestPage != null
         ? [{ path: 'gol-test', element: <Suspense fallback={null}><GridOfLuckTestPage /></Suspense> }]
         : []),
-      { path: 'gamedebug',        element: <GameDebug />    },
+      ...(import.meta.env.DEV && MinigameLab != null
+        ? [{ path: 'minigame-lab', element: <Suspense fallback={null}><MinigameLab /></Suspense> }]
+        : []),
+      ...(GameDebug != null
+        ? [{ path: 'gamedebug', element: <Suspense fallback={null}><GameDebug /></Suspense> }]
+        : []),
       { path: '*',                element: <NotFound />     },
     ],
   },

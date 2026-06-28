@@ -1,10 +1,13 @@
 /**
  * remoteConfigTypes.ts — typed shape of the remote live-config document.
  *
- * This config is fetched at app startup from /api/live-config (or an override
- * endpoint).  It MUST be treated as pure data — no executable code, no eval,
- * no dynamic imports.  All fields are optional so the app remains functional
- * when only a subset is provided or the fetch fails entirely.
+ * This config is fetched at app startup from a build-time endpoint. In dev,
+ * the default relative `/api/live-config` proxy path is allowed; packaged
+ * builds should point VITE_REMOTE_CONFIG_URL at an absolute http(s) URL if
+ * live config is needed at all. It MUST be treated as pure data — no
+ * executable code, no eval, no dynamic imports. All fields are optional so
+ * the app remains functional when only a subset is provided or the fetch
+ * fails entirely.
  */
 
 import type { CompSelectionMode } from '../components/compSelectionUtils';
