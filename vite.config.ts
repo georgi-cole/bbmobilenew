@@ -12,8 +12,10 @@ const { version: appVersion } = JSON.parse(
 //   npm run build             →  "/bbmobilenew/"  (GitHub Pages deployment)
 //   npm run build:capacitor   →  "./"             (passed via --base ./ CLI flag,
 //                                                   required for Capacitor/WKWebView)
-export default defineConfig({
-  base: '/bbmobilenew/',
+const mobileModes = new Set(['capacitor', 'ios', 'android'])
+
+export default defineConfig(({ mode }) => ({
+  base: mobileModes.has(mode) ? './' : '/bbmobilenew/',
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
@@ -37,4 +39,4 @@ export default defineConfig({
       tsconfig: './tsconfig.test.json',
     },
   },
-})
+}))
