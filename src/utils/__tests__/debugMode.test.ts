@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { detectDebugMode, isDebugAccessGranted } from '../debugMode';
+import { canAccessSpecialSettings, detectDebugMode, isDebugAccessGranted } from '../debugMode';
 
 describe('debugMode gating', () => {
   afterEach(() => {
@@ -44,6 +44,26 @@ describe('debugMode gating', () => {
         hash: '#/game?debug=1&qa=1',
       } as unknown as Location),
     ).toBe(true);
+  });
+
+  it('opens the advanced settings route with the same qa debug hash flags', () => {
+    expect(
+      canAccessSpecialSettings({
+        hostname: 'georgi-cole.github.io',
+        search: '',
+        hash: '#/game?debug=1&qa=1',
+      } as unknown as Location),
+    ).toBe(true);
+  });
+
+  it('keeps advanced settings locked on production without qa', () => {
+    expect(
+      canAccessSpecialSettings({
+        hostname: 'georgi-cole.github.io',
+        search: '',
+        hash: '#/game?debug=1',
+      } as unknown as Location),
+    ).toBe(false);
   });
 
   it('treats localhost as an allowed debug host', () => {
