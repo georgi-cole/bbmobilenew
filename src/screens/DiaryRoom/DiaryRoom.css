@@ -3,7 +3,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  padding-bottom: 24px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .diary-room__shell {
@@ -11,6 +12,8 @@
   flex: 1;
   flex-direction: column;
   min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .diary-room__shell--masked {
@@ -24,6 +27,8 @@
   gap: 12px;
   padding: 16px 16px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--color-bg);
+  flex-shrink: 0;
 }
 
 .diary-room__back {
@@ -340,7 +345,12 @@
 /* ── Body ────────────────────────────────────────────────────────────────── */
 .diary-room__body {
   flex: 1;
-  padding: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(16px + var(--safe-bottom));
+  box-sizing: border-box;
 }
 
 .diary-room__locked {
@@ -478,6 +488,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 100%;
 }
 
 .diary-room__mini-game-card {

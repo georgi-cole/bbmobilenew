@@ -2,6 +2,20 @@
 .minigame-host {
   position: fixed;
   inset: 0;
+  --minigame-safe-top: var(--app-safe-area-top);
+  --minigame-safe-right: var(--safe-right);
+  --minigame-safe-bottom: var(--safe-bottom);
+  --minigame-safe-left: var(--safe-left);
+  --minigame-safe-padding-top: calc(var(--minigame-safe-top) + clamp(10px, 2.8vw, 18px));
+  --minigame-safe-padding-right: calc(var(--minigame-safe-right) + clamp(10px, 2.6vw, 18px));
+  --minigame-safe-padding-bottom: calc(var(--minigame-safe-bottom) + clamp(10px, 2.6vw, 18px));
+  --minigame-safe-padding-left: calc(var(--minigame-safe-left) + clamp(10px, 2.6vw, 18px));
+  --safe-top: var(--minigame-safe-top);
+  --safe-right: var(--minigame-safe-right);
+  --safe-bottom: var(--minigame-safe-bottom);
+  --safe-left: var(--minigame-safe-left);
+  --floating-corner-top-base: 14px;
+  --floating-corner-top-safe-padding: 12px;
   background: #0d0d1a;
   display: flex;
   flex-direction: column;
@@ -12,12 +26,20 @@
   overflow: hidden;
 }
 
-/* ─── Ready countdown ────────────────────────────────────────────────────── */
 .minigame-host-ready {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  width: 100%;
+  max-width: 32rem;
+  max-height: 100dvh;
+  padding:
+    var(--minigame-safe-padding-top)
+    var(--minigame-safe-padding-right)
+    var(--minigame-safe-padding-bottom)
+    var(--minigame-safe-padding-left);
+  box-sizing: border-box;
   animation: fadeIn 0.3s ease;
 }
 
@@ -49,25 +71,190 @@
   animation: pop 0.3s ease;
 }
 
-/* ─── Playing ────────────────────────────────────────────────────────────── */
-/* The playing area takes the full screen and clips any overflowing game content */
 .minigame-host-playing {
   position: absolute;
   inset: 0;
   overflow: hidden;
 }
 
-/* ─── Results overlay ────────────────────────────────────────────────────── */
-/* Results fills most of the viewport so it never appears pinned to the top */
+.minigame-host-playing > .pp,
+.minigame-host-playing > .qtr,
+.minigame-host-playing > .qtr-canvas,
+.minigame-host-playing > .td,
+.minigame-host-playing > .bbl,
+.minigame-host-playing > .tbg,
+.minigame-host-playing > .snake-root {
+  box-sizing: border-box;
+}
+
+.minigame-host-playing > .pp {
+  padding:
+    var(--minigame-safe-padding-top)
+    var(--minigame-safe-padding-right)
+    var(--minigame-safe-padding-bottom)
+    var(--minigame-safe-padding-left);
+}
+
+.minigame-host-playing > .pp .pp__card {
+  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+}
+
+.minigame-host-playing > .qtr {
+  padding:
+    calc(16px + var(--minigame-safe-top))
+    calc(16px + var(--minigame-safe-right))
+    calc(16px + var(--minigame-safe-bottom))
+    calc(16px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .qtr-canvas {
+  padding:
+    calc(12px + var(--minigame-safe-top))
+    calc(12px + var(--minigame-safe-right))
+    calc(12px + var(--minigame-safe-bottom))
+    calc(12px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .qtr-canvas .qtr-canvas__card {
+  max-height: min(
+    760px,
+    calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom) - 24px)
+  );
+}
+
+.minigame-host-playing > .td {
+  padding:
+    calc(12px + var(--minigame-safe-top))
+    calc(12px + var(--minigame-safe-right))
+    calc(12px + var(--minigame-safe-bottom))
+    calc(12px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .bbl {
+  padding:
+    calc(16px + var(--minigame-safe-top))
+    calc(16px + var(--minigame-safe-right))
+    calc(16px + var(--minigame-safe-bottom))
+    calc(16px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .bbl .bbl__card {
+  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+}
+
+.minigame-host-playing > .tbg {
+  padding:
+    calc(16px + var(--minigame-safe-top))
+    calc(16px + var(--minigame-safe-right))
+    calc(16px + var(--minigame-safe-bottom))
+    calc(16px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .tbg .tbg__card {
+  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+}
+
+.minigame-host-playing > .snake-root {
+  padding:
+    var(--minigame-safe-padding-top)
+    var(--minigame-safe-padding-right)
+    var(--minigame-safe-padding-bottom)
+    var(--minigame-safe-padding-left);
+}
+
+.minigame-host-playing > .snake-root .snake-phone {
+  height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+}
+
+.minigame-host-playing > .cm {
+  padding:
+    calc(12px + var(--minigame-safe-top))
+    calc(8px + var(--minigame-safe-right))
+    calc(20px + var(--minigame-safe-bottom))
+    calc(8px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .tilt-labyrinth-host {
+  padding:
+    calc(8px + var(--minigame-safe-top))
+    calc(8px + var(--minigame-safe-right))
+    calc(16px + var(--minigame-safe-bottom))
+    calc(8px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .mc-host {
+  padding:
+    calc(14px + var(--minigame-safe-top))
+    calc(10px + var(--minigame-safe-right))
+    calc(24px + var(--minigame-safe-bottom))
+    calc(10px + var(--minigame-safe-left));
+}
+
+.minigame-host-playing > .ta-root {
+  padding-top: calc(12px + var(--minigame-safe-top));
+  padding-right: calc(16px + var(--minigame-safe-right));
+  padding-bottom: calc(12px + var(--minigame-safe-bottom));
+  padding-left: calc(16px + var(--minigame-safe-left));
+  box-sizing: border-box;
+}
+
+.minigame-host-playing > .minesweeps {
+  padding:
+    calc(1rem + var(--minigame-safe-top))
+    calc(1rem + var(--minigame-safe-right))
+    calc(1rem + var(--minigame-safe-bottom))
+    calc(1rem + var(--minigame-safe-left));
+  box-sizing: border-box;
+}
+
+.minigame-host-playing > .grid-of-luck {
+  padding:
+    calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-top))
+    calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-right))
+    calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-bottom))
+    calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-left));
+  box-sizing: border-box;
+}
+
+.minigame-host-playing > .number-trivia {
+  padding:
+    calc(var(--minigame-safe-top) + 72px)
+    max(16px, calc(var(--minigame-safe-right) + 16px))
+    calc(var(--minigame-safe-bottom) + 24px)
+    max(16px, calc(var(--minigame-safe-left) + 16px));
+}
+
+.minigame-host-playing > .capitalization {
+  padding:
+    calc(var(--minigame-safe-top) + 72px)
+    max(16px, calc(var(--minigame-safe-right) + 16px))
+    calc(var(--minigame-safe-bottom) + 24px)
+    max(16px, calc(var(--minigame-safe-left) + 16px));
+}
+
+.minigame-host-playing > .chain-of-greed .chain-of-greed__shell {
+  padding:
+    calc(var(--minigame-safe-top) + 0.6rem)
+    calc(var(--minigame-safe-right) + 0.85rem)
+    calc(var(--minigame-safe-bottom) + 0.4rem)
+    calc(var(--minigame-safe-left) + 0.85rem);
+}
+
 .minigame-host-results {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 24px 24px 32px;
   width: 100%;
   max-width: 460px;
-  max-height: 90dvh;
+  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+  padding:
+    var(--minigame-safe-padding-top)
+    max(24px, var(--minigame-safe-padding-right))
+    max(32px, var(--minigame-safe-padding-bottom))
+    max(24px, var(--minigame-safe-padding-left));
+  box-sizing: border-box;
   animation: fadeIn 0.3s ease;
 }
 
@@ -83,7 +270,6 @@
   color: #ccc;
 }
 
-/* ─── Leaderboard (shown when participants are passed) ───────────────────── */
 .minigame-host-results-winner {
   margin: 0;
   font-size: 1rem;
@@ -217,18 +403,15 @@
 
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.08); }
+  50% { transform: scale(1.08); }
 }
 
 @keyframes pop {
-  0%   { transform: scale(0.5); opacity: 0; }
-  70%  { transform: scale(1.1); opacity: 1; }
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
 
-
-
-/* ─── Close button (top-right of playing phase) ─────────────────────────────── */
 .minigame-host-close-btn {
   --floating-corner-top-base: 12px;
   --floating-corner-right-base: 14px;
@@ -236,8 +419,6 @@
   position: absolute;
   top: var(--floating-corner-top-offset);
   right: var(--floating-corner-right-offset);
-  /* Must stay above full-viewport minigame roots (e.g. Bullseye Blitz uses a
-     fixed overlay at z-index 200) so the exit button is always reachable. */
   z-index: 9600;
   width: 36px;
   height: 36px;
