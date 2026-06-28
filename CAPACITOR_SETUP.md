@@ -1,12 +1,10 @@
-# Capacitor Shell Layer — Setup & Workflow Guide
+# Capacitor Setup
 
-This document explains what was added to the repository to support wrapping the
-existing React + TypeScript + Vite web app as an iOS (or Android) native app
-using [Capacitor](https://capacitorjs.com/), and how to continue from here.
+Use `npm run build` for the normal web / GitHub Pages deployment. That build keeps the Vite base path at `/bbmobilenew/`.
 
----
+Use `npm run build:mobile` before `npx cap sync ios` for the Capacitor / iOS app. That build runs Vite in `capacitor` mode, which switches the base path to `./` so assets resolve correctly inside WKWebView.
 
-## What was added
+Recommended iOS workflow:
 
 | File / change | Purpose |
 |---|---|
