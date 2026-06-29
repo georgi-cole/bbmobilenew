@@ -41,27 +41,29 @@ export default function useBackgroundTheme(
     resolveTheme().then((resolved: ResolvedTheme) => {
       if (cancelled) return;
 
-      // Normalize URL to work on GitHub Pages where BASE_URL may be '/bbmobilenew/'.
-      // Avoid double-prefixing if backgroundTheme already includes the base.
-      const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-      const normalized = (base && resolved.url.startsWith('/') && !resolved.url.startsWith(`${base}/`))
-        ? `${base}${resolved.url}`
-        : resolved.url;
-
-      // Apply the background immediately so consumers don't wait on image preload.
-      setState({ url: normalized, key: resolved.key, reason: resolved.reason });
-      console.info('[useBackgroundTheme] background applied:', resolved.key, normalized, `(${resolved.reason})`);
+      setState({
+        url: resolved.url,
+        key: resolved.key,
+        reason: resolved.reason,
+      });
+      console.info(
+        '[useBackgroundTheme] background applied:',
+        resolved.key,
+        resolved.url,
+        `(${resolved.reason})`,
+        `[${resolved.assetSource}:${resolved.assetFile}]`,
+      );
 
       if (attachToRoot) {
         document.documentElement.style.setProperty(
           '--intro-bg-image',
-          `url("${normalized}")`,
+          `url("${resolved.url}")`,
         );
       }
 
       // Preload the background image in parallel so it's in cache when used,
       // but do not gate state updates on this completing.
-      preloadImage(normalized).then(() => {
+      preloadImage(resolved.url).then(() => {
         if (cancelled) return;
         // Optional: could add debug logging here if desired.
       });
