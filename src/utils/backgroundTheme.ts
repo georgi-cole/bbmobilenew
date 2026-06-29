@@ -159,6 +159,7 @@ export async function resolveTheme(
   const now = new Date();
   const platform = getPlatformLabel();
   const permissionStatus = await getGeolocationPermissionStatus();
+  const permissionDenied = permissionStatus === 'denied';
   const timeKey = timeOfDayKey(now);
   const binaryFallbackKey = getBinaryFallbackKey(now);
 
@@ -173,7 +174,7 @@ export async function resolveTheme(
   if (isHolidayWindow(now)) {
     selectedKey = holidayKey(now);
     reason = 'holiday';
-  } else if (!forceNoGeo && typeof navigator !== 'undefined' && navigator.geolocation && permissionStatus !== 'denied') {
+  } else if (!forceNoGeo && typeof navigator !== 'undefined' && navigator.geolocation && !permissionDenied) {
     // 2. Geolocation + weather
     try {
       const position = await getPosition(geolocationTimeoutMs);
@@ -197,13 +198,13 @@ export async function resolveTheme(
     } catch (err) {
       locationError = err instanceof Error ? err.message : String(err);
       selectedKey = binaryFallbackKey;
-      reason = permissionStatus === 'denied' ? 'fallback:permission-denied' : 'fallback:location';
+      reason = permissionDenied ? 'fallback:permission-denied' : 'fallback:location';
     }
   } else {
     // No usable location signal: fall back to a guaranteed day/night asset.
     locationError = forceNoGeo
       ? 'forceNoGeo'
-      : permissionStatus === 'denied'
+      : permissionDenied
         ? 'permission denied'
         : 'geolocation unavailable';
     selectedKey = binaryFallbackKey;
