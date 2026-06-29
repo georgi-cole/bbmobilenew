@@ -65,8 +65,8 @@ function buildPublicSkinUrl(filename: string): string {
   return `${prefix}assets/skins/${filename}`;
 }
 
-function resolveBundledSkinUrl(filename: string): string | null {
-  return SKIN_URL_BY_FILENAME.get(filename) ?? null;
+export function resolveSkinAssetPath(filename: string): string {
+  return SKIN_URL_BY_FILENAME.get(filename) ?? buildPublicSkinUrl(filename);
 }
 
 function resolveSkinAssetWithoutFallback(key: ThemeKey): SkinAssetResolution | null {
@@ -74,14 +74,14 @@ function resolveSkinAssetWithoutFallback(key: ThemeKey): SkinAssetResolution | n
   const candidates = unique([entry.canonicalFile, ...(entry.aliases ?? [])]);
 
   for (const file of candidates) {
-    const url = resolveBundledSkinUrl(file);
+    const url = resolveSkinAssetPath(file);
     if (url) {
       return {
         key,
         label: entry.label,
         file,
         url,
-        source: 'bundled',
+        source: SKIN_URL_BY_FILENAME.has(file) ? 'bundled' : 'public',
         candidates,
       };
     }
