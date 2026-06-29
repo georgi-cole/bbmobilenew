@@ -8,27 +8,34 @@
 # Usage:
 #   bash scripts/fetch-skins.sh
 #
-# Requirements: curl (or wget as fallback)
+# Requirements: curl (or wget as fallback), Node.js (for reading the shared registry)
 
 set -euo pipefail
 
 REPO_RAW="https://raw.githubusercontent.com/georgi-cole/bbmobile/main"
 DEST_DIR="$(cd "$(dirname "$0")/.." && pwd)/public/assets/skins"
 
-# Canonical list of skin files from the legacy repo
-SKIN_FILES=(
-  "bg-sunrise.png"
-  "bg-day.png"
-  "bg-sunset.png"
-  "bg-night.png"
-  "bg-rain.png"
-  "bg-snow.png"
-  "bg-snowday.png"
-  "bg-thunderstorm.png"
-  "bg-xmas-day.png"
-  "bg-xmas-eve.png"
-  "bg-xmas-night.png"
-  "daily-background.png"
+# Read the canonical file list from the shared registry so the download list
+# stays in sync with the runtime resolver and manifest generator.
+mapfile -t SKIN_FILES < <(
+  node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const registryPath = path.resolve(process.cwd(), 'src/data/skinRegistry.json');
+const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+const seen = new Set();
+
+for (const key of Object.keys(registry)) {
+  const entry = registry[key] || {};
+  const candidates = [entry.canonicalFile, ...(entry.aliases ?? [])];
+  for (const file of candidates) {
+    if (typeof file === 'string' && file.length > 0 && !seen.has(file)) {
+      seen.add(file);
+      console.log(file);
+    }
+  }
+}
+NODE
 )
 
 mkdir -p "$DEST_DIR"
