@@ -11,12 +11,12 @@
 }
 
 @media (min-width: 640px) and (min-height: 760px) {
-  .game-screen--compact-small-balance {
+  .game-screen--compact-roster-balance {
     box-sizing: border-box;
     min-height: calc(100dvh - 84px);
   }
 
-  .game-screen--compact-small-balance > .tv-zone {
+  .game-screen--compact-roster-balance > .tv-zone {
     flex: 1 1 auto;
     min-height: 0;
   }
