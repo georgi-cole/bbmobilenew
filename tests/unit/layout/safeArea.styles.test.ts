@@ -31,12 +31,14 @@ describe('safe-area layout styles', () => {
       readFileSync(resolve(process.cwd(), 'src/components/MinigameHost/MinigameHost.css'), 'utf8'),
     );
 
-    expect(globalCss).toContain('--safe-area-inset-top: env(safe-area-inset-top, 0px);');
-    expect(globalCss).toContain('--safe-area-inset-left: env(safe-area-inset-left, 0px);');
-    expect(globalCss).toContain('--safe-area-inset-right: env(safe-area-inset-right, 0px);');
+    expect(globalCss).toContain('--safe-top: env(safe-area-inset-top, 0px);');
+    expect(globalCss).toContain('--safe-bottom: env(safe-area-inset-bottom, 0px);');
+    expect(globalCss).toContain('--safe-left: env(safe-area-inset-left, 0px);');
+    expect(globalCss).toContain('--safe-right: env(safe-area-inset-right, 0px);');
+    expect(globalCss).toContain('--safe-area-inset-top: var(--safe-top);');
     expect(globalCss).toContain('--app-safe-area-top-fallback: 0px;');
     expect(globalCss).toContain(
-      '--app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-area-inset-top));',
+      '--app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-top));',
     );
     expect(globalCss).toContain(
       '--app-safe-area-top-extra: max(0px, calc(var(--app-safe-area-top) - 16px));',
@@ -63,16 +65,16 @@ describe('safe-area layout styles', () => {
       '--floating-corner-top-offset: max( var(--floating-corner-top-base), calc(var(--app-safe-area-top) + var(--floating-corner-top-safe-padding)) );',
     );
     expect(globalCss).toContain(
-      '--floating-corner-left-offset: max( var(--floating-corner-left-base), calc(var(--safe-area-inset-left) + var(--floating-corner-left-safe-padding)) );',
+      '--floating-corner-left-offset: max( var(--floating-corner-left-base), calc(var(--safe-left) + var(--floating-corner-left-safe-padding)) );',
     );
     expect(globalCss).toContain(
-      '--floating-corner-right-offset: max( var(--floating-corner-right-base), calc(var(--safe-area-inset-right) + var(--floating-corner-right-safe-padding)) );',
+      '--floating-corner-right-offset: max( var(--floating-corner-right-base), calc(var(--safe-right) + var(--floating-corner-right-safe-padding)) );',
     );
     expect(globalCss).toContain('html.is-capacitor,');
     expect(globalCss).toContain('html.is-chrome-android {');
     expect(globalCss).toContain('--app-safe-area-top-fallback: 16px;');
     expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);');
-    expect(appShellCss).toContain('padding-bottom: var(--safe-area-inset-bottom);');
+    expect(appShellCss).toContain('padding-bottom: var(--safe-bottom);');
     expect(juryRevealCss).toContain('--floating-corner-top-base: 12px;');
     expect(juryRevealCss).toContain('top: var(--floating-corner-top-offset);');
     expect(juryRevealCss).toContain('right: var(--floating-corner-right-offset);');
@@ -82,6 +84,8 @@ describe('safe-area layout styles', () => {
     expect(evictionCss).toContain('left: var(--floating-corner-left-offset);');
     expect(minigameHostCss).toContain('--floating-corner-top-base: 12px;');
     expect(minigameHostCss).toContain('--floating-corner-right-base: 14px;');
+    expect(minigameHostCss).toContain('--minigame-stage-top-gap: clamp(56px, 12vh, 92px);');
+    expect(minigameHostCss).toContain('--minigame-stage-top-padding: calc(var(--minigame-safe-top) + var(--minigame-stage-top-gap));');
     expect(minigameHostCss).toContain('top: var(--floating-corner-top-offset);');
     expect(minigameHostCss).toContain('right: var(--floating-corner-right-offset);');
   });
