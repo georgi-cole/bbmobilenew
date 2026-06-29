@@ -10,6 +10,8 @@
   --minigame-safe-padding-right: calc(var(--minigame-safe-right) + clamp(10px, 2.6vw, 18px));
   --minigame-safe-padding-bottom: calc(var(--minigame-safe-bottom) + clamp(10px, 2.6vw, 18px));
   --minigame-safe-padding-left: calc(var(--minigame-safe-left) + clamp(10px, 2.6vw, 18px));
+  --minigame-stage-top-gap: clamp(56px, 12vh, 92px);
+  --minigame-stage-top-padding: calc(var(--minigame-safe-top) + var(--minigame-stage-top-gap));
   --safe-top: var(--minigame-safe-top);
   --safe-right: var(--minigame-safe-right);
   --safe-bottom: var(--minigame-safe-bottom);
@@ -35,7 +37,7 @@
   max-width: 32rem;
   max-height: 100dvh;
   padding:
-    var(--minigame-safe-padding-top)
+    var(--minigame-stage-top-padding)
     var(--minigame-safe-padding-right)
     var(--minigame-safe-padding-bottom)
     var(--minigame-safe-padding-left);
@@ -89,19 +91,19 @@
 
 .minigame-host-playing > .pp {
   padding:
-    var(--minigame-safe-padding-top)
+    var(--minigame-stage-top-padding)
     var(--minigame-safe-padding-right)
     var(--minigame-safe-padding-bottom)
     var(--minigame-safe-padding-left);
 }
 
 .minigame-host-playing > .pp .pp__card {
-  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .qtr {
   padding:
-    calc(16px + var(--minigame-safe-top))
+    calc(16px + var(--minigame-stage-top-padding))
     calc(16px + var(--minigame-safe-right))
     calc(16px + var(--minigame-safe-bottom))
     calc(16px + var(--minigame-safe-left));
@@ -109,7 +111,7 @@
 
 .minigame-host-playing > .qtr-canvas {
   padding:
-    calc(12px + var(--minigame-safe-top))
+    calc(12px + var(--minigame-stage-top-padding))
     calc(12px + var(--minigame-safe-right))
     calc(12px + var(--minigame-safe-bottom))
     calc(12px + var(--minigame-safe-left));
@@ -118,13 +120,13 @@
 .minigame-host-playing > .qtr-canvas .qtr-canvas__card {
   max-height: min(
     760px,
-    calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom) - 24px)
+    calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom) - 24px)
   );
 }
 
 .minigame-host-playing > .td {
   padding:
-    calc(12px + var(--minigame-safe-top))
+    calc(12px + var(--minigame-stage-top-padding))
     calc(12px + var(--minigame-safe-right))
     calc(12px + var(--minigame-safe-bottom))
     calc(12px + var(--minigame-safe-left));
@@ -132,44 +134,44 @@
 
 .minigame-host-playing > .bbl {
   padding:
-    calc(16px + var(--minigame-safe-top))
+    calc(16px + var(--minigame-stage-top-padding))
     calc(16px + var(--minigame-safe-right))
     calc(16px + var(--minigame-safe-bottom))
     calc(16px + var(--minigame-safe-left));
 }
 
 .minigame-host-playing > .bbl .bbl__card {
-  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .tbg {
   padding:
-    calc(16px + var(--minigame-safe-top))
+    calc(16px + var(--minigame-stage-top-padding))
     calc(16px + var(--minigame-safe-right))
     calc(16px + var(--minigame-safe-bottom))
     calc(16px + var(--minigame-safe-left));
 }
 
 .minigame-host-playing > .tbg .tbg__card {
-  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .snake-root {
   padding:
-    var(--minigame-safe-padding-top)
+    var(--minigame-stage-top-padding)
     var(--minigame-safe-padding-right)
     var(--minigame-safe-padding-bottom)
     var(--minigame-safe-padding-left);
 }
 
 .minigame-host-playing > .snake-root .snake-phone {
-  height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
-  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+  height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .cm {
   padding:
-    calc(12px + var(--minigame-safe-top))
+    calc(12px + var(--minigame-stage-top-padding))
     calc(8px + var(--minigame-safe-right))
     calc(20px + var(--minigame-safe-bottom))
     calc(8px + var(--minigame-safe-left));
@@ -177,7 +179,7 @@
 
 .minigame-host-playing > .tilt-labyrinth-host {
   padding:
-    calc(8px + var(--minigame-safe-top))
+    calc(8px + var(--minigame-stage-top-padding))
     calc(8px + var(--minigame-safe-right))
     calc(16px + var(--minigame-safe-bottom))
     calc(8px + var(--minigame-safe-left));
@@ -185,14 +187,14 @@
 
 .minigame-host-playing > .mc-host {
   padding:
-    calc(14px + var(--minigame-safe-top))
+    calc(14px + var(--minigame-stage-top-padding))
     calc(10px + var(--minigame-safe-right))
     calc(24px + var(--minigame-safe-bottom))
     calc(10px + var(--minigame-safe-left));
 }
 
 .minigame-host-playing > .ta-root {
-  padding-top: calc(12px + var(--minigame-safe-top));
+  padding-top: calc(12px + var(--minigame-stage-top-padding));
   padding-right: calc(16px + var(--minigame-safe-right));
   padding-bottom: calc(12px + var(--minigame-safe-bottom));
   padding-left: calc(16px + var(--minigame-safe-left));
@@ -201,7 +203,7 @@
 
 .minigame-host-playing > .minesweeps {
   padding:
-    calc(1rem + var(--minigame-safe-top))
+    calc(1rem + var(--minigame-stage-top-padding))
     calc(1rem + var(--minigame-safe-right))
     calc(1rem + var(--minigame-safe-bottom))
     calc(1rem + var(--minigame-safe-left));
@@ -210,7 +212,7 @@
 
 .minigame-host-playing > .grid-of-luck {
   padding:
-    calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-top))
+    calc(clamp(16px, 3vw, 28px) + var(--minigame-stage-top-padding))
     calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-right))
     calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-bottom))
     calc(clamp(16px, 3vw, 28px) + var(--minigame-safe-left));
@@ -219,7 +221,7 @@
 
 .minigame-host-playing > .number-trivia {
   padding:
-    calc(var(--minigame-safe-top) + 72px)
+    calc(var(--minigame-stage-top-padding) + 72px)
     max(16px, calc(var(--minigame-safe-right) + 16px))
     calc(var(--minigame-safe-bottom) + 24px)
     max(16px, calc(var(--minigame-safe-left) + 16px));
@@ -227,7 +229,7 @@
 
 .minigame-host-playing > .capitalization {
   padding:
-    calc(var(--minigame-safe-top) + 72px)
+    calc(var(--minigame-stage-top-padding) + 72px)
     max(16px, calc(var(--minigame-safe-right) + 16px))
     calc(var(--minigame-safe-bottom) + 24px)
     max(16px, calc(var(--minigame-safe-left) + 16px));
@@ -235,7 +237,7 @@
 
 .minigame-host-playing > .chain-of-greed .chain-of-greed__shell {
   padding:
-    calc(var(--minigame-safe-top) + 0.6rem)
+    calc(var(--minigame-stage-top-padding) + 0.6rem)
     calc(var(--minigame-safe-right) + 0.85rem)
     calc(var(--minigame-safe-bottom) + 0.4rem)
     calc(var(--minigame-safe-left) + 0.85rem);
@@ -244,14 +246,14 @@
 .minigame-host-results {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
   width: 100%;
   max-width: 460px;
-  height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
-  max-height: calc(100dvh - var(--minigame-safe-padding-top) - var(--minigame-safe-padding-bottom));
+  height: 100dvh;
+  max-height: 100dvh;
   padding:
-    var(--minigame-safe-padding-top)
+    var(--minigame-stage-top-padding)
     max(24px, var(--minigame-safe-padding-right))
     max(32px, var(--minigame-safe-padding-bottom))
     max(24px, var(--minigame-safe-padding-left));
