@@ -4,6 +4,7 @@ import {
   getPlatformLabel,
   resolveSkinAsset,
   SKIN_REGISTRY,
+  type GeolocationPermissionStatus,
   type SkinAssetSource,
   type ThemeKey,
   type PlatformLabel,
@@ -81,7 +82,7 @@ export interface ResolvedTheme {
   assetFile: string;
   assetSource: SkinAssetSource;
   platform: PlatformLabel;
-  permissionStatus: PermissionState | 'unsupported' | 'unknown';
+  permissionStatus: GeolocationPermissionStatus;
 }
 
 export interface ResolveOptions {
