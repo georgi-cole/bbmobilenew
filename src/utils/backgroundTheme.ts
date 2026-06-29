@@ -184,10 +184,14 @@ export async function resolveTheme(
       if (weatherKey) {
         selectedKey = weatherKey;
         reason = `weather:${weatherCode}`;
-      } else {
-        // Clear/overcast: use the local time bucket.
+      } else if (weatherCode === 0 || weatherCode === 1 || weatherCode === 2 || weatherCode === 3) {
+        // Clear/overcast: use the local time bucket so sunrise/sunset remain visible.
         selectedKey = timeKey;
         reason = `weather:${weatherCode}:timeofday`;
+      } else {
+        // Unrecognized weather codes fall back to a guaranteed day/night asset.
+        selectedKey = binaryFallbackKey;
+        reason = `weather:${weatherCode}:fallback`;
       }
     } catch (err) {
       locationError = err instanceof Error ? err.message : String(err);
