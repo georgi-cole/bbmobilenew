@@ -2,8 +2,8 @@
 /**
  * generate-skins-manifest.mjs
  *
- * Scans public/assets/skins/ for image files and heuristically maps them to
- * the canonical theme keys used by backgroundTheme.ts.  Writes the result to
+ * Scans public/assets/skins/ for image files and maps them to the canonical
+ * theme keys declared in src/data/skinRegistry.json. Writes the result to
  * public/assets/skins/skins.json (pretty-printed).
  *
  * Usage:
@@ -19,56 +19,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SKINS_DIR = path.resolve(__dirname, '..', 'public', 'assets', 'skins');
+const REGISTRY_PATH = path.resolve(__dirname, '..', 'src', 'data', 'skinRegistry.json');
 const MANIFEST_PATH = path.join(SKINS_DIR, 'skins.json');
-
-/** Canonical theme keys (must match ThemeKey in backgroundTheme.ts). */
-const THEME_KEYS = [
-  'sunrise',
-  'day',
-  'sunset',
-  'night',
-  'rain',
-  'snow',
-  'snowday',
-  'thunderstorm',
-  'xmasDay',
-  'xmasEve',
-  'xmasNight',
-];
-
-/**
- * Substrings to look for in a filename (lower-cased) to identify each key.
- * Earlier entries in the array = more canonical match; used for sort priority.
- * NOTE: Keep in sync with the CANDIDATES map in src/utils/backgroundTheme.ts
- * so the generator can detect all filenames used by the runtime prober.
- */
-const KEY_HINTS = {
-  sunrise:      ['sunrise'],
-  day:          ['day', 'daily', 'autumn', 'leaves'], // checked after xmasDay/snowday to avoid conflicts
-  sunset:       ['sunset'],
-  night:        ['night'],       // checked in DETECTION_PRIORITY before 'snow'; covers night-snow-background
-  rain:         ['rain'],
-  snowday:      ['snowday'],     // must come before 'snow'
-  snow:         ['snow', 'blizzard'],
-  thunderstorm: ['thunder', 'storm'],
-  xmasDay:      ['xmas-day', 'xmasday', 'santa-day', 'santaday', 'christmas-day',
-                 'xmas-background'], // 'xmas-background' is not a substring of 'xmas-*-background' so it uniquely matches xmas-background.{ext}
-  xmasEve:      ['xmas-eve', 'xmaseve', 'christmas-eve'],
-  xmasNight:    ['xmas-night', 'xmasnight', 'xmasy-night', 'christmas-night'],
-};
-
-/**
- * Priority order for key detection — more-specific keys are checked first to
- * avoid partial-match ambiguity.  'night' is checked before 'snow' so that
- * 'night-snow-background.png' maps to night rather than snow.
- */
-const DETECTION_PRIORITY = [
-  'xmasDay', 'xmasEve', 'xmasNight',
-  'snowday', 'thunderstorm',
-  'sunrise', 'sunset',
-  'rain', 'night', 'snow',
-  'day',
-];
 
 /** Supported image extensions. */
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif']);
@@ -77,21 +29,13 @@ function isImageFile(filename) {
   return IMAGE_EXTENSIONS.has(path.extname(filename).toLowerCase());
 }
 
-/**
- * Returns the theme key and the index of the matching hint within that key's
- * hints array for a given filename.  Earlier hint index = more canonical name.
- * Returns null if no key matches.
- */
-function detectKeyWithHintIndex(filename) {
-  const lower = filename.toLowerCase();
-  for (const key of DETECTION_PRIORITY) {
-    const hints = KEY_HINTS[key] ?? [];
-    const hintIndex = hints.findIndex((h) => lower.includes(h));
-    if (hintIndex !== -1) {
-      return { key, hintIndex };
-    }
+function readRegistry() {
+  const raw = fs.readFileSync(REGISTRY_PATH, 'utf8');
+  const parsed = JSON.parse(raw);
+  if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`[generate-skins-manifest] registry is not an object: ${REGISTRY_PATH}`);
   }
-  return null;
+  return /** @type {Record<string, { canonicalFile?: string; aliases?: string[] }>} */ (parsed);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -111,54 +55,59 @@ if (!skinsStats.isDirectory()) {
   process.exit(1);
 }
 
+let registry;
+try {
+  registry = readRegistry();
+} catch (err) {
+  console.error(`[generate-skins-manifest] ERROR: unable to read registry: ${REGISTRY_PATH}`);
+  console.error(`  ${String(err)}`);
+  process.exit(1);
+}
+
+const themeKeys = Object.keys(registry);
 const allFiles = fs.readdirSync(SKINS_DIR).filter((f) => isImageFile(f));
+const fileSet = new Set(allFiles);
+const manifest = {};
+const usedFiles = new Set();
 
 if (allFiles.length === 0) {
   console.warn('[generate-skins-manifest] WARNING: no image files found in', SKINS_DIR);
-  console.warn('  The manifest will be empty.  Run scripts/fetch-skins.sh to download assets.');
+  console.warn('  The manifest will be empty. Run scripts/fetch-skins.sh to download assets.');
 }
 
-// Build per-key candidate lists with hint-index metadata for sorting.
-/** @type {Record<string, Array<{file: string, hintIndex: number}>>} */
-const keyGroups = {};
-for (const file of allFiles) {
-  const match = detectKeyWithHintIndex(file);
-  if (!match) {
-    console.log(`  [skip] ${file}  (no matching theme key)`);
+for (const key of themeKeys) {
+  const entry = registry[key] ?? {};
+  const candidates = [entry.canonicalFile, ...(entry.aliases ?? [])].filter(Boolean);
+  const hit = candidates.find((file) => fileSet.has(file));
+
+  if (!hit) {
+    console.warn(`[generate-skins-manifest] WARNING: no file found for ${key}; candidates: ${candidates.join(', ')}`);
     continue;
   }
-  if (!keyGroups[match.key]) keyGroups[match.key] = [];
-  keyGroups[match.key].push({ file, hintIndex: match.hintIndex });
-}
 
-// Sort each group and emit manifest entries.
-// Sort order: earlier hint index (more canonical) > no spaces/parens > alphabetical.
-const manifest = {};
-for (const key of THEME_KEYS) {
-  const group = keyGroups[key];
-  if (!group || group.length === 0) continue;
+  manifest[key] = hit;
+  usedFiles.add(hit);
+  console.log(`  [map]  ${hit}  → ${key}`);
 
-  group.sort((a, b) => {
-    if (a.hintIndex !== b.hintIndex) return a.hintIndex - b.hintIndex;
-    const aComplex = /[\s()]/.test(a.file) ? 1 : 0;
-    const bComplex = /[\s()]/.test(b.file) ? 1 : 0;
-    if (aComplex !== bComplex) return aComplex - bComplex;
-    return a.file.localeCompare(b.file);
-  });
-
-  manifest[key] = group[0].file;
-  console.log(`  [map]  ${group[0].file}  → ${key}`);
-  for (let i = 1; i < group.length; i++) {
-    console.log(`  [dup]  ${group[i].file}  → ${key} (already mapped to ${group[0].file}; skipping)`);
+  for (const candidate of candidates) {
+    if (candidate !== hit && fileSet.has(candidate) && !usedFiles.has(candidate)) {
+      console.log(`  [alt]  ${candidate}  → ${key} (available but not canonical)`);
+    }
   }
 }
 
-// Report any theme keys that received no mapping
-const unmapped = THEME_KEYS.filter((k) => !manifest[k]);
-if (unmapped.length > 0) {
-  console.warn('\n[generate-skins-manifest] WARNING: no file found for keys:', unmapped.join(', '));
-  console.warn('  These keys will fall back to candidate probing at runtime.');
+// Report any image files that are not used by the registry.
+for (const file of allFiles) {
+  if (!usedFiles.has(file)) {
+    console.log(`  [skip] ${file}  (not referenced by skinRegistry.json)`);
+  }
 }
 
-fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+const unmapped = themeKeys.filter((k) => !manifest[k]);
+if (unmapped.length > 0) {
+  console.warn('\n[generate-skins-manifest] WARNING: no file found for keys:', unmapped.join(', '));
+  console.warn('  These keys will fall back to bundled asset resolution at runtime.');
+}
+
+fs.writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 console.log(`\n[generate-skins-manifest] Wrote ${MANIFEST_PATH}`);
