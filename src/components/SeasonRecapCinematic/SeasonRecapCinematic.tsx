@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import { resolveAvatarCandidates } from '../../utils/avatar';
+import { resolveSkinAssetPath } from '../../utils/skinAssets';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import EvictionLadder from './EvictionLadder';
 import { buildSeasonRecapData, deriveEvictionFallbackPlacement, type AwardCategory } from './seasonRecapData';
@@ -31,7 +32,8 @@ const LADDER_ARCHIVE_LIMIT = 6;
 const FINALISTS_RANK_OFFSET = 2;
 const DICEBEAR_HOST = 'api.dicebear.com';
 const URL_PARSE_BASE = 'https://bbmobilenew.local';
-const RECAP_SKINS_BASE = `${import.meta.env.BASE_URL}assets/skins/`;
+const RECAP_GIRLS_IMAGE = resolveSkinAssetPath('thegirls.webp');
+const RECAP_BOYS_IMAGE = resolveSkinAssetPath('the boys.webp');
 
 function isDicebearAvatar(candidate: string): boolean {
   try {
@@ -183,7 +185,7 @@ function HeadlineGirlsScene() {
   return (
     <FullscreenPhotoScene
       className="src-scene--headline-girls"
-      imageSrc={`${RECAP_SKINS_BASE}thegirls.webp`}
+      imageSrc={RECAP_GIRLS_IMAGE}
       imageAlt="The girls season photoshoot"
       eyebrow="Final photoshoot"
       title="The Girls"
@@ -196,7 +198,7 @@ function PhonePostBoysScene() {
   return (
     <FullscreenPhotoScene
       className="src-scene--phone-post-boys"
-      imageSrc={`${RECAP_SKINS_BASE}the boys.webp`}
+      imageSrc={RECAP_BOYS_IMAGE}
       imageAlt="The boys season photoshoot"
       eyebrow="Final photoshoot"
       title="The Boys"
