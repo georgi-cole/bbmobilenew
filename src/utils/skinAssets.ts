@@ -74,14 +74,14 @@ function resolveSkinAssetWithoutFallback(key: ThemeKey): SkinAssetResolution | n
   const candidates = unique([entry.canonicalFile, ...(entry.aliases ?? [])]);
 
   for (const file of candidates) {
-    const url = resolveSkinAssetPath(file);
+    const url = SKIN_URL_BY_FILENAME.get(file) ?? null;
     if (url) {
       return {
         key,
         label: entry.label,
         file,
         url,
-        source: SKIN_URL_BY_FILENAME.has(file) ? 'bundled' : 'public',
+        source: 'bundled',
         candidates,
       };
     }
@@ -116,8 +116,8 @@ export function resolveSkinAsset(key: ThemeKey, fallbackKey?: ThemeKey): SkinAss
     key: fallbackKey ?? key,
     label: entry.label,
     file,
-    url: buildPublicSkinUrl(file),
-    source: 'public',
+    url: resolveSkinAssetPath(file),
+    source: SKIN_URL_BY_FILENAME.has(file) ? 'bundled' : 'public',
     candidates,
   };
 }
