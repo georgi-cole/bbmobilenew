@@ -10,6 +10,7 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   finalizePendingEviction,
+  confirmDayStartShock,
   setEvictionOverlay,
   selectAlivePlayers,
   selectF3Part3PredictedWinnerId,
@@ -29,6 +30,8 @@ import {
   dismissBattleBack,
   tryActivateBattleBack,
   tryActivatePendingForcedBattleBack,
+  tryActivateDayStartShock,
+  tryActivatePendingForcedDayStartShock,
   tryActivateSecretMission,
   openBattleBackCompetition,
   tryActivateDoubleEviction,
@@ -78,6 +81,7 @@ import { isPlacementRankingGame } from '../../minigames/registry'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
+import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
 import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
@@ -815,13 +819,37 @@ export default function GameScreen() {
   // Fire tryActivateSecretMission once per day when the game enters week_start.
   // The thunk centralizes the daily chance table, testing override, and
   // one-per-season guard.
-  const secretMissionActivationWeekRef = useRef<number | null>(null)
+  const weekStartActivationWeekRef = useRef<number | null>(null)
+  const weekStartActivationResolvedRef = useRef(false)
   useEffect(() => {
     if (game.phase !== 'week_start') return
-    if (secretMissionActivationWeekRef.current === game.week) return
-    secretMissionActivationWeekRef.current = game.week
-    dispatch(tryActivateSecretMission())
-  }, [game.phase, game.week, dispatch])
+    if (game.pendingEviction || game.dayStartShock) return
+    if (weekStartActivationWeekRef.current !== game.week) {
+      weekStartActivationWeekRef.current = game.week
+      weekStartActivationResolvedRef.current = false
+    }
+    if (weekStartActivationResolvedRef.current) return
+
+    if (dispatch(tryActivatePendingForcedDayStartShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
+    if (dispatch(tryActivateDayStartShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
+    if (dispatch(tryActivateSecretMission())) {
+      weekStartActivationResolvedRef.current = true
+    }
+  }, [
+    game.dayStartShock,
+    game.pendingEviction,
+    game.pendingForcedShock?.earliestWeek,
+    game.pendingForcedShock?.type,
+    game.phase,
+    game.week,
+    dispatch,
+  ])
 
   // ── Democracia activation on loh_comp_announcement entry ─────────────────
   // Fire tryActivatePendingForcedDemocracia (debug) or tryActivateDemocracia
@@ -2256,6 +2284,16 @@ export default function GameScreen() {
       }, POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
     }
   }, [dispatch, game.pendingEviction, game.phase, setFinal4Stage])
+
+  const handleDayStartShockConfirm = useCallback(() => {
+    dispatch(confirmDayStartShock())
+  }, [dispatch])
+
+  const dayStartShock = game.dayStartShock
+  const dayStartShockPlayer = useMemo(() => {
+    if (!dayStartShock) return null
+    return game.players.find((player) => player.id === dayStartShock.targetId) ?? null
+  }, [dayStartShock, game.players])
 
 
   const battleBack = game.battleBack
@@ -3782,6 +3820,16 @@ export default function GameScreen() {
             onDone={handleEvictionSplashDone}
             layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
             devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {dayStartShock && dayStartShockPlayer && (
+          <DayStartShockPopup
+            key={`${dayStartShock.templateId}-${dayStartShock.triggeredWeek}-${dayStartShock.source}`}
+            player={dayStartShockPlayer}
+            reason={dayStartShock.reason}
+            onConfirm={handleDayStartShockConfirm}
           />
         )}
       </AnimatePresence>
