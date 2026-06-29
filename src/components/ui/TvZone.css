@@ -449,8 +449,8 @@
   }
 
   .tv-zone__viewport {
-    min-height: 120px;
-    padding: 16px 14px;
+    min-height: 144px;
+    padding: 18px 14px;
   }
   .tv-zone__now {
     font-size: 0.82rem;
