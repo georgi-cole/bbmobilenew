@@ -2,7 +2,6 @@ import {
   getBinaryFallbackKey,
   getGeolocationPermissionStatus,
   getPlatformLabel,
-  getSkinCandidates,
   resolveSkinAsset,
   SKIN_REGISTRY,
   type SkinAssetSource,
