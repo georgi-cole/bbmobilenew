@@ -2817,8 +2817,9 @@ export default function GameScreen() {
     spectatorF3Active ||
     spectatorLegacyActive
 
-  const expandsTvForCompactRoster = settings.gameUX.compactRoster
-  const compactRosterLogRows = expandsTvForCompactRoster ? 6 : 2
+  const expandsTvForCompactSmall =
+    settings.gameUX.compactRoster && settings.gameUX.compactRosterLayout === 'small'
+  const compactSmallLogRows = expandsTvForCompactSmall ? 6 : 2
 
   // ── Viewport fallback message for blank-TV states ────────────────────────
   // Provides a meaningful holding message during states where no fresh TV event
@@ -2865,7 +2866,7 @@ export default function GameScreen() {
   return (
     <LayoutGroup id="game-layout">
     <div
-      className={`game-screen game-screen-shell${expandsTvForCompactRoster ? ' game-screen--compact-roster-balance' : ''}`}
+      className={`game-screen game-screen-shell${expandsTvForCompactSmall ? ' game-screen--compact-small-balance' : ''}`}
     >
       {showPublicSaveReveal && publicSaveWinnerId ? (
         <TvZone
@@ -2889,7 +2890,7 @@ export default function GameScreen() {
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={compactSmallLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : showDemocraciaResults && democraciaResultDisplay ? (
@@ -2915,7 +2916,7 @@ export default function GameScreen() {
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={compactSmallLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : showVoteResults ? (
@@ -2942,7 +2943,7 @@ export default function GameScreen() {
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={compactSmallLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : (
@@ -2970,7 +2971,7 @@ export default function GameScreen() {
                   ? handlePublicSaveResultDismiss
                   : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={compactSmallLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       )}

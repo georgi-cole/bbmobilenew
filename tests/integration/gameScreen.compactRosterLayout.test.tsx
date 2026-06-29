@@ -45,18 +45,18 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
 }
 
 describe('GameScreen compact roster balancing', () => {
-  it('expands the tv stack for compact slider mode and requests a taller log feed', () => {
+  it('expands the tv stack only for compact small mode and requests a taller log feed', () => {
     const store = makeStore()
 
-    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
+    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'small' }))
 
     const { container } = renderGameScreen(store)
 
-    expect(container.firstElementChild).toHaveClass('game-screen--compact-roster-balance')
+    expect(container.firstElementChild).toHaveClass('game-screen--compact-small-balance')
     expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '6')
   })
 
-  it('keeps the roster balance active on narrow viewports so the TV log stays visible', () => {
+  it('keeps phone slider mode on the original tv sizing and default log rows', () => {
     const store = makeStore()
 
     store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
@@ -65,7 +65,7 @@ describe('GameScreen compact roster balancing', () => {
 
     const { container } = renderGameScreen(store)
 
-    expect(container.firstElementChild).toHaveClass('game-screen--compact-roster-balance')
-    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '6')
+    expect(container.firstElementChild).not.toHaveClass('game-screen--compact-small-balance')
+    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '2')
   })
 })
