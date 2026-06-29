@@ -12,8 +12,9 @@
 
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_RAW="https://raw.githubusercontent.com/georgi-cole/bbmobile/main"
-DEST_DIR="$(cd "$(dirname "$0")/.." && pwd)/public/assets/skins"
+DEST_DIR="${REPO_ROOT}/public/assets/skins"
 SKIN_FILES=()
 
 # Read the canonical file list from the shared registry so the download list
@@ -21,10 +22,10 @@ SKIN_FILES=()
 while IFS= read -r file; do
   [[ -n "$file" ]] && SKIN_FILES+=("$file")
 done < <(
-  node <<'NODE'
+  REPO_ROOT="$REPO_ROOT" node <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
-const registryPath = path.resolve(process.cwd(), 'src/data/skinRegistry.json');
+const registryPath = path.resolve(process.env.REPO_ROOT, 'src/data/skinRegistry.json');
 const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
 const seen = new Set();
 
