@@ -14,10 +14,13 @@ set -euo pipefail
 
 REPO_RAW="https://raw.githubusercontent.com/georgi-cole/bbmobile/main"
 DEST_DIR="$(cd "$(dirname "$0")/.." && pwd)/public/assets/skins"
+SKIN_FILES=()
 
 # Read the canonical file list from the shared registry so the download list
 # stays in sync with the runtime resolver and manifest generator.
-mapfile -t SKIN_FILES < <(
+while IFS= read -r file; do
+  [[ -n "$file" ]] && SKIN_FILES+=("$file")
+done < <(
   node <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
