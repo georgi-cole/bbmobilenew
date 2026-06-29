@@ -19,8 +19,3 @@
   /* Push content above bottom safe area */
   padding-bottom: var(--safe-bottom);
 }
-
-.app-shell__main--screen-owned-scroll {
-  overflow: hidden;
-  overscroll-behavior: none;
-}
