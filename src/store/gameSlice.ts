@@ -2,6 +2,7 @@ import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolki
 import type { RootState, AppDispatch } from './store';
 import type {
   DemocraciaResultDisplay,
+  DayStartShockState,
   GameState,
   Player,
   Phase,
@@ -71,6 +72,7 @@ import {
   buildDoubleEvictionTieResolutionMessage,
   calculateRequiredDoubleEvictionSlots,
 } from '../features/twists/doubleEvictionTieUtils';
+import { buildDayStartShockSelection } from '../features/twists/dayStartShock';
 import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
@@ -95,6 +97,8 @@ const PHASE_ORDER: Phase[] = [
 ];
 
 const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3;
+const DAY_START_SHOCK_MIN_WEEK = 3;
+const DAY_START_SHOCK_RNG_SALT = 0x7c2f5d19;
 const AI_USER_THREAT_WEIGHT = 6;
 const AI_LOH_REVENGE_THREAT_WEIGHT = 6;
 const AI_LOH_BASE_THREAT_WEIGHT = 2;
@@ -118,7 +122,8 @@ function getForcedShockActivationWeek(
     || state.doubleEviction?.weekActive === true
     || state.specialVeto?.activeType != null
     || state.democracia?.active === true;
-  return phaseWindowPassed || currentWeekBlocked ? state.week + 1 : state.week;
+  const earliestWeek = phaseWindowPassed || currentWeekBlocked ? state.week + 1 : state.week;
+  return safePhase === 'week_start' ? Math.max(DAY_START_SHOCK_MIN_WEEK, earliestWeek) : earliestWeek;
 }
 
 function formatForcedShockLabel(type: ForcedShockType): string {
@@ -137,6 +142,8 @@ function formatForcedShockLabel(type: ForcedShockType): string {
       return 'Force Majeure';
     case 'democracia':
       return 'Democracia';
+    case 'dayStartShock':
+      return 'Morning Shock';
     default:
       return type;
   }
@@ -172,6 +179,8 @@ function getForcedShockSafePhase(type: ForcedShockType): Phase {
       return 'eviction_results';
     case 'democracia':
       return 'loh_comp_announcement';
+    case 'dayStartShock':
+      return 'week_start';
     default:
       return 'pos_results';
   }
@@ -370,6 +379,7 @@ export function createInitialGameState(): GameState {
       awaitingVipSecondSaveTarget: false,
     },
     pendingForcedShock: null,
+    dayStartShock: null,
     democracia: {
       usedThisSeason: false,
       active: false,
@@ -2141,6 +2151,7 @@ const gameSlice = createSlice({
       evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
       state.pendingEviction = null;
+      state.dayStartShock = null;
 
       pushEvent(state, msg, 'game');
 
@@ -2486,6 +2497,29 @@ const gameSlice = createSlice({
     /** Clear a queued debug shock after it has been successfully consumed. */
     consumeForcedShock(state) {
       state.pendingForcedShock = null;
+    },
+
+    /**
+     * Activate the day-start shock popup.
+     * The popup stays visible until the player confirms the elimination.
+     */
+    activateDayStartShock(state, action: PayloadAction<DayStartShockState>) {
+      state.dayStartShock = action.payload;
+      state.twistActivatedThisWeek = true;
+    },
+
+    /**
+     * Confirm the day-start shock and hand the chosen housemate off to the
+     * standard eviction splash.
+     */
+    confirmDayStartShock(state) {
+      if (!state.dayStartShock) return;
+      const { targetId, reason } = state.dayStartShock;
+      state.pendingEviction = {
+        evicteeId: targetId,
+        evictionMessage: reason,
+      };
+      state.dayStartShock = null;
     },
 
     /**
@@ -3010,6 +3044,7 @@ const gameSlice = createSlice({
       state.voteResults = null;
       state.evictionSplashId = null;
       state.pendingEviction = null;
+      state.dayStartShock = null;
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
     /**
@@ -3111,6 +3146,7 @@ const gameSlice = createSlice({
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
         state.awaitingFinal3Plea ||
+        state.dayStartShock != null ||
         state.specialVeto?.awaitingHolderReplacement ||
         state.specialVeto?.awaitingCoupReplacement1 ||
         state.specialVeto?.awaitingCoupReplacement2 ||
@@ -5119,6 +5155,8 @@ export const {
   queueForcedShock,
   clearForcedShock,
   consumeForcedShock,
+  activateDayStartShock,
+  confirmDayStartShock,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -5425,6 +5463,11 @@ function resolveDebugBlockers(
 
   if (game.pendingEviction) {
     dispatch(finalizePendingEviction(game.pendingEviction.evicteeId));
+    return true;
+  }
+
+  if (game.dayStartShock) {
+    dispatch(confirmDayStartShock());
     return true;
   }
 
@@ -5898,6 +5941,100 @@ export const tryActivateSecretMission =
   };
 
 /**
+ * Attempt to trigger the random day-start shock on the current day.
+ *
+ * Eligibility:
+ *  - `settings.sim.enableTwists` must be true
+ *  - current phase must be `week_start`
+ *  - the season must be at least Day 3
+ *  - at least 5 housemates must still be alive
+ *  - no other twist may already be active this week
+ *  - no queued debug shock may be waiting to consume the window
+ *
+ * If the roll succeeds, the popup is activated and the user must confirm the
+ * eviction before the standard eviction animation can begin.
+ */
+export const tryActivateDayStartShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState();
+
+    if (!settings.sim.enableTwists) return false;
+    if (game.phase !== 'week_start') return false;
+    if (game.dayStartShock) return false;
+    if (game.pendingForcedShock) return false;
+    if (game.twistActivatedThisWeek) return false;
+    if (game.week < DAY_START_SHOCK_MIN_WEEK) return false;
+
+    const activePlayers = game.players.filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury',
+    );
+    if (activePlayers.length <= 4) return false;
+
+    const chance = Math.max(0, Math.min(100, settings.sim.dayStartShockChance ?? 1));
+    if (chance <= 0) return false;
+
+    const rng = mulberry32((game.seed ^ DAY_START_SHOCK_RNG_SALT) >>> 0);
+    if (rng() * 100 >= chance) return false;
+
+    const selection = buildDayStartShockSelection(game.players, rng);
+    if (!selection) return false;
+
+    dispatch(
+      activateDayStartShock({
+        ...selection,
+        triggeredWeek: game.week,
+        source: 'random',
+      }),
+    );
+    return true;
+  };
+
+/**
+ * Attempt to trigger a queued debug day-start shock.
+ *
+ * Bypasses the probability roll, but still respects the day 1 / day 2 and
+ * final-4 guardrails so the debug queue mirrors the live ruleset.
+ */
+export const tryActivatePendingForcedDayStartShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState();
+    const pending = game.pendingForcedShock;
+
+    if (!pending || pending.type !== 'dayStartShock') return false;
+    if (game.phase !== 'week_start') return false;
+    if (game.week < pending.earliestWeek) return false;
+    if (game.dayStartShock) return false;
+    if (game.twistActivatedThisWeek) return false;
+
+    const activePlayers = game.players.filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury',
+    );
+    if (activePlayers.length <= 4) {
+      dispatch(clearForcedShock());
+      return false;
+    }
+
+    const rng = mulberry32((game.seed ^ (DAY_START_SHOCK_RNG_SALT ^ 0x1f1f1f1f)) >>> 0);
+    const selection = buildDayStartShockSelection(game.players, rng);
+    if (!selection) {
+      dispatch(clearForcedShock());
+      return false;
+    }
+
+    dispatch(
+      activateDayStartShock({
+        ...selection,
+        triggeredWeek: game.week,
+        source: 'debug',
+      }),
+    );
+    dispatch(consumeForcedShock());
+    return true;
+  };
+
+/**
  * Attempt to activate the Battle Back / Jury Return twist after an eviction.
  *
  * Eligibility:
@@ -6115,7 +6252,13 @@ export const tryActivatePendingForcedSpecialVeto =
     const { game } = getState();
     const pending = game.pendingForcedShock;
 
-    if (!pending || pending.type === 'doubleEviction' || pending.type === 'battleBack' || pending.type === 'democracia') return false;
+    if (
+      !pending ||
+      pending.type === 'doubleEviction' ||
+      pending.type === 'battleBack' ||
+      pending.type === 'democracia' ||
+      pending.type === 'dayStartShock'
+    ) return false;
     if (game.phase !== 'pos_results') return false;
     if (game.week < pending.earliestWeek) return false;
     if (game.doubleEviction?.weekActive) return false;

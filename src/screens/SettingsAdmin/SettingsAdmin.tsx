@@ -487,6 +487,29 @@ export default function SettingsAdmin() {
             )}
 
             {settings.sim.enableTwists && (
+              <div className="settings-row settings-row--col">
+                <label className="settings-row__label">
+                  Morning Shock Chance — {settings.sim.dayStartShockChance ?? 1}%
+                </label>
+                <input
+                  type="range"
+                  className="settings-slider"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={settings.sim.dayStartShockChance ?? 1}
+                  onChange={(e) =>
+                    dispatch(setSim({ dayStartShockChance: Number(e.target.value) }))
+                  }
+                  aria-label="Morning Shock chance percentage"
+                />
+                <p className="settings-helper-text">
+                  Chance that a Day 3+ morning shock removes an active housemate before the LOH comp starts. Only fires when more than 4 housemates are still alive.
+                </p>
+              </div>
+            )}
+
+            {settings.sim.enableTwists && (
               <>
                 <div className="settings-row">
                   <label className="settings-row__label">Public's Favorite (Public Vote)</label>
