@@ -53,10 +53,10 @@ function hasFontFaceSet(): boolean {
   return typeof document !== 'undefined' && 'fonts' in document && !!document.fonts;
 }
 
-export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHubAssetsState {
+export default function useHomeHubAssets(): HomeHubAssetsState {
   useLoadIntroHub();
 
-  const assetUrls = useMemo(() => getHomeHubAssetUrls(effectiveBgUrl), [effectiveBgUrl]);
+  const assetUrls = useMemo(() => getHomeHubAssetUrls(), []);
   const [imagesState, dispatchImages] = useReducer(imagesReducer, {
     loaded: 0,
     ready: assetUrls.length === 0,
