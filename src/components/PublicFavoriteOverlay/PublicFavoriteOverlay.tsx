@@ -572,29 +572,41 @@ export default function PublicFavoriteOverlay({
     () => getActiveSpotlightPlayers(candidates, eliminated),
     [candidates, eliminated],
   );
+  const activePlayerKey = useMemo(
+    () => activePlayers.map((candidate) => candidate.id).join('|'),
+    [activePlayers],
+  );
   const rankedPlayers = useMemo(
     () => [...activePlayers].sort((left, right) => (votes[right.id] ?? 0) - (votes[left.id] ?? 0)),
     [activePlayers, votes],
   );
   const spotlightItems = useMemo(() => buildHouseguestSpotlightItems(activePlayers), [activePlayers]);
-  const spotlight = selectSpotlightItem(spotlightItems, spotlightRotation);
+  const spotlight = useMemo(
+    () => selectSpotlightItem(spotlightItems, spotlightRotation),
+    [spotlightItems, spotlightRotation],
+  );
+  const spotlightPlayerId = spotlight?.item.player.id ?? null;
+  const spotlightFact = spotlight?.fact ?? null;
   const finalTwoNames =
     activePlayers.length === 2
       ? `${activePlayers[0].name} vs ${activePlayers[1].name}`
       : null;
 
   useEffect(() => {
-    setSpotlightRotation(0);
-  }, [candidateIds]);
+    setSpotlightRotation((rotation) => {
+      if (spotlightItems.length === 0) return 0;
+      return rotation % spotlightItems.length;
+    });
+  }, [activePlayerKey, spotlightItems.length]);
 
   useEffect(() => {
-    if (displayStep !== 'voting' || !spotlight) return;
-    const timeoutMs = getSpotlightRotationDelayMs(spotlight.fact);
+    if (displayStep !== 'voting' || !spotlightFact || !spotlightPlayerId) return;
+    const timeoutMs = getSpotlightRotationDelayMs(spotlightFact);
     const id = window.setTimeout(() => {
       setSpotlightRotation((rotation) => rotation + 1);
     }, timeoutMs);
     return () => window.clearTimeout(id);
-  }, [displayStep, spotlight]);
+  }, [displayStep, spotlightFact, spotlightPlayerId]);
 
   useEffect(() => {
     const firstActiveId = activePlayers[0]?.id ?? null;
