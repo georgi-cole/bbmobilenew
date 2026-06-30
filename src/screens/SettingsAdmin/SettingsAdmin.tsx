@@ -15,6 +15,7 @@ import CompSelection from '../../components/CompSelection';
 import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
 import { getAllGames, type GameCategory } from '../../minigames/registry';
 import { restartApp } from '../../utils/restartApp';
+import { buildViewportMetaContent } from '../../utils/viewportMeta';
 import './SettingsAdmin.css';
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
@@ -150,9 +151,7 @@ export default function SettingsAdmin() {
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
     if (meta) {
-      meta.content = enableZoom
-        ? 'width=device-width, initial-scale=1.0'
-        : 'width=device-width, initial-scale=1.0, user-scalable=no';
+      meta.content = buildViewportMetaContent(enableZoom);
     }
   }, [enableZoom]);
 

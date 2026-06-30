@@ -1,7 +1,7 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
   position: relative;
-  height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));
+  height: calc(var(--nav-bar-height, 60px) + var(--safe-bottom));
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 18px 18px 28px 28px / 12px 12px 24px 24px;
@@ -38,14 +38,14 @@
 
 .game-bottom-nav__items {
   position: absolute;
-  inset: 0;
+  inset: 0 0 var(--safe-bottom) 0;
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   column-gap: 7px;
   width: 100%;
-  height: var(--nav-bar-height, 60px);
+  height: auto;
   padding: 1px 2.25% 3px;
   background: transparent;
 }

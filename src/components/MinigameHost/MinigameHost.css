@@ -18,6 +18,14 @@
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  width: 100%;
+  padding:
+    calc(var(--fullscreen-safe-top) + 24px)
+    calc(var(--fullscreen-safe-right) + 24px)
+    calc(var(--fullscreen-safe-bottom) + 24px)
+    calc(var(--fullscreen-safe-left) + 24px);
+  box-sizing: border-box;
+  text-align: center;
   animation: fadeIn 0.3s ease;
 }
 
@@ -64,10 +72,15 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 24px 24px 32px;
+  padding:
+    calc(var(--fullscreen-safe-top) + 24px)
+    calc(var(--fullscreen-safe-right) + 24px)
+    calc(var(--fullscreen-safe-bottom) + 32px)
+    calc(var(--fullscreen-safe-left) + 24px);
   width: 100%;
   max-width: 460px;
-  max-height: 90dvh;
+  max-height: min(90dvh, calc(var(--fullscreen-safe-height) - 32px));
+  box-sizing: border-box;
   animation: fadeIn 0.3s ease;
 }
 

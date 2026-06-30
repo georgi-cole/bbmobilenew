@@ -8,7 +8,12 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.88);
-  padding: 12px;
+  padding:
+    calc(var(--fullscreen-safe-top) + 12px)
+    calc(var(--fullscreen-safe-right) + 12px)
+    calc(var(--fullscreen-safe-bottom) + 12px)
+    calc(var(--fullscreen-safe-left) + 12px);
+  box-sizing: border-box;
 }
 
 /* ── Card ──────────────────────────────────────────────────────────────────── */

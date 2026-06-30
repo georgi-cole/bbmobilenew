@@ -8,7 +8,12 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.85);
-  padding: 16px;
+  padding:
+    calc(var(--fullscreen-safe-top) + 16px)
+    calc(var(--fullscreen-safe-right) + 16px)
+    calc(var(--fullscreen-safe-bottom) + 16px)
+    calc(var(--fullscreen-safe-left) + 16px);
+  box-sizing: border-box;
   transition: background 0.3s ease;
 }
 
@@ -32,7 +37,7 @@
 
 .qtr__card--canvas {
   max-width: min(1120px, 100%);
-  max-height: calc(100dvh - 32px);
+  max-height: calc(var(--fullscreen-safe-height) - 32px);
   display: flex;
   flex-direction: column;
   overflow: auto;
