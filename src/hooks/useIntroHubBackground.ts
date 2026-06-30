@@ -5,11 +5,6 @@ interface IntroHubBackgroundState {
   ready: boolean;
 }
 
-interface ValidationState {
-  resolvedFor: string | null;
-  url: string | null;
-}
-
 function loadImage(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const image = new Image();
@@ -26,52 +21,57 @@ function loadImage(url: string): Promise<boolean> {
  *   1. Preferred remote background, if it loads successfully.
  *   2. Local themed fallback background.
  *
- * The hook keeps a known-good fallback visible while the preferred image is
- * being validated so Capacitor/iOS never ends up with a broken background.
+ * The hook returns a usable URL immediately so the screen can paint on the
+ * first frame, then upgrades to the preferred remote image in the background
+ * if it loads.
  */
 export default function useIntroHubBackground(
   preferredUrl: string | null,
   fallbackUrl: string | null,
 ): IntroHubBackgroundState {
-  const isBypassed = preferredUrl == null || preferredUrl === fallbackUrl;
-  const [validation, setValidation] = useState<ValidationState>({ resolvedFor: null, url: null });
+  const [url, setUrl] = useState<string | null>(fallbackUrl ?? preferredUrl);
 
   useEffect(() => {
-    if (isBypassed || !preferredUrl) {
-      return;
-    }
-
     let cancelled = false;
+    const immediateUrl = fallbackUrl ?? preferredUrl;
+    setUrl(immediateUrl);
+
+    if (!preferredUrl || preferredUrl === fallbackUrl) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     void loadImage(preferredUrl).then((ok) => {
       if (cancelled) return;
 
       if (ok) {
-        setValidation({ resolvedFor: preferredUrl, url: preferredUrl });
+        if (import.meta.env.DEV) {
+          console.info('[HomeHub] Preferred intro background loaded', {
+            preferredUrl,
+            fallbackUrl: immediateUrl,
+          });
+        }
+        setUrl(preferredUrl);
         return;
       }
 
       if (import.meta.env.DEV) {
-        console.warn('[HomeHub] Preferred intro background failed to load; using fallback', preferredUrl);
+        console.warn('[HomeHub] Preferred intro background failed to load; using fallback', {
+          preferredUrl,
+          fallbackUrl: immediateUrl,
+        });
       }
-
-      setValidation({ resolvedFor: preferredUrl, url: fallbackUrl ?? preferredUrl });
+      setUrl(immediateUrl);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [fallbackUrl, isBypassed, preferredUrl]);
-
-  if (isBypassed) {
-    return {
-      url: fallbackUrl ?? preferredUrl,
-      ready: true,
-    };
-  }
+  }, [fallbackUrl, preferredUrl]);
 
   return {
-    url: validation.resolvedFor === preferredUrl ? validation.url : (fallbackUrl ?? preferredUrl),
-    ready: validation.resolvedFor === preferredUrl,
+    url: url ?? fallbackUrl ?? preferredUrl,
+    ready: true,
   };
 }
