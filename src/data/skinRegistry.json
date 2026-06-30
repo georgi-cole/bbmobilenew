@@ -1,0 +1,57 @@
+{
+  "sunrise": {
+    "label": "Sunrise",
+    "canonicalFile": "bg-sunrise.png",
+    "aliases": ["sunrise-background.jpg", "sunrise-background.png"]
+  },
+  "day": {
+    "label": "Daytime",
+    "canonicalFile": "bg-day.png",
+    "aliases": ["daily-background.jpg", "daily-background.png", "autumn-leaves-background.png"]
+  },
+  "sunset": {
+    "label": "Sunset",
+    "canonicalFile": "bg-sunset.png",
+    "aliases": ["sunset-background.jpg", "sunset-background.png"]
+  },
+  "night": {
+    "label": "Night",
+    "canonicalFile": "bg-night.png",
+    "aliases": ["bg-night.jpg", "icy-night-background.jpg", "night-snow-background.png"]
+  },
+  "rain": {
+    "label": "Rainy",
+    "canonicalFile": "bg-rain.png",
+    "aliases": ["rainy-background.jpg", "rainy-background.png"]
+  },
+  "snow": {
+    "label": "Snow",
+    "canonicalFile": "bg-snow.png",
+    "aliases": ["blizzard-background.png"]
+  },
+  "snowday": {
+    "label": "Snowy Day",
+    "canonicalFile": "bg-snowday.png",
+    "aliases": ["snowday-background.png"]
+  },
+  "thunderstorm": {
+    "label": "Thunderstorm",
+    "canonicalFile": "bg-thunderstorm.png",
+    "aliases": ["thunderstorm-background.png"]
+  },
+  "xmasDay": {
+    "label": "Christmas Day",
+    "canonicalFile": "bg-xmas-day.png",
+    "aliases": ["xmas-day-background.png", "discrete-santa-day-background.png", "xmas-background.jpg"]
+  },
+  "xmasEve": {
+    "label": "Christmas Eve",
+    "canonicalFile": "bg-xmas-eve.png",
+    "aliases": ["xmas-eve-background.png"]
+  },
+  "xmasNight": {
+    "label": "Christmas Night",
+    "canonicalFile": "bg-xmas-night.png",
+    "aliases": ["xmasy-night-background.png"]
+  }
+}

@@ -1,13 +1,13 @@
 {
-  "sunrise": "sunrise-background.jpg",
-  "day": "daily-background.jpg",
-  "sunset": "sunset-background.jpg",
-  "night": "bg-night.jpg",
-  "rain": "rainy-background.jpg",
-  "snow": "blizzard-background.png",
-  "snowday": "snowday-background.png",
-  "thunderstorm": "thunderstorm-background.png",
-  "xmasDay": "xmas-day-background.png",
-  "xmasEve": "xmas-eve-background.png",
-  "xmasNight": "xmasy-night-background.png"
+  "sunrise": "bg-sunrise.png",
+  "day": "bg-day.png",
+  "sunset": "bg-sunset.png",
+  "night": "bg-night.png",
+  "rain": "bg-rain.png",
+  "snow": "bg-snow.png",
+  "snowday": "bg-snowday.png",
+  "thunderstorm": "bg-thunderstorm.png",
+  "xmasDay": "bg-xmas-day.png",
+  "xmasEve": "bg-xmas-eve.png",
+  "xmasNight": "bg-xmas-night.png"
 }

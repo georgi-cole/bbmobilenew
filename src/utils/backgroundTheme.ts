@@ -1,3 +1,15 @@
+import {
+  getBinaryFallbackKey,
+  getGeolocationPermissionStatus,
+  getPlatformLabel,
+  resolveSkinAsset,
+  SKIN_REGISTRY,
+  type GeolocationPermissionStatus,
+  type SkinAssetSource,
+  type ThemeKey,
+  type PlatformLabel,
+} from './skinAssets';
+
 /**
  * backgroundTheme.ts
  *
@@ -6,77 +18,32 @@
  *   2. Geolocation + Open-Meteo current weather (no API key required)
  *   3. Time-of-day fallback
  *
- * Asset resolution order for each chosen theme key:
- *   a. Fetch public/assets/skins/skins.json manifest → use mapped filename if
- *      the file exists (HEAD check).
- *   b. Probe candidate filename lists with HEAD requests; pick first hit.
- *   c. Fall back to DEFAULT_FILE.
+ * The skin lookup itself is handled by src/utils/skinAssets.ts, which provides
+ * a shared native-safe registry and a bundled asset URL resolver.
  */
 
-const VITE_BASE: string = import.meta.env.BASE_URL ?? '/';
-export const ASSETS_BASE = `${VITE_BASE.replace(/\/$/, '')}/assets/skins/`;
-
-/** Ultimate fallback filename when no candidate can be found. */
-const DEFAULT_FILE = 'daily-background.png';
+const base = import.meta.env.BASE_URL ?? '/';
+const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+export const ASSETS_BASE = `${normalizedBase}assets/skins/`;
 
 export interface BackgroundEntry {
   file: string;
   label: string;
 }
 
-export type ThemeKey =
-  | 'sunrise'
-  | 'day'
-  | 'sunset'
-  | 'night'
-  | 'rain'
-  | 'snow'
-  | 'snowday'
-  | 'thunderstorm'
-  | 'xmasDay'
-  | 'xmasEve'
-  | 'xmasNight';
+export const BACKGROUNDS: Record<ThemeKey, BackgroundEntry> = Object.fromEntries(
+  Object.entries(SKIN_REGISTRY).map(([key, entry]) => [
+    key,
+    { file: entry.canonicalFile, label: entry.label },
+  ]),
+) as Record<ThemeKey, BackgroundEntry>;
 
-export const BACKGROUNDS: Record<ThemeKey, BackgroundEntry> = {
-  sunrise:      { file: 'bg-sunrise.png',      label: 'Sunrise'      },
-  day:          { file: 'bg-day.png',           label: 'Daytime'      },
-  sunset:       { file: 'bg-sunset.png',        label: 'Sunset'       },
-  night:        { file: 'bg-night.png',         label: 'Night'        },
-  rain:         { file: 'bg-rain.png',          label: 'Rainy'        },
-  snow:         { file: 'bg-snow.png',          label: 'Snow'         },
-  snowday:      { file: 'bg-snowday.png',       label: 'Snowy Day'    },
-  thunderstorm: { file: 'bg-thunderstorm.png',  label: 'Thunderstorm' },
-  xmasDay:      { file: 'bg-xmas-day.png',      label: 'Christmas Day'   },
-  xmasEve:      { file: 'bg-xmas-eve.png',      label: 'Christmas Eve'   },
-  xmasNight:    { file: 'bg-xmas-night.png',    label: 'Christmas Night' },
-};
-
-/**
- * Candidate filenames to probe (HEAD) when no manifest is available.
- * Listed in priority order; first existing file wins.
- * NOTE: Keep in sync with the filenames emitted by scripts/generate-skins-manifest.mjs
- * so that the fallback probing covers any files the manifest generator would detect.
- */
-export const CANDIDATES: Record<ThemeKey, string[]> = {
-  sunrise:      ['bg-sunrise.png',      'sunrise-background.png'                              ],
-  day:          ['bg-day.png',          'daily-background.png',    'autumn-leaves-background.png'],
-  sunset:       ['bg-sunset.png',       'sunset-background.png'                               ],
-  night:        ['bg-night.png',        'icy-night-background.jpg', 'night-snow-background.png'],
-  rain:         ['bg-rain.png',         'rainy-background.png'                                ],
-  snow:         ['bg-snow.png',         'blizzard-background.png'                             ],
-  snowday:      ['bg-snowday.png',      'snowday-background.png'                              ],
-  thunderstorm: ['bg-thunderstorm.png', 'thunderstorm-background.png'                         ],
-  xmasDay:      ['bg-xmas-day.png',     'xmas-day-background.png', 'discrete-santa-day-background.png', 'xmas-background.jpg'],
-  xmasEve:      ['bg-xmas-eve.png',     'xmas-eve-background.png'                            ],
-  xmasNight:    ['bg-xmas-night.png',   'xmasy-night-background.png'                         ],
-};
-
-/** Shape of the optional skins.json manifest (key → filename). */
-export type SkinsManifest = Partial<Record<ThemeKey, string>>;
-
-/** Module-level manifest cache to avoid redundant network fetches. */
-const MANIFEST_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-let _manifestCache: { data: SkinsManifest | null; fetchedAt: number } | null = null;
+export const CANDIDATES: Record<ThemeKey, string[]> = Object.fromEntries(
+  Object.entries(SKIN_REGISTRY).map(([key, entry]) => [
+    key,
+    [entry.canonicalFile, ...(entry.aliases ?? [])],
+  ]),
+) as Record<ThemeKey, string[]>;
 
 /**
  * Maps Open-Meteo WMO weathercode to a theme key.
@@ -85,10 +52,10 @@ let _manifestCache: { data: SkinsManifest | null; fetchedAt: number } | null = n
 export function mapWeatherCodeToTheme(weathercode: number): ThemeKey | null {
   if (weathercode === 0 || weathercode === 1) return null; // clear — fall through to time-of-day
   if (weathercode === 2 || weathercode === 3) return null; // partly/overcast — time-of-day
-  if (weathercode >= 51 && weathercode <= 67) return 'rain';        // drizzle / rain
-  if (weathercode >= 71 && weathercode <= 77) return 'snow';        // snow
-  if (weathercode >= 80 && weathercode <= 82) return 'rain';        // showers
-  if (weathercode >= 85 && weathercode <= 86) return 'snowday';     // snow showers
+  if (weathercode >= 51 && weathercode <= 67) return 'rain'; // drizzle / rain
+  if (weathercode >= 71 && weathercode <= 77) return 'snow'; // snow
+  if (weathercode >= 80 && weathercode <= 82) return 'rain'; // showers
+  if (weathercode >= 85 && weathercode <= 86) return 'snowday'; // snow showers
   if (weathercode >= 95 && weathercode <= 99) return 'thunderstorm'; // thunderstorm
   return null;
 }
@@ -102,8 +69,8 @@ export function mapWeatherCodeToTheme(weathercode: number): ThemeKey | null {
  */
 export function timeOfDayKey(date: Date): ThemeKey {
   const hour = date.getHours();
-  if (hour >= 5 && hour <= 7)   return 'sunrise';
-  if (hour >= 8 && hour <= 17)  return 'day';
+  if (hour >= 5 && hour <= 7) return 'sunrise';
+  if (hour >= 8 && hour <= 17) return 'day';
   if (hour >= 18 && hour <= 20) return 'sunset';
   return 'night';
 }
@@ -112,101 +79,15 @@ export interface ResolvedTheme {
   key: ThemeKey;
   url: string;
   reason: string;
+  assetFile: string;
+  assetSource: SkinAssetSource;
+  platform: PlatformLabel;
+  permissionStatus: GeolocationPermissionStatus;
 }
 
 export interface ResolveOptions {
   geolocationTimeoutMs?: number;
   forceNoGeo?: boolean;
-}
-
-/** Returns true if the given URL responds with HTTP 2xx (file exists). */
-export async function existsHead(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, { method: 'HEAD' });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Attempts to fetch and parse `skins.json` from ASSETS_BASE.
- * Results are cached for MANIFEST_CACHE_TTL_MS to avoid repeated network requests.
- * Returns the manifest mapping or null on any failure.
- */
-export async function fetchManifest(): Promise<SkinsManifest | null> {
-  const now = Date.now();
-  if (_manifestCache && now - _manifestCache.fetchedAt < MANIFEST_CACHE_TTL_MS) {
-    return _manifestCache.data;
-  }
-  try {
-    const res = await fetch(`${ASSETS_BASE}skins.json`);
-    const data: SkinsManifest | null = res.ok ? (await res.json()) as SkinsManifest : null;
-    _manifestCache = { data, fetchedAt: now };
-    return data;
-  } catch {
-    _manifestCache = { data: null, fetchedAt: now };
-    return null;
-  }
-}
-
-/**
- * Resolves the asset URL for a key using a manifest entry.
- * Returns the URL if the manifest contains a filename for the key and that
- * file responds to a HEAD request; otherwise returns null.
- */
-export async function resolveAssetForKeyWithManifest(
-  key: ThemeKey,
-  manifest: SkinsManifest,
-): Promise<string | null> {
-  const filename = manifest[key];
-  if (!filename) return null;
-  // Reject filenames containing path separators or null bytes — a bare filename
-  // with no separators cannot cause path traversal regardless of encoding.
-  if (filename.includes('/') || filename.includes('\\') || filename.includes('\0')) {
-    console.warn('[backgroundTheme] manifest entry for', key, 'contains unsafe path; ignoring');
-    return null;
-  }
-  const url = `${ASSETS_BASE}${filename}`;
-  const ok = await existsHead(url);
-  if (ok) {
-    console.debug('[backgroundTheme] manifest hit for', key, '→', filename);
-    return url;
-  }
-  console.debug('[backgroundTheme] manifest entry for', key, '(', filename, ') returned 404; will probe');
-  return null;
-}
-
-/**
- * Resolves the asset URL for a key by probing CANDIDATES with HEAD requests.
- * All candidates are probed concurrently; the first hit in priority order wins.
- * Returns the first URL that exists, or the default fallback URL.
- */
-export async function resolveAssetForKeyByProbing(key: ThemeKey): Promise<string> {
-  const candidates = CANDIDATES[key] ?? [];
-  const urls = candidates.map((f) => `${ASSETS_BASE}${f}`);
-  const results = await Promise.all(urls.map((url) => existsHead(url)));
-  const hitIndex = results.indexOf(true);
-  if (hitIndex !== -1) {
-    const url = urls[hitIndex];
-    console.debug('[backgroundTheme] probe hit for', key, '→', candidates[hitIndex]);
-    return url;
-  }
-  const fallback = `${ASSETS_BASE}${DEFAULT_FILE}`;
-  console.debug('[backgroundTheme] no probe hit for', key, '; using default', DEFAULT_FILE);
-  return fallback;
-}
-
-/**
- * Resolves the final asset URL for a theme key.
- * Tries the manifest first, then probing, then the default.
- */
-async function resolveAssetUrl(key: ThemeKey, manifest: SkinsManifest | null): Promise<string> {
-  if (manifest) {
-    const url = await resolveAssetForKeyWithManifest(key, manifest);
-    if (url) return url;
-  }
-  return resolveAssetForKeyByProbing(key);
 }
 
 /** Wraps navigator.geolocation.getCurrentPosition in a Promise with timeout. */
@@ -239,19 +120,25 @@ async function fetchWeatherCode(lat: number, lon: number): Promise<number> {
 /** Returns true when the current date falls in the Dec 20 – Jan 1 holiday window. */
 function isHolidayWindow(date: Date): boolean {
   const month = date.getMonth() + 1; // 1-based
-  const day   = date.getDate();
+  const day = date.getDate();
   return (month === 12 && day >= 20) || (month === 1 && day === 1);
 }
 
 /** Picks the holiday sub-theme (Eve vs Day vs Night) within the window. */
 function holidayKey(date: Date): ThemeKey {
   const month = date.getMonth() + 1;
-  const day   = date.getDate();
-  const hour  = date.getHours();
+  const day = date.getDate();
+  const hour = date.getHours();
 
-  if (month === 12 && day === 24) return hour >= 18 ? 'xmasEve'   : 'xmasDay';
+  if (month === 12 && day === 24) return hour >= 18 ? 'xmasEve' : 'xmasDay';
   if (month === 12 && day === 25) return hour >= 18 ? 'xmasNight' : 'xmasDay';
   return hour >= 18 ? 'xmasNight' : 'xmasDay';
+}
+
+function logBackgroundResolution(details: Record<string, unknown>): void {
+  if (import.meta.env.DEV) {
+    console.info('[backgroundTheme] resolution', details);
+  }
 }
 
 /**
@@ -262,60 +149,97 @@ function holidayKey(date: Date): ThemeKey {
  *   2. Geolocation → Open-Meteo weather code → theme key
  *   3. Time-of-day fallback
  *
- * For each resolved theme key the asset URL is determined by:
- *   a. skins.json manifest (if present and the file exists)
- *   b. Probing CANDIDATES with HEAD requests
- *   c. DEFAULT_FILE fallback
+ * The selected theme key is resolved against the shared skin registry and,
+ * if needed, falls back to the binary day/night background for the current
+ * local time so the app never renders with an empty background.
  */
 export async function resolveTheme(
   { geolocationTimeoutMs = 7000, forceNoGeo = false }: ResolveOptions = {},
 ): Promise<ResolvedTheme> {
   const now = new Date();
+  const platform = getPlatformLabel();
+  const permissionStatus = await getGeolocationPermissionStatus();
+  const permissionDenied = permissionStatus === 'denied';
+  const timeKey = timeOfDayKey(now);
+  const binaryFallbackKey = getBinaryFallbackKey(now);
 
-  // Fetch manifest once; failures are silently ignored
-  const manifest = await fetchManifest();
-  if (manifest) {
-    console.debug('[backgroundTheme] skins.json manifest loaded');
-  } else {
-    console.debug('[backgroundTheme] skins.json not available; will probe candidates');
-  }
+  let selectedKey: ThemeKey;
+  let reason: string;
+  let coordinates: { latitude: number; longitude: number } | null = null;
+  let locationError: string | null = null;
+  let weatherCode: number | null = null;
+  let weatherKey: ThemeKey | null = null;
 
   // 1. Holiday override
   if (isHolidayWindow(now)) {
-    const key = holidayKey(now);
-    const url = await resolveAssetUrl(key, manifest);
-    console.info('[backgroundTheme] Holiday override →', key, url);
-    return { key, url, reason: 'holiday' };
-  }
-
-  // 2. Geolocation + weather
-  if (!forceNoGeo && typeof navigator !== 'undefined') {
+    selectedKey = holidayKey(now);
+    reason = 'holiday';
+  } else if (!forceNoGeo && typeof navigator !== 'undefined' && navigator.geolocation && !permissionDenied) {
+    // 2. Geolocation + weather
     try {
       const position = await getPosition(geolocationTimeoutMs);
       const { latitude, longitude } = position.coords;
-      console.debug('[backgroundTheme] Got position', latitude, longitude);
-      const code = await fetchWeatherCode(latitude, longitude);
-      console.debug('[backgroundTheme] weathercode', code);
-      const weatherKey = mapWeatherCodeToTheme(code);
+      coordinates = { latitude, longitude };
+      weatherCode = await fetchWeatherCode(latitude, longitude);
+      weatherKey = mapWeatherCodeToTheme(weatherCode);
+
       if (weatherKey) {
-        const url = await resolveAssetUrl(weatherKey, manifest);
-        console.info('[backgroundTheme] Weather theme →', weatherKey, `(code ${code})`, url);
-        return { key: weatherKey, url, reason: `weather:${code}` };
+        selectedKey = weatherKey;
+        reason = `weather:${weatherCode}`;
+      } else if (weatherCode === 0 || weatherCode === 1 || weatherCode === 2 || weatherCode === 3) {
+        // Clear/overcast: use the local time bucket so sunrise/sunset remain visible.
+        selectedKey = timeKey;
+        reason = `weather:${weatherCode}:timeofday`;
+      } else {
+        // Unrecognized weather codes fall back to a guaranteed day/night asset.
+        selectedKey = binaryFallbackKey;
+        reason = `weather:${weatherCode}:fallback`;
       }
-      // Clear/overcast — fall through to time-of-day but note the source
-      const todKey = timeOfDayKey(now);
-      const url = await resolveAssetUrl(todKey, manifest);
-      console.info('[backgroundTheme] Clear/overcast; time-of-day →', todKey, url);
-      return { key: todKey, url, reason: `weather:${code}:timeofday` };
     } catch (err) {
-      // Geo or network failure — fall through to time-of-day
-      console.debug('[backgroundTheme] geo/weather unavailable:', err);
+      locationError = err instanceof Error ? err.message : String(err);
+      selectedKey = binaryFallbackKey;
+      reason = permissionDenied ? 'fallback:permission-denied' : 'fallback:location';
     }
+  } else {
+    // No usable location signal: fall back to a guaranteed day/night asset.
+    locationError = forceNoGeo
+      ? 'forceNoGeo'
+      : permissionDenied
+        ? 'permission denied'
+        : 'geolocation unavailable';
+    selectedKey = binaryFallbackKey;
+    reason = 'fallback:location';
   }
 
-  // 3. Time-of-day fallback
-  const key = timeOfDayKey(now);
-  const url = await resolveAssetUrl(key, manifest);
-  console.info('[backgroundTheme] Time-of-day fallback →', key, url);
-  return { key, url, reason: 'timeofday' };
+  const resolvedAsset = resolveSkinAsset(selectedKey, binaryFallbackKey);
+  const resolvedReason = resolvedAsset.key === selectedKey ? reason : `${reason}:asset-fallback:${resolvedAsset.key}`;
+
+  logBackgroundResolution({
+    platform,
+    permissionStatus,
+    coordinates,
+    locationError,
+    weatherCode,
+    weatherKey,
+    timeKey,
+    binaryFallbackKey,
+    selectedKey,
+    resolvedKey: resolvedAsset.key,
+    selectedAssetFile: resolvedAsset.file,
+    selectedAssetSource: resolvedAsset.source,
+    selectedAssetUrl: resolvedAsset.url,
+    reason: resolvedReason,
+  });
+
+  return {
+    key: resolvedAsset.key,
+    url: resolvedAsset.url,
+    reason: resolvedReason,
+    assetFile: resolvedAsset.file,
+    assetSource: resolvedAsset.source,
+    platform,
+    permissionStatus,
+  };
 }
+
+export type { ThemeKey } from './skinAssets';
