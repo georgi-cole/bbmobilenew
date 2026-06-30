@@ -1,5 +1,6 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import RecapImage from '../../components/SeasonRecapCinematic/RecapImage';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { resetGame, archiveSeason } from '../../store/gameSlice';
 import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
@@ -10,11 +11,13 @@ import { computeLeaderboardScore, computeSeasonLeaderboard } from '../../scoring
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
 import { DEFAULT_WEIGHTS } from '../../scoring/weights';
 import { SoundManager } from '../../services/sound/SoundManager';
+import { buildAftermathStories } from './aftermath';
 import './GameOver.css';
 
 const CAROUSEL_INTERVAL_MS = 5000;
+const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
 
-/** Build PlayerSeasonSummary array from current player state — pure (no Date.now). */
+/** Build PlayerSeasonSummary array from current player state - pure (no Date.now). */
 function buildSummaries(players: Player[], favoriteWinnerId: string | null, week: number): PlayerSeasonSummary[] {
   return players.map((p) => {
     // Only players with status 'jury' are actual jury members.
@@ -57,7 +60,7 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null, week
   });
 }
 
-/** Build a SeasonArchive from pre-computed summaries — called only from event handlers. */
+/** Build a SeasonArchive from pre-computed summaries - called only from event handlers. */
 function buildArchive(season: number, summaries: PlayerSeasonSummary[]): SeasonArchive {
   return {
     seasonIndex: season,
@@ -66,6 +69,8 @@ function buildArchive(season: number, summaries: PlayerSeasonSummary[]): SeasonA
     playerSummaries: summaries,
   };
 }
+
+type GameOverPanel = 'results' | 'adPrompt' | 'aftermath';
 
 export default function GameOver() {
   const dispatch = useAppDispatch();
@@ -82,15 +87,19 @@ export default function GameOver() {
   const archivedRef = useRef(false);
 
   const [carouselSlide, setCarouselSlide] = useState(0);
+  const [panel, setPanel] = useState<GameOverPanel>('results');
+  const [storyIndex, setStoryIndex] = useState(0);
 
   const winner = players.find((p) => p.isWinner) ?? players.find((p) => p.finalRank === 1);
   const runnerUp = players.find((p) => p.finalRank === 2);
 
-  // Compute per-player summaries (pure — no impure calls)
+  // Compute per-player summaries (pure - no impure calls)
   const summaries = buildSummaries(players, favoriteWinnerId, week);
 
   const seasonLeaderboard = computeSeasonLeaderboard(summaries, DEFAULT_WEIGHTS).slice(0, 5);
   const allTimeLeaderboard = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS).slice(0, 5);
+  const aftermathStories = useMemo(() => buildAftermathStories(players, season), [players, season]);
+  const activeStory = aftermathStories[storyIndex] ?? aftermathStories[0];
 
   // Auto-advance carousel
   useEffect(() => {
@@ -130,13 +139,44 @@ export default function GameOver() {
     navigate('/');
   }
 
+  function openAftermathPrompt() {
+    setPanel('adPrompt');
+  }
+
+  function closeOverlay() {
+    setPanel('results');
+    setStoryIndex(0);
+  }
+
+  function watchAd() {
+    SoundManager.unlockFromGesture();
+    setStoryIndex(0);
+    setPanel('aftermath');
+  }
+
+  function showPreviousStory() {
+    setStoryIndex((current) => Math.max(current - 1, 0));
+  }
+
+  function showNextStory() {
+    if (storyIndex >= aftermathStories.length - 1) {
+      closeOverlay();
+      return;
+    }
+    setStoryIndex((current) => Math.min(current + 1, aftermathStories.length - 1));
+  }
+
   return (
     <div className="gameover-shell">
+      <div className="gameover-brand" aria-hidden="true">
+        <img className="gameover-brand__logo" src={LOGO_SRC} alt="" />
+      </div>
+
       <div className="gameover-card">
         <h1 className="gameover-title">Season Complete</h1>
-        <p className="gameover-sub">Thanks for playing — here are the results</p>
+        <p className="gameover-sub">Thanks for playing - here are the results</p>
 
-        {/* ── Carousel ── */}
+        {/* -- Carousel -- */}
         <div className="gameover-carousel" aria-live="polite">
           {/* Slide 0: Winner / Runner-up */}
           <div
@@ -159,7 +199,7 @@ export default function GameOver() {
           <div
             className={`gameover-carousel__slide${carouselSlide === 1 ? ' gameover-carousel__slide--active' : ''}`}
           >
-            <p className="gameover-carousel__heading">Season Top 5 🏆</p>
+            <p className="gameover-carousel__heading">Season Top 5</p>
             <ul className="gameover-scoreboard">
               {seasonLeaderboard.map((entry, i) => (
                 <li key={entry.playerId} className="gameover-scoreboard__row">
@@ -175,7 +215,7 @@ export default function GameOver() {
           <div
             className={`gameover-carousel__slide${carouselSlide === 2 ? ' gameover-carousel__slide--active' : ''}`}
           >
-            <p className="gameover-carousel__heading">All-Time Top 5 🌟</p>
+            <p className="gameover-carousel__heading">All-Time Top 5</p>
             <ul className="gameover-scoreboard">
               {allTimeLeaderboard.map((entry, i) => (
                 <li key={entry.playerId} className="gameover-scoreboard__row">
@@ -188,7 +228,7 @@ export default function GameOver() {
           </div>
         </div>
 
-        {/* ── Carousel dots ── */}
+        {/* -- Carousel dots -- */}
         <div className="gameover-carousel__dots">
           {[0, 1, 2].map((i) => (
             <button
@@ -196,19 +236,113 @@ export default function GameOver() {
               className={`gameover-carousel__dot${carouselSlide === i ? ' gameover-carousel__dot--active' : ''}`}
               onClick={() => setCarouselSlide(i)}
               aria-label={`Show slide ${i + 1}`}
+              type="button"
             />
           ))}
         </div>
 
         <div className="gameover-actions">
-          <button className="gameover-btn gameover-btn--primary" onClick={startNewSeason}>
-            Start New Season
+          <button className="gameover-btn gameover-btn--primary" onClick={startNewSeason} type="button">
+            New Season
           </button>
-          <button className="gameover-btn gameover-btn--ghost" onClick={exitToHome}>
-            Exit to Home
+          <button className="gameover-btn gameover-btn--ghost" onClick={exitToHome} type="button">
+            Home
+          </button>
+          <button className="gameover-btn gameover-btn--accent" onClick={openAftermathPrompt} type="button">
+            Aftermath
           </button>
         </div>
       </div>
+
+      {panel !== 'results' && (
+        <div className="gameover-overlay" role="dialog" aria-modal="true">
+          <div className="gameover-overlay__scrim" onClick={panel === 'adPrompt' ? closeOverlay : undefined} />
+
+          {panel === 'adPrompt' && (
+            <div className="gameover-prompt">
+              <p className="gameover-prompt__eyebrow">Aftermath Special</p>
+              <h2 className="gameover-prompt__title">Watch a quick ad to unlock the gossip reel.</h2>
+              <p className="gameover-prompt__body">
+                See what happened to the housemates after the finale. For testing, tapping Watch Ad simulates a completed ad.
+              </p>
+              <div className="gameover-prompt__actions">
+                <button className="gameover-btn gameover-btn--primary" onClick={watchAd} type="button">
+                  Watch Ad
+                </button>
+                <button className="gameover-btn gameover-btn--ghost" onClick={closeOverlay} type="button">
+                  Back
+                </button>
+              </div>
+            </div>
+          )}
+
+          {panel === 'aftermath' && activeStory && (
+            <div className={`gameover-aftermath gameover-aftermath--${activeStory.tone}`}>
+              <div className="gameover-aftermath__topbar">
+                <span className="gameover-aftermath__edition">Late Edition</span>
+                <span className={`gameover-aftermath__tone gameover-aftermath__tone--${activeStory.tone}`}>
+                  {activeStory.toneLabel}
+                </span>
+              </div>
+
+              <div className="gameover-aftermath__meta">
+                <div>
+                  <p className="gameover-aftermath__player">{activeStory.playerName}</p>
+                  <p className="gameover-aftermath__placement">{activeStory.placementLabel}</p>
+                </div>
+                <p className="gameover-aftermath__progress">
+                  {storyIndex + 1} / {aftermathStories.length}
+                </p>
+              </div>
+
+              <div className="gameover-aftermath__paper">
+                <div className="gameover-aftermath__lead">
+                  <p className="gameover-aftermath__kicker">What happened next</p>
+                  <h2 className="gameover-aftermath__headline">{activeStory.headline}</h2>
+                  <p className="gameover-aftermath__subheadline">{activeStory.subheadline}</p>
+                </div>
+
+                <div className="gameover-aftermath__story-grid">
+                  <div className="gameover-aftermath__photo-panel">
+                    <RecapImage
+                      className="gameover-aftermath__photo"
+                      sources={activeStory.imageSources}
+                      alt={activeStory.playerName}
+                    />
+                    <p className="gameover-aftermath__caption">Exclusive post-show sighting.</p>
+                  </div>
+
+                  <div className="gameover-aftermath__copy">
+                    <ul className="gameover-aftermath__bullets">
+                      {activeStory.bulletPoints.map((bullet) => (
+                        <li key={bullet}>{bullet}</li>
+                      ))}
+                    </ul>
+                    <p className="gameover-aftermath__body">{activeStory.body}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="gameover-aftermath__actions">
+                <button className="gameover-btn gameover-btn--ghost" onClick={closeOverlay} type="button">
+                  Results
+                </button>
+                <button
+                  className="gameover-btn gameover-btn--ghost"
+                  onClick={showPreviousStory}
+                  disabled={storyIndex === 0}
+                  type="button"
+                >
+                  Previous
+                </button>
+                <button className="gameover-btn gameover-btn--primary" onClick={showNextStory} type="button">
+                  {storyIndex === aftermathStories.length - 1 ? 'Done' : 'Next'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

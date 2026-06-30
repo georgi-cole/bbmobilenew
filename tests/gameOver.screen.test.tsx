@@ -75,7 +75,7 @@ describe('GameOver screen', () => {
       </Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /exit to home/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Home route')).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe('GameOver screen', () => {
       </Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /start new season/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^new season$/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Home route')).toBeInTheDocument();
@@ -159,7 +159,7 @@ describe('GameOver screen', () => {
       </Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /exit to home/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
     await waitFor(() => expect(screen.getByText('Home')).toBeInTheDocument());
 
     const archives = store.getState().game.seasonArchives ?? [];
@@ -225,7 +225,7 @@ describe('GameOver screen', () => {
       </Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /exit to home/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
     await waitFor(() => expect(screen.getByText('Home')).toBeInTheDocument());
 
     const archives = store.getState().game.seasonArchives ?? [];
@@ -237,5 +237,51 @@ describe('GameOver screen', () => {
       (s) => s.isEvicted,
     );
     expect(evictedSummary?.survivedDoubleEviction).toBeUndefined();
+  });
+
+  it('opens the aftermath ad prompt and enters the aftermath sequence after the fake ad', async () => {
+    const store = makeStore({
+      week: 9,
+      phase: 'jury',
+      seasonFinale: {
+        phase: 'seasonComplete',
+        winnerId: 'user',
+        interviewIndex: 0,
+        goodbyeIndex: 0,
+        isChatOpen: false,
+        isLightsOffAnimating: false,
+        publicFavoriteEnabled: false,
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/gameover']}>
+          <Routes>
+            <Route path="/" element={<div>Home route</div>} />
+            <Route path="/gameover" element={<GameOver />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^aftermath$/i }));
+
+    expect(screen.getByText('Aftermath Special')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^watch ad$/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
+    await waitFor(() => {
+      expect(screen.queryByText('Aftermath Special')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^aftermath$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^watch ad$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Late Edition')).toBeInTheDocument();
+      expect(screen.getByText(/What happened next/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^results$/i })).toBeInTheDocument();
+    });
   });
 });
