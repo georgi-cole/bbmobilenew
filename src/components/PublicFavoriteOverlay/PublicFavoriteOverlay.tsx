@@ -4,7 +4,7 @@
  * UX flow:
  *  1. intro            — brief live-broadcast sting over the fullscreen board
  *  2. audience_surge   — optional rewarded-ad hook that boosts temporary momentum
- *  3. live_results     — animated ranking board and timed houseguest trivia spotlight
+ *  3. live_results     — animated ranking board and timed housemate trivia spotlight
  *  4. elimination      — short tension beat when a player drops out
  *  5. final_reveal     — winner reveal card; tap to close
  *
@@ -257,57 +257,59 @@ function AudienceSurgePanel({
   const selectedName = activePlayers.find((candidate) => candidate.id === selectedPlayerId)?.name ?? null;
 
   return (
-    <section className="pf-overlay__surge-panel" aria-label="Audience Surge">
-      <div className="pf-overlay__surge-copy">
-        <p className="pf-overlay__surge-kicker">Audience Surge</p>
-        <p className="pf-overlay__surge-description">
-          {surgeActive && activeSurgeName
-            ? `${activeSurgeName} is getting a temporary Viewer Spotlight boost.`
-            : 'Choose one eligible player and watch to give them a short burst of audience momentum.'}
-        </p>
-      </div>
+    <footer className="pf-overlay__footer">
+      <section className="pf-overlay__surge-panel" aria-label="Audience Surge">
+        <div className="pf-overlay__surge-copy">
+          <p className="pf-overlay__surge-kicker">Audience Surge</p>
+          <p className="pf-overlay__surge-description">
+            {surgeActive && activeSurgeName
+              ? `${activeSurgeName} is getting a temporary Viewer Spotlight boost.`
+              : 'Choose one eligible player and watch to give them a short burst of audience momentum.'}
+          </p>
+        </div>
 
-      <div className="pf-overlay__surge-options" role="list" aria-label="Eligible players for Audience Surge">
-        {activePlayers.map((candidate) => {
-          const isSelected = selectedPlayerId === candidate.id;
-          const isActive = surgeActive?.playerId === candidate.id;
-          return (
-            <div key={candidate.id} role="listitem">
-              <button
-                type="button"
-                className={`pf-overlay__surge-option${isSelected ? ' pf-overlay__surge-option--selected' : ''}${isActive ? ' pf-overlay__surge-option--active' : ''}`}
-                onClick={() => onSelect(candidate.id)}
-                disabled={surgePending}
-                aria-pressed={isSelected}
-              >
-                <PlayerPortrait candidate={candidate} className="pf-overlay__portrait--chip" />
-                <span className="pf-overlay__surge-option-name">{candidate.name}</span>
-                {isActive && <span className="pf-overlay__surge-option-tag">Active</span>}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+        <div className="pf-overlay__surge-options" role="list" aria-label="Eligible players for Audience Surge">
+          {activePlayers.map((candidate) => {
+            const isSelected = selectedPlayerId === candidate.id;
+            const isActive = surgeActive?.playerId === candidate.id;
+            return (
+              <div key={candidate.id} role="listitem">
+                <button
+                  type="button"
+                  className={`pf-overlay__surge-option${isSelected ? ' pf-overlay__surge-option--selected' : ''}${isActive ? ' pf-overlay__surge-option--active' : ''}`}
+                  onClick={() => onSelect(candidate.id)}
+                  disabled={surgePending}
+                  aria-pressed={isSelected}
+                >
+                  <PlayerPortrait candidate={candidate} className="pf-overlay__portrait--chip" />
+                  <span className="pf-overlay__surge-option-name">{candidate.name}</span>
+                  {isActive && <span className="pf-overlay__surge-option-tag">Active</span>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
 
-      <button
-        type="button"
-        className="pf-overlay__surge-cta"
-        onClick={onActivate}
-        disabled={!selectedPlayerId || !canUseSurge || surgePending}
-      >
-        {surgePending
-          ? 'Connecting…'
-          : surgeActive
-            ? 'Audience Surge Active'
-            : surgeUsed
-              ? 'Audience Surge Used'
-              : `Watch to Boost${selectedName ? ` ${selectedName}` : ''}`}
-      </button>
-    </section>
+        <button
+          type="button"
+          className="pf-overlay__surge-cta"
+          onClick={onActivate}
+          disabled={!selectedPlayerId || !canUseSurge || surgePending}
+        >
+          {surgePending
+            ? 'Connecting…'
+            : surgeActive
+              ? 'Audience Surge Active'
+              : surgeUsed
+                ? 'Audience Surge Used'
+                : `Watch to Boost${selectedName ? ` ${selectedName}` : ''}`}
+        </button>
+      </section>
+    </footer>
   );
 }
 
-function HouseguestSpotlightCard({
+function HousemateSpotlightCard({
   spotlight,
   finalTwoNames,
 }: {
@@ -319,10 +321,10 @@ function HouseguestSpotlightCard({
   const { player } = item;
 
   return (
-    <motion.section className="pf-overlay__spotlight" aria-label="Houseguest Spotlight" layout>
+    <motion.section className="pf-overlay__spotlight" aria-label="Housemate Spotlight" layout>
       <div className="pf-overlay__leader-copy">
         <p className="pf-overlay__leader-kicker">
-          {finalTwoNames ? `Final two: ${finalTwoNames}` : 'Houseguest Spotlight'}
+          {finalTwoNames ? `Final two: ${finalTwoNames}` : 'Housemate Spotlight'}
         </p>
         <h3 className="pf-overlay__leader-name">{player.name}</h3>
         <motion.p
@@ -764,7 +766,7 @@ export default function PublicFavoriteOverlay({
         {displayStep === 'voting' && (
           <div className="pf-overlay__broadcast">
             <div className={`pf-overlay__board-shell pf-overlay__board-shell--${phase}`}>
-              <HouseguestSpotlightCard spotlight={spotlight} finalTwoNames={finalTwoNames} />
+              <HousemateSpotlightCard spotlight={spotlight} finalTwoNames={finalTwoNames} />
               <VoteRankingBoard
                 entries={voteEntries}
                 candidatesById={candidatesById}
