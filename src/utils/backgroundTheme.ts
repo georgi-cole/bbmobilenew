@@ -1,15 +1,3 @@
-import {
-  getBinaryFallbackKey,
-  getGeolocationPermissionStatus,
-  getPlatformLabel,
-  resolveSkinAsset,
-  SKIN_REGISTRY,
-  type GeolocationPermissionStatus,
-  type SkinAssetSource,
-  type ThemeKey,
-  type PlatformLabel,
-} from './skinAssets';
-
 /**
  * backgroundTheme.ts
  *
@@ -21,6 +9,17 @@ import {
  * The skin lookup itself is handled by src/utils/skinAssets.ts, which provides
  * a shared native-safe registry and a bundled asset URL resolver.
  */
+import {
+  getBinaryFallbackKey,
+  getGeolocationPermissionStatus,
+  getPlatformLabel,
+  resolveSkinAsset,
+  SKIN_REGISTRY,
+  type GeolocationPermissionStatus,
+  type SkinAssetSource,
+  type ThemeKey,
+  type PlatformLabel,
+} from './skinAssets';
 
 const base = import.meta.env.BASE_URL ?? '/';
 const normalizedBase = base.endsWith('/') ? base : `${base}/`;
