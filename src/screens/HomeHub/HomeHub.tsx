@@ -61,20 +61,17 @@ const HUB_BUTTONS = [
 
 interface HomeHubAssetLayerProps {
   splashDone: boolean;
-  effectiveBgUrl: string | null;
+  assetReady: boolean;
   onPlay: () => void;
   onNavigate: NavigateFunction;
 }
 
 function HomeHubAssetLayer({
   splashDone,
-  effectiveBgUrl,
+  assetReady,
   onPlay,
   onNavigate,
 }: HomeHubAssetLayerProps) {
-  const { ready: homeHubReady } = useHomeHubAssets();
-  const assetReady = homeHubReady;
-
   return (
     <>
       {splashDone && assetReady && (
@@ -88,7 +85,7 @@ function HomeHubAssetLayer({
 
         {/* Button stack: only rendered once the splash has dismissed and the
             full hub bundle is ready. */}
-        {splashDone && homeHubReady && (
+        {splashDone && assetReady && (
           <nav className="home-hub__buttons" aria-label="Main menu">
             {HUB_BUTTONS.map(({ to, label, icon, variant }) => (
               <GameButton
@@ -124,6 +121,7 @@ export default function HomeHub() {
   const dayCount = week;
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
+  const { ready: homeHubReady } = useHomeHubAssets();
   const { url: bgUrl } = useBackgroundTheme();
   const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
   const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
@@ -231,8 +229,9 @@ export default function HomeHub() {
     setSplashDone(true);
   }
 
-  const splashDuration = homeHubAssetsReady ? 2000 : 86_400_000;
-  const showSplash = !splashDone || !homeHubAssetsReady;
+  const splashDuration = homeHubReady ? 2000 : 86_400_000;
+  const showSplash = !splashDone || !homeHubReady;
+  const assetReady = homeHubReady;
 
   return (
     <>
@@ -277,7 +276,7 @@ export default function HomeHub() {
 
           <HomeHubAssetLayer
             splashDone={splashDone}
-            effectiveBgUrl={effectiveBgUrl}
+            assetReady={assetReady}
             onPlay={handlePlay}
             onNavigate={navigate}
           />
