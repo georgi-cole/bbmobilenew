@@ -29,6 +29,28 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function areSpotlightRectsEqual(previousRect: SpotlightRect | null, nextRect: SpotlightRect | null) {
+  return (
+    previousRect?.left === nextRect?.left &&
+    previousRect?.top === nextRect?.top &&
+    previousRect?.width === nextRect?.width &&
+    previousRect?.height === nextRect?.height
+  );
+}
+
+function measureSpotlightRect(element: HTMLElement): SpotlightRect {
+  const rect = element.getBoundingClientRect();
+  const viewportOffsetLeft = window.visualViewport?.offsetLeft ?? 0;
+  const viewportOffsetTop = window.visualViewport?.offsetTop ?? 0;
+
+  return {
+    left: rect.left + viewportOffsetLeft,
+    top: rect.top + viewportOffsetTop,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
 export default function ConfessionalSpotlightOverlay({
   active,
   targetRef,
@@ -40,30 +62,24 @@ export default function ConfessionalSpotlightOverlay({
   useLayoutEffect(() => {
     if (!active) return;
 
+    let animationFrameId = 0;
+
     const updateTargetRect = () => {
       const element = targetRef.current;
       if (!element) {
-        setTargetRect(null);
+        setTargetRect((previousRect) => (previousRect === null ? previousRect : null));
         return;
       }
-      const rect = element.getBoundingClientRect();
+
+      const rect = measureSpotlightRect(element);
       setTargetRect((previousRect) => {
-        if (
-          previousRect &&
-          previousRect.left === rect.left &&
-          previousRect.top === rect.top &&
-          previousRect.width === rect.width &&
-          previousRect.height === rect.height
-        ) {
+        if (areSpotlightRectsEqual(previousRect, rect)) {
           return previousRect;
         }
-        return {
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height,
-        };
+        return rect;
       });
+
+      animationFrameId = window.requestAnimationFrame(updateTargetRect);
     };
 
     updateTargetRect();
@@ -81,6 +97,7 @@ export default function ConfessionalSpotlightOverlay({
       resizeObserver?.observe(observedElement);
     }
     return () => {
+      window.cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', updateTargetRect);
       window.removeEventListener('orientationchange', updateTargetRect);
       window.removeEventListener('scroll', updateTargetRect, true);
