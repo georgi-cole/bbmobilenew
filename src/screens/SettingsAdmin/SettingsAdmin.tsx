@@ -17,7 +17,6 @@ import { getAllGames, type GameCategory } from '../../minigames/registry';
 import { restartApp } from '../../utils/restartApp';
 import { buildViewportMetaContent } from '../../utils/viewportMeta';
 import { APP_VERSION } from '../../appVersion';
-import { buildViewportMetaContent } from '../../utils/viewportMeta';
 import './SettingsAdmin.css';
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
