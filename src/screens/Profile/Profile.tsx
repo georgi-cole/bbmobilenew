@@ -48,6 +48,13 @@ export default function Profile() {
   );
 
   const gameInProgress = week > 1 || phase !== 'week_start';
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate('/game');
+  };
 
   // Photo state loaded from IndexedDB
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -187,6 +194,14 @@ export default function Profile() {
 
   return (
     <div className="placeholder-screen profile-screen">
+      <button
+        type="button"
+        className="profile-screen__back-btn"
+        onClick={goBack}
+        aria-label="Go back"
+      >
+        ← Back
+      </button>
       {/* Header: avatar + name + action buttons */}
       <div className="profile-screen__header">
         {photoUrl ? (
