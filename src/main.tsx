@@ -11,6 +11,7 @@ import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
 import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
 import { initAdBridge } from './services/ads/adsService'
+import { buildViewportMetaContent } from './utils/viewportMeta'
 import App from './App.tsx'
 
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
@@ -27,9 +28,7 @@ applyVisualFreezeState()
 const initEnableZoom = store.getState().settings.visual?.enableZoom ?? false;
 const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
 if (viewportMeta) {
-  viewportMeta.content = initEnableZoom
-    ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
-    : 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
+  viewportMeta.content = buildViewportMetaContent(initEnableZoom);
 }
 
 // Initialize the Social Engine with the Redux store so it can dispatch actions

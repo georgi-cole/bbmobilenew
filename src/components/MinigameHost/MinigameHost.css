@@ -42,6 +42,7 @@
     var(--minigame-safe-padding-bottom)
     var(--minigame-safe-padding-left);
   box-sizing: border-box;
+  text-align: center;
   animation: fadeIn 0.3s ease;
 }
 

@@ -9,6 +9,12 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding:
+    var(--fullscreen-safe-top)
+    var(--fullscreen-safe-right)
+    var(--fullscreen-safe-bottom)
+    var(--fullscreen-safe-left);
+  box-sizing: border-box;
 }
 
 .ww-header {

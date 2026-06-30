@@ -35,17 +35,24 @@
   --tv-surface:        #0b121a;
 
   /* Safe-area layout */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-area-inset-top: var(--safe-top);
-  --safe-area-inset-left: var(--safe-left);
-  --safe-area-inset-right: var(--safe-right);
-  --safe-area-inset-bottom: var(--safe-bottom);
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --app-safe-area-top-fallback: 0px;
-  --app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-top));
+  --safe-top: max(var(--app-safe-area-top-fallback), var(--safe-area-inset-top));
+  --safe-left: var(--safe-area-inset-left);
+  --safe-right: var(--safe-area-inset-right);
+  --safe-bottom: var(--safe-area-inset-bottom);
+  --app-safe-area-top: var(--safe-top);
   --app-safe-area-top-extra: max(0px, calc(var(--app-safe-area-top) - 16px));
+  --fullscreen-safe-top: var(--safe-top);
+  --fullscreen-safe-right: var(--safe-right);
+  --fullscreen-safe-bottom: var(--safe-bottom);
+  --fullscreen-safe-left: var(--safe-left);
+  --fullscreen-safe-height: calc(
+    100dvh - var(--fullscreen-safe-top) - var(--fullscreen-safe-bottom)
+  );
   --floating-corner-top-base: 12px;
   --floating-corner-top-safe-padding: 8px;
   --floating-corner-left-base: 16px;
@@ -54,7 +61,7 @@
   --floating-corner-right-safe-padding: 16px;
   --floating-corner-top-offset: max(
     var(--floating-corner-top-base),
-    calc(var(--app-safe-area-top) + var(--floating-corner-top-safe-padding))
+    calc(var(--safe-top) + var(--floating-corner-top-safe-padding))
   );
   --floating-corner-left-offset: max(
     var(--floating-corner-left-base),
@@ -84,6 +91,7 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  min-height: 100dvh;
   background: var(--color-bg);
   color: var(--color-text);
   /* Prevent pull-to-refresh on mobile */
@@ -92,6 +100,7 @@ html, body {
 
 #root {
   height: 100%;
+  min-height: 100dvh;
 }
 
 html.is-capacitor,

@@ -7,7 +7,12 @@
   align-items: center;
   justify-content: center;
   background: rgba(8, 10, 20, 0.96);
-  padding: 16px;
+  padding:
+    calc(var(--fullscreen-safe-top) + 16px)
+    calc(var(--fullscreen-safe-right) + 16px)
+    calc(var(--fullscreen-safe-bottom) + 16px)
+    calc(var(--fullscreen-safe-left) + 16px);
+  box-sizing: border-box;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }

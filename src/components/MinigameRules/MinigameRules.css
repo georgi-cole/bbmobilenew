@@ -8,10 +8,10 @@
   justify-content: center;
   z-index: 200;
   padding:
-    var(--minigame-safe-padding-top, 16px)
-    max(16px, var(--minigame-safe-padding-right, 16px))
-    max(16px, var(--minigame-safe-padding-bottom, 16px))
-    max(16px, var(--minigame-safe-padding-left, 16px));
+    var(--minigame-safe-padding-top, calc(var(--fullscreen-safe-top) + 16px))
+    max(16px, var(--minigame-safe-padding-right, calc(var(--fullscreen-safe-right) + 16px)))
+    max(16px, var(--minigame-safe-padding-bottom, calc(var(--fullscreen-safe-bottom) + 16px)))
+    max(16px, var(--minigame-safe-padding-left, calc(var(--fullscreen-safe-left) + 16px)));
   box-sizing: border-box;
 }
 
@@ -25,7 +25,11 @@
   padding: 24px;
   color: #eee;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  max-height: calc(100dvh - var(--minigame-safe-padding-top, 16px) - var(--minigame-safe-padding-bottom, 16px));
+  max-height: calc(
+    100dvh
+    - var(--minigame-safe-padding-top, calc(var(--fullscreen-safe-top) + 16px))
+    - max(16px, var(--minigame-safe-padding-bottom, calc(var(--fullscreen-safe-bottom) + 16px)))
+  );
   overflow-y: auto;
   box-sizing: border-box;
 }
