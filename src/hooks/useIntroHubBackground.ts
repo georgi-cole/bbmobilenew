@@ -29,12 +29,10 @@ export default function useIntroHubBackground(
   preferredUrl: string | null,
   fallbackUrl: string | null,
 ): IntroHubBackgroundState {
-  const [url, setUrl] = useState<string | null>(fallbackUrl ?? preferredUrl);
+  const [preferredLoadedUrl, setPreferredLoadedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const immediateUrl = fallbackUrl ?? preferredUrl;
-    setUrl(immediateUrl);
 
     if (!preferredUrl || preferredUrl === fallbackUrl) {
       return () => {
@@ -49,20 +47,19 @@ export default function useIntroHubBackground(
         if (import.meta.env.DEV) {
           console.info('[HomeHub] Preferred intro background loaded', {
             preferredUrl,
-            fallbackUrl: immediateUrl,
+            fallbackUrl,
           });
         }
-        setUrl(preferredUrl);
+        setPreferredLoadedUrl(preferredUrl);
         return;
       }
 
       if (import.meta.env.DEV) {
         console.warn('[HomeHub] Preferred intro background failed to load; using fallback', {
           preferredUrl,
-          fallbackUrl: immediateUrl,
+          fallbackUrl,
         });
       }
-      setUrl(immediateUrl);
     });
 
     return () => {
@@ -70,8 +67,10 @@ export default function useIntroHubBackground(
     };
   }, [fallbackUrl, preferredUrl]);
 
+  const url = preferredLoadedUrl === preferredUrl ? preferredUrl : fallbackUrl ?? preferredUrl;
+
   return {
-    url: url ?? fallbackUrl ?? preferredUrl,
+    url,
     ready: true,
   };
 }
