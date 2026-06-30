@@ -493,6 +493,14 @@
   object-fit: cover;
 }
 
+.pf-overlay__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: 0.15rem;
+}
+
 .pf-overlay__surge-panel {
   padding: 0.95rem;
   border-radius: 1.35rem;
