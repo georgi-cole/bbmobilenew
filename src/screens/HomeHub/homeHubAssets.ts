@@ -32,12 +32,8 @@ function unique(values: string[]): string[] {
   return Array.from(new Set(values));
 }
 
-export function getHomeHubAssetUrls(effectiveBgUrl: string | null): string[] {
+export function getHomeHubAssetUrls(): string[] {
   const urls: string[] = [];
-
-  if (effectiveBgUrl) {
-    urls.push(effectiveBgUrl);
-  }
 
   BUTTON_VARIANTS.forEach((variant) => {
     BUTTON_STATES.forEach((state) => {
