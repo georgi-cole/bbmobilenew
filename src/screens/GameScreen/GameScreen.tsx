@@ -121,6 +121,7 @@ import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
 import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
+import { setGameUX } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
 import { selectRemoteMainTvHeadline } from '../../remoteConfig/remoteConfigSlice'
@@ -162,6 +163,7 @@ import {
 } from '../../features/evictionVoteBreakdownStorage'
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import './GameScreen.css'
+import { shouldPromptForCompactRoster } from './compactRosterPrompt'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
@@ -179,6 +181,7 @@ const CONFESSIONAL_TV_PROMPT_MESSAGE =
 const PUBLIC_MODE_STORE_PROMPT =
   'If you want to activate public mode, go to the store in the home hub.'
 const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
+const COMPACT_ROSTER_PROMPT_KEY = 'bbmobilenew_compact_roster_prompt_v1'
 
 type PendingPublicSaveResult = {
   savedId: string
@@ -320,6 +323,14 @@ export default function GameScreen() {
   const adsState = useAppSelector(selectAdsState)
   const remoteMainTvHeadline = useAppSelector(selectRemoteMainTvHeadline)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
+  const [showCompactRosterPrompt, setShowCompactRosterPrompt] = useState(false)
+  const [compactRosterPromptResolved, setCompactRosterPromptResolved] = useState(() => {
+    try {
+      return localStorage.getItem(COMPACT_ROSTER_PROMPT_KEY) != null
+    } catch {
+      return false
+    }
+  })
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
   const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
@@ -356,6 +367,53 @@ export default function GameScreen() {
   const activeConfessionalDecisionKey = activeConfessionalDecision
     ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
     : null
+
+  useEffect(() => {
+    if (settings.gameUX.compactRoster) {
+      setShowCompactRosterPrompt(false)
+      return
+    }
+
+    if (compactRosterPromptResolved) {
+      return
+    }
+
+    const evaluateCompactRosterNeed = () => {
+      const viewportWidth =
+        window.visualViewport?.width ?? window.innerWidth ?? document.documentElement.clientWidth
+      const viewportHeight =
+        window.visualViewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight
+      const gameShell = document.querySelector('.game-screen-shell') as HTMLElement | null
+      return shouldPromptForCompactRoster({
+        viewportWidth,
+        viewportHeight,
+        gameShellScrollHeight: gameShell?.scrollHeight,
+      })
+    }
+
+    const syncPromptState = () => {
+      const shouldPrompt = evaluateCompactRosterNeed()
+      setShowCompactRosterPrompt(shouldPrompt)
+      if (shouldPrompt) {
+        setCompactRosterPromptResolved(true)
+        try {
+          localStorage.setItem(COMPACT_ROSTER_PROMPT_KEY, 'shown')
+        } catch {
+          // ignore storage failures
+        }
+      }
+    }
+
+    syncPromptState()
+    window.addEventListener('resize', syncPromptState)
+    window.visualViewport?.addEventListener('resize', syncPromptState)
+    window.visualViewport?.addEventListener('scroll', syncPromptState)
+    return () => {
+      window.removeEventListener('resize', syncPromptState)
+      window.visualViewport?.removeEventListener('resize', syncPromptState)
+      window.visualViewport?.removeEventListener('scroll', syncPromptState)
+    }
+  }, [compactRosterPromptResolved, settings.gameUX.compactRoster])
 
   useEffect(() => {
     return () => {
@@ -4103,6 +4161,38 @@ export default function GameScreen() {
             finalizeBattleBackOutcome(winnerId)
           }}
           pending={adPending}
+        />
+      )}
+
+      {showCompactRosterPrompt && !settings.gameUX.compactRoster && (
+        <AdPrompt
+          icon="📱"
+          title="Screen looks cramped"
+          description="This layout may be getting cropped or hard to read. Switch to Compact Roster with 2 rows of 8 avatars?"
+          watchLabel="Switch to Compact"
+          skipLabel="Keep Current"
+          onWatch={() => {
+            dispatch(setGameUX({
+              compactRoster: true,
+              compactRosterLayout: 'two-rows',
+            }))
+            setShowCompactRosterPrompt(false)
+            setCompactRosterPromptResolved(true)
+            try {
+              localStorage.setItem(COMPACT_ROSTER_PROMPT_KEY, 'accepted')
+            } catch {
+              // ignore storage failures
+            }
+          }}
+          onSkip={() => {
+            setShowCompactRosterPrompt(false)
+            setCompactRosterPromptResolved(true)
+            try {
+              localStorage.setItem(COMPACT_ROSTER_PROMPT_KEY, 'dismissed')
+            } catch {
+              // ignore storage failures
+            }
+          }}
         />
       )}
 
