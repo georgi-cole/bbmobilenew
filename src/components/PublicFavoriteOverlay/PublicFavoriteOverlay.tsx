@@ -20,9 +20,9 @@ import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
 import {
-  SPOTLIGHT_ROTATION_MS,
   buildHouseguestSpotlightItems,
   getActiveSpotlightPlayers,
+  getSpotlightRotationDelayMs,
   selectSpotlightItem,
 } from './publicFavoriteSpotlight';
 import './PublicFavoriteOverlay.css';
@@ -575,7 +575,6 @@ export default function PublicFavoriteOverlay({
     [activePlayers, votes],
   );
   const spotlightItems = useMemo(() => buildHouseguestSpotlightItems(activePlayers), [activePlayers]);
-  const hasSpotlightItems = spotlightItems.length > 0;
   const spotlight = selectSpotlightItem(spotlightItems, spotlightRotation);
   const finalTwoNames =
     activePlayers.length === 2
@@ -587,12 +586,13 @@ export default function PublicFavoriteOverlay({
   }, [candidateIds]);
 
   useEffect(() => {
-    if (displayStep !== 'voting' || !hasSpotlightItems) return;
-    const id = window.setInterval(() => {
+    if (displayStep !== 'voting' || !spotlight) return;
+    const timeoutMs = getSpotlightRotationDelayMs(spotlight.fact);
+    const id = window.setTimeout(() => {
       setSpotlightRotation((rotation) => rotation + 1);
-    }, SPOTLIGHT_ROTATION_MS);
-    return () => window.clearInterval(id);
-  }, [displayStep, hasSpotlightItems]);
+    }, timeoutMs);
+    return () => window.clearTimeout(id);
+  }, [displayStep, spotlight]);
 
   useEffect(() => {
     const firstActiveId = activePlayers[0]?.id ?? null;
