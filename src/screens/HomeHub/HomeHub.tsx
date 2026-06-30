@@ -18,7 +18,6 @@ import {
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
-import HubLoadingOverlay from '../../components/HubLoadingOverlay/HubLoadingOverlay';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
 import { SoundManager } from '../../services/sound/SoundManager';
@@ -43,12 +42,13 @@ import './HomeHub.css';
  * To add a new hub button: add an entry to HUB_BUTTONS.
  *
  * Load ordering:
- *   1. KolequantSplash shown — logo only, no dialogs, hub preloads in background.
- *   2. Hub assets preload during the splash: background, buttons, fonts, and
- *      the intro-hub runtime are all loaded before the screen is revealed.
- *   3. If the splash finishes first, a loading overlay stays up until the full
- *      hub bundle is ready so the UI never appears half-built.
- *   4. After the hub is ready, PermissionPrompts appear over the hub (location only).
+ *   1. KolequantSplash is shown as the only loading surface while the hub assets
+ *      preload in the background.
+ *   2. The intro background starts with a guaranteed day/night fallback so the
+ *      native app never paints a blank screen.
+ *   3. Once the hub runtime and button art are ready, the splash dismisses and
+ *      the full intro hub appears in one reveal.
+ *   4. PermissionPrompts appear over the hub (location only).
  *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
@@ -62,7 +62,6 @@ const HUB_BUTTONS = [
 interface HomeHubAssetLayerProps {
   splashDone: boolean;
   effectiveBgUrl: string | null;
-  backgroundReady: boolean;
   onPlay: () => void;
   onNavigate: NavigateFunction;
 }
@@ -70,14 +69,11 @@ interface HomeHubAssetLayerProps {
 function HomeHubAssetLayer({
   splashDone,
   effectiveBgUrl,
-  backgroundReady,
   onPlay,
   onNavigate,
 }: HomeHubAssetLayerProps) {
-  const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
-    useHomeHubAssets(effectiveBgUrl);
-  const assetReady = backgroundReady && homeHubReady;
-  const status = backgroundReady ? homeHubLoadStatus : 'Checking background...';
+  const { ready: homeHubReady } = useHomeHubAssets();
+  const assetReady = homeHubReady;
 
   return (
     <>
@@ -85,11 +81,7 @@ function HomeHubAssetLayer({
         <PermissionPrompts showSoundPrompt={false} />
       )}
 
-      {splashDone && !assetReady && (
-        <HubLoadingOverlay progress={homeHubLoadProgress} status={status} />
-      )}
-
-      {/* Foreground content — hidden until the full hub asset bundle is ready. */}
+      {/* Foreground content is hidden until the full hub bundle is ready. */}
       <div className="homehub-content home-hub">
         {/* Hero / icon area (no branding text — logo is shown in the splash) */}
         <div className="home-hub__hero" aria-hidden="true" />
@@ -135,7 +127,7 @@ export default function HomeHub() {
   const { url: bgUrl } = useBackgroundTheme();
   const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
   const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
-  const { url: introHubBgUrl, ready: introHubBgReady } = useIntroHubBackground(remoteBgUrl, bgUrl);
+  const { url: introHubBgUrl } = useIntroHubBackground(remoteBgUrl, bgUrl);
   const achievementSummary = useMemo(
     () => buildAchievementSummary({
       userPlayer: introHubPlayer,
@@ -239,12 +231,16 @@ export default function HomeHub() {
     setSplashDone(true);
   }
 
+  const splashDuration = homeHubAssetsReady ? 2000 : 86_400_000;
+  const showSplash = !splashDone || !homeHubAssetsReady;
+
   return (
     <>
-      {/* Cold-load intro splash — logo only, hub preloads in background.
-          Exits automatically after the animation completes (~1.2s). */}
-      {!splashDone && (
-        <KolequantSplash onFinish={handleSplashFinish} />
+      {/* Cold-load intro splash — logo only, hub preloads in the background.
+          The splash stays up until the intro hub is actually ready so the
+          screen reveals all at once instead of in stages. */}
+      {showSplash && (
+        <KolequantSplash duration={splashDuration} onFinish={handleSplashFinish} />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
@@ -280,10 +276,8 @@ export default function HomeHub() {
           )}
 
           <HomeHubAssetLayer
-            key={effectiveBgUrl ?? 'default'}
             splashDone={splashDone}
             effectiveBgUrl={effectiveBgUrl}
-            backgroundReady={introHubBgReady}
             onPlay={handlePlay}
             onNavigate={navigate}
           />
