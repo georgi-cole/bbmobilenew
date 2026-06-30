@@ -1,10 +1,16 @@
 .gameover-shell {
-  min-height: 100vh;
+  --gameover-bottom-clearance: calc(var(--nav-bar-height, 60px) + 36px);
+  min-height: 100dvh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 40%, #0d1230 0%, #05080f 70%);
-  padding: 20px;
+  background: radial-gradient(ellipse at 50% 28%, #162043 0%, #080b14 68%);
+  padding:
+    calc(20px + var(--safe-top))
+    calc(16px + var(--safe-right))
+    calc(var(--gameover-bottom-clearance) + var(--safe-bottom))
+    calc(16px + var(--safe-left));
   color: var(--color-text);
   font-family: inherit;
   position: relative;
@@ -16,25 +22,44 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 50% at 50% 0%, color-mix(in srgb, var(--color-gold-secondary) 8%, transparent) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 40% at 80% 80%, color-mix(in srgb, var(--color-accent) 6%, transparent) 0%, transparent 60%);
+    radial-gradient(ellipse 72% 50% at 50% 0%, color-mix(in srgb, var(--color-gold-secondary) 12%, transparent) 0%, transparent 68%),
+    radial-gradient(ellipse 48% 36% at 82% 82%, color-mix(in srgb, #df4153 16%, transparent) 0%, transparent 58%);
   pointer-events: none;
 }
 
+.gameover-brand,
 .gameover-card {
+  position: relative;
+  z-index: 1;
+}
+
+.gameover-brand {
+  display: flex;
+  justify-content: center;
   width: 100%;
-  max-width: 520px;
+  margin-bottom: 10px;
+}
+
+.gameover-brand__logo {
+  width: min(190px, 48vw);
+  max-width: 100%;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 14px 28px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 0 22px rgba(245, 158, 11, 0.14));
+}
+
+.gameover-card {
+  width: min(100%, 540px);
   background: linear-gradient(160deg, #141b2e 0%, #0f1422 100%);
   border: 1px solid color-mix(in srgb, var(--color-gold-secondary) 25%, transparent);
   border-radius: 20px;
-  padding: 28px 24px 24px;
+  padding: 24px 20px 20px;
   text-align: center;
   box-shadow:
     0 0 0 1px var(--color-line),
     0 20px 80px rgba(0, 0, 0, 0.7),
     0 0 40px color-mix(in srgb, var(--color-gold-secondary) 10%, transparent);
-  position: relative;
-  z-index: 1;
   animation: gameover-entrance 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -45,11 +70,11 @@
 
 .gameover-title {
   margin: 0 0 6px;
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-gold-primary); /* fallback for browsers/selection that don't support gradient text */
+  color: var(--color-gold-primary);
   background: linear-gradient(135deg, var(--color-gold-primary) 0%, var(--color-gold-secondary) 50%, var(--color-gold-deep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -57,7 +82,7 @@
 }
 
 .gameover-sub {
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   color: var(--color-text-muted);
   font-size: 0.82rem;
 }
@@ -73,10 +98,12 @@
 }
 
 .gameover-winner::before {
-  content: '🏆';
+  content: 'TROPHY';
   position: absolute;
-  font-size: 5rem;
-  opacity: 0.06;
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  opacity: 0.05;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -94,10 +121,10 @@
 }
 
 .gameover-winner__name {
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   font-weight: 900;
   margin-top: 0;
-  color: var(--color-text); /* fallback for browsers/selection that don't support gradient text */
+  color: var(--color-text);
   letter-spacing: 0.02em;
   animation: gameover-shimmer 2.5s ease-in-out infinite;
   background: linear-gradient(90deg, var(--color-text) 30%, var(--color-gold-primary) 50%, var(--color-text) 70%);
@@ -138,32 +165,38 @@
 }
 
 .gameover-actions {
-  margin-top: 20px;
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .gameover-btn {
-  padding: 11px 20px;
+  min-height: 44px;
+  padding: 10px 10px;
   border-radius: 12px;
-  font-size: 0.9rem;
+  font-size: 0.79rem;
   font-weight: 800;
   cursor: pointer;
   border: none;
-  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s, background 0.15s;
   letter-spacing: 0.02em;
   transform: translateY(0);
+  font-family: inherit;
 }
 
-.gameover-btn:hover {
-  opacity: 0.88;
+.gameover-btn:hover:not(:disabled) {
+  opacity: 0.92;
   transform: translateY(-2px);
 }
 
-.gameover-btn:active {
+.gameover-btn:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+.gameover-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 .gameover-btn--primary {
@@ -178,7 +211,11 @@
   color: var(--color-text-muted);
 }
 
-/* ── Rotating scoreboard carousel ─────────────────────────────────────────── */
+.gameover-btn--accent {
+  background: linear-gradient(135deg, #e04b5d 0%, #f59e0b 100%);
+  color: #fff8ed;
+  box-shadow: 0 6px 22px rgba(224, 75, 93, 0.28);
+}
 
 .gameover-carousel {
   position: relative;
@@ -232,8 +269,6 @@
   background: var(--color-gold-secondary);
 }
 
-/* ── Scoreboard list ─────────────────────────────────────────────────────── */
-
 .gameover-scoreboard {
   list-style: none;
   margin: 0;
@@ -272,3 +307,326 @@
   font-size: 0.78rem;
 }
 
+.gameover-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    calc(18px + var(--safe-top))
+    calc(14px + var(--safe-right))
+    calc(18px + var(--safe-bottom))
+    calc(14px + var(--safe-left));
+}
+
+.gameover-overlay__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 5, 10, 0.76);
+  backdrop-filter: blur(10px);
+}
+
+.gameover-prompt,
+.gameover-aftermath {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 560px);
+  max-height: min(100%, 760px);
+  overflow: auto;
+  border-radius: 20px;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+}
+
+.gameover-prompt {
+  padding: 24px 20px;
+  background: linear-gradient(180deg, #171e33 0%, #0f1525 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gameover-prompt__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-gold-secondary);
+}
+
+.gameover-prompt__title {
+  margin: 0 0 10px;
+  font-size: 1.3rem;
+  line-height: 1.12;
+}
+
+.gameover-prompt__body {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.gameover-prompt__actions,
+.gameover-aftermath__actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.gameover-prompt__actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gameover-aftermath {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at top, rgba(255, 239, 201, 0.75), rgba(245, 230, 206, 0.16) 32%, transparent 56%),
+    linear-gradient(180deg, #371216 0%, #1a1012 18%, #efe3cb 18.1%, #e7d7be 100%);
+  color: #17120e;
+  padding: 14px;
+  border: 1px solid rgba(255, 247, 233, 0.68);
+}
+
+.gameover-aftermath--excellent {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(245, 158, 11, 0.18);
+}
+
+.gameover-aftermath--good {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(34, 197, 94, 0.16);
+}
+
+.gameover-aftermath--neutral {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(100, 116, 139, 0.16);
+}
+
+.gameover-aftermath--bad {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(239, 68, 68, 0.16);
+}
+
+.gameover-aftermath--tragic {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(127, 29, 29, 0.26);
+}
+
+.gameover-aftermath__topbar,
+.gameover-aftermath__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gameover-aftermath__topbar {
+  margin-bottom: 12px;
+}
+
+.gameover-aftermath__edition,
+.gameover-aftermath__tone {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+}
+
+.gameover-aftermath__edition {
+  background: #420c12;
+  color: #fff2df;
+}
+
+.gameover-aftermath__tone {
+  color: #1a1206;
+  background: #f4c56b;
+}
+
+.gameover-aftermath__tone--good {
+  background: #9fdaa3;
+}
+
+.gameover-aftermath__tone--neutral {
+  background: #ced4dd;
+}
+
+.gameover-aftermath__tone--bad {
+  background: #f7b0a8;
+}
+
+.gameover-aftermath__tone--tragic {
+  background: #d08b8b;
+}
+
+.gameover-aftermath__meta {
+  margin-bottom: 12px;
+}
+
+.gameover-aftermath__player {
+  margin: 0;
+  font-size: 1.22rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.gameover-aftermath__placement,
+.gameover-aftermath__progress,
+.gameover-aftermath__kicker,
+.gameover-aftermath__caption {
+  margin: 0;
+}
+
+.gameover-aftermath__placement,
+.gameover-aftermath__progress,
+.gameover-aftermath__caption {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(23, 18, 14, 0.68);
+}
+
+.gameover-aftermath__paper {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0)),
+    linear-gradient(180deg, #f8f1e1 0%, #eadac0 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(53, 32, 11, 0.16);
+  padding: 16px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 18px 30px rgba(66, 12, 18, 0.12);
+}
+
+.gameover-aftermath__lead {
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(53, 32, 11, 0.16);
+}
+
+.gameover-aftermath__kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #7e1f2b;
+}
+
+.gameover-aftermath__headline {
+  margin: 6px 0 8px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.55rem, 4.8vw, 2.15rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.gameover-aftermath__subheadline {
+  margin: 0;
+  font-size: 0.97rem;
+  line-height: 1.42;
+  color: rgba(23, 18, 14, 0.86);
+}
+
+.gameover-aftermath__story-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.04fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.gameover-aftermath__photo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gameover-aftermath__photo {
+  width: 100%;
+  min-height: 280px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(53, 32, 11, 0.18);
+  background:
+    linear-gradient(135deg, rgba(59, 18, 23, 0.18), rgba(245, 158, 11, 0.12)),
+    #d7ccba;
+}
+
+.gameover-aftermath__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gameover-aftermath__bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.gameover-aftermath__bullets li {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(117, 31, 43, 0.08);
+  border: 1px solid rgba(117, 31, 43, 0.08);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.gameover-aftermath__body {
+  margin: 0;
+  padding-top: 2px;
+  font-size: 0.94rem;
+  line-height: 1.52;
+  color: rgba(23, 18, 14, 0.88);
+}
+
+.gameover-aftermath__actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 460px) {
+  .gameover-card {
+    padding: 20px 16px 16px;
+  }
+
+  .gameover-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gameover-actions .gameover-btn--accent {
+    grid-column: 1 / -1;
+  }
+
+  .gameover-prompt__actions,
+  .gameover-aftermath__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .gameover-aftermath__story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gameover-aftermath__photo {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 360px) {
+  .gameover-shell {
+    padding:
+      calc(14px + var(--safe-top))
+      calc(12px + var(--safe-right))
+      calc(14px + var(--safe-bottom))
+      calc(12px + var(--safe-left));
+  }
+
+  .gameover-brand__logo {
+    width: min(150px, 52vw);
+  }
+
+  .gameover-btn {
+    font-size: 0.76rem;
+  }
+}
