@@ -75,6 +75,19 @@
   text-align: center;
 }
 
+.profile-screen__back-btn {
+  align-self: flex-start;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .profile-screen__guest-banner a,
 .profile-screen__guest-link {
   color: rgba(107, 183, 255, 0.9);
