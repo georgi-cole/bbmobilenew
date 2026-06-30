@@ -2267,7 +2267,7 @@ export default function GameScreen() {
         setShowVoteBreakdownPrompt(true)
       }, POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
     }
-  }, [dispatch, game.pendingEviction, game.phase, setFinal4Stage])
+  }, [dispatch, game.doubleEviction?.pendingSecondEviction, game.pendingEviction, game.phase, setFinal4Stage])
 
 
   const battleBack = game.battleBack
