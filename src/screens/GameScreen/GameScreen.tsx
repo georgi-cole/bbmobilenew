@@ -1721,6 +1721,14 @@ export default function GameScreen() {
         .filter((p) => game.voteResults && p.id in game.voteResults)
         .map((p) => ({ nominee: p, voteCount: game.voteResults![p.id] ?? 0 }))
     : []
+  const voteResultsEvicteeIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (game.pendingEviction?.evicteeId) ids.add(game.pendingEviction.evicteeId)
+    if (game.doubleEviction?.pendingSecondEviction?.evicteeId) {
+      ids.add(game.doubleEviction.pendingSecondEviction.evicteeId)
+    }
+    return [...ids]
+  }, [game.doubleEviction?.pendingSecondEviction?.evicteeId, game.pendingEviction?.evicteeId])
   // After dismissing vote results: show the eviction splash if one is pending,
   // otherwise advance the game phase directly.
   // When a tie-break is still pending (awaitingTieBreak), do not advance — the
@@ -2226,6 +2234,7 @@ export default function GameScreen() {
   const handleEvictionSplashDone = useCallback(() => {
     const evicteeId = game.pendingEviction?.evicteeId
     if (!evicteeId) return
+    const hasQueuedSecondEviction = Boolean(game.doubleEviction?.pendingSecondEviction)
     // Clear the overlay flag so AvatarTile returns to normal after the cinematic.
     dispatch(setEvictionOverlay(null))
     // Capture the phase before dispatch since finalizePendingEviction may change it.
@@ -2234,6 +2243,9 @@ export default function GameScreen() {
     if (isFinal4) {
       // Final-4: advance the local stage machine; no battle back check needed.
       setFinal4Stage('done')
+    } else if (hasQueuedSecondEviction) {
+      // Keep the second double-eviction cinematic in the same flow so it gets
+      // its own overlay mount and eviction stinger before the week advances.
     } else {
       const activated =
         dispatch(tryActivatePendingForcedBattleBack()) ||
@@ -2923,6 +2935,7 @@ export default function GameScreen() {
           voteResultsReveal={{
             nominees: voteResultsTallies,
             evictee: voteResultsEvictee,
+            evicteeIds: voteResultsEvicteeIds,
             onTiebreakerRequired: handleTiebreakerRequired,
             publicTiebreak: publicEvictionTiebreak,
             onPublicTiebreakResolved: handlePublicEvictionTiebreakResolved,

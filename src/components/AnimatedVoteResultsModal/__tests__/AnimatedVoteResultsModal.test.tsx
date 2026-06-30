@@ -221,4 +221,28 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(container.querySelector('.avrm__tv-duel-divider')).toBeNull();
     expect(container.querySelector('.avrm__commentary--tv')).toBeNull();
   });
+
+  it('highlights both evictees in the TV variant during a double elimination', async () => {
+    const { container } = render(
+      <AnimatedVoteResultsModal
+        nominees={[
+          { nominee: makePlayer('p1', 'Nominee 1'), voteCount: 0 },
+          { nominee: makePlayer('p2', 'Nominee 2'), voteCount: 0 },
+          { nominee: makePlayer('p3', 'Nominee 3'), voteCount: 0 },
+        ]}
+        evictee={makePlayer('p1', 'Nominee 1')}
+        evicteeIds={['p1', 'p2']}
+        onDone={vi.fn()}
+        revealIntervalMs={1}
+        postRevealDelayMs={1}
+        variant="tv"
+      />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5);
+    });
+
+    expect(container.querySelectorAll('.avrm__tally--evictee')).toHaveLength(2);
+  });
 });
