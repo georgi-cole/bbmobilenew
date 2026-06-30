@@ -5,7 +5,7 @@ import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
 import type { RemotePlayerOverride } from '../remoteConfig/remoteConfigTypes';
 
-// ─── Remote override registry ─────────────────────────────────────────────────
+// ─── Remote override registry ────────────────────────────────────────────────
 
 /**
  * Module-level map of houseguest id → remote avatar URL.
@@ -115,6 +115,7 @@ function capitalize(s: string): string {
  */
 export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'avatar'>): string[] {
   const candidates: string[] = [];
+  const lookupTokens = collectAssetLookupTokens(player);
 
   // Remote config override takes highest priority (if provided for this player id).
   const hgForRemote = getById(player.id) ?? findByName(player.name);
@@ -126,6 +127,14 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
   // If player.avatar is already a full URL or absolute path, use it first
   if (player.avatar && (player.avatar.startsWith('http') || player.avatar.startsWith('/'))) {
     candidates.push(player.avatar);
+  }
+
+  const folderAvatar = listAvatarAssetCandidates().find(({ basename }) => {
+    const token = normalizeNameToken(basename.replace(/_avatar$/i, ''));
+    return lookupTokens.includes(token) || lookupTokens.some((target) => token.includes(target) || target.includes(token));
+  });
+  if (folderAvatar) {
+    candidates.push(folderAvatar.source);
   }
 
   const id = player.id;
@@ -187,8 +196,37 @@ export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): s
 }
 
 /**
- * Maps canonical houseguest ids to their full-body transparent cutout filename stems
- * located in `public/assets/formal_attires/`.
+ * Formal cutouts are stored in `public/assets/formal_attires/`.
+ * Some players have a non-.png source file in that folder, so we search the
+ * folder contents first before falling back to the historical stem map.
+ */
+const FORMAL_CUTOUT_MODULES = import.meta.glob(
+  '../../public/assets/formal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
+  {
+    eager: true,
+    import: 'default',
+  },
+) as Record<string, string>;
+
+const INFORMAL_CUTOUT_MODULES = import.meta.glob(
+  '../../public/assets/Informal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
+  {
+    eager: true,
+    import: 'default',
+  },
+) as Record<string, string>;
+
+const AVATAR_ASSET_MODULES = import.meta.glob(
+  '../../public/assets/skins/*.{png,webp,svg,jpg,jpeg,wp2}',
+  {
+    eager: true,
+    import: 'default',
+  },
+) as Record<string, string>;
+
+/**
+ * Maps canonical houseguest ids to their historical formal-cutout stems.
+ * These are used as a fallback if the folder scan does not find a direct match.
  */
 const FORMAL_CUTOUT_MAP: Record<string, string> = {
   ivy: 'Ivy_formal',
@@ -210,11 +248,73 @@ const FORMAL_CUTOUT_MAP: Record<string, string> = {
   zed: 'Zed_formal',
 };
 
+function normalizeNameToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function collectAssetLookupTokens(player: Pick<Player, 'id' | 'name'>): string[] {
+  const hg = getById(player.id) ?? findByName(player.name);
+
+  return [hg?.id, hg?.name, player.id, player.name]
+    .filter((value): value is string => Boolean(value))
+    .map(normalizeNameToken);
+}
+
+function listFormalCutoutCandidates(): Array<{ basename: string; source: string }> {
+  return Object.entries(FORMAL_CUTOUT_MODULES).map(([path, source]) => {
+    const filename = path.split('/').pop() ?? path;
+    const basename = filename.replace(/\.[^.]+$/, '');
+    return { basename, source };
+  });
+}
+
+function listInformalCutoutCandidates(): Array<{ basename: string; source: string }> {
+  return Object.entries(INFORMAL_CUTOUT_MODULES).map(([path, source]) => {
+    const filename = path.split('/').pop() ?? path;
+    const basename = filename.replace(/\.[^.]+$/, '');
+    return { basename, source };
+  });
+}
+
+function listAvatarAssetCandidates(): Array<{ basename: string; source: string }> {
+  return Object.entries(AVATAR_ASSET_MODULES).map(([path, source]) => {
+    const filename = path.split('/').pop() ?? path;
+    const basename = filename.replace(/\.[^.]+$/, '');
+    return { basename, source };
+  });
+}
+
+function resolveFormalCutoutFromFolder(player: Pick<Player, 'id' | 'name'>): string | null {
+  const targetTokens = collectAssetLookupTokens(player);
+  if (targetTokens.length === 0) return null;
+
+  const candidates = listFormalCutoutCandidates();
+
+  const exactMatch = candidates.find(({ basename }) => {
+    const token = normalizeNameToken(basename.replace(/_formal.*$/i, ''));
+    return targetTokens.includes(token);
+  });
+  if (exactMatch) return exactMatch.source;
+
+  const fuzzyMatch = candidates.find(({ basename }) => {
+    const token = normalizeNameToken(basename);
+    return targetTokens.some((target) => token.includes(target) || target.includes(token));
+  });
+  if (fuzzyMatch) return fuzzyMatch.source;
+
+  return null;
+}
+
 /**
  * Returns the URL for a housemate's full-body formal cutout from
  * `public/assets/formal_attires/`, or `null` when no cutout exists for this player.
  */
 export function resolveFormalCutout(player: Pick<Player, 'id' | 'name'>): string | null {
+  const folderMatch = resolveFormalCutoutFromFolder(player);
+  if (folderMatch) {
+    return folderMatch;
+  }
+
   const hg = getById(player.id) ?? findByName(player.name);
   if (!hg) return null;
   const stem = FORMAL_CUTOUT_MAP[hg.id];
@@ -268,9 +368,17 @@ const MALE_AVATAR_EMOJI = '👨';
  *   const cutoutSrc = resolveInformalCutout(player) ?? resolveAvatar(player);
  */
 export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): string | null {
+  const targetTokens = collectAssetLookupTokens(player);
+  if (targetTokens.length === 0) return null;
+
+  const folderMatch = listInformalCutoutCandidates().find(({ basename }) => {
+    const token = normalizeNameToken(basename.replace(/_informal.*$/i, ''));
+    return targetTokens.includes(token);
+  });
+  if (folderMatch) return folderMatch.source;
+
   const hg = getById(player.id) ?? findByName(player.name);
-  if (!hg) return null;
-  const stem = INFORMAL_CUTOUT_MAP[hg.id];
+  const stem = hg ? INFORMAL_CUTOUT_MAP[hg.id] : null;
   if (!stem) return null;
   return joinPublicAssetPath(`assets/Informal_attires/${stem}.png`);
 }

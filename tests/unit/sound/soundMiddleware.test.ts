@@ -149,6 +149,18 @@ describe('soundMiddleware eviction and finale SFX', () => {
     expect(releaseBgmMock).not.toHaveBeenCalled();
   });
 
+  it('replays the eviction stinger for a second eviction after the first overlay clears', () => {
+    const { store } = makeTestStore();
+
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-1' });
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: null });
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-2' });
+
+    expect(playMock).toHaveBeenCalledTimes(2);
+    expect(playMock).toHaveBeenNthCalledWith(1, 'player:evicted');
+    expect(playMock).toHaveBeenNthCalledWith(2, 'player:evicted');
+  });
+
   it('suppresses eviction SFX for a Battle Back return overlay', () => {
     const { store } = makeTestStore();
     store.dispatch({

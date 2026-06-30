@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
    * Reverse-domain bundle identifier.  Update this to your own Apple Developer
    * Team / App Store Connect bundle ID before building for distribution.
    */
-  appId: 'com.bbmobilenew.app',
+  appId: 'com.georgicole.thebigeye',
 
   /**
    * Display name shown on the iOS home screen.

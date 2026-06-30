@@ -201,7 +201,8 @@ This allows reproducing any run by replaying with the same `seed` and participan
 
 ## Debug Controls
 
-Visit any page with `?debug=1` to open the DebugPanel.
+Visit any page with `?debug=1` to open the DebugPanel on localhost/dev.
+On production hosts, add `qa=1` as well, for example `#/game?debug=1&qa=1`.
 Under **🎮 Minigame Debug**:
 
 - **Force Game** — select a specific game instead of random pick

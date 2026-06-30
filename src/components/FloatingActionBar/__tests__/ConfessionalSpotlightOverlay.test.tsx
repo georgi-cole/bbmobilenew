@@ -36,6 +36,8 @@ describe('ConfessionalSpotlightOverlay', () => {
       configurable: true,
       value: {
         addEventListener: vi.fn(),
+        offsetLeft: 0,
+        offsetTop: 0,
         removeEventListener: vi.fn(),
       },
     });
@@ -129,6 +131,87 @@ describe('ConfessionalSpotlightOverlay', () => {
       expect(updatedOverlayLayer.style.getPropertyValue('--confessional-spotlight-x')).toBe('192px');
       expect(updatedOverlayLayer.style.getPropertyValue('--confessional-spotlight-y')).toBe('332px');
     });
+  });
+
+  it('tracks target movement across animation frames without waiting for resize events', async () => {
+    const target = document.createElement('button');
+    const targetRef = createRef<HTMLElement>();
+    targetRef.current = target;
+
+    let rect = {
+      left: 24,
+      top: 40,
+      width: 20,
+      height: 20,
+      right: 44,
+      bottom: 60,
+    };
+    target.getBoundingClientRect = () => rect as DOMRect;
+
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    render(<ConfessionalSpotlightOverlay active targetRef={targetRef} onComplete={() => {}} />);
+
+    rect = {
+      left: 164,
+      top: 210,
+      width: 20,
+      height: 20,
+      right: 184,
+      bottom: 230,
+    };
+
+    await act(async () => {
+      const nextFrame = animationFrames.shift();
+      nextFrame?.(16);
+    });
+
+    await waitFor(() => {
+      const overlayLayer = screen
+        .getByTestId('confessional-spotlight')
+        .querySelector('.confessional-spotlight__overlay') as HTMLElement;
+      expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-x')).toBe('174px');
+      expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-y')).toBe('220px');
+    });
+  });
+
+  it('accounts for visual viewport offsets when positioning the fixed overlay', () => {
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: {
+        addEventListener: vi.fn(),
+        offsetLeft: 14,
+        offsetTop: 28,
+        removeEventListener: vi.fn(),
+      },
+    });
+
+    const target = document.createElement('button');
+    const targetRef = createRef<HTMLElement>();
+    targetRef.current = target;
+    target.getBoundingClientRect = () =>
+      ({
+        left: 60,
+        top: 80,
+        width: 24,
+        height: 24,
+        right: 84,
+        bottom: 104,
+      }) as DOMRect;
+
+    render(<ConfessionalSpotlightOverlay active targetRef={targetRef} onComplete={() => {}} />);
+
+    const overlayLayer = screen
+      .getByTestId('confessional-spotlight')
+      .querySelector('.confessional-spotlight__overlay') as HTMLElement;
+
+    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-x')).toBe('86px');
+    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-y')).toBe('120px');
   });
 
   it('waits for the doubled spotlight duration before completing', () => {

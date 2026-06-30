@@ -8,10 +8,10 @@
   justify-content: center;
   z-index: 200;
   padding:
-    calc(var(--fullscreen-safe-top) + 16px)
-    calc(var(--fullscreen-safe-right) + 16px)
-    calc(var(--fullscreen-safe-bottom) + 16px)
-    calc(var(--fullscreen-safe-left) + 16px);
+    var(--minigame-safe-padding-top, calc(var(--fullscreen-safe-top) + 16px))
+    max(16px, var(--minigame-safe-padding-right, calc(var(--fullscreen-safe-right) + 16px)))
+    max(16px, var(--minigame-safe-padding-bottom, calc(var(--fullscreen-safe-bottom) + 16px)))
+    max(16px, var(--minigame-safe-padding-left, calc(var(--fullscreen-safe-left) + 16px)));
   box-sizing: border-box;
 }
 
@@ -25,8 +25,13 @@
   padding: 24px;
   color: #eee;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  max-height: min(85vh, calc(var(--fullscreen-safe-height) - 32px));
+  max-height: calc(
+    100dvh
+    - var(--minigame-safe-padding-top, calc(var(--fullscreen-safe-top) + 16px))
+    - max(16px, var(--minigame-safe-padding-bottom, calc(var(--fullscreen-safe-bottom) + 16px)))
+  );
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .minigame-rules-title {
@@ -123,8 +128,8 @@
 
 .minigame-rules-btn-dismiss {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 12px;
+  right: 12px;
   background: transparent;
   color: #888;
   border: none;

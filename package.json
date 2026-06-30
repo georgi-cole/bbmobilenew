@@ -1,10 +1,10 @@
 {
   "name": "bbmobilenew",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "scripts": {
     "bootstrap": "npm ci && cd server && npm ci",
@@ -12,16 +12,32 @@
     "bootstrap:server": "cd server && npm ci",
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:capacitor": "tsc -b && vite build --base ./",
-    "cap:sync": "npm run build:capacitor && npx cap sync ios",
-    "cap:open": "npx cap open ios",
+    "build:mobile": "tsc -b && vite build --mode capacitor",
+    "build:capacitor": "npm run build:mobile",
+    "build:android": "tsc -b && vite build --mode android",
+    "build:ios": "npm run build:mobile",
+    "sync": "npm run build:mobile && npx cap sync",
+    "sync:android": "npm run build:android && npx cap sync android",
+    "sync:ios": "npm run build:mobile && npx cap sync ios",
+    "cap:sync": "npm run sync",
+    "cap:sync:android": "npm run sync:android",
+    "cap:sync:ios": "npm run sync:ios",
+    "open:android": "npm run sync:android && npx cap open android",
+    "open:ios": "npm run sync:ios && npx cap open ios",
+    "cap:open": "npm run open:ios",
+    "cap:open:android": "npm run open:android",
+    "cap:open:ios": "npm run open:ios",
     "lint": "eslint .",
     "lint:ci": "eslint . --max-warnings=0",
+    "audit:release": "vitest run tests/release-readiness.audit.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:minigames": "vitest run tests/minigames*.test.ts* tests/minigameHost*.test.tsx tests/unit/minigame*.test.ts* tests/unit/glass-bridge/*.test.tsx",
+    "test:e2e": "playwright test e2e/playwright/",
+    "test:release-full": "npm run lint:ci && npm run typecheck && npm run test:minigames && npm run test && npm run audit:release && npm run test:e2e && npm run build:capacitor",
     "test:famous-figures": "vitest run tests/unit/famous-figures",
     "start:famous-figures": "vite --open"
   },
@@ -38,6 +54,7 @@
     "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/ios": "^8.3.0",
     "@eslint/js": "^9.39.1",
@@ -59,7 +76,7 @@
     "prettier": "^3.8.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
-    "vite": "^7.3.2",
+    "vite": "^8.0.16",
     "vitest": "^4.1.2"
   }
 }

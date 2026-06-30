@@ -4,6 +4,7 @@ import {
   advanceBattleBackAnnouncementStep,
   buildBattleBackFeedMessage,
   isBattleBackReplayEligible,
+  shouldUseBattleBackMinigame,
 } from '../battleBackFlow'
 
 describe('battle back flow helpers', () => {
@@ -46,5 +47,11 @@ describe('battle back flow helpers', () => {
     expect(isBattleBackReplayEligible('p2', 'p0', ['p1', 'p2'], 0, 3)).toBe(false)
     expect(isBattleBackReplayEligible('p2', 'p0', ['p0', 'p1', 'p2'], 3, 3)).toBe(false)
     expect(isBattleBackReplayEligible(undefined, 'p0', ['p0', 'p1', 'p2'], 0, 3)).toBe(false)
+  })
+
+  it('uses the playable minigame only when the human is an eligible battle back candidate', () => {
+    expect(shouldUseBattleBackMinigame('p0', ['p0', 'p1', 'p2'])).toBe(true)
+    expect(shouldUseBattleBackMinigame('p0', ['p1', 'p2'])).toBe(false)
+    expect(shouldUseBattleBackMinigame(null, ['p0', 'p1', 'p2'])).toBe(false)
   })
 })

@@ -589,6 +589,29 @@ export default function MinigameHost({
                 />
               );
             }
+            if (game.implementation === 'react' && game.reactComponentKey === 'Capitalization') {
+              // Capitalization should draw a fresh geography set for each hosted run.
+              // The challenge seed is stable for a pending challenge, so forwarding it
+              // makes repeated app/browser starts land on the same first country.
+              const CapitalizationComp = reactComponents.Capitalization;
+              return (
+                <CapitalizationComp
+                  autoStart={true}
+                  participantIds={participantIds}
+                  participants={participants}
+                  onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
+                    if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
+                      onDone(value, false, completion);
+                      return;
+                    }
+                    setFinalValue(value);
+                    setFinalTiebreakerMs(tiebreakerMs ?? null);
+                    setWasPartial(false);
+                    setPhase('results');
+                  }}
+                />
+              );
+            }
             if (game.implementation === 'react') {
               const key = game.reactComponentKey;
               if (!key) {
@@ -696,34 +719,36 @@ export default function MinigameHost({
             </p>
           )}
 
-          {activeCompetitionRetry && (
-            <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
-              <p className="minigame-host-results-retry-copy">
-                Finished last? Watch a short ad to retry before the result is locked in.
-              </p>
-              <button
-                className="minigame-host-results-btn minigame-host-results-btn--retry"
-                onClick={() => activeCompetitionRetry.onWatch(handleRetryRestart)}
-                disabled={activeCompetitionRetry.pending}
-                autoFocus
-              >
-                {activeCompetitionRetry.pending ? 'Opening Ad…' : 'Watch Ad to Retry'}
-              </button>
-            </div>
-          )}
+          <div className="minigame-host-results-actions">
+            {activeCompetitionRetry && (
+              <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
+                <p className="minigame-host-results-retry-copy">
+                  Finished last? Watch a short ad to retry before the result is locked in.
+                </p>
+                <button
+                  className="minigame-host-results-btn minigame-host-results-btn--retry"
+                  onClick={() => activeCompetitionRetry.onWatch(handleRetryRestart)}
+                  disabled={activeCompetitionRetry.pending}
+                  autoFocus
+                >
+                  {activeCompetitionRetry.pending ? 'Opening Ad…' : 'Watch Ad to Retry'}
+                </button>
+              </div>
+            )}
 
-          <button
-            className="minigame-host-results-btn"
-            onClick={() => {
-              if (showCompetitionRetry) {
-                competitionRetry?.onContinueWithoutRetry?.();
-              }
-              handleContinue();
-            }}
-            {...(!showCompetitionRetry ? { autoFocus: true } : {})}
-          >
-            {showCompetitionRetry ? 'No Thanks — Continue ▶' : 'Continue ▶'}
-          </button>
+            <button
+              className="minigame-host-results-btn"
+              onClick={() => {
+                if (showCompetitionRetry) {
+                  competitionRetry?.onContinueWithoutRetry?.();
+                }
+                handleContinue();
+              }}
+              {...(!showCompetitionRetry ? { autoFocus: true } : {})}
+            >
+              {showCompetitionRetry ? 'No Thanks — Continue ▶' : 'Continue ▶'}
+            </button>
+          </div>
         </div>
       )}
     </div>

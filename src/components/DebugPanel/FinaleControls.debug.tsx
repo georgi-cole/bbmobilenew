@@ -1,7 +1,7 @@
 /**
  * FinaleControls.debug.tsx – Debug Panel section for finale controls.
  *
- * Included inside DebugPanel when debug=1 is in the URL.
+ * Included inside DebugPanel when debug access is granted.
  */
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';

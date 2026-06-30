@@ -383,7 +383,7 @@ export interface SpecialVetoState {
   awaitingVipSecondSaveTarget: boolean;
 }
 
-export type ForcedShockType = 'doubleEviction' | 'battleBack' | SpecialVetoType | 'democracia';
+export type ForcedShockType = 'doubleEviction' | 'battleBack' | SpecialVetoType | 'democracia' | 'dayStartShock';
 
 export interface ForcedShockState {
   /** Shock that should be triggered from the debug menu at the next safe chance. */
@@ -392,6 +392,24 @@ export interface ForcedShockState {
   requestedWeek: number;
   /** Earliest week when the shock is allowed to begin. */
   earliestWeek: number;
+}
+
+/**
+ * State for the day-start elimination shock popup.
+ * When set, the game is waiting for the user to confirm the eviction before
+ * the standard eviction animation can take over.
+ */
+export interface DayStartShockState {
+  /** ID of the active housemate who will be eliminated. */
+  targetId: string;
+  /** Dramatic broadcast-style reason shown in the popup. */
+  reason: string;
+  /** Template identifier used to generate the reason. */
+  templateId: string;
+  /** Week when the shock was activated. */
+  triggeredWeek: number;
+  /** Whether the shock was triggered by the random roll or the debug queue. */
+  source: 'random' | 'debug';
 }
 
 // ─── Public's Favorite voting twist ──────────────────────────────────────────
@@ -721,6 +739,12 @@ export interface GameState {
    * Append-only; used for post-season display and debugging.
    */
   history?: GameHistoryEvent[];
+  /**
+   * Day-start elimination shock state.
+   * When set, the popup is visible and advance() is blocked until the player
+   * confirms the eviction.
+   */
+  dayStartShock?: DayStartShockState | null;
   /**
    * When set, the VoteResultsPopup is shown with the vote tally before
    * advancing. Maps nominee ID → number of votes received.

@@ -47,14 +47,14 @@ describe('GridOfLuck component', () => {
     expect(screen.queryByRole('button', { name: /continue ritual/i })).toBeNull();
 
     act(() => {
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(650);
     });
 
     expect(eventCard).toHaveTextContent(/seal opening/i);
     expect(eventCard).toHaveTextContent(/box 11 opens and reveals/i);
 
     act(() => {
-      vi.advanceTimersByTime(700);
+      vi.advanceTimersByTime(850);
     });
 
     expect(boxes[10]).not.toHaveTextContent('Sealed');
@@ -63,9 +63,14 @@ describe('GridOfLuck component', () => {
     expect(resolvedEventCard).not.toHaveTextContent(/effect resolved/i);
     expect(resolvedEventCard).not.toHaveTextContent(/^up next$/i);
     expect(resolvedEventCard).toHaveTextContent(/\+\d+ lp/i);
+    expect(resolvedEventCard).not.toHaveTextContent(/worth \+\d+ lp/i);
+    expect(resolvedEventCard).toHaveTextContent(/You uncover a hidden bonus\./i);
     expect(resolvedEventCard).toHaveTextContent(/next:/i);
     expect(screen.getByRole('button', { name: /continue ritual/i })).toBeTruthy();
-    expect(within(screen.getByTestId('grid-of-luck-ritual-feed')).queryAllByRole('listitem')).toHaveLength(0);
+    const ritualFeed = within(screen.getByTestId('grid-of-luck-ritual-feed'));
+    expect(ritualFeed.getAllByRole('listitem')).toHaveLength(2);
+    expect(ritualFeed.getAllByRole('listitem')[0]).toHaveTextContent(/You uncover a hidden bonus/i);
+    expect(ritualFeed.getAllByRole('listitem')[1]).toHaveTextContent(/The chamber awakens/i);
   }, 10_000);
 
   it('keeps the human player card first even when another player acts first', () => {

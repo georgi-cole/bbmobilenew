@@ -44,6 +44,8 @@ export interface SettingsState {
     specialSafetyChance: number;
     /** Probability (0–100) that a Double Eviction activates on each eligible week (after 5 evictions, above final 5). */
     doubleEvictionChance: number;
+    /** Probability (0–100) that a random day-start shock eliminates an active housemate before the LOH flow begins. */
+    dayStartShockChance: number;
     /** When true, show the "Public's Favorite Player" vote after the finale winner reveal. */
     enableFavoritePlayer: boolean;
     /** Cash prize (USD) awarded to the Public's Favorite Player winner. */
@@ -131,6 +133,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     battleBackChance: 85,
     specialSafetyChance: 75,
     doubleEvictionChance: 35,
+    dayStartShockChance: 1,
     enableFavoritePlayer: true,
     favoritePlayerAwardAmount: 25000,
     // DEBUG/TESTING ONLY — null means default per-day chances are used.

@@ -16,6 +16,8 @@ import type { CompGame, CompSelectionPayload } from '../../components/compSelect
 import { getAllGames, type GameCategory } from '../../minigames/registry';
 import { restartApp } from '../../utils/restartApp';
 import { buildViewportMetaContent } from '../../utils/viewportMeta';
+import { APP_VERSION } from '../../appVersion';
+import { buildViewportMetaContent } from '../../utils/viewportMeta';
 import './SettingsAdmin.css';
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
@@ -485,6 +487,29 @@ export default function SettingsAdmin() {
             )}
 
             {settings.sim.enableTwists && (
+              <div className="settings-row settings-row--col">
+                <label className="settings-row__label">
+                  Morning Shock Chance — {settings.sim.dayStartShockChance ?? 1}%
+                </label>
+                <input
+                  type="range"
+                  className="settings-slider"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={settings.sim.dayStartShockChance ?? 1}
+                  onChange={(e) =>
+                    dispatch(setSim({ dayStartShockChance: Number(e.target.value) }))
+                  }
+                  aria-label="Morning Shock chance percentage"
+                />
+                <p className="settings-helper-text">
+                  Chance that a Day 3+ morning shock removes an active housemate before the LOH comp starts. Only fires when more than 4 housemates are still alive.
+                </p>
+              </div>
+            )}
+
+            {settings.sim.enableTwists && (
               <>
                 <div className="settings-row">
                   <label className="settings-row__label">Public's Favorite (Public Vote)</label>
@@ -650,7 +675,7 @@ export default function SettingsAdmin() {
           <section className="settings-section settings-section--about">
             <div className="settings-about__hero" aria-hidden="true">📺</div>
             <h2 className="settings-about__name">The Big Eye</h2>
-            <p className="settings-about__version">Version 0.0.0</p>
+            <p className="settings-about__version">Version {APP_VERSION}</p>
             <p className="settings-about__tagline">AI Edition — React + TypeScript + Vite</p>
 
             <button

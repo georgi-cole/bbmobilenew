@@ -10,6 +10,7 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   finalizePendingEviction,
+  confirmDayStartShock,
   setEvictionOverlay,
   selectAlivePlayers,
   selectF3Part3PredictedWinnerId,
@@ -29,6 +30,8 @@ import {
   dismissBattleBack,
   tryActivateBattleBack,
   tryActivatePendingForcedBattleBack,
+  tryActivateDayStartShock,
+  tryActivatePendingForcedDayStartShock,
   tryActivateSecretMission,
   openBattleBackCompetition,
   tryActivateDoubleEviction,
@@ -78,6 +81,7 @@ import { isPlacementRankingGame } from '../../minigames/registry'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
+import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
 import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
@@ -90,6 +94,7 @@ import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/feature
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
+import Capitalization from '../../components/Capitalization/Capitalization'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
@@ -97,6 +102,12 @@ import { detectDebugMode } from '../../utils/debugMode'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
 import type { Player, Phase } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
+import {
+  getCompetitionSeasonState,
+  getDefaultCompetitionProfile,
+  getMinigameAiModel,
+  simulateMinigameAiScore,
+} from '../../ai/competition'
 import {
   buildDoubleEvictionTieResolutionMessage,
   calculateRequiredDoubleEvictionSlots,
@@ -140,6 +151,7 @@ import {
   advanceBattleBackAnnouncementStep,
   buildBattleBackFeedMessage,
   isBattleBackReplayEligible,
+  shouldUseBattleBackMinigame,
 } from './battleBackFlow'
 import {
   buildEvictionVoteBreakdownPlayerNamesById,
@@ -807,13 +819,37 @@ export default function GameScreen() {
   // Fire tryActivateSecretMission once per day when the game enters week_start.
   // The thunk centralizes the daily chance table, testing override, and
   // one-per-season guard.
-  const secretMissionActivationWeekRef = useRef<number | null>(null)
+  const weekStartActivationWeekRef = useRef<number | null>(null)
+  const weekStartActivationResolvedRef = useRef(false)
   useEffect(() => {
     if (game.phase !== 'week_start') return
-    if (secretMissionActivationWeekRef.current === game.week) return
-    secretMissionActivationWeekRef.current = game.week
-    dispatch(tryActivateSecretMission())
-  }, [game.phase, game.week, dispatch])
+    if (game.pendingEviction || game.dayStartShock) return
+    if (weekStartActivationWeekRef.current !== game.week) {
+      weekStartActivationWeekRef.current = game.week
+      weekStartActivationResolvedRef.current = false
+    }
+    if (weekStartActivationResolvedRef.current) return
+
+    if (dispatch(tryActivatePendingForcedDayStartShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
+    if (dispatch(tryActivateDayStartShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
+    if (dispatch(tryActivateSecretMission())) {
+      weekStartActivationResolvedRef.current = true
+    }
+  }, [
+    game.dayStartShock,
+    game.pendingEviction,
+    game.pendingForcedShock?.earliestWeek,
+    game.pendingForcedShock?.type,
+    game.phase,
+    game.week,
+    dispatch,
+  ])
 
   // ── Democracia activation on loh_comp_announcement entry ─────────────────
   // Fire tryActivatePendingForcedDemocracia (debug) or tryActivateDemocracia
@@ -1713,6 +1749,14 @@ export default function GameScreen() {
         .filter((p) => game.voteResults && p.id in game.voteResults)
         .map((p) => ({ nominee: p, voteCount: game.voteResults![p.id] ?? 0 }))
     : []
+  const voteResultsEvicteeIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (game.pendingEviction?.evicteeId) ids.add(game.pendingEviction.evicteeId)
+    if (game.doubleEviction?.pendingSecondEviction?.evicteeId) {
+      ids.add(game.doubleEviction.pendingSecondEviction.evicteeId)
+    }
+    return [...ids]
+  }, [game.doubleEviction?.pendingSecondEviction?.evicteeId, game.pendingEviction?.evicteeId])
   // After dismissing vote results: show the eviction splash if one is pending,
   // otherwise advance the game phase directly.
   // When a tie-break is still pending (awaitingTieBreak), do not advance — the
@@ -2218,6 +2262,7 @@ export default function GameScreen() {
   const handleEvictionSplashDone = useCallback(() => {
     const evicteeId = game.pendingEviction?.evicteeId
     if (!evicteeId) return
+    const hasQueuedSecondEviction = Boolean(game.doubleEviction?.pendingSecondEviction)
     // Clear the overlay flag so AvatarTile returns to normal after the cinematic.
     dispatch(setEvictionOverlay(null))
     // Capture the phase before dispatch since finalizePendingEviction may change it.
@@ -2226,6 +2271,9 @@ export default function GameScreen() {
     if (isFinal4) {
       // Final-4: advance the local stage machine; no battle back check needed.
       setFinal4Stage('done')
+    } else if (hasQueuedSecondEviction) {
+      // Keep the second double-eviction cinematic in the same flow so it gets
+      // its own overlay mount and eviction stinger before the week advances.
     } else {
       const activated =
         dispatch(tryActivatePendingForcedBattleBack()) ||
@@ -2247,7 +2295,17 @@ export default function GameScreen() {
         setShowVoteBreakdownPrompt(true)
       }, POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
     }
-  }, [dispatch, game.pendingEviction, game.phase, setFinal4Stage])
+  }, [dispatch, game.doubleEviction?.pendingSecondEviction, game.pendingEviction, game.phase, setFinal4Stage])
+
+  const handleDayStartShockConfirm = useCallback(() => {
+    dispatch(confirmDayStartShock())
+  }, [dispatch])
+
+  const dayStartShock = game.dayStartShock
+  const dayStartShockPlayer = useMemo(() => {
+    if (!dayStartShock) return null
+    return game.players.find((player) => player.id === dayStartShock.targetId) ?? null
+  }, [dayStartShock, game.players])
 
 
   const battleBack = game.battleBack
@@ -2273,14 +2331,59 @@ export default function GameScreen() {
       : []),
     [battleBack?.active, battleBack?.candidates, game.players],
   )
+  const battleBackCandidateIds = useMemo(
+    () => battleBackCandidates.map((player) => player.id),
+    [battleBackCandidates],
+  )
+  const humanBattleBackCandidateId = useMemo(() => {
+    if (!humanPlayer?.id) return null
+    return battleBackCandidateIds.includes(humanPlayer.id) ? humanPlayer.id : null
+  }, [battleBackCandidateIds, humanPlayer?.id])
+  const useBattleBackMinigame = useMemo(
+    () => shouldUseBattleBackMinigame(humanBattleBackCandidateId, battleBackCandidateIds),
+    [battleBackCandidateIds, humanBattleBackCandidateId],
+  )
+  const capitalizationAiModel = useMemo(
+    () => getMinigameAiModel('capitalization'),
+    [],
+  )
+  const battleBackCapitalizationParticipants = useMemo(() => (
+    battleBackCandidates.map((player, index) => ({
+      id: player.id,
+      name: player.name,
+      isHuman: !!player.isUser,
+      avatar: player.avatar,
+      precomputedScore: player.isUser
+        ? 0
+        : simulateMinigameAiScore({
+          gameKey: 'capitalization',
+          minigameModel: capitalizationAiModel,
+          seed: battleBackAttemptSeed,
+          playerId: player.id,
+          participantIndex: index,
+          profile: player.competitionProfile ?? getDefaultCompetitionProfile(),
+          seasonState: getCompetitionSeasonState(game.competitionSeasonStateByPlayerId, player.id),
+        }),
+      previousPR: player.stats?.gamePRs?.capitalization ?? null,
+    }))
+  ), [battleBackAttemptSeed, battleBackCandidates, capitalizationAiModel, game.competitionSeasonStateByPlayerId])
+  const showBattleBackOverlay =
+    showBattleBack &&
+    battleBackCandidates.length > 0 &&
+    !battleBackRetryOfferWinnerId
 
   // Pre-compute the deterministic Back 2 the Game winner and spectator variant so
   // the SpectatorView reveal always matches the store write.
   const battleBackWinnerId = useMemo(() => {
-    if (!showBattleBack || battleBackRetryOfferWinnerId || battleBackCandidates.length === 0) return undefined;
-    const candidateIds = battleBackCandidates.map((p) => p.id);
-    return simulateBattleBackCompetition(candidateIds, battleBackAttemptSeed).winnerId;
-  }, [showBattleBack, battleBackAttemptSeed, battleBackCandidates, battleBackRetryOfferWinnerId]);
+    if (!showBattleBackOverlay || useBattleBackMinigame || battleBackCandidates.length === 0) return undefined;
+    return simulateBattleBackCompetition(battleBackCandidateIds, battleBackAttemptSeed).winnerId;
+  }, [
+    battleBackAttemptSeed,
+    battleBackCandidateIds,
+    battleBackCandidates.length,
+    showBattleBackOverlay,
+    useBattleBackMinigame,
+  ]);
 
   const battleBackReturnPlayer = useMemo(
     () => (battleBackReturnId ? game.players.find((p) => p.id === battleBackReturnId) ?? null : null),
@@ -2381,14 +2484,16 @@ export default function GameScreen() {
     dispatch(advance())
   }, [dispatch])
 
-  const handleBattleBackComplete = useCallback(() => {
-    if (!battleBackWinnerId) {
+  const handleBattleBackComplete = useCallback((winnerId?: string | null) => {
+    const resolvedWinnerId = winnerId ?? battleBackWinnerId
+
+    if (!resolvedWinnerId) {
       finalizeBattleBackOutcome()
       return
     }
 
     const canReplayBattleBack = isBattleBackReplayEligible(
-      battleBackWinnerId,
+      resolvedWinnerId,
       humanPlayer?.id ?? null,
       battleBack?.candidates ?? [],
       battleBackRetryCount,
@@ -2396,11 +2501,11 @@ export default function GameScreen() {
     )
 
     if (canReplayBattleBack) {
-      setBattleBackRetryOfferWinnerId(battleBackWinnerId)
+      setBattleBackRetryOfferWinnerId(resolvedWinnerId)
       return
     }
 
-    finalizeBattleBackOutcome(battleBackWinnerId)
+    finalizeBattleBackOutcome(resolvedWinnerId)
   }, [
     battleBack?.candidates,
     battleBackRetryCount,
@@ -2868,6 +2973,7 @@ export default function GameScreen() {
           voteResultsReveal={{
             nominees: voteResultsTallies,
             evictee: voteResultsEvictee,
+            evicteeIds: voteResultsEvicteeIds,
             onTiebreakerRequired: handleTiebreakerRequired,
             publicTiebreak: publicEvictionTiebreak,
             onPublicTiebreakResolved: handlePublicEvictionTiebreakResolved,
@@ -3730,6 +3836,16 @@ export default function GameScreen() {
           />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {dayStartShock && dayStartShockPlayer && (
+          <DayStartShockPopup
+            key={`${dayStartShock.templateId}-${dayStartShock.triggeredWeek}-${dayStartShock.source}`}
+            player={dayStartShockPlayer}
+            reason={dayStartShock.reason}
+            onConfirm={handleDayStartShockConfirm}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Back 2 the Game return animation (reverse eviction) ─────────────── */}
       <AnimatePresence>
@@ -3747,15 +3863,27 @@ export default function GameScreen() {
       </AnimatePresence>
 
       {/* ── Back 2 the Game / Jury Return twist overlay ──────────────────── */}
-      {showBattleBack && battleBackCandidates.length > 0 && (
+      {showBattleBackOverlay && useBattleBackMinigame && (
+        <Capitalization
+          key={`${battleBackCandidateIds.join('-')}-bb-cap-${battleBackAttemptIndex}`}
+          context="battleBack"
+          participantIds={battleBackCandidateIds}
+          participants={battleBackCapitalizationParticipants}
+          seed={battleBackAttemptSeed}
+          onFinish={(_value, _tiebreakerMs, completion) => {
+            handleBattleBackComplete(completion?.authoritativeWinnerId ?? null)
+          }}
+        />
+      )}
+      {showBattleBackOverlay && !useBattleBackMinigame && (
         <SpectatorView
-          key={`${battleBackCandidates.map((p) => p.id).join('-')}-bb-${battleBackAttemptIndex}`}
-          competitorIds={battleBackCandidates.map((p) => p.id)}
+          key={`${battleBackCandidateIds.join('-')}-bb-${battleBackAttemptIndex}`}
+          competitorIds={battleBackCandidateIds}
           variant={battleBackVariant}
           expectedWinnerId={battleBackWinnerId}
           roundLabel="Back 2 the Game"
           placement="fullscreen"
-          onDone={handleBattleBackComplete}
+          onDone={() => handleBattleBackComplete()}
         />
       )}
 

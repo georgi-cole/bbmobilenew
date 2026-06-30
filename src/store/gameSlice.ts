@@ -2,6 +2,7 @@ import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolki
 import type { RootState, AppDispatch } from './store';
 import type {
   DemocraciaResultDisplay,
+  DayStartShockState,
   GameState,
   Player,
   Phase,
@@ -15,6 +16,7 @@ import type {
   SpecialVetoType,
   ForcedShockType,
 } from '../types';
+import type { IncomingInteraction, SocialActionLogEntry } from '../social/types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import {
   getCompetitionSeasonState,
@@ -39,6 +41,19 @@ import type { SeasonArchive } from './seasonArchive';
 import { loadSeasonArchives } from './archivePersistence';
 import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService';
 import {
+  addDirection,
+  resetDailyFeedBudget,
+  updateApproval,
+} from '../publicOpinion/publicOpinionSlice';
+import {
+  decaySocialMemory,
+  pushIncomingInteraction,
+  recordSocialAction,
+  snapshotWeekRelationships,
+  updateRelationship,
+  updateSocialMemory,
+} from '../social/socialSlice';
+import {
   createSecretMissionState,
   buildMissionTasks,
   checkSecretMissionTrigger,
@@ -57,6 +72,7 @@ import {
   buildDoubleEvictionTieResolutionMessage,
   calculateRequiredDoubleEvictionSlots,
 } from '../features/twists/doubleEvictionTieUtils';
+import { buildDayStartShockSelection } from '../features/twists/dayStartShock';
 import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
@@ -81,6 +97,8 @@ const PHASE_ORDER: Phase[] = [
 ];
 
 const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3;
+const DAY_START_SHOCK_MIN_WEEK = 3;
+const DAY_START_SHOCK_RNG_SALT = 0x7c2f5d19;
 const AI_USER_THREAT_WEIGHT = 6;
 const AI_LOH_REVENGE_THREAT_WEIGHT = 6;
 const AI_LOH_BASE_THREAT_WEIGHT = 2;
@@ -104,7 +122,8 @@ function getForcedShockActivationWeek(
     || state.doubleEviction?.weekActive === true
     || state.specialVeto?.activeType != null
     || state.democracia?.active === true;
-  return phaseWindowPassed || currentWeekBlocked ? state.week + 1 : state.week;
+  const earliestWeek = phaseWindowPassed || currentWeekBlocked ? state.week + 1 : state.week;
+  return safePhase === 'week_start' ? Math.max(DAY_START_SHOCK_MIN_WEEK, earliestWeek) : earliestWeek;
 }
 
 function formatForcedShockLabel(type: ForcedShockType): string {
@@ -123,6 +142,8 @@ function formatForcedShockLabel(type: ForcedShockType): string {
       return 'Force Majeure';
     case 'democracia':
       return 'Democracia';
+    case 'dayStartShock':
+      return 'Morning Shock';
     default:
       return type;
   }
@@ -158,6 +179,8 @@ function getForcedShockSafePhase(type: ForcedShockType): Phase {
       return 'eviction_results';
     case 'democracia':
       return 'loh_comp_announcement';
+    case 'dayStartShock':
+      return 'week_start';
     default:
       return 'pos_results';
   }
@@ -321,8 +344,20 @@ export function createInitialGameState(): GameState {
     players: freshPlayers,
     competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
     tvFeed: [
-      { id: 'e0', text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`, type: 'game', timestamp: Date.now() },
-      { id: 'e1', text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`, type: 'game', timestamp: Date.now() },
+      {
+        id: 'e0',
+        text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`,
+        type: 'game',
+        timestamp: Date.now(),
+        meta: { phase: 'week_start', week: 1 },
+      },
+      {
+        id: 'e1',
+        text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`,
+        type: 'game',
+        timestamp: Date.now(),
+        meta: { phase: 'week_start', week: 1 },
+      },
     ],
     isLive: false,
     hasSeenConfessionalSpotlight: false,
@@ -344,6 +379,7 @@ export function createInitialGameState(): GameState {
       awaitingVipSecondSaveTarget: false,
     },
     pendingForcedShock: null,
+    dayStartShock: null,
     democracia: {
       usedThisSeason: false,
       active: false,
@@ -369,6 +405,17 @@ const initialState: GameState = createInitialGameState();
 /** Monotonic counter to guarantee unique event IDs within the same millisecond. */
 let _pushEventCounter = 0;
 
+function buildTvMeta(
+  state: Pick<GameState, 'phase' | 'week'>,
+  meta?: TvEvent['meta'],
+): NonNullable<TvEvent['meta']> {
+  return {
+    phase: state.phase,
+    week: state.week,
+    ...(meta ?? {}),
+  };
+}
+
 function pushEvent(
   state: GameState,
   text: string,
@@ -381,7 +428,7 @@ function pushEvent(
     text,
     type,
     timestamp: ts,
-    ...(meta ? { meta } : {}),
+    meta: buildTvMeta(state, meta),
   };
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
@@ -936,6 +983,7 @@ const gameSlice = createSlice({
         ...action.payload,
         id: crypto.randomUUID(),
         timestamp: Date.now(),
+        meta: buildTvMeta(state, action.payload.meta),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -952,6 +1000,7 @@ const gameSlice = createSlice({
         timestamp: now,
         channels: ['dr'],
         source: 'manual',
+        meta: buildTvMeta(state, { week: action.payload.week }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -1925,6 +1974,7 @@ const gameSlice = createSlice({
         text: `🗳️ DEMOCRACIA! Today, instead of a Leader of the House competition, the house will elect its leader by popular vote!`,
         type: 'twist',
         major: 'democracia',
+        meta: buildTvMeta(state, { major: 'democracia' }),
         timestamp: ts,
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
@@ -2101,6 +2151,7 @@ const gameSlice = createSlice({
       evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
       state.pendingEviction = null;
+      state.dayStartShock = null;
 
       pushEvent(state, msg, 'game');
 
@@ -2267,6 +2318,7 @@ const gameSlice = createSlice({
         type: 'twist' as const,
         timestamp: ts,
         major: 'battle_back',
+        meta: buildTvMeta(state, { major: 'battle_back' }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -2361,6 +2413,7 @@ const gameSlice = createSlice({
         type: 'twist',
         timestamp: ts,
         major: 'double_eviction',
+        meta: buildTvMeta(state, { major: 'double_eviction' }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
@@ -2410,7 +2463,7 @@ const gameSlice = createSlice({
         text: typeLabels[type],
         type: 'twist',
         major: majorKeys[type],
-        meta: { major: majorKeys[type], week },
+        meta: buildTvMeta(state, { major: majorKeys[type] }),
         timestamp: ts,
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
@@ -2444,6 +2497,29 @@ const gameSlice = createSlice({
     /** Clear a queued debug shock after it has been successfully consumed. */
     consumeForcedShock(state) {
       state.pendingForcedShock = null;
+    },
+
+    /**
+     * Activate the day-start shock popup.
+     * The popup stays visible until the player confirms the elimination.
+     */
+    activateDayStartShock(state, action: PayloadAction<DayStartShockState>) {
+      state.dayStartShock = action.payload;
+      state.twistActivatedThisWeek = true;
+    },
+
+    /**
+     * Confirm the day-start shock and hand the chosen housemate off to the
+     * standard eviction splash.
+     */
+    confirmDayStartShock(state) {
+      if (!state.dayStartShock) return;
+      const { targetId, reason } = state.dayStartShock;
+      state.pendingEviction = {
+        evicteeId: targetId,
+        evictionMessage: reason,
+      };
+      state.dayStartShock = null;
     },
 
     /**
@@ -2622,6 +2698,7 @@ const gameSlice = createSlice({
         type: 'twist' as const,
         timestamp: ts,
         major: 'twist',
+        meta: buildTvMeta(state, { major: 'twist' }),
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
       // Append a start event to game history
@@ -2967,6 +3044,7 @@ const gameSlice = createSlice({
       state.voteResults = null;
       state.evictionSplashId = null;
       state.pendingEviction = null;
+      state.dayStartShock = null;
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
     /**
@@ -3014,12 +3092,14 @@ const gameSlice = createSlice({
           text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`,
           type: 'game' as const,
           timestamp: Date.now(),
+          meta: { phase: fresh.phase, week: fresh.week },
         },
         {
           id: 'e1',
           text: `[Rules] Public mode: ${fresh.publicModeEnabled === true ? 'ON' : 'OFF'}`,
           type: 'game' as const,
           timestamp: Date.now(),
+          meta: { phase: fresh.phase, week: fresh.week },
         },
       ];
       return fresh;
@@ -3066,6 +3146,7 @@ const gameSlice = createSlice({
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
         state.awaitingFinal3Plea ||
+        state.dayStartShock != null ||
         state.specialVeto?.awaitingHolderReplacement ||
         state.specialVeto?.awaitingCoupReplacement1 ||
         state.specialVeto?.awaitingCoupReplacement2 ||
@@ -5074,6 +5155,8 @@ export const {
   queueForcedShock,
   clearForcedShock,
   consumeForcedShock,
+  activateDayStartShock,
+  confirmDayStartShock,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -5193,7 +5276,412 @@ export const selectF3Part2PredictedWinnerId = (state: RootState): string | null 
   return seededPick(rng, losers).id;
 };
 
+function pickDebugAlivePlayer(
+  state: GameState,
+  rng: () => number,
+  excludeIds: Set<string> = new Set(),
+  mode: 'highest' | 'lowest' = 'highest',
+): Player | null {
+  const alive = state.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury' && !excludeIds.has(player.id),
+  );
+  if (alive.length === 0) return null;
+  return pickStrategicAiPlayer(state, alive, rng, mode) ?? seededPick(rng, alive);
+}
+
+function buildDebugIncomingInteraction(
+  fromId: string,
+  week: number,
+  rng: () => number,
+): IncomingInteraction {
+  const types: IncomingInteraction['type'][] = [
+    'compliment',
+    'gossip',
+    'warning',
+    'alliance_proposal',
+    'deal_offer',
+    'nomination_plea',
+    'check_in',
+    'snide_remark',
+    'other',
+  ];
+  const type = seededPick(rng, types);
+  const now = Date.now();
+  const requiresResponse = ['alliance_proposal', 'deal_offer', 'nomination_plea'].includes(type);
+  const textByType: Record<IncomingInteraction['type'], string[]> = {
+    compliment: ['You are still the one to beat.', 'That move was pretty iconic.'],
+    gossip: ['People are already reading the week as a power shift.', 'There is a new whisper chain in the house.'],
+    warning: ['The house is noticing your numbers.', 'Someone thinks your name is coming up soon.'],
+    alliance_proposal: ['Want to keep the line steady this week?', 'We should make this official while we still can.'],
+    deal_offer: ['Keep me off the block and I will return the favor.', 'There is a quiet deal to be made here.'],
+    nomination_plea: ['I need one more week to survive.', 'Please, not me this time.'],
+    check_in: ['Just checking in on the vibe.', 'Wanted to see where your head is at.'],
+    snide_remark: ['Bold plan. Hope it works.', 'Interesting strategy if you like chaos.'],
+    other: ['We need to talk later.', 'Something feels off this week.'],
+  };
+  const text = seededPick(rng, textByType[type]);
+
+  return {
+    id: `dbg-interaction-${week}-${fromId}-${Math.floor(now % 1_000_000)}-${Math.floor(rng() * 1_000)}`,
+    fromId,
+    type,
+    text,
+    createdAt: now,
+    createdWeek: week,
+    expiresAtWeek: week + 1,
+    read: false,
+    requiresResponse,
+    resolved: false,
+  };
+}
+
 // ─── Debug thunks ─────────────────────────────────────────────────────────────
+function seedDebugCycleNoise(
+  dispatch: AppDispatch,
+  rootState: RootState,
+  rng: () => number,
+): void {
+  const { game, publicOpinion } = rootState;
+  const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+  if (alive.length === 0) return;
+
+  dispatch(resetDailyFeedBudget({ week: game.week }));
+  dispatch(snapshotWeekRelationships());
+  dispatch(decaySocialMemory());
+
+  const beatCount = Math.min(3, alive.length);
+  const actors = seededPickN(rng, alive, beatCount);
+  const socialSummaryParts: string[] = [];
+
+  actors.forEach((actor, index) => {
+    const targets = alive.filter((p) => p.id !== actor.id);
+    if (targets.length === 0) return;
+
+    const target =
+      pickStrategicAiPlayer(game, targets, rng, index % 2 === 0 ? 'highest' : 'lowest') ??
+      seededPick(rng, targets);
+    const approvalDelta = rng() < 0.5 ? 2 : -2;
+    const relationshipDelta = approvalDelta > 0 ? 2 : -2;
+    const memoryDeltas = approvalDelta > 0
+      ? { gratitude: 1, trustMomentum: 1 }
+      : { resentment: 1, trustMomentum: -1 };
+    const timestamp = Date.now();
+
+    dispatch(
+      updateRelationship({
+        source: actor.id,
+        target: target.id,
+        delta: relationshipDelta,
+        actionSource: 'system',
+      }),
+    );
+    dispatch(
+      updateSocialMemory({
+        actorId: actor.id,
+        targetId: target.id,
+        deltas: memoryDeltas,
+        event: {
+          type: 'debug_cycle_noise',
+          actorId: actor.id,
+          targetId: target.id,
+          week: game.week,
+          timestamp,
+        },
+      }),
+    );
+    dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: `dbg-social-${game.week}-${actor.id}-${target.id}-${timestamp}`,
+          actorId: actor.id,
+          targetId: target.id,
+          cost: 0,
+          delta: relationshipDelta,
+          outcome: approvalDelta > 0 ? 'success' : 'failure',
+          newEnergy: publicOpinion?.profiles?.[actor.id]?.approval ?? 0,
+          timestamp,
+          score: approvalDelta > 0 ? 1 : -1,
+          label: approvalDelta > 0 ? 'Warm' : 'Messy',
+          source: 'system',
+          costs: { energy: 0, influence: 0, info: 0 },
+          balancesAfter: { energy: 0, influence: 0, info: 0 },
+        } satisfies SocialActionLogEntry,
+      }),
+    );
+    dispatch(pushIncomingInteraction(buildDebugIncomingInteraction(actor.id, game.week, rng)));
+    dispatch(
+      updateApproval({
+        playerId: target.id,
+        delta: approvalDelta,
+        reason: 'debug_week_noise',
+        week: game.week,
+        eventType: 'debug_week_noise',
+        attributedToId: actor.id,
+      }),
+    );
+
+    socialSummaryParts.push(
+      `${actor.name} stirred things up with ${target.name} (${approvalDelta > 0 ? '+' : ''}${approvalDelta})`,
+    );
+  });
+
+  if (socialSummaryParts.length > 0) {
+    dispatch(
+      addDirection({
+        id: `dbg-direction-${game.week}-${Date.now()}`,
+        type: rng() < 0.5 ? 'start_drama' : 'reinforce_alliance',
+        playerId: actors[0]?.id ?? alive[0].id,
+        relatedPlayerId: actors[1]?.id,
+        description: socialSummaryParts.join(' | '),
+        status: 'active',
+        createdWeek: game.week,
+        expiresAtWeek: game.week + 1,
+        approvalDelta: rng() < 0.5 ? -2 : 2,
+        progressPercent: 25,
+      }),
+    );
+  }
+
+  dispatch(
+    addSocialSummary({
+      summary:
+        socialSummaryParts.length > 0
+          ? socialSummaryParts.join(' | ')
+          : `Quiet week for the house — ${alive[0]?.name ?? 'the house'} kept things contained.`,
+      week: game.week,
+    }),
+  );
+}
+
+function resolveDebugBlockers(
+  dispatch: AppDispatch,
+  rootState: RootState,
+  rng: () => number,
+): boolean {
+  const { game, publicOpinion } = rootState;
+  const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+
+  if (game.pendingEviction) {
+    dispatch(finalizePendingEviction(game.pendingEviction.evicteeId));
+    return true;
+  }
+
+  if (game.dayStartShock) {
+    dispatch(confirmDayStartShock());
+    return true;
+  }
+
+  if (game.spectatorActive) {
+    dispatch(closeSpectator());
+    return true;
+  }
+
+  if (game.battleBack?.active) {
+    const candidates = game.battleBack.candidates
+      .map((id) => game.players.find((p) => p.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const winner = candidates.find((player) => player.status === 'jury' || player.status === 'evicted') ?? null;
+    if (winner) {
+      dispatch(completeBattleBack(winner.id));
+    } else {
+      dispatch(dismissBattleBack());
+    }
+    return true;
+  }
+
+  if (game.favoritePlayer?.active) {
+    const winner = pickDebugAlivePlayer(game, rng) ?? alive[0] ?? null;
+    if (winner) {
+      dispatch(resolveFavoritePlayerWinner(winner.id));
+      dispatch(awardFavoritePrize());
+    }
+    return true;
+  }
+
+  if (game.replacementNeeded) {
+    const exclude = new Set<string>([game.lohId ?? '', game.posWinnerId ?? '']);
+    game.nomineeIds.forEach((id) => exclude.add(id));
+    if (game.povSavedId) exclude.add(game.povSavedId);
+    const replacement = pickDebugAlivePlayer(game, rng, exclude, 'highest');
+    if (replacement) {
+      dispatch(setReplacementNominee(replacement.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingPublicSave && game.phase === 'pre_veto_public_save' && game.nomineeIds.length === 3) {
+    const savedId =
+      resolvePublicSaveNominee({
+        nomineeIds: game.nomineeIds,
+        profiles: publicOpinion?.profiles ?? {},
+      }).savedId || game.nomineeIds[0];
+    dispatch(
+      commitPublicSave({
+        savedId,
+        supportPercent: publicOpinion?.profiles?.[savedId]?.approval,
+      }),
+    );
+    return true;
+  }
+
+  if (game.awaitingPovDecision) {
+    const nominees = game.nomineeIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const eligible = getReplacementEligiblePlayers(
+      game,
+      alive,
+      game.specialVeto?.activeType === 'coup' ? 2 : 1,
+      { allowLoh: true },
+    );
+    const usePower = shouldAiUseTargetedSafetyPower(game, nominees, eligible, {
+      replacementCount: game.specialVeto?.activeType === 'coup' ? 2 : 1,
+      preferLoh: true,
+    });
+
+    dispatch(submitPovDecision(usePower));
+    return true;
+  }
+
+  if (game.awaitingPovSaveTarget) {
+    const nominees = game.nomineeIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const nomineeToSave = pickStrategicAiPlayer(game, nominees, rng, 'lowest');
+    if (nomineeToSave) {
+      dispatch(submitPovSaveTarget(nomineeToSave.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingHolderReplacement) {
+    const eligible = getReplacementEligiblePlayers(game, alive);
+    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest');
+    if (replacement) {
+      dispatch(submitDiamondReplacement(replacement.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) {
+    const eligible = getReplacementEligiblePlayers(game, alive, 2, { allowLoh: true });
+    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest', { preferLoh: true });
+    if (replacement) {
+      dispatch(submitCoupReplacement(replacement.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingVipSecondUseDecision) {
+    const nominees = game.players.filter((player) => game.nomineeIds.includes(player.id));
+    const eligible = getReplacementEligiblePlayers(game, alive);
+    const useSecond = shouldAiUseTargetedSafetyPower(game, nominees, eligible, { preferLoh: true });
+    dispatch(submitVipSecondUseDecision(useSecond));
+    return true;
+  }
+
+  if (game.specialVeto?.awaitingVipSecondSaveTarget) {
+    const nominees = game.nomineeIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const nomineeToSave = pickStrategicAiPlayer(game, nominees, rng, 'lowest');
+    if (nomineeToSave) {
+      dispatch(submitVipSecondSaveTarget(nomineeToSave.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingMissionImmunityOffer) {
+    dispatch(declineMissionImmunityReward());
+    return true;
+  }
+
+  if (game.awaitingDoubleVoteOffer) {
+    dispatch(declineDoubleVoteReward());
+    return true;
+  }
+
+  if (game.awaitingVoteDeductionPrompt) {
+    dispatch(declineVoteDeduction());
+    return true;
+  }
+
+  if (game.awaitingHumanVote && game.phase === 'live_vote') {
+    const target = pickStrategicAiPlayer(
+      game,
+      game.players.filter((player) => game.nomineeIds.includes(player.id)),
+      rng,
+      'highest',
+    );
+    if (target) {
+      dispatch(submitHumanVote(target.id));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingTieBreak) {
+    const tiedIds = game.tiedNomineeIds ?? game.nomineeIds;
+    const tiedPlayers = tiedIds
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player));
+    const chosen = pickStrategicAiPlayer(game, tiedPlayers, rng, 'highest');
+    if (chosen) {
+      if (game.awaitingPosTieBreak) {
+        dispatch(submitPosTieBreak(chosen.id));
+      } else {
+        dispatch(submitTieBreak(chosen.id));
+      }
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingCoLohNomination) {
+    const excluded = new Set<string>([...(game.coLohIds ?? []), ...game.nomineeIds]);
+    const nominee = pickDebugAlivePlayer(game, rng, excluded, 'highest');
+    const coLohId = game.coLohIds?.find((id) => game.players.find((player) => player.id === id)?.isUser);
+    if (coLohId && nominee) {
+      dispatch(submitCoLohNomination({ coLohId, nomineeId: nominee.id }));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  if (game.awaitingFinal3Plea || game.awaitingFinal3Eviction) {
+    const hohWinnerId = game.lohId ?? pickDebugAlivePlayer(game, rng)?.id ?? null;
+    const nominee = pickStrategicAiPlayer(
+      game,
+      game.nomineeIds
+        .map((id) => game.players.find((player) => player.id === id))
+        .filter((player): player is Player => Boolean(player)),
+      rng,
+      'highest',
+    );
+    if (hohWinnerId && nominee) {
+      dispatch(finalizeFinal3Decision({ hohWinnerId, evicteeId: nominee.id }));
+    } else {
+      dispatch(clearBlockingFlags());
+    }
+    return true;
+  }
+
+  return false;
+}
+
 /** Dispatch advance() repeatedly until the phase reaches 'eviction_results' (debug only). */
 export const fastForwardToEviction =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
@@ -5225,6 +5713,54 @@ export const fastForwardToEviction =
       } else {
         dispatch(advance());
       }
+      steps++;
+    }
+  };
+
+/**
+ * Simulate a full elimination cycle with debug-friendly social/public noise.
+ * Advances through blocker states, commits pending evictions, and continues
+ * until the game stabilises on the next week or a terminal endgame beat.
+ */
+export const simulateImmediateEliminationCycle =
+  () => (dispatch: AppDispatch, getState: () => RootState) => {
+    const initialWeek = getState().game.week;
+    const cycleSeed = (
+      (getState().game.seed ^ ((initialWeek + 1) * 0x9e3779b9) ^ (getState().game.players.length << 8)) >>> 0
+    );
+    const rng = mulberry32(cycleSeed);
+
+    seedDebugCycleNoise(dispatch, getState(), rng);
+
+    let steps = 0;
+    const maxSteps = PHASE_ORDER.length * 24;
+    while (steps < maxSteps) {
+      const rootState = getState();
+      const game = rootState.game;
+
+      if (game.phase === 'jury' || game.seasonFinale?.phase === 'seasonComplete') {
+        break;
+      }
+
+      if (game.week > initialWeek && game.phase === 'week_start') {
+        break;
+      }
+
+      if (resolveDebugBlockers(dispatch, rootState, rng)) {
+        steps++;
+        continue;
+      }
+
+      const prevPhase = game.phase;
+      const prevWeek = game.week;
+      dispatch(advance());
+
+      const nextState = getState().game;
+      if (nextState.phase === prevPhase && nextState.week === prevWeek && !nextState.pendingEviction) {
+        dispatch(clearBlockingFlags());
+        break;
+      }
+
       steps++;
     }
   };
@@ -5401,6 +5937,100 @@ export const tryActivateSecretMission =
         ? { day: game.week, maxDaySpan }
         : game.week,
     ));
+    return true;
+  };
+
+/**
+ * Attempt to trigger the random day-start shock on the current day.
+ *
+ * Eligibility:
+ *  - `settings.sim.enableTwists` must be true
+ *  - current phase must be `week_start`
+ *  - the season must be at least Day 3
+ *  - at least 5 housemates must still be alive
+ *  - no other twist may already be active this week
+ *  - no queued debug shock may be waiting to consume the window
+ *
+ * If the roll succeeds, the popup is activated and the user must confirm the
+ * eviction before the standard eviction animation can begin.
+ */
+export const tryActivateDayStartShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState();
+
+    if (!settings.sim.enableTwists) return false;
+    if (game.phase !== 'week_start') return false;
+    if (game.dayStartShock) return false;
+    if (game.pendingForcedShock) return false;
+    if (game.twistActivatedThisWeek) return false;
+    if (game.week < DAY_START_SHOCK_MIN_WEEK) return false;
+
+    const activePlayers = game.players.filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury',
+    );
+    if (activePlayers.length <= 4) return false;
+
+    const chance = Math.max(0, Math.min(100, settings.sim.dayStartShockChance ?? 1));
+    if (chance <= 0) return false;
+
+    const rng = mulberry32((game.seed ^ DAY_START_SHOCK_RNG_SALT) >>> 0);
+    if (rng() * 100 >= chance) return false;
+
+    const selection = buildDayStartShockSelection(game.players, rng);
+    if (!selection) return false;
+
+    dispatch(
+      activateDayStartShock({
+        ...selection,
+        triggeredWeek: game.week,
+        source: 'random',
+      }),
+    );
+    return true;
+  };
+
+/**
+ * Attempt to trigger a queued debug day-start shock.
+ *
+ * Bypasses the probability roll, but still respects the day 1 / day 2 and
+ * final-4 guardrails so the debug queue mirrors the live ruleset.
+ */
+export const tryActivatePendingForcedDayStartShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState();
+    const pending = game.pendingForcedShock;
+
+    if (!pending || pending.type !== 'dayStartShock') return false;
+    if (game.phase !== 'week_start') return false;
+    if (game.week < pending.earliestWeek) return false;
+    if (game.dayStartShock) return false;
+    if (game.twistActivatedThisWeek) return false;
+
+    const activePlayers = game.players.filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury',
+    );
+    if (activePlayers.length <= 4) {
+      dispatch(clearForcedShock());
+      return false;
+    }
+
+    const rng = mulberry32((game.seed ^ (DAY_START_SHOCK_RNG_SALT ^ 0x1f1f1f1f)) >>> 0);
+    const selection = buildDayStartShockSelection(game.players, rng);
+    if (!selection) {
+      dispatch(clearForcedShock());
+      return false;
+    }
+
+    dispatch(
+      activateDayStartShock({
+        ...selection,
+        triggeredWeek: game.week,
+        source: 'debug',
+      }),
+    );
+    dispatch(consumeForcedShock());
     return true;
   };
 
@@ -5622,7 +6252,13 @@ export const tryActivatePendingForcedSpecialVeto =
     const { game } = getState();
     const pending = game.pendingForcedShock;
 
-    if (!pending || pending.type === 'doubleEviction' || pending.type === 'battleBack' || pending.type === 'democracia') return false;
+    if (
+      !pending ||
+      pending.type === 'doubleEviction' ||
+      pending.type === 'battleBack' ||
+      pending.type === 'democracia' ||
+      pending.type === 'dayStartShock'
+    ) return false;
     if (game.phase !== 'pos_results') return false;
     if (game.week < pending.earliestWeek) return false;
     if (game.doubleEviction?.weekActive) return false;

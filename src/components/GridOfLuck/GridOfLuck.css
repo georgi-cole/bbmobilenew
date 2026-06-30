@@ -674,29 +674,30 @@
   color: rgba(255, 211, 61, 0.7);
 }
 
-.grid-of-luck__log-card ul {
+.grid-of-luck__log-list {
   margin: 0;
-  padding-left: 18px;
+  list-style: none;
+  padding: 0;
   display: grid;
   gap: 8px;
-  color: rgba(210, 200, 255, 0.82);
 }
 
 .grid-of-luck__log-card {
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
+  display: grid;
+  gap: 8px;
 }
 
 .grid-of-luck__log-entry {
   margin: 0;
-  flex: 1 1 0;
   min-width: 0;
   font-size: 0.82rem;
   line-height: 1.35;
   color: rgba(232, 220, 255, 0.88);
+}
+
+.grid-of-luck__log-entry.is-latest {
+  color: rgba(245, 247, 255, 0.96);
 }
 
 .grid-of-luck__spectator-modal {
@@ -926,7 +927,7 @@
     font-size: 0.68rem;
   }
 
-  .grid-of-luck__log-card ul {
+  .grid-of-luck__log-list {
     max-height: 96px;
     overflow-y: auto;
     padding-right: 4px;

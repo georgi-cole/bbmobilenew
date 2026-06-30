@@ -58,7 +58,7 @@
   justify-content: center;
   width: 100%;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   gap: 2px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.05));
   border: 1px solid rgba(255, 255, 255, 0.055);
@@ -108,7 +108,7 @@
 .game-bottom-nav__label {
   position: relative;
   z-index: 1;
-  font-size: 0.52rem;
+  font-size: 0.58rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.24px;

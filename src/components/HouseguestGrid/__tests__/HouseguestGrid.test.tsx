@@ -83,8 +83,61 @@ describe('HouseguestGrid', () => {
     const section = container.querySelector('section')
     const list = screen.getByRole('list')
 
-    expect(section?.style.getPropertyValue('--grid-available-height')).toBe('282px')
+    expect(section?.style.getPropertyValue('--grid-available-height')).toBe('248px')
     expect(within(list).getAllByRole('listitem')).toHaveLength(16)
+  })
+
+  it('tracks the visual viewport when mobile browser chrome changes the available height', () => {
+    vi.stubGlobal('innerHeight', 900)
+    vi.stubGlobal('visualViewport', {
+      height: 620,
+      offsetTop: 0,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+
+    const headerEl = document.createElement('div')
+    headerEl.className = 'test-tv-zone'
+    document.body.appendChild(headerEl)
+
+    const dockEl = document.createElement('div')
+    dockEl.className = 'test-dock'
+    document.body.appendChild(dockEl)
+
+    const footerEl = document.createElement('nav')
+    footerEl.className = 'test-nav'
+    document.body.appendChild(footerEl)
+
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('test-tv-zone')) return rect({ top: 12, height: 308 })
+      if (this.classList.contains('test-dock')) return rect({ top: 560, height: 76 })
+      if (this.classList.contains('test-nav')) return rect({ top: 830, height: 78 })
+      if (this.getAttribute('aria-labelledby') === 'houseguests-heading') {
+        return rect({ top: 338, height: 260 })
+      }
+      if (this.getAttribute('role') === 'list') {
+        return rect({ top: 372, height: 226 })
+      }
+      return rect({})
+    })
+
+    const houseguests: Houseguest[] = Array.from({ length: 16 }, (_, index) => ({
+      id: `p${index + 1}`,
+      name: `Player ${index + 1}`,
+    }))
+
+    const { container } = render(
+      <HouseguestGrid
+        houseguests={houseguests}
+        gridSize={16}
+        occupancyLabel="16/16"
+        headerSelector=".test-tv-zone"
+        footerSelector=".test-nav"
+        overlaySelector=".test-dock"
+      />,
+    )
+
+    expect((container.firstElementChild as HTMLElement | null)?.style.getPropertyValue('--grid-available-height')).toBe('220px')
   })
 
   it('renders the compact slider layout when requested', () => {

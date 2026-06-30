@@ -1,4 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
+const nodeBin = process.execPath;
+const viteScript = path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js');
 
 export default defineConfig({
   testDir: './e2e/playwright',
@@ -6,12 +12,26 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: 'off',
+  },
+  webServer: {
+    command: `"${nodeBin}" "${viteScript}" --host 127.0.0.1 --port 4173`,
+    url: 'http://127.0.0.1:4173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'desktop-chromium',
+      use: { browserName: 'chromium', ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'mobile-chromium',
+      use: { browserName: 'chromium', ...devices['Pixel 7'] },
+    },
+    {
+      name: 'mobile-webkit',
+      use: { browserName: 'webkit', ...devices['iPhone 13'] },
     },
   ],
 });

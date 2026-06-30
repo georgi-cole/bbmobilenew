@@ -37,6 +37,7 @@ import LaneRacers from './laneRacers/LaneRacersCanvasGame';
 import TravelingDots from '../components/TravelingDots/TravelingDots';
 import EstimationGame from '../components/EstimationGame/EstimationGame';
 import BullseyeBlitz from '../components/BullseyeBlitz/BullseyeBlitz';
+import PressurePlank from '../components/PressurePlank/PressurePlank';
 import ColorMatchComp from '../components/ColorMatchComp/ColorMatchComp';
 import SnakeGame from '../components/SnakeGame/SnakeGame';
 import RescueTheKingGame from './rescueTheKing/RescueTheKingGame';
@@ -45,6 +46,7 @@ import TimingBar from '../components/TimingBar/TimingBar';
 import Minesweeps from '../components/Minesweeps/Minesweeps';
 import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
 import NumberTrivia from '../components/NumberTrivia/NumberTrivia';
+import Capitalization from '../components/Capitalization/Capitalization';
 import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
 import GridOfLuck from '../components/GridOfLuck/GridOfLuck';
 import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed';
@@ -94,6 +96,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   TravelingDots: TravelingDots as ComponentType<GenericMinigameProps>,
   EstimationGame: EstimationGame as ComponentType<GenericMinigameProps>,
   BullseyeBlitz: BullseyeBlitz as ComponentType<GenericMinigameProps>,
+  PressurePlank: PressurePlank as ComponentType<GenericMinigameProps>,
   ColorMatch: ColorMatchComp as ComponentType<GenericMinigameProps>,
   SnakeGame: SnakeGame as ComponentType<GenericMinigameProps>,
   RescueTheKing: RescueTheKingGame as ComponentType<GenericMinigameProps>,
@@ -102,6 +105,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   Minesweeps: Minesweeps as ComponentType<GenericMinigameProps>,
   HangmanChallenge: HangmanChallengeComp as ComponentType<GenericMinigameProps>,
   NumberTrivia: NumberTrivia as ComponentType<GenericMinigameProps>,
+  Capitalization: Capitalization as ComponentType<GenericMinigameProps>,
   CodeBreaker: CodeBreakerComp as ComponentType<GenericMinigameProps>,
   GridOfLuck: GridOfLuck as ComponentType<GenericMinigameProps>,
   ChainOfGreed: ChainOfGreed as ComponentType<GenericMinigameProps>,

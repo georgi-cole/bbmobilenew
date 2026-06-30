@@ -9,6 +9,7 @@
  */
 
 import type { DiaryWeek, CreateDiaryWeekPayload, UpdateDiaryWeekPayload } from '../types/diaryWeek';
+import { apiUrl } from '../utils/apiBase';
 
 /** Set VITE_FEATURE_DIARY_WEEK=false in .env to disable the feature entirely. */
 export const FEATURE_DIARY_WEEK =
@@ -42,7 +43,7 @@ export async function listDiaryWeeks(
   publishedOnly = true,
 ): Promise<DiaryWeek[]> {
   const params = publishedOnly ? '?publishedOnly=true' : '';
-  const res = await fetch(`/api/seasons/${encodeURIComponent(seasonId)}/weeks${params}`);
+  const res = await fetch(apiUrl(`/api/seasons/${encodeURIComponent(seasonId)}/weeks${params}`));
   return parseResponse<DiaryWeek[]>(res);
 }
 
@@ -52,7 +53,7 @@ export async function getDiaryWeek(
   weekNumber: number,
 ): Promise<DiaryWeek> {
   const res = await fetch(
-    `/api/seasons/${encodeURIComponent(seasonId)}/weeks/${weekNumber}`,
+    apiUrl(`/api/seasons/${encodeURIComponent(seasonId)}/weeks/${weekNumber}`),
   );
   return parseResponse<DiaryWeek>(res);
 }
@@ -63,7 +64,7 @@ export async function createDiaryWeek(
   payload: CreateDiaryWeekPayload,
   adminKey: string,
 ): Promise<DiaryWeek> {
-  const res = await fetch(`/api/seasons/${encodeURIComponent(seasonId)}/weeks`, {
+  const res = await fetch(apiUrl(`/api/seasons/${encodeURIComponent(seasonId)}/weeks`), {
     method: 'POST',
     headers: buildHeaders(adminKey),
     body: JSON.stringify(payload),
@@ -79,7 +80,7 @@ export async function updateDiaryWeek(
   adminKey: string,
 ): Promise<DiaryWeek> {
   const res = await fetch(
-    `/api/seasons/${encodeURIComponent(seasonId)}/weeks/${weekNumber}`,
+    apiUrl(`/api/seasons/${encodeURIComponent(seasonId)}/weeks/${weekNumber}`),
     {
       method: 'PATCH',
       headers: buildHeaders(adminKey),
@@ -95,7 +96,7 @@ export async function exportDiaryWeekJson(
   weekNumber: number,
   adminKey?: string,
 ): Promise<void> {
-  const res = await fetch(`/api/weeks/${encodeURIComponent(weekId)}/export?format=json`, {
+  const res = await fetch(apiUrl(`/api/weeks/${encodeURIComponent(weekId)}/export?format=json`), {
     headers: adminKey ? buildHeaders(adminKey) : {},
   });
   if (!res.ok) {

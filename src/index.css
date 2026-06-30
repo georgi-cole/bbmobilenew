@@ -118,6 +118,117 @@ button, a {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Shared native button system for menus, dialogs, and HUD actions.
+   Keep the visual language neon and glassy, but make the sizing/padding
+   consistent across repeated UI patterns. */
+.game-button {
+  --game-button-bg: linear-gradient(180deg, rgba(25, 33, 53, 0.96), rgba(15, 20, 33, 0.98));
+  --game-button-border: rgba(255, 255, 255, 0.12);
+  --game-button-shadow: 0 10px 24px rgba(2, 6, 16, 0.22);
+  --game-button-text: var(--color-text);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--game-button-border);
+  border-radius: 14px;
+  background: var(--game-button-bg);
+  color: var(--game-button-text);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+  box-shadow: var(--game-button-shadow);
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease,
+    filter 150ms ease;
+}
+
+.game-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.18);
+  filter: brightness(1.02);
+}
+
+.game-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+
+.game-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.game-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.78);
+  outline-offset: 2px;
+}
+
+.game-button--primary {
+  --game-button-bg: linear-gradient(135deg, rgba(92, 100, 255, 0.96), rgba(136, 84, 255, 0.96));
+  --game-button-border: rgba(255, 255, 255, 0.15);
+  --game-button-shadow:
+    0 12px 28px rgba(56, 70, 255, 0.24),
+    0 0 22px rgba(139, 92, 246, 0.12);
+}
+
+.game-button--secondary {
+  --game-button-bg: linear-gradient(180deg, rgba(22, 31, 49, 0.96), rgba(14, 19, 31, 0.98));
+}
+
+.game-button--menu {
+  min-height: 40px;
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.game-button--ghost {
+  --game-button-bg: rgba(255, 255, 255, 0.04);
+  --game-button-border: rgba(255, 255, 255, 0.1);
+  --game-button-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.game-button--icon {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-radius: 14px;
+}
+
+.game-button--close {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.game-button--back {
+  padding-inline: 0.95rem 1.05rem;
+}
+
+.game-button__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 /* ── Shared placeholder screen layout ────────────────────────────────────── */
 .placeholder-screen {
   display: flex;
@@ -189,5 +300,26 @@ body.no-animations .tv-ann-modal__backdrop,
 body.no-animations .overlay-backdrop,
 body.no-animations .backdrop,
 body.no-animations .modal-backdrop {
+  display: none !important;
+}
+
+/* ── Visual freeze mode ───────────────────────────────────────────────────── */
+html[data-visual-freeze='true'],
+html[data-visual-freeze='true'] body {
+  scroll-behavior: auto;
+}
+
+html[data-visual-freeze='true'] *,
+html[data-visual-freeze='true'] *::before,
+html[data-visual-freeze='true'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-visual-freeze='true'] .tv-ann-modal__backdrop,
+html[data-visual-freeze='true'] .overlay-backdrop,
+html[data-visual-freeze='true'] .backdrop,
+html[data-visual-freeze='true'] .modal-backdrop {
   display: none !important;
 }

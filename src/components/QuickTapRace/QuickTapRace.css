@@ -9,10 +9,10 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.85);
   padding:
-    calc(var(--fullscreen-safe-top) + 16px)
-    calc(var(--fullscreen-safe-right) + 16px)
-    calc(var(--fullscreen-safe-bottom) + 16px)
-    calc(var(--fullscreen-safe-left) + 16px);
+    calc(16px + var(--safe-top))
+    calc(16px + var(--safe-right))
+    calc(16px + var(--safe-bottom))
+    calc(16px + var(--safe-left));
   box-sizing: border-box;
   transition: background 0.3s ease;
 }
@@ -37,6 +37,8 @@
 
 .qtr__card--canvas {
   max-width: min(1120px, 100%);
+  max-height: calc(100vh - 32px - var(--safe-top) - var(--safe-bottom));
+  max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom));
   max-height: calc(var(--fullscreen-safe-height) - 32px);
   display: flex;
   flex-direction: column;

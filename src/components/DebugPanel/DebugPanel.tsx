@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   advance,
@@ -14,6 +14,7 @@ import {
   rerollSeed,
   skipMinigame,
   fastForwardToEviction,
+  simulateImmediateEliminationCycle,
   startMinigame,
   queueForcedShock,
   clearForcedShock,
@@ -31,6 +32,7 @@ import { INCOMING_INTERACTION_PHASE_ORDER } from '../../social/incomingInteracti
 import { socialConfig } from '../../social/socialConfig';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
+import { isDebugAccessGranted } from '../../utils/debugMode';
 import type { ForcedShockType, Phase } from '../../types';
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
 import './DebugPanel.css';
@@ -90,6 +92,7 @@ const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
 const INCOMING_BATCH_SIZE = 6;
 const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'doubleEviction', label: 'Double Elimination' },
+  { value: 'dayStartShock', label: 'Morning Shock' },
   { value: 'battleBack', label: 'Back 2 the Game' },
   { value: 'vip', label: 'Double Trouble Safety' },
   { value: 'diamond', label: 'Halo Exchange Safety' },
@@ -151,13 +154,15 @@ function buildScheduledInteraction(
 
 export default function DebugPanel() {
   const [searchParams] = useSearchParams();
-  const isDebug = searchParams.get('debug') === '1';
+  const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true;
+  const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname);
 
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
   const incomingLogs = useAppSelector(selectIncomingInteractionLogs);
 
-  const [isOpen, setIsOpen] = useState(() => searchParams.get('debug') === '1');
+  const [isOpen, setIsOpen] = useState(() => isDebug);
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
   const [selectedHoH, setSelectedHoH] = useState('');
   const [nominee1, setNominee1] = useState('');
@@ -348,6 +353,12 @@ export default function DebugPanel() {
                 </button>
                 <button className="dbg-btn dbg-btn--wide" onClick={() => dispatch(fastForwardToEviction())}>
                   Fast-fwd → Eviction
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(simulateImmediateEliminationCycle())}
+                >
+                  Simulate Elimination Cycle
                 </button>
               </div>
 
@@ -592,6 +603,20 @@ export default function DebugPanel() {
                   onClick={() => dispatch(resetGame())}
                 >
                   Reset Season
+                </button>
+              </div>
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() =>
+                    navigate({
+                      pathname: '/settingsatiste',
+                      search: searchParams.toString() ? `?${searchParams.toString()}` : '',
+                    })
+                  }
+                >
+                  Open Advanced Settings
                 </button>
               </div>
             </section>

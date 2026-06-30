@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 12px calc(var(--nav-bar-height) + 10px);
+  padding: 12px 12px calc(var(--nav-bar-height) + 10px + var(--safe-bottom));
 }
 
 .game-screen--compact-roster-balance {
@@ -111,7 +111,7 @@
 /* ── Dev: nomination animation debug button (dev builds only) ────────────── */
 .dev-nom-anim-btn {
   position: fixed;
-  bottom: calc(var(--nav-bar-height, 56px) + 8px);
+  bottom: calc(var(--nav-bar-height, 56px) + var(--safe-bottom) + 8px);
   left: 8px;
   z-index: 9000;
   padding: 6px 10px;

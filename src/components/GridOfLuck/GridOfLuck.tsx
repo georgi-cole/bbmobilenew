@@ -217,8 +217,9 @@ const STATUS_ICON_GROUPS = {
 
 const ELIMINATION_TYPES = new Set<BoxType>(['execution', 'martyrdom']);
 const HUMAN_PICK_DELAY_MS = 1200;
-const BOX_CHOICE_BEAT_MS = 450;
-const BOX_REVEAL_BEAT_MS = 650;
+const BOX_CHOICE_BEAT_MS = 600;
+const BOX_REVEAL_BEAT_MS = 850;
+const SCREEN_MODE_RESET_MS = 850;
 const MAX_CHAIN_DEPTH = 4;
 const MAX_GRID_OF_LUCK_PLAYERS = 10;
 const MARTYRDOM_ELIMINATION_DAMAGE = 10_000;
@@ -759,7 +760,7 @@ function applyEffectSelection(
       const gain = applyGain(nextState.players, actorId, amount);
       nextState.players = gain.players;
       floatingBursts = addBurst(floatingBursts, actorId, sourceBoxId, gain.applied);
-      message = actor.isHuman ? `You uncover a hidden bonus worth +${gain.applied} LP.` : `${actor.name} uncovers a hidden bonus worth +${gain.applied} LP.`;
+      message = actor.isHuman ? 'You uncover a hidden bonus.' : `${actor.name} uncovers a hidden bonus.`;
       break;
     }
     case 'lose150': {
@@ -1227,6 +1228,11 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     [state.gridBoxes],
   );
 
+  const ritualFeedEntries = useMemo(
+    () => state.recentEvents.slice(0, 4),
+    [state.recentEvents],
+  );
+
   const validTargets = useMemo(() => {
     if (!pendingSelection) return [];
     if (pendingSelection.step === 'martyr-curse') {
@@ -1324,7 +1330,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
 
   useEffect(() => {
     if (screenMode === 'idle') return undefined;
-    const timer = setTimeout(() => setScreenMode('idle'), 650);
+    const timer = setTimeout(() => setScreenMode('idle'), SCREEN_MODE_RESET_MS);
     return () => clearTimeout(timer);
   }, [screenMode]);
 
@@ -1641,7 +1647,6 @@ export default function GridOfLuck(props: GenericMinigameProps) {
               style={{ ['--event-color' as string]: eventCard.accent }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              key={`${turnMode}-${revealState?.boxId ?? 'none'}-${pendingSelection?.effectType ?? 'idle'}`}
             >
               <div className="grid-of-luck__event-topline">
                 <span className="grid-of-luck__event-badge">{eventCard.badge}</span>
@@ -1691,7 +1696,20 @@ export default function GridOfLuck(props: GenericMinigameProps) {
             </motion.div>
             <motion.div className="grid-of-luck__log-card" data-testid="grid-of-luck-ritual-feed">
               <span className="grid-of-luck__sidebar-label">Ritual feed</span>
-              <p className="grid-of-luck__log-entry">{state.recentEvents[0] ?? 'The chamber waits in silence.'}</p>
+              <ul className="grid-of-luck__log-list">
+                {ritualFeedEntries.length > 0 ? (
+                  ritualFeedEntries.map((entry, index) => (
+                    <li
+                      key={`${entry}-${index}`}
+                      className={`grid-of-luck__log-entry${index === 0 ? ' is-latest' : ''}`}
+                    >
+                      {entry}
+                    </li>
+                  ))
+                ) : (
+                  <li className="grid-of-luck__log-entry is-latest">The chamber waits in silence.</li>
+                )}
+              </ul>
             </motion.div>
           </motion.aside>
         </motion.section>

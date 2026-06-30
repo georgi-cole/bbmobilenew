@@ -5,6 +5,7 @@ import './styles/_ios-standalone-fixes.css'
 import './styles/_introhub-buttons.css'
 import './compat/legacySpectatorAdapter.js'
 import { applyDisplayModeClasses } from './utils/displayMode'
+import { applyVisualFreezeState } from './utils/visualFreeze'
 import { store } from './store/store'
 import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
@@ -17,6 +18,10 @@ import App from './App.tsx'
 // early as possible so CSS selectors in _ios-standalone-fixes.css and
 // _introhub-buttons.css are active before the first paint.
 applyDisplayModeClasses()
+
+// Visual QA freeze mode is route-driven and lets Playwright load a stable
+// screenshot-friendly version of the app without waiting on animations.
+applyVisualFreezeState()
 
 // Apply initial viewport zoom setting: when enableZoom is false (default),
 // prevent pinch-to-zoom for a fixed-layout feel.

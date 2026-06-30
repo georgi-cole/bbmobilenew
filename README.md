@@ -1,4 +1,4 @@
-# bbmobilenew — Big Brother AI Edition
+# The Big Eye
 
 A React + TypeScript + Vite mobile-first app.
 
@@ -38,6 +38,23 @@ npm run bootstrap
 npm run build      # output in dist/
 npm run preview    # preview the production build
 ```
+
+### Mobile builds
+
+For native Android/iOS builds, set the matching API base URL in:
+
+- `.env.android` using `VITE_ANDROID_API_BASE_URL`
+- `.env.ios` using `VITE_IOS_API_BASE_URL`
+
+Then build with:
+
+```bash
+npm run build:android
+npm run build:ios
+```
+
+These modes keep local development on `http://localhost:4000` but switch the
+packaged app to the real backend.
 
 ## GitHub Pages deployment
 
@@ -201,10 +218,29 @@ flatten `border-radius` on `<button>` elements, and ignore custom shadows.
 4. Inspect element styles and verify `html.is-standalone` class is present and
    the standalone-specific CSS rules are applied.
 
+### PO / QA: Fast elimination cycle
+
+Use the Debug Panel when you want to jump through a full elimination cycle without
+clicking every phase manually.
+
+1. Open the app with debug access enabled.
+2. Open the Debug Panel.
+3. Press `Simulate Elimination Cycle`.
+4. Check that the game advances through one full cycle and lands on the next stable week state.
+
+What this button does:
+
+- seeds social noise, incoming interactions, approval shifts, and relationship updates
+- resolves blocker states like save prompts, veto prompts, vote prompts, tie-breaks, and pending evictions
+- finalizes the elimination so you can continue testing the next phase immediately
+
+Use it for quick end-to-end sanity checks of old and new games, especially when you want to
+verify that the cycle still behaves realistically without manually playing through each step.
+
 
 
 The **Weekly Diary Room Log** feature lets admins record and publish a
-structured summary of each Big Brother game week. Guests can view published
+structured summary of each The Big Eye week. Guests can view published
 weeks; only admins may create, edit, or export unpublished drafts.
 
 ### Feature flag

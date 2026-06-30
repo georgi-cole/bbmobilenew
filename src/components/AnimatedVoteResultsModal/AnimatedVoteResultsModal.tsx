@@ -51,6 +51,8 @@ export interface AnimatedVoteResultsModalProps {
   nominees: VoteTally[];
   /** Pre-determined evictee; pass null to let the component detect ties. */
   evictee?: Player | null;
+  /** Optional list of evictee IDs for multi-eviction reveals such as double elimination. */
+  evicteeIds?: string[];
   onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
@@ -128,6 +130,7 @@ function buildVoteSequence(tallies: VoteTally[]): string[] {
 export default function AnimatedVoteResultsModal({
   nominees,
   evictee: evicteeProp = null,
+  evicteeIds,
   onTiebreakerRequired,
   publicTiebreak = null,
   onPublicTiebreakResolved,
@@ -181,6 +184,11 @@ export default function AnimatedVoteResultsModal({
 
   const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length;
   const isTied = tiedIds.length > 1;
+  const resolvedEvicteeIds = useMemo(() => {
+    if (evicteeIds && evicteeIds.length > 0) return new Set(evicteeIds);
+    return resolvedEvictee ? new Set([resolvedEvictee.id]) : new Set<string>();
+  }, [evicteeIds, resolvedEvictee]);
+  const showResolvedEvictees = variant === 'tv' ? allRevealed : outcomeVisible;
   const maxShownVotes = useMemo(
     () => Math.max(0, ...nominees.map((t) => displayedCounts[t.nominee.id] ?? 0)),
     [displayedCounts, nominees],
@@ -269,7 +277,7 @@ export default function AnimatedVoteResultsModal({
             <div className="avrm__tallies avrm__tallies--tv">
               {nominees.map((t, index) => {
                 const shown = displayedCounts[t.nominee.id] ?? 0;
-                const isEvictee = resolvedEvictee?.id === t.nominee.id;
+                const isEvictee = resolvedEvicteeIds.has(t.nominee.id);
                 const isPulsing = lastRevealedId === t.nominee.id;
                 const isLeading = outcomeVisible
                   ? isEvictee
@@ -287,7 +295,7 @@ export default function AnimatedVoteResultsModal({
                         'avrm__tally--visible',
                         'avrm__tally--tv',
                         nominees.length > 2 ? 'avrm__tally--tv-triple' : '',
-                        isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
+                        isEvictee && showResolvedEvictees ? 'avrm__tally--evictee' : '',
                         isLeading ? 'avrm__tally--leading' : '',
                         isPulsing ? 'avrm__tally--pulse' : '',
                       ]
@@ -316,7 +324,7 @@ export default function AnimatedVoteResultsModal({
           <div className="avrm__tallies">
             {nominees.map((t) => {
               const shown = displayedCounts[t.nominee.id] ?? 0;
-              const isEvictee = resolvedEvictee?.id === t.nominee.id;
+              const isEvictee = resolvedEvicteeIds.has(t.nominee.id);
               const isPulsing = lastRevealedId === t.nominee.id;
               return (
                 <div
@@ -324,7 +332,7 @@ export default function AnimatedVoteResultsModal({
                   className={[
                     'avrm__tally',
                     'avrm__tally--visible',
-                    isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
+                    isEvictee && showResolvedEvictees ? 'avrm__tally--evictee' : '',
                     isPulsing ? 'avrm__tally--pulse' : '',
                   ]
                     .filter(Boolean)

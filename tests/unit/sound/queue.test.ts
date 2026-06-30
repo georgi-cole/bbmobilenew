@@ -24,7 +24,7 @@ function resetSoundManager() {
     _desiredPerOwner: Record<string, unknown>;
     _currentBgmOwner: string | null;
     _lastPlayedAt: Map<string, number>;
-    _primedMusicEls: Map<string, HTMLAudioElement>;
+    _sfxPrimed: boolean;
   };
   sm._unlocked = false;
   sm._unlockHandler = null;
@@ -49,7 +49,7 @@ function resetSoundManager() {
   sm._desiredPerOwner = {};
   sm._currentBgmOwner = null;
   sm._lastPlayedAt = new Map();
-  sm._primedMusicEls = new Map();
+  sm._sfxPrimed = false;
 }
 
 beforeEach(() => {
@@ -198,80 +198,63 @@ describe('SoundManager music state machine', () => {
     expect(sm._musicEl?.preload).toBe('none');
   });
 
-  it('primes finale music tracks on unlock so later phase changes reuse those elements', async () => {
+  it('primes one reusable music element on unlock and reuses it for delayed phase music', async () => {
     const sm = SoundManager as unknown as {
-      _primedMusicEls: Map<string, HTMLAudioElement>;
+      _musicEl: HTMLAudioElement | null;
+      _primeSfxForMobile: () => void;
     };
-    const createSpy = vi.spyOn(document, 'createElement');
-
-    await SoundManager.setDesiredMusic('competition', 'initial');
+    vi.spyOn(sm, '_primeSfxForMobile').mockImplementation(() => {});
 
     SoundManager.unlockFromGesture();
     await Promise.resolve();
 
-    expect(sm._primedMusicEls.has('music:season_recap')).toBe(true);
-    expect(sm._primedMusicEls.has('music:jury_voting_bg')).toBe(true);
-    expect(sm._primedMusicEls.has('music:public_voting')).toBe(true);
-    expect(sm._primedMusicEls.has('music:final_modal')).toBe(true);
+    const primedEl = sm._musicEl;
+    expect(primedEl).toBeTruthy();
+    expect(SoundManager.currentMusicKey).toBeNull();
 
-    createSpy.mockClear();
+    const createSpy = vi.spyOn(document, 'createElement');
 
-    await SoundManager.setDesiredMusic('jury_voting', 'finale:revealVotes');
-
-    expect(createSpy).not.toHaveBeenCalled();
-    expect(SoundManager.currentMusicKey).toBe('music:jury_voting_bg');
-    expect(sm._primedMusicEls.get('music:jury_voting_bg')).toBe(
-      (SoundManager as unknown as { _musicEl: HTMLAudioElement | null })._musicEl,
-    );
-
-    createSpy.mockClear();
-
-    await SoundManager.setDesiredMusic('final_modal', 'route:game-over');
+    await SoundManager.setDesiredMusic('competition', 'phase-after-route');
 
     expect(createSpy).not.toHaveBeenCalled();
-    expect(SoundManager.currentMusicKey).toBe('music:final_modal');
-    expect(sm._primedMusicEls.get('music:final_modal')).toBe(
-      (SoundManager as unknown as { _musicEl: HTMLAudioElement | null })._musicEl,
-    );
+    expect(SoundManager.currentMusicKey).toBe('music:hoh_comp_general');
+    expect(sm._musicEl).toBe(primedEl);
   });
 
-  it('does not let a late priming callback pause a reused finale track', async () => {
+  it('reuses the same unlocked music element across phase changes', async () => {
     const sm = SoundManager as unknown as {
       _unlocked: boolean;
-      _primeMusicForMobile: () => void;
-      _primedMusicEls: Map<string, HTMLAudioElement>;
+      _musicEl: HTMLAudioElement | null;
     };
     sm._unlocked = true;
 
-    let finalModalPlayCount = 0;
-    let resolvePrimingPlay!: () => void;
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLAudioElement) {
-      const src = this.getAttribute('src') ?? this.src ?? '';
-      if (/Final(?:%20| )modal sound\.mp3/.test(src)) {
-        finalModalPlayCount += 1;
-        if (finalModalPlayCount === 1) {
-          return new Promise<void>((resolve) => {
-            resolvePrimingPlay = resolve;
-          });
-        }
-      }
-      return Promise.resolve();
-    });
+    await SoundManager.setDesiredMusic('competition', 'phase');
+    const firstEl = sm._musicEl;
 
-    sm._primeMusicForMobile();
-    const primedFinalModalEl = sm._primedMusicEls.get('music:final_modal');
-    expect(primedFinalModalEl).toBeTruthy();
+    await SoundManager.setDesiredMusic('jury_voting', 'finale:revealVotes');
 
-    await SoundManager.setDesiredMusic('final_modal', 'route:game-over');
-    expect(SoundManager.currentMusicKey).toBe('music:final_modal');
-    primedFinalModalEl!.currentTime = 12;
+    expect(firstEl).toBeTruthy();
+    expect(sm._musicEl).toBe(firstEl);
+    expect(SoundManager.currentMusicKey).toBe('music:jury_voting_bg');
+  });
 
-    resolvePrimingPlay();
+  it('does not mark SFX failed when mobile priming play is rejected', async () => {
+    const sm = SoundManager as unknown as {
+      _failedKeys: Set<string>;
+      _primeMusicForMobile: () => void;
+      _sfxPrimed: boolean;
+    };
+    const notAllowed = new DOMException('blocked', 'NotAllowedError');
+    vi.spyOn(sm, '_primeMusicForMobile').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(notAllowed);
+
+    SoundManager.unlockFromGesture();
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(primedFinalModalEl!.currentTime).toBe(12);
-    expect(SoundManager.currentMusicKey).toBe('music:final_modal');
+    expect(sm._sfxPrimed).toBe(true);
+    expect(sm._failedKeys.size).toBe(0);
   });
 
   it('honours finale music loop metadata for public voting and the final modal', async () => {
