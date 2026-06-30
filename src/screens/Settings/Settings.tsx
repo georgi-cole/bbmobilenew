@@ -8,6 +8,7 @@ import {
   setGameUX,
   type ThemePreset,
   type SettingsState,
+  type CompactRosterLayout,
 } from '../../store/settingsSlice';
 import './Settings.css';
 
@@ -44,9 +45,19 @@ type DropdownItem = {
 
 type SettingItem = ToggleItem | DropdownItem;
 
+type CompactRosterItem = {
+  type: 'compact-roster';
+  id: string;
+  label: string;
+  getEnabled: (s: SettingsState) => boolean;
+  getLayout: (s: SettingsState) => CompactRosterLayout;
+  onToggle: (dispatch: AppDispatch, val: boolean) => void;
+  onLayoutChange: (dispatch: AppDispatch, val: CompactRosterLayout) => void;
+};
+
 interface SettingSection {
   id: string;
-  items: SettingItem[];
+  items: Array<SettingItem | CompactRosterItem>;
 }
 
 // ── Sections config ────────────────────────────────────────────────────────────
@@ -129,6 +140,20 @@ const SECTIONS: SettingSection[] = [
       },
     ],
   },
+  {
+    id: 'gameux',
+    items: [
+      {
+        type: 'compact-roster',
+        id: 'compact-roster',
+        label: 'Compact Roster',
+        getEnabled: (s) => s.gameUX.compactRoster,
+        getLayout: (s) => s.gameUX.compactRosterLayout,
+        onToggle: (dispatch, val) => dispatch(setGameUX({ compactRoster: val })),
+        onLayoutChange: (dispatch, val) => dispatch(setGameUX({ compactRosterLayout: val })),
+      },
+    ],
+  },
 ];
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -179,6 +204,65 @@ export default function Settings() {
     }
   }
 
+  function renderCompactRosterItem(item: CompactRosterItem) {
+    const enabled = item.getEnabled(settings);
+    const layout = item.getLayout(settings);
+    const options: { id: CompactRosterLayout; label: string; description: string }[] = [
+      {
+        id: 'slider',
+        label: 'Horizontal slider',
+        description: 'Show every avatar in one scrollable row.',
+      },
+      {
+        id: 'small',
+        label: 'Smaller tiles',
+        description: 'Keep the roster grid but shrink each tile to about half size.',
+      },
+      {
+        id: 'two-rows',
+        label: '2 rows of 8 avatars',
+        description: 'Spread the roster across two wide rows.',
+      },
+    ];
+
+    return (
+      <div key={item.id} className="settings-row settings-row--col">
+        <div className="settings-row settings-row--nested">
+          <label className="settings-row__label">{item.label}</label>
+          <input
+            type="checkbox"
+            className="settings-toggle"
+            checked={enabled}
+            onChange={(e) => item.onToggle(dispatch, e.target.checked)}
+            aria-label={`Toggle ${item.label.toLowerCase()}`}
+          />
+        </div>
+        {enabled && (
+          <div className="settings-choice-group" aria-label="Compact roster layout">
+            {options.map((option) => {
+              const selected = layout === option.id;
+              return (
+                <label
+                  key={option.id}
+                  className={`settings-choice ${selected ? 'settings-choice--active' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="compact-roster-layout-basic"
+                    checked={selected}
+                    onChange={() => item.onLayoutChange(dispatch, option.id)}
+                  />
+                  <span className="settings-choice__title">{option.label}</span>
+                  <span className="settings-choice__description">{option.description}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="settings-screen settings-screen--basic">
       <header className="settings-screen__header">
@@ -195,7 +279,9 @@ export default function Settings() {
       <div className="settings-content settings-content--flat">
         {SECTIONS.map((section) => (
           <section key={section.id} className="settings-section">
-            {section.items.map(renderItem)}
+            {section.items.map((item) =>
+              item.type === 'compact-roster' ? renderCompactRosterItem(item) : renderItem(item),
+            )}
           </section>
         ))}
       </div>

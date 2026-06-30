@@ -22,6 +22,7 @@ export interface SettingsState {
   gameUX: {
     confirmMajorActions: boolean;
     showTooltips: boolean;
+    /** Enables the denser roster presentation when screens are constrained. */
     compactRoster: boolean;
     compactRosterLayout: CompactRosterLayout;
     useHaptics: boolean;

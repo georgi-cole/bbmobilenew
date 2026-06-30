@@ -168,6 +168,32 @@ describe('Settings screen', () => {
     });
   });
 
+  it('shows compact roster controls in the standard settings screen', async () => {
+    const { store } = renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/toggle compact roster/i)).toBeTruthy();
+    });
+
+    const compactRosterToggle = screen.getByLabelText(/toggle compact roster/i);
+    if (!(compactRosterToggle as HTMLInputElement).checked) {
+      fireEvent.click(compactRosterToggle);
+    }
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/compact roster layout/i)).toBeTruthy();
+    });
+
+    const compactRosterLayoutGroup = screen.getByLabelText(/compact roster layout/i);
+    expect(within(compactRosterLayoutGroup).getAllByRole('radio')).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole('radio', { name: /2 rows of 8 avatars/i }));
+
+    await waitFor(() => {
+      expect(store.getState().settings.gameUX.compactRosterLayout).toBe('two-rows');
+    });
+  });
+
   it('loads the requested default Game UX configuration for a fresh store', async () => {
     renderSettingsAdmin();
 
