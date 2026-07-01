@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import NavBar from './NavBar';
+import SafeGameViewport from './SafeGameViewport';
 import DebugPanel from '../DebugPanel/DebugPanel';
 import FinalFaceoff from '../FinalFaceoff/FinalFaceoff';
 import SeasonFinaleOverlay from '../SeasonFinale/SeasonFinaleOverlay';
@@ -84,19 +85,21 @@ export default function AppShell() {
   }, [settings.gameUX.animations]);
 
   return (
-    <div className="app-shell">
-      <main className="app-shell__main">
-        <Outlet />
-      </main>
-      <NavBar />
-      <DebugPanel />
-      {/* Mount FinalFaceoff when entering jury so it can initialise the finale.
-          Also remount it for the rare recovery case where jury voting already
-          completed but the season finale overlay has not started yet. */}
-      {phase === 'jury' &&
-        seasonFinale == null &&
-        (finale.isActive || !finale.hasStarted || finale.isComplete) && <FinalFaceoff />}
-      {seasonFinale && <SeasonFinaleOverlay />}
-    </div>
+    <SafeGameViewport>
+      <div className="app-shell">
+        <main className="app-shell__main">
+          <Outlet />
+        </main>
+        <NavBar />
+        <DebugPanel />
+        {/* Mount FinalFaceoff when entering jury so it can initialise the finale.
+            Also remount it for the rare recovery case where jury voting already
+            completed but the season finale overlay has not started yet. */}
+        {phase === 'jury' &&
+          seasonFinale == null &&
+          (finale.isActive || !finale.hasStarted || finale.isComplete) && <FinalFaceoff />}
+        {seasonFinale && <SeasonFinaleOverlay />}
+      </div>
+    </SafeGameViewport>
   );
 }
