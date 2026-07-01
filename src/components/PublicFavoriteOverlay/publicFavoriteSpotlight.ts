@@ -2,12 +2,13 @@ import { getById } from '../../data/houseguests';
 import type { Houseguest } from '../../types/houseguest';
 import type { Player } from '../../types';
 
-export const SPOTLIGHT_ROTATION_MS = 4000;
-
 export interface HouseguestSpotlightItem {
   player: Player;
   facts: string[];
 }
+
+const SPOTLIGHT_ROTATION_MIN_MS = 3000;
+const SPOTLIGHT_ROTATION_MAX_MS = 5000;
 
 function cleanText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
@@ -79,6 +80,12 @@ export function buildHouseguestSpotlightItems(candidates: Player[]): HouseguestS
       facts: facts.length > 0 ? facts : [`${profile.name} remains one of the houseguests to watch.`],
     };
   });
+}
+
+export function getSpotlightRotationDelayMs(fact: string): number {
+  const wordCount = Math.max(1, fact.split(/\s+/).filter(Boolean).length);
+  const scaledDelay = 3000 + Math.min(2000, Math.max(0, (wordCount - 8) * 110));
+  return Math.max(SPOTLIGHT_ROTATION_MIN_MS, Math.min(SPOTLIGHT_ROTATION_MAX_MS, scaledDelay));
 }
 
 export function selectSpotlightItem(
