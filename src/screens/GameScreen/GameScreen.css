@@ -1,14 +1,16 @@
 /* GameScreen */
 .game-screen {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 12px calc(var(--nav-bar-height) + 10px + var(--safe-bottom));
+  min-height: 100%;
+  padding: 12px 12px calc(var(--nav-bar-height) + 10px);
 }
 
 .game-screen--compact-roster-balance {
   box-sizing: border-box;
-  min-height: calc(100dvh - 84px);
+  min-height: calc(100% - 84px);
 }
 
 .game-screen--compact-roster-balance > .tv-zone {
@@ -110,8 +112,8 @@
 
 /* ── Dev: nomination animation debug button (dev builds only) ────────────── */
 .dev-nom-anim-btn {
-  position: fixed;
-  bottom: calc(var(--nav-bar-height, 56px) + var(--safe-bottom) + 8px);
+  position: absolute;
+  bottom: calc(var(--nav-bar-height, 56px) + 8px);
   left: 8px;
   z-index: 9000;
   padding: 6px 10px;
