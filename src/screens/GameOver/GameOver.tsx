@@ -12,17 +12,36 @@ import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
 import { DEFAULT_WEIGHTS } from '../../scoring/weights';
 import { SoundManager } from '../../services/sound/SoundManager';
 import { buildAftermathStories } from './aftermath';
+import { buildSeasonRecapData } from '../../components/SeasonRecapCinematic/seasonRecapData';
+import type { PublicOpinionState } from '../../publicOpinion/types';
 import './GameOver.css';
 
 const CAROUSEL_INTERVAL_MS = 5000;
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
 
-/** Build PlayerSeasonSummary array from current player state - pure (no Date.now). */
-function buildSummaries(players: Player[], favoriteWinnerId: string | null, week: number): PlayerSeasonSummary[] {
+function buildTitleMap(
+  players: Player[],
+  week: number,
+  publicOpinion: PublicOpinionState | null | undefined,
+): Map<string, string[]> {
+  const titlesByPlayerId = new Map<string, string[]>();
+  buildSeasonRecapData(players, week, publicOpinion).categories.forEach((category) => {
+    const existing = titlesByPlayerId.get(category.winner.id) ?? [];
+    existing.push(category.name);
+    titlesByPlayerId.set(category.winner.id, existing);
+  });
+  return titlesByPlayerId;
+}
+
+function buildSummaries(
+  players: Player[],
+  favoriteWinnerId: string | null,
+  week: number,
+  publicOpinion: PublicOpinionState | null | undefined,
+): PlayerSeasonSummary[] {
+  const titlesByPlayerId = buildTitleMap(players, week, publicOpinion);
+
   return players.map((p) => {
-    // Only players with status 'jury' are actual jury members.
-    // The winner (finalRank=1) and runner-up (finalRank=2) are NOT jury members
-    // and should not receive the madeJury bonus.
     const madeJury = p.status === 'jury';
     const lohWins = p.stats?.lohWins ?? 0;
     const posWins = p.stats?.posWins ?? 0;
@@ -30,16 +49,13 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null, week
     const battleBackWins = p.stats?.battleBackWins ?? 0;
     const wonPublicFavorite = favoriteWinnerId != null && p.id === favoriteWinnerId;
     const wonFinalHoh = p.stats?.wonFinalHoh ?? false;
-    // The internal `week` counter now represents in-game days, so archive the
-    // survival duration as daysAlive. Keep weeksAlive populated too as a
-    // backwards-compatible fallback for any older consumers still reading it.
     const daysAlive = p.evictedAtWeek ?? week;
     const survivedDoubleEviction = p.stats?.survivedDoubleEviction ?? false;
 
     const summary: PlayerSeasonSummary = {
       playerId: p.id,
       displayName: p.name,
-      finalPlacement: p.finalRank ?? null,
+      finalPlacement: p.finalRank ?? p.seasonPlacement ?? null,
       isEvicted: p.status === 'evicted' || p.status === 'jury',
       lohWins,
       posWins,
@@ -53,6 +69,8 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null, week
       daysAlive,
       weeksAlive: daysAlive,
       survivedDoubleEviction: survivedDoubleEviction ? true : undefined,
+      finalPublicApproval: publicOpinion?.profiles[p.id]?.approval,
+      titlesWon: titlesByPlayerId.get(p.id) ?? [],
       leaderboardScore: 0,
     };
     summary.leaderboardScore = computeLeaderboardScore(summary, DEFAULT_WEIGHTS);
@@ -60,7 +78,6 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null, week
   });
 }
 
-/** Build a SeasonArchive from pre-computed summaries - called only from event handlers. */
 function buildArchive(season: number, summaries: PlayerSeasonSummary[]): SeasonArchive {
   return {
     seasonIndex: season,
@@ -80,10 +97,9 @@ export default function GameOver() {
   const week = useAppSelector((s) => s.game.week);
   const seasonArchives = useAppSelector((s) => s.game.seasonArchives ?? []);
   const favoriteWinnerId = useAppSelector((s) => s.game.favoritePlayer?.winnerId ?? null);
+  const publicOpinion = useAppSelector((s) => s.publicOpinion);
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
-  // Use a ref so the guard is synchronously readable and prevents double-archiving
-  // even if the button is clicked multiple times before React re-renders.
   const archivedRef = useRef(false);
 
   const [carouselSlide, setCarouselSlide] = useState(0);
@@ -92,16 +108,13 @@ export default function GameOver() {
 
   const winner = players.find((p) => p.isWinner) ?? players.find((p) => p.finalRank === 1);
   const runnerUp = players.find((p) => p.finalRank === 2);
-
-  // Compute per-player summaries (pure - no impure calls)
-  const summaries = buildSummaries(players, favoriteWinnerId, week);
+  const summaries = buildSummaries(players, favoriteWinnerId, week, publicOpinion);
 
   const seasonLeaderboard = computeSeasonLeaderboard(summaries, DEFAULT_WEIGHTS).slice(0, 5);
   const allTimeLeaderboard = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS).slice(0, 5);
   const aftermathStories = useMemo(() => buildAftermathStories(players, season), [players, season]);
   const activeStory = aftermathStories[storyIndex] ?? aftermathStories[0];
 
-  // Auto-advance carousel
   useEffect(() => {
     const id = setInterval(() => {
       setCarouselSlide((s) => (s + 1) % 3);
@@ -118,8 +131,6 @@ export default function GameOver() {
 
   function startNewSeason() {
     archiveCompletedSeason();
-    // Clear any stale mid-season snapshot so the Play prompt won't offer
-    // to resume an outdated save after the season has been completed.
     if (!isGuest && activeProfileId) {
       clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
     }
@@ -130,8 +141,6 @@ export default function GameOver() {
 
   function exitToHome() {
     archiveCompletedSeason();
-    // Clear any stale mid-season snapshot so HomeHub does not offer to resume
-    // a season that has already been completed.
     if (!isGuest && activeProfileId) {
       clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
     }
@@ -176,9 +185,7 @@ export default function GameOver() {
         <h1 className="gameover-title">Season Complete</h1>
         <p className="gameover-sub">Thanks for playing - here are the results</p>
 
-        {/* -- Carousel -- */}
         <div className="gameover-carousel" aria-live="polite">
-          {/* Slide 0: Winner / Runner-up */}
           <div
             className={`gameover-carousel__slide${carouselSlide === 0 ? ' gameover-carousel__slide--active' : ''}`}
           >
@@ -195,7 +202,6 @@ export default function GameOver() {
             )}
           </div>
 
-          {/* Slide 1: Season top 5 */}
           <div
             className={`gameover-carousel__slide${carouselSlide === 1 ? ' gameover-carousel__slide--active' : ''}`}
           >
@@ -211,7 +217,6 @@ export default function GameOver() {
             </ul>
           </div>
 
-          {/* Slide 2: All-time top 5 */}
           <div
             className={`gameover-carousel__slide${carouselSlide === 2 ? ' gameover-carousel__slide--active' : ''}`}
           >
@@ -228,7 +233,6 @@ export default function GameOver() {
           </div>
         </div>
 
-        {/* -- Carousel dots -- */}
         <div className="gameover-carousel__dots">
           {[0, 1, 2].map((i) => (
             <button

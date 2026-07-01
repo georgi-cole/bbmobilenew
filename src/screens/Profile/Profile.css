@@ -6,7 +6,6 @@
   padding-bottom: 40px;
 }
 
-/* Header card */
 .profile-screen__header {
   display: flex;
   align-items: center;
@@ -63,7 +62,6 @@
   white-space: nowrap;
 }
 
-/* Guest banner */
 .profile-screen__guest-banner {
   background: rgba(255, 180, 60, 0.08);
   border: 1px solid rgba(255, 180, 60, 0.2);
@@ -100,8 +98,10 @@
   text-decoration: underline;
 }
 
-/* Game status chips */
-.profile-screen__status-card {
+.profile-screen__status-card,
+.profile-screen__bio-card,
+.profile-screen__stats-card,
+.profile-screen__titles-card {
   background: linear-gradient(180deg, #0d1728, #091220);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 14px;
@@ -124,18 +124,53 @@
   gap: 7px;
 }
 
-.profile-screen__no-game {
-  font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.35);
+.profile-screen__hold-pill {
+  touch-action: manipulation;
+  user-select: none;
 }
 
-/* Bio card */
-.profile-screen__bio-card {
-  background: linear-gradient(180deg, #0d1728, #091220);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 14px;
+.profile-screen__hold-pill--revealed {
+  align-items: flex-start;
+  min-width: 160px;
+  padding: 8px 12px;
+  white-space: normal;
+}
+
+.profile-screen__hold-pill-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.profile-screen__hold-pill-caption {
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.profile-screen__hold-pill-value {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.profile-screen__hold-pill-hint {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.86;
+}
+
+.profile-screen__no-game,
+.profile-screen__empty-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .profile-screen__bio-story {
@@ -166,15 +201,6 @@
   font-weight: 600;
 }
 
-/* Stats card */
-.profile-screen__stats-card {
-  background: linear-gradient(180deg, #0d1728, #091220);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 14px;
-}
-
 .profile-screen__stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -199,9 +225,36 @@
   letter-spacing: 0.04em;
 }
 
-/* Switch profile button */
+.profile-screen__titles-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-screen__title-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(107, 183, 255, 0.12);
+  border: 1px solid rgba(107, 183, 255, 0.22);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.profile-screen__title-count {
+  color: rgba(107, 183, 255, 0.92);
+}
+
 .profile-screen__switch-btn {
   width: 100%;
   color: rgba(255, 255, 255, 0.8);
 }
 
+@media (max-width: 480px) {
+  .profile-screen__stats-grid {
+    gap: 8px;
+  }
+}

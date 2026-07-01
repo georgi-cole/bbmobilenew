@@ -38,6 +38,10 @@ export interface PlayerSeasonSummary {
   weeksAlive?: number;
   /** True if the player was evicted at some point (including jury). */
   isEvicted?: boolean;
+  /** Final public approval captured when the season ended. */
+  finalPublicApproval?: number;
+  /** Wrap-up titles this player won in the season recap. */
+  titlesWon?: string[];
   /** Computed total leaderboard score using the scoring module weights. */
   leaderboardScore?: number;
 }
