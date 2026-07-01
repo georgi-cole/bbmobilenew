@@ -1,23 +1,24 @@
 /* MinigameHost.css */
 .minigame-host {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  --minigame-safe-top: var(--app-safe-area-top);
-  --minigame-safe-right: var(--safe-right);
-  --minigame-safe-bottom: var(--safe-bottom);
-  --minigame-safe-left: var(--safe-left);
-  --minigame-safe-padding-top: calc(var(--minigame-safe-top) + clamp(10px, 2.8vw, 18px));
-  --minigame-safe-padding-right: calc(var(--minigame-safe-right) + clamp(10px, 2.6vw, 18px));
-  --minigame-safe-padding-bottom: calc(var(--minigame-safe-bottom) + clamp(10px, 2.6vw, 18px));
-  --minigame-safe-padding-left: calc(var(--minigame-safe-left) + clamp(10px, 2.6vw, 18px));
-  --minigame-stage-top-gap: clamp(56px, 12vh, 92px);
-  --minigame-stage-top-padding: calc(var(--minigame-safe-top) + var(--minigame-stage-top-gap));
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  --minigame-safe-top: 0px;
+  --minigame-safe-right: 0px;
+  --minigame-safe-bottom: 0px;
+  --minigame-safe-left: 0px;
+  --minigame-safe-padding-top: clamp(10px, 2.8vw, 18px);
+  --minigame-safe-padding-right: clamp(10px, 2.6vw, 18px);
+  --minigame-safe-padding-bottom: clamp(10px, 2.6vw, 18px);
+  --minigame-safe-padding-left: clamp(10px, 2.6vw, 18px);
+  --minigame-stage-top-gap: clamp(56px, 12%, 92px);
+  --minigame-stage-top-padding: var(--minigame-stage-top-gap);
   --safe-top: var(--minigame-safe-top);
   --safe-right: var(--minigame-safe-right);
   --safe-bottom: var(--minigame-safe-bottom);
   --safe-left: var(--minigame-safe-left);
-  --floating-corner-top-base: 14px;
-  --floating-corner-top-safe-padding: 12px;
   background: #0d0d1a;
   display: flex;
   flex-direction: column;
@@ -35,7 +36,7 @@
   gap: 16px;
   width: 100%;
   max-width: 32rem;
-  max-height: 100dvh;
+  max-height: 100%;
   padding:
     var(--minigame-stage-top-padding)
     var(--minigame-safe-padding-right)
@@ -76,6 +77,9 @@
 .minigame-host-playing {
   position: absolute;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -98,7 +102,7 @@
 }
 
 .minigame-host-playing > .pp .pp__card {
-  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100% - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .qtr {
@@ -120,7 +124,7 @@
 .minigame-host-playing > .qtr-canvas .qtr-canvas__card {
   max-height: min(
     760px,
-    calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom) - 24px)
+    calc(100% - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom) - 24px)
   );
 }
 
@@ -141,7 +145,7 @@
 }
 
 .minigame-host-playing > .bbl .bbl__card {
-  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100% - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .tbg {
@@ -153,7 +157,7 @@
 }
 
 .minigame-host-playing > .tbg .tbg__card {
-  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100% - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .snake-root {
@@ -165,8 +169,8 @@
 }
 
 .minigame-host-playing > .snake-root .snake-phone {
-  height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
-  max-height: calc(100dvh - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
+  height: calc(100% - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
+  max-height: calc(100% - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
 }
 
 .minigame-host-playing > .cm {
@@ -250,8 +254,9 @@
   gap: 12px;
   width: 100%;
   max-width: 460px;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   padding:
     var(--minigame-stage-top-padding)
     max(24px, var(--minigame-safe-padding-right))
@@ -444,12 +449,9 @@
 }
 
 .minigame-host-close-btn {
-  --floating-corner-top-base: 12px;
-  --floating-corner-right-base: 14px;
-  --floating-corner-right-safe-padding: 14px;
   position: absolute;
-  top: var(--floating-corner-top-offset);
-  right: var(--floating-corner-right-offset);
+  top: 12px;
+  right: 14px;
   z-index: 9600;
   width: 36px;
   height: 36px;
