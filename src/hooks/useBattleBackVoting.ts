@@ -33,6 +33,8 @@ interface Options {
   eliminationIntervalMs?: number;
   /** Tick interval for percentage drift in ms. Default: 400. */
   tickIntervalMs?: number;
+  /** Strength of each drift tick. Lower values create calmer vote swings. */
+  driftAmount?: number;
   /** Optional temporary momentum boost for a single active candidate. */
   surgeTargetId?: string | null;
 }
@@ -155,6 +157,7 @@ export function useBattleBackVoting({
   seed,
   eliminationIntervalMs = 3500,
   tickIntervalMs = 400,
+  driftAmount = 5,
   surgeTargetId = null,
 }: Options): BattleBackVoteState {
   const rngRef = useRef(mulberry32(seed));
@@ -208,13 +211,13 @@ export function useBattleBackVoting({
         pcts: driftPercentages(
           pctsRef.current,
           rngRef.current,
-          5,
+          driftAmount,
           currentSurgeIndex >= 0 ? currentSurgeIndex : null,
         ),
       });
     }, tickIntervalMs);
     return () => clearInterval(id);
-  }, [state.isComplete, tickIntervalMs]);
+  }, [state.isComplete, tickIntervalMs, driftAmount]);
 
   // ── Elimination tick ─────────────────────────────────────────────────────
   const eliminateLowest = useCallback(() => {
