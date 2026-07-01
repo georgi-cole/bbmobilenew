@@ -608,7 +608,7 @@ export default function Profile() {
               className="profile-screen__guest-link"
               onClick={() => navigate('/profile-picker')}
             >
-              Create a profile to save progress ->
+              Create a profile to save progress -&gt;
             </button>
           </p>
         </div>
