@@ -10,12 +10,12 @@
 }
 
 .minigame-lab__panel {
-  position: fixed;
+  position: absolute;
   top: 16px;
   left: 16px;
   z-index: 9601;
-  width: min(92vw, 392px);
-  max-height: calc(100dvh - 32px);
+  width: min(92%, 392px);
+  max-height: calc(100% - 32px);
   overflow: auto;
   padding: 18px;
   border-radius: 24px;
@@ -197,7 +197,7 @@
     right: 12px;
     bottom: 12px;
     width: auto;
-    max-height: 46dvh;
+    max-height: 46%;
     padding: 16px;
   }
 
