@@ -550,13 +550,14 @@
 
 .src-category-plaque {
   position: absolute;
-  right: 50%;
+  left: 50%;
+  right: auto;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
-  transform: translateX(50%);
+  transform: translateX(-50%);
   z-index: 4;
   display: grid;
   gap: 0.2rem;
-  width: min(78vw, 390px);
+  width: min(calc(100vw - 48px), 390px);
   padding: 0.9rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
@@ -570,6 +571,8 @@
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .src-category-plaque__stat {
@@ -578,6 +581,8 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(238, 233, 255, 0.76);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .src-scene--ladder-intro,
@@ -697,6 +702,42 @@
 
   .src-tabloid-card__photo {
     min-height: 250px;
+  }
+
+  .src-category-header {
+    top: max(76px, calc(env(safe-area-inset-top, 0px) + 40px));
+    left: 18px;
+    right: 18px;
+    max-width: none;
+    text-align: center;
+  }
+
+  .src-category-stage {
+    top: 188px;
+    right: 18px;
+    bottom: 128px;
+    left: 18px;
+  }
+
+  .src-category-cutout {
+    width: min(86vw, 360px);
+    height: min(56dvh, 500px);
+    max-height: min(60dvh, 540px);
+    min-height: min(390px, calc(100dvh - 360px));
+  }
+
+  .src-category-plaque {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    width: min(calc(100vw - 32px), 320px);
+    padding: 0.82rem 0.9rem;
+  }
+
+  .src-category-plaque__name {
+    font-size: 1.08rem;
+  }
+
+  .src-category-plaque__stat {
+    font-size: 0.8rem;
   }
 }
 
