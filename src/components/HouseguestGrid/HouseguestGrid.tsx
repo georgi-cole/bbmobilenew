@@ -1,10 +1,19 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
+import { useAppSelector } from '../../store/hooks'
 import type { CompactRosterLayout } from '../../store/settingsSlice'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
+
+type RoboStatsSummary = {
+  daysInGame?: number | null
+  lohWins?: number | null
+  posWins?: number | null
+  averageLohRank?: number | null
+  averagePosRank?: number | null
+}
 
 export type Houseguest = {
   id: string | number
@@ -13,13 +22,7 @@ export type Houseguest = {
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
-  roboStats?: {
-    daysInGame?: number | null
-    lohWins?: number | null
-    posWins?: number | null
-    averageLohRank?: number | null
-    averagePosRank?: number | null
-  }
+  roboStats?: RoboStatsSummary
   /**
    * Called when the user has held their finger down long enough to trigger the
    * hold-preview threshold. The caller should show a transient profile preview.
@@ -84,6 +87,10 @@ const DEFAULT_FOOTER_HEIGHT = 60
 /** Extra vertical margin subtracted from available height */
 const GRID_VERTICAL_MARGIN = 4
 
+function buildSurvivorRoboStatsById(game: ReturnType<typeof useAppSelector> extends never ? never : unknown) {
+  return game
+}
+
 export default function HouseguestGrid({
   houseguests,
   showCountInHeader = false,
@@ -97,6 +104,26 @@ export default function HouseguestGrid({
   occupancyLabel,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
+  const game = useAppSelector((s) => s.game)
+  const survivorRoboStatsById = useMemo(() => {
+    const statsById = new Map<string, RoboStatsSummary>()
+    if (game.mode !== 'survivor') return statsById
+    const currentDay = game.modeSpecific?.kind === 'survivor'
+      ? game.modeSpecific.currentDay
+      : game.week
+    game.players.forEach((player) => {
+      if (!player.isRobo) return
+      const entryDay = player.survivorEntryDay ?? 1
+      statsById.set(player.id, {
+        daysInGame: Math.max(1, currentDay - entryDay + 1),
+        lohWins: player.stats?.lohWins ?? 0,
+        posWins: player.stats?.posWins ?? 0,
+        averageLohRank: null,
+        averagePosRank: null,
+      })
+    })
+    return statsById
+  }, [game.mode, game.modeSpecific, game.players, game.week])
 
   useEffect(() => {
     function setAvailableHeight() {
@@ -186,26 +213,29 @@ export default function HouseguestGrid({
       </div>
 
       <ul className={listClassName} role="list">
-        {houseguests.map((hg) => (
-          <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
-            <AvatarTile
-              name={hg.name}
-              avatarUrl={hg.avatarUrl}
-              isEvicted={hg.isEvicted}
-              isYou={hg.isYou}
-              onClick={hg.onClick}
-              roboStats={hg.roboStats}
-              onHoldPreviewStart={hg.onHoldPreviewStart}
-              onHoldPreviewEnd={hg.onHoldPreviewEnd}
-              statuses={hg.statuses}
-              finalRank={hg.finalRank}
-              showPermanentBadge={hg.showPermanentBadge}
-              layoutId={hg.layoutId}
-              isEvicting={hg.isEvicting}
-              nominationCeremonyState={hg.nominationCeremonyState}
-            />
-          </li>
-        ))}
+        {houseguests.map((hg) => {
+          const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
+          return (
+            <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
+              <AvatarTile
+                name={hg.name}
+                avatarUrl={hg.avatarUrl}
+                isEvicted={hg.isEvicted}
+                isYou={hg.isYou}
+                onClick={hg.onClick}
+                roboStats={resolvedRoboStats}
+                onHoldPreviewStart={hg.onHoldPreviewStart}
+                onHoldPreviewEnd={hg.onHoldPreviewEnd}
+                statuses={hg.statuses}
+                finalRank={hg.finalRank}
+                showPermanentBadge={hg.showPermanentBadge}
+                layoutId={hg.layoutId}
+                isEvicting={hg.isEvicting}
+                nominationCeremonyState={hg.nominationCeremonyState}
+              />
+            </li>
+          )
+        })}
         {Array.from({ length: placeholderCount }).map((_, i) => (
           <li key={`placeholder-${i}`} className={`${itemClassName} ${styles.hgTileInactive}`}>
             <img
