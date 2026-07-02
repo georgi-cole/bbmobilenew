@@ -49,6 +49,9 @@ export default function TVLog({
   mobileTwoLineMode = false,
 }: TVLogProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const isSurvivorLog = entries.some((event) => event.meta?.mode === 'survivor');
+  const effectiveMaxVisible = isSurvivorLog ? Math.max(maxVisible, 5) : maxVisible;
+  const effectiveMobileTwoLineMode = isSurvivorLog ? false : mobileTwoLineMode;
 
   // Suppress the first entry when its text duplicates the main viewport message.
   const visible = useMemo(
@@ -75,8 +78,8 @@ export default function TVLog({
     <ul
       className="tv-log"
       data-testid="tv-feed"
-      data-mobile-two-line={mobileTwoLineMode ? 'true' : undefined}
-      style={{ '--tv-log-max-vis': maxVisible } as React.CSSProperties}
+      data-mobile-two-line={effectiveMobileTwoLineMode ? 'true' : undefined}
+      style={{ '--tv-log-max-vis': effectiveMaxVisible } as React.CSSProperties}
       aria-label="Game event log"
     >
       {visible.map((ev) => {

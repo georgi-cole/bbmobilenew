@@ -15,6 +15,9 @@ export interface GameControlDockProps {
   onToolClick?: () => void;
   disabled?: boolean;
   primaryDisabled?: boolean;
+  socialDisabled?: boolean;
+  incomingRequestsDisabled?: boolean;
+  publicMeterDisabled?: boolean;
   chatBadgeCount?: number;
   /** Extra class name for the flash animation on chat node */
   chatFlash?: boolean;
@@ -44,6 +47,9 @@ export default function GameControlDock({
   onToolClick,
   disabled = false,
   primaryDisabled = false,
+  socialDisabled = false,
+  incomingRequestsDisabled = false,
+  publicMeterDisabled = false,
   chatBadgeCount,
   chatFlash = false,
   incomingRequestsBadgeCount,
@@ -57,6 +63,9 @@ export default function GameControlDock({
 }: GameControlDockProps) {
   const shellSrc = assetUrl('fab_shell_clean.svg');
   const playSrc = assetUrl('fab_center_play_clean.svg');
+  const socialUnavailableClass = socialDisabled ? ' dock-hit-area--unavailable' : '';
+  const requestsUnavailableClass = incomingRequestsDisabled ? ' dock-hit-area--unavailable' : '';
+  const publicUnavailableClass = publicMeterDisabled ? ' dock-hit-area--unavailable' : '';
 
   return (
     <div
@@ -79,21 +88,21 @@ export default function GameControlDock({
         draggable={false}
       />
       <img
-        className={`game-control-dock__icon fab-icon social${chatFlash ? ' game-control-dock__icon--flash' : ''}`}
+        className={`game-control-dock__icon fab-icon social${chatFlash ? ' game-control-dock__icon--flash' : ''}${socialDisabled ? ' game-control-dock__icon--unavailable' : ''}`}
         src={assetUrl('fab_icon_social_clean.svg')}
         alt=""
         aria-hidden="true"
         draggable={false}
       />
       <img
-        className="game-control-dock__icon fab-icon requests"
+        className={`game-control-dock__icon fab-icon requests${incomingRequestsDisabled ? ' game-control-dock__icon--unavailable' : ''}`}
         src={assetUrl('fab_icon_requests_clean.svg')}
         alt=""
         aria-hidden="true"
         draggable={false}
       />
       <img
-        className="game-control-dock__icon fab-icon stats"
+        className={`game-control-dock__icon fab-icon stats${publicMeterDisabled ? ' game-control-dock__icon--unavailable' : ''}`}
         src={assetUrl('fab_icon_stats_clean.svg')}
         alt=""
         aria-hidden="true"
@@ -109,26 +118,28 @@ export default function GameControlDock({
       />
 
       <button
-        className={`dock-hit-area hit-social dock-hit-area--social${chatFlash ? ' dock-hit-area--flash dock-node--flash' : ''}`}
+        className={`dock-hit-area hit-social dock-hit-area--social${chatFlash ? ' dock-hit-area--flash dock-node--flash' : ''}${socialUnavailableClass}`}
         type="button"
         aria-label={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
+        aria-disabled={socialDisabled || disabled}
         disabled={disabled}
         onClick={disabled ? undefined : onChatClick}
       >
-        {chatBadgeCount != null && chatBadgeCount > 0 && (
+        {chatBadgeCount != null && chatBadgeCount > 0 && !socialDisabled && (
           <span className="dock-hit-area__badge" aria-hidden="true">
             {chatBadgeCount > 99 ? '99+' : chatBadgeCount}
           </span>
         )}
       </button>
       <button
-        className="dock-hit-area hit-requests dock-hit-area--requests"
+        className={`dock-hit-area hit-requests dock-hit-area--requests${requestsUnavailableClass}`}
         type="button"
         aria-label={`Incoming requests${incomingRequestsBadgeCount ? ` (${incomingRequestsBadgeCount})` : ''}`}
+        aria-disabled={incomingRequestsDisabled || disabled}
         disabled={disabled}
         onClick={disabled ? undefined : onIncomingRequestsClick}
       >
-        {incomingRequestsBadgeCount != null && incomingRequestsBadgeCount > 0 && (
+        {incomingRequestsBadgeCount != null && incomingRequestsBadgeCount > 0 && !incomingRequestsDisabled && (
           <span className="dock-hit-area__badge" aria-hidden="true">
             {incomingRequestsBadgeCount > 99 ? '99+' : incomingRequestsBadgeCount}
           </span>
@@ -142,13 +153,14 @@ export default function GameControlDock({
         onClick={primaryDisabled ? undefined : onPrimaryActionClick}
       />
       <button
-        className="dock-hit-area hit-stats dock-hit-area--stats"
+        className={`dock-hit-area hit-stats dock-hit-area--stats${publicUnavailableClass}`}
         type="button"
         aria-label={`Public meter${publicMeterBadgeCount ? ` (${publicMeterBadgeCount})` : ''}`}
+        aria-disabled={publicMeterDisabled || disabled}
         disabled={disabled}
         onClick={disabled ? undefined : onPublicMeterClick}
       >
-        {publicMeterBadgeCount != null && publicMeterBadgeCount > 0 && (
+        {publicMeterBadgeCount != null && publicMeterBadgeCount > 0 && !publicMeterDisabled && (
           <span className="dock-hit-area__badge" aria-hidden="true">
             {publicMeterBadgeCount > 99 ? '99+' : publicMeterBadgeCount}
           </span>

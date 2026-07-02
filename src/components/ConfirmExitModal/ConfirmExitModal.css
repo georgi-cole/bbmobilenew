@@ -38,3 +38,13 @@
 .confirm-modal__btn {
   min-width: 112px;
 }
+
+.confirm-modal__btn--danger {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.38);
+}
+
+.confirm-modal__btn--danger:hover {
+  background: rgba(127, 29, 29, 0.32);
+  color: #fee2e2;
+}
