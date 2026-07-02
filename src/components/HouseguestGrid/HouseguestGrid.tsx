@@ -13,6 +13,13 @@ export type Houseguest = {
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
+  roboStats?: {
+    daysInGame?: number | null
+    lohWins?: number | null
+    posWins?: number | null
+    averageLohRank?: number | null
+    averagePosRank?: number | null
+  }
   /**
    * Called when the user has held their finger down long enough to trigger the
    * hold-preview threshold. The caller should show a transient profile preview.
@@ -187,6 +194,7 @@ export default function HouseguestGrid({
               isEvicted={hg.isEvicted}
               isYou={hg.isYou}
               onClick={hg.onClick}
+              roboStats={hg.roboStats}
               onHoldPreviewStart={hg.onHoldPreviewStart}
               onHoldPreviewEnd={hg.onHoldPreviewEnd}
               statuses={hg.statuses}
