@@ -17,6 +17,7 @@ import {
 } from '../../store/selectors';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import {
+  getBlockedSocialModuleAnnouncementMessage,
   getSocialModuleAvailability,
   type SocialModuleAvailability,
   logBlockedSocialModuleOpen,
@@ -25,6 +26,8 @@ import GameControlDock from '../GameControlDock/GameControlDock';
 import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay';
 
 const CONFESSIONAL_FLASH_DURATION_MS = 1800;
+const SURVIVOR_DISABLED_MESSAGE_MS = 5000;
+const SURVIVOR_PUBLIC_MODE_MESSAGE = 'Public mode is available in Classic campaign mode only.';
 
 type FloatingActionBarProps = {
   /** Called when the player activates Public Meter while public mode is disabled. */
@@ -60,6 +63,7 @@ export default function FloatingActionBar({
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
+  const isSurvivorMode = game.mode === 'survivor';
 
   const humanPlayer = players.find((p) => p.isUser);
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null;
@@ -77,6 +81,7 @@ export default function FloatingActionBar({
 
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);
+  const [blockedAnnouncement, setBlockedAnnouncement] = useState<{ id: number; message: string } | null>(null);
   const prevEnergyRef = useRef(humanEnergy);
   useEffect(() => {
     if (humanEnergy === null || humanEnergy === prevEnergyRef.current) {
@@ -92,6 +97,19 @@ export default function FloatingActionBar({
       clearTimeout(flashOff);
     };
   }, [humanEnergy]);
+
+  useEffect(() => {
+    if (!blockedAnnouncement) return undefined;
+    const timeout = window.setTimeout(() => {
+      setBlockedAnnouncement((current) => (current?.id === blockedAnnouncement.id ? null : current));
+    }, SURVIVOR_DISABLED_MESSAGE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [blockedAnnouncement]);
+
+  const showSurvivorBlockedMessage = useCallback((message: string | null) => {
+    if (!message) return;
+    setBlockedAnnouncement({ id: Date.now(), message });
+  }, []);
 
   const [isConfessionalFlashing, setIsConfessionalFlashing] = useState(false);
   const [confessionalFlashTick, setConfessionalFlashTick] = useState(0);
@@ -151,11 +169,22 @@ export default function FloatingActionBar({
         socialModuleAvailability,
         'FloatingActionBar chat button',
       );
+      if (isSurvivorMode) {
+        showSurvivorBlockedMessage(getBlockedSocialModuleAnnouncementMessage(socialModuleAvailability));
+        return;
+      }
       onSocialModuleBlocked?.(socialModuleAvailability);
       return;
     }
     dispatch(openSocialPanel());
-  }, [canUseSocialModules, dispatch, onSocialModuleBlocked, socialModuleAvailability]);
+  }, [
+    canUseSocialModules,
+    dispatch,
+    isSurvivorMode,
+    onSocialModuleBlocked,
+    showSurvivorBlockedMessage,
+    socialModuleAvailability,
+  ]);
 
   const handleIncomingRequestsClick = useCallback(() => {
     if (!canUseSocialModules) {
@@ -164,11 +193,22 @@ export default function FloatingActionBar({
         socialModuleAvailability,
         'FloatingActionBar incoming requests button',
       );
+      if (isSurvivorMode) {
+        showSurvivorBlockedMessage(getBlockedSocialModuleAnnouncementMessage(socialModuleAvailability));
+        return;
+      }
       onSocialModuleBlocked?.(socialModuleAvailability);
       return;
     }
     dispatch(openIncomingInbox());
-  }, [canUseSocialModules, dispatch, onSocialModuleBlocked, socialModuleAvailability]);
+  }, [
+    canUseSocialModules,
+    dispatch,
+    isSurvivorMode,
+    onSocialModuleBlocked,
+    showSurvivorBlockedMessage,
+    socialModuleAvailability,
+  ]);
 
   const dispatchPlayPressedEvent = useCallback(() => {
     try {
@@ -179,6 +219,7 @@ export default function FloatingActionBar({
   }, []);
 
   const handlePrimaryActionClick = useCallback(() => {
+    setBlockedAnnouncement(null);
     if (hasPendingConfessionalDecision) {
       setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey);
       setConfessionalFlashTick((tick) => tick + 1);
@@ -208,14 +249,30 @@ export default function FloatingActionBar({
 
   const handlePublicMeterClick = useCallback(() => {
     if (game.publicModeEnabled !== true) {
+      if (isSurvivorMode) {
+        showSurvivorBlockedMessage(SURVIVOR_PUBLIC_MODE_MESSAGE);
+        return;
+      }
       onPublicMeterBlocked?.();
       return;
     }
     navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter');
-  }, [game.publicModeEnabled, navigate, onPublicMeterBlocked, publicRequestCount]);
+  }, [
+    game.publicModeEnabled,
+    isSurvivorMode,
+    navigate,
+    onPublicMeterBlocked,
+    publicRequestCount,
+    showSurvivorBlockedMessage,
+  ]);
 
   return (
     <>
+      {blockedAnnouncement && (
+        <div className="floating-action-bar__blocked-message" role="status" aria-live="polite">
+          {blockedAnnouncement.message}
+        </div>
+      )}
       <GameControlDock
         onChatClick={handleChatClick}
         onIncomingRequestsClick={handleIncomingRequestsClick}
