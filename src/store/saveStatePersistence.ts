@@ -74,6 +74,11 @@ function getRunId(snapshot: SavedSeasonSnapshot | undefined): string | null {
   return snapshot?.game.runId ?? snapshot?.game.gameId ?? null;
 }
 
+function isRunSnapshotResumable(snapshot: SavedSeasonSnapshot | undefined): snapshot is SavedSeasonSnapshot {
+  if (!snapshot) return false;
+  return snapshot.game.status !== 'completed' && snapshot.game.status !== 'failed';
+}
+
 function getSurvivorBestDay(snapshot: SavedSeasonSnapshot | undefined): number {
   if (!snapshot || snapshot.game.mode !== 'survivor') return 0;
   const modeSpecific = snapshot.game.modeSpecific?.kind === 'survivor'
@@ -96,6 +101,8 @@ function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>
   if (parsed.version !== 2 || parsed.profileId !== profileId) return null;
   const classic = coerceSnapshot(parsed.runs?.classic, profileId) ?? undefined;
   const survivor = coerceSnapshot(parsed.runs?.survivor, profileId) ?? undefined;
+  const resumableClassic = isRunSnapshotResumable(classic) ? classic : undefined;
+  const resumableSurvivor = isRunSnapshotResumable(survivor) ? survivor : undefined;
   const maxSurvivorDaysSurvived = Math.max(
     typeof parsed.stats?.maxSurvivorDaysSurvived === 'number' ? parsed.stats.maxSurvivorDaysSurvived : 0,
     getSurvivorBestDay(survivor),
@@ -107,8 +114,8 @@ function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>
     activeRunId: typeof parsed.activeRunId === 'string' ? parsed.activeRunId : null,
     lastPlayedRunId: typeof parsed.lastPlayedRunId === 'string' ? parsed.lastPlayedRunId : null,
     runs: {
-      ...(classic ? { classic } : {}),
-      ...(survivor ? { survivor } : {}),
+      ...(resumableClassic ? { classic: resumableClassic } : {}),
+      ...(resumableSurvivor ? { survivor: resumableSurvivor } : {}),
     },
     stats: { maxSurvivorDaysSurvived },
   };
@@ -192,15 +199,18 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
   const survivorBest = mode === 'survivor'
     ? Math.max(current.stats.maxSurvivorDaysSurvived, getSurvivorBestDay(snapshot))
     : current.stats.maxSurvivorDaysSurvived;
+  const nextRuns = { ...current.runs };
+  if (isRunSnapshotResumable(snapshot)) {
+    nextRuns[mode] = snapshot;
+  } else {
+    delete nextRuns[mode];
+  }
   const next: SavedRunProfile = {
     ...current,
     savedAt: snapshot.savedAt,
-    activeRunId: runId,
-    lastPlayedRunId: runId,
-    runs: {
-      ...current.runs,
-      [mode]: snapshot,
-    },
+    activeRunId: isRunSnapshotResumable(snapshot) ? runId : null,
+    lastPlayedRunId: isRunSnapshotResumable(snapshot) ? runId : current.lastPlayedRunId,
+    runs: nextRuns,
     stats: {
       ...current.stats,
       maxSurvivorDaysSurvived: survivorBest,

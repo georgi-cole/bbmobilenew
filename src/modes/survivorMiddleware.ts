@@ -126,6 +126,37 @@ function withNormalizedSurvivorCast(game: GameState): GameState | null {
   };
 }
 
+function withSurvivorFailureIfHumanEvicted(game: GameState, evicteeId: string): GameState | null {
+  if (game.mode !== 'survivor') return null;
+  const evictee = game.players.find((player) => player.id === evicteeId);
+  if (!evictee?.isUser || !isExited(evictee)) return null;
+
+  const modeSpecific = getSurvivorState(game);
+  const currentDay = Math.max(modeSpecific.currentDay, game.week);
+  const gameOverEvent: TvEvent = {
+    id: `survivor-failed-${game.runId ?? game.gameId}-${currentDay}`,
+    text: `Survivor run ended. You were eliminated on Day ${currentDay}.`,
+    type: 'game',
+    timestamp: Date.now(),
+    meta: { phase: game.phase, week: game.week, mode: 'survivor' },
+  };
+
+  return {
+    ...game,
+    status: 'failed',
+    modeSpecific: {
+      ...modeSpecific,
+      currentDay,
+      bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
+      startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
+    },
+    pendingEviction: undefined,
+    voteResults: null,
+    lastPlayedAt: Date.now(),
+    tvFeed: [gameOverEvent, ...game.tvFeed].slice(0, 50),
+  };
+}
+
 function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState | null {
   if (game.mode !== 'survivor' || !shouldReplaceEvictedPlayers(game.mode)) return null;
   const evicteeIndex = game.players.findIndex((player) => player.id === evicteeId);
@@ -227,12 +258,20 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   drainSurvivorSocial(storeApi, game, typedAction.type);
 
   if (typedAction.type === 'game/finalizePendingEviction' && typeof typedAction.payload === 'string') {
+    const failedGame = withSurvivorFailureIfHumanEvicted(game, typedAction.payload);
+    if (failedGame) {
+      storeApi.dispatch(hydrateGame(failedGame));
+      return result;
+    }
+
     const nextGame = withReplacementIfNeeded(game, typedAction.payload);
     if (nextGame) {
       storeApi.dispatch(hydrateGame(nextGame));
       return result;
     }
   }
+
+  if (game.status === 'failed' || game.status === 'completed') return result;
 
   const normalized = withNormalizedSurvivorCast((storeApi.getState() as { game: GameState }).game);
   if (normalized) {

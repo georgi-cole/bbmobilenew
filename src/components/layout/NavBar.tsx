@@ -21,6 +21,11 @@ export default function NavBar() {
   const dispatch = useAppDispatch();
   const reduxStore = useStore<RootState>();
   const isGameOverRoute = pathname.startsWith('/game-over');
+  const isActiveGameplayRoute =
+    pathname === '/game' ||
+    pathname.startsWith('/game/') ||
+    pathname.startsWith('/diary-room') ||
+    pathname.startsWith('/public-meter');
 
   // Heuristic: treat the game as "active/in-progress" when either we're past
   // week 1 or the phase is not the initial 'week_start'. This mirrors the
@@ -37,7 +42,7 @@ export default function NavBar() {
   if (pathname === '/' || pathname.startsWith('/credits')) return null;
 
   function handleHomeClick() {
-    if (!isGameActive) {
+    if (!isGameActive || !isActiveGameplayRoute) {
       navigate('/');
       return;
     }
