@@ -33,6 +33,25 @@ function isExited(player: Player | undefined): boolean {
   return player?.status === 'evicted' || player?.status === 'jury';
 }
 
+function isTerminalActionBlocked(actionType?: string): boolean {
+  return Boolean(
+    actionType &&
+    (SURVIVOR_BLOCKED_TERMINAL_ACTIONS.has(actionType) || actionType.startsWith('challenge/')),
+  );
+}
+
+function needsSurvivorTerminalHydration(game: GameState): boolean {
+  return isSurvivorHumanEliminated(game) && (
+    game.status !== 'failed' ||
+    game.pendingEviction != null ||
+    game.voteResults != null ||
+    game.awaitingHumanVote === true ||
+    game.awaitingTieBreak === true ||
+    game.pendingMinigame != null ||
+    game.minigameResult != null
+  );
+}
+
 function getSurvivorState(game: GameState): SurvivorModeState {
   return game.modeSpecific?.kind === 'survivor'
     ? game.modeSpecific
@@ -220,10 +239,9 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   if (
     stateBefore.game.mode === 'survivor' &&
     isSurvivorRunTerminal(stateBefore.game) &&
-    typedAction.type &&
-    SURVIVOR_BLOCKED_TERMINAL_ACTIONS.has(typedAction.type)
+    isTerminalActionBlocked(typedAction.type)
   ) {
-    if (isSurvivorHumanEliminated(stateBefore.game) && stateBefore.game.status !== 'failed') {
+    if (needsSurvivorTerminalHydration(stateBefore.game)) {
       storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(stateBefore.game)));
     }
     return undefined;
@@ -251,13 +269,7 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   if (game.mode !== 'survivor') return result;
 
   if (isSurvivorHumanEliminated(game)) {
-    const needsTerminalHydration =
-      game.status !== 'failed' ||
-      game.pendingEviction != null ||
-      game.voteResults != null ||
-      game.awaitingHumanVote === true ||
-      game.awaitingTieBreak === true;
-    if (needsTerminalHydration) {
+    if (needsSurvivorTerminalHydration(game)) {
       storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(game)));
     }
     return result;
