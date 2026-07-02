@@ -3,7 +3,8 @@ import type { GameState, Player, TvEvent } from '../types';
 import type { SurvivorModeState } from './modeTypes';
 import { advance, consumeForcedShock, finalizePendingEviction, hydrateGame } from '../store/gameSlice';
 import { getDefaultCompetitionSeasonState } from '../ai/competition';
-import { buildReplacementRobo, createSurvivorModeState } from './survivorRun';
+import { drainEvictedPlayerSocial } from '../social/socialSlice';
+import { buildReplacementRobo, createSurvivorModeState, SURVIVOR_STARTING_CAST_SIZE } from './survivorRun';
 import { isSocialModeEnabled, shouldReplaceEvictedPlayers } from './gameModes';
 
 const SURVIVOR_BLOCKED_SHOCK_ACTIONS = new Set([
@@ -21,7 +22,108 @@ function isExited(player: Player | undefined): boolean {
 function getSurvivorState(game: GameState): SurvivorModeState {
   return game.modeSpecific?.kind === 'survivor'
     ? game.modeSpecific
-    : createSurvivorModeState(game.players.filter((player) => !isExited(player)).length);
+    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
+}
+
+function withSurvivorCompetitionState(
+  game: GameState,
+  players: Player[],
+): GameState['competitionSeasonStateByPlayerId'] {
+  const previous = game.competitionSeasonStateByPlayerId ?? {};
+  return Object.fromEntries(
+    players.map((player) => [
+      player.id,
+      previous[player.id] ?? getDefaultCompetitionSeasonState(),
+    ]),
+  );
+}
+
+function normalizeSurvivorPlayer(player: Player, slot: number, currentDay: number): Player {
+  if (player.isUser) {
+    return {
+      ...player,
+      status: isExited(player) ? player.status : 'active',
+      isUser: true,
+      isRobo: false,
+      survivorEntryDay: player.survivorEntryDay ?? 1,
+      survivorSlot: 0,
+    };
+  }
+
+  return {
+    ...player,
+    status: 'active',
+    isRobo: true,
+    survivorEntryDay: player.survivorEntryDay ?? currentDay,
+    survivorSlot: player.survivorSlot ?? slot,
+    stats: player.stats ?? { lohWins: 0, posWins: 0, timesNominated: 0 },
+  };
+}
+
+function withNormalizedSurvivorCast(game: GameState): GameState | null {
+  if (game.mode !== 'survivor') return null;
+
+  const modeSpecific = getSurvivorState(game);
+  const currentDay = Math.max(modeSpecific.currentDay, game.week);
+  const human = game.players.find((player) => player.isUser);
+  if (!human) return null;
+
+  const targetRoboCount = SURVIVOR_STARTING_CAST_SIZE - 1;
+  const activeRobos = game.players.filter((player) => !player.isUser && !isExited(player));
+  const keptRobos = activeRobos.slice(0, targetRoboCount).map((player, index) => (
+    normalizeSurvivorPlayer(player, index + 1, currentDay)
+  ));
+
+  let nextRoboIndex = Math.max(modeSpecific.nextRoboIndex, targetRoboCount);
+  while (keptRobos.length < targetRoboCount) {
+    const replacement = buildReplacementRobo(
+      {
+        ...game,
+        modeSpecific: {
+          ...modeSpecific,
+          currentDay,
+          startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
+          nextRoboIndex,
+        },
+      },
+      keptRobos.length + 1,
+    );
+    keptRobos.push(replacement);
+    nextRoboIndex += 1;
+  }
+
+  const players = [normalizeSurvivorPlayer(human, 0, currentDay), ...keptRobos];
+  const validIds = new Set(players.map((player) => player.id));
+  const normalizedModeSpecific: SurvivorModeState = {
+    ...modeSpecific,
+    currentDay,
+    bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
+    startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
+    nextRoboIndex,
+  };
+
+  const unchanged =
+    game.players.length === players.length &&
+    game.players.every((player, index) => player.id === players[index]?.id) &&
+    modeSpecific.startingCastSize === SURVIVOR_STARTING_CAST_SIZE &&
+    modeSpecific.nextRoboIndex === nextRoboIndex &&
+    modeSpecific.currentDay === currentDay &&
+    game.players.every((player) => player.survivorEntryDay != null && player.survivorSlot != null);
+
+  if (unchanged) return null;
+
+  return {
+    ...game,
+    players,
+    lohId: game.lohId && validIds.has(game.lohId) ? game.lohId : null,
+    prevHohId: game.prevHohId && validIds.has(game.prevHohId) ? game.prevHohId : null,
+    posWinnerId: game.posWinnerId && validIds.has(game.posWinnerId) ? game.posWinnerId : null,
+    nomineeIds: game.nomineeIds.filter((id) => validIds.has(id)),
+    povProtectedIds: game.povProtectedIds?.filter((id) => validIds.has(id)) ?? [],
+    competitionSeasonStateByPlayerId: withSurvivorCompetitionState(game, players),
+    modeSpecific: normalizedModeSpecific,
+    lastPlayedAt: Date.now(),
+  };
 }
 
 function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState | null {
@@ -32,9 +134,9 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
 
   const modeSpecific = getSurvivorState(game);
   const activeCastSize = game.players.filter((player) => !isExited(player)).length;
-  if (activeCastSize >= modeSpecific.startingCastSize) return null;
+  if (activeCastSize >= SURVIVOR_STARTING_CAST_SIZE) return null;
 
-  const replacement = buildReplacementRobo(game);
+  const replacement = buildReplacementRobo(game, evictee.survivorSlot ?? evicteeIndex);
   const nextCompetitionState = {
     ...(game.competitionSeasonStateByPlayerId ?? {}),
     [replacement.id]: getDefaultCompetitionSeasonState(),
@@ -58,6 +160,7 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
       ...modeSpecific,
       currentDay,
       bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
+      startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
       totalRoboContestantsEvicted,
       nextRoboIndex: modeSpecific.nextRoboIndex + 1,
     },
@@ -71,11 +174,16 @@ function withSurvivorDaySync(game: GameState): GameState | null {
   const modeSpecific = getSurvivorState(game);
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const bestDayReached = Math.max(modeSpecific.bestDayReached, currentDay);
-  if (currentDay === modeSpecific.currentDay && bestDayReached === modeSpecific.bestDayReached) return null;
+  if (
+    currentDay === modeSpecific.currentDay &&
+    bestDayReached === modeSpecific.bestDayReached &&
+    modeSpecific.startingCastSize === SURVIVOR_STARTING_CAST_SIZE
+  ) return null;
   return {
     ...game,
     modeSpecific: {
       ...modeSpecific,
+      startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
       currentDay,
       bestDayReached,
     },
@@ -83,9 +191,24 @@ function withSurvivorDaySync(game: GameState): GameState | null {
   };
 }
 
+function drainSurvivorSocial(storeApi: Parameters<Middleware>[0], game: GameState, actionType?: string) {
+  if (actionType === drainEvictedPlayerSocial.type) return;
+  const humanPlayer = game.players.find((player) => player.isUser);
+  if (!humanPlayer) return;
+  storeApi.dispatch(drainEvictedPlayerSocial({ playerId: humanPlayer.id, week: game.week }));
+}
+
 export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) => {
   const typedAction = action as { type?: string; payload?: unknown };
   const stateBefore = storeApi.getState() as { game: GameState };
+
+  if (
+    stateBefore.game.mode === 'survivor' &&
+    typedAction.type?.startsWith('social/') &&
+    typedAction.type !== drainEvictedPlayerSocial.type
+  ) {
+    return undefined;
+  }
 
   if (stateBefore.game.mode === 'survivor' && typedAction.type && SURVIVOR_BLOCKED_SHOCK_ACTIONS.has(typedAction.type)) {
     if (stateBefore.game.pendingForcedShock?.type && stateBefore.game.pendingForcedShock.type !== 'doubleEviction') {
@@ -99,6 +222,14 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   const game = stateAfter.game;
 
   if (game.mode !== 'survivor') return result;
+
+  drainSurvivorSocial(storeApi, game, typedAction.type);
+
+  const normalized = withNormalizedSurvivorCast(game);
+  if (normalized) {
+    storeApi.dispatch(hydrateGame(normalized));
+    return result;
+  }
 
   if (typedAction.type === 'game/finalizePendingEviction' && typeof typedAction.payload === 'string') {
     const nextGame = withReplacementIfNeeded(game, typedAction.payload);
