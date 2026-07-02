@@ -8,7 +8,6 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(3px);
   animation: ad-prompt-fadein 0.18s ease;
 }
 

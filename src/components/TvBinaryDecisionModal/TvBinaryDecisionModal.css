@@ -21,13 +21,6 @@
   animation: tvbmFadeIn 0.22s ease;
 }
 
-@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
-  .tv-binary-modal {
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-}
-
 @keyframes tvbmFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }

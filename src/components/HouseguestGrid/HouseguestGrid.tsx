@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
@@ -173,7 +173,7 @@ export default function HouseguestGrid({
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = previousHouseguestsRef.current
     previousHouseguestsRef.current = houseguests
 

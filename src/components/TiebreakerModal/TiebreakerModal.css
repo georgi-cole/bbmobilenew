@@ -14,10 +14,6 @@
   animation: tbmFadeIn 0.3s ease;
 }
 
-@supports (backdrop-filter: blur(6px)) {
-  .tbm { backdrop-filter: blur(6px); }
-}
-
 @keyframes tbmFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
