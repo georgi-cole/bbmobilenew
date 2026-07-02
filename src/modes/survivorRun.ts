@@ -9,7 +9,7 @@ const ROBO_NAMES = [
 ];
 
 const SAVE_VERSION = 2;
-const SURVIVOR_STARTING_CAST_SIZE = 9;
+export const SURVIVOR_STARTING_CAST_SIZE = 8;
 
 function makeRunId(mode: 'classic' | 'survivor'): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -22,7 +22,7 @@ function robotAvatar(seed: string): string {
   return `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(seed)}`;
 }
 
-function buildRoboPlayer(index: number, runId: string): Player {
+function buildRoboPlayer(index: number, runId: string, entryDay = 1, slot = index + 1): Player {
   const name = ROBO_NAMES[index % ROBO_NAMES.length];
   const suffix = Math.floor(index / ROBO_NAMES.length);
   const displayName = suffix > 0 ? `${name}-${suffix + 1}` : name;
@@ -33,6 +33,9 @@ function buildRoboPlayer(index: number, runId: string): Player {
     avatar: robotAvatar(id),
     status: 'active',
     isRobo: true,
+    survivorEntryDay: entryDay,
+    survivorSlot: slot,
+    stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
     competitionProfile: getDefaultCompetitionProfile(),
   };
 }
@@ -62,8 +65,8 @@ export function createSurvivorRun(): GameState {
   const human = base.players.find((player) => player.isUser) ?? base.players[0];
   const startingCastSize = SURVIVOR_STARTING_CAST_SIZE;
   const players = [
-    { ...human, id: 'user', status: 'active' as const, isUser: true, isRobo: false },
-    ...Array.from({ length: startingCastSize - 1 }, (_, index) => buildRoboPlayer(index, runId)),
+    { ...human, id: 'user', status: 'active' as const, isUser: true, isRobo: false, survivorEntryDay: 1, survivorSlot: 0 },
+    ...Array.from({ length: startingCastSize - 1 }, (_, index) => buildRoboPlayer(index, runId, 1, index + 1)),
   ];
   const now = Date.now();
   const modeSpecific = createSurvivorModeState(startingCastSize);
@@ -92,7 +95,7 @@ export function createSurvivorRun(): GameState {
     tvFeed: [
       {
         id: 'survivor-e0',
-        text: 'Survivor Mode online. Nine contestants enter; synthetic replacements keep the board full after every robo eviction.',
+        text: 'Survivor Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.',
         type: 'game',
         timestamp: now,
         meta: { phase: 'week_start', week: 1, mode: 'survivor' },
@@ -108,23 +111,30 @@ export function createSurvivorRun(): GameState {
   };
 }
 
-export function buildReplacementRobo(state: GameState): Player {
+export function buildReplacementRobo(state: GameState, slot?: number): Player {
   const survivorState = state.modeSpecific?.kind === 'survivor'
     ? state.modeSpecific
-    : createSurvivorModeState(state.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length + 1);
-  return buildRoboPlayer(survivorState.nextRoboIndex, state.runId ?? state.gameId);
+    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
+  const currentDay = Math.max(survivorState.currentDay, state.week);
+  return buildRoboPlayer(
+    survivorState.nextRoboIndex,
+    state.runId ?? state.gameId,
+    currentDay,
+    slot ?? survivorState.nextRoboIndex + 1,
+  );
 }
 
 export function markSurvivorDay(state: GameState): GameState {
   if (state.mode !== 'survivor') return state;
   const modeSpecific = state.modeSpecific?.kind === 'survivor'
     ? state.modeSpecific
-    : createSurvivorModeState(state.players.length);
+    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
   const currentDay = Math.max(modeSpecific.currentDay, state.week);
   return {
     ...state,
     modeSpecific: {
       ...modeSpecific,
+      startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
       currentDay,
       bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
     },
