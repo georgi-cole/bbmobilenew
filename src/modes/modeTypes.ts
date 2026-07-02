@@ -34,11 +34,15 @@ export type GameRunState = BaseGameState & {
 
 export type RoboPlayer = BasePlayer & {
   isRobo?: boolean;
+  survivorEntryDay?: number;
+  survivorSlot?: number;
 };
 
 declare module '../types' {
   interface Player {
     isRobo?: boolean;
+    survivorEntryDay?: number;
+    survivorSlot?: number;
   }
 
   interface GameState {
