@@ -223,6 +223,9 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
     typedAction.type &&
     SURVIVOR_BLOCKED_TERMINAL_ACTIONS.has(typedAction.type)
   ) {
+    if (isSurvivorHumanEliminated(stateBefore.game) && stateBefore.game.status !== 'failed') {
+      storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(stateBefore.game)));
+    }
     return undefined;
   }
 
