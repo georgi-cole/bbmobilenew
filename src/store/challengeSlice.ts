@@ -16,7 +16,7 @@ import {
 } from '../ai/competition';
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
 import { getBracketPoolForContext } from '../ai/competition/bracketTemplate';
-import { applyCompetitionSeasonUpdate, selectAlivePlayers } from './gameSlice';
+import { applyCompetitionSeasonUpdate, hydrateGame, selectAlivePlayers } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
@@ -196,6 +196,39 @@ export const startChallenge =
       if (pool.length > 0) return selectFromPool(pool);
       return pickRandomGame(gameSeed, { category, excludeKeys });
     };
+    const pickSurvivorGame = (category?: GameCategory, excludeKeys?: string[]) => {
+      const pool = getPoolByFilter({ retired: false, category, excludeKeys });
+      const modeSpecific = state.game.modeSpecific?.kind === 'survivor'
+        ? state.game.modeSpecific
+        : null;
+      if (pool.length === 0 || !modeSpecific) return pickFromRegistry(category, excludeKeys);
+
+      const usedKeys = modeSpecific.competitionRotation.usedKeys ?? [];
+      const used = new Set(usedKeys);
+      let available = pool.filter((game) => !used.has(game.key));
+      let nextUsedKeys = usedKeys;
+      let nextRound = modeSpecific.competitionRotation.round ?? 1;
+
+      if (available.length === 0) {
+        available = pool;
+        nextUsedKeys = [];
+        nextRound += 1;
+      }
+
+      const selected = selectFromPool(available);
+      dispatch(hydrateGame({
+        ...state.game,
+        modeSpecific: {
+          ...modeSpecific,
+          competitionRotation: {
+            usedKeys: [...nextUsedKeys, selected.key],
+            round: nextRound,
+          },
+        },
+        lastPlayedAt: Date.now(),
+      }));
+      return selected;
+    };
     const getBracketTemplatePool = (excludeKeys?: string[]) => {
       const bracketCompType =
         opts.prizeType === 'LOH' || opts.prizeType === 'POS'
@@ -219,6 +252,8 @@ export const startChallenge =
       const found = getGame(forceKey);
       if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`);
       gameEntry = found;
+    } else if (state.game.mode === 'survivor') {
+      gameEntry = pickSurvivorGame(opts.category, opts.excludeKeys);
     } else {
       // Remote live-config weekly mode takes priority over user settings.
       const remoteChallenge = state.remoteConfig?.config?.challenge;

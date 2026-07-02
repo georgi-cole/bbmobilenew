@@ -11,12 +11,15 @@ import profilesReducer, {
 } from './profilesSlice';
 import socialReducer from '../social/socialSlice';
 import { socialMiddleware } from '../social/socialMiddleware';
+import { survivorMiddleware } from '../modes/survivorMiddleware';
 import { soundMiddleware } from './soundMiddleware';
 import uiReducer from './uiSlice';
 import { saveSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
 import {
   savedStateKeyForProfile,
   clearSeasonSnapshot,
+  clearSavedRun,
+  saveRunSnapshot,
 } from './saveStatePersistence';
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice';
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
@@ -76,6 +79,7 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
+      survivorMiddleware,
       socialMiddleware,
       soundMiddleware,
       publicOpinionMiddleware,
@@ -83,6 +87,15 @@ export const store = configureStore({
       secretMissionMiddleware,
     ),
 });
+
+function hasMeaningfulGameProgress(game: ReturnType<typeof store.getState>['game']): boolean {
+  return game.mode === 'survivor'
+    || game.week > 1
+    || game.phase !== 'week_start'
+    || Boolean(game.runId)
+    || Boolean(game.pendingEviction)
+    || Boolean(game.seasonFinale);
+}
 
 // Persist settings to localStorage whenever they change
 let prevSettings = store.getState().settings;
@@ -92,6 +105,8 @@ let prevUserProfile = store.getState().userProfile;
 let prevProfiles = store.getState().profiles;
 // Persist ads state to localStorage whenever it changes
 let prevAds = store.getState().ads;
+// Persist active mode runs whenever the game slice changes.
+let prevGame = store.getState().game;
 // Persist season archives to localStorage whenever they change
 let prevSeasonArchives = store.getState().game.seasonArchives;
 // Track archive length together with the profile that owns those archives.
@@ -122,6 +137,25 @@ store.subscribe(() => {
     prevAds = current.ads;
     saveAdsState(current.ads);
   }
+  if (current.game !== prevGame) {
+    prevGame = current.game;
+    const activeProfileId = current.profiles.activeProfileId;
+    if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {
+      saveRunSnapshot(activeProfileId, {
+        version: 1,
+        profileId: activeProfileId,
+        savedAt: new Date().toISOString(),
+        game: {
+          ...current.game,
+          mode: current.game.mode ?? 'classic',
+          lastPlayedAt: Date.now(),
+          saveVersion: current.game.saveVersion ?? 2,
+        },
+        finale: current.finale,
+        social: current.social,
+      });
+    }
+  }
   if (current.game.seasonArchives !== prevSeasonArchives) {
     prevSeasonArchives = current.game.seasonArchives;
     const newLength = current.game.seasonArchives?.length ?? 0;
@@ -142,6 +176,7 @@ store.subscribe(() => {
       // the previous in-progress save snapshot is now stale — clear it automatically.
       if (sameProfile && newLength > prevSeasonArchivesLength && archivesProfileId) {
         clearSeasonSnapshot(savedStateKeyForProfile(archivesProfileId));
+        clearSavedRun(archivesProfileId, 'classic');
       }
     }
     prevSeasonArchivesLength = newLength;
