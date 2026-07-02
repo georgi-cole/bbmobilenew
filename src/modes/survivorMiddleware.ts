@@ -1,4 +1,4 @@
-import type { Middleware } from '@reduxjs/toolkit';
+import type { Middleware, MiddlewareAPI } from '@reduxjs/toolkit';
 import type { GameState, Player, TvEvent } from '../types';
 import type { SurvivorModeState } from './modeTypes';
 import { advance, consumeForcedShock, finalizePendingEviction, hydrateGame } from '../store/gameSlice';
@@ -191,7 +191,7 @@ function withSurvivorDaySync(game: GameState): GameState | null {
   };
 }
 
-function drainSurvivorSocial(storeApi: Parameters<Middleware>[0], game: GameState, actionType?: string) {
+function drainSurvivorSocial(storeApi: MiddlewareAPI, game: GameState, actionType?: string) {
   if (actionType === drainEvictedPlayerSocial.type) return;
   const humanPlayer = game.players.find((player) => player.isUser);
   if (!humanPlayer) return;
@@ -225,18 +225,18 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
 
   drainSurvivorSocial(storeApi, game, typedAction.type);
 
-  const normalized = withNormalizedSurvivorCast(game);
-  if (normalized) {
-    storeApi.dispatch(hydrateGame(normalized));
-    return result;
-  }
-
   if (typedAction.type === 'game/finalizePendingEviction' && typeof typedAction.payload === 'string') {
     const nextGame = withReplacementIfNeeded(game, typedAction.payload);
     if (nextGame) {
       storeApi.dispatch(hydrateGame(nextGame));
       return result;
     }
+  }
+
+  const normalized = withNormalizedSurvivorCast((storeApi.getState() as { game: GameState }).game);
+  if (normalized) {
+    storeApi.dispatch(hydrateGame(normalized));
+    return result;
   }
 
   const latest = (storeApi.getState() as { game: GameState }).game;
