@@ -10,10 +10,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.78);
+  background: rgba(0, 0, 0, 0.72);
   animation: stingerFadeIn 0.18s ease;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .tv-stinger__content {
