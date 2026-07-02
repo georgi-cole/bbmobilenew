@@ -1,4 +1,4 @@
-import type { GameMode } from '../types';
+import type { GameMode } from './modeTypes';
 
 export interface GameModeConfig {
   publicModeEnabled: boolean;
