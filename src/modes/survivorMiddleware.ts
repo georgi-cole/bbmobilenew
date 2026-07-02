@@ -1,10 +1,17 @@
 import type { Middleware, MiddlewareAPI } from '@reduxjs/toolkit';
-import type { GameState, Player, TvEvent } from '../types';
+import type { GameState, Player } from '../types';
 import type { SurvivorModeState } from './modeTypes';
 import { advance, consumeForcedShock, finalizePendingEviction, hydrateGame } from '../store/gameSlice';
 import { getDefaultCompetitionSeasonState } from '../ai/competition';
 import { drainEvictedPlayerSocial } from '../social/socialSlice';
-import { buildReplacementRobo, createSurvivorModeState, SURVIVOR_STARTING_CAST_SIZE } from './survivorRun';
+import {
+  buildReplacementRobo,
+  createSurvivorModeState,
+  isSurvivorHumanEliminated,
+  isSurvivorRunTerminal,
+  SURVIVOR_STARTING_CAST_SIZE,
+  terminalizeSurvivorRun,
+} from './survivorRun';
 import { isSocialModeEnabled, shouldReplaceEvictedPlayers } from './gameModes';
 
 const SURVIVOR_BLOCKED_SHOCK_ACTIONS = new Set([
@@ -15,8 +22,34 @@ const SURVIVOR_BLOCKED_SHOCK_ACTIONS = new Set([
   'game/triggerSecretMission',
 ]);
 
+const SURVIVOR_BLOCKED_TERMINAL_ACTIONS = new Set([
+  'game/advance',
+  'game/finalizePendingEviction',
+  'game/applyMinigameWinner',
+  'game/applyF3MinigameWinner',
+]);
+
 function isExited(player: Player | undefined): boolean {
   return player?.status === 'evicted' || player?.status === 'jury';
+}
+
+function isTerminalActionBlocked(actionType?: string): boolean {
+  return Boolean(
+    actionType &&
+    (SURVIVOR_BLOCKED_TERMINAL_ACTIONS.has(actionType) || actionType.startsWith('challenge/')),
+  );
+}
+
+function needsSurvivorTerminalHydration(game: GameState): boolean {
+  return isSurvivorHumanEliminated(game) && (
+    game.status !== 'failed' ||
+    game.pendingEviction != null ||
+    game.voteResults != null ||
+    game.awaitingHumanVote === true ||
+    game.awaitingTieBreak === true ||
+    game.pendingMinigame != null ||
+    game.minigameResult != null
+  );
 }
 
 function getSurvivorState(game: GameState): SurvivorModeState {
@@ -61,12 +94,12 @@ function normalizeSurvivorPlayer(player: Player, slot: number, currentDay: numbe
 }
 
 function withNormalizedSurvivorCast(game: GameState): GameState | null {
-  if (game.mode !== 'survivor') return null;
+  if (game.mode !== 'survivor' || isSurvivorRunTerminal(game)) return null;
 
   const modeSpecific = getSurvivorState(game);
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const human = game.players.find((player) => player.isUser);
-  if (!human) return null;
+  if (!human) return terminalizeSurvivorRun(game);
 
   const targetRoboCount = SURVIVOR_STARTING_CAST_SIZE - 1;
   const activeRobos = game.players.filter((player) => !player.isUser && !isExited(player));
@@ -126,39 +159,8 @@ function withNormalizedSurvivorCast(game: GameState): GameState | null {
   };
 }
 
-function withSurvivorFailureIfHumanEvicted(game: GameState, evicteeId: string): GameState | null {
-  if (game.mode !== 'survivor') return null;
-  const evictee = game.players.find((player) => player.id === evicteeId);
-  if (!evictee?.isUser || !isExited(evictee)) return null;
-
-  const modeSpecific = getSurvivorState(game);
-  const currentDay = Math.max(modeSpecific.currentDay, game.week);
-  const gameOverEvent: TvEvent = {
-    id: `survivor-failed-${game.runId ?? game.gameId}-${currentDay}`,
-    text: `Survivor run ended. You were eliminated on Day ${currentDay}.`,
-    type: 'game',
-    timestamp: Date.now(),
-    meta: { phase: game.phase, week: game.week, mode: 'survivor' },
-  };
-
-  return {
-    ...game,
-    status: 'failed',
-    modeSpecific: {
-      ...modeSpecific,
-      currentDay,
-      bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
-      startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
-    },
-    pendingEviction: undefined,
-    voteResults: null,
-    lastPlayedAt: Date.now(),
-    tvFeed: [gameOverEvent, ...game.tvFeed].slice(0, 50),
-  };
-}
-
 function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState | null {
-  if (game.mode !== 'survivor' || !shouldReplaceEvictedPlayers(game.mode)) return null;
+  if (game.mode !== 'survivor' || isSurvivorRunTerminal(game) || !shouldReplaceEvictedPlayers(game.mode)) return null;
   const evicteeIndex = game.players.findIndex((player) => player.id === evicteeId);
   const evictee = evicteeIndex >= 0 ? game.players[evicteeIndex] : undefined;
   if (!isExited(evictee) || evictee?.isUser) return null;
@@ -176,10 +178,10 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
   const totalRoboContestantsEvicted = modeSpecific.totalRoboContestantsEvicted + 1;
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const players = game.players.map((player, index) => (index === evicteeIndex ? replacement : player));
-  const replacementEvent: TvEvent = {
+  const replacementEvent = {
     id: `survivor-replacement-${replacement.id}`,
     text: `${replacement.name} enters as a replacement synthetic contestant.`,
-    type: 'game',
+    type: 'game' as const,
     timestamp: Date.now(),
     meta: { phase: game.phase, week: game.week, mode: 'survivor' },
   };
@@ -202,7 +204,7 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
 }
 
 function withSurvivorDaySync(game: GameState): GameState | null {
-  if (game.mode !== 'survivor') return null;
+  if (game.mode !== 'survivor' || isSurvivorRunTerminal(game)) return null;
   const modeSpecific = getSurvivorState(game);
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const bestDayReached = Math.max(modeSpecific.bestDayReached, currentDay);
@@ -236,6 +238,17 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
 
   if (
     stateBefore.game.mode === 'survivor' &&
+    isSurvivorRunTerminal(stateBefore.game) &&
+    isTerminalActionBlocked(typedAction.type)
+  ) {
+    if (needsSurvivorTerminalHydration(stateBefore.game)) {
+      storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(stateBefore.game)));
+    }
+    return undefined;
+  }
+
+  if (
+    stateBefore.game.mode === 'survivor' &&
     typedAction.type?.startsWith('social/') &&
     typedAction.type !== drainEvictedPlayerSocial.type
   ) {
@@ -255,23 +268,24 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
 
   if (game.mode !== 'survivor') return result;
 
+  if (isSurvivorHumanEliminated(game)) {
+    if (needsSurvivorTerminalHydration(game)) {
+      storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(game)));
+    }
+    return result;
+  }
+
+  if (isSurvivorRunTerminal(game)) return result;
+
   drainSurvivorSocial(storeApi, game, typedAction.type);
 
   if (typedAction.type === 'game/finalizePendingEviction' && typeof typedAction.payload === 'string') {
-    const failedGame = withSurvivorFailureIfHumanEvicted(game, typedAction.payload);
-    if (failedGame) {
-      storeApi.dispatch(hydrateGame(failedGame));
-      return result;
-    }
-
     const nextGame = withReplacementIfNeeded(game, typedAction.payload);
     if (nextGame) {
       storeApi.dispatch(hydrateGame(nextGame));
       return result;
     }
   }
-
-  if (game.status === 'failed' || game.status === 'completed') return result;
 
   const normalized = withNormalizedSurvivorCast((storeApi.getState() as { game: GameState }).game);
   if (normalized) {

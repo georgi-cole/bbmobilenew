@@ -1,4 +1,4 @@
-import type { GameState, Player } from '../types';
+import type { GameState, Player, TvEvent } from '../types';
 import type { SurvivorModeState } from './modeTypes';
 import { getDefaultCompetitionProfile, getDefaultCompetitionSeasonState } from '../ai/competition';
 import { createInitialGameState } from '../store/gameSlice';
@@ -20,6 +20,74 @@ function makeRunId(mode: 'classic' | 'survivor'): string {
 
 function robotAvatar(seed: string): string {
   return `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(seed)}`;
+}
+
+function isPlayerExited(player: Player | undefined): boolean {
+  return player?.status === 'evicted' || player?.status === 'jury';
+}
+
+function getSurvivorModeState(state: GameState): SurvivorModeState {
+  return state.modeSpecific?.kind === 'survivor'
+    ? state.modeSpecific
+    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
+}
+
+export function getSurvivorCurrentDay(state: GameState): number {
+  const survivorState = getSurvivorModeState(state);
+  return Math.max(survivorState.currentDay, state.week ?? 1);
+}
+
+export function isSurvivorHumanEliminated(state: GameState): boolean {
+  if (state.mode !== 'survivor') return false;
+  const human = state.players.find((player) => player.isUser);
+  return !human || isPlayerExited(human);
+}
+
+export function isSurvivorRunTerminal(state: GameState): boolean {
+  if (state.mode !== 'survivor') return false;
+  return state.status === 'failed' || state.status === 'completed' || isSurvivorHumanEliminated(state);
+}
+
+export function terminalizeSurvivorRun(state: GameState): GameState {
+  if (state.mode !== 'survivor') return state;
+
+  const modeSpecific = getSurvivorModeState(state);
+  const currentDay = getSurvivorCurrentDay(state);
+  const eventId = `survivor-failed-${state.runId ?? state.gameId}-${currentDay}`;
+  const hasTerminalEvent = state.tvFeed.some((event) => event.id === eventId);
+  const gameOverEvent: TvEvent = {
+    id: eventId,
+    text: `Survivor run ended. You were eliminated on Day ${currentDay}.`,
+    type: 'game',
+    timestamp: Date.now(),
+    meta: { phase: state.phase, week: state.week, mode: 'survivor' },
+  };
+
+  return {
+    ...state,
+    status: state.status === 'completed' ? 'completed' : 'failed',
+    pendingEviction: null,
+    voteResults: null,
+    votes: {},
+    awaitingHumanVote: false,
+    awaitingTieBreak: false,
+    tiedNomineeIds: null,
+    replacementNeeded: false,
+    awaitingNominations: false,
+    pendingNominee1Id: null,
+    awaitingPovDecision: false,
+    awaitingPovSaveTarget: false,
+    pendingMinigame: null,
+    minigameResult: null,
+    modeSpecific: {
+      ...modeSpecific,
+      currentDay,
+      bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
+      startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
+    },
+    lastPlayedAt: Date.now(),
+    tvFeed: hasTerminalEvent ? state.tvFeed : [gameOverEvent, ...state.tvFeed].slice(0, 50),
+  };
 }
 
 function buildRoboPlayer(index: number, runId: string, entryDay = 1, slot = index + 1): Player {
@@ -112,9 +180,7 @@ export function createSurvivorRun(): GameState {
 }
 
 export function buildReplacementRobo(state: GameState, slot?: number): Player {
-  const survivorState = state.modeSpecific?.kind === 'survivor'
-    ? state.modeSpecific
-    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
+  const survivorState = getSurvivorModeState(state);
   const currentDay = Math.max(survivorState.currentDay, state.week);
   return buildRoboPlayer(
     survivorState.nextRoboIndex,
@@ -126,9 +192,7 @@ export function buildReplacementRobo(state: GameState, slot?: number): Player {
 
 export function markSurvivorDay(state: GameState): GameState {
   if (state.mode !== 'survivor') return state;
-  const modeSpecific = state.modeSpecific?.kind === 'survivor'
-    ? state.modeSpecific
-    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
+  const modeSpecific = getSurvivorModeState(state);
   const currentDay = Math.max(modeSpecific.currentDay, state.week);
   return {
     ...state,

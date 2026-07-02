@@ -11,18 +11,20 @@ import {
   archiveKeyForProfile,
 } from '../../store/profilesSlice';
 import {
+  clearSavedRun,
   getLastPlayedRun,
   getSavedRun,
   loadSavedRunProfile,
   type SavedSeasonSnapshot,
 } from '../../store/saveStatePersistence';
 import type { GameMode } from '../../modes/modeTypes';
-import { createSurvivorRun } from '../../modes/survivorRun';
+import { createSurvivorRun, isSurvivorRunTerminal } from '../../modes/survivorRun';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import HubLoadingOverlay from '../../components/HubLoadingOverlay/HubLoadingOverlay';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { SoundManager } from '../../services/sound/SoundManager';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
 import useHomeHubAssets from '../../hooks/useHomeHubAssets';
@@ -60,6 +62,8 @@ const HUB_BUTTONS = [
   { to: '/leaderboard',  label: 'Leaderboard', icon: '🏆', variant: 'secondary_wide'   },
   { to: '/credits',      label: 'Credits',     icon: '🎬', variant: 'secondary_small'  },
 ] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
+
+type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
 
 function snapshotDay(snapshot: SavedSeasonSnapshot | null | undefined): number | null {
   const day = snapshot?.game?.week;
@@ -193,6 +197,7 @@ export default function HomeHub() {
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
   const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
+  const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
 
   const savedRuns = useMemo(
     () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId) : null),
@@ -201,6 +206,7 @@ export default function HomeHub() {
   const classicSnapshot = savedRuns?.runs.classic ?? null;
   const survivorSnapshot = savedRuns?.runs.survivor ?? null;
   const lastSnapshot = !isGuest && activeProfileId ? getLastPlayedRun(activeProfileId) : null;
+  const hasEndedSurvivorRecord = !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0;
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
@@ -226,6 +232,11 @@ export default function HomeHub() {
   }, [autoStartGame, navigate]);
 
   function hydrateSnapshot(snapshot: SavedSeasonSnapshot) {
+    if (isSurvivorRunTerminal(snapshot.game)) {
+      setSurvivorPrompt('ended');
+      setPlaySelectionOpen(true);
+      return;
+    }
     dispatch(hydrateGame(snapshot.game));
     dispatch(hydrateFinale(snapshot.finale));
     dispatch(hydrateSocial(snapshot.social));
@@ -243,12 +254,43 @@ export default function HomeHub() {
   }
 
   function startSurvivorRun() {
+    if (!isGuest && activeProfileId) {
+      clearSavedRun(activeProfileId, 'survivor');
+    }
+    setSurvivorPrompt(null);
     dispatch(hydrateGame(createSurvivorRun()));
     setPreloading(true);
   }
 
+  function resumeSurvivorRun() {
+    if (!survivorSnapshot) {
+      setSurvivorPrompt('ended');
+      return;
+    }
+    setSurvivorPrompt(null);
+    hydrateSnapshot(survivorSnapshot);
+  }
+
+  function openSurvivorMode() {
+    SoundManager.unlockFromGesture();
+    if (survivorSnapshot) {
+      setSurvivorPrompt('resume-or-new');
+      return;
+    }
+    if (hasEndedSurvivorRecord) {
+      setSurvivorPrompt('ended');
+      return;
+    }
+    startSurvivorRun();
+  }
+
   function startOrResumeMode(mode: GameMode) {
     SoundManager.unlockFromGesture();
+    if (mode === 'survivor') {
+      openSurvivorMode();
+      return;
+    }
+
     if (!isGuest && activeProfileId) {
       const snapshot = getSavedRun(activeProfileId, mode);
       if (snapshot?.profileId === activeProfileId) {
@@ -261,8 +303,7 @@ export default function HomeHub() {
       }
     }
 
-    if (mode === 'survivor') startSurvivorRun();
-    else startClassicRun();
+    startClassicRun();
   }
 
   function continueLastRun() {
@@ -337,6 +378,41 @@ export default function HomeHub() {
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
       {preloading && <AssetPreloaderOverlay />}
+
+      <ConfirmExitModal
+        open={survivorPrompt === 'resume-or-new'}
+        title="Survivor Mode"
+        description="Resume your saved run or start over?"
+        confirmLabel="Resume Saved Run"
+        secondaryLabel="Start New Survivor"
+        cancelLabel="Cancel"
+        onConfirm={resumeSurvivorRun}
+        onSecondary={() => setSurvivorPrompt('confirm-new')}
+        onCancel={() => setSurvivorPrompt(null)}
+      />
+
+      <ConfirmExitModal
+        open={survivorPrompt === 'ended'}
+        title="Survivor Mode"
+        description="Your previous Survivor run has ended."
+        confirmLabel="Start New Survivor"
+        cancelLabel="Return Home"
+        onConfirm={startSurvivorRun}
+        onCancel={() => {
+          setSurvivorPrompt(null);
+          setPlaySelectionOpen(false);
+        }}
+      />
+
+      <ConfirmExitModal
+        open={survivorPrompt === 'confirm-new'}
+        title="Start new Survivor run?"
+        description="This will replace your saved Survivor run only. Classic progress will not be affected."
+        confirmLabel="Start New"
+        cancelLabel="Cancel"
+        onConfirm={startSurvivorRun}
+        onCancel={() => setSurvivorPrompt('resume-or-new')}
+      />
 
       <div className="homehub-shell">
         <div className="homehub-frame">

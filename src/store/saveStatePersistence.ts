@@ -12,6 +12,7 @@
 import type { GameState } from '../types';
 import type { GameMode } from '../modes/modeTypes';
 import { normalizeGameMode } from '../modes/gameModes';
+import { isSurvivorRunTerminal } from '../modes/survivorRun';
 import type { FinaleState } from './finaleSlice';
 import type { SocialState } from '../social/types';
 
@@ -76,6 +77,7 @@ function getRunId(snapshot: SavedSeasonSnapshot | undefined): string | null {
 
 function isRunSnapshotResumable(snapshot: SavedSeasonSnapshot | undefined): snapshot is SavedSeasonSnapshot {
   if (!snapshot) return false;
+  if (isSurvivorRunTerminal(snapshot.game)) return false;
   return snapshot.game.status !== 'completed' && snapshot.game.status !== 'failed';
 }
 
@@ -200,7 +202,8 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
     ? Math.max(current.stats.maxSurvivorDaysSurvived, getSurvivorBestDay(snapshot))
     : current.stats.maxSurvivorDaysSurvived;
   const nextRuns = { ...current.runs };
-  if (isRunSnapshotResumable(snapshot)) {
+  const resumable = isRunSnapshotResumable(snapshot);
+  if (resumable) {
     nextRuns[mode] = snapshot;
   } else {
     delete nextRuns[mode];
@@ -208,8 +211,8 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
   const next: SavedRunProfile = {
     ...current,
     savedAt: snapshot.savedAt,
-    activeRunId: isRunSnapshotResumable(snapshot) ? runId : null,
-    lastPlayedRunId: isRunSnapshotResumable(snapshot) ? runId : current.lastPlayedRunId,
+    activeRunId: resumable ? runId : null,
+    lastPlayedRunId: resumable ? runId : current.lastPlayedRunId,
     runs: nextRuns,
     stats: {
       ...current.stats,
