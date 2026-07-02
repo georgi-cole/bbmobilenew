@@ -77,8 +77,12 @@ export function terminalizeSurvivorRun(state: GameState): GameState {
     pendingNominee1Id: null,
     awaitingPovDecision: false,
     awaitingPovSaveTarget: false,
+    awaitingMissionImmunityOffer: false,
     pendingMinigame: null,
     minigameResult: null,
+    awaitingFinal3Eviction: false,
+    awaitingFinal3Plea: false,
+    dayStartShock: null,
     modeSpecific: {
       ...modeSpecific,
       currentDay,
