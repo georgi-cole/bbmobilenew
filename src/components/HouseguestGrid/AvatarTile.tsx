@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
@@ -11,12 +12,22 @@ export const LONG_PRESS_CLICK_SUPPRESSION_MS = 600
 /** Pixel-distance threshold: if the finger moves more than this the long-press is cancelled. */
 export const LONG_PRESS_MOVE_THRESHOLD_PX = 10
 
+type RoboStatsSummary = {
+  daysInGame?: number | null
+  lohWins?: number | null
+  posWins?: number | null
+  averageLohRank?: number | null
+  averagePosRank?: number | null
+}
+
 type Props = {
   name: string
   avatarUrl?: string
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
+  /** Optional compact Survivor robo stats shown when tapping robo tiles. */
+  roboStats?: RoboStatsSummary
   /**
    * Called when the user has held their finger down long enough to trigger the
    * hold-preview threshold. The caller should show a transient profile preview.
@@ -61,7 +72,12 @@ type Props = {
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting, nominationCeremonyState }: Props) {
+function formatStat(value: number | null | undefined, options: { decimals?: number } = {}) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return options.decimals != null ? value.toFixed(options.decimals) : String(value)
+}
+
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, roboStats, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting, nominationCeremonyState }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -69,6 +85,8 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const suppressClickUntilRef = React.useRef(0)
   const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null)
   const isHoldActiveRef = React.useRef(false)
+  const [statsOpen, setStatsOpen] = React.useState(false)
+  const isSurvivorRoboTile = Boolean(roboStats) || Boolean(avatarUrl?.includes('bottts'))
 
   React.useEffect(() => {
     attemptRef.current = 0
@@ -166,125 +184,162 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   }
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!onClick) return
     if (Date.now() < suppressClickUntilRef.current) {
       e.preventDefault()
       e.stopPropagation()
       return
     }
-    onClick()
+    if (isSurvivorRoboTile && !isEvicted) {
+      setStatsOpen(true)
+    }
+    if (onClick) onClick()
   }
 
   function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
-    if (!onClick && !onHoldPreviewStart) return
+    if (!onClick && !onHoldPreviewStart && !isSurvivorRoboTile) return
     e.preventDefault()
     e.stopPropagation()
   }
 
-  const isInteractive = Boolean(onClick ?? onHoldPreviewStart)
+  const isInteractive = Boolean(onClick ?? onHoldPreviewStart ?? isSurvivorRoboTile)
+
+  const statsSheet = statsOpen ? createPortal(
+    <div className={styles.roboStatsBackdrop} role="presentation" onClick={() => setStatsOpen(false)}>
+      <section
+        className={styles.roboStatsSheet}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${name} robo stats`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className={styles.roboStatsHandle} aria-hidden="true" />
+        <div className={styles.roboStatsHeader}>
+          <div>
+            <p className={styles.roboStatsEyebrow}>Synthetic Contestant</p>
+            <h2 className={styles.roboStatsName}>{name}</h2>
+          </div>
+          <button type="button" className={styles.roboStatsClose} onClick={() => setStatsOpen(false)} aria-label="Close stats">
+            ×
+          </button>
+        </div>
+        <dl className={styles.roboStatsGrid}>
+          <div><dt>Days in game</dt><dd>{formatStat(roboStats?.daysInGame)}</dd></div>
+          <div><dt>LOHs won</dt><dd>{formatStat(roboStats?.lohWins)}</dd></div>
+          <div><dt>POS won</dt><dd>{formatStat(roboStats?.posWins)}</dd></div>
+          <div><dt>Avg LOH rank</dt><dd>{formatStat(roboStats?.averageLohRank, { decimals: 1 })}</dd></div>
+          <div><dt>Avg POS rank</dt><dd>{formatStat(roboStats?.averagePosRank, { decimals: 1 })}</dd></div>
+        </dl>
+      </section>
+    </div>,
+    document.body,
+  ) : null
 
   return (
-    <div
-      className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
-      aria-label={ariaLabel}
-      title={name}
-      role={isInteractive ? 'button' : 'group'}
-      tabIndex={isInteractive ? 0 : undefined}
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
-      onKeyDown={
-        onClick
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onClick()
+    <>
+      <div
+        className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
+        aria-label={ariaLabel}
+        title={name}
+        role={isInteractive ? 'button' : 'group'}
+        tabIndex={isInteractive ? 0 : undefined}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onKeyDown={
+          isInteractive
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  if (isSurvivorRoboTile && !isEvicted) setStatsOpen(true)
+                  if (onClick) onClick()
+                }
               }
-            }
-          : undefined
-      }
-    >
-      <motion.div
-        className={[
-          styles.avatarWrap,
-          nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
-        ].filter(Boolean).join(' ')}
-        layoutId={layoutId}
-        data-nomination-ceremony-state={nominationCeremonyState}
-        animate={
-          // Only apply opacity animation when layoutId is present (shared-layout path).
-          // isEvicting is only ever set to true for tiles participating in the match-cut
-          // animation which always have a layoutId, so this coupling is intentional.
-          layoutId ? { opacity: isEvicting ? 0 : 1 } : undefined
+            : undefined
         }
-        transition={layoutId ? {
-          opacity: isEvicting ? { duration: 0.1 } : { duration: 0.2, delay: 0.3 },
-        } : undefined}
       >
-        <div className={styles.nameOverlay} aria-hidden="true">
-          {name}
-        </div>
-
-        {isYou && (
-          <span className={styles.youBadge} aria-hidden="true">
-            YOU
-          </span>
-        )}
-
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={name}
-            className={styles.avatar}
-            onError={handleImgError}
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-          />
-        ) : (
-          <div className={styles.avatarPlaceholder} aria-hidden="true" />
-        )}
-
-        {/* Status badge stack — top-left corner, stacked vertically */}
-        {showPermanentBadge && badges.length > 0 && (
-          <div className={styles.badgeStack} role="list">
-            {badges.map((b) => (
-              <span
-                key={b.code}
-                className={`${styles.statusBadge} ${styles[`badge_${b.code}`] ?? ''}`}
-                role="listitem"
-                aria-label={b.label}
-                title={b.label}
-              >
-                {b.imageSrc ? (
-                  <img
-                    src={b.imageSrc}
-                    alt=""
-                    aria-hidden="true"
-                    className={styles.statusBadgeImage}
-                  />
-                ) : (
-                  b.emoji
-                )}
-              </span>
-            ))}
+        <motion.div
+          className={[
+            styles.avatarWrap,
+            nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
+          ].filter(Boolean).join(' ')}
+          layoutId={layoutId}
+          data-nomination-ceremony-state={nominationCeremonyState}
+          animate={
+            // Only apply opacity animation when layoutId is present (shared-layout path).
+            // isEvicting is only ever set to true for tiles participating in the match-cut
+            // animation which always have a layoutId, so this coupling is intentional.
+            layoutId ? { opacity: isEvicting ? 0 : 1 } : undefined
+          }
+          transition={layoutId ? {
+            opacity: isEvicting ? { duration: 0.1 } : { duration: 0.2, delay: 0.3 },
+          } : undefined}
+        >
+          <div className={styles.nameOverlay} aria-hidden="true">
+            {name}
           </div>
-        )}
 
-        {/* Evictee mark — paint brushstroke PNG overlay */}
-        {isEvicted && (
-          <img
-            src={`${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`}
-            alt=""
-            aria-hidden="true"
-            className={styles.cross}
-          />
-        )}
-      </motion.div>
+          {isYou && (
+            <span className={styles.youBadge} aria-hidden="true">
+              YOU
+            </span>
+          )}
 
-      <div className={styles.nameRow} aria-hidden="true" />
-    </div>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={name}
+              className={styles.avatar}
+              onError={handleImgError}
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+            />
+          ) : (
+            <div className={styles.avatarPlaceholder} aria-hidden="true" />
+          )}
+
+          {/* Status badge stack — top-left corner, stacked vertically */}
+          {showPermanentBadge && badges.length > 0 && (
+            <div className={styles.badgeStack} role="list">
+              {badges.map((b) => (
+                <span
+                  key={b.code}
+                  className={`${styles.statusBadge} ${styles[`badge_${b.code}`] ?? ''}`}
+                  role="listitem"
+                  aria-label={b.label}
+                  title={b.label}
+                >
+                  {b.imageSrc ? (
+                    <img
+                      src={b.imageSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className={styles.statusBadgeImage}
+                    />
+                  ) : (
+                    b.emoji
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Evictee mark — paint brushstroke PNG overlay */}
+          {isEvicted && (
+            <img
+              src={`${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`}
+              alt=""
+              aria-hidden="true"
+              className={styles.cross}
+            />
+          )}
+        </motion.div>
+
+        <div className={styles.nameRow} aria-hidden="true" />
+      </div>
+      {statsSheet}
+    </>
   )
 }
