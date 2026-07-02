@@ -1,5 +1,6 @@
 import type { Middleware } from '@reduxjs/toolkit';
-import type { GameState, Player, SurvivorModeState } from '../types';
+import type { GameState, Player } from '../types';
+import type { SurvivorModeState } from './modeTypes';
 import { advance, hydrateGame } from '../store/gameSlice';
 import { getDefaultCompetitionSeasonState } from '../ai/competition';
 import { buildReplacementRobo, createSurvivorModeState } from './survivorRun';
