@@ -130,6 +130,7 @@ export default function HouseguestGrid({
   const containerRef = useRef<HTMLElement | null>(null)
   const previousHouseguestsRef = useRef<Houseguest[]>(houseguests)
   const survivorHoldTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  const survivorHoldClearTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const game = useAppSelector((s) => s.game)
   const gamePlayersById = useMemo(
     () => new Map(game.players.map((player) => [String(player.id), player])),
@@ -155,13 +156,19 @@ export default function HouseguestGrid({
     return statsById
   }, [game.mode, game.modeSpecific, game.players, game.week])
   const [survivorHoldRoster, setSurvivorHoldRoster] = useState<Houseguest[] | null>(null)
-  const renderedHouseguests = survivorHoldRoster ?? houseguests
+  const renderedHouseguests = game.mode === 'survivor' && survivorHoldRoster !== null
+    ? survivorHoldRoster
+    : houseguests
 
   useEffect(() => {
     return () => {
       if (survivorHoldTimerRef.current !== null) {
         window.clearTimeout(survivorHoldTimerRef.current)
         survivorHoldTimerRef.current = null
+      }
+      if (survivorHoldClearTimerRef.current !== null) {
+        window.clearTimeout(survivorHoldClearTimerRef.current)
+        survivorHoldClearTimerRef.current = null
       }
     }
   }, [])
@@ -175,8 +182,14 @@ export default function HouseguestGrid({
         window.clearTimeout(survivorHoldTimerRef.current)
         survivorHoldTimerRef.current = null
       }
+      if (survivorHoldClearTimerRef.current !== null) {
+        window.clearTimeout(survivorHoldClearTimerRef.current)
+      }
       if (survivorHoldRoster !== null) {
-        setSurvivorHoldRoster(null)
+        survivorHoldClearTimerRef.current = window.setTimeout(() => {
+          survivorHoldClearTimerRef.current = null
+          setSurvivorHoldRoster(null)
+        }, 0)
       }
       return
     }
