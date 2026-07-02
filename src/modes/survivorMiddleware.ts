@@ -1,5 +1,5 @@
 import type { Middleware } from '@reduxjs/toolkit';
-import type { GameState, Player } from '../types';
+import type { GameState, Player, TvEvent } from '../types';
 import type { SurvivorModeState } from './modeTypes';
 import { advance, consumeForcedShock, finalizePendingEviction, hydrateGame } from '../store/gameSlice';
 import { getDefaultCompetitionSeasonState } from '../ai/competition';
@@ -42,6 +42,13 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
   const totalRoboContestantsEvicted = modeSpecific.totalRoboContestantsEvicted + 1;
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const players = game.players.map((player, index) => (index === evicteeIndex ? replacement : player));
+  const replacementEvent: TvEvent = {
+    id: `survivor-replacement-${replacement.id}`,
+    text: `${replacement.name} enters as a replacement synthetic contestant.`,
+    type: 'game',
+    timestamp: Date.now(),
+    meta: { phase: game.phase, week: game.week, mode: 'survivor' },
+  };
 
   return {
     ...game,
@@ -55,16 +62,7 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
       nextRoboIndex: modeSpecific.nextRoboIndex + 1,
     },
     lastPlayedAt: Date.now(),
-    tvFeed: [
-      {
-        id: `survivor-replacement-${replacement.id}`,
-        text: `${replacement.name} enters as a replacement synthetic contestant.`,
-        type: 'game',
-        timestamp: Date.now(),
-        meta: { phase: game.phase, week: game.week, mode: 'survivor' },
-      },
-      ...game.tvFeed,
-    ].slice(0, 50),
+    tvFeed: [replacementEvent, ...game.tvFeed].slice(0, 50),
   };
 }
 
