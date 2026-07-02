@@ -118,7 +118,8 @@
   transform: scale(0.985);
 }
 
-.dock-hit-area:disabled {
+.dock-hit-area:disabled,
+.dock-hit-area--unavailable {
   cursor: not-allowed;
 }
 
@@ -211,12 +212,22 @@
 }
 
 .game-control-dock__play--disabled,
+.game-control-dock__icon--unavailable,
 .game-control-dock:has(.dock-hit-area--play:disabled) .fab-play,
 .game-control-dock:has(.dock-hit-area--social:disabled) .fab-icon.social,
 .game-control-dock:has(.dock-hit-area--requests:disabled) .fab-icon.requests,
 .game-control-dock:has(.dock-hit-area--stats:disabled) .fab-icon.stats,
 .game-control-dock:has(.dock-hit-area--confessional:disabled) .fab-icon.confessional {
   opacity: 0.5;
+}
+
+.game-control-dock__icon--unavailable {
+  filter: grayscale(1) drop-shadow(0 0 3px rgba(75, 85, 99, 0.18));
+}
+
+.dock-hit-area--unavailable:hover,
+.dock-hit-area--unavailable:active {
+  transform: none;
 }
 
 @keyframes dock-icon-flash {
