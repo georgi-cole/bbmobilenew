@@ -97,7 +97,7 @@ const LATE_SEASON_PLAYER_THRESHOLD = 6;
 // Keep a modest history buffer in case the scheduler window expands.
 const RECENT_HISTORY_LIMIT = 10;
 
-// ─── Slice ────────────────────────────────────────────────────────────────────
+// ─── Slice ───────────────────────────────────────────────────────────────────
 
 const challengeSlice = createSlice({
   name: 'challenge',
@@ -382,13 +382,20 @@ export const startChallenge =
       : ((mulberry32((challengeSeed ^ nextNonce) >>> 0)() * 0x100000000) >>> 0);
     dispatch(incrementNonce());
 
+    const latestState = getState();
+    const gameState = latestState.game;
+    const resolvedParticipants = gameState.mode === 'survivor'
+      ? selectAlivePlayers(latestState)
+        .slice(0, gameState.modeSpecific?.kind === 'survivor' ? gameState.modeSpecific.startingCastSize : 8)
+        .map((player) => player.id)
+      : participants;
+
     // Pre-compute AI scores for all non-human participants.
-    const gameState = getState().game;
     const humanId = gameState?.players?.find((p) => p.isUser)?.id;
     const aiScores: Record<string, number> = {};
     const minigameModel = getMinigameAiModelForGame(gameEntry);
     const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined;
-    participants.forEach((pid, index) => {
+    resolvedParticipants.forEach((pid, index) => {
       if (pid !== humanId) {
         const player = gameState?.players?.find((p) => p.id === pid);
         aiScores[pid] = simulateMinigameAiScore({
@@ -417,7 +424,7 @@ export const startChallenge =
       const scoreRange = Math.max(1, maxScore - minScore);
       const maxMs = minigameModel.tiebreakerMaxMs;
       aiTiebreakers = {};
-      participants.forEach((pid) => {
+      resolvedParticipants.forEach((pid) => {
         if (pid === humanId || aiScores[pid] == null) return;
         // Seed the jitter RNG differently from the score RNG by XOR-ing a fixed salt.
         const rng = mulberry32(((perChallengeSeed >>> 0) ^ (hashStringU32(pid) ^ 0xbeef_cafe)) >>> 0);
@@ -435,7 +442,7 @@ export const startChallenge =
       id,
       game: gameEntry,
       seed: perChallengeSeed,
-      participants,
+      participants: resolvedParticipants,
       phase: 'rules',
       aiScores,
       aiTiebreakers,
