@@ -87,10 +87,6 @@ const DEFAULT_FOOTER_HEIGHT = 60
 /** Extra vertical margin subtracted from available height */
 const GRID_VERTICAL_MARGIN = 4
 
-function buildSurvivorRoboStatsById(game: ReturnType<typeof useAppSelector> extends never ? never : unknown) {
-  return game
-}
-
 export default function HouseguestGrid({
   houseguests,
   showCountInHeader = false,
