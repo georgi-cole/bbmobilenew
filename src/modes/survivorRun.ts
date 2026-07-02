@@ -9,6 +9,7 @@ const ROBO_NAMES = [
 ];
 
 const SAVE_VERSION = 2;
+const SURVIVOR_STARTING_CAST_SIZE = 9;
 
 function makeRunId(mode: 'classic' | 'survivor'): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -59,9 +60,9 @@ export function createSurvivorRun(): GameState {
   const base = createInitialGameState();
   const runId = makeRunId('survivor');
   const human = base.players.find((player) => player.isUser) ?? base.players[0];
-  const startingCastSize = Math.max(2, base.players.length);
+  const startingCastSize = SURVIVOR_STARTING_CAST_SIZE;
   const players = [
-    { ...human, id: 'user', status: 'active' as const, isUser: true },
+    { ...human, id: 'user', status: 'active' as const, isUser: true, isRobo: false },
     ...Array.from({ length: startingCastSize - 1 }, (_, index) => buildRoboPlayer(index, runId)),
   ];
   const now = Date.now();
@@ -79,20 +80,26 @@ export function createSurvivorRun(): GameState {
     season: 1,
     week: 1,
     publicModeEnabled: false,
+    cfg: {
+      ...(base.cfg ?? {}),
+      jurySize: 0,
+      enableJuryReturn: false,
+      enableSpectatorReact: false,
+    },
     players,
     competitionSeasonStateByPlayerId: buildCompetitionState(players),
     modeSpecific,
     tvFeed: [
       {
         id: 'survivor-e0',
-        text: 'Survivor Mode online. Synthetic contestants will be replaced after every eviction.',
+        text: 'Survivor Mode online. Nine contestants enter; synthetic replacements keep the board full after every robo eviction.',
         type: 'game',
         timestamp: now,
         meta: { phase: 'week_start', week: 1, mode: 'survivor' },
       },
       {
         id: 'survivor-e1',
-        text: '[Rules] Public mode: OFF | Social mode: OFF | Endless days: ON',
+        text: '[Rules] Public mode: OFF | Social mode: OFF | Endless days: ON | Double Elimination: possible',
         type: 'game',
         timestamp: now,
         meta: { phase: 'week_start', week: 1, mode: 'survivor' },
