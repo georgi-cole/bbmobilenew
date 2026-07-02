@@ -29,17 +29,6 @@
   -webkit-backdrop-filter: none;
 }
 
-@supports (backdrop-filter: blur(6px)) {
-  .avrm { backdrop-filter: blur(6px); }
-}
-
-@supports (backdrop-filter: blur(6px)) or (-webkit-backdrop-filter: blur(6px)) {
-  .avrm--tv {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-}
-
 @keyframes avrmFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }

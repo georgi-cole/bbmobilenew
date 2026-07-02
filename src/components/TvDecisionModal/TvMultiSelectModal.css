@@ -14,13 +14,6 @@
   animation: tvmsFadeIn 0.22s ease;
 }
 
-@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
-  .tv-ms-modal {
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-}
-
 @keyframes tvmsFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
