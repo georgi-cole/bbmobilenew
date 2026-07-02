@@ -850,8 +850,8 @@ export default function FamousFiguresComp({
         {pickLine(NARRATION.roundStart, humanCursor)}
       </p>
 
-      {/* Timer — only relevant for the global round (not shown when playing ahead) */}
-      {!humanIsAhead && (
+      {/* Timer — stay visible during active rounds, including ahead-play. */}
+      {ff.status === 'round_active' && !humanAllDone && (
         <div
           className="ff-timer"
           aria-label={`Timer: ${timerSecs} seconds remaining`}

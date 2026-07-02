@@ -20,6 +20,7 @@ const ALL_PARTICIPANTS = [
 export default function FamousFiguresTestPage() {
   const [prizeType, setPrizeType] = useState<FamousFiguresPrizeType>('LOH');
   const [seed, setSeed] = useState(42);
+  const [runSeed, setRunSeed] = useState(seed);
   const [running, setRunning] = useState(false);
   const [skipWinnerAnimation, setSkipWinnerAnimation] = useState(true);
   const [soloMode, setSoloMode] = useState(false);
@@ -31,6 +32,9 @@ export default function FamousFiguresTestPage() {
   const participantIds = participants.map((p) => p.id);
 
   function startGame() {
+    // Mix the displayed seed with fresh time-based entropy so each new run
+    // reshuffles the figure order instead of replaying the same three names.
+    setRunSeed((seed ^ Date.now()) >>> 0);
     setGameKey((k) => k + 1);
     setRunning(true);
   }
@@ -116,7 +120,7 @@ export default function FamousFiguresTestPage() {
             participantIds={participantIds}
             participants={participants}
             prizeType={prizeType}
-            seed={seed}
+            seed={runSeed}
             skipWinnerAnimation={skipWinnerAnimation}
             onComplete={keepOnComplete ? undefined : () => setRunning(false)}
           />
