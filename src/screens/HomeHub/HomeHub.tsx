@@ -200,10 +200,7 @@ export default function HomeHub() {
   );
   const classicSnapshot = savedRuns?.runs.classic ?? null;
   const survivorSnapshot = savedRuns?.runs.survivor ?? null;
-  const lastSnapshot = useMemo(
-    () => (!isGuest && activeProfileId ? getLastPlayedRun(activeProfileId) : null),
-    [activeProfileId, isGuest, savedRuns?.lastPlayedRunId],
-  );
+  const lastSnapshot = !isGuest && activeProfileId ? getLastPlayedRun(activeProfileId) : null;
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
@@ -280,42 +277,39 @@ export default function HomeHub() {
     }
   }
 
-  const playSelectionButtons = useMemo<PlaySelectionButton[]>(() => {
-    const buttons: PlaySelectionButton[] = [];
-    if (lastSnapshot) {
-      buttons.push({
-        key: 'continue-last',
-        label: 'Continue Last',
-        icon: '▶',
-        variant: 'primary_large',
-        onClick: continueLastRun,
-      });
-    }
-    buttons.push(
-      {
-        key: 'classic',
-        label: buildModeLabel('classic', classicSnapshot),
-        icon: '🎬',
-        variant: 'secondary_wide',
-        onClick: () => startOrResumeMode('classic'),
-      },
-      {
-        key: 'survivor',
-        label: buildModeLabel('survivor', survivorSnapshot),
-        icon: '◆',
-        variant: 'secondary_wide',
-        onClick: () => startOrResumeMode('survivor'),
-      },
-      {
-        key: 'back',
-        label: 'Back',
-        icon: '↩',
-        variant: 'secondary_medium',
-        onClick: () => setPlaySelectionOpen(false),
-      },
-    );
-    return buttons;
-  }, [classicSnapshot, lastSnapshot, survivorSnapshot]);
+  const playSelectionButtons: PlaySelectionButton[] = [];
+  if (lastSnapshot) {
+    playSelectionButtons.push({
+      key: 'continue-last',
+      label: 'Continue Last',
+      icon: '▶',
+      variant: 'primary_large',
+      onClick: continueLastRun,
+    });
+  }
+  playSelectionButtons.push(
+    {
+      key: 'classic',
+      label: buildModeLabel('classic', classicSnapshot),
+      icon: '🎬',
+      variant: 'secondary_wide',
+      onClick: () => startOrResumeMode('classic'),
+    },
+    {
+      key: 'survivor',
+      label: buildModeLabel('survivor', survivorSnapshot),
+      icon: '◆',
+      variant: 'secondary_wide',
+      onClick: () => startOrResumeMode('survivor'),
+    },
+    {
+      key: 'back',
+      label: 'Back',
+      icon: '↩',
+      variant: 'secondary_medium',
+      onClick: () => setPlaySelectionOpen(false),
+    },
+  );
 
   const handlePlay = () => {
     // Unlock audio in the gesture context.  We intentionally do NOT follow up
