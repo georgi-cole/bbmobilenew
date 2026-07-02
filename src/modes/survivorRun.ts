@@ -1,4 +1,5 @@
-import type { GameState, Player, SurvivorModeState } from '../types';
+import type { GameState, Player } from '../types';
+import type { SurvivorModeState } from './modeTypes';
 import { getDefaultCompetitionProfile, getDefaultCompetitionSeasonState } from '../ai/competition';
 import { createInitialGameState } from '../store/gameSlice';
 
@@ -41,6 +42,7 @@ function buildCompetitionState(players: Player[]): GameState['competitionSeasonS
 
 export function createSurvivorModeState(startingCastSize: number): SurvivorModeState {
   return {
+    kind: 'survivor',
     currentDay: 1,
     totalRoboContestantsEvicted: 0,
     bestDayReached: 1,
