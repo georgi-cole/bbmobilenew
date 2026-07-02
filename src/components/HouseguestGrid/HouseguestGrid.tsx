@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
@@ -6,6 +6,7 @@ import { useAppSelector } from '../../store/hooks'
 import type { CompactRosterLayout } from '../../store/settingsSlice'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
+const SURVIVOR_REPLACEMENT_HOLD_MS = 900
 
 type RoboStatsSummary = {
   daysInGame?: number | null
@@ -87,6 +88,33 @@ const DEFAULT_FOOTER_HEIGHT = 60
 /** Extra vertical margin subtracted from available height */
 const GRID_VERTICAL_MARGIN = 4
 
+function buildSurvivorReplacementHold(
+  previous: Houseguest[],
+  current: Houseguest[],
+  hiddenIds: Set<string>,
+  restoredIds: Set<string>,
+): Houseguest[] {
+  const visible = current
+    .filter((houseguest) => !hiddenIds.has(String(houseguest.id)))
+    .map((houseguest) => ({ ...houseguest }))
+
+  const visibleIds = new Set(visible.map((houseguest) => String(houseguest.id)))
+  restoredIds.forEach((id) => {
+    if (visibleIds.has(id)) return
+    const restored = previous.find((houseguest) => String(houseguest.id) === id)
+    if (!restored) return
+    visible.push({ ...restored, isEvicted: true })
+    visibleIds.add(id)
+  })
+
+  const order = new Map(previous.map((houseguest, index) => [String(houseguest.id), index]))
+  return visible
+    .sort((left, right) => (order.get(String(left.id)) ?? 0) - (order.get(String(right.id)) ?? 0))
+    .map((houseguest) => (restoredIds.has(String(houseguest.id))
+      ? { ...houseguest, isEvicted: true }
+      : houseguest))
+}
+
 export default function HouseguestGrid({
   houseguests,
   showCountInHeader = false,
@@ -100,7 +128,14 @@ export default function HouseguestGrid({
   occupancyLabel,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
+  const previousHouseguestsRef = useRef<Houseguest[]>(houseguests)
+  const survivorHoldTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  const survivorHoldClearTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const game = useAppSelector((s) => s.game)
+  const gamePlayersById = useMemo(
+    () => new Map(game.players.map((player) => [String(player.id), player])),
+    [game.players],
+  )
   const survivorRoboStatsById = useMemo(() => {
     const statsById = new Map<string, RoboStatsSummary>()
     if (game.mode !== 'survivor') return statsById
@@ -120,6 +155,77 @@ export default function HouseguestGrid({
     })
     return statsById
   }, [game.mode, game.modeSpecific, game.players, game.week])
+  const [survivorHoldRoster, setSurvivorHoldRoster] = useState<Houseguest[] | null>(null)
+  const renderedHouseguests = game.mode === 'survivor' && survivorHoldRoster !== null
+    ? survivorHoldRoster
+    : houseguests
+
+  useEffect(() => {
+    return () => {
+      if (survivorHoldTimerRef.current !== null) {
+        window.clearTimeout(survivorHoldTimerRef.current)
+        survivorHoldTimerRef.current = null
+      }
+      if (survivorHoldClearTimerRef.current !== null) {
+        window.clearTimeout(survivorHoldClearTimerRef.current)
+        survivorHoldClearTimerRef.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const previous = previousHouseguestsRef.current
+    previousHouseguestsRef.current = houseguests
+
+    if (game.mode !== 'survivor') {
+      if (survivorHoldTimerRef.current !== null) {
+        window.clearTimeout(survivorHoldTimerRef.current)
+        survivorHoldTimerRef.current = null
+      }
+      if (survivorHoldClearTimerRef.current !== null) {
+        window.clearTimeout(survivorHoldClearTimerRef.current)
+      }
+      if (survivorHoldRoster !== null) {
+        survivorHoldClearTimerRef.current = window.setTimeout(() => {
+          survivorHoldClearTimerRef.current = null
+          setSurvivorHoldRoster(null)
+        }, 0)
+      }
+      return
+    }
+
+    const currentDay = game.modeSpecific?.kind === 'survivor' ? game.modeSpecific.currentDay : null
+    if (currentDay == null || currentDay <= 1) return
+    if (survivorHoldRoster !== null) return
+
+    const previousIds = new Set(previous.map((houseguest) => String(houseguest.id)))
+    const currentIds = new Set(houseguests.map((houseguest) => String(houseguest.id)))
+    const addedIds = houseguests
+      .map((houseguest) => String(houseguest.id))
+      .filter((id) => !previousIds.has(id))
+    const addedRoboIds = addedIds.filter((id) => gamePlayersById.get(id)?.isRobo)
+    if (addedRoboIds.length === 0) return
+
+    const removedIds = previous
+      .map((houseguest) => String(houseguest.id))
+      .filter((id) => !currentIds.has(id))
+
+    const holdRoster = buildSurvivorReplacementHold(
+      previous,
+      houseguests,
+      new Set(addedRoboIds),
+      new Set(removedIds),
+    )
+
+    setSurvivorHoldRoster(holdRoster)
+    if (survivorHoldTimerRef.current !== null) {
+      window.clearTimeout(survivorHoldTimerRef.current)
+    }
+    survivorHoldTimerRef.current = window.setTimeout(() => {
+      survivorHoldTimerRef.current = null
+      setSurvivorHoldRoster(null)
+    }, SURVIVOR_REPLACEMENT_HOLD_MS)
+  }, [game.mode, game.modeSpecific, gamePlayersById, houseguests, survivorHoldRoster])
 
   useEffect(() => {
     function setAvailableHeight() {
@@ -200,8 +306,8 @@ export default function HouseguestGrid({
       <div className={styles.headerRow}>
         <h3 id="houseguests-heading" className={styles.header}>
           {HOUSEMATES_SECTION_TITLE}
-          {showCountInHeader && <span className={styles.count}> ({houseguests.length})</span>}
-          {!showCountInHeader && <span className="visually-hidden"> ({houseguests.length})</span>}
+          {showCountInHeader && <span className={styles.count}> ({renderedHouseguests.length})</span>}
+          {!showCountInHeader && <span className="visually-hidden"> ({renderedHouseguests.length})</span>}
         </h3>
         {occupancyLabel && (
           <StatusPill variant="ghost" label={occupancyLabel} ariaLabel={`${occupancyLabel} housemates`} />
@@ -209,7 +315,7 @@ export default function HouseguestGrid({
       </div>
 
       <ul className={listClassName} role="list">
-        {houseguests.map((hg) => {
+        {renderedHouseguests.map((hg) => {
           const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
           return (
             <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>

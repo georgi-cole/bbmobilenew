@@ -22,13 +22,6 @@
   animation: tvdmFadeIn 0.22s ease;
 }
 
-@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
-  .tv-decision-modal {
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-}
-
 @keyframes tvdmFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -260,4 +253,3 @@
 .tv-decision-modal__btn-confirm-name {
   font-weight: 800;
 }
-
