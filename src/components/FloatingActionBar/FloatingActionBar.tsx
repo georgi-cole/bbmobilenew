@@ -73,6 +73,7 @@ export default function FloatingActionBar({
     [directions, humanPlayer],
   );
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
+  const socialModulesUnavailable = !canUseSocialModules;
 
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);
@@ -222,10 +223,13 @@ export default function FloatingActionBar({
         onPublicMeterClick={handlePublicMeterClick}
         onToolClick={handleToolClick}
         primaryDisabled={primaryDisabled}
-        chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
-        chatFlash={isFlashing}
-        incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
-        publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
+        socialDisabled={socialModulesUnavailable}
+        incomingRequestsDisabled={socialModulesUnavailable}
+        publicMeterDisabled={game.publicModeEnabled !== true}
+        chatBadgeCount={!socialModulesUnavailable && humanEnergy !== null ? humanEnergy : undefined}
+        chatFlash={!socialModulesUnavailable && isFlashing}
+        incomingRequestsBadgeCount={!socialModulesUnavailable && pendingCount > 0 ? pendingCount : undefined}
+        publicMeterBadgeCount={game.publicModeEnabled === true && publicRequestCount > 0 ? publicRequestCount : undefined}
         primaryPulse={primaryPulse}
         confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
         confessionalFlash={isConfessionalFlashing}
