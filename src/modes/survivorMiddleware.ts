@@ -47,9 +47,23 @@ function needsSurvivorTerminalHydration(game: GameState): boolean {
     game.voteResults != null ||
     game.awaitingHumanVote === true ||
     game.awaitingTieBreak === true ||
+    game.replacementNeeded === true ||
+    game.awaitingNominations === true ||
+    game.awaitingPovDecision === true ||
+    game.awaitingPovSaveTarget === true ||
     game.pendingMinigame != null ||
-    game.minigameResult != null
+    game.minigameResult != null ||
+    game.awaitingFinal3Eviction === true ||
+    game.awaitingFinal3Plea === true ||
+    game.dayStartShock != null
   );
+}
+
+function clearPendingChallenge(storeApi: MiddlewareAPI) {
+  const state = storeApi.getState() as { challenge?: { pending?: unknown } };
+  if (state.challenge?.pending != null) {
+    storeApi.dispatch({ type: 'challenge/setPendingChallenge', payload: null });
+  }
 }
 
 function getSurvivorState(game: GameState): SurvivorModeState {
@@ -244,6 +258,7 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
     if (needsSurvivorTerminalHydration(stateBefore.game)) {
       storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(stateBefore.game)));
     }
+    clearPendingChallenge(storeApi);
     return undefined;
   }
 
@@ -272,10 +287,14 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
     if (needsSurvivorTerminalHydration(game)) {
       storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(game)));
     }
+    clearPendingChallenge(storeApi);
     return result;
   }
 
-  if (isSurvivorRunTerminal(game)) return result;
+  if (isSurvivorRunTerminal(game)) {
+    clearPendingChallenge(storeApi);
+    return result;
+  }
 
   drainSurvivorSocial(storeApi, game, typedAction.type);
 
