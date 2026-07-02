@@ -7,6 +7,7 @@ import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
   player: Player;
+  className?: string;
   /** Whether this avatar is currently selected (shows selection ring) */
   selected?: boolean;
   /** Size variant */
@@ -34,6 +35,7 @@ interface PlayerAvatarProps {
  */
 export default function PlayerAvatar({
   player,
+  className,
   selected = false,
   size = 'md',
   onClick,
@@ -82,6 +84,7 @@ export default function PlayerAvatar({
   const classes = [
     'pa',
     `pa--${size}`,
+    className ?? '',
     selected ? 'pa--selected' : '',
     isEvicted ? 'pa--evicted' : '',
     revived ? 'pa--revived' : '',

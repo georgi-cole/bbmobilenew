@@ -383,8 +383,8 @@ export default function HomeHub() {
         open={survivorPrompt === 'resume-or-new'}
         title="Survivor Mode"
         description="Resume your saved run or start over?"
-        confirmLabel="Resume Saved Run"
-        secondaryLabel="Start New Survivor"
+        confirmLabel="Resume"
+        secondaryLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={resumeSurvivorRun}
         onSecondary={() => setSurvivorPrompt('confirm-new')}
@@ -395,8 +395,8 @@ export default function HomeHub() {
         open={survivorPrompt === 'ended'}
         title="Survivor Mode"
         description="Your previous Survivor run has ended."
-        confirmLabel="Start New Survivor"
-        cancelLabel="Return Home"
+        confirmLabel="Start New"
+        cancelLabel="Cancel"
         onConfirm={startSurvivorRun}
         onCancel={() => {
           setSurvivorPrompt(null);
