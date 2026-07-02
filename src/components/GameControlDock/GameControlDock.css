@@ -11,6 +11,26 @@
   user-select: none;
 }
 
+.floating-action-bar__blocked-message {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-bar-height) + 78px + env(safe-area-inset-bottom, 0px));
+  z-index: 115;
+  width: min(88vw, 420px);
+  transform: translateX(-50%);
+  border: 1px solid rgba(151, 164, 207, 0.28);
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: rgba(15, 20, 34, 0.94);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
+  color: rgba(247, 249, 255, 0.94);
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+
 .fab-clean {
   position: fixed;
 }
