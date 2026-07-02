@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { advance, setHasSeenConfessionalSpotlight } from '../../store/gameSlice';
+import { advance, hydrateGame, setHasSeenConfessionalSpotlight } from '../../store/gameSlice';
 import {
   openIncomingInbox,
   openSocialPanel,
@@ -19,9 +19,13 @@ import { selectActiveConfessionalDecision } from '../../store/confessionalDecisi
 import {
   getBlockedSocialModuleAnnouncementMessage,
   getSocialModuleAvailability,
-  type SocialModuleAvailability,
   logBlockedSocialModuleOpen,
+  type SocialModuleAvailability,
 } from '../../social/socialModuleAvailability';
+import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
+import { clearSavedRun, loadSavedRunProfile } from '../../store/saveStatePersistence';
+import { createSurvivorRun, getSurvivorCurrentDay, isSurvivorRunTerminal } from '../../modes/survivorRun';
+import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
 import GameControlDock from '../GameControlDock/GameControlDock';
 import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay';
 
@@ -59,11 +63,14 @@ export default function FloatingActionBar({
   const confessionalAlertCount = useAppSelector(selectConfessionalAlertCount);
   const canUseSocialModules = useAppSelector(selectHumanCanUseSocialModules);
   const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
+  const activeProfileId = useAppSelector(selectActiveProfileId);
+  const isGuest = useAppSelector(selectIsGuest);
   const game = useAppSelector((s) => s.game);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
   const isSurvivorMode = game.mode === 'survivor';
+  const survivorTerminalActive = isSurvivorRunTerminal(game);
 
   const humanPlayer = players.find((p) => p.isUser);
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null;
@@ -78,6 +85,14 @@ export default function FloatingActionBar({
   );
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
   const socialModulesUnavailable = !canUseSocialModules;
+  const survivorDay = getSurvivorCurrentDay(game);
+  const bestSurvivorRecord = useMemo(
+    () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId).stats.maxSurvivorDaysSurvived : 0),
+    [activeProfileId, isGuest],
+  );
+  const survivorEndDescription = bestSurvivorRecord > survivorDay
+    ? `You were eliminated on Day ${survivorDay}. Best survival record: ${bestSurvivorRecord} days.`
+    : `You were eliminated on Day ${survivorDay}.`;
 
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);
@@ -145,10 +160,12 @@ export default function FloatingActionBar({
   const confessionalPromptActivated =
     activeConfessionalDecisionKey !== null &&
     triggeredConfessionalDecisionKey === activeConfessionalDecisionKey;
-  const primaryDisabled = hasPendingConfessionalDecision ? confessionalPromptActivated : isWaiting;
-  const primaryPulse = hasPendingConfessionalDecision
-    ? !confessionalPromptActivated
-    : canAdvance && !isWaiting;
+  const primaryDisabled = survivorTerminalActive || (hasPendingConfessionalDecision ? confessionalPromptActivated : isWaiting);
+  const primaryPulse = survivorTerminalActive
+    ? false
+    : hasPendingConfessionalDecision
+      ? !confessionalPromptActivated
+      : canAdvance && !isWaiting;
   const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated;
   const confessionalSpotlightEligible =
     hasPendingConfessionalDecision &&
@@ -219,6 +236,7 @@ export default function FloatingActionBar({
   }, []);
 
   const handlePrimaryActionClick = useCallback(() => {
+    if (survivorTerminalActive) return;
     setBlockedAnnouncement(null);
     if (hasPendingConfessionalDecision) {
       setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey);
@@ -237,6 +255,7 @@ export default function FloatingActionBar({
     dispatchPlayPressedEvent,
     hasPendingConfessionalDecision,
     hasSeenConfessionalSpotlight,
+    survivorTerminalActive,
   ]);
 
   const handleToolClick = useCallback(() => {
@@ -266,6 +285,20 @@ export default function FloatingActionBar({
     showSurvivorBlockedMessage,
   ]);
 
+  const handleStartNewSurvivor = useCallback(() => {
+    if (!isGuest && activeProfileId) {
+      clearSavedRun(activeProfileId, 'survivor');
+    }
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null });
+    dispatch(hydrateGame(createSurvivorRun()));
+    navigate('/game', { replace: true });
+  }, [activeProfileId, dispatch, isGuest, navigate]);
+
+  const handleReturnHome = useCallback(() => {
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null });
+    navigate('/');
+  }, [dispatch, navigate]);
+
   return (
     <>
       {blockedAnnouncement && (
@@ -273,12 +306,22 @@ export default function FloatingActionBar({
           {blockedAnnouncement.message}
         </div>
       )}
+      <ConfirmExitModal
+        open={survivorTerminalActive}
+        title="Survivor run ended"
+        description={survivorEndDescription}
+        confirmLabel="Start New Survivor"
+        cancelLabel="Return Home"
+        onConfirm={handleStartNewSurvivor}
+        onCancel={handleReturnHome}
+      />
       <GameControlDock
         onChatClick={handleChatClick}
         onIncomingRequestsClick={handleIncomingRequestsClick}
         onPrimaryActionClick={handlePrimaryActionClick}
         onPublicMeterClick={handlePublicMeterClick}
         onToolClick={handleToolClick}
+        disabled={survivorTerminalActive}
         primaryDisabled={primaryDisabled}
         socialDisabled={socialModulesUnavailable}
         incomingRequestsDisabled={socialModulesUnavailable}
