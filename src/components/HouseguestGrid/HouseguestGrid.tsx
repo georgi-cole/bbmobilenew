@@ -181,6 +181,8 @@ export default function HouseguestGrid({
       return
     }
 
+    const currentDay = game.modeSpecific?.kind === 'survivor' ? game.modeSpecific.currentDay : null
+    if (currentDay == null || currentDay <= 1) return
     if (survivorHoldRoster !== null) return
 
     const previousIds = new Set(previous.map((houseguest) => String(houseguest.id)))
@@ -210,7 +212,7 @@ export default function HouseguestGrid({
       survivorHoldTimerRef.current = null
       setSurvivorHoldRoster(null)
     }, SURVIVOR_REPLACEMENT_HOLD_MS)
-  }, [game.mode, gamePlayersById, houseguests, survivorHoldRoster])
+  }, [game.mode, game.modeSpecific, gamePlayersById, houseguests, survivorHoldRoster])
 
   useEffect(() => {
     function setAvailableHeight() {
