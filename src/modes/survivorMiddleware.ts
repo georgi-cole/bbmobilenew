@@ -1,10 +1,18 @@
 import type { Middleware } from '@reduxjs/toolkit';
 import type { GameState, Player } from '../types';
 import type { SurvivorModeState } from './modeTypes';
-import { advance, hydrateGame } from '../store/gameSlice';
+import { advance, consumeForcedShock, finalizePendingEviction, hydrateGame } from '../store/gameSlice';
 import { getDefaultCompetitionSeasonState } from '../ai/competition';
 import { buildReplacementRobo, createSurvivorModeState } from './survivorRun';
 import { isSocialModeEnabled, shouldReplaceEvictedPlayers } from './gameModes';
+
+const SURVIVOR_BLOCKED_SHOCK_ACTIONS = new Set([
+  'game/activateBattleBack',
+  'game/activateSpecialVeto',
+  'game/activateDayStartShock',
+  'game/activateDemocracia',
+  'game/triggerSecretMission',
+]);
 
 function isExited(player: Player | undefined): boolean {
   return player?.status === 'evicted' || player?.status === 'jury';
@@ -18,7 +26,8 @@ function getSurvivorState(game: GameState): SurvivorModeState {
 
 function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState | null {
   if (game.mode !== 'survivor' || !shouldReplaceEvictedPlayers(game.mode)) return null;
-  const evictee = game.players.find((player) => player.id === evicteeId);
+  const evicteeIndex = game.players.findIndex((player) => player.id === evicteeId);
+  const evictee = evicteeIndex >= 0 ? game.players[evicteeIndex] : undefined;
   if (!isExited(evictee) || evictee?.isUser) return null;
 
   const modeSpecific = getSurvivorState(game);
@@ -32,10 +41,11 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
   };
   const totalRoboContestantsEvicted = modeSpecific.totalRoboContestantsEvicted + 1;
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
+  const players = game.players.map((player, index) => (index === evicteeIndex ? replacement : player));
 
   return {
     ...game,
-    players: [...game.players, replacement],
+    players,
     competitionSeasonStateByPlayerId: nextCompetitionState,
     modeSpecific: {
       ...modeSpecific,
@@ -76,9 +86,19 @@ function withSurvivorDaySync(game: GameState): GameState | null {
 }
 
 export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) => {
-  const result = next(action);
   const typedAction = action as { type?: string; payload?: unknown };
-  const game = storeApi.getState().game as GameState;
+  const stateBefore = storeApi.getState() as { game: GameState };
+
+  if (stateBefore.game.mode === 'survivor' && typedAction.type && SURVIVOR_BLOCKED_SHOCK_ACTIONS.has(typedAction.type)) {
+    if (stateBefore.game.pendingForcedShock?.type && stateBefore.game.pendingForcedShock.type !== 'doubleEviction') {
+      storeApi.dispatch(consumeForcedShock());
+    }
+    return undefined;
+  }
+
+  const result = next(action);
+  const stateAfter = storeApi.getState() as { game: GameState };
+  const game = stateAfter.game;
 
   if (game.mode !== 'survivor') return result;
 
@@ -90,14 +110,24 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
     }
   }
 
+  const latest = (storeApi.getState() as { game: GameState }).game;
+  if (
+    typedAction.type !== 'game/finalizePendingEviction' &&
+    latest.pendingEviction &&
+    !latest.voteResults
+  ) {
+    storeApi.dispatch(finalizePendingEviction(latest.pendingEviction.evicteeId));
+    return result;
+  }
+
   if (typedAction.type === 'game/advance') {
-    const latest = storeApi.getState().game as GameState;
-    if (!isSocialModeEnabled(latest.mode) && (latest.phase === 'social_1' || latest.phase === 'social_2')) {
+    const advanced = (storeApi.getState() as { game: GameState }).game;
+    if (!isSocialModeEnabled(advanced.mode) && (advanced.phase === 'social_1' || advanced.phase === 'social_2')) {
       storeApi.dispatch(advance());
       return result;
     }
 
-    const synced = withSurvivorDaySync(latest);
+    const synced = withSurvivorDaySync(advanced);
     if (synced) storeApi.dispatch(hydrateGame(synced));
   }
 
