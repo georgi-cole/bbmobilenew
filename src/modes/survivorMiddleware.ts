@@ -136,7 +136,8 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
   const activeCastSize = game.players.filter((player) => !isExited(player)).length;
   if (activeCastSize >= SURVIVOR_STARTING_CAST_SIZE) return null;
 
-  const replacement = buildReplacementRobo(game, evictee.survivorSlot ?? evicteeIndex);
+  const replacementSlot = evictee?.survivorSlot ?? evicteeIndex;
+  const replacement = buildReplacementRobo(game, replacementSlot);
   const nextCompetitionState = {
     ...(game.competitionSeasonStateByPlayerId ?? {}),
     [replacement.id]: getDefaultCompetitionSeasonState(),
