@@ -25,10 +25,19 @@
   background:
     radial-gradient(circle at 50% 20%, rgba(120, 168, 255, 0.14), transparent 36%),
     linear-gradient(180deg, rgba(7, 12, 22, 0.18) 0%, rgba(3, 7, 14, 0.34) 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 @supports (backdrop-filter: blur(6px)) {
   .avrm { backdrop-filter: blur(6px); }
+}
+
+@supports (backdrop-filter: blur(6px)) or (-webkit-backdrop-filter: blur(6px)) {
+  .avrm--tv {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 @keyframes avrmFadeIn {
