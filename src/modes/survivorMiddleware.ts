@@ -248,7 +248,15 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   if (game.mode !== 'survivor') return result;
 
   if (isSurvivorHumanEliminated(game)) {
-    storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(game)));
+    const needsTerminalHydration =
+      game.status !== 'failed' ||
+      game.pendingEviction != null ||
+      game.voteResults != null ||
+      game.awaitingHumanVote === true ||
+      game.awaitingTieBreak === true;
+    if (needsTerminalHydration) {
+      storeApi.dispatch(hydrateGame(terminalizeSurvivorRun(game)));
+    }
     return result;
   }
 
