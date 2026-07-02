@@ -345,7 +345,7 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as FamousFiguresPrizeType}
-                  seed={seed}
+                  seed={import.meta.env.PROD ? 0 : seed}
                   onComplete={handleReactComplete}
                   skipWinnerAnimation={true}
                 />
