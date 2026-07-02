@@ -31,7 +31,7 @@ interface Props {
   candidates: Player[];
   seed: number;
   awardAmount?: number;
-  /** Override the elimination interval (ms). Default: 3500. Useful for QA slow-mode. */
+  /** Override the elimination interval (ms). Default: 4800. Useful for QA slow-mode. */
   eliminationIntervalMs?: number;
   onComplete: (winnerId: string) => void;
   onAudienceSurgeRequest?: (playerId: string) => Promise<boolean> | boolean;
@@ -64,7 +64,9 @@ interface VoteEntry {
   surgeActive: boolean;
 }
 
-const ELIM_INTERVAL_MS = 3500;
+const ELIM_INTERVAL_MS = 4800;
+const VOTE_TICK_INTERVAL_MS = 750;
+const VOTE_DRIFT_AMOUNT = 3;
 const INTRO_MS = 1600;
 const CLOCK_INTERVAL_MS = 200;
 const SURGE_SELECTION_WINDOW_MS = 6500;
@@ -99,7 +101,6 @@ function getStatusLine(args: {
   const {
     phase,
     countdown,
-    eliminationName,
     surgeActive,
     surgePlayerName,
     surgePending,
@@ -111,23 +112,23 @@ function getStatusLine(args: {
     return 'Public favorite locked in';
   }
   if (phase === 'intro') {
-    return 'Broadcast feed coming online';
+    return 'Standings are loading';
   }
-  if (phase === 'elimination' && eliminationName) {
-    return `${eliminationName} falls out of the public vote`;
+  if (phase === 'elimination') {
+    return 'Standings paused for elimination';
   }
   if (surgePending) {
-    return 'Preparing Audience Surge…';
+    return 'Connecting Audience Surge';
   }
   if (surgeActive && surgePlayerName) {
-    return `${surgePlayerName} is riding an Audience Surge · ${clampCountdown(
+    return `${surgePlayerName} has the audience boost · ${clampCountdown(
       surgeActive.endsAt - nowMs,
     )}s left`;
   }
   if (phase === 'audience_surge' && surgeWindowRemaining > 0) {
-    return `Viewer Spotlight closes in ${surgeWindowRemaining}s`;
+    return `Audience Surge closes in ${surgeWindowRemaining}s`;
   }
-  return `Next results shift in ${countdown}s`;
+  return `Board refresh in ${countdown}s`;
 }
 
 function AnimatedPercent({ percent }: { percent: number }) {
@@ -139,18 +140,25 @@ function AnimatedPercent({ percent }: { percent: number }) {
 }
 
 function VoteAccentRail({ percent, tone = 'default' }: { percent: number; tone?: 'default' | 'leader' }) {
-  const activeSegments = Math.max(1, Math.min(6, Math.round(percent / 17)));
+  const clampedPercent = Math.max(6, Math.min(100, percent));
   return (
     <div
       className={`pf-overlay__accent-rail${tone === 'leader' ? ' pf-overlay__accent-rail--leader' : ''}`}
       aria-hidden="true"
     >
-      {Array.from({ length: 6 }, (_, index) => (
-        <span
-          key={index}
-          className={`pf-overlay__accent-segment${index < activeSegments ? ' pf-overlay__accent-segment--active' : ''}`}
-        />
-      ))}
+      <span className="pf-overlay__accent-track" />
+      <motion.span
+        className="pf-overlay__accent-fill"
+        initial={false}
+        animate={{ width: `${clampedPercent}%` }}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+      />
+      <motion.span
+        className="pf-overlay__accent-pip"
+        initial={false}
+        animate={{ left: `calc(${clampedPercent}% - 0.45rem)` }}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+      />
     </div>
   );
 }
@@ -228,8 +236,8 @@ function PublicVoteIntro() {
       transition={{ duration: 0.35, ease: 'easeOut' }}
     >
       <span className="pf-overlay__intro-live">LIVE</span>
-      <p className="pf-overlay__intro-title">LIVE PUBLIC VOTE</p>
-      <p className="pf-overlay__intro-subtitle">Broadcast signal locked. Bringing the audience board into focus.</p>
+      <p className="pf-overlay__intro-title">PUBLIC FAVORITE VOTE</p>
+      <p className="pf-overlay__intro-subtitle">Audience numbers are coming in. Stand by for the first live board.</p>
     </motion.div>
   );
 }
@@ -373,6 +381,8 @@ function VoteRankingCard({
       className={`pf-overlay__rank-card${entry.isLeader ? ' pf-overlay__rank-card--leader' : ''}${entry.surgeActive ? ' pf-overlay__rank-card--surge' : ''}${isSelected ? ' pf-overlay__rank-card--selected' : ''}`}
       onClick={() => onSelect(entry.playerId)}
       aria-label={`${entry.name}, rank ${entry.rank}, ${entry.percent}%`}
+      layout
+      transition={{ layout: { duration: 0.42, ease: 'easeOut' } }}
     >
       <span className="pf-overlay__rank-number">#{entry.rank}</span>
       <PlayerPortrait candidate={candidate} />
@@ -381,11 +391,15 @@ function VoteRankingCard({
           <span className="pf-overlay__rank-name">{entry.name}</span>
           <VoteTrendChip trend={entry.trend} previousRank={entry.previousRank} rank={entry.rank} />
         </div>
-        <VoteAccentRail percent={entry.percent} />
+        <VoteAccentRail percent={entry.percent} tone={entry.isLeader ? 'leader' : 'default'} />
       </div>
       <div className="pf-overlay__rank-tail">
         <AnimatedPercent percent={entry.percent} />
-        {entry.surgeActive && <span className="pf-overlay__rank-tag">Surge</span>}
+        {entry.surgeActive ? (
+          <span className="pf-overlay__rank-tag">Surge</span>
+        ) : entry.isLeader ? (
+          <span className="pf-overlay__rank-tag">Live lead</span>
+        ) : null}
       </div>
     </motion.button>
   );
@@ -405,7 +419,7 @@ function VoteRankingBoard({
   return (
     <section className="pf-overlay__board" aria-label="Public vote ranking board">
       <div className="pf-overlay__board-header">
-        <p className="pf-overlay__board-title">Results board</p>
+        <p className="pf-overlay__board-title">Audience board</p>
       </div>
       <div className="pf-overlay__board-list">
         {entries.map((entry) => {
@@ -522,7 +536,8 @@ export default function PublicFavoriteOverlay({
     candidates: candidateIds,
     seed,
     eliminationIntervalMs,
-    tickIntervalMs: 400,
+    tickIntervalMs: VOTE_TICK_INTERVAL_MS,
+    driftAmount: VOTE_DRIFT_AMOUNT,
     surgeTargetId: surgeActive?.playerId ?? null,
   });
   const displayStep: Step = isComplete && step === 'voting' ? 'winner' : step;
@@ -762,8 +777,8 @@ export default function PublicFavoriteOverlay({
         <AnimatePresence>
           {phase !== 'final_reveal' && (
             <PublicVoteHeader
-              title="LIVE PUBLIC VOTE"
-              subtitle="Public Favorite Player"
+              title="PUBLIC FAVORITE VOTE"
+              subtitle="Viewer board"
               statusLine={statusLine}
             />
           )}

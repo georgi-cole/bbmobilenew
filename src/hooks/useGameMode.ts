@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 interface WakeLockSentinelLike {
   released?: boolean;
@@ -16,6 +17,19 @@ interface LockableOrientationLike {
   unlock?: () => void;
 }
 
+interface NativeStatusBarLike {
+  hide?: () => Promise<void>;
+  show?: () => Promise<void>;
+  setOverlaysWebView?: (options: { overlay: boolean }) => Promise<void>;
+}
+
+function getNativeStatusBar(): NativeStatusBarLike | null {
+  if (!Capacitor.isNativePlatform()) return null;
+
+  const plugins = (Capacitor as unknown as { Plugins?: Record<string, unknown> }).Plugins;
+  return (plugins?.StatusBar as NativeStatusBarLike | undefined) ?? null;
+}
+
 /**
  * Keeps the game in an "active play" mode on supported mobile browsers.
  *
@@ -23,15 +37,18 @@ interface LockableOrientationLike {
  * - requests a screen wake lock so the display stays awake during play
  * - re-requests the wake lock when the tab becomes visible again
  * - attempts to keep the experience portrait-locked when the platform allows it
+ * - hides the native Capacitor status bar when the StatusBar plugin exists
  */
 export default function useGameMode(): void {
   useEffect(() => {
     let isMounted = true;
     let wakeLockSentinel: WakeLockSentinelLike | null = null;
     let wakeLockRequestInFlight: Promise<void> | null = null;
+    let statusBarHidden = false;
 
     const wakeLock = (navigator as Navigator & { wakeLock?: WakeLockControllerLike }).wakeLock;
     const orientation = screen.orientation as LockableOrientationLike | undefined;
+    const statusBar = getNativeStatusBar();
 
     function isWakeLockRequestAllowedByVisibility() {
       return document.visibilityState === 'visible';
@@ -106,23 +123,51 @@ export default function useGameMode(): void {
       }
     }
 
+    async function hideStatusBar() {
+      if (!statusBar || statusBarHidden) return;
+
+      try {
+        await statusBar.setOverlaysWebView?.({ overlay: false });
+        await statusBar.hide?.();
+        statusBarHidden = true;
+      } catch {
+        // SafeGameViewport owns layout correctness even when native APIs fail.
+      }
+    }
+
+    async function showStatusBar() {
+      if (!statusBar || !statusBarHidden) return;
+
+      try {
+        await statusBar.show?.();
+      } catch {
+        // Native status bar restoration is best-effort during teardown.
+      } finally {
+        statusBarHidden = false;
+      }
+    }
+
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
         void requestWakeLock();
         void lockOrientation();
+        void hideStatusBar();
       } else {
         void releaseWakeLock();
+        void showStatusBar();
       }
     }
 
     void requestWakeLock();
     void lockOrientation();
+    void hideStatusBar();
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       unlockOrientation();
+      void showStatusBar();
       void releaseWakeLock();
     };
   }, []);

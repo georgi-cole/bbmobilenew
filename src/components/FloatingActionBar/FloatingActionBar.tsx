@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { advance, setHasSeenConfessionalSpotlight } from '../../store/gameSlice';
+import { advance, hydrateGame, setHasSeenConfessionalSpotlight } from '../../store/gameSlice';
 import {
   openIncomingInbox,
   openSocialPanel,
@@ -17,14 +17,21 @@ import {
 } from '../../store/selectors';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import {
+  getBlockedSocialModuleAnnouncementMessage,
   getSocialModuleAvailability,
-  type SocialModuleAvailability,
   logBlockedSocialModuleOpen,
+  type SocialModuleAvailability,
 } from '../../social/socialModuleAvailability';
+import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
+import { clearSavedRun, loadSavedRunProfile } from '../../store/saveStatePersistence';
+import { createSurvivorRun, getSurvivorCurrentDay, isSurvivorRunTerminal } from '../../modes/survivorRun';
+import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
 import GameControlDock from '../GameControlDock/GameControlDock';
 import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay';
 
 const CONFESSIONAL_FLASH_DURATION_MS = 1800;
+const SURVIVOR_DISABLED_MESSAGE_MS = 5000;
+const SURVIVOR_PUBLIC_MODE_MESSAGE = 'Public mode is available in Classic campaign mode only.';
 
 type FloatingActionBarProps = {
   /** Called when the player activates Public Meter while public mode is disabled. */
@@ -56,10 +63,14 @@ export default function FloatingActionBar({
   const confessionalAlertCount = useAppSelector(selectConfessionalAlertCount);
   const canUseSocialModules = useAppSelector(selectHumanCanUseSocialModules);
   const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
+  const activeProfileId = useAppSelector(selectActiveProfileId);
+  const isGuest = useAppSelector(selectIsGuest);
   const game = useAppSelector((s) => s.game);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
+  const isSurvivorMode = game.mode === 'survivor';
+  const survivorTerminalActive = isSurvivorRunTerminal(game);
 
   const humanPlayer = players.find((p) => p.isUser);
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null;
@@ -73,9 +84,19 @@ export default function FloatingActionBar({
     [directions, humanPlayer],
   );
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
+  const socialModulesUnavailable = !canUseSocialModules;
+  const survivorDay = getSurvivorCurrentDay(game);
+  const bestSurvivorRecord = useMemo(
+    () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId).stats.maxSurvivorDaysSurvived : 0),
+    [activeProfileId, isGuest],
+  );
+  const survivorEndDescription = bestSurvivorRecord > survivorDay
+    ? `You were eliminated on Day ${survivorDay}. Best survival record: ${bestSurvivorRecord} days.`
+    : `You were eliminated on Day ${survivorDay}.`;
 
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);
+  const [blockedAnnouncement, setBlockedAnnouncement] = useState<{ id: number; message: string } | null>(null);
   const prevEnergyRef = useRef(humanEnergy);
   useEffect(() => {
     if (humanEnergy === null || humanEnergy === prevEnergyRef.current) {
@@ -91,6 +112,19 @@ export default function FloatingActionBar({
       clearTimeout(flashOff);
     };
   }, [humanEnergy]);
+
+  useEffect(() => {
+    if (!blockedAnnouncement) return undefined;
+    const timeout = window.setTimeout(() => {
+      setBlockedAnnouncement((current) => (current?.id === blockedAnnouncement.id ? null : current));
+    }, SURVIVOR_DISABLED_MESSAGE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [blockedAnnouncement]);
+
+  const showSurvivorBlockedMessage = useCallback((message: string | null) => {
+    if (!message) return;
+    setBlockedAnnouncement({ id: Date.now(), message });
+  }, []);
 
   const [isConfessionalFlashing, setIsConfessionalFlashing] = useState(false);
   const [confessionalFlashTick, setConfessionalFlashTick] = useState(0);
@@ -126,10 +160,12 @@ export default function FloatingActionBar({
   const confessionalPromptActivated =
     activeConfessionalDecisionKey !== null &&
     triggeredConfessionalDecisionKey === activeConfessionalDecisionKey;
-  const primaryDisabled = hasPendingConfessionalDecision ? confessionalPromptActivated : isWaiting;
-  const primaryPulse = hasPendingConfessionalDecision
-    ? !confessionalPromptActivated
-    : canAdvance && !isWaiting;
+  const primaryDisabled = survivorTerminalActive || (hasPendingConfessionalDecision ? confessionalPromptActivated : isWaiting);
+  const primaryPulse = survivorTerminalActive
+    ? false
+    : hasPendingConfessionalDecision
+      ? !confessionalPromptActivated
+      : canAdvance && !isWaiting;
   const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated;
   const confessionalSpotlightEligible =
     hasPendingConfessionalDecision &&
@@ -150,11 +186,22 @@ export default function FloatingActionBar({
         socialModuleAvailability,
         'FloatingActionBar chat button',
       );
+      if (isSurvivorMode) {
+        showSurvivorBlockedMessage(getBlockedSocialModuleAnnouncementMessage(socialModuleAvailability));
+        return;
+      }
       onSocialModuleBlocked?.(socialModuleAvailability);
       return;
     }
     dispatch(openSocialPanel());
-  }, [canUseSocialModules, dispatch, onSocialModuleBlocked, socialModuleAvailability]);
+  }, [
+    canUseSocialModules,
+    dispatch,
+    isSurvivorMode,
+    onSocialModuleBlocked,
+    showSurvivorBlockedMessage,
+    socialModuleAvailability,
+  ]);
 
   const handleIncomingRequestsClick = useCallback(() => {
     if (!canUseSocialModules) {
@@ -163,11 +210,22 @@ export default function FloatingActionBar({
         socialModuleAvailability,
         'FloatingActionBar incoming requests button',
       );
+      if (isSurvivorMode) {
+        showSurvivorBlockedMessage(getBlockedSocialModuleAnnouncementMessage(socialModuleAvailability));
+        return;
+      }
       onSocialModuleBlocked?.(socialModuleAvailability);
       return;
     }
     dispatch(openIncomingInbox());
-  }, [canUseSocialModules, dispatch, onSocialModuleBlocked, socialModuleAvailability]);
+  }, [
+    canUseSocialModules,
+    dispatch,
+    isSurvivorMode,
+    onSocialModuleBlocked,
+    showSurvivorBlockedMessage,
+    socialModuleAvailability,
+  ]);
 
   const dispatchPlayPressedEvent = useCallback(() => {
     try {
@@ -178,6 +236,8 @@ export default function FloatingActionBar({
   }, []);
 
   const handlePrimaryActionClick = useCallback(() => {
+    if (survivorTerminalActive) return;
+    setBlockedAnnouncement(null);
     if (hasPendingConfessionalDecision) {
       setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey);
       setConfessionalFlashTick((tick) => tick + 1);
@@ -195,6 +255,7 @@ export default function FloatingActionBar({
     dispatchPlayPressedEvent,
     hasPendingConfessionalDecision,
     hasSeenConfessionalSpotlight,
+    survivorTerminalActive,
   ]);
 
   const handleToolClick = useCallback(() => {
@@ -207,25 +268,68 @@ export default function FloatingActionBar({
 
   const handlePublicMeterClick = useCallback(() => {
     if (game.publicModeEnabled !== true) {
+      if (isSurvivorMode) {
+        showSurvivorBlockedMessage(SURVIVOR_PUBLIC_MODE_MESSAGE);
+        return;
+      }
       onPublicMeterBlocked?.();
       return;
     }
     navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter');
-  }, [game.publicModeEnabled, navigate, onPublicMeterBlocked, publicRequestCount]);
+  }, [
+    game.publicModeEnabled,
+    isSurvivorMode,
+    navigate,
+    onPublicMeterBlocked,
+    publicRequestCount,
+    showSurvivorBlockedMessage,
+  ]);
+
+  const handleStartNewSurvivor = useCallback(() => {
+    if (!isGuest && activeProfileId) {
+      clearSavedRun(activeProfileId, 'survivor');
+    }
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null });
+    dispatch(hydrateGame(createSurvivorRun()));
+    navigate('/game', { replace: true });
+  }, [activeProfileId, dispatch, isGuest, navigate]);
+
+  const handleReturnHome = useCallback(() => {
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null });
+    navigate('/');
+  }, [dispatch, navigate]);
 
   return (
     <>
+      {blockedAnnouncement && (
+        <div className="floating-action-bar__blocked-message" role="status" aria-live="polite">
+          {blockedAnnouncement.message}
+        </div>
+      )}
+      <ConfirmExitModal
+        open={survivorTerminalActive}
+        title="Survivor run ended"
+        description={survivorEndDescription}
+        confirmLabel="Start New Survivor"
+        cancelLabel="Return Home"
+        onConfirm={handleStartNewSurvivor}
+        onCancel={handleReturnHome}
+      />
       <GameControlDock
         onChatClick={handleChatClick}
         onIncomingRequestsClick={handleIncomingRequestsClick}
         onPrimaryActionClick={handlePrimaryActionClick}
         onPublicMeterClick={handlePublicMeterClick}
         onToolClick={handleToolClick}
+        disabled={survivorTerminalActive}
         primaryDisabled={primaryDisabled}
-        chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
-        chatFlash={isFlashing}
-        incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
-        publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
+        socialDisabled={socialModulesUnavailable}
+        incomingRequestsDisabled={socialModulesUnavailable}
+        publicMeterDisabled={game.publicModeEnabled !== true}
+        chatBadgeCount={!socialModulesUnavailable && humanEnergy !== null ? humanEnergy : undefined}
+        chatFlash={!socialModulesUnavailable && isFlashing}
+        incomingRequestsBadgeCount={!socialModulesUnavailable && pendingCount > 0 ? pendingCount : undefined}
+        publicMeterBadgeCount={game.publicModeEnabled === true && publicRequestCount > 0 ? publicRequestCount : undefined}
         primaryPulse={primaryPulse}
         confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
         confessionalFlash={isConfessionalFlashing}

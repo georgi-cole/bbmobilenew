@@ -7,10 +7,12 @@ interface Props {
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  secondaryLabel?: string;
   /** When false, only the confirm button is rendered (info/notification dialogs). Defaults to true. */
   showCancel?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  onSecondary?: () => void;
 }
 
 /**
@@ -23,9 +25,11 @@ export default function ConfirmExitModal({
   description,
   confirmLabel = 'Exit',
   cancelLabel = 'Stay',
+  secondaryLabel,
   showCancel = true,
   onConfirm,
   onCancel,
+  onSecondary,
 }: Props) {
   const uid = useId();
   const titleId = `${uid}-title`;
@@ -61,14 +65,19 @@ export default function ConfirmExitModal({
         <h2 id={titleId} className="confirm-modal__title">{title}</h2>
         {description && <p id={descId} className="confirm-modal__desc">{description}</p>}
         <div className="confirm-modal__actions">
+          <button type="button" className="confirm-modal__btn game-button game-button--primary" onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+          {secondaryLabel && onSecondary && (
+            <button type="button" className="confirm-modal__btn confirm-modal__btn--danger game-button game-button--ghost" onClick={onSecondary}>
+              {secondaryLabel}
+            </button>
+          )}
           {showCancel && (
             <button type="button" className="confirm-modal__btn game-button game-button--ghost" onClick={onCancel}>
               {cancelLabel}
             </button>
           )}
-          <button type="button" className="confirm-modal__btn game-button game-button--primary" onClick={onConfirm}>
-            {confirmLabel}
-          </button>
         </div>
       </div>
     </div>

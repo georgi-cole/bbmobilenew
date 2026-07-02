@@ -16,7 +16,7 @@ import {
 } from '../ai/competition';
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
 import { getBracketPoolForContext } from '../ai/competition/bracketTemplate';
-import { applyCompetitionSeasonUpdate, selectAlivePlayers } from './gameSlice';
+import { applyCompetitionSeasonUpdate, hydrateGame, selectAlivePlayers } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
@@ -97,7 +97,7 @@ const LATE_SEASON_PLAYER_THRESHOLD = 6;
 // Keep a modest history buffer in case the scheduler window expands.
 const RECENT_HISTORY_LIMIT = 10;
 
-// ─── Slice ────────────────────────────────────────────────────────────────────
+// ─── Slice ───────────────────────────────────────────────────────────────────
 
 const challengeSlice = createSlice({
   name: 'challenge',
@@ -196,6 +196,39 @@ export const startChallenge =
       if (pool.length > 0) return selectFromPool(pool);
       return pickRandomGame(gameSeed, { category, excludeKeys });
     };
+    const pickSurvivorGame = (category?: GameCategory, excludeKeys?: string[]) => {
+      const pool = getPoolByFilter({ retired: false, category, excludeKeys });
+      const modeSpecific = state.game.modeSpecific?.kind === 'survivor'
+        ? state.game.modeSpecific
+        : null;
+      if (pool.length === 0 || !modeSpecific) return pickFromRegistry(category, excludeKeys);
+
+      const usedKeys = modeSpecific.competitionRotation.usedKeys ?? [];
+      const used = new Set(usedKeys);
+      let available = pool.filter((game) => !used.has(game.key));
+      let nextUsedKeys = usedKeys;
+      let nextRound = modeSpecific.competitionRotation.round ?? 1;
+
+      if (available.length === 0) {
+        available = pool;
+        nextUsedKeys = [];
+        nextRound += 1;
+      }
+
+      const selected = selectFromPool(available);
+      dispatch(hydrateGame({
+        ...state.game,
+        modeSpecific: {
+          ...modeSpecific,
+          competitionRotation: {
+            usedKeys: [...nextUsedKeys, selected.key],
+            round: nextRound,
+          },
+        },
+        lastPlayedAt: Date.now(),
+      }));
+      return selected;
+    };
     const getBracketTemplatePool = (excludeKeys?: string[]) => {
       const bracketCompType =
         opts.prizeType === 'LOH' || opts.prizeType === 'POS'
@@ -219,6 +252,8 @@ export const startChallenge =
       const found = getGame(forceKey);
       if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`);
       gameEntry = found;
+    } else if (state.game.mode === 'survivor') {
+      gameEntry = pickSurvivorGame(opts.category, opts.excludeKeys);
     } else {
       // Remote live-config weekly mode takes priority over user settings.
       const remoteChallenge = state.remoteConfig?.config?.challenge;
@@ -347,13 +382,20 @@ export const startChallenge =
       : ((mulberry32((challengeSeed ^ nextNonce) >>> 0)() * 0x100000000) >>> 0);
     dispatch(incrementNonce());
 
+    const latestState = getState();
+    const gameState = latestState.game;
+    const resolvedParticipants = gameState.mode === 'survivor'
+      ? selectAlivePlayers(latestState)
+        .slice(0, gameState.modeSpecific?.kind === 'survivor' ? gameState.modeSpecific.startingCastSize : 8)
+        .map((player) => player.id)
+      : participants;
+
     // Pre-compute AI scores for all non-human participants.
-    const gameState = getState().game;
     const humanId = gameState?.players?.find((p) => p.isUser)?.id;
     const aiScores: Record<string, number> = {};
     const minigameModel = getMinigameAiModelForGame(gameEntry);
     const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined;
-    participants.forEach((pid, index) => {
+    resolvedParticipants.forEach((pid, index) => {
       if (pid !== humanId) {
         const player = gameState?.players?.find((p) => p.id === pid);
         aiScores[pid] = simulateMinigameAiScore({
@@ -382,7 +424,7 @@ export const startChallenge =
       const scoreRange = Math.max(1, maxScore - minScore);
       const maxMs = minigameModel.tiebreakerMaxMs;
       aiTiebreakers = {};
-      participants.forEach((pid) => {
+      resolvedParticipants.forEach((pid) => {
         if (pid === humanId || aiScores[pid] == null) return;
         // Seed the jitter RNG differently from the score RNG by XOR-ing a fixed salt.
         const rng = mulberry32(((perChallengeSeed >>> 0) ^ (hashStringU32(pid) ^ 0xbeef_cafe)) >>> 0);
@@ -400,7 +442,7 @@ export const startChallenge =
       id,
       game: gameEntry,
       seed: perChallengeSeed,
-      participants,
+      participants: resolvedParticipants,
       phase: 'rules',
       aiScores,
       aiTiebreakers,
