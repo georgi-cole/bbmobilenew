@@ -1,6 +1,6 @@
 import type { Player } from '../../types';
 import { enrichPlayer } from '../../utils/houseguestLookup';
-import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './HouseguestProfile.css';
 
 interface HouseguestProfileProps {
@@ -32,15 +32,12 @@ export default function HouseguestProfile({ player, onClose }: HouseguestProfile
         </button>
 
         <div className="hg-profile__header">
-          <img
+          <PlayerAvatar
+            player={player}
             className="hg-profile__avatar"
-            src={resolveAvatar(player)}
-            alt={player.name}
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.onerror = null;
-              img.src = getDicebear(player.name);
-            }}
+            size="lg"
+            showRelationshipOutline={false}
+            showEvictedStyle={false}
           />
           <div className="hg-profile__identity">
             <h2 className="hg-profile__name">{ep.fullName ?? ep.name}</h2>

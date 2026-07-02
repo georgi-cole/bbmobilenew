@@ -15,7 +15,6 @@ import {
   loadSeasonSnapshot,
   clearSeasonSnapshot,
 } from '../../store/saveStatePersistence';
-import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import HubLoadingOverlay from '../../components/HubLoadingOverlay/HubLoadingOverlay';
@@ -178,6 +177,15 @@ export default function HomeHub() {
     navigate('/', { replace: true });
   }, [autoStartGame, navigate]);
 
+  useEffect(() => {
+    if (!showResumePrompt) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setShowResumePrompt(false);
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showResumePrompt]);
+
   const handlePlay = () => {
     // Unlock audio in the gesture context.  We intentionally do NOT follow up
     // with SoundManager.panicStopAllMusic() here — that used to race with the
@@ -251,15 +259,27 @@ export default function HomeHub() {
       {preloading && <AssetPreloaderOverlay />}
 
       {/* Resume saved season prompt — shown when Play is pressed and a save exists */}
-      <ConfirmExitModal
-        open={showResumePrompt}
-        title="Resume season?"
-        description="Pick up where you left off, or start fresh."
-        confirmLabel="Resume"
-        cancelLabel="New Season"
-        onConfirm={handleResume}
-        onCancel={handleNewSeason}
-      />
+      {showResumePrompt && (
+        <div className="homehub-resume-modal" role="presentation" onClick={() => setShowResumePrompt(false)}>
+          <div className="homehub-resume-modal__card" role="dialog" aria-modal="true" aria-labelledby="homehub-resume-title" aria-describedby="homehub-resume-desc" onClick={(event) => event.stopPropagation()}>
+            <h2 id="homehub-resume-title" className="homehub-resume-modal__title">Survivor Mode</h2>
+            <p id="homehub-resume-desc" className="homehub-resume-modal__desc">
+              Resume your saved run or start over?
+            </p>
+            <div className="homehub-resume-modal__actions">
+              <button type="button" className="homehub-resume-modal__btn homehub-resume-modal__btn--primary" onClick={handleResume}>
+                Resume
+              </button>
+              <button type="button" className="homehub-resume-modal__btn homehub-resume-modal__btn--secondary" onClick={handleNewSeason}>
+                Start New
+              </button>
+              <button type="button" className="homehub-resume-modal__btn homehub-resume-modal__btn--ghost" onClick={() => setShowResumePrompt(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="homehub-shell">
         <div className="homehub-frame">

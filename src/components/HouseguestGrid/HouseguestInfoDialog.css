@@ -89,6 +89,11 @@
     0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
+.hg-info-dialog__avatar.pa {
+  width: 58px;
+  height: 58px;
+}
+
 .hg-info-dialog__name {
   margin: 0;
   color: #ffffff;

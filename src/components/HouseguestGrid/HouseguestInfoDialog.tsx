@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Player } from '../../types';
 import { enrichPlayer } from '../../utils/houseguestLookup';
-import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './HouseguestInfoDialog.css';
 
 interface HouseguestInfoDialogProps {
@@ -75,16 +75,12 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
         </button>
 
         <div className="hg-info-dialog__header">
-          <img
+          <PlayerAvatar
+            player={player}
             className="hg-info-dialog__avatar"
-            src={resolveAvatar(player)}
-            alt={player.name}
-            draggable={false}
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.onerror = null;
-              img.src = getDicebear(player.name);
-            }}
+            size="lg"
+            showRelationshipOutline={false}
+            showEvictedStyle={false}
           />
           <div className="hg-info-dialog__identity">
             <h3 className="hg-info-dialog__name">{ep.fullName ?? ep.name}</h3>
