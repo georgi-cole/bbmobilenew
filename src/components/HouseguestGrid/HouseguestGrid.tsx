@@ -6,7 +6,7 @@ import { useAppSelector } from '../../store/hooks'
 import type { CompactRosterLayout } from '../../store/settingsSlice'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
-const SURVIVOR_REPLACEMENT_HOLD_MS = 900
+const SURVIVOR_REPLACEMENT_HOLD_MS = 2000
 
 type RoboStatsSummary = {
   daysInGame?: number | null
