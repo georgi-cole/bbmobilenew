@@ -45,10 +45,10 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
 }
 
 describe('GameScreen compact roster balancing', () => {
-  it('expands the tv stack for the supported two-row compact mode and requests a taller log feed', () => {
+  it('expands the tv stack for compact slider mode and requests a taller log feed', () => {
     const store = makeStore()
 
-    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'two-rows' }))
+    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
 
     const { container } = renderGameScreen(store)
 
@@ -59,7 +59,7 @@ describe('GameScreen compact roster balancing', () => {
   it('keeps the roster balance active on narrow viewports so the TV log stays visible', () => {
     const store = makeStore()
 
-    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'small' }))
+    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
     vi.stubGlobal('innerWidth', 390)
     vi.stubGlobal('innerHeight', 844)
 

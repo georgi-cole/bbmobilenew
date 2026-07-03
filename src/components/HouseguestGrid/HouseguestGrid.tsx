@@ -1,14 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
-import {
-  setGameUX,
-  type CompactRosterLayout,
-  type SupportedCompactRosterLayout,
-} from '../../store/settingsSlice'
+import type { CompactRosterLayout } from '../../store/settingsSlice'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
 
@@ -91,37 +87,6 @@ const MIN_GRID_HEIGHT = 220
 const DEFAULT_FOOTER_HEIGHT = 60
 /** Extra vertical margin subtracted from available height */
 const GRID_VERTICAL_MARGIN = 4
-const NORMAL_GRID_COLUMNS = 4
-const NORMAL_GRID_GAP = 5
-const COMPACT_PROMPT_MIN_TILE_SIZE = 72
-const COMPACT_PROMPT_VERTICAL_BUFFER = 8
-const COMPACT_ROSTER_PROMPT_STORAGE_PREFIX = 'bbmobilenew_compact_roster_prompt_dismissed'
-
-type CompactRosterPromptState = {
-  bucket: string
-} | null
-
-function getViewportSizeBucket(width: number, height: number) {
-  const bucketWidth = Math.max(0, Math.round(width / 80) * 80)
-  const bucketHeight = Math.max(0, Math.round(height / 80) * 80)
-  return `${bucketWidth}x${bucketHeight}`
-}
-
-function isCompactPromptDismissed(bucket: string) {
-  try {
-    return window.localStorage.getItem(`${COMPACT_ROSTER_PROMPT_STORAGE_PREFIX}:${bucket}`) === '1'
-  } catch {
-    return false
-  }
-}
-
-function rememberCompactPromptDismissal(bucket: string) {
-  try {
-    window.localStorage.setItem(`${COMPACT_ROSTER_PROMPT_STORAGE_PREFIX}:${bucket}`, '1')
-  } catch {
-    // localStorage can be unavailable in private browsing or embedded webviews.
-  }
-}
 
 export default function HouseguestGrid({
   houseguests,
@@ -138,7 +103,6 @@ export default function HouseguestGrid({
   const containerRef = useRef<HTMLElement | null>(null)
   const dispatch = useAppDispatch()
   const game = useAppSelector((s) => s.game)
-  const [compactPrompt, setCompactPrompt] = useState<CompactRosterPromptState>(null)
   const survivorReplacementTransition = game.modeSpecific?.kind === 'survivor'
     ? game.modeSpecific.replacementTransition ?? null
     : null
@@ -213,10 +177,8 @@ export default function HouseguestGrid({
     function setAvailableHeight() {
       const visualViewport = window.visualViewport
       const viewportHeight = visualViewport?.height ?? window.innerHeight
-      const viewportWidth = visualViewport?.width ?? window.innerWidth
       const viewportTop = visualViewport?.offsetTop ?? 0
       let listTop = 0
-      let listWidth = 0
       let footerH = DEFAULT_FOOTER_HEIGHT
       let bottomBoundary = viewportTop + viewportHeight - footerH
 
@@ -225,15 +187,9 @@ export default function HouseguestGrid({
 
       if (containerRef.current instanceof HTMLElement) {
         const listEl = containerRef.current.querySelector('ul[role="list"]')
-        if (listEl instanceof HTMLElement) {
-          const listRect = listEl.getBoundingClientRect()
-          listTop = listRect.top
-          listWidth = listRect.width
-        } else {
-          const containerRect = containerRef.current.getBoundingClientRect()
-          listTop = containerRect.top
-          listWidth = containerRect.width
-        }
+        listTop = listEl instanceof HTMLElement
+          ? listEl.getBoundingClientRect().top
+          : containerRef.current.getBoundingClientRect().top
       } else {
         const headerEl = document.querySelector(headerSelector)
         if (headerEl instanceof HTMLElement) {
@@ -258,57 +214,18 @@ export default function HouseguestGrid({
       if (containerRef.current) {
         containerRef.current.style.setProperty('--grid-available-height', `${available}px`)
       }
-
-      const normalRows = Math.ceil(renderedHouseguests.length / NORMAL_GRID_COLUMNS)
-      const measuredTileWidth = listWidth > 0
-        ? (listWidth - NORMAL_GRID_GAP * (NORMAL_GRID_COLUMNS - 1)) / NORMAL_GRID_COLUMNS
-        : COMPACT_PROMPT_MIN_TILE_SIZE
-      const comfortableNormalHeight = Math.ceil(
-        Math.max(COMPACT_PROMPT_MIN_TILE_SIZE, measuredTileWidth) * normalRows
-          + NORMAL_GRID_GAP * Math.max(0, normalRows - 1)
-          + COMPACT_PROMPT_VERTICAL_BUFFER,
-      )
-      const rosterCount = Math.max(gridSize ?? 0, renderedHouseguests.length)
-      const shouldConsiderCompactPrompt =
-        !compact &&
-        rosterCount >= 16 &&
-        renderedHouseguests.length >= 16 &&
-        (game.mode !== 'survivor' || renderedHouseguests.length > 8)
-      const bucket = getViewportSizeBucket(viewportWidth, viewportHeight)
-      const shouldShowPrompt =
-        shouldConsiderCompactPrompt &&
-        available < comfortableNormalHeight &&
-        !isCompactPromptDismissed(bucket)
-
-      setCompactPrompt((current) => {
-        if (!shouldShowPrompt) return current === null ? current : null
-        return current?.bucket === bucket ? current : { bucket }
-      })
     }
 
     setAvailableHeight()
     window.addEventListener('resize', setAvailableHeight)
     window.visualViewport?.addEventListener('resize', setAvailableHeight)
     window.visualViewport?.addEventListener('scroll', setAvailableHeight)
-
-    const resizeObserver = typeof ResizeObserver !== 'undefined' && containerRef.current
-      ? new ResizeObserver(setAvailableHeight)
-      : null
-    if (resizeObserver && containerRef.current) {
-      resizeObserver.observe(containerRef.current)
-      const listEl = containerRef.current.querySelector('ul[role="list"]')
-      if (listEl instanceof HTMLElement) {
-        resizeObserver.observe(listEl)
-      }
-    }
-
     return () => {
       window.removeEventListener('resize', setAvailableHeight)
       window.visualViewport?.removeEventListener('resize', setAvailableHeight)
       window.visualViewport?.removeEventListener('scroll', setAvailableHeight)
-      resizeObserver?.disconnect()
     }
-  }, [compact, footerSelector, game.mode, gridSize, headerSelector, overlaySelector, renderedHouseguests.length])
+  }, [headerSelector, footerSelector, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
   const effectiveCompactLayout = compact ? compactLayout : 'default'
@@ -324,18 +241,6 @@ export default function HouseguestGrid({
   ]
     .filter(Boolean)
     .join(' ')
-
-  function applyCompactPromptChoice(layout: SupportedCompactRosterLayout) {
-    dispatch(setGameUX({ compactRoster: true, compactRosterLayout: layout }))
-    setCompactPrompt(null)
-  }
-
-  function dismissCompactPrompt() {
-    if (compactPrompt) {
-      rememberCompactPromptDismissal(compactPrompt.bucket)
-    }
-    setCompactPrompt(null)
-  }
 
   return (
     <section
@@ -391,23 +296,6 @@ export default function HouseguestGrid({
           </li>
         ))}
       </ul>
-
-      {compactPrompt && (
-        <aside className={styles.compactPrompt} aria-label="Compact roster suggestion">
-          <p className={styles.compactPromptText}>This screen is cramped. Switch to compact roster?</p>
-          <div className={styles.compactPromptActions}>
-            <button type="button" onClick={() => applyCompactPromptChoice('two-rows')}>
-              2 rows of 8 avatars
-            </button>
-            <button type="button" onClick={() => applyCompactPromptChoice('small')}>
-              4x4 smaller avatars
-            </button>
-            <button type="button" onClick={dismissCompactPrompt}>
-              Not now
-            </button>
-          </div>
-        </aside>
-      )}
     </section>
   )
 }

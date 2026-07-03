@@ -1,21 +1,15 @@
 .safe-game-viewport {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh;
   overflow: hidden;
-  background-color: var(--safe-game-viewport-bg-color, var(--app-physical-bg, var(--color-bg)));
-  background-image: var(--safe-game-viewport-bg-image, none);
-  background-size: cover;
-  background-position: var(--safe-game-viewport-bg-position, center);
-  background-repeat: no-repeat;
+  background: var(--color-bg);
   color: var(--color-text);
   isolation: isolate;
 }
 
 body.homehub-full-bleed-active {
-  --app-physical-bg: var(--color-bg);
-  --safe-game-viewport-bg-image: var(--homehub-full-bleed-bg, none);
-  --safe-game-viewport-bleed-bg: var(--homehub-full-bleed-bg, none);
-  --safe-game-viewport-bg-position: center;
   background-color: var(--color-bg);
   background-image: var(--homehub-full-bleed-bg, none);
   background-size: cover;
@@ -27,10 +21,9 @@ body.homehub-full-bleed-active {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-color: var(--safe-game-viewport-bg-color, var(--app-physical-bg, var(--color-bg)));
-  background-image: var(--safe-game-viewport-bleed-bg, var(--homehub-full-bleed-bg, none));
+  background-image: var(--homehub-full-bleed-bg, none);
   background-size: cover;
-  background-position: var(--safe-game-viewport-bleed-position, var(--safe-game-viewport-bg-position, center));
+  background-position: center;
   background-repeat: no-repeat;
   opacity: 0;
   pointer-events: none;
