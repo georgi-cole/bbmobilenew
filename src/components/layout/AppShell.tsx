@@ -14,6 +14,12 @@ import './AppShell.css';
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean'];
 
+export function buildViewportMetaContent(enableZoom: boolean): string {
+  return enableZoom
+    ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
+    : 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
+}
+
 /**
  * AppShell — persistent wrapper around every screen.
  *
@@ -45,6 +51,18 @@ export default function AppShell() {
     THEME_PRESETS.forEach((t) => document.body.classList.remove(`theme-${t}`));
     document.body.classList.add(`theme-${display.themePreset}`);
   }, [display.themePreset]);
+
+  // Keep viewport-fit=cover attached to every runtime viewport meta rewrite.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (!meta) return undefined;
+    const applyViewportMeta = () => {
+      meta.content = buildViewportMetaContent(settings.visual?.enableZoom ?? false);
+    };
+    applyViewportMeta();
+    const id = window.setTimeout(applyViewportMeta, 0);
+    return () => window.clearTimeout(id);
+  }, [settings.visual?.enableZoom]);
 
   // Apply remote theme CSS custom properties (overrides the preset class values).
   // Properties are cleared when the remote config has no theme section.
