@@ -6,6 +6,15 @@ export const STORAGE_KEY = 'bbmobilenew_settings_v1';
 
 export type ThemePreset = 'midnight' | 'neon' | 'sunset' | 'ocean';
 export type CompactRosterLayout = 'slider' | 'small' | 'two-rows';
+export type SupportedCompactRosterLayout = Exclude<CompactRosterLayout, 'slider'>;
+
+export const SUPPORTED_COMPACT_ROSTER_LAYOUTS: SupportedCompactRosterLayout[] = ['two-rows', 'small'];
+
+export function normalizeCompactRosterLayout(
+  layout: CompactRosterLayout | undefined,
+): SupportedCompactRosterLayout {
+  return layout === 'two-rows' ? 'two-rows' : 'small';
+}
 
 export interface SettingsState {
   audio: {
@@ -96,6 +105,15 @@ function normalizeCompSelection(
   return merged;
 }
 
+function normalizeGameUX(
+  gameUX?: Partial<SettingsState['gameUX']>,
+): SettingsState['gameUX'] {
+  const merged = { ...DEFAULT_SETTINGS.gameUX, ...(gameUX ?? {}) };
+  merged.compSelection = normalizeCompSelection(gameUX?.compSelection);
+  merged.compactRosterLayout = normalizeCompactRosterLayout(merged.compactRosterLayout);
+  return merged;
+}
+
 export const DEFAULT_SETTINGS: SettingsState = {
   audio: {
     musicOn: true,
@@ -158,8 +176,7 @@ export function loadSettings(): SettingsState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<SettingsState>;
-    // Deep-merge to preserve new defaults when schema is extended
-    const mergedGameUX = { ...DEFAULT_SETTINGS.gameUX, ...parsed.gameUX };
+    const mergedGameUX = normalizeGameUX(parsed.gameUX);
     const parsedSim = parsed.sim as LegacySimSettings | undefined;
     const normalizedSim: Partial<SettingsState['sim']> = parsedSim
       ? (({ specialVetoChance: legacyVetoChance, ...rest }) => ({
@@ -171,9 +188,6 @@ export function loadSettings(): SettingsState {
         }))(parsedSim)
       : {};
     const mergedSim = { ...DEFAULT_SETTINGS.sim, ...normalizedSim };
-    // compSelection is a nested object — deep-merge so partial stored values
-    // (e.g. from an older schema version) inherit any newly-added defaults.
-    mergedGameUX.compSelection = normalizeCompSelection(parsed.gameUX?.compSelection);
     return {
       audio:   { ...DEFAULT_SETTINGS.audio,   ...parsed.audio },
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
@@ -216,6 +230,12 @@ const settingsSlice = createSlice({
     },
     setGameUX(state, action: PayloadAction<Partial<SettingsState['gameUX']>>) {
       Object.assign(state.gameUX, action.payload);
+      if (action.payload.compactRosterLayout !== undefined) {
+        state.gameUX.compactRosterLayout = normalizeCompactRosterLayout(action.payload.compactRosterLayout);
+      }
+      if (action.payload.compSelection !== undefined) {
+        state.gameUX.compSelection = normalizeCompSelection(action.payload.compSelection);
+      }
     },
     setSim(state, action: PayloadAction<Partial<SettingsState['sim']>>) {
       Object.assign(state.sim, action.payload);
@@ -227,16 +247,10 @@ const settingsSlice = createSlice({
       return DEFAULT_SETTINGS;
     },
     importSettings(_state, action: PayloadAction<SettingsState>) {
-      // Deep-merge with DEFAULT_SETTINGS so importing older saved state that
-      // lacks newer sections (e.g. visual) never leaves them undefined.
-      const mergedGameUX = { ...DEFAULT_SETTINGS.gameUX, ...action.payload.gameUX };
-      // compSelection is a nested object — deep-merge so partial imported values
-      // inherit any newly-added defaults.
-      mergedGameUX.compSelection = normalizeCompSelection(action.payload.gameUX?.compSelection);
       return {
         audio:   { ...DEFAULT_SETTINGS.audio,   ...action.payload.audio },
         display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },
-        gameUX:  mergedGameUX,
+        gameUX:  normalizeGameUX(action.payload.gameUX),
         sim:     { ...DEFAULT_SETTINGS.sim,     ...action.payload.sim },
         visual:  { ...DEFAULT_SETTINGS.visual,  ...action.payload.visual },
       };
