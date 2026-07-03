@@ -1,5 +1,6 @@
 .container {
-  padding: 4px 8px 6px;
+  position: relative;
+  padding: 2px 8px 6px;
 }
 
 .headerRow {
@@ -7,7 +8,23 @@
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-  margin-bottom: 10px;
+  max-height: 32px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: max-height 180ms ease, margin-bottom 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.headerRowVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.headerRowHidden {
+  max-height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
 }
 .header {
   font-size: 13px;
@@ -390,7 +407,7 @@
 
 /* ── Compact mode ────────────────────────────────────────────────────────── */
 .compact {
-  padding: 4px 4px 2px;
+  padding: 2px 4px;
 }
 
 .compact .grid {
@@ -538,6 +555,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .headerRow {
+    transition: none;
+  }
+
   .gridItem,
   .nomination_loh,
   .nomination_danger::before,
