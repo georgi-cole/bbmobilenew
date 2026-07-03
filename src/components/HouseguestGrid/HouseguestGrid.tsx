@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
@@ -87,10 +87,6 @@ const MIN_GRID_HEIGHT = 220
 const DEFAULT_FOOTER_HEIGHT = 60
 /** Extra vertical margin subtracted from available height */
 const GRID_VERTICAL_MARGIN = 4
-/** Initial header flash lets players orient without permanently spending a row. */
-const HEADER_INITIAL_FLASH_MS = 1400
-/** Count changes deserve a slightly longer flash because the roster state changed. */
-const HEADER_CHANGE_FLASH_MS = 2200
 
 export default function HouseguestGrid({
   houseguests,
@@ -164,20 +160,6 @@ export default function HouseguestGrid({
     ))
   }, [game.mode, game.players, game.week, houseguests, survivorReplacementTransition])
   const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
-  const [headerVisible, setHeaderVisible] = useState(true)
-  const previousHeaderSignalRef = useRef(headerSignal)
-
-  useEffect(() => {
-    const changed = previousHeaderSignalRef.current !== headerSignal
-    previousHeaderSignalRef.current = headerSignal
-    setHeaderVisible(true)
-
-    const timer = window.setTimeout(
-      () => setHeaderVisible(false),
-      changed ? HEADER_CHANGE_FLASH_MS : HEADER_INITIAL_FLASH_MS,
-    )
-    return () => window.clearTimeout(timer)
-  }, [headerSignal])
 
   useEffect(() => {
     if (survivorReplacementTransition === null) return undefined
@@ -243,7 +225,7 @@ export default function HouseguestGrid({
       window.visualViewport?.removeEventListener('resize', setAvailableHeight)
       window.visualViewport?.removeEventListener('scroll', setAvailableHeight)
     }
-  }, [headerSelector, footerSelector, overlaySelector, headerVisible])
+  }, [headerSelector, footerSelector, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
   const effectiveCompactLayout = compact ? compactLayout : 'default'
@@ -259,12 +241,6 @@ export default function HouseguestGrid({
   ]
     .filter(Boolean)
     .join(' ')
-  const headerRowClassName = [
-    styles.headerRow,
-    headerVisible ? styles.headerRowVisible : styles.headerRowHidden,
-  ]
-    .filter(Boolean)
-    .join(' ')
 
   return (
     <section
@@ -273,7 +249,7 @@ export default function HouseguestGrid({
       aria-labelledby="houseguests-heading"
       data-compact-layout={effectiveCompactLayout}
     >
-      <div className={headerRowClassName} aria-live="polite">
+      <div key={headerSignal} className={styles.headerRow} aria-live="polite">
         <h3 id="houseguests-heading" className={styles.header}>
           {HOUSEMATES_SECTION_TITLE}
           {showCountInHeader && <span className={styles.count}> ({renderedHouseguests.length})</span>}
