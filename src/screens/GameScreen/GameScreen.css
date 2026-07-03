@@ -1,16 +1,23 @@
 /* GameScreen */
 .game-screen {
+  --game-screen-floating-dock-clearance: clamp(64px, 18vw, 88px);
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 100%;
-  padding: 12px 12px calc(var(--nav-bar-height) + 10px);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 12px 10px;
+  overflow: hidden;
+}
+
+.game-screen:has(.game-control-dock) {
+  padding-bottom: calc(10px + var(--game-screen-floating-dock-clearance));
 }
 
 .game-screen--compact-roster-balance {
   box-sizing: border-box;
-  min-height: calc(100% - 84px);
 }
 
 .game-screen--compact-roster-balance > .tv-zone {
@@ -113,7 +120,7 @@
 /* ── Dev: nomination animation debug button (dev builds only) ────────────── */
 .dev-nom-anim-btn {
   position: absolute;
-  bottom: calc(var(--nav-bar-height, 56px) + 8px);
+  bottom: 8px;
   left: 8px;
   z-index: 9000;
   padding: 6px 10px;
@@ -126,6 +133,10 @@
   cursor: pointer;
   letter-spacing: 0.03em;
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.game-screen:has(.game-control-dock) .dev-nom-anim-btn {
+  bottom: calc(8px + var(--game-screen-floating-dock-clearance));
 }
 
 .dev-nom-anim-btn:hover {
