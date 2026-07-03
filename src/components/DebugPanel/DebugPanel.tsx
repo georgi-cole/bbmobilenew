@@ -32,6 +32,7 @@ import { INCOMING_INTERACTION_PHASE_ORDER } from '../../social/incomingInteracti
 import { socialConfig } from '../../social/socialConfig';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
+import SurvivorDebugControls from './SurvivorDebugControls';
 import { isDebugAccessGranted } from '../../utils/debugMode';
 import type { ForcedShockType, Phase } from '../../types';
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
@@ -687,6 +688,9 @@ export default function DebugPanel() {
 
             {/* ── Minigame Debug Controls ── */}
             <MinigameDebugControls />
+
+            {/* ── Survivor Debug Controls ── */}
+            <SurvivorDebugControls />
           </div>
         </aside>
       )}
