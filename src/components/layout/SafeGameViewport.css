@@ -120,6 +120,25 @@ body.homehub-full-bleed-active .safe-game-viewport__bleed {
   right: 1rem;
 }
 
+/* Crystal Path's own CSS predates the safe viewport. Keep it scoped to the safe minigame host. */
+.safe-game-viewport__content .cps-shell {
+  height: 100%;
+  min-height: 0;
+}
+
+.safe-game-viewport__content .cps-modal,
+.safe-game-viewport__content .cps-secret-banner {
+  position: absolute;
+}
+
+.safe-game-viewport__content .cps-secret-banner {
+  top: 1rem;
+}
+
+.safe-game-viewport__content .cps-complete {
+  min-height: 100%;
+}
+
 .safe-game-viewport--debug::before {
   content: '';
   position: fixed;
