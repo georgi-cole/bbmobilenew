@@ -447,23 +447,23 @@ export default function HomeHub() {
       )}
 
       <div className="homehub-shell">
-        <div className="homehub-frame">
-          {/* Dynamic background layer */}
+        {/* Decorative background layer: full physical viewport, non-interactive. */}
+        <div
+          className="homehub-intro-bg"
+          style={effectiveBgUrl ? { backgroundImage: `url("${effectiveBgUrl}")` } : undefined}
+          aria-hidden="true"
+        />
+
+        {/* Remote overlay — decorative full-bleed tint over the background image. */}
+        {remoteOverlayOpacity != null && remoteOverlayOpacity > 0 && (
           <div
-            className="homehub-intro-bg"
-            style={effectiveBgUrl ? { backgroundImage: `url("${effectiveBgUrl}")` } : undefined}
+            className="homehub-remote-overlay"
+            style={{ opacity: remoteOverlayOpacity }}
             aria-hidden="true"
           />
+        )}
 
-          {/* Remote overlay — only rendered when the remote config sets an overlayOpacity */}
-          {remoteOverlayOpacity != null && remoteOverlayOpacity > 0 && (
-            <div
-              className="homehub-remote-overlay"
-              style={{ opacity: remoteOverlayOpacity }}
-              aria-hidden="true"
-            />
-          )}
-
+        <div className="homehub-frame">
           <HomeHubAssetLayer
             key={effectiveBgUrl ?? 'default'}
             splashDone={splashDone}
