@@ -21,28 +21,20 @@ export default function NavBar() {
   const dispatch = useAppDispatch();
   const reduxStore = useStore<RootState>();
   const isGameOverRoute = pathname.startsWith('/game-over');
-  const isActiveGameplayRoute =
-    pathname === '/game' ||
-    pathname.startsWith('/game/') ||
-    pathname.startsWith('/diary-room') ||
-    pathname.startsWith('/public-meter');
-
-  // Heuristic: treat the game as "active/in-progress" when either we're past
-  // week 1 or the phase is not the initial 'week_start'. This mirrors the
-  // gameInProgress logic used elsewhere (e.g. in Settings).
-  const isGameActive = useAppSelector(
-    (s) => s.game.week > 1 || s.game.phase !== 'week_start' || s.game.mode === 'survivor',
-  );
+  // The homebar should appear as soon as a run is launched from IntroHub, so
+  // we key visibility off the run state that resetGame/hydrateGame now mark
+  // active immediately.
+  const isGameActive = useAppSelector((s) => s.game.status === 'active');
   const activeProfileId = useAppSelector((s) => s.profiles.activeProfileId);
   const isGuest = useAppSelector((s) => s.profiles.isGuest);
   const canPersistActiveRun = !isGuest && Boolean(activeProfileId);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  if (pathname === '/' || pathname.startsWith('/credits') || !isGameActive) return null;
+  if (pathname === '/' || pathname.startsWith('/credits') || (!isGameActive && !isGameOverRoute)) return null;
 
   function handleHomeClick() {
-    if (!isGameActive || !isActiveGameplayRoute) {
+    if (!isGameActive) {
       navigate('/');
       return;
     }

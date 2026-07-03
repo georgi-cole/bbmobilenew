@@ -446,6 +446,7 @@ export default function Profile() {
   const season = useAppSelector((s) => s.game.season);
   const week = useAppSelector((s) => s.game.week);
   const phase = useAppSelector((s) => s.game.phase);
+  const isGameActive = useAppSelector((s) => s.game.status === 'active');
   const lohId = useAppSelector((s) => s.game.lohId);
   const nomineeIds = useAppSelector((s) => s.game.nomineeIds);
   const posWinnerId = useAppSelector((s) => s.game.posWinnerId);
@@ -478,7 +479,7 @@ export default function Profile() {
   }, [profile, userPlayer]);
   const careerStats = useCareerStats(userIdentity);
 
-  const gameInProgress = week > 1 || phase !== 'week_start';
+  const gameInProgress = isGameActive || week > 1 || phase !== 'week_start';
   const goBack = () => {
     if (window.history.length > 1) {
       navigate(-1);

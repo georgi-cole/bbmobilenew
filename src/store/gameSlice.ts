@@ -3083,7 +3083,13 @@ const gameSlice = createSlice({
       const season = nextSeasonNumber(seasonArchives);
       // Use the factory to build a fully fresh initial state from the latest
       // persisted settings/profile, then override seed, seasonArchives, and season.
-      const fresh = { ...createInitialGameState(), seed, seasonArchives, season };
+      const fresh = {
+        ...createInitialGameState(),
+        seed,
+        seasonArchives,
+        season,
+        status: 'active' as const,
+      };
       // Update the welcome message to reflect the actual season number.
       // publicModeEnabled is already derived from settings inside createInitialGameState().
       fresh.tvFeed = [
@@ -3114,6 +3120,7 @@ const gameSlice = createSlice({
         ...action.payload,
         gameId: action.payload.gameId ?? crypto.randomUUID(),
         hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
+        status: action.payload.status ?? 'active',
       };
     },
 

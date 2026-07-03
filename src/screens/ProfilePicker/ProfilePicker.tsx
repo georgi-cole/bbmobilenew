@@ -48,8 +48,10 @@ export default function ProfilePicker() {
   const isGuest = useAppSelector(selectIsGuest);
 
   // Is there an in-progress game (non-trivial state) that would be lost?
+  // Fresh launches are marked active immediately so the warning still shows
+  // before the first week advances.
   const isGameActive = useAppSelector(
-    (s) => s.game.week > 1 || s.game.phase !== 'week_start',
+    (s) => s.game.status === 'active' || s.game.week > 1 || s.game.phase !== 'week_start',
   );
 
   // Photo cache: profileId → dataUrl

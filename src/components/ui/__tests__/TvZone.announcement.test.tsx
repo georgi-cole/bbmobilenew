@@ -297,6 +297,19 @@ describe('TvZone — announcement overlay', () => {
 
   it('dims the surrounding screen while the vote results reveal is active', () => {
     const store = makeStore();
+    const tvZoneRect = {
+      left: 80,
+      top: 120,
+      width: 420,
+      height: 260,
+      right: 500,
+      bottom: 380,
+      x: 80,
+      y: 120,
+      toJSON: () => ({}),
+    } as DOMRect;
+
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(tvZoneRect);
 
     renderTvZone(store, {
       voteResultsReveal: {
@@ -310,7 +323,13 @@ describe('TvZone — announcement overlay', () => {
     });
 
     expect(screen.getByLabelText('Game action zone')).toHaveClass('tv-zone--live-vote-focus');
-    expect(document.body.querySelector('.tv-zone-live-vote-backdrop')).not.toBeNull();
+    const backdrop = document.body.querySelector('.tv-zone-live-vote-backdrop');
+    expect(backdrop).not.toBeNull();
+    expect(backdrop?.querySelector('svg')).not.toBeNull();
+    const cutout = backdrop?.querySelector('rect[fill="black"]');
+    expect(cutout).not.toBeNull();
+    expect(cutout?.getAttribute('x')).toBe('68');
+    expect(cutout?.getAttribute('y')).toBe('108');
   });
 
   it('restores normal brightness for the post-vote summary announcement state', () => {
