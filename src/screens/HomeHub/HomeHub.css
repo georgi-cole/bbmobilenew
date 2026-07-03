@@ -1,6 +1,6 @@
 /* HomeHub — narrower asymmetric buttons, stronger glass look */
 
-/* Shell fills the safe viewport parent; decorative layers intentionally bleed past it. */
+/* Shell fills the safe viewport parent; decorative art is painted by SafeGameViewport. */
 .homehub-shell {
   position: relative;
   width: 100%;
@@ -13,7 +13,6 @@
   justify-content: center;
   padding: 0;
   box-sizing: border-box;
-  isolation: isolate;
 }
 
 /* Master portrait frame for safe interactive content */
@@ -30,37 +29,6 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-}
-
-/* Full-bleed dynamic background. This is decorative only and covers the physical viewport. */
-.homehub-intro-bg {
-  position: fixed;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  z-index: 0;
-  transition: opacity 300ms ease, transform 350ms ease;
-  pointer-events: none;
-}
-
-/* Bottom scrim gradient — deepens behind the button stack so text/icons
-   remain legible against any background image */
-.homehub-intro-bg::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 72%;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.80) 0%,
-    rgba(0, 0, 0, 0.50) 32%,
-    rgba(0, 0, 0, 0.18) 62%,
-    transparent 100%
-  );
-  pointer-events: none;
 }
 
 /* Foreground content container: centered in the frame */
@@ -137,15 +105,6 @@
 @media (max-width: 420px) {
   .home-hub__title { font-size: 1.8rem; }
   .home-hub { padding-bottom: 24px; }
-}
-
-/* Remote config overlay — a dark tint layer over the remote background image */
-.homehub-remote-overlay {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  pointer-events: none;
-  z-index: 1;
 }
 
 .homehub-resume-modal {
