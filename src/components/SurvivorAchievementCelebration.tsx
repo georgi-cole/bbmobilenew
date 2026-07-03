@@ -52,7 +52,6 @@ export default function SurvivorAchievementCelebration() {
 
   const profileId = activeProfileId ?? '';
   const currentCelebration = celebration;
-  const celebrationId = currentCelebration?.achievement.id ?? null;
 
   useEffect(() => {
     if (!currentCelebration || !profileId) return undefined;
@@ -69,11 +68,12 @@ export default function SurvivorAchievementCelebration() {
     }, AUTO_DISMISS_MS);
 
     return () => window.clearTimeout(timer);
-  }, [celebrationId, profileId]);
+  }, [currentCelebration, profileId]);
 
-  if (!currentCelebration || !activeProfileId) return null;
+  if (!currentCelebration || !profileId) return null;
 
-  const { display } = currentCelebration;
+  const celebrationData = celebration!;
+  const { display } = celebrationData;
   const unlockDateLabel = display.unlock?.unlockedAt
     ? new Intl.DateTimeFormat(undefined, {
         month: 'short',
@@ -83,13 +83,13 @@ export default function SurvivorAchievementCelebration() {
     : 'Just now';
 
   function dismiss() {
-    if (dismissingRef.current === currentCelebration.achievement.id) return;
-    dismissingRef.current = currentCelebration.achievement.id;
-    void markSurvivorAchievementCelebrationSeen(profileId, currentCelebration.achievement.id);
+    if (dismissingRef.current === celebrationData.achievement.id) return;
+    dismissingRef.current = celebrationData.achievement.id;
+    void markSurvivorAchievementCelebrationSeen(profileId, celebrationData.achievement.id);
     setDismissedIds((current) =>
-      current.includes(currentCelebration.achievement.id)
+      current.includes(celebrationData.achievement.id)
         ? current
-        : [...current, currentCelebration.achievement.id],
+        : [...current, celebrationData.achievement.id],
     );
   }
 

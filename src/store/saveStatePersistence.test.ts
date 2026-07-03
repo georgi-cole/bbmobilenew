@@ -46,6 +46,11 @@ describe('saveStatePersistence survivor progression', () => {
         status: 'active',
         runId: 'run-1',
         gameId: 'game-1',
+        players: [
+          { id: 'user', name: 'You', avatar: '🙂', status: 'active', isUser: true },
+          { id: 'ai-1', name: 'AI 1', avatar: 'A', status: 'active' },
+          { id: 'ai-2', name: 'AI 2', avatar: 'B', status: 'active' },
+        ],
         modeSpecific: {
           kind: 'survivor',
           currentDay: 25,
