@@ -216,6 +216,28 @@ export default function HomeHub() {
   const hasEndedSurvivorRecord = !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0;
 
   useEffect(() => {
+    const { body } = document;
+    body.classList.add('homehub-full-bleed-active');
+
+    if (effectiveBgUrl) {
+      body.style.setProperty('--homehub-full-bleed-bg', `url(${JSON.stringify(effectiveBgUrl)})`);
+    } else {
+      body.style.removeProperty('--homehub-full-bleed-bg');
+    }
+
+    body.style.setProperty(
+      '--homehub-full-bleed-overlay-opacity',
+      remoteOverlayOpacity != null && remoteOverlayOpacity > 0 ? String(remoteOverlayOpacity) : '0',
+    );
+
+    return () => {
+      body.classList.remove('homehub-full-bleed-active');
+      body.style.removeProperty('--homehub-full-bleed-bg');
+      body.style.removeProperty('--homehub-full-bleed-overlay-opacity');
+    };
+  }, [effectiveBgUrl, remoteOverlayOpacity]);
+
+  useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
     gameWindow.game = gameWindow.game ?? {};
     // Legacy IntroHub/achievements scripts still read from window.game, so keep
@@ -447,22 +469,6 @@ export default function HomeHub() {
       )}
 
       <div className="homehub-shell">
-        {/* Decorative background layer: full physical viewport, non-interactive. */}
-        <div
-          className="homehub-intro-bg"
-          style={effectiveBgUrl ? { backgroundImage: `url("${effectiveBgUrl}")` } : undefined}
-          aria-hidden="true"
-        />
-
-        {/* Remote overlay — decorative full-bleed tint over the background image. */}
-        {remoteOverlayOpacity != null && remoteOverlayOpacity > 0 && (
-          <div
-            className="homehub-remote-overlay"
-            style={{ opacity: remoteOverlayOpacity }}
-            aria-hidden="true"
-          />
-        )}
-
         <div className="homehub-frame">
           <HomeHubAssetLayer
             key={effectiveBgUrl ?? 'default'}
