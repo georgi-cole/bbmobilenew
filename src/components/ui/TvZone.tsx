@@ -340,15 +340,16 @@ export default function TvZone(props: TvZoneProps) {
   const latestEventRef = useRef(latestEvent);
   // Update the ref after each render so the phase-transition effect always has
   // the freshest value without needing latestEvent in its own dependency array.
+  const tvZoneRef = useRef<HTMLElement | null>(null);
+  const liveVoteBackdropMaskId = useId().replace(/:/g, '-') + '-live-vote-mask';
+  const [liveVoteBackdropMetrics, setLiveVoteBackdropMetrics] = useState<LiveVoteBackdropMetrics | null>(null);
+
   useLayoutEffect(() => {
     latestEventRef.current = latestEvent;
   });
 
   useLayoutEffect(() => {
-    if (!voteResultsRevealActive) {
-      setLiveVoteBackdropMetrics(null);
-      return;
-    }
+    if (!voteResultsRevealActive) return;
 
     const updateBackdropMetrics = () => {
       const zone = tvZoneRef.current;
@@ -390,9 +391,6 @@ export default function TvZone(props: TvZoneProps) {
   const activeDetoxEvent = detoxMessageQueue[detoxMessageIndex];
   const displayedEvent = activeDetoxEvent ?? latestEvent;
   const detoxMessageActive = Boolean(activeDetoxEvent);
-  const tvZoneRef = useRef<HTMLElement | null>(null);
-  const liveVoteBackdropMaskId = useId().replace(/:/g, '-') + '-live-vote-mask';
-  const [liveVoteBackdropMetrics, setLiveVoteBackdropMetrics] = useState<LiveVoteBackdropMetrics | null>(null);
 
   // ── Shock announcement sequence state ────────────────────────────────────────
   // Phase A: full-screen shock stinger (ShockIntroOverlay).
