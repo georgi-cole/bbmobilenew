@@ -1,36 +1,32 @@
 /* HomeHub — narrower asymmetric buttons, stronger glass look */
 
-/* Shell fills the viewport */
+/* Shell fills the safe viewport parent */
 .homehub-shell {
   position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
-  min-height: calc(100% + var(--app-safe-area-top, 0px) + var(--safe-bottom, 0px));
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: transparent;
   display: flex;
-  align-items: center;    /* vertically center */
-  justify-content: center;/* horizontally center */
+  align-items: center;
+  justify-content: center;
   padding: 0;
-  margin-top: calc(-1 * var(--app-safe-area-top, 0px));
-  margin-bottom: calc(-1 * var(--safe-bottom, 0px));
   box-sizing: border-box;
 }
 
 /* Master portrait frame */
 .homehub-frame {
   position: relative;
-  width: min(100vw, 480px);
-  height: 100vh;
-  height: 100dvh;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
   overflow: hidden;
   display: flex;
-  align-items: center;    /* vertically center the button stack in the frame */
+  align-items: center;
   justify-content: center;
-  /* Safe-area insets so content clears status bar and home indicator */
-  padding-top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
-  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
@@ -71,6 +67,7 @@
   z-index: 2;
   width: 100%;
   max-width: 480px;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -80,12 +77,14 @@
 /* Main hub container uses vertical centering */
 .home-hub {
   width: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  padding: 10px 10px 36px;
+  padding: 10px 10px clamp(18px, 5vh, 36px);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Title */
@@ -112,9 +111,11 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
+  min-height: 0;
   align-items: center;
   padding: 8px 4px;
-  /* Slide up + fade in — gives a native app "hub reveal" feel */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: hub-nav-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -133,7 +134,7 @@
 /* Responsive: smaller screens */
 @media (max-width: 420px) {
   .home-hub__title { font-size: 1.8rem; }
-  .home-hub { padding-bottom: 28px; }
+  .home-hub { padding-bottom: 24px; }
 }
 
 /* Remote config overlay — a dark tint layer over the remote background image */
@@ -146,7 +147,7 @@
 }
 
 .homehub-resume-modal {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 8000;
   display: flex;
