@@ -6,18 +6,22 @@
      --tv-log-max-vis  : number of rows visible before scroll (default 3)
                          max-height is calculated as calc(var(--tv-log-item-h) * var(--tv-log-max-vis))
 
-   Both variables can be overridden on a parent element to adapt the log to
-   different screen sizes without touching the component code.
+   The log always reserves one row and can grow to three rows as viewport space
+   allows. Older entries remain reachable through the internal scroller.
    ───────────────────────────────────────────────────────────────────────────── */
 
 .tv-log {
   --tv-log-item-h: 36px;
   --tv-log-max-vis: 3;
 
+  flex: 0 0 auto;
   list-style: none;
   margin: 0;
   padding: 0;
+  min-height: var(--tv-log-item-h);
   max-height: calc(var(--tv-log-item-h) * var(--tv-log-max-vis));
+  max-height: clamp(var(--tv-log-item-h), 10vh, calc(var(--tv-log-item-h) * var(--tv-log-max-vis)));
+  max-height: clamp(var(--tv-log-item-h), 10svh, calc(var(--tv-log-item-h) * var(--tv-log-max-vis)));
   overflow-y: auto;
   overscroll-behavior: contain;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
@@ -56,6 +60,15 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+.tv-log__item--empty {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.tv-log__item--empty:hover {
+  background: transparent;
+}
+
 /* Expanded items grow to show full text */
 .tv-log__item--expanded {
   align-items: flex-start;
@@ -69,6 +82,12 @@
   color: var(--color-text, #f1f5f9);
   background: rgba(99, 102, 241, 0.06);
   animation: tvLogItemIn 0.3s ease;
+}
+
+.tv-log__item--empty:first-child {
+  color: var(--color-text-muted, #9ca3af);
+  background: transparent;
+  animation: none;
 }
 
 @keyframes tvLogItemIn {
@@ -104,13 +123,8 @@
     --tv-log-item-h: 32px;
   }
 
-  .tv-log[data-mobile-two-line='true'] {
-    max-height: calc((0.78rem * 1.4 * 2) + 12px);
-  }
-
   .tv-log[data-mobile-two-line='true'] .tv-log__item {
     align-items: flex-start;
-    min-height: 0;
     padding: 6px 12px;
   }
 

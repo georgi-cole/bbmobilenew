@@ -1,6 +1,8 @@
 /* GameScreen */
 .game-screen {
   --game-screen-floating-dock-clearance: clamp(64px, 18vw, 88px);
+  --game-screen-tv-min-height: clamp(238px, 30svh, 312px);
+  --game-screen-tv-viewport-min-height: clamp(144px, 18svh, 192px);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -20,9 +22,19 @@
   box-sizing: border-box;
 }
 
+.game-screen > .tv-zone,
 .game-screen--compact-roster-balance > .tv-zone {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: var(--game-screen-tv-min-height);
+  --tv-zone-viewport-min-height: var(--game-screen-tv-viewport-min-height);
+}
+
+body:has(.game-screen-shell) .safe-game-viewport {
+  background-color: var(--color-bg);
+  background-image: url('/assets/bb-gameplay-bg.svg');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
 }
 
 /* Gameplay background shell */

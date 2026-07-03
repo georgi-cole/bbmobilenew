@@ -5,7 +5,9 @@
 
 .tv-zone {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
+  min-height: var(--tv-zone-min-height, 238px);
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(99, 102, 241, 0.2);
@@ -148,8 +150,8 @@
   --tv-reflection-x: 18%;
   --tv-reflection-y: 12%;
   position: relative;
-  flex: 1 1 0;
-  min-height: 192px; /* ~20% larger than original 160px — constant, not dynamic */
+  flex: 1 0 auto;
+  min-height: var(--tv-zone-viewport-min-height, 192px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -417,6 +419,10 @@
 
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
+  .tv-zone {
+    min-height: var(--tv-zone-min-height, 238px);
+  }
+
   .tv-zone__head {
     gap: 5px;
     padding: 6px 10px;
@@ -442,7 +448,7 @@
   }
 
   .tv-zone__viewport {
-    min-height: 144px;
+    min-height: var(--tv-zone-viewport-min-height, 144px);
     padding: 18px 14px;
   }
   .tv-zone__now {
@@ -458,6 +464,7 @@
   display: flex;
   flex: 1 1 auto;
   align-items: stretch;
+  min-height: 0;
   padding: 8px 10px 4px;
   background:
     radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 48%),
@@ -468,6 +475,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 0;
   position: relative;
   border-radius: 10px;
   border: 3px solid #1a1a2e;

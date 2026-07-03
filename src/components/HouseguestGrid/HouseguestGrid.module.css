@@ -1,13 +1,32 @@
 .container {
-  padding: 4px 8px 6px;
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 2px 8px 6px;
+  overflow: hidden;
 }
 
 .headerRow {
-  display: flex;
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  z-index: 6;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 8px;
+  max-width: calc(100% - 16px);
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(10, 15, 26, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  animation: houseguestHeaderFlash 2200ms ease forwards;
 }
 .header {
   font-size: 13px;
@@ -23,17 +42,32 @@
   margin-left: 6px;
 }
 
+@keyframes houseguestHeaderFlash {
+  0%, 68% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 .grid {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 5px;
   grid-template-columns: repeat(4, 1fr);
   justify-items: stretch;
   align-items: start;
-  max-height: var(--grid-available-height, 480px);
-  overflow: hidden;
+  max-height: min(var(--grid-available-height, 480px), 100%);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding-bottom: 4px;
 }
 
@@ -42,6 +76,8 @@
   margin: 0;
   padding: 0 0 4px;
   display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 5px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -390,7 +426,7 @@
 
 /* ── Compact mode ────────────────────────────────────────────────────────── */
 .compact {
-  padding: 4px 4px 2px;
+  padding: 2px 4px;
 }
 
 .compact .grid {
@@ -538,6 +574,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .headerRow {
+    animation: none;
+    opacity: 0;
+  }
+
   .gridItem,
   .nomination_loh,
   .nomination_danger::before,

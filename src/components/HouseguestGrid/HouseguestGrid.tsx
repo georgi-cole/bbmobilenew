@@ -159,6 +159,7 @@ export default function HouseguestGrid({
         : houseguest
     ))
   }, [game.mode, game.players, game.week, houseguests, survivorReplacementTransition])
+  const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
 
   useEffect(() => {
     if (survivorReplacementTransition === null) return undefined
@@ -248,7 +249,7 @@ export default function HouseguestGrid({
       aria-labelledby="houseguests-heading"
       data-compact-layout={effectiveCompactLayout}
     >
-      <div className={styles.headerRow}>
+      <div key={headerSignal} className={styles.headerRow} aria-live="polite">
         <h3 id="houseguests-heading" className={styles.header}>
           {HOUSEMATES_SECTION_TITLE}
           {showCountInHeader && <span className={styles.count}> ({renderedHouseguests.length})</span>}

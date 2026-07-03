@@ -36,6 +36,7 @@ export default function SafeGameViewport({ children, className = '', debug }: Sa
 
   return (
     <div className={classes} data-safe-game-viewport="outer">
+      <div className="safe-game-viewport__bleed" aria-hidden="true" />
       <div className="safe-game-viewport__content" data-safe-game-viewport="content">
         {children}
       </div>
