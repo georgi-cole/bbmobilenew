@@ -29,10 +29,13 @@ describe('safe-area layout styles', () => {
     expect(globalCss).toContain('--safe-bottom: env(safe-area-inset-bottom, 0px);');
     expect(globalCss).toContain('--safe-left: env(safe-area-inset-left, 0px);');
     expect(safeViewportTsx).toContain('export default function SafeGameViewport');
+    expect(safeViewportTsx).toContain('safe-game-viewport__bleed');
     expect(appShellTsx).toContain('<SafeGameViewport>');
 
     expect(safeViewportCss).toContain('.safe-game-viewport { position: fixed; inset: 0;');
     expect(safeViewportCss).toContain('height: 100dvh;');
+    expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
+    expect(safeViewportCss).toContain('body.homehub-full-bleed-active .safe-game-viewport__bleed');
     expect(safeViewportCss).toContain('top: var(--safe-top);');
     expect(safeViewportCss).toContain('right: var(--safe-right);');
     expect(safeViewportCss).toContain('bottom: var(--safe-bottom);');
@@ -72,7 +75,10 @@ describe('safe-area layout styles', () => {
     expect(gameScreenCss).not.toContain('padding: 12px 12px calc(var(--nav-bar-height) + 10px);');
   });
 
-  it('keeps home hub controls safe-contained while decorative art bleeds full viewport', () => {
+  it('keeps home hub controls safe-contained while decorative art is owned by the physical viewport', () => {
+    const safeViewportCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.css'), 'utf8'),
+    );
     const homeHubTsx = readFileSync(resolve(process.cwd(), 'src/screens/HomeHub/HomeHub.tsx'), 'utf8');
     const homeHubCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/screens/HomeHub/HomeHub.css'), 'utf8'),
@@ -80,23 +86,29 @@ describe('safe-area layout styles', () => {
     const minigameRulesCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/MinigameRules/MinigameRules.css'), 'utf8'),
     );
-    const bgIndex = homeHubTsx.indexOf('className="homehub-intro-bg"');
     const frameIndex = homeHubTsx.indexOf('className="homehub-frame"');
     const assetLayerIndex = homeHubTsx.indexOf('<HomeHubAssetLayer');
 
-    expect(bgIndex).toBeGreaterThan(-1);
-    expect(frameIndex).toBeGreaterThan(bgIndex);
+    expect(homeHubTsx).toContain("body.classList.add('homehub-full-bleed-active')");
+    expect(homeHubTsx).toContain("--homehub-full-bleed-bg");
+    expect(homeHubTsx).toContain("--homehub-full-bleed-overlay-opacity");
+    expect(homeHubTsx).not.toContain('className="homehub-intro-bg"');
+    expect(homeHubTsx).not.toContain('className="homehub-remote-overlay"');
+    expect(frameIndex).toBeGreaterThan(-1);
     expect(assetLayerIndex).toBeGreaterThan(frameIndex);
-    expect(homeHubTsx).toContain('aria-hidden="true"');
+
+    expect(safeViewportCss).toContain('body.homehub-full-bleed-active { background-color: var(--color-bg);');
+    expect(safeViewportCss).toContain('background-image: var(--homehub-full-bleed-bg, none);');
+    expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
+    expect(safeViewportCss).toContain('opacity: var(--homehub-full-bleed-overlay-opacity, 0);');
 
     expect(homeHubCss).toContain('.homehub-shell { position: relative; width: 100%; height: 100%;');
     expect(homeHubCss).toContain('overflow: hidden;');
     expect(homeHubCss).toContain('.homehub-frame { position: relative; z-index: 2; width: 100%;');
-    expect(homeHubCss).toContain('.homehub-intro-bg { position: fixed; inset: 0;');
-    expect(homeHubCss).toContain('.homehub-remote-overlay { position: fixed; inset: 0;');
-    expect(homeHubCss).toContain('pointer-events: none;');
     expect(homeHubCss).toContain('.home-hub__buttons { display: flex; flex-direction: column;');
     expect(homeHubCss).toContain('overflow-y: auto;');
+    expect(homeHubCss).not.toContain('.homehub-intro-bg');
+    expect(homeHubCss).not.toContain('.homehub-remote-overlay');
     expect(homeHubCss).not.toMatch(/\.homehub-(?:shell|frame)\s*\{[^}]*overflow-y:\s*auto/);
     expect(homeHubCss).not.toContain('min-height: 100vh');
     expect(homeHubCss).not.toContain('min-height: 100dvh');
