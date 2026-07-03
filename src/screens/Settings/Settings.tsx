@@ -2,10 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { AppDispatch } from '../../store/store';
 import {
+  normalizeCompactRosterLayout,
   selectSettings,
   setAudio,
   setDisplay,
   setGameUX,
+  type CompactRosterLayout,
   type ThemePreset,
   type SettingsState,
 } from '../../store/settingsSlice';
@@ -19,6 +21,11 @@ const THEME_OPTIONS: { value: ThemePreset; label: string }[] = [
   { value: 'neon',     label: '⚡ Neon'     },
   { value: 'sunset',   label: '🌅 Sunset'   },
   { value: 'ocean',    label: '🌊 Ocean'    },
+];
+
+const COMPACT_ROSTER_LAYOUT_OPTIONS: { value: CompactRosterLayout; label: string }[] = [
+  { value: 'two-rows', label: '2 rows of 8 avatars' },
+  { value: 'small', label: '4x4 smaller avatars' },
 ];
 
 // ── Setting item types ─────────────────────────────────────────────────────────
@@ -86,6 +93,26 @@ const SECTIONS: SettingSection[] = [
         options: THEME_OPTIONS,
         get: (s) => s.display.themePreset,
         onChange: (dispatch, val) => dispatch(setDisplay({ themePreset: val as ThemePreset })),
+      },
+    ],
+  },
+  {
+    id: 'gameplay',
+    items: [
+      {
+        type: 'toggle',
+        id: 'compactRoster',
+        label: 'Compact Roster',
+        get: (s) => s.gameUX.compactRoster,
+        onChange: (dispatch, val) => dispatch(setGameUX({ compactRoster: val })),
+      },
+      {
+        type: 'dropdown',
+        id: 'compact-roster-layout',
+        label: 'Compact Roster Layout',
+        options: COMPACT_ROSTER_LAYOUT_OPTIONS,
+        get: (s) => normalizeCompactRosterLayout(s.gameUX.compactRosterLayout),
+        onChange: (dispatch, val) => dispatch(setGameUX({ compactRosterLayout: val as CompactRosterLayout })),
       },
     ],
   },
