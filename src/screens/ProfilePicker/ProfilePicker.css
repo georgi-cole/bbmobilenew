@@ -6,6 +6,23 @@
   margin: 0 auto;
 }
 
+.profile-picker__topbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.profile-picker__back-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .profile-picker__title {
   font-size: 1.3rem;
   font-weight: 800;

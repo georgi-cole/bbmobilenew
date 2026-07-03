@@ -68,6 +68,7 @@ export default function ProfilePicker() {
   const [pendingGuest, setPendingGuest] = useState(false);
   // Confirmation for delete
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingHome, setPendingHome] = useState(false);
 
   // Resume-save prompt: triggered when switching to a profile that has a saved season.
   // Holds the profile ID to switch to so the confirm/cancel handlers can act on it.
@@ -126,7 +127,7 @@ export default function ProfilePicker() {
       // No saved season — start fresh immediately.
       const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
       dispatch(resetGame(archives));
-      navigate('/profile');
+      navigate('/profile', { replace: true });
     }
   }
 
@@ -142,7 +143,7 @@ export default function ProfilePicker() {
       dispatch(hydrateGame(snapshot.game));
       dispatch(hydrateFinale(snapshot.finale));
       dispatch(hydrateSocial(snapshot.social));
-      navigate('/game');
+      navigate('/game', { replace: true });
     } catch {
       // If hydration fails for any reason, gracefully fall back to a fresh season
       // and clear the bad snapshot so it doesn't keep reappearing.
@@ -156,7 +157,7 @@ export default function ProfilePicker() {
     clearSeasonSnapshot(saveKey);
     const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
     dispatch(resetGame(archives));
-    navigate('/profile');
+    navigate('/profile', { replace: true });
   }
 
   function handleGuestMode() {
@@ -167,11 +168,25 @@ export default function ProfilePicker() {
     }
   }
 
+  function handleHome() {
+    if (isGameActive) {
+      setPendingHome(true);
+      return;
+    }
+    navigate('/');
+  }
+
+  function commitHome() {
+    dispatch(resetGame());
+    setPendingHome(false);
+    navigate('/');
+  }
+
   function commitGuest() {
     dispatch(enterGuestMode());
     // Guest mode never persists archives, so start with an empty list.
     dispatch(resetGame([]));
-    navigate('/game');
+    navigate('/game', { replace: true });
   }
 
   function handleCreate() {
@@ -182,7 +197,7 @@ export default function ProfilePicker() {
     setShowCreateForm(false);
     setNewName('');
     setNewAvatar('🧑');
-    navigate('/profile');
+    navigate('/profile', { replace: true });
   }
 
   function handleDeleteRequest(id: string) {
@@ -216,6 +231,15 @@ export default function ProfilePicker() {
 
   return (
     <div className="placeholder-screen profile-picker">
+      <div className="profile-picker__topbar">
+        <button
+          type="button"
+          className="profile-picker__back-btn"
+          onClick={handleHome}
+        >
+          ← Back to Home
+        </button>
+      </div>
       <h1 className="profile-picker__title">👤 Profiles</h1>
       <p className="profile-picker__subtitle">Select a profile to play as</p>
 
@@ -401,6 +425,16 @@ export default function ProfilePicker() {
         cancelLabel="Keep Playing"
         onConfirm={() => { setPendingGuest(false); commitGuest(); }}
         onCancel={() => setPendingGuest(false)}
+      />
+
+      <ConfirmExitModal
+        open={pendingHome}
+        title="Leave for Home?"
+        description="Returning home now will reset the current game. Save first if you want to resume this season later."
+        confirmLabel="Go Home"
+        cancelLabel="Stay Here"
+        onConfirm={commitHome}
+        onCancel={() => setPendingHome(false)}
       />
 
       {/* Delete confirmation modal */}
