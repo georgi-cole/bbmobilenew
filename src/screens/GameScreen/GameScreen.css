@@ -32,17 +32,12 @@
 body:has(.game-screen-shell) {
   --app-physical-bg: var(--color-bg);
   --safe-game-viewport-bg-image: url('/assets/bb-gameplay-bg.svg');
-  --safe-game-viewport-bleed-bg: url('/assets/bb-gameplay-bg.svg');
   --safe-game-viewport-bg-position: center top;
   background-color: var(--color-bg);
   background-image: url('/assets/bb-gameplay-bg.svg');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
-}
-
-body:has(.game-screen-shell) .safe-game-viewport__bleed {
-  opacity: 1;
 }
 
 /* Gameplay background shell */
