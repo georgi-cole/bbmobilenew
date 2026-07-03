@@ -6,6 +6,56 @@
   overflow: hidden;
   background: var(--color-bg);
   color: var(--color-text);
+  isolation: isolate;
+}
+
+body.homehub-full-bleed-active {
+  background-color: var(--color-bg);
+  background-image: var(--homehub-full-bleed-bg, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.safe-game-viewport__bleed {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--homehub-full-bleed-bg, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease, transform 350ms ease;
+}
+
+.safe-game-viewport__bleed::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 72%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.80) 0%,
+    rgba(0, 0, 0, 0.50) 32%,
+    rgba(0, 0, 0, 0.18) 62%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.safe-game-viewport__bleed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: var(--homehub-full-bleed-overlay-opacity, 0);
+  pointer-events: none;
+}
+
+body.homehub-full-bleed-active .safe-game-viewport__bleed {
+  opacity: 1;
 }
 
 .safe-game-viewport__content {
@@ -14,6 +64,7 @@
   right: var(--safe-right);
   bottom: var(--safe-bottom);
   left: var(--safe-left);
+  z-index: 1;
   display: flex;
   justify-content: center;
   min-width: 0;
