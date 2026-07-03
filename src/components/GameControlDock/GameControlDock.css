@@ -1,10 +1,10 @@
 /* ── GameControlDock ────────────────────────────────────────────────────── */
 .game-control-dock {
-  position: fixed;
-  bottom: calc(var(--nav-bar-height) + 3px + env(safe-area-inset-bottom, 0px));
+  position: absolute;
+  bottom: 8px;
   left: 50%;
   z-index: 100;
-  width: min(80vw, 340px);
+  width: min(80%, 340px);
   aspect-ratio: 980 / 220;
   transform: translateX(-50%);
   -webkit-user-select: none;
@@ -12,11 +12,11 @@
 }
 
 .floating-action-bar__blocked-message {
-  position: fixed;
+  position: absolute;
   left: 50%;
-  bottom: calc(var(--nav-bar-height) + 78px + env(safe-area-inset-bottom, 0px));
+  bottom: clamp(76px, 22vw, 104px);
   z-index: 115;
-  width: min(88vw, 420px);
+  width: min(88%, 420px);
   transform: translateX(-50%);
   border: 1px solid rgba(151, 164, 207, 0.28);
   border-radius: 14px;
@@ -32,7 +32,7 @@
 }
 
 .fab-clean {
-  position: fixed;
+  position: absolute;
 }
 
 .fab-shell,
@@ -333,7 +333,7 @@
 }
 
 .confessional-spotlight {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 1400;
   pointer-events: none;
