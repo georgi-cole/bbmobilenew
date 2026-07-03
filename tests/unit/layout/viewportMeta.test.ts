@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildViewportMetaContent } from '../../../src/components/layout/AppShell';
+import { buildViewportMetaContent } from '../../../src/components/layout/viewportMeta';
 
 describe('buildViewportMetaContent', () => {
   it('preserves viewport-fit=cover when pinch zoom is enabled', () => {
