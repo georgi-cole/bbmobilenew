@@ -11,8 +11,7 @@ import { imageIdToDataUrl } from '../../utils/imageDb';
 import { publicOpinionConfig } from '../../publicOpinion/publicOpinionConfig';
 import { normalizeAffinity } from '../../social/affinityUtils';
 import {
-  SURVIVOR_ACHIEVEMENTS,
-  buildSurvivorAchievementDisplayModel,
+  buildUnlockedSurvivorAchievementDisplayModels,
 } from '../../modes/survivorAchievements';
 import type { Phase, Player, StatusPillVariant } from '../../types';
 import './Profile.css';
@@ -497,10 +496,7 @@ export default function Profile() {
   const survivorUnlocks = savedRunProfile?.stats.survivorAchievementsUnlocked ?? {};
   const survivorHighestDay = savedRunProfile?.stats.maxSurvivorDaysSurvived ?? 0;
   const survivorUnlockedCount = Object.keys(survivorUnlocks).length;
-  const survivorTotalCount = SURVIVOR_ACHIEVEMENTS.length;
-  const survivorAchievementCards = SURVIVOR_ACHIEVEMENTS.map((achievement) =>
-    buildSurvivorAchievementDisplayModel(achievement, survivorUnlocks[achievement.id]),
-  );
+  const survivorAchievementCards = buildUnlockedSurvivorAchievementDisplayModels(survivorUnlocks);
 
   const gameInProgress = isGameActive || week > 1 || phase !== 'week_start';
   const goBack = () => {
@@ -816,9 +812,7 @@ export default function Profile() {
               Progress is saved to this profile and carries across Survivor runs.
             </p>
           </div>
-          <div className="profile-screen__survivor-count">
-            {survivorUnlockedCount}/{survivorTotalCount}
-          </div>
+          <div className="profile-screen__survivor-count">{survivorUnlockedCount} unlocked</div>
         </div>
         <div className="profile-screen__survivor-stats">
           <div className="profile-screen__survivor-stat">
@@ -831,13 +825,17 @@ export default function Profile() {
             <span className="profile-screen__survivor-stat-val">{survivorUnlockedCount}</span>
             <span className="profile-screen__survivor-stat-key">Unlocked</span>
           </div>
-          <div className="profile-screen__survivor-stat">
-            <span className="profile-screen__survivor-stat-val">{survivorTotalCount}</span>
-            <span className="profile-screen__survivor-stat-key">Total</span>
-          </div>
         </div>
         <div className="profile-screen__survivor-grid">
-          {survivorAchievementCards.map((achievement) => (
+          {survivorUnlockedCount === 0 ? (
+            <div className="profile-screen__survivor-empty">
+              <p className="profile-screen__empty-text">No Survivor achievements unlocked yet.</p>
+              <p className="profile-screen__survivor-empty-hint">
+                Reach Survivor Day 10 to unlock your first milestone.
+              </p>
+            </div>
+          ) : (
+            survivorAchievementCards.map((achievement) => (
             <article
               key={achievement.id}
               className={[
@@ -856,7 +854,11 @@ export default function Profile() {
               </div>
               <p className="profile-screen__survivor-name">{achievement.title}</p>
               <p className="profile-screen__survivor-subtitle">{achievement.subtitle}</p>
-              <p className="profile-screen__survivor-requirement">{achievement.requirement}</p>
+              <p className="profile-screen__survivor-requirement">
+                {achievement.visibility === 'secret'
+                  ? `Secret Day ${achievement.day}`
+                  : `Day ${achievement.day} milestone`}
+              </p>
               {achievement.isUnlocked && achievement.unlock ? (
                 <p className="profile-screen__survivor-unlocked">
                   Unlocked {formatIsoDate(achievement.unlock.unlockedAt)} · Day{' '}
@@ -864,7 +866,8 @@ export default function Profile() {
                 </p>
               ) : null}
             </article>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
