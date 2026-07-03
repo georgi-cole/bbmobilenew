@@ -43,12 +43,10 @@ describe('NavBar', () => {
     expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
   });
 
-  it('keeps the bottom navigation available on profile routes during an active game', () => {
+  it('hides the bottom navigation on non-game routes even during an active game', () => {
     renderNavBar('/profile');
 
-    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'HOME' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'USER' })).toBeDefined();
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
   });
 
   it('hides the bottom navigation on the credits route', () => {
