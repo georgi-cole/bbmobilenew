@@ -1,93 +1,263 @@
 .survivor-rules-modal__backdrop {
   position: fixed;
   inset: 0;
+  z-index: 12000;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(4, 8, 16, 0.72);
-  z-index: 12000;
-  padding: 20px;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 16px)
+    calc(env(safe-area-inset-right, 0px) + 16px)
+    calc(env(safe-area-inset-bottom, 0px) + 16px)
+    calc(env(safe-area-inset-left, 0px) + 16px);
+  background:
+    radial-gradient(circle at 20% 18%, rgba(98, 109, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 80% 12%, rgba(139, 92, 246, 0.16), transparent 24%),
+    radial-gradient(circle at bottom, rgba(15, 118, 255, 0.12), transparent 36%),
+    rgba(3, 6, 14, 0.82);
+  backdrop-filter: blur(16px);
 }
 
 .survivor-rules-modal__card {
-  width: min(600px, 96%);
-  background: linear-gradient(180deg, #09111f, #101a2c);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  box-shadow: 0 36px 100px rgba(0, 0, 0, 0.64);
-  padding: 22px;
-  color: #f3f7ff;
+  position: relative;
+  width: min(42rem, 100%);
+  max-height: min(
+    calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px),
+    44rem
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(139, 92, 246, 0.18), transparent 34%),
+    radial-gradient(circle at 82% 0%, rgba(59, 130, 246, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(14, 19, 34, 0.98), rgba(8, 11, 20, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 28px 90px rgba(0, 0, 0, 0.72),
+    0 0 42px rgba(99, 102, 241, 0.14);
+  color: var(--color-text);
   outline: none;
 }
 
+.survivor-rules-modal__card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.08) 50%, transparent 82%);
+  transform: translateX(-120%);
+  animation: survivorRulesSweep 5.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes survivorRulesSweep {
+  0%,
+  60% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.survivor-rules-modal__glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(12px);
+}
+
+.survivor-rules-modal__glow--left {
+  top: -3rem;
+  left: -4rem;
+  width: 11rem;
+  height: 11rem;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.28), transparent 68%);
+}
+
+.survivor-rules-modal__glow--right {
+  right: -4rem;
+  bottom: -5rem;
+  width: 12rem;
+  height: 12rem;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.24), transparent 68%);
+}
+
+.survivor-rules-modal__header {
+  position: relative;
+  z-index: 1;
+  padding: 1.2rem 1.2rem 1rem;
+}
+
 .survivor-rules-modal__eyebrow {
-  margin: 0 0 10px;
-  color: #8fb3ff;
+  margin: 0 0 0.55rem;
+  color: rgba(183, 194, 255, 0.9);
   font-size: 0.72rem;
-  letter-spacing: 0.16em;
+  font-weight: 800;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .survivor-rules-modal__title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: clamp(1.55rem, 4.4vw, 2.1rem);
+  line-height: 1.04;
+  font-weight: 900;
+  color: #f8faff;
+  text-wrap: balance;
 }
 
 .survivor-rules-modal__desc {
-  margin: 10px 0 16px;
-  color: rgba(243, 247, 255, 0.82);
+  margin: 0.75rem 0 0;
+  max-width: 34rem;
+  color: rgba(229, 234, 255, 0.76);
+  font-size: 0.96rem;
+  line-height: 1.5;
 }
 
-.survivor-rules-modal__list {
-  margin: 0 0 18px;
-  padding-left: 1.2rem;
-  color: rgba(243, 247, 255, 0.92);
-  line-height: 1.55;
+.survivor-rules-modal__rules {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.7rem;
+  padding: 0 1.2rem 1rem;
+  overflow: auto;
 }
 
-.survivor-rules-modal__list li + li {
-  margin-top: 0.55rem;
+.survivor-rules-modal__rule {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: flex-start;
+  padding: 0.9rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03)),
+    rgba(13, 18, 32, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.survivor-rules-modal__rule-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.96), rgba(139, 92, 246, 0.96));
+  color: #f5f7ff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  box-shadow:
+    0 10px 20px rgba(81, 83, 210, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.survivor-rules-modal__rule-copy {
+  min-width: 0;
+}
+
+.survivor-rules-modal__rule-title {
+  margin: 0;
+  color: #fff;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.survivor-rules-modal__rule-desc {
+  margin: 0.28rem 0 0;
+  color: rgba(229, 234, 255, 0.76);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.survivor-rules-modal__footer {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.9rem;
+  padding: 0 1.2rem 1.2rem;
 }
 
 .survivor-rules-modal__checkbox {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 18px;
-  font-size: 0.95rem;
-  color: rgba(243, 247, 255, 0.88);
+  gap: 0.6rem;
+  width: fit-content;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(238, 243, 255, 0.88);
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .survivor-rules-modal__checkbox input {
   width: 1rem;
   height: 1rem;
-  accent-color: #8fb3ff;
+  margin: 0;
+  accent-color: var(--color-accent-2);
 }
 
 .survivor-rules-modal__actions {
   display: flex;
-  gap: 10px;
+  gap: 0.7rem;
   justify-content: flex-end;
   flex-wrap: wrap;
 }
 
 .survivor-rules-modal__btn {
-  min-width: 132px;
+  min-width: 11rem;
 }
 
-.survivor-rules-modal__btn--primary {
-  background: linear-gradient(180deg, #8fb3ff, #6e95f3);
-  border-color: rgba(143, 179, 255, 0.45);
-  color: #08101c;
+.survivor-rules-modal__btn.game-button {
+  box-shadow:
+    0 12px 26px rgba(2, 6, 16, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-.survivor-rules-modal__btn--ghost {
-  background: rgba(255, 255, 255, 0.04);
+.survivor-rules-modal__btn.game-button--ghost {
+  --game-button-bg: rgba(255, 255, 255, 0.05);
+  --game-button-border: rgba(255, 255, 255, 0.1);
+}
+
+.survivor-rules-modal__btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.84);
+  outline-offset: 2px;
 }
 
 @media (max-width: 640px) {
+  .survivor-rules-modal__backdrop {
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 10px)
+      calc(env(safe-area-inset-right, 0px) + 10px)
+      calc(env(safe-area-inset-bottom, 0px) + 10px)
+      calc(env(safe-area-inset-left, 0px) + 10px);
+  }
+
   .survivor-rules-modal__card {
-    padding: 18px;
+    max-height: min(
+      calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px),
+      44rem
+    );
+    border-radius: 20px;
+  }
+
+  .survivor-rules-modal__header,
+  .survivor-rules-modal__rules,
+  .survivor-rules-modal__footer {
+    padding-inline: 1rem;
+  }
+
+  .survivor-rules-modal__rule {
+    padding: 0.82rem 0.85rem;
   }
 
   .survivor-rules-modal__actions {
@@ -95,6 +265,11 @@
   }
 
   .survivor-rules-modal__btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .survivor-rules-modal__checkbox {
     width: 100%;
   }
 }

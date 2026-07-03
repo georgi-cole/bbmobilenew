@@ -8,11 +8,27 @@ interface Props {
 }
 
 const RULES = [
-  'Play Survivor as a normal player run, not a debug sandbox.',
-  'Read each prompt carefully before you confirm it.',
-  'Stay with the run until it finishes or you are eliminated.',
-  'Use the in-app controls only; do not rely on developer shortcuts.',
-];
+  {
+    title: 'Endless days',
+    description: 'Survive as long as you can. The run ends only when you are eliminated.',
+  },
+  {
+    title: 'Synthetic replacements',
+    description: 'AI contestants are replaced after eviction, keeping the house full.',
+  },
+  {
+    title: 'Social mode off',
+    description: 'The AI players are not here to make friends.',
+  },
+  {
+    title: 'Public mode off',
+    description: 'No audience saves. No popularity shield. Only survival.',
+  },
+  {
+    title: 'Every day counts',
+    description: 'Your highest Survivor day and unlocked milestones are saved to your profile.',
+  },
+] as const;
 
 export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props) {
   const uid = useId();
@@ -28,9 +44,11 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
 
   useEffect(() => {
     if (!open) return;
+
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onCancel();
     }
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onCancel]);
@@ -46,44 +64,62 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
       aria-describedby={descId}
     >
       <div className="survivor-rules-modal__card" tabIndex={-1} ref={cardRef}>
-        <p className="survivor-rules-modal__eyebrow">Survivor Mode</p>
-        <h2 id={titleId} className="survivor-rules-modal__title">Before you jump in</h2>
-        <p id={descId} className="survivor-rules-modal__desc">
-          These are the player-facing rules for the mode.
-        </p>
+        <div className="survivor-rules-modal__glow survivor-rules-modal__glow--left" aria-hidden="true" />
+        <div className="survivor-rules-modal__glow survivor-rules-modal__glow--right" aria-hidden="true" />
 
-        <ul className="survivor-rules-modal__list">
-          {RULES.map((rule) => (
-            <li key={rule}>{rule}</li>
+        <header className="survivor-rules-modal__header">
+          <p className="survivor-rules-modal__eyebrow">Survivor Mode</p>
+          <h2 id={titleId} className="survivor-rules-modal__title">
+            Before You Enter Survivor
+          </h2>
+          <p id={descId} className="survivor-rules-modal__desc">
+            Survivor Mode is an endless pressure run. There is no finale, no public rescue,
+            and no social safety net.
+          </p>
+        </header>
+
+        <div className="survivor-rules-modal__rules" role="list" aria-label="Survivor rules">
+          {RULES.map((rule, index) => (
+            <article className="survivor-rules-modal__rule" key={rule.title} role="listitem">
+              <div className="survivor-rules-modal__rule-index" aria-hidden="true">
+                {index + 1}
+              </div>
+              <div className="survivor-rules-modal__rule-copy">
+                <h3 className="survivor-rules-modal__rule-title">{rule.title}</h3>
+                <p className="survivor-rules-modal__rule-desc">{rule.description}</p>
+              </div>
+            </article>
           ))}
-        </ul>
-
-        <label className="survivor-rules-modal__checkbox">
-          <input
-            type="checkbox"
-            checked={dontShowAgain}
-            onChange={(e) => setDontShowAgain(e.target.checked)}
-          />
-          <span>Don't show again</span>
-        </label>
-
-        <div className="survivor-rules-modal__actions">
-          <button
-            type="button"
-            className="survivor-rules-modal__btn survivor-rules-modal__btn--primary"
-            onClick={() => onContinue(dontShowAgain)}
-            autoFocus
-          >
-            Continue
-          </button>
-          <button
-            type="button"
-            className="survivor-rules-modal__btn survivor-rules-modal__btn--ghost"
-            onClick={onCancel}
-          >
-            Back
-          </button>
         </div>
+
+        <footer className="survivor-rules-modal__footer">
+          <label className="survivor-rules-modal__checkbox">
+            <input
+              type="checkbox"
+              checked={dontShowAgain}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
+            />
+            <span>Don&apos;t show this again</span>
+          </label>
+
+          <div className="survivor-rules-modal__actions">
+            <button
+              type="button"
+              className="survivor-rules-modal__btn game-button game-button--primary"
+              onClick={() => onContinue(dontShowAgain)}
+              autoFocus
+            >
+              Enter Survivor
+            </button>
+            <button
+              type="button"
+              className="survivor-rules-modal__btn game-button game-button--ghost"
+              onClick={onCancel}
+            >
+              Back
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   );
