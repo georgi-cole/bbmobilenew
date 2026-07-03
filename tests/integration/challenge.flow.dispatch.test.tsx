@@ -16,10 +16,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import challengeReducer, { startChallenge, recordRun, setPendingChallenge } from '../../src/store/challengeSlice';
+import profilesReducer, { type ProfilesState } from '../../src/store/profilesSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
-import { getBracketPoolForContext } from '../../src/ai/competition/bracketTemplate';
+import { getApprovedCompetitionGameKeys, getBracketPoolForContext } from '../../src/ai/competition/bracketTemplate';
+import { createSurvivorRun } from '../../src/modes/survivorRun';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -39,6 +41,7 @@ vi.mock('../../src/components/ui/TvZone', () => ({
 const REDUCERS = {
   game: gameReducer,
   challenge: challengeReducer,
+  profiles: profilesReducer,
   settings: settingsReducer,
   publicOpinion: publicOpinionReducer,
 } as const;
@@ -64,6 +67,20 @@ function makeStoreWithCompSelection(
           },
         },
       },
+    },
+  });
+}
+
+function makeSurvivorStore() {
+  return configureStore({
+    reducer: REDUCERS,
+    preloadedState: {
+      game: createSurvivorRun(),
+      profiles: {
+        profiles: [],
+        activeProfileId: null,
+        isGuest: true,
+      } satisfies ProfilesState,
     },
   });
 }
@@ -338,6 +355,18 @@ describe('startChallenge – compSelection modes', () => {
     const pending = store.getState().challenge.pending;
     expect(pending).not.toBeNull();
     expect(typeof pending?.game.key).toBe('string');
+  });
+
+  it('survivor mode only selects games approved in the classical template', () => {
+    const store = makeSurvivorStore();
+    const approvedKeys = new Set(getApprovedCompetitionGameKeys());
+
+    dispatchThunk(store, startChallenge(42, ['p1', 'p2']));
+
+    const pending = store.getState().challenge.pending;
+    expect(pending).not.toBeNull();
+    expect(pending?.game.retired).toBe(false);
+    expect(approvedKeys.has(pending?.game.key ?? '')).toBe(true);
   });
 
   it('debug forceGameKey overrides compSelection mode', () => {

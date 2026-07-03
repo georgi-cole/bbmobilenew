@@ -6,9 +6,14 @@ import {
   selectIsGuest,
 } from '../../store/profilesSlice';
 import { findArchiveUserSummary } from '../../store/achievementSummary';
+import { loadSavedRunProfile } from '../../store/saveStatePersistence';
 import { imageIdToDataUrl } from '../../utils/imageDb';
 import { publicOpinionConfig } from '../../publicOpinion/publicOpinionConfig';
 import { normalizeAffinity } from '../../social/affinityUtils';
+import {
+  SURVIVOR_ACHIEVEMENTS,
+  buildSurvivorAchievementDisplayModel,
+} from '../../modes/survivorAchievements';
 import type { Phase, Player, StatusPillVariant } from '../../types';
 import './Profile.css';
 
@@ -208,6 +213,16 @@ function findApprovalBand(approval: number): string {
 
 function formatPercent(value: number, digits = 0): string {
   return `${value.toFixed(digits)}%`;
+}
+
+function formatIsoDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date);
 }
 
 function formatPhaseLabel(phase: Phase): string {
@@ -478,6 +493,14 @@ export default function Profile() {
     return null;
   }, [profile, userPlayer]);
   const careerStats = useCareerStats(userIdentity);
+  const savedRunProfile = profile ? loadSavedRunProfile(profile.id) : null;
+  const survivorUnlocks = savedRunProfile?.stats.survivorAchievementsUnlocked ?? {};
+  const survivorHighestDay = savedRunProfile?.stats.maxSurvivorDaysSurvived ?? 0;
+  const survivorUnlockedCount = Object.keys(survivorUnlocks).length;
+  const survivorTotalCount = SURVIVOR_ACHIEVEMENTS.length;
+  const survivorAchievementCards = SURVIVOR_ACHIEVEMENTS.map((achievement) =>
+    buildSurvivorAchievementDisplayModel(achievement, survivorUnlocks[achievement.id]),
+  );
 
   const gameInProgress = isGameActive || week > 1 || phase !== 'week_start';
   const goBack = () => {
@@ -784,6 +807,66 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      <div className="profile-screen__survivor-card">
+        <div className="profile-screen__survivor-header">
+          <div>
+            <p className="profile-screen__section-title">Survivor Progress</p>
+            <p className="profile-screen__survivor-copy">
+              Progress is saved to this profile and carries across Survivor runs.
+            </p>
+          </div>
+          <div className="profile-screen__survivor-count">
+            {survivorUnlockedCount}/{survivorTotalCount}
+          </div>
+        </div>
+        <div className="profile-screen__survivor-stats">
+          <div className="profile-screen__survivor-stat">
+            <span className="profile-screen__survivor-stat-val">
+              {survivorHighestDay > 0 ? survivorHighestDay : '-'}
+            </span>
+            <span className="profile-screen__survivor-stat-key">Highest Day</span>
+          </div>
+          <div className="profile-screen__survivor-stat">
+            <span className="profile-screen__survivor-stat-val">{survivorUnlockedCount}</span>
+            <span className="profile-screen__survivor-stat-key">Unlocked</span>
+          </div>
+          <div className="profile-screen__survivor-stat">
+            <span className="profile-screen__survivor-stat-val">{survivorTotalCount}</span>
+            <span className="profile-screen__survivor-stat-key">Total</span>
+          </div>
+        </div>
+        <div className="profile-screen__survivor-grid">
+          {survivorAchievementCards.map((achievement) => (
+            <article
+              key={achievement.id}
+              className={[
+                'profile-screen__survivor-achievement',
+                achievement.isUnlocked ? 'profile-screen__survivor-achievement--unlocked' : '',
+                !achievement.isUnlocked && achievement.visibility === 'secret'
+                  ? 'profile-screen__survivor-achievement--secret'
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              <div className="profile-screen__survivor-card-top">
+                <span className="profile-screen__survivor-tier">{achievement.tierLabel}</span>
+                <span className="profile-screen__survivor-category">{achievement.categoryLabel}</span>
+              </div>
+              <p className="profile-screen__survivor-name">{achievement.title}</p>
+              <p className="profile-screen__survivor-subtitle">{achievement.subtitle}</p>
+              <p className="profile-screen__survivor-requirement">{achievement.requirement}</p>
+              {achievement.isUnlocked && achievement.unlock ? (
+                <p className="profile-screen__survivor-unlocked">
+                  Unlocked {formatIsoDate(achievement.unlock.unlockedAt)} · Day{' '}
+                  {achievement.unlock.unlockedAtDay}
+                </p>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </div>
 
       {careerStats.seasons > 0 && (
         <div className="profile-screen__titles-card">
