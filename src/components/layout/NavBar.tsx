@@ -20,6 +20,7 @@ export default function NavBar() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const reduxStore = useStore<RootState>();
+  const isMainGameRoute = pathname === '/game';
   const isGameOverRoute = pathname.startsWith('/game-over');
   // The homebar should appear as soon as a run is launched from IntroHub, so
   // we key visibility off the run state that resetGame/hydrateGame now mark
@@ -31,7 +32,8 @@ export default function NavBar() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  if (pathname === '/' || pathname.startsWith('/credits') || (!isGameActive && !isGameOverRoute)) return null;
+  if (!isMainGameRoute && !isGameOverRoute) return null;
+  if (!isGameActive && !isGameOverRoute) return null;
 
   function handleHomeClick() {
     if (!isGameActive) {
