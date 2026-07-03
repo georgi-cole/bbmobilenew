@@ -5,6 +5,8 @@ import './NavBar.css';
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame } from '../../store/gameSlice';
+import { selectPendingChallenge } from '../../store/challengeSlice';
+import { selectMusicScene } from '../../store/uiSlice';
 import { saveRunSnapshot } from '../../store/saveStatePersistence';
 import type { RootState } from '../../store/store';
 import GameBottomNav, { type NavTab } from '../GameBottomNav/GameBottomNav';
@@ -26,14 +28,32 @@ export default function NavBar() {
   // we key visibility off the run state that resetGame/hydrateGame now mark
   // active immediately.
   const isGameActive = useAppSelector((s) => s.game.status === 'active');
+  const pendingChallenge = useAppSelector(selectPendingChallenge);
+  const pendingMinigame = useAppSelector((s) => s.game.pendingMinigame);
+  const gamePhase = useAppSelector((s) => s.game.phase);
+  const seasonFinale = useAppSelector((s) => s.game.seasonFinale);
+  const battleBack = useAppSelector((s) => s.game.battleBack);
+  const favoritePlayer = useAppSelector((s) => s.game.favoritePlayer);
+  const musicScene = useAppSelector(selectMusicScene);
   const activeProfileId = useAppSelector((s) => s.profiles.activeProfileId);
   const isGuest = useAppSelector((s) => s.profiles.isGuest);
   const canPersistActiveRun = !isGuest && Boolean(activeProfileId);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const isFullScreenFlowActive =
+    Boolean(pendingChallenge) ||
+    Boolean(pendingMinigame) ||
+    gamePhase === 'jury' ||
+    gamePhase === 'jury_announcement' ||
+    gamePhase === 'jury_cinematic' ||
+    Boolean(seasonFinale) ||
+    musicScene !== 'none' ||
+    Boolean(battleBack?.competitionActive) ||
+    Boolean(favoritePlayer?.votingStarted);
 
   if (!isMainGameRoute && !isGameOverRoute) return null;
   if (!isGameActive && !isGameOverRoute) return null;
+  if (!isGameOverRoute && isFullScreenFlowActive) return null;
 
   function handleHomeClick() {
     if (!isGameActive) {

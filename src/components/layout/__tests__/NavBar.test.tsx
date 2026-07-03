@@ -4,21 +4,64 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import gameReducer from '../../../store/gameSlice';
+import challengeReducer, { type PendingChallenge } from '../../../store/challengeSlice';
 import profilesReducer from '../../../store/profilesSlice';
+import type { GameState, MinigameSession } from '../../../types';
 import NavBar from '../NavBar';
 
-function renderNavBar(initialEntry = '/game') {
+function buildPendingChallenge(): PendingChallenge {
+  return {
+    id: 'challenge-1',
+    game: {
+      key: 'majority_rules',
+      title: 'Majority Rules',
+      implementation: 'react',
+      reactComponentKey: 'MajorityRules',
+      retired: false,
+    } as PendingChallenge['game'],
+    seed: 1,
+    participants: ['user'],
+    phase: 'rules',
+    aiScores: {},
+  };
+}
+
+function buildPendingMinigame(): MinigameSession {
+  return {
+    key: 'quickTap',
+    participants: ['user'],
+    seed: 1,
+    options: { timeLimit: 30 },
+    aiScores: {},
+  };
+}
+
+function renderNavBar(
+  initialEntry = '/game',
+  options: {
+    challengePending?: boolean;
+    pendingMinigame?: boolean;
+    gameOverrides?: Partial<GameState>;
+  } = {},
+) {
   const initialGameState = gameReducer(undefined, { type: '@@INIT' });
+  const initialChallengeState = challengeReducer(undefined, { type: '@@INIT' });
   const store = configureStore({
     reducer: {
       game: gameReducer,
+      challenge: challengeReducer,
       profiles: profilesReducer,
     },
     preloadedState: {
       game: {
         ...initialGameState,
         status: 'active' as const,
+        ...(options.pendingMinigame ? { pendingMinigame: buildPendingMinigame() } : {}),
+        ...options.gameOverrides,
       },
+      challenge: options.challengePending
+        ? { ...initialChallengeState, pending: buildPendingChallenge() }
+        : initialChallengeState,
     },
   });
 
@@ -43,8 +86,38 @@ describe('NavBar', () => {
     expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
   });
 
-  it('hides the bottom navigation on non-game routes even during an active game', () => {
-    renderNavBar('/profile');
+  it('hides the bottom navigation while a challenge rules modal is active', () => {
+    renderNavBar('/game', { challengePending: true });
+
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
+  });
+
+  it('hides the bottom navigation while a native minigame session is active', () => {
+    renderNavBar('/game', { pendingMinigame: true });
+
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
+  });
+
+  it('hides the bottom navigation during the tribunal-style jury sequence', () => {
+    renderNavBar('/game', { gameOverrides: { phase: 'jury' as const } });
+
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
+  });
+
+  it('hides the bottom navigation during the season finale recap', () => {
+    renderNavBar('/game', {
+      gameOverrides: {
+        seasonFinale: {
+          phase: 'winnerCinematic',
+          winnerId: 'user',
+          interviewIndex: 0,
+          goodbyeIndex: 0,
+          isChatOpen: false,
+          isLightsOffAnimating: false,
+          publicFavoriteEnabled: false,
+        } as NonNullable<GameState['seasonFinale']>,
+      },
+    });
 
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
   });
