@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Settings from '../src/screens/Settings/Settings';
+import SettingsAdmin from '../src/screens/SettingsAdmin/SettingsAdmin';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer, { setGameUX } from '../src/store/settingsSlice';
 
@@ -22,6 +23,19 @@ function renderSettings(store = makeStore()) {
       <MemoryRouter initialEntries={['/settings']}>
         <Routes>
           <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+  return { store };
+}
+
+function renderSettingsAdmin(store = makeStore()) {
+  render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={['/settingsatiste']}>
+        <Routes>
+          <Route path="/settingsatiste" element={<SettingsAdmin />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -50,5 +64,19 @@ describe('Settings compact roster controls', () => {
 
     expect(store.getState().settings.gameUX.compactRosterLayout).toBe('small');
     expect(screen.getByLabelText(/compact roster layout/i)).toHaveValue('small');
+  });
+
+  it('keeps retired horizontal slider out of advanced Settings', () => {
+    const store = makeStore();
+
+    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }));
+    renderSettingsAdmin(store);
+    fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
+
+    expect(screen.queryByText(/horizontal slider/i)).toBeNull();
+    expect(screen.getByText('2 rows of 8 avatars')).toBeTruthy();
+    expect(screen.getByText('4x4 smaller avatars')).toBeTruthy();
+    expect(screen.getByLabelText(/compact roster layout/i)).toBeTruthy();
+    expect(store.getState().settings.gameUX.compactRosterLayout).toBe('small');
   });
 });

@@ -29,7 +29,10 @@
   --tv-zone-viewport-min-height: var(--game-screen-tv-viewport-min-height);
 }
 
-body:has(.game-screen-shell) .safe-game-viewport {
+body:has(.game-screen-shell) {
+  --app-physical-bg: var(--color-bg);
+  --safe-game-viewport-bg-image: url('/assets/bb-gameplay-bg.svg');
+  --safe-game-viewport-bg-position: center top;
   background-color: var(--color-bg);
   background-image: url('/assets/bb-gameplay-bg.svg');
   background-size: cover;

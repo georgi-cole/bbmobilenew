@@ -28,13 +28,18 @@ describe('safe-area layout styles', () => {
     expect(globalCss).toContain('--safe-right: env(safe-area-inset-right, 0px);');
     expect(globalCss).toContain('--safe-bottom: env(safe-area-inset-bottom, 0px);');
     expect(globalCss).toContain('--safe-left: env(safe-area-inset-left, 0px);');
+    expect(globalCss).toContain('background: var(--app-physical-bg, var(--color-bg));');
     expect(safeViewportTsx).toContain('export default function SafeGameViewport');
     expect(safeViewportTsx).toContain('safe-game-viewport__bleed');
     expect(appShellTsx).toContain('<SafeGameViewport>');
 
-    expect(safeViewportCss).toContain('.safe-game-viewport { position: fixed; inset: 0;');
-    expect(safeViewportCss).toContain('height: 100dvh;');
+    expect(safeViewportCss).toContain('.safe-game-viewport { position: fixed; inset: 0; overflow: hidden;');
+    expect(safeViewportCss).toContain('background-image: var(--safe-game-viewport-bg-image, none);');
+    expect(safeViewportCss).not.toContain('height: 100dvh;');
+    expect(safeViewportCss).not.toContain('height: 100vh;');
+    expect(safeViewportCss).not.toContain('width: 100vw;');
     expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
+    expect(safeViewportCss).toContain('background-image: var(--safe-game-viewport-bleed-bg, var(--homehub-full-bleed-bg, none));');
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active .safe-game-viewport__bleed');
     expect(safeViewportCss).toContain('top: var(--safe-top);');
     expect(safeViewportCss).toContain('right: var(--safe-right);');
@@ -97,7 +102,8 @@ describe('safe-area layout styles', () => {
     expect(gameScreenCss).toContain('--game-screen-tv-min-height: clamp(238px, 30svh, 312px);');
     expect(gameScreenCss).toContain('--game-screen-tv-viewport-min-height: clamp(144px, 18svh, 192px);');
     expect(gameScreenCss).toContain('.game-screen > .tv-zone, .game-screen--compact-roster-balance > .tv-zone { flex: 0 0 auto; min-height: var(--game-screen-tv-min-height); --tv-zone-viewport-min-height: var(--game-screen-tv-viewport-min-height); }');
-    expect(gameScreenCss).toContain("body:has(.game-screen-shell) .safe-game-viewport { background-color: var(--color-bg); background-image: url('/assets/bb-gameplay-bg.svg');");
+    expect(gameScreenCss).toContain("body:has(.game-screen-shell) { --app-physical-bg: var(--color-bg); --safe-game-viewport-bg-image: url('/assets/bb-gameplay-bg.svg');");
+    expect(gameScreenCss).not.toContain('body:has(.game-screen-shell) .safe-game-viewport__bleed { opacity: 1;');
     expect(gameScreenCss).not.toContain('.game-screen--compact-roster-balance > .tv-zone { flex: 1 1 auto; min-height: 0; }');
 
     expect(tvZoneCss).toContain('.tv-zone { display: flex; flex: 0 0 auto; flex-direction: column; min-height: var(--tv-zone-min-height, 238px);');
@@ -117,11 +123,15 @@ describe('safe-area layout styles', () => {
 
     expect(houseguestGridTsx).toContain('const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`');
     expect(houseguestGridTsx).toContain('key={headerSignal}');
+    expect(houseguestGridTsx).toContain('This screen is cramped. Switch to compact roster?');
+    expect(houseguestGridTsx).toContain('new ResizeObserver(setAvailableHeight)');
+    expect(houseguestGridTsx).toContain('COMPACT_ROSTER_PROMPT_STORAGE_PREFIX');
     expect(houseguestGridTsx).not.toContain('setHeaderVisible');
     expect(houseguestGridCss).toContain('.headerRow { position: absolute; top: 4px; left: 8px;');
     expect(houseguestGridCss).toContain('animation: houseguestHeaderFlash 2200ms ease forwards;');
     expect(houseguestGridCss).toContain('.grid { list-style: none; margin: 0; padding: 0; display: grid; flex: 1 1 auto; min-height: 0;');
     expect(houseguestGridCss).toContain('overflow-y: auto;');
+    expect(houseguestGridCss).toContain('.compactPrompt { position: absolute;');
   });
 
   it('keeps home hub controls safe-contained while decorative art is owned by the physical viewport', () => {
@@ -146,8 +156,9 @@ describe('safe-area layout styles', () => {
     expect(frameIndex).toBeGreaterThan(-1);
     expect(assetLayerIndex).toBeGreaterThan(frameIndex);
 
-    expect(safeViewportCss).toContain('body.homehub-full-bleed-active { background-color: var(--color-bg);');
+    expect(safeViewportCss).toContain('body.homehub-full-bleed-active { --app-physical-bg: var(--color-bg);');
     expect(safeViewportCss).toContain('background-image: var(--homehub-full-bleed-bg, none);');
+    expect(safeViewportCss).toContain('--safe-game-viewport-bleed-bg: var(--homehub-full-bleed-bg, none);');
     expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
     expect(safeViewportCss).toContain('opacity: var(--homehub-full-bleed-overlay-opacity, 0);');
 
@@ -178,11 +189,16 @@ describe('safe-area layout styles', () => {
       resolve(process.cwd(), 'src/components/layout/viewportMeta.ts'),
       'utf8',
     );
+    const settingsAdminTsx = readFileSync(
+      resolve(process.cwd(), 'src/screens/SettingsAdmin/SettingsAdmin.tsx'),
+      'utf8',
+    );
 
     expect(useGameModeTs).toContain('SafeGameViewport remains the only safe-area layout owner');
     expect(useGameModeTs).toContain('setOverlaysWebView?.({ overlay: true })');
     expect(useGameModeTs).not.toContain('setOverlaysWebView?.({ overlay: false })');
     expect(viewportMetaTs).toContain('viewport-fit=cover');
+    expect(settingsAdminTsx).toContain('viewport-fit=cover');
   });
 
   it('keeps minigames and old fullscreen game roots inside the safe viewport', () => {
@@ -199,6 +215,9 @@ describe('safe-area layout styles', () => {
     expect(safeViewportCss).toContain('.minigame-host, .qtr, .qtr-canvas, .pp, .bbl, .td, .snake-root, .spectator-overlay, .pf-overlay, .day-start-shock');
     expect(safeViewportCss).toContain('position: absolute !important;');
     expect(safeViewportCss).toContain('--app-safe-area-top: 0px;');
+    expect(safeViewportCss).toContain('.safe-game-viewport__content .cps-shell { height: 100%; min-height: 0; }');
+    expect(safeViewportCss).toContain('.safe-game-viewport__content .cps-modal, .safe-game-viewport__content .cps-secret-banner { position: absolute; }');
+    expect(safeViewportCss).toContain('.safe-game-viewport__content .cps-secret-banner { top: 1rem; }');
 
     expect(minigameHostCss).toContain('.minigame-host { position: absolute; inset: 0;');
     expect(minigameHostCss).toContain('height: 100%;');

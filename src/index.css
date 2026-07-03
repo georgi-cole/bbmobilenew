@@ -84,7 +84,7 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: var(--color-bg);
+  background: var(--app-physical-bg, var(--color-bg));
   color: var(--color-text);
   /* Prevent pull-to-refresh on mobile */
   overscroll-behavior: none;
@@ -92,6 +92,7 @@ html, body {
 
 #root {
   height: 100%;
+  background: var(--app-physical-bg, var(--color-bg));
 }
 
 html.is-capacitor,
