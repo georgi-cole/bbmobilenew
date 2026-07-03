@@ -46,6 +46,54 @@ describe('safe-area layout styles', () => {
     expect(appShellCss).not.toContain('padding-bottom: var(--safe-bottom);');
   });
 
+  it('does not double-count the bottom safe area inside the app shell', () => {
+    const bottomNavCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/components/GameBottomNav/GameBottomNav.css'), 'utf8'),
+    );
+    const dockCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/components/GameControlDock/GameControlDock.css'), 'utf8'),
+    );
+    const gameScreenCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'), 'utf8'),
+    );
+
+    expect(bottomNavCss).toContain('height: var(--nav-bar-height, 60px);');
+    expect(bottomNavCss).not.toContain('height: calc(var(--nav-bar-height, 60px) + var(--safe-bottom));');
+    expect(bottomNavCss).not.toContain('env(safe-area-inset-bottom');
+
+    expect(dockCss).toContain('.game-control-dock { position: absolute;');
+    expect(dockCss).toContain('bottom: 8px;');
+    expect(dockCss).not.toContain('position: fixed; bottom: calc(var(--nav-bar-height)');
+    expect(dockCss).not.toContain('env(safe-area-inset-bottom');
+
+    expect(gameScreenCss).toContain('height: 100%;');
+    expect(gameScreenCss).toContain('overflow: hidden;');
+    expect(gameScreenCss).toContain('.game-screen:has(.game-control-dock)');
+    expect(gameScreenCss).not.toContain('padding: 12px 12px calc(var(--nav-bar-height) + 10px);');
+  });
+
+  it('keeps home hub and minigame rules inside their safe viewport parents', () => {
+    const homeHubCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/screens/HomeHub/HomeHub.css'), 'utf8'),
+    );
+    const minigameRulesCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/components/MinigameRules/MinigameRules.css'), 'utf8'),
+    );
+
+    expect(homeHubCss).toContain('.homehub-shell { position: relative; width: 100%; height: 100%;');
+    expect(homeHubCss).not.toContain('min-height: 100vh');
+    expect(homeHubCss).not.toContain('min-height: 100dvh');
+    expect(homeHubCss).not.toContain('margin-top: calc(-1 * var(--app-safe-area-top');
+    expect(homeHubCss).not.toContain('env(safe-area-inset');
+
+    expect(minigameRulesCss).toContain('.minigame-rules-overlay { position: absolute; inset: 0; height: 100%;');
+    expect(minigameRulesCss).toContain('overflow: hidden;');
+    expect(minigameRulesCss).toContain('.minigame-rules-modal { position: relative; display: flex; flex-direction: column;');
+    expect(minigameRulesCss).toContain('.minigame-rules-list { margin: 0 0 8px; padding-left: 20px; line-height: 1.6; flex: 1 1 auto;');
+    expect(minigameRulesCss).not.toContain('position: fixed;');
+    expect(minigameRulesCss).not.toContain('100dvh');
+  });
+
   it('keeps minigames and old fullscreen game roots inside the safe viewport', () => {
     const safeViewportCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.css'), 'utf8'),
@@ -70,7 +118,7 @@ describe('safe-area layout styles', () => {
     expect(minigameHostCss).not.toContain('100dvh');
 
     expect(gameScreenCss).toContain('position: relative;');
-    expect(gameScreenCss).toContain('min-height: 100%;');
+    expect(gameScreenCss).toContain('height: 100%;');
     expect(gameScreenCss).not.toContain('100vh');
     expect(gameScreenCss).not.toContain('100dvh');
   });
