@@ -50,25 +50,29 @@ export default function SurvivorAchievementCelebration() {
     };
   }, [activeProfileId, dismissedIds, game, isGuest, waitingForInput]);
 
+  const profileId = activeProfileId ?? '';
+  const currentCelebration = celebration;
+  const celebrationId = currentCelebration?.achievement.id ?? null;
+
   useEffect(() => {
-    if (!celebration || !activeProfileId) return undefined;
+    if (!currentCelebration || !profileId) return undefined;
 
     const timer = window.setTimeout(() => {
-      if (dismissingRef.current === celebration.achievement.id) return;
-      dismissingRef.current = celebration.achievement.id;
-      void markSurvivorAchievementCelebrationSeen(profileId, celebration.achievement.id);
+      if (dismissingRef.current === currentCelebration.achievement.id) return;
+      dismissingRef.current = currentCelebration.achievement.id;
+      void markSurvivorAchievementCelebrationSeen(profileId, currentCelebration.achievement.id);
       setDismissedIds((current) =>
-        current.includes(celebration.achievement.id) ? current : [...current, celebration.achievement.id],
+        current.includes(currentCelebration.achievement.id)
+          ? current
+          : [...current, currentCelebration.achievement.id],
       );
     }, AUTO_DISMISS_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeProfileId, celebration]);
+  }, [celebrationId, profileId]);
 
-  if (!celebration || !activeProfileId) return null;
+  if (!currentCelebration || !activeProfileId) return null;
 
-  const profileId = activeProfileId;
-  const currentCelebration = celebration;
   const { display } = currentCelebration;
   const unlockDateLabel = display.unlock?.unlockedAt
     ? new Intl.DateTimeFormat(undefined, {
