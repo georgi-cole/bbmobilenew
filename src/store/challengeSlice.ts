@@ -15,7 +15,7 @@ import {
   simulateMinigameAiScore,
 } from '../ai/competition';
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
-import { getBracketPoolForContext } from '../ai/competition/bracketTemplate';
+import { getApprovedCompetitionGameKeys, getBracketPoolForContext } from '../ai/competition/bracketTemplate';
 import { applyCompetitionSeasonUpdate, hydrateGame, selectAlivePlayers } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
@@ -96,6 +96,7 @@ const initialState: ChallengeState = {
 const LATE_SEASON_PLAYER_THRESHOLD = 6;
 // Keep a modest history buffer in case the scheduler window expands.
 const RECENT_HISTORY_LIMIT = 10;
+const SURVIVOR_APPROVED_GAME_KEYS = new Set(getApprovedCompetitionGameKeys());
 
 // ─── Slice ───────────────────────────────────────────────────────────────────
 
@@ -197,20 +198,29 @@ export const startChallenge =
       return pickRandomGame(gameSeed, { category, excludeKeys });
     };
     const pickSurvivorGame = (category?: GameCategory, excludeKeys?: string[]) => {
-      const pool = getPoolByFilter({ retired: false, category, excludeKeys });
       const modeSpecific = state.game.modeSpecific?.kind === 'survivor'
         ? state.game.modeSpecific
         : null;
-      if (pool.length === 0 || !modeSpecific) return pickFromRegistry(category, excludeKeys);
+      if (!modeSpecific) return pickFromRegistry(category, excludeKeys);
+
+      const approvedPool = getPoolByFilter({ retired: false, excludeKeys })
+        .filter((game) => SURVIVOR_APPROVED_GAME_KEYS.has(game.key));
+      const pool = category
+        ? approvedPool.filter((game) => game.category === category)
+        : approvedPool;
+      const selectionPool = pool.length > 0 ? pool : approvedPool;
+      if (selectionPool.length === 0) {
+        throw new Error('[challengeSlice] No approved Survivor games are available');
+      }
 
       const usedKeys = modeSpecific.competitionRotation.usedKeys ?? [];
       const used = new Set(usedKeys);
-      let available = pool.filter((game) => !used.has(game.key));
+      let available = selectionPool.filter((game) => !used.has(game.key));
       let nextUsedKeys = usedKeys;
       let nextRound = modeSpecific.competitionRotation.round ?? 1;
 
       if (available.length === 0) {
-        available = pool;
+        available = selectionPool;
         nextUsedKeys = [];
         nextRound += 1;
       }

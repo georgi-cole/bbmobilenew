@@ -13,8 +13,14 @@ import type { GameState } from '../types';
 import type { GameMode } from '../modes/modeTypes';
 import { normalizeGameMode } from '../modes/gameModes';
 import { isSurvivorRunTerminal } from '../modes/survivorRun';
+import {
+  applySurvivorAchievementProgress,
+  getSurvivorProgressDay,
+  normalizeSurvivorAchievementUnlockMap,
+} from '../modes/survivorAchievements';
 import type { FinaleState } from './finaleSlice';
 import type { SocialState } from '../social/types';
+import type { SurvivorAchievementUnlockMap } from '../modes/survivorAchievements';
 
 /** Prefix for per-profile saved-season localStorage keys. */
 export const SAVED_STATE_KEY_PREFIX = 'bbmobilenew:savedSeason:';
@@ -38,6 +44,7 @@ export interface SavedSeasonSnapshot {
 
 export interface SavedRunProfileStats {
   maxSurvivorDaysSurvived: number;
+  survivorAchievementsUnlocked: SurvivorAchievementUnlockMap;
 }
 
 export interface SavedRunProfile {
@@ -67,7 +74,7 @@ function emptySavedRunProfile(profileId: string): SavedRunProfile {
     activeRunId: null,
     lastPlayedRunId: null,
     runs: {},
-    stats: { maxSurvivorDaysSurvived: 0 },
+    stats: { maxSurvivorDaysSurvived: 0, survivorAchievementsUnlocked: {} },
   };
 }
 
@@ -79,14 +86,6 @@ function isRunSnapshotResumable(snapshot: SavedSeasonSnapshot | undefined): snap
   if (!snapshot) return false;
   if (isSurvivorRunTerminal(snapshot.game)) return false;
   return snapshot.game.status !== 'completed' && snapshot.game.status !== 'failed';
-}
-
-function getSurvivorBestDay(snapshot: SavedSeasonSnapshot | undefined): number {
-  if (!snapshot || snapshot.game.mode !== 'survivor') return 0;
-  const modeSpecific = snapshot.game.modeSpecific?.kind === 'survivor'
-    ? snapshot.game.modeSpecific
-    : null;
-  return Math.max(snapshot.game.week ?? 1, modeSpecific?.bestDayReached ?? 1, modeSpecific?.currentDay ?? 1);
 }
 
 function coerceSnapshot(raw: unknown, profileId: string): SavedSeasonSnapshot | null {
@@ -107,7 +106,7 @@ function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>
   const resumableSurvivor = isRunSnapshotResumable(survivor) ? survivor : undefined;
   const maxSurvivorDaysSurvived = Math.max(
     typeof parsed.stats?.maxSurvivorDaysSurvived === 'number' ? parsed.stats.maxSurvivorDaysSurvived : 0,
-    getSurvivorBestDay(survivor),
+    getSurvivorProgressDay(survivor?.game),
   );
   return {
     version: 2,
@@ -119,7 +118,12 @@ function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>
       ...(resumableClassic ? { classic: resumableClassic } : {}),
       ...(resumableSurvivor ? { survivor: resumableSurvivor } : {}),
     },
-    stats: { maxSurvivorDaysSurvived },
+    stats: {
+      maxSurvivorDaysSurvived,
+      survivorAchievementsUnlocked: normalizeSurvivorAchievementUnlockMap(
+        parsed.stats?.survivorAchievementsUnlocked,
+      ),
+    },
   };
 }
 
@@ -199,8 +203,17 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
   const current = loadSavedRunProfile(profileId);
   const runId = getRunId(snapshot);
   const survivorBest = mode === 'survivor'
-    ? Math.max(current.stats.maxSurvivorDaysSurvived, getSurvivorBestDay(snapshot))
+    ? Math.max(current.stats.maxSurvivorDaysSurvived, getSurvivorProgressDay(snapshot.game))
     : current.stats.maxSurvivorDaysSurvived;
+  const survivorAchievementsUnlocked =
+    mode === 'survivor'
+      ? applySurvivorAchievementProgress(
+          current.stats.survivorAchievementsUnlocked,
+          getSurvivorProgressDay(snapshot.game),
+          runId,
+          snapshot.savedAt,
+        ).unlocks
+      : current.stats.survivorAchievementsUnlocked;
   const nextRuns = { ...current.runs };
   const resumable = isRunSnapshotResumable(snapshot);
   if (resumable) {
@@ -217,9 +230,33 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
     stats: {
       ...current.stats,
       maxSurvivorDaysSurvived: survivorBest,
+      survivorAchievementsUnlocked,
     },
   };
   return saveRunProfile(next);
+}
+
+export function markSurvivorAchievementCelebrationSeen(
+  profileId: string,
+  achievementId: string,
+): boolean {
+  const current = loadSavedRunProfile(profileId);
+  const unlock = current.stats.survivorAchievementsUnlocked[achievementId];
+  if (!unlock || unlock.celebrationSeen) return false;
+
+  return saveRunProfile({
+    ...current,
+    stats: {
+      ...current.stats,
+      survivorAchievementsUnlocked: {
+        ...current.stats.survivorAchievementsUnlocked,
+        [achievementId]: {
+          ...unlock,
+          celebrationSeen: true,
+        },
+      },
+    },
+  });
 }
 
 export function getSavedRun(profileId: string, mode: GameMode): SavedSeasonSnapshot | null {

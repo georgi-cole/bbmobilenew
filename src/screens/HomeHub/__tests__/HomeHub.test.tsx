@@ -345,6 +345,34 @@ describe('HomeHub', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 
+  it('shows Survivor rules before starting a fresh Survivor run', async () => {
+    const view = renderHomeHub();
+
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Survivor Mode' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/don't show again/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => {
+      expect(
+        mockDispatch.mock.calls.some(
+          ([action]) => typeof action === 'object' && action !== null && (action as { type?: string }).type === 'game/hydrateGame',
+        ),
+      ).toBe(true);
+    });
+    expect(localStorage.getItem('bb:homeHubSurvivorRulesSeen:guest')).toBe('1');
+
+    view.unmount();
+  });
+
   it('mirrors the current Redux game state onto window.game for the intro hub', async () => {
     mockState.game = {
       gameId: 'game-A',

@@ -25,6 +25,7 @@ import HubLoadingOverlay from '../../components/HubLoadingOverlay/HubLoadingOver
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
+import SurvivorRulesModal from '../../components/ConfirmExitModal/SurvivorRulesModal';
 import { SoundManager } from '../../services/sound/SoundManager';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
 import useHomeHubAssets from '../../hooks/useHomeHubAssets';
@@ -33,6 +34,10 @@ import {
   hasSeenHomeHubSplashForGame,
   markHomeHubSplashSeenForGame,
 } from './homeHubSplashSession';
+import {
+  hasSeenSurvivorRules,
+  markSurvivorRulesSeen,
+} from './survivorRulesSeen';
 import {
   selectRemoteIntroHubBg,
   selectRemoteIntroHubOverlay,
@@ -198,6 +203,8 @@ export default function HomeHub() {
   const [preloading, setPreloading] = useState(autoStartGame);
   const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
+  const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
+  const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId);
 
   const savedRuns = useMemo(
     () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId) : null),
@@ -258,8 +265,25 @@ export default function HomeHub() {
       clearSavedRun(activeProfileId, 'survivor');
     }
     setSurvivorPrompt(null);
+    setPlaySelectionOpen(false);
     dispatch(hydrateGame(createSurvivorRun()));
     setPreloading(true);
+  }
+
+  function requestSurvivorRunStart() {
+    if (!survivorRulesDismissed) {
+      setSurvivorRulesOpen(true);
+      return;
+    }
+    startSurvivorRun();
+  }
+
+  function handleSurvivorRulesContinue(dontShowAgain: boolean) {
+    if (dontShowAgain) {
+      markSurvivorRulesSeen(activeProfileId);
+    }
+    setSurvivorRulesOpen(false);
+    startSurvivorRun();
   }
 
   function resumeSurvivorRun() {
@@ -281,7 +305,7 @@ export default function HomeHub() {
       setSurvivorPrompt('ended');
       return;
     }
-    startSurvivorRun();
+    requestSurvivorRunStart();
   }
 
   function startOrResumeMode(mode: GameMode) {
@@ -397,7 +421,7 @@ export default function HomeHub() {
         description="Your previous Survivor run has ended."
         confirmLabel="Start New"
         cancelLabel="Cancel"
-        onConfirm={startSurvivorRun}
+        onConfirm={requestSurvivorRunStart}
         onCancel={() => {
           setSurvivorPrompt(null);
           setPlaySelectionOpen(false);
@@ -410,9 +434,17 @@ export default function HomeHub() {
         description="This will replace your saved Survivor run only. Classic progress will not be affected."
         confirmLabel="Start New"
         cancelLabel="Cancel"
-        onConfirm={startSurvivorRun}
+        onConfirm={requestSurvivorRunStart}
         onCancel={() => setSurvivorPrompt('resume-or-new')}
       />
+
+      {survivorRulesOpen && (
+        <SurvivorRulesModal
+          open={survivorRulesOpen}
+          onContinue={handleSurvivorRulesContinue}
+          onCancel={() => setSurvivorRulesOpen(false)}
+        />
+      )}
 
       <div className="homehub-shell">
         <div className="homehub-frame">

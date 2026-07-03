@@ -1,0 +1,137 @@
+.survivor-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 8450;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    calc(18px + env(safe-area-inset-top))
+    calc(18px + env(safe-area-inset-right))
+    calc(18px + env(safe-area-inset-bottom))
+    calc(18px + env(safe-area-inset-left));
+  border: 0;
+  background: rgba(3, 5, 12, 0.84);
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.survivor-celebration__card {
+  width: min(100%, 440px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(125, 104, 255, 0.2), transparent 42%),
+    linear-gradient(180deg, rgba(15, 21, 40, 0.98), rgba(8, 12, 24, 0.98));
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 18px;
+  text-align: left;
+  pointer-events: none;
+}
+
+.survivor-celebration__eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.survivor-celebration__pill,
+.survivor-celebration__tier {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.survivor-celebration__pill {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.survivor-celebration__tier {
+  background: rgba(110, 140, 255, 0.14);
+  color: rgba(187, 198, 255, 0.96);
+}
+
+.survivor-celebration__body {
+  display: grid;
+  gap: 8px;
+}
+
+.survivor-celebration__title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.survivor-celebration__subtitle {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.survivor-celebration__meta,
+.survivor-celebration__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.survivor-celebration__meta {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.survivor-celebration__footer {
+  margin-top: 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.survivor-celebration[data-tier='legendary'] .survivor-celebration__tier {
+  background: rgba(255, 177, 84, 0.18);
+  color: rgba(255, 214, 167, 0.98);
+}
+
+.survivor-celebration[data-tier='mythic'] .survivor-celebration__card {
+  background:
+    radial-gradient(circle at top left, rgba(120, 233, 255, 0.24), transparent 40%),
+    radial-gradient(circle at top right, rgba(137, 104, 255, 0.2), transparent 42%),
+    linear-gradient(180deg, rgba(9, 18, 32, 0.99), rgba(5, 8, 18, 0.99));
+}
+
+.survivor-celebration[data-effect='mystery'] .survivor-celebration__pill {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 480px) {
+  .survivor-celebration {
+    align-items: flex-end;
+  }
+
+  .survivor-celebration__card {
+    width: 100%;
+    border-radius: 18px 18px 12px 12px;
+  }
+}

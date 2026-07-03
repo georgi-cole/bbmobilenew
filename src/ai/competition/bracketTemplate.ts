@@ -47,6 +47,16 @@ export interface BracketBand {
  */
 export type BracketTemplate = BracketBand[];
 
+/**
+ * Return the unique set of all competition game keys approved in the default
+ * classical bracket template.
+ */
+export function getApprovedCompetitionGameKeys(
+  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE,
+): string[] {
+  return [...new Set(template.flatMap((band) => [...band.loh, ...band.pos]))];
+}
+
 // ── Default template ──────────────────────────────────────────────────────────
 
 /**

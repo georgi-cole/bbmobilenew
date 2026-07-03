@@ -90,6 +90,7 @@ import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import IncomingInteractionsInbox from '../../components/IncomingInteractionsInbox/IncomingInteractionsInbox'
+import SurvivorAchievementCelebration from '../../components/SurvivorAchievementCelebration'
 import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/featureFlags'
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import SpectatorView from '../../components/ui/SpectatorView'
@@ -3846,6 +3847,7 @@ export default function GameScreen() {
           />
         )}
       </AnimatePresence>
+      <SurvivorAchievementCelebration />
 
       {/* ── Back 2 the Game return animation (reverse eviction) ─────────────── */}
       <AnimatePresence>
