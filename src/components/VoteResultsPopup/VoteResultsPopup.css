@@ -15,10 +15,6 @@
   cursor: pointer;
 }
 
-@supports (backdrop-filter: blur(6px)) {
-  .vrp { backdrop-filter: blur(6px); }
-}
-
 @keyframes vrpFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }

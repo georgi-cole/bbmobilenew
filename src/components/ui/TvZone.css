@@ -587,7 +587,7 @@
 /* ── Double Eviction spotlight effect ──────────────────────────────────────── */
 
 /**
- * Full-screen dim + blur backdrop rendered via React portal to document.body.
+ * Full-screen dim backdrop rendered via React portal to document.body.
  * Sits below the TvZone spotlight (z-index: 9998) so the TV appears to be
  * spotlit while the rest of the screen recedes into the background.
  */
@@ -607,8 +607,6 @@
       rgba(40, 0, 8, 0.84) 0%,
       rgba(14, 0, 4, 0.78) 100%
     );
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   pointer-events: none;
   animation: deBackdropPulse var(--de-spotlight-ms, 1700ms) ease-out forwards;
 }
