@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAppSelector } from '../store/hooks';
 import { selectActiveProfileId, selectIsGuest } from '../store/profilesSlice';
 import { selectIsWaitingForInput } from '../store/selectors';
@@ -11,7 +12,7 @@ import {
 } from '../modes/survivorAchievements';
 import './SurvivorAchievementCelebration.css';
 
-const AUTO_DISMISS_MS = 2200;
+const BACKDROP_DISMISS_DELAY_MS = 1200;
 
 export default function SurvivorAchievementCelebration() {
   const activeProfileId = useAppSelector(selectActiveProfileId);
@@ -19,6 +20,7 @@ export default function SurvivorAchievementCelebration() {
   const waitingForInput = useAppSelector(selectIsWaitingForInput);
   const game = useAppSelector((state) => state.game);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [backdropDismissId, setBackdropDismissId] = useState<string | null>(null);
   const dismissingRef = useRef<string | null>(null);
 
   const celebration = useMemo(() => {
@@ -33,9 +35,7 @@ export default function SurvivorAchievementCelebration() {
     }
 
     const savedProfile = loadSavedRunProfile(activeProfileId);
-    const candidateDefinitions = Object.values(
-      savedProfile.stats.survivorAchievementsUnlocked,
-    )
+    const candidateDefinitions = Object.values(savedProfile.stats.survivorAchievementsUnlocked)
       .filter((unlock) => !unlock.celebrationSeen && !dismissedIds.includes(unlock.id))
       .map((unlock) => SURVIVOR_ACHIEVEMENTS_BY_ID[unlock.id])
       .filter((achievement): achievement is SurvivorAchievementDefinition => achievement != null);
@@ -52,27 +52,23 @@ export default function SurvivorAchievementCelebration() {
 
   const profileId = activeProfileId ?? '';
   const currentCelebration = celebration;
+  const celebrationId = currentCelebration?.achievement.id ?? null;
+  const backdropDismissEnabled = celebrationId != null && backdropDismissId === celebrationId;
 
   useEffect(() => {
-    if (!currentCelebration || !profileId) return undefined;
+    dismissingRef.current = null;
+    if (!celebrationId) return undefined;
 
     const timer = window.setTimeout(() => {
-      if (dismissingRef.current === currentCelebration.achievement.id) return;
-      dismissingRef.current = currentCelebration.achievement.id;
-      void markSurvivorAchievementCelebrationSeen(profileId, currentCelebration.achievement.id);
-      setDismissedIds((current) =>
-        current.includes(currentCelebration.achievement.id)
-          ? current
-          : [...current, currentCelebration.achievement.id],
-      );
-    }, AUTO_DISMISS_MS);
+      setBackdropDismissId(celebrationId);
+    }, BACKDROP_DISMISS_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [currentCelebration, profileId]);
+  }, [celebrationId]);
 
   if (!currentCelebration || !profileId) return null;
 
-  const celebrationData = celebration!;
+  const celebrationData = currentCelebration;
   const { display } = celebrationData;
   const unlockDateLabel = display.unlock?.unlockedAt
     ? new Intl.DateTimeFormat(undefined, {
@@ -93,33 +89,91 @@ export default function SurvivorAchievementCelebration() {
     );
   }
 
+  function handleBackdropClick(event: MouseEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget || !backdropDismissEnabled) return;
+    dismiss();
+  }
+
   return (
-    <button
-      type="button"
-      className="survivor-celebration"
-      data-tier={display.tier}
-      data-effect={display.effectStyle}
-      aria-label={`Survivor achievement unlocked: ${display.title}. Tap to continue.`}
-      onClick={dismiss}
-    >
-      <div className="survivor-celebration__card">
-        <div className="survivor-celebration__eyebrow">
-          <span className="survivor-celebration__pill">Survivor unlock</span>
-          <span className="survivor-celebration__tier">{display.tierLabel}</span>
+    <AnimatePresence>
+      <motion.div
+        key={celebrationData.achievement.id}
+        className="survivor-celebration"
+        data-tier={display.tier}
+        data-effect={display.effectStyle}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.24, ease: 'easeOut' }}
+        onClick={handleBackdropClick}
+        aria-label={`Survivor achievement unlocked: ${display.title}`}
+      >
+        <div className="survivor-celebration__backdrop" aria-hidden="true">
+          <span className="survivor-celebration__ray survivor-celebration__ray--left" />
+          <span className="survivor-celebration__ray survivor-celebration__ray--right" />
+          <span className="survivor-celebration__glow survivor-celebration__glow--top" />
+          <span className="survivor-celebration__glow survivor-celebration__glow--bottom" />
         </div>
-        <div className="survivor-celebration__body">
-          <p className="survivor-celebration__title">{display.title}</p>
-          <p className="survivor-celebration__subtitle">{display.subtitle}</p>
-          <div className="survivor-celebration__meta">
-            <span>Day {display.day}</span>
-            <span>{display.requirement}</span>
+
+        <motion.section
+          className="survivor-celebration__card"
+          initial={{ opacity: 0, y: 28, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.98 }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="survivor-achievement-title"
+        >
+          <div className="survivor-celebration__chrome" aria-hidden="true">
+            <span />
+            <span />
+            <span />
           </div>
-        </div>
-        <div className="survivor-celebration__footer">
-          <span>Unlocked {unlockDateLabel}</span>
-          <span>Tap anywhere to continue</span>
-        </div>
-      </div>
-    </button>
+          <div className="survivor-celebration__eyebrow">
+            <span className="survivor-celebration__pill">Achievement Unlocked</span>
+            <span className="survivor-celebration__tier">{display.tierLabel}</span>
+          </div>
+
+          <div className="survivor-celebration__hero">
+            <p className="survivor-celebration__day">Day {display.day}</p>
+            <h2 id="survivor-achievement-title" className="survivor-celebration__title">
+              {display.title}
+            </h2>
+            <p className="survivor-celebration__subtitle">{display.subtitle}</p>
+          </div>
+
+          <div className="survivor-celebration__meta">
+            <div className="survivor-celebration__meta-block">
+              <span className="survivor-celebration__meta-label">Category</span>
+              <span className="survivor-celebration__meta-value">{display.categoryLabel}</span>
+            </div>
+            <div className="survivor-celebration__meta-block">
+              <span className="survivor-celebration__meta-label">Reached</span>
+              <span className="survivor-celebration__meta-value">
+                Day {display.unlock?.unlockedAtDay ?? display.day}
+              </span>
+            </div>
+            <div className="survivor-celebration__meta-block">
+              <span className="survivor-celebration__meta-label">Unlocked</span>
+              <span className="survivor-celebration__meta-value">{unlockDateLabel}</span>
+            </div>
+          </div>
+
+          <div className="survivor-celebration__footer">
+            <button
+              type="button"
+              className="survivor-celebration__continue"
+              onClick={dismiss}
+            >
+              Continue
+            </button>
+            <p className="survivor-celebration__hint">
+              {backdropDismissEnabled ? 'Tap outside to close.' : 'Take it in for a second.'}
+            </p>
+          </div>
+        </motion.section>
+      </motion.div>
+    </AnimatePresence>
   );
 }

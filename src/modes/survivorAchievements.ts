@@ -62,8 +62,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-10',
     day: 10,
-    name: 'First Spar',
-    subtitle: 'Ten days in Survivor Mode is enough to start leaving a mark.',
+    name: 'Signal Detected',
+    subtitle: 'You survived long enough for the system to notice you.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'bronze',
@@ -72,8 +72,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-25',
     day: 25,
-    name: 'Heat Check',
-    subtitle: 'A full month of pressure, and the run is still breathing.',
+    name: 'Not a Glitch',
+    subtitle: 'Twenty-five days in. This is no accident anymore.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'bronze',
@@ -82,8 +82,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-50',
     day: 50,
-    name: 'Halfway Fire',
-    subtitle: 'Fifty days in Survivor Mode with the game still in your hands.',
+    name: 'Half-Century Human',
+    subtitle: 'Fifty days survived against the synthetic house.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'silver',
@@ -92,8 +92,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-100',
     day: 100,
-    name: 'Century Run',
-    subtitle: 'Three digits of Survivor Mode, no flinch required.',
+    name: 'The Human Anomaly',
+    subtitle: 'One hundred days survived. The AI has no clean explanation.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'silver',
@@ -102,8 +102,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-200',
     day: 200,
-    name: 'Pressure Proof',
-    subtitle: 'Two hundred days and the floor is still holding.',
+    name: 'Still Loading',
+    subtitle: 'Two hundred days in, and the exit button is still missing.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'gold',
@@ -112,8 +112,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-300',
     day: 300,
-    name: 'Long Haul',
-    subtitle: 'Survivor Mode becomes a habit somewhere around here.',
+    name: 'Long-Term Problem',
+    subtitle: 'You are no longer a contestant. You are a design flaw.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'gold',
@@ -122,8 +122,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-365',
     day: 365,
-    name: 'Year One',
-    subtitle: 'A full year in Survivor Mode deserves a proper spotlight.',
+    name: 'One Year in the Machine',
+    subtitle: 'Three hundred sixty-five days inside an endless game.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'platinum',
@@ -132,8 +132,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-400',
     day: 400,
-    name: 'Skyline',
-    subtitle: 'The run is starting to look architectural.',
+    name: 'Error Tolerance',
+    subtitle: 'Four hundred days survived. The system has adapted badly.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'platinum',
@@ -142,8 +142,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-500',
     day: 500,
-    name: 'Five Hundred Club',
-    subtitle: 'A half-millennium of Survivor Mode is real commitment.',
+    name: 'Myth of the House',
+    subtitle: 'The AI players are replacing each other around your legend.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'legendary',
@@ -152,8 +152,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-1000',
     day: 1000,
-    name: 'Millennium Survivor',
-    subtitle: 'A four-digit run that belongs on the wall.',
+    name: 'Permanent Error',
+    subtitle: 'One thousand days survived. The system has learned to fear the exception.',
     category: 'milestone',
     visibility: 'visible',
     tier: 'legendary',
@@ -162,8 +162,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-2000',
     day: 2000,
-    name: 'Deep Archive',
-    subtitle: 'Survivor Mode has become part of the profile history.',
+    name: 'Second Millennium',
+    subtitle: 'Two thousand days. The house has rebuilt itself around you.',
     category: 'ultra',
     visibility: 'visible',
     tier: 'mythic',
@@ -172,8 +172,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-3000',
     day: 3000,
-    name: 'Pressure Atlas',
-    subtitle: 'Three thousand days of keeping the lights on.',
+    name: 'Synthetic Folklore',
+    subtitle: 'New robo players enter already knowing your name.',
     category: 'ultra',
     visibility: 'visible',
     tier: 'mythic',
@@ -182,8 +182,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-4000',
     day: 4000,
-    name: 'Signal Tower',
-    subtitle: 'The Survivor profile is now visible from orbit.',
+    name: 'The Endless Resident',
+    subtitle: 'You do not live in the house. The house lives around you.',
     category: 'ultra',
     visibility: 'visible',
     tier: 'mythic',
@@ -192,8 +192,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-5000',
     day: 5000,
-    name: 'Mythic Five',
-    subtitle: 'Five thousand days in Survivor Mode changes the shape of the file.',
+    name: 'Impossible Tenant',
+    subtitle: 'Five thousand days survived. The game has stopped pretending this is normal.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -202,8 +202,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-6000',
     day: 6000,
-    name: 'Mythic Six',
-    subtitle: 'The profile has started collecting weather.',
+    name: 'Machine-Worn Human',
+    subtitle: 'The system is aging faster than you are.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -212,8 +212,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-7000',
     day: 7000,
-    name: 'Mythic Seven',
-    subtitle: 'Seven thousand days of pure stubbornness.',
+    name: 'Beyond Balance',
+    subtitle: 'No simulation was meant to carry you this far.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -222,8 +222,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-8000',
     day: 8000,
-    name: 'Mythic Eight',
-    subtitle: 'By this point, Survivor Mode feels like a second home hub.',
+    name: 'Permanent Occupant',
+    subtitle: 'Eight thousand days. The house has accepted the bug.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -232,8 +232,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-9000',
     day: 9000,
-    name: 'Mythic Nine',
-    subtitle: 'The archive is getting heavier by the day.',
+    name: 'Over 9000',
+    subtitle: 'The survival level is no longer measurable.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -242,8 +242,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-10000',
     day: 10000,
-    name: 'Ten Thousand Days',
-    subtitle: 'An impossible-looking milestone made visible anyway.',
+    name: 'Five-Digit Survivor',
+    subtitle: 'Ten thousand days. You are no longer in Survivor mode. Survivor mode is in you.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -252,8 +252,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-100000',
     day: 100000,
-    name: 'Forever Mode',
-    subtitle: 'A myth so large it has to be treated like a landmark.',
+    name: 'The Immortal Exception',
+    subtitle: 'One hundred thousand days. The system ends before you do.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -262,8 +262,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-69',
     day: 69,
-    name: 'Lucky 69',
-    subtitle: 'A suspiciously satisfying anomaly.',
+    name: 'Nice Try, Algorithm',
+    subtitle: 'The system tried to stay serious. You ruined that.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'silver',
@@ -273,7 +273,7 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
     id: 'survivor-anomaly-111',
     day: 111,
     name: 'Triple Signal',
-    subtitle: 'Three ones, no explanation needed.',
+    subtitle: 'Three ones. One human. Zero explanations.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'silver',
@@ -282,8 +282,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-314',
     day: 314,
-    name: 'Pi Day',
-    subtitle: 'A hidden curve in the run.',
+    name: 'Pi in the Machine',
+    subtitle: 'The numbers are irrational. So is your survival.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'gold',
@@ -292,8 +292,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-404',
     day: 404,
-    name: 'Not Found',
-    subtitle: 'The day the signal folded in on itself.',
+    name: 'Human Not Found',
+    subtitle: 'The system searched for your elimination. No result.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'gold',
@@ -302,8 +302,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-444',
     day: 444,
-    name: 'Mirror Wall',
-    subtitle: 'A pattern that looks like it belongs to someone else.',
+    name: 'Synchronized Threat',
+    subtitle: 'The house numbers lined up. Nobody feels safer.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'platinum',
@@ -312,8 +312,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-666',
     day: 666,
-    name: 'Triple Six',
-    subtitle: 'A loud little omen for the Survivor record book.',
+    name: 'Cursed Runtime',
+    subtitle: 'Something unholy is keeping this run alive.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'platinum',
@@ -322,8 +322,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-777',
     day: 777,
-    name: 'Jackpot Seven',
-    subtitle: 'A secret that arrives with extra sparkle.',
+    name: 'Jackpot Survivor',
+    subtitle: 'The house rolled lucky. Unfortunately, so did you.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'legendary',
@@ -332,8 +332,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-888',
     day: 888,
-    name: 'Infinite Loop',
-    subtitle: 'The run seems to know where it is going.',
+    name: 'Infinite Loop Energy',
+    subtitle: 'The symbols repeat. The run refuses to end.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'legendary',
@@ -342,8 +342,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-999',
     day: 999,
-    name: 'Almost There',
-    subtitle: 'One breath before the next major wall.',
+    name: 'Almost Permanent',
+    subtitle: 'One day before the line between player and bug disappears.',
     category: 'anomaly',
     visibility: 'secret',
     tier: 'legendary',
@@ -556,4 +556,27 @@ export function buildSurvivorAchievementDisplayModel(
     unlock: null,
     effectStyle: achievement.effectStyle,
   };
+}
+
+export function buildUnlockedSurvivorAchievementDisplayModels(
+  unlocks: SurvivorAchievementUnlockMap,
+): SurvivorAchievementDisplayModel[] {
+  return SURVIVOR_ACHIEVEMENTS
+    .filter((achievement) => unlocks[achievement.id] != null)
+    .map((achievement) =>
+      buildSurvivorAchievementDisplayModel(achievement, unlocks[achievement.id]),
+    )
+    .sort((left, right) => {
+      const rightUnlockDay = right.unlock?.unlockedAtDay ?? right.day;
+      const leftUnlockDay = left.unlock?.unlockedAtDay ?? left.day;
+      if (rightUnlockDay !== leftUnlockDay) return rightUnlockDay - leftUnlockDay;
+
+      const rightUnlockedAt = right.unlock?.unlockedAt ?? '';
+      const leftUnlockedAt = left.unlock?.unlockedAt ?? '';
+      if (rightUnlockedAt !== leftUnlockedAt) {
+        return rightUnlockedAt.localeCompare(leftUnlockedAt);
+      }
+
+      return right.day - left.day;
+    });
 }

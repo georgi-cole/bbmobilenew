@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   SURVIVOR_ACHIEVEMENTS,
+  buildUnlockedSurvivorAchievementDisplayModels,
   buildSurvivorAchievementDisplayModel,
   getEligibleSurvivorAchievements,
   getNextUnseenSurvivorCelebration,
@@ -64,6 +65,33 @@ describe('survivorAchievements helpers', () => {
     expect(unlocked.title).toBe(secretAchievement!.name);
     expect(unlocked.subtitle).toBe(secretAchievement!.subtitle);
     expect(unlocked.requirement).toBe('Unlocked on Day 404.');
+  });
+
+  it('builds profile cards from unlocked achievements only', () => {
+    const cards = buildUnlockedSurvivorAchievementDisplayModels({
+      'survivor-day-25': {
+        id: 'survivor-day-25',
+        unlockedAt: '2026-07-01T09:30:00.000Z',
+        unlockedAtDay: 25,
+        firstRunId: 'run-1',
+        celebrationSeen: true,
+      },
+      'survivor-anomaly-404': {
+        id: 'survivor-anomaly-404',
+        unlockedAt: '2026-07-02T09:30:00.000Z',
+        unlockedAtDay: 404,
+        firstRunId: 'run-2',
+        celebrationSeen: false,
+      },
+    });
+
+    expect(cards).toHaveLength(2);
+    expect(cards.map((card) => card.id)).toEqual([
+      'survivor-anomaly-404',
+      'survivor-day-25',
+    ]);
+    expect(cards[0].title).toBe('Human Not Found');
+    expect(cards[1].title).toBe('Not a Glitch');
   });
 
   it('does not repeat the celebration once it has been seen', () => {
