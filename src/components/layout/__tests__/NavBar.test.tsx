@@ -4,12 +4,21 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import gameReducer from '../../../store/gameSlice';
+import profilesReducer from '../../../store/profilesSlice';
 import NavBar from '../NavBar';
 
 function renderNavBar(initialEntry = '/game') {
+  const initialGameState = gameReducer(undefined, { type: '@@INIT' });
   const store = configureStore({
     reducer: {
       game: gameReducer,
+      profiles: profilesReducer,
+    },
+    preloadedState: {
+      game: {
+        ...initialGameState,
+        status: 'active' as const,
+      },
     },
   });
 
@@ -23,7 +32,7 @@ function renderNavBar(initialEntry = '/game') {
 }
 
 describe('NavBar', () => {
-  it('shows the updated bottom navigation labels', () => {
+  it('shows the updated bottom navigation labels once a game is active', () => {
     renderNavBar('/game');
 
     expect(screen.getByRole('button', { name: 'RULES' })).toBeDefined();
@@ -32,6 +41,14 @@ describe('NavBar', () => {
     expect(screen.getByRole('button', { name: 'USER' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'LEADERBOARD' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
+  });
+
+  it('keeps the bottom navigation available on profile routes during an active game', () => {
+    renderNavBar('/profile');
+
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'HOME' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'USER' })).toBeDefined();
   });
 
   it('hides the bottom navigation on the credits route', () => {

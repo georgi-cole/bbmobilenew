@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition, type CSSProperties } from 'react';
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, useId, startTransition, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Phase, Player } from '../../types';
 import { useStore } from 'react-redux';
@@ -174,6 +174,8 @@ function getPhaseAnnouncementKey(
 // preventing jarring text transitions between the overlay disappearing and new text.
 const POST_DISMISS_FADE_MS = 300;
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
+const LIVE_VOTE_CUTOUT_PADDING = 12;
+const LIVE_VOTE_CUTOUT_RADIUS = 18;
 const DETOX_MESSAGE_HOLD_MS = 1500;
 const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
   'loh_tiebreak_tie',
@@ -226,6 +228,17 @@ type TvZoneDemocraciaResultsReveal = {
     voteCount: number;
   }>;
   onDone: () => void;
+};
+
+type LiveVoteBackdropMetrics = {
+  viewportWidth: number;
+  viewportHeight: number;
+  cutout: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
 };
 
 type TvZoneProps = {
@@ -331,9 +344,55 @@ export default function TvZone(props: TvZoneProps) {
     latestEventRef.current = latestEvent;
   });
 
+  useLayoutEffect(() => {
+    if (!voteResultsRevealActive) {
+      setLiveVoteBackdropMetrics(null);
+      return;
+    }
+
+    const updateBackdropMetrics = () => {
+      const zone = tvZoneRef.current;
+      if (!zone || typeof window === 'undefined') return;
+
+      const rect = zone.getBoundingClientRect();
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || Math.ceil(rect.right);
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || Math.ceil(rect.bottom);
+
+      setLiveVoteBackdropMetrics({
+        viewportWidth,
+        viewportHeight,
+        cutout: {
+          x: rect.left - LIVE_VOTE_CUTOUT_PADDING,
+          y: rect.top - LIVE_VOTE_CUTOUT_PADDING,
+          w: rect.width + LIVE_VOTE_CUTOUT_PADDING * 2,
+          h: rect.height + LIVE_VOTE_CUTOUT_PADDING * 2,
+        },
+      });
+    };
+
+    updateBackdropMetrics();
+    const handleViewportChange = () => updateBackdropMetrics();
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(handleViewportChange)
+      : null;
+    if (observer && tvZoneRef.current) observer.observe(tvZoneRef.current);
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+      observer?.disconnect();
+    };
+  }, [voteResultsRevealActive]);
+
   const activeDetoxEvent = detoxMessageQueue[detoxMessageIndex];
   const displayedEvent = activeDetoxEvent ?? latestEvent;
   const detoxMessageActive = Boolean(activeDetoxEvent);
+  const tvZoneRef = useRef<HTMLElement | null>(null);
+  const liveVoteBackdropMaskId = useId().replace(/:/g, '-') + '-live-vote-mask';
+  const [liveVoteBackdropMetrics, setLiveVoteBackdropMetrics] = useState<LiveVoteBackdropMetrics | null>(null);
 
   // ── Shock announcement sequence state ────────────────────────────────────────
   // Phase A: full-screen shock stinger (ShockIntroOverlay).
@@ -726,6 +785,7 @@ export default function TvZone(props: TvZoneProps) {
         isLiveVoteFocus ? 'tv-zone--live-vote-focus' : '',
         detoxMessageActive ? 'tv-zone--detox-stream' : '',
       ].filter(Boolean).join(' ')}
+      ref={tvZoneRef}
       aria-label="Game action zone"
       style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
     >
@@ -734,8 +794,61 @@ export default function TvZone(props: TvZoneProps) {
         <div className="tv-zone-de-backdrop" aria-hidden="true" />,
         document.body,
       )}
-      {isLiveVoteFocus && createPortal(
-        <div className="tv-zone-live-vote-backdrop" aria-hidden="true" />,
+      {isLiveVoteFocus && liveVoteBackdropMetrics && createPortal(
+        <div className="tv-zone-live-vote-backdrop" aria-hidden="true">
+          <svg
+            className="tv-zone-live-vote-backdrop__svg"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox={`0 0 ${liveVoteBackdropMetrics.viewportWidth} ${liveVoteBackdropMetrics.viewportHeight}`}
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <mask id={liveVoteBackdropMaskId} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
+                <rect
+                  x={0}
+                  y={0}
+                  width={liveVoteBackdropMetrics.viewportWidth}
+                  height={liveVoteBackdropMetrics.viewportHeight}
+                  fill="white"
+                />
+                <rect
+                  x={liveVoteBackdropMetrics.cutout.x}
+                  y={liveVoteBackdropMetrics.cutout.y}
+                  width={liveVoteBackdropMetrics.cutout.w}
+                  height={liveVoteBackdropMetrics.cutout.h}
+                  rx={LIVE_VOTE_CUTOUT_RADIUS}
+                  ry={LIVE_VOTE_CUTOUT_RADIUS}
+                  fill="black"
+                />
+              </mask>
+              <linearGradient id={`${liveVoteBackdropMaskId}-shade`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#030812" stopOpacity="0.38" />
+                <stop offset="100%" stopColor="#02060c" stopOpacity="0.56" />
+              </linearGradient>
+              <radialGradient id={`${liveVoteBackdropMaskId}-glow`} cx="50%" cy="34%" r="70%">
+                <stop offset="0%" stopColor="#78a8ff" stopOpacity="0.08" />
+                <stop offset="16%" stopColor="#78a8ff" stopOpacity="0.04" />
+                <stop offset="30%" stopColor="#000000" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            <rect
+              x={0}
+              y={0}
+              width={liveVoteBackdropMetrics.viewportWidth}
+              height={liveVoteBackdropMetrics.viewportHeight}
+              fill={`url(#${liveVoteBackdropMaskId}-glow)`}
+              mask={`url(#${liveVoteBackdropMaskId})`}
+            />
+            <rect
+              x={0}
+              y={0}
+              width={liveVoteBackdropMetrics.viewportWidth}
+              height={liveVoteBackdropMetrics.viewportHeight}
+              fill={`url(#${liveVoteBackdropMaskId}-shade)`}
+              mask={`url(#${liveVoteBackdropMaskId})`}
+            />
+          </svg>
+        </div>,
         document.body,
       )}
 
