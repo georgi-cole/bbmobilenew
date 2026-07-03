@@ -29,6 +29,8 @@ const SURVIVOR_BLOCKED_TERMINAL_ACTIONS = new Set([
   'game/applyF3MinigameWinner',
 ]);
 
+const SURVIVOR_REPLACEMENT_TRANSITION_MS = 2000;
+
 function isExited(player: Player | undefined): boolean {
   return player?.status === 'evicted' || player?.status === 'jury';
 }
@@ -177,7 +179,7 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
   if (game.mode !== 'survivor' || isSurvivorRunTerminal(game) || !shouldReplaceEvictedPlayers(game.mode)) return null;
   const evicteeIndex = game.players.findIndex((player) => player.id === evicteeId);
   const evictee = evicteeIndex >= 0 ? game.players[evicteeIndex] : undefined;
-  if (!isExited(evictee) || evictee?.isUser) return null;
+  if (!evictee || !isExited(evictee) || evictee.isUser) return null;
 
   const modeSpecific = getSurvivorState(game);
   const activeCastSize = game.players.filter((player) => !isExited(player)).length;
@@ -191,12 +193,13 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
   };
   const totalRoboContestantsEvicted = modeSpecific.totalRoboContestantsEvicted + 1;
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
+  const startedAt = Date.now();
   const players = game.players.map((player, index) => (index === evicteeIndex ? replacement : player));
   const replacementEvent = {
     id: `survivor-replacement-${replacement.id}`,
     text: `${replacement.name} enters as a replacement synthetic contestant.`,
     type: 'game' as const,
-    timestamp: Date.now(),
+    timestamp: startedAt,
     meta: { phase: game.phase, week: game.week, mode: 'survivor' },
   };
 
@@ -211,8 +214,16 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
       startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
       totalRoboContestantsEvicted,
       nextRoboIndex: modeSpecific.nextRoboIndex + 1,
+      replacementTransition: {
+        mode: 'survivor',
+        outgoingPlayerSnapshot: { ...evictee, status: 'evicted' },
+        incomingPlayerId: replacement.id,
+        slot: replacementSlot,
+        startedAt,
+        durationMs: SURVIVOR_REPLACEMENT_TRANSITION_MS,
+      },
     },
-    lastPlayedAt: Date.now(),
+    lastPlayedAt: startedAt,
     tvFeed: [replacementEvent, ...game.tvFeed].slice(0, 50),
   };
 }

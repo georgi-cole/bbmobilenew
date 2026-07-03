@@ -3117,6 +3117,11 @@ const gameSlice = createSlice({
       };
     },
 
+    clearSurvivorReplacementTransition(state) {
+      if (state.modeSpecific?.kind !== 'survivor') return;
+      state.modeSpecific.replacementTransition = null;
+    },
+
     setHasSeenConfessionalSpotlight(state, action: PayloadAction<boolean>) {
       state.hasSeenConfessionalSpotlight = action.payload;
     },
@@ -5177,6 +5182,7 @@ export const {
   clearBlockingFlags,
   archiveSeason,
   replacePlayers,
+  clearSurvivorReplacementTransition,
   resetGame,
   rerollSeed,
   hydrateGame,

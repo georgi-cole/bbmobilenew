@@ -14,10 +14,20 @@ export interface SurvivorModeState {
   bestDayReached: number;
   startingCastSize: number;
   nextRoboIndex: number;
+  replacementTransition?: SurvivorReplacementTransition | null;
   competitionRotation: {
     usedKeys: string[];
     round: number;
   };
+}
+
+export interface SurvivorReplacementTransition {
+  mode: 'survivor';
+  outgoingPlayerSnapshot: BasePlayer;
+  incomingPlayerId: string;
+  slot: number;
+  startedAt: number;
+  durationMs: number;
 }
 
 export type ModeSpecificState = ClassicModeState | SurvivorModeState;
