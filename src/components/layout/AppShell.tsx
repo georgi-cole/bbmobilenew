@@ -10,15 +10,10 @@ import { selectFinale } from '../../store/finaleSlice';
 import { selectSettings } from '../../store/settingsSlice';
 import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice';
 import useGameMode from '../../hooks/useGameMode';
+import { buildViewportMetaContent } from './viewportMeta';
 import './AppShell.css';
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean'];
-
-export function buildViewportMetaContent(enableZoom: boolean): string {
-  return enableZoom
-    ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
-    : 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
-}
 
 /**
  * AppShell — persistent wrapper around every screen.
