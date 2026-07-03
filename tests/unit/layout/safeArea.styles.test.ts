@@ -72,15 +72,32 @@ describe('safe-area layout styles', () => {
     expect(gameScreenCss).not.toContain('padding: 12px 12px calc(var(--nav-bar-height) + 10px);');
   });
 
-  it('keeps home hub and minigame rules inside their safe viewport parents', () => {
+  it('keeps home hub controls safe-contained while decorative art bleeds full viewport', () => {
+    const homeHubTsx = readFileSync(resolve(process.cwd(), 'src/screens/HomeHub/HomeHub.tsx'), 'utf8');
     const homeHubCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/screens/HomeHub/HomeHub.css'), 'utf8'),
     );
     const minigameRulesCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/MinigameRules/MinigameRules.css'), 'utf8'),
     );
+    const bgIndex = homeHubTsx.indexOf('className="homehub-intro-bg"');
+    const frameIndex = homeHubTsx.indexOf('className="homehub-frame"');
+    const assetLayerIndex = homeHubTsx.indexOf('<HomeHubAssetLayer');
+
+    expect(bgIndex).toBeGreaterThan(-1);
+    expect(frameIndex).toBeGreaterThan(bgIndex);
+    expect(assetLayerIndex).toBeGreaterThan(frameIndex);
+    expect(homeHubTsx).toContain('aria-hidden="true"');
 
     expect(homeHubCss).toContain('.homehub-shell { position: relative; width: 100%; height: 100%;');
+    expect(homeHubCss).toContain('overflow: hidden;');
+    expect(homeHubCss).toContain('.homehub-frame { position: relative; z-index: 2; width: 100%;');
+    expect(homeHubCss).toContain('.homehub-intro-bg { position: fixed; inset: 0;');
+    expect(homeHubCss).toContain('.homehub-remote-overlay { position: fixed; inset: 0;');
+    expect(homeHubCss).toContain('pointer-events: none;');
+    expect(homeHubCss).toContain('.home-hub__buttons { display: flex; flex-direction: column;');
+    expect(homeHubCss).toContain('overflow-y: auto;');
+    expect(homeHubCss).not.toMatch(/\.homehub-(?:shell|frame)\s*\{[^}]*overflow-y:\s*auto/);
     expect(homeHubCss).not.toContain('min-height: 100vh');
     expect(homeHubCss).not.toContain('min-height: 100dvh');
     expect(homeHubCss).not.toContain('margin-top: calc(-1 * var(--app-safe-area-top');
@@ -92,6 +109,19 @@ describe('safe-area layout styles', () => {
     expect(minigameRulesCss).toContain('.minigame-rules-list { margin: 0 0 8px; padding-left: 20px; line-height: 1.6; flex: 1 1 auto;');
     expect(minigameRulesCss).not.toContain('position: fixed;');
     expect(minigameRulesCss).not.toContain('100dvh');
+  });
+
+  it('keeps native status bar policy aligned with CSS-owned safe areas', () => {
+    const useGameModeTs = readFileSync(resolve(process.cwd(), 'src/hooks/useGameMode.ts'), 'utf8');
+    const viewportMetaTs = readFileSync(
+      resolve(process.cwd(), 'src/components/layout/viewportMeta.ts'),
+      'utf8',
+    );
+
+    expect(useGameModeTs).toContain('SafeGameViewport remains the only safe-area layout owner');
+    expect(useGameModeTs).toContain('setOverlaysWebView?.({ overlay: true })');
+    expect(useGameModeTs).not.toContain('setOverlaysWebView?.({ overlay: false })');
+    expect(viewportMetaTs).toContain('viewport-fit=cover');
   });
 
   it('keeps minigames and old fullscreen game roots inside the safe viewport', () => {
