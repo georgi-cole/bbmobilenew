@@ -12,7 +12,7 @@ import { createHashRouter } from 'react-router-dom';
 import AppShell             from './components/layout/AppShell';
 import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoundary';
 import HomeHub              from './screens/HomeHub/HomeHub';
-import GameRouteGate        from './routes/GameRouteGate';
+import GameScreen           from './screens/GameScreen/GameScreen';
 import DiaryRoom            from './screens/DiaryRoom/DiaryRoom';
 import Houseguests          from './screens/Houseguests/Houseguests';
 import Profile              from './screens/Profile/Profile';
@@ -96,22 +96,22 @@ export const router = createHashRouter([
     element: <AppShell />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      { index: true,              element: <HomeHub />        },
-      { path: 'game',             element: <GameRouteGate />  },
-      { path: 'diary-room',       element: <DiaryRoom />      },
-      { path: 'houseguests',      element: <Houseguests />    },
-      { path: 'profile',          element: <Profile />        },
-      { path: 'profile-edit',     element: <EditProfile />    },
-      { path: 'profile-picker',   element: <ProfilePicker />  },
-      { path: 'leaderboard',      element: <Leaderboard />    },
-      { path: 'credits',          element: <Credits />        },
-      { path: 'week',             element: <Week />           },
-      { path: 'create-player',    element: <CreatePlayer />   },
-      { path: 'game-over',        element: <GameOver />       },
-      { path: 'self-evicted',     element: <SelfEvicted />    },
-      { path: 'rules',            element: <Rules />          },
-      { path: 'public-meter',     element: <PublicMeter />    },
-      { path: 'settings',         element: <Settings />       },
+      { index: true,              element: <HomeHub />      },
+      { path: 'game',             element: <GameScreen />   },
+      { path: 'diary-room',       element: <DiaryRoom />    },
+      { path: 'houseguests',      element: <Houseguests />  },
+      { path: 'profile',          element: <Profile />      },
+      { path: 'profile-edit',     element: <EditProfile />  },
+      { path: 'profile-picker',   element: <ProfilePicker /> },
+      { path: 'leaderboard',      element: <Leaderboard />  },
+      { path: 'credits',          element: <Credits />      },
+      { path: 'week',             element: <Week />         },
+      { path: 'create-player',    element: <CreatePlayer /> },
+      { path: 'game-over',        element: <GameOver />     },
+      { path: 'self-evicted',     element: <SelfEvicted />  },
+      { path: 'rules',            element: <Rules />        },
+      { path: 'public-meter',     element: <PublicMeter />  },
+      { path: 'settings',         element: <Settings />     },
       ...(SettingsAdmin != null
         ? [{ path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> }]
         : []),
@@ -148,7 +148,7 @@ export const router = createHashRouter([
       ...(GameDebug != null
         ? [{ path: 'gamedebug', element: <Suspense fallback={null}><GameDebug /></Suspense> }]
         : []),
-      { path: '*',                element: <NotFound />       },
+      { path: '*',                element: <NotFound />     },
     ],
   },
 ]);

@@ -2,14 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  normalizeCompactRosterLayout,
   selectSettings,
   setAudio,
   setDisplay,
   setGameUX,
   setSim,
   setVisual,
-  type SupportedCompactRosterLayout,
+  type CompactRosterLayout,
   type ThemePreset,
 } from '../../store/settingsSlice';
 import CompSelection from '../../components/CompSelection';
@@ -68,19 +67,24 @@ const THEME_PRESETS: { id: ThemePreset; label: string; swatch: string }[] = [
 ];
 
 const COMPACT_ROSTER_LAYOUT_OPTIONS: {
-  id: SupportedCompactRosterLayout;
+  id: CompactRosterLayout;
   label: string;
   description: string;
 }[] = [
   {
-    id: 'two-rows',
-    label: '2 rows of 8 avatars',
-    description: 'Spread the roster across two wide rows.',
+    id: 'slider',
+    label: 'Horizontal slider',
+    description: 'Show every avatar in one scrollable row.',
   },
   {
     id: 'small',
-    label: '4x4 smaller avatars',
+    label: 'Smaller tiles',
     description: 'Keep the roster grid but shrink each tile to about half size.',
+  },
+  {
+    id: 'two-rows',
+    label: '2 rows of 8 avatars',
+    description: 'Spread the roster across two wide rows.',
   },
 ];
 
@@ -148,12 +152,10 @@ export default function SettingsAdmin() {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
     if (meta) {
       meta.content = enableZoom
-        ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
-        : 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
+        ? 'width=device-width, initial-scale=1.0'
+        : 'width=device-width, initial-scale=1.0, user-scalable=no';
     }
   }, [enableZoom]);
-
-  const compactRosterLayout = normalizeCompactRosterLayout(settings.gameUX.compactRosterLayout);
 
   return (
     <div className="settings-screen">
@@ -343,7 +345,7 @@ export default function SettingsAdmin() {
               {settings.gameUX.compactRoster && (
                 <div className="settings-choice-group" aria-label="Compact roster layout">
                   {COMPACT_ROSTER_LAYOUT_OPTIONS.map((option) => {
-                    const selected = compactRosterLayout === option.id;
+                    const selected = settings.gameUX.compactRosterLayout === option.id;
                     return (
                       <label
                         key={option.id}
@@ -502,7 +504,7 @@ export default function SettingsAdmin() {
                   aria-label="Morning Shock chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Chance that a Day 3+ morning shock removes an active housemate before the LOH flow begins. Only fires when more than 4 housemates are still alive.
+                  Chance that a Day 3+ morning shock removes an active housemate before the LOH comp starts. Only fires when more than 4 housemates are still alive.
                 </p>
               </div>
             )}
