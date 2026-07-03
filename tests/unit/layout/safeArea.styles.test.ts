@@ -75,6 +75,55 @@ describe('safe-area layout styles', () => {
     expect(gameScreenCss).not.toContain('padding: 12px 12px calc(var(--nav-bar-height) + 10px);');
   });
 
+  it('keeps gameplay safe bands painted while TV and log keep their own space', () => {
+    const gameScreenCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'), 'utf8'),
+    );
+    const tvZoneCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/components/ui/TvZone.css'), 'utf8'),
+    );
+    const tvLogTsx = readFileSync(resolve(process.cwd(), 'src/components/TVLog/TVLog.tsx'), 'utf8');
+    const tvLogCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/components/TVLog/TVLog.css'), 'utf8'),
+    );
+    const houseguestGridTsx = readFileSync(
+      resolve(process.cwd(), 'src/components/HouseguestGrid/HouseguestGrid.tsx'),
+      'utf8',
+    );
+    const houseguestGridCss = normalizeCss(
+      readFileSync(resolve(process.cwd(), 'src/components/HouseguestGrid/HouseguestGrid.module.css'), 'utf8'),
+    );
+
+    expect(gameScreenCss).toContain('--game-screen-tv-min-height: clamp(238px, 30svh, 312px);');
+    expect(gameScreenCss).toContain('--game-screen-tv-viewport-min-height: clamp(144px, 18svh, 192px);');
+    expect(gameScreenCss).toContain('.game-screen > .tv-zone, .game-screen--compact-roster-balance > .tv-zone { flex: 0 0 auto; min-height: var(--game-screen-tv-min-height); --tv-zone-viewport-min-height: var(--game-screen-tv-viewport-min-height); }');
+    expect(gameScreenCss).toContain("body:has(.game-screen-shell) .safe-game-viewport { background-color: var(--color-bg); background-image: url('/assets/bb-gameplay-bg.svg');");
+    expect(gameScreenCss).not.toContain('.game-screen--compact-roster-balance > .tv-zone { flex: 1 1 auto; min-height: 0; }');
+
+    expect(tvZoneCss).toContain('.tv-zone { display: flex; flex: 0 0 auto; flex-direction: column; min-height: var(--tv-zone-min-height, 238px);');
+    expect(tvZoneCss).toContain('flex: 1 0 auto; min-height: var(--tv-zone-viewport-min-height, 192px); display: flex;');
+    expect(tvZoneCss).toContain('.tv-zone__bezel { display: flex; flex: 1 1 auto; align-items: stretch; min-height: 0;');
+    expect(tvZoneCss).not.toContain('.tv-zone { flex: 1 1 auto;');
+
+    expect(tvLogTsx).toContain('const MAX_ADAPTIVE_VISIBLE_ROWS = 3;');
+    expect(tvLogTsx).toContain('entries.length <= 1');
+    expect(tvLogTsx).toContain('visible.length === 0');
+    expect(tvLogTsx).toContain("'--tv-log-max-vis': effectiveMaxVisible");
+    expect(tvLogCss).toContain('.tv-log { --tv-log-item-h: 36px; --tv-log-max-vis: 3; flex: 0 0 auto;');
+    expect(tvLogCss).toContain('min-height: var(--tv-log-item-h);');
+    expect(tvLogCss).toContain('max-height: clamp(var(--tv-log-item-h), 10svh, calc(var(--tv-log-item-h) * var(--tv-log-max-vis)));');
+    expect(tvLogCss).toContain('overflow-y: auto;');
+    expect(tvLogCss).not.toContain('display: none;');
+
+    expect(houseguestGridTsx).toContain('const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`');
+    expect(houseguestGridTsx).toContain('key={headerSignal}');
+    expect(houseguestGridTsx).not.toContain('setHeaderVisible');
+    expect(houseguestGridCss).toContain('.headerRow { position: absolute; top: 4px; left: 8px;');
+    expect(houseguestGridCss).toContain('animation: houseguestHeaderFlash 2200ms ease forwards;');
+    expect(houseguestGridCss).toContain('.grid { list-style: none; margin: 0; padding: 0; display: grid; flex: 1 1 auto; min-height: 0;');
+    expect(houseguestGridCss).toContain('overflow-y: auto;');
+  });
+
   it('keeps home hub controls safe-contained while decorative art is owned by the physical viewport', () => {
     const safeViewportCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.css'), 'utf8'),
