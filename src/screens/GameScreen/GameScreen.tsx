@@ -131,6 +131,7 @@ import {
   getBlockedSocialModuleAnnouncementMessage,
   type SocialModuleAvailability,
 } from '../../social/socialModuleAvailability'
+import { isPublicModeEnabled, isSocialModeEnabled } from '../../modes/gameModes'
 import {
   showInterstitial,
   showRewarded,
@@ -162,6 +163,7 @@ import {
   saveEvictionVoteBreakdownUnlock,
 } from '../../features/evictionVoteBreakdownStorage'
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
+import { shouldShowGameControlDock } from './gameScreenUiGuards'
 import './GameScreen.css'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
@@ -1068,6 +1070,7 @@ export default function GameScreen() {
 
   // ── Pre-veto public save phase ───────────────────────────────────────────
   const showPublicSaveReveal =
+    isPublicModeEnabled(game.mode) &&
     game.phase === 'pre_veto_public_save' &&
     Boolean(game.awaitingPublicSave) &&
     game.nomineeIds.length === 3 &&
@@ -1118,7 +1121,9 @@ export default function GameScreen() {
     ? `w${game.week}-public-save-${pendingPublicSaveResult.savedId}`
     : ''
   const showPublicSaveCeremony =
-    publicSaveCeremonyKey !== '' && publicSaveCeremonyKey !== publicSaveCeremonyConsumedKey
+    isPublicModeEnabled(game.mode) &&
+    publicSaveCeremonyKey !== '' &&
+    publicSaveCeremonyKey !== publicSaveCeremonyConsumedKey
 
   const handlePublicSaveDone = useCallback(() => {
     if (!publicSaveWinnerId) return
@@ -2692,7 +2697,10 @@ export default function GameScreen() {
     (s: RootState) => (humanPlayer ? (s.social?.energyBank?.[humanPlayer.id] ?? 0) : 0),
   )
   useEffect(() => {
-    if (!humanPlayer) return
+    if (!humanPlayer || game.mode === 'survivor' || !isSocialModeEnabled(game.mode)) {
+      setShowEnergyRechargePrompt(false)
+      return
+    }
     const energyIsZero = userEnergy === 0
     const inSocialPhase = game.phase === 'social_1' || game.phase === 'social_2'
     if (
@@ -2720,7 +2728,7 @@ export default function GameScreen() {
       }
       setShowEnergyRechargePrompt(false)
     }
-  }, [userEnergy, humanPlayer, humanPlayerEliminated, game.week, game.phase, isFinal3Week])
+  }, [userEnergy, humanPlayer, humanPlayerEliminated, game.mode, game.week, game.phase, isFinal3Week])
 
   // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
   // Show a rewarded prompt when the user's approval drops below 40%
@@ -2732,7 +2740,10 @@ export default function GameScreen() {
         : 100,
   )
   useEffect(() => {
-    if (!humanPlayer) return
+    if (!humanPlayer || game.mode === 'survivor' || game.publicModeEnabled !== true) {
+      setShowDislikedBoostPrompt(false)
+      return
+    }
     const todayIsoDate = new Date().toISOString().slice(0, 10)
     if (
       !humanPlayerEliminated &&
@@ -2758,6 +2769,8 @@ export default function GameScreen() {
     adsState?.dailyUsage?.public_meter_disliked_boost,
     humanPlayer,
     humanPlayerEliminated,
+    game.mode,
+    game.publicModeEnabled,
     lastDislikedPromptDate,
     setLastDislikedPromptDate,
     userApproval,
@@ -2782,7 +2795,7 @@ export default function GameScreen() {
     'social_2',
   ])
   const isSocialPhase = SOCIAL_INTERACTION_PHASES.has(game.phase)
-  const showSocialPanel = isSocialPhase && !!humanPlayer
+  const showSocialPanel = isSocialPhase && !!humanPlayer && isSocialModeEnabled(game.mode)
 
   // Hide Continue button while waiting for any human-only decision modal.
   // Also hide during VoteResultsPopup / EvictionSplash so the phase cannot
@@ -2796,6 +2809,76 @@ export default function GameScreen() {
     game.awaitingFinal3Plea === true &&
     game.phase === 'final3_decision' &&
     !!game.lohId
+  const showGameControlDock = shouldShowGameControlDock(game.status === 'active', [
+    Boolean(
+      showOutgoingHohWarning ||
+      showReplacementModal ||
+      showNominationsModal ||
+      showNomAnim ||
+      showPublicSaveReveal ||
+      showReplacementCeremony ||
+      showSaveCeremony ||
+      showPovDecisionModal ||
+      showPovSaveModal ||
+      showFinal4Chat ||
+      showFinal4Modal ||
+      showFinal4AnnounceChat ||
+      showDoubleVoteOffer ||
+      showDoubleVoteModal ||
+      showLiveVoteModal ||
+      showTieBreakModal ||
+      showDemocraciaResults ||
+      showFinal3Modal ||
+      showFinal3Ceremony ||
+      (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') ||
+      showVoteResults ||
+      showVoteDeductionOffer ||
+      showEvictionSplash ||
+      showBattleBackReturn ||
+      showBattleBack ||
+      showFavoriteVoting ||
+      (game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true) ||
+      showMinigameHost ||
+      showWinnerCeremony ||
+      showAdvanceHohCeremony ||
+      showQuickTapRace ||
+      showBullseyeBlitz ||
+      showTravelingDots ||
+      aiTiebreakStage !== null ||
+      spectatorF3Active ||
+      spectatorLegacyActive
+    ),
+    Boolean(postEvictionVoteBreakdown !== null),
+    Boolean(showEnergyRechargePrompt),
+    Boolean(showDislikedBoostPrompt),
+    Boolean(showBattleBackOverlay),
+    Boolean(showBattleBackReturn),
+    Boolean(showFavoriteVoting),
+    Boolean(showMinigameHost),
+    Boolean(showPressurePlank),
+    Boolean(showBullseyeBlitz),
+    Boolean(showTravelingDots),
+    Boolean(showLaneRacers),
+    Boolean(showQuickTapRace),
+    Boolean(showWinnerCeremony),
+    Boolean(showAdvanceHohCeremony),
+    Boolean(showPublicSaveReveal),
+    Boolean(showPublicSaveCeremony),
+    Boolean(showDemocraciaResults),
+    Boolean(showFinal4Modal),
+    Boolean(showFinal4AnnounceChat),
+    Boolean(showFinal3Modal),
+    Boolean(showFinal3Ceremony),
+    Boolean(showVoteBreakdownPrompt),
+    Boolean(battleBackRetryOfferWinnerId),
+    Boolean(preAdAnnouncement),
+    Boolean(socialModuleUnavailableAnnouncement),
+    Boolean(publicMeterUnavailableAnnouncement),
+    Boolean(spectatorF3Active),
+    Boolean(spectatorF3Part2Active),
+    Boolean(spectatorLegacyActive),
+    Boolean(socialSummaryOpen),
+  ])
 
   // ── Jury reveal overlay ───────────────────────────────────────────────────
   // JuryPhaseRevealOverlay handles its own animation sequence (no-animations
@@ -3890,7 +3973,7 @@ export default function GameScreen() {
       )}
 
       {/* ── Public's Favorite Player voting overlay ───────────────────────── */}
-      {showFavoriteVoting && favoritePlayer && (
+      {isPublicModeEnabled(game.mode) && showFavoriteVoting && favoritePlayer && (
         <PublicFavoriteOverlay
           candidates={game.players.filter((p) => (favoritePlayer.candidates ?? []).includes(p.id))}
           seed={game.seed}
@@ -3906,13 +3989,13 @@ export default function GameScreen() {
       )}
 
       {/* ── Social Phase Panel V2 (modal overlay skeleton) ───────────────── */}
-      <SocialPanelV2 />
+      {isSocialModeEnabled(game.mode) && <SocialPanelV2 />}
 
       {/* ── Incoming interactions inbox ─────────────────────────────────── */}
-      <IncomingInteractionsInbox />
+      {isSocialModeEnabled(game.mode) && <IncomingInteractionsInbox />}
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
-      {socialSummaryOpen && <SocialSummaryPopup />}
+      {isSocialModeEnabled(game.mode) && socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── Ad Prompts ───────────────────────────────────────────────────── */}
       {showVoteBreakdownPrompt && (
@@ -4161,7 +4244,7 @@ export default function GameScreen() {
       )}
 
       {/* ── Floating Action Bar ───────────────────────────────────────────── */}
-      {!awaitingHumanDecision && (
+      {showGameControlDock && (
         <FloatingActionBar
           onPublicMeterBlocked={handlePublicMeterBlocked}
           onSocialModuleBlocked={handleSocialModuleBlocked}
