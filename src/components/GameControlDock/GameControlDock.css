@@ -1,7 +1,7 @@
 /* ── GameControlDock ────────────────────────────────────────────────────── */
 .game-control-dock {
   position: absolute;
-  bottom: 8px;
+  bottom: 2px;
   left: 50%;
   z-index: 100;
   width: min(80%, 340px);

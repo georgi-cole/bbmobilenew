@@ -23,6 +23,6 @@ body:has(.game-screen-shell) .app-shell {
   overscroll-behavior-y: contain;
   padding-top: var(--app-safe-area-top);
   padding-right: var(--safe-right);
-  padding-bottom: var(--safe-bottom);
+  padding-bottom: 0;
   padding-left: var(--safe-left);
 }

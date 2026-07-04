@@ -133,4 +133,14 @@ describe('TVLog — mobile compact mode', () => {
 
     expect(screen.getByRole('list', { name: /Game event log/i }).getAttribute('data-mobile-two-line')).toBe('true');
   });
+
+  it('allows callers to reserve a one-row scroller on tight game layouts', () => {
+    const entries: TvEvent[] = [makeEvent({ id: 'e1', text: 'Compact mobile log message' })];
+
+    render(<TVLog entries={entries} maxVisible={1} />);
+
+    expect(screen.getByRole('list', { name: /Game event log/i }).getAttribute('style')).toContain(
+      '--tv-log-max-vis: 1',
+    );
+  });
 });
