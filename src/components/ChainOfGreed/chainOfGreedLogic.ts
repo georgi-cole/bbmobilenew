@@ -386,7 +386,7 @@ export function decideAiAction(options: {
     0,
     1.3,
   );
-    const potPressure = chain.pot / CHAIN_LADDER[CHAIN_LADDER.length - 1];
+  const potPressure = chain.pot / CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const stepPressure = chain.step / CHAIN_LADDER.length;
   const middleReferenceRisk = chain.referenceNumber > 28 && chain.referenceNumber < 72 ? 0.07 : -0.04;
   const meaningfulPot = chain.pot >= CHAIN_LADDER[1];
@@ -422,7 +422,7 @@ export function decideAiAction(options: {
     if (phase !== 'standard' && playerScore <= 0 && remainingTurns <= 1) return 'bank';
   }
 
-const higherWeight = clamp((100 - chain.referenceNumber) / 100, 0.1, 0.9);
+  const higherWeight = clamp((100 - chain.referenceNumber) / 100, 0.1, 0.9);
   const lowerWeight = clamp(chain.referenceNumber / 100, 0.1, 0.9);
   const volatilitySwing = (player.personality.volatility - 0.5) * 0.18;
   const pressureBias = comebackDrive * 0.20 - safetyBias * 0.07;
