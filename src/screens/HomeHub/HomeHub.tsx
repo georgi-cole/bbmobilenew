@@ -209,13 +209,13 @@ export default function HomeHub() {
   );
   // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl;
-  const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
   const [splashExitRequested, setSplashExitRequested] = useState(false);
   const [hubAssetState, setHubAssetState] = useState<HubAssetState>({
     ready: false,
     progress: 0,
     status: 'Opening the house doors.',
   });
+  const splashDone = hasSeenHomeHubSplashForGame(gameId) || (splashExitRequested && hubAssetState.ready);
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
@@ -439,13 +439,12 @@ export default function HomeHub() {
   }
 
   useEffect(() => {
-    if (splashDone || !splashExitRequested || !hubAssetState.ready) {
+    if (!splashDone) {
       return;
     }
 
     markHomeHubSplashSeenForGame(gameId);
-    setSplashDone(true);
-  }, [gameId, hubAssetState.ready, splashDone, splashExitRequested]);
+  }, [gameId, splashDone]);
 
   return (
     <>
