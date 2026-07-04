@@ -1,4 +1,5 @@
 .safe-game-viewport {
+  --safe-game-viewport-bleed-bottom: var(--safe-bottom);
   position: fixed;
   inset: 0;
   width: auto;
@@ -18,9 +19,17 @@ body.homehub-full-bleed-active {
   background-repeat: no-repeat;
 }
 
+html.homehub-full-bleed-active .safe-game-viewport,
+body.homehub-full-bleed-active .safe-game-viewport {
+  --safe-game-viewport-bleed-bottom: max(var(--safe-bottom), 34px);
+}
+
 .safe-game-viewport__bleed {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: calc(-1 * var(--safe-game-viewport-bleed-bottom));
+  left: 0;
   z-index: 0;
   background-image: var(--homehub-full-bleed-bg, none);
   background-size: cover;

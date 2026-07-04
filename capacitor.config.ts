@@ -18,6 +18,17 @@ const config: CapacitorConfig = {
    * Must match `build.outDir` in vite.config.ts (defaults to "dist").
    */
   webDir: 'dist',
+
+  ios: {
+    contentInset: 'never',
+  },
+
+  plugins: {
+    StatusBar: {
+      overlaysWebView: true,
+      backgroundColor: '#00000000',
+    },
+  },
 };
 
 export default config;

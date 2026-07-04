@@ -36,7 +36,9 @@ describe('safe-area layout styles', () => {
     expect(safeViewportCss).toContain('width: auto;');
     expect(safeViewportCss).toContain('height: auto;');
     expect(safeViewportCss).not.toContain('height: 100dvh;');
-    expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
+    expect(safeViewportCss).toContain('--safe-game-viewport-bleed-bottom: var(--safe-bottom);');
+    expect(safeViewportCss).toContain('--safe-game-viewport-bleed-bottom: max(var(--safe-bottom), 34px);');
+    expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; top: 0; right: 0; bottom: calc(-1 * var(--safe-game-viewport-bleed-bottom)); left: 0;');
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active .safe-game-viewport__bleed');
     expect(safeViewportCss).toContain('.safe-game-viewport__content { position: absolute; inset: 0;');
     expect(safeViewportCss).not.toContain('top: var(--safe-top);');
@@ -133,7 +135,8 @@ describe('safe-area layout styles', () => {
     expect(houseguestGridCss).toContain('.grid { list-style: none; margin: 0; padding: 0; display: grid; flex: 1 1 auto; min-height: 0;');
     expect(houseguestGridCss).toContain('grid-auto-rows: max-content;');
     expect(houseguestGridCss).toContain('align-content: start;');
-    expect(houseguestGridCss).toContain('overflow-y: auto;');
+    expect(houseguestGridCss).toContain('overflow: hidden;');
+    expect(houseguestGridCss).not.toContain('overflow-y: auto;');
     expect(houseguestGridCss).not.toContain('survivorTileSettle');
   });
 
@@ -163,7 +166,8 @@ describe('safe-area layout styles', () => {
     expect(safeViewportCss).toContain('html.homehub-full-bleed-active, body.homehub-full-bleed-active');
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active { background-color: var(--color-bg);');
     expect(safeViewportCss).toContain('background-image: var(--homehub-full-bleed-bg, none);');
-    expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
+    expect(safeViewportCss).toContain('--safe-game-viewport-bleed-bottom: max(var(--safe-bottom), 34px);');
+    expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; top: 0; right: 0; bottom: calc(-1 * var(--safe-game-viewport-bleed-bottom)); left: 0;');
     expect(safeViewportCss).toContain('opacity: var(--homehub-full-bleed-overlay-opacity, 0);');
 
     expect(homeHubCss).toContain('.homehub-shell { position: relative; width: 100%; height: 100%;');
@@ -189,6 +193,7 @@ describe('safe-area layout styles', () => {
   });
 
   it('keeps native status bar policy aligned with CSS-owned safe areas', () => {
+    const capacitorConfigTs = readFileSync(resolve(process.cwd(), 'capacitor.config.ts'), 'utf8');
     const useGameModeTs = readFileSync(resolve(process.cwd(), 'src/hooks/useGameMode.ts'), 'utf8');
     const viewportMetaTs = readFileSync(
       resolve(process.cwd(), 'src/components/layout/viewportMeta.ts'),
@@ -198,6 +203,8 @@ describe('safe-area layout styles', () => {
     expect(useGameModeTs).toContain('SafeGameViewport remains the only safe-area layout owner');
     expect(useGameModeTs).toContain('setOverlaysWebView?.({ overlay: true })');
     expect(useGameModeTs).not.toContain('setOverlaysWebView?.({ overlay: false })');
+    expect(capacitorConfigTs).toContain("contentInset: 'never'");
+    expect(capacitorConfigTs).toContain('overlaysWebView: true');
     expect(viewportMetaTs).toContain('viewport-fit=cover');
   });
 
