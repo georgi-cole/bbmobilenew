@@ -24,8 +24,8 @@ export interface TVLogProps {
   mainTVMessage?: string;
   /**
    * Maximum number of rows visible before the list scrolls.
-   * The mobile layout always allows up to three adaptive rows so the log never
-   * disappears entirely when screen space is tight.
+   * The log always keeps at least one visible row so older entries remain
+   * reachable without letting the feed crowd the roster.
    * @default 3
    */
   maxVisible?: number;
@@ -52,7 +52,7 @@ export default function TVLog({
   mobileTwoLineMode = false,
 }: TVLogProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const effectiveMaxVisible = Math.max(MAX_ADAPTIVE_VISIBLE_ROWS, maxVisible);
+  const effectiveMaxVisible = Math.max(1, maxVisible);
 
   // Suppress the first entry only when older rows remain, so the log never
   // collapses to an empty strip just because the main TV repeats the newest row.

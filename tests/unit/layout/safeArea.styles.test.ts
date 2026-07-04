@@ -26,7 +26,7 @@ describe('safe-area layout styles', () => {
     expect(appShellCss).toContain('margin: 0 auto;');
     expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);');
     expect(appShellCss).toContain('padding-right: var(--safe-right);');
-    expect(appShellCss).toContain('padding-bottom: var(--safe-bottom);');
+    expect(appShellCss).toContain('padding-bottom: 0;');
     expect(appShellCss).toContain('padding-left: var(--safe-left);');
   });
 
@@ -45,10 +45,11 @@ describe('safe-area layout styles', () => {
     expect(bottomNavCss).toContain('padding-bottom: var(--safe-bottom);');
     expect(bottomNavCss).not.toContain('env(safe-area-inset-bottom');
     expect(dockCss).toContain('.game-control-dock { position: absolute;');
-    expect(dockCss).toContain('bottom: 8px;');
+    expect(dockCss).toContain('bottom: 2px;');
     expect(dockCss).not.toContain('position: fixed;');
     expect(dockCss).not.toContain('env(safe-area-inset-bottom');
     expect(gameScreenCss).toContain('.game-screen:has(.game-control-dock)');
+    expect(gameScreenCss).toContain('--game-screen-floating-dock-clearance: clamp(56px, 16vw, 76px);');
   });
 
   it('keeps gameplay painted and roster positions stable', () => {
@@ -70,6 +71,8 @@ describe('safe-area layout styles', () => {
     expect(houseguestGridCss).not.toContain('overflow-y: auto;');
     expect(houseguestGridCss).not.toContain('survivorTileSettle');
     expect(tvLogCss).toContain('overflow-y: auto;');
+    expect(tvLogCss).toContain('@media (max-width: 480px) and (max-height: 900px)');
+    expect(tvLogCss).toContain('max-height: var(--tv-log-item-h);');
     expect(tvLogCss).not.toContain('display: none;');
   });
 

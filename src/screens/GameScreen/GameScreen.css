@@ -1,21 +1,21 @@
 /* GameScreen */
 .game-screen {
-  --game-screen-floating-dock-clearance: clamp(64px, 18vw, 88px);
+  --game-screen-floating-dock-clearance: clamp(56px, 16vw, 76px);
   --game-screen-tv-min-height: clamp(238px, 30svh, 312px);
   --game-screen-tv-viewport-min-height: clamp(144px, 18svh, 192px);
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 12px 12px 10px;
+  padding: 4px 12px 6px;
   overflow: hidden;
 }
 
 .game-screen:has(.game-control-dock) {
-  padding-bottom: calc(10px + var(--game-screen-floating-dock-clearance));
+  padding-bottom: calc(4px + var(--game-screen-floating-dock-clearance));
 }
 
 .game-screen--compact-roster-balance {
