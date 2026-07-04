@@ -1,7 +1,7 @@
 .survivor-standout {
   flex: 0 0 auto;
   width: min(100%, 420px);
-  margin: 6px auto 0;
+  margin: 16px auto 12px;
   color: #f8fafc;
 }
 
@@ -150,7 +150,7 @@
 
 .survivor-standout--mini-chip {
   width: 100%;
-  margin-top: 4px;
+  margin-top: 10px;
 }
 
 .survivor-standout--mini-chip .survivor-standout__body {
