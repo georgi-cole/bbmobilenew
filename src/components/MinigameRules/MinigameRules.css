@@ -97,6 +97,7 @@
 
 .minigame-rules-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 20px;
   justify-content: center;
@@ -104,7 +105,8 @@
 }
 
 .minigame-rules-btn-start {
-  flex: 1;
+  flex: 1 1 160px;
+  min-width: 0;
   max-width: 200px;
   padding: 12px 24px;
   background: #e94560;
