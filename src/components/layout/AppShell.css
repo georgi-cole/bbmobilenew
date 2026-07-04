@@ -3,31 +3,26 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   max-width: 480px;
-  margin: 0;
+  margin: 0 auto;
   background: var(--color-bg);
   position: relative;
   overflow: hidden;
-  min-height: 0;
-}
-
-body.homehub-full-bleed-active .app-shell {
-  background: transparent;
 }
 
 body:has(.game-screen-shell) .app-shell {
-  background: transparent;
+  background: var(--color-bg);
 }
 
 .app-shell__main {
   position: relative;
   flex: 1 1 0;
-  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   padding-top: var(--app-safe-area-top);
   padding-right: var(--safe-right);
+  padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
 }
