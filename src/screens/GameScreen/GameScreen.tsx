@@ -97,7 +97,7 @@ import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import Capitalization from '../../components/Capitalization/Capitalization'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
-import { resolveAvatar } from '../../utils/avatar'
+import { getProfilePhotoAvatarId, resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import { detectDebugMode } from '../../utils/debugMode'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
@@ -733,7 +733,7 @@ export default function GameScreen() {
     return {
       id: p.id,
       name: p.name,
-      avatarUrl: resolveAvatar(p),
+      avatarUrl: getProfilePhotoAvatarId(p.avatar) ? p.avatar : resolveAvatar(p),
       statuses,
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted,
