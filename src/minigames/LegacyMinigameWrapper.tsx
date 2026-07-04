@@ -177,8 +177,8 @@ export default function LegacyMinigameWrapper({ game, options = {}, onComplete, 
         aria-label="Quit minigame"
         style={{
           position: 'absolute',
-          top: 8,
-          right: 8,
+          top: 'max(8px, calc(var(--minigame-safe-top, var(--safe-top, 0px)) + 8px))',
+          right: 'max(8px, calc(var(--minigame-safe-right, var(--safe-right, 0px)) + 8px))',
           zIndex: 10,
           background: 'rgba(0,0,0,0.6)',
           color: '#fff',

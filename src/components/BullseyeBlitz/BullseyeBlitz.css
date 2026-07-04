@@ -8,7 +8,12 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.88);
-  padding: 16px;
+  box-sizing: border-box;
+  padding:
+    max(16px, calc(var(--minigame-safe-top, var(--safe-top, 0px)) + 16px))
+    max(16px, calc(var(--minigame-safe-right, var(--safe-right, 0px)) + 16px))
+    max(16px, calc(var(--minigame-safe-bottom, var(--safe-bottom, 0px)) + 16px))
+    max(16px, calc(var(--minigame-safe-left, var(--safe-left, 0px)) + 16px));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -17,9 +22,7 @@
 .bbl__card {
   width: 100%;
   max-width: 460px;
-  /* Fallback first; prefer dynamic viewport units when supported. */
-  max-height: calc(100vh - 32px);
-  max-height: calc(100dvh - 32px);
+  max-height: 100%;
   margin-block: auto;
   background: var(--color-surface, #1e1e2e);
   border: 1px solid rgba(255, 255, 255, 0.1);

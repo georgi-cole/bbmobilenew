@@ -8,10 +8,12 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.85);
+  box-sizing: border-box;
   padding:
-    calc(16px + var(--safe-top))
-    16px
-    calc(16px + var(--safe-bottom));
+    max(16px, calc(var(--minigame-safe-top, var(--safe-top, 0px)) + 16px))
+    max(16px, calc(var(--minigame-safe-right, var(--safe-right, 0px)) + 16px))
+    max(16px, calc(var(--minigame-safe-bottom, var(--safe-bottom, 0px)) + 16px))
+    max(16px, calc(var(--minigame-safe-left, var(--safe-left, 0px)) + 16px));
   transition: background 0.3s ease;
 }
 
@@ -25,18 +27,19 @@
 .qtr__card {
   width: 100%;
   max-width: 440px;
+  max-height: 100%;
   background: var(--color-surface, #1e1e2e);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .qtr__card--canvas {
   max-width: min(1120px, 100%);
-  max-height: calc(100vh - 32px - var(--safe-top) - var(--safe-bottom));
-  max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom));
+  max-height: min(760px, 100%);
   display: flex;
   flex-direction: column;
   overflow: auto;
@@ -746,11 +749,15 @@
 
 @media (max-width: 640px) {
   .qtr {
-    padding: 10px;
+    padding:
+      max(10px, calc(var(--minigame-safe-top, var(--safe-top, 0px)) + 10px))
+      max(10px, calc(var(--minigame-safe-right, var(--safe-right, 0px)) + 10px))
+      max(10px, calc(var(--minigame-safe-bottom, var(--safe-bottom, 0px)) + 10px))
+      max(10px, calc(var(--minigame-safe-left, var(--safe-left, 0px)) + 10px));
   }
 
   .qtr__card--canvas {
-    max-height: calc(100dvh - 20px);
+    max-height: 100%;
     border-radius: 18px;
   }
 

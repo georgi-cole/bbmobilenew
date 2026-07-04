@@ -85,6 +85,8 @@
 .minigame-host-playing > .td,
 .minigame-host-playing > .bbl,
 .minigame-host-playing > .tbg,
+.minigame-host-playing > .glass-bridge,
+.minigame-host-playing > .bb-blitz,
 .minigame-host-playing > .snake-root {
   box-sizing: border-box;
 }
@@ -154,6 +156,21 @@
 
 .minigame-host-playing > .tbg .tbg__card {
   max-height: calc(100% - var(--minigame-stage-top-padding) - var(--minigame-safe-padding-bottom));
+}
+
+.minigame-host-playing > .glass-bridge,
+.minigame-host-playing > .bb-blitz {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  padding:
+    var(--minigame-stage-top-padding)
+    var(--minigame-safe-padding-right)
+    var(--minigame-safe-padding-bottom)
+    var(--minigame-safe-padding-left);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .minigame-host-playing > .snake-root {
@@ -446,8 +463,8 @@
 
 .minigame-host-close-btn {
   position: absolute;
-  top: 12px;
-  right: 14px;
+  top: max(12px, calc(var(--minigame-safe-top) + 12px));
+  right: max(14px, calc(var(--minigame-safe-right) + 14px));
   z-index: 9600;
   width: 36px;
   height: 36px;
