@@ -60,7 +60,7 @@ import {
   submitCoLohNomination,
   submitPosTieBreak,
 } from '../../store/gameSlice'
-import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
+import { startChallenge, selectPendingChallenge, completeChallenge, type PendingChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
 import { setEnergyBankEntry } from '../../social/socialSlice'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'
@@ -184,6 +184,14 @@ const CONFESSIONAL_TV_PROMPT_MESSAGE =
 const PUBLIC_MODE_STORE_PROMPT =
   'If you want to activate public mode, go to the store in the home hub.'
 const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
+
+function buildAiOnlyChallengeRawResults(challenge: PendingChallenge) {
+  return challenge.participants.map((id) => ({
+    playerId: id,
+    rawValue: challenge.aiScores[id] ?? 0,
+    ...(challenge.aiTiebreakers?.[id] != null ? { tiebreaker: challenge.aiTiebreakers[id] } : {}),
+  }))
+}
 
 type PendingPublicSaveResult = {
   savedId: string
@@ -2612,6 +2620,38 @@ export default function GameScreen() {
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
+  const aiOnlyChallengeResolvedRef = useRef<string | null>(null)
+  useEffect(() => {
+    const isClassicCompetitionPhase =
+      game.mode !== 'survivor' &&
+      (game.phase === 'loh_comp' || game.phase === 'pos_comp')
+    if (
+      !isClassicCompetitionPhase ||
+      !pendingChallenge ||
+      humanIsChallengeParticipant ||
+      pendingChallenge.participants.length === 0 ||
+      aiOnlyChallengeResolvedRef.current === pendingChallenge.id
+    ) {
+      return
+    }
+
+    aiOnlyChallengeResolvedRef.current = pendingChallenge.id
+    const rawResults = buildAiOnlyChallengeRawResults(pendingChallenge)
+    const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null
+    const finalWinnerId = scoreWinnerId ?? pendingChallenge.participants[0]
+    const ranked = computeScores(
+      pendingChallenge.game.scoringAdapter,
+      rawResults,
+      pendingChallenge.game.scoringParams ?? {},
+    )
+    const lastNonWinner = [...ranked].reverse().find((result) => result.playerId !== finalWinnerId)
+
+    dispatch(applyMinigameWinner({
+      winnerId: finalWinnerId,
+      lastPlaceId: lastNonWinner?.playerId ?? null,
+      skipSeasonUpdate: true,
+    }))
+  }, [dispatch, game.mode, game.phase, humanIsChallengeParticipant, pendingChallenge])
   /** True whenever a native React LOH/POS minigame overlay should be displayed. */
   const showLohMinigame = !showMinigameHost && humanIsParticipant
   const showPressurePlank = showLohMinigame && pendingMinigame?.key === 'pressurePlank'

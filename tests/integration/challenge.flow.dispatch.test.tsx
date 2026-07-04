@@ -10,7 +10,7 @@
 //     category-only, unique, retired modes).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
@@ -48,6 +48,19 @@ const REDUCERS = {
 
 function makeStore() {
   return configureStore({ reducer: REDUCERS });
+}
+
+function makeStoreWithGame(overrides: Partial<ReturnType<typeof gameReducer>>) {
+  const initialGameState = gameReducer(undefined, { type: '@@INIT' });
+  return configureStore({
+    reducer: REDUCERS,
+    preloadedState: {
+      game: {
+        ...initialGameState,
+        ...overrides,
+      },
+    },
+  });
 }
 
 /** Create a store with custom settings.gameUX.compSelection preloaded. */
@@ -170,6 +183,29 @@ describe('challenge flow – phase transition dispatch', () => {
     const dialogs = screen.getAllByRole('dialog');
     expect(dialogs.length).toBeGreaterThanOrEqual(1);
     expect(dialogs.some((d) => d.classList.contains('minigame-host'))).toBe(true);
+  });
+
+  it('resolves a classic AI-only competition when the human is an evicted spectator', async () => {
+    const store = makeStoreWithGame({
+      status: 'active',
+      phase: 'loh_comp',
+      seed: 42,
+      players: [
+        { id: 'user', name: 'You', avatar: '🙂', status: 'evicted', isUser: true },
+        { id: 'p1', name: 'Ari', avatar: '🙂', status: 'active', isUser: false },
+        { id: 'p2', name: 'Bo', avatar: '🙂', status: 'active', isUser: false },
+      ],
+    });
+
+    renderWithStore(store);
+
+    await waitFor(() => {
+      expect(store.getState().challenge.pending).toBeNull();
+      expect(store.getState().challenge.history).toHaveLength(1);
+    });
+
+    expect(['p1', 'p2']).toContain(store.getState().game.lohId);
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 });
 
