@@ -1,0 +1,184 @@
+.survivor-standout {
+  flex: 0 0 auto;
+  width: min(100%, 420px);
+  margin: 6px auto 0;
+  color: #f8fafc;
+}
+
+.survivor-standout__body {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 74px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 197, 94, 0.18), transparent 38%),
+    linear-gradient(135deg, rgba(8, 13, 22, 0.86), rgba(19, 28, 42, 0.78));
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.survivor-standout__body:disabled {
+  cursor: default;
+}
+
+.survivor-standout__body:not(:disabled) {
+  cursor: pointer;
+}
+
+.survivor-standout__body:not(:disabled):focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.72);
+  outline-offset: 2px;
+}
+
+.survivor-standout__avatar-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(250, 204, 21, 0.34);
+  background: rgba(15, 23, 42, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.survivor-standout__avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.survivor-standout__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.survivor-standout__eyebrow {
+  color: rgba(187, 247, 208, 0.82);
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.survivor-standout__title {
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survivor-standout__subtitle {
+  overflow: hidden;
+  color: rgba(226, 232, 240, 0.8);
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survivor-standout__stats {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 6px;
+}
+
+.survivor-standout__stats span {
+  display: flex;
+  min-width: 42px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.survivor-standout__stats strong {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.survivor-standout__stats small {
+  color: rgba(203, 213, 225, 0.74);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.survivor-standout--compact-strip .survivor-standout__body {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  min-height: 48px;
+  padding: 6px 8px;
+}
+
+.survivor-standout--compact-strip .survivor-standout__avatar-wrap {
+  width: 34px;
+  height: 34px;
+}
+
+.survivor-standout--compact-strip .survivor-standout__eyebrow,
+.survivor-standout--mini-chip .survivor-standout__eyebrow,
+.survivor-standout--mini-chip .survivor-standout__avatar-wrap,
+.survivor-standout--mini-chip .survivor-standout__stats {
+  display: none;
+}
+
+.survivor-standout--compact-strip .survivor-standout__stats span:not(:first-child) {
+  display: none;
+}
+
+.survivor-standout--mini-chip {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.survivor-standout--mini-chip .survivor-standout__body {
+  display: block;
+  min-height: 0;
+  padding: 6px 9px;
+  border-radius: 999px;
+}
+
+.survivor-standout--mini-chip .survivor-standout__copy {
+  display: block;
+}
+
+.survivor-standout--mini-chip .survivor-standout__title,
+.survivor-standout--mini-chip .survivor-standout__subtitle {
+  display: inline;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.survivor-standout--mini-chip .survivor-standout__title::after {
+  content: ' - ';
+  color: rgba(226, 232, 240, 0.72);
+  font-weight: 700;
+}
+
+@media (max-width: 360px), (max-height: 700px) {
+  .survivor-standout__stats span:not(:first-child) {
+    display: none;
+  }
+}
