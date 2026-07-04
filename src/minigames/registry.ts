@@ -1221,7 +1221,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Guess Higher or Lower to grow the shared chain from 50 up to 1300 influence.',
       'Bank secures only the current chain pot, keeps the same reference number, and resets the chain.',
       'A wrong guess destroys the active pot. Equal numbers count as a miss.',
-                        'Standard rounds end with weakest-link votes until 2 players remain.',
+      'Standard rounds end with weakest-link votes until 2 players remain.',
       'Final 2 uses individual timed scoring. Only the winner claims the secured influence total.',
     ],
 
