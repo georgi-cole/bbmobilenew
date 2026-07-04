@@ -137,7 +137,7 @@ const TURN_PIPELINE_STAGE_ORDER: Record<Exclude<TurnPipelineStage, 'settle'>, Tu
   ladderUpdate: 'settle',
 };
 
-const FAST_AI_PIPELINE_DURATIONS: typeof CHAIN_TURN_PIPELINE_DURATIONS = {
+const FAST_AI_PIPELINE_DURATIONS: Record<TurnPipelineStage, number> = {
   decision: 150,
   reveal: 220,
   verdict: 220,
@@ -146,7 +146,7 @@ const FAST_AI_PIPELINE_DURATIONS: typeof CHAIN_TURN_PIPELINE_DURATIONS = {
   settle: 150,
 };
 
-const FAST_FINAL_BANK_PIPELINE_DURATIONS: typeof CHAIN_TURN_PIPELINE_DURATIONS = {
+const FAST_FINAL_BANK_PIPELINE_DURATIONS: Record<TurnPipelineStage, number> = {
   decision: 120,
   reveal: 130,
   verdict: 130,
@@ -663,11 +663,12 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     if (!actor || !actorChain) return;
 
     if (choice === 'bank' && actorChain.pot <= 0) return;
-    if (kind === 'final' && actor.isHuman && state.finalTimerExpiry) {
+        if (kind === 'final' && actor.isHuman && state.finalTimerExpiry !== null) {
+      const pausedRemaining = Math.max(0, state.finalTimerExpiry - Date.now());
       setState((previous) => ({
         ...previous,
         finalTimerExpiry: null,
-        finalTimerPausedRemaining: Math.max(0, state.finalTimerExpiry - Date.now()),
+        finalTimerPausedRemaining: pausedRemaining,
       }));
     }
 
