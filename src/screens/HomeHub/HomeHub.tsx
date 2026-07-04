@@ -216,24 +216,27 @@ export default function HomeHub() {
   const hasEndedSurvivorRecord = !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0;
 
   useEffect(() => {
+    const root = document.documentElement;
     const { body } = document;
+    root.classList.add('homehub-full-bleed-active');
     body.classList.add('homehub-full-bleed-active');
 
     if (effectiveBgUrl) {
-      body.style.setProperty('--homehub-full-bleed-bg', `url(${JSON.stringify(effectiveBgUrl)})`);
+      root.style.setProperty('--homehub-full-bleed-bg', `url(${JSON.stringify(effectiveBgUrl)})`);
     } else {
-      body.style.removeProperty('--homehub-full-bleed-bg');
+      root.style.removeProperty('--homehub-full-bleed-bg');
     }
 
-    body.style.setProperty(
+    root.style.setProperty(
       '--homehub-full-bleed-overlay-opacity',
       remoteOverlayOpacity != null && remoteOverlayOpacity > 0 ? String(remoteOverlayOpacity) : '0',
     );
 
     return () => {
+      root.classList.remove('homehub-full-bleed-active');
       body.classList.remove('homehub-full-bleed-active');
-      body.style.removeProperty('--homehub-full-bleed-bg');
-      body.style.removeProperty('--homehub-full-bleed-overlay-opacity');
+      root.style.removeProperty('--homehub-full-bleed-bg');
+      root.style.removeProperty('--homehub-full-bleed-overlay-opacity');
     };
   }, [effectiveBgUrl, remoteOverlayOpacity]);
 
