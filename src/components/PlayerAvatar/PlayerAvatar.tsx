@@ -45,9 +45,13 @@ export default function PlayerAvatar({
   showEvictedStyle = true,
 }: PlayerAvatarProps) {
   const { candidates } = useResolvedAvatarSrc(player);
-  const [candidateIdx, setCandidateIdx] = useState(0);
-  const [showFallback, setShowFallback] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const candidatesKey = candidates.join('\n');
+  const [imageState, setImageState] = useState({
+    candidatesKey,
+    candidateIdx: 0,
+    showFallback: false,
+    loaded: false,
+  });
   const [revived, setRevived] = useState(false);
   const prevStatusRef = useRef(player.status);
 
@@ -66,19 +70,26 @@ export default function PlayerAvatar({
     }
   }, [player.status]);
 
-  useEffect(() => {
-    setCandidateIdx(0);
-    setShowFallback(false);
-    setLoaded(false);
-  }, [candidates]);
-
+  const candidateIdx = imageState.candidatesKey === candidatesKey ? imageState.candidateIdx : 0;
+  const showFallback = imageState.candidatesKey === candidatesKey ? imageState.showFallback : false;
+  const loaded = imageState.candidatesKey === candidatesKey ? imageState.loaded : false;
   const avatarSrc = candidates[candidateIdx] ?? '';
 
   function handleError() {
     if (candidateIdx < candidates.length - 1) {
-      setCandidateIdx((i) => i + 1);
+      setImageState({
+        candidatesKey,
+        candidateIdx: candidateIdx + 1,
+        showFallback: false,
+        loaded: false,
+      });
     } else {
-      setShowFallback(true);
+      setImageState({
+        candidatesKey,
+        candidateIdx,
+        showFallback: true,
+        loaded: false,
+      });
     }
   }
 
@@ -110,7 +121,12 @@ export default function PlayerAvatar({
       src={avatarSrc}
       alt=""
       onError={handleError}
-      onLoad={() => setLoaded(true)}
+      onLoad={() => setImageState({
+        candidatesKey,
+        candidateIdx,
+        showFallback: false,
+        loaded: true,
+      })}
       aria-hidden="true"
     />
   );
