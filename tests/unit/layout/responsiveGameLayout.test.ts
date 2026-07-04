@@ -122,7 +122,9 @@ describe('responsive game layout budget', () => {
     }))
 
     expect(budget.survivorStandoutMode).toBe('full-card')
+    expect(budget.tvLogRows).toBe(5)
     expect(budget.cssVars).toMatchObject({
+      '--game-tv-log-rows': '5',
       '--game-survivor-standout-min-height': '74px',
     })
   })
