@@ -164,7 +164,7 @@ export default function useHomeHubAssets(effectiveBgUrl: string | null): HomeHub
     ? 'Intro hub ready'
     : !runtimeReady && imagesState.ready && fontsReady
     ? 'Finalizing intro hub...'
-    : 'Loading intro hub...';
+    : 'Preparing intro hub...';
 
   return { ready, progress, status };
 }

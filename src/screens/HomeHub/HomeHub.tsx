@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
@@ -21,7 +21,6 @@ import type { GameMode } from '../../modes/modeTypes';
 import { createSurvivorRun, isSurvivorRunTerminal } from '../../modes/survivorRun';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
-import HubLoadingOverlay from '../../components/HubLoadingOverlay/HubLoadingOverlay';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
@@ -71,6 +70,12 @@ const HUB_BUTTONS = [
 type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
 
+interface HubAssetState {
+  ready: boolean;
+  progress: number;
+  status: string;
+}
+
 function snapshotDay(snapshot: SavedSeasonSnapshot | null | undefined): number | null {
   const day = snapshot?.game?.week;
   return typeof day === 'number' && Number.isFinite(day) ? day : null;
@@ -103,6 +108,7 @@ interface HomeHubAssetLayerProps {
   playSelectionButtons: PlaySelectionButton[];
   onPlay: () => void;
   onNavigate: NavigateFunction;
+  onAssetStateChange: (state: HubAssetState) => void;
 }
 
 function HomeHubAssetLayer({
@@ -113,20 +119,26 @@ function HomeHubAssetLayer({
   playSelectionButtons,
   onPlay,
   onNavigate,
+  onAssetStateChange,
 }: HomeHubAssetLayerProps) {
   const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
     useHomeHubAssets(effectiveBgUrl);
   const assetReady = backgroundReady && homeHubReady;
-  const status = backgroundReady ? homeHubLoadStatus : 'Checking background...';
+  const status = backgroundReady ? homeHubLoadStatus : 'Choosing the right house exterior...';
+  const progress = backgroundReady ? homeHubLoadProgress : Math.min(20, homeHubLoadProgress);
+
+  useEffect(() => {
+    onAssetStateChange({
+      ready: assetReady,
+      progress,
+      status,
+    });
+  }, [assetReady, onAssetStateChange, progress, status]);
 
   return (
     <>
       {splashDone && assetReady && (
         <PermissionPrompts showSoundPrompt={false} />
-      )}
-
-      {splashDone && !assetReady && (
-        <HubLoadingOverlay progress={homeHubLoadProgress} status={status} />
       )}
 
       {/* Foreground content — hidden until the full hub asset bundle is ready. */}
@@ -136,7 +148,7 @@ function HomeHubAssetLayer({
 
         {/* Button stack: only rendered once the splash has dismissed and the
             full hub bundle is ready. */}
-        {splashDone && homeHubReady && (
+        {splashDone && assetReady && (
           <nav className="home-hub__buttons" aria-label={playSelectionOpen ? 'Play menu' : 'Main menu'}>
             {playSelectionOpen
               ? playSelectionButtons.map(({ key, label, icon, variant, onClick }) => (
@@ -198,6 +210,12 @@ export default function HomeHub() {
   // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl;
   const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
+  const [splashExitRequested, setSplashExitRequested] = useState(false);
+  const [hubAssetState, setHubAssetState] = useState<HubAssetState>({
+    ready: false,
+    progress: 0,
+    status: 'Opening the house doors.',
+  });
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
@@ -402,17 +420,44 @@ export default function HomeHub() {
     setPlaySelectionOpen(true);
   };
 
+  const handleHubAssetStateChange = useCallback((nextState: HubAssetState) => {
+    setHubAssetState((current) => {
+      if (
+        current.ready === nextState.ready &&
+        current.progress === nextState.progress &&
+        current.status === nextState.status
+      ) {
+        return current;
+      }
+
+      return nextState;
+    });
+  }, []);
+
   function handleSplashFinish() {
+    setSplashExitRequested(true);
+  }
+
+  useEffect(() => {
+    if (splashDone || !splashExitRequested || !hubAssetState.ready) {
+      return;
+    }
+
     markHomeHubSplashSeenForGame(gameId);
     setSplashDone(true);
-  }
+  }, [gameId, hubAssetState.ready, splashDone, splashExitRequested]);
 
   return (
     <>
       {/* Cold-load intro splash — logo only, hub preloads in background.
           Exits automatically after the animation completes (~1.2s). */}
       {!splashDone && (
-        <KolequantSplash onFinish={handleSplashFinish} />
+        <KolequantSplash
+          ready={hubAssetState.ready}
+          progress={hubAssetState.progress}
+          status={hubAssetState.status}
+          onFinish={handleSplashFinish}
+        />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
@@ -508,6 +553,7 @@ export default function HomeHub() {
             playSelectionButtons={playSelectionButtons}
             onPlay={handlePlay}
             onNavigate={navigate}
+            onAssetStateChange={handleHubAssetStateChange}
           />
 
           {/* Intro hub overlay — chips rendered only while HomeHub is mounted */}

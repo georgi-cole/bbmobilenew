@@ -1,83 +1,193 @@
 .kq-splash {
   position: fixed;
   inset: 0;
+  z-index: 99999;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* Top padding for status-bar / notch */
-  padding-top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
   min-height: 100dvh;
-  background: #000; /* pure black */
+  padding:
+    var(--app-safe-area-top, env(safe-area-inset-top, 0px))
+    28px
+    max(28px, env(safe-area-inset-bottom, 28px));
+  box-sizing: border-box;
   overflow: hidden;
-  z-index: 99999;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(86, 114, 255, 0.24) 0%, rgba(86, 114, 255, 0.08) 28%, transparent 55%),
+    linear-gradient(180deg, #02030a 0%, #060816 54%, #010207 100%);
   pointer-events: none;
-  /* Container fades out in sync with the logo so the hub behind it is
-     revealed smoothly — no hard cut from black to hub background. */
-  animation: kq-splash-out var(--kq-splash-duration, 1.2s) ease forwards;
 }
 
-/* Subtle ambient glow centred behind the logo — premium launch feel */
-.kq-splash::before {
+.kq-splash::before,
+.kq-splash::after {
   content: '';
   position: absolute;
-  width: min(72vmin, 360px);
-  height: min(72vmin, 360px);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(80, 50, 200, 0.22) 0%, transparent 68%);
-  opacity: 0;
-  animation: kq-fade var(--kq-splash-duration, 1.2s) ease forwards;
+  inset: 0;
   pointer-events: none;
+}
+
+.kq-splash::before {
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 48%, transparent 52%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0 1px,
+      transparent 1px 88px
+    );
+  opacity: 0.16;
+  transform: translateX(-22%);
+  animation: kq-scan 5200ms ease-in-out infinite alternate;
+}
+
+.kq-splash::after {
+  background: radial-gradient(circle at center, transparent 34%, rgba(0, 0, 0, 0.36) 74%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+.kq-splash--exiting {
+  animation: kq-splash-exit 360ms ease forwards;
 }
 
 .kq-splash__logo {
+  position: relative;
+  z-index: 1;
   width: min(52vmin, 240px);
   max-width: 300px;
   opacity: 0;
   transform: scale(0.96) translateY(8px);
-  animation: kq-logo-in var(--kq-splash-duration, 1.2s) ease forwards;
+  animation: kq-logo-in 640ms cubic-bezier(0.22, 1, 0.36, 1) 80ms forwards;
+  filter: drop-shadow(0 18px 36px rgba(67, 89, 255, 0.28));
 }
 
-/* Copyright pinned to the bottom of the splash overlay, fades with the logo */
+.kq-splash__preload {
+  position: relative;
+  z-index: 1;
+  width: min(340px, 78vw);
+  margin-top: 28px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: kq-preload-in 560ms ease 420ms forwards;
+}
+
+.kq-splash__preload-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 24px;
+  color: rgba(241, 245, 255, 0.84);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.kq-splash__preload-row span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kq-splash__preload-row span:last-child {
+  color: rgba(255, 255, 255, 0.56);
+  font-variant-numeric: tabular-nums;
+}
+
+.kq-splash__bar-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.kq-splash__bar-fill {
+  width: var(--kq-splash-progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f5f7ff 0%, #74d8ff 54%, #9a7dff 100%);
+  box-shadow: 0 0 18px rgba(116, 216, 255, 0.42);
+  transition: width 180ms linear;
+}
+
 .kq-splash__copyright {
   position: absolute;
-  bottom: max(28px, env(safe-area-inset-bottom, 28px));
-  left: 0;
+  z-index: 1;
   right: 0;
+  bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  left: 0;
   text-align: center;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 0.75rem;
-  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
   text-transform: uppercase;
   opacity: 0;
-  animation: kq-fade var(--kq-splash-duration, 1.2s) ease forwards;
+  animation: kq-preload-in 560ms ease 560ms forwards;
 }
 
-/* Container: fades out at the same time as the logo so the hub is
-   revealed through the dissolving splash rather than snapping in. */
-@keyframes kq-splash-out {
-  0%   { opacity: 1; }
-  78%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-/* Logo: slides up while fading in, then fades out */
 @keyframes kq-logo-in {
-  0%   { opacity: 0; transform: scale(0.96) translateY(10px); }
-  22%  { opacity: 1; transform: scale(1)    translateY(0);    }
-  78%  { opacity: 1; transform: scale(1)    translateY(0);    }
-  100% { opacity: 0; transform: scale(0.98) translateY(-5px); }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
-/* Copyright + glow: simple fade in / hold / fade out matching the logo timing */
-@keyframes kq-fade {
-  0%   { opacity: 0; }
-  22%  { opacity: 1; }
-  78%  { opacity: 1; }
-  100% { opacity: 0; }
+
+@keyframes kq-preload-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kq-splash-exit {
+  to {
+    opacity: 0;
+    transform: scale(1.006);
+  }
+}
+
+@keyframes kq-scan {
+  from { transform: translateX(-22%); }
+  to { transform: translateX(22%); }
 }
 
 @media (max-width: 420px) {
-  .kq-splash__logo { width: 60vmin; }
+  .kq-splash {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+
+  .kq-splash__logo {
+    width: 60vmin;
+  }
+
+  .kq-splash__preload {
+    width: min(320px, 86vw);
+  }
+
+  .kq-splash__preload-row {
+    font-size: 0.72rem;
+  }
+
   .kq-splash__copyright {
-    letter-spacing: 0.16em;
-    font-size: 0.68rem;
+    font-size: 0.66rem;
+    letter-spacing: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kq-splash,
+  .kq-splash::before,
+  .kq-splash__logo,
+  .kq-splash__preload,
+  .kq-splash__copyright {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
   }
 }
