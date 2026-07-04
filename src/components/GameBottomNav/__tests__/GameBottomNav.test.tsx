@@ -23,4 +23,15 @@ describe('GameBottomNav', () => {
     expect(screen.queryByRole('button', { name: 'LEADERBOARD' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
   });
+
+  it('keeps accessible names when compact mode hides visual labels', () => {
+    const { container } = render(<GameBottomNav activeTab="home" />);
+
+    expect(screen.getByRole('button', { name: 'HOME' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'RULES' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'SETTINGS' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'BOARD' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'USER' })).toBeDefined();
+    expect(container.querySelectorAll('.game-bottom-nav__label')).toHaveLength(5);
+  });
 });
