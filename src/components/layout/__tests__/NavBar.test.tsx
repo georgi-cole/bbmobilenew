@@ -9,7 +9,7 @@ import profilesReducer from '../../../store/profilesSlice';
 import type { GameState, MinigameSession } from '../../../types';
 import NavBar from '../NavBar';
 
-function buildPendingChallenge(): PendingChallenge {
+function buildPendingChallenge(participants: string[] = ['user']): PendingChallenge {
   return {
     id: 'challenge-1',
     game: {
@@ -20,16 +20,16 @@ function buildPendingChallenge(): PendingChallenge {
       retired: false,
     } as PendingChallenge['game'],
     seed: 1,
-    participants: ['user'],
+    participants,
     phase: 'rules',
     aiScores: {},
   };
 }
 
-function buildPendingMinigame(): MinigameSession {
+function buildPendingMinigame(participants: string[] = ['user']): MinigameSession {
   return {
     key: 'quickTap',
-    participants: ['user'],
+    participants,
     seed: 1,
     options: { timeLimit: 30 },
     aiScores: {},
@@ -40,7 +40,9 @@ function renderNavBar(
   initialEntry = '/game',
   options: {
     challengePending?: boolean;
+    challengeParticipants?: string[];
     pendingMinigame?: boolean;
+    pendingMinigameParticipants?: string[];
     gameOverrides?: Partial<GameState>;
   } = {},
 ) {
@@ -56,11 +58,11 @@ function renderNavBar(
       game: {
         ...initialGameState,
         status: 'active' as const,
-        ...(options.pendingMinigame ? { pendingMinigame: buildPendingMinigame() } : {}),
+        ...(options.pendingMinigame ? { pendingMinigame: buildPendingMinigame(options.pendingMinigameParticipants) } : {}),
         ...options.gameOverrides,
       },
       challenge: options.challengePending
-        ? { ...initialChallengeState, pending: buildPendingChallenge() }
+        ? { ...initialChallengeState, pending: buildPendingChallenge(options.challengeParticipants) }
         : initialChallengeState,
     },
   });
@@ -92,10 +94,43 @@ describe('NavBar', () => {
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
   });
 
+  it('keeps bottom navigation available for an evicted classic spectator during an AI-only challenge', () => {
+    renderNavBar('/game', {
+      challengePending: true,
+      challengeParticipants: ['p1', 'p2'],
+      gameOverrides: {
+        players: [
+          { id: 'user', name: 'You', avatar: '🙂', status: 'evicted', isUser: true },
+          { id: 'p1', name: 'Ari', avatar: '🙂', status: 'active', isUser: false },
+          { id: 'p2', name: 'Bo', avatar: '🙂', status: 'active', isUser: false },
+        ],
+      },
+    });
+
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'HOME' })).toBeDefined();
+  });
+
   it('hides the bottom navigation while a native minigame session is active', () => {
     renderNavBar('/game', { pendingMinigame: true });
 
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
+  });
+
+  it('keeps bottom navigation available when a native minigame excludes the evicted user', () => {
+    renderNavBar('/game', {
+      pendingMinigame: true,
+      pendingMinigameParticipants: ['p1', 'p2'],
+      gameOverrides: {
+        players: [
+          { id: 'user', name: 'You', avatar: '🙂', status: 'jury', isUser: true },
+          { id: 'p1', name: 'Ari', avatar: '🙂', status: 'active', isUser: false },
+          { id: 'p2', name: 'Bo', avatar: '🙂', status: 'active', isUser: false },
+        ],
+      },
+    });
+
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeDefined();
   });
 
   it('hides the bottom navigation during the tribunal-style jury sequence', () => {

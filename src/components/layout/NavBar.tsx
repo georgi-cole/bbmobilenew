@@ -30,6 +30,7 @@ export default function NavBar() {
   const isGameActive = useAppSelector((s) => s.game.status === 'active');
   const pendingChallenge = useAppSelector(selectPendingChallenge);
   const pendingMinigame = useAppSelector((s) => s.game.pendingMinigame);
+  const humanPlayer = useAppSelector((s) => s.game.players.find((player) => player.isUser));
   const gamePhase = useAppSelector((s) => s.game.phase);
   const seasonFinale = useAppSelector((s) => s.game.seasonFinale);
   const battleBack = useAppSelector((s) => s.game.battleBack);
@@ -40,9 +41,13 @@ export default function NavBar() {
   const canPersistActiveRun = !isGuest && Boolean(activeProfileId);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const humanInPendingChallenge =
+    Boolean(pendingChallenge && humanPlayer && pendingChallenge.participants.includes(humanPlayer.id));
+  const humanInPendingMinigame =
+    Boolean(pendingMinigame && humanPlayer && pendingMinigame.participants.includes(humanPlayer.id));
   const isFullScreenFlowActive =
-    Boolean(pendingChallenge) ||
-    Boolean(pendingMinigame) ||
+    humanInPendingChallenge ||
+    humanInPendingMinigame ||
     gamePhase === 'jury' ||
     gamePhase === 'jury_announcement' ||
     gamePhase === 'jury_cinematic' ||
