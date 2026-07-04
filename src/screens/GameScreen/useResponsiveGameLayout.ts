@@ -69,7 +69,7 @@ const GAME_SECTION_GAPS = 12
 const TV_LOG_ROW_HEIGHT = 32
 const TV_CHROME_HEIGHT = 88
 const MAX_PHONE_TV_LOG_ROWS = 5
-const MAX_TABLET_TV_LOG_ROWS = 5
+const MAX_TABLET_TV_LOG_ROWS = 6
 const SHORT_ROSTER_MAX_PLAYERS = ROSTER_COLUMNS * 2
 const SURVIVOR_STANDOUT_GAP_ALLOWANCE = 10
 const SURVIVOR_FULL_STANDOUT_MIN_SPACE = 72
@@ -152,7 +152,7 @@ function resolveAdaptiveTvLogRows(options: {
 }) {
   const maxRows = options.playerCount <= SHORT_ROSTER_MAX_PLAYERS
     ? (options.isTablet ? MAX_TABLET_TV_LOG_ROWS : MAX_PHONE_TV_LOG_ROWS)
-    : (options.isTablet ? 4 : 3)
+    : (options.isTablet ? 5 : 3)
   const baseRows = resolveBaseTvLogRows(options.extraAfterFeature, options.isTablet)
   const rowsThatFit = 1 + Math.floor(options.extraAfterFeature / TV_LOG_ROW_HEIGHT)
 
@@ -209,22 +209,36 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const normalStageHeight = Math.max(0, measuredStageAndNavHeight - normalNavHeight)
   const compactStageHeight = Math.max(0, measuredStageAndNavHeight - compactNavHeight)
   const isTablet = layoutSize === 'tablet-portrait' || layoutSize === 'tablet-landscape'
-  const shellMaxWidth = isTablet
-    ? (layoutSize === 'tablet-landscape' ? 560 : 520)
-    : 480
+  const shellMaxWidth = layoutSize === 'tablet-landscape'
+    ? roundPx(clamp(viewportWidth - 48, 900, 1100))
+    : layoutSize === 'tablet-portrait'
+      ? 620
+      : 480
+  const cabinetMaxHeight = Math.max(0, viewportHeight - effectiveSafeTop - input.safeBottom)
+  const panelGap = layoutSize === 'tablet-landscape'
+    ? roundPx(clamp(viewportWidth * 0.018, 12, 20))
+    : 0
+  const layoutColumns = layoutSize === 'tablet-landscape'
+    ? 'minmax(0, 1.05fr) minmax(360px, 0.95fr)'
+    : '1fr'
+  const rosterStageWidth = layoutSize === 'tablet-landscape'
+    ? clamp(stageWidth * 0.44, 400, 520)
+    : stageWidth
 
   const rosterContentWidth = Math.max(
     240,
-    stageWidth - GAME_INLINE_PADDING - ROSTER_INLINE_PADDING,
+    rosterStageWidth - GAME_INLINE_PADDING - ROSTER_INLINE_PADDING,
   )
   const tileWidth = (rosterContentWidth - ROSTER_GAP * (ROSTER_COLUMNS - 1)) / ROSTER_COLUMNS
-  const normalTileMax = isTablet
-    ? 128
-    : layoutSize === 'phone-large' && (viewportHeight >= 900 || stageWidth >= 420)
-      ? 104
-      : layoutSize === 'phone-large'
-        ? 80
-        : 78
+  const normalTileMax = layoutSize === 'tablet-landscape'
+    ? 112
+    : isTablet
+      ? 128
+      : layoutSize === 'phone-large' && (viewportHeight >= 900 || stageWidth >= 420)
+        ? 104
+        : layoutSize === 'phone-large'
+          ? 80
+          : 78
   const normalTileSize = Math.floor(clamp(tileWidth, 76, normalTileMax))
   const compactTileSize = Math.floor(clamp(normalTileSize * 0.86, 64, normalTileSize))
   const rosterRows = Math.max(1, Math.ceil(Math.max(input.playerCount, 1) / ROSTER_COLUMNS))
@@ -256,7 +270,11 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const normalControlsFullRosterFits =
     !shouldUseCompactBase &&
     normalRosterHeight + minTvHeight <= normalAvailableAfterTv
-  const bottomControlsMode: BottomControlsMode = normalControlsFullRosterFits ? 'normal' : 'compact'
+  const bottomControlsMode: BottomControlsMode = isTablet
+    ? 'normal'
+    : normalControlsFullRosterFits
+      ? 'normal'
+      : 'compact'
   const availableAfterTv = bottomControlsMode === 'normal'
     ? normalAvailableAfterTv
     : compactAvailableAfterTv
@@ -267,8 +285,9 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const normalStaticFitsAfterCompactControls =
     !shouldUseCompactBase &&
     normalWithoutHeader + minTvHeight <= compactAvailableAfterTv
-  const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> =
-    input.userCompactRoster || !normalStaticFitsAfterCompactControls
+  const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> = isTablet
+    ? 'normal'
+    : input.userCompactRoster || !normalStaticFitsAfterCompactControls
       ? 'compact-small'
       : 'normal'
   const rosterMode: ResponsiveRosterMode = baseRosterMode
@@ -276,7 +295,11 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const baseRosterHeight = baseRosterMode === 'compact-small' ? compactRosterHeight : normalRosterHeight
   const baseRosterHeightWithoutHeader = baseRosterMode === 'compact-small' ? compactWithoutHeader : normalWithoutHeader
   const headerFits = baseRosterHeight + minTvHeight <= availableAfterTv
-  const rosterHeaderMode: RosterHeaderMode = headerFits ? 'persistent' : 'tv-chip'
+  const rosterHeaderMode: RosterHeaderMode = isTablet
+    ? 'persistent'
+    : headerFits
+      ? 'persistent'
+      : 'tv-chip'
   const rosterDisplayHeight = rosterHeaderMode === 'persistent'
     ? baseRosterHeight
     : baseRosterHeightWithoutHeader
@@ -291,11 +314,13 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     ? survivorStandoutHeight + SURVIVOR_STANDOUT_GAP_ALLOWANCE
     : 0
   const extraAfterFeature = Math.max(0, extraAfterMandatory - featureReserve)
-  const tvLogRows = resolveAdaptiveTvLogRows({
-    extraAfterFeature,
-    isTablet,
-    playerCount: input.playerCount,
-  })
+  const tvLogRows = layoutSize === 'tablet-landscape'
+    ? (input.playerCount <= SHORT_ROSTER_MAX_PLAYERS ? MAX_TABLET_TV_LOG_ROWS : 5)
+    : resolveAdaptiveTvLogRows({
+        extraAfterFeature,
+        isTablet,
+        playerCount: input.playerCount,
+      })
   const extraLogRows = tvLogRows - 1
   const breathingRoom = clamp(extraAfterFeature - extraLogRows * TV_LOG_ROW_HEIGHT, 0, isTablet ? 36 : 20)
   const tvHeight = minTvHeight + extraLogRows * TV_LOG_ROW_HEIGHT + breathingRoom
@@ -327,6 +352,10 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     '--game-roster-gap': `${ROSTER_GAP}px`,
     '--game-survivor-standout-min-height': `${survivorStandoutHeight}px`,
     '--game-shell-max-width': `${shellMaxWidth}px`,
+    '--game-cabinet-max-width': `${shellMaxWidth}px`,
+    '--game-cabinet-max-height': `${roundPx(cabinetMaxHeight)}px`,
+    '--game-layout-columns': layoutColumns,
+    '--game-panel-gap': `${panelGap}px`,
   } as GameCssVars
 
   const debugLabel = buildDebugLabel(input, {
@@ -357,6 +386,9 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     roundPx(selectedNavHeight),
     roundPx(effectiveSafeTop),
     shellMaxWidth,
+    roundPx(cabinetMaxHeight),
+    panelGap,
+    layoutColumns,
   ].join(':')
 
   return {
