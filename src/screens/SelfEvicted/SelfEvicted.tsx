@@ -22,7 +22,7 @@ export default function SelfEvicted() {
   const playerName = useAppSelector(
     (s) => s.game.players.find((p) => p.isUser)?.name ?? 'Housemate',
   );
-  const currentMode = useAppSelector((s): GameMode => (s.game.mode === 'survivor' ? 'survivor' : 'classic'));
+  const currentMode = useAppSelector((s): GameMode => s.game.mode ?? 'classic');
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
 
