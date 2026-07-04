@@ -77,6 +77,12 @@ type Props = {
   compact?: boolean
   /** Optional compact roster presentation chosen in Settings. */
   compactLayout?: CompactRosterLayout
+  /** Responsive budget-selected roster behavior. */
+  rosterMode?: 'normal' | 'compact-small' | 'scroll'
+  /** Whether the HOUSEMATES row should stay visible or briefly overlay. */
+  headerMode?: 'transient' | 'persistent'
+  /** Changes when the measured layout budget changes. */
+  layoutRevision?: number
   /** Optional alive/total chip shown beside the section heading. */
   occupancyLabel?: string
 }
@@ -98,6 +104,9 @@ export default function HouseguestGrid({
   placeholderCount = 0,
   compact = false,
   compactLayout = 'slider',
+  rosterMode = 'normal',
+  headerMode = 'transient',
+  layoutRevision = 0,
   occupancyLabel,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
@@ -225,7 +234,7 @@ export default function HouseguestGrid({
       window.visualViewport?.removeEventListener('resize', setAvailableHeight)
       window.visualViewport?.removeEventListener('scroll', setAvailableHeight)
     }
-  }, [headerSelector, footerSelector, overlaySelector])
+  }, [headerSelector, footerSelector, layoutRevision, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
   const effectiveCompactLayout = compact ? compactLayout : 'default'
@@ -238,6 +247,7 @@ export default function HouseguestGrid({
     compact ? styles.compact : '',
     effectiveCompactLayout === 'small' ? styles.compactSmall : '',
     effectiveCompactLayout === 'two-rows' ? styles.compactTwoRows : '',
+    rosterMode === 'scroll' ? styles.scrollRoster : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -248,6 +258,8 @@ export default function HouseguestGrid({
       className={sectionClassName}
       aria-labelledby="houseguests-heading"
       data-compact-layout={effectiveCompactLayout}
+      data-roster-mode={rosterMode}
+      data-header-mode={headerMode}
     >
       <div key={headerSignal} className={styles.headerRow} aria-live="polite">
         <h3 id="houseguests-heading" className={styles.header}>
@@ -260,7 +272,11 @@ export default function HouseguestGrid({
         )}
       </div>
 
-      <ul className={listClassName} role="list">
+      <ul
+        className={listClassName}
+        role="list"
+        data-roster-scroll={rosterMode === 'scroll' ? 'true' : undefined}
+      >
         {renderedHouseguests.map((hg) => {
           const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
           return (

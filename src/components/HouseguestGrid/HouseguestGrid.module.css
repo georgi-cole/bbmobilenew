@@ -66,7 +66,7 @@
   align-content: start;
   justify-items: stretch;
   align-items: start;
-  max-height: min(var(--grid-available-height, 480px), 100%);
+  max-height: min(var(--game-roster-max-height, 480px), var(--grid-available-height, 480px), 100%);
   overflow: hidden;
   padding-bottom: 4px;
 }
@@ -94,6 +94,36 @@
   flex: 0 0 min(84px, calc(25vw - 10px));
   min-width: 0;
   scroll-snap-align: start;
+}
+
+.container[data-header-mode='persistent'] .headerRow {
+  position: static;
+  max-width: 100%;
+  margin: 0 0 5px;
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+.scrollRoster .grid {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-block: 8px;
+  padding-right: 2px;
+}
+
+.scrollRoster .grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollRoster .grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollRoster .grid::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.34);
+  border-radius: 999px;
 }
 
 .tile {
@@ -439,7 +469,7 @@
 
 .compactSmall .tile,
 .compactSmall .hgTileInactive {
-  width: var(--compact-small-tile-width, 50%);
+  width: min(100%, var(--game-avatar-tile-size, var(--compact-small-tile-width, 50%)));
   margin-inline: auto;
 }
 
