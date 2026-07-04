@@ -253,6 +253,11 @@ type TvZoneProps = {
   onExternalAnnouncementDismiss?: () => void;
   /** Fallback text shown in the viewport when no fresh event is available and the screen would otherwise go blank. */
   viewportFallbackMessage?: string;
+  /** Compact board occupancy chip shown when the roster header yields space to the board. */
+  occupancyChip?: {
+    label: string;
+    ariaLabel: string;
+  } | null;
 };
 
 /**
@@ -292,6 +297,7 @@ export default function TvZone(props: TvZoneProps) {
     [gameState.tvFeed],
   );
   const mainLogMaxVisible = props.mainLogMaxVisible ?? 2;
+  const occupancyChip = props.occupancyChip ?? null;
 
   const latestEvent = tvVisibleFeed[0];
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
@@ -894,6 +900,11 @@ export default function TvZone(props: TvZoneProps) {
       {/* ── Bezel + Viewport ────────────────────────────────────────────────── */}
       <div className="tv-zone__bezel">
         <div className="tv-zone__bezel-frame">
+          {occupancyChip && (
+            <span className="tv-zone__occupancy-chip" aria-label={occupancyChip.ariaLabel}>
+              {occupancyChip.label}
+            </span>
+          )}
 
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
             <p

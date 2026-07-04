@@ -9,7 +9,7 @@ export type GameLayoutSize =
   | 'tablet-landscape'
 
 export type ResponsiveRosterMode = 'normal' | 'compact-small' | 'scroll'
-export type RosterHeaderMode = 'transient' | 'persistent'
+export type RosterHeaderMode = 'tv-chip' | 'persistent'
 export type SurvivorStandoutLayoutMode = 'full-card' | 'compact-strip' | 'mini-chip'
 
 export interface ResponsiveGameLayoutBudget {
@@ -56,11 +56,13 @@ const DEFAULT_PHONE_HEIGHT = 780
 const DEFAULT_DOCK_RATIO = 220 / 980
 const ROSTER_COLUMNS = 4
 const ROSTER_GAP = 5
+const GAME_INLINE_PADDING = 24
 const ROSTER_INLINE_PADDING = 16
 const ROSTER_HEADER_HEIGHT = 30
 const GAME_VERTICAL_PADDING = 10
 const GAME_SECTION_GAPS = 12
 const TV_LOG_ROW_HEIGHT = 32
+const TV_CHROME_HEIGHT = 88
 const MAX_PHONE_TV_LOG_ROWS = 5
 const MAX_TABLET_TV_LOG_ROWS = 5
 const SHORT_ROSTER_MAX_PLAYERS = ROSTER_COLUMNS * 2
@@ -139,32 +141,17 @@ function resolveBaseTvLogRows(extraAfterBaseRoster: number, isTablet: boolean) {
 }
 
 function resolveAdaptiveTvLogRows(options: {
-  availableAfterTv: number
-  baseRosterHeight: number
-  baseRows: number
+  extraAfterFeature: number
   isTablet: boolean
   playerCount: number
-  rosterMode: ResponsiveRosterMode
-  survivorStandoutMode: SurvivorStandoutLayoutMode
 }) {
-  if (options.playerCount > SHORT_ROSTER_MAX_PLAYERS || options.rosterMode === 'scroll') {
-    return options.baseRows
-  }
+  const maxRows = options.playerCount <= SHORT_ROSTER_MAX_PLAYERS
+    ? (options.isTablet ? MAX_TABLET_TV_LOG_ROWS : MAX_PHONE_TV_LOG_ROWS)
+    : (options.isTablet ? 4 : 3)
+  const baseRows = resolveBaseTvLogRows(options.extraAfterFeature, options.isTablet)
+  const rowsThatFit = 1 + Math.floor(options.extraAfterFeature / TV_LOG_ROW_HEIGHT)
 
-  const maxRows = options.isTablet ? MAX_TABLET_TV_LOG_ROWS : MAX_PHONE_TV_LOG_ROWS
-  const maxExtraRows = Math.max(0, maxRows - options.baseRows)
-  if (maxExtraRows === 0) return options.baseRows
-
-  const survivorStandoutHeight = getSurvivorStandoutHeight(options.survivorStandoutMode)
-  const reservedHeight =
-    options.baseRosterHeight +
-    options.baseRows * TV_LOG_ROW_HEIGHT +
-    survivorStandoutHeight +
-    SURVIVOR_STANDOUT_GAP_ALLOWANCE
-  const slackAfterFeature = options.availableAfterTv - reservedHeight
-  const extraRows = clamp(Math.floor(slackAfterFeature / TV_LOG_ROW_HEIGHT), 0, maxExtraRows)
-
-  return options.baseRows + extraRows
+  return clamp(Math.max(baseRows, rowsThatFit), 1, maxRows)
 }
 
 function buildDebugLabel(input: ResponsiveGameLayoutInput, budget: {
@@ -202,95 +189,88 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const navHeight = input.navHeight || DEFAULT_NAV_HEIGHT
   void navHeight
   const measuredDockHeight = input.dockHeight || estimateDockHeight(stageWidth)
-  const dockClearance = input.hasDock ? measuredDockHeight + 8 : 0
+  const dockClearance = input.hasDock ? measuredDockHeight + 6 : 0
   const isTablet = layoutSize === 'tablet-portrait' || layoutSize === 'tablet-landscape'
   const shellMaxWidth = isTablet
     ? (layoutSize === 'tablet-landscape' ? 560 : 520)
     : 480
 
-  const tileWidth = (stageWidth - ROSTER_INLINE_PADDING - ROSTER_GAP * (ROSTER_COLUMNS - 1)) / ROSTER_COLUMNS
-  const normalTileSize = clamp(tileWidth, 64, isTablet ? 128 : 112)
-  const compactTileSize = normalTileSize * 0.72
+  const rosterContentWidth = Math.max(
+    240,
+    stageWidth - GAME_INLINE_PADDING - ROSTER_INLINE_PADDING,
+  )
+  const tileWidth = (rosterContentWidth - ROSTER_GAP * (ROSTER_COLUMNS - 1)) / ROSTER_COLUMNS
+  const normalTileMax = isTablet
+    ? 128
+    : layoutSize === 'phone-large' && (viewportHeight >= 900 || stageWidth >= 420)
+      ? 104
+      : layoutSize === 'phone-large'
+        ? 80
+        : 78
+  const normalTileSize = Math.floor(clamp(tileWidth, 76, normalTileMax))
+  const compactTileSize = Math.floor(clamp(normalTileSize * 0.86, 64, normalTileSize))
   const rosterRows = Math.max(1, Math.ceil(Math.max(input.playerCount, 1) / ROSTER_COLUMNS))
   const shouldUseCompactBase =
     !isTablet &&
     input.playerCount >= 16 &&
-    (layoutSize === 'phone-small' || stageWidth < 370)
-  const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> = input.userCompactRoster || shouldUseCompactBase
-    ? 'compact-small'
-    : 'normal'
+    (layoutSize === 'phone-small' || rosterContentWidth < 320)
 
-  const baseTvHeight = layoutSize === 'phone-small'
-    ? 204
-    : layoutSize === 'phone-medium'
-      ? 232
-      : isTablet
-        ? 292
-        : 258
-  const tvHeight = clamp(
-    stageHeight * (isTablet ? 0.27 : 0.3),
-    baseTvHeight,
-    isTablet ? 336 : 312,
-  )
-  const tvViewportHeight = clamp(tvHeight - 82, 132, isTablet ? 238 : 192)
   const availableAfterTv = Math.max(
     0,
-    stageHeight - tvHeight - dockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
+    stageHeight - dockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
   )
   const normalRosterHeight = rosterRows * normalTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
   const compactRosterHeight = rosterRows * compactTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
+  const minTvViewportHeight = layoutSize === 'phone-small'
+    ? 112
+    : layoutSize === 'phone-medium'
+      ? 132
+      : isTablet
+        ? 176
+        : 144
+  const minTvHeight = minTvViewportHeight + TV_CHROME_HEIGHT + TV_LOG_ROW_HEIGHT
+  const normalWithoutHeader = normalRosterHeight - ROSTER_HEADER_HEIGHT
+  const normalStaticFits =
+    !shouldUseCompactBase &&
+    normalWithoutHeader + minTvHeight <= availableAfterTv
+  const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> =
+    input.userCompactRoster || !normalStaticFits
+      ? 'compact-small'
+      : 'normal'
+  const rosterMode: ResponsiveRosterMode = baseRosterMode
   const baseAvatarTileSize = baseRosterMode === 'compact-small' ? compactTileSize : normalTileSize
   const baseRosterHeight = baseRosterMode === 'compact-small' ? compactRosterHeight : normalRosterHeight
-  const extraAfterBaseRoster = availableAfterTv - baseRosterHeight
-
-  const baseTvLogRows = resolveBaseTvLogRows(extraAfterBaseRoster, isTablet)
-  const preliminaryLogHeight = baseTvLogRows * TV_LOG_ROW_HEIGHT
-  const preliminaryAvailableRosterHeight = Math.max(
-    180,
-    stageHeight - tvHeight - preliminaryLogHeight - dockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
-  )
-  const preliminaryRosterFits = baseRosterHeight <= preliminaryAvailableRosterHeight
-  const preliminaryRosterMode: ResponsiveRosterMode = preliminaryRosterFits ? baseRosterMode : 'scroll'
-  const preliminarySurvivorStandoutMode = resolveSurvivorStandoutMode({
-    layoutSize,
-    rosterMode: preliminaryRosterMode,
-    extraAfterBaseRoster,
-  })
-  const tvLogRows = resolveAdaptiveTvLogRows({
-    availableAfterTv,
-    baseRosterHeight,
-    baseRows: baseTvLogRows,
-    isTablet,
-    playerCount: input.playerCount,
-    rosterMode: preliminaryRosterMode,
-    survivorStandoutMode: preliminarySurvivorStandoutMode,
-  })
-  const logHeight = tvLogRows * TV_LOG_ROW_HEIGHT
-  const availableRosterHeight = Math.max(
-    180,
-    stageHeight - tvHeight - logHeight - dockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
-  )
-
-  const baseRosterFits = baseRosterHeight <= availableRosterHeight
-  const rosterMode: ResponsiveRosterMode = baseRosterFits ? baseRosterMode : 'scroll'
+  const baseRosterHeightWithoutHeader = baseRosterHeight - ROSTER_HEADER_HEIGHT
+  const headerFits = baseRosterHeight + minTvHeight <= availableAfterTv
+  const rosterHeaderMode: RosterHeaderMode = headerFits ? 'persistent' : 'tv-chip'
+  const rosterDisplayHeight = rosterHeaderMode === 'persistent'
+    ? baseRosterHeight
+    : baseRosterHeightWithoutHeader
+  const extraAfterMandatory = Math.max(0, availableAfterTv - rosterDisplayHeight - minTvHeight)
   const survivorStandoutMode = resolveSurvivorStandoutMode({
     layoutSize,
     rosterMode,
-    extraAfterBaseRoster,
+    extraAfterBaseRoster: extraAfterMandatory,
   })
   const survivorStandoutHeight = getSurvivorStandoutHeight(survivorStandoutMode)
-
-  const rosterHeaderMode: RosterHeaderMode = baseRosterFits || isTablet || layoutSize === 'phone-large'
-    ? 'persistent'
-    : 'transient'
+  const featureReserve = input.playerCount <= SHORT_ROSTER_MAX_PLAYERS
+    ? survivorStandoutHeight + SURVIVOR_STANDOUT_GAP_ALLOWANCE
+    : 0
+  const extraAfterFeature = Math.max(0, extraAfterMandatory - featureReserve)
+  const tvLogRows = resolveAdaptiveTvLogRows({
+    extraAfterFeature,
+    isTablet,
+    playerCount: input.playerCount,
+  })
+  const extraLogRows = tvLogRows - 1
+  const breathingRoom = clamp(extraAfterFeature - extraLogRows * TV_LOG_ROW_HEIGHT, 0, isTablet ? 36 : 20)
+  const tvHeight = minTvHeight + extraLogRows * TV_LOG_ROW_HEIGHT + breathingRoom
+  const tvViewportHeight = minTvViewportHeight + breathingRoom
   const compactRoster = baseRosterMode === 'compact-small'
   const compactRosterLayout = input.userCompactRoster
     ? input.userCompactRosterLayout
     : 'small'
-  const rosterMaxHeight = Math.max(
-    180,
-    availableRosterHeight - (rosterHeaderMode === 'persistent' ? ROSTER_HEADER_HEIGHT : 0),
-  )
+  const rosterMaxHeight = baseRosterHeightWithoutHeader
   const avatarTileSize = baseAvatarTileSize
   const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
 
@@ -302,6 +282,7 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     '--game-screen-tv-viewport-min-height': `${roundPx(tvViewportHeight)}px`,
     '--game-tv-log-rows': String(tvLogRows),
     '--game-roster-max-height': `${roundPx(rosterMaxHeight)}px`,
+    '--game-roster-board-height': `${roundPx(baseRosterHeightWithoutHeader)}px`,
     '--game-avatar-tile-size': `${avatarTileSizePx}px`,
     '--game-roster-gap': `${ROSTER_GAP}px`,
     '--game-survivor-standout-min-height': `${survivorStandoutHeight}px`,

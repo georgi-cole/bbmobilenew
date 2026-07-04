@@ -15,7 +15,7 @@
 }
 
 .game-screen:has(.game-control-dock) {
-  padding-bottom: calc(4px + var(--game-screen-floating-dock-clearance));
+  padding-bottom: var(--game-screen-floating-dock-clearance);
 }
 
 .game-screen--compact-roster-balance {

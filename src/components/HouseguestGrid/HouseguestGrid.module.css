@@ -1,11 +1,11 @@
 .container {
   position: relative;
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
-  padding: 2px 8px 6px;
-  overflow: hidden;
+  padding: 0 8px;
+  overflow: visible;
 }
 
 .headerRow {
@@ -58,7 +58,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   gap: var(--game-roster-gap, 5px);
   grid-template-columns: repeat(4, minmax(0, var(--game-avatar-tile-size, 1fr)));
@@ -67,9 +67,9 @@
   justify-content: center;
   justify-items: stretch;
   align-items: start;
-  max-height: min(var(--game-roster-max-height, 480px), var(--grid-available-height, 480px), 100%);
-  overflow: hidden;
-  padding-bottom: 4px;
+  height: var(--game-roster-board-height, auto);
+  max-height: none;
+  overflow: visible;
 }
 
 .slider {
@@ -107,25 +107,18 @@
   transform: none;
 }
 
-.scrollRoster .grid {
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  scroll-padding-block: 8px;
-  padding-right: 2px;
-}
-
-.scrollRoster .grid::-webkit-scrollbar {
-  width: 4px;
-}
-
-.scrollRoster .grid::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollRoster .grid::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.34);
-  border-radius: 999px;
+.container[data-header-mode='tv-chip'] .headerRow {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+  opacity: 1;
+  animation: none;
 }
 
 .tile {
