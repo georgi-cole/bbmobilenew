@@ -154,15 +154,47 @@ describe('responsive game layout budget', () => {
     const budget = computeResponsiveGameLayout(makeInput({
       viewportWidth: 1024,
       viewportHeight: 768,
-      stageWidth: 560,
+      stageWidth: 976,
       stageHeight: 650,
       safeBottom: 20,
       dockHeight: 76,
     }))
 
     expect(budget.layoutSize).toBe('tablet-landscape')
-    expect(budget.shellMaxWidth).toBe(560)
+    expect(budget.shellMaxWidth).toBe(976)
+    expect(budget.bottomControlsMode).toBe('normal')
+    expect(budget.baseRosterMode).toBe('normal')
     expect(budget.rosterMode).not.toBe('scroll')
+    expect(budget.rosterHeaderMode).toBe('persistent')
+    expect(budget.compactRoster).toBe(false)
+    expect(budget.avatarTileSize).toBeLessThanOrEqual(112)
+    expect(budget.tvLogRows).toBe(5)
+    expect(budget.cssVars).toMatchObject({
+      '--game-bottom-controls-mode': 'normal',
+      '--game-action-dock-scale': '1',
+      '--game-nav-item-label-display': 'block',
+      '--game-cabinet-max-width': '976px',
+      '--game-layout-columns': 'minmax(0, 1.05fr) minmax(360px, 0.95fr)',
+    })
+    expect(readCssPx(budget, '--game-panel-gap')).toBeGreaterThan(0)
+  })
+
+  it('does not apply user compact roster preferences to tablet landscape', () => {
+    const budget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 1180,
+      viewportHeight: 820,
+      stageWidth: 1100,
+      stageHeight: 700,
+      safeBottom: 20,
+      dockHeight: 80,
+      userCompactRoster: true,
+    }))
+
+    expect(budget.layoutSize).toBe('tablet-landscape')
+    expect(budget.bottomControlsMode).toBe('normal')
+    expect(budget.rosterMode).toBe('normal')
+    expect(budget.compactRoster).toBe(false)
+    expect(budget.shellMaxWidth).toBe(1100)
   })
 
   it('exposes a full Survivor standout mode for medium Android-sized eight-player layouts', () => {
@@ -205,7 +237,7 @@ describe('responsive game layout budget', () => {
     const budget = computeResponsiveGameLayout(makeInput({
       viewportWidth: 820,
       viewportHeight: 1080,
-      stageWidth: 520,
+      stageWidth: 620,
       stageHeight: 980,
       dockHeight: 0,
       hasDock: false,
