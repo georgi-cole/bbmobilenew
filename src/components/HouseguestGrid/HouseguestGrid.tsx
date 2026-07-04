@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
+import SurvivorStandoutCard from '../SurvivorStandout/SurvivorStandoutCard'
 import styles from './HouseguestGrid.module.css'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
 import type { CompactRosterLayout } from '../../store/settingsSlice'
+import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
 
@@ -94,6 +96,22 @@ const DEFAULT_FOOTER_HEIGHT = 60
 /** Extra vertical margin subtracted from available height */
 const GRID_VERTICAL_MARGIN = 4
 
+function resolveSurvivorStandoutMode(options: {
+  compact: boolean
+  compactLayout: CompactRosterLayout
+  rosterMode: 'normal' | 'compact-small' | 'scroll'
+  viewportWidth: number
+  viewportHeight: number
+}): SurvivorStandoutMode {
+  if (options.rosterMode === 'scroll' || options.viewportHeight < 700 || options.viewportWidth < 360) {
+    return 'mini-chip'
+  }
+  if (options.viewportWidth >= 720) return 'full-card'
+  if (options.compact && options.compactLayout === 'slider') return 'mini-chip'
+  if (options.compact || options.rosterMode === 'compact-small') return 'compact-strip'
+  return 'full-card'
+}
+
 export default function HouseguestGrid({
   houseguests,
   showCountInHeader = false,
@@ -112,6 +130,7 @@ export default function HouseguestGrid({
   const containerRef = useRef<HTMLElement | null>(null)
   const dispatch = useAppDispatch()
   const game = useAppSelector((s) => s.game)
+  const challengeHistory = useAppSelector((s) => s.challenge?.history ?? [])
   const survivorReplacementTransition = game.modeSpecific?.kind === 'survivor'
     ? game.modeSpecific.replacementTransition ?? null
     : null
@@ -169,6 +188,21 @@ export default function HouseguestGrid({
     ))
   }, [game.mode, game.players, game.week, houseguests, survivorReplacementTransition])
   const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
+  const showSurvivorStandout = game.mode === 'survivor' && overlaySelector === '.game-control-dock'
+  const survivorStandout = useMemo(
+    () => (showSurvivorStandout ? selectSurvivorStandout(game, challengeHistory) : null),
+    [challengeHistory, game, showSurvivorStandout],
+  )
+  const visualViewport = typeof window === 'undefined' ? undefined : window.visualViewport
+  const viewportWidth = visualViewport?.width ?? (typeof window === 'undefined' ? 0 : window.innerWidth)
+  const viewportHeight = visualViewport?.height ?? (typeof window === 'undefined' ? 0 : window.innerHeight)
+  const survivorStandoutMode = resolveSurvivorStandoutMode({
+    compact,
+    compactLayout,
+    rosterMode,
+    viewportWidth,
+    viewportHeight,
+  })
 
   useEffect(() => {
     if (survivorReplacementTransition === null) return undefined
@@ -312,6 +346,9 @@ export default function HouseguestGrid({
           </li>
         ))}
       </ul>
+      {survivorStandout && (
+        <SurvivorStandoutCard standout={survivorStandout} mode={survivorStandoutMode} />
+      )}
     </section>
   )
 }

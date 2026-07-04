@@ -106,4 +106,74 @@ describe('responsive game layout budget', () => {
     expect(budget.shellMaxWidth).toBe(560)
     expect(budget.rosterHeaderMode).toBe('persistent')
   })
+
+  it('exposes a full Survivor standout mode for medium Android-sized eight-player layouts', () => {
+    const budget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 393,
+      viewportHeight: 851,
+      stageWidth: 393,
+      stageHeight: 851,
+      safeTop: 0,
+      safeBottom: 0,
+      navHeight: 60,
+      dockHeight: 76,
+      playerCount: 8,
+      isAndroidLike: true,
+    }))
+
+    expect(budget.survivorStandoutMode).toBe('full-card')
+    expect(budget.cssVars).toMatchObject({
+      '--game-survivor-standout-min-height': '74px',
+    })
+  })
+
+  it('collapses the Survivor standout on small phones instead of dropping it', () => {
+    const budget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 340,
+      viewportHeight: 660,
+      stageWidth: 340,
+      stageHeight: 660,
+      navHeight: 60,
+      dockHeight: 76,
+      playerCount: 8,
+    }))
+
+    expect(budget.survivorStandoutMode).toBe('mini-chip')
+  })
+
+  it('uses the richer Survivor standout treatment on tablet budgets', () => {
+    const budget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 820,
+      viewportHeight: 1080,
+      stageWidth: 520,
+      stageHeight: 980,
+      dockHeight: 0,
+      hasDock: false,
+      playerCount: 8,
+    }))
+
+    expect(budget.survivorStandoutMode).toBe('full-card')
+  })
+
+  it('keeps Survivor avatar tile size stable across transient dock budget changes', () => {
+    const calm = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 393,
+      viewportHeight: 851,
+      stageWidth: 393,
+      stageHeight: 851,
+      dockHeight: 76,
+      playerCount: 8,
+    }))
+    const crowded = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 393,
+      viewportHeight: 851,
+      stageWidth: 393,
+      stageHeight: 851,
+      dockHeight: 140,
+      playerCount: 8,
+    }))
+
+    expect(crowded.avatarTileSize).toBe(calm.avatarTileSize)
+    expect(crowded.rosterGap).toBe(calm.rosterGap)
+  })
 })
