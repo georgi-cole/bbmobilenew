@@ -31,6 +31,17 @@ const AVATAR_OPTIONS = [
   '🧑','👱','👩','🧔','👧','🧓','👩‍🦱','🧑‍🦰','🧑‍🦳','🧑‍🦲','👦','👴',
 ];
 
+const SAFE_PREVIEW_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+
+function isSafePreviewFile(file: File | Blob) {
+  return SAFE_PREVIEW_MIME_TYPES.has(file.type);
+}
+
 /**
  * ProfilePicker — allows the user to select, create, delete profiles or enter
  * guest mode.  Switching profiles (when a game is active) shows a confirmation
@@ -254,6 +265,11 @@ export default function ProfilePicker() {
     if (!file) return;
     e.target.value = '';
 
+    if (!isSafePreviewFile(file)) {
+      clearNewPhoto();
+      return;
+    }
+
     setProcessingPhoto(true);
     try {
       const blob = await resizeAndCompressImage(file);
@@ -264,6 +280,10 @@ export default function ProfilePicker() {
       setNewPhotoPreview(url);
     } catch {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      if (!isSafePreviewFile(file)) {
+        clearNewPhoto();
+        return;
+      }
       const url = URL.createObjectURL(file);
       previewUrlRef.current = url;
       setNewPhotoBlob(file);
