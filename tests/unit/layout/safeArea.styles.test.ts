@@ -33,7 +33,9 @@ describe('safe-area layout styles', () => {
     expect(appShellTsx).toContain('<SafeGameViewport>');
 
     expect(safeViewportCss).toContain('.safe-game-viewport { position: fixed; inset: 0;');
-    expect(safeViewportCss).toContain('height: 100dvh;');
+    expect(safeViewportCss).toContain('width: auto;');
+    expect(safeViewportCss).toContain('height: auto;');
+    expect(safeViewportCss).not.toContain('height: 100dvh;');
     expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active .safe-game-viewport__bleed');
     expect(safeViewportCss).toContain('.safe-game-viewport__content { position: absolute; inset: 0;');
@@ -129,7 +131,10 @@ describe('safe-area layout styles', () => {
     expect(houseguestGridCss).toContain('.headerRow { position: absolute; top: 4px; left: 8px;');
     expect(houseguestGridCss).toContain('animation: houseguestHeaderFlash 2200ms ease forwards;');
     expect(houseguestGridCss).toContain('.grid { list-style: none; margin: 0; padding: 0; display: grid; flex: 1 1 auto; min-height: 0;');
+    expect(houseguestGridCss).toContain('grid-auto-rows: max-content;');
+    expect(houseguestGridCss).toContain('align-content: start;');
     expect(houseguestGridCss).toContain('overflow-y: auto;');
+    expect(houseguestGridCss).not.toContain('survivorTileSettle');
   });
 
   it('keeps home hub controls safe-contained while decorative art is owned by the physical viewport', () => {
@@ -147,6 +152,7 @@ describe('safe-area layout styles', () => {
     const assetLayerIndex = homeHubTsx.indexOf('<HomeHubAssetLayer');
 
     expect(homeHubTsx).toContain("body.classList.add('homehub-full-bleed-active')");
+    expect(homeHubTsx).toContain("root.classList.add('homehub-full-bleed-active')");
     expect(homeHubTsx).toContain("--homehub-full-bleed-bg");
     expect(homeHubTsx).toContain("--homehub-full-bleed-overlay-opacity");
     expect(homeHubTsx).not.toContain('className="homehub-intro-bg"');
@@ -154,6 +160,7 @@ describe('safe-area layout styles', () => {
     expect(frameIndex).toBeGreaterThan(-1);
     expect(assetLayerIndex).toBeGreaterThan(frameIndex);
 
+    expect(safeViewportCss).toContain('html.homehub-full-bleed-active, body.homehub-full-bleed-active');
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active { background-color: var(--color-bg);');
     expect(safeViewportCss).toContain('background-image: var(--homehub-full-bleed-bg, none);');
     expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
