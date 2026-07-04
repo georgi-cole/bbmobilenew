@@ -1,5 +1,7 @@
+import { useStore } from 'react-redux';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { clearSurvivorReplacementTransition, hydrateGame } from '../../store/gameSlice';
+import { clearSurvivorReplacementTransition, hydrateGame, simulateImmediateEliminationCycle } from '../../store/gameSlice';
+import type { RootState } from '../../store/store';
 import {
   createSurvivorRun,
   getSurvivorCurrentDay,
@@ -10,10 +12,11 @@ import {
 
 export default function SurvivorDebugControls() {
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const game = useAppSelector((state) => state.game);
 
-  const isSurvivorMode = game.mode === 'survivor';
-  const survivorState = game.modeSpecific?.kind === 'survivor' ? game.modeSpecific : null;
+  const isSurvivorMode = game.mode === 'survival';
+  const survivorState = game.modeSpecific?.kind === 'survival' ? game.modeSpecific : null;
   const currentDay = isSurvivorMode ? getSurvivorCurrentDay(game) : null;
   const isTerminal = isSurvivorMode ? isSurvivorRunTerminal(game) : false;
   const replacementTransition = survivorState?.replacementTransition ?? null;
@@ -24,7 +27,9 @@ export default function SurvivorDebugControls() {
 
   const handleAdvanceDay = () => {
     if (!isSurvivorMode) return;
-    dispatch(hydrateGame(markSurvivorDay(game)));
+    dispatch(simulateImmediateEliminationCycle());
+    const advancedGame = store.getState().game;
+    dispatch(hydrateGame(markSurvivorDay(advancedGame)));
   };
 
   const handleTerminalizeRun = () => {
@@ -38,17 +43,17 @@ export default function SurvivorDebugControls() {
 
   return (
     <section className="dbg-section">
-      <h3 className="dbg-section__title">Survivor Debug</h3>
+      <h3 className="dbg-section__title">Survival Debug</h3>
 
       <div className="dbg-row">
         <button className="dbg-btn dbg-btn--wide" onClick={handleStartRun}>
-          Start Survivor Run
+          Start Survival Run
         </button>
       </div>
 
       <dl className="dbg-grid">
         <dt>Mode</dt>
-        <dd>{isSurvivorMode ? 'survivor' : 'classic'}</dd>
+        <dd>{isSurvivorMode ? 'survival' : 'classic'}</dd>
         <dt>Current Day</dt>
         <dd>{currentDay ?? 'n/a'}</dd>
         <dt>Best Day</dt>
@@ -69,7 +74,7 @@ export default function SurvivorDebugControls() {
           onClick={handleAdvanceDay}
           disabled={!isSurvivorMode || isTerminal}
         >
-          Advance Survivor Day
+          Advance Survival Day
         </button>
         <button
           className="dbg-btn dbg-btn--wide"

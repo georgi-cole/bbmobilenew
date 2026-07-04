@@ -27,7 +27,7 @@ export default function SurvivorAchievementCelebration() {
     if (
       isGuest ||
       !activeProfileId ||
-      game.mode !== 'survivor' ||
+      game.mode !== 'survival' ||
       game.status !== 'active' ||
       waitingForInput
     ) {
@@ -106,7 +106,7 @@ export default function SurvivorAchievementCelebration() {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.24, ease: 'easeOut' }}
         onClick={handleBackdropClick}
-        aria-label={`Survivor achievement unlocked: ${display.title}`}
+        aria-label={`Survival achievement unlocked: ${display.title}`}
       >
         <div className="survivor-celebration__backdrop" aria-hidden="true">
           <span className="survivor-celebration__ray survivor-celebration__ray--left" />

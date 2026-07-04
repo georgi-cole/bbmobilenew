@@ -6,7 +6,7 @@ const SOCIAL_MODULE_BLOCKED_PHASES: ReadonlySet<Phase> = new Set<Phase>([
   'eviction_results',
 ]);
 
-const SURVIVOR_SOCIAL_BLOCK_REASON = 'Survivor mode disables social modules.';
+const SURVIVOR_SOCIAL_BLOCK_REASON = 'Survival mode disables social modules.';
 
 interface HumanPlayerLike {
   id: string;
@@ -67,7 +67,7 @@ export function getSocialModuleAvailability(game: GameLike): SocialModuleAvailab
     };
   }
 
-  if (game.mode === 'survivor') {
+  if (game.mode === 'survival') {
     return {
       canOpen: false,
       reason: SURVIVOR_SOCIAL_BLOCK_REASON,

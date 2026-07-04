@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
-import type { CompactRosterLayout } from '../../store/settingsSlice'
 
 export type GameLayoutSize =
   | 'phone-small'
@@ -18,7 +17,6 @@ export interface ResponsiveGameLayoutBudget {
   rosterMode: ResponsiveRosterMode
   rosterHeaderMode: RosterHeaderMode
   compactRoster: boolean
-  compactRosterLayout: CompactRosterLayout
   avatarTileSize: number
   rosterGap: number
   tvLogRows: number
@@ -43,7 +41,6 @@ export interface ResponsiveGameLayoutInput {
   hasDock: boolean
   playerCount: number
   userCompactRoster: boolean
-  userCompactRosterLayout: CompactRosterLayout
   isAndroidLike?: boolean
   debugEnabled?: boolean
   revision?: number
@@ -267,9 +264,6 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const tvHeight = minTvHeight + extraLogRows * TV_LOG_ROW_HEIGHT + breathingRoom
   const tvViewportHeight = minTvViewportHeight + breathingRoom
   const compactRoster = baseRosterMode === 'compact-small'
-  const compactRosterLayout = input.userCompactRoster
-    ? input.userCompactRosterLayout
-    : 'small'
   const rosterMaxHeight = baseRosterHeightWithoutHeader
   const avatarTileSize = baseAvatarTileSize
   const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
@@ -320,7 +314,6 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     rosterMode,
     rosterHeaderMode,
     compactRoster,
-    compactRosterLayout,
     avatarTileSize: avatarTileSizePx,
     rosterGap: ROSTER_GAP,
     tvLogRows,
@@ -351,7 +344,6 @@ function readViewportInput<TStage extends HTMLElement>(
     hasDock: boolean
     playerCount: number
     userCompactRoster: boolean
-    userCompactRosterLayout: CompactRosterLayout
   },
   revision: number,
 ): ResponsiveGameLayoutInput {
@@ -384,7 +376,6 @@ function readViewportInput<TStage extends HTMLElement>(
     hasDock: options.hasDock,
     playerCount: options.playerCount,
     userCompactRoster: options.userCompactRoster,
-    userCompactRosterLayout: options.userCompactRosterLayout,
     isAndroidLike,
     debugEnabled: isLayoutDebugEnabled(),
     revision,
@@ -397,7 +388,6 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     hasDock: boolean
     playerCount: number
     userCompactRoster: boolean
-    userCompactRosterLayout: CompactRosterLayout
   },
 ) {
   const revisionRef = useRef(0)
@@ -405,7 +395,6 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     hasDock,
     playerCount,
     userCompactRoster,
-    userCompactRosterLayout,
   } = options
   const [budget, setBudget] = useState<ResponsiveGameLayoutBudget>(() =>
     computeResponsiveGameLayout({
@@ -420,7 +409,6 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
       hasDock,
       playerCount,
       userCompactRoster,
-      userCompactRosterLayout,
       revision: 0,
     }))
 
@@ -430,10 +418,9 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
       hasDock,
       playerCount,
       userCompactRoster,
-      userCompactRosterLayout,
     }, revisionRef.current))
     setBudget((prev) => (prev.signature === next.signature && prev.debugLabel === next.debugLabel ? prev : next))
-  }, [hasDock, playerCount, stageRef, userCompactRoster, userCompactRosterLayout])
+  }, [hasDock, playerCount, stageRef, userCompactRoster])
 
   useEffect(() => {
     measure()

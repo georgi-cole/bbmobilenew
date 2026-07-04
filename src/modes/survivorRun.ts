@@ -11,7 +11,7 @@ const ROBO_NAMES = [
 const SAVE_VERSION = 2;
 export const SURVIVOR_STARTING_CAST_SIZE = 8;
 
-function makeRunId(mode: 'classic' | 'survivor'): string {
+function makeRunId(mode: 'classic' | 'survival'): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `${mode}-${crypto.randomUUID()}`;
   }
@@ -27,7 +27,7 @@ function isPlayerExited(player: Player | undefined): boolean {
 }
 
 function getSurvivorModeState(state: GameState): SurvivorModeState {
-  return state.modeSpecific?.kind === 'survivor'
+  return state.modeSpecific?.kind === 'survival'
     ? state.modeSpecific
     : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
 }
@@ -38,18 +38,18 @@ export function getSurvivorCurrentDay(state: GameState): number {
 }
 
 export function isSurvivorHumanEliminated(state: GameState): boolean {
-  if (state.mode !== 'survivor') return false;
+  if (state.mode !== 'survival') return false;
   const human = state.players.find((player) => player.isUser);
   return !human || isPlayerExited(human);
 }
 
 export function isSurvivorRunTerminal(state: GameState): boolean {
-  if (state.mode !== 'survivor') return false;
+  if (state.mode !== 'survival') return false;
   return state.status === 'failed' || state.status === 'completed' || isSurvivorHumanEliminated(state);
 }
 
 export function terminalizeSurvivorRun(state: GameState): GameState {
-  if (state.mode !== 'survivor') return state;
+  if (state.mode !== 'survival') return state;
 
   const modeSpecific = getSurvivorModeState(state);
   const currentDay = getSurvivorCurrentDay(state);
@@ -57,10 +57,10 @@ export function terminalizeSurvivorRun(state: GameState): GameState {
   const hasTerminalEvent = state.tvFeed.some((event) => event.id === eventId);
   const gameOverEvent: TvEvent = {
     id: eventId,
-    text: `Survivor run ended. You were eliminated on Day ${currentDay}.`,
+    text: `Survival run ended. You were eliminated on Day ${currentDay}.`,
     type: 'game',
     timestamp: Date.now(),
-    meta: { phase: state.phase, week: state.week, mode: 'survivor' },
+    meta: { phase: state.phase, week: state.week, mode: 'survival' },
   };
 
   return {
@@ -118,7 +118,7 @@ function buildCompetitionState(players: Player[]): GameState['competitionSeasonS
 
 export function createSurvivorModeState(startingCastSize: number): SurvivorModeState {
   return {
-    kind: 'survivor',
+    kind: 'survival',
     currentDay: 1,
     totalRoboContestantsEvicted: 0,
     bestDayReached: 1,
@@ -133,7 +133,7 @@ export function createSurvivorModeState(startingCastSize: number): SurvivorModeS
 
 export function createSurvivorRun(): GameState {
   const base = createInitialGameState();
-  const runId = makeRunId('survivor');
+  const runId = makeRunId('survival');
   const human = base.players.find((player) => player.isUser) ?? base.players[0];
   const startingCastSize = SURVIVOR_STARTING_CAST_SIZE;
   const players = [
@@ -147,7 +147,7 @@ export function createSurvivorRun(): GameState {
     ...base,
     gameId: runId,
     runId,
-    mode: 'survivor',
+    mode: 'survival',
     status: 'active',
     createdAt: now,
     lastPlayedAt: now,
@@ -167,17 +167,17 @@ export function createSurvivorRun(): GameState {
     tvFeed: [
       {
         id: 'survivor-e0',
-        text: 'Survivor Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.',
+        text: 'Survival Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.',
         type: 'game',
         timestamp: now,
-        meta: { phase: 'week_start', week: 1, mode: 'survivor' },
+        meta: { phase: 'week_start', week: 1, mode: 'survival' },
       },
       {
         id: 'survivor-e1',
         text: '[Rules] Public mode: OFF | Social mode: OFF | Endless days: ON | Double Elimination: possible',
         type: 'game',
         timestamp: now,
-        meta: { phase: 'week_start', week: 1, mode: 'survivor' },
+        meta: { phase: 'week_start', week: 1, mode: 'survival' },
       },
     ],
   };
@@ -195,7 +195,7 @@ export function buildReplacementRobo(state: GameState, slot?: number): Player {
 }
 
 export function markSurvivorDay(state: GameState): GameState {
-  if (state.mode !== 'survivor') return state;
+  if (state.mode !== 'survival') return state;
   const modeSpecific = getSurvivorModeState(state);
   const currentDay = Math.max(modeSpecific.currentDay, state.week);
   return {

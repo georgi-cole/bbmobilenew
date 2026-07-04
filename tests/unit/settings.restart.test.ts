@@ -123,7 +123,7 @@ describe('getRestartRelevantSnapshotFromSettings', () => {
     expect(snapshot).not.toHaveProperty('display');
   });
 
-  it('does NOT include pure-UI gameUX fields (animations, useHaptics, compactRoster, compactRosterLayout)', () => {
+  it('does NOT include pure-UI gameUX fields (animations, useHaptics, compactRoster)', () => {
     const liveSettings = { ...DEFAULT_SETTINGS };
     const snapshot = getRestartRelevantSnapshotFromSettings(liveSettings);
     expect(snapshot.gameUX).not.toHaveProperty('animations');

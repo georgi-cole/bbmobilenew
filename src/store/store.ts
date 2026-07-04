@@ -89,7 +89,7 @@ export const store = configureStore({
 });
 
 function hasMeaningfulGameProgress(game: ReturnType<typeof store.getState>['game']): boolean {
-  return game.mode === 'survivor'
+  return game.mode === 'survival'
     || game.week > 1
     || game.phase !== 'week_start'
     || Boolean(game.runId)

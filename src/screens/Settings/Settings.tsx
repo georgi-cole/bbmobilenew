@@ -1,13 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { AppDispatch } from '../../store/store';
 import {
-  normalizeCompactRosterLayout,
   selectSettings,
   setAudio,
   setDisplay,
   setGameUX,
-  type CompactRosterLayout,
   type ThemePreset,
   type SettingsState,
 } from '../../store/settingsSlice';
@@ -23,11 +23,6 @@ const THEME_OPTIONS: { value: ThemePreset; label: string }[] = [
   { value: 'ocean',    label: '🌊 Ocean'    },
 ];
 
-const COMPACT_ROSTER_LAYOUT_OPTIONS: { value: CompactRosterLayout; label: string }[] = [
-  { value: 'two-rows', label: '2 rows of 8 avatars' },
-  { value: 'small', label: '4x4 smaller avatars' },
-];
-
 // ── Setting item types ─────────────────────────────────────────────────────────
 // Add a new member to this union + a matching case in renderItem() to support
 // a new control type (e.g. 'number-input', 'radio-group', …).
@@ -36,6 +31,8 @@ type ToggleItem = {
   type: 'toggle';
   id: string;
   label: string;
+  badge?: string;
+  gated?: boolean;
   get: (s: SettingsState) => boolean;
   onChange: (dispatch: AppDispatch, val: boolean) => void;
 };
@@ -102,17 +99,18 @@ const SECTIONS: SettingSection[] = [
       {
         type: 'toggle',
         id: 'compactRoster',
-        label: 'Compact Roster',
+        label: 'Compact mode',
         get: (s) => s.gameUX.compactRoster,
         onChange: (dispatch, val) => dispatch(setGameUX({ compactRoster: val })),
       },
       {
-        type: 'dropdown',
-        id: 'compact-roster-layout',
-        label: 'Compact Roster Layout',
-        options: COMPACT_ROSTER_LAYOUT_OPTIONS,
-        get: (s) => normalizeCompactRosterLayout(s.gameUX.compactRosterLayout),
-        onChange: (dispatch, val) => dispatch(setGameUX({ compactRosterLayout: val as CompactRosterLayout })),
+        type: 'toggle',
+        id: 'publicMode',
+        label: 'Public Mode',
+        badge: 'VIP',
+        gated: true,
+        get: (s) => s.sim.publicMode,
+        onChange: () => {},
       },
     ],
   },
@@ -164,6 +162,7 @@ export default function Settings() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const settings = useAppSelector(selectSettings);
+  const [showVipPrompt, setShowVipPrompt] = useState(false);
 
   function renderItem(item: SettingItem) {
     switch (item.type) {
@@ -171,12 +170,22 @@ export default function Settings() {
         const checked = item.get(settings);
         return (
           <div key={item.id} className="settings-row">
-            <label className="settings-row__label">{item.label}</label>
+            <label className="settings-row__label">
+              {item.label}
+              {item.badge && <span className="settings-row__badge">{item.badge}</span>}
+            </label>
             <input
               type="checkbox"
               className="settings-toggle"
               checked={checked}
-              onChange={(e) => item.onChange(dispatch, e.target.checked)}
+              onChange={(e) => {
+                if (item.gated) {
+                  e.preventDefault();
+                  setShowVipPrompt(true);
+                  return;
+                }
+                item.onChange(dispatch, e.target.checked);
+              }}
               aria-label={`Toggle ${item.label.toLowerCase()}`}
             />
           </div>
@@ -226,6 +235,15 @@ export default function Settings() {
           </section>
         ))}
       </div>
+      <ConfirmExitModal
+        open={showVipPrompt}
+        title="VIP Required"
+        description="Public Mode is a VIP setting. Advanced Settings can override it for testing."
+        confirmLabel="OK"
+        showCancel={false}
+        onConfirm={() => setShowVipPrompt(false)}
+        onCancel={() => setShowVipPrompt(false)}
+      />
     </div>
   );
 }

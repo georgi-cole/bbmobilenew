@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { isPublicModeEnabled, isSocialModeEnabled } from '../gameModes';
 
 describe('game mode config', () => {
-  it('disables public and social modes in Survivor', () => {
-    expect(isPublicModeEnabled('survivor')).toBe(false);
-    expect(isSocialModeEnabled('survivor')).toBe(false);
+  it('disables public and social modes in Survival', () => {
+    expect(isPublicModeEnabled('survival')).toBe(false);
+    expect(isSocialModeEnabled('survival')).toBe(false);
   });
 
   it('keeps public and social modes enabled in Classic', () => {

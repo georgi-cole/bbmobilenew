@@ -3132,7 +3132,7 @@ const gameSlice = createSlice({
     },
 
     clearSurvivorReplacementTransition(state) {
-      if (state.modeSpecific?.kind !== 'survivor') return;
+      if (state.modeSpecific?.kind !== 'survival') return;
       state.modeSpecific.replacementTransition = null;
     },
 

@@ -84,12 +84,12 @@ function snapshotDay(snapshot: SavedSeasonSnapshot | null | undefined): number |
 function buildModeLabel(mode: GameMode, snapshot: SavedSeasonSnapshot | null | undefined): string {
   const day = snapshotDay(snapshot);
   if (mode === 'classic') return day ? `Classic Day ${day}` : 'Classic Campaign';
-  const survivorState = snapshot?.game?.modeSpecific?.kind === 'survivor'
+  const survivorState = snapshot?.game?.modeSpecific?.kind === 'survival'
     ? snapshot.game.modeSpecific
     : null;
-  if (day) return `Survivor Day ${day}`;
-  if (survivorState?.bestDayReached) return `Survivor Best ${survivorState.bestDayReached}`;
-  return 'Survivor Mode';
+  if (day) return `Survival Day ${day}`;
+  if (survivorState?.bestDayReached) return `Survival Best ${survivorState.bestDayReached}`;
+  return 'Survival Mode';
 }
 
 interface PlaySelectionButton {
@@ -231,7 +231,7 @@ export default function HomeHub() {
     [activeProfileId, isGuest],
   );
   const classicSnapshot = savedRuns?.runs.classic ?? null;
-  const survivorSnapshot = savedRuns?.runs.survivor ?? null;
+  const survivorSnapshot = savedRuns?.runs.survival ?? null;
   const lastSnapshot = !isGuest && activeProfileId ? getLastPlayedRun(activeProfileId) : null;
   const hasEndedSurvivorRecord = !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0;
 
@@ -299,7 +299,7 @@ export default function HomeHub() {
 
   function startSurvivorRun() {
     if (!isGuest && activeProfileId) {
-      clearSavedRun(activeProfileId, 'survivor');
+      clearSavedRun(activeProfileId, 'survival');
     }
     setSurvivorPrompt(null);
     setPlaySelectionOpen(false);
@@ -347,7 +347,7 @@ export default function HomeHub() {
 
   function startOrResumeMode(mode: GameMode) {
     SoundManager.unlockFromGesture();
-    if (mode === 'survivor') {
+    if (mode === 'survival') {
       openSurvivorMode();
       return;
     }
@@ -394,11 +394,11 @@ export default function HomeHub() {
       onClick: () => startOrResumeMode('classic'),
     },
     {
-      key: 'survivor',
-      label: buildModeLabel('survivor', survivorSnapshot),
+      key: 'survival',
+      label: buildModeLabel('survival', survivorSnapshot),
       icon: '◆',
       variant: 'secondary_wide',
-      onClick: () => startOrResumeMode('survivor'),
+      onClick: () => startOrResumeMode('survival'),
     },
     {
       key: 'back',
@@ -486,7 +486,7 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
-        title="Survivor Mode"
+        title="Survival Mode"
         description="Resume your saved run or start over?"
         confirmLabel="Resume"
         secondaryLabel="Start New"
@@ -498,8 +498,8 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'ended'}
-        title="Survivor Mode"
-        description="Your previous Survivor run has ended."
+        title="Survival Mode"
+        description="Your previous Survival run has ended."
         confirmLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}
@@ -511,8 +511,8 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'confirm-new'}
-        title="Start new Survivor run?"
-        description="This will replace your saved Survivor run only. Classic progress will not be affected."
+        title="Start new Survival run?"
+        description="This will replace your saved Survival run only. Classic progress will not be affected."
         confirmLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}

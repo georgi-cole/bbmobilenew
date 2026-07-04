@@ -8,7 +8,6 @@ import {
   setGameUX,
   setSim,
   setVisual,
-  type CompactRosterLayout,
   type ThemePreset,
 } from '../../store/settingsSlice';
 import CompSelection from '../../components/CompSelection';
@@ -65,29 +64,6 @@ const THEME_PRESETS: { id: ThemePreset; label: string; swatch: string }[] = [
   { id: 'sunset',   label: 'Sunset',   swatch: '#f97316' },
   { id: 'ocean',    label: 'Ocean',    swatch: '#0ea5e9' },
 ];
-
-const COMPACT_ROSTER_LAYOUT_OPTIONS: {
-  id: CompactRosterLayout;
-  label: string;
-  description: string;
-}[] = [
-  {
-    id: 'slider',
-    label: 'Horizontal slider',
-    description: 'Show every avatar in one scrollable row.',
-  },
-  {
-    id: 'small',
-    label: 'Smaller tiles',
-    description: 'Keep the roster grid but shrink each tile to about half size.',
-  },
-  {
-    id: 'two-rows',
-    label: '2 rows of 8 avatars',
-    description: 'Spread the roster across two wide rows.',
-  },
-];
-
 
 export default function SettingsAdmin() {
   const [activeTab, setActiveTab] = useState<Tab>('audio');
@@ -331,39 +307,15 @@ export default function SettingsAdmin() {
               />
             </div>
 
-            <div className="settings-row settings-row--col">
-              <div className="settings-row settings-row--nested">
-                <label className="settings-row__label">Compact Roster</label>
-                <input
-                  type="checkbox"
-                  className="settings-toggle"
-                  checked={settings.gameUX.compactRoster}
-                  onChange={(e) => dispatch(setGameUX({ compactRoster: e.target.checked }))}
-                  aria-label="Toggle compact roster"
-                />
-              </div>
-              {settings.gameUX.compactRoster && (
-                <div className="settings-choice-group" aria-label="Compact roster layout">
-                  {COMPACT_ROSTER_LAYOUT_OPTIONS.map((option) => {
-                    const selected = settings.gameUX.compactRosterLayout === option.id;
-                    return (
-                      <label
-                        key={option.id}
-                        className={`settings-choice ${selected ? 'settings-choice--active' : ''}`}
-                      >
-                        <input
-                          type="radio"
-                          name="compact-roster-layout"
-                          checked={selected}
-                          onChange={() => dispatch(setGameUX({ compactRosterLayout: option.id }))}
-                        />
-                        <span className="settings-choice__title">{option.label}</span>
-                        <span className="settings-choice__description">{option.description}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="settings-row">
+              <label className="settings-row__label">Compact mode</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.gameUX.compactRoster}
+                onChange={(e) => dispatch(setGameUX({ compactRoster: e.target.checked }))}
+                aria-label="Toggle compact mode"
+              />
             </div>
 
             <div className="settings-row">
@@ -390,7 +342,7 @@ export default function SettingsAdmin() {
 
             <div className="settings-row settings-row--col">
               <div className="settings-row">
-                <label className="settings-row__label">Public mode</label>
+                <label className="settings-row__label">Public Mode</label>
                 <input
                   type="checkbox"
                   className="settings-toggle"

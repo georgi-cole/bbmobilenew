@@ -41,7 +41,7 @@ function isAliveSurvivorPlayer(player: Player) {
 }
 
 function getCurrentSurvivorDay(game: GameState) {
-  const survivorDay = game.modeSpecific?.kind === 'survivor'
+  const survivorDay = game.modeSpecific?.kind === 'survival'
     ? game.modeSpecific.currentDay
     : undefined;
   return Math.max(1, survivorDay ?? game.week ?? 1);
@@ -88,7 +88,7 @@ export function selectSurvivorStandout(
   game: GameState,
   challengeHistory: ChallengeRun[] = [],
 ): SurvivorStandoutResult | null {
-  if (game.mode !== 'survivor') return null;
+  if (game.mode !== 'survival') return null;
 
   const currentDay = getCurrentSurvivorDay(game);
   const alivePlayers = game.players.filter(isAliveSurvivorPlayer);
