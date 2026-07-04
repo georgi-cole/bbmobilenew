@@ -116,7 +116,7 @@ describe('ChainOfGreed component', () => {
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
   });
 
-  it('locks a bank choice, stages the outcome, and still requires a guess afterward', () => {
+    it('keeps banking unavailable until the chain has a pot', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
@@ -124,43 +124,11 @@ describe('ChainOfGreed component', () => {
       vi.advanceTimersByTime(950);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bank' }));
-
-    expect(screen.getByText('You chose BANK.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Higher' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Lower' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Bank' })).toBeDisabled();
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_DECISION_MS);
-    });
-
-    expect(screen.getByTestId('chain-turn-reveal')).toHaveTextContent(/Bank secured/i);
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_REVEAL_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_VERDICT_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_CONSEQUENCE_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_LADDERUPDATE_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_SETTLE_MS);
-    });
-
-    expect(screen.getByRole('button', { name: 'Banked' })).toBeDisabled();
+    const bankButton = screen.getByRole('button', { name: 'Bank' });
+    expect(bankButton).toBeDisabled();
+    expect(bankButton).toHaveAttribute('title', 'Build the chain before banking.');
     expect(screen.getByRole('button', { name: 'Higher' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeEnabled();
-    expect(screen.getAllByText(/You banked 0\./i)).toHaveLength(2);
-    expect(screen.getByTestId('chain-event-log')).toHaveTextContent(/You banked 0./i);
+    expect(screen.queryByText(/You banked 0\./i)).not.toBeInTheDocument();
   });
 });
