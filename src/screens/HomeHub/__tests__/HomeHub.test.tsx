@@ -82,9 +82,18 @@ vi.mock('../../../utils/preload', () => ({
 }));
 
 vi.mock('../../../components/KolequantSplash/KolequantSplash', () => ({
-  default: ({ onFinish }: { onFinish?: () => void }) => (
+  default: ({
+    onFinish,
+    progress,
+    status,
+  }: {
+    onFinish?: () => void;
+    progress?: number;
+    ready?: boolean;
+    status?: string;
+  }) => (
     <button data-testid="kolequant-splash" onClick={onFinish} type="button">
-      Finish splash
+      {status ?? 'Finish splash'} {progress ?? 0}%
     </button>
   ),
 }));
@@ -304,7 +313,7 @@ describe('HomeHub', () => {
     }
   });
 
-  it('shows the hub loading overlay until the full hub bundle is ready', async () => {
+  it('keeps the Kolequant splash up until the full hub bundle is ready', async () => {
     const pendingResolvers: Array<() => void> = [];
     preloadImageMock.mockImplementation(() => new Promise<void>((resolve) => {
       pendingResolvers.push(resolve);
@@ -314,7 +323,7 @@ describe('HomeHub', () => {
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
 
-    expect(screen.getByRole('status', { name: /Loading intro hub\.\.\./ })).toBeInTheDocument();
+    expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
 
     await act(async () => {
@@ -330,7 +339,7 @@ describe('HomeHub', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole('status')).toBeNull();
+      expect(screen.queryByTestId('kolequant-splash')).toBeNull();
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
   });

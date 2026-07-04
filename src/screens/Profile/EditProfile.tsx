@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   selectCurrentProfile,
   updateProfile,
   type ProfileBio,
 } from '../../store/profilesSlice';
+import { updateUserPlayerIdentity } from '../../store/gameSlice';
 import { resizeAndCompressImage } from '../../utils/imageUtils';
 import { saveImage, imageIdToDataUrl, deleteImage } from '../../utils/imageDb';
 import './EditProfile.css';
@@ -60,13 +61,17 @@ function CollapsibleSection({
  */
 export default function EditProfile() {
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const dispatch = useAppDispatch();
   const profile = useAppSelector(selectCurrentProfile);
+  const returnTo = ((routeLocation.state as { from?: string } | null)?.from === '/'
+    ? '/'
+    : '/game');
 
   // Redirect if no profile is active
   useEffect(() => {
-    if (!profile) navigate('/profile-picker', { replace: true });
-  }, [profile, navigate]);
+    if (!profile) navigate('/profile-picker', { replace: true, state: { from: returnTo } });
+  }, [profile, navigate, returnTo]);
 
   // --- Form state ---
   const [name, setName] = useState(profile?.name ?? '');
@@ -202,8 +207,15 @@ export default function EditProfile() {
         bio,
       }),
     );
+    dispatch(
+      updateUserPlayerIdentity({
+        name: name.trim() || profile.name,
+        avatar,
+        photoId,
+      }),
+    );
 
-    navigate('/profile');
+    navigate('/profile', { replace: true, state: { from: returnTo } });
   }
 
   if (!profile) return null;
@@ -460,7 +472,7 @@ export default function EditProfile() {
         <button
           type="button"
           className="edit-profile__btn edit-profile__btn--cancel"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/profile', { replace: true, state: { from: returnTo } })}
         >
           Cancel
         </button>

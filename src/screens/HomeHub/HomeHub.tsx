@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
@@ -21,7 +21,6 @@ import type { GameMode } from '../../modes/modeTypes';
 import { createSurvivorRun, isSurvivorRunTerminal } from '../../modes/survivorRun';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
-import HubLoadingOverlay from '../../components/HubLoadingOverlay/HubLoadingOverlay';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
@@ -68,7 +67,14 @@ const HUB_BUTTONS = [
   { to: '/credits',      label: 'Credits',     icon: '🎬', variant: 'secondary_small'  },
 ] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
 
+type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
+
+interface HubAssetState {
+  ready: boolean;
+  progress: number;
+  status: string;
+}
 
 function snapshotDay(snapshot: SavedSeasonSnapshot | null | undefined): number | null {
   const day = snapshot?.game?.week;
@@ -102,6 +108,7 @@ interface HomeHubAssetLayerProps {
   playSelectionButtons: PlaySelectionButton[];
   onPlay: () => void;
   onNavigate: NavigateFunction;
+  onAssetStateChange: (state: HubAssetState) => void;
 }
 
 function HomeHubAssetLayer({
@@ -112,20 +119,26 @@ function HomeHubAssetLayer({
   playSelectionButtons,
   onPlay,
   onNavigate,
+  onAssetStateChange,
 }: HomeHubAssetLayerProps) {
   const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
     useHomeHubAssets(effectiveBgUrl);
   const assetReady = backgroundReady && homeHubReady;
-  const status = backgroundReady ? homeHubLoadStatus : 'Checking background...';
+  const status = backgroundReady ? homeHubLoadStatus : 'Choosing the right house exterior...';
+  const progress = backgroundReady ? homeHubLoadProgress : Math.min(20, homeHubLoadProgress);
+
+  useEffect(() => {
+    onAssetStateChange({
+      ready: assetReady,
+      progress,
+      status,
+    });
+  }, [assetReady, onAssetStateChange, progress, status]);
 
   return (
     <>
       {splashDone && assetReady && (
         <PermissionPrompts showSoundPrompt={false} />
-      )}
-
-      {splashDone && !assetReady && (
-        <HubLoadingOverlay progress={homeHubLoadProgress} status={status} />
       )}
 
       {/* Foreground content — hidden until the full hub asset bundle is ready. */}
@@ -135,7 +148,7 @@ function HomeHubAssetLayer({
 
         {/* Button stack: only rendered once the splash has dismissed and the
             full hub bundle is ready. */}
-        {splashDone && homeHubReady && (
+        {splashDone && assetReady && (
           <nav className="home-hub__buttons" aria-label={playSelectionOpen ? 'Play menu' : 'Main menu'}>
             {playSelectionOpen
               ? playSelectionButtons.map(({ key, label, icon, variant, onClick }) => (
@@ -153,7 +166,7 @@ function HomeHubAssetLayer({
                     label={label}
                     icon={icon}
                     variant={variant}
-                    onClick={to === '/game' ? onPlay : () => onNavigate(to)}
+                    onClick={to === '/game' ? onPlay : () => onNavigate(to, to === '/profile' ? { state: { from: '/' } } : undefined)}
                   />
                 ))}
           </nav>
@@ -196,12 +209,19 @@ export default function HomeHub() {
   );
   // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl;
-  const [splashDone, setSplashDone] = useState(() => hasSeenHomeHubSplashForGame(gameId));
+  const [splashExitRequested, setSplashExitRequested] = useState(false);
+  const [hubAssetState, setHubAssetState] = useState<HubAssetState>({
+    ready: false,
+    progress: 0,
+    status: 'Opening the house doors.',
+  });
+  const splashDone = hasSeenHomeHubSplashForGame(gameId) || (splashExitRequested && hubAssetState.ready);
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
   const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
+  const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null);
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
   const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId);
@@ -252,12 +272,29 @@ export default function HomeHub() {
 
   function startClassicRun() {
     if (!isGuest && activeProfileId) {
+      clearSavedRun(activeProfileId, 'classic');
       const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? [];
       dispatch(resetGame(archives));
     } else {
       dispatch(resetGame(undefined));
     }
+    setClassicPrompt(null);
+    setPlaySelectionOpen(false);
     setPreloading(true);
+  }
+
+  function resumeClassicRun() {
+    if (!classicSnapshot) {
+      setClassicPrompt(null);
+      startClassicRun();
+      return;
+    }
+    try {
+      setClassicPrompt(null);
+      hydrateSnapshot(classicSnapshot);
+    } catch {
+      startClassicRun();
+    }
   }
 
   function startSurvivorRun() {
@@ -318,12 +355,8 @@ export default function HomeHub() {
     if (!isGuest && activeProfileId) {
       const snapshot = getSavedRun(activeProfileId, mode);
       if (snapshot?.profileId === activeProfileId) {
-        try {
-          hydrateSnapshot(snapshot);
-          return;
-        } catch {
-          // Bad snapshots fall through to a clean run for the selected mode.
-        }
+        setClassicPrompt('resume-or-new');
+        return;
       }
     }
 
@@ -387,21 +420,69 @@ export default function HomeHub() {
     setPlaySelectionOpen(true);
   };
 
+  const handleHubAssetStateChange = useCallback((nextState: HubAssetState) => {
+    setHubAssetState((current) => {
+      if (
+        current.ready === nextState.ready &&
+        current.progress === nextState.progress &&
+        current.status === nextState.status
+      ) {
+        return current;
+      }
+
+      return nextState;
+    });
+  }, []);
+
   function handleSplashFinish() {
-    markHomeHubSplashSeenForGame(gameId);
-    setSplashDone(true);
+    setSplashExitRequested(true);
   }
+
+  useEffect(() => {
+    if (!splashDone) {
+      return;
+    }
+
+    markHomeHubSplashSeenForGame(gameId);
+  }, [gameId, splashDone]);
 
   return (
     <>
       {/* Cold-load intro splash — logo only, hub preloads in background.
           Exits automatically after the animation completes (~1.2s). */}
       {!splashDone && (
-        <KolequantSplash onFinish={handleSplashFinish} />
+        <KolequantSplash
+          ready={hubAssetState.ready}
+          progress={hubAssetState.progress}
+          status={hubAssetState.status}
+          onFinish={handleSplashFinish}
+        />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
       {preloading && <AssetPreloaderOverlay />}
+
+      <ConfirmExitModal
+        open={classicPrompt === 'resume-or-new'}
+        title="Classic Campaign"
+        description="Resume your saved Classic campaign or start over?"
+        confirmLabel="Resume"
+        secondaryLabel="Start New"
+        cancelLabel="Cancel"
+        onConfirm={resumeClassicRun}
+        onSecondary={() => setClassicPrompt('confirm-new')}
+        onCancel={() => setClassicPrompt(null)}
+      />
+
+      <ConfirmExitModal
+        open={classicPrompt === 'confirm-new'}
+        title="Start new Classic campaign?"
+        description="This will replace your saved Classic campaign only. Survivor progress will not be affected."
+        confirmLabel="Start New"
+        cancelLabel="Cancel"
+        onConfirm={startClassicRun}
+        onCancel={() => setClassicPrompt('resume-or-new')}
+      />
 
       <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
@@ -471,6 +552,7 @@ export default function HomeHub() {
             playSelectionButtons={playSelectionButtons}
             onPlay={handlePlay}
             onNavigate={navigate}
+            onAssetStateChange={handleHubAssetStateChange}
           />
 
           {/* Intro hub overlay — chips rendered only while HomeHub is mounted */}

@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProfilePicker from './ProfilePicker';
 
 const mockNavigate = vi.fn();
 const mockDispatch = vi.fn();
+let mockLocationState: { from?: string } | null = null;
 
 const mockState: {
   profiles: {
@@ -35,6 +36,7 @@ const mockState: {
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  useLocation: () => ({ state: mockLocationState }),
 }));
 
 vi.mock('../../store/hooks', () => ({
@@ -54,7 +56,11 @@ vi.mock('../../store/saveStatePersistence', () => ({
 
 vi.mock('../../utils/imageDb', () => ({
   imageIdToDataUrl: vi.fn(() => Promise.resolve(null)),
+  saveImage: vi.fn(() => Promise.resolve()),
   deleteImage: vi.fn(() => Promise.resolve()),
+}));
+vi.mock('../../utils/imageUtils', () => ({
+  resizeAndCompressImage: vi.fn(),
 }));
 
 vi.mock('../../components/ConfirmExitModal/ConfirmExitModal', () => ({
@@ -65,6 +71,7 @@ describe('ProfilePicker', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockDispatch.mockReset();
+    mockLocationState = null;
     mockState.profiles = {
       profiles: [],
       activeProfileId: null,
@@ -76,7 +83,7 @@ describe('ProfilePicker', () => {
     };
   });
 
-  it('replaces the picker history entry after creating a profile', () => {
+  it('replaces the picker history entry after creating a profile', async () => {
     render(<ProfilePicker />);
 
     fireEvent.click(screen.getByRole('button', { name: /create new profile/i }));
@@ -85,14 +92,17 @@ describe('ProfilePicker', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /create profile/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/profile', { replace: true });
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/profile', { replace: true, state: { from: '/game' } });
+    });
   });
 
   it('shows a direct way back home from the picker', () => {
+    mockLocationState = { from: '/' };
     render(<ProfilePicker />);
 
     fireEvent.click(screen.getByRole('button', { name: /back to home/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 });

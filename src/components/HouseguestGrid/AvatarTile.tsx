@@ -2,6 +2,8 @@ import React from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { avatarVariants } from '../../utils/avatarCase'
+import { getProfilePhotoAvatarId } from '../../utils/avatar'
+import { imageIdToDataUrl } from '../../utils/imageDb'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
@@ -78,6 +80,7 @@ function formatStat(value: number | null | undefined, options: { decimals?: numb
 }
 
 export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, roboStats, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting, nominationCeremonyState }: Props) {
+  const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -86,6 +89,8 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null)
   const isHoldActiveRef = React.useRef(false)
   const [statsOpen, setStatsOpen] = React.useState(false)
+  const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(null)
+  const resolvedAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
   const isSurvivorRoboTile = Boolean(roboStats) || Boolean(avatarUrl?.includes('bottts'))
 
   React.useEffect(() => {
@@ -93,6 +98,20 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     variantsRef.current = null
     exhaustedRef.current = false
   }, [avatarUrl])
+
+  React.useEffect(() => {
+    let cancelled = false
+    setProfilePhotoUrl(null)
+    if (!profilePhotoId) return undefined
+
+    imageIdToDataUrl(profilePhotoId).then((url) => {
+      if (!cancelled) setProfilePhotoUrl(url)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [profilePhotoId])
 
   React.useEffect(
     () => () => {
@@ -287,9 +306,9 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
             </span>
           )}
 
-          {avatarUrl ? (
+          {resolvedAvatarUrl ? (
             <img
-              src={avatarUrl}
+              src={resolvedAvatarUrl}
               alt={name}
               className={styles.avatar}
               onError={handleImgError}
