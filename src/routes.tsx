@@ -12,7 +12,7 @@ import { createHashRouter } from 'react-router-dom';
 import AppShell             from './components/layout/AppShell';
 import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoundary';
 import HomeHub              from './screens/HomeHub/HomeHub';
-import GameScreen           from './screens/GameScreen/GameScreen';
+import GameRoute            from './routes/GameRoute';
 import DiaryRoom            from './screens/DiaryRoom/DiaryRoom';
 import Houseguests          from './screens/Houseguests/Houseguests';
 import Profile              from './screens/Profile/Profile';
@@ -97,7 +97,7 @@ export const router = createHashRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true,              element: <HomeHub />      },
-      { path: 'game',             element: <GameScreen />   },
+      { path: 'game',             element: <GameRoute />    },
       { path: 'diary-room',       element: <DiaryRoom />    },
       { path: 'houseguests',      element: <Houseguests />  },
       { path: 'profile',          element: <Profile />      },

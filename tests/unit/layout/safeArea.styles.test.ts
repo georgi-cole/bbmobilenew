@@ -36,20 +36,25 @@ describe('safe-area layout styles', () => {
     expect(safeViewportCss).toContain('height: 100dvh;');
     expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; inset: 0;');
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active .safe-game-viewport__bleed');
-    expect(safeViewportCss).toContain('top: var(--safe-top);');
-    expect(safeViewportCss).toContain('right: var(--safe-right);');
-    expect(safeViewportCss).toContain('bottom: var(--safe-bottom);');
-    expect(safeViewportCss).toContain('left: var(--safe-left);');
+    expect(safeViewportCss).toContain('.safe-game-viewport__content { position: absolute; inset: 0;');
+    expect(safeViewportCss).not.toContain('top: var(--safe-top);');
+    expect(safeViewportCss).not.toContain('right: var(--safe-right);');
+    expect(safeViewportCss).not.toContain('bottom: var(--safe-bottom);');
+    expect(safeViewportCss).not.toContain('left: var(--safe-left);');
     expect(safeViewportCss).toContain('.safe-game-viewport--debug::before');
     expect(safeViewportCss).toContain('.safe-game-viewport--debug .safe-game-viewport__content::after');
 
     expect(appShellCss).toContain('height: 100%;');
     expect(appShellCss).toContain('min-height: 0;');
-    expect(appShellCss).not.toContain('padding-top: var(--app-safe-area-top);');
+    expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);');
+    expect(appShellCss).toContain('padding-right: var(--safe-right);');
+    expect(appShellCss).toContain('padding-left: var(--safe-left);');
+    expect(appShellCss).toContain('body.homehub-full-bleed-active .app-shell { background: transparent;');
+    expect(appShellCss).toContain('body:has(.game-screen-shell) .app-shell { background: transparent;');
     expect(appShellCss).not.toContain('padding-bottom: var(--safe-bottom);');
   });
 
-  it('does not double-count the bottom safe area inside the app shell', () => {
+  it('lets bottom nav own bottom safe-area reservation without using raw env() children', () => {
     const bottomNavCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/GameBottomNav/GameBottomNav.css'), 'utf8'),
     );
@@ -60,8 +65,11 @@ describe('safe-area layout styles', () => {
       readFileSync(resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'), 'utf8'),
     );
 
+    expect(bottomNavCss).toContain('height: calc(var(--nav-bar-height, 60px) + var(--safe-bottom));');
+    expect(bottomNavCss).toContain('padding-bottom: var(--safe-bottom);');
+    expect(bottomNavCss).toContain('border-radius: 18px 18px 0 0 / 12px 12px 0 0;');
+    expect(bottomNavCss).toContain('bottom: var(--safe-bottom);');
     expect(bottomNavCss).toContain('height: var(--nav-bar-height, 60px);');
-    expect(bottomNavCss).not.toContain('height: calc(var(--nav-bar-height, 60px) + var(--safe-bottom));');
     expect(bottomNavCss).not.toContain('env(safe-area-inset-bottom');
 
     expect(dockCss).toContain('.game-control-dock { position: absolute;');
@@ -154,6 +162,7 @@ describe('safe-area layout styles', () => {
     expect(homeHubCss).toContain('.homehub-shell { position: relative; width: 100%; height: 100%;');
     expect(homeHubCss).toContain('overflow: hidden;');
     expect(homeHubCss).toContain('.homehub-frame { position: relative; z-index: 2; width: 100%;');
+    expect(homeHubCss).toContain('padding-bottom: var(--safe-bottom);');
     expect(homeHubCss).toContain('.home-hub__buttons { display: flex; flex-direction: column;');
     expect(homeHubCss).toContain('overflow-y: auto;');
     expect(homeHubCss).not.toContain('.homehub-intro-bg');
@@ -198,9 +207,13 @@ describe('safe-area layout styles', () => {
 
     expect(safeViewportCss).toContain('.minigame-host, .qtr, .qtr-canvas, .pp, .bbl, .td, .snake-root, .spectator-overlay, .pf-overlay, .day-start-shock');
     expect(safeViewportCss).toContain('position: absolute !important;');
-    expect(safeViewportCss).toContain('--app-safe-area-top: 0px;');
+    expect(safeViewportCss).not.toContain('--app-safe-area-top: 0px;');
+    expect(safeViewportCss).not.toContain('--safe-bottom: 0px;');
 
     expect(minigameHostCss).toContain('.minigame-host { position: absolute; inset: 0;');
+    expect(minigameHostCss).toContain('--minigame-safe-top: var(--safe-top);');
+    expect(minigameHostCss).toContain('--minigame-safe-bottom: var(--safe-bottom);');
+    expect(minigameHostCss).toContain('--minigame-stage-top-padding: max(var(--minigame-stage-top-gap), calc(var(--minigame-safe-top) + 10px));');
     expect(minigameHostCss).toContain('height: 100%;');
     expect(minigameHostCss).toContain('max-height: 100%;');
     expect(minigameHostCss).toContain('overflow-y: auto;');
@@ -212,6 +225,21 @@ describe('safe-area layout styles', () => {
     expect(gameScreenCss).toContain('height: 100%;');
     expect(gameScreenCss).not.toContain('100vh');
     expect(gameScreenCss).not.toContain('100dvh');
+  });
+
+  it('guards cold direct /game navigation instead of rendering inactive controls', () => {
+    const routesTsx = readFileSync(resolve(process.cwd(), 'src/routes.tsx'), 'utf8');
+    const gameRouteTsx = readFileSync(resolve(process.cwd(), 'src/routes/GameRoute.tsx'), 'utf8');
+    const navBarTsx = readFileSync(resolve(process.cwd(), 'src/components/layout/NavBar.tsx'), 'utf8');
+    const gameSliceTs = readFileSync(resolve(process.cwd(), 'src/store/gameSlice.ts'), 'utf8');
+
+    expect(routesTsx).toContain("import GameRoute            from './routes/GameRoute';");
+    expect(routesTsx).toContain("{ path: 'game',             element: <GameRoute />");
+    expect(gameRouteTsx).toContain('export default function GameRoute()');
+    expect(gameRouteTsx).toContain("state.game.status === 'active'");
+    expect(gameRouteTsx).toContain('<Navigate to="/" replace />');
+    expect(navBarTsx).toContain("s.game.status === 'active'");
+    expect(gameSliceTs).toContain("status: 'active' as const");
   });
 
   it('keeps explicit back-header screens aligned to the shared 16px baseline', () => {

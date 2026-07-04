@@ -21,8 +21,8 @@ function readSafeViewportDebugFlag(): boolean {
 
 /**
  * Mandatory gameplay viewport contract.
- * The outer shell covers the physical screen; the inner content is the only
- * rectangle where game UI may render, inset by the device safe-area variables.
+ * The outer shell and content both cover the physical screen; route layouts own
+ * the safe-area padding for their controls so decorative paint can stay full bleed.
  */
 export default function SafeGameViewport({ children, className = '', debug }: SafeGameViewportProps) {
   const debugEnabled = debug ?? (import.meta.env.DEV && readSafeViewportDebugFlag());

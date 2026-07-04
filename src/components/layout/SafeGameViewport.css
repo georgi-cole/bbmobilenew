@@ -60,10 +60,7 @@ body.homehub-full-bleed-active .safe-game-viewport__bleed {
 
 .safe-game-viewport__content {
   position: absolute;
-  top: var(--safe-top);
-  right: var(--safe-right);
-  bottom: var(--safe-bottom);
-  left: var(--safe-left);
+  inset: 0;
   z-index: 1;
   display: flex;
   justify-content: center;
@@ -87,25 +84,6 @@ body.homehub-full-bleed-active .safe-game-viewport__bleed {
 ) {
   position: absolute !important;
   inset: 0 !important;
-}
-
-.safe-game-viewport__content :is(
-  .minigame-host,
-  .qtr,
-  .qtr-canvas,
-  .pp,
-  .bbl,
-  .td,
-  .snake-root,
-  .spectator-overlay,
-  .pf-overlay,
-  .day-start-shock
-) {
-  --safe-top: 0px;
-  --safe-right: 0px;
-  --safe-bottom: 0px;
-  --safe-left: 0px;
-  --app-safe-area-top: 0px;
 }
 
 .safe-game-viewport__content .pf-overlay__stage {

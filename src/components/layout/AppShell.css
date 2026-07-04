@@ -12,6 +12,14 @@
   min-height: 0;
 }
 
+body.homehub-full-bleed-active .app-shell {
+  background: transparent;
+}
+
+body:has(.game-screen-shell) .app-shell {
+  background: transparent;
+}
+
 .app-shell__main {
   position: relative;
   flex: 1 1 0;
@@ -19,4 +27,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
+  padding-top: var(--app-safe-area-top);
+  padding-right: var(--safe-right);
+  padding-left: var(--safe-left);
 }
