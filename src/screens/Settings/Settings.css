@@ -253,6 +253,22 @@
   color: rgba(255, 255, 255, 0.95);
 }
 
+.settings-row__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.1rem;
+  margin-left: 0.45rem;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  color: #fbbf24;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 /* Toggle checkbox */
 .settings-toggle {
   appearance: none;
@@ -458,78 +474,6 @@
   font-size: 0.75rem;
   color: var(--color-text-muted, rgba(255,255,255,0.5));
   margin-top: 4px;
-}
-
-.settings-choice-group {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.settings-choice {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-  width: 100%;
-  text-align: left;
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
-    rgba(20, 27, 38, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
-  color: var(--color-text);
-  padding: 0.82rem 0.9rem;
-  cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 8px 18px rgba(0, 0, 0, 0.16);
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.settings-choice::before {
-  content: '';
-  position: absolute;
-  inset: 1px 1px auto;
-  height: 40%;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 85%);
-  pointer-events: none;
-}
-
-.settings-choice input[type='radio'] {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.settings-choice:hover {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-    rgba(26, 35, 54, 0.98);
-  transform: translateY(-1px);
-}
-
-.settings-choice--active {
-  border-color: rgba(99, 102, 241, 0.26);
-  background:
-    linear-gradient(180deg, rgba(99, 102, 241, 0.16), rgba(99, 102, 241, 0.06)),
-    rgba(22, 29, 46, 0.98);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 0 0 1px rgba(99, 102, 241, 0.08),
-    0 10px 22px rgba(0, 0, 0, 0.18);
-}
-
-.settings-choice__title {
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.settings-choice__description {
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
 }
 
 /* Theme preset grid */

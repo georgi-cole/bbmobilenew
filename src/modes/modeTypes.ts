@@ -1,6 +1,6 @@
 import type { GameState as BaseGameState, Player as BasePlayer } from '../types';
 
-export type GameMode = 'classic' | 'survivor';
+export type GameMode = 'classic' | 'survival';
 export type GameRunStatus = 'active' | 'paused' | 'completed' | 'failed';
 
 export interface ClassicModeState {
@@ -8,7 +8,7 @@ export interface ClassicModeState {
 }
 
 export interface SurvivorModeState {
-  kind: 'survivor';
+  kind: 'survival';
   currentDay: number;
   totalRoboContestantsEvicted: number;
   bestDayReached: number;
@@ -22,7 +22,7 @@ export interface SurvivorModeState {
 }
 
 export interface SurvivorReplacementTransition {
-  mode: 'survivor';
+  mode: 'survival';
   outgoingPlayerSnapshot: BasePlayer;
   incomingPlayerId: string;
   slot: number;

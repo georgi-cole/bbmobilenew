@@ -4,7 +4,7 @@
 // Separate from season archives (which store completed seasons).
 //
 // Key behaviours:
-//  - Each profile can keep one Classic and one Survivor run side by side.
+//  - Each profile can keep one Classic and one Survival run side by side.
 //  - Guest mode never writes or reads snapshots.
 //  - Stale/invalid snapshots are silently discarded on load.
 //  - Legacy single-slot saves are migrated into the Classic slot on read.
@@ -95,13 +95,30 @@ function coerceSnapshot(raw: unknown, profileId: string): SavedSeasonSnapshot | 
   if (parsed.profileId !== profileId || !parsed.savedAt || !parsed.game || !parsed.finale || !parsed.social) {
     return null;
   }
-  return parsed as SavedSeasonSnapshot;
+  const snapshot = parsed as SavedSeasonSnapshot;
+  const legacyGame = snapshot.game as unknown as {
+    mode?: GameMode | 'survivor';
+    modeSpecific?: {
+      kind?: GameMode | 'survivor';
+      replacementTransition?: { mode?: GameMode | 'survivor' } | null;
+    } | null;
+  };
+  const mode = normalizeGameMode(legacyGame.mode);
+  legacyGame.mode = mode;
+  if (legacyGame.modeSpecific?.kind === 'survivor') {
+    legacyGame.modeSpecific.kind = 'survival';
+  }
+  if (legacyGame.modeSpecific?.replacementTransition?.mode === 'survivor') {
+    legacyGame.modeSpecific.replacementTransition.mode = 'survival';
+  }
+  return snapshot;
 }
 
 function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>): SavedRunProfile | null {
   if (parsed.version !== 2 || parsed.profileId !== profileId) return null;
-  const classic = coerceSnapshot(parsed.runs?.classic, profileId) ?? undefined;
-  const survivor = coerceSnapshot(parsed.runs?.survivor, profileId) ?? undefined;
+  const runs = parsed.runs as Partial<Record<GameMode | 'survivor', SavedSeasonSnapshot>> | undefined;
+  const classic = coerceSnapshot(runs?.classic, profileId) ?? undefined;
+  const survivor = coerceSnapshot(runs?.survival ?? runs?.survivor, profileId) ?? undefined;
   const resumableClassic = isRunSnapshotResumable(classic) ? classic : undefined;
   const resumableSurvivor = isRunSnapshotResumable(survivor) ? survivor : undefined;
   const maxSurvivorDaysSurvived = Math.max(
@@ -116,7 +133,7 @@ function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>
     lastPlayedRunId: typeof parsed.lastPlayedRunId === 'string' ? parsed.lastPlayedRunId : null,
     runs: {
       ...(resumableClassic ? { classic: resumableClassic } : {}),
-      ...(resumableSurvivor ? { survivor: resumableSurvivor } : {}),
+      ...(resumableSurvivor ? { survival: resumableSurvivor } : {}),
     },
     stats: {
       maxSurvivorDaysSurvived,
@@ -156,7 +173,7 @@ export function loadSeasonSnapshot(key: string): SavedSeasonSnapshot | null {
     if (!parsed.profileId || !parsed.savedAt || !parsed.game || !parsed.finale || !parsed.social) {
       return null;
     }
-    return parsed as SavedSeasonSnapshot;
+    return coerceSnapshot(parsed, parsed.profileId) ?? null;
   } catch {
     return null;
   }
@@ -202,11 +219,11 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
   const mode = normalizeGameMode(snapshot.game.mode);
   const current = loadSavedRunProfile(profileId);
   const runId = getRunId(snapshot);
-  const survivorBest = mode === 'survivor'
+  const survivorBest = mode === 'survival'
     ? Math.max(current.stats.maxSurvivorDaysSurvived, getSurvivorProgressDay(snapshot.game))
     : current.stats.maxSurvivorDaysSurvived;
   const survivorAchievementsUnlocked =
-    mode === 'survivor'
+    mode === 'survival'
       ? applySurvivorAchievementProgress(
           current.stats.survivorAchievementsUnlocked,
           getSurvivorProgressDay(snapshot.game),

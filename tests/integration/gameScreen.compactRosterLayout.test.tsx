@@ -8,6 +8,9 @@ import challengeReducer from '../../src/store/challengeSlice'
 import socialReducer from '../../src/social/socialSlice'
 import uiReducer from '../../src/store/uiSlice'
 import settingsReducer, { setGameUX } from '../../src/store/settingsSlice'
+import profilesReducer from '../../src/store/profilesSlice'
+import adsReducer from '../../src/store/adsSlice'
+import remoteConfigReducer from '../../src/remoteConfig/remoteConfigSlice'
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
 
@@ -29,6 +32,9 @@ function makeStore() {
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      profiles: profilesReducer,
+      ads: adsReducer,
+      remoteConfig: remoteConfigReducer,
       publicOpinion: publicOpinionReducer,
     },
   })
@@ -45,27 +51,27 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
 }
 
 describe('GameScreen compact roster balancing', () => {
-  it('expands the tv stack for compact slider mode and requests a taller log feed', () => {
+  it('expands the tv stack for compact mode and requests a taller log feed', () => {
     const store = makeStore()
 
-    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
+    store.dispatch(setGameUX({ compactRoster: true }))
 
     const { container } = renderGameScreen(store)
 
     expect(container.firstElementChild).toHaveClass('game-screen--compact-roster-balance')
-    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '6')
+    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '3')
   })
 
   it('keeps the roster balance active on narrow viewports so the TV log stays visible', () => {
     const store = makeStore()
 
-    store.dispatch(setGameUX({ compactRoster: true, compactRosterLayout: 'slider' }))
+    store.dispatch(setGameUX({ compactRoster: true }))
     vi.stubGlobal('innerWidth', 390)
     vi.stubGlobal('innerHeight', 844)
 
     const { container } = renderGameScreen(store)
 
     expect(container.firstElementChild).toHaveClass('game-screen--compact-roster-balance')
-    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '6')
+    expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '3')
   })
 })

@@ -1,5 +1,7 @@
 import type { GameMode } from './modeTypes';
 
+export type LegacyGameMode = GameMode | 'survivor';
+
 export interface GameModeConfig {
   publicModeEnabled: boolean;
   socialModeEnabled: boolean;
@@ -30,26 +32,26 @@ export const survivorModeConfig: GameModeConfig = {
   useRoboPlayers: true,
 };
 
-export function normalizeGameMode(mode: GameMode | undefined | null): GameMode {
-  return mode === 'survivor' ? 'survivor' : 'classic';
+export function normalizeGameMode(mode: LegacyGameMode | undefined | null): GameMode {
+  return mode === 'survival' || mode === 'survivor' ? 'survival' : 'classic';
 }
 
-export function getModeConfig(mode: GameMode | undefined | null): GameModeConfig {
-  return normalizeGameMode(mode) === 'survivor' ? survivorModeConfig : classicModeConfig;
+export function getModeConfig(mode: LegacyGameMode | undefined | null): GameModeConfig {
+  return normalizeGameMode(mode) === 'survival' ? survivorModeConfig : classicModeConfig;
 }
 
-export function isPublicModeEnabled(mode: GameMode | undefined | null): boolean {
+export function isPublicModeEnabled(mode: LegacyGameMode | undefined | null): boolean {
   return getModeConfig(mode).publicModeEnabled;
 }
 
-export function isSocialModeEnabled(mode: GameMode | undefined | null): boolean {
+export function isSocialModeEnabled(mode: LegacyGameMode | undefined | null): boolean {
   return getModeConfig(mode).socialModeEnabled;
 }
 
-export function isInfiniteMode(mode: GameMode | undefined | null): boolean {
+export function isInfiniteMode(mode: LegacyGameMode | undefined | null): boolean {
   return getModeConfig(mode).infiniteDaysEnabled;
 }
 
-export function shouldReplaceEvictedPlayers(mode: GameMode | undefined | null): boolean {
+export function shouldReplaceEvictedPlayers(mode: LegacyGameMode | undefined | null): boolean {
   return getModeConfig(mode).replaceEvictedPlayers;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -113,32 +113,39 @@ describe('Settings screen', () => {
     expect(vi.mocked(restartApp)).toHaveBeenCalledWith('#/game');
   });
 
-  it('shows compact roster layout choices when the toggle is enabled', async () => {
+  it('shows only the compact mode toggle in advanced Settings', async () => {
     const { store } = renderSettingsAdmin();
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/toggle compact roster/i)).toBeTruthy();
+      expect(screen.getByLabelText(/toggle compact mode/i)).toBeTruthy();
     });
 
-    const compactRosterToggle = screen.getByLabelText(/toggle compact roster/i);
+    const compactRosterToggle = screen.getByLabelText(/toggle compact mode/i);
     if (!(compactRosterToggle as HTMLInputElement).checked) {
       fireEvent.click(compactRosterToggle);
     }
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/compact roster layout/i)).toBeTruthy();
+      expect(store.getState().settings.gameUX.compactRoster).toBe(true);
     });
 
-    const compactRosterLayoutGroup = screen.getByLabelText(/compact roster layout/i);
-    expect(within(compactRosterLayoutGroup).getAllByRole('radio')).toHaveLength(3);
+    expect(screen.queryByLabelText(/compact roster layout/i)).toBeNull();
+  });
 
-    fireEvent.click(screen.getByRole('radio', { name: /2 rows of 8 avatars/i }));
+  it('shows Public Mode in normal Settings as a VIP-gated toggle', async () => {
+    const { store } = renderSettings();
 
-    await waitFor(() => {
-      expect(store.getState().settings.gameUX.compactRosterLayout).toBe('two-rows');
-    });
+    const publicModeToggle = screen.getByLabelText(/toggle public mode/i);
+    expect(publicModeToggle).toBeChecked();
+    expect(screen.getByText('VIP')).toBeTruthy();
+
+    fireEvent.click(publicModeToggle);
+
+    expect(store.getState().settings.sim.publicMode).toBe(true);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText(/public mode is a vip setting/i)).toBeTruthy();
   });
 
   it('shows the renamed brand and twist copy in the UI', async () => {
@@ -181,7 +188,7 @@ describe('Settings screen', () => {
 
     expect(screen.getByLabelText(/toggle confirm major actions/i)).toBeChecked();
     expect(screen.getByLabelText(/toggle show tooltips/i)).toBeChecked();
-    expect(screen.getByLabelText(/toggle compact roster/i)).not.toBeChecked();
+    expect(screen.getByLabelText(/toggle compact mode/i)).not.toBeChecked();
     expect(screen.getByLabelText(/toggle haptic feedback/i)).toBeChecked();
     expect(screen.getByLabelText(/toggle animations/i)).toBeChecked();
     expect(screen.getByLabelText(/toggle public mode/i)).toBeChecked();

@@ -130,7 +130,7 @@ describe('TimingBar', () => {
     expect(screen.queryByRole('heading', { name: "You've been eliminated" })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '📹 Remain as spectator' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '⏩ Skip to final results' })).not.toBeInTheDocument();
-    expect(screen.getByText('⚡ Survivor — Winner')).toBeInTheDocument();
+    expect(screen.getByText('⚡ Survival Winner')).toBeInTheDocument();
     expect(screen.getAllByText('Nico').length).toBeGreaterThan(0);
   });
 

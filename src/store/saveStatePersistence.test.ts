@@ -41,7 +41,7 @@ describe('saveStatePersistence survivor progression', () => {
       profileId: 'profile-1',
       savedAt: '2026-07-01T12:00:00.000Z',
       game: {
-        mode: 'survivor',
+        mode: 'survival',
         week: 25,
         status: 'active',
         runId: 'run-1',
@@ -52,7 +52,7 @@ describe('saveStatePersistence survivor progression', () => {
           { id: 'ai-2', name: 'AI 2', avatar: 'B', status: 'active' },
         ],
         modeSpecific: {
-          kind: 'survivor',
+          kind: 'survival',
           currentDay: 25,
           bestDayReached: 25,
           startingCastSize: 9,

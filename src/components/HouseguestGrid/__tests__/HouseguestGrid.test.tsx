@@ -1,6 +1,11 @@
 import { describe, expect, it, afterEach, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { render, screen, within, cleanup } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import HouseguestGrid, { type Houseguest } from '../HouseguestGrid';
+import gameReducer from '../../../store/gameSlice';
+import challengeReducer from '../../../store/challengeSlice';
 
 function rect({
   top = 0,
@@ -24,6 +29,17 @@ function rect({
     bottom: top + height,
     toJSON: () => ({}),
   } as DOMRect
+}
+
+function renderGrid(ui: ReactElement) {
+  const store = configureStore({
+    reducer: {
+      game: gameReducer,
+      challenge: challengeReducer,
+    },
+  })
+
+  return render(<Provider store={store}>{ui}</Provider>)
 }
 
 describe('HouseguestGrid', () => {
@@ -69,7 +85,7 @@ describe('HouseguestGrid', () => {
       name: `Player ${index + 1}`,
     }))
 
-    const { container } = render(
+    const { container } = renderGrid(
       <HouseguestGrid
         houseguests={houseguests}
         gridSize={16}
@@ -126,7 +142,7 @@ describe('HouseguestGrid', () => {
       name: `Player ${index + 1}`,
     }))
 
-    const { container } = render(
+    const { container } = renderGrid(
       <HouseguestGrid
         houseguests={houseguests}
         gridSize={16}
@@ -140,39 +156,21 @@ describe('HouseguestGrid', () => {
     expect((container.firstElementChild as HTMLElement | null)?.style.getPropertyValue('--grid-available-height')).toBe('220px')
   })
 
-  it('renders the compact slider layout when requested', () => {
+  it('renders the compact small layout when requested', () => {
     const houseguests: Houseguest[] = Array.from({ length: 6 }, (_, index) => ({
       id: `p${index + 1}`,
       name: `Player ${index + 1}`,
     }))
 
-    const { container } = render(
+    const { container } = renderGrid(
       <HouseguestGrid
         houseguests={houseguests}
         compact
-        compactLayout="slider"
         placeholderCount={2}
       />,
     )
 
-    expect(container.querySelector('section')?.getAttribute('data-compact-layout')).toBe('slider')
+    expect(container.querySelector('section')?.getAttribute('data-compact-layout')).toBe('small')
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(8)
-  })
-
-  it('marks the two-row compact layout when requested', () => {
-    const houseguests: Houseguest[] = Array.from({ length: 8 }, (_, index) => ({
-      id: `p${index + 1}`,
-      name: `Player ${index + 1}`,
-    }))
-
-    const { container } = render(
-      <HouseguestGrid
-        houseguests={houseguests}
-        compact
-        compactLayout="two-rows"
-      />,
-    )
-
-    expect(container.querySelector('section')?.getAttribute('data-compact-layout')).toBe('two-rows')
   })
 })

@@ -345,7 +345,7 @@ describe('HomeHub', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 
-  it('shows Survivor rules before starting a fresh Survivor run', async () => {
+  it('shows Survival rules before starting a fresh Survival run', async () => {
     const view = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -355,11 +355,11 @@ describe('HomeHub', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Survivor Mode' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Survival Mode' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText(/don't show again/i));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByLabelText(/don't show this again/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Survival' }));
 
     await waitFor(() => {
       expect(

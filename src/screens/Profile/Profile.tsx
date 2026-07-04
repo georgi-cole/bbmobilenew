@@ -807,9 +807,9 @@ export default function Profile() {
       <div className="profile-screen__survivor-card">
         <div className="profile-screen__survivor-header">
           <div>
-            <p className="profile-screen__section-title">Survivor Progress</p>
+            <p className="profile-screen__section-title">Survival Progress</p>
             <p className="profile-screen__survivor-copy">
-              Progress is saved to this profile and carries across Survivor runs.
+              Progress is saved to this profile and carries across Survival runs.
             </p>
           </div>
           <div className="profile-screen__survivor-count">{survivorUnlockedCount} unlocked</div>
@@ -829,9 +829,9 @@ export default function Profile() {
         <div className="profile-screen__survivor-grid">
           {survivorUnlockedCount === 0 ? (
             <div className="profile-screen__survivor-empty">
-              <p className="profile-screen__empty-text">No Survivor achievements unlocked yet.</p>
+              <p className="profile-screen__empty-text">No Survival achievements unlocked yet.</p>
               <p className="profile-screen__survivor-empty-hint">
-                Reach Survivor Day 10 to unlock your first milestone.
+                Reach Survival Day 10 to unlock your first milestone.
               </p>
             </div>
           ) : (

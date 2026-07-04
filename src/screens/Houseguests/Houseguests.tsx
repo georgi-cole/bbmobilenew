@@ -68,7 +68,6 @@ export default function Houseguests() {
         gridSize={gridSize}
         placeholderCount={placeholderCount}
         compact={settings.gameUX.compactRoster}
-        compactLayout={settings.gameUX.compactRosterLayout}
         occupancyLabel={occupancyLabel}
       />
 

@@ -20,9 +20,9 @@ function player(
 
 function survivorGame(players: Player[], currentDay = 10): GameState {
   return {
-    mode: 'survivor',
+    mode: 'survival',
     modeSpecific: {
-      kind: 'survivor',
+      kind: 'survival',
       currentDay,
       totalRoboContestantsEvicted: 0,
       bestDayReached: currentDay,

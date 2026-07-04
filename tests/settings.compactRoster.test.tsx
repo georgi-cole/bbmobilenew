@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Settings from '../src/screens/Settings/Settings';
 import gameReducer from '../src/store/gameSlice';
-import settingsReducer, { setGameUX } from '../src/store/settingsSlice';
+import settingsReducer, { loadSettings, STORAGE_KEY } from '../src/store/settingsSlice';
 
 function makeStore() {
   return configureStore({
@@ -30,25 +30,56 @@ function renderSettings(store = makeStore()) {
 }
 
 describe('Settings compact roster controls', () => {
-  it('shows Compact Roster in normal Settings with only supported layout choices', () => {
-    renderSettings();
-
-    expect(screen.getByLabelText(/toggle compact roster/i)).toBeTruthy();
-
-    const layoutSelect = screen.getByLabelText(/compact roster layout/i);
-    const optionLabels = within(layoutSelect).getAllByRole('option').map((option) => option.textContent);
-
-    expect(optionLabels).toEqual(['2 rows of 8 avatars', '4x4 smaller avatars']);
-    expect(optionLabels).not.toContain('Horizontal slider');
+  afterEach(() => {
+    localStorage.removeItem(STORAGE_KEY);
   });
 
-  it('normalizes a stored slider layout to the supported smaller-avatar mode', () => {
-    const store = makeStore();
+  it('shows only Compact mode in normal Settings without a separate layout choice', () => {
+    renderSettings();
 
-    store.dispatch(setGameUX({ compactRosterLayout: 'slider' }));
-    renderSettings(store);
+    expect(screen.getByLabelText(/toggle compact mode/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/compact roster layout/i)).toBeNull();
+    expect(screen.queryByText(/4x4 smaller avatars/i)).toBeNull();
+    expect(screen.queryByText(/2 rows of 8 avatars/i)).toBeNull();
+  });
 
-    expect(store.getState().settings.gameUX.compactRosterLayout).toBe('small');
-    expect(screen.getByLabelText(/compact roster layout/i)).toHaveValue('small');
+  it('migrates the old smaller-avatar layout to compact mode', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        gameUX: {
+          compactRoster: false,
+          compactRosterLayout: 'small',
+        },
+      }),
+    );
+
+    expect(loadSettings().gameUX.compactRoster).toBe(true);
+  });
+
+  it('does not force compact mode for the old two-row layout unless compact was already on', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        gameUX: {
+          compactRoster: false,
+          compactRosterLayout: 'two-rows',
+        },
+      }),
+    );
+
+    expect(loadSettings().gameUX.compactRoster).toBe(false);
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        gameUX: {
+          compactRoster: true,
+          compactRosterLayout: 'two-rows',
+        },
+      }),
+    );
+
+    expect(loadSettings().gameUX.compactRoster).toBe(true);
   });
 });

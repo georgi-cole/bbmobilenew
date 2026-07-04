@@ -72,30 +72,10 @@
   overflow: visible;
 }
 
-.slider {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 4px;
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  gap: 5px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x proximity;
-}
-
-
 .gridItem {
   width: var(--game-avatar-tile-size, 100%);
   max-width: 100%;
   min-width: 0;
-}
-
-.sliderItem {
-  flex: 0 0 min(84px, calc(25vw - 10px));
-  min-width: 0;
-  scroll-snap-align: start;
 }
 
 .container[data-header-mode='persistent'] .headerRow {
@@ -471,11 +451,6 @@
 .compactSmall .hgPlaceholderImg {
   width: 28px;
   height: 28px;
-}
-
-.compactTwoRows .grid {
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  max-height: none;
 }
 
 .roboStatsBackdrop {

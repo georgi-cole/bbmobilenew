@@ -16,7 +16,7 @@ export function getConfiguredCastSize(): number {
 /**
  * The subset of settings that require starting a new game to take effect.
  * Pure UI/audio/accessibility settings (animations, useHaptics, compactRoster,
- * compactRosterLayout, audio, display, visual) are intentionally excluded —
+ * audio, display, visual) are intentionally excluded —
  * changing those never triggers the restart prompt.
  * Gameplay-defining fields (castSize, spectatorMode, compSelection, sim.*) are
  * included because they affect the season structure or player roster.

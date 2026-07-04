@@ -17,7 +17,6 @@ function makeInput(overrides: Partial<ResponsiveGameLayoutInput> = {}): Responsi
     hasDock: true,
     playerCount: 16,
     userCompactRoster: false,
-    userCompactRosterLayout: 'small',
     ...overrides,
   }
 }

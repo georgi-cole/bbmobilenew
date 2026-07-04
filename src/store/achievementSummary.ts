@@ -143,7 +143,7 @@ export function buildAchievementSummary(input: {
   if (seasonsWon > 0) highlightBadges.push(`🏆 Season champ ×${seasonsWon}`);
   if (publicFavoriteWins > 0) highlightBadges.push(`🌟 Public favorite ×${publicFavoriteWins}`);
   if (totalCompWins >= 5) highlightBadges.push(`💪 Comp beast ×${totalCompWins}`);
-  if (survivedNominations >= 3) highlightBadges.push(`🛡️ Block survivor ×${survivedNominations}`);
+  if (survivedNominations >= 3) highlightBadges.push(`🛡️ Block survival ×${survivedNominations}`);
   if (rewardIds.size > 0) highlightBadges.push(`🥚 Reward hunter ×${rewardIds.size}`);
   if (doubleEvictionSurvivals > 0 || tripleEvictionSurvivals > 0) {
     highlightBadges.push(`⚡ Eviction escape artist ×${doubleEvictionSurvivals + tripleEvictionSurvivals}`);

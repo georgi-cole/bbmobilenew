@@ -69,7 +69,7 @@ function clearPendingChallenge(storeApi: MiddlewareAPI) {
 }
 
 function getSurvivorState(game: GameState): SurvivorModeState {
-  return game.modeSpecific?.kind === 'survivor'
+  return game.modeSpecific?.kind === 'survival'
     ? game.modeSpecific
     : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
 }
@@ -110,7 +110,7 @@ function normalizeSurvivorPlayer(player: Player, slot: number, currentDay: numbe
 }
 
 function withNormalizedSurvivorCast(game: GameState): GameState | null {
-  if (game.mode !== 'survivor' || isSurvivorRunTerminal(game)) return null;
+  if (game.mode !== 'survival' || isSurvivorRunTerminal(game)) return null;
 
   const modeSpecific = getSurvivorState(game);
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
@@ -176,7 +176,7 @@ function withNormalizedSurvivorCast(game: GameState): GameState | null {
 }
 
 function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState | null {
-  if (game.mode !== 'survivor' || isSurvivorRunTerminal(game) || !shouldReplaceEvictedPlayers(game.mode)) return null;
+  if (game.mode !== 'survival' || isSurvivorRunTerminal(game) || !shouldReplaceEvictedPlayers(game.mode)) return null;
   const evicteeIndex = game.players.findIndex((player) => player.id === evicteeId);
   const evictee = evicteeIndex >= 0 ? game.players[evicteeIndex] : undefined;
   if (!evictee || !isExited(evictee) || evictee.isUser) return null;
@@ -200,7 +200,7 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
     text: `${replacement.name} enters as a replacement synthetic contestant.`,
     type: 'game' as const,
     timestamp: startedAt,
-    meta: { phase: game.phase, week: game.week, mode: 'survivor' },
+    meta: { phase: game.phase, week: game.week, mode: 'survival' },
   };
 
   return {
@@ -215,7 +215,7 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
       totalRoboContestantsEvicted,
       nextRoboIndex: modeSpecific.nextRoboIndex + 1,
       replacementTransition: {
-        mode: 'survivor',
+        mode: 'survival',
         outgoingPlayerSnapshot: { ...evictee, status: 'evicted' },
         incomingPlayerId: replacement.id,
         slot: replacementSlot,
@@ -229,7 +229,7 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
 }
 
 function withSurvivorDaySync(game: GameState): GameState | null {
-  if (game.mode !== 'survivor' || isSurvivorRunTerminal(game)) return null;
+  if (game.mode !== 'survival' || isSurvivorRunTerminal(game)) return null;
   const modeSpecific = getSurvivorState(game);
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const bestDayReached = Math.max(modeSpecific.bestDayReached, currentDay);
@@ -262,7 +262,7 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   const stateBefore = storeApi.getState() as { game: GameState };
 
   if (
-    stateBefore.game.mode === 'survivor' &&
+    stateBefore.game.mode === 'survival' &&
     isSurvivorRunTerminal(stateBefore.game) &&
     isTerminalActionBlocked(typedAction.type)
   ) {
@@ -274,14 +274,14 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   }
 
   if (
-    stateBefore.game.mode === 'survivor' &&
+    stateBefore.game.mode === 'survival' &&
     typedAction.type?.startsWith('social/') &&
     typedAction.type !== drainEvictedPlayerSocial.type
   ) {
     return undefined;
   }
 
-  if (stateBefore.game.mode === 'survivor' && typedAction.type && SURVIVOR_BLOCKED_SHOCK_ACTIONS.has(typedAction.type)) {
+  if (stateBefore.game.mode === 'survival' && typedAction.type && SURVIVOR_BLOCKED_SHOCK_ACTIONS.has(typedAction.type)) {
     if (stateBefore.game.pendingForcedShock?.type && stateBefore.game.pendingForcedShock.type !== 'doubleEviction') {
       storeApi.dispatch(consumeForcedShock());
     }
@@ -292,7 +292,7 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   const stateAfter = storeApi.getState() as { game: GameState };
   const game = stateAfter.game;
 
-  if (game.mode !== 'survivor') return result;
+  if (game.mode !== 'survival') return result;
 
   if (isSurvivorHumanEliminated(game)) {
     if (needsSurvivorTerminalHydration(game)) {
