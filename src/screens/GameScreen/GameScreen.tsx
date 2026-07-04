@@ -149,6 +149,7 @@ import {
 } from './gameScreenPersistence'
 import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import { useResponsiveGameLayout } from './useResponsiveGameLayout'
+import { getCeremonyTileRect } from './ceremonyTileMeasurement'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
@@ -410,24 +411,10 @@ export default function GameScreen() {
     FEATURE_SPECTATOR_REACT && game.cfg?.enableSpectatorReact !== false
 
   // ── Tile position lookup for CeremonyOverlay ──────────────────────────────
-  // Queries a `data-player-id` attribute on the houseguest grid's <li> items so
-  // we can get a bounding rect without needing to pass refs through render.
+  // Queries the houseguest grid's data-player-id items and centers only scroll
+  // roster targets before measurement, keeping normal/compact rosters fixed.
   const getTileRect = useCallback((playerId: string): DOMRect | null => {
-    // CSS.escape may be unavailable in some environments (jsdom); fall back to
-    // a simple attribute selector when it isn't defined.
-    const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(playerId) : playerId
-    const el = document.querySelector<HTMLElement>(`[data-player-id="${escaped}"]`)
-    if (!el) return null
-    const scrollRoot = el.closest<HTMLElement>('[data-roster-scroll="true"]')
-    if (scrollRoot) {
-      const tileRect = el.getBoundingClientRect()
-      const scrollRect = scrollRoot.getBoundingClientRect()
-      if (tileRect.top < scrollRect.top || tileRect.bottom > scrollRect.bottom) {
-        el.scrollIntoView({ block: 'center', inline: 'nearest' })
-      }
-    }
-    const rect = el.getBoundingClientRect()
-    return rect.width > 0 || rect.height > 0 ? rect : null
+    return getCeremonyTileRect(playerId)
   }, [])
 
   // ── CeremonyOverlay — deferred LOH / POS winner commit ─────────────────
@@ -1201,6 +1188,7 @@ export default function GameScreen() {
   // plays, showing the 🛡️ badge landing on the saved nominee's tile.
   const [pendingSaveCeremony, setPendingSaveCeremony] = useState<{
     tiles: CeremonyTile[]
+    resolveTiles: () => CeremonyTile[]
     caption: string
     subtitle?: string
     savedId: string
@@ -1252,10 +1240,33 @@ export default function GameScreen() {
         glowTone: 'success' as const,
       },
     ]
+    const resolveTiles = (): CeremonyTile[] => {
+      const currentSavedRect = getTileRect(id)
+      const currentHolderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
+      const currentSourceIsDistinctHolder =
+        currentHolderRect != null && game.posWinnerId != null && game.posWinnerId !== id
+
+      return [
+        ...(currentSourceIsDistinctHolder
+          ? [{
+              rect: currentHolderRect,
+              glowTone: 'gold' as const,
+            }]
+          : []),
+        {
+          rect: currentSavedRect,
+          badge: 'ðŸ›¡ï¸',
+          badgeStart: currentSourceIsDistinctHolder && currentHolderRect ? currentHolderRect : 'center',
+          badgeLabel: `${savedPlayer.name} saved by veto`,
+          glowTone: 'success' as const,
+        },
+      ]
+    }
 
     pendingSaveDispatchRef.current = () => dispatch(submitSaveAction)
     setPendingSaveCeremony({
       tiles,
+      resolveTiles,
       caption: `${savedPlayer.name} has been saved!`,
       subtitle: saveSubtitle,
       savedId: id,
@@ -1299,6 +1310,7 @@ export default function GameScreen() {
   // tile to the replacement nominee's tile.
   const [pendingReplacementCeremony, setPendingReplacementCeremony] = useState<{
     tiles: CeremonyTile[]
+    resolveTiles: () => CeremonyTile[]
     caption: string
     subtitle?: string
     replacementId: string
@@ -1352,10 +1364,33 @@ export default function GameScreen() {
         glowTone: 'danger' as const,
       },
     ]
+    const resolveTiles = (): CeremonyTile[] => {
+      const currentReplacementRect = getTileRect(id)
+      const currentSourceRect = sourceId ? getTileRect(sourceId) : null
+      const currentSourceIsDistinct = currentSourceRect != null && sourceId != null && sourceId !== id
+
+      return [
+        ...(currentSourceIsDistinct
+          ? [{
+              rect: currentSourceRect,
+              glowTone: 'gold' as const,
+            }]
+          : []),
+        {
+          rect: currentReplacementRect,
+          badge: 'â“',
+          badgeImageSrc: NOMINATION_BADGE_SRC,
+          badgeStart: currentSourceIsDistinct && currentSourceRect ? currentSourceRect : 'center',
+          badgeLabel: `${replacementPlayer.name} named backup nominee`,
+          glowTone: 'danger' as const,
+        },
+      ]
+    }
 
     pendingReplacementDispatchRef.current = onCommit
     setPendingReplacementCeremony({
       tiles,
+      resolveTiles,
       caption: `${replacementPlayer.name} is the backup nominee!`,
       subtitle: replacementSubtitle,
       replacementId: id,
@@ -3830,7 +3865,9 @@ export default function GameScreen() {
       {/* ── CeremonyOverlay — Replacement nominee (human LOH deferred) ──── */}
       {pendingReplacementCeremony && (
         <CeremonyOverlay
-          tiles={pendingReplacementCeremony.tiles}
+          tiles={[]}
+          layoutSignal={responsiveGameLayout.revision}
+          resolveTiles={pendingReplacementCeremony.resolveTiles}
           caption={pendingReplacementCeremony.caption}
           subtitle={pendingReplacementCeremony.subtitle}
           onDone={handleReplacementCeremonyDone}
@@ -3898,7 +3935,9 @@ export default function GameScreen() {
       {/* ── CeremonyOverlay — POS save ceremony (human POS holder) ────── */}
       {showSaveCeremony && pendingSaveCeremony && (
         <CeremonyOverlay
-          tiles={pendingSaveCeremony.tiles}
+          tiles={[]}
+          layoutSignal={responsiveGameLayout.revision}
+          resolveTiles={pendingSaveCeremony.resolveTiles}
           caption={pendingSaveCeremony.caption}
           subtitle={pendingSaveCeremony.subtitle}
           onDone={handleSaveCeremonyDone}

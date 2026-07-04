@@ -60,10 +60,11 @@
   display: grid;
   flex: 1 1 auto;
   min-height: 0;
-  gap: 5px;
-  grid-template-columns: repeat(4, 1fr);
+  gap: var(--game-roster-gap, 5px);
+  grid-template-columns: repeat(4, minmax(0, var(--game-avatar-tile-size, 1fr)));
   grid-auto-rows: max-content;
   align-content: start;
+  justify-content: center;
   justify-items: stretch;
   align-items: start;
   max-height: min(var(--game-roster-max-height, 480px), var(--grid-available-height, 480px), 100%);
@@ -86,7 +87,8 @@
 
 
 .gridItem {
-  width: 100%;
+  width: var(--game-avatar-tile-size, 100%);
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -407,7 +409,7 @@
 /* 12-tile and 16-tile grid layouts (both use 4 columns) */
 .hgGrid12,
 .hgGrid16 {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, var(--game-avatar-tile-size, 1fr)));
 }
 
 /* Inactive/placeholder tile */
@@ -448,7 +450,7 @@
 }
 
 .compact .grid {
-  gap: 3px;
+  gap: var(--game-roster-gap, 5px);
 }
 
 .compact .avatarWrap {
