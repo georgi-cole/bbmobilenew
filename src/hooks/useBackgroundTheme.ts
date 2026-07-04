@@ -25,14 +25,21 @@ interface UseBackgroundThemeOptions {
   attachToRoot?: boolean;
 }
 
+function resolveInitialBackground(): BackgroundState {
+  const fallbackKey = getBinaryFallbackKey(new Date());
+  const fallbackAsset = resolveSkinAsset(fallbackKey);
+
+  return {
+    url: fallbackAsset.url,
+    key: fallbackAsset.key,
+    reason: 'fallback:initial-render',
+  };
+}
+
 export default function useBackgroundTheme(
   opts: UseBackgroundThemeOptions = {},
 ): BackgroundState {
-  const [state, setState] = useState<BackgroundState>({
-    url: null,
-    key: null,
-    reason: null,
-  });
+  const [state, setState] = useState<BackgroundState>(() => resolveInitialBackground());
 
   const { attachToRoot } = opts;
 

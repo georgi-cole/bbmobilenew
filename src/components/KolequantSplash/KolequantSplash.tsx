@@ -50,8 +50,6 @@ export default function KolequantSplash({
   const progressLabel = status ?? activeMessages[messageIndex];
 
   useEffect(() => {
-    setMinimumElapsed(false);
-    setExiting(false);
     exitStartedRef.current = false;
     const timer = window.setTimeout(() => setMinimumElapsed(true), duration);
     return () => window.clearTimeout(timer);
@@ -69,9 +67,18 @@ export default function KolequantSplash({
     if (!ready || !minimumElapsed || exitStartedRef.current) return;
 
     exitStartedRef.current = true;
-    setExiting(true);
-    const timer = window.setTimeout(() => onFinish?.(), EXIT_MS);
-    return () => window.clearTimeout(timer);
+    let finishTimer: number | undefined;
+    const exitTimer = window.setTimeout(() => {
+      setExiting(true);
+      finishTimer = window.setTimeout(() => onFinish?.(), EXIT_MS);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(exitTimer);
+      if (finishTimer != null) {
+        window.clearTimeout(finishTimer);
+      }
+    };
   }, [minimumElapsed, onFinish, ready]);
 
   const splashStyle = {
