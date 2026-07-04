@@ -7,7 +7,7 @@
  *   3. Add a <Route> inside the AppShell layout route
  *   That's it — no other files need changing.
  */
-import { createHashRouter } from 'react-router-dom';
+import { createHashRouter, Navigate } from 'react-router-dom';
 
 import AppShell             from './components/layout/AppShell';
 import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoundary';
@@ -30,6 +30,7 @@ import Settings             from './screens/Settings/Settings';
 import NotFound             from './screens/NotFound/NotFound';
 import { canAccessSpecialSettings } from './utils/debugMode';
 import { lazy, Suspense }   from 'react';
+import { useAppSelector } from './store/hooks';
 
 // Admin/debug screens stay hidden unless the current session has QA debug access.
 const SettingsAdmin = import.meta.env.DEV || canAccessSpecialSettings()
@@ -90,6 +91,11 @@ const MinigameLab = import.meta.env.DEV
   ? lazy(() => import('./screens/MinigameLab/MinigameLab'))
   : null;
 
+function GameRoute() {
+  const isGameActive = useAppSelector((state) => state.game.status === 'active');
+  return isGameActive ? <GameScreen /> : <Navigate to="/" replace />;
+}
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -97,7 +103,7 @@ export const router = createHashRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true,              element: <HomeHub />      },
-      { path: 'game',             element: <GameScreen />   },
+      { path: 'game',             element: <GameRoute />    },
       { path: 'diary-room',       element: <DiaryRoom />    },
       { path: 'houseguests',      element: <Houseguests />  },
       { path: 'profile',          element: <Profile />      },
