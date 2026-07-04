@@ -114,6 +114,7 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     ? Math.max(input.safeTop, ANDROID_TOP_SAFE_FALLBACK)
     : input.safeTop
   const navHeight = input.navHeight || DEFAULT_NAV_HEIGHT
+  void navHeight
   const measuredDockHeight = input.dockHeight || estimateDockHeight(stageWidth)
   const dockClearance = input.hasDock ? measuredDockHeight + 8 : 0
   const isTablet = layoutSize === 'tablet-portrait' || layoutSize === 'tablet-landscape'
