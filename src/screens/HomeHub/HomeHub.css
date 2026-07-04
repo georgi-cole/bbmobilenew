@@ -1,5 +1,9 @@
 /* HomeHub — narrower asymmetric buttons, stronger glass look */
 
+body:has(.homehub-shell) .app-shell {
+  background: var(--color-bg, #050813);
+}
+
 /* Shell fills the viewport; HomeHub owns its own decorative paint. */
 .homehub-shell {
   position: relative;
@@ -135,6 +139,62 @@
 @media (max-width: 420px) {
   .home-hub__title { font-size: 1.8rem; }
   .home-hub { padding-bottom: 28px; }
+}
+
+@media (min-width: 720px) and (orientation: portrait) {
+  .homehub-frame {
+    width: min(100vw, 620px);
+  }
+
+  .homehub-content {
+    max-width: 520px;
+  }
+}
+
+@media (min-width: 720px) and (orientation: landscape) {
+  body:has(.homehub-shell) .app-shell {
+    max-width: 100%;
+  }
+
+  .homehub-frame {
+    width: 100vw;
+    max-width: none;
+  }
+
+  .homehub-content {
+    width: min(100%, 520px);
+    max-width: 520px;
+  }
+
+  .homehub-frame #intro-hub {
+    --hub-chip-top-offset: 18px;
+    --hub-chip-left-offset: 18px;
+    --hub-chip-right-offset: 18px;
+    position: absolute;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: min(calc(100% - 96px), 760px);
+    height: min(calc(100% - var(--app-safe-area-top, 0px) - var(--safe-bottom, 0px) - 28px), 560px);
+    min-height: 360px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .homehub-frame #intro-hub .hub-chip--bottom-left,
+  .homehub-frame #intro-hub .hub-chip--bottom-right {
+    bottom: 18px;
+  }
+
+  .homehub-frame #intro-hub .hub-chip--bottom-left-2,
+  .homehub-frame #intro-hub .hub-chip--bottom-right-2 {
+    bottom: 70px;
+  }
+
+  .homehub-frame #intro-hub .hub-chip--bottom-left-3,
+  .homehub-frame #intro-hub .hub-chip--bottom-right-3 {
+    bottom: 122px;
+  }
 }
 
 .homehub-resume-modal {
