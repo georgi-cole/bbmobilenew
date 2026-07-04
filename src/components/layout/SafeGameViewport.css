@@ -19,6 +19,26 @@ body.homehub-full-bleed-active {
   background-repeat: no-repeat;
 }
 
+body.homehub-full-bleed-active::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: calc(-1 * max(var(--safe-bottom), 34px));
+  left: 0;
+  z-index: 0;
+  background-image: var(--homehub-full-bleed-bg, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+body.homehub-full-bleed-active #root {
+  position: relative;
+  z-index: 1;
+}
+
 html.homehub-full-bleed-active .safe-game-viewport,
 body.homehub-full-bleed-active .safe-game-viewport {
   --safe-game-viewport-bleed-bottom: max(var(--safe-bottom), 34px);

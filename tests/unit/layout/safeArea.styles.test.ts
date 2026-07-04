@@ -38,6 +38,8 @@ describe('safe-area layout styles', () => {
     expect(safeViewportCss).not.toContain('height: 100dvh;');
     expect(safeViewportCss).toContain('--safe-game-viewport-bleed-bottom: var(--safe-bottom);');
     expect(safeViewportCss).toContain('--safe-game-viewport-bleed-bottom: max(var(--safe-bottom), 34px);');
+    expect(safeViewportCss).toContain('body.homehub-full-bleed-active::before { content: \'\'; position: fixed; top: 0; right: 0; bottom: calc(-1 * max(var(--safe-bottom), 34px)); left: 0;');
+    expect(safeViewportCss).toContain('body.homehub-full-bleed-active #root { position: relative; z-index: 1;');
     expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; top: 0; right: 0; bottom: calc(-1 * var(--safe-game-viewport-bleed-bottom)); left: 0;');
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active .safe-game-viewport__bleed');
     expect(safeViewportCss).toContain('.safe-game-viewport__content { position: absolute; inset: 0;');
@@ -167,6 +169,7 @@ describe('safe-area layout styles', () => {
     expect(safeViewportCss).toContain('body.homehub-full-bleed-active { background-color: var(--color-bg);');
     expect(safeViewportCss).toContain('background-image: var(--homehub-full-bleed-bg, none);');
     expect(safeViewportCss).toContain('--safe-game-viewport-bleed-bottom: max(var(--safe-bottom), 34px);');
+    expect(safeViewportCss).toContain('body.homehub-full-bleed-active::before { content: \'\'; position: fixed; top: 0; right: 0; bottom: calc(-1 * max(var(--safe-bottom), 34px)); left: 0;');
     expect(safeViewportCss).toContain('.safe-game-viewport__bleed { position: fixed; top: 0; right: 0; bottom: calc(-1 * var(--safe-game-viewport-bleed-bottom)); left: 0;');
     expect(safeViewportCss).toContain('opacity: var(--homehub-full-bleed-overlay-opacity, 0);');
 
