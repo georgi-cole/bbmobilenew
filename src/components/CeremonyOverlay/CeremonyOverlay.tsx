@@ -70,6 +70,8 @@ export interface CeremonyOverlayProps {
    * during the render phase (e.g. first paint).
    */
   resolveTiles?: () => CeremonyTile[];
+  /** Changes when the surrounding layout budget changes and tile rects should be refreshed. */
+  layoutSignal?: string | number;
 }
 
 /** Badge animation phases with timing (ms from overlay mount) */
@@ -169,6 +171,7 @@ export default function CeremonyOverlay({
   showDim = true,
   showCaption = true,
   resolveTiles,
+  layoutSignal,
 }: CeremonyOverlayProps) {
   const [visible, setVisible] = useState(true);
   const [badgePhase, setBadgePhase] = useState<BadgePhase>('hidden');
@@ -229,13 +232,13 @@ export default function CeremonyOverlay({
     return id;
   }, []);
 
-  // Resolve tiles lazily on mount when resolveTiles is provided.
+  // Resolve tiles lazily and refresh them when the measured layout changes.
   useEffect(() => {
-    if (resolveTiles && resolvedTiles === null) {
+    if (resolveTiles) {
       setResolvedTiles(resolveTiles());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [layoutSignal]);
 
   // Headless fallback: fire onDone immediately
   useEffect(() => {

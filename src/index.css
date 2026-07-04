@@ -94,9 +94,12 @@ html, body {
   height: 100%;
 }
 
-html.is-capacitor,
-html.is-chrome-android {
+html.is-capacitor {
   --app-safe-area-top-fallback: 16px;
+}
+
+html.is-chrome-android {
+  --app-safe-area-top-fallback: 24px;
 }
 
 /* ── Base elements ────────────────────────────────────────────────────────── */

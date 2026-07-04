@@ -19,10 +19,12 @@ describe('safe-area layout styles', () => {
 
     expect(globalCss).toContain('--safe-top: env(safe-area-inset-top, 0px);');
     expect(globalCss).toContain('--safe-bottom: env(safe-area-inset-bottom, 0px);');
+    expect(globalCss).toContain('html.is-chrome-android { --app-safe-area-top-fallback: 24px; }');
     expect(existsSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.tsx'))).toBe(false);
     expect(existsSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.css'))).toBe(false);
     expect(appShellTsx).not.toContain('SafeGameViewport');
     expect(appShellCss).toContain('height: 100dvh;');
+    expect(appShellCss).toContain('max-width: var(--app-shell-max-width, 480px);');
     expect(appShellCss).toContain('margin: 0 auto;');
     expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);');
     expect(appShellCss).toContain('padding-right: var(--safe-right);');
@@ -56,8 +58,13 @@ describe('safe-area layout styles', () => {
     const gameScreenCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'), 'utf8'),
     );
+    const gameScreenTsx = readFileSync(resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.tsx'), 'utf8');
     const houseguestGridCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/HouseguestGrid/HouseguestGrid.module.css'), 'utf8'),
+    );
+    const ceremonyOverlayTsx = readFileSync(
+      resolve(process.cwd(), 'src/components/CeremonyOverlay/CeremonyOverlay.tsx'),
+      'utf8',
     );
     const tvLogCss = normalizeCss(
       readFileSync(resolve(process.cwd(), 'src/components/TVLog/TVLog.css'), 'utf8'),
@@ -68,8 +75,12 @@ describe('safe-area layout styles', () => {
     expect(houseguestGridCss).toContain('grid-auto-rows: max-content;');
     expect(houseguestGridCss).toContain('align-content: start;');
     expect(houseguestGridCss).toContain('overflow: hidden;');
-    expect(houseguestGridCss).not.toContain('overflow-y: auto;');
+    expect(houseguestGridCss).toContain(".scrollRoster .grid { overflow-y: auto;");
+    expect(houseguestGridCss).toContain(".container[data-header-mode='persistent'] .headerRow");
     expect(houseguestGridCss).not.toContain('survivorTileSettle');
+    expect(gameScreenTsx).toContain('useResponsiveGameLayout');
+    expect(gameScreenTsx).toContain('layoutSignal={responsiveGameLayout.revision}');
+    expect(ceremonyOverlayTsx).toContain('layoutSignal?: string | number;');
     expect(tvLogCss).toContain('overflow-y: auto;');
     expect(tvLogCss).toContain('@media (max-width: 480px) and (max-height: 900px)');
     expect(tvLogCss).toContain('max-height: var(--tv-log-item-h);');

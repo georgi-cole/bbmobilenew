@@ -148,6 +148,7 @@ import {
   usePersistedPromptDate,
 } from './gameScreenPersistence'
 import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
+import { useResponsiveGameLayout } from './useResponsiveGameLayout'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
@@ -300,6 +301,7 @@ function buildDoubleEvictionPostVoteAnnouncement(options: {
 export default function GameScreen() {
   const dispatch = useAppDispatch()
   const store = useStore<RootState>()
+  const gameScreenRef = useRef<HTMLDivElement | null>(null)
   const storeRef = useRef(store)
   useEffect(() => {
     storeRef.current = store
@@ -416,6 +418,14 @@ export default function GameScreen() {
     const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(playerId) : playerId
     const el = document.querySelector<HTMLElement>(`[data-player-id="${escaped}"]`)
     if (!el) return null
+    const scrollRoot = el.closest<HTMLElement>('[data-roster-scroll="true"]')
+    if (scrollRoot) {
+      const tileRect = el.getBoundingClientRect()
+      const scrollRect = scrollRoot.getBoundingClientRect()
+      if (tileRect.top < scrollRect.top || tileRect.bottom > scrollRect.bottom) {
+        el.scrollIntoView({ block: 'center', inline: 'nearest' })
+      }
+    }
     const rect = el.getBoundingClientRect()
     return rect.width > 0 || rect.height > 0 ? rect : null
   }, [])
@@ -2951,9 +2961,6 @@ export default function GameScreen() {
     spectatorF3Active ||
     spectatorLegacyActive
 
-  const expandsTvForCompactRoster = settings.gameUX.compactRoster
-  const compactRosterLogRows = expandsTvForCompactRoster ? 6 : 2
-
   // ── Viewport fallback message for blank-TV states ────────────────────────
   // Provides a meaningful holding message during states where no fresh TV event
   // is available: after dismissing the live_eviction announcement during
@@ -2996,10 +3003,24 @@ export default function GameScreen() {
     })
   }
 
+  const responsiveGameLayout = useResponsiveGameLayout(gameScreenRef, {
+    hasDock: showGameControlDock,
+    playerCount: game.players.length,
+    userCompactRoster: settings.gameUX.compactRoster,
+    userCompactRosterLayout: settings.gameUX.compactRosterLayout,
+  })
+  const gameTvLogRows = responsiveGameLayout.tvLogRows
+
   return (
     <LayoutGroup id="game-layout">
     <div
-      className={`game-screen game-screen-shell${expandsTvForCompactRoster ? ' game-screen--compact-roster-balance' : ''}`}
+      ref={gameScreenRef}
+      className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}`}
+      style={responsiveGameLayout.cssVars}
+      data-layout-size={responsiveGameLayout.layoutSize}
+      data-roster-mode={responsiveGameLayout.rosterMode}
+      data-roster-header={responsiveGameLayout.rosterHeaderMode}
+      data-layout-revision={responsiveGameLayout.revision}
     >
       {showPublicSaveReveal && publicSaveWinnerId ? (
         <TvZone
@@ -3023,7 +3044,7 @@ export default function GameScreen() {
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : showDemocraciaResults && democraciaResultDisplay ? (
@@ -3049,7 +3070,7 @@ export default function GameScreen() {
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : showVoteResults ? (
@@ -3077,7 +3098,7 @@ export default function GameScreen() {
               ? () => setPublicMeterUnavailableAnnouncement(null)
               : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : (
@@ -3105,12 +3126,18 @@ export default function GameScreen() {
                   ? handlePublicSaveResultDismiss
                   : handlePreAdAnnouncementDismiss
           }
-          mainLogMaxVisible={compactRosterLogRows}
+          mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
         />
       )}
 
       {/* ── Outgoing LOH ineligibility warning ──────────────────────────── */}
+      {responsiveGameLayout.debugEnabled && (
+        <output className="game-screen__layout-debug" aria-live="polite">
+          {responsiveGameLayout.debugLabel}
+        </output>
+      )}
+
       {showOutgoingHohWarning && (
         <div
           className="tv-binary-modal"
@@ -3162,6 +3189,7 @@ export default function GameScreen() {
       {shouldShowNominationCeremony && (
         <CeremonyOverlay
           tiles={[]}
+          layoutSignal={responsiveGameLayout.revision}
           resolveTiles={() => {
             const lohId = lohCeremonyTileId
             if (!lohId) return []
@@ -3780,6 +3808,7 @@ export default function GameScreen() {
       {showAdvanceHohCeremony && game.lohId && (
         <CeremonyOverlay
           tiles={[]}
+          layoutSignal={responsiveGameLayout.revision}
           resolveTiles={() => {
             const winnerId = game.lohId!
             const winnerPlayer = game.players.find((p) => p.id === winnerId)
@@ -3815,6 +3844,7 @@ export default function GameScreen() {
       {showAiReplacementAnim && game.nomineeIds.length > 0 && (
         <CeremonyOverlay
           tiles={[]}
+          layoutSignal={responsiveGameLayout.revision}
           resolveTiles={() => {
             const replacementId = game.nomineeIds[game.nomineeIds.length - 1]
             const sourceId = game.specialVeto?.activeType === 'diamond' ? game.posWinnerId : game.lohId
@@ -3848,6 +3878,7 @@ export default function GameScreen() {
       {showPublicSaveCeremony && pendingPublicSaveResult && (
         <CeremonyOverlay
           tiles={[]}
+          layoutSignal={responsiveGameLayout.revision}
           resolveTiles={() => [{
             rect: getTileRect(pendingPublicSaveResult.savedId),
             badge: '❓',
@@ -4257,8 +4288,11 @@ export default function GameScreen() {
         headerSelector=".tv-zone"
         footerSelector=".nav-bar"
         overlaySelector=".game-control-dock"
-        compact={settings.gameUX.compactRoster}
-        compactLayout={settings.gameUX.compactRosterLayout}
+        compact={responsiveGameLayout.compactRoster}
+        compactLayout={responsiveGameLayout.compactRosterLayout}
+        rosterMode={responsiveGameLayout.rosterMode}
+        headerMode={responsiveGameLayout.rosterHeaderMode}
+        layoutRevision={responsiveGameLayout.revision}
         occupancyLabel={`${alivePlayers.length}/${game.players.length}`}
       />
       {previewPlayer && <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />}
