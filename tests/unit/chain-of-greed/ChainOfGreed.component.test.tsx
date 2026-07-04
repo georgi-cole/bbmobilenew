@@ -116,7 +116,7 @@ describe('ChainOfGreed component', () => {
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
   });
 
-    it('keeps banking unavailable until the chain has a pot', () => {
+  it('keeps banking unavailable until the chain has a pot', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
