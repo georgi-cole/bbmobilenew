@@ -68,6 +68,7 @@ const HUB_BUTTONS = [
   { to: '/credits',      label: 'Credits',     icon: '🎬', variant: 'secondary_small'  },
 ] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
 
+type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
 
 function snapshotDay(snapshot: SavedSeasonSnapshot | null | undefined): number | null {
@@ -202,6 +203,7 @@ export default function HomeHub() {
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
   const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
+  const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null);
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
   const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId);
@@ -252,12 +254,29 @@ export default function HomeHub() {
 
   function startClassicRun() {
     if (!isGuest && activeProfileId) {
+      clearSavedRun(activeProfileId, 'classic');
       const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? [];
       dispatch(resetGame(archives));
     } else {
       dispatch(resetGame(undefined));
     }
+    setClassicPrompt(null);
+    setPlaySelectionOpen(false);
     setPreloading(true);
+  }
+
+  function resumeClassicRun() {
+    if (!classicSnapshot) {
+      setClassicPrompt(null);
+      startClassicRun();
+      return;
+    }
+    try {
+      setClassicPrompt(null);
+      hydrateSnapshot(classicSnapshot);
+    } catch {
+      startClassicRun();
+    }
   }
 
   function startSurvivorRun() {
@@ -318,12 +337,8 @@ export default function HomeHub() {
     if (!isGuest && activeProfileId) {
       const snapshot = getSavedRun(activeProfileId, mode);
       if (snapshot?.profileId === activeProfileId) {
-        try {
-          hydrateSnapshot(snapshot);
-          return;
-        } catch {
-          // Bad snapshots fall through to a clean run for the selected mode.
-        }
+        setClassicPrompt('resume-or-new');
+        return;
       }
     }
 
@@ -402,6 +417,28 @@ export default function HomeHub() {
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
       {preloading && <AssetPreloaderOverlay />}
+
+      <ConfirmExitModal
+        open={classicPrompt === 'resume-or-new'}
+        title="Classic Campaign"
+        description="Resume your saved Classic campaign or start over?"
+        confirmLabel="Resume"
+        secondaryLabel="Start New"
+        cancelLabel="Cancel"
+        onConfirm={resumeClassicRun}
+        onSecondary={() => setClassicPrompt('confirm-new')}
+        onCancel={() => setClassicPrompt(null)}
+      />
+
+      <ConfirmExitModal
+        open={classicPrompt === 'confirm-new'}
+        title="Start new Classic campaign?"
+        description="This will replace your saved Classic campaign only. Survivor progress will not be affected."
+        confirmLabel="Start New"
+        cancelLabel="Cancel"
+        onConfirm={startClassicRun}
+        onCancel={() => setClassicPrompt('resume-or-new')}
+      />
 
       <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
