@@ -138,7 +138,9 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('top: var(--hub-chip-top-offset);');
     expect(introHubCss).toContain('left: var(--hub-chip-left-offset);');
     expect(introHubCss).toContain('right: var(--hub-chip-right-offset);');
+    expect(introHubCss).toMatch(/#intro-hub\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;[^}]*width:\s*auto;[^}]*height:\s*auto;/s);
     expect(introHubCss).toMatch(/#intro-hub\s*\{[^}]*pointer-events:\s*none;/s);
+    expect(introHubCss).not.toMatch(/#intro-hub\s*\{[^}]*height:\s*100%;/s);
     expect(introHubCss).toMatch(/\.hub-chip\s*\{[^}]*pointer-events:\s*auto;/s);
     expect(introHubCss).toContain('touch-action: manipulation;');
     expect(introHubCss).toContain('@media (hover: none) and (pointer: coarse)');
@@ -159,7 +161,9 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain('top: var(--hub-chip-top-offset);');
     expect(mirroredIntroHubCss).toContain('left: var(--hub-chip-left-offset);');
     expect(mirroredIntroHubCss).toContain('right: var(--hub-chip-right-offset);');
+    expect(mirroredIntroHubCss).toMatch(/#intro-hub\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;[^}]*width:\s*auto;[^}]*height:\s*auto;/s);
     expect(mirroredIntroHubCss).toContain('pointer-events: none;');
+    expect(mirroredIntroHubCss).not.toMatch(/#intro-hub\s*\{[^}]*height:\s*100%;/s);
     expect(mirroredIntroHubCss).toContain('pointer-events: auto;');
     expect(mirroredIntroHubCss).toContain('touch-action: manipulation;');
     expect(mirroredIntroHubCss).toContain('@media (hover: none) and (pointer: coarse)');

@@ -216,31 +216,6 @@ export default function HomeHub() {
   const hasEndedSurvivorRecord = !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0;
 
   useEffect(() => {
-    const root = document.documentElement;
-    const { body } = document;
-    root.classList.add('homehub-full-bleed-active');
-    body.classList.add('homehub-full-bleed-active');
-
-    if (effectiveBgUrl) {
-      root.style.setProperty('--homehub-full-bleed-bg', `url(${JSON.stringify(effectiveBgUrl)})`);
-    } else {
-      root.style.removeProperty('--homehub-full-bleed-bg');
-    }
-
-    root.style.setProperty(
-      '--homehub-full-bleed-overlay-opacity',
-      remoteOverlayOpacity != null && remoteOverlayOpacity > 0 ? String(remoteOverlayOpacity) : '0',
-    );
-
-    return () => {
-      root.classList.remove('homehub-full-bleed-active');
-      body.classList.remove('homehub-full-bleed-active');
-      root.style.removeProperty('--homehub-full-bleed-bg');
-      root.style.removeProperty('--homehub-full-bleed-overlay-opacity');
-    };
-  }, [effectiveBgUrl, remoteOverlayOpacity]);
-
-  useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> };
     gameWindow.game = gameWindow.game ?? {};
     // Legacy IntroHub/achievements scripts still read from window.game, so keep
@@ -473,6 +448,20 @@ export default function HomeHub() {
 
       <div className="homehub-shell">
         <div className="homehub-frame">
+          <div
+            className="homehub-intro-bg"
+            style={effectiveBgUrl ? { backgroundImage: `url("${effectiveBgUrl}")` } : undefined}
+            aria-hidden="true"
+          />
+
+          {remoteOverlayOpacity != null && remoteOverlayOpacity > 0 && (
+            <div
+              className="homehub-remote-overlay"
+              style={{ opacity: remoteOverlayOpacity }}
+              aria-hidden="true"
+            />
+          )}
+
           <HomeHubAssetLayer
             key={effectiveBgUrl ?? 'default'}
             splashDone={splashDone}

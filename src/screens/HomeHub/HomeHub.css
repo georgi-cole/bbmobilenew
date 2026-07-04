@@ -1,29 +1,30 @@
 /* HomeHub — narrower asymmetric buttons, stronger glass look */
 
-/* Shell fills the safe viewport parent; decorative art is painted by SafeGameViewport. */
+/* Shell fills the viewport; HomeHub owns its own decorative paint. */
 .homehub-shell {
   position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: calc(100% + var(--app-safe-area-top, 0px) + var(--safe-bottom, 0px));
   overflow: hidden;
   background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  margin-top: calc(-1 * var(--app-safe-area-top, 0px));
+  margin-bottom: calc(-1 * var(--safe-bottom, 0px));
   box-sizing: border-box;
 }
 
 /* Master portrait frame for safe interactive content */
 .homehub-frame {
   position: relative;
-  z-index: 2;
-  width: 100%;
-  max-width: 480px;
-  height: 100%;
-  min-height: 0;
+  width: min(100vw, 480px);
+  height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
+  padding-top: var(--app-safe-area-top, env(safe-area-inset-top, 0px));
   padding-bottom: var(--safe-bottom);
   overflow: hidden;
   display: flex;
@@ -32,13 +33,46 @@
   box-sizing: border-box;
 }
 
+.homehub-intro-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  transition: opacity 300ms ease, transform 350ms ease;
+}
+
+.homehub-intro-bg::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 72%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.80) 0%,
+    rgba(0, 0, 0, 0.50) 32%,
+    rgba(0, 0, 0, 0.18) 62%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.homehub-remote-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+  pointer-events: none;
+}
+
 /* Foreground content container: centered in the frame */
 .homehub-content {
   position: relative;
-  z-index: 3;
+  z-index: 2;
   width: 100%;
   max-width: 480px;
-  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -48,14 +82,12 @@
 /* Main hub container uses vertical centering */
 .home-hub {
   width: 100%;
-  max-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  padding: 10px 10px clamp(18px, 5vh, 36px);
+  padding: 10px 10px 36px;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 /* Title */
@@ -82,11 +114,8 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  min-height: 0;
   align-items: center;
   padding: 8px 4px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   animation: hub-nav-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -105,7 +134,7 @@
 /* Responsive: smaller screens */
 @media (max-width: 420px) {
   .home-hub__title { font-size: 1.8rem; }
-  .home-hub { padding-bottom: 24px; }
+  .home-hub { padding-bottom: 28px; }
 }
 
 .homehub-resume-modal {

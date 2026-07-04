@@ -38,7 +38,7 @@ function getNativeStatusBar(): NativeStatusBarLike | null {
  * - re-requests the wake lock when the tab becomes visible again
  * - attempts to keep the experience portrait-locked when the platform allows it
  * - lets the native status bar overlay the WebView before hiding it so
- *   SafeGameViewport remains the only safe-area layout owner
+ *   CSS remains the only safe-area layout owner
  */
 export default function useGameMode(): void {
   useEffect(() => {
@@ -128,12 +128,12 @@ export default function useGameMode(): void {
       if (!statusBar || statusBarHidden) return;
 
       try {
-        // SafeGameViewport owns CSS safe-area layout; native APIs must not resize the WebView.
+        // CSS owns safe-area layout; native APIs must not resize the WebView.
         await statusBar.setOverlaysWebView?.({ overlay: true });
         await statusBar.hide?.();
         statusBarHidden = true;
       } catch {
-        // SafeGameViewport owns layout correctness even when native APIs fail.
+        // CSS owns layout correctness even when native APIs fail.
       }
     }
 
