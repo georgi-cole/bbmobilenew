@@ -10,6 +10,7 @@ export type GameLayoutSize =
 
 export type ResponsiveRosterMode = 'normal' | 'compact-small' | 'scroll'
 export type RosterHeaderMode = 'transient' | 'persistent'
+export type SurvivorStandoutLayoutMode = 'full-card' | 'compact-strip' | 'mini-chip'
 
 export interface ResponsiveGameLayoutBudget {
   layoutSize: GameLayoutSize
@@ -21,6 +22,7 @@ export interface ResponsiveGameLayoutBudget {
   avatarTileSize: number
   rosterGap: number
   tvLogRows: number
+  survivorStandoutMode: SurvivorStandoutLayoutMode
   cssVars: CSSProperties
   debugEnabled: boolean
   debugLabel: string
@@ -58,6 +60,11 @@ const ROSTER_INLINE_PADDING = 16
 const ROSTER_HEADER_HEIGHT = 30
 const GAME_VERTICAL_PADDING = 10
 const GAME_SECTION_GAPS = 12
+const SURVIVOR_FULL_STANDOUT_MIN_SPACE = 72
+const SURVIVOR_COMPACT_STANDOUT_MIN_SPACE = 34
+const SURVIVOR_FULL_STANDOUT_HEIGHT = 74
+const SURVIVOR_COMPACT_STANDOUT_HEIGHT = 48
+const SURVIVOR_MINI_STANDOUT_HEIGHT = 28
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -87,11 +94,44 @@ function resolveLayoutSize(width: number, height: number): GameLayoutSize {
   return 'phone-large'
 }
 
+function resolveSurvivorStandoutMode(options: {
+  layoutSize: GameLayoutSize
+  rosterMode: ResponsiveRosterMode
+  extraAfterBaseRoster: number
+}): SurvivorStandoutLayoutMode {
+  if (options.rosterMode === 'scroll' || options.layoutSize === 'phone-small') {
+    return 'mini-chip'
+  }
+  if (options.layoutSize === 'tablet-portrait' || options.layoutSize === 'tablet-landscape') {
+    return 'full-card'
+  }
+  if (options.extraAfterBaseRoster >= SURVIVOR_FULL_STANDOUT_MIN_SPACE) {
+    return 'full-card'
+  }
+  if (options.extraAfterBaseRoster >= SURVIVOR_COMPACT_STANDOUT_MIN_SPACE) {
+    return 'compact-strip'
+  }
+  return 'mini-chip'
+}
+
+function getSurvivorStandoutHeight(mode: SurvivorStandoutLayoutMode) {
+  switch (mode) {
+    case 'full-card':
+      return SURVIVOR_FULL_STANDOUT_HEIGHT
+    case 'compact-strip':
+      return SURVIVOR_COMPACT_STANDOUT_HEIGHT
+    case 'mini-chip':
+    default:
+      return SURVIVOR_MINI_STANDOUT_HEIGHT
+  }
+}
+
 function buildDebugLabel(input: ResponsiveGameLayoutInput, budget: {
   layoutSize: GameLayoutSize
   baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'>
   rosterMode: ResponsiveRosterMode
   tvLogRows: number
+  survivorStandoutMode: SurvivorStandoutLayoutMode
   effectiveSafeTop: number
   dockClearance: number
   rosterMaxHeight: number
@@ -103,6 +143,7 @@ function buildDebugLabel(input: ResponsiveGameLayoutInput, budget: {
     `nav ${Math.round(input.navHeight)}`,
     `dock ${Math.round(budget.dockClearance)}`,
     `tv rows ${budget.tvLogRows}`,
+    `standout ${budget.survivorStandoutMode}`,
     `roster ${budget.baseRosterMode}->${budget.rosterMode} ${Math.round(budget.rosterMaxHeight)}`,
     budget.layoutSize,
   ].join(' | ')
@@ -174,6 +215,12 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
 
   const baseRosterFits = baseRosterHeight <= availableRosterHeight
   const rosterMode: ResponsiveRosterMode = baseRosterFits ? baseRosterMode : 'scroll'
+  const survivorStandoutMode = resolveSurvivorStandoutMode({
+    layoutSize,
+    rosterMode,
+    extraAfterBaseRoster,
+  })
+  const survivorStandoutHeight = getSurvivorStandoutHeight(survivorStandoutMode)
 
   const rosterHeaderMode: RosterHeaderMode = baseRosterFits || isTablet || layoutSize === 'phone-large'
     ? 'persistent'
@@ -199,6 +246,7 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     '--game-roster-max-height': `${roundPx(rosterMaxHeight)}px`,
     '--game-avatar-tile-size': `${avatarTileSizePx}px`,
     '--game-roster-gap': `${ROSTER_GAP}px`,
+    '--game-survivor-standout-min-height': `${survivorStandoutHeight}px`,
     '--game-shell-max-width': `${shellMaxWidth}px`,
   } as CSSProperties
 
@@ -207,6 +255,7 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     baseRosterMode,
     rosterMode,
     tvLogRows,
+    survivorStandoutMode,
     effectiveSafeTop,
     dockClearance,
     rosterMaxHeight,
@@ -217,6 +266,7 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     rosterMode,
     rosterHeaderMode,
     tvLogRows,
+    survivorStandoutMode,
     roundPx(tvHeight),
     roundPx(rosterMaxHeight),
     avatarTileSizePx,
@@ -235,6 +285,7 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     avatarTileSize: avatarTileSizePx,
     rosterGap: ROSTER_GAP,
     tvLogRows,
+    survivorStandoutMode,
     cssVars,
     debugEnabled: input.debugEnabled === true,
     debugLabel,
