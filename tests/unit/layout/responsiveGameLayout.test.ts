@@ -22,6 +22,11 @@ function makeInput(overrides: Partial<ResponsiveGameLayoutInput> = {}): Responsi
   }
 }
 
+function readCssPx(budget: ReturnType<typeof computeResponsiveGameLayout>, name: string) {
+  const value = (budget.cssVars as Record<string, string>)[name]
+  return Number.parseFloat(value)
+}
+
 describe('responsive game layout budget', () => {
   it('uses a measured Android top-safe fallback when env safe-area is zero', () => {
     const budget = computeResponsiveGameLayout(makeInput({
@@ -52,6 +57,7 @@ describe('responsive game layout budget', () => {
     expect(budget.cssVars).toMatchObject({
       '--game-roster-board-height': '335px',
     })
+    expect(readCssPx(budget, '--game-screen-tv-viewport-min-height')).toBeGreaterThanOrEqual(144)
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(1)
   })
 
