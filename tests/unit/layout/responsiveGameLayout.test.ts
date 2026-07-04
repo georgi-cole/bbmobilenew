@@ -37,7 +37,7 @@ describe('responsive game layout budget', () => {
     })
   })
 
-  it('keeps the device-bucket roster size before allowing roster scroll on phones', () => {
+  it('fits an iPhone Pro-like board statically by moving Housemates to the TV chip', () => {
     const budget = computeResponsiveGameLayout(makeInput({
       viewportHeight: 852,
       stageHeight: 699,
@@ -46,8 +46,12 @@ describe('responsive game layout budget', () => {
 
     expect(budget.layoutSize).toBe('phone-large')
     expect(budget.baseRosterMode).toBe('normal')
-    expect(budget.rosterMode).toBe('scroll')
+    expect(budget.rosterMode).toBe('normal')
+    expect(budget.rosterHeaderMode).toBe('tv-chip')
     expect(budget.compactRoster).toBe(false)
+    expect(budget.cssVars).toMatchObject({
+      '--game-roster-board-height': '335px',
+    })
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(1)
   })
 
@@ -76,9 +80,11 @@ describe('responsive game layout budget', () => {
     expect(liveVoteBudget.cssVars).toMatchObject({
       '--game-avatar-tile-size': `${dayEndBudget.avatarTileSize}px`,
     })
+    expect(dayEndBudget.rosterMode).toBe('normal')
+    expect(liveVoteBudget.rosterMode).toBe('normal')
   })
 
-  it('spends extra vertical space on more TV log rows before leaving dead space', () => {
+  it('uses a full Housemates row and more log rows on iPhone Pro Max-like screens', () => {
     const budget = computeResponsiveGameLayout(makeInput({
       viewportWidth: 430,
       viewportHeight: 950,
@@ -90,6 +96,41 @@ describe('responsive game layout budget', () => {
     expect(budget.rosterMode).toBe('normal')
     expect(budget.rosterHeaderMode).toBe('persistent')
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(3)
+  })
+
+  it('keeps Pixel 6 Android-style screens on a static normal roster', () => {
+    const budget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 393,
+      viewportHeight: 851,
+      stageWidth: 393,
+      stageHeight: 700,
+      safeTop: 0,
+      safeBottom: 0,
+      dockHeight: 70,
+      isAndroidLike: true,
+    }))
+
+    expect(budget.cssVars).toMatchObject({
+      '--game-safe-top': '24px',
+    })
+    expect(budget.rosterMode).toBe('normal')
+    expect(budget.compactRoster).toBe(false)
+    expect(budget.rosterHeaderMode).toBe('tv-chip')
+  })
+
+  it('uses compact fallback only on genuinely small static boards', () => {
+    const budget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 320,
+      viewportHeight: 667,
+      stageWidth: 320,
+      stageHeight: 620,
+      dockHeight: 62,
+    }))
+
+    expect(budget.layoutSize).toBe('phone-small')
+    expect(budget.rosterMode).toBe('compact-small')
+    expect(budget.compactRoster).toBe(true)
+    expect(budget.rosterHeaderMode).toBe('tv-chip')
   })
 
   it('classifies tablet landscape and widens the centered game cabinet intentionally', () => {
@@ -104,7 +145,7 @@ describe('responsive game layout budget', () => {
 
     expect(budget.layoutSize).toBe('tablet-landscape')
     expect(budget.shellMaxWidth).toBe(560)
-    expect(budget.rosterHeaderMode).toBe('persistent')
+    expect(budget.rosterMode).not.toBe('scroll')
   })
 
   it('exposes a full Survivor standout mode for medium Android-sized eight-player layouts', () => {

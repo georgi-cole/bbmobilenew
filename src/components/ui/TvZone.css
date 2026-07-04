@@ -493,6 +493,29 @@
     linear-gradient(180deg, #0d1320 0%, #060a12 100%);
 }
 
+.tv-zone__occupancy-chip {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(9, 14, 25, 0.72);
+  color: rgba(242, 245, 255, 0.9);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  font-size: 0.64rem;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
 /* ── Bezel brand badge ──────────────────────────────────────────────────────── */
 .tv-zone__bezel-brand {
   position: absolute;
@@ -583,6 +606,13 @@
   }
   .tv-zone__bezel-frame {
     border-width: 2px;
+  }
+  .tv-zone__occupancy-chip {
+    top: 6px;
+    right: 7px;
+    height: 20px;
+    min-width: 40px;
+    font-size: 0.6rem;
   }
 }
 

@@ -81,8 +81,8 @@ type Props = {
   compactLayout?: CompactRosterLayout
   /** Responsive budget-selected roster behavior. */
   rosterMode?: 'normal' | 'compact-small' | 'scroll'
-  /** Whether the HOUSEMATES row should stay visible or briefly overlay. */
-  headerMode?: 'transient' | 'persistent'
+  /** Whether the HOUSEMATES row stays above the board or moves into the TV chip. */
+  headerMode?: 'tv-chip' | 'persistent'
   /** Changes when the measured layout budget changes. */
   layoutRevision?: number
   /** Optional alive/total chip shown beside the section heading. */
@@ -123,7 +123,7 @@ export default function HouseguestGrid({
   compact = false,
   compactLayout = 'slider',
   rosterMode = 'normal',
-  headerMode = 'transient',
+  headerMode = 'tv-chip',
   layoutRevision = 0,
   occupancyLabel,
 }: Props) {

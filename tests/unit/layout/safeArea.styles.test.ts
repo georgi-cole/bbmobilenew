@@ -77,9 +77,12 @@ describe('safe-area layout styles', () => {
     expect(houseguestGridCss).toContain('grid-template-columns: repeat(4, minmax(0, var(--game-avatar-tile-size, 1fr)));');
     expect(houseguestGridCss).toContain('gap: var(--game-roster-gap, 5px);');
     expect(houseguestGridCss).toContain('width: var(--game-avatar-tile-size, 100%);');
-    expect(houseguestGridCss).toContain('overflow: hidden;');
-    expect(houseguestGridCss).toContain(".scrollRoster .grid { overflow-y: auto;");
+    expect(houseguestGridCss).toContain('height: var(--game-roster-board-height, auto);');
+    expect(houseguestGridCss).toContain('overflow: visible;');
+    expect(houseguestGridCss).not.toContain('.scrollRoster .grid { overflow-y: auto;');
     expect(houseguestGridCss).toContain(".container[data-header-mode='persistent'] .headerRow");
+    expect(houseguestGridCss).toContain(".container[data-header-mode='tv-chip'] .headerRow");
+    expect(gameScreenTsx).toContain('occupancyChip={rosterOccupancyChip}');
     expect(houseguestGridCss).not.toContain('survivorTileSettle');
     expect(gameScreenTsx).toContain('useResponsiveGameLayout');
     expect(gameScreenTsx).toContain('layoutSignal={responsiveGameLayout.revision}');

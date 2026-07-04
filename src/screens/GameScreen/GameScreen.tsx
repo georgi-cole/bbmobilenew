@@ -3045,6 +3045,13 @@ export default function GameScreen() {
     userCompactRosterLayout: settings.gameUX.compactRosterLayout,
   })
   const gameTvLogRows = responsiveGameLayout.tvLogRows
+  const housemateOccupancyLabel = `${alivePlayers.length}/${game.players.length}`
+  const rosterOccupancyChip = responsiveGameLayout.rosterHeaderMode === 'tv-chip'
+    ? {
+        label: housemateOccupancyLabel,
+        ariaLabel: `Housemates ${alivePlayers.length} of ${game.players.length}`,
+      }
+    : null
 
   return (
     <LayoutGroup id="game-layout">
@@ -3081,6 +3088,7 @@ export default function GameScreen() {
           }
           mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
+          occupancyChip={rosterOccupancyChip}
         />
       ) : showDemocraciaResults && democraciaResultDisplay ? (
         <TvZone
@@ -3107,6 +3115,7 @@ export default function GameScreen() {
           }
           mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
+          occupancyChip={rosterOccupancyChip}
         />
       ) : showVoteResults ? (
         <TvZone
@@ -3135,6 +3144,7 @@ export default function GameScreen() {
           }
           mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
+          occupancyChip={rosterOccupancyChip}
         />
       ) : (
         <TvZone
@@ -3163,6 +3173,7 @@ export default function GameScreen() {
           }
           mainLogMaxVisible={gameTvLogRows}
           viewportFallbackMessage={tvViewportFallbackMessage}
+          occupancyChip={rosterOccupancyChip}
         />
       )}
 
@@ -4332,7 +4343,7 @@ export default function GameScreen() {
         rosterMode={responsiveGameLayout.rosterMode}
         headerMode={responsiveGameLayout.rosterHeaderMode}
         layoutRevision={responsiveGameLayout.revision}
-        occupancyLabel={`${alivePlayers.length}/${game.players.length}`}
+        occupancyLabel={housemateOccupancyLabel}
       />
       {previewPlayer && <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />}
     </div>
