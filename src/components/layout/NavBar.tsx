@@ -125,7 +125,7 @@ export default function NavBar() {
       onRulesClick={() => navigate('/rules')}
       onSettingsClick={() => navigate('/settings')}
       onLeaderboardClick={() => navigate('/leaderboard')}
-      onProfileClick={() => navigate('/profile')}
+      onProfileClick={() => navigate('/profile', { state: { from: '/game' } })}
     >
       <ConfirmExitModal
         open={confirmOpen}

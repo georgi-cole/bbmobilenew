@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   selectAllProfiles,
@@ -23,8 +23,8 @@ import {
   clearSeasonSnapshot,
 } from '../../store/saveStatePersistence';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
-import { imageIdToDataUrl } from '../../utils/imageDb';
-import { deleteImage } from '../../utils/imageDb';
+import { resizeAndCompressImage } from '../../utils/imageUtils';
+import { imageIdToDataUrl, saveImage, deleteImage } from '../../utils/imageDb';
 import './ProfilePicker.css';
 
 const AVATAR_OPTIONS = [
@@ -41,7 +41,11 @@ const AVATAR_OPTIONS = [
  */
 export default function ProfilePicker() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
+  const returnTo = ((location.state as { from?: string } | null)?.from === '/'
+    ? '/'
+    : '/game');
 
   const profiles = useAppSelector(selectAllProfiles);
   const activeProfileId = useAppSelector(selectActiveProfileId);
@@ -61,6 +65,11 @@ export default function ProfilePicker() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newAvatar, setNewAvatar] = useState('🧑');
+  const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
+  const [newPhotoBlob, setNewPhotoBlob] = useState<Blob | null>(null);
+  const [processingPhoto, setProcessingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
 
   // Confirmation for profile switch (current game is active)
   const [pendingSwitchId, setPendingSwitchId] = useState<string | null>(null);
@@ -94,12 +103,20 @@ export default function ProfilePicker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles]);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+    };
+  }, []);
+
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   function handleSelectProfile(id: string) {
     if (id === activeProfileId && !isGuest) {
-      // Already active — just go back
-      navigate(-1);
+      // Already active - return to the profile detail without adding another history entry.
+      navigate('/profile', { replace: true, state: { from: returnTo } });
       return;
     }
     if (isGameActive) {
@@ -127,7 +144,7 @@ export default function ProfilePicker() {
       // No saved season — start fresh immediately.
       const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
       dispatch(resetGame(archives));
-      navigate('/profile', { replace: true });
+      navigate('/profile', { replace: true, state: { from: returnTo } });
     }
   }
 
@@ -157,7 +174,7 @@ export default function ProfilePicker() {
     clearSeasonSnapshot(saveKey);
     const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
     dispatch(resetGame(archives));
-    navigate('/profile', { replace: true });
+    navigate('/profile', { replace: true, state: { from: returnTo } });
   }
 
   function handleGuestMode() {
@@ -169,17 +186,21 @@ export default function ProfilePicker() {
   }
 
   function handleHome() {
+    if (returnTo === '/game') {
+      navigate('/game', { replace: true });
+      return;
+    }
     if (isGameActive) {
       setPendingHome(true);
       return;
     }
-    navigate('/');
+    navigate(returnTo, { replace: true });
   }
 
   function commitHome() {
     dispatch(resetGame());
     setPendingHome(false);
-    navigate('/');
+    navigate(returnTo, { replace: true });
   }
 
   function commitGuest() {
@@ -189,15 +210,67 @@ export default function ProfilePicker() {
     navigate('/game', { replace: true });
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!newName.trim() || atLimit) return;
+    let photoId: string | undefined;
+    if (newPhotoBlob) {
+      const randomPart = (() => {
+        try {
+          return crypto.randomUUID();
+        } catch {
+          return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        }
+      })();
+      photoId = `profile-photo-${randomPart}`;
+      try {
+        await saveImage(photoId, newPhotoBlob);
+      } catch (err) {
+        console.error('Failed to save new profile photo to IndexedDB', err);
+        photoId = undefined;
+      }
+    }
     // A newly created profile has no archives yet.
-    dispatch(createProfile({ name: newName.trim(), avatar: newAvatar }));
+    dispatch(createProfile({ name: newName.trim(), avatar: newAvatar, photoId }));
     dispatch(resetGame([]));
     setShowCreateForm(false);
     setNewName('');
     setNewAvatar('🧑');
-    navigate('/profile', { replace: true });
+    clearNewPhoto();
+    navigate('/profile', { replace: true, state: { from: returnTo } });
+  }
+
+  function clearNewPhoto() {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setNewPhotoPreview(null);
+    setNewPhotoBlob(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleNewPhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setProcessingPhoto(true);
+    try {
+      const blob = await resizeAndCompressImage(file);
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      previewUrlRef.current = url;
+      setNewPhotoBlob(blob);
+      setNewPhotoPreview(url);
+    } catch {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      const url = URL.createObjectURL(file);
+      previewUrlRef.current = url;
+      setNewPhotoBlob(file);
+      setNewPhotoPreview(url);
+    } finally {
+      setProcessingPhoto(false);
+    }
   }
 
   function handleDeleteRequest(id: string) {
@@ -237,7 +310,7 @@ export default function ProfilePicker() {
           className="profile-picker__back-btn"
           onClick={handleHome}
         >
-          ← Back to Home
+          {returnTo === '/game' ? '← Back to Game' : '← Back to Home'}
         </button>
       </div>
       <h1 className="profile-picker__title">👤 Profiles</h1>
@@ -321,6 +394,35 @@ export default function ProfilePicker() {
           ) : (
             <div className="profile-picker__create">
               <p className="profile-picker__create-title">New Profile</p>
+              <div className="profile-picker__create-photo-section">
+                <div className="profile-picker__create-photo-wrap">
+                  {newPhotoPreview ? (
+                    <img className="profile-picker__create-photo-img" src={newPhotoPreview} alt="New profile" />
+                  ) : (
+                    <span className="profile-picker__create-photo-avatar">{newAvatar}</span>
+                  )}
+                  <button
+                    type="button"
+                    className="profile-picker__create-photo-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label="Upload profile photo"
+                  >
+                    📷
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleNewPhotoChange}
+                  />
+                </div>
+                <div className="profile-picker__create-photo-copy">
+                  <span className="profile-picker__create-photo-label">Profile Photo</span>
+                  <span className="profile-picker__create-photo-hint">Upload from your gallery</span>
+                  {processingPhoto && <span className="profile-picker__create-photo-processing">Processing image...</span>}
+                </div>
+              </div>
               <input
                 className="profile-picker__input"
                 type="text"
@@ -348,15 +450,15 @@ export default function ProfilePicker() {
                 <button
                   type="button"
                   className="profile-picker__btn--cancel"
-                  onClick={() => { setShowCreateForm(false); setNewName(''); setNewAvatar('🧑'); }}
+                  onClick={() => { setShowCreateForm(false); setNewName(''); setNewAvatar('🧑'); clearNewPhoto(); }}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   className="profile-picker__btn profile-picker__btn--create"
-                  disabled={!newName.trim()}
-                  onClick={handleCreate}
+                  disabled={!newName.trim() || processingPhoto}
+                  onClick={() => void handleCreate()}
                 >
                   Create Profile
                 </button>

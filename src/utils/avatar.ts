@@ -5,6 +5,18 @@ import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
 import type { RemotePlayerOverride } from '../remoteConfig/remoteConfigTypes';
 
+const PROFILE_PHOTO_AVATAR_PREFIX = 'profile-photo:';
+
+export function profilePhotoAvatar(photoId: string): string {
+  return `${PROFILE_PHOTO_AVATAR_PREFIX}${photoId}`;
+}
+
+export function getProfilePhotoAvatarId(avatar: string | null | undefined): string | null {
+  if (!avatar?.startsWith(PROFILE_PHOTO_AVATAR_PREFIX)) return null;
+  const id = avatar.slice(PROFILE_PHOTO_AVATAR_PREFIX.length);
+  return id || null;
+}
+
 // ─── Remote override registry ────────────────────────────────────────────────
 
 /**
@@ -113,12 +125,24 @@ function capitalize(s: string): string {
  *
  * For numeric ids with no houseguest match, candidates are: assets/skins/{id}_avatar.webp
  */
-export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'avatar'>): string[] {
+export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'avatar'> & Partial<Pick<Player, 'isUser'>>): string[] {
   const candidates: string[] = [];
+
+  if (getProfilePhotoAvatarId(player.avatar)) {
+    candidates.push(getDicebear(player.name));
+    return candidates;
+  }
+
+  if (player.avatar && (player.avatar.startsWith('data:') || player.avatar.startsWith('blob:'))) {
+    candidates.push(player.avatar);
+    return candidates;
+  }
+
+  const isUserPlayer = player.isUser === true || player.id === 'user';
   const lookupTokens = collectAssetLookupTokens(player);
 
   // Remote config override takes highest priority (if provided for this player id).
-  const hgForRemote = getById(player.id) ?? findByName(player.name);
+  const hgForRemote = isUserPlayer ? undefined : (getById(player.id) ?? findByName(player.name));
   const remoteAvatarUrl = hgForRemote ? _remoteAvatarMap.get(hgForRemote.id) : undefined;
   if (remoteAvatarUrl) {
     candidates.push(remoteAvatarUrl);
@@ -129,12 +153,14 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
     candidates.push(player.avatar);
   }
 
-  const folderAvatar = listAvatarAssetCandidates().find(({ basename }) => {
-    const token = normalizeNameToken(basename.replace(/_avatar$/i, ''));
-    return lookupTokens.includes(token) || lookupTokens.some((target) => token.includes(target) || target.includes(token));
-  });
-  if (folderAvatar) {
-    candidates.push(folderAvatar.source);
+  if (!isUserPlayer) {
+    const folderAvatar = listAvatarAssetCandidates().find(({ basename }) => {
+      const token = normalizeNameToken(basename.replace(/_avatar$/i, ''));
+      return lookupTokens.includes(token) || lookupTokens.some((target) => token.includes(target) || target.includes(token));
+    });
+    if (folderAvatar) {
+      candidates.push(folderAvatar.source);
+    }
   }
 
   const id = player.id;
@@ -142,7 +168,7 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
 
   // Try to resolve a stable houseguest id from the canonical dataset.
   // Match by player.id first (in case it is already a slug), then by player.name.
-  const hg = getById(id) ?? findByName(player.name);
+  const hg = isUserPlayer ? undefined : (getById(id) ?? findByName(player.name));
   if (hg) {
     const hgId = hg.id; // lowercase stable slug, e.g. 'finn'
     const hgIdCap = capitalize(hgId); // e.g. 'Finn'

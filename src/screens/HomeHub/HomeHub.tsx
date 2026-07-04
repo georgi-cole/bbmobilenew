@@ -166,7 +166,7 @@ function HomeHubAssetLayer({
                     label={label}
                     icon={icon}
                     variant={variant}
-                    onClick={to === '/game' ? onPlay : () => onNavigate(to)}
+                    onClick={to === '/game' ? onPlay : () => onNavigate(to, to === '/profile' ? { state: { from: '/' } } : undefined)}
                   />
                 ))}
           </nav>

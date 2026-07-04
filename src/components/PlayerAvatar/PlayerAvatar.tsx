@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
+import { isEmoji } from '../../utils/avatar';
+import { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc';
 import { getRelationshipTone } from './relationshipOutline';
 import { SoundManager } from '../../services/sound/SoundManager';
 import './PlayerAvatar.css';
@@ -43,7 +44,7 @@ export default function PlayerAvatar({
   showRelationshipOutline = true,
   showEvictedStyle = true,
 }: PlayerAvatarProps) {
-  const [candidates] = useState(() => resolveAvatarCandidates(player));
+  const { candidates } = useResolvedAvatarSrc(player);
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -64,6 +65,12 @@ export default function PlayerAvatar({
       return () => { clearTimeout(startId); clearTimeout(endId); setRevived(false); };
     }
   }, [player.status]);
+
+  useEffect(() => {
+    setCandidateIdx(0);
+    setShowFallback(false);
+    setLoaded(false);
+  }, [candidates]);
 
   const avatarSrc = candidates[candidateIdx] ?? '';
 

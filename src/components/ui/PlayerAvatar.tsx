@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Player } from '../../types';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc';
 import { getBadgesForPlayer } from '../../utils/statusBadges';
 import './PlayerAvatar.css';
 
@@ -29,8 +30,14 @@ interface PlayerAvatarProps {
  */
 export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAvatarProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const { src: resolvedAvatarSrc } = useResolvedAvatarSrc(player);
   const [avatarSrc, setAvatarSrc] = useState(() => resolveAvatar(player));
   const [showEmojiAvatar, setShowEmojiAvatar] = useState(false);
+
+  useEffect(() => {
+    setAvatarSrc(resolvedAvatarSrc);
+    setShowEmojiAvatar(false);
+  }, [resolvedAvatarSrc]);
 
   function handleClick() {
     if (onSelect) {
