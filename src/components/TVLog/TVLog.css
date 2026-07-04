@@ -6,8 +6,8 @@
      --tv-log-max-vis  : number of rows visible before scroll (default 3)
                          max-height is calculated as calc(var(--tv-log-item-h) * var(--tv-log-max-vis))
 
-   The log always reserves one row and can grow to three rows as viewport space
-   allows. Older entries remain reachable through the internal scroller.
+   The log always reserves one row and can grow to the visible-row budget the
+   layout grants. Older entries remain reachable through the internal scroller.
    ───────────────────────────────────────────────────────────────────────────── */
 
 .tv-log {
@@ -20,8 +20,8 @@
   padding: 0;
   min-height: var(--tv-log-item-h);
   max-height: calc(var(--tv-log-item-h) * var(--tv-log-max-vis));
-  max-height: clamp(var(--tv-log-item-h), 10vh, calc(var(--tv-log-item-h) * var(--tv-log-max-vis)));
-  max-height: clamp(var(--tv-log-item-h), 10svh, calc(var(--tv-log-item-h) * var(--tv-log-max-vis)));
+  max-height: min(18vh, calc(var(--tv-log-item-h) * var(--tv-log-max-vis)));
+  max-height: min(18svh, calc(var(--tv-log-item-h) * var(--tv-log-max-vis)));
   overflow-y: auto;
   overscroll-behavior: contain;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
