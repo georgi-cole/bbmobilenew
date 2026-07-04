@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
+import { isEmoji } from '../../utils/avatar';
+import { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc';
 import { getRelationshipTone } from './relationshipOutline';
 import { SoundManager } from '../../services/sound/SoundManager';
 import './PlayerAvatar.css';
@@ -43,10 +44,14 @@ export default function PlayerAvatar({
   showRelationshipOutline = true,
   showEvictedStyle = true,
 }: PlayerAvatarProps) {
-  const [candidates] = useState(() => resolveAvatarCandidates(player));
-  const [candidateIdx, setCandidateIdx] = useState(0);
-  const [showFallback, setShowFallback] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const { candidates } = useResolvedAvatarSrc(player);
+  const candidatesKey = candidates.join('\n');
+  const [imageState, setImageState] = useState({
+    candidatesKey,
+    candidateIdx: 0,
+    showFallback: false,
+    loaded: false,
+  });
   const [revived, setRevived] = useState(false);
   const prevStatusRef = useRef(player.status);
 
@@ -65,13 +70,26 @@ export default function PlayerAvatar({
     }
   }, [player.status]);
 
+  const candidateIdx = imageState.candidatesKey === candidatesKey ? imageState.candidateIdx : 0;
+  const showFallback = imageState.candidatesKey === candidatesKey ? imageState.showFallback : false;
+  const loaded = imageState.candidatesKey === candidatesKey ? imageState.loaded : false;
   const avatarSrc = candidates[candidateIdx] ?? '';
 
   function handleError() {
     if (candidateIdx < candidates.length - 1) {
-      setCandidateIdx((i) => i + 1);
+      setImageState({
+        candidatesKey,
+        candidateIdx: candidateIdx + 1,
+        showFallback: false,
+        loaded: false,
+      });
     } else {
-      setShowFallback(true);
+      setImageState({
+        candidatesKey,
+        candidateIdx,
+        showFallback: true,
+        loaded: false,
+      });
     }
   }
 
@@ -103,7 +121,12 @@ export default function PlayerAvatar({
       src={avatarSrc}
       alt=""
       onError={handleError}
-      onLoad={() => setLoaded(true)}
+      onLoad={() => setImageState({
+        candidatesKey,
+        candidateIdx,
+        showFallback: false,
+        loaded: true,
+      })}
       aria-hidden="true"
     />
   );

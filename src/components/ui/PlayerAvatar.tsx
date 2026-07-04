@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import { getDicebear } from '../../utils/avatar';
+import { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc';
 import { getBadgesForPlayer } from '../../utils/statusBadges';
 import './PlayerAvatar.css';
 
@@ -29,8 +30,14 @@ interface PlayerAvatarProps {
  */
 export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAvatarProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [avatarSrc, setAvatarSrc] = useState(() => resolveAvatar(player));
-  const [showEmojiAvatar, setShowEmojiAvatar] = useState(false);
+  const { src: resolvedAvatarSrc } = useResolvedAvatarSrc(player);
+  const [avatarState, setAvatarState] = useState({
+    baseSrc: resolvedAvatarSrc,
+    src: resolvedAvatarSrc,
+    showEmojiAvatar: false,
+  });
+  const avatarSrc = avatarState.baseSrc === resolvedAvatarSrc ? avatarState.src : resolvedAvatarSrc;
+  const showEmojiAvatar = avatarState.baseSrc === resolvedAvatarSrc ? avatarState.showEmojiAvatar : false;
 
   function handleClick() {
     if (onSelect) {
@@ -44,10 +51,18 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
     const dicebear = getDicebear(player.name);
     if (avatarSrc !== dicebear) {
       // Step 2: swap to Dicebear
-      setAvatarSrc(dicebear);
+      setAvatarState({
+        baseSrc: resolvedAvatarSrc,
+        src: dicebear,
+        showEmojiAvatar: false,
+      });
     } else {
       // Step 3: Dicebear also failed — show emoji fallback
-      setShowEmojiAvatar(true);
+      setAvatarState({
+        baseSrc: resolvedAvatarSrc,
+        src: avatarSrc,
+        showEmojiAvatar: true,
+      });
     }
   }
 
