@@ -7,12 +7,12 @@
  *   3. Add a <Route> inside the AppShell layout route
  *   That's it — no other files need changing.
  */
-import { createHashRouter, Navigate } from 'react-router-dom';
+import { createHashRouter } from 'react-router-dom';
 
 import AppShell             from './components/layout/AppShell';
 import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoundary';
 import HomeHub              from './screens/HomeHub/HomeHub';
-import GameScreen           from './screens/GameScreen/GameScreen';
+import GameRoute            from './routes/GameRoute';
 import DiaryRoom            from './screens/DiaryRoom/DiaryRoom';
 import Houseguests          from './screens/Houseguests/Houseguests';
 import Profile              from './screens/Profile/Profile';
@@ -30,7 +30,6 @@ import Settings             from './screens/Settings/Settings';
 import NotFound             from './screens/NotFound/NotFound';
 import { canAccessSpecialSettings } from './utils/debugMode';
 import { lazy, Suspense }   from 'react';
-import { useAppSelector } from './store/hooks';
 
 // Admin/debug screens stay hidden unless the current session has QA debug access.
 const SettingsAdmin = import.meta.env.DEV || canAccessSpecialSettings()
@@ -90,11 +89,6 @@ const GridOfLuckTestPage = import.meta.env.DEV
 const MinigameLab = import.meta.env.DEV
   ? lazy(() => import('./screens/MinigameLab/MinigameLab'))
   : null;
-
-function GameRoute() {
-  const isGameActive = useAppSelector((state) => state.game.status === 'active');
-  return isGameActive ? <GameScreen /> : <Navigate to="/" replace />;
-}
 
 export const router = createHashRouter([
   {

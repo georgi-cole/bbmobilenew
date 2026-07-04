@@ -229,13 +229,15 @@ describe('safe-area layout styles', () => {
 
   it('guards cold direct /game navigation instead of rendering inactive controls', () => {
     const routesTsx = readFileSync(resolve(process.cwd(), 'src/routes.tsx'), 'utf8');
+    const gameRouteTsx = readFileSync(resolve(process.cwd(), 'src/routes/GameRoute.tsx'), 'utf8');
     const navBarTsx = readFileSync(resolve(process.cwd(), 'src/components/layout/NavBar.tsx'), 'utf8');
     const gameSliceTs = readFileSync(resolve(process.cwd(), 'src/store/gameSlice.ts'), 'utf8');
 
-    expect(routesTsx).toContain('function GameRoute()');
-    expect(routesTsx).toContain("state.game.status === 'active'");
-    expect(routesTsx).toContain('<Navigate to="/" replace />');
+    expect(routesTsx).toContain("import GameRoute            from './routes/GameRoute';");
     expect(routesTsx).toContain("{ path: 'game',             element: <GameRoute />");
+    expect(gameRouteTsx).toContain('export default function GameRoute()');
+    expect(gameRouteTsx).toContain("state.game.status === 'active'");
+    expect(gameRouteTsx).toContain('<Navigate to="/" replace />');
     expect(navBarTsx).toContain("s.game.status === 'active'");
     expect(gameSliceTs).toContain("status: 'active' as const");
   });
