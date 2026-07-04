@@ -10,18 +10,22 @@ export type GameLayoutSize =
 export type ResponsiveRosterMode = 'normal' | 'compact-small' | 'scroll'
 export type RosterHeaderMode = 'tv-chip' | 'persistent'
 export type SurvivorStandoutLayoutMode = 'full-card' | 'compact-strip' | 'mini-chip'
+export type BottomControlsMode = 'normal' | 'compact'
+
+type GameCssVars = CSSProperties & Record<string, string>
 
 export interface ResponsiveGameLayoutBudget {
   layoutSize: GameLayoutSize
   baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'>
   rosterMode: ResponsiveRosterMode
   rosterHeaderMode: RosterHeaderMode
+  bottomControlsMode: BottomControlsMode
   compactRoster: boolean
   avatarTileSize: number
   rosterGap: number
   tvLogRows: number
   survivorStandoutMode: SurvivorStandoutLayoutMode
-  cssVars: CSSProperties
+  cssVars: GameCssVars
   debugEnabled: boolean
   debugLabel: string
   shellMaxWidth: number
@@ -48,9 +52,13 @@ export interface ResponsiveGameLayoutInput {
 
 const ANDROID_TOP_SAFE_FALLBACK = 24
 const DEFAULT_NAV_HEIGHT = 60
+const COMPACT_NAV_HEIGHT = 46
 const DEFAULT_PHONE_WIDTH = 390
 const DEFAULT_PHONE_HEIGHT = 780
 const DEFAULT_DOCK_RATIO = 220 / 980
+const COMPACT_DOCK_SCALE = 0.9
+const NORMAL_DOCK_GAP = 6
+const COMPACT_DOCK_GAP = 3
 const ROSTER_COLUMNS = 4
 const ROSTER_GAP = 5
 const GAME_INLINE_PADDING = 24
@@ -155,21 +163,25 @@ function buildDebugLabel(input: ResponsiveGameLayoutInput, budget: {
   layoutSize: GameLayoutSize
   baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'>
   rosterMode: ResponsiveRosterMode
+  rosterHeaderMode: RosterHeaderMode
+  bottomControlsMode: BottomControlsMode
   tvLogRows: number
   survivorStandoutMode: SurvivorStandoutLayoutMode
   effectiveSafeTop: number
   dockClearance: number
+  navHeight: number
   rosterMaxHeight: number
 }) {
   return [
     `${Math.round(input.viewportWidth)}x${Math.round(input.viewportHeight)}`,
     `stage ${Math.round(input.stageWidth)}x${Math.round(input.stageHeight)}`,
     `safe ${Math.round(budget.effectiveSafeTop)}/${Math.round(input.safeBottom)}`,
-    `nav ${Math.round(input.navHeight)}`,
+    `nav ${Math.round(budget.navHeight)}`,
     `dock ${Math.round(budget.dockClearance)}`,
+    `controls ${budget.bottomControlsMode}`,
     `tv rows ${budget.tvLogRows}`,
     `standout ${budget.survivorStandoutMode}`,
-    `roster ${budget.baseRosterMode}->${budget.rosterMode} ${Math.round(budget.rosterMaxHeight)}`,
+    `roster ${budget.baseRosterMode}->${budget.rosterMode}/${budget.rosterHeaderMode} ${Math.round(budget.rosterMaxHeight)}`,
     budget.layoutSize,
   ].join(' | ')
 }
@@ -183,10 +195,19 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const effectiveSafeTop = input.isAndroidLike
     ? Math.max(input.safeTop, ANDROID_TOP_SAFE_FALLBACK)
     : input.safeTop
-  const navHeight = input.navHeight || DEFAULT_NAV_HEIGHT
-  void navHeight
+  const measuredNavHeight = input.navHeight || DEFAULT_NAV_HEIGHT + input.safeBottom
+  const normalNavContentHeight = Math.max(DEFAULT_NAV_HEIGHT, measuredNavHeight - input.safeBottom)
+  const compactNavContentHeight = Math.min(normalNavContentHeight, COMPACT_NAV_HEIGHT)
+  const normalNavHeight = normalNavContentHeight + input.safeBottom
+  const compactNavHeight = compactNavContentHeight + input.safeBottom
   const measuredDockHeight = input.dockHeight || estimateDockHeight(stageWidth)
-  const dockClearance = input.hasDock ? measuredDockHeight + 6 : 0
+  const normalDockHeight = input.hasDock ? measuredDockHeight : 0
+  const compactDockHeight = input.hasDock ? Math.max(56, measuredDockHeight * COMPACT_DOCK_SCALE) : 0
+  const normalDockClearance = input.hasDock ? normalDockHeight + NORMAL_DOCK_GAP : 0
+  const compactDockClearance = input.hasDock ? compactDockHeight + COMPACT_DOCK_GAP : 0
+  const measuredStageAndNavHeight = stageHeight + measuredNavHeight
+  const normalStageHeight = Math.max(0, measuredStageAndNavHeight - normalNavHeight)
+  const compactStageHeight = Math.max(0, measuredStageAndNavHeight - compactNavHeight)
   const isTablet = layoutSize === 'tablet-portrait' || layoutSize === 'tablet-landscape'
   const shellMaxWidth = isTablet
     ? (layoutSize === 'tablet-landscape' ? 560 : 520)
@@ -212,9 +233,13 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     input.playerCount >= 16 &&
     (layoutSize === 'phone-small' || rosterContentWidth < 320)
 
-  const availableAfterTv = Math.max(
+  const normalAvailableAfterTv = Math.max(
     0,
-    stageHeight - dockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
+    normalStageHeight - normalDockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
+  )
+  const compactAvailableAfterTv = Math.max(
+    0,
+    compactStageHeight - compactDockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
   )
   const normalRosterHeight = rosterRows * normalTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
   const compactRosterHeight = rosterRows * compactTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
@@ -227,17 +252,29 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
         : 144
   const minTvHeight = minTvViewportHeight + TV_CHROME_HEIGHT + TV_LOG_ROW_HEIGHT
   const normalWithoutHeader = normalRosterHeight - ROSTER_HEADER_HEIGHT
-  const normalStaticFits =
+  const compactWithoutHeader = compactRosterHeight - ROSTER_HEADER_HEIGHT
+  const normalControlsFullRosterFits =
     !shouldUseCompactBase &&
-    normalWithoutHeader + minTvHeight <= availableAfterTv
+    normalRosterHeight + minTvHeight <= normalAvailableAfterTv
+  const bottomControlsMode: BottomControlsMode = normalControlsFullRosterFits ? 'normal' : 'compact'
+  const availableAfterTv = bottomControlsMode === 'normal'
+    ? normalAvailableAfterTv
+    : compactAvailableAfterTv
+  const selectedNavHeight = bottomControlsMode === 'normal' ? normalNavHeight : compactNavHeight
+  const selectedNavContentHeight = bottomControlsMode === 'normal' ? normalNavContentHeight : compactNavContentHeight
+  const selectedDockHeight = bottomControlsMode === 'normal' ? normalDockHeight : compactDockHeight
+  const dockClearance = bottomControlsMode === 'normal' ? normalDockClearance : compactDockClearance
+  const normalStaticFitsAfterCompactControls =
+    !shouldUseCompactBase &&
+    normalWithoutHeader + minTvHeight <= compactAvailableAfterTv
   const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> =
-    input.userCompactRoster || !normalStaticFits
+    input.userCompactRoster || !normalStaticFitsAfterCompactControls
       ? 'compact-small'
       : 'normal'
   const rosterMode: ResponsiveRosterMode = baseRosterMode
   const baseAvatarTileSize = baseRosterMode === 'compact-small' ? compactTileSize : normalTileSize
   const baseRosterHeight = baseRosterMode === 'compact-small' ? compactRosterHeight : normalRosterHeight
-  const baseRosterHeightWithoutHeader = baseRosterHeight - ROSTER_HEADER_HEIGHT
+  const baseRosterHeightWithoutHeader = baseRosterMode === 'compact-small' ? compactWithoutHeader : normalWithoutHeader
   const headerFits = baseRosterHeight + minTvHeight <= availableAfterTv
   const rosterHeaderMode: RosterHeaderMode = headerFits ? 'persistent' : 'tv-chip'
   const rosterDisplayHeight = rosterHeaderMode === 'persistent'
@@ -267,10 +304,19 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const rosterMaxHeight = baseRosterHeightWithoutHeader
   const avatarTileSize = baseAvatarTileSize
   const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
+  const actionDockScale = bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
+  const actionDockGap = bottomControlsMode === 'normal' ? NORMAL_DOCK_GAP : COMPACT_DOCK_GAP
+  const navItemLabelDisplay = bottomControlsMode === 'normal' ? 'block' : 'none'
 
   const cssVars = {
     '--game-safe-top': `${roundPx(effectiveSafeTop)}px`,
     '--game-safe-bottom': `${roundPx(input.safeBottom)}px`,
+    '--game-bottom-controls-mode': bottomControlsMode,
+    '--game-action-dock-scale': String(actionDockScale),
+    '--game-action-dock-height': `${roundPx(selectedDockHeight)}px`,
+    '--game-action-dock-gap': `${roundPx(actionDockGap)}px`,
+    '--game-nav-height': `${roundPx(selectedNavContentHeight)}px`,
+    '--game-nav-item-label-display': navItemLabelDisplay,
     '--game-screen-floating-dock-clearance': `${roundPx(dockClearance)}px`,
     '--game-screen-tv-min-height': `${roundPx(tvHeight)}px`,
     '--game-screen-tv-viewport-min-height': `${roundPx(tvViewportHeight)}px`,
@@ -281,16 +327,19 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     '--game-roster-gap': `${ROSTER_GAP}px`,
     '--game-survivor-standout-min-height': `${survivorStandoutHeight}px`,
     '--game-shell-max-width': `${shellMaxWidth}px`,
-  } as CSSProperties
+  } as GameCssVars
 
   const debugLabel = buildDebugLabel(input, {
     layoutSize,
     baseRosterMode,
     rosterMode,
+    rosterHeaderMode,
+    bottomControlsMode,
     tvLogRows,
     survivorStandoutMode,
     effectiveSafeTop,
     dockClearance,
+    navHeight: selectedNavHeight,
     rosterMaxHeight,
   })
   const signature = [
@@ -298,12 +347,14 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     baseRosterMode,
     rosterMode,
     rosterHeaderMode,
+    bottomControlsMode,
     tvLogRows,
     survivorStandoutMode,
     roundPx(tvHeight),
     roundPx(rosterMaxHeight),
     avatarTileSizePx,
     roundPx(dockClearance),
+    roundPx(selectedNavHeight),
     roundPx(effectiveSafeTop),
     shellMaxWidth,
   ].join(':')
@@ -313,6 +364,7 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     baseRosterMode,
     rosterMode,
     rosterHeaderMode,
+    bottomControlsMode,
     compactRoster,
     avatarTileSize: avatarTileSizePx,
     rosterGap: ROSTER_GAP,
@@ -371,7 +423,7 @@ function readViewportInput<TStage extends HTMLElement>(
     stageHeight: stageRect?.height ?? viewportHeight,
     safeTop,
     safeBottom,
-    navHeight: navRect?.height ?? DEFAULT_NAV_HEIGHT,
+    navHeight: navRect?.height ?? DEFAULT_NAV_HEIGHT + safeBottom,
     dockHeight: dockRect?.height ?? 0,
     hasDock: options.hasDock,
     playerCount: options.playerCount,
@@ -449,16 +501,66 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
 
   useEffect(() => {
     const root = document.documentElement
-    const previous = root.style.getPropertyValue('--app-shell-max-width')
+    const cssVars = budget.cssVars
+    const previousShellMaxWidth = root.style.getPropertyValue('--app-shell-max-width')
+    const previousNavHeight = root.style.getPropertyValue('--nav-bar-height')
+    const previousBottomControlsMode = root.style.getPropertyValue('--game-bottom-controls-mode')
+    const previousDockScale = root.style.getPropertyValue('--game-action-dock-scale')
+    const previousDockHeight = root.style.getPropertyValue('--game-action-dock-height')
+    const previousDockGap = root.style.getPropertyValue('--game-action-dock-gap')
+    const previousGameNavHeight = root.style.getPropertyValue('--game-nav-height')
+    const previousNavItemLabelDisplay = root.style.getPropertyValue('--game-nav-item-label-display')
     root.style.setProperty('--app-shell-max-width', `${budget.shellMaxWidth}px`)
+    root.style.setProperty('--nav-bar-height', cssVars['--game-nav-height'])
+    root.style.setProperty('--game-bottom-controls-mode', cssVars['--game-bottom-controls-mode'])
+    root.style.setProperty('--game-action-dock-scale', cssVars['--game-action-dock-scale'])
+    root.style.setProperty('--game-action-dock-height', cssVars['--game-action-dock-height'])
+    root.style.setProperty('--game-action-dock-gap', cssVars['--game-action-dock-gap'])
+    root.style.setProperty('--game-nav-height', cssVars['--game-nav-height'])
+    root.style.setProperty('--game-nav-item-label-display', cssVars['--game-nav-item-label-display'])
     return () => {
-      if (previous) {
-        root.style.setProperty('--app-shell-max-width', previous)
+      if (previousShellMaxWidth) {
+        root.style.setProperty('--app-shell-max-width', previousShellMaxWidth)
       } else {
         root.style.removeProperty('--app-shell-max-width')
       }
+      if (previousNavHeight) {
+        root.style.setProperty('--nav-bar-height', previousNavHeight)
+      } else {
+        root.style.removeProperty('--nav-bar-height')
+      }
+      if (previousBottomControlsMode) {
+        root.style.setProperty('--game-bottom-controls-mode', previousBottomControlsMode)
+      } else {
+        root.style.removeProperty('--game-bottom-controls-mode')
+      }
+      if (previousDockScale) {
+        root.style.setProperty('--game-action-dock-scale', previousDockScale)
+      } else {
+        root.style.removeProperty('--game-action-dock-scale')
+      }
+      if (previousDockHeight) {
+        root.style.setProperty('--game-action-dock-height', previousDockHeight)
+      } else {
+        root.style.removeProperty('--game-action-dock-height')
+      }
+      if (previousDockGap) {
+        root.style.setProperty('--game-action-dock-gap', previousDockGap)
+      } else {
+        root.style.removeProperty('--game-action-dock-gap')
+      }
+      if (previousGameNavHeight) {
+        root.style.setProperty('--game-nav-height', previousGameNavHeight)
+      } else {
+        root.style.removeProperty('--game-nav-height')
+      }
+      if (previousNavItemLabelDisplay) {
+        root.style.setProperty('--game-nav-item-label-display', previousNavItemLabelDisplay)
+      } else {
+        root.style.removeProperty('--game-nav-item-label-display')
+      }
     }
-  }, [budget.shellMaxWidth])
+  }, [budget.cssVars, budget.shellMaxWidth])
 
   return budget
 }
