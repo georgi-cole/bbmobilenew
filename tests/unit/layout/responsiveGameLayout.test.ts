@@ -37,7 +37,7 @@ describe('responsive game layout budget', () => {
     })
   })
 
-  it('tries a fixed compact roster before allowing roster scroll on phones', () => {
+  it('keeps the device-bucket roster size before allowing roster scroll on phones', () => {
     const budget = computeResponsiveGameLayout(makeInput({
       viewportHeight: 852,
       stageHeight: 699,
@@ -45,9 +45,37 @@ describe('responsive game layout budget', () => {
     }))
 
     expect(budget.layoutSize).toBe('phone-large')
-    expect(budget.rosterMode).toBe('compact-small')
-    expect(budget.compactRoster).toBe(true)
+    expect(budget.baseRosterMode).toBe('normal')
+    expect(budget.rosterMode).toBe('scroll')
+    expect(budget.compactRoster).toBe(false)
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(1)
+  })
+
+  it('does not change avatar tile size when transient vertical budget changes', () => {
+    const dayEndBudget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 393,
+      viewportHeight: 852,
+      stageWidth: 393,
+      stageHeight: 760,
+      playerCount: 16,
+    }))
+    const liveVoteBudget = computeResponsiveGameLayout(makeInput({
+      viewportWidth: 393,
+      viewportHeight: 852,
+      stageWidth: 393,
+      stageHeight: 700,
+      playerCount: 16,
+    }))
+
+    expect(dayEndBudget.layoutSize).toBe(liveVoteBudget.layoutSize)
+    expect(dayEndBudget.baseRosterMode).toBe(liveVoteBudget.baseRosterMode)
+    expect(dayEndBudget.avatarTileSize).toBe(liveVoteBudget.avatarTileSize)
+    expect(dayEndBudget.cssVars).toMatchObject({
+      '--game-avatar-tile-size': `${dayEndBudget.avatarTileSize}px`,
+    })
+    expect(liveVoteBudget.cssVars).toMatchObject({
+      '--game-avatar-tile-size': `${dayEndBudget.avatarTileSize}px`,
+    })
   })
 
   it('spends extra vertical space on more TV log rows before leaving dead space', () => {

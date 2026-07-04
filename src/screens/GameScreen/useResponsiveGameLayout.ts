@@ -13,10 +13,13 @@ export type RosterHeaderMode = 'transient' | 'persistent'
 
 export interface ResponsiveGameLayoutBudget {
   layoutSize: GameLayoutSize
+  baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'>
   rosterMode: ResponsiveRosterMode
   rosterHeaderMode: RosterHeaderMode
   compactRoster: boolean
   compactRosterLayout: CompactRosterLayout
+  avatarTileSize: number
+  rosterGap: number
   tvLogRows: number
   cssVars: CSSProperties
   debugEnabled: boolean
@@ -86,6 +89,7 @@ function resolveLayoutSize(width: number, height: number): GameLayoutSize {
 
 function buildDebugLabel(input: ResponsiveGameLayoutInput, budget: {
   layoutSize: GameLayoutSize
+  baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'>
   rosterMode: ResponsiveRosterMode
   tvLogRows: number
   effectiveSafeTop: number
@@ -99,7 +103,7 @@ function buildDebugLabel(input: ResponsiveGameLayoutInput, budget: {
     `nav ${Math.round(input.navHeight)}`,
     `dock ${Math.round(budget.dockClearance)}`,
     `tv rows ${budget.tvLogRows}`,
-    `roster ${budget.rosterMode} ${Math.round(budget.rosterMaxHeight)}`,
+    `roster ${budget.baseRosterMode}->${budget.rosterMode} ${Math.round(budget.rosterMaxHeight)}`,
     budget.layoutSize,
   ].join(' | ')
 }
@@ -126,6 +130,13 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const normalTileSize = clamp(tileWidth, 64, isTablet ? 128 : 112)
   const compactTileSize = normalTileSize * 0.72
   const rosterRows = Math.max(1, Math.ceil(Math.max(input.playerCount, 1) / ROSTER_COLUMNS))
+  const shouldUseCompactBase =
+    !isTablet &&
+    input.playerCount >= 16 &&
+    (layoutSize === 'phone-small' || stageWidth < 370)
+  const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> = input.userCompactRoster || shouldUseCompactBase
+    ? 'compact-small'
+    : 'normal'
 
   const baseTvHeight = layoutSize === 'phone-small'
     ? 204
@@ -146,11 +157,13 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   )
   const normalRosterHeight = rosterRows * normalTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
   const compactRosterHeight = rosterRows * compactTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
-  const extraAfterNormalRoster = availableAfterTv - normalRosterHeight
+  const baseAvatarTileSize = baseRosterMode === 'compact-small' ? compactTileSize : normalTileSize
+  const baseRosterHeight = baseRosterMode === 'compact-small' ? compactRosterHeight : normalRosterHeight
+  const extraAfterBaseRoster = availableAfterTv - baseRosterHeight
 
-  const tvLogRows = extraAfterNormalRoster >= 96 || isTablet
-    ? (isTablet && extraAfterNormalRoster >= 160 ? 4 : 3)
-    : extraAfterNormalRoster >= 36
+  const tvLogRows = extraAfterBaseRoster >= 96 || isTablet
+    ? (isTablet && extraAfterBaseRoster >= 160 ? 4 : 3)
+    : extraAfterBaseRoster >= 36
       ? 2
       : 1
   const logHeight = tvLogRows * 32
@@ -159,20 +172,13 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     stageHeight - tvHeight - logHeight - dockClearance - GAME_VERTICAL_PADDING - GAME_SECTION_GAPS,
   )
 
-  const normalFits = normalRosterHeight <= availableRosterHeight
-  const compactFits = compactRosterHeight <= availableRosterHeight
-  const rosterMode: ResponsiveRosterMode = input.userCompactRoster
-    ? 'compact-small'
-    : normalFits
-      ? 'normal'
-      : compactFits
-        ? 'compact-small'
-        : 'scroll'
+  const baseRosterFits = baseRosterHeight <= availableRosterHeight
+  const rosterMode: ResponsiveRosterMode = baseRosterFits ? baseRosterMode : 'scroll'
 
-  const rosterHeaderMode: RosterHeaderMode = normalFits || isTablet || layoutSize === 'phone-large'
+  const rosterHeaderMode: RosterHeaderMode = baseRosterFits || isTablet || layoutSize === 'phone-large'
     ? 'persistent'
     : 'transient'
-  const compactRoster = input.userCompactRoster || rosterMode === 'compact-small'
+  const compactRoster = baseRosterMode === 'compact-small'
   const compactRosterLayout = input.userCompactRoster
     ? input.userCompactRosterLayout
     : 'small'
@@ -180,7 +186,8 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     180,
     availableRosterHeight - (rosterHeaderMode === 'persistent' ? ROSTER_HEADER_HEIGHT : 0),
   )
-  const avatarTileSize = rosterMode === 'compact-small' ? compactTileSize : normalTileSize
+  const avatarTileSize = baseAvatarTileSize
+  const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
 
   const cssVars = {
     '--game-safe-top': `${roundPx(effectiveSafeTop)}px`,
@@ -190,12 +197,14 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
     '--game-screen-tv-viewport-min-height': `${roundPx(tvViewportHeight)}px`,
     '--game-tv-log-rows': String(tvLogRows),
     '--game-roster-max-height': `${roundPx(rosterMaxHeight)}px`,
-    '--game-avatar-tile-size': `${roundPx(avatarTileSize)}px`,
+    '--game-avatar-tile-size': `${avatarTileSizePx}px`,
+    '--game-roster-gap': `${ROSTER_GAP}px`,
     '--game-shell-max-width': `${shellMaxWidth}px`,
   } as CSSProperties
 
   const debugLabel = buildDebugLabel(input, {
     layoutSize,
+    baseRosterMode,
     rosterMode,
     tvLogRows,
     effectiveSafeTop,
@@ -204,11 +213,13 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   })
   const signature = [
     layoutSize,
+    baseRosterMode,
     rosterMode,
     rosterHeaderMode,
     tvLogRows,
     roundPx(tvHeight),
     roundPx(rosterMaxHeight),
+    avatarTileSizePx,
     roundPx(dockClearance),
     roundPx(effectiveSafeTop),
     shellMaxWidth,
@@ -216,10 +227,13 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
 
   return {
     layoutSize,
+    baseRosterMode,
     rosterMode,
     rosterHeaderMode,
     compactRoster,
     compactRosterLayout,
+    avatarTileSize: avatarTileSizePx,
+    rosterGap: ROSTER_GAP,
     tvLogRows,
     cssVars,
     debugEnabled: input.debugEnabled === true,

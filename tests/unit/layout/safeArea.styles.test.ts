@@ -74,6 +74,9 @@ describe('safe-area layout styles', () => {
     expect(gameScreenCss).not.toContain('.safe-game-viewport');
     expect(houseguestGridCss).toContain('grid-auto-rows: max-content;');
     expect(houseguestGridCss).toContain('align-content: start;');
+    expect(houseguestGridCss).toContain('grid-template-columns: repeat(4, minmax(0, var(--game-avatar-tile-size, 1fr)));');
+    expect(houseguestGridCss).toContain('gap: var(--game-roster-gap, 5px);');
+    expect(houseguestGridCss).toContain('width: var(--game-avatar-tile-size, 100%);');
     expect(houseguestGridCss).toContain('overflow: hidden;');
     expect(houseguestGridCss).toContain(".scrollRoster .grid { overflow-y: auto;");
     expect(houseguestGridCss).toContain(".container[data-header-mode='persistent'] .headerRow");
