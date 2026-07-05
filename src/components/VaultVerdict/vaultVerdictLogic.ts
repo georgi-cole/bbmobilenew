@@ -2,8 +2,7 @@ import { mulberry32 } from '../../store/rng';
 import type { GenericMinigameProps } from '../../minigames/reactComponents';
 
 export const VAULT_VERDICT_AMOUNTS = [
-  1, 7, 13, 37, 69, 123, 404, 666, 777, 1337, 4200, 6969, 10000, 22222, 42000,
-  69000, 100000, 123456, 222222, 404404, 666666, 1000000,
+  0, 1, 4.04, 6.66, 13, 13.37, 21, 24, 37, 42, 50, 55, 60, 66, 69, 75, 80, 88, 91, 95, 99, 100,
 ] as const;
 
 export const VAULT_VERDICT_ROUND_SCHEDULE = [5, 4, 4, 3, 2, 1, 1] as const;
@@ -12,7 +11,7 @@ export type VaultStatus = 'available' | 'personal' | 'opened' | 'remainingFinalW
 export type BankMood = 'stingy' | 'calculated' | 'generous' | 'chaotic';
 export type AiPersonality = 'cautious' | 'balanced' | 'greedy' | 'chaotic' | 'show-off' | 'panic';
 export type OutcomeType = 'signedVerdict' | 'openedVault';
-export type ContestantStatus = 'Playing' | 'Signed' | 'Final Stage' | 'Finished';
+export type ContestantStatus = 'Charging' | 'Locked' | 'Final Battery' | 'Finished';
 export type BroadcastKind = 'decision' | 'amount' | 'round' | 'flavor' | 'final';
 
 export interface VaultPodState {
@@ -78,8 +77,8 @@ export interface ResolvedVaultParticipant {
 const FALLBACK_NAMES = ['You', 'Kian', 'Mira', 'Jules', 'Nina', 'Sasha', 'Eli', 'Rhea'];
 const BANK_MOODS: BankMood[] = ['stingy', 'calculated', 'generous', 'chaotic'];
 const AI_PERSONALITIES: AiPersonality[] = ['cautious', 'balanced', 'greedy', 'chaotic', 'show-off', 'panic'];
-const DRAMATIC_AMOUNTS = new Set([69, 404, 666, 1337, 4200, 6969, 69000, 404404, 666666, 1000000]);
-const TOP_AMOUNTS = new Set([222222, 404404, 666666, 1000000]);
+const DRAMATIC_AMOUNTS = new Set([0, 4.04, 6.66, 13.37, 42, 69, 99, 100]);
+const TOP_AMOUNTS = new Set([88, 91, 95, 99, 100]);
 const OFFER_MULTIPLIERS: Array<[number, number]> = [
   [0.45, 0.65],
   [0.52, 0.73],
@@ -130,15 +129,9 @@ function getNoise(mood: BankMood, rng: () => number) {
   return mood === 'chaotic' ? 0.84 + rng() * 0.34 : 0.94 + rng() * 0.12;
 }
 
-function cleanRound(value: number) {
-  if (value < 1000) return Math.round(value / 10) * 10;
-  if (value < 10000) return Math.round(value / (value < 5000 ? 50 : 100)) * (value < 5000 ? 50 : 100);
-  if (value < 100000) return Math.round(value / 500) * 500;
-  return Math.round(value / 1000) * 1000;
-}
-
 export function formatVaultAmount(value: number) {
-  return value.toLocaleString();
+  const rounded = Math.round(value * 100) / 100;
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toString()}%`;
 }
 
 export function createVaultVerdictRng(seed = 0) {
@@ -153,7 +146,7 @@ export function createVaultPods(seed: number): VaultPodState[] {
   const rng = mulberry32(seed >>> 0);
   const amounts = shuffle(VAULT_VERDICT_AMOUNTS, rng);
   return amounts.map((amount, index) => ({
-    vaultId: `vault-${index + 1}`,
+    vaultId: `battery-${index + 1}`,
     displayNumber: index + 1,
     amount,
     status: 'available',
@@ -180,10 +173,28 @@ export function calculateEyeBankOffer(options: {
   const rawOffer = expectedValue * multiplier * getMoodModifier(bankMood, rng) * getNoise(bankMood, rng);
   return {
     round: offerNumber,
-    offer: Math.max(1, cleanRound(rawOffer)),
+    offer: clamp(Math.round(rawOffer), 0, Math.max(0, ...remainingValues)),
     expectedValue,
     remainingValues: [...remainingValues],
   };
+}
+
+export function getHighestRemainingValue(contestant: Pick<VaultContestantState, 'vaults'>) {
+  return Math.max(0, ...calculateRemainingValues(contestant));
+}
+
+export function getSpecialRevealLabel(value: number) {
+  const labels = new Map<number, string>([
+    [0, 'DEAD CELL'],
+    [4.04, 'BATTERY NOT FOUND'],
+    [6.66, 'CURSED CELL'],
+    [13.37, 'ELITE CHARGE'],
+    [42, 'ANSWER CELL'],
+    [69, 'NICE'],
+    [99, 'ONE PERCENT AWAY'],
+    [100, 'FULL POWER'],
+  ]);
+  return labels.get(value) ?? null;
 }
 
 export function resolveVaultParticipants(
@@ -200,7 +211,7 @@ export function resolveVaultParticipants(
 
   const ids = props.participantIds && props.participantIds.length > 0
     ? props.participantIds
-    : FALLBACK_NAMES.map((_, index) => `vault-player-${index + 1}`);
+    : FALLBACK_NAMES.map((_, index) => `battery-player-${index + 1}`);
 
   return ids.map((id, index) => ({
     id,
@@ -363,7 +374,7 @@ function shouldAiAcceptOffer(options: {
   const offerRatio = offer / Math.max(1, expectedValue);
   const topStillHidden = calculateRemainingValues(contestant).filter((amount) => TOP_AMOUNTS.has(amount)).length;
   const hitTopThisRound = openedThisRound.some((amount) => TOP_AMOUNTS.has(amount));
-  const luckyRound = openedThisRound.every((amount) => amount < 10000);
+  const luckyRound = openedThisRound.every((amount) => amount <= 24);
   let threshold = 0.68 + round * 0.055;
 
   if (personality === 'cautious') threshold -= 0.12;
@@ -387,40 +398,41 @@ function buildBroadcastMessage(options: {
 }) {
   const { contestant, kind, amount, accepted, smallPlayerCount, rng } = options;
   const name = contestant.displayName;
-      if (smallPlayerCount) {
+  if (smallPlayerCount) {
     const vague = [
       'The control room just gasped. No further comment.',
       'Someone in another booth made the host blink twice.',
-      'The Eye Bank Broadcast briefly lost its composure.',
-      'One booth just reached a dangerous part of the board.',
+      'The Battery Low ticker briefly lost its composure.',
+      'A private booth just hit final battery territory.',
     ];
     return pick(rng, vague);
   }
   if (kind === 'decision') {
     if (accepted) {
       return pick(rng, [
-        `${name} signed a Verdict early. The audience is judging silently.`,
-        `${name} signed and left the booth glowing.`,
-        `${name} made peace with The Eye Bank. Bold or blessed?`,
+        `${name} locked a safe-looking Bank Offer.`,
+        `${name} accepted the charge and stepped away from the rack.`,
+        `${name} took the Bank Offer. The booth lights went green.`,
       ]);
     }
     return pick(rng, [
-      `${name} just rejected a spicy Eye Bank offer. Confidence or delusion?`,
-      `${name} risked the vault and the studio leaned forward.`,
-      `${name} refused an offer that made the host blink twice.`,
+      `${name} just rejected a risky Power Bank offer.`,
+      `${name} said no way too confidently.`,
+      `${name} ignored an offer that made the control room blink twice.`,
     ]);
   }
   if (kind === 'amount' && amount != null) {
-    if (amount === 1000000) return 'Someone just opened the 1,000,000 in another booth. The studio went quiet.';
-    if (amount === 404) return 'Somebody found 404. Their prize was not found either.';
-    if (amount === 69) return 'Another booth just opened 69. The audience reacted exactly how you think.';
-    return `A contestant just found ${formatVaultAmount(amount)} in another private booth. Painful.`;
+    if (amount === 100) return 'Someone just opened 100% in another booth. The room went silent.';
+    if (amount === 4.04) return 'Another booth found 4.04%. Battery not found.';
+    if (amount === 0) return 'Someone just opened 0%. Brutal.';
+    if (amount === 69) return 'Another booth just opened 69%. The audience reacted exactly how you think.';
+    return `A contestant just exposed ${formatVaultAmount(amount)} in another private booth. Painful.`;
   }
-  if (kind === 'final') return 'One booth just reached the Final Verdict.';
+  if (kind === 'final') return 'Someone is down to their final reserve battery.';
   return pick(rng, [
-    'A booth just cleared three tiny values in a row. The Eye Bank is sweating.',
-    'Someone quietly built a very dangerous board.',
-    'The Eye Bank sent a disrespectful offer and got rejected instantly.',
+    'A booth just kept the 100% alive into the late game.',
+    'Someone quietly built a dangerous charge rack.',
+    'The Bank sent an offer and got ignored instantly.',
   ]);
 }
 
@@ -510,11 +522,11 @@ export function simulateAiContestant(
 
 export function getContestantBroadcastStatus(contestant: VaultContestantState, elapsedMs: number): ContestantStatus {
   if (contestant.finalAmount != null && (contestant.finishTimeMs ?? 0) <= elapsedMs) {
-    return contestant.outcomeType === 'signedVerdict' ? 'Signed' : 'Finished';
+    return contestant.outcomeType === 'signedVerdict' ? 'Locked' : 'Finished';
   }
   const finalEventAt = contestant.offerHistory.length >= 7 ? contestant.offerHistory[6]?.round : null;
-  if (finalEventAt != null && elapsedMs >= Math.max(0, (contestant.finishTimeMs ?? 0) - 12000)) return 'Final Stage';
-  return 'Playing';
+  if (finalEventAt != null && elapsedMs >= Math.max(0, (contestant.finishTimeMs ?? 0) - 12000)) return 'Final Battery';
+  return 'Charging';
 }
 
 export function rankVaultContestants(contestants: VaultContestantState[]): RankedVaultResult[] {

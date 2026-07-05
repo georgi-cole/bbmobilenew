@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { GenericMinigameProps } from '../../minigames/reactComponents';
 import {
   VAULT_VERDICT_AMOUNTS,
@@ -9,7 +10,8 @@ import {
   createInitialContestant,
   createVaultVerdictRng,
   formatVaultAmount,
-  getContestantBroadcastStatus,
+  getHighestRemainingValue,
+  getSpecialRevealLabel,
   getVaultsLeftThisRound,
   maybeCreateOffer,
   openWallVault,
@@ -19,7 +21,7 @@ import {
   signVerdict,
   simulateAiContestant,
 } from './vaultVerdictLogic';
-import type { BroadcastEvent, RankedVaultResult, VaultContestantState } from './vaultVerdictLogic';
+import type { BroadcastEvent, RankedVaultResult, VaultContestantState, VaultPodState } from './vaultVerdictLogic';
 import './VaultVerdict.css';
 
 const FINAL_FEED_LIMIT = 18;
@@ -33,9 +35,7 @@ function formatTime(ms: number | null) {
 }
 
 function getReactionClass(amount: number) {
-  return [69, 404, 666, 1337, 4200, 6969, 69000, 404404, 666666, 1000000].includes(amount)
-    ? ' vault-verdict__pod--dramatic'
-    : '';
+  return getSpecialRevealLabel(amount) ? ' vault-verdict__pod--dramatic' : '';
 }
 
 function buildCompletion(contestants: VaultContestantState[]) {
@@ -47,7 +47,41 @@ function buildCompletion(contestants: VaultContestantState[]) {
   };
 }
 
-export default function VaultVerdict(props: GenericMinigameProps) {
+function BatteryTile({
+  battery,
+  disabled,
+  onClick,
+}: {
+  battery: VaultPodState;
+  disabled: boolean;
+  onClick: (batteryId: string, eventTimeMs: number) => void;
+}) {
+  const chargeStyle = battery.status === 'opened'
+    ? ({ '--charge': `${battery.amount}%` } as CSSProperties)
+    : undefined;
+  const specialLabel = battery.status === 'opened' ? getSpecialRevealLabel(battery.amount) : null;
+
+  return (
+    <button
+      type="button"
+      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${battery.status === 'opened' ? getReactionClass(battery.amount) : ''}`}
+      style={chargeStyle}
+      disabled={disabled}
+      onClick={(event) => onClick(battery.vaultId, event.timeStamp)}
+      aria-label={`Battery ${battery.displayNumber}`}
+    >
+      <span>{battery.status === 'personal' ? 'MY' : battery.displayNumber}</span>
+      {battery.status === 'opened' && (
+        <>
+          <strong>{formatVaultAmount(battery.amount)}</strong>
+          {specialLabel && <em>{specialLabel}</em>}
+        </>
+      )}
+    </button>
+  );
+}
+
+export default function BatteryLow(props: GenericMinigameProps) {
   const { seed: seedProp = 0, onFinish } = props;
   const [sessionSeed] = useState(() => createVaultVerdictRng(seedProp).seed);
   const rng = useMemo(() => createVaultVerdictRng(sessionSeed).rng, [sessionSeed]);
@@ -83,31 +117,27 @@ export default function VaultVerdict(props: GenericMinigameProps) {
     [aiContestants],
   );
   const vaultsLeft = getVaultsLeftThisRound(human);
-  const latestOffer = human.offerHistory[human.offerHistory.length - 1] ?? null;
   const finalWallVault = human.vaults.find((vault) => vault.status === 'remainingFinalWallVault');
   const personalVaultNumber = human.personalVaultId
     ? human.vaults.find((vault) => vault.vaultId === human.personalVaultId)?.displayNumber ?? null
     : null;
-  const broadcastMessage = feed[0]?.message ?? (
-    human.personalVaultId
-      ? 'Private booths are live. The Eye Bank is watching every vault.'
-      : 'Vault Verdict is standing by. Choose My Vault to begin.'
-  );
-  const eventEyebrow = !human.personalVaultId
-    ? 'Selection'
-    : human.currentOffer
-      ? human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length ? 'Final Verdict' : 'Eye Bank Offer'
-      : `Round ${human.currentRound} of ${VAULT_VERDICT_ROUND_SCHEDULE.length}`;
-  const eventTitle = !human.personalVaultId
-    ? 'Choose My Vault'
-    : human.currentOffer
-      ? formatVaultAmount(human.currentOffer)
-      : `Open ${vaultsLeft} vault${vaultsLeft === 1 ? '' : 's'}`;
-  const eventDetail = !human.personalVaultId
-    ? 'Select one pod to seal in your private chamber.'
-    : human.currentOffer
-      ? `${latestOffer?.remainingValues.length ?? 0} hidden values remain, including My Vault.`
-      : `My Vault${personalVaultNumber ? ` is Pod ${personalVaultNumber}` : ''}. The next pod you open leaves the board.`;
+  const highestRemaining = getHighestRemainingValue(human);
+  const latestReveal = human.revealedAmounts[human.revealedAmounts.length - 1] ?? null;
+  const latestRevealLabel = latestReveal == null ? null : getSpecialRevealLabel(latestReveal);
+  const leftRail = human.vaults.slice(0, 11);
+  const rightRail = human.vaults.slice(11);
+  const tickerMessages = [
+    ...(feed.length > 0 ? feed.map((event) => event.message) : []),
+    human.personalVaultId ? 'Private charging booths are live.' : 'Choose a Reserve Battery to begin.',
+    'The Bank is watching the rack.',
+    'A private booth just hit final battery territory.',
+    'The control room just gasped. No further comment.',
+  ];
+  const middleStatus = human.currentOffer != null
+    ? formatVaultAmount(human.currentOffer)
+    : human.personalVaultId
+      ? `ROUND ${human.currentRound} / ${VAULT_VERDICT_ROUND_SCHEDULE.length} - ${vaultsLeft} LEFT`
+      : 'CHOOSE RESERVE BATTERY';
 
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return;
@@ -176,124 +206,133 @@ export default function VaultVerdict(props: GenericMinigameProps) {
     });
   }
 
+  function getBatteryDisabled(battery: VaultPodState) {
+    return (
+      battery.status !== 'available' ||
+      (!human.personalVaultId && battery.status !== 'available') ||
+      human.currentOffer != null ||
+      human.finalAmount != null ||
+      (human.personalVaultId != null && vaultsLeft <= 0)
+    );
+  }
+
+  function handleBatteryClick(batteryId: string, eventTimeMs: number) {
+    if (human.personalVaultId) {
+      handleOpenVault(batteryId, eventTimeMs);
+      return;
+    }
+    handleChooseVault(batteryId, eventTimeMs);
+  }
+
   return (
     <div className="vault-verdict">
       <div className="vault-verdict__stage">
         <header className="vault-verdict__header">
-          <div className="vault-verdict__brand">
-            <span className="vault-verdict__eyebrow">Eye Bank Studio</span>
-            <h1>Vault Verdict</h1>
-          </div>
           <div className="vault-verdict__broadcast-row" aria-live="polite">
-            <span>Vault Verdict</span>
-            <strong>{broadcastMessage}</strong>
-            <div className="vault-verdict__broadcast-chips" aria-label="Contestant booth status">
-              {aiContestants.slice(0, 5).map((contestant) => (
-                <em key={contestant.contestantId}>
-                  {contestant.displayName}: {getContestantBroadcastStatus(contestant, elapsedMs)}
-                </em>
-              ))}
+            <span>Battery Low</span>
+            <div className="vault-verdict__ticker" aria-label="Live Battery Low broadcast ticker">
+              <div className="vault-verdict__ticker-track">
+                {[...tickerMessages, ...tickerMessages].map((message, index) => (
+                  <strong key={`${message}-${index}`}>{message}</strong>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="vault-verdict__timer">
-            <span>Finish time</span>
-            <strong>{formatTime(human.finishTimeMs ?? elapsedMs)}</strong>
-          </div>
+          {rankedResults == null && (
+            <div className="vault-verdict__control-row">
+              <div className="vault-verdict__timer">
+                <span>Time</span>
+                <strong>{formatTime(human.finishTimeMs ?? elapsedMs)}</strong>
+              </div>
+              <div className={`vault-verdict__status ${human.currentOffer != null ? 'is-offer' : ''}`}>
+                <span>{human.currentOffer != null ? 'Bank Offer' : 'Status'}</span>
+                <strong>{middleStatus}</strong>
+              </div>
+              {human.currentOffer != null && (
+                <div className="vault-verdict__decision-buttons">
+                  <button
+                    type="button"
+                    className="vault-verdict__accept"
+                    onClick={(event) => finishWith(signVerdict, event.timeStamp)}
+                    aria-label="Accept Bank Offer"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    className="vault-verdict__reject"
+                    onClick={(event) => finishWith(riskVault, event.timeStamp)}
+                    aria-label="Reject Bank Offer"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         {rankedResults == null ? (
           <main className="vault-verdict__game-grid">
-            <section className="vault-verdict__board" aria-label="Vault pod board">
-              <div className="vault-verdict__iris-core">
-                <span>Vault Verdict</span>
-                <strong>{human.openedVaultIds.length}/21</strong>
+            <section className="vault-verdict__board" aria-label="Battery rack board">
+              <button
+                type="button"
+                className="vault-verdict__info-button"
+                onClick={() => setAmountInfoOpen(true)}
+                aria-label="Show battery values"
+              >
+                i
+              </button>
+              <div className="vault-verdict__rail vault-verdict__rail--left">
+                {leftRail.map((battery) => (
+                  <BatteryTile
+                    key={battery.vaultId}
+                    battery={battery}
+                    disabled={getBatteryDisabled(battery)}
+                    onClick={handleBatteryClick}
+                  />
+                ))}
               </div>
-              {human.vaults.map((vault, index) => {
-                const angle = ((360 / human.vaults.length) * index - 90) * (Math.PI / 180);
-                const radius = 40;
-                const style = {
-                  left: `${50 + Math.cos(angle) * radius}%`,
-                  top: `${50 + Math.sin(angle) * radius}%`,
-                };
-                const disabled =
-                  vault.status !== 'available' ||
-                  !human.personalVaultId && vault.status !== 'available' ||
-                  !!human.currentOffer ||
-                  !!human.finalAmount ||
-                  (human.personalVaultId != null && vaultsLeft <= 0);
-                return (
-                  <button
-                    key={vault.vaultId}
-                    type="button"
-                    className={`vault-verdict__pod vault-verdict__pod--${vault.status}${vault.status === 'opened' ? getReactionClass(vault.amount) : ''}`}
-                    style={style}
-                    disabled={disabled}
-                    onClick={(event) =>
-                      (human.personalVaultId
-                        ? handleOpenVault(vault.vaultId, event.timeStamp)
-                        : handleChooseVault(vault.vaultId, event.timeStamp))}
-                    aria-label={`Vault pod ${vault.displayNumber}`}
-                  >
-                    <span>{vault.displayNumber}</span>
-                    {vault.status === 'opened' && <strong>{formatVaultAmount(vault.amount)}</strong>}
-                  </button>
-                );
-              })}
-            </section>
-
-            <aside className={`vault-verdict__event-panel ${human.currentOffer ? 'is-live' : ''}`}>
-              <div className="vault-verdict__event-topline">
-                <span>{eventEyebrow}</span>
-                <button type="button" className="vault-verdict__info-button" onClick={() => setAmountInfoOpen(true)} aria-label="Show vault values">
-                  i
-                </button>
-              </div>
-              <strong>{eventTitle}</strong>
-              <p>{eventDetail}</p>
-              <dl className="vault-verdict__event-stats">
-                <div>
-                  <dt>My Vault</dt>
-                  <dd>{personalVaultNumber ? `Pod ${personalVaultNumber}` : 'Unclaimed'}</dd>
+              <div className="vault-verdict__core-battery">
+                <span>Max Charge Left</span>
+                <strong>{formatVaultAmount(highestRemaining)}</strong>
+                <div
+                  className={`vault-verdict__core-shell ${latestReveal != null && latestReveal >= highestRemaining ? 'is-voltage-drop' : 'is-scan'}`}
+                  style={{ '--charge': `${highestRemaining}%` } as CSSProperties}
+                >
+                  <div className="vault-verdict__core-fill" />
+                  <div className="vault-verdict__core-scan" />
                 </div>
-                <div>
-                  <dt>Opened</dt>
-                  <dd>{human.openedVaultIds.length}</dd>
-                </div>
-                <div>
-                  <dt>Hidden</dt>
-                  <dd>{22 - human.revealedAmounts.length}</dd>
-                </div>
-              </dl>
-              <div className="vault-verdict__recent-values" aria-label="Recently opened values">
-                {human.revealedAmounts.slice(-4).length === 0 ? (
-                  <span>No reveals yet</span>
-                ) : (
-                  human.revealedAmounts.slice(-4).map((amount) => (
-                    <span key={`${amount}-${human.revealedAmounts.indexOf(amount)}`}>{formatVaultAmount(amount)}</span>
-                  ))
+                <small>{personalVaultNumber ? `Reserve Battery ${personalVaultNumber}` : 'Reserve Battery unclaimed'}</small>
+                {latestReveal != null && (
+                  <em>{latestRevealLabel ?? `${formatVaultAmount(latestReveal)} exposed`}</em>
                 )}
               </div>
-              <div className="vault-verdict__actions">
-                <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(signVerdict, event.timeStamp)}>
-                  Sign the Verdict
-                </button>
-                <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(riskVault, event.timeStamp)}>
-                  Risk the Vault
-                </button>
+              <div className="vault-verdict__rail vault-verdict__rail--right">
+                {rightRail.map((battery) => (
+                  <BatteryTile
+                    key={battery.vaultId}
+                    battery={battery}
+                    disabled={getBatteryDisabled(battery)}
+                    onClick={handleBatteryClick}
+                  />
+                ))}
               </div>
-            </aside>
+            </section>
           </main>
         ) : (
           <main className="vault-verdict__results">
             <section className="vault-verdict__result-hero">
               <span>Final Results</span>
-              <h2>{rankedResults[0]?.displayName} wins the Vault Verdict</h2>
+              <h2>{rankedResults[0]?.displayName} wins Battery Low</h2>
               <p>
                 You finished with {formatVaultAmount(human.finalAmount ?? 0)} by{' '}
-                {human.outcomeType === 'signedVerdict' ? 'signing the Verdict' : 'opening My Vault'}.
+                {human.outcomeType === 'signedVerdict' ? 'locking the Bank Offer' : 'opening the Reserve Battery'}.
               </p>
               {finalWallVault && (
-                <p className="vault-verdict__missed">What you missed: Pod {finalWallVault.displayNumber} held {formatVaultAmount(finalWallVault.amount)}.</p>
+                <p className="vault-verdict__missed">
+                  What you missed: Battery {finalWallVault.displayNumber} held {formatVaultAmount(finalWallVault.amount)}.
+                </p>
               )}
             </section>
             <section className="vault-verdict__result-list">
@@ -302,21 +341,23 @@ export default function VaultVerdict(props: GenericMinigameProps) {
                   <span>#{result.placement}</span>
                   <strong>{result.displayName}</strong>
                   <em>{formatVaultAmount(result.finalAmount ?? 0)}</em>
-                  <small>{result.outcomeType === 'signedVerdict' ? 'Signed Verdict' : 'Opened Vault'} · {formatTime(result.finishTimeMs)}</small>
+                  <small>
+                    {result.outcomeType === 'signedVerdict' ? 'Locked Bank Offer' : 'Opened Reserve Battery'} - {formatTime(result.finishTimeMs)}
+                  </small>
                 </article>
               ))}
             </section>
             <button type="button" className="vault-verdict__commit" disabled={committed} onClick={handleCommitResults}>
-              Lock Studio Result
+              Lock Result
             </button>
           </main>
         )}
         {amountInfoOpen && (
-          <div className="vault-verdict__amount-modal" role="dialog" aria-modal="true" aria-label="Vault values">
+          <div className="vault-verdict__amount-modal" role="dialog" aria-modal="true" aria-label="Battery values">
             <div className="vault-verdict__amount-panel">
               <div className="vault-verdict__amount-header">
-                <span>Vault Values</span>
-                <button type="button" onClick={() => setAmountInfoOpen(false)} aria-label="Close vault values">x</button>
+                <span>Battery Values</span>
+                <button type="button" onClick={() => setAmountInfoOpen(false)} aria-label="Close battery values">x</button>
               </div>
               <div className="vault-verdict__amount-grid">
                 {VAULT_VERDICT_AMOUNTS.slice().reverse().map((amount) => (
