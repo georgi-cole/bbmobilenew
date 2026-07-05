@@ -1213,6 +1213,33 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  bigSpender: {
+    key: 'bigSpender',
+    title: 'Big Spender: Broke or Boom',
+    description: 'Open wallets, spend down your Eyeoleans, and avoid bombs while racing to the lowest balance.',
+    instructions: [
+      'Every player starts with 1,000 Eyeoleans and takes turns opening wallets from a 24-wallet board.',
+      'Most wallets subtract Eyeoleans, some add Eyeoleans, and a few hide bombs.',
+      'Reach exactly 0 first to take the top spot, or lock your current balance before the risk gets too loud.',
+      'Opened wallets are replaced in the same slot, so the board always stays full.',
+      'Bonus wallets can appear once per turn, but they cannot chain into more bonus wallets.',
+      'If you open a bomb, you may use up to two ad saves for a mandatory Second Chance Wallet.',
+      'Bombed players rank below everyone who survives, even if their balance was low.',
+    ],
+    resultMode: 'placement',
+    metricKind: 'points',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'BigSpender',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
   chainOfGreed: {
     key: 'chainOfGreed',
     title: 'Chain of Greed',

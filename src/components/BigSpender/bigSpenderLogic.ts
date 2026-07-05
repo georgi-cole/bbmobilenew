@@ -425,7 +425,9 @@ export function pickWalletOutcome(rng: () => number): BigSpenderWalletOutcome {
   ], rng()).type;
 
   if (outcomeType === 'bomb') return { type: 'bomb', amount: null };
-  const table = outcomeType === 'negative' ? BIG_SPENDER_NEGATIVE_WALLETS : BIG_SPENDER_POSITIVE_WALLETS;
+  const table: readonly { amount: number; weight: number }[] = outcomeType === 'negative'
+    ? BIG_SPENDER_NEGATIVE_WALLETS
+    : BIG_SPENDER_POSITIVE_WALLETS;
   const amount = weightedPick(table, rng()).amount;
   return { type: outcomeType, amount };
 }
