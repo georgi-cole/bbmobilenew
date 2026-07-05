@@ -1132,7 +1132,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       inline: 'center',
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
     });
-  }, [currentActor?.id]);
+  }, [currentActor]);
   const handleAction = (choice: ChainAction) => {
     if (!actionTargetId || !actionTargetKind || isActionLocked || (choice === 'bank' && (isBankUsedThisTurn || isBankEmpty))) return;
     if (actionTargetKind === 'standard') {
