@@ -50,6 +50,7 @@ import Capitalization from '../components/Capitalization/Capitalization';
 import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
 import GridOfLuck from '../components/GridOfLuck/GridOfLuck';
 import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed';
+import VaultVerdict from '../components/VaultVerdict/VaultVerdict';
 import BigSpender from '../components/BigSpender/BigSpender';
 
 /**
@@ -110,6 +111,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   CodeBreaker: CodeBreakerComp as ComponentType<GenericMinigameProps>,
   GridOfLuck: GridOfLuck as ComponentType<GenericMinigameProps>,
   ChainOfGreed: ChainOfGreed as ComponentType<GenericMinigameProps>,
+  VaultVerdict: VaultVerdict as ComponentType<GenericMinigameProps>,
   BigSpender: BigSpender as ComponentType<GenericMinigameProps>,
 };
 

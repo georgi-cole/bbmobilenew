@@ -545,4 +545,20 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Trap Auction — secret bidding game; AI balances nerve to avoid the ' +
       'lowest bid while accounting for luck in reading opponent ranges.',
   },
+  vaultVerdict: {
+    key: 'vaultVerdict',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: {
+      physical: 0,
+      mental: 0.25,
+      precision: 0.05,
+      nerve: 0.35,
+      luck: 0.35,
+    },
+    notes:
+      'Vault Verdict simulates private Eye Bank offer games; AI mixes risk ' +
+      'tolerance, offer value, and board luck.',
+  },
 };
