@@ -186,7 +186,7 @@ function getPlayerInitials(name: string) {
 function getSafeAvatarDisplay(player: ChainOfGreedPlayerState | null) {
   if (!player) return 'BB';
   const avatar = player.avatar.trim();
-  const looksLikeRawImageText = /profile|photo|image|avatar|https?:|[\/]|[a-f0-9]{8}/i.test(avatar);
+  const looksLikeRawImageText = /profile|photo|image|avatar|https?:|[/]|[a-f0-9]{8}/i.test(avatar);
   if (!avatar || avatar.length > 4 || looksLikeRawImageText) return getPlayerInitials(player.name);
   return avatar;
 }
