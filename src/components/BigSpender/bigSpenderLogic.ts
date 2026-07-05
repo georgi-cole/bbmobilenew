@@ -5,7 +5,7 @@ export const BIG_SPENDER_DISPLAY_NAME = 'Big Spender: Broke or Boom';
 
 export const BIG_SPENDER_CONFIG = {
   startingBalance: 1000,
-  boardSize: 30,
+  boardSize: 28,
   outcomeWeights: {
     negative: 81,
     positive: 15,
@@ -55,6 +55,27 @@ export const BIG_SPENDER_POSITIVE_WALLETS = [
 ] as const;
 
 export const BIG_SPENDER_FUNNY_AMOUNTS = new Set([69, 123, 222, 333, 404, 420, 666]);
+
+const AI_NEGATIVE_BROADCASTS = [
+  '{name} found a receipt with bad handwriting.',
+  '{name} heard the wallet sigh.',
+  '{name} made the house accountants smile.',
+  '{name} opened one and looked suddenly humble.',
+] as const;
+
+const AI_POSITIVE_BROADCASTS = [
+  '{name} found suspicious cashback.',
+  '{name} got a wallet that fought back.',
+  '{name} accidentally made things worse.',
+  '{name} opened one and the room got nosy.',
+] as const;
+
+const AI_BOMB_BROADCASTS = [
+  'Rumors say {name} heard a very suspicious beep.',
+  'A tiny boom echoed somewhere near {name}.',
+  '{name} found the wallet with commitment issues.',
+  'The house just went quiet around {name}.',
+] as const;
 
 export type BigSpenderOutcomeType = 'negative' | 'positive' | 'bomb';
 export type BigSpenderWalletKind = 'normal' | 'bonus' | 'secondChance';
@@ -181,11 +202,16 @@ function appendEvent(state: BigSpenderState, event: BigSpenderEvent) {
 
 function getOutcomeMessage(player: BigSpenderPlayerState, outcome: BigSpenderWalletOutcome) {
   if (outcome.type === 'bomb' && player.isHuman) return 'You opened a bomb.';
-  if (outcome.type === 'bomb') return `Rumors say ${player.displayName} just opened a bomb.`;
+  if (outcome.type === 'bomb') return getAiBroadcastLine(player, AI_BOMB_BROADCASTS);
   const amount = outcome.amount ?? 0;
   if (player.isHuman && amount < 0) return `You opened ${amount} Eyeoleans.`;
   if (player.isHuman) return `You found +${amount} Eyeoleans.`;
-  return `${player.displayName} opened wallet ${player.walletsOpened}.`;
+  return getAiBroadcastLine(player, outcome.type === 'negative' ? AI_NEGATIVE_BROADCASTS : AI_POSITIVE_BROADCASTS);
+}
+
+function getAiBroadcastLine(player: BigSpenderPlayerState, lines: readonly string[]) {
+  const template = lines[Math.max(0, player.walletsOpened - 1) % lines.length] ?? '{name} opened a wallet.';
+  return template.replace('{name}', player.displayName);
 }
 
 function nextRandom(state: BigSpenderState) {
@@ -650,7 +676,7 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
   appendEvent(state, {
     type: 'playerLocked',
     playerId,
-    message: `${player.displayName} locked after opening ${player.walletsOpened} wallets.`,
+    message: `${player.displayName} stepped away after ${player.walletsOpened} wallets.`,
   });
   return completeIfNeeded(state);
 }

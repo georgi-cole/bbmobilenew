@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GenericMinigameProps } from '../../minigames/reactComponents';
 import { mulberry32 } from '../../store/rng';
 import {
-  BIG_SPENDER_DISPLAY_NAME,
   buildBigSpenderRawResults,
   createInitialBigSpenderState,
   decideAiShouldOpen,
@@ -19,6 +18,12 @@ import {
 } from './bigSpenderLogic';
 import './BigSpender.css';
 
+type BombDramaStage = 'impact' | 'cracked' | 'prompt' | null;
+
+const BOMB_IMPACT_MS = 560;
+const BOMB_PROMPT_MS = 1650;
+const ZERO_RESULTS_DELAY_MS = 1800;
+
 function getPlayerLabel(player: BigSpenderPlayerState) {
   if (player.status === 'zeroFinished') return 'Zero';
   if (player.status === 'bombed') return 'Bombed';
@@ -33,7 +38,7 @@ function getWalletAriaLabel(wallet: BigSpenderWallet) {
 
 function getWalletResultLabel(wallet: BigSpenderWallet) {
   if (wallet.state !== 'revealed') return null;
-  if (wallet.outcome.type === 'bomb') return 'Bomb';
+  if (wallet.outcome.type === 'bomb') return '💣';
   const amount = wallet.outcome.amount ?? 0;
   if (amount > 0) return `+${amount}`;
   return `${amount}`;
@@ -61,11 +66,15 @@ export default function BigSpender(props: GenericMinigameProps) {
   const [state, setState] = useState(() => createInitialBigSpenderState(participants, seed));
   const [resultCommitted, setResultCommitted] = useState(false);
   const [broadcasts, setBroadcasts] = useState<string[]>([]);
+  const [bombDramaStage, setBombDramaStage] = useState<BombDramaStage>(null);
+  const [zeroDramaVisible, setZeroDramaVisible] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));
   const aiTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const broadcastQueueRef = useRef<string[]>([]);
   const broadcastKeysRef = useRef(new Set<string>());
   const broadcastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const zeroDramaKeysRef = useRef(new Set<string>());
 
   const humanPlayer = useMemo(() => state.players.find((player) => player.isHuman) ?? null, [state.players]);
   const humanBoard = useMemo(
@@ -80,6 +89,14 @@ export default function BigSpender(props: GenericMinigameProps) {
     state.status === 'running' &&
     state.pendingAdRescue?.playerId !== humanPlayer.playerId,
   );
+  const humanAdRescuePending = Boolean(state.pendingAdRescue && humanPlayer?.playerId === state.pendingAdRescue.playerId);
+  const pendingAdRescueWalletId = state.pendingAdRescue?.walletId ?? null;
+  const humanZeroFinished = humanPlayer?.status === 'zeroFinished';
+  const humanZeroEvent = humanPlayer
+    ? state.events.find((event) => event.type === 'playerZeroFinished' && event.playerId === humanPlayer.playerId)
+    : null;
+  const humanZeroEventKey = humanZeroEvent ? getBroadcastKey(humanZeroEvent) : null;
+  const shouldShowResults = state.status === 'completed' && showResults;
 
   useEffect(() => {
     const timers = aiTimersRef.current;
@@ -158,6 +175,44 @@ export default function BigSpender(props: GenericMinigameProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!humanAdRescuePending) {
+      const resetTimer = setTimeout(() => setBombDramaStage(null), 0);
+      return () => clearTimeout(resetTimer);
+    }
+
+    const timers = [
+      setTimeout(() => setBombDramaStage('impact'), 0),
+      setTimeout(() => setBombDramaStage('cracked'), BOMB_IMPACT_MS),
+      setTimeout(() => setBombDramaStage('prompt'), BOMB_PROMPT_MS),
+    ];
+    return () => {
+      for (const timer of timers) {
+        clearTimeout(timer);
+      }
+    };
+  }, [humanAdRescuePending, pendingAdRescueWalletId]);
+
+  useEffect(() => {
+    if (!humanZeroEventKey || zeroDramaKeysRef.current.has(humanZeroEventKey)) return;
+    zeroDramaKeysRef.current.add(humanZeroEventKey);
+    const showTimer = setTimeout(() => setZeroDramaVisible(true), 0);
+    const hideTimer = setTimeout(() => setZeroDramaVisible(false), ZERO_RESULTS_DELAY_MS);
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+    };
+  }, [humanZeroEventKey]);
+
+  useEffect(() => {
+    if (state.status !== 'completed') {
+      const resetTimer = setTimeout(() => setShowResults(false), 0);
+      return () => clearTimeout(resetTimer);
+    }
+    const timer = setTimeout(() => setShowResults(true), humanZeroFinished ? ZERO_RESULTS_DELAY_MS : 0);
+    return () => clearTimeout(timer);
+  }, [humanZeroFinished, state.status]);
+
   const openWallet = (walletId: string) => {
     if (!humanPlayer || !canHumanAct) return;
     setState((previous) => openBigSpenderWallet(previous, humanPlayer.playerId, walletId));
@@ -179,19 +234,21 @@ export default function BigSpender(props: GenericMinigameProps) {
   };
 
   return (
-    <div className="big-spender" data-testid="big-spender-game">
-      <header className="big-spender__header">
-        <div className="big-spender__title-block">
-          <span className="big-spender__eyebrow">Eyeoleans at risk</span>
-          <h1>{BIG_SPENDER_DISPLAY_NAME}</h1>
-        </div>
-      </header>
-
+    <div className={[
+      'big-spender',
+      humanAdRescuePending && bombDramaStage === 'cracked' ? 'big-spender--cracked' : '',
+      zeroDramaVisible ? 'big-spender--zeroing' : '',
+    ].join(' ')} data-testid="big-spender-game">
       <section className="big-spender__status-panel" aria-live="polite">
         <div>
           <span className="big-spender__eyebrow">Live balance</span>
           <strong>{humanPlayer ? `${humanPlayer.balance} Eyeoleans` : 'Results'}</strong>
         </div>
+        {state.status === 'running' && (
+          <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanAct}>
+            Lock in
+          </button>
+        )}
       </section>
 
       <main className="big-spender__table">
@@ -226,15 +283,6 @@ export default function BigSpender(props: GenericMinigameProps) {
 
       </main>
 
-      {state.status === 'running' && (
-        <footer className="big-spender__actions">
-          <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanAct}>
-            Lock in
-          </button>
-          <span>{canHumanAct ? 'Open wallets while the house plays live.' : 'Your run is locked.'}</span>
-        </footer>
-      )}
-
       {broadcasts.length > 0 && (
         <section className="big-spender__broadcasts" aria-label="House broadcasts" aria-live="polite">
           {broadcasts.map((message) => (
@@ -243,7 +291,20 @@ export default function BigSpender(props: GenericMinigameProps) {
         </section>
       )}
 
-      {state.pendingAdRescue && humanPlayer?.playerId === state.pendingAdRescue.playerId && (
+      {humanAdRescuePending && bombDramaStage && bombDramaStage !== 'prompt' && (
+        <div className={`big-spender__screen-drama big-spender__screen-drama--${bombDramaStage}`} aria-hidden="true">
+          <span className="big-spender__screen-drama-icon">💣</span>
+        </div>
+      )}
+
+      {zeroDramaVisible && (
+        <div className="big-spender__screen-drama big-spender__screen-drama--zero" aria-hidden="true">
+          <span className="big-spender__screen-drama-kicker">Zero hit</span>
+          <strong>0</strong>
+        </div>
+      )}
+
+      {humanAdRescuePending && bombDramaStage === 'prompt' && (
         <div className="big-spender__overlay">
           <div className="big-spender__modal big-spender__modal--danger">
             <span className="big-spender__eyebrow">Bomb save</span>
@@ -257,7 +318,7 @@ export default function BigSpender(props: GenericMinigameProps) {
         </div>
       )}
 
-      {state.status === 'completed' && (
+      {shouldShowResults && (
         <div className="big-spender__overlay">
           <div className="big-spender__modal big-spender__modal--results">
             <span className="big-spender__eyebrow">Final ranking</span>
