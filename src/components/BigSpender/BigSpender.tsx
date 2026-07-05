@@ -124,32 +124,14 @@ export default function BigSpender(props: GenericMinigameProps) {
   }, [state]);
 
   useEffect(() => {
+    const timers = aiTimersRef.current;
     return () => {
-      for (const timer of aiTimersRef.current.values()) {
+      for (const timer of timers.values()) {
         clearTimeout(timer);
       }
-      aiTimersRef.current.clear();
+      timers.clear();
     };
   }, []);
-
-  useEffect(() => {
-    if (state.status !== 'running') return;
-    if (!humanPlayer || humanPlayer.status !== 'active') return;
-    const hasHiddenWallets = humanBoard.some((wallet) => wallet.state === 'hidden');
-    if (hasHiddenWallets) return;
-    setState((previous) => {
-      const actor = previous.players.find((player) => player.playerId === humanPlayer.playerId);
-      if (
-        previous.status !== 'running' ||
-        !actor ||
-        actor.status !== 'active' ||
-        getBigSpenderBoardForPlayer(previous, actor.playerId).some((wallet) => wallet.state === 'hidden')
-      ) {
-        return previous;
-      }
-      return lockBigSpenderPlayer(previous, actor.playerId);
-    });
-  }, [humanBoard, humanPlayer, state.status]);
 
   const openWallet = (walletId: string) => {
     if (!humanPlayer || !canHumanAct) return;
