@@ -49,8 +49,8 @@ function buildCompletion(contestants: VaultContestantState[]) {
 
 export default function VaultVerdict(props: GenericMinigameProps) {
   const { seed: seedProp = 0, onFinish } = props;
-  const seedRef = useRef(createVaultVerdictRng(seedProp).seed);
-  const rngRef = useRef(createVaultVerdictRng(seedRef.current).rng);
+  const [sessionSeed] = useState(() => createVaultVerdictRng(seedProp).seed);
+  const rng = useMemo(() => createVaultVerdictRng(sessionSeed).rng, [sessionSeed]);
   const startTimeRef = useRef<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [feed, setFeed] = useState<BroadcastEvent[]>([]);
@@ -60,12 +60,12 @@ export default function VaultVerdict(props: GenericMinigameProps) {
   const initialContestants = useMemo(() => {
     const participants = resolveVaultParticipants(props);
     return participants.map((participant, index) => {
-      const contestant = createInitialContestant(participant, index, seedRef.current + 101);
+      const contestant = createInitialContestant(participant, index, sessionSeed + 101);
       return participant.isHuman
         ? contestant
-        : simulateAiContestant(contestant, seedRef.current + 909, participants.length);
+        : simulateAiContestant(contestant, sessionSeed + 909, participants.length);
     });
-  }, [props]);
+  }, [props, sessionSeed]);
 
   const [contestants, setContestants] = useState<VaultContestantState[]>(initialContestants);
   const human = contestants.find((contestant) => contestant.isUserControlled) ?? contestants[0]!;
@@ -89,7 +89,7 @@ export default function VaultVerdict(props: GenericMinigameProps) {
     if (!human.personalVaultId || human.finalAmount != null) return;
     const timer = window.setInterval(() => {
       if (startTimeRef.current != null) {
-        setElapsedMs(Date.now() - startTimeRef.current);
+        setElapsedMs(performance.now() - startTimeRef.current);
       }
     }, 500);
     return () => window.clearInterval(timer);
@@ -98,7 +98,7 @@ export default function VaultVerdict(props: GenericMinigameProps) {
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return;
     if (feed.length >= FINAL_FEED_LIMIT || feedIndex >= visibleFeedPool.length) return;
-    const delay = 8000 + Math.floor(rngRef.current() * 6000);
+    const delay = 8000 + Math.floor(rng() * 6000);
     const timer = window.setTimeout(() => {
       let nextIndex = feedIndex;
       let nextEvent = visibleFeedPool[nextIndex];
@@ -112,7 +112,7 @@ export default function VaultVerdict(props: GenericMinigameProps) {
       }
     }, human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length ? delay + 7000 : delay);
     return () => window.clearTimeout(timer);
-  }, [feed, feedIndex, human.currentRound, human.finalAmount, human.personalVaultId, visibleFeedPool]);
+  }, [feed, feedIndex, human.currentRound, human.finalAmount, human.personalVaultId, rng, visibleFeedPool]);
 
   function updateHuman(updater: (current: VaultContestantState) => VaultContestantState) {
     setContestants((previous) =>
@@ -120,19 +120,22 @@ export default function VaultVerdict(props: GenericMinigameProps) {
     );
   }
 
-  function handleChooseVault(vaultId: string) {
-    startTimeRef.current = Date.now();
+  function handleChooseVault(vaultId: string, eventTimeMs: number) {
+    startTimeRef.current = eventTimeMs;
     setElapsedMs(0);
     updateHuman((current) => choosePersonalVault(current, vaultId));
   }
 
-  function handleOpenVault(vaultId: string) {
-    const openedAt = startTimeRef.current == null ? 0 : Date.now() - startTimeRef.current;
-    updateHuman((current) => maybeCreateOffer(openWallVault(current, vaultId, openedAt), rngRef.current));
+  function handleOpenVault(vaultId: string, eventTimeMs: number) {
+    const openedAt = startTimeRef.current == null ? 0 : eventTimeMs - startTimeRef.current;
+    updateHuman((current) => maybeCreateOffer(openWallVault(current, vaultId, openedAt), rng));
   }
 
-  function finishWith(updater: (current: VaultContestantState, finishTimeMs: number) => VaultContestantState) {
-    const finishTimeMs = startTimeRef.current == null ? elapsedMs : Date.now() - startTimeRef.current;
+  function finishWith(
+    updater: (current: VaultContestantState, finishTimeMs: number) => VaultContestantState,
+    eventTimeMs: number,
+  ) {
+    const finishTimeMs = startTimeRef.current == null ? elapsedMs : eventTimeMs - startTimeRef.current;
     setElapsedMs(finishTimeMs);
     updateHuman((current) => updater(current, finishTimeMs));
   }
@@ -189,7 +192,10 @@ export default function VaultVerdict(props: GenericMinigameProps) {
                     className={`vault-verdict__pod vault-verdict__pod--${vault.status}${vault.status === 'opened' ? getReactionClass(vault.amount) : ''}`}
                     style={style}
                     disabled={disabled}
-                    onClick={() => (human.personalVaultId ? handleOpenVault(vault.vaultId) : handleChooseVault(vault.vaultId))}
+                    onClick={(event) =>
+                      (human.personalVaultId
+                        ? handleOpenVault(vault.vaultId, event.timeStamp)
+                        : handleChooseVault(vault.vaultId, event.timeStamp))}
                     aria-label={`Vault pod ${vault.displayNumber}`}
                   >
                     <span>{vault.displayNumber}</span>
@@ -223,10 +229,10 @@ export default function VaultVerdict(props: GenericMinigameProps) {
                   <small>{latestOffer.remainingValues.length} sealed values remain in your private board.</small>
                 )}
                 <div className="vault-verdict__actions">
-                  <button type="button" disabled={!human.currentOffer} onClick={() => finishWith(signVerdict)}>
+                  <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(signVerdict, event.timeStamp)}>
                     Sign the Verdict
                   </button>
-                  <button type="button" disabled={!human.currentOffer} onClick={() => finishWith(riskVault)}>
+                  <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(riskVault, event.timeStamp)}>
                     Risk the Vault
                   </button>
                 </div>
