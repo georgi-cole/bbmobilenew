@@ -7,10 +7,8 @@ import {
   canOfferAdRescue,
   createInitialBigSpenderState,
   decideAiShouldOpen,
-  finalizeBigSpenderByTimeout,
   finishBigSpenderTurn,
   getAiActionDelayMs,
-  getTimerDurationMs,
   lockBigSpenderPlayer,
   openBigSpenderWallet,
   pickWalletOutcome,
@@ -61,15 +59,6 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(state.players.every((entry) => entry.balance === BIG_SPENDER_CONFIG.startingBalance)).toBe(true);
     expect(state.board).toHaveLength(24);
     expect(state.currentTurnPlayerId).toBeTruthy();
-  });
-
-  it('uses the configured timer durations for player-count bands', () => {
-    expect(getTimerDurationMs(1)).toBe(180_000);
-    expect(getTimerDurationMs(2)).toBe(180_000);
-    expect(getTimerDurationMs(6)).toBe(180_000);
-    expect(getTimerDurationMs(7)).toBe(210_000);
-    expect(getTimerDurationMs(11)).toBe(210_000);
-    expect(getTimerDurationMs(12)).toBe(240_000);
   });
 
   it('declares wallet outcome weights as 81/15/4', () => {
@@ -127,7 +116,6 @@ describe('Big Spender: Broke or Boom logic', () => {
     });
 
     expect(opened.pendingAdRescue?.playerId).toBe('human');
-    expect(opened.timerPaused).toBe(true);
     expect(canOfferAdRescue(opened, player(opened, 'human'))).toBe(true);
   });
 
@@ -139,7 +127,6 @@ describe('Big Spender: Broke or Boom logic', () => {
     const declined = resolveBigSpenderAdRescue(opened, 'declined');
 
     expect(declined.pendingAdRescue).toBeNull();
-    expect(declined.timerPaused).toBe(false);
     expect(player(declined, 'human').status).toBe('bombed');
   });
 
@@ -226,21 +213,20 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(bonusResolved.pendingBonus).toBeNull();
   });
 
-  it('does not force a human action timeout before the global timer expires', () => {
+  it('keeps human turns open until the player acts', () => {
     const state = setCurrent(makeState(), 'human');
     const sameTurn = finishBigSpenderTurn({ ...state, postWalletLockPlayerId: null });
 
-    expect(state.timerDurationMs).toBeGreaterThan(0);
     expect(sameTurn.currentTurnPlayerId).not.toBeNull();
   });
 
-  it('produces randomized AI action delays in the configured bands', () => {
+  it('produces randomized AI action delays in the 1-4 second band', () => {
     expect(getAiActionDelayMs(2, () => 0)).toBe(1000);
     expect(getAiActionDelayMs(6, () => 1)).toBe(4000);
     expect(getAiActionDelayMs(7, () => 0)).toBe(1000);
-    expect(getAiActionDelayMs(11, () => 1)).toBe(3000);
-    expect(getAiActionDelayMs(12, () => 0)).toBe(750);
-    expect(getAiActionDelayMs(16, () => 1)).toBe(2500);
+    expect(getAiActionDelayMs(11, () => 1)).toBe(4000);
+    expect(getAiActionDelayMs(12, () => 0)).toBe(1000);
+    expect(getAiActionDelayMs(16, () => 1)).toBe(4000);
   });
 
   it('makes AI more likely to open high balances and cautious at low balances', () => {
@@ -248,10 +234,11 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(decideAiShouldOpen(900, () => 0.91)).toBe(false);
     expect(decideAiShouldOpen(120, () => 0.29)).toBe(true);
     expect(decideAiShouldOpen(120, () => 0.31)).toBe(false);
-    expect(decideAiShouldOpen(500, () => 0.9, { secondsRemaining: 20, likelyWinningBalance: 100 })).toBe(true);
+    expect(decideAiShouldOpen(500, () => 0.74)).toBe(true);
+    expect(decideAiShouldOpen(500, () => 0.76)).toBe(false);
   });
 
-  it('ends when all players are finalized and finalizes active players on timeout', () => {
+  it('ends when all players are finalized', () => {
     let state = makeState();
     for (const id of [...state.turnOrder]) {
       state = setCurrent(state, id);
@@ -259,10 +246,6 @@ describe('Big Spender: Broke or Boom logic', () => {
     }
 
     expect(state.status).toBe('completed');
-
-    const timedOut = finalizeBigSpenderByTimeout(makeState());
-    expect(timedOut.status).toBe('completed');
-    expect(timedOut.players.every((entry) => entry.finalizedAt != null)).toBe(true);
   });
 
   it('ranks zero finishers, lowest non-zero scores, and bombed players correctly', () => {

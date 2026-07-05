@@ -7,7 +7,6 @@ import {
   buildBigSpenderRawResults,
   createInitialBigSpenderState,
   decideAiShouldOpen,
-  finalizeBigSpenderByTimeout,
   finishBigSpenderTurn,
   getAiActionDelayMs,
   isFunnyAmount,
@@ -22,15 +21,6 @@ import {
   type BigSpenderWallet,
 } from './bigSpenderLogic';
 import './BigSpender.css';
-
-const TICK_MS = 250;
-
-function formatTime(ms: number) {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = String(totalSeconds % 60).padStart(2, '0');
-  return `${minutes}:${seconds}`;
-}
 
 function getInitials(name: string) {
   return name
@@ -76,7 +66,6 @@ export default function BigSpender(props: GenericMinigameProps) {
   );
   const seed = props.seed || 73_337;
   const [state, setState] = useState(() => createInitialBigSpenderState(participants, seed));
-  const [remainingMs, setRemainingMs] = useState(state.timerDurationMs);
   const [resultCommitted, setResultCommitted] = useState(false);
   const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,10 +77,6 @@ export default function BigSpender(props: GenericMinigameProps) {
   const humanPlayer = useMemo(() => state.players.find((player) => player.isHuman) ?? null, [state.players]);
   const ranking = useMemo(() => rankBigSpenderPlayers(state.players), [state.players]);
   const winner = ranking[0] ?? null;
-  const likelyWinningBalance = useMemo(() => {
-    const candidates = state.players.filter((player) => player.status !== 'bombed');
-    return Math.min(...candidates.map((player) => player.balance));
-  }, [state.players]);
   const canHumanAct = Boolean(
     currentPlayer?.isHuman &&
     currentPlayer.status === 'active' &&
@@ -103,20 +88,6 @@ export default function BigSpender(props: GenericMinigameProps) {
   const canPostWalletLock = Boolean(
     humanPlayer && state.postWalletLockPlayerId === humanPlayer.playerId && state.status === 'running',
   );
-
-  useEffect(() => {
-    if (state.status !== 'running' || state.timerPaused) return;
-    const timer = setInterval(() => {
-      setRemainingMs((remaining) => {
-        const next = Math.max(0, remaining - TICK_MS);
-        if (next === 0) {
-          setState((previous) => finalizeBigSpenderByTimeout(previous));
-        }
-        return next;
-      });
-    }, TICK_MS);
-    return () => clearInterval(timer);
-  }, [state.status, state.timerPaused]);
 
   useEffect(() => {
     if (aiTimerRef.current) {
@@ -131,10 +102,10 @@ export default function BigSpender(props: GenericMinigameProps) {
       aiTimerRef.current = setTimeout(() => {
         setState((previous) => {
           const actor = previous.players.find((player) => player.playerId === previous.pendingBonus?.playerId);
-          const accept = actor ? decideAiShouldOpen(actor.balance, aiRngRef.current, { secondsRemaining: Math.ceil(remainingMs / 1000), likelyWinningBalance }) : false;
+          const accept = actor ? decideAiShouldOpen(actor.balance, aiRngRef.current) : false;
           return resolveBigSpenderBonusOffer(previous, accept);
         });
-      }, 650);
+      }, getAiActionDelayMs(state.startingPlayerCount, aiRngRef.current));
       return () => {
         if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
       };
@@ -146,20 +117,17 @@ export default function BigSpender(props: GenericMinigameProps) {
       setState((previous) => {
         const actor = previous.players.find((player) => player.playerId === previous.currentTurnPlayerId);
         if (!actor || actor.isHuman || actor.status !== 'active') return previous;
-        const shouldOpen = decideAiShouldOpen(actor.balance, aiRngRef.current, {
-          secondsRemaining: Math.ceil(remainingMs / 1000),
-          likelyWinningBalance,
-        });
+        const shouldOpen = decideAiShouldOpen(actor.balance, aiRngRef.current);
         if (!shouldOpen) return lockBigSpenderPlayer(previous, actor.playerId);
         const wallet = chooseAiWallet(previous, aiRngRef.current);
-        if (!wallet) return finalizeBigSpenderByTimeout(previous);
+        if (!wallet) return lockBigSpenderPlayer(previous, actor.playerId);
         return openBigSpenderWallet(previous, actor.playerId, wallet.walletId);
       });
     }, delay);
     return () => {
       if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
     };
-  }, [currentPlayer, likelyWinningBalance, remainingMs, state]);
+  }, [currentPlayer, state]);
 
   const openWallet = (walletId: string) => {
     if (!currentPlayer || !canHumanAct) return;
@@ -191,10 +159,6 @@ export default function BigSpender(props: GenericMinigameProps) {
         <div className="big-spender__title-block">
           <span className="big-spender__eyebrow">Eyeoleans at risk</span>
           <h1>{BIG_SPENDER_DISPLAY_NAME}</h1>
-        </div>
-        <div className="big-spender__timer" aria-label={`${formatTime(remainingMs)} remaining`}>
-          <span>{state.timerPaused ? 'Paused' : 'Clock'}</span>
-          <strong>{formatTime(remainingMs)}</strong>
         </div>
       </header>
 
@@ -245,7 +209,11 @@ export default function BigSpender(props: GenericMinigameProps) {
                 <strong>{player.displayName}</strong>
                 <span>{getPlayerLabel(player)} - {player.walletsOpened} wallets</span>
               </div>
-              <data value={player.balance}>{player.balance}</data>
+              {player.isHuman ? (
+                <data value={player.balance}>{player.balance}</data>
+              ) : (
+                <span className="big-spender__score-hidden" aria-label="Score hidden">Hidden</span>
+              )}
             </article>
           ))}
         </aside>
@@ -312,7 +280,7 @@ export default function BigSpender(props: GenericMinigameProps) {
                 <li key={player.playerId}>
                   <span>{player.rank}</span>
                   <strong>{player.displayName}</strong>
-                  <em>{player.balance} Eyeoleans - {getPlayerLabel(player)}</em>
+                  <em>{player.isHuman ? `${player.balance} Eyeoleans` : 'Score hidden'} - {getPlayerLabel(player)}</em>
                 </li>
               ))}
             </ol>
