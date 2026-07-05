@@ -53,13 +53,13 @@ function player(state: BigSpenderState, playerId: string) {
 }
 
 describe('Big Spender: Broke or Boom logic', () => {
-  it('initializes all players at 1,000 Eyeoleans with private 30-wallet boards', () => {
+  it('initializes all players at 1,000 Eyeoleans with private 28-wallet boards', () => {
     const state = makeState();
 
     expect(state.players).toHaveLength(participants.length);
     expect(state.players.every((entry) => entry.balance === BIG_SPENDER_CONFIG.startingBalance)).toBe(true);
-    expect(state.board).toHaveLength(30);
-    expect(state.players.every((entry) => getBigSpenderBoardForPlayer(state, entry.playerId).length === 30)).toBe(true);
+    expect(state.board).toHaveLength(BIG_SPENDER_CONFIG.boardSize);
+    expect(state.players.every((entry) => getBigSpenderBoardForPlayer(state, entry.playerId).length === BIG_SPENDER_CONFIG.boardSize)).toBe(true);
     expect(firstWallet(state, 'human').walletId).not.toBe(firstWallet(state, 'ai-1').walletId);
     expect(state.currentTurnPlayerId).toBeTruthy();
   });
@@ -200,7 +200,7 @@ describe('Big Spender: Broke or Boom logic', () => {
     });
     const openedWallet = getBigSpenderBoardForPlayer(opened, 'ai-1').find((entry) => entry.walletId === wallet.walletId);
 
-    expect(getBigSpenderBoardForPlayer(opened, 'ai-1')).toHaveLength(30);
+    expect(getBigSpenderBoardForPlayer(opened, 'ai-1')).toHaveLength(BIG_SPENDER_CONFIG.boardSize);
     expect(openedWallet?.state).toBe('revealed');
     expect(openedWallet?.openedByPlayerId).toBe('ai-1');
   });
