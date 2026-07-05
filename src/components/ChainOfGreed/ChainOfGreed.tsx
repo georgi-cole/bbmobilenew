@@ -1315,7 +1315,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               <div
                 role="button"
                 tabIndex={0}
-                aria-label="View full ladder"
+                aria-label="Open chain ladder board"
                 className="chain-of-greed__ladder-stage"
                 data-testid="chain-ladder-stage"
                 onClick={() => setIsLadderSheetOpen(true)}
