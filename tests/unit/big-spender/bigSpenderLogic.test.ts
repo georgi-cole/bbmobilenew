@@ -9,6 +9,7 @@ import {
   decideAiShouldOpen,
   finishBigSpenderTurn,
   getAiActionDelayMs,
+  getBigSpenderBoardForPlayer,
   lockBigSpenderPlayer,
   openBigSpenderWallet,
   pickWalletOutcome,
@@ -39,8 +40,8 @@ function setCurrent(state: BigSpenderState, playerId: string) {
   return state;
 }
 
-function firstWallet(state: BigSpenderState) {
-  const wallet = state.board[0];
+function firstWallet(state: BigSpenderState, playerId = 'human') {
+  const wallet = getBigSpenderBoardForPlayer(state, playerId)[0];
   if (!wallet) throw new Error('missing wallet');
   return wallet;
 }
@@ -52,12 +53,14 @@ function player(state: BigSpenderState, playerId: string) {
 }
 
 describe('Big Spender: Broke or Boom logic', () => {
-  it('initializes all players at 1,000 Eyeoleans with a 24-wallet board', () => {
+  it('initializes all players at 1,000 Eyeoleans with private 30-wallet boards', () => {
     const state = makeState();
 
     expect(state.players).toHaveLength(participants.length);
     expect(state.players.every((entry) => entry.balance === BIG_SPENDER_CONFIG.startingBalance)).toBe(true);
-    expect(state.board).toHaveLength(24);
+    expect(state.board).toHaveLength(30);
+    expect(state.players.every((entry) => getBigSpenderBoardForPlayer(state, entry.playerId).length === 30)).toBe(true);
+    expect(firstWallet(state, 'human').walletId).not.toBe(firstWallet(state, 'ai-1').walletId);
     expect(state.currentTurnPlayerId).toBeTruthy();
   });
 
@@ -99,14 +102,16 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(player(opened, 'human').positiveWalletsOpened).toBe(1);
   });
 
-  it('marks an AI bombed and advances away from that player', () => {
+  it('marks an AI bombed without using the human board', () => {
     const state = setCurrent(makeState(), 'ai-1');
-    const opened = openBigSpenderWallet(state, 'ai-1', firstWallet(state).walletId, 'normal', {
+    const humanWalletId = firstWallet(state, 'human').walletId;
+    const opened = openBigSpenderWallet(state, 'ai-1', firstWallet(state, 'ai-1').walletId, 'normal', {
       forcedOutcome: { type: 'bomb', amount: null },
     });
 
     expect(player(opened, 'ai-1').status).toBe('bombed');
-    expect(opened.currentTurnPlayerId).not.toBe('ai-1');
+    expect(getBigSpenderBoardForPlayer(opened, 'human')[0]?.walletId).toBe(humanWalletId);
+    expect(getBigSpenderBoardForPlayer(opened, 'human')[0]?.state).toBe('hidden');
   });
 
   it('offers ad rescue to an eligible human bomb opening', () => {
@@ -186,18 +191,18 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(locked.currentTurnPlayerId).not.toBe('human');
   });
 
-  it('replaces opened wallets and keeps the board at 24 slots', () => {
+  it('keeps opened wallets revealed on that player board', () => {
     const state = setCurrent(makeState(), 'ai-1');
-    const wallet = firstWallet(state);
+    const wallet = firstWallet(state, 'ai-1');
     const opened = openBigSpenderWallet(state, 'ai-1', wallet.walletId, 'normal', {
       forcedOutcome: { type: 'negative', amount: -25 },
       suppressBonus: true,
     });
-    const replacement = opened.board.find((entry) => entry.boardSlotIndex === wallet.boardSlotIndex);
+    const openedWallet = getBigSpenderBoardForPlayer(opened, 'ai-1').find((entry) => entry.walletId === wallet.walletId);
 
-    expect(opened.board).toHaveLength(24);
-    expect(replacement?.walletId).not.toBe(wallet.walletId);
-    expect(replacement?.generationNumber).toBe(wallet.generationNumber + 1);
+    expect(getBigSpenderBoardForPlayer(opened, 'ai-1')).toHaveLength(30);
+    expect(openedWallet?.state).toBe('revealed');
+    expect(openedWallet?.openedByPlayerId).toBe('ai-1');
   });
 
   it('offers at most one extra wallet per turn and the extra cannot chain another extra', () => {

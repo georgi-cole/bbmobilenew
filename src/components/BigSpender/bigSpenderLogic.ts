@@ -5,13 +5,13 @@ export const BIG_SPENDER_DISPLAY_NAME = 'Big Spender: Broke or Boom';
 
 export const BIG_SPENDER_CONFIG = {
   startingBalance: 1000,
-  boardSize: 24,
+  boardSize: 30,
   outcomeWeights: {
     negative: 81,
     positive: 15,
     bomb: 4,
   },
-  bonusExtraWalletChance: 0.1,
+  bonusExtraWalletChance: 0,
   maxExtraWalletsPerTurn: 1,
   maxAdBombRescues: 2,
 } as const;
@@ -83,6 +83,7 @@ export interface BigSpenderWallet {
   generationColor: number;
   outcome: BigSpenderWalletOutcome;
   state: BigSpenderWalletState;
+  openedByPlayerId: string | null;
 }
 
 export interface BigSpenderPlayerState {
@@ -148,6 +149,7 @@ export interface BigSpenderState {
   currentTurnPlayerId: string | null;
   players: BigSpenderPlayerState[];
   board: BigSpenderWallet[];
+  boardsByPlayerId: Record<string, BigSpenderWallet[]>;
   pendingBonus: BigSpenderPendingBonus | null;
   pendingAdRescue: BigSpenderPendingAdRescue | null;
   postWalletLockPlayerId: string | null;
@@ -177,6 +179,13 @@ function appendEvent(state: BigSpenderState, event: BigSpenderEvent) {
   state.events = [event, ...state.events].slice(0, 16);
 }
 
+function getOutcomeMessage(player: BigSpenderPlayerState, outcome: BigSpenderWalletOutcome) {
+  if (outcome.type === 'bomb') return `Rumors say ${player.displayName} just opened a bomb.`;
+  const amount = outcome.amount ?? 0;
+  if (amount < 0) return `${player.displayName} just opened ${amount} Eyeoleans.`;
+  return `${player.displayName} just found +${amount} Eyeoleans.`;
+}
+
 function nextRandom(state: BigSpenderState) {
   const seed = (state.seed + Math.imul(state.randomCursor + 1, 0x9e3779b1)) >>> 0;
   state.randomCursor += 1;
@@ -199,6 +208,12 @@ function cloneState(state: BigSpenderState): BigSpenderState {
     turnOrder: [...state.turnOrder],
     players: state.players.map((player) => ({ ...player })),
     board: state.board.map((wallet) => ({ ...wallet, outcome: { ...wallet.outcome } })),
+    boardsByPlayerId: Object.fromEntries(
+      Object.entries(state.boardsByPlayerId).map(([playerId, board]) => [
+        playerId,
+        board.map((wallet) => ({ ...wallet, outcome: { ...wallet.outcome } })),
+      ]),
+    ),
     pendingBonus: state.pendingBonus ? { ...state.pendingBonus } : null,
     pendingAdRescue: state.pendingAdRescue ? { ...state.pendingAdRescue } : null,
     events: [...state.events],
@@ -211,10 +226,21 @@ function getPlayerMutable(state: BigSpenderState, playerId: string) {
   return player;
 }
 
-function getWalletMutable(state: BigSpenderState, walletId: string) {
-  const wallet = state.board.find((entry) => entry.walletId === walletId);
+function getBoardMutable(state: BigSpenderState, playerId: string) {
+  const board = state.boardsByPlayerId[playerId];
+  if (!board) throw new Error(`Big Spender board for '${playerId}' not found.`);
+  return board;
+}
+
+function getWalletMutable(state: BigSpenderState, playerId: string, walletId: string) {
+  const wallet = getBoardMutable(state, playerId).find((entry) => entry.walletId === walletId);
   if (!wallet) throw new Error(`Big Spender wallet '${walletId}' not found.`);
   return wallet;
+}
+
+function syncVisibleBoard(state: BigSpenderState) {
+  const humanPlayer = state.players.find((player) => player.isHuman) ?? state.players[0];
+  state.board = humanPlayer ? state.boardsByPlayerId[humanPlayer.playerId] ?? [] : [];
 }
 
 function markTurnFlags(state: BigSpenderState) {
@@ -235,6 +261,12 @@ function nextEligibleTurnIndex(state: BigSpenderState, startIndex: number) {
 }
 
 function completeIfNeeded(state: BigSpenderState) {
+  for (const player of state.players) {
+    const hiddenWallets = (state.boardsByPlayerId[player.playerId] ?? []).some((wallet) => wallet.state === 'hidden');
+    if (player.status === 'active' && player.finalizedAt == null && !hiddenWallets) {
+      finalizePlayer(player, state, 'locked');
+    }
+  }
   const unresolved = state.players.filter((player) => player.status === 'active' && player.finalizedAt == null);
   if (unresolved.length > 0) return state;
   state.status = 'completed';
@@ -243,6 +275,7 @@ function completeIfNeeded(state: BigSpenderState) {
   state.pendingBonus = null;
   state.pendingAdRescue = null;
   markTurnFlags(state);
+  syncVisibleBoard(state);
   appendEvent(state, { type: 'gameCompleted', message: 'All players are finalized.' });
   return state;
 }
@@ -263,30 +296,17 @@ function advanceTurnMutable(state: BigSpenderState) {
   return state;
 }
 
-function createWalletFromRoll(slotIndex: number, generationNumber: number, rng: () => number): BigSpenderWallet {
+function createWalletFromRoll(slotIndex: number, generationNumber: number, playerId: string, rng: () => number): BigSpenderWallet {
   const outcome = pickWalletOutcome(rng);
   return {
-    walletId: `wallet-${slotIndex}-${generationNumber}`,
+    walletId: `${playerId}-wallet-${slotIndex}-${generationNumber}`,
     boardSlotIndex: slotIndex,
     generationNumber,
     generationColor: generationNumber % 6,
     outcome,
     state: 'hidden',
+    openedByPlayerId: null,
   };
-}
-
-function replaceWalletMutable(state: BigSpenderState, wallet: BigSpenderWallet) {
-  const nextWallet = createWalletFromRoll(
-    wallet.boardSlotIndex,
-    wallet.generationNumber + 1,
-    () => nextRandom(state),
-  );
-  state.board = state.board.map((entry) => entry.walletId === wallet.walletId ? nextWallet : entry);
-  appendEvent(state, {
-    type: 'walletReplaced',
-    walletId: nextWallet.walletId,
-    message: `Slot ${nextWallet.boardSlotIndex + 1} refilled.`,
-  });
 }
 
 function finalizePlayer(player: BigSpenderPlayerState, state: BigSpenderState, status: BigSpenderPlayerStatus) {
@@ -296,10 +316,6 @@ function finalizePlayer(player: BigSpenderPlayerState, state: BigSpenderState, s
   if (status === 'locked') player.lockedAt = state.actionOrder;
   if (status === 'zeroFinished') player.zeroFinishedAt = state.actionOrder;
   if (status === 'bombed') player.bombedAt = state.actionOrder;
-}
-
-function shouldPauseForHumanLock(player: BigSpenderPlayerState, state: BigSpenderState, kind: BigSpenderWalletKind) {
-  return kind !== 'bonus' && player.isHuman && player.status === 'active' && state.status === 'running';
 }
 
 function maybeOfferBonus(state: BigSpenderState, player: BigSpenderPlayerState, openedWallet: BigSpenderWallet, options: BigSpenderOpenOptions) {
@@ -341,7 +357,7 @@ function applyOutcomeMutable(
       type: 'walletOpened',
       playerId: player.playerId,
       outcome,
-      message: `${player.displayName} gained ${outcome.amount ?? 0} Eyeoleans.`,
+      message: getOutcomeMessage(player, outcome),
     });
     return;
   }
@@ -353,7 +369,7 @@ function applyOutcomeMutable(
       type: 'walletOpened',
       playerId: player.playerId,
       outcome,
-      message: `${player.displayName} spent ${Math.abs(outcome.amount ?? 0)} Eyeoleans.`,
+      message: getOutcomeMessage(player, outcome),
     });
     if (player.balance === 0) {
       finalizePlayer(player, state, 'zeroFinished');
@@ -371,7 +387,7 @@ function applyOutcomeMutable(
     type: 'walletOpened',
     playerId: player.playerId,
     outcome,
-    message: `${player.displayName} opened a bomb.`,
+    message: getOutcomeMessage(player, outcome),
   });
 }
 
@@ -384,15 +400,11 @@ function markBombedMutable(state: BigSpenderState, player: BigSpenderPlayerState
   });
 }
 
-function finishAfterResolution(state: BigSpenderState, player: BigSpenderPlayerState, kind: BigSpenderWalletKind) {
+function finishAfterResolution(state: BigSpenderState) {
   completeIfNeeded(state);
   if (state.status === 'completed' || state.pendingAdRescue || state.pendingBonus) return state;
-  if (shouldPauseForHumanLock(player, state, kind)) {
-    state.postWalletLockPlayerId = player.playerId;
-    markTurnFlags(state);
-    return state;
-  }
-  return advanceTurnMutable(state);
+  markTurnFlags(state);
+  return state;
 }
 
 export function sumWeights(items: readonly { weight: number }[]) {
@@ -421,6 +433,10 @@ export function pickWalletOutcome(rng: () => number): BigSpenderWalletOutcome {
 
 export function isFunnyAmount(amount: number | null | undefined) {
   return amount != null && BIG_SPENDER_FUNNY_AMOUNTS.has(Math.abs(amount));
+}
+
+export function getBigSpenderBoardForPlayer(state: BigSpenderState, playerId: string) {
+  return state.boardsByPlayerId[playerId] ?? [];
 }
 
 export function resolveBigSpenderParticipants(participants?: BigSpenderParticipant[], participantIds?: string[]) {
@@ -475,22 +491,29 @@ export function createInitialBigSpenderState(
     originalTurnOrderIndex: index,
     currentTurn: false,
   }));
-  const board = Array.from({ length: BIG_SPENDER_CONFIG.boardSize }, (_unused, slotIndex) =>
-    createWalletFromRoll(slotIndex, 1, rng),
+  const boardsByPlayerId = Object.fromEntries(
+    players.map((player) => [
+      player.playerId,
+      Array.from({ length: BIG_SPENDER_CONFIG.boardSize }, (_unused, slotIndex) =>
+        createWalletFromRoll(slotIndex, 1, player.playerId, rng),
+      ),
+    ]),
   );
   const firstPlayerId = players[0]?.playerId ?? null;
+  const humanPlayerId = players.find((player) => player.isHuman)?.playerId ?? firstPlayerId;
   const state: BigSpenderState = {
     gameId: BIG_SPENDER_GAME_ID,
     status: 'running',
     seed,
-    randomCursor: BIG_SPENDER_CONFIG.boardSize + participants.length,
+    randomCursor: BIG_SPENDER_CONFIG.boardSize * participants.length + participants.length,
     actionOrder: 0,
     startingPlayerCount: participants.length,
     turnOrder: players.map((player) => player.playerId),
     currentTurnIndex: 0,
     currentTurnPlayerId: firstPlayerId,
     players,
-    board,
+    board: humanPlayerId ? boardsByPlayerId[humanPlayerId] ?? [] : [],
+    boardsByPlayerId,
     pendingBonus: null,
     pendingAdRescue: null,
     postWalletLockPlayerId: null,
@@ -518,17 +541,18 @@ export function openBigSpenderWallet(
 ) {
   const state = cloneState(previousState);
   if (state.status !== 'running') return state;
-  if (state.pendingAdRescue || state.pendingBonus) return state;
+  if (state.pendingAdRescue?.playerId === playerId || state.pendingBonus?.playerId === playerId) return state;
   const player = getPlayerMutable(state, playerId);
   if (player.status !== 'active' || player.finalizedAt != null) return state;
-  if (state.currentTurnPlayerId !== playerId && kind === 'normal') return state;
 
-  const wallet = getWalletMutable(state, walletId);
+  const wallet = getWalletMutable(state, playerId, walletId);
   if (wallet.state !== 'hidden') return state;
   wallet.state = 'opening';
+  wallet.openedByPlayerId = playerId;
   const outcome = options.forcedOutcome ?? wallet.outcome;
   wallet.outcome = outcome;
   wallet.state = 'revealed';
+  syncVisibleBoard(state);
 
   applyOutcomeMutable(state, player, outcome, kind);
 
@@ -544,15 +568,13 @@ export function openBigSpenderWallet(
       return state;
     }
     markBombedMutable(state, player);
-    replaceWalletMutable(state, wallet);
-    return finishAfterResolution(state, player, kind);
+    return finishAfterResolution(state);
   }
 
-  replaceWalletMutable(state, wallet);
   if (player.status === 'active' && kind === 'normal' && maybeOfferBonus(state, player, wallet, options)) {
     return state;
   }
-  return finishAfterResolution(state, player, kind);
+  return finishAfterResolution(state);
 }
 
 export function resolveBigSpenderBonusOffer(previousState: BigSpenderState, accept: boolean, forcedOutcome?: BigSpenderWalletOutcome) {
@@ -567,13 +589,13 @@ export function resolveBigSpenderBonusOffer(previousState: BigSpenderState, acce
       playerId: pending.playerId,
       message: `${player.displayName} declined the bonus wallet.`,
     });
-    return finishAfterResolution(state, player, 'normal');
+    return finishAfterResolution(state);
   }
 
   const outcome = forcedOutcome ?? pickWalletOutcome(() => nextRandom(state));
   resolveSyntheticWalletMutable(state, player, outcome, 'bonus');
   if (outcome.type === 'bomb') markBombedMutable(state, player);
-  return finishAfterResolution(state, player, 'bonus');
+  return finishAfterResolution(state);
 }
 
 export function resolveBigSpenderAdRescue(
@@ -586,7 +608,6 @@ export function resolveBigSpenderAdRescue(
   if (!pending) return state;
   state.pendingAdRescue = null;
   const player = getPlayerMutable(state, pending.playerId);
-  const wallet = getWalletMutable(state, pending.walletId);
 
   if (decision !== 'completed' || player.status !== 'active') {
     appendEvent(state, {
@@ -595,8 +616,7 @@ export function resolveBigSpenderAdRescue(
       message: `${player.displayName} did not complete the ad save.`,
     });
     markBombedMutable(state, player);
-    replaceWalletMutable(state, wallet);
-    return finishAfterResolution(state, player, 'normal');
+    return finishAfterResolution(state);
   }
 
   player.adBombRescuesUsed += 1;
@@ -608,8 +628,7 @@ export function resolveBigSpenderAdRescue(
   const outcome = forcedSecondChanceOutcome ?? pickWalletOutcome(() => nextRandom(state));
   resolveSyntheticWalletMutable(state, player, outcome, 'secondChance');
   if (outcome.type === 'bomb') markBombedMutable(state, player);
-  replaceWalletMutable(state, wallet);
-  return finishAfterResolution(state, player, 'secondChance');
+  return finishAfterResolution(state);
 }
 
 export function finishBigSpenderTurn(previousState: BigSpenderState) {
@@ -621,14 +640,17 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
   const state = cloneState(previousState);
   const player = getPlayerMutable(state, playerId);
   if (state.status !== 'running' || player.status !== 'active' || player.finalizedAt != null) return state;
-  if (state.currentTurnPlayerId !== playerId && state.postWalletLockPlayerId !== playerId) return state;
   finalizePlayer(player, state, 'locked');
+  if (state.currentTurnPlayerId === playerId) {
+    state.currentTurnPlayerId = null;
+    markTurnFlags(state);
+  }
   appendEvent(state, {
     type: 'playerLocked',
     playerId,
     message: `${player.displayName} locked at ${player.balance} Eyeoleans.`,
   });
-  return advanceTurnMutable(state);
+  return completeIfNeeded(state);
 }
 
 export function decideAiShouldOpen(balance: number, rng: () => number) {

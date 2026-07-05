@@ -7,14 +7,12 @@ import {
   buildBigSpenderRawResults,
   createInitialBigSpenderState,
   decideAiShouldOpen,
-  finishBigSpenderTurn,
   getAiActionDelayMs,
-  isFunnyAmount,
+  getBigSpenderBoardForPlayer,
   lockBigSpenderPlayer,
   openBigSpenderWallet,
   rankBigSpenderPlayers,
   resolveBigSpenderAdRescue,
-  resolveBigSpenderBonusOffer,
   resolveBigSpenderParticipants,
   type BigSpenderPlayerState,
   type BigSpenderState,
@@ -44,18 +42,26 @@ function getWalletAriaLabel(wallet: BigSpenderWallet) {
   return `Open wallet ${wallet.boardSlotIndex + 1}, generation ${wallet.generationNumber}`;
 }
 
-function getOutcomeCopy(state: BigSpenderState) {
-  const event = state.events.find((entry) => entry.type === 'walletOpened' && entry.outcome);
-  if (!event?.outcome) return 'Pick a wallet. Spend down to zero without finding a bomb.';
-  if (event.outcome.type === 'bomb') return 'Bomb wallet. The room just got expensive.';
-  const amount = event.outcome.amount ?? 0;
-  const funny = isFunnyAmount(amount) ? ' House number hit.' : '';
-  if (amount < 0) return `Spent ${Math.abs(amount)} Eyeoleans.${funny}`;
-  return `Gained ${amount} Eyeoleans.${funny}`;
+function isImageAvatar(avatar?: string) {
+  return Boolean(avatar && (/^(https?:|data:image\/|\/)/.test(avatar) || /\.(avif|jpe?g|png|webp|gif|svg)$/i.test(avatar)));
 }
 
-function chooseAiWallet(state: BigSpenderState, rng: () => number) {
-  const available = state.board.filter((wallet) => wallet.state === 'hidden');
+function getOutcomeCopy(state: BigSpenderState) {
+  const event = state.events.find((entry) => entry.type === 'walletOpened' && entry.outcome);
+  if (!event?.outcome) return 'Pick wallets while the house opens theirs. Lock in whenever you like.';
+  return event.message;
+}
+
+function getWalletResultLabel(wallet: BigSpenderWallet) {
+  if (wallet.state !== 'revealed') return null;
+  if (wallet.outcome.type === 'bomb') return 'Bomb';
+  const amount = wallet.outcome.amount ?? 0;
+  if (amount > 0) return `+${amount}`;
+  return `${amount}`;
+}
+
+function chooseAiWallet(state: BigSpenderState, playerId: string, rng: () => number) {
+  const available = getBigSpenderBoardForPlayer(state, playerId).filter((wallet) => wallet.state === 'hidden');
   return available[Math.floor(rng() * available.length)] ?? available[0] ?? null;
 }
 
@@ -68,79 +74,91 @@ export default function BigSpender(props: GenericMinigameProps) {
   const [state, setState] = useState(() => createInitialBigSpenderState(participants, seed));
   const [resultCommitted, setResultCommitted] = useState(false);
   const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));
-  const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const currentPlayer = useMemo(
-    () => state.players.find((player) => player.playerId === state.currentTurnPlayerId) ?? null,
-    [state.currentTurnPlayerId, state.players],
-  );
   const humanPlayer = useMemo(() => state.players.find((player) => player.isHuman) ?? null, [state.players]);
+  const humanBoard = useMemo(
+    () => humanPlayer ? getBigSpenderBoardForPlayer(state, humanPlayer.playerId) : state.board,
+    [humanPlayer, state],
+  );
+  const playersById = useMemo(() => new Map(state.players.map((player) => [player.playerId, player])), [state.players]);
   const ranking = useMemo(() => rankBigSpenderPlayers(state.players), [state.players]);
   const winner = ranking[0] ?? null;
   const canHumanAct = Boolean(
-    currentPlayer?.isHuman &&
-    currentPlayer.status === 'active' &&
+    humanPlayer &&
+    humanPlayer.status === 'active' &&
     state.status === 'running' &&
-    !state.pendingAdRescue &&
-    !state.pendingBonus &&
-    !state.postWalletLockPlayerId,
-  );
-  const canPostWalletLock = Boolean(
-    humanPlayer && state.postWalletLockPlayerId === humanPlayer.playerId && state.status === 'running',
+    state.pendingAdRescue?.playerId !== humanPlayer.playerId,
   );
 
   useEffect(() => {
-    if (aiTimerRef.current) {
-      clearTimeout(aiTimerRef.current);
-      aiTimerRef.current = null;
+    const timers = aiTimersRef.current;
+    for (const [playerId, timer] of timers) {
+      const player = state.players.find((entry) => entry.playerId === playerId);
+      if (state.status !== 'running' || !player || player.isHuman || player.status !== 'active') {
+        clearTimeout(timer);
+        timers.delete(playerId);
+      }
     }
-    if (state.status !== 'running' || state.pendingAdRescue || state.postWalletLockPlayerId) return;
 
-    if (state.pendingBonus) {
-      const bonusPlayer = state.players.find((player) => player.playerId === state.pendingBonus?.playerId);
-      if (!bonusPlayer || bonusPlayer.isHuman) return;
-      aiTimerRef.current = setTimeout(() => {
+    if (state.status !== 'running') return;
+
+    for (const player of state.players) {
+      if (player.isHuman || player.status !== 'active' || timers.has(player.playerId)) continue;
+      if (!getBigSpenderBoardForPlayer(state, player.playerId).some((wallet) => wallet.state === 'hidden')) continue;
+      const delay = getAiActionDelayMs(state.startingPlayerCount, aiRngRef.current);
+      const timer = setTimeout(() => {
+        aiTimersRef.current.delete(player.playerId);
         setState((previous) => {
-          const actor = previous.players.find((player) => player.playerId === previous.pendingBonus?.playerId);
-          const accept = actor ? decideAiShouldOpen(actor.balance, aiRngRef.current) : false;
-          return resolveBigSpenderBonusOffer(previous, accept);
+          const actor = previous.players.find((entry) => entry.playerId === player.playerId);
+          if (!actor || actor.isHuman || actor.status !== 'active') return previous;
+          const shouldOpen = decideAiShouldOpen(actor.balance, aiRngRef.current);
+          if (!shouldOpen) return lockBigSpenderPlayer(previous, actor.playerId);
+          const wallet = chooseAiWallet(previous, actor.playerId, aiRngRef.current);
+          if (!wallet) return lockBigSpenderPlayer(previous, actor.playerId);
+          return openBigSpenderWallet(previous, actor.playerId, wallet.walletId);
         });
-      }, getAiActionDelayMs(state.startingPlayerCount, aiRngRef.current));
-      return () => {
-        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
-      };
+      }, delay);
+      timers.set(player.playerId, timer);
     }
+  }, [state]);
 
-    if (!currentPlayer || currentPlayer.isHuman || currentPlayer.status !== 'active') return;
-    const delay = getAiActionDelayMs(state.startingPlayerCount, aiRngRef.current);
-    aiTimerRef.current = setTimeout(() => {
-      setState((previous) => {
-        const actor = previous.players.find((player) => player.playerId === previous.currentTurnPlayerId);
-        if (!actor || actor.isHuman || actor.status !== 'active') return previous;
-        const shouldOpen = decideAiShouldOpen(actor.balance, aiRngRef.current);
-        if (!shouldOpen) return lockBigSpenderPlayer(previous, actor.playerId);
-        const wallet = chooseAiWallet(previous, aiRngRef.current);
-        if (!wallet) return lockBigSpenderPlayer(previous, actor.playerId);
-        return openBigSpenderWallet(previous, actor.playerId, wallet.walletId);
-      });
-    }, delay);
+  useEffect(() => {
     return () => {
-      if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+      for (const timer of aiTimersRef.current.values()) {
+        clearTimeout(timer);
+      }
+      aiTimersRef.current.clear();
     };
-  }, [currentPlayer, state]);
+  }, []);
+
+  useEffect(() => {
+    if (state.status !== 'running') return;
+    if (!humanPlayer || humanPlayer.status !== 'active') return;
+    const hasHiddenWallets = humanBoard.some((wallet) => wallet.state === 'hidden');
+    if (hasHiddenWallets) return;
+    setState((previous) => {
+      const actor = previous.players.find((player) => player.playerId === humanPlayer.playerId);
+      if (
+        previous.status !== 'running' ||
+        !actor ||
+        actor.status !== 'active' ||
+        getBigSpenderBoardForPlayer(previous, actor.playerId).some((wallet) => wallet.state === 'hidden')
+      ) {
+        return previous;
+      }
+      return lockBigSpenderPlayer(previous, actor.playerId);
+    });
+  }, [humanBoard, humanPlayer, state.status]);
 
   const openWallet = (walletId: string) => {
-    if (!currentPlayer || !canHumanAct) return;
-    setState((previous) => openBigSpenderWallet(previous, currentPlayer.playerId, walletId));
+    if (!humanPlayer || !canHumanAct) return;
+    setState((previous) => openBigSpenderWallet(previous, humanPlayer.playerId, walletId));
   };
 
   const lockHuman = () => {
     if (!humanPlayer) return;
     setState((previous) => lockBigSpenderPlayer(previous, humanPlayer.playerId));
-  };
-
-  const continueHumanTurn = () => {
-    setState((previous) => finishBigSpenderTurn(previous));
   };
 
   const finish = () => {
@@ -164,8 +182,8 @@ export default function BigSpender(props: GenericMinigameProps) {
 
       <section className="big-spender__status-panel" aria-live="polite">
         <div>
-          <span className="big-spender__eyebrow">Current turn</span>
-          <strong>{currentPlayer?.displayName ?? 'Results'}</strong>
+          <span className="big-spender__eyebrow">Live balance</span>
+          <strong>{humanPlayer ? `${humanPlayer.balance} Eyeoleans` : 'Results'}</strong>
         </div>
         <p>{getOutcomeCopy(state)}</p>
         {humanPlayer && (
@@ -177,20 +195,36 @@ export default function BigSpender(props: GenericMinigameProps) {
 
       <main className="big-spender__table">
         <section className="big-spender__board" aria-label="Wallet board">
-          {state.board.map((wallet) => (
-            <button
-              key={wallet.walletId}
-              type="button"
-              className={`big-spender__wallet big-spender__wallet--color-${wallet.generationColor}`}
-              disabled={!canHumanAct || wallet.state !== 'hidden'}
-              onClick={() => openWallet(wallet.walletId)}
-              aria-label={getWalletAriaLabel(wallet)}
-            >
-              <span className="big-spender__wallet-flap" aria-hidden="true" />
-              <span className="big-spender__wallet-id">{wallet.boardSlotIndex + 1}</span>
-              <span className="big-spender__wallet-generation">G{wallet.generationNumber}</span>
-            </button>
-          ))}
+          {humanBoard.map((wallet) => {
+            const opener = wallet.openedByPlayerId ? playersById.get(wallet.openedByPlayerId) : null;
+            const resultLabel = getWalletResultLabel(wallet);
+            return (
+              <button
+                key={wallet.walletId}
+                type="button"
+                className={[
+                  'big-spender__wallet',
+                  `big-spender__wallet--color-${wallet.generationColor}`,
+                  wallet.state === 'revealed' ? 'big-spender__wallet--revealed' : '',
+                  wallet.outcome.type === 'bomb' && wallet.state === 'revealed' ? 'big-spender__wallet--bomb' : '',
+                ].join(' ')}
+                disabled={!canHumanAct || wallet.state !== 'hidden'}
+                onClick={() => openWallet(wallet.walletId)}
+                aria-label={getWalletAriaLabel(wallet)}
+              >
+                <span className="big-spender__wallet-flap" aria-hidden="true" />
+                <span className="big-spender__wallet-id">{wallet.boardSlotIndex + 1}</span>
+                {resultLabel ? (
+                  <>
+                    <strong className="big-spender__wallet-result">{resultLabel}</strong>
+                    <span className="big-spender__wallet-opener">{opener?.displayName ?? 'Opened'}</span>
+                  </>
+                ) : (
+                  <span className="big-spender__wallet-generation">Tap</span>
+                )}
+              </button>
+            );
+          })}
         </section>
 
         <aside className="big-spender__players" aria-label="Player balances">
@@ -199,12 +233,17 @@ export default function BigSpender(props: GenericMinigameProps) {
               key={player.playerId}
               className={[
                 'big-spender__player',
-                player.currentTurn ? 'big-spender__player--current' : '',
                 player.isHuman ? 'big-spender__player--human' : '',
                 `big-spender__player--${player.status}`,
               ].join(' ')}
             >
-              <span className="big-spender__avatar" aria-hidden="true">{player.avatar || getInitials(player.displayName)}</span>
+              <span className="big-spender__avatar" aria-hidden="true">
+                {isImageAvatar(player.avatar) ? (
+                  <img src={player.avatar} alt="" />
+                ) : (
+                  player.avatar || getInitials(player.displayName)
+                )}
+              </span>
               <div className="big-spender__player-copy">
                 <strong>{player.displayName}</strong>
                 <span>{getPlayerLabel(player)} - {player.walletsOpened} wallets</span>
@@ -219,42 +258,23 @@ export default function BigSpender(props: GenericMinigameProps) {
         </aside>
       </main>
 
-      {canHumanAct && (
+      {state.status === 'running' && (
         <footer className="big-spender__actions">
-          <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman}>
-            Lock
+          <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanAct}>
+            Lock in
           </button>
-          <span>Open any wallet or lock your balance.</span>
+          <span>{canHumanAct ? 'Open wallets while the house plays live.' : 'Your run is locked.'}</span>
         </footer>
       )}
 
-      {canPostWalletLock && (
-        <div className="big-spender__overlay">
-          <div className="big-spender__modal">
-            <span className="big-spender__eyebrow">Lock window</span>
-            <h2>Keep that balance?</h2>
-            <p>You can lock now, or pass the turn and keep chasing zero next time.</p>
-            <div className="big-spender__modal-actions">
-              <button type="button" onClick={lockHuman}>Lock balance</button>
-              <button type="button" onClick={continueHumanTurn}>Keep playing</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {state.pendingBonus && humanPlayer?.playerId === state.pendingBonus.playerId && (
-        <div className="big-spender__overlay">
-          <div className="big-spender__modal">
-            <span className="big-spender__eyebrow">Bonus wallet</span>
-            <h2>One more wallet?</h2>
-            <p>The bonus uses normal odds, but cannot trigger another bonus.</p>
-            <div className="big-spender__modal-actions">
-              <button type="button" onClick={() => setState((previous) => resolveBigSpenderBonusOffer(previous, true))}>Open bonus</button>
-              <button type="button" onClick={() => setState((previous) => resolveBigSpenderBonusOffer(previous, false))}>Decline</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <section className="big-spender__broadcasts" aria-label="House broadcasts" aria-live="polite">
+        {state.events
+          .filter((entry) => entry.type === 'walletOpened' || entry.type === 'playerLocked' || entry.type === 'playerBombed' || entry.type === 'playerZeroFinished')
+          .slice(0, 4)
+          .map((entry, index) => (
+            <p key={`${entry.type}-${entry.playerId ?? 'house'}-${index}`}>{entry.message}</p>
+          ))}
+      </section>
 
       {state.pendingAdRescue && humanPlayer?.playerId === state.pendingAdRescue.playerId && (
         <div className="big-spender__overlay">
