@@ -1068,7 +1068,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   });
   const lastTurn = state.turnHistory[0] ?? null;
   const turnComparisonSymbol = pendingTurn?.choice ? (momentGlyphs[pendingTurn.choice] ?? null) : null;
-  const showTurnReveal = Boolean(pendingTurn && pendingTurn.stage !== 'decision' && (pendingTurn.choice === 'bank' || pendingTurn.resolution.revealedNumber !== null));
   const heroKicker = isHumanTurn
     ? 'YOUR TURN'
     : currentActor
