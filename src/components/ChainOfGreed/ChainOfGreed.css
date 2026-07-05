@@ -2229,3 +2229,99 @@
     font-size: 1.75rem;
   }
 }
+
+
+/* -- Extra compact LOH final pass ------------------------------------------ */
+.chain-of-greed__hero-stage {
+  grid-template-rows: minmax(24.5rem, 1fr) minmax(2.55rem, auto);
+  min-height: clamp(27rem, 68dvh, 35.5rem);
+  gap: 0.4rem;
+}
+
+.chain-of-greed__hero-meta,
+.chain-of-greed__event-log,
+.chain-of-greed__action-info {
+  display: none;
+}
+
+.chain-of-greed__stage-core {
+  min-height: 24.5rem;
+}
+
+.chain-of-greed__ladder-stage,
+.chain-of-greed__participant-panel {
+  min-height: 24.5rem;
+}
+
+.chain-of-greed__participant-panel {
+  grid-template-rows: auto minmax(4.7rem, auto) auto auto minmax(0, 1fr);
+  gap: 0.55rem;
+  padding: 0.72rem;
+}
+
+.chain-of-greed__participant-detail {
+  min-height: 2.55rem;
+}
+
+.chain-of-greed__participant-log {
+  min-height: 3.1rem;
+  display: grid;
+  align-content: start;
+  gap: 0.18rem;
+  padding-top: 0.52rem;
+  border-top: 1px solid rgba(125, 171, 255, 0.12);
+}
+
+.chain-of-greed__participant-log span {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(190, 211, 255, 0.62);
+}
+
+.chain-of-greed__participant-log strong {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: rgba(238, 244, 255, 0.88);
+  font-size: 0.74rem;
+  line-height: 1.28;
+}
+
+.chain-of-greed__action-bar {
+  grid-template-columns: 1fr;
+  padding: 0.38rem 0.45rem max(env(safe-area-inset-bottom, 0px), 0.38rem);
+}
+
+.chain-of-greed__buttons {
+  gap: 0.38rem;
+}
+
+.chain-of-greed__action,
+.chain-of-greed__continue {
+  min-height: 2.4rem;
+}
+
+.chain-of-greed__player-rail {
+  padding-block: 0.02rem 0.18rem;
+}
+
+@media (max-width: 560px) {
+  .chain-of-greed__hero-stage {
+    grid-template-rows: minmax(23.5rem, 1fr) minmax(2.55rem, auto);
+    min-height: clamp(26rem, 66dvh, 34rem);
+  }
+
+  .chain-of-greed__stage-core,
+  .chain-of-greed__ladder-stage,
+  .chain-of-greed__participant-panel {
+    min-height: 23.5rem;
+  }
+
+  .chain-of-greed__participant-detail {
+    min-height: 2.25rem;
+  }
+}

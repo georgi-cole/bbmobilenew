@@ -49,6 +49,8 @@ export interface ChainOfGreedPlayerState extends ChainOfGreedResolvedParticipant
   voteCount: number;
   semifinalScore: number;
   finalScore: number;
+  finalWrongGuesses: number;
+  finalBanks: number;
   turnsTakenThisRound: number;
   personality: ChainOfGreedPersonality;
   lastRoundPerformance: number;
@@ -191,6 +193,8 @@ export function createChainOfGreedPlayers(
       voteCount: 0,
       semifinalScore: 0,
       finalScore: 0,
+      finalWrongGuesses: 0,
+      finalBanks: 0,
       turnsTakenThisRound: 0,
       personality: {
         aggression,
@@ -659,6 +663,56 @@ export function rankPlayersByScore(scores: Record<string, number>, players: Chai
       type: 'duel' as const,
       message: 'Scores were tied, so sudden death decided it.',
       transcript: duel.transcript,
+    },
+  };
+}
+
+export function rankFinalPlayersByScore(scores: Record<string, number>, players: ChainOfGreedPlayerState[], rng: () => number) {
+  const contenders = players.filter((player) => !player.isEliminated);
+  const compareFinalists = (left: ChainOfGreedPlayerState, right: ChainOfGreedPlayerState) => {
+    const scoreDelta = (scores[right.id] ?? 0) - (scores[left.id] ?? 0);
+    if (scoreDelta !== 0) return scoreDelta;
+    const mistakeDelta = left.finalWrongGuesses - right.finalWrongGuesses;
+    if (mistakeDelta !== 0) return mistakeDelta;
+    return left.finalBanks - right.finalBanks;
+  };
+  const sorted = [...contenders].sort(compareFinalists);
+  const top = sorted[0];
+  if (!top) return { ordered: sorted, tieBreak: null as ChainOfGreedTieBreakInfo | null };
+
+  const scoreTied = sorted.filter((player) => (scores[player.id] ?? 0) === (scores[top.id] ?? 0));
+  if (scoreTied.length <= 1) return { ordered: sorted, tieBreak: null as ChainOfGreedTieBreakInfo | null };
+
+  const statBest = scoreTied[0]!;
+  const fullyTied = scoreTied.filter((player) =>
+    player.finalWrongGuesses === statBest.finalWrongGuesses && player.finalBanks === statBest.finalBanks,
+  );
+  if (fullyTied.length <= 1) {
+    return {
+      ordered: sorted,
+      tieBreak: {
+        type: 'stats' as const,
+        message: 'Final score tied. Fewer mistakes, then fewer banks decided the LOH.',
+        transcript: scoreTied.map((player) => `${player.name}: score ${scores[player.id] ?? 0}, mistakes ${player.finalWrongGuesses}, banks ${player.finalBanks}`),
+      },
+    };
+  }
+
+  const duel = resolveSuddenDeathDuel(fullyTied, rng);
+  const duelOrderedIds = duel.orderedIds;
+  const ordered = [
+    ...duelOrderedIds.map((id) => sorted.find((player) => player.id === id)!).filter(Boolean),
+    ...sorted.filter((player) => !duelOrderedIds.includes(player.id)),
+  ];
+  return {
+    ordered,
+    tieBreak: {
+      type: 'duel' as const,
+      message: 'Final score, mistakes, and banks were tied; sudden death decided the LOH.',
+      transcript: [
+        ...fullyTied.map((player) => `${player.name}: score ${scores[player.id] ?? 0}, mistakes ${player.finalWrongGuesses}, banks ${player.finalBanks}`),
+        ...duel.transcript,
+      ],
     },
   };
 }
