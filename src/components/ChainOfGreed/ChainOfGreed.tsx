@@ -16,6 +16,7 @@ import {
   formatInfluence,
   getStandardRoundEliminationCount,
   getStandardRoundTurnCap,
+  rankFinalPlayersByScore,
   rankPlayersByScore,
   resolveChainAction,
   resolveChainOfGreedParticipants,
@@ -154,6 +155,8 @@ const FAST_FINAL_BANK_PIPELINE_DURATIONS: Record<TurnPipelineStage, number> = {
   ladderUpdate: 120,
   settle: 120,
 };
+
+const STANDARD_ROUND_COUNT = 5;
 
 function emitSoundCue(cue: string) {
   if (typeof window === 'undefined') return;
@@ -362,7 +365,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const [pendingTurn, setPendingTurn] = useState<PendingTurnPipeline | null>(null);
   const [bankedTurn, setBankedTurn] = useState<{ actorId: string; kind: TurnPhaseKind } | null>(null);
   const [isResultCommitted, setIsResultCommitted] = useState(false);
-  const [logExpanded, setLogExpanded] = useState(false);
   const [finalSecondsRemaining, setFinalSecondsRemaining] = useState<number | null>(null);
   const [finalDetailExpanded, setFinalDetailExpanded] = useState(false);
   const rngRef = useRef(createChainOfGreedRng(props.seed));
@@ -554,7 +556,11 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
           latestMoment: getLatestMoment(turn.choice, turn.resolution),
           ...(turn.kind === 'semifinal'
             ? { semifinalScore: nextScore }
-            : { finalScore: nextScore }),
+            : {
+              finalScore: nextScore,
+              finalWrongGuesses: player.finalWrongGuesses + (turn.resolution.wasCorrect === false ? 1 : 0),
+              finalBanks: player.finalBanks + (turn.choice === 'bank' ? 1 : 0),
+            }),
         };
       });
       const nextHistory: ChainOfGreedTurnRecord[] = [turn.historyEntry, ...previous.turnHistory].slice(0, 10);
@@ -745,11 +751,13 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   function startFinal() {
     const finalists = getActivePlayers(state.players);
     const ids = finalists.map((player) => player.id);
-    // Timed final: each player gets one 30-second window (not interleaved turns)
     const chains = Object.fromEntries(ids.map((id) => [id, createInitialChainState(rngRef.current.rng)]));
     const scores = Object.fromEntries(ids.map((id) => [id, 0]));
+    const nextPlayers = state.players.map((player) => ids.includes(player.id)
+      ? { ...player, finalScore: 0, finalWrongGuesses: 0, finalBanks: 0, latestMoment: null }
+      : player);
     const firstPlayerId = ids[0] ?? null;
-    const firstPlayer = getPlayer(state.players, firstPlayerId);
+    const firstPlayer = getPlayer(nextPlayers, firstPlayerId);
     const firstIsHuman = Boolean(firstPlayer?.isHuman);
     setPendingTurn(null);
     setBankedTurn(null);
@@ -757,16 +765,17 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     setState((previous) => ({
       ...previous,
       phase: 'finalTurn',
+      players: nextPlayers,
+      roundNumber: STANDARD_ROUND_COUNT + 1,
       finalOrder: ids,
       finalTurnIndex: 0,
       finalScores: scores,
       finalChains: chains,
       finalTieBreak: null,
-      // Only start a real-time timer for human players; AI windows are simulated instantly
       finalTimerExpiry: firstIsHuman ? Date.now() + FINAL_ROUND_DURATION_MS : null,
       finalTimerPausedRemaining: null,
-      statusText: '30-second Final. Bank as much as possible.',
-      helperText: nextHelper(FINAL_HELPERS),
+      statusText: 'Round 6 Final. Bank the highest individual score.',
+      helperText: 'Ties use fewer mistakes, then fewer banks.',
       revealedNumber: chains[firstPlayerId ?? '']?.referenceNumber ?? Object.values(chains)[0]?.referenceNumber ?? null,
     }));
   }
@@ -777,7 +786,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     setState((previous) => {
       const nextTurnIndex = previous.finalTurnIndex + 1;
       if (nextTurnIndex >= previous.finalOrder.length) {
-        const ranking = rankPlayersByScore(previous.finalScores, previous.players, rngRef.current.rng);
+        const ranking = rankFinalPlayersByScore(previous.finalScores, previous.players, rngRef.current.rng);
         emitSoundCue('winner-stinger');
         return {
           ...previous,
@@ -813,6 +822,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     const rng = rngRef.current.rng;
     let chain = startChain;
     let score = startScore;
+    let mistakes = 0;
+    let banks = 0;
     const simTurns = 6 + Math.floor(rng() * 7); // 6–12 representative turns for AI final simulation
     let bankAvailableForSim = true;
     for (let i = 0; i < simTurns; i++) {
@@ -827,6 +838,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       });
       const resolution = resolveChainAction(choice, chain, rng);
       score += resolution.individualDelta;
+      mistakes += resolution.wasCorrect === false ? 1 : 0;
+      banks += choice === 'bank' ? 1 : 0;
       chain = resolution.updatedChain;
       bankAvailableForSim = choice !== 'bank';
     }
@@ -834,7 +847,14 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       const nextScores = { ...previous.finalScores, [aiPlayer.id]: score };
       const nextChains = { ...previous.finalChains, [aiPlayer.id]: chain };
       const nextPlayers = previous.players.map((player) =>
-        player.id === aiPlayer.id ? { ...player, finalScore: score } : player,
+        player.id === aiPlayer.id
+          ? {
+            ...player,
+            finalScore: score,
+            finalWrongGuesses: player.finalWrongGuesses + mistakes,
+            finalBanks: player.finalBanks + banks,
+          }
+          : player,
       );
       return { ...previous, players: nextPlayers, finalScores: nextScores, finalChains: nextChains };
     });
@@ -843,10 +863,10 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
 
   function continueAfterElimination() {
     const remaining = getActivePlayers(state.players);
-    if (remaining.length === 2) {
+    if (state.roundNumber >= STANDARD_ROUND_COUNT || remaining.length <= 2) {
       setPhase('finalIntro', {
-        statusText: 'Two players remain. Final showdown.',
-        helperText: 'Winner claims everything.',
+        statusText: `Round ${STANDARD_ROUND_COUNT + 1}: LOH final.`,
+        helperText: 'Every active player gets one 30-second chain.',
       });
       return;
     }
@@ -1161,6 +1181,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
         : pendingTurn.consequenceText
     : `Pot ${currentPotLabel} - Next ${nextRewardValueLabel}`;
   const panelTone = pendingTurn ? pendingTurn.tone : heroTone;
+  const participantLogText = lastTurn?.message ?? 'Live feed - no turns yet';
   useEffect(() => {
     if (!bankedTurn) return;
     if (!actionTargetId || !actionTargetKind || bankedTurn.actorId !== actionTargetId || bankedTurn.kind !== actionTargetKind) {
@@ -1267,23 +1288,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             }}
             transition={{ duration: 0.34, ease: 'easeOut' }}
           >
-            <div className="chain-of-greed__hero-meta">
-              <div className="chain-of-greed__hero-topline">
-                <span className="chain-of-greed__status-kicker">{heroKicker}</span>
-                {state.phase === 'playerTurn' ? (
-                  <button
-                    type="button"
-                    className="chain-of-greed__phase-chip chain-of-greed__phase-chip--info"
-                    aria-label="View full ladder"
-                    onClick={() => setIsLadderSheetOpen(true)}
-                  >
-                    <span className="chain-of-greed__phase-chip-icon" aria-hidden="true">ℹ️</span>
-                  </button>
-                ) : (
-                  <span className="chain-of-greed__phase-chip">{heroPhaseChip}</span>
-                )}
-              </div>
-            </div>
             <div className="chain-of-greed__stage-core" data-testid="chain-broadcast-board">
               <AnimatePresence initial={false}>
                 {lastTurn && heroTone !== 'neutral' && (
@@ -1388,6 +1392,10 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 <div className="chain-of-greed__participant-number">{panelNumberLabel}</div>
                 <div className="chain-of-greed__participant-status">{panelStatusText}</div>
                 <p className="chain-of-greed__participant-detail">{panelDetailText}</p>
+                <div className="chain-of-greed__participant-log" data-testid="chain-participant-log">
+                  <span>Log</span>
+                  <strong>{participantLogText}</strong>
+                </div>
               </aside>
             </div>
             <div className="chain-of-greed__hero-status">
@@ -1415,14 +1423,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 }}
             >
-              <button
-                  type="button"
-                  className="chain-of-greed__action-info"
-                aria-label="Open help"
-                onClick={() => setState((previous) => ({ ...previous, showHelp: !previous.showHelp }))}
-              >
-                <span aria-hidden="true">ℹ️</span>
-              </button>
               {isHumanTurn ? (
                 <div className="chain-of-greed__buttons">
                   <button
@@ -1460,37 +1460,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             </motion.footer>
           )}
 
-          <div className="chain-of-greed__event-log" data-testid="chain-event-log">
-            {state.turnHistory.length === 0 ? (
-              <div className="chain-of-greed__log-ticker">
-                <span className="chain-of-greed__log-ticker-text">Live feed — no turns yet</span>
-              </div>
-            ) : (
-              <div className="chain-of-greed__log-ticker">
-                <span className="chain-of-greed__log-ticker-actor">{state.turnHistory[0]?.actorName}</span>
-                <span className="chain-of-greed__log-ticker-text">{state.turnHistory[0]?.message}</span>
-                {state.turnHistory.length > 1 && (
-                  <button
-                    type="button"
-                    className="chain-of-greed__log-expand"
-                    aria-expanded={logExpanded}
-                    onClick={() => setLogExpanded((prev) => !prev)}
-                  >
-                    {logExpanded ? '▲' : `+${state.turnHistory.length - 1}`}
-                  </button>
-                )}
-                {logExpanded && (
-                  <ol className="chain-of-greed__log-history">
-                    {state.turnHistory.slice(1).map((entry, index) => (
-                      <li key={`${entry.actorId}-${index}-${entry.referenceNumber}-${entry.choice}`}>
-                        <strong>{entry.actorName}</strong> — {entry.message}
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </div>
-            )}
-          </div>
 
           {playerRail}
         </main>
@@ -1570,9 +1539,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               <li>Guess higher or lower to grow the chain from 50 up to 1300.</li>
               <li>Bank secures the active pot, keeps the reference number, and resets the chain.</li>
               <li>A wrong guess destroys only the active pot. Equal numbers count as a miss.</li>
-              <li>Standard rounds end with weakest-link votes until 2 players remain.</li>
-              <li>Final 2 uses individual timed scoring. Only the winner claims the secured influence total.</li>
-              <li>Only the final winner claims the secured influence total. Everyone else gets 0.</li>
+              <li>There are five standard rounds, each ending with weakest-link votes.</li>
+              <li>Round 6 is the LOH final: every active player gets 30 seconds to build an individual chain.</li>
+              <li>Highest final score becomes LOH. Ties use fewer final mistakes, then fewer final banks.</li>
             </ul>
             <button type="button" className="chain-of-greed__continue" onClick={() => setState((previous) => ({ ...previous, showHelp: false }))}>Close Help</button>
           </div>
@@ -1688,7 +1657,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             )}
             {!(humanPlayer && state.eliminatedThisStep.includes(humanPlayer.id)) && (
               <button type="button" className="chain-of-greed__continue" onClick={continueAfterElimination}>
-                {getActivePlayers(state.players).length === 2 ? 'Continue to Final' : `Continue to Round ${state.roundNumber + 1}`}
+                {state.roundNumber >= STANDARD_ROUND_COUNT || getActivePlayers(state.players).length <= 2 ? 'Continue to Final' : `Continue to Round ${state.roundNumber + 1}`}
               </button>
             )}
           </div>
@@ -1730,9 +1699,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
       {state.phase === 'finalIntro' && (
         <div className="chain-of-greed__overlay">
           <div className="chain-of-greed__modal chain-of-greed__modal--hero">
-            <div className="chain-of-greed__eyebrow">Final 2: 30-Second Showdown</div>
-            <h2>30 seconds each. Bank as much as possible.</h2>
-            <p>Each finalist gets 30 seconds to build and bank. Whoever banks more wins {formatInfluence(state.securedTotal)}.</p>
+            <div className="chain-of-greed__eyebrow">Round 6: LOH Final</div>
+            <h2>30 seconds each. Highest chain score wins.</h2>
+            <p>Every active player gets one timed chain. Ties use fewer mistakes, then fewer banks.</p>
             <button type="button" className="chain-of-greed__continue" onClick={startFinal}>Start Final</button>
           </div>
         </div>
@@ -1742,8 +1711,8 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
         <div className="chain-of-greed__overlay">
           <div className="chain-of-greed__modal chain-of-greed__modal--hero">
             <div className="chain-of-greed__eyebrow">Winner</div>
-            <h2>{winner?.name ?? 'A finalist'} claims {formatInfluence(state.securedTotal)}</h2>
-            <p>All other players leave with nothing.</p>
+            <h2>{winner?.name ?? 'A finalist'} becomes LOH</h2>
+            <p>Highest final score wins. Ties use fewer mistakes, then fewer banks.</p>
             <div className="chain-of-greed__summary-grid">
               {Object.entries(state.finalScores).map(([id, score]) => (
                 <div key={id}><span>{getPlayer(state.players, id)?.name ?? id}</span><strong>{score}</strong></div>
