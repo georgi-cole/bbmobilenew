@@ -143,9 +143,6 @@ export interface BigSpenderState {
   randomCursor: number;
   actionOrder: number;
   startingPlayerCount: number;
-  timerDurationMs: number;
-  timerStartedAt: number;
-  timerPaused: boolean;
   turnOrder: string[];
   currentTurnIndex: number;
   currentTurnPlayerId: string | null;
@@ -402,18 +399,8 @@ export function sumWeights(items: readonly { weight: number }[]) {
   return items.reduce((total, item) => total + item.weight, 0);
 }
 
-export function getTimerDurationMs(startingPlayerCount: number) {
-  if (startingPlayerCount >= 12) return 240_000;
-  if (startingPlayerCount >= 7) return 210_000;
-  return 180_000;
-}
-
-export function getAiActionDelayMs(startingPlayerCount: number, rng: () => number) {
-  const [min, max] = startingPlayerCount >= 12
-    ? [750, 2500]
-    : startingPlayerCount >= 7
-      ? [1000, 3000]
-      : [1000, 4000];
+export function getAiActionDelayMs(_startingPlayerCount: number, rng: () => number) {
+  const [min, max] = [1000, 4000];
   return Math.round(min + rng() * (max - min));
 }
 
@@ -461,7 +448,7 @@ export function resolveBigSpenderParticipants(participants?: BigSpenderParticipa
 export function createInitialBigSpenderState(
   participants: BigSpenderParticipant[],
   seed = Date.now(),
-  now = Date.now(),
+  _now = Date.now(),
 ): BigSpenderState {
   if (participants.length < 2) {
     throw new Error('Big Spender requires at least 2 players.');
@@ -499,9 +486,6 @@ export function createInitialBigSpenderState(
     randomCursor: BIG_SPENDER_CONFIG.boardSize + participants.length,
     actionOrder: 0,
     startingPlayerCount: participants.length,
-    timerDurationMs: getTimerDurationMs(participants.length),
-    timerStartedAt: now,
-    timerPaused: false,
     turnOrder: players.map((player) => player.playerId),
     currentTurnIndex: 0,
     currentTurnPlayerId: firstPlayerId,
@@ -551,7 +535,6 @@ export function openBigSpenderWallet(
   if (outcome.type === 'bomb') {
     if (kind !== 'secondChance' && canOfferAdRescue(state, player)) {
       state.pendingAdRescue = { playerId: player.playerId, walletId: wallet.walletId };
-      state.timerPaused = true;
       appendEvent(state, {
         type: 'adRescueOffered',
         playerId: player.playerId,
@@ -602,7 +585,6 @@ export function resolveBigSpenderAdRescue(
   const pending = state.pendingAdRescue;
   if (!pending) return state;
   state.pendingAdRescue = null;
-  state.timerPaused = false;
   const player = getPlayerMutable(state, pending.playerId);
   const wallet = getWalletMutable(state, pending.walletId);
 
@@ -649,34 +631,8 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
   return advanceTurnMutable(state);
 }
 
-export function finalizeBigSpenderByTimeout(previousState: BigSpenderState) {
-  const state = cloneState(previousState);
-  for (const player of state.players) {
-    if (player.status === 'active' && player.finalizedAt == null) {
-      state.actionOrder += 1;
-      player.finalizedAt = state.actionOrder;
-    }
-  }
-  state.status = 'completed';
-  state.pendingBonus = null;
-  state.pendingAdRescue = null;
-  state.postWalletLockPlayerId = null;
-  state.currentTurnPlayerId = null;
-  markTurnFlags(state);
-  appendEvent(state, { type: 'gameCompleted', message: 'The clock expired.' });
-  return state;
-}
-
-export function decideAiShouldOpen(balance: number, rng: () => number, options: { secondsRemaining?: number; likelyWinningBalance?: number } = {}) {
-  let openChance = balance >= 701 ? 0.9 : balance >= 401 ? 0.75 : balance >= 151 ? 0.55 : 0.3;
-  if (
-    options.secondsRemaining != null &&
-    options.secondsRemaining <= 30 &&
-    options.likelyWinningBalance != null &&
-    balance > options.likelyWinningBalance
-  ) {
-    openChance = clamp(openChance + 0.18, 0, 0.97);
-  }
+export function decideAiShouldOpen(balance: number, rng: () => number) {
+  const openChance = balance >= 701 ? 0.9 : balance >= 401 ? 0.75 : balance >= 151 ? 0.55 : 0.3;
   return rng() < openChance;
 }
 

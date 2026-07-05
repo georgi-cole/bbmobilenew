@@ -1,7 +1,7 @@
 .big-spender {
   min-height: 100dvh;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, auto) auto;
   gap: 0.65rem;
   padding: calc(env(safe-area-inset-top, 0px) + 0.7rem) 0.75rem calc(env(safe-area-inset-bottom, 0px) + 0.7rem);
   box-sizing: border-box;
@@ -10,7 +10,8 @@
     radial-gradient(circle at 20% 0%, rgba(255, 210, 96, 0.2), transparent 30%),
     radial-gradient(circle at 84% 18%, rgba(80, 190, 255, 0.18), transparent 28%),
     linear-gradient(180deg, #111620 0%, #070b12 100%);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .big-spender h1,
@@ -51,7 +52,6 @@
 }
 
 .big-spender__eyebrow,
-.big-spender__timer span,
 .big-spender__save-counter,
 .big-spender__wallet-generation,
 .big-spender__player-copy span {
@@ -60,22 +60,6 @@
   letter-spacing: 0.11em;
   text-transform: uppercase;
   color: rgba(211, 225, 255, 0.7);
-}
-
-.big-spender__timer {
-  flex: 0 0 auto;
-  min-width: 5.25rem;
-  display: grid;
-  justify-items: end;
-  gap: 0.08rem;
-  padding: 0.4rem 0.55rem;
-  border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.big-spender__timer strong {
-  font-size: 1.2rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .big-spender__status-panel {
@@ -253,6 +237,14 @@
   color: #ffe4a3;
 }
 
+.big-spender__score-hidden {
+  justify-self: end;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: rgba(211, 225, 255, 0.58);
+  text-transform: uppercase;
+}
+
 .big-spender__actions {
   min-height: 3rem;
   display: flex;
@@ -290,13 +282,17 @@
   inset: 0;
   z-index: 20;
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
   padding: 1rem;
   background: rgba(2, 5, 10, 0.72);
+  overflow-y: auto;
 }
 
 .big-spender__modal {
   width: min(100%, 28rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
   display: grid;
   gap: 0.75rem;
   padding: 1rem;
@@ -308,7 +304,7 @@
 }
 
 .big-spender__modal--results {
-  max-height: min(80dvh, 36rem);
+  max-height: calc(100dvh - 2rem);
 }
 
 .big-spender__modal h2 {
@@ -377,10 +373,6 @@
 }
 
 @media (max-width: 760px) {
-  .big-spender {
-    overflow-y: auto;
-  }
-
   .big-spender__status-panel {
     grid-template-columns: 1fr;
     align-items: start;
