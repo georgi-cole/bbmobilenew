@@ -1237,6 +1237,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'logic',
     retired: false,
   },
+  vaultVerdict: {
+    key: 'vaultVerdict',
+    title: 'Vault Verdict',
+    description: 'Choose My Vault, open iris pods, and decide whether to sign The Eye Bank offer or risk the final vault.',
+    instructions: [
+      'Choose one circular pod as My Vault. It moves into your private chamber and stays sealed.',
+      'Open the remaining wall pods in rounds of 5, 4, 4, 3, 2, 1, and 1.',
+      'After each round, The Eye Bank makes an offer based on your still-hidden values.',
+      'Sign the Verdict to accept the offer, or Risk the Vault to keep playing.',
+      'Rejecting the final offer opens My Vault. There is no swap.',
+      'Other contestants play private boards in parallel; their final amounts are revealed only after your game ends.',
+    ],
+    resultMode: 'placement',
+    metricKind: 'points',
+    metricLabel: 'Vault Winnings',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'VaultVerdict',
+    legacy: false,
+    weight: 2,
+    category: 'logic',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
