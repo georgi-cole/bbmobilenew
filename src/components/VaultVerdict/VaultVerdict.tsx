@@ -26,6 +26,15 @@ import './VaultVerdict.css';
 
 const FINAL_FEED_LIMIT = 18;
 
+interface FinaleReveal {
+  reserveNumber: number;
+  reserveAmount: number;
+  wallNumber: number | null;
+  wallAmount: number | null;
+  offerAmount: number;
+  step: 'charging' | 'revealed';
+}
+
 function formatTime(ms: number | null) {
   if (ms == null) return '--';
   const seconds = Math.floor(ms / 1000);
@@ -91,6 +100,8 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const [feedIndex, setFeedIndex] = useState(0);
   const [committed, setCommitted] = useState(false);
   const [amountInfoOpen, setAmountInfoOpen] = useState(false);
+  const [finaleReveal, setFinaleReveal] = useState<FinaleReveal | null>(null);
+  const [finaleComplete, setFinaleComplete] = useState(false);
 
   const initialContestants = useMemo(() => {
     const participants = resolveVaultParticipants(props);
@@ -105,7 +116,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const [contestants, setContestants] = useState<VaultContestantState[]>(initialContestants);
   const human = contestants.find((contestant) => contestant.isUserControlled) ?? contestants[0]!;
   const aiContestants = contestants.filter((contestant) => !contestant.isUserControlled);
-  const rankedResults: RankedVaultResult[] | null = human.finalAmount == null
+  const gameActive = human.finalAmount == null;
+  const showFinale = finaleReveal != null && !finaleComplete;
+  const rankedResults: RankedVaultResult[] | null = human.finalAmount == null || showFinale
     ? null
     : rankVaultContestants(contestants);
   const visibleFeedPool = useMemo(
@@ -124,15 +137,32 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const highestRemaining = getHighestRemainingValue(human);
   const latestReveal = human.revealedAmounts[human.revealedAmounts.length - 1] ?? null;
   const latestRevealLabel = latestReveal == null ? null : getSpecialRevealLabel(latestReveal);
+  const coreMood = latestReveal == null
+    ? 'is-idle'
+    : latestReveal > highestRemaining
+      ? 'is-voltage-drop'
+      : 'is-holding';
+  const eventTone = human.currentOffer != null
+    ? 'has-offer'
+    : latestRevealLabel
+      ? 'has-dramatic-reveal'
+      : '';
   const leftRail = human.vaults.slice(0, 11);
   const rightRail = human.vaults.slice(11);
   const tickerMessages = [
     ...(feed.length > 0 ? feed.map((event) => event.message) : []),
+    human.currentOffer != null && human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length
+      ? 'Final Bank Offer is on the table. The reserve circuit is armed.'
+      : null,
+    human.currentOffer != null && human.currentRound < VAULT_VERDICT_ROUND_SCHEDULE.length
+      ? 'The Bank Offer just landed. Control room holding breath.'
+      : null,
+    latestRevealLabel ? `${latestRevealLabel}. The rack just reacted.` : null,
     human.personalVaultId ? 'Private charging booths are live.' : 'Choose a Reserve Battery to begin.',
     'The Bank is watching the rack.',
     'A private booth just hit final battery territory.',
     'The control room just gasped. No further comment.',
-  ];
+  ].filter((message): message is string => message != null);
   const middleStatus = human.currentOffer != null
     ? formatVaultAmount(human.currentOffer)
     : human.personalVaultId
@@ -168,6 +198,14 @@ export default function BatteryLow(props: GenericMinigameProps) {
     return () => window.clearTimeout(timer);
   }, [feed, feedIndex, human.currentRound, human.finalAmount, human.personalVaultId, rng, visibleFeedPool]);
 
+  useEffect(() => {
+    if (!finaleReveal || finaleReveal.step === 'revealed') return;
+    const timer = window.setTimeout(() => {
+      setFinaleReveal((current) => current ? { ...current, step: 'revealed' } : current);
+    }, 1600);
+    return () => window.clearTimeout(timer);
+  }, [finaleReveal]);
+
   function updateHuman(updater: (current: VaultContestantState) => VaultContestantState) {
     setContestants((previous) =>
       previous.map((contestant) => (contestant.contestantId === human.contestantId ? updater(contestant) : contestant)),
@@ -192,6 +230,30 @@ export default function BatteryLow(props: GenericMinigameProps) {
     const finishTimeMs = startTimeRef.current == null ? elapsedMs : eventTimeMs - startTimeRef.current;
     setElapsedMs(finishTimeMs);
     updateHuman((current) => updater(current, finishTimeMs));
+  }
+
+  function handleRejectOffer(eventTimeMs: number) {
+    const finishTimeMs = startTimeRef.current == null ? elapsedMs : eventTimeMs - startTimeRef.current;
+    if (human.currentOffer != null && human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length) {
+      const resolvedHuman = riskVault(human, finishTimeMs);
+      const reserveBattery = resolvedHuman.vaults.find((battery) => battery.vaultId === resolvedHuman.personalVaultId);
+      const wallBattery = resolvedHuman.vaults.find((battery) => battery.status === 'remainingFinalWallVault');
+      setElapsedMs(finishTimeMs);
+      setFinaleComplete(false);
+      setFinaleReveal({
+        reserveNumber: reserveBattery?.displayNumber ?? 0,
+        reserveAmount: reserveBattery?.amount ?? resolvedHuman.finalAmount ?? 0,
+        wallNumber: wallBattery?.displayNumber ?? null,
+        wallAmount: wallBattery?.amount ?? null,
+        offerAmount: human.currentOffer,
+        step: 'charging',
+      });
+      setContestants((previous) =>
+        previous.map((contestant) => (contestant.contestantId === human.contestantId ? resolvedHuman : contestant)),
+      );
+      return;
+    }
+    finishWith(riskVault, eventTimeMs);
   }
 
   function handleCommitResults() {
@@ -238,13 +300,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
               </div>
             </div>
           </div>
-          {rankedResults == null && (
+          {gameActive && (
             <div className="vault-verdict__control-row">
               <div className="vault-verdict__timer">
                 <span>Time</span>
                 <strong>{formatTime(human.finishTimeMs ?? elapsedMs)}</strong>
               </div>
-              <div className={`vault-verdict__status ${human.currentOffer != null ? 'is-offer' : ''}`}>
+              <div key={human.offerHistory.length} className={`vault-verdict__status ${human.currentOffer != null ? 'is-offer' : ''}`}>
                 <span>{human.currentOffer != null ? 'Bank Offer' : 'Status'}</span>
                 <strong>{middleStatus}</strong>
               </div>
@@ -261,7 +323,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   <button
                     type="button"
                     className="vault-verdict__reject"
-                    onClick={(event) => finishWith(riskVault, event.timeStamp)}
+                    onClick={(event) => handleRejectOffer(event.timeStamp)}
                     aria-label="Reject Bank Offer"
                   >
                     ×
@@ -272,9 +334,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
           )}
         </header>
 
-        {rankedResults == null ? (
+        {gameActive ? (
           <main className="vault-verdict__game-grid">
-            <section className="vault-verdict__board" aria-label="Battery rack board">
+            <section className={`vault-verdict__board ${eventTone}`} aria-label="Battery rack board">
               <button
                 type="button"
                 className="vault-verdict__info-button"
@@ -283,6 +345,12 @@ export default function BatteryLow(props: GenericMinigameProps) {
               >
                 i
               </button>
+              {latestReveal != null && (
+                <div key={`${latestReveal}-${human.openedVaultIds.length}`} className={`vault-verdict__reveal-flash ${latestRevealLabel ? 'is-special' : ''}`} aria-hidden="true">
+                  <span>{latestRevealLabel ?? 'Battery Exposed'}</span>
+                  <strong>{formatVaultAmount(latestReveal)}</strong>
+                </div>
+              )}
               <div className="vault-verdict__rail vault-verdict__rail--left">
                 {leftRail.map((battery) => (
                   <BatteryTile
@@ -297,7 +365,8 @@ export default function BatteryLow(props: GenericMinigameProps) {
                 <span>Max Charge Left</span>
                 <strong>{formatVaultAmount(highestRemaining)}</strong>
                 <div
-                  className={`vault-verdict__core-shell ${latestReveal != null && latestReveal >= highestRemaining ? 'is-voltage-drop' : 'is-scan'}`}
+                  key={`${human.openedVaultIds.length}-${highestRemaining}`}
+                  className={`vault-verdict__core-shell ${coreMood}`}
                   style={{ '--charge': `${highestRemaining}%` } as CSSProperties}
                 >
                   <div className="vault-verdict__core-fill" />
@@ -320,11 +389,52 @@ export default function BatteryLow(props: GenericMinigameProps) {
               </div>
             </section>
           </main>
+        ) : showFinale && finaleReveal ? (
+          <main className="vault-verdict__finale" aria-live="polite">
+            <section className={`vault-verdict__finale-panel is-${finaleReveal.step}`}>
+              <span>Grand Finale</span>
+              <h2>Reserve Battery {finaleReveal.reserveNumber || ''}</h2>
+              <div className="vault-verdict__finale-batteries">
+                <div className="vault-verdict__finale-battery is-offer">
+                  <small>Rejected Bank Offer</small>
+                  <strong>{formatVaultAmount(finaleReveal.offerAmount)}</strong>
+                </div>
+                <div
+                  className="vault-verdict__finale-battery is-reserve"
+                  style={{ '--charge': `${finaleReveal.step === 'revealed' ? finaleReveal.reserveAmount : 0}%` } as CSSProperties}
+                >
+                  <small>Reserve Battery</small>
+                  <strong>{finaleReveal.step === 'revealed' ? formatVaultAmount(finaleReveal.reserveAmount) : 'Scanning'}</strong>
+                  {finaleReveal.step === 'revealed' && getSpecialRevealLabel(finaleReveal.reserveAmount) && (
+                    <em>{getSpecialRevealLabel(finaleReveal.reserveAmount)}</em>
+                  )}
+                </div>
+                <div className="vault-verdict__finale-battery is-wall">
+                  <small>Final Rack Battery</small>
+                  <strong>
+                    {finaleReveal.step === 'revealed' && finaleReveal.wallAmount != null
+                      ? formatVaultAmount(finaleReveal.wallAmount)
+                      : finaleReveal.wallNumber != null ? `Battery ${finaleReveal.wallNumber}` : '--'}
+                  </strong>
+                </div>
+              </div>
+              <p>
+                {finaleReveal.step === 'revealed'
+                  ? finaleReveal.reserveAmount >= finaleReveal.offerAmount
+                    ? 'The risk paid off. Your reserve held more charge than the Bank wanted to give you.'
+                    : 'The Bank had the better read, but the Reserve Battery is now locked as your final charge.'
+                  : 'The rack is discharging the final circuit. Reserve value incoming.'}
+              </p>
+              <button type="button" disabled={finaleReveal.step !== 'revealed'} onClick={() => setFinaleComplete(true)}>
+                Reveal Results
+              </button>
+            </section>
+          </main>
         ) : (
           <main className="vault-verdict__results">
             <section className="vault-verdict__result-hero">
               <span>Final Results</span>
-              <h2>{rankedResults[0]?.displayName} wins Battery Low</h2>
+              <h2>{rankedResults?.[0]?.displayName} wins Battery Low</h2>
               <p>
                 You finished with {formatVaultAmount(human.finalAmount ?? 0)} by{' '}
                 {human.outcomeType === 'signedVerdict' ? 'locking the Bank Offer' : 'opening the Reserve Battery'}.
@@ -336,7 +446,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
               )}
             </section>
             <section className="vault-verdict__result-list">
-              {rankedResults.map((result) => (
+              {(rankedResults ?? []).map((result) => (
                 <article key={result.contestantId} className={result.isUserControlled ? 'is-human' : ''}>
                   <span>#{result.placement}</span>
                   <strong>{result.displayName}</strong>
