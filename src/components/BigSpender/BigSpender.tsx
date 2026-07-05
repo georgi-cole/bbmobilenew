@@ -6,10 +6,12 @@ import {
   buildBigSpenderRawResults,
   createInitialBigSpenderState,
   decideAiShouldOpen,
+  fastForwardBigSpenderGame,
   getAiActionDelayMs,
   getBigSpenderBoardForPlayer,
   lockBigSpenderPlayer,
   openBigSpenderWallet,
+  rankBigSpenderGame,
   rankBigSpenderPlayers,
   resolveBigSpenderAdRescue,
   resolveBigSpenderParticipants,
@@ -57,7 +59,14 @@ function chooseAiWallet(state: BigSpenderState, playerId: string, rng: () => num
 }
 
 function isBroadcastEvent(event: BigSpenderState['events'][number]) {
-  return event.type === 'walletOpened' || event.type === 'playerLocked' || event.type === 'playerBombed' || event.type === 'playerZeroFinished';
+  return (
+    event.type === 'walletOpened' ||
+    event.type === 'playerLocked' ||
+    event.type === 'playerBombed' ||
+    event.type === 'playerZeroFinished' ||
+    event.type === 'playerEliminated' ||
+    event.type === 'roundCompleted'
+  );
 }
 
 function getBroadcastKey(event: BigSpenderState['events'][number]) {
@@ -76,6 +85,7 @@ export default function BigSpender(props: GenericMinigameProps) {
   const [bombDramaStage, setBombDramaStage] = useState<BombDramaStage>(null);
   const [zeroDramaVisible, setZeroDramaVisible] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [fastForwarding, setFastForwarding] = useState(false);
   const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));
   const aiTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const broadcastQueueRef = useRef<string[]>([]);
@@ -88,15 +98,36 @@ export default function BigSpender(props: GenericMinigameProps) {
     () => humanPlayer ? getBigSpenderBoardForPlayer(state, humanPlayer.playerId) : state.board,
     [humanPlayer, state],
   );
-  const ranking = useMemo(() => rankBigSpenderPlayers(state.players), [state.players]);
+  const ranking = useMemo(
+    () => state.status === 'completed' ? rankBigSpenderGame(state) : rankBigSpenderPlayers(state.players.filter((player) => state.activePlayerIds.includes(player.playerId))),
+    [state],
+  );
   const winner = ranking[0] ?? null;
+  const isFinaleRound = state.roundNumber === BIG_SPENDER_CONFIG.finalRound;
+  const humanInRound = Boolean(humanPlayer && state.activePlayerIds.includes(humanPlayer.playerId));
   const humanAdRescuePending = Boolean(state.pendingAdRescue && humanPlayer?.playerId === state.pendingAdRescue.playerId);
   const humanSecondChancePending = Boolean(state.pendingSecondChance && humanPlayer?.playerId === state.pendingSecondChance.playerId);
   const pendingAdRescueWalletId = state.pendingAdRescue?.walletId ?? null;
+  const humanFinaleTurn = Boolean(!isFinaleRound || (humanPlayer && state.currentTurnPlayerId === humanPlayer.playerId));
+  const humanFinishedWhileRunning = Boolean(
+    state.status === 'running' &&
+    humanPlayer &&
+    (!humanInRound || humanPlayer.finalizedAt != null || humanPlayer.status !== 'active'),
+  );
+  const humanWaitingForFinaleTurn = Boolean(
+    state.status === 'running' &&
+    humanPlayer &&
+    humanInRound &&
+    isFinaleRound &&
+    humanPlayer.status === 'active' &&
+    state.currentTurnPlayerId !== humanPlayer.playerId,
+  );
   const canHumanOpen = Boolean(
     humanPlayer &&
+    humanInRound &&
     humanPlayer.status === 'active' &&
     state.status === 'running' &&
+    humanFinaleTurn &&
     !humanAdRescuePending &&
     (!state.pendingSecondChance || humanSecondChancePending),
   );
@@ -128,6 +159,8 @@ export default function BigSpender(props: GenericMinigameProps) {
 
     for (const player of state.players) {
       if (player.isHuman || player.status !== 'active' || timers.has(player.playerId)) continue;
+      if (!state.activePlayerIds.includes(player.playerId)) continue;
+      if (state.roundNumber === BIG_SPENDER_CONFIG.finalRound && state.currentTurnPlayerId !== player.playerId) continue;
       if (!getBigSpenderBoardForPlayer(state, player.playerId).some((wallet) => wallet.state === 'hidden')) continue;
       const delay = getAiActionDelayMs(state.startingPlayerCount, aiRngRef.current);
       const timer = setTimeout(() => {
@@ -250,9 +283,27 @@ export default function BigSpender(props: GenericMinigameProps) {
     props.onFinish?.(ranking.length - winner.rank + 1, 0, {
       authoritativeWinnerId: winner.playerId,
       rawValue: ranking.length - winner.rank + 1,
-      rawResults: buildBigSpenderRawResults(state.players),
+      rawResults: buildBigSpenderRawResults(state),
     });
   };
+
+  const fastForwardHouse = () => {
+    if (!humanFinishedWhileRunning || fastForwarding) return;
+    setFastForwarding(true);
+    window.setTimeout(() => {
+      setState((previous) => fastForwardBigSpenderGame(previous));
+      setFastForwarding(false);
+    }, 900);
+  };
+
+  const statusMessage = (() => {
+    if (fastForwarding) return 'Fast forwarding the house feed...';
+    if (humanFinishedWhileRunning) return 'You are done here. The house is still finishing this round.';
+    if (humanWaitingForFinaleTurn) return 'Finale board is shared. Waiting for the other finalist to pick.';
+    if (humanSecondChancePending) return 'Pick any closed wallet yourself.';
+    if (walletsUntilLock > 0) return `${walletsUntilLock} more wallet${walletsUntilLock === 1 ? '' : 's'} to unlock Lock in.`;
+    return isFinaleRound ? 'Finale turn is live.' : 'Lock in is ready.';
+  })();
 
   return (
     <div className={[
@@ -263,19 +314,23 @@ export default function BigSpender(props: GenericMinigameProps) {
     ].join(' ')} data-testid="big-spender-game">
       <section className="big-spender__status-panel" aria-live="polite">
         <div>
-          <span className="big-spender__eyebrow">{humanSecondChancePending ? 'Second chance' : 'Live balance'}</span>
+          <span className="big-spender__eyebrow">
+            {humanSecondChancePending ? 'Second chance' : isFinaleRound ? 'Round 5 finale' : `Round ${state.roundNumber}`}
+          </span>
           <strong>{humanPlayer ? `${humanPlayer.balance} Eyeoleans` : 'Results'}</strong>
           {state.status === 'running' && (
-            <small>
-              {humanSecondChancePending
-                ? 'Pick any closed wallet yourself.'
-                : walletsUntilLock > 0
-                  ? `${walletsUntilLock} more wallet${walletsUntilLock === 1 ? '' : 's'} to unlock Lock in.`
-                  : 'Lock in is ready.'}
+            <small className={humanFinishedWhileRunning || humanWaitingForFinaleTurn || fastForwarding ? 'big-spender__status-note--live' : ''}>
+              {statusMessage}
+              {(humanFinishedWhileRunning || humanWaitingForFinaleTurn || fastForwarding) && <span className="big-spender__status-loader" aria-hidden="true" />}
             </small>
           )}
         </div>
-        {state.status === 'running' && (
+        {state.status === 'running' && humanFinishedWhileRunning && (
+          <button type="button" className="big-spender__action big-spender__action--lock" onClick={fastForwardHouse} disabled={fastForwarding}>
+            {fastForwarding ? 'Forwarding' : 'Fast forward'}
+          </button>
+        )}
+        {state.status === 'running' && !humanFinishedWhileRunning && (
           <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanLock}>
             Lock in
           </button>

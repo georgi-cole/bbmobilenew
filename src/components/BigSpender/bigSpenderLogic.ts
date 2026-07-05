@@ -7,6 +7,8 @@ export const BIG_SPENDER_CONFIG = {
   startingBalance: 1200,
   boardSize: 32,
   minWalletsBeforeLock: 8,
+  finalRound: 5,
+  roundFourFinalistCount: 2,
   outcomeWeights: {
     negative: 75,
     positive: 20,
@@ -16,6 +18,8 @@ export const BIG_SPENDER_CONFIG = {
   maxExtraWalletsPerTurn: 1,
   maxAdBombRescues: 2,
 } as const;
+
+const BIG_SPENDER_FINALE_BOARD_ID = '__big_spender_finale_board__';
 
 export const BIG_SPENDER_NEGATIVE_WALLETS = [
   { amount: -25, weight: 2 },
@@ -125,8 +129,18 @@ export interface BigSpenderPlayerState {
   lockedAt: number | null;
   zeroFinishedAt: number | null;
   finalizedAt: number | null;
+  eliminatedRound: number | null;
+  gameRank: number | null;
   originalTurnOrderIndex: number;
   currentTurn: boolean;
+}
+
+export interface BigSpenderRoundResult {
+  roundNumber: number;
+  finalistRound: boolean;
+  rankedPlayerIds: string[];
+  eliminatedPlayerIds: string[];
+  survivorPlayerIds: string[];
 }
 
 export interface BigSpenderPendingBonus {
@@ -157,6 +171,8 @@ export interface BigSpenderEvent {
     | 'playerLocked'
     | 'playerZeroFinished'
     | 'playerBombed'
+    | 'roundCompleted'
+    | 'playerEliminated'
     | 'gameCompleted'
     | 'turnAdvanced';
   playerId?: string;
@@ -171,10 +187,14 @@ export interface BigSpenderState {
   seed: number;
   randomCursor: number;
   actionOrder: number;
+  roundNumber: number;
   startingPlayerCount: number;
   turnOrder: string[];
   currentTurnIndex: number;
   currentTurnPlayerId: string | null;
+  activePlayerIds: string[];
+  eliminatedPlayerIds: string[];
+  roundResults: BigSpenderRoundResult[];
   players: BigSpenderPlayerState[];
   board: BigSpenderWallet[];
   boardsByPlayerId: Record<string, BigSpenderWallet[]>;
@@ -245,6 +265,14 @@ function cloneState(state: BigSpenderState): BigSpenderState {
   return {
     ...state,
     turnOrder: [...state.turnOrder],
+    activePlayerIds: [...state.activePlayerIds],
+    eliminatedPlayerIds: [...state.eliminatedPlayerIds],
+    roundResults: state.roundResults.map((round) => ({
+      ...round,
+      rankedPlayerIds: [...round.rankedPlayerIds],
+      eliminatedPlayerIds: [...round.eliminatedPlayerIds],
+      survivorPlayerIds: [...round.survivorPlayerIds],
+    })),
     players: state.players.map((player) => ({ ...player })),
     board: state.board.map((wallet) => ({ ...wallet, outcome: { ...wallet.outcome } })),
     boardsByPlayerId: Object.fromEntries(
@@ -260,6 +288,20 @@ function cloneState(state: BigSpenderState): BigSpenderState {
   };
 }
 
+function isFinaleRound(state: BigSpenderState) {
+  return state.roundNumber === BIG_SPENDER_CONFIG.finalRound;
+}
+
+function isRoundParticipant(state: BigSpenderState, playerId: string) {
+  return state.activePlayerIds.includes(playerId);
+}
+
+function getBoardOwnerId(state: BigSpenderState, playerId: string) {
+  return isFinaleRound(state) && isRoundParticipant(state, playerId)
+    ? BIG_SPENDER_FINALE_BOARD_ID
+    : playerId;
+}
+
 function getPlayerMutable(state: BigSpenderState, playerId: string) {
   const player = state.players.find((entry) => entry.playerId === playerId);
   if (!player) throw new Error(`Big Spender player '${playerId}' not found.`);
@@ -267,7 +309,7 @@ function getPlayerMutable(state: BigSpenderState, playerId: string) {
 }
 
 function getBoardMutable(state: BigSpenderState, playerId: string) {
-  const board = state.boardsByPlayerId[playerId];
+  const board = state.boardsByPlayerId[getBoardOwnerId(state, playerId)];
   if (!board) throw new Error(`Big Spender board for '${playerId}' not found.`);
   return board;
 }
@@ -280,12 +322,12 @@ function getWalletMutable(state: BigSpenderState, playerId: string, walletId: st
 
 function syncVisibleBoard(state: BigSpenderState) {
   const humanPlayer = state.players.find((player) => player.isHuman) ?? state.players[0];
-  state.board = humanPlayer ? state.boardsByPlayerId[humanPlayer.playerId] ?? [] : [];
+  state.board = humanPlayer ? state.boardsByPlayerId[getBoardOwnerId(state, humanPlayer.playerId)] ?? [] : [];
 }
 
 function markTurnFlags(state: BigSpenderState) {
   for (const player of state.players) {
-    player.currentTurn = player.playerId === state.currentTurnPlayerId;
+    player.currentTurn = isRoundParticipant(state, player.playerId) && player.playerId === state.currentTurnPlayerId;
   }
 }
 
@@ -295,14 +337,111 @@ function nextEligibleTurnIndex(state: BigSpenderState, startIndex: number) {
     const index = (startIndex + offset) % state.turnOrder.length;
     const id = state.turnOrder[index];
     const player = state.players.find((entry) => entry.playerId === id);
-    if (player && player.status === 'active' && player.finalizedAt == null) return index;
+    if (player && isRoundParticipant(state, player.playerId) && player.status === 'active' && player.finalizedAt == null) return index;
   }
   return -1;
 }
 
+function startNextRoundMutable(state: BigSpenderState, survivorPlayerIds: string[]) {
+  state.roundNumber = survivorPlayerIds.length <= BIG_SPENDER_CONFIG.roundFourFinalistCount
+    ? BIG_SPENDER_CONFIG.finalRound
+    : state.roundNumber + 1;
+  state.actionOrder = 0;
+  state.activePlayerIds = [...survivorPlayerIds];
+  state.turnOrder = [...survivorPlayerIds];
+  state.currentTurnIndex = 0;
+  state.currentTurnPlayerId = isFinaleRound(state) ? survivorPlayerIds[0] ?? null : null;
+  state.pendingBonus = null;
+  state.pendingAdRescue = null;
+  state.pendingSecondChance = null;
+  state.postWalletLockPlayerId = null;
+
+  const rng = () => nextRandom(state);
+  state.players = state.players.map((player) => {
+    if (!survivorPlayerIds.includes(player.playerId)) return { ...player, currentTurn: false };
+    return resetPlayerForRound(player, survivorPlayerIds.indexOf(player.playerId));
+  });
+
+  state.boardsByPlayerId = {
+    ...state.boardsByPlayerId,
+    ...Object.fromEntries(
+      survivorPlayerIds.map((playerId) => [playerId, createBoardForOwner(playerId, state.roundNumber, rng)]),
+    ),
+  };
+  if (isFinaleRound(state)) {
+    state.boardsByPlayerId[BIG_SPENDER_FINALE_BOARD_ID] = createBoardForOwner(BIG_SPENDER_FINALE_BOARD_ID, state.roundNumber, rng);
+  }
+  markTurnFlags(state);
+  syncVisibleBoard(state);
+  appendEvent(state, {
+    type: 'roundCompleted',
+    message: isFinaleRound(state) ? 'Finale round: the last two share one board.' : `Round ${state.roundNumber} begins.`,
+  });
+  return state;
+}
+
+function completeRoundMutable(state: BigSpenderState) {
+  const roundPlayers = state.players.filter((player) => state.activePlayerIds.includes(player.playerId));
+  const ranked = rankBigSpenderPlayers(roundPlayers);
+  const isFinalRound = isFinaleRound(state);
+
+  if (isFinalRound) {
+    for (const [index, rankedPlayer] of ranked.entries()) {
+      const player = getPlayerMutable(state, rankedPlayer.playerId);
+      player.gameRank = index + 1;
+      player.eliminatedRound = null;
+    }
+    state.roundResults.push({
+      roundNumber: state.roundNumber,
+      finalistRound: true,
+      rankedPlayerIds: ranked.map((player) => player.playerId),
+      eliminatedPlayerIds: [],
+      survivorPlayerIds: [],
+    });
+    state.status = 'completed';
+    state.currentTurnPlayerId = null;
+    state.postWalletLockPlayerId = null;
+    state.pendingBonus = null;
+    state.pendingAdRescue = null;
+    state.pendingSecondChance = null;
+    markTurnFlags(state);
+    syncVisibleBoard(state);
+    appendEvent(state, { type: 'gameCompleted', message: 'The finale is complete.' });
+    return state;
+  }
+
+  const eliminateCount = state.roundNumber >= 4
+    ? Math.max(0, ranked.length - BIG_SPENDER_CONFIG.roundFourFinalistCount)
+    : Math.min(1, Math.max(0, ranked.length - BIG_SPENDER_CONFIG.roundFourFinalistCount));
+  const survivorPlayerIds = ranked.slice(0, Math.max(0, ranked.length - eliminateCount)).map((player) => player.playerId);
+  const eliminatedThisRound = ranked.slice(survivorPlayerIds.length);
+
+  for (const [index, eliminated] of eliminatedThisRound.entries()) {
+    const player = getPlayerMutable(state, eliminated.playerId);
+    player.eliminatedRound = state.roundNumber;
+    player.gameRank = survivorPlayerIds.length + index + 1;
+    state.eliminatedPlayerIds.push(player.playerId);
+    appendEvent(state, {
+      type: 'playerEliminated',
+      playerId: player.playerId,
+      message: `${player.displayName} is eliminated in Round ${state.roundNumber}.`,
+    });
+  }
+
+  state.roundResults.push({
+    roundNumber: state.roundNumber,
+    finalistRound: false,
+    rankedPlayerIds: ranked.map((player) => player.playerId),
+    eliminatedPlayerIds: eliminatedThisRound.map((player) => player.playerId),
+    survivorPlayerIds,
+  });
+  return startNextRoundMutable(state, survivorPlayerIds);
+}
+
 function completeIfNeeded(state: BigSpenderState) {
   for (const player of state.players) {
-    const hiddenWallets = (state.boardsByPlayerId[player.playerId] ?? []).some((wallet) => wallet.state === 'hidden');
+    if (!isRoundParticipant(state, player.playerId)) continue;
+    const hiddenWallets = getBigSpenderBoardForPlayer(state, player.playerId).some((wallet) => wallet.state === 'hidden');
     if (
       player.status === 'active' &&
       player.finalizedAt == null &&
@@ -312,18 +451,13 @@ function completeIfNeeded(state: BigSpenderState) {
       finalizePlayer(player, state, 'locked');
     }
   }
-  const unresolved = state.players.filter((player) => player.status === 'active' && player.finalizedAt == null);
+  const unresolved = state.players.filter((player) =>
+    isRoundParticipant(state, player.playerId) &&
+    player.status === 'active' &&
+    player.finalizedAt == null
+  );
   if (unresolved.length > 0) return state;
-  state.status = 'completed';
-  state.currentTurnPlayerId = null;
-  state.postWalletLockPlayerId = null;
-  state.pendingBonus = null;
-  state.pendingAdRescue = null;
-  state.pendingSecondChance = null;
-  markTurnFlags(state);
-  syncVisibleBoard(state);
-  appendEvent(state, { type: 'gameCompleted', message: 'All players are finalized.' });
-  return state;
+  return completeRoundMutable(state);
 }
 
 function advanceTurnMutable(state: BigSpenderState) {
@@ -342,16 +476,51 @@ function advanceTurnMutable(state: BigSpenderState) {
   return state;
 }
 
-function createWalletFromRoll(slotIndex: number, generationNumber: number, playerId: string, rng: () => number): BigSpenderWallet {
+function advanceFinaleTurnMutable(state: BigSpenderState) {
+  if (!isFinaleRound(state) || state.status === 'completed') return state;
+  const nextIndex = nextEligibleTurnIndex(state, state.currentTurnIndex + 1);
+  if (nextIndex < 0) return completeIfNeeded(state);
+  state.currentTurnIndex = nextIndex;
+  state.currentTurnPlayerId = state.turnOrder[nextIndex] ?? null;
+  markTurnFlags(state);
+  return state;
+}
+
+function createWalletFromRoll(slotIndex: number, generationNumber: number, playerId: string, rng: () => number, roundNumber: number): BigSpenderWallet {
   const outcome = pickWalletOutcome(rng);
   return {
-    walletId: `${playerId}-wallet-${slotIndex}-${generationNumber}`,
+    walletId: `${playerId}-round-${roundNumber}-wallet-${slotIndex}-${generationNumber}`,
     boardSlotIndex: slotIndex,
     generationNumber,
     generationColor: generationNumber % 6,
     outcome,
     state: 'hidden',
     openedByPlayerId: null,
+  };
+}
+
+function createBoardForOwner(ownerId: string, roundNumber: number, rng: () => number) {
+  return Array.from({ length: BIG_SPENDER_CONFIG.boardSize }, (_unused, slotIndex) =>
+    createWalletFromRoll(slotIndex, roundNumber, ownerId, rng, roundNumber),
+  );
+}
+
+function resetPlayerForRound(player: BigSpenderPlayerState, roundIndex: number): BigSpenderPlayerState {
+  return {
+    ...player,
+    balance: BIG_SPENDER_CONFIG.startingBalance,
+    status: 'active',
+    walletsOpened: 0,
+    negativeWalletsOpened: 0,
+    positiveWalletsOpened: 0,
+    bombsOpened: 0,
+    bonusWalletsOpened: 0,
+    bombedAt: null,
+    lockedAt: null,
+    zeroFinishedAt: null,
+    finalizedAt: null,
+    currentTurn: false,
+    originalTurnOrderIndex: roundIndex,
   };
 }
 
@@ -449,6 +618,7 @@ function markBombedMutable(state: BigSpenderState, player: BigSpenderPlayerState
 function finishAfterResolution(state: BigSpenderState) {
   completeIfNeeded(state);
   if (state.status === 'completed' || state.pendingAdRescue || state.pendingBonus || state.pendingSecondChance) return state;
+  if (isFinaleRound(state)) return advanceFinaleTurnMutable(state);
   markTurnFlags(state);
   return state;
 }
@@ -482,7 +652,7 @@ export function isFunnyAmount(amount: number | null | undefined) {
 }
 
 export function getBigSpenderBoardForPlayer(state: BigSpenderState, playerId: string) {
-  return state.boardsByPlayerId[playerId] ?? [];
+  return state.boardsByPlayerId[getBoardOwnerId(state, playerId)] ?? [];
 }
 
 export function resolveBigSpenderParticipants(participants?: BigSpenderParticipant[], participantIds?: string[]) {
@@ -534,29 +704,32 @@ export function createInitialBigSpenderState(
     lockedAt: null,
     zeroFinishedAt: null,
     finalizedAt: null,
+    eliminatedRound: null,
+    gameRank: null,
     originalTurnOrderIndex: index,
     currentTurn: false,
   }));
   const boardsByPlayerId = Object.fromEntries(
     players.map((player) => [
       player.playerId,
-      Array.from({ length: BIG_SPENDER_CONFIG.boardSize }, (_unused, slotIndex) =>
-        createWalletFromRoll(slotIndex, 1, player.playerId, rng),
-      ),
+      createBoardForOwner(player.playerId, 1, rng),
     ]),
   );
-  const firstPlayerId = players[0]?.playerId ?? null;
-  const humanPlayerId = players.find((player) => player.isHuman)?.playerId ?? firstPlayerId;
+  const humanPlayerId = players.find((player) => player.isHuman)?.playerId ?? players[0]?.playerId ?? null;
   const state: BigSpenderState = {
     gameId: BIG_SPENDER_GAME_ID,
     status: 'running',
     seed,
     randomCursor: BIG_SPENDER_CONFIG.boardSize * participants.length + participants.length,
     actionOrder: 0,
+    roundNumber: 1,
     startingPlayerCount: participants.length,
     turnOrder: players.map((player) => player.playerId),
     currentTurnIndex: 0,
-    currentTurnPlayerId: firstPlayerId,
+    currentTurnPlayerId: null,
+    activePlayerIds: players.map((player) => player.playerId),
+    eliminatedPlayerIds: [],
+    roundResults: [],
     players,
     board: humanPlayerId ? boardsByPlayerId[humanPlayerId] ?? [] : [],
     boardsByPlayerId,
@@ -592,6 +765,8 @@ export function openBigSpenderWallet(
   if (kind === 'secondChance' && !isSecondChancePick) return state;
   if (state.pendingAdRescue?.playerId === playerId || state.pendingBonus?.playerId === playerId) return state;
   if (state.pendingSecondChance?.playerId === playerId && !isSecondChancePick) return state;
+  if (!isRoundParticipant(state, playerId)) return state;
+  if (isFinaleRound(state) && state.currentTurnPlayerId !== playerId) return state;
   const player = getPlayerMutable(state, playerId);
   if (player.status !== 'active' || player.finalizedAt != null) return state;
 
@@ -700,6 +875,8 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
   const state = cloneState(previousState);
   const player = getPlayerMutable(state, playerId);
   if (state.status !== 'running' || player.status !== 'active' || player.finalizedAt != null) return state;
+  if (!isRoundParticipant(state, playerId)) return state;
+  if (isFinaleRound(state) && state.currentTurnPlayerId !== playerId) return state;
   if (state.pendingSecondChance?.playerId === playerId) return state;
   if (player.walletsOpened < BIG_SPENDER_CONFIG.minWalletsBeforeLock) return state;
   finalizePlayer(player, state, 'locked');
@@ -712,12 +889,77 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
     playerId,
     message: `${player.displayName} stepped away after ${player.walletsOpened} wallets.`,
   });
-  return completeIfNeeded(state);
+  completeIfNeeded(state);
+  if ((state as BigSpenderState).status === 'completed') return state;
+  if (isFinaleRound(state)) return advanceFinaleTurnMutable(state);
+  return state;
 }
 
 export function decideAiShouldOpen(balance: number, rng: () => number) {
   const openChance = balance >= 901 ? 0.94 : balance >= 501 ? 0.82 : balance >= 151 ? 0.64 : 0.38;
   return rng() < openChance;
+}
+
+function simulateAiPlayerToFinalized(state: BigSpenderState, player: BigSpenderPlayerState) {
+  const board = getBoardMutable(state, player.playerId);
+  let guard = 0;
+  while (state.status === 'running' && player.status === 'active' && player.finalizedAt == null && guard < BIG_SPENDER_CONFIG.boardSize) {
+    guard += 1;
+    const hiddenWallets = board.filter((wallet) => wallet.state === 'hidden');
+    if (hiddenWallets.length === 0) break;
+    const mustOpen = player.walletsOpened < BIG_SPENDER_CONFIG.minWalletsBeforeLock;
+    if (!mustOpen && !decideAiShouldOpen(player.balance, () => nextRandom(state))) break;
+    const wallet = hiddenWallets[Math.floor(nextRandom(state) * hiddenWallets.length)] ?? hiddenWallets[0]!;
+    wallet.state = 'revealed';
+    wallet.openedByPlayerId = player.playerId;
+    applyOutcomeMutable(state, player, wallet.outcome, 'normal');
+    if (wallet.outcome.type === 'bomb') {
+      markBombedMutable(state, player);
+      break;
+    }
+  }
+
+  if (state.status === 'running' && player.status === 'active' && player.finalizedAt == null) {
+    finalizePlayer(player, state, 'locked');
+    appendEvent(state, {
+      type: 'playerLocked',
+      playerId: player.playerId,
+      message: `${player.displayName} stepped away after ${player.walletsOpened} wallets.`,
+    });
+  }
+}
+
+export function fastForwardBigSpenderGame(previousState: BigSpenderState) {
+  const state = cloneState(previousState);
+  let guard = 0;
+  while (state.status === 'running' && guard < 200) {
+    guard += 1;
+    const human = state.players.find((player) => player.isHuman);
+    if (human && isRoundParticipant(state, human.playerId) && human.status === 'active' && human.finalizedAt == null) {
+      return state;
+    }
+
+    const activePlayers = state.players.filter((player) =>
+      isRoundParticipant(state, player.playerId) &&
+      player.status === 'active' &&
+      player.finalizedAt == null
+    );
+
+    if (activePlayers.length === 0) {
+      completeIfNeeded(state);
+      continue;
+    }
+
+    const playerToSimulate = isFinaleRound(state)
+      ? activePlayers.find((player) => player.playerId === state.currentTurnPlayerId) ?? activePlayers[0]
+      : activePlayers[0];
+    if (!playerToSimulate) break;
+    simulateAiPlayerToFinalized(state, playerToSimulate);
+    completeIfNeeded(state);
+    if ((state as BigSpenderState).status !== 'completed' && isFinaleRound(state)) advanceFinaleTurnMutable(state);
+  }
+  syncVisibleBoard(state);
+  return state;
 }
 
 export function getNextEligibleBigSpenderPlayer(state: BigSpenderState) {
@@ -758,7 +1000,23 @@ export function rankBigSpenderPlayers(players: BigSpenderPlayerState[]) {
   }));
 }
 
-export function buildBigSpenderRawResults(players: BigSpenderPlayerState[]) {
-  const ranked = rankBigSpenderPlayers(players);
+export function rankBigSpenderGame(state: BigSpenderState) {
+  if (state.players.some((player) => player.gameRank != null)) {
+    return [...state.players]
+      .sort((left, right) => {
+        const leftRank = left.gameRank ?? Number.MAX_SAFE_INTEGER;
+        const rightRank = right.gameRank ?? Number.MAX_SAFE_INTEGER;
+        if (leftRank !== rightRank) return leftRank - rightRank;
+        return left.originalTurnOrderIndex - right.originalTurnOrderIndex;
+      })
+      .map((player, index) => ({ ...player, rank: player.gameRank ?? index + 1 }));
+  }
+  return rankBigSpenderPlayers(state.players.filter((player) => state.activePlayerIds.includes(player.playerId)));
+}
+
+export function buildBigSpenderRawResults(stateOrPlayers: BigSpenderState | BigSpenderPlayerState[]) {
+  const ranked = Array.isArray(stateOrPlayers)
+    ? rankBigSpenderPlayers(stateOrPlayers)
+    : rankBigSpenderGame(stateOrPlayers);
   return Object.fromEntries(ranked.map((player) => [player.playerId, ranked.length - player.rank + 1]));
 }
