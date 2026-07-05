@@ -225,13 +225,13 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(sameTurn.currentTurnPlayerId).not.toBeNull();
   });
 
-  it('produces randomized AI action delays in the 1-4 second band', () => {
-    expect(getAiActionDelayMs(2, () => 0)).toBe(1000);
-    expect(getAiActionDelayMs(6, () => 1)).toBe(4000);
-    expect(getAiActionDelayMs(7, () => 0)).toBe(1000);
-    expect(getAiActionDelayMs(11, () => 1)).toBe(4000);
-    expect(getAiActionDelayMs(12, () => 0)).toBe(1000);
-    expect(getAiActionDelayMs(16, () => 1)).toBe(4000);
+  it('produces randomized AI action delays in a paced 1.8-5.2 second band', () => {
+    expect(getAiActionDelayMs(2, () => 0)).toBe(1800);
+    expect(getAiActionDelayMs(6, () => 1)).toBe(5200);
+    expect(getAiActionDelayMs(7, () => 0)).toBe(1800);
+    expect(getAiActionDelayMs(11, () => 1)).toBe(5200);
+    expect(getAiActionDelayMs(12, () => 0)).toBe(1800);
+    expect(getAiActionDelayMs(16, () => 1)).toBe(5200);
   });
 
   it('makes AI more likely to open high balances and cautious at low balances', () => {

@@ -180,10 +180,12 @@ function appendEvent(state: BigSpenderState, event: BigSpenderEvent) {
 }
 
 function getOutcomeMessage(player: BigSpenderPlayerState, outcome: BigSpenderWalletOutcome) {
+  if (outcome.type === 'bomb' && player.isHuman) return 'You opened a bomb.';
   if (outcome.type === 'bomb') return `Rumors say ${player.displayName} just opened a bomb.`;
   const amount = outcome.amount ?? 0;
-  if (amount < 0) return `${player.displayName} just opened ${amount} Eyeoleans.`;
-  return `${player.displayName} just found +${amount} Eyeoleans.`;
+  if (player.isHuman && amount < 0) return `You opened ${amount} Eyeoleans.`;
+  if (player.isHuman) return `You found +${amount} Eyeoleans.`;
+  return `${player.displayName} opened wallet ${player.walletsOpened}.`;
 }
 
 function nextRandom(state: BigSpenderState) {
@@ -412,7 +414,7 @@ export function sumWeights(items: readonly { weight: number }[]) {
 }
 
 export function getAiActionDelayMs(_startingPlayerCount: number, rng: () => number) {
-  const [min, max] = [1000, 4000];
+  const [min, max] = [1800, 5200];
   return Math.round(min + rng() * (max - min));
 }
 
@@ -648,7 +650,7 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
   appendEvent(state, {
     type: 'playerLocked',
     playerId,
-    message: `${player.displayName} locked at ${player.balance} Eyeoleans.`,
+    message: `${player.displayName} locked after opening ${player.walletsOpened} wallets.`,
   });
   return completeIfNeeded(state);
 }
