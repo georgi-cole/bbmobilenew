@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GenericMinigameProps } from '../../minigames/reactComponents';
 import { mulberry32 } from '../../store/rng';
 import {
+  BIG_SPENDER_CONFIG,
   buildBigSpenderRawResults,
   createInitialBigSpenderState,
   decideAiShouldOpen,
@@ -20,9 +21,10 @@ import './BigSpender.css';
 
 type BombDramaStage = 'impact' | 'cracked' | 'prompt' | null;
 
-const BOMB_IMPACT_MS = 560;
-const BOMB_PROMPT_MS = 1650;
-const ZERO_RESULTS_DELAY_MS = 1800;
+const BOMB_ICON = '\u{1F4A3}';
+const BOMB_IMPACT_MS = 760;
+const BOMB_PROMPT_MS = 2200;
+const ZERO_RESULTS_DELAY_MS = 2600;
 
 function getPlayerLabel(player: BigSpenderPlayerState) {
   if (player.status === 'zeroFinished') return 'Zero';
@@ -38,10 +40,15 @@ function getWalletAriaLabel(wallet: BigSpenderWallet) {
 
 function getWalletResultLabel(wallet: BigSpenderWallet) {
   if (wallet.state !== 'revealed') return null;
-  if (wallet.outcome.type === 'bomb') return '💣';
+  if (wallet.outcome.type === 'bomb') return BOMB_ICON;
   const amount = wallet.outcome.amount ?? 0;
   if (amount > 0) return `+${amount}`;
   return `${amount}`;
+}
+
+function getWalletAriaLabelForState(wallet: BigSpenderWallet, isSecondChancePick: boolean) {
+  if (isSecondChancePick) return `Pick wallet ${wallet.boardSlotIndex + 1} as your Second Chance Wallet`;
+  return getWalletAriaLabel(wallet);
 }
 
 function chooseAiWallet(state: BigSpenderState, playerId: string, rng: () => number) {
@@ -83,14 +90,23 @@ export default function BigSpender(props: GenericMinigameProps) {
   );
   const ranking = useMemo(() => rankBigSpenderPlayers(state.players), [state.players]);
   const winner = ranking[0] ?? null;
-  const canHumanAct = Boolean(
+  const humanAdRescuePending = Boolean(state.pendingAdRescue && humanPlayer?.playerId === state.pendingAdRescue.playerId);
+  const humanSecondChancePending = Boolean(state.pendingSecondChance && humanPlayer?.playerId === state.pendingSecondChance.playerId);
+  const pendingAdRescueWalletId = state.pendingAdRescue?.walletId ?? null;
+  const canHumanOpen = Boolean(
     humanPlayer &&
     humanPlayer.status === 'active' &&
     state.status === 'running' &&
-    state.pendingAdRescue?.playerId !== humanPlayer.playerId,
+    !humanAdRescuePending &&
+    (!state.pendingSecondChance || humanSecondChancePending),
   );
-  const humanAdRescuePending = Boolean(state.pendingAdRescue && humanPlayer?.playerId === state.pendingAdRescue.playerId);
-  const pendingAdRescueWalletId = state.pendingAdRescue?.walletId ?? null;
+  const canHumanLock = Boolean(
+    canHumanOpen &&
+    !humanSecondChancePending &&
+    humanPlayer &&
+    humanPlayer.walletsOpened >= BIG_SPENDER_CONFIG.minWalletsBeforeLock,
+  );
+  const walletsUntilLock = Math.max(0, BIG_SPENDER_CONFIG.minWalletsBeforeLock - (humanPlayer?.walletsOpened ?? 0));
   const humanZeroFinished = humanPlayer?.status === 'zeroFinished';
   const humanZeroEvent = humanPlayer
     ? state.events.find((event) => event.type === 'playerZeroFinished' && event.playerId === humanPlayer.playerId)
@@ -119,7 +135,7 @@ export default function BigSpender(props: GenericMinigameProps) {
         setState((previous) => {
           const actor = previous.players.find((entry) => entry.playerId === player.playerId);
           if (!actor || actor.isHuman || actor.status !== 'active') return previous;
-          const shouldOpen = actor.walletsOpened === 0 || decideAiShouldOpen(actor.balance, aiRngRef.current);
+          const shouldOpen = actor.walletsOpened < BIG_SPENDER_CONFIG.minWalletsBeforeLock || decideAiShouldOpen(actor.balance, aiRngRef.current);
           if (!shouldOpen) return lockBigSpenderPlayer(previous, actor.playerId);
           const wallet = chooseAiWallet(previous, actor.playerId, aiRngRef.current);
           if (!wallet) return lockBigSpenderPlayer(previous, actor.playerId);
@@ -214,8 +230,13 @@ export default function BigSpender(props: GenericMinigameProps) {
   }, [humanZeroFinished, state.status]);
 
   const openWallet = (walletId: string) => {
-    if (!humanPlayer || !canHumanAct) return;
-    setState((previous) => openBigSpenderWallet(previous, humanPlayer.playerId, walletId));
+    if (!humanPlayer || !canHumanOpen) return;
+    setState((previous) => openBigSpenderWallet(
+      previous,
+      humanPlayer.playerId,
+      walletId,
+      humanSecondChancePending ? 'secondChance' : 'normal',
+    ));
   };
 
   const lockHuman = () => {
@@ -238,14 +259,24 @@ export default function BigSpender(props: GenericMinigameProps) {
       'big-spender',
       humanAdRescuePending && bombDramaStage === 'cracked' ? 'big-spender--cracked' : '',
       zeroDramaVisible ? 'big-spender--zeroing' : '',
+      humanSecondChancePending ? 'big-spender--second-chance' : '',
     ].join(' ')} data-testid="big-spender-game">
       <section className="big-spender__status-panel" aria-live="polite">
         <div>
-          <span className="big-spender__eyebrow">Live balance</span>
+          <span className="big-spender__eyebrow">{humanSecondChancePending ? 'Second chance' : 'Live balance'}</span>
           <strong>{humanPlayer ? `${humanPlayer.balance} Eyeoleans` : 'Results'}</strong>
+          {state.status === 'running' && (
+            <small>
+              {humanSecondChancePending
+                ? 'Pick any closed wallet yourself.'
+                : walletsUntilLock > 0
+                  ? `${walletsUntilLock} more wallet${walletsUntilLock === 1 ? '' : 's'} to unlock Lock in.`
+                  : 'Lock in is ready.'}
+            </small>
+          )}
         </div>
         {state.status === 'running' && (
-          <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanAct}>
+          <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanLock}>
             Lock in
           </button>
         )}
@@ -264,17 +295,18 @@ export default function BigSpender(props: GenericMinigameProps) {
                   `big-spender__wallet--color-${wallet.generationColor}`,
                   wallet.state === 'revealed' ? 'big-spender__wallet--revealed' : '',
                   wallet.outcome.type === 'bomb' && wallet.state === 'revealed' ? 'big-spender__wallet--bomb' : '',
+                  humanSecondChancePending && wallet.state === 'hidden' ? 'big-spender__wallet--second-chance' : '',
                 ].join(' ')}
-                disabled={!canHumanAct || wallet.state !== 'hidden'}
+                disabled={!canHumanOpen || wallet.state !== 'hidden'}
                 onClick={() => openWallet(wallet.walletId)}
-                aria-label={getWalletAriaLabel(wallet)}
+                aria-label={getWalletAriaLabelForState(wallet, humanSecondChancePending)}
               >
                 <span className="big-spender__wallet-flap" aria-hidden="true" />
                 <span className="big-spender__wallet-id">{wallet.boardSlotIndex + 1}</span>
                 {resultLabel ? (
                   <strong className="big-spender__wallet-result">{resultLabel}</strong>
                 ) : (
-                  <span className="big-spender__wallet-generation">Tap</span>
+                  <span className="big-spender__wallet-generation">{humanSecondChancePending ? 'Pick' : 'Tap'}</span>
                 )}
               </button>
             );
@@ -293,14 +325,15 @@ export default function BigSpender(props: GenericMinigameProps) {
 
       {humanAdRescuePending && bombDramaStage && bombDramaStage !== 'prompt' && (
         <div className={`big-spender__screen-drama big-spender__screen-drama--${bombDramaStage}`} aria-hidden="true">
-          <span className="big-spender__screen-drama-icon">💣</span>
+          <span className="big-spender__screen-drama-icon">{BOMB_ICON}</span>
         </div>
       )}
 
       {zeroDramaVisible && (
         <div className="big-spender__screen-drama big-spender__screen-drama--zero" aria-hidden="true">
-          <span className="big-spender__screen-drama-kicker">Zero hit</span>
+          <span className="big-spender__screen-drama-kicker">Perfect broke</span>
           <strong>0</strong>
+          <span className="big-spender__screen-drama-caption">You hit the cleanest possible landing.</span>
         </div>
       )}
 
@@ -309,7 +342,7 @@ export default function BigSpender(props: GenericMinigameProps) {
           <div className="big-spender__modal big-spender__modal--danger">
             <span className="big-spender__eyebrow">Bomb save</span>
             <h2>Watch an ad for one last wallet?</h2>
-            <p>If the ad completes, the bomb is cancelled and a mandatory Second Chance Wallet opens immediately.</p>
+            <p>If the ad completes, the bomb is cancelled and you choose one closed wallet as your mandatory Second Chance Wallet.</p>
             <div className="big-spender__modal-actions">
               <button type="button" onClick={() => setState((previous) => resolveBigSpenderAdRescue(previous, 'completed'))}>Watch ad</button>
               <button type="button" onClick={() => setState((previous) => resolveBigSpenderAdRescue(previous, 'declined'))}>Skip</button>
