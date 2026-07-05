@@ -176,6 +176,21 @@ function getPlayer(players: ChainOfGreedPlayerState[], id: string | null) {
   return players.find((player) => player.id === id) ?? null;
 }
 
+function getPlayerInitials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? 'P';
+  const second = words.length > 1 ? words[1]?.[0] : words[0]?.[1];
+  return `${first}${second ?? ''}`.toUpperCase();
+}
+
+function getSafeAvatarDisplay(player: ChainOfGreedPlayerState | null) {
+  if (!player) return 'BB';
+  const avatar = player.avatar.trim();
+  const looksLikeRawImageText = /profile|photo|image|avatar|https?:|[\/]|[a-f0-9]{8}/i.test(avatar);
+  if (!avatar || avatar.length > 4 || looksLikeRawImageText) return getPlayerInitials(player.name);
+  return avatar;
+}
+
 function buildIndividualOrder(ids: string[], turnsPerPlayer: number) {
   return Array.from({ length: turnsPerPlayer }, () => ids).flat();
 }
@@ -1114,27 +1129,39 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const isBankUsedThisTurn = Boolean(actionTargetKind && !isBankAvailable(bankedTurn, actionTargetId, actionTargetKind));
   const isBankEmpty = activePot <= 0;
   const isActionLocked = Boolean(pendingTurn);
-  const boardModeLabel = state.phase === 'finalTurn'
-    ? 'Final 2'
-    : state.phase === 'semifinalTurn'
-      ? 'Final 3'
-      : state.phase === 'playerTurn'
-        ? `Round ${state.roundNumber}`
-        : heroPhaseChip;
-  const turnClockLabel = state.phase === 'finalTurn'
-    ? `${Math.min(state.finalTurnIndex + 1, Math.max(state.finalOrder.length, 1))}/${Math.max(state.finalOrder.length, 1)}`
-    : state.phase === 'semifinalTurn'
-      ? `${Math.min(state.semifinalTurnIndex + 1, Math.max(state.semifinalOrder.length, 1))}/${Math.max(state.semifinalOrder.length, 1)}`
-      : state.phase === 'playerTurn'
-        ? `${state.turnsRemaining} turns`
-        : `R${state.roundNumber}`;
-  const actorMetricLabel = currentActor ? playerMetricText(currentActor) : `${activePlayers.length} live`;
-  const scoreStripItems = [
-    { label: 'Players', value: `${activePlayers.length}/${state.startingCount}` },
-    { label: 'Secured', value: state.securedTotal.toLocaleString() },
-    { label: 'Mode', value: boardModeLabel },
-    { label: 'Clock', value: finalSecondsRemaining !== null ? `${finalSecondsRemaining}s` : turnClockLabel },
-  ];
+  const panelActor = pendingTurn ? getPlayer(state.players, pendingTurn.actorId) : currentActor;
+  const panelActorName = panelActor?.name ?? pendingTurn?.actorName ?? heroPhaseChip;
+  const panelAvatar = getSafeAvatarDisplay(panelActor);
+  const panelModeLabel = pendingTurn
+    ? getActionVerb(pendingTurn.choice)
+    : isHumanTurn
+      ? 'YOUR TURN'
+      : currentActor
+        ? 'READING THE BOARD'
+        : heroKicker;
+  const panelNumberLabel = pendingTurn
+    && pendingTurn.choice !== 'bank'
+    && pendingTurn.stage !== 'decision'
+    && pendingTurn.resolution.revealedNumber !== null
+    ? `${pendingTurn.referenceNumber} ${turnComparisonSymbol ?? ''} ${pendingTurn.resolution.revealedNumber}`
+    : `${referenceNumber}`;
+  const panelStatusText = pendingTurn
+    ? pendingTurn.stage === 'decision'
+      ? 'LOCKED IN'
+      : pendingTurn.verdictText.toUpperCase()
+    : isHumanTurn
+      ? 'Choose move'
+      : currentActor
+        ? 'Reading the board'
+        : heroCommentary;
+  const panelDetailText = pendingTurn
+    ? pendingTurn.stage === 'decision'
+      ? `Pot ${currentPotLabel} - Next ${nextRewardValueLabel}`
+      : pendingTurn.choice === 'bank'
+        ? `+${Math.max(pendingTurn.resolution.securedDelta, pendingTurn.resolution.individualDelta).toLocaleString()} secured - Current ${pendingTurn.resolution.updatedChain.referenceNumber}`
+        : pendingTurn.consequenceText
+    : `Pot ${currentPotLabel} - Next ${nextRewardValueLabel}`;
+  const panelTone = pendingTurn ? pendingTurn.tone : heroTone;
   useEffect(() => {
     if (!bankedTurn) return;
     if (!actionTargetId || !actionTargetKind || bankedTurn.actorId !== actionTargetId || bankedTurn.kind !== actionTargetKind) {
@@ -1179,7 +1206,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             data-testid={`chain-player-${player.id}`}
             ref={(element) => { playerCardRefs.current[player.id] = element; }}
           >
-            <div className="chain-of-greed__rail-avatar">{player.avatar}</div>
+            <div className="chain-of-greed__rail-avatar">{getSafeAvatarDisplay(player)}</div>
             <div className="chain-of-greed__rail-copy">
               <strong>{player.name}</strong>
               <span>{playerMetricText(player)}</span>
@@ -1241,15 +1268,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             }}
             transition={{ duration: 0.34, ease: 'easeOut' }}
           >
-            <div className="chain-of-greed__score-strip" data-testid="chain-score-strip" aria-label="Chain of Greed scoreboard">
-              {scoreStripItems.map((item) => (
-                <div key={item.label} className="chain-of-greed__score-tile">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </div>
-              ))}
-            </div>
-
             <div className="chain-of-greed__hero-meta">
               <div className="chain-of-greed__hero-topline">
                 <span className="chain-of-greed__status-kicker">{heroKicker}</span>
@@ -1266,19 +1284,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   <span className="chain-of-greed__phase-chip">{heroPhaseChip}</span>
                 )}
               </div>
-              <p className="chain-of-greed__commentary">{heroCommentary}</p>
-              <div className="chain-of-greed__actor-strip" data-testid="chain-actor-strip">
-                <div className="chain-of-greed__actor-token" aria-hidden="true">
-                  {currentActor?.avatar ?? 'BB'}
-                </div>
-                <div className="chain-of-greed__actor-copy">
-                  <span>{isHumanTurn ? 'You are playing' : currentActor ? 'Now playing' : 'Broadcast board'}</span>
-                  <strong>{currentActor?.name ?? heroPhaseChip}</strong>
-                </div>
-                <div className="chain-of-greed__actor-meter">
-                  <span>{actorMetricLabel}</span>
-                </div>
-              </div>
             </div>
             <div className="chain-of-greed__stage-core" data-testid="chain-broadcast-board">
               <AnimatePresence initial={false}>
@@ -1292,24 +1297,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.55, ease: 'easeOut' }}
                   />
-                )}
-              </AnimatePresence>
-              {/* Left-side callout: temporary turn messages that must NOT overlay the ladder spine */}
-              <AnimatePresence>
-                {pendingTurn && pendingTurn.stage !== 'decision' && (
-                  <motion.aside
-                    className={`chain-of-greed__side-callout chain-of-greed__side-callout--${pendingTurn.tone}`}
-                    aria-live="polite"
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    transition={{ duration: 0.22 }}
-                  >
-                    <span className="chain-of-greed__side-callout-text">{pendingTurn.verdictText}</span>
-                    {(pendingTurn.stage === 'consequence' || pendingTurn.stage === 'ladderUpdate' || pendingTurn.stage === 'settle') && (
-                      <span className="chain-of-greed__side-callout-sub">{pendingTurn.consequenceText}</span>
-                    )}
-                  </motion.aside>
                 )}
               </AnimatePresence>
               <div
@@ -1387,51 +1374,22 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                     </span>
                   </div>
                 )}
-                <div className="chain-of-greed__outcome-slot" data-testid="chain-outcome-slot" aria-live="polite">
-                  <AnimatePresence initial={false}>
-                    {showTurnReveal ? (
-                    <motion.div
-                      className={`chain-of-greed__reveal chain-of-greed__reveal--${heroTone}`}
-                      data-testid="chain-turn-reveal"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                    >
-                      {pendingTurn?.choice === 'bank' ? (
-                        <>
-                          <span className="chain-of-greed__reveal-comparison">
-                            <strong>{Math.max(pendingTurn.resolution.securedDelta, pendingTurn.resolution.individualDelta).toLocaleString()}</strong>
-                            <span>{turnComparisonSymbol}</span>
-                          </span>
-                          <span className="chain-of-greed__reveal-verdict">{pendingTurn.verdictText}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="chain-of-greed__reveal-comparison">
-                            <strong>{pendingTurn?.referenceNumber}</strong>
-                            <span>{turnComparisonSymbol}</span>
-                            <strong>{pendingTurn?.resolution.revealedNumber}</strong>
-                          </span>
-                          <span className="chain-of-greed__reveal-verdict">{pendingTurn?.verdictText}</span>
-                        </>
-                      )}
-                    </motion.div>
-                  ) : state.revealedNumber !== null && state.revealedNumber !== referenceNumber && (
-                    <motion.div
-                      className={`chain-of-greed__reveal chain-of-greed__reveal--${heroTone}`}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                    >
-                      Next reveal <strong>{state.revealedNumber}</strong>
-                    </motion.div>
-                  )}
-                  </AnimatePresence>
-                  {!showTurnReveal && !(state.revealedNumber !== null && state.revealedNumber !== referenceNumber) && (
-                    <div className="chain-of-greed__outcome-placeholder">Awaiting reveal</div>
-                  )}
-                </div>
               </div>
+              <aside className={[
+                'chain-of-greed__participant-panel',
+                `chain-of-greed__participant-panel--${panelTone}`,
+              ].filter(Boolean).join(' ')} data-testid="chain-participant-panel" aria-live="polite">
+                <div className="chain-of-greed__participant-topline">
+                  <span className="chain-of-greed__participant-avatar" aria-hidden="true">{panelAvatar}</span>
+                  <div className="chain-of-greed__participant-name">
+                    <span>{panelModeLabel}</span>
+                    <strong>{panelActorName}</strong>
+                  </div>
+                </div>
+                <div className="chain-of-greed__participant-number">{panelNumberLabel}</div>
+                <div className="chain-of-greed__participant-status">{panelStatusText}</div>
+                <p className="chain-of-greed__participant-detail">{panelDetailText}</p>
+              </aside>
             </div>
             <div className="chain-of-greed__hero-status">
               <div className="chain-of-greed__inline-status" data-testid="chain-inline-status">
@@ -1458,12 +1416,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 }}
             >
-              <div className="chain-of-greed__action-cue" data-testid="chain-action-cue">
-                <span>{isHumanTurn ? 'Choose move' : 'Watching'}</span>
-                <strong>{currentActor?.name ?? 'House'}</strong>
-              </div>
-              <div className="chain-of-greed__action-controls">
-                <button
+              <button
                   type="button"
                   className="chain-of-greed__action-info"
                 aria-label="Open help"
@@ -1505,7 +1458,6 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   <span>{getAiWaitingText(pendingTurn, isBankUsedThisTurn)}</span>
                 </div>
               )}
-              </div>
             </motion.footer>
           )}
 
