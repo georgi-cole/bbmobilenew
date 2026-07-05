@@ -132,6 +132,7 @@
 .vault-verdict__status.is-offer {
   border: 1px solid rgba(125, 247, 202, 0.22);
   background: rgba(125, 247, 202, 0.08);
+  animation: offer-arrival 680ms ease both;
 }
 
 .vault-verdict__decision-buttons {
@@ -184,6 +185,7 @@
     linear-gradient(90deg, rgba(125, 247, 202, 0.05) 1px, transparent 1px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
   background-size: 34px 34px, 34px 34px, auto;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .vault-verdict__board::before {
@@ -193,6 +195,52 @@
   border: 1px solid rgba(125, 247, 202, 0.12);
   border-radius: 6px;
   pointer-events: none;
+}
+
+.vault-verdict__board.has-offer {
+  border-color: rgba(255, 207, 112, 0.34);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.25), 0 0 34px rgba(255, 207, 112, 0.1);
+}
+
+.vault-verdict__board.has-dramatic-reveal {
+  border-color: rgba(255, 95, 109, 0.38);
+  animation: rack-warning 520ms ease both;
+}
+
+.vault-verdict__reveal-flash {
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  min-width: min(300px, calc(100% - 86px));
+  padding: 8px 12px;
+  border: 1px solid rgba(125, 247, 202, 0.28);
+  border-radius: 7px;
+  background: rgba(5, 10, 13, 0.88);
+  color: #f5f7df;
+  text-align: center;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: reveal-flash 1500ms ease both;
+}
+
+.vault-verdict__reveal-flash span {
+  color: rgba(125, 247, 202, 0.78);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__reveal-flash strong {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.vault-verdict__reveal-flash.is-special {
+  border-color: rgba(255, 207, 112, 0.42);
+  box-shadow: 0 0 26px rgba(255, 207, 112, 0.16);
 }
 
 .vault-verdict__info-button,
@@ -394,6 +442,10 @@
   animation: voltage-drop 460ms ease;
 }
 
+.vault-verdict__core-shell.is-holding {
+  animation: max-holding 560ms ease;
+}
+
 .vault-verdict__core-battery small {
   color: rgba(238, 248, 245, 0.78);
   font-size: 0.9rem;
@@ -418,6 +470,151 @@
   place-items: center;
   padding: 18px;
   background: rgba(0, 0, 0, 0.62);
+}
+
+.vault-verdict__finale {
+  display: grid;
+  min-height: min(72vh, 720px);
+}
+
+.vault-verdict__finale-panel {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+  min-height: 100%;
+  padding: clamp(20px, 4vw, 40px);
+  border: 1px solid rgba(255, 207, 112, 0.34);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 207, 112, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(5, 10, 13, 0.92);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34), 0 0 44px rgba(255, 207, 112, 0.12);
+  text-align: center;
+  overflow: hidden;
+}
+
+.vault-verdict__finale-panel > span {
+  color: #ffcf70;
+  font-size: 0.72rem;
+  font-weight: 1000;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__finale-panel h2,
+.vault-verdict__finale-panel p {
+  margin: 0;
+}
+
+.vault-verdict__finale-panel h2 {
+  color: #f5f7df;
+  font-size: clamp(2rem, 6vw, 4.8rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.vault-verdict__finale-panel p {
+  max-width: 680px;
+  color: rgba(238, 248, 245, 0.82);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.vault-verdict__finale-batteries {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  width: min(820px, 100%);
+  gap: 10px;
+}
+
+.vault-verdict__finale-battery {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-height: 190px;
+  padding: 16px;
+  border: 1px solid rgba(134, 216, 205, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  overflow: hidden;
+}
+
+.vault-verdict__finale-battery::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  height: var(--charge, 0%);
+  max-height: calc(100% - 20px);
+  border-radius: 6px;
+  background: linear-gradient(0deg, rgba(99, 240, 168, 0.72), rgba(245, 247, 223, 0.42));
+  opacity: 0.86;
+  transition: height 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.vault-verdict__finale-battery small,
+.vault-verdict__finale-battery strong,
+.vault-verdict__finale-battery em {
+  position: relative;
+  z-index: 1;
+}
+
+.vault-verdict__finale-battery small {
+  color: rgba(125, 247, 202, 0.78);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__finale-battery strong {
+  color: #f5f7df;
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.vault-verdict__finale-battery em {
+  color: #ffcf70;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__finale-battery.is-reserve {
+  border-color: rgba(255, 207, 112, 0.46);
+  animation: finale-reserve-pulse 1.6s ease infinite;
+}
+
+.vault-verdict__finale-battery.is-offer,
+.vault-verdict__finale-battery.is-wall {
+  opacity: 0.78;
+}
+
+.vault-verdict__finale-battery.is-offer::before,
+.vault-verdict__finale-battery.is-wall::before {
+  display: none;
+}
+
+.vault-verdict__finale-panel button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  padding: 12px 16px;
+  color: #06100d;
+  background: #ffcf70;
+  cursor: pointer;
+  font-weight: 1000;
+}
+
+.vault-verdict__finale-panel button:disabled {
+  opacity: 0.46;
+  cursor: default;
 }
 
 .vault-verdict__amount-panel {
@@ -544,6 +741,43 @@
   }
 }
 
+@keyframes offer-arrival {
+  from {
+    box-shadow: inset 0 0 0 1px rgba(255, 207, 112, 0), 0 0 0 rgba(255, 207, 112, 0);
+    filter: brightness(0.9);
+  }
+  to {
+    box-shadow: inset 0 0 0 1px rgba(255, 207, 112, 0.18), 0 0 22px rgba(255, 207, 112, 0.08);
+    filter: brightness(1);
+  }
+}
+
+@keyframes reveal-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.98);
+  }
+  16%,
+  78% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -4px) scale(0.99);
+  }
+}
+
+@keyframes rack-warning {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  45% {
+    filter: brightness(1.16);
+  }
+}
+
 @keyframes battery-scan {
   0% {
     transform: translateY(-100%);
@@ -569,6 +803,26 @@
   }
 }
 
+@keyframes max-holding {
+  0%,
+  100% {
+    box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.34), 0 0 34px rgba(125, 247, 202, 0.11);
+  }
+  50% {
+    box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.34), 0 0 44px rgba(125, 247, 202, 0.26);
+  }
+}
+
+@keyframes finale-reserve-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 207, 112, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 34px rgba(255, 207, 112, 0.2);
+  }
+}
+
 @media (max-width: 860px) {
   .vault-verdict__control-row {
     grid-template-columns: minmax(82px, 0.22fr) minmax(0, 1fr) auto;
@@ -591,6 +845,14 @@
   .vault-verdict__core-shell {
     width: min(180px, 62%);
     aspect-ratio: 0.72;
+  }
+
+  .vault-verdict__finale-batteries {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-verdict__finale-battery {
+    min-height: 130px;
   }
 }
 
