@@ -56,6 +56,7 @@ export default function VaultVerdict(props: GenericMinigameProps) {
   const [feed, setFeed] = useState<BroadcastEvent[]>([]);
   const [feedIndex, setFeedIndex] = useState(0);
   const [committed, setCommitted] = useState(false);
+  const [amountInfoOpen, setAmountInfoOpen] = useState(false);
 
   const initialContestants = useMemo(() => {
     const participants = resolveVaultParticipants(props);
@@ -84,6 +85,29 @@ export default function VaultVerdict(props: GenericMinigameProps) {
   const vaultsLeft = getVaultsLeftThisRound(human);
   const latestOffer = human.offerHistory[human.offerHistory.length - 1] ?? null;
   const finalWallVault = human.vaults.find((vault) => vault.status === 'remainingFinalWallVault');
+  const personalVaultNumber = human.personalVaultId
+    ? human.vaults.find((vault) => vault.vaultId === human.personalVaultId)?.displayNumber ?? null
+    : null;
+  const broadcastMessage = feed[0]?.message ?? (
+    human.personalVaultId
+      ? 'Private booths are live. The Eye Bank is watching every vault.'
+      : 'Vault Verdict is standing by. Choose My Vault to begin.'
+  );
+  const eventEyebrow = !human.personalVaultId
+    ? 'Selection'
+    : human.currentOffer
+      ? human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length ? 'Final Verdict' : 'Eye Bank Offer'
+      : `Round ${human.currentRound} of ${VAULT_VERDICT_ROUND_SCHEDULE.length}`;
+  const eventTitle = !human.personalVaultId
+    ? 'Choose My Vault'
+    : human.currentOffer
+      ? formatVaultAmount(human.currentOffer)
+      : `Open ${vaultsLeft} vault${vaultsLeft === 1 ? '' : 's'}`;
+  const eventDetail = !human.personalVaultId
+    ? 'Select one pod to seal in your private chamber.'
+    : human.currentOffer
+      ? `${latestOffer?.remainingValues.length ?? 0} hidden values remain, including My Vault.`
+      : `My Vault${personalVaultNumber ? ` is Pod ${personalVaultNumber}` : ''}. The next pod you open leaves the board.`;
 
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return;
@@ -156,9 +180,20 @@ export default function VaultVerdict(props: GenericMinigameProps) {
     <div className="vault-verdict">
       <div className="vault-verdict__stage">
         <header className="vault-verdict__header">
-          <div>
+          <div className="vault-verdict__brand">
             <span className="vault-verdict__eyebrow">Eye Bank Studio</span>
             <h1>Vault Verdict</h1>
+          </div>
+          <div className="vault-verdict__broadcast-row" aria-live="polite">
+            <span>Vault Verdict</span>
+            <strong>{broadcastMessage}</strong>
+            <div className="vault-verdict__broadcast-chips" aria-label="Contestant booth status">
+              {aiContestants.slice(0, 5).map((contestant) => (
+                <em key={contestant.contestantId}>
+                  {contestant.displayName}: {getContestantBroadcastStatus(contestant, elapsedMs)}
+                </em>
+              ))}
+            </div>
           </div>
           <div className="vault-verdict__timer">
             <span>Finish time</span>
@@ -169,8 +204,9 @@ export default function VaultVerdict(props: GenericMinigameProps) {
         {rankedResults == null ? (
           <main className="vault-verdict__game-grid">
             <section className="vault-verdict__board" aria-label="Vault pod board">
-              <div className="vault-verdict__eye">
-                <span>Eye Bank</span>
+              <div className="vault-verdict__iris-core">
+                <span>Vault Verdict</span>
+                <strong>{human.openedVaultIds.length}/21</strong>
               </div>
               {human.vaults.map((vault, index) => {
                 const angle = ((360 / human.vaults.length) * index - 90) * (Math.PI / 180);
@@ -205,64 +241,45 @@ export default function VaultVerdict(props: GenericMinigameProps) {
               })}
             </section>
 
-            <aside className="vault-verdict__side">
-              <section className="vault-verdict__my-vault">
-                <span>My Vault</span>
-                <strong>
-                  {human.personalVaultId
-                    ? `Pod ${human.vaults.find((vault) => vault.vaultId === human.personalVaultId)?.displayNumber ?? ''}`
-                    : 'Choose a pod'}
-                </strong>
-                <small>{human.personalVaultId ? 'Sealed until the Final Verdict' : 'Your private vault chamber awaits'}</small>
-              </section>
-
-              <section className="vault-verdict__round-panel">
-                <span>Round {human.currentRound || 1} of {VAULT_VERDICT_ROUND_SCHEDULE.length}</span>
-                <strong>{human.personalVaultId ? vaultsLeft : 1}</strong>
-                <small>{human.personalVaultId ? 'vaults left to open this round' : 'pod to claim as My Vault'}</small>
-              </section>
-
-              <section className={`vault-verdict__offer ${human.currentOffer ? 'is-live' : ''}`}>
-                <span>The Eye Bank Offers</span>
-                <strong>{human.currentOffer ? formatVaultAmount(human.currentOffer) : 'Awaiting round result'}</strong>
-                {latestOffer && (
-                  <small>{latestOffer.remainingValues.length} sealed values remain in your private board.</small>
-                )}
-                <div className="vault-verdict__actions">
-                  <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(signVerdict, event.timeStamp)}>
-                    Sign the Verdict
-                  </button>
-                  <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(riskVault, event.timeStamp)}>
-                    Risk the Vault
-                  </button>
+            <aside className={`vault-verdict__event-panel ${human.currentOffer ? 'is-live' : ''}`}>
+              <div className="vault-verdict__event-topline">
+                <span>{eventEyebrow}</span>
+                <button type="button" className="vault-verdict__info-button" onClick={() => setAmountInfoOpen(true)} aria-label="Show vault values">
+                  i
+                </button>
+              </div>
+              <strong>{eventTitle}</strong>
+              <p>{eventDetail}</p>
+              <dl className="vault-verdict__event-stats">
+                <div>
+                  <dt>My Vault</dt>
+                  <dd>{personalVaultNumber ? `Pod ${personalVaultNumber}` : 'Unclaimed'}</dd>
                 </div>
-              </section>
-            </aside>
-
-            <section className="vault-verdict__ladder" aria-label="Amount ladder">
-              {VAULT_VERDICT_AMOUNTS.slice().reverse().map((amount) => (
-                <span key={amount} className={human.revealedAmounts.includes(amount) ? 'is-opened' : ''}>
-                  {formatVaultAmount(amount)}
-                </span>
-              ))}
-            </section>
-
-            <aside className="vault-verdict__broadcast">
-              <h2>Eye Bank Broadcast</h2>
-              <div className="vault-verdict__feed">
-                {feed.length === 0 ? (
-                  <p>The booths are sealed. The control room is listening.</p>
+                <div>
+                  <dt>Opened</dt>
+                  <dd>{human.openedVaultIds.length}</dd>
+                </div>
+                <div>
+                  <dt>Hidden</dt>
+                  <dd>{22 - human.revealedAmounts.length}</dd>
+                </div>
+              </dl>
+              <div className="vault-verdict__recent-values" aria-label="Recently opened values">
+                {human.revealedAmounts.slice(-4).length === 0 ? (
+                  <span>No reveals yet</span>
                 ) : (
-                  feed.map((event) => <p key={event.id}>{event.message}</p>)
+                  human.revealedAmounts.slice(-4).map((amount) => (
+                    <span key={`${amount}-${human.revealedAmounts.indexOf(amount)}`}>{formatVaultAmount(amount)}</span>
+                  ))
                 )}
               </div>
-              <div className="vault-verdict__booths">
-                {aiContestants.map((contestant) => (
-                  <div key={contestant.contestantId}>
-                    <span>{contestant.displayName}</span>
-                    <strong>{getContestantBroadcastStatus(contestant, elapsedMs)}</strong>
-                  </div>
-                ))}
+              <div className="vault-verdict__actions">
+                <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(signVerdict, event.timeStamp)}>
+                  Sign the Verdict
+                </button>
+                <button type="button" disabled={!human.currentOffer} onClick={(event) => finishWith(riskVault, event.timeStamp)}>
+                  Risk the Vault
+                </button>
               </div>
             </aside>
           </main>
@@ -293,6 +310,23 @@ export default function VaultVerdict(props: GenericMinigameProps) {
               Lock Studio Result
             </button>
           </main>
+        )}
+        {amountInfoOpen && (
+          <div className="vault-verdict__amount-modal" role="dialog" aria-modal="true" aria-label="Vault values">
+            <div className="vault-verdict__amount-panel">
+              <div className="vault-verdict__amount-header">
+                <span>Vault Values</span>
+                <button type="button" onClick={() => setAmountInfoOpen(false)} aria-label="Close vault values">x</button>
+              </div>
+              <div className="vault-verdict__amount-grid">
+                {VAULT_VERDICT_AMOUNTS.slice().reverse().map((amount) => (
+                  <span key={amount} className={human.revealedAmounts.includes(amount) ? 'is-opened' : ''}>
+                    {formatVaultAmount(amount)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
