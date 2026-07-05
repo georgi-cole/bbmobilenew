@@ -49,12 +49,13 @@ describe('ChainOfGreed component', () => {
     expect(screen.queryByText(/Bank is safe, but the first correct guess starts the value/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/First correct call starts the climb/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('chain-ladder-stage')).toBeInTheDocument();
-    expect(screen.getByTestId('chain-score-strip')).toHaveTextContent(/Players/i);
-    expect(screen.getByTestId('chain-score-strip')).toHaveTextContent(/Secured/i);
-    expect(screen.getByTestId('chain-actor-strip')).toHaveTextContent(/You/i);
+    expect(screen.queryByTestId('chain-score-strip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chain-outcome-slot')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chain-action-cue')).not.toBeInTheDocument();
     expect(screen.getByTestId('chain-broadcast-board')).toBeInTheDocument();
-    expect(screen.getByTestId('chain-outcome-slot')).toHaveTextContent(/Awaiting reveal/i);
-    expect(screen.getByTestId('chain-action-cue')).toHaveTextContent(/Choose move/i);
+    const participantPanel = screen.getByTestId('chain-participant-panel');
+    expect(participantPanel).toHaveTextContent(/You/i);
+    expect(participantPanel).toHaveTextContent(/Choose move/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Step 0\/8/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Next 50/i);
     expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
@@ -116,6 +117,23 @@ describe('ChainOfGreed component', () => {
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
   });
 
+  it('falls back to initials instead of rendering raw profile image text', () => {
+    vi.useFakeTimers();
+    const imageTextParticipants = [
+      { ...participants[0], name: 'Ate Three', avatar: 'profile photo:photo-d34feb7a-7c42-4864-a8e2-23fa285c69af-1783205172715' },
+      ...participants.slice(1),
+    ];
+
+    render(<ChainOfGreed participants={imageTextParticipants} seed={42} onFinish={() => {}} />);
+
+    act(() => {
+      vi.advanceTimersByTime(950);
+    });
+
+    expect(screen.queryByText(/profile photo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/photo-d34/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('chain-participant-panel')).toHaveTextContent(/AT/i);
+  });
   it('keeps banking unavailable until the chain has a pot', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
