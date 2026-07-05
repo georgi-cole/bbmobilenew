@@ -4,12 +4,13 @@ export const BIG_SPENDER_GAME_ID = 'big_spender_broke_or_boom';
 export const BIG_SPENDER_DISPLAY_NAME = 'Big Spender: Broke or Boom';
 
 export const BIG_SPENDER_CONFIG = {
-  startingBalance: 1000,
-  boardSize: 28,
+  startingBalance: 1200,
+  boardSize: 32,
+  minWalletsBeforeLock: 8,
   outcomeWeights: {
-    negative: 81,
-    positive: 15,
-    bomb: 4,
+    negative: 75,
+    positive: 20,
+    bomb: 5,
   },
   bonusExtraWalletChance: 0,
   maxExtraWalletsPerTurn: 1,
@@ -138,6 +139,11 @@ export interface BigSpenderPendingAdRescue {
   walletId: string;
 }
 
+export interface BigSpenderPendingSecondChance {
+  playerId: string;
+  sourceWalletId: string;
+}
+
 export interface BigSpenderEvent {
   type:
     | 'walletOpened'
@@ -147,6 +153,7 @@ export interface BigSpenderEvent {
     | 'adRescueOffered'
     | 'adRescueCompleted'
     | 'adRescueFailed'
+    | 'secondChanceReady'
     | 'playerLocked'
     | 'playerZeroFinished'
     | 'playerBombed'
@@ -173,6 +180,7 @@ export interface BigSpenderState {
   boardsByPlayerId: Record<string, BigSpenderWallet[]>;
   pendingBonus: BigSpenderPendingBonus | null;
   pendingAdRescue: BigSpenderPendingAdRescue | null;
+  pendingSecondChance: BigSpenderPendingSecondChance | null;
   postWalletLockPlayerId: string | null;
   events: BigSpenderEvent[];
 }
@@ -200,10 +208,13 @@ function appendEvent(state: BigSpenderState, event: BigSpenderEvent) {
   state.events = [event, ...state.events].slice(0, 16);
 }
 
-function getOutcomeMessage(player: BigSpenderPlayerState, outcome: BigSpenderWalletOutcome) {
+function getOutcomeMessage(player: BigSpenderPlayerState, outcome: BigSpenderWalletOutcome, kind: BigSpenderWalletKind) {
+  if (outcome.type === 'bomb' && player.isHuman && kind === 'secondChance') return 'Your Second Chance Wallet had a bomb.';
   if (outcome.type === 'bomb' && player.isHuman) return 'You opened a bomb.';
   if (outcome.type === 'bomb') return getAiBroadcastLine(player, AI_BOMB_BROADCASTS);
   const amount = outcome.amount ?? 0;
+  if (player.isHuman && kind === 'secondChance' && amount < 0) return `Second Chance Wallet: ${amount} Eyeoleans.`;
+  if (player.isHuman && kind === 'secondChance') return `Second Chance Wallet: +${amount} Eyeoleans.`;
   if (player.isHuman && amount < 0) return `You opened ${amount} Eyeoleans.`;
   if (player.isHuman) return `You found +${amount} Eyeoleans.`;
   return getAiBroadcastLine(player, outcome.type === 'negative' ? AI_NEGATIVE_BROADCASTS : AI_POSITIVE_BROADCASTS);
@@ -244,6 +255,7 @@ function cloneState(state: BigSpenderState): BigSpenderState {
     ),
     pendingBonus: state.pendingBonus ? { ...state.pendingBonus } : null,
     pendingAdRescue: state.pendingAdRescue ? { ...state.pendingAdRescue } : null,
+    pendingSecondChance: state.pendingSecondChance ? { ...state.pendingSecondChance } : null,
     events: [...state.events],
   };
 }
@@ -291,7 +303,12 @@ function nextEligibleTurnIndex(state: BigSpenderState, startIndex: number) {
 function completeIfNeeded(state: BigSpenderState) {
   for (const player of state.players) {
     const hiddenWallets = (state.boardsByPlayerId[player.playerId] ?? []).some((wallet) => wallet.state === 'hidden');
-    if (player.status === 'active' && player.finalizedAt == null && !hiddenWallets) {
+    if (
+      player.status === 'active' &&
+      player.finalizedAt == null &&
+      !hiddenWallets &&
+      state.pendingSecondChance?.playerId !== player.playerId
+    ) {
       finalizePlayer(player, state, 'locked');
     }
   }
@@ -302,6 +319,7 @@ function completeIfNeeded(state: BigSpenderState) {
   state.postWalletLockPlayerId = null;
   state.pendingBonus = null;
   state.pendingAdRescue = null;
+  state.pendingSecondChance = null;
   markTurnFlags(state);
   syncVisibleBoard(state);
   appendEvent(state, { type: 'gameCompleted', message: 'All players are finalized.' });
@@ -385,7 +403,7 @@ function applyOutcomeMutable(
       type: 'walletOpened',
       playerId: player.playerId,
       outcome,
-      message: getOutcomeMessage(player, outcome),
+      message: getOutcomeMessage(player, outcome, kind),
     });
     return;
   }
@@ -397,7 +415,7 @@ function applyOutcomeMutable(
       type: 'walletOpened',
       playerId: player.playerId,
       outcome,
-      message: getOutcomeMessage(player, outcome),
+      message: getOutcomeMessage(player, outcome, kind),
     });
     if (player.balance === 0) {
       finalizePlayer(player, state, 'zeroFinished');
@@ -415,7 +433,7 @@ function applyOutcomeMutable(
     type: 'walletOpened',
     playerId: player.playerId,
     outcome,
-    message: getOutcomeMessage(player, outcome),
+    message: getOutcomeMessage(player, outcome, kind),
   });
 }
 
@@ -430,7 +448,7 @@ function markBombedMutable(state: BigSpenderState, player: BigSpenderPlayerState
 
 function finishAfterResolution(state: BigSpenderState) {
   completeIfNeeded(state);
-  if (state.status === 'completed' || state.pendingAdRescue || state.pendingBonus) return state;
+  if (state.status === 'completed' || state.pendingAdRescue || state.pendingBonus || state.pendingSecondChance) return state;
   markTurnFlags(state);
   return state;
 }
@@ -440,7 +458,7 @@ export function sumWeights(items: readonly { weight: number }[]) {
 }
 
 export function getAiActionDelayMs(_startingPlayerCount: number, rng: () => number) {
-  const [min, max] = [1800, 5200];
+  const [min, max] = [2400, 6500];
   return Math.round(min + rng() * (max - min));
 }
 
@@ -544,6 +562,7 @@ export function createInitialBigSpenderState(
     boardsByPlayerId,
     pendingBonus: null,
     pendingAdRescue: null,
+    pendingSecondChance: null,
     postWalletLockPlayerId: null,
     events: [],
   };
@@ -569,7 +588,10 @@ export function openBigSpenderWallet(
 ) {
   const state = cloneState(previousState);
   if (state.status !== 'running') return state;
+  const isSecondChancePick = kind === 'secondChance' && state.pendingSecondChance?.playerId === playerId;
+  if (kind === 'secondChance' && !isSecondChancePick) return state;
   if (state.pendingAdRescue?.playerId === playerId || state.pendingBonus?.playerId === playerId) return state;
+  if (state.pendingSecondChance?.playerId === playerId && !isSecondChancePick) return state;
   const player = getPlayerMutable(state, playerId);
   if (player.status !== 'active' || player.finalizedAt != null) return state;
 
@@ -580,6 +602,7 @@ export function openBigSpenderWallet(
   const outcome = options.forcedOutcome ?? wallet.outcome;
   wallet.outcome = outcome;
   wallet.state = 'revealed';
+  if (isSecondChancePick) state.pendingSecondChance = null;
   syncVisibleBoard(state);
 
   applyOutcomeMutable(state, player, outcome, kind);
@@ -629,7 +652,6 @@ export function resolveBigSpenderBonusOffer(previousState: BigSpenderState, acce
 export function resolveBigSpenderAdRescue(
   previousState: BigSpenderState,
   decision: BigSpenderAdDecision,
-  forcedSecondChanceOutcome?: BigSpenderWalletOutcome,
 ) {
   const state = cloneState(previousState);
   const pending = state.pendingAdRescue;
@@ -651,12 +673,22 @@ export function resolveBigSpenderAdRescue(
   appendEvent(state, {
     type: 'adRescueCompleted',
     playerId: player.playerId,
-    message: `${player.displayName} earned a second chance wallet.`,
+    message: `${player.displayName} earned a Second Chance pick.`,
   });
-  const outcome = forcedSecondChanceOutcome ?? pickWalletOutcome(() => nextRandom(state));
-  resolveSyntheticWalletMutable(state, player, outcome, 'secondChance');
-  if (outcome.type === 'bomb') markBombedMutable(state, player);
-  return finishAfterResolution(state);
+  const hiddenWallets = getBoardMutable(state, player.playerId).some((wallet) => wallet.state === 'hidden');
+  if (!hiddenWallets) {
+    markBombedMutable(state, player);
+    return finishAfterResolution(state);
+  }
+  state.pendingSecondChance = { playerId: player.playerId, sourceWalletId: pending.walletId };
+  appendEvent(state, {
+    type: 'secondChanceReady',
+    playerId: player.playerId,
+    walletId: pending.walletId,
+    message: `${player.displayName} is choosing a Second Chance Wallet.`,
+  });
+  syncVisibleBoard(state);
+  return state;
 }
 
 export function finishBigSpenderTurn(previousState: BigSpenderState) {
@@ -668,6 +700,8 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
   const state = cloneState(previousState);
   const player = getPlayerMutable(state, playerId);
   if (state.status !== 'running' || player.status !== 'active' || player.finalizedAt != null) return state;
+  if (state.pendingSecondChance?.playerId === playerId) return state;
+  if (player.walletsOpened < BIG_SPENDER_CONFIG.minWalletsBeforeLock) return state;
   finalizePlayer(player, state, 'locked');
   if (state.currentTurnPlayerId === playerId) {
     state.currentTurnPlayerId = null;
@@ -682,7 +716,7 @@ export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: s
 }
 
 export function decideAiShouldOpen(balance: number, rng: () => number) {
-  const openChance = balance >= 701 ? 0.9 : balance >= 401 ? 0.75 : balance >= 151 ? 0.55 : 0.3;
+  const openChance = balance >= 901 ? 0.94 : balance >= 501 ? 0.82 : balance >= 151 ? 0.64 : 0.38;
   return rng() < openChance;
 }
 

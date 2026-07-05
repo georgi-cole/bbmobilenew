@@ -46,6 +46,12 @@ function firstWallet(state: BigSpenderState, playerId = 'human') {
   return wallet;
 }
 
+function walletAt(state: BigSpenderState, index: number, playerId = 'human') {
+  const wallet = getBigSpenderBoardForPlayer(state, playerId)[index];
+  if (!wallet) throw new Error(`missing wallet ${index}`);
+  return wallet;
+}
+
 function player(state: BigSpenderState, playerId: string) {
   const found = state.players.find((entry) => entry.playerId === playerId);
   if (!found) throw new Error(`missing player ${playerId}`);
@@ -53,7 +59,7 @@ function player(state: BigSpenderState, playerId: string) {
 }
 
 describe('Big Spender: Broke or Boom logic', () => {
-  it('initializes all players at 1,000 Eyeoleans with private 28-wallet boards', () => {
+  it('initializes all players at the configured balance with private 32-wallet boards', () => {
     const state = makeState();
 
     expect(state.players).toHaveLength(participants.length);
@@ -64,8 +70,8 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(state.currentTurnPlayerId).toBeTruthy();
   });
 
-  it('declares wallet outcome weights as 81/15/4', () => {
-    expect(BIG_SPENDER_CONFIG.outcomeWeights).toEqual({ negative: 81, positive: 15, bomb: 4 });
+  it('declares wallet outcome weights as 75/20/5', () => {
+    expect(BIG_SPENDER_CONFIG.outcomeWeights).toEqual({ negative: 75, positive: 20, bomb: 5 });
   });
 
   it('keeps positive and negative amount tables normalized to 100', () => {
@@ -98,7 +104,7 @@ describe('Big Spender: Broke or Boom logic', () => {
       suppressBonus: true,
     });
 
-    expect(player(opened, 'human').balance).toBe(1666);
+    expect(player(opened, 'human').balance).toBe(BIG_SPENDER_CONFIG.startingBalance + 666);
     expect(player(opened, 'human').positiveWalletsOpened).toBe(1);
   });
 
@@ -135,17 +141,40 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(player(declined, 'human').status).toBe('bombed');
   });
 
-  it('completed ad rescue cancels the original bomb and opens a mandatory Second Chance Wallet', () => {
+  it('completed ad rescue cancels the original bomb and lets the user pick a mandatory Second Chance Wallet', () => {
     const state = setCurrent(makeState(), 'human');
     const opened = openBigSpenderWallet(state, 'human', firstWallet(state).walletId, 'normal', {
       forcedOutcome: { type: 'bomb', amount: null },
     });
-    const rescued = resolveBigSpenderAdRescue(opened, 'completed', { type: 'negative', amount: -200 });
+    const rescued = resolveBigSpenderAdRescue(opened, 'completed');
 
+    expect(rescued.pendingSecondChance?.playerId).toBe('human');
     expect(player(rescued, 'human').status).toBe('active');
-    expect(player(rescued, 'human').balance).toBe(800);
+    expect(player(rescued, 'human').balance).toBe(BIG_SPENDER_CONFIG.startingBalance);
     expect(player(rescued, 'human').adBombRescuesUsed).toBe(1);
-    expect(player(rescued, 'human').walletsOpened).toBe(2);
+    expect(player(rescued, 'human').walletsOpened).toBe(1);
+
+    const picked = openBigSpenderWallet(rescued, 'human', walletAt(rescued, 1).walletId, 'secondChance', {
+      forcedOutcome: { type: 'negative', amount: -200 },
+    });
+
+    expect(picked.pendingSecondChance).toBeNull();
+    expect(player(picked, 'human').status).toBe('active');
+    expect(player(picked, 'human').balance).toBe(BIG_SPENDER_CONFIG.startingBalance - 200);
+    expect(player(picked, 'human').walletsOpened).toBe(2);
+  });
+
+  it('blocks normal wallet opens while a Second Chance pick is pending', () => {
+    const state = setCurrent(makeState(), 'human');
+    const opened = openBigSpenderWallet(state, 'human', firstWallet(state).walletId, 'normal', {
+      forcedOutcome: { type: 'bomb', amount: null },
+    });
+    const rescued = resolveBigSpenderAdRescue(opened, 'completed');
+    const blocked = openBigSpenderWallet(rescued, 'human', walletAt(rescued, 1).walletId, 'normal', {
+      forcedOutcome: { type: 'negative', amount: -200 },
+    });
+
+    expect(blocked).toEqual(rescued);
   });
 
   it('does not allow Second Chance Wallets to trigger extra wallets', () => {
@@ -153,10 +182,14 @@ describe('Big Spender: Broke or Boom logic', () => {
     const opened = openBigSpenderWallet(state, 'human', firstWallet(state).walletId, 'normal', {
       forcedOutcome: { type: 'bomb', amount: null },
     });
-    const rescued = resolveBigSpenderAdRescue(opened, 'completed', { type: 'positive', amount: 100 });
+    const rescued = resolveBigSpenderAdRescue(opened, 'completed');
+    const picked = openBigSpenderWallet(rescued, 'human', walletAt(rescued, 1).walletId, 'secondChance', {
+      forcedOutcome: { type: 'positive', amount: 100 },
+      forceBonusOffer: true,
+    });
 
-    expect(rescued.pendingBonus).toBeNull();
-    expect(player(rescued, 'human').bonusWalletsOpened).toBe(0);
+    expect(picked.pendingBonus).toBeNull();
+    expect(player(picked, 'human').bonusWalletsOpened).toBe(0);
   });
 
   it('bombing inside a Second Chance Wallet bombs the user without another ad rescue', () => {
@@ -164,11 +197,14 @@ describe('Big Spender: Broke or Boom logic', () => {
     const opened = openBigSpenderWallet(state, 'human', firstWallet(state).walletId, 'normal', {
       forcedOutcome: { type: 'bomb', amount: null },
     });
-    const rescued = resolveBigSpenderAdRescue(opened, 'completed', { type: 'bomb', amount: null });
+    const rescued = resolveBigSpenderAdRescue(opened, 'completed');
+    const picked = openBigSpenderWallet(rescued, 'human', walletAt(rescued, 1).walletId, 'secondChance', {
+      forcedOutcome: { type: 'bomb', amount: null },
+    });
 
-    expect(player(rescued, 'human').status).toBe('bombed');
-    expect(rescued.pendingAdRescue).toBeNull();
-    expect(player(rescued, 'human').adBombRescuesUsed).toBe(1);
+    expect(player(picked, 'human').status).toBe('bombed');
+    expect(picked.pendingAdRescue).toBeNull();
+    expect(player(picked, 'human').adBombRescuesUsed).toBe(1);
   });
 
   it('limits the human to two ad rescues per game', () => {
@@ -182,10 +218,19 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(player(opened, 'human').status).toBe('bombed');
   });
 
-  it('locks a player and prevents future turns for that player', () => {
+  it('requires the minimum wallet count before a player can lock', () => {
     const state = setCurrent(makeState(), 'human');
-    const locked = lockBigSpenderPlayer(state, 'human');
+    const tooEarly = lockBigSpenderPlayer(state, 'human');
 
+    expect(player(tooEarly, 'human').status).toBe('active');
+
+    const ready = {
+      ...state,
+      players: state.players.map((entry) =>
+        entry.playerId === 'human' ? { ...entry, walletsOpened: BIG_SPENDER_CONFIG.minWalletsBeforeLock } : entry,
+      ),
+    };
+    const locked = lockBigSpenderPlayer(ready, 'human');
     expect(player(locked, 'human').status).toBe('locked');
     expect(player(locked, 'human').finalizedAt).not.toBeNull();
     expect(locked.currentTurnPlayerId).not.toBe('human');
@@ -225,28 +270,31 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(sameTurn.currentTurnPlayerId).not.toBeNull();
   });
 
-  it('produces randomized AI action delays in a paced 1.8-5.2 second band', () => {
-    expect(getAiActionDelayMs(2, () => 0)).toBe(1800);
-    expect(getAiActionDelayMs(6, () => 1)).toBe(5200);
-    expect(getAiActionDelayMs(7, () => 0)).toBe(1800);
-    expect(getAiActionDelayMs(11, () => 1)).toBe(5200);
-    expect(getAiActionDelayMs(12, () => 0)).toBe(1800);
-    expect(getAiActionDelayMs(16, () => 1)).toBe(5200);
+  it('produces randomized AI action delays in a paced 2.4-6.5 second band', () => {
+    expect(getAiActionDelayMs(2, () => 0)).toBe(2400);
+    expect(getAiActionDelayMs(6, () => 1)).toBe(6500);
+    expect(getAiActionDelayMs(7, () => 0)).toBe(2400);
+    expect(getAiActionDelayMs(11, () => 1)).toBe(6500);
+    expect(getAiActionDelayMs(12, () => 0)).toBe(2400);
+    expect(getAiActionDelayMs(16, () => 1)).toBe(6500);
   });
 
   it('makes AI more likely to open high balances and cautious at low balances', () => {
-    expect(decideAiShouldOpen(900, () => 0.89)).toBe(true);
-    expect(decideAiShouldOpen(900, () => 0.91)).toBe(false);
-    expect(decideAiShouldOpen(120, () => 0.29)).toBe(true);
-    expect(decideAiShouldOpen(120, () => 0.31)).toBe(false);
-    expect(decideAiShouldOpen(500, () => 0.74)).toBe(true);
-    expect(decideAiShouldOpen(500, () => 0.76)).toBe(false);
+    expect(decideAiShouldOpen(1000, () => 0.93)).toBe(true);
+    expect(decideAiShouldOpen(1000, () => 0.95)).toBe(false);
+    expect(decideAiShouldOpen(120, () => 0.37)).toBe(true);
+    expect(decideAiShouldOpen(120, () => 0.39)).toBe(false);
+    expect(decideAiShouldOpen(500, () => 0.63)).toBe(true);
+    expect(decideAiShouldOpen(500, () => 0.65)).toBe(false);
   });
 
   it('ends when all players are finalized', () => {
     let state = makeState();
     for (const id of [...state.turnOrder]) {
       state = setCurrent(state, id);
+      state.players = state.players.map((entry) =>
+        entry.playerId === id ? { ...entry, walletsOpened: BIG_SPENDER_CONFIG.minWalletsBeforeLock } : entry,
+      );
       state = lockBigSpenderPlayer(state, id);
     }
 
