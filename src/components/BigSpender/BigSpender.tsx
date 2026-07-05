@@ -4,6 +4,7 @@ import { mulberry32 } from '../../store/rng';
 import {
   BIG_SPENDER_CONFIG,
   buildBigSpenderRawResults,
+  continueBigSpenderRound,
   createInitialBigSpenderState,
   decideAiShouldOpen,
   fastForwardBigSpenderGame,
@@ -15,6 +16,7 @@ import {
   rankBigSpenderPlayers,
   resolveBigSpenderAdRescue,
   resolveBigSpenderParticipants,
+  skipBigSpenderToResults,
   type BigSpenderPlayerState,
   type BigSpenderState,
   type BigSpenderWallet,
@@ -104,6 +106,10 @@ export default function BigSpender(props: GenericMinigameProps) {
   );
   const winner = ranking[0] ?? null;
   const isFinaleRound = state.roundNumber === BIG_SPENDER_CONFIG.finalRound;
+  const finalePlayers = useMemo(
+    () => state.players.filter((player) => state.activePlayerIds.includes(player.playerId)),
+    [state.activePlayerIds, state.players],
+  );
   const humanInRound = Boolean(humanPlayer && state.activePlayerIds.includes(humanPlayer.playerId));
   const humanAdRescuePending = Boolean(state.pendingAdRescue && humanPlayer?.playerId === state.pendingAdRescue.playerId);
   const humanSecondChancePending = Boolean(state.pendingSecondChance && humanPlayer?.playerId === state.pendingSecondChance.playerId);
@@ -143,6 +149,18 @@ export default function BigSpender(props: GenericMinigameProps) {
     ? state.events.find((event) => event.type === 'playerZeroFinished' && event.playerId === humanPlayer.playerId)
     : null;
   const humanZeroEventKey = humanZeroEvent ? getBroadcastKey(humanZeroEvent) : null;
+  const latestRoundResult = state.roundResults[state.roundResults.length - 1] ?? null;
+  const shouldShowRoundSummary = state.status === 'roundSummary' && latestRoundResult != null;
+  const roundSummaryPlayers = useMemo(() => {
+    if (!latestRoundResult) return [];
+    const ids = new Set(latestRoundResult.rankedPlayerIds);
+    return rankBigSpenderPlayers(state.players.filter((player) => ids.has(player.playerId)));
+  }, [latestRoundResult, state.players]);
+  const humanEliminatedInSummary = Boolean(
+    shouldShowRoundSummary &&
+    humanPlayer &&
+    latestRoundResult?.eliminatedPlayerIds.includes(humanPlayer.playerId),
+  );
   const shouldShowResults = state.status === 'completed' && showResults;
 
   useEffect(() => {
@@ -296,6 +314,19 @@ export default function BigSpender(props: GenericMinigameProps) {
     }, 900);
   };
 
+  const continueRound = () => {
+    setState((previous) => continueBigSpenderRound(previous));
+  };
+
+  const skipToResults = () => {
+    setState((previous) => skipBigSpenderToResults(previous));
+  };
+
+  const getWalletOpenedByLabel = (wallet: BigSpenderWallet) => {
+    if (!isFinaleRound || wallet.state !== 'revealed' || !wallet.openedByPlayerId) return null;
+    return state.players.find((player) => player.playerId === wallet.openedByPlayerId)?.displayName ?? 'Finalist';
+  };
+
   const statusMessage = (() => {
     if (fastForwarding) return 'Fast forwarding the house feed...';
     if (humanFinishedWhileRunning) return 'You are done here. The house is still finishing this round.';
@@ -324,6 +355,19 @@ export default function BigSpender(props: GenericMinigameProps) {
               {(humanFinishedWhileRunning || humanWaitingForFinaleTurn || fastForwarding) && <span className="big-spender__status-loader" aria-hidden="true" />}
             </small>
           )}
+          {isFinaleRound && finalePlayers.length > 0 && (
+            <div className="big-spender__finalists" aria-label="Finalists">
+              {finalePlayers.map((player) => (
+                <span
+                  key={player.playerId}
+                  className={player.currentTurn ? 'big-spender__finalist big-spender__finalist--turn' : 'big-spender__finalist'}
+                >
+                  <strong>{player.displayName}</strong>
+                  <em>{player.balance} Eyeoleans</em>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {state.status === 'running' && humanFinishedWhileRunning && (
           <button type="button" className="big-spender__action big-spender__action--lock" onClick={fastForwardHouse} disabled={fastForwarding}>
@@ -341,6 +385,7 @@ export default function BigSpender(props: GenericMinigameProps) {
         <section className="big-spender__board" aria-label="Wallet board">
           {humanBoard.map((wallet) => {
             const resultLabel = getWalletResultLabel(wallet);
+            const openedByLabel = getWalletOpenedByLabel(wallet);
             return (
               <button
                 key={wallet.walletId}
@@ -359,7 +404,10 @@ export default function BigSpender(props: GenericMinigameProps) {
                 <span className="big-spender__wallet-flap" aria-hidden="true" />
                 <span className="big-spender__wallet-id">{wallet.boardSlotIndex + 1}</span>
                 {resultLabel ? (
-                  <strong className="big-spender__wallet-result">{resultLabel}</strong>
+                  <>
+                    <strong className="big-spender__wallet-result">{resultLabel}</strong>
+                    {openedByLabel && <span className="big-spender__wallet-opener">{openedByLabel}</span>}
+                  </>
                 ) : (
                   <span className="big-spender__wallet-generation">{humanSecondChancePending ? 'Pick' : 'Tap'}</span>
                 )}
@@ -370,7 +418,7 @@ export default function BigSpender(props: GenericMinigameProps) {
 
       </main>
 
-      {broadcasts.length > 0 && (
+      {!isFinaleRound && broadcasts.length > 0 && (
         <section className="big-spender__broadcasts" aria-label="House broadcasts" aria-live="polite">
           {broadcasts.map((message) => (
             <p key={message}>{message}</p>
@@ -401,6 +449,52 @@ export default function BigSpender(props: GenericMinigameProps) {
             <div className="big-spender__modal-actions">
               <button type="button" onClick={() => setState((previous) => resolveBigSpenderAdRescue(previous, 'completed'))}>Watch ad</button>
               <button type="button" onClick={() => setState((previous) => resolveBigSpenderAdRescue(previous, 'declined'))}>Skip</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shouldShowRoundSummary && latestRoundResult && (
+        <div className="big-spender__overlay">
+          <div className="big-spender__modal big-spender__modal--round">
+            <span className="big-spender__eyebrow">Round {latestRoundResult.roundNumber} results</span>
+            <h2>
+              {humanEliminatedInSummary
+                ? 'You were eliminated'
+                : latestRoundResult.survivorPlayerIds.length <= BIG_SPENDER_CONFIG.roundFourFinalistCount
+                  ? 'Finale is set'
+                  : 'You survived'}
+            </h2>
+            <p>
+              {humanEliminatedInSummary
+                ? 'The house keeps playing from here.'
+                : latestRoundResult.survivorPlayerIds.length <= BIG_SPENDER_CONFIG.roundFourFinalistCount
+                  ? 'Two finalists remain for the shared-board finale.'
+                  : `${latestRoundResult.survivorPlayerIds.length} players move on.`}
+            </p>
+            <ol className="big-spender__ranking big-spender__ranking--round">
+              {roundSummaryPlayers.map((player) => {
+                const eliminated = latestRoundResult.eliminatedPlayerIds.includes(player.playerId);
+                return (
+                  <li key={player.playerId} className={eliminated ? 'big-spender__ranking-item--eliminated' : ''}>
+                    <span>{player.rank}</span>
+                    <strong>{player.displayName}</strong>
+                    <em>{eliminated ? 'Eliminated' : `${player.walletsOpened} wallets - ${getPlayerLabel(player)}`}</em>
+                  </li>
+                );
+              })}
+            </ol>
+            <div className="big-spender__modal-actions">
+              {humanEliminatedInSummary ? (
+                <>
+                  <button type="button" onClick={continueRound}>Watch as spectator</button>
+                  <button type="button" onClick={skipToResults}>Skip to results</button>
+                </>
+              ) : (
+                <button type="button" onClick={continueRound}>
+                  {latestRoundResult.survivorPlayerIds.length <= BIG_SPENDER_CONFIG.roundFourFinalistCount ? 'Start finale' : 'Next round'}
+                </button>
+              )}
             </div>
           </div>
         </div>

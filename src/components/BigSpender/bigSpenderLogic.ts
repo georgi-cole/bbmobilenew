@@ -66,6 +66,12 @@ const AI_NEGATIVE_BROADCASTS = [
   '{name} heard the wallet sigh.',
   '{name} made the house accountants smile.',
   '{name} opened one and looked suddenly humble.',
+  '{name} discovered a service fee with stage presence.',
+  '{name} picked a wallet that asked for a manager.',
+  '{name} found the budget spreadsheet crying.',
+  '{name} opened one and immediately blamed production.',
+  '{name} found a coupon that expired in 2009.',
+  '{name} just made zero look fashionable.',
 ] as const;
 
 const AI_POSITIVE_BROADCASTS = [
@@ -73,6 +79,12 @@ const AI_POSITIVE_BROADCASTS = [
   '{name} got a wallet that fought back.',
   '{name} accidentally made things worse.',
   '{name} opened one and the room got nosy.',
+  '{name} found money with excellent timing.',
+  '{name} got a tiny financial plot twist.',
+  '{name} found a wallet that clearly has favorites.',
+  '{name} opened one and tried not to smile.',
+  '{name} just bought themselves a little breathing room.',
+  '{name} found the house\'s emergency snack fund.',
 ] as const;
 
 const AI_BOMB_BROADCASTS = [
@@ -80,13 +92,17 @@ const AI_BOMB_BROADCASTS = [
   'A tiny boom echoed somewhere near {name}.',
   '{name} found the wallet with commitment issues.',
   'The house just went quiet around {name}.',
+  '{name} opened one and everyone suddenly remembered errands.',
+  'A producer just asked whether {name} signed the waiver.',
+  '{name} found the spicy wallet.',
+  'Something near {name} made a very final noise.',
 ] as const;
 
 export type BigSpenderOutcomeType = 'negative' | 'positive' | 'bomb';
 export type BigSpenderWalletKind = 'normal' | 'bonus' | 'secondChance';
 export type BigSpenderWalletState = 'hidden' | 'opening' | 'revealed';
 export type BigSpenderPlayerStatus = 'active' | 'locked' | 'zeroFinished' | 'bombed';
-export type BigSpenderGameStatus = 'running' | 'completed';
+export type BigSpenderGameStatus = 'running' | 'roundSummary' | 'completed';
 export type BigSpenderAdDecision = 'completed' | 'declined' | 'failed' | 'unavailable';
 
 export interface BigSpenderParticipant {
@@ -296,10 +312,8 @@ function isRoundParticipant(state: BigSpenderState, playerId: string) {
   return state.activePlayerIds.includes(playerId);
 }
 
-function getBoardOwnerId(state: BigSpenderState, playerId: string) {
-  return isFinaleRound(state) && isRoundParticipant(state, playerId)
-    ? BIG_SPENDER_FINALE_BOARD_ID
-    : playerId;
+function getBoardOwnerId(state: BigSpenderState, _playerId: string) {
+  return isFinaleRound(state) ? BIG_SPENDER_FINALE_BOARD_ID : _playerId;
 }
 
 function getPlayerMutable(state: BigSpenderState, playerId: string) {
@@ -343,6 +357,7 @@ function nextEligibleTurnIndex(state: BigSpenderState, startIndex: number) {
 }
 
 function startNextRoundMutable(state: BigSpenderState, survivorPlayerIds: string[]) {
+  state.status = 'running';
   state.roundNumber = survivorPlayerIds.length <= BIG_SPENDER_CONFIG.roundFourFinalistCount
     ? BIG_SPENDER_CONFIG.finalRound
     : state.roundNumber + 1;
@@ -435,7 +450,26 @@ function completeRoundMutable(state: BigSpenderState) {
     eliminatedPlayerIds: eliminatedThisRound.map((player) => player.playerId),
     survivorPlayerIds,
   });
-  return startNextRoundMutable(state, survivorPlayerIds);
+  state.status = 'roundSummary';
+  state.currentTurnPlayerId = null;
+  state.postWalletLockPlayerId = null;
+  state.pendingBonus = null;
+  state.pendingAdRescue = null;
+  state.pendingSecondChance = null;
+  markTurnFlags(state);
+  syncVisibleBoard(state);
+  appendEvent(state, {
+    type: 'roundCompleted',
+    message: `Round ${state.roundNumber} is complete.`,
+  });
+  return state;
+}
+
+function continueRoundSummaryMutable(state: BigSpenderState) {
+  if (state.status !== 'roundSummary') return state;
+  const latestRound = state.roundResults[state.roundResults.length - 1];
+  if (!latestRound) return state;
+  return startNextRoundMutable(state, latestRound.survivorPlayerIds);
 }
 
 function completeIfNeeded(state: BigSpenderState) {
@@ -568,24 +602,14 @@ function applyOutcomeMutable(
   if (outcome.type === 'positive') {
     player.positiveWalletsOpened += 1;
     player.balance += outcome.amount ?? 0;
-    appendEvent(state, {
-      type: 'walletOpened',
-      playerId: player.playerId,
-      outcome,
-      message: getOutcomeMessage(player, outcome, kind),
-    });
+    appendWalletOpenedEvent(state, player, outcome, kind);
     return;
   }
 
   if (outcome.type === 'negative') {
     player.negativeWalletsOpened += 1;
     player.balance = clamp(player.balance + (outcome.amount ?? 0), 0, Number.MAX_SAFE_INTEGER);
-    appendEvent(state, {
-      type: 'walletOpened',
-      playerId: player.playerId,
-      outcome,
-      message: getOutcomeMessage(player, outcome, kind),
-    });
+    appendWalletOpenedEvent(state, player, outcome, kind);
     if (player.balance === 0) {
       finalizePlayer(player, state, 'zeroFinished');
       appendEvent(state, {
@@ -598,6 +622,23 @@ function applyOutcomeMutable(
   }
 
   player.bombsOpened += 1;
+  appendWalletOpenedEvent(state, player, outcome, kind);
+}
+
+function shouldBroadcastWalletOpened(state: BigSpenderState, player: BigSpenderPlayerState, outcome: BigSpenderWalletOutcome) {
+  if (isFinaleRound(state)) return false;
+  if (player.isHuman) return true;
+  if (outcome.type === 'bomb') return true;
+  return (player.walletsOpened + player.originalTurnOrderIndex + state.roundNumber) % 4 === 0;
+}
+
+function appendWalletOpenedEvent(
+  state: BigSpenderState,
+  player: BigSpenderPlayerState,
+  outcome: BigSpenderWalletOutcome,
+  kind: BigSpenderWalletKind,
+) {
+  if (!shouldBroadcastWalletOpened(state, player, outcome)) return;
   appendEvent(state, {
     type: 'walletOpened',
     playerId: player.playerId,
@@ -746,6 +787,7 @@ export function createInitialBigSpenderState(
 export function canOfferAdRescue(state: BigSpenderState, player: BigSpenderPlayerState) {
   return (
     player.isHuman &&
+    !isFinaleRound(state) &&
     player.adBombRescuesUsed < BIG_SPENDER_CONFIG.maxAdBombRescues &&
     player.finalizedAt == null &&
     state.status === 'running'
@@ -871,6 +913,11 @@ export function finishBigSpenderTurn(previousState: BigSpenderState) {
   return advanceTurnMutable(state);
 }
 
+export function continueBigSpenderRound(previousState: BigSpenderState) {
+  const state = cloneState(previousState);
+  return continueRoundSummaryMutable(state);
+}
+
 export function lockBigSpenderPlayer(previousState: BigSpenderState, playerId: string) {
   const state = cloneState(previousState);
   const player = getPlayerMutable(state, playerId);
@@ -957,6 +1004,51 @@ export function fastForwardBigSpenderGame(previousState: BigSpenderState) {
     simulateAiPlayerToFinalized(state, playerToSimulate);
     completeIfNeeded(state);
     if ((state as BigSpenderState).status !== 'completed' && isFinaleRound(state)) advanceFinaleTurnMutable(state);
+  }
+  syncVisibleBoard(state);
+  return state;
+}
+
+export function skipBigSpenderToResults(previousState: BigSpenderState) {
+  const state = cloneState(previousState);
+  let guard = 0;
+  while (state.status !== 'completed' && guard < 500) {
+    guard += 1;
+    const human = state.players.find((player) => player.isHuman);
+    if (
+      human &&
+      isRoundParticipant(state, human.playerId) &&
+      human.status === 'active' &&
+      human.finalizedAt == null
+    ) {
+      return state;
+    }
+
+    if (state.status === 'roundSummary') {
+      continueRoundSummaryMutable(state);
+      continue;
+    }
+
+    if (state.status !== 'running') break;
+
+    const activePlayers = state.players.filter((player) =>
+      isRoundParticipant(state, player.playerId) &&
+      player.status === 'active' &&
+      player.finalizedAt == null
+    );
+
+    if (activePlayers.length === 0) {
+      completeIfNeeded(state);
+      continue;
+    }
+
+    const playerToSimulate = isFinaleRound(state)
+      ? activePlayers.find((player) => player.playerId === state.currentTurnPlayerId) ?? activePlayers[0]
+      : activePlayers[0];
+    if (!playerToSimulate) break;
+    simulateAiPlayerToFinalized(state, playerToSimulate);
+    completeIfNeeded(state);
+    if (state.status === 'running' && isFinaleRound(state)) advanceFinaleTurnMutable(state);
   }
   syncVisibleBoard(state);
   return state;
