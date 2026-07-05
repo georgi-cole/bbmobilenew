@@ -7,6 +7,7 @@ import {
   canOfferAdRescue,
   createInitialBigSpenderState,
   decideAiShouldOpen,
+  fastForwardBigSpenderGame,
   finishBigSpenderTurn,
   getAiActionDelayMs,
   getBigSpenderBoardForPlayer,
@@ -67,7 +68,9 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(state.board).toHaveLength(BIG_SPENDER_CONFIG.boardSize);
     expect(state.players.every((entry) => getBigSpenderBoardForPlayer(state, entry.playerId).length === BIG_SPENDER_CONFIG.boardSize)).toBe(true);
     expect(firstWallet(state, 'human').walletId).not.toBe(firstWallet(state, 'ai-1').walletId);
-    expect(state.currentTurnPlayerId).toBeTruthy();
+    expect(state.roundNumber).toBe(1);
+    expect(state.activePlayerIds).toHaveLength(participants.length);
+    expect(state.currentTurnPlayerId).toBeNull();
   });
 
   it('declares wallet outcome weights as 75/20/5', () => {
@@ -288,7 +291,7 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(decideAiShouldOpen(500, () => 0.65)).toBe(false);
   });
 
-  it('ends when all players are finalized', () => {
+  it('starts a new round when all current players are finalized', () => {
     let state = makeState();
     for (const id of [...state.turnOrder]) {
       state = setCurrent(state, id);
@@ -298,7 +301,24 @@ describe('Big Spender: Broke or Boom logic', () => {
       state = lockBigSpenderPlayer(state, id);
     }
 
-    expect(state.status).toBe('completed');
+    expect(state.status).toBe('running');
+    expect(state.roundNumber).toBe(2);
+    expect(state.roundResults).toHaveLength(1);
+    expect(state.activePlayerIds).toHaveLength(participants.length - 1);
+  });
+
+  it('fast forwards remaining house play through the finale after the human is out', () => {
+    let state = setCurrent(makeState(), 'human');
+    state.players = state.players.map((entry) => entry.playerId === 'human' ? { ...entry, adBombRescuesUsed: 2 } : entry);
+    state = openBigSpenderWallet(state, 'human', firstWallet(state).walletId, 'normal', {
+      forcedOutcome: { type: 'bomb', amount: null },
+    });
+
+    const completed = fastForwardBigSpenderGame(state);
+
+    expect(completed.status).toBe('completed');
+    expect(completed.roundNumber).toBe(BIG_SPENDER_CONFIG.finalRound);
+    expect(completed.players.filter((entry) => entry.gameRank != null)).toHaveLength(participants.length);
   });
 
   it('ranks zero finishers, lowest non-zero scores, and bombed players correctly', () => {

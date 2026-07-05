@@ -73,6 +73,22 @@
   font-weight: 700;
 }
 
+.big-spender__status-note--live {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.big-spender__status-loader {
+  width: 1.45rem;
+  height: 0.35rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255, 226, 139, 0.95) 0 0.12rem, transparent 0.14rem) 0 50% / 0.48rem 100% repeat-x;
+  animation: big-spender-status-loader 720ms linear infinite;
+}
+
 .big-spender__status-panel strong {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -592,6 +608,11 @@
   38% { transform: translate3d(0.14rem, -0.06rem, 0); }
   58% { transform: translate3d(-0.08rem, 0.04rem, 0); }
   100% { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes big-spender-status-loader {
+  from { background-position-x: 0; }
+  to { background-position-x: 0.48rem; }
 }
 
 @media (max-width: 340px) {
