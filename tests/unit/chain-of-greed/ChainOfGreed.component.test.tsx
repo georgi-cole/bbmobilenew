@@ -4,12 +4,6 @@ import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
 import { CHAIN_TURN_PIPELINE_DURATIONS } from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
 
 const TURN_PIPELINE_MS = Object.values(CHAIN_TURN_PIPELINE_DURATIONS).reduce((total, value) => total + value, 0);
-const AFTER_DECISION_MS = CHAIN_TURN_PIPELINE_DURATIONS.decision + 1;
-const AFTER_REVEAL_MS = CHAIN_TURN_PIPELINE_DURATIONS.reveal + 1;
-const AFTER_VERDICT_MS = CHAIN_TURN_PIPELINE_DURATIONS.verdict + 1;
-const AFTER_CONSEQUENCE_MS = CHAIN_TURN_PIPELINE_DURATIONS.consequence + 1;
-const AFTER_LADDERUPDATE_MS = CHAIN_TURN_PIPELINE_DURATIONS.ladderUpdate + 1;
-const AFTER_SETTLE_MS = CHAIN_TURN_PIPELINE_DURATIONS.settle + 1;
 
 const participants = [
   { id: 'human', name: 'You', isHuman: true, precomputedScore: 75, previousPR: null },
