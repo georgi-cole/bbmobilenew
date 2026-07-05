@@ -1114,6 +1114,27 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   const isBankUsedThisTurn = Boolean(actionTargetKind && !isBankAvailable(bankedTurn, actionTargetId, actionTargetKind));
   const isBankEmpty = activePot <= 0;
   const isActionLocked = Boolean(pendingTurn);
+  const boardModeLabel = state.phase === 'finalTurn'
+    ? 'Final 2'
+    : state.phase === 'semifinalTurn'
+      ? 'Final 3'
+      : state.phase === 'playerTurn'
+        ? `Round ${state.roundNumber}`
+        : heroPhaseChip;
+  const turnClockLabel = state.phase === 'finalTurn'
+    ? `${Math.min(state.finalTurnIndex + 1, Math.max(state.finalOrder.length, 1))}/${Math.max(state.finalOrder.length, 1)}`
+    : state.phase === 'semifinalTurn'
+      ? `${Math.min(state.semifinalTurnIndex + 1, Math.max(state.semifinalOrder.length, 1))}/${Math.max(state.semifinalOrder.length, 1)}`
+      : state.phase === 'playerTurn'
+        ? `${state.turnsRemaining} turns`
+        : `R${state.roundNumber}`;
+  const actorMetricLabel = currentActor ? playerMetricText(currentActor) : `${activePlayers.length} live`;
+  const scoreStripItems = [
+    { label: 'Players', value: `${activePlayers.length}/${state.startingCount}` },
+    { label: 'Secured', value: state.securedTotal.toLocaleString() },
+    { label: 'Mode', value: boardModeLabel },
+    { label: 'Clock', value: finalSecondsRemaining !== null ? `${finalSecondsRemaining}s` : turnClockLabel },
+  ];
   useEffect(() => {
     if (!bankedTurn) return;
     if (!actionTargetId || !actionTargetKind || bankedTurn.actorId !== actionTargetId || bankedTurn.kind !== actionTargetKind) {
@@ -1220,6 +1241,15 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
             }}
             transition={{ duration: 0.34, ease: 'easeOut' }}
           >
+            <div className="chain-of-greed__score-strip" data-testid="chain-score-strip" aria-label="Chain of Greed scoreboard">
+              {scoreStripItems.map((item) => (
+                <div key={item.label} className="chain-of-greed__score-tile">
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div>
+
             <div className="chain-of-greed__hero-meta">
               <div className="chain-of-greed__hero-topline">
                 <span className="chain-of-greed__status-kicker">{heroKicker}</span>
@@ -1237,8 +1267,20 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                 )}
               </div>
               <p className="chain-of-greed__commentary">{heroCommentary}</p>
+              <div className="chain-of-greed__actor-strip" data-testid="chain-actor-strip">
+                <div className="chain-of-greed__actor-token" aria-hidden="true">
+                  {currentActor?.avatar ?? 'BB'}
+                </div>
+                <div className="chain-of-greed__actor-copy">
+                  <span>{isHumanTurn ? 'You are playing' : currentActor ? 'Now playing' : 'Broadcast board'}</span>
+                  <strong>{currentActor?.name ?? heroPhaseChip}</strong>
+                </div>
+                <div className="chain-of-greed__actor-meter">
+                  <span>{actorMetricLabel}</span>
+                </div>
+              </div>
             </div>
-            <div className="chain-of-greed__stage-core">
+            <div className="chain-of-greed__stage-core" data-testid="chain-broadcast-board">
               <AnimatePresence initial={false}>
                 {lastTurn && heroTone !== 'neutral' && (
                   <motion.div
@@ -1270,11 +1312,19 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   </motion.aside>
                 )}
               </AnimatePresence>
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="Open chain ladder board"
                 className="chain-of-greed__ladder-stage"
                 data-testid="chain-ladder-stage"
                 onClick={() => setIsLadderSheetOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setIsLadderSheetOpen(true);
+                  }
+                }}
               >
                 <div className={`chain-of-greed__number-aura chain-of-greed__number-aura--${heroTone}`} aria-hidden="true" />
                 <ol className="chain-of-greed__ladder-track" aria-label="Current chain ladder">
@@ -1337,8 +1387,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                     </span>
                   </div>
                 )}
-                <AnimatePresence initial={false}>
-                  {showTurnReveal ? (
+                <div className="chain-of-greed__outcome-slot" data-testid="chain-outcome-slot" aria-live="polite">
+                  <AnimatePresence initial={false}>
+                    {showTurnReveal ? (
                     <motion.div
                       className={`chain-of-greed__reveal chain-of-greed__reveal--${heroTone}`}
                       data-testid="chain-turn-reveal"
@@ -1375,8 +1426,12 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                       Next reveal <strong>{state.revealedNumber}</strong>
                     </motion.div>
                   )}
-                </AnimatePresence>
-              </button>
+                  </AnimatePresence>
+                  {!showTurnReveal && !(state.revealedNumber !== null && state.revealedNumber !== referenceNumber) && (
+                    <div className="chain-of-greed__outcome-placeholder">Awaiting reveal</div>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="chain-of-greed__hero-status">
               <div className="chain-of-greed__inline-status" data-testid="chain-inline-status">
@@ -1403,9 +1458,14 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 }}
             >
-              <button
-                type="button"
-                className="chain-of-greed__action-info"
+              <div className="chain-of-greed__action-cue" data-testid="chain-action-cue">
+                <span>{isHumanTurn ? 'Choose move' : 'Watching'}</span>
+                <strong>{currentActor?.name ?? 'House'}</strong>
+              </div>
+              <div className="chain-of-greed__action-controls">
+                <button
+                  type="button"
+                  className="chain-of-greed__action-info"
                 aria-label="Open help"
                 onClick={() => setState((previous) => ({ ...previous, showHelp: !previous.showHelp }))}
               >
@@ -1445,6 +1505,7 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
                   <span>{getAiWaitingText(pendingTurn, isBankUsedThisTurn)}</span>
                 </div>
               )}
+              </div>
             </motion.footer>
           )}
 

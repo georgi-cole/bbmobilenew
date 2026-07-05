@@ -49,6 +49,12 @@ describe('ChainOfGreed component', () => {
     expect(screen.queryByText(/Bank is safe, but the first correct guess starts the value/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/First correct call starts the climb/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('chain-ladder-stage')).toBeInTheDocument();
+    expect(screen.getByTestId('chain-score-strip')).toHaveTextContent(/Players/i);
+    expect(screen.getByTestId('chain-score-strip')).toHaveTextContent(/Secured/i);
+    expect(screen.getByTestId('chain-actor-strip')).toHaveTextContent(/You/i);
+    expect(screen.getByTestId('chain-broadcast-board')).toBeInTheDocument();
+    expect(screen.getByTestId('chain-outcome-slot')).toHaveTextContent(/Awaiting reveal/i);
+    expect(screen.getByTestId('chain-action-cue')).toHaveTextContent(/Choose move/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Step 0\/8/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Next 50/i);
     expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
