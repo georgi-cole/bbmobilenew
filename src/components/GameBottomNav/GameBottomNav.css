@@ -25,10 +25,10 @@
 /* Background SVG fills the nav bar area */
 .game-bottom-nav__shell {
   position: absolute;
-  inset: 0;
+  inset: 0 0 calc(-1 * var(--safe-bottom)) 0;
   z-index: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% + var(--safe-bottom));
   object-fit: cover;
   opacity: 0.16;
   mix-blend-mode: soft-light;
@@ -101,8 +101,8 @@
 .game-bottom-nav__glyph {
   position: relative;
   z-index: 1;
-  width: 22px;
-  height: 22px;
+  width: var(--game-nav-glyph-size, 22px);
+  height: var(--game-nav-glyph-size, 22px);
   object-fit: contain;
   filter: saturate(0.86) contrast(0.94) brightness(0.97);
   pointer-events: none;
@@ -112,6 +112,7 @@
 .game-bottom-nav__label {
   position: relative;
   z-index: 1;
+  display: var(--game-nav-item-label-display, block);
   font-size: 0.58rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -129,4 +130,23 @@
   outline: 2px solid rgba(255, 255, 255, 0.7);
   outline-offset: -2px;
   border-radius: 6px;
+}
+
+:root[style*="--game-bottom-controls-mode: compact"] .game-bottom-nav {
+  margin-bottom: calc(-0.35 * var(--safe-bottom));
+}
+
+:root[style*="--game-bottom-controls-mode: compact"] .game-bottom-nav__items {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+:root[style*="--game-bottom-controls-mode: compact"] .game-bottom-nav__item {
+  min-height: 44px;
+  gap: 0;
+  padding: 5px 4px;
+}
+
+:root[style*="--game-bottom-controls-mode: compact"] .game-bottom-nav__glyph {
+  --game-nav-glyph-size: 24px;
 }

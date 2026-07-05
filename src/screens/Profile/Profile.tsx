@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import {
   selectCurrentProfile,
@@ -454,6 +454,7 @@ function HoldRevealPill({
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const profile = useAppSelector(selectCurrentProfile);
   const isGuest = useAppSelector(selectIsGuest);
 
@@ -499,13 +500,10 @@ export default function Profile() {
   const survivorAchievementCards = buildUnlockedSurvivorAchievementDisplayModels(survivorUnlocks);
 
   const gameInProgress = isGameActive || week > 1 || phase !== 'week_start';
-  const goBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate('/game');
-  };
+  const returnTo = ((location.state as { from?: string } | null)?.from === '/'
+    ? '/'
+    : '/game');
+  const goBack = () => navigate(returnTo, { replace: true });
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -626,7 +624,7 @@ export default function Profile() {
             <button
               type="button"
               className="profile-screen__guest-link"
-              onClick={() => navigate('/profile-picker')}
+              onClick={() => navigate('/profile-picker', { state: { from: returnTo } })}
             >
               Create a profile to save progress -&gt;
             </button>
@@ -639,7 +637,7 @@ export default function Profile() {
         <button
           type="button"
           className="profile-screen__switch-btn game-button game-button--secondary"
-          onClick={() => navigate('/profile-picker')}
+          onClick={() => navigate('/profile-picker', { state: { from: returnTo } })}
         >
           Select Profile
         </button>
@@ -656,7 +654,7 @@ export default function Profile() {
         <button
           type="button"
           className="profile-screen__switch-btn game-button game-button--secondary"
-          onClick={() => navigate('/profile-picker')}
+          onClick={() => navigate('/profile-picker', { state: { from: returnTo } })}
           style={{ marginBottom: 12 }}
         >
           Select or Create a Profile
@@ -692,7 +690,7 @@ export default function Profile() {
           <button
             type="button"
             className="profile-screen__icon-btn game-button game-button--menu game-button--ghost"
-            onClick={() => navigate('/profile-edit')}
+            onClick={() => navigate('/profile-edit', { state: { from: returnTo } })}
             aria-label="Edit profile"
           >
             Edit
@@ -700,7 +698,7 @@ export default function Profile() {
           <button
             type="button"
             className="profile-screen__icon-btn game-button game-button--menu game-button--ghost"
-            onClick={() => navigate('/profile-picker')}
+            onClick={() => navigate('/profile-picker', { state: { from: returnTo } })}
             aria-label="Switch profile"
           >
             Switch
@@ -807,9 +805,9 @@ export default function Profile() {
       <div className="profile-screen__survivor-card">
         <div className="profile-screen__survivor-header">
           <div>
-            <p className="profile-screen__section-title">Survivor Progress</p>
+            <p className="profile-screen__section-title">Survival Progress</p>
             <p className="profile-screen__survivor-copy">
-              Progress is saved to this profile and carries across Survivor runs.
+              Progress is saved to this profile and carries across Survival runs.
             </p>
           </div>
           <div className="profile-screen__survivor-count">{survivorUnlockedCount} unlocked</div>
@@ -829,9 +827,9 @@ export default function Profile() {
         <div className="profile-screen__survivor-grid">
           {survivorUnlockedCount === 0 ? (
             <div className="profile-screen__survivor-empty">
-              <p className="profile-screen__empty-text">No Survivor achievements unlocked yet.</p>
+              <p className="profile-screen__empty-text">No Survival achievements unlocked yet.</p>
               <p className="profile-screen__survivor-empty-hint">
-                Reach Survivor Day 10 to unlock your first milestone.
+                Reach Survival Day 10 to unlock your first milestone.
               </p>
             </div>
           ) : (

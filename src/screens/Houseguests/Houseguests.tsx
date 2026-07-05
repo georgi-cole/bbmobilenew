@@ -4,7 +4,7 @@ import { selectAlivePlayers } from '../../store/gameSlice'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
 import HouseguestInfoDialog from '../../components/HouseguestGrid/HouseguestInfoDialog'
 import { selectSettings } from '../../store/settingsSlice'
-import { resolveAvatar } from '../../utils/avatar'
+import { getProfilePhotoAvatarId, resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
 import './Houseguests.css'
 
@@ -38,7 +38,7 @@ export default function Houseguests() {
     return {
       id: p.id,
       name: p.name,
-      avatarUrl: resolveAvatar(p),
+      avatarUrl: getProfilePhotoAvatarId(p.avatar) ? p.avatar : resolveAvatar(p),
       statuses: statusString,
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted: p.status === 'evicted' || p.status === 'jury',
@@ -68,7 +68,6 @@ export default function Houseguests() {
         gridSize={gridSize}
         placeholderCount={placeholderCount}
         compact={settings.gameUX.compactRoster}
-        compactLayout={settings.gameUX.compactRosterLayout}
         occupancyLabel={occupancyLabel}
       />
 

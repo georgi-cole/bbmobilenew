@@ -37,6 +37,7 @@ import { loadActiveProfile, archiveKeyForActiveProfile, loadProfilesState } from
 import { loadSettings } from './settingsSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
+import { profilePhotoAvatar } from '../utils/avatar';
 import type { SeasonArchive } from './seasonArchive';
 import { loadSeasonArchives } from './archivePersistence';
 import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService';
@@ -240,7 +241,7 @@ function buildUserPlayer(): Player {
   return {
     id: 'user',
     name: profile.name,
-    avatar: profile.avatar,
+    avatar: profile.photoId ? profilePhotoAvatar(profile.photoId) : profile.avatar,
     status: 'active',
     isUser: true,
   };
@@ -3066,6 +3067,12 @@ const gameSlice = createSlice({
       state.players = action.payload;
       state.competitionSeasonStateByPlayerId = buildInitialCompetitionSeasonState(action.payload);
     },
+    updateUserPlayerIdentity(state, action: PayloadAction<{ name: string; avatar: string; photoId?: string }>) {
+      const human = state.players.find((player) => player.isUser);
+      if (!human) return;
+      human.name = action.payload.name.trim() || human.name;
+      human.avatar = action.payload.photoId ? profilePhotoAvatar(action.payload.photoId) : action.payload.avatar;
+    },
     /** Reset game state with a fresh random roster. */
     resetGame(state, action: PayloadAction<SeasonArchive[] | undefined>) {
       // Mix Math.random() with Date.now() to derive a fresh 32-bit game seed.
@@ -3125,7 +3132,7 @@ const gameSlice = createSlice({
     },
 
     clearSurvivorReplacementTransition(state) {
-      if (state.modeSpecific?.kind !== 'survivor') return;
+      if (state.modeSpecific?.kind !== 'survival') return;
       state.modeSpecific.replacementTransition = null;
     },
 
@@ -5189,6 +5196,7 @@ export const {
   clearBlockingFlags,
   archiveSeason,
   replacePlayers,
+  updateUserPlayerIdentity,
   clearSurvivorReplacementTransition,
   resetGame,
   rerollSeed,

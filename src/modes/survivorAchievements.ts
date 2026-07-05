@@ -242,8 +242,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-10000',
     day: 10000,
-    name: 'Five-Digit Survivor',
-    subtitle: 'Ten thousand days. You are no longer in Survivor mode. Survivor mode is in you.',
+    name: 'Five-Digit Survival',
+    subtitle: 'Ten thousand days. You are no longer in Survival mode. Survival mode is in you.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -322,7 +322,7 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-777',
     day: 777,
-    name: 'Jackpot Survivor',
+    name: 'Jackpot Survival',
     subtitle: 'The house rolled lucky. Unfortunately, so did you.',
     category: 'anomaly',
     visibility: 'secret',
@@ -387,7 +387,7 @@ function normalizeCategoryLabel(category: SurvivorAchievementCategory): string {
 
 export function getSurvivorProgressDay(game: Pick<GameState, 'week' | 'modeSpecific'> | null | undefined): number {
   if (!game) return 0;
-  const survivorState = game.modeSpecific?.kind === 'survivor' ? game.modeSpecific : null;
+  const survivorState = game.modeSpecific?.kind === 'survival' ? game.modeSpecific : null;
   return Math.max(game.week ?? 1, survivorState?.currentDay ?? 1, survivorState?.bestDayReached ?? 1);
 }
 
@@ -546,7 +546,7 @@ export function buildSurvivorAchievementDisplayModel(
     id: achievement.id,
     title: achievement.name,
     subtitle: achievement.subtitle,
-    requirement: `Reach Day ${achievement.day} in Survivor Mode.`,
+    requirement: `Reach Day ${achievement.day} in Survival Mode.`,
     tierLabel,
     categoryLabel,
     visibility,

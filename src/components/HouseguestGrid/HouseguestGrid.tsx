@@ -5,7 +5,6 @@ import SurvivorStandoutCard from '../SurvivorStandout/SurvivorStandoutCard'
 import styles from './HouseguestGrid.module.css'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
-import type { CompactRosterLayout } from '../../store/settingsSlice'
 import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
@@ -77,8 +76,6 @@ type Props = {
   placeholderCount?: number
   /** When true, reduces avatar/tile size and spacing for a denser layout. */
   compact?: boolean
-  /** Optional compact roster presentation chosen in Settings. */
-  compactLayout?: CompactRosterLayout
   /** Responsive budget-selected roster behavior. */
   rosterMode?: 'normal' | 'compact-small' | 'scroll'
   /** Whether the HOUSEMATES row stays above the board or moves into the TV chip. */
@@ -98,7 +95,6 @@ const GRID_VERTICAL_MARGIN = 4
 
 function resolveSurvivorStandoutMode(options: {
   compact: boolean
-  compactLayout: CompactRosterLayout
   rosterMode: 'normal' | 'compact-small' | 'scroll'
   viewportWidth: number
   viewportHeight: number
@@ -107,7 +103,6 @@ function resolveSurvivorStandoutMode(options: {
     return 'mini-chip'
   }
   if (options.viewportWidth >= 720) return 'full-card'
-  if (options.compact && options.compactLayout === 'slider') return 'mini-chip'
   if (options.compact || options.rosterMode === 'compact-small') return 'compact-strip'
   return 'full-card'
 }
@@ -121,7 +116,6 @@ export default function HouseguestGrid({
   gridSize,
   placeholderCount = 0,
   compact = false,
-  compactLayout = 'slider',
   rosterMode = 'normal',
   headerMode = 'tv-chip',
   layoutRevision = 0,
@@ -131,13 +125,13 @@ export default function HouseguestGrid({
   const dispatch = useAppDispatch()
   const game = useAppSelector((s) => s.game)
   const challengeHistory = useAppSelector((s) => s.challenge?.history ?? [])
-  const survivorReplacementTransition = game.modeSpecific?.kind === 'survivor'
+  const survivorReplacementTransition = game.modeSpecific?.kind === 'survival'
     ? game.modeSpecific.replacementTransition ?? null
     : null
   const survivorRoboStatsById = useMemo(() => {
     const statsById = new Map<string, RoboStatsSummary>()
-    if (game.mode !== 'survivor') return statsById
-    const currentDay = game.modeSpecific?.kind === 'survivor'
+    if (game.mode !== 'survival') return statsById
+    const currentDay = game.modeSpecific?.kind === 'survival'
       ? game.modeSpecific.currentDay
       : game.week
     game.players.forEach((player) => {
@@ -154,7 +148,7 @@ export default function HouseguestGrid({
     return statsById
   }, [game.mode, game.modeSpecific, game.players, game.week])
   const renderedHouseguests = useMemo(() => {
-    if (game.mode !== 'survivor' || survivorReplacementTransition === null) return houseguests
+    if (game.mode !== 'survival' || survivorReplacementTransition === null) return houseguests
 
     const outgoing = survivorReplacementTransition.outgoingPlayerSnapshot
     const incomingId = survivorReplacementTransition.incomingPlayerId
@@ -188,7 +182,7 @@ export default function HouseguestGrid({
     ))
   }, [game.mode, game.players, game.week, houseguests, survivorReplacementTransition])
   const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
-  const showSurvivorStandout = game.mode === 'survivor' && overlaySelector === '.game-control-dock'
+  const showSurvivorStandout = game.mode === 'survival' && overlaySelector === '.game-control-dock'
   const survivorStandout = useMemo(
     () => (showSurvivorStandout ? selectSurvivorStandout(game, challengeHistory) : null),
     [challengeHistory, game, showSurvivorStandout],
@@ -198,7 +192,6 @@ export default function HouseguestGrid({
   const viewportHeight = visualViewport?.height ?? (typeof window === 'undefined' ? 0 : window.innerHeight)
   const survivorStandoutMode = resolveSurvivorStandoutMode({
     compact,
-    compactLayout,
     rosterMode,
     viewportWidth,
     viewportHeight,
@@ -271,16 +264,13 @@ export default function HouseguestGrid({
   }, [headerSelector, footerSelector, layoutRevision, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
-  const effectiveCompactLayout = compact ? compactLayout : 'default'
-  const listClassName = effectiveCompactLayout === 'slider'
-    ? styles.slider
-    : `${styles.grid}${gridSizeClass ? ` ${gridSizeClass}` : ''}`
-  const itemClassName = effectiveCompactLayout === 'slider' ? styles.sliderItem : styles.gridItem
+  const effectiveCompactLayout = compact ? 'small' : 'default'
+  const listClassName = `${styles.grid}${gridSizeClass ? ` ${gridSizeClass}` : ''}`
+  const itemClassName = styles.gridItem
   const sectionClassName = [
     styles.container,
     compact ? styles.compact : '',
     effectiveCompactLayout === 'small' ? styles.compactSmall : '',
-    effectiveCompactLayout === 'two-rows' ? styles.compactTwoRows : '',
     rosterMode === 'scroll' ? styles.scrollRoster : '',
   ]
     .filter(Boolean)

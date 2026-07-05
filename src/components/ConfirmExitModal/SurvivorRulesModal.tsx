@@ -26,7 +26,7 @@ const RULES = [
   },
   {
     title: 'Every day counts',
-    description: 'Your highest Survivor day and unlocked milestones are saved to your profile.',
+    description: 'Your highest Survival day and unlocked milestones are saved to your profile.',
   },
 ] as const;
 
@@ -68,17 +68,17 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
         <div className="survivor-rules-modal__glow survivor-rules-modal__glow--right" aria-hidden="true" />
 
         <header className="survivor-rules-modal__header">
-          <p className="survivor-rules-modal__eyebrow">Survivor Mode</p>
+          <p className="survivor-rules-modal__eyebrow">Survival Mode</p>
           <h2 id={titleId} className="survivor-rules-modal__title">
-            Before You Enter Survivor
+            Before You Enter Survival
           </h2>
           <p id={descId} className="survivor-rules-modal__desc">
-            Survivor Mode is an endless pressure run. There is no finale, no public rescue,
+            Survival Mode is an endless pressure run. There is no finale, no public rescue,
             and no social safety net.
           </p>
         </header>
 
-        <div className="survivor-rules-modal__rules" role="list" aria-label="Survivor rules">
+        <div className="survivor-rules-modal__rules" role="list" aria-label="Survival rules">
           {RULES.map((rule, index) => (
             <article className="survivor-rules-modal__rule" key={rule.title} role="listitem">
               <div className="survivor-rules-modal__rule-index" aria-hidden="true">
@@ -109,7 +109,7 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
               onClick={() => onContinue(dontShowAgain)}
               autoFocus
             >
-              Enter Survivor
+              Enter Survival
             </button>
             <button
               type="button"

@@ -198,7 +198,7 @@ export const startChallenge =
       return pickRandomGame(gameSeed, { category, excludeKeys });
     };
     const pickSurvivorGame = (category?: GameCategory, excludeKeys?: string[]) => {
-      const modeSpecific = state.game.modeSpecific?.kind === 'survivor'
+      const modeSpecific = state.game.modeSpecific?.kind === 'survival'
         ? state.game.modeSpecific
         : null;
       if (!modeSpecific) return pickFromRegistry(category, excludeKeys);
@@ -210,7 +210,7 @@ export const startChallenge =
         : approvedPool;
       const selectionPool = pool.length > 0 ? pool : approvedPool;
       if (selectionPool.length === 0) {
-        throw new Error('[challengeSlice] No approved Survivor games are available');
+        throw new Error('[challengeSlice] No approved Survival games are available');
       }
 
       const usedKeys = modeSpecific.competitionRotation.usedKeys ?? [];
@@ -262,7 +262,7 @@ export const startChallenge =
       const found = getGame(forceKey);
       if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`);
       gameEntry = found;
-    } else if (state.game.mode === 'survivor') {
+    } else if (state.game.mode === 'survival') {
       gameEntry = pickSurvivorGame(opts.category, opts.excludeKeys);
     } else {
       // Remote live-config weekly mode takes priority over user settings.
@@ -394,9 +394,9 @@ export const startChallenge =
 
     const latestState = getState();
     const gameState = latestState.game;
-    const resolvedParticipants = gameState.mode === 'survivor'
+    const resolvedParticipants = gameState.mode === 'survival'
       ? selectAlivePlayers(latestState)
-        .slice(0, gameState.modeSpecific?.kind === 'survivor' ? gameState.modeSpecific.startingCastSize : 8)
+        .slice(0, gameState.modeSpecific?.kind === 'survival' ? gameState.modeSpecific.startingCastSize : 8)
         .map((player) => player.id)
       : participants;
 

@@ -32,7 +32,7 @@ describe('Survivor replacement transition', () => {
     store.dispatch(finalizePendingEviction(outgoing!.id));
 
     const game = store.getState().game;
-    const transition = game.modeSpecific?.kind === 'survivor'
+    const transition = game.modeSpecific?.kind === 'survival'
       ? game.modeSpecific.replacementTransition
       : null;
     const activePlayers = game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury');

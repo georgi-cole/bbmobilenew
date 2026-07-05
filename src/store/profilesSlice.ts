@@ -150,11 +150,11 @@ export function saveProfilesState(state: ProfilesState): void {
  * Return the active profile's name and avatar (for use in gameSlice.buildUserPlayer).
  * Falls back through the legacy userProfile storage, then to the hardcoded default.
  */
-export function loadActiveProfile(): { name: string; avatar: string } {
+export function loadActiveProfile(): { name: string; avatar: string; photoId?: string } {
   const state = loadProfilesState();
   if (!state.isGuest && state.activeProfileId) {
     const profile = state.profiles.find((p) => p.id === state.activeProfileId);
-    if (profile) return { name: profile.name, avatar: profile.avatar };
+    if (profile) return { name: profile.name, avatar: profile.avatar, photoId: profile.photoId };
   }
   // Legacy fallback: read from old userProfile storage key.
   try {
@@ -214,13 +214,14 @@ const profilesSlice = createSlice({
      */
     createProfile(
       state,
-      action: PayloadAction<{ name: string; avatar: string }>,
+      action: PayloadAction<{ name: string; avatar: string; photoId?: string }>,
     ) {
       if (state.profiles.length >= MAX_PROFILES) return;
       const profile: StoredProfile = {
         id: generateId(),
         name: action.payload.name.trim() || 'You',
         avatar: action.payload.avatar || '👤',
+        photoId: action.payload.photoId,
         createdAt: new Date().toISOString(),
       };
       state.profiles.push(profile);

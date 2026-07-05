@@ -49,6 +49,8 @@ export interface ChainOfGreedPlayerState extends ChainOfGreedResolvedParticipant
   voteCount: number;
   semifinalScore: number;
   finalScore: number;
+  finalWrongGuesses: number;
+  finalBanks: number;
   turnsTakenThisRound: number;
   personality: ChainOfGreedPersonality;
   lastRoundPerformance: number;
@@ -191,6 +193,8 @@ export function createChainOfGreedPlayers(
       voteCount: 0,
       semifinalScore: 0,
       finalScore: 0,
+      finalWrongGuesses: 0,
+      finalBanks: 0,
       turnsTakenThisRound: 0,
       personality: {
         aggression,
@@ -388,7 +392,9 @@ export function decideAiAction(options: {
   );
   const potPressure = chain.pot / CHAIN_LADDER[CHAIN_LADDER.length - 1];
   const stepPressure = chain.step / CHAIN_LADDER.length;
-  // Deep chains (5+) naturally invite pushing unless the player is safely ahead
+  const middleReferenceRisk = chain.referenceNumber > 28 && chain.referenceNumber < 72 ? 0.07 : -0.04;
+  const meaningfulPot = chain.pot >= CHAIN_LADDER[1];
+  // Deep chains (5+) naturally invite pushing unless the player is safely ahead.
   const deepChainBias = chain.step >= 5 && pressureFromStanding >= 0.4 ? -0.06 : 0;
   const comebackDrive = clamp(
     pressureFromStanding * 0.75
@@ -398,19 +404,27 @@ export function decideAiAction(options: {
     1,
   );
   const safetyBias = clamp(
-    player.personality.caution * 0.50
-      + potPressure * 0.38
-      + stepPressure * 0.20
-      + (pressureFromStanding < 0.30 ? 0.14 : 0),
+    player.personality.caution * 0.56
+      + potPressure * 0.48
+      + stepPressure * 0.24
+      + middleReferenceRisk
+      + (pressureFromStanding < 0.30 ? 0.16 : 0),
     0,
-    1.2,
+    1.35,
   );
+  const lateRoundBankPressure = phase === 'standard' && remainingTurns <= 2 ? 0.18 : 0;
   const bankUrgency = phase === 'standard'
-    ? 0.10 + safetyBias + dangerLevel * 0.13 - comebackDrive * 0.32 + deepChainBias
-    : 0.13 + player.personality.caution * 0.22 + potPressure * 0.46 + stepPressure * 0.35 + (remainingTurns <= 1 ? 0.42 : 0) - comebackDrive * 0.26;
+    ? 0.12 + safetyBias + dangerLevel * 0.14 + lateRoundBankPressure - comebackDrive * 0.30 + deepChainBias
+    : 0.16 + player.personality.caution * 0.28 + potPressure * 0.52 + stepPressure * 0.38 + (remainingTurns <= 1 ? 0.46 : 0) - comebackDrive * 0.24;
 
-  if (bankAvailable && chain.pot > 0 && bankUrgency >= 0.78) return 'bank';
-  if (bankAvailable && phase !== 'standard' && chain.pot > 0 && playerScore <= 0 && remainingTurns <= 1) return 'bank';
+  if (bankAvailable && chain.pot > 0) {
+    const cautiousBank = player.personality.caution >= 0.68 && meaningfulPot && bankUrgency >= 0.60;
+    const balancedBank = player.personality.caution >= 0.42 && player.personality.aggression < 0.70 && chain.pot >= CHAIN_LADDER[2] && bankUrgency >= 0.66;
+    const aggressiveBank = chain.pot >= CHAIN_LADDER[4] && bankUrgency >= 0.75;
+    const lateRoundBank = phase === 'standard' && remainingTurns <= 2 && meaningfulPot && bankUrgency >= 0.58;
+    if (cautiousBank || balancedBank || aggressiveBank || lateRoundBank) return 'bank';
+    if (phase !== 'standard' && playerScore <= 0 && remainingTurns <= 1) return 'bank';
+  }
 
   const higherWeight = clamp((100 - chain.referenceNumber) / 100, 0.1, 0.9);
   const lowerWeight = clamp(chain.referenceNumber / 100, 0.1, 0.9);
@@ -649,6 +663,56 @@ export function rankPlayersByScore(scores: Record<string, number>, players: Chai
       type: 'duel' as const,
       message: 'Scores were tied, so sudden death decided it.',
       transcript: duel.transcript,
+    },
+  };
+}
+
+export function rankFinalPlayersByScore(scores: Record<string, number>, players: ChainOfGreedPlayerState[], rng: () => number) {
+  const contenders = players.filter((player) => !player.isEliminated);
+  const compareFinalists = (left: ChainOfGreedPlayerState, right: ChainOfGreedPlayerState) => {
+    const scoreDelta = (scores[right.id] ?? 0) - (scores[left.id] ?? 0);
+    if (scoreDelta !== 0) return scoreDelta;
+    const mistakeDelta = left.finalWrongGuesses - right.finalWrongGuesses;
+    if (mistakeDelta !== 0) return mistakeDelta;
+    return left.finalBanks - right.finalBanks;
+  };
+  const sorted = [...contenders].sort(compareFinalists);
+  const top = sorted[0];
+  if (!top) return { ordered: sorted, tieBreak: null as ChainOfGreedTieBreakInfo | null };
+
+  const scoreTied = sorted.filter((player) => (scores[player.id] ?? 0) === (scores[top.id] ?? 0));
+  if (scoreTied.length <= 1) return { ordered: sorted, tieBreak: null as ChainOfGreedTieBreakInfo | null };
+
+  const statBest = scoreTied[0]!;
+  const fullyTied = scoreTied.filter((player) =>
+    player.finalWrongGuesses === statBest.finalWrongGuesses && player.finalBanks === statBest.finalBanks,
+  );
+  if (fullyTied.length <= 1) {
+    return {
+      ordered: sorted,
+      tieBreak: {
+        type: 'stats' as const,
+        message: 'Final score tied. Fewer mistakes, then fewer banks decided the LOH.',
+        transcript: scoreTied.map((player) => `${player.name}: score ${scores[player.id] ?? 0}, mistakes ${player.finalWrongGuesses}, banks ${player.finalBanks}`),
+      },
+    };
+  }
+
+  const duel = resolveSuddenDeathDuel(fullyTied, rng);
+  const duelOrderedIds = duel.orderedIds;
+  const ordered = [
+    ...duelOrderedIds.map((id) => sorted.find((player) => player.id === id)!).filter(Boolean),
+    ...sorted.filter((player) => !duelOrderedIds.includes(player.id)),
+  ];
+  return {
+    ordered,
+    tieBreak: {
+      type: 'duel' as const,
+      message: 'Final score, mistakes, and banks were tied; sudden death decided the LOH.',
+      transcript: [
+        ...fullyTied.map((player) => `${player.name}: score ${scores[player.id] ?? 0}, mistakes ${player.finalWrongGuesses}, banks ${player.finalBanks}`),
+        ...duel.transcript,
+      ],
     },
   };
 }

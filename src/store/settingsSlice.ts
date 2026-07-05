@@ -5,16 +5,6 @@ import type { CompSelectionPayload } from '../components/compSelectionUtils';
 export const STORAGE_KEY = 'bbmobilenew_settings_v1';
 
 export type ThemePreset = 'midnight' | 'neon' | 'sunset' | 'ocean';
-export type CompactRosterLayout = 'slider' | 'small' | 'two-rows';
-export type SupportedCompactRosterLayout = Exclude<CompactRosterLayout, 'slider'>;
-
-export const SUPPORTED_COMPACT_ROSTER_LAYOUTS: SupportedCompactRosterLayout[] = ['two-rows', 'small'];
-
-export function normalizeCompactRosterLayout(
-  layout: CompactRosterLayout | undefined,
-): SupportedCompactRosterLayout {
-  return layout === 'two-rows' ? 'two-rows' : 'small';
-}
 
 export interface SettingsState {
   audio: {
@@ -32,7 +22,6 @@ export interface SettingsState {
     confirmMajorActions: boolean;
     showTooltips: boolean;
     compactRoster: boolean;
-    compactRosterLayout: CompactRosterLayout;
     useHaptics: boolean;
     animations: boolean;
     spectatorMode: boolean;
@@ -108,9 +97,12 @@ function normalizeCompSelection(
 function normalizeGameUX(
   gameUX?: Partial<SettingsState['gameUX']>,
 ): SettingsState['gameUX'] {
+  const legacyCompactRosterLayout = (gameUX as { compactRosterLayout?: unknown } | undefined)?.compactRosterLayout;
   const merged = { ...DEFAULT_SETTINGS.gameUX, ...(gameUX ?? {}) };
   merged.compSelection = normalizeCompSelection(gameUX?.compSelection);
-  merged.compactRosterLayout = normalizeCompactRosterLayout(merged.compactRosterLayout);
+  if (legacyCompactRosterLayout === 'small') {
+    merged.compactRoster = true;
+  }
   return merged;
 }
 
@@ -130,7 +122,6 @@ export const DEFAULT_SETTINGS: SettingsState = {
     confirmMajorActions: true,
     showTooltips: true,
     compactRoster: false,
-    compactRosterLayout: 'small',
     useHaptics: true,
     animations: true,
     spectatorMode: true,
@@ -230,9 +221,6 @@ const settingsSlice = createSlice({
     },
     setGameUX(state, action: PayloadAction<Partial<SettingsState['gameUX']>>) {
       Object.assign(state.gameUX, action.payload);
-      if (action.payload.compactRosterLayout !== undefined) {
-        state.gameUX.compactRosterLayout = normalizeCompactRosterLayout(action.payload.compactRosterLayout);
-      }
       if (action.payload.compSelection !== undefined) {
         state.gameUX.compSelection = normalizeCompSelection(action.payload.compSelection);
       }

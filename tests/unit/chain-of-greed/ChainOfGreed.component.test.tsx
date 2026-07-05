@@ -1,15 +1,13 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ChainOfGreed from '../../../src/components/ChainOfGreed/ChainOfGreed';
-import { CHAIN_TURN_PIPELINE_DURATIONS } from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
+import {
+  CHAIN_TURN_PIPELINE_DURATIONS,
+  rankFinalPlayersByScore,
+  type ChainOfGreedPlayerState,
+} from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
 
 const TURN_PIPELINE_MS = Object.values(CHAIN_TURN_PIPELINE_DURATIONS).reduce((total, value) => total + value, 0);
-const AFTER_DECISION_MS = CHAIN_TURN_PIPELINE_DURATIONS.decision + 1;
-const AFTER_REVEAL_MS = CHAIN_TURN_PIPELINE_DURATIONS.reveal + 1;
-const AFTER_VERDICT_MS = CHAIN_TURN_PIPELINE_DURATIONS.verdict + 1;
-const AFTER_CONSEQUENCE_MS = CHAIN_TURN_PIPELINE_DURATIONS.consequence + 1;
-const AFTER_LADDERUPDATE_MS = CHAIN_TURN_PIPELINE_DURATIONS.ladderUpdate + 1;
-const AFTER_SETTLE_MS = CHAIN_TURN_PIPELINE_DURATIONS.settle + 1;
 
 const participants = [
   { id: 'human', name: 'You', isHuman: true, precomputedScore: 75, previousPR: null },
@@ -55,9 +53,19 @@ describe('ChainOfGreed component', () => {
     expect(screen.queryByText(/Bank is safe, but the first correct guess starts the value/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/First correct call starts the climb/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('chain-ladder-stage')).toBeInTheDocument();
+    expect(screen.queryByTestId('chain-score-strip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chain-outcome-slot')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chain-action-cue')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chain-event-log')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chain-broadcast-board')).toBeInTheDocument();
+    const participantPanel = screen.getByTestId('chain-participant-panel');
+    expect(participantPanel).toHaveTextContent(/You/i);
+    expect(participantPanel).toHaveTextContent(/Choose move/i);
+    expect(screen.getByTestId('chain-participant-log')).toHaveTextContent(/Live feed/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Step 0\/8/i);
     expect(screen.getByTestId('chain-inline-status')).toHaveTextContent(/Next 50/i);
-    expect(screen.getByRole('button', { name: /View full ladder/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /View full ladder/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open chain ladder board' })).toBeInTheDocument();
     expect(screen.getByLabelText('Current chain ladder')).toBeInTheDocument();
     const ladderStage = screen.getByTestId('chain-ladder-stage');
     const higherButton = screen.getByRole('button', { name: 'Higher' });
@@ -67,7 +75,7 @@ describe('ChainOfGreed component', () => {
     expect(higherButton.compareDocumentPosition(playerRail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId('chain-current-anchor')).toBeInTheDocument();
     expect(screen.queryByText(/Current pot 0/i)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Open help' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Open help' })).toHaveLength(1);
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
     expect(screen.getByTestId('chain-ladder-stage')).not.toHaveTextContent(/Next\s+Next/i);
     expect(screen.queryByText(/Step 0\/8 • Pot 0 • Next 50/i)).not.toBeInTheDocument();
@@ -93,13 +101,15 @@ describe('ChainOfGreed component', () => {
     expect(screen.queryByText(/is reading the board/i)).not.toBeInTheDocument();
   });
 
-  it('shows a reusable help overlay with the bank and equal-number rules', () => {
+  it('shows a reusable help overlay with the bank, equal-number, and LOH final rules', () => {
     render(<ChainOfGreed participants={participants} seed={7} onFinish={() => {}} />);
 
     fireEvent.click(screen.getByRole('button', { name: /open help/i }));
 
     expect(screen.getByText(/Bank secures the active pot/i)).toBeInTheDocument();
     expect(screen.getByText(/Equal numbers count as a miss/i)).toBeInTheDocument();
+    expect(screen.getByText(/five standard rounds/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 6 is the LOH final/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close Help' }));
     expect(screen.queryByText(/Bank secures the active pot/i)).not.toBeInTheDocument();
   });
@@ -111,12 +121,66 @@ describe('ChainOfGreed component', () => {
       expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /View full ladder/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open chain ladder board' }));
     expect(screen.getByText('Chain rewards')).toBeInTheDocument();
     expect(screen.getAllByText('Max').length).toBeGreaterThan(0);
   });
 
-  it('locks a bank choice, stages the outcome, and still requires a guess afterward', () => {
+  it('falls back to initials instead of rendering raw profile image text', () => {
+    vi.useFakeTimers();
+    const imageTextParticipants = [
+      { ...participants[0], name: 'Ate Three', avatar: 'profile photo:photo-d34feb7a-7c42-4864-a8e2-23fa285c69af-1783205172715' },
+      ...participants.slice(1),
+    ];
+
+    render(<ChainOfGreed participants={imageTextParticipants} seed={42} onFinish={() => {}} />);
+
+    act(() => {
+      vi.advanceTimersByTime(950);
+    });
+
+    expect(screen.queryByText(/profile photo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/photo-d34/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('chain-participant-panel')).toHaveTextContent(/AT/i);
+  });
+
+  it('breaks final score ties by fewer mistakes, then fewer banks', () => {
+    const makePlayer = (id: string, finalWrongGuesses: number, finalBanks: number) => ({
+      ...participants[0],
+      id,
+      name: id.toUpperCase(),
+      avatar: id,
+      isHuman: false,
+      isEliminated: false,
+      totalContribution: 0,
+      roundContribution: 0,
+      roundCorrectGuesses: 0,
+      roundWrongGuesses: 0,
+      roundBanks: 0,
+      roundBusts: 0,
+      totalCorrectGuesses: 0,
+      totalWrongGuesses: 0,
+      totalBanks: 0,
+      totalBusts: 0,
+      voteCount: 0,
+      semifinalScore: 0,
+      finalScore: 500,
+      finalWrongGuesses,
+      finalBanks,
+      turnsTakenThisRound: 0,
+      personality: { aggression: 0.5, caution: 0.5, volatility: 0.5, social: 0.5 },
+      lastRoundPerformance: 0,
+      latestMoment: null,
+    }) as ChainOfGreedPlayerState;
+
+    const players = [makePlayer('a', 1, 0), makePlayer('b', 0, 2), makePlayer('c', 0, 1)];
+    const ranking = rankFinalPlayersByScore({ a: 500, b: 500, c: 500 }, players, () => 0.5);
+
+    expect(ranking.ordered.map((player) => player.id)).toEqual(['c', 'b', 'a']);
+    expect(ranking.tieBreak?.message).toMatch(/Fewer mistakes/i);
+  });
+
+  it('keeps banking unavailable until the chain has a pot', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
@@ -124,43 +188,11 @@ describe('ChainOfGreed component', () => {
       vi.advanceTimersByTime(950);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bank' }));
-
-    expect(screen.getByText('You chose BANK.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Higher' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Lower' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Bank' })).toBeDisabled();
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_DECISION_MS);
-    });
-
-    expect(screen.getByTestId('chain-turn-reveal')).toHaveTextContent(/Bank secured/i);
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_REVEAL_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_VERDICT_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_CONSEQUENCE_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_LADDERUPDATE_MS);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(AFTER_SETTLE_MS);
-    });
-
-    expect(screen.getByRole('button', { name: 'Banked' })).toBeDisabled();
+    const bankButton = screen.getByRole('button', { name: 'Bank' });
+    expect(bankButton).toBeDisabled();
+    expect(bankButton).toHaveAttribute('title', 'Build the chain before banking.');
     expect(screen.getByRole('button', { name: 'Higher' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Lower' })).toBeEnabled();
-    expect(screen.getAllByText(/You banked 0\./i)).toHaveLength(2);
-    expect(screen.getByTestId('chain-event-log')).toHaveTextContent(/You banked 0./i);
+    expect(screen.queryByText(/You banked 0\./i)).not.toBeInTheDocument();
   });
 });

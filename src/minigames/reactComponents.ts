@@ -51,6 +51,7 @@ import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
 import GridOfLuck from '../components/GridOfLuck/GridOfLuck';
 import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed';
 import VaultVerdict from '../components/VaultVerdict/VaultVerdict';
+import BigSpender from '../components/BigSpender/BigSpender';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -111,6 +112,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   GridOfLuck: GridOfLuck as ComponentType<GenericMinigameProps>,
   ChainOfGreed: ChainOfGreed as ComponentType<GenericMinigameProps>,
   VaultVerdict: VaultVerdict as ComponentType<GenericMinigameProps>,
+  BigSpender: BigSpender as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;

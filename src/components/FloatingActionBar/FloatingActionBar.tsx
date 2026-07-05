@@ -69,7 +69,7 @@ export default function FloatingActionBar({
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
-  const isSurvivorMode = game.mode === 'survivor';
+  const isSurvivorMode = game.mode === 'survival';
   const survivorTerminalActive = isSurvivorRunTerminal(game);
 
   const humanPlayer = players.find((p) => p.isUser);
@@ -287,7 +287,7 @@ export default function FloatingActionBar({
 
   const handleStartNewSurvivor = useCallback(() => {
     if (!isGuest && activeProfileId) {
-      clearSavedRun(activeProfileId, 'survivor');
+      clearSavedRun(activeProfileId, 'survival');
     }
     dispatch({ type: 'challenge/setPendingChallenge', payload: null });
     dispatch(hydrateGame(createSurvivorRun()));
@@ -308,9 +308,9 @@ export default function FloatingActionBar({
       )}
       <ConfirmExitModal
         open={survivorTerminalActive}
-        title="Survivor run ended"
+        title="Survival run ended"
         description={survivorEndDescription}
-        confirmLabel="Start New Survivor"
+        confirmLabel="Start New Survival"
         cancelLabel="Return Home"
         onConfirm={handleStartNewSurvivor}
         onCancel={handleReturnHome}

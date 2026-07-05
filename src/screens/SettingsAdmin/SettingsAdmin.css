@@ -192,46 +192,6 @@
   margin-top: 4px;
 }
 
-.settings-choice-group {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.settings-choice {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-  width: 100%;
-  text-align: left;
-  background: rgba(255 255 255 / 0.04);
-  border: 1px solid var(--color-line);
-  border-radius: 10px;
-  color: var(--color-text);
-  padding: 0.7rem 0.8rem;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.settings-choice:hover {
-  background: rgba(255 255 255 / 0.07);
-}
-
-.settings-choice--active {
-  border-color: var(--color-accent);
-  background: rgba(99 102 241 / 0.14);
-}
-
-.settings-choice__title {
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.settings-choice__description {
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-}
-
 /* Theme preset grid */
 .settings-theme-grid {
   display: grid;

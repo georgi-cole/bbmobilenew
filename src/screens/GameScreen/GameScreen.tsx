@@ -97,7 +97,7 @@ import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import Capitalization from '../../components/Capitalization/Capitalization'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
-import { resolveAvatar } from '../../utils/avatar'
+import { getProfilePhotoAvatarId, resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import { detectDebugMode } from '../../utils/debugMode'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
@@ -733,7 +733,7 @@ export default function GameScreen() {
     return {
       id: p.id,
       name: p.name,
-      avatarUrl: resolveAvatar(p),
+      avatarUrl: getProfilePhotoAvatarId(p.avatar) ? p.avatar : resolveAvatar(p),
       statuses,
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted,
@@ -2623,7 +2623,7 @@ export default function GameScreen() {
   const aiOnlyChallengeResolvedRef = useRef<string | null>(null)
   useEffect(() => {
     const isClassicCompetitionPhase =
-      game.mode !== 'survivor' &&
+      game.mode !== 'survival' &&
       (game.phase === 'loh_comp' || game.phase === 'pos_comp')
     if (
       !isClassicCompetitionPhase ||
@@ -2782,7 +2782,7 @@ export default function GameScreen() {
     (s: RootState) => (humanPlayer ? (s.social?.energyBank?.[humanPlayer.id] ?? 0) : 0),
   )
   useEffect(() => {
-    if (!humanPlayer || game.mode === 'survivor' || !isSocialModeEnabled(game.mode)) {
+    if (!humanPlayer || game.mode === 'survival' || !isSocialModeEnabled(game.mode)) {
       setShowEnergyRechargePrompt(false)
       return
     }
@@ -2825,7 +2825,7 @@ export default function GameScreen() {
         : 100,
   )
   useEffect(() => {
-    if (!humanPlayer || game.mode === 'survivor' || game.publicModeEnabled !== true) {
+    if (!humanPlayer || game.mode === 'survival' || game.publicModeEnabled !== true) {
       setShowDislikedBoostPrompt(false)
       return
     }
@@ -3082,7 +3082,6 @@ export default function GameScreen() {
     hasDock: showGameControlDock,
     playerCount: game.players.length,
     userCompactRoster: settings.gameUX.compactRoster,
-    userCompactRosterLayout: settings.gameUX.compactRosterLayout,
   })
   const gameTvLogRows = responsiveGameLayout.tvLogRows
   const housemateOccupancyLabel = `${alivePlayers.length}/${game.players.length}`
@@ -4379,7 +4378,6 @@ export default function GameScreen() {
         footerSelector=".nav-bar"
         overlaySelector=".game-control-dock"
         compact={responsiveGameLayout.compactRoster}
-        compactLayout={responsiveGameLayout.compactRosterLayout}
         rosterMode={responsiveGameLayout.rosterMode}
         headerMode={responsiveGameLayout.rosterHeaderMode}
         layoutRevision={responsiveGameLayout.revision}
