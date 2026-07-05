@@ -138,7 +138,7 @@ function cleanRound(value: number) {
 }
 
 export function formatVaultAmount(value: number) {
-  return `$${value.toLocaleString()}`;
+  return value.toLocaleString();
 }
 
 export function createVaultVerdictRng(seed = 0) {
@@ -387,7 +387,7 @@ function buildBroadcastMessage(options: {
 }) {
   const { contestant, kind, amount, accepted, smallPlayerCount, rng } = options;
   const name = contestant.displayName;
-  if (smallPlayerCount) {
+      if (smallPlayerCount) {
     const vague = [
       'The control room just gasped. No further comment.',
       'Someone in another booth made the host blink twice.',
@@ -400,7 +400,7 @@ function buildBroadcastMessage(options: {
     if (accepted) {
       return pick(rng, [
         `${name} signed a Verdict early. The audience is judging silently.`,
-        `${name} took the money and left the booth glowing.`,
+        `${name} signed and left the booth glowing.`,
         `${name} made peace with The Eye Bank. Bold or blessed?`,
       ]);
     }
@@ -411,9 +411,9 @@ function buildBroadcastMessage(options: {
     ]);
   }
   if (kind === 'amount' && amount != null) {
-    if (amount === 1000000) return 'Someone just opened the $1,000,000 in another booth. The studio went quiet.';
-    if (amount === 404) return 'Somebody found $404. Their prize was not found either.';
-    if (amount === 69) return 'Another booth just opened $69. The audience reacted exactly how you think.';
+    if (amount === 1000000) return 'Someone just opened the 1,000,000 in another booth. The studio went quiet.';
+    if (amount === 404) return 'Somebody found 404. Their prize was not found either.';
+    if (amount === 69) return 'Another booth just opened 69. The audience reacted exactly how you think.';
     return `A contestant just found ${formatVaultAmount(amount)} in another private booth. Painful.`;
   }
   if (kind === 'final') return 'One booth just reached the Final Verdict.';
