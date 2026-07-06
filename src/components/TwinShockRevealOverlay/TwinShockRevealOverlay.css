@@ -1,0 +1,174 @@
+.twin-shock-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 8800;
+  pointer-events: none;
+  color: #fff;
+}
+
+.twin-shock-reveal__shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 10, 18, 0.84);
+  animation: twin-shock-fade-in 260ms ease-out both;
+}
+
+.twin-shock-reveal__beam {
+  position: absolute;
+  left: calc(var(--twin-shock-left) - 10px);
+  top: calc(var(--twin-shock-top) - 10px);
+  width: calc(var(--twin-shock-width) + 20px);
+  height: calc(var(--twin-shock-height) + 20px);
+  border: 2px solid rgba(255, 214, 102, 0.96);
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.18),
+    0 0 26px rgba(255, 214, 102, 0.82),
+    inset 0 0 20px rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  animation: twin-shock-pulse 920ms ease-in-out infinite alternate;
+}
+
+.twin-shock-reveal--combined.twin-shock-reveal--after .twin-shock-reveal__beam {
+  border-color: rgba(112, 231, 255, 0.96);
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.18),
+    0 0 30px rgba(112, 231, 255, 0.9),
+    inset 0 0 20px rgba(255, 255, 255, 0.24);
+}
+
+.twin-shock-reveal--ali_enters.twin-shock-reveal--after .twin-shock-reveal__beam {
+  border-color: rgba(102, 255, 178, 0.96);
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.18),
+    0 0 30px rgba(102, 255, 178, 0.86),
+    inset 0 0 20px rgba(255, 255, 255, 0.24);
+}
+
+.twin-shock-reveal__tile {
+  position: absolute;
+  left: var(--twin-shock-left);
+  top: var(--twin-shock-top);
+  width: var(--twin-shock-width);
+  height: var(--twin-shock-height);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: rgba(13, 18, 26, 0.74);
+  transform-origin: center;
+  animation: twin-shock-tile-rise 620ms ease-out both;
+}
+
+.twin-shock-reveal--after .twin-shock-reveal__tile {
+  animation: twin-shock-swap 680ms ease-out both;
+}
+
+.twin-shock-reveal__avatar-wrap {
+  width: min(74%, 136px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.twin-shock-reveal__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.twin-shock-reveal__avatar-fallback {
+  font-size: clamp(1rem, 3vw, 2rem);
+  font-weight: 800;
+}
+
+.twin-shock-reveal__name {
+  width: 100%;
+  min-height: 1.9rem;
+  padding: 0.24rem 0.45rem 0.42rem;
+  background: rgba(0, 0, 0, 0.46);
+  text-align: center;
+  font-size: clamp(0.78rem, 1.5vw, 1.04rem);
+  font-weight: 800;
+  line-height: 1.08;
+}
+
+.twin-shock-reveal__caption {
+  position: absolute;
+  left: max(14px, calc(var(--twin-shock-left) - 24px));
+  top: min(
+    calc(100vh - 66px),
+    calc(var(--twin-shock-top) + var(--twin-shock-height) + 20px)
+  );
+  max-width: min(420px, calc(100vw - 28px));
+  padding: 0.48rem 0.7rem;
+  border-radius: 7px;
+  background: rgba(5, 10, 18, 0.88);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  font-size: clamp(0.82rem, 1.7vw, 1rem);
+  font-weight: 750;
+  line-height: 1.18;
+  animation: twin-shock-caption 360ms ease-out both;
+}
+
+@keyframes twin-shock-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes twin-shock-pulse {
+  from { transform: scale(0.99); opacity: 0.72; }
+  to { transform: scale(1.025); opacity: 1; }
+}
+
+@keyframes twin-shock-tile-rise {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes twin-shock-swap {
+  0% {
+    opacity: 0.1;
+    transform: scale(0.88) rotate(-1deg);
+  }
+  58% {
+    opacity: 1;
+    transform: scale(1.08) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes twin-shock-caption {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twin-shock-reveal__shade,
+  .twin-shock-reveal__beam,
+  .twin-shock-reveal__tile,
+  .twin-shock-reveal__caption,
+  .twin-shock-reveal--after .twin-shock-reveal__tile {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+}

@@ -443,13 +443,32 @@ export type TwinShockResolution =
   | 'mission_success'
   | 'secret_lost';
 
+export type TwinShockRevealAnimation =
+  | {
+      type: 'combined';
+      playerId: string;
+      fromName: string;
+      fromAvatar: string;
+      toName: string;
+      toAvatar: string;
+    }
+  | {
+      type: 'ali_enters';
+      replacedPlayerId: string;
+      replacedPlayerName: string;
+      replacedPlayerAvatar: string;
+      incomingPlayerId: string;
+      incomingName: string;
+      incomingAvatar: string;
+    };
+
 export interface TwinShockState {
   status: TwinShockStatus;
   promptStage: TwinShockPromptStage | null;
   queuedDay: number | null;
   retryCount: number;
   cluesShownDays: number[];
-  pendingRevealAnimation?: 'combined' | 'ali_enters' | null;
+  pendingRevealAnimation?: TwinShockRevealAnimation | null;
 }
 
 // ─── Public's Favorite voting twist ──────────────────────────────────────────

@@ -129,12 +129,11 @@ export function getConfessionalDecisionPresentation(
     case 'twin_shock': {
       const stage = game.twinShock?.promptStage;
       if (stage === 'day4_initial') {
-        const humanName = game.players.find((player) => player.isUser)?.name ?? 'Houseguest';
-        prompt = `Hi, ${humanName}. How have you been lately? Thank you for sharing. We may come back to this later. But right now, I need to ask you something. Have you noticed anything off about Lia?`;
+        prompt = 'I need to ask you something. Have you noticed anything off about Lia?';
       } else if (stage === 'day4_detail') {
         prompt = 'What exactly have you noticed?';
       } else if (stage === 'day5_final') {
-        prompt = 'Yesterday, I asked you whether you had noticed anything off about Lia. I will ask one last time. What do you think is going on?';
+        prompt = 'Last time, I asked you whether you had noticed anything off about Lia. I will ask one last time. What do you think is going on?';
       } else if (stage === 'day5_give_up') {
         prompt = 'Say that you give up, and I will tell you the secret.';
       } else if (stage === 'secret_lost') {
