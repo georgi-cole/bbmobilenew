@@ -96,6 +96,47 @@
   font-size: clamp(1.05rem, 4.5vw, 1.35rem);
 }
 
+.big-spender__finalists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.18rem;
+}
+
+.big-spender__finalist {
+  min-width: 0;
+  display: grid;
+  gap: 0.04rem;
+  padding: 0.32rem 0.42rem;
+  border: 1px solid rgba(218, 231, 255, 0.14);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.big-spender__finalist--turn {
+  border-color: rgba(255, 224, 141, 0.52);
+  background: rgba(255, 218, 116, 0.11);
+}
+
+.big-spender__finalist strong,
+.big-spender__finalist em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.big-spender__finalist strong {
+  font-size: 0.78rem;
+}
+
+.big-spender__finalist em {
+  color: rgba(229, 239, 255, 0.8);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .big-spender__status-panel p {
   min-width: 0;
   color: rgba(239, 245, 255, 0.9);
@@ -235,6 +276,18 @@
   line-height: 1;
   color: #fff5c7;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.42);
+}
+
+.big-spender__wallet-opener {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(244, 248, 255, 0.72);
+  font-size: 0.64rem;
+  font-weight: 900;
 }
 
 .big-spender__wallet--bomb .big-spender__wallet-result {
@@ -405,6 +458,10 @@
   max-height: calc(100dvh - 2rem);
 }
 
+.big-spender__modal--round {
+  width: min(100%, 32rem);
+}
+
 .big-spender__modal h2 {
   font-size: 1.35rem;
 }
@@ -425,6 +482,10 @@
   color: #f8fbff;
 }
 
+.big-spender__modal-actions > button:only-child {
+  grid-column: 1 / -1;
+}
+
 .big-spender__ranking {
   min-height: 0;
   overflow-y: auto;
@@ -443,6 +504,20 @@
   padding: 0.34rem 0.45rem;
   border-radius: 0.55rem;
   background: rgba(255, 255, 255, 0.05);
+}
+
+.big-spender__ranking--round {
+  max-height: min(44dvh, 22rem);
+}
+
+.big-spender__ranking-item--eliminated {
+  border: 1px solid rgba(255, 112, 112, 0.38);
+  background: rgba(255, 76, 76, 0.09);
+}
+
+.big-spender__ranking-item--eliminated span {
+  background: rgba(255, 95, 95, 0.18);
+  color: #ffd9d9;
 }
 
 .big-spender__ranking span {

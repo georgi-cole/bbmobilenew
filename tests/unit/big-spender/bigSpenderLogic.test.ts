@@ -5,6 +5,7 @@ import {
   BIG_SPENDER_NEGATIVE_WALLETS,
   BIG_SPENDER_POSITIVE_WALLETS,
   canOfferAdRescue,
+  continueBigSpenderRound,
   createInitialBigSpenderState,
   decideAiShouldOpen,
   fastForwardBigSpenderGame,
@@ -17,6 +18,7 @@ import {
   rankBigSpenderPlayers,
   resolveBigSpenderAdRescue,
   resolveBigSpenderBonusOffer,
+  skipBigSpenderToResults,
   sumWeights,
   type BigSpenderParticipant,
   type BigSpenderState,
@@ -291,7 +293,7 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(decideAiShouldOpen(500, () => 0.65)).toBe(false);
   });
 
-  it('starts a new round when all current players are finalized', () => {
+  it('pauses on a round summary when all current players are finalized', () => {
     let state = makeState();
     for (const id of [...state.turnOrder]) {
       state = setCurrent(state, id);
@@ -301,24 +303,83 @@ describe('Big Spender: Broke or Boom logic', () => {
       state = lockBigSpenderPlayer(state, id);
     }
 
-    expect(state.status).toBe('running');
-    expect(state.roundNumber).toBe(2);
+    expect(state.status).toBe('roundSummary');
+    expect(state.roundNumber).toBe(1);
     expect(state.roundResults).toHaveLength(1);
-    expect(state.activePlayerIds).toHaveLength(participants.length - 1);
+    expect(state.roundResults[0]?.survivorPlayerIds).toHaveLength(participants.length - 1);
+
+    const nextRound = continueBigSpenderRound(state);
+    expect(nextRound.status).toBe('running');
+    expect(nextRound.roundNumber).toBe(2);
+    expect(nextRound.activePlayerIds).toHaveLength(participants.length - 1);
   });
 
-  it('fast forwards remaining house play through the finale after the human is out', () => {
+  it('fast forwards remaining house play to the current round summary after the human is out', () => {
     let state = setCurrent(makeState(), 'human');
     state.players = state.players.map((entry) => entry.playerId === 'human' ? { ...entry, adBombRescuesUsed: 2 } : entry);
     state = openBigSpenderWallet(state, 'human', firstWallet(state).walletId, 'normal', {
       forcedOutcome: { type: 'bomb', amount: null },
     });
 
-    const completed = fastForwardBigSpenderGame(state);
+    const summary = fastForwardBigSpenderGame(state);
+
+    expect(summary.status).toBe('roundSummary');
+    expect(summary.roundResults).toHaveLength(1);
+  });
+
+  it('skips to completed results after the human has been eliminated', () => {
+    let state = setCurrent(makeState(), 'human');
+    state.players = state.players.map((entry) => entry.playerId === 'human' ? { ...entry, adBombRescuesUsed: 2 } : entry);
+    state = openBigSpenderWallet(state, 'human', firstWallet(state).walletId, 'normal', {
+      forcedOutcome: { type: 'bomb', amount: null },
+    });
+
+    const completed = skipBigSpenderToResults(fastForwardBigSpenderGame(state));
 
     expect(completed.status).toBe('completed');
     expect(completed.roundNumber).toBe(BIG_SPENDER_CONFIG.finalRound);
     expect(completed.players.filter((entry) => entry.gameRank != null)).toHaveLength(participants.length);
+  });
+
+  it('shows the shared finale board even after the human is only spectating', () => {
+    const state = makeState();
+    const summary = {
+      ...state,
+      status: 'roundSummary' as const,
+      roundNumber: 4,
+      roundResults: [{
+        roundNumber: 4,
+        finalistRound: false,
+        rankedPlayerIds: ['ai-1', 'ai-2', 'human'],
+        eliminatedPlayerIds: ['human'],
+        survivorPlayerIds: ['ai-1', 'ai-2'],
+      }],
+    };
+
+    const finale = continueBigSpenderRound(summary);
+    const spectatorBoard = getBigSpenderBoardForPlayer(finale, 'human');
+    const finalistBoard = getBigSpenderBoardForPlayer(finale, 'ai-1');
+
+    expect(finale.roundNumber).toBe(BIG_SPENDER_CONFIG.finalRound);
+    expect(spectatorBoard[0]?.walletId).toBe(finalistBoard[0]?.walletId);
+  });
+
+  it('does not offer ad saves during the shared finale', () => {
+    const state = makeState();
+    const finale = continueBigSpenderRound({
+      ...state,
+      status: 'roundSummary' as const,
+      roundNumber: 4,
+      roundResults: [{
+        roundNumber: 4,
+        finalistRound: false,
+        rankedPlayerIds: ['human', 'ai-1'],
+        eliminatedPlayerIds: [],
+        survivorPlayerIds: ['human', 'ai-1'],
+      }],
+    });
+
+    expect(canOfferAdRescue(finale, player(finale, 'human'))).toBe(false);
   });
 
   it('ranks zero finishers, lowest non-zero scores, and bombed players correctly', () => {
