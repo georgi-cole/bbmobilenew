@@ -15,6 +15,6 @@ describe('shouldShowGameControlDock', () => {
   });
 
   it('keeps the dock visible for terminal survivor runs so the end modal can mount', () => {
-    expect(shouldShowGameControlDock(false, [false, false], true)).toBe(true);
+    expect(shouldShowGameControlDock(false, [false, true], true)).toBe(true);
   });
 });

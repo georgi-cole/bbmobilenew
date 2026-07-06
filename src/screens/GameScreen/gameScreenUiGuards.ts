@@ -1,7 +1,8 @@
 export function shouldShowGameControlDock(
   hasStartedGame: boolean,
   blockers: readonly boolean[],
-  allowWhenInactive = false,
+  forceVisible = false,
 ): boolean {
-  return (hasStartedGame || allowWhenInactive) && !blockers.some(Boolean);
+  if (forceVisible) return true;
+  return hasStartedGame && !blockers.some(Boolean);
 }
