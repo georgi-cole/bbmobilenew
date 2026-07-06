@@ -246,6 +246,17 @@
   transform: none;
 }
 
+.htw-wall--spectator {
+  cursor: default;
+  opacity: 0.72;
+  pointer-events: none;
+  filter: saturate(0.88) brightness(0.86);
+}
+
+.htw-wall--expanded.htw-wall--spectator:active {
+  transform: none;
+}
+
 .htw-wall-icon {
   font-size: 3rem;
   pointer-events: none;
@@ -298,6 +309,30 @@
   font-size: 0.9rem;
   opacity: 0.75;
   border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.htw-fast-forward {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  margin-top: 0.6rem;
+  padding: 0 1rem;
+  border: 1px solid rgba(131, 191, 255, 0.4);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(131, 191, 255, 0.22), rgba(255, 107, 157, 0.18));
+  color: rgba(255, 255, 255, 0.92);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.htw-fast-forward:disabled {
+  cursor: default;
+  opacity: 0.68;
 }
 
 /* ── Complete screen ─────────────────────────────────────────────────────────── */

@@ -119,6 +119,18 @@ function clearRoundHintState(state: MajorityRulesState) {
   state.roundHintPeekedAnswers = null;
 }
 
+function distributionsMatch(
+  left: Record<string, number> | null,
+  right: Record<string, number>,
+): boolean {
+  if (!left) return false;
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if ((left[key] ?? 0) !== (right[key] ?? 0)) return false;
+  }
+  return true;
+}
+
 function prepareQuestion(state: MajorityRulesState) {
   const question = pickMajorityRulesQuestion(state.seed, state.roundNumber, state.usedQuestionIds);
   state.currentQuestion = question;
@@ -433,10 +445,24 @@ const majorityRulesSlice = createSlice({
     advanceReveal(state) {
       if (state.phase !== 'reveal' || !state.revealState) return;
       const { result } = state.revealState;
+      const repeatedThreeWayRevote =
+        state.activeIds.length === 3 &&
+        result.kind === 'revote' &&
+        state.revoteNumber > 0 &&
+        distributionsMatch(state.previousDistribution, result.distribution);
 
       state.previousDistribution = result.distribution;
 
       if (result.kind === 'revote') {
+        if (repeatedThreeWayRevote) {
+          state.roundNumber += 1;
+          state.revoteNumber = 0;
+          state.previousDistribution = null;
+          state.blockedAnswers = {};
+          prepareQuestion(state);
+          state.phase = 'question';
+          return;
+        }
         if (state.activeIds.length === 3 && state.revoteNumber >= 2) {
           advanceToThreeWayDuel(state);
           return;

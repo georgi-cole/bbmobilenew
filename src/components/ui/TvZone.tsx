@@ -460,6 +460,7 @@ export default function TvZone(props: TvZoneProps) {
   const isShockAnnouncement =
     activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
   const showInlineAnnouncement = activeAnnouncement != null && !(shockIntroActive && isShockAnnouncement);
+  const showOccupancyChip = occupancyChip != null && !showInlineAnnouncement;
   const suppressStaleLiveVotePitchMessage =
     displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
     gameState.phase !== 'social_2';
@@ -900,7 +901,7 @@ export default function TvZone(props: TvZoneProps) {
       {/* ── Bezel + Viewport ────────────────────────────────────────────────── */}
       <div className="tv-zone__bezel">
         <div className="tv-zone__bezel-frame">
-          {occupancyChip && (
+          {showOccupancyChip && (
             <span className="tv-zone__occupancy-chip" aria-label={occupancyChip.ariaLabel}>
               {occupancyChip.label}
             </span>

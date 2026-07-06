@@ -99,6 +99,7 @@ const NARRATION = {
 
 /** How long the winner screen stays visible before MinigameHost dismisses it. */
 const WINNER_SCREEN_DURATION_MS = 5000;
+const SPECTATOR_FAST_FORWARD_SPEED = 2;
 
 /** Minimum ms between periodic "still holding" narration messages. */
 const MIN_NARRATION_INTERVAL_MS = 8000;
@@ -179,6 +180,7 @@ export default function HoldTheWallComp({
   // Local UI state
   const [isHolding, setIsHolding] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [fastForward, setFastForward] = useState(false);
   // Track round start for the complete screen "last player standing after Xs" message
   const [roundStartKey, setRoundStartKey] = useState(0);
   const [narrativeMsg, setNarrativeMsg] = useState('Get ready to hold on for dear life…');
@@ -225,20 +227,14 @@ export default function HoldTheWallComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Schedule AI drops + start 2-second hold rule when game becomes active ──
+  // ── Start round state + 2-second hold rule when game becomes active ──
   useEffect(() => {
     if (htw.status !== 'active') return;
 
     startTimeRef.current = Date.now();
+    setFastForward(false);
     // Increment roundStartKey to restart the Hourglass animation on each new round
     setRoundStartKey((k) => k + 1);
-
-    // Schedule each AI's deterministic drop
-    const timeouts = Object.entries(htw.aiDropSchedule).map(([id, delayMs]) =>
-      window.setTimeout(() => {
-        dispatch(dropPlayer(id));
-      }, delayMs),
-    );
 
     // Start the 2-second initial-hold enforcement rule (server-authoritative)
     let unsubElim: (() => void) | undefined;
@@ -266,13 +262,39 @@ export default function HoldTheWallComp({
     }
 
     return () => {
-      timeouts.forEach((t) => window.clearTimeout(t));
       unsubElim?.();
       effectsScheduler?.destroy();
       controllerRef.current?.endRound();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htw.status]);
+
+  // ── Schedule AI drops; spectator fast-forward compresses the remaining timers ──
+  useEffect(() => {
+    if (htw.status !== 'active') return;
+
+    const startTime = startTimeRef.current ?? Date.now();
+    if (startTimeRef.current === null) {
+      startTimeRef.current = startTime;
+    }
+
+    const elapsed = Date.now() - startTime;
+    const humanDroppedForSpeed = humanId ? htw.droppedIds.includes(humanId) : false;
+    const timerSpeed =
+      fastForward && humanDroppedForSpeed ? SPECTATOR_FAST_FORWARD_SPEED : 1;
+
+    const timeouts = Object.entries(htw.aiDropSchedule)
+      .filter(([id]) => !htw.droppedIds.includes(id))
+      .map(([id, dropAtMs]) =>
+        window.setTimeout(() => {
+          dispatch(dropPlayer(id));
+        }, Math.max(0, (dropAtMs - elapsed) / timerSpeed)),
+      );
+
+    return () => {
+      timeouts.forEach((t) => window.clearTimeout(t));
+    };
+  }, [dispatch, fastForward, htw.aiDropSchedule, htw.droppedIds, htw.status, humanId]);
 
   // ── Elapsed timer (requestAnimationFrame loop) ────────────────────────────
   useEffect(() => {
@@ -401,6 +423,8 @@ export default function HoldTheWallComp({
   const winnerPlayer = htw.winnerId ? playerMap[htw.winnerId] : null;
   const humanDropped = humanId ? htw.droppedIds.includes(humanId) : false;
   const humanIsWinner = htw.winnerId === humanId;
+  const canHoldWall = htw.status === 'active' && !humanDropped;
+  const fastForwardActive = htw.status === 'active' && humanDropped && fastForward;
 
   // Wind modifier class — applied to root so CSS can target participant avatars
   const windActive = 'wind' in activeEffects;
@@ -477,28 +501,29 @@ export default function HoldTheWallComp({
         <span className="htw-narrative-text">{narrativeMsg}</span>
       </div>
 
-      {/* Wall panel — expands to fill remaining space; shown while human is active */}
-      {htw.status === 'active' && !humanDropped && (
+      {/* Wall panel — expands to fill remaining space and stays visible while spectating */}
+      {htw.status === 'active' && (
         <div
           className={[
             'htw-wall',
             'htw-wall--expanded',
             isHolding ? 'htw-wall--holding' : '',
+            !canHoldWall ? 'htw-wall--spectator' : '',
           ]
             .filter(Boolean)
             .join(' ')}
           data-testid="htw-wall"
-          role="button"
-          aria-label="Hold the wall"
-          aria-pressed={isHolding}
-          onPointerDown={handleHoldStart}
-          onPointerUp={handleHoldEnd}
-          onPointerLeave={handleHoldEnd}
+          role={canHoldWall ? 'button' : 'img'}
+          aria-label={canHoldWall ? 'Hold the wall' : 'Wall still in play'}
+          aria-pressed={canHoldWall ? isHolding : undefined}
+          onPointerDown={canHoldWall ? handleHoldStart : undefined}
+          onPointerUp={canHoldWall ? handleHoldEnd : undefined}
+          onPointerLeave={canHoldWall ? handleHoldEnd : undefined}
           onContextMenu={handleContextMenu}
         >
           <span className="htw-wall-icon">🧱</span>
           <span className="htw-wall-instruction">
-            {isHolding ? 'HOLDING!' : 'PRESS & HOLD'}
+            {canHoldWall ? (isHolding ? 'HOLDING!' : 'PRESS & HOLD') : 'WALL CONTINUES'}
           </span>
         </div>
       )}
@@ -507,6 +532,15 @@ export default function HoldTheWallComp({
       {htw.status === 'active' && humanDropped && (
         <div className="htw-spectating" data-testid="htw-spectating">
           <p>You dropped! Watching {remaining} player{remaining !== 1 ? 's' : ''} remaining…</p>
+          <button
+            type="button"
+            className="htw-fast-forward"
+            onClick={() => setFastForward(true)}
+            disabled={fastForwardActive}
+            aria-pressed={fastForwardActive}
+          >
+            {fastForwardActive ? '2x speed active' : 'Fast-forward 2x'}
+          </button>
           {/* Auto-drop feedback: shown when eliminated by the 2-second rule */}
           {isAutoDropped && (
             <p className="htw-auto-drop-notice" data-testid="htw-auto-drop-notice">
