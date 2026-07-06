@@ -4,7 +4,7 @@
  * Adds on top of CeremonyOverlay:
  *   - Body scroll lock (overflow: hidden) while the overlay is active.
  *   - visualViewport + window resize + capture-scroll listeners when
- *     measureA or measureB callbacks are provided, keeping cutout holes
+ *     measureTiles, measureA, or measureB callbacks are provided, keeping cutout holes
  *     and flying badges aligned during pinch-zoom and page scroll.
  *   - ResizeObserver on tileRefs elements (if provided) to detect tile
  *     reflow due to layout changes.
@@ -26,6 +26,8 @@ import CeremonyOverlay from '../CeremonyOverlay/CeremonyOverlay';
 import type { CeremonyOverlayProps, CeremonyTile } from '../CeremonyOverlay/CeremonyOverlay';
 
 export interface SpotlightAnimationProps extends Omit<CeremonyOverlayProps, 'resolveTiles'> {
+  /** Re-measures the full ceremony tile set in one pass. */
+  measureTiles?: () => CeremonyTile[];
   /** Re-measures tile A (index 0) position on viewport changes. */
   measureA?: () => DOMRect | null;
   /** Re-measures tile B (index 1) position on viewport changes. */
@@ -40,6 +42,7 @@ export interface SpotlightAnimationProps extends Omit<CeremonyOverlayProps, 'res
 
 export default function SpotlightAnimation({
   tiles: initialTiles,
+  measureTiles,
   measureA,
   measureB,
   tileRefs,
@@ -50,7 +53,7 @@ export default function SpotlightAnimation({
   const rafRef = useRef<number>(0);
   const activeRef = useRef(true);
 
-  const hasMeasure = measureA != null || measureB != null;
+  const hasMeasure = measureTiles != null || measureA != null || measureB != null;
   const hasRefs = (tileRefs?.length ?? 0) > 0;
 
   const remeasure = useCallback(() => {
@@ -58,6 +61,10 @@ export default function SpotlightAnimation({
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
       if (!activeRef.current) return;
+      if (measureTiles) {
+        setTiles(measureTiles());
+        return;
+      }
       setTiles((prev) =>
         prev.map((tile, idx) => {
           const measureFn = idx === 0 ? measureA : idx === 1 ? measureB : undefined;
@@ -71,7 +78,7 @@ export default function SpotlightAnimation({
         }),
       );
     });
-  }, [measureA, measureB, tileRefs]);
+  }, [measureA, measureB, measureTiles, tileRefs]);
 
   useEffect(() => {
     activeRef.current = true;
