@@ -29,6 +29,8 @@ const BOMB_ICON = '\u{1F4A3}';
 const BOMB_IMPACT_MS = 760;
 const BOMB_PROMPT_MS = 2200;
 const ZERO_RESULTS_DELAY_MS = 2600;
+const WINNER_CELEBRATION_MS = 1900;
+const RESULT_MEDALS = ['1', '2', '3'] as const;
 
 function getPlayerLabel(player: BigSpenderPlayerState) {
   if (player.status === 'zeroFinished') return 'Zero';
@@ -162,6 +164,7 @@ export default function BigSpender(props: GenericMinigameProps) {
     latestRoundResult?.eliminatedPlayerIds.includes(humanPlayer.playerId),
   );
   const shouldShowResults = state.status === 'completed' && showResults;
+  const winnerCelebrationVisible = Boolean(state.status === 'completed' && winner && !showResults && !zeroDramaVisible);
 
   useEffect(() => {
     const timers = aiTimersRef.current;
@@ -276,7 +279,8 @@ export default function BigSpender(props: GenericMinigameProps) {
       const resetTimer = setTimeout(() => setShowResults(false), 0);
       return () => clearTimeout(resetTimer);
     }
-    const timer = setTimeout(() => setShowResults(true), humanZeroFinished ? ZERO_RESULTS_DELAY_MS : 0);
+    const revealDelay = humanZeroFinished ? ZERO_RESULTS_DELAY_MS : WINNER_CELEBRATION_MS;
+    const timer = setTimeout(() => setShowResults(true), revealDelay);
     return () => clearTimeout(timer);
   }, [humanZeroFinished, state.status]);
 
@@ -440,6 +444,14 @@ export default function BigSpender(props: GenericMinigameProps) {
         </div>
       )}
 
+      {winnerCelebrationVisible && winner && (
+        <div className="big-spender__screen-drama big-spender__screen-drama--winner" aria-live="assertive">
+          <span className="big-spender__screen-drama-kicker">Winner locked</span>
+          <strong>{winner.displayName}</strong>
+          <span className="big-spender__screen-drama-caption">Final results are coming in.</span>
+        </div>
+      )}
+
       {humanAdRescuePending && bombDramaStage === 'prompt' && (
         <div className="big-spender__overlay">
           <div className="big-spender__modal big-spender__modal--danger">
@@ -503,18 +515,28 @@ export default function BigSpender(props: GenericMinigameProps) {
       {shouldShowResults && (
         <div className="big-spender__overlay">
           <div className="big-spender__modal big-spender__modal--results">
-            <span className="big-spender__eyebrow">Final ranking</span>
-            <h2>{winner?.displayName ?? 'Someone'} wins</h2>
-            <ol className="big-spender__ranking">
+            <div className="big-spender__results-hero">
+              <span className="big-spender__results-trophy" aria-hidden="true">Winner</span>
+              <span className="big-spender__eyebrow">Final results</span>
+              <h2>{winner?.displayName ?? 'Someone'} wins</h2>
+              <p>Big Spender is complete. The final standings are locked.</p>
+            </div>
+            <ol className="big-spender__ranking big-spender__ranking--final" aria-label="Final rankings">
               {ranking.map((player) => (
-                <li key={player.playerId}>
-                  <span>{player.rank}</span>
+                <li
+                  key={player.playerId}
+                  className={[
+                    player.rank === 1 ? 'big-spender__ranking-item--winner' : '',
+                    player.isHuman ? 'big-spender__ranking-item--you' : '',
+                  ].join(' ')}
+                >
+                  <span>{RESULT_MEDALS[player.rank - 1] ?? player.rank}</span>
                   <strong>{player.displayName}</strong>
-                  <em>{player.balance} - {getPlayerLabel(player)} - {player.walletsOpened} wallets</em>
+                  <em>{player.balance} Eyeoleans - {getPlayerLabel(player)} - {player.walletsOpened} wallets</em>
                 </li>
               ))}
             </ol>
-            <button type="button" onClick={finish} disabled={resultCommitted}>Claim result</button>
+            <button type="button" className="big-spender__results-cta" onClick={finish} disabled={resultCommitted}>Continue</button>
           </div>
         </div>
       )}

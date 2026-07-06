@@ -382,6 +382,31 @@ describe('Big Spender: Broke or Boom logic', () => {
     expect(canOfferAdRescue(finale, player(finale, 'human'))).toBe(false);
   });
 
+  it('ends the finale immediately when a finalist opens a bomb', () => {
+    const state = makeState();
+    const finale = continueBigSpenderRound({
+      ...state,
+      status: 'roundSummary' as const,
+      roundNumber: 4,
+      roundResults: [{
+        roundNumber: 4,
+        finalistRound: false,
+        rankedPlayerIds: ['human', 'ai-1'],
+        eliminatedPlayerIds: [],
+        survivorPlayerIds: ['human', 'ai-1'],
+      }],
+    });
+
+    const completed = openBigSpenderWallet(finale, 'human', firstWallet(finale, 'human').walletId, 'normal', {
+      forcedOutcome: { type: 'bomb', amount: null },
+    });
+
+    expect(completed.status).toBe('completed');
+    expect(player(completed, 'human').balance).toBe(0);
+    expect(player(completed, 'human').gameRank).toBe(2);
+    expect(player(completed, 'ai-1').gameRank).toBe(1);
+  });
+
   it('ranks zero finishers, lowest non-zero scores, and bombed players correctly', () => {
     const state = makeState();
     const ranked = rankBigSpenderPlayers([

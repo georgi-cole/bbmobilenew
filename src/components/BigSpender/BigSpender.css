@@ -455,6 +455,7 @@
 }
 
 .big-spender__modal--results {
+  width: min(100%, 34rem);
   max-height: calc(100dvh - 2rem);
 }
 
@@ -510,6 +511,19 @@
   max-height: min(44dvh, 22rem);
 }
 
+.big-spender__ranking--final {
+  max-height: min(42dvh, 20rem);
+}
+
+.big-spender__ranking-item--winner {
+  border: 1px solid rgba(255, 224, 141, 0.5);
+  background: rgba(255, 218, 116, 0.12);
+}
+
+.big-spender__ranking-item--you {
+  box-shadow: inset 0 0 0 1px rgba(92, 236, 185, 0.35);
+}
+
 .big-spender__ranking-item--eliminated {
   border: 1px solid rgba(255, 112, 112, 0.38);
   background: rgba(255, 76, 76, 0.09);
@@ -543,6 +557,42 @@
   color: rgba(218, 231, 255, 0.78);
   font-size: 0.78rem;
   text-align: right;
+}
+
+.big-spender__results-hero {
+  display: grid;
+  justify-items: center;
+  gap: 0.28rem;
+  padding: 0.35rem 0 0.15rem;
+  text-align: center;
+}
+
+.big-spender__results-trophy {
+  display: inline-grid;
+  place-items: center;
+  min-width: 4.2rem;
+  height: 1.65rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e5ad36, #ffe08d);
+  color: #17120a;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.big-spender__results-hero h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 6vw, 2rem);
+}
+
+.big-spender__results-hero p {
+  max-width: 26rem;
+  font-size: 0.9rem;
+}
+
+.big-spender__results-cta {
+  width: 100%;
 }
 
 .big-spender__screen-drama {
@@ -634,6 +684,37 @@
   text-shadow: 0 0 2rem rgba(92, 236, 185, 0.5);
 }
 
+.big-spender__screen-drama--winner {
+  gap: 0.4rem;
+  align-content: center;
+  padding: 1rem;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 226, 139, 0.11) 0 0.4rem, transparent 0.4rem 1rem),
+    radial-gradient(circle, rgba(255, 224, 118, 0.22), rgba(8, 14, 22, 0.92) 66%);
+  color: #f8fbff;
+  text-align: center;
+  animation: big-spender-winner-fade 1900ms ease-out both;
+}
+
+.big-spender__screen-drama--winner::after {
+  background:
+    linear-gradient(90deg, transparent 0 44%, #ffe38a 44% 56%, transparent 56% 100%) 16% 24% / 2.4rem 0.45rem no-repeat,
+    linear-gradient(90deg, transparent 0 44%, #5cecb9 44% 56%, transparent 56% 100%) 76% 28% / 2.6rem 0.45rem no-repeat,
+    linear-gradient(90deg, transparent 0 44%, #ff738a 44% 56%, transparent 56% 100%) 32% 72% / 2.8rem 0.45rem no-repeat,
+    linear-gradient(90deg, transparent 0 44%, #8eb8ff 44% 56%, transparent 56% 100%) 68% 70% / 2.5rem 0.45rem no-repeat;
+  animation: big-spender-confetti-pop 1500ms ease-out both;
+}
+
+.big-spender__screen-drama--winner strong {
+  position: relative;
+  z-index: 1;
+  max-width: min(28rem, 86vw);
+  overflow-wrap: anywhere;
+  font-size: clamp(2.2rem, 12vw, 5rem);
+  line-height: 1;
+  text-shadow: 0 0 2rem rgba(255, 224, 118, 0.5);
+}
+
 .big-spender__screen-drama-kicker {
   font-size: 0.8rem;
   font-weight: 900;
@@ -688,6 +769,13 @@
 @keyframes big-spender-status-loader {
   from { background-position-x: 0; }
   to { background-position-x: 0.48rem; }
+}
+
+@keyframes big-spender-winner-fade {
+  0% { opacity: 0; transform: scale(0.98); }
+  16% { opacity: 1; transform: scale(1); }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.02); }
 }
 
 @media (max-width: 340px) {
