@@ -334,7 +334,7 @@ describe('SpotlightAnimation — viewport tracking with measureTiles', () => {
     try {
       const { container } = render(
         <SpotlightAnimation
-          tiles={measureTiles()}
+          tiles={[]}
           caption="Track the full ceremony"
           onDone={vi.fn()}
           measureTiles={measureTiles}
@@ -342,6 +342,10 @@ describe('SpotlightAnimation — viewport tracking with measureTiles', () => {
       );
 
       await act(async () => {});
+      expect(rafCallback).not.toBeNull();
+      await act(async () => {
+        if (rafCallback) rafCallback(0 as unknown as DOMHighResTimeStamp);
+      });
       await act(async () => { vi.advanceTimersByTime(200); });
 
       const badge = container.querySelector<HTMLElement>('.ceremony-overlay__badge');
@@ -368,6 +372,61 @@ describe('SpotlightAnimation — viewport tracking with measureTiles', () => {
       await act(async () => {});
 
       expect(measureTiles.mock.calls.length).toBeGreaterThan(callsBeforeResize);
+    } finally {
+      rafSpy.mockRestore();
+      cafSpy.mockRestore();
+    }
+  });
+
+  it('does not fall back early when measureTiles ceremonies start with an empty tile list', async () => {
+    const sourceRect = makeRect(20, 40, 32, 32);
+    const targetRect = makeRect(120, 200, 60, 80);
+    const measureTiles = vi.fn(() => [
+      { rect: sourceRect, glowTone: 'gold' as const },
+      {
+        rect: targetRect,
+        badge: 'ðŸ‘‘',
+        badgeStart: sourceRect,
+        badgeLabel: 'Winner badge',
+      },
+    ]);
+
+    let rafCallback: FrameRequestCallback | null = null;
+    const rafSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb: FrameRequestCallback): number => {
+        rafCallback = cb;
+        return 1;
+      });
+    const cafSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation((_id: number) => {});
+
+    try {
+      const onDone = vi.fn();
+      const { container } = render(
+        <SpotlightAnimation
+          tiles={[]}
+          caption="Track the full ceremony"
+          onDone={onDone}
+          measureTiles={measureTiles}
+        />,
+      );
+
+      await act(async () => {});
+      expect(onDone).not.toHaveBeenCalled();
+      expect(container.querySelector('.ceremony-overlay')).toBeNull();
+      expect(rafCallback).not.toBeNull();
+
+      await act(async () => {
+        if (rafCallback) rafCallback(0 as unknown as DOMHighResTimeStamp);
+      });
+      await act(async () => { vi.advanceTimersByTime(200); });
+
+      expect(measureTiles).toHaveBeenCalled();
+      expect(onDone).not.toHaveBeenCalled();
+      expect(container.querySelector('.ceremony-overlay')).not.toBeNull();
+      expect(container.querySelector('.ceremony-overlay__glow')).not.toBeNull();
     } finally {
       rafSpy.mockRestore();
       cafSpy.mockRestore();

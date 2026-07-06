@@ -49,7 +49,7 @@ export default function SpotlightAnimation({
   onDone,
   ...rest
 }: SpotlightAnimationProps) {
-  const [tiles, setTiles] = useState<CeremonyTile[]>(initialTiles);
+  const [tiles, setTiles] = useState<CeremonyTile[] | null>(measureTiles ? null : initialTiles);
   const rafRef = useRef<number>(0);
   const activeRef = useRef(true);
 
@@ -66,7 +66,7 @@ export default function SpotlightAnimation({
         return;
       }
       setTiles((prev) =>
-        prev.map((tile, idx) => {
+        (prev ?? []).map((tile, idx) => {
           const measureFn = idx === 0 ? measureA : idx === 1 ? measureB : undefined;
           const refEl = tileRefs?.[idx]?.current ?? null;
           if (!measureFn && !refEl) return tile;
@@ -125,6 +125,11 @@ export default function SpotlightAnimation({
       ro?.disconnect();
     };
   }, [hasMeasure, hasRefs, remeasure, tileRefs]);
+
+  // When a full-tile measurement callback is driving the overlay, wait for the
+  // first post-commit measurement before mounting CeremonyOverlay. Otherwise it
+  // sees an empty tile set and treats the animation as a headless fallback.
+  if (tiles == null) return null;
 
   return <CeremonyOverlay {...rest} tiles={tiles} onDone={onDone} />;
 }
