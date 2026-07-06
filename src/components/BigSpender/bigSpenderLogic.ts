@@ -465,6 +465,58 @@ function completeRoundMutable(state: BigSpenderState) {
   return state;
 }
 
+function completeFinaleAfterBombMutable(state: BigSpenderState, bombedPlayerId: string) {
+  const roundPlayers = state.players.filter((player) => state.activePlayerIds.includes(player.playerId));
+  const bombedPlayer = roundPlayers.find((player) => player.playerId === bombedPlayerId);
+  if (bombedPlayer) {
+    bombedPlayer.balance = 0;
+    bombedPlayer.eliminatedRound = state.roundNumber;
+    if (!state.eliminatedPlayerIds.includes(bombedPlayer.playerId)) {
+      state.eliminatedPlayerIds.push(bombedPlayer.playerId);
+    }
+  }
+
+  const winner = roundPlayers.find((player) => player.playerId !== bombedPlayerId);
+  if (winner && winner.finalizedAt == null) {
+    finalizePlayer(winner, state, 'locked');
+  }
+
+  const rankedPlayerIds = [
+    ...(winner ? [winner.playerId] : []),
+    ...(bombedPlayer ? [bombedPlayer.playerId] : []),
+  ];
+
+  if (winner) {
+    winner.gameRank = 1;
+    winner.eliminatedRound = null;
+  }
+  if (bombedPlayer) {
+    bombedPlayer.gameRank = rankedPlayerIds.length;
+  }
+
+  state.roundResults.push({
+    roundNumber: state.roundNumber,
+    finalistRound: true,
+    rankedPlayerIds,
+    eliminatedPlayerIds: bombedPlayer ? [bombedPlayer.playerId] : [],
+    survivorPlayerIds: [],
+  });
+  state.status = 'completed';
+  state.currentTurnPlayerId = null;
+  state.postWalletLockPlayerId = null;
+  state.pendingBonus = null;
+  state.pendingAdRescue = null;
+  state.pendingSecondChance = null;
+  markTurnFlags(state);
+  syncVisibleBoard(state);
+  appendEvent(state, {
+    type: 'gameCompleted',
+    playerId: winner?.playerId,
+    message: winner ? `${winner.displayName} wins the finale.` : 'The finale is complete.',
+  });
+  return state;
+}
+
 function continueRoundSummaryMutable(state: BigSpenderState) {
   if (state.status !== 'roundSummary') return state;
   const latestRound = state.roundResults[state.roundResults.length - 1];
@@ -657,6 +709,10 @@ function markBombedMutable(state: BigSpenderState, player: BigSpenderPlayerState
 }
 
 function finishAfterResolution(state: BigSpenderState) {
+  const finaleBombedPlayer = isFinaleRound(state)
+    ? state.players.find((player) => isRoundParticipant(state, player.playerId) && player.status === 'bombed')
+    : null;
+  if (finaleBombedPlayer) return completeFinaleAfterBombMutable(state, finaleBombedPlayer.playerId);
   completeIfNeeded(state);
   if (state.status === 'completed' || state.pendingAdRescue || state.pendingBonus || state.pendingSecondChance) return state;
   if (isFinaleRound(state)) return advanceFinaleTurnMutable(state);
@@ -836,6 +892,7 @@ export function openBigSpenderWallet(
       return state;
     }
     markBombedMutable(state, player);
+    if (isFinaleRound(state)) return completeFinaleAfterBombMutable(state, player.playerId);
     return finishAfterResolution(state);
   }
 
