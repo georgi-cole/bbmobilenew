@@ -82,7 +82,6 @@ import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
 import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
-import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
 import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
 import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
@@ -3272,10 +3271,10 @@ export default function GameScreen() {
       {/* ── Nomination ceremony — spotlight cutout with ❓ badges ─────────── */}
       {/* Shown for BOTH human LOH (deferred commit) and AI LOH (already committed). */}
       {shouldShowNominationCeremony && (
-        <CeremonyOverlay
+        <SpotlightAnimation
           tiles={[]}
           layoutSignal={responsiveGameLayout.revision}
-          resolveTiles={() => {
+          measureTiles={() => {
             const lohId = lohCeremonyTileId
             if (!lohId) return []
             const lohRect = getTileRect(lohId)
@@ -3891,10 +3890,10 @@ export default function GameScreen() {
       {/* When the human was outgoing LOH and skipped the minigame, advance()    */}
       {/* picks the winner directly. This overlay shows the 👑 ceremony.         */}
       {showAdvanceHohCeremony && game.lohId && (
-        <CeremonyOverlay
+        <SpotlightAnimation
           tiles={[]}
           layoutSignal={responsiveGameLayout.revision}
-          resolveTiles={() => {
+          measureTiles={() => {
             const winnerId = game.lohId!
             const winnerPlayer = game.players.find((p) => p.id === winnerId)
             return [{
@@ -3914,10 +3913,9 @@ export default function GameScreen() {
 
       {/* ── CeremonyOverlay — Replacement nominee (human LOH deferred) ──── */}
       {pendingReplacementCeremony && (
-        <CeremonyOverlay
-          tiles={[]}
-          layoutSignal={responsiveGameLayout.revision}
-          resolveTiles={pendingReplacementCeremony.resolveTiles}
+        <SpotlightAnimation
+          tiles={pendingReplacementCeremony.tiles}
+          measureTiles={pendingReplacementCeremony.resolveTiles}
           caption={pendingReplacementCeremony.caption}
           subtitle={pendingReplacementCeremony.subtitle}
           onDone={handleReplacementCeremonyDone}
@@ -3929,10 +3927,10 @@ export default function GameScreen() {
       {/* Only the replacement nominee (last in nomineeIds, pushed by store) gets */}
       {/* a badge. The badge flies from the LOH tile → replacement tile.          */}
       {showAiReplacementAnim && game.nomineeIds.length > 0 && (
-        <CeremonyOverlay
+        <SpotlightAnimation
           tiles={[]}
           layoutSignal={responsiveGameLayout.revision}
-          resolveTiles={() => {
+          measureTiles={() => {
             const replacementId = game.nomineeIds[game.nomineeIds.length - 1]
             const sourceId = game.specialVeto?.activeType === 'diamond' ? game.posWinnerId : game.lohId
             const sourceRect = sourceId ? getTileRect(sourceId) : null
@@ -3963,10 +3961,10 @@ export default function GameScreen() {
       )}
 
       {showPublicSaveCeremony && pendingPublicSaveResult && (
-        <CeremonyOverlay
+        <SpotlightAnimation
           tiles={[]}
           layoutSignal={responsiveGameLayout.revision}
-          resolveTiles={() => [{
+          measureTiles={() => [{
             rect: getTileRect(pendingPublicSaveResult.savedId),
             badge: '❓',
             badgeImageSrc: NOMINATION_BADGE_SRC,
@@ -3984,10 +3982,9 @@ export default function GameScreen() {
 
       {/* ── CeremonyOverlay — POS save ceremony (human POS holder) ────── */}
       {showSaveCeremony && pendingSaveCeremony && (
-        <CeremonyOverlay
-          tiles={[]}
-          layoutSignal={responsiveGameLayout.revision}
-          resolveTiles={pendingSaveCeremony.resolveTiles}
+        <SpotlightAnimation
+          tiles={pendingSaveCeremony.tiles}
+          measureTiles={pendingSaveCeremony.resolveTiles}
           caption={pendingSaveCeremony.caption}
           subtitle={pendingSaveCeremony.subtitle}
           onDone={handleSaveCeremonyDone}
