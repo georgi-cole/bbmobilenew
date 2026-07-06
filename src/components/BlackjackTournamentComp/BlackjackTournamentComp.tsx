@@ -24,6 +24,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
+  FINAL_TARGET_SCORE,
   initBlackjackTournament,
   resolveSpinner,
   selectPair,
@@ -136,11 +137,21 @@ interface RosterBarProps {
   controllingId: string | null;
   humanId: string | null;
   getName: (id: string) => string;
+  playerScores?: Record<string, number>;
+  finalistIds?: [string, string] | null;
 }
 
 // ─── RosterBar ────────────────────────────────────────────────────────────────
 
-function RosterBar({ allIds, eliminatedIds, controllingId, humanId, getName }: RosterBarProps) {
+function RosterBar({
+  allIds,
+  eliminatedIds,
+  controllingId,
+  humanId,
+  getName,
+  playerScores = {},
+  finalistIds = null,
+}: RosterBarProps) {
   return (
     <div className="bjt-roster-wrap" aria-label="Remaining players">
       <div className="bjt-roster">
@@ -148,6 +159,13 @@ function RosterBar({ allIds, eliminatedIds, controllingId, humanId, getName }: R
           const isElim = eliminatedIds.includes(id);
           const isController = id === controllingId;
           const isYou = id === humanId;
+          const score = playerScores[id];
+          const scoreLabel =
+            score == null || isElim
+              ? null
+              : finalistIds?.includes(id)
+                ? `${score}/${FINAL_TARGET_SCORE}`
+                : `${score} pts`;
           const classes = [
             'bjt-roster-item',
             isElim ? 'bjt-roster-item--eliminated' : '',
@@ -167,6 +185,7 @@ function RosterBar({ allIds, eliminatedIds, controllingId, humanId, getName }: R
                 }}
               />
               <span className="bjt-roster-name">{getName(id)}</span>
+              {scoreLabel && <span className="bjt-roster-score">{scoreLabel}</span>}
               {isController && !isElim && (
                 <span className="bjt-roster-ctrl" aria-label="In control">⭐</span>
               )}
@@ -474,6 +493,7 @@ export default function BlackjackTournamentComp({
 
   // Maintain a stable full-order list of all participant IDs.
   const allParticipantIds = participantIds;
+  const isFinalDuelActive = bt.finalistIds !== null;
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
@@ -544,6 +564,8 @@ export default function BlackjackTournamentComp({
           controllingId={null}
           humanId={bt.humanPlayerId}
           getName={getName}
+          playerScores={bt.playerScores}
+          finalistIds={bt.finalistIds}
         />
       </div>
     );
@@ -578,7 +600,11 @@ export default function BlackjackTournamentComp({
     return (
       <div className="bjt-container bjt-pick" role="region" aria-label="Fighter selection">
         <div className="bjt-players-remaining" role="status" aria-live="polite">
-          <span className="bjt-badge">{bt.remainingPlayerIds.length} remaining</span>
+          <span className="bjt-badge">
+            {isFinalDuelActive
+              ? `Final duel: first to ${FINAL_TARGET_SCORE}`
+              : `${bt.remainingPlayerIds.length} remaining`}
+          </span>
           {bt.eliminatedPlayerIds.length > 0 && (
             <span className="bjt-eliminated-list">
               Eliminated: {bt.eliminatedPlayerIds.map((id) => getName(id)).join(', ')}
@@ -686,6 +712,8 @@ export default function BlackjackTournamentComp({
           controllingId={controllerId}
           humanId={bt.humanPlayerId}
           getName={getName}
+          playerScores={bt.playerScores}
+          finalistIds={bt.finalistIds}
         />
       </div>
     );
@@ -711,7 +739,15 @@ export default function BlackjackTournamentComp({
 
     return (
       <div className="bjt-container bjt-duel" role="region" aria-label="Blackjack duel">
-        <h2 className="bjt-title">⚔️ Duel: {aName} vs {bName}</h2>
+        <h2 className="bjt-title">
+          ⚔️ {isFinalDuelActive ? 'Final Duel' : 'Duel'}: {aName} vs {bName}
+        </h2>
+        {isFinalDuelActive && (
+          <p className="bjt-final-score">
+            First to {FINAL_TARGET_SCORE}: {aName} {bt.playerScores[duel.fighterAId] ?? 0} -
+            {bt.playerScores[duel.fighterBId] ?? 0} {bName}
+          </p>
+        )}
 
         {/* Fast-forward button */}
         <button
@@ -818,6 +854,8 @@ export default function BlackjackTournamentComp({
           controllingId={bt.controllingPlayerId}
           humanId={bt.humanPlayerId}
           getName={getName}
+          playerScores={bt.playerScores}
+          finalistIds={bt.finalistIds}
         />
       </div>
     );
@@ -856,6 +894,8 @@ export default function BlackjackTournamentComp({
             controllingId={bt.controllingPlayerId}
             humanId={bt.humanPlayerId}
             getName={getName}
+            playerScores={bt.playerScores}
+            finalistIds={bt.finalistIds}
           />
         </div>
       );
@@ -863,6 +903,14 @@ export default function BlackjackTournamentComp({
 
     const winnerName = bt.duelWinnerId ? getName(bt.duelWinnerId) : '';
     const loserName = bt.duelLoserId ? getName(bt.duelLoserId) : '';
+    const loserEliminated = bt.duelEliminatedId === bt.duelLoserId;
+    const winnerPreviewScore = bt.duelWinnerId
+      ? (bt.playerScores[bt.duelWinnerId] ?? 0) + 1
+      : 0;
+    const loserPreviewScore = bt.duelLoserId
+      ? Math.max(0, (bt.playerScores[bt.duelLoserId] ?? 0) - 1)
+      : 0;
+    const finalWinPending = isFinalDuelActive && winnerPreviewScore >= FINAL_TARGET_SCORE;
 
     return (
       <div className="bjt-container bjt-result" role="status" aria-live="assertive">
@@ -909,18 +957,33 @@ export default function BlackjackTournamentComp({
         </div>
 
         <p className="bjt-eliminated-msg">
-          💀 {loserName} has been eliminated!
+          {isFinalDuelActive
+            ? finalWinPending
+              ? `🏁 ${winnerName} reaches ${FINAL_TARGET_SCORE} and wins the final duel!`
+              : `${winnerName} scores! ${winnerPreviewScore}/${FINAL_TARGET_SCORE}`
+            : loserEliminated
+              ? `💀 ${loserName} has been eliminated!`
+              : `${winnerName} gains 1 point; ${loserName} drops to ${loserPreviewScore}.`}
         </p>
         <p className="bjt-remaining-msg">
-          {bt.remainingPlayerIds.filter((id) => id !== bt.duelLoserId).length} players remain
+          {isFinalDuelActive
+            ? `Final score preview: ${winnerName} ${winnerPreviewScore}/${FINAL_TARGET_SCORE}`
+            : loserEliminated
+              ? `${bt.remainingPlayerIds.filter((id) => id !== bt.duelLoserId).length} players remain`
+              : `${bt.remainingPlayerIds.length} players remain`}
         </p>
 
         <RosterBar
           allIds={allParticipantIds}
-          eliminatedIds={[...bt.eliminatedPlayerIds, ...(bt.duelLoserId ? [bt.duelLoserId] : [])]}
+          eliminatedIds={[
+            ...bt.eliminatedPlayerIds,
+            ...(bt.duelEliminatedId ? [bt.duelEliminatedId] : []),
+          ]}
           controllingId={null}
           humanId={bt.humanPlayerId}
           getName={getName}
+          playerScores={bt.playerScores}
+          finalistIds={bt.finalistIds}
         />
       </div>
     );
@@ -956,6 +1019,8 @@ export default function BlackjackTournamentComp({
                 controllingId={bt.winnerId ?? null}
                 humanId={bt.humanPlayerId}
                 getName={getName}
+                playerScores={bt.playerScores}
+                finalistIds={bt.finalistIds}
               />
             </>
           ) : undefined}

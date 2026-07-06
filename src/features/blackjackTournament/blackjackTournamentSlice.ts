@@ -77,6 +77,10 @@ export interface BlackjackTournamentState {
   allPlayerIds: string[];
   remainingPlayerIds: string[];
   eliminatedPlayerIds: string[];
+  /** Main tournament starts each player at 3 points/lives. Finalists reset to 0. */
+  playerScores: Record<string, number>;
+  /** Set when the final duel begins; finalists race from 0 to FINAL_TARGET_SCORE. */
+  finalistIds: [string, string] | null;
 
   humanPlayerId: string | null;
   /** True once the human has been eliminated (spectator mode). */
@@ -94,6 +98,8 @@ export interface BlackjackTournamentState {
   duelWinnerId: string | null;
   /** Loser of the most recently completed duel. */
   duelLoserId: string | null;
+  /** Set when the duel loser has reached 0 and is actually eliminated. */
+  duelEliminatedId: string | null;
   /** True when the last duel ended in a tie — rematch required. */
   isDuelTie: boolean;
   /** Running count of rematches for the current duel pair (resets on new pair). */
@@ -121,6 +127,8 @@ const AI_DECISION_RNG_MASK = 0xdeadbeef;
 const REMATCH_CAP_RNG_OFFSET = 128;
 /** Maximum number of rematches before forcing a deterministic fallback winner. */
 export const REMATCH_CAP = 100;
+export const STARTING_PLAYER_SCORE = 3;
+export const FINAL_TARGET_SCORE = 3;
 
 /** AI stands on this total or higher (standard soft-17 rule). */
 export const AI_STAND_THRESHOLD = 17;
@@ -342,6 +350,8 @@ const initialState: BlackjackTournamentState = {
   allPlayerIds: [],
   remainingPlayerIds: [],
   eliminatedPlayerIds: [],
+  playerScores: {},
+  finalistIds: null,
 
   humanPlayerId: null,
   isSpectating: false,
@@ -353,6 +363,7 @@ const initialState: BlackjackTournamentState = {
   currentDuel: null,
   duelWinnerId: null,
   duelLoserId: null,
+  duelEliminatedId: null,
   isDuelTie: false,
   rematchCount: 0,
   duelIndex: 0,
@@ -381,6 +392,14 @@ function autoSetFighters(
     state.fighterAId = null;
     state.fighterBId = null;
   }
+}
+
+function enterFinalDuel(state: BlackjackTournamentState): void {
+  if (state.remainingPlayerIds.length !== 2) return;
+  const finalists = [state.remainingPlayerIds[0], state.remainingPlayerIds[1]] as [string, string];
+  state.finalistIds = finalists;
+  state.playerScores[finalists[0]] = 0;
+  state.playerScores[finalists[1]] = 0;
 }
 
 /**
@@ -449,6 +468,10 @@ const blackjackTournamentSlice = createSlice({
       state.allPlayerIds = [...participantIds];
       state.remainingPlayerIds = [...participantIds];
       state.eliminatedPlayerIds = [];
+      state.playerScores = Object.fromEntries(
+        participantIds.map((id) => [id, STARTING_PLAYER_SCORE]),
+      );
+      state.finalistIds = null;
       state.humanPlayerId = humanPlayerId;
       state.isSpectating = false;
       state.controllingPlayerId = null;
@@ -457,6 +480,7 @@ const blackjackTournamentSlice = createSlice({
       state.currentDuel = null;
       state.duelWinnerId = null;
       state.duelLoserId = null;
+      state.duelEliminatedId = null;
       state.isDuelTie = false;
       state.rematchCount = 0;
       state.duelIndex = 0;
@@ -468,6 +492,9 @@ const blackjackTournamentSlice = createSlice({
         state.winnerId = participantIds[0] ?? null;
         state.phase = 'complete';
       } else {
+        if (participantIds.length === 2) {
+          enterFinalDuel(state);
+        }
         state.phase = 'spin';
       }
     },
@@ -578,15 +605,26 @@ const blackjackTournamentSlice = createSlice({
           );
           state.duelWinnerId = fallback === 'fighterA' ? duel.fighterAId : duel.fighterBId;
           state.duelLoserId = fallback === 'fighterA' ? duel.fighterBId : duel.fighterAId;
+          state.duelEliminatedId =
+            state.finalistIds === null &&
+            ((state.playerScores[state.duelLoserId] ?? STARTING_PLAYER_SCORE) <= 1)
+              ? state.duelLoserId
+              : null;
           state.isDuelTie = false;
         } else {
           state.duelWinnerId = null;
           state.duelLoserId = null;
+          state.duelEliminatedId = null;
           state.isDuelTie = true;
         }
       } else {
         state.duelWinnerId = outcome === 'fighterA' ? duel.fighterAId : duel.fighterBId;
         state.duelLoserId = outcome === 'fighterA' ? duel.fighterBId : duel.fighterAId;
+        state.duelEliminatedId =
+          state.finalistIds === null &&
+          ((state.playerScores[state.duelLoserId] ?? STARTING_PLAYER_SCORE) <= 1)
+            ? state.duelLoserId
+            : null;
         state.isDuelTie = false;
       }
       state.phase = 'duel_result';
@@ -619,21 +657,59 @@ const blackjackTournamentSlice = createSlice({
         state.isDuelTie = false;
         state.duelWinnerId = null;
         state.duelLoserId = null;
+        state.duelEliminatedId = null;
         state.phase = 'duel';
         return;
       }
 
-      if (!state.duelLoserId) return;
+      if (!state.duelWinnerId || !state.duelLoserId) return;
 
+      const winner = state.duelWinnerId;
       const loser = state.duelLoserId;
-      state.remainingPlayerIds = state.remainingPlayerIds.filter((id) => id !== loser);
-      state.eliminatedPlayerIds.push(loser);
+      const isFinalDuel = state.finalistIds !== null;
 
-      if (state.humanPlayerId === loser) {
-        state.isSpectating = true;
+      if (isFinalDuel) {
+        const nextWinnerScore = (state.playerScores[winner] ?? 0) + 1;
+        state.playerScores[winner] = nextWinnerScore;
+
+        state.controllingPlayerId = winner;
+        state.fighterAId = null;
+        state.fighterBId = null;
+        state.currentDuel = null;
+        state.duelEliminatedId = null;
+        state.rematchCount = 0;
+        state.duelIndex++;
+
+        if (nextWinnerScore >= FINAL_TARGET_SCORE) {
+          state.winnerId = winner;
+          state.phase = 'complete';
+          return;
+        }
+
+        autoSetFighters(state);
+        state.phase = 'pick_opponent';
+        return;
       }
 
-      state.controllingPlayerId = state.duelWinnerId;
+      state.playerScores[winner] = (state.playerScores[winner] ?? STARTING_PLAYER_SCORE) + 1;
+      const nextLoserScore = Math.max(0, (state.playerScores[loser] ?? STARTING_PLAYER_SCORE) - 1);
+      state.playerScores[loser] = nextLoserScore;
+
+      if (nextLoserScore <= 0) {
+        state.remainingPlayerIds = state.remainingPlayerIds.filter((id) => id !== loser);
+        if (!state.eliminatedPlayerIds.includes(loser)) {
+          state.eliminatedPlayerIds.push(loser);
+        }
+        state.duelEliminatedId = loser;
+
+        if (state.humanPlayerId === loser) {
+          state.isSpectating = true;
+        }
+      } else {
+        state.duelEliminatedId = null;
+      }
+
+      state.controllingPlayerId = winner;
       state.fighterAId = null;
       state.fighterBId = null;
       state.currentDuel = null;
@@ -644,6 +720,9 @@ const blackjackTournamentSlice = createSlice({
         state.winnerId = state.remainingPlayerIds[0] ?? null;
         state.phase = 'complete';
       } else {
+        if (state.remainingPlayerIds.length === 2 && state.finalistIds === null) {
+          enterFinalDuel(state);
+        }
         autoSetFighters(state);
         state.phase = 'pick_opponent';
       }

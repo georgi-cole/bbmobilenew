@@ -95,6 +95,15 @@ function runOneDuelHeadless(store: ReturnType<typeof makeIntegrationStore>): voi
   }
 }
 
+function runUntilCompleteHeadless(
+  store: ReturnType<typeof makeIntegrationStore>,
+  safety = 1200,
+): void {
+  while (store.getState().blackjackTournament.phase !== 'complete' && safety-- > 0) {
+    runOneDuelHeadless(store);
+  }
+}
+
 // ─── Registry wiring ──────────────────────────────────────────────────────────
 
 describe('Registry — blackjackTournament entry', () => {
@@ -174,7 +183,7 @@ describe('Integration — full 2-player tournament', () => {
   it('resolves to complete with a valid winner', () => {
     const store = makeIntegrationStore();
     init2PlayerStore(store);
-    runOneDuelHeadless(store);
+    runUntilCompleteHeadless(store);
     const bt = store.getState().blackjackTournament;
     expect(bt.phase).toBe('complete');
     expect(['alice', 'bob']).toContain(bt.winnerId);
@@ -183,7 +192,7 @@ describe('Integration — full 2-player tournament', () => {
   it('eliminated + remaining = all players', () => {
     const store = makeIntegrationStore();
     init2PlayerStore(store);
-    runOneDuelHeadless(store);
+    runUntilCompleteHeadless(store);
     const bt = store.getState().blackjackTournament;
     const combined = [...bt.remainingPlayerIds, ...bt.eliminatedPlayerIds].sort();
     expect(combined).toEqual(bt.allPlayerIds.slice().sort());
@@ -204,7 +213,7 @@ describe('resolveBlackjackTournamentOutcome — idempotency', () => {
         humanPlayerId: null,
       }),
     );
-    runOneDuelHeadless(store);
+    runUntilCompleteHeadless(store);
     expect(store.getState().blackjackTournament.phase).toBe('complete');
     return store;
   }
@@ -238,7 +247,7 @@ describe('resolveBlackjackTournamentOutcome — idempotency', () => {
         humanPlayerId: null,
       }),
     );
-    runOneDuelHeadless(store);
+    runUntilCompleteHeadless(store);
     expect(store.getState().blackjackTournament.phase).toBe('complete');
     store.dispatch(resolveBlackjackTournamentOutcome());
     // Should be a no-op (phase mismatch)
