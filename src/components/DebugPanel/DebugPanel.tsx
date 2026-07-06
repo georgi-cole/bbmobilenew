@@ -100,6 +100,7 @@ const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'coup', label: 'Detox Safety' },
   { value: 'spotlight', label: 'Force Majeure Safety' },
   { value: 'democracia', label: 'Democracia' },
+  { value: 'twinShock', label: 'Twin Shock' },
 ];
 
 let incomingSeedCounter = 0;

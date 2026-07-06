@@ -69,4 +69,26 @@ describe('DebugPanel forced shock controls', () => {
 
     expect(store.getState().game.pendingForcedShock?.type).toBe('dayStartShock')
   })
+
+  it('includes Twin Shock in the force shock dropdown and queues it', async () => {
+    const user = userEvent.setup()
+    const store = makeStore()
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/game?debug=1&qa=1']}>
+          <DebugPanel />
+        </MemoryRouter>
+      </Provider>,
+    )
+
+    const forceShockSelect = screen.getByRole('combobox', { name: 'Force Shock' })
+
+    expect(screen.getByRole('option', { name: 'Twin Shock' })).toBeDefined()
+
+    await user.selectOptions(forceShockSelect, 'twinShock')
+    await user.click(screen.getByRole('button', { name: 'Queue' }))
+
+    expect(store.getState().game.pendingForcedShock?.type).toBe('twinShock')
+  })
 })

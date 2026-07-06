@@ -59,6 +59,10 @@ export interface Player {
   finalRank?: number;
   /** True once the player is confirmed season winner. */
   isWinner?: boolean;
+  /** Twin Shock: Lia keeps her id but plays as the combined Lia & Ali contestant. */
+  twinMode?: 'combined';
+  /** True for housemates inserted after the starting roster. */
+  lateEntrant?: boolean;
 }
 
 // ─── Minigame types ───────────────────────────────────────────────────────────
@@ -383,7 +387,13 @@ export interface SpecialVetoState {
   awaitingVipSecondSaveTarget: boolean;
 }
 
-export type ForcedShockType = 'doubleEviction' | 'battleBack' | SpecialVetoType | 'democracia' | 'dayStartShock';
+export type ForcedShockType =
+  | 'doubleEviction'
+  | 'battleBack'
+  | SpecialVetoType
+  | 'democracia'
+  | 'dayStartShock'
+  | 'twinShock';
 
 export interface ForcedShockState {
   /** Shock that should be triggered from the debug menu at the next safe chance. */
@@ -410,6 +420,36 @@ export interface DayStartShockState {
   triggeredWeek: number;
   /** Whether the shock was triggered by the random roll or the debug queue. */
   source: 'random' | 'debug';
+}
+
+export type TwinShockStatus =
+  | 'inactive'
+  | 'day4_pending'
+  | 'day4_asked_no_correct_guess'
+  | 'resolved_discovered'
+  | 'resolved_mission_success'
+  | 'resolved_secret_lost'
+  | 'cancelled_pre_day4_eviction';
+
+export type TwinShockPromptStage =
+  | 'day4_initial'
+  | 'day4_detail'
+  | 'day5_final'
+  | 'day5_give_up'
+  | 'secret_lost';
+
+export type TwinShockResolution =
+  | 'discovered'
+  | 'mission_success'
+  | 'secret_lost';
+
+export interface TwinShockState {
+  status: TwinShockStatus;
+  promptStage: TwinShockPromptStage | null;
+  queuedDay: number | null;
+  retryCount: number;
+  cluesShownDays: number[];
+  pendingRevealAnimation?: 'combined' | 'ali_enters' | null;
 }
 
 // ─── Public's Favorite voting twist ──────────────────────────────────────────
@@ -732,6 +772,15 @@ export interface GameState {
    * Feature-gated via settings.sim.enableFavoritePlayer.
    */
   favoritePlayer?: FavoritePlayerState;
+  /** One-time hidden identity twist centered on Lia and Ali. */
+  twinShock?: TwinShockState;
+  /** Global per-save flag: once activated, Twin Shock never repeats. */
+  twinShockConsumed?: boolean;
+  twinShockActivatedSeason?: number | null;
+  twinShockResolution?: TwinShockResolution | null;
+  twinShockResolvedDay?: number | null;
+  twinShockDiscoveredByUser?: boolean;
+  liaForcedUntilTwinShockResolved?: boolean;
   /** Explicit post-jury finale state machine controlling the end-of-season flow. */
   seasonFinale?: SeasonFinaleState | null;
   /**

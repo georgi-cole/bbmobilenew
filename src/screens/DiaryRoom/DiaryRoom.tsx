@@ -22,6 +22,7 @@ import {
   declineSecretMission,
   claimMissionReward,
   recordSecretMissionEasterEgg,
+  submitTwinShockAnswer,
   selectAlivePlayers,
 } from '../../store/gameSlice';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
@@ -34,6 +35,7 @@ import {
   pickMissionImmunityDuration,
   type SecretMissionBoxRewardType,
 } from '../../bb/secretMission';
+import { resolveTwinShockTurn } from '../../bb/twinShock';
 import { applyInfluenceDelta } from '../../social/socialSlice';
 import {
   createInitialBigEyeState,
@@ -679,6 +681,33 @@ export default function DiaryRoom() {
       saveChat(playerId, updated);
       return updated;
     });
+
+    if (activeConfessionalDecision?.type === 'twin_shock' && gameState.twinShock?.promptStage) {
+      const twinResult = resolveTwinShockTurn(gameState.twinShock, text, {
+        playerName,
+        liaActive: alivePlayers.some((player) => player.id === 'lia'),
+      });
+      dispatch(submitTwinShockAnswer(text));
+      setBbTyping(true);
+      await new Promise<void>((resolve) => setTimeout(resolve, 550));
+      setBbTyping(false);
+      const bbMessages: ChatMessage[] = twinResult.messages.map((messageText) => ({
+        id: crypto.randomUUID(),
+        role: 'bb',
+        text: messageText,
+        timestamp: Date.now(),
+      }));
+      setMessages((prev) => {
+        const withSeen = prev.map((m) =>
+          m.role === 'user' && m.status !== 'seen' ? { ...m, status: 'seen' as MessageStatus } : m,
+        );
+        const withReply = [...withSeen, ...bbMessages];
+        saveChat(playerId, withReply);
+        return withReply;
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
       const resp = await generateBigBrotherReply({
