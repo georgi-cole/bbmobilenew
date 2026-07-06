@@ -277,6 +277,29 @@ describe('completeChallenge — positive-score winner preference', () => {
   });
 });
 
+describe('startChallenge - LOH participant filtering', () => {
+  it('excludes the outgoing LOH from LOH challenge participants before AI scoring', () => {
+    const players = makePlayers(4);
+    const store = makeStore({
+      players,
+      phase: 'loh_comp',
+      prevHohId: 'p2',
+    });
+
+    store.dispatch(
+      startChallenge(42, ['p0', 'p1', 'p2', 'p3'], {
+        forceGameKey: 'quickTap',
+        prizeType: 'LOH',
+      }),
+    );
+
+    const pending = store.getState().challenge.pending;
+    expect(pending?.participants).toEqual(['p0', 'p1', 'p3']);
+    expect(pending?.participants).not.toContain('p2');
+    expect(Object.keys(pending?.aiScores ?? {})).not.toContain('p2');
+  });
+});
+
 describe('eviction tie-break copy', () => {
   it('uses LOH terminology when prompting a human tie-breaker', () => {
     const players = makePlayers(5);

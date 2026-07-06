@@ -114,6 +114,7 @@ import {
   formatDoubleEvictionNameList,
 } from '../../features/twists/doubleEvictionTieUtils'
 import { mulberry32 } from '../../store/rng'
+import { isSurvivorRunTerminal } from '../../modes/survivorRun'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
 import { rankPublicEvictionTieNominees } from '../../publicOpinion/PublicEvictionTieService'
@@ -2893,6 +2894,7 @@ export default function GameScreen() {
     game.awaitingFinal3Plea === true &&
     game.phase === 'final3_decision' &&
     !!game.lohId
+  const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game)
   const showGameControlDock = shouldShowGameControlDock(game.status === 'active', [
     Boolean(
       showOutgoingHohWarning ||
@@ -2962,7 +2964,7 @@ export default function GameScreen() {
     Boolean(spectatorF3Part2Active),
     Boolean(spectatorLegacyActive),
     Boolean(socialSummaryOpen),
-  ])
+  ], survivorTerminalActive)
 
   // ── Jury reveal overlay ───────────────────────────────────────────────────
   // JuryPhaseRevealOverlay handles its own animation sequence (no-animations
