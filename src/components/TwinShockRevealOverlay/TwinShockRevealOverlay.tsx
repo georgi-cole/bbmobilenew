@@ -21,13 +21,20 @@ export default function TwinShockRevealOverlay({
   const [stage, setStage] = useState<RevealStage>('before');
 
   useLayoutEffect(() => {
-    const measured = getTileRect(targetId);
-    setRect(measured);
-    if (!measured) {
-      const id = window.setTimeout(onDone, 100);
-      return () => window.clearTimeout(id);
-    }
-    return undefined;
+    let doneFallbackId: number | null = null;
+    const frameId = window.requestAnimationFrame(() => {
+      const measured = getTileRect(targetId);
+      if (!measured) {
+        doneFallbackId = window.setTimeout(onDone, 100);
+        return;
+      }
+      setRect(measured);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      if (doneFallbackId !== null) window.clearTimeout(doneFallbackId);
+    };
   }, [getTileRect, onDone, targetId]);
 
   useEffect(() => {

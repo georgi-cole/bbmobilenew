@@ -501,7 +501,7 @@ export default function DiaryRoom() {
     const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount);
     setMessages([greeting]);
     saveChat(playerId, [greeting]);
-  }, [confessionalLocked, playerId]);
+  }, [confessionalDecisionPending, confessionalLocked, playerId]);
 
   useEffect(() => {
     if (confessionalLocked || !activeDecisionPresentation) return;
