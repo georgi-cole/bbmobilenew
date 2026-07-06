@@ -100,6 +100,12 @@ function runOneDuel(store: Store): void {
   }
 }
 
+function runUntilComplete(store: Store, safety = 1200): void {
+  while (getState(store).phase !== 'complete' && safety-- > 0) {
+    runOneDuel(store);
+  }
+}
+
 // ─── computeTotal ─────────────────────────────────────────────────────────────
 
 describe('computeTotal', () => {
@@ -678,7 +684,7 @@ describe('Tie → Rematch', () => {
     }
     expect(getState(store).phase).toBe('complete');
     expect(['alice', 'bob']).toContain(getState(store).winnerId);
-    expect(getState(store).eliminatedPlayerIds).toHaveLength(1);
+    expect(getState(store).finalistIds).toEqual(['alice', 'bob']);
   });
 });
 
@@ -704,15 +710,17 @@ describe('advanceFromDuelResult', () => {
     }
   }
 
-  it('eliminates the loser from remainingPlayerIds', () => {
+  it('deducts one point from the loser without immediate elimination', () => {
     const store = makeStore();
     initStore(store, ['a', 'b', 'c'], 42);
     reachResult(store);
     const before = getState(store);
     const loser = before.duelLoserId!;
+    const scoreBefore = before.playerScores[loser];
     store.dispatch(advanceFromDuelResult());
-    expect(getState(store).remainingPlayerIds).not.toContain(loser);
-    expect(getState(store).eliminatedPlayerIds).toContain(loser);
+    expect(getState(store).remainingPlayerIds).toContain(loser);
+    expect(getState(store).eliminatedPlayerIds).not.toContain(loser);
+    expect(getState(store).playerScores[loser]).toBe(scoreBefore - 1);
   });
 
   it('transitions to pick_opponent when ≥2 remain', () => {
@@ -723,13 +731,14 @@ describe('advanceFromDuelResult', () => {
     expect(getState(store).phase).toBe('pick_opponent');
   });
 
-  it('transitions to complete when 1 remains', () => {
+  it('two-player games enter the final race instead of completing after one duel', () => {
     const store = makeStore();
     initStore(store, ['a', 'b'], 42);
     reachResult(store);
     store.dispatch(advanceFromDuelResult());
-    expect(getState(store).phase).toBe('complete');
-    expect(getState(store).winnerId).not.toBeNull();
+    expect(getState(store).phase).toBe('pick_opponent');
+    expect(getState(store).winnerId).toBeNull();
+    expect(getState(store).finalistIds).toEqual(['a', 'b']);
   });
 
   it('increments duelIndex on decisive result', () => {
@@ -757,7 +766,7 @@ describe('Full 2-player tournament', () => {
   it('completes with a winner', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob'], 42);
-    runOneDuel(store);
+    runUntilComplete(store);
     const s = getState(store);
     expect(s.phase).toBe('complete');
     expect(s.winnerId).toBeDefined();
@@ -767,7 +776,7 @@ describe('Full 2-player tournament', () => {
   it('winner is in allPlayerIds', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob'], 42);
-    runOneDuel(store);
+    runUntilComplete(store);
     const s = getState(store);
     expect(s.allPlayerIds).toContain(s.winnerId);
   });
@@ -775,7 +784,7 @@ describe('Full 2-player tournament', () => {
   it('eliminated + remaining = all', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob'], 42);
-    runOneDuel(store);
+    runUntilComplete(store);
     const s = getState(store);
     expect([...s.remainingPlayerIds, ...s.eliminatedPlayerIds].sort()).toEqual(
       s.allPlayerIds.slice().sort(),
@@ -786,23 +795,20 @@ describe('Full 2-player tournament', () => {
 // ─── Full 3-player tournament ─────────────────────────────────────────────────
 
 describe('Full 3-player tournament', () => {
-  it('completes after 2 decisive duels', () => {
+  it('eventually completes under the point-based format', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob', 'carol'], 42);
-    runOneDuel(store);
-    expect(getState(store).phase).toBe('pick_opponent');
-    runOneDuel(store);
+    runUntilComplete(store);
     expect(getState(store).phase).toBe('complete');
-    // duelIndex counts completed decisive duels (ties don't increment it).
-    expect(getState(store).duelIndex).toBe(2);
+    expect(['alice', 'bob', 'carol']).toContain(getState(store).winnerId);
   });
 
-  it('elimination order has 2 entries for 3 players', () => {
+  it('eliminates one player before the final duel in a 3-player game', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob', 'carol'], 42);
-    runOneDuel(store);
-    runOneDuel(store);
-    expect(getState(store).eliminatedPlayerIds).toHaveLength(2);
+    runUntilComplete(store);
+    expect(getState(store).eliminatedPlayerIds).toHaveLength(1);
+    expect(getState(store).finalistIds).toHaveLength(2);
   });
 });
 
@@ -868,9 +874,8 @@ describe('Deterministic tournament simulation', () => {
       else if (ph === 'duel_result') store.dispatch(advanceFromDuelResult());
     }
     expect(getState(store).phase).toBe('complete');
-    expect(getState(store).eliminatedPlayerIds).toHaveLength(4);
-    // 4 decisive duels required for 5 players.
-    expect(getState(store).duelIndex).toBe(4);
+    expect(getState(store).eliminatedPlayerIds).toHaveLength(3);
+    expect(getState(store).duelIndex).toBeGreaterThan(4);
   });
 });
 

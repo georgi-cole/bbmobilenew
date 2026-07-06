@@ -30,7 +30,7 @@ describe('Blackjack Tournament rules', () => {
   it('resolves duels without ambiguity', () => {
     expect(resolveDuelOutcome([10, 7], [9, 7])).toBe('fighterA');
     expect(resolveDuelOutcome([10, 7], [10, 8])).toBe('fighterB');
-    expect(resolveDuelOutcome([10, 10, 5], [9, 9, 4])).toBe('fighterB');
+    expect(resolveDuelOutcome([10, 10, 5], [9, 9, 4])).toBe('tie');
     expect(resolveDuelOutcome([10, 10, 2], [10, 10, 2])).toBe('tie');
     expect(resolveDuelOutcome([10, 10, 5], [10, 10, 6])).toBe('tie');
   });

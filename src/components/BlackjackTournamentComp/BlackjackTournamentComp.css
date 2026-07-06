@@ -480,6 +480,14 @@
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
+.bjt-final-score {
+  margin: -0.35rem 0 0.25rem;
+  color: rgba(255, 215, 0, 0.86);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .bjt-actions {
   display: flex;
   gap: 0.75rem;
@@ -753,6 +761,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #f0e6d3;
+}
+
+.bjt-roster-score {
+  font-size: 0.54rem;
+  font-weight: 800;
+  color: #ffd700;
+  line-height: 1;
 }
 
 .bjt-roster-ctrl {
