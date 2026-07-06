@@ -74,6 +74,13 @@ import {
   calculateRequiredDoubleEvictionSlots,
 } from '../features/twists/doubleEvictionTieUtils';
 import { buildDayStartShockSelection } from '../features/twists/dayStartShock';
+import {
+  createInitialTwinShockState,
+  resolveTwinShockTurn,
+  TWIN_SHOCK_ALI_ID,
+  TWIN_SHOCK_LIA_ID,
+  type TwinShockTurnResult,
+} from '../bb/twinShock';
 import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
@@ -145,9 +152,15 @@ function formatForcedShockLabel(type: ForcedShockType): string {
       return 'Democracia';
     case 'dayStartShock':
       return 'Morning Shock';
+    case 'twinShock':
+      return 'Twin Shock';
     default:
       return type;
   }
+}
+
+function isSpecialVetoType(type: ForcedShockType): type is SpecialVetoType {
+  return type === 'vip' || type === 'diamond' || type === 'coup' || type === 'spotlight';
 }
 
 function formatDemocraciaResultNames(state: GameState, candidateIds: string[]): string {
@@ -178,6 +191,8 @@ function getForcedShockSafePhase(type: ForcedShockType): Phase {
       return 'nominations';
     case 'battleBack':
       return 'eviction_results';
+    case 'twinShock':
+      return 'eviction_results';
     case 'democracia':
       return 'loh_comp_announcement';
     case 'dayStartShock':
@@ -199,6 +214,13 @@ const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
 type SecretMissionTaskBuildResult = {
   templateId: string;
   tasks: MissionTask[];
+};
+
+const TWIN_SHOCK_RESERVED_IDS = new Set([TWIN_SHOCK_LIA_ID, TWIN_SHOCK_ALI_ID, 'lia_ali']);
+const TWIN_SHOCK_LIA_POOL_ENTRY = {
+  id: TWIN_SHOCK_LIA_ID,
+  name: 'Lia',
+  avatar: 'Lia',
 };
 
 function buildSecretMissionTargetCandidates(state: GameState): string[] {
@@ -253,18 +275,28 @@ function buildUserPlayer(): Player {
  * rosterSize is read from persisted settings (gameUX.castSize) with a
  * fallback to the GAME_ROSTER_SIZE constant.
  */
-function pickHouseguests(rosterSize = GAME_ROSTER_SIZE): Player[] {
+function pickHouseguests(rosterSize = GAME_ROSTER_SIZE, twinShockConsumed = false): Player[] {
   const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
   const rng = mulberry32(seed);
-  return seededPickN(rng, HOUSEGUEST_POOL, rosterSize - 1).map((hg) => ({
+  const lia = HOUSEGUEST_POOL.find((houseguest) => houseguest.id === TWIN_SHOCK_LIA_ID)
+    ?? TWIN_SHOCK_LIA_POOL_ENTRY;
+  const eligiblePool = HOUSEGUEST_POOL.filter((houseguest) => (
+    twinShockConsumed
+      ? !TWIN_SHOCK_RESERVED_IDS.has(houseguest.id)
+      : houseguest.id !== TWIN_SHOCK_LIA_ID && houseguest.id !== TWIN_SHOCK_ALI_ID
+  ));
+  const pickCount = twinShockConsumed ? rosterSize - 1 : Math.max(0, rosterSize - 2);
+  const picked = seededPickN(rng, eligiblePool, pickCount);
+  const roster = !twinShockConsumed && lia ? [lia, ...picked] : picked;
+  return roster.map((hg) => ({
     ...hg,
     status: 'active' as const,
   }));
 }
 
-function buildInitialPlayers(): Player[] {
+function buildInitialPlayers(twinShockConsumed = false): Player[] {
   const rosterSize = getConfiguredCastSize();
-  return [buildUserPlayer(), ...pickHouseguests(rosterSize)];
+  return [buildUserPlayer(), ...pickHouseguests(rosterSize, twinShockConsumed)];
 }
 
 function buildInitialCompetitionSeasonState(players: Player[]): Record<string, ReturnType<typeof getDefaultCompetitionSeasonState>> {
@@ -293,8 +325,9 @@ function nextSeasonNumber(archives: SeasonArchive[]): number {
  * each new season always uses the latest persisted configuration rather than
  * stale module-scope values.
  */
-export function createInitialGameState(): GameState {
-  const freshPlayers = buildInitialPlayers();
+export function createInitialGameState(options?: { twinShockConsumed?: boolean }): GameState {
+  const twinShockConsumed = options?.twinShockConsumed === true;
+  const freshPlayers = buildInitialPlayers(twinShockConsumed);
   const freshSettings = loadSettings();
   // Guest mode never persists archives — treat as an empty history so guest
   // sessions always start at Season 1 regardless of any logged-in user data.
@@ -381,6 +414,13 @@ export function createInitialGameState(): GameState {
     },
     pendingForcedShock: null,
     dayStartShock: null,
+    twinShock: createInitialTwinShockState(),
+    twinShockConsumed,
+    twinShockActivatedSeason: null,
+    twinShockResolution: null,
+    twinShockResolvedDay: null,
+    twinShockDiscoveredByUser: false,
+    liaForcedUntilTwinShockResolved: !twinShockConsumed,
     democracia: {
       usedThisSeason: false,
       active: false,
@@ -769,6 +809,220 @@ function applyCompetitionSeasonUpdateToState(
 
 function getAlivePlayers(state: GameState): Player[] {
   return state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+}
+
+function isPlayerActiveInHouse(state: GameState, playerId: string): boolean {
+  const player = state.players.find((candidate) => candidate.id === playerId);
+  return Boolean(player && player.status !== 'evicted' && player.status !== 'jury');
+}
+
+function getHumanPlayer(state: GameState): Player | undefined {
+  return state.players.find((player) => player.isUser);
+}
+
+function canHumanReceiveTwinShockConfessional(state: GameState): boolean {
+  const human = getHumanPlayer(state);
+  return Boolean(human && human.status !== 'evicted' && human.status !== 'jury');
+}
+
+function queueTwinShockConfessional(state: GameState, stage: NonNullable<GameState['twinShock']>['promptStage']) {
+  const twinShock = state.twinShock ?? createInitialTwinShockState();
+  twinShock.promptStage = stage;
+  twinShock.queuedDay = state.week;
+  twinShock.retryCount = 0;
+  if (stage === 'day4_initial') {
+    twinShock.status = 'day4_pending';
+    state.twinShockConsumed = true;
+    state.twinShockActivatedSeason = state.season;
+    state.liaForcedUntilTwinShockResolved = true;
+  }
+  state.twinShock = twinShock;
+  pushEvent(state, 'The Big Eye wants you in the Confessional.', 'diary', {
+    major: 'twin_shock_confessional',
+  });
+}
+
+function shouldQueueTwinShockBeforeDayEnd(state: GameState): boolean {
+  if (!canHumanReceiveTwinShockConfessional(state)) return false;
+  const twinShock = state.twinShock ?? createInitialTwinShockState();
+  const forcedTwinShock = state.pendingForcedShock?.type === 'twinShock'
+    && state.week >= state.pendingForcedShock.earliestWeek
+    && twinShock.promptStage === null;
+
+  if (forcedTwinShock && twinShock.status !== 'resolved_discovered' && twinShock.status !== 'resolved_mission_success') {
+    queueTwinShockConfessional(
+      state,
+      isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID) ? 'day4_initial' : 'secret_lost',
+    );
+    state.pendingForcedShock = null;
+    return true;
+  }
+
+  if (
+    !state.twinShockConsumed &&
+    twinShock.status === 'inactive' &&
+    state.week === 4 &&
+    isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID)
+  ) {
+    queueTwinShockConfessional(state, 'day4_initial');
+    return true;
+  }
+
+  if (
+    state.week === 5 &&
+    twinShock.status === 'day4_asked_no_correct_guess' &&
+    twinShock.promptStage === null
+  ) {
+    queueTwinShockConfessional(
+      state,
+      isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID) ? 'day5_final' : 'secret_lost',
+    );
+    return true;
+  }
+
+  return false;
+}
+
+function pushTwinShockAnnouncement(state: GameState, text: string, major: string) {
+  const ts = Date.now();
+  state.tvFeed = [
+    {
+      id: `${state.phase}-w${state.week}-${ts}-${major}`,
+      text,
+      type: 'twist' as const,
+      timestamp: ts,
+      major,
+      meta: buildTvMeta(state, { major }),
+    },
+    ...state.tvFeed,
+  ].slice(0, 50);
+}
+
+function ensureCompetitionStateForPlayer(state: GameState, playerId: string) {
+  if (!state.competitionSeasonStateByPlayerId) state.competitionSeasonStateByPlayerId = {};
+  if (!state.competitionSeasonStateByPlayerId[playerId]) {
+    state.competitionSeasonStateByPlayerId[playerId] = getDefaultCompetitionSeasonState();
+  }
+}
+
+function resolveTwinShockDiscovered(state: GameState) {
+  const lia = state.players.find((player) => player.id === TWIN_SHOCK_LIA_ID);
+  const humanName = getHumanPlayer(state)?.name ?? 'The player';
+  if (lia) {
+    lia.name = 'Lia & Ali';
+    lia.avatar = 'Lia_Ali';
+    lia.twinMode = 'combined';
+    if (lia.status === 'evicted' || lia.status === 'jury') lia.status = 'active';
+  }
+  state.twinShockConsumed = true;
+  state.twinShockResolution = 'discovered';
+  state.twinShockResolvedDay = state.week;
+  state.twinShockDiscoveredByUser = true;
+  state.liaForcedUntilTwinShockResolved = false;
+  if (state.twinShock) {
+    state.twinShock.status = 'resolved_discovered';
+    state.twinShock.promptStage = null;
+    state.twinShock.queuedDay = null;
+    state.twinShock.retryCount = 0;
+    state.twinShock.pendingRevealAnimation = 'combined';
+  }
+  pushTwinShockAnnouncement(
+    state,
+    `TWIN SHOCK! ${humanName} exposed that Lia had a twin. Lia has been secretly switching places with her twin sister, Ali. What a shock! Welcome Ali to the House. From now on, Lia & Ali will play as one contestant.`,
+    'twin_shock_discovered',
+  );
+}
+
+function resolveTwinShockMissionSuccess(state: GameState) {
+  const lia = state.players.find((player) => player.id === TWIN_SHOCK_LIA_ID);
+  if (!state.players.some((player) => player.id === TWIN_SHOCK_ALI_ID)) {
+    state.players.push({
+      id: TWIN_SHOCK_ALI_ID,
+      name: 'Ali',
+      avatar: 'Ali',
+      status: 'active',
+      lateEntrant: true,
+      stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
+    });
+  }
+  ensureCompetitionStateForPlayer(state, TWIN_SHOCK_ALI_ID);
+  state.twinShockConsumed = true;
+  state.twinShockResolution = 'mission_success';
+  state.twinShockResolvedDay = state.week;
+  state.twinShockDiscoveredByUser = false;
+  state.liaForcedUntilTwinShockResolved = false;
+  if (state.twinShock) {
+    state.twinShock.status = 'resolved_mission_success';
+    state.twinShock.promptStage = null;
+    state.twinShock.queuedDay = null;
+    state.twinShock.retryCount = 0;
+    state.twinShock.pendingRevealAnimation = 'ali_enters';
+  }
+  pushTwinShockAnnouncement(
+    state,
+    'TWIN SHOCK REVEALED! Lia has been secretly switching places with her twin sister, Ali, all along. Because the secret mission was successful, Ali has earned her place as a full contestant. Welcome Ali to the House!',
+    'twin_shock_mission_success',
+  );
+  if (lia) {
+    pushEvent(state, `${lia.name} and Ali share a powerful bond after the reveal.`, 'social', {
+      major: 'twin_shock_bond',
+    });
+  }
+}
+
+function resolveTwinShockSecretLost(state: GameState) {
+  state.twinShockConsumed = true;
+  state.twinShockResolution = 'secret_lost';
+  state.twinShockResolvedDay = state.week;
+  state.twinShockDiscoveredByUser = false;
+  state.liaForcedUntilTwinShockResolved = false;
+  if (state.twinShock) {
+    state.twinShock.status = 'resolved_secret_lost';
+    state.twinShock.promptStage = null;
+    state.twinShock.queuedDay = null;
+    state.twinShock.retryCount = 0;
+    state.twinShock.pendingRevealAnimation = null;
+  }
+  state.history = [
+    ...(state.history ?? []),
+    {
+      type: 'twinShock',
+      week: state.week,
+      data: { resolution: 'secret_lost' },
+      timestamp: Date.now(),
+    },
+  ];
+}
+
+function applyTwinShockTurnResult(state: GameState, result: TwinShockTurnResult) {
+  const twinShock = state.twinShock ?? createInitialTwinShockState();
+  twinShock.status = result.status;
+  twinShock.promptStage = result.promptStage;
+  twinShock.retryCount = result.retryCount;
+  if (result.promptStage === null) twinShock.queuedDay = null;
+  state.twinShock = twinShock;
+
+  if (result.resolution === 'resolved_discovered') resolveTwinShockDiscovered(state);
+  if (result.resolution === 'resolved_mission_success') resolveTwinShockMissionSuccess(state);
+  if (result.resolution === 'resolved_secret_lost') resolveTwinShockSecretLost(state);
+}
+
+function maybePushTwinShockClue(state: GameState) {
+  if (state.twinShockConsumed || !isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID)) return;
+  if (state.week < 2 || state.week > 4) return;
+  const twinShock = state.twinShock ?? createInitialTwinShockState();
+  if (twinShock.cluesShownDays.includes(state.week) || twinShock.cluesShownDays.length >= 2) return;
+
+  const clues = [
+    'Lia seemed unusually quiet this morning, then suddenly full of energy by lunch.',
+    'Lia laughed at a joke she claimed not to understand yesterday.',
+    'Someone mentioned that Lia looked different in the garden, but nobody pushed it further.',
+    'Lia forgot a conversation she had only a day ago.',
+  ];
+  const clue = clues[(state.week + twinShock.cluesShownDays.length) % clues.length];
+  twinShock.cluesShownDays = [...twinShock.cluesShownDays, state.week];
+  state.twinShock = twinShock;
+  pushEvent(state, clue, 'social', { major: 'twin_shock_clue' });
 }
 
 function resolveCompetitionParticipants(state: GameState): string[] {
@@ -3048,6 +3302,21 @@ const gameSlice = createSlice({
       state.dayStartShock = null;
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
+    submitTwinShockAnswer(state, action: PayloadAction<string>) {
+      if (!state.twinShock?.promptStage) return;
+      const human = getHumanPlayer(state);
+      if (!human || human.status === 'evicted' || human.status === 'jury') {
+        state.twinShock.promptStage = null;
+        state.twinShock.queuedDay = null;
+        return;
+      }
+      const result = resolveTwinShockTurn(state.twinShock, action.payload, {
+        playerName: human.name,
+        liaActive: isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID),
+      });
+      applyTwinShockTurnResult(state, result);
+    },
+
     /**
      * Archive the completed season.  Prepends the archive entry and caps the
      * list at 50 entries to bound memory usage.
@@ -3088,15 +3357,22 @@ const gameSlice = createSlice({
       // Derive the next season number from the maximum archived seasonIndex so the
       // result is stable even after the 50-entry archive cap or non-contiguous entries.
       const season = nextSeasonNumber(seasonArchives);
+      const twinShockConsumed = state.twinShockConsumed === true;
       // Use the factory to build a fully fresh initial state from the latest
       // persisted settings/profile, then override seed, seasonArchives, and season.
       const fresh = {
-        ...createInitialGameState(),
+        ...createInitialGameState({ twinShockConsumed }),
         seed,
         seasonArchives,
         season,
         status: 'active' as const,
       };
+      fresh.twinShockConsumed = twinShockConsumed;
+      fresh.twinShockActivatedSeason = state.twinShockActivatedSeason ?? null;
+      fresh.twinShockResolution = state.twinShockResolution ?? null;
+      fresh.twinShockResolvedDay = state.twinShockResolvedDay ?? null;
+      fresh.twinShockDiscoveredByUser = state.twinShockDiscoveredByUser ?? false;
+      fresh.liaForcedUntilTwinShockResolved = !twinShockConsumed;
       // Update the welcome message to reflect the actual season number.
       // publicModeEnabled is already derived from settings inside createInitialGameState().
       fresh.tvFeed = [
@@ -3128,6 +3404,13 @@ const gameSlice = createSlice({
         gameId: action.payload.gameId ?? crypto.randomUUID(),
         hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
         status: action.payload.status ?? 'active',
+        twinShock: action.payload.twinShock ?? createInitialTwinShockState(),
+        twinShockConsumed: action.payload.twinShockConsumed ?? false,
+        twinShockActivatedSeason: action.payload.twinShockActivatedSeason ?? null,
+        twinShockResolution: action.payload.twinShockResolution ?? null,
+        twinShockResolvedDay: action.payload.twinShockResolvedDay ?? null,
+        twinShockDiscoveredByUser: action.payload.twinShockDiscoveredByUser ?? false,
+        liaForcedUntilTwinShockResolved: action.payload.liaForcedUntilTwinShockResolved ?? !(action.payload.twinShockConsumed ?? false),
       };
     },
 
@@ -3179,7 +3462,8 @@ const gameSlice = createSlice({
         state.democracia?.awaitingHumanVote ||
         state.democracia?.awaitingPublicBreaker ||
         state.awaitingCoLohNomination ||
-        state.awaitingPosTieBreak
+        state.awaitingPosTieBreak ||
+        state.twinShock?.promptStage != null
       ) {
         return;
       }
@@ -3817,6 +4101,10 @@ const gameSlice = createSlice({
       const nextIdx = (currentIdx + 1) % PHASE_ORDER.length;
       let nextPhase: Phase = PHASE_ORDER[nextIdx];
 
+      if (state.phase === 'eviction_results' && nextPhase === 'week_end') {
+        if (shouldQueueTwinShockBeforeDayEnd(state)) return;
+      }
+
       // Advance seed: consume one RNG value so each advance uses a different seed
       const seedRng = mulberry32(state.seed);
       state.seed = (seedRng() * 0x100000000) >>> 0;
@@ -3953,6 +4241,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'social_1': {
+          maybePushTwinShockClue(state);
           const hohName = state.players.find((p) => p.id === state.lohId)?.name ?? 'The new LOH';
           pushEvent(state, `Housemates congratulate ${hohName}. Alliances are already forming… 💬`, 'social');
           break;
@@ -5202,6 +5491,7 @@ export const {
   rerollSeed,
   hydrateGame,
   setHasSeenConfessionalSpotlight,
+  submitTwinShockAnswer,
   triggerSecretMission,
   markSecondSecretMissionChanceResolved,
   offerSecretMission,
@@ -6273,13 +6563,7 @@ export const tryActivatePendingForcedSpecialVeto =
     const { game } = getState();
     const pending = game.pendingForcedShock;
 
-    if (
-      !pending ||
-      pending.type === 'doubleEviction' ||
-      pending.type === 'battleBack' ||
-      pending.type === 'democracia' ||
-      pending.type === 'dayStartShock'
-    ) return false;
+    if (!pending || !isSpecialVetoType(pending.type)) return false;
     if (game.phase !== 'pos_results') return false;
     if (game.week < pending.earliestWeek) return false;
     if (game.doubleEviction?.weekActive) return false;

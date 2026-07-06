@@ -28,7 +28,8 @@ export type ConfessionalDecisionType =
   | 'vip_second_use'       // VIP second-use yes/no decision
   | 'pos_save_target'      // Human POS holder picks who to save
   | 'replacement_nominee'  // Human LOH (or POS holder) names replacement
-  | 'tie_break';           // Human LOH breaks a tied eviction vote
+  | 'tie_break'            // Human LOH breaks a tied eviction vote
+  | 'twin_shock';          // Mandatory Lia/Ali story Confessional
 
 export interface ActiveConfessionalDecision {
   /** What kind of decision must be resolved. */
@@ -76,6 +77,7 @@ function getActiveConfessionalDecisionFromGame(
   const humanPlayer = game.players?.find((p) => p.isUser);
   if (!humanPlayer) return null;
   if (humanPlayer.status === 'evicted' || humanPlayer.status === 'jury') return null;
+  if (game.twinShock?.promptStage) return { type: 'twin_shock', week, phase };
 
   // ── Nominations ─────────────────────────────────────────────────────────
   if (game.awaitingNominations) {

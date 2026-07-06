@@ -46,7 +46,8 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
     Boolean(game.democracia?.awaitingPublicBreaker) ||
     Boolean(game.democracia?.resultDisplay) ||
     Boolean(game.awaitingCoLohNomination) ||
-    Boolean(game.awaitingPosTieBreak)
+    Boolean(game.awaitingPosTieBreak) ||
+    Boolean(game.twinShock?.promptStage)
   );
 };
 
@@ -148,6 +149,9 @@ export const selectConfessionalAlertCount = (state: RootState): number => {
     count += 1;
   }
   if (state.game?.awaitingVoteDeductionPrompt) count += 1;
+  if (state.game?.twinShock?.promptStage && activeConfessionalDecision?.type !== 'twin_shock') {
+    count += 1;
+  }
 
   // Ceremony decisions routed to the confessional add a mandatory alert.
   if (activeConfessionalDecision !== null) count += 1;
