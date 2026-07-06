@@ -16,13 +16,13 @@ const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
 const EXIT_MS = 360;
 
 const DEFAULT_MESSAGES = [
-  'Opening the house doors.',
-  'Polishing the nomination wall.',
-  'Calibrating the Big Eye signal.',
-  'Lighting the diary room.',
+  'Starting the Kolequant engine.',
+  'Mapping today\'s strategy board.',
+  'Calibrating the signal.',
+  'Warming up the challenge floor.',
   'Stacking the social energy chips.',
   'Calling the camera drone into position.',
-  'Preparing the live-show floor.',
+  'Preparing the live floor.',
 ] as const;
 
 function clampProgress(value: number): number {

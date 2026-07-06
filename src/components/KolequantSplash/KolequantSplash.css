@@ -1,4 +1,6 @@
 .kq-splash {
+  --kq-splash-logo-width: min(52vmin, 240px);
+
   position: fixed;
   inset: 0;
   z-index: 99999;
@@ -52,7 +54,7 @@
 .kq-splash__logo {
   position: relative;
   z-index: 1;
-  width: min(52vmin, 240px);
+  width: var(--kq-splash-logo-width);
   max-width: 300px;
   opacity: 0;
   transform: scale(0.96) translateY(8px);
@@ -63,7 +65,8 @@
 .kq-splash__preload {
   position: relative;
   z-index: 1;
-  width: min(340px, 78vw);
+  width: var(--kq-splash-logo-width);
+  max-width: 300px;
   margin-top: 28px;
   opacity: 0;
   transform: translateY(8px);
@@ -159,16 +162,10 @@
 
 @media (max-width: 420px) {
   .kq-splash {
+    --kq-splash-logo-width: 60vmin;
+
     padding-right: 22px;
     padding-left: 22px;
-  }
-
-  .kq-splash__logo {
-    width: 60vmin;
-  }
-
-  .kq-splash__preload {
-    width: min(320px, 86vw);
   }
 
   .kq-splash__preload-row {

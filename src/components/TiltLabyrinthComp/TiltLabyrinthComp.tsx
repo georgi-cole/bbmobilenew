@@ -82,6 +82,7 @@ const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
 
 const TIME_LIMIT_MS = 60_000;
+const FAILED_RUN_SCORE_MS = TIME_LIMIT_MS + 1;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -164,6 +165,10 @@ function cellCenter(col: number, row: number): FeaturePoint {
 
 function randomInt(rng: () => number, min: number, max: number): number {
   return Math.floor(rng() * (max - min + 1)) + min;
+}
+
+function formatTiltLabyrinthScore(timeMs: number): string {
+  return timeMs > TIME_LIMIT_MS ? 'DNF' : `${(timeMs / 1000).toFixed(2)}s`;
 }
 
 function pickFeaturePoint(
@@ -635,6 +640,14 @@ export default function TiltLabyrinthComp({
       if (!gs.finished) {
         gs.elapsed = performance.now() - gs.startTime;
 
+        if (gs.elapsed >= TIME_LIMIT_MS) {
+          gs.finished = true;
+          gs.finishTime = FAILED_RUN_SCORE_MS;
+          handleFinish(FAILED_RUN_SCORE_MS);
+          drawMaze(ctx, maze, gs, gs.elapsed);
+          return;
+        }
+
         // Compute acceleration
         let ax = 0;
         let ay = 0;
@@ -892,9 +905,12 @@ export default function TiltLabyrinthComp({
     const continueValue = labState.humanScore ?? 0;
     let resultsSummary = 'Final standings recorded.';
     if (humanEntry) {
-      resultsSummary = `Your time: ${(humanEntry.timeMs / 1000).toFixed(2)}s`;
+      resultsSummary =
+        humanEntry.timeMs > TIME_LIMIT_MS
+          ? 'You did not finish before time ran out.'
+          : `Your time: ${formatTiltLabyrinthScore(humanEntry.timeMs)}`;
     } else if (winnerEntry) {
-      resultsSummary = `${winnerEntry.name} finished in ${(winnerEntry.timeMs / 1000).toFixed(2)}s`;
+      resultsSummary = `${winnerEntry.name} finished in ${formatTiltLabyrinthScore(winnerEntry.timeMs)}`;
     }
 
     return (
@@ -926,7 +942,7 @@ export default function TiltLabyrinthComp({
                   )}
                 </span>
                 <span className="tilt-labyrinth-time">
-                  {(entry.timeMs / 1000).toFixed(2)}s
+                  {formatTiltLabyrinthScore(entry.timeMs)}
                 </span>
               </li>
             ))}
