@@ -65,6 +65,27 @@ describe('responsive game layout budget', () => {
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(1)
   })
 
+  it('keeps iPhone Pro bottom controls stable after compact controls resize themselves', () => {
+    const normalMeasuredBudget = computeResponsiveGameLayout(makeInput({
+      viewportHeight: 852,
+      stageHeight: 699,
+      navHeight: 94,
+      dockHeight: 70,
+      playerCount: 16,
+    }))
+    const compactMeasuredBudget = computeResponsiveGameLayout(makeInput({
+      viewportHeight: 852,
+      stageHeight: 713,
+      navHeight: 80,
+      dockHeight: 63,
+      playerCount: 16,
+    }))
+
+    expect(normalMeasuredBudget.bottomControlsMode).toBe('compact')
+    expect(compactMeasuredBudget.bottomControlsMode).toBe('compact')
+    expect(compactMeasuredBudget.signature).toBe(normalMeasuredBudget.signature)
+  })
+
   it('does not change avatar tile size when transient vertical budget changes', () => {
     const dayEndBudget = computeResponsiveGameLayout(makeInput({
       viewportWidth: 393,
