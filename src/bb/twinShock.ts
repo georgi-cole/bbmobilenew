@@ -273,7 +273,7 @@ export function resolveTwinShockTurn(
           'Here is the secret.',
           'All along, Lia has been secretly switching places with her twin sister, Ali.',
           'Their secret mission was successful.',
-          'Ali will now enter the House as a full contestant.',
+          'Ali will now take over the first empty place in the House as a full contestant.',
           'You are free to return and inform the others.',
         ],
         status: 'resolved_mission_success',

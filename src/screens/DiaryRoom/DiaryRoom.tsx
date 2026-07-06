@@ -426,6 +426,26 @@ export default function DiaryRoom() {
     });
   }, [playerId]);
 
+  const appendBigEyeMessagesSequentially = useCallback(async (lines: string[]) => {
+    for (const line of lines) {
+      setBbTyping(true);
+      await new Promise<void>((resolve) => setTimeout(resolve, 550));
+      setBbTyping(false);
+      const nextMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'bb',
+        text: line,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => {
+        const updated = [...prev, nextMessage];
+        saveChat(playerId, updated);
+        return updated;
+      });
+      await new Promise<void>((resolve) => setTimeout(resolve, 220));
+    }
+  }, [playerId]);
+
   // Track which mission already had its reward-pending message injected.
   const rewardMsgInjectedForMissionRef = useRef<string | null>(null);
   const rewardMissionKey = secretMission
@@ -469,10 +489,16 @@ export default function DiaryRoom() {
     }
 
     const nextConversationState = createInitialBigEyeState();
-    const visitCount = recordConfessionalVisit(playerId);
-    const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount);
     setConversationState(nextConversationState);
     saveConversationState(playerId, nextConversationState);
+    if (confessionalDecisionPending) {
+      setMessages([]);
+      saveChat(playerId, []);
+      return;
+    }
+
+    const visitCount = recordConfessionalVisit(playerId);
+    const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount);
     setMessages([greeting]);
     saveChat(playerId, [greeting]);
   }, [confessionalLocked, playerId]);
@@ -683,28 +709,25 @@ export default function DiaryRoom() {
     });
 
     if (activeConfessionalDecision?.type === 'twin_shock' && gameState.twinShock?.promptStage) {
+      const currentPromptStage = gameState.twinShock.promptStage;
       const twinResult = resolveTwinShockTurn(gameState.twinShock, text, {
         playerName,
         liaActive: alivePlayers.some((player) => player.id === 'lia'),
       });
       dispatch(submitTwinShockAnswer(text));
-      setBbTyping(true);
-      await new Promise<void>((resolve) => setTimeout(resolve, 550));
-      setBbTyping(false);
-      const bbMessages: ChatMessage[] = twinResult.messages.map((messageText) => ({
-        id: crypto.randomUUID(),
-        role: 'bb',
-        text: messageText,
-        timestamp: Date.now(),
-      }));
       setMessages((prev) => {
         const withSeen = prev.map((m) =>
           m.role === 'user' && m.status !== 'seen' ? { ...m, status: 'seen' as MessageStatus } : m,
         );
-        const withReply = [...withSeen, ...bbMessages];
-        saveChat(playerId, withReply);
-        return withReply;
+        saveChat(playerId, withSeen);
+        return withSeen;
       });
+      const nextPromptWillRender =
+        twinResult.promptStage !== null &&
+        twinResult.promptStage !== currentPromptStage;
+      if (!nextPromptWillRender) {
+        await appendBigEyeMessagesSequentially(twinResult.messages);
+      }
       setLoading(false);
       return;
     }

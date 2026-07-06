@@ -59,6 +59,7 @@ import {
   resolveDemocraciaPublicBreaker,
   submitCoLohNomination,
   submitPosTieBreak,
+  completeTwinShockRevealAnimation,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge, type PendingChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -118,6 +119,7 @@ import { mulberry32 } from '../../store/rng'
 import { isSurvivorRunTerminal } from '../../modes/survivorRun'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
+import TwinShockRevealOverlay from '../../components/TwinShockRevealOverlay/TwinShockRevealOverlay'
 import { rankPublicEvictionTieNominees } from '../../publicOpinion/PublicEvictionTieService'
 import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
 import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
@@ -425,6 +427,10 @@ export default function GameScreen() {
   const getTileRect = useCallback((playerId: string): DOMRect | null => {
     return getCeremonyTileRect(playerId)
   }, [])
+  const twinShockReveal = game.twinShock?.pendingRevealAnimation ?? null
+  const handleTwinShockRevealDone = useCallback(() => {
+    dispatch(completeTwinShockRevealAnimation())
+  }, [dispatch])
 
   // ── CeremonyOverlay — deferred LOH / POS winner commit ─────────────────
   // When MinigameHost reports a winner, we show the CeremonyOverlay with a
@@ -4049,6 +4055,16 @@ export default function GameScreen() {
             player={dayStartShockPlayer}
             reason={dayStartShock.reason}
             onConfirm={handleDayStartShockConfirm}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {twinShockReveal && (
+          <TwinShockRevealOverlay
+            key={`${twinShockReveal.type}-${twinShockReveal.type === 'combined' ? twinShockReveal.playerId : twinShockReveal.incomingPlayerId}`}
+            reveal={twinShockReveal}
+            getTileRect={getTileRect}
+            onDone={handleTwinShockRevealDone}
           />
         )}
       </AnimatePresence>

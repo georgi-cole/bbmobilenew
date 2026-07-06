@@ -217,10 +217,13 @@ type SecretMissionTaskBuildResult = {
 };
 
 const TWIN_SHOCK_RESERVED_IDS = new Set([TWIN_SHOCK_LIA_ID, TWIN_SHOCK_ALI_ID, 'lia_ali']);
+const TWIN_SHOCK_LIA_AVATAR = 'assets/skins/Lia_avatar.webp';
+const TWIN_SHOCK_ALI_AVATAR = 'assets/skins/Ali_avatar.webp';
+const TWIN_SHOCK_COMBINED_AVATAR = 'assets/skins/Lia_Ali_avatar.webp';
 const TWIN_SHOCK_LIA_POOL_ENTRY = {
   id: TWIN_SHOCK_LIA_ID,
   name: 'Lia',
-  avatar: 'Lia',
+  avatar: TWIN_SHOCK_LIA_AVATAR,
 };
 
 function buildSecretMissionTargetCandidates(state: GameState): string[] {
@@ -278,8 +281,11 @@ function buildUserPlayer(): Player {
 function pickHouseguests(rosterSize = GAME_ROSTER_SIZE, twinShockConsumed = false): Player[] {
   const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
   const rng = mulberry32(seed);
-  const lia = HOUSEGUEST_POOL.find((houseguest) => houseguest.id === TWIN_SHOCK_LIA_ID)
-    ?? TWIN_SHOCK_LIA_POOL_ENTRY;
+  const lia = {
+    ...(HOUSEGUEST_POOL.find((houseguest) => houseguest.id === TWIN_SHOCK_LIA_ID)
+      ?? TWIN_SHOCK_LIA_POOL_ENTRY),
+    avatar: TWIN_SHOCK_LIA_AVATAR,
+  };
   const eligiblePool = HOUSEGUEST_POOL.filter((houseguest) => (
     twinShockConsumed
       ? !TWIN_SHOCK_RESERVED_IDS.has(houseguest.id)
@@ -528,13 +534,15 @@ function getReplacementEligiblePlayers(
   state: GameState,
   alivePlayers: Player[],
   neededCount = 1,
-  options: { allowLoh?: boolean } = {},
+  options: { allowLoh?: boolean; actorId?: string | null } = {},
 ): Player[] {
+  const actorId = options.actorId === undefined ? state.lohId : options.actorId;
   const baseEligible = alivePlayers.filter(
     (pl) =>
       (options.allowLoh === true || pl.id !== state.lohId) &&
       pl.id !== state.posWinnerId &&
-      !state.nomineeIds.includes(pl.id),
+      !state.nomineeIds.includes(pl.id) &&
+      canPlayerTargetPlayer(state, actorId, pl.id),
   );
   const protectedIds = new Set(getPovProtectedIds(state));
   const nonProtected = baseEligible.filter((player) => !protectedIds.has(player.id));
@@ -545,7 +553,7 @@ function isEligibleReplacementNominee(
   state: GameState,
   playerId: string,
   neededCount = 1,
-  options: { allowLoh?: boolean } = {},
+  options: { allowLoh?: boolean; actorId?: string | null } = {},
 ): boolean {
   const alivePlayers = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
   return getReplacementEligiblePlayers(state, alivePlayers, neededCount, options)
@@ -816,6 +824,48 @@ function isPlayerActiveInHouse(state: GameState, playerId: string): boolean {
   return Boolean(player && player.status !== 'evicted' && player.status !== 'jury');
 }
 
+function isTwinShockActivePair(state: GameState): boolean {
+  return state.twinShockResolution === 'mission_success'
+    && isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID)
+    && isPlayerActiveInHouse(state, TWIN_SHOCK_ALI_ID);
+}
+
+function isTwinAlliancePair(state: GameState, firstId: string | null | undefined, secondId: string | null | undefined): boolean {
+  if (!firstId || !secondId || firstId === secondId || !isTwinShockActivePair(state)) return false;
+  return (
+    (firstId === TWIN_SHOCK_LIA_ID && secondId === TWIN_SHOCK_ALI_ID) ||
+    (firstId === TWIN_SHOCK_ALI_ID && secondId === TWIN_SHOCK_LIA_ID)
+  );
+}
+
+function canPlayerTargetPlayer(state: GameState, actorId: string | null | undefined, targetId: string): boolean {
+  return !isTwinAlliancePair(state, actorId, targetId);
+}
+
+function getTwinNomineeToSave(
+  state: GameState,
+  holderId: string | null | undefined,
+  nominees?: Player[],
+): Player | null {
+  if (!holderId || !isTwinShockActivePair(state)) return null;
+  const nomineePool = nominees ?? state.players.filter((player) => state.nomineeIds.includes(player.id));
+  return nomineePool.find((nominee) => isTwinAlliancePair(state, holderId, nominee.id)) ?? null;
+}
+
+function pickSafetySaveTarget(
+  state: GameState,
+  holderId: string | null | undefined,
+  nominees: Player[],
+  rng: () => number,
+): Player | null {
+  return getTwinNomineeToSave(state, holderId, nominees)
+    ?? pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+}
+
+function shouldUseSafetyForTwin(state: GameState, holderId: string | null | undefined, nominees: Player[]): boolean {
+  return getTwinNomineeToSave(state, holderId, nominees) !== null;
+}
+
 function getHumanPlayer(state: GameState): Player | undefined {
   return state.players.find((player) => player.isUser);
 }
@@ -837,6 +887,7 @@ function queueTwinShockConfessional(state: GameState, stage: NonNullable<GameSta
     state.liaForcedUntilTwinShockResolved = true;
   }
   state.twinShock = twinShock;
+  state.twistActivatedThisWeek = true;
   pushEvent(state, 'The Big Eye wants you in the Confessional.', 'diary', {
     major: 'twin_shock_confessional',
   });
@@ -869,7 +920,7 @@ function shouldQueueTwinShockBeforeDayEnd(state: GameState): boolean {
   }
 
   if (
-    state.week === 5 &&
+    state.week === (twinShock.queuedDay ?? 4) + 1 &&
     twinShock.status === 'day4_asked_no_correct_guess' &&
     twinShock.promptStage === null
   ) {
@@ -908,9 +959,11 @@ function ensureCompetitionStateForPlayer(state: GameState, playerId: string) {
 function resolveTwinShockDiscovered(state: GameState) {
   const lia = state.players.find((player) => player.id === TWIN_SHOCK_LIA_ID);
   const humanName = getHumanPlayer(state)?.name ?? 'The player';
+  const fromName = lia?.name ?? 'Lia';
+  const fromAvatar = lia?.avatar ?? TWIN_SHOCK_LIA_AVATAR;
   if (lia) {
     lia.name = 'Lia & Ali';
-    lia.avatar = 'Lia_Ali';
+    lia.avatar = TWIN_SHOCK_COMBINED_AVATAR;
     lia.twinMode = 'combined';
     if (lia.status === 'evicted' || lia.status === 'jury') lia.status = 'active';
   }
@@ -924,7 +977,14 @@ function resolveTwinShockDiscovered(state: GameState) {
     state.twinShock.promptStage = null;
     state.twinShock.queuedDay = null;
     state.twinShock.retryCount = 0;
-    state.twinShock.pendingRevealAnimation = 'combined';
+    state.twinShock.pendingRevealAnimation = {
+      type: 'combined',
+      playerId: TWIN_SHOCK_LIA_ID,
+      fromName,
+      fromAvatar,
+      toName: 'Lia & Ali',
+      toAvatar: TWIN_SHOCK_COMBINED_AVATAR,
+    };
   }
   pushTwinShockAnnouncement(
     state,
@@ -935,11 +995,36 @@ function resolveTwinShockDiscovered(state: GameState) {
 
 function resolveTwinShockMissionSuccess(state: GameState) {
   const lia = state.players.find((player) => player.id === TWIN_SHOCK_LIA_ID);
-  if (!state.players.some((player) => player.id === TWIN_SHOCK_ALI_ID)) {
+  const replacement = state.players
+    .filter((player) =>
+      !player.isUser &&
+      player.id !== TWIN_SHOCK_LIA_ID &&
+      player.id !== TWIN_SHOCK_ALI_ID &&
+      (player.status === 'evicted' || player.status === 'jury'))
+    .sort((a, b) => {
+      const placementDiff = (b.seasonPlacement ?? -1) - (a.seasonPlacement ?? -1);
+      if (placementDiff !== 0) return placementDiff;
+      return (a.evictedAtWeek ?? Number.MAX_SAFE_INTEGER) - (b.evictedAtWeek ?? Number.MAX_SAFE_INTEGER);
+    })[0] ?? null;
+  const replacedPlayerId = replacement?.id ?? TWIN_SHOCK_ALI_ID;
+  const replacedPlayerName = replacement?.name ?? 'an empty house slot';
+  const replacedPlayerAvatar = replacement?.avatar ?? TWIN_SHOCK_ALI_AVATAR;
+
+  if (replacement) {
+    replacement.id = TWIN_SHOCK_ALI_ID;
+    replacement.name = 'Ali';
+    replacement.avatar = TWIN_SHOCK_ALI_AVATAR;
+    replacement.status = 'active';
+    replacement.lateEntrant = true;
+    replacement.evictedAtWeek = undefined;
+    replacement.seasonPlacement = undefined;
+    replacement.finalRank = undefined;
+    replacement.stats = { lohWins: 0, posWins: 0, timesNominated: 0 };
+  } else if (!state.players.some((player) => player.id === TWIN_SHOCK_ALI_ID)) {
     state.players.push({
       id: TWIN_SHOCK_ALI_ID,
       name: 'Ali',
-      avatar: 'Ali',
+      avatar: TWIN_SHOCK_ALI_AVATAR,
       status: 'active',
       lateEntrant: true,
       stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
@@ -956,11 +1041,21 @@ function resolveTwinShockMissionSuccess(state: GameState) {
     state.twinShock.promptStage = null;
     state.twinShock.queuedDay = null;
     state.twinShock.retryCount = 0;
-    state.twinShock.pendingRevealAnimation = 'ali_enters';
+    state.twinShock.pendingRevealAnimation = {
+      type: 'ali_enters',
+      replacedPlayerId,
+      replacedPlayerName,
+      replacedPlayerAvatar,
+      incomingPlayerId: TWIN_SHOCK_ALI_ID,
+      incomingName: 'Ali',
+      incomingAvatar: TWIN_SHOCK_ALI_AVATAR,
+    };
   }
   pushTwinShockAnnouncement(
     state,
-    'TWIN SHOCK REVEALED! Lia has been secretly switching places with her twin sister, Ali, all along. Because the secret mission was successful, Ali has earned her place as a full contestant. Welcome Ali to the House!',
+    replacement
+      ? `TWIN SHOCK REVEALED! Lia has been secretly switching places with her twin sister, Ali, all along. Because the secret mission was successful, Ali takes over ${replacedPlayerName}'s empty spot as a full contestant. Welcome Ali to the House!`
+      : 'TWIN SHOCK REVEALED! Lia has been secretly switching places with her twin sister, Ali, all along. Because the secret mission was successful, Ali has earned her place as a full contestant. Welcome Ali to the House!',
     'twin_shock_mission_success',
   );
   if (lia) {
@@ -995,11 +1090,16 @@ function resolveTwinShockSecretLost(state: GameState) {
 }
 
 function applyTwinShockTurnResult(state: GameState, result: TwinShockTurnResult) {
+  const previousQueuedDay = state.twinShock?.queuedDay ?? null;
   const twinShock = state.twinShock ?? createInitialTwinShockState();
   twinShock.status = result.status;
   twinShock.promptStage = result.promptStage;
   twinShock.retryCount = result.retryCount;
-  if (result.promptStage === null) twinShock.queuedDay = null;
+  if (result.promptStage === null && result.status !== 'day4_asked_no_correct_guess') {
+    twinShock.queuedDay = null;
+  } else if (result.status === 'day4_asked_no_correct_guess' && previousQueuedDay !== null) {
+    twinShock.queuedDay = previousQueuedDay;
+  }
   state.twinShock = twinShock;
 
   if (result.resolution === 'resolved_discovered') resolveTwinShockDiscovered(state);
@@ -1745,7 +1845,7 @@ const gameSlice = createSlice({
       if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
       const id = action.payload;
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-      const eligible = alive.filter((p) => p.id !== state.lohId);
+      const eligible = alive.filter((p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id));
       if (!eligible.some((p) => p.id === id)) return;
       state.pendingNominee1Id = id;
     },
@@ -1763,7 +1863,7 @@ const gameSlice = createSlice({
       const id1 = state.pendingNominee1Id;
       if (!id1 || id2 === id1) return;
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-      const eligible = alive.filter((p) => p.id !== state.lohId);
+      const eligible = alive.filter((p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id));
       if (!eligible.some((p) => p.id === id2)) return;
       if (!eligible.some((p) => p.id === id1)) return;
 
@@ -1810,7 +1910,7 @@ const gameSlice = createSlice({
       const expectedCount = isDoubleEviction ? 3 : 2;
       if (ids.length !== expectedCount) return;
       if (new Set(ids).size !== ids.length) return; // duplicates check
-      const eligible = alive.filter((p) => p.id !== state.lohId);
+      const eligible = alive.filter((p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id));
       if (!ids.every((id) => eligible.some((p) => p.id === id))) return;
 
       const nominees = ids.map((id) => state.players.find((p) => p.id === id)!).filter(Boolean);
@@ -1925,7 +2025,9 @@ const gameSlice = createSlice({
       if (!state.awaitingPovDecision) return;
       state.awaitingPovDecision = false;
       const posWinner = state.players.find((p) => p.id === state.posWinnerId);
-      if (action.payload) {
+      const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+      const willUsePower = action.payload || shouldUseSafetyForTwin(state, posWinner?.id, nominees);
+      if (willUsePower) {
         const svType = state.specialVeto?.activeType;
         if (svType === 'coup') {
           // Detox: remove both nominees, await holder replacement picks
@@ -1976,6 +2078,8 @@ const gameSlice = createSlice({
       const posWinner = state.players.find((p) => p.id === state.posWinnerId);
       const lohPlayer = state.players.find((p) => p.id === state.lohId);
       if (!savedPlayer || !posWinner) return;
+      const twinSaveTarget = getTwinNomineeToSave(state, posWinner.id);
+      if (twinSaveTarget && twinSaveTarget.id !== saveId) return;
 
       // Save the selected nominee
       state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId);
@@ -2002,7 +2106,7 @@ const gameSlice = createSlice({
         } else {
           // AI holder names replacement
           const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-          const eligible = getReplacementEligiblePlayers(state, alive);
+          const eligible = getReplacementEligiblePlayers(state, alive, 1, { actorId: posWinner.id });
           if (eligible.length > 0) {
             const rng = mulberry32(state.seed);
             const replacement = seededPick(rng, eligible);
@@ -2068,6 +2172,7 @@ const gameSlice = createSlice({
       if (!state.nomineeIds.includes(nomineeId)) return;
       const humanPlayer = state.players.find((p) => p.isUser);
       if (!humanPlayer) return;
+      if (!canPlayerTargetPlayer(state, humanPlayer.id, nomineeId)) return;
       if (!state.votes) state.votes = {};
       state.votes[humanPlayer.id] = nomineeId;
       state.awaitingHumanVote = false;
@@ -2087,6 +2192,7 @@ const gameSlice = createSlice({
       const evictee = state.players.find((p) => p.id === nomineeId);
       const lohPlayer = state.players.find((p) => p.id === state.lohId);
       if (!evictee) return;
+      if (!canPlayerTargetPlayer(state, lohPlayer?.id, nomineeId)) return;
 
       state.awaitingTieBreak = false;
       state.tiedNomineeIds = null;
@@ -2247,6 +2353,7 @@ const gameSlice = createSlice({
       const humanPlayer = state.players.find((p) => p.isUser);
       if (!humanPlayer) return;
       if (targetId === humanPlayer.id) return; // no self-vote
+      if (!canPlayerTargetPlayer(state, humanPlayer.id, targetId)) return;
       if (!dem.candidateIds.includes(targetId)) return; // must be a candidate
       if (!dem.eligibleVoterIds.includes(humanPlayer.id)) return; // must be eligible voter
       dem.votesByVoterId[humanPlayer.id] = targetId;
@@ -2821,7 +2928,7 @@ const gameSlice = createSlice({
 
       if (state.specialVeto.awaitingCoupReplacement1) {
         if (id === state.posWinnerId || state.nomineeIds.includes(id)) return;
-        if (!isEligibleReplacementNominee(state, id, 2, { allowLoh: true })) return;
+        if (!isEligibleReplacementNominee(state, id, 2, { allowLoh: true, actorId: povHolder?.id })) return;
         state.specialVeto.coupReplacement1Id = id;
         state.specialVeto.awaitingCoupReplacement1 = false;
         state.specialVeto.awaitingCoupReplacement2 = true;
@@ -2834,7 +2941,7 @@ const gameSlice = createSlice({
         const rep1Id = state.specialVeto.coupReplacement1Id;
         if (id === state.posWinnerId || id === rep1Id || state.nomineeIds.includes(id)) return;
         if (!alive.some((p) => p.id === id)) return;
-        const availableSecondChoices = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true })
+        const availableSecondChoices = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true, actorId: povHolder?.id })
           .filter((player) => player.id !== rep1Id);
         if (!availableSecondChoices.some((player) => player.id === id)) return;
 
@@ -2860,7 +2967,9 @@ const gameSlice = createSlice({
       if (!state.specialVeto?.awaitingVipSecondUseDecision) return;
       state.specialVeto.awaitingVipSecondUseDecision = false;
       const povHolder = state.players.find((p) => p.id === state.posWinnerId);
-      if (action.payload) {
+      const nominees = state.players.filter((player) => state.nomineeIds.includes(player.id));
+      const willUseSecond = action.payload || shouldUseSafetyForTwin(state, povHolder?.id, nominees);
+      if (willUseSecond) {
         state.specialVeto.awaitingVipSecondSaveTarget = true;
         pushEvent(
           state,
@@ -2890,6 +2999,8 @@ const gameSlice = createSlice({
       const povHolder = state.players.find((p) => p.id === state.posWinnerId);
       const lohPlayer = state.players.find((p) => p.id === state.lohId);
       if (!savedPlayer || !povHolder) return;
+      const twinSaveTarget = getTwinNomineeToSave(state, povHolder.id);
+      if (twinSaveTarget && twinSaveTarget.id !== saveId) return;
 
       state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId);
       savedPlayer.status = 'active';
@@ -3317,6 +3428,11 @@ const gameSlice = createSlice({
       applyTwinShockTurnResult(state, result);
     },
 
+    completeTwinShockRevealAnimation(state) {
+      if (!state.twinShock) return;
+      state.twinShock.pendingRevealAnimation = null;
+    },
+
     /**
      * Archive the completed season.  Prepends the archive entry and caps the
      * list at 50 entries to bound memory usage.
@@ -3463,7 +3579,8 @@ const gameSlice = createSlice({
         state.democracia?.awaitingPublicBreaker ||
         state.awaitingCoLohNomination ||
         state.awaitingPosTieBreak ||
-        state.twinShock?.promptStage != null
+        state.twinShock?.promptStage != null ||
+        state.twinShock?.pendingRevealAnimation != null
       ) {
         return;
       }
@@ -3874,9 +3991,10 @@ const gameSlice = createSlice({
             state,
             state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury'),
           );
-          const useSecond = shouldAiUseTargetedSafetyPower(state, nominees, eligible);
+          const useSecond = shouldUseSafetyForTwin(state, povHolder?.id, nominees)
+            || shouldAiUseTargetedSafetyPower(state, nominees, eligible);
           if (useSecond && nominees.length > 0) {
-            const nominee2 = pickStrategicAiPlayer(state, nominees, rng2, 'lowest');
+            const nominee2 = pickSafetySaveTarget(state, povHolder?.id, nominees, rng2);
             if (!nominee2) {
               state.specialVeto.vipUseStage = -1;
               return;
@@ -4197,7 +4315,7 @@ const gameSlice = createSlice({
             // Cast AI votes (no self-vote)
             for (const voter of demAlive) {
               if (!voter.isUser) {
-                const candidates = demAlive.filter((c) => c.id !== voter.id);
+                const candidates = demAlive.filter((c) => c.id !== voter.id && canPlayerTargetPlayer(state, voter.id, c.id));
                 if (candidates.length > 0) {
                   const vSeed = (state.seed ^ (voter.id.charCodeAt(0) * 31 + voter.id.charCodeAt(voter.id.length - 1))) >>> 0;
                   const vRng = mulberry32(vSeed);
@@ -4264,7 +4382,11 @@ const gameSlice = createSlice({
               const coLoh = state.players.find((p) => p.id === coLohId);
               if (coLoh?.isUser) continue; // human handled below
               const coPool = coAlive.filter(
-                (p) => p.id !== coLohId && !coLohIds.includes(p.id) && !state.nomineeIds.includes(p.id),
+                (p) =>
+                  p.id !== coLohId &&
+                  !coLohIds.includes(p.id) &&
+                  !state.nomineeIds.includes(p.id) &&
+                  canPlayerTargetPlayer(state, coLohId, p.id),
               );
               if (coPool.length > 0) {
                 const nominee = pickStrategicAiPlayer(state, coPool, rng, 'highest') ?? seededPick(rng, coPool);
@@ -4305,7 +4427,7 @@ const gameSlice = createSlice({
           const canUsePublicNomineeRule = publicModeEnabled && !isDoubleEviction;
           const nomineeCount = isDoubleEviction ? 3 : 2;
           // Guard: need LOH + nomineeCount eligible players.
-          const pool = alive.filter((p) => p.id !== state.lohId);
+          const pool = alive.filter((p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id));
           if (pool.length < nomineeCount) break;
 
           const lohPlayer = state.players.find((p) => p.id === state.lohId);
@@ -4488,7 +4610,7 @@ const gameSlice = createSlice({
               // AI: pick one nominee to save
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
               if (nominees.length > 0) {
-                const nomineeToSave = pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+                const nomineeToSave = pickSafetySaveTarget(state, posWinner?.id, nominees, rng);
                 if (!nomineeToSave) break;
                 const savedName = nomineeToSave.name;
                 state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
@@ -4523,7 +4645,7 @@ const gameSlice = createSlice({
                 state.specialVeto!.awaitingHolderReplacement = true;
                 pushEvent(state, `${posWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`, 'game');
               } else {
-                const eligible = getReplacementEligiblePlayers(state, alive);
+                const eligible = getReplacementEligiblePlayers(state, alive, 1, { actorId: posWinner.id });
                 if (eligible.length > 0) {
                   const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest');
                   if (replacement) {
@@ -4537,11 +4659,12 @@ const gameSlice = createSlice({
               pushEvent(state, `${posWinner.name}, will you use Halo Exchange? 😇`, 'game');
             } else {
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
-              const eligible = getReplacementEligiblePlayers(state, alive);
-              const useIt = shouldAiUseTargetedSafetyPower(state, nominees, eligible);
+              const eligible = getReplacementEligiblePlayers(state, alive, 1, { actorId: posWinner?.id });
+              const useIt = shouldUseSafetyForTwin(state, posWinner?.id, nominees)
+                || shouldAiUseTargetedSafetyPower(state, nominees, eligible);
               if (useIt) {
                 if (nominees.length > 0) {
-                  const nomineeToSave = pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+                  const nomineeToSave = pickSafetySaveTarget(state, posWinner?.id, nominees, rng);
                   if (!nomineeToSave) break;
                   state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
                   const savedP = state.players.find((p) => p.id === nomineeToSave.id);
@@ -4581,7 +4704,7 @@ const gameSlice = createSlice({
               const removedNames = oldNominees.map((n) => n.name).join(' and ');
               pushDetoxEvent(state, `${posWinner.name} has decided to use Detox. ⚡`);
               pushDetoxEvent(state, `${posWinner.name} used Detox and cleared ${removedNames} from the block! ⚡`);
-              const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true });
+              const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true, actorId: posWinner.id });
               const replacements = pickStrategicAiPlayers(
                 state,
                 eligible,
@@ -4605,8 +4728,9 @@ const gameSlice = createSlice({
               );
             } else {
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
-              const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true });
-              const useIt = shouldAiUseTargetedSafetyPower(state, nominees, eligible, {
+              const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true, actorId: posWinner?.id });
+              const useIt = shouldUseSafetyForTwin(state, posWinner?.id, nominees)
+                || shouldAiUseTargetedSafetyPower(state, nominees, eligible, {
                 replacementCount: Math.min(2, nominees.length),
                 preferLoh: true,
               });
@@ -4666,10 +4790,11 @@ const gameSlice = createSlice({
             } else {
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
               const eligible = getReplacementEligiblePlayers(state, alive);
-              const useIt = shouldAiUseTargetedSafetyPower(state, nominees, eligible);
+              const useIt = shouldUseSafetyForTwin(state, posWinner?.id, nominees)
+                || shouldAiUseTargetedSafetyPower(state, nominees, eligible);
               if (useIt) {
                 if (nominees.length > 0) {
-                  const nomineeToSave = pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+                  const nomineeToSave = pickSafetySaveTarget(state, posWinner?.id, nominees, rng);
                   if (!nomineeToSave) {
                     state.specialVeto!.vipUseStage = -1;
                     break;
@@ -4759,7 +4884,14 @@ const gameSlice = createSlice({
           );
           for (const voter of eligibleVoters) {
             if (!voter.isUser) {
-              state.votes[voter.id] = chooseAiEvictionVote(voter.id, state.nomineeIds, state.seed);
+              const eligibleNomineeIds = state.nomineeIds.filter((nomineeId) =>
+                canPlayerTargetPlayer(state, voter.id, nomineeId),
+              );
+              state.votes[voter.id] = chooseAiEvictionVote(
+                voter.id,
+                eligibleNomineeIds.length > 0 ? eligibleNomineeIds : state.nomineeIds,
+                state.seed,
+              );
             }
           }
 
@@ -5492,6 +5624,7 @@ export const {
   hydrateGame,
   setHasSeenConfessionalSpotlight,
   submitTwinShockAnswer,
+  completeTwinShockRevealAnimation,
   triggerSecretMission,
   markSecondSecretMissionChanceResolved,
   offerSecretMission,
@@ -5847,7 +5980,8 @@ function resolveDebugBlockers(
       game.specialVeto?.activeType === 'coup' ? 2 : 1,
       { allowLoh: true },
     );
-    const usePower = shouldAiUseTargetedSafetyPower(game, nominees, eligible, {
+    const usePower = shouldUseSafetyForTwin(game, game.posWinnerId, nominees)
+      || shouldAiUseTargetedSafetyPower(game, nominees, eligible, {
       replacementCount: game.specialVeto?.activeType === 'coup' ? 2 : 1,
       preferLoh: true,
     });
@@ -5860,7 +5994,7 @@ function resolveDebugBlockers(
     const nominees = game.nomineeIds
       .map((id) => game.players.find((player) => player.id === id))
       .filter((player): player is Player => Boolean(player));
-    const nomineeToSave = pickStrategicAiPlayer(game, nominees, rng, 'lowest');
+    const nomineeToSave = pickSafetySaveTarget(game, game.posWinnerId, nominees, rng);
     if (nomineeToSave) {
       dispatch(submitPovSaveTarget(nomineeToSave.id));
     } else {
@@ -5870,7 +6004,7 @@ function resolveDebugBlockers(
   }
 
   if (game.specialVeto?.awaitingHolderReplacement) {
-    const eligible = getReplacementEligiblePlayers(game, alive);
+    const eligible = getReplacementEligiblePlayers(game, alive, 1, { actorId: game.posWinnerId });
     const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest');
     if (replacement) {
       dispatch(submitDiamondReplacement(replacement.id));
@@ -5881,7 +6015,7 @@ function resolveDebugBlockers(
   }
 
   if (game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) {
-    const eligible = getReplacementEligiblePlayers(game, alive, 2, { allowLoh: true });
+    const eligible = getReplacementEligiblePlayers(game, alive, 2, { allowLoh: true, actorId: game.posWinnerId });
     const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest', { preferLoh: true });
     if (replacement) {
       dispatch(submitCoupReplacement(replacement.id));
@@ -5894,7 +6028,8 @@ function resolveDebugBlockers(
   if (game.specialVeto?.awaitingVipSecondUseDecision) {
     const nominees = game.players.filter((player) => game.nomineeIds.includes(player.id));
     const eligible = getReplacementEligiblePlayers(game, alive);
-    const useSecond = shouldAiUseTargetedSafetyPower(game, nominees, eligible, { preferLoh: true });
+    const useSecond = shouldUseSafetyForTwin(game, game.posWinnerId, nominees)
+      || shouldAiUseTargetedSafetyPower(game, nominees, eligible, { preferLoh: true });
     dispatch(submitVipSecondUseDecision(useSecond));
     return true;
   }
@@ -5903,7 +6038,7 @@ function resolveDebugBlockers(
     const nominees = game.nomineeIds
       .map((id) => game.players.find((player) => player.id === id))
       .filter((player): player is Player => Boolean(player));
-    const nomineeToSave = pickStrategicAiPlayer(game, nominees, rng, 'lowest');
+    const nomineeToSave = pickSafetySaveTarget(game, game.posWinnerId, nominees, rng);
     if (nomineeToSave) {
       dispatch(submitVipSecondSaveTarget(nomineeToSave.id));
     } else {
@@ -6206,6 +6341,12 @@ export const tryActivateSecretMission =
     if (game.week < 3) return false;
     if (aliveCount <= 5) return false;
     if (seasonMissionCount >= 2) return false;
+    if (game.twistActivatedThisWeek) return false;
+    if (game.twinShock?.promptStage || game.twinShock?.pendingRevealAnimation) return false;
+    if (
+      game.twinShock?.status === 'day4_pending' ||
+      game.twinShock?.status === 'day4_asked_no_correct_guess'
+    ) return false;
     if (!canReplaceSecretMissionSlot(game.secretMission)) return false;
 
     const maxDaySpan = aliveCount - 5;
