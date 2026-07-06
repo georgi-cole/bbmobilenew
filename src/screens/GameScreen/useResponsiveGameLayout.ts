@@ -200,9 +200,11 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const compactNavContentHeight = Math.min(normalNavContentHeight, COMPACT_NAV_HEIGHT)
   const normalNavHeight = normalNavContentHeight + input.safeBottom
   const compactNavHeight = compactNavContentHeight + input.safeBottom
-  const measuredDockHeight = input.dockHeight || estimateDockHeight(stageWidth)
-  const normalDockHeight = input.hasDock ? measuredDockHeight : 0
-  const compactDockHeight = input.hasDock ? Math.max(56, measuredDockHeight * COMPACT_DOCK_SCALE) : 0
+  const estimatedDockHeight = estimateDockHeight(stageWidth)
+  const measuredDockHeight = input.dockHeight || estimatedDockHeight
+  const baselineDockHeight = Math.max(measuredDockHeight, estimatedDockHeight)
+  const normalDockHeight = input.hasDock ? baselineDockHeight : 0
+  const compactDockHeight = input.hasDock ? Math.max(56, baselineDockHeight * COMPACT_DOCK_SCALE) : 0
   const normalDockClearance = input.hasDock ? normalDockHeight + NORMAL_DOCK_GAP : 0
   const compactDockClearance = input.hasDock ? compactDockHeight + COMPACT_DOCK_GAP : 0
   const measuredStageAndNavHeight = stageHeight + measuredNavHeight
@@ -433,10 +435,9 @@ function readViewportInput<TStage extends HTMLElement>(
 ): ResponsiveGameLayoutInput {
   const visualViewport = window.visualViewport
   const viewportWidth = visualViewport?.width ?? window.innerWidth
-  const viewportHeight = visualViewport?.height ?? window.innerHeight
+  const viewportHeight = Math.max(visualViewport?.height ?? 0, window.innerHeight)
   const stageRect = stageRef.current?.getBoundingClientRect()
   const navRect = document.querySelector<HTMLElement>('.nav-bar')?.getBoundingClientRect()
-  const dockRect = document.querySelector<HTMLElement>('.game-control-dock')?.getBoundingClientRect()
   const rootStyle = getComputedStyle(document.documentElement)
   const safeTop = Math.max(
     readPx(rootStyle.getPropertyValue('--safe-top')),
@@ -456,7 +457,7 @@ function readViewportInput<TStage extends HTMLElement>(
     safeTop,
     safeBottom,
     navHeight: navRect?.height ?? DEFAULT_NAV_HEIGHT + safeBottom,
-    dockHeight: dockRect?.height ?? 0,
+    dockHeight: options.hasDock ? estimateDockHeight(stageRect?.width ?? Math.min(viewportWidth, DEFAULT_PHONE_WIDTH)) : 0,
     hasDock: options.hasDock,
     playerCount: options.playerCount,
     userCompactRoster: options.userCompactRoster,
@@ -510,12 +511,9 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     measure()
     window.addEventListener('resize', measure)
     window.visualViewport?.addEventListener('resize', measure)
-    window.visualViewport?.addEventListener('scroll', measure)
-
     const observed = [
       stageRef.current,
       document.querySelector<HTMLElement>('.nav-bar'),
-      document.querySelector<HTMLElement>('.game-control-dock'),
     ].filter((el): el is HTMLElement => el instanceof HTMLElement)
     let resizeObserver: ResizeObserver | null = null
     if (typeof ResizeObserver !== 'undefined') {
@@ -526,7 +524,6 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     return () => {
       window.removeEventListener('resize', measure)
       window.visualViewport?.removeEventListener('resize', measure)
-      window.visualViewport?.removeEventListener('scroll', measure)
       resizeObserver?.disconnect()
     }
   }, [measure, stageRef])

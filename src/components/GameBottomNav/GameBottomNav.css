@@ -132,10 +132,6 @@
   border-radius: 6px;
 }
 
-:root[style*="--game-bottom-controls-mode: compact"] .game-bottom-nav {
-  margin-bottom: calc(-0.35 * var(--safe-bottom));
-}
-
 :root[style*="--game-bottom-controls-mode: compact"] .game-bottom-nav__items {
   padding-top: 2px;
   padding-bottom: 2px;
