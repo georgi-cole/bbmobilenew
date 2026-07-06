@@ -12,12 +12,12 @@ describe('GameScreen ceremony animation contracts', () => {
 
     expect(source).toContain('measureA: () => getTileRect(finalWinnerId)')
     expect(source).toContain('measureA={pendingWinnerCeremony.measureA}')
-    expect(source).toContain('measureTiles={() => {')
-    expect(source).toContain('measureTiles={pendingReplacementCeremony.resolveTiles}')
-    expect(source).toContain('measureTiles={pendingSaveCeremony.resolveTiles}')
-    expect(source).toContain('measureTiles={() => [{')
+    expect(source).toContain('layoutSignal={responsiveGameLayout.revision}')
+    expect(source).toContain('resolveTiles={pendingReplacementCeremony.resolveTiles}')
+    expect(source).toContain('resolveTiles={pendingSaveCeremony.resolveTiles}')
     expect(source).toContain("badgeMotion: 'extract' as const")
     expect(source).toContain('const nomCeremonyTileIds = showNomAnim ? nomAnimPlayers.map((p) => p.id) : []')
+    expect(source).toContain('resolveTiles={() => {')
   })
 
   it('keeps eviction/spotlight animation tied to stable avatar tile layout ids', () => {
