@@ -400,12 +400,19 @@ export const startChallenge =
         .map((player) => player.id)
       : participants;
 
+    const isLohChallenge = opts.prizeType === 'LOH' || (opts.prizeType == null && gameState.phase === 'loh_comp');
+    const eligibleParticipants =
+      isLohChallenge && gameState.prevHohId
+        ? resolvedParticipants.filter((id) => id !== gameState.prevHohId)
+        : resolvedParticipants;
+    const finalParticipants = eligibleParticipants.length > 0 ? eligibleParticipants : resolvedParticipants;
+
     // Pre-compute AI scores for all non-human participants.
     const humanId = gameState?.players?.find((p) => p.isUser)?.id;
     const aiScores: Record<string, number> = {};
     const minigameModel = getMinigameAiModelForGame(gameEntry);
     const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined;
-    resolvedParticipants.forEach((pid, index) => {
+    finalParticipants.forEach((pid, index) => {
       if (pid !== humanId) {
         const player = gameState?.players?.find((p) => p.id === pid);
         aiScores[pid] = simulateMinigameAiScore({
@@ -434,7 +441,7 @@ export const startChallenge =
       const scoreRange = Math.max(1, maxScore - minScore);
       const maxMs = minigameModel.tiebreakerMaxMs;
       aiTiebreakers = {};
-      resolvedParticipants.forEach((pid) => {
+      finalParticipants.forEach((pid) => {
         if (pid === humanId || aiScores[pid] == null) return;
         // Seed the jitter RNG differently from the score RNG by XOR-ing a fixed salt.
         const rng = mulberry32(((perChallengeSeed >>> 0) ^ (hashStringU32(pid) ^ 0xbeef_cafe)) >>> 0);
@@ -452,7 +459,7 @@ export const startChallenge =
       id,
       game: gameEntry,
       seed: perChallengeSeed,
-      participants: resolvedParticipants,
+      participants: finalParticipants,
       phase: 'rules',
       aiScores,
       aiTiebreakers,
