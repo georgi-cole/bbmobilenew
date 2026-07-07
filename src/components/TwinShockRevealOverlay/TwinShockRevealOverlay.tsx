@@ -40,8 +40,8 @@ export default function TwinShockRevealOverlay({
   const timings = useMemo(
     () => (
       reveal.type === 'ali_enters'
-        ? { transformAt: 1800, settledAt: 3200, doneAt: 5600 }
-        : { transformAt: 1550, settledAt: 2850, doneAt: 4900 }
+        ? { transformAt: 2100, settledAt: 3900, doneAt: 6600 }
+        : { transformAt: 1850, settledAt: 3450, doneAt: 5800 }
     ),
     [reveal.type],
   );
@@ -62,20 +62,13 @@ export default function TwinShockRevealOverlay({
   }, [onDone, rect, timings]);
 
   const display = useMemo(() => {
-    const transformed = stage !== 'intro';
-    const settled = stage === 'settled';
     if (reveal.type === 'combined') {
       return {
         beforeName: reveal.fromName,
         beforeAvatar: reveal.fromAvatar,
         afterName: reveal.toName,
         afterAvatar: reveal.toAvatar,
-        headline: settled ? 'Twin Shock Exposed' : 'The spotlight tightens',
-        caption: settled
-          ? 'Lia & Ali will continue the game together as one contestant.'
-          : transformed
-            ? 'The house sees both twins at once.'
-            : 'Lia steps into the spotlight alone.',
+        ariaLabel: 'Twin Shock revealed',
       };
     }
     return {
@@ -83,14 +76,9 @@ export default function TwinShockRevealOverlay({
       beforeAvatar: reveal.replacedPlayerAvatar,
       afterName: reveal.incomingName,
       afterAvatar: reveal.incomingAvatar,
-      headline: settled ? 'New Housemate' : 'A place in the House opens',
-      caption: settled
-        ? `${reveal.incomingName} is now officially in the game.`
-        : transformed
-          ? `${reveal.incomingName} steps into the House.`
-          : `${reveal.replacedPlayerName}'s tile fades from the board.`,
+      ariaLabel: 'New housemate revealed',
     };
-  }, [reveal, stage]);
+  }, [reveal]);
 
   if (!rect || stage === 'done') return null;
 
@@ -107,7 +95,7 @@ export default function TwinShockRevealOverlay({
       style={style}
       role="status"
       aria-live="assertive"
-      aria-label={display.caption}
+      aria-label={display.ariaLabel}
     >
       <div className="twin-shock-reveal__shade" />
       <div className="twin-shock-reveal__flare" />
@@ -139,12 +127,7 @@ export default function TwinShockRevealOverlay({
             </span>
           )}
         </div>
-        <div className="twin-shock-reveal__headline">{display.headline}</div>
-        <div className="twin-shock-reveal__name">
-          {stage === 'intro' ? display.beforeName : display.afterName}
-        </div>
       </div>
-      <div className="twin-shock-reveal__caption">{display.caption}</div>
     </div>
   );
 }
