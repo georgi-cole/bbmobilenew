@@ -219,6 +219,19 @@ function uniqueSources(sources: Array<string | null | undefined>): string[] {
   });
 }
 
+function getTabloidMatchTokens(player: Player | undefined): string[] {
+  const tokens = uniqueSources([
+    player?.name,
+    player?.name.split(' ')[0],
+  ]).map(normalizePhotoToken);
+
+  if (player?.id === 'ali' || player?.name === 'Ali') {
+    tokens.push(normalizePhotoToken('Lia'));
+  }
+
+  return [...new Set(tokens)];
+}
+
 function isDicebearCandidate(candidate: string): boolean {
   try {
     const parsed = new URL(candidate, typeof window !== 'undefined' ? window.location.origin : 'https://bbmobilenew.local');
@@ -248,10 +261,7 @@ function pickTabloidPhoto(
   usedPhotoIds: Set<string>,
 ): string | null {
   if (tabloidPhotos.length === 0) return null;
-
-  const firstName = player?.name.split(' ')[0] ?? '';
-  const fullName = player?.name ?? '';
-  const desiredTokens = uniqueSources([firstName, fullName]).map(normalizePhotoToken);
+  const desiredTokens = getTabloidMatchTokens(player);
 
   const matchedPhoto = tabloidPhotos.find(
     (entry) => !usedPhotoIds.has(entry.id) && desiredTokens.includes(entry.matchToken),

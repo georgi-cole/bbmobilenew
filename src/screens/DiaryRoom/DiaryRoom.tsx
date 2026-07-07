@@ -35,7 +35,7 @@ import {
   pickMissionImmunityDuration,
   type SecretMissionBoxRewardType,
 } from '../../bb/secretMission';
-import { resolveTwinShockTurn } from '../../bb/twinShock';
+import { classifyTwinShockAnswer, resolveTwinShockTurn } from '../../bb/twinShock';
 import { applyInfluenceDelta } from '../../social/socialSlice';
 import {
   createInitialBigEyeState,
@@ -715,7 +715,19 @@ export default function DiaryRoom() {
       return updated;
     });
 
-    if (activeConfessionalDecision?.type === 'twin_shock' && gameState.twinShock?.promptStage) {
+    const latentTwinShockGuess =
+      activeConfessionalDecision?.type !== 'twin_shock' &&
+      gameState.twinShock?.status === 'day4_asked_no_correct_guess' &&
+      gameState.twinShock.promptStage == null &&
+      classifyTwinShockAnswer(text) === 'correct_twin_guess';
+
+    if (
+      gameState.twinShock &&
+      (
+        (activeConfessionalDecision?.type === 'twin_shock' && gameState.twinShock.promptStage) ||
+        latentTwinShockGuess
+      )
+    ) {
       const currentPromptStage = gameState.twinShock.promptStage;
       const twinResult = resolveTwinShockTurn(gameState.twinShock, text, {
         playerName,

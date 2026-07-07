@@ -9,6 +9,16 @@ import gameReducer, {
 } from '../../src/store/gameSlice';
 import { classifyTwinShockAnswer } from '../../src/bb/twinShock';
 import type { GameState } from '../../src/types';
+import { resolveSkinAssetPathWithFallback } from '../../src/utils/skinAssets';
+
+const TWIN_SHOCK_COMBINED_AVATAR = resolveSkinAssetPathWithFallback(
+  'Ali_lia_avatar.webp',
+  'Lia_Ali_avatar.webp',
+);
+const TWIN_SHOCK_LIA_FLIP_AVATAR = resolveSkinAssetPathWithFallback(
+  'Lia_flip_avatar.webp',
+  'Lia_avatar.webp',
+);
 
 function reduce(state: GameState, action: { type: string; payload?: unknown }): GameState {
   return gameReducer(state, action);
@@ -84,7 +94,7 @@ describe('Twin Shock reducer flow', () => {
 
     const lia = state.players.find((player) => player.id === 'lia');
     expect(lia?.name).toBe('Lia & Ali');
-    expect(lia?.avatar).toBe('assets/skins/Lia_Ali_avatar.webp');
+    expect(lia?.avatar).toBe(TWIN_SHOCK_COMBINED_AVATAR);
     expect(lia?.twinMode).toBe('combined');
     expect(state.players.some((player) => player.id === 'ali')).toBe(false);
     expect(state.twinShockResolution).toBe('discovered');
@@ -92,7 +102,7 @@ describe('Twin Shock reducer flow', () => {
     expect(state.twinShock?.pendingRevealAnimation).toMatchObject({
       type: 'combined',
       playerId: 'lia',
-      toAvatar: 'assets/skins/Lia_Ali_avatar.webp',
+      toAvatar: TWIN_SHOCK_COMBINED_AVATAR,
     });
   });
 
@@ -113,6 +123,33 @@ describe('Twin Shock reducer flow', () => {
 
     expect(state.phase).toBe('eviction_results');
     expect(state.twinShock?.promptStage).toBe('day5_final');
+  });
+
+  it('secretly flips Lia to the hint avatar after the first failed confessional', () => {
+    let state = reduce(makeTwinShockState({ week: 1 }), queueForcedShock('twinShock'));
+    state = reduce(state, advance());
+    state = reduce(state, submitTwinShockAnswer('No idea'));
+
+    const lia = state.players.find((player) => player.id === 'lia');
+    expect(lia?.name).toBe('Lia');
+    expect(lia?.avatar).toBe(TWIN_SHOCK_LIA_FLIP_AVATAR);
+    expect(state.twinShock?.status).toBe('day4_asked_no_correct_guess');
+    expect(state.twinShock?.promptStage).toBeNull();
+  });
+
+  it('lets the player expose the twins later without waiting for the next Big Eye call', () => {
+    let state = reduce(makeTwinShockState({ week: 1 }), queueForcedShock('twinShock'));
+    state = reduce(state, advance());
+    state = reduce(state, submitTwinShockAnswer('No idea'));
+    state = reduce(state, submitTwinShockAnswer('Wait, Lia has a twin sister'));
+
+    const lia = state.players.find((player) => player.id === 'lia');
+    expect(lia?.name).toBe('Lia & Ali');
+    expect(lia?.avatar).toBe(TWIN_SHOCK_COMBINED_AVATAR);
+    expect(lia?.twinMode).toBe('combined');
+    expect(state.twinShockDiscoveredByUser).toBe(true);
+    expect(state.twinShockResolution).toBe('discovered');
+    expect(state.players.some((player) => player.id === 'ali')).toBe(false);
   });
 
   it('replaces the first evicted housemate with Ali when the next-day mission succeeds', () => {
