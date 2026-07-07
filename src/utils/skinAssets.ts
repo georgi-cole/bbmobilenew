@@ -70,6 +70,23 @@ export function resolveSkinAssetPath(filename: string): string {
   return SKIN_URL_BY_FILENAME.get(filename) ?? buildPublicSkinUrl(filename);
 }
 
+export function hasSkinAsset(filename: string): boolean {
+  return SKIN_URL_BY_FILENAME.has(filename);
+}
+
+export function resolveSkinAssetPathWithFallback(
+  filename: string,
+  fallbackFilename?: string,
+): string {
+  if (hasSkinAsset(filename)) {
+    return resolveSkinAssetPath(filename);
+  }
+  if (fallbackFilename) {
+    return resolveSkinAssetPath(fallbackFilename);
+  }
+  return resolveSkinAssetPath(filename);
+}
+
 function resolveSkinAssetWithoutFallback(key: ThemeKey): SkinAssetResolution | null {
   const entry = getRegistryEntry(key);
   const candidates = unique([entry.canonicalFile, ...(entry.aliases ?? [])]);

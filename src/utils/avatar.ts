@@ -293,12 +293,28 @@ function normalizeNameToken(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
+function isTwinShockAliIdentity(player: Pick<Player, 'id' | 'name'>): boolean {
+  return normalizeNameToken(player.id) === 'ali' || normalizeNameToken(player.name) === 'ali';
+}
+
 function collectAssetLookupTokens(player: Pick<Player, 'id' | 'name'>): string[] {
   const hg = getById(player.id) ?? findByName(player.name);
 
   return [hg?.id, hg?.name, player.id, player.name]
     .filter((value): value is string => Boolean(value))
     .map(normalizeNameToken);
+}
+
+function collectTwinShockFullSizeLookupTokens(player: Pick<Player, 'id' | 'name'>): string[] {
+  const baseTokens = collectAssetLookupTokens(player);
+  if (!isTwinShockAliIdentity(player)) return baseTokens;
+
+  const lia = getById('lia') ?? findByName('Lia');
+  const aliasTokens = [lia?.id, lia?.name, 'lia', 'Lia']
+    .filter((value): value is string => Boolean(value))
+    .map(normalizeNameToken);
+
+  return [...new Set([...baseTokens, ...aliasTokens])];
 }
 
 function listFormalCutoutCandidates(): Array<{ basename: string; source: string }> {
@@ -326,7 +342,7 @@ function listAvatarAssetCandidates(): Array<{ basename: string; source: string }
 }
 
 function resolveFormalCutoutFromFolder(player: Pick<Player, 'id' | 'name'>): string | null {
-  const targetTokens = collectAssetLookupTokens(player);
+  const targetTokens = collectTwinShockFullSizeLookupTokens(player);
   if (targetTokens.length === 0) return null;
 
   const candidates = listFormalCutoutCandidates();
@@ -356,7 +372,10 @@ export function resolveFormalCutout(player: Pick<Player, 'id' | 'name'>): string
     return folderMatch;
   }
 
-  const hg = getById(player.id) ?? findByName(player.name);
+  const aliasPlayer = isTwinShockAliIdentity(player)
+    ? ({ id: 'lia', name: 'Lia' } as const)
+    : player;
+  const hg = getById(aliasPlayer.id) ?? findByName(aliasPlayer.name);
   if (!hg) return null;
   const stem = FORMAL_CUTOUT_MAP[hg.id];
   if (!stem) return null;
@@ -409,7 +428,7 @@ const MALE_AVATAR_EMOJI = '👨';
  *   const cutoutSrc = resolveInformalCutout(player) ?? resolveAvatar(player);
  */
 export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): string | null {
-  const targetTokens = collectAssetLookupTokens(player);
+  const targetTokens = collectTwinShockFullSizeLookupTokens(player);
   if (targetTokens.length === 0) return null;
 
   const folderMatch = listInformalCutoutCandidates().find(({ basename }) => {
@@ -418,7 +437,10 @@ export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): stri
   });
   if (folderMatch) return folderMatch.source;
 
-  const hg = getById(player.id) ?? findByName(player.name);
+  const aliasPlayer = isTwinShockAliIdentity(player)
+    ? ({ id: 'lia', name: 'Lia' } as const)
+    : player;
+  const hg = getById(aliasPlayer.id) ?? findByName(aliasPlayer.name);
   const stem = hg ? INFORMAL_CUTOUT_MAP[hg.id] : null;
   if (!stem) return null;
   return joinPublicAssetPath(`assets/Informal_attires/${stem}.png`);
