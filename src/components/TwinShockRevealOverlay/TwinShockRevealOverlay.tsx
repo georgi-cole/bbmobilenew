@@ -11,13 +11,6 @@ type TwinShockRevealOverlayProps = {
 
 type RevealStage = 'intro' | 'transform' | 'settled' | 'done';
 
-function getTileElement(playerId: string): HTMLElement | null {
-  const escapedId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-    ? CSS.escape(playerId)
-    : playerId.replace(/"/g, '\\"');
-  return document.querySelector<HTMLElement>(`[data-player-id="${escapedId}"]`);
-}
-
 export default function TwinShockRevealOverlay({
   reveal,
   getTileRect,
@@ -43,21 +36,6 @@ export default function TwinShockRevealOverlay({
       if (doneFallbackId !== null) window.clearTimeout(doneFallbackId);
     };
   }, [getTileRect, onDone, targetId]);
-
-  useLayoutEffect(() => {
-    const tile = getTileElement(targetId);
-    if (!tile) return undefined;
-
-    const previousOpacity = tile.style.opacity;
-    const previousVisibility = tile.style.visibility;
-    tile.style.opacity = '0';
-    tile.style.visibility = 'hidden';
-
-    return () => {
-      tile.style.opacity = previousOpacity;
-      tile.style.visibility = previousVisibility;
-    };
-  }, [targetId]);
 
   const timings = useMemo(
     () => (

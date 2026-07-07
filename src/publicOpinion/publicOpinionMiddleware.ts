@@ -136,11 +136,8 @@ function ensureProfiles(
   game: GameState,
 ): Record<string, unknown> {
   let profiles = ((store.getState() as StateWithGame).publicOpinion?.profiles ?? {});
-  const missingPlayerIds = (game.players ?? [])
-    .map((player) => player.id)
-    .filter((playerId) => !profiles[playerId]);
-  if (missingPlayerIds.length > 0) {
-    store.dispatch(initializeProfiles(missingPlayerIds));
+  if (Object.keys(profiles).length === 0 && game.players?.length > 0) {
+    store.dispatch(initializeProfiles(game.players.map((p) => p.id)));
     profiles = ((store.getState() as StateWithGame).publicOpinion?.profiles ?? {});
   }
   return profiles;
@@ -233,10 +230,13 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
   const actionType = (action as { type: string }).type;
   const actionPayload = (action as { payload?: unknown }).payload;
-  ensureProfiles(store, game);
 
   // ── Game reset ─────────────────────────────────────────────────────────────
   if (actionType === 'game/resetGame') {
+    const playerIds = game.players?.map((p) => p.id) ?? [];
+    if (playerIds.length > 0) {
+      store.dispatch(initializeProfiles(playerIds));
+    }
     return result;
   }
 

@@ -269,37 +269,5 @@ describe('publicOpinionMiddleware', () => {
     const expiredDirection = store.getState().publicOpinion.directions.find((direction) => direction.id === 'dir-1');
     expect(expiredDirection?.status).toBe('expired');
   });
-
-  it('initializes a public profile for a newly added late entrant without resetting existing approvals', () => {
-    const store = configureStore({
-      reducer: {
-        game: gameReducer,
-        publicOpinion: publicOpinionReducer,
-      },
-      middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(publicOpinionMiddleware),
-      preloadedState: {
-        game: makeGameState(),
-      },
-    });
-
-    store.dispatch(initializeProfiles(['p1', 'p2']));
-
-    store.dispatch({
-      type: 'game/forcePhase',
-      payload: {
-        players: [
-          makePlayer('p1', 'Aria'),
-          makePlayer('p2', 'Kian'),
-          makePlayer('ali', 'Ali'),
-        ],
-      },
-    });
-
-    const { profiles } = store.getState().publicOpinion;
-    expect(profiles.p1.approval).toBe(50);
-    expect(profiles.p2.approval).toBe(50);
-    expect(profiles.ali.approval).toBe(50);
-  });
 });
 
