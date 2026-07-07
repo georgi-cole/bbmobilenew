@@ -9,7 +9,7 @@ type TwinShockRevealOverlayProps = {
   onDone: () => void;
 };
 
-type RevealStage = 'before' | 'after' | 'done';
+type RevealStage = 'intro' | 'transform' | 'settled' | 'done';
 
 export default function TwinShockRevealOverlay({
   reveal,
@@ -18,7 +18,7 @@ export default function TwinShockRevealOverlay({
 }: TwinShockRevealOverlayProps) {
   const targetId = reveal.type === 'combined' ? reveal.playerId : reveal.incomingPlayerId;
   const [rect, setRect] = useState<DOMRect | null>(null);
-  const [stage, setStage] = useState<RevealStage>('before');
+  const [stage, setStage] = useState<RevealStage>('intro');
 
   useLayoutEffect(() => {
     let doneFallbackId: number | null = null;
@@ -37,34 +37,58 @@ export default function TwinShockRevealOverlay({
     };
   }, [getTileRect, onDone, targetId]);
 
+  const timings = useMemo(
+    () => (
+      reveal.type === 'ali_enters'
+        ? { transformAt: 1800, settledAt: 3200, doneAt: 5600 }
+        : { transformAt: 1550, settledAt: 2850, doneAt: 4900 }
+    ),
+    [reveal.type],
+  );
+
   useEffect(() => {
     if (!rect) return undefined;
-    const swapId = window.setTimeout(() => setStage('after'), 950);
+    const transformId = window.setTimeout(() => setStage('transform'), timings.transformAt);
+    const settledId = window.setTimeout(() => setStage('settled'), timings.settledAt);
     const doneId = window.setTimeout(() => {
       setStage('done');
       onDone();
-    }, 2700);
+    }, timings.doneAt);
     return () => {
-      window.clearTimeout(swapId);
+      window.clearTimeout(transformId);
+      window.clearTimeout(settledId);
       window.clearTimeout(doneId);
     };
-  }, [onDone, rect]);
+  }, [onDone, rect, timings]);
 
   const display = useMemo(() => {
-    const after = stage !== 'before';
+    const transformed = stage !== 'intro';
+    const settled = stage === 'settled';
     if (reveal.type === 'combined') {
       return {
-        name: after ? reveal.toName : reveal.fromName,
-        avatar: after ? reveal.toAvatar : reveal.fromAvatar,
-        caption: after ? 'Lia & Ali are revealed' : 'Lia steps into the spotlight',
+        beforeName: reveal.fromName,
+        beforeAvatar: reveal.fromAvatar,
+        afterName: reveal.toName,
+        afterAvatar: reveal.toAvatar,
+        headline: settled ? 'Twin Shock Exposed' : 'The spotlight tightens',
+        caption: settled
+          ? 'Lia & Ali will continue the game together as one contestant.'
+          : transformed
+            ? 'The house sees both twins at once.'
+            : 'Lia steps into the spotlight alone.',
       };
     }
     return {
-      name: after ? reveal.incomingName : reveal.replacedPlayerName,
-      avatar: after ? reveal.incomingAvatar : reveal.replacedPlayerAvatar,
-      caption: after
-        ? `${reveal.incomingName} takes the empty place`
-        : `${reveal.replacedPlayerName}'s place goes dark`,
+      beforeName: reveal.replacedPlayerName,
+      beforeAvatar: reveal.replacedPlayerAvatar,
+      afterName: reveal.incomingName,
+      afterAvatar: reveal.incomingAvatar,
+      headline: settled ? 'New Housemate' : 'A place in the House opens',
+      caption: settled
+        ? `${reveal.incomingName} is now officially in the game.`
+        : transformed
+          ? `${reveal.incomingName} steps into the House.`
+          : `${reveal.replacedPlayerName}'s tile fades from the board.`,
     };
   }, [reveal, stage]);
 
@@ -86,23 +110,39 @@ export default function TwinShockRevealOverlay({
       aria-label={display.caption}
     >
       <div className="twin-shock-reveal__shade" />
+      <div className="twin-shock-reveal__flare" />
       <div className="twin-shock-reveal__beam" />
       <div className="twin-shock-reveal__tile">
         <div className="twin-shock-reveal__avatar-wrap">
-          {display.avatar ? (
+          {display.beforeAvatar ? (
             <img
-              className="twin-shock-reveal__avatar"
-              src={display.avatar}
+              className="twin-shock-reveal__avatar twin-shock-reveal__avatar--before"
+              src={display.beforeAvatar}
               alt=""
               draggable={false}
             />
           ) : (
-            <span className="twin-shock-reveal__avatar-fallback">
-              {display.name.slice(0, 2).toUpperCase()}
+            <span className="twin-shock-reveal__avatar-fallback twin-shock-reveal__avatar-fallback--before">
+              {display.beforeName.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+          {display.afterAvatar ? (
+            <img
+              className="twin-shock-reveal__avatar twin-shock-reveal__avatar--after"
+              src={display.afterAvatar}
+              alt=""
+              draggable={false}
+            />
+          ) : (
+            <span className="twin-shock-reveal__avatar-fallback twin-shock-reveal__avatar-fallback--after">
+              {display.afterName.slice(0, 2).toUpperCase()}
             </span>
           )}
         </div>
-        <div className="twin-shock-reveal__name">{display.name}</div>
+        <div className="twin-shock-reveal__headline">{display.headline}</div>
+        <div className="twin-shock-reveal__name">
+          {stage === 'intro' ? display.beforeName : display.afterName}
+        </div>
       </div>
       <div className="twin-shock-reveal__caption">{display.caption}</div>
     </div>
