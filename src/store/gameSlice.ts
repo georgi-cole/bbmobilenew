@@ -842,6 +842,25 @@ function canPlayerTargetPlayer(state: GameState, actorId: string | null | undefi
   return !isTwinAlliancePair(state, actorId, targetId);
 }
 
+function usesPluralPlayerGrammar(player: Pick<Player, 'name'> & Partial<Pick<Player, 'twinMode'>> | null | undefined): boolean {
+  if (!player) return false;
+  return player.twinMode === 'combined' || player.name.includes('&');
+}
+
+function getPlayerBeVerb(
+  player: Pick<Player, 'name'> & Partial<Pick<Player, 'twinMode'>> | null | undefined,
+  singular: string,
+  plural: string,
+): string {
+  return usesPluralPlayerGrammar(player) ? plural : singular;
+}
+
+function getPlayerReflexive(
+  player: Pick<Player, 'name'> & Partial<Pick<Player, 'twinMode'>> | null | undefined,
+): string {
+  return usesPluralPlayerGrammar(player) ? 'themselves' : 'themself';
+}
+
 function getTwinNomineeToSave(
   state: GameState,
   holderId: string | null | undefined,
@@ -1059,7 +1078,7 @@ function resolveTwinShockMissionSuccess(state: GameState) {
     'twin_shock_mission_success',
   );
   if (lia) {
-    pushEvent(state, `${lia.name} and Ali share a powerful bond after the reveal.`, 'social', {
+    pushEvent(state, 'Lia and Ali share a powerful bond after the reveal.', 'social', {
       major: 'twin_shock_bond',
     });
   }
@@ -2039,7 +2058,7 @@ const gameSlice = createSlice({
           state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
           pushDetoxEvent(
             state,
-            `${posWinner?.name ?? 'The Detox holder'} has decided to use Detox. ⚡`,
+            `${posWinner?.name ?? 'The Detox holder'} ${getPlayerBeVerb(posWinner, 'has', 'have')} decided to use Detox. ⚡`,
           );
           pushDetoxEvent(
             state,
@@ -2058,7 +2077,7 @@ const gameSlice = createSlice({
         }
         pushEvent(
           state,
-          `${posWinner?.name ?? 'The holder'} has decided NOT to use the power. The nominations remain the same. ⚡`,
+          `${posWinner?.name ?? 'The holder'} ${getPlayerBeVerb(posWinner, 'has', 'have')} decided NOT to use the power. The nominations remain the same. ⚡`,
           'game',
         );
       }
@@ -4702,7 +4721,8 @@ const gameSlice = createSlice({
               state.povSavedId = null;
               state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
               const removedNames = oldNominees.map((n) => n.name).join(' and ');
-              pushDetoxEvent(state, `${posWinner.name} has decided to use Detox. ⚡`);
+              pushDetoxEvent(state, `${posWinner.name} ${getPlayerBeVerb(posWinner, 'has', 'have')} decided to use Detox. ⚡`);
+
               pushDetoxEvent(state, `${posWinner.name} used Detox and cleared ${removedNames} from the block! ⚡`);
               const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true, actorId: posWinner.id });
               const replacements = pickStrategicAiPlayers(
@@ -4741,7 +4761,7 @@ const gameSlice = createSlice({
                 state.povSavedId = null;
                 state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
                 const removedNames = oldNominees.map((n) => n.name).join(' and ');
-                pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'} has decided to use Detox. ⚡`);
+                pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'} ${getPlayerBeVerb(posWinner, 'has', 'have')} decided to use Detox. ⚡`);
                 pushDetoxEvent(state, `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`);
                 if (eligible.length >= 2) {
                   const replacements = pickStrategicAiPlayers(state, eligible, 2, rng, { preferLoh: true });
@@ -4838,7 +4858,7 @@ const gameSlice = createSlice({
             const lohName = state.players.find((pl) => pl.id === state.lohId)?.name ?? 'The LOH';
             pushEvent(
               state,
-              `${savedName} has decided to use the Power of Safety on themself. ${lohName} must now name a backup nominee.`,
+              `${savedName} ${getPlayerBeVerb(posWinner, 'has', 'have')} decided to use the Power of Safety on ${getPlayerReflexive(posWinner)}. ${lohName} must now name a backup nominee.`,
               'game',
             );
 

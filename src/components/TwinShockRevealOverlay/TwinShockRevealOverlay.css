@@ -4,13 +4,29 @@
   z-index: 8800;
   pointer-events: none;
   color: #fff;
+  --twin-shock-beam-color: rgba(255, 214, 102, 0.96);
+  --twin-shock-glow-color: rgba(255, 214, 102, 0.82);
 }
 
 .twin-shock-reveal__shade {
   position: absolute;
   inset: 0;
-  background: rgba(5, 10, 18, 0.84);
-  animation: twin-shock-fade-in 260ms ease-out both;
+  background:
+    radial-gradient(circle at center, rgba(15, 22, 34, 0.08) 0, rgba(5, 10, 18, 0.88) 72%),
+    rgba(5, 10, 18, 0.82);
+  animation: twin-shock-fade-in 520ms ease-out both;
+}
+
+.twin-shock-reveal__flare {
+  position: absolute;
+  left: calc(var(--twin-shock-left) - 40px);
+  top: calc(var(--twin-shock-top) - 60px);
+  width: calc(var(--twin-shock-width) + 80px);
+  height: calc(var(--twin-shock-height) + 120px);
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.22) 0, rgba(255, 255, 255, 0) 70%);
+  opacity: 0.35;
+  filter: blur(12px);
+  animation: twin-shock-flare 1600ms ease-in-out infinite alternate;
 }
 
 .twin-shock-reveal__beam {
@@ -19,29 +35,25 @@
   top: calc(var(--twin-shock-top) - 10px);
   width: calc(var(--twin-shock-width) + 20px);
   height: calc(var(--twin-shock-height) + 20px);
-  border: 2px solid rgba(255, 214, 102, 0.96);
+  border: 2px solid var(--twin-shock-beam-color);
   box-shadow:
     0 0 0 9999px rgba(0, 0, 0, 0.18),
-    0 0 26px rgba(255, 214, 102, 0.82),
+    0 0 26px var(--twin-shock-glow-color),
     inset 0 0 20px rgba(255, 255, 255, 0.22);
   border-radius: 12px;
-  animation: twin-shock-pulse 920ms ease-in-out infinite alternate;
+  animation: twin-shock-pulse 1500ms ease-in-out infinite alternate;
 }
 
-.twin-shock-reveal--combined.twin-shock-reveal--after .twin-shock-reveal__beam {
-  border-color: rgba(112, 231, 255, 0.96);
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.18),
-    0 0 30px rgba(112, 231, 255, 0.9),
-    inset 0 0 20px rgba(255, 255, 255, 0.24);
+.twin-shock-reveal--combined.twin-shock-reveal--transform,
+.twin-shock-reveal--combined.twin-shock-reveal--settled {
+  --twin-shock-beam-color: rgba(112, 231, 255, 0.96);
+  --twin-shock-glow-color: rgba(112, 231, 255, 0.9);
 }
 
-.twin-shock-reveal--ali_enters.twin-shock-reveal--after .twin-shock-reveal__beam {
-  border-color: rgba(102, 255, 178, 0.96);
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.18),
-    0 0 30px rgba(102, 255, 178, 0.86),
-    inset 0 0 20px rgba(255, 255, 255, 0.24);
+.twin-shock-reveal--ali_enters.twin-shock-reveal--transform,
+.twin-shock-reveal--ali_enters.twin-shock-reveal--settled {
+  --twin-shock-beam-color: rgba(102, 255, 178, 0.96);
+  --twin-shock-glow-color: rgba(102, 255, 178, 0.86);
 }
 
 .twin-shock-reveal__tile {
@@ -56,41 +68,106 @@
   justify-items: center;
   overflow: hidden;
   border-radius: 10px;
-  background: rgba(13, 18, 26, 0.74);
+  background:
+    linear-gradient(180deg, rgba(18, 25, 39, 0.9), rgba(8, 13, 22, 0.86));
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transform-origin: center;
-  animation: twin-shock-tile-rise 620ms ease-out both;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  animation: twin-shock-tile-rise 850ms ease-out both;
 }
 
-.twin-shock-reveal--after .twin-shock-reveal__tile {
-  animation: twin-shock-swap 680ms ease-out both;
+.twin-shock-reveal--transform .twin-shock-reveal__tile {
+  animation: twin-shock-swap 1100ms ease-out both;
+}
+
+.twin-shock-reveal--settled .twin-shock-reveal__tile {
+  transform: scale(1.03);
 }
 
 .twin-shock-reveal__avatar-wrap {
+  position: relative;
   width: min(74%, 136px);
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 0 0 6px rgba(255, 255, 255, 0.04);
 }
 
 .twin-shock-reveal__avatar {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition:
+    opacity 900ms ease,
+    transform 900ms ease,
+    filter 900ms ease;
+}
+
+.twin-shock-reveal__avatar--before,
+.twin-shock-reveal__avatar-fallback--before {
+  opacity: 1;
+  transform: scale(1);
+  filter: saturate(0.94);
+}
+
+.twin-shock-reveal__avatar--after,
+.twin-shock-reveal__avatar-fallback--after {
+  opacity: 0;
+  transform: scale(0.88);
+  filter: saturate(1.14);
 }
 
 .twin-shock-reveal__avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   font-size: clamp(1rem, 3vw, 2rem);
   font-weight: 800;
+}
+
+.twin-shock-reveal--transform .twin-shock-reveal__avatar--before,
+.twin-shock-reveal--transform .twin-shock-reveal__avatar-fallback--before,
+.twin-shock-reveal--settled .twin-shock-reveal__avatar--before,
+.twin-shock-reveal--settled .twin-shock-reveal__avatar-fallback--before {
+  opacity: 0;
+  transform: scale(1.16);
+  filter: blur(5px);
+}
+
+.twin-shock-reveal--transform .twin-shock-reveal__avatar--after,
+.twin-shock-reveal--transform .twin-shock-reveal__avatar-fallback--after,
+.twin-shock-reveal--settled .twin-shock-reveal__avatar--after,
+.twin-shock-reveal--settled .twin-shock-reveal__avatar-fallback--after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.twin-shock-reveal__headline {
+  margin-top: 0.44rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: clamp(0.62rem, 1.2vw, 0.78rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .twin-shock-reveal__name {
   width: 100%;
   min-height: 1.9rem;
   padding: 0.24rem 0.45rem 0.42rem;
-  background: rgba(0, 0, 0, 0.46);
+  background: rgba(0, 0, 0, 0.38);
   text-align: center;
   font-size: clamp(0.78rem, 1.5vw, 1.04rem);
   font-weight: 800;
@@ -107,12 +184,12 @@
   max-width: min(420px, calc(100vw - 28px));
   padding: 0.48rem 0.7rem;
   border-radius: 7px;
-  background: rgba(5, 10, 18, 0.88);
+  background: rgba(5, 10, 18, 0.9);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
   font-size: clamp(0.82rem, 1.7vw, 1rem);
   font-weight: 750;
   line-height: 1.18;
-  animation: twin-shock-caption 360ms ease-out both;
+  animation: twin-shock-caption 620ms ease-out both;
 }
 
 @keyframes twin-shock-fade-in {
@@ -125,10 +202,21 @@
   to { transform: scale(1.025); opacity: 1; }
 }
 
+@keyframes twin-shock-flare {
+  from {
+    opacity: 0.18;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 0.44;
+    transform: scale(1.06);
+  }
+}
+
 @keyframes twin-shock-tile-rise {
   from {
     opacity: 0;
-    transform: scale(0.92);
+    transform: scale(0.88) translateY(12px);
   }
   to {
     opacity: 1;
@@ -138,16 +226,13 @@
 
 @keyframes twin-shock-swap {
   0% {
-    opacity: 0.1;
-    transform: scale(0.88) rotate(-1deg);
+    transform: scale(0.96);
   }
-  58% {
-    opacity: 1;
-    transform: scale(1.08) rotate(0deg);
+  42% {
+    transform: scale(1.12);
   }
   100% {
-    opacity: 1;
-    transform: scale(1);
+    transform: scale(1.03);
   }
 }
 
@@ -164,11 +249,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .twin-shock-reveal__shade,
+  .twin-shock-reveal__flare,
   .twin-shock-reveal__beam,
   .twin-shock-reveal__tile,
   .twin-shock-reveal__caption,
-  .twin-shock-reveal--after .twin-shock-reveal__tile {
+  .twin-shock-reveal--transform .twin-shock-reveal__tile,
+  .twin-shock-reveal__avatar {
     animation-duration: 1ms;
     animation-iteration-count: 1;
+    transition-duration: 1ms;
   }
 }

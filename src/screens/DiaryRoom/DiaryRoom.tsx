@@ -261,6 +261,11 @@ function buildEntryGreeting(playerName: string, seed: number, visitCount: number
   };
 }
 
+function getBigEyeTypingDelay(text: string): number {
+  const normalizedLength = text.trim().length;
+  return Math.max(420, Math.min(1180, 260 + normalizedLength * 12));
+}
+
 function hasSummaryEmitted(playerId: string): boolean {
   try {
     return sessionStorage.getItem(summaryKey(playerId)) === '1';
@@ -429,7 +434,7 @@ export default function DiaryRoom() {
   const appendBigEyeMessagesSequentially = useCallback(async (lines: string[]) => {
     for (const line of lines) {
       setBbTyping(true);
-      await new Promise<void>((resolve) => setTimeout(resolve, 550));
+      await new Promise<void>((resolve) => setTimeout(resolve, getBigEyeTypingDelay(line)));
       setBbTyping(false);
       const nextMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -442,7 +447,7 @@ export default function DiaryRoom() {
         saveChat(playerId, updated);
         return updated;
       });
-      await new Promise<void>((resolve) => setTimeout(resolve, 220));
+      await new Promise<void>((resolve) => setTimeout(resolve, /[.!?]$/.test(line) ? 340 : 240));
     }
   }, [playerId]);
 
@@ -454,6 +459,8 @@ export default function DiaryRoom() {
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
+  const confessionalDecisionPendingRef = useRef(confessionalDecisionPending);
+  useEffect(() => { confessionalDecisionPendingRef.current = confessionalDecisionPending; }, [confessionalDecisionPending]);
 
   useEffect(() => {
     if (!confessionalDecisionPending && navigationBlockerState === 'blocked' && resetNavigationBlocker) {
@@ -491,7 +498,7 @@ export default function DiaryRoom() {
     const nextConversationState = createInitialBigEyeState();
     setConversationState(nextConversationState);
     saveConversationState(playerId, nextConversationState);
-    if (confessionalDecisionPending) {
+    if (confessionalDecisionPendingRef.current) {
       setMessages([]);
       saveChat(playerId, []);
       return;
@@ -501,7 +508,7 @@ export default function DiaryRoom() {
     const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount);
     setMessages([greeting]);
     saveChat(playerId, [greeting]);
-  }, [confessionalDecisionPending, confessionalLocked, playerId]);
+  }, [confessionalLocked, playerId]);
 
   useEffect(() => {
     if (confessionalLocked || !activeDecisionPresentation) return;
