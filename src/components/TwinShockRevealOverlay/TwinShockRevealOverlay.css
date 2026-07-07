@@ -63,9 +63,7 @@
   width: var(--twin-shock-width);
   height: var(--twin-shock-height);
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  align-items: center;
-  justify-items: center;
+  place-items: center;
   overflow: hidden;
   border-radius: 10px;
   background:
@@ -88,7 +86,7 @@
 
 .twin-shock-reveal__avatar-wrap {
   position: relative;
-  width: min(74%, 136px);
+  width: min(82%, 156px);
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
@@ -152,46 +150,6 @@
   transform: scale(1);
 }
 
-.twin-shock-reveal__headline {
-  margin-top: 0.44rem;
-  padding: 0.18rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: clamp(0.62rem, 1.2vw, 0.78rem);
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.twin-shock-reveal__name {
-  width: 100%;
-  min-height: 1.9rem;
-  padding: 0.24rem 0.45rem 0.42rem;
-  background: rgba(0, 0, 0, 0.38);
-  text-align: center;
-  font-size: clamp(0.78rem, 1.5vw, 1.04rem);
-  font-weight: 800;
-  line-height: 1.08;
-}
-
-.twin-shock-reveal__caption {
-  position: absolute;
-  left: max(14px, calc(var(--twin-shock-left) - 24px));
-  top: min(
-    calc(100vh - 66px),
-    calc(var(--twin-shock-top) + var(--twin-shock-height) + 20px)
-  );
-  max-width: min(420px, calc(100vw - 28px));
-  padding: 0.48rem 0.7rem;
-  border-radius: 7px;
-  background: rgba(5, 10, 18, 0.9);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-  font-size: clamp(0.82rem, 1.7vw, 1rem);
-  font-weight: 750;
-  line-height: 1.18;
-  animation: twin-shock-caption 620ms ease-out both;
-}
-
 @keyframes twin-shock-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -236,23 +194,11 @@
   }
 }
 
-@keyframes twin-shock-caption {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .twin-shock-reveal__shade,
   .twin-shock-reveal__flare,
   .twin-shock-reveal__beam,
   .twin-shock-reveal__tile,
-  .twin-shock-reveal__caption,
   .twin-shock-reveal--transform .twin-shock-reveal__tile,
   .twin-shock-reveal__avatar {
     animation-duration: 1ms;
