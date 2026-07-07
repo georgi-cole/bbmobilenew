@@ -928,10 +928,11 @@ function shouldQueueTwinShockBeforeDayEnd(state: GameState): boolean {
     && twinShock.promptStage === null;
 
   if (forcedTwinShock && twinShock.status !== 'resolved_discovered' && twinShock.status !== 'resolved_mission_success') {
-    queueTwinShockConfessional(
-      state,
-      isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID) ? 'day4_initial' : 'secret_lost',
-    );
+    if (!isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID)) {
+      state.pendingForcedShock = null;
+      return false;
+    }
+    queueTwinShockConfessional(state, 'day4_initial');
     state.pendingForcedShock = null;
     return true;
   }
