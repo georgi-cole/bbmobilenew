@@ -231,14 +231,21 @@ function uniqueSources(sources: Array<string | null | undefined>): string[] {
   });
 }
 
+function getTabloidMatchTokens(player: Player | undefined): string[] {
+  const tokens = uniqueSources([player?.name, firstName(player)]).map(normalizeToken);
+  if (player?.id === 'ali' || player?.name === 'Ali') {
+    tokens.push(normalizeToken('Lia'));
+  }
+  return [...new Set(tokens)];
+}
+
 function pickTabloidPhoto(
   player: Player | undefined,
   photos: TabloidPhotoEntry[],
   usedPhotoIds: Set<string>,
 ): string | null {
   if (photos.length === 0) return null;
-
-  const desiredTokens = uniqueSources([player?.name, firstName(player)]).map(normalizeToken);
+  const desiredTokens = getTabloidMatchTokens(player);
   const matched = photos.find(
     (photo) => !usedPhotoIds.has(photo.id) && desiredTokens.includes(photo.matchToken),
   );

@@ -86,9 +86,9 @@
 
 .twin-shock-reveal__avatar-wrap {
   position: relative;
-  width: min(82%, 156px);
+  width: min(86%, 164px);
   aspect-ratio: 1;
-  border-radius: 50%;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   overflow: hidden;

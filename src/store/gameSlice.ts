@@ -37,9 +37,10 @@ import { loadActiveProfile, archiveKeyForActiveProfile, loadProfilesState } from
 import { loadSettings } from './settingsSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
-import { profilePhotoAvatar } from '../utils/avatar';
+import { profilePhotoAvatar, resolveAvatar } from '../utils/avatar';
 import type { SeasonArchive } from './seasonArchive';
 import { loadSeasonArchives } from './archivePersistence';
+import { resolveSkinAssetPathWithFallback } from '../utils/skinAssets';
 import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService';
 import {
   addDirection,
@@ -219,7 +220,14 @@ type SecretMissionTaskBuildResult = {
 const TWIN_SHOCK_RESERVED_IDS = new Set([TWIN_SHOCK_LIA_ID, TWIN_SHOCK_ALI_ID, 'lia_ali']);
 const TWIN_SHOCK_LIA_AVATAR = 'assets/skins/Lia_avatar.webp';
 const TWIN_SHOCK_ALI_AVATAR = 'assets/skins/Ali_avatar.webp';
-const TWIN_SHOCK_COMBINED_AVATAR = 'assets/skins/Lia_Ali_avatar.webp';
+const TWIN_SHOCK_LIA_FLIP_AVATAR = resolveSkinAssetPathWithFallback(
+  'Lia_flip_avatar.webp',
+  'Lia_avatar.webp',
+);
+const TWIN_SHOCK_COMBINED_AVATAR = resolveSkinAssetPathWithFallback(
+  'Ali_lia_avatar.webp',
+  'Lia_Ali_avatar.webp',
+);
 const TWIN_SHOCK_LIA_POOL_ENTRY = {
   id: TWIN_SHOCK_LIA_ID,
   name: 'Lia',
@@ -975,11 +983,17 @@ function ensureCompetitionStateForPlayer(state: GameState, playerId: string) {
   }
 }
 
+function applyTwinShockFlipHint(state: GameState) {
+  const lia = state.players.find((player) => player.id === TWIN_SHOCK_LIA_ID);
+  if (!lia || lia.twinMode === 'combined') return;
+  lia.avatar = TWIN_SHOCK_LIA_FLIP_AVATAR;
+}
+
 function resolveTwinShockDiscovered(state: GameState) {
   const lia = state.players.find((player) => player.id === TWIN_SHOCK_LIA_ID);
   const humanName = getHumanPlayer(state)?.name ?? 'The player';
   const fromName = lia?.name ?? 'Lia';
-  const fromAvatar = lia?.avatar ?? TWIN_SHOCK_LIA_AVATAR;
+  const fromAvatar = lia ? resolveAvatar(lia) : TWIN_SHOCK_LIA_AVATAR;
   if (lia) {
     lia.name = 'Lia & Ali';
     lia.avatar = TWIN_SHOCK_COMBINED_AVATAR;
@@ -1027,7 +1041,15 @@ function resolveTwinShockMissionSuccess(state: GameState) {
     })[0] ?? null;
   const replacedPlayerId = replacement?.id ?? TWIN_SHOCK_ALI_ID;
   const replacedPlayerName = replacement?.name ?? 'an empty house slot';
-  const replacedPlayerAvatar = replacement?.avatar ?? TWIN_SHOCK_ALI_AVATAR;
+  const replacedPlayerAvatar = replacement
+    ? resolveAvatar(replacement)
+    : TWIN_SHOCK_ALI_AVATAR;
+
+  if (lia) {
+    lia.name = 'Lia';
+    lia.avatar = TWIN_SHOCK_LIA_AVATAR;
+    delete lia.twinMode;
+  }
 
   if (replacement) {
     replacement.id = TWIN_SHOCK_ALI_ID;
@@ -1120,6 +1142,10 @@ function applyTwinShockTurnResult(state: GameState, result: TwinShockTurnResult)
     twinShock.queuedDay = previousQueuedDay;
   }
   state.twinShock = twinShock;
+
+  if (result.status === 'day4_asked_no_correct_guess' && result.promptStage === null) {
+    applyTwinShockFlipHint(state);
+  }
 
   if (result.resolution === 'resolved_discovered') resolveTwinShockDiscovered(state);
   if (result.resolution === 'resolved_mission_success') resolveTwinShockMissionSuccess(state);
@@ -3433,14 +3459,19 @@ const gameSlice = createSlice({
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
     submitTwinShockAnswer(state, action: PayloadAction<string>) {
-      if (!state.twinShock?.promptStage) return;
+      const twinShock = state.twinShock;
+      if (!twinShock) return;
+      const canProcessUnpromptedFollowUpGuess =
+        twinShock.promptStage == null &&
+        twinShock.status === 'day4_asked_no_correct_guess';
+      if (!twinShock.promptStage && !canProcessUnpromptedFollowUpGuess) return;
       const human = getHumanPlayer(state);
       if (!human || human.status === 'evicted' || human.status === 'jury') {
-        state.twinShock.promptStage = null;
-        state.twinShock.queuedDay = null;
+        twinShock.promptStage = null;
+        twinShock.queuedDay = null;
         return;
       }
-      const result = resolveTwinShockTurn(state.twinShock, action.payload, {
+      const result = resolveTwinShockTurn(twinShock, action.payload, {
         playerName: human.name,
         liaActive: isPlayerActiveInHouse(state, TWIN_SHOCK_LIA_ID),
       });
