@@ -88,6 +88,21 @@ describe('Twin Shock reducer flow', () => {
     expect(state.twinShockConsumed).toBe(true);
   });
 
+  it('does not surface a secret-lost confessional if Lia was already gone before a forced activation starts', () => {
+    let state = reduce(makeTwinShockState({
+      week: 2,
+      players: makeTwinShockState().players.map((player) =>
+        player.id === 'lia' ? { ...player, status: 'evicted' } : player,
+      ),
+    }), queueForcedShock('twinShock'));
+    state = reduce(state, advance());
+
+    expect(state.pendingForcedShock).toBeNull();
+    expect(state.twinShock?.promptStage).toBeNull();
+    expect(state.twinShock?.status).toBe('inactive');
+    expect(state.twinShockResolution).toBeNull();
+  });
+
   it('turns Lia into Lia & Ali when the player exposes the secret', () => {
     let state = reduce(makeTwinShockState(), advance());
     state = reduce(state, submitTwinShockAnswer('Maybe she has a twin sister?'));
