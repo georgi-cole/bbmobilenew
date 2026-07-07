@@ -106,6 +106,21 @@ function joinPublicAssetPath(path: string): string {
   return path;
 }
 
+function normalizeExplicitAvatarPath(avatar: string | null | undefined): string | null {
+  if (!avatar) return null;
+  if (avatar.startsWith('http') || avatar.startsWith('/')) return avatar;
+
+  const normalized = avatar.replace(/^\.\//, '');
+  if (
+    normalized.startsWith('assets/')
+    || /\.(png|webp|svg|jpg|jpeg|wp2)$/i.test(normalized)
+  ) {
+    return joinPublicAssetPath(normalized);
+  }
+
+  return null;
+}
+
 /** Capitalises the first letter of a string and lowercases the rest. */
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -148,15 +163,15 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
     candidates.push(remoteAvatarUrl);
   }
 
-  // If player.avatar is already a full URL or absolute path, use it first
-  if (player.avatar && (player.avatar.startsWith('http') || player.avatar.startsWith('/'))) {
-    candidates.push(player.avatar);
+  const explicitAvatarPath = normalizeExplicitAvatarPath(player.avatar);
+  if (explicitAvatarPath) {
+    candidates.push(explicitAvatarPath);
   }
 
   if (!isUserPlayer) {
     const folderAvatar = listAvatarAssetCandidates().find(({ basename }) => {
       const token = normalizeNameToken(basename.replace(/_avatar$/i, ''));
-      return lookupTokens.includes(token) || lookupTokens.some((target) => token.includes(target) || target.includes(token));
+      return lookupTokens.includes(token);
     });
     if (folderAvatar) {
       candidates.push(folderAvatar.source);
