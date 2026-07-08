@@ -64,6 +64,7 @@ import {
 import { startChallenge, selectPendingChallenge, completeChallenge, type PendingChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
 import { setEnergyBankEntry } from '../../social/socialSlice'
+import { useSearchParams } from 'react-router-dom'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
@@ -311,6 +312,7 @@ function buildDoubleEvictionPostVoteAnnouncement(options: {
  * or add action buttons by dispatching events via useAppDispatch().
  */
 export default function GameScreen() {
+  const [searchParams] = useSearchParams()
   const dispatch = useAppDispatch()
   const store = useStore<RootState>()
   const gameScreenRef = useRef<HTMLDivElement | null>(null)
@@ -1164,8 +1166,9 @@ export default function GameScreen() {
   )
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
-  // Kept visible in-game for QA/mobile testing.
+  // Only visible in development builds for easy QA verification.
   const isDebugMode = detectDebugMode()
+  const isQaMode = searchParams.get('qa') === '1'
   const handleDevPlayNomAnim = useCallback(() => {
     const eligible = alivePlayers.filter((p) => !p.isUser)
     const devNominees = eligible.slice(0, 2).map((p) => p.id)
@@ -4368,15 +4371,15 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Debug: trigger nomination animation ───────────────────────────── */}
-      {!awaitingHumanDecision && (
+      {/* ── QA: trigger nomination animation (enabled with qa=1) ─────────── */}
+      {isQaMode && !awaitingHumanDecision && (
         <button
           className="dev-nom-anim-btn"
           onClick={handleDevPlayNomAnim}
           type="button"
-          aria-label="Debug: Play Nomination Animation"
+          aria-label="QA: Play Nomination Animation"
         >
-          🎬 Debug: Play Nomination Animation
+          🎬 QA: Play Nomination Animation
         </button>
       )}
 
