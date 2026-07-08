@@ -113,7 +113,10 @@ export const router = createHashRouter([
       { path: 'public-meter',     element: <PublicMeter />  },
       { path: 'settings',         element: <Settings />     },
       ...(SettingsAdmin != null
-        ? [{ path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> }]
+        ? [
+            { path: 'settings-admin', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> },
+            { path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> },
+          ]
         : []),
       ...(import.meta.env.DEV && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
