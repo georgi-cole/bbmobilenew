@@ -237,6 +237,18 @@ body:has(.game-screen-shell) {
   bottom: calc(8px + var(--game-screen-floating-dock-clearance));
 }
 
+@media (max-width: 640px) {
+  .dev-nom-anim-btn {
+    left: 50%;
+    right: auto;
+    bottom: calc(var(--nav-bar-height, 56px) + env(safe-area-inset-bottom, 0px) + 10px);
+    transform: translateX(-50%);
+    width: min(calc(100vw - 20px), 320px);
+    padding: 12px 14px;
+    font-size: 0.82rem;
+  }
+}
+
 .dev-nom-anim-btn:hover {
   background: rgba(0, 0, 0, 0.8);
   border-color: rgba(255, 215, 0, 0.9);
