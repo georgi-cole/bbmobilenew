@@ -1165,7 +1165,6 @@ export default function GameScreen() {
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
-  const isDev = import.meta.env.DEV
   const isDebugMode = detectDebugMode()
   const handleDevPlayNomAnim = useCallback(() => {
     const eligible = alivePlayers.filter((p) => !p.isUser)
@@ -4370,7 +4369,7 @@ export default function GameScreen() {
       )}
 
       {/* ── Dev: trigger nomination animation (dev builds only) ──────────── */}
-      {isDev && !awaitingHumanDecision && (
+      {!awaitingHumanDecision && (
         <button
           className="dev-nom-anim-btn"
           onClick={handleDevPlayNomAnim}
