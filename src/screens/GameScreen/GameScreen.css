@@ -225,12 +225,20 @@ body:has(.game-screen-shell) {
   border-radius: 6px;
   border: 1px dashed rgba(255, 200, 0, 0.7);
   background: rgba(0, 0, 0, 0.6);
-  color: #ffd700;
+  color: transparent;
   font-size: 0.72rem;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   letter-spacing: 0.03em;
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dev-nom-anim-btn::after {
+  content: 'Debug Menu';
+  color: #ffd700;
 }
 
 .game-screen:has(.game-control-dock) .dev-nom-anim-btn {
@@ -245,6 +253,10 @@ body:has(.game-screen-shell) {
     transform: translateX(-50%);
     width: min(calc(100vw - 20px), 320px);
     padding: 12px 14px;
+    font-size: 0.82rem;
+  }
+
+  .dev-nom-anim-btn::after {
     font-size: 0.82rem;
   }
 }

@@ -267,7 +267,7 @@ export default function HomeHub() {
     dispatch(hydrateGame(snapshot.game));
     dispatch(hydrateFinale(snapshot.finale));
     dispatch(hydrateSocial(snapshot.social));
-    navigate('/game');
+    navigate({ pathname: '/game', search: location.search });
   }
 
   function startClassicRun() {

@@ -1166,17 +1166,9 @@ export default function GameScreen() {
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Kept visible in-game for QA/mobile testing.
   const isDebugMode = detectDebugMode()
-  const handleDevPlayNomAnim = useCallback(() => {
-    const eligible = alivePlayers.filter((p) => !p.isUser)
-    const devNominees = eligible.slice(0, 2).map((p) => p.id)
-    if (devNominees.length === 2) {
-      console.log('DEV: Play Nomination Animation', devNominees)
-      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
-      const fullIds = autoId && !devNominees.includes(autoId) ? [...devNominees, autoId] : devNominees
-      setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
-      setPendingNominees(devNominees)
-    }
-  }, [alivePlayers, canUsePublicNomineeRule, game.lastHohCompFinisherId, game.week, setAiNomAnimConsumedKey, setPendingNominees])
+  const handleOpenDebugPanel = useCallback(() => {
+    window.dispatchEvent(new Event('bbm:open-debug-panel'))
+  }, [])
 
   // ── Human POS holder decision (use veto or not) ──────────────────────────
   const humanIsPosHolder = humanPlayer && game.posWinnerId === humanPlayer.id
@@ -4372,9 +4364,10 @@ export default function GameScreen() {
       {!awaitingHumanDecision && (
         <button
           className="dev-nom-anim-btn"
-          onClick={handleDevPlayNomAnim}
+          onClick={handleOpenDebugPanel}
           type="button"
-          aria-label="Debug: Play Nomination Animation"
+          aria-label="Open Debug Panel"
+          title="Open Debug Panel"
         >
           🎬 Debug: Play Nomination Animation
         </button>

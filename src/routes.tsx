@@ -31,10 +31,7 @@ import NotFound             from './screens/NotFound/NotFound';
 import { canAccessSpecialSettings } from './utils/debugMode';
 import { lazy, Suspense }   from 'react';
 
-// Admin/debug screens stay hidden unless the current session has QA debug access.
-const SettingsAdmin = import.meta.env.DEV || canAccessSpecialSettings()
-  ? lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'))
-  : null;
+const SettingsAdminPage = lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'));
 const GameDebug = import.meta.env.DEV
   ? lazy(() => import('./screens/GameDebug/GameDebug'))
   : null;
@@ -90,6 +87,14 @@ const MinigameLab = import.meta.env.DEV
   ? lazy(() => import('./screens/MinigameLab/MinigameLab'))
   : null;
 
+function SettingsAdminRoute() {
+  if (!canAccessSpecialSettings()) {
+    return <NotFound />;
+  }
+
+  return <Suspense fallback={null}><SettingsAdminPage /></Suspense>;
+}
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -112,12 +117,8 @@ export const router = createHashRouter([
       { path: 'rules',            element: <Rules />        },
       { path: 'public-meter',     element: <PublicMeter />  },
       { path: 'settings',         element: <Settings />     },
-      ...(SettingsAdmin != null
-        ? [
-            { path: 'settings-admin', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> },
-            { path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> },
-          ]
-        : []),
+      { path: 'settings-admin', element: <SettingsAdminRoute /> },
+      { path: 'settingsatiste', element: <SettingsAdminRoute /> },
       ...(import.meta.env.DEV && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
         : []),

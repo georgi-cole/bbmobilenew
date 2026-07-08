@@ -3,7 +3,7 @@
 /* Floating action button (bottom-right corner) */
 .dbg-fab {
   position: fixed;
-  bottom: 5rem; /* above nav bar */
+  bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); /* above nav bar */
   right: 1rem;
   z-index: 9000;
   width: 2.75rem;
@@ -241,6 +241,11 @@
 
 /* Hide on very small screens (phones in portrait) by tucking behind toggle */
 @media (max-width: 360px) {
+  .dbg-fab {
+    right: 0.75rem;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .dbg-panel {
     width: 100vw;
   }

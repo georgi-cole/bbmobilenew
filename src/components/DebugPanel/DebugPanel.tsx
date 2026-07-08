@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -172,6 +172,12 @@ export default function DebugPanel() {
   const [selectedPov, setSelectedPov] = useState('');
   const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
   const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
+
+  useEffect(() => {
+    const openPanel = () => setIsOpen(true);
+    window.addEventListener('bbm:open-debug-panel', openPanel);
+    return () => window.removeEventListener('bbm:open-debug-panel', openPanel);
+  }, []);
 
   if (!isDebug) return null;
 

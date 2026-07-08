@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getAll } from '../../data/houseguests';
 import { resolveAvatar } from '../../utils/avatar';
 import { preloadImage, preloadImages } from '../../utils/preload';
@@ -22,6 +22,7 @@ function getAvatarUrls(): string[] {
 
 export default function AssetPreloaderOverlay() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Opening the competition arena.');
   const doneFiredRef = useRef(false);
@@ -48,14 +49,14 @@ export default function AssetPreloaderOverlay() {
       if (cancelled || doneFiredRef.current) return;
       doneFiredRef.current = true;
       setStatus('Entering the house.');
-      navigate('/game');
+      navigate({ pathname: '/game', search: location.search });
     }
 
     void run();
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [location.search, navigate]);
 
   return (
     <KolequantSplash
