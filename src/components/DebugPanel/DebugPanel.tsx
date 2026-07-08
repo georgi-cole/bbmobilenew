@@ -613,7 +613,7 @@ export default function DebugPanel() {
                   className="dbg-btn dbg-btn--wide"
                   onClick={() =>
                     navigate({
-                      pathname: '/settingsatiste',
+                      pathname: '/settings-admin',
                       search: searchParams.toString() ? `?${searchParams.toString()}` : '',
                     })
                   }
