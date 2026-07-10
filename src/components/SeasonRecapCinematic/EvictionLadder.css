@@ -305,7 +305,9 @@
   font-weight: 800;
   letter-spacing: 0.14em;
   color: var(--ladder-text-muted);
-  white-space: nowrap;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .eviction-ladder__status-icon {
@@ -433,5 +435,10 @@
   .eviction-ladder__ranking {
     padding: 0.56rem 0.6rem 0.56rem 0.66rem;
     gap: 0.56rem;
+  }
+
+  .eviction-ladder__status {
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
   }
 }

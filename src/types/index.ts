@@ -813,6 +813,8 @@ export interface GameState {
    * confirms the eviction.
    */
   dayStartShock?: DayStartShockState | null;
+  /** True after Morning Shock activates, preventing another activation this season. */
+  dayStartShockUsedThisSeason?: boolean;
   /**
    * When set, the VoteResultsPopup is shown with the vote tally before
    * advancing. Maps nominee ID → number of votes received.

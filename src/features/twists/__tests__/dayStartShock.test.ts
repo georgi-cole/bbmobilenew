@@ -22,4 +22,15 @@ describe('day start shock selection', () => {
     expect(selection?.templateId).toBeTruthy();
     expect(rng).toHaveBeenCalledTimes(2);
   });
+
+  it('never selects the user player', () => {
+    const players: Player[] = [
+      { id: 'user', name: 'You', avatar: '🧑', status: 'active', isUser: true },
+      { id: 'ai', name: 'Housemate', avatar: '👩', status: 'active' },
+    ];
+
+    const selection = buildDayStartShockSelection(players, () => 0);
+
+    expect(selection?.targetId).toBe('ai');
+  });
 });

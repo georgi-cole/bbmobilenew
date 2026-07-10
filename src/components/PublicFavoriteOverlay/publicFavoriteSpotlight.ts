@@ -7,8 +7,8 @@ export interface HouseguestSpotlightItem {
   facts: string[];
 }
 
-const SPOTLIGHT_ROTATION_MIN_MS = 3000;
-const SPOTLIGHT_ROTATION_MAX_MS = 5000;
+const SPOTLIGHT_ROTATION_MIN_MS = 4500;
+const SPOTLIGHT_ROTATION_MAX_MS = 6000;
 
 function cleanText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
@@ -84,7 +84,7 @@ export function buildHouseguestSpotlightItems(candidates: Player[]): HouseguestS
 
 export function getSpotlightRotationDelayMs(fact: string): number {
   const wordCount = Math.max(1, fact.split(/\s+/).filter(Boolean).length);
-  const scaledDelay = 3000 + Math.min(2000, Math.max(0, (wordCount - 8) * 110));
+  const scaledDelay = 4500 + Math.min(1500, Math.max(0, (wordCount - 8) * 110));
   return Math.max(SPOTLIGHT_ROTATION_MIN_MS, Math.min(SPOTLIGHT_ROTATION_MAX_MS, scaledDelay));
 }
 

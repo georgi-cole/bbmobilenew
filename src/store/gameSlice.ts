@@ -428,6 +428,7 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     },
     pendingForcedShock: null,
     dayStartShock: null,
+    dayStartShockUsedThisSeason: false,
     twinShock: createInitialTwinShockState(),
     twinShockConsumed,
     twinShockActivatedSeason: null,
@@ -2913,6 +2914,7 @@ const gameSlice = createSlice({
      */
     activateDayStartShock(state, action: PayloadAction<DayStartShockState>) {
       state.dayStartShock = action.payload;
+      state.dayStartShockUsedThisSeason = true;
       state.twistActivatedThisWeek = true;
     },
 
@@ -6466,6 +6468,7 @@ export const tryActivateDayStartShock =
     if (!settings.sim.enableTwists) return false;
     if (game.phase !== 'week_start') return false;
     if (game.dayStartShock) return false;
+    if (game.dayStartShockUsedThisSeason) return false;
     if (game.pendingForcedShock) return false;
     if (game.twistActivatedThisWeek) return false;
     if (game.week < DAY_START_SHOCK_MIN_WEEK) return false;
@@ -6481,7 +6484,11 @@ export const tryActivateDayStartShock =
     const rng = mulberry32((game.seed ^ DAY_START_SHOCK_RNG_SALT) >>> 0);
     if (rng() * 100 >= chance) return false;
 
-    const selection = buildDayStartShockSelection(game.players, rng);
+    const selection = buildDayStartShockSelection(
+      game.players,
+      rng,
+      game.players.filter((player) => player.isUser).map((player) => player.id),
+    );
     if (!selection) return false;
 
     dispatch(
@@ -6510,6 +6517,10 @@ export const tryActivatePendingForcedDayStartShock =
     if (game.phase !== 'week_start') return false;
     if (game.week < pending.earliestWeek) return false;
     if (game.dayStartShock) return false;
+    if (game.dayStartShockUsedThisSeason) {
+      dispatch(clearForcedShock());
+      return false;
+    }
     if (game.twistActivatedThisWeek) return false;
 
     const activePlayers = game.players.filter(
@@ -6521,7 +6532,11 @@ export const tryActivatePendingForcedDayStartShock =
     }
 
     const rng = mulberry32((game.seed ^ (DAY_START_SHOCK_RNG_SALT ^ 0x1f1f1f1f)) >>> 0);
-    const selection = buildDayStartShockSelection(game.players, rng);
+    const selection = buildDayStartShockSelection(
+      game.players,
+      rng,
+      game.players.filter((player) => player.isUser).map((player) => player.id),
+    );
     if (!selection) {
       dispatch(clearForcedShock());
       return false;

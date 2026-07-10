@@ -141,8 +141,19 @@ function formatShockReason(template: ShockTemplate, name: string): string {
   return template.text.replace(/\{\{name\}\}/g, name);
 }
 
-export function buildDayStartShockSelection(players: Player[], rng: () => number): DayStartShockSelection | null {
-  const activePlayers = players.filter((player) => player.status !== 'evicted' && player.status !== 'jury');
+export function buildDayStartShockSelection(
+  players: Player[],
+  rng: () => number,
+  excludedPlayerIds: Iterable<string> = [],
+): DayStartShockSelection | null {
+  const excludedIds = new Set(excludedPlayerIds);
+  const activePlayers = players.filter(
+    (player) =>
+      player.status !== 'evicted'
+      && player.status !== 'jury'
+      && !player.isUser
+      && !excludedIds.has(player.id),
+  );
   if (activePlayers.length === 0) return null;
 
   const target = seededPick(rng, activePlayers);

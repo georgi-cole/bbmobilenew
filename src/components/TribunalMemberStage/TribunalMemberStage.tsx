@@ -19,7 +19,11 @@ import { useEffect, useState } from 'react';
 import type { Player } from '../../types';
 import type { JurorReveal } from '../../store/finaleSlice';
 import { PUBLIC_JUROR_ID } from '../../store/finaleSlice';
-import { resolveFormalCutout, resolveSilhouetteFallback } from '../../utils/avatar';
+import {
+  resolveFormalCutout,
+  resolveFullSizeCutoutFallback,
+  resolveSilhouetteFallback,
+} from '../../utils/avatar';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import {
   PHRASE_TYPING_CHAR_INTERVAL_MS,
@@ -114,7 +118,7 @@ export default function TribunalMemberStage({
 
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
   const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null;
-  const fallbackSrc = current && !isPublic ? resolveSilhouetteFallback(current.juror) : null;
+  const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null;
   const cutoutSrc = current && !isPublic && fallbackSrc
     ? failedCutoutId === current.juror.id || !formalSrc
       ? fallbackSrc

@@ -30,6 +30,14 @@ import {
 import { selectSettings } from '../../store/settingsSlice';
 import { setMusicScene } from '../../store/uiSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
+import {
+  resolveAvatarCandidates,
+  resolveFormalCutout,
+  resolveInformalCutoutCandidates,
+  resolveSilhouetteFallback,
+} from '../../utils/avatar';
+import { preloadImages } from '../../utils/preload';
+import { resolveSkinAssetPath } from '../../utils/skinAssets';
 import { selectPublicOpinion } from '../../publicOpinion';
 import { showInterstitial } from '../../services/ads/adsService';
 import { SoundManager } from '../../services/sound/SoundManager';
@@ -62,6 +70,23 @@ export default function FinalFaceoff() {
   const { play } = useSound();
 
   const jurorListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sources = game.players.flatMap((player) => [
+      resolveAvatarCandidates(player)[0],
+      ...resolveInformalCutoutCandidates(player),
+      resolveFormalCutout(player),
+      resolveSilhouetteFallback(player),
+    ]);
+    sources.push(
+      resolveSkinAssetPath('thegirls.webp'),
+      resolveSkinAssetPath('the boys.webp'),
+    );
+
+    // Start warming every tribunal and recap portrait as soon as the finale
+    // mounts; the clue act provides a buffer before the recap uses them.
+    void preloadImages([...new Set(sources.filter((source): source is string => Boolean(source)))]);
+  }, [game.players]);
 
   // ── Phase management ───────────────────────────────────────────────────
   // 'clues'       → auto-reveal juror messages (no vote chips)
