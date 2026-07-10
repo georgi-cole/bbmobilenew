@@ -328,7 +328,7 @@ function LadderWaveScene({
         caption={caption}
         compact={entries.length >= 6}
         animationDelayMs={220}
-        stepDelayMs={130}
+        stepDelayMs={375}
       />
     </SceneFrame>
   );

@@ -102,6 +102,10 @@ export default function TwinShockRevealOverlay({
     };
   }, [reveal]);
 
+  const showingIncomingAvatar = stage !== 'intro';
+  const visibleAvatar = showingIncomingAvatar ? display.afterAvatar : display.beforeAvatar;
+  const visibleName = showingIncomingAvatar ? display.afterName : display.beforeName;
+
   if (!rect || stage === 'done') return null;
 
   const style = {
@@ -124,28 +128,17 @@ export default function TwinShockRevealOverlay({
       <div className="twin-shock-reveal__beam" />
       <div className="twin-shock-reveal__tile">
         <div className="twin-shock-reveal__avatar-wrap">
-          {display.beforeAvatar ? (
+          {visibleAvatar ? (
             <img
-              className="twin-shock-reveal__avatar twin-shock-reveal__avatar--before"
-              src={display.beforeAvatar}
+              key={`${showingIncomingAvatar ? 'after' : 'before'}-${visibleAvatar}`}
+              className={`twin-shock-reveal__avatar twin-shock-reveal__avatar--${showingIncomingAvatar ? 'after' : 'before'}`}
+              src={visibleAvatar}
               alt=""
               draggable={false}
             />
           ) : (
-            <span className="twin-shock-reveal__avatar-fallback twin-shock-reveal__avatar-fallback--before">
-              {display.beforeName.slice(0, 2).toUpperCase()}
-            </span>
-          )}
-          {display.afterAvatar ? (
-            <img
-              className="twin-shock-reveal__avatar twin-shock-reveal__avatar--after"
-              src={display.afterAvatar}
-              alt=""
-              draggable={false}
-            />
-          ) : (
-            <span className="twin-shock-reveal__avatar-fallback twin-shock-reveal__avatar-fallback--after">
-              {display.afterName.slice(0, 2).toUpperCase()}
+            <span className={`twin-shock-reveal__avatar-fallback twin-shock-reveal__avatar-fallback--${showingIncomingAvatar ? 'after' : 'before'}`}>
+              {visibleName.slice(0, 2).toUpperCase()}
             </span>
           )}
         </div>

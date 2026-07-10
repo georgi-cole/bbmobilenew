@@ -31,7 +31,7 @@ export const RECAP_EXIT_FADE_MS = 420;
 const HEADLINE_GIRLS_DURATION_MS = seconds(4);
 const PHONE_POST_BOYS_DURATION_MS = seconds(4);
 const LADDER_INTRO_DURATION_MS = seconds(3.5);
-const LADDER_WAVE_DURATION_MS = seconds(4.25);
+const LADDER_WAVE_DURATION_MS = seconds(8.5);
 const MOMENT_OF_TRUTH_DURATION_MS = seconds(6);
 
 export function buildSeasonRecapTimeline(categoryIds: string[], evictionWaveCount: number): RecapTimelineScene[] {

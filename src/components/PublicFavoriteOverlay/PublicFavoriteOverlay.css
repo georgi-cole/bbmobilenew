@@ -80,6 +80,25 @@
   background: linear-gradient(180deg, rgba(17, 20, 34, 0.96), rgba(12, 14, 24, 0.94));
 }
 
+.pf-overlay__announcement-slot {
+  flex-shrink: 0;
+  display: grid;
+  min-height: 7.5rem;
+}
+
+.pf-overlay__announcement-slot > *,
+.pf-overlay__announcement-panel {
+  grid-area: 1 / 1;
+  min-height: 0;
+}
+
+.pf-overlay__announcement-panel,
+.pf-overlay__announcement-panel > .pf-overlay__header,
+.pf-overlay__announcement-slot > .pf-overlay__elimination {
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .pf-overlay__header-topline,
 .pf-overlay__leader-meta,
 .pf-overlay__rank-name-row,

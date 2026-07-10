@@ -260,23 +260,23 @@ describe('PublicFavoriteOverlay', () => {
       />,
     );
 
-    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    let spotlight = screen.getByTestId('housemate-spotlight');
     expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(3999);
+      vi.advanceTimersByTime(4499);
     });
-    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    spotlight = screen.getByTestId('housemate-spotlight');
     expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(1);
+      vi.advanceTimersByTime(1501);
     });
-    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    spotlight = screen.getByTestId('housemate-spotlight');
     expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
   });
 
-  it('does not restart the spotlight timer when vote eliminations change the active pool', () => {
+  it('holds the current spotlight through an elimination, then skips eliminated candidates', () => {
     let votingState = {
       votes: { p1: 10, p2: 70, p3: 20 },
       eliminated: [] as string[],
@@ -293,7 +293,7 @@ describe('PublicFavoriteOverlay', () => {
       />,
     );
 
-    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
+    let spotlight = screen.getByTestId('housemate-spotlight');
     expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
 
     act(() => {
@@ -315,15 +315,15 @@ describe('PublicFavoriteOverlay', () => {
       />,
     );
 
-    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
+    spotlight = screen.getByTestId('housemate-spotlight');
+    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(2500);
     });
 
-    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByRole('heading', { name: 'Morgan' })).toBeInTheDocument();
+    spotlight = screen.getByTestId('housemate-spotlight');
+    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
   });
 
   it('removes vote-eliminated players from the spotlight pool and marks the final two', () => {
@@ -373,7 +373,7 @@ describe('PublicFavoriteOverlay', () => {
     const firstFinnFact = within(spotlight).getByText(/marine architect/i).textContent;
 
     act(() => {
-      vi.advanceTimersByTime(12000);
+      vi.advanceTimersByTime(18000);
     });
 
     spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });

@@ -329,7 +329,13 @@ function HousemateSpotlightCard({
   const { player } = item;
 
   return (
-    <motion.section className="pf-overlay__spotlight" aria-label="Housemate Spotlight" layout>
+    <motion.section
+      className="pf-overlay__spotlight"
+      role="region"
+      aria-label="Housemate Spotlight"
+      data-testid="housemate-spotlight"
+      layout
+    >
       <div className="pf-overlay__leader-copy">
         <p className="pf-overlay__leader-kicker">
           {finalTwoNames ? `Final two: ${finalTwoNames}` : 'Housemate Spotlight'}
@@ -523,8 +529,8 @@ export default function PublicFavoriteOverlay({
   const surgeRequestLockRef = useRef(false);
   const previousRanksRef = useRef<Record<string, number>>({});
   const previousEliminatedCountRef = useRef(0);
+  const eliminatedIdsRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
-  const [spotlightRotation, setSpotlightRotation] = useState(0);
 
   const candidateIds = useMemo(() => candidates.map((candidate) => candidate.id), [candidates]);
   const candidatesById = useMemo(
@@ -539,6 +545,10 @@ export default function PublicFavoriteOverlay({
     tickIntervalMs: VOTE_TICK_INTERVAL_MS,
     driftAmount: VOTE_DRIFT_AMOUNT,
     surgeTargetId: surgeActive?.playerId ?? null,
+  });
+  const [spotlightRotation, setSpotlightRotation] = useState(() => {
+    const firstEligibleIndex = candidates.findIndex((candidate) => !eliminated.includes(candidate.id));
+    return Math.max(firstEligibleIndex, 0);
   });
   const displayStep: Step = isComplete && step === 'voting' ? 'winner' : step;
 
@@ -587,15 +597,14 @@ export default function PublicFavoriteOverlay({
     () => getActiveSpotlightPlayers(candidates, eliminated),
     [candidates, eliminated],
   );
-  const activePlayerKey = useMemo(
-    () => activePlayers.map((candidate) => candidate.id).join('|'),
-    [activePlayers],
-  );
+  eliminatedIdsRef.current = new Set(eliminated);
   const rankedPlayers = useMemo(
     () => [...activePlayers].sort((left, right) => (votes[right.id] ?? 0) - (votes[left.id] ?? 0)),
     [activePlayers, votes],
   );
-  const spotlightItems = useMemo(() => buildHouseguestSpotlightItems(activePlayers), [activePlayers]);
+  // Keep the rotation source stable when an elimination arrives. The current
+  // housemate holds their full beat, then the next timer skips eliminated IDs.
+  const spotlightItems = useMemo(() => buildHouseguestSpotlightItems(candidates), [candidates]);
   const spotlight = useMemo(
     () => selectSpotlightItem(spotlightItems, spotlightRotation),
     [spotlightItems, spotlightRotation],
@@ -608,20 +617,22 @@ export default function PublicFavoriteOverlay({
       : null;
 
   useEffect(() => {
-    setSpotlightRotation((rotation) => {
-      if (spotlightItems.length === 0) return 0;
-      return rotation % spotlightItems.length;
-    });
-  }, [activePlayerKey, spotlightItems.length]);
-
-  useEffect(() => {
     if (displayStep !== 'voting' || !spotlightFact || !spotlightPlayerId) return;
     const timeoutMs = getSpotlightRotationDelayMs(spotlightFact);
     const id = window.setTimeout(() => {
-      setSpotlightRotation((rotation) => rotation + 1);
+      setSpotlightRotation((rotation) => {
+        for (let offset = 1; offset <= spotlightItems.length; offset += 1) {
+          const nextRotation = rotation + offset;
+          const nextPlayerId = selectSpotlightItem(spotlightItems, nextRotation)?.item.player.id;
+          if (nextPlayerId && !eliminatedIdsRef.current.has(nextPlayerId)) {
+            return nextRotation;
+          }
+        }
+        return rotation;
+      });
     }, timeoutMs);
     return () => window.clearTimeout(id);
-  }, [displayStep, spotlightFact, spotlightPlayerId]);
+  }, [displayStep, spotlightFact, spotlightItems, spotlightPlayerId]);
 
   useEffect(() => {
     const firstActiveId = activePlayers[0]?.id ?? null;
@@ -774,21 +785,23 @@ export default function PublicFavoriteOverlay({
           </button>
         )}
 
-        <AnimatePresence>
-          {phase !== 'final_reveal' && (
-            <PublicVoteHeader
-              title="PUBLIC FAVORITE VOTE"
-              subtitle="Viewer board"
-              statusLine={statusLine}
-            />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {eliminationActive && phase !== 'final_reveal' && (
-            <EliminationMoment player={eliminationActive.player} />
-          )}
-        </AnimatePresence>
+        {phase !== 'final_reveal' && (
+          <div className="pf-overlay__announcement-slot">
+            <AnimatePresence mode="wait" initial={false}>
+              {eliminationActive ? (
+                <EliminationMoment key={`elimination-${eliminationActive.player.id}`} player={eliminationActive.player} />
+              ) : (
+                <motion.div key="public-vote-header" className="pf-overlay__announcement-panel">
+                  <PublicVoteHeader
+                    title="PUBLIC FAVORITE VOTE"
+                    subtitle="Viewer board"
+                    statusLine={statusLine}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {displayStep === 'voting' && (
           <div className="pf-overlay__broadcast">

@@ -16,7 +16,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Player } from '../../types'
-import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar'
+import {
+  resolveAvatarCandidates,
+  resolveFormalCutout,
+  resolveSilhouetteFallback,
+  isEmoji,
+} from '../../utils/avatar'
+import { preloadImages } from '../../utils/preload'
 import './JuryPhaseRevealOverlay.css'
 
 // ── Timing constants (ms) ─────────────────────────────────────────────────────
@@ -68,6 +74,17 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
    */
   const [instant, setInstant] = useState(false)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  useEffect(() => {
+    if (!open) return
+    const sources = jurors.flatMap((juror) => [
+      resolveAvatarCandidates(juror)[0],
+      resolveFormalCutout(juror),
+      resolveSilhouetteFallback(juror),
+    ]).filter((source): source is string => Boolean(source))
+
+    void preloadImages([...new Set(sources)])
+  }, [jurors, open])
 
   const prefersReducedMotion =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
