@@ -689,11 +689,15 @@ function shouldAiUseTargetedSafetyPower(
   const bestRelationship = Math.max(
     ...currentNominees.map((nominee) => getSafetyRelationshipScore(state, holderId, nominee)),
   );
-  let useChance = strategicUpgrade ? 0.35 : 0.05;
-  if (bestRelationship >= 75) useChance += 0.5;
-  else if (bestRelationship >= 45) useChance += 0.35;
-  else if (bestRelationship >= 20) useChance += 0.18;
-  useChance = Math.max(0.03, Math.min(0.92, useChance));
+  // A non-nominated holder should almost always keep the power.  Relationship
+  // signals make a save possible, not expected; strategy can only add a small
+  // nudge.  Mandatory self-use and the twin exception are handled by callers.
+  let useChance = 0.01;
+  if (bestRelationship >= 75) useChance = 0.09;
+  else if (bestRelationship >= 45) useChance = 0.065;
+  else if (bestRelationship >= 20) useChance = 0.04;
+  if (strategicUpgrade) useChance += 0.01;
+  useChance = Math.min(0.10, useChance);
   const rng = mulberry32(
     (state.seed ^ hashString(`safety:${state.week}:${holderId}:${currentNominees.map((p) => p.id).join('|')}`)) >>> 0,
   );
