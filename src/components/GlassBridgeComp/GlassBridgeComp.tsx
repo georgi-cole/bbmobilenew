@@ -514,7 +514,7 @@ export default function GlassBridgeComp({
   const timerIntervalRef = useRef<number | null>(null);
   const timerDisplayRef = useRef(timerDisplay);
   const aiStepTimerRef = useRef<number | null>(null);
-  const parallelStepTimerRef = useRef<number | null>(null);
+  const parallelStepTimersRef = useRef<Map<string, number>>(new Map());
   const autoAdvanceRef = useRef<number | null>(null);
   const revealTimerRef = useRef<number | null>(null);
   const pendingStepRef = useRef<number | null>(null);
@@ -583,10 +583,10 @@ export default function GlassBridgeComp({
       window.clearTimeout(aiStepTimerRef.current);
       aiStepTimerRef.current = null;
     }
-    if (parallelStepTimerRef.current !== null) {
-      window.clearTimeout(parallelStepTimerRef.current);
-      parallelStepTimerRef.current = null;
+    for (const timer of parallelStepTimersRef.current.values()) {
+      window.clearTimeout(timer);
     }
+    parallelStepTimersRef.current.clear();
     if (autoAdvanceRef.current !== null) {
       window.clearTimeout(autoAdvanceRef.current);
       autoAdvanceRef.current = null;
@@ -955,51 +955,71 @@ export default function GlassBridgeComp({
     }
   }, [dispatch, flashStatusBanner, gb, timerDisplay]);
 
-  // Independently advance released AI players while the original active turn continues.
+  // Independently advance every released AI while the original active turn continues.
   useEffect(() => {
-    if (gb.phase !== 'playing' || gb.timerExpired || gb.parallelPlayerIds.length === 0) return;
+    const waitingForHumanSpectatorDecision = Boolean(
+      humanId && !gb.humanSpectating && (
+        gb.progress[humanId]?.eliminated
+        || (pendingStep?.actorId === humanId && pendingStep.isBreak)
+      ),
+    );
+    if (
+      gb.phase !== 'playing'
+      || gb.timerExpired
+      || gb.parallelPlayerIds.length === 0
+      || waitingForHumanSpectatorDecision
+    ) {
+      for (const timer of parallelStepTimersRef.current.values()) window.clearTimeout(timer);
+      parallelStepTimersRef.current.clear();
+      return;
+    }
     const candidates = gb.parallelPlayerIds
       .filter((playerId) => playerId !== humanId)
       .map((playerId) => ({ playerId, progress: gb.progress[playerId] }))
-      .filter(({ progress }) => progress && !progress.eliminated && progress.finishTimeMs === undefined)
-      .sort((a, b) => a.progress.furthestRowReached - b.progress.furthestRowReached);
-    const candidate = candidates[0];
-    if (!candidate) return;
-    const rowNumber = candidate.progress.furthestRowReached + 1;
-    const row = gb.rows[rowNumber - 1];
-    if (!row) return;
-    const occupiedSides = Object.entries(gb.progress)
-      .filter(([playerId, progress]) =>
-        playerId !== candidate.playerId
-        && !progress.eliminated
-        && progress.finishTimeMs === undefined
-        && progress.furthestRowReached === rowNumber
-        && progress.currentSide,
-      )
-      .map(([, progress]) => progress.currentSide!);
-    const participant = gb.participants.find((entry) => entry.id === candidate.playerId);
-    const chosenSide = chooseParallelAiSide(
-      row,
-      occupiedSides,
-      timerDisplayRef.current,
-      aiRngRef.current,
-      participant?.competitionProfile,
-    );
-    parallelStepTimerRef.current = window.setTimeout(() => {
-      dispatch(resolveParallelStep({
-        playerId: candidate.playerId,
-        chosenSide,
-        now: getEffectiveNowMs(),
-      }));
-      parallelStepTimerRef.current = null;
-    }, scaleSpectatorDelay(1_500));
-    return () => {
-      if (parallelStepTimerRef.current !== null) {
-        window.clearTimeout(parallelStepTimerRef.current);
-        parallelStepTimerRef.current = null;
+      .filter(({ progress }) => progress && !progress.eliminated && progress.finishTimeMs === undefined);
+    const candidateIds = new Set(candidates.map(({ playerId }) => playerId));
+    for (const [playerId, timer] of parallelStepTimersRef.current) {
+      if (!candidateIds.has(playerId)) {
+        window.clearTimeout(timer);
+        parallelStepTimersRef.current.delete(playerId);
       }
-    };
-  }, [dispatch, gb, getEffectiveNowMs, humanId, scaleSpectatorDelay]);
+    }
+
+    candidates.forEach((candidate, index) => {
+      if (parallelStepTimersRef.current.has(candidate.playerId)) return;
+      const rowNumber = candidate.progress.furthestRowReached + 1;
+      const row = gb.rows[rowNumber - 1];
+      if (!row) return;
+      const occupiedSides = Object.entries(gb.progress)
+        .filter(([playerId, progress]) =>
+          playerId !== candidate.playerId
+          && !progress.eliminated
+          && progress.finishTimeMs === undefined
+          && progress.furthestRowReached === rowNumber
+          && progress.currentSide,
+        )
+        .map(([, progress]) => progress.currentSide!);
+      const participant = gb.participants.find((entry) => entry.id === candidate.playerId);
+      const chosenSide = chooseParallelAiSide(
+        row,
+        occupiedSides,
+        timerDisplayRef.current,
+        aiRngRef.current,
+        participant?.competitionProfile,
+      );
+      const delay = scaleSpectatorDelay(900 + (index * 90));
+      const timer = window.setTimeout(() => {
+        parallelStepTimersRef.current.delete(candidate.playerId);
+        dispatch(resolveParallelStep({
+          playerId: candidate.playerId,
+          chosenSide,
+          now: getEffectiveNowMs(),
+          remainingMs: timerDisplayRef.current,
+        }));
+      }, delay);
+      parallelStepTimersRef.current.set(candidate.playerId, timer);
+    });
+  }, [dispatch, gb, getEffectiveNowMs, humanId, pendingStep, scaleSpectatorDelay]);
 
   useEffect(() => {
     if (gb.phase !== 'playing') return;
@@ -1648,16 +1668,23 @@ export default function GlassBridgeComp({
               // Find players on this row (those who have reached exactly this row and are active).
               const playersOnRow = gb.turnOrder.filter(pid => {
                 const p = gb.progress[pid];
+                const isParallelPlayer = gb.parallelPlayerIds.includes(pid);
+                const parallelPlayerOnRow = Boolean(
+                  isParallelPlayer
+                  && p?.firstStepAtMs !== undefined
+                  && Math.max(1, p.furthestRowReached) === rowNum,
+                );
+                const mainPlayerOnRow = activeId === pid
+                  && !isParallelPlayer
+                  && gb.currentPlayerRow === rowNum;
                 const timedOutOnBridge =
                   timeoutCollapseActive &&
                   isTimeoutPlayer(pid) &&
-                  (activeId === pid || gb.parallelPlayerIds.includes(pid)) &&
-                  isCurrentRow;
+                  (mainPlayerOnRow || parallelPlayerOnRow);
                 return (
                   p &&
                   p.finishTimeMs === undefined &&
-                  activeId === pid &&
-                  isCurrentRow &&
+                  (mainPlayerOnRow || parallelPlayerOnRow) &&
                   (!p.eliminated || timedOutOnBridge)
                 );
               });
