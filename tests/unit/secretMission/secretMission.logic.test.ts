@@ -16,6 +16,9 @@ import {
   checkSecretMissionTrigger,
   createSecretMissionState,
   getSecretMissionBoxRewards,
+  getMissionTaskSetSignature,
+  findSecretMissionTaskReference,
+  getSecretMissionTaskHint,
   getSecretMissionTriggerChance,
   isSecretMissionSuccessful,
   MISSION_TEMPLATES,
@@ -144,6 +147,33 @@ describe('mission generation', () => {
     const taskTypes = tasks.map((task) => task.type);
     expect(taskTypes).toContain('survive_days');
     expect(new Set(taskTypes).size).toBe(5);
+  });
+
+  it('generates a different checklist when the prior task-set signature is excluded', () => {
+    const template = pickMissionTemplate(5);
+    const first = buildMissionTasks(template, 5, { missionNumber: 1 });
+    const firstSignature = getMissionTaskSetSignature(first);
+    const second = buildMissionTasks(template, 5, {
+      missionNumber: 2,
+      excludedTaskSetSignatures: [firstSignature],
+    });
+
+    expect(getMissionTaskSetSignature(second)).not.toBe(firstSignature);
+  });
+
+  it('recognizes numeric and ordinal task references and gives actionable energy hints', () => {
+    const tasks = buildMissionTasks(pickMissionTemplate(5), 5, { missionNumber: 1 });
+    const energyTask = {
+      ...tasks[0],
+      type: 'social_energy_empty_streak' as const,
+    };
+    const hintTasks = [tasks[0], tasks[1], energyTask, tasks[3], tasks[4]];
+
+    expect(findSecretMissionTaskReference('How do I complete task 3?', hintTasks)?.task)
+      .toBe(energyTask);
+    expect(findSecretMissionTaskReference('Give me more info on the third task', hintTasks)?.task)
+      .toBe(energyTask);
+    expect(getSecretMissionTaskHint(energyTask, 3)).toMatch(/Social Energy badge \(⚡\).*0/i);
   });
 
   it('builds target-nominated tasks with a concrete target when selected', () => {

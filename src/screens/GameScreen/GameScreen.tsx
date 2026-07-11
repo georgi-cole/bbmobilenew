@@ -3625,6 +3625,7 @@ export default function GameScreen() {
       {/* ── MinigameHost (challenge flow) ────────────────────────────────── */}
       {showMinigameHost && pendingChallenge && (
         <MinigameHost
+          key={pendingChallenge.id}
           game={pendingChallenge.game}
           gameOptions={{
             seed: pendingChallenge.seed,
@@ -3718,6 +3719,12 @@ export default function GameScreen() {
               reactCompletion?.authoritativeWinnerId != null &&
               capturedParticipants.includes(reactCompletion.authoritativeWinnerId)
                 ? reactCompletion.authoritativeWinnerId
+                : null;
+            const explicitLastPlaceId =
+              reactCompletion?.authoritativeLastPlaceId != null &&
+              capturedParticipants.includes(reactCompletion.authoritativeLastPlaceId) &&
+              reactCompletion.authoritativeLastPlaceId !== explicitWinnerId
+                ? reactCompletion.authoritativeLastPlaceId
                 : null;
 
             if (import.meta.env.DEV) {
@@ -3820,6 +3827,7 @@ export default function GameScreen() {
                 }
                 return humanPlayer.id
               }
+              if (explicitLastPlaceId) return explicitLastPlaceId;
               const ranked = computeScores(
                 pendingChallenge.game.scoringAdapter,
                 rawResults,

@@ -335,17 +335,34 @@ export function eliminatePlayers(
   ids: string[],
   round: number,
   nextPlacement: number,
+  tieBreakSeed = round,
 ): TrapAuctionPlayer[] {
-  let placementCounter = nextPlacement;
+  const hashTieBreaker = (playerId: string): number => {
+    let hash = (tieBreakSeed ^ 0x811c9dc5) >>> 0;
+    for (let i = 0; i < playerId.length; i++) {
+      hash ^= playerId.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash;
+  };
+  const tiedPlayers = players
+    .filter((player) => ids.includes(player.id) && player.isAlive)
+    // Less money after paying the tied bid ranks worse. Exact bank ties use a
+    // deterministic draw so roster order never silently decides last place.
+    .sort((a, b) => a.bank - b.bank || hashTieBreaker(a.id) - hashTieBreaker(b.id));
+  const placementById = new Map<string, number>();
+  tiedPlayers.forEach((player, index) => {
+    placementById.set(player.id, nextPlacement - index);
+  });
+
   return players.map((p) => {
-    if (ids.includes(p.id) && p.isAlive) {
-      const pl = placementCounter;
-      placementCounter--;
+    const placement = placementById.get(p.id);
+    if (placement !== undefined) {
       return {
         ...p,
         isAlive: false,
         eliminatedRound: round,
-        placement: pl,
+        placement,
       };
     }
     return p;

@@ -69,6 +69,8 @@ export interface MinigameParticipant {
 
 export interface ReactMinigameCompletion {
   authoritativeWinnerId?: string | null;
+  /** Authoritative worst finisher when the minigame owns its full standings. */
+  authoritativeLastPlaceId?: string | null;
   rawValue?: number;
   rawResults?: Record<string, number>;
   /** Optional time-based tie-breaker in ms (lower = faster = better rank). */
@@ -667,6 +669,13 @@ export default function MinigameHost({
 
           {leaderboard ? (
             <>
+              {wasPartial && (
+                <p className="minigame-host-results-alternate-timeline">
+                  You left early and scrambled the time-space continuum. In this alternative
+                  universe, {leaderboard[0]?.name ?? 'someone unexpected'} won the competition —
+                  even if the timeline you saw was heading somewhere else.
+                </p>
+              )}
               <p className="minigame-host-results-winner">
                 🏆 {leaderboard[0]?.name ?? 'Unknown'} wins
                 {leaderboard[0]?.isHuman ? " — that's you!" : '!'}

@@ -49,6 +49,11 @@ interface StateForManeuvers {
 }
 
 let _store: StoreAPI | null = null;
+const FIRST_POSITIVE_MIN_DELTA = 1;
+const FIRST_POSITIVE_MAX_DELTA = 5;
+const REPEATED_POSITIVE_MIN_DELTA = 1;
+const REPEATED_POSITIVE_MAX_DELTA = 3;
+const REPEATED_BACKFIRE_DELTA = -5;
 const REPETITION_BACKFIRE_THRESHOLD = 2;
 const REPETITION_BACKFIRE_CHANCE = 0.5;
 const ALLIANCE_REJECTION_DELTA = -6;
@@ -80,6 +85,53 @@ function isRepeatSensitiveAction(
   }
 
   return delta > 0 || yields.influence > 0 || yields.info > 0;
+}
+
+function randomIntegerInclusive(min: number, max: number, random: () => number): number {
+  const normalized = Math.max(0, Math.min(0.999999999, random()));
+  return min + Math.floor(normalized * (max - min + 1));
+}
+
+/**
+ * Friendly actions feel strongest the first time, soften on the second use,
+ * and become risky from the third use onward.  Keeping this in one helper
+ * makes every positive interaction follow the same rule instead of special
+ * casing Compliment in the UI.
+ */
+export function computeRepeatedPositiveDelta(
+  priorRepeats: number,
+  random: () => number = Math.random,
+): { delta: number; didBackfire: boolean } {
+  if (priorRepeats <= 0) {
+    return {
+      delta: randomIntegerInclusive(FIRST_POSITIVE_MIN_DELTA, FIRST_POSITIVE_MAX_DELTA, random),
+      didBackfire: false,
+    };
+  }
+
+  if (priorRepeats === 1) {
+    return {
+      delta: randomIntegerInclusive(
+        REPEATED_POSITIVE_MIN_DELTA,
+        REPEATED_POSITIVE_MAX_DELTA,
+        random,
+      ),
+      didBackfire: false,
+    };
+  }
+
+  if (random() < REPETITION_BACKFIRE_CHANCE) {
+    return { delta: REPEATED_BACKFIRE_DELTA, didBackfire: true };
+  }
+
+  return {
+    delta: randomIntegerInclusive(
+      REPEATED_POSITIVE_MIN_DELTA,
+      REPEATED_POSITIVE_MAX_DELTA,
+      random,
+    ),
+    didBackfire: false,
+  };
 }
 
 function scoreToLabel(score: number): 'Bad' | 'Unmoved' | 'Good' | 'Great' {
@@ -240,6 +292,8 @@ export interface ExecuteActionOptions {
    * primary target → subject relationship to reflect the conversation.
    */
   subjectId?: string;
+  /** Optional RNG override for deterministic simulations and tests. */
+  random?: () => number;
 }
 
 export interface ExecuteActionResult {
@@ -307,6 +361,7 @@ export function executeAction(
   }
 
   const scaledYields = normalizeActionYields(action);
+  const random = options?.random ?? Math.random;
   const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
   const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
   let outcome = options?.outcome ?? 'success';
@@ -314,25 +369,32 @@ export function executeAction(
   let gaslightOccurred = false;
   if (actionId === 'proposeAlliance' && !options?.outcome) {
     const acceptChance = getAllianceAcceptChance(existingAffinity, priorRepeats);
-    const accepted = Math.random() < acceptChance;
+    const accepted = random() < acceptChance;
     if (!accepted) {
       outcome = 'failure';
       gaslightOccurred =
         existingAffinity < ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD && priorRepeats > 0;
     } else {
-      betrayalOccurred = Math.random() < getAllianceBetrayalChance(existingAffinity);
+      betrayalOccurred = random() < getAllianceBetrayalChance(existingAffinity);
     }
   }
   const baseDelta =
     actionId === 'proposeAlliance' && outcome === 'failure'
       ? getAllianceFailureDelta(gaslightOccurred)
       : computeOutcomeDelta(actionId, actorId, targetId, outcome);
-  const didBackfire =
-    outcome === 'success' &&
-    priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
-    isRepeatSensitiveAction(action, baseDelta, scaledYields) &&
-    Math.random() < REPETITION_BACKFIRE_CHANCE;
-  const delta = didBackfire ? -Math.abs(baseDelta) : baseDelta;
+  const repeatSensitive =
+    outcome === 'success' && isRepeatSensitiveAction(action, baseDelta, scaledYields);
+  const repeatedPositive = repeatSensitive && baseDelta > 0
+    ? computeRepeatedPositiveDelta(priorRepeats, random)
+    : {
+        delta: baseDelta,
+        didBackfire:
+          repeatSensitive &&
+          priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
+          random() < REPETITION_BACKFIRE_CHANCE,
+      };
+  const didBackfire = repeatedPositive.didBackfire;
+  const delta = repeatedPositive.delta;
 
   // Evaluate outcome score and label using the SocialPolicy evaluator.
   const mode = options?.previewOnly ? 'preview' : 'execute';

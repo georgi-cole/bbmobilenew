@@ -69,6 +69,7 @@ interface StateWithGame {
   game: GameState;
   social?: {
     energyBank?: Record<string, number>;
+    relationships?: import('./types').RelationshipsMap;
     incomingInteractions?: IncomingInteraction[];
     scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
   };
@@ -326,6 +327,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   // ── Advance action (phase determined by comparing before/after state) ───────
   if (type === 'game/advance') {
     const prevState = api.getState() as StateWithGame;
+    api.dispatch({
+      type: 'game/syncStrategicRelationships',
+      payload: prevState.social?.relationships ?? {},
+    });
     const prevPhase = prevState.game?.phase;
     const prevHohId = prevState.game?.lohId ?? null;
     const prevPovId = prevState.game?.posWinnerId ?? null;

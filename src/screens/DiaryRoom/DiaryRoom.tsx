@@ -18,7 +18,6 @@ import {
   selfEvict,
   offerSecretMission,
   acceptSecretMission,
-  reshuffleSecretMission,
   declineSecretMission,
   claimMissionReward,
   recordSecretMissionEasterEgg,
@@ -32,6 +31,8 @@ import { getSecretMissionEasterEggByIntent } from '../../bb/secretMissionEasterE
 import {
   SECRET_MISSION_BOX_REWARDS,
   getSecretMissionBoxRewards,
+  findSecretMissionTaskReference,
+  getSecretMissionTaskHint,
   pickMissionImmunityDuration,
   type SecretMissionBoxRewardType,
 } from '../../bb/secretMission';
@@ -751,6 +752,32 @@ export default function DiaryRoom() {
       return;
     }
 
+    const isMissionHintRequest =
+      secretMission?.status === 'accepted' &&
+      /(?:how|hint|help|explain|more info|what (?:do|is)|gimme|give me|complete\s+(?:task|mission))/i.test(text);
+    const missionTaskReference = isMissionHintRequest
+      ? findSecretMissionTaskReference(text, secretMission.tasks)
+      : null;
+    if (missionTaskReference) {
+      setMessages((prev) => {
+        const withSeen = prev.map((message) =>
+          message.role === 'user' && message.status !== 'seen'
+            ? { ...message, status: 'seen' as MessageStatus }
+            : message,
+        );
+        saveChat(playerId, withSeen);
+        return withSeen;
+      });
+      await appendBigEyeMessagesSequentially([
+        getSecretMissionTaskHint(
+          missionTaskReference.task,
+          missionTaskReference.taskNumber,
+        ),
+      ]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const resp = await generateBigBrotherReply({
         diaryText: text,
@@ -1296,17 +1323,6 @@ export default function DiaryRoom() {
               <div className="diary-room__footer">
                 <span className="diary-room__charcount">{entry.length}/280</span>
                 <div className="diary-room__footer-actions">
-                  {secretMission?.status === 'accepted' && (
-                    <button
-                      className="diary-room__submit diary-room__submit--secondary"
-                      type="button"
-                      onClick={() => dispatch(reshuffleSecretMission())}
-                      disabled={loading}
-                      aria-label="Shuffle mission"
-                    >
-                      🔀 Shuffle
-                    </button>
-                  )}
                   <button
                     className="diary-room__submit"
                     type="submit"

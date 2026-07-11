@@ -985,7 +985,9 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     instructions: [
       'By a random draw selection, the first players chooses the pair to duel',
       'Both players receive 2 cards. Choose to Hit (draw a card) or Stand.',
-      'Closest to 21 without going over wins. Bust (over 21) = elimination.',
+      'Closest to 21 without going over wins the duel. A bust loses the duel.',
+      'Every player starts with 3 lives. Losing a duel costs 1 life; winning does not add one.',
+      'Reach 0 lives and you are eliminated. Remaining lives carry into the Final 2.',
       'The duel winner stays in control and picks the next pair to duel.',
       'Last player standing wins the competition!',
     ],
