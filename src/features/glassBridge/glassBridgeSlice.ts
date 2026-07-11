@@ -57,6 +57,8 @@ export interface GlassBridgePlayerProgress {
   finishTimeMs?: number;
   /** Cumulative penalty in ms added for hint usage (30 000 ms per hint). */
   hintPenaltyMs: number;
+  /** Tile currently occupied after the player's latest safe step. */
+  currentSide?: TileSide;
 }
 
 export type GlassBridgePhase =
@@ -133,6 +135,9 @@ export interface GlassBridgeState {
 
   /** Whether the human is currently spectating (eliminated but watching). */
   humanSpectating: boolean;
+
+  /** Unstarted players released onto the bridge once less than a minute remains. */
+  parallelPlayerIds: string[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -148,6 +153,30 @@ export const MAX_HINTS_PER_RUN = 3;
 
 export function buildGlassBridgeTimeLimitMs(participantCount: number): number {
   return Math.max(1, participantCount) * TIME_LIMIT_PER_PLAYER_MS;
+}
+
+export const PARALLEL_START_THRESHOLD_MS = 60_000;
+export const COLLISION_OVERRIDE_THRESHOLD_MS = 15_000;
+
+export function shouldStartParallelPlayers(remainingMs: number): boolean {
+  return remainingMs <= PARALLEL_START_THRESHOLD_MS;
+}
+
+/** Respect occupied tiles while time permits, but stop waiting in the final 15 seconds. */
+export function chooseParallelAiSide(
+  row: BridgeRow,
+  occupiedSides: TileSide[],
+  remainingMs: number,
+  rng: () => number,
+  profile?: CompetitionSkillProfile,
+): TileSide {
+  const preferred = aiDecideStep(row, rng, profile);
+  if (remainingMs < COLLISION_OVERRIDE_THRESHOLD_MS || !occupiedSides.includes(preferred)) {
+    return preferred;
+  }
+  const alternative: TileSide = preferred === 'left' ? 'right' : 'left';
+  const alternativeBroken = alternative === 'left' ? row.leftBroken : row.rightBroken;
+  return !alternativeBroken && !occupiedSides.includes(alternative) ? alternative : preferred;
 }
 
 /**
@@ -317,6 +346,7 @@ const initialState: GlassBridgeState = {
   timerExpired: false,
   humanPlayerId: null,
   humanSpectating: false,
+  parallelPlayerIds: [],
 };
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
@@ -374,6 +404,7 @@ const glassBridgeSlice = createSlice({
           timeReachedFurthestRowMs: 0,
           eliminated: false,
           hintPenaltyMs: 0,
+          currentSide: undefined,
         };
       }
 
@@ -468,6 +499,53 @@ const glassBridgeSlice = createSlice({
       state.currentPlayerRow = 1;
     },
 
+    /** Release only players who have not yet stepped onto the bridge. */
+    startParallelPlayers(state) {
+      if (state.phase !== 'playing' || state.timerExpired) return;
+      const activeId = state.turnOrder[state.currentTurnIndex];
+      state.parallelPlayerIds = state.turnOrder.filter((playerId) => {
+        const progress = state.progress[playerId];
+        return playerId !== activeId
+          && progress?.firstStepAtMs === undefined
+          && !progress.eliminated
+          && progress.finishTimeMs === undefined;
+      });
+    },
+
+    /** Resolve an independently active player's next row without changing the main turn. */
+    resolveParallelStep(
+      state,
+      action: PayloadAction<{ playerId: string; chosenSide: TileSide; now: number }>,
+    ) {
+      if (state.phase !== 'playing' || state.timerExpired) return;
+      const { playerId, chosenSide, now } = action.payload;
+      if (!state.parallelPlayerIds.includes(playerId)) return;
+      const progress = state.progress[playerId];
+      if (!progress || progress.eliminated || progress.finishTimeMs !== undefined) return;
+      const rowNumber = progress.furthestRowReached + 1;
+      const row = state.rows[rowNumber - 1];
+      if (!row) return;
+      if (progress.firstStepAtMs === undefined) progress.firstStepAtMs = now;
+      const elapsed = state.challengeStartTimeMs === null ? 0 : now - state.challengeStartTimeMs;
+
+      if (chosenSide === row.safeSide) {
+        progress.furthestRowReached = rowNumber;
+        progress.timeReachedFurthestRowMs = elapsed;
+        progress.currentSide = chosenSide;
+        row.revealedSafeSide = chosenSide;
+        if (rowNumber >= state.rowsCount) {
+          progress.finishTimeMs = elapsed;
+          progress.currentSide = undefined;
+        }
+      } else {
+        if (chosenSide === 'left') row.leftBroken = true;
+        else row.rightBroken = true;
+        progress.eliminated = true;
+        progress.currentSide = undefined;
+        if (!state.eliminationOrder.includes(playerId)) state.eliminationOrder.push(playerId);
+      }
+    },
+
     /**
      * Resolve a single step: the active player steps onto `chosenSide`.
      *
@@ -521,6 +599,7 @@ const glassBridgeSlice = createSlice({
         // Safe — advance.
         progress.furthestRowReached = state.currentPlayerRow;
         progress.timeReachedFurthestRowMs = elapsed;
+        progress.currentSide = chosenSide;
 
         // Mark this row's safe side as revealed so subsequent AI players can use it.
         row.revealedSafeSide = chosenSide;
@@ -528,6 +607,7 @@ const glassBridgeSlice = createSlice({
         if (state.currentPlayerRow >= state.rowsCount) {
           // Player has crossed the final row — they finished!
           progress.finishTimeMs = elapsed;
+          progress.currentSide = undefined;
           // Advance to next turn.
           state.currentTurnIndex += 1;
           state.currentPlayerRow = 1;
@@ -542,6 +622,7 @@ const glassBridgeSlice = createSlice({
           row.rightBroken = true;
         }
         progress.eliminated = true;
+        progress.currentSide = undefined;
         state.eliminationOrder.push(activeId);
 
         // Advance to next turn.
@@ -628,6 +709,8 @@ export const {
   recordNumberChoice,
   finaliseOrderSelection,
   startPlaying,
+  startParallelPlayers,
+  resolveParallelStep,
   resolveStep,
   advanceTurn,
   expireTimer,

@@ -30,6 +30,8 @@ import {
   recordNumberChoice,
   finaliseOrderSelection,
   startPlaying,
+  startParallelPlayers,
+  resolveParallelStep,
   resolveStep,
   expireTimer,
   completeGame,
@@ -41,6 +43,8 @@ import {
   selectIsGameOver,
   HINT_PENALTY_MS,
   MAX_HINTS_PER_RUN,
+  shouldStartParallelPlayers,
+  chooseParallelAiSide,
   type BridgeRow,
   type TileSide,
 } from '../../features/glassBridge/glassBridgeSlice';
@@ -508,7 +512,9 @@ export default function GlassBridgeComp({
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const timerIntervalRef = useRef<number | null>(null);
+  const timerDisplayRef = useRef(timerDisplay);
   const aiStepTimerRef = useRef<number | null>(null);
+  const parallelStepTimerRef = useRef<number | null>(null);
   const autoAdvanceRef = useRef<number | null>(null);
   const revealTimerRef = useRef<number | null>(null);
   const pendingStepRef = useRef<number | null>(null);
@@ -564,6 +570,10 @@ export default function GlassBridgeComp({
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
   const aiRngRef = useRef(mulberry32(sessionSeed + 9999));
 
+  useEffect(() => {
+    timerDisplayRef.current = timerDisplay;
+  }, [timerDisplay]);
+
   function clearAllTimers() {
     if (timerIntervalRef.current !== null) {
       window.clearInterval(timerIntervalRef.current);
@@ -572,6 +582,10 @@ export default function GlassBridgeComp({
     if (aiStepTimerRef.current !== null) {
       window.clearTimeout(aiStepTimerRef.current);
       aiStepTimerRef.current = null;
+    }
+    if (parallelStepTimerRef.current !== null) {
+      window.clearTimeout(parallelStepTimerRef.current);
+      parallelStepTimerRef.current = null;
     }
     if (autoAdvanceRef.current !== null) {
       window.clearTimeout(autoAdvanceRef.current);
@@ -929,10 +943,70 @@ export default function GlassBridgeComp({
 
   // ── 6. AI step automation ──────────────────────────────────────────────────
   useEffect(() => {
+    if (gb.phase !== 'playing' || gb.timerExpired) return;
+    if (!shouldStartParallelPlayers(timerDisplay) || gb.parallelPlayerIds.length > 0) return;
+    const activeId = selectActivePlayerId(gb);
+    const hasUnstartedPlayers = gb.turnOrder.some((playerId) =>
+      playerId !== activeId && gb.progress[playerId]?.firstStepAtMs === undefined,
+    );
+    if (hasUnstartedPlayers) {
+      dispatch(startParallelPlayers());
+      flashStatusBanner('Less than a minute remains — waiting players are entering the path now!', 'warning');
+    }
+  }, [dispatch, flashStatusBanner, gb, timerDisplay]);
+
+  // Independently advance released AI players while the original active turn continues.
+  useEffect(() => {
+    if (gb.phase !== 'playing' || gb.timerExpired || gb.parallelPlayerIds.length === 0) return;
+    const candidates = gb.parallelPlayerIds
+      .filter((playerId) => playerId !== humanId)
+      .map((playerId) => ({ playerId, progress: gb.progress[playerId] }))
+      .filter(({ progress }) => progress && !progress.eliminated && progress.finishTimeMs === undefined)
+      .sort((a, b) => a.progress.furthestRowReached - b.progress.furthestRowReached);
+    const candidate = candidates[0];
+    if (!candidate) return;
+    const rowNumber = candidate.progress.furthestRowReached + 1;
+    const row = gb.rows[rowNumber - 1];
+    if (!row) return;
+    const occupiedSides = Object.entries(gb.progress)
+      .filter(([playerId, progress]) =>
+        playerId !== candidate.playerId
+        && !progress.eliminated
+        && progress.finishTimeMs === undefined
+        && progress.furthestRowReached === rowNumber
+        && progress.currentSide,
+      )
+      .map(([, progress]) => progress.currentSide!);
+    const participant = gb.participants.find((entry) => entry.id === candidate.playerId);
+    const chosenSide = chooseParallelAiSide(
+      row,
+      occupiedSides,
+      timerDisplayRef.current,
+      aiRngRef.current,
+      participant?.competitionProfile,
+    );
+    parallelStepTimerRef.current = window.setTimeout(() => {
+      dispatch(resolveParallelStep({
+        playerId: candidate.playerId,
+        chosenSide,
+        now: getEffectiveNowMs(),
+      }));
+      parallelStepTimerRef.current = null;
+    }, scaleSpectatorDelay(1_500));
+    return () => {
+      if (parallelStepTimerRef.current !== null) {
+        window.clearTimeout(parallelStepTimerRef.current);
+        parallelStepTimerRef.current = null;
+      }
+    };
+  }, [dispatch, gb, getEffectiveNowMs, humanId, scaleSpectatorDelay]);
+
+  useEffect(() => {
     if (gb.phase !== 'playing') return;
 
     const activeId = selectActivePlayerId(gb);
     if (!activeId) return;
+    if (gb.parallelPlayerIds.includes(activeId)) return;
 
     const isHumanTurn = activeId === humanId && !gb.humanSpectating;
     if (isHumanTurn) return; // human controls their own steps
@@ -1066,7 +1140,12 @@ export default function GlassBridgeComp({
     setShowEliminationFlash(true);
     setShowScreenShake(true);
     playDeath();
-    if (activeId && activeRow && hasOneBrokenTile(activeRow)) {
+    if (
+      activeId
+      && activeRow
+      && gb.progress[activeId]?.firstStepAtMs !== undefined
+      && hasOneBrokenTile(activeRow)
+    ) {
       flashStatusBanner(
         getBrokenPlatformFallMessage(activeId === humanId, getName(activeId)),
         'danger',
@@ -1088,6 +1167,7 @@ export default function GlassBridgeComp({
     gb.currentPlayerRow,
     gb.currentTurnIndex,
     gb.phase,
+    gb.progress,
     gb.rows,
     gb.timerExpired,
     gb.turnOrder,
@@ -1241,9 +1321,12 @@ export default function GlassBridgeComp({
       if (pendingStep) return;
 
       const activeId = selectActivePlayerId(gb);
-      if (activeId !== humanId) return;
+      const isParallelHuman = gb.parallelPlayerIds.includes(humanId);
+      if (activeId !== humanId && !isParallelHuman) return;
 
-      const rowIdx = gb.currentPlayerRow - 1;
+      const rowIdx = isParallelHuman
+        ? (gb.progress[humanId]?.furthestRowReached ?? 0)
+        : gb.currentPlayerRow - 1;
       if (rowIdx < 0 || rowIdx >= gb.rows.length) return;
       const row = gb.rows[rowIdx];
 
@@ -1281,7 +1364,9 @@ export default function GlassBridgeComp({
           shatterResolveRef.current = window.setTimeout(() => {
             setShatteringTile(null);
             setPendingStep(null);
-            dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
+            dispatch(isParallelHuman
+              ? resolveParallelStep({ playerId: humanId, chosenSide: side, now: chosenAt })
+              : resolveStep({ chosenSide: side, now: chosenAt }));
           }, shatterDelay);
           return;
         }
@@ -1291,7 +1376,9 @@ export default function GlassBridgeComp({
         if (rowIdx + 1 < gb.rowsCount) {
           flashStatusBanner(pickRandom(humanClearMessages)(rowIdx + 1), 'success');
         }
-        dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
+        dispatch(isParallelHuman
+          ? resolveParallelStep({ playerId: humanId, chosenSide: side, now: chosenAt })
+          : resolveStep({ chosenSide: side, now: chosenAt }));
       }, suspenseDelay);
     },
     [humanId, gb, dispatch, pendingStep, playSafeStep, playDeath, flashStatusBanner, getEffectiveNowMs],
@@ -1318,7 +1405,9 @@ export default function GlassBridgeComp({
     const hintsUsed = getHintUses(humanProgress.hintPenaltyMs);
     if (hintsUsed >= MAX_HINTS_PER_RUN) return;
 
-    const rowIdx = gb.currentPlayerRow - 1;
+    const rowIdx = gb.parallelPlayerIds.includes(humanId)
+      ? humanProgress.furthestRowReached
+      : gb.currentPlayerRow - 1;
     if (rowIdx < 0 || rowIdx >= gb.rows.length) return;
     const row = gb.rows[rowIdx];
 
@@ -1336,13 +1425,17 @@ export default function GlassBridgeComp({
     setCurrentHintMessage(pickRandom(hintMessages)(chance));
     setHintRequestsForCurrentRow(sameRowHintCount);
     dispatch(recordHintUsed({ playerId: humanId }));
-  }, [humanId, gb.progress, gb.currentPlayerRow, gb.rows, dispatch, hintRequestsForCurrentRow]);
+  }, [humanId, gb.progress, gb.currentPlayerRow, gb.parallelPlayerIds, gb.rows, dispatch, hintRequestsForCurrentRow]);
 
   // ── Derived values ────────────────────────────────────────────────────────
 
   const activeId = selectActivePlayerId(gb);
-  const isHumanTurn = activeId === humanId && !gb.humanSpectating;
+  const humanIsParallel = humanId ? gb.parallelPlayerIds.includes(humanId) : false;
+  const isHumanTurn = (activeId === humanId || humanIsParallel) && !gb.humanSpectating;
   const humanProgress = humanId ? gb.progress[humanId] : null;
+  const currentRowForDisplay = humanIsParallel && humanProgress
+    ? humanProgress.furthestRowReached + 1
+    : gb.currentPlayerRow;
   const isHumanEliminated = !!humanProgress?.eliminated;
   const pendingActorId = pendingStep?.actorId ?? null;
   const hintsUsed = getHintUses(humanProgress?.hintPenaltyMs);
@@ -1549,7 +1642,7 @@ export default function GlassBridgeComp({
             <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
-              const isCurrentRow = gb.currentPlayerRow === rowNum;
+              const isCurrentRow = currentRowForDisplay === rowNum;
               const rowDepthScale = Math.max(0.82, 1 - rowIdx * 0.015);
 
               // Find players on this row (those who have reached exactly this row and are active).
@@ -1558,7 +1651,7 @@ export default function GlassBridgeComp({
                 const timedOutOnBridge =
                   timeoutCollapseActive &&
                   isTimeoutPlayer(pid) &&
-                  activeId === pid &&
+                  (activeId === pid || gb.parallelPlayerIds.includes(pid)) &&
                   isCurrentRow;
                 return (
                   p &&
