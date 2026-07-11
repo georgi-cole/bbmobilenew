@@ -332,5 +332,15 @@ body:has(.game-screen-shell) {
   pointer-events: none;
 }
 
+.game-screen__battle-back-minigame {
+  position: fixed;
+  inset: 0;
+  z-index: 9200;
+  isolation: isolate;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: #07170f;
+}
+
 
 /* ── end of GameScreen.css ─────────────────────────────────────────────────── */

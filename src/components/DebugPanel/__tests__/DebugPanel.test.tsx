@@ -26,6 +26,20 @@ function makeStore() {
 }
 
 describe('DebugPanel forced shock controls', () => {
+  it('can place a player in the Tribunal for battle-back testing', async () => {
+    const user = userEvent.setup()
+    const store = makeStore()
+    const player = store.getState().game.players[0]
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/game?debug=1&qa=1']}><DebugPanel /></MemoryRouter>
+      </Provider>,
+    )
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Player House Status' }), player.id)
+    await user.click(screen.getByRole('button', { name: 'Set Tribunal' }))
+    expect(store.getState().game.players.find((candidate) => candidate.id === player.id)?.status).toBe('jury')
+  })
+
   it('includes Back 2 the Game in the force shock dropdown and queues it', async () => {
     const user = userEvent.setup()
     const store = makeStore()

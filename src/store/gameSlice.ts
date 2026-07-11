@@ -3336,6 +3336,29 @@ const gameSlice = createSlice({
         pushEvent(state, `[DEBUG] ${player.name} forced as POS winner. 🎭`, 'game');
       }
     },
+    /** Force a player's house status without leaving stale competition roles (debug only). */
+    forcePlayerStatus(
+      state,
+      action: PayloadAction<{ playerId: string; status: 'active' | 'jury' | 'evicted' }>,
+    ) {
+      const { playerId, status } = action.payload;
+      const player = state.players.find((candidate) => candidate.id === playerId);
+      if (!player) return;
+      if (status !== 'active') {
+        state.nomineeIds = state.nomineeIds.filter((id) => id !== playerId);
+        state.povProtectedIds = (state.povProtectedIds ?? []).filter((id) => id !== playerId);
+        if (state.lohId === playerId) state.lohId = null;
+        if (state.posWinnerId === playerId) state.posWinnerId = null;
+        player.evictedAtWeek = player.evictedAtWeek ?? state.week;
+      } else {
+        player.evictedAtWeek = undefined;
+        player.finalRank = undefined;
+        player.seasonPlacement = undefined;
+        player.isWinner = false;
+      }
+      player.status = status;
+      pushEvent(state, `[DEBUG] ${player.name} forced to ${status} status.`, 'game');
+    },
     /** Force entry into Final 4 eviction phase (debug only). */
     forcePhase(state, action: PayloadAction<Phase>) {
       state.phase = action.payload;
@@ -5667,6 +5690,7 @@ export const {
   forceHoH,
   forceNominees,
   forcePovWinner,
+  forcePlayerStatus,
   forcePhase,
   clearBlockingFlags,
   archiveSeason,
