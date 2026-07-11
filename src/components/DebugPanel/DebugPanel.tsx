@@ -7,6 +7,7 @@ import {
   forceHoH,
   forceNominees,
   forcePovWinner,
+  forcePlayerStatus,
   forcePhase,
   finalizeFinal4Eviction,
   clearBlockingFlags,
@@ -170,6 +171,7 @@ export default function DebugPanel() {
   const [nominee1, setNominee1] = useState('');
   const [nominee2, setNominee2] = useState('');
   const [selectedPov, setSelectedPov] = useState('');
+  const [selectedStatusPlayer, setSelectedStatusPlayer] = useState('');
   const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
   const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
 
@@ -441,6 +443,19 @@ export default function DebugPanel() {
                 >
                   Set
                 </button>
+              </div>
+
+              <div className="dbg-row dbg-row--col">
+                <label className="dbg-label">Player House Status</label>
+                <select aria-label="Player House Status" className="dbg-select" value={selectedStatusPlayer} onChange={(e) => setSelectedStatusPlayer(e.target.value)}>
+                  <option value="">— pick player —</option>
+                  {game.players.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.status})</option>)}
+                </select>
+                <div className="dbg-row">
+                  <button className="dbg-btn" disabled={!selectedStatusPlayer} onClick={() => dispatch(forcePlayerStatus({ playerId: selectedStatusPlayer, status: 'jury' }))}>Set Tribunal</button>
+                  <button className="dbg-btn" disabled={!selectedStatusPlayer} onClick={() => dispatch(forcePlayerStatus({ playerId: selectedStatusPlayer, status: 'evicted' }))}>Set Pre-jury Evicted</button>
+                  <button className="dbg-btn" disabled={!selectedStatusPlayer} onClick={() => dispatch(forcePlayerStatus({ playerId: selectedStatusPlayer, status: 'active' }))}>Restore Active</button>
+                </div>
               </div>
 
               <div className="dbg-row">

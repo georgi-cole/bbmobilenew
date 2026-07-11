@@ -60,11 +60,12 @@ import {
   submitCoLohNomination,
   submitPosTieBreak,
   completeTwinShockRevealAnimation,
+  resetGame,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge, type PendingChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
 import { setEnergyBankEntry } from '../../social/socialSlice'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
@@ -98,6 +99,7 @@ import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopu
 import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import Capitalization from '../../components/Capitalization/Capitalization'
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { getProfilePhotoAvatarId, resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
@@ -313,6 +315,7 @@ function buildDoubleEvictionPostVoteAnnouncement(options: {
  */
 export default function GameScreen() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const store = useStore<RootState>()
   const gameScreenRef = useRef<HTMLDivElement | null>(null)
@@ -404,6 +407,16 @@ export default function GameScreen() {
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
+  const preJuryGameOver = game.mode !== 'survival' && humanPlayer?.status === 'evicted'
+  const handleStartNewSeason = useCallback(() => {
+    dispatch(resetGame())
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null })
+    navigate('/', { replace: true })
+  }, [dispatch, navigate])
+  const handlePreJuryReturnHome = useCallback(() => {
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null })
+    navigate('/', { replace: true })
+  }, [dispatch, navigate])
   const confessionalTvAnnouncement = confessionalPromptTriggered && showConfessionalTvPrompt
     ? {
       key: 'confessional_required',
@@ -4089,16 +4102,18 @@ export default function GameScreen() {
 
       {/* ── Back 2 the Game / Jury Return twist overlay ──────────────────── */}
       {showBattleBackOverlay && useBattleBackMinigame && (
-        <Capitalization
-          key={`${battleBackCandidateIds.join('-')}-bb-cap-${battleBackAttemptIndex}`}
-          context="battleBack"
-          participantIds={battleBackCandidateIds}
-          participants={battleBackCapitalizationParticipants}
-          seed={battleBackAttemptSeed}
-          onFinish={(_value, _tiebreakerMs, completion) => {
-            handleBattleBackComplete(completion?.authoritativeWinnerId ?? null)
-          }}
-        />
+        <div className="game-screen__battle-back-minigame" aria-label="Back 2 the Game competition">
+          <Capitalization
+            key={`${battleBackCandidateIds.join('-')}-bb-cap-${battleBackAttemptIndex}`}
+            context="battleBack"
+            participantIds={battleBackCandidateIds}
+            participants={battleBackCapitalizationParticipants}
+            seed={battleBackAttemptSeed}
+            onFinish={(_value, _tiebreakerMs, completion) => {
+              handleBattleBackComplete(completion?.authoritativeWinnerId ?? null)
+            }}
+          />
+        </div>
       )}
       {showBattleBackOverlay && !useBattleBackMinigame && (
         <SpectatorView
@@ -4111,6 +4126,15 @@ export default function GameScreen() {
           onDone={() => handleBattleBackComplete()}
         />
       )}
+      <ConfirmExitModal
+        open={preJuryGameOver}
+        title="Your season is over"
+        description="You were eliminated before the Tribunal began, so you cannot return to the game or cast a finale vote."
+        confirmLabel="Start New Season"
+        cancelLabel="Return Home"
+        onConfirm={handleStartNewSeason}
+        onCancel={handlePreJuryReturnHome}
+      />
 
       {/* ── Public's Favorite Player voting overlay ───────────────────────── */}
       {isPublicModeEnabled(game.mode) && showFavoriteVoting && favoritePlayer && (
