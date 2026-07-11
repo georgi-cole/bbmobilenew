@@ -126,6 +126,8 @@ export interface SocialActionDefinition {
    * as the contextual subject. Used by the UI to generate candidate chips.
    */
   subjectPool?: SubjectPool;
+  /** Allow the acting player to be chosen as the contextual subject. */
+  allowActorAsSubject?: boolean;
   /**
    * When set, this action is only available when the selected primary target
    * has one of the listed statuses.  For example, `['loh', 'loh+pos']` means
@@ -354,6 +356,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: { energy: 2, influence: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'nominees',
+    allowActorAsSubject: true,
     successWeight: 1,
     outcomeTag: 'protection',
     availabilityHint: 'Talk to POS about a nominee',
