@@ -300,7 +300,7 @@ describe('DiaryRoom', () => {
     expect(screen.getByTestId('diary-room-shell')).not.toHaveClass('diary-room__shell--masked');
   });
 
-  it('shows the shuffle mission button for accepted secret missions', () => {
+  it('does not show a shuffle control for accepted secret missions', () => {
     renderDiaryRoom(['/game', '/diary-room'], {
       setupStore: (store) => {
         store.dispatch(triggerSecretMission(5));
@@ -309,10 +309,10 @@ describe('DiaryRoom', () => {
       },
     });
 
-    expect(screen.getByRole('button', { name: /shuffle mission/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /shuffle mission/i })).toBeNull();
   });
 
-  it('reshuffles accepted secret mission tasks from the confessional footer', () => {
+  it('answers task-number hint requests from the active mission checklist', async () => {
     const { store } = renderDiaryRoom(['/game', '/diary-room'], {
       setupStore: (store) => {
         store.dispatch(triggerSecretMission(5));
@@ -321,15 +321,21 @@ describe('DiaryRoom', () => {
       },
     });
 
-    const before = store.getState().game.secretMission!.tasks.map((task) => task.description);
-    expect(screen.getByRole('button', { name: /shuffle mission/i })).toBeTruthy();
+    const tasks = store.getState().game.secretMission!.tasks;
+    const taskIndex = tasks.findIndex((task) => task.type === 'social_energy_empty_streak');
+    const requestedIndex = taskIndex >= 0 ? taskIndex : 0;
 
-    fireEvent.click(screen.getByRole('button', { name: /shuffle mission/i }));
+    fireEvent.change(screen.getByLabelText(/diary entry/i), {
+      target: { value: `How do I complete task ${requestedIndex + 1}?` },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+    await flushConversationTimers();
 
-    const after = store.getState().game.secretMission!.tasks.map((task) => task.description);
-    expect(after).not.toEqual(before);
-    expect(after).toHaveLength(5);
-    expect(after.some((description) => /Survive until Day/i.test(description))).toBe(true);
+    if (taskIndex >= 0) {
+      expect(screen.getByText(/Social Energy badge.*reaches 0/i)).toBeTruthy();
+    } else {
+      expect(screen.getByText(new RegExp(`To complete task ${requestedIndex + 1}`, 'i'))).toBeTruthy();
+    }
   });
 
   it('shows four mystery reward boxes once a secret mission is completed', () => {

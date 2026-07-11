@@ -254,7 +254,21 @@ export default function TrapAuction({
   function handleGameComplete() {
     if (!state.winner) return;
     if (onComplete) {
-      onComplete({ authoritativeWinnerId: state.winner.id });
+      const ordered = [...state.players].sort(
+        (a, b) => (a.placement ?? Number.MAX_SAFE_INTEGER) - (b.placement ?? Number.MAX_SAFE_INTEGER),
+      );
+      const lastPlaceId = ordered[ordered.length - 1]?.id ?? null;
+      const playerCount = ordered.length;
+      onComplete({
+        authoritativeWinnerId: state.winner.id,
+        authoritativeLastPlaceId: lastPlaceId,
+        rawResults: Object.fromEntries(
+          ordered.map((player) => [
+            player.id,
+            playerCount - (player.placement ?? playerCount) + 1,
+          ]),
+        ),
+      });
     } else if (onFinish) {
       onFinish(1);
     }

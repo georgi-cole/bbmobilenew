@@ -429,6 +429,20 @@ describe('applyBidCosts', () => {
 // ─── eliminatePlayers ────────────────────────────────────────────────────────
 
 describe('eliminatePlayers', () => {
+  it('uses remaining bank before a deterministic draw to rank tied-low eliminations', () => {
+    const players = makePlayers(4, [
+      { id: 'safe', bank: 60 },
+      { id: 'poor', bank: 8 },
+      { id: 'rich', bank: 35 },
+      { id: 'other', bank: 50 },
+    ]);
+
+    const result = eliminatePlayers(players, ['poor', 'rich'], 2, 4, 1234);
+
+    expect(result.find((player) => player.id === 'poor')?.placement).toBe(4);
+    expect(result.find((player) => player.id === 'rich')?.placement).toBe(3);
+  });
+
   it('marks specified players as eliminated', () => {
     const players = makePlayers(4);
     const result = eliminatePlayers(players, ['p1', 'p2'], 2, 4);

@@ -716,11 +716,14 @@ describe('advanceFromDuelResult', () => {
     reachResult(store);
     const before = getState(store);
     const loser = before.duelLoserId!;
+    const winner = before.duelWinnerId!;
     const scoreBefore = before.playerScores[loser];
+    const winnerScoreBefore = before.playerScores[winner];
     store.dispatch(advanceFromDuelResult());
     expect(getState(store).remainingPlayerIds).toContain(loser);
     expect(getState(store).eliminatedPlayerIds).not.toContain(loser);
     expect(getState(store).playerScores[loser]).toBe(scoreBefore - 1);
+    expect(getState(store).playerScores[winner]).toBe(winnerScoreBefore);
   });
 
   it('transitions to pick_opponent when ≥2 remain', () => {
@@ -803,11 +806,11 @@ describe('Full 3-player tournament', () => {
     expect(['alice', 'bob', 'carol']).toContain(getState(store).winnerId);
   });
 
-  it('eliminates one player before the final duel in a 3-player game', () => {
+  it('eliminates every player except the winner in a 3-player game', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob', 'carol'], 42);
     runUntilComplete(store);
-    expect(getState(store).eliminatedPlayerIds).toHaveLength(1);
+    expect(getState(store).eliminatedPlayerIds).toHaveLength(2);
     expect(getState(store).finalistIds).toHaveLength(2);
   });
 });
@@ -853,7 +856,7 @@ describe('Deterministic tournament simulation', () => {
     expect(winners.size).toBeGreaterThanOrEqual(1);
   });
 
-  it('5-player tournament eventually completes with 4 eliminations', () => {
+  it('5-player tournament eventually completes with only the winner remaining', () => {
     const store = makeStore();
     initStore(store, ['a', 'b', 'c', 'd', 'e'], 999);
     let safety = 500;
@@ -874,7 +877,7 @@ describe('Deterministic tournament simulation', () => {
       else if (ph === 'duel_result') store.dispatch(advanceFromDuelResult());
     }
     expect(getState(store).phase).toBe('complete');
-    expect(getState(store).eliminatedPlayerIds).toHaveLength(3);
+    expect(getState(store).eliminatedPlayerIds).toHaveLength(4);
     expect(getState(store).duelIndex).toBeGreaterThan(4);
   });
 });

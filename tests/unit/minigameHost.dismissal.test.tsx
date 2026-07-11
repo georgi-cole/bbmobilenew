@@ -191,6 +191,8 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
 
     // Results screen with "Exited Early" heading should now appear
     expect(screen.getByText('🚪 Exited Early')).toBeTruthy();
+    expect(screen.getByText(/scrambled the time-space continuum/i)).toBeInTheDocument();
+    expect(screen.getByText(/AI-1 won the competition/i)).toBeInTheDocument();
     // Continue button should be present
     expect(screen.getByRole('button', { name: /continue/i })).toBeTruthy();
   });

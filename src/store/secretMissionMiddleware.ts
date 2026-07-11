@@ -207,19 +207,19 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
 
   if (
     (actionType === 'game/advance' || actionType === 'game/setPhase' || actionType === 'game/forcePhase') &&
-    game.phase === 'week_start' &&
-    (prevPhase !== 'week_start' || prevWeek !== game.week)
+    game.phase === 'week_end' &&
+    (prevPhase !== 'week_end' || prevWeek !== game.week)
   ) {
-    const completedDay = game.week - 1;
+    const completedDay = game.week;
     for (const task of tasks) {
       if (task.type === 'survive_days') {
-        const current = Math.min(game.week, task.target);
+        const current = Math.min(completedDay, task.target);
         store.dispatch(updateMissionTaskProgress({
           taskId: task.id,
           current,
-          lastProgressDay: game.week,
-          firstSatisfiedDay: current >= task.target ? game.week : undefined,
-          auditEntry: `Reached day ${game.week}`,
+          lastProgressDay: completedDay,
+          firstSatisfiedDay: current >= task.target ? completedDay : undefined,
+          auditEntry: `Reached day ${completedDay}`,
         }));
       }
 
@@ -267,6 +267,13 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
           completed: maxStreak >= task.target,
         });
       }
+    }
+    const latest = store.getState() as RootLike;
+    if (
+      completedDay >= game.secretMission.endDay &&
+      latest.game.secretMission?.status === 'accepted'
+    ) {
+      store.dispatch(expireSecretMission());
     }
     return result;
   }

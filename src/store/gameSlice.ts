@@ -66,6 +66,7 @@ import {
   canOfferMissionImmunity,
   canUseVoteDeduction,
   isSecretMissionSuccessful,
+  getMissionTaskSetSignature,
   pickMissionImmunityDuration,
   type MissionTask,
   type LegacyMissionRewardType,
@@ -257,6 +258,8 @@ function buildSecretMissionTasksForTemplate(
     templateId: template.id,
     tasks: buildMissionTasks(template, triggeredDay, {
       targetCandidateIds: buildSecretMissionTargetCandidates(state),
+      missionNumber: state.secretMission?.missionNumber,
+      excludedTaskSetSignatures: state.secretMissionTaskSetHistory ?? [],
     }),
   };
 }
@@ -379,6 +382,7 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     tiedNomineeIds: null,
     awaitingMissionImmunityOffer: false,
     secretMissionCount: 0,
+    secretMissionTaskSetHistory: [],
     secretMissionSecondChanceResolved: false,
     awaitingFinal3Eviction: false,
     awaitingFinal3Plea: false,
@@ -605,6 +609,20 @@ function getAiThreatScore(
   return score;
 }
 
+function getStrategicRelationship(state: GameState, actorId: string, targetId: string) {
+  return state.strategicRelationships?.[actorId]?.[targetId] ?? null;
+}
+
+function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
+  const relationship = getStrategicRelationship(state, holderId, nominee.id);
+  if (!relationship) return -getAiThreatScore(state, nominee) * 3;
+  let score = relationship.affinity - getAiThreatScore(state, nominee) * 3;
+  if (relationship.tags.includes('alliance')) score += 55;
+  if (relationship.tags.includes('protection') || relationship.tags.includes('shield')) score += 25;
+  if (relationship.tags.includes('betrayal')) score -= 35;
+  return score;
+}
+
 function pickStrategicAiPlayer(
   state: GameState,
   candidates: Player[],
@@ -647,10 +665,12 @@ function pickStrategicAiPlayers(
 
 function shouldAiUseTargetedSafetyPower(
   state: GameState,
+  holderId: string | null | undefined,
   currentNominees: Player[],
   eligibleReplacements: Player[],
   options: { replacementCount?: number; preferLoh?: boolean } = {},
 ): boolean {
+  if (!holderId) return false;
   const replacementCount = Math.max(1, options.replacementCount ?? 1);
   if (eligibleReplacements.length === 0 || currentNominees.length === 0) return false;
   const currentScores = currentNominees
@@ -665,7 +685,19 @@ function shouldAiUseTargetedSafetyPower(
   const replacementValue = replacementScores
     .slice(0, Math.min(replacementCount, replacementScores.length))
     .reduce((sum, score) => sum + score, 0);
-  return replacementValue > currentValue;
+  const strategicUpgrade = replacementValue > currentValue;
+  const bestRelationship = Math.max(
+    ...currentNominees.map((nominee) => getSafetyRelationshipScore(state, holderId, nominee)),
+  );
+  let useChance = strategicUpgrade ? 0.35 : 0.05;
+  if (bestRelationship >= 75) useChance += 0.5;
+  else if (bestRelationship >= 45) useChance += 0.35;
+  else if (bestRelationship >= 20) useChance += 0.18;
+  useChance = Math.max(0.03, Math.min(0.92, useChance));
+  const rng = mulberry32(
+    (state.seed ^ hashString(`safety:${state.week}:${holderId}:${currentNominees.map((p) => p.id).join('|')}`)) >>> 0,
+  );
+  return rng() < useChance;
 }
 
 function ensureMinimumNominees(
@@ -886,8 +918,18 @@ function pickSafetySaveTarget(
   nominees: Player[],
   rng: () => number,
 ): Player | null {
-  return getTwinNomineeToSave(state, holderId, nominees)
-    ?? pickStrategicAiPlayer(state, nominees, rng, 'lowest');
+  const twin = getTwinNomineeToSave(state, holderId, nominees);
+  if (twin) return twin;
+  if (!holderId || nominees.length === 0) return null;
+  const scored = nominees.map((nominee) => ({
+    nominee,
+    score: getSafetyRelationshipScore(state, holderId, nominee),
+  }));
+  const bestScore = Math.max(...scored.map((entry) => entry.score));
+  return seededPick(
+    rng,
+    scored.filter((entry) => entry.score === bestScore).map((entry) => entry.nominee),
+  );
 }
 
 function shouldUseSafetyForTwin(state: GameState, holderId: string | null | undefined, nominees: Player[]): boolean {
@@ -1346,23 +1388,47 @@ function hashString(s: string): number {
 }
 
 /**
- * Isolated AI voting logic.
- * Deterministic placeholder — replace this function with relationship-based
- * logic once the social module is installed.
+ * Relationship-aware AI voting logic. Allies are normally protected, while
+ * threat, explicit targets, betrayal history, and rare backstabs can override.
  *
  * @param voterId     ID of the AI voter casting their vote
  * @param nomineeIds  IDs of eligible nominees (must have ≥1 entry)
  * @param gameSeed    Current game seed (keeps results varied across weeks)
  * @returns           The nominee ID that this AI voter chooses to evict
  */
-function chooseAiEvictionVote(
+export function chooseAiEvictionVote(
+  state: GameState,
   voterId: string,
   nomineeIds: string[],
   gameSeed: number,
 ): string {
-  const voterSeed = (gameSeed ^ hashString(voterId)) >>> 0;
-  const rng = mulberry32(voterSeed);
-  return nomineeIds[Math.floor(rng() * nomineeIds.length)];
+  if (nomineeIds.length <= 1) return nomineeIds[0];
+
+  const scored = nomineeIds.map((nomineeId) => {
+    const nominee = state.players.find((player) => player.id === nomineeId);
+    const relationship = getStrategicRelationship(state, voterId, nomineeId);
+    const tags = new Set(relationship?.tags ?? []);
+    const affinity = relationship?.affinity ?? 0;
+    const threat = nominee ? getAiThreatScore(state, nominee) : 0;
+    const rng = mulberry32(
+      (gameSeed ^ hashString(`vote:${state.week}:${voterId}:${nomineeId}`)) >>> 0,
+    );
+
+    let score = (threat * 8) - affinity + (rng() * 4);
+    if (tags.has('target')) score += 25;
+    if (tags.has('betrayal')) score += 35;
+    if (tags.has('protection') || tags.has('shield')) score -= 20;
+    if (tags.has('alliance')) {
+      const backstabChance = Math.min(0.22, 0.05 + (threat * 0.015));
+      if (rng() < backstabChance) score += 95;
+      else score -= 90;
+    }
+
+    return { nomineeId, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score || a.nomineeId.localeCompare(b.nomineeId));
+  return scored[0].nomineeId;
 }
 
 const gameSlice = createSlice({
@@ -1379,6 +1445,12 @@ const gameSlice = createSlice({
     updatePlayer(state, action: PayloadAction<Player>) {
       const idx = state.players.findIndex((p) => p.id === action.payload.id);
       if (idx !== -1) state.players[idx] = action.payload;
+    },
+    syncStrategicRelationships(
+      state,
+      action: PayloadAction<NonNullable<GameState['strategicRelationships']>>,
+    ) {
+      state.strategicRelationships = action.payload;
     },
     addTvEvent(state, action: PayloadAction<Omit<TvEvent, 'id' | 'timestamp'>>) {
       const event: TvEvent = {
@@ -4068,7 +4140,7 @@ const gameSlice = createSlice({
             state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury'),
           );
           const useSecond = shouldUseSafetyForTwin(state, povHolder?.id, nominees)
-            || shouldAiUseTargetedSafetyPower(state, nominees, eligible);
+            || shouldAiUseTargetedSafetyPower(state, povHolder?.id, nominees, eligible);
           if (useSecond && nominees.length > 0) {
             const nominee2 = pickSafetySaveTarget(state, povHolder?.id, nominees, rng2);
             if (!nominee2) {
@@ -4737,7 +4809,7 @@ const gameSlice = createSlice({
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
               const eligible = getReplacementEligiblePlayers(state, alive, 1, { actorId: posWinner?.id });
               const useIt = shouldUseSafetyForTwin(state, posWinner?.id, nominees)
-                || shouldAiUseTargetedSafetyPower(state, nominees, eligible);
+                || shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible);
               if (useIt) {
                 if (nominees.length > 0) {
                   const nomineeToSave = pickSafetySaveTarget(state, posWinner?.id, nominees, rng);
@@ -4807,7 +4879,7 @@ const gameSlice = createSlice({
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
               const eligible = getReplacementEligiblePlayers(state, alive, 2, { allowLoh: true, actorId: posWinner?.id });
               const useIt = shouldUseSafetyForTwin(state, posWinner?.id, nominees)
-                || shouldAiUseTargetedSafetyPower(state, nominees, eligible, {
+                || shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible, {
                 replacementCount: Math.min(2, nominees.length),
                 preferLoh: true,
               });
@@ -4868,7 +4940,7 @@ const gameSlice = createSlice({
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
               const eligible = getReplacementEligiblePlayers(state, alive);
               const useIt = shouldUseSafetyForTwin(state, posWinner?.id, nominees)
-                || shouldAiUseTargetedSafetyPower(state, nominees, eligible);
+                || shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible);
               if (useIt) {
                 if (nominees.length > 0) {
                   const nomineeToSave = pickSafetySaveTarget(state, posWinner?.id, nominees, rng);
@@ -4937,13 +5009,35 @@ const gameSlice = createSlice({
               'game',
             );
           } else {
-            // AI POS holder who is not a nominee: does not use the veto
-            const povName = posWinner?.name ?? 'The safety holder';
-            pushEvent(
-              state,
-              `${povName} has decided NOT to use the Power of Safety. The nominations remain the same. ⚡`,
-              'game',
-            );
+            const nominees = state.players.filter((player) => state.nomineeIds.includes(player.id));
+            const eligible = getReplacementEligiblePlayers(state, alive);
+            const useIt = shouldUseSafetyForTwin(state, posWinner?.id, nominees)
+              || shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible);
+            const saveTarget = useIt
+              ? pickSafetySaveTarget(state, posWinner?.id, nominees, rng)
+              : null;
+
+            if (saveTarget) {
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== saveTarget.id);
+              saveTarget.status = 'active';
+              state.povSavedId = saveTarget.id;
+              addPovProtectedId(state, saveTarget.id);
+              pushEvent(
+                state,
+                `${posWinner?.name ?? 'The safety holder'} used the Power of Safety on ${saveTarget.name}. ⚡`,
+                'game',
+              );
+              const lohPlayer = state.players.find((player) => player.id === state.lohId);
+              if (lohPlayer?.isUser) state.replacementNeeded = true;
+              else state.aiReplacementStep = 1;
+            } else {
+              const povName = posWinner?.name ?? 'The safety holder';
+              pushEvent(
+                state,
+                `${povName} has decided NOT to use the Power of Safety. The nominations remain the same. ⚡`,
+                'game',
+              );
+            }
           }
           break;
         }
@@ -4965,6 +5059,7 @@ const gameSlice = createSlice({
                 canPlayerTargetPlayer(state, voter.id, nomineeId),
               );
               state.votes[voter.id] = chooseAiEvictionVote(
+                state,
                 voter.id,
                 eligibleNomineeIds.length > 0 ? eligibleNomineeIds : state.nomineeIds,
                 state.seed,
@@ -5238,26 +5333,10 @@ const gameSlice = createSlice({
       sm.status = 'accepted';
       sm.templateId = nextMission.templateId;
       sm.tasks = nextMission.tasks;
-    },
-
-    /**
-     * Rotate an accepted mission to the next template in the pool and rebuild
-     * its checklist from scratch for the original trigger day.
-     */
-    reshuffleSecretMission(state) {
-      const sm = state.secretMission;
-      if (!sm || sm.status !== 'accepted') return;
-      const currentIndex = MISSION_TEMPLATES.findIndex((t) => t.id === sm.templateId);
-      const nextIndex = currentIndex >= 0
-        ? (currentIndex + 1) % MISSION_TEMPLATES.length
-        : 0;
-      const nextMission = buildSecretMissionTasksForTemplate(
-        state,
-        MISSION_TEMPLATES[nextIndex]?.id ?? MISSION_TEMPLATES[0].id,
-        sm.triggeredDay,
+      const signature = getMissionTaskSetSignature(nextMission.tasks);
+      state.secretMissionTaskSetHistory = Array.from(
+        new Set([...(state.secretMissionTaskSetHistory ?? []), signature]),
       );
-      sm.templateId = nextMission.templateId;
-      sm.tasks = nextMission.tasks;
     },
 
     /**
@@ -5623,6 +5702,7 @@ export const {
   setPhase,
   advanceWeek,
   updatePlayer,
+  syncStrategicRelationships,
   addTvEvent,
   addSocialSummary,
   setLive,
@@ -5707,7 +5787,6 @@ export const {
   markSecondSecretMissionChanceResolved,
   offerSecretMission,
   acceptSecretMission,
-  reshuffleSecretMission,
   declineSecretMission,
   updateMissionTaskProgress,
   syncMissionTask,
@@ -6059,7 +6138,7 @@ function resolveDebugBlockers(
       { allowLoh: true },
     );
     const usePower = shouldUseSafetyForTwin(game, game.posWinnerId, nominees)
-      || shouldAiUseTargetedSafetyPower(game, nominees, eligible, {
+      || shouldAiUseTargetedSafetyPower(game, game.posWinnerId, nominees, eligible, {
       replacementCount: game.specialVeto?.activeType === 'coup' ? 2 : 1,
       preferLoh: true,
     });
@@ -6107,7 +6186,7 @@ function resolveDebugBlockers(
     const nominees = game.players.filter((player) => game.nomineeIds.includes(player.id));
     const eligible = getReplacementEligiblePlayers(game, alive);
     const useSecond = shouldUseSafetyForTwin(game, game.posWinnerId, nominees)
-      || shouldAiUseTargetedSafetyPower(game, nominees, eligible, { preferLoh: true });
+      || shouldAiUseTargetedSafetyPower(game, game.posWinnerId, nominees, eligible, { preferLoh: true });
     dispatch(submitVipSecondUseDecision(useSecond));
     return true;
   }

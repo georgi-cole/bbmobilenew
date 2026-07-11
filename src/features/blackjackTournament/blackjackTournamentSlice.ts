@@ -20,7 +20,8 @@
  *  - Both fighters receive two cards and alternately hit or stand.
  *  - Closest to 21 without going over wins. Bust (>21) = loss.
  *  - Exact tie (equal totals) or both-bust → TIE: rematch same pair.
- *  - After a decisive duel, loser is eliminated; duel winner becomes next controller.
+ *  - After a decisive duel, the loser loses one life; the winner becomes next controller.
+ *  - Winning never adds a life. A player is eliminated only when a loss takes them to zero.
  *  - Last player remaining wins the competition.
  *
  * Tie / rematch:
@@ -77,9 +78,9 @@ export interface BlackjackTournamentState {
   allPlayerIds: string[];
   remainingPlayerIds: string[];
   eliminatedPlayerIds: string[];
-  /** Main tournament starts each player at 3 points/lives. Finalists reset to 0. */
+  /** Every player starts with 3 lives. Only duel losses change this value. */
   playerScores: Record<string, number>;
-  /** Set when the final duel begins; finalists race from 0 to FINAL_TARGET_SCORE. */
+  /** Set when only two players remain; their existing lives carry into the final. */
   finalistIds: [string, string] | null;
 
   humanPlayerId: string | null;
@@ -128,7 +129,6 @@ const REMATCH_CAP_RNG_OFFSET = 128;
 /** Maximum number of rematches before forcing a deterministic fallback winner. */
 export const REMATCH_CAP = 100;
 export const STARTING_PLAYER_SCORE = 3;
-export const FINAL_TARGET_SCORE = 3;
 
 /** AI stands on this total or higher (standard soft-17 rule). */
 export const AI_STAND_THRESHOLD = 17;
@@ -398,8 +398,6 @@ function enterFinalDuel(state: BlackjackTournamentState): void {
   if (state.remainingPlayerIds.length !== 2) return;
   const finalists = [state.remainingPlayerIds[0], state.remainingPlayerIds[1]] as [string, string];
   state.finalistIds = finalists;
-  state.playerScores[finalists[0]] = 0;
-  state.playerScores[finalists[1]] = 0;
 }
 
 /**
@@ -666,32 +664,6 @@ const blackjackTournamentSlice = createSlice({
 
       const winner = state.duelWinnerId;
       const loser = state.duelLoserId;
-      const isFinalDuel = state.finalistIds !== null;
-
-      if (isFinalDuel) {
-        const nextWinnerScore = (state.playerScores[winner] ?? 0) + 1;
-        state.playerScores[winner] = nextWinnerScore;
-
-        state.controllingPlayerId = winner;
-        state.fighterAId = null;
-        state.fighterBId = null;
-        state.currentDuel = null;
-        state.duelEliminatedId = null;
-        state.rematchCount = 0;
-        state.duelIndex++;
-
-        if (nextWinnerScore >= FINAL_TARGET_SCORE) {
-          state.winnerId = winner;
-          state.phase = 'complete';
-          return;
-        }
-
-        autoSetFighters(state);
-        state.phase = 'pick_opponent';
-        return;
-      }
-
-      state.playerScores[winner] = (state.playerScores[winner] ?? STARTING_PLAYER_SCORE) + 1;
       const nextLoserScore = Math.max(0, (state.playerScores[loser] ?? STARTING_PLAYER_SCORE) - 1);
       state.playerScores[loser] = nextLoserScore;
 

@@ -264,7 +264,13 @@ export function trapAuctionReducer(
 
       // Eliminate lowest bidders
       const placement = nextPlacementFor(afterCosts);
-      const afterElimination = eliminatePlayers(afterCosts, lowestIds, state.round, placement);
+      const afterElimination = eliminatePlayers(
+        afterCosts,
+        lowestIds,
+        state.round,
+        placement,
+        state.seed ^ state.round,
+      );
 
       const humanEliminated = lowestIds.some((id) =>
         state.players.find((p) => p.id === id)?.isHuman,
@@ -421,7 +427,13 @@ function simulateToCompletion(state: TrapAuctionState): TrapAuctionState {
     const withExposure = exposeHighestBidder(withBids, highestId, s.round + 1);
     const afterCosts = applyBidCosts(withExposure, s.round);
     const placement = nextPlacementFor(afterCosts);
-    const afterElimination = eliminatePlayers(afterCosts, lowestIds, s.round, placement);
+    const afterElimination = eliminatePlayers(
+      afterCosts,
+      lowestIds,
+      s.round,
+      placement,
+      s.seed ^ s.round,
+    );
 
     s = {
       ...s,

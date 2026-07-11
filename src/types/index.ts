@@ -914,6 +914,10 @@ export interface GameState {
   secretMission?: import('../bb/secretMission').SecretMissionState;
   /** Number of secret missions started this season (capped at 2). */
   secretMissionCount?: number;
+  /** Task-set signatures already generated this season; prevents repeat checklists. */
+  secretMissionTaskSetHistory?: string[];
+  /** Latest social graph snapshot used by synchronous POS and eviction AI decisions. */
+  strategicRelationships?: import('../social/types').RelationshipsMap;
   /** Tracks whether the optional second-mission 50% roll has already been resolved. */
   secretMissionSecondChanceResolved?: boolean;
   /**

@@ -12,10 +12,11 @@ import {
   getAllowedBidRange,
   isCompleteTie,
   isUnbreakableTie,
+  MOCK_PARTICIPANTS,
   nextPlacementFor,
   resolveTieWinner,
 } from '../src/components/TrapAuction/trapAuctionHelpers';
-import { MOCK_PARTICIPANTS, TRAP_AUCTION_CONFIG } from '../src/components/TrapAuction/trapAuctionTypes';
+import { TRAP_AUCTION_CONFIG } from '../src/components/TrapAuction/trapAuctionTypes';
 
 describe('Trap Auction rules', () => {
   it('assigns stable players and allowed bid ranges', () => {
@@ -69,9 +70,9 @@ describe('Trap Auction rules', () => {
     expect(reveals.slice(1).every((entry) => entry.isLowest)).toBe(true);
 
     const tieReveals = buildRoundReveals(players.map((player) => ({ ...player, currentBid: 5 })));
-    expect(tieReveals).toHaveLength(1);
+    expect(tieReveals).toHaveLength(players.length);
     expect(tieReveals[0].isHighest).toBe(true);
-    expect(tieReveals[0].isLowest).toBe(true);
+    expect(tieReveals.every((entry) => entry.isLowest)).toBe(true);
   });
 
   it('applies round outcomes and tie safeguards deterministically', () => {

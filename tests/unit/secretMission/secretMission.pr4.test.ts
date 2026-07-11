@@ -7,6 +7,7 @@ import gameReducer, {
   expireMissionReward,
   offerSecretMission,
   recordSecretMissionEasterEgg,
+  setPhase,
   setMissionTaskBaselineApproval,
   syncMissionTask,
   triggerSecretMission,
@@ -45,6 +46,20 @@ function setupAcceptedMission() {
 }
 
 describe('secret mission v2 follow-up', () => {
+  it('removes an incomplete mission when its final day ends', () => {
+    const store = setupAcceptedMission();
+    const mission = store.getState().game.secretMission!;
+    store.dispatch(hydrateGame({
+      ...store.getState().game,
+      week: mission.endDay,
+      phase: 'social_2',
+    }));
+
+    store.dispatch(setPhase('week_end'));
+
+    expect(store.getState().game.secretMission?.status).toBe('expired');
+  });
+
   it('picks a deterministic immunity duration in the 1–3 day range', () => {
     const duration = pickMissionImmunityDuration(5, 'silent_witness');
     expect([1, 2, 3]).toContain(duration);

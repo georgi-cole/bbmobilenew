@@ -187,6 +187,7 @@ export interface MissionBuildContext {
   triggeredDay: number;
   templateId: string;
   targetCandidateIds?: string[];
+  variant?: number;
 }
 
 export interface MissionTemplate {
@@ -453,7 +454,9 @@ function buildWeightedTaskStack(
   weights: Record<WeightedRequirementType, number>,
 ): Omit<MissionTask, 'completed' | 'current'>[] {
   const endDay = context.triggeredDay + daySpan;
-  const rng = createSeededRng(hashString(`${context.templateId}:${context.triggeredDay}:${endDay}`));
+  const rng = createSeededRng(
+    hashString(`${context.templateId}:${context.triggeredDay}:${endDay}:${context.variant ?? 0}`),
+  );
   const chosenTypes = weightedPickDistinct(weights, 4, rng);
   return [
     buildRequirementTask('survive_days', context, endDay, rng),
@@ -547,18 +550,85 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
 export function buildMissionTasks(
   template: MissionTemplate,
   triggeredDay: number,
-  options?: Omit<MissionBuildContext, 'triggeredDay' | 'templateId'>,
+  options?: {
+    targetCandidateIds?: string[];
+    missionNumber?: number;
+    excludedTaskSetSignatures?: string[];
+  },
 ): MissionTask[] {
-  const context: MissionBuildContext = {
-    triggeredDay,
-    templateId: template.id,
-    targetCandidateIds: options?.targetCandidateIds,
-  };
-  return buildWeightedTaskStack(context, template.daySpan, template.requirementWeights).map((task) => ({
-    ...task,
-    current: 0,
-    completed: false,
-  }));
+  const excluded = new Set(options?.excludedTaskSetSignatures ?? []);
+  let candidate: MissionTask[] = [];
+
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const context: MissionBuildContext = {
+      triggeredDay,
+      templateId: template.id,
+      targetCandidateIds: options?.targetCandidateIds,
+      variant: (options?.missionNumber ?? 1) * 101 + attempt,
+    };
+    candidate = buildWeightedTaskStack(context, template.daySpan, template.requirementWeights)
+      .map((task) => ({ ...task, current: 0, completed: false }));
+    if (!excluded.has(getMissionTaskSetSignature(candidate))) return candidate;
+  }
+
+  return candidate;
+}
+
+export function getMissionTaskSetSignature(tasks: readonly Pick<MissionTask, 'type'>[]): string {
+  return tasks.map((task) => task.type).sort().join('|');
+}
+
+const ORDINAL_TASK_REFERENCES: Readonly<Record<string, number>> = {
+  first: 1,
+  second: 2,
+  third: 3,
+  fourth: 4,
+  fifth: 5,
+};
+
+export function findSecretMissionTaskReference(
+  input: string,
+  tasks: readonly MissionTask[],
+): { task: MissionTask; taskNumber: number } | null {
+  const normalized = input.toLowerCase();
+  const numeric = normalized.match(/(?:task|mission|number|#)\s*(\d+)/i)
+    ?? normalized.match(/\b(\d+)\b/);
+  let taskNumber = numeric ? Number(numeric[1]) : 0;
+  if (!taskNumber) {
+    const ordinal = Object.entries(ORDINAL_TASK_REFERENCES)
+      .find(([word]) => normalized.includes(word));
+    taskNumber = ordinal?.[1] ?? 0;
+  }
+  const task = tasks[taskNumber - 1];
+  return task ? { task, taskNumber } : null;
+}
+
+export function getSecretMissionTaskHint(task: MissionTask, taskNumber: number): string {
+  const prefix = `To complete task ${taskNumber}`;
+  switch (task.type) {
+    case 'social_energy_empty_streak':
+      return `${prefix}, use the Social module until your Social Energy badge (⚡) reaches 0 on each required day. The checklist updates when that day ends.`;
+    case 'social_action_count':
+      return task.requiredActionIds?.length
+        ? `${prefix}, open the Social module and perform each listed interaction once: ${task.requiredActionIds.join(', ')}. Repeating the same listed action does not replace a missing one.`
+        : `${prefix}, use the Social module for the requested number of successful interactions before the deadline.`;
+    case 'incoming_response_streak':
+      return `${prefix}, open Incoming Requests and answer every request on each required day. Ignoring even one request breaks that day's streak.`;
+    case 'competition_placement':
+      return `${prefix}, finish ${task.placementThreshold === 1 ? 'first' : `in the top ${task.placementThreshold}`} in any competition before the deadline.`;
+    case 'avoid_last_place':
+      return `${prefix}, complete the required number of competitions without finishing last. Each qualifying competition adds one.`;
+    case 'public_approval_gain':
+      return `${prefix}, raise your Public Meter approval by ${task.requiredDelta ?? task.target} percentage points above the rating you had when you accepted the mission.`;
+    case 'target_nominated':
+      return `${prefix}, use social strategy such as Pitch Target or Vote Rally to help put your marked player on the block before the deadline.`;
+    case 'easter_egg_discovery':
+      return `${prefix}, talk naturally with the Big Eye and explore unusual topics or phrases. Hidden discoveries count automatically when you uncover them.`;
+    case 'survive_days':
+      return `${prefix}, remain in the house through Day ${task.endDay ?? task.target}. It updates automatically as the game advances.`;
+    default:
+      return `${prefix}, follow this checklist requirement before its deadline: ${task.description}`;
+  }
 }
 
 export function isSecretMissionSuccessful(tasks: readonly MissionTask[]): boolean {
