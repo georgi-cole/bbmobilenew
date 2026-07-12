@@ -138,6 +138,7 @@ export default function MinigameHost({
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
+  const [showFullRanking, setShowFullRanking] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
   const competitionRetryEnabled = competitionRetry?.enabled ?? false;
   const rulesGame = useMemo(
@@ -163,6 +164,7 @@ export default function MinigameHost({
   const handleRulesDismiss = useCallback(() => {
     setFinalValue(0);
     setWasPartial(true);
+    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -199,6 +201,7 @@ export default function MinigameHost({
   const handleQuit = useCallback((partial: LegacyRawResult) => {
     setFinalValue(partial.value);
     setWasPartial(true);
+    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -662,23 +665,41 @@ export default function MinigameHost({
       )}
 
       {phase === 'results' && (
-        <div className="minigame-host-results">
+        <div className={`minigame-host-results ${wasPartial ? 'minigame-host-results--timeline' : ''}`}>
+          {wasPartial && <div className="minigame-host-results-rift" aria-hidden="true" />}
+          {wasPartial && (
+            <button
+              type="button"
+              className="minigame-host-results-close"
+              aria-label="Close results"
+              onClick={() => {
+                if (showCompetitionRetry) competitionRetry?.onContinueWithoutRetry?.();
+                handleContinue();
+              }}
+            >
+              ×
+            </button>
+          )}
+          {wasPartial && <p className="minigame-host-results-kicker">Temporal rupture</p>}
           <h2 className="minigame-host-results-title">
-            {wasPartial ? '🚪 Exited Early' : '🏁 Finished!'}
+            {wasPartial ? 'Exited early' : '🏁 Finished!'}
           </h2>
+          {wasPartial && <div className="minigame-host-results-divider" aria-hidden="true"><span /></div>}
 
           {leaderboard ? (
             <>
               {wasPartial && (
                 <p className="minigame-host-results-alternate-timeline">
-                  You left early and scrambled the time-space continuum. In this alternative
-                  universe, {leaderboard[0]?.name ?? 'someone unexpected'} won the competition —
-                  even if the timeline you saw was heading somewhere else.
+                  You slipped out of the timeline. While you were gone, the competition resolved in
+                  an alternate universe.
                 </p>
               )}
-              <p className="minigame-host-results-winner">
-                🏆 {leaderboard[0]?.name ?? 'Unknown'} wins
-                {leaderboard[0]?.isHuman ? " — that's you!" : '!'}
+              <p className={`minigame-host-results-winner ${wasPartial ? 'minigame-host-results-winner--timeline' : ''}`}>
+                {wasPartial && <span className="minigame-host-results-trophy" aria-hidden="true">🏆</span>}
+                <span>
+                  {leaderboard[0]?.name ?? 'Unknown'} wins
+                  {leaderboard[0]?.isHuman ? " — that's you!" : '!'}
+                </span>
               </p>
               <ol className="minigame-host-leaderboard">
                 {leaderboard.map((entry, i) => (
@@ -729,34 +750,49 @@ export default function MinigameHost({
           )}
 
           <div className="minigame-host-results-actions">
+            {wasPartial && leaderboard && (
+              <button
+                type="button"
+                className="minigame-host-results-btn minigame-host-results-btn--ranking"
+                onClick={() => setShowFullRanking((isShowing) => !isShowing)}
+              >
+                <span className="minigame-host-results-ranking-icon" aria-hidden="true"><i /><i /><i /></span>
+                <span>{showFullRanking ? 'Hide full ranking' : 'See full ranking'}</span>
+                <span className="minigame-host-results-ranking-chevron" aria-hidden="true">›</span>
+              </button>
+            )}
             {activeCompetitionRetry && (
               <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
-                <p className="minigame-host-results-retry-copy">
-                  Finished last? Watch a short ad to retry before the result is locked in.
-                </p>
                 <button
                   className="minigame-host-results-btn minigame-host-results-btn--retry"
                   onClick={() => activeCompetitionRetry.onWatch(handleRetryRestart)}
                   disabled={activeCompetitionRetry.pending}
                   autoFocus
                 >
-                  {activeCompetitionRetry.pending ? 'Opening Ad…' : 'Watch Ad to Retry'}
+                  {activeCompetitionRetry.pending ? (
+                    'Opening Ad…'
+                  ) : (
+                    <><span className="minigame-host-results-rewind" aria-hidden="true">◀◀</span>Reverse time</>
+                  )}
                 </button>
+                <p className="minigame-host-results-retry-copy">
+                  Watch a short ad to retry before this result is locked in.
+                </p>
               </div>
             )}
 
-            <button
-              className="minigame-host-results-btn"
-              onClick={() => {
-                if (showCompetitionRetry) {
-                  competitionRetry?.onContinueWithoutRetry?.();
-                }
-                handleContinue();
-              }}
-              {...(!showCompetitionRetry ? { autoFocus: true } : {})}
-            >
-              {showCompetitionRetry ? 'No Thanks — Continue ▶' : 'Continue ▶'}
-            </button>
+            {(!wasPartial || !showCompetitionRetry) && (
+              <button
+                className="minigame-host-results-btn"
+                onClick={() => {
+                  if (showCompetitionRetry) competitionRetry?.onContinueWithoutRetry?.();
+                  handleContinue();
+                }}
+                {...(!showCompetitionRetry ? { autoFocus: true } : {})}
+              >
+                {showCompetitionRetry ? 'No Thanks — Continue ▶' : 'Continue ▶'}
+              </button>
+            )}
           </div>
         </div>
       )}
