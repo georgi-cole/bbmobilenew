@@ -27,6 +27,9 @@ const INTRO_DELAY_MS = 5000;
 const AI_LOCK_DELAY_MS = 950;
 const AI_DUEL_DELAY_MS = 1250;
 const SPECTATOR_REVEAL_ADVANCE_DELAY_MS = 3000;
+const FAST_FORWARD_STEP_MS = 25;
+
+type SpectatorMode = 'playing' | 'pending' | 'watching' | 'skipping';
 
 const PHASE_MOTION = {
   initial: { opacity: 0, y: 18, scale: 0.985 },
@@ -380,6 +383,7 @@ export default function MajorityRulesComp({
   const game = useAppSelector((state: RootState) => state.majorityRules);
   const gamePlayers = useAppSelector((state: RootState) => state.game.players);
   const completedRef = useRef(false);
+  const [spectatorMode, setSpectatorMode] = useState<SpectatorMode>('playing');
   const [initialConfig] = useState<{
     participantIds: string[];
     competitionType: MajorityRulesCompetitionType;
@@ -436,6 +440,20 @@ export default function MajorityRulesComp({
     };
 
   const getName = (id: string) => getPlayer(id).name;
+  const humanIsEliminated = Boolean(
+    game.humanPlayerId && game.eliminatedIds.includes(game.humanPlayerId),
+  );
+
+  useEffect(() => {
+    if (
+      humanIsEliminated &&
+      spectatorMode === 'playing' &&
+      game.phase !== 'winner' &&
+      game.phase !== 'complete'
+    ) {
+      setSpectatorMode('pending');
+    }
+  }, [game.phase, humanIsEliminated, spectatorMode]);
 
   useEffect(() => {
     dispatch(initMajorityRules(initialConfig));
@@ -450,35 +468,50 @@ export default function MajorityRulesComp({
   useEffect(() => {
     const humanIsActive =
       game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId);
-    if (game.phase !== 'question' || humanIsActive) return undefined;
-    const timeout = window.setTimeout(() => dispatch(lockRound()), AI_LOCK_DELAY_MS);
+    if (game.phase !== 'question' || humanIsActive || spectatorMode === 'pending') return undefined;
+    const timeout = window.setTimeout(
+      () => dispatch(lockRound()),
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_LOCK_DELAY_MS,
+    );
     return () => window.clearTimeout(timeout);
-  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase]);
+  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase, spectatorMode]);
 
   useEffect(() => {
-    if (game.phase !== 'final_duel_roll' || !game.finalDuel) return undefined;
+    if (game.phase !== 'final_duel_roll' || !game.finalDuel || spectatorMode === 'pending') return undefined;
     if (game.finalDuel.currentRollerId === game.humanPlayerId) return undefined;
-    const timeout = window.setTimeout(() => dispatch(rollFinalDuel()), AI_DUEL_DELAY_MS);
+    const timeout = window.setTimeout(
+      () => dispatch(rollFinalDuel()),
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_DUEL_DELAY_MS,
+    );
     return () => window.clearTimeout(timeout);
-  }, [dispatch, game.finalDuel, game.humanPlayerId, game.phase]);
+  }, [dispatch, game.finalDuel, game.humanPlayerId, game.phase, spectatorMode]);
 
   useEffect(() => {
-    if (game.phase !== 'three_way_duel_roll' || !game.threeWayDuel) return undefined;
+    if (game.phase !== 'three_way_duel_roll' || !game.threeWayDuel || spectatorMode === 'pending') return undefined;
     if (game.threeWayDuel.currentRollerId === game.humanPlayerId) return undefined;
-    const timeout = window.setTimeout(() => dispatch(rollThreeWayDuel()), AI_DUEL_DELAY_MS);
+    const timeout = window.setTimeout(
+      () => dispatch(rollThreeWayDuel()),
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_DUEL_DELAY_MS,
+    );
     return () => window.clearTimeout(timeout);
-  }, [dispatch, game.humanPlayerId, game.phase, game.threeWayDuel]);
+  }, [dispatch, game.humanPlayerId, game.phase, game.threeWayDuel, spectatorMode]);
 
   useEffect(() => {
     const humanIsStillActive =
       game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId);
-    if (game.phase !== 'reveal' || humanIsStillActive) return undefined;
+    if (game.phase !== 'reveal' || humanIsStillActive || spectatorMode === 'pending') return undefined;
     const timeout = window.setTimeout(
       () => dispatch(advanceReveal()),
-      SPECTATOR_REVEAL_ADVANCE_DELAY_MS,
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : SPECTATOR_REVEAL_ADVANCE_DELAY_MS,
     );
     return () => window.clearTimeout(timeout);
-  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase]);
+  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase, spectatorMode]);
+
+  useEffect(() => {
+    if (game.phase !== 'winner' || spectatorMode !== 'skipping') return undefined;
+    const timeout = window.setTimeout(() => dispatch(advanceWinner()), FAST_FORWARD_STEP_MS);
+    return () => window.clearTimeout(timeout);
+  }, [dispatch, game.phase, spectatorMode]);
 
   useEffect(() => {
     if (game.phase !== 'complete' || completedRef.current) return;
@@ -766,7 +799,9 @@ export default function MajorityRulesComp({
           <span className="majority-rules-kicker">The room speaks.</span>
           <h2 className="majority-rules-question">
             {reveal?.result.kind === 'revote'
-              ? 'Split house. Nobody is safe yet.'
+              ? reveal.revoteNumber >= 1
+                ? 'Still tied. This question is over.'
+                : 'Split house. One re-vote remains.'
               : reveal?.result.kind === 'unanimous'
                 ? 'A full sweep. Nobody falls this time.'
                 : tiedMinorityLabels.length > 0
@@ -775,7 +810,9 @@ export default function MajorityRulesComp({
           </h2>
           <p className="majority-rules-copy">
             {reveal?.result.kind === 'revote'
-              ? 'Every answer tied, so the house votes again.'
+              ? reveal.revoteNumber >= 1
+                ? 'The re-vote tied again, so a fresh question will replace it.'
+                : 'Every populated answer tied, so the house votes once more.'
               : reveal?.result.kind === 'unanimous'
                 ? 'No elimination this round. The next question starts fresh.'
                 : tiedMinorityLabels.length > 0
@@ -1145,6 +1182,28 @@ export default function MajorityRulesComp({
           </motion.div>
         )}
       </AnimatePresence>
+      {spectatorMode === 'pending' && (
+        <div className="majority-rules-spectator-overlay" role="dialog" aria-modal="true" aria-labelledby="majority-rules-spectator-title">
+          <div className="majority-rules-spectator-card">
+            <span className="majority-rules-badge majority-rules-badge--danger">Eliminated</span>
+            <h2 id="majority-rules-spectator-title">Stay for the rest of the vote?</h2>
+            <p>You can watch at normal speed or fast-forward the same live game directly to its final result.</p>
+            <div className="majority-rules-spectator-actions">
+              <button type="button" className="majority-rules-primary" onClick={() => setSpectatorMode('watching')}>
+                Continue watching
+              </button>
+              <button type="button" className="majority-rules-secondary" onClick={() => setSpectatorMode('skipping')}>
+                Skip to results
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {spectatorMode === 'skipping' && game.phase !== 'complete' && (
+        <div className="majority-rules-fast-forward" role="status" aria-live="polite">
+          Fast-forwarding the live game…
+        </div>
+      )}
     </div>
   );
 }

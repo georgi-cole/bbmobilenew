@@ -95,7 +95,7 @@ describe('majorityRules registry entry', () => {
       'You get 3 hints for the whole game, and each hint can only be used once.',
     );
     expect(entry?.instructions).toContain(
-      "If all 3 answers are split evenly, everyone re-votes up to 3 times before a 3-way dice tiebreaker.",
+      'A tied ballot gets one re-vote. If it is still tied, that question is discarded and a new one begins.',
     );
   });
 });
@@ -249,7 +249,7 @@ describe('majorityRules initialization flow', () => {
     expect(retriedState.roundHintPollEstimate).toBeNull();
   });
 
-  it('moves a third straight 3-player draw into the 3-way dice tiebreak', () => {
+  it('replaces the question after one tied re-vote', () => {
     const question = MAJORITY_RULES_QUESTIONS[0];
     const store = configureStore({
       reducer: {
@@ -265,7 +265,7 @@ describe('majorityRules initialization flow', () => {
           eliminatedIds: [],
           humanPlayerId: 'p1',
           roundNumber: 4,
-          revoteNumber: 2,
+          revoteNumber: 1,
           currentQuestion: question,
           usedQuestionIds: [question.id],
           draftAnswers: {},
@@ -292,7 +292,7 @@ describe('majorityRules initialization flow', () => {
               tiedOptionIds: ['a', 'b', 'c'],
               eliminationCount: 1,
             },
-            revoteNumber: 2,
+            revoteNumber: 1,
           },
           threeWayDuel: null,
           finalDuel: null,
@@ -305,11 +305,11 @@ describe('majorityRules initialization flow', () => {
     store.dispatch(advanceReveal());
 
     const majorityRules = store.getState().majorityRules;
-    expect(majorityRules.phase).toBe('three_way_duel_pick');
-    expect(majorityRules.threeWayDuel?.finalists).toEqual(['p1', 'p2', 'p3']);
-    expect(majorityRules.threeWayDuel?.chosenNumbers.p1).toBeNull();
-    expect(majorityRules.threeWayDuel?.chosenNumbers.p2).toBeTypeOf('number');
-    expect(majorityRules.threeWayDuel?.chosenNumbers.p3).toBeTypeOf('number');
+    expect(majorityRules.phase).toBe('question');
+    expect(majorityRules.roundNumber).toBe(5);
+    expect(majorityRules.revoteNumber).toBe(0);
+    expect(majorityRules.currentQuestion?.id).not.toBe(question.id);
+    expect(majorityRules.blockedAnswers).toEqual({});
   });
 
   it('eliminates the third player after a 3-way dice tie and advances to the final duel', () => {
