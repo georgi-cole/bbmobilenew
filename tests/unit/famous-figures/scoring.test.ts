@@ -40,7 +40,7 @@ describe('getPointsForHintsUsed', () => {
 // ─── Scoring across rounds ────────────────────────────────────────────────────
 
 describe('scoring across rounds', () => {
-  it('accumulates scores across 3 rounds correctly', () => {
+  it('accumulates scores across 6 rounds correctly', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER], competitionType: 'LOH', seed: 7 }));
 
@@ -65,6 +65,11 @@ describe('scoring across rounds', () => {
     // Round 3: no correct answer → 0 pts
     store.dispatch(endRound());
     store.dispatch(nextRound());
+
+    for (let round = 3; round < 6; round++) {
+      store.dispatch(endRound());
+      store.dispatch(nextRound());
+    }
 
     expect(getState(store).status).toBe('complete');
     expect(getState(store).playerScores[PLAYER]).toBe(17);
@@ -104,6 +109,11 @@ describe('tiebreaker logic', () => {
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
+    for (let round = 3; round < 6; round++) {
+      store.dispatch(endRound());
+      store.dispatch(nextRound());
+    }
+
     const s = getState(store);
     expect(s.status).toBe('complete');
     // PA: 10 + 10 + 0 = 20 (2 correct rounds)
@@ -132,6 +142,11 @@ describe('tiebreaker logic', () => {
     // Round 3: neither correct
     store.dispatch(endRound());
     store.dispatch(nextRound());
+
+    for (let round = 3; round < 6; round++) {
+      store.dispatch(endRound());
+      store.dispatch(nextRound());
+    }
 
     const s = getState(store);
     expect(s.winnerId).toBe(PA);

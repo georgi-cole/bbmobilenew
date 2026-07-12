@@ -1,5 +1,5 @@
 /**
- * Integration test: simulate a full 3-round Famous Figures match
+ * Integration test: simulate a full 6-round Famous Figures match
  * with one human player and one AI player.
  */
 import { describe, it, expect } from 'vitest';
@@ -29,7 +29,7 @@ const AI = 'ai-player';
 const SEED = 42;
 
 describe('match-flow integration', () => {
-  it('simulates a full 3-round match', () => {
+  it('simulates a full 6-round match', () => {
     const store = makeStore();
 
     // ── Start match ──────────────────────────────────────────────────────
@@ -57,6 +57,7 @@ describe('match-flow integration', () => {
     expect(ff(store).playerRoundScores[HUMAN][0]).toBe(10);
 
     store.dispatch(nextRound());
+
     expect(ff(store).status).toBe('round_active');
     expect(ff(store).currentRound).toBe(1);
 
@@ -99,14 +100,25 @@ describe('match-flow integration', () => {
 
     store.dispatch(nextRound());
 
+    // Rounds 4-6: human solves each figure while AI misses.
+    for (let round = 3; round < 6; round++) {
+      const state = ff(store);
+      const humanFigure = FAMOUS_FIGURES[getPlayerFigureIndex(state, HUMAN, round)];
+      store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: humanFigure.canonicalName }));
+      store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: round }));
+      store.dispatch(submitPlayerGuess({ playerId: AI, guess: 'wrong answer xyzzy' }));
+      store.dispatch(endRound());
+      store.dispatch(nextRound());
+    }
+
     // ── Final state ───────────────────────────────────────────────────────
     const final = ff(store);
     expect(final.status).toBe('complete');
 
-    // Human has 17 pts; AI has points from round 3 only
+    // Human has 47 pts; AI has points from round 3 only
     const humanTotal = final.playerScores[HUMAN];
     const aiTotal = final.playerScores[AI];
-    expect(humanTotal).toBe(17);
+    expect(humanTotal).toBe(47);
     expect(aiTotal).toBeGreaterThan(0);
 
     // Human won overall (17 > AI's single-round score of at most 10)
@@ -150,14 +162,14 @@ describe('match-flow integration', () => {
     expect(ff(store).status).toBe('round_active');
   });
 
-  it('human can complete all 3 rounds before global endRound', () => {
+  it('human can complete all 6 rounds before global endRound', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'LOH', seed: SEED }));
 
-    // Human solves all 3 rounds; AI never answers.
+    // Human solves all 6 rounds; AI never answers.
     // After endRound/nextRound each round becomes the current global round,
     // so each human answer is a current-round answer requiring advancePlayerCursor.
-    for (let round = 0; round < 3; round++) {
+    for (let round = 0; round < 6; round++) {
       const s = ff(store);
       expect(s.status).toBe('round_active');
       expect(s.currentRound).toBe(round);
@@ -171,13 +183,13 @@ describe('match-flow integration', () => {
       expect(ff(store).status).toBe('round_active');
       // Advance round via endRound/nextRound to proceed (AI still inactive)
       store.dispatch(endRound());
-      if (round < 2) store.dispatch(nextRound());
+      if (round < 5) store.dispatch(nextRound());
     }
 
     store.dispatch(nextRound());
-    // After all 3 rounds, match is complete
+    // After all 6 rounds, match is complete
     expect(ff(store).status).toBe('complete');
-    // Human cursor is 3 (completed all rounds)
-    expect(ff(store).playerRoundCursor[HUMAN]).toBe(3);
+    // Human cursor is 6 (completed all rounds)
+    expect(ff(store).playerRoundCursor[HUMAN]).toBe(6);
   });
 });
