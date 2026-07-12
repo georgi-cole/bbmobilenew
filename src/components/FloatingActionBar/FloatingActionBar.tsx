@@ -301,9 +301,9 @@ export default function FloatingActionBar({
     navigate('/');
   }, [dispatch, navigate]);
 
-  // Center the dock in the real rendered space between the roster's last row
-  // and the navbar. Device scaling and tile rounding can make nominally equal
-  // budget gaps render at noticeably different sizes.
+  // Center the dock in the real rendered space between the content immediately
+  // above it and the navbar. The whole houseguest section is the upper boundary
+  // because modes may append content after the roster list.
   useEffect(() => {
     const dock = dockRef.current;
     const gameScreen = dock?.closest<HTMLElement>('.game-screen');
@@ -311,14 +311,14 @@ export default function FloatingActionBar({
 
     let frameId = 0;
     const balanceDock = () => {
-      const roster = gameScreen.querySelector<HTMLElement>(
-        'section[aria-labelledby="houseguests-heading"] ul[role="list"]',
+      const contentAbove = gameScreen.querySelector<HTMLElement>(
+        'section[aria-labelledby="houseguests-heading"]',
       );
       const nav = document.querySelector<HTMLElement>('.nav-bar');
-      if (!roster || !nav) return;
+      if (!contentAbove || !nav) return;
 
       const gameRect = gameScreen.getBoundingClientRect();
-      const rosterRect = roster.getBoundingClientRect();
+      const contentRect = contentAbove.getBoundingClientRect();
       const dockRect = dock.getBoundingClientRect();
       const navRect = nav.getBoundingClientRect();
       if (dockRect.height <= 0) return;
@@ -331,7 +331,7 @@ export default function FloatingActionBar({
       const bottomOffset = resolveBalancedDockBottom({
         gameBottom: gameRect.bottom,
         lowerBoundary,
-        rosterBottom: rosterRect.bottom,
+        contentBottom: contentRect.bottom,
         dockHeight: dockRect.height,
         minimumGap,
       });
