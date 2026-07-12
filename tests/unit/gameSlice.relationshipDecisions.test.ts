@@ -12,7 +12,40 @@ function player(id: string): Player {
   } as Player;
 }
 
+function userPlayer(id: string): Player {
+  return { ...player(id), isUser: true };
+}
+
 describe('relationship-aware AI eviction decisions', () => {
+  it('does not treat the human as an automatic eviction threat', () => {
+    const voters = Array.from({ length: 12 }, (_, index) => player(`voter-${index}`));
+    const state = {
+      week: 4,
+      lohId: 'loh',
+      players: [...voters, userPlayer('user'), player('ai')],
+      strategicRelationships: {},
+    } as GameState;
+
+    const votes = voters.map((voter) =>
+      chooseAiEvictionVote(state, voter.id, ['user', 'ai'], 42),
+    );
+
+    expect(new Set(votes)).toEqual(new Set(['user', 'ai']));
+  });
+
+  it('uses accomplishments rather than player type to identify a threat', () => {
+    const provenThreat = player('proven-threat');
+    provenThreat.stats = { lohWins: 2, posWins: 1, timesNominated: 1 };
+    const state = {
+      week: 4,
+      lohId: 'loh',
+      players: [player('voter'), userPlayer('user'), provenThreat],
+      strategicRelationships: {},
+    } as GameState;
+
+    expect(chooseAiEvictionVote(state, 'voter', ['user', 'proven-threat'], 42))
+      .toBe('proven-threat');
+  });
   it('normally protects an ally instead of voting randomly', () => {
     const state = {
       week: 4,

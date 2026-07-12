@@ -109,7 +109,6 @@ const PHASE_ORDER: Phase[] = [
 const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3;
 const DAY_START_SHOCK_MIN_WEEK = 3;
 const DAY_START_SHOCK_RNG_SALT = 0x7c2f5d19;
-const AI_USER_THREAT_WEIGHT = 6;
 const AI_LOH_REVENGE_THREAT_WEIGHT = 6;
 const AI_LOH_BASE_THREAT_WEIGHT = 2;
 const AI_LOH_WIN_THREAT_WEIGHT = 4;
@@ -594,7 +593,6 @@ function getAiThreatScore(
   const posWins = player.stats?.posWins ?? 0;
   const timesNominated = player.stats?.timesNominated ?? 0;
   let score = 0;
-  if (player.isUser) score += AI_USER_THREAT_WEIGHT;
   if (player.id === state.lohId) {
     score += options.preferLoh === true
       ? AI_LOH_REVENGE_THREAT_WEIGHT
