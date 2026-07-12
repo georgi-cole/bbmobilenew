@@ -45,7 +45,9 @@ body:has(.homehub-shell) .app-shell {
   background-position: center;
   background-repeat: no-repeat;
   pointer-events: none;
-  transition: opacity 300ms ease, transform 350ms ease;
+  transition:
+    opacity 300ms ease,
+    transform 350ms ease;
 }
 
 .homehub-intro-bg::after {
@@ -55,8 +57,8 @@ body:has(.homehub-shell) .app-shell {
   height: 72%;
   background: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.80) 0%,
-    rgba(0, 0, 0, 0.50) 32%,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.5) 32%,
     rgba(0, 0, 0, 0.18) 62%,
     transparent 100%
   );
@@ -109,7 +111,7 @@ body:has(.homehub-shell) .app-shell {
   letter-spacing: 1px;
   color: var(--color-text, #fff);
   text-transform: uppercase;
-  text-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 
 /* Buttons stack: centered, with entrance animation on first render */
@@ -124,76 +126,30 @@ body:has(.homehub-shell) .app-shell {
 }
 
 @keyframes hub-nav-enter {
-  from { opacity: 0; transform: translateY(22px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Footer note */
 .homehub-footer {
   margin-top: 6px;
-  color: rgba(255,255,255,0.72);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.88rem;
 }
 
 /* Responsive: smaller screens */
 @media (max-width: 420px) {
-  .home-hub__title { font-size: 1.8rem; }
-  .home-hub { padding-bottom: 28px; }
-}
-
-@media (min-width: 720px) and (orientation: portrait) {
-  .homehub-frame {
-    width: min(100vw, 620px);
+  .home-hub__title {
+    font-size: 1.8rem;
   }
-
-  .homehub-content {
-    max-width: 520px;
-  }
-}
-
-@media (min-width: 720px) and (orientation: landscape) {
-  body:has(.homehub-shell) .app-shell {
-    max-width: 100%;
-  }
-
-  .homehub-frame {
-    width: 100vw;
-    max-width: none;
-  }
-
-  .homehub-content {
-    width: min(100%, 520px);
-    max-width: 520px;
-  }
-
-  .homehub-frame #intro-hub {
-    --hub-chip-top-offset: 18px;
-    --hub-chip-left-offset: 18px;
-    --hub-chip-right-offset: 18px;
-    position: absolute;
-    inset: auto;
-    top: 50%;
-    left: 50%;
-    width: min(calc(100% - 96px), 760px);
-    height: min(calc(100% - var(--app-safe-area-top, 0px) - var(--safe-bottom, 0px) - 28px), 560px);
-    min-height: 360px;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-  }
-
-  .homehub-frame #intro-hub .hub-chip--bottom-left,
-  .homehub-frame #intro-hub .hub-chip--bottom-right {
-    bottom: 18px;
-  }
-
-  .homehub-frame #intro-hub .hub-chip--bottom-left-2,
-  .homehub-frame #intro-hub .hub-chip--bottom-right-2 {
-    bottom: 70px;
-  }
-
-  .homehub-frame #intro-hub .hub-chip--bottom-left-3,
-  .homehub-frame #intro-hub .hub-chip--bottom-right-3 {
-    bottom: 122px;
+  .home-hub {
+    padding-bottom: 28px;
   }
 }
 
