@@ -91,7 +91,7 @@ const initialState: FamousFiguresState = {
   competitionType: 'LOH',
   status: 'idle',
   currentRound: 0,
-  totalRounds: 3,
+  totalRounds: 6,
   currentFigureIndex: 0,
   hintsRevealed: 0,
   playerScores: {},
@@ -311,7 +311,7 @@ const famousFiguresSlice = createSlice({
       state.status = 'round_active';
       state.currentRound = 0;
       state.round = 0;
-      state.totalRounds = 3;
+      state.totalRounds = 6;
       state.hintsRevealed = 0;
       state.figureOrder = order;
       // Select exactly totalRounds figures from the shuffle — shared by all

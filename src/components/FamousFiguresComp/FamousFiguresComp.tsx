@@ -444,6 +444,7 @@ export default function FamousFiguresComp({
     if (ff.status !== 'round_active') return;
     // Block if human has finished all personal rounds
     if (humanCursor >= ff.totalRounds) return;
+    if (humanCursor !== ff.currentRound) return;
     // Block if human already answered this personal round
     if (humanCursor !== (ff.playerRoundCursor[humanId] ?? 0)) return;
 
@@ -590,13 +591,15 @@ export default function FamousFiguresComp({
   // shared matchFigureOrder all players see the same figure per global round,
   // but the human can advance ahead of the global round immediately after
   // answering correctly.
-  const humanIsAhead = humanId !== null && humanCursor > ff.currentRound;
+  // Do not show the next personal figure while the shared round timer and AI
+  // are still resolving the current one.
+  const humanIsAhead = false;
   // Resolve the human's current figure from the shared matchFigureOrder.
   const humanFigureIdx =
-    humanId !== null && ff.matchFigureOrder.length > humanCursor
-      ? ff.matchFigureOrder[humanCursor]
+    humanId !== null && ff.matchFigureOrder.length > ff.currentRound
+      ? ff.matchFigureOrder[ff.currentRound]
       : humanId !== null
-        ? getPlayerFigureIndex(ff, humanId, humanCursor)
+        ? getPlayerFigureIndex(ff, humanId, ff.currentRound)
         : ff.currentFigureIndex;
   // Always show the human's own figure — on round_reveal this is the figure
   // they were actually being tested on. When there is no local human player,
@@ -604,7 +607,7 @@ export default function FamousFiguresComp({
   const figure = FAMOUS_FIGURES[humanFigureIdx] ?? null;
   // For hints: when ahead of the global round use the local counter so we
   // don't mutate the global hintsRevealed for the ongoing AI round.
-  const effectiveHintsRevealed = humanIsAhead ? humanAheadHints : ff.hintsRevealed;
+  const effectiveHintsRevealed = ff.hintsRevealed;
   // humanCorrect: true only if the human has already answered their CURRENT
   // personal round. When the human is ahead, they are on a fresh round (cursor
   // has already moved) so correct = false until they answer the new figure.
@@ -834,7 +837,7 @@ export default function FamousFiguresComp({
 
   // Show the human's personal round number (cursor + 1) when they are ahead,
   // otherwise show the global round number.
-  const displayRound = humanIsAhead ? humanCursor + 1 : ff.currentRound + 1;
+  const displayRound = ff.currentRound + 1;
 
   return (
     <div className="ff-container" data-status="round_active">
@@ -847,7 +850,7 @@ export default function FamousFiguresComp({
 
       {/* Narration */}
       <p className="ff-narration" aria-live="polite">
-        {pickLine(NARRATION.roundStart, humanCursor)}
+        {humanCorrect ? 'Correct — waiting for the other housemates.' : pickLine(NARRATION.roundStart, ff.currentRound)}
       </p>
 
       {/* Timer — stay visible during active rounds, including ahead-play. */}
