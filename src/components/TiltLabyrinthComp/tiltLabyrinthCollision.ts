@@ -1,3 +1,9 @@
+export const TILT_HAZARD_HIT_PENALTY_MS = 3_000;
+
+export function calculateTiltAdjustedTime(rawTimeMs: number, hazardHits: number): number {
+  return rawTimeMs + Math.max(0, hazardHits) * TILT_HAZARD_HIT_PENALTY_MS;
+}
+
 /**
  * tiltLabyrinthCollision — shared collision helpers for Tilt Labyrinth.
  *
