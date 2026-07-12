@@ -297,6 +297,10 @@ const publicOpinionSlice = createSlice({
         applyDirectionCompletionRewards(state, direction, week);
       }
     },
+
+    hydratePublicOpinion(_state, action: PayloadAction<PublicOpinionState>) {
+      return action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder.addMatcher(
@@ -315,6 +319,7 @@ export const {
   pruneExpiredDirections,
   resetDailyFeedBudget,
   updateMissionProgress,
+  hydratePublicOpinion,
 } = publicOpinionSlice.actions;
 
 export default publicOpinionSlice.reducer;
