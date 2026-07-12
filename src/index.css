@@ -99,7 +99,8 @@ html.is-capacitor {
 }
 
 html.is-chrome-android {
-  --app-safe-area-top-fallback: 24px;
+  /* Clear centered punch-hole cameras before drawing the TV header edge. */
+  --app-safe-area-top-fallback: 44px;
 }
 
 /* ── Base elements ────────────────────────────────────────────────────────── */

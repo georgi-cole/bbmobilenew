@@ -27,7 +27,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../../store/gameSlice';
@@ -567,5 +567,35 @@ describe('SocialPanelV2 – subject picker', () => {
 
     const subjectPicker = screen.getByLabelText('Choose subject');
     expect(subjectPicker).toHaveTextContent(nomineeWithPos.name);
+  });
+
+  it('lets a nominated user ask the POS holder to use safety on them', () => {
+    const basePlayers = store.getState().game.players.filter((p) => !p.isUser);
+    const posHolder = basePlayers[0];
+    const otherNominee = basePlayers[1];
+    cleanup();
+    store = makeStore({
+      phase: 'social_1',
+      humanStatus: 'nominated',
+      playerStatusOverrides: {
+        [posHolder.id]: 'pos',
+        [otherNominee.id]: 'nominated',
+      },
+    });
+    const human = store.getState().game.players.find((p) => p.isUser)!;
+    store.dispatch(setEnergyBankEntry({ playerId: human.id, value: 10 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: human.id, value: 20 }));
+    store.dispatch(openSocialPanel());
+    initManeuvers(store);
+    renderPanel(store);
+
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(posHolder.name, 'i') })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /Ask to Use Safety/i }));
+
+    const subjectPicker = screen.getByLabelText('Choose subject');
+    expect(subjectPicker).toHaveTextContent(human.name);
+    expect(subjectPicker).toHaveTextContent(otherNominee.name);
+    fireEvent.click(within(subjectPicker).getByRole('button', { name: human.name }));
+    expect(screen.getByRole('button', { name: 'Execute' })).toBeEnabled();
   });
 });

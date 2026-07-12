@@ -8,6 +8,8 @@ function assetUrl(file: string): string {
 }
 
 export interface GameControlDockProps {
+  /** Ref to the dock shell for responsive placement within the game screen. */
+  dockRef?: Ref<HTMLDivElement>;
   onChatClick?: () => void;
   onIncomingRequestsClick?: () => void;
   onPrimaryActionClick?: () => void;
@@ -40,6 +42,7 @@ export interface GameControlDockProps {
 }
 
 export default function GameControlDock({
+  dockRef,
   onChatClick,
   onIncomingRequestsClick,
   onPrimaryActionClick,
@@ -69,6 +72,7 @@ export default function GameControlDock({
 
   return (
     <div
+      ref={dockRef}
       className="game-control-dock fab-clean"
       role="toolbar"
       aria-label="Game actions"

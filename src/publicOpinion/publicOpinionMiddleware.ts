@@ -82,6 +82,7 @@ interface StateWithGame {
     directions: PublicDirection[];
   };
   social?: {
+    relationships?: import('../social/types').RelationshipsMap;
     sessionLogs?: Array<{
       actorId?: string;
       source?: 'manual' | 'system';
@@ -447,7 +448,9 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       }
 
       let missionEventType: MissionGameEvent['type'] | null = null;
-      if (actionId === 'betray' && outcome === 'success') {
+      if (actionId === 'apologize' && outcome === 'success') {
+        missionEventType = 'apologized_to';
+      } else if (actionId === 'betray' && outcome === 'success') {
         missionEventType = 'betrayal';
       } else if (actionId === 'ally' || actionId === 'protect') {
         missionEventType = outcome === 'success' ? 'positive_social' : null;
@@ -659,6 +662,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             week: week + 1,
             seed: game.seed ?? 0,
             count: publicOpinionConfig.directionsPerCycle,
+            relationships: nextState.social?.relationships,
           });
           for (const direction of newDirections) {
             store.dispatch(addDirection(direction));

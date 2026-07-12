@@ -261,7 +261,6 @@
 }
 
 .minigame-host-results {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -281,63 +280,11 @@
   animation: fadeIn 0.3s ease;
 }
 
-.minigame-host-results--timeline {
-  gap: 14px;
-  isolation: isolate;
-  animation: timeline-arrival 640ms cubic-bezier(.2, .75, .2, 1);
-}
-
-.minigame-host-results-rift {
-  position: absolute;
-  z-index: -1;
-  top: -110px;
-  right: -120px;
-  width: 310px;
-  height: 310px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(246, 74, 115, .24) 0 2%, transparent 3% 11%, rgba(118, 103, 255, .18) 12% 13%, transparent 14% 22%, rgba(65, 211, 255, .1) 23% 24%, transparent 25%), radial-gradient(circle, rgba(108, 92, 246, .18), transparent 66%);
-  animation: rift-spin 12s linear infinite;
-  pointer-events: none;
-}
-
-.minigame-host-results-close {
-  position: absolute;
-  top: var(--minigame-stage-top-padding);
-  right: max(24px, var(--minigame-safe-padding-right));
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  padding: 0 0 2px;
-  border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 50%;
-  color: #f5f4ff;
-  background: rgba(18, 17, 38, .76);
-  font-size: 1.55rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
 .minigame-host-results-title {
   font-size: 1.6rem;
   font-weight: 700;
   color: #e94560;
   margin: 0;
-  flex-shrink: 0;
-}
-
-.minigame-host-results--timeline .minigame-host-results-title {
-  max-width: calc(100% - 50px);
-  color: #ff5a78;
-  letter-spacing: -.02em;
-}
-
-.minigame-host-results-alternate-timeline {
-  margin: 0;
-  max-width: 360px;
-  color: #dedced;
-  font-size: 1rem;
-  line-height: 1.48;
   flex-shrink: 0;
 }
 
@@ -357,15 +304,6 @@
   flex-shrink: 0;
 }
 
-.minigame-host-results-winner--timeline {
-  padding: 11px 14px;
-  border: 1px solid rgba(255, 206, 91, .3);
-  border-radius: 14px;
-  color: #fff9e7;
-  background: linear-gradient(100deg, rgba(255, 178, 55, .13), rgba(233, 69, 96, .12));
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .16);
-}
-
 .minigame-host-leaderboard {
   list-style: none;
   margin: 0;
@@ -377,15 +315,6 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-}
-
-.minigame-host-leaderboard--preview {
-  flex: 0 0 auto;
-  overflow: hidden;
-}
-
-.minigame-host-leaderboard--preview .minigame-host-leaderboard-entry:nth-child(n + 4) {
-  display: none;
 }
 
 .minigame-host-results-actions {
@@ -501,13 +430,6 @@
 .minigame-host-results-btn--retry {
   margin-top: 0;
   background: #6a67f5;
-}
-
-.minigame-host-results-btn--ranking {
-  padding: 12px 24px;
-  border: 1px solid rgba(153, 145, 255, .5);
-  color: #dcd9ff;
-  background: rgba(110, 103, 245, .14);
 }
 
 .minigame-host-results-btn:disabled {

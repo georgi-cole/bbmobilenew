@@ -138,7 +138,6 @@ export default function MinigameHost({
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
-  const [showFullRanking, setShowFullRanking] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
   const competitionRetryEnabled = competitionRetry?.enabled ?? false;
   const rulesGame = useMemo(
@@ -164,7 +163,6 @@ export default function MinigameHost({
   const handleRulesDismiss = useCallback(() => {
     setFinalValue(0);
     setWasPartial(true);
-    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -201,7 +199,6 @@ export default function MinigameHost({
   const handleQuit = useCallback((partial: LegacyRawResult) => {
     setFinalValue(partial.value);
     setWasPartial(true);
-    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -701,7 +698,7 @@ export default function MinigameHost({
                   {leaderboard[0]?.isHuman ? " — that's you!" : '!'}
                 </span>
               </p>
-              <ol className={`minigame-host-leaderboard ${wasPartial && !showFullRanking ? 'minigame-host-leaderboard--preview' : ''}`}>
+              <ol className="minigame-host-leaderboard">
                 {leaderboard.map((entry, i) => (
                   <li
                     key={entry.id}
