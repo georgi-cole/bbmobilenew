@@ -138,7 +138,6 @@ export default function MinigameHost({
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
-  const [showFullRanking, setShowFullRanking] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
   const competitionRetryEnabled = competitionRetry?.enabled ?? false;
   const rulesGame = useMemo(
@@ -164,7 +163,6 @@ export default function MinigameHost({
   const handleRulesDismiss = useCallback(() => {
     setFinalValue(0);
     setWasPartial(true);
-    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -201,7 +199,6 @@ export default function MinigameHost({
   const handleQuit = useCallback((partial: LegacyRawResult) => {
     setFinalValue(partial.value);
     setWasPartial(true);
-    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -257,6 +254,8 @@ export default function MinigameHost({
     competitionRetryEnabled && !!humanLastPlaceEntry?.isHuman;
   const activeCompetitionRetry =
     showCompetitionRetry && competitionRetry ? competitionRetry : null;
+  const showOrganicLastPlace = showCompetitionRetry && !wasPartial;
+  const showTimeMachineResults = wasPartial || showOrganicLastPlace;
 
   const handleRetryRestart = useCallback(() => {
     setFinalValue(null);
@@ -665,9 +664,9 @@ export default function MinigameHost({
       )}
 
       {phase === 'results' && (
-        <div className={`minigame-host-results ${wasPartial ? 'minigame-host-results--timeline' : ''}`}>
-          {wasPartial && <div className="minigame-host-results-rift" aria-hidden="true" />}
-          {wasPartial && (
+        <div className={`minigame-host-results ${showTimeMachineResults ? 'minigame-host-results--timeline' : ''}`}>
+          {showTimeMachineResults && <div className="minigame-host-results-rift" aria-hidden="true" />}
+          {showTimeMachineResults && (
             <button
               type="button"
               className="minigame-host-results-close"
@@ -680,22 +679,27 @@ export default function MinigameHost({
               ×
             </button>
           )}
-          {wasPartial && <p className="minigame-host-results-kicker">Temporal rupture</p>}
+          {showTimeMachineResults && (
+            <p className="minigame-host-results-kicker">
+              {showOrganicLastPlace ? 'Alternative universe' : 'Temporal rupture'}
+            </p>
+          )}
           <h2 className="minigame-host-results-title">
-            {wasPartial ? 'Exited early' : '🏁 Finished!'}
+            {showOrganicLastPlace ? 'Is this real?' : wasPartial ? 'Exited early' : '🏁 Finished!'}
           </h2>
-          {wasPartial && <div className="minigame-host-results-divider" aria-hidden="true"><span /></div>}
+          {showTimeMachineResults && <div className="minigame-host-results-divider" aria-hidden="true"><span /></div>}
 
           {leaderboard ? (
             <>
-              {wasPartial && (
+              {showTimeMachineResults && (
                 <p className="minigame-host-results-alternate-timeline">
-                  You slipped out of the timeline. While you were gone, the competition resolved in
-                  an alternate universe.
+                  {showOrganicLastPlace
+                    ? "A time shift seems to have opened an alternative universe, because somehow you finished last. You're definitely not a loser, so this must be a temporal rift. Use the time machine to set things straight."
+                    : 'You slipped out of the timeline. While you were gone, the competition resolved in an alternate universe.'}
                 </p>
               )}
-              <p className={`minigame-host-results-winner ${wasPartial ? 'minigame-host-results-winner--timeline' : ''}`}>
-                {wasPartial && <span className="minigame-host-results-trophy" aria-hidden="true">🏆</span>}
+              <p className={`minigame-host-results-winner ${showTimeMachineResults ? 'minigame-host-results-winner--timeline' : ''}`}>
+                {showTimeMachineResults && <span className="minigame-host-results-trophy" aria-hidden="true">🏆</span>}
                 <span>
                   {leaderboard[0]?.name ?? 'Unknown'} wins
                   {leaderboard[0]?.isHuman ? " — that's you!" : '!'}
@@ -750,17 +754,6 @@ export default function MinigameHost({
           )}
 
           <div className="minigame-host-results-actions">
-            {wasPartial && leaderboard && (
-              <button
-                type="button"
-                className="minigame-host-results-btn minigame-host-results-btn--ranking"
-                onClick={() => setShowFullRanking((isShowing) => !isShowing)}
-              >
-                <span className="minigame-host-results-ranking-icon" aria-hidden="true"><i /><i /><i /></span>
-                <span>{showFullRanking ? 'Hide full ranking' : 'See full ranking'}</span>
-                <span className="minigame-host-results-ranking-chevron" aria-hidden="true">›</span>
-              </button>
-            )}
             {activeCompetitionRetry && (
               <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
                 <button
@@ -781,7 +774,7 @@ export default function MinigameHost({
               </div>
             )}
 
-            {(!wasPartial || !showCompetitionRetry) && (
+            {(!showTimeMachineResults || !showCompetitionRetry) && (
               <button
                 className="minigame-host-results-btn"
                 onClick={() => {
