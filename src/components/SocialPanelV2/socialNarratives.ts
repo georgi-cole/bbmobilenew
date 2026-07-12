@@ -35,6 +35,11 @@ const NARRATIVES: Record<string, string[]> = {
     "You told {target} they remind you of your favourite childhood TV character.",
     "You convinced {target} they are the secret fan-favourite of this season.",
   ],
+  apologize: [
+    'You gave {target} a sincere apology and cleared the air.',
+    'You owned your mistake with {target}. The tension finally eased.',
+    'You and {target} talked it through without excuses.',
+  ],
   rumor: [
     "You planted a seed in {target}'s ear about a secret trio on the other side.",
     "You told {target} someone has been throwing competitions on purpose.",
