@@ -123,7 +123,16 @@ interface Props {
   /** LOH/POS minigame path: all game players (for name lookup). */
   players?: Player[];
   /** MinigameHost path: called with the human's final score. */
-  onFinish?: (value: number) => void;
+  onFinish?: (
+    value: number,
+    tiebreakerMs?: number,
+    completion?: {
+      authoritativeWinnerId?: string | null;
+      authoritativeLastPlaceId?: string | null;
+      rawResults?: Record<string, number>;
+      tiebreakerMs?: number;
+    },
+  ) => void;
   /** Competition seed (forwarded from host; reserved for future use). */
   seed?: number;
   /** When true the game starts immediately on mount. */
@@ -751,8 +760,19 @@ export default function SnakeGame({
       dispatch(completeMinigame(payload));
       return;
     }
-    if (onFinish) onFinish(humanScore);
-  }, [dispatch, onFinish, scores, session]);
+    if (onFinish) {
+      const winnerId = scores[0]?.id ?? humanId ?? null;
+      const lastPlaceId = scores[scores.length - 1]?.id ?? null;
+      const humanResult = scores.find((entry) => entry.isHuman);
+      const humanTime = humanResult?.completionMs;
+      onFinish(humanScore, humanTime, {
+        authoritativeWinnerId: winnerId,
+        authoritativeLastPlaceId: lastPlaceId,
+        rawResults: Object.fromEntries(scores.map((entry) => [entry.id, entry.score])),
+        ...(humanTime != null ? { tiebreakerMs: humanTime } : {}),
+      });
+    }
+  }, [dispatch, humanId, onFinish, scores, session]);
 
   const handleFastForward = useCallback(() => {
     if (gamePhase !== 'waiting' || isFastForwarding) return;

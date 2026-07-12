@@ -81,6 +81,13 @@ interface StateWithGame {
     profiles: Record<string, unknown>;
     directions: PublicDirection[];
   };
+  social?: {
+    sessionLogs?: Array<{
+      actorId?: string;
+      source?: 'manual' | 'system';
+      week?: number;
+    }>;
+  };
 }
 
 const OPENING_PUBLIC_APPROVAL_MIN = 42;
@@ -356,6 +363,50 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
     return result;
   }
 
+  if (actionType === 'challenge/recordRun') {
+    const run = actionPayload as {
+      participants?: string[];
+      canonicalScores?: Record<string, number>;
+      winnerId?: string;
+      partial?: boolean;
+    } | undefined;
+    const human = game.players?.find((player) => player.isUser);
+    if (!human || !run?.participants?.includes(human.id)) return result;
+    ensureProfiles(store, game);
+
+    let delta = 0;
+    let reason = 'competition_performance';
+    if (run.partial) {
+      delta = publicOpinionConfig.competitionImpact.quitEarly;
+      reason = 'challenge_quit_early';
+    } else {
+      const ranked = [...run.participants].sort((a, b) =>
+        (run.canonicalScores?.[b] ?? 0) - (run.canonicalScores?.[a] ?? 0),
+      );
+      const placement = ranked.indexOf(human.id) + 1;
+      if (placement === 1) {
+        delta = publicOpinionConfig.competitionImpact.strongPerformance;
+        reason = 'strong_competition_performance';
+      } else if (placement === ranked.length) {
+        delta = publicOpinionConfig.competitionImpact.lastPlace;
+        reason = 'last_place_competition';
+      } else if (placement > Math.ceil(ranked.length / 2)) {
+        delta = publicOpinionConfig.competitionImpact.weakPerformance;
+        reason = 'weak_competition_performance';
+      }
+    }
+    if (delta !== 0) {
+      store.dispatch(updateApproval({
+        playerId: human.id,
+        delta,
+        reason,
+        week: game.week ?? 1,
+        addToFeed: true,
+      }));
+    }
+    return result;
+  }
+
   if (actionType === 'social/recordSocialAction') {
     // Payload: { entry: SocialActionLogEntry }
     // entry has actorId, targetId, actionId ('ally'|'protect'|'betray'|'nominate'),
@@ -367,12 +418,33 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         actionId?: string;
         outcome?: string;
         delta?: number;
+        score?: number;
+        source?: 'manual' | 'system';
       };
     } | undefined;
     const entry = payload?.entry;
     if (entry?.actorId) {
       const week = game.week ?? 1;
       const { actorId, targetId, actionId = '', outcome = '', delta = 0 } = entry;
+
+      const human = game.players?.find((player) => player.isUser);
+      if (human?.id === actorId && entry.source === 'manual') {
+        const score = typeof entry.score === 'number' ? entry.score : 0;
+        const approvalDelta = outcome === 'success' && score >= 0.55
+          ? publicOpinionConfig.socialImpact.highQualityInteraction
+          : outcome === 'failure' || score <= -0.25
+            ? publicOpinionConfig.socialImpact.poorInteraction
+            : 0;
+        if (approvalDelta !== 0) {
+          store.dispatch(updateApproval({
+            playerId: actorId,
+            delta: approvalDelta,
+            reason: approvalDelta > 0 ? 'high_quality_social_play' : 'poor_social_play',
+            week,
+            addToFeed: false,
+          }));
+        }
+      }
 
       let missionEventType: MissionGameEvent['type'] | null = null;
       if (actionId === 'betray' && outcome === 'success') {
@@ -558,6 +630,23 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       }
 
       if (newPhase === 'week_end') {
+        const human = game.players?.find((player) => player.isUser);
+        const socialLogs = nextState.social?.sessionLogs;
+        if (human && socialLogs) {
+          const usedSocialThisWeek = socialLogs.some(
+            (entry) => entry.actorId === human.id && entry.source === 'manual' && entry.week === week,
+          );
+          if (!usedSocialThisWeek) {
+            store.dispatch(updateApproval({
+              playerId: human.id,
+              delta: publicOpinionConfig.socialImpact.inactiveDay,
+              reason: 'social_inactivity',
+              week,
+              addToFeed: false,
+            }));
+          }
+        }
+
         store.dispatch(pruneExpiredDirections({ week: week + 1 }));
 
         const activePlayers = (game.players ?? []).filter(

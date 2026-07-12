@@ -8,11 +8,18 @@ export const publicOpinionConfig = {
     povWin: 4,
     nominated: -2,
     evictionVotedOut: -3,
+    strongPerformance: 1,
+    weakPerformance: -1,
+    lastPlace: -2,
+    quitEarly: -4,
   },
   socialImpact: {
     positiveInteraction: 2,
     negativeInteraction: -2,
     betrayal: -4,
+    highQualityInteraction: 1,
+    poorInteraction: -1,
+    inactiveDay: -1,
   },
   strategyImpact: {
     boldNomination: 3,

@@ -507,6 +507,43 @@ describe('advance() — eviction_results with Double Eviction', () => {
     expect(doubleEviction?.pendingSecondEviction?.evictionMessage).toContain('eliminated in tonight\'s Double Elimination');
   });
 
+  it('treats 3-3-1 as two clear evictees with no tie-break', () => {
+    const store = makeEvictionStore({
+      v0: 'p1', v1: 'p1', v2: 'p1',
+      v3: 'p2', v4: 'p2', v5: 'p2',
+      v6: 'p3',
+    });
+    store.dispatch(advance());
+    const game = store.getState().game;
+    expect(game.awaitingTieBreak).toBe(false);
+    expect(new Set([
+      game.pendingEviction?.evicteeId,
+      game.doubleEviction?.pendingSecondEviction?.evicteeId,
+    ])).toEqual(new Set(['p1', 'p2']));
+  });
+
+  it('treats 2-2-2 as a tie for both eviction slots', () => {
+    const store = makeEvictionStore({
+      v0: 'p1', v1: 'p1', v2: 'p2', v3: 'p2', v4: 'p3', v5: 'p3',
+    }, { humanLoh: true });
+    store.dispatch(advance());
+    const game = store.getState().game;
+    expect(game.awaitingTieBreak).toBe(true);
+    expect(game.pendingEviction).toBeNull();
+    expect(new Set(game.tiedNomineeIds ?? [])).toEqual(new Set(['p1', 'p2', 'p3']));
+  });
+
+  it('treats 2-1-1 as a tie only for the second eviction slot', () => {
+    const store = makeEvictionStore({
+      v0: 'p1', v1: 'p1', v2: 'p2', v3: 'p3',
+    }, { humanLoh: true });
+    store.dispatch(advance());
+    const game = store.getState().game;
+    expect(game.pendingEviction?.evicteeId).toBe('p1');
+    expect(game.awaitingTieBreak).toBe(true);
+    expect(new Set(game.tiedNomineeIds ?? [])).toEqual(new Set(['p2', 'p3']));
+  });
+
   it('stores vote results for popup reveal', () => {
     const store = makeEvictionStore({
       v0: 'p1', v1: 'p2', v2: 'p3',

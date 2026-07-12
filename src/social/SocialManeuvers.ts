@@ -471,7 +471,7 @@ export function executeAction(
   }
 
   // Read balances after all mutations
-  const stateAfter = _store.getState() as { social: SocialState };
+  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } };
   const balancesAfter = {
     energy: stateAfter.social.energyBank[actorId] ?? 0,
     influence: stateAfter.social.influenceBank[actorId] ?? 0,
@@ -492,6 +492,7 @@ export function executeAction(
     newEnergy,
     balancesAfter,
     timestamp: Date.now(),
+    week: stateAfter.game?.week,
     score: finalScore,
     label: finalLabel,
     source: options?.source ?? 'system',

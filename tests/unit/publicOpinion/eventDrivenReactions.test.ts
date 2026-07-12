@@ -160,6 +160,69 @@ describe('event-driven approval: loh_results', () => {
   });
 });
 
+describe('event-driven approval: challenge performance', () => {
+  it('penalizes quitting more than finishing last', () => {
+    const players = makeGameState().players.map((player, index) => ({
+      ...player,
+      isUser: index === 0,
+    }));
+    const quitStore = makeStore({ players });
+    quitStore.dispatch(initializeProfiles(players.map((player) => player.id)));
+    quitStore.dispatch({
+      type: 'challenge/recordRun',
+      payload: {
+        participants: ['p1', 'p2', 'p3'],
+        canonicalScores: { p1: 0, p2: 800, p3: 500 },
+        winnerId: 'p2',
+        partial: true,
+      },
+    });
+    expect(quitStore.getState().publicOpinion.profiles.p1.approval).toBe(
+      50 + publicOpinionConfig.competitionImpact.quitEarly,
+    );
+
+    const lastStore = makeStore({ players });
+    lastStore.dispatch(initializeProfiles(players.map((player) => player.id)));
+    lastStore.dispatch({
+      type: 'challenge/recordRun',
+      payload: {
+        participants: ['p1', 'p2', 'p3'],
+        canonicalScores: { p1: 100, p2: 800, p3: 500 },
+        winnerId: 'p2',
+        partial: false,
+      },
+    });
+    expect(lastStore.getState().publicOpinion.profiles.p1.approval).toBe(
+      50 + publicOpinionConfig.competitionImpact.lastPlace,
+    );
+  });
+});
+
+describe('event-driven approval: social quality', () => {
+  it('rewards only strong manual interactions and penalizes poor attempts', () => {
+    const players = makeGameState().players.map((player, index) => ({
+      ...player,
+      isUser: index === 0,
+    }));
+    const store = makeStore({ players });
+    store.dispatch(initializeProfiles(players.map((player) => player.id)));
+
+    store.dispatch({
+      type: 'social/recordSocialAction',
+      payload: { entry: { actorId: 'p1', targetId: 'p2', actionId: 'compliment', outcome: 'success', delta: 4, score: 0.8, source: 'manual' } },
+    });
+    expect(store.getState().publicOpinion.profiles.p1.approval).toBe(
+      50 + publicOpinionConfig.socialImpact.highQualityInteraction,
+    );
+
+    store.dispatch({
+      type: 'social/recordSocialAction',
+      payload: { entry: { actorId: 'p1', targetId: 'p2', actionId: 'compliment', outcome: 'failure', delta: -2, score: -0.5, source: 'manual' } },
+    });
+    expect(store.getState().publicOpinion.profiles.p1.approval).toBe(50);
+  });
+});
+
 describe('event-driven approval: nomination_results', () => {
   it('applies LOH backlash immediately when a liked player (≥60%) is nominated', () => {
     const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });

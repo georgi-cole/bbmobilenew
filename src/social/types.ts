@@ -61,6 +61,8 @@ export interface SocialActionLogEntry {
   /** Actor's energy after the action (backward-compatible; prefer `balancesAfter.energy`). */
   newEnergy: number;
   timestamp: number;
+  /** In-game week in which the action happened, used by daily engagement systems. */
+  week?: number;
   /** Normalised outcome score in [-1, +1] produced by the SocialPolicy evaluator. */
   score?: number;
   /** Human-readable outcome label (e.g. 'Good', 'Bad') produced by the evaluator. */
