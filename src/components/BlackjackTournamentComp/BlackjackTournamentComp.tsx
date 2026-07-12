@@ -25,6 +25,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
   initBlackjackTournament,
+  startFinalStage,
   resolveSpinner,
   selectPair,
   hitCurrentPlayer,
@@ -143,7 +144,7 @@ interface RosterBarProps {
   getName: (id: string) => string;
   getAvatar: (id: string) => string;
   playerScores?: Record<string, number>;
-  finalistIds?: [string, string] | null;
+  finalistIds?: string[] | null;
 }
 
 // ─── RosterBar ────────────────────────────────────────────────────────────────
@@ -156,6 +157,7 @@ function RosterBar({
   getName,
   getAvatar,
   playerScores = {},
+  finalistIds = null,
 }: RosterBarProps) {
   return (
     <div className="bjt-roster-wrap" aria-label="Remaining players">
@@ -167,7 +169,9 @@ function RosterBar({
           const score = playerScores[id];
           const scoreLabel = score == null || isElim
             ? null
-            : `${score} ${score === 1 ? 'life' : 'lives'}`;
+            : finalistIds === null
+              ? `${score} ${score === 1 ? 'pt' : 'pts'}`
+              : `${score} ${score === 1 ? 'life' : 'lives'}`;
           const classes = [
             'bjt-roster-item',
             isElim ? 'bjt-roster-item--eliminated' : '',
@@ -499,11 +503,40 @@ export default function BlackjackTournamentComp({
 
   // Maintain a stable full-order list of all participant IDs.
   const allParticipantIds = participantIds;
-  const isFinalDuelActive = bt.finalistIds !== null;
+  const isFinalDuelActive = bt.stage === 'final';
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
   const { phase } = bt;
+
+  if (phase === 'league_results') {
+    return (
+      <div className="bjt-container bjt-result" role="region" aria-label="League rankings">
+        <h2 className="bjt-title">📊 League Complete</h2>
+        <p className="bjt-subtitle">
+          Every player has completed the round robin. The top three advance with 3 lives each.
+        </p>
+        <div className="minigame-placement-list bjt-placement-list" role="list" aria-label="League standings">
+          {bt.leagueRankings.map((id, index) => (
+            <div key={id} className="bjt-placement-item" role="listitem">
+              <span className="bjt-placement-rank">#{index + 1}</span>
+              <img src={avatarForId(id)} alt={getName(id)} className="bjt-roster-avatar" />
+              <span className="bjt-placement-name">{getName(id)}</span>
+              <span className="bjt-placement-detail">{bt.leagueScores[id] ?? 0} pts</span>
+              {index < 3 && <span className="bjt-badge">FINALIST</span>}
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="bjt-btn bjt-btn--continue"
+          onClick={() => dispatch(startFinalStage())}
+        >
+          Start Final Three →
+        </button>
+      </div>
+    );
+  }
 
   // ── Spin phase ────────────────────────────────────────────────────────────
   if (phase === 'spin') {
@@ -748,7 +781,9 @@ export default function BlackjackTournamentComp({
     return (
       <div className="bjt-container bjt-duel" role="region" aria-label="Blackjack duel">
         <h2 className="bjt-title">
-          ⚔️ {isFinalDuelActive ? 'Final Duel' : 'Duel'}: {aName} vs {bName}
+          ⚔️ {isFinalDuelActive
+            ? 'Final Three Duel'
+            : `League Match ${bt.leagueOpponentIndex + 1}/${bt.leagueOpponentIds.length}`}: {aName} vs {bName}
         </h2>
         {isFinalDuelActive && (
           <p className="bjt-final-score">
@@ -915,7 +950,10 @@ export default function BlackjackTournamentComp({
     const loserName = bt.duelLoserId ? getName(bt.duelLoserId) : '';
     const loserEliminated = bt.duelEliminatedId === bt.duelLoserId;
     const loserPreviewScore = bt.duelLoserId
-      ? Math.max(0, (bt.playerScores[bt.duelLoserId] ?? 0) - 1)
+      ? (bt.playerScores[bt.duelLoserId] ?? 0) - 1
+      : 0;
+    const winnerPreviewScore = bt.duelWinnerId
+      ? (bt.playerScores[bt.duelWinnerId] ?? 0) + 1
       : 0;
 
     return (
@@ -963,12 +1001,16 @@ export default function BlackjackTournamentComp({
         </div>
 
         <p className="bjt-eliminated-msg">
-          {loserEliminated
+          {bt.stage === 'league'
+            ? `${winnerName} gains 1 point (${winnerPreviewScore}). ${loserName} loses 1 point (${loserPreviewScore}).`
+            : loserEliminated
             ? `💀 ${loserName} has been eliminated!`
             : `${loserName} loses one life and drops to ${loserPreviewScore}. ${winnerName} keeps their current total.`}
         </p>
         <p className="bjt-remaining-msg">
-          {loserEliminated
+          {bt.stage === 'league'
+            ? `${Math.min(bt.leagueOpponentIndex + 1, bt.leagueOpponentIds.length)} of ${bt.leagueOpponentIds.length} user matches completed`
+            : loserEliminated
             ? `${bt.remainingPlayerIds.filter((id) => id !== bt.duelLoserId).length} players remain`
             : `${bt.remainingPlayerIds.length} players remain`}
         </p>

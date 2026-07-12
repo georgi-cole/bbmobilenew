@@ -21,6 +21,7 @@ import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import reducer, {
   initBlackjackTournament,
+  startFinalStage,
   resolveSpinner,
   selectPair,
   hitCurrentPlayer,
@@ -59,9 +60,21 @@ function initStore(store: Store, ids: string[], seed = 42, type: 'LOH' | 'POS' =
       participantIds: ids,
       competitionType: type,
       seed,
-      humanPlayerId: null,
+      humanPlayerId: ids.length > 1 ? ids[0] : null,
     }),
   );
+  let safety = 500;
+  while (getState(store).phase !== 'league_results' && getState(store).phase !== 'complete' && safety-- > 0) {
+    const phase = getState(store).phase;
+    if (phase === 'duel') {
+      const duel = getState(store).currentDuel;
+      if (duel?.duelTurn === 'finished') store.dispatch(resolveDuel());
+      else store.dispatch(standCurrentPlayer());
+    } else if (phase === 'duel_result') {
+      store.dispatch(advanceFromDuelResult());
+    }
+  }
+  if (getState(store).phase === 'league_results') store.dispatch(startFinalStage());
 }
 
 /** Run through spin → pick → duel → result for one duel using auto-resolve (both stand). */
@@ -339,6 +352,62 @@ describe('initBlackjackTournament', () => {
     expect(s.duelIndex).toBe(0);
     expect(s.eliminatedPlayerIds).toEqual([]);
     expect(s.phase).toBe('spin');
+  });
+});
+
+describe('league to Final Three flow', () => {
+  function initLeague(ids: string[], seed = 42) {
+    const store = makeStore();
+    store.dispatch(initBlackjackTournament({
+      participantIds: ids,
+      competitionType: 'LOH',
+      seed,
+      humanPlayerId: ids[0] ?? null,
+    }));
+    return store;
+  }
+
+  it('queues one interactive match against every opponent', () => {
+    const store = initLeague(['user', 'a', 'b', 'c']);
+    const state = getState(store);
+    expect(state.stage).toBe('league');
+    expect(state.phase).toBe('duel');
+    expect(state.leagueOpponentIds).toHaveLength(3);
+    expect(state.currentDuel?.fighterAId).toBe('user');
+    expect(state.leagueOpponentIds).toContain(state.currentDuel?.fighterBId);
+  });
+
+  it('pre-resolves AI-only league matches without delaying the user', () => {
+    const first = getState(initLeague(['user', 'a', 'b', 'c'], 99));
+    const second = getState(initLeague(['user', 'a', 'b', 'c'], 99));
+    expect(first.playerScores).toEqual(second.playerScores);
+    expect(first.playerScores.user).toBe(0);
+    expect(Object.values(first.playerScores).some((score) => score < 0)).toBe(true);
+  });
+
+  it('ranks everyone, cuts to three, and resets finalists to 3 lives', () => {
+    const store = initLeague(['user', 'a', 'b', 'c', 'd']);
+    let safety = 500;
+    while (getState(store).phase !== 'league_results' && safety-- > 0) {
+      const state = getState(store);
+      if (state.phase === 'duel') {
+        if (state.currentDuel?.duelTurn === 'finished') store.dispatch(resolveDuel());
+        else store.dispatch(standCurrentPlayer());
+      } else if (state.phase === 'duel_result') {
+        store.dispatch(advanceFromDuelResult());
+      }
+    }
+    const league = getState(store);
+    expect(league.leagueRankings).toHaveLength(5);
+    expect(league.remainingPlayerIds).toEqual(league.leagueRankings.slice(0, 3));
+    expect(league.eliminatedPlayerIds).toEqual(league.leagueRankings.slice(3));
+
+    store.dispatch(startFinalStage());
+    const final = getState(store);
+    expect(final.stage).toBe('final');
+    expect(final.phase).toBe('spin');
+    expect(final.remainingPlayerIds).toHaveLength(3);
+    final.remainingPlayerIds.forEach((id) => expect(final.playerScores[id]).toBe(3));
   });
 });
 
@@ -811,7 +880,7 @@ describe('Full 3-player tournament', () => {
     initStore(store, ['alice', 'bob', 'carol'], 42);
     runUntilComplete(store);
     expect(getState(store).eliminatedPlayerIds).toHaveLength(2);
-    expect(getState(store).finalistIds).toHaveLength(2);
+    expect(getState(store).finalistIds).toHaveLength(3);
   });
 });
 

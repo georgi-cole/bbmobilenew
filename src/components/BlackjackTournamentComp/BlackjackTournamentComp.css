@@ -940,6 +940,39 @@
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
 }
 
+/* ─── League standings ───────────────────────────────────────────────────── */
+
+.bjt-placement-list {
+  width: min(100%, 34rem);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.bjt-placement-item {
+  display: grid;
+  grid-template-columns: 2.5rem 2.25rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bjt-placement-rank,
+.bjt-placement-detail {
+  color: #ffd700;
+  font-weight: 800;
+}
+
+.bjt-placement-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
 /* ─── no-animations overrides ─────────────────────────────────────────────── */
 
 body.no-animations .bjt-crown,
