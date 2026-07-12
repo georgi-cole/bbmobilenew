@@ -17,6 +17,7 @@ import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import blackjackTournamentReducer, {
   initBlackjackTournament,
+  startFinalStage,
   resolveSpinner,
   selectPair,
   standCurrentPlayer,
@@ -64,6 +65,9 @@ function init2PlayerStore(
 }
 
 function runOneDuelHeadless(store: ReturnType<typeof makeIntegrationStore>): void {
+  if (store.getState().blackjackTournament.phase === 'league_results') {
+    store.dispatch(startFinalStage());
+  }
   const s = store.getState().blackjackTournament;
   if (s.phase === 'spin') store.dispatch(resolveSpinner());
 
@@ -162,10 +166,10 @@ describe('AI Registry — blackjackTournament entry', () => {
 // ─── Slice initialisation ─────────────────────────────────────────────────────
 
 describe('Integration — initBlackjackTournament', () => {
-  it('transitions to spin phase for 2 players', () => {
+  it('pre-resolves the AI-only league and waits on rankings', () => {
     const store = makeIntegrationStore();
     init2PlayerStore(store);
-    expect(store.getState().blackjackTournament.phase).toBe('spin');
+    expect(store.getState().blackjackTournament.phase).toBe('league_results');
   });
 
   it('sets allPlayerIds and remainingPlayerIds', () => {
