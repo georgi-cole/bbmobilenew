@@ -42,9 +42,13 @@ function getSubjectCandidates(
   players: Player[],
   actorId: string,
   relationships: Record<string, Record<string, { affinity: number }>> | undefined,
+  allowActorAsSubject = false,
 ): Player[] {
   const eligible = players.filter(
-    (p) => p.id !== primaryTargetId && p.id !== actorId && p.status !== 'evicted' && p.status !== 'jury',
+    (p) => p.id !== primaryTargetId
+      && (allowActorAsSubject || p.id !== actorId)
+      && p.status !== 'evicted'
+      && p.status !== 'jury',
   );
   switch (pool) {
     case 'nominees':
@@ -323,9 +327,12 @@ export default function SocialPanelV2() {
       ? getSubjectCandidates(
           selectedAction.subjectPool,
           effectivePrimaryTargetId,
-          orderedPlayers,
+          selectedAction.allowActorAsSubject
+            ? [...orderedPlayers, humanPlayer!]
+            : orderedPlayers,
           humanPlayer!.id,
           relationships as Record<string, Record<string, { affinity: number }>> | undefined,
+          selectedAction.allowActorAsSubject,
         )
       : [];
 
