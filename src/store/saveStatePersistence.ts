@@ -20,6 +20,8 @@ import {
 } from '../modes/survivorAchievements';
 import type { FinaleState } from './finaleSlice';
 import type { SocialState } from '../social/types';
+import type { PublicOpinionState } from '../publicOpinion/types';
+import type { ChallengeState } from './challengeSlice';
 import type { SurvivorAchievementUnlockMap } from '../modes/survivorAchievements';
 
 /** Prefix for per-profile saved-season localStorage keys. */
@@ -40,6 +42,10 @@ export interface SavedSeasonSnapshot {
   finale: FinaleState;
   /** Social-slice state at the time of save. */
   social: SocialState;
+  /** Optional for backward compatibility with snapshots created before public-mode persistence. */
+  publicOpinion?: PublicOpinionState;
+  /** Restores the selected challenge; an in-progress game restarts from its rules screen. */
+  challenge?: ChallengeState;
 }
 
 export interface SavedRunProfileStats {

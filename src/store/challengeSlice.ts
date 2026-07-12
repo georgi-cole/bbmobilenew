@@ -128,6 +128,15 @@ const challengeSlice = createSlice({
     clearDebugOverrides(state) {
       state.debug = {};
     },
+    hydrateChallenge(_state, action: PayloadAction<ChallengeState>) {
+      const restored = action.payload;
+      return {
+        ...restored,
+        pending: restored.pending
+          ? { ...restored.pending, phase: 'rules' as const }
+          : null,
+      };
+    },
   },
 });
 
@@ -138,6 +147,7 @@ export const {
   recordRun,
   setDebugOverrides,
   clearDebugOverrides,
+  hydrateChallenge,
 } = challengeSlice.actions;
 
 export default challengeSlice.reducer;

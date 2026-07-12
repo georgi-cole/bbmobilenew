@@ -16,6 +16,8 @@ import {
 import { resetGame, hydrateGame } from '../../store/gameSlice';
 import { hydrateFinale } from '../../store/finaleSlice';
 import { hydrateSocial } from '../../social/socialSlice';
+import { hydratePublicOpinion } from '../../publicOpinion/publicOpinionSlice';
+import { hydrateChallenge } from '../../store/challengeSlice';
 import { loadSeasonArchives } from '../../store/archivePersistence';
 import {
   savedStateKeyForProfile,
@@ -171,6 +173,8 @@ export default function ProfilePicker() {
       dispatch(hydrateGame(snapshot.game));
       dispatch(hydrateFinale(snapshot.finale));
       dispatch(hydrateSocial(snapshot.social));
+      if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion));
+      if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge));
       navigate('/game', { replace: true });
     } catch {
       // If hydration fails for any reason, gracefully fall back to a fresh season

@@ -66,6 +66,8 @@ import { startChallenge, selectPendingChallenge, completeChallenge, type Pending
 import { selectLastSocialReport } from '../../social/socialSlice'
 import { setEnergyBankEntry } from '../../social/socialSlice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice'
+import { clearSavedRun, clearSeasonSnapshot, savedStateKeyForProfile } from '../../store/saveStatePersistence'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
@@ -325,6 +327,8 @@ export default function GameScreen() {
   }, [store])
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
+  const activeProfileId = useAppSelector(selectActiveProfileId)
+  const isGuest = useAppSelector(selectIsGuest)
   const settings = useAppSelector(selectSettings)
   // ── Confessional ceremony decision routing ─────────────────────────────────
   // When non-null, a required player ceremony decision is pending that must be
@@ -408,15 +412,22 @@ export default function GameScreen() {
   const humanPlayer = game.players.find((p) => p.isUser)
   const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
   const preJuryGameOver = game.mode !== 'survival' && humanPlayer?.status === 'evicted'
+  const clearEliminatedRun = useCallback(() => {
+    if (isGuest || !activeProfileId) return
+    clearSavedRun(activeProfileId, game.mode ?? 'classic')
+    clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId))
+  }, [activeProfileId, game.mode, isGuest])
   const handleStartNewSeason = useCallback(() => {
+    clearEliminatedRun()
     dispatch(resetGame())
     dispatch({ type: 'challenge/setPendingChallenge', payload: null })
-    navigate('/', { replace: true })
-  }, [dispatch, navigate])
+    navigate('/', { replace: true, state: { autoStartGame: true } })
+  }, [clearEliminatedRun, dispatch, navigate])
   const handlePreJuryReturnHome = useCallback(() => {
+    clearEliminatedRun()
     dispatch({ type: 'challenge/setPendingChallenge', payload: null })
     navigate('/', { replace: true })
-  }, [dispatch, navigate])
+  }, [clearEliminatedRun, dispatch, navigate])
   const confessionalTvAnnouncement = confessionalPromptTriggered && showConfessionalTvPrompt
     ? {
       key: 'confessional_required',

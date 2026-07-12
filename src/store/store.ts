@@ -107,6 +107,10 @@ let prevProfiles = store.getState().profiles;
 let prevAds = store.getState().ads;
 // Persist active mode runs whenever the game slice changes.
 let prevGame = store.getState().game;
+let prevFinale = store.getState().finale;
+let prevSocial = store.getState().social;
+let prevPublicOpinion = store.getState().publicOpinion;
+let prevChallenge = store.getState().challenge;
 // Persist season archives to localStorage whenever they change
 let prevSeasonArchives = store.getState().game.seasonArchives;
 // Track archive length together with the profile that owns those archives.
@@ -137,8 +141,18 @@ store.subscribe(() => {
     prevAds = current.ads;
     saveAdsState(current.ads);
   }
-  if (current.game !== prevGame) {
+  const resumableStateChanged =
+    current.game !== prevGame
+    || current.finale !== prevFinale
+    || current.social !== prevSocial
+    || current.publicOpinion !== prevPublicOpinion
+    || current.challenge !== prevChallenge;
+  if (resumableStateChanged) {
     prevGame = current.game;
+    prevFinale = current.finale;
+    prevSocial = current.social;
+    prevPublicOpinion = current.publicOpinion;
+    prevChallenge = current.challenge;
     const activeProfileId = current.profiles.activeProfileId;
     if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {
       saveRunSnapshot(activeProfileId, {
@@ -153,6 +167,8 @@ store.subscribe(() => {
         },
         finale: current.finale,
         social: current.social,
+        publicOpinion: current.publicOpinion,
+        challenge: current.challenge,
       });
     }
   }
@@ -183,6 +199,27 @@ store.subscribe(() => {
     prevArchiveProfileId = archivesProfileId;
   }
 });
+
+// Android may reclaim a background WebView without another Redux action. Force
+// the latest serializable campaign state to storage as soon as the app hides.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return;
+    const current = store.getState();
+    const activeProfileId = current.profiles.activeProfileId;
+    if (current.profiles.isGuest || !activeProfileId || !hasMeaningfulGameProgress(current.game)) return;
+    saveRunSnapshot(activeProfileId, {
+      version: 1,
+      profileId: activeProfileId,
+      savedAt: new Date().toISOString(),
+      game: { ...current.game, lastPlayedAt: Date.now() },
+      finale: current.finale,
+      social: current.social,
+      publicOpinion: current.publicOpinion,
+      challenge: current.challenge,
+    });
+  });
+}
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
