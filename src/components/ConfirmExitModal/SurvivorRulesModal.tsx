@@ -9,24 +9,24 @@ interface Props {
 
 const RULES = [
   {
-    title: 'Endless days',
-    description: 'Survive as long as you can. The run ends only when you are eliminated.',
+    kicker: 'RUN',
+    title: 'Endless survival',
+    description: 'There is no finale. Keep advancing through days until you are eliminated.',
   },
   {
-    title: 'Synthetic replacements',
-    description: 'AI contestants are replaced after eviction, keeping the house full.',
+    kicker: 'HOUSE',
+    title: 'The house stays full',
+    description: 'Every evicted AI is replaced, so each new day restores the pressure.',
   },
   {
-    title: 'Social mode off',
-    description: 'The AI players are not here to make friends.',
+    kicker: 'RULES',
+    title: 'Competition only',
+    description: 'Social and public modes are off. There are no alliances, audience saves, or approval shields.',
   },
   {
-    title: 'Public mode off',
-    description: 'No audience saves. No popularity shield. Only survival.',
-  },
-  {
+    kicker: 'RECORD',
     title: 'Every day counts',
-    description: 'Your highest Survival day and unlocked milestones are saved to your profile.',
+    description: 'Your best day and unlocked Survival milestones are saved to your profile.',
   },
 ] as const;
 
@@ -68,26 +68,28 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
         <div className="survivor-rules-modal__glow survivor-rules-modal__glow--right" aria-hidden="true" />
 
         <header className="survivor-rules-modal__header">
-          <p className="survivor-rules-modal__eyebrow">Survival Mode</p>
+          <div className="survivor-rules-modal__brand">
+            <span className="survivor-rules-modal__logo" aria-hidden="true">∞</span>
+            <div>
+              <p className="survivor-rules-modal__eyebrow">Survival Mode</p>
+              <p className="survivor-rules-modal__guide-label">The Big Eye — Survival Guide</p>
+            </div>
+          </div>
           <h2 id={titleId} className="survivor-rules-modal__title">
-            Before You Enter Survival
+            How Survival Works
           </h2>
           <p id={descId} className="survivor-rules-modal__desc">
-            Survival Mode is an endless pressure run. There is no finale, no public rescue,
-            and no social safety net.
+            The classical weekly structure becomes an endless elimination run. Win challenges,
+            survive each vote, and push your record as far as you can.
           </p>
         </header>
 
         <div className="survivor-rules-modal__rules" role="list" aria-label="Survival rules">
-          {RULES.map((rule, index) => (
+          {RULES.map((rule) => (
             <article className="survivor-rules-modal__rule" key={rule.title} role="listitem">
-              <div className="survivor-rules-modal__rule-index" aria-hidden="true">
-                {index + 1}
-              </div>
-              <div className="survivor-rules-modal__rule-copy">
-                <h3 className="survivor-rules-modal__rule-title">{rule.title}</h3>
-                <p className="survivor-rules-modal__rule-desc">{rule.description}</p>
-              </div>
+              <span className="survivor-rules-modal__rule-kicker">{rule.kicker}</span>
+              <h3 className="survivor-rules-modal__rule-title">{rule.title}</h3>
+              <p className="survivor-rules-modal__rule-desc">{rule.description}</p>
             </article>
           ))}
         </div>
