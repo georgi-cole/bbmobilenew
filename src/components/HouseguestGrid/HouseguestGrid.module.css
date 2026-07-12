@@ -78,6 +78,15 @@
   min-width: 0;
 }
 
+.scrollRoster .grid {
+  height: auto;
+  max-height: var(--game-roster-max-height, 40vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
 .container[data-header-mode='persistent'] .headerRow {
   position: static;
   max-width: 100%;
