@@ -189,6 +189,15 @@ export const startChallenge =
     const forceKey = opts.forceGameKey ?? debugState.forceGameKey;
     const forceSeed = debugState.forceSeed;
     const gameSeed = forceSeed !== undefined ? forceSeed : seed;
+    const nextNonce = state.challenge?.nextNonce ?? 1;
+    // Vary game selection by both run and invocation. Using only the season
+    // seed made every Survival run follow the same apparent playlist.
+    const selectionSeed = forceSeed !== undefined
+      ? gameSeed
+      : deriveSeed(
+          (gameSeed ^ nextNonce) >>> 0,
+          `${state.game.runId ?? state.game.gameId ?? 'game'}:${nextNonce}`,
+        );
 
     const historyGameKeys = (state.challenge?.history ?? [])
       .slice(0, RECENT_HISTORY_LIMIT)
@@ -201,7 +210,7 @@ export const startChallenge =
       activeCompetitorCount > 0 && activeCompetitorCount <= LATE_SEASON_PLAYER_THRESHOLD;
     const selectFromPool = (pool: GameRegistryEntry[]) =>
       selectNextCompetitionGame({
-        seed: gameSeed,
+        seed: selectionSeed,
         games: pool,
         recentGameKeys: historyGameKeys,
         lateSeasonBias,
@@ -401,7 +410,6 @@ export const startChallenge =
     // Derive a per-invocation seed so repeated challenges with the same base
     // seed (same week) still get varied question order / AI behaviour.
     // debug.forceSeed bypasses this for reproducibility.
-    const nextNonce = state.challenge?.nextNonce ?? 1;
     const perChallengeSeed = forceSeed !== undefined
       ? challengeSeed
       : ((mulberry32((challengeSeed ^ nextNonce) >>> 0)() * 0x100000000) >>> 0);
