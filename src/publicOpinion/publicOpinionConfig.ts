@@ -17,6 +17,9 @@ export const publicOpinionConfig = {
     positiveInteraction: 2,
     negativeInteraction: -2,
     betrayal: -4,
+    highQualityInteraction: 1,
+    poorInteraction: -1,
+    inactiveDay: -1,
   },
   strategyImpact: {
     boldNomination: 3,
