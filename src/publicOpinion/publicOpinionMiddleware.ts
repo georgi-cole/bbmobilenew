@@ -77,12 +77,12 @@ function dispatchReactionDeltas(
 
 interface StateWithGame {
   game: GameState;
-  social?: { relationships?: import('../social/types').RelationshipsMap };
   publicOpinion?: {
     profiles: Record<string, unknown>;
     directions: PublicDirection[];
   };
   social?: {
+    relationships?: import('../social/types').RelationshipsMap;
     sessionLogs?: Array<{
       actorId?: string;
       source?: 'manual' | 'system';

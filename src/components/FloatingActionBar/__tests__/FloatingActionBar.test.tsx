@@ -27,7 +27,8 @@ import socialReducer, {
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
 import publicOpinionReducer, { addDirection } from '../../../publicOpinion/publicOpinionSlice';
-import FloatingActionBar, { resolveBalancedDockBottom } from '../FloatingActionBar';
+import FloatingActionBar from '../FloatingActionBar';
+import { resolveBalancedDockBottom } from '../floatingActionBarLayout';
 import type { RootState } from '../../../store/store';
 import type { PublicDirection } from '../../../publicOpinion/types';
 import { createSecretMissionState } from '../../../bb/secretMission';

@@ -28,6 +28,7 @@ import { createSurvivorRun, getSurvivorCurrentDay, isSurvivorRunTerminal } from 
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
 import GameControlDock from '../GameControlDock/GameControlDock';
 import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay';
+import { resolveBalancedDockBottom } from './floatingActionBarLayout';
 
 const CONFESSIONAL_FLASH_DURATION_MS = 1800;
 const SURVIVOR_DISABLED_MESSAGE_MS = 5000;
@@ -39,24 +40,6 @@ type FloatingActionBarProps = {
   /** Called when the player activates a blocked social module. */
   onSocialModuleBlocked?: (availability: SocialModuleAvailability) => void;
 };
-
-export function resolveBalancedDockBottom({
-  gameBottom,
-  lowerBoundary,
-  rosterBottom,
-  dockHeight,
-  minimumGap,
-}: {
-  gameBottom: number;
-  lowerBoundary: number;
-  rosterBottom: number;
-  dockHeight: number;
-  minimumGap: number;
-}) {
-  const openSpace = lowerBoundary - rosterBottom - dockHeight;
-  const balancedGap = Math.max(minimumGap, openSpace / 2);
-  return Math.max(minimumGap, gameBottom - lowerBoundary + balancedGap);
-}
 
 /**
  * FloatingActionBar — BitLife-style mobile FAB for the Game screen.
