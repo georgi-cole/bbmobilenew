@@ -160,6 +160,44 @@ describe('event-driven approval: loh_results', () => {
   });
 });
 
+describe('event-driven approval: challenge performance', () => {
+  it('penalizes quitting more than finishing last', () => {
+    const players = makeGameState().players.map((player, index) => ({
+      ...player,
+      isUser: index === 0,
+    }));
+    const quitStore = makeStore({ players });
+    quitStore.dispatch(initializeProfiles(players.map((player) => player.id)));
+    quitStore.dispatch({
+      type: 'challenge/recordRun',
+      payload: {
+        participants: ['p1', 'p2', 'p3'],
+        canonicalScores: { p1: 0, p2: 800, p3: 500 },
+        winnerId: 'p2',
+        partial: true,
+      },
+    });
+    expect(quitStore.getState().publicOpinion.profiles.p1.approval).toBe(
+      50 + publicOpinionConfig.competitionImpact.quitEarly,
+    );
+
+    const lastStore = makeStore({ players });
+    lastStore.dispatch(initializeProfiles(players.map((player) => player.id)));
+    lastStore.dispatch({
+      type: 'challenge/recordRun',
+      payload: {
+        participants: ['p1', 'p2', 'p3'],
+        canonicalScores: { p1: 100, p2: 800, p3: 500 },
+        winnerId: 'p2',
+        partial: false,
+      },
+    });
+    expect(lastStore.getState().publicOpinion.profiles.p1.approval).toBe(
+      50 + publicOpinionConfig.competitionImpact.lastPlace,
+    );
+  });
+});
+
 describe('event-driven approval: nomination_results', () => {
   it('applies LOH backlash immediately when a liked player (≥60%) is nominated', () => {
     const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });

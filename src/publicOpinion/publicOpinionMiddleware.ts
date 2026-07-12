@@ -356,6 +356,50 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
     return result;
   }
 
+  if (actionType === 'challenge/recordRun') {
+    const run = actionPayload as {
+      participants?: string[];
+      canonicalScores?: Record<string, number>;
+      winnerId?: string;
+      partial?: boolean;
+    } | undefined;
+    const human = game.players?.find((player) => player.isUser);
+    if (!human || !run?.participants?.includes(human.id)) return result;
+    ensureProfiles(store, game);
+
+    let delta = 0;
+    let reason = 'competition_performance';
+    if (run.partial) {
+      delta = publicOpinionConfig.competitionImpact.quitEarly;
+      reason = 'challenge_quit_early';
+    } else {
+      const ranked = [...run.participants].sort((a, b) =>
+        (run.canonicalScores?.[b] ?? 0) - (run.canonicalScores?.[a] ?? 0),
+      );
+      const placement = ranked.indexOf(human.id) + 1;
+      if (placement === 1) {
+        delta = publicOpinionConfig.competitionImpact.strongPerformance;
+        reason = 'strong_competition_performance';
+      } else if (placement === ranked.length) {
+        delta = publicOpinionConfig.competitionImpact.lastPlace;
+        reason = 'last_place_competition';
+      } else if (placement > Math.ceil(ranked.length / 2)) {
+        delta = publicOpinionConfig.competitionImpact.weakPerformance;
+        reason = 'weak_competition_performance';
+      }
+    }
+    if (delta !== 0) {
+      store.dispatch(updateApproval({
+        playerId: human.id,
+        delta,
+        reason,
+        week: game.week ?? 1,
+        addToFeed: true,
+      }));
+    }
+    return result;
+  }
+
   if (actionType === 'social/recordSocialAction') {
     // Payload: { entry: SocialActionLogEntry }
     // entry has actorId, targetId, actionId ('ally'|'protect'|'betray'|'nominate'),

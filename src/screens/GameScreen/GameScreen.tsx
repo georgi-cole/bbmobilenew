@@ -2076,7 +2076,7 @@ export default function GameScreen() {
     // — UNLESS this is an AI tiebreak where we want the modal to show the tie
     // banner first and call onTiebreakerRequired.
     if (game.pendingEviction) {
-      if (!humanIsHoH) {
+      if (!humanIsHoH && game.awaitingTieBreak) {
         // Check whether the tallies are actually tied (AI tiebreak case).
         let maxVotes = -1
         let topCount = 0
@@ -2107,10 +2107,10 @@ export default function GameScreen() {
     if (evicteeIds.length !== 1) return null
 
     return game.players.find((p) => p.id === evicteeIds[0]) ?? null
-  }, [game.voteResults, game.pendingEviction, game.players, humanIsHoH])
+  }, [game.voteResults, game.pendingEviction, game.players, game.awaitingTieBreak, humanIsHoH])
 
   const aiTiebreakContext = useMemo<AiTiebreakContext | null>(() => {
-    if (humanIsHoH || !game.voteResults || !game.pendingEviction?.evicteeId) return null
+    if (humanIsHoH || !game.awaitingTieBreak || !game.voteResults || !game.pendingEviction?.evicteeId) return null
     let maxVotes = -1
     let topCount = 0
     for (const count of Object.values(game.voteResults)) {
@@ -2141,7 +2141,7 @@ export default function GameScreen() {
         ? `By a vote of ${evicteeVotes + 1} to ${otherVotes}`
         : `With ${evicteeVotes + 1} vote${evicteeVotes + 1 === 1 ? '' : 's'}`,
     }
-  }, [game.lohId, game.pendingEviction?.evicteeId, game.players, game.voteResults, humanIsHoH])
+  }, [game.awaitingTieBreak, game.lohId, game.pendingEviction?.evicteeId, game.players, game.voteResults, humanIsHoH])
 
   const aiTiebreakAnnouncement = useMemo<Announcement | null>(() => {
     if (!aiTiebreakStage || !activeAiTiebreakContext) return null
@@ -3742,6 +3742,7 @@ export default function GameScreen() {
 
             const scoreWinnerId = dispatch(completeChallenge(rawResults, {
               authoritativeWinnerId: explicitWinnerId,
+              partial: partial === true,
             })) as string | null;
 
             if (import.meta.env.DEV) {

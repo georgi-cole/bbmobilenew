@@ -162,7 +162,9 @@ describe('SnakeGame competition reveal flow', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
-    expect(onFinish).toHaveBeenCalledWith(0);
+    expect(onFinish).toHaveBeenCalled();
+    expect(onFinish.mock.calls[0]?.[0]).toBe(0);
+    expect(onFinish.mock.calls[0]?.[2]?.authoritativeWinnerId).toBeTruthy();
   });
 
   it('renders a retro handheld status line for points and time', () => {

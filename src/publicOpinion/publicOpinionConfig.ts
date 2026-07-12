@@ -8,6 +8,10 @@ export const publicOpinionConfig = {
     povWin: 4,
     nominated: -2,
     evictionVotedOut: -3,
+    strongPerformance: 1,
+    weakPerformance: -1,
+    lastPlace: -2,
+    quitEarly: -4,
   },
   socialImpact: {
     positiveInteraction: 2,

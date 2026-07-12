@@ -49,6 +49,8 @@ export interface ChallengeRun {
   timestamp: number;
   /** Whether the winner was determined by the game authoritatively. */
   authoritative: boolean;
+  /** True when the human dismissed the challenge before it completed. */
+  partial?: boolean;
 }
 
 export interface ChallengeState {
@@ -481,6 +483,7 @@ export const completeChallenge =
     rawResults: RawResult[],
     options?: {
       authoritativeWinnerId?: string | null;
+      partial?: boolean;
     },
   ) =>
   (dispatch: AppDispatch, getState: () => RootState): string | null => {
@@ -516,6 +519,7 @@ export const completeChallenge =
       winnerId,
       timestamp: Date.now(),
       authoritative: explicitWinnerId !== null || winner?.authoritativeWinner === true,
+      partial: options?.partial === true,
     };
 
     dispatch(recordRun(run));
