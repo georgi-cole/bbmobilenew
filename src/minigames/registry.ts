@@ -60,8 +60,15 @@ export interface GameRegistryEntry {
   category: GameCategory;
   /** True if this entry should not be selected for new challenges. */
   retired: boolean;
+  /** Optional safe participant-count bounds for random scheduling. */
+  minPlayers?: number;
+  maxPlayers?: number;
   /** Key of the game that supersedes this one (for retired games). */
   replacedBy?: string;
+}
+
+export function supportsPlayerCount(game: GameRegistryEntry, playerCount: number): boolean {
+  return playerCount >= (game.minPlayers ?? 1) && playerCount <= (game.maxPlayers ?? Number.POSITIVE_INFINITY);
 }
 
 export function isPlacementRankingGame(
@@ -1212,6 +1219,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     weight: 2,
     category: 'logic',
     retired: false,
+    minPlayers: 2,
+    maxPlayers: 4,
   },
 
   bigSpender: {
@@ -1219,17 +1228,10 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     title: 'Big Spender: Broke or Boom',
     description: 'Open private wallets, spend down your Eyeoleans, and lock in before a bomb ruins the run.',
     instructions: [
-      'The game runs across 5 rounds. Rounds 1-4 use private boards, then Round 5 is a shared-board finale.',
-      'Every active player starts each round with 1,200 Eyeoleans and plays live on a 32-wallet board.',
-      'Most wallets subtract Eyeoleans, some add Eyeoleans, and a few hide bombs.',
-      'Open at least 8 wallets to unlock Lock in, then stop whenever your balance feels good.',
-      'Reach 0 to make the strongest possible finish. The closer to 0 you are, the better you rank.',
-      'Rounds 1-3 eliminate the lowest-ranked player. Round 4 cuts the field down to the final 2.',
-      'In Round 5, the finalists take turns picking from the same board with both balances visible.',
-      'If you open a bomb before the finale, the blast reveals first, then you may use up to two ad saves and personally pick a mandatory Second Chance Wallet.',
-      'A finale bomb drops that finalist to 0, ends the game immediately, and the other finalist wins.',
-      'Scores stay hidden before the finale and reveal fully on the results screen.',
-      'Bombed players rank below everyone who survives, even if their balance was low.',
+      'Start each round with 1,200 Eyeoleans. Open wallets and finish as close to 0 as possible; bombs rank below every survivor.',
+      'After 8 wallets you may Lock in. Rounds 1-3 remove one player and Round 4 selects the final two.',
+      'Rounds 1-4 use private boards. The finalists share one board and alternate picks in Round 5.',
+      'Before the finale, a bomb may be rescued twice by an ad and one mandatory Second Chance Wallet.',
     ],
     resultMode: 'placement',
     metricKind: 'points',

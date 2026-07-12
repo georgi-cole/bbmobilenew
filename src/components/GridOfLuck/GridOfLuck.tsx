@@ -1184,6 +1184,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
   const [completed, setCompleted] = useState(false);
   const [isSpectatorMode, setIsSpectatorMode] = useState(false);
   const [showSpectatorChoice, setShowSpectatorChoice] = useState(false);
+  const [autoplay, setAutoplay] = useState(false);
 
   const activePlayer = getCurrentPlayer(state);
   const humanPlayer = useMemo(
@@ -1445,15 +1446,24 @@ export default function GridOfLuck(props: GenericMinigameProps) {
   }, [pendingSelection, resolveOutcome, state, validTargets]);
 
   useEffect(() => {
+    if (!autoplay || !pendingSelection || validTargets.length === 0) return undefined;
+    const timer = setTimeout(() => {
+      const target = validTargets[Math.floor(rngRef.current() * validTargets.length)] ?? validTargets[0];
+      if (target) handleTargetSelection(target.id);
+    }, 650);
+    return () => clearTimeout(timer);
+  }, [autoplay, handleTargetSelection, pendingSelection, validTargets]);
+
+  useEffect(() => {
     if (turnMode !== 'box') return undefined;
     if (state.gamePhase === 'finished') return undefined;
-    if (activePlayer.isHuman) return undefined;
+    if (activePlayer.isHuman && !autoplay) return undefined;
     const timer = setTimeout(() => {
       const box = chooseAiBox(state, activePlayer.id, rngRef.current);
       stageBoxReveal(state, activePlayer, box.id);
     }, state.gamePhase === 'final' ? 700 : state.players.length >= 5 ? 850 : HUMAN_PICK_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [activePlayer, stageBoxReveal, state, turnMode]);
+  }, [activePlayer, autoplay, stageBoxReveal, state, turnMode]);
 
   useEffect(() => {
     if (floatingBursts.length === 0) return undefined;
@@ -1534,6 +1544,10 @@ export default function GridOfLuck(props: GenericMinigameProps) {
               {state.gamePhase === 'finished' ? 'Ritual Complete' : state.gamePhase === 'final' ? 'Final Phase' : 'Mystic Chamber'}
             </motion.h2>
             <motion.div className="grid-of-luck__turn-meta">
+              <label className="grid-of-luck__autoplay">
+                <input type="checkbox" checked={autoplay} onChange={(event) => setAutoplay(event.target.checked)} />
+                Autoplay
+              </label>
               <span className="grid-of-luck__boxes-remaining">{boxesRemaining} boxes</span>
               {state.gamePhase === 'final' && <span className="grid-of-luck__phase-badge">Final</span>}
             </motion.div>
@@ -1604,7 +1618,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
                 const effectMeta = BOX_META[box.type];
                 const glow = opened ? getBoxTone(box.type) : 'rgba(185, 150, 255, 0.75)';
                 const isCurrentReveal = revealState?.boxId === box.id;
-                const isClickable = turnMode === 'box' && activePlayer.isHuman && !opened && !box.isLocked && state.gamePhase !== 'finished';
+                const isClickable = turnMode === 'box' && activePlayer.isHuman && !autoplay && !opened && !box.isLocked && state.gamePhase !== 'finished';
                 return (
                   <motion.button
                     key={box.id}

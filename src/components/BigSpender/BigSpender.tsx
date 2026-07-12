@@ -64,7 +64,6 @@ function chooseAiWallet(state: BigSpenderState, playerId: string, rng: () => num
 
 function isBroadcastEvent(event: BigSpenderState['events'][number]) {
   return (
-    event.type === 'walletOpened' ||
     event.type === 'playerLocked' ||
     event.type === 'playerBombed' ||
     event.type === 'playerZeroFinished' ||
@@ -90,6 +89,7 @@ export default function BigSpender(props: GenericMinigameProps) {
   const [zeroDramaVisible, setZeroDramaVisible] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [fastForwarding, setFastForwarding] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));
   const aiTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const broadcastQueueRef = useRef<string[]>([]);
@@ -230,9 +230,9 @@ export default function BigSpender(props: GenericMinigameProps) {
     const drain = () => {
       const nextMessage = broadcastQueueRef.current.shift();
       if (nextMessage) {
-        setBroadcasts((previous) => [nextMessage, ...previous].slice(0, 3));
+        setBroadcasts((previous) => [nextMessage, ...previous].slice(0, 2));
       }
-      broadcastTimerRef.current = broadcastQueueRef.current.length > 0 ? setTimeout(drain, 1350) : null;
+      broadcastTimerRef.current = broadcastQueueRef.current.length > 0 ? setTimeout(drain, 2_200) : null;
     };
     broadcastTimerRef.current = setTimeout(drain, 450);
   }, [state.events]);
@@ -378,6 +378,9 @@ export default function BigSpender(props: GenericMinigameProps) {
             {fastForwarding ? 'Forwarding' : 'Fast forward'}
           </button>
         )}
+        <button type="button" className="big-spender__info" onClick={() => setShowRules(true)} aria-label="Show rules">
+          i
+        </button>
         {state.status === 'running' && !humanFinishedWhileRunning && (
           <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanLock}>
             Lock in
@@ -428,6 +431,18 @@ export default function BigSpender(props: GenericMinigameProps) {
             <p key={message}>{message}</p>
           ))}
         </section>
+      )}
+
+      {showRules && (
+        <div className="big-spender__overlay" role="dialog" aria-modal="true" aria-label="Big Spender rules">
+          <div className="big-spender__modal big-spender__modal--rules">
+            <span className="big-spender__eyebrow">Quick rules</span>
+            <h2>Broke or Boom</h2>
+            <p>Start at 1,200. Open at least 8 wallets, then lock in as close to 0 as you dare. Bombed players rank last.</p>
+            <p>Rounds 1–4 use private boards. The final two alternate on one shared board.</p>
+            <button type="button" onClick={() => setShowRules(false)}>Got it</button>
+          </div>
+        </div>
       )}
 
       {humanAdRescuePending && bombDramaStage && bombDramaStage !== 'prompt' && (
