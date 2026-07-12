@@ -27,7 +27,7 @@ import socialReducer, {
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
 import publicOpinionReducer, { addDirection } from '../../../publicOpinion/publicOpinionSlice';
-import FloatingActionBar from '../FloatingActionBar';
+import FloatingActionBar, { resolveBalancedDockBottom } from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
 import type { PublicDirection } from '../../../publicOpinion/types';
 import { createSecretMissionState } from '../../../bb/secretMission';
@@ -105,6 +105,18 @@ function renderFAB(
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
+
+describe('FloatingActionBar – responsive placement', () => {
+  it('centers the dock between the fourth roster row and navbar', () => {
+    expect(resolveBalancedDockBottom({
+      gameBottom: 800,
+      lowerBoundary: 800,
+      rosterBottom: 600,
+      dockHeight: 80,
+      minimumGap: 8,
+    })).toBe(60);
+  });
+});
 
 describe('FloatingActionBar – social energy badge', () => {
   it('shows a badge with the human player energy value', () => {

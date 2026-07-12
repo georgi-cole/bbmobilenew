@@ -40,6 +40,24 @@ type FloatingActionBarProps = {
   onSocialModuleBlocked?: (availability: SocialModuleAvailability) => void;
 };
 
+export function resolveBalancedDockBottom({
+  gameBottom,
+  lowerBoundary,
+  rosterBottom,
+  dockHeight,
+  minimumGap,
+}: {
+  gameBottom: number;
+  lowerBoundary: number;
+  rosterBottom: number;
+  dockHeight: number;
+  minimumGap: number;
+}) {
+  const openSpace = lowerBoundary - rosterBottom - dockHeight;
+  const balancedGap = Math.max(minimumGap, openSpace / 2);
+  return Math.max(minimumGap, gameBottom - lowerBoundary + balancedGap);
+}
+
 /**
  * FloatingActionBar — BitLife-style mobile FAB for the Game screen.
  *
@@ -131,6 +149,7 @@ export default function FloatingActionBar({
   const [triggeredConfessionalDecisionKey, setTriggeredConfessionalDecisionKey] = useState<string | null>(null);
   const [showConfessionalSpotlight, setShowConfessionalSpotlight] = useState(false);
   const confessionalIconRef = useRef<HTMLImageElement | null>(null);
+  const dockRef = useRef<HTMLDivElement | null>(null);
   const prevConfessionalCountRef = useRef(confessionalAlertCount);
   const hasPendingConfessionalDecision = activeConfessionalDecision !== null;
   const hasSeenConfessionalSpotlight = game.hasSeenConfessionalSpotlight === true;
@@ -299,6 +318,70 @@ export default function FloatingActionBar({
     navigate('/');
   }, [dispatch, navigate]);
 
+  // Center the dock in the real rendered space between the roster's last row
+  // and the navbar. Device scaling and tile rounding can make nominally equal
+  // budget gaps render at noticeably different sizes.
+  useEffect(() => {
+    const dock = dockRef.current;
+    const gameScreen = dock?.closest<HTMLElement>('.game-screen');
+    if (!dock || !gameScreen) return undefined;
+
+    let frameId = 0;
+    const balanceDock = () => {
+      const roster = gameScreen.querySelector<HTMLElement>(
+        'section[aria-labelledby="houseguests-heading"] ul[role="list"]',
+      );
+      const nav = document.querySelector<HTMLElement>('.nav-bar');
+      if (!roster || !nav) return;
+
+      const gameRect = gameScreen.getBoundingClientRect();
+      const rosterRect = roster.getBoundingClientRect();
+      const dockRect = dock.getBoundingClientRect();
+      const navRect = nav.getBoundingClientRect();
+      if (dockRect.height <= 0) return;
+
+      const lowerBoundary = Math.min(gameRect.bottom, navRect.top);
+      const configuredGap = Number.parseFloat(
+        getComputedStyle(gameScreen).getPropertyValue('--game-action-dock-gap'),
+      );
+      const minimumGap = Number.isFinite(configuredGap) ? configuredGap : 8;
+      const bottomOffset = resolveBalancedDockBottom({
+        gameBottom: gameRect.bottom,
+        lowerBoundary,
+        rosterBottom: rosterRect.bottom,
+        dockHeight: dockRect.height,
+        minimumGap,
+      });
+      dock.style.bottom = `${Math.round(bottomOffset)}px`;
+    };
+    const scheduleBalance = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(balanceDock);
+    };
+
+    scheduleBalance();
+    window.addEventListener('resize', scheduleBalance);
+    window.visualViewport?.addEventListener('resize', scheduleBalance);
+    const observed = [
+      gameScreen,
+      dock,
+      gameScreen.querySelector<HTMLElement>('.tv-zone'),
+      gameScreen.querySelector<HTMLElement>('section[aria-labelledby="houseguests-heading"]'),
+      document.querySelector<HTMLElement>('.nav-bar'),
+    ].filter((element): element is HTMLElement => element instanceof HTMLElement);
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(scheduleBalance);
+    observed.forEach((element) => resizeObserver?.observe(element));
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', scheduleBalance);
+      window.visualViewport?.removeEventListener('resize', scheduleBalance);
+      resizeObserver?.disconnect();
+    };
+  }, []);
+
   return (
     <>
       {blockedAnnouncement && (
@@ -316,6 +399,7 @@ export default function FloatingActionBar({
         onCancel={handleReturnHome}
       />
       <GameControlDock
+        dockRef={dockRef}
         onChatClick={handleChatClick}
         onIncomingRequestsClick={handleIncomingRequestsClick}
         onPrimaryActionClick={handlePrimaryActionClick}

@@ -50,7 +50,7 @@ export interface ResponsiveGameLayoutInput {
   revision?: number
 }
 
-const ANDROID_TOP_SAFE_FALLBACK = 30
+const ANDROID_TOP_SAFE_FALLBACK = 44
 const DEFAULT_NAV_HEIGHT = 60
 const COMPACT_NAV_HEIGHT = 46
 const DEFAULT_PHONE_WIDTH = 390
