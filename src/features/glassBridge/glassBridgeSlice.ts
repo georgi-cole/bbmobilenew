@@ -157,6 +157,8 @@ export function buildGlassBridgeTimeLimitMs(participantCount: number): number {
 
 export const PARALLEL_START_THRESHOLD_MS = 60_000;
 export const COLLISION_OVERRIDE_THRESHOLD_MS = 15_000;
+export const MAX_PARALLEL_MOVERS = 3;
+export const PARALLEL_RELEASE_INTERVAL_MS = 4_000;
 
 export function shouldStartParallelPlayers(remainingMs: number): boolean {
   return remainingMs <= PARALLEL_START_THRESHOLD_MS;
@@ -499,17 +501,26 @@ const glassBridgeSlice = createSlice({
       state.currentPlayerRow = 1;
     },
 
-    /** Release only players who have not yet stepped onto the bridge. */
-    startParallelPlayers(state) {
+    /** Release waiting players gradually; the final scramble may release everyone. */
+    startParallelPlayers(state, action: PayloadAction<{ releaseAll?: boolean } | undefined>) {
       if (state.phase !== 'playing' || state.timerExpired) return;
       const activeId = state.turnOrder[state.currentTurnIndex];
-      state.parallelPlayerIds = state.turnOrder.filter((playerId) => {
+      const waiting = state.turnOrder.filter((playerId) => {
         const progress = state.progress[playerId];
         return playerId !== activeId
+          && !state.parallelPlayerIds.includes(playerId)
           && progress?.firstStepAtMs === undefined
           && !progress.eliminated
           && progress.finishTimeMs === undefined;
       });
+      const activeParallelCount = state.parallelPlayerIds.filter((playerId) => {
+        const progress = state.progress[playerId];
+        return progress && !progress.eliminated && progress.finishTimeMs === undefined;
+      }).length;
+      const capacity = action.payload?.releaseAll
+        ? waiting.length
+        : Math.max(0, MAX_PARALLEL_MOVERS - activeParallelCount);
+      state.parallelPlayerIds.push(...waiting.slice(0, capacity));
     },
 
     /** Resolve an independently active player's next row without changing the main turn. */

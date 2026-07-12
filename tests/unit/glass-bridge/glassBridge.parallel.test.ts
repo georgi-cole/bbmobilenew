@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 import glassBridgeReducer, {
   COLLISION_OVERRIDE_THRESHOLD_MS,
+  MAX_PARALLEL_MOVERS,
   chooseParallelAiSide,
   finaliseOrderSelection,
   initGlassBridge,
@@ -36,13 +37,14 @@ describe('Glass Bridge low-time parallel play', () => {
     expect(shouldStartParallelPlayers(60_000)).toBe(true);
   });
 
-  it('starts every waiting player without duplicating the current player', () => {
+  it('releases waiting players gradually without duplicating the current player', () => {
     const store = startedStore();
     const activeId = store.getState().glassBridge.turnOrder[0];
     store.dispatch(startParallelPlayers());
-    expect(store.getState().glassBridge.parallelPlayerIds).toEqual(
-      store.getState().glassBridge.turnOrder.filter((id) => id !== activeId),
+    expect(store.getState().glassBridge.parallelPlayerIds).toHaveLength(
+      Math.min(MAX_PARALLEL_MOVERS, store.getState().glassBridge.turnOrder.length - 1),
     );
+    expect(store.getState().glassBridge.parallelPlayerIds).not.toContain(activeId);
   });
 
   it('advances a released player independently of the main turn', () => {

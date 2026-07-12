@@ -45,6 +45,9 @@ import {
   MAX_HINTS_PER_RUN,
   shouldStartParallelPlayers,
   chooseParallelAiSide,
+  COLLISION_OVERRIDE_THRESHOLD_MS,
+  MAX_PARALLEL_MOVERS,
+  PARALLEL_RELEASE_INTERVAL_MS,
   type BridgeRow,
   type TileSide,
 } from '../../features/glassBridge/glassBridgeSlice';
@@ -515,6 +518,7 @@ export default function GlassBridgeComp({
   const timerDisplayRef = useRef(timerDisplay);
   const aiStepTimerRef = useRef<number | null>(null);
   const parallelStepTimersRef = useRef<Map<string, number>>(new Map());
+  const parallelReleaseTimerRef = useRef<number | null>(null);
   const autoAdvanceRef = useRef<number | null>(null);
   const revealTimerRef = useRef<number | null>(null);
   const pendingStepRef = useRef<number | null>(null);
@@ -944,8 +948,35 @@ export default function GlassBridgeComp({
   // ── 6. AI step automation ──────────────────────────────────────────────────
   useEffect(() => {
     if (gb.phase !== 'playing' || gb.timerExpired) return;
-    if (!shouldStartParallelPlayers(timerDisplay) || gb.parallelPlayerIds.length > 0) return;
+    if (!shouldStartParallelPlayers(timerDisplay)) return;
     const activeId = selectActivePlayerId(gb);
+    const waiting = gb.turnOrder.filter((playerId) =>
+      playerId !== activeId
+      && !gb.parallelPlayerIds.includes(playerId)
+      && gb.progress[playerId]?.firstStepAtMs === undefined,
+    );
+    if (waiting.length === 0) return;
+    if (timerDisplay <= COLLISION_OVERRIDE_THRESHOLD_MS) {
+      dispatch(startParallelPlayers({ releaseAll: true }));
+      return;
+    }
+    const activeParallelCount = gb.parallelPlayerIds.filter((playerId) => {
+      const progress = gb.progress[playerId];
+      return progress && !progress.eliminated && progress.finishTimeMs === undefined;
+    }).length;
+    if (activeParallelCount >= MAX_PARALLEL_MOVERS) return;
+    if (gb.parallelPlayerIds.length > 0) {
+      parallelReleaseTimerRef.current = window.setTimeout(() => {
+        dispatch(startParallelPlayers());
+        parallelReleaseTimerRef.current = null;
+      }, PARALLEL_RELEASE_INTERVAL_MS);
+      return () => {
+        if (parallelReleaseTimerRef.current !== null) {
+          window.clearTimeout(parallelReleaseTimerRef.current);
+          parallelReleaseTimerRef.current = null;
+        }
+      };
+    }
     const hasUnstartedPlayers = gb.turnOrder.some((playerId) =>
       playerId !== activeId && gb.progress[playerId]?.firstStepAtMs === undefined,
     );
