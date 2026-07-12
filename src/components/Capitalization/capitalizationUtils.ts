@@ -35,6 +35,7 @@ export interface CapitalizationRoundPerformance {
   attempts: number;
   timeMs: number;
   skipped?: boolean;
+  hintUsed?: boolean;
 }
 
 export interface CapitalizationStanding {
@@ -135,7 +136,8 @@ export function computeCapitalizationQuestionScore(
   const timePenalty = Math.min(620, Math.round((performance.timeMs / 1000) * 18));
   const attemptPenalty = Math.max(0, attempts - 1) * 140;
   const firstTryBonus = attempts === 1 ? 110 : 0;
-  return Math.max(90, 1000 + firstTryBonus - timePenalty - attemptPenalty);
+  const score = Math.max(90, 1000 + firstTryBonus - timePenalty - attemptPenalty);
+  return performance.hintUsed ? Math.floor(score / 2) : score;
 }
 
 export function createCapitalizationAiRng(context: CapitalizationAiRngContext): () => number {

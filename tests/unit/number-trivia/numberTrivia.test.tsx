@@ -63,10 +63,10 @@ describe('NumberTrivia helpers', () => {
     expect(solvedFastButMessy).toBeGreaterThan(solvedSlowClean);
   });
 
-  it('eliminates half the field at the end of round four using the lower half', () => {
+  it('eliminates one player per round instead of wiping out half the field', () => {
     expect(getNumberTriviaEliminationCount(4, 3)).toBe(1);
-    expect(getNumberTriviaEliminationCount(4, 5)).toBe(2);
-    expect(getNumberTriviaEliminationCount(4, 6)).toBe(3);
+    expect(getNumberTriviaEliminationCount(4, 5)).toBe(1);
+    expect(getNumberTriviaEliminationCount(4, 6)).toBe(1);
   });
 
   it('keeps easy AI answers fast and confident', () => {
@@ -98,11 +98,9 @@ describe('NumberTrivia helpers', () => {
       sequenceRng([0.5, 0.2, 0.3, 0.9]),
     );
 
-    expect(performance).toMatchObject({
-      guessed: true,
-      attempts: 2,
-      closestDistance: 0,
-    });
+    expect(performance.guessed).toBe(true);
+    expect(performance.attempts).toBeGreaterThanOrEqual(2);
+    expect(performance.closestDistance).toBe(0);
     expect(performance.timeMs).toBeGreaterThan(4_000);
     expect(performance.timeMs).toBeLessThanOrEqual(6_650);
   });

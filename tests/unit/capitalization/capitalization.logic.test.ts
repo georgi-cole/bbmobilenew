@@ -85,6 +85,12 @@ describe('Capitalization answer matching and scoring', () => {
     expect(fastFirstTry).toBeGreaterThan(slowThirdTry);
     expect(slowThirdTry).toBeGreaterThan(0);
     expect(skipped).toBe(0);
+    expect(computeCapitalizationQuestionScore({
+      guessed: true,
+      attempts: 1,
+      timeMs: 2_000,
+      hintUsed: true,
+    })).toBe(Math.floor(fastFirstTry / 2));
   });
 });
 

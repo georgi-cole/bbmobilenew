@@ -137,7 +137,10 @@ export function simulateNumberTriviaAiPerformance(
   const profile = NUMBER_TRIVIA_AI_PROFILES[context.question.difficulty];
   const skillOffset = clamp((context.precomputedScore - 60) / 300, -0.12, 0.12);
   const fatiguePenalty = Math.max(0, context.roundNumber - 3) * 0.015;
-  const minAccuracy = clamp(profile.accuracyRange[0] + skillOffset - fatiguePenalty, 0.05, 0.995);
+  const configuredMinAccuracy = profile.accuracyRange[0] + skillOffset - fatiguePenalty;
+  const minAccuracy = context.question.difficulty === 'easy'
+    ? clamp(Math.max(0.95, configuredMinAccuracy), 0.95, 0.995)
+    : clamp(configuredMinAccuracy, 0.05, 0.995);
   const maxAccuracy = clamp(profile.accuracyRange[1] + skillOffset - fatiguePenalty, minAccuracy, 0.995);
   const accuracy = clamp(
     minAccuracy + (maxAccuracy - minAccuracy) * clamp(0.5 + skillOffset * 2.5, 0, 1),
@@ -148,7 +151,8 @@ export function simulateNumberTriviaAiPerformance(
   const guessed = rng() < accuracy;
 
   if (guessed) {
-    let attempts = 1;
+    const isExactYearQuestion = /\b(?:which|what) year\b/i.test(context.question.prompt);
+    let attempts = isExactYearQuestion ? Math.min(2, profile.maxCorrectAttempts) : 1;
     let hesitationChance = clamp(profile.hesitationChance - skillOffset * 1.2, 0.01, 0.9);
     while (attempts < profile.maxCorrectAttempts && rng() < hesitationChance) {
       attempts += 1;
@@ -206,9 +210,6 @@ export function computeNumberTriviaRoundScore(performance: TriviaRoundPerformanc
 
 export function getNumberTriviaEliminationCount(roundNumber: number, activeCount: number): number {
   if (roundNumber >= NUMBER_TRIVIA_TOTAL_ROUNDS || activeCount <= 2) return 0;
-  if (roundNumber === 4) {
-    return Math.min(activeCount - 2, Math.floor(activeCount / 2));
-  }
   return Math.min(activeCount - 2, 1);
 }
 

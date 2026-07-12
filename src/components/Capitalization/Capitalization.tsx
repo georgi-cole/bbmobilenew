@@ -109,6 +109,8 @@ export default function Capitalization({
   const [attempts, setAttempts] = useState(0);
   const [feedback, setFeedback] = useState('The globe is choosing the next continent.');
   const [inputError, setInputError] = useState<string | null>(null);
+  const [hintOptions, setHintOptions] = useState<string[] | null>(null);
+  const [hintUsed, setHintUsed] = useState(false);
   const [scoreboard, setScoreboard] = useState<CapitalizationScoreboard | null>(null);
   const [nowMs, setNowMs] = useState(0);
   const [questionStartedAtMs, setQuestionStartedAtMs] = useState(0);
@@ -249,8 +251,30 @@ export default function Capitalization({
       guessed: true,
       attempts: nextAttempts,
       timeMs: Date.now() - questionStartedAtRef.current,
+      hintUsed,
     });
-  }, [answerInput, attempts, currentQuestion, phase, resolveQuestion]);
+  }, [answerInput, attempts, currentQuestion, hintUsed, phase, resolveQuestion]);
+
+  const requestHint = useCallback(() => {
+    if (!currentQuestion || phase !== 'question' || hintUsed) return;
+    const distractors = Array.from(new Set(
+      questionSet.questions
+        .map((question) => question.capital)
+        .filter((capital) => capital !== currentQuestion.capital),
+    ));
+    const start = (runSeed + currentQuestion.questionNumber) % Math.max(1, distractors.length);
+    const picked = [
+      distractors[start],
+      distractors[(start + 3) % Math.max(1, distractors.length)],
+    ].filter((value): value is string => Boolean(value));
+    const options = Array.from(new Set([currentQuestion.capital, ...picked])).slice(0, 3);
+    const correctPosition = (runSeed ^ currentQuestion.questionNumber) % options.length;
+    const correct = options.shift();
+    if (correct) options.splice(correctPosition, 0, correct);
+    setHintOptions(options);
+    setHintUsed(true);
+    setFeedback('Hint used — the score for this question is now halved.');
+  }, [currentQuestion, hintUsed, phase, questionSet.questions, runSeed]);
 
   const skipQuestion = useCallback(() => {
     if (!currentQuestion || phase !== 'question') return;
@@ -272,6 +296,8 @@ export default function Capitalization({
     setAnswerInput('');
     setAttempts(0);
     setInputError(null);
+    setHintOptions(null);
+    setHintUsed(false);
     setScoreboard(null);
     setQuestionStartedAtMs(0);
     setFeedback(`The globe is landing on ${nextQuestion?.continent ?? 'the next continent'}.`);
@@ -396,7 +422,19 @@ export default function Capitalization({
                       <button type="button" disabled={inputDisabled} onClick={skipQuestion}>
                         Skip
                       </button>
+                      <button type="button" disabled={inputDisabled || hintUsed} onClick={requestHint}>
+                        Hint −50%
+                      </button>
                     </div>
+                    {hintOptions && (
+                      <div className="capitalization__hint-options" aria-label="Capital hint options">
+                        {hintOptions.map((option) => (
+                          <button key={option} type="button" onClick={() => setAnswerInput(option)}>
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {inputError && <p className="capitalization__error">{inputError}</p>}
                   </form>
                 )}
