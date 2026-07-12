@@ -28,13 +28,15 @@ function readCssPx(budget: ReturnType<typeof computeResponsiveGameLayout>, name:
 
 describe('responsive game layout budget', () => {
   it('uses a measured Android top-safe fallback when env safe-area is zero', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportHeight: 800,
-      stageHeight: 700,
-      safeTop: 0,
-      safeBottom: 0,
-      isAndroidLike: true,
-    }))
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportHeight: 800,
+        stageHeight: 700,
+        safeTop: 0,
+        safeBottom: 0,
+        isAndroidLike: true,
+      })
+    )
 
     expect(budget.cssVars).toMatchObject({
       '--game-safe-top': '44px',
@@ -42,11 +44,13 @@ describe('responsive game layout budget', () => {
   })
 
   it('uses compact bottom controls before compacting an iPhone Pro-like roster', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportHeight: 852,
-      stageHeight: 699,
-      playerCount: 16,
-    }))
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportHeight: 852,
+        stageHeight: 699,
+        playerCount: 16,
+      })
+    )
 
     expect(budget.layoutSize).toBe('phone-large')
     expect(budget.bottomControlsMode).toBe('compact')
@@ -66,20 +70,24 @@ describe('responsive game layout budget', () => {
   })
 
   it('keeps iPhone Pro bottom controls stable after compact controls resize themselves', () => {
-    const normalMeasuredBudget = computeResponsiveGameLayout(makeInput({
-      viewportHeight: 852,
-      stageHeight: 699,
-      navHeight: 94,
-      dockHeight: 70,
-      playerCount: 16,
-    }))
-    const compactMeasuredBudget = computeResponsiveGameLayout(makeInput({
-      viewportHeight: 852,
-      stageHeight: 713,
-      navHeight: 80,
-      dockHeight: 63,
-      playerCount: 16,
-    }))
+    const normalMeasuredBudget = computeResponsiveGameLayout(
+      makeInput({
+        viewportHeight: 852,
+        stageHeight: 699,
+        navHeight: 94,
+        dockHeight: 70,
+        playerCount: 16,
+      })
+    )
+    const compactMeasuredBudget = computeResponsiveGameLayout(
+      makeInput({
+        viewportHeight: 852,
+        stageHeight: 713,
+        navHeight: 80,
+        dockHeight: 63,
+        playerCount: 16,
+      })
+    )
 
     expect(normalMeasuredBudget.bottomControlsMode).toBe('compact')
     expect(compactMeasuredBudget.bottomControlsMode).toBe('compact')
@@ -87,20 +95,24 @@ describe('responsive game layout budget', () => {
   })
 
   it('does not change avatar tile size when transient vertical budget changes', () => {
-    const dayEndBudget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 393,
-      viewportHeight: 852,
-      stageWidth: 393,
-      stageHeight: 760,
-      playerCount: 16,
-    }))
-    const liveVoteBudget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 393,
-      viewportHeight: 852,
-      stageWidth: 393,
-      stageHeight: 700,
-      playerCount: 16,
-    }))
+    const dayEndBudget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 393,
+        viewportHeight: 852,
+        stageWidth: 393,
+        stageHeight: 760,
+        playerCount: 16,
+      })
+    )
+    const liveVoteBudget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 393,
+        viewportHeight: 852,
+        stageWidth: 393,
+        stageHeight: 700,
+        playerCount: 16,
+      })
+    )
 
     expect(dayEndBudget.layoutSize).toBe(liveVoteBudget.layoutSize)
     expect(dayEndBudget.baseRosterMode).toBe(liveVoteBudget.baseRosterMode)
@@ -116,13 +128,15 @@ describe('responsive game layout budget', () => {
   })
 
   it('keeps normal premium controls on iPhone Pro Max-like screens when full roster fits', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 430,
-      viewportHeight: 950,
-      stageWidth: 430,
-      stageHeight: 900,
-      dockHeight: 74,
-    }))
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 430,
+        viewportHeight: 950,
+        stageWidth: 430,
+        stageHeight: 900,
+        dockHeight: 74,
+      })
+    )
 
     expect(budget.bottomControlsMode).toBe('normal')
     expect(budget.rosterMode).toBe('normal')
@@ -135,16 +149,18 @@ describe('responsive game layout budget', () => {
   })
 
   it('keeps Pixel 6 Android-style screens on a static full roster with protected service row', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 393,
-      viewportHeight: 851,
-      stageWidth: 393,
-      stageHeight: 700,
-      safeTop: 0,
-      safeBottom: 0,
-      dockHeight: 70,
-      isAndroidLike: true,
-    }))
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 393,
+        viewportHeight: 851,
+        stageWidth: 393,
+        stageHeight: 700,
+        safeTop: 0,
+        safeBottom: 0,
+        dockHeight: 70,
+        isAndroidLike: true,
+      })
+    )
 
     expect(budget.cssVars).toMatchObject({
       '--game-safe-top': '44px',
@@ -160,13 +176,15 @@ describe('responsive game layout budget', () => {
   })
 
   it('tries compact bottom controls before compact roster fallback on small old phones', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 320,
-      viewportHeight: 667,
-      stageWidth: 320,
-      stageHeight: 560,
-      dockHeight: 62,
-    }))
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 320,
+        viewportHeight: 667,
+        stageWidth: 320,
+        stageHeight: 560,
+        dockHeight: 62,
+      })
+    )
 
     expect(budget.layoutSize).toBe('phone-small')
     expect(budget.bottomControlsMode).toBe('compact')
@@ -175,66 +193,62 @@ describe('responsive game layout budget', () => {
     expect(budget.rosterHeaderMode).toBe('tv-chip')
   })
 
-  it('classifies tablet landscape and widens the centered game cabinet intentionally', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 1024,
-      viewportHeight: 768,
-      stageWidth: 976,
-      stageHeight: 650,
-      safeBottom: 20,
-      dockHeight: 76,
-    }))
+  it('keeps tablet landscape viewports in the centered phone layout', () => {
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 1024,
+        viewportHeight: 768,
+        stageWidth: 976,
+        stageHeight: 650,
+        safeBottom: 20,
+        dockHeight: 76,
+      })
+    )
 
-    expect(budget.layoutSize).toBe('tablet-landscape')
-    expect(budget.shellMaxWidth).toBe(976)
-    expect(budget.bottomControlsMode).toBe('normal')
-    expect(budget.baseRosterMode).toBe('normal')
+    expect(budget.layoutSize).toBe('phone-medium')
+    expect(budget.shellMaxWidth).toBe(480)
     expect(budget.rosterMode).not.toBe('scroll')
-    expect(budget.rosterHeaderMode).toBe('persistent')
-    expect(budget.compactRoster).toBe(false)
-    expect(budget.avatarTileSize).toBeLessThanOrEqual(112)
-    expect(budget.tvLogRows).toBe(5)
     expect(budget.cssVars).toMatchObject({
-      '--game-bottom-controls-mode': 'normal',
-      '--game-action-dock-scale': '1',
-      '--game-nav-item-label-display': 'block',
-      '--game-cabinet-max-width': '976px',
-      '--game-layout-columns': 'minmax(0, 1.05fr) minmax(360px, 0.95fr)',
+      '--game-cabinet-max-width': '480px',
+      '--game-shell-max-width': '480px',
     })
-    expect(readCssPx(budget, '--game-panel-gap')).toBeGreaterThan(0)
   })
 
-  it('does not apply user compact roster preferences to tablet landscape', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 1180,
-      viewportHeight: 820,
-      stageWidth: 1100,
-      stageHeight: 700,
-      safeBottom: 20,
-      dockHeight: 80,
-      userCompactRoster: true,
-    }))
+  it('keeps tablet portrait viewports in the centered phone layout', () => {
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 820,
+        viewportHeight: 1180,
+        stageWidth: 620,
+        stageHeight: 1060,
+        safeBottom: 20,
+        dockHeight: 80,
+      })
+    )
 
-    expect(budget.layoutSize).toBe('tablet-landscape')
-    expect(budget.bottomControlsMode).toBe('normal')
-    expect(budget.rosterMode).toBe('normal')
-    expect(budget.compactRoster).toBe(false)
-    expect(budget.shellMaxWidth).toBe(1100)
+    expect(budget.layoutSize).toBe('phone-large')
+    expect(budget.shellMaxWidth).toBe(480)
+    expect(budget.cssVars).toMatchObject({
+      '--game-cabinet-max-width': '480px',
+      '--game-shell-max-width': '480px',
+    })
   })
 
   it('exposes a full Survivor standout mode for medium Android-sized eight-player layouts', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 393,
-      viewportHeight: 851,
-      stageWidth: 393,
-      stageHeight: 851,
-      safeTop: 0,
-      safeBottom: 0,
-      navHeight: 60,
-      dockHeight: 76,
-      playerCount: 8,
-      isAndroidLike: true,
-    }))
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 393,
+        viewportHeight: 851,
+        stageWidth: 393,
+        stageHeight: 851,
+        safeTop: 0,
+        safeBottom: 0,
+        navHeight: 60,
+        dockHeight: 76,
+        playerCount: 8,
+        isAndroidLike: true,
+      })
+    )
 
     expect(budget.survivorStandoutMode).toBe('full-card')
     expect(budget.tvLogRows).toBe(5)
@@ -245,50 +259,58 @@ describe('responsive game layout budget', () => {
   })
 
   it('collapses the Survivor standout on small phones instead of dropping it', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 340,
-      viewportHeight: 660,
-      stageWidth: 340,
-      stageHeight: 660,
-      navHeight: 60,
-      dockHeight: 76,
-      playerCount: 8,
-    }))
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 340,
+        viewportHeight: 660,
+        stageWidth: 340,
+        stageHeight: 660,
+        navHeight: 60,
+        dockHeight: 76,
+        playerCount: 8,
+      })
+    )
 
     expect(budget.survivorStandoutMode).toBe('mini-chip')
   })
 
-  it('uses the richer Survivor standout treatment on tablet budgets', () => {
-    const budget = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 820,
-      viewportHeight: 1080,
-      stageWidth: 620,
-      stageHeight: 980,
-      dockHeight: 0,
-      hasDock: false,
-      playerCount: 8,
-    }))
+  it('uses available vertical room for the richer Survivor standout treatment', () => {
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 820,
+        viewportHeight: 1080,
+        stageWidth: 620,
+        stageHeight: 980,
+        dockHeight: 0,
+        hasDock: false,
+        playerCount: 8,
+      })
+    )
 
     expect(budget.survivorStandoutMode).toBe('full-card')
   })
 
   it('keeps Survivor avatar tile size stable across transient dock budget changes', () => {
-    const calm = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 393,
-      viewportHeight: 851,
-      stageWidth: 393,
-      stageHeight: 851,
-      dockHeight: 76,
-      playerCount: 8,
-    }))
-    const crowded = computeResponsiveGameLayout(makeInput({
-      viewportWidth: 393,
-      viewportHeight: 851,
-      stageWidth: 393,
-      stageHeight: 851,
-      dockHeight: 140,
-      playerCount: 8,
-    }))
+    const calm = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 393,
+        viewportHeight: 851,
+        stageWidth: 393,
+        stageHeight: 851,
+        dockHeight: 76,
+        playerCount: 8,
+      })
+    )
+    const crowded = computeResponsiveGameLayout(
+      makeInput({
+        viewportWidth: 393,
+        viewportHeight: 851,
+        stageWidth: 393,
+        stageHeight: 851,
+        dockHeight: 140,
+        playerCount: 8,
+      })
+    )
 
     expect(crowded.avatarTileSize).toBe(calm.avatarTileSize)
     expect(crowded.rosterGap).toBe(calm.rosterGap)
