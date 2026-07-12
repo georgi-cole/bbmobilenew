@@ -261,6 +261,7 @@
 }
 
 .minigame-host-results {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -278,6 +279,26 @@
   box-sizing: border-box;
   overflow: hidden;
   animation: fadeIn 0.3s ease;
+}
+
+.minigame-host-results--timeline {
+  isolation: isolate;
+}
+
+.minigame-host-results-rift {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.minigame-host-results-close {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0 0 2px;
+  border-radius: 50%;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .minigame-host-results-title {
@@ -315,6 +336,15 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+}
+
+.minigame-host-leaderboard--preview {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.minigame-host-leaderboard--preview .minigame-host-leaderboard-entry:nth-child(n + 4) {
+  display: none;
 }
 
 .minigame-host-results-actions {

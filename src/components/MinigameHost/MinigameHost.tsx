@@ -138,6 +138,7 @@ export default function MinigameHost({
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
+  const [showFullRanking, setShowFullRanking] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
   const competitionRetryEnabled = competitionRetry?.enabled ?? false;
   const rulesGame = useMemo(
@@ -163,6 +164,7 @@ export default function MinigameHost({
   const handleRulesDismiss = useCallback(() => {
     setFinalValue(0);
     setWasPartial(true);
+    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -199,6 +201,7 @@ export default function MinigameHost({
   const handleQuit = useCallback((partial: LegacyRawResult) => {
     setFinalValue(partial.value);
     setWasPartial(true);
+    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
