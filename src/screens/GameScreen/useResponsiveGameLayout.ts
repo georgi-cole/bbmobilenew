@@ -50,15 +50,15 @@ export interface ResponsiveGameLayoutInput {
   revision?: number
 }
 
-const ANDROID_TOP_SAFE_FALLBACK = 24
+const ANDROID_TOP_SAFE_FALLBACK = 30
 const DEFAULT_NAV_HEIGHT = 60
 const COMPACT_NAV_HEIGHT = 46
 const DEFAULT_PHONE_WIDTH = 390
 const DEFAULT_PHONE_HEIGHT = 780
 const DEFAULT_DOCK_RATIO = 220 / 980
 const COMPACT_DOCK_SCALE = 0.9
-const NORMAL_DOCK_GAP = 6
-const COMPACT_DOCK_GAP = 3
+const NORMAL_DOCK_GAP = 12
+const COMPACT_DOCK_GAP = 8
 const ROSTER_COLUMNS = 4
 const ROSTER_GAP = 5
 const GAME_INLINE_PADDING = 24
@@ -205,8 +205,11 @@ export function computeResponsiveGameLayout(input: ResponsiveGameLayoutInput): R
   const baselineDockHeight = Math.max(measuredDockHeight, estimatedDockHeight)
   const normalDockHeight = input.hasDock ? baselineDockHeight : 0
   const compactDockHeight = input.hasDock ? Math.max(56, baselineDockHeight * COMPACT_DOCK_SCALE) : 0
-  const normalDockClearance = input.hasDock ? normalDockHeight + NORMAL_DOCK_GAP : 0
-  const compactDockClearance = input.hasDock ? compactDockHeight + COMPACT_DOCK_GAP : 0
+  // Reserve the same whitespace above and below the floating dock. The CSS
+  // positions the dock by actionDockGap from the nav edge; the second gap here
+  // keeps the fourth roster row equally far from the dock's upper edge.
+  const normalDockClearance = input.hasDock ? normalDockHeight + NORMAL_DOCK_GAP * 2 : 0
+  const compactDockClearance = input.hasDock ? compactDockHeight + COMPACT_DOCK_GAP * 2 : 0
   const measuredStageAndNavHeight = stageHeight + measuredNavHeight
   const normalStageHeight = Math.max(0, measuredStageAndNavHeight - normalNavHeight)
   const compactStageHeight = Math.max(0, measuredStageAndNavHeight - compactNavHeight)

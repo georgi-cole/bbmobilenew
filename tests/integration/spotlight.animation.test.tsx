@@ -19,6 +19,7 @@ import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
+import profilesReducer from '../../src/store/profilesSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import CeremonyOverlay from '../../src/components/CeremonyOverlay/CeremonyOverlay';
@@ -94,6 +95,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      profiles: profilesReducer,
       publicOpinion: publicOpinionReducer,
     },
     preloadedState: { game: { ...base, ...overrides } },
@@ -202,6 +204,31 @@ describe('GameScreen – CeremonyOverlay defers LOH/POS store mutations', () => 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it('hides the committed tile badge until an advance-picked LOH ceremony finishes', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 50, y: 100, width: 60, height: 80,
+      top: 100, left: 50, bottom: 180, right: 110,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const store = makeStore({
+      phase: 'loh_results',
+      lohId: 'p1',
+      prevHohId: 'p0',
+    });
+    renderWithStore(store);
+
+    const ceremonyBadges = document.querySelectorAll<HTMLImageElement>('img[src*="loh_badge.png"]');
+    expect(ceremonyBadges).toHaveLength(1);
+    expect(ceremonyBadges[0]).toHaveClass('ceremony-overlay__badge-image');
+
+    await act(async () => { vi.advanceTimersByTime(2800 + 400); });
+
+    const landedBadges = document.querySelectorAll<HTMLImageElement>('img[src*="loh_badge.png"]');
+    expect(landedBadges).toHaveLength(1);
+    expect(landedBadges[0]).not.toHaveClass('ceremony-overlay__badge-image');
   });
 
   it('commits applyMinigameWinner immediately when DOMRects are unavailable (defensive fallback)', async () => {

@@ -469,6 +469,7 @@ export default function GameScreen() {
   // pendingWinnerDispatchRef stores the deferred thunk so handleCeremonyDone
   // can call it without stale-closure issues.
   const [pendingWinnerCeremony, setPendingWinnerCeremony] = useState<{
+    winnerId: string
     tiles: CeremonyTile[]
     caption: string
     subtitle?: string
@@ -734,6 +735,9 @@ export default function GameScreen() {
     const isAnimatingSaveTarget = pendingSaveCeremony?.savedId === p.id
     const isPublicSaveWinner = pendingPublicSaveResult?.savedId === p.id
     const isAnimatingReplacementNominee = activeReplacementAnimationTargetId === p.id
+    const isAnimatingAwardWinner =
+      pendingWinnerCeremony?.winnerId === p.id ||
+      (showAdvanceHohCeremony && game.lohId === p.id)
     if (
       Array.isArray(game.nomineeIds) &&
       game.nomineeIds.includes(p.id) &&
@@ -771,7 +775,10 @@ export default function GameScreen() {
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted,
       isYou: p.isUser,
-      showPermanentBadge: !isAnimatingNominee,
+      // The landing badge is the only award badge visible during a winner
+      // ceremony. This also covers the outgoing-LOH path, where the reducer has
+      // already committed the winner before the overlay starts.
+      showPermanentBadge: !isAnimatingNominee && !isAnimatingAwardWinner,
       nominationCeremonyState,
       layoutId: `avatar-tile-${p.id}`,
       isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || game.evictionOverlayPlayerId === p.id || isReturning,
@@ -3887,6 +3894,7 @@ export default function GameScreen() {
             pendingWinnerDispatchRef.current = () =>
               dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: compLastPlaceId, skipSeasonUpdate: true }));
             setPendingWinnerCeremony({
+              winnerId: finalWinnerId,
               tiles,
               caption: `${winnerPlayer.name} wins ${winLabel}!`,
               subtitle: winSymbol,
