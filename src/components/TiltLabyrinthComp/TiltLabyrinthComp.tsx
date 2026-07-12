@@ -1,5 +1,5 @@
 /**
- * TiltLabyrinthComp — Modernised native React Tilt Labyrinth competition minigame.
+ * TiltLabyrinthComp â€” Modernised native React Tilt Labyrinth competition minigame.
  *
  * Features:
  *  - Seeded recursive-backtracking maze generation (deterministic)
@@ -51,7 +51,7 @@ import {
 } from './tiltLabyrinthCollision';
 import './TiltLabyrinthComp.css';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const MAZE_COLS = 19;
 const MAZE_ROWS = 19;
@@ -87,7 +87,7 @@ const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
 
 
-const MEDALS = ['🥇', '🥈', '🥉'];
+const MEDALS = ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'];
 
 interface FeaturePoint {
   x: number;
@@ -129,7 +129,7 @@ interface GameState {
   lastHazardHitAt: number;
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Props â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface TiltLabyrinthCompProps {
   participantIds: string[];
@@ -139,7 +139,7 @@ interface TiltLabyrinthCompProps {
   onComplete: (completion?: ReactMinigameCompletion) => void;
 }
 
-// ─── Seeded RNG ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Seeded RNG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function makeRng(seed: number): () => number {
   let s = (seed >>> 0) || 1;
@@ -234,7 +234,7 @@ function createHazards(
   return hazards;
 }
 
-// ─── Maze generation ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Maze generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function generateMaze(cols: number, rows: number, rng: () => number): MazeCell[][] {
   const grid: MazeCell[][] = Array.from({ length: rows }, () =>
@@ -278,7 +278,7 @@ function generateMaze(cols: number, rows: number, rng: () => number): MazeCell[]
   return grid;
 }
 
-// ─── Rendering ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type SimulatedRun = TiltLabyrinthRunDetails;
 
@@ -431,7 +431,7 @@ function drawMaze(
     ctx.font = `${Math.round(CELL_PX * 0.52)}px system-ui`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🔑', keyPos.x, keyPos.y + 0.5);
+    ctx.fillText('ðŸ”‘', keyPos.x, keyPos.y + 0.5);
   }
 
   // Door / gate near the goal
@@ -451,7 +451,7 @@ function drawMaze(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = lockOpen ? '#dcfce7' : '#ffe4e6';
-  ctx.fillText(lockOpen ? '🟢' : '🔒', doorPos.x, doorPos.y + 0.5);
+  ctx.fillText(lockOpen ? 'ðŸŸ¢' : 'ðŸ”’', doorPos.x, doorPos.y + 0.5);
 
   // Goal (only truly available once the lock opens)
   ctx.fillStyle = lockOpen
@@ -461,7 +461,7 @@ function drawMaze(
 
   ctx.fillStyle = lockOpen ? `rgba(34, 197, 94, ${0.8 * pulse})` : 'rgba(148, 163, 184, 0.6)';
   ctx.font = `${Math.round(CELL_PX * 0.55)}px system-ui`;
-  ctx.fillText('🏁', goalPos.x, goalPos.y);
+  ctx.fillText('ðŸ', goalPos.x, goalPos.y);
 
   // Walls
   ctx.save();
@@ -513,7 +513,7 @@ function drawMaze(
 
     ctx.fillStyle = '#fff1f2';
     ctx.font = `${Math.round(CELL_PX * 0.42)}px system-ui`;
-    ctx.fillText('✦', hazard.x, hazard.y + 0.5);
+    ctx.fillText('âœ¦', hazard.x, hazard.y + 0.5);
   });
 
   // Ball glow
@@ -539,7 +539,7 @@ function drawMaze(
   ctx.fill();
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function TiltLabyrinthComp({
   participantIds,
@@ -566,7 +566,7 @@ export default function TiltLabyrinthComp({
   const [lockOpen, setLockOpen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // ── Initialise on mount ──────────────────────────────────────────────────
+  // â”€â”€ Initialise on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const competitionIdentity = [seed, prizeType, participantIds.join('\u0000')].join(':');
     if (initializedCompetitionRef.current === competitionIdentity) return;
@@ -598,7 +598,7 @@ export default function TiltLabyrinthComp({
     );
     const hazards = createHazards(rng, keyPos, doorPos, goalPos);
 
-    // Compute AI scores (completion times in ms — lower is better)
+    // Compute AI scores (completion times in ms â€” lower is better)
     const aiScores: Record<string, number> = {};
     const humanParticipant = participants?.find((p) => p.isHuman);
     const humanId = humanParticipant?.id ?? null;
@@ -682,7 +682,7 @@ export default function TiltLabyrinthComp({
     orientationCleanupRef.current?.();
   }, [dispatch]);
 
-  // ── Finish handler ─────────────────────────────────────────────────────────
+  // â”€â”€ Finish handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleFinish = useCallback(
     (timeMs: number) => {
       if (resolvedRef.current) return;
@@ -696,7 +696,7 @@ export default function TiltLabyrinthComp({
     [dispatch],
   );
 
-  // ── Game loop ─────────────────────────────────────────────────────────────
+  // â”€â”€ Game loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -818,7 +818,7 @@ export default function TiltLabyrinthComp({
           gs.finished = true;
           gs.finishTime = Math.round(gs.elapsed);
           handleFinish(gs.finishTime);
-          // Draw final frame then stop — no RAF after goal reached
+          // Draw final frame then stop â€” no RAF after goal reached
           drawMaze(ctx, maze, gs, gs.elapsed);
           return;
         }
@@ -837,7 +837,7 @@ export default function TiltLabyrinthComp({
     return () => cancelAnimationFrame(animId);
   }, [handleFinish]);
 
-  // ── Keyboard controls ──────────────────────────────────────────────────────
+  // â”€â”€ Keyboard controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const gs = gameRef.current;
@@ -862,7 +862,7 @@ export default function TiltLabyrinthComp({
     };
   }, []);
 
-  // ── Device orientation ────────────────────────────────────────────────────
+  // â”€â”€ Device orientation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const handleOrientation = (e: DeviceOrientationEvent) => {
       const gs = gameRef.current;
@@ -893,7 +893,7 @@ export default function TiltLabyrinthComp({
           }
         })
         .catch(() => {
-          // Permission denied — keyboard/touch controls still work
+          // Permission denied â€” keyboard/touch controls still work
         });
     } else if (typeof DeviceOrientationEvent !== 'undefined') {
       window.addEventListener('deviceorientation', handleOrientation);
@@ -907,7 +907,7 @@ export default function TiltLabyrinthComp({
     };
   }, []);
 
-  // ── Touch controls ────────────────────────────────────────────────────────
+  // â”€â”€ Touch controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -950,7 +950,7 @@ export default function TiltLabyrinthComp({
     };
   }, []);
 
-  // ── Results screen ────────────────────────────────────────────────────────
+  // â”€â”€ Results screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const leaderboard = useMemo(() => {
     if (!labState || labState.phase !== 'complete') return null;
     const entries = Object.entries(labState.finalScores)
@@ -1036,7 +1036,7 @@ export default function TiltLabyrinthComp({
         placementsAriaLabel="Final standings"
       >
         <div className="tilt-labyrinth-results-hero">
-          <div className="tilt-labyrinth-trophy">🏆</div>
+          <div className="tilt-labyrinth-trophy">ðŸ†</div>
           <h2 className="tilt-labyrinth-results-title">
             {humanEntry && humanEntry.id === winnerEntry?.id
               ? 'You Win!'
@@ -1049,7 +1049,7 @@ export default function TiltLabyrinthComp({
                 {resultsSummary}
                 {rank >= 0 && (
                   <span className="tilt-labyrinth-your-rank">
-                    {' '}• Rank {rank + 1} of {leaderboard.length}
+                    {' '}â€¢ Rank {rank + 1} of {leaderboard.length}
                   </span>
                 )}
               </p>
@@ -1060,7 +1060,7 @@ export default function TiltLabyrinthComp({
     );
   }
 
-  // ── Playing screen ────────────────────────────────────────────────────────
+  // â”€â”€ Playing screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const objectiveText = !hasKey
     ? 'Find the key'
     : !lockOpen
@@ -1072,14 +1072,14 @@ export default function TiltLabyrinthComp({
       <div className="tilt-labyrinth-hud">
         <div className="tilt-labyrinth-controls-hint">
           {useTilt
-            ? '📱 Tilt to move • Keys also work'
-            : '⬆⬇⬅➡ Arrow keys / WASD or drag'}
+            ? 'ðŸ“± Tilt to move â€¢ Keys also work'
+            : 'â¬†â¬‡â¬…âž¡ Arrow keys / WASD or drag'}
         </div>
       </div>
 
       <div className="tilt-labyrinth-status-bar" aria-label="Tilt Labyrinth status">
         <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--objective">
-          🎯 {objectiveText}
+          ðŸŽ¯ {objectiveText}
         </div>
         <div
           className={[
@@ -1089,7 +1089,7 @@ export default function TiltLabyrinthComp({
             .filter(Boolean)
             .join(' ')}
         >
-          🔑 {hasKey ? 'Key found' : 'No key'}
+          ðŸ”‘ {hasKey ? 'Key found' : 'No key'}
         </div>
         <div
           className={[
@@ -1099,13 +1099,13 @@ export default function TiltLabyrinthComp({
             .filter(Boolean)
             .join(' ')}
         >
-          🚪 {lockOpen ? 'Gate open' : 'Gate locked'}
+          ðŸšª {lockOpen ? 'Gate open' : 'Gate locked'}
         </div>
         <div className="tilt-labyrinth-status-chip">
           Time {formatTiltLabyrinthScore(elapsedSeconds * 1000)}
         </div>
         <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--danger">
-          Hazards {hazardHits} � +{hazardHits * 3}s
+          Hazards {hazardHits} · +{hazardHits * 3}s
         </div>
       </div>
 
@@ -1120,7 +1120,7 @@ export default function TiltLabyrinthComp({
       </div>
 
       <p className="tilt-labyrinth-goal-hint">
-        Find the 🔑 key, unlock the gate, and survive the floating hazards to reach the 🏁 goal.
+        Find the ðŸ”‘ key, unlock the gate, and survive the floating hazards to reach the ðŸ goal.
       </p>
     </div>
   );
