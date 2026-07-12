@@ -992,8 +992,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     instructions: [
       'League: play one blackjack duel against every opponent while AI league matches resolve in the background.',
       'A league win adds 1 point and a league loss removes 1 point. Scores may go below zero.',
-      'After all league matches, only the top three players advance.',
-      'Final Three: all finalists reset to 3 lives. Winners keep their total; losers lose 1 life.',
+      'After all league matches, the top three scores advance. Everyone tied at the cutoff also qualifies.',
+      'Finals: all qualifiers reset to 3 lives. Winners keep their total; losers lose 1 life.',
       'The duel winner controls the next pairing. Reach 0 lives and you are eliminated.',
       'The last finalist with lives remaining wins the competition!',
     ],

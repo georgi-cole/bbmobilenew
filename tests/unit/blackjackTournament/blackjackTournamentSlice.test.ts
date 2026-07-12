@@ -29,6 +29,7 @@ import reducer, {
   resolveDuel,
   advanceFromDuelResult,
   markBlackjackTournamentOutcomeResolved,
+  selectLeagueFinalists,
   resetBlackjackTournament,
   computeTotal,
   cardRank,
@@ -385,7 +386,7 @@ describe('league to Final Three flow', () => {
     expect(Object.values(first.playerScores).some((score) => score < 0)).toBe(true);
   });
 
-  it('ranks everyone, cuts to three, and resets finalists to 3 lives', () => {
+  it('ranks everyone, includes cutoff ties, and resets finalists to 3 lives', () => {
     const store = initLeague(['user', 'a', 'b', 'c', 'd']);
     let safety = 500;
     while (getState(store).phase !== 'league_results' && safety-- > 0) {
@@ -399,15 +400,30 @@ describe('league to Final Three flow', () => {
     }
     const league = getState(store);
     expect(league.leagueRankings).toHaveLength(5);
-    expect(league.remainingPlayerIds).toEqual(league.leagueRankings.slice(0, 3));
-    expect(league.eliminatedPlayerIds).toEqual(league.leagueRankings.slice(3));
+    const expectedFinalists = selectLeagueFinalists(league.leagueRankings, league.leagueScores);
+    expect(league.remainingPlayerIds).toEqual(expectedFinalists);
+    expect(league.eliminatedPlayerIds).toEqual(
+      league.leagueRankings.filter((id) => !expectedFinalists.includes(id)),
+    );
 
     store.dispatch(startFinalStage());
     const final = getState(store);
     expect(final.stage).toBe('final');
     expect(final.phase).toBe('spin');
-    expect(final.remainingPlayerIds).toHaveLength(3);
+    expect(final.remainingPlayerIds).toHaveLength(expectedFinalists.length);
     final.remainingPlayerIds.forEach((id) => expect(final.playerScores[id]).toBe(3));
+  });
+
+  it('advances everyone tied with the third-place score', () => {
+    const rankings = ['lira', 'kang', 'sora', 'venn', 'zari', 'user'];
+    const scores = { lira: 2, kang: 0, sora: 0, venn: 0, zari: 0, user: 0 };
+    expect(selectLeagueFinalists(rankings, scores)).toEqual(rankings);
+  });
+
+  it('does not expand the finals when fourth place has a lower score', () => {
+    const rankings = ['a', 'b', 'c', 'd', 'e'];
+    const scores = { a: 3, b: 2, c: 1, d: 0, e: -1 };
+    expect(selectLeagueFinalists(rankings, scores)).toEqual(['a', 'b', 'c']);
   });
 });
 
