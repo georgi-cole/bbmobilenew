@@ -277,3 +277,36 @@
   color: #7dd3fc;
   font-size: 0.88rem;
 }
+
+/* Standard competition-results layout refinements. */
+.tilt-labyrinth-standard-results {
+  color: #f8fafc;
+}
+
+.tilt-labyrinth-results-kicker {
+  margin: 0;
+  color: #a0a0b8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.tilt-labyrinth-standard-results .minigame-host-results-title,
+.tilt-labyrinth-standard-results .minigame-host-results-score {
+  text-align: center;
+}
+
+.tilt-labyrinth-result-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.tilt-labyrinth-result-score small {
+  color: #7f879f;
+  font-size: 0.68rem;
+  font-weight: 600;
+}

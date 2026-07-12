@@ -270,6 +270,10 @@ describe('TiltLabyrinthComp movement hardening', () => {
       store.dispatch(setHumanScore(4321));
     });
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+    expect(screen.getByText('Competition Results')).toHaveClass('minigame-host-results-title');
+    expect(screen.getByRole('list', { name: 'Final standings' })).toHaveClass(
+      'minigame-host-leaderboard',
+    );
 
     view.rerender(
       <Provider store={store}>

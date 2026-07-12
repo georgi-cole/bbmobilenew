@@ -37,7 +37,6 @@ import { resolveTiltLabyrinthOutcome } from '../../features/tiltLabyrinth/thunks
 import { getDefaultCompetitionProfile } from '../../ai/competition/index';
 import type { CompetitionSkillProfile } from '../../ai/competition/types';
 import { mulberry32 } from '../../store/rng';
-import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import type {
@@ -86,8 +85,6 @@ const KEY_RADIUS = 7;
 const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
 
-
-const MEDALS = ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'];
 
 interface FeaturePoint {
   x: number;
@@ -431,7 +428,7 @@ function drawMaze(
     ctx.font = `${Math.round(CELL_PX * 0.52)}px system-ui`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('ðŸ”‘', keyPos.x, keyPos.y + 0.5);
+    ctx.fillText('K', keyPos.x, keyPos.y + 0.5);
   }
 
   // Door / gate near the goal
@@ -451,7 +448,7 @@ function drawMaze(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = lockOpen ? '#dcfce7' : '#ffe4e6';
-  ctx.fillText(lockOpen ? 'ðŸŸ¢' : 'ðŸ”’', doorPos.x, doorPos.y + 0.5);
+  ctx.fillText(lockOpen ? 'O' : 'L', doorPos.x, doorPos.y + 0.5);
 
   // Goal (only truly available once the lock opens)
   ctx.fillStyle = lockOpen
@@ -461,7 +458,7 @@ function drawMaze(
 
   ctx.fillStyle = lockOpen ? `rgba(34, 197, 94, ${0.8 * pulse})` : 'rgba(148, 163, 184, 0.6)';
   ctx.font = `${Math.round(CELL_PX * 0.55)}px system-ui`;
-  ctx.fillText('ðŸ', goalPos.x, goalPos.y);
+  ctx.fillText('G', goalPos.x, goalPos.y);
 
   // Walls
   ctx.save();
@@ -513,7 +510,7 @@ function drawMaze(
 
     ctx.fillStyle = '#fff1f2';
     ctx.font = `${Math.round(CELL_PX * 0.42)}px system-ui`;
-    ctx.fillText('âœ¦', hazard.x, hazard.y + 0.5);
+    ctx.fillText('*', hazard.x, hazard.y + 0.5);
   });
 
   // Ball glow
@@ -980,87 +977,66 @@ export default function TiltLabyrinthComp({
 
   if (leaderboard && labState?.phase === 'complete') {
     const winnerEntry = leaderboard[0];
-    const humanEntry = leaderboard.find((e) => e.isHuman);
+    const humanEntry = leaderboard.find((entry) => entry.isHuman);
+    const humanRank = leaderboard.findIndex((entry) => entry.isHuman);
     const continueValue = labState.humanScore ?? 0;
-    let resultsSummary = 'Final standings recorded.';
-    if (humanEntry) {
-      resultsSummary = `Your adjusted time: ${formatTiltLabyrinthScore(humanEntry.adjustedTimeMs)}`;
-    } else if (winnerEntry) {
-      resultsSummary = `${winnerEntry.name} finished in ${formatTiltLabyrinthScore(winnerEntry.timeMs)}`;
-    }
 
     return (
-      <MinigameCompleteWrapper
-        className="tilt-labyrinth-results"
-        onContinue={() => onComplete({
-          rawValue: continueValue,
-          rawResults: labState.finalScores,
-          authoritativeWinnerId: labState.winnerId,
-          authoritativeLastPlaceId: labState.lastPlaceId,
-        })}
-        placementsNode={
-          <ol className="tilt-labyrinth-placements" role="list" aria-label="Final standings">
-            {leaderboard.map((entry, i) => (
-              <li
-                key={entry.id}
-                className={[
-                  'tilt-labyrinth-placement-row',
-                  entry.isHuman ? 'tilt-labyrinth-placement-row--you' : '',
-                  i === 0 ? 'tilt-labyrinth-placement-row--winner' : '',
-                  i === leaderboard.length - 1 ? 'tilt-labyrinth-placement-row--last' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                role="listitem"
-              >
-                <span className="tilt-labyrinth-rank">{MEDALS[i] ?? `${i + 1}.`}</span>
-                <span className="tilt-labyrinth-pname">
-                  {entry.name}
-                  {entry.isHuman && (
-                    <span className="tilt-labyrinth-you-tag" aria-label="(you)">
-                      {' '}(you)
-                    </span>
-                  )}
-                </span>
-                <span className="tilt-labyrinth-time">
-                  {formatTiltLabyrinthScore(entry.adjustedTimeMs)}
-                  <small>
-                    {` ${formatTiltLabyrinthScore(entry.rawTimeMs)} + ${entry.hazardHits * 3}s`}
-                  </small>
-                </span>
-              </li>
-            ))}
-          </ol>
-        }
-        placementsRole="list"
-        placementsAriaLabel="Final standings"
-      >
-        <div className="tilt-labyrinth-results-hero">
-          <div className="tilt-labyrinth-trophy">ðŸ†</div>
-          <h2 className="tilt-labyrinth-results-title">
-            {humanEntry && humanEntry.id === winnerEntry?.id
-              ? 'You Win!'
-              : `${winnerEntry?.name ?? 'Winner'} Wins!`}
-          </h2>
-          {(() => {
-            const rank = leaderboard.findIndex((e) => e.isHuman);
-            return (
-              <p className="tilt-labyrinth-results-subtitle">
-                {resultsSummary}
-                {rank >= 0 && (
-                  <span className="tilt-labyrinth-your-rank">
-                    {' '}â€¢ Rank {rank + 1} of {leaderboard.length}
-                  </span>
-                )}
-              </p>
-            );
-          })()}
+      <div className="minigame-host-results tilt-labyrinth-standard-results">
+        <p className="tilt-labyrinth-results-kicker">Final standings</p>
+        <h2 className="minigame-host-results-title">Competition Results</h2>
+        <p className="minigame-host-results-winner">
+          {winnerEntry?.isHuman ? 'You win!' : `${winnerEntry?.name ?? 'Unknown'} wins!`}
+        </p>
+        {humanEntry && (
+          <p className="minigame-host-results-score">
+            Your adjusted time: <strong>{formatTiltLabyrinthScore(humanEntry.adjustedTimeMs)}</strong>
+            {humanRank >= 0 && ` | Rank ${humanRank + 1} of ${leaderboard.length}`}
+          </p>
+        )}
+
+        <ol className="minigame-host-leaderboard" aria-label="Final standings">
+          {leaderboard.map((entry, index) => (
+            <li
+              key={entry.id}
+              className={[
+                'minigame-host-leaderboard-entry',
+                entry.isHuman ? 'minigame-host-leaderboard-entry--you' : '',
+                index === 0 ? 'minigame-host-leaderboard-entry--winner' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              <span className="minigame-host-leaderboard-rank" aria-hidden="true">#{index + 1}</span>
+              <span className="minigame-host-leaderboard-name">
+                {entry.name}
+                {entry.isHuman && <span className="minigame-host-leaderboard-you"> (You)</span>}
+              </span>
+              <span className="minigame-host-leaderboard-score tilt-labyrinth-result-score">
+                <strong>{formatTiltLabyrinthScore(entry.adjustedTimeMs)}</strong>
+                <small>{formatTiltLabyrinthScore(entry.rawTimeMs)} + {entry.hazardHits * 3}s penalty</small>
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        <div className="minigame-host-results-actions">
+          <button
+            type="button"
+            className="minigame-host-results-btn"
+            onClick={() => onComplete({
+              rawValue: continueValue,
+              rawResults: labState.finalScores,
+              authoritativeWinnerId: labState.winnerId,
+              authoritativeLastPlaceId: labState.lastPlaceId,
+            })}
+          >
+            Continue
+          </button>
         </div>
-      </MinigameCompleteWrapper>
+      </div>
     );
   }
 
-  // â”€â”€ Playing screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Playing screen
   const objectiveText = !hasKey
     ? 'Find the key'
     : !lockOpen
@@ -1072,14 +1048,14 @@ export default function TiltLabyrinthComp({
       <div className="tilt-labyrinth-hud">
         <div className="tilt-labyrinth-controls-hint">
           {useTilt
-            ? 'ðŸ“± Tilt to move â€¢ Keys also work'
-            : 'â¬†â¬‡â¬…âž¡ Arrow keys / WASD or drag'}
+            ? 'Tilt to move | Keys also work'
+            : 'Arrow keys / WASD or drag'}
         </div>
       </div>
 
       <div className="tilt-labyrinth-status-bar" aria-label="Tilt Labyrinth status">
         <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--objective">
-          ðŸŽ¯ {objectiveText}
+          Objective: {objectiveText}
         </div>
         <div
           className={[
@@ -1089,7 +1065,7 @@ export default function TiltLabyrinthComp({
             .filter(Boolean)
             .join(' ')}
         >
-          ðŸ”‘ {hasKey ? 'Key found' : 'No key'}
+          Key: {hasKey ? 'Found' : 'Not found'}
         </div>
         <div
           className={[
@@ -1099,13 +1075,13 @@ export default function TiltLabyrinthComp({
             .filter(Boolean)
             .join(' ')}
         >
-          ðŸšª {lockOpen ? 'Gate open' : 'Gate locked'}
+          Gate: {lockOpen ? 'Open' : 'Locked'}
         </div>
         <div className="tilt-labyrinth-status-chip">
           Time {formatTiltLabyrinthScore(elapsedSeconds * 1000)}
         </div>
         <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--danger">
-          Hazards {hazardHits} · +{hazardHits * 3}s
+          Hazards {hazardHits} | +{hazardHits * 3}s
         </div>
       </div>
 
@@ -1120,7 +1096,7 @@ export default function TiltLabyrinthComp({
       </div>
 
       <p className="tilt-labyrinth-goal-hint">
-        Find the ðŸ”‘ key, unlock the gate, and survive the floating hazards to reach the ðŸ goal.
+        Find the key, unlock the gate, avoid the floating hazards, and reach the goal.
       </p>
     </div>
   );
