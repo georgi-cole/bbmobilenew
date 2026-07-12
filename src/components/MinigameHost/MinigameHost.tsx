@@ -138,6 +138,7 @@ export default function MinigameHost({
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
+  const [showFullRanking, setShowFullRanking] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
   const competitionRetryEnabled = competitionRetry?.enabled ?? false;
   const rulesGame = useMemo(
@@ -163,6 +164,7 @@ export default function MinigameHost({
   const handleRulesDismiss = useCallback(() => {
     setFinalValue(0);
     setWasPartial(true);
+    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -199,6 +201,7 @@ export default function MinigameHost({
   const handleQuit = useCallback((partial: LegacyRawResult) => {
     setFinalValue(partial.value);
     setWasPartial(true);
+    setShowFullRanking(false);
     setPhase('results');
   }, []);
 
@@ -662,7 +665,14 @@ export default function MinigameHost({
       )}
 
       {phase === 'results' && (
-        <div className="minigame-host-results">
+        <div className={`minigame-host-results ${wasPartial ? 'minigame-host-results--timeline' : ''}`}>
+          {wasPartial && <div className="minigame-host-results-rift" aria-hidden="true" />}
+          {wasPartial && (
+            <button type="button" className="minigame-host-results-close" aria-label="Close results" onClick={() => {
+              if (showCompetitionRetry) competitionRetry?.onContinueWithoutRetry?.();
+              handleContinue();
+            }}>×</button>
+          )}
           <h2 className="minigame-host-results-title">
             {wasPartial ? '🚪 Exited Early' : '🏁 Finished!'}
           </h2>
@@ -676,11 +686,11 @@ export default function MinigameHost({
                   even if the timeline you saw was heading somewhere else.
                 </p>
               )}
-              <p className="minigame-host-results-winner">
+              <p className={`minigame-host-results-winner ${wasPartial ? 'minigame-host-results-winner--timeline' : ''}`}>
                 🏆 {leaderboard[0]?.name ?? 'Unknown'} wins
                 {leaderboard[0]?.isHuman ? " — that's you!" : '!'}
               </p>
-              <ol className="minigame-host-leaderboard">
+              <ol className={`minigame-host-leaderboard ${wasPartial && !showFullRanking ? 'minigame-host-leaderboard--preview' : ''}`}>
                 {leaderboard.map((entry, i) => (
                   <li
                     key={entry.id}
@@ -729,10 +739,15 @@ export default function MinigameHost({
           )}
 
           <div className="minigame-host-results-actions">
+            {wasPartial && leaderboard && (
+              <button type="button" className="minigame-host-results-btn minigame-host-results-btn--ranking" onClick={() => setShowFullRanking((isShowing) => !isShowing)}>
+                {showFullRanking ? 'Hide full ranking' : 'See full ranking'}
+              </button>
+            )}
             {activeCompetitionRetry && (
               <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
                 <p className="minigame-host-results-retry-copy">
-                  Finished last? Watch a short ad to retry before the result is locked in.
+                  One short ad can rewind this round before the result is locked in.
                 </p>
                 <button
                   className="minigame-host-results-btn minigame-host-results-btn--retry"
@@ -740,7 +755,7 @@ export default function MinigameHost({
                   disabled={activeCompetitionRetry.pending}
                   autoFocus
                 >
-                  {activeCompetitionRetry.pending ? 'Opening Ad…' : 'Watch Ad to Retry'}
+                  {activeCompetitionRetry.pending ? 'Opening Ad…' : '↶ Reverse time'}
                 </button>
               </div>
             )}
