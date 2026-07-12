@@ -7,7 +7,7 @@
  *  - Keyboard controls (arrow keys / WASD)
  *  - Device orientation (tilt) support with graceful permission handling
  *  - Touch drag fallback for mobile devices without tilt access
- *  - Finish-time scoring (lower time = better score)
+ *  - Unlimited play with adjusted-time scoring (raw time + 3 seconds per hazard hit)
  *  - Results screen with full ranked leaderboard (ascending by time)
  *  - Reduced-motion: tilt controls fall back to keyboard/touch automatically
  *
@@ -16,7 +16,7 @@
  *  - On maze solved, dispatches setHumanScore then resolveTiltLabyrinthOutcome.
  *  - After the user taps Continue on the results screen, calls onComplete.
  *
- * Scoring: lower-is-better. Winner = fastest time. Last place = slowest time.
+ * Scoring: lower-is-better adjusted time. Winner = fastest after hazard penalties.
  */
 
 import {
@@ -34,13 +34,18 @@ import {
   resetTiltLabyrinth,
 } from '../../features/tiltLabyrinth/tiltLabyrinthSlice';
 import { resolveTiltLabyrinthOutcome } from '../../features/tiltLabyrinth/thunks';
-import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition/index';
+import { getDefaultCompetitionProfile } from '../../ai/competition/index';
+import type { CompetitionSkillProfile } from '../../ai/competition/types';
 import { mulberry32 } from '../../store/rng';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
-import type { TiltLabyrinthPrizeType } from '../../features/tiltLabyrinth/tiltLabyrinthSlice';
+import type {
+  TiltLabyrinthPrizeType,
+  TiltLabyrinthRunDetails,
+} from '../../features/tiltLabyrinth/tiltLabyrinthSlice';
 import {
+  calculateTiltAdjustedTime,
   resolveCollisions,
   type TiltLabyrinthMazeCell as MazeCell,
 } from './tiltLabyrinthCollision';
@@ -81,8 +86,6 @@ const KEY_RADIUS = 7;
 const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
 
-const TIME_LIMIT_MS = 60_000;
-const FAILED_RUN_SCORE_MS = TIME_LIMIT_MS + 1;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -168,7 +171,10 @@ function randomInt(rng: () => number, min: number, max: number): number {
 }
 
 function formatTiltLabyrinthScore(timeMs: number): string {
-  return timeMs > TIME_LIMIT_MS ? 'DNF' : `${(timeMs / 1000).toFixed(2)}s`;
+  const totalSeconds = timeMs / 1000;
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(2)}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  return `${minutes}:${(totalSeconds % 60).toFixed(2).padStart(5, '0')}`;
 }
 
 function pickFeaturePoint(
@@ -274,6 +280,63 @@ function generateMaze(cols: number, rows: number, rng: () => number): MazeCell[]
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
+type SimulatedRun = TiltLabyrinthRunDetails;
+
+function shortestPathLength(maze: MazeCell[][], start: FeaturePoint, end: FeaturePoint): number {
+  const queue: Array<{ col: number; row: number; distance: number }> = [
+    { col: start.col, row: start.row, distance: 0 },
+  ];
+  const visited = new Set([`${start.col}:${start.row}`]);
+  const directions = [
+    { wall: 'top' as const, dc: 0, dr: -1 },
+    { wall: 'right' as const, dc: 1, dr: 0 },
+    { wall: 'bottom' as const, dc: 0, dr: 1 },
+    { wall: 'left' as const, dc: -1, dr: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current.col === end.col && current.row === end.row) return current.distance;
+    for (const direction of directions) {
+      if (maze[current.row][current.col].walls[direction.wall]) continue;
+      const col = current.col + direction.dc;
+      const row = current.row + direction.dr;
+      const key = `${col}:${row}`;
+      if (col < 0 || row < 0 || col >= MAZE_COLS || row >= MAZE_ROWS || visited.has(key)) continue;
+      visited.add(key);
+      queue.push({ col, row, distance: current.distance + 1 });
+    }
+  }
+  return MAZE_COLS * MAZE_ROWS;
+}
+
+function simulateHumanLikeAiRun(
+  profile: CompetitionSkillProfile,
+  routeCells: number,
+  rng: () => number,
+): SimulatedRun {
+  const navigationSkill =
+    profile.mental * 0.35 + profile.precision * 0.4 + profile.nerve * 0.15 + profile.consistency * 0.1;
+  const movementMs = routeCells * (180 + (100 - navigationSkill) * 1.2);
+  const hesitationMs = routeCells * (40 + (100 - profile.mental) * 0.9);
+  const mistakes = Math.floor(rng() * 3 + (100 - profile.mental) / 24);
+  let mistakeMs = 0;
+  for (let index = 0; index < mistakes; index++) mistakeMs += 3_000 + rng() * 9_000;
+  const hazardHits = Math.floor(rng() * (1 + (100 - profile.precision) / 18));
+  const recoveryMs = hazardHits * (1_000 + rng() * 3_000);
+  const startAndGateHesitationMs = 5_000 + rng() * 10_000;
+  const confusionChance = 0.03 + profile.chokeRisk / 500;
+  const confusionMs = rng() < confusionChance ? 30_000 + rng() * 330_000 : 0;
+  const rawTimeMs = Math.max(
+    15_000,
+    Math.round(movementMs + hesitationMs + mistakeMs + recoveryMs + startAndGateHesitationMs + confusionMs),
+  );
+  return {
+    rawTimeMs,
+    hazardHits,
+    adjustedTimeMs: calculateTiltAdjustedTime(rawTimeMs, hazardHits),
+  };
+}
 function traceMazeWalls(ctx: CanvasRenderingContext2D, maze: MazeCell[][]): void {
   ctx.beginPath();
   for (let row = 0; row < MAZE_ROWS; row++) {
@@ -487,6 +550,7 @@ export default function TiltLabyrinthComp({
 }: TiltLabyrinthCompProps) {
   const dispatch = useAppDispatch();
   const labState = useAppSelector((s: RootState) => s.tiltLabyrinth);
+  const gamePlayers = useAppSelector((s: RootState) => s.game?.players ?? []);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState | null>(null);
@@ -500,6 +564,7 @@ export default function TiltLabyrinthComp({
   const [hazardHits, setHazardHits] = useState(0);
   const [hasKey, setHasKey] = useState(false);
   const [lockOpen, setLockOpen] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // ── Initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -538,24 +603,20 @@ export default function TiltLabyrinthComp({
     const humanParticipant = participants?.find((p) => p.isHuman);
     const humanId = humanParticipant?.id ?? null;
 
-    const aiModel = getMinigameAiModel('tiltLabyrinth');
+    const routeCells =
+      shortestPathLength(maze, cellCenter(0, 0), keyPos) +
+      shortestPathLength(maze, keyPos, doorPos) +
+      shortestPathLength(maze, doorPos, goalPos);
+    const runDetails: Record<string, SimulatedRun> = {};
 
     participants?.forEach((p, idx) => {
       if (p.isHuman) return;
-      aiScores[p.id] = Math.round(
-        simulateAiPerformance({
-          minigameKey: 'tiltLabyrinth',
-          seed,
-          playerId: p.id,
-          participantIndex: idx,
-          profile: undefined,
-          minigameModel: {
-            ...aiModel,
-            minScore: 5_000,
-            maxScore: TIME_LIMIT_MS,
-          },
-        }),
-      );
+      const profile = gamePlayers.find((player) => player.id === p.id)?.competitionProfile
+        ?? getDefaultCompetitionProfile();
+      const aiRng = makeRng((seed ^ Math.imul(idx + 1, 0x9e3779b9)) >>> 0);
+      const run = simulateHumanLikeAiRun(profile, routeCells, aiRng);
+      runDetails[p.id] = run;
+      aiScores[p.id] = run.adjustedTimeMs;
     });
 
     // Fallback for when no participants structure is provided
@@ -563,7 +624,9 @@ export default function TiltLabyrinthComp({
       const fallbackRng = mulberry32((seed >>> 0) ^ 0xabcdef01);
       for (const id of participantIds) {
         if (id === humanId) continue;
-        aiScores[id] = Math.round(5_000 + fallbackRng() * 45_000);
+        const run = simulateHumanLikeAiRun(getDefaultCompetitionProfile(), routeCells, fallbackRng);
+        runDetails[id] = run;
+        aiScores[id] = run.adjustedTimeMs;
       }
     }
 
@@ -583,6 +646,7 @@ export default function TiltLabyrinthComp({
         competitionType: prizeType,
         seed,
         aiScores,
+        aiRunDetails: runDetails,
       }),
     );
 
@@ -610,7 +674,7 @@ export default function TiltLabyrinthComp({
 
   // Include all props that supply competition data. The stable identity guard
   // prevents parent rerenders with new array instances from resetting a result.
-  }, [dispatch, seed, participantIds, participants, prizeType]);
+  }, [dispatch, seed, participantIds, participants, prizeType, gamePlayers]);
 
   useEffect(() => () => {
     dispatch(resetTiltLabyrinth());
@@ -624,7 +688,9 @@ export default function TiltLabyrinthComp({
       if (resolvedRef.current) return;
       resolvedRef.current = true;
       cancelAnimationFrame(rafRef.current);
-      dispatch(setHumanScore(timeMs));
+      const hits = gameRef.current?.hazardHits ?? 0;
+      const adjustedTimeMs = calculateTiltAdjustedTime(timeMs, hits);
+      dispatch(setHumanScore({ rawTimeMs: timeMs, hazardHits: hits, adjustedTimeMs }));
       dispatch(resolveTiltLabyrinthOutcome());
     },
     [dispatch],
@@ -646,13 +712,9 @@ export default function TiltLabyrinthComp({
       if (!gs.finished) {
         gs.elapsed = performance.now() - gs.startTime;
 
-        if (gs.elapsed >= TIME_LIMIT_MS) {
-          gs.finished = true;
-          gs.finishTime = FAILED_RUN_SCORE_MS;
-          handleFinish(FAILED_RUN_SCORE_MS);
-          drawMaze(ctx, maze, gs, gs.elapsed);
-          return;
-        }
+        const nextElapsedSeconds = Math.floor(gs.elapsed / 1000);
+        setElapsedSeconds((current) => current === nextElapsedSeconds ? current : nextElapsedSeconds);
+
 
         // Compute acceleration
         let ax = 0;
@@ -894,14 +956,25 @@ export default function TiltLabyrinthComp({
     const entries = Object.entries(labState.finalScores)
       .map(([id, timeMs]) => {
         const p = labState.participants.find((x) => x.id === id);
+        const details = labState.runDetails?.[id] ?? {
+          rawTimeMs: timeMs,
+          hazardHits: 0,
+          adjustedTimeMs: timeMs,
+        };
         return {
           id,
           name: p?.name ?? id,
           isHuman: p?.isHuman ?? false,
           timeMs,
+          ...details,
         };
       })
-      .sort((a, b) => a.timeMs - b.timeMs); // ascending: best (lowest) first
+      .sort((a, b) =>
+        a.adjustedTimeMs - b.adjustedTimeMs ||
+        a.hazardHits - b.hazardHits ||
+        a.rawTimeMs - b.rawTimeMs ||
+        a.id.localeCompare(b.id),
+      );
     return entries;
   }, [labState]);
 
@@ -911,10 +984,7 @@ export default function TiltLabyrinthComp({
     const continueValue = labState.humanScore ?? 0;
     let resultsSummary = 'Final standings recorded.';
     if (humanEntry) {
-      resultsSummary =
-        humanEntry.timeMs > TIME_LIMIT_MS
-          ? 'You did not finish before time ran out.'
-          : `Your time: ${formatTiltLabyrinthScore(humanEntry.timeMs)}`;
+      resultsSummary = `Your adjusted time: ${formatTiltLabyrinthScore(humanEntry.adjustedTimeMs)}`;
     } else if (winnerEntry) {
       resultsSummary = `${winnerEntry.name} finished in ${formatTiltLabyrinthScore(winnerEntry.timeMs)}`;
     }
@@ -926,6 +996,7 @@ export default function TiltLabyrinthComp({
           rawValue: continueValue,
           rawResults: labState.finalScores,
           authoritativeWinnerId: labState.winnerId,
+          authoritativeLastPlaceId: labState.lastPlaceId,
         })}
         placementsNode={
           <ol className="tilt-labyrinth-placements" role="list" aria-label="Final standings">
@@ -952,7 +1023,10 @@ export default function TiltLabyrinthComp({
                   )}
                 </span>
                 <span className="tilt-labyrinth-time">
-                  {formatTiltLabyrinthScore(entry.timeMs)}
+                  {formatTiltLabyrinthScore(entry.adjustedTimeMs)}
+                  <small>
+                    {` ${formatTiltLabyrinthScore(entry.rawTimeMs)} + ${entry.hazardHits * 3}s`}
+                  </small>
                 </span>
               </li>
             ))}
@@ -1027,8 +1101,11 @@ export default function TiltLabyrinthComp({
         >
           🚪 {lockOpen ? 'Gate open' : 'Gate locked'}
         </div>
+        <div className="tilt-labyrinth-status-chip">
+          Time {formatTiltLabyrinthScore(elapsedSeconds * 1000)}
+        </div>
         <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--danger">
-          👾 Hits {hazardHits}
+          Hazards {hazardHits} � +{hazardHits * 3}s
         </div>
       </div>
 

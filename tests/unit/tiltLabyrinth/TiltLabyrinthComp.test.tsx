@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import type { ReactNode } from 'react';
 import TiltLabyrinthComp from '../../../src/components/TiltLabyrinthComp/TiltLabyrinthComp';
 import {
+  calculateTiltAdjustedTime,
   resolveCollisions,
 } from '../../../src/components/TiltLabyrinthComp/tiltLabyrinthCollision';
 import tiltLabyrinthReducer, {
@@ -87,6 +88,11 @@ function makeStore() {
   });
 }
 
+describe('Tilt Labyrinth adjusted scoring', () => {
+  it('accepts unlimited raw time and adds three seconds per hazard hit', () => {
+    expect(calculateTiltAdjustedTime(7 * 60_000, 4)).toBe(432_000);
+  });
+});
 describe('TiltLabyrinthComp movement hardening', () => {
   beforeEach(() => {
     stubCanvas();
@@ -151,7 +157,7 @@ describe('TiltLabyrinthComp movement hardening', () => {
     expect(result.vy).toBe(velocityY);
   });
 
-  it('renders the controls hint without a visible time-remaining HUD', () => {
+  it('shows elapsed time and hazard penalties without a time limit', () => {
     render(
       <Provider store={makeStore()}>
         <TiltLabyrinthComp
@@ -181,7 +187,8 @@ describe('TiltLabyrinthComp movement hardening', () => {
 
     expect(screen.queryByLabelText(/time remaining/i)).not.toBeInTheDocument();
     expect(screen.getByText(/arrow keys \/ wasd or drag/i)).toBeInTheDocument();
-    expect(screen.getByText(/hits 0/i)).toBeInTheDocument();
+    expect(screen.getByText(/time 0.00s/i)).toBeInTheDocument();
+    expect(screen.getByText(/hazards 0.*\+0s/i)).toBeInTheDocument();
   });
 
   it('continues with the recorded human finish time even when the leaderboard lacks a human entry', () => {
@@ -237,6 +244,7 @@ describe('TiltLabyrinthComp movement hardening', () => {
       rawValue: 4321,
       rawResults: { 'ai-1': 6000 },
       authoritativeWinnerId: 'ai-1',
+      authoritativeLastPlaceId: null,
     });
   });
 

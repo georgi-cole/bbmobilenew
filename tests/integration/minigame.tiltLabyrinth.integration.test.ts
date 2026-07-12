@@ -182,9 +182,12 @@ describe('Registry — tiltLabyrinth entry', () => {
     expect(getGame('tiltLabyrinth')?.timeLimitMs).toBe(0);
   });
 
-  it('documents that finish time is recorded without a countdown', () => {
+  it('documents unlimited play and hazard penalties', () => {
     expect(getGame('tiltLabyrinth')?.instructions).toContain(
-      'There is no countdown — your finish time is recorded when you reach the goal',
+      'There is no time limit - take as long as you need to finish',
+    );
+    expect(getGame('tiltLabyrinth')?.instructions).toContain(
+      'Each hazard hit adds 3 seconds to your completion time',
     );
   });
 });
@@ -538,7 +541,7 @@ describe('Full slice round-trip via resolveTiltLabyrinthOutcome', () => {
     expect(gameState.lastHohCompFinisherId).toBe('p3');
   });
 
-  it('timeout (DNF at 60000ms) is treated as worst time for last-place', () => {
+  it('accepts a seven-minute completion and ranks it normally', () => {
     const store = makeIntegrationStore('loh_comp');
     store.dispatch(
       initTiltLabyrinth({
@@ -552,11 +555,11 @@ describe('Full slice round-trip via resolveTiltLabyrinthOutcome', () => {
       }),
     );
 
-    // alice DNFs (60000ms timeout)
-    store.dispatch(setHumanScore(60_000));
+    // Unlimited play: a seven-minute finish is valid, but naturally ranks last.
+    store.dispatch(setHumanScore(420_000));
 
     const { winnerId, lastPlaceId } = store.getState().tiltLabyrinth;
     expect(winnerId).toBe('bob');     // fastest AI
-    expect(lastPlaceId).toBe('alice'); // alice hit the time limit
+    expect(lastPlaceId).toBe('alice'); // alice completed, but was slowest
   });
 });

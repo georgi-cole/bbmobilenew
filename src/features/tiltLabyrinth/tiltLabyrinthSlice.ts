@@ -26,6 +26,12 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 export type TiltLabyrinthPrizeType = 'LOH' | 'POS';
 export type TiltLabyrinthPhase = 'idle' | 'playing' | 'complete';
 
+export interface TiltLabyrinthRunDetails {
+  rawTimeMs: number;
+  hazardHits: number;
+  adjustedTimeMs: number;
+}
+
 export interface TiltLabyrinthParticipant {
   id: string;
   name: string;
@@ -46,6 +52,7 @@ export interface TiltLabyrinthState {
   humanScore: number | null;
   /** All final scores (AI + human). Populated when phase transitions to 'complete'. */
   finalScores: Record<string, number>;
+  runDetails: Record<string, TiltLabyrinthRunDetails>;
 
   winnerId: string | null;
   lastPlaceId: string | null;
@@ -65,6 +72,7 @@ const initialState: TiltLabyrinthState = {
   aiScores: {},
   humanScore: null,
   finalScores: {},
+  runDetails: {},
   winnerId: null,
   lastPlaceId: null,
   outcomeResolved: false,
@@ -116,6 +124,7 @@ export interface InitTiltLabyrinthPayload {
   seed: number;
   /** Pre-computed AI completion times in ms, keyed by player ID. Human's ID must NOT be included. */
   aiScores: Record<string, number>;
+  aiRunDetails?: Record<string, TiltLabyrinthRunDetails>;
 }
 
 const tiltLabyrinthSlice = createSlice({
@@ -127,7 +136,7 @@ const tiltLabyrinthSlice = createSlice({
      * Should be dispatched by TiltLabyrinthComp on mount (once).
      */
     initTiltLabyrinth(state, action: PayloadAction<InitTiltLabyrinthPayload>) {
-      const { participantIds, participantNames, humanPlayerId, competitionType, seed, aiScores } =
+      const { participantIds, participantNames, humanPlayerId, competitionType, seed, aiScores, aiRunDetails } =
         action.payload;
 
       state.phase = 'playing';
@@ -137,6 +146,7 @@ const tiltLabyrinthSlice = createSlice({
       state.aiScores = aiScores;
       state.humanScore = null;
       state.finalScores = {};
+      state.runDetails = { ...aiRunDetails };
       state.winnerId = null;
       state.lastPlaceId = null;
       state.outcomeResolved = false;
@@ -153,11 +163,18 @@ const tiltLabyrinthSlice = createSlice({
      * Transitions phase to 'complete'.
      * Lower time = better (faster maze completion).
      */
-    setHumanScore(state, action: PayloadAction<number>) {
+    setHumanScore(
+      state,
+      action: PayloadAction<number | TiltLabyrinthRunDetails>,
+    ) {
       if (state.phase !== 'playing') return;
 
-      const humanScore = action.payload;
+      const details = typeof action.payload === 'number'
+        ? { rawTimeMs: action.payload, hazardHits: 0, adjustedTimeMs: action.payload }
+        : action.payload;
+      const humanScore = details.adjustedTimeMs;
       state.humanScore = humanScore;
+      if (state.humanPlayerId) state.runDetails[state.humanPlayerId] = details;
 
       // Build full score map: AI scores + human score
       const allScores: Record<string, number> = { ...state.aiScores };
