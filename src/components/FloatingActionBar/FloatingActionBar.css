@@ -1,7 +1,7 @@
 /* ── Floating Action Bar ────────────────────────────────────────────────── */
 .fab {
   position: absolute;
-  bottom: 16px;
+  bottom: var(--game-action-dock-gap, 12px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;

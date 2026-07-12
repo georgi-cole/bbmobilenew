@@ -37,7 +37,7 @@ describe('responsive game layout budget', () => {
     }))
 
     expect(budget.cssVars).toMatchObject({
-      '--game-safe-top': '24px',
+      '--game-safe-top': '30px',
     })
   })
 
@@ -147,12 +147,16 @@ describe('responsive game layout budget', () => {
     }))
 
     expect(budget.cssVars).toMatchObject({
-      '--game-safe-top': '24px',
+      '--game-safe-top': '30px',
     })
     expect(['normal', 'compact']).toContain(budget.bottomControlsMode)
     expect(budget.rosterMode).toBe('normal')
     expect(budget.compactRoster).toBe(false)
     expect(readCssPx(budget, '--game-screen-tv-viewport-min-height')).toBeGreaterThanOrEqual(144)
+    const dockGap = readCssPx(budget, '--game-action-dock-gap')
+    const dockHeight = readCssPx(budget, '--game-action-dock-height')
+    const dockClearance = readCssPx(budget, '--game-screen-floating-dock-clearance')
+    expect(dockClearance).toBe(dockHeight + dockGap * 2)
   })
 
   it('tries compact bottom controls before compact roster fallback on small old phones', () => {
