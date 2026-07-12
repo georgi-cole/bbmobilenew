@@ -8,7 +8,7 @@
  * a winner without user awareness.
  *
  * Fix: both buttons now route through `setPhase('results')` so the player
- * sees the "🚪 Exited Early" screen and must click "Continue ▶" to confirm.
+ * sees the "Exited early" screen and must click "Continue ▶" to confirm.
  *
  * Tests verify:
  *  1. Clicking ✕ on the rules modal transitions to results screen (does NOT
@@ -190,9 +190,9 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
     });
 
     // Results screen with "Exited Early" heading should now appear
-    expect(screen.getByText('🚪 Exited Early')).toBeTruthy();
-    expect(screen.getByText(/scrambled the time-space continuum/i)).toBeInTheDocument();
-    expect(screen.getByText(/AI-1 won the competition/i)).toBeInTheDocument();
+    expect(screen.getByText('Exited early')).toBeTruthy();
+    expect(screen.getByText(/slipped out of the timeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/AI-1 wins/i)).toBeInTheDocument();
     // Continue button should be present
     expect(screen.getByRole('button', { name: /continue/i })).toBeTruthy();
   });
@@ -274,7 +274,7 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
       fireEvent.click(screen.getByRole('button', { name: /exit minigame/i }));
     });
 
-    expect(screen.getByText('🚪 Exited Early')).toBeTruthy();
+    expect(screen.getByText('Exited early')).toBeTruthy();
   });
 
   it('clicking Continue after playing-phase exit calls onDone(0, true)', async () => {
