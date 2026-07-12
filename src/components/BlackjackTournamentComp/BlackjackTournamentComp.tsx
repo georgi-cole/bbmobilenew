@@ -510,29 +510,37 @@ export default function BlackjackTournamentComp({
   const { phase } = bt;
 
   if (phase === 'league_results') {
+    const finalistIds = bt.finalistIds ?? [];
+    const finalistCount = finalistIds.length;
     return (
       <div className="bjt-container bjt-result" role="region" aria-label="League rankings">
         <h2 className="bjt-title">📊 League Complete</h2>
         <p className="bjt-subtitle">
-          Every player has completed the round robin. The top three advance with 3 lives each.
+          The top three scores advance, and every tie at the cutoff qualifies. {finalistCount} players enter the finals with 3 lives each.
         </p>
         <div className="minigame-placement-list bjt-placement-list" role="list" aria-label="League standings">
-          {bt.leagueRankings.map((id, index) => (
+          {bt.leagueRankings.map((id) => {
+            const score = bt.leagueScores[id] ?? 0;
+            const sharedRank = bt.leagueRankings.findIndex(
+              (rankedId) => (bt.leagueScores[rankedId] ?? 0) === score,
+            ) + 1;
+            return (
             <div key={id} className="bjt-placement-item" role="listitem">
-              <span className="bjt-placement-rank">#{index + 1}</span>
+              <span className="bjt-placement-rank">#{sharedRank}</span>
               <img src={avatarForId(id)} alt={getName(id)} className="bjt-roster-avatar" />
               <span className="bjt-placement-name">{getName(id)}</span>
               <span className="bjt-placement-detail">{bt.leagueScores[id] ?? 0} pts</span>
-              {index < 3 && <span className="bjt-badge">FINALIST</span>}
+              {finalistIds.includes(id) && <span className="bjt-badge">FINALIST</span>}
             </div>
-          ))}
+            );
+          })}
         </div>
         <button
           type="button"
           className="bjt-btn bjt-btn--continue"
           onClick={() => dispatch(startFinalStage())}
         >
-          Start Final Three →
+          Start Finals →
         </button>
       </div>
     );
@@ -782,7 +790,7 @@ export default function BlackjackTournamentComp({
       <div className="bjt-container bjt-duel" role="region" aria-label="Blackjack duel">
         <h2 className="bjt-title">
           ⚔️ {isFinalDuelActive
-            ? 'Final Three Duel'
+            ? 'Finals Duel'
             : `League Match ${bt.leagueOpponentIndex + 1}/${bt.leagueOpponentIds.length}`}: {aName} vs {bName}
         </h2>
         {isFinalDuelActive && (

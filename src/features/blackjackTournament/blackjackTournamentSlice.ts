@@ -87,7 +87,7 @@ export interface BlackjackTournamentState {
   leagueRankings: string[];
   leagueOpponentIds: string[];
   leagueOpponentIndex: number;
-  /** Top-three finalists, in league ranking order. */
+  /** Finalists in league ranking order, including every tie at the top-three cutoff. */
   finalistIds: string[] | null;
 
   humanPlayerId: string | null;
@@ -381,6 +381,18 @@ export function rankLeaguePlayers(
   );
 }
 
+/** Select the top three scores without using an invisible tiebreaker at the cutoff. */
+export function selectLeagueFinalists(
+  leagueRankings: string[],
+  scores: Record<string, number>,
+  guaranteedPlaces = 3,
+): string[] {
+  if (leagueRankings.length <= guaranteedPlaces) return [...leagueRankings];
+  const cutoffId = leagueRankings[guaranteedPlaces - 1];
+  const cutoffScore = scores[cutoffId] ?? 0;
+  return leagueRankings.filter((id) => (scores[id] ?? 0) >= cutoffScore);
+}
+
 function shuffleLeagueOpponents(ids: string[], seed: number): string[] {
   const result = [...ids];
   const rng = mulberry32((seed ^ 0x1ea6e001) >>> 0);
@@ -494,10 +506,11 @@ function dealDuelCards(
 function finishLeague(state: BlackjackTournamentState): void {
   state.leagueScores = { ...state.playerScores };
   state.leagueRankings = rankLeaguePlayers(state.allPlayerIds, state.leagueScores, state.seed);
-  const finalists = state.leagueRankings.slice(0, Math.min(3, state.leagueRankings.length));
+  const finalists = selectLeagueFinalists(state.leagueRankings, state.leagueScores);
   state.finalistIds = finalists;
   state.remainingPlayerIds = finalists;
-  state.eliminatedPlayerIds = state.leagueRankings.slice(finalists.length);
+  const finalistSet = new Set(finalists);
+  state.eliminatedPlayerIds = state.leagueRankings.filter((id) => !finalistSet.has(id));
   state.fighterAId = null;
   state.fighterBId = null;
   state.currentDuel = null;
