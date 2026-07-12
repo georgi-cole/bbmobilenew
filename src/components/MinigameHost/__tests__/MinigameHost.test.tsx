@@ -95,6 +95,7 @@ describe('MinigameHost competition retry', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Exit minigame' }))
 
     expect(screen.getByText('Watch a short ad to retry before this result is locked in.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'See full ranking' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reverse time' }))
 
@@ -125,7 +126,32 @@ describe('MinigameHost competition retry', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Finish Test Game' }))
 
-    expect(screen.queryByRole('button', { name: 'Watch Ad to Retry' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Reverse time' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Continue ▶' })).toBeInTheDocument()
+  })
+
+  it('uses the alternative-universe treatment when the human organically finishes last', () => {
+    render(
+      <MinigameHost
+        game={baseGame}
+        onDone={vi.fn()}
+        skipRules
+        skipCountdown
+        participants={makeParticipants(0, 50)}
+        competitionRetry={{ enabled: true, onWatch: vi.fn() }}
+      />,
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish Test Game' }))
+
+    expect(screen.getByText('Alternative universe')).toBeInTheDocument()
+    expect(screen.getByText('Is this real?')).toBeInTheDocument()
+    expect(screen.getByText(/somehow you finished last/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reverse time' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /continue/i })).toBeNull()
   })
 })
