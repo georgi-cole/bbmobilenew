@@ -94,9 +94,9 @@ describe('MinigameHost competition retry', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Exit minigame' }))
 
-    expect(screen.getByText('One short ad can rewind this round before the result is locked in.')).toBeInTheDocument()
+    expect(screen.getByText('Finished last? Watch a short ad to retry before the result is locked in.')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '↶ Reverse time' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Watch Ad to Retry' }))
 
     expect(onWatch).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Exit minigame' })).toBeInTheDocument()
