@@ -37,7 +37,7 @@ describe('responsive game layout budget', () => {
     }))
 
     expect(budget.cssVars).toMatchObject({
-      '--game-safe-top': '30px',
+      '--game-safe-top': '44px',
     })
   })
 
@@ -147,7 +147,7 @@ describe('responsive game layout budget', () => {
     }))
 
     expect(budget.cssVars).toMatchObject({
-      '--game-safe-top': '30px',
+      '--game-safe-top': '44px',
     })
     expect(['normal', 'compact']).toContain(budget.bottomControlsMode)
     expect(budget.rosterMode).toBe('normal')

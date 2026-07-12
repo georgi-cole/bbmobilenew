@@ -19,7 +19,7 @@ describe('safe-area layout styles', () => {
 
     expect(globalCss).toContain('--safe-top: env(safe-area-inset-top, 0px);');
     expect(globalCss).toContain('--safe-bottom: env(safe-area-inset-bottom, 0px);');
-    expect(globalCss).toContain('html.is-chrome-android { --app-safe-area-top-fallback: 24px; }');
+    expect(globalCss).toContain('html.is-chrome-android { /* Clear centered punch-hole cameras before drawing the TV header edge. */ --app-safe-area-top-fallback: 44px; }');
     expect(existsSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.tsx'))).toBe(false);
     expect(existsSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.css'))).toBe(false);
     expect(appShellTsx).not.toContain('SafeGameViewport');
@@ -47,7 +47,7 @@ describe('safe-area layout styles', () => {
     expect(bottomNavCss).toContain('padding-bottom: var(--safe-bottom);');
     expect(bottomNavCss).not.toContain('env(safe-area-inset-bottom');
     expect(dockCss).toContain('.game-control-dock { position: absolute;');
-    expect(dockCss).toContain('bottom: 2px;');
+    expect(dockCss).toContain('bottom: var(--game-action-dock-gap, 8px);');
     expect(dockCss).not.toContain('position: fixed;');
     expect(dockCss).not.toContain('env(safe-area-inset-bottom');
     expect(gameScreenCss).toContain('.game-screen:has(.game-control-dock)');
