@@ -3,17 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { getAll } from '../../data/houseguests';
 import { resolveAvatar } from '../../utils/avatar';
 import { preloadImage, preloadImages } from '../../utils/preload';
-import KolequantSplash from '../KolequantSplash/KolequantSplash';
+import GameLoadingSplash from '../GameLoadingSplash/GameLoadingSplash';
 
 const GAMEPLAY_BG = '/assets/bb-gameplay-bg.svg';
-const GAMEPLAY_MESSAGES = [
-  'Opening the competition arena.',
-  'Lighting the game board.',
-  'Positioning the houseguests.',
-  'Priming the challenge controls.',
-  'Rolling cameras for the next scene.',
-] as const;
-
 function getAvatarUrls(): string[] {
   return getAll().map((hg) =>
     resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }),
@@ -58,12 +50,9 @@ export default function AssetPreloaderOverlay() {
   }, [navigate]);
 
   return (
-    <KolequantSplash
-      duration={600000}
-      ready={false}
+    <GameLoadingSplash
       progress={progress}
       status={status}
-      messages={GAMEPLAY_MESSAGES}
     />
   );
 }
