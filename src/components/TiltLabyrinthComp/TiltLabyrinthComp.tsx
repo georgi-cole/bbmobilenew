@@ -493,6 +493,7 @@ export default function TiltLabyrinthComp({
   const mazeRef = useRef<MazeCell[][] | null>(null);
   const rafRef = useRef<number>(0);
   const resolvedRef = useRef(false);
+  const initializedCompetitionRef = useRef<string | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
 
   const [useTilt, setUseTilt] = useState(false);
@@ -502,6 +503,10 @@ export default function TiltLabyrinthComp({
 
   // ── Initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
+    const competitionIdentity = [seed, prizeType, participantIds.join('\u0000')].join(':');
+    if (initializedCompetitionRef.current === competitionIdentity) return;
+    initializedCompetitionRef.current = competitionIdentity;
+
     const rng = makeRng((seed >>> 0) ^ 0xfeedcafe);
     const maze = generateMaze(MAZE_COLS, MAZE_ROWS, rng);
     mazeRef.current = maze;
@@ -603,14 +608,15 @@ export default function TiltLabyrinthComp({
     };
     resolvedRef.current = false;
 
-    return () => {
-      dispatch(resetTiltLabyrinth());
-      cancelAnimationFrame(rafRef.current);
-      orientationCleanupRef.current?.();
-    };
-  // Include all props that affect maze generation and slice init so that
-  // if MinigameHost reuses the component instance the state stays fresh.
+  // Include all props that supply competition data. The stable identity guard
+  // prevents parent rerenders with new array instances from resetting a result.
   }, [dispatch, seed, participantIds, participants, prizeType]);
+
+  useEffect(() => () => {
+    dispatch(resetTiltLabyrinth());
+    cancelAnimationFrame(rafRef.current);
+    orientationCleanupRef.current?.();
+  }, [dispatch]);
 
   // ── Finish handler ─────────────────────────────────────────────────────────
   const handleFinish = useCallback(
@@ -916,7 +922,11 @@ export default function TiltLabyrinthComp({
     return (
       <MinigameCompleteWrapper
         className="tilt-labyrinth-results"
-        onContinue={() => onComplete({ rawValue: continueValue })}
+        onContinue={() => onComplete({
+          rawValue: continueValue,
+          rawResults: labState.finalScores,
+          authoritativeWinnerId: labState.winnerId,
+        })}
         placementsNode={
           <ol className="tilt-labyrinth-placements" role="list" aria-label="Final standings">
             {leaderboard.map((entry, i) => (

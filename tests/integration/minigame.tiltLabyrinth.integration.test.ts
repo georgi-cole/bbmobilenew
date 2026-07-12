@@ -173,8 +173,9 @@ describe('Registry — tiltLabyrinth entry', () => {
     expect(getGame('tiltLabyrinth')?.reactComponentKey).toBe('TiltLabyrinth');
   });
 
-  it('has authoritative=true', () => {
+  it('uses the authoritative winner contract', () => {
     expect(getGame('tiltLabyrinth')?.authoritative).toBe(true);
+    expect(getGame('tiltLabyrinth')?.scoringAdapter).toBe('authoritative');
   });
 
   it('has timeLimitMs=0 (self-terminating)', () => {
