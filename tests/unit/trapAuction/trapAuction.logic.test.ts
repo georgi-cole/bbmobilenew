@@ -17,6 +17,7 @@ import {
   eliminatePlayers,
   getWinner,
   buildRoundReveals,
+  computeAiBids,
   nextPlacementFor,
   shouldRevealPlayerBank,
   MOCK_PARTICIPANTS,
@@ -258,6 +259,27 @@ describe('chooseAiBid', () => {
       // round 1 of a 6-player field (sustainable budget ≈ bank / 5).
       expect(avg).toBeLessThan(TRAP_AUCTION_CONFIG.startingBank * 0.5);
     });
+  });
+
+  it('does not collapse a 16-player opening round onto one shared bid', () => {
+    const participants = [
+      { id: 'human', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+      ...['Lia', 'Dex', 'Zed', 'Vee', 'Aria', 'Blue', 'Sol', 'Kai', 'Rae', 'Kian', 'Echo', 'Nova', 'Jax', 'Ivy', 'Ash']
+        .map((name) => ({ id: name.toLowerCase(), name, isHuman: false, precomputedScore: 0, previousPR: null })),
+    ];
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const players = createInitialPlayers(participants, seed);
+      const withBids = computeAiBids(players, { round: 1, players }, seed * 7919);
+      const bids = withBids.filter((player) => !player.isHuman).map((player) => player.currentBid as number);
+      const frequencies = bids.reduce<Record<number, number>>((counts, bid) => {
+        counts[bid] = (counts[bid] ?? 0) + 1;
+        return counts;
+      }, {});
+
+      expect(new Set(bids).size).toBeGreaterThanOrEqual(4);
+      expect(Math.max(...Object.values(frequencies))).toBeLessThan(bids.length / 2);
+    }
   });
 });
 

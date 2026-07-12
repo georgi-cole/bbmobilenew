@@ -27,6 +27,24 @@ function deriveSeed(base: number, salt: number): number {
   return (mulberry32((base ^ salt ^ 0xdeadbeef) >>> 0)() * 0x100000000) >>> 0;
 }
 
+function hashPlayerId(id: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+/** Stable continuous traits keep two AIs with the same broad personality distinct. */
+function getIndividualBidStyle(playerId: string) {
+  const rng = mulberry32(hashPlayerId(playerId) ^ 0x9e3779b9);
+  return {
+    riskBias: (rng() - 0.5) * 0.5,
+    volatility: 0.7 + rng() * 0.6,
+  };
+}
+
 // ─── Personality assignment ───────────────────────────────────────────────────
 
 const AI_PERSONALITIES: AiPersonality[] = [
@@ -179,7 +197,9 @@ export function chooseAiBid(
         Math.max(
           2,                         // hard minimum when bank > 1
           endgameFloor(aliveCount),  // late-game lift
-          Math.floor(player.bank * (aliveCount <= 3 ? 0.12 : 0.08)),
+          // Only the endgame needs a bank-relative floor. Applying an 8% floor
+          // to a full 16-player opening forced most strategies to exactly 8.
+          aliveCount <= 3 ? Math.floor(player.bank * 0.12) : 0,
           Math.floor(2 + roundPressure * 4),  // round pressure: up to +4 by round 8
         ),
       );
@@ -227,7 +247,10 @@ export function chooseAiBid(
       multiplier = 0.5 + rng();
   }
 
-  const raw = Math.round(sustainable * Math.max(0, multiplier));
+  const individualStyle = getIndividualBidStyle(player.id);
+  const individualNoise = (rng() - 0.5) * 0.22 * individualStyle.volatility;
+  const individualizedMultiplier = multiplier + individualStyle.riskBias + individualNoise;
+  const raw = Math.round(sustainable * Math.max(0, individualizedMultiplier));
 
   const clamped = Math.max(min, Math.min(max, raw));
   return Math.max(min, Math.min(max, Math.max(survivalFloor, clamped)));
@@ -502,7 +525,9 @@ export function computeAiBids(
 ): TrapAuctionPlayer[] {
   return players.map((p, idx) => {
     if (!p.isAlive || p.isHuman || p.currentBid !== null) return p;
-    const playerSeed = deriveSeed(roundSeed, idx);
+    // Player identity participates in the seed so roster order is not the AI's
+    // hidden strategy and two contestants never share the same random stream.
+    const playerSeed = deriveSeed(roundSeed, idx ^ hashPlayerId(p.id));
     const bid = chooseAiBid(p, state, playerSeed);
     return { ...p, currentBid: bid };
   });
