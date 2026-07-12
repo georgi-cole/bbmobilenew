@@ -237,9 +237,10 @@ export function computeResponsiveGameLayout(
   const minTvHeight = minTvViewportHeight + TV_CHROME_HEIGHT + TV_LOG_ROW_HEIGHT
   const normalWithoutHeader = normalRosterHeight - ROSTER_HEADER_HEIGHT
   const compactWithoutHeader = compactRosterHeight - ROSTER_HEADER_HEIGHT
-  const normalControlsFullRosterFits =
-    !shouldUseCompactBase && normalRosterHeight + minTvHeight <= normalAvailableAfterTv
-  const bottomControlsMode: BottomControlsMode = normalControlsFullRosterFits ? 'normal' : 'compact'
+  // Compact presentation is an explicit accessibility/display preference. A
+  // cramped viewport may scroll the roster, but must not silently opt the user
+  // into smaller tiles or controls.
+  const bottomControlsMode: BottomControlsMode = input.userCompactRoster ? 'compact' : 'normal'
   const availableAfterTv =
     bottomControlsMode === 'normal' ? normalAvailableAfterTv : compactAvailableAfterTv
   const selectedNavHeight = bottomControlsMode === 'normal' ? normalNavHeight : compactNavHeight
@@ -247,11 +248,12 @@ export function computeResponsiveGameLayout(
     bottomControlsMode === 'normal' ? normalNavContentHeight : compactNavContentHeight
   const selectedDockHeight = bottomControlsMode === 'normal' ? normalDockHeight : compactDockHeight
   const dockClearance = bottomControlsMode === 'normal' ? normalDockClearance : compactDockClearance
-  const normalStaticFitsAfterCompactControls =
-    !shouldUseCompactBase && normalWithoutHeader + minTvHeight <= compactAvailableAfterTv
   const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> =
-    input.userCompactRoster || !normalStaticFitsAfterCompactControls ? 'compact-small' : 'normal'
-  const rosterMode: ResponsiveRosterMode = baseRosterMode
+    input.userCompactRoster ? 'compact-small' : 'normal'
+  const normalStaticFits =
+    !shouldUseCompactBase && normalWithoutHeader + minTvHeight <= normalAvailableAfterTv
+  const rosterMode: ResponsiveRosterMode =
+    !input.userCompactRoster && !normalStaticFits ? 'scroll' : baseRosterMode
   const baseAvatarTileSize = baseRosterMode === 'compact-small' ? compactTileSize : normalTileSize
   const baseRosterHeight =
     baseRosterMode === 'compact-small' ? compactRosterHeight : normalRosterHeight
@@ -282,7 +284,9 @@ export function computeResponsiveGameLayout(
   const tvHeight = minTvHeight + extraLogRows * TV_LOG_ROW_HEIGHT + breathingRoom
   const tvViewportHeight = minTvViewportHeight + breathingRoom
   const compactRoster = baseRosterMode === 'compact-small'
-  const rosterMaxHeight = baseRosterHeightWithoutHeader
+  const rosterMaxHeight = rosterMode === 'scroll'
+    ? Math.max(normalTileSize, availableAfterTv - minTvHeight)
+    : baseRosterHeightWithoutHeader
   const avatarTileSize = baseAvatarTileSize
   const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
   const actionDockScale = bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
