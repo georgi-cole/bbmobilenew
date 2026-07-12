@@ -5,7 +5,6 @@ import {
   buildPollEstimate,
   countAnswerDistribution,
   initializeDiceDuel,
-  initializeThreeWayDice,
   pickAiDuelNumber,
   pickMajorityRulesQuestion,
   resolveDiceDuelRoll,
@@ -119,18 +118,6 @@ function clearRoundHintState(state: MajorityRulesState) {
   state.roundHintPeekedAnswers = null;
 }
 
-function distributionsMatch(
-  left: Record<string, number> | null,
-  right: Record<string, number>,
-): boolean {
-  if (!left) return false;
-  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
-  for (const key of keys) {
-    if ((left[key] ?? 0) !== (right[key] ?? 0)) return false;
-  }
-  return true;
-}
-
 function prepareQuestion(state: MajorityRulesState) {
   const question = pickMajorityRulesQuestion(state.seed, state.roundNumber, state.usedQuestionIds);
   state.currentQuestion = question;
@@ -208,24 +195,6 @@ function ensureAiThreeWayDuelPicks(state: MajorityRulesState) {
   if (allPicked && state.phase === 'three_way_duel_pick') {
     state.phase = 'three_way_duel_roll';
   }
-}
-
-function advanceToThreeWayDuel(state: MajorityRulesState) {
-  if (state.activeIds.length !== 3) return;
-  state.currentQuestion = null;
-  state.draftAnswers = {};
-  state.revealState = null;
-  state.blockedAnswers = {};
-  state.revoteNumber = 0;
-  clearRoundHintState(state);
-  state.finalDuel = null;
-  state.threeWayDuel = initializeThreeWayDice([
-    state.activeIds[0],
-    state.activeIds[1],
-    state.activeIds[2],
-  ]);
-  state.phase = 'three_way_duel_pick';
-  ensureAiThreeWayDuelPicks(state);
 }
 
 function seedOpeningFinalDuel(state: MajorityRulesState) {
@@ -445,16 +414,12 @@ const majorityRulesSlice = createSlice({
     advanceReveal(state) {
       if (state.phase !== 'reveal' || !state.revealState) return;
       const { result } = state.revealState;
-      const repeatedThreeWayRevote =
-        state.activeIds.length === 3 &&
-        result.kind === 'revote' &&
-        state.revoteNumber > 0 &&
-        distributionsMatch(state.previousDistribution, result.distribution);
-
       state.previousDistribution = result.distribution;
 
       if (result.kind === 'revote') {
-        if (repeatedThreeWayRevote) {
+        // A tied ballot gets exactly one re-vote. If that also ties, discard
+        // the question so deterministic AI choices cannot repeat forever.
+        if (state.revoteNumber >= 1) {
           state.roundNumber += 1;
           state.revoteNumber = 0;
           state.previousDistribution = null;
@@ -463,12 +428,8 @@ const majorityRulesSlice = createSlice({
           state.phase = 'question';
           return;
         }
-        if (state.activeIds.length === 3 && state.revoteNumber >= 2) {
-          advanceToThreeWayDuel(state);
-          return;
-        }
         state.phase = 'question';
-        state.revoteNumber += 1;
+        state.revoteNumber = 1;
         state.blockedAnswers = { ...result.answers };
         state.draftAnswers = {};
         state.revealState = null;

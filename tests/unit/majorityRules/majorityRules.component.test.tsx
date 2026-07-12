@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import majorityRulesReducer, {
@@ -199,7 +199,7 @@ describe('MajorityRulesComp', () => {
     expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId);
   });
 
-  it('auto-advances reveal in 3 seconds when the eliminated user keeps spectating', async () => {
+  it('pauses after elimination and resumes normal timing when the user continues watching', async () => {
     vi.useFakeTimers();
     const question = MAJORITY_RULES_QUESTIONS[0];
     const store = makeStore(undefined, {
@@ -260,6 +260,15 @@ describe('MajorityRulesComp', () => {
 
     await act(async () => {});
     expect(store.getState().majorityRules.phase).toBe('reveal');
+    expect(screen.getByRole('button', { name: 'Continue watching' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Skip to results' })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(store.getState().majorityRules.phase).toBe('reveal');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue watching' }));
 
     act(() => {
       vi.advanceTimersByTime(2999);
@@ -270,6 +279,67 @@ describe('MajorityRulesComp', () => {
       vi.advanceTimersByTime(1);
     });
     expect(store.getState().majorityRules.phase).toBe('question');
+    vi.useRealTimers();
+  });
+
+  it('fast-forwards the existing game state when the eliminated user skips to results', async () => {
+    vi.useFakeTimers();
+    const question = MAJORITY_RULES_QUESTIONS[0];
+    const store = makeStore(undefined, {
+      phase: 'question',
+      competitionType: 'LOH',
+      seed: 42,
+      participantIds: ['user', 'finn', 'mimi', 'rae'],
+      activeIds: ['finn', 'mimi', 'rae'],
+      eliminatedIds: ['user'],
+      humanPlayerId: 'user',
+      roundNumber: 12,
+      revoteNumber: 0,
+      currentQuestion: question,
+      usedQuestionIds: [question.id],
+      draftAnswers: {},
+      previousDistribution: null,
+      blockedAnswers: {},
+      doubleEliminationArmed: false,
+      hintInventories: {},
+      roundHintUsedBy: null,
+      roundHintType: null,
+      roundHintTargetId: null,
+      roundHintPollEstimate: null,
+      roundHintPeekedAnswers: null,
+      revealState: null,
+      threeWayDuel: null,
+      finalDuel: null,
+      winnerId: null,
+      outcomeResolved: false,
+    });
+
+    render(
+      <Provider store={store}>
+        <MajorityRulesComp
+          participantIds={['user', 'finn', 'mimi', 'rae']}
+          participants={[
+            { id: 'user', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+            { id: 'finn', name: 'Finn', isHuman: false, precomputedScore: 0, previousPR: null },
+            { id: 'mimi', name: 'Mimi', isHuman: false, precomputedScore: 0, previousPR: null },
+            { id: 'rae', name: 'Rae', isHuman: false, precomputedScore: 0, previousPR: null },
+          ]}
+          prizeType="LOH"
+          seed={42}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: 'Skip to results' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Fast-forwarding the live game');
+
+    act(() => vi.advanceTimersByTime(24));
+    expect(store.getState().majorityRules.phase).toBe('question');
+    act(() => vi.advanceTimersByTime(1));
+    expect(store.getState().majorityRules.phase).toBe('reveal');
+    expect(store.getState().majorityRules.roundNumber).toBe(12);
+    expect(store.getState().majorityRules.currentQuestion?.id).toBe(question.id);
     vi.useRealTimers();
   });
 

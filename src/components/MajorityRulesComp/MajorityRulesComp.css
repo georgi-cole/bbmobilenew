@@ -444,6 +444,7 @@ button.majority-rules-player-card:hover {
 .majority-rules-follow-target,
 .majority-rules-number-button,
 .majority-rules-primary,
+.majority-rules-secondary,
 .majority-rules-pill {
   appearance: none;
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -464,6 +465,7 @@ button.majority-rules-player-card:hover {
 .majority-rules-option:hover,
 .majority-rules-number-button:hover,
 .majority-rules-primary:hover,
+.majority-rules-secondary:hover,
 .majority-rules-pill:hover {
   transform: translateY(-1px);
   border-color: rgba(191, 219, 254, 0.62);
@@ -472,6 +474,7 @@ button.majority-rules-player-card:hover {
 .majority-rules-option:disabled,
 .majority-rules-number-button:disabled,
 .majority-rules-primary:disabled,
+.majority-rules-secondary:disabled,
 .majority-rules-pill:disabled {
   opacity: 0.56;
   transform: none;
@@ -608,6 +611,75 @@ button.majority-rules-player-card:hover {
   background: linear-gradient(180deg, #f97316, #c2410c);
   border-color: rgba(251, 146, 60, 0.72);
   box-shadow: 0 12px 28px rgba(194, 65, 12, 0.2);
+}
+
+.majority-rules-secondary {
+  justify-self: stretch;
+  border-radius: 18px;
+  padding: 0.98rem 1.15rem;
+  font-weight: 900;
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(148, 163, 184, 0.34);
+}
+
+.majority-rules-spectator-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 1rem) 1rem calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(12px);
+}
+
+.majority-rules-spectator-card {
+  width: min(100%, 28rem);
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.2rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  box-shadow: 0 28px 70px rgba(2, 6, 23, 0.58);
+  color: #f8fafc;
+}
+
+.majority-rules-spectator-card h2,
+.majority-rules-spectator-card p {
+  margin: 0;
+}
+
+.majority-rules-spectator-card p {
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.majority-rules-spectator-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.majority-rules-fast-forward {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(2, 6, 23, 0.9);
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+@media (max-width: 420px) {
+  .majority-rules-spectator-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 body.no-animations .majority-rules-ambient,
