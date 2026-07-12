@@ -258,6 +258,22 @@
   line-height: 1.45;
 }
 
+.capitalization__hint-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.capitalization__hint-options button {
+  min-height: 2.35rem;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  border-radius: 0.65rem;
+  background: rgba(14, 116, 144, 0.2);
+  color: inherit;
+  font-weight: 700;
+}
+
 .capitalization__location {
   margin-top: auto;
   padding: 12px;
