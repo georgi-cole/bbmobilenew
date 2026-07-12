@@ -198,7 +198,7 @@ export default function CrystalPathShatteredGame({
   const [activeAnimation, setActiveAnimation] = useState<Animation | null>(null);
   const [hintRowIndex, setHintRowIndex] = useState<number | null>(null);
   const [messageLog, setMessageLog] = useState<string[]>([]);
-  const [mysteryModal, setMysteryModal] = useState<{ effectLabel: string; positive: boolean } | null>(null);
+  const [mysteryModal, setMysteryModal] = useState<{ effectLabel: string; detail: string; positive: boolean } | null>(null);
   const [secretWinBanner, setSecretWinBanner] = useState(false);
   const [liveFeed, setLiveFeed] = useState<string[]>([]);
   const [resolvedRows, setResolvedRows] = useState<Record<number, { side: TileSide; wrong: boolean }>>({});
@@ -546,7 +546,14 @@ export default function CrystalPathShatteredGame({
     if (eliminatedByMystery) playDeath();
 
     if (targetPlayer?.isHuman) {
-      setMysteryModal({ effectLabel: applied.label, positive });
+      const detail = applied.spDelta !== 0
+        ? `${applied.spDelta > 0 ? 'Restore' : 'Lose'} ${Math.abs(applied.spDelta)} SP.`
+        : applied.hintDelta !== 0
+          ? `${applied.hintDelta > 0 ? 'Gain' : 'Lose'} ${Math.abs(applied.hintDelta)} hint.`
+          : applied.addedEffect
+            ? `${applied.label} is active briefly.`
+            : 'The effect applies immediately.';
+      setMysteryModal({ effectLabel: applied.label, detail, positive });
       queueTimeout(() => setMysteryModal(null), MYSTERY_REVEAL_MS);
     }
     queueTimeout(() => {
@@ -920,7 +927,7 @@ export default function CrystalPathShatteredGame({
           <div className={`cps-modal-card ${mysteryModal.positive ? 'is-pos' : 'is-neg'}`}>
             <div className="cps-modal-icon" aria-hidden="true">{mysteryModal.positive ? '✨' : '⚠️'}</div>
             <h3>{mysteryModal.effectLabel}</h3>
-            <p>{mysteryModal.positive ? 'The chamber smiles on you.' : 'The chamber tests you.'}</p>
+            <p>{mysteryModal.detail}</p>
           </div>
         </div>
       )}

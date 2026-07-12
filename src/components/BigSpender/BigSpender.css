@@ -49,12 +49,22 @@
 
 .big-spender__status-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 0.65rem;
   min-height: 0;
   padding: 0.55rem 0.65rem;
   border-radius: 0.8rem;
+}
+
+.big-spender__info {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(213, 226, 255, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fbff;
+  font-weight: 900;
 }
 
 .big-spender__status-panel > div {
@@ -461,6 +471,10 @@
 
 .big-spender__modal--round {
   width: min(100%, 32rem);
+}
+
+.big-spender__modal--rules {
+  width: min(100%, 24rem);
 }
 
 .big-spender__modal h2 {

@@ -86,6 +86,18 @@
   flex-wrap: wrap;
 }
 
+.grid-of-luck__autoplay {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  color: rgba(235, 226, 255, 0.9);
+}
+
+.grid-of-luck__autoplay input {
+  accent-color: #9d75ff;
+}
+
 .grid-of-luck__boxes-remaining {
   background: rgba(120, 80, 255, 0.2);
   border: 1px solid rgba(160, 120, 255, 0.3);

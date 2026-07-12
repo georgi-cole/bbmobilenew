@@ -17,7 +17,7 @@ import {
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
 import { getApprovedCompetitionGameKeys, getBracketPoolForContext } from '../ai/competition/bracketTemplate';
 import { applyCompetitionSeasonUpdate, hydrateGame, selectAlivePlayers } from './gameSlice';
-import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
+import { pickRandomGame, getGame, getPoolByFilter, supportsPlayerCount } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
@@ -183,6 +183,8 @@ export const startChallenge =
       .map((run) => run.gameKey);
     // Late-season bias is based on active competitors (jury members no longer play comps).
     const activeCompetitorCount = selectAlivePlayers(state).length;
+    const scheduledPlayerCount = participants.length || activeCompetitorCount;
+    const eligibleForRoster = (game: GameRegistryEntry) => supportsPlayerCount(game, scheduledPlayerCount);
     const lateSeasonBias =
       activeCompetitorCount > 0 && activeCompetitorCount <= LATE_SEASON_PLAYER_THRESHOLD;
     const selectFromPool = (pool: GameRegistryEntry[]) =>
@@ -193,7 +195,7 @@ export const startChallenge =
         lateSeasonBias,
       });
     const pickFromRegistry = (category?: GameCategory, excludeKeys?: string[]) => {
-      const pool = getPoolByFilter({ retired: false, category, excludeKeys });
+      const pool = getPoolByFilter({ retired: false, category, excludeKeys }).filter(eligibleForRoster);
       if (pool.length > 0) return selectFromPool(pool);
       return pickRandomGame(gameSeed, { category, excludeKeys });
     };
@@ -204,6 +206,7 @@ export const startChallenge =
       if (!modeSpecific) return pickFromRegistry(category, excludeKeys);
 
       const approvedPool = getPoolByFilter({ retired: false, excludeKeys })
+        .filter(eligibleForRoster)
         .filter((game) => SURVIVOR_APPROVED_GAME_KEYS.has(game.key));
       const pool = category
         ? approvedPool.filter((game) => game.category === category)
@@ -254,7 +257,7 @@ export const startChallenge =
       const excluded = new Set(excludeKeys ?? []);
       return bracketKeys
         .map((k) => getGame(k))
-        .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && !excluded.has(g.key));
+        .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && !excluded.has(g.key) && eligibleForRoster(g));
     };
 
     let gameEntry: GameRegistryEntry;
@@ -276,7 +279,7 @@ export const startChallenge =
           // Remote key takes priority over the user's selectedGameId.
           const key = remoteChallenge?.weeklyGameKey ?? compSel?.selectedGameId;
           const found = key ? getGame(key) : undefined;
-          if (found) {
+          if (found && eligibleForRoster(found)) {
             gameEntry = found;
           } else {
             // Unknown or missing key — fall back to random selection.
@@ -290,7 +293,7 @@ export const startChallenge =
           const keys = remoteChallenge?.weeklyGameKeys ?? compSel?.selectedGameIds ?? [];
           const pool = keys
             .map((k) => getGame(k))
-            .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired);
+            .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && eligibleForRoster(g));
           if (pool.length > 0) {
             gameEntry = selectFromPool(pool);
           } else {
@@ -354,7 +357,7 @@ export const startChallenge =
             retired: false,
             category: opts.category,
             excludeKeys: exclude,
-          });
+          }).filter(eligibleForRoster);
           if (uniquePool.length > 0) {
             gameEntry = selectFromPool(uniquePool);
           } else {

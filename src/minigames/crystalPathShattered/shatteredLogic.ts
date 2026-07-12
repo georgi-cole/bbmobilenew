@@ -46,7 +46,7 @@ export const VISIBLE_ROW_WINDOW = 8;
 /** Turn pacing. */
 export const SAFE_STEP_MS = 420;
 export const WRONG_STEP_MS = 720;
-export const MYSTERY_REVEAL_MS = 900;
+export const MYSTERY_REVEAL_MS = 2_400;
 export const AI_MIN_THINK_MS = 320;
 export const AI_MAX_THINK_MS = 1_300;
 export const NEW_TURN_DELAY_MS = 520;
