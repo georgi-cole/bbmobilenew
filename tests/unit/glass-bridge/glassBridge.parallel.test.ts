@@ -72,4 +72,27 @@ describe('Glass Bridge low-time parallel play', () => {
       () => 0,
     )).toBe('left');
   });
+
+  it('enforces occupied-tile avoidance when simultaneous steps resolve', () => {
+    const store = startedStore();
+    store.dispatch(startParallelPlayers());
+    const [firstId, secondId] = store.getState().glassBridge.parallelPlayerIds;
+    const safeSide = store.getState().glassBridge.rows[0].safeSide;
+    store.dispatch(resolveParallelStep({
+      playerId: firstId,
+      chosenSide: safeSide,
+      now: T0 + 1_000,
+      remainingMs: 30_000,
+    }));
+    store.dispatch(resolveParallelStep({
+      playerId: secondId,
+      chosenSide: safeSide,
+      now: T0 + 1_001,
+      remainingMs: 30_000,
+    }));
+
+    const progress = store.getState().glassBridge.progress;
+    expect(progress[firstId].currentSide).toBe(safeSide);
+    expect(progress[secondId].currentSide).not.toBe(safeSide);
+  });
 });

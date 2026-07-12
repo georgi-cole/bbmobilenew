@@ -515,10 +515,15 @@ const glassBridgeSlice = createSlice({
     /** Resolve an independently active player's next row without changing the main turn. */
     resolveParallelStep(
       state,
-      action: PayloadAction<{ playerId: string; chosenSide: TileSide; now: number }>,
+      action: PayloadAction<{
+        playerId: string;
+        chosenSide: TileSide;
+        now: number;
+        remainingMs?: number;
+      }>,
     ) {
       if (state.phase !== 'playing' || state.timerExpired) return;
-      const { playerId, chosenSide, now } = action.payload;
+      const { playerId, chosenSide, now, remainingMs = 0 } = action.payload;
       if (!state.parallelPlayerIds.includes(playerId)) return;
       const progress = state.progress[playerId];
       if (!progress || progress.eliminated || progress.finishTimeMs !== undefined) return;
@@ -527,18 +532,36 @@ const glassBridgeSlice = createSlice({
       if (!row) return;
       if (progress.firstStepAtMs === undefined) progress.firstStepAtMs = now;
       const elapsed = state.challengeStartTimeMs === null ? 0 : now - state.challengeStartTimeMs;
+      const occupiedSides = Object.entries(state.progress)
+        .filter(([otherId, other]) =>
+          otherId !== playerId
+          && !other.eliminated
+          && other.finishTimeMs === undefined
+          && other.furthestRowReached === rowNumber
+          && other.currentSide,
+        )
+        .map(([, other]) => other.currentSide!);
+      let resolvedSide = chosenSide;
+      if (
+        remainingMs >= COLLISION_OVERRIDE_THRESHOLD_MS
+        && occupiedSides.includes(resolvedSide)
+      ) {
+        const alternative: TileSide = resolvedSide === 'left' ? 'right' : 'left';
+        const alternativeBroken = alternative === 'left' ? row.leftBroken : row.rightBroken;
+        if (!alternativeBroken && !occupiedSides.includes(alternative)) resolvedSide = alternative;
+      }
 
-      if (chosenSide === row.safeSide) {
+      if (resolvedSide === row.safeSide) {
         progress.furthestRowReached = rowNumber;
         progress.timeReachedFurthestRowMs = elapsed;
-        progress.currentSide = chosenSide;
-        row.revealedSafeSide = chosenSide;
+        progress.currentSide = resolvedSide;
+        row.revealedSafeSide = resolvedSide;
         if (rowNumber >= state.rowsCount) {
           progress.finishTimeMs = elapsed;
           progress.currentSide = undefined;
         }
       } else {
-        if (chosenSide === 'left') row.leftBroken = true;
+        if (resolvedSide === 'left') row.leftBroken = true;
         else row.rightBroken = true;
         progress.eliminated = true;
         progress.currentSide = undefined;

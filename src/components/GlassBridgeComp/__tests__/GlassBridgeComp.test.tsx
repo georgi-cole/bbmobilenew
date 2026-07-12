@@ -4,12 +4,14 @@ import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import glassBridgeReducer, {
   finaliseOrderSelection,
+  initGlassBridge,
   recordNumberChoice,
   startPlaying,
   resolveStep,
   HINT_PENALTY_MS,
 } from '../../../features/glassBridge/glassBridgeSlice';
 import GlassBridgeComp from '../GlassBridgeComp';
+import { mulberry32 } from '../../../store/rng';
 
 const playSafeStep = vi.fn();
 const playDeath = vi.fn();
@@ -72,6 +74,59 @@ describe('GlassBridgeComp', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('starts every waiting AI concurrently when a stalled human reaches one minute', async () => {
+    const ids = ['user', 'ai-1', 'ai-2', 'ai-3', 'ai-4', 'ai-5'];
+    const seed = 42;
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <GlassBridgeComp
+          participantIds={ids}
+          participants={ids.map((id) => ({ id, name: id, isHuman: id === 'user' }))}
+          seed={seed}
+        />
+      </Provider>,
+    );
+    await advance(0);
+
+    // Assign the user the number that the seeded reveal will place first.
+    const shuffledNumbers = ids.map((_, index) => index + 1);
+    const rng = mulberry32(seed + 1);
+    for (let i = shuffledNumbers.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [shuffledNumbers[i], shuffledNumbers[j]] = [shuffledNumbers[j], shuffledNumbers[i]];
+    }
+    const firstNumber = shuffledNumbers[0];
+    const remainingNumbers = ids.map((_, index) => index + 1).filter((n) => n !== firstNumber);
+
+    await act(async () => {
+      store.dispatch(initGlassBridge({
+        participantIds: ids,
+        participants: ids.map((id) => ({ id, name: id, isHuman: id === 'user' })),
+        competitionType: 'LOH',
+        seed,
+        humanPlayerId: 'user',
+      }));
+      store.dispatch(recordNumberChoice({ playerId: 'user', number: firstNumber }));
+      ids.slice(1).forEach((id, index) => {
+        store.dispatch(recordNumberChoice({ playerId: id, number: remainingNumbers[index] }));
+      });
+      store.dispatch(finaliseOrderSelection());
+      store.dispatch(startPlaying({ now: Date.now() }));
+    });
+
+    expect(store.getState().glassBridge.turnOrder[0]).toBe('user');
+    expect(store.getState().glassBridge.globalTimeLimitMs).toBe(96_000);
+    await advance(36_250);
+    await advance(2_250);
+
+    const progress = store.getState().glassBridge.progress;
+    for (const id of ids.slice(1)) {
+      expect(progress[id].firstStepAtMs, `${id} should have started`).toBeDefined();
+    }
+    expect(progress.user.furthestRowReached).toBe(0);
   });
 
   it('waits for the bridge-collapse timeout sequence before showing results', async () => {
