@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import type { ReactNode } from 'react';
@@ -7,7 +7,9 @@ import TiltLabyrinthComp from '../../../src/components/TiltLabyrinthComp/TiltLab
 import {
   resolveCollisions,
 } from '../../../src/components/TiltLabyrinthComp/tiltLabyrinthCollision';
-import tiltLabyrinthReducer from '../../../src/features/tiltLabyrinth/tiltLabyrinthSlice';
+import tiltLabyrinthReducer, {
+  setHumanScore,
+} from '../../../src/features/tiltLabyrinth/tiltLabyrinthSlice';
 
 vi.mock('../../../src/components/TiltLabyrinthComp/TiltLabyrinthComp.css', () => ({}));
 vi.mock('../../../src/components/MinigameHost/MinigameCompleteWrapper', () => ({
@@ -231,6 +233,47 @@ describe('TiltLabyrinthComp movement hardening', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
-    expect(onComplete).toHaveBeenCalledWith({ rawValue: 4321 });
+    expect(onComplete).toHaveBeenCalledWith({
+      rawValue: 4321,
+      rawResults: { 'ai-1': 6000 },
+      authoritativeWinnerId: 'ai-1',
+    });
+  });
+
+  it('preserves completed results when the parent recreates participant arrays', () => {
+    const store = makeStore();
+    const props = {
+      participantIds: ['human', 'ai-1'],
+      participants: [
+        { id: 'human', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+        { id: 'ai-1', name: 'Alex', isHuman: false, precomputedScore: 0, previousPR: null },
+      ],
+      prizeType: 'LOH' as const,
+      seed: 42,
+      onComplete: vi.fn(),
+    };
+    const view = render(
+      <Provider store={store}>
+        <TiltLabyrinthComp {...props} />
+      </Provider>,
+    );
+
+    act(() => {
+      store.dispatch(setHumanScore(4321));
+    });
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+
+    view.rerender(
+      <Provider store={store}>
+        <TiltLabyrinthComp
+          {...props}
+          participantIds={[...props.participantIds]}
+          participants={props.participants.map((participant) => ({ ...participant }))}
+        />
+      </Provider>,
+    );
+
+    expect(store.getState().tiltLabyrinth.phase).toBe('complete');
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
   });
 });
