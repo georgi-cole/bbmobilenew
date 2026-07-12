@@ -1,17 +1,17 @@
 export function resolveBalancedDockBottom({
   gameBottom,
   lowerBoundary,
-  rosterBottom,
+  contentBottom,
   dockHeight,
   minimumGap,
 }: {
   gameBottom: number;
   lowerBoundary: number;
-  rosterBottom: number;
+  contentBottom: number;
   dockHeight: number;
   minimumGap: number;
 }) {
-  const openSpace = lowerBoundary - rosterBottom - dockHeight;
+  const openSpace = lowerBoundary - contentBottom - dockHeight;
   const balancedGap = Math.max(minimumGap, openSpace / 2);
   return Math.max(minimumGap, gameBottom - lowerBoundary + balancedGap);
 }

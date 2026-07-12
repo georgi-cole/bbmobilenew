@@ -108,14 +108,24 @@ function renderFAB(
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('FloatingActionBar – responsive placement', () => {
-  it('centers the dock between the fourth roster row and navbar', () => {
+  it('centers the dock between the content above it and navbar', () => {
     expect(resolveBalancedDockBottom({
       gameBottom: 800,
       lowerBoundary: 800,
-      rosterBottom: 600,
+      contentBottom: 600,
       dockHeight: 80,
       minimumGap: 8,
     })).toBe(60);
+  });
+
+  it('accounts for mode-specific content appended below the roster', () => {
+    expect(resolveBalancedDockBottom({
+      gameBottom: 800,
+      lowerBoundary: 800,
+      contentBottom: 660,
+      dockHeight: 80,
+      minimumGap: 8,
+    })).toBe(30);
   });
 });
 
