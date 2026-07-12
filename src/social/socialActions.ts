@@ -243,6 +243,18 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     yields: { influence: 0.03 },
   },
   {
+    id: 'apologize',
+    title: 'Clear the Air',
+    icon: '🕊️',
+    description: 'Own a mistake and sincerely repair tension with this player.',
+    category: 'friendly',
+    kind: 'rapport',
+    baseCost: 1,
+    targetMode: 'primary',
+    successWeight: 2,
+    yields: { influence: 0.02 },
+  },
+  {
     id: 'share_intel',
     title: 'Share Intel',
     icon: '📋',

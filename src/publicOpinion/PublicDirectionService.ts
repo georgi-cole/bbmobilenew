@@ -2,6 +2,7 @@ import type { Player } from '../types';
 import { mulberry32, seededPick, seededPickN } from '../store/rng';
 import { publicOpinionConfig } from './publicOpinionConfig';
 import type { PublicDirection, DirectionType } from './types';
+import type { RelationshipsMap } from '../social/types';
 
 const DIRECTION_TYPES: DirectionType[] = [
   'get_closer',
@@ -84,8 +85,9 @@ export function generateDirectionsForCycle(params: {
   week: number;
   seed: number;
   count?: number;
+  relationships?: RelationshipsMap;
 }): PublicDirection[] {
-  const { players, week, seed, count = publicOpinionConfig.directionsPerCycle } = params;
+  const { players, week, seed, count = publicOpinionConfig.directionsPerCycle, relationships } = params;
 
   const activePlayers = players.filter(
     (p) => p.status !== 'evicted' && p.status !== 'jury',
@@ -99,14 +101,23 @@ export function generateDirectionsForCycle(params: {
   const selectedPlayers = seededPickN(rng, activePlayers, Math.min(count, activePlayers.length));
 
   for (const player of selectedPlayers) {
-    const dirType: DirectionType = seededPick(rng, DIRECTION_TYPES);
+    let dirType: DirectionType = seededPick(rng, DIRECTION_TYPES);
+    const repairCandidates = activePlayers.filter(
+      (candidate) => candidate.id !== player.id
+        && (relationships?.[player.id]?.[candidate.id]?.affinity ?? 0) < 15,
+    );
+    if ((dirType === 'apologize' || dirType === 'repair_relationship') && repairCandidates.length === 0) {
+      dirType = 'get_closer';
+    }
     const isSolo = SOLO_DIRECTION_TYPES.includes(dirType);
 
     let relatedPlayerId: string | undefined;
     let relatedName: string | undefined;
 
     if (!isSolo && activePlayers.length > 1) {
-      const others = activePlayers.filter((p) => p.id !== player.id);
+      const others = (dirType === 'apologize' || dirType === 'repair_relationship')
+        ? repairCandidates
+        : activePlayers.filter((p) => p.id !== player.id);
       const related = seededPick(rng, others);
       relatedPlayerId = related.id;
       relatedName = related.name;

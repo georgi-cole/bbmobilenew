@@ -19,6 +19,7 @@ import {
   startMinigame,
   queueForcedShock,
   clearForcedShock,
+  completeMission,
 } from '../../store/gameSlice';
 import {
   clearIncomingInteractionLogs,
@@ -608,6 +609,17 @@ export default function DebugPanel() {
                   title="Launch a standalone TapRace session for testing"
                 >
                   Test TapRace
+                </button>
+              </div>
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(completeMission())}
+                  disabled={game.secretMission?.status !== 'accepted'}
+                  title="Complete every active Secret Mission task and reveal its reward"
+                >
+                  Complete Secret Mission
                 </button>
               </div>
 

@@ -39,7 +39,7 @@ export const socialConfig = {
     friendlyActions: [
       'ally', 'protect',
       // Extended friendly actions for the outgoing social module:
-      'compliment', 'proposeAlliance', 'group_chat', 'reassure', 'share_intel', 'ask_use_safety',
+      'compliment', 'proposeAlliance', 'group_chat', 'reassure', 'apologize', 'share_intel', 'ask_use_safety',
     ] as string[],
     aggressiveActions: [
       'betray', 'nominate',
