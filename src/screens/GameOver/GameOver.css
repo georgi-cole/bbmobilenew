@@ -1445,12 +1445,83 @@
 
 .gameover-record-logo {
   display: block;
-  width: min(132px, 34vw);
-  max-height: 56px;
-  margin: auto auto 2px;
+  width: min(260px, 58vw);
+  max-height: 110px;
+  margin: auto auto 8px;
   object-fit: contain;
   opacity: 0.84;
   filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.38));
+}
+
+.gameover-champion-record {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2dvh, 20px);
+  padding: clamp(16px, 3dvh, 28px) 14px;
+}
+
+.gameover-champion-record__identity {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  text-align: center;
+}
+
+.gameover-champion-record__identity .gameover-winner__name {
+  margin-top: 4px;
+  font-size: clamp(2.45rem, 11vw, 4.5rem);
+  line-height: 0.9;
+}
+
+.gameover-champion-record__showpiece {
+  position: relative;
+  display: grid;
+  width: clamp(13rem, 52vw, 19rem);
+  aspect-ratio: 1;
+  place-items: center;
+  perspective: 700px;
+}
+
+.gameover-champion-record__portrait {
+  align-self: auto;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-width: 3px;
+  box-shadow: 0 20px 52px rgba(2, 6, 23, 0.54), 0 0 46px rgba(99, 102, 241, 0.32);
+}
+
+.gameover-champion-record__trophy {
+  position: absolute;
+  right: -7%;
+  bottom: 2%;
+  z-index: 4;
+  display: grid;
+  width: clamp(4.7rem, 18vw, 6.4rem);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 50%;
+  color: #fff4b8;
+  background: radial-gradient(circle at 34% 26%, #fff8d7, #f3be45 46%, #9b5b12 100%);
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.48), 0 0 30px rgba(245, 194, 67, 0.34);
+  transform-style: preserve-3d;
+  animation: gameover-trophy-spin 3.2s linear infinite;
+}
+
+.gameover-champion-record__trophy svg {
+  width: 58%;
+  height: 58%;
+  fill: currentColor;
+  filter: drop-shadow(0 3px 4px rgba(92, 49, 4, 0.38));
+}
+
+@keyframes gameover-trophy-spin {
+  0% { transform: rotateY(0deg) rotateZ(-4deg); }
+  50% { transform: rotateY(180deg) rotateZ(4deg); }
+  100% { transform: rotateY(360deg) rotateZ(-4deg); }
 }
 
 .gameover-aftermath__paper {
@@ -1464,6 +1535,23 @@
     repeating-linear-gradient(0deg, rgba(35, 28, 48, 0.025) 0 1px, transparent 1px 4px),
     linear-gradient(145deg, #f6f4fa, #e9e5f0);
   box-shadow: 0 20px 52px rgba(2, 6, 23, 0.42), inset 0 0 0 6px rgba(255, 255, 255, 0.35);
+}
+
+.gameover-aftermath {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.gameover-aftermath__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 2px 18px;
+  overscroll-behavior: contain;
+  scroll-padding-bottom: 24px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .gameover-aftermath__paper::before {
@@ -1511,8 +1599,31 @@
   background: rgba(91, 75, 183, 0.08);
 }
 
+.gameover-aftermath__actions {
+  position: relative;
+  bottom: auto;
+  z-index: 30;
+  flex: 0 0 auto;
+  margin: 8px -12px -12px;
+  padding: 11px 12px max(12px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(129, 140, 248, 0.2);
+  background: rgba(8, 11, 20, 0.99);
+  box-shadow: 0 -16px 34px rgba(8, 11, 20, 0.88);
+  pointer-events: auto;
+}
+
 @media (max-width: 460px) {
   .gameover-card { padding: 14px 12px 12px; border-radius: 18px 18px 8px 8px; }
   .gameover-title { font-size: clamp(2.55rem, 15vw, 4.6rem); }
   .gameover-aftermath__photo { height: min(46dvh, 430px); min-height: 340px; }
+}
+
+@media (max-height: 760px) {
+  .gameover-champion-record__showpiece {
+    width: clamp(10.5rem, 42vw, 14rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gameover-champion-record__trophy { animation: none; }
 }

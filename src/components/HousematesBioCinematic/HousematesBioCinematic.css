@@ -590,15 +590,24 @@
 @media (orientation: portrait) {
   .hbc-card__portrait-wrap {
     z-index: 6;
-    bottom: -2%;
-    left: -12%;
-    width: 78vw;
-    height: 86%;
+    bottom: -4%;
+    left: -28%;
+    width: 96vw;
+    height: 100%;
   }
 
   .hbc-card--reverse .hbc-card__portrait-wrap {
-    right: -12%;
+    right: -28%;
     left: auto;
+  }
+
+  .hbc-card__portrait {
+    transform: scale(1.16);
+    transform-origin: left bottom;
+  }
+
+  .hbc-card--reverse .hbc-card__portrait {
+    transform-origin: right bottom;
   }
 
   .hbc-card__copy {
@@ -647,15 +656,17 @@
 
 @media (max-width: 420px) and (orientation: portrait) {
   .hbc-card__portrait-wrap {
-    left: -14%;
-    width: 82vw;
-    height: 84%;
+    left: -31%;
+    width: 100vw;
+    height: 100%;
   }
 
   .hbc-card--reverse .hbc-card__portrait-wrap {
-    right: -14%;
+    right: -31%;
     left: auto;
   }
+
+  .hbc-card__portrait { transform: scale(1.2); }
 
   .hbc-card__copy { width: 47vw; }
 

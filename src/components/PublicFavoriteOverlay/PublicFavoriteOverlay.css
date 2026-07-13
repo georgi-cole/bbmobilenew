@@ -868,8 +868,8 @@
 }
 
 .pf-overlay__spotlight {
-  min-height: 7.4rem;
-  grid-template-columns: minmax(0, 1fr) 7.4rem;
+  min-height: 10.75rem;
+  grid-template-columns: minmax(0, 1fr) clamp(9rem, 34vw, 14rem);
   padding: 0.75rem 0.8rem;
   border-color: rgba(121, 231, 255, 0.2);
   border-radius: 1rem;
@@ -911,8 +911,8 @@
 }
 
 .pf-overlay__leader-avatar--portrait {
-  width: clamp(6rem, 25vw, 7.75rem);
-  height: clamp(6rem, 25vw, 7.75rem);
+  width: clamp(8.5rem, 32vw, 13rem);
+  height: clamp(8.5rem, 32vw, 13rem);
   overflow: hidden;
   border: 2px solid rgba(121, 231, 255, 0.54);
   border-radius: 50%;
@@ -1038,7 +1038,7 @@
 
 @media (max-width: 420px) {
   .pf-overlay__spotlight {
-    grid-template-columns: minmax(0, 1fr) 6.8rem;
+    grid-template-columns: minmax(0, 1fr) 9rem;
   }
 
   .pf-overlay__header-copy {
@@ -1058,7 +1058,7 @@
 
 @media (max-height: 700px) {
   .pf-overlay__spotlight {
-    min-height: 5.8rem;
+    min-height: 8.75rem;
   }
 
   .pf-overlay__spotlight-fact,

@@ -625,13 +625,13 @@
 /* Verdict act: the finalists read as opposing cases, not small profile tiles. */
 .fo-finalists {
   z-index: 4;
-  flex: 0 0 clamp(210px, 34dvh, 310px);
+  flex: 0 0 clamp(260px, 40dvh, 390px);
   gap: 8px;
   padding: 2px 12px 8px;
 }
 
 .fo-finalist {
-  max-width: 250px;
+  max-width: 320px;
   min-width: 0;
   overflow: hidden;
   display: block;
@@ -666,8 +666,9 @@
 .fo-finalist__portrait.pa {
   display: block;
   flex: 0 0 auto;
-  width: clamp(7.75rem, 33vw, 11rem);
-  height: clamp(7.75rem, 33vw, 11rem);
+  width: min(94%, 15rem);
+  height: auto;
+  aspect-ratio: 1;
   overflow: hidden;
   border: 2px solid rgba(232, 191, 118, 0.64);
   border-radius: 50%;
@@ -870,12 +871,12 @@
   }
 
   .fo-finalists {
-    flex-basis: 190px;
+    flex-basis: 230px;
   }
 
   .fo-finalist__portrait.pa {
-    width: 6.75rem;
-    height: 6.75rem;
+    width: min(90%, 9.25rem);
+    height: auto;
   }
 }
 

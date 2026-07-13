@@ -75,6 +75,9 @@ describe('GameOver screen', () => {
       </Provider>,
     );
 
+    expect(document.querySelector('.gameover-champion-record__trophy')).toBeInTheDocument();
+    expect(document.querySelector('.gameover-champion-record__stats')).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
 
     await waitFor(() => {
@@ -283,5 +286,14 @@ describe('GameOver screen', () => {
       expect(screen.getByText(/What happened next/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^results$/i })).toBeInTheDocument();
     });
+
+    const aftermathScroller = document.querySelector('.gameover-aftermath__scroll');
+    const aftermathActions = document.querySelector('.gameover-aftermath__actions');
+    expect(aftermathScroller).toBeInTheDocument();
+    expect(aftermathActions).toBeInTheDocument();
+    expect(aftermathScroller?.contains(aftermathActions)).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+    expect(screen.getByRole('button', { name: /^next$/i })).toBeEnabled();
   });
 });
