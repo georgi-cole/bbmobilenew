@@ -11,7 +11,7 @@ const HERO_TILES: Tile[] = [
   {
     kicker: '1',
     title: 'Win control',
-    copy: 'Take the weekly lead, shape the block, and keep the vote moving in your favor.',
+    copy: 'Take the daily lead, shape the block, and keep the vote moving in your favor.',
   },
   {
     kicker: '2',
@@ -26,20 +26,20 @@ const HERO_TILES: Tile[] = [
   {
     kicker: '4',
     title: 'Finish the season',
-    copy: 'Make it to the endgame, then earn the final panel vote.',
+    copy: 'Make it to the endgame, then earn enough Tribunal votes to win.',
   },
 ];
 
-const WEEK_STEPS: Tile[] = [
+const DAY_STEPS: Tile[] = [
   {
     kicker: 'LOH',
     title: 'Compete for the lead',
-    copy: 'Everyone still in the game can compete for weekly control. The winner becomes the weekly leader and starts the week in charge.',
+    copy: 'Everyone still in the game can compete for control. The winner becomes the Leader of the House and starts the day in charge.',
   },
   {
     kicker: 'NOMS',
     title: 'Set the block',
-    copy: 'The LOH names the nominees. Most weeks start with two people on the block, and public mode can add a third before safety.',
+    copy: 'The LOH names the nominees. Most days start with two people on the block, and public mode can add a third before safety.',
   },
   {
     kicker: 'POS',
@@ -49,7 +49,7 @@ const WEEK_STEPS: Tile[] = [
   {
     kicker: 'VOTE',
     title: 'Live vote',
-    copy: 'The remaining players vote to remove someone from the game. Some special weeks replace this with a different eviction step, and the broadcast says when that happens.',
+    copy: 'The remaining players vote to remove someone from the game. Some special days replace this with a different eviction step, and the broadcast says when that happens.',
   },
 ];
 
@@ -145,15 +145,15 @@ const CONFESSIONAL_DECISIONS: Tile[] = [
   },
   {
     kicker: '05',
-    title: 'Mission offers',
-    copy: 'The confessional also handles one-off prompts and mission offers when they appear.',
+    title: 'Secrets and missions',
+    copy: 'Secret opportunities and mission offers can be hidden here, so read every prompt carefully.',
   },
 ];
 
-const SPECIAL_WEEK_NOTES: Tile[] = [
+const SPECIAL_DAY_NOTES: Tile[] = [
   {
     kicker: 'SHIFT',
-    title: 'Compressed week',
+    title: 'Compressed day',
     copy: 'The schedule can move faster than normal and some steps may land closer together.',
   },
   {
@@ -164,12 +164,35 @@ const SPECIAL_WEEK_NOTES: Tile[] = [
   {
     kicker: 'SWAP',
     title: 'Rule swap',
-    copy: 'The week can change shape, but the broadcast explains the new rule when it happens.',
+    copy: 'The day can change shape, but the broadcast explains the new rule when it happens.',
   },
   {
     kicker: 'EVIC',
     title: 'Special eviction',
-    copy: 'Some weeks skip the usual vote and end with a one-off eviction decision instead.',
+    copy: 'Some days skip the usual vote and end with a one-off eviction decision instead.',
+  },
+];
+
+const TRIBUNAL_NOTES: Tile[] = [
+  {
+    kicker: 'MEMBERS',
+    title: 'Who joins',
+    copy: 'Once the Tribunal stage begins, eligible eliminated players become Tribunal members instead of leaving the season behind.',
+  },
+  {
+    kicker: 'GAME',
+    title: 'Every move matters',
+    copy: 'Tribunal members remember your strategy, relationships, promises, and betrayals when judging the finalists.',
+  },
+  {
+    kicker: 'VOTE',
+    title: 'The final decision',
+    copy: 'When only two finalists remain, each Tribunal member casts a vote for the player they want to win.',
+  },
+  {
+    kicker: 'POWER',
+    title: 'Your voice remains',
+    copy: 'If you become a Tribunal member, your game is over but your final vote can still decide the champion.',
   },
 ];
 
@@ -197,7 +220,7 @@ const FINALE_STEPS: Tile[] = [
   {
     kicker: 'F2',
     title: 'Final 2',
-    copy: 'The final panel votes for the winner.',
+    copy: 'The Tribunal casts the final votes and chooses the winner.',
   },
   {
     kicker: 'BONUS',
@@ -241,17 +264,17 @@ export default function Rules() {
         <section className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon" aria-hidden="true">01</span>
-            <h2 className="rules-section__title">The Weekly Loop</h2>
+            <h2 className="rules-section__title">The Daily Loop</h2>
           </div>
           <p className="rules-section__intro">
-            The game is built around a repeatable rhythm. Once you know the order, every week makes
+            The game is built around a repeatable rhythm. Once you know the order, every day makes
             more sense: win the lead, set the block, use safety, then survive the vote.
           </p>
           <div className="rules-step-grid">
-            {WEEK_STEPS.map((tile) => renderTile(tile, 'rules-step-card'))}
+            {DAY_STEPS.map((tile) => renderTile(tile, 'rules-step-card'))}
           </div>
           <p className="rules-section__note">
-            Public mode can add a third nominee before safety, and special weeks can change the
+            Public mode can add a third nominee before safety, and special days can change the
             order. The broadcast explains the live rule when it appears.
           </p>
         </section>
@@ -288,16 +311,16 @@ export default function Rules() {
             <h2 className="rules-section__title">Control and Safety</h2>
           </div>
           <p className="rules-section__intro">
-            The weekly leader controls the nominations. The Power of Safety winner controls
-            whether the block stays the same or gets reshaped, and if the holder is nominated,
-            self-save is allowed but never forced.
+            The daily leader controls the nominations. The Power of Safety winner controls whether
+            the block stays the same or gets reshaped, and if the holder is nominated, self-save is
+            allowed but never forced.
           </p>
           <div className="rules-step-grid">
             {[
               {
                 kicker: 'LOH',
-                title: 'Weekly leader',
-                copy: 'Wins the weekly competition and names the nominees for the week.',
+                title: 'Leader of the House',
+                copy: 'Wins the daily competition and names the nominees for the day.',
               },
               {
                 kicker: 'POS',
@@ -312,7 +335,7 @@ export default function Rules() {
               {
                 kicker: 'PUBLIC',
                 title: 'Public seasons',
-                copy: 'When public mode is on, the week can add a public save before safety and adjust the block again.',
+                copy: 'When public mode is on, the day can add a public save before safety and adjust the block again.',
               },
             ].map((tile) => renderTile(tile, 'rules-step-card'))}
           </div>
@@ -353,6 +376,10 @@ export default function Rules() {
             This is where nomination picks, safety decisions, replacement picks, tie-breaks, and
             mission offers appear in a clean, no-distraction format.
           </p>
+          <p className="rules-section__note">
+            Keep your eyes wide open. Secrets and special opportunities are sometimes hidden inside
+            the Confessional, so check it often and read every message carefully.
+          </p>
           <div className="rules-confessional-grid">
             {CONFESSIONAL_DECISIONS.map((tile) => renderTile(tile, 'rules-confessional-card'))}
           </div>
@@ -361,22 +388,22 @@ export default function Rules() {
         <section className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon" aria-hidden="true">06</span>
-            <h2 className="rules-section__title">Special Weeks</h2>
+            <h2 className="rules-section__title">Special Days</h2>
           </div>
           <p className="rules-section__intro">
-            Not every week follows the standard script. Some weeks speed up, some weeks bring
-            someone back, and some weeks swap out part of the normal order.
+            Not every day follows the standard script. Some days speed up, some days bring someone
+            back, and some days swap out part of the normal order.
           </p>
           <div className="rules-split">
             <div className="rules-split__main">
               <p className="rules-section__intro">
                 The important part is simple: you do not need to memorize every variation ahead of
-                time. When a special week happens, the broadcast explains the new rule on the spot.
+                time. When a special day happens, the broadcast explains the new rule on the spot.
               </p>
             </div>
             <div className="rules-split__aside">
               <div className="rules-special-grid">
-                {SPECIAL_WEEK_NOTES.map((tile) => renderTile(tile, 'rules-special-card'))}
+                {SPECIAL_DAY_NOTES.map((tile) => renderTile(tile, 'rules-special-card'))}
               </div>
             </div>
           </div>
@@ -385,6 +412,25 @@ export default function Rules() {
         <section className="rules-section">
           <div className="rules-section__header">
             <span className="rules-section__icon" aria-hidden="true">07</span>
+            <h2 className="rules-section__title">The Tribunal</h2>
+          </div>
+          <p className="rules-section__intro">
+            The Tribunal is formed from eligible eliminated players late in the season. Leaving the
+            main game does not always mean leaving the story: Tribunal members watch the endgame and
+            ultimately choose the winner.
+          </p>
+          <div className="rules-step-grid">
+            {TRIBUNAL_NOTES.map((tile) => renderTile(tile, 'rules-step-card'))}
+          </div>
+          <p className="rules-section__note">
+            How you treat people throughout the season can matter as much as your competition
+            record. The finalists need the Tribunal's respect as well as a strong resume.
+          </p>
+        </section>
+
+        <section className="rules-section">
+          <div className="rules-section__header">
+            <span className="rules-section__icon" aria-hidden="true">08</span>
             <h2 className="rules-section__title">Finale</h2>
           </div>
           <p className="rules-section__intro">
@@ -393,7 +439,7 @@ export default function Rules() {
           </p>
           <p className="rules-section__intro">
             The final stretch moves from a special eviction at Final 4 into the three-part final
-            lead race, then into the final panel vote.
+            lead race, then into the Tribunal vote.
           </p>
           <div className="rules-finale-grid">
             {FINALE_STEPS.map((tile) => renderTile(tile, 'rules-finale-card'))}
