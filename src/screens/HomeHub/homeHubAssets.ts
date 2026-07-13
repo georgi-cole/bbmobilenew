@@ -24,6 +24,17 @@ const INTRO_HUB_ICONS = [
   'shop',
 ] as const;
 
+const HOME_HUB_BUTTON_ICONS = [
+  'play',
+  'rules',
+  'profile',
+  'leaderboard',
+  'credits',
+  'campaign',
+  'survival',
+  'back',
+] as const;
+
 function assetUrl(path: string): string {
   return `${BASE}${path}`;
 }
@@ -53,6 +64,10 @@ export function getHomeHubAssetUrls(effectiveBgUrl: string | null): string[] {
 
   INTRO_HUB_ICONS.forEach((icon) => {
     urls.push(assetUrl(`/assets/side_utilities_button/${icon}_v2.svg`));
+  });
+
+  HOME_HUB_BUTTON_ICONS.forEach((icon) => {
+    urls.push(assetUrl(`/assets/intro_hub_icons/${icon}.svg`));
   });
 
   return unique(urls);

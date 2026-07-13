@@ -364,7 +364,7 @@ describe('HomeHub', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Survival Mode' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Survival' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/don't show this again/i));
