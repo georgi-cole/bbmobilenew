@@ -19,7 +19,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
-import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import {
   buildHouseguestSpotlightItems,
   getActiveSpotlightPlayers,
@@ -357,18 +356,13 @@ function HousemateSpotlightCard({
         <AnimatePresence mode="wait">
           <motion.div
             key={player.id}
-            className="pf-overlay__leader-cutout-wrap"
+            className="pf-overlay__leader-avatar-wrap"
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
             transition={{ duration: 0.32, ease: 'easeOut' }}
           >
-            <FullSizeCutoutImage
-              player={player}
-              alt={player.name}
-              className="pf-overlay__leader-avatar pf-overlay__leader-avatar--cutout"
-              loading="eager"
-            />
+            <PlayerPortrait candidate={player} className="pf-overlay__leader-avatar pf-overlay__leader-avatar--portrait" />
           </motion.div>
         </AnimatePresence>
       </div>

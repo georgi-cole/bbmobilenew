@@ -18,6 +18,7 @@ import './FinalLightsOutSequence.css';
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 export interface FinalLightsOutSequenceProps {
+  /** Retained for call-site compatibility; the final TV card intentionally contains only the farewell. */
   publicFavoriteWinnerName?: string;
   onComplete: () => void;
 }
@@ -41,7 +42,6 @@ const LIGHT_ROWS = 5;
 const STAGE_DURATIONS = [800, 1400, 1400, 1400, 3000, 1800, 1400];
 
 export default function FinalLightsOutSequence({
-  publicFavoriteWinnerName,
   onComplete,
 }: FinalLightsOutSequenceProps) {
   const [stage, setStage] = useState(0);
@@ -267,15 +267,9 @@ export default function FinalLightsOutSequence({
               />
             </span>
             <p className="flo-tv-message">
-              <span>This is not a Goodbye,</span>
-              <span>it's see you soon</span>
-              <span className="flo-tv-message-signoff">from the Big Eye.</span>
+              <span>This is not a goodbye</span>
+              <span>It&apos;s see you soon</span>
             </p>
-            {publicFavoriteWinnerName && (
-              <p className="flo-tv-footnote">
-                Public's Favorite: <strong>{publicFavoriteWinnerName}</strong>
-              </p>
-            )}
           </div>
         </div>
       </div>

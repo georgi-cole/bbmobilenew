@@ -46,7 +46,7 @@ import { useStore } from 'react-redux';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
-import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic';
 import TribunalMemberStage from '../TribunalMemberStage/TribunalMemberStage';
 import {
@@ -551,12 +551,12 @@ export default function FinalFaceoff() {
               >
                 {finale.winnerId === f.id && <span className="fo-winner-badge">Champion</span>}
                 <div className="fo-finalist__portrait-frame">
-                  <FullSizeCutoutImage
+                  <PlayerAvatar
                     player={f}
-                    attire="formal"
-                    alt={f.name}
                     className="fo-finalist__portrait"
-                    loading="eager"
+                    size="lg"
+                    showRelationshipOutline={false}
+                    showEvictedStyle={false}
                   />
                 </div>
                 <div className="fo-finalist__meta">
