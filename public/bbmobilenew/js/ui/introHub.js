@@ -31,7 +31,7 @@
     { id: 'music', label: 'Music', icon: 'music', position: 'top-left' },
     { id: 'sounds', label: 'Sounds', icon: 'sound', position: 'top-left-2' },
     // Bottom-left corner (stacked bottom → top)
-    { id: 'houseguests', label: 'Houseguests', icon: 'housemates', position: 'bottom-left' },
+    { id: 'houseguests', label: 'Housemates', icon: 'housemates', position: 'bottom-left' },
     { id: 'achievements', label: 'Achievements', icon: 'achievements', position: 'bottom-left-2' },
     { id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'bottom-left-3' },
     // Bottom-right corner (stacked bottom → top: store, settings, share)
@@ -1089,7 +1089,7 @@
     } else if (global.HouseguestsModal && typeof global.HouseguestsModal.open === 'function') {
       global.HouseguestsModal.open('list');
     } else {
-      openPlaceholder('Houseguests', '👥', 'Houseguest details will appear here.');
+      openPlaceholder('Housemates', '👥', 'Housemate details will appear here.');
     }
   }
 

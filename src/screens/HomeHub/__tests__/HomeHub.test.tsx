@@ -13,6 +13,7 @@ const mockState: {
     season?: number;
     week?: number;
     phase?: string;
+    twinShockConsumed?: boolean;
     players: Array<{ id: string; isUser: boolean }>;
     seasonArchives: Array<{ seasonId: string }>;
   };
@@ -86,13 +87,15 @@ vi.mock('../../../components/KolequantSplash/KolequantSplash', () => ({
     onFinish,
     progress,
     status,
+    duration,
   }: {
     onFinish?: () => void;
     progress?: number;
     ready?: boolean;
     status?: string;
+    duration?: number;
   }) => (
-    <button data-testid="kolequant-splash" onClick={onFinish} type="button">
+    <button data-testid="kolequant-splash" data-duration={duration} onClick={onFinish} type="button">
       {status ?? 'Finish splash'} {progress ?? 0}%
     </button>
   ),
@@ -110,15 +113,26 @@ vi.mock('../../../components/AssetPreloaderOverlay/AssetPreloaderOverlay', () =>
   default: () => <div data-testid="asset-preloader-overlay" />,
 }));
 
+vi.mock('../../../components/HousematesBioCinematic/HousematesBioCinematic', () => ({
+  default: ({ onComplete }: { onComplete: () => void }) => (
+    <div data-testid="housemates-bio-cinematic" role="dialog">
+      <button type="button" onClick={onComplete}>Return to IntroHub</button>
+    </div>
+  ),
+}));
+
 vi.mock('../../../components/GameButton/GameButton', () => ({
   default: ({
     label,
+    icon,
     onClick,
   }: {
     label: string;
+    icon?: React.ReactNode;
     onClick: () => void;
   }) => (
-    <button onClick={onClick} type="button">
+    <button data-has-icon={Boolean(icon)} onClick={onClick} type="button">
+      {icon}
       {label}
     </button>
   ),
@@ -157,6 +171,7 @@ describe('HomeHub', () => {
     const firstRender = renderHomeHub();
 
     expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
+    expect(screen.getByTestId('kolequant-splash')).toHaveAttribute('data-duration', '5000');
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
 
@@ -191,17 +206,15 @@ describe('HomeHub', () => {
     await waitFor(() => {
       expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('kolequant-splash')).toHaveAttribute('data-duration', '0');
   });
 
-  it('does not show the Kolequant splash when the current game was already seen', async () => {
+  it('still shows the five-second launch splash when the current game was seen previously', () => {
     localStorage.setItem('bb:homeHubSplashLastGameId', 'game-A');
 
     renderHomeHub();
 
-    expect(screen.queryByTestId('kolequant-splash')).toBeNull();
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('kolequant-splash')).toHaveAttribute('data-duration', '5000');
   });
 
   it('preloads a later remote background before showing buttons again', async () => {
@@ -382,12 +395,39 @@ describe('HomeHub', () => {
     view.unmount();
   });
 
+  it('opens the Housemates cinematic below the text-only game modes and returns to the Play menu', async () => {
+    renderHomeHub();
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+
+    const classic = screen.getByRole('button', { name: 'Campaign' });
+    const survival = screen.getByRole('button', { name: 'Survival' });
+    const housemates = screen.getByRole('button', { name: 'Housemates' });
+    expect(screen.queryByRole('button', { name: 'Mystery Wildcards' })).toBeNull();
+    expect(classic).toHaveAttribute('data-has-icon', 'true');
+    expect(survival).toHaveAttribute('data-has-icon', 'true');
+    expect(classic.compareDocumentPosition(survival) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(survival.compareDocumentPosition(housemates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(housemates);
+    expect(screen.getByTestId('housemates-bio-cinematic')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Return to IntroHub' }));
+    expect(screen.queryByTestId('housemates-bio-cinematic')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Housemates' })).toBeInTheDocument();
+  });
+
   it('mirrors the current Redux game state onto window.game for the intro hub', async () => {
     mockState.game = {
       gameId: 'game-A',
       season: 4,
       week: 7,
       phase: 'nominations',
+      twinShockConsumed: true,
       players: [{ id: 'user', isUser: true }],
       seasonArchives: [{ seasonId: 'season-3' }],
     };
@@ -404,6 +444,7 @@ describe('HomeHub', () => {
         day: 7,
         week: 7,
         phase: 'nominations',
+        twinShockConsumed: true,
         players: [{ id: 'user', isUser: true }],
         seasonArchives: [{ seasonId: 'season-3' }],
         achievementSummary: {
@@ -413,6 +454,9 @@ describe('HomeHub', () => {
           },
         },
       });
+      expect(
+        (window as Window & { game?: { mysteryWildcards?: unknown[] } }).game?.mysteryWildcards,
+      ).toHaveLength(5);
     });
   });
 });

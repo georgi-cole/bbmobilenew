@@ -4,7 +4,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import { resolveAvatarCandidates } from '../../utils/avatar';
-import { resolveSkinAssetPath } from '../../utils/skinAssets';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import EvictionLadder from './EvictionLadder';
 import { buildSeasonRecapData, deriveEvictionFallbackPlacement, type AwardCategory } from './seasonRecapData';
@@ -32,8 +31,35 @@ const LADDER_ARCHIVE_LIMIT = 6;
 const FINALISTS_RANK_OFFSET = 2;
 const DICEBEAR_HOST = 'api.dicebear.com';
 const URL_PARSE_BASE = 'https://bbmobilenew.local';
-const RECAP_GIRLS_IMAGE = resolveSkinAssetPath('thegirls.webp');
-const RECAP_BOYS_IMAGE = resolveSkinAssetPath('the boys.webp');
+const RECAP_PUBLIC_BASE = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const RECAP_GIRLS_IMAGE = `${RECAP_PUBLIC_BASE}assets/skins/thegirls.webp`;
+const RECAP_BOYS_IMAGE = `${RECAP_PUBLIC_BASE}assets/skins/the%20boys.webp`;
+
+const RECAP_HIGHLIGHTS = [
+  {
+    imageSrc: `${RECAP_PUBLIC_BASE}assets/season-recap-moments/kitchen-pancake-chaos.webp`,
+    eyebrow: 'Unseen footage · Kitchen cam',
+    title: 'The pancake incident',
+    caption: 'One flip. Three suspects. Flour absolutely everywhere.',
+    stamp: '02:13 AM',
+  },
+  {
+    imageSrc: `${RECAP_PUBLIC_BASE}assets/season-recap-moments/backyard-key-slide.webp`,
+    eyebrow: 'Challenge replay · Backyard',
+    title: 'Key, set, chaos',
+    caption: 'The golden key was easy. Staying upright was not.',
+    stamp: 'WEEK 07',
+  },
+  {
+    imageSrc: `${RECAP_PUBLIC_BASE}assets/season-recap-moments/midnight-cake-mission.webp`,
+    eyebrow: 'Secret mission · Living room',
+    title: 'Operation: midnight cake',
+    caption: 'A flawless plan, if nobody looked at the enormous cake.',
+    stamp: 'CLASSIFIED',
+  },
+] as const;
 
 function isDicebearAvatar(candidate: string): boolean {
   try {
@@ -143,6 +169,7 @@ function FullscreenPhotoScene({
   return (
     <SceneFrame className={className}>
       <div className="src-photoshoot">
+        <div className="src-photoshoot__frame" aria-hidden="true" />
         <motion.img
           src={imageSrc}
           alt={imageAlt}
@@ -207,6 +234,35 @@ function PhonePostBoysScene() {
   );
 }
 
+function HighlightMomentScene({ highlightIndex = 0 }: { highlightIndex?: number }) {
+  const highlight = RECAP_HIGHLIGHTS[highlightIndex] ?? RECAP_HIGHLIGHTS[0];
+
+  return (
+    <SceneFrame className="src-scene--highlight-moment">
+      <motion.div
+        className="src-highlight-photo"
+        initial={{ opacity: 0, scale: 1.08, rotate: -0.7 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <img src={highlight.imageSrc} alt={highlight.title} loading="eager" />
+        <div className="src-highlight-photo__flash" aria-hidden="true" />
+        <span className="src-highlight-photo__stamp">{highlight.stamp}</span>
+      </motion.div>
+      <motion.div
+        className="src-highlight-copy"
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.55 }}
+      >
+        <p>{highlight.eyebrow}</p>
+        <h2>{highlight.title}</h2>
+        <span>{highlight.caption}</span>
+      </motion.div>
+    </SceneFrame>
+  );
+}
+
 function CategoryScene({ category }: { category: AwardCategory }) {
   return (
     <SceneFrame className={`src-scene--category src-scene--category-${category.visualVariant}`}>
@@ -220,6 +276,14 @@ function CategoryScene({ category }: { category: AwardCategory }) {
         } as CSSProperties}
       />
       <div className="src-category-header">
+        <motion.p
+          className="src-category-eyebrow"
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45, delay: 0.4 }}
+        >
+          Season honor · Archive file
+        </motion.p>
         <motion.span
           className="src-category-emoji"
           initial={{ opacity: 0, scale: 0.72, y: 8 }}
@@ -345,6 +409,7 @@ function MomentOfTruthScene({ finalists }: { finalists: Player[] }) {
       >
         AND NOW THE MOMENT OF TRUTH
       </motion.p>
+      <p className="src-mot-subtitle">The season ends where the final decision begins.</p>
       <div className="src-finalists-equal">
         {finalists.map((player) => (
           <div key={player.id} className="src-finalists-equal__card">
@@ -425,6 +490,18 @@ export default function SeasonRecapCinematic({
     currentScene?.kind === 'ladder_wave'
       ? recapData.evictionWaves[currentScene.ladderWaveIndex ?? 0]
       : null;
+  const sceneProgress = timeline.length > 0 ? Math.min(1, (sceneIndex + 1) / timeline.length) : 0;
+  const chapterLabel = currentScene?.kind === 'category'
+    ? 'Season honors'
+    : currentScene?.kind === 'ladder_intro' || currentScene?.kind === 'ladder_wave'
+      ? 'Road to the final two'
+      : currentScene?.kind === 'moment_of_truth'
+        ? 'The final two'
+        : currentScene?.kind === 'highlight_moment'
+          ? 'Unseen moments'
+          : currentScene?.kind === 'headline_girls' || currentScene?.kind === 'phone_post_boys'
+          ? 'Final photoshoot'
+          : 'Season archive';
 
   return (
     <motion.div
@@ -437,6 +514,7 @@ export default function SeasonRecapCinematic({
     >
       <div className="src-overlay-bg" aria-hidden="true" />
       <div className="src-vignette" aria-hidden="true" />
+      <div className="src-archive-lines" aria-hidden="true" />
       <div className="src-particles" aria-hidden="true">
         {Array.from({ length: 16 }).map((_, index) => (
           <span key={index} className={`src-particle src-particle--${(index % 6) + 1}`} />
@@ -454,6 +532,15 @@ export default function SeasonRecapCinematic({
         </button>
       )}
 
+      <div className="src-archive-header" aria-hidden="true">
+        <span>Season archive</span>
+        <strong>{chapterLabel}</strong>
+        <small>{String(Math.min(sceneIndex + 1, timeline.length)).padStart(2, '0')} / {String(timeline.length).padStart(2, '0')}</small>
+      </div>
+      <div className="src-archive-progress" aria-hidden="true">
+        <motion.span animate={{ scaleX: sceneProgress }} transition={{ duration: 0.35, ease: 'easeOut' }} />
+      </div>
+
       <AnimatePresence mode="wait">
         {currentScene?.kind === 'intro' && <IntroScene key={currentScene.id} scene={currentScene} />}
         {currentScene?.kind === 'headline_girls' && (
@@ -461,6 +548,12 @@ export default function SeasonRecapCinematic({
         )}
         {currentScene?.kind === 'phone_post_boys' && (
           <PhonePostBoysScene key={currentScene.id} />
+        )}
+        {currentScene?.kind === 'highlight_moment' && (
+          <HighlightMomentScene
+            key={currentScene.id}
+            highlightIndex={currentScene.highlightIndex}
+          />
         )}
         {currentScene?.kind === 'category' && activeCategory && (
           <CategoryScene key={currentScene.id} category={activeCategory} />

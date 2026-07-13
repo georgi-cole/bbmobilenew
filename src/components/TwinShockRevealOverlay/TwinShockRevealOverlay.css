@@ -81,7 +81,18 @@
 }
 
 .twin-shock-reveal--settled .twin-shock-reveal__tile {
-  transform: scale(1.03);
+  opacity: 0;
+  transform: scale(1);
+  animation: none;
+  transition: opacity 420ms ease, transform 420ms ease;
+}
+
+.twin-shock-reveal--settled .twin-shock-reveal__shade,
+.twin-shock-reveal--settled .twin-shock-reveal__flare,
+.twin-shock-reveal--settled .twin-shock-reveal__beam {
+  opacity: 0;
+  animation: none;
+  transition: opacity 420ms ease;
 }
 
 .twin-shock-reveal__avatar-wrap {

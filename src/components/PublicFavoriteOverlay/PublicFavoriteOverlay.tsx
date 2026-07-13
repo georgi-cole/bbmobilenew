@@ -19,6 +19,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import {
   buildHouseguestSpotlightItems,
   getActiveSpotlightPlayers,
@@ -126,7 +127,7 @@ function getStatusLine(args: {
     )}s left`;
   }
   if (phase === 'audience_surge' && surgeWindowRemaining > 0) {
-    return `Audience Surge closes in ${surgeWindowRemaining}s`;
+    return `Boost window closes in ${surgeWindowRemaining}s`;
   }
   return `Board refresh in ${countdown}s`;
 }
@@ -332,7 +333,7 @@ function HousemateSpotlightCard({
     <motion.section
       className="pf-overlay__spotlight"
       role="region"
-      aria-label="Housemate Spotlight"
+      aria-label="Houseguest Spotlight"
       data-testid="housemate-spotlight"
       layout
     >
@@ -354,16 +355,21 @@ function HousemateSpotlightCard({
       <div className="pf-overlay__leader-portrait-wrap">
         <div className="pf-overlay__leader-glow" aria-hidden="true" />
         <AnimatePresence mode="wait">
-          <motion.img
+          <motion.div
             key={player.id}
-            src={resolveAvatar(player)}
-            alt={player.name}
-            className="pf-overlay__leader-avatar"
+            className="pf-overlay__leader-cutout-wrap"
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
             transition={{ duration: 0.32, ease: 'easeOut' }}
-          />
+          >
+            <FullSizeCutoutImage
+              player={player}
+              alt={player.name}
+              className="pf-overlay__leader-avatar pf-overlay__leader-avatar--cutout"
+              loading="eager"
+            />
+          </motion.div>
         </AnimatePresence>
       </div>
     </motion.section>
@@ -425,7 +431,7 @@ function VoteRankingBoard({
   return (
     <section className="pf-overlay__board" aria-label="Public vote ranking board">
       <div className="pf-overlay__board-header">
-        <p className="pf-overlay__board-title">Audience board</p>
+        <p className="pf-overlay__board-title">Results board</p>
       </div>
       <div className="pf-overlay__board-list">
         {entries.map((entry) => {
@@ -485,13 +491,9 @@ function FinalPublicFavoriteReveal({
       <div className="pf-overlay__winner-avatar-wrap" aria-hidden="true">
         <div className="pf-overlay__winner-glow" />
         {winnerPlayer ? (
-          <img
-            src={resolveAvatar(winnerPlayer)}
-            alt={winnerPlayer.name}
-            className="pf-overlay__winner-avatar"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+          <PlayerPortrait
+            candidate={winnerPlayer}
+            className="pf-overlay__winner-avatar pf-overlay__winner-avatar--portrait"
           />
         ) : (
           <span className="pf-overlay__winner-fallback">🏆</span>
@@ -773,6 +775,8 @@ export default function PublicFavoriteOverlay({
       aria-label="Public's Favorite Player overlay"
     >
       <div className="pf-overlay__dim" />
+      <div className="pf-overlay__studio" aria-hidden="true" />
+      <div className="pf-overlay__scanlines" aria-hidden="true" />
       <div className="pf-overlay__stage">
         {displayStep === 'voting' && phase === 'intro' && (
           <button
@@ -793,8 +797,8 @@ export default function PublicFavoriteOverlay({
               ) : (
                 <motion.div key="public-vote-header" className="pf-overlay__announcement-panel">
                   <PublicVoteHeader
-                    title="PUBLIC FAVORITE VOTE"
-                    subtitle="Viewer board"
+                    title="PUBLIC FAVORITE PLAYER"
+                    subtitle="Live public vote"
                     statusLine={statusLine}
                   />
                 </motion.div>

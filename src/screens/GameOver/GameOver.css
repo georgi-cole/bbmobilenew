@@ -630,3 +630,794 @@
     font-size: 0.76rem;
   }
 }
+
+/* ─── Post-finale gallery redesign ──────────────────────────────────────── */
+.gameover-shell {
+  --gameover-gold: #e8c178;
+  --gameover-pearl: #f7f1e8;
+  --gameover-plum: #5c223f;
+  justify-content: flex-end;
+  background: #030304;
+  padding:
+    max(14px, calc(env(safe-area-inset-top, 0px) + 10px))
+    max(10px, calc(env(safe-area-inset-right, 0px) + 8px))
+    max(var(--gameover-bottom-clearance), calc(env(safe-area-inset-bottom, 0px) + 72px))
+    max(10px, calc(env(safe-area-inset-left, 0px) + 8px));
+}
+
+.gameover-gallery-bg {
+  position: absolute;
+  inset: -2%;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(3, 3, 4, 0.18), rgba(3, 3, 4, 0.74) 54%, rgba(3, 3, 4, 0.96)),
+    url('/assets/cinematic-backgrounds/post-finale-gallery.webp') center / cover no-repeat;
+  filter: saturate(0.8) contrast(1.06);
+  animation: gameover-gallery-breathe 18s ease-in-out infinite alternate;
+}
+
+@keyframes gameover-gallery-breathe {
+  from { transform: scale(1.01); }
+  to { transform: scale(1.05); }
+}
+
+.gameover-gallery-flashes {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16% 46%, rgba(255, 255, 255, 0.5) 0 1px, transparent 4%),
+    radial-gradient(circle at 80% 42%, rgba(255, 255, 255, 0.42) 0 1px, transparent 4%),
+    radial-gradient(circle at 66% 55%, rgba(232, 193, 120, 0.28) 0 1px, transparent 5%);
+  animation: gameover-camera-flicker 4.8s steps(1, end) infinite;
+}
+
+@keyframes gameover-camera-flicker {
+  0%, 78%, 100% { opacity: 0.34; }
+  79% { opacity: 1; }
+  81% { opacity: 0.24; }
+  84% { opacity: 0.85; }
+}
+
+.gameover-shell::before {
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(232, 193, 120, 0.08), transparent 34%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 25%, transparent 75%, rgba(0, 0, 0, 0.42));
+}
+
+.gameover-brand {
+  position: absolute;
+  top: max(16px, calc(env(safe-area-inset-top, 0px) + 12px));
+  left: max(18px, calc(env(safe-area-inset-left, 0px) + 12px));
+  justify-content: flex-start;
+  width: auto;
+  margin: 0;
+}
+
+.gameover-brand__logo {
+  width: min(112px, 30vw);
+  opacity: 0.88;
+}
+
+.gameover-card {
+  width: min(100%, 620px);
+  padding: 16px 14px 14px;
+  border-color: rgba(232, 193, 120, 0.28);
+  border-radius: 24px 24px 10px 10px;
+  background:
+    linear-gradient(145deg, rgba(12, 9, 12, 0.84), rgba(4, 4, 6, 0.94)),
+    rgba(5, 5, 7, 0.9);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.56), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(22px);
+  text-align: left;
+}
+
+.gameover-eyebrow {
+  margin: 0 0 6px;
+  color: var(--gameover-gold);
+  font-size: clamp(0.52rem, 2vw, 0.68rem);
+  font-weight: 950;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.gameover-title {
+  margin: 0;
+  color: var(--gameover-pearl);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.45rem, 12vw, 5.4rem);
+  font-weight: 500;
+  line-height: 0.8;
+  letter-spacing: -0.065em;
+  text-transform: none;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+.gameover-sub {
+  margin: 9px 0 12px;
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 0.72rem;
+}
+
+.gameover-carousel {
+  min-height: min(42dvh, 360px);
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.gameover-carousel__slide {
+  height: 100%;
+  padding: 10px 0;
+}
+
+.gameover-carousel__slide--active {
+  display: block;
+}
+
+.gameover-champion-record {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: end;
+  min-height: min(30dvh, 248px);
+  overflow: hidden;
+  border: 1px solid rgba(232, 193, 120, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 22% 36%, rgba(232, 193, 120, 0.18), transparent 35%),
+    linear-gradient(120deg, rgba(82, 28, 57, 0.24), rgba(255, 255, 255, 0.025));
+}
+
+.gameover-champion-record__portrait {
+  align-self: stretch;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gameover-champion-record__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.58));
+}
+
+.gameover-champion-record__copy {
+  padding: 16px 14px 14px 4px;
+}
+
+.gameover-winner__label {
+  color: var(--gameover-gold);
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+}
+
+.gameover-winner__name {
+  margin: 8px 0 0;
+  color: white;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.1rem, 10vw, 4.5rem);
+  font-weight: 500;
+  line-height: 0.82;
+  letter-spacing: -0.06em;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  animation: none;
+}
+
+.gameover-champion-record__verdict {
+  margin: 10px 0 14px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.gameover-champion-record__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.gameover-champion-record__stats span {
+  display: grid;
+  gap: 2px;
+  color: rgba(255, 255, 255, 0.43);
+  font-size: 0.48rem;
+  text-transform: uppercase;
+}
+
+.gameover-champion-record__stats strong {
+  color: white;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.gameover-honors-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.gameover-runnerup,
+.gameover-favorite {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.gameover-favorite {
+  border-color: rgba(232, 193, 120, 0.22);
+  background: rgba(232, 193, 120, 0.07);
+}
+
+.gameover-carousel__heading {
+  margin: 4px 0 10px;
+  color: var(--gameover-gold);
+}
+
+.gameover-scoreboard__row {
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.gameover-carousel__dots {
+  margin: 10px 0 6px;
+}
+
+.gameover-carousel__dot {
+  width: 22px;
+  height: 3px;
+  border-radius: 999px;
+}
+
+.gameover-actions {
+  margin-top: 8px;
+}
+
+.gameover-btn {
+  min-height: 46px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gameover-btn--primary {
+  background: linear-gradient(100deg, #f0d39a, #c69d55);
+  color: #160e07;
+}
+
+.gameover-btn--accent {
+  background: linear-gradient(100deg, #672648, #a34873);
+  box-shadow: 0 8px 24px rgba(103, 38, 72, 0.34);
+}
+
+.gameover-overlay {
+  z-index: 9300;
+  align-items: stretch;
+  padding: 0;
+}
+
+.gameover-overlay__scrim {
+  background:
+    linear-gradient(180deg, rgba(3, 3, 4, 0.4), rgba(3, 3, 4, 0.88)),
+    url('/assets/cinematic-backgrounds/post-finale-gallery.webp') center / cover no-repeat;
+  backdrop-filter: blur(12px);
+}
+
+.gameover-prompt,
+.gameover-aftermath {
+  align-self: center;
+  width: min(calc(100% - 20px), 760px);
+  max-height: calc(100dvh - 20px);
+  border-radius: 26px 26px 10px 10px;
+}
+
+.gameover-prompt {
+  padding: 28px 22px;
+  border-color: rgba(232, 193, 120, 0.26);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(232, 193, 120, 0.12), transparent 32%),
+    rgba(7, 6, 8, 0.88);
+  backdrop-filter: blur(22px);
+}
+
+.gameover-prompt__eyebrow {
+  color: var(--gameover-gold);
+}
+
+.gameover-prompt__title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 9vw, 4rem);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+}
+
+.gameover-aftermath {
+  --aftermath-tone: #e1b96d;
+  padding: 12px;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--gameover-pearl);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--aftermath-tone) 18%, transparent), transparent 36%),
+    linear-gradient(160deg, rgba(17, 12, 17, 0.96), rgba(4, 4, 6, 0.98));
+  animation: aftermath-file-enter 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes aftermath-file-enter {
+  from { opacity: 0; transform: translateX(18px) scale(0.985); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.gameover-aftermath--good { --aftermath-tone: #75d19a; }
+.gameover-aftermath--neutral { --aftermath-tone: #aab7c8; }
+.gameover-aftermath--bad { --aftermath-tone: #ef816f; }
+.gameover-aftermath--tragic { --aftermath-tone: #cf5b68; }
+
+.gameover-aftermath__topbar {
+  margin: 0 0 8px;
+}
+
+.gameover-aftermath__masthead {
+  color: white;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.25rem, 5vw, 1.8rem);
+  letter-spacing: -0.04em;
+}
+
+.gameover-aftermath__edition,
+.gameover-aftermath__tone {
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 0.54rem;
+}
+
+.gameover-aftermath__edition {
+  border: 1px solid rgba(232, 193, 120, 0.28);
+  color: var(--gameover-gold);
+  background: transparent;
+}
+
+.gameover-aftermath__tone,
+.gameover-aftermath__tone--good,
+.gameover-aftermath__tone--neutral,
+.gameover-aftermath__tone--bad,
+.gameover-aftermath__tone--tragic {
+  color: #0d0907;
+  background: var(--aftermath-tone);
+}
+
+.gameover-aftermath__progress-rail {
+  height: 2px;
+  margin: 0 0 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gameover-aftermath__progress-rail span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gameover-gold), var(--aftermath-tone));
+  transition: width 0.4s ease;
+}
+
+.gameover-aftermath__meta {
+  margin-bottom: 8px;
+}
+
+.gameover-aftermath__player {
+  color: white;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.gameover-aftermath__placement,
+.gameover-aftermath__progress,
+.gameover-aftermath__caption {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.gameover-aftermath__paper {
+  padding: 14px;
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  color: var(--gameover-pearl);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+    rgba(255, 255, 255, 0.025);
+  box-shadow: none;
+}
+
+.gameover-aftermath__lead {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.gameover-aftermath__kicker {
+  color: var(--aftermath-tone);
+}
+
+.gameover-aftermath__headline {
+  color: white;
+  font-size: clamp(2.1rem, 9vw, 4.5rem);
+  font-weight: 500;
+  line-height: 0.84;
+  letter-spacing: -0.06em;
+  text-transform: none;
+}
+
+.gameover-aftermath__subheadline,
+.gameover-aftermath__body {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.gameover-aftermath__photo-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: #09080a;
+}
+
+.gameover-aftermath__photo {
+  min-height: 250px;
+  border: 0;
+  border-radius: 0;
+  filter: saturate(0.88) contrast(1.06);
+  animation: aftermath-photo-drift 7s ease-out both;
+}
+
+@keyframes aftermath-photo-drift {
+  from { transform: scale(1.045); }
+  to { transform: scale(1); }
+}
+
+.gameover-aftermath__exclusive {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 999px;
+  color: white;
+  background: rgba(5, 4, 6, 0.62);
+  font-size: 0.52rem;
+  font-weight: 950;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.gameover-aftermath__flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  pointer-events: none;
+  animation: aftermath-flash 0.72s 0.12s ease-out both;
+}
+
+@keyframes aftermath-flash {
+  0% { opacity: 0; }
+  12% { opacity: 0.68; }
+  100% { opacity: 0; }
+}
+
+.gameover-aftermath__bullets li {
+  border-color: color-mix(in srgb, var(--aftermath-tone) 18%, transparent);
+  color: rgba(255, 255, 255, 0.78);
+  background: color-mix(in srgb, var(--aftermath-tone) 8%, transparent);
+}
+
+.gameover-aftermath__contact-sheet {
+  display: flex;
+  gap: 5px;
+  margin: 9px 0 0;
+  overflow-x: auto;
+}
+
+.gameover-aftermath__contact-sheet span {
+  display: grid;
+  flex: 0 0 30px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.56rem;
+  font-weight: 850;
+}
+
+.gameover-aftermath__contact-sheet span.is-active {
+  border-color: var(--aftermath-tone);
+  color: white;
+  background: color-mix(in srgb, var(--aftermath-tone) 18%, transparent);
+}
+
+.gameover-aftermath__actions {
+  position: sticky;
+  bottom: -12px;
+  margin: 8px -12px -12px;
+  padding: 9px 12px max(10px, env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(0deg, rgba(4, 4, 6, 0.98) 70%, transparent);
+}
+
+@media (max-width: 460px) {
+  .gameover-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .gameover-actions .gameover-btn--accent {
+    grid-column: auto;
+  }
+
+  .gameover-aftermath__actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .gameover-aftermath__story-grid {
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: 10px;
+  }
+
+  .gameover-aftermath__photo {
+    min-height: 220px;
+  }
+
+  .gameover-aftermath__body {
+    display: none;
+  }
+
+  .gameover-aftermath__bullets li {
+    padding: 8px;
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .gameover-carousel {
+    min-height: 250px;
+  }
+
+  .gameover-champion-record {
+    min-height: 190px;
+  }
+
+  .gameover-aftermath__subheadline,
+  .gameover-aftermath__caption {
+    display: none;
+  }
+}
+
+/* Main-game palette and portrait-first finale corrections */
+.gameover-shell {
+  --gameover-gold: #a5b4fc;
+  --gameover-pearl: rgba(255, 255, 255, 0.94);
+  --gameover-plum: #6366f1;
+  background: #0d111a;
+}
+
+.gameover-gallery-bg {
+  background:
+    linear-gradient(180deg, rgba(13, 17, 26, 0.18), rgba(13, 17, 26, 0.82) 52%, #0d111a 96%),
+    linear-gradient(135deg, rgba(99, 102, 241, 0.32), rgba(139, 92, 246, 0.18)),
+    url('/assets/cinematic-backgrounds/post-finale-gallery.webp') center / cover no-repeat;
+  background-blend-mode: normal, color, luminosity;
+  filter: saturate(0.62) contrast(1.04);
+}
+
+.gameover-gallery-flashes {
+  background:
+    radial-gradient(circle at 16% 46%, rgba(96, 165, 250, 0.55) 0 1px, transparent 4%),
+    radial-gradient(circle at 80% 42%, rgba(139, 92, 246, 0.5) 0 1px, transparent 4%),
+    radial-gradient(circle at 66% 55%, rgba(165, 180, 252, 0.34) 0 1px, transparent 5%);
+}
+
+.gameover-shell::before {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.17), transparent 34%),
+    linear-gradient(90deg, rgba(3, 7, 18, 0.5), transparent 25%, transparent 75%, rgba(3, 7, 18, 0.5));
+}
+
+.gameover-card {
+  border-color: rgba(129, 140, 248, 0.32);
+  background:
+    linear-gradient(145deg, rgba(20, 27, 38, 0.9), rgba(9, 13, 23, 0.96)),
+    #141b26;
+  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.6), inset 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.gameover-title { color: rgba(255, 255, 255, 0.96); }
+.gameover-eyebrow,
+.gameover-winner__label,
+.gameover-carousel__heading { color: #a5b4fc; }
+
+.gameover-champion-record {
+  grid-template-columns: minmax(92px, 0.58fr) minmax(0, 1.42fr);
+  align-items: center;
+  border-color: rgba(129, 140, 248, 0.27);
+  background:
+    radial-gradient(circle at 21% 44%, rgba(96, 165, 250, 0.2), transparent 35%),
+    linear-gradient(120deg, rgba(99, 102, 241, 0.16), rgba(139, 92, 246, 0.06));
+}
+
+.gameover-champion-record__portrait {
+  align-self: center;
+  width: min(30vw, 126px);
+  height: min(30vw, 126px);
+  margin-left: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(165, 180, 252, 0.58);
+  border-radius: 50%;
+  background: #141b26;
+  box-shadow: 0 0 32px rgba(99, 102, 241, 0.24);
+}
+
+.gameover-champion-record__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  filter: none;
+}
+
+.gameover-favorite {
+  border-color: rgba(139, 92, 246, 0.28);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.gameover-carousel__dot--active {
+  background: linear-gradient(90deg, #60a5fa, #8b5cf6);
+}
+
+.gameover-btn--primary,
+.gameover-btn--accent {
+  color: white;
+  background: linear-gradient(105deg, var(--color-accent, #6366f1), var(--color-accent-2, #8b5cf6));
+  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.25);
+}
+
+.gameover-overlay__scrim {
+  background:
+    linear-gradient(180deg, rgba(13, 17, 26, 0.62), rgba(8, 11, 20, 0.94)),
+    linear-gradient(135deg, rgba(99, 102, 241, 0.24), rgba(139, 92, 246, 0.2)),
+    url('/assets/cinematic-backgrounds/post-finale-gallery.webp') center / cover no-repeat;
+  background-blend-mode: normal, color, luminosity;
+}
+
+.gameover-prompt {
+  border-color: rgba(129, 140, 248, 0.34);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 34%),
+    rgba(13, 17, 26, 0.94);
+}
+
+.gameover-prompt__eyebrow { color: #a5b4fc; }
+
+.gameover-aftermath,
+.gameover-aftermath--good,
+.gameover-aftermath--neutral,
+.gameover-aftermath--bad,
+.gameover-aftermath--tragic {
+  --aftermath-tone: var(--color-accent-2, #8b5cf6);
+}
+
+.gameover-aftermath {
+  overflow-y: auto;
+  border-color: rgba(129, 140, 248, 0.28);
+  color: var(--gameover-pearl);
+  background:
+    radial-gradient(circle at top right, rgba(139, 92, 246, 0.2), transparent 38%),
+    linear-gradient(160deg, rgba(20, 27, 38, 0.98), rgba(8, 11, 20, 0.99));
+}
+
+.gameover-aftermath__topbar {
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.gameover-aftermath__edition {
+  border-color: rgba(129, 140, 248, 0.32);
+  color: #a5b4fc;
+}
+
+.gameover-aftermath__progress-rail span {
+  background: linear-gradient(90deg, #60a5fa, #8b5cf6);
+}
+
+.gameover-aftermath__paper {
+  border-color: rgba(129, 140, 248, 0.18);
+  color: rgba(255, 255, 255, 0.94);
+  background:
+    linear-gradient(145deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.025)),
+    rgba(20, 27, 38, 0.72);
+}
+
+.gameover-aftermath__kicker { color: #a5b4fc; }
+
+.gameover-aftermath__story-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.gameover-aftermath__photo-panel { min-width: 0; }
+
+.gameover-aftermath__photo-frame {
+  width: 100%;
+  border-color: rgba(129, 140, 248, 0.24);
+  background: #0d111a;
+}
+
+.gameover-aftermath__photo {
+  display: block;
+  width: 100%;
+  height: min(48dvh, 480px);
+  min-height: 330px;
+  object-fit: cover;
+  object-position: center 24%;
+  filter: saturate(0.96) contrast(1.02);
+}
+
+.gameover-aftermath__caption { margin: 6px 2px 0; }
+
+.gameover-aftermath__bullets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gameover-aftermath__bullets li {
+  border-color: rgba(129, 140, 248, 0.2);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.gameover-aftermath__contact-sheet span.is-active {
+  border-color: #818cf8;
+  background: rgba(99, 102, 241, 0.22);
+}
+
+.gameover-aftermath__actions {
+  background: linear-gradient(0deg, rgba(8, 11, 20, 0.99) 72%, transparent);
+}
+
+@media (max-width: 460px) {
+  .gameover-aftermath__paper { padding: 12px; }
+  .gameover-aftermath__headline {
+    font-size: clamp(2rem, 10vw, 2.75rem);
+    line-height: 0.9;
+  }
+  .gameover-aftermath__subheadline { font-size: 0.82rem; line-height: 1.35; }
+  .gameover-aftermath__story-grid { grid-template-columns: minmax(0, 1fr); }
+  .gameover-aftermath__photo { min-height: 340px; height: min(47dvh, 430px); }
+  .gameover-aftermath__body { display: block; }
+  .gameover-aftermath__bullets li { font-size: 0.68rem; }
+}
+
+@media (min-width: 700px) {
+  .gameover-shell {
+    justify-content: center;
+  }
+
+  .gameover-card {
+    padding: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gameover-gallery-bg,
+  .gameover-gallery-flashes,
+  .gameover-aftermath__photo,
+  .gameover-aftermath__flash {
+    animation: none;
+  }
+}

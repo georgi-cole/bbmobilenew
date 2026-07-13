@@ -12,16 +12,17 @@ describe('FullSizeCutoutImage', () => {
     );
 
     const image = screen.getByAltText('Mimi');
-    expect(image.getAttribute('src')).toBe('assets/Informal_attires/Mimi_informal.png');
+    expect(image.getAttribute('src')).toContain('Mimi_informal.png');
+    expect(image.style.opacity).toBe('1');
 
     fireEvent.error(image);
 
     await waitFor(() => {
-      expect(image.getAttribute('src')).toBe('assets/full_body_fallback_female.png');
+      expect(image.getAttribute('src')).toContain('full_body_fallback_female.png');
     });
   });
 
-  it('uses the male full-body fallback for male players with no cutout', () => {
+  it('uses a real informal cutout when one is available', () => {
     render(
       <FullSizeCutoutImage
         player={{ id: 'dex', name: 'Dex', avatar: '🧑' }}
@@ -30,7 +31,21 @@ describe('FullSizeCutoutImage', () => {
     );
 
     const image = screen.getByAltText('Dex');
-    expect(image.getAttribute('src')).toBe('assets/full_body_fallback_male.png');
+    expect(image.getAttribute('src')).toContain('Dex_informal.webp');
+  });
+
+  it('uses the formal cutout when the voting stage requests formal attire', () => {
+    render(
+      <FullSizeCutoutImage
+        player={{ id: 'lia', name: 'Lia', avatar: '/lia.webp' }}
+        attire="formal"
+        alt="Lia at the Tribunal"
+      />,
+    );
+
+    expect(screen.getByAltText('Lia at the Tribunal').getAttribute('src')).toContain(
+      'Lia_formal.png',
+    );
   });
 
   it('uses the neutral full-body fallback for user players with no gendered cutout', () => {
@@ -42,6 +57,6 @@ describe('FullSizeCutoutImage', () => {
     );
 
     const image = screen.getByAltText('You');
-    expect(image.getAttribute('src')).toBe('assets/full_body_fallback_neutral.png');
+    expect(image.getAttribute('src')).toContain('full_body_fallback_neutral.png');
   });
 });

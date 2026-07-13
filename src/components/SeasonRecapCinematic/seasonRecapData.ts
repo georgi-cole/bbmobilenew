@@ -12,6 +12,10 @@ const TABLOID_PHOTO_MODULES = import.meta.glob('../../../public/assets/tabloid_p
   import: 'default',
 }) as Record<string, string>;
 
+const RECAP_ASSET_BASE = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+
 interface TabloidPhotoEntry {
   id: string;
   matchToken: string;
@@ -188,8 +192,8 @@ function tabloidPhotoExtensionPriority(extension: string): number {
 }
 
 function listTabloidPhotoEntries(): TabloidPhotoEntry[] {
-  return Object.entries(TABLOID_PHOTO_MODULES)
-    .map(([path, source]) => {
+  return Object.keys(TABLOID_PHOTO_MODULES)
+    .map((path) => {
       const filename = path.split('/').pop() ?? path;
       const extension = filename.split('.').pop() ?? '';
       const basename = filename.replace(/\.[^.]+$/, '');
@@ -198,7 +202,7 @@ function listTabloidPhotoEntries(): TabloidPhotoEntry[] {
         id: basename,
         matchToken: normalizePhotoToken(matchBase),
         extension,
-        source,
+        source: `${RECAP_ASSET_BASE}assets/tabloid_photos/${encodeURIComponent(filename)}`,
       };
     })
     .sort((a, b) => {

@@ -229,6 +229,40 @@
   flex-shrink: 0;
 }
 
+.houseguests-list__item--mystery,
+.houseguests-list__item--mystery:hover,
+.houseguests-list__item--mystery:active {
+  cursor: default;
+  opacity: 0.78;
+  transform: none;
+  border-color: rgba(139, 92, 246, 0.22);
+  background:
+    linear-gradient(110deg, rgba(79, 70, 229, 0.1), rgba(255, 255, 255, 0.045)),
+    rgba(255, 255, 255, 0.035);
+}
+
+.houseguests-list__avatar--mystery,
+.houseguests-list__avatar--unavailable {
+  background-image: none !important;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(167, 139, 250, 0.28), transparent 38%),
+    linear-gradient(145deg, #24233a, #121521);
+  border-color: rgba(167, 139, 250, 0.42);
+  color: #c4b5fd;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  box-shadow: 0 0 22px rgba(99, 102, 241, 0.15);
+}
+
+.houseguests-list__item--mystery .houseguests-list__name {
+  color: rgba(255, 255, 255, 0.72);
+  letter-spacing: 0.04em;
+}
+
+.houseguests-list__item--mystery .houseguests-list__location {
+  color: rgba(196, 181, 253, 0.55);
+}
+
 /* ===== Houseguest Detail View ===== */
 .houseguests-detail__back-btn {
   display: inline-flex;

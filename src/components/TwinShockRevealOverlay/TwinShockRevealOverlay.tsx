@@ -50,20 +50,32 @@ export default function TwinShockRevealOverlay({
 
     const previousOpacity = tile.style.opacity;
     const previousVisibility = tile.style.visibility;
+    const previousTransition = tile.style.transition;
     tile.style.opacity = '0';
     tile.style.visibility = 'hidden';
 
     return () => {
       tile.style.opacity = previousOpacity;
       tile.style.visibility = previousVisibility;
+      tile.style.transition = previousTransition;
     };
   }, [targetId]);
+
+  useEffect(() => {
+    if (stage !== 'settled') return;
+    const tile = getTileElement(targetId);
+    if (!tile) return;
+
+    tile.style.transition = 'opacity 420ms ease';
+    tile.style.visibility = 'visible';
+    tile.style.opacity = '1';
+  }, [stage, targetId]);
 
   const timings = useMemo(
     () => (
       reveal.type === 'ali_enters'
-        ? { transformAt: 2100, settledAt: 3900, doneAt: 6600 }
-        : { transformAt: 1850, settledAt: 3450, doneAt: 5800 }
+        ? { transformAt: 2100, settledAt: 3900, doneAt: 4650 }
+        : { transformAt: 1850, settledAt: 3450, doneAt: 4200 }
     ),
     [reveal.type],
   );

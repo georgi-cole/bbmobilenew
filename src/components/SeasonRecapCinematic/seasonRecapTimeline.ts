@@ -2,6 +2,7 @@ export type RecapSceneKind =
   | 'intro'
   | 'headline_girls'
   | 'phone_post_boys'
+  | 'highlight_moment'
   | 'category'
   | 'ladder_intro'
   | 'ladder_wave'
@@ -16,6 +17,7 @@ export interface RecapTimelineScene {
   categoryId?: string;
   montageBeatIndex?: number;
   ladderWaveIndex?: number;
+  highlightIndex?: number;
 }
 
 const SECOND = 1000;
@@ -30,6 +32,7 @@ export const RECAP_EXIT_FADE_MS = 420;
 
 const HEADLINE_GIRLS_DURATION_MS = seconds(4);
 const PHONE_POST_BOYS_DURATION_MS = seconds(4);
+const HIGHLIGHT_MOMENT_DURATION_MS = seconds(4.6);
 const LADDER_INTRO_DURATION_MS = seconds(3.5);
 const LADDER_WAVE_DURATION_MS = seconds(8.5);
 const MOMENT_OF_TRUTH_DURATION_MS = seconds(6);
@@ -61,6 +64,9 @@ export function buildSeasonRecapTimeline(categoryIds: string[], evictionWaveCoun
     pushScene('intro_before_final_word', 'intro', INTRO_MIN_DURATION_MS),
     pushScene('headline_girls', 'headline_girls', HEADLINE_GIRLS_DURATION_MS),
     pushScene('phone_post_boys', 'phone_post_boys', PHONE_POST_BOYS_DURATION_MS),
+    pushScene('highlight_kitchen_chaos', 'highlight_moment', HIGHLIGHT_MOMENT_DURATION_MS, { highlightIndex: 0 }),
+    pushScene('highlight_backyard_key', 'highlight_moment', HIGHLIGHT_MOMENT_DURATION_MS, { highlightIndex: 1 }),
+    pushScene('highlight_midnight_mission', 'highlight_moment', HIGHLIGHT_MOMENT_DURATION_MS, { highlightIndex: 2 }),
   ];
 
   categoryIds.forEach((categoryId) => {
