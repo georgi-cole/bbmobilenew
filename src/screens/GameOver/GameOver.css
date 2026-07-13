@@ -1421,3 +1421,98 @@
     animation: none;
   }
 }
+
+/* Full-height season record and tabloid-style aftermath refinements. */
+.gameover-shell {
+  justify-content: flex-start;
+  padding-top: max(10px, calc(var(--safe-top) + 8px));
+}
+
+.gameover-card {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 680px);
+  height: calc(100dvh - var(--gameover-bottom-clearance) - var(--safe-top) - var(--safe-bottom) - 20px);
+  max-height: none;
+  min-height: 0;
+}
+
+.gameover-carousel { flex: 1; min-height: 0; }
+.gameover-carousel__slide--active { display: flex; flex-direction: column; }
+.gameover-carousel__slide--active .gameover-champion-record { flex: 1; }
+.gameover-scoreboard { gap: clamp(5px, 1.2dvh, 10px); }
+.gameover-scoreboard__row { flex: 0 0 auto; }
+
+.gameover-record-logo {
+  display: block;
+  width: min(132px, 34vw);
+  max-height: 56px;
+  margin: auto auto 2px;
+  object-fit: contain;
+  opacity: 0.84;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.38));
+}
+
+.gameover-aftermath__paper {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(68, 55, 94, 0.24);
+  border-radius: 8px;
+  color: #191522;
+  background:
+    radial-gradient(circle at 14% 16%, rgba(99, 102, 241, 0.08) 0 1px, transparent 1.5px) 0 0 / 8px 8px,
+    repeating-linear-gradient(0deg, rgba(35, 28, 48, 0.025) 0 1px, transparent 1px 4px),
+    linear-gradient(145deg, #f6f4fa, #e9e5f0);
+  box-shadow: 0 20px 52px rgba(2, 6, 23, 0.42), inset 0 0 0 6px rgba(255, 255, 255, 0.35);
+}
+
+.gameover-aftermath__paper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(118deg, transparent 0 46%, rgba(107, 78, 143, 0.045) 46% 48%, transparent 48% 100%);
+  mix-blend-mode: multiply;
+}
+
+.gameover-aftermath__lead,
+.gameover-aftermath__story-grid { position: relative; z-index: 1; }
+.gameover-aftermath__lead { border-bottom-color: rgba(49, 39, 64, 0.22); }
+.gameover-aftermath__kicker { color: #5b4bb7; }
+.gameover-aftermath__headline { color: #17121e; text-shadow: none; }
+.gameover-aftermath__subheadline,
+.gameover-aftermath__body { color: rgba(31, 25, 42, 0.75); }
+
+.gameover-aftermath__photo-frame {
+  padding: 6px;
+  border: 1px solid rgba(25, 20, 33, 0.22);
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(31, 24, 43, 0.22);
+  transform: rotate(-0.35deg);
+}
+
+.gameover-aftermath__photo {
+  height: min(47dvh, 470px);
+  min-height: 330px;
+  object-position: center top;
+  filter: saturate(0.9) contrast(1.08);
+}
+
+.gameover-aftermath__caption {
+  color: rgba(31, 25, 42, 0.58);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+}
+
+.gameover-aftermath__bullets li {
+  border-color: rgba(91, 75, 183, 0.2);
+  color: rgba(28, 23, 38, 0.86);
+  background: rgba(91, 75, 183, 0.08);
+}
+
+@media (max-width: 460px) {
+  .gameover-card { padding: 14px 12px 12px; border-radius: 18px 18px 8px 8px; }
+  .gameover-title { font-size: clamp(2.55rem, 15vw, 4.6rem); }
+  .gameover-aftermath__photo { height: min(46dvh, 430px); min-height: 340px; }
+}

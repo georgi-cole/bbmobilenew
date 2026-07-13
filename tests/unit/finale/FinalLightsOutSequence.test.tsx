@@ -106,12 +106,13 @@ describe('FinalLightsOutSequence', () => {
       height: '180px',
     });
 
-    expect(screen.getByText(/This is not a Goodbye/i)).toBeInTheDocument();
+    expect(screen.getByText(/This is not a goodbye/i)).toBeInTheDocument();
+    expect(screen.getByText(/It's see you soon/i)).toBeInTheDocument();
     expect(document.querySelector('.flo-tv-message em')).toBeNull();
-    expect(screen.getByText(/from the Big Eye\./i).tagName).toBe('SPAN');
+    expect(document.querySelectorAll('.flo-tv-message > span')).toHaveLength(2);
     const logo = document.querySelector<HTMLImageElement>('.flo-tv-logo-image');
     expect(logo?.getAttribute('src')).toContain('/assets/avatar_badges/goodbye_eye_vector.svg');
-    expect(screen.getByText(/Public's Favorite:/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Public's Favorite:/i)).toBeNull();
   });
 
   it('anchors to the main TV viewport when that element appears after mount', async () => {

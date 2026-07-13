@@ -185,10 +185,6 @@ export default function GameOver() {
     <div className="gameover-shell">
       <div className="gameover-gallery-bg" aria-hidden="true" />
       <div className="gameover-gallery-flashes" aria-hidden="true" />
-      <div className="gameover-brand" aria-hidden="true">
-        <img className="gameover-brand__logo" src={LOGO_SRC} alt="" />
-      </div>
-
       <div className="gameover-card">
         <p className="gameover-eyebrow">Season {season} · Official record</p>
         <h1 className="gameover-title">Season Complete</h1>
@@ -250,6 +246,7 @@ export default function GameOver() {
                 </li>
               ))}
             </ul>
+            <img className="gameover-record-logo" src={LOGO_SRC} alt="KoleQuant" />
           </div>
 
           <div
@@ -265,6 +262,7 @@ export default function GameOver() {
                 </li>
               ))}
             </ul>
+            <img className="gameover-record-logo" src={LOGO_SRC} alt="KoleQuant" />
           </div>
         </div>
 

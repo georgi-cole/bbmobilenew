@@ -657,24 +657,38 @@
   position: absolute;
   inset: 0 0 54px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding: 12px;
 }
 
-.fo-finalist__portrait {
+.fo-finalist__portrait.pa {
   display: block;
-  width: 92%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center bottom;
-  filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.52));
+  flex: 0 0 auto;
+  width: clamp(7.75rem, 33vw, 11rem);
+  height: clamp(7.75rem, 33vw, 11rem);
+  overflow: hidden;
+  border: 2px solid rgba(232, 191, 118, 0.64);
+  border-radius: 50%;
+  background: #111725;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 34px rgba(232, 191, 118, 0.18);
+  filter: none;
   animation: fo-finalist-arrive 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.fo-finalist:nth-child(2) .fo-finalist__portrait {
+.fo-finalist:nth-child(2) .fo-finalist__portrait.pa {
+  border-color: rgba(185, 166, 255, 0.68);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 34px rgba(185, 166, 255, 0.2);
   animation-delay: 90ms;
 }
+
+.fo-finalist--winner .fo-finalist__portrait.pa {
+  border-color: rgba(255, 239, 185, 0.92);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 42px rgba(247, 211, 132, 0.34);
+}
+
+.fo-finalist__portrait .pa__img { object-position: center 18%; }
 
 @keyframes fo-finalist-arrive {
   from { opacity: 0; transform: translateY(24px) scale(0.94); }
@@ -857,6 +871,11 @@
 
   .fo-finalists {
     flex-basis: 190px;
+  }
+
+  .fo-finalist__portrait.pa {
+    width: 6.75rem;
+    height: 6.75rem;
   }
 }
 

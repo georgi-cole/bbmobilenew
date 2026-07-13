@@ -590,14 +590,14 @@
 @media (orientation: portrait) {
   .hbc-card__portrait-wrap {
     z-index: 6;
-    bottom: -1%;
-    left: -5%;
-    width: 59vw;
-    height: 75%;
+    bottom: -2%;
+    left: -12%;
+    width: 78vw;
+    height: 86%;
   }
 
   .hbc-card--reverse .hbc-card__portrait-wrap {
-    right: -5%;
+    right: -12%;
     left: auto;
   }
 
@@ -647,8 +647,14 @@
 
 @media (max-width: 420px) and (orientation: portrait) {
   .hbc-card__portrait-wrap {
-    width: 62vw;
-    height: 72%;
+    left: -14%;
+    width: 82vw;
+    height: 84%;
+  }
+
+  .hbc-card--reverse .hbc-card__portrait-wrap {
+    right: -14%;
+    left: auto;
   }
 
   .hbc-card__copy { width: 47vw; }
