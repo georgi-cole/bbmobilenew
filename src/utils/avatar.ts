@@ -317,19 +317,19 @@ function collectTwinShockFullSizeLookupTokens(player: Pick<Player, 'id' | 'name'
   return [...new Set([...baseTokens, ...aliasTokens])];
 }
 
-function listFormalCutoutCandidates(): Array<{ basename: string; source: string }> {
-  return Object.entries(FORMAL_CUTOUT_MODULES).map(([path, source]) => {
+function listFormalCutoutCandidates(): Array<{ basename: string; filename: string }> {
+  return Object.keys(FORMAL_CUTOUT_MODULES).map((path) => {
     const filename = path.split('/').pop() ?? path;
     const basename = filename.replace(/\.[^.]+$/, '');
-    return { basename, source };
+    return { basename, filename };
   });
 }
 
-function listInformalCutoutCandidates(): Array<{ basename: string; source: string }> {
-  return Object.entries(INFORMAL_CUTOUT_MODULES).map(([path, source]) => {
+function listInformalCutoutCandidates(): Array<{ basename: string; filename: string }> {
+  return Object.keys(INFORMAL_CUTOUT_MODULES).map((path) => {
     const filename = path.split('/').pop() ?? path;
     const basename = filename.replace(/\.[^.]+$/, '');
-    return { basename, source };
+    return { basename, filename };
   });
 }
 
@@ -351,13 +351,17 @@ function resolveFormalCutoutFromFolder(player: Pick<Player, 'id' | 'name'>): str
     const token = normalizeNameToken(basename.replace(/_formal.*$/i, ''));
     return targetTokens.includes(token);
   });
-  if (exactMatch) return exactMatch.source;
+  if (exactMatch) {
+    return joinPublicAssetPath(`assets/formal_attires/${exactMatch.filename}`);
+  }
 
   const fuzzyMatch = candidates.find(({ basename }) => {
     const token = normalizeNameToken(basename);
     return targetTokens.some((target) => token.includes(target) || target.includes(token));
   });
-  if (fuzzyMatch) return fuzzyMatch.source;
+  if (fuzzyMatch) {
+    return joinPublicAssetPath(`assets/formal_attires/${fuzzyMatch.filename}`);
+  }
 
   return null;
 }
@@ -435,7 +439,9 @@ export function resolveInformalCutout(player: Pick<Player, 'id' | 'name'>): stri
     const token = normalizeNameToken(basename.replace(/_informal.*$/i, ''));
     return targetTokens.includes(token);
   });
-  if (folderMatch) return folderMatch.source;
+  if (folderMatch) {
+    return joinPublicAssetPath(`assets/Informal_attires/${folderMatch.filename}`);
+  }
 
   const aliasPlayer = isTwinShockAliIdentity(player)
     ? ({ id: 'lia', name: 'Lia' } as const)

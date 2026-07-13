@@ -37,6 +37,10 @@ const TABLOID_PHOTO_MODULES = import.meta.glob('../../../public/assets/tabloid_p
   import: 'default',
 }) as Record<string, string>;
 
+const AFTERMATH_ASSET_BASE = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+
 const AFTERMATH_SCENARIOS: Record<AftermathTone, AftermathScenarioTemplate[]> = {
   excellent: [
     {
@@ -197,8 +201,8 @@ function extensionPriority(extension: string): number {
 }
 
 function listTabloidPhotos(): TabloidPhotoEntry[] {
-  return Object.entries(TABLOID_PHOTO_MODULES)
-    .map(([path, source]) => {
+  return Object.keys(TABLOID_PHOTO_MODULES)
+    .map((path) => {
       const filename = path.split('/').pop() ?? path;
       const extension = filename.split('.').pop() ?? '';
       const basename = filename.replace(/\.[^.]+$/, '');
@@ -207,7 +211,7 @@ function listTabloidPhotos(): TabloidPhotoEntry[] {
         id: basename,
         matchToken: normalizeToken(matchBase),
         extension,
-        source,
+        source: `${AFTERMATH_ASSET_BASE}assets/tabloid_photos/${encodeURIComponent(filename)}`,
       };
     })
     .sort((left, right) => {

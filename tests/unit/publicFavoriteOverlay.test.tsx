@@ -372,8 +372,16 @@ describe('PublicFavoriteOverlay', () => {
     let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
     const firstFinnFact = within(spotlight).getByText(/marine architect/i).textContent;
 
+    // Advance one spotlight beat at a time so React can commit each rotation
+    // and schedule the next biography timer.
     act(() => {
-      vi.advanceTimersByTime(18000);
+      vi.advanceTimersByTime(6000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(6000);
     });
 
     spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });

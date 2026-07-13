@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { TwinShockRevealAnimation } from '../../types';
 import './TwinShockRevealOverlay.css';
@@ -26,6 +26,7 @@ export default function TwinShockRevealOverlay({
   const targetId = reveal.type === 'combined' ? reveal.playerId : reveal.incomingPlayerId;
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [stage, setStage] = useState<RevealStage>('intro');
+  const liveTileRef = useRef<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
     let doneFallbackId: number | null = null;
@@ -50,20 +51,34 @@ export default function TwinShockRevealOverlay({
 
     const previousOpacity = tile.style.opacity;
     const previousVisibility = tile.style.visibility;
+    const previousTransition = tile.style.transition;
+    liveTileRef.current = tile;
     tile.style.opacity = '0';
     tile.style.visibility = 'hidden';
 
     return () => {
       tile.style.opacity = previousOpacity;
       tile.style.visibility = previousVisibility;
+      tile.style.transition = previousTransition;
+      liveTileRef.current = null;
     };
   }, [targetId]);
+
+  useEffect(() => {
+    if (stage !== 'settled') return;
+    const tile = liveTileRef.current ?? getTileElement(targetId);
+    if (!tile) return;
+
+    tile.style.transition = 'opacity 420ms ease';
+    tile.style.visibility = 'visible';
+    tile.style.opacity = '1';
+  }, [stage, targetId]);
 
   const timings = useMemo(
     () => (
       reveal.type === 'ali_enters'
-        ? { transformAt: 2100, settledAt: 3900, doneAt: 6600 }
-        : { transformAt: 1850, settledAt: 3450, doneAt: 5800 }
+        ? { transformAt: 2100, settledAt: 3900, doneAt: 4650 }
+        : { transformAt: 1850, settledAt: 3450, doneAt: 4200 }
     ),
     [reveal.type],
   );

@@ -46,7 +46,7 @@ import { useStore } from 'react-redux';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic';
 import TribunalMemberStage from '../TribunalMemberStage/TribunalMemberStage';
 import {
@@ -483,12 +483,27 @@ export default function FinalFaceoff() {
   const cluesRemaining = isCluesPhase
     ? finale.revealOrder.length - finale.revealedCount
     : 0;
+  const tribunalProgress = isCluesPhase
+    ? finale.revealOrder.length > 0
+      ? finale.revealedCount / finale.revealOrder.length
+      : 0
+    : revealed.length > 0
+      ? visibleVoteCount / revealed.length
+      : 0;
 
   return (
-    <div className="fo-overlay" role="dialog" aria-label="Tribunal Finale">
+    <div
+      className={`fo-overlay fo-overlay--${isCluesPhase ? 'deliberation' : 'verdict'}`}
+      role="dialog"
+      aria-label="Tribunal Finale"
+    >
+      <div className="fo-chamber" aria-hidden="true" />
+      <div className="fo-chamber__light" aria-hidden="true" />
+      <div className="fo-chamber__grain" aria-hidden="true" />
       {/* Header */}
       <div className="fo-header">
-        <h2 className="fo-title">🏛️ The Final Tribunal</h2>
+        <p className="fo-header__eyebrow">Season {game.season} · Final decision</p>
+        <h2 className="fo-title"><span>The Final</span> Tribunal</h2>
         <p className="fo-subtitle">
           {isCluesPhase
             ? cluesRemaining > 0
@@ -496,14 +511,18 @@ export default function FinalFaceoff() {
               : 'All members have spoken'
             : finale.isComplete
               ? `${winner ? `${winner.name} wins The Big Eye!` : 'Winner declared!'} 🏆`
-              : `${visibleVoteCount} / ${revealed.length} votes revealed`}
+               : `${visibleVoteCount} / ${revealed.length} votes revealed`}
         </p>
+        <div className="fo-header__progress" aria-hidden="true">
+          <span style={{ transform: `scaleX(${Math.min(1, tribunalProgress)})` }} />
+        </div>
       </div>
 
       {/* Jury-return notice */}
       {finale.returnedJurorId && (
         <div className="fo-jury-return">
-          🔁 Tribunal Return: {game.players.find((p) => p.id === finale.returnedJurorId)?.name ?? ''} rejoined the Tribunal!
+          <span>Tribunal return</span>
+          {game.players.find((p) => p.id === finale.returnedJurorId)?.name ?? ''} rejoined the Tribunal.
         </div>
       )}
 
@@ -530,10 +549,23 @@ export default function FinalFaceoff() {
                 key={f.id}
                 className={`fo-finalist${finale.winnerId === f.id ? ' fo-finalist--winner' : ''}`}
               >
-                {finale.winnerId === f.id && <span className="fo-winner-badge">WINNER</span>}
-                <PlayerAvatar player={f} size="md" showRelationshipOutline={false} />
-                <span className="fo-finalist__name">{f.name}</span>
-                <span className="fo-finalist__votes">{tally[f.id] ?? 0}</span>
+                {finale.winnerId === f.id && <span className="fo-winner-badge">Champion</span>}
+                <div className="fo-finalist__portrait-frame">
+                  <FullSizeCutoutImage
+                    player={f}
+                    attire="formal"
+                    alt={f.name}
+                    className="fo-finalist__portrait"
+                    loading="eager"
+                  />
+                </div>
+                <div className="fo-finalist__meta">
+                  <span className="fo-finalist__role">Finalist</span>
+                  <span className="fo-finalist__name">{f.name}</span>
+                  <span className="fo-finalist__votes">
+                    {tally[f.id] ?? 0}<small> votes</small>
+                  </span>
+                </div>
               </div>
             ))}
           </div>

@@ -20,6 +20,7 @@ describe('KolequantSplash', () => {
     expect(screen.getByText('Opening the house doors.')).toBeInTheDocument();
     expect(screen.getByText('42%')).toBeInTheDocument();
     expect(screen.getByText('© 2026')).toBeInTheDocument();
+    expect(container.querySelector('.kq-splash__dna-glow')).toBeInTheDocument();
     expect(container.querySelector('.kq-splash__electric')).toBeNull();
     expect(container.querySelector('.kq-splash__logo-frame')).toBeNull();
     expect(container.firstChild).toHaveStyle({

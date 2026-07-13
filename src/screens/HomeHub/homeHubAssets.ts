@@ -32,6 +32,7 @@ const HOME_HUB_BUTTON_ICONS = [
   'credits',
   'campaign',
   'survival',
+  'housemates',
   'back',
 ] as const;
 

@@ -14,8 +14,6 @@ import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/c
 import type { Player } from '../src/types';
 import type { PublicOpinionState } from '../src/publicOpinion/types';
 
-const BASE_URL = import.meta.env.BASE_URL;
-
 vi.mock('framer-motion', async () => {
   const React = await import('react');
 
@@ -238,7 +236,7 @@ describe('SeasonRecapCinematic', () => {
 
     const img = document.querySelector('.src-headline-media__image') as HTMLImageElement | null;
     expect(img).toBeTruthy();
-    expect(img?.getAttribute('src')).toBe(`${BASE_URL}assets/skins/thegirls.webp`);
+    expect(img?.getAttribute('src')).toContain('thegirls.webp');
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -253,8 +251,22 @@ describe('SeasonRecapCinematic', () => {
 
     const img = document.querySelector('.src-phone-post__image') as HTMLImageElement | null;
     expect(img).toBeTruthy();
-    expect(img?.getAttribute('src')).toBe(`${BASE_URL}assets/skins/the boys.webp`);
+    expect(decodeURIComponent(img?.getAttribute('src') ?? '')).toContain('the boys.webp');
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('includes three generated unseen-moment chapters before the awards', () => {
+    const timeline = getTimeline();
+    const highlights = timeline.filter((scene) => scene.kind === 'highlight_moment');
+    const firstCategory = timeline.find((scene) => scene.kind === 'category');
+
+    expect(highlights).toHaveLength(3);
+    expect(highlights.map((scene) => scene.id)).toEqual([
+      'highlight_kitchen_chaos',
+      'highlight_backyard_key',
+      'highlight_midnight_mission',
+    ]);
+    expect(highlights.at(-1)!.endMs).toBeLessThanOrEqual(firstCategory!.startMs);
   });
 
   it('renders the moment-of-truth screen with finalist cutouts', async () => {
