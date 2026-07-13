@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
@@ -46,6 +46,29 @@ import {
 import { buildAchievementSummary } from '../../store/achievementSummary';
 import './HomeHub.css';
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+type HomeHubIconName =
+  | 'play'
+  | 'rules'
+  | 'profile'
+  | 'leaderboard'
+  | 'credits'
+  | 'campaign'
+  | 'survival'
+  | 'back';
+
+function HomeHubButtonIcon({ name }: { name: HomeHubIconName }) {
+  return (
+    <img
+      className="home-hub__button-icon"
+      src={`${BASE}/assets/intro_hub_icons/${name}.svg`}
+      alt=""
+      draggable={false}
+    />
+  );
+}
+
 /**
  * HomeHub — entry screen with BB hero branding and button stack.
  *
@@ -62,12 +85,12 @@ import './HomeHub.css';
  *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
-  { to: '/game',         label: 'Play',        icon: '▶',  variant: 'primary_large'    },
-  { to: '/rules',        label: 'Rules',       icon: '📋', variant: 'secondary_medium' },
-  { to: '/profile',      label: 'Profile',     icon: '👤', variant: 'secondary_medium' },
-  { to: '/leaderboard',  label: 'Leaderboard', icon: '🏆', variant: 'secondary_wide'   },
-  { to: '/credits',      label: 'Credits',     icon: '🎬', variant: 'secondary_small'  },
-] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
+  { to: '/game',         label: 'Play',        icon: 'play',        variant: 'primary_large'    },
+  { to: '/rules',        label: 'Rules',       icon: 'rules',       variant: 'secondary_medium' },
+  { to: '/profile',      label: 'Profile',     icon: 'profile',     variant: 'secondary_medium' },
+  { to: '/leaderboard',  label: 'Leaderboard', icon: 'leaderboard', variant: 'secondary_wide'   },
+  { to: '/credits',      label: 'Credits',     icon: 'credits',     variant: 'secondary_small'  },
+] as const satisfies ReadonlyArray<{ to: string; label: string; icon: HomeHubIconName; variant: GameButtonVariant }>;
 
 type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
@@ -78,26 +101,10 @@ interface HubAssetState {
   status: string;
 }
 
-function snapshotDay(snapshot: SavedSeasonSnapshot | null | undefined): number | null {
-  const day = snapshot?.game?.week;
-  return typeof day === 'number' && Number.isFinite(day) ? day : null;
-}
-
-function buildModeLabel(mode: GameMode, snapshot: SavedSeasonSnapshot | null | undefined): string {
-  const day = snapshotDay(snapshot);
-  if (mode === 'classic') return day ? `Classic Day ${day}` : 'Classic Campaign';
-  const survivorState = snapshot?.game?.modeSpecific?.kind === 'survival'
-    ? snapshot.game.modeSpecific
-    : null;
-  if (day) return `Survival Day ${day}`;
-  if (survivorState?.bestDayReached) return `Survival Best ${survivorState.bestDayReached}`;
-  return 'Survival Mode';
-}
-
 interface PlaySelectionButton {
   key: string;
   label: string;
-  icon: string;
+  icon: ReactNode;
   variant: GameButtonVariant;
   onClick: () => void;
 }
@@ -166,7 +173,7 @@ function HomeHubAssetLayer({
                   <GameButton
                     key={to}
                     label={label}
-                    icon={icon}
+                    icon={<HomeHubButtonIcon name={icon} />}
                     variant={variant}
                     onClick={to === '/game' ? onPlay : () => onNavigate(to, to === '/profile' ? { state: { from: '/' } } : undefined)}
                   />
@@ -384,7 +391,7 @@ export default function HomeHub() {
     playSelectionButtons.push({
       key: 'continue-last',
       label: 'Continue Last',
-      icon: '▶',
+      icon: <HomeHubButtonIcon name="play" />,
       variant: 'primary_large',
       onClick: continueLastRun,
     });
@@ -392,22 +399,22 @@ export default function HomeHub() {
   playSelectionButtons.push(
     {
       key: 'classic',
-      label: buildModeLabel('classic', classicSnapshot),
-      icon: '🎬',
+      label: 'Campaign',
+      icon: <HomeHubButtonIcon name="campaign" />,
       variant: 'secondary_wide',
       onClick: () => startOrResumeMode('classic'),
     },
     {
       key: 'survival',
-      label: buildModeLabel('survival', survivorSnapshot),
-      icon: '◆',
+      label: 'Survival',
+      icon: <HomeHubButtonIcon name="survival" />,
       variant: 'secondary_wide',
       onClick: () => startOrResumeMode('survival'),
     },
     {
       key: 'back',
       label: 'Back',
-      icon: '↩',
+      icon: <HomeHubButtonIcon name="back" />,
       variant: 'secondary_medium',
       onClick: () => setPlaySelectionOpen(false),
     },

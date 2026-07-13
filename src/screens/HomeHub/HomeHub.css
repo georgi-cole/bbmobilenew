@@ -125,6 +125,19 @@ body:has(.homehub-shell) .app-shell {
   animation: hub-nav-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.home-hub__button-icon {
+  display: block;
+  width: 27px;
+  height: 27px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(20, 16, 72, 0.5));
+}
+
+.game-btn--secondary_small .home-hub__button-icon {
+  width: 25px;
+  height: 25px;
+}
+
 @keyframes hub-nav-enter {
   from {
     opacity: 0;
