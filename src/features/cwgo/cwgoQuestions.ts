@@ -67,7 +67,7 @@ export const CWGO_QUESTIONS: CwgoQuestion[] = [
   { id: 'q42', prompt: 'How many bones are in the human hand (including wrist)?', answer: 27, unit: 'bones', difficulty: 3 },
   { id: 'q43', prompt: 'Approximately how many miles per hour does a commercial airplane cruise at?', answer: 575, unit: 'mph', difficulty: 3 },
   { id: 'q44', prompt: 'How many muscles are in the human body (approximate)?', answer: 600, unit: 'muscles', difficulty: 3 },
-  { id: 'q45', prompt: 'Approximately how many calories are in a Big Mac?', answer: 550, unit: 'calories', difficulty: 3 },
+  { id: 'q45', prompt: 'Approximately how many calories are in a Big Mac?', answer: 550, unit: 'calories', difficulty: 4 },
   { id: 'q46', prompt: 'In feet, how tall is Mount Everest (nearest 100)?', answer: 29000, unit: 'feet', difficulty: 3 },
   { id: 'q47', prompt: 'How many countries are in the United Nations (approximate)?', answer: 193, unit: 'countries', difficulty: 3 },
   { id: 'q48', prompt: 'Approximately how many bones are in the human spine?', answer: 33, unit: 'vertebrae', difficulty: 3 },

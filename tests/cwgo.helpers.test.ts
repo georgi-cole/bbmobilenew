@@ -97,17 +97,17 @@ describe('aiSkillRangeForDifficulty', () => {
 });
 
 describe('difficultyLabel', () => {
-  it('maps difficulty buckets to Easy / Medium / Hard', () => {
-    expect(difficultyLabel(1)).toBe('Easy');
-    expect(difficultyLabel(2)).toBe('Medium');
+  it('maps all five question difficulty labels', () => {
+    expect(difficultyLabel(1)).toBe('Very Easy');
+    expect(difficultyLabel(2)).toBe('Easy');
     expect(difficultyLabel(3)).toBe('Medium');
     expect(difficultyLabel(4)).toBe('Hard');
-    expect(difficultyLabel(5)).toBe('Hard');
+    expect(difficultyLabel(5)).toBe('Very Hard');
   });
 
   it('clamps out-of-range values', () => {
-    expect(difficultyLabel(0)).toBe('Easy');
-    expect(difficultyLabel(99)).toBe('Hard');
+    expect(difficultyLabel(0)).toBe('Very Easy');
+    expect(difficultyLabel(99)).toBe('Very Hard');
   });
 });
 

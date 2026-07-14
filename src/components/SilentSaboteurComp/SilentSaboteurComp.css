@@ -3,6 +3,7 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 .ss-wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -37,6 +38,76 @@
   min-height: calc(100vh - 2.5rem - var(--safe-top) - var(--safe-bottom));
   min-height: calc(100dvh - 2.5rem - var(--safe-top) - var(--safe-bottom));
   align-items: center;
+}
+
+.ss-wrap[data-phase='voting'] .ss-stage {
+  flex: 1;
+  align-items: center;
+}
+
+.ss-wrap[data-phase='voting'] .ss-phase-card--vote {
+  width: min(100%, 680px);
+  max-width: 680px;
+  margin-block: auto;
+}
+
+.ss-stage--winner {
+  min-height: calc(100vh - 2.5rem - var(--safe-top) - var(--safe-bottom));
+  min-height: calc(100dvh - 2.5rem - var(--safe-top) - var(--safe-bottom));
+}
+
+.ss-stage--winner .ss-winner-card {
+  max-width: none;
+  min-height: inherit;
+  justify-content: center;
+}
+
+.ss-spectator-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(5, 6, 16, 0.86);
+  backdrop-filter: blur(10px);
+}
+
+.ss-spectator-card {
+  width: min(100%, 520px);
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid rgba(129, 140, 248, 0.38);
+  border-radius: 22px;
+  background: #17192a;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.ss-spectator-card h2 {
+  margin: 0.35rem 0 0.65rem;
+}
+
+.ss-spectator-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.ss-fast-forward {
+  position: fixed;
+  z-index: 70;
+  top: calc(0.75rem + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(49, 46, 129, 0.94);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  color: #eef2ff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────── */
@@ -703,6 +774,10 @@ body.no-animations .ss-vote-board__tile--pulse {
   .ss-winner-card,
   .ss-phase-banner {
     max-width: 100%;
+  }
+
+  .ss-spectator-actions {
+    grid-template-columns: 1fr;
   }
 
   .ss-phase-card,

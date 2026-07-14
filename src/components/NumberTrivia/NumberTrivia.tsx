@@ -136,7 +136,7 @@ export default function NumberTrivia({
     const effectiveRoundNumber = effectiveRoundIndex + 1;
     const effectiveQuestion = chosenQuestions[effectiveRoundIndex];
     const sourceStandings = options?.sourceStandings ?? standings;
-    if (!effectiveQuestion) return;
+    if (!effectiveQuestion) return null;
 
     const activeIds = new Set(
       sourceStandings
@@ -204,13 +204,15 @@ export default function NumberTrivia({
 
     setStandings(nextStandings);
     setRoundIndex(effectiveRoundIndex);
-    setScoreboard({
+    const nextScoreboard: ScoreboardState = {
       roundNumber: effectiveRoundNumber,
       answer: effectiveQuestion.answer,
       eliminatedIds,
       standings: nextStandings,
       final,
-    });
+    };
+    setScoreboard(nextScoreboard);
+    return nextScoreboard;
   }, [
     chosenQuestions,
     humanId,
@@ -309,6 +311,25 @@ export default function NumberTrivia({
       sourceStandings: standings,
     });
   }, [finishCompetition, humanId, resolveRound, roundIndex, scoreboard, standings]);
+
+  const fastForwardToResults = useCallback(() => {
+    if (!scoreboard) return;
+    let simulatedStandings = scoreboard.standings;
+    let finalScoreboard = scoreboard;
+    for (let nextRoundIndex = scoreboard.roundNumber; nextRoundIndex < NUMBER_TRIVIA_TOTAL_ROUNDS; nextRoundIndex += 1) {
+      const simulatedRound = resolveRound(undefined, {
+        roundIndex: nextRoundIndex,
+        sourceStandings: simulatedStandings,
+      });
+      if (!simulatedRound) break;
+      simulatedStandings = simulatedRound.standings;
+      finalScoreboard = simulatedRound;
+      if (simulatedRound.final) break;
+    }
+    setStandings(finalScoreboard.standings);
+    setRoundIndex(finalScoreboard.roundNumber - 1);
+    setScoreboard(finalScoreboard);
+  }, [resolveRound, scoreboard]);
 
   const winner = scoreboard?.standings[0] ?? standings.slice().sort(compareTriviaStandings)[0] ?? null;
   const rootClassName = scoreboard ? 'number-trivia number-trivia--scoreboard' : 'number-trivia number-trivia--playing';
@@ -476,9 +497,20 @@ export default function NumberTrivia({
                   ? `🏆 ${winner?.participantName ?? 'Winner'} takes Number Trivia.`
                   : 'Review the standings, then continue to the next round.'}
               </p>
-              <button className="number-trivia__button number-trivia__button--primary" type="button" onClick={continueFromScoreboard}>
-                Continue
-              </button>
+              {!scoreboard.final && humanStanding?.eliminatedRound !== null ? (
+                <div className="number-trivia__spectator-actions" role="group" aria-label="Eliminated player options">
+                  <button className="number-trivia__button number-trivia__button--secondary" type="button" onClick={continueFromScoreboard}>
+                    Keep watching
+                  </button>
+                  <button className="number-trivia__button number-trivia__button--primary" type="button" onClick={fastForwardToResults}>
+                    Fast-forward to results
+                  </button>
+                </div>
+              ) : (
+                <button className="number-trivia__button number-trivia__button--primary" type="button" onClick={continueFromScoreboard}>
+                  Continue
+                </button>
+              )}
             </div>
           </section>
         )}

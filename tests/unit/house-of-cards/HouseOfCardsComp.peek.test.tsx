@@ -1,17 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
-import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import HouseOfCardsComp from '../../../src/components/HouseOfCardsComp/HouseOfCardsComp';
 import {
-  finaliseOutcome,
-  TOTAL_PAIRS,
-} from '../../../src/features/houseOfCards/houseOfCardsSlice';
-import houseOfCardsReducer from '../../../src/features/houseOfCards/houseOfCardsSlice';
-import {
   buildHouseOfCardsBoard,
-  PEEK_DURATION_MS,
+  chooseHouseOfCardsFinalWinner,
 } from '../../../src/components/HouseOfCardsComp/houseOfCardsUtils';
+import houseOfCardsReducer, {
+  HOUSE_OF_CARDS_TILE_COUNTS,
+} from '../../../src/features/houseOfCards/houseOfCardsSlice';
 
 function makeStore() {
   return configureStore({
@@ -22,158 +21,84 @@ function makeStore() {
   });
 }
 
-function renderGame(
-  seed = 42,
-  participants = [{ id: 'human', name: 'You', isHuman: true }],
-) {
+function renderGame(seed = 42) {
   const store = makeStore();
-  const participantIds = participants.map((participant) => participant.id);
-
-  const utils = render(
+  render(
     <Provider store={store}>
       <HouseOfCardsComp
-        participantIds={participantIds}
-        participants={participants}
+        participantIds={['human']}
+        participants={[{ id: 'human', name: 'You', isHuman: true }]}
         prizeType="LOH"
         seed={seed}
       />
     </Provider>,
   );
-
-  return { store, ...utils };
+  return store;
 }
 
-function getPairIndexes(seed: number): number[][] {
-  const board = buildHouseOfCardsBoard(seed);
+function getPairIndexes(seed: number, pairCount: number): number[][] {
   const bySymbol = new Map<string, number[]>();
-
-  for (const card of board) {
-    const indexes = bySymbol.get(card.symbol) ?? [];
-    indexes.push(card.index);
-    bySymbol.set(card.symbol, indexes);
-  }
-
+  buildHouseOfCardsBoard(seed, pairCount).forEach((card) => {
+    bySymbol.set(card.symbol, [...(bySymbol.get(card.symbol) ?? []), card.index]);
+  });
   return [...bySymbol.values()];
 }
 
-function clickCell(index: number) {
-  const cells = screen.getAllByRole('gridcell');
-  fireEvent.click(cells[index]);
-}
-
-async function clickPair(pair: number[]) {
-  await act(async () => {
-    clickCell(pair[0]);
-  });
-  await act(async () => {
-    clickCell(pair[1]);
-  });
-}
-
-async function clickMismatch(firstIndex: number, secondIndex: number) {
-  await act(async () => {
-    clickCell(firstIndex);
-  });
-  await act(async () => {
-    clickCell(secondIndex);
-  });
-}
-
-describe('HouseOfCardsComp — peek effect', () => {
+describe('HouseOfCardsComp — five-round tournament', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('triggers peek only after 2 consecutive matched pairs and hides after 1000ms', async () => {
-    const seed = 42;
-    const pairs = getPairIndexes(seed);
+  it('uses the requested board sizes and has an elapsed timer with no cutoff', () => {
+    expect(HOUSE_OF_CARDS_TILE_COUNTS).toEqual([8, 12, 16, 20, 24]);
+    renderGame();
 
-    renderGame(seed);
-    await act(async () => {});
+    expect(screen.getByText('Round 1/5')).toBeInTheDocument();
+    expect(screen.getByText('8 tiles')).toBeInTheDocument();
+    expect(screen.getAllByRole('gridcell')).toHaveLength(8);
 
-    await clickPair(pairs[0]);
-    expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
-
-    await clickPair(pairs[1]);
-    expect(screen.getByText(/peek!/i)).toBeInTheDocument();
-
-    await act(async () => {
-      vi.advanceTimersByTime(PEEK_DURATION_MS - 1);
-    });
-    expect(screen.getByText(/peek!/i)).toBeInTheDocument();
-
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(61_000));
+    expect(screen.getByText('61s')).toBeInTheDocument();
+    expect(screen.getByText('Elapsed · no limit')).toBeInTheDocument();
+    expect(screen.getByLabelText('Round 1 card grid')).toBeInTheDocument();
   });
 
-  it('does not trigger after a broken streak and only fires once total', async () => {
+  it('advances from the 8-tile first round to the 12-tile second round', async () => {
     const seed = 42;
-    const pairs = getPairIndexes(seed);
-
     renderGame(seed);
-    await act(async () => {});
+    const pairs = getPairIndexes(seed, 4);
 
-    await clickPair(pairs[0]);
-    expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
+    for (const pair of pairs) {
+      await act(async () => {
+        fireEvent.click(screen.getAllByRole('gridcell')[pair[0]]);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getAllByRole('gridcell')[pair[1]]);
+      });
+      act(() => vi.advanceTimersByTime(260));
+    }
 
-    await clickMismatch(pairs[1][0], pairs[2][0]);
-    await act(async () => {
-      vi.advanceTimersByTime(901);
-    });
-
-    await clickPair(pairs[1]);
-    expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
-
-    await clickPair(pairs[2]);
-    expect(screen.getByText(/peek!/i)).toBeInTheDocument();
-
-    await act(async () => {
-      vi.advanceTimersByTime(PEEK_DURATION_MS);
-    });
-    expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
-
-    await clickPair(pairs[3]);
-    expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
-
-    await clickPair(pairs[4]);
-    expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Round 1 complete')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next round' }));
+    expect(screen.getByText('Round 2/5')).toBeInTheDocument();
+    expect(screen.getAllByRole('gridcell')).toHaveLength(12);
   });
 
-  it('renders a native-styled final scoreboard without emoji rank glyphs', async () => {
-    const seed = 42;
-    const { store } = renderGame(seed, [
-      { id: 'human', name: 'Finn', isHuman: true },
-      { id: 'zed', name: 'Zed', isHuman: false },
-      { id: 'vee', name: 'Vee', isHuman: false },
-    ]);
-    await act(async () => {
-      store.dispatch(
-        finaliseOutcome({
-          matchedPairs: TOTAL_PAIRS,
-          mistakes: 0,
-          turnsTaken: TOTAL_PAIRS,
-          completionTimeMs: 15_000,
-          streakBest: 4,
-          humanId: 'human',
-        }),
-      );
-    });
-
-    expect(screen.getByText('House of Cards')).toBeInTheDocument();
-    expect(screen.getByText('You Win!')).toBeInTheDocument();
-    expect(screen.getByText('Continue ▶')).toHaveClass('hoc-complete-continue');
-    const winnerRow = screen.getByLabelText('Rank 1').closest('li') as HTMLElement;
-    expect(screen.getByLabelText('Rank 1')).toHaveTextContent('1');
-    expect(screen.getAllByRole('listitem')).toHaveLength(3);
-    expect(within(winnerRow).getByText('Finn')).toBeInTheDocument();
-    expect(within(winnerRow).getByText(/10\/10 pairs · 0 misses/i)).toBeInTheDocument();
-    expect(screen.queryByText('🥇')).not.toBeInTheDocument();
-    expect(screen.queryByText('4️⃣')).not.toBeInTheDocument();
+  it('uses preliminary totals only when final pair points are tied', () => {
+    expect(chooseHouseOfCardsFinalWinner(
+      ['alice', 'bob'],
+      { alice: 7, bob: 6 },
+      { alice: 100, bob: 900 },
+    )).toBe('alice');
+    expect(chooseHouseOfCardsFinalWinner(
+      ['alice', 'bob'],
+      { alice: 7, bob: 7 },
+      { alice: 100, bob: 900 },
+    )).toBe('bob');
   });
 });

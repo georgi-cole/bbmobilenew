@@ -26,7 +26,6 @@ export type FamousFiguresTimerPhase =
   | 'hint_3'
   | 'hint_4'
   | 'hint_5'
-  | 'overtime'
   | 'done';
 
 export interface FamousFiguresState {
@@ -138,8 +137,34 @@ export function getPointsForHintsUsed(hintsRevealed: number): number {
     case 3: return 5;
     case 4: return 3;
     case 5: return 1;
-    default: return 1; // overtime
+    default: return 1; // Cap scoring at the final clue value.
   }
+}
+
+function hashFamousFiguresAiId(value: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+/** Deterministic clue and reaction delay used for live and fast-forwarded AI guesses. */
+export function getFamousFiguresAiPlan(
+  seed: number,
+  round: number,
+  aiId: string,
+  difficulty: 'easy' | 'medium' | 'hard',
+): { clueNumber: number; delayMs: number } {
+  const rng = mulberry32((seed ^ hashFamousFiguresAiId(aiId) ^ Math.imul(round + 1, 0x9e3779b9)) >>> 0);
+  const roll = rng();
+  let clueNumber: number;
+  if (difficulty === 'easy' && roll < 0.08) clueNumber = 1;
+  else if (difficulty === 'easy') clueNumber = roll < 0.68 ? 2 : roll < 0.88 ? 3 : roll < 0.97 ? 4 : 5;
+  else if (difficulty === 'medium') clueNumber = roll < 0.56 ? 2 : roll < 0.82 ? 3 : roll < 0.95 ? 4 : 5;
+  else clueNumber = roll < 0.36 ? 2 : roll < 0.66 ? 3 : roll < 0.88 ? 4 : 5;
+  return { clueNumber, delayMs: 1800 + Math.round(rng() * 4800) };
 }
 
 /** FNV-1a 32-bit hash — stable string → uint32. */
@@ -360,7 +385,7 @@ const famousFiguresSlice = createSlice({
       if (state.roundComplete) return;
       if (state.hintsRevealed >= 5) return;
       state.hintsRevealed += 1;
-      const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5', 'overtime', 'done'];
+      const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5'];
       const phaseIdx = Math.min(state.hintsRevealed, phases.length - 1);
       state.timerPhase = phases[phaseIdx];
     },
@@ -373,13 +398,13 @@ const famousFiguresSlice = createSlice({
     advanceTimer(state) {
       if (state.roundComplete) return;
       const order: FamousFiguresTimerPhase[] = [
-        'clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5', 'overtime', 'done',
+        'clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5', 'done',
       ];
       const idx = order.indexOf(state.timerPhase);
       if (idx < 0 || idx >= order.length - 1) return;
       state.timerPhase = order[idx + 1];
       // Keep hintsRevealed in sync when auto-advancing hint phases
-      if (state.timerPhase !== 'overtime' && state.timerPhase !== 'done') {
+      if (state.timerPhase !== 'done') {
         const newHints = order.indexOf(state.timerPhase);
         if (newHints > state.hintsRevealed) {
           state.hintsRevealed = newHints;
@@ -590,6 +615,45 @@ const famousFiguresSlice = createSlice({
     },
 
     /**
+     * Resolve every outstanding AI response for the current round and move the
+     * whole field to the reveal together. Used after the human answers correctly.
+     */
+    fastForwardCurrentRound(state) {
+      if (state.status !== 'round_active') return;
+      const roundIdx = state.currentRound;
+      const allIds = Object.keys(state.playerScores);
+      const aiSubs = state.aiSubmissions[roundIdx] ?? {};
+      const figIdx = state.matchFigureOrder[roundIdx] ?? state.currentFigureIndex;
+      const figure = FAMOUS_FIGURES[figIdx];
+
+      for (const id of allIds) {
+        if ((state.playerRoundCursor[id] ?? 0) > roundIdx) continue;
+        if (!state.playerPersonalRoundScores[id]) state.playerPersonalRoundScores[id] = [];
+
+        if (state.playerPersonalRoundScores[id][roundIdx] !== undefined) {
+          state.playerRoundCursor[id] = roundIdx + 1;
+          continue;
+        }
+
+        if (aiSubs[id] && figure) {
+          const plan = getFamousFiguresAiPlan(state.seed, roundIdx, id, figure.difficulty);
+          const simulatedHints = Math.max(state.hintsRevealed, plan.clueNumber - 1);
+          const points = getPointsForHintsUsed(simulatedHints);
+          state.playerScores[id] = (state.playerScores[id] ?? 0) + points;
+          state.playerCorrect[id] = true;
+          if (!state.correctPlayers.includes(id)) state.correctPlayers.push(id);
+          state.playerCorrectTimestamp[id] = Date.now();
+          state.playerPersonalRoundScores[id][roundIdx] = points;
+        } else {
+          state.playerPersonalRoundScores[id][roundIdx] = 0;
+        }
+        state.playerRoundCursor[id] = roundIdx + 1;
+      }
+
+      doEndRound(state);
+    },
+
+    /**
      * Atomically complete all remaining rounds and transition to 'complete'.
      *
      * For each remaining round:
@@ -717,6 +781,7 @@ export const {
   endRound,
   nextRound,
   setAiSubmissionsForRound,
+  fastForwardCurrentRound,
   finishAllRounds,
   markFamousFiguresOutcomeResolved,
   resetFamousFigures,

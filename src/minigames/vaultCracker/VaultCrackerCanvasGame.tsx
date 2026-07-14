@@ -79,6 +79,7 @@ function makeEmptySnapshot(): VaultCrackerEngineSnapshot {
     lastGuess: null,
     guessHistory: [],
     pressure: 0.06,
+    validationMessage: null,
   };
 }
 
@@ -273,7 +274,9 @@ export default function VaultCrackerCanvasGame({
   const attempts = snapshot.attempts;
   const elapsedLabel = formatElapsed(snapshot.elapsedMs);
   const statusText =
-    phase === 'solved'
+    snapshot.validationMessage !== null
+      ? snapshot.validationMessage
+      : phase === 'solved'
       ? `Vault breached in ${attempts} ${attempts === 1 ? 'attempt' : 'attempts'}`
       : snapshot.lastGuess
         ? getAttemptSummary(snapshot.lastGuess)
@@ -432,7 +435,11 @@ export default function VaultCrackerCanvasGame({
 
         {(statusText !== null || hintText !== null) && (
           <div className="cb__status-card" aria-live="polite">
-            {statusText !== null && <p className="cb__status">{statusText}</p>}
+            {statusText !== null && (
+              <p className={`cb__status${snapshot.validationMessage ? ' cb__status--fail' : ''}`}>
+                {statusText}
+              </p>
+            )}
             {hintText !== null && <p className="cb__hint">{hintText}</p>}
           </div>
         )}

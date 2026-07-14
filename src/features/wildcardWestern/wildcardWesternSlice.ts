@@ -3,7 +3,7 @@
  */
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { dealCards, getFirstPair, getNextQuestion, selectRandomPair } from './helpers';
+import { dealCards, getNextQuestion, selectRandomPair } from './helpers';
 import { WILDCARD_QUESTIONS } from './wildcardWesternQuestions';
 import { mulberry32 } from '../../store/rng';
 
@@ -26,6 +26,7 @@ export type WildcardWesternPhase =
   | 'intro'
   | 'cardDeal'
   | 'cardReveal'
+  | 'leagueResults'
   | 'pairIntro'
   | 'duelQuestion'
   | 'buzzOpen'
@@ -42,6 +43,7 @@ export type DuelOutcome = 'correct' | 'wrong' | 'timeout' | 'nobuzz' | null;
 
 export interface WildcardWesternState {
   phase: WildcardWesternPhase;
+  stage: 'league' | 'final';
   prizeType: 'LOH' | 'POS';
   seed: number;
   duelNumber: number;
@@ -50,6 +52,13 @@ export interface WildcardWesternState {
   aliveIds: string[];
   eliminatedIds: string[];
   humanPlayerId: string | null;
+  /** League points in stage one and lives in the final. */
+  playerScores: Record<string, number>;
+  leagueScores: Record<string, number>;
+  leagueRankings: string[];
+  leagueOpponentIds: string[];
+  leagueOpponentIndex: number;
+  finalistIds: string[] | null;
 
   cardsByPlayerId: Record<string, number>;
 
@@ -71,6 +80,8 @@ export interface WildcardWesternState {
 
   lastDuelOutcome: DuelOutcome;
   lastEliminatedId: string | null;
+  lastDuelWinnerId: string | null;
+  lastDuelLoserId: string | null;
 
   winnerId: string | null;
   outcomeResolved: boolean;
@@ -78,6 +89,7 @@ export interface WildcardWesternState {
 
 const initialState: WildcardWesternState = {
   phase: 'idle',
+  stage: 'league',
   prizeType: 'LOH',
   seed: 0,
   duelNumber: 0,
@@ -86,6 +98,12 @@ const initialState: WildcardWesternState = {
   aliveIds: [],
   eliminatedIds: [],
   humanPlayerId: null,
+  playerScores: {},
+  leagueScores: {},
+  leagueRankings: [],
+  leagueOpponentIds: [],
+  leagueOpponentIndex: 0,
+  finalistIds: null,
 
   cardsByPlayerId: {},
 
@@ -107,10 +125,81 @@ const initialState: WildcardWesternState = {
 
   lastDuelOutcome: null,
   lastEliminatedId: null,
+  lastDuelWinnerId: null,
+  lastDuelLoserId: null,
 
   winnerId: null,
   outcomeResolved: false,
 };
+
+function hashWildcardId(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function simulateWildcardLeague(ids: string[], humanId: string | null, seed: number): Record<string, number> {
+  const scores = Object.fromEntries(ids.map((id) => [id, 0]));
+  const aiIds = ids.filter((id) => id !== humanId);
+  for (let first = 0; first < aiIds.length; first += 1) {
+    for (let second = first + 1; second < aiIds.length; second += 1) {
+      const a = aiIds[first];
+      const b = aiIds[second];
+      const rng = mulberry32((seed ^ hashWildcardId(`league:${a}:${b}`)) >>> 0);
+      const winner = rng() < 0.5 ? a : b;
+      const loser = winner === a ? b : a;
+      scores[winner] += 1;
+      scores[loser] -= 1;
+    }
+  }
+  return scores;
+}
+
+function rankWildcardLeague(ids: string[], scores: Record<string, number>, seed: number): string[] {
+  return [...ids].sort((a, b) =>
+    (scores[b] ?? 0) - (scores[a] ?? 0)
+    || hashWildcardId(`${seed}:${a}`) - hashWildcardId(`${seed}:${b}`),
+  );
+}
+
+function wildcardFinalists(rankings: string[], scores: Record<string, number>): string[] {
+  if (rankings.length <= 3) return [...rankings];
+  const cutoff = scores[rankings[2]] ?? 0;
+  return rankings.filter((id) => (scores[id] ?? 0) >= cutoff);
+}
+
+function finishWildcardLeague(state: WildcardWesternState) {
+  state.leagueScores = { ...state.playerScores };
+  state.leagueRankings = rankWildcardLeague(state.participantIds, state.leagueScores, state.seed);
+  state.finalistIds = wildcardFinalists(state.leagueRankings, state.leagueScores);
+  state.aliveIds = [...state.finalistIds];
+  const finalistSet = new Set(state.finalistIds);
+  state.eliminatedIds = state.leagueRankings.filter((id) => !finalistSet.has(id)).reverse();
+  state.currentPair = null;
+  state.phase = 'leagueResults';
+}
+
+function recordWildcardDuel(state: WildcardWesternState, winnerId: string, loserId: string) {
+  state.lastDuelWinnerId = winnerId;
+  state.lastDuelLoserId = loserId;
+  state.lastEliminatedId = null;
+  state.controllerId = winnerId;
+  if (state.stage === 'league') {
+    state.playerScores[winnerId] = (state.playerScores[winnerId] ?? 0) + 1;
+    state.playerScores[loserId] = (state.playerScores[loserId] ?? 0) - 1;
+    return;
+  }
+  const nextLives = Math.max(0, (state.playerScores[loserId] ?? 3) - 1);
+  state.playerScores[loserId] = nextLives;
+  if (nextLives === 0) {
+    state.aliveIds = state.aliveIds.filter((id) => id !== loserId);
+    if (!state.eliminatedIds.includes(loserId)) state.eliminatedIds.push(loserId);
+    state.lastEliminatedId = loserId;
+  }
+}
 
 const wildcardWesternSlice = createSlice({
   name: 'wildcardWestern',
@@ -127,6 +216,7 @@ const wildcardWesternSlice = createSlice({
     ) {
       const { participantIds, prizeType, seed, humanPlayerId } = action.payload;
       state.phase = 'intro';
+      state.stage = 'league';
       state.prizeType = prizeType;
       state.seed = seed;
       state.duelNumber = 0;
@@ -134,6 +224,14 @@ const wildcardWesternSlice = createSlice({
       state.aliveIds = [...participantIds];
       state.eliminatedIds = [];
       state.humanPlayerId = humanPlayerId;
+      state.playerScores = simulateWildcardLeague(participantIds, humanPlayerId, seed);
+      state.leagueScores = { ...state.playerScores };
+      state.leagueRankings = [];
+      state.leagueOpponentIds = humanPlayerId
+        ? participantIds.filter((id) => id !== humanPlayerId).sort((a, b) => hashWildcardId(`${seed}:${a}`) - hashWildcardId(`${seed}:${b}`))
+        : [];
+      state.leagueOpponentIndex = 0;
+      state.finalistIds = null;
       state.cardsByPlayerId = {};
       state.currentPair = null;
       state.duelResolved = false;
@@ -157,6 +255,8 @@ const wildcardWesternSlice = createSlice({
       state.eliminationChooserId = null;
       state.lastDuelOutcome = null;
       state.lastEliminatedId = null;
+      state.lastDuelWinnerId = null;
+      state.lastDuelLoserId = null;
       state.winnerId = null;
       state.outcomeResolved = false;
     },
@@ -176,9 +276,27 @@ const wildcardWesternSlice = createSlice({
 
     advanceCardReveal(state) {
       if (state.phase !== 'cardReveal') return;
-      const [low, high] = getFirstPair(state.cardsByPlayerId, state.aliveIds);
-      state.currentPair = [low, high];
-      state.phase = 'pairIntro';
+      const opponent = state.leagueOpponentIds[0];
+      if (state.humanPlayerId && opponent) {
+        state.currentPair = [state.humanPlayerId, opponent];
+        state.phase = 'pairIntro';
+      } else {
+        finishWildcardLeague(state);
+      }
+    },
+
+    startWildcardFinal(state) {
+      if (state.phase !== 'leagueResults' || !state.finalistIds?.length) return;
+      state.stage = 'final';
+      state.aliveIds = [...state.finalistIds];
+      for (const id of state.aliveIds) state.playerScores[id] = 3;
+      state.controllerId = state.leagueRankings.find((id) => state.aliveIds.includes(id)) ?? state.aliveIds[0] ?? null;
+      state.currentPair = null;
+      state.lastDuelWinnerId = null;
+      state.lastDuelLoserId = null;
+      state.lastEliminatedId = null;
+      state.phase = state.aliveIds.length <= 1 ? 'gameOver' : 'chooseNextPair';
+      if (state.aliveIds.length <= 1) state.winnerId = state.aliveIds[0] ?? null;
     },
 
     advancePairIntro(state) {
@@ -228,24 +346,11 @@ const wildcardWesternSlice = createSlice({
 
       state.duelResolved = true;
       state.lastDuelOutcome = 'nobuzz';
-
-      if (state.aliveIds.length === 2) {
-        // Final 2: redraw question, don't eliminate.
-        state.phase = 'finalDuel';
-        state.duelResolved = false;
-        state.currentQuestionId = null;
-        state.buzzedBy = null;
-        state.selectedAnswerIndex = null;
-        state.buzzWindowUntil = 0;
-        state.answerWindowUntil = 0;
-        return;
-      }
-
-      // Both eliminated
       if (state.currentPair) {
-        state.eliminatedIds.push(...state.currentPair);
-        state.aliveIds = state.aliveIds.filter((id) => !state.currentPair!.includes(id));
-        state.lastEliminatedId = null;
+        const rng = mulberry32((state.seed ^ Math.imul(state.duelNumber + 1, 0x9e3779b9)) >>> 0);
+        const winner = state.currentPair[rng() < 0.5 ? 0 : 1];
+        const loser = state.currentPair.find((id) => id !== winner)!;
+        recordWildcardDuel(state, winner, loser);
       }
 
       state.phase = 'resolution';
@@ -276,15 +381,9 @@ const wildcardWesternSlice = createSlice({
       const opponent = state.buzzedBy === p1 ? p2 : p1;
 
       if (correct) {
-        // Buzzer wins, opponent eliminated
-        state.eliminatedIds.push(opponent);
-        state.aliveIds = state.aliveIds.filter((id) => id !== opponent);
-        state.lastEliminatedId = opponent;
+        recordWildcardDuel(state, state.buzzedBy, opponent);
       } else {
-        // Buzzer loses, buzzer eliminated
-        state.eliminatedIds.push(state.buzzedBy);
-        state.aliveIds = state.aliveIds.filter((id) => id !== state.buzzedBy);
-        state.lastEliminatedId = state.buzzedBy;
+        recordWildcardDuel(state, opponent, state.buzzedBy);
       }
 
       state.phase = 'resolution';
@@ -298,9 +397,8 @@ const wildcardWesternSlice = createSlice({
       state.lastDuelOutcome = 'timeout';
 
       if (state.buzzedBy) {
-        state.eliminatedIds.push(state.buzzedBy);
-        state.aliveIds = state.aliveIds.filter((id) => id !== state.buzzedBy);
-        state.lastEliminatedId = state.buzzedBy;
+        const opponent = state.currentPair?.find((id) => id !== state.buzzedBy);
+        if (opponent) recordWildcardDuel(state, opponent, state.buzzedBy);
       }
 
       state.phase = 'resolution';
@@ -309,6 +407,18 @@ const wildcardWesternSlice = createSlice({
     advanceResolution(state) {
       if (state.phase !== 'resolution') return;
 
+      if (state.stage === 'league') {
+        state.leagueOpponentIndex += 1;
+        const nextOpponent = state.leagueOpponentIds[state.leagueOpponentIndex];
+        if (state.humanPlayerId && nextOpponent) {
+          state.currentPair = [state.humanPlayerId, nextOpponent];
+          state.phase = 'pairIntro';
+        } else {
+          finishWildcardLeague(state);
+        }
+        return;
+      }
+
       // Check win condition
       if (state.aliveIds.length === 1) {
         state.winnerId = state.aliveIds[0];
@@ -316,37 +426,8 @@ const wildcardWesternSlice = createSlice({
         return;
       }
 
-      if (state.aliveIds.length === 2) {
-        // In finalDuel mode, next pair is always the final 2
-        state.currentPair = [state.aliveIds[0], state.aliveIds[1]];
-        state.phase = 'finalDuel';
-        return;
-      }
-
-      // Normal case: determine who controls next
-      if (state.lastDuelOutcome === 'nobuzz') {
-        // Both eliminated, random pair
-        state.phase = 'randomPairSelection';
-      } else if (state.lastDuelOutcome === 'correct') {
-        // Winner chooses elimination then next pair
-        const winner = state.currentPair?.find((id) => state.aliveIds.includes(id));
-        if (winner) {
-          state.controllerId = winner;
-          state.eliminationChooserId = winner;
-          state.phase = 'chooseElimination';
-        } else {
-          state.phase = 'randomPairSelection';
-        }
-      } else {
-        // Wrong or timeout: survivor chooses next pair
-        const survivor = state.currentPair?.find((id) => state.aliveIds.includes(id));
-        if (survivor) {
-          state.controllerId = survivor;
-          state.phase = 'chooseNextPair';
-        } else {
-          state.phase = 'randomPairSelection';
-        }
-      }
+      state.controllerId = state.lastDuelWinnerId;
+      state.phase = 'chooseNextPair';
     },
 
     playerChooseElimination(state, action: PayloadAction<{ targetId: string }>) {
@@ -409,6 +490,7 @@ export const {
   advanceIntro,
   dealCardsAction,
   advanceCardReveal,
+  startWildcardFinal,
   advancePairIntro,
   openBuzzWindow,
   playerBuzz,

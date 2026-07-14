@@ -84,8 +84,8 @@ describe('NumberTrivia helpers', () => {
       attempts: 1,
       closestDistance: 0,
     });
-    expect(performance.timeMs).toBeGreaterThanOrEqual(500);
-    expect(performance.timeMs).toBeLessThanOrEqual(2_000);
+    expect(performance.timeMs).toBeGreaterThanOrEqual(1_800);
+    expect(performance.timeMs).toBeLessThanOrEqual(5_500);
   });
 
   it('lets harder questions create hesitant but correct AI runs', () => {
@@ -102,7 +102,7 @@ describe('NumberTrivia helpers', () => {
     expect(performance.attempts).toBeGreaterThanOrEqual(2);
     expect(performance.closestDistance).toBe(0);
     expect(performance.timeMs).toBeGreaterThan(4_000);
-    expect(performance.timeMs).toBeLessThanOrEqual(6_650);
+    expect(performance.timeMs).toBeLessThanOrEqual(16_600);
   });
 
   it('uses near-miss logic for very hard AI misses', () => {
@@ -207,7 +207,12 @@ describe('NumberTrivia component', () => {
       const scoreboardLabel = round === 5 ? 'Final scoreboard' : `Round ${round} scoreboard`;
       expect(screen.getByLabelText(scoreboardLabel)).toBeInTheDocument();
       expect(screen.queryByLabelText('Gameplay panel')).toBeNull();
-      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      const continueButton = screen.queryByRole('button', { name: 'Continue' });
+      if (continueButton) {
+        fireEvent.click(continueButton);
+      } else {
+        fireEvent.click(screen.getByRole('button', { name: 'Keep watching' }));
+      }
     }
 
     expect(onFinish).toHaveBeenCalledTimes(1);

@@ -100,17 +100,17 @@
 /* Card reveal */
 .ww-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 0.65rem;
   width: 100%;
-  max-width: 700px;
+  max-width: 900px;
 }
 
 .ww-player-card {
   background: linear-gradient(135deg, #c8a96e 0%, #8b4513 100%);
   border: 4px solid #722f37;
   border-radius: 12px;
-  padding: 1.2rem;
+  padding: 0.65rem 0.45rem;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   animation: ww-card-deal 0.5s ease-out;
@@ -135,10 +135,57 @@
 }
 
 .ww-card-value {
-  font-size: 2.5rem;
+  font-size: 1.65rem;
   font-weight: 900;
   color: #722f37;
   text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.ww-player-card .ww-avatar-name {
+  font-size: 0.68rem;
+}
+
+.ww-league-results {
+  width: min(100%, 680px);
+}
+
+.ww-league-list {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0;
+  margin: 1rem 0 1.25rem;
+  list-style: none;
+}
+
+.ww-league-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto 5.5rem;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(244, 228, 193, 0.14);
+  border-radius: 10px;
+  background: rgba(45, 27, 14, 0.62);
+  text-align: left;
+}
+
+.ww-league-row--finalist {
+  border-color: rgba(212, 160, 23, 0.55);
+  background: rgba(212, 160, 23, 0.11);
+}
+
+@media (max-width: 520px) {
+  .ww-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ww-league-row {
+    grid-template-columns: 1.5rem 1fr auto;
+  }
+
+  .ww-league-row small {
+    grid-column: 2 / -1;
+  }
 }
 
 .ww-card-status {

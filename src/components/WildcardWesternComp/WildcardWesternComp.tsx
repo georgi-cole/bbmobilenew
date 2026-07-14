@@ -12,6 +12,7 @@ import {
   advanceIntro,
   dealCardsAction,
   advanceCardReveal,
+  startWildcardFinal,
   advancePairIntro,
   openBuzzWindow,
   playerBuzz,
@@ -827,6 +828,24 @@ export default function WildcardWesternComp({
           </div>
         )}
 
+        {state.phase === 'leagueResults' && (
+          <div className="ww-resolution ww-league-results">
+            <h2>League Standings</h2>
+            <p>Win +1 · Loss −1 · Top three plus cutoff ties advance</p>
+            <ol className="ww-league-list">
+              {state.leagueRankings.map((id, index) => (
+                <li key={id} className={state.finalistIds?.includes(id) ? 'ww-league-row ww-league-row--finalist' : 'ww-league-row'}>
+                  <span>{index + 1}.</span>
+                  <strong>{getParticipantName(id)}{id === humanPlayerId ? ' (You)' : ''}</strong>
+                  <span>{state.leagueScores[id] ?? 0} pts</span>
+                  <small>{state.finalistIds?.includes(id) ? 'Finalist' : 'Eliminated'}</small>
+                </li>
+              ))}
+            </ol>
+            <button className="ww-btn" onClick={() => dispatch(startWildcardFinal())}>Start three-life final</button>
+          </div>
+        )}
+
         {state.phase === 'pairIntro' && (
           <div className="ww-duel-container">
             <div className="ww-duel-header">
@@ -1020,22 +1039,22 @@ export default function WildcardWesternComp({
             )}
             {state.lastDuelOutcome === 'correct' && (
               <p className="ww-outcome-correct">
-                Correct! {getParticipantName(state.lastEliminatedId ?? '')} has been eliminated.
+                Correct! {getParticipantName(state.lastDuelWinnerId ?? '')} wins; {getParticipantName(state.lastDuelLoserId ?? '')} loses {state.stage === 'final' ? 'one life' : 'one league point'}.
               </p>
             )}
             {state.lastDuelOutcome === 'wrong' && (
               <p className="ww-outcome-wrong">
-                Wrong answer! {getParticipantName(state.lastEliminatedId ?? '')} has been eliminated.
+                Wrong answer! {getParticipantName(state.lastDuelLoserId ?? '')} loses {state.stage === 'final' ? 'one life' : 'one league point'}.
               </p>
             )}
             {state.lastDuelOutcome === 'timeout' && (
               <p className="ww-outcome-timeout">
-                Time's up! {getParticipantName(state.lastEliminatedId ?? '')} has been eliminated.
+                Time&apos;s up! {getParticipantName(state.lastDuelLoserId ?? '')} loses {state.stage === 'final' ? 'one life' : 'one league point'}.
               </p>
             )}
             {state.lastDuelOutcome === 'nobuzz' && (
               <p className="ww-outcome-timeout">
-                No one drew! {state.currentPair ? 'Both eliminated.' : ''}
+                No one drew. The seeded duel result awards the match to {getParticipantName(state.lastDuelWinnerId ?? '')}.
               </p>
             )}
             {(selectedAnswerText || correctAnswerText) && state.lastDuelOutcome !== 'nobuzz' && (
@@ -1182,7 +1201,7 @@ export default function WildcardWesternComp({
       {/* Status bar */}
       <div className="ww-status-bar">
         <div className="ww-status-bar-counts">
-          <span className="ww-alive-count">Alive: {state.aliveIds.length}</span>
+          <span className="ww-alive-count">{state.stage === 'league' ? 'League players' : 'Finalists alive'}: {state.aliveIds.length}</span>
           <span>Duel #{state.duelNumber}</span>
           <span className="ww-eliminated">Out: {state.eliminatedIds.length}</span>
         </div>
@@ -1194,6 +1213,7 @@ export default function WildcardWesternComp({
               avatarUrl={getParticipantAvatar(id)}
               isYou={isHuman(id)}
               isDuelist={state.currentPair?.includes(id)}
+              badge={state.stage === 'final' ? `❤️${state.playerScores[id] ?? 0}` : undefined}
               size="sm"
             />
           ))}

@@ -11,6 +11,7 @@ import { mulberry32 } from '../../store/rng';
 import { CWGO_QUESTIONS } from './cwgoQuestions';
 import {
   generateAIGuess,
+  aiExactAnswerProbability,
   aiSkillRangeForDifficulty,
   computeWinnerClosestWithoutGoingOver,
   computeMassElimination,
@@ -43,6 +44,7 @@ export type CwgoStatus =
   | 'idle'
   | 'mass_input'
   | 'mass_reveal'
+  | 'league_results'
   | 'choose_duel'
   | 'duel_input'
   | 'duel_reveal'
@@ -52,8 +54,16 @@ export type CwgoPrizeType = 'LOH' | 'POS';
 
 export interface CwgoState {
   status: CwgoStatus;
+  stage: 'league' | 'final';
   prizeType: CwgoPrizeType;
   seed: number;
+  allPlayerIds: string[];
+  humanPlayerId: string | null;
+  /** League points in stage one and remaining lives in the final. */
+  playerScores: Record<string, number>;
+  leagueScores: Record<string, number>;
+  leagueRankings: string[];
+  finalistIds: string[] | null;
   /** IDs of players still competing. */
   aliveIds: string[];
   /** Current question index into CWGO_QUESTIONS. */
@@ -95,8 +105,15 @@ export interface CwgoState {
 
 const initialState: CwgoState = {
   status: 'idle',
+  stage: 'league',
   prizeType: 'LOH',
   seed: 0,
+  allPlayerIds: [],
+  humanPlayerId: null,
+  playerScores: {},
+  leagueScores: {},
+  leagueRankings: [],
+  finalistIds: null,
   aliveIds: [],
   questionIdx: 0,
   questionOrder: [],
@@ -126,6 +143,45 @@ function pickQuestionFromOrder(questionOrder: number[], round: number): number {
   return Math.floor(rng() * CWGO_QUESTIONS.length);
 }
 
+function hashPlayerId(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function rankLeague(playerIds: string[], scores: Record<string, number>, seed: number): string[] {
+  return [...playerIds].sort((a, b) =>
+    (scores[b] ?? 0) - (scores[a] ?? 0)
+    || hashPlayerId(`${seed}:${a}`) - hashPlayerId(`${seed}:${b}`),
+  );
+}
+
+function selectFinalists(rankings: string[], scores: Record<string, number>): string[] {
+  if (rankings.length <= 3) return [...rankings];
+  const cutoffScore = scores[rankings[2]] ?? 0;
+  return rankings.filter((id) => (scores[id] ?? 0) >= cutoffScore);
+}
+
+function simulateAiLeague(playerIds: string[], humanPlayerId: string | null, seed: number): Record<string, number> {
+  const scores = Object.fromEntries(playerIds.map((id) => [id, 0]));
+  const aiIds = playerIds.filter((id) => id !== humanPlayerId);
+  for (let first = 0; first < aiIds.length; first += 1) {
+    for (let second = first + 1; second < aiIds.length; second += 1) {
+      const a = aiIds[first];
+      const b = aiIds[second];
+      const rng = mulberry32((seed ^ hashPlayerId(`cwgo:${a}:${b}`)) >>> 0);
+      const winner = rng() < 0.5 ? a : b;
+      const loser = winner === a ? b : a;
+      scores[winner] += 1;
+      scores[loser] -= 1;
+    }
+  }
+  return scores;
+}
+
 /** Auto-fill AI guesses for all non-human aliveIds using seeded RNG. */
 function fillAIGuesses(
   guesses: Record<string, number>,
@@ -143,10 +199,13 @@ function fillAIGuesses(
     if (!humanIds.has(id) && updated[id] === undefined) {
       // Derive a per-player skill from the seeded RNG, scaled into the band the
       // question's difficulty allows (easy questions → weaker AI).
-      const aiSkill = skillRange.min + mulberry32(aiSeed)() * (skillRange.max - skillRange.min);
+      const knowledgeRoll = mulberry32(aiSeed)();
+      const aiSkill = skillRange.min + mulberry32(aiSeed ^ 0xa511e9b3)() * (skillRange.max - skillRange.min);
       // Advance seed before generating the guess so skill and guess use independent RNG sequences.
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
-      updated[id] = generateAIGuess(answer, aiSkill, aiSeed);
+      updated[id] = knowledgeRoll < aiExactAnswerProbability(difficulty)
+        ? answer
+        : generateAIGuess(answer, aiSkill, aiSeed);
       // Advance seed for next AI player
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
     }
@@ -167,9 +226,10 @@ const cwgoSlice = createSlice({
         participantIds: string[];
         prizeType: CwgoPrizeType;
         seed: number;
+        humanPlayerId?: string | null;
       }>,
     ) {
-      const { participantIds, prizeType, seed } = action.payload;
+      const { participantIds, prizeType, seed, humanPlayerId = null } = action.payload;
       // Defensive: if seed is zero or missing, generate one from Date.now() to
       // avoid every challenge with an unset seed producing the same question.
       const safeSeed = seed && seed !== 0
@@ -177,8 +237,15 @@ const cwgoSlice = createSlice({
         : ((mulberry32(Date.now() >>> 0)() * 0x100000000) >>> 0);
       const questionOrder = generateQuestionOrder(safeSeed);
       state.status = 'mass_input';
+      state.stage = 'league';
       state.prizeType = prizeType;
       state.seed = safeSeed;
+      state.allPlayerIds = [...participantIds];
+      state.humanPlayerId = humanPlayerId;
+      state.playerScores = simulateAiLeague(participantIds, humanPlayerId, safeSeed);
+      state.leagueScores = { ...state.playerScores };
+      state.leagueRankings = [];
+      state.finalistIds = null;
       state.aliveIds = [...participantIds];
       state.round = 0;
       state.questionOrder = questionOrder;
@@ -261,6 +328,34 @@ const cwgoSlice = createSlice({
         guess: state.guesses[id] ?? 0,
       }));
 
+      if (state.stage === 'league') {
+        const humanId = state.humanPlayerId;
+        if (humanId && state.aliveIds.includes(humanId)) {
+          for (const opponentId of state.aliveIds) {
+            if (opponentId === humanId) continue;
+            const winner = computeWinnerClosestWithoutGoingOver(
+              entries.filter((entry) => entry.playerId === humanId || entry.playerId === opponentId),
+              question.answer,
+            );
+            const loser = winner === humanId ? opponentId : humanId;
+            if (winner) {
+              state.playerScores[winner] = (state.playerScores[winner] ?? 0) + 1;
+              state.playerScores[loser] = (state.playerScores[loser] ?? 0) - 1;
+            }
+          }
+        }
+        state.leagueScores = { ...state.playerScores };
+        state.leagueRankings = rankLeague(state.allPlayerIds, state.leagueScores, state.seed);
+        state.finalistIds = selectFinalists(state.leagueRankings, state.leagueScores);
+        state.aliveIds = [...state.finalistIds];
+        const finalistSet = new Set(state.finalistIds);
+        const nonFinalists = state.leagueRankings.filter((id) => !finalistSet.has(id));
+        state.eliminationOrder = [...nonFinalists].reverse();
+        state.lastEliminated = [...nonFinalists];
+        state.status = 'league_results';
+        return;
+      }
+
       const { eliminated, surviving } = computeMassElimination(
         entries,
         question.answer,
@@ -283,6 +378,26 @@ const cwgoSlice = createSlice({
       } else {
         // Advance question so the pick screen doesn't show the previous question
         state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round);
+        state.status = 'choose_duel';
+      }
+    },
+
+    startCwgoFinal(state) {
+      if (state.status !== 'league_results' || !state.finalistIds?.length) return;
+      state.stage = 'final';
+      state.aliveIds = [...state.finalistIds];
+      for (const id of state.aliveIds) state.playerScores[id] = 3;
+      state.leaderId = state.leagueRankings.find((id) => state.aliveIds.includes(id)) ?? state.aliveIds[0] ?? null;
+      state.guesses = {};
+      state.lastEliminated = [];
+      state.round += 1;
+      state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round);
+      if (state.aliveIds.length <= 1) {
+        state.status = 'complete';
+      } else if (state.aliveIds.length === 2) {
+        state.duelPair = [state.aliveIds[0], state.aliveIds[1]];
+        state.status = 'duel_input';
+      } else {
         state.status = 'choose_duel';
       }
     },
@@ -332,10 +447,18 @@ const cwgoSlice = createSlice({
 
       const loser = state.duelPair.find((id) => id !== state.duelWinnerId);
       if (loser) {
-        state.aliveIds = state.aliveIds.filter((id) => id !== loser);
-        state.lastEliminated = [loser];
-        state.eliminationOrder.push(loser);
+        const nextLives = Math.max(0, (state.playerScores[loser] ?? 3) - 1);
+        state.playerScores[loser] = nextLives;
+        if (nextLives === 0) {
+          state.aliveIds = state.aliveIds.filter((id) => id !== loser);
+          state.lastEliminated = [loser];
+          state.eliminationOrder.push(loser);
+        } else {
+          state.lastEliminated = [];
+        }
       }
+
+      state.leaderId = state.duelWinnerId;
 
       state.duelPair = null;
       state.guesses = {};
@@ -371,6 +494,7 @@ export const {
   autoFillAIGuesses,
   revealMassResults,
   confirmMassElimination,
+  startCwgoFinal,
   chooseDuelPair,
   revealDuelResults,
   confirmDuelElimination,

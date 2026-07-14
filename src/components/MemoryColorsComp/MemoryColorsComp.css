@@ -270,28 +270,25 @@
 
 .mc-host--results {
   justify-content: flex-start;
-  padding: max(20px, env(safe-area-inset-top, 0px)) 12px calc(20px + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  padding: 0;
+  overflow: visible;
 }
 
 .mc-results-panel {
+  max-width: none;
+  min-height: 100%;
   width: 100%;
-  max-width: 540px;
-  max-height: min(760px, calc(100vh - 40px));
-  max-height: min(760px, calc(100dvh - 40px));
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 24px 20px 20px;
+  background:
+    radial-gradient(circle at top, rgba(67, 122, 184, 0.15), transparent 38%),
+    linear-gradient(180deg, #071426 0%, #0b1930 100%);
+  border: 0;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  overflow-y: auto;
+  box-shadow: none;
 }
 
 .mc-results-panel::before {
@@ -328,7 +325,7 @@
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   padding-right: 2px;

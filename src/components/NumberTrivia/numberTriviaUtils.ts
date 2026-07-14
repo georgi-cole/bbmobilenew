@@ -50,40 +50,40 @@ interface NumberTriviaAiDifficultyProfile {
 const NUMBER_TRIVIA_AI_PROFILES: Record<NumberTriviaDifficulty, NumberTriviaAiDifficultyProfile> = {
   easy: {
     accuracyRange: [0.95, 1],
-    delayRangeMs: [500, 2_000],
-    maxCorrectAttempts: 1,
-    maxWrongAttempts: 1,
-    hesitationChance: 0.03,
+    delayRangeMs: [1_800, 5_500],
+    maxCorrectAttempts: 3,
+    maxWrongAttempts: 3,
+    hesitationChance: 0.38,
     nearMissChance: 0.3,
     giveUpChance: 0.08,
     confidentWrongChance: 0.12,
   },
   medium: {
     accuracyRange: [0.75, 0.9],
-    delayRangeMs: [1_000, 4_000],
-    maxCorrectAttempts: 2,
-    maxWrongAttempts: 2,
-    hesitationChance: 0.28,
+    delayRangeMs: [2_600, 8_000],
+    maxCorrectAttempts: 4,
+    maxWrongAttempts: 4,
+    hesitationChance: 0.52,
     nearMissChance: 0.4,
     giveUpChance: 0.14,
     confidentWrongChance: 0.16,
   },
   hard: {
     accuracyRange: [0.5, 0.7],
-    delayRangeMs: [2_000, 6_000],
-    maxCorrectAttempts: 3,
-    maxWrongAttempts: 3,
-    hesitationChance: 0.5,
+    delayRangeMs: [3_500, 11_000],
+    maxCorrectAttempts: 5,
+    maxWrongAttempts: 5,
+    hesitationChance: 0.64,
     nearMissChance: 0.52,
     giveUpChance: 0.2,
     confidentWrongChance: 0.2,
   },
   'very-hard': {
     accuracyRange: [0.25, 0.5],
-    delayRangeMs: [3_000, 8_000],
-    maxCorrectAttempts: 4,
-    maxWrongAttempts: 4,
-    hesitationChance: 0.68,
+    delayRangeMs: [4_500, 15_000],
+    maxCorrectAttempts: 6,
+    maxWrongAttempts: 6,
+    hesitationChance: 0.76,
     nearMissChance: 0.68,
     giveUpChance: 0.32,
     confidentWrongChance: 0.3,
@@ -151,8 +151,7 @@ export function simulateNumberTriviaAiPerformance(
   const guessed = rng() < accuracy;
 
   if (guessed) {
-    const isExactYearQuestion = /\b(?:which|what) year\b/i.test(context.question.prompt);
-    let attempts = isExactYearQuestion ? Math.min(2, profile.maxCorrectAttempts) : 1;
+    let attempts = 1;
     let hesitationChance = clamp(profile.hesitationChance - skillOffset * 1.2, 0.01, 0.9);
     while (attempts < profile.maxCorrectAttempts && rng() < hesitationChance) {
       attempts += 1;
@@ -162,7 +161,7 @@ export function simulateNumberTriviaAiPerformance(
     return {
       guessed: true,
       attempts,
-      timeMs: Math.round(baseDelayMs + (attempts - 1) * 650 + Math.max(0, fatiguePenalty * 3_000)),
+      timeMs: Math.round(baseDelayMs + (attempts - 1) * 1_400 + Math.max(0, fatiguePenalty * 3_000)),
       closestDistance: 0,
     };
   }
@@ -181,7 +180,7 @@ export function simulateNumberTriviaAiPerformance(
     attempts: clamp(attempts, 1, NUMBER_TRIVIA_MAX_ATTEMPTS),
     timeMs: Math.round(
       baseDelayMs
-      + Math.max(0, attempts - 1) * 850
+      + Math.max(0, attempts - 1) * 1_350
       + (nearMiss ? 250 : 900)
       + Math.max(0, fatiguePenalty * 3_000),
     ),

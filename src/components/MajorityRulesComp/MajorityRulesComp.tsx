@@ -773,8 +773,6 @@ export default function MajorityRulesComp({
 
   const renderReveal = () => {
     const reveal = game.revealState;
-    const distribution = reveal?.result.distribution ?? {};
-    const answerLookup = reveal?.result.answers ?? {};
     const eliminated = reveal?.result.eliminatedIds ?? [];
     const minorityLabel = game.currentQuestion?.options.find(
       (option) => option.id === reveal?.result.minorityOptionId,
@@ -823,35 +821,12 @@ export default function MajorityRulesComp({
           </p>
         </div>
 
-        <div className="majority-rules-distribution">
-          {game.currentQuestion?.options.map((option) => (
-            <div key={option.id} className="majority-rules-distribution-row">
-              <div className="majority-rules-distribution-top">
-                <span>{option.text}</span>
-                <strong>{distribution[option.id] ?? 0}</strong>
-              </div>
-              <div className="majority-rules-poll-bar">
-                <div
-                  className="majority-rules-poll-fill"
-                  style={{
-                    width: `${((distribution[option.id] ?? 0) / Math.max(1, game.activeIds.length)) * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="majority-rules-answer-grid">
-          {game.activeIds.map((playerId, idx) => (
+        {eliminated.length > 0 && (
+          <div className="majority-rules-eliminated-grid" aria-label="Eliminated players">
+          {eliminated.map((playerId, idx) => (
             <motion.div
               key={playerId}
-              className={[
-                'majority-rules-answer-card',
-                eliminated.includes(playerId) ? 'majority-rules-answer-card--eliminated' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              className="majority-rules-eliminated-card"
               {...(motionEnabled
                 ? {
                     initial: { opacity: 0, y: 12 },
@@ -859,19 +834,13 @@ export default function MajorityRulesComp({
                   }
                 : {})}
             >
-              <div className="majority-rules-answer-card__player">
-                <MajorityRulesPortrait player={getPlayer(playerId)} size="sm" />
-                <div className="majority-rules-answer-card__meta">
-                  <span>{getName(playerId)}</span>
-                  {eliminated.includes(playerId) && <strong>Eliminated</strong>}
-                </div>
-              </div>
-              <strong>
-                {game.currentQuestion?.options.find((option) => option.id === answerLookup[playerId])?.text ?? '—'}
-              </strong>
+              <MajorityRulesPortrait player={getPlayer(playerId)} size="lg" />
+              <strong>{getName(playerId)}</strong>
+              <span>Eliminated</span>
             </motion.div>
           ))}
-        </div>
+          </div>
+        )}
 
         <button type="button" className="majority-rules-primary" onClick={() => dispatch(advanceReveal())}>
           Continue
@@ -1138,7 +1107,7 @@ export default function MajorityRulesComp({
   };
 
   return (
-    <div className="majority-rules-shell">
+    <div className="majority-rules-shell" data-phase={game.phase}>
       <div className="majority-rules-ambient majority-rules-ambient--one" aria-hidden="true" />
       <div className="majority-rules-ambient majority-rules-ambient--two" aria-hidden="true" />
       <AnimatePresence mode="wait" initial={false}>

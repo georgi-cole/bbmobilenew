@@ -11,6 +11,10 @@ import famousFiguresReducer, {
   resetFamousFigures,
   markFamousFiguresOutcomeResolved,
   finishAllRounds,
+  fastForwardCurrentRound,
+  setAiSubmissionsForRound,
+  getFamousFiguresAiPlan,
+  getPointsForHintsUsed,
   FAMOUS_FIGURES,
   getPlayerFigureIndex,
 } from '../../../src/features/famousFigures/famousFiguresSlice';
@@ -230,18 +234,35 @@ describe('famousFiguresSlice', () => {
     expect(s.roundComplete).toBe(true);
   });
 
-  it('advanceTimer progresses past hint_5 to overtime (timer deadlock fix)', () => {
+  it('advanceTimer ends the round immediately after hint_5', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'LOH', seed: 1 }));
     // Advance through all hint phases
     for (let i = 0; i < 5; i++) store.dispatch(revealNextHint());
     expect(getState(store).timerPhase).toBe('hint_5');
-    // Firing advanceTimer (not revealNextHint) should transition to overtime
+    // There is no extra ten-second overtime window after the final clue.
     store.dispatch(advanceTimer());
-    expect(getState(store).timerPhase).toBe('overtime');
+    expect(getState(store).timerPhase).toBe('done');
     // One more advance → done
     store.dispatch(advanceTimer());
     expect(getState(store).timerPhase).toBe('done');
+  });
+
+  it('fast-forward preserves each AI planned clue instead of awarding premature clue-one points', () => {
+    const seed = 17;
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'LOH', seed }));
+    const started = getState(store);
+    const figure = FAMOUS_FIGURES[started.matchFigureOrder[0]];
+    const plan = getFamousFiguresAiPlan(seed, 0, PLAYER_B, figure.difficulty);
+    store.dispatch(setAiSubmissionsForRound({ round: 0, submissions: { [PLAYER_B]: true } }));
+
+    store.dispatch(fastForwardCurrentRound());
+
+    const finished = getState(store);
+    expect(finished.status).toBe('round_reveal');
+    expect(finished.playerScores[PLAYER_B]).toBe(getPointsForHintsUsed(plan.clueNumber - 1));
+    expect(finished.playerRoundCursor[PLAYER_B]).toBe(1);
   });
 
   it('endRound transitions to round_reveal', () => {

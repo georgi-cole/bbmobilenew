@@ -63,8 +63,8 @@ describe('MemoryColorsComp color names', () => {
     );
   });
 
-  it('starts at 5 colors and allows 3 mistakes', () => {
+  it('starts at 5 colors and allows 5 mistakes', () => {
     expect(INITIAL_SEQUENCE_LENGTH).toBe(5);
-    expect(MAX_MISTAKES).toBe(3);
+    expect(MAX_MISTAKES).toBe(5);
   });
 });

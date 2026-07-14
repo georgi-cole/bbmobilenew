@@ -82,6 +82,7 @@ function makeInitialState(seed: number, timeLimitMs?: number): VaultCrackerRunti
     particles: [],
     pointer: makePointerState(),
     submitPressed: false,
+    validationMessage: null,
   };
 }
 
@@ -345,6 +346,7 @@ export class VaultCrackerCanvasEngine {
     if (!isInteractivePhase(this.state.phase)) return;
     this.ensureTimerStarted();
     this.state.digits[index] = modulo(this.state.digits[index] + delta, 10);
+    this.state.validationMessage = null;
     this.state.pulse = 0.22;
     this.state.glow = clamp(this.state.glow + 0.07, 0.18, 1.12);
     this.state.dialAnimations[index].offset += delta * (fromDrag ? 9 : 14);
@@ -357,6 +359,15 @@ export class VaultCrackerCanvasEngine {
     this.ensureTimerStarted();
 
     const guess = [...this.state.digits];
+    if (new Set(guess).size !== CODE_LENGTH) {
+      this.state.validationMessage = 'Use four different digits. Repeated digits are not allowed.';
+      this.state.rejectPulse = 1;
+      this.state.shake = 1;
+      setPhase(this.state, 'failAnimating');
+      this.emitProgress(true);
+      return;
+    }
+    this.state.validationMessage = null;
     const result = evaluateGuess(this.state.secretCode, guess);
     this.state.lastGuess = result;
     this.state.guessHistory = [...this.state.guessHistory, result];
@@ -423,6 +434,7 @@ export class VaultCrackerCanvasEngine {
       lastGuess: this.state.lastGuess ? { ...this.state.lastGuess, digits: [...this.state.lastGuess.digits] } : null,
       guessHistory: this.state.guessHistory.map((guess) => ({ ...guess, digits: [...guess.digits] })),
       pressure: this.state.pressure,
+      validationMessage: this.state.validationMessage,
     };
   }
 

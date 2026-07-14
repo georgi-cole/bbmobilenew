@@ -49,6 +49,8 @@ export interface CapitalizationStanding {
   lastQuestionAttempts: number;
   lastQuestionTimeMs: number;
   lastQuestionGuessed: boolean;
+  lastQuestionHintUsed: boolean;
+  hintsUsed: number;
   eliminatedAfterQuestion: number | null;
 }
 
@@ -76,16 +78,23 @@ export function buildCapitalizationQuestionSet(seed: number): CapitalizationQues
     0,
     CAPITALIZATION_TOTAL_CONTINENTS,
   );
-  const questions = continents.flatMap((continent, continentIndex) =>
-    shuffleWithRng(CAPITALIZATION_COUNTRIES_BY_CONTINENT[continent], rng)
-      .slice(0, CAPITALIZATION_QUESTIONS_PER_CONTINENT)
+  const questions = continents.flatMap((continent, continentIndex) => {
+    const countries = CAPITALIZATION_COUNTRIES_BY_CONTINENT[continent];
+    const difficultyPools = [
+      countries.filter((country) => country.difficulty <= 2),
+      countries.filter((country) => country.difficulty === 3),
+      countries.filter((country) => country.difficulty >= 4),
+    ];
+    return difficultyPools
+      .map((pool) => shuffleWithRng(pool, rng)[0])
+      .filter((item): item is CapitalizationCountry => Boolean(item))
       .map((item, questionIndex) => ({
         ...item,
         continent,
         questionNumber:
           continentIndex * CAPITALIZATION_QUESTIONS_PER_CONTINENT + questionIndex + 1,
-      })),
-  );
+      }));
+  });
 
   return { continents, questions };
 }
@@ -104,6 +113,8 @@ export function createCapitalizationStandings(
     lastQuestionAttempts: 0,
     lastQuestionTimeMs: 0,
     lastQuestionGuessed: false,
+    lastQuestionHintUsed: false,
+    hintsUsed: 0,
     eliminatedAfterQuestion: null,
   }));
 }
@@ -151,16 +162,29 @@ export function simulateCapitalizationAiPerformance(
   rng: () => number,
 ): CapitalizationRoundPerformance {
   const skill = clamp(context.participant.precomputedScore / 100, 0.18, 0.96);
-  const difficultyPenalty = (context.question.difficulty - 1) * 0.075;
-  const lateMatchPressure = Math.max(0, context.question.questionNumber - 6) * 0.018;
-  const correctChance = clamp(0.34 + skill * 0.62 - difficultyPenalty - lateMatchPressure, 0.08, 0.97);
+  const correctChanceByDifficulty: Record<CapitalizationQuestion['difficulty'], number> = {
+    1: 0.999,
+    2: 0.9,
+    3: 0.5,
+    4: 0.3,
+    5: 0.1,
+  };
+  const hintChanceByDifficulty: Record<CapitalizationQuestion['difficulty'], number> = {
+    1: 0.005,
+    2: 0.03,
+    3: 0.12,
+    4: 0.58,
+    5: 0.84,
+  };
+  const correctChance = correctChanceByDifficulty[context.question.difficulty];
+  const hintUsed = rng() < hintChanceByDifficulty[context.question.difficulty];
   const guessed = rng() < correctChance;
   const speedBias = 1 - skill;
   const baseTimeMs = 2400 + rng() * 2800 + speedBias * 6200 + context.question.difficulty * 420;
 
   if (guessed) {
     let attempts = 1;
-    let extraAttemptChance = clamp(0.38 - skill * 0.28 + difficultyPenalty, 0.04, 0.54);
+    let extraAttemptChance = clamp(0.28 - skill * 0.18 + context.question.difficulty * 0.07, 0.08, 0.62);
     while (attempts < 4 && rng() < extraAttemptChance) {
       attempts += 1;
       extraAttemptChance *= 0.42;
@@ -170,6 +194,7 @@ export function simulateCapitalizationAiPerformance(
       guessed: true,
       attempts,
       timeMs: Math.round(baseTimeMs + (attempts - 1) * (1100 + rng() * 900)),
+      hintUsed,
     };
   }
 
@@ -179,6 +204,7 @@ export function simulateCapitalizationAiPerformance(
     attempts,
     skipped: rng() < 0.35,
     timeMs: Math.round(baseTimeMs + attempts * (1200 + rng() * 1000)),
+    hintUsed,
   };
 }
 
@@ -199,6 +225,8 @@ export function applyCapitalizationPerformance(
       lastQuestionAttempts: Math.max(1, performance.attempts),
       lastQuestionTimeMs: Math.max(0, performance.timeMs),
       lastQuestionGuessed: performance.guessed,
+      lastQuestionHintUsed: Boolean(performance.hintUsed),
+      hintsUsed: standing.hintsUsed + (performance.hintUsed ? 1 : 0),
     };
   });
 }

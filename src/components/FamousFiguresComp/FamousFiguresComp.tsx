@@ -19,9 +19,11 @@ import {
   nextRound,
   resetFamousFigures,
   finishAllRounds,
+  fastForwardCurrentRound,
   FAMOUS_FIGURES,
   setAiSubmissionsForRound,
   buildAiSubmissionsForRound,
+  getFamousFiguresAiPlan,
   getPlayerFigureIndex,
 } from '../../features/famousFigures/famousFiguresSlice';
 import type {
@@ -54,8 +56,8 @@ const CONFIRM_MS = 700;
 const WINNER_SCREEN_DURATION_MS = 4000;
 
 // Timer durations per phase (milliseconds).
-// All active phases use 10 s so the full round stays under 80 s even with all
-// hints revealed and an overtime window.
+// Every visible clue receives 10 seconds. There is no extra overtime window
+// after the fifth hint.
 const PHASE_DURATIONS: Record<string, number> = {
   clue: 10000,
   hint_1: 10000,
@@ -63,7 +65,6 @@ const PHASE_DURATIONS: Record<string, number> = {
   hint_3: 10000,
   hint_4: 10000,
   hint_5: 10000,
-  overtime: 10000,
   done: 0,
 };
 
@@ -237,10 +238,9 @@ export default function FamousFiguresComp({
    */
   const activeTimerRef = useRef<{ interval: ReturnType<typeof setInterval>; timeout: ReturnType<typeof setTimeout> } | null>(null);
   // ── AI submission tracking ────────────────────────────────────────────────
-  // Tracks the round for which we have already scheduled AI submissions so we
-  // only schedule once per round regardless of how many timer-phase changes
-  // occur. Resets when the round advances.
-  const aiSubmitScheduledRoundRef = useRef<number>(-1);
+  // Tracks each AI already scheduled in the current round. Different AIs can
+  // begin on different clues without duplicate timeouts.
+  const aiSubmissionKeysRef = useRef<Set<string>>(new Set());
   // Pending AI submission timeouts — cleared on round advance or unmount.
   const pendingAiTimeoutsRef = useRef<PendingAiTimeout[]>([]);
   // 300 ms debounce for the hint button — prevents rapid clicking from
@@ -303,12 +303,10 @@ export default function FamousFiguresComp({
       // Stale-timer guard: discard callbacks that belong to a previous round.
       if (current.currentRound !== capturedRound) return;
 
-      if (phase === 'done' || phase === 'overtime') {
+      if (phase === 'done' || phase === 'hint_5') {
         dispatch(endRound());
       } else {
-        // Advance timer phase (clue→hint_1→…→hint_5→overtime→done)
-        // This correctly handles hint_5 expiry by entering overtime rather
-        // than calling revealNextHint() which would be a no-op (capped at 5).
+        // Advance timer phase (clue→hint_1→…→hint_5).
         dispatch(advanceTimer());
       }
     }, duration);
@@ -348,41 +346,43 @@ export default function FamousFiguresComp({
   // Cancel any pending AI submission timeouts when the round advances (or on
   // unmount). This prevents stale submissions from firing after the round ends.
   useEffect(() => {
+    const submissionKeys = aiSubmissionKeysRef.current;
     return () => {
       pendingAiTimeoutsRef.current.forEach((entry) => clearTimeout(entry.id));
       pendingAiTimeoutsRef.current = [];
-      // Reset so the new round can schedule its own submissions.
-      aiSubmitScheduledRoundRef.current = -1;
+      submissionKeys.clear();
     };
   }, [ff.currentRound]);
 
-  // Schedule AI answers with a random delay after the clue phase expires.
-  //
-  // We only schedule ONCE per round (aiSubmitScheduledRoundRef guards this) so
-  // that subsequent timer-phase changes (hint_2, hint_3 …) or hint-button clicks
-  // that also advance the phase do NOT re-trigger a second batch of submissions.
-  //
-  // The random 2–8 s delay means the AI doesn't snap-close the round the
-  // instant the clue phase ends — the human always has meaningful play time.
+  // Schedule each AI on its planned clue. Most begin on clue two; only a small
+  // share of easy-figure AIs can answer from the opening clue.
   useEffect(() => {
     if (ff.status !== 'round_active') return;
-    // Wait until the clue phase has passed (human gets the full 15 s base clue).
-    if (ff.timerPhase === 'clue') return;
-
     const round = ff.currentRound;
-    // Only schedule once per round regardless of subsequent phase changes.
-    if (aiSubmitScheduledRoundRef.current === round) return;
-
     const aiSubs = ff.aiSubmissions[round];
     if (!aiSubs) return;
 
-    aiSubmitScheduledRoundRef.current = round;
+    const clueByPhase: Record<string, number> = {
+      clue: 1,
+      hint_1: 2,
+      hint_2: 3,
+      hint_3: 4,
+      hint_4: 5,
+      hint_5: 6,
+    };
+    const visibleClue = clueByPhase[ff.timerPhase] ?? 6;
+
     for (const [aiId, correct] of Object.entries(aiSubs)) {
       if (!correct) continue;
-      // Skip AI players who somehow already answered (defensive check).
       if (ff.playerCorrect[aiId]) continue;
-      // Random delay within 2–8 s so the AI doesn't autopilot-close the round.
-      const delay = 2000 + Math.random() * 6000;
+      const key = `${round}:${aiId}`;
+      if (aiSubmissionKeysRef.current.has(key)) continue;
+      const aiFigIdx = getPlayerFigureIndex(ff, aiId, round);
+      const aiFigure = FAMOUS_FIGURES[aiFigIdx];
+      if (!aiFigure) continue;
+      const plan = getFamousFiguresAiPlan(effectiveSeed, round, aiId, aiFigure.difficulty);
+      if (visibleClue < plan.clueNumber) continue;
+      aiSubmissionKeysRef.current.add(key);
       const t = setTimeout(() => {
         pendingAiTimeoutsRef.current = pendingAiTimeoutsRef.current.filter((e) => e.id !== t);
         // Bail out if the round ended before the AI's delay elapsed.
@@ -391,14 +391,14 @@ export default function FamousFiguresComp({
         if (current.currentRound !== round) return; // stale round guard
         if (current.playerCorrect[aiId]) return;
         // Use the AI's personal figure for this round.
-        const aiFigIdx = getPlayerFigureIndex(current, aiId, round);
-        const aiFigure = FAMOUS_FIGURES[aiFigIdx];
-        if (!aiFigure) return;
-        dispatch(submitPlayerGuess({ playerId: aiId, guess: aiFigure.canonicalName, timestamp: Date.now() }));
+        const figureIndex = getPlayerFigureIndex(current, aiId, round);
+        const currentFigure = FAMOUS_FIGURES[figureIndex];
+        if (!currentFigure) return;
+        dispatch(submitPlayerGuess({ playerId: aiId, guess: currentFigure.canonicalName, timestamp: Date.now() }));
         // For AI players the cursor must be advanced immediately (no overlay shown).
         // Use the round captured in the closure as targetRound for the idempotency guard.
         dispatch(advancePlayerCursor({ playerId: aiId, targetRound: round }));
-      }, delay);
+      }, plan.delayMs);
       pendingAiTimeoutsRef.current.push({ id: t, aiId, round });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -586,6 +586,12 @@ export default function FamousFiguresComp({
     dispatch(finishAllRounds());
   }, [dispatch]);
 
+  const handleFastForwardRound = useCallback(() => {
+    pendingAiTimeoutsRef.current.forEach((entry) => clearTimeout(entry.id));
+    pendingAiTimeoutsRef.current = [];
+    dispatch(fastForwardCurrentRound());
+  }, [dispatch]);
+
   // ── Derived ───────────────────────────────────────────────────────────────
   // The human's active personal round is their cursor position.  With the
   // shared matchFigureOrder all players see the same figure per global round,
@@ -626,7 +632,7 @@ export default function FamousFiguresComp({
     humanCursor < ff.totalRounds &&
     !humanCorrect &&
     !hintsAllRevealed &&
-    (humanIsAhead || (ff.timerPhase !== 'overtime' && ff.timerPhase !== 'done'));
+    (humanIsAhead || ff.timerPhase !== 'done');
 
   // True when the local human player has solved all their personal rounds but
   // the global match has not yet transitioned to 'complete' (the timer for the
@@ -909,6 +915,16 @@ export default function FamousFiguresComp({
             <div className="ff-success-points">+{successOverlay.points} points</div>
           </div>
         </div>
+      )}
+
+      {humanCorrect && successOverlay === null && ff.status === 'round_active' && (
+        <button
+          className="ff-fastforward-btn"
+          onClick={handleFastForwardRound}
+          type="button"
+        >
+          {ff.currentRound + 1 >= ff.totalRounds ? 'Finish Round' : 'Next Round'}
+        </button>
       )}
 
       {/* Guess input */}

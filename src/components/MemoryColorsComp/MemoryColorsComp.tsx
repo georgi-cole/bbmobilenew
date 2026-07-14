@@ -5,7 +5,7 @@
  *  - Pool of 20 named colors.
  *  - Round 1 flashes a sequence of 5 colors; each new round adds 1 more color.
  *  - Player must reproduce the exact order from the full color pool.
- *  - The run ends on the 3rd total mistake.
+ *  - The run ends on the 5th total mistake.
  *  - Ranking priority: furthest round, then fewer mistakes, then lower time.
  */
 import { useEffect, useRef, useCallback, useState, type CSSProperties } from 'react';
@@ -31,6 +31,7 @@ import type {
   ReactMinigameCompletion,
 } from '../MinigameHost/MinigameHost';
 import HOUSEGUESTS from '../../data/houseguests';
+import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './MemoryColorsComp.css';
 
 const SHOW_DURATION_MS = 900;
@@ -256,12 +257,13 @@ export default function MemoryColorsComp({
 
     return (
       <div className="mc-host mc-host--results">
-        <div className="mc-results-panel">
-          <div className="mc-results-title">🧠 Memory Colors</div>
-          <div className="mc-results-subtitle">20-color pool • 3 mistakes max</div>
-
-          <div className="mc-results-scroll" role="region" aria-label="Final standings">
-            <ol className="mc-results-list">
+        <MinigameCompleteWrapper
+          className="mc-results-panel"
+          onContinue={handleDone}
+          continueLabel="Continue"
+          continueButtonClassName="mc-btn mc-btn--primary mc-btn--done"
+          placementsNode={
+            <ol className="mc-results-list" aria-label="Final standings">
               {ranking.map((id, i) => {
                 const r = allResults[id];
                 const isHuman = id === mc.humanPlayerId;
@@ -298,12 +300,11 @@ export default function MemoryColorsComp({
                 );
               })}
             </ol>
-          </div>
-
-          <button className="mc-btn mc-btn--primary mc-btn--done" onClick={handleDone} autoFocus>
-            Continue ▶
-          </button>
-        </div>
+          }
+        >
+          <div className="mc-results-title">🧠 Memory Colors</div>
+          <div className="mc-results-subtitle">20-color pool • 5 mistakes max</div>
+        </MinigameCompleteWrapper>
       </div>
     );
   }

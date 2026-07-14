@@ -19,6 +19,7 @@ import {
   autoFillAIGuesses,
   revealMassResults,
   confirmMassElimination,
+  startCwgoFinal,
   chooseDuelPair,
   revealDuelResults,
   confirmDuelElimination,
@@ -150,6 +151,7 @@ export default function ClosestWithoutGoingOverComp({
         participantIds,
         prizeType,
         seed,
+        humanPlayerId: humanId,
       }),
     );
     return () => {
@@ -285,11 +287,24 @@ export default function ClosestWithoutGoingOverComp({
 
   // Hide the question card during choose_duel — the question belongs to the
   // upcoming duel, not the leader-pick phase.
-  const showQuestion = cwgo.status !== 'choose_duel';
+  const showQuestion = cwgo.status !== 'choose_duel' && cwgo.status !== 'league_results';
 
   return (
     <div className="cwgo">
       <h2 className="cwgo__title">Don&apos;t Go Over — {prizeLabel}</h2>
+
+      {cwgo.stage === 'final' && (
+        <div className="cwgo-lives" aria-label="Finalist lives">
+          {cwgo.aliveIds.map((id) => (
+            <span key={id} className="cwgo-lives__player">
+              <strong>{playerName(id)}{id === humanId ? ' (You)' : ''}</strong>
+              <span aria-label={`${cwgo.playerScores[id] ?? 0} lives`}>
+                {'❤️'.repeat(Math.max(0, cwgo.playerScores[id] ?? 0))}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {showQuestion && question && (
         <div className="cwgo__question">
@@ -298,7 +313,7 @@ export default function ClosestWithoutGoingOverComp({
             <span
               className={`cwgo__difficulty cwgo__difficulty--${difficultyLabel(
                 question.difficulty,
-              ).toLowerCase()}`}
+              ).toLowerCase().replace(/\s+/g, '-')}`}
             >
               {difficultyLabel(question.difficulty)}
             </span>
@@ -462,6 +477,29 @@ export default function ClosestWithoutGoingOverComp({
           </motion.div>
         )}
 
+        {cwgo.status === 'league_results' && (
+          <motion.div key="league-results" className="cwgo-reveal" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h3 className="cwgo-reveal__heading">League Standings</h3>
+            <p>Win +1 · Loss −1 · Top three plus cutoff ties advance</p>
+            <div className="cwgo-results-wrap">
+              {cwgo.leagueRankings.map((id, index) => (
+                <div key={id} className={`cwgo-result-row${cwgo.finalistIds?.includes(id) ? ' cwgo-result-row--winner' : ''}`}>
+                  <span className="cwgo-result-row__rank">{index + 1}</span>
+                  <div className="cwgo-result-row__info">
+                    <strong className="cwgo-result-row__name">{playerName(id)}{id === humanId ? ' (You)' : ''}</strong>
+                    <span>{cwgo.leagueScores[id] ?? 0} points · {cwgo.finalistIds?.includes(id) ? 'Finalist' : 'Eliminated'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="cwgo-footer">
+              <button className="cwgo-btn cwgo-btn--gold cwgo-btn--lg" onClick={() => dispatch(startCwgoFinal())}>
+                Start three-life final
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── CHOOSE DUEL ───────────────────────────────────────────────────── */}
         {cwgo.status === 'choose_duel' && (
           <motion.div
@@ -613,7 +651,7 @@ export default function ClosestWithoutGoingOverComp({
         {/* Three sequential stages (auto-timed):
              guesses  → both players' numbers visible, no outcome context
              answer   → correct answer revealed with pop animation
-             outcome  → winner/loser styling, "Out" stamp, Continue button */}
+             outcome  → winner/loser styling, life-loss stamp, Continue button */}
         {cwgo.status === 'duel_reveal' && cwgo.duelPair && cwgo.revealResults.length === 2 && (
           <motion.div
             key="duel-reveal"
@@ -687,7 +725,9 @@ export default function ClosestWithoutGoingOverComp({
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.35 }}
                           >
-                            <span className="cwgo-duel__elim-text">Out</span>
+                            <span className="cwgo-duel__elim-text">
+                              {(cwgo.playerScores[r.playerId] ?? 3) <= 1 ? 'Out' : '−1 life'}
+                            </span>
                           </motion.div>
                         )}
                       </div>

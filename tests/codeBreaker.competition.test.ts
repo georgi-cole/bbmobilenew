@@ -262,30 +262,30 @@ describe('Vault Cracker — getAttemptBand', () => {
 // ── 4. Pure logic — scoring ───────────────────────────────────────────────────
 
 describe('Vault Cracker — scoring', () => {
-  it('single attempt instant solve is discounted as lucky (below the elite peak)', () => {
-    // 1 attempt: base=100, confidence=0.75 → adjusted=75; time bonus=12 → 87
-    expect(computeSolvedScore(1, 0)).toBe(87);
+  it('a single-attempt instant solve receives the maximum score', () => {
+    expect(computeSolvedScore(1, 0)).toBe(100);
   });
 
-  it('four attempt instant solve yields the highest possible score (elite peak)', () => {
-    // 4 attempts: base=84, confidence=1.00 → adjusted=84; time bonus=12 → 96
-    expect(computeSolvedScore(4, 0)).toBe(96);
+  it('a four-attempt instant solve stays below every faster attempt tier', () => {
+    expect(computeSolvedScore(4, 0)).toBe(88);
+    expect(computeSolvedScore(3, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBeGreaterThan(
+      computeSolvedScore(4, 0),
+    );
   });
 
   it('treats zero attempts and negative elapsed values like an immediate one-attempt solve', () => {
-    expect(computeSolvedScore(0, -5_000)).toBe(87);
+    expect(computeSolvedScore(0, -5_000)).toBe(100);
   });
 
   it('guards against non-positive elapsed score caps', () => {
     // cap=0 → safeCapMs=1 → time fraction≈0 → no time bonus
-    expect(computeSolvedScore(2, 20_000, 0)).toBe(79);
+    expect(computeSolvedScore(2, 20_000, 0)).toBe(93);
     // cap=-25 → safeCapMs=1, elapsed=-1000 → elapsed treated as 0 → full time bonus
-    expect(computeSolvedScore(2, -1_000, -25)).toBe(91);
+    expect(computeSolvedScore(2, -1_000, -25)).toBe(96);
   });
 
-  it('elite attempts (3–4) score higher than mythic attempts (1–2) at the same elapsed time', () => {
-    // For a hard puzzle, 4 attempts (84 × 1.00 = 84) beats 2 attempts (96 × 0.82 = 79)
-    expect(computeSolvedScore(4, 20_000)).toBeGreaterThan(computeSolvedScore(2, 20_000));
+  it('fewer attempts always score higher at the same elapsed time', () => {
+    expect(computeSolvedScore(2, 20_000)).toBeGreaterThan(computeSolvedScore(4, 20_000));
   });
 
   it('longer elapsed time reduces score for the same attempt count', () => {
@@ -294,28 +294,28 @@ describe('Vault Cracker — scoring', () => {
 
   it('very slow high-attempt solves collapse toward the solved floor', () => {
     // 50 attempts: base=10 (floored), confidence=0.80 → adjusted=8; time bonus=0 → 8
-    expect(computeSolvedScore(50, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBe(8);
+    expect(computeSolvedScore(50, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBe(SOLVED_SCORE_FLOOR);
   });
 
   it('softened curve — expert range instant solves (5–6 attempts)', () => {
     // 5 attempts: base=82, confidence=1.00 → adjusted=82; time bonus=12 → 94
-    expect(computeSolvedScore(5, 0)).toBe(94);
+    expect(computeSolvedScore(5, 0)).toBe(84);
     // 6 attempts: base=74, confidence=0.98 → adjusted=73; time bonus=12 → 85
-    expect(computeSolvedScore(6, 0)).toBe(85);
+    expect(computeSolvedScore(6, 0)).toBe(80);
   });
 
   it('softened curve — strong range instant solves (7–8 attempts)', () => {
     // 7 attempts: base=66, confidence=0.97 → adjusted=64; time bonus=12 → 76
     expect(computeSolvedScore(7, 0)).toBe(76);
     // 8 attempts: base=58, confidence=0.96 → adjusted=56; time bonus=12 → 68
-    expect(computeSolvedScore(8, 0)).toBe(68);
+    expect(computeSolvedScore(8, 0)).toBe(72);
   });
 
   it('softened curve — solved range instant solves (9–10 attempts)', () => {
     // 9 attempts: base=50, confidence=0.93 → Math.round(50*0.93)=Math.round(46.5)=47; time bonus=12 → 59
-    expect(computeSolvedScore(9, 0)).toBe(59);
+    expect(computeSolvedScore(9, 0)).toBe(68);
     // 10 attempts: base=42, confidence=0.90 → Math.round(42*0.90)=Math.round(37.8)=38; time bonus=12 → 50
-    expect(computeSolvedScore(10, 0)).toBe(50);
+    expect(computeSolvedScore(10, 0)).toBe(64);
   });
 
   it('softened curve — elite peak (4 attempts) still outranks expert range (5–6 attempts)', () => {
@@ -331,10 +331,10 @@ describe('Vault Cracker — scoring', () => {
   });
 
   it('AI solve profiles keep attempts and elapsed time in the hard-puzzle range', () => {
-    // Hard-puzzle AI: 4..11 attempts, reflecting a puzzle most players need many guesses for
+    // Weighted hard-puzzle AI: 4..20 attempts.
     const result = computeAiSolveProfile(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS);
     expect(result.attempts).toBeGreaterThanOrEqual(4);
-    expect(result.attempts).toBeLessThanOrEqual(11);
+    expect(result.attempts).toBeLessThanOrEqual(20);
     expect(result.elapsedMs).toBeGreaterThanOrEqual(15_000);
     expect(result.elapsedMs).toBeLessThanOrEqual(DEFAULT_ELAPSED_SCORE_CAP_MS);
     expect(result.score).toBe(computeAiScore(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS));

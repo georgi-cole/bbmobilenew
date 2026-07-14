@@ -30,7 +30,7 @@ describe('hangmanChallengeEngine', () => {
     ]);
   });
 
-  it('calculates solved-round bonuses and unsolved fallback scores', () => {
+  it('calculates solved-round bonuses and gives failed rounds zero points', () => {
     const solvedBreakdown = calculateRoundScore({
       solved: true,
       errors: 0,
@@ -55,7 +55,7 @@ describe('hangmanChallengeEngine', () => {
       mysteryAdjustments: [{ label: 'Hidden risk', value: -80 }],
       bonusTokenPoints: 0,
     });
-    expect(failedBreakdown.finalRoundScore).toBe(38);
+    expect(failedBreakdown.finalRoundScore).toBe(0);
   });
 
   it('uses the required mystery box spawn schedule', () => {

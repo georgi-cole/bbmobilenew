@@ -107,7 +107,7 @@ describe('HangmanChallengeComp', () => {
     expect(screen.getByLabelText(/round breakdown/i)).toBeInTheDocument();
   });
 
-  it('renders a compact two-line round summary after completing a round', () => {
+  it('renders each player as one compact scoreboard row', () => {
     render(<HangmanChallengeComp participants={participants} seed={42} />);
 
     fireEvent.click(screen.getByRole('button', { name: /enter round/i }));
@@ -135,7 +135,7 @@ describe('HangmanChallengeComp', () => {
     }
 
     expect(firstRow.querySelector('.hangman-challenge__score-primary-row')).toBeTruthy();
-    expect(firstRow.querySelector('.hangman-challenge__score-secondary-row')).toBeTruthy();
+    expect(firstRow.querySelector('.hangman-challenge__score-secondary-row')).toBeNull();
     expect(within(firstRow).getByText(/total/i)).toBeInTheDocument();
     expect(within(firstRow).getByText(/\+\d+/)).toBeInTheDocument();
   });

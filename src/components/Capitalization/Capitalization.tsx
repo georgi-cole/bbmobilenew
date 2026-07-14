@@ -283,8 +283,9 @@ export default function Capitalization({
       skipped: true,
       attempts: Math.max(1, attempts),
       timeMs: Date.now() - questionStartedAtRef.current,
+      hintUsed,
     });
-  }, [attempts, currentQuestion, phase, resolveQuestion]);
+  }, [attempts, currentQuestion, hintUsed, phase, resolveQuestion]);
 
   const continueFromScoreboard = useCallback(() => {
     if (!scoreboard) return;
@@ -559,12 +560,12 @@ function Scoreboard({
               <div className="capitalization__standing-main">
                 <strong>{standing.isHuman ? 'You' : standing.participantName}</strong>
                 <span>
-                  {standing.correctAnswers}/{standing.questionsPlayed} correct - round {standing.lastQuestionScore} - {formatCapitalizationTimeMs(standing.lastQuestionTimeMs)}
+                  {standing.correctAnswers}/{standing.questionsPlayed} correct - round {standing.lastQuestionScore} - {formatCapitalizationTimeMs(standing.lastQuestionTimeMs)} - {standing.lastQuestionHintUsed ? 'hint used' : 'no hint'}
                 </span>
               </div>
               <div className="capitalization__standing-score">
                 <strong>{standing.cumulativeScore}</strong>
-                <span>{status}</span>
+                <span>{status} · {standing.hintsUsed} hint{standing.hintsUsed === 1 ? '' : 's'}</span>
               </div>
             </li>
           );
