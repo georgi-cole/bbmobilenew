@@ -33,9 +33,8 @@ import wildcardWesternReducer, {
   openBuzzWindow,
   playerAnswer,
   playerBuzz,
-  playerChooseElimination,
   playerChooseNextPair,
-  randomPairChosen,
+  startWildcardFinal,
 } from '../src/features/wildcardWestern/wildcardWesternSlice';
 import {
   dealCards,
@@ -262,7 +261,7 @@ describe('Wildcard Western audit', () => {
     expect(aliveIds).toContain(nextPair[1]);
   });
 
-  it('drives the elimination path through a live slice round without stalling', () => {
+  it('drives the league path through a live slice round without stalling', () => {
     const store = makeWildcardStore();
     store.dispatch(
       initWildcardWestern({
@@ -285,24 +284,11 @@ describe('Wildcard Western audit', () => {
     store.dispatch(advanceResolution());
 
     const afterResolution = store.getState().wildcardWestern;
-    expect(['chooseElimination', 'chooseNextPair', 'randomPairSelection', 'gameOver']).toContain(afterResolution.phase);
-
-    if (afterResolution.phase === 'chooseElimination') {
-      const target = afterResolution.aliveIds.find((id) => id !== afterResolution.eliminationChooserId);
-      expect(target).toBeDefined();
-      store.dispatch(playerChooseElimination({ targetId: target! }));
-    } else if (afterResolution.phase === 'chooseNextPair') {
-      const pairNext = [afterResolution.aliveIds[0], afterResolution.aliveIds[1]] as [string, string];
-      store.dispatch(playerChooseNextPair({ pair: pairNext }));
-    } else if (afterResolution.phase === 'randomPairSelection') {
-      store.dispatch(randomPairChosen());
-    }
-
-    const afterControl = store.getState().wildcardWestern;
-    expect(['pairIntro', 'gameOver', 'complete']).toContain(afterControl.phase);
+    expect(['pairIntro', 'leagueResults']).toContain(afterResolution.phase);
+    expect(afterResolution.aliveIds).toHaveLength(4);
   });
 
-  it('keeps the final-two no-buzz path on the final duel instead of killing both players', () => {
+  it('makes a final no-buzz duel cost one life without eliminating both finalists', () => {
     const store = makeWildcardStore();
     store.dispatch(
       initWildcardWestern({
@@ -317,11 +303,17 @@ describe('Wildcard Western audit', () => {
     store.dispatch(advanceCardReveal());
     store.dispatch(advancePairIntro());
     store.dispatch(openBuzzWindow());
-
+    store.dispatch(buzzTimeout());
+    store.dispatch(advanceResolution());
+    store.dispatch(startWildcardFinal());
+    store.dispatch(playerChooseNextPair({ pair: ['alice', 'bob'] }));
+    store.dispatch(advancePairIntro());
+    store.dispatch(openBuzzWindow());
     store.dispatch(buzzTimeout());
     const afterTimeout = store.getState().wildcardWestern;
-    expect(afterTimeout.phase).toBe('finalDuel');
+    expect(afterTimeout.phase).toBe('resolution');
     expect(afterTimeout.aliveIds).toHaveLength(2);
+    expect(Object.values(afterTimeout.playerScores).sort()).toEqual([2, 3]);
   });
 
   it('handles answer timeout as a single-elimination result', () => {

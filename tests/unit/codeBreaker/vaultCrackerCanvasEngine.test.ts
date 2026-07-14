@@ -108,6 +108,24 @@ describe('VaultCrackerCanvasEngine', () => {
     expect(context.setTransform).toHaveBeenCalledWith(1, 0, 0, 1, 0, 0);
     expect(context.scale).toHaveBeenCalledWith(2, 2);
   });
+
+  it('rejects a combination containing repeated digits without consuming an attempt', () => {
+    const canvas = document.createElement('canvas');
+    const engine = new VaultCrackerCanvasEngine(canvas, { seed: 42 });
+    const internals = engine as unknown as {
+      state: { digits: number[] };
+      submitGuess: () => void;
+    };
+
+    internals.state.digits = [3, 8, 3, 9];
+    internals.submitGuess();
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.attempts).toBe(0);
+    expect(snapshot.guessHistory).toHaveLength(0);
+    expect(snapshot.validationMessage).toMatch(/different digits/i);
+  });
+
   it('does not reschedule the RAF loop after an onProgress callback pauses the engine', async () => {
     const canvas = document.createElement('canvas');
     let engine: VaultCrackerCanvasEngine | null = null;

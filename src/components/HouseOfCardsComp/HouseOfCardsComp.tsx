@@ -1,55 +1,33 @@
-/**
- * HouseOfCardsComp — "House of Cards" memory-match competition screen.
- *
- * Hybrid gameplay:
- *   - Memory-card matching race (core gameplay)
- *   - Compact event ticker showing AI progress (spectator-friendly)
- *   - Streak-triggered Peek effect (once per game, auto at 2-pair streak)
- *
- * Phases: active → complete
- *
- * The component:
- *   1. Dispatches startHouseOfCards on mount.
- *   2. Runs the human's card-flip game loop locally via useState.
- *   3. On game over (all pairs found OR time runs out), dispatches finaliseOutcome.
- *   4. Dispatches resolveHouseOfCardsOutcome to apply winner/last-place.
- *   5. Shows a rich results screen from canonical standings.
- *   6. Fires onComplete() to hand control back to MinigameHost.
- */
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { mulberry32 } from '../../store/rng';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
-  startHouseOfCards,
-  finaliseOutcome,
+  completeHouseOfCardsTournament,
+  HOUSE_OF_CARDS_TILE_COUNTS,
   resetHouseOfCards,
-  TOTAL_PAIRS,
-  GAME_TIME_LIMIT_MS,
-} from '../../features/houseOfCards/houseOfCardsSlice';
-import type {
-  HouseOfCardsState,
-  HouseOfCardsPrizeType,
-  PlayerOutcome,
+  startHouseOfCards,
+  type HouseOfCardsPrizeType,
+  type HouseOfCardsState,
+  type PlayerOutcome,
 } from '../../features/houseOfCards/houseOfCardsSlice';
 import { resolveHouseOfCardsOutcome } from '../../features/houseOfCards/thunks';
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
+import { useHouseOfCardsAudio } from '../../hooks/useHouseOfCardsAudio';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import {
   buildHouseOfCardsBoard,
-  PEEK_DURATION_MS,
-  PEEK_STREAK_TRIGGER,
+  chooseHouseOfCardsFinalWinner,
   type HouseOfCardsBoardCard,
 } from './houseOfCardsUtils';
-import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
-import { useHouseOfCardsAudio } from '../../hooks/useHouseOfCardsAudio';
 import './HouseOfCardsComp.css';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ParticipantProp {
   id: string;
   name: string;
   isHuman: boolean;
+  precomputedScore?: number;
 }
 
 interface Props {
@@ -60,515 +38,475 @@ interface Props {
   onComplete?: (completion?: ReactMinigameCompletion) => void;
 }
 
-interface TickerEvent {
-  id: string;
-  text: string;
+interface RoundPerformance {
+  score: number;
+  mistakes: number;
+  timeMs: number;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-function getMissesLabel(mistakes: number): string {
-  return `${mistakes} ${mistakes === 1 ? 'miss' : 'misses'}`;
+interface RoundSummary {
+  round: number;
+  rankedIds: string[];
+  eliminatedIds: string[];
+  nextActiveIds: string[];
+  roundScores: Record<string, RoundPerformance>;
+  cumulativeScores: Record<string, number>;
 }
 
-const MISMATCH_HIDE_MS = 900;
+type TournamentPhase = 'playing' | 'round_results' | 'final_playing' | 'results';
 
-// ─── Component ────────────────────────────────────────────────────────────────
+type BoardStyle = CSSProperties & { '--hoc-columns': number };
 
-export default function HouseOfCardsComp({
-  participantIds,
-  participants,
-  prizeType,
-  seed,
-  onComplete,
-}: Props) {
-  const dispatch = useAppDispatch();
-  const [sessionSeed] = useState<number>(() => (seed !== undefined && seed !== 0 ? seed : cryptoSeed()));
+function hashId(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
 
-  // Resolve the human player id.
-  const humanId = useMemo(
-    () =>
-      participants?.find((p) => p.isHuman)?.id ??
-      participantIds.find((id) => {
-        const p = participants?.find((x) => x.id === id);
-        return p ? p.isHuman : false;
-      }) ??
-      participantIds[0] ??
-      null,
-    [participants, participantIds],
+function simulateRound(playerId: string, round: number, pairCount: number, seed: number, skill = 55): RoundPerformance {
+  const rng = mulberry32((seed ^ hashId(playerId) ^ Math.imul(round, 0x9e3779b9)) >>> 0);
+  const normalizedSkill = Math.max(0.15, Math.min(0.95, skill / 100));
+  const mistakes = Math.floor(rng() * (2 + (1 - normalizedSkill) * pairCount * 0.65));
+  const timeMs = Math.round(
+    pairCount * (720 + (1 - normalizedSkill) * 720)
+    + mistakes * (820 + rng() * 520)
+    + 1_400
+    + rng() * 2_600,
   );
+  return {
+    mistakes,
+    timeMs,
+    score: Math.max(1, pairCount * 1_000 - mistakes * 90 - Math.floor(timeMs / 1_000)),
+  };
+}
 
-  // Resolve display name for each player.
+function boardColumns(tileCount: number): number {
+  if (tileCount <= 8) return 4;
+  if (tileCount <= 16) return 4;
+  if (tileCount <= 20) return 5;
+  return 6;
+}
+
+export default function HouseOfCardsComp({ participantIds, participants, prizeType, seed, onComplete }: Props) {
+  const dispatch = useAppDispatch();
+  const [sessionSeed] = useState(() => (seed ? seed : cryptoSeed()));
+  const humanId = useMemo(
+    () => participants?.find((participant) => participant.isHuman)?.id ?? participantIds[0] ?? null,
+    [participantIds, participants],
+  );
   const nameFor = useCallback(
-    (id: string): string => participants?.find((p) => p.id === id)?.name ?? id,
+    (id: string) => participants?.find((participant) => participant.id === id)?.name ?? id,
     [participants],
   );
-
-  // ── Redux state ─────────────────────────────────────────────────────────
+  const skillFor = useCallback(
+    (id: string) => participants?.find((participant) => participant.id === id)?.precomputedScore ?? 55,
+    [participants],
+  );
   const hoc = useAppSelector(
-    (s: RootState) => (s as RootState & { houseOfCards?: HouseOfCardsState }).houseOfCards,
+    (state: RootState) => (state as RootState & { houseOfCards?: HouseOfCardsState }).houseOfCards,
   );
 
-  // ── Local game state ─────────────────────────────────────────────────────
-  const [board, setBoard] = useState<HouseOfCardsBoardCard[]>([]);
-  const [locked, setLocked] = useState(false);
+  const [phase, setPhase] = useState<TournamentPhase>('playing');
+  const [round, setRound] = useState(1);
+  const [activeIds, setActiveIds] = useState<string[]>(participantIds);
+  const [cumulativeScores, setCumulativeScores] = useState<Record<string, number>>(
+    () => Object.fromEntries(participantIds.map((id) => [id, 0])),
+  );
+  const [board, setBoard] = useState<HouseOfCardsBoardCard[]>(
+    () => buildHouseOfCardsBoard(sessionSeed, HOUSE_OF_CARDS_TILE_COUNTS[0] / 2),
+  );
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
+  const [locked, setLocked] = useState(false);
   const [matchedPairs, setMatchedPairs] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(GAME_TIME_LIMIT_MS / 1000);
-  const [gameOver, setGameOver] = useState(false);
-  const [peekActive, setPeekActive] = useState(false);
-  /** Whether the one-time streak-triggered peek has already been used. */
-  const [peekUsed, setPeekUsed] = useState(false);
-  const [burstText, setBurstText] = useState<string | null>(null);
-  /** Event ticker: latest events shown at the bottom of the screen. */
-  const [tickerEvents, setTickerEvents] = useState<TickerEvent[]>([]);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [roundSummary, setRoundSummary] = useState<RoundSummary | null>(null);
+  const [finalists, setFinalists] = useState<string[]>([]);
+  const [finalTurnId, setFinalTurnId] = useState<string | null>(null);
+  const [finalPoints, setFinalPoints] = useState<Record<string, number>>({});
+  const [finalStandings, setFinalStandings] = useState<PlayerOutcome[]>([]);
 
-  const startTimeRef = useRef<number>(Date.now());
-  const gameOverRef = useRef(false);
-  const matchedPairsRef = useRef(0);
-  const mistakesRef = useRef(0);
-  const turnsTakenRef = useRef(0);
-  const streakBestRef = useRef(0);
-  const finalisedRef = useRef(false);
-  const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const completionSoundPlayedRef = useRef(false);
-  const { playFlip, playMatch, playMismatch, playPeek, playComplete } = useHouseOfCardsAudio(
-    hoc?.status === 'active' && !gameOver,
+  const roundStartedAtRef = useRef(Date.now());
+  const roundCompletedRef = useRef(false);
+  const finalCompletedRef = useRef(false);
+  const aiTurnRef = useRef(0);
+  const { playFlip, playMatch, playMismatch, playComplete } = useHouseOfCardsAudio(
+    phase === 'playing' || phase === 'final_playing',
   );
 
-  // ── Initialise competition ───────────────────────────────────────────────
+  const tileCount = HOUSE_OF_CARDS_TILE_COUNTS[round - 1] ?? HOUSE_OF_CARDS_TILE_COUNTS[4];
+  const targetPairs = tileCount / 2;
+  const boardStyle: BoardStyle = { '--hoc-columns': boardColumns(tileCount) };
+
+  const resetBoardForRound = useCallback((nextRound: number) => {
+    const nextTiles = HOUSE_OF_CARDS_TILE_COUNTS[nextRound - 1];
+    setRound(nextRound);
+    setBoard(buildHouseOfCardsBoard(sessionSeed ^ Math.imul(nextRound, 0x85ebca6b), nextTiles / 2));
+    setFlippedIndices([]);
+    setLocked(false);
+    setMatchedPairs(0);
+    setMistakes(0);
+    setStreak(0);
+    setBestStreak(0);
+    setElapsedSeconds(0);
+    setRoundSummary(null);
+    roundStartedAtRef.current = Date.now();
+    roundCompletedRef.current = false;
+    setPhase(nextRound === 5 ? 'final_playing' : 'playing');
+  }, [sessionSeed]);
+
+  const startFinal = useCallback((candidateIds: string[], scores: Record<string, number>) => {
+    const ranked = candidateIds
+      .slice()
+      .sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0) || participantIds.indexOf(a) - participantIds.indexOf(b));
+    const selected = ranked.slice(0, 2);
+    if (selected.length < 2) {
+      const fallback = participantIds
+        .filter((id) => !selected.includes(id))
+        .sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0];
+      if (fallback) selected.push(fallback);
+    }
+    setFinalists(selected);
+    setActiveIds(selected);
+    setFinalPoints(Object.fromEntries(selected.map((id) => [id, 0])));
+    setFinalTurnId(selected[0] ?? null);
+    setCumulativeScores(scores);
+    finalCompletedRef.current = false;
+    aiTurnRef.current = 0;
+    resetBoardForRound(5);
+  }, [participantIds, resetBoardForRound]);
+
   useEffect(() => {
-    dispatch(
-      startHouseOfCards({
-        participantIds,
-        humanId,
-        prizeType,
-        seed: sessionSeed,
-      }),
-    );
-    setBoard(buildHouseOfCardsBoard(sessionSeed));
-    startTimeRef.current = Date.now();
-    gameOverRef.current = false;
-    finalisedRef.current = false;
-    return () => {
-      if (peekTimeoutRef.current) {
-        clearTimeout(peekTimeoutRef.current);
-        peekTimeoutRef.current = null;
-      }
-      dispatch(resetHouseOfCards());
-    };
-  // Intentionally run only on mount: participants/session seed/prizeType define the competition
-  // session and must not change mid-game (restart would require a remount).
+    dispatch(startHouseOfCards({ participantIds, humanId, prizeType, seed: sessionSeed }));
+    return () => { dispatch(resetHouseOfCards()); };
+  // A remount defines a new tournament session.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Schedule AI ticker events from pre-computed outcomes ─────────────────
-  // Events fire at the AI's deterministic completion time so the ticker
-  // shows "X finished!" realistically spread over the game clock.
   useEffect(() => {
-    if (!hoc || hoc.status !== 'active') return;
+    if (phase !== 'playing' && phase !== 'final_playing') return;
+    const timer = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - roundStartedAtRef.current) / 1_000));
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [phase, round]);
 
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const entries = Object.entries(hoc.aiOutcomes);
-
-    // Intermediate "found a match" events: fired at ~halfway through their run
-    entries.forEach(([id, outcome]) => {
-      const halfTime = outcome.didFinish && outcome.completionTimeMs !== null
-        ? outcome.completionTimeMs / 2
-        : 20_000;
-      const t1 = setTimeout(() => {
-        setTickerEvents((prev) => [
-          { id: `${id}-mid`, text: `${nameFor(id).split(' ')[0]} matched a pair` },
-          ...prev,
-        ].slice(0, 5));
-      }, halfTime);
-      timers.push(t1);
-
-      // "Finished" event
-      if (outcome.didFinish && outcome.completionTimeMs !== null) {
-        const t2 = setTimeout(() => {
-          setTickerEvents((prev) => [
-            { id: `${id}-done`, text: `${nameFor(id).split(' ')[0]} finished! 🏁` },
-            ...prev,
-          ].slice(0, 5));
-        }, outcome.completionTimeMs);
-        timers.push(t2);
+  const finishPreliminaryRound = useCallback(() => {
+    if (roundCompletedRef.current || round > 4) return;
+    roundCompletedRef.current = true;
+    const pairs = HOUSE_OF_CARDS_TILE_COUNTS[round - 1] / 2;
+    const roundScores: Record<string, RoundPerformance> = {};
+    activeIds.forEach((id) => {
+      if (id === humanId) {
+        const timeMs = Math.max(1, Date.now() - roundStartedAtRef.current);
+        roundScores[id] = {
+          mistakes,
+          timeMs,
+          score: Math.max(1, pairs * 1_000 - mistakes * 90 - Math.floor(timeMs / 1_000) + bestStreak * 15),
+        };
+      } else {
+        roundScores[id] = simulateRound(id, round, pairs, sessionSeed, skillFor(id));
       }
     });
+    const nextScores = { ...cumulativeScores };
+    activeIds.forEach((id) => { nextScores[id] = (nextScores[id] ?? 0) + roundScores[id].score; });
+    const rankedIds = activeIds.slice().sort((a, b) => {
+      if (round === 4 && nextScores[b] !== nextScores[a]) return nextScores[b] - nextScores[a];
+      return roundScores[b].score - roundScores[a].score
+        || roundScores[a].mistakes - roundScores[b].mistakes
+        || roundScores[a].timeMs - roundScores[b].timeMs
+        || nextScores[b] - nextScores[a];
+    });
+    const nextActiveIds = round === 4
+      ? rankedIds.slice(0, 2)
+      : rankedIds.length > 2 ? rankedIds.slice(0, -1) : rankedIds;
+    const eliminatedIds = rankedIds.filter((id) => !nextActiveIds.includes(id));
+    setCumulativeScores(nextScores);
+    setRoundSummary({ round, rankedIds, eliminatedIds, nextActiveIds, roundScores, cumulativeScores: nextScores });
+    setPhase('round_results');
+  }, [activeIds, bestStreak, cumulativeScores, humanId, mistakes, round, sessionSeed, skillFor]);
 
-    return () => timers.forEach(clearTimeout);
-  // Re-run when the game starts (hoc.status flips to active) or when
-  // nameFor changes (participants updated). The effect captures nameFor
-  // at scheduling time so it must be in deps to avoid stale name lookups.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoc?.status, nameFor]);
-
-  // ── Countdown timer ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (gameOver) return;
-    if (timeLeft <= 0) {
-      setGameOver(true);
+    if (phase === 'playing' && matchedPairs >= targetPairs) finishPreliminaryRound();
+  }, [finishPreliminaryRound, matchedPairs, phase, targetPairs]);
+
+  const simulateRemainingPreliminaryRounds = useCallback((
+    startRound: number,
+    startingIds: string[],
+    startingScores: Record<string, number>,
+  ) => {
+    let ids = [...startingIds];
+    const scores = { ...startingScores };
+    for (let simulatedRound = startRound; simulatedRound <= 4; simulatedRound += 1) {
+      const pairs = HOUSE_OF_CARDS_TILE_COUNTS[simulatedRound - 1] / 2;
+      const performances = Object.fromEntries(ids.map((id) => [
+        id,
+        simulateRound(id, simulatedRound, pairs, sessionSeed, skillFor(id)),
+      ]));
+      ids.forEach((id) => { scores[id] = (scores[id] ?? 0) + performances[id].score; });
+      ids.sort((a, b) => scores[b] - scores[a] || performances[b].score - performances[a].score);
+      ids = simulatedRound === 4 ? ids.slice(0, 2) : ids.length > 2 ? ids.slice(0, -1) : ids;
+    }
+    startFinal(ids, scores);
+  }, [sessionSeed, skillFor, startFinal]);
+
+  const continueRound = useCallback(() => {
+    if (!roundSummary) return;
+    if (roundSummary.round === 4) {
+      startFinal(roundSummary.nextActiveIds, roundSummary.cumulativeScores);
       return;
     }
-    const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearTimeout(id);
-  }, [timeLeft, gameOver]);
-
-  // ── Finalise outcome once game is over ──────────────────────────────────
-  useEffect(() => {
-    if (!gameOver || finalisedRef.current) return;
-    if (!hoc || hoc.status === 'complete') return; // already done
-
-    finalisedRef.current = true;
-    const elapsed = Date.now() - startTimeRef.current;
-    const didFinish = matchedPairsRef.current >= TOTAL_PAIRS;
-
-    dispatch(
-      finaliseOutcome({
-        matchedPairs: matchedPairsRef.current,
-        mistakes: mistakesRef.current,
-        turnsTaken: turnsTakenRef.current,
-        completionTimeMs: didFinish ? elapsed : null,
-        streakBest: streakBestRef.current,
-        humanId: humanId ?? participantIds[0] ?? '',
-      }),
+    if (humanId && roundSummary.nextActiveIds.includes(humanId)) {
+      setActiveIds(roundSummary.nextActiveIds);
+      resetBoardForRound(roundSummary.round + 1);
+      return;
+    }
+    simulateRemainingPreliminaryRounds(
+      roundSummary.round + 1,
+      roundSummary.nextActiveIds,
+      roundSummary.cumulativeScores,
     );
-  }, [gameOver, dispatch, humanId, participantIds, hoc]);
+  }, [humanId, resetBoardForRound, roundSummary, simulateRemainingPreliminaryRounds, startFinal]);
 
-  // ── When slice reaches complete, dispatch outcome thunk ──────────────────
-  useEffect(() => {
-    if (!hoc || hoc.status !== 'complete') return;
-    dispatch(resolveHouseOfCardsOutcome());
-  }, [hoc, dispatch]);
-
-  useEffect(() => {
-    if (hoc?.status === 'complete' && !completionSoundPlayedRef.current) {
-      completionSoundPlayedRef.current = true;
-      playComplete();
+  const resolvePair = useCallback((firstIndex: number, secondIndex: number) => {
+    const first = board[firstIndex];
+    const second = board[secondIndex];
+    if (!first || !second) return;
+    setLocked(true);
+    if (first.symbol === second.symbol) {
+      playMatch();
+      setBoard((current) => current.map((card, index) =>
+        index === firstIndex || index === secondIndex
+          ? { ...card, isFlipped: true, isMatched: true, isMismatch: false }
+          : card,
+      ));
+      setMatchedPairs((value) => value + 1);
+      setFlippedIndices([]);
+      if (phase === 'final_playing' && finalTurnId) {
+        setFinalPoints((points) => ({ ...points, [finalTurnId]: (points[finalTurnId] ?? 0) + 1 }));
+      } else {
+        setStreak((value) => {
+          const next = value + 1;
+          setBestStreak((best) => Math.max(best, next));
+          return next;
+        });
+      }
+      window.setTimeout(() => setLocked(false), 260);
       return;
     }
 
-    if (hoc?.status !== 'complete') {
-      completionSoundPlayedRef.current = false;
+    playMismatch();
+    setBoard((current) => current.map((card, index) =>
+      index === firstIndex || index === secondIndex ? { ...card, isFlipped: true, isMismatch: true } : card,
+    ));
+    if (phase === 'playing') {
+      setMistakes((value) => value + 1);
+      setStreak(0);
     }
-  }, [hoc?.status, playComplete]);
-
-  // ── Card flip handler ────────────────────────────────────────────────────
-  const handleCardClick = useCallback(
-    (cardIndex: number) => {
-      if (locked || gameOver) return;
-      const card = board[cardIndex];
-      if (!card || card.isMatched || card.isFlipped) return;
-      playFlip();
-
-      const newBoard = board.map((c, i) =>
-        i === cardIndex ? { ...c, isFlipped: true } : c,
-      );
-      const newFlipped = [...flippedIndices, cardIndex];
-
-      if (newFlipped.length === 2) {
-        const [a, b] = newFlipped;
-        const cardA = newBoard[a];
-        const cardB = newBoard[b];
-        setLocked(true);
-        turnsTakenRef.current += 1;
-
-        if (cardA.symbol === cardB.symbol) {
-          // Match!
-          playMatch();
-          const newMatched = matchedPairsRef.current + 1;
-          matchedPairsRef.current = newMatched;
-          const newStreak = streak + 1;
-          const newStreakBest = Math.max(newStreak, streakBestRef.current);
-          streakBestRef.current = newStreakBest;
-
-          newBoard[a] = { ...newBoard[a], isMatched: true, isFlipped: true };
-          newBoard[b] = { ...newBoard[b], isMatched: true, isFlipped: true };
-
-          const burstMsg = newStreak >= 3 ? `🔥 ${newStreak}× STREAK!` : '✓ MATCH!';
-          setBurstText(burstMsg);
-          setTimeout(() => setBurstText(null), 600);
-
-          setBoard(newBoard);
-          setMatchedPairs(newMatched);
-          setStreak(newStreak);
-          setFlippedIndices([]);
-          setLocked(false);
-
-          // ── Streak-triggered Peek (once per game) ────────────────────
-          // Triggers the first time the player completes a streak of
-          // PEEK_STREAK_TRIGGER consecutive correct pairs.
-          if (newStreak >= PEEK_STREAK_TRIGGER && !peekUsed) {
-            setPeekUsed(true);
-            setPeekActive(true);
-            playPeek();
-            // Reveal all currently-unmatched cards for PEEK_DURATION_MS.
-            setBoard((prev) =>
-              prev.map((c) => (!c.isMatched ? { ...c, isFlipped: true } : c)),
-            );
-            // Capture indices that are currently flipped (not yet matched) so
-            // we only hide cards that the peek itself revealed.
-            const alreadyRevealedIndices = new Set(newBoard.filter((c) => c.isFlipped && !c.isMatched).map((c) => c.index));
-            peekTimeoutRef.current = setTimeout(() => {
-              setBoard((prev) =>
-                prev.map((c) =>
-                  !c.isMatched && !alreadyRevealedIndices.has(c.index) ? { ...c, isFlipped: false } : c,
-                ),
-              );
-              setPeekActive(false);
-              peekTimeoutRef.current = null;
-            }, PEEK_DURATION_MS);
-          }
-
-          if (newMatched >= TOTAL_PAIRS) {
-            setGameOver(true);
-          }
-        } else {
-          // Mismatch
-          playMismatch();
-          mistakesRef.current += 1;
-          setMistakes((m) => m + 1);
-          newBoard[a] = { ...newBoard[a], isMismatch: true };
-          newBoard[b] = { ...newBoard[b], isMismatch: true };
-          setBoard(newBoard);
-          setStreak(0);
-          setFlippedIndices([]);
-          setTimeout(() => {
-            setBoard((prev) =>
-              prev.map((c, i) =>
-                i === a || i === b
-                  ? { ...c, isFlipped: false, isMismatch: false }
-                  : c,
-              ),
-            );
-            setLocked(false);
-          }, MISMATCH_HIDE_MS);
-        }
-        return;
+    window.setTimeout(() => {
+      setBoard((current) => current.map((card, index) =>
+        index === firstIndex || index === secondIndex
+          ? { ...card, isFlipped: false, isMismatch: false }
+          : card,
+      ));
+      setFlippedIndices([]);
+      if (phase === 'final_playing') {
+        setFinalTurnId((turn) => finalists.find((id) => id !== turn) ?? turn);
       }
+      setLocked(false);
+    }, 760);
+  }, [board, finalTurnId, finalists, phase, playMatch, playMismatch]);
 
-      setBoard(newBoard);
-      setFlippedIndices(newFlipped);
-    },
-    [board, locked, gameOver, flippedIndices, streak, peekUsed, playFlip, playMatch, playPeek, playMismatch],
-  );
+  const handleCardClick = useCallback((cardIndex: number) => {
+    if (locked || (phase !== 'playing' && phase !== 'final_playing')) return;
+    if (phase === 'final_playing' && finalTurnId !== humanId) return;
+    const card = board[cardIndex];
+    if (!card || card.isMatched || card.isFlipped) return;
+    playFlip();
+    setBoard((current) => current.map((item, index) => index === cardIndex ? { ...item, isFlipped: true } : item));
+    if (flippedIndices.length === 0) {
+      setFlippedIndices([cardIndex]);
+      return;
+    }
+    resolvePair(flippedIndices[0], cardIndex);
+  }, [board, finalTurnId, flippedIndices, humanId, locked, phase, playFlip, resolvePair]);
 
-  // ── Results screen ──────────────────────────────────────────────────────
-  const handleContinue = useCallback(() => {
-    onComplete?.();
-  }, [onComplete]);
+  useEffect(() => {
+    if (phase !== 'final_playing' || !finalTurnId || finalTurnId === humanId || locked || matchedPairs >= targetPairs) return;
+    const timer = window.setTimeout(() => {
+      const available = board.filter((card) => !card.isMatched);
+      if (available.length < 2) return;
+      const rng = mulberry32((sessionSeed ^ hashId(finalTurnId) ^ aiTurnRef.current++) >>> 0);
+      const first = available[Math.floor(rng() * available.length)];
+      const knownMatch = available.find((card) => card.index !== first.index && card.symbol === first.symbol);
+      const wrongChoice = available.find((card) => card.index !== first.index && card.symbol !== first.symbol);
+      const second = rng() < 0.7 ? knownMatch : wrongChoice ?? knownMatch;
+      if (!second) return;
+      setBoard((current) => current.map((card) =>
+        card.index === first.index || card.index === second.index ? { ...card, isFlipped: true } : card,
+      ));
+      resolvePair(first.index, second.index);
+    }, 850 + (aiTurnRef.current % 3) * 260);
+    return () => window.clearTimeout(timer);
+  }, [board, finalTurnId, humanId, locked, matchedPairs, phase, resolvePair, sessionSeed, targetPairs]);
 
-  if (hoc?.status === 'complete' && hoc.standings.length > 0) {
-    const winner = hoc.standings[0];
-    const lastPlace = hoc.standings[hoc.standings.length - 1];
-    const winnerName = nameFor(winner.playerId);
-    const isHumanWinner = winner.playerId === humanId;
+  useEffect(() => {
+    if (phase !== 'final_playing' || matchedPairs < targetPairs || finalCompletedRef.current || finalists.length < 2) return;
+    finalCompletedRef.current = true;
+    const [first, second] = finalists;
+    const winnerId = chooseHouseOfCardsFinalWinner(
+      [first, second],
+      finalPoints,
+      cumulativeScores,
+    );
+    const finalistLoser = finalists.find((id) => id !== winnerId)!;
+    const orderedIds = [
+      winnerId,
+      finalistLoser,
+      ...participantIds
+        .filter((id) => !finalists.includes(id))
+        .sort((a, b) => (cumulativeScores[b] ?? 0) - (cumulativeScores[a] ?? 0)),
+    ];
+    const standingsWithoutRank: Array<Omit<PlayerOutcome, 'finalRank'>> = orderedIds.map((id) => ({
+      playerId: id,
+      matchedPairs: finalists.includes(id) ? finalPoints[id] ?? 0 : 0,
+      mistakes: 0,
+      turnsTaken: 0,
+      didFinish: true,
+      completionTimeMs: finalists.includes(id) ? Date.now() - roundStartedAtRef.current : null,
+      streakBest: 0,
+      clashScore: (cumulativeScores[id] ?? 0) + (finalPoints[id] ?? 0) * 10_000,
+    }));
+    const ranked = standingsWithoutRank.map((outcome, index) => ({ ...outcome, finalRank: index + 1 }));
+    setFinalStandings(ranked);
+    dispatch(completeHouseOfCardsTournament({ standings: standingsWithoutRank }));
+    playComplete();
+    setPhase('results');
+  }, [cumulativeScores, dispatch, finalPoints, finalists, matchedPairs, participantIds, phase, playComplete, targetPairs]);
 
+  useEffect(() => {
+    if (hoc?.status === 'complete') dispatch(resolveHouseOfCardsOutcome());
+  }, [dispatch, hoc?.status]);
+
+  const finish = useCallback(() => {
+    if (finalStandings.length === 0) return;
+    const rawResults = Object.fromEntries(finalStandings.map((entry) => [entry.playerId, entry.clashScore]));
+    onComplete?.({
+      rawValue: humanId ? rawResults[humanId] ?? 0 : 0,
+      rawResults,
+      authoritativeWinnerId: finalStandings[0].playerId,
+      authoritativeLastPlaceId: finalStandings[finalStandings.length - 1].playerId,
+    });
+  }, [finalStandings, humanId, onComplete]);
+
+  if (phase === 'round_results' && roundSummary) {
     return (
       <MinigameCompleteWrapper
-        className="hoc-complete"
-        onContinue={handleContinue}
-        continueLabel="Continue ▶"
+        className="hoc-complete hoc-round-results"
+        onContinue={continueRound}
+        continueLabel={humanId && roundSummary.nextActiveIds.includes(humanId) ? 'Next round' : 'Watch the finalists'}
         continueButtonClassName="hoc-complete-continue"
         placementsNode={
-          <div className="hoc-standings">
-            <div className="hoc-standings-label">Final Standings</div>
-            <ol className="hoc-standings-list" role="list" aria-label="Final standings">
-              {hoc.standings.map((outcome: PlayerOutcome) => {
-                const isHuman = outcome.playerId === humanId;
-                const isLast = outcome.playerId === lastPlace.playerId;
-                const isWinner = outcome.playerId === winner.playerId;
-                const rowClass = [
-                  'hoc-standing-row',
-                  isWinner ? 'hoc-standing--winner' : '',
-                  isLast && !isWinner ? 'hoc-standing--last' : '',
-                  isHuman ? 'hoc-standing--human' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ');
-
-                return (
-                  <li key={outcome.playerId} className={rowClass}>
-                    <span
-                      className={[
-                        'hoc-standing-rank',
-                        outcome.finalRank <= 3 ? `hoc-standing-rank--top-${outcome.finalRank}` : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      aria-label={`Rank ${outcome.finalRank}`}
-                    >
-                      {outcome.finalRank}
-                    </span>
-                    <div className="hoc-standing-summary">
-                      <span
-                        className={`hoc-standing-name${isHuman ? ' hoc-standing-name--human' : ''}`}
-                      >
-                        {nameFor(outcome.playerId)}
-                      </span>
-                      <span className="hoc-standing-meta">
-                        {outcome.matchedPairs}/{TOTAL_PAIRS} pairs ·{' '}
-                        {getMissesLabel(outcome.mistakes)}
-                      </span>
-                    </div>
-                    <div className="hoc-standing-details">
-                      <span className="hoc-standing-score">{outcome.clashScore} pts</span>
-                      <div className="hoc-standing-badges">
-                        {isHuman && !isLast && (
-                          <span className="hoc-standing-badge hoc-badge--you">You</span>
-                        )}
-                        {isLast && !isWinner && (
-                          <span className="hoc-standing-badge hoc-badge--last">Last</span>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
+          <ol className="hoc-standings-list" aria-label={`Round ${roundSummary.round} standings`}>
+            {roundSummary.rankedIds.map((id, index) => (
+              <li key={id} className={`hoc-standing-row${id === humanId ? ' hoc-standing--human' : ''}${roundSummary.eliminatedIds.includes(id) ? ' hoc-standing--last' : ''}`}>
+                <span className="hoc-standing-rank">{index + 1}</span>
+                <div className="hoc-standing-summary">
+                  <strong>{nameFor(id)}{id === humanId ? ' (You)' : ''}</strong>
+                  <span>{roundSummary.roundScores[id].mistakes} misses · {(roundSummary.roundScores[id].timeMs / 1_000).toFixed(1)}s</span>
+                </div>
+                <strong>{roundSummary.cumulativeScores[id]}</strong>
+              </li>
+            ))}
+          </ol>
         }
       >
-        <div className="hoc-complete-title">
-          <span className="hoc-complete-title-icon" aria-hidden="true" />
-          <span>House of Cards</span>
-        </div>
-        <div className="hoc-complete-winner">
-          <div className="hoc-complete-winner-rank" aria-hidden="true">
-            1
-          </div>
-          <div className="hoc-complete-winner-badge">{isHumanWinner ? 'You Win!' : 'Winner'}</div>
-          <div className="hoc-complete-winner-name">{winnerName}</div>
-          <div className="hoc-complete-winner-score">{winner.clashScore} clash points</div>
-          <div className="hoc-complete-winner-meta">
-            {winner.matchedPairs}/{TOTAL_PAIRS} pairs · {getMissesLabel(winner.mistakes)}
-          </div>
-        </div>
+        <h2 className="hoc-complete-title">Round {roundSummary.round} complete</h2>
+        <p className="hoc-round-summary">
+          {roundSummary.eliminatedIds.length > 0
+            ? `${roundSummary.eliminatedIds.map(nameFor).join(', ')} eliminated.`
+            : 'The field advances.'}
+        </p>
       </MinigameCompleteWrapper>
     );
   }
 
-  // Timer formatting
-  const timerClass =
-    timeLeft <= 5
-      ? 'hoc-timer hoc-timer--danger'
-      : timeLeft <= 15
-      ? 'hoc-timer hoc-timer--warning'
-      : 'hoc-timer';
+  if (phase === 'results' && finalStandings.length > 0) {
+    const winner = finalStandings[0];
+    return (
+      <MinigameCompleteWrapper
+        className="hoc-complete"
+        onContinue={finish}
+        continueButtonClassName="hoc-complete-continue"
+        placementsNode={
+          <ol className="hoc-standings-list" aria-label="Final standings">
+            {finalStandings.map((outcome) => (
+              <li key={outcome.playerId} className={`hoc-standing-row${outcome.finalRank === 1 ? ' hoc-standing--winner' : ''}${outcome.playerId === humanId ? ' hoc-standing--human' : ''}`}>
+                <span className="hoc-standing-rank">{outcome.finalRank}</span>
+                <div className="hoc-standing-summary">
+                  <strong>{nameFor(outcome.playerId)}{outcome.playerId === humanId ? ' (You)' : ''}</strong>
+                  <span>{finalists.includes(outcome.playerId) ? `${finalPoints[outcome.playerId] ?? 0} final pairs` : 'Eliminated in preliminaries'}</span>
+                </div>
+                <strong>{outcome.clashScore}</strong>
+              </li>
+            ))}
+          </ol>
+        }
+      >
+        <h2 className="hoc-complete-title">🏆 {nameFor(winner.playerId)} wins House of Cards</h2>
+        <p className="hoc-round-summary">Five rounds complete</p>
+      </MinigameCompleteWrapper>
+    );
+  }
 
+  const isFinal = phase === 'final_playing';
+  const humanCanPlay = !isFinal || finalTurnId === humanId;
   return (
-    <div className="hoc-root">
-      {/* HUD — compact stat bar */}
-      <div className="hoc-hud" role="status" aria-label="Game stats">
-        <div className="hoc-hud-stat">
-          <strong className={timerClass}>{timeLeft}s</strong>
-          <span>Time</span>
-        </div>
-        <div className="hoc-hud-stat">
-          <strong>
-            {matchedPairs}/{TOTAL_PAIRS}
-          </strong>
-          <span>Pairs</span>
-        </div>
-        <div className="hoc-hud-stat">
-          <strong>{mistakes}</strong>
-          <span>Misses</span>
-        </div>
-        <div className={`hoc-streak${streak >= 2 ? ' hoc-streak--active' : ''}`}>
-          🔥 {streak}×
-        </div>
-        {!peekUsed && (
-          <div className="hoc-peek-hint" title="Match 2 pairs in a row to unlock Peek">
-            👁 ×1
-          </div>
-        )}
+    <div className="hoc-root" data-phase={phase}>
+      <div className="hoc-hud">
+        <div className="hoc-hud-stat"><strong>Round {round}/5</strong><span>{tileCount} tiles</span></div>
+        <div className="hoc-hud-stat"><strong>{elapsedSeconds}s</strong><span>Elapsed · no limit</span></div>
+        <div className="hoc-hud-stat"><strong>{matchedPairs}/{targetPairs}</strong><span>Pairs</span></div>
+        {!isFinal && <div className="hoc-hud-stat"><strong>{mistakes}</strong><span>Misses</span></div>}
+        {!isFinal && <div className="hoc-hud-stat"><strong>{streak}×</strong><span>Streak</span></div>}
       </div>
 
-      {/* Card board — primary interaction area, scrolls if needed */}
+      {isFinal && (
+        <div className="hoc-final-score" aria-live="polite">
+          <strong>{nameFor(finalists[0] ?? '')}: {finalPoints[finalists[0] ?? ''] ?? 0}</strong>
+          <span>{nameFor(finalTurnId ?? '')}'s turn{humanCanPlay ? ' — choose two cards' : ' — choosing…'}</span>
+          <strong>{nameFor(finalists[1] ?? '')}: {finalPoints[finalists[1] ?? ''] ?? 0}</strong>
+        </div>
+      )}
+
       <div className="hoc-board-wrap">
-        <div className="hoc-board" role="grid" aria-label="Card grid">
-          {board.map((card, i) => (
-            <div
-              key={i}
+        <div className="hoc-board" style={boardStyle} role="grid" aria-label={isFinal ? 'Shared final card grid' : `Round ${round} card grid`}>
+          {board.map((card) => (
+            <button
+              key={card.index}
               className="hoc-card"
+              type="button"
+              role="gridcell"
               data-flipped={card.isFlipped ? 'true' : 'false'}
               data-matched={card.isMatched ? 'true' : 'false'}
               data-mismatch={card.isMismatch ? 'true' : 'false'}
-              data-locked={locked || card.isMatched ? 'true' : 'false'}
-              role="gridcell"
+              disabled={locked || card.isMatched || !humanCanPlay}
+              onClick={() => handleCardClick(card.index)}
               aria-label={card.isFlipped || card.isMatched ? card.symbol : 'Hidden card'}
-              onClick={() => handleCardClick(i)}
-              tabIndex={card.isMatched ? -1 : 0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') handleCardClick(i);
-              }}
             >
-              <div className="hoc-card-inner">
-                <div className="hoc-card-face hoc-card-back">
-                  <div className="hoc-card-back-pattern" />
-                  {/* Subtle SVG eye mark — thematic, low-contrast */}
-                  <svg
-                    className="hoc-card-eye"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <ellipse cx="12" cy="12" rx="10" ry="6" />
-                    <circle cx="12" cy="12" r="3" />
-                    <circle cx="12" cy="12" r="1.2" className="hoc-card-eye-pupil" />
-                  </svg>
-                </div>
-                <div className="hoc-card-face hoc-card-front" aria-hidden="true">
-                  {card.symbol}
-                </div>
-              </div>
-            </div>
+              <span className="hoc-card-inner">
+                <span className="hoc-card-face hoc-card-back"><span className="hoc-card-back-pattern" /></span>
+                <span className="hoc-card-face hoc-card-front">{card.symbol}</span>
+              </span>
+            </button>
           ))}
         </div>
       </div>
-
-      {/* Compact event ticker — bottom, replaces bulky progress rail */}
-      {tickerEvents.length > 0 && (
-        <div className="hoc-ticker" aria-label="Competition updates" aria-live="polite">
-          {tickerEvents.slice(0, 3).map((ev) => (
-            <div key={ev.id} className="hoc-ticker-item">{ev.text}</div>
-          ))}
-        </div>
-      )}
-
-      {/* Burst animation */}
-      {burstText && (
-        <div className="hoc-match-burst" aria-hidden="true">
-          <div
-            className={`hoc-match-burst-text${
-              burstText.includes('STREAK') ? ' hoc-burst--streak' : ' hoc-burst--match'
-            }`}
-          >
-            {burstText}
-          </div>
-        </div>
-      )}
-
-      {/* Peek overlay */}
-      {peekActive && (
-        <div className="hoc-peek-overlay" aria-live="polite">
-          <div className="hoc-peek-banner">👁 PEEK!</div>
-        </div>
-      )}
-
-      {/* Time up overlay */}
-      {gameOver && matchedPairs < TOTAL_PAIRS && (
-        <div className="hoc-timeout-overlay" role="alert">
-          <div className="hoc-timeout-card">
-            <h3>⏰ Time&rsquo;s Up!</h3>
-            <p>
-              You matched {matchedPairs} of {TOTAL_PAIRS} pairs.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

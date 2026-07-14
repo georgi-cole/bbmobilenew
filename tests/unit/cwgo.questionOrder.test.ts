@@ -16,6 +16,7 @@ import cwgoReducer, {
   setGuesses,
   revealMassResults,
   confirmMassElimination,
+  startCwgoFinal,
 } from '../../src/features/cwgo/cwgoCompetitionSlice';
 import { CWGO_QUESTIONS } from '../../src/features/cwgo/cwgoQuestions';
 
@@ -60,10 +61,7 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
     expect(questionIdx).toBe(questionOrder[0]);
   });
 
-  it('questionIdx advances to questionOrder[round] after confirmMassElimination → choose_duel', async () => {
-    // Need 4 players with 1 eliminated so 3 survive → choose_duel
-    // When nobody goes over, bottom half is eliminated. With 4 players floor(4/2)=2
-    // are eliminated, leaving 2 → duel_input. So use 5 players to get 3 survivors.
+  it('questionIdx advances to questionOrder[round] when the final starts', async () => {
     const store = makeStore();
     store.dispatch(startCwgoCompetition({
       participantIds: ['alice', 'bob', 'carol', 'dave', 'eve'],
@@ -85,11 +83,11 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
     }));
     store.dispatch(revealMassResults());
     store.dispatch(confirmMassElimination());
+    expect(store.getState().cwgo.status).toBe('league_results');
+    store.dispatch(startCwgoFinal());
 
-    // status should be choose_duel since 3 survived
-    const afterElim = store.getState().cwgo;
-    expect(afterElim.status).toBe('choose_duel');
-    // round is now 1; questionIdx should equal questionOrder[1]
-    expect(afterElim.questionIdx).toBe(afterElim.questionOrder[1 % afterElim.questionOrder.length]);
+    const finalState = store.getState().cwgo;
+    expect(finalState.round).toBe(1);
+    expect(finalState.questionIdx).toBe(finalState.questionOrder[1 % finalState.questionOrder.length]);
   });
 });

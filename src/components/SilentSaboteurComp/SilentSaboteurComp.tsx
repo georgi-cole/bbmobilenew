@@ -48,9 +48,9 @@ const SILENT_SABOTEUR_TIMINGS = {
   /** Human saboteur timeout fallback. */
   SELECT_VICTIM_TIMEOUT_MS: 10_000,
   /** AI voting stagger window minimum. */
-  AI_VOTE_STAGGER_MIN_MS: 4200,
+  AI_VOTE_STAGGER_MIN_MS: 7000,
   /** AI voting stagger window maximum. */
-  AI_VOTE_STAGGER_MAX_MS: 6500,
+  AI_VOTE_STAGGER_MAX_MS: 12_000,
   /** Voting phase shared timer — 120 seconds. */
   VOTING_TIMER_MS: 120_000,
   /** Jury vote shared timer — 120 seconds. */
@@ -73,6 +73,7 @@ const SILENT_SABOTEUR_VOTE_JITTER_MS = 90;
 const SILENT_SABOTEUR_VOTE_JITTER_SPAN = (SILENT_SABOTEUR_VOTE_JITTER_MS * 2) + 1;
 
 type RevealStage = 'votes' | 'accusationResult' | 'elimination';
+type SpectatorMode = 'active' | 'pending' | 'watching' | 'skipping';
 
 /**
  * Local state machine for the Final-2 staged cinematic flow.
@@ -389,6 +390,7 @@ export default function SilentSaboteurComp({
   const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null);
   const [countdownNow, setCountdownNow] = useState(() => Date.now());
   const [socialMapOpen, setSocialMapOpen] = useState(false);
+  const [spectatorMode, setSpectatorMode] = useState<SpectatorMode>('active');
   /** Locks manual non-Final-2 CTA clicks until the beat changes. */
   const [majorBeatActionLocked, setMajorBeatActionLocked] = useState(false);
 
@@ -425,6 +427,7 @@ export default function SilentSaboteurComp({
   const votingTimerFiredRef = useRef(false);
 
   const animationsDisabled = areAnimationsDisabled();
+  const fastForwarding = spectatorMode === 'skipping';
 
   // Resolve name lookup
   const nameMap = useMemo<Record<string, string>>(() => {
@@ -465,6 +468,12 @@ export default function SilentSaboteurComp({
   const isHumanSaboteur = humanPlayerId !== null && saboteurId === humanPlayerId;
   const isHumanJuror = humanPlayerId !== null && eliminatedIds.includes(humanPlayerId);
   const final2Mode = phase === 'final2_jury';
+
+  useEffect(() => {
+    if (humanPlayerId && eliminatedIds.includes(humanPlayerId) && spectatorMode === 'active') {
+      setSpectatorMode('pending');
+    }
+  }, [eliminatedIds, humanPlayerId, spectatorMode]);
   /**
    * ID of the finalist the jury majority accused of planting the bomb.
    * Computed from juryVotes once voting is complete (phase ≥ winner).
@@ -529,9 +538,12 @@ export default function SilentSaboteurComp({
   // Intro: auto-advance
   useEffect(() => {
     if (phase !== 'intro') return;
-    const t = setTimeout(() => dispatch(advanceIntro()), SILENT_SABOTEUR_TIMINGS.INTRO_MS);
+    const t = setTimeout(
+      () => dispatch(advanceIntro()),
+      fastForwarding ? 350 : SILENT_SABOTEUR_TIMINGS.INTRO_MS,
+    );
     return () => clearTimeout(t);
-  }, [phase, dispatch]);
+  }, [phase, dispatch, fastForwarding]);
 
   // Bomb reveal: cinematic hold before showing voting UI.
   useEffect(() => {
@@ -555,7 +567,7 @@ export default function SilentSaboteurComp({
       const t = setTimeout(() => {
         const victim = pickVictimForAi(seed, round, saboteurId, activeIds);
         dispatch(selectVictim({ victimId: victim }));
-      }, SILENT_SABOTEUR_TIMINGS.SABOTEUR_CHOOSING_MS);
+      }, fastForwarding ? 350 : SILENT_SABOTEUR_TIMINGS.SABOTEUR_CHOOSING_MS);
       return () => clearTimeout(t);
     }
 
@@ -587,7 +599,7 @@ export default function SilentSaboteurComp({
         const accused = pickVoteForAiOrAbstain(seed, round, voterId, activeIds, victimId);
         if (accused == null) return;
         dispatch(submitVote({ voterId, accusedId: accused }));
-      }, delay);
+      }, fastForwarding ? Math.max(180, delay * 0.06) : delay);
       delays.push(t);
     }
 
@@ -599,7 +611,9 @@ export default function SilentSaboteurComp({
   // Opening the Social Map does NOT pause or reset this timer.
   useEffect(() => {
     if (phase !== 'voting' || bombRevealVisible) return;
-    const delay = animationsDisabled
+    const delay = fastForwarding
+      ? 900
+      : animationsDisabled
       ? 50
       : SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS;
     const t = setTimeout(() => {
@@ -646,8 +660,8 @@ export default function SilentSaboteurComp({
     }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const voteStepMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.VOTE_REVEAL_STEP_MS;
-    const resultPauseMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.REVEAL_RESULT_PAUSE_MS;
+    const voteStepMs = fastForwarding ? 110 : animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.VOTE_REVEAL_STEP_MS;
+    const resultPauseMs = fastForwarding ? 260 : animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.REVEAL_RESULT_PAUSE_MS;
     const voteCount = revealVoteEntries.length;
 
     if (voteStepMs === 0) {
@@ -692,7 +706,7 @@ export default function SilentSaboteurComp({
     if (!isHumanJuror || !final2SaboteurId || !final2VictimId) return;
     if (humanPlayerId && juryVotes[humanPlayerId] !== undefined) return;
 
-    const delay = animationsDisabled ? 50 : SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS;
+    const delay = fastForwarding ? 900 : animationsDisabled ? 50 : SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS;
     const t = setTimeout(() => {
       if (!humanPlayerId) return;
       const finalists = [final2SaboteurId, final2VictimId];
@@ -742,7 +756,7 @@ export default function SilentSaboteurComp({
         const accused = pickVoteForAi(seed, 9999, jurorId, finalists, null);
         const safeAccused = finalists.includes(accused) ? accused : finalists[0];
         dispatch(submitJuryVote({ jurorId, accusedId: safeAccused }));
-      }, animationsDisabled ? 0 : delay);
+      }, fastForwarding ? Math.max(150, delay * 0.05) : animationsDisabled ? 0 : delay);
       timers.push(t);
     }
     return () => timers.forEach(clearTimeout);
@@ -755,7 +769,7 @@ export default function SilentSaboteurComp({
       setFinal2RevealDone(false);
       return;
     }
-    const delayMs = animationsDisabled ? 0 : 1500;
+    const delayMs = fastForwarding ? 300 : animationsDisabled ? 0 : 1500;
     const t = setTimeout(() => setFinal2RevealDone(true), delayMs);
     return () => clearTimeout(t);
   }, [final2Stage, animationsDisabled]);
@@ -861,7 +875,7 @@ export default function SilentSaboteurComp({
   // human still manually acknowledges their own elimination card (which shows
   // the "stay for the Final 2" message) and still casts their Tribunal vote.
   useEffect(() => {
-    if (!isHumanJuror || majorBeatActionLocked) return;
+    if (!isHumanJuror || majorBeatActionLocked || spectatorMode === 'pending') return;
     let action: (() => void) | null = null;
     if (phase === 'voting' && bombRevealVisible) {
       action = handleBombRevealContinue;
@@ -872,7 +886,11 @@ export default function SilentSaboteurComp({
       action = handleRoundTransitionContinue;
     }
     if (!action) return;
-    const delay = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.AUTO_SPECTATOR_CONTINUE_MS;
+    const delay = fastForwarding
+      ? 260
+      : animationsDisabled
+        ? 0
+        : SILENT_SABOTEUR_TIMINGS.AUTO_SPECTATOR_CONTINUE_MS;
     const t = setTimeout(action, delay);
     return () => clearTimeout(t);
   }, [
@@ -884,6 +902,8 @@ export default function SilentSaboteurComp({
     revealInfo,
     humanPlayerId,
     animationsDisabled,
+    fastForwarding,
+    spectatorMode,
     handleBombRevealContinue,
     handleRevealAccusationContinue,
     handleRevealEliminationContinue,
@@ -941,7 +961,7 @@ export default function SilentSaboteurComp({
   if (!ss) return null;
 
   return (
-    <div className="ss-wrap" aria-live="polite">
+    <div className="ss-wrap" data-phase={phase} aria-live="polite">
 
       {phase === 'intro' && (
         <div className="ss-stage ss-stage--centered">
@@ -1269,7 +1289,7 @@ export default function SilentSaboteurComp({
 
       {/* Original winner screen — only for non-Final-2 games. */}
       {phase === 'winner' && winnerId && final2Stage === null && (
-        <div className="ss-stage ss-stage--centered">
+        <div className="ss-stage ss-stage--centered ss-stage--winner">
           <div className="ss-winner-card ss-cinematic">
             <div className="ss-confetti" aria-hidden="true">
               {Array.from({ length: 12 }, (_, idx) => (
@@ -1466,6 +1486,7 @@ export default function SilentSaboteurComp({
 
       {/* FINAL2_WINNER: Winner celebration with manual Continue. */}
       {final2Stage === 'FINAL2_WINNER' && winnerId && (
+        <div className="ss-stage ss-stage--centered ss-stage--winner">
         <div className="ss-winner-card ss-cinematic" data-testid="ss-final2-winner">
           <div className="ss-confetti" aria-hidden="true">
             {Array.from({ length: 12 }, (_, idx) => (
@@ -1491,6 +1512,7 @@ export default function SilentSaboteurComp({
             </button>
           </ActionFooter>
         </div>
+        </div>
       )}
 
       {phase === 'complete' && (
@@ -1498,6 +1520,27 @@ export default function SilentSaboteurComp({
           <p className="ss-phase-eyebrow">Competition complete</p>
           <p className="ss-phase-label">✅ Silent Saboteur has ended.</p>
         </div>
+      )}
+
+      {spectatorMode === 'pending' && (
+        <div className="ss-spectator-overlay" role="dialog" aria-modal="true" aria-labelledby="ss-spectator-title">
+          <div className="ss-spectator-card">
+            <p className="ss-phase-eyebrow">Eliminated</p>
+            <h2 id="ss-spectator-title">How would you like to continue?</h2>
+            <p>You can remain a spectator at normal speed or watch the same game accelerate to the finale.</p>
+            <div className="ss-spectator-actions">
+              <button className="ss-btn ss-action-btn" type="button" onClick={() => setSpectatorMode('watching')}>
+                Remain spectator
+              </button>
+              <button className="ss-btn ss-btn--secondary" type="button" onClick={() => setSpectatorMode('skipping')}>
+                Fast-forward game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {fastForwarding && phase !== 'complete' && (
+        <div className="ss-fast-forward" role="status" aria-live="polite">Fast-forwarding to the finale…</div>
       )}
     </div>
   );

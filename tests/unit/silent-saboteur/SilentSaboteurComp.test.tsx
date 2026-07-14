@@ -177,14 +177,18 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
 
     expect(ss(store).phase).toBe('round_transition');
 
-    // If this seed evicted the human, the round-summary Continue is auto-pressed
-    // so the spectating player isn't forced to click through AI-only rounds.
-    // Otherwise (human still active) the round summary waits for a manual click.
+    // Eliminated humans now choose between normal spectating and fast-forwarding.
     const humanEvicted = ss(store).eliminatedIds.includes('user');
 
     if (humanEvicted) {
+      expect(screen.getByRole('dialog', { name: 'How would you like to continue?' })).toBeInTheDocument();
       await act(async () => {
-        vi.advanceTimersByTime(5000);
+        fireEvent.click(screen.getByRole('button', { name: 'Remain spectator' }));
+      });
+
+      expect(screen.getByTestId('ss-round-transition-continue-btn')).toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('ss-round-transition-continue-btn'));
       });
       expect(ss(store).phase).toBe('select_victim');
     } else {

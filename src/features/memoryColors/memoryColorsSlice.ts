@@ -7,7 +7,7 @@
  *  - Each new round adds exactly 1 more color.
  *  - Sequence reveal shows the colors in order, then the player reconstructs
  *    the exact order from the full color pool.
- *  - The run ends on the 3rd total mistake.
+ *  - The run ends on the 5th total mistake.
  *
  * Ranking priority (higher is better):
  *  1. furthestRoundReached
@@ -96,7 +96,7 @@ export const MEMORY_COLOR_POOL: readonly MemoryColorDef[] = [
 
 export const NUM_COLORS = MEMORY_COLOR_POOL.length;
 export const INITIAL_SEQUENCE_LENGTH = 5;
-export const MAX_MISTAKES = 3;
+export const MAX_MISTAKES = 5;
 
 const SALT_SEQUENCE = 0xabcdef01;
 const SALT_AI = 0x12345678;

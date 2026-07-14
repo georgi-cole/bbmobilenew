@@ -1032,13 +1032,11 @@ export default function HangmanChallengeComp({
                     <div className="hangman-challenge__score-primary-row">
                       <span className="hangman-challenge__avatar">{entry.avatarText}</span>
                       <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
-                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
-                    </div>
-                    <div className="hangman-challenge__score-secondary-row">
-                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved' : 'Failed'} • {entry.word}</span>
-                      {compactRoundMeta(entry).map((label, index) => (
-                        <span key={`${entry.participantId}-round-meta-${index}`}>{label}</span>
+                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved' : 'Failed'} · {entry.word}</span>
+                      {compactRoundMeta(entry).map((label, metaIndex) => (
+                        <span className="hangman-challenge__score-meta" key={`${entry.participantId}-round-meta-${metaIndex}`}>{label}</span>
                       ))}
+                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
                     </div>
                   </div>
                 </article>
@@ -1067,13 +1065,11 @@ export default function HangmanChallengeComp({
                     <div className="hangman-challenge__score-primary-row">
                       <span className="hangman-challenge__avatar">{entry.avatarText}</span>
                       <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
-                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
-                    </div>
-                    <div className="hangman-challenge__score-secondary-row">
-                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved final' : 'Missed final'} • {entry.word}</span>
-                      {compactRoundMeta(entry).map((label, index) => (
-                        <span key={`${entry.participantId}-final-meta-${index}`}>{label}</span>
+                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved final' : 'Missed final'} · {entry.word}</span>
+                      {compactRoundMeta(entry).map((label, metaIndex) => (
+                        <span className="hangman-challenge__score-meta" key={`${entry.participantId}-final-meta-${metaIndex}`}>{label}</span>
                       ))}
+                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
                     </div>
                   </div>
                 </article>

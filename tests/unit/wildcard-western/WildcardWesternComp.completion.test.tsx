@@ -224,7 +224,7 @@ describe('WildcardWesternComp completion flow', () => {
       vi.advanceTimersByTime(1600);
     });
 
-    expect(store.getState().wildcardWestern.phase).toBe('finalDuel');
+    expect(store.getState().wildcardWestern.phase).toBe('chooseNextPair');
     expect(screen.queryByRole('dialog', { name: /you have been eliminated/i })).toBeNull();
   });
 
@@ -256,7 +256,7 @@ describe('WildcardWesternComp completion flow', () => {
       vi.advanceTimersByTime(1600);
     });
 
-    expect(store.getState().wildcardWestern.phase).toBe('finalDuel');
+    expect(store.getState().wildcardWestern.phase).toBe('chooseNextPair');
     expect(screen.queryByRole('dialog', { name: /you have been eliminated/i })).toBeNull();
   });
 

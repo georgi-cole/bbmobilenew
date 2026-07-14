@@ -601,6 +601,7 @@ function applyEffectSelection(
   chainDepth = 0,
   fromForcedOpen = false,
 ): ResolutionOutcome {
+  const previousPower = state.lastPowerUsed;
   let nextState: GameState = {
     ...state,
     players: clonePlayers(state.players),
@@ -801,8 +802,8 @@ function applyEffectSelection(
       break;
     }
     case 'copyLastPower': {
-      const copied = nextState.lastPowerUsed && nextState.lastPowerUsed !== 'copyLastPower'
-        ? nextState.lastPowerUsed
+      const copied = previousPower && previousPower !== 'copyLastPower'
+        ? previousPower
         : 'hiddenBonus';
       const copiedTargets = resolveAutoTargetIds(nextState.players, actorId, copied, rng);
       const copiedResolution = applyEffectSelection(nextState, actorId, copied, sourceBoxId, copiedTargets, rng, chainDepth + 1, fromForcedOpen);

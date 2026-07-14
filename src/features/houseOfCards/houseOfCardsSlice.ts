@@ -22,6 +22,8 @@ import { mulberry32 } from '../../store/rng';
 
 /** Number of pairs on the board. */
 export const TOTAL_PAIRS = 10;
+/** Tile counts for the four elimination rounds and the shared final. */
+export const HOUSE_OF_CARDS_TILE_COUNTS = [8, 12, 16, 20, 24] as const;
 /** Time limit in milliseconds. */
 export const GAME_TIME_LIMIT_MS = 60_000;
 /** Minimum plausible AI finish time for a 20-card memory match game (ms).
@@ -310,6 +312,21 @@ const houseOfCardsSlice = createSlice({
       state.status = 'complete';
     },
 
+    /** Complete the five-round tournament using the already-authoritative order. */
+    completeHouseOfCardsTournament(
+      state,
+      action: PayloadAction<{ standings: Array<Omit<PlayerOutcome, 'finalRank'>> }>,
+    ) {
+      if (state.status !== 'active') return;
+      state.standings = action.payload.standings.map((outcome, index) => ({
+        ...outcome,
+        finalRank: index + 1,
+      }));
+      state.winnerId = state.standings[0]?.playerId ?? null;
+      state.lastPlaceId = state.standings[state.standings.length - 1]?.playerId ?? null;
+      state.status = 'complete';
+    },
+
     /** Idempotency guard: prevent the outcome thunk from firing twice. */
     markHouseOfCardsOutcomeResolved(state) {
       state.outcomeResolved = true;
@@ -325,6 +342,7 @@ const houseOfCardsSlice = createSlice({
 export const {
   startHouseOfCards,
   finaliseOutcome,
+  completeHouseOfCardsTournament,
   markHouseOfCardsOutcomeResolved,
   resetHouseOfCards,
 } = houseOfCardsSlice.actions;

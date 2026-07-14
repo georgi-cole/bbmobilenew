@@ -47,6 +47,7 @@ export interface VaultCrackerEngineSnapshot {
   lastGuess: GuessResult | null;
   guessHistory: GuessResult[];
   pressure: number;
+  validationMessage: string | null;
 }
 
 export interface VaultCrackerWinPayload extends VaultCrackerEngineSnapshot {
@@ -115,4 +116,5 @@ export interface VaultCrackerRuntimeState {
   particles: Particle[];
   pointer: PointerState;
   submitPressed: boolean;
+  validationMessage: string | null;
 }

@@ -15,6 +15,7 @@ export const AUTHORITATIVE_COMPONENT_KEYS: Set<string> = new Set([
   'WildcardWestern',
   'CodeBreaker',
   'Tetris',
+  'TiltLabyrinth',
   'MemoryColors',
   'Capitalization',
   'SnakeGame',

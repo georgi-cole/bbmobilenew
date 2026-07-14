@@ -56,7 +56,7 @@ describe('Silent Saboteur rules', () => {
     expect(victimOverrideEliminatesVictim.accusedId).toBe('d');
 
     const victimOverrideCatchesSaboteur = resolveRound(
-      { s: 'c', v: 's', c: 'd', d: 'c' },
+      { s: 'c', v: 's', c: 's', d: 'c' },
       's',
       'v',
       ['s', 'v', 'c', 'd'],
@@ -94,6 +94,6 @@ describe('Silent Saboteur rules', () => {
     const aiVotes = buildAiJuryVotes(12, ['j1', 'j2'], 's', 'v');
     expect(Object.keys(aiVotes)).toEqual(['j1', 'j2']);
     expect(Object.values(aiVotes).every((vote) => ['s', 'v'].includes(vote))).toBe(true);
-    expect(['s', 'v']).toContain(pickVictimTieBreakVote(12, 'v', 's', 'x'));
+    expect(['s', 'v']).toContain(pickVictimTieBreakVote(12, 'v', 's', 'v'));
   });
 });

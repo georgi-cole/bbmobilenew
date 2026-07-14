@@ -67,6 +67,16 @@
   color: #f87171;
 }
 
+.cwgo__difficulty--very-easy {
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.45);
+}
+
+.cwgo__difficulty--very-hard {
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.48);
+}
+
 .cwgo__question-text {
   font-size: 1.05rem;
   font-weight: 700;
@@ -189,6 +199,26 @@
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+}
+
+.cwgo-lives {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 14px;
+}
+
+.cwgo-lives__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid rgba(250, 204, 21, 0.28);
+  border-radius: 999px;
+  background: rgba(54, 30, 10, 0.58);
+  color: #fff4cf;
+  font-size: 0.82rem;
 }
 
 .cwgo-mass-input__subtitle {

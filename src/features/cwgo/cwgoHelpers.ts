@@ -94,15 +94,19 @@ export function aiSkillRangeForDifficulty(difficulty: number): { min: number; ma
   }
 }
 
+/** Chance that an AI knows the exact answer before estimation noise is applied. */
+export function aiExactAnswerProbability(difficulty: number): number {
+  const d = Math.max(1, Math.min(5, Math.round(difficulty)));
+  return [0.999, 0.9, 0.5, 0.28, 0.12][d - 1];
+}
+
 /**
  * Map a question's 1–5 difficulty rating to a player-facing label.
  * Buckets match {@link aiSkillRangeForDifficulty}: 1 → Easy, 2–3 → Medium, 4–5 → Hard.
  */
-export function difficultyLabel(difficulty: number): 'Easy' | 'Medium' | 'Hard' {
+export function difficultyLabel(difficulty: number): 'Very Easy' | 'Easy' | 'Medium' | 'Hard' | 'Very Hard' {
   const d = Math.max(1, Math.min(5, Math.round(difficulty)));
-  if (d <= 1) return 'Easy';
-  if (d <= 3) return 'Medium';
-  return 'Hard';
+  return ['Very Easy', 'Easy', 'Medium', 'Hard', 'Very Hard'][d - 1] as 'Very Easy' | 'Easy' | 'Medium' | 'Hard' | 'Very Hard';
 }
 
 // ─── Winner Computation ───────────────────────────────────────────────────────

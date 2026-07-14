@@ -26,6 +26,10 @@ import cwgoReducer, {
   setGuesses,
   revealMassResults,
   confirmMassElimination,
+  startCwgoFinal,
+  chooseDuelPair,
+  revealDuelResults,
+  confirmDuelElimination,
 } from '../src/features/cwgo/cwgoCompetitionSlice';
 import { resolveHoldTheWallOutcome } from '../src/features/holdTheWall/thunks';
 import { resolveCompetitionOutcome } from '../src/features/cwgo/thunks';
@@ -228,6 +232,17 @@ describe('LOH comp last-place mismatch — CWGO (elimination tracking)', () => {
     store.dispatch(setGuesses({ p0: 999999, p1: 0 }));
     store.dispatch(revealMassResults());
     store.dispatch(confirmMassElimination());
+    expect(store.getState().cwgo.status).toBe('league_results');
+    store.dispatch(startCwgoFinal());
+
+    for (let loss = 0; loss < 3; loss += 1) {
+      store.dispatch(setGuesses({ p0: 999999, p1: 0 }));
+      store.dispatch(revealDuelResults());
+      store.dispatch(confirmDuelElimination());
+      if (loss < 2) {
+        store.dispatch(chooseDuelPair(['p0', 'p1']));
+      }
+    }
 
     // Verify CWGO reached 'complete' with p0 eliminated first
     const cwgoState = store.getState().cwgo;

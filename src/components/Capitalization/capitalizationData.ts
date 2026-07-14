@@ -88,6 +88,8 @@ export const CAPITALIZATION_COUNTRIES_BY_CONTINENT: Record<
     country('rwanda', 'Rwanda', '🇷🇼', 'Kigali', -1.9, 29.9, 3),
     country('tunisia', 'Tunisia', '🇹🇳', 'Tunis', 34, 9.5, 2),
     country('nigeria', 'Nigeria', '🇳🇬', 'Abuja', 9.1, 8.7, 2),
+    country('burkina-faso', 'Burkina Faso', '🇧🇫', 'Ouagadougou', 12.3, -1.6, 4),
+    country('burundi', 'Burundi', '🇧🇮', 'Gitega', -3.4, 29.9, 5),
   ],
   Asia: [
     country('japan', 'Japan', '🇯🇵', 'Tokyo', 36.2, 138.3, 1),
@@ -112,6 +114,9 @@ export const CAPITALIZATION_COUNTRIES_BY_CONTINENT: Record<
     country('poland', 'Poland', '🇵🇱', 'Warsaw', 52.1, 19.4, 2, ['Warszawa']),
     country('norway', 'Norway', '🇳🇴', 'Oslo', 60.5, 8.5, 2),
     country('ireland', 'Ireland', '🇮🇪', 'Dublin', 53.4, -8.2, 2),
+    country('romania', 'Romania', '🇷🇴', 'Bucharest', 45.9, 24.9, 3),
+    country('montenegro', 'Montenegro', '🇲🇪', 'Podgorica', 42.7, 19.4, 4),
+    country('moldova', 'Moldova', '🇲🇩', 'Chisinau', 47, 28.8, 5, ['Chișinău']),
   ],
   'North America': [
     country('canada', 'Canada', '🇨🇦', 'Ottawa', 56.1, -106.3, 2),

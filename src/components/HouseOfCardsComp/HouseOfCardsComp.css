@@ -16,6 +16,72 @@
   overflow: hidden;
 }
 
+/* Five-round tournament overrides. */
+.hoc-board {
+  grid-template-columns: repeat(var(--hoc-columns, 4), minmax(0, 1fr));
+  max-width: 640px;
+}
+
+.hoc-card {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.hoc-card:disabled {
+  opacity: 1;
+}
+
+.hoc-final-score {
+  width: min(100%, 640px);
+  display: grid;
+  grid-template-columns: 1fr minmax(140px, 1.4fr) 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  border-radius: 14px;
+  background: rgba(12, 25, 42, 0.9);
+  text-align: center;
+}
+
+.hoc-final-score strong:first-child {
+  text-align: left;
+}
+
+.hoc-final-score strong:last-child {
+  text-align: right;
+}
+
+.hoc-final-score span {
+  color: #ffd166;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.hoc-round-results .minigame-placement-list {
+  max-width: 620px;
+}
+
+.hoc-round-summary {
+  margin: 0;
+  color: #95a9c0;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .hoc-final-score {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hoc-final-score span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
 /* ── HUD ─────────────────────────────────────────────────────────────────── */
 .hoc-hud {
   display: flex;

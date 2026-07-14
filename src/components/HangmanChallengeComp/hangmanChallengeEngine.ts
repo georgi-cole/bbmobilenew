@@ -193,7 +193,6 @@ export function calculateRoundScore({
   timePenaltyPoints,
   boxesOpened,
   perfectEligible,
-  revealedRatio,
   mysteryAdjustments,
   bonusTokenPoints,
 }: CalculateRoundScoreParams): RoundScoreBreakdown {
@@ -201,15 +200,13 @@ export function calculateRoundScore({
   const errorPenalty = errors * -60;
 
   if (!solved) {
-    const baseScore = revealedRatio >= 0.5 ? 250 : revealedRatio >= 0.3 ? 100 : 0;
-    const finalRoundScore = Math.max(0, baseScore + roundedTimePenalty + mysteryAdjustments.reduce((sum, item) => sum + item.value, 0));
     return {
-      baseScore,
+      baseScore: 0,
       errorPenalty: 0,
-      timePenalty: roundedTimePenalty,
-      mysteryAdjustments,
+      timePenalty: 0,
+      mysteryAdjustments: [],
       bonuses: [],
-      finalRoundScore,
+      finalRoundScore: 0,
     };
   }
 

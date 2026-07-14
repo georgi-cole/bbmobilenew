@@ -16,6 +16,7 @@ import wildcardWesternReducer, {
   playerAnswer,
   answerTimeout,
   advanceResolution,
+  startWildcardFinal,
   playerChooseElimination,
   playerChooseNextPair,
   resetWildcardWestern,
@@ -143,22 +144,15 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(dealCardsAction());
     });
 
-    it('selects lowest vs highest card holders', () => {
+    it('starts the human league schedule against its first opponent', () => {
       store.dispatch(advanceCardReveal());
       const state = store.getState().wildcardWestern;
 
       expect(state.phase).toBe('pairIntro');
       expect(state.currentPair).toHaveLength(2);
 
-      const [low, high] = state.currentPair!;
-      const lowCard = state.cardsByPlayerId[low];
-      const highCard = state.cardsByPlayerId[high];
-
-      for (const id of PLAYERS) {
-        const card = state.cardsByPlayerId[id];
-        expect(card).toBeGreaterThanOrEqual(lowCard);
-        expect(card).toBeLessThanOrEqual(highCard);
-      }
+      expect(state.currentPair?.[0]).toBe('alice');
+      expect(state.leagueOpponentIds).toContain(state.currentPair?.[1]);
     });
 
     it('uses duelQuestion before opening the buzz window', () => {
@@ -238,7 +232,7 @@ describe('wildcardWesternSlice', () => {
       reachBuzzOpen(store);
     });
 
-    it('correct answer eliminates opponent', () => {
+    it('correct answer awards +1/-1 league points without immediate elimination', () => {
       const state = store.getState().wildcardWestern;
       const [p1, p2] = state.currentPair!;
 
@@ -254,12 +248,13 @@ describe('wildcardWesternSlice', () => {
 
       expect(stateAfter.phase).toBe('resolution');
       expect(stateAfter.duelResolved).toBe(true);
-      // Buzzer survived (p2 was eliminated or we moved to chooseElimination)
       expect(stateAfter.aliveIds).toContain(p1);
-      expect(stateAfter.aliveIds).not.toContain(p2);
+      expect(stateAfter.aliveIds).toContain(p2);
+      expect(stateAfter.playerScores[p1]).toBeGreaterThan(state.playerScores[p1]);
+      expect(stateAfter.playerScores[p2]).toBeLessThan(state.playerScores[p2]);
     });
 
-    it('answer timeout eliminates buzzer', () => {
+    it('answer timeout costs the buzzer one league point', () => {
       const state = store.getState().wildcardWestern;
       const [p1] = state.currentPair!;
 
@@ -269,8 +264,9 @@ describe('wildcardWesternSlice', () => {
       const stateAfter = store.getState().wildcardWestern;
 
       expect(stateAfter.phase).toBe('resolution');
-      expect(stateAfter.lastEliminatedId).toBe(p1);
-      expect(stateAfter.aliveIds).not.toContain(p1);
+      expect(stateAfter.lastEliminatedId).toBeNull();
+      expect(stateAfter.aliveIds).toContain(p1);
+      expect(stateAfter.playerScores[p1]).toBeLessThan(state.playerScores[p1]);
     });
   });
 
@@ -287,7 +283,7 @@ describe('wildcardWesternSlice', () => {
       reachBuzzOpen(store);
     });
 
-    it('eliminates both players when >2 alive', () => {
+    it('resolves a no-buzz duel deterministically without skipping league scoring', () => {
       const stateBefore = store.getState().wildcardWestern;
       const [p1, p2] = stateBefore.currentPair!;
 
@@ -295,8 +291,10 @@ describe('wildcardWesternSlice', () => {
       const stateAfter = store.getState().wildcardWestern;
 
       expect(stateAfter.phase).toBe('resolution');
-      expect(stateAfter.aliveIds).not.toContain(p1);
-      expect(stateAfter.aliveIds).not.toContain(p2);
+      expect(stateAfter.aliveIds).toContain(p1);
+      expect(stateAfter.aliveIds).toContain(p2);
+      expect(Math.abs(stateAfter.playerScores[p1] - stateBefore.playerScores[p1])).toBe(1);
+      expect(Math.abs(stateAfter.playerScores[p2] - stateBefore.playerScores[p2])).toBe(1);
       expect(stateAfter.lastDuelOutcome).toBe('nobuzz');
     });
 
@@ -426,6 +424,50 @@ describe('wildcardWesternSlice', () => {
 
       const afterSecond = store.getState().wildcardWestern;
       expect(afterSecond.eliminatedIds).toEqual(eliminatedFirst);
+    });
+  });
+
+  describe('blackjack tournament final', () => {
+    it('advances cutoff ties, gives finalists three lives, and removes one life per loss', () => {
+      store.dispatch(initWildcardWestern({
+        participantIds: PLAYERS,
+        prizeType: 'LOH',
+        seed: SEED,
+        humanPlayerId: 'alice',
+      }));
+      store.dispatch(advanceIntro());
+      store.dispatch(dealCardsAction());
+      store.dispatch(advanceCardReveal());
+
+      while (store.getState().wildcardWestern.phase !== 'leagueResults') {
+        store.dispatch(advancePairIntro());
+        store.dispatch(openBuzzWindow());
+        store.dispatch(playerBuzz({ playerId: 'alice' }));
+        store.dispatch(playerAnswer({ answerIndex: getCorrectAnswerIndex(store) }));
+        store.dispatch(advanceResolution());
+      }
+
+      const league = store.getState().wildcardWestern;
+      const cutoff = league.leagueScores[league.leagueRankings[2]];
+      expect(league.finalistIds).toEqual(
+        league.leagueRankings.filter((id) => league.leagueScores[id] >= cutoff),
+      );
+
+      store.dispatch(startWildcardFinal());
+      const finalStart = store.getState().wildcardWestern;
+      finalStart.aliveIds.forEach((id) => expect(finalStart.playerScores[id]).toBe(3));
+
+      const pair = finalStart.aliveIds.slice(0, 2) as [string, string];
+      store.dispatch(playerChooseNextPair({ pair }));
+      store.dispatch(advancePairIntro());
+      store.dispatch(openBuzzWindow());
+      store.dispatch(playerBuzz({ playerId: pair[0] }));
+      store.dispatch(playerAnswer({ answerIndex: getWrongAnswerIndex(store) }));
+
+      const afterLoss = store.getState().wildcardWestern;
+      expect(afterLoss.playerScores[pair[0]]).toBe(2);
+      expect(afterLoss.aliveIds).toContain(pair[0]);
+      expect(afterLoss.controllerId).toBe(pair[1]);
     });
   });
 
