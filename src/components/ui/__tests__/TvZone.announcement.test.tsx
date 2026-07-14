@@ -601,6 +601,45 @@ describe('TvZone — announcement overlay', () => {
     vi.useRealTimers();
   });
 
+  it('plays the Tribunal phase shock before revealing the queued day-start message', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(addTvEvent(makeEvent({
+        id: 'tribunal-phase-preroll',
+        text: `Congrats all, you've just made it to tribunal. Your voices will crown the winner.`,
+        meta: { major: 'tribunal_phase' },
+      })));
+    });
+    const tribunalPrerollId = store.getState().game.tvFeed[0].id;
+    act(() => {
+      store.dispatch(addTvEvent(makeEvent({
+        id: 'tribunal-day-start',
+        text: `Day 5 begins! 🏠 It's time for the LOH competition.`,
+        meta: { announcementPrerollEventId: tribunalPrerollId },
+      })));
+    });
+
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
+    expect(screen.getByRole('dialog', { name: /Congrats all, you've just made it to tribunal/i })).toBeDefined();
+
+    act(() => {
+      window.dispatchEvent(new Event('tv:announcement-dismiss'));
+      vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS);
+    });
+
+    expect(screen.queryByRole('dialog', { name: /made it to tribunal/i })).toBeNull();
+    expect(document.querySelector('.tv-zone__now')).toHaveTextContent('Day 5 begins!');
+    vi.useRealTimers();
+  });
+
   it('applies the Back 2 the Game styling when the major key is battle_back', () => {
     vi.useFakeTimers();
     const store = makeStore();
