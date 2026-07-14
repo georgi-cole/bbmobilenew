@@ -231,6 +231,20 @@ describe('challenge flow – startChallenge thunk', () => {
     expect(state.challenge.pending?.phase).toBe('rules');
   });
 
+  it('forces Find your twin for an activated but unresolved Day 5 Twin Shock', () => {
+    const initialGame = gameReducer(undefined, { type: '@@INIT' });
+    const store = makeStoreWithGame({
+      week: 5,
+      phase: 'loh_comp',
+      twinShockConsumed: true,
+      twinShockResolution: null,
+    });
+    const participants = initialGame.players.map((player) => player.id);
+
+    dispatchThunk(store, startChallenge(55, participants, { prizeType: 'LOH' }));
+
+    expect(store.getState().challenge.pending?.game.key).toBe('castleRescue');
+  });
   it('leaves challenge.history empty until completeChallenge is called', () => {
     const store = makeStore();
 
