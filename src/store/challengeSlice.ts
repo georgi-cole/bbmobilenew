@@ -24,6 +24,7 @@ import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
 import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice';
+import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,14 @@ function hashStringU32(s: string): number {
   return h;
 }
 
+function shouldForceTwinShockHintGame(state: RootState, prizeType?: CwgoPrizeType | string): boolean {
+  const game = state.game;
+  const isLohChallenge = prizeType === 'LOH' || (prizeType == null && game.phase === 'loh_comp');
+  return isLohChallenge
+    && game.week === 5
+    && game.twinShockConsumed !== true
+    && game.players.some((player) => player.id === TWIN_SHOCK_LIA_ID && player.status === 'active');
+}
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface ChallengeRun {
@@ -426,6 +435,10 @@ export const startChallenge =
       }
     }
 
+    if (shouldForceTwinShockHintGame(state, opts.prizeType)) {
+      const twinHintGame = getGame('castleRescue');
+      if (twinHintGame) gameEntry = twinHintGame;
+    }
     // Derive a per-challenge seed from the base seed + game key hash.
     const challengeSeed = deriveSeed(gameSeed, gameEntry.key);
 
