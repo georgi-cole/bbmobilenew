@@ -432,6 +432,7 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     pendingForcedShock: null,
     dayStartShock: null,
     dayStartShockUsedThisSeason: false,
+    tribunalPhaseAnnounced: false,
     twinShock: createInitialTwinShockState(),
     twinShockConsumed,
     twinShockActivatedSeason: null,
@@ -480,7 +481,7 @@ function pushEvent(
   text: string,
   type: TvEvent['type'],
   meta?: TvEvent['meta'],
-) {
+): TvEvent {
   const ts = Date.now();
   const event: TvEvent = {
     id: `${state.phase}-w${state.week}-${ts}-${++_pushEventCounter}`,
@@ -490,6 +491,7 @@ function pushEvent(
     meta: buildTvMeta(state, meta),
   };
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+  return event;
 }
 
 function pushDetoxEvent(state: GameState, text: string) {
@@ -4442,7 +4444,26 @@ const gameSlice = createSlice({
           state.awaitingCoLohNomination = false;
           state.coLohNomineeByCoLohId = null;
           state.awaitingPosTieBreak = false;
-          pushEvent(state, `Day ${state.week} begins! 🏠 It's time for the LOH competition.`, 'game');
+          const tribunalPhaseBegins =
+            state.tribunalPhaseAnnounced !== true &&
+            state.players.some((player) => player.status === 'jury');
+          const tribunalAnnouncement = tribunalPhaseBegins
+            ? pushEvent(
+                state,
+                `Congrats all, you've just made it to tribunal. Your voices will crown the winner.`,
+                'game',
+                { major: 'tribunal_phase' },
+              )
+            : null;
+          if (tribunalPhaseBegins) {
+            state.tribunalPhaseAnnounced = true;
+          }
+          pushEvent(
+            state,
+            `Day ${state.week} begins! 🏠 It's time for the LOH competition.`,
+            'game',
+            tribunalAnnouncement ? { announcementPrerollEventId: tribunalAnnouncement.id } : undefined,
+          );
           break;
         }
         case 'loh_comp_announcement': {
