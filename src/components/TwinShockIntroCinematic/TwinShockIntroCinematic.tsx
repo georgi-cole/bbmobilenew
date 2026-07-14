@@ -9,8 +9,10 @@ import {
 import './TwinShockIntroCinematic.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
-export const TWIN_SHOCK_INTRO_DURATION_MS = 13_800;
-const REDUCED_DURATION_MS = 3_800;
+export const TWIN_SHOCK_INTRO_DURATION_MS = 16_200;
+const REDUCED_DURATION_MS = 6_200;
+const CINEMATIC_FADE_OUT_MS = 1_200;
+const SKIP_FADE_OUT_MS = 420;
 
 type CinematicStage = 'signal' | 'childhood' | 'grown' | 'reveal' | 'verdict';
 
@@ -51,6 +53,8 @@ export default function TwinShockIntroCinematic({
   const [elapsedMs, setElapsedMs] = useState(0);
   const onCompleteRef = useRef(onComplete);
   const completedRef = useRef(false);
+  const fadeStartedRef = useRef(false);
+  const completionTimerRef = useRef<number | null>(null);
   const audioRef = useRef<CinematicAudioController | null>(null);
   const skipRef = useRef<HTMLButtonElement | null>(null);
 
@@ -58,12 +62,18 @@ export default function TwinShockIntroCinematic({
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  const finish = useCallback(() => {
+  const complete = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
-    audioRef.current?.fadeOutAndStop(420);
     onCompleteRef.current();
   }, []);
+
+  const skip = useCallback(() => {
+    if (completedRef.current || completionTimerRef.current != null) return;
+    fadeStartedRef.current = true;
+    audioRef.current?.fadeOutAndStop(SKIP_FADE_OUT_MS);
+    completionTimerRef.current = window.setTimeout(complete, SKIP_FADE_OUT_MS);
+  }, [complete]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -79,26 +89,31 @@ export default function TwinShockIntroCinematic({
     const intervalId = window.setInterval(() => {
       const nextElapsed = performance.now() - startedAt;
       setElapsedMs(Math.min(durationMs, nextElapsed));
+      if (!fadeStartedRef.current && nextElapsed >= durationMs - CINEMATIC_FADE_OUT_MS) {
+        fadeStartedRef.current = true;
+        audio.fadeOutAndStop(CINEMATIC_FADE_OUT_MS);
+      }
       if (nextElapsed >= durationMs) {
         window.clearInterval(intervalId);
-        finish();
+        complete();
       }
     }, 60);
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') finish();
+      if (event.key === 'Escape') skip();
     };
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       window.clearInterval(intervalId);
+      if (completionTimerRef.current != null) window.clearTimeout(completionTimerRef.current);
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
       audio.dispose();
       audioRef.current = null;
       void SoundManager.syncMusic();
     };
-  }, [durationMs, finish]);
+  }, [complete, durationMs, skip]);
 
   const stage = useMemo(
     () => stageAt(elapsedMs, prefersReducedMotion),
@@ -121,7 +136,7 @@ export default function TwinShockIntroCinematic({
       <div className="twin-intro__scan" aria-hidden="true" />
       <div className="twin-intro__grain" aria-hidden="true" />
 
-      <button ref={skipRef} className="twin-intro__skip" type="button" onClick={finish}>
+      <button ref={skipRef} className="twin-intro__skip" type="button" onClick={skip}>
         Skip <span aria-hidden="true">×</span>
       </button>
 

@@ -45,7 +45,7 @@ describe('TwinShockIntroCinematic', () => {
     expect(container.querySelector('.twin-intro')).toHaveAttribute('data-stage', 'reveal');
     act(() => vi.advanceTimersByTime(3_700));
     expect(container.querySelector('.twin-intro')).toHaveAttribute('data-stage', 'verdict');
-    act(() => vi.advanceTimersByTime(3_000));
+    act(() => vi.advanceTimersByTime(5_400));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -53,6 +53,7 @@ describe('TwinShockIntroCinematic', () => {
     const onComplete = vi.fn();
     render(<TwinShockIntroCinematic reveal={reveal} onComplete={onComplete} />);
     fireEvent.click(screen.getByRole('button', { name: /skip/i }));
+    act(() => vi.advanceTimersByTime(420));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });
