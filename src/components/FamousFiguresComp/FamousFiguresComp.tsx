@@ -346,10 +346,11 @@ export default function FamousFiguresComp({
   // Cancel any pending AI submission timeouts when the round advances (or on
   // unmount). This prevents stale submissions from firing after the round ends.
   useEffect(() => {
+    const submissionKeys = aiSubmissionKeysRef.current;
     return () => {
       pendingAiTimeoutsRef.current.forEach((entry) => clearTimeout(entry.id));
       pendingAiTimeoutsRef.current = [];
-      aiSubmissionKeysRef.current.clear();
+      submissionKeys.clear();
     };
   }, [ff.currentRound]);
 

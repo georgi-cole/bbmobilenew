@@ -445,7 +445,7 @@ export default function SilentSaboteurComp({
 
   // Derive values from state (using defaults when ss is not yet initialized)
   const phase = ss?.phase ?? 'idle';
-  const eliminatedIds = ss?.eliminatedIds ?? [];
+  const eliminatedIds = useMemo(() => ss?.eliminatedIds ?? [], [ss?.eliminatedIds]);
   const humanPlayerId = ss?.humanPlayerId ?? null;
   const saboteurId = ss?.saboteurId ?? null;
   const victimId = ss?.victimId ?? null;
@@ -698,7 +698,7 @@ export default function SilentSaboteurComp({
     );
 
     return () => timers.forEach(clearTimeout);
-  }, [phase, revealInfo, revealVoteEntries, round, animationsDisabled]);
+  }, [phase, revealInfo, revealVoteEntries, round, animationsDisabled, fastForwarding]);
 
   // final2_jury: 120s shared timer; human juror timeout dispatches jury vote.
   useEffect(() => {
@@ -772,7 +772,7 @@ export default function SilentSaboteurComp({
     const delayMs = fastForwarding ? 300 : animationsDisabled ? 0 : 1500;
     const t = setTimeout(() => setFinal2RevealDone(true), delayMs);
     return () => clearTimeout(t);
-  }, [final2Stage, animationsDisabled]);
+  }, [final2Stage, animationsDisabled, fastForwarding]);
 
   // Final-2 CTA buttons are single-fire per stage. Unlock once the stage changes.
   useEffect(() => {
