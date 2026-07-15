@@ -41,11 +41,18 @@
     calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 
-.pf-overlay__skip {
+.pf-overlay__speed-controls {
   position: fixed;
   top: var(--floating-corner-top-offset);
   right: var(--floating-corner-right-offset);
-  z-index: 4;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pf-overlay__skip,
+.pf-overlay__fast-forward {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   padding: 0.48rem 0.82rem;
@@ -57,6 +64,24 @@
   text-transform: uppercase;
   backdrop-filter: blur(10px);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.3);
+}
+
+.pf-overlay__fast-forward {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  border-color: rgba(165, 180, 252, 0.34);
+  background: linear-gradient(110deg, rgba(47, 53, 112, 0.9), rgba(76, 29, 149, 0.88));
+}
+
+.pf-overlay__fast-forward span {
+  font-size: 1rem;
+  line-height: 0;
+}
+
+.pf-overlay__fast-forward.is-active,
+.pf-overlay__fast-forward:disabled {
+  opacity: 0.72;
 }
 
 .pf-overlay__header,
@@ -868,8 +893,8 @@
 }
 
 .pf-overlay__spotlight {
-  min-height: 10.75rem;
-  grid-template-columns: minmax(0, 1fr) clamp(9rem, 34vw, 14rem);
+  min-height: 9.5rem;
+  grid-template-columns: minmax(0, 1fr) clamp(7.5rem, 25vw, 10rem);
   padding: 0.75rem 0.8rem;
   border-color: rgba(121, 231, 255, 0.2);
   border-radius: 1rem;
@@ -899,8 +924,10 @@
 }
 
 .pf-overlay__leader-portrait-wrap {
-  align-self: stretch;
-  overflow: hidden;
+  align-self: center;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: visible;
 }
 
 .pf-overlay__leader-avatar-wrap {
@@ -911,8 +938,9 @@
 }
 
 .pf-overlay__leader-avatar--portrait {
-  width: clamp(8.5rem, 32vw, 13rem);
-  height: clamp(8.5rem, 32vw, 13rem);
+  width: min(100%, 9.5rem);
+  height: auto;
+  aspect-ratio: 1;
   overflow: hidden;
   border: 2px solid rgba(121, 231, 255, 0.54);
   border-radius: 50%;
@@ -1038,7 +1066,17 @@
 
 @media (max-width: 420px) {
   .pf-overlay__spotlight {
-    grid-template-columns: minmax(0, 1fr) 9rem;
+    grid-template-columns: minmax(0, 1fr) 7.6rem;
+  }
+
+  .pf-overlay__speed-controls {
+    gap: 0.28rem;
+  }
+
+  .pf-overlay__skip,
+  .pf-overlay__fast-forward {
+    padding: 0.43rem 0.66rem;
+    font-size: 0.7rem;
   }
 
   .pf-overlay__header-copy {
