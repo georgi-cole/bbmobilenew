@@ -72,6 +72,7 @@ const CLOCK_INTERVAL_MS = 200;
 const SURGE_SELECTION_WINDOW_MS = 6500;
 const SURGE_DURATION_MS = 7000;
 const ELIMINATION_SPOTLIGHT_MS = 1400;
+const FAST_FORWARD_ELIMINATION_INTERVAL_MS = 260;
 function formatEyeoleans(amount: number): string {
   return `${new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -517,6 +518,7 @@ export default function PublicFavoriteOverlay({
   const [nextShiftAt, setNextShiftAt] = useState(() => Date.now() + eliminationIntervalMs);
   const [selectedSurgeId, setSelectedSurgeId] = useState<string | null>(candidates[0]?.id ?? null);
   const [introSkipBoostMs, setIntroSkipBoostMs] = useState(0);
+  const [fastForwarding, setFastForwarding] = useState(false);
   const [surgePending, setSurgePending] = useState(false);
   const [surgeUsed, setSurgeUsed] = useState(false);
   const [surgeActive, setSurgeActive] = useState<SurgeState | null>(null);
@@ -534,11 +536,15 @@ export default function PublicFavoriteOverlay({
     [candidates],
   );
 
+  const effectiveEliminationIntervalMs = fastForwarding
+    ? Math.min(eliminationIntervalMs, FAST_FORWARD_ELIMINATION_INTERVAL_MS)
+    : eliminationIntervalMs;
+
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
     seed,
-    eliminationIntervalMs,
-    tickIntervalMs: VOTE_TICK_INTERVAL_MS,
+    eliminationIntervalMs: effectiveEliminationIntervalMs,
+    tickIntervalMs: fastForwarding ? 120 : VOTE_TICK_INTERVAL_MS,
     driftAmount: VOTE_DRIFT_AMOUNT,
     surgeTargetId: surgeActive?.playerId ?? null,
   });
@@ -565,8 +571,8 @@ export default function PublicFavoriteOverlay({
 
   useEffect(() => {
     if (isComplete) return;
-    setNextShiftAt(Date.now() + eliminationIntervalMs);
-  }, [eliminated.length, eliminationIntervalMs, isComplete]);
+    setNextShiftAt(Date.now() + effectiveEliminationIntervalMs);
+  }, [eliminated.length, effectiveEliminationIntervalMs, isComplete]);
 
   useEffect(() => {
     if (eliminated.length <= previousEliminatedCountRef.current) {
@@ -720,6 +726,17 @@ export default function PublicFavoriteOverlay({
     setNowMs(Date.now());
   }, [elapsedMs, introSkipBoostMs]);
 
+  const handleFastForward = useCallback(() => {
+    if (fastForwarding || isComplete || surgePending) return;
+    const remainingIntroMs = Math.max(0, INTRO_MS - elapsedMs);
+    if (remainingIntroMs > 0) {
+      setIntroSkipBoostMs((current) => current + remainingIntroMs);
+    }
+    setFastForwarding(true);
+    setNextShiftAt(Date.now() + Math.min(eliminationIntervalMs, FAST_FORWARD_ELIMINATION_INTERVAL_MS));
+    setNowMs(Date.now());
+  }, [elapsedMs, eliminationIntervalMs, fastForwarding, isComplete, surgePending]);
+
   const handleActivateSurge = useCallback(async () => {
     if (
       !selectedSurgeId ||
@@ -772,15 +789,29 @@ export default function PublicFavoriteOverlay({
       <div className="pf-overlay__studio" aria-hidden="true" />
       <div className="pf-overlay__scanlines" aria-hidden="true" />
       <div className="pf-overlay__stage">
-        {displayStep === 'voting' && phase === 'intro' && (
-          <button
-            type="button"
-            className="pf-overlay__skip"
-            onClick={handleSkipIntro}
-            aria-label="Skip animation"
-          >
-            Skip
-          </button>
+        {displayStep === 'voting' && (
+          <div className="pf-overlay__speed-controls" aria-label="Public vote playback controls">
+            {phase === 'intro' && (
+              <button
+                type="button"
+                className="pf-overlay__skip"
+                onClick={handleSkipIntro}
+                aria-label="Skip animation"
+              >
+                Skip
+              </button>
+            )}
+            <button
+              type="button"
+              className={`pf-overlay__fast-forward${fastForwarding ? ' is-active' : ''}`}
+              onClick={handleFastForward}
+              disabled={fastForwarding || surgePending}
+              aria-label="Fast forward public favorite vote"
+            >
+              <span aria-hidden="true">»</span>
+              {fastForwarding ? 'Forwarding' : 'Fast forward'}
+            </button>
+          </div>
         )}
 
         {phase !== 'final_reveal' && (

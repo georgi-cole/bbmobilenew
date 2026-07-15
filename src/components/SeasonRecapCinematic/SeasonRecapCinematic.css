@@ -1454,8 +1454,13 @@
 
   .src-category-header {
     top: 18%;
-    right: 8%;
-    max-width: 46vw;
+    right: 5%;
+    max-width: 40vw;
+  }
+
+  .src-category-title {
+    font-size: clamp(2.4rem, 8.5vw, 4.65rem);
+    line-height: 0.84;
   }
 
   .src-category-stage {
@@ -1479,6 +1484,29 @@
     right: 54px;
     bottom: 54px;
     left: 54px;
+  }
+}
+
+@media (max-width: 699px) {
+  .src-category-header {
+    right: 3.5vw;
+    max-width: 46vw;
+  }
+
+  .src-category-title {
+    font-size: clamp(2rem, 9.4vw, 3.35rem);
+    line-height: 0.86;
+    letter-spacing: -0.055em;
+  }
+
+  .src-category-subtitle {
+    max-width: 46vw;
+    font-size: clamp(0.62rem, 2.3vw, 0.78rem);
+    line-height: 1.3;
+  }
+
+  .src-category-stage {
+    right: 40%;
   }
 }
 
