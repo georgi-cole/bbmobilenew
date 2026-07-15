@@ -42,7 +42,7 @@ function shouldForceTwinShockHintGame(state: RootState, prizeType?: CwgoPrizeTyp
   const isLohChallenge = prizeType === 'LOH' || (prizeType == null && game.phase === 'loh_comp');
   return isLohChallenge
     && game.week === 5
-    && game.twinShockConsumed !== true
+    && game.twinShockResolution == null
     && game.players.some((player) => player.id === TWIN_SHOCK_LIA_ID && player.status === 'active');
 }
 // ─── State ────────────────────────────────────────────────────────────────────
