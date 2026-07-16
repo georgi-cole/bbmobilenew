@@ -147,8 +147,6 @@ export default function BatteryLow(props: GenericMinigameProps) {
     : latestRevealLabel
       ? 'has-dramatic-reveal'
       : '';
-  const leftRail = human.vaults.slice(0, 11);
-  const rightRail = human.vaults.slice(11);
   const tickerMessages = [
     ...(feed.length > 0 ? feed.map((event) => event.message) : []),
     human.currentOffer != null && human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length
@@ -302,13 +300,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
           </div>
           {gameActive && (
             <div className="vault-verdict__control-row">
-              <div className="vault-verdict__timer">
-                <span>Time</span>
-                <strong>{formatTime(human.finishTimeMs ?? elapsedMs)}</strong>
-              </div>
               <div key={human.offerHistory.length} className={`vault-verdict__status ${human.currentOffer != null ? 'is-offer' : ''}`}>
                 <span>{human.currentOffer != null ? 'Bank Offer' : 'Status'}</span>
                 <strong>{middleStatus}</strong>
+              </div>
+              <div className="vault-verdict__timer">
+                <span>Time</span>
+                <strong>{formatTime(human.finishTimeMs ?? elapsedMs)}</strong>
               </div>
               {human.currentOffer != null && (
                 <div className="vault-verdict__decision-buttons">
@@ -351,19 +349,12 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   <strong>{formatVaultAmount(latestReveal)}</strong>
                 </div>
               )}
-              <div className="vault-verdict__rail vault-verdict__rail--left">
-                {leftRail.map((battery) => (
-                  <BatteryTile
-                    key={battery.vaultId}
-                    battery={battery}
-                    disabled={getBatteryDisabled(battery)}
-                    onClick={handleBatteryClick}
-                  />
-                ))}
-              </div>
               <div className="vault-verdict__core-battery">
-                <span>Max Charge Left</span>
-                <strong>{formatVaultAmount(highestRemaining)}</strong>
+                <div className="vault-verdict__core-reading">
+                  <span>Max Charge Left</span>
+                  <strong>{formatVaultAmount(highestRemaining)}</strong>
+                  <small>{personalVaultNumber ? `Reserve Battery ${personalVaultNumber}` : 'Reserve Battery unclaimed'}</small>
+                </div>
                 <div
                   key={`${human.openedVaultIds.length}-${highestRemaining}`}
                   className={`vault-verdict__core-shell ${coreMood}`}
@@ -372,13 +363,12 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   <div className="vault-verdict__core-fill" />
                   <div className="vault-verdict__core-scan" />
                 </div>
-                <small>{personalVaultNumber ? `Reserve Battery ${personalVaultNumber}` : 'Reserve Battery unclaimed'}</small>
                 {latestReveal != null && (
                   <em>{latestRevealLabel ?? `${formatVaultAmount(latestReveal)} exposed`}</em>
                 )}
               </div>
-              <div className="vault-verdict__rail vault-verdict__rail--right">
-                {rightRail.map((battery) => (
+              <div className="vault-verdict__battery-grid">
+                {human.vaults.map((battery) => (
                   <BatteryTile
                     key={battery.vaultId}
                     battery={battery}

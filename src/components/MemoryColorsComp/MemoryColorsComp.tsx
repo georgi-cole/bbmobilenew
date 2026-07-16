@@ -292,7 +292,6 @@ export default function MemoryColorsComp({
                     {r && (
                       <span className="mc-results-score">
                         Round {furthestRound}
-                        <span className="mc-results-detail"> • {r.mistakesUsed}/{MAX_MISTAKES} mistakes</span>
                         <span className="mc-results-detail"> • {(r.totalResponseMs / 1000).toFixed(1)}s</span>
                       </span>
                     )}

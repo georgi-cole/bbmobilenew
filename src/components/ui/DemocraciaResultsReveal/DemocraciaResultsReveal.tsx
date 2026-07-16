@@ -45,8 +45,15 @@ export default function DemocraciaResultsReveal({
     let frameId = 0;
 
     const recalculateScale = () => {
-      const availableWidth = safeArea.clientWidth;
-      const availableHeight = safeArea.clientHeight;
+      const safeAreaStyles = window.getComputedStyle(safeArea);
+      const horizontalPadding =
+        (Number.parseFloat(safeAreaStyles.paddingLeft) || 0) +
+        (Number.parseFloat(safeAreaStyles.paddingRight) || 0);
+      const verticalPadding =
+        (Number.parseFloat(safeAreaStyles.paddingTop) || 0) +
+        (Number.parseFloat(safeAreaStyles.paddingBottom) || 0);
+      const availableWidth = Math.max(0, safeArea.clientWidth - horizontalPadding);
+      const availableHeight = Math.max(0, safeArea.clientHeight - verticalPadding);
       const contentWidth = content.scrollWidth;
       const contentHeight = content.scrollHeight;
 

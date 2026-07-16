@@ -8,91 +8,132 @@ import cwgoReducer, {
   revealDuelResults,
   revealMassResults,
   setGuesses,
+  setResponseTimes,
   startCwgoCompetition,
-  startCwgoFinal,
 } from '../src/features/cwgo/cwgoCompetitionSlice';
 import { CWGO_QUESTIONS } from '../src/features/cwgo/cwgoQuestions';
-import { mulberry32 } from '../src/store/rng';
 
 function makeStore() {
   return configureStore({ reducer: { cwgo: cwgoReducer } });
 }
 
-function completeHumanLeague(store: ReturnType<typeof makeStore>, participantIds: string[]) {
-  store.dispatch(startCwgoCompetition({
-    participantIds,
-    prizeType: 'LOH',
-    seed: 42,
-    humanPlayerId: participantIds[0],
-  }));
-  const state = store.getState().cwgo;
-  const answer = CWGO_QUESTIONS[state.questionIdx].answer;
-  store.dispatch(setGuesses(Object.fromEntries(
-    participantIds.map((id, index) => [id, Math.max(0, answer - index)]),
-  )));
+function start(store: ReturnType<typeof makeStore>, ids: string[]) {
+  store.dispatch(startCwgoCompetition({ participantIds: ids, prizeType: 'LOH', seed: 42 }));
+  return CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
+}
+
+function reachThreePlayerFinal(store: ReturnType<typeof makeStore>) {
+  const answer = start(store, ['a', 'b', 'c', 'd']);
+  store.dispatch(setGuesses({ a: answer - 10, b: answer - 5, c: answer - 3, d: answer - 1 }));
   store.dispatch(revealMassResults());
   store.dispatch(confirmMassElimination());
 }
 
-describe('cwgoCompetitionSlice — blackjack tournament league', () => {
-  it('scores every head-to-head league result as +1/-1 and advances cutoff ties', () => {
+describe('cwgoCompetitionSlice — strict qualifier', () => {
+  it('eliminates every player who goes over and continues above three survivors', () => {
     const store = makeStore();
-    const ids = ['alice', 'bob', 'carol', 'dave'];
-    completeHumanLeague(store, ids);
-
-    const state = store.getState().cwgo;
-    expect(state.status).toBe('league_results');
-    expect(state.stage).toBe('league');
-    expect(Object.values(state.leagueScores).reduce((sum, score) => sum + score, 0)).toBe(0);
-    expect(state.leagueScores.alice).toBe(3);
-    expect(state.leagueRankings[0]).toBe('alice');
-
-    const cutoff = state.leagueScores[state.leagueRankings[2]];
-    expect(state.finalistIds).toEqual(
-      state.leagueRankings.filter((id) => state.leagueScores[id] >= cutoff),
-    );
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const answer = start(store, ids);
+    store.dispatch(setGuesses({ a: answer - 1, b: answer - 2, c: answer - 3, d: answer - 4, e: answer + 1, f: answer + 2 }));
+    store.dispatch(revealMassResults());
+    expect(store.getState().cwgo.lastEliminated).toEqual(['e', 'f']);
+    store.dispatch(confirmMassElimination());
+    expect(store.getState().cwgo.aliveIds).toEqual(['a', 'b', 'c', 'd']);
+    expect(store.getState().cwgo.status).toBe('mass_input');
   });
 
-  it('starts every finalist with three lives', () => {
+  it('redraws with no elimination when everyone goes over', () => {
     const store = makeStore();
-    completeHumanLeague(store, ['alice', 'bob', 'carol', 'dave']);
-    const finalists = [...(store.getState().cwgo.finalistIds ?? [])];
-
-    store.dispatch(startCwgoFinal());
-    const state = store.getState().cwgo;
-
-    expect(state.stage).toBe('final');
-    expect(state.aliveIds).toEqual(finalists);
-    finalists.forEach((id) => expect(state.playerScores[id]).toBe(3));
-    expect(['choose_duel', 'duel_input']).toContain(state.status);
+    const ids = ['a', 'b', 'c', 'd'];
+    const answer = start(store, ids);
+    store.dispatch(setGuesses(Object.fromEntries(ids.map((id, index) => [id, answer + index + 1]))));
+    store.dispatch(revealMassResults());
+    store.dispatch(confirmMassElimination());
+    expect(store.getState().cwgo.aliveIds).toEqual(ids);
+    expect(store.getState().cwgo.eliminationOrder).toEqual([]);
+    expect(store.getState().cwgo.status).toBe('mass_input');
   });
 
-  it('removes one life per duel, eliminates at zero, and gives pairing control to the winner', () => {
+  it('eliminates only the slower tied furthest valid guess and starts a three-player final', () => {
     const store = makeStore();
-    completeHumanLeague(store, ['alice', 'bob', 'carol', 'dave']);
-    store.dispatch(startCwgoFinal());
+    const answer = start(store, ['a', 'b', 'c', 'd']);
+    store.dispatch(setGuesses({ a: answer - 10, b: answer - 10, c: answer - 2, d: answer - 1 }));
+    store.dispatch(setResponseTimes({ a: 2_000, b: 7_000, c: 5_000, d: 4_000 }));
+    store.dispatch(revealMassResults());
+    store.dispatch(confirmMassElimination());
+    expect(store.getState().cwgo.aliveIds).toEqual(['a', 'c', 'd']);
+    expect(store.getState().cwgo.stage).toBe('final');
+    expect(store.getState().cwgo.playerScores).toMatchObject({ a: 3, c: 3, d: 3 });
+    expect(store.getState().cwgo.status).toBe('choose_duel');
+  });
 
-    const pair = store.getState().cwgo.aliveIds.slice(0, 2) as [string, string];
-    const winner = pair[0];
-    const loser = pair[1];
+  it('starts a two-player final when strict elimination leaves two survivors', () => {
+    const store = makeStore();
+    const answer = start(store, ['a', 'b', 'c', 'd', 'e']);
+    store.dispatch(setGuesses({ a: answer - 1, b: answer - 2, c: answer + 1, d: answer + 2, e: answer + 3 }));
+    store.dispatch(revealMassResults());
+    store.dispatch(confirmMassElimination());
+    expect(store.getState().cwgo.aliveIds).toEqual(['a', 'b']);
+    expect(store.getState().cwgo.status).toBe('duel_input');
+    expect(store.getState().cwgo.playerScores).toMatchObject({ a: 3, b: 3 });
+  });
 
+  it('declares an immediate winner when strict elimination leaves one survivor', () => {
+    const store = makeStore();
+    const answer = start(store, ['a', 'b', 'c', 'd']);
+    store.dispatch(setGuesses({ a: answer - 1, b: answer + 1, c: answer + 2, d: answer + 3 }));
+    store.dispatch(revealMassResults());
+    store.dispatch(confirmMassElimination());
+    expect(store.getState().cwgo.status).toBe('complete');
+    expect(store.getState().cwgo.aliveIds).toEqual(['a']);
+  });
+});
+
+describe('cwgoCompetitionSlice — three-life final', () => {
+  it('uses response time to break an equal duel guess', () => {
+    const store = makeStore();
+    reachThreePlayerFinal(store);
+    store.dispatch(chooseDuelPair(['b', 'c']));
+    const answer = CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
+    store.dispatch(setGuesses({ b: answer, c: answer }));
+    store.dispatch(setResponseTimes({ b: 6_000, c: 3_000 }));
+    store.dispatch(revealDuelResults());
+    expect(store.getState().cwgo.duelWinnerId).toBe('c');
+  });
+
+  it('redraws an all-over duel without taking a life', () => {
+    const store = makeStore();
+    reachThreePlayerFinal(store);
+    const pair: [string, string] = ['b', 'c'];
+    store.dispatch(chooseDuelPair(pair));
+    const answer = CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
+    store.dispatch(setGuesses({ b: answer + 1, c: answer + 2 }));
+    store.dispatch(revealDuelResults());
+    store.dispatch(confirmDuelElimination());
+    expect(store.getState().cwgo.playerScores).toMatchObject({ b: 3, c: 3 });
+    expect(store.getState().cwgo.duelPair).toEqual(pair);
+    expect(store.getState().cwgo.status).toBe('duel_input');
+  });
+
+  it('removes one life per duel and eliminates at zero', () => {
+    const store = makeStore();
+    reachThreePlayerFinal(store);
+    const rounds: Array<{ pair: [string, string]; winner: string }> = [
+      { pair: ['b', 'c'], winner: 'b' },
+      { pair: ['c', 'd'], winner: 'd' },
+      { pair: ['b', 'c'], winner: 'b' },
+    ];
     for (let duel = 0; duel < 3; duel += 1) {
-      if (store.getState().cwgo.status === 'choose_duel') {
-        store.dispatch(chooseDuelPair(pair));
-      }
-      const current = store.getState().cwgo;
-      const answer = CWGO_QUESTIONS[current.questionIdx].answer;
+      const { pair, winner } = rounds[duel];
+      if (store.getState().cwgo.status === 'choose_duel') store.dispatch(chooseDuelPair(pair));
+      const answer = CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
+      const loser = pair.find((id) => id !== winner)!;
       store.dispatch(setGuesses({ [winner]: answer, [loser]: answer + 1 }));
       store.dispatch(revealDuelResults());
       store.dispatch(confirmDuelElimination());
-
-      const after = store.getState().cwgo;
-      expect(after.playerScores[loser]).toBe(2 - duel);
-      expect(after.leaderId).toBe(winner);
-      if (duel < 2) expect(after.aliveIds).toContain(loser);
+      expect(store.getState().cwgo.playerScores.c).toBe(2 - duel);
     }
-
-    expect(store.getState().cwgo.aliveIds).not.toContain(loser);
+    expect(store.getState().cwgo.aliveIds).not.toContain('c');
   });
 });
 
@@ -107,14 +148,5 @@ describe('cwgoCompetitionSlice — defensive seed', () => {
     const store = makeStore();
     store.dispatch(startCwgoCompetition({ participantIds: ['x'], prizeType: 'LOH', seed: 12345 }));
     expect(store.getState().cwgo.seed).toBe(12345);
-  });
-});
-
-describe('challenge seed uniqueness', () => {
-  it('derives unique seeds for repeated challenge nonces', () => {
-    const seeds = Array.from({ length: 10 }, (_, index) => (
-      (mulberry32((99999 ^ (index + 1)) >>> 0)() * 0x100000000) >>> 0
-    ));
-    expect(new Set(seeds).size).toBe(seeds.length);
   });
 });

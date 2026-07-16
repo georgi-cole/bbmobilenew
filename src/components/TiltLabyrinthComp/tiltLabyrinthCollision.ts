@@ -1,7 +1,14 @@
 export const TILT_HAZARD_HIT_PENALTY_MS = 3_000;
+export const TILT_HINT_PENALTY_MS = 30_000;
 
-export function calculateTiltAdjustedTime(rawTimeMs: number, hazardHits: number): number {
-  return rawTimeMs + Math.max(0, hazardHits) * TILT_HAZARD_HIT_PENALTY_MS;
+export function calculateTiltAdjustedTime(
+  rawTimeMs: number,
+  hazardHits: number,
+  hintUsed = false,
+): number {
+  return rawTimeMs
+    + Math.max(0, hazardHits) * TILT_HAZARD_HIT_PENALTY_MS
+    + (hintUsed ? TILT_HINT_PENALTY_MS : 0);
 }
 
 /**

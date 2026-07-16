@@ -134,9 +134,43 @@ describe('HangmanChallengeComp', () => {
       throw new Error('Expected a score row to be rendered');
     }
 
-    expect(firstRow.querySelector('.hangman-challenge__score-primary-row')).toBeTruthy();
+    expect(firstRow.children).toHaveLength(6);
+    expect(firstRow.querySelector('.hangman-challenge__score-primary-row')).toBeNull();
     expect(firstRow.querySelector('.hangman-challenge__score-secondary-row')).toBeNull();
     expect(within(firstRow).getByText(/total/i)).toBeInTheDocument();
     expect(within(firstRow).getByText(/\+\d+/)).toBeInTheDocument();
+    expect(firstRow.querySelector('.hangman-challenge__score-status')).toBeTruthy();
+  });
+
+  it('opens the final verdict directly after round five', () => {
+    render(<HangmanChallengeComp participants={participants} seed={42} />);
+    const words = pickRoundWords(42);
+
+    for (let round = 0; round < 5; round += 1) {
+      fireEvent.click(screen.getByRole('button', { name: /enter round/i }));
+      const entryPanel = screen.getByLabelText(/letter entry/i);
+      const input = within(entryPanel).getByLabelText(/guess a letter/i);
+      const guessButton = within(entryPanel).getByRole('button', { name: /guess/i });
+
+      for (const letter of getSolutionLetters(words[round].text)) {
+        fireEvent.change(input, { target: { value: letter } });
+        fireEvent.click(guessButton);
+      }
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+
+      if (round < 4) {
+        fireEvent.click(screen.getByRole('button', { name: /continue to scoreboard/i }));
+        expect(screen.getByLabelText(/round scoreboard/i)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+      }
+    }
+
+    expect(screen.getByLabelText(/final results/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/round breakdown/i)).toBeNull();
+    expect(screen.queryByLabelText(/round scoreboard/i)).toBeNull();
+    expect(screen.getByText(/^final verdict$/i)).toBeInTheDocument();
   });
 });

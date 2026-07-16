@@ -169,23 +169,33 @@ export function simulateCapitalizationAiPerformance(
     4: 0.3,
     5: 0.1,
   };
-  const hintChanceByDifficulty: Record<CapitalizationQuestion['difficulty'], number> = {
-    1: 0.005,
-    2: 0.03,
-    3: 0.12,
-    4: 0.58,
-    5: 0.84,
+  const fallbackHintChanceByDifficulty: Record<CapitalizationQuestion['difficulty'], number> = {
+    1: 0.08,
+    2: 0.35,
+    3: 0.68,
+    4: 0.9,
+    5: 0.97,
   };
   const correctChance = correctChanceByDifficulty[context.question.difficulty];
-  const hintUsed = rng() < hintChanceByDifficulty[context.question.difficulty];
-  const guessed = rng() < correctChance;
+  const recalledAnswer = rng() < correctChance;
+
+  // Hints are a fallback for a failed recall, not an unrelated random event.
+  // Once shown three options, stronger players are better at recognition, but
+  // the hint is never an automatic correct answer.
+  const hintUsed = !recalledAnswer &&
+    rng() < fallbackHintChanceByDifficulty[context.question.difficulty];
+  const hintAnswerChance = clamp(0.48 + skill * 0.32, 0.54, 0.79);
+  const guessedWithHint = hintUsed && rng() < hintAnswerChance;
+  const guessed = recalledAnswer || guessedWithHint;
   const speedBias = 1 - skill;
-  const baseTimeMs = 2400 + rng() * 2800 + speedBias * 6200 + context.question.difficulty * 420;
+  const hintDecisionTimeMs = hintUsed ? 1200 + rng() * 1800 : 0;
+  const baseTimeMs = 2400 + rng() * 2800 + speedBias * 6200 +
+    context.question.difficulty * 420 + hintDecisionTimeMs;
 
   if (guessed) {
     let attempts = 1;
     let extraAttemptChance = clamp(0.28 - skill * 0.18 + context.question.difficulty * 0.07, 0.08, 0.62);
-    while (attempts < 4 && rng() < extraAttemptChance) {
+    while (!hintUsed && attempts < 4 && rng() < extraAttemptChance) {
       attempts += 1;
       extraAttemptChance *= 0.42;
     }
@@ -198,11 +208,13 @@ export function simulateCapitalizationAiPerformance(
     };
   }
 
-  const attempts = 1 + Math.floor(rng() * (context.question.difficulty >= 4 ? 4 : 3));
+  const attempts = hintUsed
+    ? 1
+    : 1 + Math.floor(rng() * (context.question.difficulty >= 4 ? 4 : 3));
   return {
     guessed: false,
     attempts,
-    skipped: rng() < 0.35,
+    skipped: !hintUsed && rng() < 0.35,
     timeMs: Math.round(baseTimeMs + attempts * (1200 + rng() * 1000)),
     hintUsed,
   };

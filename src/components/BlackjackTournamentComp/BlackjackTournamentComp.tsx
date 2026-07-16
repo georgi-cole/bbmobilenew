@@ -513,7 +513,7 @@ export default function BlackjackTournamentComp({
     const finalistIds = bt.finalistIds ?? [];
     const finalistCount = finalistIds.length;
     return (
-      <div className="bjt-container bjt-result" role="region" aria-label="League rankings">
+      <div className="bjt-container bjt-result bjt-league-results" role="region" aria-label="League rankings">
         <h2 className="bjt-title">📊 League Complete</h2>
         <p className="bjt-subtitle">
           The top three scores advance, and every tie at the cutoff qualifies. {finalistCount} players enter the finals with 3 lives each.

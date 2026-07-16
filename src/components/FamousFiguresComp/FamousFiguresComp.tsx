@@ -354,8 +354,8 @@ export default function FamousFiguresComp({
     };
   }, [ff.currentRound]);
 
-  // Schedule each AI on its planned clue. Most begin on clue two; only a small
-  // share of easy-figure AIs can answer from the opening clue.
+  // Schedule each AI on its planned clue. Figure recognizability, individual
+  // knowledge, and hesitation determine whether they answer early or need all hints.
   useEffect(() => {
     if (ff.status !== 'round_active') return;
     const round = ff.currentRound;

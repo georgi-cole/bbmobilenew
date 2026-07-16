@@ -601,13 +601,6 @@ export default function MajorityRulesComp({
             >
               <span className="majority-rules-option-label">{option.label}</span>
               <strong className="majority-rules-option-title">{option.text}</strong>
-              <span className="majority-rules-option-copy">
-                {blocked
-                  ? 'You used this answer on the re-vote.'
-                  : selected
-                    ? 'Locked in as your current read.'
-                    : 'Could this be where the crowd lands?'}
-              </span>
             </motion.button>
           );
         })}
@@ -615,9 +608,9 @@ export default function MajorityRulesComp({
 
       {activeHumanId && (
         <div className="majority-rules-hints">
-          <div className="majority-rules-section-title">
+          <div className="majority-rules-section-title majority-rules-section-title--hints">
             <h3>Use one hint this round</h3>
-            <span>{remainingHints} of 3 total left.</span>
+            <span>{remainingHints}/3 left</span>
           </div>
           <div className="majority-rules-hint-actions">
             <button
@@ -631,7 +624,7 @@ export default function MajorityRulesComp({
                 dispatch(applyMajorityRulesHint({ playerId: activeHumanId, hintType: 'pollHint' }))
               }
             >
-              📊 Poll Hint{humanHintInventory?.pollHintUsed ? ' • Used' : ''}
+              📊 Poll{humanHintInventory?.pollHintUsed ? ' • Used' : ''}
             </button>
             <button
               type="button"
@@ -644,7 +637,7 @@ export default function MajorityRulesComp({
                 dispatch(applyMajorityRulesHint({ playerId: activeHumanId, hintType: 'peekTwo' }))
               }
             >
-              🕵️ Peek Two{humanHintInventory?.peekTwoUsed ? ' • Used' : ''}
+              🕵️ Peek 2{humanHintInventory?.peekTwoUsed ? ' • Used' : ''}
             </button>
             <button
               type="button"
@@ -666,7 +659,7 @@ export default function MajorityRulesComp({
                 )
               }
             >
-              🪞 Follow Player{humanHintInventory?.followPlayerUsed ? ' • Used' : ''}
+              🪞 Follow{humanHintInventory?.followPlayerUsed ? ' • Used' : ''}
             </button>
           </div>
 
@@ -741,23 +734,15 @@ export default function MajorityRulesComp({
       )}
 
       <div className="majority-rules-footer">
-        <p className="majority-rules-copy majority-rules-copy--dim">
-          {game.roundHintType === 'followPlayer'
-            ? 'Your answer will copy your chosen player when everyone reveals.'
-            : 'No timer pressure here — take the read you trust most.'}
-        </p>
-        <button
-          type="button"
-          className="majority-rules-primary"
-          disabled={
-            !!activeHumanId &&
-            game.roundHintType !== 'followPlayer' &&
-            !game.draftAnswers[activeHumanId]
-          }
-          onClick={() => dispatch(lockRound())}
-        >
-          Lock answers
-        </button>
+        {(selectedHumanOption || game.roundHintType === 'followPlayer') && (
+          <button
+            type="button"
+            className="majority-rules-primary"
+            onClick={() => dispatch(lockRound())}
+          >
+            Continue
+          </button>
+        )}
       </div>
       {useActiveStatusRail && (
         <div className="majority-rules-status-dock">

@@ -171,21 +171,20 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
       screen.getByText(/has been eliminated/),
     ).toBeInTheDocument();
 
+    const humanEvicted = ss(store).eliminatedIds.includes('user');
+    expect(screen.queryByRole('dialog', { name: 'How would you like to continue?' })).not.toBeInTheDocument();
+    if (humanEvicted) {
+      expect(screen.getByRole('button', { name: 'Continue game' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Exit game' })).toBeInTheDocument();
+    }
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('ss-elimination-continue-btn'));
     });
 
     expect(ss(store).phase).toBe('round_transition');
 
-    // Eliminated humans now choose between normal spectating and fast-forwarding.
-    const humanEvicted = ss(store).eliminatedIds.includes('user');
-
     if (humanEvicted) {
-      expect(screen.getByRole('dialog', { name: 'How would you like to continue?' })).toBeInTheDocument();
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Remain spectator' }));
-      });
-
       expect(screen.getByTestId('ss-round-transition-continue-btn')).toBeInTheDocument();
       await act(async () => {
         fireEvent.click(screen.getByTestId('ss-round-transition-continue-btn'));

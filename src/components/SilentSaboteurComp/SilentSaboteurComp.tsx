@@ -25,6 +25,7 @@ import {
   endVotingPhase,
   advanceReveal,
   startNextRound,
+  fastForwardSilentSaboteur,
   submitJuryVote,
   advanceWinner,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
@@ -33,6 +34,7 @@ import { pickVictimForAi, pickVoteForAi, pickVoteForAiOrAbstain, getValidSaboteu
 import { mulberry32 } from '../../store/rng';
 import type {
   SilentSaboteurPrizeType,
+  SilentSaboteurRoundHistoryEntry,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
@@ -73,7 +75,7 @@ const SILENT_SABOTEUR_VOTE_JITTER_MS = 90;
 const SILENT_SABOTEUR_VOTE_JITTER_SPAN = (SILENT_SABOTEUR_VOTE_JITTER_MS * 2) + 1;
 
 type RevealStage = 'votes' | 'accusationResult' | 'elimination';
-type SpectatorMode = 'active' | 'pending' | 'watching' | 'skipping';
+type SpectatorMode = 'active' | 'watching' | 'skipping';
 
 /**
  * Local state machine for the Final-2 staged cinematic flow.
@@ -390,6 +392,7 @@ export default function SilentSaboteurComp({
   const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null);
   const [countdownNow, setCountdownNow] = useState(() => Date.now());
   const [socialMapOpen, setSocialMapOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [spectatorMode, setSpectatorMode] = useState<SpectatorMode>('active');
   /** Locks manual non-Final-2 CTA clicks until the beat changes. */
   const [majorBeatActionLocked, setMajorBeatActionLocked] = useState(false);
@@ -450,6 +453,7 @@ export default function SilentSaboteurComp({
   const saboteurId = ss?.saboteurId ?? null;
   const victimId = ss?.victimId ?? null;
   const revealInfo = ss?.revealInfo ?? null;
+  const roundHistory = useMemo(() => ss?.roundHistory ?? [], [ss?.roundHistory]);
   const final2SaboteurId = ss?.final2SaboteurId ?? null;
   const final2VictimId = ss?.final2VictimId ?? null;
   const winnerId = ss?.winnerId ?? null;
@@ -469,11 +473,6 @@ export default function SilentSaboteurComp({
   const isHumanJuror = humanPlayerId !== null && eliminatedIds.includes(humanPlayerId);
   const final2Mode = phase === 'final2_jury';
 
-  useEffect(() => {
-    if (humanPlayerId && eliminatedIds.includes(humanPlayerId) && spectatorMode === 'active') {
-      setSpectatorMode('pending');
-    }
-  }, [eliminatedIds, humanPlayerId, spectatorMode]);
   /**
    * ID of the finalist the jury majority accused of planting the bomb.
    * Computed from juryVotes once voting is complete (phase ≥ winner).
@@ -861,7 +860,15 @@ export default function SilentSaboteurComp({
   const handleRevealEliminationContinue = useCallback(() => {
     if (majorBeatActionLocked) return;
     setMajorBeatActionLocked(true);
+    if (revealInfo?.eliminatedId === humanPlayerId) setSpectatorMode('watching');
     dispatch(advanceReveal());
+  }, [dispatch, humanPlayerId, majorBeatActionLocked, revealInfo?.eliminatedId]);
+
+  const handleExitAfterElimination = useCallback(() => {
+    if (majorBeatActionLocked) return;
+    setMajorBeatActionLocked(true);
+    setSpectatorMode('watching');
+    dispatch(fastForwardSilentSaboteur());
   }, [dispatch, majorBeatActionLocked]);
 
   const handleRoundTransitionContinue = useCallback(() => {
@@ -875,7 +882,7 @@ export default function SilentSaboteurComp({
   // human still manually acknowledges their own elimination card (which shows
   // the "stay for the Final 2" message) and still casts their Tribunal vote.
   useEffect(() => {
-    if (!isHumanJuror || majorBeatActionLocked || spectatorMode === 'pending') return;
+    if (!isHumanJuror || majorBeatActionLocked) return;
     let action: (() => void) | null = null;
     if (phase === 'voting' && bombRevealVisible) {
       action = handleBombRevealContinue;
@@ -1106,14 +1113,28 @@ export default function SilentSaboteurComp({
                 selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
               />
             )}
-            {/* Social Map toggle */}
-            <button
-              className="ss-btn ss-btn--social-map"
-              onClick={() => setSocialMapOpen(true)}
-              aria-label="Open Social Map"
-            >
-              🗺️ Social Map
-            </button>
+            <div className="ss-round-tools" aria-label="Round tools">
+              <button
+                className="ss-btn ss-btn--social-map"
+                onClick={() => {
+                  setHistoryOpen(false);
+                  setSocialMapOpen(true);
+                }}
+                aria-label="Open Social Map"
+              >
+                🗺️ Social Map
+              </button>
+              <button
+                className="ss-btn ss-btn--history"
+                onClick={() => {
+                  setSocialMapOpen(false);
+                  setHistoryOpen(true);
+                }}
+                aria-label="Open Round History"
+              >
+                📜 History
+              </button>
+            </div>
             <ProgressMeter
               label="Vote Progress"
               participantIds={activeIds}
@@ -1230,15 +1251,29 @@ export default function SilentSaboteurComp({
                   </p>
                 )}
                 <ActionFooter>
-                  <button
-                    className="ss-btn ss-action-btn"
-                    onClick={handleRevealEliminationContinue}
-                    aria-label="Continue"
-                    data-testid="ss-elimination-continue-btn"
-                    disabled={majorBeatActionLocked}
-                  >
-                    Continue
-                  </button>
+                  <div className={revealInfo.eliminatedId === humanPlayerId ? 'ss-elimination-actions' : undefined}>
+                    <button
+                      className="ss-btn ss-action-btn"
+                      onClick={handleRevealEliminationContinue}
+                      aria-label={revealInfo.eliminatedId === humanPlayerId ? 'Continue game' : 'Continue'}
+                      data-testid="ss-elimination-continue-btn"
+                      disabled={majorBeatActionLocked}
+                    >
+                      {revealInfo.eliminatedId === humanPlayerId ? 'Continue game' : 'Continue'}
+                    </button>
+                    {revealInfo.eliminatedId === humanPlayerId && (
+                      <button
+                        className="ss-btn ss-btn--secondary ss-exit-game-btn"
+                        type="button"
+                        onClick={handleExitAfterElimination}
+                        aria-label="Exit game"
+                        data-testid="ss-elimination-exit-btn"
+                        disabled={majorBeatActionLocked}
+                      >
+                        Exit game
+                      </button>
+                    )}
+                  </div>
                 </ActionFooter>
               </>
             )}
@@ -1331,6 +1366,14 @@ export default function SilentSaboteurComp({
               finalistIds={final2FinalistIdsRef.current}
               getName={getName}
             />
+            <button
+              className="ss-btn ss-btn--history ss-btn--history-final"
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              aria-label="Open Round History"
+            >
+              📜 History
+            </button>
             <p className="ss-hint hint-small">
               {eliminatedIds.length} Tribunal member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
             </p>
@@ -1371,6 +1414,14 @@ export default function SilentSaboteurComp({
               getName={getName}
               compact={true}
             />
+            <button
+              className="ss-btn ss-btn--history ss-btn--history-final"
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              aria-label="Open Round History"
+            >
+              📜 History
+            </button>
             {/* Human jury vote buttons — no role labels */}
             {isHumanJuror && juryVotes[humanPlayerId!] === undefined && (
               <AvatarTileGrid
@@ -1522,22 +1573,12 @@ export default function SilentSaboteurComp({
         </div>
       )}
 
-      {spectatorMode === 'pending' && (
-        <div className="ss-spectator-overlay" role="dialog" aria-modal="true" aria-labelledby="ss-spectator-title">
-          <div className="ss-spectator-card">
-            <p className="ss-phase-eyebrow">Eliminated</p>
-            <h2 id="ss-spectator-title">How would you like to continue?</h2>
-            <p>You can remain a spectator at normal speed or watch the same game accelerate to the finale.</p>
-            <div className="ss-spectator-actions">
-              <button className="ss-btn ss-action-btn" type="button" onClick={() => setSpectatorMode('watching')}>
-                Remain spectator
-              </button>
-              <button className="ss-btn ss-btn--secondary" type="button" onClick={() => setSpectatorMode('skipping')}>
-                Fast-forward game
-              </button>
-            </div>
-          </div>
-        </div>
+      {historyOpen && (
+        <RoundHistoryOverlay
+          entries={roundHistory}
+          getName={getName}
+          onClose={() => setHistoryOpen(false)}
+        />
       )}
       {fastForwarding && phase !== 'complete' && (
         <div className="ss-fast-forward" role="status" aria-live="polite">Fast-forwarding to the finale…</div>
@@ -1547,6 +1588,73 @@ export default function SilentSaboteurComp({
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
+
+function RoundHistoryOverlay({
+  entries,
+  getName,
+  onClose,
+}: {
+  entries: SilentSaboteurRoundHistoryEntry[];
+  getName: (id: string) => string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="ss-history-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="ss-history"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ss-history-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="ss-history__header">
+          <div>
+            <h2 id="ss-history-title">📜 Round History</h2>
+            <p>Victims, accusations, votes and revealed saboteurs.</p>
+          </div>
+          <button type="button" className="ss-social-map__close" onClick={onClose} aria-label="Close Round History">
+            ✕
+          </button>
+        </header>
+
+        {entries.length === 0 ? (
+          <p className="ss-history__empty">No completed rounds yet.</p>
+        ) : (
+          <div className="ss-history__list">
+            {[...entries].reverse().map((entry) => (
+              <article className="ss-history__round" key={entry.round}>
+                <div className="ss-history__round-heading">
+                  <strong>Round {entry.round}</strong>
+                  <span className={entry.reason === 'saboteur_caught' ? 'is-caught' : 'is-detonated'}>
+                    {entry.reason === 'saboteur_caught' ? 'Saboteur caught' : 'Bomb detonated'}
+                  </span>
+                </div>
+                <dl className="ss-history__facts">
+                  <div><dt>Victim</dt><dd>{getName(entry.victimId)}</dd></div>
+                  <div><dt>Accused</dt><dd>{getName(entry.accusedId)}</dd></div>
+                  <div><dt>Saboteur</dt><dd>{getName(entry.saboteurId)}</dd></div>
+                  <div><dt>Eliminated</dt><dd>{getName(entry.eliminatedId)}</dd></div>
+                </dl>
+                <details className="ss-history__votes">
+                  <summary>Voting · {Object.keys(entry.votes).length} cast</summary>
+                  <ul>
+                    {Object.entries(entry.votes).map(([voterId, accusedId]) => (
+                      <li key={voterId}>
+                        <span>{getName(voterId)}</span>
+                        <span aria-hidden="true">→</span>
+                        <strong>{getName(accusedId)}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
 
 function VictimNotice({
   playerId,

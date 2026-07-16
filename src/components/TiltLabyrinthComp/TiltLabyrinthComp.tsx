@@ -87,6 +87,7 @@ const MIN_HAZARD_SPACING_CELLS = 2.75;
 const KEY_RADIUS = 7;
 const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
+const HINT_PATH_DURATION_MS = 3_000;
 
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -105,6 +106,11 @@ interface Hazard {
   vy: number;
   radius: number;
   phase: number;
+}
+
+interface MazePathPoint {
+  col: number;
+  row: number;
 }
 
 interface DeviceOrientationPermissionApi {
@@ -129,6 +135,9 @@ interface GameState {
   hazards: Hazard[];
   hazardHits: number;
   lastHazardHitAt: number;
+  hintUsed: boolean;
+  hintPath: MazePathPoint[];
+  hintPathUntil: number;
 }
 
 // â”€â”€â”€ Props â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -312,6 +321,69 @@ function shortestPathLength(maze: MazeCell[][], start: FeaturePoint, end: Featur
   return MAZE_COLS * MAZE_ROWS;
 }
 
+function findMazePath(
+  maze: MazeCell[][],
+  start: MazePathPoint,
+  end: MazePathPoint,
+): MazePathPoint[] {
+  const queue: MazePathPoint[] = [start];
+  const previous = new Map<string, MazePathPoint | null>([[`${start.col}:${start.row}`, null]]);
+  const directions = [
+    { wall: 'top' as const, dc: 0, dr: -1 },
+    { wall: 'right' as const, dc: 1, dr: 0 },
+    { wall: 'bottom' as const, dc: 0, dr: 1 },
+    { wall: 'left' as const, dc: -1, dr: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current.col === end.col && current.row === end.row) {
+      const path: MazePathPoint[] = [];
+      let cursor: MazePathPoint | null = current;
+      while (cursor) {
+        path.push(cursor);
+        cursor = previous.get(`${cursor.col}:${cursor.row}`) ?? null;
+      }
+      return path.reverse();
+    }
+
+    for (const direction of directions) {
+      if (maze[current.row][current.col].walls[direction.wall]) continue;
+      const next = { col: current.col + direction.dc, row: current.row + direction.dr };
+      const key = `${next.col}:${next.row}`;
+      if (
+        next.col < 0 || next.row < 0 ||
+        next.col >= MAZE_COLS || next.row >= MAZE_ROWS ||
+        previous.has(key)
+      ) continue;
+      previous.set(key, current);
+      queue.push(next);
+    }
+  }
+
+  return [];
+}
+
+function buildRemainingRoute(maze: MazeCell[][], game: GameState): MazePathPoint[] {
+  const start = {
+    col: clamp(Math.floor(game.ball.x / CELL_PX), 0, MAZE_COLS - 1),
+    row: clamp(Math.floor(game.ball.y / CELL_PX), 0, MAZE_ROWS - 1),
+  };
+  const destinations: MazePathPoint[] = [];
+  if (!game.hasKey) destinations.push(game.keyPos);
+  if (!game.lockOpen) destinations.push(game.doorPos);
+  destinations.push(game.goalPos);
+
+  const route: MazePathPoint[] = [start];
+  let segmentStart = start;
+  for (const destination of destinations) {
+    const segment = findMazePath(maze, segmentStart, destination);
+    route.push(...segment.slice(1));
+    segmentStart = destination;
+  }
+  return route;
+}
+
 function simulateHumanLikeAiRun(
   profile: CompetitionSkillProfile,
   routeCells: number,
@@ -413,6 +485,31 @@ function drawMaze(
   ctx.fillRect(0, 0, MAZE_W, MAZE_H);
 
   const pulse = 0.6 + 0.4 * Math.sin(elapsed / 300);
+
+  // Show the route from the ball through every remaining objective.
+  if (game.hintPath.length > 1 && performance.now() < game.hintPathUntil) {
+    ctx.save();
+    ctx.beginPath();
+    game.hintPath.forEach((point, index) => {
+      const x = (point.col + 0.5) * CELL_PX;
+      const y = (point.row + 0.5) * CELL_PX;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.34)';
+    ctx.lineWidth = 11;
+    ctx.shadowColor = 'rgba(250, 204, 21, 0.9)';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#fde047';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([7, 5]);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // Key
   if (!hasKey) {
@@ -553,6 +650,7 @@ export default function TiltLabyrinthComp({
   const dispatch = useAppDispatch();
   const labState = useAppSelector((s: RootState) => s.tiltLabyrinth);
   const gamePlayers = useAppSelector((s: RootState) => s.game?.players ?? EMPTY_GAME_PLAYERS);
+  const competitionIdentity = [seed, prizeType, participantIds.join('\u0000')].join(':');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState | null>(null);
@@ -561,16 +659,23 @@ export default function TiltLabyrinthComp({
   const resolvedRef = useRef(false);
   const initializedCompetitionRef = useRef<string | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
+  const hintStatusTimerRef = useRef<number | null>(null);
 
   const [useTilt, setUseTilt] = useState(false);
   const [hazardHits, setHazardHits] = useState(0);
   const [hasKey, setHasKey] = useState(false);
   const [lockOpen, setLockOpen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [hintStatus, setHintStatus] = useState(() => ({
+    competitionIdentity,
+    used: false,
+    active: false,
+  }));
+  const hintUsed = hintStatus.competitionIdentity === competitionIdentity && hintStatus.used;
+  const hintActive = hintStatus.competitionIdentity === competitionIdentity && hintStatus.active;
 
   // â”€â”€ Initialise on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
-    const competitionIdentity = [seed, prizeType, participantIds.join('\u0000')].join(':');
     if (initializedCompetitionRef.current === competitionIdentity) return;
     initializedCompetitionRef.current = competitionIdentity;
 
@@ -671,17 +776,21 @@ export default function TiltLabyrinthComp({
       hazards,
       hazardHits: 0,
       lastHazardHitAt: -HAZARD_HIT_COOLDOWN_MS,
+      hintUsed: false,
+      hintPath: [],
+      hintPathUntil: 0,
     };
     resolvedRef.current = false;
 
   // Include all props that supply competition data. The stable identity guard
   // prevents parent rerenders with new array instances from resetting a result.
-  }, [dispatch, seed, participantIds, participants, prizeType, gamePlayers]);
+  }, [competitionIdentity, dispatch, seed, participantIds, participants, prizeType, gamePlayers]);
 
   useEffect(() => () => {
     dispatch(resetTiltLabyrinth());
     cancelAnimationFrame(rafRef.current);
     orientationCleanupRef.current?.();
+    if (hintStatusTimerRef.current !== null) window.clearTimeout(hintStatusTimerRef.current);
   }, [dispatch]);
 
   // â”€â”€ Finish handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -691,8 +800,14 @@ export default function TiltLabyrinthComp({
       resolvedRef.current = true;
       cancelAnimationFrame(rafRef.current);
       const hits = gameRef.current?.hazardHits ?? 0;
-      const adjustedTimeMs = calculateTiltAdjustedTime(timeMs, hits);
-      dispatch(setHumanScore({ rawTimeMs: timeMs, hazardHits: hits, adjustedTimeMs }));
+      const usedHint = gameRef.current?.hintUsed ?? false;
+      const adjustedTimeMs = calculateTiltAdjustedTime(timeMs, hits, usedHint);
+      dispatch(setHumanScore({
+        rawTimeMs: timeMs,
+        hazardHits: hits,
+        hintUsed: usedHint,
+        adjustedTimeMs,
+      }));
       dispatch(resolveTiltLabyrinthOutcome());
     },
     [dispatch],
@@ -838,6 +953,25 @@ export default function TiltLabyrinthComp({
 
     return () => cancelAnimationFrame(animId);
   }, [handleFinish]);
+
+  const handleHint = useCallback(() => {
+    const game = gameRef.current;
+    const maze = mazeRef.current;
+    if (!game || !maze || game.finished || game.hintUsed) return;
+
+    game.hintUsed = true;
+    game.hintPath = buildRemainingRoute(maze, game);
+    game.hintPathUntil = performance.now() + HINT_PATH_DURATION_MS;
+    setHintStatus({ competitionIdentity, used: true, active: true });
+
+    if (hintStatusTimerRef.current !== null) window.clearTimeout(hintStatusTimerRef.current);
+    hintStatusTimerRef.current = window.setTimeout(() => {
+      setHintStatus((current) => current.competitionIdentity === competitionIdentity
+        ? { ...current, active: false }
+        : current);
+      hintStatusTimerRef.current = null;
+    }, HINT_PATH_DURATION_MS);
+  }, [competitionIdentity]);
 
   // â”€â”€ Keyboard controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
@@ -1027,7 +1161,7 @@ export default function TiltLabyrinthComp({
                 <span className="tilt-labyrinth-time">
                   {formatTiltLabyrinthScore(entry.adjustedTimeMs)}
                   <small>
-                    {` ${formatTiltLabyrinthScore(entry.rawTimeMs)} + ${entry.hazardHits * 3}s`}
+                    {` ${formatTiltLabyrinthScore(entry.rawTimeMs)} + ${entry.hazardHits * 3}s hazards${entry.hintUsed ? ' + 30s hint' : ''}`}
                   </small>
                 </span>
               </li>
@@ -1109,6 +1243,19 @@ export default function TiltLabyrinthComp({
         <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--danger">
           Hazards {hazardHits} · +{hazardHits * 3}s
         </div>
+        <button
+          type="button"
+          className={[
+            'tilt-labyrinth-status-chip',
+            'tilt-labyrinth-status-chip--hint',
+            hintActive ? 'tilt-labyrinth-status-chip--hint-active' : '',
+          ].filter(Boolean).join(' ')}
+          onClick={handleHint}
+          disabled={hintUsed}
+          aria-label="Use hint: add 30 seconds and show the correct path for 3 seconds"
+        >
+          {hintActive ? '✨ Path shown · +30s' : hintUsed ? '✓ Hint used · +30s' : '💡 Hint · +30s'}
+        </button>
       </div>
 
       <div className="tilt-labyrinth-canvas-wrap">

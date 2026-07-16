@@ -111,6 +111,30 @@
   color: #fca5a5;
 }
 
+.tilt-labyrinth-status-chip--hint {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.34);
+  color: #fde68a;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tilt-labyrinth-status-chip--hint:not(:disabled):hover,
+.tilt-labyrinth-status-chip--hint:not(:disabled):focus-visible,
+.tilt-labyrinth-status-chip--hint-active {
+  background: rgba(250, 204, 21, 0.22);
+  border-color: rgba(253, 224, 71, 0.7);
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.2);
+  outline: none;
+}
+
+.tilt-labyrinth-status-chip--hint:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
 /* ── Canvas ──────────────────────────────────────────────────────────────── */
 
 .tilt-labyrinth-canvas-wrap {

@@ -771,7 +771,7 @@ export default function WildcardWesternComp({
       </div>
 
       {/* Content */}
-      <div className="ww-content">
+      <div className={state.phase === 'leagueResults' ? 'ww-content ww-content--league-results' : 'ww-content'}>
         {state.phase === 'intro' && (
           <div className="ww-intro">
             <h2>Welcome to the Wild West!</h2>
@@ -832,7 +832,7 @@ export default function WildcardWesternComp({
           <div className="ww-resolution ww-league-results">
             <h2>League Standings</h2>
             <p>Win +1 · Loss −1 · Top three plus cutoff ties advance</p>
-            <ol className="ww-league-list">
+            <ol className="ww-league-list" aria-label="League standings">
               {state.leagueRankings.map((id, index) => (
                 <li key={id} className={state.finalistIds?.includes(id) ? 'ww-league-row ww-league-row--finalist' : 'ww-league-row'}>
                   <span>{index + 1}.</span>
@@ -842,7 +842,7 @@ export default function WildcardWesternComp({
                 </li>
               ))}
             </ol>
-            <button className="ww-btn" onClick={() => dispatch(startWildcardFinal())}>Start three-life final</button>
+            <button className="ww-btn ww-league-start" onClick={() => dispatch(startWildcardFinal())}>Start three-life final</button>
           </div>
         )}
 

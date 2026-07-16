@@ -31,7 +31,6 @@ const SLOW_MS = 12_000;
 const DOUBLE_MS = 8_000;
 const TIME_PENALTY_SURGE_MS = 10_000;
 const SCORE_CUT_MULTIPLIER = 0.88;
-const EFFECT_TOKEN_INSERT_INDEX = 2;
 const MEDALS = ['🥇', '🥈', '🥉'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PRESSURE_CRACK_INDICES = Array.from({ length: MAX_ERRORS }, (_, index) => index);
@@ -174,24 +173,6 @@ function secondsLabel(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-function compactRoundMeta(entry: RoundSummary): string[] {
-  const tokens = [
-    `${entry.errors} err`,
-    secondsLabel(entry.elapsedSeconds),
-    `${entry.boxesOpened} bx`,
-    `+${entry.roundScore}`,
-  ];
-  if (entry.appliedEffects.length > 0) {
-    const extraEffects = entry.appliedEffects.length - 1;
-    tokens.splice(
-      EFFECT_TOKEN_INSERT_INDEX,
-      0,
-      extraEffects > 0 ? `${entry.appliedEffects[0]} +${extraEffects}` : entry.appliedEffects[0],
-    );
-  }
-  return tokens;
 }
 
 function findRandomHiddenLetters(word: string, guessedLetters: string[], revealedLetters: string[], amount: number, rng: () => number): string[] {
@@ -758,7 +739,7 @@ export default function HangmanChallengeComp({
     setCumulativeScores((prev) => ({ ...prev, ...nextTotals }));
     setRoundHistory((prev) => [...prev, nextLeaderboard]);
     setRoundState((prev) => ({ ...prev, visibleBox: null, boardFlash: roundSolved ? 'solved' : 'failed' }));
-    setPhase('breakdown');
+    setPhase(roundIndex >= TOTAL_ROUNDS - 1 ? 'final' : 'breakdown');
   }, [cumulativeScores, currentWord, humanParticipant, resolvedParticipants, revealRatio, roundIndex, roundState, seed]);
 
   useEffect(() => {
@@ -1028,17 +1009,13 @@ export default function HangmanChallengeComp({
               {roundLeaderboard.map((entry, index) => (
                 <article className="hangman-challenge__score-row" key={entry.participantId}>
                   <div className="hangman-challenge__score-rank">{MEDALS[index] ?? `#${index + 1}`}</div>
-                  <div className="hangman-challenge__score-main">
-                    <div className="hangman-challenge__score-primary-row">
-                      <span className="hangman-challenge__avatar">{entry.avatarText}</span>
-                      <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
-                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved' : 'Failed'} · {entry.word}</span>
-                      {compactRoundMeta(entry).map((label, metaIndex) => (
-                        <span className="hangman-challenge__score-meta" key={`${entry.participantId}-round-meta-${metaIndex}`}>{label}</span>
-                      ))}
-                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
-                    </div>
-                  </div>
+                  <span className="hangman-challenge__avatar">{entry.avatarText}</span>
+                  <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
+                  <span className={`hangman-challenge__score-status${entry.solved ? ' is-solved' : ' is-failed'}`} aria-label={entry.solved ? 'Solved' : 'Failed'}>
+                    {entry.solved ? '✓' : '—'}
+                  </span>
+                  <strong className="hangman-challenge__round-points">+{entry.roundScore}</strong>
+                  <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
                 </article>
               ))}
             </div>
@@ -1050,28 +1027,21 @@ export default function HangmanChallengeComp({
       )}
 
       {phase === 'final' && (
-        <section className="hangman-challenge__overlay" aria-label="Final results">
-          <div className="hangman-challenge__overlay-card hangman-challenge__overlay-card--scoreboard">
+        <section className="hangman-challenge__overlay hangman-challenge__overlay--final" aria-label="Final results">
+          <div className="hangman-challenge__overlay-card hangman-challenge__overlay-card--scoreboard hangman-challenge__overlay-card--final">
             <p className="hangman-challenge__eyebrow">Final verdict</p>
-            <h3>{winnerNames.length > 1 ? `${winnerNames.join(' & ')} share the top score` : `${winnerNames[0] ?? 'Winner'} leads the board`}</h3>
-            <p className="hangman-challenge__winner-copy">
-              Highest cumulative score after five rounds decides the winner.
-            </p>
+            <div className="hangman-challenge__final-winner">
+              <span>{winnerNames.length > 1 ? 'Joint winners' : 'Winner'}</span>
+              <strong>{winnerNames.join(' & ') || 'Winner'}</strong>
+              <em>{finalRankings[0]?.cumulativeScore ?? 0} points</em>
+            </div>
             <div className="hangman-challenge__scoreboard">
               {finalRankings.map((entry, index) => (
-                <article className={`hangman-challenge__score-row${index === 0 ? ' is-winner' : ''}`} key={entry.participantId}>
+                <article className={`hangman-challenge__score-row${entry.cumulativeScore === finalRankings[0]?.cumulativeScore ? ' is-winner' : ''}`} key={entry.participantId}>
                   <div className="hangman-challenge__score-rank">{MEDALS[index] ?? `#${index + 1}`}</div>
-                  <div className="hangman-challenge__score-main">
-                    <div className="hangman-challenge__score-primary-row">
-                      <span className="hangman-challenge__avatar">{entry.avatarText}</span>
-                      <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
-                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved final' : 'Missed final'} · {entry.word}</span>
-                      {compactRoundMeta(entry).map((label, metaIndex) => (
-                        <span className="hangman-challenge__score-meta" key={`${entry.participantId}-final-meta-${metaIndex}`}>{label}</span>
-                      ))}
-                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
-                    </div>
-                  </div>
+                  <span className="hangman-challenge__avatar">{entry.avatarText}</span>
+                  <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
+                  <strong className="hangman-challenge__final-points">{entry.cumulativeScore}</strong>
                 </article>
               ))}
             </div>

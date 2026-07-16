@@ -2,24 +2,24 @@
  * ClosestWithoutGoingOverComp – "Don't Go Over" competition screen.
  *
  * Phases:
- *   mass_input  → all players enter guesses
- *   mass_reveal → animated reveal with elimination
+ *   mass_input  → strict qualifier: all players enter guesses
+ *   mass_reveal → over-guessers leave, or the slowest furthest valid guess leaves
  *   choose_duel → leader picks two players to duel
  *   duel_input  → duel pair enters guesses
  *   duel_reveal → animated reveal of duel result
  *   complete    → champion announced
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import type { RootState } from '../store/store';
 import {
   startCwgoCompetition,
   setGuesses,
+  setResponseTimes,
   autoFillAIGuesses,
   revealMassResults,
   confirmMassElimination,
-  startCwgoFinal,
   chooseDuelPair,
   revealDuelResults,
   confirmDuelElimination,
@@ -96,6 +96,7 @@ export default function ClosestWithoutGoingOverComp({
   const [scaleIdx, setScaleIdx] = useState(NO_SCALE_INDEX);
   // Sequential reveal stages for the duel: guesses → answer → outcome
   const [duelRevealStage, setDuelRevealStage] = useState<'guesses' | 'answer' | 'outcome'>('guesses');
+  const questionShownAtRef = useRef(0);
 
   // Derive helper data
   const humanPlayer = players.find((p) => p.isUser);
@@ -140,8 +141,9 @@ export default function ClosestWithoutGoingOverComp({
    */
   function parseScaledGuess(raw: string): number | null {
     const n = parseFloat(raw);
-    if (isNaN(n)) return null;
-    return Math.round(n * SCALES[scaleIdx].value);
+    const scaled = Math.round(n * SCALES[scaleIdx].value);
+    if (!Number.isFinite(scaled) || scaled < 0 || scaled > Number.MAX_SAFE_INTEGER) return null;
+    return scaled;
   }
 
   // Start competition on mount
@@ -151,7 +153,6 @@ export default function ClosestWithoutGoingOverComp({
         participantIds,
         prizeType,
         seed,
-        humanPlayerId: humanId,
       }),
     );
     return () => {
@@ -159,6 +160,16 @@ export default function ClosestWithoutGoingOverComp({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Begin timing only after React has committed the fully visible input screen.
+  useEffect(() => {
+    if (cwgo?.status !== 'mass_input' && cwgo?.status !== 'duel_input') return;
+    questionShownAtRef.current = performance.now();
+  }, [cwgo?.questionIdx, cwgo?.status]);
+
+  function humanResponseTimeMs(): number {
+    return Math.max(0, Math.round(performance.now() - questionShownAtRef.current));
+  }
 
   // ── Duel reveal: advance through suspense stages automatically ────────────────
   // guesses (t=0) → answer revealed (t+1.5s) → outcome shown (t+3.2s)
@@ -252,6 +263,7 @@ export default function ClosestWithoutGoingOverComp({
     }
     setInputError('');
     dispatch(setGuesses({ [humanId]: val }));
+    dispatch(setResponseTimes({ [humanId]: humanResponseTimeMs() }));
     dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
     setHumanGuess('');
     setScaleIdx(0);
@@ -272,6 +284,7 @@ export default function ClosestWithoutGoingOverComp({
       }
       setInputError('');
       dispatch(setGuesses({ [humanId]: val }));
+      dispatch(setResponseTimes({ [humanId]: humanResponseTimeMs() }));
     }
 
     // Fill AI guesses for non-human duel participant
@@ -287,7 +300,7 @@ export default function ClosestWithoutGoingOverComp({
 
   // Hide the question card during choose_duel — the question belongs to the
   // upcoming duel, not the leader-pick phase.
-  const showQuestion = cwgo.status !== 'choose_duel' && cwgo.status !== 'league_results';
+  const showQuestion = cwgo.status !== 'choose_duel';
 
   return (
     <div className="cwgo">
@@ -368,6 +381,7 @@ export default function ClosestWithoutGoingOverComp({
                 <div className="cwgo-mass-input__input-row">
                   <input
                     type="number"
+                    min={0}
                     className="cwgo-mass-input__input"
                     value={humanGuess}
                     onChange={(e) => setHumanGuess(e.target.value)}
@@ -415,7 +429,9 @@ export default function ClosestWithoutGoingOverComp({
             variants={containerVariants}
           >
             <p className="cwgo-reveal__heading">
-              Results — Answer: <strong>{question?.answer.toLocaleString()}</strong>
+              {cwgo.revealResults.every((result) => result.wentOver)
+                ? 'Everyone went over — this question is void.'
+                : <>Results — Answer: <strong>{question?.answer.toLocaleString()}</strong></>}
             </p>
             <div className="cwgo-results-wrap">
               <div className="cwgo-reveal">
@@ -450,6 +466,9 @@ export default function ClosestWithoutGoingOverComp({
                             ? `over by ${Math.abs(r.diff).toLocaleString()}`
                             : `diff: ${r.diff.toLocaleString()}`}
                         </span>
+                        {r.responseTimeMs !== undefined && (
+                          <span className="cwgo-result-row__diff">• {(r.responseTimeMs / 1000).toFixed(1)}s</span>
+                        )}
                       </div>
                       {isLastElim && (
                         <motion.div
@@ -471,30 +490,7 @@ export default function ClosestWithoutGoingOverComp({
                 className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
                 onClick={() => dispatch(confirmMassElimination())}
               >
-                Continue
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {cwgo.status === 'league_results' && (
-          <motion.div key="league-results" className="cwgo-reveal" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <h3 className="cwgo-reveal__heading">League Standings</h3>
-            <p>Win +1 · Loss −1 · Top three plus cutoff ties advance</p>
-            <div className="cwgo-results-wrap">
-              {cwgo.leagueRankings.map((id, index) => (
-                <div key={id} className={`cwgo-result-row${cwgo.finalistIds?.includes(id) ? ' cwgo-result-row--winner' : ''}`}>
-                  <span className="cwgo-result-row__rank">{index + 1}</span>
-                  <div className="cwgo-result-row__info">
-                    <strong className="cwgo-result-row__name">{playerName(id)}{id === humanId ? ' (You)' : ''}</strong>
-                    <span>{cwgo.leagueScores[id] ?? 0} points · {cwgo.finalistIds?.includes(id) ? 'Finalist' : 'Eliminated'}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="cwgo-footer">
-              <button className="cwgo-btn cwgo-btn--gold cwgo-btn--lg" onClick={() => dispatch(startCwgoFinal())}>
-                Start three-life final
+                {cwgo.revealResults.every((result) => result.wentOver) ? 'New question' : 'Continue'}
               </button>
             </div>
           </motion.div>
@@ -691,14 +687,15 @@ export default function ClosestWithoutGoingOverComp({
                 // Whether the outcome (winner/loser styling) is visible.
                 // Hoisted outside map to avoid recomputing on every iteration.
                 const showOutcome = duelRevealStage === 'outcome';
+                const isRedraw = showOutcome && !cwgo.duelWinnerId;
 
                 return cwgo.revealResults.map((r: CwgoResult, i: number) => {
                   // Build side CSS class once per side rather than inside JSX.
                   const sideClass = [
                     'cwgo-duel__side',
-                    showOutcome && r.isWinner  ? 'cwgo-duel__side--winner'  : '',
-                    showOutcome && !r.isWinner ? 'cwgo-duel__side--loser'   : '',
-                    showOutcome && r.wentOver  ? 'cwgo-duel__side--over'    : '',
+                    showOutcome && !isRedraw && r.isWinner  ? 'cwgo-duel__side--winner'  : '',
+                    showOutcome && !isRedraw && !r.isWinner ? 'cwgo-duel__side--loser'   : '',
+                    showOutcome && !isRedraw && r.wentOver  ? 'cwgo-duel__side--over'    : '',
                     !showOutcome               ? 'cwgo-duel__side--pending' : '',
                   ].filter(Boolean).join(' ');
 
@@ -718,7 +715,7 @@ export default function ClosestWithoutGoingOverComp({
                           alt={playerName(r.playerId)}
                           onError={(e) => handleAvatarError(e, playerName(r.playerId))}
                         />
-                        {showOutcome && !r.isWinner && (
+                        {showOutcome && !isRedraw && !r.isWinner && (
                           <motion.div
                             className="cwgo-duel__elim-overlay"
                             initial={{ opacity: 0, scale: 1.2 }}
@@ -731,7 +728,7 @@ export default function ClosestWithoutGoingOverComp({
                           </motion.div>
                         )}
                       </div>
-                      {showOutcome && r.isWinner && (
+                      {showOutcome && !isRedraw && r.isWinner && (
                         <motion.div
                           className="cwgo-duel__winner-badge"
                           initial={{ scale: 0 }}
@@ -743,6 +740,9 @@ export default function ClosestWithoutGoingOverComp({
                       )}
                       <p className="cwgo-duel__player-name">{playerName(r.playerId)}</p>
                       <p className="cwgo-duel__score">{r.guess.toLocaleString()}</p>
+                      {r.responseTimeMs !== undefined && (
+                        <p className="cwgo-duel__diff">{(r.responseTimeMs / 1000).toFixed(1)}s</p>
+                      )}
                       {showOutcome && (
                         <motion.p
                           className="cwgo-duel__diff"
@@ -767,6 +767,10 @@ export default function ClosestWithoutGoingOverComp({
               })()}
             </div>
 
+            {duelRevealStage === 'outcome' && !cwgo.duelWinnerId && (
+              <p className="cwgo-reveal__heading">Both players went over — new question.</p>
+            )}
+
             {/* Continue button only appears once the outcome is revealed */}
             <AnimatePresence>
               {duelRevealStage === 'outcome' && (
@@ -780,7 +784,7 @@ export default function ClosestWithoutGoingOverComp({
                     className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
                     onClick={() => dispatch(confirmDuelElimination())}
                   >
-                    Continue
+                      {cwgo.duelWinnerId ? 'Continue' : 'New question'}
                   </button>
                 </motion.div>
               )}

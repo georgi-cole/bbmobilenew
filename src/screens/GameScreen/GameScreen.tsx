@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
@@ -912,7 +912,7 @@ export default function GameScreen() {
   // (auto-rule) when the game enters loh_comp_announcement. The thunk checks
   // day/alive-count eligibility, preventing double-activation within a day.
   const democraciaActivationKeyRef = useRef<string | null>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (game.phase !== 'loh_comp_announcement') return
     const activationKey = `${game.week}:${game.pendingForcedShock?.type ?? 'none'}:${game.pendingForcedShock?.earliestWeek ?? 'none'}`
     if (democraciaActivationKeyRef.current === activationKey) return

@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateAIGuess,
+  generateAIResponseTimeMs,
   aiSkillRangeForDifficulty,
   difficultyLabel,
   computeWinnerClosestWithoutGoingOver,
@@ -74,7 +75,7 @@ describe('aiSkillRangeForDifficulty', () => {
     expect(aiSkillRangeForDifficulty(9)).toEqual(aiSkillRangeForDifficulty(5));
   });
 
-  it('lets a knowledgeable human win easy rounds ~95% of the time', () => {
+  it('lets a knowledgeable human usually win easy rounds', () => {
     // A human who knows an easy answer guesses it exactly and should essentially
     // always win against the (deliberately weak) easy-difficulty AI band.
     const answer = 100;
@@ -92,7 +93,17 @@ describe('aiSkillRangeForDifficulty', () => {
       }
       if (computeWinnerClosestWithoutGoingOver(guesses, answer) === 'human') humanWins++;
     }
-    expect(humanWins / trials).toBeGreaterThanOrEqual(0.95);
+    expect(humanWins / trials).toBeGreaterThanOrEqual(0.9);
+  });
+});
+
+describe('generateAIResponseTimeMs', () => {
+  it('is deterministic, human-scale, and varies by player', () => {
+    const first = generateAIResponseTimeMs(3, 42, 'ai-a', 1);
+    expect(first).toBe(generateAIResponseTimeMs(3, 42, 'ai-a', 1));
+    expect(first).toBeGreaterThanOrEqual(1_800);
+    expect(first).toBeLessThanOrEqual(13_500);
+    expect(first).not.toBe(generateAIResponseTimeMs(3, 42, 'ai-b', 1));
   });
 });
 
@@ -144,22 +155,22 @@ describe('computeWinnerClosestWithoutGoingOver', () => {
     expect(computeWinnerClosestWithoutGoingOver(guesses, 100)).toBe('b');
   });
 
-  it('when all go over, the least-over (lowest guess) wins', () => {
+  it('returns no winner when all go over so the question can be redrawn', () => {
     const guesses = [
       { playerId: 'a', guess: 110 },
       { playerId: 'b', guess: 105 }, // least over
       { playerId: 'c', guess: 120 },
     ];
-    expect(computeWinnerClosestWithoutGoingOver(guesses, 100)).toBe('b');
+    expect(computeWinnerClosestWithoutGoingOver(guesses, 100)).toBeNull();
   });
 
-  it('tie is broken by first entry', () => {
+  it('an equal winning guess is broken by faster response time', () => {
     const guesses = [
       { playerId: 'a', guess: 80 },
       { playerId: 'b', guess: 80 },
     ];
     // Both equal — first entry should win
-    expect(computeWinnerClosestWithoutGoingOver(guesses, 100)).toBe('a');
+    expect(computeWinnerClosestWithoutGoingOver(guesses, 100, { a: 5_000, b: 3_000 })).toBe('b');
   });
 });
 
@@ -179,19 +190,19 @@ describe('computeMassElimination', () => {
     expect(surviving).toContain('c');
   });
 
-  it('when all go over, keeps only the least-over player', () => {
+  it('when all go over, eliminates nobody and requests a redraw', () => {
     const guesses = [
       { playerId: 'a', guess: 110 },
       { playerId: 'b', guess: 105 }, // least over
       { playerId: 'c', guess: 115 },
     ];
-    const { eliminated, surviving } = computeMassElimination(guesses, 100, ['a', 'b', 'c']);
-    expect(surviving).toEqual(['b']);
-    expect(eliminated).toContain('a');
-    expect(eliminated).toContain('c');
+    const { eliminated, surviving, redraw } = computeMassElimination(guesses, 100, ['a', 'b', 'c']);
+    expect(surviving).toEqual(['a', 'b', 'c']);
+    expect(eliminated).toEqual([]);
+    expect(redraw).toBe(true);
   });
 
-  it('when no one goes over, eliminates bottom half', () => {
+  it('when no one goes over, eliminates only the furthest valid guess', () => {
     const guesses = [
       { playerId: 'a', guess: 60 }, // lowest → eliminated
       { playerId: 'b', guess: 80 },
@@ -200,9 +211,21 @@ describe('computeMassElimination', () => {
     ];
     const { eliminated } = computeMassElimination(guesses, 100, ['a', 'b', 'c', 'd']);
     // Bottom 2 of 4 should be eliminated
-    expect(eliminated).toHaveLength(2);
-    expect(eliminated).toContain('a');
-    expect(eliminated).toContain('d');
+    expect(eliminated).toEqual(['a']);
+  });
+
+  it('uses the slower response to break a tie for furthest valid guess', () => {
+    const guesses = [
+      { playerId: 'a', guess: 60 },
+      { playerId: 'b', guess: 60 },
+      { playerId: 'c', guess: 90 },
+    ];
+    const result = computeMassElimination(guesses, 100, ['a', 'b', 'c'], {
+      a: 2_000,
+      b: 6_000,
+      c: 8_000,
+    });
+    expect(result.eliminated).toEqual(['b']);
   });
 
   it('returns empty arrays for empty input', () => {

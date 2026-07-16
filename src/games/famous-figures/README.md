@@ -95,7 +95,7 @@ Each figure in `src/games/famous-figures/data/famous_figures.json` follows this 
 | `normalizedAliases` | `string[]` | `normalizeForMatching` applied to each alias |
 | `hints` | `[string, string, string, string, string]` | Exactly 5 entries, shown at runtime from broad to specific |
 | `baseClueFact` | `string` | Opening clue shown before any hint is requested |
-| `difficulty` | `"easy" \| "medium" \| "hard"` | Affects AI correct-answer probability |
+| `difficulty` | `"very_easy" \| "easy" \| "medium" \| "hard" \| "very_hard"` | Internal recognizability band; affects AI accuracy, hints needed, and reaction speed. It is never shown to the player. |
 | `category` | `string` | Free-form (artist, scientist, ruler, leader, etc.) |
 | `era` | `string` | Historical period |
 
@@ -161,6 +161,8 @@ Full **Damerau-Levenshtein** distance (not restricted). Transpositions count as 
    ```
 4. Write all five hints as a gradual ladder: broad category, general relationship or world, behavior or role, strong signature trait, then a near-giveaway final clue.
 5. Run tests: `npm run test:famous-figures`
+
+AI contestants also have stable general-knowledge profiles and deterministic figure-specific familiarity. This allows strong players to answer recognizable figures early while preserving occasional blind spots, specialist solves, hesitation, and correct answers after four or five hints.
 
 ---
 

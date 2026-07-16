@@ -62,6 +62,7 @@ export default function MinigameCompleteWrapper({
 
   const rootClass = ['minigame-complete', className].filter(Boolean).join(' ');
   const scrollClass = ['minigame-placement-list', placementsClassName].filter(Boolean).join(' ');
+  const continueClass = continueButtonClassName ?? 'minigame-complete-continue';
 
   return (
     <div className={rootClass}>
@@ -84,7 +85,7 @@ export default function MinigameCompleteWrapper({
         <button
           ref={continueRef}
           type="button"
-          className={continueButtonClassName}
+          className={continueClass}
           onClick={onContinue}
           aria-label={continueLabel}
         >

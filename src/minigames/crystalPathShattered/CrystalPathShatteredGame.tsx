@@ -55,6 +55,7 @@ import {
   simulateAiRun,
   STARTING_HINTS,
   STARTING_SP,
+  CATASTROPHE_STEP_MS,
   WRONG_STEP_MS,
   MYSTERY_REVEAL_MS,
   AI_MIN_THINK_MS,
@@ -444,13 +445,6 @@ export default function CrystalPathShatteredGame({
     const wrong = side !== row.safeSide;
     const now = Date.now();
     const progressedRow = row.index + 1;
-    setActiveAnimation({
-      playerId,
-      kind: wrong ? 'wrong' : 'safe',
-      side,
-      rowIndex: row.index,
-      until: now + (wrong ? WRONG_STEP_MS : SAFE_STEP_MS),
-    });
     setHintRowIndex(null);
     setMysteryPendingStep(false);
     setResolvedRows((cur) => ({
@@ -463,6 +457,14 @@ export default function CrystalPathShatteredGame({
       const res = resolveWrongTileDelta(base, runner.effects, now);
       const newSp = Math.max(0, runner.sp + res.delta);
       const eliminated = newSp <= 0;
+      const animationMs = eliminated ? CATASTROPHE_STEP_MS : WRONG_STEP_MS;
+      setActiveAnimation({
+        playerId,
+        kind: 'wrong',
+        side,
+        rowIndex: row.index,
+        until: now + animationMs,
+      });
       if (eliminated) playDeath();
       else playSafeStep();
       setPlayers((cur) => cur.map((p) => {
@@ -493,8 +495,15 @@ export default function CrystalPathShatteredGame({
           }
           advanceToNextPlayer(clampedActivePlayerIndex);
         }
-      }, WRONG_STEP_MS);
+      }, animationMs);
     } else {
+      setActiveAnimation({
+        playerId,
+        kind: 'safe',
+        side,
+        rowIndex: row.index,
+        until: now + SAFE_STEP_MS,
+      });
       playSafeStep();
       const furthest = Math.max(runner.furthestRow, progressedRow);
       const justFinished = runner.finishedAtMs === null && furthest >= HIDDEN_BRIDGE_LENGTH;
@@ -690,7 +699,7 @@ export default function CrystalPathShatteredGame({
 
   if (phase === 'complete') {
       return (
-        <div className="cps-shell" aria-label="Crystal Path: Infinity — complete">
+        <div className="cps-shell cps-shell--complete" aria-label="Crystal Path: Infinity — complete">
         {/* Environment */}
         <div className="cps-depth-fog" aria-hidden="true" />
         <div className="cps-spotlight" aria-hidden="true" />
@@ -702,7 +711,6 @@ export default function CrystalPathShatteredGame({
           <MinigameCompleteWrapper
             className="cps-complete"
             onContinue={handleContinue}
-            continueButtonClassName="cps-btn cps-btn-primary"
             placementsClassName="cps-placements"
             placementsRole="list"
             placementsAriaLabel="Final standings"

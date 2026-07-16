@@ -27,6 +27,7 @@ import silentSaboteurReducer, {
   startNextRound,
   submitJuryVote,
   advanceWinner,
+  fastForwardSilentSaboteur,
   markSilentSaboteurOutcomeResolved,
   resetSilentSaboteur,
 } from '../../../src/features/silentSaboteur/silentSaboteurSlice';
@@ -215,6 +216,32 @@ describe('submitVote', () => {
     // One player eliminated
     expect(getState(store).activeIds.length).toBe(2);
     expect(getState(store).eliminatedIds.length).toBe(1);
+    expect(getState(store).roundHistory).toHaveLength(1);
+    expect(getState(store).roundHistory[0]).toMatchObject({
+      round: 1,
+      victimId: getState(store).revealInfo?.victimId,
+      saboteurId: getState(store).revealInfo?.saboteurId,
+      accusedId: getState(store).revealInfo?.accusedId,
+    });
+  });
+});
+
+describe('fastForwardSilentSaboteur', () => {
+  it('resolves every remaining round deterministically and stops on the winner result', () => {
+    const store = makeStore();
+    init(store, PLAYERS_5, 'alice');
+    store.dispatch(advanceIntro());
+    const { saboteurId, activeIds } = getState(store);
+    const victimId = activeIds.find((id) => id !== saboteurId)!;
+    store.dispatch(selectVictim({ victimId }));
+    castAllValidVotes(store);
+
+    store.dispatch(fastForwardSilentSaboteur());
+
+    expect(getState(store).phase).toBe('winner');
+    expect(getState(store).winnerId).toBeTruthy();
+    expect(getState(store).activeIds).toContain(getState(store).winnerId);
+    expect(getState(store).roundHistory.length).toBeGreaterThanOrEqual(1);
   });
 });
 

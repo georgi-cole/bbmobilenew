@@ -149,12 +149,57 @@
   width: min(100%, 680px);
 }
 
+.ww-content--league-results {
+  min-height: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.ww-content--league-results .ww-league-results {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ww-content--league-results .ww-league-results > h2,
+.ww-content--league-results .ww-league-results > p,
+.ww-content--league-results .ww-league-start {
+  flex: 0 0 auto;
+}
+
 .ww-league-list {
   display: grid;
   gap: 0.45rem;
   padding: 0;
   margin: 1rem 0 1.25rem;
   list-style: none;
+}
+
+.ww-content--league-results .ww-league-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 160, 23, 0.55) transparent;
+  padding: 0.15rem 0.2rem 0.35rem;
+}
+
+.ww-content--league-results .ww-league-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ww-content--league-results .ww-league-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(212, 160, 23, 0.55);
+}
+
+.ww-league-start {
+  align-self: center;
 }
 
 .ww-league-row {
@@ -185,6 +230,33 @@
 
   .ww-league-row small {
     grid-column: 2 / -1;
+  }
+
+  .ww-content--league-results {
+    padding-block: 0.65rem;
+  }
+
+  .ww-content--league-results .ww-league-results > h2 {
+    margin-bottom: 0.35rem;
+  }
+
+  .ww-content--league-results .ww-league-results > p {
+    margin: 0 0 0.45rem;
+    font-size: 0.82rem;
+    line-height: 1.3;
+  }
+
+  .ww-content--league-results .ww-league-list {
+    width: 100%;
+    margin: 0 0 0.55rem;
+  }
+
+  .ww-content--league-results .ww-league-row {
+    padding-block: 0.5rem;
+  }
+
+  .ww-league-start {
+    min-height: 48px;
   }
 }
 

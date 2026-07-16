@@ -4,6 +4,8 @@
 
 // ─── Figure data ─────────────────────────────────────────────────────────────
 
+export type FigureDifficulty = 'very_easy' | 'easy' | 'medium' | 'hard' | 'very_hard';
+
 export interface FigureRow {
   canonicalName: string;
   /** Pre-normalised canonical name (particles removed, lowercase, no diacritics). */
@@ -15,7 +17,8 @@ export interface FigureRow {
   hints: [string, string, string, string, string];
   /** Single-sentence clue shown before any hints are requested. */
   baseClueFact: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  /** Internal recognizability band used only for AI accuracy and response timing. */
+  difficulty: FigureDifficulty;
   category: string;
   era: string;
 }

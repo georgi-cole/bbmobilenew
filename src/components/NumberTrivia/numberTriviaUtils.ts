@@ -3,6 +3,8 @@ import type { NumberTriviaDifficulty, NumberTriviaQuestion } from './numberTrivi
 
 export const NUMBER_TRIVIA_TOTAL_ROUNDS = 5;
 export const NUMBER_TRIVIA_MAX_ATTEMPTS = 6;
+export const NUMBER_TRIVIA_READING_BUFFER_MS = 3_000;
+export const NUMBER_TRIVIA_DUEL_STARTING_LIVES = 3;
 
 export interface TriviaRoundPerformance {
   guessed: boolean;
@@ -49,8 +51,8 @@ interface NumberTriviaAiDifficultyProfile {
 
 const NUMBER_TRIVIA_AI_PROFILES: Record<NumberTriviaDifficulty, NumberTriviaAiDifficultyProfile> = {
   easy: {
-    accuracyRange: [0.95, 1],
-    delayRangeMs: [1_800, 5_500],
+    accuracyRange: [0.9, 0.98],
+    delayRangeMs: [2_200, 6_000],
     maxCorrectAttempts: 3,
     maxWrongAttempts: 3,
     hesitationChance: 0.38,
@@ -59,8 +61,8 @@ const NUMBER_TRIVIA_AI_PROFILES: Record<NumberTriviaDifficulty, NumberTriviaAiDi
     confidentWrongChance: 0.12,
   },
   medium: {
-    accuracyRange: [0.75, 0.9],
-    delayRangeMs: [2_600, 8_000],
+    accuracyRange: [0.7, 0.86],
+    delayRangeMs: [3_000, 8_500],
     maxCorrectAttempts: 4,
     maxWrongAttempts: 4,
     hesitationChance: 0.52,
@@ -69,8 +71,8 @@ const NUMBER_TRIVIA_AI_PROFILES: Record<NumberTriviaDifficulty, NumberTriviaAiDi
     confidentWrongChance: 0.16,
   },
   hard: {
-    accuracyRange: [0.5, 0.7],
-    delayRangeMs: [3_500, 11_000],
+    accuracyRange: [0.45, 0.65],
+    delayRangeMs: [4_000, 12_000],
     maxCorrectAttempts: 5,
     maxWrongAttempts: 5,
     hesitationChance: 0.64,
@@ -79,8 +81,8 @@ const NUMBER_TRIVIA_AI_PROFILES: Record<NumberTriviaDifficulty, NumberTriviaAiDi
     confidentWrongChance: 0.2,
   },
   'very-hard': {
-    accuracyRange: [0.25, 0.5],
-    delayRangeMs: [4_500, 15_000],
+    accuracyRange: [0.22, 0.46],
+    delayRangeMs: [5_000, 16_000],
     maxCorrectAttempts: 6,
     maxWrongAttempts: 6,
     hesitationChance: 0.76,
@@ -135,18 +137,10 @@ export function simulateNumberTriviaAiPerformance(
   rng: () => number,
 ): TriviaRoundPerformance {
   const profile = NUMBER_TRIVIA_AI_PROFILES[context.question.difficulty];
-  const skillOffset = clamp((context.precomputedScore - 60) / 300, -0.12, 0.12);
+  const skillOffset = clamp((context.precomputedScore - 60) / 450, -0.08, 0.08);
   const fatiguePenalty = Math.max(0, context.roundNumber - 3) * 0.015;
-  const configuredMinAccuracy = profile.accuracyRange[0] + skillOffset - fatiguePenalty;
-  const minAccuracy = context.question.difficulty === 'easy'
-    ? clamp(Math.max(0.95, configuredMinAccuracy), 0.95, 0.995)
-    : clamp(configuredMinAccuracy, 0.05, 0.995);
-  const maxAccuracy = clamp(profile.accuracyRange[1] + skillOffset - fatiguePenalty, minAccuracy, 0.995);
-  const accuracy = clamp(
-    minAccuracy + (maxAccuracy - minAccuracy) * clamp(0.5 + skillOffset * 2.5, 0, 1),
-    0.05,
-    0.995,
-  );
+  const baseAccuracy = (profile.accuracyRange[0] + profile.accuracyRange[1]) / 2;
+  const accuracy = clamp(baseAccuracy + skillOffset - fatiguePenalty, 0.05, 0.985);
   const baseDelayMs = randomBetween(profile.delayRangeMs[0], profile.delayRangeMs[1], rng);
   const guessed = rng() < accuracy;
 
@@ -210,6 +204,50 @@ export function computeNumberTriviaRoundScore(performance: TriviaRoundPerformanc
 export function getNumberTriviaEliminationCount(roundNumber: number, activeCount: number): number {
   if (roundNumber >= NUMBER_TRIVIA_TOTAL_ROUNDS || activeCount <= 2) return 0;
   return Math.min(activeCount - 2, 1);
+}
+
+/**
+ * Round five keeps the top two cumulative scores. Everyone tied with the
+ * second-place score also qualifies, so a genuine cutoff tie is never broken
+ * by an unrelated field such as player name.
+ */
+export function getNumberTriviaFinalistIds(rankedStandings: TriviaStanding[]): string[] {
+  if (rankedStandings.length <= 2) return rankedStandings.map((entry) => entry.participantId);
+  const cutoffScore = rankedStandings[1].cumulativeScore;
+  return rankedStandings
+    .filter((entry) => entry.cumulativeScore >= cutoffScore)
+    .map((entry) => entry.participantId);
+}
+
+export interface NumberTriviaDuelPerformance {
+  participantId: string;
+  performance: TriviaRoundPerformance;
+}
+
+/** Pick exactly one duel loser. Accuracy comes first; response time only breaks numerical ties. */
+export function getNumberTriviaDuelLoserId(
+  entries: NumberTriviaDuelPerformance[],
+  rng: () => number = () => 0,
+): string | null {
+  if (entries.length === 0) return null;
+  const compare = (a: NumberTriviaDuelPerformance, b: NumberTriviaDuelPerformance) => {
+    if (a.performance.guessed !== b.performance.guessed) return a.performance.guessed ? -1 : 1;
+
+    const aDistance = a.performance.guessed
+      ? 0
+      : Math.max(0, a.performance.closestDistance ?? Number.POSITIVE_INFINITY);
+    const bDistance = b.performance.guessed
+      ? 0
+      : Math.max(0, b.performance.closestDistance ?? Number.POSITIVE_INFINITY);
+    if (aDistance !== bDistance) return aDistance - bDistance;
+    if (a.performance.timeMs !== b.performance.timeMs) return a.performance.timeMs - b.performance.timeMs;
+    if (a.performance.attempts !== b.performance.attempts) return a.performance.attempts - b.performance.attempts;
+    return 0;
+  };
+  const worst = [...entries].sort(compare).at(-1);
+  if (!worst) return null;
+  const exactTies = entries.filter((entry) => compare(entry, worst) === 0);
+  return exactTies[Math.floor(rng() * exactTies.length)]?.participantId ?? worst.participantId;
 }
 
 export function compareTriviaStandings(a: TriviaStanding, b: TriviaStanding): number {
