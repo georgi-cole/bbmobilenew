@@ -22,6 +22,7 @@ import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
 import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice';
+import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,15 @@ function hashStringU32(s: string): number {
     h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
   }
   return h;
+}
+
+function shouldForceTwinShockHintGame(state: RootState, prizeType?: CwgoPrizeType | string): boolean {
+  const gameState = state.game;
+  const isLohChallenge = prizeType === 'LOH' || (prizeType == null && gameState.phase === 'loh_comp');
+  if (!isLohChallenge) return false;
+  if (gameState.week !== 5) return false;
+  if (gameState.twinShockConsumed) return false;
+  return gameState.players.some((player) => player.id === TWIN_SHOCK_LIA_ID && player.status === 'active');
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -401,6 +411,15 @@ export const startChallenge =
         default:
           gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           break;
+      }
+    }
+
+    // Twin Shock hint override: on Day 5 LOH, force Find your twin whenever
+    // Lia is still active and the twist has not been resolved yet.
+    if (shouldForceTwinShockHintGame(state, opts.prizeType)) {
+      const hintGame = getGame('castleRescue');
+      if (hintGame) {
+        gameEntry = hintGame;
       }
     }
 
