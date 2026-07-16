@@ -123,6 +123,76 @@ describe('Capitalization AI and eliminations', () => {
     expect(second).toEqual(first);
   });
 
+  it('uses a hint as the fallback when an AI cannot recall a very hard capital', () => {
+    const oceaniaCountry = CAPITALIZATION_COUNTRIES_BY_CONTINENT.Oceania
+      .find((country) => country.difficulty === 5);
+    if (!oceaniaCountry) throw new Error('Very hard Oceania fixture missing');
+
+    const rolls = [
+      0.99, // recall fails against the 10% difficulty-five chance
+      0.96, // still uses the 97% fallback hint chance
+      0.2,  // recognizes the answer among the three hint options
+      0.5,  // hint decision time
+      0.5,  // base response time
+      0.5,  // final response-time variation
+    ];
+    const performance = simulateCapitalizationAiPerformance(
+      {
+        participant: {
+          id: 'ai-hinter',
+          name: 'AI Hinter',
+          isHuman: false,
+          precomputedScore: 55,
+        },
+        question: {
+          ...oceaniaCountry,
+          continent: 'Oceania',
+          questionNumber: 1,
+        },
+      },
+      () => rolls.shift() ?? 0.5,
+    );
+
+    expect(performance).toMatchObject({
+      guessed: true,
+      attempts: 1,
+      hintUsed: true,
+    });
+    expect(computeCapitalizationQuestionScore(performance)).toBeGreaterThan(0);
+  });
+
+  it('does not make the three-option hint an automatic correct answer', () => {
+    const oceaniaCountry = CAPITALIZATION_COUNTRIES_BY_CONTINENT.Oceania
+      .find((country) => country.difficulty === 5);
+    if (!oceaniaCountry) throw new Error('Very hard Oceania fixture missing');
+
+    const rolls = [0.99, 0.1, 0.99, 0.5, 0.5, 0.5];
+    const performance = simulateCapitalizationAiPerformance(
+      {
+        participant: {
+          id: 'ai-misses-hint',
+          name: 'AI Misses Hint',
+          isHuman: false,
+          precomputedScore: 55,
+        },
+        question: {
+          ...oceaniaCountry,
+          continent: 'Oceania',
+          questionNumber: 1,
+        },
+      },
+      () => rolls.shift() ?? 0.5,
+    );
+
+    expect(performance).toMatchObject({
+      guessed: false,
+      attempts: 1,
+      skipped: false,
+      hintUsed: true,
+    });
+    expect(computeCapitalizationQuestionScore(performance)).toBe(0);
+  });
+
   it('eliminates roughly thirty percent of the lowest-scoring AI players and preserves the human', () => {
     const participants = [
       { id: 'human', name: 'You', isHuman: true, precomputedScore: 0 },
