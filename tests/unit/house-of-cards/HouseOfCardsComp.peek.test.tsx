@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HouseOfCardsComp from '../../../src/components/HouseOfCardsComp/HouseOfCardsComp';
 import {
   buildHouseOfCardsBoard,
+  chooseHouseOfCardsAiPair,
   chooseHouseOfCardsFinalWinner,
 } from '../../../src/components/HouseOfCardsComp/houseOfCardsUtils';
 import houseOfCardsReducer, {
@@ -100,5 +101,23 @@ describe('HouseOfCardsComp — five-round tournament', () => {
       { alice: 7, bob: 7 },
       { alice: 100, bob: 900 },
     )).toBe('bob');
+  });
+
+  it('makes a finalist discover a fresh board instead of reading hidden matches', () => {
+    const board = buildHouseOfCardsBoard(2026, 12);
+    let firstTurnMatches = 0;
+
+    for (let seed = 1; seed <= 120; seed += 1) {
+      const pair = chooseHouseOfCardsAiPair({
+        board,
+        rememberedIndexes: new Set(),
+        seed,
+        skill: 60,
+      });
+      expect(pair).not.toBeNull();
+      if (pair && board[pair[0]].symbol === board[pair[1]].symbol) firstTurnMatches += 1;
+    }
+
+    expect(firstTurnMatches).toBeLessThan(25);
   });
 });
