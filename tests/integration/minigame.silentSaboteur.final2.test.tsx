@@ -182,6 +182,7 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     expect(votingPanel.textContent).not.toMatch(/\bVictim\b/);
     expect(votingPanel.textContent).not.toMatch(/\bSaboteur\b/);
     expect(votingPanel.textContent).not.toMatch(/\bSuspect\b/);
+    expect(screen.getByRole('button', { name: 'Open Round History' })).toBeInTheDocument();
   });
 
   it('does not show any Continue-style cinematic CTA during active FINAL2_VOTING', async () => {

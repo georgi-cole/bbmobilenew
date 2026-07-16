@@ -34,6 +34,8 @@ import {
   resolveFinal2,
   noJuryFallbackWinner,
   buildAiJuryVotes,
+  pickVictimForAi,
+  pickVoteForAiOrAbstain,
 } from './helpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,6 +64,16 @@ export interface RevealInfo {
   victimId: string;
   /** The player who received the most votes (or was designated via Victim Override). */
   accusedId: string;
+  votes: Record<string, string>;
+}
+
+export interface SilentSaboteurRoundHistoryEntry {
+  round: number;
+  victimId: string;
+  saboteurId: string;
+  accusedId: string;
+  eliminatedId: string;
+  reason: EliminationReason;
   votes: Record<string, string>;
 }
 
@@ -94,6 +106,8 @@ export interface SilentSaboteurState {
 
   /** Reveal metadata for the UI. */
   revealInfo: RevealInfo | null;
+  /** Completed rounds, retained after ephemeral round state is cleared. */
+  roundHistory: SilentSaboteurRoundHistoryEntry[];
 
   /** Set when the game reaches final-2 with no jury players. */
   noJuryFallback: boolean;
@@ -127,6 +141,7 @@ const initialState: SilentSaboteurState = {
   final2TieBreakVote: null,
 
   revealInfo: null,
+  roundHistory: [],
 
   noJuryFallback: false,
 
@@ -227,29 +242,18 @@ const silentSaboteurSlice = createSlice({
     // ── Advance from reveal ────────────────────────────────────────────────────
     advanceReveal(state) {
       if (state.phase !== 'reveal') return;
-      const remaining = state.activeIds.length;
-      if (remaining === 1) {
-        // Winner determined
-        state.winnerId = state.activeIds[0];
-        state.phase = 'winner';
-      } else if (remaining === 2) {
-        _startFinal2(state);
-      } else {
-        state.phase = 'round_transition';
-      }
+      _advanceAfterReveal(state);
     },
 
     // ── Start next round (from round_transition) ──────────────────────────────
     startNextRound(state) {
       if (state.phase !== 'round_transition') return;
-      // Clear round ephemeral state
-      state.saboteurId = null;
-      state.victimId = null;
-      state.votes = {};
-      state.revealInfo = null;
-      state.round += 1;
-      state.phase = 'select_saboteur';
-      _assignSaboteur(state);
+      _startNextRound(state);
+    },
+
+    /** Resolve every remaining AI-only round immediately and stop on the winner screen. */
+    fastForwardSilentSaboteur(state) {
+      _fastForwardToWinner(state);
     },
 
     // ── Submit jury vote (final-2) ────────────────────────────────────────────
@@ -350,7 +354,83 @@ function _resolveVotingPhase(state: SilentSaboteurState) {
     accusedId,
     votes: { ...votes },
   };
+  state.roundHistory.push({
+    round: state.round + 1,
+    victimId,
+    saboteurId,
+    accusedId,
+    eliminatedId,
+    reason,
+    votes: { ...votes },
+  });
   state.phase = 'reveal';
+}
+
+function _advanceAfterReveal(state: SilentSaboteurState) {
+  const remaining = state.activeIds.length;
+  if (remaining === 1) {
+    state.winnerId = state.activeIds[0];
+    state.phase = 'winner';
+  } else if (remaining === 2) {
+    _startFinal2(state);
+  } else {
+    state.phase = 'round_transition';
+  }
+}
+
+function _startNextRound(state: SilentSaboteurState) {
+  state.saboteurId = null;
+  state.victimId = null;
+  state.votes = {};
+  state.revealInfo = null;
+  state.round += 1;
+  state.phase = 'select_saboteur';
+  _assignSaboteur(state);
+}
+
+function _fastForwardToWinner(state: SilentSaboteurState) {
+  for (let guard = 0; guard < 100 && state.phase !== 'winner' && state.phase !== 'complete'; guard++) {
+    if (state.phase === 'reveal') {
+      _advanceAfterReveal(state);
+    } else if (state.phase === 'round_transition') {
+      _startNextRound(state);
+    } else if (state.phase === 'select_victim' && state.saboteurId) {
+      const victimId = pickVictimForAi(state.seed, state.round, state.saboteurId, state.activeIds);
+      state.victimId = victimId;
+      state.votes = {};
+      state.phase = 'voting';
+    } else if (state.phase === 'voting' && state.victimId) {
+      for (const voterId of state.activeIds) {
+        const accusedId = pickVoteForAiOrAbstain(
+          state.seed,
+          state.round,
+          voterId,
+          state.activeIds,
+          state.victimId,
+        );
+        if (accusedId !== null) state.votes[voterId] = accusedId;
+      }
+      _resolveVotingPhase(state);
+    } else if (
+      state.phase === 'final2_jury' &&
+      state.final2SaboteurId &&
+      state.final2VictimId
+    ) {
+      const missingJurors = state.eliminatedIds.filter((id) => state.juryVotes[id] === undefined);
+      Object.assign(
+        state.juryVotes,
+        buildAiJuryVotes(
+          state.seed,
+          missingJurors,
+          state.final2SaboteurId,
+          state.final2VictimId,
+        ),
+      );
+      _resolveFinal2Phase(state);
+    } else {
+      break;
+    }
+  }
 }
 
 /** Set up the Final-2 Jury Deduction Finale. */
@@ -427,6 +507,7 @@ export const {
   endVotingPhase,
   advanceReveal,
   startNextRound,
+  fastForwardSilentSaboteur,
   submitJuryVote,
   advanceWinner,
   markSilentSaboteurOutcomeResolved,
