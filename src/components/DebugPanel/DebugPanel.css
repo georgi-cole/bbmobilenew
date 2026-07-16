@@ -239,6 +239,76 @@
   background: rgba(180 20 20 / 0.4);
 }
 
+/* In-panel minigame picker. Native select popups are unreliable in some
+   Android WebViews/emulators, so keep the complete interaction in the drawer. */
+.dbg-minigame-picker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+.dbg-minigame-picker__label {
+  color: #ccc;
+  font-size: 0.8rem;
+}
+.dbg-minigame-picker__trigger {
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid #777;
+  border-radius: 5px;
+  background: #222;
+  color: #eee;
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+}
+.dbg-minigame-picker__trigger span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dbg-minigame-picker__options {
+  grid-column: 1 / -1;
+  max-height: min(18rem, 45dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  border: 1px solid rgba(255 255 255 / 0.18);
+  border-radius: 6px;
+  background: #151522;
+}
+.dbg-minigame-picker__option {
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #e0e0f0;
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+}
+.dbg-minigame-picker__option + .dbg-minigame-picker__option {
+  border-top: 1px solid rgba(255 255 255 / 0.06);
+}
+.dbg-minigame-picker__option[aria-selected='true'] {
+  background: #16213e;
+  color: #fff;
+}
+.dbg-minigame-picker__option:active {
+  background: #0f3460;
+}
+
 /* Hide on very small screens (phones in portrait) by tucking behind toggle */
 @media (max-width: 360px) {
   .dbg-panel {
