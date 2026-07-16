@@ -75,4 +75,23 @@ describe('BlackjackTournamentComp styles', () => {
     const actionDeclarations = getRuleDeclarations(css, '.bjt-league-results > .bjt-btn--continue');
     expect(actionDeclarations['flex']).toBe('0 0 auto');
   });
+
+  it('keeps the final Continue action above an embedded, scrollable roster', () => {
+    const css = readFileSync(
+      resolve(process.cwd(), 'src/components/BlackjackTournamentComp/BlackjackTournamentComp.css'),
+      'utf8',
+    );
+
+    const placements = getRuleDeclarations(css, '.bjt-complete .minigame-placement-list');
+    expect(placements.flex).toBe('1 1 auto');
+    expect(placements['min-height']).toBe('0');
+    expect(placements['overflow-y']).toBe('auto');
+
+    const continueArea = getRuleDeclarations(css, '.bjt-complete .minigame-continue-area');
+    expect(continueArea.position).toBe('relative');
+    expect(continueArea.flex).toBe('0 0 auto');
+
+    const roster = getRuleDeclarations(css, '.bjt-complete .bjt-roster-wrap');
+    expect(roster.position).toBe('static');
+  });
 });
