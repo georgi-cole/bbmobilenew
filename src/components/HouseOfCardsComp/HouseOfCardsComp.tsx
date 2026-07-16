@@ -468,6 +468,14 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
   const humanCanPlay = !isFinal || finalTurnId === humanId;
   return (
     <div className="hoc-root" data-phase={phase}>
+      <div className="hoc-atmosphere" aria-hidden="true">
+        <span /><span /><span />
+      </div>
+      <header className="hoc-game-heading">
+        <span className="hoc-game-heading__kicker">Memory tournament</span>
+        <strong>House of Cards</strong>
+        <span>Reveal the deck. Match every pair.</span>
+      </header>
       <div className="hoc-hud">
         <div className="hoc-hud-stat"><strong>Round {round}/5</strong><span>{tileCount} tiles</span></div>
         <div className="hoc-hud-stat"><strong>{elapsedSeconds}s</strong><span>Elapsed · no limit</span></div>
@@ -484,7 +492,7 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
         </div>
       )}
 
-      <div className="hoc-board-wrap">
+      <div className="hoc-board-wrap" data-round={round}>
         <div className="hoc-board" style={boardStyle} role="grid" aria-label={isFinal ? 'Shared final card grid' : `Round ${round} card grid`}>
           {board.map((card) => (
             <button
@@ -500,7 +508,14 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
               aria-label={card.isFlipped || card.isMatched ? card.symbol : 'Hidden card'}
             >
               <span className="hoc-card-inner">
-                <span className="hoc-card-face hoc-card-back"><span className="hoc-card-back-pattern" /></span>
+                <span className="hoc-card-face hoc-card-back">
+                  <span className="hoc-card-back-pattern" />
+                  <svg className="hoc-card-eye" viewBox="0 0 24 24" aria-hidden="true">
+                    <ellipse cx="12" cy="12" rx="10" ry="6" />
+                    <circle cx="12" cy="12" r="3" />
+                    <circle cx="12" cy="12" r="1.2" className="hoc-card-eye-pupil" />
+                  </svg>
+                </span>
                 <span className="hoc-card-face hoc-card-front">{card.symbol}</span>
               </span>
             </button>
