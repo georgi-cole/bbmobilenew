@@ -38,6 +38,17 @@ describe('TrapAuction component', () => {
     expect(screen.queryByRole('button', { name: /next round/i })).not.toBeInTheDocument();
   });
 
+  it('uses the compact reveal-only layout when the bids are shown', async () => {
+    vi.useFakeTimers();
+
+    render(<TrapAuction participants={participants} seed={42} autoStart />);
+
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: /lock in/i }));
+
+    expect(screen.getByText(/the bids are in/i).closest('.ta-main--reveal')).toBeInTheDocument();
+  });
+
   it('auto-advances through reveal to elimination without any user interaction', async () => {
     vi.useFakeTimers();
 

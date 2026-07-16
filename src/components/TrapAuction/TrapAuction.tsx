@@ -316,7 +316,7 @@ export default function TrapAuction({
       </div>
 
       {/* ── Phase content ── */}
-      <main className="ta-main">
+      <main className={`ta-main ${state.phase === 'reveal' ? 'ta-main--reveal' : ''}`}>
         {state.phase === 'intro' && renderIntro()}
         {state.phase === 'bid' && renderBid()}
         {state.phase === 'reveal' && renderReveal()}

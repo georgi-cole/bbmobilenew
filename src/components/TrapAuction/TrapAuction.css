@@ -510,12 +510,14 @@
 
 /* ─── Reveal Phase ───────────────────────────────────────────────────────────── */
 
-.ta-reveal-phase {
+.ta-main--reveal .ta-reveal-phase {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 16px;
   flex: 1;
+  padding-block: clamp(12px, 5vh, 40px);
 }
 
 .ta-reveal-phase__title {
