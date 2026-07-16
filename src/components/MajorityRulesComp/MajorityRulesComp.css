@@ -747,6 +747,74 @@ button.majority-rules-player-card:hover {
   text-align: center;
 }
 
+.majority-rules-aggregation {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.majority-rules-aggregation__row {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.majority-rules-aggregation__row.is-majority {
+  border-color: rgba(74, 222, 128, 0.55);
+  background: rgba(22, 101, 52, 0.16);
+}
+
+.majority-rules-aggregation__row.is-minority {
+  border-color: rgba(248, 113, 113, 0.58);
+  background: rgba(127, 29, 29, 0.16);
+}
+
+.majority-rules-aggregation__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.majority-rules-aggregation__label strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.majority-rules-aggregation__label span {
+  flex: 0 0 auto;
+  color: var(--majority-rules-muted, #a8b4ca);
+}
+
+.majority-rules-aggregation__track {
+  height: 0.35rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.majority-rules-aggregation__track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa);
+}
+
+.majority-rules-aggregation__row.is-majority .majority-rules-aggregation__track span {
+  background: linear-gradient(90deg, #22c55e, #86efac);
+}
+
+.majority-rules-aggregation__row.is-minority .majority-rules-aggregation__track span {
+  background: linear-gradient(90deg, #ef4444, #fca5a5);
+}
+
 @media (max-width: 420px) {
   .majority-rules-spectator-actions {
     grid-template-columns: minmax(0, 1fr);

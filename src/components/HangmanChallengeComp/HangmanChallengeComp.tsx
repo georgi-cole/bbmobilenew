@@ -18,6 +18,7 @@ import {
   type ScoreLineItem,
 } from './hangmanChallengeEngine';
 import './HangmanChallengeComp.css';
+import { sanitizeVerdictBoardLetterInput } from './verdictBoardInput';
 
 const TOTAL_ROUNDS = 5;
 const MAX_ERRORS = 7;
@@ -212,10 +213,6 @@ function formatAdjustment(value: number): string {
   return `${value >= 0 ? '+' : ''}${value}`;
 }
 
-function sanitizeLetterInput(value: string): string {
-  return value.toUpperCase().replace(/[^A-Z]/g, '').slice(-1);
-}
-
 export default function HangmanChallengeComp({
   onFinish,
   seed = 0,
@@ -296,7 +293,7 @@ export default function HangmanChallengeComp({
         : roundState.wrongCount >= 2
           ? 'linear-gradient(180deg, rgba(255, 214, 120, 0.96), rgba(227, 128, 70, 0.92))'
           : 'linear-gradient(180deg, rgba(111, 220, 255, 0.94), rgba(53, 135, 224, 0.9))';
-  const normalizedInput = sanitizeLetterInput(letterInput);
+  const normalizedInput = sanitizeVerdictBoardLetterInput(letterInput);
   const inputIsUsed = normalizedInput.length > 0
     && (roundState.guessedLetters.includes(normalizedInput) || roundState.wrongLetters.includes(normalizedInput));
   const inputIsDisabled = normalizedInput.length > 0 && roundState.disabledLetters.includes(normalizedInput);
@@ -762,7 +759,7 @@ export default function HangmanChallengeComp({
   }, [canSubmitInput, guessLetter, normalizedInput]);
 
   const handleLetterInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setLetterInput(sanitizeLetterInput(event.target.value));
+    setLetterInput(sanitizeVerdictBoardLetterInput(event.target.value));
   }, []);
 
   const handleLetterInputSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {

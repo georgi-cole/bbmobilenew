@@ -586,6 +586,44 @@
 .bjt-complete {
   gap: 1rem;
   position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bjt-complete .minigame-complete {
+  position: relative;
+  inset: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.bjt-complete .minigame-placement-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bjt-complete .minigame-continue-area {
+  position: relative;
+  bottom: auto;
+  flex: 0 0 auto;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.bjt-complete .bjt-roster-wrap {
+  position: static;
+  width: 100%;
+}
+
+.bjt-complete .bjt-roster {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0.75rem;
 }
 
 .bjt-confetti,

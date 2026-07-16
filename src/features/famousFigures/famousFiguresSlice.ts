@@ -151,11 +151,11 @@ function hashFamousFiguresAiId(value: string): number {
 }
 
 const AI_DIFFICULTY_PROFILE: Record<FigureDifficulty, { solveChance: number; expectedClue: number }> = {
-  very_easy: { solveChance: 0.88, expectedClue: 1.45 },
-  easy: { solveChance: 0.78, expectedClue: 2.2 },
-  medium: { solveChance: 0.62, expectedClue: 3.15 },
-  hard: { solveChance: 0.43, expectedClue: 4.1 },
-  very_hard: { solveChance: 0.27, expectedClue: 4.85 },
+  very_easy: { solveChance: 0.88, expectedClue: 2.15 },
+  easy: { solveChance: 0.78, expectedClue: 2.65 },
+  medium: { solveChance: 0.62, expectedClue: 3.35 },
+  hard: { solveChance: 0.43, expectedClue: 4.2 },
+  very_hard: { solveChance: 0.27, expectedClue: 4.9 },
 };
 
 function clampAiValue(value: number, min: number, max: number): number {
@@ -183,7 +183,7 @@ export function getFamousFiguresAiPlan(
   const hesitation = rng() < 0.11 ? 0.8 + rng() * 1.7 : 0;
   const clueNumber = Math.round(clampAiValue(
     profile.expectedClue + knowledgeShift + naturalVariation + hesitation,
-    1,
+    2,
     6,
   ));
   const reactionDelay =
@@ -192,7 +192,7 @@ export function getFamousFiguresAiPlan(
     (0.9 - knowledge) * 2100 +
     rng() * 2600 +
     (rng() < 0.08 ? 1800 + rng() * 2400 : 0);
-  return { clueNumber, delayMs: Math.round(clampAiValue(reactionDelay, 900, 9500)) };
+  return { clueNumber, delayMs: Math.round(clampAiValue(reactionDelay, 1800, 9500)) };
 }
 
 /** FNV-1a 32-bit hash — stable string → uint32. */

@@ -766,6 +766,11 @@ export default function MajorityRulesComp({
       game.currentQuestion?.options
         .filter((option) => reveal?.result.tiedOptionIds.includes(option.id))
         .map((option) => option.text) ?? [];
+    const distribution = reveal?.result.distribution ?? {};
+    const totalVotes = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+    const populatedCounts = Object.values(distribution).filter((count) => count > 0);
+    const highestCount = populatedCounts.length > 0 ? Math.max(...populatedCounts) : 0;
+    const lowestCount = populatedCounts.length > 0 ? Math.min(...populatedCounts) : 0;
 
     return (
       <motion.div
@@ -805,6 +810,36 @@ export default function MajorityRulesComp({
                    : 'The minority has been eliminated.'}
           </p>
         </div>
+
+        {game.currentQuestion && totalVotes > 0 && (
+          <div className="majority-rules-aggregation" aria-label="Vote aggregation">
+            {game.currentQuestion.options.map((option) => {
+              const count = distribution[option.id] ?? 0;
+              const percentage = Math.round((count / totalVotes) * 100);
+              const tiedBallot = highestCount === lowestCount;
+              const status = count === 0
+                ? 'No votes'
+                : tiedBallot
+                  ? 'Tied'
+                  : count === highestCount
+                    ? 'Majority'
+                    : count === lowestCount
+                      ? 'Minority'
+                      : 'Middle';
+              return (
+                <div key={option.id} className={`majority-rules-aggregation__row is-${status.toLowerCase().replace(' ', '-')}`}>
+                  <div className="majority-rules-aggregation__label">
+                    <strong>{option.label}. {option.text}</strong>
+                    <span>{status} · {count}/{totalVotes} ({percentage}%)</span>
+                  </div>
+                  <div className="majority-rules-aggregation__track" aria-hidden="true">
+                    <span style={{ width: `${percentage}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {eliminated.length > 0 && (
           <div className="majority-rules-eliminated-grid" aria-label="Eliminated players">
