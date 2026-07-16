@@ -161,12 +161,18 @@ export default function DebugPanel() {
   const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true;
   const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname);
 
+  if (!isDebug) return null;
+
+  return <DebugPanelContent searchParams={searchParams} />;
+}
+
+function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
   const incomingLogs = useAppSelector(selectIncomingInteractionLogs);
 
-  const [isOpen, setIsOpen] = useState(() => isDebug);
+  const [isOpen, setIsOpen] = useState(true);
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
   const [selectedHoH, setSelectedHoH] = useState('');
   const [nominee1, setNominee1] = useState('');
@@ -175,8 +181,6 @@ export default function DebugPanel() {
   const [selectedStatusPlayer, setSelectedStatusPlayer] = useState('');
   const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
   const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
-
-  if (!isDebug) return null;
 
   const alive = game.players.filter(
     (p) => p.status !== 'evicted' && p.status !== 'jury',

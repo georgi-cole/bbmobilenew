@@ -20,7 +20,13 @@ function getAvatarUrls(): string[] {
   );
 }
 
-export default function AssetPreloaderOverlay() {
+interface AssetPreloaderOverlayProps {
+  destination?: string;
+}
+
+export default function AssetPreloaderOverlay({
+  destination = '/game',
+}: AssetPreloaderOverlayProps) {
   const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Opening the competition arena.');
@@ -48,14 +54,14 @@ export default function AssetPreloaderOverlay() {
       if (cancelled || doneFiredRef.current) return;
       doneFiredRef.current = true;
       setStatus('Entering the house.');
-      navigate('/game');
+      navigate(destination);
     }
 
     void run();
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [destination, navigate]);
 
   return (
     <KolequantSplash

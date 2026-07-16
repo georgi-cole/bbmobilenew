@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import DebugPanel from '../DebugPanel'
 import gameReducer from '../../../store/gameSlice'
@@ -26,6 +26,35 @@ function makeStore() {
 }
 
 describe('DebugPanel forced shock controls', () => {
+  it('opens when the mounted app navigates into debug mode', async () => {
+    const user = userEvent.setup()
+    const store = makeStore()
+
+    function DebugRouteHarness() {
+      const navigate = useNavigate()
+      return (
+        <>
+          <button type="button" onClick={() => navigate('/game?debug=1&qa=1')}>
+            Enter debug game
+          </button>
+          <DebugPanel />
+        </>
+      )
+    }
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/']}>
+          <DebugRouteHarness />
+        </MemoryRouter>
+      </Provider>,
+    )
+
+    expect(screen.queryByRole('complementary', { name: 'Debug Panel' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Enter debug game' }))
+    expect(screen.getByRole('complementary', { name: 'Debug Panel' })).toBeInTheDocument()
+  })
+
   it('can place a player in the Tribunal for battle-back testing', async () => {
     const user = userEvent.setup()
     const store = makeStore()
