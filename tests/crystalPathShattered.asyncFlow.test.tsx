@@ -4,6 +4,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import CrystalPathShatteredGame from '../src/minigames/crystalPathShattered/CrystalPathShatteredGame';
 import {
+  CATASTROPHE_STEP_MS,
   SAFE_STEP_MS,
   WRONG_STEP_MS,
   createRowStream,
@@ -165,7 +166,7 @@ describe('Crystal Path: Infinity async flow', () => {
       );
 
       await act(async () => {
-        vi.advanceTimersByTime(WRONG_STEP_MS + 20);
+        vi.advanceTimersByTime(CATASTROPHE_STEP_MS + 20);
       });
     }
 
@@ -204,7 +205,7 @@ describe('Crystal Path: Infinity async flow', () => {
       );
 
       await act(async () => {
-        vi.advanceTimersByTime(WRONG_STEP_MS + 20);
+        vi.advanceTimersByTime(CATASTROPHE_STEP_MS + 20);
       });
 
       if (screen.queryByLabelText('Crystal Path: Infinity — complete')) break;

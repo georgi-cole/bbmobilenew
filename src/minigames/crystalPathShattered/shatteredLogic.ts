@@ -46,6 +46,8 @@ export const VISIBLE_ROW_WINDOW = 8;
 /** Turn pacing. */
 export const SAFE_STEP_MS = 420;
 export const WRONG_STEP_MS = 720;
+/** Extended only for a lethal SP loss so the full bridge collapse has room to land. */
+export const CATASTROPHE_STEP_MS = 1_600;
 export const MYSTERY_REVEAL_MS = 2_400;
 export const AI_MIN_THINK_MS = 320;
 export const AI_MAX_THINK_MS = 1_300;
