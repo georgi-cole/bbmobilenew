@@ -19,6 +19,10 @@
   align-content: center;
 }
 
+.majority-rules-shell[data-phase='reveal'] {
+  align-content: center;
+}
+
 .majority-rules-ambient {
   position: absolute;
   inset: auto;
@@ -460,9 +464,9 @@ button.majority-rules-player-card:hover {
 
 .majority-rules-option {
   border-radius: 22px;
-  padding: 1rem 1rem 0.95rem;
+  padding: 0.78rem 1rem;
   display: grid;
-  gap: 0.22rem;
+  gap: 0.1rem;
   text-align: left;
 }
 
@@ -647,6 +651,39 @@ button.majority-rules-player-card:hover {
   box-shadow: 0 12px 28px rgba(194, 65, 12, 0.2);
 }
 
+.majority-rules-card--question {
+  gap: 0.72rem;
+}
+
+.majority-rules-card--question .majority-rules-header-copy,
+.majority-rules-card--question .majority-rules-hints {
+  gap: 0.5rem;
+}
+
+.majority-rules-card--question .majority-rules-options {
+  gap: 0.55rem;
+}
+
+.majority-rules-card--question .majority-rules-hint-actions {
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+}
+
+.majority-rules-card--question .majority-rules-pill {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: 0.55rem;
+  white-space: nowrap;
+}
+
+.majority-rules-card--question .majority-rules-footer:empty {
+  display: none;
+}
+
+.majority-rules-card--reveal {
+  align-self: center;
+}
+
 .majority-rules-secondary {
   justify-self: stretch;
   border-radius: 18px;
@@ -772,6 +809,10 @@ body.no-animations .majority-rules-avatar-chip--pulse .majority-rules-portrait {
     border-radius: 22px;
   }
 
+  .majority-rules-card--question {
+    padding: 0.82rem;
+  }
+
   .majority-rules-badge-row,
   .majority-rules-hint-actions,
   .majority-rules-number-picker {
@@ -823,6 +864,11 @@ body.no-animations .majority-rules-avatar-chip--pulse .majority-rules-portrait {
   .majority-rules-section-title {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .majority-rules-section-title--hints {
+    align-items: baseline;
+    flex-direction: row;
   }
 
   .majority-rules-primary {
