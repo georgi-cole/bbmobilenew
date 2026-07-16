@@ -67,7 +67,7 @@ describe('Registry — dontGoOver entry', () => {
 // ── Slice initialisation ──────────────────────────────────────────────────────
 
 describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
-  it('transitions status to mass_input', () => {
+  it('starts three participants directly in the three-life final', () => {
     const store = makeStore();
     store.dispatch(
       startCwgoCompetition({
@@ -76,7 +76,9 @@ describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
         seed: 42,
       }),
     );
-    expect(store.getState().cwgo.status).toBe('mass_input');
+    expect(store.getState().cwgo.status).toBe('choose_duel');
+    expect(store.getState().cwgo.stage).toBe('final');
+    expect(store.getState().cwgo.playerScores).toEqual({ alice: 3, bob: 3, carol: 3 });
   });
 
   it('stores prizeType and seed', () => {
@@ -106,7 +108,7 @@ describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
     const { cwgo } = store.getState();
     expect(cwgo.guesses).toEqual({});
     expect(cwgo.revealResults).toHaveLength(0);
-    expect(cwgo.duelPair).toBeNull();
+    expect(cwgo.duelPair).toEqual(['a', 'b']);
   });
 
   it('sets a valid questionIdx within CWGO_QUESTIONS bounds', () => {

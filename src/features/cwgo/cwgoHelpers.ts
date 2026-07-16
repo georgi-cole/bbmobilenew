@@ -19,6 +19,8 @@ export interface CwgoResult {
   /** Whether the guess went over the answer. */
   wentOver: boolean;
   isWinner: boolean;
+  /** Time from the fully displayed question to submission. */
+  responseTimeMs?: number;
 }
 
 // ─── AI Guess Generator ───────────────────────────────────────────────────────
@@ -94,10 +96,28 @@ export function aiSkillRangeForDifficulty(difficulty: number): { min: number; ma
   }
 }
 
-/** Chance that an AI knows the exact answer before estimation noise is applied. */
-export function aiExactAnswerProbability(difficulty: number): number {
+/**
+ * Produce a deterministic but human-like AI response time. Each player has a
+ * stable speed tendency, while question difficulty and round-level jitter keep
+ * their timing from looking robotic.
+ */
+export function generateAIResponseTimeMs(
+  difficulty: number,
+  seed: number,
+  playerId: string,
+  round: number,
+): number {
   const d = Math.max(1, Math.min(5, Math.round(difficulty)));
-  return [0.999, 0.9, 0.5, 0.28, 0.12][d - 1];
+  let idHash = 2166136261;
+  for (let index = 0; index < playerId.length; index += 1) {
+    idHash ^= playerId.charCodeAt(index);
+    idHash = Math.imul(idHash, 16777619);
+  }
+  const traitRng = mulberry32((idHash ^ 0x51f15e) >>> 0);
+  const roundRng = mulberry32((seed ^ idHash ^ Math.imul(round + 1, 0x6d2b79f5)) >>> 0);
+  const speedTrait = 0.78 + traitRng() * 0.48;
+  const thinkingMs = (1_700 + d * 720 + roundRng() * (1_900 + d * 520)) * speedTrait;
+  return Math.round(Math.max(1_800, Math.min(13_500, thinkingMs)));
 }
 
 /**
@@ -117,32 +137,39 @@ export function difficultyLabel(difficulty: number): 'Very Easy' | 'Easy' | 'Med
  * Rules:
  *  1. Any guess that exceeds the answer ("goes over") is disqualified.
  *  2. Among non-disqualified guesses, the closest (highest without going over) wins.
- *  3. Ties are broken by the order of the guesses array (first entry wins).
- *  4. If ALL guesses went over, the lowest-over guess wins (safeguard).
+ *  3. Equal guesses are broken by faster response time.
+ *  4. If all guesses went over, the round is void and returns null.
  *
  * @returns The winning playerId, or null if entries array is empty.
  */
 export function computeWinnerClosestWithoutGoingOver(
   guesses: CwgoGuessEntry[],
   answer: number,
+  responseTimesMs: Record<string, number> = {},
+  tieSeed = 0,
 ): string | null {
   if (guesses.length === 0) return null;
 
   const valid = guesses.filter((g) => g.guess <= answer);
-  const pool = valid.length > 0 ? valid : guesses;
+  // A round where everyone went over is void and must be replayed.
+  if (valid.length === 0) return null;
 
-  let best = pool[0];
-  for (const entry of pool) {
-    if (valid.length > 0) {
-      // Closest without going over → highest valid guess wins
-      if (entry.guess > best.guess) best = entry;
-    } else {
-      // All went over → least over (smallest guess) wins
-      if (entry.guess < best.guess) best = entry;
-    }
-  }
-
-  return best.playerId;
+  const bestGuess = Math.max(...valid.map((entry) => entry.guess));
+  const tied = valid.filter((entry) => entry.guess === bestGuess);
+  return [...tied].sort((a, b) => {
+    const timeDiff = (responseTimesMs[a.playerId] ?? Number.MAX_SAFE_INTEGER)
+      - (responseTimesMs[b.playerId] ?? Number.MAX_SAFE_INTEGER);
+    if (timeDiff !== 0) return timeDiff;
+    const seededRank = (id: string) => {
+      let hash = tieSeed >>> 0;
+      for (let index = 0; index < id.length; index += 1) {
+        hash ^= id.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    };
+    return seededRank(a.playerId) - seededRank(b.playerId);
+  })[0]?.playerId ?? null;
 }
 
 // ─── Mass Elimination ─────────────────────────────────────────────────────────
@@ -152,10 +179,9 @@ export function computeWinnerClosestWithoutGoingOver(
  *
  * Elimination rule:
  *  - Players whose guess goes over are eliminated.
- *  - If no one goes over, the player(s) furthest from the answer (lowest guesses) are
- *    eliminated (bottom half, rounded down, minimum 1 eliminated when >2 alive).
- *  - If ALL go over, only the worst (furthest over) are eliminated (all except the
- *    least-over player(s)).
+ *  - If no one goes over, the furthest valid guess is eliminated. An exact tie
+ *    eliminates only the slower player.
+ *  - If all go over, nobody is eliminated and the question is redrawn.
  *
  * @param guesses  Array of guesses from all alive players.
  * @param answer   The true answer.
@@ -166,8 +192,10 @@ export function computeMassElimination(
   guesses: CwgoGuessEntry[],
   answer: number,
   aliveIds: string[],
-): { eliminated: string[]; surviving: string[] } {
-  if (guesses.length === 0) return { eliminated: [], surviving: [] };
+  responseTimesMs: Record<string, number> = {},
+  tieSeed = 0,
+): { eliminated: string[]; surviving: string[]; redraw: boolean } {
+  if (guesses.length === 0) return { eliminated: [], surviving: [], redraw: false };
 
   const overIds = guesses.filter((g) => g.guess > answer).map((g) => g.playerId);
 
@@ -175,28 +203,35 @@ export function computeMassElimination(
     // Some went over → eliminate those who went over
     const surviving = aliveIds.filter((id) => !overIds.includes(id));
     const eliminated = aliveIds.filter((id) => overIds.includes(id));
-    return { eliminated, surviving };
+    return { eliminated, surviving, redraw: false };
   }
 
   if (overIds.length === guesses.length) {
-    // All went over → eliminate all except the least-over (closest to answer from above)
-    const sorted = [...guesses].sort((a, b) => a.guess - b.guess);
-    const winnerIdWhenAllOver = sorted[0].playerId;
-    const eliminated = aliveIds.filter((id) => id !== winnerIdWhenAllOver);
-    const surviving = aliveIds.filter((id) => id === winnerIdWhenAllOver);
-    return { eliminated, surviving };
+    // Everyone missed the core rule, so discard the question without elimination.
+    return { eliminated: [], surviving: [...aliveIds], redraw: true };
   }
 
-  // No one went over → eliminate bottom half (furthest = lowest guesses)
-  const validGuesses = [...guesses].sort((a, b) => a.guess - b.guess); // ascending
-  const eliminateCount = Math.max(
-    1,
-    Math.floor(validGuesses.length / 2),
-  );
-  const eliminatedIds = validGuesses.slice(0, eliminateCount).map((g) => g.playerId);
-  const eliminated = aliveIds.filter((id) => eliminatedIds.includes(id));
-  const surviving = aliveIds.filter((id) => !eliminatedIds.includes(id));
-  return { eliminated, surviving };
+  // Nobody went over: the furthest valid guess is vulnerable. If several
+  // players made that exact guess, only the slowest submission is eliminated.
+  const lowestGuess = Math.min(...guesses.map((entry) => entry.guess));
+  const tiedFurthest = guesses.filter((entry) => entry.guess === lowestGuess);
+  const seededRank = (id: string) => {
+    let hash = tieSeed >>> 0;
+    for (let index = 0; index < id.length; index += 1) {
+      hash ^= id.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  };
+  const eliminatedId = [...tiedFurthest].sort((a, b) => {
+    const timeDiff = (responseTimesMs[b.playerId] ?? Number.MAX_SAFE_INTEGER)
+      - (responseTimesMs[a.playerId] ?? Number.MAX_SAFE_INTEGER);
+    if (timeDiff !== 0) return timeDiff;
+    return seededRank(a.playerId) - seededRank(b.playerId);
+  })[0]?.playerId;
+  const eliminated = eliminatedId ? [eliminatedId] : [];
+  const surviving = aliveIds.filter((id) => id !== eliminatedId);
+  return { eliminated, surviving, redraw: false };
 }
 
 // ─── Sorted Results for Reveal ────────────────────────────────────────────────
@@ -211,8 +246,10 @@ export function computeMassElimination(
 export function computeSortedResultsForReveal(
   guesses: CwgoGuessEntry[],
   answer: number,
+  responseTimesMs: Record<string, number> = {},
+  tieSeed = 0,
 ): CwgoResult[] {
-  const winnerId = computeWinnerClosestWithoutGoingOver(guesses, answer);
+  const winnerId = computeWinnerClosestWithoutGoingOver(guesses, answer, responseTimesMs, tieSeed);
 
   const results: CwgoResult[] = guesses.map((g) => {
     const diff = answer - g.guess;
@@ -223,12 +260,15 @@ export function computeSortedResultsForReveal(
       diff,
       wentOver,
       isWinner: g.playerId === winnerId,
+      responseTimeMs: responseTimesMs[g.playerId],
     };
   });
 
   return results.sort((a, b) => {
     if (a.isWinner !== b.isWinner) return a.isWinner ? -1 : 1;
     if (a.wentOver !== b.wentOver) return a.wentOver ? 1 : -1;
-    return Math.abs(a.diff) - Math.abs(b.diff);
+    const distance = Math.abs(a.diff) - Math.abs(b.diff);
+    if (distance !== 0) return distance;
+    return (a.responseTimeMs ?? Number.MAX_SAFE_INTEGER) - (b.responseTimeMs ?? Number.MAX_SAFE_INTEGER);
   });
 }

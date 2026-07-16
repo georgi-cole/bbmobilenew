@@ -24,13 +24,11 @@ import glassBridgeReducer from '../src/features/glassBridge/glassBridgeSlice';
 import cwgoReducer, {
   startCwgoCompetition,
   setGuesses,
-  revealMassResults,
-  confirmMassElimination,
-  startCwgoFinal,
   chooseDuelPair,
   revealDuelResults,
   confirmDuelElimination,
 } from '../src/features/cwgo/cwgoCompetitionSlice';
+import { CWGO_QUESTIONS } from '../src/features/cwgo/cwgoQuestions';
 import { resolveHoldTheWallOutcome } from '../src/features/holdTheWall/thunks';
 import { resolveCompetitionOutcome } from '../src/features/cwgo/thunks';
 import type { GameState, Player } from '../src/types';
@@ -229,19 +227,14 @@ describe('LOH comp last-place mismatch — CWGO (elimination tracking)', () => {
     expect(store.getState().cwgo.eliminationOrder).toEqual([]);
 
     // p0 goes over (999999 > any CWGO answer), p1 stays under → p0 eliminated
-    store.dispatch(setGuesses({ p0: 999999, p1: 0 }));
-    store.dispatch(revealMassResults());
-    store.dispatch(confirmMassElimination());
-    expect(store.getState().cwgo.status).toBe('league_results');
-    store.dispatch(startCwgoFinal());
-
     for (let loss = 0; loss < 3; loss += 1) {
-      store.dispatch(setGuesses({ p0: 999999, p1: 0 }));
-      store.dispatch(revealDuelResults());
-      store.dispatch(confirmDuelElimination());
-      if (loss < 2) {
+      if (store.getState().cwgo.status === 'choose_duel') {
         store.dispatch(chooseDuelPair(['p0', 'p1']));
       }
+      const answer = CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
+      store.dispatch(setGuesses({ p0: answer + 1, p1: Math.max(0, answer - 1) }));
+      store.dispatch(revealDuelResults());
+      store.dispatch(confirmDuelElimination());
     }
 
     // Verify CWGO reached 'complete' with p0 eliminated first

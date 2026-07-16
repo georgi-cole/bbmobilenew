@@ -16,7 +16,6 @@ import cwgoReducer, {
   setGuesses,
   revealMassResults,
   confirmMassElimination,
-  startCwgoFinal,
 } from '../../src/features/cwgo/cwgoCompetitionSlice';
 import { CWGO_QUESTIONS } from '../../src/features/cwgo/cwgoQuestions';
 
@@ -83,8 +82,8 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
     }));
     store.dispatch(revealMassResults());
     store.dispatch(confirmMassElimination());
-    expect(store.getState().cwgo.status).toBe('league_results');
-    store.dispatch(startCwgoFinal());
+    expect(store.getState().cwgo.status).toBe('choose_duel');
+    expect(store.getState().cwgo.stage).toBe('final');
 
     const finalState = store.getState().cwgo;
     expect(finalState.round).toBe(1);
