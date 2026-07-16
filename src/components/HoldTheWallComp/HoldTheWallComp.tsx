@@ -445,11 +445,27 @@ export default function HoldTheWallComp({
       {/* HUD */}
       <div className="htw-hud">
         <div className="htw-hud-stat">
-          <Hourglass
-            key={roundStartKey}
-            cycleDurationMs={7000}
-            running={htw.status === 'active'}
-          />
+          <div className="htw-hud-timer-row">
+            <Hourglass
+              key={roundStartKey}
+              cycleDurationMs={7000}
+              running={htw.status === 'active'}
+            />
+            {htw.status === 'active' && humanDropped && (
+              <button
+                type="button"
+                className="htw-fast-forward"
+                onClick={() => setFastForward(true)}
+                disabled={fastForwardActive}
+                aria-label={fastForwardActive ? 'Fast-forward 2x active' : 'Fast-forward 2x'}
+                aria-pressed={fastForwardActive}
+                title={fastForwardActive ? '2x speed active' : 'Fast-forward 2x'}
+              >
+                <span aria-hidden="true">⏩</span>
+                <span>2×</span>
+              </button>
+            )}
+          </div>
         </div>
         <div className="htw-hud-stat">
           <span className="htw-hud-label">Remaining</span>
@@ -532,15 +548,6 @@ export default function HoldTheWallComp({
       {htw.status === 'active' && humanDropped && (
         <div className="htw-spectating" data-testid="htw-spectating">
           <p>You dropped! Watching {remaining} player{remaining !== 1 ? 's' : ''} remaining…</p>
-          <button
-            type="button"
-            className="htw-fast-forward"
-            onClick={() => setFastForward(true)}
-            disabled={fastForwardActive}
-            aria-pressed={fastForwardActive}
-          >
-            {fastForwardActive ? '2x speed active' : 'Fast-forward 2x'}
-          </button>
           {/* Auto-drop feedback: shown when eliminated by the 2-second rule */}
           {isAutoDropped && (
             <p className="htw-auto-drop-notice" data-testid="htw-auto-drop-notice">
