@@ -11,7 +11,7 @@
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
-import type { FigureRow } from '../../games/famous-figures/model';
+import type { FigureDifficulty, FigureRow } from '../../games/famous-figures/model';
 import { isAcceptedGuess, normalizeForMatching } from '../../games/famous-figures/fuzzy';
 import figuresData from '../../games/famous-figures/data/famous_figures.json';
 
@@ -150,21 +150,49 @@ function hashFamousFiguresAiId(value: string): number {
   return hash >>> 0;
 }
 
+const AI_DIFFICULTY_PROFILE: Record<FigureDifficulty, { solveChance: number; expectedClue: number }> = {
+  very_easy: { solveChance: 0.88, expectedClue: 1.45 },
+  easy: { solveChance: 0.78, expectedClue: 2.2 },
+  medium: { solveChance: 0.62, expectedClue: 3.15 },
+  hard: { solveChance: 0.43, expectedClue: 4.1 },
+  very_hard: { solveChance: 0.27, expectedClue: 4.85 },
+};
+
+function clampAiValue(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/** Stable general-knowledge profile so AI contestants do not feel interchangeable. */
+export function getFamousFiguresAiKnowledge(aiId: string): number {
+  const rng = mulberry32(hashFamousFiguresAiId(aiId) ^ 0xa511e9b3);
+  return 0.38 + rng() * 0.52;
+}
+
 /** Deterministic clue and reaction delay used for live and fast-forwarded AI guesses. */
 export function getFamousFiguresAiPlan(
   seed: number,
   round: number,
   aiId: string,
-  difficulty: 'easy' | 'medium' | 'hard',
+  difficulty: FigureDifficulty,
 ): { clueNumber: number; delayMs: number } {
   const rng = mulberry32((seed ^ hashFamousFiguresAiId(aiId) ^ Math.imul(round + 1, 0x9e3779b9)) >>> 0);
-  const roll = rng();
-  let clueNumber: number;
-  if (difficulty === 'easy' && roll < 0.08) clueNumber = 1;
-  else if (difficulty === 'easy') clueNumber = roll < 0.68 ? 2 : roll < 0.88 ? 3 : roll < 0.97 ? 4 : 5;
-  else if (difficulty === 'medium') clueNumber = roll < 0.56 ? 2 : roll < 0.82 ? 3 : roll < 0.95 ? 4 : 5;
-  else clueNumber = roll < 0.36 ? 2 : roll < 0.66 ? 3 : roll < 0.88 ? 4 : 5;
-  return { clueNumber, delayMs: 1800 + Math.round(rng() * 4800) };
+  const profile = AI_DIFFICULTY_PROFILE[difficulty];
+  const knowledge = getFamousFiguresAiKnowledge(aiId);
+  const knowledgeShift = (0.64 - knowledge) * 2.2;
+  const naturalVariation = (rng() + rng() - 1) * 1.45;
+  const hesitation = rng() < 0.11 ? 0.8 + rng() * 1.7 : 0;
+  const clueNumber = Math.round(clampAiValue(
+    profile.expectedClue + knowledgeShift + naturalVariation + hesitation,
+    1,
+    6,
+  ));
+  const reactionDelay =
+    850 +
+    profile.expectedClue * 180 +
+    (0.9 - knowledge) * 2100 +
+    rng() * 2600 +
+    (rng() < 0.08 ? 1800 + rng() * 2400 : 0);
+  return { clueNumber, delayMs: Math.round(clampAiValue(reactionDelay, 900, 9500)) };
 }
 
 /** FNV-1a 32-bit hash — stable string → uint32. */
@@ -181,10 +209,9 @@ function fnv1a32(s: string): number {
  * Build deterministic AI submissions for a single round.
  * Returns a map of playerId → correct (boolean).
  *
- * Probability of correct answer depends solely on figure difficulty:
- *   easy   → 70 % chance of correct
- *   medium → 50 % chance of correct
- *   hard   → 30 % chance of correct
+ * Probability combines the figure's five-level recognizability band, a stable
+ * general-knowledge profile for each AI, and a figure-specific familiarity or
+ * blind spot. This keeps outcomes varied without making iconic figures obscure.
  *
  * The result is deterministic: given the same participantIds, figureIndex,
  * hintsRevealed and rng state, the output is always identical.
@@ -204,14 +231,23 @@ export function buildAiSubmissionsForRound(
     const idHash = fnv1a32(id);
     const seed = (idHash ^ (figureIndex * 0x9e3779b9) ^ (hintsRevealed * 0x517cc1b7)) >>> 0;
     const localRng = mulberry32(seed ^ (rng() * 0x100000000) >>> 0);
-    const roll = localRng();
+    const profile = AI_DIFFICULTY_PROFILE[figure.difficulty];
+    const knowledge = getFamousFiguresAiKnowledge(id);
+    const familiarity = (localRng() - 0.5) * 0.2;
+    const familiarityEvent = localRng();
+    const exceptionalAdjustment = familiarityEvent < 0.06
+      ? -0.26
+      : familiarityEvent < 0.14
+        ? 0.14
+        : 0;
+    const lateHintAdjustment = Math.min(5, Math.max(0, hintsRevealed)) * 0.025;
+    const threshold = clampAiValue(
+      profile.solveChance + (knowledge - 0.64) * 0.38 + familiarity + exceptionalAdjustment + lateHintAdjustment,
+      0.08,
+      0.985,
+    );
 
-    let threshold = 0;
-    if (figure.difficulty === 'easy') threshold = 0.70;
-    else if (figure.difficulty === 'medium') threshold = 0.50;
-    else threshold = 0.30;
-
-    result[id] = roll < threshold;
+    result[id] = localRng() < threshold;
   }
 
   return result;
