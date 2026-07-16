@@ -45,4 +45,34 @@ describe('BlackjackTournamentComp styles', () => {
     expect(confirmDeclarations.bottom).toBe(CONFIRM_BUTTON_OFFSET);
     expect(confirmDeclarations['z-index']).toBe('11');
   });
+
+  it('keeps the league action visible while the standings own the mobile scroll area', () => {
+    const css = readFileSync(
+      resolve(process.cwd(), 'src/components/BlackjackTournamentComp/BlackjackTournamentComp.css'),
+      'utf8',
+    );
+    const component = readFileSync(
+      resolve(process.cwd(), 'src/components/BlackjackTournamentComp/BlackjackTournamentComp.tsx'),
+      'utf8',
+    );
+
+    expect(component).toContain('bjt-container bjt-result bjt-league-results');
+
+    const resultDeclarations = getRuleDeclarations(css, '.bjt-league-results');
+    expect(resultDeclarations.height).toBe('100%');
+    expect(resultDeclarations['min-height']).toBe('0');
+    expect(resultDeclarations['max-height']).toBe('100%');
+    expect(resultDeclarations['justify-content']).toBe('flex-start');
+    expect(resultDeclarations.overflow).toBe('hidden');
+
+    const standingsDeclarations = getRuleDeclarations(css, '.bjt-league-results > .bjt-placement-list');
+    expect(standingsDeclarations.flex).toBe('1 1 auto');
+    expect(standingsDeclarations['min-height']).toBe('0');
+    expect(standingsDeclarations['overflow-y']).toBe('auto');
+    expect(standingsDeclarations['-webkit-overflow-scrolling']).toBe('touch');
+    expect(standingsDeclarations['overscroll-behavior']).toBe('contain');
+
+    const actionDeclarations = getRuleDeclarations(css, '.bjt-league-results > .bjt-btn--continue');
+    expect(actionDeclarations['flex']).toBe('0 0 auto');
+  });
 });
