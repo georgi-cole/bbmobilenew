@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Capacitor } from '@capacitor/core';
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
@@ -101,6 +100,9 @@ type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
 
 const DEBUG_GAME_ROUTE = '/game?debug=1&qa=1';
+// Temporary QA switch: keep the launcher available in web, emulator, and native
+// builds. Set to false before producing the public store release.
+const ENABLE_PUBLIC_DEBUG_LAUNCHER = true;
 
 interface HubAssetState {
   ready: boolean;
@@ -247,7 +249,6 @@ export default function HomeHub() {
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
   const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId);
-  const canLaunchWithDebug = import.meta.env.DEV || Capacitor.isNativePlatform();
   const gameRoute = debugLaunch ? DEBUG_GAME_ROUTE : '/game';
 
   const savedRuns = useMemo(
@@ -439,7 +440,7 @@ export default function HomeHub() {
         setHousematesBioOpen(true);
       },
     },
-    ...(canLaunchWithDebug
+    ...(ENABLE_PUBLIC_DEBUG_LAUNCHER
       ? [{
           key: 'debug-launch',
           label: `Debug Menu: ${debugLaunch ? 'On' : 'Off'}`,
