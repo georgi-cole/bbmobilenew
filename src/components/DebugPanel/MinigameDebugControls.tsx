@@ -18,6 +18,9 @@ export default function MinigameDebugControls() {
   const [localSeed, setLocalSeed] = useState(String(debug.forceSeed ?? ''));
   const [skipRules, setSkipRules] = useState(debug.skipRules ?? false);
   const [fastFwd, setFastFwd] = useState(debug.fastForwardCountdown ?? false);
+  const [gamePickerOpen, setGamePickerOpen] = useState(false);
+
+  const selectedGameTitle = ALL_GAMES.find((game) => game.key === localKey)?.title ?? '(random)';
 
   const handleApply = () => {
     dispatch(
@@ -35,6 +38,7 @@ export default function MinigameDebugControls() {
     setLocalSeed('');
     setSkipRules(false);
     setFastFwd(false);
+    setGamePickerOpen(false);
     dispatch(clearDebugOverrides());
   };
 
@@ -46,21 +50,51 @@ export default function MinigameDebugControls() {
 
       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {/* Force game key */}
-        <label style={{ fontSize: '0.8rem', color: '#ccc' }}>
-          Force Game
-          <select
-            value={localKey}
-            onChange={(e) => setLocalKey(e.target.value)}
-            style={{ marginLeft: 8, background: '#222', color: '#eee', border: '1px solid #555', borderRadius: 4, padding: '2px 4px' }}
+        <div className="dbg-minigame-picker">
+          <span className="dbg-minigame-picker__label">Force Game</span>
+          <button
+            type="button"
+            className="dbg-minigame-picker__trigger"
+            aria-label="Force Game"
+            aria-haspopup="listbox"
+            aria-expanded={gamePickerOpen}
+            onClick={() => setGamePickerOpen((open) => !open)}
           >
-            <option value="">(random)</option>
-            {ALL_GAMES.map((g) => (
-              <option key={g.key} value={g.key}>
-                {g.title}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span>{selectedGameTitle}</span>
+            <span aria-hidden="true">{gamePickerOpen ? '▴' : '▾'}</span>
+          </button>
+          {gamePickerOpen && (
+            <div className="dbg-minigame-picker__options" role="listbox" aria-label="Minigame options">
+              <button
+                type="button"
+                role="option"
+                aria-selected={localKey === ''}
+                className="dbg-minigame-picker__option"
+                onClick={() => {
+                  setLocalKey('');
+                  setGamePickerOpen(false);
+                }}
+              >
+                (random)
+              </button>
+              {ALL_GAMES.map((game) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={localKey === game.key}
+                  className="dbg-minigame-picker__option"
+                  key={game.key}
+                  onClick={() => {
+                    setLocalKey(game.key);
+                    setGamePickerOpen(false);
+                  }}
+                >
+                  {game.title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Force seed */}
         <label style={{ fontSize: '0.8rem', color: '#ccc' }}>
