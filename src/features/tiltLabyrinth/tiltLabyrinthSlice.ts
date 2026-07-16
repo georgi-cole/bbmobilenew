@@ -29,6 +29,7 @@ export type TiltLabyrinthPhase = 'idle' | 'playing' | 'complete';
 export interface TiltLabyrinthRunDetails {
   rawTimeMs: number;
   hazardHits: number;
+  hintUsed?: boolean;
   adjustedTimeMs: number;
 }
 

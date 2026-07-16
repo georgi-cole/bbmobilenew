@@ -92,6 +92,10 @@ describe('Tilt Labyrinth adjusted scoring', () => {
   it('accepts unlimited raw time and adds three seconds per hazard hit', () => {
     expect(calculateTiltAdjustedTime(7 * 60_000, 4)).toBe(432_000);
   });
+
+  it('adds a thirty-second penalty when the player uses the route hint', () => {
+    expect(calculateTiltAdjustedTime(60_000, 2, true)).toBe(96_000);
+  });
 });
 describe('TiltLabyrinthComp movement hardening', () => {
   beforeEach(() => {
@@ -189,6 +193,33 @@ describe('TiltLabyrinthComp movement hardening', () => {
     expect(screen.getByText(/arrow keys \/ wasd or drag/i)).toBeInTheDocument();
     expect(screen.getByText(/time 0.00s/i)).toBeInTheDocument();
     expect(screen.getByText(/hazards 0.*\+0s/i)).toBeInTheDocument();
+  });
+
+  it('offers a one-use hint that shows the route for three seconds', () => {
+    vi.useFakeTimers();
+    render(
+      <Provider store={makeStore()}>
+        <TiltLabyrinthComp
+          participantIds={['human', 'ai-1']}
+          participants={[
+            { id: 'human', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+            { id: 'ai-1', name: 'Alex', isHuman: false, precomputedScore: 0, previousPR: null },
+          ]}
+          prizeType="LOH"
+          seed={42}
+          onComplete={vi.fn()}
+        />
+      </Provider>,
+    );
+
+    const hint = screen.getByRole('button', { name: /use hint.*add 30 seconds/i });
+    fireEvent.click(hint);
+    expect(hint).toBeDisabled();
+    expect(screen.getByText(/path shown.*\+30s/i)).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(3_000));
+    expect(screen.getByText(/hint used.*\+30s/i)).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it('continues with the recorded human finish time even when the leaderboard lacks a human entry', () => {
