@@ -260,6 +260,9 @@ describe('MajorityRulesComp', () => {
 
     await act(async () => {});
     expect(store.getState().majorityRules.phase).toBe('reveal');
+    expect(screen.getByLabelText('Vote aggregation')).toBeInTheDocument();
+    expect(screen.getByText('Majority · 3/5 (60%)')).toBeInTheDocument();
+    expect(screen.getAllByText('Minority · 1/5 (20%)')).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Continue watching' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Skip to results' })).toBeInTheDocument();
 
