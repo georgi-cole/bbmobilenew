@@ -414,10 +414,14 @@ export default function TvZone(props: TvZoneProps) {
     const currentPhase = gameState.phase;
     const prevPhase = previousPhaseRef.current;
     previousPhaseRef.current = currentPhase;
-    const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
+    const democraciaPreVoteActive =
+      currentPhase === 'loh_comp_announcement' &&
+      gameState.democracia?.active === true;
+    const key = democraciaPreVoteActive
+      ? 'democracia'
+      : getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
     const keyChangedInPlace =
       prevPhase === currentPhase &&
-      currentPhase === 'nominations' &&
       phaseAnnouncement?.key !== null &&
       phaseAnnouncement?.key !== undefined &&
       phaseAnnouncement?.key !== key;
@@ -444,7 +448,14 @@ export default function TvZone(props: TvZoneProps) {
         setPhaseAnnouncement(null);
       }
     });
-  }, [gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
+  }, [
+    gameState.phase,
+    gameState.democracia?.active,
+    alivePlayers.length,
+    dismissedPhase,
+    doubleEvictionActive,
+    phaseAnnouncement?.key,
+  ]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {

@@ -138,6 +138,44 @@ describe('DemocraciaResultsReveal', () => {
     });
   });
 
+  it('excludes the safe-area padding when calculating the usable TV viewport', async () => {
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
+      const styles = originalGetComputedStyle(element);
+
+      if ((element as HTMLElement).classList?.contains('democracia-results__safe-area')) {
+        Object.defineProperties(styles, {
+          paddingLeft: { configurable: true, value: '10px' },
+          paddingRight: { configurable: true, value: '10px' },
+          paddingTop: { configurable: true, value: '10px' },
+          paddingBottom: { configurable: true, value: '10px' },
+        });
+      }
+
+      return styles;
+    });
+
+    const { container } = render(
+      <DemocraciaResultsReveal
+        mode="tie"
+        title="TIED VOTE"
+        subtitle="Ash and Remy are tied at 3 votes."
+        participants={[
+          { player: makePlayer('p1', 'Ash'), voteCount: 3 },
+          { player: makePlayer('p2', 'Remy'), voteCount: 3 },
+        ]}
+        onDone={vi.fn()}
+        countdownMs={100000}
+      />,
+    );
+
+    const content = container.querySelector('.democracia-results__content');
+
+    await waitFor(() => {
+      expect(content).toHaveStyle({ transform: 'scale(0.4444)' });
+    });
+  });
+
   it('keeps the content at full scale when the viewport has enough room', async () => {
     layoutScenario = {
       safeAreaWidth: 480,

@@ -24,7 +24,13 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
-import gameReducer, { activateDoubleEviction, addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
+import gameReducer, {
+  activateDemocracia,
+  activateDoubleEviction,
+  addTvEvent,
+  setPhase,
+  updatePlayer,
+} from '../../../store/gameSlice';
 import socialReducer from '../../../social/socialSlice';
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
@@ -1144,6 +1150,29 @@ describe('TvZone — phase-based announcement triggers', () => {
     });
 
     expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
+    vi.useRealTimers();
+  });
+
+  it('replaces the LOH announcement with the Democracia shock before voting begins', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('loh_comp_announcement')); });
+    expect(screen.getByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeDefined();
+
+    act(() => { store.dispatch(activateDemocracia()); });
+
+    expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: DEMOCRACIA!/i })).toBeDefined();
+    expect(store.getState().game.phase).toBe('loh_comp_announcement');
+    expect(store.getState().game.democracia?.awaitingHumanVote).toBe(false);
     vi.useRealTimers();
   });
 
