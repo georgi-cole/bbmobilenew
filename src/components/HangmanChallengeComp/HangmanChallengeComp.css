@@ -69,8 +69,7 @@
 }
 
 .hangman-challenge__subtitle,
-.hangman-challenge__intro p,
-.hangman-challenge__winner-copy {
+.hangman-challenge__intro p {
   margin: 6px 0 0;
   color: rgba(245, 247, 251, 0.72);
 }
@@ -152,8 +151,7 @@
 }
 
 .hangman-challenge__pressure-head,
-.hangman-challenge__used-head,
-.hangman-challenge__score-primary-row {
+.hangman-challenge__used-head {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -182,9 +180,7 @@
 }
 
 .hangman-challenge__pressure-copy,
-.hangman-challenge__box small,
-.hangman-challenge__score-primary-row span,
-.hangman-challenge__score-inline-total {
+.hangman-challenge__box small {
   color: rgba(245, 247, 251, 0.72);
 }
 
@@ -542,7 +538,57 @@
 }
 
 .hangman-challenge__overlay-card--scoreboard {
+  width: min(100%, 560px);
+  padding: 18px;
   padding-bottom: 18px;
+}
+
+.hangman-challenge__overlay--final {
+  align-items: center;
+}
+
+.hangman-challenge__overlay-card--final {
+  width: min(100%, 520px);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 203, 121, 0.13), transparent 36%),
+    rgba(10, 14, 22, 0.94);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 38px rgba(255, 203, 121, 0.08);
+}
+
+.hangman-challenge__final-winner {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 13px 16px;
+  border: 1px solid rgba(255, 203, 121, 0.28);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 203, 121, 0.11), rgba(255, 255, 255, 0.025));
+  text-align: center;
+}
+
+.hangman-challenge__final-winner span {
+  color: #ffcb79;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hangman-challenge__final-winner strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #fff4df;
+  font-size: 1.45rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangman-challenge__final-winner em {
+  color: rgba(245, 247, 251, 0.7);
+  font-size: 0.78rem;
+  font-style: normal;
 }
 
 .hangman-challenge__score-burst {
@@ -574,18 +620,24 @@
 
 .hangman-challenge__scoreboard {
   display: grid;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .hangman-challenge__score-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 38px 34px minmax(0, 1fr) 24px auto auto;
+  align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: 16px;
+  min-height: 50px;
+  padding: 6px 10px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hangman-challenge__overlay-card--final .hangman-challenge__score-row {
+  grid-template-columns: 38px 34px minmax(0, 1fr) auto;
 }
 
 .hangman-challenge__score-row.is-winner {
@@ -594,9 +646,9 @@
 }
 
 .hangman-challenge__score-rank {
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -605,20 +657,8 @@
   font-weight: 700;
 }
 
-.hangman-challenge__score-main {
-  min-width: 0;
-}
-
-.hangman-challenge__score-primary-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 5px 9px;
-}
-
 .hangman-challenge__score-name {
-  min-width: 72px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -627,9 +667,9 @@
 }
 
 .hangman-challenge__score-inline-total {
-  margin-left: auto;
+  color: rgba(245, 247, 251, 0.62);
   white-space: nowrap;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .hangman-challenge__score-inline-total strong {
@@ -637,24 +677,42 @@
   color: #f5f7fb;
 }
 
-.hangman-challenge__score-meta {
-  font-size: 0.74rem;
-  color: rgba(245, 247, 251, 0.62);
+.hangman-challenge__score-status {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
-.hangman-challenge__score-outcome {
-  flex: 1 1 132px;
-  color: rgba(245, 247, 251, 0.82);
-  font-size: 0.76rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.hangman-challenge__score-status.is-solved {
+  color: #7be0bd;
+  background: rgba(93, 220, 183, 0.12);
+}
+
+.hangman-challenge__score-status.is-failed {
+  color: #ff7187;
+  background: rgba(255, 94, 118, 0.12);
+}
+
+.hangman-challenge__round-points {
+  color: rgba(245, 247, 251, 0.78);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.hangman-challenge__final-points {
+  color: #fff0d5;
+  font-size: 1rem;
   white-space: nowrap;
 }
 
 .hangman-challenge__avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -735,11 +793,17 @@
     height: 50px;
   }
 
-  .hangman-challenge__score-primary-row {
-    gap: 4px 7px;
+  .hangman-challenge__overlay-card--scoreboard {
+    padding: 16px 14px;
   }
 
-  .hangman-challenge__score-inline-total {
-    margin-left: auto;
+  .hangman-challenge__score-row {
+    grid-template-columns: 34px 32px minmax(0, 1fr) 22px auto auto;
+    gap: 6px;
+    padding-inline: 7px;
+  }
+
+  .hangman-challenge__overlay-card--final .hangman-challenge__score-row {
+    grid-template-columns: 34px 32px minmax(0, 1fr) auto;
   }
 }
