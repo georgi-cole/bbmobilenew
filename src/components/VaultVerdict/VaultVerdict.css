@@ -93,7 +93,7 @@
 
 .vault-verdict__control-row {
   display: grid;
-  grid-template-columns: minmax(92px, 0.18fr) minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(82px, 0.18fr) auto;
   align-items: stretch;
   gap: 8px;
   padding: 8px;
@@ -174,10 +174,10 @@
 .vault-verdict__board {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(110px, 0.72fr) minmax(220px, 1.28fr) minmax(110px, 0.72fr);
-  gap: clamp(10px, 2vw, 24px);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   align-items: stretch;
-  min-height: min(72vh, 720px);
+  min-height: 0;
   padding: 42px clamp(12px, 2.2vw, 24px) 18px;
   overflow: hidden;
   background:
@@ -262,25 +262,35 @@
   z-index: 2;
 }
 
-.vault-verdict__rail {
+.vault-verdict__battery-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  align-content: stretch;
+  align-content: start;
+}
+
+.vault-verdict__battery-grid > :last-child:nth-child(3n + 1) {
+  grid-column: 2;
 }
 
 .vault-verdict__pod {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 48px;
+  min-height: 46px;
   padding: 7px 6px;
   border: 1px solid rgba(134, 216, 205, 0.28);
-  border-radius: 7px;
-  background: linear-gradient(145deg, #182832, #0b1116);
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, rgba(125, 247, 202, 0.1), transparent 16%, transparent 84%, rgba(0, 0, 0, 0.28)),
+    linear-gradient(145deg, #1b3039, #0a1116);
   color: #eef8f5;
   cursor: pointer;
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 247, 223, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 2px 7px rgba(0, 0, 0, 0.18);
   transition: border-color 150ms ease, filter 150ms ease, transform 150ms ease, opacity 150ms ease;
 }
 
@@ -301,12 +311,13 @@
 .vault-verdict__pod::after {
   content: '';
   position: absolute;
-  top: 9px;
-  right: -3px;
+  top: 50%;
+  right: 0;
   width: 6px;
-  height: 22px;
-  border-radius: 0 3px 3px 0;
-  background: rgba(134, 216, 205, 0.34);
+  height: 44%;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(180deg, rgba(245, 247, 223, 0.52), rgba(86, 151, 145, 0.3));
+  transform: translateY(-50%);
 }
 
 .vault-verdict__pod:hover:not(:disabled) {
@@ -378,11 +389,11 @@
 
 .vault-verdict__core-battery {
   display: grid;
-  align-content: center;
-  justify-items: center;
+  grid-template-columns: minmax(130px, auto) minmax(180px, 1fr) auto;
+  align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: clamp(12px, 2vw, 22px);
+  padding: 10px 12px;
   border: 1px solid rgba(125, 247, 202, 0.2);
   border-radius: 8px;
   background:
@@ -391,18 +402,25 @@
   text-align: center;
 }
 
-.vault-verdict__core-battery strong {
+.vault-verdict__core-reading {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  text-align: left;
+}
+
+.vault-verdict__core-reading strong {
   color: #f5f7df;
-  font-size: clamp(2.8rem, 7vw, 5.8rem);
-  line-height: 0.9;
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: 1;
 }
 
 .vault-verdict__core-shell {
   position: relative;
-  width: min(280px, 80%);
-  aspect-ratio: 0.56;
+  width: 100%;
+  height: clamp(66px, 9vw, 92px);
   border: 2px solid rgba(245, 247, 223, 0.34);
-  border-radius: 18px;
+  border-radius: 14px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
   box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.34), 0 0 34px rgba(125, 247, 202, 0.11);
@@ -411,24 +429,25 @@
 .vault-verdict__core-shell::before {
   content: '';
   position: absolute;
-  top: -11px;
-  left: 35%;
-  width: 30%;
-  height: 10px;
-  border-radius: 5px 5px 0 0;
-  background: rgba(245, 247, 223, 0.34);
+  top: 28%;
+  right: 0;
+  width: 8px;
+  height: 44%;
+  z-index: 2;
+  border-radius: 5px 0 0 5px;
+  background: linear-gradient(180deg, rgba(245, 247, 223, 0.58), rgba(125, 247, 202, 0.24));
 }
 
 .vault-verdict__core-fill {
   position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  height: var(--charge, 0%);
-  max-height: calc(100% - 16px);
-  border-radius: 12px;
-  background: linear-gradient(0deg, #63f0a8, #7df7ca 58%, #f5f7df);
-  transition: height 420ms ease;
+  top: 7px;
+  bottom: 7px;
+  left: 7px;
+  width: var(--charge, 0%);
+  max-width: calc(100% - 14px);
+  border-radius: 9px;
+  background: linear-gradient(90deg, #63f0a8, #7df7ca 58%, #f5f7df);
+  transition: width 420ms ease;
 }
 
 .vault-verdict__core-scan {
@@ -453,7 +472,7 @@
 }
 
 .vault-verdict__core-battery em {
-  min-height: 1.2em;
+  max-width: 110px;
   color: #ffcf70;
   font-size: 0.8rem;
   font-style: normal;
@@ -780,11 +799,11 @@
 
 @keyframes battery-scan {
   0% {
-    transform: translateY(-100%);
+    transform: translateX(-100%);
   }
   55%,
   100% {
-    transform: translateY(100%);
+    transform: translateX(100%);
   }
 }
 
@@ -825,26 +844,7 @@
 
 @media (max-width: 860px) {
   .vault-verdict__control-row {
-    grid-template-columns: minmax(82px, 0.22fr) minmax(0, 1fr) auto;
-  }
-
-  .vault-verdict__board {
-    grid-template-columns: 1fr 1fr;
-    min-height: auto;
-  }
-
-  .vault-verdict__core-battery {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .vault-verdict__rail {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .vault-verdict__core-shell {
-    width: min(180px, 62%);
-    aspect-ratio: 0.72;
+    grid-template-columns: minmax(0, 1fr) minmax(78px, auto) auto;
   }
 
   .vault-verdict__finale-batteries {
@@ -858,45 +858,82 @@
 
 @media (max-width: 620px) {
   .vault-verdict {
-    padding-inline: 8px;
+    padding: calc(var(--minigame-safe-top, 0px) + 8px) 8px calc(var(--minigame-safe-bottom, 0px) + 8px);
   }
 
   .vault-verdict__broadcast-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 7px;
+    min-height: 38px;
+    padding: 5px 7px;
   }
 
   .vault-verdict__broadcast-row > span {
-    justify-self: start;
+    padding: 4px 7px;
+    font-size: 0.64rem;
   }
 
   .vault-verdict__control-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) minmax(68px, auto) auto;
+    gap: 6px;
+    padding: 6px;
   }
 
+  .vault-verdict__timer,
   .vault-verdict__status {
-    grid-column: 1 / -1;
-    grid-row: 1;
+    min-height: 46px;
+    padding: 6px 8px;
   }
 
-  .vault-verdict__timer {
-    grid-row: 2;
+  .vault-verdict__timer strong,
+  .vault-verdict__status strong {
+    font-size: 0.94rem;
   }
 
   .vault-verdict__decision-buttons {
-    grid-row: 2;
+    gap: 5px;
+  }
+
+  .vault-verdict__decision-buttons button {
+    width: 42px;
+    min-height: 46px;
   }
 
   .vault-verdict__board {
-    gap: 8px;
-    padding-inline: 10px;
+    gap: 7px;
+    padding: 38px 9px 10px;
   }
 
-  .vault-verdict__rail {
-    grid-template-columns: 1fr;
+  .vault-verdict__core-battery {
+    grid-template-columns: minmax(112px, 0.85fr) minmax(0, 1.15fr);
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .vault-verdict__core-reading strong {
+    font-size: 2rem;
+  }
+
+  .vault-verdict__core-reading small {
+    font-size: 0.7rem;
+    line-height: 1.1;
+  }
+
+  .vault-verdict__core-shell {
+    height: 64px;
+  }
+
+  .vault-verdict__core-battery > em {
+    display: none;
+  }
+
+  .vault-verdict__battery-grid {
+    gap: 6px;
   }
 
   .vault-verdict__pod {
-    min-height: 44px;
+    min-height: 42px;
+    padding: 5px;
   }
 
   .vault-verdict__pod em {
