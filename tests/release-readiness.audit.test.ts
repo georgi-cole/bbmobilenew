@@ -327,12 +327,13 @@ describe('release readiness branding', () => {
     expect(rulesTsx).not.toMatch(/[\u2014\u2013]/);
     expect(rulesCss).not.toMatch(/[\u2014\u2013]/);
     expect(rulesTsx).toContain('How to Play');
-    expect(rulesTsx).toContain('Weekly Loop');
+    expect(rulesTsx).toContain('Daily Loop');
     expect(rulesTsx).toContain('Challenges and Ranking');
     expect(rulesTsx).toContain('Control and Safety');
     expect(rulesTsx).toContain('Social Game and Public Mode');
     expect(rulesTsx).toContain('Confessional');
-    expect(rulesTsx).toContain('Special Weeks');
+    expect(rulesTsx).toContain('Special Days');
+    expect(rulesTsx).toContain('The Tribunal');
     expect(rulesTsx).toContain('Finale');
     expect(rulesTsx).toContain('Power of Safety');
     expect(rulesTsx).toContain('public approval meter');
@@ -343,6 +344,7 @@ describe('release readiness branding', () => {
     expect(rulesTsx).toMatch(/minigame/i);
     expect(rulesTsx).toMatch(/final 4/i);
     expect(rulesTsx).toMatch(/final 2/i);
+    expect(rulesTsx).not.toMatch(/\bweeks?\b/i);
     expect(rulesTsx).not.toMatch(/Big Brother/i);
     expect(rulesTsx).not.toContain('Diary Room');
     expect(rulesTsx).not.toContain('houseguest');

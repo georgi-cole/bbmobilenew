@@ -14,6 +14,8 @@ import { useState, useMemo } from 'react';
 import SpectatorView from '../../components/ui/SpectatorView';
 import type { SpectatorVariant } from '../../components/ui/SpectatorView';
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay';
+import TwinShockIntroCinematic from '../../components/TwinShockIntroCinematic/TwinShockIntroCinematic';
+import TwinShockRevealOverlay from '../../components/TwinShockRevealOverlay/TwinShockRevealOverlay';
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition';
 import { mulberry32 } from '../../store/rng';
 import type { Player } from '../../types';
@@ -35,12 +37,35 @@ const MOCK_ALL_PLAYERS: Player[] = [
   { id: 'p6', name: 'Frank', avatar: '🧑', status: 'active' },
 ];
 
-type ActiveOverlay = 'none' | 'battleBack' | 'publicFavorite';
+const BASE = import.meta.env.BASE_URL;
+const MOCK_EXPOSED_TWIN_REVEAL = {
+  type: 'combined' as const,
+  playerId: 'lia',
+  fromName: 'Lia',
+  fromAvatar: `${BASE}assets/skins/Lia_avatar.webp`,
+  toName: 'Lia & Ali',
+  toAvatar: `${BASE}assets/skins/Ali_lia_avatar.webp`,
+};
+
+const MOCK_SECRET_KEPT_TWIN_REVEAL = {
+  type: 'ali_enters' as const,
+  replacedPlayerId: 'echo',
+  replacedPlayerName: 'Echo',
+  replacedPlayerAvatar: `${BASE}assets/skins/Echo_avatar.webp`,
+  incomingPlayerId: 'ali',
+  incomingName: 'Ali',
+  incomingAvatar: `${BASE}assets/skins/Ali_avatar.webp`,
+};
+
+type TwinScenario = 'exposed' | 'secretKept';
+
+type ActiveOverlay = 'none' | 'battleBack' | 'publicFavorite' | 'twinShock' | 'twinShockAvatar';
 
 export default function TwistsTestPage() {
   const [seed, setSeed] = useState(42);
   const [awardAmount, setAwardAmount] = useState(25000);
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>('none');
+  const [twinScenario, setTwinScenario] = useState<TwinScenario>('exposed');
   const [lastResult, setLastResult] = useState<string | null>(null);
   // Seed frozen at the moment the overlay is opened so that changing the
   // seed input while SpectatorView is mounted cannot desync the displayed
@@ -69,11 +94,22 @@ export default function TwistsTestPage() {
     setActiveOverlay('none');
   }
 
+  const activeTwinReveal = twinScenario === 'secretKept'
+    ? MOCK_SECRET_KEPT_TWIN_REVEAL
+    : MOCK_EXPOSED_TWIN_REVEAL;
+
+  function getTwinTileRect(): DOMRect | null {
+    const targetId = activeTwinReveal.type === 'combined'
+      ? activeTwinReveal.playerId
+      : activeTwinReveal.incomingPlayerId;
+    return document.querySelector<HTMLElement>(`[data-player-id="${targetId}"]`)?.getBoundingClientRect() ?? null;
+  }
+
   return (
     <div style={{ padding: '1.5rem', maxWidth: '500px', margin: '0 auto', color: '#fff' }}>
       <h1 style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>🔬 Twists Test Page</h1>
       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-        Manual QA page for Back 2 the Game (competition) and Public's Favorite overlays.
+        Manual QA page for Back 2 the Game, Public's Favorite, and both Twin Shock outcomes.
       </p>
 
       {/* Controls */}
@@ -114,6 +150,20 @@ export default function TwistsTestPage() {
         >
           ⭐ Test Public's Favorite
         </button>
+        <button
+          type="button"
+          onClick={() => { setTwinScenario('exposed'); setLastResult(null); setActiveOverlay('twinShock'); }}
+          style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #6366f1, #0891b2)', color: '#fff', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontWeight: 700 }}
+        >
+          Test Exposed — Lia & Ali as One
+        </button>
+        <button
+          type="button"
+          onClick={() => { setTwinScenario('secretKept'); setLastResult(null); setActiveOverlay('twinShock'); }}
+          style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #0891b2, #2563eb)', color: '#fff', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontWeight: 700 }}
+        >
+          Test Secret Kept — Ali Enters
+        </button>
       </div>
 
       {/* Last result */}
@@ -127,6 +177,23 @@ export default function TwistsTestPage() {
       <div style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
         <p><strong style={{ color: '#f97316' }}>Back 2 the Game candidates ({MOCK_JURORS.length}):</strong> {MOCK_JURORS.map((p) => p.name).join(', ')}</p>
         <p><strong style={{ color: '#7c3aed' }}>PublicFavorite candidates ({MOCK_ALL_PLAYERS.length}):</strong> {MOCK_ALL_PLAYERS.map((p) => p.name).join(', ')}</p>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '1.5rem' }}>
+        <div
+          data-player-id="lia"
+          style={{ width: '92px', padding: '8px', borderRadius: '16px', background: '#151933', textAlign: 'center' }}
+        >
+          <img src={`${BASE}assets/skins/Ali_lia_avatar.webp`} alt="Lia and Ali preview tile" style={{ display: 'block', width: '76px', height: '76px', borderRadius: '12px', objectFit: 'cover' }} />
+          <span style={{ display: 'block', marginTop: '6px', fontSize: '0.75rem' }}>Lia &amp; Ali</span>
+        </div>
+        <div
+          data-player-id="ali"
+          style={{ width: '92px', padding: '8px', borderRadius: '16px', background: '#151933', textAlign: 'center' }}
+        >
+          <img src={`${BASE}assets/skins/Ali_avatar.webp`} alt="Ali preview tile" style={{ display: 'block', width: '76px', height: '76px', borderRadius: '12px', objectFit: 'cover' }} />
+          <span style={{ display: 'block', marginTop: '6px', fontSize: '0.75rem' }}>Ali</span>
+        </div>
       </div>
 
       {/* Overlays */}
@@ -148,6 +215,24 @@ export default function TwistsTestPage() {
           awardAmount={awardAmount}
           eliminationIntervalMs={3500}
           onComplete={handleFavoriteComplete}
+        />
+      )}
+      {activeOverlay === 'twinShock' && (
+        <TwinShockIntroCinematic
+          reveal={activeTwinReveal}
+          onComplete={() => setActiveOverlay('twinShockAvatar')}
+        />
+      )}
+      {activeOverlay === 'twinShockAvatar' && (
+        <TwinShockRevealOverlay
+          reveal={activeTwinReveal}
+          getTileRect={getTwinTileRect}
+          onDone={() => {
+            setLastResult(twinScenario === 'secretKept'
+              ? 'Secret kept: Ali entered separately and replaced an evicted housemate.'
+              : 'Secret exposed: Lia and Ali now play as one housemate.');
+            setActiveOverlay('none');
+          }}
         />
       )}
     </div>

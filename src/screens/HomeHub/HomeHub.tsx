@@ -29,10 +29,13 @@ import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal
 import SurvivorRulesModal from '../../components/ConfirmExitModal/SurvivorRulesModal';
 import { SoundManager } from '../../services/sound/SoundManager';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
+import HousematesBioCinematic from '../../components/HousematesBioCinematic/HousematesBioCinematic';
+import { MYSTERY_WILDCARD_BIOS } from '../../components/HousematesBioCinematic/housematesBioData';
 import useHomeHubAssets from '../../hooks/useHomeHubAssets';
 import useIntroHubBackground from '../../hooks/useIntroHubBackground';
 import {
   hasSeenHomeHubSplashForGame,
+  hasShownHomeHubSplashThisSession,
   markHomeHubSplashSeenForGame,
 } from './homeHubSplashSession';
 import {
@@ -56,6 +59,7 @@ type HomeHubIconName =
   | 'credits'
   | 'campaign'
   | 'survival'
+  | 'housemates'
   | 'back';
 
 function HomeHubButtonIcon({ name }: { name: HomeHubIconName }) {
@@ -194,6 +198,7 @@ export default function HomeHub() {
   const season = useAppSelector((state) => state.game.season);
   const week = useAppSelector((state) => state.game.week);
   const phase = useAppSelector((state) => state.game.phase);
+  const twinShockRevealed = useAppSelector((state) => state.game.twinShockConsumed === true);
   const introHubPlayer = useAppSelector(
     (state) => state.game.players.find((player) => player.isUser) ?? null,
   );
@@ -218,18 +223,22 @@ export default function HomeHub() {
   );
   // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl;
+  const [isInitialAppSplash] = useState(() => !hasShownHomeHubSplashThisSession());
   const [splashExitRequested, setSplashExitRequested] = useState(false);
   const [hubAssetState, setHubAssetState] = useState<HubAssetState>({
     ready: false,
     progress: 0,
     status: 'Opening the house doors.',
   });
-  const splashDone = hasSeenHomeHubSplashForGame(gameId) || (splashExitRequested && hubAssetState.ready);
+  const splashDone =
+    (!isInitialAppSplash && hasSeenHomeHubSplashForGame(gameId)) ||
+    (splashExitRequested && hubAssetState.ready);
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
   const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
+  const [housematesBioOpen, setHousematesBioOpen] = useState(false);
   const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null);
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
@@ -257,8 +266,11 @@ export default function HomeHub() {
       players: introHubPlayer ? [introHubPlayer] : [],
       seasonArchives,
       achievementSummary,
+      twinShockConsumed: twinShockRevealed,
+      mysteryWildcards: MYSTERY_WILDCARD_BIOS,
+      assetBase: import.meta.env.BASE_URL || '/',
     });
-  }, [achievementSummary, dayCount, season, week, phase, introHubPlayer, seasonArchives]);
+  }, [achievementSummary, dayCount, season, week, phase, introHubPlayer, seasonArchives, twinShockRevealed]);
 
   useEffect(() => {
     if (!autoStartGame) return;
@@ -412,6 +424,16 @@ export default function HomeHub() {
       onClick: () => startOrResumeMode('survival'),
     },
     {
+      key: 'housemates',
+      label: 'Housemates',
+      icon: <HomeHubButtonIcon name="housemates" />,
+      variant: 'secondary_wide',
+      onClick: () => {
+        SoundManager.unlockFromGesture();
+        setHousematesBioOpen(true);
+      },
+    },
+    {
       key: 'back',
       label: 'Back',
       icon: <HomeHubButtonIcon name="back" />,
@@ -463,6 +485,7 @@ export default function HomeHub() {
           Exits automatically after the animation completes (~1.2s). */}
       {!splashDone && (
         <KolequantSplash
+          duration={isInitialAppSplash ? 5000 : 0}
           ready={hubAssetState.ready}
           progress={hubAssetState.progress}
           status={hubAssetState.status}
@@ -472,6 +495,10 @@ export default function HomeHub() {
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
       {preloading && <AssetPreloaderOverlay />}
+
+      {housematesBioOpen && (
+        <HousematesBioCinematic onComplete={() => setHousematesBioOpen(false)} />
+      )}
 
       <ConfirmExitModal
         open={classicPrompt === 'resume-or-new'}

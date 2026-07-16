@@ -1,19 +1,26 @@
 import { useState, type ImgHTMLAttributes, type SyntheticEvent } from 'react';
 import type { Player } from '../../types';
-import { resolveInformalCutoutCandidates } from '../../utils/avatar';
+import { resolveFormalCutout, resolveInformalCutoutCandidates } from '../../utils/avatar';
 
 interface FullSizeCutoutImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> {
   player: Pick<Player, 'id' | 'name'> & Partial<Pick<Player, 'avatar'>>;
+  attire?: 'informal' | 'formal';
 }
 
 export default function FullSizeCutoutImage({
   player,
+  attire = 'informal',
   onError,
   onLoad,
   style,
   ...imgProps
 }: FullSizeCutoutImageProps) {
-  const candidates = resolveInformalCutoutCandidates(player);
+  const informalCandidates = resolveInformalCutoutCandidates(player);
+  const formalCutout = attire === 'formal' ? resolveFormalCutout(player) : null;
+  const candidates = [formalCutout, ...informalCandidates].filter(
+    (candidate, index, all): candidate is string =>
+      Boolean(candidate) && all.indexOf(candidate) === index,
+  );
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [resolved, setResolved] = useState(false);
 
@@ -43,7 +50,10 @@ export default function FullSizeCutoutImage({
       data-image-state={resolved ? 'resolved' : 'pending'}
       style={{
         ...style,
-        opacity: resolved ? (typeof style?.opacity === 'number' ? style.opacity : 1) : 0,
+        // Keep the source visible while the load event settles. Cached local
+        // assets can finish before React receives onLoad; hiding pending images
+        // made valid housemate cutouts disappear for an entire recap scene.
+        opacity: typeof style?.opacity === 'number' ? style.opacity : 1,
       }}
     />
   );

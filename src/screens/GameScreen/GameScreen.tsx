@@ -125,6 +125,7 @@ import { isSurvivorRunTerminal } from '../../modes/survivorRun'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
 import TwinShockRevealOverlay from '../../components/TwinShockRevealOverlay/TwinShockRevealOverlay'
+import TwinShockIntroCinematic from '../../components/TwinShockIntroCinematic/TwinShockIntroCinematic'
 import { rankPublicEvictionTieNominees } from '../../publicOpinion/PublicEvictionTieService'
 import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
 import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
@@ -454,6 +455,13 @@ export default function GameScreen() {
     return getCeremonyTileRect(playerId)
   }, [])
   const twinShockReveal = game.twinShock?.pendingRevealAnimation ?? null
+  const twinShockSequenceKey = twinShockReveal
+    ? `${game.season}-${game.week}-${twinShockReveal.type}-${twinShockReveal.type === 'combined' ? twinShockReveal.playerId : twinShockReveal.incomingPlayerId}`
+    : null
+  const [completedTwinShockIntroKey, setCompletedTwinShockIntroKey] = useState<string | null>(null)
+  const handleTwinShockIntroDone = useCallback(() => {
+    if (twinShockSequenceKey) setCompletedTwinShockIntroKey(twinShockSequenceKey)
+  }, [twinShockSequenceKey])
   const handleTwinShockRevealDone = useCallback(() => {
     dispatch(completeTwinShockRevealAnimation())
   }, [dispatch])
@@ -4102,9 +4110,16 @@ export default function GameScreen() {
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {twinShockReveal && (
+        {twinShockReveal && completedTwinShockIntroKey !== twinShockSequenceKey && (
+          <TwinShockIntroCinematic
+            key={`intro-${twinShockSequenceKey}`}
+            reveal={twinShockReveal}
+            onComplete={handleTwinShockIntroDone}
+          />
+        )}
+        {twinShockReveal && completedTwinShockIntroKey === twinShockSequenceKey && (
           <TwinShockRevealOverlay
-            key={`${twinShockReveal.type}-${twinShockReveal.type === 'combined' ? twinShockReveal.playerId : twinShockReveal.incomingPlayerId}`}
+            key={`avatar-${twinShockSequenceKey}`}
             reveal={twinShockReveal}
             getTileRect={getTileRect}
             onDone={handleTwinShockRevealDone}

@@ -95,13 +95,22 @@ export default function KolequantSplash({
       aria-live="polite"
       aria-label={`${progressLabel} ${clampedProgress}%`}
     >
-      <img
-        src={LOGO_SRC}
-        alt="Kolequant"
-        className="kq-splash__logo"
-        draggable={false}
-        decoding="async"
-      />
+      <div className="kq-splash__logo-wrap">
+        <img
+          src={LOGO_SRC}
+          alt="Kolequant"
+          className="kq-splash__logo"
+          draggable={false}
+          decoding="async"
+        />
+        <img
+          src={LOGO_SRC}
+          alt=""
+          className="kq-splash__dna-glow"
+          draggable={false}
+          aria-hidden="true"
+        />
+      </div>
       <div className="kq-splash__preload" aria-hidden="true">
         <div className="kq-splash__preload-row">
           <span>{activeMessages[messageIndex]}</span>

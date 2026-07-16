@@ -72,6 +72,7 @@ const CLOCK_INTERVAL_MS = 200;
 const SURGE_SELECTION_WINDOW_MS = 6500;
 const SURGE_DURATION_MS = 7000;
 const ELIMINATION_SPOTLIGHT_MS = 1400;
+const FAST_FORWARD_ELIMINATION_INTERVAL_MS = 260;
 function formatEyeoleans(amount: number): string {
   return `${new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -126,7 +127,7 @@ function getStatusLine(args: {
     )}s left`;
   }
   if (phase === 'audience_surge' && surgeWindowRemaining > 0) {
-    return `Audience Surge closes in ${surgeWindowRemaining}s`;
+    return `Boost window closes in ${surgeWindowRemaining}s`;
   }
   return `Board refresh in ${countdown}s`;
 }
@@ -332,7 +333,7 @@ function HousemateSpotlightCard({
     <motion.section
       className="pf-overlay__spotlight"
       role="region"
-      aria-label="Housemate Spotlight"
+      aria-label="Houseguest Spotlight"
       data-testid="housemate-spotlight"
       layout
     >
@@ -354,16 +355,16 @@ function HousemateSpotlightCard({
       <div className="pf-overlay__leader-portrait-wrap">
         <div className="pf-overlay__leader-glow" aria-hidden="true" />
         <AnimatePresence mode="wait">
-          <motion.img
+          <motion.div
             key={player.id}
-            src={resolveAvatar(player)}
-            alt={player.name}
-            className="pf-overlay__leader-avatar"
+            className="pf-overlay__leader-avatar-wrap"
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
             transition={{ duration: 0.32, ease: 'easeOut' }}
-          />
+          >
+            <PlayerPortrait candidate={player} className="pf-overlay__leader-avatar pf-overlay__leader-avatar--portrait" />
+          </motion.div>
         </AnimatePresence>
       </div>
     </motion.section>
@@ -425,7 +426,7 @@ function VoteRankingBoard({
   return (
     <section className="pf-overlay__board" aria-label="Public vote ranking board">
       <div className="pf-overlay__board-header">
-        <p className="pf-overlay__board-title">Audience board</p>
+        <p className="pf-overlay__board-title">Results board</p>
       </div>
       <div className="pf-overlay__board-list">
         {entries.map((entry) => {
@@ -485,13 +486,9 @@ function FinalPublicFavoriteReveal({
       <div className="pf-overlay__winner-avatar-wrap" aria-hidden="true">
         <div className="pf-overlay__winner-glow" />
         {winnerPlayer ? (
-          <img
-            src={resolveAvatar(winnerPlayer)}
-            alt={winnerPlayer.name}
-            className="pf-overlay__winner-avatar"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+          <PlayerPortrait
+            candidate={winnerPlayer}
+            className="pf-overlay__winner-avatar pf-overlay__winner-avatar--portrait"
           />
         ) : (
           <span className="pf-overlay__winner-fallback">🏆</span>
@@ -521,6 +518,7 @@ export default function PublicFavoriteOverlay({
   const [nextShiftAt, setNextShiftAt] = useState(() => Date.now() + eliminationIntervalMs);
   const [selectedSurgeId, setSelectedSurgeId] = useState<string | null>(candidates[0]?.id ?? null);
   const [introSkipBoostMs, setIntroSkipBoostMs] = useState(0);
+  const [fastForwarding, setFastForwarding] = useState(false);
   const [surgePending, setSurgePending] = useState(false);
   const [surgeUsed, setSurgeUsed] = useState(false);
   const [surgeActive, setSurgeActive] = useState<SurgeState | null>(null);
@@ -538,11 +536,15 @@ export default function PublicFavoriteOverlay({
     [candidates],
   );
 
+  const effectiveEliminationIntervalMs = fastForwarding
+    ? Math.min(eliminationIntervalMs, FAST_FORWARD_ELIMINATION_INTERVAL_MS)
+    : eliminationIntervalMs;
+
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
     seed,
-    eliminationIntervalMs,
-    tickIntervalMs: VOTE_TICK_INTERVAL_MS,
+    eliminationIntervalMs: effectiveEliminationIntervalMs,
+    tickIntervalMs: fastForwarding ? 120 : VOTE_TICK_INTERVAL_MS,
     driftAmount: VOTE_DRIFT_AMOUNT,
     surgeTargetId: surgeActive?.playerId ?? null,
   });
@@ -569,8 +571,8 @@ export default function PublicFavoriteOverlay({
 
   useEffect(() => {
     if (isComplete) return;
-    setNextShiftAt(Date.now() + eliminationIntervalMs);
-  }, [eliminated.length, eliminationIntervalMs, isComplete]);
+    setNextShiftAt(Date.now() + effectiveEliminationIntervalMs);
+  }, [eliminated.length, effectiveEliminationIntervalMs, isComplete]);
 
   useEffect(() => {
     if (eliminated.length <= previousEliminatedCountRef.current) {
@@ -724,6 +726,17 @@ export default function PublicFavoriteOverlay({
     setNowMs(Date.now());
   }, [elapsedMs, introSkipBoostMs]);
 
+  const handleFastForward = useCallback(() => {
+    if (fastForwarding || isComplete || surgePending) return;
+    const remainingIntroMs = Math.max(0, INTRO_MS - elapsedMs);
+    if (remainingIntroMs > 0) {
+      setIntroSkipBoostMs((current) => current + remainingIntroMs);
+    }
+    setFastForwarding(true);
+    setNextShiftAt(Date.now() + Math.min(eliminationIntervalMs, FAST_FORWARD_ELIMINATION_INTERVAL_MS));
+    setNowMs(Date.now());
+  }, [elapsedMs, eliminationIntervalMs, fastForwarding, isComplete, surgePending]);
+
   const handleActivateSurge = useCallback(async () => {
     if (
       !selectedSurgeId ||
@@ -773,16 +786,32 @@ export default function PublicFavoriteOverlay({
       aria-label="Public's Favorite Player overlay"
     >
       <div className="pf-overlay__dim" />
+      <div className="pf-overlay__studio" aria-hidden="true" />
+      <div className="pf-overlay__scanlines" aria-hidden="true" />
       <div className="pf-overlay__stage">
-        {displayStep === 'voting' && phase === 'intro' && (
-          <button
-            type="button"
-            className="pf-overlay__skip"
-            onClick={handleSkipIntro}
-            aria-label="Skip animation"
-          >
-            Skip
-          </button>
+        {displayStep === 'voting' && (
+          <div className="pf-overlay__speed-controls" aria-label="Public vote playback controls">
+            {phase === 'intro' && (
+              <button
+                type="button"
+                className="pf-overlay__skip"
+                onClick={handleSkipIntro}
+                aria-label="Skip animation"
+              >
+                Skip
+              </button>
+            )}
+            <button
+              type="button"
+              className={`pf-overlay__fast-forward${fastForwarding ? ' is-active' : ''}`}
+              onClick={handleFastForward}
+              disabled={fastForwarding || surgePending}
+              aria-label="Fast forward public favorite vote"
+            >
+              <span aria-hidden="true">»</span>
+              {fastForwarding ? 'Forwarding' : 'Fast forward'}
+            </button>
+          </div>
         )}
 
         {phase !== 'final_reveal' && (
@@ -793,8 +822,8 @@ export default function PublicFavoriteOverlay({
               ) : (
                 <motion.div key="public-vote-header" className="pf-overlay__announcement-panel">
                   <PublicVoteHeader
-                    title="PUBLIC FAVORITE VOTE"
-                    subtitle="Viewer board"
+                    title="PUBLIC FAVORITE PLAYER"
+                    subtitle="Live public vote"
                     statusLine={statusLine}
                   />
                 </motion.div>

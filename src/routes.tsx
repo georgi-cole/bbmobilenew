@@ -39,9 +39,10 @@ const GameDebug = import.meta.env.DEV
   ? lazy(() => import('./screens/GameDebug/GameDebug'))
   : null;
 
-// Dev-only manual QA page — lazy-loaded so production bundles are unaffected.
-// Vite dead-code-eliminates the dynamic import when DEV is false at build time.
-const TwistsTestPage = import.meta.env.DEV
+// Manual QA page. Normal release builds omit it; local production previews can
+// opt in with VITE_ENABLE_QA_ROUTES=true.
+const twistsQaEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_QA_ROUTES === 'true';
+const TwistsTestPage = twistsQaEnabled
   ? lazy(() => import('./screens/TwistsTestPage/TwistsTestPage'))
   : null;
 
@@ -115,7 +116,7 @@ export const router = createHashRouter([
       ...(SettingsAdmin != null
         ? [{ path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> }]
         : []),
-      ...(import.meta.env.DEV && TwistsTestPage != null
+      ...(twistsQaEnabled && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
         : []),
       ...(import.meta.env.DEV && CwgoTestPage != null

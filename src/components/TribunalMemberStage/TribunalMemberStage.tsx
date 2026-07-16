@@ -158,7 +158,10 @@ export default function TribunalMemberStage({
       {/* ── Name plate ──────────────────────────────────────────────── */}
       {current && (
         <div className="tms-nameplate" key={`name-${currentAnimationKey}`}>
-          <span className="tms-nameplate__eyebrow">TRIBUNAL MEMBER</span>
+          <span className="tms-nameplate__sequence">
+            Testimony {String(revealedJurors.length).padStart(2, '0')}
+          </span>
+          <span className="tms-nameplate__eyebrow">Tribunal member</span>
           <span className="tms-nameplate__name">
             {isPublic ? 'The Public' : current.juror.name}
             {isPublic && <span className="tms-nameplate__public-badge">🌐</span>}
@@ -212,6 +215,7 @@ export default function TribunalMemberStage({
                 onClick={() => onCastVote(f.id)}
               >
                 <PlayerAvatar player={f} size="sm" showRelationshipOutline={false} />
+                <span className="tms-vote-choice__role">Finalist</span>
                 <span className="tms-vote-choice__name">{f.name}</span>
               </button>
             ))}

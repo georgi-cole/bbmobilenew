@@ -10,6 +10,79 @@
   let currentView = null; // 'list' or 'detail'
   let selectedHouseguest = null;
   let closeTimeout = null; // Track pending close timeout to prevent race condition
+  const MYSTERY_WILDCARD_IDS = ['lia', 'ali', 'noa', 'pax', 'rey'];
+  const AVATAR_FILE_OVERRIDES = { mimi: 'mimi_avatar.webp' };
+
+  function assetUrl(path) {
+    if (!path || /^(?:https?:|data:|blob:)/i.test(path)) return path || '';
+    const base = typeof g.assetBase === 'string' && g.assetBase ? g.assetBase : '/';
+    const cleanBase = base.endsWith('/') ? base : `${base}/`;
+    return `${cleanBase}${path.replace(/^\.?\//, '')}`;
+  }
+
+  function avatarUrlFor(housemate) {
+    if (housemate.avatarPath) return assetUrl(housemate.avatarPath);
+    const id = String(housemate.id || housemate.name || '').toLowerCase();
+    const file = AVATAR_FILE_OVERRIDES[id] || `${housemate.name}_avatar.webp`;
+    return assetUrl(`assets/skins/${file}`);
+  }
+
+  function renderAvatar(avatar, housemate) {
+    avatar.textContent = '';
+    avatar.style.backgroundImage = '';
+    avatar.style.backgroundColor = '';
+
+    if (housemate.isLockedMystery) {
+      avatar.classList.add('houseguests-list__avatar--mystery');
+      avatar.textContent = '?';
+      return;
+    }
+
+    avatar.classList.remove('houseguests-list__avatar--mystery');
+    avatar.classList.add('houseguests-list__avatar--loading');
+    const avatarUrl = avatarUrlFor(housemate);
+    const img = new Image();
+    img.onload = () => {
+      avatar.classList.remove('houseguests-list__avatar--loading');
+      avatar.style.backgroundImage = `url(${avatarUrl})`;
+    };
+    img.onerror = () => {
+      avatar.classList.remove('houseguests-list__avatar--loading');
+      avatar.classList.add('houseguests-list__avatar--unavailable');
+      avatar.textContent = '?';
+    };
+    img.src = avatarUrl;
+  }
+
+  function getRosterEntries() {
+    const regularHousemates = global.Houseguests ? global.Houseguests.getAll() : [];
+    const profiles = Array.isArray(g.mysteryWildcards) ? g.mysteryWildcards : [];
+    const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
+    const twinShockUnlocked = g.twinShockConsumed === true;
+
+    const mysteryHousemates = MYSTERY_WILDCARD_IDS.map((id, index) => {
+      const profile = profilesById.get(id);
+      const unlocked = (id === 'lia' || id === 'ali') && twinShockUnlocked && profile;
+      if (!unlocked) {
+        return {
+          id: `mystery-${id}`,
+          name: 'Unknown',
+          fullName: 'Unknown',
+          location: 'Mystery housemate',
+          isLockedMystery: true,
+          mysteryIndex: index + 1,
+        };
+      }
+
+      return {
+        ...profile,
+        isMysteryWildcard: true,
+        story: profile.introduction,
+      };
+    });
+
+    return [...regularHousemates, ...mysteryHousemates];
+  }
 
   /**
    * Build the modal container structure
@@ -38,7 +111,7 @@
     const title = document.createElement('h2');
     title.id = 'houseguests-modal-title';
     title.className = 'houseguests-modal__title';
-    title.textContent = 'Houseguests';
+    title.textContent = 'Housemates';
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'houseguests-modal__close-btn';
@@ -71,12 +144,12 @@
     const body = modalContainer.querySelector('.houseguests-modal__body');
     const title = modalContainer.querySelector('.houseguests-modal__title');
     
-    title.textContent = 'Houseguests';
+    title.textContent = 'Housemates';
     body.innerHTML = '';
     body.className = 'houseguests-modal__body houseguests-modal__body--list';
 
     // Get houseguests data
-    const houseguests = global.Houseguests ? global.Houseguests.getAll() : [];
+    const houseguests = getRosterEntries();
 
     if (houseguests.length === 0) {
       const emptyMsg = document.createElement('p');
@@ -93,51 +166,19 @@
     houseguests.forEach(houseguest => {
       const item = document.createElement('button');
       item.className = 'houseguests-list__item';
-      item.setAttribute('aria-label', `View ${houseguest.fullName}`);
+      if (houseguest.isLockedMystery) {
+        item.classList.add('houseguests-list__item--mystery');
+        item.disabled = true;
+        item.setAttribute('aria-label', `Mystery housemate ${houseguest.mysteryIndex}, locked`);
+      } else {
+        item.setAttribute('aria-label', `View ${houseguest.fullName}`);
+      }
 
       // Avatar (using avatar cache if available, fallback to direct loading)
       const avatar = document.createElement('div');
       avatar.className = 'houseguests-list__avatar';
       
-      // Try to get avatar from cache first
-      const AvatarCache = global.AvatarCache || window.AvatarCache;
-      let avatarUrl = null;
-      
-      if (AvatarCache && typeof AvatarCache.getUrl === 'function') {
-        avatarUrl = AvatarCache.getUrl(houseguest);
-      } else if (global.resolveAvatar) {
-        avatarUrl = global.resolveAvatar(houseguest);
-      } else {
-        // Direct fallback to avatars folder
-        avatarUrl = `avatars/${houseguest.name}.png`;
-      }
-      
-      // Check if avatar is already cached
-      const cached = AvatarCache && AvatarCache.has(houseguest);
-      
-      if (cached) {
-        // Use cached image immediately
-        avatar.style.backgroundImage = `url(${avatarUrl})`;
-      } else {
-        // Show placeholder while loading
-        avatar.classList.add('houseguests-list__avatar--loading');
-        avatar.style.backgroundColor = getColorForName(houseguest.name);
-        avatar.textContent = houseguest.name.charAt(0);
-        
-        // Load image in background
-        const img = new Image();
-        img.onload = () => {
-          avatar.classList.remove('houseguests-list__avatar--loading');
-          avatar.style.backgroundImage = `url(${avatarUrl})`;
-          avatar.textContent = '';
-          avatar.style.backgroundColor = '';
-        };
-        img.onerror = () => {
-          // Keep placeholder on error
-          avatar.classList.remove('houseguests-list__avatar--loading');
-        };
-        img.src = avatarUrl;
-      }
+      renderAvatar(avatar, houseguest);
 
       // Info
       const info = document.createElement('div');
@@ -157,16 +198,18 @@
       // Arrow icon
       const arrow = document.createElement('div');
       arrow.className = 'houseguests-list__arrow';
-      arrow.textContent = '›';
+      arrow.textContent = houseguest.isLockedMystery ? '' : '›';
 
       item.appendChild(avatar);
       item.appendChild(info);
       item.appendChild(arrow);
 
-      item.addEventListener('click', () => {
-        selectedHouseguest = houseguest;
-        renderDetailView();
-      });
+      if (!houseguest.isLockedMystery) {
+        item.addEventListener('click', () => {
+          selectedHouseguest = houseguest;
+          renderDetailView();
+        });
+      }
 
       list.appendChild(item);
     });
@@ -204,43 +247,7 @@
 
     const avatar = document.createElement('div');
     avatar.className = 'houseguests-detail__avatar';
-    
-    // Try to get avatar from cache first
-    const AvatarCache = global.AvatarCache || window.AvatarCache;
-    let avatarUrl = null;
-    
-    if (AvatarCache && typeof AvatarCache.getUrl === 'function') {
-      avatarUrl = AvatarCache.getUrl(selectedHouseguest);
-    } else if (global.resolveAvatar) {
-      avatarUrl = global.resolveAvatar(selectedHouseguest);
-    } else {
-      // Direct fallback to avatars folder
-      avatarUrl = `avatars/${selectedHouseguest.name}.png`;
-    }
-    
-    // Check if avatar is already cached
-    const cached = AvatarCache && AvatarCache.has(selectedHouseguest);
-    
-    if (cached) {
-      // Use cached image immediately
-      avatar.style.backgroundImage = `url(${avatarUrl})`;
-    } else {
-      // Show placeholder while loading
-      avatar.style.backgroundColor = getColorForName(selectedHouseguest.name);
-      avatar.textContent = selectedHouseguest.name.charAt(0);
-      
-      // Load image in background
-      const img = new Image();
-      img.onload = () => {
-        avatar.style.backgroundImage = `url(${avatarUrl})`;
-        avatar.textContent = '';
-        avatar.style.backgroundColor = '';
-      };
-      img.onerror = () => {
-        // Keep placeholder on error
-      };
-      img.src = avatarUrl;
-    }
+    renderAvatar(avatar, selectedHouseguest);
 
     const nameLabel = document.createElement('h3');
     nameLabel.className = 'houseguests-detail__name';
@@ -260,7 +267,7 @@
     const basicGrid = document.createElement('div');
     basicGrid.className = 'houseguests-detail__grid';
 
-    const basicFields = [
+    const standardFields = [
       { label: 'Age', value: selectedHouseguest.age },
       { label: 'Sex', value: selectedHouseguest.sex },
       { label: 'Location', value: selectedHouseguest.location },
@@ -287,6 +294,14 @@
           : 'None' 
       }
     ];
+    const wildcardFields = [
+      { label: 'Age', value: selectedHouseguest.age },
+      { label: 'Location', value: selectedHouseguest.location },
+      { label: 'Profession', value: selectedHouseguest.profession },
+      { label: 'Why They Want to Win', value: selectedHouseguest.prizePlan },
+      { label: 'Private File', value: selectedHouseguest.privateDetail },
+    ];
+    const basicFields = selectedHouseguest.isMysteryWildcard ? wildcardFields : standardFields;
 
     basicFields.forEach(field => {
       const item = document.createElement('div');

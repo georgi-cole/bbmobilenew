@@ -21,9 +21,9 @@
  * - `logic-only`         – restrict to the `logic` registry category.
  * - `retired`            – pick from retired games only.
  * - `misc`               – games not matching any of the main categories (fallback).
- * - `unique`             – default mapped mode; uses the order/type bracket template
- *                          when available, avoids recent repeats within that mapped pool,
- *                          and only falls back to broader scheduling when no mapping applies.
+ * - `unique`             – default mapped mode; uses the day/housemate/type campaign map
+ *                          and avoids every played LOH/POS game while the current eligible
+ *                          pool still contains an unused game.
  * - `bracket-template`   – select from the default bracket template pool for the
  *                          current player count and competition type (LOH/POS).
  *                          Falls back to random selection when the bracket pool is empty.

@@ -108,6 +108,35 @@ describe('PublicFavoriteOverlay', () => {
     expect(screen.getByRole('button', { name: /watch to boost taylor/i })).toBeEnabled();
   });
 
+  it('offers a fast-forward control that accelerates the remaining vote', () => {
+    mockedUseBattleBackVoting.mockReturnValue({
+      votes: { p1: 41, p2: 34, p3: 25 },
+      eliminated: [],
+      winnerId: null,
+      isComplete: false,
+    });
+
+    render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={1}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const fastForward = screen.getByRole('button', { name: /fast forward public favorite vote/i });
+    expect(fastForward).toBeEnabled();
+
+    fireEvent.click(fastForward);
+
+    expect(screen.getByRole('button', { name: /fast forward public favorite vote/i })).toBeDisabled();
+    expect(screen.getByText('Forwarding')).toBeInTheDocument();
+    expect(mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]).toMatchObject({
+      eliminationIntervalMs: 260,
+      tickIntervalMs: 120,
+    });
+  });
+
   it('requests audience surge only once and shows the active state', async () => {
     mockedUseBattleBackVoting.mockReturnValue({
       votes: { p1: 38, p2: 35, p3: 27 },
@@ -372,8 +401,16 @@ describe('PublicFavoriteOverlay', () => {
     let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
     const firstFinnFact = within(spotlight).getByText(/marine architect/i).textContent;
 
+    // Advance one spotlight beat at a time so React can commit each rotation
+    // and schedule the next biography timer.
     act(() => {
-      vi.advanceTimersByTime(18000);
+      vi.advanceTimersByTime(6000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(6000);
     });
 
     spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });

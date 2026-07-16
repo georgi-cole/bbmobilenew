@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RecapImage from '../../components/SeasonRecapCinematic/RecapImage';
+import { resolveAvatarCandidates } from '../../utils/avatar';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { resetGame, archiveSeason } from '../../store/gameSlice';
 import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
@@ -108,12 +109,16 @@ export default function GameOver() {
 
   const winner = players.find((p) => p.isWinner) ?? players.find((p) => p.finalRank === 1);
   const runnerUp = players.find((p) => p.finalRank === 2);
+  const favoriteWinner = players.find((p) => p.id === favoriteWinnerId);
   const summaries = buildSummaries(players, favoriteWinnerId, week, publicOpinion);
 
   const seasonLeaderboard = computeSeasonLeaderboard(summaries, DEFAULT_WEIGHTS).slice(0, 5);
   const allTimeLeaderboard = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS).slice(0, 5);
   const aftermathStories = useMemo(() => buildAftermathStories(players, season), [players, season]);
   const activeStory = aftermathStories[storyIndex] ?? aftermathStories[0];
+  const aftermathProgress = aftermathStories.length > 0
+    ? ((storyIndex + 1) / aftermathStories.length) * 100
+    : 0;
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -177,29 +182,55 @@ export default function GameOver() {
 
   return (
     <div className="gameover-shell">
-      <div className="gameover-brand" aria-hidden="true">
-        <img className="gameover-brand__logo" src={LOGO_SRC} alt="" />
-      </div>
-
+      <div className="gameover-gallery-bg" aria-hidden="true" />
+      <div className="gameover-gallery-flashes" aria-hidden="true" />
       <div className="gameover-card">
+        <p className="gameover-eyebrow">Season {season} · Official record</p>
         <h1 className="gameover-title">Season Complete</h1>
-        <p className="gameover-sub">Thanks for playing - here are the results</p>
+        <p className="gameover-sub">The house is closed. The record is permanent.</p>
 
         <div className="gameover-carousel" aria-live="polite">
           <div
             className={`gameover-carousel__slide${carouselSlide === 0 ? ' gameover-carousel__slide--active' : ''}`}
           >
-            <div className="gameover-winner">
-              <div className="gameover-winner__label">Winner</div>
-              <div className="gameover-winner__name">{winner?.name ?? 'TBD'}</div>
+            <div className="gameover-champion-record">
+              <div className="gameover-champion-record__identity">
+                <div className="gameover-winner__label">Season champion</div>
+                <div className="gameover-winner__name">{winner?.name ?? 'TBD'}</div>
+              </div>
+              <div className="gameover-champion-record__showpiece">
+                <div className="gameover-champion-record__portrait" aria-hidden="true">
+                  {winner && (
+                    <RecapImage
+                      sources={resolveAvatarCandidates(winner)}
+                      alt={winner.name}
+                      className="gameover-champion-record__image"
+                      loading="eager"
+                    />
+                  )}
+                </div>
+                <span className="gameover-champion-record__trophy" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M6 2h12v3h4v3a6 6 0 0 1-5.24 5.95A7 7 0 0 1 13 17.92V20h4v2H7v-2h4v-2.08a7 7 0 0 1-3.76-3.97A6 6 0 0 1 2 8V5h4V2Zm12 5v4.72A4 4 0 0 0 20 8V7h-2ZM4 7v1a4 4 0 0 0 2 3.72V7H4Z" />
+                  </svg>
+                </span>
+              </div>
             </div>
 
-            {runnerUp && (
-              <div className="gameover-runnerup">
-                <div className="gameover-runnerup__label">Runner-up</div>
-                <div className="gameover-runnerup__name">{runnerUp.name}</div>
-              </div>
-            )}
+            <div className="gameover-honors-row">
+              {runnerUp && (
+                <div className="gameover-runnerup">
+                  <div className="gameover-runnerup__label">Runner-up</div>
+                  <div className="gameover-runnerup__name">{runnerUp.name}</div>
+                </div>
+              )}
+              {favoriteWinner && (
+                <div className="gameover-favorite">
+                  <div className="gameover-runnerup__label">Public favorite</div>
+                  <div className="gameover-runnerup__name">{favoriteWinner.name}</div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div
@@ -215,6 +246,7 @@ export default function GameOver() {
                 </li>
               ))}
             </ul>
+            <img className="gameover-record-logo" src={LOGO_SRC} alt="KoleQuant" />
           </div>
 
           <div
@@ -230,6 +262,7 @@ export default function GameOver() {
                 </li>
               ))}
             </ul>
+            <img className="gameover-record-logo" src={LOGO_SRC} alt="KoleQuant" />
           </div>
         </div>
 
@@ -281,49 +314,68 @@ export default function GameOver() {
           )}
 
           {panel === 'aftermath' && activeStory && (
-            <div className={`gameover-aftermath gameover-aftermath--${activeStory.tone}`}>
+            <div key={activeStory.playerId} className={`gameover-aftermath gameover-aftermath--${activeStory.tone}`}>
               <div className="gameover-aftermath__topbar">
                 <span className="gameover-aftermath__edition">Late Edition</span>
-                <span className={`gameover-aftermath__tone gameover-aftermath__tone--${activeStory.tone}`}>
-                  {activeStory.toneLabel}
-                </span>
+                <span className="gameover-aftermath__masthead">After the Eye</span>
               </div>
 
-              <div className="gameover-aftermath__meta">
-                <div>
-                  <p className="gameover-aftermath__player">{activeStory.playerName}</p>
-                  <p className="gameover-aftermath__placement">{activeStory.placementLabel}</p>
-                </div>
-                <p className="gameover-aftermath__progress">
-                  {storyIndex + 1} / {aftermathStories.length}
-                </p>
+              <div className="gameover-aftermath__progress-rail" aria-hidden="true">
+                <span style={{ width: `${aftermathProgress}%` }} />
               </div>
 
-              <div className="gameover-aftermath__paper">
-                <div className="gameover-aftermath__lead">
-                  <p className="gameover-aftermath__kicker">What happened next</p>
-                  <h2 className="gameover-aftermath__headline">{activeStory.headline}</h2>
-                  <p className="gameover-aftermath__subheadline">{activeStory.subheadline}</p>
+              <div className="gameover-aftermath__scroll">
+                <div className="gameover-aftermath__meta">
+                  <div>
+                    <p className="gameover-aftermath__player">{activeStory.playerName}</p>
+                    <p className="gameover-aftermath__placement">{activeStory.placementLabel}</p>
+                  </div>
+                  <p className="gameover-aftermath__progress">
+                    {storyIndex + 1} / {aftermathStories.length}
+                  </p>
                 </div>
 
-                <div className="gameover-aftermath__story-grid">
-                  <div className="gameover-aftermath__photo-panel">
-                    <RecapImage
-                      className="gameover-aftermath__photo"
-                      sources={activeStory.imageSources}
-                      alt={activeStory.playerName}
-                    />
-                    <p className="gameover-aftermath__caption">Exclusive post-show sighting.</p>
+                <div className="gameover-aftermath__paper">
+                  <div className="gameover-aftermath__lead">
+                    <p className="gameover-aftermath__kicker">What happened next</p>
+                    <h2 className="gameover-aftermath__headline">{activeStory.headline}</h2>
+                    <p className="gameover-aftermath__subheadline">{activeStory.subheadline}</p>
                   </div>
 
-                  <div className="gameover-aftermath__copy">
-                    <ul className="gameover-aftermath__bullets">
-                      {activeStory.bulletPoints.map((bullet) => (
-                        <li key={bullet}>{bullet}</li>
-                      ))}
-                    </ul>
-                    <p className="gameover-aftermath__body">{activeStory.body}</p>
+                  <div className="gameover-aftermath__story-grid">
+                    <div className="gameover-aftermath__photo-panel">
+                      <div className="gameover-aftermath__photo-frame">
+                        <RecapImage
+                          className="gameover-aftermath__photo"
+                          sources={activeStory.imageSources}
+                          alt={activeStory.playerName}
+                        />
+                        <span className="gameover-aftermath__flash" aria-hidden="true" />
+                      </div>
+                      <p className="gameover-aftermath__caption">Post-show sighting.</p>
+                    </div>
+
+                    <div className="gameover-aftermath__copy">
+                      <ul className="gameover-aftermath__bullets">
+                        {activeStory.bulletPoints.map((bullet) => (
+                          <li key={bullet}>{bullet}</li>
+                        ))}
+                      </ul>
+                      <p className="gameover-aftermath__body">{activeStory.body}</p>
+                    </div>
                   </div>
+                </div>
+
+                <div className="gameover-aftermath__contact-sheet" aria-label="Aftermath stories">
+                  {aftermathStories.slice(0, 8).map((story, index) => (
+                    <span
+                      key={story.playerId}
+                      className={index === storyIndex ? 'is-active' : ''}
+                      title={story.playerName}
+                    >
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                  ))}
                 </div>
               </div>
 

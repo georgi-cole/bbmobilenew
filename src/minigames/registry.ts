@@ -268,7 +268,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: false,
     weight: 1,
     category: 'arcade',
-    retired: false,
+    retired: true,
   },
 
   estimationGame: {

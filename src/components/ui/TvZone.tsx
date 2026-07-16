@@ -89,6 +89,7 @@ const MAJOR_KEYS = new Set([
   'coup_detat',
   'spotlight_veto',
   'democracia',
+  'tribunal_phase',
   'twist',
   'loh_comp_announcement',
   'pos_comp_announcement',
@@ -110,6 +111,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   coup_detat:           { title: 'Detox!',                     subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',    isLive: true,  autoDismissMs: null },
   spotlight_veto:       { title: 'Force Majeure!',             subtitle: 'The holder is forced to use the power this ceremony. ✨',        isLive: true,  autoDismissMs: null },
   democracia:           { title: 'DEMOCRACIA!',                subtitle: 'The house will elect the new Leader of the House by secret vote.', isLive: true,  autoDismissMs: null },
+  tribunal_phase:       { title: `Congrats all, you've just made it to tribunal.`, subtitle: 'Your voices will crown the winner.', isLive: true, autoDismissMs: null },
   twist:                { title: 'Shock Alert!',               subtitle: 'The Big Eye has a surprise.',                                  isLive: true,  autoDismissMs: null },
   loh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
   pos_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
@@ -201,6 +203,7 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'battle_back_rules',
   'battle_back_challenge',
   'democracia',
+  'tribunal_phase',
 ]);
 
 type TvZonePublicSaveReveal = {
@@ -300,6 +303,11 @@ export default function TvZone(props: TvZoneProps) {
   const occupancyChip = props.occupancyChip ?? null;
 
   const latestEvent = tvVisibleFeed[0];
+  const announcementPrerollEvent = useMemo(() => {
+    const prerollId = latestEvent?.meta?.announcementPrerollEventId;
+    if (typeof prerollId !== 'string') return null;
+    return tvVisibleFeed.find((event) => event.id === prerollId) ?? null;
+  }, [latestEvent, tvVisibleFeed]);
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
   const voteResultsRevealActive = Boolean(props.voteResultsReveal);
   const democraciaResultsRevealActive = Boolean(props.democraciaResultsReveal);
@@ -459,11 +467,13 @@ export default function TvZone(props: TvZoneProps) {
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {
-    if (!latestEvent) return null;
-    if (latestEvent.id === dismissedEventId) return null;
-    const majorKey = extractMajorKey(latestEvent);
-    return majorKey ? buildAnnouncement(majorKey, latestEvent) : null;
-  }, [latestEvent, dismissedEventId]);
+    const announcementEvent = announcementPrerollEvent ?? latestEvent;
+    if (!announcementEvent) return null;
+    if (announcementEvent.id === dismissedEventId) return null;
+    const majorKey = extractMajorKey(announcementEvent);
+    return majorKey ? buildAnnouncement(majorKey, announcementEvent) : null;
+  }, [announcementPrerollEvent, latestEvent, dismissedEventId]);
+  const eventAnnouncementSource = announcementPrerollEvent ?? latestEvent;
 
   // Active announcement precedence: priorityAnnouncement, then externalAnnouncement,
   // then phaseAnnouncement, then eventAnnouncement.
@@ -563,15 +573,15 @@ export default function TvZone(props: TvZoneProps) {
       if (phaseAnnouncement) {
         setDismissedPhase(gameState.phase);
         setPhaseAnnouncement(null);
-      } else if (latestEvent) {
-        setDismissedEventId(latestEvent.id);
+      } else if (eventAnnouncementSource) {
+        setDismissedEventId(eventAnnouncementSource.id);
       }
       onExternalAnnouncementDismiss?.();
     } else if (phaseAnnouncement) {
       setDismissedPhase(gameState.phase);
       setPhaseAnnouncement(null);
-    } else if (latestEvent) {
-      setDismissedEventId(latestEvent.id);
+    } else if (eventAnnouncementSource) {
+      setDismissedEventId(eventAnnouncementSource.id);
     }
     if (skipPostDismissFade) {
       setPostDismissBlocked(false);
@@ -587,7 +597,7 @@ export default function TvZone(props: TvZoneProps) {
   }, [
     priorityAnnouncement,
     externalAnnouncement,
-    latestEvent,
+    eventAnnouncementSource,
     phaseAnnouncement,
     eventAnnouncement,
     gameState.phase,

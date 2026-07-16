@@ -15,7 +15,9 @@ import {
   simulateMinigameAiScore,
 } from '../ai/competition';
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
-import { getApprovedCompetitionGameKeys, getBracketPoolForContext } from '../ai/competition/bracketTemplate';
+import {
+  getClassicCampaignPoolForContext,
+} from '../ai/competition/bracketTemplate';
 import { applyCompetitionSeasonUpdate, hydrateGame, selectAlivePlayers } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter, supportsPlayerCount } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
@@ -36,14 +38,13 @@ function hashStringU32(s: string): number {
 }
 
 function shouldForceTwinShockHintGame(state: RootState, prizeType?: CwgoPrizeType | string): boolean {
-  const gameState = state.game;
-  const isLohChallenge = prizeType === 'LOH' || (prizeType == null && gameState.phase === 'loh_comp');
-  if (!isLohChallenge) return false;
-  if (gameState.week !== 5) return false;
-  if (gameState.twinShockConsumed) return false;
-  return gameState.players.some((player) => player.id === TWIN_SHOCK_LIA_ID && player.status === 'active');
+  const game = state.game;
+  const isLohChallenge = prizeType === 'LOH' || (prizeType == null && game.phase === 'loh_comp');
+  return isLohChallenge
+    && game.week === 5
+    && game.twinShockResolution == null
+    && game.players.some((player) => player.id === TWIN_SHOCK_LIA_ID && player.status === 'active');
 }
-
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface ChallengeRun {
@@ -108,7 +109,6 @@ const initialState: ChallengeState = {
 const LATE_SEASON_PLAYER_THRESHOLD = 6;
 // Keep a modest history buffer in case the scheduler window expands.
 const RECENT_HISTORY_LIMIT = 10;
-const SURVIVOR_APPROVED_GAME_KEYS = new Set(getApprovedCompetitionGameKeys());
 
 // ─── Slice ───────────────────────────────────────────────────────────────────
 
@@ -209,9 +209,8 @@ export const startChallenge =
           `${state.game.runId ?? state.game.gameId ?? 'game'}:${nextNonce}`,
         );
 
-    const historyGameKeys = (state.challenge?.history ?? [])
-      .slice(0, RECENT_HISTORY_LIMIT)
-      .map((run) => run.gameKey);
+    const allHistoryGameKeys = (state.challenge?.history ?? []).map((run) => run.gameKey);
+    const historyGameKeys = allHistoryGameKeys.slice(0, RECENT_HISTORY_LIMIT);
     // Late-season bias is based on active competitors (jury members no longer play comps).
     const activeCompetitorCount = selectAlivePlayers(state).length;
     const scheduledPlayerCount = participants.length || activeCompetitorCount;
@@ -236,15 +235,17 @@ export const startChallenge =
         : null;
       if (!modeSpecific) return pickFromRegistry(category, excludeKeys);
 
-      const approvedPool = getPoolByFilter({ retired: false, excludeKeys })
-        .filter(eligibleForRoster)
-        .filter((game) => SURVIVOR_APPROVED_GAME_KEYS.has(game.key));
+      // Survivor has its own free-form rotation. The curated Classic campaign
+      // map must not constrain it; only retirement, roster safety, explicit
+      // exclusions, and an optional category filter apply.
+      const availablePool = getPoolByFilter({ retired: false, excludeKeys })
+        .filter(eligibleForRoster);
       const pool = category
-        ? approvedPool.filter((game) => game.category === category)
-        : approvedPool;
-      const selectionPool = pool.length > 0 ? pool : approvedPool;
+        ? availablePool.filter((game) => game.category === category)
+        : availablePool;
+      const selectionPool = pool.length > 0 ? pool : availablePool;
       if (selectionPool.length === 0) {
-        throw new Error('[challengeSlice] No approved Survival games are available');
+        throw new Error('[challengeSlice] No non-retired Survival games are available');
       }
 
       const usedKeys = modeSpecific.competitionRotation.usedKeys ?? [];
@@ -274,15 +275,29 @@ export const startChallenge =
       return selected;
     };
     const getBracketTemplatePool = (excludeKeys?: string[]) => {
+      const isFinal3Competition =
+        state.game.phase === 'final3_comp1' ||
+        state.game.phase === 'final3_comp1_minigame' ||
+        state.game.phase === 'final3_comp2' ||
+        state.game.phase === 'final3_comp2_minigame' ||
+        state.game.phase === 'final3_comp3' ||
+        state.game.phase === 'final3_comp3_minigame';
       const bracketCompType =
         opts.prizeType === 'LOH' || opts.prizeType === 'POS'
           ? opts.prizeType
-          : undefined;
+          : isFinal3Competition
+            ? 'LOH'
+            : undefined;
       if (!bracketCompType) return [];
 
       const bracketPlayerCount =
         activeCompetitorCount > 0 ? activeCompetitorCount : participants.length;
-      const bracketKeys = getBracketPoolForContext(bracketPlayerCount, bracketCompType);
+      const bracketKeys = getClassicCampaignPoolForContext({
+        day: state.game.week,
+        playerCount: bracketPlayerCount,
+        compType: bracketCompType,
+        phase: state.game.phase,
+      });
       if (bracketKeys.length === 0) return [];
 
       const excluded = new Set(excludeKeys ?? []);
@@ -372,8 +387,12 @@ export const startChallenge =
 
         case 'unique': {
           const recentKeys = new Set(historyGameKeys);
+          const seasonUsedKeys = new Set(allHistoryGameKeys);
           const bracketPool = getBracketTemplatePool(opts.excludeKeys);
-          const uniqueBracketPool = bracketPool.filter((game) => !recentKeys.has(game.key));
+          // Classic campaign selection is without replacement across both LOH
+          // and POS. Only repeat after every game in the current eligible pool
+          // has already appeared this season.
+          const uniqueBracketPool = bracketPool.filter((game) => !seasonUsedKeys.has(game.key));
           if (uniqueBracketPool.length > 0) {
             gameEntry = selectFromPool(uniqueBracketPool);
             break;
@@ -400,7 +419,9 @@ export const startChallenge =
         case 'bracket-template': {
           const bracketPool = getBracketTemplatePool(opts.excludeKeys);
           if (bracketPool.length > 0) {
-            gameEntry = selectFromPool(bracketPool);
+            const seasonUsedKeys = new Set(allHistoryGameKeys);
+            const unusedPool = bracketPool.filter((game) => !seasonUsedKeys.has(game.key));
+            gameEntry = selectFromPool(unusedPool.length > 0 ? unusedPool : bracketPool);
             break;
           }
           gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
@@ -414,15 +435,10 @@ export const startChallenge =
       }
     }
 
-    // Twin Shock hint override: on Day 5 LOH, force Find your twin whenever
-    // Lia is still active and the twist has not been resolved yet.
     if (shouldForceTwinShockHintGame(state, opts.prizeType)) {
-      const hintGame = getGame('castleRescue');
-      if (hintGame) {
-        gameEntry = hintGame;
-      }
+      const twinHintGame = getGame('castleRescue');
+      if (twinHintGame) gameEntry = twinHintGame;
     }
-
     // Derive a per-challenge seed from the base seed + game key hash.
     const challengeSeed = deriveSeed(gameSeed, gameEntry.key);
 

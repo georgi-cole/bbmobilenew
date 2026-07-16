@@ -440,3 +440,449 @@
   0%, 100% { opacity: 0.4; }
   50%       { opacity: 0.9; }
 }
+
+/* ─── Cinematic Tribunal redesign ──────────────────────────────────────────
+   Phone-first ceremonial chamber. The game logic above is unchanged; these
+   rules turn the same clues, choices and ballots into one coherent finale. */
+.fo-overlay {
+  --fo-gold: #e8bf76;
+  --fo-violet: #b9a6ff;
+  --fo-ink: #05060a;
+  color: #f8f4ed;
+  background: var(--fo-ink);
+  isolation: isolate;
+}
+
+.fo-overlay::before {
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(4, 5, 9, 0.34), rgba(3, 4, 7, 0.58) 56%, rgba(2, 3, 5, 0.94)),
+    radial-gradient(circle at 50% 12%, rgba(232, 191, 118, 0.12), transparent 30%);
+}
+
+.fo-chamber,
+.fo-chamber__light,
+.fo-chamber__grain {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+}
+
+.fo-chamber {
+  inset: -2%;
+  background: url('/assets/cinematic-backgrounds/tribunal-chamber.webp') center / cover no-repeat;
+  filter: saturate(0.82) contrast(1.05) brightness(0.74);
+  animation: fo-chamber-breathe 16s ease-in-out infinite alternate;
+}
+
+.fo-chamber__light {
+  z-index: -2;
+  background:
+    linear-gradient(90deg, rgba(232, 170, 80, 0.08), transparent 35%, transparent 65%, rgba(162, 137, 255, 0.1)),
+    radial-gradient(ellipse at 50% 88%, rgba(245, 226, 192, 0.13), transparent 38%);
+  mix-blend-mode: screen;
+}
+
+.fo-chamber__grain {
+  z-index: 30;
+  opacity: 0.09;
+  background-image: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, 0.12) 3px 4px);
+  mix-blend-mode: soft-light;
+}
+
+@keyframes fo-chamber-breathe {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.07); }
+}
+
+.fo-header {
+  z-index: 12;
+  display: grid;
+  justify-items: center;
+  flex: 0 0 auto;
+  padding:
+    max(12px, calc(env(safe-area-inset-top, 0px) + 8px))
+    58px
+    10px;
+  border: 0;
+  background: linear-gradient(180deg, rgba(2, 3, 6, 0.9), rgba(2, 3, 6, 0.42) 72%, transparent);
+  pointer-events: none;
+}
+
+.fo-header__eyebrow {
+  margin: 0 0 3px;
+  color: var(--fo-gold);
+  font-size: clamp(0.54rem, 2vw, 0.72rem);
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.fo-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.32em;
+  color: #fff;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.55rem, 7vw, 3.4rem);
+  font-weight: 500;
+  line-height: 0.96;
+  letter-spacing: -0.055em;
+  text-transform: none;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.66);
+}
+
+.fo-title span {
+  color: rgba(255, 255, 255, 0.66);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.39em;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.fo-subtitle {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.69);
+  font-size: clamp(0.64rem, 2.5vw, 0.82rem);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.fo-header__progress {
+  width: min(210px, 48vw);
+  height: 2px;
+  margin-top: 9px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.fo-header__progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--fo-gold), #fff, var(--fo-violet));
+  box-shadow: 0 0 12px rgba(232, 191, 118, 0.72);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fo-jury-return {
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0 12px 6px;
+  padding: 0.48rem 0.7rem;
+  border-color: rgba(232, 191, 118, 0.36);
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(9, 8, 12, 0.68);
+  backdrop-filter: blur(16px);
+}
+
+.fo-jury-return > span {
+  color: var(--fo-gold);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.fo-controls {
+  z-index: 24;
+  justify-content: center;
+  padding: 8px 14px max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  border: 0;
+  background: linear-gradient(0deg, rgba(2, 3, 6, 0.96), rgba(2, 3, 6, 0.58) 72%, transparent);
+}
+
+.fo-btn {
+  flex: 0 1 340px;
+  min-height: 48px;
+  border: 1px solid rgba(232, 191, 118, 0.44);
+  border-radius: 999px;
+  background: linear-gradient(115deg, #c69244, #f0cf8c 46%, #a98fff);
+  color: #090806;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34), 0 0 24px rgba(232, 191, 118, 0.16);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.fo-btn--secondary {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(7, 8, 13, 0.58);
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+}
+
+/* Verdict act: the finalists read as opposing cases, not small profile tiles. */
+.fo-finalists {
+  z-index: 4;
+  flex: 0 0 clamp(260px, 40dvh, 390px);
+  gap: 8px;
+  padding: 2px 12px 8px;
+}
+
+.fo-finalist {
+  max-width: 320px;
+  min-width: 0;
+  overflow: hidden;
+  display: block;
+  padding: 0;
+  border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 20px 20px 8px 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(5, 6, 10, 0.82)),
+    rgba(7, 8, 13, 0.55);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(12px);
+}
+
+.fo-finalist:first-child {
+  border-top-color: rgba(232, 191, 118, 0.55);
+}
+
+.fo-finalist:nth-child(2) {
+  border-top-color: rgba(185, 166, 255, 0.58);
+}
+
+.fo-finalist__portrait-frame {
+  position: absolute;
+  inset: 0 0 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.fo-finalist__portrait.pa {
+  display: block;
+  flex: 0 0 auto;
+  width: min(94%, 15rem);
+  height: auto;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid rgba(232, 191, 118, 0.64);
+  border-radius: 50%;
+  background: #111725;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 34px rgba(232, 191, 118, 0.18);
+  filter: none;
+  animation: fo-finalist-arrive 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.fo-finalist:nth-child(2) .fo-finalist__portrait.pa {
+  border-color: rgba(185, 166, 255, 0.68);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 34px rgba(185, 166, 255, 0.2);
+  animation-delay: 90ms;
+}
+
+.fo-finalist--winner .fo-finalist__portrait.pa {
+  border-color: rgba(255, 239, 185, 0.92);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 42px rgba(247, 211, 132, 0.34);
+}
+
+.fo-finalist__portrait .pa__img { object-position: center 18%; }
+
+@keyframes fo-finalist-arrive {
+  from { opacity: 0; transform: translateY(24px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fo-finalist__meta {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  padding: 9px 10px 10px;
+  background: linear-gradient(0deg, rgba(3, 4, 7, 0.98), rgba(3, 4, 7, 0.76), transparent);
+}
+
+.fo-finalist__role {
+  grid-column: 1;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.fo-finalist__name {
+  grid-column: 1;
+  overflow: hidden;
+  color: #fff;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.05rem, 5vw, 1.75rem);
+  font-weight: 500;
+  line-height: 0.95;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fo-finalist__votes {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  color: var(--fo-gold);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 8vw, 3rem);
+  font-weight: 500;
+  line-height: 0.8;
+}
+
+.fo-finalist:nth-child(2) .fo-finalist__votes {
+  color: #c7b8ff;
+}
+
+.fo-finalist__votes small {
+  display: none;
+}
+
+.fo-finalist--winner {
+  border-color: rgba(247, 211, 132, 0.85);
+  box-shadow: 0 0 0 1px rgba(247, 211, 132, 0.24), 0 0 50px rgba(247, 211, 132, 0.26);
+}
+
+.fo-winner-badge {
+  top: 9px;
+  z-index: 3;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  color: #15100a;
+  background: linear-gradient(115deg, #fff2c2, #d69a3b);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
+}
+
+.fo-jurors {
+  z-index: 5;
+  margin: 0 8px;
+  padding: 8px 6px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(3, 4, 8, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  scrollbar-width: thin;
+}
+
+.jb-bubble {
+  align-items: center;
+  min-height: 54px;
+  border-color: rgba(255, 255, 255, 0.11);
+  border-radius: 12px;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+
+.jb-name {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jb-vote-statement {
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 0.72rem;
+}
+
+.jb-vote-statement__finalist {
+  color: var(--fo-gold);
+}
+
+.jb-bubble--public {
+  border-color: rgba(232, 191, 118, 0.42);
+  background: linear-gradient(100deg, rgba(232, 191, 118, 0.13), rgba(185, 166, 255, 0.08));
+}
+
+.fo-tally {
+  z-index: 6;
+  gap: 6px;
+  padding: 6px 12px 2px;
+  border: 0;
+}
+
+.fo-tally__item {
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(4, 5, 9, 0.68);
+  backdrop-filter: blur(12px);
+}
+
+.fo-tally__name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.fo-tally__count {
+  color: var(--fo-gold);
+}
+
+@media (min-width: 700px) {
+  .fo-header {
+    padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 16px));
+  }
+
+  .fo-title {
+    font-size: clamp(2.5rem, 4vw, 4rem);
+  }
+
+  .fo-finalists,
+  .fo-jurors,
+  .fo-tally {
+    width: min(100% - 48px, 1040px);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .fo-finalists {
+    flex-basis: min(42dvh, 400px);
+    gap: 18px;
+  }
+
+  .fo-finalist {
+    max-width: 420px;
+  }
+
+  .fo-finalist__portrait-frame {
+    bottom: 64px;
+  }
+}
+
+@media (max-height: 700px) {
+  .fo-header {
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: 6px;
+  }
+
+  .fo-subtitle,
+  .fo-header__progress {
+    margin-top: 4px;
+  }
+
+  .fo-finalists {
+    flex-basis: 230px;
+  }
+
+  .fo-finalist__portrait.pa {
+    width: min(90%, 9.25rem);
+    height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fo-chamber,
+  .fo-finalist__portrait {
+    animation: none;
+  }
+}

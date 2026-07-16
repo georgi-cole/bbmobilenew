@@ -20,7 +20,12 @@ import profilesReducer, { type ProfilesState } from '../../src/store/profilesSli
 import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
-import { getApprovedCompetitionGameKeys, getBracketPoolForContext } from '../../src/ai/competition/bracketTemplate';
+import {
+  getApprovedCompetitionGameKeys,
+  getBracketPoolForContext,
+  getClassicCampaignPoolForContext,
+} from '../../src/ai/competition/bracketTemplate';
+import { getPoolByFilter, supportsPlayerCount } from '../../src/minigames/registry';
 import { createSurvivorRun } from '../../src/modes/survivorRun';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -226,6 +231,20 @@ describe('challenge flow – startChallenge thunk', () => {
     expect(state.challenge.pending?.phase).toBe('rules');
   });
 
+  it('forces Find your twin for an activated but unresolved Day 5 Twin Shock', () => {
+    const initialGame = gameReducer(undefined, { type: '@@INIT' });
+    const store = makeStoreWithGame({
+      week: 5,
+      phase: 'loh_comp',
+      twinShockConsumed: true,
+      twinShockResolution: null,
+    });
+    const participants = initialGame.players.map((player) => player.id);
+
+    dispatchThunk(store, startChallenge(55, participants, { prizeType: 'LOH' }));
+
+    expect(store.getState().challenge.pending?.game.key).toBe('castleRescue');
+  });
   it('leaves challenge.history empty until completeChallenge is called', () => {
     const store = makeStore();
 
@@ -383,6 +402,78 @@ describe('startChallenge – compSelection modes', () => {
     expect(expectedPool).toContain(pending?.game.key);
   });
 
+  it('unique: does not reuse an eligible game until the current pool is exhausted', () => {
+    const store = makeStoreWithCompSelection({ mode: 'unique', enabledIds: [] });
+    const state = store.getState();
+    const alivePlayerCount = state.game.players.filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury',
+    ).length;
+    const eligibleKeys = getClassicCampaignPoolForContext({
+      day: state.game.week,
+      playerCount: alivePlayerCount,
+      compType: 'POS',
+      phase: 'pos_comp',
+    });
+    const onlyUnusedKey = eligibleKeys.at(-1);
+    expect(onlyUnusedKey).toBeDefined();
+
+    eligibleKeys.slice(0, -1).forEach((gameKey, index) => {
+      store.dispatch(recordRun({
+        id: `used-by-earlier-loh-or-pos-${index}`,
+        gameKey,
+        seed: index,
+        participants: [],
+        rawScores: {},
+        canonicalScores: {},
+        winnerId: 'p1',
+        timestamp: index,
+        authoritative: false,
+      }));
+    });
+
+    dispatchThunk(store, startChallenge(91, state.game.players.map((player) => player.id), { prizeType: 'POS' }));
+    expect(store.getState().challenge.pending?.game.key).toBe(onlyUnusedKey);
+
+    store.dispatch(recordRun({
+      id: 'used-final-eligible-game',
+      gameKey: onlyUnusedKey!,
+      seed: 99,
+      participants: [],
+      rawScores: {},
+      canonicalScores: {},
+      winnerId: 'p1',
+      timestamp: 99,
+      authoritative: false,
+    }));
+    store.dispatch(setPendingChallenge(null));
+
+    dispatchThunk(store, startChallenge(92, state.game.players.map((player) => player.id), { prizeType: 'POS' }));
+    expect(eligibleKeys).toContain(store.getState().challenge.pending?.game.key);
+  });
+
+  it('unique: routes Final 3 parts through their phase-specific LOH pools', () => {
+    const players = [
+      { id: 'p1', name: 'Ari', avatar: '🙂', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'Bo', avatar: '🙂', status: 'active' as const, isUser: false },
+      { id: 'p3', name: 'Cy', avatar: '🙂', status: 'active' as const, isUser: false },
+    ];
+    const store = makeStoreWithGame({
+      week: 14,
+      phase: 'final3_comp2_minigame',
+      players,
+    });
+    const expectedPool = getClassicCampaignPoolForContext({
+      day: 14,
+      playerCount: 3,
+      compType: 'LOH',
+      phase: 'final3_comp2_minigame',
+    });
+
+    dispatchThunk(store, startChallenge(144, players.map((player) => player.id)));
+
+    expect(expectedPool).toContain(store.getState().challenge.pending?.game.key);
+  });
+
   it('random-games: falls back to the existing random selection', () => {
     const store = makeStoreWithCompSelection({ mode: 'random-games', enabledIds: [] });
 
@@ -393,16 +484,29 @@ describe('startChallenge – compSelection modes', () => {
     expect(typeof pending?.game.key).toBe('string');
   });
 
-  it('survivor mode only selects games approved in the classical template', () => {
+  it('survivor mode rotates through all roster-safe non-retired games, independently of Classic', () => {
     const store = makeSurvivorStore();
-    const approvedKeys = new Set(getApprovedCompetitionGameKeys());
+    const playerCount = store.getState().game.players.filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury',
+    ).length;
+    const availableKeys = getPoolByFilter({ retired: false })
+      .filter((game) => supportsPlayerCount(game, playerCount))
+      .map((game) => game.key);
+    const classicKeys = new Set(getApprovedCompetitionGameKeys());
+    const survivorOnlyKeys = availableKeys.filter((key) => !classicKeys.has(key));
+    const selectedKeys = new Set<string>();
 
-    dispatchThunk(store, startChallenge(42, ['p1', 'p2']));
+    expect(survivorOnlyKeys.length).toBeGreaterThan(0);
+    availableKeys.forEach((_, index) => {
+      dispatchThunk(store, startChallenge(42 + index, store.getState().game.players.map((player) => player.id)));
+      const pending = store.getState().challenge.pending;
+      expect(pending?.game.retired).toBe(false);
+      selectedKeys.add(pending?.game.key ?? '');
+      store.dispatch(setPendingChallenge(null));
+    });
 
-    const pending = store.getState().challenge.pending;
-    expect(pending).not.toBeNull();
-    expect(pending?.game.retired).toBe(false);
-    expect(approvedKeys.has(pending?.game.key ?? '')).toBe(true);
+    expect([...selectedKeys].some((key) => survivorOnlyKeys.includes(key))).toBe(true);
+    expect(selectedKeys.size).toBe(availableKeys.length);
   });
 
   it('debug forceGameKey overrides compSelection mode', () => {

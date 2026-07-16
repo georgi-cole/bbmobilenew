@@ -1,204 +1,275 @@
-/**
- * bracketTemplate.ts — Default competition scheduling template.
- *
- * Organises minigame keys into player-count brackets, each with a separate
- * LOH pool and POS pool.  Games may only be swapped within the same bracket
- * and the same competition type (LOH or POS).
- *
- * The DEFAULT_BRACKET_TEMPLATE constant is the single source of truth and is
- * deliberately easy to edit: to adjust a bracket, change the keys array for
- * the relevant band/type entry.  To add a new bracket, insert a new band
- * object and keep the array sorted from highest to lowest player-count band
- * (highest `maxPlayers` first) so that `getBracketPoolForContext` resolves
- * the correct band quickly.
- *
- * Bracket definitions:
- *  - 16–13 players
- *  - 12–10 players
- *  - 9–8  players
- *  - 7–5  players
- *  - 4    players
- *  - 3    players (Final Trilogy — LOH only, no POS)
- */
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import type { Phase } from '../../types';
 
 /**
- * A single bracket band.  `minPlayers` and `maxPlayers` are both inclusive.
- * Pools list registry game keys.  An empty `pos` array means no POS games
- * are played in this band (e.g. the Final Trilogy bracket).
+ * Classic campaign competition map.
+ *
+ * The most specific rule matching the current day, alive-housemate count, and
+ * Final 3 phase owns the random-selection pool. Keeping LOH and POS lists separate prevents
+ * a short luck game from accidentally becoming the week's main competition.
  */
+
 export interface BracketBand {
-  /** Human-readable label used for debugging and display. */
+  /** Human-readable label used by tests, diagnostics, and design reviews. */
   label: string;
-  /** Inclusive lower bound (fewest players in the bracket). */
+  /** Inclusive alive-housemate bounds. */
   minPlayers: number;
-  /** Inclusive upper bound (most players in the bracket). */
   maxPlayers: number;
-  /** Registry keys for LOH competitions in this bracket. */
+  /** Optional inclusive campaign-day bounds. */
+  minDay?: number;
+  maxDay?: number;
+  /** Optional exact phases, used to make the Final 3 trilogy escalate. */
+  phases?: Phase[];
   loh: string[];
-  /** Registry keys for POS competitions in this bracket. Empty = no POS. */
   pos: string[];
 }
 
-/**
- * The full bracket template: an ordered list of bands (highest to lowest
- * player count).  Mutate or replace this constant to reconfigure the season.
- */
 export type BracketTemplate = BracketBand[];
 
+export interface ClassicCampaignContext {
+  day: number;
+  playerCount: number;
+  compType: 'LOH' | 'POS';
+  phase?: Phase;
+}
+
 /**
- * Return the unique set of all competition game keys approved in the default
- * classical bracket template.
+ * Explicitly approved normal-campaign games. Registry activation alone is not
+ * enough: entries only belong here after gameplay QA and campaign approval.
+ * Special-purpose games such as Capitalization are intentionally absent.
  */
+export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
+  'quickTap',
+  'memoryMatch',
+  'holdWall',
+  'famousFigures',
+  'silentSaboteur',
+  'majorityRules',
+  'colorMatch',
+  'logicLocks',
+  'snake',
+  'cardClash',
+  'hangman',
+  'tiltLabyrinth',
+  'threeDigitsQuiz',
+  'tetris',
+  'minesweeps',
+  'dontGoOver',
+  'blackjackTournament',
+  'riskWheel',
+  'wildcardWestern',
+  'castleRescue',
+  'glass_bridge_brutal',
+  'crystal_path_shattered',
+  'trapAuction',
+  'gridOfLuck',
+  'bigSpender',
+  'chainOfGreed',
+  'batteryLow',
+] as const;
+
+/** Per-game story prerequisites that apply in addition to the roster map. */
+export const CLASSIC_CAMPAIGN_GAME_MIN_DAY: Partial<
+  Record<(typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number], number>
+> = {
+  // Social reads only feel earned after several days with the housemates.
+  silentSaboteur: 4,
+};
+
 export function getApprovedCompetitionGameKeys(
   template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE,
 ): string[] {
   return [...new Set(template.flatMap((band) => [...band.loh, ...band.pos]))];
 }
 
-// ── Default template ──────────────────────────────────────────────────────────
-
 /**
- * Default season template derived from engagement-based bracket analysis.
+ * Design rules represented below:
  *
- * LOH / POS games are chosen so that:
- *  - Large-group phases (16–10) favour fast, social, or mass-participation games.
- *  - Mid-game phases (9–5) shift toward individual skill and precision.
- *  - Endgame phases (4 and below) use spotlight-heavy, high-drama games.
- *  - Final Trilogy (3 players) is LOH-only with an escalating three-comp arc.
- *
- * Swaps are only valid within the same bracket AND the same comp type.
+ * - Day 1 uses immediately readable, parallel-play games at every normal
+ *   cast size, so a smaller configured starting cast still gets a strong hook.
+ * - With many housemates, LOH uses fixed-round or simultaneous games and POS
+ *   stays short. Sequential/turn-heavy formats wait until the cast is smaller.
+ * - LOH becomes longer and more technical as the season progresses.
+ * - POS increasingly permits shorter, simpler, and chance-driven formats.
+ * - Final 4 only uses games that make sense with four players.
+ * - Each Final 3 part has a distinct style and an escalating difficulty curve.
  */
 export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
   {
-    label: '16–13 players',
+    label: 'Day 1 hook',
+    minPlayers: 5,
+    maxPlayers: 16,
+    minDay: 1,
+    maxDay: 1,
+    loh: ['holdWall', 'majorityRules', 'memoryMatch'],
+    pos: ['quickTap', 'colorMatch', 'dontGoOver'],
+  },
+  {
+    label: '16-13 players',
     minPlayers: 13,
     maxPlayers: 16,
     loh: [
-      'majorityRules',      // Majority Rules   — social deduction; best with a full house
-      'glass_bridge_brutal', // The Crystal Path — high-stakes sequential choice
-      'riskWheel',          // Risk Wheel       — multi-round elimination wheel
-      'trapAuction',        // Trap Auction     — secret bidding; best when many bluff
+      'holdWall',
+      'memoryMatch',
+      'famousFigures',
+      'majorityRules',
+      'batteryLow',
     ],
-    pos: [
-      'quickTap',   // Quick Tap Race — fast, fair, packed leaderboard
-      'holdWall',   // Hold the Wall  — endurance; every dropout is visible
-      'colorMatch', // Color Match    — precision slider; easy to compare across cast
-    ],
+    pos: ['quickTap', 'colorMatch', 'cardClash', 'hangman', 'dontGoOver', 'tiltLabyrinth'],
   },
   {
-    label: '12–10 players',
+    label: '12-10 players',
     minPlayers: 10,
     maxPlayers: 12,
-    loh: [
-      'blackjackTournament', // Blackjack Tournament — duel structure; tighter cast
-      'dontGoOver',          // Don't Go Over        — numeric guessing; tournament pressure
-      'silentSaboteur',      // Silent Saboteur      — deduction peaks at 10–12 players
-    ],
+    loh: ['memoryMatch', 'famousFigures', 'majorityRules', 'silentSaboteur', 'batteryLow'],
     pos: [
-      'castleRescue',  // Find Your Twin  — platformer; spotlight per run at mid-size
-      'logicLocks',    // Vault Cracker   — logic puzzle; watchable at mid-cast
+      'quickTap',
+      'colorMatch',
+      'cardClash',
+      'hangman',
+      'dontGoOver',
+      'tiltLabyrinth',
+      'threeDigitsQuiz',
+      'logicLocks',
     ],
   },
   {
-    label: '9–8 players',
+    label: '9-8 players',
     minPlayers: 8,
     maxPlayers: 9,
-    loh: [
-      'famousFigures',  // Famous Figures  — clue-based; each run gets real focus
-      'wildcardWestern', // Wildcard Western — showdown format; focused and dramatic
-    ],
-    pos: [
-      'minesweeps',    // Minesweeps    — high-focus puzzle; best with small field
-      'tiltLabyrinth', // Tilt Labyrinth — route precision; better with few players
-    ],
+    loh: ['snake', 'memoryMatch', 'famousFigures', 'silentSaboteur', 'batteryLow', 'chainOfGreed'],
+    pos: ['logicLocks', 'hangman', 'tiltLabyrinth', 'minesweeps', 'dontGoOver', 'bigSpender', 'threeDigitsQuiz', 'tetris'],
   },
   {
-    label: '7–5 players',
+    label: '7-5 players',
     minPlayers: 5,
     maxPlayers: 7,
     loh: [
-      'snake',        // Serpentine (Snake) — arcade mastery; each mistake magnified
-      'tetris',       // Fit Me In (Tetris) — serious skill; mid-late game feel
-      'chainOfGreed', // Chain of Greed     — higher-lower chain; good for ≤7 players
+      'castleRescue',
+      'glass_bridge_brutal',
+      'chainOfGreed',
+      'trapAuction',
+      'silentSaboteur',
+      'batteryLow',
     ],
-    pos: [
-      'cardClash',      // House of Cards — memory race; great at 5–7
-      'threeDigitsQuiz', // Number Trivia  — elimination trivia; sharper with fewer
-    ],
+    pos: ['riskWheel', 'blackjackTournament', 'bigSpender', 'logicLocks', 'hangman', 'minesweeps', 'tetris'],
   },
   {
     label: '4 players',
     minPlayers: 4,
     maxPlayers: 4,
-    loh: [
-      'gridOfLuck', // Grid of Luck  — cinematic box-opening; scales to 4
-      'logicLocks', // Vault Cracker — elite endgame puzzle pressure
-    ],
-    pos: [
-      'gridOfLuck', // Grid of Luck  — turn-based; fine at final 4
-      'logicLocks', // Vault Cracker — alternate high-stakes option
-    ],
+    loh: ['crystal_path_shattered', 'chainOfGreed', 'batteryLow', 'trapAuction', 'holdWall'],
+    pos: ['gridOfLuck', 'riskWheel', 'blackjackTournament', 'bigSpender', 'tetris'],
   },
   {
+    label: 'Final 3 - Part 1 endurance',
+    minPlayers: 3,
+    maxPlayers: 3,
+    phases: ['final3_comp1', 'final3_comp1_minigame'],
+    loh: ['holdWall', 'glass_bridge_brutal'],
+    pos: [],
+  },
+  {
+    label: 'Final 3 - Part 2 precision and memory',
+    minPlayers: 3,
+    maxPlayers: 3,
+    phases: ['final3_comp2', 'final3_comp2_minigame'],
+    loh: ['memoryMatch', 'famousFigures', 'castleRescue', 'batteryLow'],
+    pos: [],
+  },
+  {
+    label: 'Final 3 - Part 3 championship',
+    minPlayers: 3,
+    maxPlayers: 3,
+    phases: ['final3_comp3', 'final3_comp3_minigame'],
+    loh: ['crystal_path_shattered', 'chainOfGreed', 'wildcardWestern', 'trapAuction'],
+    pos: [],
+  },
+  {
+    // Phase-less compatibility pool for tools that only know the player count.
     label: '3 players (Final Trilogy)',
     minPlayers: 3,
     maxPlayers: 3,
     loh: [
-      'glass_bridge_brutal', // Crystal Path: Infinity — high-stakes sequential choice; strong opening comp of the trilogy
-      'chainOfGreed',   // Chain of Greed  — pressure chain; escalating second comp
-      'gridOfLuck',     // Grid of Luck    — cinematic finale; dramatic conclusion
+      'holdWall',
+      'glass_bridge_brutal',
+      'memoryMatch',
+      'famousFigures',
+      'castleRescue',
+      'batteryLow',
+      'crystal_path_shattered',
+      'chainOfGreed',
+      'wildcardWestern',
+      'trapAuction',
     ],
-    // Final Trilogy is LOH-only — no POS comps at final 3.
     pos: [],
   },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function matchesCampaignContext(band: BracketBand, context: ClassicCampaignContext): boolean {
+  if (context.playerCount < band.minPlayers || context.playerCount > band.maxPlayers) return false;
+  if (band.minDay !== undefined && context.day < band.minDay) return false;
+  if (band.maxDay !== undefined && context.day > band.maxDay) return false;
+  if (band.phases && (!context.phase || !band.phases.includes(context.phase))) return false;
+  return true;
+}
+
+function applyGameStoryPrerequisites(pool: string[], day: number): string[] {
+  return pool.filter((key) => {
+    const minDay = CLASSIC_CAMPAIGN_GAME_MIN_DAY[
+      key as (typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number]
+    ];
+    return minDay === undefined || day >= minDay;
+  });
+}
 
 /**
- * Return the list of registry keys eligible for the next competition, given
- * the current alive-player count and competition type.
- *
- * Rules:
- *  - The bracket is determined by the first band (highest `maxPlayers` first)
- *    whose range includes `playerCount`.
- *  - If `playerCount` is above every bracket's `maxPlayers` (unusual edge case)
- *    the first band is returned.
- *  - If `playerCount` is below every bracket's `minPlayers` (e.g. 1–2 players
- *    when the narrowest bracket starts at 3), an empty pool is returned so the
- *    caller can fall back to the standard scheduler.
- *
- * @param playerCount - Number of currently alive players (>= 1).
- * @param compType    - 'LOH' or 'POS'.
- * @param template    - Template to query; defaults to DEFAULT_BRACKET_TEMPLATE.
+ * Resolve the exact classic-campaign pool for a day/housemate/phase context.
+ * Counts above the supported cast size use the widest large-house band. Counts
+ * below Final 3 intentionally return no pool.
+ */
+export function getClassicCampaignPoolForContext(
+  context: ClassicCampaignContext,
+  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE,
+): string[] {
+  const matched = template
+    .filter((band) => matchesCampaignContext(band, context))
+    .sort((left, right) => {
+      const specificity = (band: BracketBand) =>
+        (band.phases ? 100 : 0) +
+        (band.minDay !== undefined || band.maxDay !== undefined ? 10 : 0);
+      return specificity(right) - specificity(left);
+    })[0];
+  if (matched) {
+    const pool = context.compType === 'POS' ? matched.pos : matched.loh;
+    return applyGameStoryPrerequisites(pool, context.day);
+  }
+
+  if (context.playerCount > 16) {
+    const widest = template.find(
+      (band) => band.minPlayers === 13 && band.maxPlayers === 16 && !band.minDay && !band.phases,
+    );
+    if (widest) {
+      const pool = context.compType === 'POS' ? widest.pos : widest.loh;
+      return applyGameStoryPrerequisites(pool, context.day);
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Backwards-compatible count-only resolver used by admin tools and existing
+ * callers. Day-specific and Final 3 phase-specific rows are skipped because
+ * those callers do not have enough context to select them safely.
  */
 export function getBracketPoolForContext(
   playerCount: number,
   compType: 'LOH' | 'POS',
   template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE,
 ): string[] {
-  // Walk bands from widest (first) to narrowest to find the correct bracket.
-  // Bands are stored in descending order so this is a simple linear scan.
-  let matched: BracketBand | undefined;
-  for (const band of template) {
-    if (playerCount >= band.minPlayers && playerCount <= band.maxPlayers) {
-      matched = band;
-      break;
-    }
-  }
-
-  // Edge case: player count is above every bracket's maxPlayers — use the
-  // widest band.  Do NOT fall back for below-range counts (e.g. 1–2 players
-  // when the smallest bracket starts at 3): return an empty pool so the
-  // caller can fall back to the standard scheduler.
-  if (!matched && template.length > 0 && playerCount > template[0].maxPlayers) {
-    matched = template[0];
-  }
-
-  if (!matched) return [];
-
-  const pool = compType === 'POS' ? matched.pos : matched.loh;
-  return pool.length > 0 ? [...pool] : [];
+  const genericTemplate = template.filter((band) => !band.minDay && !band.maxDay && !band.phases);
+  return getClassicCampaignPoolForContext(
+    { day: Number.MAX_SAFE_INTEGER, playerCount, compType },
+    genericTemplate,
+  );
 }
