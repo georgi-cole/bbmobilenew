@@ -65,6 +65,42 @@
   background: linear-gradient(180deg, transparent, rgba(7, 20, 38, 0.96) 32%);
 }
 
+/* Standard results action used whenever a game does not provide a themed CTA. */
+.minigame-complete-continue {
+  width: min(100%, 22rem);
+  min-height: 48px;
+  padding: 0.85rem 1.5rem;
+  border: 0;
+  border-radius: 8px;
+  background: #e94560;
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(233, 69, 96, 0.24);
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.minigame-complete-continue:hover:not(:disabled) {
+  background: #f0526b;
+  box-shadow: 0 10px 26px rgba(233, 69, 96, 0.32);
+}
+
+.minigame-complete-continue:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+.minigame-complete-continue:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+}
+
+.minigame-complete-continue:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 /* Optional: opt-in sticky behaviour for future use */
 .minigame-continue-sticky {
   position: sticky;

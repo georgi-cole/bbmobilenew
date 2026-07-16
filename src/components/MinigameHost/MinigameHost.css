@@ -484,13 +484,13 @@
 .minigame-host-results--timeline {
   --timeline-violet: #8d63ff;
   --timeline-coral: #f15370;
-  gap: clamp(10px, 1.6vh, 16px);
+  gap: clamp(8px, 1.35vh, 13px);
   max-width: 480px;
   padding:
     var(--minigame-stage-top-padding)
-    max(26px, var(--minigame-safe-padding-right))
-    max(26px, var(--minigame-safe-padding-bottom))
-    max(26px, var(--minigame-safe-padding-left));
+    max(22px, var(--minigame-safe-padding-right))
+    max(22px, var(--minigame-safe-padding-bottom))
+    max(22px, var(--minigame-safe-padding-left));
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
@@ -534,13 +534,13 @@
   z-index: 3;
   top: max(18px, calc(var(--minigame-safe-top) + 14px));
   right: max(20px, calc(var(--minigame-safe-right) + 18px));
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-color: rgba(244, 74, 105, .82);
   color: var(--timeline-coral);
   background: rgba(12, 17, 40, .84);
   box-shadow: 0 0 22px rgba(241, 83, 112, .15);
-  font-size: 1.8rem;
+  font-size: 1.55rem;
   font-weight: 500;
 }
 
@@ -561,7 +561,7 @@
   max-width: none;
   margin: -1px 0 0;
   color: var(--timeline-coral);
-  font-size: clamp(3.15rem, 13.8vw, 4.45rem);
+  font-size: clamp(2.65rem, 11.6vw, 3.75rem);
   font-weight: 760;
   letter-spacing: -.055em;
   line-height: .98;
@@ -605,18 +605,18 @@
   max-width: 410px;
   margin: 0 0 clamp(2px, .5vh, 6px);
   color: #f0eef7;
-  font-size: clamp(1rem, 4.25vw, 1.22rem);
+  font-size: clamp(.94rem, 3.7vw, 1.08rem);
   line-height: 1.42;
   letter-spacing: -.015em;
 }
 
 .minigame-host-results--timeline .minigame-host-results-winner--timeline {
   display: flex;
-  min-height: clamp(82px, 13.5vh, 112px);
+  min-height: clamp(72px, 11.5vh, 96px);
   align-items: center;
   justify-content: flex-start;
-  gap: clamp(18px, 5vw, 28px);
-  padding: 12px clamp(22px, 6vw, 32px);
+  gap: clamp(15px, 4.3vw, 23px);
+  padding: 10px clamp(18px, 5vw, 26px);
   border: 1.5px solid rgba(255, 104, 121, .88);
   border-radius: 12px;
   color: #fff9f2;
@@ -624,29 +624,29 @@
     radial-gradient(circle at 15% 50%, rgba(246, 153, 45, .15), transparent 28%),
     linear-gradient(100deg, rgba(68, 24, 39, .64), rgba(15, 15, 39, .88));
   box-shadow: 0 0 26px rgba(245, 72, 102, .15), inset 0 0 30px rgba(231, 83, 110, .07);
-  font-size: clamp(1.65rem, 7vw, 2.2rem);
+  font-size: clamp(1.45rem, 6vw, 1.85rem);
   letter-spacing: -.025em;
   text-align: left;
 }
 
 .minigame-host-results-trophy {
-  font-size: clamp(3rem, 13vw, 4.15rem);
+  font-size: clamp(2.6rem, 11vw, 3.5rem);
   line-height: 1;
   filter: drop-shadow(0 0 10px rgba(255, 183, 45, .35));
 }
 
 .minigame-host-results--timeline .minigame-host-leaderboard {
-  gap: 7px;
+  gap: 6px;
 }
 
 .minigame-host-results--timeline .minigame-host-leaderboard-entry {
-  min-height: clamp(52px, 7.5vh, 66px);
-  gap: 10px;
-  padding: 8px clamp(13px, 4vw, 20px);
+  min-height: clamp(48px, 6.7vh, 58px);
+  gap: 8px;
+  padding: 7px clamp(12px, 3.5vw, 17px);
   border: 1px solid rgba(99, 111, 159, .18);
   border-radius: 10px;
   background: linear-gradient(100deg, rgba(21, 28, 56, .95), rgba(12, 18, 40, .92));
-  font-size: clamp(.88rem, 3.7vw, 1rem);
+  font-size: clamp(.82rem, 3.25vw, .94rem);
 }
 
 .minigame-host-results--timeline .minigame-host-leaderboard-entry--winner,
@@ -656,11 +656,11 @@
 }
 
 .minigame-host-results--timeline .minigame-host-leaderboard-rank {
-  width: 34px;
-  font-size: 1.45rem;
+  width: 30px;
+  font-size: 1.25rem;
 }
 
-.minigame-host-results--timeline .minigame-host-leaderboard-name { font-size: 1.05em; }
+.minigame-host-results--timeline .minigame-host-leaderboard-name { font-size: 1em; }
 .minigame-host-results--timeline .minigame-host-leaderboard-score { color: #9fa5c0; }
 .minigame-host-results--timeline .minigame-host-leaderboard-score strong { color: #f8f7ff; font-size: 1.08em; }
 
@@ -678,24 +678,24 @@
 
 .minigame-host-results--timeline .minigame-host-results-btn--retry {
   display: flex;
-  min-height: clamp(62px, 8.2vh, 76px);
+  min-height: clamp(54px, 7.2vh, 66px);
   align-items: center;
   justify-content: center;
-  gap: clamp(14px, 4vw, 22px);
-  padding: 11px 20px;
+  gap: clamp(12px, 3.5vw, 18px);
+  padding: 9px 18px;
   border: 1.5px solid #da86ff;
   border-radius: 11px;
   background:
     radial-gradient(circle at 50% 120%, rgba(163, 100, 255, .68), transparent 60%),
     linear-gradient(100deg, #5134c6, #5930d0 52%, #7247df);
   box-shadow: 0 0 22px rgba(132, 76, 255, .52), inset 0 0 22px rgba(255, 255, 255, .11);
-  font-size: clamp(1.3rem, 5.6vw, 1.65rem);
+  font-size: clamp(1.12rem, 4.8vw, 1.4rem);
 }
 
 .minigame-host-results-rewind {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border: 2px solid #c8b2ff;
   border-radius: 50%;
@@ -710,17 +710,17 @@
   align-self: center;
   margin: 0;
   color: #a8a8bb;
-  font-size: clamp(.82rem, 3.5vw, .96rem);
+  font-size: clamp(.78rem, 3.2vw, .9rem);
   line-height: 1.38;
 }
 
 @media (max-height: 700px) {
-  .minigame-host-results--timeline { gap: 8px; }
-  .minigame-host-results--timeline .minigame-host-results-title { font-size: 2.8rem; }
-  .minigame-host-results--timeline .minigame-host-results-alternate-timeline { font-size: .96rem; }
-  .minigame-host-results--timeline .minigame-host-results-winner--timeline { min-height: 70px; }
-  .minigame-host-results--timeline .minigame-host-results-trophy { font-size: 2.7rem; }
-  .minigame-host-results--timeline .minigame-host-leaderboard-entry { min-height: 46px; }
+  .minigame-host-results--timeline { gap: 7px; }
+  .minigame-host-results--timeline .minigame-host-results-title { font-size: 2.45rem; }
+  .minigame-host-results--timeline .minigame-host-results-alternate-timeline { font-size: .88rem; }
+  .minigame-host-results--timeline .minigame-host-results-winner--timeline { min-height: 62px; }
+  .minigame-host-results--timeline .minigame-host-results-trophy { font-size: 2.35rem; }
+  .minigame-host-results--timeline .minigame-host-leaderboard-entry { min-height: 42px; }
 }
 
 @keyframes fadeIn {
