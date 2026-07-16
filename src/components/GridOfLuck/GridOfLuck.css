@@ -2,6 +2,8 @@
   position: relative;
   width: 100%;
   max-width: 100vw;
+  container-type: inline-size;
+  container-name: grid-of-luck;
   box-sizing: border-box;
   min-height: 100%;
   overflow-x: hidden;
@@ -780,7 +782,7 @@
   color: #e9d5ff;
 }
 
-@media (min-width: 960px) {
+@container grid-of-luck (min-width: 960px) {
   .grid-of-luck__arena {
     grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
   }
@@ -795,7 +797,9 @@
       calc(72px + env(safe-area-inset-bottom, 0px))
       max(10px, env(safe-area-inset-left, 0px));
   }
+}
 
+@container grid-of-luck (max-width: 719px) {
   .grid-of-luck__camera {
     gap: 10px;
   }
@@ -1018,7 +1022,7 @@
   }
 }
 
-@media (max-width: 430px) {
+@container grid-of-luck (max-width: 430px) {
   .grid-of-luck__camera {
     gap: 8px;
   }
@@ -1037,7 +1041,6 @@
     padding: 5px 6px;
   }
 
-  .grid-of-luck__event-card,
   .grid-of-luck__active-card,
   .grid-of-luck__reveal-card,
   .grid-of-luck__next-card,
