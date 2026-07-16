@@ -96,7 +96,9 @@ export default function ClosestWithoutGoingOverComp({
   const [scaleIdx, setScaleIdx] = useState(NO_SCALE_INDEX);
   // Sequential reveal stages for the duel: guesses → answer → outcome
   const [duelRevealStage, setDuelRevealStage] = useState<'guesses' | 'answer' | 'outcome'>('guesses');
+  const [spectatorMode, setSpectatorMode] = useState<'playing' | 'pending' | 'watching' | 'skipping'>('playing');
   const questionShownAtRef = useRef(0);
+  const exitCompletedRef = useRef(false);
 
   // Derive helper data
   const humanPlayer = players.find((p) => p.isUser);
@@ -240,6 +242,44 @@ export default function ClosestWithoutGoingOverComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cwgo?.status]);
 
+  useEffect(() => {
+    if (!cwgo || spectatorMode !== 'skipping') return undefined;
+    if (cwgo.status === 'complete') {
+      if (!exitCompletedRef.current) {
+        exitCompletedRef.current = true;
+        dispatch(resolveCompetitionOutcome());
+        onComplete?.();
+      }
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (cwgo.status === 'mass_input') {
+        dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
+        dispatch(revealMassResults());
+        return;
+      }
+      if (cwgo.status === 'mass_reveal') {
+        dispatch(confirmMassElimination());
+        return;
+      }
+      if (cwgo.status === 'choose_duel') {
+        const leaderId = cwgo.leaderId ?? cwgo.aliveIds[0];
+        const candidates = cwgo.aliveIds.filter((id) => id !== leaderId);
+        const pair = candidates.length >= 2 ? candidates.slice(0, 2) : cwgo.aliveIds.slice(0, 2);
+        if (pair.length === 2) dispatch(chooseDuelPair([pair[0], pair[1]]));
+        return;
+      }
+      if (cwgo.status === 'duel_input') {
+        dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
+        dispatch(revealDuelResults());
+        return;
+      }
+      if (cwgo.status === 'duel_reveal') dispatch(confirmDuelElimination());
+    }, 40);
+    return () => window.clearTimeout(timer);
+  }, [cwgo, dispatch, humanId, onComplete, spectatorMode]);
+
   if (!cwgo || cwgo.status === 'idle') {
     return <div className="cwgo-loading">Loading competition…</div>;
   }
@@ -300,6 +340,22 @@ export default function ClosestWithoutGoingOverComp({
 
   // Hide the question card during choose_duel — the question belongs to the
   // upcoming duel, not the leader-pick phase.
+  function handleMassContinue() {
+    const humanWasEliminated = humanId !== null && cwgo.lastEliminated.includes(humanId);
+    dispatch(confirmMassElimination());
+    if (humanWasEliminated) setSpectatorMode('pending');
+  }
+
+  function handleDuelContinue() {
+    const humanLosesLastLife = humanId !== null
+      && cwgo.duelPair?.includes(humanId)
+      && cwgo.duelWinnerId !== null
+      && cwgo.duelWinnerId !== humanId
+      && (cwgo.playerScores[humanId] ?? 3) <= 1;
+    dispatch(confirmDuelElimination());
+    if (humanLosesLastLife) setSpectatorMode('pending');
+  }
+
   const showQuestion = cwgo.status !== 'choose_duel';
 
   return (
@@ -430,7 +486,7 @@ export default function ClosestWithoutGoingOverComp({
           >
             <p className="cwgo-reveal__heading">
               {cwgo.revealResults.every((result) => result.wentOver)
-                ? 'Everyone went over — this question is void.'
+                ? 'Everyone went over — the least-over guess survives.'
                 : <>Results — Answer: <strong>{question?.answer.toLocaleString()}</strong></>}
             </p>
             <div className="cwgo-results-wrap">
@@ -488,9 +544,9 @@ export default function ClosestWithoutGoingOverComp({
             <div className="cwgo-footer">
               <button
                 className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
-                onClick={() => dispatch(confirmMassElimination())}
+                onClick={handleMassContinue}
               >
-                {cwgo.revealResults.every((result) => result.wentOver) ? 'New question' : 'Continue'}
+                Continue
               </button>
             </div>
           </motion.div>
@@ -782,7 +838,7 @@ export default function ClosestWithoutGoingOverComp({
                 >
                   <button
                     className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
-                    onClick={() => dispatch(confirmDuelElimination())}
+                    onClick={handleDuelContinue}
                   >
                       {cwgo.duelWinnerId ? 'Continue' : 'New question'}
                   </button>
@@ -843,6 +899,28 @@ export default function ClosestWithoutGoingOverComp({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {spectatorMode === 'pending' && (
+        <div className="cwgo-spectator-overlay" role="dialog" aria-modal="true" aria-labelledby="cwgo-spectator-title">
+          <div className="cwgo-spectator-card">
+            <span className="cwgo-spectator-card__eyebrow">Eliminated</span>
+            <h3 id="cwgo-spectator-title">How would you like to continue?</h3>
+            <p>Watch the remaining players at normal speed, or exit while the competition resolves to its winner.</p>
+            <div className="cwgo-spectator-card__actions">
+              <button className="cwgo-btn cwgo-btn--purple" type="button" onClick={() => setSpectatorMode('watching')}>
+                Continue as spectator
+              </button>
+              <button className="cwgo-btn cwgo-btn--secondary" type="button" onClick={() => setSpectatorMode('skipping')}>
+                Exit game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {spectatorMode === 'skipping' && cwgo.status !== 'complete' && (
+        <div className="cwgo-fast-forward" role="status" aria-live="polite">Fast-forwarding to the winner…</div>
+      )}
     </div>
   );
 }
