@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
@@ -98,6 +99,8 @@ const HUB_BUTTONS = [
 
 type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
+
+const DEBUG_GAME_ROUTE = '/game?debug=1&qa=1';
 
 interface HubAssetState {
   ready: boolean;
@@ -237,12 +240,15 @@ export default function HomeHub() {
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
+  const [debugLaunch, setDebugLaunch] = useState(false);
   const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
   const [housematesBioOpen, setHousematesBioOpen] = useState(false);
   const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null);
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
   const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId);
+  const canLaunchWithDebug = import.meta.env.DEV || Capacitor.isNativePlatform();
+  const gameRoute = debugLaunch ? DEBUG_GAME_ROUTE : '/game';
 
   const savedRuns = useMemo(
     () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId) : null),
@@ -290,7 +296,7 @@ export default function HomeHub() {
     dispatch(hydrateSocial(snapshot.social));
     if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion));
     if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge));
-    navigate('/game');
+    navigate(gameRoute);
   }
 
   function startClassicRun() {
@@ -433,6 +439,15 @@ export default function HomeHub() {
         setHousematesBioOpen(true);
       },
     },
+    ...(canLaunchWithDebug
+      ? [{
+          key: 'debug-launch',
+          label: `Debug Menu: ${debugLaunch ? 'On' : 'Off'}`,
+          icon: <span aria-hidden="true">🛠️</span>,
+          variant: 'secondary_wide' as const,
+          onClick: () => setDebugLaunch((enabled) => !enabled),
+        }]
+      : []),
     {
       key: 'back',
       label: 'Back',
@@ -494,7 +509,7 @@ export default function HomeHub() {
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
-      {preloading && <AssetPreloaderOverlay />}
+      {preloading && <AssetPreloaderOverlay destination={gameRoute} />}
 
       {housematesBioOpen && (
         <HousematesBioCinematic onComplete={() => setHousematesBioOpen(false)} />

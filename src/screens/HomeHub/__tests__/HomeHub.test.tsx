@@ -110,7 +110,9 @@ vi.mock('../../../components/PermissionPrompts/PermissionPrompts', () => ({
 }));
 
 vi.mock('../../../components/AssetPreloaderOverlay/AssetPreloaderOverlay', () => ({
-  default: () => <div data-testid="asset-preloader-overlay" />,
+  default: ({ destination }: { destination?: string }) => (
+    <div data-destination={destination} data-testid="asset-preloader-overlay" />
+  ),
 }));
 
 vi.mock('../../../components/HousematesBioCinematic/HousematesBioCinematic', () => ({
@@ -365,6 +367,24 @@ describe('HomeHub', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+  });
+
+  it('starts a fresh game with debug enabled from the Play menu', async () => {
+    renderHomeHub();
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Debug Menu: Off' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Campaign' }));
+
+    expect(screen.getByTestId('asset-preloader-overlay')).toHaveAttribute(
+      'data-destination',
+      '/game?debug=1&qa=1',
+    );
   });
 
   it('shows Survival rules before starting a fresh Survival run', async () => {

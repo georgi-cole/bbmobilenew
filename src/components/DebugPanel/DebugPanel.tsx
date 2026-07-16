@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -175,6 +175,12 @@ export default function DebugPanel() {
   const [selectedStatusPlayer, setSelectedStatusPlayer] = useState('');
   const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
   const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
+
+  // AppShell stays mounted while the hash route changes. When debug is enabled
+  // by the mobile launch flow, open the drawer as soon as access becomes active.
+  useEffect(() => {
+    if (isDebug) setIsOpen(true);
+  }, [isDebug]);
 
   if (!isDebug) return null;
 
