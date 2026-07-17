@@ -25,9 +25,9 @@ describe('Housemates biography cinematic', () => {
     }
   });
 
-  it('keeps the complete cinematic below two minutes', () => {
-    expect(HOUSEMATES_BIO_DURATION_MS).toBeLessThanOrEqual(120_000);
-    expect(HOUSEMATES_BIO_DURATION_MS).toBeGreaterThan(100_000);
+  it('holds every housemate on screen for 5.1 seconds', () => {
+    expect(HOUSEMATE_CARD_MS).toBe(5_100);
+    expect(HOUSEMATES_BIO_DURATION_MS).toBe(131_400);
   });
 
   it('keeps the five mystery housemates in a separate unlockable wildcard collection', () => {

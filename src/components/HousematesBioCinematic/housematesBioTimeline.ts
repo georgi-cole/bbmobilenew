@@ -1,7 +1,7 @@
 import { HOUSEMATES_BIO_CARDS, type HousematesBioCard } from './housematesBioData';
 
 export const HOUSEMATES_INTRO_MS = 3_800;
-export const HOUSEMATE_CARD_MS = 4_100;
+export const HOUSEMATE_CARD_MS = 5_100;
 export const HOUSEMATES_OUTRO_MS = 6_400;
 export const HOUSEMATES_CREDIT_MS = 4_700;
 export const HOUSEMATES_LOGO_MS = 4_300;
