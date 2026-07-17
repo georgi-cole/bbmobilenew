@@ -4,6 +4,11 @@
 import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
 import type { RemotePlayerOverride } from '../remoteConfig/remoteConfigTypes';
+import {
+  AVATAR_ASSET_FILES,
+  FORMAL_CUTOUT_FILES,
+  INFORMAL_CUTOUT_FILES,
+} from '../data/avatarAssetManifest';
 
 const PROFILE_PHOTO_AVATAR_PREFIX = 'profile-photo:';
 
@@ -250,35 +255,6 @@ export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'> & P
 }
 
 /**
- * Formal cutouts are stored in `public/assets/formal_attires/`.
- * Some players have a non-.png source file in that folder, so we search the
- * folder contents first before falling back to the historical stem map.
- */
-const FORMAL_CUTOUT_MODULES = import.meta.glob(
-  '../../public/assets/formal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
-  {
-    eager: true,
-    import: 'default',
-  },
-) as Record<string, string>;
-
-const INFORMAL_CUTOUT_MODULES = import.meta.glob(
-  '../../public/assets/Informal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
-  {
-    eager: true,
-    import: 'default',
-  },
-) as Record<string, string>;
-
-const AVATAR_ASSET_MODULES = import.meta.glob(
-  '../../public/assets/skins/*.{png,webp,svg,jpg,jpeg,wp2}',
-  {
-    eager: true,
-    import: 'default',
-  },
-) as Record<string, string>;
-
-/**
  * Maps canonical houseguest ids to their historical formal-cutout stems.
  * These are used as a fallback if the folder scan does not find a direct match.
  */
@@ -331,26 +307,23 @@ function collectTwinShockFullSizeLookupTokens(player: Pick<Player, 'id' | 'name'
 }
 
 function listFormalCutoutCandidates(): Array<{ basename: string; filename: string }> {
-  return Object.keys(FORMAL_CUTOUT_MODULES).map((path) => {
-    const filename = path.split('/').pop() ?? path;
+  return FORMAL_CUTOUT_FILES.map((filename) => {
     const basename = filename.replace(/\.[^.]+$/, '');
     return { basename, filename };
   });
 }
 
 function listInformalCutoutCandidates(): Array<{ basename: string; filename: string }> {
-  return Object.keys(INFORMAL_CUTOUT_MODULES).map((path) => {
-    const filename = path.split('/').pop() ?? path;
+  return INFORMAL_CUTOUT_FILES.map((filename) => {
     const basename = filename.replace(/\.[^.]+$/, '');
     return { basename, filename };
   });
 }
 
 function listAvatarAssetCandidates(): Array<{ basename: string; source: string }> {
-  return Object.entries(AVATAR_ASSET_MODULES).map(([path, source]) => {
-    const filename = path.split('/').pop() ?? path;
+  return AVATAR_ASSET_FILES.map((filename) => {
     const basename = filename.replace(/\.[^.]+$/, '');
-    return { basename, source };
+    return { basename, source: joinPublicAssetPath(`assets/skins/${filename}`) };
   });
 }
 
