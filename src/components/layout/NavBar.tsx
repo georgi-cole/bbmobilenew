@@ -41,6 +41,7 @@ export default function NavBar() {
   const canPersistActiveRun = !isGuest && Boolean(activeProfileId);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const humanInPendingChallenge =
     Boolean(pendingChallenge && humanPlayer && pendingChallenge.participants.includes(humanPlayer.id));
   const humanInPendingMinigame =
@@ -65,6 +66,7 @@ export default function NavBar() {
       navigate('/');
       return;
     }
+    setSaveError(false);
     setConfirmOpen(true);
   }
 
@@ -92,8 +94,11 @@ export default function NavBar() {
   }
 
   function saveThenReturnHome() {
-    saveActiveRun();
-    returnHome();
+    if (saveActiveRun()) {
+      returnHome();
+      return;
+    }
+    setSaveError(true);
   }
 
   function quitWithoutSaving() {
@@ -111,11 +116,14 @@ export default function NavBar() {
     return null;
   }
 
-  const hasSavedRun = canPersistActiveRun;
-  const modalTitle = hasSavedRun ? 'Return to Home hub?' : 'Unsaved progress';
-  const modalDescription = hasSavedRun
-    ? 'Your saved progress will be available when you come back.'
-    : 'Save before returning home, or quit without saving.';
+  const modalTitle = saveError
+    ? 'Progress was not saved'
+    : canPersistActiveRun ? 'Save and return home?' : 'Leave this season?';
+  const modalDescription = saveError
+    ? 'Your season is still open. Free some browser storage and try again.'
+    : canPersistActiveRun
+      ? 'We will save your current week before returning to the Home hub.'
+      : 'Guest seasons cannot be saved. Leaving will discard this run.';
 
   return (
     <GameBottomNav
@@ -131,11 +139,11 @@ export default function NavBar() {
         open={confirmOpen}
         title={modalTitle}
         description={modalDescription}
-        confirmLabel={hasSavedRun ? 'Return Home' : 'Save first'}
-        secondaryLabel={hasSavedRun ? undefined : 'Quit without saving'}
+        confirmLabel={canPersistActiveRun ? (saveError ? 'Try saving again' : 'Save & Home') : 'Quit without saving'}
+        secondaryLabel={canPersistActiveRun ? 'Quit without saving' : undefined}
         cancelLabel="Cancel"
-        onConfirm={hasSavedRun ? returnHome : saveThenReturnHome}
-        onSecondary={hasSavedRun ? undefined : quitWithoutSaving}
+        onConfirm={canPersistActiveRun ? saveThenReturnHome : quitWithoutSaving}
+        onSecondary={canPersistActiveRun ? quitWithoutSaving : undefined}
         onCancel={() => setConfirmOpen(false)}
       />
     </GameBottomNav>

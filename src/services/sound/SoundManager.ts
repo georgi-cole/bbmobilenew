@@ -42,6 +42,10 @@
  */
 
 import { SOUND_REGISTRY } from './sounds';
+
+// Only the tiny, frequently-used interface sounds are worth warming during
+// the first gesture. Everything else is created on demand when it is needed.
+const MOBILE_SFX_PRIME_KEYS = ['ui:navigate', 'ui:confirm', 'ui:error'] as const;
 import type { SoundCategory, SoundEntry } from './sounds';
 import {
   MUSIC_TRACK_SOUND_KEYS,
@@ -1093,16 +1097,17 @@ class _SoundManager {
   }
 
   /**
-   * Pre-create and prime one pool element per registered SFX key during a
-   * user gesture. The element is paused immediately so stale startup sounds
-   * cannot become audible later.
+   * Pre-create the small set of common interface sounds during a user gesture.
+   * The element is paused immediately so stale startup sounds cannot become
+   * audible later. Ceremony and minigame audio remains lazy/on-demand.
    */
   private _primeSfxForMobile(): void {
     if (typeof document === 'undefined' || this._sfxPrimed) return;
     this._sfxPrimed = true;
 
-    for (const [key, entry] of Object.entries(SOUND_REGISTRY)) {
-      if (entry.category === 'music') continue; // music handled separately
+    for (const key of MOBILE_SFX_PRIME_KEYS) {
+      const entry = SOUND_REGISTRY[key];
+      if (!entry) continue;
       let pool = this._sfxPools.get(key);
       if (!pool) {
         pool = [];

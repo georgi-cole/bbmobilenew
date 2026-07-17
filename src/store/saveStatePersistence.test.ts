@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  clearLastSavePersistenceIssue,
+  CORRUPT_SAVE_RECOVERY_KEY,
+  getLastSavePersistenceIssue,
   loadSavedRunProfile,
   markSurvivorAchievementCelebrationSeen,
   saveRunSnapshot,
@@ -10,10 +13,26 @@ import {
 describe('saveStatePersistence survivor progression', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
+    clearLastSavePersistenceIssue();
   });
 
   afterEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
+    clearLastSavePersistenceIssue();
+  });
+
+  it('quarantines a damaged run and reports a visible recovery event', () => {
+    const key = savedRunsKeyForProfile('profile-1');
+    localStorage.setItem(key, '{damaged-json');
+
+    const profile = loadSavedRunProfile('profile-1');
+
+    expect(profile.runs).toEqual({});
+    expect(localStorage.getItem(key)).toBeNull();
+    expect(sessionStorage.getItem(CORRUPT_SAVE_RECOVERY_KEY)).toBe('{damaged-json');
+    expect(getLastSavePersistenceIssue()?.kind).toBe('corrupt_recovered');
   });
 
   it('normalizes missing survivor achievement unlock maps to an empty object', () => {

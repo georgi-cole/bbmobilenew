@@ -10,6 +10,8 @@ import { selectSettings } from '../../store/settingsSlice';
 import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice';
 import useGameMode from '../../hooks/useGameMode';
 import { buildViewportMetaContent } from './viewportMeta';
+import PortraitOrientationGuard from './PortraitOrientationGuard';
+import SaveRecoveryNotice from '../SaveRecoveryNotice/SaveRecoveryNotice';
 import './AppShell.css';
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean'];
@@ -110,6 +112,8 @@ export default function AppShell() {
         seasonFinale == null &&
         (finale.isActive || !finale.hasStarted || finale.isComplete) && <FinalFaceoff />}
       {seasonFinale && <SeasonFinaleOverlay />}
+      <PortraitOrientationGuard />
+      <SaveRecoveryNotice />
     </div>
   );
 }

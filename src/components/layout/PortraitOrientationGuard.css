@@ -1,0 +1,73 @@
+.portrait-orientation-guard {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .portrait-orientation-guard {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: grid;
+    grid-template-columns: auto minmax(0, 24rem);
+    place-content: center;
+    align-items: center;
+    gap: clamp(1.5rem, 5vw, 4rem);
+    padding: max(1.5rem, env(safe-area-inset-top)) max(2rem, env(safe-area-inset-right))
+      max(1.5rem, env(safe-area-inset-bottom)) max(2rem, env(safe-area-inset-left));
+    color: #f7f8ff;
+    text-align: left;
+    background:
+      radial-gradient(circle at 20% 20%, rgb(101 72 255 / 28%), transparent 34%),
+      radial-gradient(circle at 80% 75%, rgb(255 53 143 / 18%), transparent 32%),
+      #090d18;
+  }
+
+  .portrait-orientation-guard__phone {
+    width: 4.75rem;
+    aspect-ratio: 9 / 17;
+    padding: 0.3rem;
+    border: 0.18rem solid rgb(255 255 255 / 85%);
+    border-radius: 1rem;
+    box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%);
+    transform: rotate(-90deg);
+    animation: portrait-guard-rotate 1.5s ease-in-out 0.25s both;
+  }
+
+  .portrait-orientation-guard__phone span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 0.65rem;
+    background: linear-gradient(145deg, #7048ff, #ff358f);
+  }
+
+  .portrait-orientation-guard__eyebrow {
+    margin: 0 0 0.35rem;
+    color: #b9a9ff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .portrait-orientation-guard h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    line-height: 1;
+  }
+
+  .portrait-orientation-guard p:last-child {
+    margin: 0.65rem 0 0;
+    color: rgb(247 248 255 / 72%);
+    font-size: clamp(0.8rem, 2vw, 1rem);
+    line-height: 1.45;
+  }
+}
+
+@keyframes portrait-guard-rotate {
+  to { transform: rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portrait-orientation-guard__phone { animation: none; transform: none; }
+}

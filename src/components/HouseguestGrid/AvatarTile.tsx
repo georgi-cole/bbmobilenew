@@ -2,7 +2,7 @@ import React from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { avatarVariants } from '../../utils/avatarCase'
-import { getProfilePhotoAvatarId } from '../../utils/avatar'
+import { getLocalAvatarFallback, getProfilePhotoAvatarId } from '../../utils/avatar'
 import { imageIdToDataUrl } from '../../utils/imageDb'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
@@ -138,7 +138,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     }
 
     exhaustedRef.current = true
-    img.src = '/avatars/placeholder.png'
+    img.src = getLocalAvatarFallback(name, isYou)
   }
 
   // Resolve badges: normalise statuses prop to a joined string then derive BadgeInfo[]
