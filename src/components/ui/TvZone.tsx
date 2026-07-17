@@ -24,6 +24,7 @@ import type { TvEvent } from '../../types';
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
 import { getViewportMessageKey } from './tvZoneKeys';
 import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents';
+import { formatCycleAriaLabel, formatCycleLabel, formatPhaseLabel } from '../../utils/gameStatusLanguage';
 import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay';
 import ConfessionalSpotlightOverlay from '../FloatingActionBar/ConfessionalSpotlightOverlay';
 import DemocraciaResultsReveal from './DemocraciaResultsReveal/DemocraciaResultsReveal';
@@ -39,39 +40,6 @@ const EVENT_LABELS: Record<TvEvent['type'], string> = {
   vote: 'Vote update',
   twist: 'Shock alert',
   diary: 'Diary Room',
-};
-
-// Compact phase labels — edit these strings to change what appears in the HUD pill.
-const PHASE_LABELS: Record<string, string> = {
-  week_start:               'DAY START',
-  loh_comp_announcement:    'LOH COMP',
-  loh_comp:                 'LOH COMP',
-  loh_results:              'LOH RESULTS',
-  social_1:             'SOCIAL',
-  nominations:          'NOMS',
-  nomination_results:       'NOMS RESULTS',
-  pre_veto_public_save:     'PUBLIC SAFETY',
-  pos_comp_announcement:    'POS COMP',
-  pos_comp:                 'POS COMP',
-  pos_results:          'POS RESULTS',
-  pos_ceremony:         'SAFETY',
-  pos_ceremony_results: 'SAFETY RESULTS',
-  social_2:             'SOCIAL',
-  live_vote:            'VOTE',
-  eviction_results:     'ELIM',
-  week_end:             'DAY END',
-  final4_eviction:      'F4 ELIM',
-  final3:               'THE FINALE',
-  final3_comp1:         'F3 P1',
-  final3_comp1_minigame: 'F3 P1',
-  final3_comp2:         'F3 P2',
-  final3_comp2_minigame: 'F3 P2',
-  final3_comp3:         'F3 P3',
-  final3_comp3_minigame: 'F3 P3',
-  final3_decision:      'FINAL LOH',
-  jury_announcement:    'TRIBUNAL',
-  jury_cinematic:       'TRIBUNAL',
-  jury:                 'TRIBUNAL',
 };
 
 // ─── Announcement configuration ──────────────────────────────────────────────
@@ -757,7 +725,7 @@ export default function TvZone(props: TvZoneProps) {
     };
   }, []);
 
-  const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
+  const phaseLabel = formatPhaseLabel(gameState.phase);
   const viewportContext = `Day ${gameState.week} · ${phaseLabel}`;
   const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start';
   const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge;
@@ -892,12 +860,12 @@ export default function TvZone(props: TvZoneProps) {
       <div className="tv-zone__head">
         {/* Left: pinned phase chip */}
         <div className="tv-zone__head-phase">
-          <GameTopChip label={phaseLabel} className="tv-zone__head-chip" />
+          <GameTopChip label={phaseLabel} tone="accent" className="tv-zone__head-chip" />
         </div>
 
         {/* Center: scrollable single-row status chips */}
         <ul className="tv-zone__head-pills" aria-label="Game status chips">
-          <li><GameTopChip label={`S${gameState.season}D${gameState.week}`} className="tv-zone__head-chip" /></li>
+          <li><GameTopChip label={formatCycleLabel(gameState.week)} ariaLabel={formatCycleAriaLabel(gameState.season, gameState.week)} tone="neutral" className="tv-zone__head-chip" /></li>
         </ul>
 
         <div className="tv-zone__head-actions">

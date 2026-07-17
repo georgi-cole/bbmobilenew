@@ -91,3 +91,26 @@ button.game-top-chip:focus-visible {
   color: var(--color-text, #fff);
   line-height: 1;
 }
+
+/* Semantic tones keep context chips quieter than actionable or urgent state. */
+.game-top-chip--neutral {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.game-top-chip--danger {
+  border-color: rgba(255, 194, 194, 0.36);
+  background: linear-gradient(135deg, #c73b4f, #8e2438);
+  box-shadow: 0 0 14px rgba(199, 59, 79, 0.26);
+}
+.game-top-chip--success {
+  border-color: rgba(202, 255, 230, 0.3);
+  background: linear-gradient(135deg, #16845f, #11654b);
+  box-shadow: 0 0 14px rgba(31, 200, 132, 0.2);
+}
+body.experiment-game-chrome-refined .game-top-chip {
+  min-width: 0;
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+body.experiment-game-chrome-refined .game-top-chip::after { display: none; }
