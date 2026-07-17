@@ -125,6 +125,8 @@ export default function GameControlDock({
         className={`dock-hit-area hit-social dock-hit-area--social${chatFlash ? ' dock-hit-area--flash dock-node--flash' : ''}${socialUnavailableClass}`}
         type="button"
         aria-label={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
+        data-label="Social"
+        title="Social actions"
         aria-disabled={socialDisabled || disabled}
         disabled={disabled}
         onClick={disabled ? undefined : onChatClick}
@@ -139,6 +141,8 @@ export default function GameControlDock({
         className={`dock-hit-area hit-requests dock-hit-area--requests${requestsUnavailableClass}`}
         type="button"
         aria-label={`Incoming requests${incomingRequestsBadgeCount ? ` (${incomingRequestsBadgeCount})` : ''}`}
+        data-label="Requests"
+        title="Incoming requests"
         aria-disabled={incomingRequestsDisabled || disabled}
         disabled={disabled}
         onClick={disabled ? undefined : onIncomingRequestsClick}
@@ -153,6 +157,8 @@ export default function GameControlDock({
         className={`dock-hit-area hit-play dock-hit-area--play${primaryPulse ? ' dock-hit-area--pulse dock-node--pulse' : ''}`}
         type="button"
         aria-label="Advance to next phase"
+        data-label="Continue"
+        title="Continue to the next game phase"
         disabled={primaryDisabled}
         onClick={primaryDisabled ? undefined : onPrimaryActionClick}
       />
@@ -160,6 +166,8 @@ export default function GameControlDock({
         className={`dock-hit-area hit-stats dock-hit-area--stats${publicUnavailableClass}`}
         type="button"
         aria-label={`Public meter${publicMeterBadgeCount ? ` (${publicMeterBadgeCount})` : ''}`}
+        data-label="Public"
+        title="Public meter"
         aria-disabled={publicMeterDisabled || disabled}
         disabled={disabled}
         onClick={disabled ? undefined : onPublicMeterClick}
@@ -174,6 +182,8 @@ export default function GameControlDock({
         className={`dock-hit-area hit-confessional dock-hit-area--confessional${confessionalFlash ? ` dock-hit-area--confessional-flash dock-hit-area--confessional-flash-${confessionalFlashTick % 2}` : ''}${confessionalPersistentFlash ? ' dock-hit-area--confessional-persistent' : ''}`}
         type="button"
         aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
+        data-label="Diary"
+        title="Diary Room"
         disabled={disabled}
         onClick={disabled ? undefined : onToolClick}
       >
