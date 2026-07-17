@@ -692,3 +692,55 @@
     animation: none;
   }
 }
+
+/* Refined broadcast hierarchy: category → headline → game context. */
+.tv-zone__story { display: contents; }
+.tv-zone__story-eyebrow,
+.tv-zone__story-context { display: none; }
+
+body.experiment-game-chrome-refined .tv-zone__story {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: min(100%, 660px);
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 20px clamp(16px, 5vw, 34px);
+  text-align: center;
+}
+body.experiment-game-chrome-refined .tv-zone__story-eyebrow,
+body.experiment-game-chrome-refined .tv-zone__story-context {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(223, 230, 255, 0.68);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+body.experiment-game-chrome-refined .tv-zone__story-eyebrow::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: #8b7dff;
+  box-shadow: 0 0 12px rgba(139, 125, 255, 0.72);
+  content: '';
+}
+body.experiment-game-chrome-refined .tv-zone__story-context {
+  padding-top: 2px;
+  color: rgba(203, 211, 236, 0.52);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+}
+body.experiment-game-chrome-refined .tv-zone__story .tv-zone__now {
+  max-width: 58ch;
+  padding: 0;
+  background: none;
+  font-size: clamp(0.94rem, 2.8vw, 1.08rem);
+  font-weight: 750;
+  line-height: 1.48;
+  text-wrap: balance;
+}
