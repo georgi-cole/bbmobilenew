@@ -145,6 +145,21 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+:global(body.experiment-game-chrome-refined) .avatarWrap {
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:global(body.experiment-game-chrome-refined) .nameOverlay {
+  bottom: 6px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: left;
+}
+
 .nomination_loh {
   border-color: rgba(255, 215, 96, 0.72);
   box-shadow:

@@ -1,0 +1,60 @@
+/* Rollout-only presentation layer. Removing the body class is an instant rollback. */
+body.experiment-game-chrome-refined .game-screen {
+  gap: 8px;
+  padding-top: 8px;
+}
+
+body.experiment-game-chrome-refined .tv-zone {
+  border-color: rgb(255 255 255 / 10%);
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgb(24 31 49 / 96%), rgb(10 15 27 / 98%));
+  box-shadow: 0 18px 50px rgb(0 0 0 / 32%), inset 0 1px rgb(255 255 255 / 7%);
+}
+
+body.experiment-game-chrome-refined .tv-zone__head {
+  min-height: 42px;
+  padding: 8px 10px;
+  background: rgb(4 8 16 / 36%);
+}
+
+body.experiment-game-chrome-refined .tv-zone__viewport {
+  --tv-screen-texture-opacity: 0.018;
+  background:
+    radial-gradient(circle at 50% -10%, rgb(119 91 255 / 20%), transparent 46%),
+    linear-gradient(180deg, #10192a, #050912);
+}
+
+body.experiment-game-chrome-refined .tv-zone__feed {
+  scrollbar-color: rgb(255 255 255 / 18%) transparent;
+}
+
+body.experiment-game-chrome-refined .game-bottom-nav {
+  margin: 0 8px 6px;
+  border-radius: 20px;
+  clip-path: inset(0 round 20px);
+}
+
+body.experiment-game-chrome-refined .game-bottom-nav__item {
+  border-color: transparent;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.experiment-game-chrome-refined .game-bottom-nav__item--active {
+  border-color: rgb(255 255 255 / 8%);
+  background: rgb(255 255 255 / 8%);
+}
+
+body.experiment-game-chrome-refined .game-control-dock {
+  filter: drop-shadow(0 14px 24px rgb(0 0 0 / 34%));
+}
+
+body.experiment-game-chrome-refined .game-control-dock__icon,
+body.experiment-game-chrome-refined .game-control-dock__play {
+  filter: saturate(0.9) contrast(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.experiment-game-chrome-refined .tv-zone__viewport::before { animation: none; }
+}
