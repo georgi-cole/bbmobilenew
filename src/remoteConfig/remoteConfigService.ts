@@ -14,7 +14,7 @@
  * executed as code.  URL fields are validated to only allow http/https.
  */
 
-import type { RemoteConfig, RemotePlayerOverride } from './remoteConfigTypes';
+import type { RemoteConfig, RemoteOperations, RemotePlayerOverride, RemoteRollout } from './remoteConfigTypes';
 import type { CompSelectionMode } from '../components/compSelectionUtils';
 import { apiUrl } from '../utils/apiBase';
 
@@ -73,6 +73,11 @@ function safeStr(value: unknown): string | undefined {
 function safeOpacity(value: unknown): number | undefined {
   if (typeof value !== 'number' || !isFinite(value)) return undefined;
   return Math.max(0, Math.min(1, value));
+}
+
+function safePercentage(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !isFinite(value)) return undefined;
+  return Math.max(0, Math.min(100, value));
 }
 
 /** Returns true when the URL is an absolute http(s) URL. */
@@ -205,6 +210,46 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
       .map(sanitisePlayerOverride)
       .filter((o): o is RemotePlayerOverride => o !== null);
     if (overrides.length > 0) config.players = overrides;
+  }
+
+  // operations: gradual UI rollout, kill switches and privacy-safe telemetry.
+  if (r.operations && typeof r.operations === 'object' && !Array.isArray(r.operations)) {
+    const ops = r.operations as Record<string, unknown>;
+    config.operations = {};
+
+    if (ops.killSwitches && typeof ops.killSwitches === 'object' && !Array.isArray(ops.killSwitches)) {
+      const kills = ops.killSwitches as Record<string, unknown>;
+      if (typeof kills.refinedGameChrome === 'boolean') {
+        config.operations.killSwitches = { refinedGameChrome: kills.refinedGameChrome };
+      }
+    }
+
+    if (ops.rollouts && typeof ops.rollouts === 'object' && !Array.isArray(ops.rollouts)) {
+      const rollouts = ops.rollouts as Record<string, unknown>;
+      const chrome = rollouts.refinedGameChrome;
+      if (chrome && typeof chrome === 'object' && !Array.isArray(chrome)) {
+        const value = chrome as Record<string, unknown>;
+        const rollout: RemoteRollout = {};
+        if (typeof value.enabled === 'boolean') rollout.enabled = value.enabled;
+        const percentage = safePercentage(value.percentage);
+        if (percentage !== undefined) rollout.percentage = percentage;
+        const salt = safeStr(value.salt);
+        if (salt) rollout.salt = salt;
+        if (Object.keys(rollout).length > 0) config.operations.rollouts = { refinedGameChrome: rollout };
+      }
+    }
+
+    if (ops.telemetry && typeof ops.telemetry === 'object' && !Array.isArray(ops.telemetry)) {
+      const value = ops.telemetry as Record<string, unknown>;
+      const telemetry: NonNullable<RemoteOperations['telemetry']> = {};
+      if (typeof value.enabled === 'boolean') telemetry.enabled = value.enabled;
+      const samplePercentage = safePercentage(value.samplePercentage);
+      if (samplePercentage !== undefined) telemetry.samplePercentage = samplePercentage;
+      if (isSafeUrl(value.endpointUrl)) telemetry.endpointUrl = value.endpointUrl as string;
+      if (Object.keys(telemetry).length > 0) config.operations.telemetry = telemetry;
+    }
+
+    if (Object.keys(config.operations).length === 0) delete config.operations;
   }
 
   return config;

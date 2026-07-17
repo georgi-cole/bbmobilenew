@@ -174,6 +174,29 @@ describe('sanitiseRemoteConfig', () => {
     // Only non-empty strings are kept
     expect(result?.challenge?.weeklyGameKeys).toEqual(['quickTapRace', 'colorMatch']);
   });
+
+  it('sanitises rollout controls and telemetry endpoints', () => {
+    const result = sanitiseRemoteConfig({
+      operations: {
+        killSwitches: { refinedGameChrome: true, unknown: true },
+        rollouts: { refinedGameChrome: { enabled: true, percentage: 140, salt: 'july' } },
+        telemetry: { enabled: true, samplePercentage: -5, endpointUrl: 'https://events.example.com/v1' },
+      },
+    });
+
+    expect(result?.operations).toEqual({
+      killSwitches: { refinedGameChrome: true },
+      rollouts: { refinedGameChrome: { enabled: true, percentage: 100, salt: 'july' } },
+      telemetry: { enabled: true, samplePercentage: 0, endpointUrl: 'https://events.example.com/v1' },
+    });
+  });
+
+  it('drops unsafe telemetry collector URLs', () => {
+    const result = sanitiseRemoteConfig({
+      operations: { telemetry: { enabled: true, endpointUrl: 'javascript:alert(1)' } },
+    });
+    expect(result?.operations?.telemetry?.endpointUrl).toBeUndefined();
+  });
 });
 
 // ─── remote config endpoint policy ────────────────────────────────────────────

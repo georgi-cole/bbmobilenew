@@ -111,6 +111,31 @@ export interface RemotePlayerOverride {
   bio?: string;
 }
 
+export interface RemoteRollout {
+  /** Master switch for this presentation experiment. Defaults to false. */
+  enabled?: boolean;
+  /** Stable percentage of installs assigned to the treatment, from 0 to 100. */
+  percentage?: number;
+  /** Change the salt to create a fresh assignment without identifying players. */
+  salt?: string;
+}
+
+export interface RemoteOperations {
+  /** Emergency switches always win over rollout configuration. */
+  killSwitches?: {
+    refinedGameChrome?: boolean;
+  };
+  rollouts?: {
+    refinedGameChrome?: RemoteRollout;
+  };
+  telemetry?: {
+    enabled?: boolean;
+    samplePercentage?: number;
+    /** Optional HTTPS collector for privacy-safe product events. */
+    endpointUrl?: string;
+  };
+}
+
 // ─── Root config ─────────────────────────────────────────────────────────────
 
 export interface RemoteConfig {
@@ -126,4 +151,6 @@ export interface RemoteConfig {
    * Only entries matching a known houseguest id are applied.
    */
   players?: RemotePlayerOverride[];
+  /** Release controls for gradual UI rollout, rollback and product measurement. */
+  operations?: RemoteOperations;
 }
