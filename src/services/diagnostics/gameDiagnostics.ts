@@ -19,7 +19,21 @@ export type GameDiagnostic = {
 let latestContext: Partial<GameDiagnostic> = {};
 let installed = false;
 
-function activeSurface(state: any): string {
+type DiagnosticState = {
+  game?: {
+    seasonFinale?: unknown;
+    pendingMinigame?: unknown;
+    evictionOverlayPlayerId?: unknown;
+    phase?: string;
+    week?: number;
+    gameId?: string | null;
+    runId?: string | null;
+    saveVersion?: number;
+  };
+  finale?: { isActive?: boolean };
+  challenge?: { pendingChallenge?: unknown };
+};
+function activeSurface(state: DiagnosticState): string {
   if (state?.game?.seasonFinale) return 'season-finale';
   if (state?.finale?.isActive) return 'jury-finale';
   if (state?.challenge?.pendingChallenge) return 'challenge';
@@ -30,7 +44,7 @@ function activeSurface(state: any): string {
 
 export const gameDiagnosticsMiddleware: Middleware = (api) => (next) => (action) => {
   const result = next(action);
-  const state = api.getState() as any;
+  const state = api.getState() as DiagnosticState;
   latestContext = {
     phase: state?.game?.phase,
     week: state?.game?.week,
