@@ -11,25 +11,31 @@ import { createHashRouter } from 'react-router-dom';
 
 import AppShell             from './components/layout/AppShell';
 import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoundary';
+import RouteLoadingScreen   from './components/RouteLoadingScreen/RouteLoadingScreen';
 import HomeHub              from './screens/HomeHub/HomeHub';
-import GameRoute            from './routes/GameRoute';
-import DiaryRoom            from './screens/DiaryRoom/DiaryRoom';
-import Houseguests          from './screens/Houseguests/Houseguests';
-import Profile              from './screens/Profile/Profile';
-import EditProfile          from './screens/Profile/EditProfile';
-import ProfilePicker        from './screens/ProfilePicker/ProfilePicker';
-import Leaderboard          from './screens/Leaderboard/Leaderboard';
-import Credits              from './screens/Credits/Credits';
-import Week                 from './screens/Week/Week';
-import CreatePlayer         from './screens/CreatePlayer/CreatePlayer';
-import GameOver             from './screens/GameOver/GameOver';
-import SelfEvicted          from './screens/SelfEvicted/SelfEvicted';
-import Rules                from './screens/Rules/Rules';
-import PublicMeter          from './screens/PublicMeter/PublicMeter';
-import Settings             from './screens/Settings/Settings';
 import NotFound             from './screens/NotFound/NotFound';
 import { canAccessSpecialSettings } from './utils/debugMode';
-import { lazy, Suspense }   from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
+
+const GameRoute = lazy(() => import('./routes/GameRoute'));
+const DiaryRoom = lazy(() => import('./screens/DiaryRoom/DiaryRoom'));
+const Houseguests = lazy(() => import('./screens/Houseguests/Houseguests'));
+const Profile = lazy(() => import('./screens/Profile/Profile'));
+const EditProfile = lazy(() => import('./screens/Profile/EditProfile'));
+const ProfilePicker = lazy(() => import('./screens/ProfilePicker/ProfilePicker'));
+const Leaderboard = lazy(() => import('./screens/Leaderboard/Leaderboard'));
+const Credits = lazy(() => import('./screens/Credits/Credits'));
+const Week = lazy(() => import('./screens/Week/Week'));
+const CreatePlayer = lazy(() => import('./screens/CreatePlayer/CreatePlayer'));
+const GameOver = lazy(() => import('./screens/GameOver/GameOver'));
+const SelfEvicted = lazy(() => import('./screens/SelfEvicted/SelfEvicted'));
+const Rules = lazy(() => import('./screens/Rules/Rules'));
+const PublicMeter = lazy(() => import('./screens/PublicMeter/PublicMeter'));
+const Settings = lazy(() => import('./screens/Settings/Settings'));
+
+const load = (element: ReactNode) => (
+  <Suspense fallback={<RouteLoadingScreen />}>{element}</Suspense>
+);
 
 // Admin/debug screens stay hidden unless the current session has QA debug access.
 const SettingsAdmin = import.meta.env.DEV || canAccessSpecialSettings()
@@ -98,21 +104,21 @@ export const router = createHashRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true,              element: <HomeHub />      },
-      { path: 'game',             element: <GameRoute />    },
-      { path: 'diary-room',       element: <DiaryRoom />    },
-      { path: 'houseguests',      element: <Houseguests />  },
-      { path: 'profile',          element: <Profile />      },
-      { path: 'profile-edit',     element: <EditProfile />  },
-      { path: 'profile-picker',   element: <ProfilePicker /> },
-      { path: 'leaderboard',      element: <Leaderboard />  },
-      { path: 'credits',          element: <Credits />      },
-      { path: 'week',             element: <Week />         },
-      { path: 'create-player',    element: <CreatePlayer /> },
-      { path: 'game-over',        element: <GameOver />     },
-      { path: 'self-evicted',     element: <SelfEvicted />  },
-      { path: 'rules',            element: <Rules />        },
-      { path: 'public-meter',     element: <PublicMeter />  },
-      { path: 'settings',         element: <Settings />     },
+      { path: 'game',             element: load(<GameRoute />)    },
+      { path: 'diary-room',       element: load(<DiaryRoom />)    },
+      { path: 'houseguests',      element: load(<Houseguests />)  },
+      { path: 'profile',          element: load(<Profile />)      },
+      { path: 'profile-edit',     element: load(<EditProfile />)  },
+      { path: 'profile-picker',   element: load(<ProfilePicker />) },
+      { path: 'leaderboard',      element: load(<Leaderboard />)  },
+      { path: 'credits',          element: load(<Credits />)      },
+      { path: 'week',             element: load(<Week />)         },
+      { path: 'create-player',    element: load(<CreatePlayer />) },
+      { path: 'game-over',        element: load(<GameOver />)     },
+      { path: 'self-evicted',     element: load(<SelfEvicted />)  },
+      { path: 'rules',            element: load(<Rules />)        },
+      { path: 'public-meter',     element: load(<PublicMeter />)  },
+      { path: 'settings',         element: load(<Settings />)     },
       ...(SettingsAdmin != null
         ? [{ path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> }]
         : []),
