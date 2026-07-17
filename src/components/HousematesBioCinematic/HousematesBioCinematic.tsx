@@ -139,18 +139,10 @@ function HousemateScene({ card, index }: { card: HousematesBioCard; index: numbe
         </motion.div>
 
         <motion.div
-          className="hbc-bubble hbc-bubble--intro"
-          initial={{ opacity: 0, y: 20, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.46, duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {card.introduction}
-        </motion.div>
-        <motion.div
           className="hbc-bubble hbc-bubble--dream"
           initial={{ opacity: 0, y: 20, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 1.48, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ delay: 0.58, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="hbc-bubble__label">Why I’m here</span>
           {card.prizePlan}
