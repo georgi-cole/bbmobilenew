@@ -5,6 +5,7 @@ import {
   markAllIncomingInteractionsRead,
   selectIncomingInboxOpen,
   selectIncomingInteractions,
+  selectSocialCommitments,
   selectUnreadIncomingInteractionCount,
 } from '../../social/socialSlice';
 import { getIncomingInteractionPriority } from '../../social/incomingInteractionScheduler';
@@ -18,6 +19,11 @@ import {
   getIncomingInteractionResponseOptions,
   getIncomingInteractionTone,
 } from '../../social/incomingInteractionPresentation';
+import {
+  getSocialCommitmentDueCopy,
+  getSocialCommitmentLabel,
+  getSocialCredibility,
+} from '../../social/socialCommitments';
 import type {
   IncomingInteraction,
   IncomingInteractionPriority,
@@ -25,6 +31,7 @@ import type {
   IncomingInteractionType,
   RelationshipsMap,
   SocialMemoryMap,
+  SocialCommitment,
 } from '../../social/types';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
@@ -94,6 +101,7 @@ function InteractionItem({
   relationships,
   socialMemory,
   humanId,
+  commitment,
 }: {
   interaction: IncomingInteraction;
   priority: IncomingInteractionPriority;
@@ -105,26 +113,23 @@ function InteractionItem({
   relationships: RelationshipsMap;
   socialMemory: SocialMemoryMap;
   humanId: string;
+  commitment?: SocialCommitment;
 }) {
   const fromPlayer = playerById.get(interaction.fromId);
   const fromName = fromPlayer?.name ?? interaction.fromId;
   const typeLabel = getIncomingInteractionTypeLabel(interaction.type);
   const typeIcon = TYPE_ICONS[interaction.type] ?? '💌';
   const isUnread = !interaction.read && !interaction.resolved;
-  const resolvedLabel = interaction.resolved
+  const resolvedLabel: string | null = interaction.resolved
     ? formatResponseLabel(interaction.type, interaction.resolvedWith)
     : isUnread
       ? 'New'
-      : 'Read';
+      : null;
   const priorityLabel = PRIORITY_LABELS[priority];
   const isUrgent = isExpiringThisWeek(interaction, currentWeek);
   const expiryLabel = showExpiry ? getExpiryLabel(interaction, currentWeek, priority) : null;
   const expiryClass = expiryLabel && priority === 'high' ? ' inbox-item__expiry--urgent' : '';
   const shouldShowActions = showActions && !interaction.resolved;
-  const responseOptions = useMemo(
-    () => (shouldShowActions ? getIncomingInteractionResponseOptions(interaction.type) : []),
-    [shouldShowActions, interaction.type],
-  );
   const tone = useMemo(
     () =>
       getIncomingInteractionTone({
@@ -135,6 +140,14 @@ function InteractionItem({
         isUrgent,
       }),
     [interaction, relationships, socialMemory, humanId, isUrgent],
+  );
+  const responseOptions = useMemo(
+    () => (
+      shouldShowActions
+        ? getIncomingInteractionResponseOptions(interaction.type, interaction, tone)
+        : []
+    ),
+    [shouldShowActions, interaction, tone],
   );
 
   return (
@@ -160,9 +173,11 @@ function InteractionItem({
         <div className="inbox-item__title">
           <div className="inbox-item__from-row">
             <span className="inbox-item__from">{fromName}</span>
-            <span className={`inbox-item__priority inbox-item__priority--${priority}`}>
-              {priorityLabel}
-            </span>
+            {priority === 'high' && (
+              <span className={`inbox-item__priority inbox-item__priority--${priority}`}>
+                {priorityLabel}
+              </span>
+            )}
           </div>
           <div className="inbox-item__type-row">
             <span className="inbox-item__type-icon" aria-hidden="true">
@@ -177,12 +192,24 @@ function InteractionItem({
             {expiryLabel && <span className={`inbox-item__expiry${expiryClass}`}>{expiryLabel}</span>}
           </div>
         </div>
-        <span className={`inbox-item__status${isUnread ? ' inbox-item__status--new' : ''}`}>
-          {resolvedLabel}
-        </span>
+        {resolvedLabel && (
+          <span className={`inbox-item__status${isUnread ? ' inbox-item__status--new' : ''}`}>
+            {resolvedLabel}
+          </span>
+        )}
       </div>
 
       <p className="inbox-item__text">{interaction.text}</p>
+
+      {commitment && (
+        <div className={`inbox-item__promise inbox-item__promise--${commitment.status}`}>
+          <strong>
+            {commitment.status === 'pending' ? 'Promise active' : `Promise ${commitment.status}`}
+          </strong>
+          <span>{getSocialCommitmentLabel(commitment.kind)}</span>
+          {commitment.status === 'pending' && <small>{getSocialCommitmentDueCopy(commitment.kind)}</small>}
+        </div>
+      )}
 
       {shouldShowActions && (
         <div className="inbox-item__actions">
@@ -190,10 +217,13 @@ function InteractionItem({
             <button
               key={`${interaction.id}-${option.responseType}`}
               type="button"
+              aria-label={option.label}
+              title={option.description}
+              data-response-type={option.responseType}
               className={`inbox-action inbox-action--${option.style}`}
               onClick={() => onRespond(interaction.id, option.responseType)}
             >
-              {option.label}
+              <span>{option.label}</span>
             </button>
           ))}
         </div>
@@ -212,6 +242,7 @@ export default function IncomingInteractionsInbox() {
   const currentWeek = game.week ?? 1;
   const relationships = useAppSelector((s) => s.social?.relationships ?? {});
   const socialMemory = useAppSelector((s) => s.social?.socialMemory ?? {});
+  const commitments = useAppSelector(selectSocialCommitments);
 
   const humanPlayer = players.find((player) => player.isUser);
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
@@ -269,6 +300,11 @@ export default function IncomingInteractionsInbox() {
       ).length,
     [pendingInteractions, currentWeek],
   );
+  const pendingCommitments = useMemo(
+    () => commitments.filter((commitment) => commitment.status === 'pending'),
+    [commitments],
+  );
+  const credibility = useMemo(() => getSocialCredibility(commitments), [commitments]);
 
   const headerSummary =
     pendingInteractions.length === 0
@@ -302,6 +338,9 @@ export default function IncomingInteractionsInbox() {
           <div className="inbox-header__title">📥 Incoming Interactions</div>
           <div className="inbox-header__meta">
             <span className="inbox-header__summary">{headerSummary}</span>
+            <span className="inbox-header__credibility">
+              Credibility {credibility.score}% · {credibility.label}
+            </span>
             <button
               className="inbox-header__close"
               type="button"
@@ -318,13 +357,25 @@ export default function IncomingInteractionsInbox() {
             <div className="inbox-empty">No incoming interactions yet.</div>
           ) : (
             <div className="inbox-sections">
-              <section className="inbox-section" aria-label="Needs Response">
-                <h3 className="inbox-section__title">Needs Response</h3>
-                {needsResponseInteractions.length === 0 ? (
-                  <div className="inbox-empty inbox-empty--compact">
-                    No interactions need a response.
+              {pendingCommitments.length > 0 && (
+                <section className="inbox-section inbox-section--promises" aria-label="Active Promises">
+                  <h3 className="inbox-section__title inbox-section__title--promises">Active Promises</h3>
+                  <div className="inbox-promises">
+                    {pendingCommitments.map((commitment) => (
+                      <div className="inbox-promise" key={commitment.id}>
+                        <strong>{getSocialCommitmentLabel(commitment.kind)}</strong>
+                        <span>
+                          {playerById.get(commitment.beneficiaryId)?.name ?? commitment.beneficiaryId}
+                          {' · '}{getSocialCommitmentDueCopy(commitment.kind)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ) : (
+                </section>
+              )}
+              {needsResponseInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="Needs Response">
+                  <h3 className="inbox-section__title">Needs Response</h3>
                   <div className="inbox-section__list" role="list">
                     {needsResponseInteractions.map(({ interaction, priority }) => (
                       <InteractionItem
@@ -341,11 +392,12 @@ export default function IncomingInteractionsInbox() {
                         relationships={relationships}
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
+                        commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
                       />
                     ))}
                   </div>
-                )}
-              </section>
+                </section>
+              )}
               {updateInteractions.length > 0 && (
                 <section className="inbox-section" aria-label="Updates">
                   <h3 className="inbox-section__title inbox-section__title--updates">Updates</h3>
@@ -365,6 +417,7 @@ export default function IncomingInteractionsInbox() {
                         relationships={relationships}
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
+                        commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
                       />
                     ))}
                   </div>
@@ -391,6 +444,7 @@ export default function IncomingInteractionsInbox() {
                         relationships={relationships}
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
+                        commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
                       />
                     ))}
                   </div>

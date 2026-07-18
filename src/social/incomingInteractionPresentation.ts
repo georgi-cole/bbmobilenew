@@ -1,5 +1,10 @@
 import { normalizeAffinity } from './affinityUtils';
 import { socialConfig } from './socialConfig';
+import {
+  getCommitmentKindForInteraction,
+  getSocialCommitmentDueCopy,
+  getSocialCommitmentLabel,
+} from './socialCommitments';
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
@@ -24,6 +29,8 @@ export interface IncomingInteractionResponseOption {
   label: string;
   responseType: IncomingInteractionResponseType;
   style: IncomingInteractionResponseStyle;
+  description: string;
+  createsCommitment?: boolean;
 }
 
 const RESPONSE_STYLE_BY_TYPE: Record<IncomingInteractionResponseType, IncomingInteractionResponseStyle> = {
@@ -95,6 +102,191 @@ const RESPONSE_OPTIONS_BY_TYPE: Record<
     { label: 'Dismiss', responseType: 'dismiss' },
   ],
 };
+
+type ResponseBlueprint = Array<{
+  label: string;
+  responseType: IncomingInteractionResponseType;
+}>;
+
+// The social engine still receives stable response intents, but the words the
+// player sees vary so different people do not feel like copies of one form.
+const RESPONSE_OPTION_VARIANTS_BY_TYPE: Partial<
+  Record<IncomingInteractionType, ResponseBlueprint[]>
+> = {
+  warning: [
+    [
+      { label: 'Take seriously', responseType: 'positive' },
+      { label: 'Ask more', responseType: 'neutral' },
+      { label: 'Doubt it', responseType: 'negative' },
+      { label: 'Ignore it', responseType: 'dismiss' },
+    ],
+  ],
+  snide_remark: [
+    [
+      { label: 'Defuse', responseType: 'positive' },
+      { label: 'Stay cool', responseType: 'neutral' },
+      { label: 'Call it out', responseType: 'negative' },
+      { label: 'Walk away', responseType: 'dismiss' },
+    ],
+  ],
+  deal_offer: [
+    [
+      { label: 'Shake on it', responseType: 'accept' },
+      { label: 'Ask time', responseType: 'neutral' },
+      { label: 'Counter', responseType: 'decline' },
+      { label: 'End pitch', responseType: 'dismiss' },
+    ],
+  ],
+  alliance_proposal: [
+    [
+      { label: 'Lock it in', responseType: 'accept' },
+      { label: 'Test waters', responseType: 'neutral' },
+      { label: 'Keep distance', responseType: 'decline' },
+      { label: 'Change subject', responseType: 'dismiss' },
+    ],
+  ],
+  nomination_plea: [
+    [
+      { label: 'Comfort', responseType: 'positive' },
+      { label: 'Hear out', responseType: 'neutral' },
+      { label: 'Hold ground', responseType: 'negative' },
+      { label: 'End talk', responseType: 'dismiss' },
+    ],
+  ],
+  compliment: [
+    [
+      { label: 'Return it', responseType: 'positive' },
+      { label: 'Play it cool', responseType: 'neutral' },
+      { label: 'Deflect it', responseType: 'negative' },
+      { label: 'Move on', responseType: 'dismiss' },
+    ],
+  ],
+  gossip: [
+    [
+      { label: 'Ask details', responseType: 'positive' },
+      { label: 'Listen', responseType: 'neutral' },
+      { label: 'Challenge', responseType: 'negative' },
+      { label: 'Stop rumor', responseType: 'dismiss' },
+    ],
+  ],
+  check_in: [
+    [
+      { label: 'Be honest', responseType: 'positive' },
+      { label: 'Ask them back', responseType: 'neutral' },
+      { label: 'Keep distance', responseType: 'negative' },
+      { label: 'Leave it', responseType: 'dismiss' },
+    ],
+    [
+      { label: 'Let them in', responseType: 'positive' },
+      { label: 'Joke it off', responseType: 'neutral' },
+      { label: 'Set boundary', responseType: 'negative' },
+      { label: 'End the chat', responseType: 'dismiss' },
+    ],
+  ],
+  other: [
+    [
+      { label: 'Engage', responseType: 'positive' },
+      { label: 'Stay neutral', responseType: 'neutral' },
+      { label: 'Push back', responseType: 'negative' },
+      { label: 'Move along', responseType: 'dismiss' },
+    ],
+  ],
+};
+
+const SCENARIO_RESPONSE_OPTIONS: Record<string, ResponseBlueprint> = {
+  generic_gossip: [
+    { label: 'Ask source', responseType: 'positive' },
+    { label: 'Listen', responseType: 'neutral' },
+    { label: 'Defend them', responseType: 'negative' },
+    { label: 'Kill rumor', responseType: 'dismiss' },
+  ],
+  betrayal_warning: [
+    { label: 'Trust warning', responseType: 'positive' },
+    { label: 'Ask for proof', responseType: 'neutral' },
+    { label: 'Question motive', responseType: 'negative' },
+    { label: 'Drop it', responseType: 'dismiss' },
+  ],
+  survivor_gratitude: [
+    { label: 'Share moment', responseType: 'positive' },
+    { label: 'Accept thanks', responseType: 'neutral' },
+    { label: 'Downplay it', responseType: 'negative' },
+    { label: 'Move on', responseType: 'dismiss' },
+  ],
+  post_veto_gratitude: [
+    { label: 'Celebrate', responseType: 'positive' },
+    { label: 'Stay modest', responseType: 'neutral' },
+    { label: 'Call in favor', responseType: 'negative' },
+    { label: 'Change subject', responseType: 'dismiss' },
+  ],
+  nomination_aftershock: [
+    { label: 'Reassure them', responseType: 'positive' },
+    { label: 'Stay vague', responseType: 'neutral' },
+    { label: 'Stand firm', responseType: 'negative' },
+    { label: 'End talk', responseType: 'dismiss' },
+  ],
+};
+
+const CHECK_IN_OPTIONS_BY_TONE: Partial<Record<IncomingInteractionTone, ResponseBlueprint>> = {
+  Warm: [
+    { label: 'Open up', responseType: 'positive' },
+    { label: 'Keep it easy', responseType: 'neutral' },
+    { label: 'Hold back', responseType: 'negative' },
+    { label: 'Wrap it up', responseType: 'dismiss' },
+  ],
+  Trusting: [
+    { label: 'Confide in them', responseType: 'positive' },
+    { label: 'Stay casual', responseType: 'neutral' },
+    { label: 'Keep your guard', responseType: 'negative' },
+    { label: 'Move on', responseType: 'dismiss' },
+  ],
+  Guarded: [
+    { label: 'Meet halfway', responseType: 'positive' },
+    { label: 'Stay measured', responseType: 'neutral' },
+    { label: 'Set boundary', responseType: 'negative' },
+    { label: 'End the chat', responseType: 'dismiss' },
+  ],
+  Bitter: [
+    { label: 'Acknowledge hurt', responseType: 'positive' },
+    { label: 'Keep your cool', responseType: 'neutral' },
+    { label: 'Push back', responseType: 'negative' },
+    { label: 'Walk away', responseType: 'dismiss' },
+  ],
+  'Feels ignored': [
+    { label: 'Give time', responseType: 'positive' },
+    { label: 'Check briefly', responseType: 'neutral' },
+    { label: 'Stay distant', responseType: 'negative' },
+    { label: 'Put it off', responseType: 'dismiss' },
+  ],
+};
+
+function getStableVariantIndex(interaction: IncomingInteraction, tone: IncomingInteractionTone | undefined, count: number): number {
+  const source = `${interaction.fromId}|${interaction.id}|${interaction.payload?.scenarioKey ?? ''}|${tone ?? ''}`;
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = Math.imul(31, hash) + source.charCodeAt(index) | 0;
+  }
+  return Math.abs(hash) % count;
+}
+
+function getResponseBlueprints(
+  type: IncomingInteractionType,
+  interaction?: IncomingInteraction,
+  tone?: IncomingInteractionTone,
+): ResponseBlueprint {
+  if (!interaction) return RESPONSE_OPTIONS_BY_TYPE[type];
+
+  const scenarioKey = interaction.payload?.scenarioKey;
+  if (typeof scenarioKey === 'string' && SCENARIO_RESPONSE_OPTIONS[scenarioKey]) {
+    return SCENARIO_RESPONSE_OPTIONS[scenarioKey];
+  }
+
+  if (type === 'check_in' && tone && CHECK_IN_OPTIONS_BY_TONE[tone]) {
+    return CHECK_IN_OPTIONS_BY_TONE[tone];
+  }
+
+  const variants = [RESPONSE_OPTIONS_BY_TYPE[type], ...(RESPONSE_OPTION_VARIANTS_BY_TYPE[type] ?? [])];
+  return variants[getStableVariantIndex(interaction, tone, variants.length)];
+}
 
 const DEFAULT_TONES_BY_TYPE: Partial<Record<IncomingInteractionType, IncomingInteractionTone>> = {
   compliment: 'Warm',
@@ -173,12 +365,51 @@ function detectTrustingTone(trustHigh: boolean, affinity: number): boolean {
 
 export function getIncomingInteractionResponseOptions(
   type: IncomingInteractionType,
+  interaction?: IncomingInteraction,
+  tone?: IncomingInteractionTone,
 ): IncomingInteractionResponseOption[] {
-  const options = RESPONSE_OPTIONS_BY_TYPE[type];
+  const options = getResponseBlueprints(type, interaction, tone);
+  const commitmentKind = interaction ? getCommitmentKindForInteraction(interaction) : null;
   return options.map((option) => ({
     ...option,
     style: RESPONSE_STYLE_BY_TYPE[option.responseType] ?? 'neutral',
+    ...(commitmentKind ? getCommitmentResponsePresentation(commitmentKind, option.responseType) : {
+      description: getDefaultResponseDescription(option.responseType),
+    }),
   }));
+}
+
+function getDefaultResponseDescription(responseType: IncomingInteractionResponseType): string {
+  if (responseType === 'positive' || responseType === 'accept') return 'Builds trust and goodwill.';
+  if (responseType === 'neutral') return 'Avoids a commitment, with a smaller relationship gain.';
+  if (responseType === 'negative' || responseType === 'decline') return 'Sets a clear boundary and damages trust.';
+  return 'Ends the conversation without engaging.';
+}
+
+function getCommitmentResponsePresentation(
+  kind: NonNullable<ReturnType<typeof getCommitmentKindForInteraction>>,
+  responseType: IncomingInteractionResponseType,
+): { label?: string; description: string; createsCommitment?: boolean } {
+  const makesPromise = responseType === 'positive' || responseType === 'accept';
+  if (makesPromise) {
+    const label = kind === 'protect_from_nomination'
+      ? 'Promise safety'
+      : kind === 'use_safety_on_player'
+        ? 'Promise the power'
+        : 'Promise your vote';
+    return {
+      label,
+      description: `Creates a promise: ${getSocialCommitmentLabel(kind)}. ${getSocialCommitmentDueCopy(kind)}.`,
+      createsCommitment: true,
+    };
+  }
+  if (responseType === 'neutral') {
+    return { label: 'Give no guarantees', description: 'Keeps your options open without making a promise.' };
+  }
+  if (responseType === 'negative' || responseType === 'decline') {
+    return { label: 'Refuse clearly', description: 'No promise is made, but they will remember the rejection.' };
+  }
+  return { label: 'End the talk', description: 'Dismisses them and closes the conversation.' };
 }
 
 export function getIncomingInteractionResponseLabel(

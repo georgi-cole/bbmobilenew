@@ -22,6 +22,7 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
     deliveredThisPhase: 0,
   },
   socialMemory: {},
+  commitments: [],
   influenceWeights: {},
   panelOpen: false,
   weekStartRelSnapshot: {},

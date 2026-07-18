@@ -3,12 +3,15 @@ import type { AppDispatch, RootState } from '../store/store';
 import { socialConfig } from './socialConfig';
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
 import {
+  addSocialCommitment,
+  applyInfoDelta,
   dismissIncomingInteraction,
   resolveExpiredIncomingInteractionsForWeek,
   resolveIncomingInteraction,
   updateRelationship,
   updateSocialMemory,
 } from './socialSlice';
+import { createCommitmentFromInteraction } from './socialCommitments';
 import { isIncomingInteractionInvalidated } from './incomingInteractionValidity';
 import {
   buildSocialMemoryDeltaForResponse,
@@ -159,6 +162,14 @@ export function respondToIncomingInteraction({
       }),
     );
 
+    const commitment = createCommitmentFromInteraction({
+      interaction,
+      responseType,
+      promisorId: humanPlayer.id,
+      week: currentWeek,
+    });
+    if (commitment) dispatch(addSocialCommitment(commitment));
+
     const delta = getResponseDelta(responseType);
     const acceptedAlliance =
       interaction.type === 'alliance_proposal' && responseType === 'accept';
@@ -203,6 +214,14 @@ export function respondToIncomingInteraction({
           event: memoryEvent,
         }),
       );
+    }
+
+    // Actionable intel now pays out information, so gossip and warnings matter strategically.
+    if (
+      (interaction.type === 'gossip' || interaction.type === 'warning') &&
+      (responseType === 'positive' || responseType === 'neutral')
+    ) {
+      dispatch(applyInfoDelta({ playerId: humanPlayer.id, delta: 1 }));
     }
 
     const text = buildResponseLogText(interaction, responseType, fromName);

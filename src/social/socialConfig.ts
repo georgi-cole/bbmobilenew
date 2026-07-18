@@ -292,4 +292,14 @@ export const socialConfig = {
       ignore: { neglect: 3, trustMomentum: -2 },
     },
   },
+
+  // ── Social commitments ───────────────────────────────────────────────────
+  socialCommitmentConfig: {
+    affinityDelta: { kept: 9, broken: -16 },
+    influenceDelta: { kept: 100, broken: -150 },
+    memoryDelta: {
+      kept: { gratitude: 4, trustMomentum: 3 },
+      broken: { resentment: 5, trustMomentum: -4 },
+    },
+  },
 };

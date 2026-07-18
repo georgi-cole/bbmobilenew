@@ -720,6 +720,28 @@ function buildInteractionTextContext(
   };
 }
 
+/** Pick a concrete third party for gossip/warnings instead of vague “people” talk. */
+function selectInteractionSubject(
+  actorId: string,
+  playerId: string,
+  type: IncomingInteractionType,
+  context: AutonomyContext,
+): AutonomyPlayer | undefined {
+  if (type !== 'gossip' && type !== 'warning') return undefined;
+  const candidates = context.players.filter(
+    (candidate) =>
+      candidate.id !== actorId &&
+      candidate.id !== playerId &&
+      candidate.status !== 'evicted' &&
+      candidate.status !== 'jury',
+  );
+  return candidates.sort((left, right) => {
+    const leftAffinity = normalizeAffinity(context.relationships[actorId]?.[left.id]?.affinity ?? 0);
+    const rightAffinity = normalizeAffinity(context.relationships[actorId]?.[right.id]?.affinity ?? 0);
+    return leftAffinity - rightAffinity || left.id.localeCompare(right.id);
+  })[0];
+}
+
 function renderInteractionTemplate(template: string, textContext: InteractionTextContext): string {
   return template
     .replace(/\{actor\}/g, textContext.actorName)
@@ -937,16 +959,22 @@ export function scheduleIncomingInteractionsForPhase(
       pendingInteractions,
       context.random,
     );
+    const subject = selectInteractionSubject(actor.id, playerId, plan.type, context);
+    const subjectName = subject?.name ?? subject?.id;
+    const interactionText = subjectName
+      ? `${textResult.text} ${plan.type === 'gossip' ? 'The name at the center of it is' : 'Keep an eye on'} ${subjectName}.`
+      : textResult.text;
     const interaction: IncomingInteraction = {
       id: generateInteractionId(),
       fromId: actor.id,
       type: plan.type,
-      text: textResult.text,
+      text: interactionText,
       payload: {
         scenarioKey: plan.scenarioKey,
         variantFamilyId: textResult.variantFamilyId,
         phase,
         actorStatus: actor.status,
+        subjectId: subject?.id,
       },
       createdAt: Date.now(),
       createdWeek: week,

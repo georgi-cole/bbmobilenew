@@ -6,6 +6,7 @@ import type {
   IncomingInteractionResponseType,
   ScheduledIncomingInteraction,
   SocialActionLogEntry,
+  SocialCommitment,
   SocialMemoryEvent,
   SocialPhaseReport,
   SocialState,
@@ -337,6 +338,32 @@ const socialSlice = createSlice({
         });
       });
     },
+    /** Record a promise created by a high-stakes incoming response. */
+    addSocialCommitment(state, action: PayloadAction<SocialCommitment>) {
+      if (!state.commitments) state.commitments = [];
+      if (state.commitments.some((entry) => entry.interactionId === action.payload.interactionId)) return;
+      state.commitments.unshift(action.payload);
+    },
+    /** Mark a pending promise as kept, broken, or void. */
+    resolveSocialCommitment(
+      state,
+      action: PayloadAction<{
+        commitmentId: string;
+        status: Exclude<SocialCommitment['status'], 'pending'>;
+        resolvedAt?: number;
+        resolvedWeek?: number;
+        resolutionReason?: string;
+      }>,
+    ) {
+      const entry = (state.commitments ?? []).find(
+        (commitment) => commitment.id === action.payload.commitmentId,
+      );
+      if (!entry || entry.status !== 'pending') return;
+      entry.status = action.payload.status;
+      entry.resolvedAt = action.payload.resolvedAt ?? Date.now();
+      entry.resolvedWeek = action.payload.resolvedWeek;
+      entry.resolutionReason = action.payload.resolutionReason;
+    },
     /** Manually open the social panel (e.g. via the FAB 💬 button). */
     openSocialPanel(state) {
       state.panelOpen = true;
@@ -378,7 +405,7 @@ const socialSlice = createSlice({
      * Replaces the entire social slice with the snapshot.
      */
     hydrateSocial(_state, action: PayloadAction<SocialState>) {
-      return action.payload;
+      return { ...action.payload, commitments: action.payload.commitments ?? [] };
     },
   },
 });
@@ -410,6 +437,8 @@ export const {
   updateRelationship,
   updateSocialMemory,
   decaySocialMemory,
+  addSocialCommitment,
+  resolveSocialCommitment,
   openSocialPanel,
   closeSocialPanel,
   openIncomingInbox,
@@ -436,6 +465,10 @@ export const selectSocialPanelOpen = (state: { social: SocialState }) =>
   state.social?.panelOpen ?? false;
 export const selectSocialMemory = (state: { social: SocialState }) =>
   state.social?.socialMemory ?? {};
+export const selectSocialCommitments = (state: { social: SocialState }) =>
+  state.social?.commitments ?? [];
+export const selectPendingSocialCommitments = (state: { social: SocialState }) =>
+  selectSocialCommitments(state).filter((commitment) => commitment.status === 'pending');
 export const selectWeekStartRelSnapshot = (state: { social: SocialState }) =>
   state.social?.weekStartRelSnapshot ?? {};
 export const selectIncomingInboxOpen = (state: { social: SocialState }) =>
