@@ -79,13 +79,16 @@ export default function GameBottomNav({
         {refined && moreOpen && createPortal(
           <div className="game-bottom-nav__more-menu" id="game-navigation-more" role="menu" aria-label="More destinations">
             <button type="button" role="menuitem" onClick={() => openDestination('rules')}>
-              <span>Rules</span><small>How the game works</small>
+              <img src={`${BASE}/assets/updated_nav_fab_bar/rules_approved_final.svg`} alt="" aria-hidden="true" />
+              <span>Rules</span>
             </button>
             <button type="button" role="menuitem" onClick={() => openDestination('leaderboard')}>
-              <span>Board</span><small>Leaderboard and season standings</small>
+              <img src={`${BASE}/assets/updated_nav_fab_bar/leaderboard_approved_final.svg`} alt="" aria-hidden="true" />
+              <span>Board</span>
             </button>
             <button type="button" role="menuitem" onClick={() => openDestination('store')}>
-              <span>Store</span><small>Cosmetics and extras</small>
+              <img src={`${BASE}/assets/icons/shop.svg`} alt="" aria-hidden="true" />
+              <span>Store</span>
             </button>
           </div>,
           document.body,

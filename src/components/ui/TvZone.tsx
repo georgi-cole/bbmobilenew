@@ -973,6 +973,7 @@ export default function TvZone(props: TvZoneProps) {
         mainTVMessage={mainTvMessage}
         maxVisible={mainLogMaxVisible}
         mobileTwoLineMode={mainLogMaxVisible <= 2}
+        inlineVisible={mainLogMaxVisible > 0}
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}

@@ -40,6 +40,7 @@ export interface ResponsiveGameLayoutInput {
   hasDock: boolean
   playerCount: number
   userCompactRoster: boolean
+  inlineLogVisible: boolean
   isAndroidLike?: boolean
   debugEnabled?: boolean
   revision?: number
@@ -52,18 +53,19 @@ const DEFAULT_PHONE_WIDTH = 390
 const DEFAULT_PHONE_HEIGHT = 780
 const DEFAULT_DOCK_RATIO = 220 / 980
 const COMPACT_DOCK_SCALE = 0.9
-const NORMAL_DOCK_GAP = 12
+const NORMAL_DOCK_GAP = 8
 const COMPACT_DOCK_GAP = 8
 const ROSTER_COLUMNS = 4
 const ROSTER_GAP = 5
 const GAME_INLINE_PADDING = 24
 const ROSTER_INLINE_PADDING = 16
 const ROSTER_HEADER_HEIGHT = 30
-const GAME_VERTICAL_PADDING = 10
-const GAME_SECTION_GAPS = 12
-const TV_LOG_ROW_HEIGHT = 32
+const GAME_VERTICAL_PADDING = 8
+const GAME_SECTION_GAPS = 8
+const MOBILE_TV_LOG_ROW_HEIGHT = 32
+const WIDE_TV_LOG_ROW_HEIGHT = 36
 const TV_CHROME_HEIGHT = 88
-const MAX_PHONE_TV_LOG_ROWS = 5
+const MAX_INLINE_TV_LOG_ROWS = 3
 const SHORT_ROSTER_MAX_PLAYERS = ROSTER_COLUMNS * 2
 const SURVIVOR_STANDOUT_GAP_ALLOWANCE = 10
 const SURVIVOR_FULL_STANDOUT_MIN_SPACE = 72
@@ -126,17 +128,8 @@ function getSurvivorStandoutHeight(mode: SurvivorStandoutLayoutMode) {
   }
 }
 
-function resolveBaseTvLogRows(extraAfterBaseRoster: number) {
-  if (extraAfterBaseRoster >= 96) return 3
-  return extraAfterBaseRoster >= 36 ? 2 : 1
-}
-
-function resolveAdaptiveTvLogRows(options: { extraAfterFeature: number; playerCount: number }) {
-  const maxRows = options.playerCount <= SHORT_ROSTER_MAX_PLAYERS ? MAX_PHONE_TV_LOG_ROWS : 3
-  const baseRows = resolveBaseTvLogRows(options.extraAfterFeature)
-  const rowsThatFit = 1 + Math.floor(options.extraAfterFeature / TV_LOG_ROW_HEIGHT)
-
-  return clamp(Math.max(baseRows, rowsThatFit), 1, maxRows)
+function resolveAdaptiveTvLogRows(extraAfterFeature: number, rowHeight: number) {
+  return clamp(1 + Math.floor(extraAfterFeature / rowHeight), 1, MAX_INLINE_TV_LOG_ROWS)
 }
 
 function buildDebugLabel(
@@ -234,7 +227,10 @@ export function computeResponsiveGameLayout(
     rosterRows * compactTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
   const minTvViewportHeight =
     layoutSize === 'phone-small' ? 112 : layoutSize === 'phone-medium' ? 132 : 144
-  const minTvHeight = minTvViewportHeight + TV_CHROME_HEIGHT + TV_LOG_ROW_HEIGHT
+  // Refined chrome moves history into an on-demand module. Reserve inline-log
+  // height only when rows are actually rendered, so the roster gets the space.
+  const tvLogRowHeight = viewportWidth <= 480 ? MOBILE_TV_LOG_ROW_HEIGHT : WIDE_TV_LOG_ROW_HEIGHT
+  const minTvHeight = minTvViewportHeight + TV_CHROME_HEIGHT + (input.inlineLogVisible ? tvLogRowHeight : 0)
   const normalWithoutHeader = normalRosterHeight - ROSTER_HEADER_HEIGHT
   const compactWithoutHeader = compactRosterHeight - ROSTER_HEADER_HEIGHT
   // Compact presentation is an explicit accessibility/display preference. A
@@ -275,13 +271,12 @@ export function computeResponsiveGameLayout(
       ? survivorStandoutHeight + SURVIVOR_STANDOUT_GAP_ALLOWANCE
       : 0
   const extraAfterFeature = Math.max(0, extraAfterMandatory - featureReserve)
-  const tvLogRows = resolveAdaptiveTvLogRows({
-    extraAfterFeature,
-    playerCount: input.playerCount,
-  })
-  const extraLogRows = tvLogRows - 1
-  const breathingRoom = clamp(extraAfterFeature - extraLogRows * TV_LOG_ROW_HEIGHT, 0, 20)
-  const tvHeight = minTvHeight + extraLogRows * TV_LOG_ROW_HEIGHT + breathingRoom
+  const tvLogRows = input.inlineLogVisible
+    ? resolveAdaptiveTvLogRows(extraAfterFeature, tvLogRowHeight)
+    : 0
+  const extraLogRows = Math.max(0, tvLogRows - 1)
+  const breathingRoom = clamp(extraAfterFeature - extraLogRows * tvLogRowHeight, 0, 20)
+  const tvHeight = minTvHeight + extraLogRows * tvLogRowHeight + breathingRoom
   const tvViewportHeight = minTvViewportHeight + breathingRoom
   const compactRoster = baseRosterMode === 'compact-small'
   const rosterMaxHeight = rosterMode === 'scroll'
@@ -300,6 +295,7 @@ export function computeResponsiveGameLayout(
     '--game-action-dock-scale': String(actionDockScale),
     '--game-action-dock-height': `${roundPx(selectedDockHeight)}px`,
     '--game-action-dock-gap': `${roundPx(actionDockGap)}px`,
+    '--game-layout-rhythm': `${roundPx(actionDockGap)}px`,
     '--game-nav-height': `${roundPx(selectedNavContentHeight)}px`,
     '--game-nav-item-label-display': navItemLabelDisplay,
     '--game-screen-floating-dock-clearance': `${roundPx(dockClearance)}px`,
@@ -384,6 +380,7 @@ function readViewportInput<TStage extends HTMLElement>(
     hasDock: boolean
     playerCount: number
     userCompactRoster: boolean
+    inlineLogVisible: boolean
   },
   revision: number
 ): ResponsiveGameLayoutInput {
@@ -417,6 +414,7 @@ function readViewportInput<TStage extends HTMLElement>(
     hasDock: options.hasDock,
     playerCount: options.playerCount,
     userCompactRoster: options.userCompactRoster,
+    inlineLogVisible: options.inlineLogVisible,
     isAndroidLike,
     debugEnabled: isLayoutDebugEnabled(),
     revision,
@@ -429,10 +427,11 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     hasDock: boolean
     playerCount: number
     userCompactRoster: boolean
+    inlineLogVisible: boolean
   }
 ) {
   const revisionRef = useRef(0)
-  const { hasDock, playerCount, userCompactRoster } = options
+  const { hasDock, playerCount, userCompactRoster, inlineLogVisible } = options
   const [budget, setBudget] = useState<ResponsiveGameLayoutBudget>(() =>
     computeResponsiveGameLayout({
       viewportWidth: DEFAULT_PHONE_WIDTH,
@@ -447,6 +446,7 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
       playerCount,
       userCompactRoster,
       revision: 0,
+      inlineLogVisible,
     })
   )
 
@@ -459,6 +459,7 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
           hasDock,
           playerCount,
           userCompactRoster,
+          inlineLogVisible,
         },
         revisionRef.current
       )
@@ -466,7 +467,7 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     setBudget((prev) =>
       prev.signature === next.signature && prev.debugLabel === next.debugLabel ? prev : next
     )
-  }, [hasDock, playerCount, stageRef, userCompactRoster])
+  }, [hasDock, inlineLogVisible, playerCount, stageRef, userCompactRoster])
 
   useEffect(() => {
     measure()

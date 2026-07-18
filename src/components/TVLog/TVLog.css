@@ -277,6 +277,19 @@ body.experiment-game-chrome-refined .tv-log__event:focus-visible {
   outline-offset: -2px;
 }
 /* Refined game: keep history off the main screen and open it on demand. */
+/* Inline House Feed stays lightweight; categories remain in the full log module. */
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__toolbar,
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__type,
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__time {
+  display: none;
+}
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__copy {
+  display: contents;
+}
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__event {
+  min-height: var(--tv-log-item-h);
+  padding-block: 0;
+}
 body.experiment-game-chrome-refined .tv-log__launcher {
   position: absolute;
   right: 10px;

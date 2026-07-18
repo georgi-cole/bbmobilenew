@@ -158,10 +158,10 @@
   bottom: calc(var(--nav-bar-height, 60px) + var(--safe-bottom) + 8px);
   z-index: 1500;
   display: flex;
-  width: min(260px, calc(100vw - 28px));
+  width: min(184px, calc(100vw - 28px));
   flex-direction: column;
-  gap: 4px;
-  padding: 7px;
+  gap: 5px;
+  padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--game-radius-3);
   background: rgba(12, 18, 31, 0.97);
@@ -171,14 +171,13 @@
 }
 .game-bottom-nav__more-menu button {
   display: flex;
-  min-height: 50px;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.04));
   color: rgba(244, 246, 255, 0.94);
   font: inherit;
   text-align: left;
@@ -187,8 +186,8 @@
 .game-bottom-nav__more-menu button:hover,
 .game-bottom-nav__more-menu button:focus-visible { background: rgba(255, 255, 255, 0.07); }
 .game-bottom-nav__more-menu button:focus-visible { outline: 2px solid rgba(151, 139, 255, 0.88); outline-offset: -2px; }
-.game-bottom-nav__more-menu span { font-size: 0.78rem; font-weight: 800; }
-.game-bottom-nav__more-menu small { color: rgba(212, 219, 240, 0.56); font-size: 0.62rem; font-weight: 600; }
+.game-bottom-nav__more-menu img { width: 24px; height: 24px; object-fit: contain; opacity: 0.9; }
+.game-bottom-nav__more-menu span { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .game-bottom-nav--refined-architecture .game-bottom-nav__item--active::after {
   position: absolute;
   bottom: 2px;

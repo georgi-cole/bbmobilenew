@@ -179,4 +179,16 @@ describe('TVLog — refined on-demand module', () => {
 
     document.body.classList.remove('experiment-game-chrome-refined');
   });
+
+  it('shows lightweight inline rows when House Feed is active', () => {
+    document.body.classList.add('experiment-game-chrome-refined');
+    const entries: TvEvent[] = [makeEvent({ id: 'survivor', text: 'Survivor round begins', type: 'game' })];
+    render(<TVLog entries={entries} maxVisible={2} inlineVisible />);
+
+    expect(screen.getByText('Survivor round begins')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Open game log/i })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    document.body.classList.remove('experiment-game-chrome-refined');
+  });
 });

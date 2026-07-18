@@ -159,6 +159,7 @@ import {
 import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import { useResponsiveGameLayout } from './useResponsiveGameLayout'
 import { getCeremonyTileRect } from './ceremonyTileMeasurement'
+import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome'
 import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
@@ -322,6 +323,7 @@ export default function GameScreen() {
   const dispatch = useAppDispatch()
   const store = useStore<RootState>()
   const gameScreenRef = useRef<HTMLDivElement | null>(null)
+  const refinedGameChrome = useRefinedGameChrome()
   const storeRef = useRef(store)
   useEffect(() => {
     storeRef.current = store
@@ -3131,6 +3133,7 @@ export default function GameScreen() {
     hasDock: showGameControlDock,
     playerCount: game.players.length,
     userCompactRoster: settings.gameUX.compactRoster,
+    inlineLogVisible: !refinedGameChrome || game.mode === 'survival' || settings.gameUX.houseFeed,
   })
   const gameTvLogRows = responsiveGameLayout.tvLogRows
   const housemateOccupancyLabel = `${alivePlayers.length}/${game.players.length}`

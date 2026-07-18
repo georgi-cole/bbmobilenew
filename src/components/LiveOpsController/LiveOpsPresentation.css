@@ -1,6 +1,6 @@
 /* Rollout-only presentation layer. Removing the body class is an instant rollback. */
 body.experiment-game-chrome-refined .game-screen {
-  gap: 8px;
+  gap: var(--game-layout-rhythm, 8px);
   padding-top: 8px;
 }
 
@@ -12,8 +12,8 @@ body.experiment-game-chrome-refined .tv-zone {
 }
 
 body.experiment-game-chrome-refined .tv-zone__head {
-  min-height: 42px;
-  padding: 8px 10px;
+  min-height: 32px;
+  padding: 3px 10px;
   background: rgb(4 8 16 / 36%);
 }
 

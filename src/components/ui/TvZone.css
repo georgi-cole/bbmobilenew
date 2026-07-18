@@ -22,8 +22,8 @@
 .tv-zone__head {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 11px;
+  gap: 3px;
+  padding: 3px 7px;
   background: rgba(0, 0, 0, 0.35);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -56,14 +56,14 @@
 .tv-zone__head-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 1px;
   flex-shrink: 0;
 }
 
 .tv-zone__head-chip {
   min-width: auto;
-  height: 22px;
-  padding: 0 10px;
+  height: 21px;
+  padding: 0 7px;
 }
 
 .tv-zone__head-chip::after {
@@ -75,8 +75,8 @@
 }
 
 .tv-zone__head-chip .game-top-chip__label {
-  font-size: var(--game-type-eyebrow-size);
-  letter-spacing: 0.35px;
+  font-size: 0.56rem;
+  letter-spacing: 0.28px;
 }
 
 .tv-zone__audio-btn {
@@ -425,8 +425,8 @@
   }
 
   .tv-zone__head {
-    gap: 5px;
-    padding: 6px 10px;
+    gap: 3px;
+    padding: 3px 6px;
   }
 
   .tv-zone__head-pills {
@@ -434,18 +434,18 @@
   }
 
   .tv-zone__head-actions {
-    gap: 6px;
+    gap: 1px;
   }
 
   .tv-zone__head-chip {
-    height: 30px;
-    min-width: 30px;
-    padding: 0 11px;
+    height: 22px;
+    min-width: 22px;
+    padding: 0 7px;
   }
 
   .tv-zone__head-chip .game-top-chip__label {
-    font-size: 0.66rem;
-    letter-spacing: 0.4px;
+    font-size: 0.56rem;
+    letter-spacing: 0.28px;
   }
 
   .tv-zone__viewport {

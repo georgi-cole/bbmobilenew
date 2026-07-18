@@ -28,6 +28,7 @@ export interface TVLogProps {
   mainTVMessage?: string;
   maxVisible?: number;
   mobileTwoLineMode?: boolean;
+  inlineVisible?: boolean;
 }
 
 function formatEventAge(timestamp: number): string {
@@ -43,6 +44,7 @@ export default function TVLog({
   mainTVMessage,
   maxVisible = MAX_ADAPTIVE_VISIBLE_ROWS,
   mobileTwoLineMode = false,
+  inlineVisible = false,
 }: TVLogProps) {
   const refined = useRefinedGameChrome();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -137,8 +139,8 @@ export default function TVLog({
     </>
   );
 
-  if (!refined) {
-    return <section className="tv-log-shell" aria-labelledby="tv-log-heading">{activityContent}</section>;
+  if (!refined || inlineVisible) {
+    return <section className={`tv-log-shell${refined ? ' tv-log-shell--inline' : ''}`} aria-labelledby="tv-log-heading">{activityContent}</section>;
   }
 
   return (
