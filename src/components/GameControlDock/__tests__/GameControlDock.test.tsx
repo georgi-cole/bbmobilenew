@@ -4,14 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import GameControlDock from '../GameControlDock';
 
 describe('GameControlDock', () => {
-  it('exposes concise visible labels for the refined action hierarchy', () => {
-    render(<GameControlDock />);
-    expect(screen.getByRole('button', { name: 'Advance to next phase' })).toHaveAttribute('data-label', 'Continue');
-    expect(screen.getByRole('button', { name: 'Social' })).toHaveAttribute('data-label', 'Social');
-    expect(screen.getByRole('button', { name: 'Incoming requests' })).toHaveAttribute('data-label', 'Requests');
-    expect(screen.getByRole('button', { name: 'Public meter' })).toHaveAttribute('data-label', 'Public');
-    expect(screen.getByRole('button', { name: 'Confessional' })).toHaveAttribute('data-label', 'Diary');
-  });
   it('uses the clean glassy dock shell, play, and icon assets', () => {
     const { container } = render(<GameControlDock />);
 

@@ -34,13 +34,7 @@ import './ShockDangerMode.css';
 
 const NOOP = () => {};
 
-const EVENT_LABELS: Record<TvEvent['type'], string> = {
-  game: 'House update',
-  social: 'Social update',
-  vote: 'Vote update',
-  twist: 'Shock alert',
-  diary: 'Diary Room',
-};
+
 
 // ─── Announcement configuration ──────────────────────────────────────────────
 
@@ -279,7 +273,6 @@ export default function TvZone(props: TvZoneProps) {
   const occupancyChip = props.occupancyChip ?? null;
 
   const latestEvent = tvVisibleFeed[0];
-  const viewportEyebrow = latestEvent ? EVENT_LABELS[latestEvent.type] : 'House update';
   const announcementPrerollEvent = useMemo(() => {
     const prerollId = latestEvent?.meta?.announcementPrerollEventId;
     if (typeof prerollId !== 'string') return null;
@@ -726,7 +719,6 @@ export default function TvZone(props: TvZoneProps) {
   }, []);
 
   const phaseLabel = formatPhaseLabel(gameState.phase);
-  const viewportContext = `Day ${gameState.week} · ${phaseLabel}`;
   const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start';
   const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge;
   const saveChipAriaLabel = isGuest
@@ -907,21 +899,18 @@ export default function TvZone(props: TvZoneProps) {
           )}
 
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
-            <div className="tv-zone__story" aria-hidden={hideViewportMessage}>
-              <span className="tv-zone__story-eyebrow">{viewportEyebrow}</span>
-              <p
-                key={viewportMessageKey}
-                className={[
-                  'tv-zone__now',
-                  detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
-                  hideViewportMessage ? 'tv-zone__now--hidden' : '',
-                ].filter(Boolean).join(' ')}
-                style={hideViewportMessage ? { opacity: 0 } : undefined}
-              >
-                {viewportDisplayText}
-              </p>
-              <span className="tv-zone__story-context">{viewportContext}</span>
-            </div>
+            <p
+              key={viewportMessageKey}
+              aria-hidden={hideViewportMessage}
+              className={[
+                'tv-zone__now',
+                detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
+                hideViewportMessage ? 'tv-zone__now--hidden' : '',
+              ].filter(Boolean).join(' ')}
+              style={hideViewportMessage ? { opacity: 0 } : undefined}
+            >
+              {viewportDisplayText}
+            </p>
 
             {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}
             {gameState.twistActive && (
