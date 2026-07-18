@@ -296,6 +296,10 @@ export default function HouseguestGrid({
         )}
       </div>
 
+      <p id="houseguests-interaction-instructions" className={styles.interactionInstructions}>
+        Tap a housemate to interact. Press and hold to preview their profile.
+      </p>
+
       <ul
         className={listClassName}
         role="list"
@@ -320,6 +324,7 @@ export default function HouseguestGrid({
                 layoutId={hg.layoutId}
                 isEvicting={hg.isEvicting}
                 nominationCeremonyState={hg.nominationCeremonyState}
+                descriptionId="houseguests-interaction-instructions"
               />
             </li>
           )

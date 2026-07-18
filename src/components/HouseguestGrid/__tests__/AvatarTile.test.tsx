@@ -1,8 +1,17 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import AvatarTile from '../AvatarTile'
 
 describe('AvatarTile', () => {
+  it('exposes interaction guidance and a visible affordance hook', () => {
+    const { container } = render(
+      <AvatarTile name="Taylor" onClick={vi.fn()} descriptionId="roster-help" />,
+    )
+    const tile = screen.getByRole('button', { name: 'Taylor' })
+    expect(tile).toHaveAttribute('aria-describedby', 'roster-help')
+    expect(tile.className).toContain('interactive')
+    expect(container.querySelector('[class*="interactionCue"]')).toBeTruthy()
+  })
   it('renders the nomination badge asset for nominated players', () => {
     render(
       <AvatarTile
