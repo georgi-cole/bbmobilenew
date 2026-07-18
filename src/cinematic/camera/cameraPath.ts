@@ -44,8 +44,8 @@ export const sampleCamera = (progress: number, frame: number): CameraSample => {
 
   // Briefly inspect the KoleQuant yacht, then release back to the coast-wide
   // path so the sunset can complete over the landscape.
-  const focusIn = easedRange(frame, 1430, 1472);
-  const focusOut = 1 - easedRange(frame, 1502, 1550);
+  const focusIn = easedRange(frame, 1590, 1636);
+  const focusOut = 1 - easedRange(frame, 1668, 1718);
   const yachtFocus = focusIn * focusOut;
   const focusPosition = new Vector3(38, 19, -504);
   const focusTarget = new Vector3(42, 5, -558);

@@ -330,10 +330,10 @@ const Roads = ({ state }: { state: TimelineState }) => {
 };
 
 export const City = ({ frame, state }: CityProps) => {
-  // Once the camera has emerged over the coast, remove the last nearby tower
-  // silhouettes so the held finale remains an unobstructed beach horizon.
-  if (state.coastProgress >= 0.995) return null;
-  const exitDrop = Math.pow(state.coastProgress, 3) * 190;
+  // Complete the city exit before the opaque coastal plate appears. This
+  // prevents buildings, sea, and beach geometry from double-exposing.
+  if (state.cityExitProgress >= 0.995) return null;
+  const exitDrop = Math.pow(state.cityExitProgress, 2.2) * 250;
 
   return (
   <group position={[0, -exitDrop, 0]}>
