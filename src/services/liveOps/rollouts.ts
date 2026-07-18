@@ -29,7 +29,22 @@ export function getRolloutBucket(seed: string, key: string, salt = ''): number {
 export function isRefinedGameChromeEnabled(config: RemoteConfig | null, seed = getInstallSeed()): boolean {
   if (config?.operations?.killSwitches?.refinedGameChrome) return false;
   const rollout = config?.operations?.rollouts?.refinedGameChrome;
-  if (!rollout?.enabled) return false;
+  // The refined chrome is now the shipped experience. A rollout remains
+  // available for deliberate experiments, but missing/disabled configuration
+  // must not silently restore the legacy interface in production.
+  if (!rollout?.enabled) return true;
   const percentage = Math.max(0, Math.min(100, rollout.percentage ?? 0));
   return getRolloutBucket(seed, 'refined-game-chrome', rollout.salt) < percentage;
+}
+
+/** Resolve the shipped variant, with an explicit URL override for comparison. */
+export function resolveRefinedGameChrome(
+  config: RemoteConfig | null,
+  search: string,
+  seed?: string,
+): boolean {
+  const requestedVariant = new URLSearchParams(search).get('uiVariant');
+  if (requestedVariant === 'refined') return true;
+  if (requestedVariant === 'control') return false;
+  return isRefinedGameChromeEnabled(config, seed);
 }
