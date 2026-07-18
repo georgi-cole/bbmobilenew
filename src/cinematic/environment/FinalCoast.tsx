@@ -25,6 +25,7 @@ const SEA_VERTEX = `
 const SEA_FRAGMENT = `
   uniform float uTime;
   uniform float uOpacity;
+  uniform float uReveal;
   uniform float uGoldenHour;
   uniform float uSunset;
   varying vec2 vUv;
@@ -32,6 +33,11 @@ const SEA_FRAGMENT = `
   void main() {
     float waveA = sin(vUv.y * 155.0 + uTime * 0.052 + sin(vUv.x * 31.0)) * 0.5 + 0.5;
     float waveB = sin(vUv.y * 91.0 - uTime * 0.037 + vUv.x * 47.0) * 0.5 + 0.5;
+    float revealNoise = (waveA - 0.5) * 0.024 + (waveB - 0.5) * 0.016;
+    float revealFront = 1.0 - clamp(uReveal, 0.0, 1.0);
+    if (vUv.y + revealNoise < revealFront) discard;
+    float revealEdge = 1.0 - smoothstep(0.0, 0.045, abs(vUv.y + revealNoise - revealFront));
+
     float glint = smoothstep(0.945, 1.0, waveA * 0.66 + waveB * 0.34);
     float horizon = smoothstep(0.0, 1.0, vUv.y);
     vec3 dayDeep = vec3(0.035, 0.16, 0.22);
@@ -45,6 +51,7 @@ const SEA_FRAGMENT = `
     vec3 eveningColor = mix(eveningDeep, eveningHorizon, horizon * 0.76);
     vec3 color = mix(dayColor, afternoonColor, uGoldenHour * 0.78);
     color = mix(color, eveningColor, uSunset * 0.94);
+    color += mix(vec3(0.1, 0.2, 0.23), vec3(0.48, 0.28, 0.16), uGoldenHour) * revealEdge * 0.035;
     color += glint * vec3(0.2, 0.4, 0.44) * (0.12 + horizon * 0.24);
 
     float reflectionCentre = 0.528
@@ -61,6 +68,50 @@ const SEA_FRAGMENT = `
     color += mix(vec3(1.0, 0.88, 0.54), vec3(1.0, 0.38, 0.11), uSunset)
       * sunPath * glint * horizon * reflectionFade * 0.72;
     gl_FragColor = vec4(color, uOpacity);
+  }
+`;
+const COAST_SURFACE_VERTEX = `
+  varying vec3 vLocalPosition;
+  void main() {
+    vLocalPosition = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const COAST_SURFACE_FRAGMENT = `
+  uniform vec3 uBaseColor;
+  uniform float uReveal;
+  uniform float uNearDepth;
+  uniform float uFarDepth;
+  uniform float uRockiness;
+  uniform float uSunset;
+  varying vec3 vLocalPosition;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  void main() {
+    vec2 p = vLocalPosition.xz;
+    float depth = clamp((-vLocalPosition.z - uNearDepth) / (uFarDepth - uNearDepth), 0.0, 1.0);
+    float grain = hash(floor(p * 2.7));
+    float broad = hash(floor(p * 0.16));
+    float windRipple = sin(p.x * 0.19 + sin(p.y * 0.075) * 2.1) * 0.5 + 0.5;
+    float revealNoise = (broad - 0.5) * 0.055 + (windRipple - 0.5) * 0.028;
+    float revealFront = 1.0 - clamp(uReveal, 0.0, 1.0);
+    if (depth + revealNoise < revealFront) discard;
+
+    float fine = hash(floor(p * 7.5));
+    float sandTexture = windRipple * 0.09 + (grain - 0.5) * 0.16 + (fine - 0.5) * 0.08;
+    float rockVein = sin(p.x * 0.075 + sin(p.y * 0.045) * 2.7) * 0.11 + (broad - 0.5) * 0.24;
+    float surfaceTexture = mix(sandTexture, rockVein, uRockiness);
+    vec3 color = uBaseColor * (0.9 + surfaceTexture);
+    color += vec3(0.24, 0.17, 0.105) * smoothstep(0.86, 1.0, grain) * (1.0 - uRockiness) * 0.48;
+    color *= 1.0 - uSunset * 0.16;
+
+    float edge = 1.0 - smoothstep(0.0, 0.055, abs(depth + revealNoise - revealFront));
+    color += mix(vec3(0.15, 0.22, 0.24), vec3(0.42, 0.29, 0.2), uSunset) * edge * 0.04;
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -574,7 +625,7 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
     [],
   );
   const opacity = state.coastProgress;
-  const detailOpacity = clamp01((opacity - 0.16) / 0.84);
+  const detailOpacity = clamp01((opacity - 0.38) / 0.62);
   const sandColor = new Color('#c69a72')
     .lerp(new Color('#b66d50'), state.goldenHourProgress * 0.62)
     .lerp(new Color('#55303a'), state.sunsetProgress * 0.9);
@@ -585,9 +636,10 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
     .lerp(new Color('#3a3028'), state.goldenHourProgress * 0.5)
     .lerp(new Color('#141721'), state.sunsetProgress * 0.88);
 
-  // Mount only after the city has completed its exit. The landscape plate is
-  // intentionally opaque so no building geometry can show through the sea.
-  if (opacity <= 0.12) return null;
+  // Reveal opaque coast pixels from the distant horizon toward the camera.
+  // This keeps the city spatially continuous during the transition without
+  // double-exposing two transparent worlds.
+  if (opacity <= 0.001) return null;
 
   return (
     <group>
@@ -599,6 +651,7 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
           uniforms={{
             uTime: { value: frame },
             uOpacity: { value: 1 },
+            uReveal: { value: opacity },
             uGoldenHour: { value: state.goldenHourProgress },
             uSunset: { value: state.sunsetProgress },
           }}
@@ -607,12 +660,18 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
       </mesh>
 
       <mesh geometry={beachGeometry} renderOrder={4}>
-        <meshStandardMaterial
-          color={sandColor}
-          roughness={0.82}
-          metalness={0.03}
+        <shaderMaterial
+          vertexShader={COAST_SURFACE_VERTEX}
+          fragmentShader={COAST_SURFACE_FRAGMENT}
+          uniforms={{
+            uBaseColor: { value: sandColor },
+            uReveal: { value: clamp01((opacity - 0.68) / 0.32) },
+            uNearDepth: { value: 324 },
+            uFarDepth: { value: 535 },
+            uRockiness: { value: 0 },
+            uSunset: { value: state.sunsetProgress },
+          }}
           side={DoubleSide}
-          depthTest
           depthWrite
         />
       </mesh>
@@ -626,10 +685,19 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
       />
       {[leftGeometry, rightGeometry].map((geometry, index) => (
         <mesh key={index} geometry={geometry}>
-          <meshStandardMaterial
-            color={index === 0 ? leftShoreColor : rightShoreColor}
-            roughness={0.84}
-            metalness={0.04}
+          <shaderMaterial
+            vertexShader={COAST_SURFACE_VERTEX}
+            fragmentShader={COAST_SURFACE_FRAGMENT}
+            uniforms={{
+              uBaseColor: { value: index === 0 ? leftShoreColor : rightShoreColor },
+              uReveal: { value: clamp01((opacity - 0.48) / 0.52) },
+              uNearDepth: { value: 425 },
+              uFarDepth: { value: 895 },
+              uRockiness: { value: 1 },
+              uSunset: { value: state.sunsetProgress },
+            }}
+            side={DoubleSide}
+            depthWrite
           />
         </mesh>
       ))}

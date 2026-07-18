@@ -73,7 +73,7 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
   // visibly opening; the sunrise illumination then follows the reveal.
   const sunRevealProgress = easedRange(frame, 1480, 1542);
   const sunPositionProgress = easedRange(frame, 1438, 1545);
-  const sunHorizonProgress = easedRange(frame, 1622, 1668);
+  const sunHorizonProgress = easedRange(frame, 1606, 1662);
   // Establish a restrained pre-dawn before the shutter opens, then let full
   // daylight arrive with the revealed sun and coastline.
   const preDawn = easedRange(frame, 1328, 1438);
@@ -81,13 +81,13 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
   const dawnProgress = clamp01(preDawn * 0.42 + fullDaylight * 0.58);
   // Drop the city below camera before the opaque coast settles in. Keeping
   // these beats adjacent avoids the transparent city/sea double exposure.
-  const cityExitProgress = easedRange(frame, 1510, 1580);
-  const coastProgress = easedRange(frame, 1550, 1625);
-  const goldenHourProgress = easedRange(frame, 1550, 1688);
+  const coastProgress = easedRange(frame, 1498, 1640);
+  const cityExitProgress = easedRange(frame, 1518, 1638);
+  const goldenHourProgress = easedRange(frame, 1535, 1688);
   // Give the wide landscape a few seconds to move through afternoon, sunset,
   // and evening before the final blackout.
-  const sunsetProgress = easedRange(frame, 1672, 1786);
-  const finalDarkness = easedRange(frame, 1762, 1799);
+  const sunsetProgress = easedRange(frame, 1684, 1786);
+  const finalDarkness = easedRange(frame, 1766, 1799);
   const stormProgress = rangeProgress(frame, 300, 930);
   const eveningProgress = rangeProgress(frame, 810, 1320);
   const cloudBuild = easedRange(frame, 300, 465);

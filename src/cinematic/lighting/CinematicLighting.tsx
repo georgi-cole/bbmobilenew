@@ -1,4 +1,9 @@
 import { AdditiveBlending, Color } from 'three';
+import {
+  CELESTIAL_DISC_RADIUS,
+  getCelestialBreath,
+  getCelestialEyePosition,
+} from '../celestial/celestialGeometry';
 import type { TimelineState } from '../timeline/timeline';
 import { clamp01, lerp, smootherstep } from '../utils/math';
 
@@ -116,7 +121,7 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
   return (
     <group position={[0, 0, 2.25]}>
       <mesh>
-        <planeGeometry args={[27.2, 27.2]} />
+        <planeGeometry args={[CELESTIAL_DISC_RADIUS * 2.02, CELESTIAL_DISC_RADIUS * 2.02]} />
         <shaderMaterial
           vertexShader={HALO_VERTEX}
           fragmentShader={APERTURE_FRAGMENT}
@@ -130,7 +135,7 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
         />
       </mesh>
       <mesh position={[0, 0, 0.08]}>
-        <ringGeometry args={[12.75, 13.18, 96]} />
+        <ringGeometry args={[CELESTIAL_DISC_RADIUS - 0.28, CELESTIAL_DISC_RADIUS + 0.28, 96]} />
         <meshBasicMaterial
           color="#d8fff7"
           transparent
@@ -143,17 +148,7 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
     </group>
   );
 };
-const CelestialBody = ({
-  state,
-  sunX,
-  sunY,
-  moonY,
-}: {
-  state: TimelineState;
-  sunX: number;
-  sunY: number;
-  moonY: number;
-}) => {
+const CelestialBody = ({ state, sunX }: { state: TimelineState; sunX: number }) => {
   const sunsetOcclusion = 1 - smootherstep(clamp01((state.sunsetProgress - 0.72) / 0.28));
   const sunMorph = state.sunMorph;
   const lunarStrength = 1 - sunMorph;
@@ -161,13 +156,13 @@ const CelestialBody = ({
   const sunVisibility = state.sunIntensity * state.sunRevealProgress;
   const celestialVisibility = Math.min(1, moonVisibility + sunVisibility) * sunsetOcclusion;
   const x = lerp(0, sunX, state.sunHorizonProgress);
-  const settledY = lerp(moonY, sunY, state.sunPositionProgress);
-  const y = settledY + state.sunHorizonProgress * 18 - state.sunsetProgress * 58;
-  const breathe = 1 + Math.sin(state.frame * 0.026) * 0.008;
-  const z = lerp(-540, -760, state.sunPositionProgress);
+  const [eyeY, eyeZ] = getCelestialEyePosition(state);
+  const y = lerp(eyeY, 7.5, state.sunHorizonProgress) - state.sunsetProgress * 34;
+  const breathe = getCelestialBreath(state.frame);
+  const z = lerp(eyeZ, -1135, state.sunHorizonProgress);
   const bodyScale = breathe;
-  const sunVisualScale = lerp(1, 1.65, state.sunHorizonProgress);
-  const haloScale = lerp(1, 1.4, state.sunHorizonProgress);
+  const sunVisualScale = lerp(1, 3.15, state.sunHorizonProgress);
+  const haloScale = lerp(1, 2.25, state.sunHorizonProgress);
   const glowColor = mixColor(
     mixColor('#afc9e3', '#ffc25f', sunMorph),
     '#ff5b24',
@@ -197,7 +192,7 @@ const CelestialBody = ({
         />
       </mesh>
       <mesh scale={[sunVisualScale, sunVisualScale, sunVisualScale]}>
-        <sphereGeometry args={[12, 64, 48]} />
+        <sphereGeometry args={[CELESTIAL_DISC_RADIUS, 64, 48]} />
         <shaderMaterial
           vertexShader={CELESTIAL_VERTEX}
           fragmentShader={CELESTIAL_FRAGMENT}
@@ -245,7 +240,7 @@ export const CinematicLighting = ({ state }: { state: TimelineState }) => {
         intensity={state.moonIntensity * 0.36}
         position={[-120, moonY, -310]}
       />
-      <CelestialBody state={state} sunX={sunX} sunY={sunY} moonY={moonY} />
+      <CelestialBody state={state} sunX={sunX} />
     </>
   );
 };
