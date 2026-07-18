@@ -144,3 +144,25 @@ describe('TVLog — mobile compact mode', () => {
     );
   });
 });
+
+describe('TVLog — activity filters', () => {
+  it('filters the feed without changing the underlying event list', async () => {
+    const entries: TvEvent[] = [
+      makeEvent({ id: 'game', text: 'Competition announced', type: 'game' }),
+      makeEvent({ id: 'social', text: 'A new alliance formed', type: 'social' }),
+    ];
+    render(<TVLog entries={entries} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Social' }));
+    expect(screen.getByText('A new alliance formed')).toBeDefined();
+    expect(screen.queryByText('Competition announced')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Social' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('labels each event by type and exposes its timestamp', () => {
+    const entries: TvEvent[] = [makeEvent({ id: 'vote', text: 'The vote is locked', type: 'vote' })];
+    const { container } = render(<TVLog entries={entries} />);
+    expect(screen.getByText('Vote')).toBeDefined();
+    expect(container.querySelector('time[datetime]')).toBeTruthy();
+  });
+});
