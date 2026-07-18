@@ -28,6 +28,7 @@ import PermissionPrompts from '../../components/PermissionPrompts/PermissionProm
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import SurvivorRulesModal from '../../components/ConfirmExitModal/SurvivorRulesModal';
 import { SoundManager } from '../../services/sound/SoundManager';
+import { startCreditsSoundtrackFromGesture } from '../../cinematic/audio/creditsSoundtrack';
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
 import HousematesBioCinematic from '../../components/HousematesBioCinematic/HousematesBioCinematic';
 import { MYSTERY_WILDCARD_BIOS } from '../../components/HousematesBioCinematic/housematesBioData';
@@ -184,7 +185,18 @@ function HomeHubAssetLayer({
                     label={label}
                     icon={<HomeHubButtonIcon name={icon} />}
                     variant={variant}
-                    onClick={to === '/game' ? onPlay : () => onNavigate(to, to === '/profile' ? { state: { from: '/' } } : undefined)}
+                    onClick={to === '/game'
+  ? onPlay
+  : to === '/credits'
+    ? () => {
+        void startCreditsSoundtrackFromGesture().catch(() => {
+          // The Credits screen keeps a direct-link tap fallback for browsers
+          // that still reject media playback during route navigation.
+        });
+        onNavigate(to);
+      }
+    : () => onNavigate(to, to === '/profile' ? { state: { from: '/' } } : undefined)
+}
                   />
                 ))}
           </nav>
