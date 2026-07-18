@@ -1,6 +1,11 @@
 import { AdditiveBlending, Color } from 'three';
+import {
+  CELESTIAL_DISC_RADIUS,
+  getCelestialBreath,
+  getCelestialEyePosition,
+} from '../celestial/celestialGeometry';
 import type { TimelineState } from '../timeline/timeline';
-import { lerp } from '../utils/math';
+import { clamp01, lerp, smootherstep } from '../utils/math';
 
 const mixColor = (from: string, to: string, amount: number): string =>
   `#${new Color(from).lerp(new Color(to), amount).getHexString()}`;
@@ -62,6 +67,7 @@ const APERTURE_FRAGMENT = `
 `;
 const CELESTIAL_FRAGMENT = `
   uniform float uSunMorph;
+  uniform float uSunset;
   uniform float uTime;
   uniform float uOpacity;
   varying vec2 vUv;
@@ -100,8 +106,8 @@ const CELESTIAL_FRAGMENT = `
       * sin((vUv.x - vUv.y) * 63.0 + uTime * 0.008);
     float solarLimb = clamp(max(0.0, vNormal.z), 0.0, 1.0);
     float coreHeat = pow(solarLimb, 0.46);
-    vec3 sunEdge = vec3(1.0, 0.30, 0.055);
-    vec3 sunCore = vec3(1.0, 0.88, 0.47);
+    vec3 sunEdge = mix(vec3(1.0, 0.30, 0.055), vec3(0.82, 0.055, 0.018), uSunset);
+    vec3 sunCore = mix(vec3(1.0, 0.88, 0.47), vec3(1.0, 0.43, 0.12), uSunset * 0.82);
     vec3 sun = mix(sunEdge, sunCore, coreHeat);
     sun *= 1.0 + solarCellA * 0.045 + solarCellB * 0.022;
     sun += vec3(1.0, 0.72, 0.28) * pow(solarLimb, 2.2) * 0.12;
@@ -115,7 +121,7 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
   return (
     <group position={[0, 0, 2.25]}>
       <mesh>
-        <planeGeometry args={[35.5, 35.5]} />
+        <planeGeometry args={[CELESTIAL_DISC_RADIUS * 2.02, CELESTIAL_DISC_RADIUS * 2.02]} />
         <shaderMaterial
           vertexShader={HALO_VERTEX}
           fragmentShader={APERTURE_FRAGMENT}
@@ -129,7 +135,7 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
         />
       </mesh>
       <mesh position={[0, 0, 0.08]}>
-        <ringGeometry args={[16.65, 17.15, 96]} />
+        <ringGeometry args={[CELESTIAL_DISC_RADIUS - 0.28, CELESTIAL_DISC_RADIUS + 0.28, 96]} />
         <meshBasicMaterial
           color="#d8fff7"
           transparent
@@ -142,30 +148,26 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
     </group>
   );
 };
-const CelestialBody = ({
-  state,
-  sunX,
-  sunY,
-  moonY,
-}: {
-  state: TimelineState;
-  sunX: number;
-  sunY: number;
-  moonY: number;
-}) => {
-  const sunsetOcclusion = 1 - Math.min(1, state.sunsetProgress * 1.5);
-  const celestialVisibility = Math.min(1, state.moonIntensity + state.sunIntensity) * sunsetOcclusion;
+const CelestialBody = ({ state, sunX }: { state: TimelineState; sunX: number }) => {
+  const sunsetOcclusion = 1 - smootherstep(clamp01((state.sunsetProgress - 0.72) / 0.28));
   const sunMorph = state.sunMorph;
   const lunarStrength = 1 - sunMorph;
+  const moonVisibility = state.moonIntensity * lunarStrength;
+  const sunVisibility = state.sunIntensity * state.sunRevealProgress;
+  const celestialVisibility = Math.min(1, moonVisibility + sunVisibility) * sunsetOcclusion;
   const x = lerp(0, sunX, state.sunHorizonProgress);
-  const settledY = lerp(moonY, sunY, state.sunPositionProgress);
-  const y = settledY + state.sunHorizonProgress * 18 - state.sunsetProgress * 58;
-  const breathe = 1 + Math.sin(state.frame * 0.026) * 0.008;
-  const z = lerp(-540, -760, state.sunPositionProgress);
+  const [eyeY, eyeZ] = getCelestialEyePosition(state);
+  const y = lerp(eyeY, 7.5, state.sunHorizonProgress) - state.sunsetProgress * 34;
+  const breathe = getCelestialBreath(state.frame);
+  const z = lerp(eyeZ, -1135, state.sunHorizonProgress);
   const bodyScale = breathe;
-  const sunVisualScale = lerp(1, 1.65, state.sunHorizonProgress);
-  const haloScale = lerp(1, 1.4, state.sunHorizonProgress);
-  const glowColor = mixColor('#afc9e3', '#ffc25f', sunMorph);
+  const sunVisualScale = lerp(1, 3.15, state.sunHorizonProgress);
+  const haloScale = lerp(1, 2.25, state.sunHorizonProgress);
+  const glowColor = mixColor(
+    mixColor('#afc9e3', '#ffc25f', sunMorph),
+    '#ff5b24',
+    state.sunsetProgress * 0.82,
+  );
   const coronaPulse = 0.92 + Math.sin(state.frame * 0.048) * 0.045;
 
   return (
@@ -179,7 +181,7 @@ const CelestialBody = ({
             uColor: { value: new Color(glowColor) },
             uOpacity: {
               value: celestialVisibility
-                * (lunarStrength * 0.18 + sunMorph * 0.44)
+                * (lunarStrength * 0.18 + sunMorph * state.sunRevealProgress * 0.44)
                 * coronaPulse,
             },
           }}
@@ -190,12 +192,13 @@ const CelestialBody = ({
         />
       </mesh>
       <mesh scale={[sunVisualScale, sunVisualScale, sunVisualScale]}>
-        <sphereGeometry args={[12, 64, 48]} />
+        <sphereGeometry args={[CELESTIAL_DISC_RADIUS, 64, 48]} />
         <shaderMaterial
           vertexShader={CELESTIAL_VERTEX}
           fragmentShader={CELESTIAL_FRAGMENT}
           uniforms={{
             uSunMorph: { value: sunMorph },
+            uSunset: { value: state.sunsetProgress },
             uTime: { value: state.frame },
             uOpacity: { value: celestialVisibility },
           }}
@@ -206,7 +209,7 @@ const CelestialBody = ({
       </mesh>
       <pointLight
         color={glowColor}
-        intensity={(state.moonIntensity * 0.62 + state.sunIntensity * 1.3) * sunsetOcclusion}
+        intensity={(moonVisibility * 0.62 + sunVisibility * 1.3) * sunsetOcclusion}
         distance={390}
       />
       <CelestialAperture closure={state.apertureClosure} />
@@ -218,12 +221,15 @@ export const CinematicLighting = ({ state }: { state: TimelineState }) => {
   const sunX = 22;
   const sunY = 15;
   const moonY = lerp(-42, 138, state.moonProgress);
-  const sunColor = state.sunWarmth > 0.3 ? '#ffc49a' : '#d8efff';
+  const sunColor = mixColor('#d8efff', '#ff8a48', state.sunWarmth);
+  const ambientColor = mixColor('#8ea3d4', '#9b6670', state.sunsetProgress * 0.72);
+  const hemisphereSky = mixColor('#8ba6e4', '#513b55', state.sunsetProgress * 0.78);
+  const hemisphereGround = mixColor('#080b15', '#1b0d14', state.sunsetProgress * 0.75);
 
   return (
     <>
-      <ambientLight color="#8ea3d4" intensity={state.ambientIntensity} />
-      <hemisphereLight args={['#8ba6e4', '#080b15', 0.26 + state.lightning * 0.35]} />
+      <ambientLight color={ambientColor} intensity={state.ambientIntensity} />
+      <hemisphereLight args={[hemisphereSky, hemisphereGround, 0.26 + state.lightning * 0.35]} />
       <directionalLight
         color={sunColor}
         intensity={state.sunIntensity * 1.45}
@@ -234,7 +240,7 @@ export const CinematicLighting = ({ state }: { state: TimelineState }) => {
         intensity={state.moonIntensity * 0.36}
         position={[-120, moonY, -310]}
       />
-      <CelestialBody state={state} sunX={sunX} sunY={sunY} moonY={moonY} />
+      <CelestialBody state={state} sunX={sunX} />
     </>
   );
 };

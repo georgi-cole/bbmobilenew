@@ -11,7 +11,13 @@ import {
 } from 'three';
 import { CINEMATIC_CONFIG } from '../config/cinematicConfig';
 import type { TimelineState } from '../timeline/timeline';
-import { easedRange, lerp } from '../utils/math';
+import {
+  CELESTIAL_EYE_SCALE,
+  CELESTIAL_PUPIL_RADIUS,
+  getCelestialBreath,
+  getCelestialEyePosition,
+} from '../celestial/celestialGeometry';
+import { easedRange } from '../utils/math';
 import { createSeededRandom, randomBetween } from '../utils/seededRandom';
 
 type AtmosphereProps = {
@@ -306,19 +312,21 @@ const CelestialEye = ({ opacity, frame, state }: {
   const outline = useMemo(() => createEyeOutline(), []);
   if (opacity <= 0.001) return null;
 
-  const moonY = lerp(-42, 138, state.moonProgress);
-  const y = lerp(moonY, 15, state.sunPositionProgress);
-  const z = lerp(-543, -763, state.sunPositionProgress);
+  const [y, z] = getCelestialEyePosition(state);
   const revealOpen = Math.min(1, opacity * 1.25);
   const narrativeEyeOpen = 1 - easedRange(frame, 1545, 1588);
   const open = revealOpen * narrativeEyeOpen;
-  const breathe = 1 + Math.sin((frame - 1080) * 0.018) * 0.012;
+  const breathe = getCelestialBreath(state.frame);
   const rotation = (frame - 990) * 0.0014;
 
   return (
     <group
       position={[0, y, z]}
-      scale={[0.92 * breathe, 0.92 * breathe * (0.035 + open * 0.965), 0.92]}
+      scale={[
+        CELESTIAL_EYE_SCALE * breathe,
+        CELESTIAL_EYE_SCALE * breathe * (0.035 + open * 0.965),
+        CELESTIAL_EYE_SCALE,
+      ]}
     >
       <Line
         points={outline}
@@ -347,7 +355,7 @@ const CelestialEye = ({ opacity, frame, state }: {
         />
       </group>
       <mesh position={[0, 0, -0.8]} rotation={[0, 0, rotation]}>
-        <ringGeometry args={[12.65, 13.15, 96]} />
+        <ringGeometry args={[CELESTIAL_PUPIL_RADIUS - 0.27, CELESTIAL_PUPIL_RADIUS + 0.27, 96]} />
         <meshBasicMaterial
           color="#9cd6e2"
           transparent

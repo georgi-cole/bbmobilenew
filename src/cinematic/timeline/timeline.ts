@@ -6,10 +6,13 @@ export type TimelineState = {
   progress: number;
   dawnProgress: number;
   sunMorph: number;
+  sunRevealProgress: number;
   sunPositionProgress: number;
   sunHorizonProgress: number;
+  goldenHourProgress: number;
   sunsetProgress: number;
   apertureClosure: number;
+  cityExitProgress: number;
   coastProgress: number;
   stormProgress: number;
   eveningProgress: number;
@@ -66,16 +69,25 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
   const apertureClosure = Math.min(apertureClose, 1 - apertureOpen);
   // The celestial texture changes only while the aperture is fully closed.
   const sunMorph = easedRange(frame, 1344, 1374);
+  // Keep both the sun and its building reflections dark until the shutter is
+  // visibly opening; the sunrise illumination then follows the reveal.
+  const sunRevealProgress = easedRange(frame, 1480, 1542);
   const sunPositionProgress = easedRange(frame, 1438, 1545);
-  const sunHorizonProgress = easedRange(frame, 1622, 1668);
+  const sunHorizonProgress = easedRange(frame, 1606, 1662);
   // Establish a restrained pre-dawn before the shutter opens, then let full
   // daylight arrive with the revealed sun and coastline.
   const preDawn = easedRange(frame, 1328, 1438);
   const fullDaylight = easedRange(frame, 1438, 1650);
   const dawnProgress = clamp01(preDawn * 0.42 + fullDaylight * 0.58);
-  const coastProgress = easedRange(frame, 1530, 1650);
-  const sunsetProgress = easedRange(frame, 1722, 1782);
-  const finalDarkness = easedRange(frame, 1768, 1799);
+  // Drop the city below camera before the opaque coast settles in. Keeping
+  // these beats adjacent avoids the transparent city/sea double exposure.
+  const coastProgress = easedRange(frame, 1498, 1640);
+  const cityExitProgress = easedRange(frame, 1518, 1638);
+  const goldenHourProgress = easedRange(frame, 1535, 1688);
+  // Give the wide landscape a few seconds to move through afternoon, sunset,
+  // and evening before the final blackout.
+  const sunsetProgress = easedRange(frame, 1684, 1786);
+  const finalDarkness = easedRange(frame, 1766, 1799);
   const stormProgress = rangeProgress(frame, 300, 930);
   const eveningProgress = rangeProgress(frame, 810, 1320);
   const cloudBuild = easedRange(frame, 300, 465);
@@ -92,8 +104,10 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
   let skyHorizon = mixColor('#091936', '#293441', stormShade * 0.82);
   skyTop = mixColor(skyTop, '#7ba9c5', dawnProgress);
   skyHorizon = mixColor(skyHorizon, '#e9c0a3', dawnProgress);
-  skyTop = mixColor(skyTop, '#050611', sunsetProgress * 0.92);
-  skyHorizon = mixColor(skyHorizon, '#210d12', sunsetProgress * 0.86);
+  skyTop = mixColor(skyTop, '#647d9a', goldenHourProgress * 0.48);
+  skyHorizon = mixColor(skyHorizon, '#ef9b67', goldenHourProgress * 0.72);
+  skyTop = mixColor(skyTop, '#0b1024', sunsetProgress * 0.96);
+  skyHorizon = mixColor(skyHorizon, '#5a2635', sunsetProgress * 0.9);
 
   const strikeOne = pulse(frame, 435, 8);
   const strikeTwo = pulse(frame, 570, 10);
@@ -111,16 +125,23 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
     progress,
     dawnProgress,
     sunMorph,
+    sunRevealProgress,
     sunPositionProgress,
     sunHorizonProgress,
+    goldenHourProgress,
     sunsetProgress,
     apertureClosure,
+    cityExitProgress,
     coastProgress,
     stormProgress,
     eveningProgress,
     skyTop,
     skyHorizon,
-    fogColor: mixColor(mixColor('#17263d', '#465567', stormShade), '#9fb6be', dawnProgress),
+    fogColor: mixColor(
+      mixColor(mixColor('#17263d', '#465567', stormShade), '#9fb6be', dawnProgress),
+      '#73505a',
+      sunsetProgress * 0.72,
+    ),
     fogNear: lerp(155, 125, stormShade),
     fogFar: lerp(720, 590, stormShade) + dawnProgress * 74,
     starsOpacity: 0.96 * (1 - stormShade * 0.96) * (1 - easedRange(frame, 1318, 1470)),
@@ -129,9 +150,12 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
     rainIntensity,
     wetness,
     ambientIntensity: (0.34 - stormShade * 0.08 + lightning * 0.72 + dawnProgress * 0.7)
-      * (1 - sunsetProgress * 0.58),
-    sunIntensity: sunMorph * (0.42 + dawnProgress * 0.95) * (1 - sunsetProgress * 0.28),
-    sunWarmth: 1 - dawnProgress * 0.38,
+      * (1 - sunsetProgress * 0.66),
+    sunIntensity: sunMorph
+      * sunRevealProgress
+      * (0.42 + dawnProgress * 0.95)
+      * (1 - sunsetProgress * 0.38),
+    sunWarmth: clamp01(0.48 + (1 - dawnProgress) * 0.44 + sunsetProgress * 0.46),
     moonIntensity: moonReveal * (1 - sunMorph) * 1.28,
     moonProgress: easedRange(frame, 810, 960),
     windowIntensity: nightLightFade * (2.12 + stormShade * 0.66),

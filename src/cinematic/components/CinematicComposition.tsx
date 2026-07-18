@@ -55,7 +55,7 @@ const THUNDER_STRIKES = [
 ] as const;
 
 const CinematicThunder = () => {
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
   const { isPlayer } = getRemotionEnvironment();
   const relativeSource = 'assets/sounds/cinematic-thunder.wav';
   const source = isPlayer && typeof document !== 'undefined'
@@ -67,7 +67,7 @@ const CinematicThunder = () => {
       {THUNDER_STRIKES.map((strike) => (
         <Sequence
           key={strike.frame}
-          from={strike.frame}
+          from={Math.round((strike.frame / 1799) * (durationInFrames - 1))}
           durationInFrames={Math.round(4.2 * fps)}
         >
           <Audio src={source} volume={strike.volume} />
@@ -189,13 +189,13 @@ export const CinematicComposition = ({
         }}
       >
         <fog attach="fog" args={[state.fogColor, state.fogNear, state.fogFar]} />
-        <Atmosphere frame={frame} state={state} />
+        <Atmosphere frame={state.frame} state={state} />
         <CinematicLighting state={state} />
-        <City frame={frame} state={state} />
-        <FinalCoast frame={frame} state={state} />
-        <CinematicCamera frame={frame} progress={state.progress} />
+        <City frame={state.frame} state={state} />
+        <FinalCoast frame={state.frame} state={state} />
+        <CinematicCamera frame={state.frame} progress={state.progress} />
       </ThreeCanvas>
-      <LightningOverlay frame={frame} opacity={state.lightningBolt} />
+      <LightningOverlay frame={state.frame} opacity={state.lightningBolt} />
       <OptionalAssetLayer state={state} />
       <div
         className="big-eye-cinematic__grain"

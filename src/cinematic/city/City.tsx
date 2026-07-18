@@ -330,10 +330,11 @@ const Roads = ({ state }: { state: TimelineState }) => {
 };
 
 export const City = ({ frame, state }: CityProps) => {
-  // Once the camera has emerged over the coast, remove the last nearby tower
-  // silhouettes so the held finale remains an unobstructed beach horizon.
-  if (state.coastProgress >= 0.995) return null;
-  const exitDrop = Math.pow(state.coastProgress, 3) * 190;
+  // The coast reveals from the distant horizon forward while the city eases
+  // below the camera. Opaque, depth-tested coast pixels replace the city
+  // spatially instead of cross-fading two complete scenes.
+  if (state.cityExitProgress >= 0.995) return null;
+  const exitDrop = Math.pow(state.cityExitProgress, 2.45) * 205;
 
   return (
   <group position={[0, -exitDrop, 0]}>
