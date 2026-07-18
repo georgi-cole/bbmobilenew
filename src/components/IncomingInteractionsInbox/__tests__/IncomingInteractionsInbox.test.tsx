@@ -178,7 +178,7 @@ describe('IncomingInteractionsInbox', () => {
 
     renderInbox(store);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Thank' }));
+    fireEvent.click(document.querySelector('[data-response-type="positive"]')!);
 
     const entry = store.getState().social.incomingInteractions.find((i) => i.id === 'interaction-3');
     expect(entry?.resolved).toBe(true);
@@ -208,7 +208,7 @@ describe('IncomingInteractionsInbox', () => {
 
     renderInbox(store);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    fireEvent.click(document.querySelector('[data-response-type="accept"]')!);
 
     const socialState = store.getState().social;
     expect(socialState.relationships[otherPlayer.id]?.[humanId]?.tags).toContain('alliance');
@@ -254,8 +254,11 @@ describe('IncomingInteractionsInbox', () => {
 
     renderInbox(store);
 
-    expect(screen.getByRole('button', { name: 'Fire back' })).toBeInTheDocument();
+    expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument();
     expect(screen.getByText(/Bitter/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Why now')).not.toBeInTheDocument();
+    expect(screen.queryByText('What it means')).not.toBeInTheDocument();
   });
 
   it('closes and logs the reason when the phase changes to eviction results', () => {
