@@ -306,7 +306,6 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           <div className={styles.nameOverlay} aria-hidden="true">
             {name}
           </div>
-          {isInteractive && <span className={styles.interactionCue} aria-hidden="true">•••</span>}
           {isPressing && <span className={styles.holdProgress} aria-hidden="true" />}
 
           {isYou && (

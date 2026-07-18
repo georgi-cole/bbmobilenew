@@ -14,8 +14,8 @@
   -webkit-user-select: none;
   user-select: none;
   /* Enlarge to a reliable touch target while keeping the shell compact. */
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
 }
 

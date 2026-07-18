@@ -2,11 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import './styles/gameDesignSystem.css'
+import './styles/gameAccessibility.css'
 import './styles/_ios-standalone-fixes.css'
 import './styles/_introhub-buttons.css'
 import './compat/legacySpectatorAdapter.js'
 import { applyDisplayModeClasses } from './utils/displayMode'
 import { applyVisualFreezeState } from './utils/visualFreeze'
+import { buildViewportMetaContent } from './components/layout/viewportMeta'
 import { store } from './store/store'
 import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
@@ -23,16 +25,11 @@ applyDisplayModeClasses()
 // screenshot-friendly version of the app without waiting on animations.
 applyVisualFreezeState()
 
-// Apply initial viewport zoom setting: when enableZoom is false (default),
-// prevent pinch-to-zoom for a fixed-layout feel.
-const initEnableZoom = store.getState().settings.visual?.enableZoom ?? false;
+// Native pinch zoom remains available; the preference only expands its range.
 const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
 if (viewportMeta) {
-  viewportMeta.content = initEnableZoom
-    ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
-    : 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
+  viewportMeta.content = buildViewportMetaContent(store.getState().settings.visual?.enableZoom ?? false);
 }
-
 // Initialize the Social Engine with the Redux store so it can dispatch actions
 // and read state throughout the session.
 SocialEngine.init(store)

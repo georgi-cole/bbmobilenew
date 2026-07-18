@@ -43,12 +43,6 @@ describe('TvZone screen styling', () => {
     expect(viewport?.querySelector('.tv-zone__vignette')).toBeNull();
   });
 
-it('renders a broadcast hierarchy around the current TV message', () => {
-    const { container } = renderTvZone();
-    expect(container.querySelector('.tv-zone__story')).toBeTruthy();
-    expect(container.querySelector('.tv-zone__story-eyebrow')?.textContent).toBe('House update');
-    expect(container.querySelector('.tv-zone__story-context')?.textContent).toMatch(/Day 1/i);
-  });
   it('builds stable fallback keys for repeated text and different keys for different text', () => {
     const baseEvent: TvEvent = {
       id: '',

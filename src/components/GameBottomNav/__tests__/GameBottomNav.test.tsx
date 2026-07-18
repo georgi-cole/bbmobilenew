@@ -40,12 +40,13 @@ describe('GameBottomNav', () => {
     document.body.classList.add('experiment-game-chrome-refined');
     render(<GameBottomNav activeTab={null} />);
 
-    expect(screen.getByRole('button', { name: 'Leaderboard' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Profile' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'RULES' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Leaderboard' })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: 'More' }));
     expect(screen.getByRole('menuitem', { name: /Rules/i })).toBeDefined();
-    expect(screen.getByRole('menuitem', { name: /Settings/i })).toBeDefined();
+    expect(screen.getByRole('menuitem', { name: /Board/i })).toBeDefined();
+    expect(screen.getByRole('menuitem', { name: /Store/i })).toBeDefined();
     document.body.classList.remove('experiment-game-chrome-refined');
   });});

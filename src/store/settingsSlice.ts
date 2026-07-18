@@ -22,6 +22,7 @@ export interface SettingsState {
     confirmMajorActions: boolean;
     showTooltips: boolean;
     compactRoster: boolean;
+    houseFeed: boolean;
     useHaptics: boolean;
     animations: boolean;
     spectatorMode: boolean;
@@ -122,6 +123,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     confirmMajorActions: true,
     showTooltips: true,
     compactRoster: false,
+    houseFeed: false,
     useHaptics: true,
     animations: true,
     spectatorMode: true,

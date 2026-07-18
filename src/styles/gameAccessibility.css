@@ -1,0 +1,70 @@
+/* Device and accessibility guarantees for the game interface. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body.reduce-motion .game-screen *,
+body.reduce-motion .game-screen *::before,
+body.reduce-motion .game-screen *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-screen *, .game-screen *::before, .game-screen *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+@media (pointer: coarse) {
+  body.experiment-game-chrome-refined .tv-log__filter,
+  .game-bottom-nav__more-menu button,
+  .game-bottom-nav__item,
+  .dock-hit-area,
+  .top-utility-button { min-width: 44px; min-height: 44px; }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --game-border-subtle: rgba(255, 255, 255, 0.24);
+    --game-border-strong: rgba(255, 255, 255, 0.42);
+    --game-text-secondary: rgba(255, 255, 255, 0.88);
+    --game-text-tertiary: rgba(255, 255, 255, 0.72);
+  }
+  body.experiment-game-chrome-refined .game-bottom-nav__item--active,
+  body.experiment-game-chrome-refined .tv-log__filter--active { border: 2px solid currentColor; }
+}
+@media (forced-colors: active) {
+  .game-bottom-nav, .tv-zone, .tv-log-shell, .game-control-dock, [class*='avatarWrap'] {
+    forced-color-adjust: auto;
+    border: 1px solid CanvasText;
+  }
+  .game-bottom-nav__shell, .game-control-dock__shell { opacity: 0; }
+  :focus-visible { outline: 3px solid Highlight !important; }
+}
+@media (max-width: 359px) {
+  .game-screen {
+    --game-screen-tv-min-height: clamp(214px, 29svh, 248px);
+    --game-screen-tv-viewport-min-height: clamp(124px, 17svh, 154px);
+    gap: var(--game-space-1);
+    padding-inline: max(6px, var(--safe-left)) max(6px, var(--safe-right));
+  }
+  body.experiment-game-chrome-refined .tv-zone__story { padding-inline: 12px; }
+  body.experiment-game-chrome-refined .tv-log__heading-group { display: none; }
+  .game-bottom-nav__label { font-size: 0.52rem; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .game-screen {
+    --game-screen-floating-dock-clearance: 52px;
+    --game-screen-tv-min-height: clamp(178px, 43svh, 224px);
+    --game-screen-tv-viewport-min-height: clamp(102px, 24svh, 132px);
+    padding-top: var(--game-space-1);
+  }
+  body.experiment-game-chrome-refined .tv-zone__story { gap: var(--game-space-1); padding-block: 10px; }
+  body.experiment-game-chrome-refined .tv-zone__story-context { display: none; }
+  .game-control-dock { --game-action-dock-scale: 0.82; }
+  .game-bottom-nav { --nav-bar-height: 52px; }
+}
+@media (min-width: 700px) and (min-height: 700px) {
+  .game-screen { padding-inline: max(var(--game-space-4), var(--safe-left)) max(var(--game-space-4), var(--safe-right)); }
+  body.experiment-game-chrome-refined .tv-zone__story .tv-zone__now { font-size: 1.08rem; }
+}

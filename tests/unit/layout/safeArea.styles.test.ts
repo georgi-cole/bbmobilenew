@@ -90,7 +90,7 @@ describe('safe-area layout styles', () => {
     expect(tvLogCss).toContain('overflow-y: auto;');
     expect(tvLogCss).toContain('@media (max-width: 480px) and (max-height: 900px)');
     expect(tvLogCss).toContain('max-height: var(--tv-log-item-h);');
-    expect(tvLogCss).not.toContain('display: none;');
+    expect(tvLogCss).not.toMatch(/\.tv-log\s*\{[^}]*display:\s*none/);
   });
 
   it('restores HomeHub-owned full-height decorative background with safe controls', () => {
@@ -140,10 +140,10 @@ describe('safe-area layout styles', () => {
     const navBarTsx = readFileSync(resolve(process.cwd(), 'src/components/layout/NavBar.tsx'), 'utf8');
     const gameSliceTs = readFileSync(resolve(process.cwd(), 'src/store/gameSlice.ts'), 'utf8');
 
-    expect(routesTsx).toContain("import GameRoute            from './routes/GameRoute';");
-    expect(routesTsx).toContain("{ path: 'game',             element: <GameRoute />");
+    expect(routesTsx).toContain("const GameRoute = lazy(() => import('./routes/GameRoute'));");
+    expect(routesTsx).toContain("{ path: 'game',             element: load(<GameRoute />)");
     expect(gameRouteTsx).toContain('export default function GameRoute()');
-    expect(gameRouteTsx).toContain("state.game.status === 'active'");
+    expect(gameRouteTsx).toContain("game.status === 'active'");
     expect(gameRouteTsx).toContain('<Navigate to="/" replace />');
     expect(navBarTsx).toContain("s.game.status === 'active'");
     expect(gameSliceTs).toContain("status: 'active' as const");

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome';
 import './GameBottomNav.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
-export type NavTab = 'home' | 'rules' | 'settings' | 'leaderboard' | 'profile';
+export type NavTab = 'home' | 'rules' | 'settings' | 'leaderboard' | 'profile' | 'store';
 
 type PrimaryItem = { tab: NavTab; glyph: string; label: string; accessibleLabel: string };
 const CONTROL_ITEMS: PrimaryItem[] = [
@@ -15,7 +16,7 @@ const CONTROL_ITEMS: PrimaryItem[] = [
 ];
 const REFINED_ITEMS: PrimaryItem[] = [
   { tab: 'home', glyph: 'home_approved_final.svg', label: 'Home', accessibleLabel: 'Home' },
-  { tab: 'leaderboard', glyph: 'leaderboard_approved_final.svg', label: 'Board', accessibleLabel: 'Leaderboard' },
+  { tab: 'settings', glyph: 'settings_approved_final.svg', label: 'Settings', accessibleLabel: 'Settings' },
   { tab: 'profile', glyph: 'profile_approved_final.svg', label: 'Profile', accessibleLabel: 'Profile' },
 ];
 
@@ -27,6 +28,7 @@ export interface GameBottomNavProps {
   onSettingsClick?: () => void;
   onLeaderboardClick?: () => void;
   onProfileClick?: () => void;
+  onStoreClick?: () => void;
   children?: React.ReactNode;
 }
 
@@ -38,6 +40,7 @@ export default function GameBottomNav({
   onSettingsClick,
   onLeaderboardClick,
   onProfileClick,
+  onStoreClick,
   children,
 }: GameBottomNavProps) {
   const refined = useRefinedGameChrome();
@@ -49,6 +52,7 @@ export default function GameBottomNav({
     settings: onSettingsClick,
     leaderboard: onLeaderboardClick,
     profile: onProfileClick,
+    store: onStoreClick,
   };
 
   useEffect(() => {
@@ -66,21 +70,28 @@ export default function GameBottomNav({
   }
 
   const items = refined ? REFINED_ITEMS : CONTROL_ITEMS;
-  const moreIsActive = activeTab === 'rules' || activeTab === 'settings';
+  const moreIsActive = activeTab === 'rules' || activeTab === 'leaderboard' || activeTab === 'store';
 
   return (
     <>
       <nav className={`game-bottom-nav nav-bar${refined ? ' game-bottom-nav--refined-architecture' : ''}`} aria-label="Main navigation">
         <img className="game-bottom-nav__shell" src={navBarSrc} alt="" aria-hidden="true" draggable={false} />
-        {refined && moreOpen && (
+        {refined && moreOpen && createPortal(
           <div className="game-bottom-nav__more-menu" id="game-navigation-more" role="menu" aria-label="More destinations">
             <button type="button" role="menuitem" onClick={() => openDestination('rules')}>
-              <span>Rules</span><small>How the game works</small>
+              <img src={`${BASE}/assets/updated_nav_fab_bar/rules_approved_final.svg`} alt="" aria-hidden="true" />
+              <span>Rules</span>
             </button>
-            <button type="button" role="menuitem" onClick={() => openDestination('settings')}>
-              <span>Settings</span><small>Audio, display and gameplay</small>
+            <button type="button" role="menuitem" onClick={() => openDestination('leaderboard')}>
+              <img src={`${BASE}/assets/updated_nav_fab_bar/leaderboard_approved_final.svg`} alt="" aria-hidden="true" />
+              <span>Board</span>
             </button>
-          </div>
+            <button type="button" role="menuitem" onClick={() => openDestination('store')}>
+              <img src={`${BASE}/assets/icons/shop.svg`} alt="" aria-hidden="true" />
+              <span>Store</span>
+            </button>
+          </div>,
+          document.body,
         )}
         <div className="game-bottom-nav__items">
           {items.map(({ tab, glyph, label, accessibleLabel }) => {
@@ -111,7 +122,7 @@ export default function GameBottomNav({
               disabled={disabled}
               onClick={() => setMoreOpen((open) => !open)}
             >
-              <img className="game-bottom-nav__glyph" src={`${BASE}/assets/updated_nav_fab_bar/settings_approved_final.svg`} alt="" aria-hidden="true" draggable={false} />
+              <img className="game-bottom-nav__glyph" src={`${BASE}/assets/updated_nav_fab_bar/rules_approved_final.svg`} alt="" aria-hidden="true" draggable={false} />
               <span className="game-bottom-nav__label">More</span>
             </button>
           )}
