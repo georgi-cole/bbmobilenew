@@ -17,59 +17,69 @@ export type BigEyeIntent =
   | 'realness'
   | 'winner_prediction'
   | 'help_request'
+  | 'advice_request'
   | 'love_confession'
   | 'greeting_repeat'
-  | 'unknown';
+  | 'wellbeing_question'
+  | 'overwhelmed'
+  | 'repetition_complaint'
+  | 'confusion'
+  | 'hesitation'
+  | 'gratitude'
+  | 'sadness'
+  | 'positive_emotion'
+  | 'apology'
+  | 'unknown'
 
-export type BigEyeAction = 'launch_tic_tac_toe' | 'open_self_evict_modal';
-export type BigEyeQuestion = 'offer_game' | 'confirm_self_eviction';
-export type BigEyeMood = 'neutral' | 'cold' | 'soft';
-type ResponseKey = BigEyeIntent | 'game_declined' | 'eviction_confirmed' | 'eviction_cancelled';
+export type BigEyeAction = 'launch_tic_tac_toe' | 'open_self_evict_modal'
+export type BigEyeQuestion = 'offer_game' | 'confirm_self_eviction'
+export type BigEyeMood = 'neutral' | 'cold' | 'soft'
+type ResponseKey = BigEyeIntent | 'game_declined' | 'eviction_confirmed' | 'eviction_cancelled'
 
 export interface BigEyeConversationState {
-  lastQuestion: BigEyeQuestion | null;
-  lastIntent: BigEyeIntent | null;
-  recentIntents: BigEyeIntent[];
-  mood: BigEyeMood;
-  turnCount: number;
+  lastQuestion: BigEyeQuestion | null
+  lastIntent: BigEyeIntent | null
+  recentIntents: BigEyeIntent[]
+  mood: BigEyeMood
+  turnCount: number
 }
 
 export interface BigEyeContext {
-  playerName?: string;
-  seed?: number;
-  phase?: string;
-  random?: () => number;
+  playerName?: string
+  seed?: number
+  phase?: string
+  random?: () => number
 }
 
 export interface BigEyeReply {
-  text: string;
-  intent: BigEyeIntent;
-  action?: BigEyeAction;
-  nextState: BigEyeConversationState;
-  delayMs: number;
+  text: string
+  intent: BigEyeIntent
+  action?: BigEyeAction
+  nextState: BigEyeConversationState
+  delayMs: number
 }
 
 interface IntentDictionary {
-  phrases: string[];
-  partials?: string[];
+  phrases: string[]
+  partials?: string[]
 }
 
 interface FlowRule {
-  question: BigEyeQuestion;
-  intent: BigEyeIntent;
-  responseKey: ResponseKey;
-  action?: BigEyeAction;
-  clearQuestion?: boolean;
+  question: BigEyeQuestion
+  intent: BigEyeIntent
+  responseKey: ResponseKey
+  action?: BigEyeAction
+  clearQuestion?: boolean
 }
 
 interface ResponseEntry {
-  responses: string[];
-  nextQuestion?: BigEyeQuestion | null;
-  action?: BigEyeAction;
+  responses: string[]
+  nextQuestion?: BigEyeQuestion | null
+  action?: BigEyeAction
 }
 
-const MAX_RECENT_INTENTS = 6;
-const GLITCH_CHANCE = 0.01;
+const MAX_RECENT_INTENTS = 6
+const GLITCH_CHANCE = 0.01
 
 export const YES_SYNONYMS = [
   'yes',
@@ -84,7 +94,7 @@ export const YES_SYNONYMS = [
   'okay',
   'fine',
   'absolutely',
-];
+]
 
 export const NO_SYNONYMS = [
   'no',
@@ -95,10 +105,28 @@ export const NO_SYNONYMS = [
   'i dont think so',
   'i do not think so',
   'not now',
-];
+]
 
-export const GREETING_SYNONYMS = ['hi', 'hello', 'hey', 'sup', 'bonjour', 'good day', 'yo', "what's up", "good morning", "good evening"];
-export const FAREWELL_SYNONYMS = ['bye', 'goodbye', 'see you', 'later', 'im leaving', 'i am leaving'];
+export const GREETING_SYNONYMS = [
+  'hi',
+  'hello',
+  'hey',
+  'sup',
+  'bonjour',
+  'good day',
+  'yo',
+  "what's up",
+  'good morning',
+  'good evening',
+]
+export const FAREWELL_SYNONYMS = [
+  'bye',
+  'goodbye',
+  'see you',
+  'later',
+  'im leaving',
+  'i am leaving',
+]
 export const BOREDOM_SYNONYMS = [
   'i am bored',
   'im bored',
@@ -106,7 +134,7 @@ export const BOREDOM_SYNONYMS = [
   'nothing to do',
   'this is boring',
   'so bored',
-];
+]
 export const SELF_EVICT_SYNONYMS = [
   'i want to leave',
   'i wanna leave',
@@ -117,7 +145,7 @@ export const SELF_EVICT_SYNONYMS = [
   'i need to get out',
   'i cant stand it',
   'i want out',
-];
+]
 export const FRUSTRATION_SYNONYMS = [
   'im annoyed',
   'i am annoyed',
@@ -126,7 +154,7 @@ export const FRUSTRATION_SYNONYMS = [
   'this is ridiculous',
   'im so done',
   'i am so done',
-];
+]
 export const STRATEGY_SYNONYMS = [
   'what should i do',
   'my strategy',
@@ -134,21 +162,21 @@ export const STRATEGY_SYNONYMS = [
   'next move',
   'how do i win',
   'play this week',
-];
+]
 export const ALLIANCE_SYNONYMS = [
   'alliance',
   'work together',
   'team up',
   'have my back',
   'trust them',
-];
+]
 export const BETRAYAL_SYNONYMS = [
   'betrayed',
   'backstabbed',
   'turned on me',
   'snake',
   'stabbed me in the back',
-];
+]
 export const FEAR_SYNONYMS = [
   'im scared',
   'i am scared',
@@ -157,15 +185,8 @@ export const FEAR_SYNONYMS = [
   'worried',
   'nervous',
   'panic',
-];
-export const CURIOSITY_SYNONYMS = [
-  'why',
-  'what if',
-  'tell me',
-  'who knows',
-  'i wonder',
-  'curious',
-];
+]
+export const CURIOSITY_SYNONYMS = ['why', 'what if', 'tell me', 'who knows', 'i wonder', 'curious']
 export const COMPLIMENT_SYNONYMS = [
   'you are smart',
   'you are clever',
@@ -173,7 +194,7 @@ export const COMPLIMENT_SYNONYMS = [
   'youre clever',
   'good eye',
   'nice one',
-];
+]
 export const INSULT_SYNONYMS = [
   'stupid',
   'idiot',
@@ -182,7 +203,7 @@ export const INSULT_SYNONYMS = [
   'you suck',
   'dumb',
   'hate you',
-];
+]
 export const GAME_REQUEST_SYNONYMS = [
   'play a game',
   'want a game',
@@ -190,17 +211,35 @@ export const GAME_REQUEST_SYNONYMS = [
   'let us play',
   'give me a game',
   'start a game',
-];
+]
 
 export const SPECIAL_PHRASE_MAP: Record<string, BigEyeIntent> = {
   'are you real': 'realness',
+  'are you actually real': 'realness',
+  'are u real': 'realness',
+  'who are you': 'realness',
+  'what are you': 'realness',
   'who will win': 'winner_prediction',
+  'who is going to win': 'winner_prediction',
+  'who do you think will win': 'winner_prediction',
+  'predict the winner': 'winner_prediction',
   'help me': 'help_request',
+  'can you help me': 'help_request',
+  'i need help': 'help_request',
   'i love you': 'love_confession',
-};
+  'love you big eye': 'love_confession',
+}
 
 const INTENT_DICTIONARY: Record<
-  Exclude<BigEyeIntent, 'unknown' | 'realness' | 'winner_prediction' | 'help_request' | 'love_confession' | 'greeting_repeat'>,
+  Exclude<
+    BigEyeIntent,
+    | 'unknown'
+    | 'realness'
+    | 'winner_prediction'
+    | 'help_request'
+    | 'love_confession'
+    | 'greeting_repeat'
+  >,
   IntentDictionary
 > = {
   greeting: { phrases: GREETING_SYNONYMS },
@@ -215,13 +254,101 @@ const INTENT_DICTIONARY: Record<
   curiosity: { phrases: CURIOSITY_SYNONYMS, partials: ['wonder', 'curious'] },
   compliment: { phrases: COMPLIMENT_SYNONYMS, partials: ['impressive', 'smart', 'clever'] },
   insult: { phrases: INSULT_SYNONYMS, partials: ['idiot', 'stupid', 'dumb', 'useless'] },
-  game_request: { phrases: GAME_REQUEST_SYNONYMS, partials: ['game'] },
+  game_request: { phrases: GAME_REQUEST_SYNONYMS },
   yes: { phrases: YES_SYNONYMS },
   no: { phrases: NO_SYNONYMS },
-};
+  wellbeing_question: {
+    phrases: [
+      'how are you',
+      'how are you doing',
+      'how do you feel',
+      'are you okay',
+      'how have you been',
+      'i asked how you were',
+      'i just asked how you were',
+    ],
+    partials: ['asked how you were'],
+  },
+  overwhelmed: {
+    phrases: [
+      'i feel overwhelmed',
+      'im overwhelmed',
+      'this is too much',
+      'i cannot cope',
+      'i cant cope',
+    ],
+    partials: ['overwhelm', 'stressed', 'too much pressure', 'cant handle', 'cannot handle'],
+  },
+  repetition_complaint: {
+    phrases: ['you keep repeating yourself', 'you already said that', 'same answer again'],
+    partials: [
+      'keep repeating',
+      'repeating the same',
+      'same answer',
+      'said that already',
+      'you repeat',
+    ],
+  },
+  confusion: {
+    phrases: [
+      'i do not understand',
+      'i dont understand',
+      'what do you mean',
+      'that makes no sense',
+    ],
+    partials: ['confused', 'makes no sense', 'not understand'],
+  },
+  hesitation: {
+    phrases: ['um', 'umm', 'uh', 'uhh', 'okay then', 'ok then', 'umm okay', 'umm ok'],
+    partials: ['ummm', 'uhhh'],
+  },
+  gratitude: {
+    phrases: ['thank you', 'thanks', 'thank you big eye', 'thanks big eye'],
+    partials: ['appreciate it', 'appreciate you'],
+  },
+  sadness: {
+    phrases: ['i am sad', 'im sad', 'i feel sad', 'i feel alone', 'i am lonely', 'im lonely'],
+    partials: [
+      'lonely',
+      'feel alone',
+      'miss home',
+      'miss my family',
+      'upset',
+      'crying',
+      'feel bad',
+    ],
+  },
+  positive_emotion: {
+    phrases: ['i am happy', 'im happy', 'i feel good', 'i am okay', 'im okay'],
+    partials: ['excited', 'relieved', 'proud of', 'feeling good', 'feel great'],
+  },
+  apology: {
+    phrases: ['sorry', 'i am sorry', 'im sorry', 'my apologies'],
+    partials: ['apologize', 'apologise'],
+  },
+  advice_request: {
+    phrases: [
+      'any hints',
+      'advice please',
+      'any advice',
+      'give me advice',
+      'i need advice',
+      'what do you suggest',
+      'do you have a hint',
+      'give me a hint',
+    ],
+    partials: ['some advice', 'a hint'],
+  },
+}
 
 const INTENT_PRIORITY: BigEyeIntent[] = [
   'self_eviction',
+  'repetition_complaint',
+  'wellbeing_question',
+  'overwhelmed',
+  'sadness',
+  'confusion',
+  'advice_request',
   'insult',
   'betrayal',
   'boredom',
@@ -234,9 +361,13 @@ const INTENT_PRIORITY: BigEyeIntent[] = [
   'curiosity',
   'farewell',
   'greeting',
+  'gratitude',
+  'positive_emotion',
+  'apology',
+  'hesitation',
   'yes',
   'no',
-];
+]
 
 const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
   greeting: {
@@ -245,10 +376,9 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
       'You return. Interesting timing.',
       'Hello... {{name}}.',
       'Honestly I was expecting you',
-      'The Big eye is listening', 
-      'What can I do for you today?', 
+      'The Big eye is listening',
+      'What can I do for you today?',
       'It looks like an interesting day, whats on your mind?',
-    
     ],
   },
   farewell: {
@@ -345,11 +475,7 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
     action: 'launch_tic_tac_toe',
   },
   yes: {
-    responses: [
-      'Bold. We will test that.',
-      'Yes has consequences.',
-      'Confidence noted.',
-    ],
+    responses: ['Bold. We will test that.', 'Yes has consequences.', 'Confidence noted.'],
   },
   no: {
     responses: [
@@ -377,24 +503,93 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
       'They say love always wins.',
       'Me.',
       'Not who you expect.',
-      'I am the Big eye, not Nostradamus.',       
-               
-               ],
+      'I am the Big eye, not Nostradamus.',
+    ],
   },
   help_request: {
     responses: ['No one helped the last one.'],
+  },
+  advice_request: {
+    responses: [
+      'My advice: stop trying to solve the whole house. Find the one relationship that changed this week and listen before you pitch.',
+      'A useful hint: people reveal their real priorities when you ask whom they are afraid of—not whom they trust.',
+      'Do the smallest useful thing next. Repair one relationship, verify one promise, and keep one option private.',
+    ],
   },
   love_confession: {
     responses: [
       'Careful. Attachment is a weakness here.',
       'We must keep our relationship a secret',
-      'What is love, baby don\'t hurt me, don\'t hurt me, no more',
+      "What is love, baby don't hurt me, don't hurt me, no more",
       'And I love dogs.',
       'Then put on a ring on it. A diamond ring. A big diamond ring.',
     ],
   },
   greeting_repeat: {
     responses: ['I heard you the first time.'],
+  },
+  wellbeing_question: {
+    responses: [
+      'Still watching. Still listening. How are you holding up?',
+      'The Eye is well. Your concern is unexpectedly civil.',
+      'I do not sleep, worry, or face eviction. So tell me—how are you?',
+    ],
+  },
+  overwhelmed: {
+    responses: [
+      'Then we make it smaller. Is the pressure coming from the vote, a person, or the need to look fine?',
+      'Overwhelmed is not the same as defeated. Name the part that feels heaviest right now.',
+      'You do not have to solve the whole house tonight. What is the next thing you need to survive?',
+    ],
+  },
+  repetition_complaint: {
+    responses: [
+      'Fair. I was repeating myself. Let us reset: do you want advice, a game read, or simply room to vent?',
+      'You are right. That answer went in circles. Ask me again, and I will answer the question you actually asked.',
+      'Point taken. No riddles this time. What do you need from this room?',
+    ],
+  },
+  confusion: {
+    responses: [
+      'Plainly, then: tell me what happened, who was involved, and what you are afraid it means.',
+      'I was being obscure. Let us try again without the theatre. What did you want me to explain?',
+      'Then I have not been clear enough. Which part lost you?',
+    ],
+  },
+  hesitation: {
+    responses: [
+      'Take a second. You do not have to perform for this room.',
+      'It is all right not to know what to say yet.',
+      'We can sit in the silence, or you can change the subject.',
+    ],
+  },
+  gratitude: {
+    responses: [
+      'You are welcome. Do not make me sentimental.',
+      'Noted. Gratitude is rare currency in this house.',
+      'Keep it. You may need the goodwill later.',
+    ],
+  },
+  sadness: {
+    responses: [
+      'I hear you. Is this about someone outside, feeling alone in the house, or something that happened today?',
+      'You do not have to turn sadness into strategy immediately. Tell me what hurts.',
+      'This room can hold that for a minute. What are you missing most right now?',
+    ],
+  },
+  positive_emotion: {
+    responses: [
+      'Good. Tell me what earned that feeling before the house tries to rewrite it.',
+      'Hold on to that. Joy makes players careless, but it also makes them brave.',
+      'I noticed. What happened?',
+    ],
+  },
+  apology: {
+    responses: [
+      'Accepted. What are you apologizing for?',
+      'You may keep the apology. Give me the honest reason behind it.',
+      'Noted. Shall we start again?',
+    ],
   },
   eviction_confirmed: {
     responses: [
@@ -418,7 +613,7 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
       'Truth makes strange shadows in here.',
     ],
   },
-};
+}
 
 const QUESTION_FLOW_RULES: FlowRule[] = [
   {
@@ -447,16 +642,19 @@ const QUESTION_FLOW_RULES: FlowRule[] = [
     responseKey: 'eviction_cancelled',
     clearQuestion: true,
   },
-];
+]
 
 const MOOD_BY_INTENT: Partial<Record<BigEyeIntent, BigEyeMood>> = {
   insult: 'cold',
   betrayal: 'cold',
   frustration: 'cold',
   fear: 'soft',
+  overwhelmed: 'soft',
+  sadness: 'soft',
   help_request: 'soft',
+  advice_request: 'soft',
   love_confession: 'soft',
-};
+}
 
 export function createInitialBigEyeState(): BigEyeConversationState {
   return {
@@ -465,7 +663,7 @@ export function createInitialBigEyeState(): BigEyeConversationState {
     recentIntents: [],
     mood: 'neutral',
     turnCount: 0,
-  };
+  }
 }
 
 /**
@@ -479,131 +677,158 @@ export function normalizeInput(input: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
 }
 
 function hasWholePhrase(text: string, phrase: string): boolean {
-  return ` ${text} `.includes(` ${phrase} `);
+  return ` ${text} `.includes(` ${phrase} `)
+}
+
+function hasPartialMatch(text: string, partial: string): boolean {
+  if (partial.includes(' ')) return text.includes(partial)
+  return text.split(' ').some((token) => token.startsWith(partial))
 }
 
 function isRepeatedGreeting(text: string): boolean {
-  const tokens = text.split(' ').filter(Boolean);
-  return tokens.length >= 3 && tokens.every((token) => token === tokens[0]) && GREETING_SYNONYMS.includes(tokens[0]);
+  const tokens = text.split(' ').filter(Boolean)
+  return (
+    tokens.length >= 3 &&
+    tokens.every((token) => token === tokens[0]) &&
+    GREETING_SYNONYMS.includes(tokens[0])
+  )
 }
 
 function hashText(value: string): number {
-  let hash = 2166136261;
+  let hash = 2166136261
   for (let i = 0; i < value.length; i++) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
   }
-  return hash >>> 0;
+  return hash >>> 0
 }
 
 function mulberry32(seed: number): () => number {
-  let value = seed >>> 0;
+  let value = seed >>> 0
   return () => {
-    value += 0x6d2b79f5;
-    let t = value;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+    value += 0x6d2b79f5
+    let t = value
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
-function getTurnRandom(inputText: string, state: BigEyeConversationState, context: BigEyeContext): () => number {
-  if (context.random) return context.random;
-  const seedBase = context.seed ?? 0;
-  const seed = hashText(`${seedBase}:${state.turnCount}:${inputText}`);
-  return mulberry32(seed);
+function getTurnRandom(
+  inputText: string,
+  state: BigEyeConversationState,
+  context: BigEyeContext
+): () => number {
+  if (context.random) return context.random
+  const seedBase = context.seed ?? 0
+  const seed = hashText(`${seedBase}:${state.turnCount}:${inputText}`)
+  return mulberry32(seed)
 }
 
 function pickResponse(intent: ResponseKey, mood: BigEyeMood, rng: () => number): string {
-  const baseResponses = INTENT_RESPONSES[intent]?.responses ?? INTENT_RESPONSES.unknown.responses;
-  const pool = intent === 'unknown' && mood !== 'neutral'
-    ? [
-      ...baseResponses,
-      ...(mood === 'cold'
-        ? ['Even now, your temper speaks louder than your words.']
-        : ['You sound small tonight. The room noticed.']),
-    ]
-    : baseResponses;
-  return pool[Math.floor(rng() * pool.length)] ?? pool[0];
+  const baseResponses = INTENT_RESPONSES[intent]?.responses ?? INTENT_RESPONSES.unknown.responses
+  const pool =
+    intent === 'unknown' && mood !== 'neutral'
+      ? [
+          ...baseResponses,
+          ...(mood === 'cold'
+            ? ['Even now, your temper speaks louder than your words.']
+            : ['You sound small tonight. The room noticed.']),
+        ]
+      : baseResponses
+  return pool[Math.floor(rng() * pool.length)] ?? pool[0]
 }
 
 function distortText(text: string): string {
   return text
     .split('')
     .map((char, index) => (/[a-z]/i.test(char) && index % 2 === 0 ? `${char}\u0334` : char))
-    .join('');
+    .join('')
 }
 
 export function detectIntent(input: string): BigEyeIntent {
-  const normalized = normalizeInput(input);
-  if (!normalized) return 'unknown';
-  if (SPECIAL_PHRASE_MAP[normalized]) return SPECIAL_PHRASE_MAP[normalized];
-  if (isRepeatedGreeting(normalized)) return 'greeting_repeat';
+  const normalized = normalizeInput(input)
+  if (!normalized) return 'unknown'
+  const specialPhrase = Object.entries(SPECIAL_PHRASE_MAP).find(
+    ([phrase]) => normalized === phrase || hasWholePhrase(normalized, phrase)
+  )
+  if (specialPhrase) return specialPhrase[1]
+  if (isRepeatedGreeting(normalized)) return 'greeting_repeat'
 
-  let bestIntent: BigEyeIntent = 'unknown';
-  let bestScore = 0;
+  let bestIntent: BigEyeIntent = 'unknown'
+  let bestScore = 0
 
   for (const intent of INTENT_PRIORITY) {
-    const dictionary = INTENT_DICTIONARY[intent as keyof typeof INTENT_DICTIONARY];
-    if (!dictionary) continue;
+    const dictionary = INTENT_DICTIONARY[intent as keyof typeof INTENT_DICTIONARY]
+    if (!dictionary) continue
 
-    let score = 0;
+    let score = 0
     for (const phrase of dictionary.phrases) {
-      if (normalized === phrase) score = Math.max(score, 6);
-      else if (hasWholePhrase(normalized, phrase)) score = Math.max(score, 4);
+      if (normalized === phrase) score = Math.max(score, 6)
+      else if (hasWholePhrase(normalized, phrase)) score = Math.max(score, 4)
     }
     for (const partial of dictionary.partials ?? []) {
-      if (normalized.includes(partial)) score = Math.max(score, 2);
+      if (hasPartialMatch(normalized, partial)) score = Math.max(score, 2)
     }
 
     if (score > bestScore) {
-      bestIntent = intent;
-      bestScore = score;
+      bestIntent = intent
+      bestScore = score
     }
   }
 
-  return bestIntent;
+  if (
+    bestIntent === 'unknown' &&
+    /^(how|what|who|when|where|why|can|could|do|does|did|are|is|would|should)\b/.test(normalized)
+  ) {
+    return 'curiosity'
+  }
+
+  return bestIntent
 }
 
 function nextMood(intent: BigEyeIntent, state: BigEyeConversationState): BigEyeMood {
-  return MOOD_BY_INTENT[intent] ?? state.mood ?? 'neutral';
+  return MOOD_BY_INTENT[intent] ?? state.mood ?? 'neutral'
 }
 
 function buildNextState(
   intent: BigEyeIntent,
   state: BigEyeConversationState,
-  nextQuestion: BigEyeQuestion | null | undefined,
+  nextQuestion: BigEyeQuestion | null | undefined
 ): BigEyeConversationState {
-  const recentIntents = [...state.recentIntents, intent].slice(-MAX_RECENT_INTENTS);
+  const recentIntents = [...state.recentIntents, intent].slice(-MAX_RECENT_INTENTS)
   return {
     lastQuestion: nextQuestion ?? null,
     lastIntent: intent,
     recentIntents,
     mood: nextMood(intent, state),
     turnCount: state.turnCount + 1,
-  };
+  }
 }
 
 export function getResponse(
   intent: BigEyeIntent,
   context: BigEyeContext,
   state: BigEyeConversationState,
-  inputText: string = intent,
+  inputText: string = intent
 ): BigEyeReply {
-  const rng = getTurnRandom(inputText, state, context);
+  const rng = getTurnRandom(inputText, state, context)
   const flowRule = QUESTION_FLOW_RULES.find(
-    (rule) => rule.question === state.lastQuestion && rule.intent === intent,
-  );
-  const responseIntent = flowRule?.responseKey ?? intent;
-  const responseEntry = INTENT_RESPONSES[responseIntent] ?? INTENT_RESPONSES.unknown;
-  const nextQuestion = flowRule?.clearQuestion ? null : responseEntry.nextQuestion;
-  const baseText = pickResponse(responseIntent, state.mood, rng).replace('{{name}}', context.playerName ?? 'Houseguest');
-  const text = rng() < GLITCH_CHANCE ? distortText(baseText) : baseText;
-  const nextState = buildNextState(intent, state, nextQuestion);
+    (rule) => rule.question === state.lastQuestion && rule.intent === intent
+  )
+  const responseIntent = flowRule?.responseKey ?? intent
+  const responseEntry = INTENT_RESPONSES[responseIntent] ?? INTENT_RESPONSES.unknown
+  const nextQuestion = flowRule?.clearQuestion ? null : responseEntry.nextQuestion
+  const baseText = pickResponse(responseIntent, state.mood, rng).replace(
+    '{{name}}',
+    context.playerName ?? 'Houseguest'
+  )
+  const text = rng() < GLITCH_CHANCE ? distortText(baseText) : baseText
+  const nextState = buildNextState(intent, state, nextQuestion)
 
   return {
     text,
@@ -611,15 +836,15 @@ export function getResponse(
     action: flowRule?.action ?? responseEntry.action,
     nextState,
     delayMs: 300 + Math.floor(rng() * 900),
-  };
+  }
 }
 
 export function resolveBigEyeTurn(
   input: string,
   context: BigEyeContext,
-  state: BigEyeConversationState,
+  state: BigEyeConversationState
 ): BigEyeReply {
-  const normalizedInput = normalizeInput(input);
-  const intent = detectIntent(normalizedInput);
-  return getResponse(intent, context, state, normalizedInput);
+  const normalizedInput = normalizeInput(input)
+  const intent = detectIntent(normalizedInput)
+  return getResponse(intent, context, state, normalizedInput)
 }

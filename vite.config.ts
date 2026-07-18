@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 const { version: appVersion } = JSON.parse(
-  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
 ) as { version: string }
 
 // https://vite.dev/config/
@@ -22,6 +22,12 @@ export default defineConfig(({ mode }) => ({
   assetsInclude: ['**/*.wp2'],
   plugins: [react()],
   server: {
+    watch: {
+      // Git worktrees live inside this checkout and contain full copies of the
+      // app. Watching them causes a reload storm that can prevent the real app
+      // entry module from ever being served during local development.
+      ignored: ['**/.worktrees/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
