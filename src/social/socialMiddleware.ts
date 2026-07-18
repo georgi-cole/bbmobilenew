@@ -43,6 +43,11 @@ import { collectInvalidIncomingInteractionIds } from './incomingInteractionValid
 import type { IncomingInteraction, ScheduledIncomingInteraction } from './types';
 import { seedWeekRelationships } from './weekSocialSeed';
 import { DEFAULT_ENERGY } from './constants';
+import {
+  evaluateSocialCommitmentsForAction,
+  voidOverdueSocialCommitments,
+  type CommitmentStore,
+} from './socialCommitments';
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2']);
 
@@ -83,6 +88,7 @@ function handleWeekStart(api: MiddlewareAPI): void {
   const week = state.game?.week ?? 1;
   api.dispatch(decaySocialMemory());
   api.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week));
+  voidOverdueSocialCommitments(api as unknown as CommitmentStore);
   seedWeekRelationships(api);
   api.dispatch(snapshotWeekRelationships());
   scheduleIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore, {
@@ -313,6 +319,12 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       grantEnergy(api as unknown as MiddlewareAPI, saveId, 2);
     }
 
+    evaluateSocialCommitmentsForAction(
+      api as unknown as CommitmentStore,
+      type,
+      saveId,
+    );
+
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
 
     return result;
@@ -320,7 +332,22 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   if (type === 'game/submitPovDecision') {
     const result = next(action);
+    evaluateSocialCommitmentsForAction(
+      api as unknown as CommitmentStore,
+      type,
+      (action as unknown as { payload: boolean }).payload,
+    );
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
+    return result;
+  }
+
+  if (type === 'game/submitHumanVote' || type === 'game/submitHumanDoubleVote') {
+    const result = next(action);
+    evaluateSocialCommitmentsForAction(
+      api as unknown as CommitmentStore,
+      type,
+      (action as unknown as { payload: unknown }).payload,
+    );
     return result;
   }
 
@@ -438,6 +465,9 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     type === 'social/hydrateSocial'
   ) {
     const result = next(action);
+    if (type === 'game/finalizeNominations' || type === 'game/commitNominees') {
+      evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type);
+    }
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
     return result;
   }

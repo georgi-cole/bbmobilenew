@@ -4,6 +4,11 @@
 import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
 import type { RemotePlayerOverride } from '../remoteConfig/remoteConfigTypes';
+import {
+  AVATAR_ASSET_FILES,
+  FORMAL_CUTOUT_FILES,
+  INFORMAL_CUTOUT_FILES,
+} from '../data/avatarAssetManifest';
 
 const PROFILE_PHOTO_AVATAR_PREFIX = 'profile-photo:';
 
@@ -63,6 +68,19 @@ export function isEmoji(s: string): boolean {
 export function getDicebear(seed: string): string {
   const encoded = encodeURIComponent(seed);
   return `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encoded}`;
+}
+
+/** Guaranteed, base-aware fallback that never depends on a third-party service. */
+export function getLocalAvatarFallback(name: string, isUser = false): string {
+  if (isUser) return joinPublicAssetPath('assets/skins/You.png');
+  const initials = (name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || '?').replace(/[&<>"']/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="#172033"/><circle cx="64" cy="64" r="48" fill="#263653"/><text x="64" y="76" text-anchor="middle" font-family="system-ui,sans-serif" font-size="38" font-weight="700" fill="#f5f7ff">${initials}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 /**
@@ -205,7 +223,7 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
     );
   }
 
-  candidates.push(getDicebear(player.name));
+  candidates.push(getDicebear(player.name), getLocalAvatarFallback(player.name, isUserPlayer));
 
   return candidates;
 }
@@ -228,42 +246,13 @@ export const getAvatarCandidatesFor = resolveAvatarCandidates;
  *  - First onError: swap src to getDicebear(player.name)
  *  - Second onError (Dicebear unreachable): show emoji / initials fallback
  */
-export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): string {
+export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'> & Partial<Pick<Player, 'isUser'>>): string {
   const candidates = resolveAvatarCandidates(player);
   if (typeof window !== 'undefined' && (window as Window & { __AVATAR_DEBUG?: boolean }).__AVATAR_DEBUG) {
     console.debug('[avatar] resolveAvatar candidates for', player.name, candidates);
   }
   return candidates[0];
 }
-
-/**
- * Formal cutouts are stored in `public/assets/formal_attires/`.
- * Some players have a non-.png source file in that folder, so we search the
- * folder contents first before falling back to the historical stem map.
- */
-const FORMAL_CUTOUT_MODULES = import.meta.glob(
-  '../../public/assets/formal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
-  {
-    eager: true,
-    import: 'default',
-  },
-) as Record<string, string>;
-
-const INFORMAL_CUTOUT_MODULES = import.meta.glob(
-  '../../public/assets/Informal_attires/*.{png,webp,svg,jpg,jpeg,wp2}',
-  {
-    eager: true,
-    import: 'default',
-  },
-) as Record<string, string>;
-
-const AVATAR_ASSET_MODULES = import.meta.glob(
-  '../../public/assets/skins/*.{png,webp,svg,jpg,jpeg,wp2}',
-  {
-    eager: true,
-    import: 'default',
-  },
-) as Record<string, string>;
 
 /**
  * Maps canonical houseguest ids to their historical formal-cutout stems.
@@ -318,26 +307,23 @@ function collectTwinShockFullSizeLookupTokens(player: Pick<Player, 'id' | 'name'
 }
 
 function listFormalCutoutCandidates(): Array<{ basename: string; filename: string }> {
-  return Object.keys(FORMAL_CUTOUT_MODULES).map((path) => {
-    const filename = path.split('/').pop() ?? path;
+  return FORMAL_CUTOUT_FILES.map((filename) => {
     const basename = filename.replace(/\.[^.]+$/, '');
     return { basename, filename };
   });
 }
 
 function listInformalCutoutCandidates(): Array<{ basename: string; filename: string }> {
-  return Object.keys(INFORMAL_CUTOUT_MODULES).map((path) => {
-    const filename = path.split('/').pop() ?? path;
+  return INFORMAL_CUTOUT_FILES.map((filename) => {
     const basename = filename.replace(/\.[^.]+$/, '');
     return { basename, filename };
   });
 }
 
 function listAvatarAssetCandidates(): Array<{ basename: string; source: string }> {
-  return Object.entries(AVATAR_ASSET_MODULES).map(([path, source]) => {
-    const filename = path.split('/').pop() ?? path;
+  return AVATAR_ASSET_FILES.map((filename) => {
     const basename = filename.replace(/\.[^.]+$/, '');
-    return { basename, source };
+    return { basename, source: joinPublicAssetPath(`assets/skins/${filename}`) };
   });
 }
 

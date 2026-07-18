@@ -27,6 +27,33 @@ import type { SurvivorAchievementUnlockMap } from '../modes/survivorAchievements
 /** Prefix for per-profile saved-season localStorage keys. */
 export const SAVED_STATE_KEY_PREFIX = 'bbmobilenew:savedSeason:';
 export const SAVED_RUNS_KEY_PREFIX = 'bbmobilenew:savedRuns:';
+export const SAVE_PERSISTENCE_ISSUE_EVENT = 'bb:save-persistence-issue';
+export const CORRUPT_SAVE_RECOVERY_KEY = 'bbmobilenew:recovery:lastCorruptSave';
+
+export type SavePersistenceIssue = {
+  kind: 'write_failed' | 'corrupt_recovered';
+  occurredAt: string;
+};
+
+let lastSavePersistenceIssue: SavePersistenceIssue | null = null;
+
+function reportSavePersistenceIssue(kind: SavePersistenceIssue['kind']): void {
+  if (lastSavePersistenceIssue?.kind === kind) return;
+  lastSavePersistenceIssue = { kind, occurredAt: new Date().toISOString() };
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent<SavePersistenceIssue>(SAVE_PERSISTENCE_ISSUE_EVENT, {
+      detail: lastSavePersistenceIssue,
+    }));
+  }
+}
+
+export function getLastSavePersistenceIssue(): SavePersistenceIssue | null {
+  return lastSavePersistenceIssue;
+}
+
+export function clearLastSavePersistenceIssue(): void {
+  lastSavePersistenceIssue = null;
+}
 
 /** Shape of what we persist for a manual season save. */
 export interface SavedSeasonSnapshot {
@@ -160,6 +187,7 @@ export function saveSeasonSnapshot(key: string, snapshot: SavedSeasonSnapshot): 
     return true;
   } catch {
     // Storage unavailable or quota exceeded.
+    reportSavePersistenceIssue('write_failed');
     return false;
   }
 }
@@ -187,15 +215,31 @@ export function loadSeasonSnapshot(key: string): SavedSeasonSnapshot | null {
 
 export function loadSavedRunProfile(profileId: string): SavedRunProfile {
   const key = savedRunsKeyForProfile(profileId);
+  let malformedRaw: string | null = null;
   try {
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<SavedRunProfile>;
       const normalized = normalizeRunProfile(profileId, parsed);
       if (normalized) return normalized;
+      malformedRaw = raw;
     }
   } catch {
-    // Fall through to legacy migration.
+    try {
+      malformedRaw = localStorage.getItem(key);
+    } catch {
+      malformedRaw = null;
+    }
+  }
+
+  if (malformedRaw) {
+    try {
+      sessionStorage.setItem(CORRUPT_SAVE_RECOVERY_KEY, malformedRaw);
+      localStorage.removeItem(key);
+    } catch {
+      // Recovery can continue even if the damaged payload cannot be quarantined.
+    }
+    reportSavePersistenceIssue('corrupt_recovered');
   }
 
   const legacy = loadSeasonSnapshot(savedStateKeyForProfile(profileId));
@@ -217,6 +261,7 @@ export function saveRunProfile(profile: SavedRunProfile): boolean {
     localStorage.setItem(savedRunsKeyForProfile(profile.profileId), JSON.stringify(profile));
     return true;
   } catch {
+    reportSavePersistenceIssue('write_failed');
     return false;
   }
 }

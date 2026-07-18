@@ -35,6 +35,25 @@ describe('incomingInteractionPresentation', () => {
     expect(getIncomingInteractionResponseLabel('warning', 'positive')).toBe('Thank');
   });
 
+  it('varies player-facing choices while preserving the same response intents', () => {
+    const labelSets = Array.from({ length: 8 }, (_, index) =>
+      getIncomingInteractionResponseOptions(
+        'check_in',
+        makeInteraction({ id: `check-in-${index}`, fromId: `p${index}`, type: 'check_in' }),
+        'Curious',
+      ).map((option) => option.label).join('|'),
+    );
+
+    expect(new Set(labelSets).size).toBeGreaterThan(1);
+    expect(
+      getIncomingInteractionResponseOptions(
+        'check_in',
+        makeInteraction({ type: 'check_in' }),
+        'Guarded',
+      ).map((option) => option.responseType),
+    ).toEqual(['positive', 'neutral', 'negative', 'dismiss']);
+  });
+
   it('derives a warm tone from strong gratitude and trust', () => {
     const interaction = makeInteraction({ type: 'compliment' });
     const relationships: RelationshipsMap = {

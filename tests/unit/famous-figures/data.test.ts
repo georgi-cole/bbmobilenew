@@ -56,6 +56,8 @@ describe('Famous Figures replacement data bank', () => {
     expect(average(easyPlans.map((plan) => plan.delayMs))).toBeLessThan(
       average(hardPlans.map((plan) => plan.delayMs)),
     );
+    expect([...easyPlans, ...hardPlans].every((plan) => plan.clueNumber >= 2)).toBe(true);
+    expect([...easyPlans, ...hardPlans].every((plan) => plan.delayMs >= 1800)).toBe(true);
     expect(easyPlans.some((plan) => plan.clueNumber >= 4)).toBe(true);
     expect(hardPlans.some((plan) => plan.clueNumber <= 3)).toBe(true);
   });

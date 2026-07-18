@@ -16,6 +16,8 @@ import { SoundManager } from './services/sound/SoundManager';
 import AudioStateSync from './services/sound/AudioStateSync';
 import AudioGate from './components/AudioGate/AudioGate';
 import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice';
+import { installGameDiagnostics } from './services/diagnostics/gameDiagnostics';
+import LiveOpsController from './components/LiveOpsController/LiveOpsController';
 
 if (import.meta.env.DEV) {
   console.log('[router] bundle:', import.meta.url, '| pathname:', window.location.pathname, '| hash:', window.location.hash);
@@ -38,6 +40,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    installGameDiagnostics();
     void SoundManager.init();
     // Fetch the remote live-config on startup; falls back to cache or defaults.
     void store.dispatch(loadRemoteConfig());
@@ -45,6 +48,7 @@ export default function App() {
 
   return (
     <Provider store={store}>
+      <LiveOpsController />
       <AudioStateSync />
       {/* AudioGate is suppressed on the Intro/Home route because HomeHub
           unlocks audio via the Play gesture (see HomeHub.handlePlay). */}

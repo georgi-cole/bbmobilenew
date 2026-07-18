@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { resolveAvatarCandidates } from '../../src/utils/avatar';
+import { getLocalAvatarFallback, resolveAvatar, resolveAvatarCandidates } from '../../src/utils/avatar';
 
 describe('resolveAvatarCandidates', () => {
+  it('preserves the user identity and ends with a bundled fallback', () => {
+    const player = { id: 'guest-1', name: 'You', avatar: '', isUser: true } as const;
+    const candidates = resolveAvatarCandidates(player);
+
+    expect(candidates.at(-1)).toContain('assets/skins/You.png');
+    expect(resolveAvatar(player)).toBe(candidates[0]);
+  });
+
+  it('provides an offline-safe initials fallback for houseguests', () => {
+    expect(getLocalAvatarFallback('Nova Ray')).toMatch(/^data:image\/svg\+xml,/);
+  });
+
   it('prefers an explicit Lia avatar path before any scanned avatar asset', () => {
     const candidates = resolveAvatarCandidates({
       id: 'lia',

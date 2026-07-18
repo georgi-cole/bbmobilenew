@@ -1,18 +1,20 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import NavBar from './NavBar';
-import DebugPanel from '../DebugPanel/DebugPanel';
-import FinalFaceoff from '../FinalFaceoff/FinalFaceoff';
-import SeasonFinaleOverlay from '../SeasonFinale/SeasonFinaleOverlay';
 import { useAppSelector } from '../../store/hooks';
 import { selectFinale } from '../../store/finaleSlice';
 import { selectSettings } from '../../store/settingsSlice';
 import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice';
 import useGameMode from '../../hooks/useGameMode';
 import { buildViewportMetaContent } from './viewportMeta';
+import PortraitOrientationGuard from './PortraitOrientationGuard';
+import SaveRecoveryNotice from '../SaveRecoveryNotice/SaveRecoveryNotice';
 import './AppShell.css';
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean'];
+const DebugPanel = lazy(() => import('../DebugPanel/DebugPanel'));
+const FinalFaceoff = lazy(() => import('../FinalFaceoff/FinalFaceoff'));
+const SeasonFinaleOverlay = lazy(() => import('../SeasonFinale/SeasonFinaleOverlay'));
 
 /**
  * AppShell — persistent wrapper around every screen.
@@ -102,14 +104,18 @@ export default function AppShell() {
         <Outlet />
       </main>
       <NavBar />
-      <DebugPanel />
+      <Suspense fallback={null}><DebugPanel /></Suspense>
       {/* Mount FinalFaceoff when entering jury so it can initialise the finale.
           Also remount it for the rare recovery case where jury voting already
           completed but the season finale overlay has not started yet. */}
       {phase === 'jury' &&
         seasonFinale == null &&
-        (finale.isActive || !finale.hasStarted || finale.isComplete) && <FinalFaceoff />}
-      {seasonFinale && <SeasonFinaleOverlay />}
+        (finale.isActive || !finale.hasStarted || finale.isComplete) && (
+          <Suspense fallback={null}><FinalFaceoff /></Suspense>
+        )}
+      {seasonFinale && <Suspense fallback={null}><SeasonFinaleOverlay /></Suspense>}
+      <PortraitOrientationGuard />
+      <SaveRecoveryNotice />
     </div>
   );
 }

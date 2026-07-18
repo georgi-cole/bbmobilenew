@@ -18,6 +18,7 @@ import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import {
   buildHouseOfCardsBoard,
+  chooseHouseOfCardsAiPair,
   chooseHouseOfCardsFinalWinner,
   type HouseOfCardsBoardCard,
 } from './houseOfCardsUtils';
@@ -135,6 +136,7 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
   const roundCompletedRef = useRef(false);
   const finalCompletedRef = useRef(false);
   const aiTurnRef = useRef(0);
+  const aiMemoryRef = useRef<Set<number>>(new Set());
   const { playFlip, playMatch, playMismatch, playComplete } = useHouseOfCardsAudio(
     phase === 'playing' || phase === 'final_playing',
   );
@@ -178,6 +180,7 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
     setCumulativeScores(scores);
     finalCompletedRef.current = false;
     aiTurnRef.current = 0;
+    aiMemoryRef.current = new Set();
     resetBoardForRound(5);
   }, [participantIds, resetBoardForRound]);
 
@@ -277,6 +280,8 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
     const first = board[firstIndex];
     const second = board[secondIndex];
     if (!first || !second) return;
+    aiMemoryRef.current.add(firstIndex);
+    aiMemoryRef.current.add(secondIndex);
     setLocked(true);
     if (first.symbol === second.symbol) {
       playMatch();
@@ -339,21 +344,22 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
   useEffect(() => {
     if (phase !== 'final_playing' || !finalTurnId || finalTurnId === humanId || locked || matchedPairs >= targetPairs) return;
     const timer = window.setTimeout(() => {
-      const available = board.filter((card) => !card.isMatched);
-      if (available.length < 2) return;
-      const rng = mulberry32((sessionSeed ^ hashId(finalTurnId) ^ aiTurnRef.current++) >>> 0);
-      const first = available[Math.floor(rng() * available.length)];
-      const knownMatch = available.find((card) => card.index !== first.index && card.symbol === first.symbol);
-      const wrongChoice = available.find((card) => card.index !== first.index && card.symbol !== first.symbol);
-      const second = rng() < 0.7 ? knownMatch : wrongChoice ?? knownMatch;
-      if (!second) return;
+      const turn = aiTurnRef.current++;
+      const pair = chooseHouseOfCardsAiPair({
+        board,
+        rememberedIndexes: aiMemoryRef.current,
+        seed: (sessionSeed ^ hashId(finalTurnId) ^ turn) >>> 0,
+        skill: skillFor(finalTurnId),
+      });
+      if (!pair) return;
+      const [firstIndex, secondIndex] = pair;
       setBoard((current) => current.map((card) =>
-        card.index === first.index || card.index === second.index ? { ...card, isFlipped: true } : card,
+        card.index === firstIndex || card.index === secondIndex ? { ...card, isFlipped: true } : card,
       ));
-      resolvePair(first.index, second.index);
+      resolvePair(firstIndex, secondIndex);
     }, 850 + (aiTurnRef.current % 3) * 260);
     return () => window.clearTimeout(timer);
-  }, [board, finalTurnId, humanId, locked, matchedPairs, phase, resolvePair, sessionSeed, targetPairs]);
+  }, [board, finalTurnId, humanId, locked, matchedPairs, phase, resolvePair, sessionSeed, skillFor, targetPairs]);
 
   useEffect(() => {
     if (phase !== 'final_playing' || matchedPairs < targetPairs || finalCompletedRef.current || finalists.length < 2) return;

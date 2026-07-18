@@ -103,6 +103,29 @@ export type IncomingInteractionResponseType =
 
 export type IncomingInteractionPriority = 'high' | 'medium' | 'low';
 
+/** A concrete future action the player promised during an incoming interaction. */
+export type SocialCommitmentKind =
+  | 'protect_from_nomination'
+  | 'use_safety_on_player'
+  | 'vote_to_keep';
+
+export type SocialCommitmentStatus = 'pending' | 'kept' | 'broken' | 'void';
+
+/** A dialogue promise that later game actions can objectively verify. */
+export interface SocialCommitment {
+  id: string;
+  interactionId: string;
+  kind: SocialCommitmentKind;
+  promisorId: string;
+  beneficiaryId: string;
+  createdWeek: number;
+  dueWeek: number;
+  status: SocialCommitmentStatus;
+  resolvedAt?: number;
+  resolvedWeek?: number;
+  resolutionReason?: string;
+}
+
 export type IncomingInteractionDecisionStage =
   | 'generation'
   | 'scheduling'
@@ -182,6 +205,8 @@ export interface SocialState {
   incomingInteractionDelivery: IncomingInteractionDeliveryState;
   /** Directed social memory entries keyed by actor → target. */
   socialMemory: SocialMemoryMap;
+  /** Promises made through incoming interactions and their eventual outcomes. */
+  commitments: SocialCommitment[];
   /**
    * Influence weights per actor and decision type: actorId → decisionType → (targetId → weight).
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.

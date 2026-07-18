@@ -42,6 +42,7 @@ import adsReducer, { loadAdsState, saveAdsState } from './adsSlice';
 import { adsMiddleware } from './adsMiddleware';
 import remoteConfigReducer from '../remoteConfig/remoteConfigSlice';
 import { secretMissionMiddleware } from './secretMissionMiddleware';
+import { gameDiagnosticsMiddleware } from '../services/diagnostics/gameDiagnostics';
 
 export const store = configureStore({
   reducer: {
@@ -85,6 +86,7 @@ export const store = configureStore({
       publicOpinionMiddleware,
       adsMiddleware,
       secretMissionMiddleware,
+      gameDiagnosticsMiddleware,
     ),
 });
 
