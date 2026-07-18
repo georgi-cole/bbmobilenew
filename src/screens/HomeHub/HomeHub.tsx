@@ -196,7 +196,9 @@ function HomeHubAssetLayer({
 
 export default function HomeHub() {
   const location = useLocation();
-  const autoStartGame = (location.state as { autoStartGame?: boolean } | null)?.autoStartGame === true;
+  const routeState = location.state as { autoStartGame?: boolean; openHubUtility?: string } | null;
+  const autoStartGame = routeState?.autoStartGame === true;
+  const requestedHubUtility = routeState?.openHubUtility ?? null;
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const gameId = useAppSelector((state) => state.game.gameId);
@@ -285,6 +287,22 @@ export default function HomeHub() {
     // doesn't auto-start another season from the same history entry.
     navigate('/', { replace: true });
   }, [autoStartGame, navigate]);
+  useEffect(() => {
+    if (!splashDone || !requestedHubUtility) return undefined;
+    let attempts = 0;
+    const openRequestedUtility = window.setInterval(() => {
+      attempts += 1;
+      const button = document.querySelector<HTMLButtonElement>(`[data-hub-id="${requestedHubUtility}"]`);
+      if (button) {
+        window.clearInterval(openRequestedUtility);
+        button.click();
+        navigate('/', { replace: true });
+      } else if (attempts >= 40) {
+        window.clearInterval(openRequestedUtility);
+      }
+    }, 50);
+    return () => window.clearInterval(openRequestedUtility);
+  }, [navigate, requestedHubUtility, splashDone]);
 
   function hydrateSnapshot(snapshot: SavedSeasonSnapshot) {
     if (isSurvivorRunTerminal(snapshot.game)) {

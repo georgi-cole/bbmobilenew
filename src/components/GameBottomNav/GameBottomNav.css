@@ -153,10 +153,10 @@
   padding-inline: 5%;
 }
 .game-bottom-nav__more-menu {
-  position: absolute;
-  right: max(10px, var(--safe-right));
+  position: fixed;
+  right: max(10px, calc((100vw - min(100vw, var(--app-shell-max-width, 480px))) / 2 + 10px + var(--safe-right)));
   bottom: calc(var(--nav-bar-height, 60px) + var(--safe-bottom) + 8px);
-  z-index: 5;
+  z-index: 1500;
   display: flex;
   width: min(260px, calc(100vw - 28px));
   flex-direction: column;

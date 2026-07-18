@@ -1,5 +1,7 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import type { TvEvent } from '../../types';
+import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome';
 import { tease } from '../../utils/tvLogTemplates';
 import './TVLog.css';
 
@@ -42,8 +44,10 @@ export default function TVLog({
   maxVisible = MAX_ADAPTIVE_VISIBLE_ROWS,
   mobileTwoLineMode = false,
 }: TVLogProps) {
+  const refined = useRefinedGameChrome();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
+  const [logOpen, setLogOpen] = useState(false);
   const effectiveMaxVisible = Math.max(1, maxVisible);
 
   const visible = useMemo(() => {
@@ -55,6 +59,15 @@ export default function TVLog({
       : deduplicated.filter((entry) => entry.type === activityFilter);
   }, [activityFilter, entries, mainTVMessage]);
 
+  useEffect(() => {
+    if (!logOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLogOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [logOpen]);
+
   function toggleExpand(id: string) {
     setExpandedIds((previous) => {
       const next = new Set(previous);
@@ -64,11 +77,11 @@ export default function TVLog({
     });
   }
 
-  return (
-    <section className="tv-log-shell" aria-labelledby="tv-log-heading">
+  const activityContent = (
+    <>
       <div className="tv-log__toolbar">
         <div className="tv-log__heading-group">
-          <span className="tv-log__heading" id="tv-log-heading">Recent events</span>
+          <span className="tv-log__heading" id="tv-log-heading">Game log</span>
           <span className="tv-log__count" aria-label={`${visible.length} visible events`}>{visible.length}</span>
         </div>
         <div className="tv-log__filters" role="group" aria-label="Filter game events">
@@ -121,6 +134,45 @@ export default function TVLog({
           );
         })}
       </ul>
-    </section>
+    </>
+  );
+
+  if (!refined) {
+    return <section className="tv-log-shell" aria-labelledby="tv-log-heading">{activityContent}</section>;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="tv-log__launcher"
+        aria-label={`Open game log, ${entries.length} events`}
+        onClick={() => setLogOpen(true)}
+      >
+        <span aria-hidden="true">☷</span>
+        <span>Log</span>
+      </button>
+      {logOpen && createPortal(
+        <div className="tv-log-modal__backdrop" role="presentation" onClick={() => setLogOpen(false)}>
+          <section
+            className="tv-log-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tv-log-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="tv-log-modal__header">
+              <div>
+                <span className="tv-log-modal__eyebrow">House history</span>
+                <h2 id="tv-log-modal-title">Game log</h2>
+              </div>
+              <button type="button" className="tv-log-modal__close" aria-label="Close game log" onClick={() => setLogOpen(false)}>×</button>
+            </header>
+            {activityContent}
+          </section>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }

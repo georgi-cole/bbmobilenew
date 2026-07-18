@@ -4,6 +4,7 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 .tv-zone {
+  position: relative;
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;

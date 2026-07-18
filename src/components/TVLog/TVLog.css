@@ -276,3 +276,105 @@ body.experiment-game-chrome-refined .tv-log__event:focus-visible {
   outline: 2px solid rgba(151, 139, 255, 0.86);
   outline-offset: -2px;
 }
+/* Refined game: keep history off the main screen and open it on demand. */
+body.experiment-game-chrome-refined .tv-log__launcher {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  z-index: 8;
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.82);
+  color: rgba(239, 242, 255, 0.82);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+body.experiment-game-chrome-refined .tv-log__launcher:hover,
+body.experiment-game-chrome-refined .tv-log__launcher:focus-visible {
+  border-color: rgba(151, 139, 255, 0.45);
+  background: rgba(22, 27, 44, 0.94);
+}
+body.experiment-game-chrome-refined .tv-log__launcher:focus-visible {
+  outline: 2px solid var(--game-focus-color);
+  outline-offset: 2px;
+}
+.tv-log-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  align-items: end;
+  padding: 14px max(14px, var(--safe-right)) max(14px, var(--safe-bottom)) max(14px, var(--safe-left));
+  background: rgba(2, 5, 12, 0.72);
+  backdrop-filter: blur(8px);
+}
+.tv-log-modal {
+  display: flex;
+  width: min(100%, 620px);
+  max-height: min(78svh, 720px);
+  margin: 0 auto;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--game-border-strong);
+  border-radius: var(--game-radius-3);
+  background: var(--game-surface-raised);
+  box-shadow: var(--game-shadow-3);
+}
+.tv-log-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 10px;
+}
+.tv-log-modal__header h2 {
+  margin: 2px 0 0;
+  color: var(--game-text-primary);
+  font-size: 1.05rem;
+}
+.tv-log-modal__eyebrow {
+  color: var(--game-text-secondary);
+  font-size: var(--game-type-eyebrow-size);
+  font-weight: var(--game-type-label-weight);
+  letter-spacing: var(--game-type-heading-tracking);
+  text-transform: uppercase;
+}
+.tv-log-modal__close {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--game-surface-interactive);
+  color: var(--game-text-primary);
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+body.experiment-game-chrome-refined .tv-log-modal .tv-log__toolbar {
+  padding-inline: 16px;
+}
+body.experiment-game-chrome-refined .tv-log-modal .tv-log {
+  max-height: none;
+  flex: 1;
+  padding-bottom: 8px;
+}
+body.experiment-game-chrome-refined .tv-log-modal .tv-log__event {
+  min-height: 48px;
+  padding-inline: 16px;
+}
+@media (min-width: 700px) {
+  .tv-log-modal__backdrop { align-items: center; }
+}
