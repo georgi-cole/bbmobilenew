@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import GameBottomNav from '../GameBottomNav';
 
 describe('GameBottomNav', () => {
@@ -34,4 +35,17 @@ describe('GameBottomNav', () => {
     expect(screen.getByRole('button', { name: 'USER' })).toBeDefined();
     expect(container.querySelectorAll('.game-bottom-nav__label')).toHaveLength(5);
   });
-});
+
+  it('groups lower-frequency destinations in More for the refined architecture', async () => {
+    document.body.classList.add('experiment-game-chrome-refined');
+    render(<GameBottomNav activeTab={null} />);
+
+    expect(screen.getByRole('button', { name: 'Leaderboard' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Profile' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'RULES' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'More' }));
+    expect(screen.getByRole('menuitem', { name: /Rules/i })).toBeDefined();
+    expect(screen.getByRole('menuitem', { name: /Settings/i })).toBeDefined();
+    document.body.classList.remove('experiment-game-chrome-refined');
+  });});

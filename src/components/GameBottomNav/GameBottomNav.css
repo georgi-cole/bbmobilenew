@@ -146,3 +146,58 @@
 :root[style*="--game-bottom-controls-mode: compact"] .game-bottom-nav__glyph {
   --game-nav-glyph-size: 24px;
 }
+
+/* Refined information architecture: frequent destinations stay visible; utilities move to More. */
+.game-bottom-nav--refined-architecture .game-bottom-nav__items {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-inline: 5%;
+}
+.game-bottom-nav__more-menu {
+  position: absolute;
+  right: max(10px, var(--safe-right));
+  bottom: calc(var(--nav-bar-height, 60px) + var(--safe-bottom) + 8px);
+  z-index: 5;
+  display: flex;
+  width: min(260px, calc(100vw - 28px));
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(12, 18, 31, 0.97);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.game-bottom-nav__more-menu button {
+  display: flex;
+  min-height: 50px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: rgba(244, 246, 255, 0.94);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.game-bottom-nav__more-menu button:hover,
+.game-bottom-nav__more-menu button:focus-visible { background: rgba(255, 255, 255, 0.07); }
+.game-bottom-nav__more-menu button:focus-visible { outline: 2px solid rgba(151, 139, 255, 0.88); outline-offset: -2px; }
+.game-bottom-nav__more-menu span { font-size: 0.78rem; font-weight: 800; }
+.game-bottom-nav__more-menu small { color: rgba(212, 219, 240, 0.56); font-size: 0.62rem; font-weight: 600; }
+.game-bottom-nav--refined-architecture .game-bottom-nav__item--active::after {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #9487ff;
+  box-shadow: 0 0 9px rgba(148, 135, 255, 0.7);
+  content: '';
+}
