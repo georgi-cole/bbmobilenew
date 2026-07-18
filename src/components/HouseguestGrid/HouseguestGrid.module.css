@@ -147,7 +147,7 @@
 
 :global(body.experiment-game-chrome-refined) .avatarWrap {
   border-color: rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: var(--game-radius-2);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -609,7 +609,7 @@
 :global(body.experiment-game-chrome-refined) .interactive:hover .avatarWrap,
 :global(body.experiment-game-chrome-refined) .interactive:focus-visible .avatarWrap {
   transform: translateY(-2px);
-  border-color: rgba(151, 139, 255, 0.48);
+  border-color: var(--game-focus-color);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38), 0 0 0 2px rgba(139, 125, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 :global(body.experiment-game-chrome-refined) .pressing .avatarWrap { transform: scale(0.975); border-color: rgba(151, 139, 255, 0.7); }

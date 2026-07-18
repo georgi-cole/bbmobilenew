@@ -194,7 +194,7 @@ body.experiment-game-chrome-refined .tv-log__toolbar {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: var(--game-space-3);
   padding: 7px 10px 6px;
 }
 body.experiment-game-chrome-refined .tv-log__heading-group {
@@ -243,7 +243,7 @@ body.experiment-game-chrome-refined .tv-log__filter {
 }
 body.experiment-game-chrome-refined .tv-log__filter--active {
   border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(139, 125, 255, 0.13);
+  background: var(--game-surface-interactive-active);
   color: rgba(244, 245, 255, 0.94);
 }
 body.experiment-game-chrome-refined .tv-log { border-top-color: rgba(255, 255, 255, 0.035); }

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './styles/gameDesignSystem.css'
 import './styles/_ios-standalone-fixes.css'
 import './styles/_introhub-buttons.css'
 import './compat/legacySpectatorAdapter.js'
