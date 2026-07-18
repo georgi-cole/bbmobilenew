@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice';
 import { useAppSelector } from '../../store/hooks';
 import { configureProductTelemetry, trackProductEvent } from '../../services/liveOps/productTelemetry';
-import { isRefinedGameChromeEnabled } from '../../services/liveOps/rollouts';
+import { resolveRefinedGameChrome } from '../../services/liveOps/rollouts';
 import './LiveOpsPresentation.css';
 
 export default function LiveOpsController() {
@@ -11,16 +11,9 @@ export default function LiveOpsController() {
   const week = useAppSelector((state) => state.game.week);
   const status = useAppSelector((state) => state.game.status);
   const refinedChrome = useMemo(() => {
-    // Local QA can force either presentation without changing release config.
-    // Keep the override available in a production-style local preview, where
-    // Vite's live-reload client is intentionally absent for stability.
-    const isLocalPreview = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-    const qaVariant = import.meta.env.DEV || isLocalPreview
-      ? new URLSearchParams(window.location.search).get('uiVariant')
-      : null;
-    if (qaVariant === 'refined') return true;
-    if (qaVariant === 'control') return false;
-    return isRefinedGameChromeEnabled(config);
+    // Refined is the shipped experience. Keep explicit URL overrides available
+    // in every environment so the legacy control can still be compared later.
+    return resolveRefinedGameChrome(config, window.location.search);
   }, [config]);
 
   useEffect(() => {
