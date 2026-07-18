@@ -147,7 +147,7 @@
 
 :global(body.experiment-game-chrome-refined) .avatarWrap {
   border-color: rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: var(--game-radius-2);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -223,7 +223,7 @@
   left: 6px;
   font-size: 10px;
   color: #ffffff;
-  opacity: 0.95;
+  opacity: 1;
   text-align: right;
   text-shadow: 0 1px 2px rgba(0,0,0,0.9);
   white-space: nowrap;
@@ -590,3 +590,40 @@
     animation: none !important;
   }
 }
+
+.interactionInstructions {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.holdProgress { display: none; }
+:global(body.experiment-game-chrome-refined) .interactive { cursor: pointer; outline: none; }
+:global(body.experiment-game-chrome-refined) .interactive .avatarWrap { transition: transform 150ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+:global(body.experiment-game-chrome-refined) .interactive:hover .avatarWrap,
+:global(body.experiment-game-chrome-refined) .interactive:focus-visible .avatarWrap {
+  transform: translateY(-2px);
+  border-color: var(--game-focus-color);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38), 0 0 0 2px rgba(139, 125, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+:global(body.experiment-game-chrome-refined) .pressing .avatarWrap { transform: scale(0.975); border-color: rgba(151, 139, 255, 0.7); }
+:global(body.experiment-game-chrome-refined) .holdProgress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  display: block;
+  width: 100%;
+  height: 3px;
+  transform-origin: left;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #786cff, #ad94ff);
+  box-shadow: 0 0 10px rgba(139, 125, 255, 0.72);
+  animation: rosterHoldProgress 450ms linear both;
+}
+@keyframes rosterHoldProgress { from { transform: scaleX(0); } to { transform: scaleX(1); } }

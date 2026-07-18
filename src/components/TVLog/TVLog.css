@@ -53,7 +53,7 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   font-size: 0.78rem;
   color: var(--color-text-muted, #9ca3af);
-  cursor: pointer;
+  cursor: default;
   transition: background 0.15s ease;
 }
 
@@ -160,4 +160,234 @@
   .tv-log[data-mobile-two-line='true'] .tv-log__text {
     -webkit-line-clamp: 1;
   }
+}
+
+/* Activity-center presentation is enabled only for the refined game chrome. */
+.tv-log-shell { display: contents; }
+.tv-log__toolbar,
+.tv-log__type,
+.tv-log__time { display: none; }
+.tv-log__event {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tv-log__copy { display: contents; }
+
+body.experiment-game-chrome-refined .tv-log-shell {
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 0;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(4, 8, 16, 0.24);
+}
+body.experiment-game-chrome-refined .tv-log__toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--game-space-3);
+  padding: 7px 10px 6px;
+}
+body.experiment-game-chrome-refined .tv-log__heading-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+body.experiment-game-chrome-refined .tv-log__heading {
+  color: rgba(238, 241, 255, 0.76);
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+body.experiment-game-chrome-refined .tv-log__count {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(238, 241, 255, 0.62);
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+body.experiment-game-chrome-refined .tv-log__filters {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+body.experiment-game-chrome-refined .tv-log__filter {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(213, 220, 242, 0.55);
+  font-size: 0.58rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+body.experiment-game-chrome-refined .tv-log__filter--active {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--game-surface-interactive-active);
+  color: rgba(244, 245, 255, 0.94);
+}
+body.experiment-game-chrome-refined .tv-log { border-top-color: rgba(255, 255, 255, 0.035); }
+body.experiment-game-chrome-refined .tv-log__item { padding: 0; }
+body.experiment-game-chrome-refined .tv-log__event { min-height: var(--tv-log-item-h); padding: 5px 10px; }
+body.experiment-game-chrome-refined .tv-log__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+}
+body.experiment-game-chrome-refined .tv-log__type,
+body.experiment-game-chrome-refined .tv-log__time { display: inline; }
+body.experiment-game-chrome-refined .tv-log__type {
+  color: rgba(187, 196, 225, 0.48);
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+body.experiment-game-chrome-refined .tv-log__time {
+  flex: 0 0 auto;
+  color: rgba(187, 196, 225, 0.4);
+  font-size: 0.55rem;
+  font-weight: 700;
+}
+body.experiment-game-chrome-refined .tv-log__event:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid rgba(151, 139, 255, 0.86);
+  outline-offset: -2px;
+}
+/* Refined game: keep history off the main screen and open it on demand. */
+/* Inline House Feed stays lightweight; categories remain in the full log module. */
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__toolbar,
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__type,
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__time {
+  display: none;
+}
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__copy {
+  display: contents;
+}
+body.experiment-game-chrome-refined .tv-log-shell--inline .tv-log__event {
+  min-height: var(--tv-log-item-h);
+  padding-block: 0;
+}
+body.experiment-game-chrome-refined .tv-log__launcher {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  z-index: 8;
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.82);
+  color: rgba(239, 242, 255, 0.82);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+body.experiment-game-chrome-refined .tv-log__launcher:hover,
+body.experiment-game-chrome-refined .tv-log__launcher:focus-visible {
+  border-color: rgba(151, 139, 255, 0.45);
+  background: rgba(22, 27, 44, 0.94);
+}
+body.experiment-game-chrome-refined .tv-log__launcher:focus-visible {
+  outline: 2px solid var(--game-focus-color);
+  outline-offset: 2px;
+}
+.tv-log-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  align-items: end;
+  padding: 14px max(14px, var(--safe-right)) max(14px, var(--safe-bottom)) max(14px, var(--safe-left));
+  background: rgba(2, 5, 12, 0.72);
+  backdrop-filter: blur(8px);
+}
+.tv-log-modal {
+  display: flex;
+  width: min(100%, 620px);
+  max-height: min(78svh, 720px);
+  margin: 0 auto;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--game-border-strong);
+  border-radius: var(--game-radius-3);
+  background: var(--game-surface-raised);
+  box-shadow: var(--game-shadow-3);
+}
+.tv-log-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 10px;
+}
+.tv-log-modal__header h2 {
+  margin: 2px 0 0;
+  color: var(--game-text-primary);
+  font-size: 1.05rem;
+}
+.tv-log-modal__eyebrow {
+  color: var(--game-text-secondary);
+  font-size: var(--game-type-eyebrow-size);
+  font-weight: var(--game-type-label-weight);
+  letter-spacing: var(--game-type-heading-tracking);
+  text-transform: uppercase;
+}
+.tv-log-modal__close {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--game-surface-interactive);
+  color: var(--game-text-primary);
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+body.experiment-game-chrome-refined .tv-log-modal .tv-log__toolbar {
+  padding-inline: 16px;
+}
+body.experiment-game-chrome-refined .tv-log-modal .tv-log {
+  max-height: none;
+  flex: 1;
+  padding-bottom: 8px;
+}
+body.experiment-game-chrome-refined .tv-log-modal .tv-log__event {
+  min-height: 48px;
+  padding-inline: 16px;
+}
+@media (min-width: 700px) {
+  .tv-log-modal__backdrop { align-items: center; }
 }

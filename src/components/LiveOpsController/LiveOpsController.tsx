@@ -12,7 +12,10 @@ export default function LiveOpsController() {
   const status = useAppSelector((state) => state.game.status);
   const refinedChrome = useMemo(() => {
     // Local QA can force either presentation without changing release config.
-    const qaVariant = import.meta.env.DEV
+    // Keep the override available in a production-style local preview, where
+    // Vite's live-reload client is intentionally absent for stability.
+    const isLocalPreview = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    const qaVariant = import.meta.env.DEV || isLocalPreview
       ? new URLSearchParams(window.location.search).get('uiVariant')
       : null;
     if (qaVariant === 'refined') return true;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { buildViewportMetaContent } from '../../components/layout/viewportMeta';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -127,9 +128,7 @@ export default function SettingsAdmin() {
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
     if (meta) {
-      meta.content = enableZoom
-        ? 'width=device-width, initial-scale=1.0'
-        : 'width=device-width, initial-scale=1.0, user-scalable=no';
+      meta.content = buildViewportMetaContent(enableZoom);
     }
   }, [enableZoom]);
 
@@ -270,13 +269,13 @@ export default function SettingsAdmin() {
             </div>
 
             <div className="settings-row">
-              <label className="settings-row__label">Allow pinch-zoom</label>
+              <label className="settings-row__label">Extra zoom range</label>
               <input
                 type="checkbox"
                 className="settings-toggle"
                 checked={settings.visual?.enableZoom ?? false}
                 onChange={(e) => dispatch(setVisual({ enableZoom: e.target.checked }))}
-                aria-label="Toggle pinch zoom"
+                aria-label="Toggle extra zoom range"
               />
             </div>
           </section>

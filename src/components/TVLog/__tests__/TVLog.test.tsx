@@ -144,3 +144,51 @@ describe('TVLog — mobile compact mode', () => {
     );
   });
 });
+
+describe('TVLog — activity filters', () => {
+  it('filters the feed without changing the underlying event list', async () => {
+    const entries: TvEvent[] = [
+      makeEvent({ id: 'game', text: 'Competition announced', type: 'game' }),
+      makeEvent({ id: 'social', text: 'A new alliance formed', type: 'social' }),
+    ];
+    render(<TVLog entries={entries} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Social' }));
+    expect(screen.getByText('A new alliance formed')).toBeDefined();
+    expect(screen.queryByText('Competition announced')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Social' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('labels each event by type and exposes its timestamp', () => {
+    const entries: TvEvent[] = [makeEvent({ id: 'vote', text: 'The vote is locked', type: 'vote' })];
+    const { container } = render(<TVLog entries={entries} />);
+    expect(screen.getByText('Vote')).toBeDefined();
+    expect(container.querySelector('time[datetime]')).toBeTruthy();
+  });
+});
+describe('TVLog — refined on-demand module', () => {
+  it('keeps events off the main screen until the Log control is opened', async () => {
+    document.body.classList.add('experiment-game-chrome-refined');
+    const entries: TvEvent[] = [makeEvent({ id: 'game', text: 'Competition announced', type: 'game' })];
+    render(<TVLog entries={entries} />);
+
+    expect(screen.queryByText('Competition announced')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /Open game log/i }));
+    expect(screen.getByRole('dialog', { name: 'Game log' })).toBeDefined();
+    expect(screen.getByText('Competition announced')).toBeDefined();
+
+    document.body.classList.remove('experiment-game-chrome-refined');
+  });
+
+  it('shows lightweight inline rows when House Feed is active', () => {
+    document.body.classList.add('experiment-game-chrome-refined');
+    const entries: TvEvent[] = [makeEvent({ id: 'survivor', text: 'Survivor round begins', type: 'game' })];
+    render(<TVLog entries={entries} maxVisible={2} inlineVisible />);
+
+    expect(screen.getByText('Survivor round begins')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Open game log/i })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    document.body.classList.remove('experiment-game-chrome-refined');
+  });
+});

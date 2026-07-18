@@ -1,124 +1,180 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import type { TvEvent } from '../../types';
+import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome';
 import { tease } from '../../utils/tvLogTemplates';
 import './TVLog.css';
 
 const MAX_ADAPTIVE_VISIBLE_ROWS = 3;
+type ActivityFilter = 'all' | TvEvent['type'];
 
 const TYPE_ICONS: Record<TvEvent['type'], string> = {
-  game: '🎮',
-  social: '💬',
-  vote: '🗳️',
-  twist: '🌀',
-  diary: '📖',
+  game: '🎮', social: '💬', vote: '🗳️', twist: '🌀', diary: '📖',
 };
+const TYPE_LABELS: Record<TvEvent['type'], string> = {
+  game: 'Game', social: 'Social', vote: 'Vote', twist: 'Shock', diary: 'Diary',
+};
+const FILTERS: Array<{ value: ActivityFilter; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'game', label: 'Game' },
+  { value: 'social', label: 'Social' },
+  { value: 'vote', label: 'Votes' },
+  { value: 'twist', label: 'Shocks' },
+  { value: 'diary', label: 'Diary' },
+];
 
 export interface TVLogProps {
-  /** Full list of TV events, newest first. */
   entries: TvEvent[];
-  /**
-   * Text currently displayed in the main TV viewport.
-   * When the first entry's text matches this value it is suppressed from the
-   * log to avoid showing a duplicate row when older rows remain available.
-   */
   mainTVMessage?: string;
-  /**
-   * Maximum number of rows visible before the list scrolls.
-   * The log always keeps at least one visible row so older entries remain
-   * reachable without letting the feed crowd the roster.
-   * @default 3
-   */
   maxVisible?: number;
-  /**
-   * When enabled, small screens clamp each collapsed feed entry to two text
-   * lines while older messages remain reachable via scroll.
-   */
   mobileTwoLineMode?: boolean;
+  inlineVisible?: boolean;
 }
 
-/**
- * TVLog — a compact, scrollable event-log strip.
- *
- * Features:
- *   - Duplicate suppression: hides the first entry when it matches the main TV message and older entries remain.
- *   - Reserves at least one visible row; grows up to three rows when the viewport has room.
- *   - Teaser truncation: long lines are clipped to 60 chars; tap/click to expand.
- *   - Optional mobile two-line mode that clamps row copy without hiding the log.
- */
+function formatEventAge(timestamp: number): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
+  if (minutes < 1) return 'Now';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
+}
+
 export default function TVLog({
   entries,
   mainTVMessage,
   maxVisible = MAX_ADAPTIVE_VISIBLE_ROWS,
   mobileTwoLineMode = false,
+  inlineVisible = false,
 }: TVLogProps) {
+  const refined = useRefinedGameChrome();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
+  const [logOpen, setLogOpen] = useState(false);
   const effectiveMaxVisible = Math.max(1, maxVisible);
 
-  // Suppress the first entry only when older rows remain, so the log never
-  // collapses to an empty strip just because the main TV repeats the newest row.
   const visible = useMemo(() => {
-    if (!mainTVMessage || entries.length <= 1) return entries;
+    const deduplicated = !mainTVMessage || entries.length <= 1
+      ? entries
+      : entries[0].text === mainTVMessage ? entries.slice(1) : entries;
+    return activityFilter === 'all'
+      ? deduplicated
+      : deduplicated.filter((entry) => entry.type === activityFilter);
+  }, [activityFilter, entries, mainTVMessage]);
 
-    const [latestEntry, ...olderEntries] = entries;
-    return latestEntry.text === mainTVMessage ? olderEntries : entries;
-  }, [entries, mainTVMessage]);
+  useEffect(() => {
+    if (!logOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLogOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [logOpen]);
 
   function toggleExpand(id: string) {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+    setExpandedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
 
-  return (
-    <ul
-      className="tv-log"
-      data-testid="tv-feed"
-      data-mobile-two-line={mobileTwoLineMode ? 'true' : undefined}
-      style={{ '--tv-log-max-vis': effectiveMaxVisible } as CSSProperties}
-      aria-label="Game event log"
-    >
-      {visible.length === 0 && (
-        <li className="tv-log__item tv-log__item--empty" aria-hidden="true">
-          <span className="tv-log__icon" aria-hidden="true">•</span>
-          <span className="tv-log__text">Game log</span>
-        </li>
-      )}
-      {visible.map((ev) => {
-        const isExpanded = expandedIds.has(ev.id);
-        const displayText = isExpanded ? ev.text : tease(ev.text);
-        return (
-          <li
-            key={ev.id}
-            className={[
-              'tv-log__item',
-              `tv-log__item--${ev.type}`,
-              isExpanded ? 'tv-log__item--expanded' : '',
-            ].filter(Boolean).join(' ')}
-            onClick={() => toggleExpand(ev.id)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                toggleExpand(ev.id);
-              }
-            }}
-            aria-expanded={isExpanded}
-            aria-label={isExpanded ? ev.text : displayText}
-          >
-            <span className="tv-log__icon" aria-hidden="true">
-              {TYPE_ICONS[ev.type]}
-            </span>
-            <span className="tv-log__text">{displayText}</span>
+  const activityContent = (
+    <>
+      <div className="tv-log__toolbar">
+        <div className="tv-log__heading-group">
+          <span className="tv-log__heading" id="tv-log-heading">Game log</span>
+          <span className="tv-log__count" aria-label={`${visible.length} visible events`}>{visible.length}</span>
+        </div>
+        <div className="tv-log__filters" role="group" aria-label="Filter game events">
+          {FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={`tv-log__filter${activityFilter === filter.value ? ' tv-log__filter--active' : ''}`}
+              aria-pressed={activityFilter === filter.value}
+              onClick={() => setActivityFilter(filter.value)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ul
+        className="tv-log"
+        data-testid="tv-feed"
+        data-mobile-two-line={mobileTwoLineMode ? 'true' : undefined}
+        style={{ '--tv-log-max-vis': effectiveMaxVisible } as CSSProperties}
+        aria-label="Game event log"
+      >
+        {visible.length === 0 && (
+          <li className="tv-log__item tv-log__item--empty" aria-live="polite">
+            <span className="tv-log__icon" aria-hidden="true">•</span>
+            <span className="tv-log__text">No matching events yet</span>
           </li>
-        );
-      })}
-    </ul>
+        )}
+        {visible.map((event) => {
+          const isExpanded = expandedIds.has(event.id);
+          const displayText = isExpanded ? event.text : tease(event.text);
+          return (
+            <li key={event.id} className={`tv-log__item tv-log__item--${event.type}${isExpanded ? ' tv-log__item--expanded' : ''}`}>
+              <button
+                type="button"
+                className="tv-log__event"
+                onClick={() => toggleExpand(event.id)}
+                aria-expanded={isExpanded}
+                aria-label={`${TYPE_LABELS[event.type]} event: ${event.text}`}
+              >
+                <span className="tv-log__icon" aria-hidden="true">{TYPE_ICONS[event.type]}</span>
+                <span className="tv-log__copy">
+                  <span className="tv-log__type">{TYPE_LABELS[event.type]}</span>
+                  <span className="tv-log__text">{displayText}</span>
+                </span>
+                <time className="tv-log__time" dateTime={new Date(event.timestamp).toISOString()}>{formatEventAge(event.timestamp)}</time>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+
+  if (!refined || inlineVisible) {
+    return <section className={`tv-log-shell${refined ? ' tv-log-shell--inline' : ''}`} aria-labelledby="tv-log-heading">{activityContent}</section>;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="tv-log__launcher"
+        aria-label={`Open game log, ${entries.length} events`}
+        onClick={() => setLogOpen(true)}
+      >
+        <span aria-hidden="true">☷</span>
+        <span>Log</span>
+      </button>
+      {logOpen && createPortal(
+        <div className="tv-log-modal__backdrop" role="presentation" onClick={() => setLogOpen(false)}>
+          <section
+            className="tv-log-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tv-log-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="tv-log-modal__header">
+              <div>
+                <span className="tv-log-modal__eyebrow">House history</span>
+                <h2 id="tv-log-modal-title">Game log</h2>
+              </div>
+              <button type="button" className="tv-log-modal__close" aria-label="Close game log" onClick={() => setLogOpen(false)}>×</button>
+            </header>
+            {activityContent}
+          </section>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }

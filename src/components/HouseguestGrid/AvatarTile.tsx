@@ -72,6 +72,8 @@ type Props = {
    */
   isEvicting?: boolean
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
+  /** Shared instructions announced when this tile is interactive. */
+  descriptionId?: string
 }
 
 function formatStat(value: number | null | undefined, options: { decimals?: number } = {}) {
@@ -79,7 +81,7 @@ function formatStat(value: number | null | undefined, options: { decimals?: numb
   return options.decimals != null ? value.toFixed(options.decimals) : String(value)
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, roboStats, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting, nominationCeremonyState }: Props) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, roboStats, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting, nominationCeremonyState, descriptionId }: Props) {
   const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
@@ -89,6 +91,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null)
   const isHoldActiveRef = React.useRef(false)
   const [statsOpen, setStatsOpen] = React.useState(false)
+  const [isPressing, setIsPressing] = React.useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(null)
   const resolvedAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
   const isSurvivorRoboTile = Boolean(roboStats) || Boolean(avatarUrl?.includes('bottts'))
@@ -162,6 +165,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
 
   function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
     if (!onHoldPreviewStart) return
+    setIsPressing(true)
     clearLongPressTimeout()
     isHoldActiveRef.current = false
     const touch = e.touches[0]
@@ -189,12 +193,14 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
       // so the player can drag their finger away and still read the dialog.
       if (isHoldActiveRef.current) return
       clearLongPressTimeout()
+      setIsPressing(false)
       touchStartPosRef.current = null
     }
   }
 
   function handleTouchEnd() {
     clearLongPressTimeout()
+    setIsPressing(false)
     touchStartPosRef.current = null
     if (isHoldActiveRef.current) {
       isHoldActiveRef.current = false
@@ -256,8 +262,9 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   return (
     <>
       <div
-        className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
+        className={[styles.tile, isEvicted ? styles.evicted : '', isInteractive ? styles.interactive : '', isPressing ? styles.pressing : ''].filter(Boolean).join(' ')}
         aria-label={ariaLabel}
+        aria-describedby={isInteractive ? descriptionId : undefined}
         title={name}
         role={isInteractive ? 'button' : 'group'}
         tabIndex={isInteractive ? 0 : undefined}
@@ -299,6 +306,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           <div className={styles.nameOverlay} aria-hidden="true">
             {name}
           </div>
+          {isPressing && <span className={styles.holdProgress} aria-hidden="true" />}
 
           {isYou && (
             <span className={styles.youBadge} aria-hidden="true">

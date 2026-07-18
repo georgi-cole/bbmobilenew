@@ -105,6 +105,13 @@ const SECTIONS: SettingSection[] = [
       },
       {
         type: 'toggle',
+        id: 'houseFeed',
+        label: 'House Feed',
+        get: (s) => s.gameUX.houseFeed,
+        onChange: (dispatch, val) => dispatch(setGameUX({ houseFeed: val })),
+      },
+      {
+        type: 'toggle',
         id: 'publicMode',
         label: 'Public Mode',
         badge: 'VIP',

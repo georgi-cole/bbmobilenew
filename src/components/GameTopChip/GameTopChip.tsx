@@ -13,6 +13,8 @@ export interface GameTopChipProps {
   disabled?: boolean;
   ariaLabel?: string;
   title?: string;
+  /** Semantic visual tone. */
+  tone?: 'accent' | 'neutral' | 'danger' | 'success';
   /** Additional class names */
   className?: string;
 }
@@ -30,6 +32,7 @@ export default function GameTopChip({
   disabled = false,
   ariaLabel,
   title,
+  tone = 'accent',
   className = '',
 }: GameTopChipProps) {
   const Tag = onClick ? 'button' : 'span';
@@ -43,7 +46,7 @@ export default function GameTopChip({
 
   return (
     <Tag
-      className={`game-top-chip ${className}`.trim()}
+      className={`game-top-chip game-top-chip--${tone} ${className}`.trim()}
       aria-label={ariaLabel ?? normalizedLabel}
       title={title}
       style={chipStyle}
