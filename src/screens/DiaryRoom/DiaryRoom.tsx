@@ -250,10 +250,59 @@ function saveBigEyeMemory(gameId: string, playerId: string, memory: string): voi
   }
 }
 
-function loadChat(playerId: string): ChatMessage[] {
+function toBase64(bytes: Uint8Array): string {
+  let binary = ''
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte)
+  })
+  return btoa(binary)
+}
+
+function fromBase64(value: string): Uint8Array {
+  const binary = atob(value)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
+}
+
+async function getChatCryptoKey(playerId: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder()
+  const material = `${playerId}:${window.location.origin}:diary-room-chat`
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(material))
+  return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+}
+
+async function encryptChatPayload(playerId: string, plaintext: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const key = await getChatCryptoKey(playerId)
+  const encoded = new TextEncoder().encode(plaintext)
+  const cipherBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded)
+  const cipherBytes = new Uint8Array(cipherBuffer)
+  return `${toBase64(iv)}:${toBase64(cipherBytes)}`
+}
+
+async function decryptChatPayload(playerId: string, payload: string): Promise<string> {
+  const [ivB64, cipherB64] = payload.split(':')
+  if (!ivB64 || !cipherB64) throw new Error('Invalid encrypted payload format')
+  const iv = fromBase64(ivB64)
+  const ciphertext = fromBase64(cipherB64)
+  const key = await getChatCryptoKey(playerId)
+  const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext)
+  return new TextDecoder().decode(plainBuffer)
+}
+
+async function loadChat(playerId: string): Promise<ChatMessage[]> {
   try {
     const raw = sessionStorage.getItem(chatKey(playerId))
-    return raw ? (JSON.parse(raw) as ChatMessage[]) : []
+    if (!raw) return []
+    try {
+      const decrypted = await decryptChatPayload(playerId, raw)
+      return JSON.parse(decrypted) as ChatMessage[]
+    } catch {
+      return JSON.parse(raw) as ChatMessage[]
+    }
   } catch {
     return []
   }
@@ -261,7 +310,14 @@ function loadChat(playerId: string): ChatMessage[] {
 
 function saveChat(playerId: string, messages: ChatMessage[]): void {
   try {
-    sessionStorage.setItem(chatKey(playerId), JSON.stringify(messages))
+    const serialized = JSON.stringify(messages)
+    void encryptChatPayload(playerId, serialized)
+      .then((encrypted) => {
+        sessionStorage.setItem(chatKey(playerId), encrypted)
+      })
+      .catch(() => {
+        // sessionStorage may be unavailable in some contexts — fail silently
+      })
   } catch {
     // sessionStorage may be unavailable in some contexts — fail silently
   }
@@ -668,10 +724,22 @@ export default function DiaryRoom() {
       return
     }
 
-    const visitCount = recordConfessionalVisit(playerId)
-    const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount)
-    setMessages([greeting])
-    saveChat(playerId, [greeting])
+    let cancelled = false
+    void loadChat(playerId).then((storedMessages) => {
+      if (cancelled) return
+      if (storedMessages.length > 0) {
+        setMessages(storedMessages)
+        return
+      }
+      const visitCount = recordConfessionalVisit(playerId)
+      const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount)
+      setMessages([greeting])
+      saveChat(playerId, [greeting])
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [confessionalLocked, playerId])
 
   useEffect(() => {
