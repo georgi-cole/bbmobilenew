@@ -32,6 +32,7 @@ const SelfEvicted = lazy(() => import('./screens/SelfEvicted/SelfEvicted'));
 const Rules = lazy(() => import('./screens/Rules/Rules'));
 const PublicMeter = lazy(() => import('./screens/PublicMeter/PublicMeter'));
 const Settings = lazy(() => import('./screens/Settings/Settings'));
+const CinematicPreview = lazy(() => import('./screens/CinematicPreview/CinematicPreview'));
 
 const load = (element: ReactNode) => (
   <Suspense fallback={<RouteLoadingScreen />}>{element}</Suspense>
@@ -98,6 +99,11 @@ const MinigameLab = import.meta.env.DEV
   : null;
 
 export const router = createHashRouter([
+  {
+    path: '/cinematic',
+    element: <Suspense fallback={null}><CinematicPreview /></Suspense>,
+    errorElement: <RouteErrorBoundary />,
+  },
   {
     path: '/',
     element: <AppShell />,

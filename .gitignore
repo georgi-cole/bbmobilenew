@@ -8,8 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+**/.wrangler/
 dist
 dist-ssr
+renders/
 *.local
 
 # Editor directories and files

@@ -23,9 +23,9 @@ if (import.meta.env.DEV) {
   console.log('[router] bundle:', import.meta.url, '| pathname:', window.location.pathname, '| hash:', window.location.hash);
 }
 
-/** Returns true when the current hash corresponds to the Intro/Home route. */
-function isHomeRoute(hash: string): boolean {
-  return hash === '' || hash === '#' || hash === '#/';
+/** Returns true when a route owns its own full-screen audio/visual experience. */
+function suppressesAudioGate(hash: string): boolean {
+  return hash === '' || hash === '#' || hash === '#/' || hash.startsWith('#/cinematic');
 }
 
 export default function App() {
@@ -52,7 +52,7 @@ export default function App() {
       <AudioStateSync />
       {/* AudioGate is suppressed on the Intro/Home route because HomeHub
           unlocks audio via the Play gesture (see HomeHub.handlePlay). */}
-      {!isHomeRoute(hash) && <AudioGate />}
+      {!suppressesAudioGate(hash) && <AudioGate />}
       <RouterProvider router={router} />
     </Provider>
   );

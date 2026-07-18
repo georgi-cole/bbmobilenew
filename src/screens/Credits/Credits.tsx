@@ -1,44 +1,31 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Player, type PlayerRef } from '@remotion/player';
+import {
+  type SyntheticEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CREDITS_VIDEO_SOURCES } from './creditsAssetPaths';
+import {
+  getCreditsSoundtrackFrame,
+  isCreditsSoundtrackPlaying,
+  startCreditsSoundtrackFromGesture,
+  stopCreditsSoundtrack,
+} from '../../cinematic/audio/creditsSoundtrack';
+import { CinematicComposition } from '../../cinematic/components/CinematicComposition';
+import { CINEMATIC_CONFIG } from '../../cinematic/config/cinematicConfig';
 import './Credits.css';
 
 const EXIT_FADE_MS = 420;
-const CREDITS_PRELOAD_SELECTOR = 'video[data-credits-preload="true"]';
-
-const creditsVideoUrl = CREDITS_VIDEO_SOURCES[0];
-let creditsVideoPreloader: HTMLVideoElement | null = null;
-
-function ensureCreditsVideoPreload() {
-  if (!creditsVideoUrl || creditsVideoPreloader != null || typeof document === 'undefined') {
-    return;
-  }
-
-  const existingPreloader = document.querySelector<HTMLVideoElement>(CREDITS_PRELOAD_SELECTOR);
-  if (existingPreloader != null) {
-    creditsVideoPreloader = existingPreloader;
-    return;
-  }
-
-  const preloadVideo = document.createElement('video');
-  preloadVideo.preload = 'auto';
-  preloadVideo.muted = true;
-  preloadVideo.playsInline = true;
-  preloadVideo.src = creditsVideoUrl;
-  preloadVideo.setAttribute('data-credits-preload', 'true');
-  preloadVideo.setAttribute('aria-hidden', 'true');
-  preloadVideo.style.display = 'none';
-  document.body.appendChild(preloadVideo);
-  creditsVideoPreloader = preloadVideo;
-}
-
-ensureCreditsVideoPreload();
 
 export default function Credits() {
   const navigate = useNavigate();
   const exitTimeoutRef = useRef<number | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playerRef = useRef<PlayerRef | null>(null);
+  const [initialFrame] = useState(getCreditsSoundtrackFrame);
   const [isExiting, setIsExiting] = useState(false);
+  const [needsStart, setNeedsStart] = useState(() => !isCreditsSoundtrackPlaying());
 
   const onExit = useCallback(() => {
     if (isExiting) {
@@ -46,43 +33,53 @@ export default function Credits() {
     }
 
     setIsExiting(true);
-    videoRef.current?.pause();
+    playerRef.current?.pause();
+    stopCreditsSoundtrack();
     exitTimeoutRef.current = window.setTimeout(() => {
       navigate('/');
     }, EXIT_FADE_MS);
   }, [isExiting, navigate]);
 
-  useEffect(() => {
-    ensureCreditsVideoPreload();
+  const onStageActivate = useCallback((event: SyntheticEvent) => {
+    if (needsStart) {
+      setNeedsStart(false);
+      playerRef.current?.seekTo(0);
+      playerRef.current?.play(event);
 
-    const video = videoRef.current;
-    if (video == null) {
+      void startCreditsSoundtrackFromGesture().catch((error) => {
+        console.warn('[Credits] Soundtrack playback was blocked.', error);
+        setNeedsStart(true);
+      });
       return;
     }
 
-    video.defaultMuted = false;
-    video.muted = false;
+    onExit();
+  }, [needsStart, onExit]);
 
-    void video.play().catch(async () => {
-      // Some browsers reject autoplay once the route has mounted outside the
-      // original click gesture. Fall back to muted playback so the credits
-      // still start instantly instead of waiting for a second tap.
-      video.defaultMuted = true;
-      video.muted = true;
-      await video.play().catch((error) => {
-        console.warn('[Credits] Unable to autoplay end credits video.', error);
-      });
-    });
+  useEffect(() => {
+    const player = playerRef.current;
+    if (player == null) {
+      return;
+    }
+
+    const onPlayerEnded = () => onExit();
+    player.addEventListener('ended', onPlayerEnded);
+
+    if (!player.isPlaying()) {
+      player.play();
+    }
 
     return () => {
-      video.pause();
+      player.removeEventListener('ended', onPlayerEnded);
     };
-  }, []);
+  }, [onExit]);
 
   useEffect(() => () => {
     if (exitTimeoutRef.current != null) {
       window.clearTimeout(exitTimeoutRef.current);
     }
+    playerRef.current?.pause();
+    stopCreditsSoundtrack();
   }, []);
 
   useEffect(() => {
@@ -104,26 +101,42 @@ export default function Credits() {
         className="credits-stage"
         role="button"
         tabIndex={0}
-        aria-label="Tap to exit credits"
-        onClick={onExit}
+        aria-label={needsStart ? 'Tap to start credits' : 'Tap to exit credits'}
+        onClick={onStageActivate}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            onExit();
+            onStageActivate(event);
           }
         }}
       >
-        <video
-          ref={videoRef}
-          className="credits-video"
-          aria-label="Credits video"
-          src={creditsVideoUrl}
-          autoPlay
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          onEnded={onExit}
-        />
+        <div className="credits-webgl" aria-label="WebGL credits cinematic">
+          <Player
+            ref={playerRef}
+            component={CinematicComposition}
+            inputProps={{ audioMode: 'external' }}
+            durationInFrames={CINEMATIC_CONFIG.durationInFrames}
+            compositionWidth={CINEMATIC_CONFIG.width}
+            compositionHeight={CINEMATIC_CONFIG.height}
+            fps={CINEMATIC_CONFIG.fps}
+            initialFrame={initialFrame}
+            controls={false}
+            loop={false}
+            autoPlay
+            clickToPlay={false}
+            doubleClickToFullscreen={false}
+            spaceKeyToPlayOrPause={false}
+            moveToBeginningWhenEnded={false}
+            acknowledgeRemotionLicense
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+        {needsStart && (
+          <div className="credits-start-prompt" aria-hidden="true">
+            <strong>Tap to begin</strong>
+            <span>Sound on</span>
+          </div>
+        )}
       </div>
     </div>
   );
