@@ -286,8 +286,10 @@ async function encryptChatPayload(playerId: string, plaintext: string): Promise<
 async function decryptChatPayload(playerId: string, payload: string): Promise<string> {
   const [ivB64, cipherB64] = payload.split(':')
   if (!ivB64 || !cipherB64) throw new Error('Invalid encrypted payload format')
-  const iv = fromBase64(ivB64)
-  const ciphertext = fromBase64(cipherB64)
+  // Copy decoded bytes into ArrayBuffer-backed views. TypeScript's DOM crypto
+  // definitions reject views that could be backed by SharedArrayBuffer.
+  const iv = new Uint8Array(fromBase64(ivB64))
+  const ciphertext = new Uint8Array(fromBase64(cipherB64))
   const key = await getChatCryptoKey(playerId)
   const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext)
   return new TextDecoder().decode(plainBuffer)
@@ -823,14 +825,16 @@ export default function DiaryRoom() {
   useEffect(() => {
     return () => {
       const pid = playerIdRef.current
-      const msgs = loadChat(pid)
-      const hasUserMessage = msgs.some((msg) => msg.role === 'user')
-      if (hasUserMessage && !hasSummaryEmitted(pid)) {
-        markSummaryEmitted(pid)
-        const text = pickSummary(playerNameRef.current, seedRef.current ?? 0)
-        dispatchRef.current(addTvEvent({ text, type: 'game' }))
-      }
+      const storedMessages = loadChat(pid)
       clearConversationSession(pid)
+      void storedMessages.then((msgs) => {
+        const hasUserMessage = msgs.some((msg) => msg.role === 'user')
+        if (hasUserMessage && !hasSummaryEmitted(pid)) {
+          markSummaryEmitted(pid)
+          const text = pickSummary(playerNameRef.current, seedRef.current ?? 0)
+          dispatchRef.current(addTvEvent({ text, type: 'game' }))
+        }
+      })
     }
   }, [])
 
