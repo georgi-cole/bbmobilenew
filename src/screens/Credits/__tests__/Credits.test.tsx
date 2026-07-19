@@ -188,10 +188,15 @@ describe('Credits', () => {
 
     act(() => {
       playerMock.emitEnded();
-      vi.advanceTimersByTime(EXIT_FADE_MS);
     });
 
     expect(playerMock.pause).toHaveBeenCalled();
+    expect(screen.getByTestId('credits-end-guard')).toHaveClass('is-visible', 'is-instant');
+
+    act(() => {
+      vi.advanceTimersByTime(EXIT_FADE_MS);
+    });
+
     expect(screen.getByText('Home screen')).toBeInTheDocument();
   });
 });

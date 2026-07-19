@@ -47,8 +47,8 @@ export const sampleCamera = (progress: number, frame: number): CameraSample => {
   const focusIn = easedRange(frame, 1586, 1620);
   const focusOut = 1 - easedRange(frame, 1640, 1678);
   const yachtFocus = focusIn * focusOut;
-  const focusPosition = new Vector3(38, 19, -504);
-  const focusTarget = new Vector3(42, 5, -558);
+  const focusPosition = new Vector3(44, 20, -565);
+  const focusTarget = new Vector3(48, 5, -622);
   position.lerp(focusPosition, yachtFocus);
   target.lerp(focusTarget, yachtFocus);
 
