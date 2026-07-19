@@ -117,7 +117,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     toSecond: 9.45,
     lines: [
       { text: 'Art Direction', style: 'label' },
-      { text: 'Genestetica Ltd.', style: 'name', gapBefore: true },
+      { text: 'I.C.O LTD.', style: 'name', gapBefore: true },
     ],
   },
   {
@@ -165,7 +165,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     toSecond: 31.5,
     lines: [
       { text: 'Special Thanks', style: 'label' },
-      { text: 'Rado Tushev', style: 'name', gapBefore: true },
+      { text: 'Ana-Luna Nieves', style: 'name', gapBefore: true },
     ],
   },
   {
@@ -192,7 +192,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     toSecond: 39.6,
     lines: [
       { text: 'Special Thanks', style: 'label' },
-      { text: 'B. Braun EMEA', style: 'name', gapBefore: true },
+      { text: 'BBraun EMEA', style: 'name', gapBefore: true },
     ],
   },
   {
@@ -206,7 +206,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
   {
     id: 'closing',
     fromSecond: 43.2,
-    toSecond: 54,
+    toSecond: 48,
     lines: [
       { text: 'The Big eye is still scanning...', style: 'closing-title' },
       { text: 'More is coming soon', style: 'closing-subtitle', gapBefore: true },
