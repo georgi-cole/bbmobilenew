@@ -1066,7 +1066,7 @@
         openAchievementsPanel();
         break;
       case 'store':
-        openPlaceholder('Store', '🛒', 'Fresh cosmetic rewards and extras are on the way.');
+        global.location.hash = '#/store';
         break;
       case 'share':
         openShareDialog();

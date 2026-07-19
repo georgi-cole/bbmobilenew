@@ -136,8 +136,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
     },
   },
   sim: {
-    publicMode: true,
-    enableJuryHouse: true,
+    publicMode: false,
+    enableJuryHouse: false,
     enableFanFavorite: true,
     enableTwists: true,
     allowSelfEvict: false,
