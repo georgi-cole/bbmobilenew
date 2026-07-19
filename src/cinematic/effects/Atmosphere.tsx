@@ -10,6 +10,7 @@ import {
   Vector3,
 } from 'three';
 import { CINEMATIC_CONFIG } from '../config/cinematicConfig';
+import type { CinematicQuality } from '../config/cinematicQuality';
 import type { TimelineState } from '../timeline/timeline';
 import {
   CELESTIAL_EYE_SCALE,
@@ -23,6 +24,7 @@ import { createSeededRandom, randomBetween } from '../utils/seededRandom';
 type AtmosphereProps = {
   frame: number;
   state: TimelineState;
+  quality: CinematicQuality;
 };
 
 const SKY_VERTEX = `
@@ -78,7 +80,7 @@ const CLOUD_FRAGMENT = `
   }
 `;
 
-const SkyDome = ({ state }: { state: TimelineState }) => {
+const SkyDome = ({ state, quality }: { state: TimelineState; quality: CinematicQuality }) => {
   const uniforms = useMemo(() => ({
     uTop: { value: new Color(state.skyTop) },
     uHorizon: { value: new Color(state.skyHorizon) },
@@ -87,7 +89,7 @@ const SkyDome = ({ state }: { state: TimelineState }) => {
 
   return (
     <mesh position={[0, 70, -150]} scale={[1, 0.72, 1]}>
-      <sphereGeometry args={[720, 32, 20]} />
+      <sphereGeometry args={[720, quality === 'high' ? 32 : 24, quality === 'high' ? 20 : 14]} />
       <shaderMaterial
         side={BackSide}
         uniforms={uniforms}
@@ -99,10 +101,10 @@ const SkyDome = ({ state }: { state: TimelineState }) => {
   );
 };
 
-const Stars = ({ opacity, frame }: { opacity: number; frame: number }) => {
+const Stars = ({ opacity, frame, quality }: { opacity: number; frame: number; quality: CinematicQuality }) => {
   const { positions, colors } = useMemo(() => {
     const random = createSeededRandom(CINEMATIC_CONFIG.seed + 11);
-    const count = 2300;
+    const count = quality === 'high' ? 2300 : 1350;
     const positionValues = new Float32Array(count * 3);
     const colorValues = new Float32Array(count * 3);
     const cool = new Color('#dff8ff');
@@ -119,7 +121,7 @@ const Stars = ({ opacity, frame }: { opacity: number; frame: number }) => {
     }
 
     return { positions: positionValues, colors: colorValues };
-  }, []);
+  }, [quality]);
 
   if (opacity <= 0.001) return null;
   const twinkle = 0.9 + Math.sin(frame * 0.018) * 0.08;
@@ -143,12 +145,13 @@ const Stars = ({ opacity, frame }: { opacity: number; frame: number }) => {
   );
 };
 
-const CloudLayer = ({ frame, state, height, offset, scale }: {
+const CloudLayer = ({ frame, state, height, offset, scale, quality }: {
   frame: number;
   state: TimelineState;
   height: number;
   offset: number;
   scale: number;
+  quality: CinematicQuality;
 }) => {
   const uniforms = useMemo(() => ({
     uOpacity: { value: state.cloudOpacity },
@@ -158,7 +161,7 @@ const CloudLayer = ({ frame, state, height, offset, scale }: {
 
   return (
     <mesh position={[0, height, -150]} scale={[scale, scale * 0.72, scale]}>
-      <sphereGeometry args={[690, 32, 20]} />
+      <sphereGeometry args={[690, quality === 'high' ? 32 : 24, quality === 'high' ? 20 : 14]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={CLOUD_VERTEX}
@@ -180,12 +183,13 @@ type RainDrop = {
   thickness: number;
 };
 
-const Rain = ({ frame, intensity }: { frame: number; intensity: number }) => {
+const Rain = ({ frame, intensity, quality }: { frame: number; intensity: number; quality: CinematicQuality }) => {
   const meshRef = useRef<InstancedMesh>(null);
   const helper = useMemo(() => new Object3D(), []);
+  const sampledFrame = quality === 'balanced' ? Math.floor(frame / 2) * 2 : frame;
   const drops = useMemo<RainDrop[]>(() => {
     const random = createSeededRandom(CINEMATIC_CONFIG.seed + 91);
-    return Array.from({ length: 820 }, () => ({
+    return Array.from({ length: quality === 'high' ? 720 : 430 }, () => ({
       x: randomBetween(random, -78, 78),
       yOffset: randomBetween(random, 0, 118),
       z: randomBetween(random, CINEMATIC_CONFIG.city.farZ, CINEMATIC_CONFIG.city.nearZ),
@@ -193,14 +197,14 @@ const Rain = ({ frame, intensity }: { frame: number; intensity: number }) => {
       length: randomBetween(random, 2.2, 6.4),
       thickness: randomBetween(random, 0.018, 0.048),
     }));
-  }, []);
+  }, [quality]);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
 
     drops.forEach((drop, index) => {
-      const travel = (frame * drop.speed + drop.yOffset) % 118;
+      const travel = (sampledFrame * drop.speed + drop.yOffset) % 118;
       helper.position.set(drop.x + travel * 0.08, 112 - travel, drop.z);
       helper.rotation.set(0, 0, -0.13);
       helper.scale.set(drop.thickness, drop.length, drop.thickness);
@@ -209,7 +213,7 @@ const Rain = ({ frame, intensity }: { frame: number; intensity: number }) => {
     });
     mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     mesh.instanceMatrix.needsUpdate = true;
-  }, [drops, frame, helper]);
+  }, [drops, helper, sampledFrame]);
 
   if (intensity <= 0.001) return null;
 
@@ -385,13 +389,13 @@ const CelestialEye = ({ opacity, frame, state }: {
   );
 };
 
-export const Atmosphere = ({ frame, state }: AtmosphereProps) => (
+export const Atmosphere = ({ frame, state, quality }: AtmosphereProps) => (
   <>
-    <SkyDome state={state} />
-    <Stars opacity={state.starsOpacity} frame={frame} />
-    <CloudLayer frame={frame} state={state} height={82} offset={0.4} scale={1.04} />
-    <CloudLayer frame={frame} state={state} height={103} offset={8.7} scale={1.22} />
-    <Rain frame={frame} intensity={state.rainIntensity} />
+    <SkyDome state={state} quality={quality} />
+    <Stars opacity={state.starsOpacity} frame={frame} quality={quality} />
+    <CloudLayer frame={frame} state={state} height={82} offset={0.4} scale={1.04} quality={quality} />
+    <CloudLayer frame={frame} state={state} height={103} offset={8.7} scale={1.22} quality={quality} />
+    <Rain frame={frame} intensity={state.rainIntensity} quality={quality} />
     <LightningBolt frame={frame} intensity={state.lightningBolt} />
     <CelestialEye opacity={state.eyeOpacity} frame={frame} state={state} />
   </>

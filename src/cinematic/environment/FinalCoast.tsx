@@ -33,12 +33,14 @@ const SEA_FRAGMENT = `
   void main() {
     float waveA = sin(vUv.y * 155.0 + uTime * 0.052 + sin(vUv.x * 31.0)) * 0.5 + 0.5;
     float waveB = sin(vUv.y * 91.0 - uTime * 0.037 + vUv.x * 47.0) * 0.5 + 0.5;
+    float waveC = sin(vUv.y * 226.0 + uTime * 0.073 + sin(vUv.x * 18.0) * 1.8) * 0.5 + 0.5;
     float revealNoise = (waveA - 0.5) * 0.024 + (waveB - 0.5) * 0.016;
     float revealFront = 1.0 - clamp(uReveal, 0.0, 1.0);
     if (vUv.y + revealNoise < revealFront) discard;
     float revealEdge = 1.0 - smoothstep(0.0, 0.045, abs(vUv.y + revealNoise - revealFront));
 
-    float glint = smoothstep(0.945, 1.0, waveA * 0.66 + waveB * 0.34);
+    float glint = smoothstep(0.91, 1.0, waveA * 0.46 + waveB * 0.3 + waveC * 0.24);
+    float softCrest = smoothstep(0.76, 0.96, waveC * 0.62 + waveA * 0.38);
     float horizon = smoothstep(0.0, 1.0, vUv.y);
     vec3 dayDeep = vec3(0.035, 0.16, 0.22);
     vec3 dayHorizon = vec3(0.28, 0.52, 0.61);
@@ -51,22 +53,25 @@ const SEA_FRAGMENT = `
     vec3 eveningColor = mix(eveningDeep, eveningHorizon, horizon * 0.76);
     vec3 color = mix(dayColor, afternoonColor, uGoldenHour * 0.78);
     color = mix(color, eveningColor, uSunset * 0.94);
+    color *= 0.97 + (waveB - 0.5) * 0.045;
     color += mix(vec3(0.1, 0.2, 0.23), vec3(0.48, 0.28, 0.16), uGoldenHour) * revealEdge * 0.035;
-    color += glint * vec3(0.2, 0.4, 0.44) * (0.12 + horizon * 0.24);
+    color += glint * vec3(0.24, 0.46, 0.49) * (0.14 + horizon * 0.29);
+    color += softCrest * vec3(0.16, 0.31, 0.34) * (0.025 + horizon * 0.055);
 
     float reflectionCentre = 0.528
-      + sin(vUv.y * 31.0 + uTime * 0.018) * 0.009
-      + sin(vUv.y * 73.0 - uTime * 0.011) * 0.004;
-    float reflectionTightness = mix(18.0, 72.0, horizon);
+      + sin(vUv.y * 31.0 + uTime * 0.018) * 0.011
+      + sin(vUv.y * 73.0 - uTime * 0.011) * 0.005;
+    float reflectionTightness = mix(12.0, 58.0, horizon);
     float sunPath = exp(-abs(vUv.x - reflectionCentre) * reflectionTightness);
-    float brokenLight = smoothstep(0.48, 0.92, waveA * 0.55 + waveB * 0.45);
-    float reflectionFade = 1.0 - smoothstep(0.7, 1.0, uSunset);
-    float spill = sunPath * (0.16 + brokenLight * 1.18)
-      * (0.32 + horizon * 0.9) * reflectionFade;
-    vec3 reflectionWarm = mix(vec3(1.0, 0.68, 0.26), vec3(1.0, 0.19, 0.045), uSunset * 0.86);
-    color += reflectionWarm * spill;
-    color += mix(vec3(1.0, 0.88, 0.54), vec3(1.0, 0.38, 0.11), uSunset)
-      * sunPath * glint * horizon * reflectionFade * 0.72;
+    float reflectionScatter = exp(-abs(vUv.x - reflectionCentre) * mix(7.0, 22.0, horizon));
+    float brokenLight = smoothstep(0.39, 0.88, waveA * 0.42 + waveB * 0.28 + waveC * 0.3);
+    float reflectionFade = 1.0 - smoothstep(0.82, 1.0, uSunset);
+    float spill = (sunPath * (0.34 + brokenLight * 1.58) + reflectionScatter * glint * 0.36)
+      * (0.4 + horizon * 1.12) * reflectionFade * (0.88 + uGoldenHour * 0.42);
+    vec3 reflectionWarm = mix(vec3(1.0, 0.75, 0.32), vec3(1.0, 0.18, 0.035), uSunset * 0.86);
+    color += reflectionWarm * spill * 1.08;
+    color += mix(vec3(1.0, 0.93, 0.66), vec3(1.0, 0.34, 0.08), uSunset)
+      * sunPath * glint * horizon * reflectionFade * 1.05;
     gl_FragColor = vec4(color, uOpacity);
   }
 `;
@@ -97,7 +102,7 @@ const COAST_SURFACE_FRAGMENT = `
     float grain = hash(floor(p * 2.7));
     float broad = hash(floor(p * 0.16));
     float windRipple = sin(p.x * 0.19 + sin(p.y * 0.075) * 2.1) * 0.5 + 0.5;
-    float revealNoise = (broad - 0.5) * 0.055 + (windRipple - 0.5) * 0.028;
+    float revealNoise = 0.0;
     float revealFront = 1.0 - clamp(uReveal, 0.0, 1.0);
     if (depth + revealNoise < revealFront) discard;
 
@@ -148,28 +153,6 @@ const CLOUD_FRAGMENT = `
 
 type ShorePoint = readonly [number, number];
 
-const LEFT_EDGE: readonly ShorePoint[] = [
-  [-48, -425],
-  [-57, -472],
-  [-74, -525],
-  [-68, -580],
-  [-96, -644],
-  [-124, -710],
-  [-158, -790],
-  [-202, -895],
-] as const;
-
-const RIGHT_EDGE: readonly ShorePoint[] = [
-  [50, -425],
-  [64, -476],
-  [60, -532],
-  [88, -590],
-  [104, -650],
-  [132, -724],
-  [162, -806],
-  [212, -895],
-] as const;
-
 const BEACH_EDGE: readonly ShorePoint[] = [
   [-360, -522],
   [-220, -516],
@@ -200,28 +183,6 @@ const createBeachGeometry = (): BufferGeometry => {
   geometry.computeVertexNormals();
   return geometry;
 };
-const createShoreGeometry = (edge: readonly ShorePoint[], side: -1 | 1): BufferGeometry => {
-  const positions: number[] = [];
-  const outerX = side * 370;
-  for (let index = 0; index < edge.length - 1; index += 1) {
-    const current = edge[index];
-    const next = edge[index + 1];
-    if (!current || !next) continue;
-    positions.push(
-      outerX, 0, current[1],
-      current[0], 0.12, current[1],
-      outerX, 0, next[1],
-      current[0], 0.12, current[1],
-      next[0], 0.12, next[1],
-      outerX, 0, next[1],
-    );
-  }
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  geometry.computeVertexNormals();
-  return geometry;
-};
-
 const CloudBank = ({ frame, opacity, state }: {
   frame: number;
   opacity: number;
@@ -385,12 +346,13 @@ type YachtProps = {
   frame: number;
   logoTexture?: Texture;
   opacity: number;
+  sunset: number;
   position: readonly [number, number, number];
   rotation: number;
   scale?: number;
 };
 
-const Yacht = ({ brand, frame, logoTexture, opacity, position, rotation, scale = 1 }: YachtProps) => {
+const Yacht = ({ brand, frame, logoTexture, opacity, sunset, position, rotation, scale = 1 }: YachtProps) => {
   const rightSail = useMemo(() => createSailGeometry(1), []);
   const leftSail = useMemo(() => createSailGeometry(-1), []);
   const sailLogoGeometry = useMemo(() => createSailLogoGeometry(), []);
@@ -398,6 +360,7 @@ const Yacht = ({ brand, frame, logoTexture, opacity, position, rotation, scale =
   const bob = Math.sin(frame * 0.035 + position[0] * 0.08) * 0.12;
   const roll = Math.sin(frame * 0.022 + position[2] * 0.03) * 0.012;
   const translucent = opacity < 0.999;
+  const navigationLight = opacity * clamp01((sunset - 0.28) / 0.42) * (1 - clamp01((sunset - 0.95) / 0.05));
 
   return (
     <group
@@ -532,6 +495,18 @@ const Yacht = ({ brand, frame, logoTexture, opacity, position, rotation, scale =
           </mesh>
         </group>
       )}
+      <mesh position={[-2.48, 1.48, -1.72]}>
+        <sphereGeometry args={[0.14, 8, 6]} />
+        <meshBasicMaterial color="#ff5d68" transparent opacity={navigationLight} toneMapped={false} />
+      </mesh>
+      <mesh position={[2.48, 1.48, -1.72]}>
+        <sphereGeometry args={[0.14, 8, 6]} />
+        <meshBasicMaterial color="#71f1b1" transparent opacity={navigationLight} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 1.72, 0.82]}>
+        <boxGeometry args={[1.55, 0.22, 0.54]} />
+        <meshBasicMaterial color="#ffd49a" transparent opacity={navigationLight * 0.78} toneMapped={false} />
+      </mesh>
       <Line
         points={[new Vector3(-2.15, 0.18, -4.2), new Vector3(-3.3, 0.12, -14.5)]}
         color="#d6f7f3"
@@ -552,20 +527,21 @@ const Yacht = ({ brand, frame, logoTexture, opacity, position, rotation, scale =
   );
 };
 
-const Yachts = ({ frame, opacity }: { frame: number; opacity: number }) => {
+const Yachts = ({ frame, opacity, sunset }: { frame: number; opacity: number; sunset: number }) => {
   // CanvasTexture is created synchronously, so the coast never suspends the
   // entire WebGL canvas while a late image asset is fetched on mobile.
   const logoTexture = useMemo(() => createKoleQuantLogoTexture(), []);
 
   return (
     <group>
-      <Yacht brand="eye" frame={frame} opacity={opacity} position={[-39, 0.18, -548]} rotation={0.13} />
-      <group position={[42, 0.08, -558]} rotation={[0, -0.11, 0]} scale={[1.12, 1.12, 1.12]}>
+      <Yacht brand="eye" frame={frame} opacity={opacity} sunset={sunset} position={[-52, 0.18, -638]} rotation={0.13} />
+      <group position={[48, 0.08, -622]} rotation={[0, -0.11, 0]} scale={[1.12, 1.12, 1.12]}>
         <Yacht
           brand="kolequant"
           frame={frame}
           logoTexture={logoTexture}
           opacity={opacity}
+          sunset={sunset}
           position={[0, 0, 0]}
           rotation={0}
         />
@@ -574,67 +550,14 @@ const Yachts = ({ frame, opacity }: { frame: number; opacity: number }) => {
   );
 };
 
-const BirdFlock = ({ frame, opacity }: { frame: number; opacity: number }) => {
-  const birds = useMemo(() => [
-    [-62, 66, -710, 0.8],
-    [-46, 74, -735, 1.15],
-    [-28, 60, -760, 1.7],
-    [-8, 70, -785, 2.25],
-    [14, 58, -810, 2.8],
-    [38, 68, -835, 3.4],
-    [61, 56, -860, 3.9],
-  ] as const, []);
-  const drift = Math.max(0, frame - 1530) * 0.015;
-
-  return (
-    <group>
-      {birds.map(([x, y, z, phase], index) => {
-        const wing = 1.8 + (index % 3) * 0.28;
-        const flap = 0.58 + Math.sin(frame * 0.16 + phase) * 0.24;
-        return (
-          <Line
-            key={`${x}-${z}`}
-            position={[x + drift, y + Math.sin(frame * 0.025 + phase) * 0.4, z]}
-            points={[
-              new Vector3(-wing, 0, 0),
-              new Vector3(0, flap, 0),
-              new Vector3(wing, 0, 0),
-            ]}
-            color="#22323a"
-            lineWidth={2.6}
-            transparent
-            opacity={opacity * 0.88}
-            depthWrite={false}
-          />
-        );
-      })}
-    </group>
-  );
-};
 export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineState }) => {
   const beachGeometry = useMemo(() => createBeachGeometry(), []);
   const beachSurf = useMemo(() => BEACH_EDGE.map(([x, z]) => new Vector3(x, 0.34, z)), []);
-  const leftGeometry = useMemo(() => createShoreGeometry(LEFT_EDGE, -1), []);
-  const rightGeometry = useMemo(() => createShoreGeometry(RIGHT_EDGE, 1), []);
-  const leftSurf = useMemo(
-    () => LEFT_EDGE.map(([x, z]) => new Vector3(x + 1.6, 0.38, z)),
-    [],
-  );
-  const rightSurf = useMemo(
-    () => RIGHT_EDGE.map(([x, z]) => new Vector3(x - 1.6, 0.38, z)),
-    [],
-  );
   const opacity = state.coastProgress;
   const detailOpacity = clamp01((opacity - 0.38) / 0.62);
   const sandColor = new Color('#c69a72')
     .lerp(new Color('#b66d50'), state.goldenHourProgress * 0.62)
     .lerp(new Color('#55303a'), state.sunsetProgress * 0.9);
-  const leftShoreColor = new Color('#172722')
-    .lerp(new Color('#2f2b26'), state.goldenHourProgress * 0.5)
-    .lerp(new Color('#11151d'), state.sunsetProgress * 0.88);
-  const rightShoreColor = new Color('#1d2b25')
-    .lerp(new Color('#3a3028'), state.goldenHourProgress * 0.5)
-    .lerp(new Color('#141721'), state.sunsetProgress * 0.88);
 
   // Reveal opaque coast pixels from the distant horizon toward the camera.
   // This keeps the city spatially continuous during the transition without
@@ -683,30 +606,8 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
         opacity={detailOpacity * 0.62}
         depthWrite={false}
       />
-      {[leftGeometry, rightGeometry].map((geometry, index) => (
-        <mesh key={index} geometry={geometry}>
-          <shaderMaterial
-            vertexShader={COAST_SURFACE_VERTEX}
-            fragmentShader={COAST_SURFACE_FRAGMENT}
-            uniforms={{
-              uBaseColor: { value: index === 0 ? leftShoreColor : rightShoreColor },
-              uReveal: { value: clamp01((opacity - 0.48) / 0.52) },
-              uNearDepth: { value: 425 },
-              uFarDepth: { value: 895 },
-              uRockiness: { value: 1 },
-              uSunset: { value: state.sunsetProgress },
-            }}
-            side={DoubleSide}
-            depthWrite
-          />
-        </mesh>
-      ))}
-
-      <Line points={leftSurf} color="#d8f5ef" lineWidth={2.1} transparent opacity={detailOpacity * 0.54} depthWrite={false} />
-      <Line points={rightSurf} color="#d8f5ef" lineWidth={2.1} transparent opacity={detailOpacity * 0.54} depthWrite={false} />
       <CloudBank frame={frame} opacity={detailOpacity} state={state} />
-      <Yachts frame={frame} opacity={detailOpacity} />
-      <BirdFlock frame={frame} opacity={detailOpacity} />
+      <Yachts frame={frame} opacity={detailOpacity} sunset={state.sunsetProgress} />
     </group>
   );
 };

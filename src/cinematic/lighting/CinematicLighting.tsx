@@ -4,6 +4,7 @@ import {
   getCelestialBreath,
   getCelestialEyePosition,
 } from '../celestial/celestialGeometry';
+import type { CinematicQuality } from '../config/cinematicQuality';
 import type { TimelineState } from '../timeline/timeline';
 import { clamp01, lerp, smootherstep } from '../utils/math';
 
@@ -31,12 +32,17 @@ const HALO_VERTEX = `
 const HALO_FRAGMENT = `
   uniform vec3 uColor;
   uniform float uOpacity;
+  uniform float uTime;
   varying vec2 vUv;
   void main() {
-    float radius = length(vUv - vec2(0.5)) * 2.0;
-    float falloff = 1.0 - smoothstep(0.18, 1.0, radius);
-    falloff *= falloff;
-    gl_FragColor = vec4(uColor * 1.12, falloff * uOpacity);
+    vec2 p = vUv - vec2(0.5);
+    float radius = length(p) * 2.0;
+    float angle = atan(p.y, p.x);
+    float bloom = pow(1.0 - smoothstep(0.12, 1.0, radius), 2.1);
+    float inner = pow(1.0 - smoothstep(0.0, 0.58, radius), 1.35);
+    float corona = 0.94 + cos(angle * 9.0 + uTime * 0.018) * 0.06;
+    vec3 color = uColor * (1.02 + inner * 0.72);
+    gl_FragColor = vec4(color, (bloom * corona + inner * 0.28) * uOpacity);
   }
 `;
 const APERTURE_FRAGMENT = `
@@ -104,18 +110,22 @@ const CELESTIAL_FRAGMENT = `
       * sin(vUv.y * 39.0 - uTime * 0.009);
     float solarCellB = sin((vUv.x + vUv.y) * 91.0 - uTime * 0.006)
       * sin((vUv.x - vUv.y) * 63.0 + uTime * 0.008);
+    float driftingCells = sin(vUv.x * 24.0 - uTime * 0.004 + sin(vUv.y * 29.0)) * 0.5 + 0.5;
     float solarLimb = clamp(max(0.0, vNormal.z), 0.0, 1.0);
-    float coreHeat = pow(solarLimb, 0.46);
-    vec3 sunEdge = mix(vec3(1.0, 0.30, 0.055), vec3(0.82, 0.055, 0.018), uSunset);
-    vec3 sunCore = mix(vec3(1.0, 0.88, 0.47), vec3(1.0, 0.43, 0.12), uSunset * 0.82);
-    vec3 sun = mix(sunEdge, sunCore, coreHeat);
-    sun *= 1.0 + solarCellA * 0.045 + solarCellB * 0.022;
-    sun += vec3(1.0, 0.72, 0.28) * pow(solarLimb, 2.2) * 0.12;
-
+    float coreHeat = pow(solarLimb, 0.38);
+    float limbDepth = smoothstep(0.02, 0.92, solarLimb);
+    vec3 sunEdge = mix(vec3(0.88, 0.095, 0.016), vec3(0.58, 0.018, 0.012), uSunset);
+    vec3 sunMid = mix(vec3(1.0, 0.43, 0.08), vec3(0.98, 0.15, 0.025), uSunset * 0.82);
+    vec3 sunCore = mix(vec3(1.0, 0.94, 0.62), vec3(1.0, 0.52, 0.16), uSunset * 0.78);
+    vec3 sun = mix(sunEdge, sunMid, sqrt(coreHeat));
+    sun = mix(sun, sunCore, pow(coreHeat, 2.15));
+    sun *= 0.94 + solarCellA * 0.065 + solarCellB * 0.034 + driftingCells * 0.075;
+    sun += vec3(1.0, 0.62, 0.18) * pow(solarLimb, 2.7) * 0.2;
+    sun *= mix(0.76, 1.08, limbDepth);
     gl_FragColor = vec4(mix(moon, sun, uSunMorph), uOpacity);
   }
 `;
-const CelestialAperture = ({ closure }: { closure: number }) => {
+const CelestialAperture = ({ closure, quality }: { closure: number; quality: CinematicQuality }) => {
   if (closure <= 0.001) return null;
 
   return (
@@ -135,7 +145,7 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
         />
       </mesh>
       <mesh position={[0, 0, 0.08]}>
-        <ringGeometry args={[CELESTIAL_DISC_RADIUS - 0.28, CELESTIAL_DISC_RADIUS + 0.28, 96]} />
+        <ringGeometry args={[CELESTIAL_DISC_RADIUS - 0.28, CELESTIAL_DISC_RADIUS + 0.28, quality === 'high' ? 72 : 48]} />
         <meshBasicMaterial
           color="#d8fff7"
           transparent
@@ -148,7 +158,7 @@ const CelestialAperture = ({ closure }: { closure: number }) => {
     </group>
   );
 };
-const CelestialBody = ({ state, sunX }: { state: TimelineState; sunX: number }) => {
+const CelestialBody = ({ state, sunX, quality }: { state: TimelineState; sunX: number; quality: CinematicQuality }) => {
   const sunsetOcclusion = 1 - smootherstep(clamp01((state.sunsetProgress - 0.72) / 0.28));
   const sunMorph = state.sunMorph;
   const lunarStrength = 1 - sunMorph;
@@ -192,7 +202,7 @@ const CelestialBody = ({ state, sunX }: { state: TimelineState; sunX: number }) 
         />
       </mesh>
       <mesh scale={[sunVisualScale, sunVisualScale, sunVisualScale]}>
-        <sphereGeometry args={[CELESTIAL_DISC_RADIUS, 64, 48]} />
+        <sphereGeometry args={[CELESTIAL_DISC_RADIUS, quality === 'high' ? 48 : 36, quality === 'high' ? 34 : 24]} />
         <shaderMaterial
           vertexShader={CELESTIAL_VERTEX}
           fragmentShader={CELESTIAL_FRAGMENT}
@@ -212,12 +222,12 @@ const CelestialBody = ({ state, sunX }: { state: TimelineState; sunX: number }) 
         intensity={(moonVisibility * 0.62 + sunVisibility * 1.3) * sunsetOcclusion}
         distance={390}
       />
-      <CelestialAperture closure={state.apertureClosure} />
+      <CelestialAperture closure={state.apertureClosure} quality={quality} />
     </group>
   );
 };
 
-export const CinematicLighting = ({ state }: { state: TimelineState }) => {
+export const CinematicLighting = ({ state, quality }: { state: TimelineState; quality: CinematicQuality }) => {
   const sunX = 22;
   const sunY = 15;
   const moonY = lerp(-42, 138, state.moonProgress);
@@ -240,7 +250,7 @@ export const CinematicLighting = ({ state }: { state: TimelineState }) => {
         intensity={state.moonIntensity * 0.36}
         position={[-120, moonY, -310]}
       />
-      <CelestialBody state={state} sunX={sunX} />
+      <CelestialBody state={state} sunX={sunX} quality={quality} />
     </>
   );
 };
