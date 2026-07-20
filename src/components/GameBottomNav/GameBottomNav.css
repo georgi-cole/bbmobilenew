@@ -1,35 +1,60 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
+  --game-bottom-nav-content-height: clamp(46px, var(--nav-bar-height, 60px), 60px);
+  --game-bottom-nav-inline-gutter: max(10px, var(--safe-left), var(--safe-right));
+  --game-bottom-nav-panel-radius: 18px;
   position: relative;
-  height: calc(var(--nav-bar-height, 60px) + var(--safe-bottom));
+  width: calc(100% - var(--game-bottom-nav-inline-gutter) - var(--game-bottom-nav-inline-gutter));
+  max-width: 456px;
+  height: calc(var(--game-bottom-nav-content-height) + var(--safe-bottom));
+  margin-inline: auto;
   padding-bottom: var(--safe-bottom);
   flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 18px 18px 0 0 / 12px 12px 0 0;
-  clip-path: inset(0 round 18px 18px 0 0 / 12px 12px 0 0);
+  overflow: visible;
   -webkit-user-select: none;
   user-select: none;
 }
 
 .game-bottom-nav.nav-bar {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  isolation: isolate;
+}
+
+/*
+ * Keep the visual panel a stable size on every platform. The outer nav still
+ * reserves the iOS home-indicator safe area, but that safety space is no longer
+ * painted as part of the panel (which made the iPhone bar look stretched).
+ */
+.game-bottom-nav.nav-bar::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 0;
+  height: var(--game-bottom-nav-content-height);
   background: linear-gradient(180deg, rgba(17, 24, 37, 0.96), rgba(12, 18, 31, 0.98));
   border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--game-bottom-nav-panel-radius);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 10px 24px rgba(2, 6, 16, 0.24);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  isolation: isolate;
+  content: '';
 }
 
-/* Background SVG fills the nav bar area */
+/* The decorative shell is clipped to the panel instead of the safe-area spacer. */
 .game-bottom-nav__shell {
   position: absolute;
-  inset: 0 0 calc(-1 * var(--safe-bottom)) 0;
-  z-index: 0;
+  inset: 0 0 auto;
+  z-index: 1;
   width: 100%;
-  height: calc(100% + var(--safe-bottom));
+  height: var(--game-bottom-nav-content-height);
   object-fit: cover;
+  border-radius: var(--game-bottom-nav-panel-radius);
+  clip-path: inset(0 round var(--game-bottom-nav-panel-radius));
   opacity: 0.16;
   mix-blend-mode: soft-light;
   filter: saturate(0.72) brightness(0.82);
@@ -41,15 +66,15 @@
   position: absolute;
   top: 0;
   right: 0;
-  bottom: var(--safe-bottom);
+  bottom: auto;
   left: 0;
-  z-index: 1;
+  z-index: 2;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   column-gap: 7px;
   width: 100%;
-  height: var(--nav-bar-height, 60px);
+  height: var(--game-bottom-nav-content-height);
   padding: 1px 2.25% 3px;
   background: transparent;
 }
