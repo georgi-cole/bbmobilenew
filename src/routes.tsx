@@ -38,10 +38,16 @@ const load = (element: ReactNode) => (
   <Suspense fallback={<RouteLoadingScreen />}>{element}</Suspense>
 );
 
-// Admin/debug screens stay hidden unless the current session has QA debug access.
-const SettingsAdmin = import.meta.env.DEV || canAccessSpecialSettings()
-  ? lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'))
-  : null;
+// Keep the deep-link route registered so hash-router startup timing cannot turn
+// a valid QA URL into the catch-all 404. Access is still enforced by the route
+// element below at render time.
+const SettingsAdmin = lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'));
+
+function SettingsAdminRoute() {
+  return import.meta.env.DEV || canAccessSpecialSettings()
+    ? <Suspense fallback={null}><SettingsAdmin /></Suspense>
+    : <NotFound />;
+}
 const GameDebug = import.meta.env.DEV
   ? lazy(() => import('./screens/GameDebug/GameDebug'))
   : null;
@@ -125,9 +131,7 @@ export const router = createHashRouter([
       { path: 'rules',            element: load(<Rules />)        },
       { path: 'public-meter',     element: load(<PublicMeter />)  },
       { path: 'settings',         element: load(<Settings />)     },
-      ...(SettingsAdmin != null
-        ? [{ path: 'settingsatiste', element: <Suspense fallback={null}><SettingsAdmin /></Suspense> }]
-        : []),
+      { path: 'settingsatiste', element: <SettingsAdminRoute /> },
       ...(twistsQaEnabled && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
         : []),
