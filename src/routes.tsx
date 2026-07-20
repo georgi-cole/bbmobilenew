@@ -14,7 +14,7 @@ import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoun
 import RouteLoadingScreen   from './components/RouteLoadingScreen/RouteLoadingScreen';
 import HomeHub              from './screens/HomeHub/HomeHub';
 import NotFound             from './screens/NotFound/NotFound';
-import { canAccessSpecialSettings } from './utils/debugMode';
+import SettingsAdminRoute from './routes/SettingsAdminRoute';
 import { lazy, Suspense, type ReactNode } from 'react';
 
 const GameRoute = lazy(() => import('./routes/GameRoute'));
@@ -40,14 +40,7 @@ const load = (element: ReactNode) => (
 
 // Keep the deep-link route registered so hash-router startup timing cannot turn
 // a valid QA URL into the catch-all 404. Access is still enforced by the route
-// element below at render time.
-const SettingsAdmin = lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'));
-
-function SettingsAdminRoute() {
-  return import.meta.env.DEV || canAccessSpecialSettings()
-    ? <Suspense fallback={null}><SettingsAdmin /></Suspense>
-    : <NotFound />;
-}
+// element at render time.
 const GameDebug = import.meta.env.DEV
   ? lazy(() => import('./screens/GameDebug/GameDebug'))
   : null;

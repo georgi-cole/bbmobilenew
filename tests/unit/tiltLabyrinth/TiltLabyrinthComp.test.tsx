@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import type { ReactNode } from 'react';
+import { StrictMode, type ReactNode } from 'react';
 import TiltLabyrinthComp from '../../../src/components/TiltLabyrinthComp/TiltLabyrinthComp';
 import {
   calculateTiltAdjustedTime,
@@ -277,6 +277,35 @@ describe('TiltLabyrinthComp movement hardening', () => {
       authoritativeWinnerId: 'ai-1',
       authoritativeLastPlaceId: null,
     });
+  });
+
+  it('reinitializes Redux state after the Strict Mode effect replay', () => {
+    const store = makeStore();
+
+    render(
+      <StrictMode>
+        <Provider store={store}>
+          <TiltLabyrinthComp
+            participantIds={['human', 'ai-1']}
+            participants={[
+              { id: 'human', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+              { id: 'ai-1', name: 'Alex', isHuman: false, precomputedScore: 0, previousPR: null },
+            ]}
+            prizeType="LOH"
+            seed={42}
+            onComplete={vi.fn()}
+          />
+        </Provider>
+      </StrictMode>,
+    );
+
+    expect(store.getState().tiltLabyrinth.phase).toBe('playing');
+
+    act(() => {
+      store.dispatch(setHumanScore(4321));
+    });
+
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
   });
 
   it('preserves completed results when the parent recreates participant arrays', () => {
