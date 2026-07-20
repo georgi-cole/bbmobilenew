@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Big Eye iPhone Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #15171c;
+        color: #f7f7f9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 50% 15%, rgba(93, 78, 170, 0.18), transparent 34%),
+          #15171c;
+      }
+
+      .simulator {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+      }
+
+      .simulator__label {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .simulator__fit-box {
+        position: relative;
+      }
+
+      .iphone {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 421px;
+        height: 880px;
+        padding: 14px;
+        transform-origin: top left;
+        border: 2px solid #62646b;
+        border-radius: 62px;
+        background: linear-gradient(145deg, #51535a, #141519 22%, #07080a 78%, #65676d);
+        box-shadow:
+          0 30px 80px rgba(0, 0, 0, 0.58),
+          inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+      }
+
+      .iphone__screen {
+        position: relative;
+        width: 393px;
+        height: 852px;
+        overflow: hidden;
+        border-radius: 49px;
+        background: #050509;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+
+      .iphone__screen iframe {
+        display: block;
+        width: 393px;
+        height: 852px;
+        border: 0;
+        background: #050509;
+      }
+
+      .iphone__island {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        z-index: 5;
+        width: 126px;
+        height: 36px;
+        transform: translateX(-50%);
+        border-radius: 999px;
+        background: #000;
+        box-shadow: 0 1px 1px rgba(255, 255, 255, 0.08);
+        pointer-events: none;
+      }
+
+      .iphone__home-indicator {
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        z-index: 5;
+        width: 134px;
+        height: 5px;
+        transform: translateX(-50%);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.9);
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="simulator" aria-label="iPhone mobile preview">
+      <div class="simulator__label">iPhone portrait ? 393 ? 852 CSS px</div>
+      <div class="simulator__fit-box" id="fit-box">
+        <div class="iphone" id="iphone">
+          <div class="iphone__screen">
+            <iframe id="app-preview" title="Big Eye game in an iPhone viewport"></iframe>
+            <div class="iphone__island" aria-hidden="true"></div>
+            <div class="iphone__home-indicator" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const DEVICE_WIDTH = 421;
+      const DEVICE_HEIGHT = 880;
+      const LABEL_HEIGHT = 30;
+      const fitBox = document.getElementById('fit-box');
+      const iphone = document.getElementById('iphone');
+      const preview = document.getElementById('app-preview');
+
+      function fitDevice() {
+        const scale = Math.min(
+          1,
+          (window.innerWidth - 24) / DEVICE_WIDTH,
+          (window.innerHeight - LABEL_HEIGHT - 24) / DEVICE_HEIGHT,
+        );
+        iphone.style.transform = `scale(${scale})`;
+        fitBox.style.width = `${DEVICE_WIDTH * scale}px`;
+        fitBox.style.height = `${DEVICE_HEIGHT * scale}px`;
+      }
+
+      function applyIphoneSafeArea() {
+        const root = preview.contentDocument?.documentElement;
+        if (!root) return;
+        root.classList.add('is-capacitor', 'is-ios-simulator');
+        root.style.setProperty('--safe-top', '59px');
+        root.style.setProperty('--safe-bottom', '34px');
+        root.style.setProperty('--safe-left', '0px');
+        root.style.setProperty('--safe-right', '0px');
+        root.style.setProperty('--app-safe-area-top-fallback', '59px');
+      }
+
+      preview.addEventListener('load', () => {
+        applyIphoneSafeArea();
+        window.setTimeout(applyIphoneSafeArea, 250);
+      });
+      preview.src = `${window.location.pathname.replace(/iphone-simulator\.html$/, '')}#/game`;
+      window.addEventListener('resize', fitDevice);
+      fitDevice();
+    </script>
+  </body>
+</html>
