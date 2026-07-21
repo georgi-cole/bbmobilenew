@@ -13,6 +13,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
+import profilesReducer from '../../src/store/profilesSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
@@ -104,6 +105,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
   return configureStore({
     reducer: {
       game: gameReducer,
+      profiles: profilesReducer,
       challenge: challengeReducer,
       social: socialReducer,
       ui: uiReducer,
@@ -117,7 +119,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
 function renderWithStore(store: ReturnType<typeof makeStore>) {
   return render(
     <Provider store={store}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/?qa=1']}>
         <GameScreen />
       </MemoryRouter>
     </Provider>,
@@ -133,6 +135,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
+    (window as Window & { __E2E__?: boolean }).__E2E__ = true;
     // CeremonyOverlay uses getTileRect → document.querySelector + getBoundingClientRect.
     // In jsdom, getBoundingClientRect returns zero rects → overlay fires onDone immediately.
     // Mock it to return non-zero rects so the overlay actually renders.
@@ -144,6 +147,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
   });
 
   afterEach(() => {
+    delete (window as Window & { __E2E__?: boolean }).__E2E__;
     vi.useRealTimers();
     vi.restoreAllMocks();
     localStorage.clear();
@@ -154,7 +158,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Play Nomination Animation/i }));
     });
 
     // The CeremonyOverlay should now be visible with a status role
@@ -184,7 +188,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Play Nomination Animation/i }));
     });
 
     // After the stinger, nominations should not yet be committed.
@@ -279,7 +283,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Play Nomination Animation/i }));
     });
 
     expect(screen.getByRole('status')).toBeTruthy();
@@ -402,7 +406,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     const view = renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Play Nomination Animation/i }));
     });
 
     expect(view.container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(3);
@@ -423,7 +427,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     renderWithStore(store);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Dev: Play Nomination Animation/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Play Nomination Animation/i }));
     });
 
     expect(screen.getAllByText('LOH Nominee')).toHaveLength(2);

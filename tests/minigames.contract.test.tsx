@@ -110,6 +110,7 @@ describe('MinigameHost contract', () => {
 
     const stub = await screen.findByTestId('minigame-stub');
     expect(stub).toBeVisible();
+    await user.click(screen.getByRole('button', { name: /finish test minigame/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: new RegExp(`${game.title} minigame`, 'i') })).toBeVisible();

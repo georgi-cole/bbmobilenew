@@ -10,6 +10,8 @@
  */
 
 import { socialConfig } from './socialConfig';
+import { normalizeAffinity } from './affinityUtils';
+import { hasAllianceBetween } from './socialAlliance';
 import type { PolicyContext, RelationshipsMap } from './types';
 
 // ── Evaluator configuration ───────────────────────────────────────────────
@@ -138,13 +140,47 @@ export function chooseTargetsFor(
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
   const rels = relationships[playerId] ?? {};
 
+  if (actionId === 'betray') {
+    const strainedAlliances = eligible.filter((player) => {
+      if (!hasAllianceBetween(relationships, playerId, player.id)) return false;
+      const outward = relationships[playerId]?.[player.id];
+      const inward = relationships[player.id]?.[playerId];
+      const minAffinity = Math.min(
+        normalizeAffinity(outward?.affinity ?? 0),
+        normalizeAffinity(inward?.affinity ?? 0),
+      );
+      const tags = new Set([...(outward?.tags ?? []), ...(inward?.tags ?? [])]);
+      return minAffinity < 0.2 || ['distrust', 'target', 'rivalry'].some((tag) => tags.has(tag));
+    });
+    return strainedAlliances.length > 0 ? [strainedAlliances[0].id] : [];
+  }
+
+  if (actionId === 'ally' || actionId === 'proposeAlliance') {
+    const prospects = eligible
+      .filter((player) => !hasAllianceBetween(relationships, playerId, player.id))
+      .sort((left, right) =>
+        normalizeAffinity(rels[right.id]?.affinity ?? 0) -
+        normalizeAffinity(rels[left.id]?.affinity ?? 0));
+    const actorStatus = players.find((player) => player.id === playerId)?.status ?? '';
+    const credible = prospects.filter((player) => {
+      const affinity = normalizeAffinity(rels[player.id]?.affinity ?? 0);
+      const strategicPressure = /loh|hoh|pos|pov|nominated/i.test(`${actorStatus} ${player.status}`);
+      return affinity >= allyThreshold || (affinity >= 0.15 && strategicPressure);
+    });
+    return credible.length > 0 ? [credible[0].id] : [];
+  }
+
   if (friendlyActions.includes(actionId)) {
-    const allies = eligible.filter((p) => (rels[p.id]?.affinity ?? 0) >= allyThreshold);
+    const allies = eligible.filter(
+      (p) => normalizeAffinity(rels[p.id]?.affinity ?? 0) >= allyThreshold,
+    );
     return allies.length > 0 ? [allies[0].id] : [eligible[0].id];
   }
 
   if (aggressiveActions.includes(actionId)) {
-    const enemies = eligible.filter((p) => (rels[p.id]?.affinity ?? 0) <= enemyThreshold);
+    const enemies = eligible.filter(
+      (p) => normalizeAffinity(rels[p.id]?.affinity ?? 0) <= enemyThreshold,
+    );
     return enemies.length > 0 ? [enemies[0].id] : [eligible[0].id];
   }
 

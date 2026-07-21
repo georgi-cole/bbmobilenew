@@ -41,6 +41,8 @@ export default defineConfig(({ mode }) => ({
     setupFiles: ['./src/test/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
     testTimeout: 15000,
+    // Bound concurrency so dynamic minigame imports remain reliable in the full suite.
+    maxWorkers: 4,
     typecheck: {
       tsconfig: './tsconfig.test.json',
     },

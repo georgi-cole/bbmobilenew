@@ -7,6 +7,7 @@
  */
 
 import { getActionById } from '../../social/SocialManeuvers';
+import { getStoryBibleNarrative } from '../../social/socialStoryBible';
 
 // Preset pool of short, playful TV-zone sentences shown when the Social modal closes.
 // One is picked at random so the message stays fresh across sessions.
@@ -46,7 +47,7 @@ const NARRATIVES: Record<string, string[]> = {
     "You hinted to {target} that their closest ally might be playing both sides.",
     "You dropped a bombshell on {target}: someone has a pre-game alliance.",
     "You suggested to {target} the house is closer to turning than they think.",
-    "You told {target} you heard their name come up for a backdoor.",
+    "You told {target} you heard their name come up as a backup plan.",
     "You whispered to {target} that a certain player is obsessed with them — and not in a good way.",
     "You informed {target} that someone in the house has been keeping a diary about everyone.",
     "You told {target} that three people voted against them last week and they don't know who.",
@@ -211,6 +212,8 @@ export function getSocialNarrative(
   targetName: string,
   seed: number,
 ): string {
+  const configuredNarrative = getStoryBibleNarrative(actionId, 'You', targetName, seed);
+  if (configuredNarrative) return configuredNarrative;
   const pool = NARRATIVES[actionId];
   if (!pool?.length) {
     const actionDef = getActionById(actionId);

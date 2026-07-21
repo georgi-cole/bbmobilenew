@@ -110,7 +110,7 @@ describe('Castle Rescue rules', () => {
     expect(playerLandsOnSurfaceTop({ x: 10, y: 0, w: 10, h: 10 }, 0, 3, surface)).toBe(true);
     expect(playerHitsSurfaceFromBelow({ x: 10, y: 15, w: 10, h: 10 }, 25, -3, surface)).toBe(true);
     expect(playerOverlapsPipeSide({ x: 5, y: 10, w: 10, h: 10 }, 0, 0, 20, 20)).toBe(true);
-    expect(tryEnterPipe(20, 94, 10, 10, true, 0, true, 10, 104, 40)).toBe(true);
+    expect(tryEnterPipe(20, 94, 10, 10, true, 0, true, 10, 104, 40, 40)).toBe(true);
 
     const collision = resolveFullSolidCollision(
       { x: 5, y: 15, w: 10, h: 10 },

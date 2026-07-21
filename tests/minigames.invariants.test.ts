@@ -45,7 +45,7 @@ describe('minigame invariants', () => {
       { adapter: 'raw' },
     );
 
-    expect(Object.keys(ranking)).toEqual(['b', 'c', 'a']);
+    expect(Object.keys(ranking)).toEqual(['c', 'b', 'a']);
     expect(Object.values(ranking).every((value) => Number.isFinite(value))).toBe(true);
   });
 

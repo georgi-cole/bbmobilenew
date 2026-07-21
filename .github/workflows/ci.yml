@@ -1,27 +1,102 @@
-name: CI
+name: Pull Request Quality
 
 on:
   push:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: pr-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  static-quality:
+    name: Format, lint, types, and dependencies
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - run: npm ci
+      - name: Check formatting for files changed from main
+        run: npm run format:check
+      - name: Reject focused or disabled tests
+        run: npm run test:guard
+      - name: Lint without warnings
+        run: npm run lint:ci
+      - name: Type check
+        run: npm run typecheck
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
-      - run: npm run build
+  product-tests:
+    name: Unit, component, and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run complete Vitest suite
+        run: npm test -- --reporter=dot
+      - name: Prove minigame registry and deterministic seed contracts explicitly
+        run: npx vitest run tests/minigames.qualityMatrix.test.ts tests/minigames.seedStress.test.tsx --reporter=verbose
 
-      - run: npm run lint
+  coverage:
+    name: Coverage regression evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run coverage with bounded instrumentation workers
+        run: npm run test:coverage
+      - name: Enforce global regression and critical branch floors
+        run: npm run coverage:check
+      - name: Upload coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
 
-      - run: npm run typecheck
+  production-builds:
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Web production build
+            script: build
+          - label: Capacitor mobile-mode build
+            script: build:mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}

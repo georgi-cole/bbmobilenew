@@ -282,6 +282,13 @@ function buildUserPlayer(): Player {
   };
 }
 
+function getE2ENewSeasonFixture(): Window['__bbE2ENewSeason'] {
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.__E2E__ === true) {
+    return window.__bbE2ENewSeason;
+  }
+  return undefined;
+}
+
 /**
  * Pick (rosterSize - 1) houseguests at random from the full pool.
  * Uses Math.random() to seed the pick so each new game has a fresh roster.
@@ -289,7 +296,8 @@ function buildUserPlayer(): Player {
  * fallback to the GAME_ROSTER_SIZE constant.
  */
 function pickHouseguests(rosterSize = GAME_ROSTER_SIZE, twinShockConsumed = false): Player[] {
-  const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
+  const seed = getE2ENewSeasonFixture()?.rosterSeed
+    ?? (Math.floor(Math.random() * 0x100000000)) >>> 0;
   const rng = mulberry32(seed);
   const lia = {
     ...(HOUSEGUEST_POOL.find((houseguest) => houseguest.id === TWIN_SHOCK_LIA_ID)
@@ -359,6 +367,8 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     phase: 'week_start',
     seed: 42,
     lohId: null,
+    lohSocialPlan: null,
+    lohSafetyAdvice: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: freshSettings.sim.publicMode === true,
@@ -464,6 +474,7 @@ const initialState: GameState = createInitialGameState();
 // ─── Helper ──────────────────────────────────────────────────────────────────
 /** Monotonic counter to guarantee unique event IDs within the same millisecond. */
 let _pushEventCounter = 0;
+const MAX_GAME_HISTORY_EVENTS = 1000;
 
 function buildTvMeta(
   state: Pick<GameState, 'phase' | 'week'>,
@@ -490,7 +501,7 @@ function pushEvent(
     timestamp: ts,
     meta: buildTvMeta(state, meta),
   };
-  state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+  state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
   return event;
 }
 
@@ -693,6 +704,15 @@ function shouldAiUseTargetedSafetyPower(
   if (bestRelationship >= 75) useChance += 0.5;
   else if (bestRelationship >= 45) useChance += 0.35;
   else if (bestRelationship >= 20) useChance += 0.18;
+  const lohAdvice = state.lohSafetyAdvice;
+  if (
+    lohAdvice?.week === state.week &&
+    lohAdvice.lohId === state.lohId &&
+    lohAdvice.holderId === holderId
+  ) {
+    if (lohAdvice.advice === 'use') useChance += 0.38;
+    if (lohAdvice.advice === 'hold') useChance -= 0.38;
+  }
   useChance = Math.max(0.03, Math.min(0.92, useChance));
   const rng = mulberry32(
     (state.seed ^ hashString(`safety:${state.week}:${holderId}:${currentNominees.map((p) => p.id).join('|')}`)) >>> 0,
@@ -1017,7 +1037,7 @@ function pushTwinShockAnnouncement(state: GameState, text: string, major: string
       meta: buildTvMeta(state, { major }),
     },
     ...state.tvFeed,
-  ].slice(0, 50);
+  ].slice(0, MAX_GAME_HISTORY_EVENTS);
 }
 
 function ensureCompetitionStateForPlayer(state: GameState, playerId: string) {
@@ -1329,6 +1349,32 @@ function applyPosWinner(state: GameState, winnerId: string, alive: Player[]): Ph
   return 'pos_results';
 }
 
+/** Remove the temporary Safety role badge once its ceremony is complete. */
+function clearExpiredSafetyStatuses(state: GameState) {
+  state.players.forEach((player) => {
+    if (player.status === 'pos') player.status = 'active';
+    else if (player.status === 'loh+pos') player.status = 'loh';
+    else if (player.status === 'nominated+pos') {
+      player.status = state.nomineeIds.includes(player.id) ? 'nominated' : 'active';
+    }
+  });
+}
+
+/** Clear nomination and Safety state as soon as the eviction cycle is resolved. */
+function clearResolvedEvictionRoles(state: GameState) {
+  state.players.forEach((player) => {
+    if (player.status === 'nominated' || player.status === 'pos' || player.status === 'nominated+pos') {
+      player.status = 'active';
+    } else if (player.status === 'loh+pos') {
+      player.status = 'loh';
+    }
+  });
+  state.nomineeIds = [];
+  state.posWinnerId = null;
+  state.povSavedId = null;
+  state.povProtectedIds = [];
+}
+
 /**
  * Pick the winner from a set of participants and their scores.
  * Returns the participant ID with the highest score.
@@ -1452,6 +1498,18 @@ const gameSlice = createSlice({
     ) {
       state.strategicRelationships = action.payload;
     },
+    setLohSocialPlan(
+      state,
+      action: PayloadAction<NonNullable<GameState['lohSocialPlan']>>,
+    ) {
+      state.lohSocialPlan = action.payload;
+    },
+    setLohSafetyAdvice(
+      state,
+      action: PayloadAction<NonNullable<GameState['lohSafetyAdvice']>>,
+    ) {
+      state.lohSafetyAdvice = action.payload;
+    },
     addTvEvent(state, action: PayloadAction<Omit<TvEvent, 'id' | 'timestamp'>>) {
       const event: TvEvent = {
         ...action.payload,
@@ -1459,7 +1517,7 @@ const gameSlice = createSlice({
         timestamp: Date.now(),
         meta: buildTvMeta(state, action.payload.meta),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
     },
     /** Persist a social phase summary to the Diary Room log (not the TV feed). */
     addSocialSummary(state, action: PayloadAction<{ summary: string; week: number }>) {
@@ -1476,7 +1534,7 @@ const gameSlice = createSlice({
         source: 'manual',
         meta: buildTvMeta(state, { week: action.payload.week }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
     },
     setLive(state, action: PayloadAction<boolean>) {
       state.isLive = action.payload;
@@ -2457,7 +2515,7 @@ const gameSlice = createSlice({
         meta: buildTvMeta(state, { major: 'democracia' }),
         timestamp: ts,
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
     },
 
     /**
@@ -2654,6 +2712,10 @@ const gameSlice = createSlice({
           }
         });
       }
+
+      if (!state.pendingEviction) {
+        clearResolvedEvictionRoles(state);
+      }
     },
 
 
@@ -2801,7 +2863,7 @@ const gameSlice = createSlice({
         major: 'battle_back',
         meta: buildTvMeta(state, { major: 'battle_back' }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
     },
 
     /**
@@ -2896,7 +2958,7 @@ const gameSlice = createSlice({
         major: 'double_eviction',
         meta: buildTvMeta(state, { major: 'double_eviction' }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
     },
 
     /**
@@ -2947,7 +3009,7 @@ const gameSlice = createSlice({
         meta: buildTvMeta(state, { major: majorKeys[type] }),
         timestamp: ts,
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
     },
 
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
@@ -3186,7 +3248,7 @@ const gameSlice = createSlice({
         major: 'twist',
         meta: buildTvMeta(state, { major: 'twist' }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS);
       // Append a start event to game history
       if (!state.history) state.history = [];
       state.history.push({
@@ -3611,7 +3673,8 @@ const gameSlice = createSlice({
       // Mix Math.random() with Date.now() to derive a fresh 32-bit game seed.
       // This seed drives in-game RNG (LOH/POS/vote outcomes); it is independent
       // of the Math.random() seed used in pickHouseguests() for roster selection.
-      const seed = (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0;
+      const seed = getE2ENewSeasonFixture()?.seasonSeed
+        ?? (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0;
       // When an explicit archives array is provided (e.g. on profile switch) use it;
       // otherwise preserve the current in-memory archives so a regular game restart
       // does not lose season history.
@@ -3669,6 +3732,7 @@ const gameSlice = createSlice({
         hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
         status: action.payload.status ?? 'active',
         twinShock: action.payload.twinShock ?? createInitialTwinShockState(),
+        lohSafetyAdvice: action.payload.lohSafetyAdvice ?? null,
         twinShockConsumed: action.payload.twinShockConsumed ?? false,
         twinShockActivatedSeason: action.payload.twinShockActivatedSeason ?? null,
         twinShockResolution: action.payload.twinShockResolution ?? null,
@@ -4093,7 +4157,12 @@ const gameSlice = createSlice({
         const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
         const eligible = getReplacementEligiblePlayers(state, aliveNow);
         if (eligible.length > 0) {
-          const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest');
+          const disclosedBackupId = state.lohSocialPlan?.week === state.week
+            && state.lohSocialPlan.lohId === state.lohId
+            ? state.lohSocialPlan.backupTargetId
+            : null;
+          const replacement = eligible.find((player) => player.id === disclosedBackupId)
+            ?? pickStrategicAiPlayer(state, eligible, rng, 'highest');
           if (replacement) appendNominee(state, replacement.id);
           pushEvent(
             state,
@@ -4387,7 +4456,9 @@ const gameSlice = createSlice({
           state.prevHohId = state.lohId ?? null;
           state.week += 1;
           state.lohId = null;
+          state.lohSocialPlan = null;
           state.nomineeIds = [];
+          state.lohSafetyAdvice = null;
           state.posWinnerId = null;
           state.replacementNeeded = false;
           state.povSavedId = null;
@@ -5061,6 +5132,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'social_2': {
+          clearExpiredSafetyStatuses(state);
           pushEvent(state, LIVE_VOTE_PITCHES_TEXT, 'social', {
             key: LIVE_VOTE_PITCHES_EVENT_KEY,
           });
@@ -5722,7 +5794,9 @@ export const {
   advanceWeek,
   updatePlayer,
   syncStrategicRelationships,
+  setLohSocialPlan,
   addTvEvent,
+  setLohSafetyAdvice,
   addSocialSummary,
   setLive,
   launchMinigame,

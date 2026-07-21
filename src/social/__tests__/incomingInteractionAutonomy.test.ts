@@ -13,6 +13,7 @@ function buildContext(overrides: Partial<AutonomyContext> = {}): AutonomyContext
   return {
     phase: 'week_start',
     week: 2,
+    dramaMode: true,
     relationships: {
       ally: { user: { affinity: 65, tags: [] } },
       enemy: { user: { affinity: -55, tags: ['betrayal'] } },
@@ -129,7 +130,7 @@ describe('incomingInteractionAutonomy thematic routing', () => {
     expect(chooseIncomingInteractionType('nominee', 'user', context)).toBe('nomination_plea');
   });
 
-  it('uses the nomination aftershock scenario right after nominations are revealed', () => {
+  it('lets a nominee react directly to the human LOH after nominations are revealed', () => {
     const context = buildContext({
       phase: 'nomination_results',
       lohId: 'user',
@@ -144,7 +145,7 @@ describe('incomingInteractionAutonomy thematic routing', () => {
       (entry) => entry.interaction.fromId === 'nominee',
     )?.interaction;
     expect(interaction?.type).toBe('check_in');
-    expect(interaction?.payload?.scenarioKey).toBe('nomination_aftershock');
+    expect(interaction?.payload?.scenarioKey).toBe('nominee_understands_loh');
   });
 
   it('routes nominees to deal offers when the player holds veto power', () => {
@@ -160,6 +161,52 @@ describe('incomingInteractionAutonomy thematic routing', () => {
 
     expect(chooseIncomingInteractionType('nominee', 'user', context)).toBe('deal_offer');
   });
+
+  it('has an AI Safety winner consult the human LOH before the ceremony', () => {
+    const context = buildContext({
+      phase: 'pos_results',
+      lohId: 'user',
+      posWinnerId: 'holder',
+      relationships: { holder: { user: { affinity: 10, tags: [] } } },
+      players: [
+        { id: 'user', name: 'You', status: 'loh', isUser: true },
+        { id: 'holder', name: 'Holder', status: 'pos' },
+      ],
+      random: () => 0,
+    });
+    const store = buildStore(context);
+
+    scheduleIncomingInteractionsForPhase('pos_results', store, context);
+
+    const interaction = store.social.scheduledIncomingInteractions[0]?.interaction;
+    expect(interaction?.type).toBe('deal_offer');
+    expect(interaction?.payload?.scenarioKey).toBe('safety_holder_consults_loh');
+  });
+  it('queues both nominee pitches when the human holds Safety, while delivery remains paced', () => {
+    const context = buildContext({
+      phase: 'pos_results',
+      posWinnerId: 'user',
+      nomineeIds: ['nomineeA', 'nomineeB'],
+      relationships: {
+        nomineeA: { user: { affinity: 0, tags: [] } },
+        nomineeB: { user: { affinity: 0, tags: [] } },
+      },
+      players: [
+        { id: 'user', name: 'You', status: 'pos', isUser: true },
+        { id: 'nomineeA', name: 'Nominee A', status: 'nominated' },
+        { id: 'nomineeB', name: 'Nominee B', status: 'nominated' },
+      ],
+      random: () => 0,
+    });
+    const store = buildStore(context);
+
+    scheduleIncomingInteractionsForPhase('pos_results', store, context);
+
+    const scheduled = store.social.scheduledIncomingInteractions;
+    expect(scheduled).toHaveLength(2);
+    expect(scheduled.every((entry) => entry.interaction.payload?.scenarioKey === 'nominee_veto_pitch')).toBe(true);
+  });
+
 
   it('keeps alliance-tagged relationships from turning hostile', () => {
     const context = buildContext({
@@ -284,5 +331,44 @@ describe('incomingInteractionAutonomy thematic routing', () => {
     expect(interaction?.type).toBe('nomination_plea');
     expect(interaction?.payload?.scenarioKey).toBe('nominee_hoh_plea');
     expect(interaction?.text).toContain('Jordan');
+  });
+
+  it('does not manufacture generic check-ins for neutral players without a trigger', () => {
+    const context = buildContext({
+      phase: 'week_start',
+      relationships: { neutral: { user: { affinity: 0, tags: [] } } },
+      players: [
+        { id: 'user', name: 'You', status: 'active', isUser: true },
+        { id: 'neutral', name: 'Neutral', status: 'active' },
+      ],
+      random: () => 0,
+    });
+    const store = buildStore(context);
+
+    scheduleIncomingInteractionsForPhase('week_start', store, context);
+
+    expect(store.social.scheduledIncomingInteractions).toHaveLength(0);
+  });
+
+  it('creates only the highest-ranked contact at a single checkpoint', () => {
+    const context = buildContext({
+      phase: 'week_start',
+      relationships: {
+        closeAlly: { user: { affinity: 90, tags: ['alliance'] } },
+        ally: { user: { affinity: 65, tags: ['alliance'] } },
+      },
+      players: [
+        { id: 'user', name: 'You', status: 'active', isUser: true },
+        { id: 'closeAlly', name: 'Close Ally', status: 'active' },
+        { id: 'ally', name: 'Ally', status: 'active' },
+      ],
+      random: () => 0,
+    });
+    const store = buildStore(context);
+
+    scheduleIncomingInteractionsForPhase('week_start', store, context);
+
+    expect(store.social.scheduledIncomingInteractions).toHaveLength(1);
+    expect(store.social.scheduledIncomingInteractions[0]?.interaction.fromId).toBe('closeAlly');
   });
 });

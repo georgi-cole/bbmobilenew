@@ -35,7 +35,6 @@ import { MYSTERY_WILDCARD_BIOS } from '../../components/HousematesBioCinematic/h
 import useHomeHubAssets from '../../hooks/useHomeHubAssets';
 import useIntroHubBackground from '../../hooks/useIntroHubBackground';
 import {
-  hasSeenHomeHubSplashForGame,
   hasShownHomeHubSplashThisSession,
   markHomeHubSplashSeenForGame,
 } from './homeHubSplashSession';
@@ -208,7 +207,10 @@ function HomeHubAssetLayer({
 
 export default function HomeHub() {
   const location = useLocation();
-  const routeState = location.state as { autoStartGame?: boolean; openHubUtility?: string } | null;
+  const routeState = location.state as {
+    autoStartGame?: boolean;
+    openHubUtility?: string;
+  } | null;
   const autoStartGame = routeState?.autoStartGame === true;
   const requestedHubUtility = routeState?.openHubUtility ?? null;
   const navigate = useNavigate();
@@ -249,9 +251,7 @@ export default function HomeHub() {
     progress: 0,
     status: 'Opening the house doors.',
   });
-  const splashDone =
-    (!isInitialAppSplash && hasSeenHomeHubSplashForGame(gameId)) ||
-    (splashExitRequested && hubAssetState.ready);
+  const splashDone = !isInitialAppSplash || (splashExitRequested && hubAssetState.ready);
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.

@@ -95,8 +95,8 @@ export function initAdBridge(): void {
     }
     const handler = rewardHandlers.get(placement as AdPlacement);
     if (handler) {
-      handler(payload);
       rewardHandlers.delete(placement as AdPlacement);
+      handler(payload);
     } else if (import.meta.env.DEV) {
       console.log(`[ads] reward granted: ${placement} — no handler registered (ad may have been dismissed)`);
     }
@@ -197,8 +197,13 @@ export function showInterstitial(
   if (import.meta.env.DEV) {
     console.log(`[ads] requesting interstitial: ${placement}`);
   }
+  try {
+    window.GameAds.showInterstitial(placement);
+  } catch (error) {
+    console.warn(`[ads] ${placement} interstitial bridge failed; request was not recorded`, error);
+    return false;
+  }
   dispatch(recordAdShown(placement));
-  window.GameAds.showInterstitial(placement);
   return true;
 }
 
@@ -229,12 +234,24 @@ export function showRewarded(
     }
     return false;
   }
+  if (rewardHandlers.has(placement)) {
+    if (import.meta.env.DEV) {
+      console.log(`[ads] ${placement} rewarded skipped: request already pending`);
+    }
+    return false;
+  }
 
   if (import.meta.env.DEV) {
     console.log(`[ads] requesting rewarded: ${placement}`);
   }
-  dispatch(recordAdShown(placement));
   rewardHandlers.set(placement, onReward);
-  window.GameAds.showRewarded(placement);
+  try {
+    window.GameAds.showRewarded(placement);
+  } catch (error) {
+    rewardHandlers.delete(placement);
+    console.warn(`[ads] ${placement} rewarded bridge failed; request was not recorded`, error);
+    return false;
+  }
+  dispatch(recordAdShown(placement));
   return true;
 }

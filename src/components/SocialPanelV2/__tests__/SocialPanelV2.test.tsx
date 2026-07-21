@@ -45,6 +45,9 @@ function makeStore(overrides?: {
   humanStatus?: RootState['game']['players'][number]['status'];
   /** Override status for specific players by id. */
   playerStatusOverrides?: Record<string, RootState['game']['players'][number]['status']>;
+  posWinnerId?: string | null;
+  povSavedId?: string | null;
+  nomineeIds?: string[];
 }) {
   const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } });
   const defaultState = base.getState() as RootState;
@@ -72,6 +75,9 @@ function makeStore(overrides?: {
       ...defaultState.game,
       players,
       phase: (overrides?.phase ?? defaultState.game.phase) as RootState['game']['phase'],
+      posWinnerId: overrides?.posWinnerId ?? defaultState.game.posWinnerId,
+      povSavedId: overrides?.povSavedId ?? defaultState.game.povSavedId,
+      nomineeIds: overrides?.nomineeIds ?? defaultState.game.nomineeIds,
     },
     social: defaultState.social,
   };
@@ -276,10 +282,65 @@ describe('SocialPanelV2 – execute flow', () => {
     expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('group chat still requires an explicit player target', () => {
+  it('group chat requires two people and its cost grows with the group', () => {
+    const players = store.getState().game.players.filter((p) => !p.isUser).slice(0, 3);
     fireEvent.click(screen.getByRole('button', { name: /Group Chat/i }));
     const btn = screen.getByRole('button', { name: 'Execute' });
     expect((btn as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(players[0].name, 'i') })[0]);
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(players[1].name, 'i') })[0]);
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText(/Cost:.*2/)).toBeDefined();
+
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(players[2].name, 'i') })[0]);
+    expect(screen.getByText(/Cost:.*3/)).toBeDefined();
+  });
+
+  it('does not execute any group target when the aggregate price is unaffordable', () => {
+    const players = store.getState().game.players.filter((p) => !p.isUser).slice(0, 6);
+    act(() => store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 3 })));
+    fireEvent.click(screen.getByRole('button', { name: /Group Chat/i }));
+    players.forEach((player) => {
+      fireEvent.click(screen.getAllByRole('button', { name: new RegExp(player.name, 'i') })[0]);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    expect(store.getState().social.energyBank[humanId]).toBe(3);
+    expect(store.getState().social.sessionLogs).toHaveLength(0);
+    expect(screen.getByText(/Nothing was spent/)).toBeDefined();
+  }, 60_000);
+
+  it('keeps multi-select active for compatible actions and charges once per selected player', () => {
+    const players = store.getState().game.players.filter((p) => !p.isUser).slice(0, 3);
+    act(() => store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 })));
+    fireEvent.click(screen.getByRole('button', { name: /Group Chat/i }));
+    players.forEach((player) => {
+      fireEvent.click(screen.getAllByRole('button', { name: new RegExp(player.name, 'i') })[0]);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    expect(screen.getByText(/Cost:.*3/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    expect(store.getState().social.energyBank[humanId]).toBe(2);
+    const logs = store.getState().social.sessionLogs.filter((entry) => entry.actionId === 'compliment');
+    expect(logs.map((entry) => entry.targetId).sort()).toEqual(players.map((player) => player.id).sort());
+  });
+
+  it('clears action and player selection after closing and reopening the panel', () => {
+    const player = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(player.name, 'i') })[0]);
+    expect((screen.getByRole('button', { name: 'Execute' }) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    act(() => store.dispatch(openSocialPanel()));
+
+    expect((screen.getByRole('button', { name: 'Execute' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: /Compliment/i }).getAttribute('aria-pressed')).toBe('false');
   });
 
   it('execute button is enabled when action and a player are both selected', () => {
@@ -549,7 +610,9 @@ describe('SocialPanelV2 – subject picker', () => {
     const nomineeWithPos = basePlayers[1];
     cleanup();
     store = makeStore({
-      phase: 'social_1',
+      phase: 'pos_results',
+      posWinnerId: posHolder.id,
+      nomineeIds: [nomineeWithPos.id],
       playerStatusOverrides: {
         [posHolder.id]: 'pos',
         [nomineeWithPos.id]: 'nominated+pos',
@@ -575,7 +638,9 @@ describe('SocialPanelV2 – subject picker', () => {
     const otherNominee = basePlayers[1];
     cleanup();
     store = makeStore({
-      phase: 'social_1',
+      phase: 'pos_results',
+      posWinnerId: posHolder.id,
+      nomineeIds: [humanId, otherNominee.id],
       humanStatus: 'nominated',
       playerStatusOverrides: {
         [posHolder.id]: 'pos',

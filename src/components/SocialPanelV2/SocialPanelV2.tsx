@@ -12,7 +12,7 @@ import {
 } from '../../social/socialSlice';
 import { addTvEvent } from '../../store/gameSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
-import { TV_SOCIAL_CLOSE_MESSAGES } from './socialNarratives';
+import { getSocialNarrative, TV_SOCIAL_CLOSE_MESSAGES } from './socialNarratives';
 import { buildDrSessionSummary } from '../../services/activityService';
 import {
   getSocialModuleAvailability,
@@ -21,6 +21,7 @@ import {
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import RecentActivity from './RecentActivity';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import type { Player } from '../../types';
 import type { SubjectPool } from '../../social/socialActions';
 import './SocialPanelV2.css';
@@ -29,6 +30,17 @@ import './SocialPanelV2.css';
 
 function isNomineeStatus(status: Player['status']): boolean {
   return status.includes('nominated');
+}
+
+function formatPlayerNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? 'the house';
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+function selectSocialCloseMessage(random: () => number = Math.random): string {
+  const index = Math.floor(random() * TV_SOCIAL_CLOSE_MESSAGES.length);
+  return TV_SOCIAL_CLOSE_MESSAGES[index];
 }
 
 /**
@@ -143,14 +155,18 @@ export default function SocialPanelV2() {
 
       // Show a short, playful TV-zone sentence — dispatched last so it appears at
       // the top of the feed (index 0) and is shown in the TV viewport after close.
-      const tvMsg = TV_SOCIAL_CLOSE_MESSAGES[
-        Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)
-      ];
-      dispatch(addTvEvent({ text: tvMsg, type: 'social', channels: ['tv', 'mainLog'] }));
+      const tvMsg = selectSocialCloseMessage();
+      dispatch(addTvEvent({ text: tvMsg, type: 'social', channels: ['tv'] }));
     }
     if (sessionLogs.length > 0) {
       dispatch(clearSessionLogs());
     }
+    setSelectedTargets(new Set());
+    setPrimaryTargetId(null);
+    setSelectedActionId(null);
+    setSelectedSubjectId(null);
+    setFeedbackMsg(null);
+    setMultiSelectActive(false);
     dispatch(closeSocialPanel());
   }
 
@@ -161,6 +177,7 @@ export default function SocialPanelV2() {
   const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
   const [primaryTargetId, setPrimaryTargetId] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [multiSelectActive, setMultiSelectActive] = useState(false);
   // Subject for primaryPlusSubject actions (the person being talked *about*).
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
@@ -179,13 +196,91 @@ export default function SocialPanelV2() {
   // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
   const targetMode = selectedAction?.targetMode ?? (selectedAction?.needsTargets === false ? 'none' : 'primary');
+  const isBatchCompatible = targetMode === 'primary'
+    && !selectedAction?.requiredTargetStatus
+    && selectedActionId !== 'proposeAlliance';
+  const usesMultipleTargets = targetMode === 'multi' || (multiSelectActive && isBatchCompatible);
+  const selectedTargetCount = selectedTargets.size;
   const effectivePrimaryTargetId = targetMode === 'none' ? null : primaryTargetId;
   const needsTarget = targetMode !== 'none';
   const needsSubject = targetMode === 'primaryPlusSubject';
-  const canExecute =
+  const hasRequiredTargets = targetMode === 'multi'
+    ? selectedTargets.size >= 2
+    : usesMultipleTargets
+      ? selectedTargets.size >= 1
+    : !needsTarget || effectivePrimaryTargetId !== null;
+  const targetCount = usesMultipleTargets ? selectedTargetCount : 1;
+  const totalCosts = useMemo(() => {
+    const baseCosts = selectedAction
+    ? SocialManeuvers.computeActionCosts(
+        humanPlayer?.id ?? '',
+        selectedAction,
+        effectivePrimaryTargetId ?? humanPlayer?.id ?? '',
+      )
+    : null;
+    return baseCosts
+    ? selectedActionId === 'group_chat'
+      ? { ...baseCosts, energy: Math.max(2, selectedTargetCount) }
+      : usesMultipleTargets
+        ? {
+            energy: baseCosts.energy * targetCount,
+            influence: baseCosts.influence * targetCount,
+            info: baseCosts.info * targetCount,
+          }
+        : baseCosts
+    : null;
+  }, [
+    effectivePrimaryTargetId,
+    humanPlayer?.id,
+    selectedAction,
+    selectedActionId,
+    selectedTargetCount,
+    targetCount,
+    usesMultipleTargets,
+  ]);
+  const energy = energyBank?.[humanPlayer?.id ?? ''] ?? 0;
+  const influence = influenceBank?.[humanPlayer?.id ?? ''] ?? 0;
+  const info = infoBank?.[humanPlayer?.id ?? ''] ?? 0;
+  const hasExecutableSelection =
     !!selectedActionId &&
-    (!needsTarget || effectivePrimaryTargetId !== null) &&
+    hasRequiredTargets &&
     (!needsSubject || selectedSubjectId !== null);
+  const canExecute = hasExecutableSelection;
+  const hiddenContextualActionIds = useMemo(() => {
+    const hidden = new Set<string>();
+    const beforeNominations = game.phase === 'social_1' && game.nomineeIds.length === 0;
+    const safetyDecisionOpen = ['pos_results', 'pos_ceremony'].includes(game.phase)
+      && !!game.posWinnerId
+      && !game.povSavedId;
+    const humanIsLoh = game.lohId === humanPlayer?.id;
+    const humanIsNominated = !!humanPlayer?.status.includes('nominated');
+    const lohPlanOpen = [
+      'loh_results',
+      'social_1',
+      'nominations',
+      'nomination_results',
+      'pre_veto_public_save',
+      'pos_comp_announcement',
+      'pos_comp',
+      'pos_results',
+      'pos_ceremony',
+      'pos_ceremony_results',
+      'social_2',
+    ]
+      .includes(game.phase);
+    if (!beforeNominations) hidden.add('pitch_target');
+    if (!lohPlanOpen || !game.lohId) hidden.add('ask_loh_target');
+    if (!humanIsNominated || !game.lohId) hidden.add('ask_why_nominated');
+    if (!safetyDecisionOpen) {
+      hidden.add('ask_use_safety');
+      hidden.add('ask_safety_plan');
+      hidden.add('ask_hold_safety');
+      hidden.add('suggest_replacement');
+    } else if (!humanIsLoh) {
+      hidden.add('ask_hold_safety');
+    }
+    return hidden;
+  }, [game.phase, game.nomineeIds.length, game.lohId, game.posWinnerId, game.povSavedId, humanPlayer?.id, humanPlayer?.status]);
 
   // Clear subject whenever action or primary target changes.
   // NOTE: This is done explicitly in the event handlers (handleActionClick and
@@ -196,9 +291,19 @@ export default function SocialPanelV2() {
   // Handle action selection. Clears the subject so a stale subject from a
   // previous primaryPlusSubject action never leaks into a new action context.
   const handleActionClick = useCallback((actionId: string) => {
+    const nextAction = SocialManeuvers.getActionById(actionId);
+    const nextMode = nextAction?.targetMode ?? (nextAction?.needsTargets === false ? 'none' : 'primary');
+    const nextBatchCompatible = nextMode === 'primary'
+      && !nextAction?.requiredTargetStatus
+      && actionId !== 'proposeAlliance';
+    if (nextMode === 'multi') {
+      setMultiSelectActive(true);
+    } else if (!nextBatchCompatible && primaryTargetId) {
+      setSelectedTargets(new Set([primaryTargetId]));
+    }
     setSelectedActionId(actionId);
     setSelectedSubjectId(null);
-  }, []);
+  }, [primaryTargetId, setMultiSelectActive, setSelectedActionId, setSelectedSubjectId, setSelectedTargets]);
 
   // Handle player selection from PlayerList.
   // For 'multi' actions the full Set is preserved; for all other modes only the
@@ -210,7 +315,7 @@ export default function SocialPanelV2() {
     ids: Set<string>,
     details: { primaryTargetId: string | null },
   ) => {
-    if (selectedAction?.targetMode === 'multi') {
+    if (usesMultipleTargets) {
       setSelectedTargets(new Set(ids));
       setPrimaryTargetId(details.primaryTargetId);
     } else {
@@ -229,36 +334,99 @@ export default function SocialPanelV2() {
         setSelectedActionId(null);
       }
     }
-  }, [selectedAction, game.players]);
+  }, [game.players, selectedAction, setPrimaryTargetId, setSelectedActionId, setSelectedSubjectId, setSelectedTargets, usesMultipleTargets]);
 
   const handleExecute = useCallback(() => {
-    if (!canExecute || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
+    if (!hasExecutableSelection || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
     isExecutingRef.current = true;
     setExecuting(true);
     setFeedbackMsg(null);
     // targetMode 'none' actions must ignore stale roster selection and execute
     // against the actor, while targeted actions use the explicit primary target.
-    const targetId = targetMode === 'none' ? humanPlayer.id : effectivePrimaryTargetId;
-    if (!targetId) {
+    const targetIds = targetMode === 'none'
+      ? [humanPlayer.id]
+      : usesMultipleTargets
+        ? Array.from(selectedTargets)
+        : effectivePrimaryTargetId ? [effectivePrimaryTargetId] : [];
+    if (targetIds.length === 0) {
       setFeedbackMsg('Select a player to continue.');
       isExecutingRef.current = false;
       setExecuting(false);
       return;
     }
     // Guard: block actions targeting unknown, evicted, or jury players.
-    const targetPlayer = game.players.find((p) => p.id === targetId);
-    if (!targetPlayer || targetPlayer.status === 'evicted' || targetPlayer.status === 'jury') {
+    if (targetMode === 'multi' && targetIds.length < 2) {
+      setFeedbackMsg('Select at least two players for a group action.');
+      isExecutingRef.current = false;
+      setExecuting(false);
+      return;
+    }
+    if (!totalCosts || !SocialManeuvers.canAfford(humanPlayer.id, totalCosts)) {
+      const needs = [
+        totalCosts && totalCosts.energy > energy ? `⚡${totalCosts.energy}` : null,
+        totalCosts && totalCosts.influence > influence ? `🤝${totalCosts.influence}` : null,
+        totalCosts && totalCosts.info > info ? `💡${totalCosts.info}` : null,
+      ].filter(Boolean).join(', ');
+      const onlyEnergyShort = !!totalCosts
+        && totalCosts.energy > energy
+        && totalCosts.influence <= influence
+        && totalCosts.info <= info;
+      setFeedbackMsg(`Insufficient resources${onlyEnergyShort ? ': insufficient energy' : ''}${needs ? ` — need ${needs}` : ''}. Nothing was spent.`);
+      isExecutingRef.current = false;
+      setExecuting(false);
+      return;
+    }
+    const hasInvalidTarget = targetIds.some((targetId) => {
+      const targetPlayer = game.players.find((p) => p.id === targetId);
+      return !targetPlayer || targetPlayer.status === 'evicted' || targetPlayer.status === 'jury';
+    });
+    if (hasInvalidTarget) {
       setFeedbackMsg('Cannot target an eliminated or Tribunal player.');
       isExecutingRef.current = false;
       setExecuting(false);
       return;
     }
-    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, {
-      source: 'manual',
-      subjectId: selectedSubjectId ?? undefined,
-    });
-    setFeedbackMsg(result.summary);
-    if (result.success) {
+    const results = targetIds.map((targetId, index) =>
+      SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, {
+        source: 'manual',
+        subjectId: selectedSubjectId ?? undefined,
+        waiveCosts: index > 0,
+        costOverride: index === 0 ? totalCosts : undefined,
+      }),
+    );
+    const result = results[0];
+    const successfulResults = results.filter((entry) => entry.success);
+    setFeedbackMsg(usesMultipleTargets
+      ? successfulResults.length === targetIds.length
+        ? `${selectedAction?.title ?? 'Action'} reached all ${targetIds.length} selected housemates.`
+        : `${selectedAction?.title ?? 'Action'} reached ${successfulResults.length} of ${targetIds.length} selected housemates.`
+      : result.summary);
+    if (successfulResults.length > 0) {
+      const targetNames = targetIds.map(
+        (targetId) => game.players.find((player) => player.id === targetId)?.name ?? targetId,
+      );
+      const subjectName = selectedSubjectId
+        ? game.players.find((player) => player.id === selectedSubjectId)?.name ?? selectedSubjectId
+        : null;
+      const persistentText = selectedActionId === 'group_chat'
+        ? `You hosted a group chat with ${formatPlayerNames(targetNames)}.`
+        : selectedActionId === 'ask_loh_target'
+          ? result.summary
+          : subjectName
+            ? `You used ${selectedAction?.title ?? selectedActionId} with ${targetNames[0]} about ${subjectName}.`
+            : getSocialNarrative(
+                selectedActionId,
+                formatPlayerNames(targetNames),
+                Date.now(),
+              );
+      dispatch(addTvEvent({
+        text: persistentText,
+        type: 'social',
+        source: 'manual',
+        channels: ['mainLog'],
+      }));
+    }
+    if (successfulResults.length > 0) {
       // Bug fix: action state is intentionally NOT cleared after success.
       // This keeps the action grid stable and avoids the "random %" / disappearing-
       // cards regression where a cleared selectedTarget would leave the preview
@@ -274,20 +442,9 @@ export default function SocialPanelV2() {
     }
     isExecutingRef.current = false;
     setExecuting(false);
-  }, [canExecute, effectivePrimaryTargetId, game.players, humanPlayer, selectedActionId, selectedSubjectId, targetMode]);
+  }, [dispatch, effectivePrimaryTargetId, energy, game.players, hasExecutableSelection, humanPlayer, info, influence, selectedAction, selectedActionId, selectedSubjectId, selectedTargets, setExecuting, setFeedbackMsg, setSuccessPulse, targetMode, totalCosts, usesMultipleTargets]);
 
   if (!open) return null;
-
-  const energy = energyBank?.[humanPlayer!.id] ?? 0;
-  const influence = influenceBank?.[humanPlayer!.id] ?? 0;
-  const info = infoBank?.[humanPlayer!.id] ?? 0;
-  const energyCost = selectedAction
-    ? SocialManeuvers.computeActionCost(
-        humanPlayer!.id,
-        selectedAction,
-        effectivePrimaryTargetId ?? humanPlayer!.id,
-      )
-    : null;
 
   // ── Player list for Social module ─────────────────────────────────────────
   // - Remove pre-jury evictees (status 'evicted' → didn't make jury) entirely.
@@ -381,7 +538,14 @@ export default function SocialPanelV2() {
         <div id="sp2-body" className="sp2-body">
           {/* Left column – Player roster */}
           <div className="sp2-column" aria-label="Player roster">
-            <span className="sp2-column__label">Players</span>
+            <div className="sp2-column__heading">
+              <span className="sp2-column__label">Players</span>
+              {usesMultipleTargets && (
+                <span className="sp2-multi-hint" role="status">
+                  Group: {selectedTargets.size} selected · {targetMode === 'multi' ? 'tap 2+ players' : 'applies to everyone selected'}
+                </span>
+              )}
+            </div>
             <PlayerList
               players={orderedPlayers}
               humanPlayerId={humanPlayer!.id}
@@ -390,6 +554,7 @@ export default function SocialPanelV2() {
               selectedIds={selectedTargets}
               onSelectionChange={handleSelectionChange}
               deltasByTargetId={deltasByTargetId}
+              multiSelect={usesMultipleTargets}
             />
           </div>
 
@@ -412,6 +577,12 @@ export default function SocialPanelV2() {
                 primaryTargetId
                   ? game.players.find((p) => p.id === primaryTargetId)?.status ?? null
                   : null
+              }
+              hiddenActionIds={hiddenContextualActionIds}
+              energyCostOverrides={
+                selectedActionId && totalCosts
+                  ? { [selectedActionId]: totalCosts.energy }
+                  : undefined
               }
             />
           </div>
@@ -437,11 +608,7 @@ export default function SocialPanelV2() {
                       setSelectedSubjectId((prev) => (prev === candidate.id ? null : candidate.id))
                     }
                   >
-                    {candidate.avatar && (
-                      <span className="sp2-subject-chip__avatar" aria-hidden="true">
-                        {candidate.avatar}
-                      </span>
-                    )}
+                    <PlayerAvatar player={candidate} size="sm" showRelationshipOutline={false} />
                     <span className="sp2-subject-chip__name">{candidate.name}</span>
                   </button>
                 ))}
@@ -461,7 +628,9 @@ export default function SocialPanelV2() {
             <span className="sp2-footer__feedback" role="status" aria-live="polite">{feedbackMsg}</span>
           ) : (
             <span className="sp2-footer__cost">
-              {energyCost !== null ? `Cost: ⚡${energyCost}` : 'Cost: —'}
+              {totalCosts
+                ? `Cost: ⚡${totalCosts.energy}${totalCosts.influence ? ` · 🤝${totalCosts.influence}` : ''}${totalCosts.info ? ` · 💡${totalCosts.info}` : ''}`
+                : 'Cost: —'}
             </span>
           )}
           <button

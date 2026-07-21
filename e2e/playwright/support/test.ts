@@ -1,0 +1,100 @@
+import { expect, test as base, type ConsoleMessage, type Page } from '@playwright/test'
+import type { RootState } from '../../../src/store/store'
+
+type BrowserErrorSource = 'console' | 'page'
+
+export interface BrowserError {
+  source: BrowserErrorSource
+  message: string
+}
+
+export interface BrowserErrorCollector {
+  readonly errors: readonly BrowserError[]
+}
+
+export const E2E_NEW_SEASON_FIXTURE = Object.freeze({
+  rosterSeed: 0x4f1bbcdc,
+  seasonSeed: 0x6d2b79f5,
+})
+
+function consoleError(message: ConsoleMessage): BrowserError | null {
+  return message.type() === 'error' ? { source: 'console', message: message.text() } : null
+}
+
+async function installUnhandledRejectionReporter(page: Page): Promise<void> {
+  await page.addInitScript((newSeasonFixture) => {
+    Object.defineProperty(window, '__E2E__', {
+      configurable: false,
+      enumerable: false,
+      value: true,
+      writable: false,
+    })
+
+    Object.defineProperty(window, '__bbE2ENewSeason', {
+      configurable: false,
+      enumerable: false,
+      value: Object.freeze(newSeasonFixture),
+      writable: false,
+    })
+
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason
+      const detail = reason instanceof Error ? `${reason.name}: ${reason.message}` : String(reason)
+      console.error(`[unhandledrejection] ${detail}`)
+    })
+  }, E2E_NEW_SEASON_FIXTURE)
+}
+
+export async function readAppState(page: Page): Promise<RootState> {
+  await expect
+    .poll(() => page.evaluate(() => window.__bbE2EState != null), {
+      message: 'read-only E2E state probe should be installed',
+    })
+    .toBe(true)
+
+  return page.evaluate(() => {
+    const probe = window.__bbE2EState
+    if (probe == null) throw new Error('read-only E2E state probe is unavailable')
+    return probe.snapshot() as RootState
+  })
+}
+
+export const test = base.extend<{ browserErrors: BrowserErrorCollector }>({
+  browserErrors: [
+    async ({ page }, use, testInfo) => {
+      const errors: BrowserError[] = []
+      const onConsole = (message: ConsoleMessage) => {
+        const error = consoleError(message)
+        if (error != null) errors.push(error)
+      }
+      const onPageError = (error: Error) => {
+        errors.push({ source: 'page', message: error.message })
+      }
+
+      page.on('console', onConsole)
+      page.on('pageerror', onPageError)
+      await installUnhandledRejectionReporter(page)
+
+      await use({ errors })
+
+      page.off('console', onConsole)
+      page.off('pageerror', onPageError)
+
+      if (errors.length > 0) {
+        await testInfo.attach('unexpected-browser-errors.json', {
+          body: JSON.stringify(errors, null, 2),
+          contentType: 'application/json',
+        })
+      }
+
+      expect(
+        errors,
+        'unexpected browser console errors, page errors, or unhandled rejections'
+      ).toEqual([])
+    },
+    { auto: true },
+  ],
+})
+
+export { expect }
+export type { Locator, Page, TestInfo } from '@playwright/test'

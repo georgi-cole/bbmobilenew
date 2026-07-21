@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import adsReducer from '../../src/store/adsSlice'
 import challengeReducer from '../../src/store/challengeSlice'
 import gameReducer from '../../src/store/gameSlice'
+import profilesReducer from '../../src/store/profilesSlice'
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
 import settingsReducer from '../../src/store/settingsSlice'
@@ -63,6 +64,7 @@ function makeStore(gameOverrides: Partial<ReturnType<typeof gameReducer>> = {}) 
       ads: adsReducer,
       challenge: challengeReducer,
       game: gameReducer,
+      profiles: profilesReducer,
       publicOpinion: publicOpinionReducer,
       settings: settingsReducer,
       social: socialReducer,
@@ -71,6 +73,7 @@ function makeStore(gameOverrides: Partial<ReturnType<typeof gameReducer>> = {}) 
     preloadedState: {
       game: {
         ...gameState,
+        status: 'active',
         publicModeEnabled: false,
         ...gameOverrides,
       },
@@ -142,7 +145,7 @@ describe('GameScreen public meter gating', () => {
     expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
   })
 
-  it('shows the out-of-house social gating announcement without adding log entries', async () => {
+  it('shows the terminal season-over state instead of out-of-house social actions', async () => {
     const baseGameState = gameReducer(undefined, { type: '@@INIT' })
     const store = makeStore({
       players: baseGameState.players.map((player) =>
@@ -154,19 +157,13 @@ describe('GameScreen public meter gating', () => {
 
     await act(async () => {})
 
-    act(() => {
-      screen.getByRole('button', { name: 'Social' }).click()
-    })
-
-    expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
-      'You are no longer in the house. But maybe try telepathy?',
-    )
+    expect(screen.getByRole('dialog', { name: 'Your season is over' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'You were eliminated before the Tribunal began, so you cannot return to the game or cast a finale vote.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Social' })).toHaveAttribute('aria-disabled', 'true')
     expect(store.getState().game.tvFeed).toEqual(initialFeed)
-
-    act(() => {
-      vi.advanceTimersByTime(3000)
-    })
-
-    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
   })
 })

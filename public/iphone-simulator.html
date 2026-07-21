@@ -8,7 +8,7 @@
     <style>
       :root {
         color-scheme: dark;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         background: #15171c;
         color: #f7f7f9;
       }
@@ -29,8 +29,7 @@
         display: grid;
         place-items: center;
         background:
-          radial-gradient(circle at 50% 15%, rgba(93, 78, 170, 0.18), transparent 34%),
-          #15171c;
+          radial-gradient(circle at 50% 15%, rgba(93, 78, 170, 0.18), transparent 34%), #15171c;
       }
 
       .simulator {
@@ -128,42 +127,42 @@
     </main>
 
     <script>
-      const DEVICE_WIDTH = 421;
-      const DEVICE_HEIGHT = 880;
-      const LABEL_HEIGHT = 30;
-      const fitBox = document.getElementById('fit-box');
-      const iphone = document.getElementById('iphone');
-      const preview = document.getElementById('app-preview');
+      const DEVICE_WIDTH = 421
+      const DEVICE_HEIGHT = 880
+      const LABEL_HEIGHT = 30
+      const fitBox = document.getElementById('fit-box')
+      const iphone = document.getElementById('iphone')
+      const preview = document.getElementById('app-preview')
 
       function fitDevice() {
         const scale = Math.min(
           1,
           (window.innerWidth - 24) / DEVICE_WIDTH,
-          (window.innerHeight - LABEL_HEIGHT - 24) / DEVICE_HEIGHT,
-        );
-        iphone.style.transform = `scale(${scale})`;
-        fitBox.style.width = `${DEVICE_WIDTH * scale}px`;
-        fitBox.style.height = `${DEVICE_HEIGHT * scale}px`;
+          (window.innerHeight - LABEL_HEIGHT - 24) / DEVICE_HEIGHT
+        )
+        iphone.style.transform = `scale(${scale})`
+        fitBox.style.width = `${DEVICE_WIDTH * scale}px`
+        fitBox.style.height = `${DEVICE_HEIGHT * scale}px`
       }
 
       function applyIphoneSafeArea() {
-        const root = preview.contentDocument?.documentElement;
-        if (!root) return;
-        root.classList.add('is-capacitor', 'is-ios-simulator');
-        root.style.setProperty('--safe-top', '59px');
-        root.style.setProperty('--safe-bottom', '34px');
-        root.style.setProperty('--safe-left', '0px');
-        root.style.setProperty('--safe-right', '0px');
-        root.style.setProperty('--app-safe-area-top-fallback', '59px');
+        const root = preview.contentDocument?.documentElement
+        if (!root) return
+        root.classList.add('is-capacitor', 'is-ios-simulator')
+        root.style.setProperty('--safe-top', '59px')
+        root.style.setProperty('--safe-bottom', '34px')
+        root.style.setProperty('--safe-left', '0px')
+        root.style.setProperty('--safe-right', '0px')
+        root.style.setProperty('--app-safe-area-top-fallback', '59px')
       }
 
       preview.addEventListener('load', () => {
-        applyIphoneSafeArea();
-        window.setTimeout(applyIphoneSafeArea, 250);
-      });
-      preview.src = `${window.location.pathname.replace(/iphone-simulator\.html$/, '')}#/game`;
-      window.addEventListener('resize', fitDevice);
-      fitDevice();
+        applyIphoneSafeArea()
+        window.setTimeout(applyIphoneSafeArea, 250)
+      })
+      preview.src = `${window.location.pathname.replace(/iphone-simulator\.html$/, '')}#/game`
+      window.addEventListener('resize', fitDevice)
+      fitDevice()
     </script>
   </body>
 </html>

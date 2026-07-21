@@ -557,6 +557,24 @@ export interface GameState {
   /** Player ID of the current Leader of the House, or null between weeks. */
   lohId: string | null;
   /**
+   * A disclosed LOH plan is persisted so conversation intel and the eventual
+   * ceremony cannot contradict one another. Cleared at the next week start.
+   */
+  lohSocialPlan?: {
+    week: number;
+    lohId: string;
+    currentTargetId: string | null;
+    backupTargetId: string | null;
+    askCountsByPlayerId: Record<string, number>;
+  } | null;
+  /** Advice a human LOH gave the current AI Safety holder before the ceremony. */
+  lohSafetyAdvice?: {
+    week: number;
+    lohId: string;
+    holderId: string;
+    advice: 'use' | 'hold' | 'free';
+  } | null;
+  /**
    * Player ID of the outgoing (previous week's) Leader of the House.
    * Set at the start of each new week so the outgoing LOH can be excluded
    * from the LOH competition. Null in Week 1 and during the Final 3.

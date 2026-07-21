@@ -152,6 +152,7 @@ describe('Chain of Greed rules', () => {
       activePlayers: players,
       votes: [
         { voterId: 'human', voterName: 'You', targetId: 'ai-1', targetName: 'AI 1', reason: 'tight race' },
+        { voterId: 'ai-1', voterName: 'AI 1', targetId: 'ai-2', targetName: 'AI 2', reason: 'tight race' },
         { voterId: 'ai-2', voterName: 'AI 2', targetId: 'ai-1', targetName: 'AI 1', reason: 'tight race' },
         { voterId: 'ai-3', voterName: 'AI 3', targetId: 'ai-2', targetName: 'AI 2', reason: 'tight race' },
       ],

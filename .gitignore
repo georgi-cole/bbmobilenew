@@ -42,3 +42,7 @@ screenshots/
 
 # Capacitor build cache
 .capacitor/
+.worktrees/
+coverage/
+playwright-report/
+test-results/

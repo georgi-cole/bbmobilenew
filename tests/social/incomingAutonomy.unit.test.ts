@@ -284,7 +284,7 @@ describe('chooseIncomingInteractionType', () => {
 
 describe('shouldEnqueueInteraction', () => {
   it('returns true for eligible actor with no pending interactions', () => {
-    const ctx = makeContext({ phase: 'nominations' });
+    const ctx = makeContext({ phase: 'nominations', lohId: 'user' });
     expect(shouldEnqueueInteraction('actor1', 'user', ctx, [])).toBe(true);
   });
 
@@ -308,19 +308,21 @@ describe('shouldEnqueueInteraction', () => {
   });
 
   it('returns false when actor is on cooldown (recent interaction in same week)', () => {
-    const ctx = makeContext({ phase: 'nominations', week: 5 });
+    const ctx = makeContext({ phase: 'nominations', week: 5, lohId: 'user' });
     // An unresolved interaction from actor1 in the same week → full recency penalty
     const pending: IncomingInteraction[] = [
-      makeInteraction({ id: 'i-recent', fromId: 'actor1', createdWeek: 5, resolved: false }),
+      makeInteraction({ id: 'i-recent', fromId: 'actor1', createdWeek: 5, resolved: true }),
     ];
-    expect(shouldEnqueueInteraction('actor1', 'user', ctx, pending)).toBe(false);
+    const decision = evaluateIncomingInteractionEnqueueDecision('actor1', 'user', ctx, pending);
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe('blocked_by_cooldown');
   });
 
   it('returns true when previous interaction is old enough (past cooldown)', () => {
     // cooldownTicks = 2; interaction from week 1, current week = 3 → no penalty
-    const ctx = makeContext({ phase: 'nominations', week: 3 });
+    const ctx = makeContext({ phase: 'nominations', week: 3, lohId: 'user' });
     const pending: IncomingInteraction[] = [
-      makeInteraction({ id: 'i-old', fromId: 'actor1', createdWeek: 1, resolved: false }),
+      makeInteraction({ id: 'i-old', fromId: 'actor1', createdWeek: 1, resolved: true }),
     ];
     expect(shouldEnqueueInteraction('actor1', 'user', ctx, pending)).toBe(true);
   });
@@ -356,7 +358,10 @@ describe('incoming interaction decision reasons', () => {
   it('respects scoreThreshold tuning from socialConfig', () => {
     socialConfig.incomingInteractionConfig.scoreThreshold = 0.99;
 
-    const ctx = makeContext({ phase: 'social_1', relationships: {} });
+    const ctx = makeContext({
+      phase: 'social_1',
+      relationships: { actor1: { user: { affinity: 30, tags: [] } } },
+    });
     const decision = evaluateIncomingInteractionEnqueueDecision('actor1', 'user', ctx, []);
 
     expect(decision.allowed).toBe(false);

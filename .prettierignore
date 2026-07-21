@@ -1,2 +1,15 @@
 dist
 node_modules
+coverage
+playwright-report
+test-results
+renders
+.worktrees
+.capacitor
+android/.gradle
+android/app/build
+android/app/src/main/assets
+ios/App/App/public
+store-assets
+public/assets/glossy_dock/integration_notes.css
+public/assets/updated_nav_fab_bar/integration_notes.css

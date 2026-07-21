@@ -309,6 +309,20 @@ describe('FloatingActionBar – layout', () => {
     renderFAB(store);
     expect(screen.queryByRole('button', { name: /save/i })).toBeNull();
   });
+
+  it('accepts the primary advance action only once for the current phase', () => {
+    const store = makeStore(true, { phase: 'week_end', week: 1 });
+    renderFAB(store);
+
+    const playButton = screen.getByRole('button', { name: 'Advance to next phase' });
+    act(() => {
+      playButton.click();
+      playButton.click();
+    });
+
+    expect(store.getState().game.week).toBe(2);
+    expect(store.getState().game.phase).toBe('week_start');
+  });
 });
 
 describe('FloatingActionBar – navigation buttons', () => {

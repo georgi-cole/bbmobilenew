@@ -340,6 +340,22 @@ export default function SettingsAdmin() {
             </div>
 
             <div className="settings-row settings-row--col">
+              <div className="settings-row settings-row--nested">
+                <label className="settings-row__label">Drama Mode</label>
+                <input
+                  type="checkbox"
+                  className="settings-toggle"
+                  checked={settings.gameUX.dramaMode}
+                  onChange={(e) => dispatch(setGameUX({ dramaMode: e.target.checked }))}
+                  aria-label="Toggle drama mode"
+                />
+              </div>
+              <p className="settings-helper-text">
+                Unlocks richer alliances, grudges, pleas, betrayals, and strategic reactions.
+              </p>
+            </div>
+
+            <div className="settings-row settings-row--col">
               <div className="settings-row">
                 <label className="settings-row__label">Public Mode</label>
                 <input

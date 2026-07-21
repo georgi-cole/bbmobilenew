@@ -82,7 +82,7 @@ const INCOMING_TYPES: IncomingInteractionType[] = [
 
 const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
   compliment: ['Your speech was iconic tonight.', 'You handled that ceremony like a pro.'],
-  gossip: ['Everyone is whispering about the next targets.', 'There is a rumor about the veto.'],
+  gossip: ['Everyone is whispering about the next targets.', 'There is a rumor about the Safety decision.'],
   warning: ['Be careful — eyes are on your alliances.', 'Watch out for the vote split tonight.'],
   alliance_proposal: ['Want to lock in something solid?', 'Let’s ride this out together.'],
   deal_offer: ['If you keep me safe, I owe you.', 'Let’s make a quiet side deal.'],

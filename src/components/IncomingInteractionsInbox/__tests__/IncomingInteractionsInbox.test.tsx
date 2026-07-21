@@ -11,6 +11,7 @@ import socialReducer, {
 } from '../../../social/socialSlice';
 import IncomingInteractionsInbox from '../IncomingInteractionsInbox';
 import { socialMiddleware } from '../../../social/socialMiddleware';
+import { hasAllianceBetween } from '../../../social/socialAlliance';
 
 function makeStore() {
   return configureStore({
@@ -213,6 +214,7 @@ describe('IncomingInteractionsInbox', () => {
     const socialState = store.getState().social;
     expect(socialState.relationships[otherPlayer.id]?.[humanId]?.tags).toContain('alliance');
     expect(socialState.relationships[humanId]?.[otherPlayer.id]?.tags).toContain('alliance');
+    expect(hasAllianceBetween(socialState.relationships, humanId, otherPlayer.id)).toBe(true);
     expect(socialState.energyBank[humanId]).toBe(2);
     expect(socialState.energyBank[otherPlayer.id]).toBe(2);
     expect(socialState.influenceBank[humanId]).toBe(200);

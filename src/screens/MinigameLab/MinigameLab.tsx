@@ -65,6 +65,7 @@ export default function MinigameLab() {
   const [skipCountdown, setSkipCountdown] = useState(() => readInitialFlag('skipCountdown', true));
   const [previewNonce, setPreviewNonce] = useState(0);
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const [completionCount, setCompletionCount] = useState(0);
 
   const freezeEnabled = getRouteFlag('freeze');
   const selectedGame =
@@ -74,6 +75,7 @@ export default function MinigameLab() {
 
   const clearLastResult = () => {
     setLastResult(null);
+    setCompletionCount(0);
   };
 
   const handleGameChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -199,6 +201,7 @@ export default function MinigameLab() {
             {selectedGame?.description ?? 'Select a game from the registry to inspect its host flow.'}
           </p>
           <p className="minigame-lab__summary-meta">{formatGameLabel(selectedGame)}</p>
+          <span data-testid="minigame-lab-completion-count">{completionCount}</span>
           <ul className="minigame-lab__instructions">
             {(selectedGame?.instructions ?? []).map((instruction) => (
               <li key={instruction}>{instruction}</li>
@@ -221,6 +224,7 @@ export default function MinigameLab() {
           skipRules={skipRules}
           skipCountdown={skipCountdown}
           onDone={(rawValue, partial, completion) => {
+            setCompletionCount((current) => current + 1);
             const rounded = Math.round(rawValue);
             if (completion?.authoritativeWinnerId) {
               setLastResult(

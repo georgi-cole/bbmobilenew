@@ -63,13 +63,13 @@ describe('SocialPolicy – chooseActionFor', () => {
 });
 
 describe('SocialPolicy – chooseTargetsFor', () => {
-  it('returns an ally for friendly actions when one exists', () => {
+  it('returns a credible alliance prospect when one exists', () => {
     const ctx: PolicyContext = {
       ...BASE_CONTEXT,
       relationships: {
         p1: {
-          p2: { affinity: 0.8, tags: [] },
-          p3: { affinity: -0.8, tags: [] },
+          p2: { affinity: 80, tags: [] },
+          p3: { affinity: -80, tags: [] },
         },
       },
     };
@@ -82,8 +82,8 @@ describe('SocialPolicy – chooseTargetsFor', () => {
       ...BASE_CONTEXT,
       relationships: {
         p1: {
-          p2: { affinity: 0.8, tags: [] },
-          p3: { affinity: -0.8, tags: [] },
+          p2: { affinity: 80, tags: [] },
+          p3: { affinity: -80, tags: [] },
         },
       },
     };
@@ -91,11 +91,15 @@ describe('SocialPolicy – chooseTargetsFor', () => {
     expect(targets).toEqual(['p3']);
   });
 
-  it('falls back to first eligible player when no ally/enemy found', () => {
-    const targets = chooseTargetsFor('p1', 'ally', BASE_CONTEXT);
+  it('falls back to first eligible player for a general friendly action', () => {
+    const targets = chooseTargetsFor('p1', 'protect', BASE_CONTEXT);
     // No relationships defined; p4 is evicted, so p2 is first eligible
     expect(targets).toHaveLength(1);
     expect(['p2', 'p3']).toContain(targets[0]);
+  });
+
+  it('does not propose an alliance without a credible relationship', () => {
+    expect(chooseTargetsFor('p1', 'ally', BASE_CONTEXT)).toEqual([]);
   });
 
   it('excludes the actor itself', () => {

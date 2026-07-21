@@ -144,7 +144,11 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
             const resultClass = getResultClass(entry);
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
-            const narrative = getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp);
+            const narrative = entry.actionId === 'ask_loh_target' && subjectName
+              ? entry.context?.lohPlanType === 'backup_plan'
+                ? `${targetName} told you ${subjectName} is their backup plan if the nominations change.`
+                : `${targetName} told you ${subjectName} is their current target.`
+              : getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp);
             const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`;
             const isNew = highlightedKeys.has(key);
             return (
@@ -157,7 +161,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
                   <span className="ra-entry__narrative">{narrative}</span>
                   {deltaText && (
                     <span className={`ra-entry__delta ra-entry__delta--${resultClass}`}>
-                      {deltaText}
+                      Relationship {deltaText}
                     </span>
                   )}
                 </span>

@@ -169,7 +169,7 @@ describe('HomeHub', () => {
     delete (window as Window & { game?: Record<string, unknown> }).game;
   });
 
-  it('shows the Kolequant splash only once per game when returning home mid-game', async () => {
+  it('shows the Kolequant splash only once per app session', async () => {
     const firstRender = renderHomeHub();
 
     expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
@@ -191,7 +191,7 @@ describe('HomeHub', () => {
     });
   });
 
-  it('shows the Kolequant splash again after a new season starts', async () => {
+  it('does not show the Kolequant splash again after a new season starts', async () => {
     const firstRender = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -205,10 +205,21 @@ describe('HomeHub', () => {
 
     renderHomeHub();
 
+    expect(screen.queryByTestId('kolequant-splash')).toBeNull();
     await waitFor(() => {
-      expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
-    expect(screen.getByTestId('kolequant-splash')).toHaveAttribute('data-duration', '0');
+  });
+
+  it('shows the hub buttons immediately after quitting a run without saving', async () => {
+    sessionStorage.setItem('bb:homeHubSplashShownThisSession', 'true');
+
+    renderHomeHub();
+
+    expect(screen.queryByTestId('kolequant-splash')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    });
   });
 
   it('still shows the five-second launch splash when the current game was seen previously', () => {

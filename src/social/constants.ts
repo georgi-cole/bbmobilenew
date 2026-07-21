@@ -2,7 +2,7 @@
 
 import type { SocialState } from './types';
 
-/** Default social-action energy each player receives at the start of a phase. */
+/** Weekly social-action energy added when the first social phase begins. Unspent energy carries forward. */
 export const DEFAULT_ENERGY = 5;
 
 /** Initial value for the Redux social state subtree. */

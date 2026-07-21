@@ -112,6 +112,13 @@ const SECTIONS: SettingSection[] = [
       },
       {
         type: 'toggle',
+        id: 'dramaMode',
+        label: 'Drama Mode',
+        get: (s) => s.gameUX.dramaMode,
+        onChange: (dispatch, val) => dispatch(setGameUX({ dramaMode: val })),
+      },
+      {
+        type: 'toggle',
         id: 'publicMode',
         label: 'Public Mode',
         badge: 'VIP',

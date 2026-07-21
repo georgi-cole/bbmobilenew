@@ -1459,15 +1459,15 @@ describe('TvZone — phase-based announcement triggers', () => {
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('pre_veto_public_save')); });
-    expect(screen.getByLabelText('PUBLIC SAFETY')).toBeDefined();
+    expect(screen.getByLabelText(/public safety/i)).toBeDefined();
     expect(screen.queryByText('pre_veto_public_save')).toBeNull();
 
     act(() => { store.dispatch(setPhase('jury_announcement')); });
-    expect(screen.getByLabelText('TRIBUNAL')).toBeDefined();
+    expect(screen.getByLabelText(/tribunal/i)).toBeDefined();
     expect(screen.queryByText('jury_announcement')).toBeNull();
 
     act(() => { store.dispatch(setPhase('jury_cinematic')); });
-    expect(screen.getByLabelText('TRIBUNAL')).toBeDefined();
+    expect(screen.getByLabelText(/tribunal/i)).toBeDefined();
     expect(screen.queryByText('jury_cinematic')).toBeNull();
   });
 

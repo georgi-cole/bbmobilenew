@@ -17,6 +17,7 @@ function makeInput(overrides: Partial<ResponsiveGameLayoutInput> = {}): Responsi
     hasDock: true,
     playerCount: 16,
     userCompactRoster: false,
+    inlineLogVisible: true,
     ...overrides,
   }
 }
@@ -67,6 +68,21 @@ describe('responsive game layout budget', () => {
     })
     expect(readCssPx(budget, '--game-screen-tv-viewport-min-height')).toBeGreaterThanOrEqual(144)
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(1)
+  })
+
+  it('does not reserve inline feed rows when refined chrome hides House Feed', () => {
+    const budget = computeResponsiveGameLayout(
+      makeInput({
+        viewportHeight: 852,
+        stageHeight: 699,
+        playerCount: 16,
+        inlineLogVisible: false,
+      })
+    )
+
+    expect(budget.tvLogRows).toBe(0)
+    expect(budget.cssVars).toMatchObject({ '--game-tv-log-rows': '0' })
+    expect(budget.rosterMode).toBe('normal')
   })
 
   it('keeps user-selected normal controls stable across viewport measurements', () => {
@@ -251,9 +267,9 @@ describe('responsive game layout budget', () => {
     )
 
     expect(budget.survivorStandoutMode).toBe('full-card')
-    expect(budget.tvLogRows).toBe(5)
+    expect(budget.tvLogRows).toBe(3)
     expect(budget.cssVars).toMatchObject({
-      '--game-tv-log-rows': '5',
+      '--game-tv-log-rows': '3',
       '--game-survivor-standout-min-height': '74px',
     })
   })

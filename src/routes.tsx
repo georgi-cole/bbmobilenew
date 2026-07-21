@@ -43,6 +43,8 @@ const load = (element: ReactNode) => (
 // element below at render time.
 const SettingsAdmin = lazy(() => import('./screens/SettingsAdmin/SettingsAdmin'));
 
+// This route-only guard intentionally shares the router configuration module.
+// eslint-disable-next-line react-refresh/only-export-components
 function SettingsAdminRoute() {
   return import.meta.env.DEV || canAccessSpecialSettings()
     ? <Suspense fallback={null}><SettingsAdmin /></Suspense>

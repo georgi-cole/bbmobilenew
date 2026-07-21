@@ -338,8 +338,13 @@ export default function IncomingInteractionsInbox() {
           <div className="inbox-header__title">📥 Incoming Interactions</div>
           <div className="inbox-header__meta">
             <span className="inbox-header__summary">{headerSummary}</span>
-            <span className="inbox-header__credibility">
-              Credibility {credibility.score}% · {credibility.label}
+            <span
+              className="inbox-header__credibility"
+              title="Your promise-keeping reputation. It changes only when a promise is later kept or broken."
+            >
+              {credibility.kept + credibility.broken === 0
+                ? 'Your reputation · no promises judged yet'
+                : `Your reputation ${credibility.score}% · ${credibility.label}`}
             </span>
             <button
               className="inbox-header__close"

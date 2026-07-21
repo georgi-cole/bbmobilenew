@@ -10,13 +10,14 @@
 //     category-only, unique, retired modes).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import challengeReducer, { startChallenge, recordRun, setPendingChallenge } from '../../src/store/challengeSlice';
 import profilesReducer, { type ProfilesState } from '../../src/store/profilesSlice';
+import socialReducer from '../../src/social/socialSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
@@ -47,6 +48,7 @@ const REDUCERS = {
   game: gameReducer,
   challenge: challengeReducer,
   profiles: profilesReducer,
+  social: socialReducer,
   settings: settingsReducer,
   publicOpinion: publicOpinionReducer,
 } as const;
@@ -190,7 +192,7 @@ describe('challenge flow – phase transition dispatch', () => {
     expect(dialogs.some((d) => d.classList.contains('minigame-host'))).toBe(true);
   });
 
-  it('resolves a classic AI-only competition when the human is an evicted spectator', async () => {
+  it('ends a classic run when the human was evicted before the Tribunal', () => {
     const store = makeStoreWithGame({
       status: 'active',
       phase: 'loh_comp',
@@ -204,13 +206,12 @@ describe('challenge flow – phase transition dispatch', () => {
 
     renderWithStore(store);
 
-    await waitFor(() => {
-      expect(store.getState().challenge.pending).toBeNull();
-      expect(store.getState().challenge.history).toHaveLength(1);
-    });
-
-    expect(['p1', 'p2']).toContain(store.getState().game.lohId);
-    expect(store.getState().game.phase).toBe('loh_results');
+    expect(screen.getByRole('dialog', { name: 'Your season is over' })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'You were eliminated before the Tribunal began, so you cannot return to the game or cast a finale vote.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

@@ -43,7 +43,7 @@ describe('safe-area layout styles', () => {
       readFileSync(resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'), 'utf8'),
     );
 
-    expect(bottomNavCss).toContain('height: calc(var(--nav-bar-height, 60px) + var(--safe-bottom));');
+    expect(bottomNavCss).toContain('height: calc(var(--game-bottom-nav-content-height) + var(--safe-bottom));');
     expect(bottomNavCss).toContain('padding-bottom: var(--safe-bottom);');
     expect(bottomNavCss).not.toContain('env(safe-area-inset-bottom');
     expect(dockCss).toContain('.game-control-dock { position: absolute;');

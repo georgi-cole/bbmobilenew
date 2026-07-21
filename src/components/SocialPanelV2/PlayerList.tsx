@@ -28,6 +28,8 @@ interface PlayerListProps {
    * expanded PlayerCard view.
    */
   deltasByTargetId?: ReadonlyMap<string, number>;
+  /** Multi-target actions use tap-to-toggle selection on touch devices. */
+  multiSelect?: boolean;
 }
 
 /**
@@ -50,6 +52,7 @@ export default function PlayerList({
   onSelectionChange,
   selectedIds: controlledSelectedIds,
   deltasByTargetId,
+  multiSelect = false,
 }: PlayerListProps) {
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
   const lastFocusedIndexRef = useRef<number>(-1);
@@ -70,7 +73,7 @@ export default function PlayerList({
     // Use the authoritative current selection (controlled or internal) for toggle logic.
     const effectiveSelectedIds = controlledSelectedIds ?? internalSelectedIds;
     let next: Set<string>;
-    if (additive) {
+    if (additive || multiSelect) {
       // Ctrl/Cmd: toggle individual player in/out of multi-select.
       const s = new Set(effectiveSelectedIds);
       if (s.has(playerId)) { s.delete(playerId); } else { s.add(playerId); }
@@ -125,9 +128,10 @@ export default function PlayerList({
         // Affinity: the human's perception of this player (human → player relationship).
         let affinity: number | undefined;
         if (humanPlayerId && relationships) {
-          const rel = relationships[humanPlayerId]?.[player.id];
-          if (rel !== undefined) {
-            affinity = Math.round(rel.affinity);
+          const outward = relationships[humanPlayerId]?.[player.id]?.affinity;
+          const inward = relationships[player.id]?.[humanPlayerId]?.affinity;
+          if (outward !== undefined || inward !== undefined) {
+            affinity = Math.round(((outward ?? 0) + (inward ?? 0)) / 2);
           }
         }
 

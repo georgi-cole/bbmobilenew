@@ -134,6 +134,16 @@ describe('Settings screen', () => {
     expect(screen.queryByLabelText(/compact roster layout/i)).toBeNull();
   });
 
+  it('defaults Drama Mode off and lets the player enable it', () => {
+    const { store } = renderSettings();
+    const dramaModeToggle = screen.getByLabelText(/toggle drama mode/i);
+    expect(dramaModeToggle).not.toBeChecked();
+
+    fireEvent.click(dramaModeToggle);
+
+    expect(store.getState().settings.gameUX.dramaMode).toBe(true);
+  });
+
   it('shows Public Mode in normal Settings as a VIP-gated toggle', async () => {
     const { store } = renderSettings();
 
@@ -191,6 +201,7 @@ describe('Settings screen', () => {
     expect(screen.getByLabelText(/toggle compact mode/i)).not.toBeChecked();
     expect(screen.getByLabelText(/toggle haptic feedback/i)).toBeChecked();
     expect(screen.getByLabelText(/toggle animations/i)).toBeChecked();
+    expect(screen.getByLabelText(/toggle drama mode/i)).not.toBeChecked();
     expect(screen.getByLabelText(/toggle public mode/i)).toBeChecked();
     expect(screen.getByLabelText(/toggle twists/i)).toBeChecked();
     expect(screen.getByText(/double elimination chance — 35%/i)).toBeTruthy();
