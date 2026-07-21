@@ -6,7 +6,7 @@ const SOCIAL_MODULE_BLOCKED_PHASES: ReadonlySet<Phase> = new Set<Phase>([
   'eviction_results',
 ]);
 
-const SURVIVOR_SOCIAL_BLOCK_REASON = 'Survival mode disables social modules.';
+const SURVIVOR_SOCIAL_BLOCK_REASON = 'Surveyeval Mode disables social modules.';
 
 interface HumanPlayerLike {
   id: string;

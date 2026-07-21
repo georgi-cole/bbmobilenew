@@ -26,7 +26,7 @@ const RULES = [
   {
     kicker: 'RECORD',
     title: 'Every day counts',
-    description: 'Your best day and unlocked Survival milestones are saved to your profile.',
+    description: 'Your best day and unlocked Surveyeval milestones are saved to your profile.',
   },
 ] as const;
 
@@ -71,12 +71,12 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
           <div className="survivor-rules-modal__brand">
             <span className="survivor-rules-modal__logo" aria-hidden="true">∞</span>
             <div>
-              <p className="survivor-rules-modal__eyebrow">Survival Mode</p>
-              <p className="survivor-rules-modal__guide-label">The Big Eye — Survival Guide</p>
+              <p className="survivor-rules-modal__eyebrow">Surveyeval Mode</p>
+              <p className="survivor-rules-modal__guide-label">The Big Eye — Surveyeval Guide</p>
             </div>
           </div>
           <h2 id={titleId} className="survivor-rules-modal__title">
-            How Survival Works
+            How Surveyeval Works
           </h2>
           <p id={descId} className="survivor-rules-modal__desc">
             The classical weekly structure becomes an endless elimination run. Win challenges,
@@ -84,7 +84,7 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
           </p>
         </header>
 
-        <div className="survivor-rules-modal__rules" role="list" aria-label="Survival rules">
+        <div className="survivor-rules-modal__rules" role="list" aria-label="Surveyeval rules">
           {RULES.map((rule) => (
             <article className="survivor-rules-modal__rule" key={rule.title} role="listitem">
               <span className="survivor-rules-modal__rule-kicker">{rule.kicker}</span>
@@ -111,7 +111,7 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
               onClick={() => onContinue(dontShowAgain)}
               autoFocus
             >
-              Enter Survival
+              Enter Surveyeval
             </button>
             <button
               type="button"

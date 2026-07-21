@@ -242,8 +242,8 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-day-10000',
     day: 10000,
-    name: 'Five-Digit Survival',
-    subtitle: 'Ten thousand days. You are no longer in Survival mode. Survival mode is in you.',
+    name: 'Five-Digit Surveyeval',
+    subtitle: 'Ten thousand days. You are no longer in Surveyeval mode. Surveyeval mode is in you.',
     category: 'mythic',
     visibility: 'visible',
     tier: 'mythic',
@@ -322,7 +322,7 @@ const SURVIVOR_ACHIEVEMENT_DATA: SurvivorAchievementDefinition[] = [
   {
     id: 'survivor-anomaly-777',
     day: 777,
-    name: 'Jackpot Survival',
+    name: 'Jackpot Surveyeval',
     subtitle: 'The house rolled lucky. Unfortunately, so did you.',
     category: 'anomaly',
     visibility: 'secret',
@@ -546,7 +546,7 @@ export function buildSurvivorAchievementDisplayModel(
     id: achievement.id,
     title: achievement.name,
     subtitle: achievement.subtitle,
-    requirement: `Reach Day ${achievement.day} in Survival Mode.`,
+    requirement: `Reach Day ${achievement.day} in Surveyeval Mode.`,
     tierLabel,
     categoryLabel,
     visibility,
