@@ -31,8 +31,8 @@ export default function SurvivorStandoutCard({ standout, mode, onPlayerClick }: 
   const title = tied ? 'Leaders tied' : primary.player.name;
   const subtitle = tied ? formatTiedNames(standout) : `${primary.daysInGame} days in game`;
   const ariaLabel = tied
-    ? `Survival leaders tied: ${formatTiedNames(standout)}`
-    : `Current Survival leader: ${primary.player.name}, ${primary.daysInGame} days in game`;
+    ? `Surveyeval leaders tied: ${formatTiedNames(standout)}`
+    : `Current Surveyeval leader: ${primary.player.name}, ${primary.daysInGame} days in game`;
 
   return (
     <section
@@ -50,7 +50,7 @@ export default function SurvivorStandoutCard({ standout, mode, onPlayerClick }: 
           <img className="survivor-standout__avatar" src={resolveAvatar(primary.player)} alt="" />
         </span>
         <span className="survivor-standout__copy">
-          <span className="survivor-standout__eyebrow">Survival Standout</span>
+          <span className="survivor-standout__eyebrow">Surveyeval Standout</span>
           <strong className="survivor-standout__title">{title}</strong>
           <span className="survivor-standout__subtitle">{subtitle}</span>
         </span>

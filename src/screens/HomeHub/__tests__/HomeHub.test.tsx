@@ -398,7 +398,7 @@ describe('HomeHub', () => {
     );
   });
 
-  it('shows Survival rules before starting a fresh Survival run', async () => {
+  it('shows Surveyeval rules before starting a fresh Surveyeval run', async () => {
     const view = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -408,11 +408,11 @@ describe('HomeHub', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Survival' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Surveyeval' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/don't show this again/i));
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Survival' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Surveyeval' }));
 
     await waitFor(() => {
       expect(
@@ -436,7 +436,7 @@ describe('HomeHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
 
     const classic = screen.getByRole('button', { name: 'Campaign' });
-    const survival = screen.getByRole('button', { name: 'Survival' });
+    const survival = screen.getByRole('button', { name: 'Surveyeval' });
     const housemates = screen.getByRole('button', { name: 'Housemates' });
     expect(screen.queryByRole('button', { name: 'Mystery Wildcards' })).toBeNull();
     expect(classic).toHaveAttribute('data-has-icon', 'true');

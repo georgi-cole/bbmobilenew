@@ -57,7 +57,7 @@ export function terminalizeSurvivorRun(state: GameState): GameState {
   const hasTerminalEvent = state.tvFeed.some((event) => event.id === eventId);
   const gameOverEvent: TvEvent = {
     id: eventId,
-    text: `Survival run ended. You were eliminated on Day ${currentDay}.`,
+    text: `Surveyeval run ended. You were eliminated on Day ${currentDay}.`,
     type: 'game',
     timestamp: Date.now(),
     meta: { phase: state.phase, week: state.week, mode: 'survival' },
@@ -167,7 +167,7 @@ export function createSurvivorRun(): GameState {
     tvFeed: [
       {
         id: 'survivor-e0',
-        text: 'Survival Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.',
+        text: 'Surveyeval Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.',
         type: 'game',
         timestamp: now,
         meta: { phase: 'week_start', week: 1, mode: 'survival' },

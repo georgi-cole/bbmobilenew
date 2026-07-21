@@ -327,7 +327,7 @@ describe('FloatingActionBar – layout', () => {
 
 describe('FloatingActionBar – navigation buttons', () => {
   it('navigates to public meter when the Public meter button is clicked', async () => {
-    const store = makeStore();
+    const store = makeStore(true, { publicModeEnabled: true });
     renderFAB(store, '/game');
     act(() => {
       screen.getByRole('button', { name: 'Public meter' }).click();
@@ -336,7 +336,7 @@ describe('FloatingActionBar – navigation buttons', () => {
   });
 
   it('shows an active public request badge and opens requests tab when the user has active requests', async () => {
-    const store = makeStore();
+    const store = makeStore(true, { publicModeEnabled: true });
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     act(() => {
       store.dispatch(addDirection(makeDirection(humanId)));

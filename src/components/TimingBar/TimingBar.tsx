@@ -1124,7 +1124,7 @@ export default function TimingBar({
             <h3 className="tbg__final-title">Last Player Standing!</h3>
 
             <div className="tbg__final-winner">
-              <span className="tbg__final-winner-label">⚡ Survival Winner</span>
+              <span className="tbg__final-winner-label">⚡ Surveyeval Winner</span>
               <span className="tbg__final-winner-name">
                 {allFinalEntries[0]?.name ?? winnerName}
               </span>

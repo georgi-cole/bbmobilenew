@@ -16,8 +16,8 @@
  * is a safe no-op — the game proceeds normally without any ad.
  */
 
-import type { AppDispatch, RootState } from '../../store/store';
-import { recordAdShown } from '../../store/adsSlice';
+import type { AppDispatch, RootState } from '../../store/store'
+import { recordAdShown } from '../../store/adsSlice'
 
 // ── Placement definitions ─────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ export type AdPlacement =
   /** Rewarded: unlock the confessional vote breakdown after live eviction results. */
   | 'eviction_vote_breakdown'
   /** Rewarded: temporary audience momentum boost during Public Favorite Player voting. */
-  | 'favorite_player_audience_surge';
+  | 'favorite_player_audience_surge'
 
 /** Placements that are automatic/interstitial (suppressed by No Ads Pack). */
 export const INTERSTITIAL_PLACEMENTS = new Set<AdPlacement>([
@@ -50,13 +50,13 @@ export const INTERSTITIAL_PLACEMENTS = new Set<AdPlacement>([
   'final_safety_decision_auto',
   'final_loh_decision_auto',
   'finale_recap_auto',
-]);
+])
 
 /** Placements that have a once-per-day limit. */
 export const DAILY_LIMITED_PLACEMENTS = new Set<AdPlacement>([
   'social_energy_recharge',
   'public_meter_disliked_boost',
-]);
+])
 
 // ── Type augmentation for window.GameAds bridge ───────────────────────────
 
@@ -64,24 +64,24 @@ declare global {
   interface Window {
     /** Native ad bridge injected by the Android/iOS wrapper. */
     GameAds?: {
-      showInterstitial(placement: string): void;
-      showRewarded(placement: string): void;
-    };
+      showInterstitial(placement: string): void
+      showRewarded(placement: string): void
+    }
     /**
      * Callback invoked by the native wrapper after a rewarded ad completes.
      * The game registers this handler at startup.
      */
-    onAdRewardGranted?: (placement: string, payload?: Record<string, unknown>) => void;
+    onAdRewardGranted?: (placement: string, payload?: Record<string, unknown>) => void
   }
 }
 
 // ── Reward callback registry ──────────────────────────────────────────────
 
-type RewardHandler = (payload?: Record<string, unknown>) => void;
-const rewardHandlers = new Map<AdPlacement, RewardHandler>();
+type RewardHandler = (payload?: Record<string, unknown>) => void
+const rewardHandlers = new Map<AdPlacement, RewardHandler>()
 
 export function clearRewardHandler(placement: AdPlacement): void {
-  rewardHandlers.delete(placement);
+  rewardHandlers.delete(placement)
 }
 
 /**
@@ -91,35 +91,34 @@ export function clearRewardHandler(placement: AdPlacement): void {
 export function initAdBridge(): void {
   window.onAdRewardGranted = (placement: string, payload?: Record<string, unknown>) => {
     if (import.meta.env.DEV) {
-      console.log(`[ads] reward granted: ${placement}`, payload ?? {});
+      console.log(`[ads] reward granted: ${placement}`, payload ?? {})
     }
-    const handler = rewardHandlers.get(placement as AdPlacement);
+    const handler = rewardHandlers.get(placement as AdPlacement)
     if (handler) {
-      rewardHandlers.delete(placement as AdPlacement);
-      handler(payload);
+      rewardHandlers.delete(placement as AdPlacement)
+      handler(payload)
     } else if (import.meta.env.DEV) {
-      console.log(`[ads] reward granted: ${placement} — no handler registered (ad may have been dismissed)`);
+      console.log(
+        `[ads] reward granted: ${placement} — no handler registered (ad may have been dismissed)`
+      )
     }
-  };
+  }
 }
 
 // ── Guard helpers ─────────────────────────────────────────────────────────
 
 /** Today's date as an ISO date-only string (YYYY-MM-DD). */
 function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10)
 }
 
 /**
  * Return true when the placement has already been shown today (for daily-limited placements).
  */
-export function isAdDailyLimitReached(
-  placement: AdPlacement,
-  state: RootState,
-): boolean {
-  if (!DAILY_LIMITED_PLACEMENTS.has(placement)) return false;
-  const lastUsed = state.ads?.dailyUsage[placement];
-  return lastUsed === todayDateString();
+export function isAdDailyLimitReached(placement: AdPlacement, state: RootState): boolean {
+  if (!DAILY_LIMITED_PLACEMENTS.has(placement)) return false
+  const lastUsed = state.ads?.dailyUsage[placement]
+  return lastUsed === todayDateString()
 }
 
 /**
@@ -133,38 +132,41 @@ export function isAdDailyLimitReached(
 export function canShowAd(
   placement: AdPlacement,
   state: RootState,
-  options?: { isFinal3Week?: boolean },
+  options?: { isFinal3Week?: boolean }
 ): boolean {
-  const hasNoAdsPack = state.ads?.hasNoAdsPack ?? false;
+  const hasNoAdsPack =
+    (state.ads?.hasNoAdsPack ?? false) ||
+    (state.vip?.isActive ?? false) ||
+    (state.vip?.entitlements?.noAds ?? false)
 
   // Automatic ads are blocked when No Ads Pack is owned.
   if (INTERSTITIAL_PLACEMENTS.has(placement) && hasNoAdsPack) {
     if (import.meta.env.DEV) {
-      console.log(`[ads] ${placement} blocked: No Ads Pack owned`);
+      console.log(`[ads] ${placement} blocked: No Ads Pack owned`)
     }
-    return false;
+    return false
   }
 
   // competition_retry is blocked during the final-3 week.
   if (placement === 'competition_retry' && options?.isFinal3Week) {
     if (import.meta.env.DEV) {
-      console.log(`[ads] ${placement} blocked: final-3 week`);
+      console.log(`[ads] ${placement} blocked: final-3 week`)
     }
-    return false;
+    return false
   }
 
   // Daily-limited placements respect once-per-day constraint.
   if (isAdDailyLimitReached(placement, state)) {
     if (import.meta.env.DEV) {
-      console.log(`[ads] ${placement} blocked: daily limit reached`);
+      console.log(`[ads] ${placement} blocked: daily limit reached`)
     }
-    return false;
+    return false
   }
 
   if (import.meta.env.DEV) {
-    console.log(`[ads] ${placement} eligible`);
+    console.log(`[ads] ${placement} eligible`)
   }
-  return true;
+  return true
 }
 
 // ── Public ad methods ─────────────────────────────────────────────────────
@@ -184,27 +186,27 @@ export function showInterstitial(
   placement: AdPlacement,
   state: RootState,
   dispatch: AppDispatch,
-  options?: { isFinal3Week?: boolean },
+  options?: { isFinal3Week?: boolean }
 ): boolean {
-  if (!canShowAd(placement, state, options)) return false;
+  if (!canShowAd(placement, state, options)) return false
   if (!window.GameAds?.showInterstitial) {
     if (import.meta.env.DEV) {
-      console.log(`[ads] ${placement} interstitial skipped: native bridge absent`);
+      console.log(`[ads] ${placement} interstitial skipped: native bridge absent`)
     }
-    return false;
+    return false
   }
 
   if (import.meta.env.DEV) {
-    console.log(`[ads] requesting interstitial: ${placement}`);
+    console.log(`[ads] requesting interstitial: ${placement}`)
   }
   try {
-    window.GameAds.showInterstitial(placement);
+    window.GameAds.showInterstitial(placement)
   } catch (error) {
-    console.warn(`[ads] ${placement} interstitial bridge failed; request was not recorded`, error);
-    return false;
+    console.warn(`[ads] ${placement} interstitial bridge failed; request was not recorded`, error)
+    return false
   }
-  dispatch(recordAdShown(placement));
-  return true;
+  dispatch(recordAdShown(placement))
+  return true
 }
 
 /**
@@ -225,33 +227,33 @@ export function showRewarded(
   state: RootState,
   dispatch: AppDispatch,
   onReward: (payload?: Record<string, unknown>) => void,
-  options?: { isFinal3Week?: boolean },
+  options?: { isFinal3Week?: boolean }
 ): boolean {
-  if (!canShowAd(placement, state, options)) return false;
+  if (!canShowAd(placement, state, options)) return false
   if (!window.GameAds?.showRewarded) {
     if (import.meta.env.DEV) {
-      console.log(`[ads] ${placement} rewarded skipped: native bridge absent`);
+      console.log(`[ads] ${placement} rewarded skipped: native bridge absent`)
     }
-    return false;
+    return false
   }
   if (rewardHandlers.has(placement)) {
     if (import.meta.env.DEV) {
-      console.log(`[ads] ${placement} rewarded skipped: request already pending`);
+      console.log(`[ads] ${placement} rewarded skipped: request already pending`)
     }
-    return false;
+    return false
   }
 
   if (import.meta.env.DEV) {
-    console.log(`[ads] requesting rewarded: ${placement}`);
+    console.log(`[ads] requesting rewarded: ${placement}`)
   }
-  rewardHandlers.set(placement, onReward);
+  rewardHandlers.set(placement, onReward)
   try {
-    window.GameAds.showRewarded(placement);
+    window.GameAds.showRewarded(placement)
   } catch (error) {
-    rewardHandlers.delete(placement);
-    console.warn(`[ads] ${placement} rewarded bridge failed; request was not recorded`, error);
-    return false;
+    rewardHandlers.delete(placement)
+    console.warn(`[ads] ${placement} rewarded bridge failed; request was not recorded`, error)
+    return false
   }
-  dispatch(recordAdShown(placement));
-  return true;
+  dispatch(recordAdShown(placement))
+  return true
 }

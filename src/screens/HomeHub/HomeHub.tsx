@@ -47,6 +47,7 @@ import {
   selectRemoteIntroHubOverlay,
 } from '../../remoteConfig/remoteConfigSlice';
 import { buildAchievementSummary } from '../../store/achievementSummary';
+import { selectHasSurvivalModeAccess } from '../../store/vipSlice';
 import './HomeHub.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -229,6 +230,8 @@ export default function HomeHub() {
   const dayCount = week;
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
+  const hasSurvivalMode = useAppSelector(selectHasSurvivalModeAccess);
+  const canUseSurvivalMode = hasSurvivalMode || import.meta.env.DEV;
   const { url: bgUrl } = useBackgroundTheme();
   const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
   const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
@@ -394,6 +397,10 @@ export default function HomeHub() {
 
   function openSurvivorMode() {
     SoundManager.unlockFromGesture();
+    if (!canUseSurvivalMode) {
+      navigate('/store');
+      return;
+    }
     if (survivorSnapshot) {
       setSurvivorPrompt('resume-or-new');
       return;
@@ -455,7 +462,7 @@ export default function HomeHub() {
     },
     {
       key: 'survival',
-      label: 'Survival',
+      label: canUseSurvivalMode ? 'Surveyeval' : 'Surveyeval · Store',
       icon: <HomeHubButtonIcon name="survival" />,
       variant: 'secondary_wide',
       onClick: () => startOrResumeMode('survival'),
@@ -570,7 +577,7 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
-        title="Survival Mode"
+        title="Surveyeval Mode"
         description="Resume your saved run or start over?"
         confirmLabel="Resume"
         secondaryLabel="Start New"
@@ -582,8 +589,8 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'ended'}
-        title="Survival Mode"
-        description="Your previous Survival run has ended."
+        title="Surveyeval Mode"
+        description="Your previous Surveyeval run has ended."
         confirmLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}
@@ -595,8 +602,8 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'confirm-new'}
-        title="Start new Survival run?"
-        description="This will replace your saved Survival run only. Classic progress will not be affected."
+        title="Start new Surveyeval run?"
+        description="This will replace your saved Surveyeval run only. Classic progress will not be affected."
         confirmLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}
