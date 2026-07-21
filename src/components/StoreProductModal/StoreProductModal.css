@@ -612,12 +612,12 @@
 }
 
 .store-product-modal__purchase {
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  background: linear-gradient(135deg, rgba(92, 100, 255, 0.98), rgba(136, 84, 255, 0.98));
+  border-color: rgba(254, 243, 199, 0.46);
+  color: #111827;
+  background: linear-gradient(135deg, #f0dda4, #d6aa54);
   box-shadow:
-    0 12px 28px rgba(56, 70, 255, 0.25),
-    0 0 22px rgba(139, 92, 246, 0.13);
+    0 12px 28px rgba(214, 171, 85, 0.2),
+    0 0 22px rgba(224, 190, 112, 0.12);
 }
 
 .store-product-modal__restore,
@@ -627,10 +627,10 @@
 }
 
 .store-product-modal__price strong {
-  color: #c9c4ff;
+  color: #f0dda4;
 }
 
 .store-product-modal__spinner {
-  border-color: rgba(255, 255, 255, 0.34);
-  border-top-color: #fff;
+  border-color: rgba(17, 24, 39, 0.28);
+  border-top-color: #111827;
 }
