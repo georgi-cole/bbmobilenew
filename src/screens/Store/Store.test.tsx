@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { STORE_PRODUCT_CATALOG } from '../../vip/vipConfig'
 import { createEmptyStoreEntitlements } from '../../vip/vipStorage'
-import { hasStoreProductIcon } from '../../components/StoreProductModal/StoreProductIcon'
+import { hasStoreProductIcon } from '../../components/StoreProductModal/storeProductIconUtils'
 import vipReducer, { type VipState } from '../../store/vipSlice'
 import Store from './Store'
 
