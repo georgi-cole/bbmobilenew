@@ -23,15 +23,21 @@ export default function Credits() {
   const navigate = useNavigate();
   const exitTimeoutRef = useRef<number | null>(null);
   const playerRef = useRef<PlayerRef | null>(null);
+  const blackoutRef = useRef<HTMLDivElement | null>(null);
   const [initialFrame] = useState(getCreditsSoundtrackFrame);
   const [isExiting, setIsExiting] = useState(false);
   const [needsStart, setNeedsStart] = useState(() => !isCreditsSoundtrackPlaying());
 
-  const onExit = useCallback(() => {
+  const onExit = useCallback((instantBlackout = false) => {
     if (isExiting) {
       return;
     }
 
+    const blackout = blackoutRef.current;
+    if (instantBlackout) {
+      blackout?.classList.add('is-instant');
+    }
+    blackout?.classList.add('is-visible');
     setIsExiting(true);
     playerRef.current?.pause();
     stopCreditsSoundtrack();
@@ -62,7 +68,7 @@ export default function Credits() {
       return;
     }
 
-    const onPlayerEnded = () => onExit();
+    const onPlayerEnded = () => onExit(true);
     player.addEventListener('ended', onPlayerEnded);
 
     if (!player.isPlaying()) {
@@ -138,6 +144,12 @@ export default function Credits() {
           </div>
         )}
       </div>
+      <div
+        ref={blackoutRef}
+        className="credits-end-guard"
+        data-testid="credits-end-guard"
+        aria-hidden="true"
+      />
     </div>
   );
 }

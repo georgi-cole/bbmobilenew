@@ -140,6 +140,8 @@ export const selectHasSurvivalModeAccess = (state: RootState) =>
   selectHasEntitlement(state, 'survivalMode')
 export const selectHasTribunalHouseAccess = (state: RootState) =>
   selectHasEntitlement(state, 'tribunalHouse')
+export const selectHasDramaModeAccess = (state: RootState) =>
+  selectHasEntitlement(state, 'dramaMode')
 export const selectHasNoAdsAccess = (state: RootState) => selectHasEntitlement(state, 'noAds')
 
 export const EMPTY_STORE_ENTITLEMENTS = createEmptyStoreEntitlements()

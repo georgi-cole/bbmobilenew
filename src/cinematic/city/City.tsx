@@ -2,17 +2,27 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import {
   AdditiveBlending,
   Color,
-  DynamicDrawUsage,
   InstancedMesh,
   Object3D,
+  StaticDrawUsage,
 } from 'three';
 import { CINEMATIC_CONFIG } from '../config/cinematicConfig';
+import type { CinematicQuality } from '../config/cinematicQuality';
 import type { TimelineState } from '../timeline/timeline';
 import { CITY_LAYOUT, type BoxInstance } from './cityLayout';
+import { Storefronts, UmbrellaPedestrians } from './StreetLife';
 
+const RETAIL_PODIUMS: readonly BoxInstance[] = CITY_LAYOUT.buildings
+  .filter((building) => Math.abs(building.position[0]) < 35)
+  .map((building, index) => ({
+    position: [building.position[0], 4.15, building.position[2]],
+    scale: [building.scale[0] + 0.34, 8.3, building.scale[2] + 0.34],
+    color: index % 2 === 0 ? '#3a464b' : '#323e44',
+  }));
 type CityProps = {
   frame: number;
   state: TimelineState;
+  quality: CinematicQuality;
 };
 
 type InstancedBoxesProps = {
@@ -36,14 +46,14 @@ const InstancedBoxes = ({ instances, material, opacity = 1, emissiveIntensity = 
       mesh.setMatrixAt(index, helper.matrix);
       mesh.setColorAt(index, new Color(instance.color));
     });
-    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    mesh.instanceMatrix.setUsage(StaticDrawUsage);
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [helper, instances]);
 
   const transparent = opacity < 1;
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, instances.length]} frustumCulled={false}>
+    <instancedMesh ref={meshRef} args={[undefined, undefined, instances.length]}>
       <boxGeometry args={[1, 1, 1]} />
       {material === 'building' && (
         <meshPhysicalMaterial vertexColors color="#ffffff" roughness={0.36} metalness={0.62} clearcoat={0.22} />
@@ -75,11 +85,16 @@ const InstancedBoxes = ({ instances, material, opacity = 1, emissiveIntensity = 
   );
 };
 
-const BuildingWindows = ({ frame, intensity }: { frame: number; intensity: number }) => {
+const BuildingWindows = ({ frame, intensity, quality }: { frame: number; intensity: number; quality: CinematicQuality }) => {
   const meshRef = useRef<InstancedMesh>(null);
   const helper = useMemo(() => new Object3D(), []);
   const colorHelper = useMemo(() => new Color(), []);
   const highlightColor = useMemo(() => new Color('#fffef5'), []);
+  const apartmentWindows = useMemo(
+    () => CITY_LAYOUT.windows.filter((window) => !(Math.abs(window.position[0]) < 35 && window.position[1] < 9.2)),
+    [],
+  );
+  const sampledFrame = quality === 'balanced' ? Math.floor(frame / 2) * 2 : frame;
   const warmPalette = useMemo(() => [
     new Color('#fffdf1'),
     new Color('#fff4c7'),
@@ -91,10 +106,10 @@ const BuildingWindows = ({ frame, intensity }: { frame: number; intensity: numbe
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    CITY_LAYOUT.windows.forEach((window, index) => {
-      const slowWave = 0.5 + Math.sin(frame * (0.009 + (index % 7) * 0.0011) + index * 1.71) * 0.5;
+    apartmentWindows.forEach((window, index) => {
+      const slowWave = 0.5 + Math.sin(sampledFrame * (0.009 + (index % 7) * 0.0011) + index * 1.71) * 0.5;
       const flickerPeriod = 10 + ((index * 7) % 31);
-      const flickerStep = Math.floor((frame + (index % flickerPeriod)) / flickerPeriod);
+      const flickerStep = Math.floor((sampledFrame + (index % flickerPeriod)) / flickerPeriod);
       const randomSample = Math.sin((flickerStep + 1) * (index + 11) * 12.9898) * 43758.5453;
       const flickerValue = randomSample - Math.floor(randomSample);
       const isReactiveWindow = index % 4 === 0;
@@ -125,10 +140,10 @@ const BuildingWindows = ({ frame, intensity }: { frame: number; intensity: numbe
 
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [colorHelper, frame, helper, highlightColor, intensity, warmPalette]);
+  }, [apartmentWindows, colorHelper, helper, highlightColor, intensity, sampledFrame, warmPalette]);
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, CITY_LAYOUT.windows.length]} frustumCulled={false}>
+    <instancedMesh ref={meshRef} args={[undefined, undefined, apartmentWindows.length]} frustumCulled={false}>
       <boxGeometry args={[1, 1, 1]} />
       <meshBasicMaterial
         color={new Color('#ffd47f')
@@ -149,25 +164,69 @@ const StreetFurniture = ({ state }: { state: TimelineState }) => {
   const poleInstances = useMemo<BoxInstance[]>(
     () => CITY_LAYOUT.streetLights.map(([x, , z]) => ({
       position: [x, 2.8, z],
-      scale: [0.18, 5.6, 0.18],
-      color: '#26324b',
+      scale: [0.22, 5.6, 0.22],
+      color: '#1d2428',
     })),
     [],
   );
+  const baseInstances = useMemo<BoxInstance[]>(
+    () => CITY_LAYOUT.streetLights.map(([x, , z]) => ({
+      position: [x, 0.42, z],
+      scale: [0.58, 0.84, 0.58],
+      color: '#20282c',
+    })),
+    [],
+  );
+  const armInstances = useMemo<BoxInstance[]>(
+    () => CITY_LAYOUT.streetLights.map(([x, y, z]) => {
+      const side = Math.sign(x) || 1;
+      return {
+        position: [x - side * 0.5, y + 0.02, z],
+        scale: [1.08, 0.13, 0.18],
+        color: '#1d2428',
+      };
+    }),
+    [],
+  );
+  const capInstances = useMemo<BoxInstance[]>(
+    () => CITY_LAYOUT.streetLights.map(([x, y, z]) => {
+      const side = Math.sign(x) || 1;
+      return {
+        position: [x - side * 0.95, y + 0.32, z],
+        scale: [0.78, 0.16, 0.78],
+        color: '#252e32',
+      };
+    }),
+    [],
+  );
+
   return (
     <>
       <InstancedBoxes instances={poleInstances} material="roof" />
-      {CITY_LAYOUT.streetLights.map(([x, y, z], index) => (
-        <mesh key={`${x}-${z}`} position={[x, y, z]}>
-          <sphereGeometry args={[0.23, 8, 8]} />
-          <meshStandardMaterial
-            color={index % 3 === 0 ? '#b9efff' : '#e8f8ff'}
-            emissive={index % 3 === 0 ? '#5de7ff' : '#d8f4ff'}
-            emissiveIntensity={state.streetLightIntensity}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
+      <InstancedBoxes instances={baseInstances} material="roof" />
+      <InstancedBoxes instances={armInstances} material="roof" />
+      <InstancedBoxes instances={capInstances} material="roof" />
+      {CITY_LAYOUT.streetLights.map(([x, y, z]) => {
+        const side = Math.sign(x) || 1;
+        const lampX = x - side * 0.95;
+        return (
+          <group key={x + ':' + z} position={[lampX, y - 0.24, z]}>
+            <mesh>
+              <boxGeometry args={[0.68, 0.92, 0.68]} />
+              <meshStandardMaterial color="#252e32" metalness={0.72} roughness={0.38} />
+            </mesh>
+            <mesh position={[0, -0.03, 0]}>
+              <boxGeometry args={[0.42, 0.6, 0.42]} />
+              <meshStandardMaterial
+                color="#ffe0aa"
+                emissive="#ffc36f"
+                emissiveIntensity={state.streetLightIntensity * 0.78}
+                toneMapped={false}
+              />
+            </mesh>
+          </group>
+        );
+      })}
       {CITY_LAYOUT.intersections.map((z, index) => (
         <group key={z} position={[index % 2 === 0 ? -10.2 : 10.2, 0, z]}>
           <mesh position={[0, 2.8, 0]}>
@@ -314,7 +373,7 @@ const Roads = ({ state }: { state: TimelineState }) => {
       {[-1, 1].map((side) => (
         <mesh key={side} position={[side * 11, 0.22, roadMidpoint]}>
           <boxGeometry args={[CINEMATIC_CONFIG.city.sidewalkWidth, 0.42, roadLength]} />
-          <meshStandardMaterial color="#161e2c" roughness={0.7} metalness={0.24} />
+          <meshPhysicalMaterial color="#161e2c" roughness={0.7 - state.wetness * 0.36} metalness={0.24 + state.wetness * 0.32} clearcoat={state.wetness * 0.7} />
         </mesh>
       ))}
       {CITY_LAYOUT.intersections.map((z) => (
@@ -329,12 +388,12 @@ const Roads = ({ state }: { state: TimelineState }) => {
   );
 };
 
-export const City = ({ frame, state }: CityProps) => {
+export const City = ({ frame, state, quality }: CityProps) => {
   // The coast reveals from the distant horizon forward while the city eases
   // below the camera. Opaque, depth-tested coast pixels replace the city
   // spatially instead of cross-fading two complete scenes.
-  if (state.cityExitProgress >= 0.995) return null;
-  const exitDrop = Math.pow(state.cityExitProgress, 2.45) * 205;
+  if (state.cityExitProgress >= 0.82) return null;
+  const exitDrop = Math.pow(state.cityExitProgress, 2.35) * 320;
 
   return (
   <group position={[0, -exitDrop, 0]}>
@@ -345,9 +404,12 @@ export const City = ({ frame, state }: CityProps) => {
     <Roads state={state} />
     <InstancedBoxes instances={CITY_LAYOUT.distantBuildings} material="distant" />
     <InstancedBoxes instances={CITY_LAYOUT.buildings} material="building" />
+    <InstancedBoxes instances={RETAIL_PODIUMS} material="building" />
     <InstancedBoxes instances={CITY_LAYOUT.roofDetails} material="roof" />
-    <BuildingWindows frame={frame} intensity={state.windowIntensity} />
+    <BuildingWindows frame={frame} intensity={state.windowIntensity} quality={quality} />
+    <Storefronts frame={frame} state={state} />
     <StreetFurniture state={state} />
+    <UmbrellaPedestrians frame={frame} state={state} quality={quality} />
     <VehicleTraffic frame={frame} state={state} />
   </group>
   );

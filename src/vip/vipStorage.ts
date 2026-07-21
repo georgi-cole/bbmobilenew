@@ -6,6 +6,7 @@ export interface StoreEntitlements {
   survivalMode: boolean
   publicMode: boolean
   tribunalHouse: boolean
+  dramaMode: boolean
   noAds: boolean
 }
 
@@ -20,6 +21,7 @@ export function createEmptyStoreEntitlements(): StoreEntitlements {
     survivalMode: false,
     publicMode: false,
     tribunalHouse: false,
+    dramaMode: false,
     noAds: false,
   }
 }
@@ -31,6 +33,7 @@ function normalizeEntitlements(raw: unknown): StoreEntitlements {
     survivalMode: value.survivalMode === true,
     publicMode: value.publicMode === true,
     tribunalHouse: value.tribunalHouse === true,
+    dramaMode: value.dramaMode === true,
     noAds: value.noAds === true,
   }
 }

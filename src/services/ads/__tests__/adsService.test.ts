@@ -19,6 +19,7 @@ function makeState(
         survivalMode: false,
         publicMode: false,
         tribunalHouse: false,
+        dramaMode: false,
         noAds: false,
       },
       ...vipOverrides,
@@ -80,6 +81,7 @@ describe('canShowAd guard logic', () => {
             survivalMode: false,
             publicMode: false,
             tribunalHouse: false,
+            dramaMode: false,
             noAds: true,
           },
         })

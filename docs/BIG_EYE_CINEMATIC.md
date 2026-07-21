@@ -107,3 +107,16 @@ Suggested eye prompt:
 - `src/cinematic/credits/`: configurable final credit overlay
 - `src/cinematic/components/`: shared composition and optional-asset handling
 - `src/remotion/`: Remotion registration and composition metadata
+## Version archive
+
+The approved first WebGL credits cut is preserved by the annotated Git tag
+**credits-webgl-v1**, which points to commit **8091bacc**. This keeps the complete
+V1 implementation available without duplicating its source and assets inside
+the V2 bundle.
+
+To inspect or restore it safely on a new branch:
+
+    git switch -c restore/credits-webgl-v1 credits-webgl-v1
+
+V2 continues on the normal credits feature branch. Editable credit copy and
+timing remain in src/cinematic/config/cinematicConfig.ts.

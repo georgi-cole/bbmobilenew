@@ -15,6 +15,7 @@ const PRODUCT_ICONS: Record<(typeof STANDALONE_PRODUCT_KEYS)[number], string> = 
   publicMode: '👁️',
   tribunalHouse: '⚖️',
   noAds: '🚫',
+  dramaMode: '\uD83C\uDFAD',
 }
 
 function CheckIcon() {

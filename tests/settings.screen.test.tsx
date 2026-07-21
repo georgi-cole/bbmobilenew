@@ -15,7 +15,7 @@ vi.mock('../src/utils/restartApp', () => ({
   restartApp: vi.fn(),
 }))
 
-function makeStore(vipActive = false, publicModeOwned = false, tribunalHouseOwned = false) {
+function makeStore(vipActive = false, publicModeOwned = false, tribunalHouseOwned = false, dramaModeOwned = false) {
   const store = configureStore({
     reducer: {
       game: gameReducer,
@@ -23,7 +23,7 @@ function makeStore(vipActive = false, publicModeOwned = false, tribunalHouseOwne
       vip: vipReducer,
     },
   })
-  if (vipActive || publicModeOwned || tribunalHouseOwned) {
+  if (vipActive || publicModeOwned || tribunalHouseOwned || dramaModeOwned) {
     store.dispatch(
       initializeVip.fulfilled(
         {
@@ -33,6 +33,7 @@ function makeStore(vipActive = false, publicModeOwned = false, tribunalHouseOwne
             survivalMode: false,
             publicMode: publicModeOwned,
             tribunalHouse: tribunalHouseOwned,
+            dramaMode: dramaModeOwned,
             noAds: false,
           },
           products: {},
@@ -49,9 +50,10 @@ function renderSettings(
   initialEntries = ['/settings'],
   vipActive = false,
   publicModeOwned = false,
-  tribunalHouseOwned = false
+  tribunalHouseOwned = false,
+  dramaModeOwned = false
 ) {
-  const store = makeStore(vipActive, publicModeOwned, tribunalHouseOwned)
+  const store = makeStore(vipActive, publicModeOwned, tribunalHouseOwned, dramaModeOwned)
   render(
     <Provider store={store}>
       <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
@@ -196,6 +198,27 @@ describe('Settings screen', () => {
     fireEvent.click(publicModeToggle)
 
     expect(store.getState().settings.sim.publicMode).toBe(true)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('gates Drama Mode for standard users', () => {
+    const { store } = renderSettings()
+    const dramaModeToggle = screen.getByLabelText(/toggle drama mode/i)
+
+    fireEvent.click(dramaModeToggle)
+
+    expect(store.getState().settings.gameUX.dramaMode).toBe(false)
+    expect(
+      screen.getByText(/drama mode is available as a permanent one-time purchase/i)
+    ).toBeTruthy()
+  })
+
+  it('allows a standalone Drama Mode owner to enable it without VIP', () => {
+    const { store } = renderSettings(['/settings'], false, false, false, true)
+
+    fireEvent.click(screen.getByLabelText(/toggle drama mode/i))
+
+    expect(store.getState().settings.gameUX.dramaMode).toBe(true)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 

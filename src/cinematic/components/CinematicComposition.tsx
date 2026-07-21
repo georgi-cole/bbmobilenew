@@ -1,4 +1,5 @@
 import { ThreeCanvas } from '@remotion/three';
+import { useMemo } from 'react';
 import {
   AbsoluteFill,
   Audio,
@@ -12,6 +13,7 @@ import { ACESFilmicToneMapping, SRGBColorSpace } from 'three';
 import { CinematicCamera } from '../camera/CinematicCamera';
 import { City } from '../city/City';
 import { CINEMATIC_AUDIO, CINEMATIC_CONFIG } from '../config/cinematicConfig';
+import { getCinematicQuality } from '../config/cinematicQuality';
 import { CreditsOverlay } from '../credits/CreditsOverlay';
 import { Atmosphere } from '../effects/Atmosphere';
 import { FinalCoast } from '../environment/FinalCoast';
@@ -160,7 +162,9 @@ export const CinematicComposition = ({
 }: CinematicCompositionProps) => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
+  const { isPlayer } = getRemotionEnvironment();
   const state = getTimelineState(frame);
+  const quality = useMemo(() => getCinematicQuality(isPlayer), [isPlayer]);
 
   return (
     <AbsoluteFill className="big-eye-cinematic">
@@ -178,9 +182,9 @@ export const CinematicComposition = ({
         }}
         gl={{
           alpha: false,
-          antialias: true,
+          antialias: quality === 'high',
           powerPreference: 'high-performance',
-          preserveDrawingBuffer: true,
+          preserveDrawingBuffer: !isPlayer,
         }}
         onCreated={({ gl }) => {
           gl.toneMapping = ACESFilmicToneMapping;
@@ -189,9 +193,9 @@ export const CinematicComposition = ({
         }}
       >
         <fog attach="fog" args={[state.fogColor, state.fogNear, state.fogFar]} />
-        <Atmosphere frame={state.frame} state={state} />
-        <CinematicLighting state={state} />
-        <City frame={state.frame} state={state} />
+        <Atmosphere frame={state.frame} state={state} quality={quality} />
+        <CinematicLighting state={state} quality={quality} />
+        <City frame={state.frame} state={state} quality={quality} />
         <FinalCoast frame={state.frame} state={state} />
         <CinematicCamera frame={state.frame} progress={state.progress} />
       </ThreeCanvas>

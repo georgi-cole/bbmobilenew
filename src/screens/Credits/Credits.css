@@ -7,12 +7,24 @@
   background: #02030a;
   overflow: hidden;
   z-index: 1000;
-  opacity: 1;
-  transition: opacity 420ms ease;
 }
 
-.credits-container.is-exiting {
+.credits-end-guard {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  background: #02030a;
   opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.credits-end-guard.is-visible {
+  opacity: 1;
+}
+
+.credits-end-guard.is-instant {
+  transition: none;
 }
 
 .credits-stage {

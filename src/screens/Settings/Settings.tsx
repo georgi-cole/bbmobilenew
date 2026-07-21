@@ -13,6 +13,7 @@ import {
   type SettingsState,
 } from '../../store/settingsSlice'
 import {
+  selectHasDramaModeAccess,
   selectHasPublicModeAccess,
   selectHasTribunalHouseAccess,
   selectIsVipActive,
@@ -39,7 +40,7 @@ type ToggleItem = {
   label: string
   badge?: string
   gated?: boolean
-  lockedFeature?: 'Public Mode' | 'Tribunal House' | 'VIP themes'
+  lockedFeature?: 'Drama Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes'
   get: (s: SettingsState) => boolean
   onChange: (dispatch: AppDispatch, val: boolean) => void
 }
@@ -119,6 +120,16 @@ const SECTIONS: SettingSection[] = [
       },
       {
         type: 'toggle',
+        id: 'dramaMode',
+        label: 'Drama Mode',
+        badge: 'Store',
+        gated: true,
+        lockedFeature: 'Drama Mode',
+        get: (s) => s.gameUX.dramaMode,
+        onChange: (dispatch, val) => dispatch(setGameUX({ dramaMode: val })),
+      },
+      {
+        type: 'toggle',
         id: 'publicMode',
         label: 'Public Mode',
         badge: 'Store',
@@ -188,21 +199,24 @@ export default function Settings() {
   const navigate = useNavigate()
   const settings = useAppSelector(selectSettings)
   const isVipActive = useAppSelector(selectIsVipActive)
+  const hasDramaMode = useAppSelector(selectHasDramaModeAccess)
   const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
   const hasTribunalHouse = useAppSelector(selectHasTribunalHouseAccess)
   const [lockedFeature, setLockedFeature] = useState<
-    'Public Mode' | 'Tribunal House' | 'VIP themes' | null
+    'Drama Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes' | null
   >(null)
 
   function renderItem(item: SettingItem) {
     switch (item.type) {
       case 'toggle': {
         const hasAccess =
-          item.id === 'publicMode'
-            ? hasPublicMode
-            : item.id === 'tribunalHouse'
-              ? hasTribunalHouse
-              : true
+          item.id === 'dramaMode'
+            ? hasDramaMode
+            : item.id === 'publicMode'
+              ? hasPublicMode
+              : item.id === 'tribunalHouse'
+                ? hasTribunalHouse
+                : true
         const checked = item.gated && !hasAccess ? false : item.get(settings)
         return (
           <div key={item.id} className="settings-row">

@@ -676,7 +676,14 @@ export default function TiltLabyrinthComp({
 
   // â”€â”€ Initialise on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
-    if (initializedCompetitionRef.current === competitionIdentity) return;
+    // Strict Mode replays effects by running cleanup and setup again. The cleanup
+    // resets the slice to idle, so allow that replay to initialize the same
+    // competition again. Once Redux is active, keep guarding against prop-only
+    // rerenders so a completed result is never overwritten.
+    if (
+      initializedCompetitionRef.current === competitionIdentity &&
+      labState?.phase !== 'idle'
+    ) return;
     initializedCompetitionRef.current = competitionIdentity;
 
     const rng = makeRng((seed >>> 0) ^ 0xfeedcafe);
@@ -784,7 +791,16 @@ export default function TiltLabyrinthComp({
 
   // Include all props that supply competition data. The stable identity guard
   // prevents parent rerenders with new array instances from resetting a result.
-  }, [competitionIdentity, dispatch, seed, participantIds, participants, prizeType, gamePlayers]);
+  }, [
+    competitionIdentity,
+    dispatch,
+    seed,
+    participantIds,
+    participants,
+    prizeType,
+    gamePlayers,
+    labState?.phase,
+  ]);
 
   useEffect(() => () => {
     dispatch(resetTiltLabyrinth());
