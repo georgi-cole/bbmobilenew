@@ -77,6 +77,9 @@ export interface AutonomyContext {
 export interface AutonomyStore {
   dispatch: (action: unknown) => unknown;
   getState: () => {
+    settings?: {
+      gameUX?: { dramaMode?: boolean };
+    };
     social?: {
       incomingInteractions?: IncomingInteraction[];
       scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
@@ -759,6 +762,7 @@ function generateInteractionText(
   context: AutonomyContext,
   pendingInteractions: IncomingInteraction[] = [],
   rng: () => number = Math.random,
+  dramaMode = false,
 ): { text: string; variantFamilyId: string } {
   // Build context for token replacement.
   const textContext = buildInteractionTextContext(actorId, playerId, context);
@@ -791,7 +795,7 @@ function generateInteractionText(
 
   // Use the rich variant bank when families are available for this scenario.
   const variantFamilies = SCENARIO_VARIANT_POOLS[plan.scenarioKey];
-  if (variantFamilies && variantFamilies.length > 0) {
+  if (dramaMode && variantFamilies && variantFamilies.length > 0) {
     const voiceProfile = getVoiceProfile(actorId);
     const { text, familyId } = pickVariantText(
       variantFamilies,
@@ -841,6 +845,7 @@ export function scheduleIncomingInteractionsForPhase(
   }
 
   const state = store.getState();
+  const dramaMode = state.settings?.gameUX?.dramaMode === true;
   const socialState = state.social;
   if (!socialState) {
     if (socialConfig.verbose) {
@@ -958,8 +963,11 @@ export function scheduleIncomingInteractionsForPhase(
       context,
       pendingInteractions,
       context.random,
+      dramaMode,
     );
-    const subject = selectInteractionSubject(actor.id, playerId, plan.type, context);
+    const subject = dramaMode
+      ? selectInteractionSubject(actor.id, playerId, plan.type, context)
+      : undefined;
     const subjectName = subject?.name ?? subject?.id;
     const interactionText = subjectName
       ? `${textResult.text} ${plan.type === 'gossip' ? 'The name at the center of it is' : 'Keep an eye on'} ${subjectName}.`
@@ -975,6 +983,7 @@ export function scheduleIncomingInteractionsForPhase(
         phase,
         actorStatus: actor.status,
         subjectId: subject?.id,
+        dramaMode,
       },
       createdAt: Date.now(),
       createdWeek: week,

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within, act } from '@testing-librar
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../../store/gameSlice';
+import settingsReducer, { setGameUX } from '../../../store/settingsSlice';
 import socialReducer, {
   openIncomingInbox,
   pushIncomingInteraction,
@@ -14,13 +15,13 @@ import { socialMiddleware } from '../../../social/socialMiddleware';
 
 function makeStore() {
   return configureStore({
-    reducer: { game: gameReducer, social: socialReducer },
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
   });
 }
 
 function makeStoreWithSocialMiddleware() {
   return configureStore({
-    reducer: { game: gameReducer, social: socialReducer },
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
   });
 }
@@ -221,6 +222,7 @@ describe('IncomingInteractionsInbox', () => {
 
   it('renders contextual responses and tone labels', () => {
     const store = makeStore();
+    store.dispatch(setGameUX({ dramaMode: true }));
     store.dispatch(openIncomingInbox());
     const otherId = getNonUserPlayer(store).id;
     store.dispatch(

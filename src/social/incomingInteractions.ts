@@ -162,13 +162,15 @@ export function respondToIncomingInteraction({
       }),
     );
 
-    const commitment = createCommitmentFromInteraction({
-      interaction,
-      responseType,
-      promisorId: humanPlayer.id,
-      week: currentWeek,
-    });
-    if (commitment) dispatch(addSocialCommitment(commitment));
+    if (state.settings?.gameUX?.dramaMode) {
+      const commitment = createCommitmentFromInteraction({
+        interaction,
+        responseType,
+        promisorId: humanPlayer.id,
+        week: currentWeek,
+      });
+      if (commitment) dispatch(addSocialCommitment(commitment));
+    }
 
     const delta = getResponseDelta(responseType);
     const acceptedAlliance =

@@ -105,6 +105,7 @@ export default function SocialPanelV2() {
   const sessionLogs = useAppSelector(selectSessionLogs);
   const relationships = useAppSelector((s) => s.social?.relationships);
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot);
+  const dramaMode = useAppSelector((s) => s.settings?.gameUX?.dramaMode === true);
 
   const humanPlayer = game.players.find((p) => p.isUser);
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
@@ -452,7 +453,10 @@ export default function SocialPanelV2() {
 
         {/* ── Recent Activity – compact fixed-height log above footer ─────── */}
         <div className="sp2-recent" aria-label="Recent Activity log">
-          <RecentActivity players={game.players.filter((p) => !p.isUser)} />
+          <RecentActivity
+            players={game.players.filter((p) => !p.isUser)}
+            dramaMode={dramaMode}
+          />
         </div>
 
         {/* ── Sticky bottom bar ────────────────────────────────────────────── */}

@@ -14,6 +14,8 @@ export interface RecentActivityProps {
   players?: readonly Player[];
   /** Maximum number of entries to display. Defaults to 6. */
   maxEntries?: number;
+  /** Enables the richer reality-show narrative copy. */
+  dramaMode?: boolean;
 }
 
 /** Map a delta value to ✓/✗/– icon. */
@@ -47,7 +49,7 @@ function getRelativeTime(timestamp: number): string {
  *
  * A "Clear" button resets the visible list client-side without mutating domain logs.
  */
-export default function RecentActivity({ players, maxEntries = 6 }: RecentActivityProps) {
+export default function RecentActivity({ players, maxEntries = 6, dramaMode = false }: RecentActivityProps) {
   const sessionLogs = useAppSelector(selectSessionLogs);
   // Client-side clear: track the watermark timestamp; only show entries after it.
   const [clearedBefore, setClearedBefore] = useState(0);
@@ -144,7 +146,9 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
             const resultClass = getResultClass(entry);
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
-            const narrative = getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp);
+            const narrative = dramaMode
+              ? getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp)
+              : 'You targeted ' + narrativeContext + '.';
             const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`;
             const isNew = highlightedKeys.has(key);
             return (

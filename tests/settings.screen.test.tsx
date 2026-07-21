@@ -7,7 +7,7 @@ import Settings from '../src/screens/Settings/Settings'
 import SettingsAdmin from '../src/screens/SettingsAdmin/SettingsAdmin'
 import { APP_VERSION } from '../src/appVersion'
 import gameReducer from '../src/store/gameSlice'
-import settingsReducer from '../src/store/settingsSlice'
+import settingsReducer, { setGameUX } from '../src/store/settingsSlice'
 import vipReducer, { initializeVip } from '../src/store/vipSlice'
 import { restartApp } from '../src/utils/restartApp'
 
@@ -51,9 +51,11 @@ function renderSettings(
   vipActive = false,
   publicModeOwned = false,
   tribunalHouseOwned = false,
-  dramaModeOwned = false
+  dramaModeOwned = false,
+  dramaModeActive = false
 ) {
   const store = makeStore(vipActive, publicModeOwned, tribunalHouseOwned, dramaModeOwned)
+  if (dramaModeActive) store.dispatch(setGameUX({ dramaMode: true }))
   render(
     <Provider store={store}>
       <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
@@ -211,6 +213,17 @@ describe('Settings screen', () => {
     expect(
       screen.getByText(/drama mode is available as a permanent one-time purchase/i)
     ).toBeTruthy()
+  })
+
+  it('shows and allows disabling Drama Mode when debug settings enabled it', () => {
+    const { store } = renderSettings(['/settings'], false, false, false, false, true)
+    const dramaModeToggle = screen.getByLabelText(/toggle drama mode/i) as HTMLInputElement
+
+    expect(dramaModeToggle.checked).toBe(true)
+    fireEvent.click(dramaModeToggle)
+
+    expect(store.getState().settings.gameUX.dramaMode).toBe(false)
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('allows a standalone Drama Mode owner to enable it without VIP', () => {

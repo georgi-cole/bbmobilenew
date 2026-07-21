@@ -367,9 +367,14 @@ export function getIncomingInteractionResponseOptions(
   type: IncomingInteractionType,
   interaction?: IncomingInteraction,
   tone?: IncomingInteractionTone,
+  dramaMode = false,
 ): IncomingInteractionResponseOption[] {
-  const options = getResponseBlueprints(type, interaction, tone);
-  const commitmentKind = interaction ? getCommitmentKindForInteraction(interaction) : null;
+  const options = dramaMode
+    ? getResponseBlueprints(type, interaction, tone)
+    : RESPONSE_OPTIONS_BY_TYPE[type];
+  const commitmentKind = dramaMode && interaction
+    ? getCommitmentKindForInteraction(interaction)
+    : null;
   return options.map((option) => ({
     ...option,
     style: RESPONSE_STYLE_BY_TYPE[option.responseType] ?? 'neutral',

@@ -102,6 +102,7 @@ function InteractionItem({
   socialMemory,
   humanId,
   commitment,
+  dramaMode,
 }: {
   interaction: IncomingInteraction;
   priority: IncomingInteractionPriority;
@@ -114,6 +115,7 @@ function InteractionItem({
   socialMemory: SocialMemoryMap;
   humanId: string;
   commitment?: SocialCommitment;
+  dramaMode: boolean;
 }) {
   const fromPlayer = playerById.get(interaction.fromId);
   const fromName = fromPlayer?.name ?? interaction.fromId;
@@ -132,22 +134,22 @@ function InteractionItem({
   const shouldShowActions = showActions && !interaction.resolved;
   const tone = useMemo(
     () =>
-      getIncomingInteractionTone({
+      dramaMode ? getIncomingInteractionTone({
         interaction,
         relationships,
         socialMemory,
         humanId,
         isUrgent,
-      }),
-    [interaction, relationships, socialMemory, humanId, isUrgent],
+      }) : undefined,
+    [dramaMode, interaction, relationships, socialMemory, humanId, isUrgent],
   );
   const responseOptions = useMemo(
     () => (
       shouldShowActions
-        ? getIncomingInteractionResponseOptions(interaction.type, interaction, tone)
+        ? getIncomingInteractionResponseOptions(interaction.type, interaction, tone, dramaMode)
         : []
     ),
-    [shouldShowActions, interaction, tone],
+    [shouldShowActions, interaction, tone, dramaMode],
   );
 
   return (
@@ -201,7 +203,7 @@ function InteractionItem({
 
       <p className="inbox-item__text">{interaction.text}</p>
 
-      {commitment && (
+      {dramaMode && commitment && (
         <div className={`inbox-item__promise inbox-item__promise--${commitment.status}`}>
           <strong>
             {commitment.status === 'pending' ? 'Promise active' : `Promise ${commitment.status}`}
@@ -243,6 +245,7 @@ export default function IncomingInteractionsInbox() {
   const relationships = useAppSelector((s) => s.social?.relationships ?? {});
   const socialMemory = useAppSelector((s) => s.social?.socialMemory ?? {});
   const commitments = useAppSelector(selectSocialCommitments);
+  const dramaMode = useAppSelector((s) => s.settings?.gameUX?.dramaMode === true);
 
   const humanPlayer = players.find((player) => player.isUser);
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
@@ -338,9 +341,11 @@ export default function IncomingInteractionsInbox() {
           <div className="inbox-header__title">📥 Incoming Interactions</div>
           <div className="inbox-header__meta">
             <span className="inbox-header__summary">{headerSummary}</span>
-            <span className="inbox-header__credibility">
-              Credibility {credibility.score}% · {credibility.label}
-            </span>
+            {dramaMode && (
+              <span className="inbox-header__credibility">
+                Credibility {credibility.score}% · {credibility.label}
+              </span>
+            )}
             <button
               className="inbox-header__close"
               type="button"
@@ -357,7 +362,7 @@ export default function IncomingInteractionsInbox() {
             <div className="inbox-empty">No incoming interactions yet.</div>
           ) : (
             <div className="inbox-sections">
-              {pendingCommitments.length > 0 && (
+              {dramaMode && pendingCommitments.length > 0 && (
                 <section className="inbox-section inbox-section--promises" aria-label="Active Promises">
                   <h3 className="inbox-section__title inbox-section__title--promises">Active Promises</h3>
                   <div className="inbox-promises">
@@ -393,6 +398,7 @@ export default function IncomingInteractionsInbox() {
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
                         commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
+                        dramaMode={dramaMode}
                       />
                     ))}
                   </div>
@@ -418,6 +424,7 @@ export default function IncomingInteractionsInbox() {
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
                         commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
+                        dramaMode={dramaMode}
                       />
                     ))}
                   </div>
@@ -445,6 +452,7 @@ export default function IncomingInteractionsInbox() {
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
                         commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
+                        dramaMode={dramaMode}
                       />
                     ))}
                   </div>
