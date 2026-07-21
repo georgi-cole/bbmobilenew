@@ -77,15 +77,3 @@
   font-size: 0.68rem;
   line-height: 1.35;
 }
-
-.vip-store__product-action {
-  min-width: 3.9rem;
-  padding: 0.22rem 0.45rem;
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: 999px;
-  color: #f0dda4;
-  background: rgba(214, 171, 85, 0.08);
-  font-size: 0.58rem;
-  font-weight: 850;
-  text-align: center;
-}

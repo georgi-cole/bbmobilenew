@@ -182,7 +182,7 @@ export default function Store() {
                 key={productKey}
                 onClick={() => selectProduct(productKey)}
                 disabled={busy}
-                aria-label={`View ${definition.title} details`}
+                aria-label={`Open ${definition.title}`}
               >
                 <span className="vip-store__product-icon" aria-hidden="true">
                   <StoreProductIcon name={definition.icon} />
@@ -194,10 +194,13 @@ export default function Store() {
                   <span className="vip-store__product-description">{definition.shortTagline}</span>
                 </span>
                 <span className="vip-store__product-footer">
-                  <strong>{product?.price || 'View'}</strong>
-                  <span className="vip-store__product-action">
-                    {includedWithVip ? 'VIP' : owned ? 'Owned' : 'Details'}
-                  </span>
+                  <strong>
+                    {includedWithVip
+                      ? 'Included with VIP'
+                      : owned
+                        ? 'Owned'
+                        : product?.price || 'Price unavailable'}
+                  </strong>
                 </span>
               </button>
             )

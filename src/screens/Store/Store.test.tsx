@@ -90,7 +90,7 @@ function renderStore(initialVip = makeVipState()) {
 }
 
 function openDramaMode() {
-  fireEvent.click(screen.getByRole('button', { name: 'View Drama Mode details' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Open Drama Mode' }))
 }
 
 describe('Store product presentation', () => {
@@ -192,7 +192,7 @@ describe('Store product presentation', () => {
     renderStore(makeVipState({ billingAvailable: false }))
     openDramaMode()
 
-    expect(screen.getByText('Price unavailable')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText('Price unavailable')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Currently unavailable' })).toBeDisabled()
   })
 
