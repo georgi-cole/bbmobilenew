@@ -344,7 +344,9 @@ export default function SocialPanelV2() {
       <div className="sp2-modal">
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className="sp2-header">
-          <span className="sp2-header__title">💬 Social Phase</span>
+          <span className="sp2-header__title">
+            {dramaMode ? '🔥 Drama Mode' : '💬 Social Phase'}
+          </span>
           <div className="sp2-header__resources">
             <span
               className="sp2-energy-chip"

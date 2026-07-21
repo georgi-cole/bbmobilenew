@@ -214,7 +214,9 @@ function InteractionItem({
       )}
 
       {shouldShowActions && (
-        <div className="inbox-item__actions">
+        <div
+          className={`inbox-item__actions${dramaMode ? ' inbox-item__actions--drama' : ''}`}
+        >
           {responseOptions.map((option) => (
             <button
               key={`${interaction.id}-${option.responseType}`}
@@ -226,6 +228,7 @@ function InteractionItem({
               onClick={() => onRespond(interaction.id, option.responseType)}
             >
               <span>{option.label}</span>
+              {dramaMode && <small>{option.description}</small>}
             </button>
           ))}
         </div>
@@ -338,7 +341,9 @@ export default function IncomingInteractionsInbox() {
     <div className="inbox-backdrop" role="dialog" aria-modal="true" aria-label="Incoming interactions">
       <div className="inbox-panel">
         <header className="inbox-header">
-          <div className="inbox-header__title">📥 Incoming Interactions</div>
+          <div className="inbox-header__title">
+            📥 Incoming Interactions{dramaMode ? ' · Drama' : ''}
+          </div>
           <div className="inbox-header__meta">
             <span className="inbox-header__summary">{headerSummary}</span>
             {dramaMode && (

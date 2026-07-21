@@ -258,6 +258,7 @@ describe('IncomingInteractionsInbox', () => {
 
     expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument();
     expect(screen.getByText(/Bitter/)).toBeInTheDocument();
+    expect(screen.getByText(/Sets a clear boundary and damages trust/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument();
     expect(screen.queryByText('Why now')).not.toBeInTheDocument();
     expect(screen.queryByText('What it means')).not.toBeInTheDocument();
