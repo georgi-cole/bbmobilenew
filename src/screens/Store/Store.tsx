@@ -108,10 +108,7 @@ export default function Store() {
         >
           &larr;
         </button>
-        <div>
-          <p className="vip-store__eyebrow">Store</p>
-          <h1>Permanent Unlocks</h1>
-        </div>
+        <h1>BIGEYE MARKETFACE</h1>
         {storeState.isActive && <span className="vip-store__active-badge">VIP Owned</span>}
       </header>
 

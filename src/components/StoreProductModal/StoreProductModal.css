@@ -634,3 +634,30 @@
   border-color: rgba(17, 24, 39, 0.28);
   border-top-color: #111827;
 }
+
+/* Clean modal motif: no diamond/rhombus decoration. */
+.store-product-modal__poster::before,
+.store-product-modal__poster::after {
+  display: none;
+}
+
+.store-product-modal__benefit-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 0;
+  border-radius: 50%;
+  color: #111827;
+  background: linear-gradient(135deg, #f0dda4, #d6aa54);
+  box-shadow: 0 0 10px rgba(214, 171, 85, 0.25);
+  transform: none;
+}
+
+.store-product-modal__benefit-mark::after {
+  content: '+';
+  font-size: 0.64rem;
+  font-weight: 950;
+  line-height: 1;
+}

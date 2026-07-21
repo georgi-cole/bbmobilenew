@@ -450,21 +450,31 @@
 /* Main-game visual alignment: navy glass, electric violet, and cool blue. */
 .vip-store {
   background:
-    radial-gradient(circle at 50% 4%, rgba(99, 102, 241, 0.2), transparent 28%),
-    radial-gradient(circle at 92% 64%, rgba(111, 183, 255, 0.09), transparent 34%),
-    linear-gradient(180deg, #0d1020 0%, #0d111a 48%, #090d17 100%);
+    radial-gradient(circle at 50% 3%, rgba(139, 92, 246, 0.3), transparent 31%),
+    radial-gradient(circle at 96% 65%, rgba(109, 40, 217, 0.15), transparent 36%),
+    linear-gradient(180deg, #17102f 0%, #110d25 48%, #0c0a19 100%);
 }
 
 .vip-store__header {
+  position: relative;
+  display: flex;
   width: min(100%, 31rem);
-  min-height: 3rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 0.1rem;
 }
 
 .vip-store__header h1 {
   color: var(--color-text);
-  font-size: 1.2rem;
+  position: absolute;
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  font-size: 1.05rem;
   font-weight: 900;
-  letter-spacing: -0.035em;
+  letter-spacing: 0.055em;
+  white-space: nowrap;
 }
 
 .vip-store__eyebrow,
@@ -473,12 +483,12 @@
 }
 
 .vip-store__back {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-color: rgba(151, 139, 255, 0.3);
   border-radius: 14px;
   color: #d9d5ff;
-  background: linear-gradient(180deg, rgba(31, 37, 69, 0.96), rgba(18, 23, 43, 0.98));
+  background: linear-gradient(180deg, rgba(56, 38, 102, 0.96), rgba(29, 22, 57, 0.98));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 8px 20px rgba(2, 6, 16, 0.28),
@@ -495,8 +505,8 @@
   width: min(100%, 31rem);
   border-color: rgba(224, 190, 112, 0.3);
   background:
-    linear-gradient(145deg, rgba(116, 92, 255, 0.12), transparent 36%),
-    linear-gradient(180deg, rgba(24, 28, 52, 0.98), rgba(14, 19, 35, 0.98));
+    linear-gradient(145deg, rgba(139, 92, 246, 0.16), transparent 38%),
+    linear-gradient(180deg, rgba(34, 25, 67, 0.98), rgba(20, 16, 43, 0.98));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 18px 44px rgba(2, 6, 16, 0.38),
@@ -547,7 +557,7 @@
 
 .vip-store__product-grid {
   border-color: rgba(151, 139, 255, 0.2);
-  background: rgba(14, 19, 35, 0.94);
+  background: rgba(25, 19, 50, 0.95);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
     0 12px 28px rgba(2, 6, 16, 0.24);
@@ -555,7 +565,7 @@
 
 .vip-store__product {
   border-bottom-color: rgba(151, 139, 255, 0.1);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.012));
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.045), rgba(255, 255, 255, 0.012));
   transition:
     background 150ms ease,
     transform 150ms ease;
