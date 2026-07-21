@@ -462,7 +462,7 @@ export default function HomeHub() {
     },
     {
       key: 'survival',
-      label: canUseSurvivalMode ? 'Survival' : 'Survival · Store',
+      label: canUseSurvivalMode ? 'Surveyeval' : 'Surveyeval · Store',
       icon: <HomeHubButtonIcon name="survival" />,
       variant: 'secondary_wide',
       onClick: () => startOrResumeMode('survival'),
@@ -577,7 +577,7 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
-        title="Survival Mode"
+        title="Surveyeval Mode"
         description="Resume your saved run or start over?"
         confirmLabel="Resume"
         secondaryLabel="Start New"
@@ -589,8 +589,8 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'ended'}
-        title="Survival Mode"
-        description="Your previous Survival run has ended."
+        title="Surveyeval Mode"
+        description="Your previous Surveyeval run has ended."
         confirmLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}
@@ -602,8 +602,8 @@ export default function HomeHub() {
 
       <ConfirmExitModal
         open={survivorPrompt === 'confirm-new'}
-        title="Start new Survival run?"
-        description="This will replace your saved Survival run only. Classic progress will not be affected."
+        title="Start new Surveyeval run?"
+        description="This will replace your saved Surveyeval run only. Classic progress will not be affected."
         confirmLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}

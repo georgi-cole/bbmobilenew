@@ -227,7 +227,7 @@ export function buildAchievementSummary(input: {
         ],
       },
       {
-        title: 'Survival / Endurance',
+        title: 'Surveyeval / Endurance',
         icon: '🛡️',
         tone: 'emerald',
         stats: [

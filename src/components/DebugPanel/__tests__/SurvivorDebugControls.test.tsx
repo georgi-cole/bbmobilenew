@@ -28,7 +28,7 @@ describe('SurvivorDebugControls', () => {
       </Provider>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Start Survival Run' }));
+    await user.click(screen.getByRole('button', { name: 'Start Surveyeval Run' }));
 
     expect(store.getState().game.mode).toBe('survival');
     expect(store.getState().game.players).toHaveLength(8);
@@ -51,7 +51,7 @@ describe('SurvivorDebugControls', () => {
       </Provider>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Advance Survival Day' }));
+    await user.click(screen.getByRole('button', { name: 'Advance Surveyeval Day' }));
 
     const gameState = store.getState().game;
     if (gameState.modeSpecific?.kind !== 'survival') {
@@ -78,6 +78,6 @@ describe('SurvivorDebugControls', () => {
     await user.click(screen.getByRole('button', { name: 'Terminalize Run' }));
 
     expect(store.getState().game.status).toBe('failed');
-    expect(store.getState().game.tvFeed[0]?.text).toContain('Survival run ended');
+    expect(store.getState().game.tvFeed[0]?.text).toContain('Surveyeval run ended');
   });
 });

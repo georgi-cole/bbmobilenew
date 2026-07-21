@@ -374,9 +374,9 @@ export default function FloatingActionBar({
       )}
       <ConfirmExitModal
         open={survivorTerminalActive}
-        title="Survival run ended"
+        title="Surveyeval run ended"
         description={survivorEndDescription}
-        confirmLabel="Start New Survival"
+        confirmLabel="Start New Surveyeval"
         cancelLabel="Return Home"
         onConfirm={handleStartNewSurvivor}
         onCancel={handleReturnHome}

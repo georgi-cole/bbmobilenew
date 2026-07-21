@@ -43,11 +43,11 @@ export default function SurvivorDebugControls() {
 
   return (
     <section className="dbg-section">
-      <h3 className="dbg-section__title">Survival Debug</h3>
+      <h3 className="dbg-section__title">Surveyeval Debug</h3>
 
       <div className="dbg-row">
         <button className="dbg-btn dbg-btn--wide" onClick={handleStartRun}>
-          Start Survival Run
+          Start Surveyeval Run
         </button>
       </div>
 
@@ -74,7 +74,7 @@ export default function SurvivorDebugControls() {
           onClick={handleAdvanceDay}
           disabled={!isSurvivorMode || isTerminal}
         >
-          Advance Survival Day
+          Advance Surveyeval Day
         </button>
         <button
           className="dbg-btn dbg-btn--wide"
