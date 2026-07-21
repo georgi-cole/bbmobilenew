@@ -45,6 +45,7 @@ function makeStore() {
         ...gameState,
         phase: 'loh_results',
         prevHohId: null,
+        publicModeEnabled: true,
       },
       publicOpinion: {
         ...publicOpinionReducer(undefined, { type: '@@INIT' }),
