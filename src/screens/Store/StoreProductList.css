@@ -77,3 +77,15 @@
   font-size: 0.68rem;
   line-height: 1.35;
 }
+
+/* Product identity sits inside the main game's violet glass system. */
+.vip-store__product-icon {
+  border-color: rgba(151, 139, 255, 0.2);
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.2), rgba(111, 183, 255, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.vip-store__product-title {
+  color: rgba(248, 250, 255, 0.96);
+  font-weight: 900;
+}
