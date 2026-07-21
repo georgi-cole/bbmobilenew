@@ -18,6 +18,7 @@ import AudioGate from './components/AudioGate/AudioGate';
 import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice';
 import { installGameDiagnostics } from './services/diagnostics/gameDiagnostics';
 import LiveOpsController from './components/LiveOpsController/LiveOpsController';
+import VipEntitlementSync from './components/VipEntitlementSync/VipEntitlementSync';
 
 if (import.meta.env.DEV) {
   console.log('[router] bundle:', import.meta.url, '| pathname:', window.location.pathname, '| hash:', window.location.hash);
@@ -50,6 +51,7 @@ export default function App() {
     <Provider store={store}>
       <LiveOpsController />
       <AudioStateSync />
+      <VipEntitlementSync />
       {/* AudioGate is suppressed on the Intro/Home route because HomeHub
           unlocks audio via the Play gesture (see HomeHub.handlePlay). */}
       {!suppressesAudioGate(hash) && <AudioGate />}

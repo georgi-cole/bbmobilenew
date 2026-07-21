@@ -32,6 +32,7 @@ const SelfEvicted = lazy(() => import('./screens/SelfEvicted/SelfEvicted'));
 const Rules = lazy(() => import('./screens/Rules/Rules'));
 const PublicMeter = lazy(() => import('./screens/PublicMeter/PublicMeter'));
 const Settings = lazy(() => import('./screens/Settings/Settings'));
+const Store = lazy(() => import('./screens/Store/Store'));
 const CinematicPreview = lazy(() => import('./screens/CinematicPreview/CinematicPreview'));
 
 const load = (element: ReactNode) => (
@@ -124,6 +125,7 @@ export const router = createHashRouter([
       { path: 'rules',            element: load(<Rules />)        },
       { path: 'public-meter',     element: load(<PublicMeter />)  },
       { path: 'settings',         element: load(<Settings />)     },
+      { path: 'store',            element: load(<Store />)        },
       { path: 'settingsatiste', element: <SettingsAdminRoute /> },
       ...(twistsQaEnabled && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]

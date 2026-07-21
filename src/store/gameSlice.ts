@@ -36,6 +36,8 @@ import HOUSEGUESTS from '../data/houseguests';
 import { loadActiveProfile, archiveKeyForActiveProfile, loadProfilesState } from './profilesSlice';
 import { loadSettings } from './settingsSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
+import { hasCachedStoreAccess } from '../vip/vipStorage';
+import { canAccessSpecialSettings } from '../utils/debugMode';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import { profilePhotoAvatar, resolveAvatar } from '../utils/avatar';
 import type { SeasonArchive } from './seasonArchive';
@@ -361,7 +363,9 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    publicModeEnabled: freshSettings.sim.publicMode === true,
+    publicModeEnabled:
+      freshSettings.sim.publicMode === true
+      && (hasCachedStoreAccess('publicMode') || import.meta.env.DEV || canAccessSpecialSettings()),
     posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,

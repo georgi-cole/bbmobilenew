@@ -48,6 +48,7 @@ import {
   selectRemoteIntroHubOverlay,
 } from '../../remoteConfig/remoteConfigSlice';
 import { buildAchievementSummary } from '../../store/achievementSummary';
+import { selectHasSurvivalModeAccess } from '../../store/vipSlice';
 import './HomeHub.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -227,6 +228,8 @@ export default function HomeHub() {
   const dayCount = week;
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
+  const hasSurvivalMode = useAppSelector(selectHasSurvivalModeAccess);
+  const canUseSurvivalMode = hasSurvivalMode || import.meta.env.DEV;
   const { url: bgUrl } = useBackgroundTheme();
   const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
   const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
@@ -394,6 +397,10 @@ export default function HomeHub() {
 
   function openSurvivorMode() {
     SoundManager.unlockFromGesture();
+    if (!canUseSurvivalMode) {
+      navigate('/store');
+      return;
+    }
     if (survivorSnapshot) {
       setSurvivorPrompt('resume-or-new');
       return;
@@ -455,7 +462,7 @@ export default function HomeHub() {
     },
     {
       key: 'survival',
-      label: 'Survival',
+      label: canUseSurvivalMode ? 'Survival' : 'Survival · Store',
       icon: <HomeHubButtonIcon name="survival" />,
       variant: 'secondary_wide',
       onClick: () => startOrResumeMode('survival'),

@@ -114,6 +114,9 @@ const adsSlice = createSlice({
 export const { setNoAdsPack, recordAdShown, resetDailyUsage, recordLastCompLastPlace, clearLastCompLastPlace } = adsSlice.actions;
 
 export const selectAdsState = (state: RootState) => state.ads;
-export const selectHasNoAdsPack = (state: RootState) => state.ads?.hasNoAdsPack ?? false;
+export const selectHasNoAdsPack = (state: RootState) =>
+  (state.ads?.hasNoAdsPack ?? false)
+  || (state.vip?.isActive ?? false)
+  || (state.vip?.entitlements?.noAds ?? false);
 
 export default adsSlice.reducer;

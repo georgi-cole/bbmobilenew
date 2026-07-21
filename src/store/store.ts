@@ -43,6 +43,8 @@ import { adsMiddleware } from './adsMiddleware';
 import remoteConfigReducer from '../remoteConfig/remoteConfigSlice';
 import { secretMissionMiddleware } from './secretMissionMiddleware';
 import { gameDiagnosticsMiddleware } from '../services/diagnostics/gameDiagnostics';
+import vipReducer, { loadVipState } from './vipSlice';
+import { saveCachedVipEntitlement } from '../vip/vipStorage';
 
 export const store = configureStore({
   reducer: {
@@ -71,12 +73,14 @@ export const store = configureStore({
     publicOpinion: publicOpinionReducer,
     ads: adsReducer,
     remoteConfig: remoteConfigReducer,
+    vip: vipReducer,
   },
   preloadedState: {
     settings: loadSettings(),
     userProfile: loadUserProfile(),
     profiles: loadProfilesState(),
     ads: loadAdsState(),
+    vip: loadVipState(),
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -107,6 +111,8 @@ let prevUserProfile = store.getState().userProfile;
 let prevProfiles = store.getState().profiles;
 // Persist ads state to localStorage whenever it changes
 let prevAds = store.getState().ads;
+// Persist permanent purchase entitlements whenever they change.
+let prevVip = store.getState().vip;
 // Persist active mode runs whenever the game slice changes.
 let prevGame = store.getState().game;
 let prevFinale = store.getState().finale;
@@ -142,6 +148,14 @@ store.subscribe(() => {
   if (current.ads !== prevAds) {
     prevAds = current.ads;
     saveAdsState(current.ads);
+  }
+  if (current.vip !== prevVip) {
+    prevVip = current.vip;
+    saveCachedVipEntitlement({
+      isActive: current.vip.isActive,
+      entitlements: current.vip.entitlements,
+      lastVerifiedAt: current.vip.lastVerifiedAt,
+    });
   }
   const resumableStateChanged =
     current.game !== prevGame

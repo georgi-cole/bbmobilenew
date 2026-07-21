@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@capacitor/core": "^8.3.0",
+    "@capgo/native-purchases": "^8.6.4",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@reduxjs/toolkit": "^2.11.2",

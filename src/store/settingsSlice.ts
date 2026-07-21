@@ -26,6 +26,8 @@ export interface SettingsState {
     useHaptics: boolean;
     animations: boolean;
     spectatorMode: boolean;
+    /** Enables richer, context-driven social simulation and reactions. */
+    dramaMode: boolean;
     castSize: number;
     /** Comp Selection configuration: which games are eligible, optional weekly draw limit, and category filter. */
     compSelection: CompSelectionPayload;
@@ -127,6 +129,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     useHaptics: true,
     animations: true,
     spectatorMode: true,
+    dramaMode: false,
     castSize: 16,
     compSelection: {
       mode: 'unique' as const,
@@ -136,8 +139,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
     },
   },
   sim: {
-    publicMode: true,
-    enableJuryHouse: true,
+    publicMode: false,
+    enableJuryHouse: false,
     enableFanFavorite: true,
     enableTwists: true,
     allowSelfEvict: false,

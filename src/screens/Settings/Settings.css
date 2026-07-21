@@ -899,3 +899,40 @@ body.high-contrast {
   color: var(--color-text);
   border: 1px solid var(--color-line);
 }
+.settings-row--vip {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-color: rgba(245, 158, 11, 0.26);
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.13), rgba(124, 58, 237, 0.08)),
+    linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+}
+
+.settings-row--vip > span:first-child {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.settings-row__vip-title {
+  color: #fbbf24;
+  font-size: 0.96rem;
+}
+
+.settings-row--vip small {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.settings-row__vip-action {
+  padding: 0.35rem 0.62rem;
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: 999px;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
