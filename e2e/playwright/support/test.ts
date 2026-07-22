@@ -60,6 +60,9 @@ export async function readAppState(page: Page): Promise<RootState> {
 }
 
 export async function closeDebugPanelIfOpen(page: Page): Promise<void> {
+  const toggle = page.getByRole('button', { name: 'Toggle Debug Panel' })
+  await expect(toggle).toBeVisible({ timeout: 10_000 })
+
   const panel = page.getByRole('complementary', { name: 'Debug Panel' })
   if (!(await panel.isVisible())) return
 

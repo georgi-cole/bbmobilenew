@@ -1,4 +1,5 @@
 import {
+  closeDebugPanelIfOpen,
   dismissPermissionPromptIfPresent,
   expect,
   readAppState,
@@ -183,14 +184,6 @@ async function openDebugPanel(page: Page): Promise<void> {
   await expect(panel).toBeVisible({ timeout: 5_000 })
 }
 
-async function closeDebugPanel(page: Page): Promise<void> {
-  const panel = page.getByRole('complementary', { name: 'Debug Panel' })
-  if (await panel.isVisible()) {
-    await panel.getByRole('button', { name: 'Close Debug Panel' }).click()
-  }
-  await expect(panel).toBeHidden()
-}
-
 async function configureValidFinaleRoster(page: Page): Promise<FixtureRoster> {
   const statusSelect = page.getByRole('combobox', { name: 'Player House Status' })
   const players = await statusSelect.locator('option').evaluateAll((options) =>
@@ -283,7 +276,7 @@ test.describe('Finale / Jury flow @release', () => {
     ).toEqual(roster.preJury.map((player) => player.id).sort())
 
     await page.getByRole('button', { name: '→ Force jury' }).click()
-    await closeDebugPanel(page)
+    await closeDebugPanelIfOpen(page)
 
     const tribunal = page.getByRole('dialog', { name: 'Tribunal Finale' })
     await expect(tribunal).toBeVisible({ timeout: 10_000 })
