@@ -242,3 +242,20 @@ This log records rule ambiguities resolved during Phase 2. It follows the eviden
 **Rejected alternatives.** Restoring the stale ad-first ordering would subordinate a critical game result to an unrelated prompt.
 
 **Player reason.** The player immediately understands the decisive vote and can trust that the terminal state matches the result.
+
+## Duplicate protection follows the progression step, not only the phase name
+
+**Ambiguity.** The floating primary action prevented a second activation until the named game phase changed. The Safety Ceremony deliberately performs several valid AI replacement steps inside `pos_ceremony_results`, so the first accepted activation could leave a visible, enabled button that silently ignored every later valid activation.
+
+**Evidence examined.**
+
+- The retained mobile trace showed repeated successful clicks on the real visible and enabled control, with no overlay interception, page error, console error, or unhandled rejection.
+- State remained at AI replacement step 2 in `pos_ceremony_results`; the named phase did not change between the ceremony's internal steps.
+- The reducer supports both intentional strategic outcomes: the Safety winner may use the power and select a backup nominee, or may hold it and nominate nobody.
+- A focused deterministic regression reproduces the original used-Safety path with seed `1244317494` and proves steps 1 to 2 to 0 complete exactly once.
+
+**Chosen behavior.** Duplicate protection keys an activation to the complete progression snapshot: phase, AI replacement step/waiting state, special-veto stage, and player-input readiness. A repeated activation against the same snapshot is ignored, while a new valid step inside the same named phase is accepted.
+
+**Rejected alternatives.** Removing duplicate protection would permit double advances. Requiring every internal step to have a new public phase would distort the state model. Adding sleeps, retries, or longer browser bounds would hide the deterministic deadlock without fixing it.
+
+**Player reason.** A rapid double tap still cannot skip gameplay, but a legitimate next step never becomes a button that looks usable and does nothing. Both valid strategic outcomes remain unchanged.

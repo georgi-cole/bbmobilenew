@@ -1,11 +1,67 @@
 # bbmobilenew Phase 2 final validation
 
-**Recorded:** 2026-07-22 (Europe/Sofia)  
+**Final update:** 2026-07-22 (Europe/Sofia)
+
 **Baseline:** `codex/cross-platform-bottom-nav` at `4dd79d53be0272691915143c14e876de001b6253`
 
-## Product decision
+**Validated game/test revision:** `f21cec04bbef48f861290999c9a29804300aad1a`
 
-**Release recommendation: NO-GO until the configured Playwright jobs pass in GitHub Actions.** Local unit, component, integration, coverage, and source checks provide medium-high confidence in core game logic. They do not prove browser startup, rendered journeys, WebKit behavior, or native Android/iOS behavior.
+## Final product decision
+
+**GO to mark PR #1219 ready for human review; do not merge automatically.** The web game and Capacitor package pass the Phase 2 functional, quality, build, dependency-audit, and browser gates. The mobile Safety Ceremony deadlock is fixed and protected at component and rendered-browser levels.
+
+This is not native-device certification. Before an Android or iOS store release, complete a native smoke and explicitly disposition the remaining Dependabot alerts.
+
+## Final verified evidence
+
+| Check | Result |
+| --- | --- |
+| Full Vitest passes | 378 files; 4,512/4,512 passed twice on unchanged source; 0 failed/skipped/pending/todo; final standard pass also green |
+| CI coverage | 68.48% statements; 58.47% branches; 69.34% functions; 71.11% lines; all named risk floors passed |
+| Quality gates | Formatting transition, zero-warning ESLint, TypeScript, disabled/focused-test guard, production debug-global scan, and diff check passed |
+| Builds | Web production and Capacitor mobile-mode builds passed |
+| Mobile browser proof | 7/7 passed in each of 3 consecutive clean runs: 21/21, zero test retries, unchanged game/test revision |
+| Desktop browser proof | 7/7 passed in each of the same 3 runs: 21/21 |
+| Active-minigame smoke | Passed in all 3 runs |
+
+The three clean attempts are E2E run `29948670990`. Mobile jobs were `89020517544`, `89021437131`, and `89022313495`; desktop jobs were `89020517495`, `89021436461`, and `89022313454`; minigame jobs were `89020517470`, `89021436517`, and `89022313459`. No retries, sleeps, larger timeouts, enlarged safety bounds, or direct Redux bypasses were added.
+
+CI run `29948671128` passed the Capacitor build (`89020517690`), quality/dependency audit (`89020517706`), coverage (`89020517753`), 4,512-test functional suite (`89020517772`), and web build (`89020517783`). Separate lint run `29948671108`, job `89020517846`, passed.
+
+## Product defect corrected
+
+The retained mobile artifact from run `29925350396`, job `88940948895`, showed Playwright repeatedly clicking a real visible and enabled **Advance to next phase** control. There was no overlay interception, stale locator, browser/page error, or unhandled rejection. State stayed in `pos_ceremony_results` at AI replacement step 2.
+
+The duplicate-action guard used only the public phase name, while the Safety Ceremony performs several valid internal steps inside that phase. The first valid click therefore locked later steps while leaving the button looking usable. Duplicate protection now keys on the real progression snapshot. It still blocks repeated input at one step but accepts the next legitimate in-phase step.
+
+A deterministic component regression reproduces seed `1244317494`, proves Safety use and steps 1 to 2 to 0 happen exactly once, clears the pending minigame, makes one backup nomination, and reaches `social_2`. The rendered journey proves the real control and state transition for both valid strategic outcomes: use Safety or hold it.
+
+## Failed evidence retained
+
+| Run | Finding | Classification |
+| --- | --- | --- |
+| `29925350396` | Enabled control could not finish Safety replacement | Actual product regression; fixed |
+| `29945690654` / `1a6f9db2` | Probe omitted a cleared value while E2E required exact `null` | Weak probe-representation assertion; corrected without weakening Redux proof |
+| `29946221855` / `e7cac47a` | Desktop legitimately held Safety | Over-specific test assumption; both strategy outcomes are valid |
+| `29946884969`, attempt 3 / `67ad61d4` | Mobile full-week path also legitimately held Safety | Valid strategic branch; final E2E covers both outcomes |
+
+These failures remain part of the audit trail and are not counted toward the three successful runs.
+
+## Remaining release risks and acceptance criteria
+
+- Before a native store release, run Android/iOS smoke for startup, save/restore, safe areas, orientation, background/resume, keyboard, and platform bridges. Browser emulation is not native evidence.
+- GitHub reports 5 High, 2 Moderate, and 1 Low Dependabot alerts. Fix or explicitly accept them in separate security work; avoid broad dependency upgrades in this functional PR.
+- Add normal-completion browser drivers for all active minigames; current registry smoke does not prove every game-specific terminal path.
+- Add CodeQL/SAST, secret scanning, SBOM/license and native supply-chain checks; update Actions emitting Node 20 deprecation warnings.
+- Human review must confirm the Safety Ceremony rule and regression. The final docs-only revision must remain green. Any later game/test change requires renewed validation.
+
+## Archived pre-browser-execution record
+
+The material below preserves the earlier bounded local-browser blocker and is superseded by the final GitHub execution evidence above. Its old NO-GO statement and old counts are historical, not the current release recommendation.
+
+## Product decision at that checkpoint
+
+**Release recommendation at that checkpoint: NO-GO until the configured Playwright jobs pass in GitHub Actions.** Local unit, component, integration, coverage, and source checks provided medium-high confidence in core game logic but did not yet prove browser execution.
 
 ## Final evidence ledger
 
