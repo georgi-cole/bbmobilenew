@@ -231,7 +231,10 @@ const FINALE_STEPS: Tile[] = [
 
 function renderTile(tile: Tile, className = '') {
   return (
-    <article className={['rules-tile', className].filter(Boolean).join(' ')}>
+    <article
+      key={`${tile.kicker}-${tile.title}`}
+      className={['rules-tile', className].filter(Boolean).join(' ')}
+    >
       <span className="rules-tile__kicker">{tile.kicker}</span>
       <h3 className="rules-tile__title">{tile.title}</h3>
       <p className="rules-tile__copy">{tile.copy}</p>
