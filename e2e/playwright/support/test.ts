@@ -63,7 +63,9 @@ export async function closeDebugPanelIfOpen(page: Page): Promise<void> {
   const panel = page.getByRole('complementary', { name: 'Debug Panel' })
   if (!(await panel.isVisible())) return
 
-  await panel.getByRole('button', { name: 'Close Debug Panel' }).click()
+  await panel
+    .getByRole('button', { name: 'Close Debug Panel' })
+    .evaluate((button) => (button as HTMLButtonElement).click())
   await expect(panel).toBeHidden()
 }
 

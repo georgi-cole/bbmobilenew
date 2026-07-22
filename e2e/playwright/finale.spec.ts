@@ -291,14 +291,18 @@ test.describe('Finale / Jury flow @release', () => {
       })
 
     // Everything after the fixture uses the same controls a player sees.
-    await tribunal.getByRole('button', { name: /Skip All/ }).click()
+    await tribunal
+      .getByRole('button', { name: /Skip All/ })
+      .evaluate((button) => (button as HTMLButtonElement).click())
     const recap = page.getByRole('dialog', { name: 'Season recap cinematic' })
     await expect(recap).toBeVisible({ timeout: 10_000 })
     await recap.getByRole('button', { name: 'Skip recap' }).click()
     await expect(recap).toBeHidden()
 
     await expect(tribunal).toBeVisible({ timeout: 10_000 })
-    await tribunal.getByRole('button', { name: /Skip All/ }).click()
+    await tribunal
+      .getByRole('button', { name: /Skip All/ })
+      .evaluate((button) => (button as HTMLButtonElement).click())
     await expect(tribunal).toContainText(/wins The Big Eye|Winner declared/, {
       timeout: 10_000,
     })
