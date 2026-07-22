@@ -15,10 +15,19 @@ import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
 import { socialConfig } from './socialConfig';
 import { normalizeAffinity } from './affinityUtils';
-import { normalizeActionCost, normalizeActionCosts, normalizeActionYields } from './smExecNormalize';
+import {
+  normalizeActionCost,
+  normalizeActionCosts,
+  normalizeActionYields,
+} from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta, evaluateOutcome, OUTCOME_THRESHOLDS } from './SocialPolicy';
-import { recordSocialAction, updateRelationship, applyInfluenceDelta, applyInfoDelta } from './socialSlice';
+import {
+  recordSocialAction,
+  updateRelationship,
+  applyInfluenceDelta,
+  applyInfoDelta,
+} from './socialSlice';
 import { ALLIANCE_TAG, BETRAYAL_TAG, hasAllianceBetween } from './socialAlliance';
 import type { SocialActionLogEntry, SocialState } from './types';
 
@@ -69,9 +78,7 @@ function countPriorRepeatedActions(
 ): number {
   return logs.filter(
     (entry) =>
-      entry.actorId === actorId &&
-      entry.targetId === targetId &&
-      entry.actionId === actionId,
+      entry.actorId === actorId && entry.targetId === targetId && entry.actionId === actionId,
   ).length;
 }
 
@@ -125,11 +132,7 @@ export function computeRepeatedPositiveDelta(
   }
 
   return {
-    delta: randomIntegerInclusive(
-      REPEATED_POSITIVE_MIN_DELTA,
-      REPEATED_POSITIVE_MAX_DELTA,
-      random,
-    ),
+    delta: randomIntegerInclusive(REPEATED_POSITIVE_MIN_DELTA, REPEATED_POSITIVE_MAX_DELTA, random),
     didBackfire: false,
   };
 }
@@ -238,7 +241,8 @@ export function getAvailableActions(
   state?: StateForManeuvers,
   targetId?: string,
 ): SocialActionDefinition[] {
-  const socialState = state?.social ?? (_store?.getState() as { social: SocialState } | null)?.social;
+  const socialState =
+    state?.social ?? (_store?.getState() as { social: SocialState } | null)?.social;
   return SOCIAL_ACTIONS.filter((action) => {
     if (!canAfford(actorId, normalizeActionCosts(action), state)) {
       return false;
@@ -333,19 +337,50 @@ export function executeAction(
   options?: ExecuteActionOptions,
 ): ExecuteActionResult {
   if (!_store) {
-    return { success: false, delta: 0, newEnergy: 0, summary: 'Store not initialised', score: 0, label: 'Unmoved' };
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: 0,
+      summary: 'Store not initialised',
+      score: 0,
+      label: 'Unmoved',
+    };
   }
 
   const action = getActionById(actionId);
   if (!action) {
-    return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Unknown action', score: 0, label: 'Unmoved' };
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: SocialEnergyBank.get(actorId),
+      summary: 'Unknown action',
+      score: 0,
+      label: 'Unmoved',
+    };
   }
 
   const costs = normalizeActionCosts(action);
   const currentEnergy = SocialEnergyBank.get(actorId);
-  const state = _store.getState() as { social: SocialState };
+  const state = _store.getState() as {
+    social: SocialState;
+    settings?: { gameUX?: { dramaMode?: boolean } };
+  };
 
-  if (actionId === 'proposeAlliance' && hasAllianceBetween(state.social.relationships, actorId, targetId)) {
+  if (action.dramaOnly && state.settings?.gameUX?.dramaMode !== true) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: 'Drama Mode required',
+      score: 0,
+      label: 'Unavailable',
+    };
+  }
+
+  if (
+    actionId === 'proposeAlliance' &&
+    hasAllianceBetween(state.social.relationships, actorId, targetId)
+  ) {
     return {
       success: false,
       delta: 0,
@@ -357,12 +392,24 @@ export function executeAction(
   }
 
   if (!canAfford(actorId, costs)) {
-    return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient resources', score: 0, label: 'Unmoved' };
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: 'Insufficient resources',
+      score: 0,
+      label: 'Unmoved',
+    };
   }
 
   const scaledYields = normalizeActionYields(action);
   const random = options?.random ?? Math.random;
-  const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
+  const priorRepeats = countPriorRepeatedActions(
+    state.social.sessionLogs,
+    actorId,
+    targetId,
+    actionId,
+  );
   const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
   let outcome = options?.outcome ?? 'success';
   let betrayalOccurred = false;
@@ -384,15 +431,16 @@ export function executeAction(
       : computeOutcomeDelta(actionId, actorId, targetId, outcome);
   const repeatSensitive =
     outcome === 'success' && isRepeatSensitiveAction(action, baseDelta, scaledYields);
-  const repeatedPositive = repeatSensitive && baseDelta > 0
-    ? computeRepeatedPositiveDelta(priorRepeats, random)
-    : {
-        delta: baseDelta,
-        didBackfire:
-          repeatSensitive &&
-          priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
-          random() < REPETITION_BACKFIRE_CHANCE,
-      };
+  const repeatedPositive =
+    repeatSensitive && baseDelta > 0
+      ? computeRepeatedPositiveDelta(priorRepeats, random)
+      : {
+          delta: baseDelta,
+          didBackfire:
+            repeatSensitive &&
+            priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
+            random() < REPETITION_BACKFIRE_CHANCE,
+        };
   const didBackfire = repeatedPositive.didBackfire;
   const delta = repeatedPositive.delta;
 
@@ -459,10 +507,7 @@ export function executeAction(
       appliedYields.influence = appliedInfluenceDelta;
     }
     if (intendedYields.info !== 0) {
-      const appliedInfoDelta = clampResourceAdjustment(
-        intendedYields.info,
-        postSpendInfoBalance,
-      );
+      const appliedInfoDelta = clampResourceAdjustment(intendedYields.info, postSpendInfoBalance);
       if (appliedInfoDelta !== 0) {
         _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedInfoDelta }));
       }
@@ -570,9 +615,7 @@ export function executeAction(
   const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome });
   const sign = delta > 0 ? '+' : '';
   const summary =
-    delta !== 0
-      ? `${action.title} ${verb} (${sign}${delta} affinity)`
-      : `${action.title} ${verb}`;
+    delta !== 0 ? `${action.title} ${verb} (${sign}${delta} affinity)` : `${action.title} ${verb}`;
 
   return { success: true, delta, newEnergy, summary, score: finalScore, label: finalLabel };
 }

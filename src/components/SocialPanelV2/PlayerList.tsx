@@ -73,7 +73,11 @@ export default function PlayerList({
     if (additive) {
       // Ctrl/Cmd: toggle individual player in/out of multi-select.
       const s = new Set(effectiveSelectedIds);
-      if (s.has(playerId)) { s.delete(playerId); } else { s.add(playerId); }
+      if (s.has(playerId)) {
+        s.delete(playerId);
+      } else {
+        s.add(playerId);
+      }
       next = s;
     } else {
       // Plain tap: select if unselected, deselect (collapse) if already selected.
@@ -95,7 +99,7 @@ export default function PlayerList({
       .filter((p) => !disabledSet.has(p.id))
       .map((p) => p.id);
     if (rangeIds.length === 0) return;
-    updateSelection(new Set(rangeIds), clickedPlayer?.id ?? (rangeIds.at(-1) ?? null));
+    updateSelection(new Set(rangeIds), clickedPlayer?.id ?? rangeIds.at(-1) ?? null);
   }
 
   function handleContainerKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -108,7 +112,9 @@ export default function PlayerList({
     const idx = buttons.indexOf(document.activeElement as HTMLElement);
     const next =
       idx === -1
-        ? e.key === 'ArrowDown' ? 0 : buttons.length - 1
+        ? e.key === 'ArrowDown'
+          ? 0
+          : buttons.length - 1
         : e.key === 'ArrowDown'
           ? Math.min(idx + 1, buttons.length - 1)
           : Math.max(idx - 1, 0);
@@ -124,11 +130,18 @@ export default function PlayerList({
 
         // Affinity: the human's perception of this player (human → player relationship).
         let affinity: number | undefined;
+        let relationshipTags: string[] = [];
         if (humanPlayerId && relationships) {
           const rel = relationships[humanPlayerId]?.[player.id];
           if (rel !== undefined) {
             affinity = Math.round(rel.affinity);
           }
+          relationshipTags = Array.from(
+            new Set([
+              ...(relationships[humanPlayerId]?.[player.id]?.tags ?? []),
+              ...(relationships[player.id]?.[humanPlayerId]?.tags ?? []),
+            ]),
+          );
         }
 
         return (
@@ -147,6 +160,7 @@ export default function PlayerList({
               }}
               affinity={affinity}
               affinityDelta={deltasByTargetId?.get(player.id)}
+              relationshipTags={relationshipTags}
             />
           </div>
         );

@@ -33,14 +33,27 @@ import {
   decaySocialMemory,
   drainEvictedPlayerSocial,
   invalidateIncomingInteractions,
+  applyDramaAction,
+  replaceDramaNetwork,
   setEnergyBankEntry,
+  updateRelationship,
 } from './socialSlice';
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
-import { scheduleIncomingInteractionsForPhase, ELIGIBLE_PHASES } from './incomingInteractionAutonomy';
+import {
+  scheduleIncomingInteractionsForPhase,
+  ELIGIBLE_PHASES,
+} from './incomingInteractionAutonomy';
 import type { AutonomyStore } from './incomingInteractionAutonomy';
 import { deliverScheduledIncomingInteractionsForPhase } from './incomingInteractionScheduler';
 import { collectInvalidIncomingInteractionIds } from './incomingInteractionValidity';
-import type { IncomingInteraction, ScheduledIncomingInteraction } from './types';
+import type {
+  DramaSocialNetwork,
+  IncomingInteraction,
+  ScheduledIncomingInteraction,
+  SocialActionLogEntry,
+  SocialMemoryMap,
+} from './types';
+import { advanceDramaNetwork, normalizeDramaSocialNetwork } from './dramaModeEngine';
 import { seedWeekRelationships } from './weekSocialSeed';
 import { DEFAULT_ENERGY } from './constants';
 import {
@@ -77,10 +90,51 @@ interface StateWithGame {
     relationships?: import('./types').RelationshipsMap;
     incomingInteractions?: IncomingInteraction[];
     scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
+    dramaNetwork?: DramaSocialNetwork;
+    socialMemory?: SocialMemoryMap;
   };
+  settings?: { gameUX?: { dramaMode?: boolean } };
 }
 
 type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown };
+
+/** Advance the premium story graph once per phase and feed consequences back into gameplay. */
+function runDramaPhase(api: MiddlewareAPI, phase: string): void {
+  const state = api.getState() as StateWithGame;
+  if (state.settings?.gameUX?.dramaMode !== true || !state.game) return;
+  const result = advanceDramaNetwork({
+    network: normalizeDramaSocialNetwork(state.social?.dramaNetwork),
+    players: (state.game.players ?? []).map((player) => ({
+      ...player,
+      name: player.name ?? player.id,
+    })),
+    relationships: state.social?.relationships ?? {},
+    week: state.game.week ?? 1,
+    phase,
+    seed: (state.game as GameState & { seed?: number }).seed ?? 0,
+  });
+  api.dispatch(replaceDramaNetwork(result.network));
+  result.relationshipEffects.forEach((effect) =>
+    api.dispatch(
+      updateRelationship({
+        ...effect,
+        actionSource: 'system',
+      }),
+    ),
+  );
+  if (result.publicAnnouncement) {
+    api.dispatch({
+      type: 'game/addTvEvent',
+      payload: {
+        text: result.publicAnnouncement,
+        type: 'social',
+        source: 'system',
+        channels: ['tv', 'mainLog'],
+        meta: { dramaEvent: true, week: state.game.week },
+      },
+    });
+  }
+}
 
 /** Seed week-start background affinities, then snapshot relationships as baseline. */
 function handleWeekStart(api: MiddlewareAPI): void {
@@ -157,14 +211,22 @@ function grantInfluence(api: MiddlewareAPI, playerId: string, delta: number): vo
 }
 
 /** Apply LOH-win energy bonus if the LOH changed. */
-function applyHohBonus(api: MiddlewareAPI, prevHohId: string | null, newHohId: string | null): void {
+function applyHohBonus(
+  api: MiddlewareAPI,
+  prevHohId: string | null,
+  newHohId: string | null,
+): void {
   if (newHohId && newHohId !== prevHohId) {
     grantEnergy(api, newHohId, 5);
   }
 }
 
 /** Apply POS-win energy bonus if the POS winner changed. */
-function applyPovBonus(api: MiddlewareAPI, prevPovId: string | null, newPovId: string | null): void {
+function applyPovBonus(
+  api: MiddlewareAPI,
+  prevPovId: string | null,
+  newPovId: string | null,
+): void {
   if (newPovId && newPovId !== prevPovId) {
     grantEnergy(api, newPovId, 3);
   }
@@ -206,6 +268,51 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   const { type } = action as { type: string };
 
+  if (type === 'social/recordSocialAction') {
+    const result = next(action);
+    const state = api.getState() as StateWithGame;
+    if (state.settings?.gameUX?.dramaMode === true) {
+      const entry = (action as unknown as { payload: { entry: SocialActionLogEntry } }).payload
+        .entry;
+      const actorName =
+        state.game.players.find((player) => player.id === entry.actorId)?.name ?? entry.actorId;
+      const targetName =
+        state.game.players.find((player) => player.id === entry.targetId)?.name ?? entry.targetId;
+      api.dispatch(
+        applyDramaAction({
+          actionId: entry.actionId,
+          actorId: entry.actorId,
+          targetId: entry.targetId,
+          subjectId: entry.subjectId,
+          actorName,
+          targetName,
+          week: entry.week ?? state.game.week ?? 1,
+          phase: state.game.phase,
+          success: entry.outcome === 'success',
+        }),
+      );
+      if (
+        entry.outcome === 'success' &&
+        (entry.actionId === 'expose_secret' || entry.actionId === 'public_callout')
+      ) {
+        api.dispatch({
+          type: 'game/addTvEvent',
+          payload: {
+            text:
+              entry.actionId === 'expose_secret'
+                ? `HOUSE EXPOSED: ${actorName} took a secret involving ${targetName} public.`
+                : `HOUSE SHOCK: ${actorName} called out ${targetName} in front of everyone.`,
+            type: 'social',
+            source: 'system',
+            channels: ['tv', 'mainLog'],
+            meta: { dramaEvent: true, week: state.game.week },
+          },
+        });
+      }
+    }
+    return result;
+  }
+
   // ── Explicit phase-set actions (payload carries the new phase) ──────────────
   if (PHASE_SET_ACTIONS.has(type)) {
     const prevPhase = (api.getState() as StateWithGame).game?.phase;
@@ -230,6 +337,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       handleAutonomyPhase(api as unknown as AutonomyStore, nextPhase);
     }
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
+    if (prevPhase !== nextPhase) runDramaPhase(api as unknown as MiddlewareAPI, nextPhase);
 
     return result;
   }
@@ -319,11 +427,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       grantEnergy(api as unknown as MiddlewareAPI, saveId, 2);
     }
 
-    evaluateSocialCommitmentsForAction(
-      api as unknown as CommitmentStore,
-      type,
-      saveId,
-    );
+    evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type, saveId);
 
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
 
@@ -387,6 +491,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       if (newPhase !== 'week_start' && ELIGIBLE_PHASES.has(newPhase)) {
         handleAutonomyPhase(api as unknown as AutonomyStore, newPhase);
       }
+      if (newPhase) runDramaPhase(api as unknown as MiddlewareAPI, newPhase);
     }
 
     // LOH / POS win bonuses (advance() sets these during loh_results / pos_results)
@@ -414,9 +519,16 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   // ── Alliance formed / betrayal: relationship-tag-driven deltas ───────────
   if (type === 'social/updateRelationship') {
-    const payload = (action as unknown as {
-      payload: { source: string; target: string; tags?: string[]; actionSource?: 'manual' | 'system' };
-    }).payload;
+    const payload = (
+      action as unknown as {
+        payload: {
+          source: string;
+          target: string;
+          tags?: string[];
+          actionSource?: 'manual' | 'system';
+        };
+      }
+    ).payload;
     const result = next(action);
     // Only apply game-event bonuses for manual (human) actions.
     // System/AI actions must not trigger alliance or betrayal resource grants —

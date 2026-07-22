@@ -56,6 +56,9 @@ export interface ActionGridProps {
    * When omitted (no target selected), role-gated actions are hidden.
    */
   primaryTargetStatus?: PlayerStatus | null;
+  /** Premium catalog and context gates. */
+  dramaMode?: boolean;
+  currentPhase?: string;
 }
 
 /**
@@ -87,6 +90,8 @@ export default function ActionGrid({
   actorInfo,
   relationships,
   primaryTargetStatus,
+  dramaMode = false,
+  currentPhase,
 }: ActionGridProps) {
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,7 +115,9 @@ export default function ActionGrid({
     const idx = activeCard ? cards.indexOf(activeCard) : -1;
     const next =
       idx === -1
-        ? e.key === 'ArrowRight' ? 0 : cards.length - 1
+        ? e.key === 'ArrowRight'
+          ? 0
+          : cards.length - 1
         : e.key === 'ArrowRight'
           ? Math.min(idx + 1, cards.length - 1)
           : Math.max(idx - 1, 0);
@@ -170,6 +177,32 @@ export default function ActionGrid({
     return action.requiredTargetStatus.includes(primaryTargetStatus);
   }
 
+  function isDramaEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
+    if (action.dramaOnly && !dramaMode) return false;
+    if (action.allowedPhases && (!currentPhase || !action.allowedPhases.includes(currentPhase)))
+      return false;
+    if (
+      !action.requiredRelationshipTags &&
+      action.minAffinity === undefined &&
+      action.maxAffinity === undefined
+    )
+      return true;
+    if (!actorId || !relationships || !selectedTargetIds || selectedTargetIds.size !== 1)
+      return false;
+    const targetId = Array.from(selectedTargetIds)[0];
+    const affinity = relationships[actorId]?.[targetId]?.affinity ?? 0;
+    if (action.minAffinity !== undefined && affinity < action.minAffinity) return false;
+    if (action.maxAffinity !== undefined && affinity > action.maxAffinity) return false;
+    if (action.requiredRelationshipTags) {
+      const currentTags = new Set([
+        ...(relationships[actorId]?.[targetId]?.tags ?? []),
+        ...(relationships[targetId]?.[actorId]?.tags ?? []),
+      ]);
+      if (!action.requiredRelationshipTags.some((tag) => currentTags.has(tag))) return false;
+    }
+    return true;
+  }
+
   function getRelationshipUnavailableReason(actionId: string): string {
     if (actionId !== 'proposeAlliance' || !relationships || !actorId || !selectedTargetIds) {
       return '';
@@ -183,16 +216,22 @@ export default function ActionGrid({
 
   const sortedActions =
     actorEnergy !== undefined
-      ? [...SOCIAL_ACTIONS].filter((a) => !a.aiOnly && isRoleEligible(a)).sort((a, b) => {
-          const aAffordable = isActionAffordable(normalizeActionCosts(a));
-          const bAffordable = isActionAffordable(normalizeActionCosts(b));
-          if (aAffordable === bAffordable) return 0;
-          return aAffordable ? -1 : 1;
-        })
-      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly && isRoleEligible(a));
+      ? [...SOCIAL_ACTIONS]
+          .filter((a) => !a.aiOnly && isRoleEligible(a) && isDramaEligible(a))
+          .sort((a, b) => {
+            const aAffordable = isActionAffordable(normalizeActionCosts(a));
+            const bAffordable = isActionAffordable(normalizeActionCosts(b));
+            if (aAffordable === bAffordable) return 0;
+            return aAffordable ? -1 : 1;
+          })
+      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly && isRoleEligible(a) && isDramaEligible(a));
 
   /** Returns an availability reason string, or empty string if the action is affordable. */
-  function getAvailabilityReason(costs: { energy: number; influence: number; info: number }): string {
+  function getAvailabilityReason(costs: {
+    energy: number;
+    influence: number;
+    info: number;
+  }): string {
     if (actorEnergy === undefined) return '';
     if (costs.energy > actorResources.energy) {
       return `Need ⚡${costs.energy} (have ${actorResources.energy})`;

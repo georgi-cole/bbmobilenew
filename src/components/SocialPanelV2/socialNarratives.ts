@@ -6,20 +6,20 @@
  * same log entry always renders the same sentence.
  */
 
-import { getActionById } from '../../social/SocialManeuvers';
+import { getActionById } from "../../social/SocialManeuvers";
 
 // Preset pool of short, playful TV-zone sentences shown when the Social modal closes.
 // One is picked at random so the message stays fresh across sessions.
 // Exported so tests can verify messages are drawn from this pool.
 export const TV_SOCIAL_CLOSE_MESSAGES = [
-  'The house is buzzing after that social session! 🏠',
-  'Alliances are shifting like sand in The Big Eye house… 🌊',
+  "The house is buzzing after that social session! 🏠",
+  "Alliances are shifting like sand in The Big Eye house… 🌊",
   "Smooth operator — you've been working that social game! 💬",
-  'The whispers have started. Watch your back! 👀',
+  "The whispers have started. Watch your back! 👀",
   "Social butterfly in action — who's loyal and who isn't? 🦋",
-  'Every word counts in this house. Choose wisely. 🎙️',
-  'The social web just got a little more tangled. 🕸️',
-  'Another week, another batch of social chess moves. ♟️',
+  "Every word counts in this house. Choose wisely. 🎙️",
+  "The social web just got a little more tangled. 🕸️",
+  "Another week, another batch of social chess moves. ♟️",
 ];
 
 const NARRATIVES: Record<string, string[]> = {
@@ -36,9 +36,9 @@ const NARRATIVES: Record<string, string[]> = {
     "You convinced {target} they are the secret fan-favourite of this season.",
   ],
   apologize: [
-    'You gave {target} a sincere apology and cleared the air.',
-    'You owned your mistake with {target}. The tension finally eased.',
-    'You and {target} talked it through without excuses.',
+    "You gave {target} a sincere apology and cleared the air.",
+    "You owned your mistake with {target}. The tension finally eased.",
+    "You and {target} talked it through without excuses.",
   ],
   rumor: [
     "You planted a seed in {target}'s ear about a secret trio on the other side.",
@@ -132,6 +132,42 @@ const NARRATIVES: Record<string, string[]> = {
     "You joined a big group conversation and steered it toward lighter topics.",
     "You made the rounds and dropped compliments like confetti.",
   ],
+  flirt: [
+    "You and {target} turned a harmless kitchen chat into suspiciously good chemistry.",
+    "You tested the spark with {target}; three people suddenly found reasons to walk past.",
+  ],
+  ride_or_die: [
+    "You and {target} made a pact equal parts friendship, strategy, and terrible timing.",
+    "You promoted {target} from trusted friend to full ride-or-die status.",
+  ],
+  plant_lie: [
+    "You gave {target} a story with just enough truth to grow legs of its own.",
+    "You planted a lie with {target} and watched suspicion enter the room before you left it.",
+  ],
+  trade_secrets: [
+    "You traded named secrets with {target}; both of you now owe the other silence.",
+    "You and {target} exchanged information sharp enough to change the week.",
+  ],
+  eavesdrop: [
+    "You heard half a whisper, one name, and exactly enough to become dangerous.",
+    "You stayed outside the conversation and learned more than anyone inside it.",
+  ],
+  expose_secret: [
+    "You took the story about {target} from a whisper to the living-room screen.",
+    "You exposed {target}'s secret and let the house decide who had been lying.",
+  ],
+  stir_rivalry: [
+    "You gave {target} one carefully selected fact and let an old rivalry do the rest.",
+    "You nudged {target} toward a feud that was already waiting for permission.",
+  ],
+  public_callout: [
+    "You called out {target} in public. Breakfast ended; the episode began.",
+    "You confronted {target} in front of everyone and the house instantly chose sides.",
+  ],
+  repair_bond: [
+    "You offered {target} a private truce without pretending the damage never happened.",
+    "You and {target} lowered the temperature, but neither put away the receipts.",
+  ],
   reassure: [
     "You pulled {target} aside and told them everything is going to be okay.",
     "You offered {target} a shoulder to lean on when they needed it most.",
@@ -206,15 +242,11 @@ const NARRATIVES: Record<string, string[]> = {
  * @param targetName  The resolved display name of the target player.
  * @param seed  An integer used to select a phrase (typically: entry timestamp).
  */
-export function getSocialNarrative(
-  actionId: string,
-  targetName: string,
-  seed: number,
-): string {
+export function getSocialNarrative(actionId: string, targetName: string, seed: number): string {
   const pool = NARRATIVES[actionId];
   if (!pool?.length) {
     const actionDef = getActionById(actionId);
-    const displayName = actionDef?.title ?? actionId.replace(/_/g, ' ');
+    const displayName = actionDef?.title ?? actionId.replace(/_/g, " ");
     return "You performed " + displayName + " targeting " + targetName + ".";
   }
   const phrase = pool[Math.abs(seed) % pool.length];

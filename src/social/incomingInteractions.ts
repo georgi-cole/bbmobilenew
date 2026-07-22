@@ -4,6 +4,7 @@ import { socialConfig } from './socialConfig';
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
 import {
   addSocialCommitment,
+  applyDramaIncomingResponse,
   applyInfoDelta,
   dismissIncomingInteraction,
   resolveExpiredIncomingInteractionsForWeek,
@@ -13,10 +14,7 @@ import {
 } from './socialSlice';
 import { createCommitmentFromInteraction } from './socialCommitments';
 import { isIncomingInteractionInvalidated } from './incomingInteractionValidity';
-import {
-  buildSocialMemoryDeltaForResponse,
-  buildSocialMemoryEvent,
-} from './socialMemory';
+import { buildSocialMemoryDeltaForResponse, buildSocialMemoryEvent } from './socialMemory';
 import { ALLIANCE_TAG } from './socialAlliance';
 import type {
   IncomingInteraction,
@@ -46,7 +44,10 @@ const RESPONSE_VERBS: Record<IncomingInteractionResponseType, string> = {
   ignore: 'ignored',
 };
 
-const IGNORED_INTERACTION_SUMMARY_LABELS: Record<IncomingInteractionType, { singular: string; plural: string }> = {
+const IGNORED_INTERACTION_SUMMARY_LABELS: Record<
+  IncomingInteractionType,
+  { singular: string; plural: string }
+> = {
   compliment: { singular: 'compliment', plural: 'compliments' },
   gossip: { singular: 'gossip drop', plural: 'gossip drops' },
   warning: { singular: 'warning', plural: 'warnings' },
@@ -90,8 +91,9 @@ function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteracti
   });
   const uniqueSenderCount = new Set(interactions.map((interaction) => interaction.fromId)).size;
   const typeFragments = Array.from(counts.entries())
-    .sort(([leftType], [rightType]) =>
-      IGNORED_INTERACTION_TYPE_PRIORITY[leftType] - IGNORED_INTERACTION_TYPE_PRIORITY[rightType],
+    .sort(
+      ([leftType], [rightType]) =>
+        IGNORED_INTERACTION_TYPE_PRIORITY[leftType] - IGNORED_INTERACTION_TYPE_PRIORITY[rightType],
     )
     .map(([type, count]) => {
       const labels = IGNORED_INTERACTION_SUMMARY_LABELS[type];
@@ -132,7 +134,9 @@ export function respondToIncomingInteraction({
 }) {
   return (dispatch: AppDispatch, getState: () => RootState): void => {
     const state = getState();
-    const interaction = state.social.incomingInteractions.find((entry) => entry.id === interactionId);
+    const interaction = state.social.incomingInteractions.find(
+      (entry) => entry.id === interactionId,
+    );
     if (!interaction || interaction.resolved) return;
     const humanPlayer = state.game.players.find((player) => player.isUser);
     if (!humanPlayer) return;
@@ -163,6 +167,17 @@ export function respondToIncomingInteraction({
     );
 
     if (state.settings?.gameUX?.dramaMode) {
+      dispatch(
+        applyDramaIncomingResponse({
+          holderId: interaction.fromId,
+          subjectId: humanPlayer.id,
+          responseType,
+          week: currentWeek,
+        }),
+      );
+    }
+
+    if (state.settings?.gameUX?.dramaMode) {
       const commitment = createCommitmentFromInteraction({
         interaction,
         responseType,
@@ -173,8 +188,7 @@ export function respondToIncomingInteraction({
     }
 
     const delta = getResponseDelta(responseType);
-    const acceptedAlliance =
-      interaction.type === 'alliance_proposal' && responseType === 'accept';
+    const acceptedAlliance = interaction.type === 'alliance_proposal' && responseType === 'accept';
     if (delta !== 0 && interaction.fromId !== humanPlayer.id) {
       dispatch(
         updateRelationship({
@@ -292,7 +306,6 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
           }),
         );
       }
-
     });
 
     dispatch(

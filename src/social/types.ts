@@ -13,6 +13,92 @@ export interface RelationshipEntry {
 /** Full relationship graph: outer key = source player ID, inner key = target player ID. */
 export type RelationshipsMap = Record<string, Record<string, RelationshipEntry>>;
 
+export type DramaArcType = 'romance' | 'bromance' | 'rivalry' | 'betrayal';
+export type DramaArcStage =
+  | 'spark'
+  | 'building'
+  | 'established'
+  | 'strained'
+  | 'climax'
+  | 'resolved';
+export interface DramaArc {
+  id: string;
+  type: DramaArcType;
+  participantIds: [string, string];
+  stage: DramaArcStage;
+  intensity: number;
+  startedWeek: number;
+  lastAdvancedWeek: number;
+  public: boolean;
+  status: 'active' | 'resolved';
+}
+export type DramaRumourKind = 'secret_alliance' | 'targeting' | 'fake_deal' | 'personal_comment';
+export type DramaRumourTruth = 'true' | 'false' | 'uncertain';
+export interface DramaRumourListener {
+  playerId: string;
+  sourceId: string;
+  confidence: number;
+  believed: boolean;
+  heardWeek: number;
+}
+export interface DramaRumour {
+  id: string;
+  kind: DramaRumourKind;
+  originatorId: string;
+  subjectId: string;
+  truth: DramaRumourTruth;
+  createdWeek: number;
+  expiresWeek: number;
+  listeners: DramaRumourListener[];
+  status: 'circulating' | 'exposed' | 'dead';
+  exposureWeek?: number;
+}
+export type DramaBeliefKind =
+  | 'loyal'
+  | 'promise_keeper'
+  | 'unreliable'
+  | 'strategic_threat'
+  | 'secretive'
+  | 'romantic_interest'
+  | 'ride_or_die'
+  | 'rival';
+export interface DramaBelief {
+  id: string;
+  holderId: string;
+  subjectId: string;
+  kind: DramaBeliefKind;
+  confidence: number;
+  sentiment: number;
+  sourceId: string;
+  createdWeek: number;
+  lastUpdatedWeek: number;
+}
+export interface DramaHouseEvent {
+  id: string;
+  type: 'arc_beat' | 'rumour_spread' | 'exposure' | 'confrontation' | 'reconciliation';
+  week: number;
+  phase: string;
+  participantIds: string[];
+  text: string;
+  public: boolean;
+  severity: 'quiet' | 'notable' | 'major';
+  createdAt: number;
+}
+export interface DramaSocialNetwork {
+  arcs: DramaArc[];
+  rumours: DramaRumour[];
+  beliefs: DramaBelief[];
+  events: DramaHouseEvent[];
+  pacing: {
+    week: number;
+    arcsStartedThisWeek: number;
+    rumourHopsThisWeek: number;
+    publicEventsThisWeek: number;
+    lastPublicEventWeek: number;
+    lastProcessedPhase: string | null;
+  };
+}
+
 export interface SocialMemoryEvent {
   type: string;
   actorId: string;
@@ -207,6 +293,8 @@ export interface SocialState {
   socialMemory: SocialMemoryMap;
   /** Promises made through incoming interactions and their eventual outcomes. */
   commitments: SocialCommitment[];
+  /** Persistent premium arcs, rumours, beliefs and paced public events. */
+  dramaNetwork: DramaSocialNetwork;
   /**
    * Influence weights per actor and decision type: actorId → decisionType → (targetId → weight).
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.

@@ -7,6 +7,7 @@ import {
   selectSocialPanelOpen,
   selectSessionLogs,
   selectWeekStartRelSnapshot,
+  selectDramaNetwork,
   closeSocialPanel,
   clearSessionLogs,
 } from '../../social/socialSlice';
@@ -45,10 +46,11 @@ function getSubjectCandidates(
   allowActorAsSubject = false,
 ): Player[] {
   const eligible = players.filter(
-    (p) => p.id !== primaryTargetId
-      && (allowActorAsSubject || p.id !== actorId)
-      && p.status !== 'evicted'
-      && p.status !== 'jury',
+    (p) =>
+      p.id !== primaryTargetId &&
+      (allowActorAsSubject || p.id !== actorId) &&
+      p.status !== 'evicted' &&
+      p.status !== 'jury',
   );
   switch (pool) {
     case 'nominees':
@@ -106,6 +108,7 @@ export default function SocialPanelV2() {
   const relationships = useAppSelector((s) => s.social?.relationships);
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot);
   const dramaMode = useAppSelector((s) => s.settings?.gameUX?.dramaMode === true);
+  const dramaNetwork = useAppSelector(selectDramaNetwork);
 
   const humanPlayer = game.players.find((p) => p.isUser);
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
@@ -144,9 +147,8 @@ export default function SocialPanelV2() {
 
       // Show a short, playful TV-zone sentence — dispatched last so it appears at
       // the top of the feed (index 0) and is shown in the TV viewport after close.
-      const tvMsg = TV_SOCIAL_CLOSE_MESSAGES[
-        Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)
-      ];
+      const tvMsg =
+        TV_SOCIAL_CLOSE_MESSAGES[Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)];
       dispatch(addTvEvent({ text: tvMsg, type: 'social', channels: ['tv', 'mainLog'] }));
     }
     if (sessionLogs.length > 0) {
@@ -173,13 +175,17 @@ export default function SocialPanelV2() {
   const isExecutingRef = useRef(false);
 
   // Clean up the success pulse timer on unmount.
-  useEffect(() => () => {
-    if (successPulseTimerRef.current !== null) clearTimeout(successPulseTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (successPulseTimerRef.current !== null) clearTimeout(successPulseTimerRef.current);
+    },
+    [],
+  );
 
   // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
-  const targetMode = selectedAction?.targetMode ?? (selectedAction?.needsTargets === false ? 'none' : 'primary');
+  const targetMode =
+    selectedAction?.targetMode ?? (selectedAction?.needsTargets === false ? 'none' : 'primary');
   const effectivePrimaryTargetId = targetMode === 'none' ? null : primaryTargetId;
   const needsTarget = targetMode !== 'none';
   const needsSubject = targetMode === 'primaryPlusSubject';
@@ -207,30 +213,30 @@ export default function SocialPanelV2() {
   // Clears the subject whenever the primary target changes.
   // Also clears the selected action if the new target's status doesn't satisfy
   // the action's requiredTargetStatus constraint (e.g. switching away from LOH).
-  const handleSelectionChange = useCallback((
-    ids: Set<string>,
-    details: { primaryTargetId: string | null },
-  ) => {
-    if (selectedAction?.targetMode === 'multi') {
-      setSelectedTargets(new Set(ids));
-      setPrimaryTargetId(details.primaryTargetId);
-    } else {
-      const nextPrimaryTargetId = details.primaryTargetId;
-      setSelectedTargets(nextPrimaryTargetId ? new Set([nextPrimaryTargetId]) : new Set());
-      setPrimaryTargetId(nextPrimaryTargetId);
-    }
-    setSelectedSubjectId(null);
-
-    // Clear role-gated action when the new target no longer qualifies.
-    if (selectedAction?.requiredTargetStatus) {
-      const nextTargetStatus = details.primaryTargetId
-        ? game.players.find((p) => p.id === details.primaryTargetId)?.status
-        : null;
-      if (!nextTargetStatus || !selectedAction.requiredTargetStatus.includes(nextTargetStatus)) {
-        setSelectedActionId(null);
+  const handleSelectionChange = useCallback(
+    (ids: Set<string>, details: { primaryTargetId: string | null }) => {
+      if (selectedAction?.targetMode === 'multi') {
+        setSelectedTargets(new Set(ids));
+        setPrimaryTargetId(details.primaryTargetId);
+      } else {
+        const nextPrimaryTargetId = details.primaryTargetId;
+        setSelectedTargets(nextPrimaryTargetId ? new Set([nextPrimaryTargetId]) : new Set());
+        setPrimaryTargetId(nextPrimaryTargetId);
       }
-    }
-  }, [selectedAction, game.players]);
+      setSelectedSubjectId(null);
+
+      // Clear role-gated action when the new target no longer qualifies.
+      if (selectedAction?.requiredTargetStatus) {
+        const nextTargetStatus = details.primaryTargetId
+          ? game.players.find((p) => p.id === details.primaryTargetId)?.status
+          : null;
+        if (!nextTargetStatus || !selectedAction.requiredTargetStatus.includes(nextTargetStatus)) {
+          setSelectedActionId(null);
+        }
+      }
+    },
+    [selectedAction, game.players],
+  );
 
   const handleExecute = useCallback(() => {
     if (!canExecute || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
@@ -275,7 +281,15 @@ export default function SocialPanelV2() {
     }
     isExecutingRef.current = false;
     setExecuting(false);
-  }, [canExecute, effectivePrimaryTargetId, game.players, humanPlayer, selectedActionId, selectedSubjectId, targetMode]);
+  }, [
+    canExecute,
+    effectivePrimaryTargetId,
+    game.players,
+    humanPlayer,
+    selectedActionId,
+    selectedSubjectId,
+    targetMode,
+  ]);
 
   if (!open) return null;
 
@@ -328,9 +342,7 @@ export default function SocialPanelV2() {
       ? getSubjectCandidates(
           selectedAction.subjectPool,
           effectivePrimaryTargetId,
-          selectedAction.allowActorAsSubject
-            ? [...orderedPlayers, humanPlayer!]
-            : orderedPlayers,
+          selectedAction.allowActorAsSubject ? [...orderedPlayers, humanPlayer!] : orderedPlayers,
           humanPlayer!.id,
           relationships as Record<string, Record<string, { affinity: number }>> | undefined,
           selectedAction.allowActorAsSubject,
@@ -340,19 +352,17 @@ export default function SocialPanelV2() {
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
       {/* Skip link: lets keyboard users jump past the header directly to actions */}
-      <a className="sp2-skip-link" href="#sp2-body">Skip to actions</a>
-      <div className="sp2-modal">
+      <a className="sp2-skip-link" href="#sp2-body">
+        Skip to actions
+      </a>
+      <div className={`sp2-modal${dramaMode ? ' sp2-modal--drama' : ''}`}>
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className="sp2-header">
           <span className="sp2-header__title">
             {dramaMode ? '🔥 Drama Mode' : '💬 Social Phase'}
           </span>
           <div className="sp2-header__resources">
-            <span
-              className="sp2-energy-chip"
-              aria-live="polite"
-              aria-label={`Energy: ${energy}`}
-            >
+            <span className="sp2-energy-chip" aria-live="polite" aria-label={`Energy: ${energy}`}>
               ⚡ {energy}
             </span>
             <span
@@ -379,6 +389,20 @@ export default function SocialPanelV2() {
             ✕
           </button>
         </header>
+
+        {dramaMode && (
+          <div className="sp2-house-pulse" aria-label="Drama Mode house pulse">
+            <strong>House Pulse</strong>
+            <span>
+              {dramaNetwork.arcs.filter((arc) => arc.status === 'active').length} active stories
+            </span>
+            <span>
+              {dramaNetwork.rumours.filter((rumour) => rumour.status === 'circulating').length}{' '}
+              rumours moving
+            </span>
+            {dramaNetwork.events.at(-1) && <em>{dramaNetwork.events.at(-1)?.text}</em>}
+          </div>
+        )}
 
         {/* ── Two-column body ──────────────────────────────────────────────── */}
         <div id="sp2-body" className="sp2-body">
@@ -413,9 +437,11 @@ export default function SocialPanelV2() {
               relationships={relationships}
               primaryTargetStatus={
                 primaryTargetId
-                  ? game.players.find((p) => p.id === primaryTargetId)?.status ?? null
+                  ? (game.players.find((p) => p.id === primaryTargetId)?.status ?? null)
                   : null
               }
+              dramaMode={dramaMode}
+              currentPhase={game.phase}
             />
           </div>
         </div>
@@ -423,13 +449,15 @@ export default function SocialPanelV2() {
         {/* ── Subject picker: compact inline chip row for "talk to X about Y" ── */}
         {needsSubject && effectivePrimaryTargetId && (
           <div className="sp2-subject-picker" aria-label="Choose subject">
-            <span className="sp2-subject-picker__label">
-              Talking about:
-            </span>
+            <span className="sp2-subject-picker__label">Talking about:</span>
             {subjectCandidates.length === 0 ? (
               <span className="sp2-subject-picker__empty">No eligible targets</span>
             ) : (
-              <div className="sp2-subject-picker__chips" role="group" aria-label="Subject candidates">
+              <div
+                className="sp2-subject-picker__chips"
+                role="group"
+                aria-label="Subject candidates"
+              >
                 {subjectCandidates.map((candidate) => (
                   <button
                     key={candidate.id}
@@ -455,16 +483,15 @@ export default function SocialPanelV2() {
 
         {/* ── Recent Activity – compact fixed-height log above footer ─────── */}
         <div className="sp2-recent" aria-label="Recent Activity log">
-          <RecentActivity
-            players={game.players.filter((p) => !p.isUser)}
-            dramaMode={dramaMode}
-          />
+          <RecentActivity players={game.players.filter((p) => !p.isUser)} dramaMode={dramaMode} />
         </div>
 
         {/* ── Sticky bottom bar ────────────────────────────────────────────── */}
         <footer className="sp2-footer">
           {feedbackMsg ? (
-            <span className="sp2-footer__feedback" role="status" aria-live="polite">{feedbackMsg}</span>
+            <span className="sp2-footer__feedback" role="status" aria-live="polite">
+              {feedbackMsg}
+            </span>
           ) : (
             <span className="sp2-footer__cost">
               {energyCost !== null ? `Cost: ⚡${energyCost}` : 'Cost: —'}

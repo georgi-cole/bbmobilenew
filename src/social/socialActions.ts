@@ -1,3 +1,5 @@
+import { DRAMA_SOCIAL_ACTIONS } from './dramaModeConfig';
+
 /**
  * Social action definitions for the SocialManeuvers subsystem.
  *
@@ -136,6 +138,12 @@ export interface SocialActionDefinition {
    * the target's status.
    */
   requiredTargetStatus?: readonly PlayerStatus[];
+  /** Only available while the premium Drama Mode simulation is enabled. */
+  dramaOnly?: boolean;
+  allowedPhases?: readonly string[];
+  requiredRelationshipTags?: readonly string[];
+  minAffinity?: number;
+  maxAffinity?: number;
 }
 
 /** Canonical list of social actions available in the game. */
@@ -300,7 +308,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     id: 'confront',
     title: 'Confront',
     icon: '😤',
-    description: 'Directly challenge someone\'s behavior or motives.',
+    description: "Directly challenge someone's behavior or motives.",
     category: 'aggressive',
     kind: 'aggressive',
     baseCost: 2,
@@ -403,6 +411,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Requires nominees on the block',
     yields: { influence: 0.03 },
   },
+  ...DRAMA_SOCIAL_ACTIONS,
   // ── AI-only shims (kept for SocialPolicy / AI engine compatibility) ────────
   // These are hidden from the human-player grid.
   {

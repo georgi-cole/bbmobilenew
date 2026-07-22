@@ -181,7 +181,9 @@ describe('IncomingInteractionsInbox', () => {
 
     fireEvent.click(document.querySelector('[data-response-type="positive"]')!);
 
-    const entry = store.getState().social.incomingInteractions.find((i) => i.id === 'interaction-3');
+    const entry = store
+      .getState()
+      .social.incomingInteractions.find((i) => i.id === 'interaction-3');
     expect(entry?.resolved).toBe(true);
     expect(entry?.resolvedWith).toBe('positive');
     expect(store.getState().game.tvFeed[0]?.text).toMatch(/encouraged/i);
@@ -258,7 +260,11 @@ describe('IncomingInteractionsInbox', () => {
 
     expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument();
     expect(screen.getByText(/Bitter/)).toBeInTheDocument();
-    expect(screen.getByText(/Sets a clear boundary and damages trust/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Call it out' })).toHaveAttribute(
+      'title',
+      'Sets a clear boundary and damages trust.',
+    );
+    expect(screen.queryByText(/Sets a clear boundary and damages trust/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument();
     expect(screen.queryByText('Why now')).not.toBeInTheDocument();
     expect(screen.queryByText('What it means')).not.toBeInTheDocument();
@@ -279,7 +285,9 @@ describe('IncomingInteractionsInbox', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(store.getState().social.incomingInboxOpen).toBe(false);
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Incoming social module did not open: Social modules are blocked during the eviction_results phase.'),
+      expect.stringContaining(
+        'Incoming social module did not open: Social modules are blocked during the eviction_results phase.',
+      ),
       expect.objectContaining({ phase: 'eviction_results' }),
     );
 

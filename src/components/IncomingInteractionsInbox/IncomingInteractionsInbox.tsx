@@ -6,10 +6,14 @@ import {
   selectIncomingInboxOpen,
   selectIncomingInteractions,
   selectSocialCommitments,
+  selectDramaNetwork,
   selectUnreadIncomingInteractionCount,
 } from '../../social/socialSlice';
 import { getIncomingInteractionPriority } from '../../social/incomingInteractionScheduler';
-import { getIncomingInteractionTypeLabel, respondToIncomingInteraction } from '../../social/incomingInteractions';
+import {
+  getIncomingInteractionTypeLabel,
+  respondToIncomingInteraction,
+} from '../../social/incomingInteractions';
 import {
   getSocialModuleAvailability,
   logBlockedSocialModuleOpen,
@@ -134,21 +138,22 @@ function InteractionItem({
   const shouldShowActions = showActions && !interaction.resolved;
   const tone = useMemo(
     () =>
-      dramaMode ? getIncomingInteractionTone({
-        interaction,
-        relationships,
-        socialMemory,
-        humanId,
-        isUrgent,
-      }) : undefined,
+      dramaMode
+        ? getIncomingInteractionTone({
+            interaction,
+            relationships,
+            socialMemory,
+            humanId,
+            isUrgent,
+          })
+        : undefined,
     [dramaMode, interaction, relationships, socialMemory, humanId, isUrgent],
   );
   const responseOptions = useMemo(
-    () => (
+    () =>
       shouldShowActions
         ? getIncomingInteractionResponseOptions(interaction.type, interaction, tone, dramaMode)
-        : []
-    ),
+        : [],
     [shouldShowActions, interaction, tone, dramaMode],
   );
 
@@ -191,7 +196,9 @@ function InteractionItem({
                 • {tone}
               </span>
             )}
-            {expiryLabel && <span className={`inbox-item__expiry${expiryClass}`}>{expiryLabel}</span>}
+            {expiryLabel && (
+              <span className={`inbox-item__expiry${expiryClass}`}>{expiryLabel}</span>
+            )}
           </div>
         </div>
         {resolvedLabel && (
@@ -209,14 +216,14 @@ function InteractionItem({
             {commitment.status === 'pending' ? 'Promise active' : `Promise ${commitment.status}`}
           </strong>
           <span>{getSocialCommitmentLabel(commitment.kind)}</span>
-          {commitment.status === 'pending' && <small>{getSocialCommitmentDueCopy(commitment.kind)}</small>}
+          {commitment.status === 'pending' && (
+            <small>{getSocialCommitmentDueCopy(commitment.kind)}</small>
+          )}
         </div>
       )}
 
       {shouldShowActions && (
-        <div
-          className={`inbox-item__actions${dramaMode ? ' inbox-item__actions--drama' : ''}`}
-        >
+        <div className="inbox-item__actions">
           {responseOptions.map((option) => (
             <button
               key={`${interaction.id}-${option.responseType}`}
@@ -228,7 +235,6 @@ function InteractionItem({
               onClick={() => onRespond(interaction.id, option.responseType)}
             >
               <span>{option.label}</span>
-              {dramaMode && <small>{option.description}</small>}
             </button>
           ))}
         </div>
@@ -248,12 +254,16 @@ export default function IncomingInteractionsInbox() {
   const relationships = useAppSelector((s) => s.social?.relationships ?? {});
   const socialMemory = useAppSelector((s) => s.social?.socialMemory ?? {});
   const commitments = useAppSelector(selectSocialCommitments);
+  const dramaNetwork = useAppSelector(selectDramaNetwork);
   const dramaMode = useAppSelector((s) => s.settings?.gameUX?.dramaMode === true);
 
   const humanPlayer = players.find((player) => player.isUser);
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
 
-  const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
+  const playerById = useMemo(
+    () => new Map(players.map((player) => [player.id, player])),
+    [players],
+  );
 
   const interactionEntries = useMemo(
     () =>
@@ -301,8 +311,7 @@ export default function IncomingInteractionsInbox() {
   const urgentCount = useMemo(
     () =>
       pendingInteractions.filter(
-        (entry) =>
-          entry.priority === 'high' || isExpiringThisWeek(entry.interaction, currentWeek),
+        (entry) => entry.priority === 'high' || isExpiringThisWeek(entry.interaction, currentWeek),
       ).length,
     [pendingInteractions, currentWeek],
   );
@@ -310,7 +319,23 @@ export default function IncomingInteractionsInbox() {
     () => commitments.filter((commitment) => commitment.status === 'pending'),
     [commitments],
   );
-  const credibility = useMemo(() => getSocialCredibility(commitments), [commitments]);
+  const credibility = useMemo(() => {
+    const base = getSocialCredibility(commitments);
+    if (!dramaMode || !humanPlayer) return base;
+    const houseBeliefs = dramaNetwork.beliefs.filter(
+      (belief) => belief.subjectId === humanPlayer.id && belief.holderId !== humanPlayer.id,
+    );
+    if (houseBeliefs.length === 0) return base;
+    const weight = houseBeliefs.reduce((sum, belief) => sum + belief.confidence, 0) || 1;
+    const signal =
+      houseBeliefs.reduce((sum, belief) => sum + belief.sentiment * belief.confidence, 0) / weight;
+    const score = Math.max(0, Math.min(100, Math.round(base.score + signal * 35)));
+    return {
+      ...base,
+      score,
+      label: score >= 70 ? 'Trusted' : score <= 35 ? 'Questioned' : 'Mixed',
+    };
+  }, [commitments, dramaMode, dramaNetwork.beliefs, humanPlayer]);
 
   const headerSummary =
     pendingInteractions.length === 0
@@ -338,7 +363,12 @@ export default function IncomingInteractionsInbox() {
   if (!open || !socialModuleAvailability.canOpen || !humanPlayer) return null;
 
   return (
-    <div className="inbox-backdrop" role="dialog" aria-modal="true" aria-label="Incoming interactions">
+    <div
+      className="inbox-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Incoming interactions"
+    >
       <div className="inbox-panel">
         <header className="inbox-header">
           <div className="inbox-header__title">
@@ -368,15 +398,22 @@ export default function IncomingInteractionsInbox() {
           ) : (
             <div className="inbox-sections">
               {dramaMode && pendingCommitments.length > 0 && (
-                <section className="inbox-section inbox-section--promises" aria-label="Active Promises">
-                  <h3 className="inbox-section__title inbox-section__title--promises">Active Promises</h3>
+                <section
+                  className="inbox-section inbox-section--promises"
+                  aria-label="Active Promises"
+                >
+                  <h3 className="inbox-section__title inbox-section__title--promises">
+                    Active Promises
+                  </h3>
                   <div className="inbox-promises">
                     {pendingCommitments.map((commitment) => (
                       <div className="inbox-promise" key={commitment.id}>
                         <strong>{getSocialCommitmentLabel(commitment.kind)}</strong>
                         <span>
-                          {playerById.get(commitment.beneficiaryId)?.name ?? commitment.beneficiaryId}
-                          {' · '}{getSocialCommitmentDueCopy(commitment.kind)}
+                          {playerById.get(commitment.beneficiaryId)?.name ??
+                            commitment.beneficiaryId}
+                          {' · '}
+                          {getSocialCommitmentDueCopy(commitment.kind)}
                         </span>
                       </div>
                     ))}
@@ -402,7 +439,9 @@ export default function IncomingInteractionsInbox() {
                         relationships={relationships}
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
-                        commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
+                        commitment={commitments.find(
+                          (entry) => entry.interactionId === interaction.id,
+                        )}
                         dramaMode={dramaMode}
                       />
                     ))}
@@ -428,7 +467,9 @@ export default function IncomingInteractionsInbox() {
                         relationships={relationships}
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
-                        commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
+                        commitment={commitments.find(
+                          (entry) => entry.interactionId === interaction.id,
+                        )}
                         dramaMode={dramaMode}
                       />
                     ))}
@@ -456,7 +497,9 @@ export default function IncomingInteractionsInbox() {
                         relationships={relationships}
                         socialMemory={socialMemory}
                         humanId={humanPlayer.id}
-                        commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
+                        commitment={commitments.find(
+                          (entry) => entry.interactionId === interaction.id,
+                        )}
                         dramaMode={dramaMode}
                       />
                     ))}

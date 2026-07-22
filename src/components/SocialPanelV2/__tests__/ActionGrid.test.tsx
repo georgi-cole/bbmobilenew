@@ -28,7 +28,9 @@ import { normalizeActionCosts } from '../../../social/smExecNormalize';
 const VISIBLE_ACTIONS = SOCIAL_ACTIONS.filter((a) => !a.aiOnly);
 
 /** Actions visible without any target selected (also excludes role-gated). */
-const DEFAULT_VISIBLE_ACTIONS = VISIBLE_ACTIONS.filter((a) => !a.requiredTargetStatus);
+const DEFAULT_VISIBLE_ACTIONS = VISIBLE_ACTIONS.filter(
+  (a) => !a.requiredTargetStatus && !a.dramaOnly,
+);
 
 describe('ActionGrid – rendering', () => {
   it('renders a card for every non-aiOnly, non-role-gated action in SOCIAL_ACTIONS', () => {
@@ -48,9 +50,7 @@ describe('ActionGrid – rendering', () => {
 
   it('shows role-gated actions when primaryTargetStatus matches', () => {
     render(<ActionGrid primaryTargetStatus="loh" />);
-    const lohActions = VISIBLE_ACTIONS.filter(
-      (a) => a.requiredTargetStatus?.includes('loh'),
-    );
+    const lohActions = VISIBLE_ACTIONS.filter((a) => a.requiredTargetStatus?.includes('loh'));
     for (const action of lohActions) {
       expect(screen.getByText(action.title)).toBeDefined();
     }
@@ -67,6 +67,25 @@ describe('ActionGrid – rendering', () => {
     for (const action of aiOnlyActions) {
       expect(screen.queryByRole('button', { name: new RegExp(action.title, 'i') })).toBeNull();
     }
+  });
+
+  it('keeps premium actions out of Normal Mode and reveals contextual actions in Drama Mode', () => {
+    const { rerender } = render(<ActionGrid />);
+    expect(screen.queryByText('Test the Spark')).toBeNull();
+    expect(screen.queryByText('Plant a Lie')).toBeNull();
+
+    rerender(
+      <ActionGrid
+        dramaMode
+        currentPhase="social_2"
+        actorId="human"
+        selectedTargetIds={new Set(['lia'])}
+        relationships={{ human: { lia: { affinity: 40, tags: [] } } }}
+      />,
+    );
+    expect(screen.getByText('Test the Spark')).toBeDefined();
+    expect(screen.getByText('Make a Pact')).toBeDefined();
+    expect(screen.getByText('Plant a Lie')).toBeDefined();
   });
 });
 
@@ -121,8 +140,12 @@ describe('ActionGrid – disabled and selected state', () => {
   it('non-selected cards have aria-pressed false', () => {
     const selected = VISIBLE_ACTIONS[0];
     render(<ActionGrid selectedId={selected.id} />);
-    const cards = screen.getAllByRole('button', { name: new RegExp(VISIBLE_ACTIONS[1].title, 'i') });
-    const otherCard = cards.find((el) => el.getAttribute('data-action-id') === VISIBLE_ACTIONS[1].id);
+    const cards = screen.getAllByRole('button', {
+      name: new RegExp(VISIBLE_ACTIONS[1].title, 'i'),
+    });
+    const otherCard = cards.find(
+      (el) => el.getAttribute('data-action-id') === VISIBLE_ACTIONS[1].id,
+    );
     expect(otherCard).toBeDefined();
     expect(otherCard!.getAttribute('aria-pressed')).toBe('false');
   });
@@ -181,12 +204,7 @@ describe('ActionGrid – preview popup', () => {
 
   it('shows per-target deltas when selectedTargetIds and players are provided', () => {
     const players = [{ id: 'p1', name: 'Alice', avatar: '😀', status: 'active' as const }];
-    render(
-      <ActionGrid
-        selectedTargetIds={new Set(['p1'])}
-        players={players}
-      />,
-    );
+    render(<ActionGrid selectedTargetIds={new Set(['p1'])} players={players} />);
     const firstCard = screen.getByRole('button', {
       name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
@@ -210,9 +228,9 @@ describe('ActionGrid – preview popup', () => {
 describe('ActionGrid – actorEnergy sorting and availability', () => {
   it('preserves canonical order (visible actions only) when actorEnergy is undefined', () => {
     render(<ActionGrid />);
-    const cards = screen.getAllByRole('button', { name: /./i }).filter(
-      (el) => el.hasAttribute('data-action-id'),
-    );
+    const cards = screen
+      .getAllByRole('button', { name: /./i })
+      .filter((el) => el.hasAttribute('data-action-id'));
     const renderedIds = cards.map((c) => c.getAttribute('data-action-id'));
     const canonicalIds = DEFAULT_VISIBLE_ACTIONS.map((a) => a.id);
     expect(renderedIds).toEqual(canonicalIds);
@@ -222,9 +240,9 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
     // With energy=1, influence=0, info=0: affordable actions are those with
     // energy<=1 AND no influence/info costs. Unaffordable are all others.
     render(<ActionGrid actorEnergy={1} actorInfluence={0} actorInfo={0} />);
-    const cards = screen.getAllByRole('button', { name: /./i }).filter(
-      (el) => el.hasAttribute('data-action-id'),
-    );
+    const cards = screen
+      .getAllByRole('button', { name: /./i })
+      .filter((el) => el.hasAttribute('data-action-id'));
     const renderedIds = cards.map((c) => c.getAttribute('data-action-id'));
     // Compute affordable/unaffordable using the same logic as the component
     // (visible only, excluding role-gated actions since no target status is set)
@@ -247,7 +265,9 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
     }).map((a) => a.id);
     // All affordable ids should appear before all unaffordable ids
     const lastAffordableIndex = Math.max(...affordableIds.map((id) => renderedIds.indexOf(id)));
-    const firstUnaffordableIndex = Math.min(...unaffordableIds.map((id) => renderedIds.indexOf(id)));
+    const firstUnaffordableIndex = Math.min(
+      ...unaffordableIds.map((id) => renderedIds.indexOf(id)),
+    );
     expect(lastAffordableIndex).toBeLessThan(firstUnaffordableIndex);
   });
 

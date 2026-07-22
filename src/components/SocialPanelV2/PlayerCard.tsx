@@ -17,6 +17,7 @@ interface PlayerCardProps {
    * zero or undefined → hidden.
    */
   affinityDelta?: number;
+  relationshipTags?: readonly string[];
 }
 
 /**
@@ -34,18 +35,14 @@ export default function PlayerCard({
   onSelect,
   affinity,
   affinityDelta,
+  relationshipTags = [],
 }: PlayerCardProps) {
-  const classes = [
-    'pc',
-    selected ? 'pc--selected' : '',
-    disabled ? 'pc--disabled' : '',
-  ]
+  const classes = ['pc', selected ? 'pc--selected' : '', disabled ? 'pc--disabled' : '']
     .filter(Boolean)
     .join(' ');
 
   const rel = affinity !== undefined ? getRelationshipLabel(affinity) : null;
-  const affinityDisplay =
-    affinity !== undefined ? `${Math.max(0, Math.min(100, affinity))}%` : '—';
+  const affinityDisplay = affinity !== undefined ? `${Math.max(0, Math.min(100, affinity))}%` : '—';
   const mood = getPlayerMood(player.id, affinity);
   const moodClass = getMoodClass(mood);
 
@@ -90,9 +87,7 @@ export default function PlayerCard({
       {/* ── Expanded detail panel (visible when selected, no repeated info) ── */}
       {selected && (
         <div className="pc__expanded" aria-label={`${player.name} relationship details`}>
-          {rel && (
-            <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
-          )}
+          {rel && <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>}
           <span className="pc__expanded-affinity">{affinityDisplay}</span>
           {affinityDelta !== undefined && affinityDelta !== 0 && (
             <span
@@ -103,6 +98,23 @@ export default function PlayerCard({
             </span>
           )}
           <span className={`pc__mood pc__mood--${moodClass}`}>{mood}</span>
+          {relationshipTags.includes('alliance') && (
+            <span className="pc__bond-chip pc__bond-chip--ally">{'\uD83E\uDD1D Ally'}</span>
+          )}
+          {relationshipTags.includes('romance') && (
+            <span className="pc__bond-chip pc__bond-chip--romance">{'\uD83D\uDC95 Romance'}</span>
+          )}
+          {relationshipTags.includes('bromance') && (
+            <span className="pc__bond-chip pc__bond-chip--bromance">
+              {'\uD83E\uDD1D Ride-or-die'}
+            </span>
+          )}
+          {(relationshipTags.includes('rivalry') || relationshipTags.includes('target')) && (
+            <span className="pc__bond-chip pc__bond-chip--rival">{'\u26A1 Rival'}</span>
+          )}
+          {relationshipTags.includes('betrayal') && (
+            <span className="pc__bond-chip pc__bond-chip--betrayal">{'\uD83D\uDDE1 Betrayed'}</span>
+          )}
         </div>
       )}
     </button>
