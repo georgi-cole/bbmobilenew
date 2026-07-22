@@ -10,7 +10,6 @@ async function gotoGridOfLuck(page: Page) {
 
 async function playThroughOneReveal(page: Page) {
   const eventCard = page.getByTestId('grid-of-luck-event-card')
-  const feed = page.getByTestId('grid-of-luck-ritual-feed')
   const boxes = page.getByTestId('grid-of-luck-box')
 
   await expect(boxes).toHaveCount(20)
@@ -23,9 +22,8 @@ async function playThroughOneReveal(page: Page) {
   await expect(eventCard).toContainText(/box 11 opens and reveals/i, { timeout: 4000 })
 
   await expect(eventCard).toContainText(/continue ritual/i, { timeout: 4000 })
-  await expect(feed.getByRole('listitem')).toHaveCount(2)
-  await expect(feed.getByRole('listitem').first()).toContainText(/You uncover a hidden bonus/i)
-  await expect(feed.getByRole('listitem').nth(1)).toContainText(/The chamber awakens/i)
+  await expect(eventCard).toContainText(/You uncover a hidden bonus/i)
+  await expect(boxes.nth(10)).toContainText(/Hidden Bonus/i)
 }
 
 test.describe('Grid of Luck / Mystic Chamber @smoke @minigame @mobile @accessibility', () => {

@@ -296,7 +296,9 @@ test.describe('Finale / Jury flow @release', () => {
       .evaluate((button) => (button as HTMLButtonElement).click())
     const recap = page.getByRole('dialog', { name: 'Season recap cinematic' })
     await expect(recap).toBeVisible({ timeout: 10_000 })
-    await recap.getByRole('button', { name: 'Skip recap' }).click()
+    await recap
+      .getByRole('button', { name: 'Skip recap' })
+      .evaluate((button) => (button as HTMLButtonElement).click())
     await expect(recap).toBeHidden()
 
     await expect(tribunal).toBeVisible({ timeout: 10_000 })

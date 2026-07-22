@@ -5,12 +5,17 @@
  *  - All new sound entries (live_vote, nominations, veto, etc.) are registered
  */
 
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
   SOUND_REGISTRY,
   FILENAME_ALIAS_MAP,
+  SOUNDS_BASE,
   resolveKey,
 } from '../../../src/services/sound/sounds';
+
+const PUBLIC_SOUNDS_DIR = join(process.cwd(), 'public', 'assets', 'sounds');
 
 // ── FILENAME_ALIAS_MAP ────────────────────────────────────────────────────────
 
@@ -77,12 +82,12 @@ describe('resolveKey()', () => {
 
 describe('SOUND_REGISTRY — new entries', () => {
   const expectedNewKeys: [string, string][] = [
-    ['music:hoh_comp_general',   'music_hoh_comp_general.mp3'],
+    ['music:hoh_comp_general',   'loh_competition.mp3'],
     ['tv:live_vote',             'live_vote.mp3'],
     ['music:nominations_horror', 'nominations_horror.mp3'],
     ['music:nominations_main',   'nominations_main.mp3'],
-    ['tv:veto_ceremony',         'veto_ceremony.mp3'],
-    ['music:veto_phase',         'veto_phase.mp3'],
+    ['tv:veto_ceremony',         'tv_winner_reveal.mp3'],
+    ['music:veto_phase',         'Power_of_safety_comp.mp3'],
     ['tv:voting_eviction',       'voting_for_eviction_user_and_housguests.mp3'],
   ];
 
@@ -121,6 +126,18 @@ describe('SOUND_REGISTRY — new entries', () => {
   it('does not mark any sound entry for eager preload', () => {
     for (const entry of Object.values(SOUND_REGISTRY)) {
       expect(entry.preload, `${entry.key} should load on demand`).toBe(false);
+    }
+  });
+
+  it('points every registered web sound to a non-empty production asset', () => {
+    for (const entry of Object.values(SOUND_REGISTRY)) {
+      const relativePath = decodeURIComponent(entry.src.slice(SOUNDS_BASE.length));
+      const assetPath = join(PUBLIC_SOUNDS_DIR, relativePath);
+
+      expect(existsSync(assetPath), `${entry.key} should resolve to ${relativePath}`).toBe(true);
+      if (existsSync(assetPath)) {
+        expect(statSync(assetPath).size, `${entry.key} should not use an empty placeholder`).toBeGreaterThan(1024);
+      }
     }
   });
 });

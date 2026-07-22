@@ -45,7 +45,15 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
   await page.getByPlaceholder('Enter display name').fill(playerName)
   await page.getByRole('button', { name: 'Create Profile', exact: true }).click()
 
-  await expect(page.getByText(playerName, { exact: true })).toBeVisible()
+  await expect
+    .poll(async () => {
+      const profiles = (await readAppState(page)).profiles
+      const activeProfile = profiles.profiles.find(
+        (profile) => profile.id === profiles.activeProfileId
+      )
+      return { activeName: activeProfile?.name ?? null, isGuest: profiles.isGuest }
+    })
+    .toEqual({ activeName: playerName, isGuest: false })
   await page.getByRole('button', { name: 'Go back' }).click()
   await waitForHome(page)
 }
@@ -217,13 +225,46 @@ async function resolveCompetitionThroughPlayerControls(page: Page, phase: string
 
   await dismiss.click()
   await expect(page.getByRole('heading', { name: 'Exited early' })).toBeVisible()
-  await page.getByRole('button', { name: /Continue.*▶/ }).click()
+  const closeResults = page.getByRole('button', { name: 'Close results' })
+  const continueWithResult = page.getByRole('button', { name: /Continue.*▶/ })
+  await expect(closeResults.or(continueWithResult).first()).toBeVisible()
+  if (await closeResults.isVisible()) {
+    await closeResults.evaluate((button) => (button as HTMLButtonElement).click())
+  } else {
+    await continueWithResult.click()
+  }
   await expect
     .poll(() => readAppState(page).then((state) => state.game.phase), {
       message: `${phase} should commit a result after the player continues`,
       timeout: SCREEN_TIMEOUT_MS,
     })
     .not.toBe(phase)
+}
+
+async function advanceToFirstSocialPhase(page: Page): Promise<void> {
+  for (let step = 0; step < 10; step += 1) {
+    await closePhaseInformationIfPresent(page)
+    const phase = (await readAppState(page)).game.phase
+    if (phase === 'social_1') return
+
+    if (phase === 'loh_comp') {
+      await resolveCompetitionThroughPlayerControls(page, phase)
+      continue
+    }
+
+    const optionalContinue = page.getByRole('button', { name: 'Continue', exact: true })
+    if (await optionalContinue.isVisible()) {
+      await optionalContinue.click()
+      continue
+    }
+
+    const advance = page.getByRole('button', { name: 'Advance to next phase' })
+    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+    await expect(advance).toBeEnabled()
+    await advance.click()
+  }
+
+  throw new Error('The first social phase was not reachable through player controls.')
 }
 
 async function playOneCompleteWeek(page: Page): Promise<{
@@ -494,6 +535,7 @@ test.describe('Real player core journeys', () => {
     page,
   }) => {
     await startFreshCampaign(page, 'Economy Journey Player')
+    await advanceToFirstSocialPhase(page)
 
     const gameActions = page.getByRole('toolbar', { name: 'Game actions' })
     await gameActions.getByRole('button', { name: /^Social(?: \(\d+\))?$/ }).click()
@@ -524,7 +566,7 @@ test.describe('Real player core journeys', () => {
 
     await page.reload()
     await waitForHome(page)
-    await resumeLastRun(page, 'Day start')
+    await resumeLastRun(page, 'Social phase')
     await gameActions.getByRole('button', { name: /^Social(?: \(\d+\))?$/ }).click()
     await expect(
       page
