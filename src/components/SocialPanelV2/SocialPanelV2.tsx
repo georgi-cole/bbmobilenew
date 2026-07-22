@@ -26,6 +26,8 @@ import type { Player } from '../../types';
 import type { SubjectPool } from '../../social/socialActions';
 import './SocialPanelV2.css';
 
+const EXECUTE_REENTRY_GUARD_MS = 250;
+
 // ── Subject candidate helpers ─────────────────────────────────────────────
 
 function isNomineeStatus(status: Player['status']): boolean {
@@ -184,13 +186,15 @@ export default function SocialPanelV2() {
   const [successPulse, setSuccessPulse] = useState(false);
   const [executing, setExecuting] = useState(false);
   const successPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const executeGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Re-entrancy guard: prevents double-execution on rapid clicks (synchronous
   // state updates are batched and `executing` state may not be visible yet).
   const isExecutingRef = useRef(false);
 
-  // Clean up the success pulse timer on unmount.
+  // Clean up feedback and double-spend guard timers on unmount.
   useEffect(() => () => {
     if (successPulseTimerRef.current !== null) clearTimeout(successPulseTimerRef.current);
+    if (executeGuardTimerRef.current !== null) clearTimeout(executeGuardTimerRef.current);
   }, []);
 
   // Derived — computed before the early return so all hooks remain unconditional.
@@ -440,8 +444,12 @@ export default function SocialPanelV2() {
         successPulseTimerRef.current = null;
       }, 850);
     }
-    isExecutingRef.current = false;
-    setExecuting(false);
+    if (executeGuardTimerRef.current !== null) clearTimeout(executeGuardTimerRef.current);
+    executeGuardTimerRef.current = setTimeout(() => {
+      isExecutingRef.current = false;
+      setExecuting(false);
+      executeGuardTimerRef.current = null;
+    }, EXECUTE_REENTRY_GUARD_MS);
   }, [dispatch, effectivePrimaryTargetId, energy, game.players, hasExecutableSelection, humanPlayer, info, influence, selectedAction, selectedActionId, selectedSubjectId, selectedTargets, setExecuting, setFeedbackMsg, setSuccessPulse, targetMode, totalCosts, usesMultipleTargets]);
 
   if (!open) return null;

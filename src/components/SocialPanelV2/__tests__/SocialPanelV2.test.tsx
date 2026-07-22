@@ -351,6 +351,21 @@ describe('SocialPanelV2 – execute flow', () => {
     expect((btn as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('charges energy and records the action only once after two rapid execute taps', () => {
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+
+    const execute = screen.getByRole('button', { name: 'Execute' });
+    fireEvent.click(execute);
+    fireEvent.click(execute);
+
+    expect(store.getState().social.energyBank[humanId]).toBe(4);
+    expect(
+      store.getState().social.sessionLogs.filter((entry) => entry.actionId === 'compliment')
+    ).toHaveLength(1);
+  });
+
   it('shows feedback after executing idle action', () => {
     fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }));

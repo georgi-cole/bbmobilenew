@@ -69,6 +69,15 @@ export async function closeDebugPanelIfOpen(page: Page): Promise<void> {
   await expect(panel).toBeHidden()
 }
 
+export async function dismissPermissionPromptIfPresent(page: Page): Promise<void> {
+  const permissionPrompt = page.getByRole('dialog', { name: 'Allow location' })
+  if (!(await permissionPrompt.isVisible())) return
+
+  await permissionPrompt.getByRole('checkbox', { name: 'Remember my choice' }).check()
+  await permissionPrompt.getByRole('button', { name: 'Deny' }).click()
+  await expect(permissionPrompt).toBeHidden()
+}
+
 export const test = base.extend<{ browserErrors: BrowserErrorCollector }>({
   browserErrors: [
     async ({ page }, use, testInfo) => {

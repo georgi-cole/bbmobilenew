@@ -1,5 +1,6 @@
 import {
   closeDebugPanelIfOpen,
+  dismissPermissionPromptIfPresent,
   E2E_NEW_SEASON_FIXTURE,
   expect,
   readAppState,
@@ -22,12 +23,7 @@ async function waitForHome(page: Page): Promise<void> {
   await expect(mainMenu).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
   await closeDebugPanelIfOpen(page)
 
-  const permissionPrompt = page.getByRole('dialog', { name: 'Allow location' })
-  if (await permissionPrompt.isVisible()) {
-    await permissionPrompt.getByRole('checkbox', { name: 'Remember my choice' }).check()
-    await permissionPrompt.getByRole('button', { name: 'Deny' }).click()
-    await expect(permissionPrompt).toBeHidden()
-  }
+  await dismissPermissionPromptIfPresent(page)
 
   await expect(mainMenu.getByRole('button', { name: 'Play', exact: true })).toBeEnabled()
 }
@@ -273,7 +269,7 @@ async function playOneCompleteWeek(page: Page): Promise<{
     lohWinnerId: string | null
     nominationIds: string[]
     posWinnerId: string | null
-    reloadedNominationHistoryCount: number | null
+    reloadedNominationFeedCount: number | null
     voteResults: Record<string, number> | null
     weekEndDoubleActivated: boolean
   }
@@ -285,7 +281,7 @@ async function playOneCompleteWeek(page: Page): Promise<{
     lohWinnerId: null as string | null,
     nominationIds: [] as string[],
     posWinnerId: null as string | null,
-    reloadedNominationHistoryCount: null as number | null,
+    reloadedNominationFeedCount: null as number | null,
     voteResults: null as Record<string, number> | null,
     weekEndDoubleActivated: false,
   }
@@ -321,7 +317,7 @@ async function playOneCompleteWeek(page: Page): Promise<{
       reloadedDuringNominations = true
       await closePhaseInformationIfPresent(page)
       const beforeReload = {
-        historyCount: game.history.length,
+        tvFeedCount: game.tvFeed.length,
         nomineeIds: [...game.nomineeIds],
         phase: game.phase,
         seed: game.seed,
@@ -333,13 +329,13 @@ async function playOneCompleteWeek(page: Page): Promise<{
       await resumeLastRun(page, 'Nomination results')
       const afterReload = await readAppState(page)
       expect({
-        historyCount: afterReload.game.history.length,
+        tvFeedCount: afterReload.game.tvFeed.length,
         nomineeIds: afterReload.game.nomineeIds,
         phase: afterReload.game.phase,
         seed: afterReload.game.seed,
         week: afterReload.game.week,
       }).toEqual(beforeReload)
-      evidence.reloadedNominationHistoryCount = afterReload.game.history.length
+      evidence.reloadedNominationFeedCount = afterReload.game.tvFeed.length
       continue
     }
 
@@ -451,7 +447,7 @@ test.describe('Real player core journeys', () => {
     }
     expect(evidence.posWinnerId).not.toBeNull()
     expect(initialActiveIdSet.has(evidence.posWinnerId ?? '')).toBe(true)
-    expect(evidence.reloadedNominationHistoryCount).not.toBeNull()
+    expect(evidence.reloadedNominationFeedCount).not.toBeNull()
     expect(evidence.weekEndDoubleActivated).toBe(true)
     expect(evidence.voteResults).not.toBeNull()
     for (const votes of Object.values(evidence.voteResults ?? {})) {
@@ -470,11 +466,11 @@ test.describe('Real player core journeys', () => {
     const maxVotes = Math.max(...Object.values(evidence.voteResults ?? {}))
     expect(evidence.voteResults?.[eliminatedId]).toBe(maxVotes)
     expect(
-      endState.game.history.filter(
+      endState.game.tvFeed.some(
         (event) =>
           event.text.includes(eliminatedPlayer?.name ?? '') && /eliminat|evict/i.test(event.text)
       )
-    ).toHaveLength(1)
+    ).toBe(true)
     expect(endState.game.players.filter((player) => player.status === 'active')).toHaveLength(
       initialActiveIds.length - 1
     )
@@ -517,7 +513,7 @@ test.describe('Real player core journeys', () => {
   test('production navigation returns to the active game and an unknown deep link recovers home @smoke @core-journey @mobile @release', async ({
     page,
   }) => {
-    await startFreshCampaign(page, 'Navigation Journey Player')
+    await startFreshCampaign(page, 'Navigation Player')
 
     await openRulesFromGame(page)
     await expect(page.getByRole('heading', { name: 'How to Play' })).toBeVisible()
@@ -578,7 +574,7 @@ test.describe('Real player core journeys', () => {
   test('a legacy save migrates and a corrupt current save recovers without harming another profile @persistence @release', async ({
     page,
   }) => {
-    const playerName = 'Persistence Journey Player'
+    const playerName = 'Persistence Player'
     await startFreshCampaign(page, playerName)
 
     const actionZone = page.getByRole('region', { name: 'Game action zone' })

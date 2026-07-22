@@ -1,4 +1,10 @@
-import { expect, readAppState, test, type Page } from './support/test'
+import {
+  dismissPermissionPromptIfPresent,
+  expect,
+  readAppState,
+  test,
+  type Page,
+} from './support/test'
 
 const PROFILE_ID = 'e2e-finale-profile'
 const PROFILE_NAME = 'Finale Journey Player'
@@ -207,12 +213,7 @@ async function waitForHome(page: Page): Promise<void> {
   const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
   await expect(mainMenu).toBeVisible({ timeout: 30_000 })
 
-  const permissionPrompt = page.getByRole('dialog', { name: 'Allow location' })
-  if (await permissionPrompt.isVisible()) {
-    await permissionPrompt.getByRole('checkbox', { name: 'Remember my choice' }).check()
-    await permissionPrompt.getByRole('button', { name: 'Deny' }).click()
-    await expect(permissionPrompt).toBeHidden()
-  }
+  await dismissPermissionPromptIfPresent(page)
 
   await expect(mainMenu.getByRole('button', { name: 'Play', exact: true })).toBeEnabled()
 }
@@ -339,6 +340,7 @@ test.describe('Finale / Jury flow @release', () => {
     expect(runnerUp.finalRank).toBe(2)
     await expect(winnerReveal).toContainText(winner.name)
 
+    await dismissPermissionPromptIfPresent(page)
     await winnerReveal.getByRole('button', { name: 'Continue' }).click()
     const interview = page.getByRole('dialog', { name: 'Winner interview' })
     await expect(interview).toBeVisible()
