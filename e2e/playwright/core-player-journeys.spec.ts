@@ -1,4 +1,5 @@
 import {
+  closeDebugPanelIfOpen,
   E2E_NEW_SEASON_FIXTURE,
   expect,
   readAppState,
@@ -19,6 +20,7 @@ const CORRUPT_SAVE_RECOVERY_KEY = 'bbmobilenew:recovery:lastCorruptSave'
 async function waitForHome(page: Page): Promise<void> {
   const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
   await expect(mainMenu).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  await closeDebugPanelIfOpen(page)
 
   const permissionPrompt = page.getByRole('dialog', { name: 'Allow location' })
   if (await permissionPrompt.isVisible()) {

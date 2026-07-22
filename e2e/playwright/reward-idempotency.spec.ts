@@ -1,4 +1,4 @@
-import { expect, readAppState, test, type Page } from './support/test'
+import { closeDebugPanelIfOpen, expect, readAppState, test, type Page } from './support/test'
 
 const PROFILE_ID = 'e2e-reward-profile'
 const PROFILE_NAME = 'Reward Journey Player'
@@ -86,6 +86,7 @@ async function installRewardFixtureAndBridge(
 async function waitForHome(page: Page): Promise<void> {
   const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
   await expect(mainMenu).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  await closeDebugPanelIfOpen(page)
 
   const permissionPrompt = page.getByRole('dialog', { name: 'Allow location' })
   if (await permissionPrompt.isVisible()) {

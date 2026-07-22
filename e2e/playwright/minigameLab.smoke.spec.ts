@@ -1,4 +1,4 @@
-import { test, expect, type Page, type TestInfo } from './support/test'
+import { closeDebugPanelIfOpen, test, expect, type Page, type TestInfo } from './support/test'
 
 import { getPoolByFilter, type GameRegistryEntry } from '../../src/minigames/registry'
 import { assertNoHorizontalDocumentOverflow } from './support/layoutAssertions'
@@ -14,6 +14,7 @@ async function openLab(page: Page, game: GameRegistryEntry): Promise<void> {
   await page.goto(
     `./#/minigame-lab?game=${encodeURIComponent(game.key)}&seed=424242&players=4&skipRules=1&skipCountdown=1&freeze=1`
   )
+  await closeDebugPanelIfOpen(page)
 }
 
 async function attachSnapshot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
@@ -63,7 +64,7 @@ test.describe('Minigame Lab smoke @smoke @minigame', () => {
         button.click()
         button.click()
       })
-      await expect(hostDialog).toBeHidden()
+      await expect(hostDialog).toBeVisible()
       await expect(page.getByTestId('minigame-lab-last-result')).toHaveText(
         `${game.title}: completed with 0 [partial]`
       )

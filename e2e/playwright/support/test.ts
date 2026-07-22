@@ -59,6 +59,14 @@ export async function readAppState(page: Page): Promise<RootState> {
   })
 }
 
+export async function closeDebugPanelIfOpen(page: Page): Promise<void> {
+  const panel = page.getByRole('complementary', { name: 'Debug Panel' })
+  if (!(await panel.isVisible())) return
+
+  await panel.getByRole('button', { name: 'Close Debug Panel' }).click()
+  await expect(panel).toBeHidden()
+}
+
 export const test = base.extend<{ browserErrors: BrowserErrorCollector }>({
   browserErrors: [
     async ({ page }, use, testInfo) => {
@@ -73,6 +81,9 @@ export const test = base.extend<{ browserErrors: BrowserErrorCollector }>({
 
       page.on('console', onConsole)
       page.on('pageerror', onPageError)
+      await page.route('**/api/live-config', async (route) => {
+        await route.fulfill({ body: '{}', contentType: 'application/json', status: 200 })
+      })
       await installUnhandledRejectionReporter(page)
 
       await use({ errors })

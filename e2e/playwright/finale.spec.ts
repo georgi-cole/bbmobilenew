@@ -245,7 +245,10 @@ test.describe('Finale / Jury flow @release', () => {
 
     const initialState = await readAppState(page)
     expect(initialState.game.seed).toBe(42)
-    expect(initialState.profiles).toEqual({ activeProfileId: PROFILE_ID, isGuest: false })
+    expect(initialState.profiles).toMatchObject({ activeProfileId: PROFILE_ID, isGuest: false })
+    expect(initialState.profiles.profiles).toContainEqual(
+      expect.objectContaining({ id: PROFILE_ID, name: PROFILE_NAME })
+    )
 
     // Fixture-only setup: retain exactly two active finalists, seven real
     // Tribunal members, and valid pre-jury evictees before entering the finale.

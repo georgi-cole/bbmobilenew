@@ -1,7 +1,8 @@
-import { test, expect, type Page } from './support/test'
+import { closeDebugPanelIfOpen, test, expect, type Page } from './support/test'
 
 async function gotoGridOfLuck(page: Page) {
   await page.goto('./#/gol-test')
+  await closeDebugPanelIfOpen(page)
   await expect(page.getByRole('heading', { name: /Mystic Chamber/i })).toBeVisible({
     timeout: 10000,
   })

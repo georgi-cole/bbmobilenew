@@ -187,32 +187,36 @@ function isAssetFile(filePath: string): boolean {
   return /\.(png|jpe?g|webp|svg|mp3|mp4|jxl|wp2)$/i.test(filePath);
 }
 
+function portablePath(filePath: string): string {
+  return normalize(filePath).replaceAll('\\', '/').toLowerCase();
+}
+
 function isUiChromeAsset(filePath: string): boolean {
-  const normalized = normalize(filePath).toLowerCase();
+  const normalized = portablePath(filePath);
   return [
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\buttons\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\icons\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\control_dock\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\side_utilities_button\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\updated_nav_fab_bar\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\glossy_dock\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\glossy_bottom_bar\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\clean_glassy_dock\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\side_node`,
+    `${portablePath(PUBLIC_DIR)}/assets/buttons/`,
+    `${portablePath(PUBLIC_DIR)}/assets/icons/`,
+    `${portablePath(PUBLIC_DIR)}/assets/control_dock/`,
+    `${portablePath(PUBLIC_DIR)}/assets/side_utilities_button/`,
+    `${portablePath(PUBLIC_DIR)}/assets/updated_nav_fab_bar/`,
+    `${portablePath(PUBLIC_DIR)}/assets/glossy_dock/`,
+    `${portablePath(PUBLIC_DIR)}/assets/glossy_bottom_bar/`,
+    `${portablePath(PUBLIC_DIR)}/assets/clean_glassy_dock/`,
+    `${portablePath(PUBLIC_DIR)}/assets/side_node`,
   ].some((prefix) => normalized.startsWith(prefix));
 }
 
 function isHeavyMediaAsset(filePath: string): boolean {
-  const normalized = normalize(filePath).toLowerCase();
+  const normalized = portablePath(filePath);
   return [
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\sounds\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\skins\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\tabloid_photos\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\informal_attires\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\formal_attires\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\credits\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\diary-room\\`,
-    `${normalize(PUBLIC_DIR).toLowerCase()}\\assets\\bbmobilenew\\`,
+    `${portablePath(PUBLIC_DIR)}/assets/sounds/`,
+    `${portablePath(PUBLIC_DIR)}/assets/skins/`,
+    `${portablePath(PUBLIC_DIR)}/assets/tabloid_photos/`,
+    `${portablePath(PUBLIC_DIR)}/assets/informal_attires/`,
+    `${portablePath(PUBLIC_DIR)}/assets/formal_attires/`,
+    `${portablePath(PUBLIC_DIR)}/assets/credits/`,
+    `${portablePath(PUBLIC_DIR)}/assets/diary-room/`,
+    `${portablePath(PUBLIC_DIR)}/assets/bbmobilenew/`,
   ].some((prefix) => normalized.startsWith(prefix));
 }
 
