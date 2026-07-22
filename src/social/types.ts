@@ -54,6 +54,10 @@ export interface SocialActionLogEntry {
    * (or in addition to) targetId.
    */
   subjectId?: string;
+  /** Structured context used to render action-specific history without parsing text. */
+  context?: {
+    lohPlanType?: 'current_target' | 'backup_plan';
+  };
   /** Energy deducted (backward-compatible; prefer `costs.energy`). */
   cost: number;
   delta: number;

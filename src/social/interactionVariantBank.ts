@@ -497,7 +497,7 @@ export const SCENARIO_VARIANT_POOLS: Record<string, VariantFamily[]> = {
       id: 'pvc_urgent',
       voiceTags: ['direct', 'emotional', 'strategic'],
       variants: [
-        { text: 'The veto changed everything, and now I have to rebuild fast.', voiceTags: ['direct', 'emotional'] },
+        { text: 'The Safety decision changed everything, and now I have to rebuild fast.', voiceTags: ['direct', 'emotional'] },
         { text: 'Once the ceremony shifted, I knew I needed to start talking immediately.', voiceTags: ['strategic', 'composed'] },
         { text: 'The block looks different now, but the danger feels even sharper.', voiceTags: ['emotional', 'direct'] },
       ],

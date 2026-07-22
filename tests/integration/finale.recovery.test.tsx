@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import AppShell from '../../src/components/layout/AppShell';
+import '../../src/components/FinalFaceoff/FinalFaceoff';
 import gameReducer from '../../src/store/gameSlice';
 import finaleReducer from '../../src/store/finaleSlice';
 import settingsReducer from '../../src/store/settingsSlice';

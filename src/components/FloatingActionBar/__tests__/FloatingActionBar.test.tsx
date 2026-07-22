@@ -18,7 +18,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import type { ComponentProps } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import gameReducer, { hydrateGame, triggerSecretMission } from '../../../store/gameSlice';
+import gameReducer, { advance, hydrateGame, triggerSecretMission } from '../../../store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,
   applyEnergyDelta,
@@ -83,6 +83,36 @@ function makeDirection(playerId: string, overrides: Partial<PublicDirection> = {
     approvalDelta: 5,
     ...overrides,
   };
+}
+
+function makeAiSafetyCeremonyStore(seed = 1244317494) {
+  const initial = makeStore().getState().game;
+  const [, loh, safetyHolder, otherNominee] = initial.players;
+  const players = initial.players.map((player) => {
+    if (player.id === loh.id) return { ...player, isUser: false, status: 'loh' as const };
+    if (player.id === safetyHolder.id) {
+      return { ...player, isUser: false, status: 'nominated+pos' as const };
+    }
+    if (player.id === otherNominee.id) {
+      return { ...player, isUser: false, status: 'nominated' as const };
+    }
+    return { ...player, status: 'active' as const };
+  });
+
+  return makeStore(true, {
+    phase: 'pos_ceremony',
+    seed,
+    lohId: loh.id,
+    posWinnerId: safetyHolder.id,
+    nomineeIds: [safetyHolder.id, otherNominee.id],
+    players,
+    povSavedId: null,
+    povProtectedIds: [],
+    aiReplacementStep: 0,
+    aiReplacementWaiting: false,
+    pendingMinigame: null,
+    tvFeed: [],
+  });
 }
 
 function LocationDisplay() {
@@ -309,11 +339,85 @@ describe('FloatingActionBar – layout', () => {
     renderFAB(store);
     expect(screen.queryByRole('button', { name: /save/i })).toBeNull();
   });
+
+  it('accepts the primary advance action only once for the current phase', () => {
+    const store = makeStore(true, { phase: 'week_end', week: 1 });
+    renderFAB(store);
+
+    const playButton = screen.getByRole('button', { name: 'Advance to next phase' });
+    act(() => {
+      playButton.click();
+      playButton.click();
+    });
+
+    expect(store.getState().game.week).toBe(2);
+    expect(store.getState().game.phase).toBe('week_start');
+  });
+
+  it('continues every deterministic AI Safety result step once without locking the phase', () => {
+    const store = makeAiSafetyCeremonyStore();
+    const safetyHolderId = store.getState().game.posWinnerId!;
+    renderFAB(store);
+
+    const activateTwice = () => {
+      const playButton = screen.getByRole('button', { name: 'Advance to next phase' });
+      act(() => {
+        playButton.click();
+        playButton.click();
+      });
+    };
+
+    activateTwice();
+    let game = store.getState().game;
+    expect(game.phase).toBe('pos_ceremony_results');
+    expect(game.aiReplacementStep).toBe(1);
+    expect(game.povSavedId).toBe(safetyHolderId);
+    expect(game.pendingMinigame).toBeNull();
+    expect(game.tvFeed.filter((event) => event.text.includes('Power of Safety on'))).toHaveLength(1);
+
+    activateTwice();
+    game = store.getState().game;
+    expect(game.phase).toBe('pos_ceremony_results');
+    expect(game.aiReplacementStep).toBe(2);
+    expect(game.tvFeed.filter((event) => event.text.includes('is selecting a backup nominee'))).toHaveLength(1);
+
+    activateTwice();
+    game = store.getState().game;
+    expect(game.phase).toBe('pos_ceremony_results');
+    expect(game.aiReplacementStep).toBe(0);
+    expect(game.nomineeIds).toHaveLength(2);
+    expect(game.tvFeed.filter((event) => event.text.includes('named') && event.text.includes('backup nominee'))).toHaveLength(1);
+
+    activateTwice();
+    game = store.getState().game;
+    expect(game.phase).toBe('social_2');
+    expect(game.pendingMinigame).toBeNull();
+    expect(game.tvFeed.filter((event) => event.text.includes('Power of Safety on'))).toHaveLength(1);
+
+    const replay = makeAiSafetyCeremonyStore();
+    replay.dispatch(advance());
+    replay.dispatch(advance());
+    replay.dispatch(advance());
+    replay.dispatch(advance());
+    const replayedGame = replay.getState().game;
+
+    expect({
+      phase: replayedGame.phase,
+      seed: replayedGame.seed,
+      nomineeIds: replayedGame.nomineeIds,
+      povSavedId: replayedGame.povSavedId,
+    }).toEqual({
+      phase: game.phase,
+      seed: game.seed,
+      nomineeIds: game.nomineeIds,
+      povSavedId: game.povSavedId,
+    });
+  });
 });
 
 describe('FloatingActionBar – navigation buttons', () => {
   it('navigates to public meter when the Public meter button is clicked', async () => {
-    const store = makeStore();
+    const store = makeStore(true, { publicModeEnabled: true });
     renderFAB(store, '/game');
     act(() => {
       screen.getByRole('button', { name: 'Public meter' }).click();
@@ -322,7 +426,7 @@ describe('FloatingActionBar – navigation buttons', () => {
   });
 
   it('shows an active public request badge and opens requests tab when the user has active requests', async () => {
-    const store = makeStore();
+    const store = makeStore(true, { publicModeEnabled: true });
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     act(() => {
       store.dispatch(addDirection(makeDirection(humanId)));

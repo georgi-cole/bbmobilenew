@@ -70,6 +70,18 @@ export default function FloatingActionBar({
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
+  const advanceProgressKey = [
+    game.phase,
+    game.aiReplacementStep ?? 0,
+    game.aiReplacementWaiting ? 'waiting-for-replacement-render' : 'replacement-ready',
+    game.specialVeto?.vipUseStage ?? 0,
+    isWaiting ? 'waiting-for-input' : 'ready',
+  ].join(':');
+  const advancedProgressRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    advancedProgressRef.current = null;
+  }, [advanceProgressKey]);
   const isSurvivorMode = game.mode === 'survival';
   const survivorTerminalActive = isSurvivorRunTerminal(game);
 
@@ -249,10 +261,13 @@ export default function FloatingActionBar({
       dispatchPlayPressedEvent();
       return;
     }
+    if (advancedProgressRef.current === advanceProgressKey) return;
+    advancedProgressRef.current = advanceProgressKey;
     dispatch(advance());
     dispatchPlayPressedEvent();
   }, [
     activeConfessionalDecisionKey,
+    advanceProgressKey,
     dispatch,
     dispatchPlayPressedEvent,
     hasPendingConfessionalDecision,

@@ -14,6 +14,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
+import gameReducer from '../../src/store/gameSlice';
+import settingsReducer, { setGameUX } from '../../src/store/settingsSlice';
 import socialReducer, {
   selectEnergyBank,
   selectInfluenceBank,
@@ -44,6 +46,7 @@ import {
 } from '../../src/social/SocialManeuvers';
 import { socialMiddleware } from '../../src/social/socialMiddleware';
 import { socialConfig } from '../../src/social/socialConfig';
+import { MIN_ALLIANCE_AFFINITY, hasAllianceBetween } from '../../src/social/socialAlliance';
 
 describe('positive interaction repetition curve', () => {
   it('uses the full +1..+5 range on first use', () => {
@@ -73,15 +76,19 @@ import type { SocialActionLogEntry } from '../../src/social/types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function makeStore() {
-  return configureStore({ reducer: { social: socialReducer } });
+function makeStore(dramaMode = true) {
+  const store = configureStore({ reducer: { social: socialReducer, settings: settingsReducer } });
+  if (dramaMode) store.dispatch(setGameUX({ dramaMode: true }));
+  return store;
 }
 
 function makeStoreWithSocialMiddleware() {
-  return configureStore({
-    reducer: { social: socialReducer },
+  const store = configureStore({
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
   });
+  store.dispatch(setGameUX({ dramaMode: true }));
+  return store;
 }
 
 // ── socialActions ──────────────────────────────────────────────────────────
@@ -383,7 +390,8 @@ describe('getAvailableActions', () => {
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
-    store.dispatch(updateRelationship({ source: 'p1', target: 'p2', delta: 5, tags: ['alliance'] }));
+    store.dispatch(updateRelationship({ source: 'p1', target: 'p2', delta: 50, tags: ['alliance'] }));
+    store.dispatch(updateRelationship({ source: 'p2', target: 'p1', delta: 50, tags: ['alliance'] }));
 
     const ids = getAvailableActions('p1', undefined, 'p2').map((action) => action.id);
 
@@ -446,12 +454,36 @@ describe('executeAction – happy path', () => {
     executeAction('p1', 'p2', 'ally', { random: () => 0.999 });
     const rel = store.getState().social.relationships['p1']?.['p2'];
     expect(rel).toBeDefined();
-    expect(rel!.affinity).toBe(socialConfig.affinityDeltas.friendlySuccess);
+    expect(rel!.affinity).toBe(socialConfig.affinityDeltas.friendlySuccess * 2);
   });
 
-  it.todo(
-    'applies the correct affinity delta for a friendly action (success) – TODO: add compliment to socialConfig.actionCategories.friendlyActions so computeOutcomeDelta returns a non-zero delta',
-  );
+  it('applies and reports the exact persisted delta for a successful friendly action', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+
+    const result = executeAction('p1', 'p2', 'compliment', { random: () => 0.999 });
+    const relationship = store.getState().social.relationships.p1?.p2;
+    const log = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
+
+    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess * 2);
+    expect(relationship?.affinity).toBe(result.delta);
+    expect(log.delta).toBe(result.delta);
+    expect(result.summary).toBe('Compliment succeeded (+' + result.delta + ' relationship)');
+  });
+
+  it('keeps the original one-sided relationship delta in standard mode', () => {
+    const store = makeStore(false);
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+
+    const result = executeAction('p1', 'p2', 'compliment', {
+      outcome: 'success',
+      random: () => 0.999,
+    });
+
+    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess);
+  });
 
   it('tags relationship with outcomeTag when action has one', () => {
     const store = makeStore();
@@ -505,16 +537,16 @@ describe('executeAction – happy path', () => {
 
     executeAction('p1', 'p2', 'compliment', { outcome: 'success', random: () => 0.999 });
     executeAction('p1', 'p2', 'compliment', { outcome: 'success', random: () => 0.999 });
-    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(8);
+    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(16);
     expect(store.getState().social.influenceBank['p1']).toBe(4);
 
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const result = executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
     randomSpy.mockRestore();
 
-    expect(result.delta).toBe(-socialConfig.affinityDeltas.friendlySuccess);
-    expect(result.summary).toBe('Compliment backfired (-5 affinity)');
-    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(3);
+    expect(result.delta).toBe(-socialConfig.affinityDeltas.friendlySuccess * 2);
+    expect(result.summary).toBe('Compliment backfired (-10 relationship)');
+    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(6);
     expect(store.getState().social.influenceBank['p1']).toBe(2);
     expect((store.getState().social.sessionLogs[2] as SocialActionLogEntry).yieldsApplied).toEqual({
       influence: -2,
@@ -534,9 +566,9 @@ describe('executeAction – happy path', () => {
     const result = executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
     randomSpy.mockRestore();
 
-    expect(result.delta).toBe(3);
-    expect(result.summary).toBe('Compliment succeeded (+3 affinity)');
-    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(11);
+    expect(result.delta).toBe(6);
+    expect(result.summary).toBe('Compliment succeeded (+6 relationship)');
+    expect(store.getState().social.relationships['p1']?.['p2']?.affinity).toBe(22);
     expect(store.getState().social.influenceBank['p1']).toBe(6);
   });
 });
@@ -603,15 +635,14 @@ describe('executeAction – failure cases', () => {
 // ── Integration: computeOutcomeDelta wired through executeAction ──────────
 
 describe('executeAction – outcome delta from SocialPolicy', () => {
-  it('delta for ally (friendly, socialConfig) is positive on success', () => {
+  it('reports the applied delta for ally on success', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
-    const result = executeAction('p1', 'p2', 'ally', { random: () => 0.999 });
+    const result = executeAction('p1', 'p2', 'ally', { outcome: 'success', random: () => 0.999 });
     expect(result.success).toBe(true);
-    expect(result.delta).toBeGreaterThanOrEqual(1);
-    expect(result.delta).toBeLessThanOrEqual(socialConfig.affinityDeltas.friendlySuccess);
+    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess * 2);
   });
 
   it('delta for betray (aggressive, socialConfig) is negative on success', () => {
@@ -619,20 +650,18 @@ describe('executeAction – outcome delta from SocialPolicy', () => {
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
-    const result = executeAction('p1', 'p2', 'betray');
+    const result = executeAction('p1', 'p2', 'betray', { outcome: 'success' });
     expect(result.success).toBe(true);
-    expect(result.delta).toBe(socialConfig.affinityDeltas.aggressiveSuccess);
+    expect(result.delta).toBe(socialConfig.affinityDeltas.aggressiveSuccess * 2);
   });
 
-  it('delta for compliment (friendly action in socialConfig) is positive on success', () => {
+  it('reports the applied delta for compliment on success', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
-    const result = executeAction('p1', 'p2', 'compliment');
-    // compliment is now in socialConfig.actionCategories.friendlyActions
-    expect(result.delta).toBeGreaterThanOrEqual(1);
-    expect(result.delta).toBeLessThanOrEqual(socialConfig.affinityDeltas.friendlySuccess);
+    const result = executeAction('p1', 'p2', 'compliment', { outcome: 'success', random: () => 0.999 });
+    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess * 2);
   });
 });
 
@@ -846,6 +875,10 @@ describe('executeAction – multi-resource deductions', () => {
     expect(result.success).toBe(true);
     expect(store.getState().social.relationships.p1?.p2?.tags).toContain('alliance');
     expect(store.getState().social.relationships.p2?.p1?.tags).toContain('alliance');
+    expect(store.getState().social.relationships.p1?.p2?.affinity).toBeGreaterThanOrEqual(MIN_ALLIANCE_AFFINITY);
+    expect(store.getState().social.relationships.p2?.p1?.affinity).toBeGreaterThanOrEqual(MIN_ALLIANCE_AFFINITY);
+    expect(hasAllianceBetween(store.getState().social.relationships, 'p1', 'p2')).toBe(true);
+    expect(getAvailableActions('p1', undefined, 'p2').map((action) => action.id)).not.toContain('proposeAlliance');
   });
 
   it('grants alliance formation resources only once for a reciprocal alliance', () => {
@@ -868,13 +901,29 @@ describe('executeAction – multi-resource deductions', () => {
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
-    store.dispatch(updateRelationship({ source: 'p1', target: 'p2', delta: 5, tags: ['alliance'] }));
+    store.dispatch(updateRelationship({ source: 'p1', target: 'p2', delta: 50, tags: ['alliance'] }));
+    store.dispatch(updateRelationship({ source: 'p2', target: 'p1', delta: 50, tags: ['alliance'] }));
 
     const result = executeAction('p1', 'p2', 'proposeAlliance', { outcome: 'success' });
 
     expect(result).toMatchObject({ success: false, summary: 'Already allied' });
     expect(store.getState().social.energyBank.p1).toBe(10);
     expect(store.getState().social.sessionLogs).toHaveLength(0);
+  });
+
+  it('repairs stale low-affinity alliance tags through a newly accepted proposal', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
+    store.dispatch(updateRelationship({ source: 'p1', target: 'p2', delta: 5, tags: ['alliance'] }));
+    store.dispatch(updateRelationship({ source: 'p2', target: 'p1', delta: 5, tags: ['alliance'] }));
+    expect(hasAllianceBetween(store.getState().social.relationships, 'p1', 'p2')).toBe(false);
+
+    const result = executeAction('p1', 'p2', 'proposeAlliance', { outcome: 'success', random: () => 0 });
+
+    expect(result.success).toBe(true);
+    expect(hasAllianceBetween(store.getState().social.relationships, 'p1', 'p2')).toBe(true);
   });
 
   it('can turn a risky alliance proposal into a betrayal', () => {

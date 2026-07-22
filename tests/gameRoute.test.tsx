@@ -7,6 +7,7 @@ import gameReducer from '../src/store/gameSlice';
 import profilesReducer from '../src/store/profilesSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
+import finaleReducer from '../src/store/finaleSlice';
 import GameRoute from '../src/routes/GameRoute';
 import { createSurvivorRun, terminalizeSurvivorRun } from '../src/modes/survivorRun';
 
@@ -19,6 +20,7 @@ function makeStore(gameOverrides: Record<string, unknown>) {
   const baseSettings = settingsReducer(undefined, { type: '@@INIT' });
   const baseProfiles = profilesReducer(undefined, { type: '@@INIT' });
   const basePublicOpinion = publicOpinionReducer(undefined, { type: '@@INIT' });
+  const baseFinale = finaleReducer(undefined, { type: '@@INIT' });
 
   return configureStore({
     reducer: {
@@ -26,6 +28,7 @@ function makeStore(gameOverrides: Record<string, unknown>) {
       settings: settingsReducer,
       profiles: profilesReducer,
       publicOpinion: publicOpinionReducer,
+      finale: finaleReducer,
     },
     preloadedState: {
       game: {
@@ -35,6 +38,7 @@ function makeStore(gameOverrides: Record<string, unknown>) {
       settings: baseSettings,
       profiles: baseProfiles,
       publicOpinion: basePublicOpinion,
+      finale: baseFinale,
     },
   });
 }

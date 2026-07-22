@@ -14,6 +14,7 @@ import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
 import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
 import { initAdBridge } from './services/ads/adsService'
+import { installE2EStateProbe } from './testSupport/e2eStateProbe'
 import App from './App.tsx'
 
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
@@ -38,11 +39,12 @@ SocialEngine.init(store)
 // can complete rewarded ad flows.
 initAdBridge()
 
-// Expose the Redux store globally for debugging and e2e tooling.
-declare global {
-  interface Window { __store: typeof store }
+// Browser journeys may observe a detached state snapshot in development, but
+// never receive the mutable Redux store or dispatch. The explicit flag is set
+// by the shared Playwright fixture before any application code runs.
+if (import.meta.env.DEV) {
+  installE2EStateProbe(window, store.getState, true)
 }
-window.__store = store
 
 // Expose legacy-safe helpers for intro hub chip interactions.
 // These are called from js/ui/introHub.js and are safe to attach before the

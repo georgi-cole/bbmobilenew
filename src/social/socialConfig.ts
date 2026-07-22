@@ -14,7 +14,7 @@ export const socialConfig = {
   actionWeights: {
     ally: 3,
     protect: 2,
-    betray: 1,
+    betray: 0.15,
     nominate: 2,
     idle: 1,
     // Extended weights covering the outgoing social module catalog:
@@ -123,11 +123,12 @@ export const socialConfig = {
    * randomVariance  – maximum ±fraction of random jitter added to each score.
    */
   incomingInteractionConfig: {
-    maxPerWeek: 6,
-    maxActive: 8,
-    maxPerAI: 2,
+    maxPerWeek: 5,
+    maxGeneratedPerCheckpoint: 1,
+    maxActive: 6,
+    maxPerAI: 1,
     cooldownTicks: 2,
-    scoreThreshold: 0.15,
+    scoreThreshold: 0.3,
     weights: {
       relationshipIntensity: 0.25,
       strategicUrgency: 0.5,
@@ -213,7 +214,7 @@ export const socialConfig = {
   // ── Incoming Interaction Delivery ─────────────────────────────────────────
   incomingInteractionDeliveryConfig: {
     /** Maximum unresolved interactions visible in the inbox at once. */
-    maxActiveVisible: 4,
+    maxActiveVisible: 2,
     /** Maximum interactions delivered per phase checkpoint. */
     maxDeliveredPerPhase: 1,
     /** Phase offsets applied when scheduling by priority. */

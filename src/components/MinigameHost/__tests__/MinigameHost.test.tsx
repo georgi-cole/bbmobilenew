@@ -154,4 +154,30 @@ describe('MinigameHost competition retry', () => {
     expect(screen.getByRole('button', { name: 'Reverse time' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /continue/i })).toBeNull()
   })
+
+  it('reports a completed result only once when Continue is activated twice', () => {
+    const onDone = vi.fn()
+
+    render(
+      <MinigameHost
+        game={baseGame}
+        onDone={onDone}
+        skipRules
+        skipCountdown
+        participants={makeParticipants(5, 1)}
+      />,
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish Test Game' }))
+    const continueButton = screen.getByRole('button', { name: /Continue/ })
+    fireEvent.click(continueButton)
+    fireEvent.click(continueButton)
+
+    expect(onDone).toHaveBeenCalledTimes(1)
+    expect(onDone).toHaveBeenCalledWith(5, false)
+  })
 })

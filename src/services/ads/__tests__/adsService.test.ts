@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RootState } from '../../../store/store'
-import { canShowAd, showInterstitial, showRewarded } from '../adsService'
+import {
+  canShowAd,
+  clearRewardHandler,
+  initAdBridge,
+  showInterstitial,
+  showRewarded,
+} from '../adsService'
 
 function makeState(
   overrides?: Partial<RootState['ads']>,
@@ -30,6 +36,7 @@ function makeState(
 describe('adsService bridge guards', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    clearRewardHandler('social_energy_recharge')
     delete window.GameAds
     delete window.onAdRewardGranted
   })
@@ -64,6 +71,69 @@ describe('adsService bridge guards', () => {
       })
     )
     expect(showRewardedBridge).toHaveBeenCalledWith('social_energy_recharge')
+  })
+
+  it('removes the reward handler before invoking it so re-entrant callbacks cannot grant twice', () => {
+    const dispatch = vi.fn()
+    window.GameAds = {
+      showInterstitial: vi.fn(),
+      showRewarded: vi.fn(),
+    }
+    initAdBridge()
+    const onReward = vi.fn(() => {
+      window.onAdRewardGranted?.('social_energy_recharge', { source: 'duplicate' })
+    })
+
+    expect(showRewarded('social_energy_recharge', makeState(), dispatch, onReward)).toBe(true)
+    window.onAdRewardGranted?.('social_energy_recharge', { source: 'native' })
+    window.onAdRewardGranted?.('social_energy_recharge', { source: 'late-duplicate' })
+
+    expect(onReward).toHaveBeenCalledTimes(1)
+    expect(onReward).toHaveBeenCalledWith({ source: 'native' })
+  })
+
+  it('allows only one in-flight rewarded request for the same placement', () => {
+    const dispatch = vi.fn()
+    const showRewardedBridge = vi.fn()
+    window.GameAds = {
+      showInterstitial: vi.fn(),
+      showRewarded: showRewardedBridge,
+    }
+
+    expect(showRewarded('social_energy_recharge', makeState(), dispatch, vi.fn())).toBe(true)
+    expect(showRewarded('social_energy_recharge', makeState(), dispatch, vi.fn())).toBe(false)
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(showRewardedBridge).toHaveBeenCalledTimes(1)
+  })
+
+  it('recovers when the rewarded native bridge throws without recording usage', () => {
+    const dispatch = vi.fn()
+    window.GameAds = {
+      showInterstitial: vi.fn(),
+      showRewarded: vi.fn(() => {
+        throw new Error('native rewarded bridge failed')
+      }),
+    }
+
+    expect(showRewarded('social_energy_recharge', makeState(), dispatch, vi.fn())).toBe(false)
+    expect(dispatch).not.toHaveBeenCalled()
+
+    window.GameAds.showRewarded = vi.fn()
+    expect(showRewarded('social_energy_recharge', makeState(), dispatch, vi.fn())).toBe(true)
+    expect(dispatch).toHaveBeenCalledTimes(1)
+  })
+
+  it('recovers when the interstitial native bridge throws without recording usage', () => {
+    const dispatch = vi.fn()
+    window.GameAds = {
+      showInterstitial: vi.fn(() => {
+        throw new Error('native interstitial bridge failed')
+      }),
+      showRewarded: vi.fn(),
+    }
+
+    expect(showInterstitial('eviction_auto', makeState(), dispatch)).toBe(false)
+    expect(dispatch).not.toHaveBeenCalled()
   })
 })
 

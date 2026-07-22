@@ -1,0 +1,103 @@
+name: Release Product Quality
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  product-quality:
+    name: Release static, test, coverage, and build gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      MINIGAME_SEED_COUNT: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run test:guard
+      - run: npm run lint:ci
+      - run: npm run typecheck
+      - name: Run complete product suite
+        run: npm test -- --reporter=dot
+      - name: Run extended deterministic minigame matrix
+        run: npx vitest run tests/minigames.seedStress.test.tsx --maxWorkers=2 --reporter=verbose
+      - name: Produce release coverage evidence
+        run: npm run test:coverage
+      - name: Enforce risk-based coverage floors
+        run: npm run coverage:check
+      - run: npm run build
+      - run: npm run build:mobile
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Upload coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-vitest-coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 30
+
+  browser-quality:
+    name: Release browser matrix (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: desktop-chromium
+            browser: chromium
+          - project: mobile-chromium
+            browser: chromium
+          - project: mobile-webkit
+            browser: webkit
+          - project: narrow-chromium
+            browser: chromium
+          - project: compact-mobile-chromium
+            browser: chromium
+          - project: wide-desktop-chromium
+            browser: chromium
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run every release browser scenario without retries
+        run: npx playwright test --project=${{ matrix.project }}
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 30
+
+  release-ready:
+    name: Release quality aggregate
+    runs-on: ubuntu-latest
+    needs: [product-quality, browser-quality]
+    permissions:
+      contents: read
+    steps:
+      - run: echo "All configured release-quality jobs passed."

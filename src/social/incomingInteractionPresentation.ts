@@ -1,5 +1,6 @@
 import { normalizeAffinity } from './affinityUtils';
 import { socialConfig } from './socialConfig';
+import { getStoryBibleResponseSet } from './socialStoryBible';
 import {
   getCommitmentKindForInteraction,
   getSocialCommitmentDueCopy,
@@ -276,6 +277,10 @@ function getResponseBlueprints(
   if (!interaction) return RESPONSE_OPTIONS_BY_TYPE[type];
 
   const scenarioKey = interaction.payload?.scenarioKey;
+  const configuredResponses = getStoryBibleResponseSet(
+    typeof scenarioKey === 'string' ? scenarioKey : undefined,
+  );
+  if (configuredResponses) return configuredResponses;
   if (typeof scenarioKey === 'string' && SCENARIO_RESPONSE_OPTIONS[scenarioKey]) {
     return SCENARIO_RESPONSE_OPTIONS[scenarioKey];
   }

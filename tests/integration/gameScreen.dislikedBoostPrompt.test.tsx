@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import adsReducer from '../../src/store/adsSlice'
 import challengeReducer from '../../src/store/challengeSlice'
 import gameReducer from '../../src/store/gameSlice'
+import profilesReducer from '../../src/store/profilesSlice'
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
 import settingsReducer from '../../src/store/settingsSlice'
@@ -33,6 +34,7 @@ function makeStore() {
       ads: adsReducer,
       challenge: challengeReducer,
       game: gameReducer,
+      profiles: profilesReducer,
       publicOpinion: publicOpinionReducer,
       settings: settingsReducer,
       social: socialReducer,
@@ -43,6 +45,7 @@ function makeStore() {
         ...gameState,
         phase: 'loh_results',
         prevHohId: null,
+        publicModeEnabled: true,
       },
       publicOpinion: {
         ...publicOpinionReducer(undefined, { type: '@@INIT' }),

@@ -119,13 +119,13 @@ describe('RecentActivity – entry rendering', () => {
   it('renders the delta value with sign when delta is positive', () => {
     const store = makeStore([makeEntry({ delta: 3 })]);
     renderActivity(store);
-    expect(screen.getByText('+3')).toBeDefined();
+    expect(screen.getByText('Relationship +3')).toBeDefined();
   });
 
   it('renders the delta value without extra sign when delta is negative', () => {
     const store = makeStore([makeEntry({ delta: -2 })]);
     renderActivity(store);
-    expect(screen.getByText('-2')).toBeDefined();
+    expect(screen.getByText('Relationship -2')).toBeDefined();
   });
 
   it('does not render a delta element when delta is 0', () => {

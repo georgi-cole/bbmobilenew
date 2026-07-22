@@ -8,6 +8,8 @@ interface Props {
   title: string;
   subtitle?: string;
   options: Player[];
+  /** Optional contextual pitch shown beneath each player's name. */
+  optionDescriptions?: Record<string, string>;
   onSelect: (playerId: string) => void;
   danger?: boolean;
   /** Label shown on the confirm button. Default: "Confirm" */
@@ -46,6 +48,7 @@ export default function TvDecisionModal({
   title,
   subtitle,
   options,
+  optionDescriptions,
   onSelect,
   danger = false,
   confirmLabel = 'Confirm',
@@ -107,7 +110,12 @@ export default function TvDecisionModal({
                     type="button"
                   >
                     <OptionAvatar player={player} selected={isSelected} />
-                    <span className="tv-decision-modal__option-name">{player.name}</span>
+                    <span className="tv-decision-modal__option-copy">
+                      <span className="tv-decision-modal__option-name">{player.name}</span>
+                      {optionDescriptions?.[player.id] && (
+                        <span className="tv-decision-modal__option-description">?{optionDescriptions[player.id]}?</span>
+                      )}
+                    </span>
                     <span className="tv-decision-modal__option-tag">{player.status}</span>
                   </button>
                 );

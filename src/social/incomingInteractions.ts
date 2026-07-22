@@ -17,7 +17,7 @@ import {
   buildSocialMemoryDeltaForResponse,
   buildSocialMemoryEvent,
 } from './socialMemory';
-import { ALLIANCE_TAG } from './socialAlliance';
+import { ALLIANCE_TAG, MIN_ALLIANCE_AFFINITY } from './socialAlliance';
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
@@ -105,7 +105,16 @@ function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteracti
   return `Several players' ${formatList(typeFragments)} went unanswered yesterday. It was a tough day, but maybe you will be more talkative today.`;
 }
 
-function getResponseDelta(responseType: IncomingInteractionResponseType): number {
+function getResponseDelta(
+  responseType: IncomingInteractionResponseType,
+  interaction?: IncomingInteraction,
+  dramaMode = false,
+): number {
+  if (dramaMode && interaction?.payload?.scenarioKey === 'safety_holder_consults_loh') {
+    if (responseType === 'accept' || responseType === 'decline') return 3;
+    if (responseType === 'neutral') return 1;
+    if (responseType === 'dismiss' || responseType === 'ignore') return -2;
+  }
   const deltas = socialConfig.incomingInteractionAffinityDeltas;
   return deltas[responseType] ?? 0;
 }
@@ -132,6 +141,7 @@ export function respondToIncomingInteraction({
 }) {
   return (dispatch: AppDispatch, getState: () => RootState): void => {
     const state = getState();
+    const dramaMode = state.settings?.gameUX?.dramaMode === true;
     const interaction = state.social.incomingInteractions.find((entry) => entry.id === interactionId);
     if (!interaction || interaction.resolved) return;
     const humanPlayer = state.game.players.find((player) => player.isUser);
@@ -170,15 +180,23 @@ export function respondToIncomingInteraction({
     });
     if (commitment) dispatch(addSocialCommitment(commitment));
 
-    const delta = getResponseDelta(responseType);
+    const delta = getResponseDelta(responseType, interaction, dramaMode);
     const acceptedAlliance =
       interaction.type === 'alliance_proposal' && responseType === 'accept';
     if (delta !== 0 && interaction.fromId !== humanPlayer.id) {
+      const fromAffinity = state.social.relationships[interaction.fromId]?.[humanPlayer.id]?.affinity ?? 0;
+      const humanAffinity = state.social.relationships[humanPlayer.id]?.[interaction.fromId]?.affinity ?? 0;
+      const fromDelta = acceptedAlliance
+        ? Math.max(delta, MIN_ALLIANCE_AFFINITY - fromAffinity)
+        : delta;
+      const humanDelta = acceptedAlliance
+        ? Math.max(delta, MIN_ALLIANCE_AFFINITY - humanAffinity)
+        : delta;
       dispatch(
         updateRelationship({
           source: interaction.fromId,
           target: humanPlayer.id,
-          delta,
+          delta: acceptedAlliance ? fromDelta : dramaMode ? fromDelta * 2 : fromDelta,
           tags: acceptedAlliance ? [ALLIANCE_TAG] : undefined,
           actionSource: 'manual',
         }),
@@ -188,12 +206,29 @@ export function respondToIncomingInteraction({
           updateRelationship({
             source: humanPlayer.id,
             target: interaction.fromId,
-            delta,
+            delta: humanDelta,
             tags: [ALLIANCE_TAG],
             actionSource: 'system',
           }),
         );
       }
+    }
+
+    if (dramaMode && interaction.payload?.scenarioKey === 'safety_holder_consults_loh') {
+      const advice = responseType === 'accept'
+        ? 'use'
+        : responseType === 'decline'
+          ? 'hold'
+          : 'free';
+      dispatch({
+        type: 'game/setLohSafetyAdvice',
+        payload: {
+          week: currentWeek,
+          lohId: humanPlayer.id,
+          holderId: interaction.fromId,
+          advice,
+        },
+      });
     }
 
     if (interaction.fromId !== humanPlayer.id) {
@@ -239,6 +274,7 @@ export function respondToIncomingInteraction({
 export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
   return (dispatch: AppDispatch, getState: () => RootState): void => {
     const state = getState();
+    const dramaMode = state.settings?.gameUX?.dramaMode === true;
     const interactions = state.social.incomingInteractions.filter(
       (entry) => !entry.resolved && entry.expiresAtWeek < week,
     );
@@ -247,7 +283,6 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
     if (!humanPlayer) return;
 
     const resolvedAt = Date.now();
-    const ignoreDelta = getResponseDelta('ignore');
 
     interactions.forEach((interaction) => {
       logIncomingInteractionDecision(dispatch, {
@@ -260,6 +295,7 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
         detail: 'week_end',
       });
 
+      const ignoreDelta = getResponseDelta('ignore', interaction, dramaMode);
       if (ignoreDelta !== 0 && interaction.fromId !== humanPlayer.id) {
         dispatch(
           updateRelationship({

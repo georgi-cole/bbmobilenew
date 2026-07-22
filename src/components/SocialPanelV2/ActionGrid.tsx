@@ -1,11 +1,8 @@
-import { useState, useRef, useCallback } from 'react';
+import { useRef } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
 import { normalizeActionCosts } from '../../social/smExecNormalize';
-import { computeOutcomeScore } from '../../social/SocialPolicy';
 import { hasAllianceBetween } from '../../social/socialAlliance';
 import ActionCard from './ActionCard';
-import PreviewPopup from './PreviewPopup';
-import type { PreviewDeltaEntry } from './PreviewPopup';
 import type { Player, PlayerStatus } from '../../types';
 import type { RelationshipsMap } from '../../social/types';
 
@@ -56,6 +53,9 @@ export interface ActionGridProps {
    * When omitted (no target selected), role-gated actions are hidden.
    */
   primaryTargetStatus?: PlayerStatus | null;
+  hiddenActionIds?: ReadonlySet<string>;
+  /** Live energy prices keyed by action id. */
+  energyCostOverrides?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -80,20 +80,16 @@ export default function ActionGrid({
   disabledIds = new Set(),
   selectedId = null,
   selectedTargetIds,
-  players,
   actorId = '',
   actorEnergy,
   actorInfluence,
   actorInfo,
   relationships,
   primaryTargetStatus,
+  hiddenActionIds = new Set(),
+  energyCostOverrides,
 }: ActionGridProps) {
-  const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleHoverFocus = useCallback((actionId: string) => {
-    setPreviewActionId(actionId);
-  }, []);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -117,32 +113,6 @@ export default function ActionGrid({
     cards[next]?.focus();
   }
 
-  function handleMouseLeave() {
-    setPreviewActionId(null);
-  }
-
-  function handleBlur(e: React.FocusEvent<HTMLDivElement>) {
-    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
-      setPreviewActionId(null);
-    }
-  }
-
-  // Compute preview deltas for the currently previewed action.
-  let previewDeltas: PreviewDeltaEntry[] | null = null;
-  if (previewActionId !== null) {
-    if (!selectedTargetIds || selectedTargetIds.size === 0) {
-      previewDeltas = [];
-    } else {
-      // Build a lookup map to avoid O(n*m) find inside the loop.
-      const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
-      previewDeltas = Array.from(selectedTargetIds).map((targetId) => ({
-        targetId,
-        targetName: playerById.get(targetId)?.name ?? targetId,
-        delta: computeOutcomeScore(previewActionId, actorId, targetId, 'preview', relationships),
-      }));
-    }
-  }
-
   // Sort actions when actorEnergy is provided: affordable (all resources) first,
   // then unaffordable. Within each group, preserve canonical order.
   //
@@ -161,6 +131,12 @@ export default function ActionGrid({
       costs.influence <= actorResources.influence &&
       costs.info <= actorResources.info
     );
+  }
+
+  function getActionCosts(action: (typeof SOCIAL_ACTIONS)[number]) {
+    const costs = normalizeActionCosts(action);
+    const energyOverride = energyCostOverrides?.[action.id];
+    return energyOverride === undefined ? costs : { ...costs, energy: energyOverride };
   }
 
   /** Check whether the current primary target's status satisfies an action's role requirement. */
@@ -183,13 +159,13 @@ export default function ActionGrid({
 
   const sortedActions =
     actorEnergy !== undefined
-      ? [...SOCIAL_ACTIONS].filter((a) => !a.aiOnly && isRoleEligible(a)).sort((a, b) => {
-          const aAffordable = isActionAffordable(normalizeActionCosts(a));
-          const bAffordable = isActionAffordable(normalizeActionCosts(b));
+      ? [...SOCIAL_ACTIONS].filter((a) => !a.aiOnly && !hiddenActionIds.has(a.id) && isRoleEligible(a)).sort((a, b) => {
+          const aAffordable = isActionAffordable(getActionCosts(a));
+          const bAffordable = isActionAffordable(getActionCosts(b));
           if (aAffordable === bAffordable) return 0;
           return aAffordable ? -1 : 1;
         })
-      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly && isRoleEligible(a));
+      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly && !hiddenActionIds.has(a.id) && isRoleEligible(a));
 
   /** Returns an availability reason string, or empty string if the action is affordable. */
   function getAvailabilityReason(costs: { energy: number; influence: number; info: number }): string {
@@ -213,11 +189,9 @@ export default function ActionGrid({
         className="sp2-action-grid"
         role="group"
         onKeyDown={handleKeyDown}
-        onMouseLeave={handleMouseLeave}
-        onBlur={handleBlur}
       >
         {sortedActions.map((action) => {
-          const costs = normalizeActionCosts(action);
+          const costs = getActionCosts(action);
           const relationshipUnavailableReason = getRelationshipUnavailableReason(action.id);
           const availabilityReason = relationshipUnavailableReason || getAvailabilityReason(costs);
           const isDisabled = disabledIds.has(action.id) || !!relationshipUnavailableReason;
@@ -232,12 +206,11 @@ export default function ActionGrid({
               available={actorEnergy !== undefined ? isAvailable : undefined}
               onClick={onActionClick}
               onPreview={onPreview}
-              onHoverFocus={handleHoverFocus}
+              costOverride={costs}
             />
           );
         })}
       </div>
-      {previewDeltas !== null && <PreviewPopup deltas={previewDeltas} />}
     </>
   );
 }

@@ -228,8 +228,9 @@ describe('DiaryRoom', () => {
     expect(screen.getByTestId('confessional-decision-message')).toBeTruthy();
   });
 
-  it('greets the player on first entry', () => {
+  it('greets the player on first entry', async () => {
     renderDiaryRoom();
+    await flushConversationTimers();
 
     expect(
       screen.getByText(/hello, you! welcome to the confessional\. here your thoughts may be echoed off the walls/i),
@@ -251,6 +252,7 @@ describe('DiaryRoom', () => {
     firstRender.unmount();
 
     renderDiaryRoom();
+    await flushConversationTimers();
 
     expect(screen.queryByText(/i'm bored/i)).toBeNull();
     expect(screen.queryByText(/want to play a game|offer tic tac toe|wake the board/i)).toBeNull();

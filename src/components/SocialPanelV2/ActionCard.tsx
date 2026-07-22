@@ -33,6 +33,8 @@ export interface ActionCardProps {
    * changing the existing `onPreview` / Preview-button semantics.
    */
   onHoverFocus?: (actionId: string) => void;
+  /** Optional live cost used by dynamically priced actions such as Group Chat. */
+  costOverride?: { energy: number; influence: number; info: number };
 }
 
 /**
@@ -53,12 +55,14 @@ export default function ActionCard({
   onClick,
   onPreview,
   onHoverFocus,
+  costOverride,
 }: ActionCardProps) {
   const { id, title, category, availabilityHint } = action;
 
   // Use normalizeActionCosts to get integer-scaled values (influence/info ×100)
   // so chip values are consistent with the bank values shown in the header.
-  const { energy: energyCost, influence: influenceCost, info: infoCost } = normalizeActionCosts(action);
+  const { energy: energyCost, influence: influenceCost, info: infoCost } =
+    costOverride ?? normalizeActionCosts(action);
 
   // A card is effectively non-interactive when the explicit `disabled` prop is
   // set. The `availabilityReason` provides a visual dimming hint but keeps the

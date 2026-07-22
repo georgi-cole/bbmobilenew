@@ -9,6 +9,7 @@ import glassBridgeReducer, {
   startPlaying,
   resolveStep,
   HINT_PENALTY_MS,
+  MAX_PARALLEL_MOVERS,
 } from '../../../features/glassBridge/glassBridgeSlice';
 import GlassBridgeComp from '../GlassBridgeComp';
 import { mulberry32 } from '../../../store/rng';
@@ -76,7 +77,7 @@ describe('GlassBridgeComp', () => {
     vi.useRealTimers();
   });
 
-  it('starts every waiting AI concurrently when a stalled human reaches one minute', async () => {
+  it('releases a capped batch of waiting AI when a stalled human reaches one minute', async () => {
     const ids = ['user', 'ai-1', 'ai-2', 'ai-3', 'ai-4', 'ai-5'];
     const seed = 42;
     const store = makeStore();
@@ -120,13 +121,19 @@ describe('GlassBridgeComp', () => {
     expect(store.getState().glassBridge.turnOrder[0]).toBe('user');
     expect(store.getState().glassBridge.globalTimeLimitMs).toBe(96_000);
     await advance(36_250);
-    await advance(2_250);
+    await advance(3_250);
 
-    const progress = store.getState().glassBridge.progress;
-    for (const id of ids.slice(1)) {
-      expect(progress[id].firstStepAtMs, `${id} should have started`).toBeDefined();
+    const state = store.getState().glassBridge;
+    expect(state.parallelPlayerIds).toHaveLength(MAX_PARALLEL_MOVERS);
+    expect(state.parallelPlayerIds).not.toContain('user');
+    for (const id of state.parallelPlayerIds) {
+      expect(state.progress[id].firstStepAtMs, `${id} should have started`).toBeDefined();
     }
-    expect(progress.user.furthestRowReached).toBe(0);
+    const waitingIds = ids.slice(1).filter((id) => !state.parallelPlayerIds.includes(id));
+    for (const id of waitingIds) {
+      expect(state.progress[id].firstStepAtMs, `${id} should still be queued`).toBeUndefined();
+    }
+    expect(state.progress.user.furthestRowReached).toBe(0);
   });
 
   it('waits for the bridge-collapse timeout sequence before showing results', async () => {

@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import adsReducer from '../../src/store/adsSlice'
 import challengeReducer from '../../src/store/challengeSlice'
 import gameReducer from '../../src/store/gameSlice'
+import profilesReducer from '../../src/store/profilesSlice'
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
 import {
@@ -55,6 +56,7 @@ function makeStore() {
       ads: adsReducer,
       challenge: challengeReducer,
       game: gameReducer,
+      profiles: profilesReducer,
       publicOpinion: publicOpinionReducer,
       settings: settingsReducer,
       social: socialReducer,

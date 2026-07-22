@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { getLocalAvatarFallback, resolveAvatar, resolveAvatarCandidates } from '../../src/utils/avatar';
 
 describe('resolveAvatarCandidates', () => {
-  it('preserves the user identity and ends with a bundled fallback', () => {
+  it('uses the bundled player image without requesting speculative custom-name assets', () => {
     const player = { id: 'guest-1', name: 'You', avatar: '', isUser: true } as const;
     const candidates = resolveAvatarCandidates(player);
+    const fallback = getLocalAvatarFallback(player.name, true);
 
-    expect(candidates.at(-1)).toContain('assets/skins/You.png');
-    expect(resolveAvatar(player)).toBe(candidates[0]);
+    expect(candidates).toEqual([fallback]);
+    expect(fallback).toContain('assets/skins/You.png');
+    expect(resolveAvatar(player)).toBe(fallback);
   });
 
   it('provides an offline-safe initials fallback for houseguests', () => {

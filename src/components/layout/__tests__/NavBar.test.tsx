@@ -9,6 +9,7 @@ import profilesReducer from '../../../store/profilesSlice';
 import type { GameState, MinigameSession } from '../../../types';
 import NavBar from '../NavBar';
 
+
 function buildPendingChallenge(participants: string[] = ['user']): PendingChallenge {
   return {
     id: 'challenge-1',
@@ -87,6 +88,7 @@ describe('NavBar', () => {
     expect(screen.queryByRole('button', { name: 'LEADERBOARD' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
   });
+
 
   it('hides the bottom navigation while a challenge rules modal is active', () => {
     renderNavBar('/game', { challengePending: true });
