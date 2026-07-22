@@ -14,15 +14,15 @@ This is not native-device certification. Before an Android or iOS store release,
 
 ## Final verified evidence
 
-| Check | Result |
-| --- | --- |
-| Full Vitest passes | 378 files; 4,512/4,512 passed twice on unchanged source; 0 failed/skipped/pending/todo; final standard pass also green |
-| CI coverage | 68.48% statements; 58.47% branches; 69.34% functions; 71.11% lines; all named risk floors passed |
-| Quality gates | Formatting transition, zero-warning ESLint, TypeScript, disabled/focused-test guard, production debug-global scan, and diff check passed |
-| Builds | Web production and Capacitor mobile-mode builds passed |
-| Mobile browser proof | 7/7 passed in each of 3 consecutive clean runs: 21/21, zero test retries, unchanged game/test revision |
-| Desktop browser proof | 7/7 passed in each of the same 3 runs: 21/21 |
-| Active-minigame smoke | Passed in all 3 runs |
+| Check                 | Result                                                                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Full Vitest passes    | 378 files; 4,512/4,512 passed twice on unchanged source; 0 failed/skipped/pending/todo; final standard pass also green                   |
+| CI coverage           | 68.48% statements; 58.47% branches; 69.34% functions; 71.11% lines; all named risk floors passed                                         |
+| Quality gates         | Formatting transition, zero-warning ESLint, TypeScript, disabled/focused-test guard, production debug-global scan, and diff check passed |
+| Builds                | Web production and Capacitor mobile-mode builds passed                                                                                   |
+| Mobile browser proof  | 7/7 passed in each of 3 consecutive clean runs: 21/21, zero test retries, unchanged game/test revision                                   |
+| Desktop browser proof | 7/7 passed in each of the same 3 runs: 21/21                                                                                             |
+| Active-minigame smoke | Passed in all 3 runs                                                                                                                     |
 
 The three clean attempts are E2E run `29948670990`. Mobile jobs were `89020517544`, `89021437131`, and `89022313495`; desktop jobs were `89020517495`, `89021436461`, and `89022313454`; minigame jobs were `89020517470`, `89021436517`, and `89022313459`. No retries, sleeps, larger timeouts, enlarged safety bounds, or direct Redux bypasses were added.
 
@@ -38,12 +38,12 @@ A deterministic component regression reproduces seed `1244317494`, proves Safety
 
 ## Failed evidence retained
 
-| Run | Finding | Classification |
-| --- | --- | --- |
-| `29925350396` | Enabled control could not finish Safety replacement | Actual product regression; fixed |
-| `29945690654` / `1a6f9db2` | Probe omitted a cleared value while E2E required exact `null` | Weak probe-representation assertion; corrected without weakening Redux proof |
-| `29946221855` / `e7cac47a` | Desktop legitimately held Safety | Over-specific test assumption; both strategy outcomes are valid |
-| `29946884969`, attempt 3 / `67ad61d4` | Mobile full-week path also legitimately held Safety | Valid strategic branch; final E2E covers both outcomes |
+| Run                                   | Finding                                                       | Classification                                                               |
+| ------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `29925350396`                         | Enabled control could not finish Safety replacement           | Actual product regression; fixed                                             |
+| `29945690654` / `1a6f9db2`            | Probe omitted a cleared value while E2E required exact `null` | Weak probe-representation assertion; corrected without weakening Redux proof |
+| `29946221855` / `e7cac47a`            | Desktop legitimately held Safety                              | Over-specific test assumption; both strategy outcomes are valid              |
+| `29946884969`, attempt 3 / `67ad61d4` | Mobile full-week path also legitimately held Safety           | Valid strategic branch; final E2E covers both outcomes                       |
 
 These failures remain part of the audit trail and are not counted toward the three successful runs.
 
