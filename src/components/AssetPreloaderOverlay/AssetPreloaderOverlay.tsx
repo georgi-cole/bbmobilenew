@@ -4,8 +4,8 @@ import { getAll } from '../../data/houseguests';
 import { resolveAvatar } from '../../utils/avatar';
 import { preloadImage, preloadImages } from '../../utils/preload';
 import KolequantSplash from '../KolequantSplash/KolequantSplash';
+import GAMEPLAY_BG from '../../assets/bb-gameplay-bg.svg';
 
-const GAMEPLAY_BG = '/assets/bb-gameplay-bg.svg';
 const GAMEPLAY_MESSAGES = [
   'Opening the competition arena.',
   'Lighting the game board.',

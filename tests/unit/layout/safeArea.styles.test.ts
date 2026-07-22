@@ -70,7 +70,7 @@ describe('safe-area layout styles', () => {
       readFileSync(resolve(process.cwd(), 'src/components/TVLog/TVLog.css'), 'utf8'),
     );
 
-    expect(gameScreenCss).toContain("body:has(.game-screen-shell) .app-shell { background-color: var(--color-bg); background-image: url('/assets/bb-gameplay-bg.svg');");
+    expect(gameScreenCss).toContain("body:has(.game-screen-shell) .app-shell { background-color: var(--color-bg); background-image: url('../../assets/bb-gameplay-bg.svg');");
     expect(gameScreenCss).not.toContain('.safe-game-viewport');
     expect(houseguestGridCss).toContain('grid-auto-rows: max-content;');
     expect(houseguestGridCss).toContain('align-content: start;');

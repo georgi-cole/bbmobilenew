@@ -348,6 +348,15 @@ test.describe('Finale / Jury flow @release', () => {
 
     const favoriteSetup = page.getByRole('dialog', { name: 'Public favorite setup' })
     await expect(favoriteSetup).toBeVisible()
+
+    // Reducing the active roster through the debug fixture can send the route
+    // guard home. Restore the game route without reloading the in-memory finale
+    // so the game-screen-only public vote continues in its real host.
+    await page.evaluate(() => {
+      window.location.hash = '/game?debug=1'
+    })
+    await expect(page).toHaveURL(/#\/game\?debug=1$/)
+    await expect(favoriteSetup).toBeVisible()
     await favoriteSetup.getByRole('button', { name: 'Skip to end' }).click()
 
     const favoriteVote = page.getByRole('dialog', {
