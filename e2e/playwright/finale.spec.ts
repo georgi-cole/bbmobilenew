@@ -213,6 +213,7 @@ async function configureValidFinaleRoster(page: Page): Promise<FixtureRoster> {
 async function waitForHome(page: Page): Promise<void> {
   const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
   await expect(mainMenu).toBeVisible({ timeout: 30_000 })
+  await closeDebugPanelIfOpen(page)
 
   await dismissPermissionPromptIfPresent(page)
 
