@@ -269,6 +269,10 @@ async function playOneCompleteWeek(page: Page): Promise<{
     lohWinnerId: string | null
     nominationIds: string[]
     posWinnerId: string | null
+    posSafetyResultEventCount: number | null
+    posBackupNomineeEventCount: number | null
+    posPendingMinigameCleared: boolean
+    posRepeatedInputBlocked: boolean
     reloadedNominationFeedCount: number | null
     voteResults: Record<string, number> | null
     weekEndDoubleActivated: boolean
@@ -281,6 +285,10 @@ async function playOneCompleteWeek(page: Page): Promise<{
     lohWinnerId: null as string | null,
     nominationIds: [] as string[],
     posWinnerId: null as string | null,
+    posSafetyResultEventCount: null as number | null,
+    posBackupNomineeEventCount: null as number | null,
+    posPendingMinigameCleared: false,
+    posRepeatedInputBlocked: false,
     reloadedNominationFeedCount: null as number | null,
     voteResults: null as Record<string, number> | null,
     weekEndDoubleActivated: false,
@@ -349,6 +357,88 @@ async function playOneCompleteWeek(page: Page): Promise<{
       continue
     }
 
+    if (game.phase === 'pos_ceremony_results') {
+      await closePhaseInformationIfPresent(page)
+      const beforeProgress = JSON.stringify({
+        week: game.week,
+        phase: game.phase,
+        aiReplacementStep: game.aiReplacementStep,
+        aiReplacementWaiting: game.aiReplacementWaiting,
+        nomineeIds: game.nomineeIds,
+        povSavedId: game.povSavedId,
+        seed: game.seed,
+      })
+
+      if (game.aiReplacementStep === 1) {
+        const safetyEvents = game.tvFeed.filter((event) =>
+          event.text.includes('Power of Safety on')
+        )
+        expect(safetyEvents).toHaveLength(1)
+        expect(game.povSavedId).not.toBeNull()
+        expect(game.pendingMinigame).toBeNull()
+        evidence.posSafetyResultEventCount = safetyEvents.length
+        evidence.posPendingMinigameCleared = true
+      }
+
+      const advance = page.getByRole('button', { name: 'Advance to next phase' })
+      await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+      await expect(advance).toBeEnabled()
+      await advance.click({ trial: true })
+
+      const probesRapidRepeat = game.aiReplacementStep === 1 || game.aiReplacementStep === 2
+      if (probesRapidRepeat) {
+        await advance.evaluate((element) => {
+          const button = element as HTMLButtonElement
+          button.click()
+          button.click()
+        })
+      } else {
+        await advance.click()
+      }
+
+      await expect
+        .poll(
+          async () => {
+            const current = (await readAppState(page)).game
+            return JSON.stringify({
+              week: current.week,
+              phase: current.phase,
+              aiReplacementStep: current.aiReplacementStep,
+              aiReplacementWaiting: current.aiReplacementWaiting,
+              nomineeIds: current.nomineeIds,
+              povSavedId: current.povSavedId,
+              seed: current.seed,
+            })
+          },
+          {
+            message: `Safety ceremony should progress from ${beforeProgress}`,
+          }
+        )
+        .not.toBe(beforeProgress)
+
+      const after = (await readAppState(page)).game
+      if (game.aiReplacementStep === 1) {
+        expect(after.phase).toBe('pos_ceremony_results')
+        expect(after.aiReplacementStep).toBe(2)
+        expect(
+          after.tvFeed.filter((event) => event.text.includes('is selecting a backup nominee'))
+        ).toHaveLength(1)
+      } else if (game.aiReplacementStep === 2) {
+        expect(after.phase).toBe('pos_ceremony_results')
+        expect(after.aiReplacementStep).toBe(0)
+        expect(after.nomineeIds).toHaveLength(2)
+        const replacementEvents = after.tvFeed.filter(
+          (event) => event.text.includes('named') && event.text.includes('backup nominee')
+        )
+        expect(replacementEvents).toHaveLength(1)
+        evidence.posBackupNomineeEventCount = replacementEvents.length
+        evidence.posRepeatedInputBlocked = true
+      } else {
+        expect(after.phase).toBe('social_2')
+      }
+      continue
+    }
+
     const optionalContinue = page.getByRole('button', { name: 'Continue', exact: true })
     if (await optionalContinue.isVisible()) {
       await optionalContinue.click()
@@ -393,8 +483,20 @@ async function playOneCompleteWeek(page: Page): Promise<{
     }
   }
 
+  const finalGame = (await readAppState(page)).game
   throw new Error(
-    `A complete week exceeded its 60-control safety bound: ${phaseHistory.join(' -> ')}`
+    `A complete week exceeded its 60-control safety bound: ${phaseHistory.join(' -> ')}; final state=${JSON.stringify(
+      {
+        seed: finalGame.seed,
+        week: finalGame.week,
+        phase: finalGame.phase,
+        aiReplacementStep: finalGame.aiReplacementStep,
+        aiReplacementWaiting: finalGame.aiReplacementWaiting,
+        pendingMinigame: finalGame.pendingMinigame,
+        nomineeIds: finalGame.nomineeIds,
+        povSavedId: finalGame.povSavedId,
+      }
+    )}`
   )
 }
 
@@ -447,6 +549,10 @@ test.describe('Real player core journeys', () => {
     }
     expect(evidence.posWinnerId).not.toBeNull()
     expect(initialActiveIdSet.has(evidence.posWinnerId ?? '')).toBe(true)
+    expect(evidence.posSafetyResultEventCount).toBe(1)
+    expect(evidence.posBackupNomineeEventCount).toBe(1)
+    expect(evidence.posPendingMinigameCleared).toBe(true)
+    expect(evidence.posRepeatedInputBlocked).toBe(true)
     expect(evidence.reloadedNominationFeedCount).not.toBeNull()
     expect(evidence.weekEndDoubleActivated).toBe(true)
     expect(evidence.voteResults).not.toBeNull()

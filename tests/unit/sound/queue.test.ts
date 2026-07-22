@@ -619,8 +619,8 @@ describe('SoundManager BGM debug logging', () => {
     expect(syncCalls.length).toBeGreaterThan(0);
     const logLine = syncCalls[0][0] as string;
     expect(logLine).toContain('track="competition"');
-    // src must resolve to the actual hoh_comp_general file.
-    expect(logLine).toContain('hoh_comp_general');
+    // src must resolve to the registered competition soundtrack.
+    expect(logLine).toContain('src="/assets/sounds/loh_competition.mp3"');
   });
 
   it('logs [audio:bgm] playing after the element starts without an error', async () => {
