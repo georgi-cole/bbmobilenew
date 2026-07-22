@@ -269,6 +269,7 @@ async function playOneCompleteWeek(page: Page): Promise<{
     lohWinnerId: string | null
     nominationIds: string[]
     posWinnerId: string | null
+    posSafetyOutcome: 'used' | 'held' | null
     posSafetyResultEventCount: number | null
     posBackupNomineeEventCount: number | null
     posPendingMinigameCleared: boolean
@@ -285,6 +286,7 @@ async function playOneCompleteWeek(page: Page): Promise<{
     lohWinnerId: null as string | null,
     nominationIds: [] as string[],
     posWinnerId: null as string | null,
+    posSafetyOutcome: null as 'used' | 'held' | null,
     posSafetyResultEventCount: null as number | null,
     posBackupNomineeEventCount: null as number | null,
     posPendingMinigameCleared: false,
@@ -378,6 +380,17 @@ async function playOneCompleteWeek(page: Page): Promise<{
         expect(game.pendingMinigame ?? null).toBeNull()
         evidence.posSafetyResultEventCount = safetyEvents.length
         evidence.posPendingMinigameCleared = true
+        evidence.posSafetyOutcome = 'used'
+      } else if (game.aiReplacementStep === 0 && game.povSavedId == null) {
+        const heldEvents = game.tvFeed.filter((event) =>
+          event.text.includes('decided NOT to use the Power of Safety')
+        )
+        expect(heldEvents).toHaveLength(1)
+        expect(game.pendingMinigame ?? null).toBeNull()
+        evidence.posSafetyOutcome = 'held'
+        evidence.posSafetyResultEventCount = 0
+        evidence.posBackupNomineeEventCount = 0
+        evidence.posPendingMinigameCleared = true
       }
 
       const advance = page.getByRole('button', { name: 'Advance to next phase' })
@@ -385,16 +398,11 @@ async function playOneCompleteWeek(page: Page): Promise<{
       await expect(advance).toBeEnabled()
       await advance.click({ trial: true })
 
-      const probesRapidRepeat = game.aiReplacementStep === 1 || game.aiReplacementStep === 2
-      if (probesRapidRepeat) {
-        await advance.evaluate((element) => {
-          const button = element as HTMLButtonElement
-          button.click()
-          button.click()
-        })
-      } else {
-        await advance.click()
-      }
+      await advance.evaluate((element) => {
+        const button = element as HTMLButtonElement
+        button.click()
+        button.click()
+      })
 
       await expect
         .poll(
@@ -435,6 +443,7 @@ async function playOneCompleteWeek(page: Page): Promise<{
         evidence.posRepeatedInputBlocked = true
       } else {
         expect(after.phase).toBe('social_2')
+        evidence.posRepeatedInputBlocked = true
       }
       continue
     }
@@ -550,10 +559,17 @@ test.describe('Real player core journeys', () => {
     expect(evidence.posWinnerId).not.toBeNull()
     expect(initialActiveIdSet.has(evidence.posWinnerId ?? '')).toBe(true)
     if (testInfo.project.name === 'mobile-chromium') {
-      expect(evidence.posSafetyResultEventCount).toBe(1)
-      expect(evidence.posBackupNomineeEventCount).toBe(1)
+      expect(evidence.posSafetyOutcome).not.toBeNull()
       expect(evidence.posPendingMinigameCleared).toBe(true)
       expect(evidence.posRepeatedInputBlocked).toBe(true)
+      if (evidence.posSafetyOutcome === 'used') {
+        expect(evidence.posSafetyResultEventCount).toBe(1)
+        expect(evidence.posBackupNomineeEventCount).toBe(1)
+      } else {
+        expect(evidence.posSafetyOutcome).toBe('held')
+        expect(evidence.posSafetyResultEventCount).toBe(0)
+        expect(evidence.posBackupNomineeEventCount).toBe(0)
+      }
     }
     expect(evidence.reloadedNominationFeedCount).not.toBeNull()
     expect(evidence.weekEndDoubleActivated).toBe(true)
