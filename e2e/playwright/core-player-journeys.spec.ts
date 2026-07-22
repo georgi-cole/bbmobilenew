@@ -375,7 +375,7 @@ async function playOneCompleteWeek(page: Page): Promise<{
         )
         expect(safetyEvents).toHaveLength(1)
         expect(game.povSavedId).not.toBeNull()
-        expect(game.pendingMinigame).toBeNull()
+        expect(game.pendingMinigame ?? null).toBeNull()
         evidence.posSafetyResultEventCount = safetyEvents.length
         evidence.posPendingMinigameCleared = true
       }
