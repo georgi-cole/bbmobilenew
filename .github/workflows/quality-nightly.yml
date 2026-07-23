@@ -6,6 +6,30 @@ on:
   workflow_dispatch:
 
 jobs:
+  extended-regression:
+    name: Extended unit, integration, coverage, and minigame regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:guard
+      - name: Run complete product regression suite
+        run: npm test -- --reporter=dot
+      - name: Run the full deterministic minigame contract matrix
+        run: npm run test:minigames
+      - name: Produce and enforce coverage evidence
+        run: npm run test:coverage
+      - run: npm run coverage:check
+
   deterministic-stress:
     name: Fifty-seed minigame matrix
     runs-on: ubuntu-latest
@@ -62,6 +86,34 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 30
+
+  active-minigames:
+    name: Every active minigame (desktop Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run registry-driven minigame browser coverage
+        run: npx playwright test --grep @minigame --project=desktop-chromium
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-active-minigames-desktop-chromium
           path: |
             playwright-report/
             test-results/
