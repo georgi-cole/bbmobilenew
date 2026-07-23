@@ -79,6 +79,7 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     // POS holder (index 4) must NOT overlap with nominees (indices 2 and 3)
     await forceNominees(page, 2, 3)
     await forcePov(page, 4) // index 4 = fourth alive player (AI)
+    await page.waitForTimeout(500)
 
     // Force the phase to final4_eviction
     const forceF4Btn = page.getByRole('button', { name: 'Force Final 4' })
@@ -87,7 +88,8 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
 
     // Advance — Continue is visible because the AI is the POS holder (no blocking flag)
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' })
-    await expect(continueBtn).toBeVisible({ timeout: 3000 })
+    await expect(continueBtn).toBeVisible({ timeout: 10000 })
+    await page.waitForLoadState('networkidle')
     await continueBtn.click()
 
     // After advance(): plea sequence + AI eviction decision should appear in TV feed

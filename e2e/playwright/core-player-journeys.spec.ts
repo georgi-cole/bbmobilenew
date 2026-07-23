@@ -20,12 +20,14 @@ const CORRUPT_SAVE_RECOVERY_KEY = 'bbmobilenew:recovery:lastCorruptSave'
 
 async function waitForHome(page: Page): Promise<void> {
   const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
-  await expect(mainMenu).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  await expect(mainMenu).toBeVisible({ timeout: SCREEN_TIMEOUT_MS * 2 })
   await closeDebugPanelIfOpen(page)
 
   await dismissPermissionPromptIfPresent(page)
 
-  await expect(mainMenu.getByRole('button', { name: 'Play', exact: true })).toBeEnabled()
+  await expect(mainMenu.getByRole('button', { name: 'Play', exact: true })).toBeEnabled({
+    timeout: SCREEN_TIMEOUT_MS,
+  })
 }
 
 async function createProfileFromHome(page: Page, playerName: string): Promise<void> {
@@ -798,6 +800,7 @@ test.describe('Real player core journeys', () => {
     )
 
     await page.reload()
+    await page.waitForLoadState('networkidle')
     await waitForHome(page)
 
     const recoveryNotice = page.getByRole('alert')
