@@ -37,14 +37,42 @@ export const socialConfig = {
   /** Categories used by computeOutcomeDelta to determine delta sign. */
   actionCategories: {
     friendlyActions: [
-      'ally', 'protect',
+      'ally',
+      'protect',
       // Extended friendly actions for the outgoing social module:
-      'compliment', 'proposeAlliance', 'group_chat', 'reassure', 'apologize', 'share_intel', 'ask_use_safety',
+      'compliment',
+      'proposeAlliance',
+      'group_chat',
+      'reassure',
+      'apologize',
+      'share_intel',
+      'ask_use_safety',
+      'flirt',
+      'ride_or_die',
+      'private_flirt',
+      'late_night_talk',
+      'cuddle',
+      'kiss_under_covers',
+      'pool_makeout',
+      'spend_night',
+      'risk_the_vibe',
+      'repair_bond',
+      'trade_secrets',
     ] as string[],
     aggressiveActions: [
-      'betray', 'nominate',
+      'betray',
+      'nominate',
       // Extended aggressive actions for the outgoing social module:
-      'rumor', 'startFight', 'confront',
+      'rumor',
+      'startFight',
+      'confront',
+      'plant_lie',
+      'stir_rivalry',
+      'public_callout',
+      'expose_secret',
+      'end_romance',
+      'break_alliance',
+      'break_bromance',
     ] as string[],
   },
   /**
@@ -107,11 +135,11 @@ export const socialConfig = {
    * maxPerWeek      – advisory budget: target maximum interactions that can be
    *                   generated across a full game week (used for planning; not
    *                   strictly enforced per-week in the current implementation).
-    * maxActive       – hard global cap: the maximum number of unresolved
-    *                   interactions (visible + scheduled) that may exist at any
-    *                   one time. Typically set to ~2× maxActiveVisible (e.g.
-    *                   8 vs 4) so the scheduler can hold a small backlog while
-    *                   still spacing deliveries across phases.
+   * maxActive       – hard global cap: the maximum number of unresolved
+   *                   interactions (visible + scheduled) that may exist at any
+   *                   one time. Typically set to ~2× maxActiveVisible (e.g.
+   *                   8 vs 4) so the scheduler can hold a small backlog while
+   *                   still spacing deliveries across phases.
    * maxPerAI        – per-actor cap: an individual AI may have at most this many
    *                   unresolved interactions pending with the player at once.
    * cooldownTicks   – minimum number of game weeks that must pass after an AI
@@ -255,6 +283,14 @@ export const socialConfig = {
        * scenario type is allowed again.
        */
       familyCooldownWeeks: 1,
+      /** Keep an exact sentence out of a sender's rotation for several weeks. */
+      lineCooldownWeeks: 4,
+      /** Cap repeated story beats across the whole house each week. */
+      maxSameScenarioPerWeek: {
+        high: 2,
+        medium: 1,
+        low: 1,
+      } as Record<IncomingInteractionPriority, number>,
     },
   },
 

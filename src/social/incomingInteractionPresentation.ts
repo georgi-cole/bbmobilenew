@@ -1,4 +1,5 @@
 import { normalizeAffinity } from './affinityUtils';
+import { getDramaResponseBlueprint } from './incomingResponseBank';
 import { socialConfig } from './socialConfig';
 import { getStoryBibleResponseSet } from './socialStoryBible';
 import {
@@ -273,6 +274,7 @@ function getResponseBlueprints(
   type: IncomingInteractionType,
   interaction?: IncomingInteraction,
   tone?: IncomingInteractionTone,
+  dramaMode = false,
 ): ResponseBlueprint {
   if (!interaction) return RESPONSE_OPTIONS_BY_TYPE[type];
 
@@ -283,6 +285,10 @@ function getResponseBlueprints(
   if (configuredResponses) return configuredResponses;
   if (typeof scenarioKey === 'string' && SCENARIO_RESPONSE_OPTIONS[scenarioKey]) {
     return SCENARIO_RESPONSE_OPTIONS[scenarioKey];
+  }
+  if (dramaMode) {
+    const dramaBlueprint = getDramaResponseBlueprint(type, interaction, tone);
+    if (dramaBlueprint) return dramaBlueprint;
   }
 
   if (type === 'check_in' && tone && CHECK_IN_OPTIONS_BY_TONE[tone]) {
@@ -372,8 +378,9 @@ export function getIncomingInteractionResponseOptions(
   type: IncomingInteractionType,
   interaction?: IncomingInteraction,
   tone?: IncomingInteractionTone,
+  dramaMode = false,
 ): IncomingInteractionResponseOption[] {
-  const options = getResponseBlueprints(type, interaction, tone);
+  const options = getResponseBlueprints(type, interaction, tone, dramaMode);
   const commitmentKind = interaction ? getCommitmentKindForInteraction(interaction) : null;
   return options.map((option) => ({
     ...option,

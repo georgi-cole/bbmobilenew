@@ -42,6 +42,9 @@ interface SeedState {
   social: {
     relationships: Record<string, Record<string, { affinity: number; tags: string[] }>>;
   };
+  settings?: {
+    gameUX?: { dramaMode?: boolean };
+  };
 }
 
 /**
@@ -58,6 +61,23 @@ function makeLcg(seed: number): () => number {
 
 const HOUSEGUEST_PROFILE_BY_ID = Object.fromEntries(HOUSEGUESTS.map((houseguest) => [houseguest.id, houseguest]));
 
+function seedStaticRelationshipChemistry(store: StoreAPI, activePlayerIds: string[]): void {
+  const activeIds = new Set(activePlayerIds);
+  for (const actorId of activePlayerIds) {
+    const profile = HOUSEGUEST_PROFILE_BY_ID[actorId];
+    if (!profile) continue;
+    profile.allies.forEach((targetId) => {
+      if (!activeIds.has(targetId)) return;
+      // Profile hints are latent chemistry, not pre-formed deals.
+      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: 8 }));
+    });
+    profile.enemies.forEach((targetId) => {
+      if (!activeIds.has(targetId)) return;
+      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: -8 }));
+    });
+  }
+}
+
 function seedStaticRelationshipTags(store: StoreAPI, activePlayerIds: string[]): void {
   const activeIds = new Set(activePlayerIds);
   for (const actorId of activePlayerIds) {
@@ -73,7 +93,6 @@ function seedStaticRelationshipTags(store: StoreAPI, activePlayerIds: string[]):
     });
   }
 }
-
 /**
  * Seed or refresh relationships at week start.
  *
@@ -96,7 +115,12 @@ export function seedWeekRelationships(store: StoreAPI): void {
   if (active.length < 2) return;
 
   if (week === 1) {
-    seedStaticRelationshipTags(store, active.map((player) => player.id));
+    const activeIds = active.map((player) => player.id);
+    if (state.settings?.gameUX?.dramaMode === true) {
+      seedStaticRelationshipChemistry(store, activeIds);
+    } else {
+      seedStaticRelationshipTags(store, activeIds);
+    }
   }
 
   // Mix game seed with week number for per-week variation.

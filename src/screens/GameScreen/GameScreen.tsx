@@ -2062,6 +2062,16 @@ export default function GameScreen() {
       nomineeIds: [...game.nomineeIds],
       evicteeId: game.pendingEviction?.evicteeId ?? null,
     }
+    Object.entries(snapshot.votes).forEach(([voterId, targetId]) => {
+      const voterName = game.players.find((player) => player.id === voterId)?.name ?? voterId;
+      const targetName = game.players.find((player) => player.id === targetId)?.name ?? targetId;
+      dispatch(addTvEvent({
+        text: `${voterName} voted to eliminate ${targetName}.`,
+        type: 'vote',
+        source: 'system',
+        channels: ['mainLog'],
+      }));
+    });
     if (wasPostEviction && humanPlayerEliminated) {
       setPostEvictionVoteBreakdown(snapshot)
     } else {
@@ -2092,6 +2102,7 @@ export default function GameScreen() {
     game.nomineeIds,
     game.pendingEviction?.evicteeId,
     game.phase,
+    game.players,
     game.votes,
     game.week,
     humanPlayerEliminated,

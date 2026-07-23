@@ -1,4 +1,4 @@
-import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
+﻿import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import type {
   DemocraciaResultDisplay,
@@ -632,10 +632,52 @@ function getSafetyRelationshipScore(state: GameState, holderId: string, nominee:
   const relationship = getStrategicRelationship(state, holderId, nominee.id);
   if (!relationship) return -getAiThreatScore(state, nominee) * 3;
   let score = relationship.affinity - getAiThreatScore(state, nominee) * 3;
-  if (relationship.tags.includes('alliance')) score += 55;
-  if (relationship.tags.includes('protection') || relationship.tags.includes('shield')) score += 25;
-  if (relationship.tags.includes('betrayal')) score -= 35;
+  if (!state.dramaSocialMode) {
+    if (relationship.tags.includes('alliance')) score += 55;
+    if (relationship.tags.includes('protection') || relationship.tags.includes('shield')) score += 25;
+    if (relationship.tags.includes('betrayal')) score -= 35;
+    return score;
+  }
+  const tags = new Set(relationship.tags);
+  if (tags.has('betrayal')) score -= 140;
+  else {
+    if (tags.has('alliance')) score += 65;
+    if (tags.has('romance') || tags.has('bromance')) score += 45;
+    if (tags.has('protection') || tags.has('shield')) score += 35;
+    if (tags.has('safety_promise')) score += 100;
+  }
+  if (tags.has('target') || tags.has('rivalry')) score -= 45;
   return score;
+}
+
+function getNominationTargetScore(state: GameState, lohId: string, candidate: Player): number {
+  const relationship = getStrategicRelationship(state, lohId, candidate.id);
+  const tags = new Set(relationship?.tags ?? []);
+  let score = getAiThreatScore(state, candidate) * 4 - (relationship?.affinity ?? 0);
+  if (tags.has('betrayal')) score += 125;
+  else {
+    if (tags.has('alliance')) score -= 110;
+    if (tags.has('romance') || tags.has('bromance')) score -= 80;
+    if (tags.has('protection') || tags.has('shield')) score -= 45;
+  }
+  if (tags.has('target')) score += 55;
+  if (tags.has('rivalry')) score += 45;
+  if (tags.has('suspicious') || tags.has('unreliable')) score += 18;
+  return score;
+}
+
+function pickStrategicNominationTargets(
+  state: GameState,
+  lohId: string,
+  candidates: Player[],
+  count: number,
+  rng: () => number,
+): Player[] {
+  return candidates
+    .map((player) => ({ player, score: getNominationTargetScore(state, lohId, player) + rng() * 8 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count)
+    .map((entry) => entry.player);
 }
 
 function pickStrategicAiPlayer(
@@ -1501,6 +1543,9 @@ const gameSlice = createSlice({
       action: PayloadAction<NonNullable<GameState['strategicRelationships']>>,
     ) {
       state.strategicRelationships = action.payload;
+    },
+    setDramaSocialMode(state, action: PayloadAction<boolean>) {
+      state.dramaSocialMode = action.payload;
     },
     setLohSocialPlan(
       state,
@@ -4695,7 +4740,9 @@ const gameSlice = createSlice({
             canUsePublicNomineeRule && state.lastHohCompFinisherId
               ? pool.filter((p) => p.id !== state.lastHohCompFinisherId)
               : pool;
-          const nominees = seededPickN(rng, aiPool, nomineeCount);
+          const nominees = state.dramaSocialMode
+            ? pickStrategicNominationTargets(state, state.lohId!, aiPool, nomineeCount, rng)
+            : seededPickN(rng, aiPool, nomineeCount);
           state.nomineeIds = nominees.map((n) => n.id);
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id);
@@ -5800,6 +5847,7 @@ export const {
   syncStrategicRelationships,
   setLohSocialPlan,
   addTvEvent,
+  setDramaSocialMode,
   setLohSafetyAdvice,
   addSocialSummary,
   setLive,

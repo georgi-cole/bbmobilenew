@@ -79,10 +79,14 @@ export function isIncomingInteractionInvalidated(
     case 'nominee_hoh_plea':
       return !isNominee(game, interaction.fromId) || !isHumanHoh(game);
     case 'nomination_aftershock':
+      return !isNominee(game, interaction.fromId) || ['live_vote', 'eviction_results', 'week_end', 'week_start'].includes(game.phase ?? '');
     case 'nominee_campaign':
-    case 'live_vote_pitch':
     case 'post_veto_campaign':
-      return !isNominee(game, interaction.fromId);
+      return !isNominee(game, interaction.fromId) || !['social_2', 'live_vote'].includes(game.phase ?? '');
+    case 'live_vote_pitch':
+      return !isNominee(game, interaction.fromId) || game.phase !== 'live_vote';
+    case 'post_veto_gratitude':
+      return ['live_vote', 'eviction_results', 'week_end', 'week_start'].includes(game.phase ?? '');
     case 'hoh_safety_request':
       return isNominee(game, interaction.fromId) || !isHumanHoh(game);
     default:

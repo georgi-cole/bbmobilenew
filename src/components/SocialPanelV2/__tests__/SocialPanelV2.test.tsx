@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tests for the SocialPanelV2 component.
  *
  * Covers:
@@ -30,6 +30,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import settingsReducer from '../../../store/settingsSlice';
 import gameReducer, { setPhase } from '../../../store/gameSlice';
 import socialReducer, { setEnergyBankEntry, setInfluenceBankEntry, openSocialPanel } from '../../../social/socialSlice';
 import { initManeuvers } from '../../../social/SocialManeuvers';
@@ -45,11 +46,13 @@ function makeStore(overrides?: {
   humanStatus?: RootState['game']['players'][number]['status'];
   /** Override status for specific players by id. */
   playerStatusOverrides?: Record<string, RootState['game']['players'][number]['status']>;
+  lohId?: string | null;
+  dramaMode?: boolean;
   posWinnerId?: string | null;
   povSavedId?: string | null;
   nomineeIds?: string[];
 }) {
-  const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } });
+  const base = configureStore({ reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer } });
   const defaultState = base.getState() as RootState;
 
   // Build the preloaded state by patching the default game state.
@@ -75,15 +78,20 @@ function makeStore(overrides?: {
       ...defaultState.game,
       players,
       phase: (overrides?.phase ?? defaultState.game.phase) as RootState['game']['phase'],
+      lohId: overrides?.lohId ?? defaultState.game.lohId,
       posWinnerId: overrides?.posWinnerId ?? defaultState.game.posWinnerId,
       povSavedId: overrides?.povSavedId ?? defaultState.game.povSavedId,
       nomineeIds: overrides?.nomineeIds ?? defaultState.game.nomineeIds,
     },
     social: defaultState.social,
+    settings: {
+      ...defaultState.settings,
+      gameUX: { ...defaultState.settings.gameUX, dramaMode: overrides?.dramaMode ?? false },
+    },
   };
 
   const store = configureStore({
-    reducer: { game: gameReducer, social: socialReducer },
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
     preloadedState,
   });
 
@@ -343,12 +351,37 @@ describe('SocialPanelV2 – execute flow', () => {
     expect(screen.getByRole('button', { name: /Compliment/i }).getAttribute('aria-pressed')).toBe('false');
   });
 
+  it('Drama Mode group chat uses plain taps for multi-select and scales its displayed cost', () => {
+    cleanup();
+    store = makeStore({ phase: 'social_1', dramaMode: true });
+    humanId = store.getState().game.players.find((player) => player.isUser)!.id;
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 }));
+    store.dispatch(openSocialPanel());
+    initManeuvers(store);
+    renderPanel(store);
+    const people = store.getState().game.players.filter((player) => !player.isUser).slice(0, 3);
+    fireEvent.click(screen.getByRole('button', { name: /Group Chat/i }));
+
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(people[0].name, 'i') })[0]);
+    expect((screen.getByRole('button', { name: 'Execute' }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(people[1].name, 'i') })[0]);
+    expect((screen.getByRole('button', { name: 'Execute' }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText(/Cost:.*2/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(people[2].name, 'i') })[0]);
+    expect((screen.getByRole('button', { name: 'Execute' }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText(/Cost:.*3/)).toBeInTheDocument();
+  });
+
   it('execute button is enabled when action and a player are both selected', () => {
     const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
     fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+
     const btn = screen.getByRole('button', { name: 'Execute' });
     expect((btn as HTMLButtonElement).disabled).toBe(false);
+
   });
 
   it('charges energy and records the action only once after two rapid execute taps', () => {
@@ -677,5 +710,37 @@ describe('SocialPanelV2 – subject picker', () => {
     expect(subjectPicker).toHaveTextContent(otherNominee.name);
     fireEvent.click(within(subjectPicker).getByRole('button', { name: human.name }));
     expect(screen.getByRole('button', { name: 'Execute' })).toBeEnabled();
+  });
+});
+
+describe('LOH target question integration', () => {
+  afterEach(() => cleanup());
+
+  it('executes while the LOH controls nominations and logs a concrete answer', () => {
+    const seedStore = makeStore();
+    const loh = seedStore.getState().game.players.find((player) => !player.isUser)!;
+    const store = makeStore({
+      phase: 'social_1',
+      lohId: loh.id,
+      playerStatusOverrides: { [loh.id]: 'loh' },
+      dramaMode: true,
+    });
+    const human = store.getState().game.players.find((player) => player.isUser)!;
+    store.dispatch(setEnergyBankEntry({ playerId: human.id, value: 5 }));
+    store.dispatch(openSocialPanel());
+    initManeuvers(store);
+    renderPanel(store);
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: new RegExp(loh.name, 'i') })[0],
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Ask LOH Target/i }));
+    const execute = screen.getByRole('button', { name: 'Execute' });
+    expect(execute).toBeEnabled();
+    fireEvent.click(execute);
+
+    const recentActivity = screen.getByLabelText('Recent Activity');
+    expect(recentActivity).toHaveTextContent(`${loh.name}:`);
+    expect(recentActivity).not.toHaveTextContent('You performed');
   });
 });

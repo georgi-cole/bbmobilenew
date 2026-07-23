@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   selectEnergyBank,
@@ -7,6 +7,7 @@ import {
   selectSocialPanelOpen,
   selectSessionLogs,
   selectWeekStartRelSnapshot,
+  selectDramaNetwork,
   closeSocialPanel,
   clearSessionLogs,
 } from '../../social/socialSlice';
@@ -21,8 +22,10 @@ import {
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import RecentActivity from './RecentActivity';
+import HousePulse from '../HousePulse/HousePulse';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import type { Player } from '../../types';
+import { resolveActionTargetMode } from '../../social/socialActions';
 import type { SubjectPool } from '../../social/socialActions';
 import './SocialPanelV2.css';
 
@@ -59,10 +62,11 @@ function getSubjectCandidates(
   allowActorAsSubject = false,
 ): Player[] {
   const eligible = players.filter(
-    (p) => p.id !== primaryTargetId
-      && (allowActorAsSubject || p.id !== actorId)
-      && p.status !== 'evicted'
-      && p.status !== 'jury',
+    (p) =>
+      p.id !== primaryTargetId &&
+      (allowActorAsSubject || p.id !== actorId) &&
+      p.status !== 'evicted' &&
+      p.status !== 'jury',
   );
   switch (pool) {
     case 'nominees':
@@ -119,6 +123,8 @@ export default function SocialPanelV2() {
   const sessionLogs = useAppSelector(selectSessionLogs);
   const relationships = useAppSelector((s) => s.social?.relationships);
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot);
+  const dramaMode = useAppSelector((s) => s.settings?.gameUX?.dramaMode === true);
+  const dramaNetwork = useAppSelector(selectDramaNetwork);
 
   const humanPlayer = game.players.find((p) => p.isUser);
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
@@ -197,9 +203,8 @@ export default function SocialPanelV2() {
     if (executeGuardTimerRef.current !== null) clearTimeout(executeGuardTimerRef.current);
   }, []);
 
-  // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
-  const targetMode = selectedAction?.targetMode ?? (selectedAction?.needsTargets === false ? 'none' : 'primary');
+  const targetMode = selectedAction ? resolveActionTargetMode(selectedAction, dramaMode) : 'primary';
   const isBatchCompatible = targetMode === 'primary'
     && !selectedAction?.requiredTargetStatus
     && selectedActionId !== 'proposeAlliance';
@@ -209,69 +214,46 @@ export default function SocialPanelV2() {
   const needsTarget = targetMode !== 'none';
   const needsSubject = targetMode === 'primaryPlusSubject';
   const hasRequiredTargets = targetMode === 'multi'
-    ? selectedTargets.size >= 2
+    ? selectedTargetCount >= Math.max(2, selectedAction?.minTargets ?? 2)
     : usesMultipleTargets
-      ? selectedTargets.size >= 1
-    : !needsTarget || effectivePrimaryTargetId !== null;
+      ? selectedTargetCount >= 1
+      : !needsTarget || effectivePrimaryTargetId !== null;
   const targetCount = usesMultipleTargets ? selectedTargetCount : 1;
   const totalCosts = useMemo(() => {
     const baseCosts = selectedAction
-    ? SocialManeuvers.computeActionCosts(
-        humanPlayer?.id ?? '',
-        selectedAction,
-        effectivePrimaryTargetId ?? humanPlayer?.id ?? '',
-      )
-    : null;
+      ? SocialManeuvers.computeActionCosts(
+          humanPlayer?.id ?? '',
+          selectedAction,
+          effectivePrimaryTargetId ?? humanPlayer?.id ?? '',
+          undefined,
+          selectedTargetCount,
+          dramaMode,
+        )
+      : null;
     return baseCosts
-    ? selectedActionId === 'group_chat'
-      ? { ...baseCosts, energy: Math.max(2, selectedTargetCount) }
-      : usesMultipleTargets
-        ? {
-            energy: baseCosts.energy * targetCount,
-            influence: baseCosts.influence * targetCount,
-            info: baseCosts.info * targetCount,
-          }
-        : baseCosts
-    : null;
-  }, [
-    effectivePrimaryTargetId,
-    humanPlayer?.id,
-    selectedAction,
-    selectedActionId,
-    selectedTargetCount,
-    targetCount,
-    usesMultipleTargets,
-  ]);
+      ? selectedActionId === 'group_chat'
+        ? { ...baseCosts, energy: Math.max(2, selectedTargetCount) }
+        : usesMultipleTargets
+          ? {
+              energy: baseCosts.energy * targetCount,
+              influence: baseCosts.influence * targetCount,
+              info: baseCosts.info * targetCount,
+            }
+          : baseCosts
+      : null;
+  }, [dramaMode, effectivePrimaryTargetId, humanPlayer?.id, selectedAction, selectedActionId, selectedTargetCount, targetCount, usesMultipleTargets]);
   const energy = energyBank?.[humanPlayer?.id ?? ''] ?? 0;
   const influence = influenceBank?.[humanPlayer?.id ?? ''] ?? 0;
   const info = infoBank?.[humanPlayer?.id ?? ''] ?? 0;
-  const hasExecutableSelection =
-    !!selectedActionId &&
-    hasRequiredTargets &&
-    (!needsSubject || selectedSubjectId !== null);
+  const hasExecutableSelection = !!selectedActionId && hasRequiredTargets && (!needsSubject || selectedSubjectId !== null);
   const canExecute = hasExecutableSelection;
   const hiddenContextualActionIds = useMemo(() => {
     const hidden = new Set<string>();
     const beforeNominations = game.phase === 'social_1' && game.nomineeIds.length === 0;
-    const safetyDecisionOpen = ['pos_results', 'pos_ceremony'].includes(game.phase)
-      && !!game.posWinnerId
-      && !game.povSavedId;
+    const safetyDecisionOpen = ['pos_results', 'pos_ceremony'].includes(game.phase) && !!game.posWinnerId && !game.povSavedId;
     const humanIsLoh = game.lohId === humanPlayer?.id;
     const humanIsNominated = !!humanPlayer?.status.includes('nominated');
-    const lohPlanOpen = [
-      'loh_results',
-      'social_1',
-      'nominations',
-      'nomination_results',
-      'pre_veto_public_save',
-      'pos_comp_announcement',
-      'pos_comp',
-      'pos_results',
-      'pos_ceremony',
-      'pos_ceremony_results',
-      'social_2',
-    ]
-      .includes(game.phase);
+    const lohPlanOpen = ['loh_results', 'social_1', 'nominations', 'nomination_results', 'pre_veto_public_save', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony', 'pos_ceremony_results', 'social_2'].includes(game.phase);
     if (!beforeNominations) hidden.add('pitch_target');
     if (!lohPlanOpen || !game.lohId) hidden.add('ask_loh_target');
     if (!humanIsNominated || !game.lohId) hidden.add('ask_why_nominated');
@@ -329,7 +311,6 @@ export default function SocialPanelV2() {
     }
     setSelectedSubjectId(null);
 
-    // Clear role-gated action when the new target no longer qualifies.
     if (selectedAction?.requiredTargetStatus) {
       const nextTargetStatus = details.primaryTargetId
         ? game.players.find((p) => p.id === details.primaryTargetId)?.status
@@ -492,9 +473,7 @@ export default function SocialPanelV2() {
       ? getSubjectCandidates(
           selectedAction.subjectPool,
           effectivePrimaryTargetId,
-          selectedAction.allowActorAsSubject
-            ? [...orderedPlayers, humanPlayer!]
-            : orderedPlayers,
+          selectedAction.allowActorAsSubject ? [...orderedPlayers, humanPlayer!] : orderedPlayers,
           humanPlayer!.id,
           relationships as Record<string, Record<string, { affinity: number }>> | undefined,
           selectedAction.allowActorAsSubject,
@@ -504,17 +483,17 @@ export default function SocialPanelV2() {
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
       {/* Skip link: lets keyboard users jump past the header directly to actions */}
-      <a className="sp2-skip-link" href="#sp2-body">Skip to actions</a>
-      <div className="sp2-modal">
+      <a className="sp2-skip-link" href="#sp2-body">
+        Skip to actions
+      </a>
+      <div className={`sp2-modal${dramaMode ? ' sp2-modal--drama' : ''}`}>
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className="sp2-header">
-          <span className="sp2-header__title">💬 Social Phase</span>
+          <span className="sp2-header__title">
+            {dramaMode ? '🔥 Drama Mode' : '💬 Social Phase'}
+          </span>
           <div className="sp2-header__resources">
-            <span
-              className="sp2-energy-chip"
-              aria-live="polite"
-              aria-label={`Energy: ${energy}`}
-            >
+            <span className="sp2-energy-chip" aria-live="polite" aria-label={`Energy: ${energy}`}>
               ⚡ {energy}
             </span>
             <span
@@ -542,6 +521,10 @@ export default function SocialPanelV2() {
           </button>
         </header>
 
+        {dramaMode && humanPlayer && (
+          <HousePulse network={dramaNetwork} players={game.players} humanId={humanPlayer.id} />
+        )}
+
         {/* ── Two-column body ──────────────────────────────────────────────── */}
         <div id="sp2-body" className="sp2-body">
           {/* Left column – Player roster */}
@@ -561,6 +544,7 @@ export default function SocialPanelV2() {
               disabledIds={disabledPlayerIds}
               selectedIds={selectedTargets}
               onSelectionChange={handleSelectionChange}
+              multiSelectEnabled={targetMode === 'multi'}
               deltasByTargetId={deltasByTargetId}
               multiSelect={usesMultipleTargets}
             />
@@ -583,9 +567,12 @@ export default function SocialPanelV2() {
               relationships={relationships}
               primaryTargetStatus={
                 primaryTargetId
-                  ? game.players.find((p) => p.id === primaryTargetId)?.status ?? null
+                  ? (game.players.find((p) => p.id === primaryTargetId)?.status ?? null)
                   : null
               }
+              dramaMode={dramaMode}
+              currentPhase={game.phase}
+              dramaNetwork={dramaNetwork}
               hiddenActionIds={hiddenContextualActionIds}
               energyCostOverrides={
                 selectedActionId && totalCosts
@@ -599,13 +586,15 @@ export default function SocialPanelV2() {
         {/* ── Subject picker: compact inline chip row for "talk to X about Y" ── */}
         {needsSubject && effectivePrimaryTargetId && (
           <div className="sp2-subject-picker" aria-label="Choose subject">
-            <span className="sp2-subject-picker__label">
-              Talking about:
-            </span>
+            <span className="sp2-subject-picker__label">Talking about:</span>
             {subjectCandidates.length === 0 ? (
               <span className="sp2-subject-picker__empty">No eligible targets</span>
             ) : (
-              <div className="sp2-subject-picker__chips" role="group" aria-label="Subject candidates">
+              <div
+                className="sp2-subject-picker__chips"
+                role="group"
+                aria-label="Subject candidates"
+              >
                 {subjectCandidates.map((candidate) => (
                   <button
                     key={candidate.id}
@@ -627,13 +616,15 @@ export default function SocialPanelV2() {
 
         {/* ── Recent Activity – compact fixed-height log above footer ─────── */}
         <div className="sp2-recent" aria-label="Recent Activity log">
-          <RecentActivity players={game.players.filter((p) => !p.isUser)} />
+          <RecentActivity players={game.players.filter((p) => !p.isUser)} dramaMode={dramaMode} />
         </div>
 
         {/* ── Sticky bottom bar ────────────────────────────────────────────── */}
         <footer className="sp2-footer">
           {feedbackMsg ? (
-            <span className="sp2-footer__feedback" role="status" aria-live="polite">{feedbackMsg}</span>
+            <span className="sp2-footer__feedback" role="status" aria-live="polite">
+              {feedbackMsg}
+            </span>
           ) : (
             <span className="sp2-footer__cost">
               {totalCosts

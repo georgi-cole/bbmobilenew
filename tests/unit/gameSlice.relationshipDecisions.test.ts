@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chooseAiEvictionVote } from '../../src/store/gameSlice';
+import gameReducer, {
+  advance,
+  chooseAiEvictionVote,
+  setDramaSocialMode,
+} from '../../src/store/gameSlice';
 import type { GameState, Player } from '../../src/types';
 
 function player(id: string): Player {
@@ -17,6 +21,47 @@ function userPlayer(id: string): Player {
 }
 
 describe('relationship-aware AI eviction decisions', () => {
+  it('persists the Drama Mode gameplay switch', () => {
+    const initial = gameReducer(undefined, { type: 'test/init' });
+    expect(gameReducer(initial, setDramaSocialMode(true)).dramaSocialMode).toBe(true);
+  });
+
+  it('uses bonds, betrayals, rivalries, and suspicion for Drama Mode nominations', () => {
+    const initial = gameReducer(undefined, { type: 'test/init' });
+    const loh = { ...player('loh'), status: 'loh' as const };
+    const candidates = [
+      player('betrayer'),
+      player('ally'),
+      player('romance'),
+      player('protected'),
+      player('target'),
+      player('suspicious'),
+    ];
+    const state = {
+      ...initial,
+      phase: 'nominations' as const,
+      lohId: loh.id,
+      players: [loh, ...candidates],
+      nomineeIds: [],
+      dramaSocialMode: true,
+      strategicRelationships: {
+        [loh.id]: {
+          betrayer: { affinity: 10, tags: ['betrayal'] },
+          ally: { affinity: 70, tags: ['alliance'] },
+          romance: { affinity: 60, tags: ['romance'] },
+          protected: { affinity: 40, tags: ['protection'] },
+          target: { affinity: 0, tags: ['target', 'rivalry'] },
+          suspicious: { affinity: 0, tags: ['suspicious', 'unreliable'] },
+        },
+      },
+    };
+
+    const result = gameReducer(state, advance());
+    expect(result.nomineeIds).toContain('betrayer');
+    expect(result.nomineeIds).toContain('target');
+    expect(result.nomineeIds).not.toContain('ally');
+  });
+
   it('does not treat the human as an automatic eviction threat', () => {
     const voters = Array.from({ length: 12 }, (_, index) => player(`voter-${index}`));
     const state = {

@@ -74,6 +74,10 @@ export interface VariantFamily {
   variants: VariantEntry[];
 }
 
+function getVariantId(family: VariantFamily, variantIndex: number): string {
+  return `${family.id}:${variantIndex}`;
+}
+
 // ── Scenario variant pools ────────────────────────────────────────────────
 
 /**
@@ -837,17 +841,24 @@ export function pickVariantText(
   recentFamilyIds: Set<string>,
   repeatCount: number,
   rng: () => number,
-): { text: string; familyId: string } {
+  recentVariantIds: Set<string> = new Set(),
+): { text: string; familyId: string; variantId: string } {
   if (families.length === 0) {
-    return { text: 'We need to talk.', familyId: 'fallback' };
+    return { text: 'We need to talk.', familyId: 'fallback', variantId: 'fallback:0' };
   }
 
   const allVoiceTags = [...profile.primary, ...profile.secondary];
+  const familiesWithFreshLines = families.filter((family) =>
+    family.variants.some((_, index) => !recentVariantIds.has(getVariantId(family, index))),
+  );
+  const freshnessPool = familiesWithFreshLines.length > 0 ? familiesWithFreshLines : families;
+
 
   // Prefer families not recently used.
-  let candidates = families.filter((family) => !recentFamilyIds.has(family.id));
+  let candidates = freshnessPool.filter((family) => !recentFamilyIds.has(family.id));
   if (candidates.length === 0) {
-    candidates = families;
+    candidates = freshnessPool;
+
   }
 
   // If this is a follow-up contact, prefer follow-up families.
@@ -876,17 +887,22 @@ export function pickVariantText(
     topFamilies[Math.floor(rng() * topFamilies.length)] ?? families[0];
 
   // Within the chosen family, prefer variants whose voice tags match.
-  const voiceMatchedVariants = chosenFamily.variants.filter((variant) =>
+  const indexedVariants = chosenFamily.variants.map((variant, index) => ({
+    variant,
+    variantId: getVariantId(chosenFamily, index),
+  }));
+  const freshVariants = indexedVariants.filter(({ variantId }) => !recentVariantIds.has(variantId));
+  const freshnessVariants = freshVariants.length > 0 ? freshVariants : indexedVariants;
+  const voiceMatchedVariants = freshnessVariants.filter(({ variant }) =>
     variant.voiceTags.some((tag) => allVoiceTags.includes(tag)),
   );
-  const variantPool =
-    voiceMatchedVariants.length > 0 ? voiceMatchedVariants : chosenFamily.variants;
+  const variantPool = voiceMatchedVariants.length > 0 ? voiceMatchedVariants : freshnessVariants;
 
-  const chosenVariant =
-    variantPool[Math.floor(rng() * variantPool.length)] ?? chosenFamily.variants[0];
+  const chosen = variantPool[Math.floor(rng() * variantPool.length)] ?? indexedVariants[0];
 
   return {
-    text: chosenVariant?.text ?? 'We need to talk.',
+    text: chosen?.variant.text ?? 'We need to talk.',
     familyId: chosenFamily.id,
+    variantId: chosen?.variantId ?? `${chosenFamily.id}:0`,
   };
 }

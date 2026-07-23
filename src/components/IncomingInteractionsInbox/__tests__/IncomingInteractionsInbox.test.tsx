@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within, act } from '@testing-librar
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../../store/gameSlice';
+import settingsReducer, { setGameUX } from '../../../store/settingsSlice';
 import socialReducer, {
   openIncomingInbox,
   pushIncomingInteraction,
@@ -15,13 +16,13 @@ import { hasAllianceBetween } from '../../../social/socialAlliance';
 
 function makeStore() {
   return configureStore({
-    reducer: { game: gameReducer, social: socialReducer },
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
   });
 }
 
 function makeStoreWithSocialMiddleware() {
   return configureStore({
-    reducer: { game: gameReducer, social: socialReducer },
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
   });
 }
@@ -181,7 +182,9 @@ describe('IncomingInteractionsInbox', () => {
 
     fireEvent.click(document.querySelector('[data-response-type="positive"]')!);
 
-    const entry = store.getState().social.incomingInteractions.find((i) => i.id === 'interaction-3');
+    const entry = store
+      .getState()
+      .social.incomingInteractions.find((i) => i.id === 'interaction-3');
     expect(entry?.resolved).toBe(true);
     expect(entry?.resolvedWith).toBe('positive');
     expect(store.getState().game.tvFeed[0]?.text).toMatch(/encouraged/i);
@@ -223,6 +226,7 @@ describe('IncomingInteractionsInbox', () => {
 
   it('renders contextual responses and tone labels', () => {
     const store = makeStore();
+    store.dispatch(setGameUX({ dramaMode: true }));
     store.dispatch(openIncomingInbox());
     const otherId = getNonUserPlayer(store).id;
     store.dispatch(
@@ -258,6 +262,11 @@ describe('IncomingInteractionsInbox', () => {
 
     expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument();
     expect(screen.getByText(/Bitter/)).toBeInTheDocument();
+    const negativeResponse = document.querySelector('[data-response-type="negative"]');
+    expect(negativeResponse).toHaveAttribute(
+      'title', 'Sets a clear boundary and damages trust.',
+    );
+    expect(screen.queryByText(/Sets a clear boundary and damages trust/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument();
     expect(screen.queryByText('Why now')).not.toBeInTheDocument();
     expect(screen.queryByText('What it means')).not.toBeInTheDocument();
@@ -278,7 +287,9 @@ describe('IncomingInteractionsInbox', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(store.getState().social.incomingInboxOpen).toBe(false);
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Incoming social module did not open: Social modules are blocked during the eviction_results phase.'),
+      expect.stringContaining(
+        'Incoming social module did not open: Social modules are blocked during the eviction_results phase.',
+      ),
       expect.objectContaining({ phase: 'eviction_results' }),
     );
 

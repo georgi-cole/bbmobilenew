@@ -14,7 +14,11 @@
 
 import type { SocialPhaseReport } from './types';
 import { socialConfig } from './socialConfig';
-import { DEFAULT_ENERGY } from './constants';
+import {
+  DEFAULT_ENERGY,
+  HUMAN_SOCIAL_ALLOWANCE,
+  MAX_HUMAN_SOCIAL_ENERGY,
+} from './constants';
 import { engineReady, engineComplete, setLastReport } from './socialSlice';
 import { initInfluence, update as influenceUpdate } from './SocialInfluence';
 import { initManeuvers } from './SocialManeuvers';
@@ -33,6 +37,9 @@ interface GameSlice {
     week: number;
   };
   social?: { energyBank?: Record<string, number> };
+  settings?: {
+    gameUX?: { dramaMode?: boolean };
+  };
 }
 
 let _store: StoreAPI | null = null;
@@ -42,6 +49,10 @@ let _lastReport: SocialPhaseReport | null = null;
 
 /** Provide the Redux store API so the engine can dispatch actions and read state. */
 function init(store: StoreAPI): void {
+  socialAIDriver.stop();
+  _activePhase = null;
+  _budgets.clear();
+  _lastReport = null;
   _store = store;
   initInfluence(store);
   initManeuvers(store);
@@ -54,9 +65,11 @@ function init(store: StoreAPI): void {
  */
 function startPhase(phaseName: string): void {
   if (!_store) return;
+  if (_activePhase === phaseName) return;
 
   const state = _store.getState() as GameSlice;
   const players = state.game?.players ?? [];
+  const dramaMode = state.settings?.gameUX?.dramaMode === true;
   const seed = state.game?.seed ?? 0;
   const carriedEnergy = state.social?.energyBank ?? {};
   const grantsWeeklyBatch = phaseName === 'social_1';
@@ -91,13 +104,18 @@ function startPhase(phaseName: string): void {
     budgets[k] = v;
   });
 
-  // Give the human player the default energy budget so they can participate.
+  // Normal Mode retains the original reset-to-5 economy. Drama Mode adds ten,
+  // carries unused energy forward, and caps the bank at three allowances.
   const humanPlayer = players.find(
     (p) => p.isUser && p.status !== 'evicted' && p.status !== 'jury',
   );
   if (humanPlayer) {
-    const humanBudget = (carriedEnergy[humanPlayer.id] ?? 0)
-      + (grantsWeeklyBatch ? DEFAULT_ENERGY : 0);
+    const carried = Math.max(0, carriedEnergy[humanPlayer.id] ?? 0);
+    const allowance = dramaMode ? HUMAN_SOCIAL_ALLOWANCE : DEFAULT_ENERGY;
+    const nextEnergy = carried + (grantsWeeklyBatch ? allowance : 0);
+    const humanBudget = dramaMode
+      ? Math.min(MAX_HUMAN_SOCIAL_ENERGY, nextEnergy)
+      : nextEnergy;
     _budgets.set(humanPlayer.id, humanBudget);
     budgets[humanPlayer.id] = humanBudget;
   }

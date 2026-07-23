@@ -1,4 +1,4 @@
-/**
+﻿/**
  * incomingInteractionAutonomy – AI-driven scheduling of incoming interactions.
  *
  * Algorithm overview
@@ -34,6 +34,7 @@ import {
   getVoiceProfile,
   pickVariantText,
 } from './interactionVariantBank';
+import { getNamedInteractionText } from './namedInteractionBank';
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -81,6 +82,9 @@ export interface AutonomyContext {
 export interface AutonomyStore {
   dispatch: (action: unknown) => unknown;
   getState: () => {
+    settings?: {
+      gameUX?: { dramaMode?: boolean };
+    };
     social?: {
       incomingInteractions?: IncomingInteraction[];
       scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
@@ -89,7 +93,6 @@ export interface AutonomyStore {
       socialMemory?: SocialMemoryMap;
       sessionLogs?: SocialActionLogEntry[];
     };
-    settings?: { gameUX?: { dramaMode?: boolean } };
     game?: {
       players?: AutonomyPlayer[];
       week?: number;
@@ -318,8 +321,9 @@ function canSendInteractionType(
     case 'alliance_proposal':
       return !signals.tags.has('alliance') && signals.affinity > 0;
     case 'snide_remark':
-    case 'warning':
       return !signals.tags.has('alliance') && !constraints.actorSurvivedCurrentVote;
+    case 'warning':
+      return !signals.tags.has('alliance') && !constraints.actorSurvivedCurrentVote && !(constraints.actorIsCurrentHoh && constraints.playerHasSafetyPower);
     case 'compliment':
       return !signals.tags.has('betrayal') || constraints.actorSurvivedCurrentVote;
     default:
@@ -933,7 +937,8 @@ function generateInteractionText(
   context: AutonomyContext,
   pendingInteractions: IncomingInteraction[] = [],
   rng: () => number = Math.random,
-): { text: string; variantFamilyId: string } {
+  dramaMode = false,
+): { text: string; variantFamilyId: string; variantId: string } {
   // Build context for token replacement.
   const textContext = buildInteractionTextContext(actorId, playerId, context);
 
@@ -962,21 +967,38 @@ function generateInteractionText(
       .map((interaction) => interaction.payload?.variantFamilyId as string | undefined)
       .filter((id): id is string => typeof id === 'string'),
   );
+  const lineRecencyWindowWeeks = Math.max(
+    familyRecencyWindowWeeks,
+    socialConfig.incomingInteractionDeliveryConfig.dedupe.lineCooldownWeeks ?? 0,
+  );
+  const recentLineCutoffWeek = context.week - lineRecencyWindowWeeks;
+  const recentVariantIds = new Set<string>(
+    pendingInteractions
+      .filter(
+        (interaction) =>
+          interaction.fromId === actorId && interaction.createdWeek >= recentLineCutoffWeek,
+      )
+      .map((interaction) => interaction.payload?.variantId as string | undefined)
+      .filter((id): id is string => typeof id === 'string'),
+  );
+
 
   // Use the rich variant bank when families are available for this scenario.
   const variantFamilies = SCENARIO_VARIANT_POOLS[plan.scenarioKey];
-  if (variantFamilies && variantFamilies.length > 0) {
+  if (dramaMode && variantFamilies && variantFamilies.length > 0) {
     const voiceProfile = getVoiceProfile(actorId);
-    const { text, familyId } = pickVariantText(
+    const { text, familyId, variantId } = pickVariantText(
       variantFamilies,
       voiceProfile,
       recentFamilyIds,
       priorFromActor,
       rng,
+      recentVariantIds,
     );
     return {
       text: renderInteractionTemplate(text, textContext),
       variantFamilyId: familyId,
+      variantId,
     };
   }
 
@@ -986,6 +1008,7 @@ function generateInteractionText(
   return {
     text: renderInteractionTemplate(template, textContext),
     variantFamilyId: `legacy_${plan.scenarioKey}`,
+    variantId: `legacy_${plan.scenarioKey}:${templates.indexOf(template)}`,
   };
 }
 
@@ -1015,6 +1038,7 @@ export function scheduleIncomingInteractionsForPhase(
   }
 
   const state = store.getState();
+  const dramaMode = state.settings?.gameUX?.dramaMode === true;
   const socialState = state.social;
   if (!socialState) {
     if (socialConfig.verbose) {
@@ -1185,12 +1209,21 @@ export function scheduleIncomingInteractionsForPhase(
       context,
       pendingInteractions,
       context.random,
+      dramaMode,
     );
-    const subject = selectInteractionSubject(actor.id, playerId, plan.type, context);
+    const subject = dramaMode
+      ? selectInteractionSubject(actor.id, playerId, plan.type, context)
+      : undefined;
     const subjectName = subject?.name ?? subject?.id;
-    const interactionText = subjectName
-      ? `${textResult.text} ${plan.type === 'gossip' ? 'The name at the center of it is' : 'Keep an eye on'} ${subjectName}.`
-      : textResult.text;
+    const interactionText =
+      subjectName && (plan.type === 'gossip' || plan.type === 'warning')
+        ? getNamedInteractionText(
+            plan.scenarioKey,
+            plan.type,
+            subjectName,
+            `${actor.id}:${playerId}:${week}:${phase}:${textResult.variantId}`,
+          )
+        : textResult.text;
     const interaction: IncomingInteraction = {
       id: generateInteractionId(),
       fromId: actor.id,
@@ -1199,9 +1232,11 @@ export function scheduleIncomingInteractionsForPhase(
       payload: {
         scenarioKey: plan.scenarioKey,
         variantFamilyId: textResult.variantFamilyId,
+        variantId: textResult.variantId,
         phase,
         actorStatus: actor.status,
         subjectId: subject?.id,
+        dramaMode,
       },
       createdAt: Date.now(),
       createdWeek: week,

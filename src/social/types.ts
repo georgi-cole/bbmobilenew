@@ -13,6 +13,132 @@ export interface RelationshipEntry {
 /** Full relationship graph: outer key = source player ID, inner key = target player ID. */
 export type RelationshipsMap = Record<string, Record<string, RelationshipEntry>>;
 
+export type DramaArcType = 'romance' | 'bromance' | 'rivalry' | 'betrayal';
+export type DramaArcStage =
+  | 'spark'
+  | 'building'
+  | 'established'
+  | 'strained'
+  | 'climax'
+  | 'resolved';
+export interface DramaArc {
+  id: string;
+  type: DramaArcType;
+  participantIds: [string, string];
+  stage: DramaArcStage;
+  intensity: number;
+  startedWeek: number;
+  lastAdvancedWeek: number;
+  public: boolean;
+  /** Players who privately know about an otherwise secret arc. */
+  discoveredByIds?: string[];
+  /** Intimate arcs are exclusive; overlapping arcs can cause betrayal fallout. */
+  exclusive?: boolean;
+  status: 'active' | 'resolved';
+}
+export type DramaRumourKind =
+  | 'secret_alliance'
+  | 'secret_romance'
+  | 'targeting'
+  | 'fake_deal'
+  | 'personal_comment';
+export type DramaRumourTruth = 'true' | 'false' | 'uncertain';
+export interface DramaRumourListener {
+  playerId: string;
+  sourceId: string;
+  confidence: number;
+  believed: boolean;
+  heardWeek: number;
+}
+export interface DramaRumour {
+  id: string;
+  kind: DramaRumourKind;
+  originatorId: string;
+  subjectId: string;
+  truth: DramaRumourTruth;
+  claim?: string;
+  evidence?: 'none' | 'weak' | 'credible' | 'confirmed';
+  sourceChain?: string[];
+  createdWeek: number;
+  expiresWeek: number;
+  listeners: DramaRumourListener[];
+  status: 'circulating' | 'exposed' | 'dead';
+  exposureWeek?: number;
+}
+export type DramaBeliefKind =
+  | 'loyal'
+  | 'promise_keeper'
+  | 'unreliable'
+  | 'strategic_threat'
+  | 'secretive'
+  | 'romantic_interest'
+  | 'ride_or_die'
+  | 'rival';
+export interface DramaAlliance {
+  id: string;
+  participantIds: [string, string];
+  formedWeek: number;
+  lastUpdatedWeek: number;
+  status: 'active' | 'strained' | 'broken';
+  secrecy: 'secret' | 'public';
+  origin: 'proposal' | 'incoming' | 'story';
+  loyaltyByPlayer: Record<string, number>;
+  primaryForIds: string[];
+  falsePretenceByIds: string[];
+  discoveredByIds: string[];
+}
+
+export interface DramaBelief {
+  id: string;
+  holderId: string;
+  subjectId: string;
+  kind: DramaBeliefKind;
+  confidence: number;
+  sentiment: number;
+  sourceId: string;
+  createdWeek: number;
+  lastUpdatedWeek: number;
+}
+export interface DramaHouseEvent {
+  id: string;
+  type:
+    | 'arc_beat'
+    | 'rumour_spread'
+    | 'exposure'
+    | 'discovery'
+    | 'confrontation'
+    | 'reconciliation'
+    | 'alliance_beat';
+  week: number;
+  phase: string;
+  participantIds: string[];
+  text: string;
+  title?: string;
+  detail?: string;
+  consequence?: string;
+  relatedArcId?: string;
+  relatedRumourId?: string;
+  public: boolean;
+  severity: 'quiet' | 'notable' | 'major';
+  createdAt: number;
+}
+export interface DramaSocialNetwork {
+  arcs: DramaArc[];
+  alliances: DramaAlliance[];
+  rumours: DramaRumour[];
+  beliefs: DramaBelief[];
+  events: DramaHouseEvent[];
+  pacing: {
+    week: number;
+    arcsStartedThisWeek: number;
+    rumourHopsThisWeek: number;
+    publicEventsThisWeek: number;
+    privateDiscoveriesThisWeek: number;
+    lastPublicEventWeek: number;
+    lastProcessedPhase: string | null;
+  };
+}
+
 export interface SocialMemoryEvent {
   type: string;
   actorId: string;
@@ -48,6 +174,10 @@ export interface SocialActionLogEntry {
   actionId: string;
   actorId: string;
   targetId: string;
+  /** All recipients for a multi-target action (targetId remains the primary). */
+  targetIds?: string[];
+  /** Per-recipient relationship changes for a multi-target action. */
+  targetDeltas?: Record<string, number>;
   /**
    * For primaryPlusSubject actions: the player being talked *about*.
    * When present, the narrative should reference this player rather than
@@ -81,8 +211,9 @@ export interface SocialActionLogEntry {
   costs?: { energy: number; influence: number; info: number };
   /** All resource balances after deductions and yields were applied. */
   balancesAfter?: { energy: number; influence: number; info: number };
-  /** Resource yields granted to the actor on success, if any. */
+  /** Signed resource effect applied after the action outcome. */
   yieldsApplied?: { influence?: number; info?: number };
+  narrative?: string;
 }
 
 export type IncomingInteractionType =
@@ -155,6 +286,8 @@ export interface IncomingInteraction {
   resolvedAt?: number;
   resolvedWeek?: number;
   resolvedWith?: IncomingInteractionResponseType;
+  resolvedLabel?: string;
+  outcomeText?: string;
 }
 
 export interface ScheduledIncomingInteraction {
@@ -211,6 +344,8 @@ export interface SocialState {
   socialMemory: SocialMemoryMap;
   /** Promises made through incoming interactions and their eventual outcomes. */
   commitments: SocialCommitment[];
+  /** Persistent premium arcs, rumours, beliefs and paced public events. */
+  dramaNetwork: DramaSocialNetwork;
   /**
    * Influence weights per actor and decision type: actorId → decisionType → (targetId → weight).
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.

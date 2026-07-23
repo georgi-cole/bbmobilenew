@@ -41,6 +41,7 @@ describe('incomingInteractionPresentation', () => {
         'check_in',
         makeInteraction({ id: `check-in-${index}`, fromId: `p${index}`, type: 'check_in' }),
         'Curious',
+        true,
       ).map((option) => option.label).join('|'),
     );
 
@@ -50,6 +51,7 @@ describe('incomingInteractionPresentation', () => {
         'check_in',
         makeInteraction({ type: 'check_in' }),
         'Guarded',
+        true,
       ).map((option) => option.responseType),
     ).toEqual(['positive', 'neutral', 'negative', 'dismiss']);
   });

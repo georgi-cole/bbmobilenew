@@ -363,7 +363,26 @@
   text-align: center;
 }
 
-.inbox-action small { color: rgba(226, 232, 240, 0.68); font-size: 0.61rem; line-height: 1.25; font-weight: 500; }
+.inbox-item__actions--drama {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.inbox-item__actions--drama .inbox-action {
+  min-height: 58px;
+  padding: 0.45rem;
+  border-radius: 0.75rem;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.66rem;
+}
+
+.inbox-action small {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.61rem;
+  line-height: 1.25;
+  font-weight: 500;
+}
 .inbox-action--positive {
   background: rgba(34, 197, 94, 0.22);
 }
@@ -387,4 +406,15 @@
 @media (max-width: 520px) {
   .inbox-header__summary { display: none; }
   .inbox-item__actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.inbox-item__outcome {
+  margin: 9px 0 0;
+  padding: 9px 11px;
+  border-left: 2px solid rgba(255, 190, 94, .8);
+  border-radius: 8px;
+  color: #d9cee4;
+  background: rgba(255, 190, 94, .07);
+  font-size: 11px;
+  line-height: 1.42;
 }

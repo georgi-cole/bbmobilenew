@@ -939,6 +939,8 @@ export interface GameState {
   /** Latest social graph snapshot used by synchronous POS and eviction AI decisions. */
   strategicRelationships?: import('../social/types').RelationshipsMap;
   /** Tracks whether the optional second-mission 50% roll has already been resolved. */
+  /** Runtime bridge used to keep premium social strategy out of Normal Mode. */
+  dramaSocialMode?: boolean;
   secretMissionSecondChanceResolved?: boolean;
   /**
    * PR 3 — doubleVote activation: set by advance() when the human player

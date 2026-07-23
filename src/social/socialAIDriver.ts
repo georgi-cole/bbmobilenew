@@ -1,4 +1,4 @@
-/**
+﻿/**
  * socialAIDriver — conservative, budget-aware driver that ticks at a
  * configurable interval and triggers AI social actions.
  *
@@ -38,12 +38,16 @@ import {
   getIncomingInteractionPriority,
 } from './incomingInteractionScheduler';
 import type {
+  DramaSocialNetwork,
   IncomingInteraction,
   IncomingInteractionDeliveryState,
   IncomingInteractionType,
   RelationshipsMap,
   ScheduledIncomingInteraction,
+  SocialActionLogEntry,
+  SocialMemoryMap,
 } from './types';
+import { chooseDramaAIMove, normalizeDramaSocialNetwork } from './dramaModeEngine';
 
 // ── Internal state ────────────────────────────────────────────────────────
 
@@ -54,12 +58,13 @@ interface StoreAPI {
 
 interface DriverState {
   game: {
-    players: Array<{ id: string; name?: string; status: string; isUser?: boolean }>;
+    players: Array<{ id: string; name: string; status: string; isUser?: boolean }>;
     seed: number;
     week: number;
     phase: string;
     lohId?: string | null;
     posWinnerId?: string | null;
+    nomineeIds?: string[];
     povProtectedIds?: string[];
   };
   social: {
@@ -67,10 +72,14 @@ interface DriverState {
     influenceBank: Record<string, number>;
     infoBank: Record<string, number>;
     relationships: RelationshipsMap;
+    socialMemory: SocialMemoryMap;
+    dramaNetwork: DramaSocialNetwork;
+    sessionLogs: SocialActionLogEntry[];
     incomingInteractions?: IncomingInteraction[];
     scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
     incomingInteractionDelivery?: IncomingInteractionDeliveryState;
   };
+  settings?: { gameUX?: { dramaMode?: boolean } };
 }
 
 const MAX_TICKS = () => socialConfig.maxTicksPerPhase;
@@ -107,7 +116,10 @@ export function start(): void {
   _actionsExecuted = 0;
 
   if (socialConfig.verbose) {
-    console.debug('[socialAIDriver] started – AI players:', aiPlayers.map((p) => p.id));
+    console.debug(
+      '[socialAIDriver] started – AI players:',
+      aiPlayers.map((p) => p.id),
+    );
   }
 
   _timer = setInterval(_tick, socialConfig.tickIntervalMs);
@@ -119,9 +131,7 @@ export function stop(): void {
   _clearTimer();
 
   if (socialConfig.verbose) {
-    console.debug(
-      `[socialAIDriver] stopped – ticks: ${_tickCount}, actions: ${_actionsExecuted}`,
-    );
+    console.debug(`[socialAIDriver] stopped – ticks: ${_tickCount}, actions: ${_actionsExecuted}`);
   }
 }
 
@@ -308,15 +318,34 @@ function _tick(): void {
   for (const player of aiPlayers) {
     if ((budgets[player.id] ?? 0) <= 0) continue;
 
-    const actionId = chooseActionFor(player.id, context);
+    const dramaMove = state.settings?.gameUX?.dramaMode
+      ? chooseDramaAIMove({
+          actorId: player.id,
+          players,
+          relationships: state.social?.relationships ?? {},
+          memory: state.social?.socialMemory ?? {},
+          network: normalizeDramaSocialNetwork(state.social?.dramaNetwork),
+          recentActions: state.social?.sessionLogs ?? [],
+          week: state.game?.week ?? 0,
+          phase: state.game?.phase ?? '',
+          seed: state.game?.seed ?? 0,
+          tick: _tickCount,
+          lohId: state.game?.lohId,
+          posWinnerId: state.game?.posWinnerId,
+          nomineeIds: state.game?.nomineeIds,
+        })
+      : null;
+    const actionId = dramaMove?.actionId ?? chooseActionFor(player.id, context);
     if (actionId === 'idle') continue;
 
     // Check full affordability (energy + influence + info) before attempting
     const actionDef = getActionById(actionId);
     if (!actionDef) continue;
-    if (!canAfford(player.id, normalizeActionCosts(actionDef))) continue;
+    if (!canAfford(player.id, normalizeActionCosts(actionDef, 0, Boolean(dramaMove)))) continue;
 
-    const targets = chooseTargetsFor(player.id, actionId, context);
+    const targets = dramaMove
+      ? [dramaMove.targetId, dramaMove.subjectId].filter((id): id is string => Boolean(id))
+      : chooseTargetsFor(player.id, actionId, context);
     if (targets.length === 0) continue;
 
     const [targetId, subjectId] = targets;

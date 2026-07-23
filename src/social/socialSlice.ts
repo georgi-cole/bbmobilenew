@@ -21,7 +21,20 @@ import {
   hasSocialMemoryDelta,
   type SocialMemoryDelta,
 } from './socialMemory';
-import { ALLIANCE_TAG, tagsAfterAllianceDecay } from './socialAlliance';
+import {
+  ALLIANCE_TAG,
+  enforceRelationshipTagAffinity,
+  normalizeRelationshipsForTags,
+  tagsAfterAllianceDecay,
+} from './socialAlliance';
+import {
+  applyDramaActionEffect as reduceDramaActionEffect,
+  applyDramaIncomingResponseEffect as reduceDramaIncomingResponseEffect,
+  normalizeDramaSocialNetwork,
+  type DramaActionEffectInput,
+  type DramaIncomingResponseEffect,
+} from './dramaModeEngine';
+import type { DramaSocialNetwork } from './types';
 
 const socialSlice = createSlice({
   name: 'social',
@@ -81,6 +94,15 @@ const socialSlice = createSlice({
     recordSocialAction(state, action: PayloadAction<{ entry: SocialActionLogEntry }>) {
       state.sessionLogs.push(action.payload.entry);
     },
+    replaceDramaNetwork(state, action: PayloadAction<DramaSocialNetwork>) {
+      state.dramaNetwork = normalizeDramaSocialNetwork(action.payload);
+    },
+    applyDramaAction(state, action: PayloadAction<DramaActionEffectInput>) {
+      state.dramaNetwork = reduceDramaActionEffect(state.dramaNetwork, action.payload);
+    },
+    applyDramaIncomingResponse(state, action: PayloadAction<DramaIncomingResponseEffect>) {
+      state.dramaNetwork = reduceDramaIncomingResponseEffect(state.dramaNetwork, action.payload);
+    },
     /** Add a new incoming interaction (newest-first). */
     pushIncomingInteraction(state, action: PayloadAction<IncomingInteraction>) {
       state.incomingInteractions.unshift(action.payload);
@@ -138,7 +160,9 @@ const socialSlice = createSlice({
     },
     /** Mark a specific incoming interaction as read. */
     markIncomingInteractionRead(state, action: PayloadAction<string>) {
-      const entry = state.incomingInteractions.find((interaction) => interaction.id === action.payload);
+      const entry = state.incomingInteractions.find(
+        (interaction) => interaction.id === action.payload,
+      );
       if (entry) {
         entry.read = true;
       }
@@ -155,18 +179,24 @@ const socialSlice = createSlice({
       action: PayloadAction<{
         interactionId: string;
         resolvedWith: IncomingInteractionResponseType;
+        resolvedLabel?: string;
+        outcomeText?: string;
         resolvedAt?: number;
         resolvedWeek?: number;
       }>,
     ) {
-      const { interactionId, resolvedWith, resolvedAt, resolvedWeek } = action.payload;
-      const entry = state.incomingInteractions.find((interaction) => interaction.id === interactionId);
+      const { interactionId, resolvedWith, resolvedLabel, outcomeText, resolvedAt, resolvedWeek } = action.payload;
+      const entry = state.incomingInteractions.find(
+        (interaction) => interaction.id === interactionId,
+      );
       if (!entry || entry.resolved) return;
       entry.resolved = true;
       entry.read = true;
       entry.resolvedAt = resolvedAt ?? Date.now();
       entry.resolvedWeek = resolvedWeek;
       entry.resolvedWith = resolvedWith;
+      entry.resolvedLabel = resolvedLabel;
+      entry.outcomeText = outcomeText;
     },
     /** Convenience helper for dismissing an interaction. */
     dismissIncomingInteraction(
@@ -186,7 +216,11 @@ const socialSlice = createSlice({
     /** Resolve invalidated interactions and remove matching scheduled entries. */
     invalidateIncomingInteractions(
       state,
-      action: PayloadAction<{ interactionIds: string[]; resolvedAt?: number; resolvedWeek?: number }>,
+      action: PayloadAction<{
+        interactionIds: string[];
+        resolvedAt?: number;
+        resolvedWeek?: number;
+      }>,
     ) {
       const { interactionIds, resolvedAt, resolvedWeek } = action.payload;
       if (interactionIds.length === 0) return;
@@ -291,12 +325,22 @@ const socialSlice = createSlice({
           rel.tags = Array.from(new Set([...rel.tags, ...tags]));
         }
         rel.tags = tagsAfterAllianceDecay(rel.tags, rel.affinity, preserveIncomingAlliance);
+        if (delta === 0 && tags && tags.length > 0) {
+          rel.affinity = enforceRelationshipTagAffinity(rel.affinity, rel.tags);
+        }
       } else {
         // Avoid creating zero-information relationships (no affinity change, no tags).
         if (delta === 0 && (!tags || tags.length === 0)) {
           return;
         }
-        state.relationships[source][target] = { affinity: delta, tags: tags ?? [] };
+        const relationshipTags = tags ?? [];
+        state.relationships[source][target] = {
+          affinity:
+            delta === 0
+              ? enforceRelationshipTagAffinity(delta, relationshipTags)
+              : delta,
+          tags: relationshipTags,
+        };
       }
     },
     /** Apply delta updates to directed social memory entries. */
@@ -341,7 +385,8 @@ const socialSlice = createSlice({
     /** Record a promise created by a high-stakes incoming response. */
     addSocialCommitment(state, action: PayloadAction<SocialCommitment>) {
       if (!state.commitments) state.commitments = [];
-      if (state.commitments.some((entry) => entry.interactionId === action.payload.interactionId)) return;
+      if (state.commitments.some((entry) => entry.interactionId === action.payload.interactionId))
+        return;
       state.commitments.unshift(action.payload);
     },
     /** Mark a pending promise as kept, broken, or void. */
@@ -405,7 +450,12 @@ const socialSlice = createSlice({
      * Replaces the entire social slice with the snapshot.
      */
     hydrateSocial(_state, action: PayloadAction<SocialState>) {
-      return { ...action.payload, commitments: action.payload.commitments ?? [] };
+      return {
+        ...action.payload,
+        relationships: normalizeRelationshipsForTags(action.payload.relationships),
+        commitments: action.payload.commitments ?? [],
+        dramaNetwork: normalizeDramaSocialNetwork(action.payload.dramaNetwork),
+      };
     },
   },
 });
@@ -422,6 +472,9 @@ export const {
   setInfoBankEntry,
   applyInfoDelta,
   recordSocialAction,
+  replaceDramaNetwork,
+  applyDramaAction,
+  applyDramaIncomingResponse,
   pushIncomingInteraction,
   scheduleIncomingInteraction,
   recordIncomingInteractionDecision,
@@ -467,6 +520,8 @@ export const selectSocialMemory = (state: { social: SocialState }) =>
   state.social?.socialMemory ?? {};
 export const selectSocialCommitments = (state: { social: SocialState }) =>
   state.social?.commitments ?? [];
+export const selectDramaNetwork = (state: { social: SocialState }) =>
+  state.social?.dramaNetwork ?? SOCIAL_INITIAL_STATE.dramaNetwork;
 export const selectPendingSocialCommitments = (state: { social: SocialState }) =>
   selectSocialCommitments(state).filter((commitment) => commitment.status === 'pending');
 export const selectWeekStartRelSnapshot = (state: { social: SocialState }) =>

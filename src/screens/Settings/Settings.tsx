@@ -211,7 +211,7 @@ export default function Settings() {
       case 'toggle': {
         const hasAccess =
           item.id === 'dramaMode'
-            ? hasDramaMode
+            ? hasDramaMode || settings.gameUX.dramaMode
             : item.id === 'publicMode'
               ? hasPublicMode
               : item.id === 'tribunalHouse'

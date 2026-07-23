@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit'
+﻿import { configureStore } from '@reduxjs/toolkit'
 import { describe, expect, it } from 'vitest'
 import gameReducer from '../../src/store/gameSlice'
 import settingsReducer, { setGameUX } from '../../src/store/settingsSlice'
@@ -35,9 +35,14 @@ function makeContextStore({
       game: {
         ...initialGame,
         players: basePlayers.map((player) =>
-          player.id === 'holder' ? { ...player, status: holderStatus } : player
+          player.id === 'holder'
+            ? { ...player, status: holderStatus === 'nominated' ? 'nominated+pos' : 'loh+pos' }
+            : player
         ),
         nomineeIds,
+        lohId: 'holder',
+        posWinnerId: 'holder',
+        phase: 'pos_results',
         nominationContext: { autoNomineeId },
       },
     } as never,
