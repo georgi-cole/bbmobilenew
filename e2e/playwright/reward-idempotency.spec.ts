@@ -335,6 +335,8 @@ test.describe('Rewarded social-energy economy journey', () => {
       )
     ).toBe(1)
 
+    await rewardPrompt.getByRole('button', { name: 'No Thanks' }).click()
+    await expect(rewardPrompt).toBeHidden()
     await saveAndReturnHome(page)
     await page.reload()
     await waitForHome(page)

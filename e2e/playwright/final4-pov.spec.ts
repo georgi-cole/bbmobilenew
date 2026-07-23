@@ -1,4 +1,16 @@
-import { test, expect, type Page } from './support/test'
+import { test, expect, readAppState, type Page } from './support/test'
+
+async function expectTvFeedText(page: Page, pattern: RegExp): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const state = await readAppState(page)
+        return state.game.tvFeed.map((event) => event.text).join('\n')
+      },
+      { timeout: 10000 }
+    )
+    .toMatch(pattern)
+}
 
 /** Navigate to the game screen with the debug panel enabled. */
 async function gotoDebug(page: Page) {
@@ -73,17 +85,14 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await expect(forceF4Btn).toBeVisible({ timeout: 3000 })
     await forceF4Btn.click()
 
-    await page.waitForSelector('[data-testid="tv-feed"]', { state: 'visible', timeout: 10000 })
-    const tvFeed = page.getByTestId('tv-feed')
-
     // Advance — Continue is visible because the AI is the POS holder (no blocking flag)
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' })
     await expect(continueBtn).toBeVisible({ timeout: 3000 })
     await continueBtn.click()
 
     // After advance(): plea sequence + AI eviction decision should appear in TV feed
-    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 10000 })
-    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 10000 })
+    await expectTvFeedText(page, /asks nominees for their pleas/i)
+    await expectTvFeedText(page, /has chosen to evict/i)
 
     // Game must have advanced to The Finale — check the phase pill which reliably
     // shows "THE FINALE" without the TVLog duplicate-suppression that hides the
@@ -118,16 +127,13 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await expect(forceF4Btn).toBeVisible({ timeout: 3000 })
     await forceF4Btn.click()
 
-    await page.waitForSelector('[data-testid="tv-feed"]', { state: 'visible', timeout: 10000 })
-    const tvFeed = page.getByTestId('tv-feed')
-
     // Continue is visible until advance() sets awaitingPovDecision
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' })
     await expect(continueBtn).toBeVisible({ timeout: 3000 })
     await continueBtn.click()
 
     // Plea messages must appear in the TV feed
-    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 10000 })
+    await expectTvFeedText(page, /asks nominees for their pleas/i)
 
     // If the ChatOverlay is present (skippable plea cinematic), click "Skip to end"
     // to immediately complete it so the decision modal appears without delay.
@@ -151,7 +157,7 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await confirmBtn.click()
 
     // TV feed must contain the "has chosen to evict" message and the Final 3 announcement
-    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 10000 })
+    await expectTvFeedText(page, /has chosen to evict/i)
     // Game must have advanced to The Finale — check the phase pill (reliable; not subject to TVLog suppression)
     await expect(page.locator('.status-pill--phase')).toContainText(/the finale/i, {
       timeout: 10000,
@@ -178,49 +184,46 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await expect(forceF3Btn).toBeVisible({ timeout: 3000 })
     await forceF3Btn.click()
 
-    await page.waitForSelector('[data-testid="tv-feed"]', { state: 'visible', timeout: 10000 })
-    const tvFeed = page.getByTestId('tv-feed')
-
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' })
     const dismissBtn = page.getByRole('button', { name: 'Dismiss challenge (score 0)' })
 
     // final3 → final3_comp1: "three-part LOH" announcement
     await expect(continueBtn).toBeVisible({ timeout: 3000 })
     await continueBtn.click()
-    await expect(tvFeed).toContainText(/three-part LOH/i, { timeout: 10000 })
+    await expectTvFeedText(page, /three-part LOH/i)
 
     // final3_comp1 → final3_comp1_minigame (human present): Part 1 underway message appears.
     // Dismiss the minigame (scores 0 for human; AI wins Part 1).
     // Then advance() result: "Part 1 result" message appears and phase goes to final3_comp2.
     await expect(continueBtn).toBeVisible({ timeout: 3000 })
     await continueBtn.click()
-    await expect(tvFeed).toContainText(/Part 1 is underway/i, { timeout: 10000 })
+    await expectTvFeedText(page, /Part 1 is underway/i)
     await expect(dismissBtn).toBeVisible({ timeout: 5000 })
     await dismissBtn.click()
-    await expect(tvFeed).toContainText(/Part 1 result/i, { timeout: 10000 })
+    await expectTvFeedText(page, /Part 1 result/i)
 
     // final3_comp2 → final3_comp2_minigame (human is a Part-2 competitor unless they won Part 1).
     // Dismiss the minigame → "Part 2 result" message appears and phase goes to final3_comp3.
     await expect(continueBtn).toBeVisible({ timeout: 3000 })
     await continueBtn.click()
-    await expect(tvFeed).toContainText(/Part 2 is underway/i, { timeout: 10000 })
+    await expectTvFeedText(page, /Part 2 is underway/i)
     // Part 2 involves the two Part-1 losers. If the human won Part 1, they sit out Part 2
     // and the game advances deterministically (no minigame). Otherwise dismiss the minigame.
     const isDismissVisible = await dismissBtn.isVisible().catch(() => false)
     if (isDismissVisible) {
       await dismissBtn.click()
     }
-    await expect(tvFeed).toContainText(/Part 2 result/i, { timeout: 10000 })
+    await expectTvFeedText(page, /Part 2 result/i)
 
     // final3_comp3 → final3_comp3_minigame: Part 3 underway + Final LOH winner announcement.
     await expect(continueBtn).toBeVisible({ timeout: 3000 })
     await continueBtn.click()
-    await expect(tvFeed).toContainText(/Part 3 is underway/i, { timeout: 10000 })
+    await expectTvFeedText(page, /Part 3 is underway/i)
     // Dismiss the Part 3 minigame if the human is a finalist.
     const isDismissVisible3 = await dismissBtn.isVisible().catch(() => false)
     if (isDismissVisible3) {
       await dismissBtn.click()
     }
-    await expect(tvFeed).toContainText(/Final Leader of the House/i, { timeout: 10000 })
+    await expectTvFeedText(page, /Final Leader of the House/i)
   })
 })
