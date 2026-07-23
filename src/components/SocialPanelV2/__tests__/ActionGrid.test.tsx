@@ -29,7 +29,18 @@ const VISIBLE_ACTIONS = SOCIAL_ACTIONS.filter((a) => !a.aiOnly);
 
 /** Actions visible without any target selected (also excludes role-gated). */
 const DEFAULT_VISIBLE_ACTIONS = VISIBLE_ACTIONS.filter(
-  (a) => !a.requiredTargetStatus && !a.dramaOnly,
+  (a) =>
+    !a.requiredTargetStatus &&
+    !a.dramaOnly &&
+    !a.requiredRelationshipTags &&
+    !a.excludedRelationshipTags &&
+    a.minAffinity === undefined &&
+    a.maxAffinity === undefined &&
+    !a.requiredActorStatus &&
+    !a.allowedPhases &&
+    !a.requiredArcTypes &&
+    !a.requiredArcStages &&
+    !a.requiresKnownSecret,
 );
 
 describe('ActionGrid – rendering', () => {
@@ -49,15 +60,19 @@ describe('ActionGrid – rendering', () => {
   });
 
   it('shows role-gated actions when primaryTargetStatus matches', () => {
-    render(<ActionGrid primaryTargetStatus="loh" />);
-    const lohActions = VISIBLE_ACTIONS.filter((a) => a.requiredTargetStatus?.includes('loh'));
+    render(<ActionGrid primaryTargetStatus="loh" currentPhase="social_1" />);
+    const lohActions = VISIBLE_ACTIONS.filter(
+      (a) =>
+        a.requiredTargetStatus?.includes('loh') &&
+        (!a.allowedPhases || a.allowedPhases.includes('social_1')),
+    );
     for (const action of lohActions) {
       expect(screen.getByText(action.title)).toBeDefined();
     }
   });
 
   it('shows POS-gated actions when primaryTargetStatus matches the POS holder', () => {
-    render(<ActionGrid primaryTargetStatus="pos" />);
+    render(<ActionGrid primaryTargetStatus="pos" currentPhase="pos_results" />);
     expect(screen.getByText('Ask to Use Safety')).toBeDefined();
   });
 
@@ -88,6 +103,28 @@ describe('ActionGrid – rendering', () => {
     expect(screen.getByText('Plant a Lie')).toBeDefined();
   });
 });
+  it('only reveals Betray Ally for an active alliance', () => {
+    const props = {
+      actorId: 'human',
+      selectedTargetIds: new Set(['lia']),
+    };
+    const { rerender } = render(
+      <ActionGrid
+        {...props}
+        relationships={{ human: { lia: { affinity: 40, tags: [] } } }}
+      />,
+    );
+    expect(screen.queryByText('Betray Ally')).toBeNull();
+
+    rerender(
+      <ActionGrid
+        {...props}
+        relationships={{ human: { lia: { affinity: 40, tags: ['alliance'] } } }}
+      />,
+    );
+    expect(screen.getByText('Betray Ally')).toBeDefined();
+  });
+
 
 describe('ActionGrid – interaction', () => {
   it('calls onActionClick with action id when a card is clicked', () => {
@@ -287,13 +324,10 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
     expect(screen.queryByText(/Need 💡/)).toBeNull();
   });
 
-  it('disables propose alliance when the selected target is already allied', () => {
+  it('hides propose alliance when the selected target is already allied', () => {
     render(
       <ActionGrid
         actorId="user"
-        actorEnergy={100}
-        actorInfluence={1000}
-        actorInfo={1000}
         selectedTargetIds={new Set(['p2'])}
         relationships={{
           user: {
@@ -303,8 +337,6 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
       />,
     );
 
-    const card = screen.getByRole('button', { name: /Propose Alliance/i });
-    expect(card.getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getByText('Already allied')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Propose Alliance/i })).toBeNull();
   });
 });

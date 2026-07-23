@@ -191,7 +191,7 @@ function _tick(): void {
     // Check full affordability (energy + influence + info) before attempting
     const actionDef = getActionById(actionId);
     if (!actionDef) continue;
-    if (!canAfford(player.id, normalizeActionCosts(actionDef))) continue;
+    if (!canAfford(player.id, normalizeActionCosts(actionDef, 0, Boolean(dramaMove)))) continue;
 
     const targets = dramaMove
       ? [dramaMove.targetId, dramaMove.subjectId].filter((id): id is string => Boolean(id))

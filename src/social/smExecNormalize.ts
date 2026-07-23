@@ -10,6 +10,7 @@
  *   normalizeActionCosts(action)   → { energy, influence, info }
  */
 
+import { resolveActionTargetMode } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
 
 type CostValue =
@@ -47,8 +48,15 @@ export function normalizeCost(value: CostValue): number {
 /**
  * Return the normalised energy cost for a social action definition.
  */
-export function normalizeActionCost(action: SocialActionDefinition): number {
-  return normalizeCost(action.baseCost);
+export function normalizeActionCost(
+  action: SocialActionDefinition,
+  targetCount = 0,
+  dramaMode = false,
+): number {
+  const cost = dramaMode && action.dramaCost ? action.dramaCost : action.baseCost;
+  const base = normalizeCost(cost);
+  if (resolveActionTargetMode(action, dramaMode) !== 'multi' || !action.energyPerTarget) return base;
+  return Math.max(base, Math.max(0, targetCount) * action.energyPerTarget);
 }
 
 /**
@@ -87,15 +95,19 @@ function toScaledIntPts(v: number, scale: number): number {
  * Influence yields are normalized separately by normalizeActionYields and remain
  * authored in legacy fractional bank units (e.g. 0.02 → +2).
  */
-export function normalizeActionCosts(action: SocialActionDefinition): {
+export function normalizeActionCosts(
+  action: SocialActionDefinition,
+  targetCount = 0,
+  dramaMode = false,
+): {
   energy: number;
   influence: number;
   info: number;
 } {
   return {
-    energy: normalizeCost(action.baseCost),
-    influence: toScaledIntPts(normalizeAuxCost(action.baseCost, 'influence'), DENOMINATED_INFLUENCE_COST_SCALE),
-    info: toScaledIntPts(normalizeAuxCost(action.baseCost, 'info'), BANK_POINT_SCALE),
+    energy: normalizeActionCost(action, targetCount, dramaMode),
+    influence: toScaledIntPts(normalizeAuxCost(dramaMode && action.dramaCost ? action.dramaCost : action.baseCost, 'influence'), DENOMINATED_INFLUENCE_COST_SCALE),
+    info: toScaledIntPts(normalizeAuxCost(dramaMode && action.dramaCost ? action.dramaCost : action.baseCost, 'info'), BANK_POINT_SCALE),
   };
 }
 

@@ -21,8 +21,11 @@ import {
 } from '../../social/socialModuleAvailability';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
+import { isEmoji, resolveAvatar } from '../../utils/avatar';
 import RecentActivity from './RecentActivity';
+import HousePulse from '../HousePulse/HousePulse';
 import type { Player } from '../../types';
+import { resolveActionTargetMode } from '../../social/socialActions';
 import type { SubjectPool } from '../../social/socialActions';
 import './SocialPanelV2.css';
 
@@ -143,12 +146,12 @@ export default function SocialPanelV2() {
       const successCount = userLogs.filter((l) => l.outcome === 'success').length;
       const failCount = userLogs.length - successCount;
       const drText = buildDrSessionSummary(game.week, userLogs.length, successCount, failCount);
-      dispatch(addTvEvent({ text: drText, type: 'diary', source: 'manual', channels: ['dr'] }));
+      dispatch(addTvEvent({ text: drText, type: 'social', source: 'manual', channels: ['mainLog', 'dr'] }));
 
       // Show a short, playful TV-zone sentence — dispatched last so it appears at
       // the top of the feed (index 0) and is shown in the TV viewport after close.
-      const tvMsg =
-        TV_SOCIAL_CLOSE_MESSAGES[Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)];
+      const messageIndex = (game.week + userLogs.length) % TV_SOCIAL_CLOSE_MESSAGES.length;
+      const tvMsg = TV_SOCIAL_CLOSE_MESSAGES[messageIndex];
       dispatch(addTvEvent({ text: tvMsg, type: 'social', channels: ['tv', 'mainLog'] }));
     }
     if (sessionLogs.length > 0) {
@@ -184,15 +187,17 @@ export default function SocialPanelV2() {
 
   // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
-  const targetMode =
-    selectedAction?.targetMode ?? (selectedAction?.needsTargets === false ? 'none' : 'primary');
+  const targetMode = selectedAction ? resolveActionTargetMode(selectedAction, dramaMode) : 'primary';
   const effectivePrimaryTargetId = targetMode === 'none' ? null : primaryTargetId;
   const needsTarget = targetMode !== 'none';
   const needsSubject = targetMode === 'primaryPlusSubject';
-  const canExecute =
-    !!selectedActionId &&
-    (!needsTarget || effectivePrimaryTargetId !== null) &&
-    (!needsSubject || selectedSubjectId !== null);
+  const minimumTargets = Math.max(2, selectedAction?.minTargets ?? 2);
+  const hasRequiredTargets =
+    !needsTarget ||
+    (targetMode === 'multi'
+      ? selectedTargets.size >= minimumTargets
+      : effectivePrimaryTargetId !== null);
+  const canExecute = !!selectedActionId && hasRequiredTargets && (!needsSubject || selectedSubjectId !== null);
 
   // Clear subject whenever action or primary target changes.
   // NOTE: This is done explicitly in the event handlers (handleActionClick and
@@ -215,7 +220,7 @@ export default function SocialPanelV2() {
   // the action's requiredTargetStatus constraint (e.g. switching away from LOH).
   const handleSelectionChange = useCallback(
     (ids: Set<string>, details: { primaryTargetId: string | null }) => {
-      if (selectedAction?.targetMode === 'multi') {
+      if (selectedAction && resolveActionTargetMode(selectedAction, dramaMode) === 'multi') {
         setSelectedTargets(new Set(ids));
         setPrimaryTargetId(details.primaryTargetId);
       } else {
@@ -235,7 +240,7 @@ export default function SocialPanelV2() {
         }
       }
     },
-    [selectedAction, game.players],
+    [selectedAction, dramaMode, game.players],
   );
 
   const handleExecute = useCallback(() => {
@@ -260,10 +265,14 @@ export default function SocialPanelV2() {
       setExecuting(false);
       return;
     }
-    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, {
-      source: 'manual',
-      subjectId: selectedSubjectId ?? undefined,
-    });
+    const result =
+      targetMode === 'multi'
+        ? SocialManeuvers.executeGroupAction(humanPlayer.id, [...selectedTargets], selectedActionId, {
+            source: 'manual',
+          })
+        : SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, {
+            source: 'manual', subjectId: selectedSubjectId ?? undefined,
+          });
     setFeedbackMsg(result.summary);
     if (result.success) {
       // Bug fix: action state is intentionally NOT cleared after success.
@@ -288,6 +297,7 @@ export default function SocialPanelV2() {
     humanPlayer,
     selectedActionId,
     selectedSubjectId,
+    selectedTargets,
     targetMode,
   ]);
 
@@ -301,6 +311,9 @@ export default function SocialPanelV2() {
         humanPlayer!.id,
         selectedAction,
         effectivePrimaryTargetId ?? humanPlayer!.id,
+        undefined,
+        selectedTargets.size,
+        dramaMode,
       )
     : null;
 
@@ -390,18 +403,8 @@ export default function SocialPanelV2() {
           </button>
         </header>
 
-        {dramaMode && (
-          <div className="sp2-house-pulse" aria-label="Drama Mode house pulse">
-            <strong>House Pulse</strong>
-            <span>
-              {dramaNetwork.arcs.filter((arc) => arc.status === 'active').length} active stories
-            </span>
-            <span>
-              {dramaNetwork.rumours.filter((rumour) => rumour.status === 'circulating').length}{' '}
-              rumours moving
-            </span>
-            {dramaNetwork.events.at(-1) && <em>{dramaNetwork.events.at(-1)?.text}</em>}
-          </div>
+        {dramaMode && humanPlayer && (
+          <HousePulse network={dramaNetwork} players={game.players} humanId={humanPlayer.id} />
         )}
 
         {/* ── Two-column body ──────────────────────────────────────────────── */}
@@ -416,6 +419,7 @@ export default function SocialPanelV2() {
               disabledIds={disabledPlayerIds}
               selectedIds={selectedTargets}
               onSelectionChange={handleSelectionChange}
+              multiSelectEnabled={targetMode === 'multi'}
               deltasByTargetId={deltasByTargetId}
             />
           </div>
@@ -442,6 +446,7 @@ export default function SocialPanelV2() {
               }
               dramaMode={dramaMode}
               currentPhase={game.phase}
+              dramaNetwork={dramaNetwork}
             />
           </div>
         </div>
@@ -470,7 +475,11 @@ export default function SocialPanelV2() {
                   >
                     {candidate.avatar && (
                       <span className="sp2-subject-chip__avatar" aria-hidden="true">
-                        {candidate.avatar}
+                        {isEmoji(candidate.avatar) ? (
+                          candidate.avatar
+                        ) : (
+                          <img src={resolveAvatar(candidate)} alt="" />
+                        )}
                       </span>
                     )}
                     <span className="sp2-subject-chip__name">{candidate.name}</span>

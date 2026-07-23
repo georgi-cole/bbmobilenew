@@ -54,6 +54,7 @@ export interface DramaIncomingResponseEffect {
   holderId: string;
   subjectId: string;
   responseType: string;
+  interactionType?: string;
   week: number;
 }
 export interface DramaAIMoveInput {
@@ -81,6 +82,7 @@ export interface DramaAIMove {
 export function createInitialDramaSocialNetwork(): DramaSocialNetwork {
   return {
     arcs: [],
+    alliances: [],
     rumours: [],
     beliefs: [],
     events: [],
@@ -89,6 +91,7 @@ export function createInitialDramaSocialNetwork(): DramaSocialNetwork {
       arcsStartedThisWeek: 0,
       rumourHopsThisWeek: 0,
       publicEventsThisWeek: 0,
+      privateDiscoveriesThisWeek: 0,
       lastPublicEventWeek: -99,
       lastProcessedPhase: null,
     },
@@ -102,6 +105,7 @@ export function normalizeDramaSocialNetwork(
   if (!value) return base;
   return {
     arcs: value.arcs ?? [],
+    alliances: value.alliances ?? [],
     rumours: value.rumours ?? [],
     beliefs: value.beliefs ?? [],
     events: value.events ?? [],
@@ -115,10 +119,20 @@ const clone = (network: DramaSocialNetwork): DramaSocialNetwork => {
     arcs: value.arcs.map((arc) => ({
       ...arc,
       participantIds: [...arc.participantIds] as [string, string],
+      discoveredByIds: [...(arc.discoveredByIds ?? [])],
+    })),
+    alliances: value.alliances.map((alliance) => ({
+      ...alliance,
+      participantIds: [...alliance.participantIds] as [string, string],
+      loyaltyByPlayer: { ...alliance.loyaltyByPlayer },
+      primaryForIds: [...alliance.primaryForIds],
+      falsePretenceByIds: [...alliance.falsePretenceByIds],
+      discoveredByIds: [...alliance.discoveredByIds],
     })),
     rumours: value.rumours.map((rumour) => ({
       ...rumour,
       listeners: rumour.listeners.map((listener) => ({ ...listener })),
+      sourceChain: [...(rumour.sourceChain ?? [])],
     })),
     beliefs: value.beliefs.map((belief) => ({ ...belief })),
     events: value.events.map((event) => ({ ...event, participantIds: [...event.participantIds] })),
@@ -233,6 +247,106 @@ function addEvent(network: DramaSocialNetwork, event: Omit<DramaHouseEvent, 'id'
   network.events = network.events.slice(-DRAMA_MODE_CONFIG.pacing.maxStoredEvents);
 }
 
+function upsertAlliance(
+  network: DramaSocialNetwork,
+  actorId: string,
+  targetId: string,
+  week: number,
+  origin: 'proposal' | 'incoming' | 'story',
+) {
+  const id = `alliance:${pairId(actorId, targetId)}`;
+  const existing = network.alliances.find((alliance) => alliance.id === id);
+  if (existing) {
+    existing.status = 'active';
+    existing.lastUpdatedWeek = week;
+    existing.loyaltyByPlayer[actorId] = Math.max(existing.loyaltyByPlayer[actorId] ?? 0, 62);
+    return existing;
+  }
+  const strongerTargetPact = network.alliances
+    .filter(
+      (alliance) =>
+        alliance.status === 'active' &&
+        alliance.participantIds.includes(targetId) &&
+        !alliance.participantIds.includes(actorId) &&
+        (alliance.loyaltyByPlayer[targetId] ?? 0) >= 68,
+    )
+    .sort(
+      (a, b) =>
+        (b.loyaltyByPlayer[targetId] ?? 0) - (a.loyaltyByPlayer[targetId] ?? 0),
+    )[0];
+  const falsePretence = Boolean(strongerTargetPact);
+  const alliance = {
+    id,
+    participantIds: [actorId, targetId] as [string, string],
+    formedWeek: week,
+    lastUpdatedWeek: week,
+    status: 'active' as const,
+    secrecy: 'secret' as const,
+    origin,
+    loyaltyByPlayer: { [actorId]: 68, [targetId]: falsePretence ? 30 : 62 },
+    primaryForIds: falsePretence ? [actorId] : [actorId, targetId],
+    falsePretenceByIds: falsePretence ? [targetId] : [],
+    discoveredByIds: [] as string[],
+  };
+  network.alliances.push(alliance);
+  addEvent(network, {
+    type: 'alliance_beat',
+    week,
+    phase: 'social',
+    participantIds: [actorId, targetId],
+    title: 'A quiet deal was struck',
+    text: 'Two housemates agreed to work together, but loyalty will be proven by actions.',
+    detail: 'The pact is private until someone shares it, spies on it, or exposes it.',
+    consequence: 'Future votes, safety decisions and betrayals will test the agreement.',
+    public: false,
+    severity: 'notable',
+  });
+  return alliance;
+}
+
+function discoverSecretArc(
+  network: DramaSocialNetwork,
+  spyId: string,
+  week: number,
+  phase: string,
+) {
+  const arc = network.arcs.find(
+    (entry) =>
+      entry.status === 'active' &&
+      !entry.public &&
+      ['romance', 'bromance'].includes(entry.type) &&
+      !entry.participantIds.includes(spyId) &&
+      !(entry.discoveredByIds ?? []).includes(spyId),
+  );
+  if (!arc) return null;
+  arc.discoveredByIds = [...(arc.discoveredByIds ?? []), spyId];
+  network.pacing.privateDiscoveriesThisWeek += 1;
+  addEvent(network, {
+    type: 'discovery',
+    week,
+    phase,
+    participantIds: [spyId, ...arc.participantIds],
+    title: 'Caught away from the cameras',
+    text: `A housemate spotted signs of a secret ${arc.type}.`,
+    detail: 'Only the witness and the people involved know this has been seen, for now.',
+    consequence: 'The witness can keep the secret, trade it, or let the rumour travel.',
+    relatedArcId: arc.id,
+    public: false,
+    severity: 'notable',
+  });
+  makeRumour(
+    network,
+    spyId,
+    spyId,
+    arc.participantIds[0],
+    arc.type === 'romance' ? 'secret_romance' : 'secret_alliance',
+    'true',
+    week,
+    `A hidden ${arc.type} links the two housemates who were spotted together.`,
+  );
+  return arc;
+}
+
 function makeRumour(
   network: DramaSocialNetwork,
   actorId: string,
@@ -241,6 +355,7 @@ function makeRumour(
   kind: DramaRumourKind,
   truth: DramaRumour['truth'],
   week: number,
+  claim = 'A private promise may not match what was said in another room.',
 ) {
   const rumour: DramaRumour = {
     id: `rumour:${actorId}:${subjectId}:${week}:${network.rumours.length}`,
@@ -248,6 +363,8 @@ function makeRumour(
     originatorId: actorId,
     subjectId,
     truth,
+    claim,
+    evidence: truth === 'true' ? 'credible' : truth === 'false' ? 'none' : 'weak',
     createdWeek: week,
     expiresWeek: week + DRAMA_MODE_CONFIG.pacing.rumourLifetimeWeeks,
     listeners: [
@@ -260,6 +377,7 @@ function makeRumour(
       },
     ],
     status: 'circulating',
+    sourceChain: [actorId],
   };
   network.rumours.push(rumour);
   upsertBelief(
@@ -281,8 +399,33 @@ export function applyDramaActionEffect(
   const network = clone(current);
   const subject = input.subjectId ?? input.targetId;
   if (input.success === false) return network;
-  if (input.actionId === 'flirt') {
-    startOrAdvanceArc(network, 'romance', input.actorId, input.targetId, input.week, 24);
+  if (input.actionId === 'proposeAlliance')
+    upsertAlliance(network, input.actorId, input.targetId, input.week, 'proposal');
+  if (input.actionId === 'break_alliance') {
+    const alliance = network.alliances.find(
+      (entry) =>
+        entry.status === 'active' &&
+        pairId(...entry.participantIds) === pairId(input.actorId, input.targetId),
+    );
+    if (alliance) {
+      alliance.status = 'broken';
+      alliance.lastUpdatedWeek = input.week;
+      addEvent(network, {
+        type: 'alliance_beat',
+        week: input.week,
+        phase: input.phase,
+        participantIds: [input.actorId, input.targetId],
+        title: 'The pact cracked',
+        text: 'A private alliance was deliberately ended.',
+        consequence: 'Both players will remember who walked away when the pressure rose.',
+        public: false,
+        severity: 'notable',
+      });
+    }
+  }
+  if (['flirt', 'private_flirt', 'late_night_talk', 'cuddle', 'kiss_under_covers', 'pool_makeout', 'spend_night', 'rekindle', 'risk_the_vibe'].includes(input.actionId)) {
+    const romanceStep = input.actionId === 'flirt' ? 24 : input.actionId === 'spend_night' ? 20 : 14;
+    startOrAdvanceArc(network, 'romance', input.actorId, input.targetId, input.week, romanceStep);
     upsertBelief(
       network,
       input.targetId,
@@ -294,6 +437,59 @@ export function applyDramaActionEffect(
       input.week,
     );
   }
+  if (input.actionId === 'go_public') {
+    const arc = network.arcs.find(
+      (entry) =>
+        entry.status === 'active' &&
+        entry.type === 'romance' &&
+        pairId(...entry.participantIds) === pairId(input.actorId, input.targetId),
+    );
+    if (arc) {
+      arc.public = true;
+      network.pacing.publicEventsThisWeek += 1;
+      network.pacing.lastPublicEventWeek = input.week;
+      addEvent(network, {
+        type: 'exposure',
+        week: input.week,
+        phase: input.phase,
+        participantIds: [...arc.participantIds],
+        title: 'No more hiding',
+        text: `${input.actorName ?? input.actorId} and ${input.targetName ?? input.targetId} made their romance public.`,
+        detail: 'The house now knows the bond is personal as well as strategic.',
+        consequence: 'Affection can create loyalty and make both players a visible pair.',
+        relatedArcId: arc.id,
+        public: true,
+        severity: 'major',
+      });
+    }
+  }
+  if (input.actionId === 'end_romance' || input.actionId === 'break_bromance') {
+    const endingType = input.actionId === 'break_bromance' ? 'bromance' : 'romance';
+    const arc = network.arcs.find(
+      (entry) =>
+        entry.status === 'active' &&
+        entry.type === endingType &&
+        pairId(...entry.participantIds) === pairId(input.actorId, input.targetId),
+    );
+    if (arc) {
+      arc.stage = 'resolved';
+      arc.status = 'resolved';
+      addEvent(network, {
+        type: 'arc_beat',
+        week: input.week,
+        phase: input.phase,
+        participantIds: [...arc.participantIds],
+        title: endingType === 'romance' ? 'The romance ended' : 'The pact ended',
+        text: `One housemate called time on the ${endingType}.`,
+        consequence: 'Old closeness can become distance, resentment, or a future repair.',
+        relatedArcId: arc.id,
+        public: arc.public,
+        severity: arc.public ? 'major' : 'notable',
+      });
+    }
+  }
+  if (input.actionId === 'snoop_around')
+    discoverSecretArc(network, input.actorId, input.week, input.phase);
   if (input.actionId === 'ride_or_die') {
     startOrAdvanceArc(network, 'bromance', input.actorId, input.targetId, input.week, 34);
     upsertBelief(
@@ -369,20 +565,59 @@ export function applyDramaActionEffect(
     const rumour = network.rumours.find(
       (entry) => entry.status === 'circulating' && entry.subjectId === input.targetId,
     );
+    const knownArc = network.arcs.find(
+      (entry) =>
+        entry.status === 'active' &&
+        !entry.public &&
+        entry.participantIds.includes(input.targetId) &&
+        (entry.participantIds.includes(input.actorId) ||
+          (entry.discoveredByIds ?? []).includes(input.actorId)),
+    );
     if (rumour) {
       rumour.status = 'exposed';
       rumour.exposureWeek = input.week;
+      rumour.evidence = rumour.truth === 'true' ? 'confirmed' : rumour.evidence;
+    }
+    if (knownArc) knownArc.public = true;
+    if (rumour || knownArc) {
       network.pacing.publicEventsThisWeek += 1;
       network.pacing.lastPublicEventWeek = input.week;
+      const participants = Array.from(
+        new Set([input.actorId, input.targetId, ...(knownArc?.participantIds ?? [])]),
+      );
+      const revelation =
+        rumour?.claim ??
+        `A secret ${knownArc?.type ?? 'relationship'} involving ${input.targetName ?? input.targetId} was confirmed.`;
       addEvent(network, {
         type: 'exposure',
         week: input.week,
         phase: input.phase,
-        participantIds: [input.actorId, input.targetId],
-        text: `HOUSE EXPOSED: ${input.actorName ?? input.actorId} took a secret involving ${input.targetName ?? input.targetId} public.`,
+        participantIds: participants,
+        title: 'House Exposed',
+        text: revelation,
+        detail: `${input.actorName ?? input.actorId} brought the receipts to the whole house.`,
+        consequence: 'Trust, targeting and any overlapping relationships will react to the reveal.',
+        relatedArcId: knownArc?.id,
+        relatedRumourId: rumour?.id,
         public: true,
         severity: 'major',
       });
+      if (knownArc?.type === 'romance') {
+        for (const participantId of knownArc.participantIds) {
+          const overlapping = network.arcs.find(
+            (entry) =>
+              entry.id !== knownArc.id &&
+              entry.status === 'active' &&
+              entry.type === 'romance' &&
+              entry.participantIds.includes(participantId),
+          );
+          if (overlapping) {
+            const hurtPartner = overlapping.participantIds.find((id) => id !== participantId);
+            if (hurtPartner)
+              startOrAdvanceArc(network, 'betrayal', hurtPartner, participantId, input.week, 55);
+          }
+        }
+      }
     }
   }
   return network;
@@ -395,6 +630,8 @@ export function applyDramaIncomingResponseEffect(
   const network = clone(current);
   const positive = ['positive', 'accept'].includes(input.responseType);
   const negative = ['negative', 'decline', 'dismiss', 'ignore'].includes(input.responseType);
+  if (positive && input.interactionType === 'alliance_proposal')
+    upsertAlliance(network, input.subjectId, input.holderId, input.week, 'incoming');
   if (positive)
     upsertBelief(
       network,
@@ -433,6 +670,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
       arcsStartedThisWeek: 0,
       rumourHopsThisWeek: 0,
       publicEventsThisWeek: 0,
+      privateDiscoveriesThisWeek: 0,
       lastProcessedPhase: null,
     };
   network.pacing.lastProcessedPhase = phaseKey;
@@ -470,13 +708,13 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
           source: a,
           target: b,
           delta: positive ? 4 : -5,
-          tags: positive ? ['alliance', arc.type] : [arc.type, 'target'],
+          tags: positive ? [arc.type] : [arc.type, 'target'],
         },
         {
           source: b,
           target: a,
           delta: positive ? 4 : -5,
-          tags: positive ? ['alliance', arc.type] : [arc.type, 'target'],
+          tags: positive ? [arc.type] : [arc.type, 'target'],
         },
       );
     }
@@ -512,6 +750,20 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
   const activeIds = new Set(
     input.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury').map((p) => p.id),
   );
+  if (input.phase === 'social_1') {
+    const lia = input.players.find((player) => player.name.toLowerCase() === 'lia');
+    const ali = input.players.find((player) => player.name.toLowerCase() === 'ali');
+    if (lia && ali && activeIds.has(lia.id) && activeIds.has(ali.id)) {
+      for (const otherId of [...activeIds].filter((id) => id !== lia.id && id !== ali.id)) {
+        const liaSignal = relation(input.relationships, lia.id, otherId);
+        const aliSignal = relation(input.relationships, ali.id, otherId);
+        if (Math.abs(liaSignal) >= 0.3)
+          effects.push({ source: ali.id, target: otherId, delta: liaSignal > 0 ? 2 : -2 });
+        if (Math.abs(aliSignal) >= 0.3)
+          effects.push({ source: lia.id, target: otherId, delta: aliSignal > 0 ? 2 : -2 });
+      }
+    }
+  }
   const canStart =
     input.week >= DRAMA_MODE_CONFIG.pacing.minArcStartWeek &&
     network.pacing.arcsStartedThisWeek < DRAMA_MODE_CONFIG.pacing.maxNewArcsPerWeek &&
@@ -605,6 +857,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
           heardWeek: input.week,
         });
         network.pacing.rumourHopsThisWeek += 1;
+        rumour.sourceChain = [...(rumour.sourceChain ?? [rumour.originatorId]), listenerId];
         upsertBelief(
           network,
           listenerId,
@@ -639,6 +892,54 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
     }
   }
 
+  for (const alliance of network.alliances.filter((entry) => entry.status === 'active')) {
+    const [a, b] = alliance.participantIds;
+    const mutual = (relation(input.relationships, a, b) + relation(input.relationships, b, a)) / 2;
+    for (const playerId of alliance.participantIds) {
+      const current = alliance.loyaltyByPlayer[playerId] ?? 50;
+      alliance.loyaltyByPlayer[playerId] = clamp(current + (mutual >= 0.45 ? 3 : mutual < 0.1 ? -5 : 0));
+      const originalPactStillActive = network.alliances.some(
+        (candidate) =>
+          candidate.id !== alliance.id &&
+          candidate.status === 'active' &&
+          candidate.participantIds.includes(playerId) &&
+          candidate.primaryForIds.includes(playerId),
+      );
+      if (alliance.falsePretenceByIds.includes(playerId) && !originalPactStillActive) {
+        alliance.loyaltyByPlayer[playerId] = clamp(alliance.loyaltyByPlayer[playerId] + 10);
+        if (alliance.loyaltyByPlayer[playerId] >= 58) {
+          alliance.falsePretenceByIds = alliance.falsePretenceByIds.filter((id) => id !== playerId);
+          alliance.primaryForIds = Array.from(new Set([...alliance.primaryForIds, playerId]));
+        }
+      }
+    }
+    alliance.lastUpdatedWeek = input.week;
+    if (Math.max(...Object.values(alliance.loyaltyByPlayer)) < 28) alliance.status = 'strained';
+  }
+
+  const canSpy =
+    input.week >= 2 &&
+    ['social_1', 'social_2'].includes(input.phase) &&
+    network.pacing.privateDiscoveriesThisWeek < 1;
+  if (canSpy) {
+    const secretArc = network.arcs.find(
+      (entry) =>
+        entry.status === 'active' &&
+        !entry.public &&
+        ['romance', 'bromance'].includes(entry.type) &&
+        entry.stage !== 'spark',
+    );
+    const spy = secretArc
+      ? [...activeIds].find(
+          (id) =>
+            !secretArc.participantIds.includes(id) &&
+            !(secretArc.discoveredByIds ?? []).includes(id) &&
+            hash(`${input.seed}:${input.week}:${input.phase}:${id}:${secretArc.id}`) % 7 === 0,
+        )
+      : undefined;
+    if (spy) discoverSecretArc(network, spy, input.week, input.phase);
+  }
+
   const exposureReady =
     input.week >= 3 &&
     network.pacing.publicEventsThisWeek < DRAMA_MODE_CONFIG.pacing.maxPublicEventsPerWeek &&
@@ -659,14 +960,28 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
       rumour.exposureWeek = input.week;
       network.pacing.publicEventsThisWeek += 1;
       network.pacing.lastPublicEventWeek = input.week;
-      const line = pickDramaCopy(DRAMA_DIALOGUE_BANK.exposure[rumour.kind], rumour.id);
-      publicAnnouncement = names(line, input.players, [rumour.originatorId, rumour.subjectId]);
+      const relatedArc = network.arcs.find(
+        (arc) =>
+          arc.status === 'active' &&
+          !arc.public &&
+          arc.participantIds.includes(rumour.subjectId) &&
+          (rumour.kind === 'secret_romance' ? arc.type === 'romance' : arc.type === 'bromance'),
+      );
+      if (relatedArc) relatedArc.public = true;
+      const line = relatedArc
+        ? `HOUSE EXPOSED: ${relatedArc.participantIds.map((id) => input.players.find((player) => player.id === id)?.name ?? id).join(' and ')} have been hiding a ${relatedArc.type}.`
+        : pickDramaCopy(DRAMA_DIALOGUE_BANK.exposure[rumour.kind], rumour.id);
+      publicAnnouncement = relatedArc ? line : names(line, input.players, [rumour.originatorId, rumour.subjectId]);
       addEvent(network, {
         type: 'exposure',
         week: input.week,
         phase: input.phase,
-        participantIds: [rumour.originatorId, rumour.subjectId],
+        participantIds: Array.from(new Set([rumour.originatorId, rumour.subjectId, ...(relatedArc?.participantIds ?? [])])),
         text: publicAnnouncement,
+        title: 'House Exposed',
+        detail: rumour.claim,
+        consequence: rumour.truth === 'false' ? 'The source risks becoming an exposed liar.' : 'The reveal changes trust, targeting and relationship pressure.',
+        relatedRumourId: rumour.id,
         public: true,
         severity: 'major',
       });
@@ -721,8 +1036,22 @@ export function chooseDramaAIMove(input: DramaAIMoveInput): DramaAIMove | null {
         targetId: other,
         reason: `${arc.type} arc at ${arc.intensity}`,
       };
-    if (arc.type === 'romance' && !alreadyDid('flirt', other))
-      return { actionId: 'flirt', targetId: other, reason: 'developing romance' };
+    if (arc.type === 'romance') {
+      const romanceAction =
+        arc.stage === 'spark'
+          ? 'private_flirt'
+          : arc.stage === 'building'
+            ? 'late_night_talk'
+            : arc.stage === 'climax' && !arc.public && input.tick % 5 === 0
+              ? 'go_public'
+              : arc.stage === 'climax'
+                ? 'spend_night'
+                : input.tick % 2 === 0
+                  ? 'kiss_under_covers'
+                  : 'cuddle';
+      if (!alreadyDid(romanceAction, other))
+        return { actionId: romanceAction, targetId: other, reason: `${arc.stage} romance arc` };
+    }
     if (arc.type === 'bromance' && !alreadyDid('trade_secrets', other))
       return {
         actionId: 'trade_secrets',
@@ -757,6 +1086,29 @@ export function chooseDramaAIMove(input: DramaAIMoveInput): DramaAIMove | null {
     return { actionId: 'reassure', targetId: rival.id, reason: 'LOH managing nomination fallout' };
   if (input.posWinnerId === input.actorId && input.lohId && input.lohId !== input.actorId)
     return { actionId: 'whisper', targetId: input.lohId, reason: 'POS holder consulting the LOH' };
+  const existingPact = input.network.alliances.some(
+    (alliance) =>
+      alliance.status === 'active' &&
+      alliance.participantIds.includes(input.actorId) &&
+      alliance.participantIds.includes(close.id),
+  );
+  if (
+    input.week >= 2 &&
+    !existingPact &&
+    relation(input.relationships, input.actorId, close.id) > 0.36 &&
+    !alreadyDid('proposeAlliance', close.id) &&
+    input.tick % 3 === 0
+  )
+    return { actionId: 'proposeAlliance', targetId: close.id, reason: 'forming a strategic pact' };
+  const hiddenArcAvailable = input.network.arcs.some(
+    (entry) =>
+      entry.status === 'active' &&
+      !entry.public &&
+      !entry.participantIds.includes(input.actorId) &&
+      !(entry.discoveredByIds ?? []).includes(input.actorId),
+  );
+  if (hiddenArcAvailable && input.tick % 7 === 2)
+    return { actionId: 'snoop_around', targetId: close.id, reason: 'looking for private information' };
   const memory = input.memory[input.actorId]?.[close.id];
   if ((memory?.gratitude ?? 0) > 4)
     return { actionId: 'ride_or_die', targetId: close.id, reason: 'gratitude becoming loyalty' };

@@ -494,7 +494,7 @@ function pushEvent(
     timestamp: ts,
     meta: buildTvMeta(state, meta),
   };
-  state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+  state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
   return event;
 }
 
@@ -621,10 +621,52 @@ function getSafetyRelationshipScore(state: GameState, holderId: string, nominee:
   const relationship = getStrategicRelationship(state, holderId, nominee.id);
   if (!relationship) return -getAiThreatScore(state, nominee) * 3;
   let score = relationship.affinity - getAiThreatScore(state, nominee) * 3;
-  if (relationship.tags.includes('alliance')) score += 55;
-  if (relationship.tags.includes('protection') || relationship.tags.includes('shield')) score += 25;
-  if (relationship.tags.includes('betrayal')) score -= 35;
+  if (!state.dramaSocialMode) {
+    if (relationship.tags.includes('alliance')) score += 55;
+    if (relationship.tags.includes('protection') || relationship.tags.includes('shield')) score += 25;
+    if (relationship.tags.includes('betrayal')) score -= 35;
+    return score;
+  }
+  const tags = new Set(relationship.tags);
+  if (tags.has('betrayal')) score -= 140;
+  else {
+    if (tags.has('alliance')) score += 65;
+    if (tags.has('romance') || tags.has('bromance')) score += 45;
+    if (tags.has('protection') || tags.has('shield')) score += 35;
+    if (tags.has('safety_promise')) score += 100;
+  }
+  if (tags.has('target') || tags.has('rivalry')) score -= 45;
   return score;
+}
+
+function getNominationTargetScore(state: GameState, lohId: string, candidate: Player): number {
+  const relationship = getStrategicRelationship(state, lohId, candidate.id);
+  const tags = new Set(relationship?.tags ?? []);
+  let score = getAiThreatScore(state, candidate) * 4 - (relationship?.affinity ?? 0);
+  if (tags.has('betrayal')) score += 125;
+  else {
+    if (tags.has('alliance')) score -= 110;
+    if (tags.has('romance') || tags.has('bromance')) score -= 80;
+    if (tags.has('protection') || tags.has('shield')) score -= 45;
+  }
+  if (tags.has('target')) score += 55;
+  if (tags.has('rivalry')) score += 45;
+  if (tags.has('suspicious') || tags.has('unreliable')) score += 18;
+  return score;
+}
+
+function pickStrategicNominationTargets(
+  state: GameState,
+  lohId: string,
+  candidates: Player[],
+  count: number,
+  rng: () => number,
+): Player[] {
+  return candidates
+    .map((player) => ({ player, score: getNominationTargetScore(state, lohId, player) + rng() * 8 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count)
+    .map((entry) => entry.player);
 }
 
 function pickStrategicAiPlayer(
@@ -1021,7 +1063,7 @@ function pushTwinShockAnnouncement(state: GameState, text: string, major: string
       meta: buildTvMeta(state, { major }),
     },
     ...state.tvFeed,
-  ].slice(0, 50);
+  ].slice(0, 1000);
 }
 
 function ensureCompetitionStateForPlayer(state: GameState, playerId: string) {
@@ -1456,6 +1498,9 @@ const gameSlice = createSlice({
     ) {
       state.strategicRelationships = action.payload;
     },
+    setDramaSocialMode(state, action: PayloadAction<boolean>) {
+      state.dramaSocialMode = action.payload;
+    },
     addTvEvent(state, action: PayloadAction<Omit<TvEvent, 'id' | 'timestamp'>>) {
       const event: TvEvent = {
         ...action.payload,
@@ -1463,7 +1508,7 @@ const gameSlice = createSlice({
         timestamp: Date.now(),
         meta: buildTvMeta(state, action.payload.meta),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
     },
     /** Persist a social phase summary to the Diary Room log (not the TV feed). */
     addSocialSummary(state, action: PayloadAction<{ summary: string; week: number }>) {
@@ -1480,7 +1525,7 @@ const gameSlice = createSlice({
         source: 'manual',
         meta: buildTvMeta(state, { week: action.payload.week }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
     },
     setLive(state, action: PayloadAction<boolean>) {
       state.isLive = action.payload;
@@ -2461,7 +2506,7 @@ const gameSlice = createSlice({
         meta: buildTvMeta(state, { major: 'democracia' }),
         timestamp: ts,
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
     },
 
     /**
@@ -2805,7 +2850,7 @@ const gameSlice = createSlice({
         major: 'battle_back',
         meta: buildTvMeta(state, { major: 'battle_back' }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
     },
 
     /**
@@ -2900,7 +2945,7 @@ const gameSlice = createSlice({
         major: 'double_eviction',
         meta: buildTvMeta(state, { major: 'double_eviction' }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
     },
 
     /**
@@ -2951,7 +2996,7 @@ const gameSlice = createSlice({
         meta: buildTvMeta(state, { major: majorKeys[type] }),
         timestamp: ts,
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
     },
 
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
@@ -3190,7 +3235,7 @@ const gameSlice = createSlice({
         major: 'twist',
         meta: buildTvMeta(state, { major: 'twist' }),
       };
-      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 1000);
       // Append a start event to game history
       if (!state.history) state.history = [];
       state.history.push({
@@ -4624,7 +4669,9 @@ const gameSlice = createSlice({
             canUsePublicNomineeRule && state.lastHohCompFinisherId
               ? pool.filter((p) => p.id !== state.lastHohCompFinisherId)
               : pool;
-          const nominees = seededPickN(rng, aiPool, nomineeCount);
+          const nominees = state.dramaSocialMode
+            ? pickStrategicNominationTargets(state, state.lohId!, aiPool, nomineeCount, rng)
+            : seededPickN(rng, aiPool, nomineeCount);
           state.nomineeIds = nominees.map((n) => n.id);
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id);
@@ -5727,6 +5774,7 @@ export const {
   updatePlayer,
   syncStrategicRelationships,
   addTvEvent,
+  setDramaSocialMode,
   addSocialSummary,
   setLive,
   launchMinigame,

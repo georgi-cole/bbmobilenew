@@ -1,4 +1,7 @@
 import { addTvEvent } from '../store/gameSlice';
+import { getIncomingInteractionTone } from './incomingInteractionPresentation';
+import { getIncomingResponseRelationshipDelta } from './incomingResponseEffects';
+import { getIncomingResponseLogCopy } from './incomingResponseEffects';
 import type { AppDispatch, RootState } from '../store/store';
 import { socialConfig } from './socialConfig';
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
@@ -117,6 +120,9 @@ function buildResponseLogText(
   responseType: IncomingInteractionResponseType,
   fromName: string,
 ): string {
+  if (interaction.payload?.dramaMode === true) {
+    return getIncomingResponseLogCopy(interaction.id, responseType, fromName);
+  }
   const typeLabel = getIncomingInteractionTypeLabel(interaction.type);
   if (responseType === 'ignore') {
     return `You ignored ${fromName}'s ${typeLabel} at week end.`;
@@ -125,12 +131,51 @@ function buildResponseLogText(
   return `You ${verb} ${fromName}'s ${typeLabel}.`;
 }
 
+function buildResponseOutcomeText(
+  interaction: IncomingInteraction,
+  responseType: IncomingInteractionResponseType,
+  _responseLabel: string | undefined,
+  fromName: string,
+  subjectName?: string,
+): string {
+  if (interaction.type === 'alliance_proposal') {
+    if (responseType === 'accept')
+      return `The pact with ${fromName} is active now. Their loyalty will be tested by votes, nominations and safety decisions.`;
+    if (responseType === 'neutral')
+      return `${fromName} leaves without a deal and will decide whether your hesitation was caution or rejection.`;
+    return `${fromName} understands there is no alliance. That closed door may shape their next move.`;
+  }
+  if (interaction.type === 'gossip' || interaction.type === 'warning') {
+    if (responseType === 'positive')
+      return `${fromName} trusts you with the full story: ${interaction.text}`;
+    if (responseType === 'neutral')
+      return `${fromName} leaves the information with you: ${interaction.text}`;
+    if (subjectName)
+      return `You challenge ${fromName}'s story about ${subjectName}. They leave unconvinced, and the claim remains unconfirmed.`;
+    return `You challenge ${fromName}'s story. They back away, and the claim remains unconfirmed.`;
+  }
+  if (interaction.type === 'nomination_plea') {
+    if (responseType === 'positive')
+      return `${fromName} leaves believing you may support them. The game will judge that expectation against what you actually do.`;
+    if (responseType === 'neutral')
+      return `${fromName} got a hearing but no promise, so they keep campaigning elsewhere.`;
+    return `${fromName} knows your support is unlikely and may redirect their campaign against you.`;
+  }
+  if (responseType === 'positive' || responseType === 'accept')
+    return `${fromName} takes your response as genuine, and the connection between you improves immediately.`;
+  if (responseType === 'neutral')
+    return `${fromName} accepts the measured response, but leaves without assuming closeness or loyalty.`;
+  return `${fromName} takes your response as distance. The social cost has already reached your relationship.`;
+}
+
 export function respondToIncomingInteraction({
   interactionId,
   responseType,
+  responseLabel,
 }: {
   interactionId: string;
   responseType: IncomingInteractionResponseType;
+  responseLabel?: string;
 }) {
   return (dispatch: AppDispatch, getState: () => RootState): void => {
     const state = getState();
@@ -156,11 +201,18 @@ export function respondToIncomingInteraction({
 
     const fromPlayer = state.game.players.find((player) => player.id === interaction.fromId);
     const fromName = fromPlayer?.name ?? interaction.fromId;
+    const subjectId = typeof interaction.payload?.subjectId === 'string' ? interaction.payload.subjectId : undefined;
+    const subjectName = subjectId
+      ? state.game.players.find((player) => player.id === subjectId)?.name
+      : undefined;
+    const outcomeText = buildResponseOutcomeText(interaction, responseType, responseLabel, fromName, subjectName);
 
     dispatch(
       resolveIncomingInteraction({
         interactionId,
         resolvedWith: responseType,
+        resolvedLabel: responseLabel,
+        outcomeText,
         resolvedAt,
         resolvedWeek: currentWeek,
       }),
@@ -172,6 +224,7 @@ export function respondToIncomingInteraction({
           holderId: interaction.fromId,
           subjectId: humanPlayer.id,
           responseType,
+          interactionType: interaction.type,
           week: currentWeek,
         }),
       );
@@ -188,6 +241,20 @@ export function respondToIncomingInteraction({
     }
 
     const delta = getResponseDelta(responseType);
+    const responseTone = state.settings?.gameUX?.dramaMode
+      ? getIncomingInteractionTone({
+          interaction,
+          relationships: state.social.relationships,
+          socialMemory: state.social.socialMemory,
+          humanId: humanPlayer.id,
+          isUrgent: interaction.expiresAtWeek <= currentWeek,
+        })
+      : undefined;
+    const contextualDelta = state.settings?.gameUX?.dramaMode
+      ? getIncomingResponseRelationshipDelta(interaction.type, responseType, responseTone)
+      : delta;
+    const contextualAdjustment = contextualDelta - delta;
+
     const acceptedAlliance = interaction.type === 'alliance_proposal' && responseType === 'accept';
     if (delta !== 0 && interaction.fromId !== humanPlayer.id) {
       dispatch(
@@ -206,6 +273,27 @@ export function respondToIncomingInteraction({
             target: interaction.fromId,
             delta,
             tags: [ALLIANCE_TAG],
+            actionSource: 'system',
+          }),
+        );
+      }
+    }
+
+    if (contextualAdjustment !== 0 && interaction.fromId !== humanPlayer.id) {
+      dispatch(
+        updateRelationship({
+          source: interaction.fromId,
+          target: humanPlayer.id,
+          delta: contextualAdjustment,
+          actionSource: 'manual',
+        }),
+      );
+      if (acceptedAlliance) {
+        dispatch(
+          updateRelationship({
+            source: humanPlayer.id,
+            target: interaction.fromId,
+            delta: contextualAdjustment,
             actionSource: 'system',
           }),
         );
@@ -240,13 +328,13 @@ export function respondToIncomingInteraction({
       dispatch(applyInfoDelta({ playerId: humanPlayer.id, delta: 1 }));
     }
 
-    const text = buildResponseLogText(interaction, responseType, fromName);
+    const text = [buildResponseLogText(interaction, responseType, fromName), outcomeText].join(' ');
     dispatch(
       addTvEvent({
         text,
         type: 'social',
         source: 'manual',
-        channels: ['tv', 'mainLog', 'dr'],
+        channels: ['mainLog', 'dr'],
       }),
     );
   };

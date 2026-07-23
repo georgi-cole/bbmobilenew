@@ -55,7 +55,7 @@ import type {
 } from './types';
 import { advanceDramaNetwork, normalizeDramaSocialNetwork } from './dramaModeEngine';
 import { seedWeekRelationships } from './weekSocialSeed';
-import { DEFAULT_ENERGY } from './constants';
+import { DEFAULT_ENERGY, HUMAN_SOCIAL_ALLOWANCE } from './constants';
 import {
   evaluateSocialCommitmentsForAction,
   voidOverdueSocialCommitments,
@@ -425,6 +425,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const afterNominees = (api.getState() as StateWithGame).game?.nomineeIds ?? [];
     if (!afterNominees.includes(saveId) && prevNominees.includes(saveId)) {
       grantEnergy(api as unknown as MiddlewareAPI, saveId, 2);
+      const holderId = prevState.game?.posWinnerId;
+      if (prevState.settings?.gameUX?.dramaMode === true && holderId && holderId !== saveId) {
+        api.dispatch(updateRelationship({ source: holderId, target: saveId, delta: 14, tags: ['protection'], actionSource: 'system' }));
+        api.dispatch(updateRelationship({ source: saveId, target: holderId, delta: 18, tags: ['gratitude'], actionSource: 'system' }));
+      }
     }
 
     evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type, saveId);
@@ -435,12 +440,18 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   }
 
   if (type === 'game/submitPovDecision') {
+    const prevState = api.getState() as StateWithGame;
+    const usePower = (action as unknown as { payload: boolean }).payload;
     const result = next(action);
-    evaluateSocialCommitmentsForAction(
-      api as unknown as CommitmentStore,
-      type,
-      (action as unknown as { payload: boolean }).payload,
-    );
+    if (prevState.settings?.gameUX?.dramaMode === true && !usePower && prevState.game?.posWinnerId) {
+      const holderId = prevState.game.posWinnerId;
+      for (const nomineeId of prevState.game.nomineeIds) {
+        const relationship = prevState.social?.relationships?.[nomineeId]?.[holderId];
+        if (!relationship?.tags.some((tag) => ['alliance', 'romance', 'bromance'].includes(tag))) continue;
+        api.dispatch(updateRelationship({ source: nomineeId, target: holderId, delta: -14, tags: ['strained'], actionSource: 'system' }));
+      }
+    }
+    evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type, usePower);
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
     return result;
   }
@@ -463,6 +474,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       payload: prevState.social?.relationships ?? {},
     });
     const prevPhase = prevState.game?.phase;
+    api.dispatch({
+      type: 'game/setDramaSocialMode',
+      payload: prevState.settings?.gameUX?.dramaMode === true,
+    });
     const prevHohId = prevState.game?.lohId ?? null;
     const prevPovId = prevState.game?.posWinnerId ?? null;
     // Track POS-auto-save: nominee who wins POS saves themselves in pos_ceremony_results.
@@ -472,6 +487,25 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     const afterState = api.getState() as StateWithGame;
     const newPhase = afterState.game?.phase;
+
+    if (
+      newPhase === 'nomination_results' &&
+      afterState.settings?.gameUX?.dramaMode === true &&
+      afterState.game?.lohId
+    ) {
+      const lohId = afterState.game.lohId;
+      const newNominees = afterState.game.nomineeIds.filter((id) => !prevNominees.includes(id));
+      for (const nomineeId of newNominees) {
+        const prior = prevState.social?.relationships?.[lohId]?.[nomineeId];
+        if (!prior?.tags.some((tag) => ['alliance', 'romance', 'bromance'].includes(tag))) continue;
+        const lohName = afterState.game.players.find((player) => player.id === lohId)?.name ?? lohId;
+        const nomineeName = afterState.game.players.find((player) => player.id === nomineeId)?.name ?? nomineeId;
+        api.dispatch(updateRelationship({ source: lohId, target: nomineeId, delta: -18, tags: ['betrayal'], actionSource: 'system' }));
+        api.dispatch(updateRelationship({ source: nomineeId, target: lohId, delta: -24, tags: ['betrayal'], actionSource: 'system' }));
+        api.dispatch(applyDramaAction({ actionId: 'betray', actorId: lohId, targetId: nomineeId, actorName: lohName, targetName: nomineeName, week: afterState.game.week, phase: newPhase, success: true }));
+        api.dispatch({ type: 'game/addTvEvent', payload: { text: `HOUSE SHOCK: ${lohName} nominated ally ${nomineeName}. The pact has become a public betrayal.`, type: 'social', source: 'system', channels: ['tv', 'mainLog'], meta: { dramaEvent: true, week: afterState.game.week } } });
+      }
+    }
 
     // Social engine lifecycle
     if (prevPhase !== newPhase) {
@@ -509,6 +543,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       const autoSaved = prevNominees.filter((id) => !afterNominees.includes(id));
       for (const id of autoSaved) {
         grantEnergy(api as unknown as MiddlewareAPI, id, 2);
+        if (prevState.settings?.gameUX?.dramaMode === true && prevPovId && prevPovId !== id) {
+          api.dispatch(updateRelationship({ source: prevPovId, target: id, delta: 14, tags: ['protection'], actionSource: 'system' }));
+          api.dispatch(updateRelationship({ source: id, target: prevPovId, delta: 18, tags: ['gratitude'], actionSource: 'system' }));
+        }
       }
     }
 
@@ -586,8 +624,8 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   // ── Battle Back win: restore energy for the user player who returns ─────
   // When the user wins the Battle Back, they re-enter the house as an active
-  // player. Energy is reset to DEFAULT_ENERGY using a direct set (not an
-  // additive delta) so the value is always exactly DEFAULT_ENERGY regardless
+  // player. Energy is restored to one full human allowance using a direct set
+  // so their return is playable regardless of any stale eliminated-state bank.
   // of any residual energy the player may carry.
   if (type === 'game/completeBattleBack') {
     const prevState = api.getState() as StateWithGame;
@@ -597,7 +635,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const result = next(action);
 
     if (winner?.isUser) {
-      api.dispatch(setEnergyBankEntry({ playerId: winnerId, value: DEFAULT_ENERGY }));
+      const restoredEnergy =
+        prevState.settings?.gameUX?.dramaMode === true
+          ? HUMAN_SOCIAL_ALLOWANCE
+          : DEFAULT_ENERGY;
+      api.dispatch(setEnergyBankEntry({ playerId: winnerId, value: restoredEnergy }));
     }
 
     return result;

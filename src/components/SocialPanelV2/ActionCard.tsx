@@ -7,6 +7,8 @@ export interface ActionCardProps {
   action: SocialActionDefinition;
   /** Optional short description shown below the title. */
   description?: string;
+  /** Resolved dynamic costs, used by multi-target actions. */
+  costs?: { energy: number; influence: number; info: number };
   /** Whether this card is currently selected. */
   selected?: boolean;
   /** When true the card is non-interactive and shows an overlay. */
@@ -44,6 +46,7 @@ export interface ActionCardProps {
  */
 export default function ActionCard({
   action,
+  costs,
   description,
   selected = false,
   disabled = false,
@@ -58,7 +61,8 @@ export default function ActionCard({
 
   // Use normalizeActionCosts to get integer-scaled values (influence/info ×100)
   // so chip values are consistent with the bank values shown in the header.
-  const { energy: energyCost, influence: influenceCost, info: infoCost } = normalizeActionCosts(action);
+  const { energy: energyCost, influence: influenceCost, info: infoCost } =
+    costs ?? normalizeActionCosts(action);
 
   // A card is effectively non-interactive when the explicit `disabled` prop is
   // set. The `availabilityReason` provides a visual dimming hint but keeps the

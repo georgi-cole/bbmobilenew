@@ -14,7 +14,11 @@
 
 import type { SocialPhaseReport } from './types';
 import { socialConfig } from './socialConfig';
-import { DEFAULT_ENERGY } from './constants';
+import {
+  DEFAULT_ENERGY,
+  HUMAN_SOCIAL_ALLOWANCE,
+  MAX_HUMAN_SOCIAL_ENERGY,
+} from './constants';
 import { engineReady, engineComplete, setLastReport } from './socialSlice';
 import { initInfluence, update as influenceUpdate } from './SocialInfluence';
 import { initManeuvers } from './SocialManeuvers';
@@ -31,6 +35,12 @@ interface GameSlice {
     players: Array<{ id: string; status: string; isUser?: boolean }>;
     seed: number;
     week: number;
+  };
+  social?: {
+    energyBank?: Record<string, number>;
+  };
+  settings?: {
+    gameUX?: { dramaMode?: boolean };
   };
 }
 
@@ -53,9 +63,11 @@ function init(store: StoreAPI): void {
  */
 function startPhase(phaseName: string): void {
   if (!_store) return;
+  if (_activePhase === phaseName) return;
 
   const state = _store.getState() as GameSlice;
   const players = state.game?.players ?? [];
+  const dramaMode = state.settings?.gameUX?.dramaMode === true;
   const seed = state.game?.seed ?? 0;
 
   _budgets.clear();
@@ -87,13 +99,21 @@ function startPhase(phaseName: string): void {
     budgets[k] = v;
   });
 
-  // Give the human player the default energy budget so they can participate.
+  // Normal Mode retains the original reset-to-5 economy. Drama Mode adds ten,
+  // carries unused energy forward, and caps the bank at three allowances.
   const humanPlayer = players.find(
     (p) => p.isUser && p.status !== 'evicted' && p.status !== 'jury',
   );
   if (humanPlayer) {
-    _budgets.set(humanPlayer.id, DEFAULT_ENERGY);
-    budgets[humanPlayer.id] = DEFAULT_ENERGY;
+    const carried = Math.max(0, state.social?.energyBank?.[humanPlayer.id] ?? 0);
+    const humanBudget = dramaMode
+      ? Math.min(
+          MAX_HUMAN_SOCIAL_ENERGY,
+          carried + HUMAN_SOCIAL_ALLOWANCE,
+        )
+      : DEFAULT_ENERGY;
+    _budgets.set(humanPlayer.id, humanBudget);
+    budgets[humanPlayer.id] = humanBudget;
   }
 
   _store.dispatch(engineReady({ budgets }));

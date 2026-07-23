@@ -174,11 +174,13 @@ const socialSlice = createSlice({
       action: PayloadAction<{
         interactionId: string;
         resolvedWith: IncomingInteractionResponseType;
+        resolvedLabel?: string;
+        outcomeText?: string;
         resolvedAt?: number;
         resolvedWeek?: number;
       }>,
     ) {
-      const { interactionId, resolvedWith, resolvedAt, resolvedWeek } = action.payload;
+      const { interactionId, resolvedWith, resolvedLabel, outcomeText, resolvedAt, resolvedWeek } = action.payload;
       const entry = state.incomingInteractions.find(
         (interaction) => interaction.id === interactionId,
       );
@@ -188,6 +190,8 @@ const socialSlice = createSlice({
       entry.resolvedAt = resolvedAt ?? Date.now();
       entry.resolvedWeek = resolvedWeek;
       entry.resolvedWith = resolvedWith;
+      entry.resolvedLabel = resolvedLabel;
+      entry.outcomeText = outcomeText;
     },
     /** Convenience helper for dismissing an interaction. */
     dismissIncomingInteraction(
@@ -433,6 +437,7 @@ const socialSlice = createSlice({
     hydrateSocial(_state, action: PayloadAction<SocialState>) {
       return {
         ...action.payload,
+        relationships: action.payload.relationships,
         commitments: action.payload.commitments ?? [],
         dramaNetwork: normalizeDramaSocialNetwork(action.payload.dramaNetwork),
       };

@@ -22,6 +22,7 @@ import { DRAMA_SOCIAL_ACTIONS } from './dramaModeConfig';
  */
 
 import type { PlayerStatus } from '../types';
+import type { DramaArcStage, DramaArcType } from './types';
 
 export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance';
 
@@ -92,6 +93,10 @@ export interface SocialActionDefinition {
    * (0.02 → +2). Dispatches applyInfluenceDelta / applyInfoDelta with
    * positive deltas.
    */
+  /** Optional Drama Mode override; Normal Mode always uses baseCost. */
+  dramaCost?: number | { energy?: number; influence?: number; info?: number };
+  /** Optional Drama Mode target-shape override. */
+  dramaTargetMode?: TargetMode;
   yields?: { influence?: number; info?: number };
   /** Emoji icon shown on the action card. */
   icon?: string;
@@ -128,6 +133,12 @@ export interface SocialActionDefinition {
    * as the contextual subject. Used by the UI to generate candidate chips.
    */
   subjectPool?: SubjectPool;
+  /** Minimum number of distinct targets required by a multi-target action. */
+  minTargets?: number;
+  /** Optional hard limit for a multi-target action. */
+  maxTargets?: number;
+  /** Dynamic energy charged per selected target (baseCost remains the floor). */
+  energyPerTarget?: number;
   /** Allow the acting player to be chosen as the contextual subject. */
   allowActorAsSubject?: boolean;
   /**
@@ -138,12 +149,38 @@ export interface SocialActionDefinition {
    * the target's status.
    */
   requiredTargetStatus?: readonly PlayerStatus[];
+  // Only actors currently holding one of these roles may use the action.
+  /** Drama-only contextual gates. Base fields above preserve Normal Mode rules. */
+  dramaAllowedPhases?: readonly string[];
+  dramaRequiredActorStatus?: readonly PlayerStatus[];
+  dramaRequiredTargetStatus?: readonly PlayerStatus[];
+  dramaRequiredRelationshipTags?: readonly string[];
+  dramaExcludedRelationshipTags?: readonly string[];
+  dramaMinAffinity?: number;
+  dramaMaxAffinity?: number;
+  requiredActorStatus?: readonly PlayerStatus[];
   /** Only available while the premium Drama Mode simulation is enabled. */
   dramaOnly?: boolean;
   allowedPhases?: readonly string[];
   requiredRelationshipTags?: readonly string[];
+  excludedRelationshipTags?: readonly string[];
   minAffinity?: number;
   maxAffinity?: number;
+  requiredArcTypes?: readonly DramaArcType[];
+  excludedArcTypes?: readonly DramaArcType[];
+  requiredArcStages?: readonly DramaArcStage[];
+  requiredArcPublic?: boolean;
+  requiresKnownSecret?: boolean;
+}
+
+/** Resolve the target shape without leaking Drama Mode behavior into Normal Mode. */
+export function resolveActionTargetMode(
+  action: SocialActionDefinition,
+  dramaMode = false,
+): TargetMode {
+  return (dramaMode ? action.dramaTargetMode : undefined) ??
+    action.targetMode ??
+    (action.needsTargets === false ? 'none' : 'primary');
 }
 
 /** Canonical list of social actions available in the game. */
@@ -169,6 +206,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'intel_gain',
     baseCost: { energy: 1 },
+    dramaCost: { energy: 2 },
     targetMode: 'primary',
     successWeight: 2,
     yields: { info: 1.0 },
@@ -181,6 +219,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'intel_gain',
     baseCost: { energy: 1 },
+    dramaCost: { energy: 2 },
     targetMode: 'none',
     needsTargets: false,
     successWeight: 2,
@@ -195,6 +234,10 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     kind: 'rapport',
     baseCost: { energy: 2 },
     targetMode: 'primary',
+    dramaTargetMode: 'multi',
+    minTargets: 2,
+    maxTargets: 8,
+    energyPerTarget: 1,
     successWeight: 2,
     yields: { influence: 0.03 },
   },
@@ -207,10 +250,13 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'alliance',
     kind: 'intel_spend',
     baseCost: { energy: 3, info: 2.0 },
+    dramaCost: { energy: 4, info: 1.0 },
     targetMode: 'primary',
     successWeight: 1,
     outcomeTag: 'alliance',
     availabilityHint: 'Requires positive affinity',
+    dramaMinAffinity: 1,
+    excludedRelationshipTags: ['alliance'],
     yields: { influence: 0.06 },
   },
   {
@@ -225,6 +271,23 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     successWeight: 2,
   },
   {
+    id: 'ask_loh_target',
+    title: 'Ask LOH Target',
+    dramaOnly: true,
+    icon: '\uD83C\uDFAF',
+    description: 'Ask the LOH who they are watching if nominations change.',
+    category: 'strategic',
+    kind: 'intel_gain',
+    baseCost: 1,
+    dramaCost: 2,
+    targetMode: 'primary',
+    successWeight: 2,
+    availabilityHint: 'Available while the LOH controls nominations',
+    requiredTargetStatus: ['loh', 'loh+pos'],
+    dramaAllowedPhases: ['loh_results', 'social_1', 'nominations', 'nomination_results', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony', 'pos_ceremony_results', 'social_2'],
+  },
+
+  {
     id: 'betray',
     title: 'Betray Ally',
     icon: '🗡️',
@@ -232,10 +295,12 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'aggressive',
     kind: 'aggressive',
     baseCost: 3,
+    dramaCost: 4,
     targetMode: 'primary',
     successWeight: 1,
     outcomeTag: 'betrayal',
     availabilityHint: 'High-risk betrayal',
+    dramaRequiredRelationshipTags: ['alliance'],
     yields: { influence: 0.04 },
   },
   {
@@ -258,8 +323,10 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'friendly',
     kind: 'rapport',
     baseCost: 1,
+    dramaCost: 2,
     targetMode: 'primary',
     successWeight: 2,
+    dramaMaxAffinity: 25,
     yields: { influence: 0.02 },
   },
   {
@@ -270,6 +337,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'intel_spend',
     baseCost: { energy: 1, info: 2.0 },
+    dramaCost: { energy: 2, info: 1.0 },
     targetMode: 'primary',
     successWeight: 2,
     outcomeTag: 'intel',
@@ -285,6 +353,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'aggressive',
     kind: 'aggressive',
     baseCost: { energy: 2, info: 1.0 },
+    dramaCost: { energy: 3, info: 1.0 },
     targetMode: 'primary',
     successWeight: 2,
     outcomeTag: 'rumor',
@@ -298,6 +367,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'aggressive',
     kind: 'aggressive',
     baseCost: 3,
+    dramaCost: 4,
     targetMode: 'primary',
     successWeight: 1,
     outcomeTag: 'conflict',
@@ -325,9 +395,11 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'political_spend',
     baseCost: { energy: 1, influence: 2.0 },
+    dramaCost: { energy: 2, influence: 2.0 },
     targetMode: 'primary',
     successWeight: 2,
     availabilityHint: 'Requires 20 influence',
+    dramaMinAffinity: 5,
     yields: { influence: 0.03 },
   },
   // ── primaryPlusSubject contextual actions ─────────────────────────────────
@@ -342,6 +414,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'political_spend',
     baseCost: { energy: 2, influence: 1.0, info: 1.0 },
+    dramaCost: { energy: 3, influence: 1.0, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'houseguests',
     successWeight: 1,
@@ -349,6 +422,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Talk to LOH about a target',
     yields: { influence: 0.04 },
     requiredTargetStatus: ['loh', 'loh+pos'],
+    dramaAllowedPhases: ['loh_results', 'social_1', 'nominations'],
   },
   {
     id: 'suggest_replacement',
@@ -358,6 +432,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'political_spend',
     baseCost: { energy: 2, influence: 1.0, info: 1.0 },
+    dramaCost: { energy: 3, influence: 1.0, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'non_nominees',
     successWeight: 1,
@@ -365,6 +440,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Requires LOH or POS holder',
     yields: { influence: 0.04 },
     requiredTargetStatus: ['loh', 'loh+pos', 'pos', 'nominated+pos'],
+    dramaAllowedPhases: ['nomination_results', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony'],
   },
   {
     id: 'ask_use_safety',
@@ -374,6 +450,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'political_spend',
     baseCost: { energy: 2, influence: 1.0 },
+    dramaCost: { energy: 3, influence: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'nominees',
     allowActorAsSubject: true,
@@ -381,6 +458,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'protection',
     availabilityHint: 'Talk to POS about a nominee',
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
+    dramaAllowedPhases: ['social_1', 'nomination_results', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony'],
   },
   {
     id: 'warn_about_player',
@@ -390,10 +468,12 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'intel_spend',
     baseCost: { energy: 1, info: 1.0 },
+    dramaCost: { energy: 2, info: 1.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'houseguests',
     successWeight: 2,
     outcomeTag: 'warning',
+    dramaRequiredRelationshipTags: ['alliance', 'bromance', 'romance'],
     yields: { influence: 0.02 },
   },
   {
@@ -404,11 +484,14 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     kind: 'political_spend',
     baseCost: { energy: 2, influence: 2.0 },
+    dramaCost: { energy: 3, influence: 2.0 },
     targetMode: 'primaryPlusSubject',
     subjectPool: 'nominees',
     successWeight: 1,
     outcomeTag: 'vote_pressure',
+    dramaRequiredTargetStatus: ['active', 'pos'],
     availabilityHint: 'Requires nominees on the block',
+    dramaAllowedPhases: ['pos_ceremony_results', 'social_2'],
     yields: { influence: 0.03 },
   },
   ...DRAMA_SOCIAL_ACTIONS,
@@ -426,6 +509,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     successWeight: 1,
     outcomeTag: 'alliance',
     aiOnly: true,
+    dramaMinAffinity: 1,
+    dramaExcludedRelationshipTags: ['alliance'],
   },
   {
     id: 'nominate',
@@ -437,6 +522,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: { energy: 1 },
     targetMode: 'primary',
     successWeight: 2,
+    dramaRequiredActorStatus: ['loh', 'loh+pos'],
+    dramaAllowedPhases: ['nominations'],
     aiOnly: true,
   },
   {
@@ -452,6 +539,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Requires 50 influence',
     yields: { influence: 0.04 },
     aiOnly: true,
+    dramaRequiredTargetStatus: ['nominated', 'nominated+pos'],
+    dramaAllowedPhases: ['pos_ceremony_results', 'social_2', 'live_vote'],
   },
   {
     id: 'idle',

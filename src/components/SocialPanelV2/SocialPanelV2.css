@@ -421,6 +421,14 @@
 .sp2-subject-chip__avatar {
   font-size: 0.9em;
 }
+.sp2-subject-chip__avatar img {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 
 .sp2-subject-chip__name {
   max-width: 8rem;

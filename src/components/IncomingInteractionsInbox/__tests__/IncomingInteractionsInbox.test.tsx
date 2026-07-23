@@ -260,9 +260,9 @@ describe('IncomingInteractionsInbox', () => {
 
     expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument();
     expect(screen.getByText(/Bitter/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Call it out' })).toHaveAttribute(
-      'title',
-      'Sets a clear boundary and damages trust.',
+    const negativeResponse = document.querySelector('[data-response-type="negative"]');
+    expect(negativeResponse).toHaveAttribute(
+      'title', 'Sets a clear boundary and damages trust.',
     );
     expect(screen.queryByText(/Sets a clear boundary and damages trust/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument();

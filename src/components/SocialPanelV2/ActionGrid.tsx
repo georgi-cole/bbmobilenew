@@ -2,12 +2,12 @@ import { useState, useRef, useCallback } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
 import { normalizeActionCosts } from '../../social/smExecNormalize';
 import { computeOutcomeScore } from '../../social/SocialPolicy';
-import { hasAllianceBetween } from '../../social/socialAlliance';
+import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility';
 import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
 import type { PreviewDeltaEntry } from './PreviewPopup';
 import type { Player, PlayerStatus } from '../../types';
-import type { RelationshipsMap } from '../../social/types';
+import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types';
 
 export interface ActionGridProps {
   /** Called with the action id when a card is clicked/activated. */
@@ -59,6 +59,7 @@ export interface ActionGridProps {
   /** Premium catalog and context gates. */
   dramaMode?: boolean;
   currentPhase?: string;
+  dramaNetwork?: DramaSocialNetwork;
 }
 
 /**
@@ -92,6 +93,7 @@ export default function ActionGrid({
   primaryTargetStatus,
   dramaMode = false,
   currentPhase,
+  dramaNetwork,
 }: ActionGridProps) {
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -170,61 +172,31 @@ export default function ActionGrid({
     );
   }
 
-  /** Check whether the current primary target's status satisfies an action's role requirement. */
-  function isRoleEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
-    if (!action.requiredTargetStatus) return true;
-    if (!primaryTargetStatus) return false;
-    return action.requiredTargetStatus.includes(primaryTargetStatus);
-  }
-
-  function isDramaEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
-    if (action.dramaOnly && !dramaMode) return false;
-    if (action.allowedPhases && (!currentPhase || !action.allowedPhases.includes(currentPhase)))
-      return false;
-    if (
-      !action.requiredRelationshipTags &&
-      action.minAffinity === undefined &&
-      action.maxAffinity === undefined
-    )
-      return true;
-    if (!actorId || !relationships || !selectedTargetIds || selectedTargetIds.size !== 1)
-      return false;
-    const targetId = Array.from(selectedTargetIds)[0];
-    const affinity = relationships[actorId]?.[targetId]?.affinity ?? 0;
-    if (action.minAffinity !== undefined && affinity < action.minAffinity) return false;
-    if (action.maxAffinity !== undefined && affinity > action.maxAffinity) return false;
-    if (action.requiredRelationshipTags) {
-      const currentTags = new Set([
-        ...(relationships[actorId]?.[targetId]?.tags ?? []),
-        ...(relationships[targetId]?.[actorId]?.tags ?? []),
-      ]);
-      if (!action.requiredRelationshipTags.some((tag) => currentTags.has(tag))) return false;
-    }
-    return true;
-  }
-
-  function getRelationshipUnavailableReason(actionId: string): string {
-    if (actionId !== 'proposeAlliance' || !relationships || !actorId || !selectedTargetIds) {
-      return '';
-    }
-    const [targetId] = Array.from(selectedTargetIds);
-    if (!targetId || selectedTargetIds.size !== 1) {
-      return '';
-    }
-    return hasAllianceBetween(relationships, actorId, targetId) ? 'Already allied' : '';
+  function isContextEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
+    return evaluateSocialActionEligibility({
+      action,
+      actorId,
+      targetIds: selectedTargetIds ? Array.from(selectedTargetIds) : [],
+      phase: currentPhase,
+      players,
+      primaryTargetStatus,
+      relationships,
+      dramaNetwork,
+      dramaMode,
+    }).eligible;
   }
 
   const sortedActions =
     actorEnergy !== undefined
       ? [...SOCIAL_ACTIONS]
-          .filter((a) => !a.aiOnly && isRoleEligible(a) && isDramaEligible(a))
+          .filter(isContextEligible)
           .sort((a, b) => {
-            const aAffordable = isActionAffordable(normalizeActionCosts(a));
-            const bAffordable = isActionAffordable(normalizeActionCosts(b));
+            const aAffordable = isActionAffordable(normalizeActionCosts(a, selectedTargetIds?.size, dramaMode));
+            const bAffordable = isActionAffordable(normalizeActionCosts(b, selectedTargetIds?.size, dramaMode));
             if (aAffordable === bAffordable) return 0;
             return aAffordable ? -1 : 1;
           })
-      : SOCIAL_ACTIONS.filter((a) => !a.aiOnly && isRoleEligible(a) && isDramaEligible(a));
+      : SOCIAL_ACTIONS.filter(isContextEligible);
 
   /** Returns an availability reason string, or empty string if the action is affordable. */
   function getAvailabilityReason(costs: {
@@ -256,15 +228,15 @@ export default function ActionGrid({
         onBlur={handleBlur}
       >
         {sortedActions.map((action) => {
-          const costs = normalizeActionCosts(action);
-          const relationshipUnavailableReason = getRelationshipUnavailableReason(action.id);
-          const availabilityReason = relationshipUnavailableReason || getAvailabilityReason(costs);
-          const isDisabled = disabledIds.has(action.id) || !!relationshipUnavailableReason;
+          const costs = normalizeActionCosts(action, selectedTargetIds?.size, dramaMode);
+          const availabilityReason = getAvailabilityReason(costs);
+          const isDisabled = disabledIds.has(action.id);
           const isAvailable = actorEnergy !== undefined && !availabilityReason;
           return (
             <ActionCard
               key={action.id}
               action={action}
+              costs={costs}
               selected={selectedId === action.id}
               disabled={isDisabled}
               availabilityReason={availabilityReason}

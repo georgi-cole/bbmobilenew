@@ -49,6 +49,13 @@ export const socialConfig = {
       'ask_use_safety',
       'flirt',
       'ride_or_die',
+      'private_flirt',
+      'late_night_talk',
+      'cuddle',
+      'kiss_under_covers',
+      'pool_makeout',
+      'spend_night',
+      'risk_the_vibe',
       'repair_bond',
       'trade_secrets',
     ] as string[],
@@ -63,6 +70,9 @@ export const socialConfig = {
       'stir_rivalry',
       'public_callout',
       'expose_secret',
+      'end_romance',
+      'break_alliance',
+      'break_bromance',
     ] as string[],
   },
   /**
@@ -272,6 +282,14 @@ export const socialConfig = {
        * scenario type is allowed again.
        */
       familyCooldownWeeks: 1,
+      /** Keep an exact sentence out of a sender's rotation for several weeks. */
+      lineCooldownWeeks: 4,
+      /** Cap repeated story beats across the whole house each week. */
+      maxSameScenarioPerWeek: {
+        high: 2,
+        medium: 1,
+        low: 1,
+      } as Record<IncomingInteractionPriority, number>,
     },
   },
 

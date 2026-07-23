@@ -116,7 +116,7 @@ describe('Drama Mode story network', () => {
         expect.objectContaining({
           source: 'human',
           target: 'lia',
-          tags: expect.arrayContaining(['alliance', 'bromance']),
+          tags: expect.arrayContaining(['bromance']),
         }),
       ]),
     );
@@ -182,5 +182,33 @@ describe('Drama Mode story network', () => {
       nomineeIds: ['lia'],
     });
     expect(move).toMatchObject({ actionId: 'ask_use_safety', targetId: 'nova', subjectId: 'lia' });
+  });
+
+  it('keeps a second alliance visibly active while tracking unequal hidden loyalty', () => {
+    const original = applyDramaActionEffect(createInitialDramaSocialNetwork(), {
+      actionId: 'proposeAlliance', actorId: 'lia', targetId: 'kai', week: 2, phase: 'social_1', success: true,
+    });
+    const second = applyDramaActionEffect(original, {
+      actionId: 'proposeAlliance', actorId: 'human', targetId: 'lia', week: 3, phase: 'social_1', success: true,
+    });
+    const pact = second.alliances.find((alliance) => alliance.participantIds.includes('human'));
+    expect(pact?.status).toBe('active');
+    expect(pact?.falsePretenceByIds).toContain('lia');
+    expect(pact?.loyaltyByPlayer.lia).toBeLessThan(pact?.loyaltyByPlayer.human ?? 0);
+  });
+
+  it('lets spying discover a secret romance without making it public immediately', () => {
+    const network = createInitialDramaSocialNetwork();
+    network.arcs.push({
+      id: 'romance:human~lia:2', type: 'romance', participantIds: ['human', 'lia'],
+      stage: 'established', intensity: 70, startedWeek: 2, lastAdvancedWeek: 2,
+      public: false, status: 'active',
+    });
+    const discovered = applyDramaActionEffect(network, {
+      actionId: 'snoop_around', actorId: 'nova', targetId: 'human', week: 3, phase: 'social_2', success: true,
+    });
+    expect(discovered.arcs[0].public).toBe(false);
+    expect(discovered.arcs[0].discoveredByIds).toContain('nova');
+    expect(discovered.rumours[0]).toMatchObject({ kind: 'secret_romance', truth: 'true' });
   });
 });

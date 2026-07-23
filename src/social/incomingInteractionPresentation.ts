@@ -1,4 +1,5 @@
 import { normalizeAffinity } from './affinityUtils';
+import { getDramaResponseBlueprint } from './incomingResponseBank';
 import { socialConfig } from './socialConfig';
 import {
   getCommitmentKindForInteraction,
@@ -274,6 +275,9 @@ function getResponseBlueprints(
   tone?: IncomingInteractionTone,
 ): ResponseBlueprint {
   if (!interaction) return RESPONSE_OPTIONS_BY_TYPE[type];
+  const dramaBlueprint = getDramaResponseBlueprint(type, interaction, tone);
+  if (dramaBlueprint) return dramaBlueprint;
+
 
   const scenarioKey = interaction.payload?.scenarioKey;
   if (typeof scenarioKey === 'string' && SCENARIO_RESPONSE_OPTIONS[scenarioKey]) {

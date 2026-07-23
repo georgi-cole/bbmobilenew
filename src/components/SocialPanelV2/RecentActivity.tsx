@@ -134,6 +134,10 @@ export default function RecentActivity({ players, maxEntries = 6, dramaMode = fa
             const action = getActionById(entry.actionId);
             const actionTitle = action?.title ?? entry.actionId.replace(/_/g, ' ');
             const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
+            const targetNames = (entry.targetIds ?? [entry.targetId]).map(
+              (targetId) => playerById.get(targetId)?.name ?? targetId,
+            );
+            const audienceName = targetNames.join(', ');
             // For primaryPlusSubject actions, show the subject in the narrative
             // since the subject is the person being talked *about*.
             const subjectName = entry.subjectId
@@ -141,14 +145,24 @@ export default function RecentActivity({ players, maxEntries = 6, dramaMode = fa
               : null;
             const narrativeContext = subjectName
               ? `${targetName} about ${subjectName}`
-              : targetName;
+              : audienceName;
             const icon = getResultIcon(entry);
             const resultClass = getResultClass(entry);
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
-            const narrative = dramaMode
-              ? getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp)
-              : 'You targeted ' + narrativeContext + '.';
+            const narrative =
+              entry.narrative ??
+              (dramaMode
+                ? getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp)
+                : 'You targeted ' + narrativeContext + '.');
+            const resourceParts = dramaMode ? [
+              entry.yieldsApplied?.influence
+                ? `Influence ${entry.yieldsApplied.influence > 0 ? '+' : ''}${entry.yieldsApplied.influence}`
+                : null,
+              entry.yieldsApplied?.info
+                ? `Intel ${entry.yieldsApplied.info > 0 ? '+' : ''}${entry.yieldsApplied.info}`
+                : null,
+            ].filter(Boolean) : [];
             const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`;
             const isNew = highlightedKeys.has(key);
             return (
@@ -162,6 +176,11 @@ export default function RecentActivity({ players, maxEntries = 6, dramaMode = fa
                   {deltaText && (
                     <span className={`ra-entry__delta ra-entry__delta--${resultClass}`}>
                       {deltaText}
+                    </span>
+                  )}
+                  {resourceParts.length > 0 && (
+                    <span className="ra-entry__resources">
+                      {resourceParts.join(' | ')}
                     </span>
                   )}
                 </span>

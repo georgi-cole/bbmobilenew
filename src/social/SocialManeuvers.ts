@@ -11,8 +11,10 @@
  * Debug: window.__socialManeuvers exposes the full public API in browsers.
  */
 
-import { SOCIAL_ACTIONS } from './socialActions';
+import { getSocialOutcomeCopy, type SocialOutcomeKind } from './socialOutcomeCopy';
+import { SOCIAL_ACTIONS, resolveActionTargetMode } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
+import { evaluateSocialActionEligibility } from './socialActionEligibility';
 import { socialConfig } from './socialConfig';
 import { normalizeAffinity } from './affinityUtils';
 import {
@@ -30,6 +32,7 @@ import {
 } from './socialSlice';
 import { ALLIANCE_TAG, BETRAYAL_TAG, hasAllianceBetween } from './socialAlliance';
 import type { SocialActionLogEntry, SocialState } from './types';
+import { getSocialResourceEffect } from './socialResourceEconomy';
 
 // ── Internal store reference ──────────────────────────────────────────────
 
@@ -53,7 +56,24 @@ type PartialSocialState = {
   sessionLogs: unknown[];
 };
 
+interface ManeuverPlayer {
+  id: string;
+  name: string;
+  status: string;
+  isUser?: boolean;
+}
+
+interface ManeuverGameState {
+  players: ManeuverPlayer[];
+  week?: number;
+  phase?: string;
+  lohId?: string | null;
+  nomineeIds?: string[];
+}
+
+
 interface StateForManeuvers {
+  settings?: { gameUX?: { dramaMode?: boolean } };
   social: PartialSocialState;
 }
 
@@ -80,6 +100,69 @@ function countPriorRepeatedActions(
     (entry) =>
       entry.actorId === actorId && entry.targetId === targetId && entry.actionId === actionId,
   ).length;
+}
+
+function buildSnoopNarrative(
+  social: SocialState,
+  actorId: string,
+  players: ManeuverPlayer[],
+): string {
+  const secret = social.dramaNetwork.arcs.find(
+    (arc) =>
+      arc.status === 'active' &&
+      !arc.public &&
+      (arc.type === 'romance' || arc.type === 'bromance') &&
+      !arc.participantIds.includes(actorId) &&
+      !(arc.discoveredByIds ?? []).includes(actorId),
+  );
+  if (!secret) {
+    return 'You checked the hallway, storage room and whisper chain, but found no usable lead this time.';
+  }
+  const names = secret.participantIds.map(
+    (id) => players.find((player) => player.id === id)?.name ?? 'another housemate',
+  );
+  if (secret.type === 'romance') {
+    return `You caught ${names[0]} and ${names[1]} slipping away together after lights-out. Their secret romance is now yours to keep, trade or expose.`;
+  }
+  return `You overheard ${names[0]} and ${names[1]} making a private loyalty pact. You now know their bromance is more strategic than it looks.`;
+}
+
+function buildLohTargetNarrative(
+  social: SocialState,
+  game: ManeuverGameState | undefined,
+  actorId: string,
+  lohId: string,
+  priorRepeats: number,
+): string {
+  const lohName = game?.players.find((player) => player.id === lohId)?.name ?? 'The LOH';
+  if (priorRepeats >= 2) {
+    return `${lohName}: "I have answered this already. Stop pressing me."`;
+  }
+  if (priorRepeats === 1) {
+    return `${lohName}: "My answer has not changed. Watch what happens at the ceremony."`;
+  }
+  const nominees = new Set(game?.nomineeIds ?? []);
+  const candidates = (game?.players ?? [])
+    .filter(
+      (player) =>
+        player.id !== lohId &&
+        player.status !== 'evicted' &&
+        player.status !== 'jury' &&
+        !nominees.has(player.id),
+    )
+    .sort(
+      (a, b) =>
+        (social.relationships[lohId]?.[a.id]?.affinity ?? 0) -
+        (social.relationships[lohId]?.[b.id]?.affinity ?? 0),
+    );
+  const likelyTarget = candidates[0];
+  if (!likelyTarget || likelyTarget.id === actorId) {
+    return `${lohName}: "I am still weighing my options. I am not giving you a name yet."`;
+  }
+  if (nominees.size > 0) {
+    return `${lohName}: "If safety changes my nominations, ${likelyTarget.name} is my current backup plan."`;
+  }
+  return `${lohName}: "Right now, ${likelyTarget.name} is the person I am watching most closely."`;
 }
 
 function isRepeatSensitiveAction(
@@ -155,13 +238,6 @@ function getAllianceAcceptChance(affinity: number, priorRepeats: number): number
       ? 0.9
       : 0.5 + normalizedAffinity * 0.45;
   return Math.max(0.08, Math.min(0.96, baseChance - priorRepeats * 0.12));
-}
-
-function getAllianceBetrayalChance(affinity: number): number {
-  const normalizedAffinity = normalizeAffinity(affinity);
-  if (normalizedAffinity < -0.15) return 0.35;
-  if (normalizedAffinity < 0.2) return 0.16;
-  return 0.04;
 }
 
 function getAllianceFailureDelta(gaslightOccurred: boolean): number {
@@ -241,10 +317,11 @@ export function getAvailableActions(
   state?: StateForManeuvers,
   targetId?: string,
 ): SocialActionDefinition[] {
-  const socialState =
-    state?.social ?? (_store?.getState() as { social: SocialState } | null)?.social;
+  const resolvedState = state ?? (_store?.getState() as StateForManeuvers | null);
+  const socialState = resolvedState?.social;
+  const dramaMode = resolvedState?.settings?.gameUX?.dramaMode === true;
   return SOCIAL_ACTIONS.filter((action) => {
-    if (!canAfford(actorId, normalizeActionCosts(action), state)) {
+    if (!canAfford(actorId, normalizeActionCosts(action, 0, dramaMode), state)) {
       return false;
     }
     if (
@@ -268,8 +345,10 @@ export function computeActionCost(
   action: SocialActionDefinition,
   _targetId: string,
   _state?: StateForManeuvers,
+  targetCount = 0,
+  dramaMode = false,
 ): number {
-  return normalizeActionCost(action);
+  return normalizeActionCost(action, targetCount, dramaMode);
 }
 
 // ── Execution ─────────────────────────────────────────────────────────────
@@ -312,6 +391,8 @@ export interface ExecuteActionResult {
   /** Normalised outcome score in [-1, +1] from the SocialPolicy evaluator. */
   score: number;
   /** Human-readable outcome label (e.g. 'Good', 'Bad'). */
+  /** Per-recipient deltas for an atomic multi-target action. */
+  targetDeltas?: Record<string, number>;
   label: string;
 }
 
@@ -359,13 +440,15 @@ export function executeAction(
     };
   }
 
-  const costs = normalizeActionCosts(action);
   const currentEnergy = SocialEnergyBank.get(actorId);
   const state = _store.getState() as {
     social: SocialState;
+    game?: ManeuverGameState;
     settings?: { gameUX?: { dramaMode?: boolean } };
   };
 
+  const dramaMode = state.settings?.gameUX?.dramaMode === true;
+  const costs = normalizeActionCosts(action, 0, dramaMode);
   if (action.dramaOnly && state.settings?.gameUX?.dramaMode !== true) {
     return {
       success: false,
@@ -391,6 +474,31 @@ export function executeAction(
     };
   }
 
+  const eligibility = evaluateSocialActionEligibility({
+    action,
+    actorId,
+    targetIds:
+      action.targetMode === 'none' || action.needsTargets === false ? [] : [targetId],
+    subjectId: options?.subjectId,
+    phase: state.game?.phase,
+    players: state.game?.players,
+    relationships: state.social.relationships,
+    dramaNetwork: state.social.dramaNetwork,
+    dramaMode: state.settings?.gameUX?.dramaMode === true,
+    requireCompleteSelection: true,
+    allowAIOnly: true,
+  });
+  if (!eligibility.eligible) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: eligibility.reason,
+      score: 0,
+      label: 'Unavailable',
+    };
+  }
+
   if (!canAfford(actorId, costs)) {
     return {
       success: false,
@@ -401,6 +509,36 @@ export function executeAction(
       label: 'Unmoved',
     };
   }
+  if (
+    dramaMode && actionId === 'betray' &&
+    !hasAllianceBetween(state.social.relationships, actorId, targetId)
+  ) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: 'You can only betray an active ally.',
+      score: 0,
+      label: 'Unavailable',
+    };
+  }
+
+  if (
+    actionId === 'ask_loh_target' &&
+    (state.game?.lohId !== targetId ||
+      !state.game?.phase ||
+      !(action.dramaAllowedPhases ?? action.allowedPhases)?.includes(state.game.phase))
+  ) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: 'The LOH target question is not available at this point in the week.',
+      score: 0,
+      label: 'Unavailable',
+    };
+  }
+
 
   const scaledYields = normalizeActionYields(action);
   const random = options?.random ?? Math.random;
@@ -410,9 +548,10 @@ export function executeAction(
     targetId,
     actionId,
   );
-  const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
+  // Acceptance belongs to the recipient, so use their view of the proposer.
+  const existingAffinity = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0;
   let outcome = options?.outcome ?? 'success';
-  let betrayalOccurred = false;
+  const betrayalOccurred = false;
   let gaslightOccurred = false;
   if (actionId === 'proposeAlliance' && !options?.outcome) {
     const acceptChance = getAllianceAcceptChance(existingAffinity, priorRepeats);
@@ -421,9 +560,19 @@ export function executeAction(
       outcome = 'failure';
       gaslightOccurred =
         existingAffinity < ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD && priorRepeats > 0;
-    } else {
-      betrayalOccurred = random() < getAllianceBetrayalChance(existingAffinity);
     }
+  }
+  if (actionId === 'ask_use_safety' && !options?.outcome) {
+    const beneficiaryId = options?.subjectId ?? actorId;
+    const recipientView = state.social.relationships[targetId]?.[beneficiaryId];
+    const tags = new Set(recipientView?.tags ?? []);
+    let acceptanceChance = 0.3 + normalizeAffinity(recipientView?.affinity ?? 0) * 0.5;
+    if (tags.has('alliance')) acceptanceChance += 0.25;
+    if (tags.has('romance') || tags.has('bromance')) acceptanceChance += 0.18;
+    if (tags.has('protection') || tags.has('safety_promise')) acceptanceChance += 0.12;
+    if (tags.has('betrayal')) acceptanceChance = 0.02;
+    else if (tags.has('target') || tags.has('rivalry')) acceptanceChance = Math.min(0.08, acceptanceChance);
+    if (random() >= Math.max(0.02, Math.min(0.94, acceptanceChance))) outcome = 'failure';
   }
   const baseDelta =
     actionId === 'proposeAlliance' && outcome === 'failure'
@@ -489,16 +638,19 @@ export function executeAction(
     _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -infoSpend }));
   }
 
-  // Apply yields (successful actions grant yields; repeated beneficial actions may backfire)
-  const intendedYields = {
-    influence: didBackfire ? -scaledYields.influence : scaledYields.influence,
-    info: didBackfire ? -scaledYields.info : scaledYields.info,
-  };
+  // Apply outcome-sensitive gains or losses after paying the action costs.
+  const resourceEffect = dramaMode
+    ? getSocialResourceEffect(action, didBackfire ? 'backfire' : outcome)
+    : outcome === 'success'
+      ? {
+          influence: didBackfire ? -scaledYields.influence : scaledYields.influence,
+          info: didBackfire ? -scaledYields.info : scaledYields.info,
+        }
+      : { influence: 0, info: 0 };
   const appliedYields = { influence: 0, info: 0 };
-  if (outcome === 'success') {
-    if (intendedYields.influence !== 0) {
+    if (resourceEffect.influence !== 0) {
       const appliedInfluenceDelta = clampResourceAdjustment(
-        intendedYields.influence,
+        resourceEffect.influence,
         postSpendInfluenceBalance,
       );
       if (appliedInfluenceDelta !== 0) {
@@ -506,14 +658,13 @@ export function executeAction(
       }
       appliedYields.influence = appliedInfluenceDelta;
     }
-    if (intendedYields.info !== 0) {
-      const appliedInfoDelta = clampResourceAdjustment(intendedYields.info, postSpendInfoBalance);
+    if (resourceEffect.info !== 0) {
+      const appliedInfoDelta = clampResourceAdjustment(resourceEffect.info, postSpendInfoBalance);
       if (appliedInfoDelta !== 0) {
         _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedInfoDelta }));
       }
       appliedYields.info = appliedInfoDelta;
     }
-  }
 
   // Read balances after all mutations
   const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } };
@@ -525,11 +676,22 @@ export function executeAction(
 
   const subjectId = options?.subjectId;
 
+  const narrative =
+    outcome !== 'success'
+      ? undefined
+      : actionId === 'snoop_around'
+        ? buildSnoopNarrative(state.social, actorId, state.game?.players ?? [])
+        : actionId === 'ask_loh_target'
+          ? buildLohTargetNarrative(state.social, state.game, actorId, targetId, priorRepeats)
+          : undefined;
+
   const entry: SocialActionLogEntry = {
     actionId,
     actorId,
     targetId,
     ...(subjectId ? { subjectId } : {}),
+    ...(narrative ? { narrative } : {}),
+
     cost: costs.energy,
     costs,
     delta,
@@ -542,7 +704,7 @@ export function executeAction(
     label: finalLabel,
     source: options?.source ?? 'system',
   };
-  if (outcome === 'success' && (appliedYields.influence !== 0 || appliedYields.info !== 0)) {
+  if (appliedYields.influence !== 0 || appliedYields.info !== 0) {
     entry.yieldsApplied = {
       ...(appliedYields.influence !== 0 ? { influence: appliedYields.influence } : {}),
       ...(appliedYields.info !== 0 ? { info: appliedYields.info } : {}),
@@ -590,6 +752,30 @@ export function executeAction(
     }
   }
 
+  if ((actionId === 'break_alliance' || actionId === 'break_bromance') && outcome === 'success') {
+    _store.dispatch(
+      updateRelationship({
+        source: targetId,
+        target: actorId,
+        delta: -5,
+        tags: [BETRAYAL_TAG],
+        actionSource: options?.source ?? 'system',
+      }),
+    );
+  }
+
+  if (actionId === 'end_romance' && outcome === 'success') {
+    _store.dispatch(
+      updateRelationship({
+        source: targetId,
+        target: actorId,
+        delta: -5,
+        tags: ['ex'],
+        actionSource: options?.source ?? 'system',
+      }),
+    );
+  }
+
   // For primaryPlusSubject actions: apply a lightweight contextual tag from the
   // primary target toward the subject (e.g. LOH now sees the subject as a "target").
   if (
@@ -610,6 +796,19 @@ export function executeAction(
     );
   }
 
+  if (actionId === 'ask_use_safety' && outcome === 'success') {
+    const beneficiaryId = subjectId ?? actorId;
+    _store.dispatch(
+      updateRelationship({
+        source: targetId,
+        target: beneficiaryId,
+        delta: 0,
+        tags: ['safety_promise'],
+        actionSource: 'system',
+      }),
+    );
+  }
+
   _store.dispatch(recordSocialAction({ entry }));
 
   const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome });
@@ -617,9 +816,209 @@ export function executeAction(
   const summary =
     delta !== 0 ? `${action.title} ${verb} (${sign}${delta} affinity)` : `${action.title} ${verb}`;
 
-  return { success: true, delta, newEnergy, summary, score: finalScore, label: finalLabel };
+
+  if (state.settings?.gameUX?.dramaMode === true) {
+    const outcomeKind: SocialOutcomeKind = betrayalOccurred
+      ? 'betrayal'
+      : gaslightOccurred
+        ? 'gaslight'
+        : didBackfire
+          ? 'backfire'
+          : outcome;
+    return {
+      success: true,
+      delta,
+      newEnergy,
+      summary: narrative ?? getSocialOutcomeCopy({ actionId, actionTitle: action.title, kind: outcomeKind, delta }),
+      score: finalScore,
+      label: finalLabel,
+    };
+  }
+  return { success: true, delta, newEnergy, summary: narrative ?? summary, score: finalScore, label: finalLabel };
 }
 
+/**
+ * Execute one atomic multi-target action. Validation and affordability happen
+ * before any mutation, so a group action can never partially spend or apply.
+ */
+export function executeGroupAction(
+  actorId: string,
+  rawTargetIds: readonly string[],
+  actionId: string,
+  options?: ExecuteActionOptions,
+): ExecuteActionResult {
+  const currentEnergy = SocialEnergyBank.get(actorId);
+  const unavailable = (summary: string): ExecuteActionResult => ({
+    success: false,
+    delta: 0,
+    newEnergy: currentEnergy,
+    summary,
+    score: 0,
+    label: 'Unavailable',
+  });
+  if (!_store) return unavailable('Store not initialised');
+
+  const action = getActionById(actionId);
+  if (!action) return unavailable('Unknown action');
+
+  const targetIds = [...new Set(rawTargetIds)].filter((id) => id && id !== actorId);
+  const state = _store.getState() as {
+    social: SocialState;
+    game?: ManeuverGameState;
+    settings?: { gameUX?: { dramaMode?: boolean } };
+  };
+  const dramaMode = state.settings?.gameUX?.dramaMode === true;
+  if (resolveActionTargetMode(action, dramaMode) !== 'multi') return unavailable('This is not a group action');
+  const eligibility = evaluateSocialActionEligibility({
+    action,
+    actorId,
+    targetIds,
+    phase: state.game?.phase,
+    players: state.game?.players,
+    relationships: state.social.relationships,
+    dramaNetwork: state.social.dramaNetwork,
+    dramaMode: state.settings?.gameUX?.dramaMode === true,
+    requireCompleteSelection: true,
+    allowAIOnly: true,
+  });
+  if (!eligibility.eligible) return unavailable(eligibility.reason);
+
+  const costs = normalizeActionCosts(action, targetIds.length, dramaMode);
+  if (!canAfford(actorId, costs)) {
+    return {
+      ...unavailable(
+        'Not enough resources: Group Chat needs ' + costs.energy + ' energy for ' +
+          targetIds.length + ' housemates.',
+      ),
+      label: 'Unmoved',
+    };
+  }
+
+  const random = options?.random ?? Math.random;
+  const outcome = options?.outcome ?? 'success';
+  const targetDeltas: Record<string, number> = {};
+  let anyBackfire = false;
+  for (const targetId of targetIds) {
+    const repeats = countPriorRepeatedActions(
+      state.social.sessionLogs,
+      actorId,
+      targetId,
+      actionId,
+    );
+    const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, outcome);
+    const repeated =
+      outcome === 'success' && baseDelta > 0
+        ? computeRepeatedPositiveDelta(repeats, random)
+        : { delta: baseDelta, didBackfire: false };
+    targetDeltas[targetId] = repeated.delta;
+    anyBackfire ||= repeated.didBackfire;
+  }
+
+  const deltas = Object.values(targetDeltas);
+  const averageDelta = Math.round(deltas.reduce((sum, value) => sum + value, 0) / deltas.length);
+  const scoreResult = evaluateOutcome({
+    actionId,
+    actorId,
+    targetIds,
+    mode: options?.previewOnly ? 'preview' : 'execute',
+    outcome,
+    relationships: state.social.relationships,
+  });
+  const finalScore = anyBackfire ? -Math.abs(scoreResult.score) : scoreResult.score;
+  const finalLabel = anyBackfire ? scoreToLabel(finalScore) : scoreResult.label;
+
+  if (options?.previewOnly) {
+    return {
+      success: true,
+      delta: averageDelta,
+      targetDeltas,
+      newEnergy: currentEnergy,
+      summary: 'Group Chat preview for ' + targetIds.length + ' housemates',
+      score: finalScore,
+      label: finalLabel,
+    };
+  }
+
+  const newEnergy = SocialEnergyBank.add(actorId, -costs.energy);
+  const currentInfluence = state.social.influenceBank[actorId] ?? 0;
+  const currentInfo = state.social.infoBank[actorId] ?? 0;
+  if (costs.influence > 0) {
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }));
+  }
+  if (costs.info > 0) {
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }));
+  }
+
+  const effect = getSocialResourceEffect(
+    action,
+    anyBackfire ? 'backfire' : outcome,
+    targetIds.length,
+  );
+  const appliedEffect = {
+    influence: clampResourceAdjustment(effect.influence, currentInfluence - costs.influence),
+    info: clampResourceAdjustment(effect.info, currentInfo - costs.info),
+  };
+  if (appliedEffect.influence !== 0) {
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: appliedEffect.influence }));
+  }
+  if (appliedEffect.info !== 0) {
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedEffect.info }));
+  }
+
+  for (const targetId of targetIds) {
+    _store.dispatch(
+      updateRelationship({
+        source: actorId,
+        target: targetId,
+        delta: targetDeltas[targetId],
+        actionSource: options?.source ?? 'system',
+      }),
+    );
+  }
+
+  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } };
+  const entry: SocialActionLogEntry = {
+    actionId,
+    actorId,
+    targetId: targetIds[0],
+    targetIds,
+    targetDeltas,
+    cost: costs.energy,
+    costs,
+    delta: averageDelta,
+    outcome,
+    newEnergy,
+    balancesAfter: {
+      energy: stateAfter.social.energyBank[actorId] ?? 0,
+      influence: stateAfter.social.influenceBank[actorId] ?? 0,
+      info: stateAfter.social.infoBank[actorId] ?? 0,
+    },
+    yieldsApplied: {
+      ...(appliedEffect.influence !== 0 ? { influence: appliedEffect.influence } : {}),
+      ...(appliedEffect.info !== 0 ? { info: appliedEffect.info } : {}),
+    },
+    narrative:
+      'You brought ' + targetIds.length +
+      ' housemates into one conversation; each reacted according to your history with them.',
+    timestamp: Date.now(),
+    week: stateAfter.game?.week,
+    score: finalScore,
+    label: finalLabel,
+    source: options?.source ?? 'system',
+  };
+  _store.dispatch(recordSocialAction({ entry }));
+
+  return {
+    success: true,
+    delta: averageDelta,
+    targetDeltas,
+    newEnergy,
+    summary:
+      'Group Chat reached ' + targetIds.length + ' housemates for ' + costs.energy + ' energy.',
+    score: finalScore,
+    label: finalLabel,
+  };
+}
 // ── Named export for convenience ──────────────────────────────────────────
 
 export const SocialManeuvers = {
@@ -628,6 +1027,7 @@ export const SocialManeuvers = {
   canAfford,
   computeActionCost,
   executeAction,
+  executeGroupAction,
 };
 
 // ── Debug export ──────────────────────────────────────────────────────────
@@ -639,5 +1039,6 @@ if (typeof window !== 'undefined') {
     canAfford,
     computeActionCost,
     executeAction,
+    executeGroupAction,
   };
 }

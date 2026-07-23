@@ -1,4 +1,5 @@
 import { socialConfig } from './socialConfig';
+import { normalizeAffinity } from './affinityUtils';
 import { INCOMING_INTERACTION_PHASE_ORDER } from './incomingInteractionPhases';
 import { applyScheduledIncomingInteractionDelivery } from './socialSlice';
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
@@ -28,6 +29,7 @@ interface SchedulerStore {
       incomingInteractions?: IncomingInteraction[];
       scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
       incomingInteractionDelivery?: IncomingInteractionDeliveryState;
+      relationships?: Record<string, Record<string, { affinity: number; tags: string[] }>>;
     };
     game?: {
       week?: number;
@@ -156,6 +158,7 @@ export function getInteractionDedupeReason({
     }
   }
 
+
   const sameType = allFromActor.find(
     (entry) =>
       entry.type === interaction.type &&
@@ -182,6 +185,15 @@ export function getInteractionDedupeReason({
     );
     if (sameFamily) {
       return 'deduped_same_family';
+    }
+  }
+
+  if (scenarioKey) {
+    const scenarioCountThisWeek = pendingInteractions.filter(
+      (entry) => entry.createdWeek === week && entry.payload?.scenarioKey === scenarioKey,
+    ).length;
+    if (scenarioCountThisWeek >= dedupe.maxSameScenarioPerWeek[priority]) {
+      return 'deduped_scenario_weekly_cap';
     }
   }
 
@@ -343,6 +355,18 @@ export function deliverScheduledIncomingInteractionsForPhase(
     if (isIncomingInteractionInvalidated(entry.interaction, state.game ?? {})) {
       logDecision(entry, 'expiration', 'invalidated_before_delivery');
       continue;
+    }
+    if (entry.interaction.type === 'alliance_proposal') {
+      const humanId = state.game?.players?.find((player) => player.isUser)?.id;
+      const senderId = entry.interaction.fromId;
+      const relationship = humanId ? state.social?.relationships?.[senderId]?.[humanId] : undefined;
+      const alreadyAllied = relationship?.tags.includes('alliance') === true;
+      const intentionalBluff = entry.interaction.payload?.strategicDeception === true;
+      const minAffinity = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds.allianceProposalMinAffinity;
+      if (alreadyAllied || (!intentionalBluff && normalizeAffinity(relationship?.affinity ?? 0) < minAffinity)) {
+        logDecision(entry, 'expiration', alreadyAllied ? 'alliance_already_active' : 'relationship_changed_before_delivery');
+        continue;
+      }
     }
     if (entry.interaction.expiresAtWeek < week) {
       logDecision(entry, 'expiration', 'expired_before_delivery');

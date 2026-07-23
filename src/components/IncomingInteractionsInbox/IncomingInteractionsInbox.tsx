@@ -114,7 +114,7 @@ function InteractionItem({
   showExpiry: boolean;
   playerById: Map<string, Player>;
   currentWeek: number;
-  onRespond: (interactionId: string, responseType: IncomingInteractionResponseType) => void;
+  onRespond: (interactionId: string, responseType: IncomingInteractionResponseType, responseLabel: string) => void;
   relationships: RelationshipsMap;
   socialMemory: SocialMemoryMap;
   humanId: string;
@@ -127,7 +127,8 @@ function InteractionItem({
   const typeIcon = TYPE_ICONS[interaction.type] ?? '💌';
   const isUnread = !interaction.read && !interaction.resolved;
   const resolvedLabel: string | null = interaction.resolved
-    ? formatResponseLabel(interaction.type, interaction.resolvedWith)
+    ? interaction.resolvedLabel
+      ? `Resolved ? ${interaction.resolvedLabel}` : formatResponseLabel(interaction.type, interaction.resolvedWith)
     : isUnread
       ? 'New'
       : null;
@@ -209,6 +210,7 @@ function InteractionItem({
       </div>
 
       <p className="inbox-item__text">{interaction.text}</p>
+      {interaction.outcomeText && <p className="inbox-item__outcome"><strong>What happened:</strong> {interaction.outcomeText}</p>}
 
       {dramaMode && commitment && (
         <div className={`inbox-item__promise inbox-item__promise--${commitment.status}`}>
@@ -232,7 +234,7 @@ function InteractionItem({
               title={option.description}
               data-response-type={option.responseType}
               className={`inbox-action inbox-action--${option.style}`}
-              onClick={() => onRespond(interaction.id, option.responseType)}
+              onClick={() => onRespond(interaction.id, option.responseType, option.label)}
             >
               <span>{option.label}</span>
             </button>
@@ -433,8 +435,8 @@ export default function IncomingInteractionsInbox() {
                         showExpiry
                         playerById={playerById}
                         currentWeek={currentWeek}
-                        onRespond={(interactionId, responseType) =>
-                          dispatch(respondToIncomingInteraction({ interactionId, responseType }))
+                        onRespond={(interactionId, responseType, responseLabel) =>
+                          dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))
                         }
                         relationships={relationships}
                         socialMemory={socialMemory}
@@ -461,8 +463,8 @@ export default function IncomingInteractionsInbox() {
                         showExpiry
                         playerById={playerById}
                         currentWeek={currentWeek}
-                        onRespond={(interactionId, responseType) =>
-                          dispatch(respondToIncomingInteraction({ interactionId, responseType }))
+                        onRespond={(interactionId, responseType, responseLabel) =>
+                          dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))
                         }
                         relationships={relationships}
                         socialMemory={socialMemory}
@@ -491,8 +493,8 @@ export default function IncomingInteractionsInbox() {
                         showExpiry={false}
                         playerById={playerById}
                         currentWeek={currentWeek}
-                        onRespond={(interactionId, responseType) =>
-                          dispatch(respondToIncomingInteraction({ interactionId, responseType }))
+                        onRespond={(interactionId, responseType, responseLabel) =>
+                          dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))
                         }
                         relationships={relationships}
                         socialMemory={socialMemory}

@@ -27,6 +27,8 @@ interface PlayerListProps {
    * delta values from sessionLogs). Used to render the delta arrow in the
    * expanded PlayerCard view.
    */
+  /** Plain taps add/remove players while a multi-target action is active. */
+  multiSelectEnabled?: boolean;
   deltasByTargetId?: ReadonlyMap<string, number>;
 }
 
@@ -48,6 +50,7 @@ export default function PlayerList({
   relationships,
   disabledIds = [],
   onSelectionChange,
+  multiSelectEnabled = false,
   selectedIds: controlledSelectedIds,
   deltasByTargetId,
 }: PlayerListProps) {
@@ -70,7 +73,7 @@ export default function PlayerList({
     // Use the authoritative current selection (controlled or internal) for toggle logic.
     const effectiveSelectedIds = controlledSelectedIds ?? internalSelectedIds;
     let next: Set<string>;
-    if (additive) {
+    if (additive || multiSelectEnabled) {
       // Ctrl/Cmd: toggle individual player in/out of multi-select.
       const s = new Set(effectiveSelectedIds);
       if (s.has(playerId)) {
