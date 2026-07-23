@@ -744,7 +744,7 @@ test.describe('Real player core journeys', () => {
       { runsPrefix: SAVED_RUNS_KEY_PREFIX, statePrefix: SAVED_STATE_KEY_PREFIX }
     )
 
-    expect(fixture.phase).toBe('loh_comp')
+    expect(fixture.phase).toBe('loh_comp_announcement')
     expect(fixture.runId).toBeTruthy()
 
     await page.reload()
