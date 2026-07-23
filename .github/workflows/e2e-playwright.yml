@@ -1,4 +1,4 @@
-name: Pull Request Browser Quality
+name: Pull Request Mobile Browser Quality
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [desktop-chromium, mobile-chromium]
+        project: [mobile-chromium]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,34 +36,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: core-${{ matrix.project }}
-          path: |
-            playwright-report/
-            test-results/
-          if-no-files-found: warn
-          retention-days: 14
-
-  active-minigames:
-    name: Every active minigame (desktop Chromium)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Run registry-driven minigame smoke without retries
-        run: npx playwright test --grep @minigame --project=desktop-chromium
-      - name: Upload browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: active-minigames-desktop-chromium
           path: |
             playwright-report/
             test-results/

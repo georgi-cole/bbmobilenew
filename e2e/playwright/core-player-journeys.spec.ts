@@ -728,7 +728,7 @@ test.describe('Real player core journeys', () => {
         const savedRunsRaw = localStorage.getItem(runsKey)
         if (!savedRunsRaw) throw new Error('current saved-run profile is missing')
         const savedRuns = JSON.parse(savedRunsRaw) as {
-          runs?: { classic?: { game?: { phase?: string; runId?: string } } }
+          runs?: { classic?: { game?: { phase?: string; runId?: string; gameId?: string } } }
         }
         const classic = savedRuns.runs?.classic
         if (!classic) throw new Error('current Classic snapshot is missing')
@@ -739,7 +739,7 @@ test.describe('Real player core journeys', () => {
         return {
           legacyKey,
           phase: classic.game?.phase ?? null,
-          runId: classic.game?.runId ?? null,
+          runIdentity: classic.game?.runId ?? classic.game?.gameId ?? null,
           runsKey,
         }
       },
@@ -747,7 +747,7 @@ test.describe('Real player core journeys', () => {
     )
 
     expect(fixture.phase).toBe('loh_comp_announcement')
-    expect(fixture.runId).toBeTruthy()
+    expect(fixture.runIdentity).toBeTruthy()
 
     await page.reload()
     await waitForHome(page)
@@ -761,16 +761,17 @@ test.describe('Real player core journeys', () => {
           if (!raw) return null
           const parsed = JSON.parse(raw) as {
             version?: number
-            runs?: { classic?: { game?: { phase?: string; runId?: string } } }
+            runs?: { classic?: { game?: { phase?: string; runId?: string; gameId?: string } } }
           }
           return {
             phase: parsed.runs?.classic?.game?.phase ?? null,
-            runId: parsed.runs?.classic?.game?.runId ?? null,
+            runIdentity:
+              parsed.runs?.classic?.game?.runId ?? parsed.runs?.classic?.game?.gameId ?? null,
             version: parsed.version ?? null,
           }
         }, fixture.runsKey)
       )
-      .toEqual({ phase: 'loh_comp', runId: fixture.runId, version: 2 })
+      .toEqual({ phase: 'loh_comp', runIdentity: fixture.runIdentity, version: 2 })
 
     await saveAndReturnHome(page)
 
