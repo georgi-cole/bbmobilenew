@@ -274,11 +274,9 @@ function getResponseBlueprints(
   type: IncomingInteractionType,
   interaction?: IncomingInteraction,
   tone?: IncomingInteractionTone,
+  dramaMode = false,
 ): ResponseBlueprint {
   if (!interaction) return RESPONSE_OPTIONS_BY_TYPE[type];
-  const dramaBlueprint = getDramaResponseBlueprint(type, interaction, tone);
-  if (dramaBlueprint) return dramaBlueprint;
-
 
   const scenarioKey = interaction.payload?.scenarioKey;
   const configuredResponses = getStoryBibleResponseSet(
@@ -287,6 +285,10 @@ function getResponseBlueprints(
   if (configuredResponses) return configuredResponses;
   if (typeof scenarioKey === 'string' && SCENARIO_RESPONSE_OPTIONS[scenarioKey]) {
     return SCENARIO_RESPONSE_OPTIONS[scenarioKey];
+  }
+  if (dramaMode) {
+    const dramaBlueprint = getDramaResponseBlueprint(type, interaction, tone);
+    if (dramaBlueprint) return dramaBlueprint;
   }
 
   if (type === 'check_in' && tone && CHECK_IN_OPTIONS_BY_TONE[tone]) {
@@ -378,12 +380,8 @@ export function getIncomingInteractionResponseOptions(
   tone?: IncomingInteractionTone,
   dramaMode = false,
 ): IncomingInteractionResponseOption[] {
-  const options = dramaMode
-    ? getResponseBlueprints(type, interaction, tone)
-    : RESPONSE_OPTIONS_BY_TYPE[type];
-  const commitmentKind = dramaMode && interaction
-    ? getCommitmentKindForInteraction(interaction)
-    : null;
+  const options = getResponseBlueprints(type, interaction, tone, dramaMode);
+  const commitmentKind = interaction ? getCommitmentKindForInteraction(interaction) : null;
   return options.map((option) => ({
     ...option,
     style: RESPONSE_STYLE_BY_TYPE[option.responseType] ?? 'neutral',

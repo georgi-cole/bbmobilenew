@@ -49,6 +49,10 @@ let _lastReport: SocialPhaseReport | null = null;
 
 /** Provide the Redux store API so the engine can dispatch actions and read state. */
 function init(store: StoreAPI): void {
+  socialAIDriver.stop();
+  _activePhase = null;
+  _budgets.clear();
+  _lastReport = null;
   _store = store;
   initInfluence(store);
   initManeuvers(store);

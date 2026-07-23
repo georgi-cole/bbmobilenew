@@ -21,7 +21,12 @@ import {
   hasSocialMemoryDelta,
   type SocialMemoryDelta,
 } from './socialMemory';
-import { ALLIANCE_TAG, tagsAfterAllianceDecay } from './socialAlliance';
+import {
+  ALLIANCE_TAG,
+  enforceRelationshipTagAffinity,
+  normalizeRelationshipsForTags,
+  tagsAfterAllianceDecay,
+} from './socialAlliance';
 import {
   applyDramaActionEffect as reduceDramaActionEffect,
   applyDramaIncomingResponseEffect as reduceDramaIncomingResponseEffect,
@@ -320,12 +325,22 @@ const socialSlice = createSlice({
           rel.tags = Array.from(new Set([...rel.tags, ...tags]));
         }
         rel.tags = tagsAfterAllianceDecay(rel.tags, rel.affinity, preserveIncomingAlliance);
+        if (delta === 0 && tags && tags.length > 0) {
+          rel.affinity = enforceRelationshipTagAffinity(rel.affinity, rel.tags);
+        }
       } else {
         // Avoid creating zero-information relationships (no affinity change, no tags).
         if (delta === 0 && (!tags || tags.length === 0)) {
           return;
         }
-        state.relationships[source][target] = { affinity: delta, tags: tags ?? [] };
+        const relationshipTags = tags ?? [];
+        state.relationships[source][target] = {
+          affinity:
+            delta === 0
+              ? enforceRelationshipTagAffinity(delta, relationshipTags)
+              : delta,
+          tags: relationshipTags,
+        };
       }
     },
     /** Apply delta updates to directed social memory entries. */
@@ -437,7 +452,7 @@ const socialSlice = createSlice({
     hydrateSocial(_state, action: PayloadAction<SocialState>) {
       return {
         ...action.payload,
-        relationships: action.payload.relationships,
+        relationships: normalizeRelationshipsForTags(action.payload.relationships),
         commitments: action.payload.commitments ?? [],
         dramaNetwork: normalizeDramaSocialNetwork(action.payload.dramaNetwork),
       };

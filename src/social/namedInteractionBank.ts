@@ -17,25 +17,25 @@ const NAMED_INTERACTION_TEMPLATES: Record<string, readonly string[]> = {
     '{subject} has been asking whether your allies would still protect you under pressure.',
     'Someone says {subject} is collecting votes against you while acting relaxed to your face.',
   ],
-};
+}
 
 function hashNamedInteractionSeed(seed: string): number {
-  let hash = 0;
+  let hash = 0
   for (let index = 0; index < seed.length; index += 1) {
-    hash = (Math.imul(hash, 31) + seed.charCodeAt(index)) | 0;
+    hash = (Math.imul(hash, 31) + seed.charCodeAt(index)) | 0
   }
-  return Math.abs(hash);
+  return Math.abs(hash)
 }
 
 export function getNamedInteractionText(
   scenarioKey: string,
   type: string,
   subjectName: string,
-  seed: string,
+  seed: string
 ): string {
   const lines =
     NAMED_INTERACTION_TEMPLATES[scenarioKey] ??
-    NAMED_INTERACTION_TEMPLATES[type === 'gossip' ? 'generic_gossip' : 'generic_warning'];
-  const selected = lines[hashNamedInteractionSeed(seed) % lines.length] ?? lines[0];
-  return selected.replaceAll('{subject}', subjectName);
+    NAMED_INTERACTION_TEMPLATES[type === 'gossip' ? 'generic_gossip' : 'generic_warning']
+  const selected = lines[hashNamedInteractionSeed(seed) % lines.length] ?? lines[0]
+  return selected.replaceAll('{subject}', subjectName)
 }

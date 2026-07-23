@@ -281,7 +281,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     successWeight: 1,
     outcomeTag: 'betrayal',
     availabilityHint: 'High-risk betrayal',
-    dramaRequiredRelationshipTags: ['alliance'],
+    requiredRelationshipTags: ['alliance'],
     yields: { influence: 0.04 },
   },
   {

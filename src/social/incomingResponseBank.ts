@@ -1,24 +1,28 @@
-import type { IncomingInteraction, IncomingInteractionResponseType, IncomingInteractionType } from './types';
+import type {
+  IncomingInteraction,
+  IncomingInteractionResponseType,
+  IncomingInteractionType,
+} from './types'
 
 export interface IncomingResponseChoice {
-  label: string;
-  responseType: IncomingInteractionResponseType;
+  label: string
+  responseType: IncomingInteractionResponseType
 }
 
-type ResponseSet = IncomingResponseChoice[];
+type ResponseSet = IncomingResponseChoice[]
 
 const set = (
   positive: string,
   neutral: string,
   negative: string,
   dismiss: string,
-  deal = false,
+  deal = false
 ): ResponseSet => [
   { label: positive, responseType: deal ? 'accept' : 'positive' },
   { label: neutral, responseType: 'neutral' },
   { label: negative, responseType: deal ? 'decline' : 'negative' },
   { label: dismiss, responseType: 'dismiss' },
-];
+]
 
 /** Compact four-choice banks keyed by conversation, event and emotional tone. */
 export const DRAMA_RESPONSE_BANK: Record<string, ResponseSet[]> = {
@@ -127,29 +131,29 @@ export const DRAMA_RESPONSE_BANK: Record<string, ResponseSet[]> = {
     set('Keep it private', 'Ask for evidence', 'Test their story', 'Pocket it'),
     set('Thank quietly', 'Ask who benefits', 'Challenge warning', 'End it'),
   ],
-};
+}
 
 function stableIndex(source: string, count: number): number {
-  let hash = 0;
+  let hash = 0
   for (let index = 0; index < source.length; index += 1) {
-    hash = (Math.imul(31, hash) + source.charCodeAt(index)) | 0;
+    hash = (Math.imul(31, hash) + source.charCodeAt(index)) | 0
   }
-  return count > 0 ? Math.abs(hash) % count : 0;
+  return count > 0 ? Math.abs(hash) % count : 0
 }
 
 export function getDramaResponseBlueprint(
   type: IncomingInteractionType,
   interaction: IncomingInteraction,
-  tone?: string,
+  tone?: string
 ): ResponseSet | null {
-  const scenario = interaction.payload?.scenarioKey;
+  const scenario = interaction.payload?.scenarioKey
   const keys = [
     tone ? `tone:${type}:${tone}` : '',
     typeof scenario === 'string' ? `scenario:${scenario}` : '',
     `type:${type}`,
-  ].filter(Boolean);
-  const key = keys.find((candidate) => DRAMA_RESPONSE_BANK[candidate]?.length);
-  if (!key) return null;
-  const pool = DRAMA_RESPONSE_BANK[key];
-  return pool[stableIndex(`${interaction.id}|${interaction.fromId}|${key}`, pool.length)] ?? null;
+  ].filter(Boolean)
+  const key = keys.find((candidate) => DRAMA_RESPONSE_BANK[candidate]?.length)
+  if (!key) return null
+  const pool = DRAMA_RESPONSE_BANK[key]
+  return pool[stableIndex(`${interaction.id}|${interaction.fromId}|${key}`, pool.length)] ?? null
 }

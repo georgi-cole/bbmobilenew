@@ -1,55 +1,55 @@
-import type { PlayerStatus } from '../types';
-import { resolveActionTargetMode } from './socialActions';
-import type { SocialActionDefinition, SubjectPool } from './socialActions';
-import type { DramaSocialNetwork, RelationshipsMap } from './types';
+import type { PlayerStatus } from '../types'
+import { resolveActionTargetMode } from './socialActions'
+import type { SocialActionDefinition, SubjectPool } from './socialActions'
+import type { DramaSocialNetwork, RelationshipsMap } from './types'
 
 export interface ActionEligibilityPlayer {
-  id: string;
-  status: PlayerStatus | string;
+  id: string
+  status: PlayerStatus | string
 }
 
 export interface SocialActionEligibilityContext {
-  action: SocialActionDefinition;
-  actorId?: string;
-  targetIds?: readonly string[];
-  subjectId?: string;
-  phase?: string;
-  players?: readonly ActionEligibilityPlayer[];
-  primaryTargetStatus?: PlayerStatus | null;
-  actorStatus?: PlayerStatus | null;
-  relationships?: RelationshipsMap;
-  dramaNetwork?: DramaSocialNetwork;
-  dramaMode?: boolean;
-  requireCompleteSelection?: boolean;
-  allowAIOnly?: boolean;
+  action: SocialActionDefinition
+  actorId?: string
+  targetIds?: readonly string[]
+  subjectId?: string
+  phase?: string
+  players?: readonly ActionEligibilityPlayer[]
+  primaryTargetStatus?: PlayerStatus | null
+  actorStatus?: PlayerStatus | null
+  relationships?: RelationshipsMap
+  dramaNetwork?: DramaSocialNetwork
+  dramaMode?: boolean
+  requireCompleteSelection?: boolean
+  allowAIOnly?: boolean
 }
 
 export interface SocialActionEligibilityResult {
-  eligible: boolean;
-  reason: string;
+  eligible: boolean
+  reason: string
 }
 
 function unavailable(reason: string): SocialActionEligibilityResult {
-  return { eligible: false, reason };
+  return { eligible: false, reason }
 }
 
 function isInHouse(status: string | undefined): boolean {
-  return Boolean(status && status !== 'evicted' && status !== 'jury');
+  return Boolean(status && status !== 'evicted' && status !== 'jury')
 }
 
 function isNominee(status: string | undefined): boolean {
-  return Boolean(status?.includes('nominated'));
+  return Boolean(status?.includes('nominated'))
 }
 
 function relationshipTags(
   relationships: RelationshipsMap | undefined,
   actorId: string,
-  targetId: string,
+  targetId: string
 ): Set<string> {
   return new Set([
     ...(relationships?.[actorId]?.[targetId]?.tags ?? []),
     ...(relationships?.[targetId]?.[actorId]?.tags ?? []),
-  ]);
+  ])
 }
 
 function isValidSubject(
@@ -59,31 +59,31 @@ function isValidSubject(
   primaryTargetId: string,
   players: readonly ActionEligibilityPlayer[],
   relationships: RelationshipsMap | undefined,
-  allowActorAsSubject: boolean,
+  allowActorAsSubject: boolean
 ): boolean {
-  const subject = players.find((player) => player.id === subjectId);
-  if (!subject || !isInHouse(subject.status) || subject.id === primaryTargetId) return false;
-  if (!allowActorAsSubject && subject.id === actorId) return false;
+  const subject = players.find((player) => player.id === subjectId)
+  if (!subject || !isInHouse(subject.status) || subject.id === primaryTargetId) return false
+  if (!allowActorAsSubject && subject.id === actorId) return false
 
   switch (pool) {
     case 'nominees':
-      return isNominee(subject.status);
+      return isNominee(subject.status)
     case 'non_nominees':
-      return !isNominee(subject.status);
+      return !isNominee(subject.status)
     case 'allies': {
-      const tags = relationshipTags(relationships, actorId, subject.id);
+      const tags = relationshipTags(relationships, actorId, subject.id)
       return (
         tags.has('alliance') ||
         tags.has('bromance') ||
         tags.has('romance') ||
         (relationships?.[actorId]?.[subject.id]?.affinity ?? 0) > 0
-      );
+      )
     }
     case 'voters':
-      return !isNominee(subject.status) && subject.status !== 'loh' && subject.status !== 'loh+pos';
+      return !isNominee(subject.status) && subject.status !== 'loh' && subject.status !== 'loh+pos'
     case 'houseguests':
     default:
-      return true;
+      return true
   }
 }
 
@@ -102,108 +102,116 @@ export function evaluateSocialActionEligibility({
   requireCompleteSelection = false,
   allowAIOnly = false,
 }: SocialActionEligibilityContext): SocialActionEligibilityResult {
-  if (action.aiOnly && !allowAIOnly) return unavailable('AI-only action');
-  if (action.dramaOnly && !dramaMode) return unavailable('Drama Mode required');
-  const allowedPhases = dramaMode ? action.dramaAllowedPhases ?? action.allowedPhases : action.allowedPhases;
+  if (action.aiOnly && !allowAIOnly) return unavailable('AI-only action')
+  if (action.dramaOnly && !dramaMode) return unavailable('Drama Mode required')
+  const allowedPhases = dramaMode
+    ? (action.dramaAllowedPhases ?? action.allowedPhases)
+    : action.allowedPhases
   if (allowedPhases && (!phase || !allowedPhases.includes(phase))) {
-    return unavailable('Not available at this point in the week');
+    return unavailable('Not available at this point in the week')
   }
 
-  const targetMode = resolveActionTargetMode(action, dramaMode);
-  const targets = [...new Set(targetIds.filter(Boolean))];
+  const targetMode = resolveActionTargetMode(action, dramaMode)
+  const targets = [...new Set(targetIds.filter(Boolean))]
   if (targetMode === 'none') {
-    if (requireCompleteSelection && subjectId) return unavailable('This action has no subject');
+    if (requireCompleteSelection && subjectId) return unavailable('This action has no subject')
   } else if (requireCompleteSelection) {
     if (targetMode === 'multi') {
-      const minimum = Math.max(2, action.minTargets ?? 2);
+      const minimum = Math.max(2, action.minTargets ?? 2)
       if (targets.length < minimum) {
-        return unavailable('Select at least ' + minimum + ' housemates');
+        return unavailable('Select at least ' + minimum + ' housemates')
       }
       if (action.maxTargets !== undefined && targets.length > action.maxTargets) {
-        return unavailable('Select no more than ' + action.maxTargets + ' housemates');
+        return unavailable('Select no more than ' + action.maxTargets + ' housemates')
       }
     } else if (targets.length !== 1) {
-      return unavailable('Select one housemate');
+      return unavailable('Select one housemate')
     }
   }
   if (requireCompleteSelection && targetMode === 'primaryPlusSubject' && !subjectId) {
-    return unavailable('Choose who the conversation is about');
+    return unavailable('Choose who the conversation is about')
   }
   if (targets.some((targetId) => targetId === actorId)) {
-    return unavailable('You cannot target yourself');
+    return unavailable('You cannot target yourself')
   }
 
-  const playerById = new Map(players.map((player) => [player.id, player]));
+  const playerById = new Map(players.map((player) => [player.id, player]))
   if (
     requireCompleteSelection &&
     players.length > 0 &&
     targetMode !== 'none' &&
     targets.some((targetId) => !isInHouse(playerById.get(targetId)?.status))
   ) {
-    return unavailable('That housemate is no longer available');
+    return unavailable('That housemate is no longer available')
   }
 
-  const requiredActorStatus = dramaMode ? action.dramaRequiredActorStatus ?? action.requiredActorStatus : action.requiredActorStatus;
+  const requiredActorStatus = dramaMode
+    ? (action.dramaRequiredActorStatus ?? action.requiredActorStatus)
+    : action.requiredActorStatus
   if (requiredActorStatus) {
     const resolvedActorStatus =
-      actorStatus ?? (playerById.get(actorId)?.status as PlayerStatus | undefined);
+      actorStatus ?? (playerById.get(actorId)?.status as PlayerStatus | undefined)
     if (!resolvedActorStatus || !requiredActorStatus.includes(resolvedActorStatus)) {
-      return unavailable('Your current role cannot use this action');
+      return unavailable('Your current role cannot use this action')
     }
   }
 
-  const requiredTargetStatus = dramaMode ? action.dramaRequiredTargetStatus ?? action.requiredTargetStatus : action.requiredTargetStatus;
+  const requiredTargetStatus = dramaMode
+    ? (action.dramaRequiredTargetStatus ?? action.requiredTargetStatus)
+    : action.requiredTargetStatus
   if (requiredTargetStatus) {
     if (targets.length === 0 && !primaryTargetStatus) {
-      return unavailable('Select the required role holder');
+      return unavailable('Select the required role holder')
     }
     const statuses =
       targets.length > 0
         ? targets.map(
             (targetId, index) =>
-              playerById.get(targetId)?.status ?? (index === 0 ? primaryTargetStatus : null),
+              playerById.get(targetId)?.status ?? (index === 0 ? primaryTargetStatus : null)
           )
-        : [primaryTargetStatus];
+        : [primaryTargetStatus]
     if (
-      statuses.some(
-        (status) => !status || !requiredTargetStatus.includes(status as PlayerStatus),
-      )
+      statuses.some((status) => !status || !requiredTargetStatus.includes(status as PlayerStatus))
     ) {
-      return unavailable('This action requires a different role holder');
+      return unavailable('This action requires a different role holder')
     }
   }
 
   const requiredRelationshipTags = dramaMode
-    ? action.dramaRequiredRelationshipTags ?? action.requiredRelationshipTags
-    : action.requiredRelationshipTags;
+    ? (action.dramaRequiredRelationshipTags ?? action.requiredRelationshipTags)
+    : action.requiredRelationshipTags
   const excludedRelationshipTags = dramaMode
-    ? action.dramaExcludedRelationshipTags ?? action.excludedRelationshipTags
-    : action.excludedRelationshipTags;
-  const minAffinity = dramaMode ? action.dramaMinAffinity ?? action.minAffinity : action.minAffinity;
-  const maxAffinity = dramaMode ? action.dramaMaxAffinity ?? action.maxAffinity : action.maxAffinity;
+    ? (action.dramaExcludedRelationshipTags ?? action.excludedRelationshipTags)
+    : action.excludedRelationshipTags
+  const minAffinity = dramaMode
+    ? (action.dramaMinAffinity ?? action.minAffinity)
+    : action.minAffinity
+  const maxAffinity = dramaMode
+    ? (action.dramaMaxAffinity ?? action.maxAffinity)
+    : action.maxAffinity
   const needsRelationshipContext =
     Boolean(requiredRelationshipTags) ||
     Boolean(excludedRelationshipTags) ||
     minAffinity !== undefined ||
-    maxAffinity !== undefined;
+    maxAffinity !== undefined
   if (needsRelationshipContext) {
     if (!actorId || targets.length === 0 || !relationships) {
-      return unavailable('Select a compatible relationship');
+      return unavailable('Select a compatible relationship')
     }
     for (const targetId of targets) {
-      const affinity = relationships[actorId]?.[targetId]?.affinity ?? 0;
-      const tags = relationshipTags(relationships, actorId, targetId);
+      const affinity = relationships[actorId]?.[targetId]?.affinity ?? 0
+      const tags = relationshipTags(relationships, actorId, targetId)
       if (minAffinity !== undefined && affinity < minAffinity) {
-        return unavailable(`Requires relationship ${minAffinity}% or higher`);
+        return unavailable(`Requires relationship ${minAffinity}% or higher`)
       }
       if (maxAffinity !== undefined && affinity > maxAffinity) {
-        return unavailable(`Only available while the relationship is ${maxAffinity}% or lower`);
+        return unavailable(`Only available while the relationship is ${maxAffinity}% or lower`)
       }
       if (requiredRelationshipTags && !requiredRelationshipTags.some((tag) => tags.has(tag))) {
-        return unavailable('The required relationship is not active');
+        return unavailable('The required relationship is not active')
       }
       if (excludedRelationshipTags?.some((tag) => tags.has(tag))) {
-        return unavailable('This relationship has already moved past that action');
+        return unavailable('This relationship has already moved past that action')
       }
     }
   }
@@ -212,41 +220,50 @@ export function evaluateSocialActionEligibility({
     Boolean(action.requiredArcTypes) ||
     Boolean(action.excludedArcTypes) ||
     Boolean(action.requiredArcStages) ||
-    action.requiredArcPublic !== undefined;
+    action.requiredArcPublic !== undefined
   if (needsArcContext) {
     const needsExistingArc =
       Boolean(action.requiredArcTypes) ||
       Boolean(action.requiredArcStages) ||
-      action.requiredArcPublic !== undefined;
+      action.requiredArcPublic !== undefined
     if (!actorId || targets.length === 0 || (needsExistingArc && !dramaNetwork)) {
-      return unavailable('This action needs an active story');
+      return unavailable('This action needs an active story')
     }
     for (const targetId of targets) {
       const pairArcs = (dramaNetwork?.arcs ?? []).filter(
         (arc) =>
           arc.status === 'active' &&
           arc.participantIds.includes(actorId) &&
-          arc.participantIds.includes(targetId),
-      );
+          arc.participantIds.includes(targetId)
+      )
       if (action.excludedArcTypes?.some((type) => pairArcs.some((arc) => arc.type === type))) {
-        return unavailable('That story is already active');
+        return unavailable('That story is already active')
       }
       const activeArc = pairArcs
         .filter((arc) => !action.requiredArcTypes || action.requiredArcTypes.includes(arc.type))
-        .sort((a, b) => b.lastAdvancedWeek - a.lastAdvancedWeek)[0];
-      if (action.requiredArcTypes && !activeArc) return unavailable('The required story is not active');
-      if (action.requiredArcStages && !action.requiredArcStages.includes(activeArc?.stage ?? 'resolved')) {
-        return unavailable('That story has not reached the right stage');
+        .sort((a, b) => b.lastAdvancedWeek - a.lastAdvancedWeek)[0]
+      if (action.requiredArcTypes && !activeArc)
+        return unavailable('The required story is not active')
+      if (
+        action.requiredArcStages &&
+        !action.requiredArcStages.includes(activeArc?.stage ?? 'resolved')
+      ) {
+        return unavailable('That story has not reached the right stage')
       }
-      if (action.requiredArcPublic !== undefined && activeArc?.public !== action.requiredArcPublic) {
-        return unavailable(action.requiredArcPublic ? 'That story is still secret' : 'That story is already public');
+      if (
+        action.requiredArcPublic !== undefined &&
+        activeArc?.public !== action.requiredArcPublic
+      ) {
+        return unavailable(
+          action.requiredArcPublic ? 'That story is still secret' : 'That story is already public'
+        )
       }
     }
   }
 
   if (action.requiresKnownSecret) {
     if (!actorId || targets.length === 0 || !dramaNetwork) {
-      return unavailable('You do not have a secret to expose');
+      return unavailable('You do not have a secret to expose')
     }
     const knowsTargetSecret = targets.every((targetId) =>
       dramaNetwork.rumours.some(
@@ -254,14 +271,14 @@ export function evaluateSocialActionEligibility({
           rumour.status === 'circulating' &&
           rumour.subjectId === targetId &&
           (rumour.originatorId === actorId ||
-            rumour.listeners.some((listener) => listener.playerId === actorId)),
-      ),
-    );
-    if (!knowsTargetSecret) return unavailable('You do not know a secret about this housemate');
+            rumour.listeners.some((listener) => listener.playerId === actorId))
+      )
+    )
+    if (!knowsTargetSecret) return unavailable('You do not know a secret about this housemate')
   }
 
   if (requireCompleteSelection && targetMode === 'primaryPlusSubject' && subjectId) {
-    const primaryTargetId = targets[0] ?? '';
+    const primaryTargetId = targets[0] ?? ''
     if (
       !isValidSubject(
         action.subjectPool ?? 'houseguests',
@@ -270,12 +287,12 @@ export function evaluateSocialActionEligibility({
         primaryTargetId,
         players,
         relationships,
-        action.allowActorAsSubject === true,
+        action.allowActorAsSubject === true
       )
     ) {
-      return unavailable('That subject does not fit this action');
+      return unavailable('That subject does not fit this action')
     }
   }
 
-  return { eligible: true, reason: '' };
+  return { eligible: true, reason: '' }
 }

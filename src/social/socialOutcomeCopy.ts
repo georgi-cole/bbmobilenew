@@ -1,4 +1,4 @@
-export type SocialOutcomeKind = 'success' | 'failure' | 'backfire' | 'betrayal' | 'gaslight';
+export type SocialOutcomeKind = 'success' | 'failure' | 'backfire' | 'betrayal' | 'gaslight'
 
 const OUTCOME_COPY: Record<SocialOutcomeKind, readonly string[]> = {
   success: [
@@ -35,9 +35,9 @@ const OUTCOME_COPY: Record<SocialOutcomeKind, readonly string[]> = {
     '{action} exposed a gap between your words and your game. Relationship {delta}.',
     '{action} damaged trust before the conversation even ended. Relationship {delta}.',
   ],
-};
+}
 
-const rotations = new Map<string, number>();
+const rotations = new Map<string, number>()
 
 export function getSocialOutcomeCopy({
   actionId,
@@ -45,17 +45,17 @@ export function getSocialOutcomeCopy({
   kind,
   delta,
 }: {
-  actionId: string;
-  actionTitle: string;
-  kind: SocialOutcomeKind;
-  delta: number;
+  actionId: string
+  actionTitle: string
+  kind: SocialOutcomeKind
+  delta: number
 }): string {
-  const pool = OUTCOME_COPY[kind];
-  const key = `${actionId}:${kind}`;
-  const nextIndex = rotations.get(key) ?? 0;
-  rotations.set(key, (nextIndex + 1) % pool.length);
-  const signedDelta = delta > 0 ? `+${delta}` : `${delta}`;
+  const pool = OUTCOME_COPY[kind]
+  const key = `${actionId}:${kind}`
+  const nextIndex = rotations.get(key) ?? 0
+  rotations.set(key, (nextIndex + 1) % pool.length)
+  const signedDelta = delta > 0 ? `+${delta}` : `${delta}`
   return (pool[nextIndex] ?? pool[0])
     .replace('{action}', actionTitle)
-    .replace('{delta}', signedDelta);
+    .replace('{delta}', signedDelta)
 }

@@ -159,7 +159,7 @@ export default function SocialPanelV2() {
       const successCount = userLogs.filter((l) => l.outcome === 'success').length;
       const failCount = userLogs.length - successCount;
       const drText = buildDrSessionSummary(game.week, userLogs.length, successCount, failCount);
-      dispatch(addTvEvent({ text: drText, type: 'social', source: 'manual', channels: ['mainLog', 'dr'] }));
+      dispatch(addTvEvent({ text: drText, type: 'diary', source: 'manual', channels: ['dr'] }));
 
       // Show a short, playful TV-zone sentence — dispatched last so it appears at
       // the top of the feed (index 0) and is shown in the TV viewport after close.

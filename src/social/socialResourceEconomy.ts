@@ -1,13 +1,13 @@
-import type { SocialActionDefinition, SocialActionKind } from './socialActions';
+import type { SocialActionDefinition, SocialActionKind } from './socialActions'
 
-export type SocialResourceOutcome = 'success' | 'failure' | 'backfire';
+export type SocialResourceOutcome = 'success' | 'failure' | 'backfire'
 
 export interface SocialResourceEffect {
-  influence: number;
-  info: number;
+  influence: number
+  info: number
 }
 
-const ZERO: SocialResourceEffect = { influence: 0, info: 0 };
+const ZERO: SocialResourceEffect = { influence: 0, info: 0 }
 
 const BY_KIND: Record<SocialActionKind, Record<SocialResourceOutcome, SocialResourceEffect>> = {
   rapport: {
@@ -35,7 +35,7 @@ const BY_KIND: Record<SocialActionKind, Record<SocialResourceOutcome, SocialReso
     failure: { influence: -4, info: 0 },
     backfire: { influence: -8, info: 0 },
   },
-};
+}
 
 const OVERRIDES: Record<string, Partial<Record<SocialResourceOutcome, SocialResourceEffect>>> = {
   proposeAlliance: {
@@ -68,21 +68,21 @@ const OVERRIDES: Record<string, Partial<Record<SocialResourceOutcome, SocialReso
     failure: { influence: -8, info: 0 },
     backfire: { influence: -12, info: 0 },
   },
-};
+}
 
 export function getSocialResourceEffect(
   action: SocialActionDefinition,
   outcome: SocialResourceOutcome,
-  targetCount = 1,
+  targetCount = 1
 ): SocialResourceEffect {
-  if (action.id === 'idle') return ZERO;
+  if (action.id === 'idle') return ZERO
   if (action.id === 'group_chat') {
-    if (outcome === 'success') return { influence: Math.min(10, targetCount + 1), info: 0 };
-    return outcome === 'failure' ? { influence: -2, info: 0 } : { influence: -5, info: 0 };
+    if (outcome === 'success') return { influence: Math.min(10, targetCount + 1), info: 0 }
+    return outcome === 'failure' ? { influence: -2, info: 0 } : { influence: -5, info: 0 }
   }
-  return OVERRIDES[action.id]?.[outcome] ?? BY_KIND[action.kind ?? 'rapport'][outcome];
+  return OVERRIDES[action.id]?.[outcome] ?? BY_KIND[action.kind ?? 'rapport'][outcome]
 }
 
 export function nextHumanSocialEnergy(current: number, allowance = 10, cap = 30): number {
-  return Math.min(cap, Math.max(0, current) + allowance);
+  return Math.min(cap, Math.max(0, current) + allowance)
 }

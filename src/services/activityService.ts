@@ -43,7 +43,7 @@ export function isVisibleInMainLog(ev: { channels?: ActivityChannel[] }): boolea
  */
 export function isVisibleOnTv(ev: { channels?: ActivityChannel[] }): boolean {
   if (!ev.channels) return true;
-  return ev.channels.includes('tv');
+  return ev.channels.includes('tv') || ev.channels.includes('mainLog');
 }
 
 /**
