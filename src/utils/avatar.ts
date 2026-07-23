@@ -186,14 +186,20 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
     candidates.push(explicitAvatarPath);
   }
 
-  if (!isUserPlayer) {
-    const folderAvatar = listAvatarAssetCandidates().find(({ basename }) => {
-      const token = normalizeNameToken(basename.replace(/_avatar$/i, ''));
-      return lookupTokens.includes(token);
-    });
-    if (folderAvatar) {
-      candidates.push(folderAvatar.source);
-    }
+  // A custom player has no canonical houseguest artwork. Avoid speculative
+  // name/id requests that produce a broken image before the bundled player
+  // fallback is shown. An explicit custom avatar still remains first.
+  if (isUserPlayer) {
+    candidates.push(getLocalAvatarFallback(player.name, true));
+    return candidates;
+  }
+
+  const folderAvatar = listAvatarAssetCandidates().find(({ basename }) => {
+    const token = normalizeNameToken(basename.replace(/_avatar$/i, ''));
+    return lookupTokens.includes(token);
+  });
+  if (folderAvatar) {
+    candidates.push(folderAvatar.source);
   }
 
   const id = player.id;

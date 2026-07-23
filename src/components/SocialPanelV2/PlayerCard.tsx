@@ -87,8 +87,15 @@ export default function PlayerCard({
       {/* ── Expanded detail panel (visible when selected, no repeated info) ── */}
       {selected && (
         <div className="pc__expanded" aria-label={`${player.name} relationship details`}>
-          {rel && <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>}
-          <span className="pc__expanded-affinity">{affinityDisplay}</span>
+          {rel && (
+            <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
+          )}
+          <span
+            className="pc__expanded-affinity"
+            title="One shared relationship score; directional opinions remain internal to the simulation."
+          >
+            Relationship {affinityDisplay}
+          </span>
           {affinityDelta !== undefined && affinityDelta !== 0 && (
             <span
               className={`pc__delta-arrow pc__delta-arrow--${affinityDelta > 0 ? 'up' : 'down'}`}

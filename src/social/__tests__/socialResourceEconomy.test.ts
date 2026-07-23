@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+﻿import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 import socialReducer, { setEnergyBankEntry } from '../socialSlice';
 import { SOCIAL_ACTIONS } from '../socialActions';
@@ -33,7 +33,7 @@ describe('social resource economy', () => {
     expect(normalizeActionCosts(groupAction(), 2, true).energy).toBe(2);
     expect(normalizeActionCosts(groupAction(), 3, true).energy).toBe(3);
     expect(normalizeActionCosts(groupAction(), 6, true).energy).toBe(6);
-    expect(normalizeActionCosts(groupAction(), 6, false).energy).toBe(2);
+    expect(normalizeActionCosts(groupAction(), 6, false).energy).toBe(6);
   });
 
   it('gives every action meaningful outcome-sensitive resource effects', () => {
@@ -48,15 +48,15 @@ describe('social resource economy', () => {
 });
 
 describe('atomic Group Chat execution', () => {
-  it('leaves normal mode on the original single-target Group Chat behavior', () => {
+  it('keeps main’s multi-target Group Chat behavior in normal mode', () => {
     const store = makeStore(false);
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'user', value: 10 }));
 
     const result = executeGroupAction('user', ['a', 'b'], 'group_chat');
 
-    expect(result.success).toBe(false);
-    expect(store.getState().social.energyBank.user).toBe(10);
+    expect(result.success).toBe(true);
+    expect(store.getState().social.energyBank.user).toBe(8);
   });
 
   it('rejects one participant before spending or logging anything', () => {

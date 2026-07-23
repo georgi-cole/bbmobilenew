@@ -12,6 +12,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
+import profilesReducer from '../../src/store/profilesSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
@@ -121,6 +122,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
   return configureStore({
     reducer: {
       game: gameReducer,
+      profiles: profilesReducer,
       challenge: challengeReducer,
       social: socialReducer,
       ui: uiReducer,

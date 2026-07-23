@@ -13,6 +13,7 @@ export interface InteractionValidityGameState {
   nomineeIds?: string[];
   awaitingPovDecision?: boolean;
   awaitingPovSaveTarget?: boolean;
+  povProtectedIds?: string[];
   players?: InteractionValidityPlayer[];
 }
 
@@ -54,6 +55,16 @@ export function isIncomingInteractionInvalidated(
 ): boolean {
   const sender = getPlayer(game, interaction.fromId);
   if (isEvictedOrGone(sender)) {
+    return true;
+  }
+  const human = game.players?.find((player) => player.isUser);
+  if (
+    interaction.payload?.originActionId === 'nominate'
+    && human
+    && (game.posWinnerId === human.id
+      || game.povProtectedIds?.includes(human.id)
+      || human.status.includes('pos'))
+  ) {
     return true;
   }
 

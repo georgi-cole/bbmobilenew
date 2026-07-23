@@ -36,9 +36,7 @@ interface GameSlice {
     seed: number;
     week: number;
   };
-  social?: {
-    energyBank?: Record<string, number>;
-  };
+  social?: { energyBank?: Record<string, number> };
   settings?: {
     gameUX?: { dramaMode?: boolean };
   };
@@ -69,6 +67,8 @@ function startPhase(phaseName: string): void {
   const players = state.game?.players ?? [];
   const dramaMode = state.settings?.gameUX?.dramaMode === true;
   const seed = state.game?.seed ?? 0;
+  const carriedEnergy = state.social?.energyBank ?? {};
+  const grantsWeeklyBatch = phaseName === 'social_1';
 
   _budgets.clear();
   _activePhase = phaseName;
@@ -91,7 +91,8 @@ function startPhase(phaseName: string): void {
       (rng / 0xffffffff) * (targetSpendPctRange[1] - targetSpendPctRange[0]);
     const actions =
       minActionsPerPlayer + Math.round(pct * (maxActionsPerPlayer - minActionsPerPlayer));
-    _budgets.set(player.id, Math.round(DEFAULT_ENERGY * pct + actions));
+    const phaseBudget = Math.round(DEFAULT_ENERGY * pct + actions);
+    _budgets.set(player.id, (carriedEnergy[player.id] ?? 0) + (grantsWeeklyBatch ? phaseBudget : 0));
   }
 
   const budgets: Record<string, number> = {};
@@ -105,13 +106,12 @@ function startPhase(phaseName: string): void {
     (p) => p.isUser && p.status !== 'evicted' && p.status !== 'jury',
   );
   if (humanPlayer) {
-    const carried = Math.max(0, state.social?.energyBank?.[humanPlayer.id] ?? 0);
+    const carried = Math.max(0, carriedEnergy[humanPlayer.id] ?? 0);
+    const allowance = dramaMode ? HUMAN_SOCIAL_ALLOWANCE : DEFAULT_ENERGY;
+    const nextEnergy = carried + (grantsWeeklyBatch ? allowance : 0);
     const humanBudget = dramaMode
-      ? Math.min(
-          MAX_HUMAN_SOCIAL_ENERGY,
-          carried + HUMAN_SOCIAL_ALLOWANCE,
-        )
-      : DEFAULT_ENERGY;
+      ? Math.min(MAX_HUMAN_SOCIAL_ENERGY, nextEnergy)
+      : nextEnergy;
     _budgets.set(humanPlayer.id, humanBudget);
     budgets[humanPlayer.id] = humanBudget;
   }

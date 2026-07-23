@@ -236,6 +236,20 @@
   color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
 }
 
+.sp2-column__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sp2-multi-hint {
+  color: #c9c2ff;
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-align: right;
+}
+
 .sp2-column__placeholder {
   flex: 1;
   display: flex;
@@ -429,6 +443,12 @@
   object-fit: cover;
 }
 
+
+.sp2-subject-chip .pa--sm {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 1.35rem;
+}
 
 .sp2-subject-chip__name {
   max-width: 8rem;

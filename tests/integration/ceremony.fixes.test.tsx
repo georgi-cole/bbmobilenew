@@ -15,6 +15,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
+import profilesReducer from '../../src/store/profilesSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import { setEnergyBankEntry } from '../../src/social/socialSlice';
@@ -26,6 +27,7 @@ import publicOpinionReducer, {
 } from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen, {
+  buildTieBreakPitch,
   POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS,
   POST_VOTE_ANNOUNCEMENT_DELAY_MS,
 } from '../../src/screens/GameScreen/GameScreen';
@@ -160,6 +162,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
   return configureStore({
     reducer: {
       game: gameReducer,
+      profiles: profilesReducer,
       challenge: challengeReducer,
       social: socialReducer,
       ui: uiReducer,
@@ -181,6 +184,24 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
+
+describe('GameScreen tie-break pitches', () => {
+  it.each([
+    [45, 'protected each other', 'relationship is real'],
+    [15, 'still be a number', 'keep an option'],
+    [-20, 'not close', 'useful as a shield'],
+    [0, 'one more day', 'decision is yours'],
+  ])(
+    'uses relationship-appropriate, deterministic alternatives at relationship %i',
+    (relationship, evenWeekText, oddWeekText) => {
+      expect(buildTieBreakPitch(relationship, 'p1', 1)).toContain(evenWeekText);
+      expect(buildTieBreakPitch(relationship, 'p1', 2)).toContain(oddWeekText);
+      expect(buildTieBreakPitch(relationship, 'p1', 1)).toBe(
+        buildTieBreakPitch(relationship, 'p1', 1),
+      );
+    },
+  );
+});
 
 describe('Ceremony fix: replacement animation gated on veto being used', () => {
   beforeEach(() => {
@@ -567,7 +588,7 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     );
   });
 
-  it('shows the unlocked vote breakdown in a modal when the evicted player is the human user', async () => {
+  it('automatically shows the vote breakdown when the evicted player is the human user', async () => {
     const players = makePlayers(6);
     const store = makeStore({
       phase: 'eviction_results',
@@ -598,15 +619,9 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS);
     });
 
-    expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
-
-    act(() => {
-      screen.getByRole('button', { name: /watch ad to unlock vote reveal/i }).click();
-    });
-
-    expect(loadEvictionVoteBreakdownUnlock()).toBeNull();
-    expect(screen.getByRole('dialog', { name: /vote breakdown/i })).toBeTruthy();
-    expect(screen.getByText(/who voted for whom/i)).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: /peek behind the curtain/i })).toBeNull();
+    expect(screen.getByRole('dialog', { name: /vote breakdown/i })).toBeInTheDocument();
+    expect(screen.getByText(/who voted for whom/i)).toBeInTheDocument();
     expect(screen.getByRole('table', { name: /eviction vote breakdown/i })).toHaveTextContent('Player 1');
     expect(screen.getByRole('table', { name: /eviction vote breakdown/i })).toHaveTextContent('Player 0');
   });

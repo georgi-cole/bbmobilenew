@@ -1,4 +1,4 @@
-/**
+﻿/**
  * socialAIDriver — conservative, budget-aware driver that ticks at a
  * configurable interval and triggers AI social actions.
  *
@@ -24,8 +24,29 @@ import { chooseActionFor, chooseTargetsFor } from './SocialPolicy';
 import { executeAction, getActionById, canAfford } from './SocialManeuvers';
 import { normalizeActionCosts } from './smExecNormalize';
 import { socialConfig } from './socialConfig';
-import type { RelationshipsMap } from './types';
-import type { DramaSocialNetwork, SocialActionLogEntry, SocialMemoryMap } from './types';
+import {
+  applyEnergyDelta,
+  applyInfluenceDelta,
+  applyInfoDelta,
+  scheduleIncomingInteraction,
+} from './socialSlice';
+import {
+  assignDeliverySlot,
+  buildDeliverySlotCounts,
+  buildPendingIncomingInteractions,
+  getInteractionDedupeReason,
+  getIncomingInteractionPriority,
+} from './incomingInteractionScheduler';
+import type {
+  DramaSocialNetwork,
+  IncomingInteraction,
+  IncomingInteractionDeliveryState,
+  IncomingInteractionType,
+  RelationshipsMap,
+  ScheduledIncomingInteraction,
+  SocialActionLogEntry,
+  SocialMemoryMap,
+} from './types';
 import { chooseDramaAIMove, normalizeDramaSocialNetwork } from './dramaModeEngine';
 
 // ── Internal state ────────────────────────────────────────────────────────
@@ -44,6 +65,7 @@ interface DriverState {
     lohId?: string | null;
     posWinnerId?: string | null;
     nomineeIds?: string[];
+    povProtectedIds?: string[];
   };
   social: {
     energyBank: Record<string, number>;
@@ -53,6 +75,9 @@ interface DriverState {
     socialMemory: SocialMemoryMap;
     dramaNetwork: DramaSocialNetwork;
     sessionLogs: SocialActionLogEntry[];
+    incomingInteractions?: IncomingInteraction[];
+    scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
+    incomingInteractionDelivery?: IncomingInteractionDeliveryState;
   };
   settings?: { gameUX?: { dramaMode?: boolean } };
 }
@@ -132,6 +157,131 @@ function _clearTimer(): void {
   }
 }
 
+const HUMAN_FACING_ACTION_TYPES: Partial<Record<string, IncomingInteractionType>> = {
+  ally: 'alliance_proposal',
+  proposeAlliance: 'alliance_proposal',
+  compliment: 'compliment',
+  protect: 'deal_offer',
+  whisper: 'gossip',
+  share_intel: 'gossip',
+  rumor: 'warning',
+  confront: 'snide_remark',
+  startFight: 'snide_remark',
+  ask_use_safety: 'deal_offer',
+  nominate: 'warning',
+};
+
+const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
+  ally: ['I think our games fit together. I want to make this official—are you in?', 'The house is splitting, and I would rather have you beside me. Want to work together?'],
+  proposeAlliance: ['I trust what we have been building. Are you ready to call it an alliance?', 'I see a real path for us if we commit now. Are you in?'],
+  compliment: ['You handled the pressure well today. I wanted you to hear that directly from me.', 'The way you carried yourself today stood out—in a good way.'],
+  protect: ['I may be able to keep heat off you this week, but I need to know we are working together.', 'Your name is vulnerable. I can help, if we can trust each other.'],
+  whisper: ['I heard something privately that could change how you read this week.', 'There is a quiet conversation happening that you should know about.'],
+  share_intel: ['I have information that could matter to your next move.', 'I learned something useful, but I need to know what you will do with it.'],
+  rumor: ['Your name is coming up more than you may realize. I thought you deserved a warning.', 'The tone changes when you leave the room. Be careful who you trust.'],
+  confront: ['We need to clear the air about how you have been moving.', 'Something between us is not adding up, and I want a direct answer.'],
+  startFight: ['I am done pretending everything between us is fine.', 'You crossed a line with me, and I am not letting it slide.'],
+  ask_use_safety: ['Before the Safety decision, I need to know whether you would use it to help me.', 'You hold Safety, and that makes this conversation urgent: would you save me?'],
+  nominate: ['I am considering putting your name in danger this week. Give me a reason not to.', 'Your name is part of my plan right now, and I wanted to hear what you would say.'],
+};
+
+function _pickHumanFacingText(actionId: string, actorId: string, week: number): string {
+  const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? ['I wanted to talk to you directly.'];
+  const seed = [...actorId].reduce((total, char) => total + char.charCodeAt(0), week);
+  return variants[seed % variants.length];
+}
+
+function _routeHumanFacingAction(
+  actorId: string,
+  actionId: string,
+  costs: { energy: number; influence: number; info: number },
+): boolean {
+  if (!_store) return false;
+  const type = HUMAN_FACING_ACTION_TYPES[actionId];
+  if (!type) return false;
+
+  const current = _store.getState() as DriverState;
+  const human = current.game.players.find((player) => player.isUser);
+  if (actionId === 'nominate' && human) {
+    const isProtected = current.game.posWinnerId === human.id
+      || current.game.povProtectedIds?.includes(human.id)
+      || human.status.includes('pos');
+    const relationship = current.social.relationships[actorId]?.[human.id];
+    const isTrustedAlly = (relationship?.affinity ?? 0) >= 30
+      || relationship?.tags.includes('alliance') === true;
+    if (isProtected || current.game.lohId !== actorId || isTrustedAlly) return true;
+  }
+  const now = Date.now();
+  const week = current.game.week ?? 1;
+  const phase = current.game.phase;
+  const scheduled = current.social.scheduledIncomingInteractions ?? [];
+  const pending = buildPendingIncomingInteractions(
+    current.social.incomingInteractions ?? [],
+    scheduled,
+  );
+  const directContactsThisWeek = pending.filter(
+    (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social',
+  ).length;
+  if (
+    directContactsThisWeek >= 1 ||
+    pending.filter((entry) => entry.createdWeek === week).length >= socialConfig.incomingInteractionConfig.maxPerWeek
+  ) return true;
+
+  const interaction: IncomingInteraction = {
+    id: `ai-action-${actionId}-${actorId}-${now}`,
+    fromId: actorId,
+    type,
+    text: _pickHumanFacingText(actionId, actorId, week),
+    payload: {
+      originActionId: actionId,
+      scenarioKey: `background_${actionId}`,
+      variantFamilyId: `background_${actionId}`,
+      phase,
+      source: 'background_social',
+    },
+    createdAt: now,
+    createdWeek: week,
+    expiresAtWeek: week + 1,
+    read: false,
+    requiresResponse: true,
+    resolved: false,
+  };
+  const priority = getIncomingInteractionPriority(type);
+  if (getInteractionDedupeReason({ interaction, priority, pendingInteractions: pending, week })) {
+    return true;
+  }
+  const deliveredThisPhase =
+    current.social.incomingInteractionDelivery?.lastDeliveryPhase === phase &&
+    current.social.incomingInteractionDelivery?.lastDeliveryWeek === week
+      ? current.social.incomingInteractionDelivery.deliveredThisPhase
+      : 0;
+  const slot = assignDeliverySlot({
+    phase,
+    week,
+    priority,
+    slotCounts: buildDeliverySlotCounts(scheduled, phase, week, deliveredThisPhase),
+    visibleActiveCount: (current.social.incomingInteractions ?? []).filter((entry) => !entry.resolved).length,
+  });
+  if (!slot) return true;
+
+  _store.dispatch(applyEnergyDelta({ playerId: actorId, delta: -costs.energy }));
+  if (costs.influence > 0) {
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }));
+  }
+  if (costs.info > 0) {
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }));
+  }
+  _store.dispatch(scheduleIncomingInteraction({
+    interaction,
+    priority,
+    scheduledAt: now,
+    scheduledForWeek: slot.scheduledForWeek,
+    scheduledForPhase: slot.scheduledForPhase,
+    deliveryReason: slot.deliveryReason,
+  }));
+  return true;
+}
+
 function _tick(): void {
   if (!_store || !_running) {
     _clearTimer();
@@ -199,6 +349,14 @@ function _tick(): void {
     if (targets.length === 0) continue;
 
     const [targetId, subjectId] = targets;
+    const targetPlayer = players.find((candidate) => candidate.id === targetId);
+    if (
+      targetPlayer?.isUser &&
+      _routeHumanFacingAction(player.id, actionId, normalizeActionCosts(actionDef))
+    ) {
+      _actionsExecuted++;
+      continue;
+    }
     const result = executeAction(player.id, targetId, actionId, {
       source: 'system',
       subjectId,

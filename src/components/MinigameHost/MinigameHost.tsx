@@ -10,7 +10,7 @@
 //      Note: React-implemented games (implementation === 'react') show their own
 //      results screen and call onDone directly when complete, skipping step 4.
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/registry';
 import MinigameRules from '../MinigameRules/MinigameRules';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
@@ -138,6 +138,24 @@ export default function MinigameHost({
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
+  const completionReportedRef = useRef(false);
+  const reportDoneOnce = useCallback(
+    (
+      rawValue: number,
+      partial = false,
+      completion?: ReactMinigameCompletion,
+      includeCompletion = completion != null,
+    ) => {
+      if (completionReportedRef.current) return;
+      completionReportedRef.current = true;
+      if (includeCompletion) {
+        onDone(rawValue, partial, completion);
+      } else {
+        onDone(rawValue, partial);
+      }
+    },
+    [onDone],
+  );
   const rankingOnly = isPlacementRankingGame(game);
   const competitionRetryEnabled = competitionRetry?.enabled ?? false;
   const rulesGame = useMemo(
@@ -150,6 +168,10 @@ export default function MinigameHost({
         : game,
     [game, participants],
   );
+
+  useEffect(() => {
+    completionReportedRef.current = false;
+  }, [game.key]);
 
   // ── Rules confirmed ─────────────────────────────────────────────────────
   const handleRulesConfirm = useCallback(() => {
@@ -208,8 +230,8 @@ export default function MinigameHost({
   // sentinel to signal completion to the parent — the actual winner is
   // determined by the Redux state, not this value.
   const handleReactComplete = useCallback((completion?: ReactMinigameCompletion) => {
-    onDone(completion?.rawValue ?? 1, false, completion);
-  }, [onDone]);
+    reportDoneOnce(completion?.rawValue ?? 1, false, completion, true);
+  }, [reportDoneOnce]);
 
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
@@ -220,11 +242,11 @@ export default function MinigameHost({
           }
         : undefined;
     if (completion != null) {
-      onDone(finalValue ?? 0, wasPartial, completion);
+      reportDoneOnce(finalValue ?? 0, wasPartial, completion);
     } else {
-      onDone(finalValue ?? 0, wasPartial);
+      reportDoneOnce(finalValue ?? 0, wasPartial);
     }
-  }, [finalTiebreakerMs, finalValue, onDone, wasPartial]);
+  }, [finalTiebreakerMs, finalValue, reportDoneOnce, wasPartial]);
 
   // ── Build leaderboard when participants are provided ─────────────────────
   const leaderboard = useMemo(() => {
@@ -582,7 +604,7 @@ export default function MinigameHost({
                   participants={participants}
                   onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
                     if (completion?.authoritativeWinnerId) {
-                      onDone(value, false, completion);
+                      reportDoneOnce(value, false, completion, true);
                       return;
                     }
                     setFinalValue(value);
@@ -605,7 +627,7 @@ export default function MinigameHost({
                   participants={participants}
                   onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
                     if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
-                      onDone(value, false, completion);
+                      reportDoneOnce(value, false, completion, true);
                       return;
                     }
                     setFinalValue(value);
@@ -640,7 +662,7 @@ export default function MinigameHost({
                   participants={participants}
                   onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
                     if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
-                      onDone(value, false, completion);
+                      reportDoneOnce(value, false, completion, true);
                       return;
                     }
                     setFinalValue(value);

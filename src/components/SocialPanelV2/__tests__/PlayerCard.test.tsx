@@ -145,7 +145,7 @@ describe('PlayerCard', () => {
     render(
       <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={72} />,
     );
-    expect(screen.getByText('72%')).toBeDefined();
+    expect(screen.getByText('Relationship 72%')).toBeDefined();
   });
 
   it('clamps affinity above 100 to 100%', () => {
@@ -153,7 +153,7 @@ describe('PlayerCard', () => {
     render(
       <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={150} />,
     );
-    expect(screen.getByText('100%')).toBeDefined();
+    expect(screen.getByText('Relationship 100%')).toBeDefined();
   });
 
   it('clamps affinity below 0 to 0%', () => {
@@ -161,7 +161,7 @@ describe('PlayerCard', () => {
     render(
       <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={-10} />,
     );
-    expect(screen.getByText('0%')).toBeDefined();
+    expect(screen.getByText('Relationship 0%')).toBeDefined();
   });
 
   it('renders "—" for affinity when not provided', () => {
@@ -169,7 +169,7 @@ describe('PlayerCard', () => {
     render(
       <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} />,
     );
-    expect(screen.getByText('—')).toBeDefined();
+    expect(screen.getByText('Relationship —')).toBeDefined();
     expect(screen.queryByText(/%/)).toBeNull();
   });
 

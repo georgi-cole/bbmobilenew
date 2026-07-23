@@ -34,7 +34,7 @@
 
 body:has(.game-screen-shell) .app-shell {
   background-color: var(--color-bg);
-  background-image: url('/assets/bb-gameplay-bg.svg');
+  background-image: url('../../assets/bb-gameplay-bg.svg');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
@@ -42,7 +42,7 @@ body:has(.game-screen-shell) .app-shell {
 
 body:has(.game-screen-shell) {
   background-color: var(--color-bg);
-  background-image: url('/assets/bb-gameplay-bg.svg');
+  background-image: url('../../assets/bb-gameplay-bg.svg');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
@@ -50,7 +50,7 @@ body:has(.game-screen-shell) {
 
 /* Gameplay background shell */
 .game-screen-shell {
-  background-image: url('/assets/bb-gameplay-bg.svg');
+  background-image: url('../../assets/bb-gameplay-bg.svg');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;

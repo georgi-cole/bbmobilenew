@@ -1,4 +1,4 @@
-/**
+﻿/**
  * socialMiddleware — Redux middleware that hooks the SocialEngine into the
  * game phase lifecycle and dispatches social resource deltas for game events.
  *
@@ -56,6 +56,7 @@ import type {
 import { advanceDramaNetwork, normalizeDramaSocialNetwork } from './dramaModeEngine';
 import { seedWeekRelationships } from './weekSocialSeed';
 import { DEFAULT_ENERGY, HUMAN_SOCIAL_ALLOWANCE } from './constants';
+import { BETRAYAL_TAG, hasAllianceBetween } from './socialAlliance';
 import {
   evaluateSocialCommitmentsForAction,
   voidOverdueSocialCommitments,
@@ -85,6 +86,7 @@ interface GameState {
 
 interface StateWithGame {
   game: GameState;
+  settings?: { gameUX?: { dramaMode?: boolean } };
   social?: {
     energyBank?: Record<string, number>;
     relationships?: import('./types').RelationshipsMap;
@@ -93,7 +95,6 @@ interface StateWithGame {
     dramaNetwork?: DramaSocialNetwork;
     socialMemory?: SocialMemoryMap;
   };
-  settings?: { gameUX?: { dramaMode?: boolean } };
 }
 
 type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown };
@@ -137,6 +138,10 @@ function runDramaPhase(api: MiddlewareAPI, phase: string): void {
 }
 
 /** Seed week-start background affinities, then snapshot relationships as baseline. */
+function isDramaModeEnabled(api: MiddlewareAPI): boolean {
+  return (api.getState() as StateWithGame).settings?.gameUX?.dramaMode === true;
+}
+
 function handleWeekStart(api: MiddlewareAPI): void {
   const state = api.getState() as StateWithGame;
   const week = state.game?.week ?? 1;
@@ -208,6 +213,39 @@ function grantEnergy(api: MiddlewareAPI, playerId: string, delta: number): void 
 /** Dispatch influence delta (integer pts ×100) to a player. */
 function grantInfluence(api: MiddlewareAPI, playerId: string, delta: number): void {
   api.dispatch(applyInfluenceDelta({ playerId, delta }));
+}
+
+function applySafetyRelationshipConsequences(
+  api: MiddlewareAPI,
+  holderId: string | null,
+  savedId: string | null,
+  nomineesBefore: string[],
+): void {
+  if (!holderId || !isDramaModeEnabled(api)) return;
+  if (savedId && savedId !== holderId) {
+    api.dispatch(updateRelationship({ source: savedId, target: holderId, delta: 15, tags: ['protection'], actionSource: 'system' }));
+    api.dispatch(updateRelationship({ source: holderId, target: savedId, delta: 8, tags: ['protection'], actionSource: 'system' }));
+  }
+  const state = api.getState() as StateWithGame;
+  const relationships = state.social?.relationships ?? {};
+  for (const nomineeId of nomineesBefore) {
+    if (nomineeId === holderId || nomineeId === savedId) continue;
+    if (!hasAllianceBetween(relationships, holderId, nomineeId)) continue;
+    api.dispatch(updateRelationship({
+      source: nomineeId,
+      target: holderId,
+      delta: -10,
+      tags: [BETRAYAL_TAG],
+      actionSource: 'system',
+    }));
+  }
+}
+
+function twinEchoFactor(source: string, target: string, week: number): number {
+  const value = `${source}|${target}|${week}`
+    .split('')
+    .reduce((hash, character) => (Math.imul(hash, 31) + character.charCodeAt(0)) | 0, 7);
+  return 0.55 + (Math.abs(value) % 16) / 100;
 }
 
 /** Apply LOH-win energy bonus if the LOH changed. */
@@ -425,11 +463,12 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const afterNominees = (api.getState() as StateWithGame).game?.nomineeIds ?? [];
     if (!afterNominees.includes(saveId) && prevNominees.includes(saveId)) {
       grantEnergy(api as unknown as MiddlewareAPI, saveId, 2);
-      const holderId = prevState.game?.posWinnerId;
-      if (prevState.settings?.gameUX?.dramaMode === true && holderId && holderId !== saveId) {
-        api.dispatch(updateRelationship({ source: holderId, target: saveId, delta: 14, tags: ['protection'], actionSource: 'system' }));
-        api.dispatch(updateRelationship({ source: saveId, target: holderId, delta: 18, tags: ['gratitude'], actionSource: 'system' }));
-      }
+      applySafetyRelationshipConsequences(
+        api as unknown as MiddlewareAPI,
+        prevState.game?.posWinnerId ?? null,
+        saveId,
+        prevNominees,
+      );
     }
 
     evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type, saveId);
@@ -441,17 +480,21 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   if (type === 'game/submitPovDecision') {
     const prevState = api.getState() as StateWithGame;
-    const usePower = (action as unknown as { payload: boolean }).payload;
+    const useSafety = (action as unknown as { payload: boolean }).payload;
     const result = next(action);
-    if (prevState.settings?.gameUX?.dramaMode === true && !usePower && prevState.game?.posWinnerId) {
-      const holderId = prevState.game.posWinnerId;
-      for (const nomineeId of prevState.game.nomineeIds) {
-        const relationship = prevState.social?.relationships?.[nomineeId]?.[holderId];
-        if (!relationship?.tags.some((tag) => ['alliance', 'romance', 'bromance'].includes(tag))) continue;
-        api.dispatch(updateRelationship({ source: nomineeId, target: holderId, delta: -14, tags: ['strained'], actionSource: 'system' }));
-      }
+    if (!useSafety) {
+      applySafetyRelationshipConsequences(
+        api as unknown as MiddlewareAPI,
+        prevState.game?.posWinnerId ?? null,
+        null,
+        prevState.game?.nomineeIds ?? [],
+      );
     }
-    evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type, usePower);
+    evaluateSocialCommitmentsForAction(
+      api as unknown as CommitmentStore,
+      type,
+      (action as unknown as { payload: boolean }).payload,
+    );
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
     return result;
   }
@@ -543,11 +586,13 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       const autoSaved = prevNominees.filter((id) => !afterNominees.includes(id));
       for (const id of autoSaved) {
         grantEnergy(api as unknown as MiddlewareAPI, id, 2);
-        if (prevState.settings?.gameUX?.dramaMode === true && prevPovId && prevPovId !== id) {
-          api.dispatch(updateRelationship({ source: prevPovId, target: id, delta: 14, tags: ['protection'], actionSource: 'system' }));
-          api.dispatch(updateRelationship({ source: id, target: prevPovId, delta: 18, tags: ['gratitude'], actionSource: 'system' }));
-        }
       }
+      applySafetyRelationshipConsequences(
+        api as unknown as MiddlewareAPI,
+        prevPovId,
+        autoSaved[0] ?? null,
+        prevNominees,
+      );
     }
 
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI);
@@ -557,17 +602,31 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   // ── Alliance formed / betrayal: relationship-tag-driven deltas ───────────
   if (type === 'social/updateRelationship') {
-    const payload = (
-      action as unknown as {
-        payload: {
-          source: string;
-          target: string;
-          tags?: string[];
-          actionSource?: 'manual' | 'system';
-        };
-      }
-    ).payload;
+    const payload = (action as unknown as {
+      payload: { source: string; target: string; delta?: number; tags?: string[]; actionSource?: 'manual' | 'system'; twinPropagation?: boolean };
+    }).payload;
     const result = next(action);
+    if (isDramaModeEnabled(api as unknown as MiddlewareAPI) && !payload.twinPropagation && payload.delta && payload.source !== payload.target) {
+      const state = api.getState() as StateWithGame;
+      const aliveIds = new Set(state.game.players
+        .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+        .map((player) => player.id));
+      const sourceTwinId = payload.source === 'lia' ? 'ali' : payload.source === 'ali' ? 'lia' : null;
+      const targetTwinId = payload.target === 'lia' ? 'ali' : payload.target === 'ali' ? 'lia' : null;
+      const echoDelta = Math.round(payload.delta * twinEchoFactor(payload.source, payload.target, state.game.week));
+      if (echoDelta !== 0 && sourceTwinId && aliveIds.has(sourceTwinId) && payload.target !== sourceTwinId) {
+        api.dispatch({
+          type: 'social/updateRelationship',
+          payload: { source: sourceTwinId, target: payload.target, delta: echoDelta, actionSource: 'system', twinPropagation: true },
+        });
+      }
+      if (echoDelta !== 0 && targetTwinId && aliveIds.has(targetTwinId) && payload.source !== targetTwinId) {
+        api.dispatch({
+          type: 'social/updateRelationship',
+          payload: { source: payload.source, target: targetTwinId, delta: echoDelta, actionSource: 'system', twinPropagation: true },
+        });
+      }
+    }
     // Only apply game-event bonuses for manual (human) actions.
     // System/AI actions must not trigger alliance or betrayal resource grants —
     // they are the root cause of influence/energy inflation when many AI players

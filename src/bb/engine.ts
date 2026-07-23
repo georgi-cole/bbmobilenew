@@ -301,8 +301,8 @@ const INTENT_SPECS: Record<Exclude<IntentId, 'safety'>, IntentSpec> = {
   strategy: {
     phrases: [
       'my alliance', 'nomination ceremony', 'who to vote', 'who to nominate',
-      'backdoor plan', 'veto ceremony', 'game plan', 'my strategy',
-      'win the veto', 'win hoh', 'who to evict',
+      'backup plan', 'safety ceremony', 'game plan', 'my strategy',
+      'win safety', 'win loh', 'who to evict',
     ],
     patterns: [
       /\b(alliance|vote(d?)|nominate|evict|hoh|veto|backdoor|target|plan|move|strategy|deal)\b/i,

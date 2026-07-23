@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 
 export const AUTHORITATIVE_COMPONENT_KEYS: Set<string> = new Set([
   'ClosestWithoutGoingOver',
@@ -19,7 +19,6 @@ export const AUTHORITATIVE_COMPONENT_KEYS: Set<string> = new Set([
   'MemoryColors',
   'Capitalization',
   'SnakeGame',
-  'PressurePlank',
   'TimingBar',
   'Minesweeps',
   'HangmanChallenge',
@@ -27,6 +26,8 @@ export const AUTHORITATIVE_COMPONENT_KEYS: Set<string> = new Set([
   'ChainOfGreed',
   'TrapAuction',
   'HouseOfCards',
+  'BatteryLow',
+  'BigSpender',
 ]);
 
 export type HostStubProps = {
@@ -52,7 +53,7 @@ function makeHostStub(name: string, callbackKind: 'finish' | 'complete') {
   return function HostStub(props: HostStubProps) {
     const didRunRef = useRef(false);
 
-    useEffect(() => {
+    const finish = () => {
       if (didRunRef.current) return;
       didRunRef.current = true;
 
@@ -73,11 +74,12 @@ function makeHostStub(name: string, callbackKind: 'finish' | 'complete') {
       }
 
       props.onComplete?.(completion);
-    }, [props]);
+    };
 
     return (
       <div data-testid="minigame-stub" data-component={name}>
         {name} stub
+        <button type="button" onClick={finish}>Finish test minigame</button>
       </div>
     );
   };

@@ -1,56 +1,71 @@
-name: E2E Playwright Tests
+name: Pull Request Browser Quality
 
 on:
   push:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: pr-browser-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  e2e:
+  core-journeys:
+    name: Core journeys (${{ matrix.project }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop-chromium, mobile-chromium]
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Start dev server
-        run: npm run dev -- --port 3000 &
-        env:
-          NODE_ENV: test
-
-      - name: Wait for dev server
-        run: |
-          echo "Waiting for dev server at http://localhost:3000 ..."
-          end=$((SECONDS+60))
-          until curl -s http://localhost:3000 > /dev/null 2>&1; do
-            if [ "$SECONDS" -ge "$end" ]; then
-              echo "Dev server did not become ready within 60 seconds."
-              exit 1
-            fi
-            echo "Dev server not ready yet, retrying..."
-            sleep 2
-          done
-          echo "Dev server is up."
-
-      - name: Run Playwright e2e tests
-        run: npm run test:e2e
-        env:
-          E2E_BASE_URL: http://localhost:3000/bbmobilenew
-
-      - name: Upload Playwright test results
-        uses: actions/upload-artifact@v4
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run real player core journeys without retries
+        run: npx playwright test --grep @core-journey --project=${{ matrix.project }}
+      - name: Upload browser evidence
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
-          path: playwright-report/
-          retention-days: 7
+          name: core-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  active-minigames:
+    name: Every active minigame (desktop Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run registry-driven minigame smoke without retries
+        run: npx playwright test --grep @minigame --project=desktop-chromium
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: active-minigames-desktop-chromium
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14

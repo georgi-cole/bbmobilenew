@@ -545,6 +545,20 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Trap Auction — secret bidding game; AI balances nerve to avoid the ' +
       'lowest bid while accounting for luck in reading opponent ranges.',
   },
+  bigSpender: {
+    key: 'bigSpender',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: {
+      physical: 0,
+      mental: 0.2,
+      precision: 0.05,
+      nerve: 0.4,
+      luck: 0.35,
+    },
+    notes: 'Big Spender combines wallet variance with nerve-led risk management.',
+  },
   batteryLow: {
     key: 'batteryLow',
     category: 'luck',

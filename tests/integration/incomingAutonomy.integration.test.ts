@@ -105,6 +105,7 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
         ai1: { user: { affinity: 70, tags: [] } },
       },
       phase: 'nominations',
+      lohId: 'user',
     });
 
     const delivered = selectIncomingInteractions({ social: store.getState().social });

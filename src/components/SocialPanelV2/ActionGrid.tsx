@@ -1,11 +1,8 @@
-import { useState, useRef, useCallback } from 'react';
+﻿import { useRef } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
 import { normalizeActionCosts } from '../../social/smExecNormalize';
-import { computeOutcomeScore } from '../../social/SocialPolicy';
 import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility';
 import ActionCard from './ActionCard';
-import PreviewPopup from './PreviewPopup';
-import type { PreviewDeltaEntry } from './PreviewPopup';
 import type { Player, PlayerStatus } from '../../types';
 import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types';
 
@@ -60,6 +57,9 @@ export interface ActionGridProps {
   dramaMode?: boolean;
   currentPhase?: string;
   dramaNetwork?: DramaSocialNetwork;
+  hiddenActionIds?: ReadonlySet<string>;
+  /** Live energy prices keyed by action id. */
+  energyCostOverrides?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -94,13 +94,10 @@ export default function ActionGrid({
   dramaMode = false,
   currentPhase,
   dramaNetwork,
+  hiddenActionIds = new Set(),
+  energyCostOverrides,
 }: ActionGridProps) {
-  const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleHoverFocus = useCallback((actionId: string) => {
-    setPreviewActionId(actionId);
-  }, []);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -126,32 +123,6 @@ export default function ActionGrid({
     cards[next]?.focus();
   }
 
-  function handleMouseLeave() {
-    setPreviewActionId(null);
-  }
-
-  function handleBlur(e: React.FocusEvent<HTMLDivElement>) {
-    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
-      setPreviewActionId(null);
-    }
-  }
-
-  // Compute preview deltas for the currently previewed action.
-  let previewDeltas: PreviewDeltaEntry[] | null = null;
-  if (previewActionId !== null) {
-    if (!selectedTargetIds || selectedTargetIds.size === 0) {
-      previewDeltas = [];
-    } else {
-      // Build a lookup map to avoid O(n*m) find inside the loop.
-      const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
-      previewDeltas = Array.from(selectedTargetIds).map((targetId) => ({
-        targetId,
-        targetName: playerById.get(targetId)?.name ?? targetId,
-        delta: computeOutcomeScore(previewActionId, actorId, targetId, 'preview', relationships),
-      }));
-    }
-  }
-
   // Sort actions when actorEnergy is provided: affordable (all resources) first,
   // then unaffordable. Within each group, preserve canonical order.
   //
@@ -172,30 +143,37 @@ export default function ActionGrid({
     );
   }
 
+  function getActionCosts(action: (typeof SOCIAL_ACTIONS)[number]) {
+    const costs = normalizeActionCosts(action, selectedTargetIds?.size, dramaMode);
+    const energyOverride = energyCostOverrides?.[action.id];
+    return energyOverride === undefined ? costs : { ...costs, energy: energyOverride };
+  }
+
   function isContextEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
-    return evaluateSocialActionEligibility({
-      action,
-      actorId,
-      targetIds: selectedTargetIds ? Array.from(selectedTargetIds) : [],
-      phase: currentPhase,
-      players,
-      primaryTargetStatus,
-      relationships,
-      dramaNetwork,
-      dramaMode,
-    }).eligible;
+    return (
+      !hiddenActionIds.has(action.id) &&
+      evaluateSocialActionEligibility({
+        action,
+        actorId,
+        targetIds: selectedTargetIds ? Array.from(selectedTargetIds) : [],
+        phase: currentPhase,
+        players,
+        primaryTargetStatus,
+        relationships,
+        dramaNetwork,
+        dramaMode,
+      }).eligible
+    );
   }
 
   const sortedActions =
     actorEnergy !== undefined
-      ? [...SOCIAL_ACTIONS]
-          .filter(isContextEligible)
-          .sort((a, b) => {
-            const aAffordable = isActionAffordable(normalizeActionCosts(a, selectedTargetIds?.size, dramaMode));
-            const bAffordable = isActionAffordable(normalizeActionCosts(b, selectedTargetIds?.size, dramaMode));
-            if (aAffordable === bAffordable) return 0;
-            return aAffordable ? -1 : 1;
-          })
+      ? [...SOCIAL_ACTIONS].filter(isContextEligible).sort((a, b) => {
+          const aAffordable = isActionAffordable(getActionCosts(a));
+          const bAffordable = isActionAffordable(getActionCosts(b));
+          if (aAffordable === bAffordable) return 0;
+          return aAffordable ? -1 : 1;
+        })
       : SOCIAL_ACTIONS.filter(isContextEligible);
 
   /** Returns an availability reason string, or empty string if the action is affordable. */
@@ -224,11 +202,9 @@ export default function ActionGrid({
         className="sp2-action-grid"
         role="group"
         onKeyDown={handleKeyDown}
-        onMouseLeave={handleMouseLeave}
-        onBlur={handleBlur}
       >
         {sortedActions.map((action) => {
-          const costs = normalizeActionCosts(action, selectedTargetIds?.size, dramaMode);
+          const costs = getActionCosts(action);
           const availabilityReason = getAvailabilityReason(costs);
           const isDisabled = disabledIds.has(action.id);
           const isAvailable = actorEnergy !== undefined && !availabilityReason;
@@ -243,12 +219,11 @@ export default function ActionGrid({
               available={actorEnergy !== undefined ? isAvailable : undefined}
               onClick={onActionClick}
               onPreview={onPreview}
-              onHoverFocus={handleHoverFocus}
+              costOverride={costs}
             />
           );
         })}
       </div>
-      {previewDeltas !== null && <PreviewPopup deltas={previewDeltas} />}
     </>
   );
 }

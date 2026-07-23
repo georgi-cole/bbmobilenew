@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+﻿import { useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   closeIncomingInbox,
@@ -54,15 +54,15 @@ const PRIORITY_LABELS: Record<IncomingInteractionPriority, string> = {
 };
 
 const TYPE_ICONS: Record<IncomingInteractionType, string> = {
-  nomination_plea: '🙏',
-  alliance_proposal: '🤝',
-  deal_offer: '💼',
-  warning: '⚠️',
-  gossip: '🗣️',
-  check_in: '💬',
-  compliment: '💖',
-  snide_remark: '😏',
-  other: '💌',
+  nomination_plea: 'ðŸ™',
+  alliance_proposal: 'ðŸ¤',
+  deal_offer: 'ðŸ’¼',
+  warning: 'âš ï¸',
+  gossip: 'ðŸ—£ï¸',
+  check_in: 'ðŸ’¬',
+  compliment: 'ðŸ’–',
+  snide_remark: 'ðŸ˜',
+  other: 'ðŸ’Œ',
 };
 
 function formatResponseLabel(
@@ -124,7 +124,7 @@ function InteractionItem({
   const fromPlayer = playerById.get(interaction.fromId);
   const fromName = fromPlayer?.name ?? interaction.fromId;
   const typeLabel = getIncomingInteractionTypeLabel(interaction.type);
-  const typeIcon = TYPE_ICONS[interaction.type] ?? '💌';
+  const typeIcon = TYPE_ICONS[interaction.type] ?? 'ðŸ’Œ';
   const isUnread = !interaction.read && !interaction.resolved;
   const resolvedLabel: string | null = interaction.resolved
     ? interaction.resolvedLabel
@@ -175,7 +175,7 @@ function InteractionItem({
           />
         ) : (
           <span className="inbox-item__avatar-fallback" aria-hidden="true">
-            👤
+            ðŸ‘¤
           </span>
         )}
         <div className="inbox-item__title">
@@ -374,22 +374,25 @@ export default function IncomingInteractionsInbox() {
       <div className="inbox-panel">
         <header className="inbox-header">
           <div className="inbox-header__title">
-            📥 Incoming Interactions{dramaMode ? ' · Drama' : ''}
+            ðŸ“¥ Incoming Interactions{dramaMode ? ' · Drama' : ''}
           </div>
           <div className="inbox-header__meta">
             <span className="inbox-header__summary">{headerSummary}</span>
-            {dramaMode && (
-              <span className="inbox-header__credibility">
-                Credibility {credibility.score}% · {credibility.label}
-              </span>
-            )}
+            <span
+              className="inbox-header__credibility"
+              title="Your promise-keeping reputation. It changes only when a promise is later kept or broken."
+            >
+              {credibility.kept + credibility.broken === 0
+                ? 'Your reputation · no promises judged yet'
+                : `Your reputation ${credibility.score}% · ${credibility.label}`}
+            </span>
             <button
               className="inbox-header__close"
               type="button"
               aria-label="Close inbox"
               onClick={() => dispatch(closeIncomingInbox())}
             >
-              ✕
+              âœ•
             </button>
           </div>
         </header>

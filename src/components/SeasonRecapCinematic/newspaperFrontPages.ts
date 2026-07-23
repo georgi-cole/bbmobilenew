@@ -131,7 +131,7 @@ export function generatePlayfulHeadline(event: NewspaperSeasonEvent): HeadlineDr
       };
     case 'veto':
       return {
-        headline: `The veto that changed everything`,
+        headline: `The Safety move that changed everything`,
         subheadline: `${subject} flipped the week on its head. ${event.detail} By sunrise, every ally was re-checking the seating chart.`,
         category: 'Competition Desk',
         stamp: 'POWER SHIFT',

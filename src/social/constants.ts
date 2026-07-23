@@ -3,7 +3,7 @@
 import type { SocialState } from './types';
 import { createInitialDramaSocialNetwork } from './dramaModeEngine';
 
-/** Default social-action energy each player receives at the start of a phase. */
+/** Weekly social-action energy added when the first social phase begins. Unspent energy carries forward. */
 export const DEFAULT_ENERGY = 5;
 /** Human allowance added at the start of every social phase. */
 export const HUMAN_SOCIAL_ALLOWANCE = 10;

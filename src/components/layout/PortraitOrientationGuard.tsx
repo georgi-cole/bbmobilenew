@@ -10,7 +10,7 @@ export default function PortraitOrientationGuard() {
       <div>
         <p className="portrait-orientation-guard__eyebrow">Best played upright</p>
         <h1>Rotate your device</h1>
-        <p>Big Brother Mobile is designed as a portrait game. Your season will be waiting.</p>
+        <p>This game is designed for portrait mode. Your season will be waiting.</p>
       </div>
     </aside>
   );

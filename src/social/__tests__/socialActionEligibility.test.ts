@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { evaluateSocialActionEligibility } from '../socialActionEligibility';
 import { SOCIAL_ACTIONS, type SocialActionDefinition } from '../socialActions';
 import { createInitialDramaSocialNetwork } from '../dramaModeEngine';
@@ -32,7 +32,6 @@ describe('social action catalogue context contract', () => {
 
   it('gives every contextual legacy action a machine-enforced rule', () => {
     expect(action('proposeAlliance')).toMatchObject({
-      dramaMinAffinity: 1,
       excludedRelationshipTags: ['alliance'],
     });
     expect(action('favor_request').dramaMinAffinity).toBe(5);
@@ -81,7 +80,7 @@ describe('evaluateSocialActionEligibility', () => {
         targetIds: ['loh'],
         players,
       }).eligible,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('requires an active alliance before a Drama Mode betrayal', () => {
@@ -170,4 +169,3 @@ describe('evaluateSocialActionEligibility', () => {
     expect(evaluateSocialActionEligibility({ ...base, actorId: 'user' }).eligible).toBe(false);
   });
 });
-

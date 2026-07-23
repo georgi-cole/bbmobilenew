@@ -56,6 +56,20 @@ describe('incomingInteractionPresentation', () => {
     ).toEqual(['positive', 'neutral', 'negative', 'dismiss']);
   });
 
+  it('uses threat-specific replies for an LOH nomination warning', () => {
+    const options = getIncomingInteractionResponseOptions(
+      'warning',
+      makeInteraction({ payload: { scenarioKey: 'background_nominate' } }),
+      'Guarded',
+    );
+    expect(options.map((option) => option.label)).toEqual([
+      'Ask why',
+      'Offer a deal',
+      'Stand your ground',
+      'Keep it private',
+    ]);
+  });
+
   it('derives a warm tone from strong gratitude and trust', () => {
     const interaction = makeInteraction({ type: 'compliment' });
     const relationships: RelationshipsMap = {

@@ -20,6 +20,7 @@ import { Provider } from 'react-redux';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
+import profilesReducer from '../../src/store/profilesSlice';
 import settingsReducer from '../../src/store/settingsSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
@@ -118,6 +119,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
   return configureStore({
     reducer: {
       game: gameReducer,
+      profiles: profilesReducer,
       settings: settingsReducer,
       challenge: challengeReducer,
       social: socialReducer,

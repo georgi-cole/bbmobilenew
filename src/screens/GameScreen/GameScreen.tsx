@@ -195,6 +195,17 @@ const PUBLIC_MODE_STORE_PROMPT =
   'If you want to activate public mode, go to the store in the home hub.'
 const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
 
+// Exported only as a pure regression-test seam; it does not participate in Fast Refresh state.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildTieBreakPitch(relationship: number, playerId: string, week: number): string {
+  const alternate = Math.abs(`${playerId}:${week}`.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 2 === 0
+  if (relationship >= 45) return alternate ? 'We have protected each other before. Keep me, and I will return it.' : 'Our relationship is real. Do not let one tied vote end it.'
+  if (relationship >= 15) return alternate ? 'I can still be a number for you after tonight. Give me that chance.' : 'Keep me and you keep an option in this house?not another enemy.'
+  if (relationship <= -20) return alternate ? 'We are not close, but eliminating me only finishes someone else?s move.' : 'You do not have to trust me to see I am useful as a shield.'
+  return alternate ? 'Give me one more day and judge me by what I do with it.' : 'This decision is yours. I am asking you not to make me the easy answer.'
+}
+
+
 function buildAiOnlyChallengeRawResults(challenge: PendingChallenge) {
   return challenge.participants.map((id) => ({
     playerId: id,
@@ -330,6 +341,7 @@ export default function GameScreen() {
   }, [store])
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
+  const socialRelationships = useAppSelector((s) => s.social.relationships)
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
   const settings = useAppSelector(selectSettings)
@@ -380,6 +392,7 @@ export default function GameScreen() {
   // Snapshot of vote data captured at handleVoteResultsDone time for use in
   // unlockVoteBreakdown when game state may have already advanced.
   const postEvictionVoteSnapshotRef = useRef<VoteBreakdownSnapshot | null>(null)
+  const autoRevealOwnEvictionVotesRef = useRef(false)
   const isMountedRef = useRef(true)
   const postEvictionVoteBreakdownPromptTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const activeConfessionalDecisionKey = activeConfessionalDecision
@@ -1209,7 +1222,7 @@ export default function GameScreen() {
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
   const isDebugMode = detectDebugMode()
-  const isQaMode = searchParams.get('qa') === '1'
+  const isQaMode = searchParams.get('qa') === '1' && isDebugMode
   const handleDevPlayNomAnim = useCallback(() => {
     const eligible = alivePlayers.filter((p) => !p.isUser)
     const devNominees = eligible.slice(0, 2).map((p) => p.id)
@@ -1772,6 +1785,17 @@ export default function GameScreen() {
   const tieBreakOptions = alivePlayers.filter((p) =>
     (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
   )
+  const tieBreakPitches: Record<string, string> = humanPlayer
+    ? Object.fromEntries(
+        tieBreakOptions.map((nominee) => {
+          const outward = socialRelationships[humanPlayer.id]?.[nominee.id]?.affinity ?? 0
+          const inward = socialRelationships[nominee.id]?.[humanPlayer.id]?.affinity ?? 0
+          const relationship = Math.round((outward + inward) / 2)
+          return [nominee.id, buildTieBreakPitch(relationship, nominee.id, game.week)]
+        }),
+      )
+    : {}
+
   const doubleEvictionTieBreakSelectCount =
     game.doubleEviction?.weekActive && game.awaitingTieBreak
       ? calculateRequiredDoubleEvictionSlots(
@@ -1919,6 +1943,7 @@ export default function GameScreen() {
       // Decide whether to offer the confessional breakdown after the animation.
       if (canOfferVoteBreakdown && !hasActiveVoteBreakdownUnlock()) {
         isPostEvictionConfessionalModeRef.current = true
+        autoRevealOwnEvictionVotesRef.current = evictee.isUser === true
         // Snapshot vote data now before any state changes.
         postEvictionVoteSnapshotRef.current = {
           votes: { ...(game.votes ?? {}) },
@@ -2149,7 +2174,7 @@ export default function GameScreen() {
   }, [game.voteResults, game.pendingEviction, game.players, game.awaitingTieBreak, humanIsHoH])
 
   const aiTiebreakContext = useMemo<AiTiebreakContext | null>(() => {
-    if (humanIsHoH || !game.awaitingTieBreak || !game.voteResults || !game.pendingEviction?.evicteeId) return null
+    if (humanIsHoH || !game.voteResults || !game.pendingEviction?.evicteeId) return null
     let maxVotes = -1
     let topCount = 0
     for (const count of Object.values(game.voteResults)) {
@@ -2180,7 +2205,7 @@ export default function GameScreen() {
         ? `By a vote of ${evicteeVotes + 1} to ${otherVotes}`
         : `With ${evicteeVotes + 1} vote${evicteeVotes + 1 === 1 ? '' : 's'}`,
     }
-  }, [game.awaitingTieBreak, game.lohId, game.pendingEviction?.evicteeId, game.players, game.voteResults, humanIsHoH])
+  }, [game.lohId, game.pendingEviction?.evicteeId, game.players, game.voteResults, humanIsHoH])
 
   const aiTiebreakAnnouncement = useMemo<Announcement | null>(() => {
     if (!aiTiebreakStage || !activeAiTiebreakContext) return null
@@ -2405,6 +2430,13 @@ export default function GameScreen() {
     // Show the confessional breakdown prompt if it was flagged during vote-results
     // dismissal (post-eviction confessional mode).
     if (isPostEvictionConfessionalModeRef.current) {
+      if (autoRevealOwnEvictionVotesRef.current && postEvictionVoteSnapshotRef.current) {
+        setPostEvictionVoteBreakdown(postEvictionVoteSnapshotRef.current)
+        postEvictionVoteSnapshotRef.current = null
+        autoRevealOwnEvictionVotesRef.current = false
+        isPostEvictionConfessionalModeRef.current = false
+        return
+      }
       if (postEvictionVoteBreakdownPromptTimerRef.current != null) {
         window.clearTimeout(postEvictionVoteBreakdownPromptTimerRef.current)
         postEvictionVoteBreakdownPromptTimerRef.current = null
@@ -3552,6 +3584,7 @@ export default function GameScreen() {
           title="Tie-Break — LOH Casts the Deciding Vote"
           subtitle={`${humanPlayer?.name}, the vote is tied! As LOH, you must break the tie.`}
           options={tieBreakOptions}
+          optionDescriptions={settings.gameUX.dramaMode ? tieBreakPitches : undefined}
           onSelect={(id) => dispatch(submitTieBreak(id))}
           danger
           stingerMessage="TIE BREAKER CAST"
@@ -3564,6 +3597,7 @@ export default function GameScreen() {
           title="Tie-Break — POS Holder Casts the Deciding Vote"
           subtitle={`${humanPlayer?.name}, the vote is tied! As POS holder, you break the tie as a special exception.`}
           options={tieBreakOptions}
+          optionDescriptions={settings.gameUX.dramaMode ? tieBreakPitches : undefined}
           onSelect={(id) => dispatch(submitPosTieBreak(id))}
           danger
           stingerMessage="TIE BREAKER CAST"

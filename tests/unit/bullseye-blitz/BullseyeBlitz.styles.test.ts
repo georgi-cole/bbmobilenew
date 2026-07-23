@@ -17,6 +17,8 @@ describe('BullseyeBlitz styles', () => {
 
     const rootRuleBody = css.slice(rootRuleStart, rootRuleEnd);
     expect(rootRuleBody).toContain('overflow-y: auto;');
+    expect(rootRuleBody).toContain('var(--minigame-safe-top');
+    expect(rootRuleBody).toContain('var(--minigame-safe-bottom');
     expect(rootRuleBody).toContain('-webkit-overflow-scrolling: touch;');
 
     const cardRuleStart = css.indexOf('.bbl__card {');
@@ -26,11 +28,7 @@ describe('BullseyeBlitz styles', () => {
     expect(cardRuleEnd).toBeGreaterThan(cardRuleStart);
 
     const cardRuleBody = css.slice(cardRuleStart, cardRuleEnd);
-    const vhIndex = cardRuleBody.indexOf('max-height: calc(100vh - 32px);');
-    const dvhIndex = cardRuleBody.indexOf('max-height: calc(100dvh - 32px);');
-
-    expect(vhIndex).toBeGreaterThanOrEqual(0);
-    expect(dvhIndex).toBeGreaterThan(vhIndex);
+    expect(cardRuleBody).toContain('max-height: 100%;');
     expect(cardRuleBody).toContain('margin-block: auto;');
     expect(cardRuleBody).toContain('overflow-y: auto;');
     expect(cardRuleBody).toContain('overscroll-behavior: contain;');

@@ -230,33 +230,33 @@ describe('ActionGrid – preview popup', () => {
     expect(screen.queryByText('Select target(s) to preview')).toBeNull();
   });
 
-  it('shows "Select target(s) to preview" when no targets are selected on hover', () => {
+  it('does not show a floating preview when no targets are selected on hover', () => {
     render(<ActionGrid />);
     const firstCard = screen.getByRole('button', {
       name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     fireEvent.pointerEnter(firstCard, { pointerType: 'mouse' });
-    expect(screen.getByText('Select target(s) to preview')).toBeDefined();
+    expect(screen.queryByText('Select target(s) to preview')).toBeNull();
   });
 
-  it('shows per-target deltas when selectedTargetIds and players are provided', () => {
+  it('does not show a floating target delta when selectedTargetIds and players are provided', () => {
     const players = [{ id: 'p1', name: 'Alice', avatar: '😀', status: 'active' as const }];
     render(<ActionGrid selectedTargetIds={new Set(['p1'])} players={players} />);
     const firstCard = screen.getByRole('button', {
       name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     fireEvent.pointerEnter(firstCard, { pointerType: 'mouse' });
-    expect(screen.getByText('Alice')).toBeDefined();
+    expect(screen.queryByText('Alice')).toBeNull();
   });
 
-  it('clears the preview when the mouse leaves the grid', () => {
+  it('keeps the removed preview absent when the mouse leaves the grid', () => {
     render(<ActionGrid />);
     const firstCard = screen.getByRole('button', {
       name: new RegExp(VISIBLE_ACTIONS[0].title, 'i'),
     });
     const grid = firstCard.closest('[role="group"]')!;
     fireEvent.pointerEnter(firstCard, { pointerType: 'mouse' });
-    expect(screen.queryByText('Select target(s) to preview')).not.toBeNull();
+    expect(screen.queryByText('Select target(s) to preview')).toBeNull();
     fireEvent.mouseLeave(grid);
     expect(screen.queryByText('Select target(s) to preview')).toBeNull();
   });
@@ -331,7 +331,10 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
         selectedTargetIds={new Set(['p2'])}
         relationships={{
           user: {
-            p2: { affinity: 5, tags: ['alliance'] },
+            p2: { affinity: 50, tags: ['alliance'] },
+          },
+          p2: {
+            user: { affinity: 50, tags: ['alliance'] },
           },
         }}
       />,

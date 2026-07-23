@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SocialManeuvers — core API for executing social actions during a phase.
  *
  * Public API:
@@ -30,7 +30,12 @@ import {
   applyInfluenceDelta,
   applyInfoDelta,
 } from './socialSlice';
-import { ALLIANCE_TAG, BETRAYAL_TAG, hasAllianceBetween } from './socialAlliance';
+import {
+  ALLIANCE_TAG,
+  BETRAYAL_TAG,
+  MIN_ALLIANCE_AFFINITY,
+  hasAllianceBetween,
+} from './socialAlliance';
 import type { SocialActionLogEntry, SocialState } from './types';
 import { getSocialResourceEffect } from './socialResourceEconomy';
 
@@ -231,7 +236,30 @@ function clampResourceAdjustment(delta: number, availableBalance: number): numbe
   return delta < 0 ? -Math.min(Math.abs(delta), availableBalance) : delta;
 }
 
-function getAllianceAcceptChance(affinity: number, priorRepeats: number): number {
+function getAdvancedAllianceAcceptChance(
+  proposerAffinity: number,
+  recipientTrust: number,
+  priorRepeats: number,
+  context: { proposerIsLoh: boolean; proposerHasSafety: boolean; recipientIsNominated: boolean },
+): number {
+  const proposer = normalizeAffinity(proposerAffinity);
+  const recipient = normalizeAffinity(recipientTrust);
+  const mutual = (proposer + recipient) / 2;
+  if (Math.min(proposer, recipient) <= -0.35) return 0.02;
+  const relationshipChance = mutual >= socialConfig.relationshipThresholds.allyThreshold
+    ? 0.82 + mutual * 0.12
+    : 0.08 + Math.max(0, mutual) * 0.85;
+  const leverageBonus = (context.proposerIsLoh ? 0.28 : 0)
+    + (context.proposerHasSafety ? 0.08 : 0)
+    + (context.recipientIsNominated ? 0.14 : 0);
+  const hostilityCap = Math.min(proposer, recipient) < -0.1 ? 0.22 : 0.95;
+  return Math.max(
+    0.02,
+    Math.min(hostilityCap, relationshipChance + leverageBonus - priorRepeats * 0.14),
+  );
+}
+
+function getStandardAllianceAcceptChance(affinity: number, priorRepeats: number): number {
   const normalizedAffinity = normalizeAffinity(affinity);
   const baseChance =
     normalizedAffinity >= socialConfig.relationshipThresholds.allyThreshold
@@ -240,8 +268,122 @@ function getAllianceAcceptChance(affinity: number, priorRepeats: number): number
   return Math.max(0.08, Math.min(0.96, baseChance - priorRepeats * 0.12));
 }
 
-function getAllianceFailureDelta(gaslightOccurred: boolean): number {
+
+function getAdvancedAllianceFailureDelta(
+  gaslightOccurred: boolean,
+  proposerAffinity: number,
+  recipientTrust: number,
+): number {
+  if (gaslightOccurred) return ALLIANCE_GASLIGHT_DELTA;
+  const mutual = (normalizeAffinity(proposerAffinity) + normalizeAffinity(recipientTrust)) / 2;
+  if (mutual >= 0.2) return -2;
+  if (mutual >= 0) return -4;
+  return ALLIANCE_REJECTION_DELTA;
+}
+
+function getStandardAllianceFailureDelta(gaslightOccurred: boolean): number {
   return gaslightOccurred ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA;
+}
+function getAllianceBetrayalChance(affinity: number): number {
+  const normalizedAffinity = normalizeAffinity(affinity);
+  if (normalizedAffinity < -0.15) return 0.35;
+  if (normalizedAffinity < 0.2) return 0.16;
+  return 0.04;
+}
+
+function getLohTargetPlan(
+  game: {
+    players?: Array<{ id: string; name?: string; status: string }>;
+    nomineeIds?: string[];
+  } | undefined,
+  relationships: SocialState['relationships'],
+  lohId: string,
+): {
+  targetId: string;
+  targetName: string;
+  isBackdoor: boolean;
+  currentTargetId: string | null;
+  backupTargetId: string | null;
+} | null {
+  const players = (game?.players ?? []).filter(
+    (player) => player.id !== lohId && player.status !== 'evicted' && player.status !== 'jury',
+  );
+  if (players.length === 0) return null;
+  const score = (playerId: string) => relationships[lohId]?.[playerId]?.affinity ?? 0;
+  const lowest = (pool: typeof players) =>
+    [...pool].sort((left, right) => score(left.id) - score(right.id))[0];
+  const nomineeIds = new Set(game?.nomineeIds ?? []);
+  const nominees = players.filter((player) => nomineeIds.has(player.id));
+  const nonNominees = players.filter((player) => !nomineeIds.has(player.id));
+  const nomineeTarget = nominees.length > 0 ? lowest(nominees) : null;
+  const backdoorTarget = nonNominees.length > 0 ? lowest(nonNominees) : null;
+  const isBackdoor = !!nomineeTarget && !!backdoorTarget &&
+    score(backdoorTarget.id) <= score(nomineeTarget.id) - 12;
+  const currentTarget = nomineeTarget ?? lowest(players);
+  const target = isBackdoor ? backdoorTarget! : currentTarget;
+  return {
+    targetId: target.id,
+    targetName: target.name ?? target.id,
+    isBackdoor,
+    currentTargetId: currentTarget?.id ?? null,
+    backupTargetId: backdoorTarget?.id ?? null,
+  };
+}
+
+function getContextualActionSummary({
+  actionId,
+  actorId,
+  targetId,
+  subjectId,
+  recipientTrust,
+  game,
+  relationships,
+}: {
+  actionId: string;
+  actorId: string;
+  targetId: string;
+  subjectId?: string;
+  recipientTrust: number;
+  game?: {
+    players?: Array<{ id: string; name?: string; status: string }>;
+    nomineeIds?: string[];
+    nominationContext?: { autoNomineeId: string | null } | null;
+  };
+  relationships: SocialState['relationships'];
+}): string | null {
+  const name = (id: string | undefined) => game?.players?.find((player) => player.id === id)?.name ?? id ?? 'that player';
+  if (actionId === 'ask_why_nominated') {
+    const lohName = name(targetId);
+    if (game?.nominationContext?.autoNomineeId === actorId) {
+      return `${lohName} explained that you entered danger automatically after the competition, not as their personal nominee.`;
+    }
+    if (recipientTrust >= 30) return `${lohName} said they respect you, but your competition potential made you too dangerous to leave comfortable.`;
+    if (recipientTrust < 0) return `${lohName} admitted they do not trust your position and wanted to force you to show your hand.`;
+    return `${lohName} said they needed options and believed you were connected enough to survive without becoming an immediate enemy.`;
+  }
+  if (actionId === 'ask_safety_plan') {
+    const holderName = name(targetId);
+    const holder = game?.players?.find((player) => player.id === targetId);
+    if (holder?.status.includes('nominated')) return `${holderName} said they have no real choice: they intend to use Safety on themselves.`;
+    if (recipientTrust < 25) return `${holderName} stayed vague and said everyone would learn the decision at the ceremony.`;
+    const nominee = (game?.nomineeIds ?? [])
+      .map((id) => ({ id, affinity: relationships[targetId]?.[id]?.affinity ?? 0 }))
+      .sort((left, right) => right.affinity - left.affinity)[0];
+    return nominee
+      ? `${holderName} trusted you enough to say they are leaning toward using Safety on ${name(nominee.id)}.`
+      : `${holderName} said they are currently leaning toward leaving the nominations unchanged.`;
+  }
+  if (actionId === 'ask_use_safety') {
+    return recipientTrust >= 20
+      ? `${name(targetId)} said they would seriously consider using Safety on ${name(subjectId)} but made no promise.`
+      : `${name(targetId)} listened to the request about ${name(subjectId)} and refused to reveal the decision.`;
+  }
+  if (actionId === 'ask_hold_safety') {
+    return recipientTrust >= 20
+      ? `${name(targetId)} acknowledged the LOH's request to leave nominations unchanged, while keeping the final decision.`
+      : `${name(targetId)} rejected the pressure and said the Safety decision belongs to them alone.`;
+  }
+  return null;
 }
 
 function getOutcomeVerb({
@@ -351,6 +493,18 @@ export function computeActionCost(
   return normalizeActionCost(action, targetCount, dramaMode);
 }
 
+/** Return the complete multi-resource price for an action. */
+export function computeActionCosts(
+  _actorId: string,
+  action: SocialActionDefinition,
+  _targetId: string,
+  _state?: StateForManeuvers,
+  targetCount = 0,
+  dramaMode = false,
+): { energy: number; influence: number; info: number } {
+  return normalizeActionCosts(action, targetCount, dramaMode);
+}
+
 // ── Execution ─────────────────────────────────────────────────────────────
 
 export interface ExecuteActionOptions {
@@ -377,6 +531,12 @@ export interface ExecuteActionOptions {
   subjectId?: string;
   /** Optional RNG override for deterministic simulations and tests. */
   random?: () => number;
+  /** Apply the action to another group member without charging the group cost again. */
+  waiveCosts?: boolean;
+  /** Override the energy portion of the cost for dynamically priced actions. */
+  energyCostOverride?: number;
+  /** Override the complete price when a UI batches several targets atomically. */
+  costOverride?: { energy: number; influence: number; info: number };
 }
 
 export interface ExecuteActionResult {
@@ -448,7 +608,13 @@ export function executeAction(
   };
 
   const dramaMode = state.settings?.gameUX?.dramaMode === true;
-  const costs = normalizeActionCosts(action, 0, dramaMode);
+  const normalizedCosts = normalizeActionCosts(action, 0, dramaMode);
+  const costs = options?.waiveCosts
+    ? { energy: 0, influence: 0, info: 0 }
+    : options?.costOverride ?? {
+        ...normalizedCosts,
+        energy: options?.energyCostOverride ?? normalizedCosts.energy,
+      };
   if (action.dramaOnly && state.settings?.gameUX?.dramaMode !== true) {
     return {
       success: false,
@@ -474,29 +640,31 @@ export function executeAction(
     };
   }
 
-  const eligibility = evaluateSocialActionEligibility({
-    action,
-    actorId,
-    targetIds:
-      action.targetMode === 'none' || action.needsTargets === false ? [] : [targetId],
-    subjectId: options?.subjectId,
-    phase: state.game?.phase,
-    players: state.game?.players,
-    relationships: state.social.relationships,
-    dramaNetwork: state.social.dramaNetwork,
-    dramaMode: state.settings?.gameUX?.dramaMode === true,
-    requireCompleteSelection: true,
-    allowAIOnly: true,
-  });
-  if (!eligibility.eligible) {
-    return {
-      success: false,
-      delta: 0,
-      newEnergy: currentEnergy,
-      summary: eligibility.reason,
-      score: 0,
-      label: 'Unavailable',
-    };
+  if (dramaMode) {
+    const eligibility = evaluateSocialActionEligibility({
+      action,
+      actorId,
+      targetIds:
+        action.targetMode === 'none' || action.needsTargets === false ? [] : [targetId],
+      subjectId: options?.subjectId,
+      phase: state.game?.phase,
+      players: state.game?.players,
+      relationships: state.social.relationships,
+      dramaNetwork: state.social.dramaNetwork,
+      dramaMode: true,
+      requireCompleteSelection: true,
+      allowAIOnly: true,
+    });
+    if (!eligibility.eligible) {
+      return {
+        success: false,
+        delta: 0,
+        newEnergy: currentEnergy,
+        summary: eligibility.reason,
+        score: 0,
+        label: 'Unavailable',
+      };
+    }
   }
 
   if (!canAfford(actorId, costs)) {
@@ -509,53 +677,88 @@ export function executeAction(
       label: 'Unmoved',
     };
   }
-  if (
-    dramaMode && actionId === 'betray' &&
-    !hasAllianceBetween(state.social.relationships, actorId, targetId)
-  ) {
-    return {
-      success: false,
-      delta: 0,
-      newEnergy: currentEnergy,
-      summary: 'You can only betray an active ally.',
-      score: 0,
-      label: 'Unavailable',
-    };
-  }
 
-  if (
-    actionId === 'ask_loh_target' &&
-    (state.game?.lohId !== targetId ||
-      !state.game?.phase ||
-      !(action.dramaAllowedPhases ?? action.allowedPhases)?.includes(state.game.phase))
-  ) {
-    return {
-      success: false,
-      delta: 0,
-      newEnergy: currentEnergy,
-      summary: 'The LOH target question is not available at this point in the week.',
-      score: 0,
-      label: 'Unavailable',
-    };
-  }
-
-
-  const scaledYields = normalizeActionYields(action);
+  const scaledYields = options?.waiveCosts
+    ? { influence: 0, info: 0 }
+    : normalizeActionYields(action);
   const random = options?.random ?? Math.random;
-  const priorRepeats = countPriorRepeatedActions(
-    state.social.sessionLogs,
-    actorId,
-    targetId,
-    actionId,
-  );
-  // Acceptance belongs to the recipient, so use their view of the proposer.
-  const existingAffinity = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0;
+  const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
+  const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
+  const recipientTrust = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0;
+  const rootState = _store.getState() as {
+    social: SocialState;
+    settings?: { gameUX?: { dramaMode?: boolean } };
+    game?: {
+      week?: number;
+      lohId?: string | null;
+      posWinnerId?: string | null;
+      players?: Array<{ id: string; name?: string; status: string }>;
+      nomineeIds?: string[];
+      nominationContext?: { autoNomineeId: string | null } | null;
+      lohSocialPlan?: {
+        week: number;
+        lohId: string;
+        currentTargetId: string | null;
+        backupTargetId: string | null;
+        askCountsByPlayerId: Record<string, number>;
+      } | null;
+    };
+  };
+  const freshLohTargetPlan = actionId === 'ask_loh_target'
+    ? getLohTargetPlan(rootState.game, state.social.relationships, targetId)
+    : null;
+  const savedLohPlan = rootState.game?.lohSocialPlan;
+  const existingLohPlan = savedLohPlan
+    && savedLohPlan.week === rootState.game?.week
+    && savedLohPlan.lohId === targetId
+    ? savedLohPlan
+    : null;
+  const lohPlanState = freshLohTargetPlan
+    ? existingLohPlan ?? {
+        week: rootState.game?.week ?? 0,
+        lohId: targetId,
+        currentTargetId: freshLohTargetPlan.currentTargetId,
+        backupTargetId: freshLohTargetPlan.backupTargetId,
+        askCountsByPlayerId: {},
+      }
+    : null;
+  const priorLohAsks = lohPlanState?.askCountsByPlayerId[actorId] ?? 0;
+  const lohDisclosureId = lohPlanState
+    ? priorLohAsks % 2 === 1 && lohPlanState.currentTargetId
+      ? lohPlanState.currentTargetId
+      : lohPlanState.backupTargetId ?? lohPlanState.currentTargetId
+    : null;
+  const lohDisclosurePlayer = rootState.game?.players?.find((player) => player.id === lohDisclosureId);
+  // The LOH may share another name as misdirection, but should not casually tell
+  // a player that *they* are the current or backup target.
+  const lohWillDisclose =
+    !!lohDisclosureId &&
+    (!dramaMode || lohDisclosureId !== actorId) &&
+    recipientTrust >= 0 &&
+    priorLohAsks < 2;
+  const lohTargetPlan = lohWillDisclose && lohDisclosureId
+    ? {
+        targetId: lohDisclosureId,
+        targetName: lohDisclosurePlayer?.name ?? lohDisclosureId,
+        isBackdoor: lohDisclosureId === lohPlanState?.backupTargetId,
+      }
+    : null;
   let outcome = options?.outcome ?? 'success';
-  const betrayalOccurred = false;
+  let betrayalOccurred = false;
   let gaslightOccurred = false;
   if (actionId === 'proposeAlliance' && !options?.outcome) {
-    const acceptChance = getAllianceAcceptChance(existingAffinity, priorRepeats);
+    const recipientPlayer = rootState.game?.players?.find((player) => player.id === targetId);
+    const acceptChance = dramaMode
+      ? getAdvancedAllianceAcceptChance(existingAffinity, recipientTrust, priorRepeats, {
+          proposerIsLoh: rootState.game?.lohId === actorId,
+          proposerHasSafety: rootState.game?.posWinnerId === actorId,
+          recipientIsNominated: recipientPlayer?.status.includes('nominated') ?? false,
+        })
+      : getStandardAllianceAcceptChance(existingAffinity, priorRepeats);
     const accepted = random() < acceptChance;
+    if (accepted && dramaMode && random() < getAllianceBetrayalChance(recipientTrust)) {
+      betrayalOccurred = true;
+    }
     if (!accepted) {
       outcome = 'failure';
       gaslightOccurred =
@@ -576,7 +779,9 @@ export function executeAction(
   }
   const baseDelta =
     actionId === 'proposeAlliance' && outcome === 'failure'
-      ? getAllianceFailureDelta(gaslightOccurred)
+      ? dramaMode
+        ? getAdvancedAllianceFailureDelta(gaslightOccurred, existingAffinity, recipientTrust)
+        : getStandardAllianceFailureDelta(gaslightOccurred)
       : computeOutcomeDelta(actionId, actorId, targetId, outcome);
   const repeatSensitive =
     outcome === 'success' && isRepeatSensitiveAction(action, baseDelta, scaledYields);
@@ -591,7 +796,21 @@ export function executeAction(
             random() < REPETITION_BACKFIRE_CHANCE,
         };
   const didBackfire = repeatedPositive.didBackfire;
-  const delta = repeatedPositive.delta;
+  const delta = actionId === 'ask_loh_target' && priorLohAsks >= 2
+    ? -Math.min(4, priorLohAsks)
+    : actionId === 'ask_loh_target' && !lohWillDisclose
+      ? 0
+      : repeatedPositive.delta;
+  const formingAlliance =
+    actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred;
+  const relationshipDelta = formingAlliance
+    ? Math.max(delta, MIN_ALLIANCE_AFFINITY - existingAffinity)
+    : actionId === 'proposeAlliance' && outcome === 'success'
+      ? delta
+      : dramaMode ? delta * 2 : delta;
+  const reciprocalAllianceDelta = formingAlliance
+    ? Math.max(delta, MIN_ALLIANCE_AFFINITY - recipientTrust)
+    : delta;
 
   // Evaluate outcome score and label using the SocialPolicy evaluator.
   const mode = options?.previewOnly ? 'preview' : 'execute';
@@ -608,19 +827,32 @@ export function executeAction(
 
   // previewOnly: return outcome without mutating state.
   if (options?.previewOnly) {
-    const previewSign = delta > 0 ? '+' : '';
+    const previewSign = relationshipDelta > 0 ? '+' : '';
     const previewSummary =
-      delta !== 0
-        ? `${action.title} preview (${previewSign}${delta} affinity)`
+      relationshipDelta !== 0
+        ? `${action.title} preview (${previewSign}${relationshipDelta} affinity)`
         : `${action.title} preview`;
     return {
       success: true,
-      delta,
+      delta: relationshipDelta,
       newEnergy: currentEnergy,
       summary: previewSummary,
       score: finalScore,
       label: finalLabel,
     };
+  }
+
+  if (actionId === 'ask_loh_target' && lohPlanState) {
+    _store.dispatch({
+      type: 'game/setLohSocialPlan',
+      payload: {
+        ...lohPlanState,
+        askCountsByPlayerId: {
+          ...lohPlanState.askCountsByPlayerId,
+          [actorId]: priorLohAsks + 1,
+        },
+      },
+    });
   }
 
   // Deduct all resources
@@ -674,7 +906,7 @@ export function executeAction(
     info: stateAfter.social.infoBank[actorId] ?? 0,
   };
 
-  const subjectId = options?.subjectId;
+  const subjectId = options?.subjectId ?? lohTargetPlan?.targetId;
 
   const narrative =
     outcome !== 'success'
@@ -691,10 +923,18 @@ export function executeAction(
     targetId,
     ...(subjectId ? { subjectId } : {}),
     ...(narrative ? { narrative } : {}),
-
+    ...(lohTargetPlan
+      ? {
+          context: {
+            lohPlanType: lohTargetPlan.isBackdoor
+              ? 'backup_plan' as const
+              : 'current_target' as const,
+          },
+        }
+      : {}),
     cost: costs.energy,
     costs,
-    delta,
+    delta: relationshipDelta,
     outcome,
     newEnergy,
     balancesAfter,
@@ -722,7 +962,7 @@ export function executeAction(
     updateRelationship({
       source: actorId,
       target: targetId,
-      delta,
+      delta: relationshipDelta,
       tags: relationshipTags,
       actionSource: options?.source ?? 'system',
     }),
@@ -744,7 +984,7 @@ export function executeAction(
         updateRelationship({
           source: targetId,
           target: actorId,
-          delta,
+          delta: reciprocalAllianceDelta,
           tags: [ALLIANCE_TAG],
           actionSource: 'system',
         }),
@@ -812,12 +1052,32 @@ export function executeAction(
   _store.dispatch(recordSocialAction({ entry }));
 
   const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome });
-  const sign = delta > 0 ? '+' : '';
-  const summary =
-    delta !== 0 ? `${action.title} ${verb} (${sign}${delta} affinity)` : `${action.title} ${verb}`;
+  const sign = relationshipDelta > 0 ? '+' : '';
+  const lohName = rootState.game?.players?.find((player) => player.id === targetId)?.name ?? 'The LOH';
+  const contextualSummary = getContextualActionSummary({
+    actionId,
+    actorId,
+    targetId,
+    subjectId: options?.subjectId,
+    recipientTrust,
+    game: rootState.game,
+    relationships: state.social.relationships,
+  });
+  const standardSummary = contextualSummary ?? (actionId === 'ask_loh_target' && priorLohAsks >= 3
+    ? `${lohName} shut the conversation down after being asked repeatedly.`
+    : actionId === 'ask_loh_target' && priorLohAsks === 2
+      ? `${lohName} said they had already answered and became annoyed by the pressure.`
+      : actionId === 'ask_loh_target' && !lohTargetPlan
+        ? `${lohName} kept their plan deliberately vague.`
+      : lohTargetPlan && outcome === 'success'
+        ? lohTargetPlan.isBackdoor
+          ? `${lohTargetPlan.targetName} is the LOH's backup plan if the nominations change.`
+          : `${lohTargetPlan.targetName} is the LOH's current target.`
+        : relationshipDelta !== 0
+          ? `${action.title} ${verb} (${sign}${relationshipDelta} relationship)`
+          : `${action.title} ${verb}`);
 
-
-  if (state.settings?.gameUX?.dramaMode === true) {
+  if (dramaMode) {
     const outcomeKind: SocialOutcomeKind = betrayalOccurred
       ? 'betrayal'
       : gaslightOccurred
@@ -827,14 +1087,29 @@ export function executeAction(
           : outcome;
     return {
       success: true,
-      delta,
+      delta: relationshipDelta,
       newEnergy,
-      summary: narrative ?? getSocialOutcomeCopy({ actionId, actionTitle: action.title, kind: outcomeKind, delta }),
+      summary:
+        narrative ??
+        contextualSummary ??
+        getSocialOutcomeCopy({
+          actionId,
+          actionTitle: action.title,
+          kind: outcomeKind,
+          delta: relationshipDelta,
+        }),
       score: finalScore,
       label: finalLabel,
     };
   }
-  return { success: true, delta, newEnergy, summary: narrative ?? summary, score: finalScore, label: finalLabel };
+  return {
+    success: true,
+    delta: relationshipDelta,
+    newEnergy,
+    summary: narrative ?? standardSummary,
+    score: finalScore,
+    label: finalLabel,
+  };
 }
 
 /**
@@ -1026,6 +1301,7 @@ export const SocialManeuvers = {
   getAvailableActions,
   canAfford,
   computeActionCost,
+  computeActionCosts,
   executeAction,
   executeGroupAction,
 };
@@ -1038,6 +1314,7 @@ if (typeof window !== 'undefined') {
     getAvailableActions,
     canAfford,
     computeActionCost,
+    computeActionCosts,
     executeAction,
     executeGroupAction,
   };
