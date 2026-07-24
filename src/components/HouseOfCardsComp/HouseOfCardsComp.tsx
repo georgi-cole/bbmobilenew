@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { mulberry32 } from '../../store/rng';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
@@ -12,6 +11,10 @@ import {
   type PlayerOutcome,
 } from '../../features/houseOfCards/houseOfCardsSlice';
 import { resolveHouseOfCardsOutcome } from '../../features/houseOfCards/thunks';
+import {
+  createHouseOfCardsAiProfiles,
+  simulateHouseOfCardsAiRound,
+} from '../../features/houseOfCards/houseOfCardsAi';
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { useHouseOfCardsAudio } from '../../hooks/useHouseOfCardsAudio';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
@@ -67,23 +70,6 @@ function hashId(value: string): number {
   return hash >>> 0;
 }
 
-function simulateRound(playerId: string, round: number, pairCount: number, seed: number, skill = 55): RoundPerformance {
-  const rng = mulberry32((seed ^ hashId(playerId) ^ Math.imul(round, 0x9e3779b9)) >>> 0);
-  const normalizedSkill = Math.max(0.15, Math.min(0.95, skill / 100));
-  const mistakes = Math.floor(rng() * (2 + (1 - normalizedSkill) * pairCount * 0.65));
-  const timeMs = Math.round(
-    pairCount * (720 + (1 - normalizedSkill) * 720)
-    + mistakes * (820 + rng() * 520)
-    + 1_400
-    + rng() * 2_600,
-  );
-  return {
-    mistakes,
-    timeMs,
-    score: Math.max(1, pairCount * 1_000 - mistakes * 90 - Math.floor(timeMs / 1_000)),
-  };
-}
-
 function boardColumns(tileCount: number): number {
   if (tileCount <= 8) return 4;
   if (tileCount <= 16) return 4;
@@ -102,9 +88,9 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
     (id: string) => participants?.find((participant) => participant.id === id)?.name ?? id,
     [participants],
   );
-  const skillFor = useCallback(
-    (id: string) => participants?.find((participant) => participant.id === id)?.precomputedScore ?? 55,
-    [participants],
+  const aiProfiles = useMemo(
+    () => createHouseOfCardsAiProfiles(participantIds, humanId, sessionSeed),
+    [participantIds, humanId, sessionSeed],
   );
   const hoc = useAppSelector(
     (state: RootState) => (state as RootState & { houseOfCards?: HouseOfCardsState }).houseOfCards,
@@ -213,7 +199,13 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
           score: Math.max(1, pairs * 1_000 - mistakes * 90 - Math.floor(timeMs / 1_000) + bestStreak * 15),
         };
       } else {
-        roundScores[id] = simulateRound(id, round, pairs, sessionSeed, skillFor(id));
+        roundScores[id] = simulateHouseOfCardsAiRound({
+          playerId: id,
+          round,
+          pairCount: pairs,
+          tournamentSeed: sessionSeed,
+          sessionAbility: aiProfiles[id]?.sessionAbility ?? 55,
+        });
       }
     });
     const nextScores = { ...cumulativeScores };
@@ -232,7 +224,7 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
     setCumulativeScores(nextScores);
     setRoundSummary({ round, rankedIds, eliminatedIds, nextActiveIds, roundScores, cumulativeScores: nextScores });
     setPhase('round_results');
-  }, [activeIds, bestStreak, cumulativeScores, humanId, mistakes, round, sessionSeed, skillFor]);
+  }, [activeIds, aiProfiles, bestStreak, cumulativeScores, humanId, mistakes, round, sessionSeed]);
 
   useEffect(() => {
     if (phase === 'playing' && matchedPairs >= targetPairs) finishPreliminaryRound();
@@ -249,14 +241,20 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
       const pairs = HOUSE_OF_CARDS_TILE_COUNTS[simulatedRound - 1] / 2;
       const performances = Object.fromEntries(ids.map((id) => [
         id,
-        simulateRound(id, simulatedRound, pairs, sessionSeed, skillFor(id)),
+        simulateHouseOfCardsAiRound({
+          playerId: id,
+          round: simulatedRound,
+          pairCount: pairs,
+          tournamentSeed: sessionSeed,
+          sessionAbility: aiProfiles[id]?.sessionAbility ?? 55,
+        }),
       ]));
       ids.forEach((id) => { scores[id] = (scores[id] ?? 0) + performances[id].score; });
       ids.sort((a, b) => scores[b] - scores[a] || performances[b].score - performances[a].score);
       ids = simulatedRound === 4 ? ids.slice(0, 2) : ids.length > 2 ? ids.slice(0, -1) : ids;
     }
     startFinal(ids, scores);
-  }, [sessionSeed, skillFor, startFinal]);
+  }, [aiProfiles, sessionSeed, startFinal]);
 
   const continueRound = useCallback(() => {
     if (!roundSummary) return;
@@ -349,7 +347,7 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
         board,
         rememberedIndexes: aiMemoryRef.current,
         seed: (sessionSeed ^ hashId(finalTurnId) ^ turn) >>> 0,
-        skill: skillFor(finalTurnId),
+        skill: 55,
       });
       if (!pair) return;
       const [firstIndex, secondIndex] = pair;
@@ -359,7 +357,7 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
       resolvePair(firstIndex, secondIndex);
     }, 850 + (aiTurnRef.current % 3) * 260);
     return () => window.clearTimeout(timer);
-  }, [board, finalTurnId, humanId, locked, matchedPairs, phase, resolvePair, sessionSeed, skillFor, targetPairs]);
+  }, [board, finalTurnId, humanId, locked, matchedPairs, phase, resolvePair, sessionSeed, targetPairs]);
 
   useEffect(() => {
     if (phase !== 'final_playing' || matchedPairs < targetPairs || finalCompletedRef.current || finalists.length < 2) return;
