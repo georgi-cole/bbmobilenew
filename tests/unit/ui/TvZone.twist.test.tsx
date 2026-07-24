@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../../src/store/gameSlice';
 import challengeReducer from '../../../src/store/challengeSlice';

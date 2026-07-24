@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import HomeHub from '../HomeHub';
 import { preloadImage } from '../../../utils/preload';
 import type { RemoteConfig } from '../../../remoteConfig/remoteConfigTypes';
@@ -37,8 +37,8 @@ const mockState: {
 
 const preloadImageMock = vi.mocked(preloadImage);
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual<typeof import('react-router')>('react-router');
   return {
     ...actual,
     useNavigate: () => mockNavigate,

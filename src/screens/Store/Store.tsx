@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import StoreProductIcon from '../../components/StoreProductModal/StoreProductIcon'
 import StoreProductModal from '../../components/StoreProductModal/StoreProductModal'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'

@@ -21,7 +21,7 @@ import {
   type CSSProperties,
   type FormEvent,
 } from 'react'
-import { useBlocker, useNavigate } from 'react-router-dom'
+import { useBlocker, useNavigate } from 'react-router'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useAppDispatch } from '../../store/hooks';
 import { setUserProfile } from '../../store/userProfileSlice';
 import { resetGame } from '../../store/gameSlice';

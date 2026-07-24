@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 import GameScreen from '../screens/GameScreen/GameScreen';
 import { useAppSelector } from '../store/hooks';
 import { isSurvivorRunTerminal } from '../modes/survivorRun';

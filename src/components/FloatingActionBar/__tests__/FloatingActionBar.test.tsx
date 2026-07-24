@@ -17,7 +17,7 @@ import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import type { ComponentProps } from 'react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router';
 import gameReducer, { advance, hydrateGame, triggerSecretMission } from '../../../store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,

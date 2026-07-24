@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { buildViewportMetaContent } from '../../components/layout/viewportMeta';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   selectSettings,

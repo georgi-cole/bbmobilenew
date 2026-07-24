@@ -34,7 +34,7 @@ const mockState: {
   },
 };
 
-vi.mock('react-router-dom', () => ({
+vi.mock('react-router', () => ({
   useNavigate: () => mockNavigate,
   useLocation: () => ({ state: mockLocationState }),
 }));

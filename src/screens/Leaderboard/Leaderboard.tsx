@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useAppSelector } from '../../store/hooks';
 import { findByName, getById } from '../../data/houseguests';
 import { computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';

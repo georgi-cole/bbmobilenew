@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 import NavBar from './NavBar';
 import { useAppSelector } from '../../store/hooks';
 import { selectFinale } from '../../store/finaleSlice';

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
+import { useLocation, useNavigate, type NavigateFunction } from 'react-router';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame, hydrateGame } from '../../store/gameSlice';
 import { hydrateFinale } from '../../store/finaleSlice';

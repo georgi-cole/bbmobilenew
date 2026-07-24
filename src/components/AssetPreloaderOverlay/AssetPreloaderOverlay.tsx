@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { getAll } from '../../data/houseguests';
 import { resolveAvatar } from '../../utils/avatar';
 import { preloadImage, preloadImages } from '../../utils/preload';
