@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Provider } from 'react-redux'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { STORE_PRODUCT_CATALOG } from '../../vip/vipConfig'
 import { createEmptyStoreEntitlements } from '../../vip/vipStorage'

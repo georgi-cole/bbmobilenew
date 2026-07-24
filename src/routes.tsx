@@ -7,7 +7,7 @@
  *   3. Add a <Route> inside the AppShell layout route
  *   That's it — no other files need changing.
  */
-import { createHashRouter } from 'react-router-dom';
+import { createHashRouter } from 'react-router';
 
 import AppShell             from './components/layout/AppShell';
 import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoundary';

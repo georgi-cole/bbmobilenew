@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router';
 import { mulberry32 } from '../../store/rng';
 import { getAllGames } from '../../minigames/registry';
 import type { GameRegistryEntry, GameCategory, ScoringAdapterName } from '../../minigames/registry';

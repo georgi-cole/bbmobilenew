@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import RecapImage from '../../components/SeasonRecapCinematic/RecapImage';
 import { resolveAvatarCandidates } from '../../utils/avatar';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';

@@ -65,7 +65,7 @@ import {
 import { startChallenge, selectPendingChallenge, completeChallenge, type PendingChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
 import { setEnergyBankEntry } from '../../social/socialSlice'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice'
 import { clearSavedRun, clearSeasonSnapshot, savedStateKeyForProfile } from '../../store/saveStatePersistence'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'

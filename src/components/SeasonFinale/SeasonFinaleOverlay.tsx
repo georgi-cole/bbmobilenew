@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import ChatOverlay, { type ChatLine } from '../ChatOverlay/ChatOverlay';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {

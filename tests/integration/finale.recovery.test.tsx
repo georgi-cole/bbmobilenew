@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { configureStore } from '@reduxjs/toolkit';
 import AppShell from '../../src/components/layout/AppShell';
 import '../../src/components/FinalFaceoff/FinalFaceoff';

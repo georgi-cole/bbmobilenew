@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import SeasonFinaleOverlay from '../src/components/SeasonFinale/SeasonFinaleOverlay';
 import gameReducer, {
   openFavoritePlayerVoting,

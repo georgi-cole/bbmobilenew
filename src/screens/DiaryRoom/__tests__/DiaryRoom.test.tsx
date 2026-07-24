@@ -2,7 +2,8 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { createMemoryRouter, RouterProvider, useNavigate } from 'react-router-dom';
+import { createMemoryRouter, useNavigate } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import DiaryRoom, { DIARY_ROOM_ENTRY_OVERLAY_MS } from '../DiaryRoom';
 import gameReducer, {
   triggerSecretMission,

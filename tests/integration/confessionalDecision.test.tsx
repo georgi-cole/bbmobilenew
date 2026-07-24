@@ -17,7 +17,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { createMemoryRouter } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
 import profilesReducer from '../../src/store/profilesSlice';

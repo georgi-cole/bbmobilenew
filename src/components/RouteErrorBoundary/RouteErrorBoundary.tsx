@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isRouteErrorResponse, useNavigate, useRouteError } from 'react-router-dom';
+import { isRouteErrorResponse, useNavigate, useRouteError } from 'react-router';
 import { captureGameDiagnostic, type GameDiagnostic } from '../../services/diagnostics/gameDiagnostics';
 import './RouteErrorBoundary.css';
 
