@@ -398,7 +398,7 @@ describe('HomeHub', () => {
     );
   });
 
-  it('shows Surveyeval rules before starting a fresh Surveyeval run', async () => {
+  it('starts the Surveyeval flow without VIP or survivalMode access instead of opening Store', async () => {
     const view = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -410,6 +410,7 @@ describe('HomeHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
     fireEvent.click(screen.getByRole('button', { name: 'Surveyeval' }));
 
+    expect(mockNavigate).not.toHaveBeenCalledWith('/store');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/don't show this again/i));
     fireEvent.click(screen.getByRole('button', { name: 'Enter Surveyeval' }));
