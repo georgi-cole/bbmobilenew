@@ -159,6 +159,30 @@ jobs:
           )
 
           game_screen_path.write_text(game_screen, encoding='utf-8')
+
+          confessional_test_path = Path('tests/integration/confessionalDecision.test.tsx')
+          confessional_test = confessional_test_path.read_text(encoding='utf-8')
+          confessional_test = replace_once(
+              confessional_test,
+              "    expect(game.pendingEviction?.evictionMessage).toContain('POS holder');\n",
+              "    expect(game.pendingEviction?.evictionMessage).toContain(\n"
+              "      'breaks the tie as a special exception',\n"
+              "    );\n",
+              'assert POS tie decision semantics instead of generic label',
+          )
+          confessional_test_path.write_text(confessional_test, encoding='utf-8')
+
+          eviction_test_path = Path('tests/integration/eviction.cinematic.test.tsx')
+          eviction_test = eviction_test_path.read_text(encoding='utf-8')
+          eviction_test = replace_once(
+              eviction_test,
+              "    expect(screen.getByRole('dialog', { name: /Alice has returned/i })).toBeTruthy();\n",
+              "    expect(\n"
+              "      screen.getByRole('dialog', { name: /Alice is returning to the house/i }),\n"
+              "    ).toBeTruthy();\n",
+              'align return animation aria assertion',
+          )
+          eviction_test_path.write_text(eviction_test, encoding='utf-8')
           """
           script = f"{script}\n{post_script}"
           Path('/tmp/apply_eviction_cleanup.py').write_text(script + '\n', encoding='utf-8')
@@ -193,6 +217,7 @@ jobs:
           src/screens/DiaryRoom/confessionalDecisionPresentation.ts
           tests/integration/ceremony.fixes.test.tsx
           tests/integration/confessionalDecision.test.tsx
+          tests/integration/eviction.cinematic.test.tsx
 
       - name: Validate cleanup
         shell: bash
