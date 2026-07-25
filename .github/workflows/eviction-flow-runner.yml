@@ -1,0 +1,249 @@
+name: Run eviction flow cleanup
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'agent/eviction-flow-cleanup'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out cleanup branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/eviction-flow-cleanup
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build and run cleanup transform
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          panel_path = Path('src/screens/DiaryRoom/ConfessionalDecisionPanel.tsx')
+          panel = panel_path.read_text(encoding='utf-8')
+          declaration = '  const isDoubleEviction = game.doubleEviction?.weekActive === true;\n'
+          if panel.count(declaration) != 2:
+              raise RuntimeError(f'expected two isDoubleEviction declarations, found {panel.count(declaration)}')
+          panel = panel.replace(
+              declaration,
+              '  const isDoubleEviction = Boolean(game.doubleEviction?.weekActive);\n',
+              1,
+          )
+          panel_path.write_text(panel, encoding='utf-8')
+
+          ceremony_path = Path('tests/integration/ceremony.fixes.test.tsx')
+          ceremony = ceremony_path.read_text(encoding='utf-8')
+          delayed_overlay = (
+              "    await act(async () => {\n"
+              "      capturedOnExternalAnnouncementDismiss?.();\n"
+              "    });\n"
+              "    expect(screen.queryByTestId('eviction-overlay')).toBeNull();\n"
+              "    await act(async () => {\n"
+              "      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);\n"
+              "    });\n"
+              "    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();\n"
+          )
+          immediate_overlay = (
+              "    await act(async () => {\n"
+              "      capturedOnExternalAnnouncementDismiss?.();\n"
+              "    });\n"
+              "    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();\n"
+          )
+          if ceremony.count(delayed_overlay) != 1:
+              raise RuntimeError(
+                  f'expected one remaining delayed-overlay assertion, found {ceremony.count(delayed_overlay)}'
+              )
+          ceremony_path.write_text(
+              ceremony.replace(delayed_overlay, immediate_overlay, 1),
+              encoding='utf-8',
+          )
+
+          workflow = Path('.github/workflows/eviction-flow-cleanup.yml').read_text(encoding='utf-8')
+          marker = "          python <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("          PY\n", start)
+          body = workflow[start:end]
+          script = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in body.splitlines()
+          )
+
+          old_reset_transform = (
+              "game_screen = replace_once(\n"
+              "    game_screen,\n"
+              "    '      setPostVoteAnnouncementDelayActive(false)\\n',\n"
+              "    '',\n"
+              "    'remove obsolete delay reset',\n"
+              ")"
+          )
+          first_reset_transform = (
+              "game_screen = game_screen.replace(\n"
+              "    '      setPostVoteAnnouncementDelayActive(false)\\n',\n"
+              "    '',\n"
+              "    1,\n"
+              ")"
+          )
+          if script.count(old_reset_transform) != 1:
+              raise RuntimeError(
+                  f'expected one delay-reset transform block, found {script.count(old_reset_transform)}'
+              )
+          script = script.replace(old_reset_transform, first_reset_transform, 1)
+
+          post_script = r"""
+          game_screen_path = Path('src/screens/GameScreen/GameScreen.tsx')
+          game_screen = game_screen_path.read_text(encoding='utf-8')
+
+          game_screen = replace_once(
+              game_screen,
+              "  const socialRelationships = useAppSelector((s) => s.social.relationships)\n",
+              "",
+              'remove unused social relationships selector',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "    showDoubleVoteOffer ||\n"
+              "    showDoubleVoteModal ||\n"
+              "    showLiveVoteModal ||\n"
+              "    showTieBreakModal ||\n",
+              "",
+              'remove legacy modals from awaitingHumanDecision',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "  // Provides a meaningful holding message during states where no fresh TV event\n"
+              "  // is available: after dismissing the live_eviction announcement during\n"
+              "  // live_vote, and during the postVoteAnnouncementDelayActive grace period.\n",
+              "  // Provides a meaningful holding message while the live vote is waiting for\n"
+              "  // the human decision or for the remaining house votes to finish.\n",
+              'update viewport fallback documentation',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "    if (postVoteAnnouncementDelayActive && game.pendingEviction) {\n"
+              "      return 'Please wait while the player says their goodbyes.'\n"
+              "    }\n",
+              "",
+              'remove obsolete goodbye fallback branch',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "    game.phase,\n"
+              "    game.awaitingHumanVote,\n"
+              "    activeConfessionalDecision,\n"
+              "    postVoteAnnouncementDelayActive,\n"
+              "    game.pendingEviction,\n"
+              "    remoteMainTvHeadline,\n",
+              "    game.phase,\n"
+              "    game.awaitingHumanVote,\n"
+              "    activeConfessionalDecision,\n"
+              "    remoteMainTvHeadline,\n",
+              'remove obsolete viewport fallback dependencies',
+          )
+
+          game_screen_path.write_text(game_screen, encoding='utf-8')
+          """
+          script = f"{script}\n{post_script}"
+          Path('/tmp/apply_eviction_cleanup.py').write_text(script + '\n', encoding='utf-8')
+          PY
+
+          set +e
+          python /tmp/apply_eviction_cleanup.py > /tmp/eviction-cleanup-output.txt 2>&1
+          status=$?
+          set -e
+          cat /tmp/eviction-cleanup-output.txt
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            mkdir -p scripts
+            cp /tmp/eviction-cleanup-output.txt scripts/eviction-cleanup-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add scripts/eviction-cleanup-error.txt
+            git commit -m "Capture eviction cleanup transform failure"
+            git push origin HEAD:agent/eviction-flow-cleanup
+            exit "$status"
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed files
+        run: >-
+          npx prettier --write
+          src/screens/GameScreen/GameScreen.tsx
+          src/store/gameSlice.ts
+          src/screens/DiaryRoom/ConfessionalDecisionPanel.tsx
+          src/screens/DiaryRoom/confessionalDecisionPresentation.ts
+          tests/integration/ceremony.fixes.test.tsx
+          tests/integration/confessionalDecision.test.tsx
+
+      - name: Validate cleanup
+        shell: bash
+        run: |
+          set +e
+          : > /tmp/eviction-cleanup-output.txt
+
+          echo '=== TYPECHECK ===' >> /tmp/eviction-cleanup-output.txt
+          npm run typecheck >> /tmp/eviction-cleanup-output.txt 2>&1
+          status=$?
+
+          if [ "$status" -eq 0 ]; then
+            echo '=== FOCUSED TESTS ===' >> /tmp/eviction-cleanup-output.txt
+            npx vitest run \
+              tests/integration/ceremony.fixes.test.tsx \
+              tests/integration/confessionalDecision.test.tsx \
+              tests/integration/eviction.cinematic.test.tsx \
+              tests/doubleEviction.flow.test.ts >> /tmp/eviction-cleanup-output.txt 2>&1
+            status=$?
+          fi
+
+          if [ "$status" -eq 0 ]; then
+            echo '=== LINT ===' >> /tmp/eviction-cleanup-output.txt
+            npm run lint:ci >> /tmp/eviction-cleanup-output.txt 2>&1
+            status=$?
+          fi
+
+          set -e
+          cat /tmp/eviction-cleanup-output.txt
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            mkdir -p scripts
+            cp /tmp/eviction-cleanup-output.txt scripts/eviction-cleanup-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add scripts/eviction-cleanup-error.txt
+            git commit -m "Capture eviction cleanup validation failure"
+            git push origin HEAD:agent/eviction-flow-cleanup
+            exit "$status"
+          fi
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          rm -f .github/workflows/eviction-flow-cleanup.yml
+          rm -f .github/workflows/eviction-flow-pr-trigger.yml
+          rm -f .github/workflows/eviction-flow-runner.yml
+          rm -f scripts/.eviction-flow-trigger
+          rm -f scripts/eviction-cleanup-error.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix eviction flow sequencing"
+          git push origin HEAD:agent/eviction-flow-cleanup
