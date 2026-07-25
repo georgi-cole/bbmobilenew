@@ -43,5 +43,53 @@ text = pattern.sub(replace_file_url, text)
 if replacements < 3:
     raise RuntimeError(f"Expected at least 3 file-URL replacements, found {replacements}")
 
+text = text.replace(
+    "from '../../src/components/FloatingActionBar/FloatingActionBar';",
+    "from '../../src/components/FloatingActionBar/publicMeterNavigation';",
+    1,
+)
 TEST_PATH.write_text(text, encoding="utf-8")
-print(f"Converted {replacements} regression source reads to repository filesystem paths.")
+
+navigation_path = Path(
+    "src/components/FloatingActionBar/publicMeterNavigation.ts"
+)
+navigation_path.write_text(
+    """export function resolvePublicMeterDestination(
+  publicModeEnabled: boolean,
+  publicRequestCount: number,
+): string {
+  if (!publicModeEnabled) return '/store';
+  return publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter';
+}
+""",
+    encoding="utf-8",
+)
+
+fab_path = Path("src/components/FloatingActionBar/FloatingActionBar.tsx")
+fab_text = fab_path.read_text(encoding="utf-8")
+layout_import = "import { resolveBalancedDockBottom } from './floatingActionBarLayout';\n"
+nav_import = (
+    "import { resolveBalancedDockBottom } from './floatingActionBarLayout';\n"
+    "import { resolvePublicMeterDestination } from './publicMeterNavigation';\n"
+)
+if "from './publicMeterNavigation'" not in fab_text:
+    if layout_import not in fab_text:
+        raise RuntimeError("Could not find FloatingActionBar layout import")
+    fab_text = fab_text.replace(layout_import, nav_import, 1)
+
+fab_text, function_replacements = re.subn(
+    r"\nexport function resolvePublicMeterDestination\(\s*publicModeEnabled: boolean,\s*publicRequestCount: number,\s*\): string \{\s*if \(!publicModeEnabled\) return '/store';\s*return publicRequestCount > 0 \? '/public-meter\?tab=requests' : '/public-meter';\s*\}\n",
+    "\n",
+    fab_text,
+    count=1,
+    flags=re.DOTALL,
+)
+if function_replacements != 1:
+    raise RuntimeError(
+        f"Expected to move one Public Meter resolver, moved {function_replacements}"
+    )
+fab_path.write_text(fab_text, encoding="utf-8")
+
+print(
+    f"Converted {replacements} source reads and isolated the Public Meter resolver."
+)
