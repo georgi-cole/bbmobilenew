@@ -1,24 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, useReducedMotion } from 'framer-motion';
-import type { Player } from '../../types';
-import { findByName, getById } from '../../data/houseguests';
-import { resolveInformalCutoutCandidates } from '../../utils/avatar';
-import './DayStartShockPopup.css';
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, useReducedMotion } from 'framer-motion'
+import type { Player } from '../../types'
+import { findByName, getById } from '../../data/houseguests'
+import { resolveInformalCutoutCandidates } from '../../utils/avatar'
+import './DayStartShockPopup.css'
 
 interface DayStartShockPopupProps {
-  player: Player;
-  reason: string;
-  onConfirm: () => void;
+  player: Player
+  reason: string
+  onConfirm: () => void
 }
 
-export function getDayStartShockObjectPronoun(player: Pick<Player, 'id' | 'name'>): 'him' | 'her' | 'them' {
-  const profile = getById(player.id) ?? findByName(player.name);
-  const sex = profile?.sex?.trim().toLowerCase();
+export function getDayStartShockObjectPronoun(
+  player: Pick<Player, 'id' | 'name'>
+): 'him' | 'her' | 'them' {
+  const profile = getById(player.id) ?? findByName(player.name)
+  const sex = profile?.sex?.trim().toLowerCase()
 
-  if (sex === 'female' || sex === 'woman') return 'her';
-  if (sex === 'male' || sex === 'man') return 'him';
-  return 'them';
+  if (sex === 'female' || sex === 'woman') return 'her'
+  if (sex === 'male' || sex === 'man') return 'him'
+  return 'them'
 }
 
 /**
@@ -29,26 +31,26 @@ export function getDayStartShockObjectPronoun(player: Pick<Player, 'id' | 'name'
  * is committed from this presentation component itself.
  */
 export default function DayStartShockPopup({ player, reason, onConfirm }: DayStartShockPopupProps) {
-  const prefersReducedMotion = useReducedMotion();
-  const cutoutCandidates = useMemo(() => resolveInformalCutoutCandidates(player), [player]);
-  const [cutoutIndex, setCutoutIndex] = useState(0);
-  const objectPronoun = getDayStartShockObjectPronoun(player);
+  const prefersReducedMotion = useReducedMotion()
+  const cutoutCandidates = useMemo(() => resolveInformalCutoutCandidates(player), [player])
+  const [cutoutIndex, setCutoutIndex] = useState(0)
+  const objectPronoun = getDayStartShockObjectPronoun(player)
 
   useEffect(() => {
-    setCutoutIndex(0);
-  }, [player.id, player.name]);
+    setCutoutIndex(0)
+  }, [player.id, player.name])
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
 
-  if (typeof document === 'undefined') return null;
+  if (typeof document === 'undefined') return null
 
-  const activeCutout = cutoutCandidates[Math.min(cutoutIndex, cutoutCandidates.length - 1)];
+  const activeCutout = cutoutCandidates[Math.min(cutoutIndex, cutoutCandidates.length - 1)]
 
   return createPortal(
     <div className="day-start-shock" role="presentation" data-testid="day-start-shock-popup">
@@ -86,8 +88,8 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
                 alt={player.name}
                 onError={() => {
                   setCutoutIndex((current) =>
-                    current < cutoutCandidates.length - 1 ? current + 1 : current,
-                  );
+                    current < cutoutCandidates.length - 1 ? current + 1 : current
+                  )
                 }}
               />
             </div>
@@ -109,12 +111,14 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
             </blockquote>
             <button className="day-start-shock__confirm" type="button" onClick={onConfirm}>
               <span>Give {objectPronoun} the boot</span>
-              <span className="day-start-shock__confirm-arrow" aria-hidden="true">→</span>
+              <span className="day-start-shock__confirm-arrow" aria-hidden="true">
+                →
+              </span>
             </button>
           </div>
         </motion.section>
       </motion.div>
     </div>,
-    document.body,
-  );
+    document.body
+  )
 }
