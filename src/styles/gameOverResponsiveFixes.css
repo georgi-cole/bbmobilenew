@@ -1,0 +1,138 @@
+/*
+ * Responsive corrections for the Season Complete champion card.
+ * Kept as a final cascade layer because GameOver.css contains several historic
+ * override sections and the champion layout must remain stable on phone screens.
+ */
+.gameover-champion-record {
+  box-sizing: border-box;
+  justify-content: flex-start !important;
+  gap: clamp(12px, 2.2dvh, 20px) !important;
+  padding:
+    clamp(24px, 4.2dvh, 38px)
+    clamp(18px, 5vw, 42px)
+    clamp(18px, 3dvh, 28px) !important;
+}
+
+.gameover-champion-record__identity {
+  box-sizing: border-box;
+  width: min(100%, 34rem) !important;
+  padding-inline: clamp(8px, 2.8vw, 24px);
+}
+
+.gameover-champion-record__identity .gameover-winner__label {
+  margin-bottom: clamp(7px, 1.2dvh, 12px);
+  font-size: clamp(0.68rem, 2.7vw, 0.86rem);
+  line-height: 1.15;
+  letter-spacing: 0.18em;
+}
+
+.gameover-champion-record__identity .gameover-winner__name {
+  max-width: 100%;
+  margin: 0 auto !important;
+  padding: 0 0.08em;
+  font-size: clamp(2.05rem, 9.5vw, 4rem) !important;
+  line-height: 0.98 !important;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.gameover-champion-record__showpiece {
+  width: clamp(10.75rem, 42vw, 15.75rem) !important;
+  max-width: min(62dvh, 100%);
+  aspect-ratio: 1;
+  flex: 0 1 auto;
+}
+
+.gameover-champion-record__portrait {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: clamp(8px, 2.2vw, 14px);
+  background:
+    radial-gradient(circle at 50% 28%, rgba(165, 180, 252, 0.2), transparent 42%),
+    linear-gradient(145deg, #172033, #0c111d) !important;
+}
+
+.gameover-champion-record__image {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain !important;
+  object-position: center !important;
+  border-radius: 50%;
+  transform: scale(0.9);
+}
+
+.gameover-champion-record__trophy {
+  right: -3% !important;
+  bottom: 1% !important;
+  width: clamp(4rem, 15vw, 5.35rem) !important;
+}
+
+@media (max-width: 460px) {
+  .gameover-champion-record {
+    min-height: 0 !important;
+    padding:
+      clamp(22px, 3.5dvh, 30px)
+      clamp(16px, 5vw, 24px)
+      clamp(16px, 2.8dvh, 24px) !important;
+  }
+
+  .gameover-champion-record__identity {
+    padding-inline: 10px;
+  }
+
+  .gameover-champion-record__showpiece {
+    width: clamp(10.5rem, 50vw, 13.75rem) !important;
+  }
+
+  .gameover-champion-record__trophy {
+    right: -1% !important;
+    width: clamp(3.75rem, 17vw, 4.8rem) !important;
+  }
+}
+
+@media (max-height: 760px) {
+  .gameover-champion-record {
+    gap: clamp(8px, 1.4dvh, 13px) !important;
+    padding-top: clamp(16px, 2.6dvh, 24px) !important;
+    padding-bottom: clamp(12px, 2dvh, 18px) !important;
+  }
+
+  .gameover-champion-record__identity .gameover-winner__label {
+    margin-bottom: 5px;
+  }
+
+  .gameover-champion-record__identity .gameover-winner__name {
+    font-size: clamp(1.9rem, 8.2vw, 3.35rem) !important;
+  }
+
+  .gameover-champion-record__showpiece {
+    width: clamp(9.5rem, 34dvh, 12.5rem) !important;
+  }
+}
+
+@media (max-height: 620px) and (orientation: landscape) {
+  .gameover-champion-record {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(9rem, 0.72fr);
+    align-items: center !important;
+    justify-items: center;
+    gap: 16px !important;
+    padding: 14px 24px !important;
+  }
+
+  .gameover-champion-record__identity {
+    text-align: left !important;
+  }
+
+  .gameover-champion-record__identity .gameover-winner__name {
+    margin-inline: 0 !important;
+  }
+
+  .gameover-champion-record__showpiece {
+    width: min(36dvh, 12rem) !important;
+  }
+}
