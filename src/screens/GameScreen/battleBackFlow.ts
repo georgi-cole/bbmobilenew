@@ -52,8 +52,7 @@ export function isBattleBackReplayEligible(
   retryCount: number,
   retryLimit: number
 ): boolean {
-  const humanParticipated =
-    humanCandidateId != null && candidateIds.includes(humanCandidateId)
+  const humanParticipated = humanCandidateId != null && candidateIds.includes(humanCandidateId)
   const winnerParticipated = winnerId != null && candidateIds.includes(winnerId)
 
   return (
