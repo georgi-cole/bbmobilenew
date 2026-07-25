@@ -47,6 +47,30 @@ jobs:
           )
           panel_path.write_text(panel, encoding='utf-8')
 
+          # A third test still encoded the removed empty five-second beat. Normalize
+          # that assertion here so the main guarded transform sees its two intended waits.
+          ceremony_path = Path('tests/integration/ceremony.fixes.test.tsx')
+          ceremony = ceremony_path.read_text(encoding='utf-8')
+          old = (
+              "    await act(async () => {\n"
+              "      capturedOnExternalAnnouncementDismiss?.();\n"
+              "    });\n"
+              "    expect(screen.queryByTestId('eviction-overlay')).toBeNull();\n"
+              "    await act(async () => {\n"
+              "      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);\n"
+              "    });\n"
+              "    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();\n"
+          )
+          new = (
+              "    await act(async () => {\n"
+              "      capturedOnExternalAnnouncementDismiss?.();\n"
+              "    });\n"
+              "    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();\n"
+          )
+          if ceremony.count(old) != 1:
+              raise RuntimeError(f'expected one remaining delayed-overlay assertion, found {ceremony.count(old)}')
+          ceremony_path.write_text(ceremony.replace(old, new, 1), encoding='utf-8')
+
           workflow = Path('.github/workflows/eviction-flow-cleanup.yml').read_text(encoding='utf-8')
           marker = "          python <<'PY'\n"
           start = workflow.index(marker) + len(marker)
