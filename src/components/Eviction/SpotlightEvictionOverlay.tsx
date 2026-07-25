@@ -17,27 +17,32 @@ import './SpotlightEvictionOverlay.css';
 //       5400 ms        onDone fires → AnimatePresence exits (reverse, 400 ms)
 //       5800 ms        match-cut shrink complete
 //
-const LIVE_BUG_AT     = 750;   // LIVE bug fades in
-const EXPAND_START    = 900;   // shared-layout expansion begins
-const DESAT_AT        = 1800;  // desaturation + vignette settle
-const LOWER_THIRD_AT  = 2100;  // lower-third slides in
-const HOLD_START      = 3000;  // expansion done; suspense hold begins
-const DONE_AT         = 5400;  // onDone fires; AnimatePresence triggers reverse (400 ms)
+const LIVE_BUG_AT = 750; // LIVE bug fades in
+const EXPAND_START = 900; // shared-layout expansion begins
+const DESAT_AT = 1800; // desaturation + vignette settle
+const LOWER_THIRD_AT = 2100; // lower-third slides in
+const HOLD_START = 3000; // expansion done; suspense hold begins
+const DONE_AT = 5400; // onDone fires; AnimatePresence triggers reverse (400 ms)
 
-// Return (reverse) sequence: start at hold, then rewind to spotlight and done.
-const RETURN_CLEAR_AT     = 900;
+// Return (reverse) sequence: start fully evicted, clear the strike and colour,
+// then rewind the shared-layout portrait into its active roster tile.
+const RETURN_CLEAR_AT = 650;
 const RETURN_SPOTLIGHT_AT = 1300;
-const RETURN_DONE_AT      = 1900;
+const RETURN_DONE_AT = 1900;
 
 // Reduced-motion: collapse the whole sequence to a short hold
 const REDUCED_DONE_AT = 600;
 const ELIMINATED_STAMP_SRC = `${import.meta.env.BASE_URL}assets/eliminated_stamp.svg`;
+const EVICTION_MARK_SRC = `${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`;
 
 // Cinematic filter applied to the portrait during the holding phase
 const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)';
 
 // Portrait layout transition: camera-push ease-out over 600 ms
-const PORTRAIT_SPRING = { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] };
+const PORTRAIT_SPRING = {
+  duration: 0.6,
+  ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+};
 
 type Phase = 'spotlight' | 'expanding' | 'holding' | 'done';
 type OverlayVariant = 'eviction' | 'return';
@@ -81,6 +86,10 @@ interface Props {
  *  3000–5400 ms holding     suspense pause
  *  5400 ms      done        onDone() fires; AnimatePresence reverse plays (400 ms)
  *
+ * Return mode begins from the fully evicted visual state, removes the red strike,
+ * restores colour and proportions, and settles directly into the roster tile.
+ * It intentionally renders no second LIVE bug, lower-third, stamp or announcement.
+ *
  * Accessibility: prefers-reduced-motion collapses the sequence to a 600 ms hold.
  * Dev-only Skip button appears when import.meta.env.DEV is true.
  */
@@ -99,8 +108,9 @@ export default function SpotlightEvictionOverlay({
 
   const isReturn = variant === 'return';
   const [phase, setPhase] = useState<Phase>(isReturn ? 'holding' : 'spotlight');
-  const [showLiveBug, setShowLiveBug] = useState(isReturn);
-  const [showLowerThird, setShowLowerThird] = useState(isReturn);
+  const [showLiveBug, setShowLiveBug] = useState(false);
+  const [showLowerThird, setShowLowerThird] = useState(false);
+  const [showReturnStrike, setShowReturnStrike] = useState(isReturn);
   const [desaturated, setDesaturated] = useState(isReturn);
   const [stampAssetState, setStampAssetState] = useState<'loading' | 'ready' | 'error'>(
     isReturn ? 'error' : 'loading',
@@ -129,7 +139,11 @@ export default function SpotlightEvictionOverlay({
   // cannot clear a subsequently-mounted overlay for a different player.
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId, variant });
+      console.debug('[SpotlightEvictionOverlay] mount', {
+        evicteeId: evictee.id,
+        layoutId,
+        variant,
+      });
     }
     dispatch(setEvictionOverlay(evictee.id));
     return () => {
@@ -138,8 +152,8 @@ export default function SpotlightEvictionOverlay({
       }
       dispatch(clearEvictionOverlay(evictee.id));
     };
-  // evictee.id, layoutId and variant are stable for the lifetime of this overlay instance
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // evictee.id, layoutId and variant are stable for the lifetime of this overlay instance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -171,46 +185,99 @@ export default function SpotlightEvictionOverlay({
       : () => {};
 
     if (prefersReducedMotion) {
-      // Simplified: skip transitions, jump straight to holding state then done
       setPhase('holding');
-      setShowLowerThird(true);
-      setShowLiveBug(true);
-      setDesaturated(true);
-      timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done (reduced-motion)'); }, REDUCED_DONE_AT));
+      if (isReturn) {
+        setShowReturnStrike(false);
+        setDesaturated(false);
+      } else {
+        setShowLowerThird(true);
+        setShowLiveBug(true);
+        setDesaturated(true);
+      }
+      timers.push(
+        setTimeout(() => {
+          setPhase('done');
+          fire();
+          dbg('done (reduced-motion)');
+        }, REDUCED_DONE_AT),
+      );
       return () => timers.forEach(clearTimeout);
     }
 
     if (isReturn) {
-      dbg('mount – return holding');
-      timers.push(setTimeout(() => {
-        setShowLowerThird(false);
-        setShowLiveBug(false);
-        dbg('return lower-third out');
-      }, RETURN_CLEAR_AT));
-      timers.push(setTimeout(() => { setDesaturated(false); dbg('return resaturate'); }, RETURN_CLEAR_AT));
-      timers.push(setTimeout(() => { setPhase('spotlight'); dbg('return spotlight'); }, RETURN_SPOTLIGHT_AT));
-      timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done (return)'); }, RETURN_DONE_AT));
+      dbg('mount – reverse eviction holding');
+      timers.push(
+        setTimeout(() => {
+          setShowReturnStrike(false);
+          setDesaturated(false);
+          dbg('return strike removed + portrait restored');
+        }, RETURN_CLEAR_AT),
+      );
+      timers.push(
+        setTimeout(() => {
+          setPhase('spotlight');
+          dbg('return match-cut to roster');
+        }, RETURN_SPOTLIGHT_AT),
+      );
+      timers.push(
+        setTimeout(() => {
+          setPhase('done');
+          fire();
+          dbg('done (return)');
+        }, RETURN_DONE_AT),
+      );
       return () => timers.forEach(clearTimeout);
     }
 
     // Full cinematic sequence
     dbg('mount – spotlight phase');
-    timers.push(setTimeout(() => { setShowLiveBug(true); dbg('LIVE bug'); }, LIVE_BUG_AT));
-    timers.push(setTimeout(() => {
-      setPhase('expanding');
-      dbg('expanding');
-      if (import.meta.env.DEV) {
-        console.debug('[SpotlightEvictionOverlay] shared-layout expansion begins', { evicteeId: evictee.id, layoutId });
-      }
-    }, EXPAND_START));
-    timers.push(setTimeout(() => { setDesaturated(true); dbg('desaturate + vignette'); }, DESAT_AT));
-    timers.push(setTimeout(() => { setShowLowerThird(true); dbg('lower-third'); }, LOWER_THIRD_AT));
-    timers.push(setTimeout(() => { setPhase('holding'); dbg('holding'); }, HOLD_START));
-    timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done'); }, DONE_AT));
+    timers.push(
+      setTimeout(() => {
+        setShowLiveBug(true);
+        dbg('LIVE bug');
+      }, LIVE_BUG_AT),
+    );
+    timers.push(
+      setTimeout(() => {
+        setPhase('expanding');
+        dbg('expanding');
+        if (import.meta.env.DEV) {
+          console.debug('[SpotlightEvictionOverlay] shared-layout expansion begins', {
+            evicteeId: evictee.id,
+            layoutId,
+          });
+        }
+      }, EXPAND_START),
+    );
+    timers.push(
+      setTimeout(() => {
+        setDesaturated(true);
+        dbg('desaturate + vignette');
+      }, DESAT_AT),
+    );
+    timers.push(
+      setTimeout(() => {
+        setShowLowerThird(true);
+        dbg('lower-third');
+      }, LOWER_THIRD_AT),
+    );
+    timers.push(
+      setTimeout(() => {
+        setPhase('holding');
+        dbg('holding');
+      }, HOLD_START),
+    );
+    timers.push(
+      setTimeout(() => {
+        setPhase('done');
+        fire();
+        dbg('done');
+      }, DONE_AT),
+    );
 
     return () => timers.forEach(clearTimeout);
-  // fire is stable (guarded by firedRef); prefersReducedMotion/isReturn read once on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fire is stable (guarded by firedRef); prefersReducedMotion/isReturn read once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleImgError() {
@@ -229,8 +296,8 @@ export default function SpotlightEvictionOverlay({
   const isDev = import.meta.env.DEV || devSkip;
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined;
 
-  const labelText = isReturn ? 'RETURNED' : 'ELIMINATED';
-  const lowerThirdLabel = getLowerThirdLabel(isReturn, labelText, contextLabel);
+  const labelText = 'ELIMINATED';
+  const lowerThirdLabel = getLowerThirdLabel(false, labelText, contextLabel);
 
   return (
     <div
@@ -239,7 +306,7 @@ export default function SpotlightEvictionOverlay({
       aria-modal="true"
       aria-label={
         isReturn
-          ? `${evictee.name} has returned to the house`
+          ? `${evictee.name} is returning to the house`
           : `${evictee.name} has been eliminated`
       }
     >
@@ -265,12 +332,12 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
-      {/* LIVE bug — top-left broadcast indicator */}
+      {/* LIVE bug — eviction only; return mode must not replay an announcement. */}
       <AnimatePresence>
-        {showLiveBug && (
+        {!isReturn && showLiveBug && (
           <motion.div
             className="seo__live-bug"
-            initial={isReturn ? false : { opacity: 0, scale: 0.7 }}
+            initial={{ opacity: 0, scale: 0.7 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.7 }}
             transition={noMotion ?? { duration: 0.18, ease: 'easeOut' }}
@@ -288,9 +355,22 @@ export default function SpotlightEvictionOverlay({
         transition={prefersReducedMotion ? { duration: 0 } : PORTRAIT_SPRING}
       >
         {showFallback ? (
-          <span className="seo__fallback" aria-hidden="true">
+          <motion.span
+            className="seo__fallback"
+            aria-hidden="true"
+            animate={
+              isReturn && desaturated
+                ? {
+                    scaleX: 1.12,
+                    scaleY: 0.88,
+                    filter: CINEMATIC_FILTER,
+                  }
+                : { scaleX: 1, scaleY: 1, filter: 'none' }
+            }
+            transition={noMotion ?? { duration: 0.5, ease: 'easeOut' }}
+          >
             {fallbackText}
-          </span>
+          </motion.span>
         ) : (
           <motion.img
             className="seo__photo"
@@ -299,14 +379,57 @@ export default function SpotlightEvictionOverlay({
             onError={handleImgError}
             animate={
               desaturated
-                ? { scale: 1.04, filter: CINEMATIC_FILTER, y: 0 }
+                ? isReturn
+                  ? {
+                      scaleX: 1.12,
+                      scaleY: 0.88,
+                      filter: CINEMATIC_FILTER,
+                      y: 0,
+                    }
+                  : { scale: 1.04, filter: CINEMATIC_FILTER, y: 0 }
                 : phase === 'expanding'
-                  ? { scale: 1.02, filter: 'saturate(0.9) contrast(1) brightness(0.95) blur(1.5px)', y: -6 }
-                  : { scale: 1, filter: 'saturate(1) contrast(1) brightness(1)', y: 0 }
+                  ? {
+                      scale: 1.02,
+                      scaleX: 1,
+                      scaleY: 1,
+                      filter: 'saturate(0.9) contrast(1) brightness(0.95) blur(1.5px)',
+                      y: -6,
+                    }
+                  : {
+                      scale: 1,
+                      scaleX: 1,
+                      scaleY: 1,
+                      filter: 'saturate(1) contrast(1) brightness(1)',
+                      y: 0,
+                    }
             }
             transition={noMotion ?? { duration: 0.5, ease: 'easeOut' }}
           />
         )}
+
+        {/* Return mode begins with the standard red eviction strike, then removes it. */}
+        <AnimatePresence>
+          {isReturn && showReturnStrike && (
+            <motion.img
+              src={EVICTION_MARK_SRC}
+              alt=""
+              aria-hidden="true"
+              initial={false}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 1.2, rotate: -4 }}
+              transition={noMotion ?? { duration: 0.4, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                inset: '4%',
+                width: '92%',
+                height: '92%',
+                objectFit: 'contain',
+                pointerEvents: 'none',
+                zIndex: 5,
+              }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Vignette — settles as image desaturates */}
         <motion.div
@@ -320,12 +443,12 @@ export default function SpotlightEvictionOverlay({
         <div className="seo__scanlines" aria-hidden="true" />
       </motion.div>
 
-      {/* Lower-third — slides up from bottom; label changes for return variant */}
+      {/* Lower-third — eviction only. Return mode is deliberately announcement-free. */}
       <AnimatePresence>
-        {showLowerThird && (
+        {!isReturn && showLowerThird && (
           <motion.div
             className="seo__lower-third"
-            initial={isReturn ? false : { y: '110%', opacity: 0 }}
+            initial={{ y: '110%', opacity: 0 }}
             animate={{ y: '0%', opacity: 1 }}
             exit={{ y: '110%', opacity: 0 }}
             transition={noMotion ?? { duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
@@ -336,16 +459,12 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
-      {/* Stamp with impact bounce; label changes for return variant */}
+      {/* Stamp with impact bounce — eviction only. */}
       <AnimatePresence>
-        {showLowerThird && (
+        {!isReturn && showLowerThird && (
           <motion.div
-            className={`seo__stamp${!isReturn && stampAssetState === 'ready' ? ' seo__stamp--asset' : ''}`}
-            initial={
-              isReturn
-                ? false
-                : { scale: 2.4, opacity: 0, rotate: -14, x: '-50%', y: '-50%' }
-            }
+            className={`seo__stamp${stampAssetState === 'ready' ? ' seo__stamp--asset' : ''}`}
+            initial={{ scale: 2.4, opacity: 0, rotate: -14, x: '-50%', y: '-50%' }}
             animate={{ scale: 1, opacity: 1, rotate: -12, x: '-50%', y: '-50%' }}
             exit={{
               scale: 0,
@@ -359,12 +478,8 @@ export default function SpotlightEvictionOverlay({
             }
             aria-hidden="true"
           >
-            {!isReturn && stampAssetState === 'ready' ? (
-              <img
-                className="seo__stamp-image"
-                src={ELIMINATED_STAMP_SRC}
-                alt=""
-              />
+            {stampAssetState === 'ready' ? (
+              <img className="seo__stamp-image" src={ELIMINATED_STAMP_SRC} alt="" />
             ) : (
               labelText
             )}
