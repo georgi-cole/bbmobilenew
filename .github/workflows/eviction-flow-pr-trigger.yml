@@ -77,6 +77,28 @@ jobs:
           end = workflow.index("          PY\n", start)
           body = workflow[start:end]
           script = '\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())
+
+          # The reset call occurs once before the verdict is created and once inside
+          # the timer effect that is deleted later. Remove only the first occurrence.
+          old_script = (
+              "game_screen = replace_once(\n"
+              "    game_screen,\n"
+              "    '      setPostVoteAnnouncementDelayActive(false)\\n',\n"
+              "    '',\n"
+              "    'remove obsolete delay reset',\n"
+              ")"
+          )
+          new_script = (
+              "game_screen = game_screen.replace(\n"
+              "    '      setPostVoteAnnouncementDelayActive(false)\\n',\n"
+              "    '',\n"
+              "    1,\n"
+              ")"
+          )
+          if script.count(old_script) != 1:
+              raise RuntimeError(f'expected one delay-reset transform block, found {script.count(old_script)}')
+          script = script.replace(old_script, new_script, 1)
+
           Path('/tmp/apply_eviction_cleanup.py').write_text(script + '\n', encoding='utf-8')
           PY
 
