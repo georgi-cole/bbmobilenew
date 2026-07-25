@@ -7,10 +7,7 @@
   box-sizing: border-box;
   justify-content: flex-start !important;
   gap: clamp(12px, 2.2dvh, 20px) !important;
-  padding:
-    clamp(24px, 4.2dvh, 38px)
-    clamp(18px, 5vw, 42px)
-    clamp(18px, 3dvh, 28px) !important;
+  padding: clamp(24px, 4.2dvh, 38px) clamp(18px, 5vw, 42px) clamp(18px, 3dvh, 28px) !important;
 }
 
 .gameover-champion-record__identity {
@@ -74,10 +71,7 @@
 @media (max-width: 460px) {
   .gameover-champion-record {
     min-height: 0 !important;
-    padding:
-      clamp(22px, 3.5dvh, 30px)
-      clamp(16px, 5vw, 24px)
-      clamp(16px, 2.8dvh, 24px) !important;
+    padding: clamp(22px, 3.5dvh, 30px) clamp(16px, 5vw, 24px) clamp(16px, 2.8dvh, 24px) !important;
   }
 
   .gameover-champion-record__identity {
