@@ -125,6 +125,7 @@ jobs:
           src/components/Minesweeps/Minesweeps.css
           src/components/SilentSaboteurComp/SilentSaboteurComp.css
           src/components/FloatingActionBar/FloatingActionBar.tsx
+          src/components/FloatingActionBar/publicMeterNavigation.ts
           src/components/TwinShockRevealOverlay/TwinShockRevealOverlay.css
           src/screens/GameScreen/evictionTieVisuals.ts
           src/screens/GameScreen/GameScreen.tsx
