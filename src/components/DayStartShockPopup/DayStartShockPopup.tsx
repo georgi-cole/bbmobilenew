@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
-import PlayerAvatar from '../ui/PlayerAvatar';
+import { findByName, getById } from '../../data/houseguests';
+import { resolveInformalCutoutCandidates } from '../../utils/avatar';
 import './DayStartShockPopup.css';
 
 interface DayStartShockPopupProps {
@@ -11,15 +12,31 @@ interface DayStartShockPopupProps {
   onConfirm: () => void;
 }
 
+export function getDayStartShockObjectPronoun(player: Pick<Player, 'id' | 'name'>): 'him' | 'her' | 'them' {
+  const profile = getById(player.id) ?? findByName(player.name);
+  const sex = profile?.sex?.trim().toLowerCase();
+
+  if (sex === 'female' || sex === 'woman') return 'her';
+  if (sex === 'male' || sex === 'man') return 'him';
+  return 'them';
+}
+
 /**
- * DayStartShockPopup - a dramatic morning shock interstitial.
+ * DayStartShockPopup — a dramatic morning removal order.
  *
- * Shows the selected housemate portrait centered at the top, followed by the
- * broadcast reason and a single confirmation button that hands the game over
- * to the standard eviction animation.
+ * The player is shown as a full-body cutout whenever one is available. The
+ * confirmation hands control to the standard eviction cinematic; no game state
+ * is committed from this presentation component itself.
  */
 export default function DayStartShockPopup({ player, reason, onConfirm }: DayStartShockPopupProps) {
   const prefersReducedMotion = useReducedMotion();
+  const cutoutCandidates = useMemo(() => resolveInformalCutoutCandidates(player), [player]);
+  const [cutoutIndex, setCutoutIndex] = useState(0);
+  const objectPronoun = getDayStartShockObjectPronoun(player);
+
+  useEffect(() => {
+    setCutoutIndex(0);
+  }, [player.id, player.name]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -31,6 +48,8 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
 
   if (typeof document === 'undefined') return null;
 
+  const activeCutout = cutoutCandidates[Math.min(cutoutIndex, cutoutCandidates.length - 1)];
+
   return createPortal(
     <div className="day-start-shock" role="presentation" data-testid="day-start-shock-popup">
       <motion.div
@@ -38,7 +57,7 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: prefersReducedMotion ? 0.12 : 0.28, ease: 'easeOut' }}
+        transition={{ duration: prefersReducedMotion ? 0.12 : 0.3, ease: 'easeOut' }}
       >
         <motion.section
           className="day-start-shock__card"
@@ -46,28 +65,53 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
           aria-modal="true"
           aria-labelledby="day-start-shock-title"
           aria-describedby="day-start-shock-reason"
-          initial={prefersReducedMotion ? { opacity: 0.96 } : { opacity: 0, scale: 0.92, y: 18 }}
+          initial={prefersReducedMotion ? { opacity: 0.96 } : { opacity: 0, scale: 0.9, y: 24 }}
           animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-          exit={prefersReducedMotion ? { opacity: 0.96 } : { opacity: 0, scale: 0.96, y: 10 }}
-          transition={{ duration: prefersReducedMotion ? 0.18 : 0.38, ease: [0.2, 0.9, 0.2, 1] }}
+          exit={prefersReducedMotion ? { opacity: 0.96 } : { opacity: 0, scale: 0.95, y: 14 }}
+          transition={{ duration: prefersReducedMotion ? 0.18 : 0.42, ease: [0.2, 0.9, 0.2, 1] }}
         >
-          <div className="day-start-shock__flare" aria-hidden="true" />
-          <div className="day-start-shock__eyebrow">Morning shock</div>
-          <div className="day-start-shock__portrait">
-            <PlayerAvatar player={player} size="lg" />
+          <div className="day-start-shock__scanlines" aria-hidden="true" />
+          <div className="day-start-shock__alarm-bar" aria-hidden="true">
+            <span />
+            <strong>HOUSE ORDER</strong>
+            <span />
           </div>
-          <h2 className="day-start-shock__title" id="day-start-shock-title">
-            {player.name}
-          </h2>
-          <p className="day-start-shock__subhead">
-            A housemate is being removed before the day can continue.
-          </p>
-          <p className="day-start-shock__reason" id="day-start-shock-reason">
-            {reason}
-          </p>
-          <button className="day-start-shock__confirm" type="button" onClick={onConfirm}>
-            Trigger eviction sequence
-          </button>
+
+          <div className="day-start-shock__hero">
+            <div className="day-start-shock__spotlight" aria-hidden="true" />
+            <div className="day-start-shock__cutout-wrap">
+              <img
+                className="day-start-shock__cutout"
+                src={activeCutout}
+                alt={player.name}
+                onError={() => {
+                  setCutoutIndex((current) =>
+                    current < cutoutCandidates.length - 1 ? current + 1 : current,
+                  );
+                }}
+              />
+            </div>
+            <div className="day-start-shock__stamp" aria-hidden="true">
+              REMOVAL
+            </div>
+          </div>
+
+          <div className="day-start-shock__content">
+            <p className="day-start-shock__eyebrow">Morning shock</p>
+            <h2 className="day-start-shock__title" id="day-start-shock-title">
+              Pack your bags, {player.name}
+            </h2>
+            <p className="day-start-shock__subhead">
+              Before the day can begin, The Big Eye has issued an immediate removal order.
+            </p>
+            <blockquote className="day-start-shock__reason" id="day-start-shock-reason">
+              {reason}
+            </blockquote>
+            <button className="day-start-shock__confirm" type="button" onClick={onConfirm}>
+              <span>Give {objectPronoun} the boot</span>
+              <span className="day-start-shock__confirm-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
         </motion.section>
       </motion.div>
     </div>,
