@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getDayStartShockObjectPronoun } from './DayStartShockPopup'
+import { getDayStartShockObjectPronoun } from './dayStartShockCopy'
 
 describe('getDayStartShockObjectPronoun', () => {
   it('uses the canonical female pronoun for a known housemate', () => {
