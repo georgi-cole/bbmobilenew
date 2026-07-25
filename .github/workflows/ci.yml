@@ -63,6 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
     steps:
       - name: Check out feature branch
         uses: actions/checkout@v4
@@ -76,7 +77,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Decode and apply patch
+      - name: Decode patch
         shell: bash
         run: |
           python3 - <<'PY'
@@ -88,7 +89,29 @@ jobs:
           script = zlib.decompress(base64.b64decode(payload))
           Path('scripts/apply_gameplay_polish.py').write_bytes(script)
           PY
-          python3 scripts/apply_gameplay_polish.py
+
+      - name: Apply patch
+        id: apply_patch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 scripts/apply_gameplay_polish.py > /tmp/gameplay-polish-patch.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '### Gameplay polish patch failure'
+              echo
+              echo '```text'
+              tail -n 80 /tmp/gameplay-polish-patch.log
+              echo '```'
+            } > /tmp/gameplay-polish-comment.md
+            gh issue comment 1257 --repo georgi-cole/bbmobilenew --body-file /tmp/gameplay-polish-comment.md
+            cat /tmp/gameplay-polish-patch.log
+            exit "$status"
+          fi
 
       - name: Install dependencies
         run: npm ci
