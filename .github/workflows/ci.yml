@@ -24,6 +24,29 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Normalize changed files for artifact
+        run: |
+          npx prettier --write \
+            src/components/DayStartShockPopup/DayStartShockPopup.css \
+            src/components/DayStartShockPopup/DayStartShockPopup.test.ts \
+            src/components/DayStartShockPopup/DayStartShockPopup.tsx \
+            src/data/avatarAssetManifest.ts \
+            src/main.tsx \
+            src/store/__tests__/selectors.final4.test.ts \
+            src/store/selectors.ts \
+            src/styles/gameOverResponsiveFixes.css
+      - uses: actions/upload-artifact@v4
+        with:
+          name: formatted-files
+          path: |
+            src/components/DayStartShockPopup/DayStartShockPopup.css
+            src/components/DayStartShockPopup/DayStartShockPopup.test.ts
+            src/components/DayStartShockPopup/DayStartShockPopup.tsx
+            src/data/avatarAssetManifest.ts
+            src/main.tsx
+            src/store/__tests__/selectors.final4.test.ts
+            src/store/selectors.ts
+            src/styles/gameOverResponsiveFixes.css
       - name: Check formatting for files changed from main
         run: npm run format:check
       - name: Reject focused or disabled tests
