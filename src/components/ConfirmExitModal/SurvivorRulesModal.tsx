@@ -3,8 +3,9 @@ import './SurvivorRulesModal.css';
 
 interface Props {
   open: boolean;
-  onContinue: (dontShowAgain: boolean) => void;
+  onContinue?: (dontShowAgain: boolean) => void;
   onCancel: () => void;
+  variant?: 'entry' | 'reference';
 }
 
 const RULES = [
@@ -30,12 +31,13 @@ const RULES = [
   },
 ] as const;
 
-export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props) {
+export default function SurvivorRulesModal({ open, onContinue, onCancel, variant = 'entry' }: Props) {
   const uid = useId();
   const titleId = `${uid}-title`;
   const descId = `${uid}-desc`;
   const cardRef = useRef<HTMLDivElement>(null);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const isReference = variant === 'reference';
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +65,11 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
       aria-labelledby={titleId}
       aria-describedby={descId}
     >
-      <div className="survivor-rules-modal__card" tabIndex={-1} ref={cardRef}>
+      <div
+        className={`survivor-rules-modal__card${isReference ? ' survivor-rules-modal__card--reference' : ''}`}
+        tabIndex={-1}
+        ref={cardRef}
+      >
         <div className="survivor-rules-modal__glow survivor-rules-modal__glow--left" aria-hidden="true" />
         <div className="survivor-rules-modal__glow survivor-rules-modal__glow--right" aria-hidden="true" />
 
@@ -94,34 +100,49 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel }: Props
           ))}
         </div>
 
-        <footer className="survivor-rules-modal__footer">
-          <label className="survivor-rules-modal__checkbox">
-            <input
-              type="checkbox"
-              checked={dontShowAgain}
-              onChange={(e) => setDontShowAgain(e.target.checked)}
-            />
-            <span>Don&apos;t show this again</span>
-          </label>
+        {isReference ? (
+          <footer className="survivor-rules-modal__footer survivor-rules-modal__footer--reference">
+            <div className="survivor-rules-modal__actions survivor-rules-modal__actions--reference">
+              <button
+                type="button"
+                className="survivor-rules-modal__btn game-button game-button--primary"
+                onClick={onCancel}
+                autoFocus
+              >
+                Close Rules
+              </button>
+            </div>
+          </footer>
+        ) : (
+          <footer className="survivor-rules-modal__footer">
+            <label className="survivor-rules-modal__checkbox">
+              <input
+                type="checkbox"
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
+              />
+              <span>Don&apos;t show this again</span>
+            </label>
 
-          <div className="survivor-rules-modal__actions">
-            <button
-              type="button"
-              className="survivor-rules-modal__btn game-button game-button--primary"
-              onClick={() => onContinue(dontShowAgain)}
-              autoFocus
-            >
-              Enter Surveyeval
-            </button>
-            <button
-              type="button"
-              className="survivor-rules-modal__btn game-button game-button--ghost"
-              onClick={onCancel}
-            >
-              Back
-            </button>
-          </div>
-        </footer>
+            <div className="survivor-rules-modal__actions">
+              <button
+                type="button"
+                className="survivor-rules-modal__btn game-button game-button--primary"
+                onClick={() => onContinue?.(dontShowAgain)}
+                autoFocus
+              >
+                Enter Surveyeval
+              </button>
+              <button
+                type="button"
+                className="survivor-rules-modal__btn game-button game-button--ghost"
+                onClick={onCancel}
+              >
+                Back
+              </button>
+            </div>
+          </footer>
+        )}
       </div>
     </div>
   );

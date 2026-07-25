@@ -148,6 +148,7 @@ export default function TVLog({
       <button
         type="button"
         className="tv-log__launcher"
+        style={{ left: 10, right: 'auto' }}
         aria-label={`Open game log, ${entries.length} events`}
         onClick={() => setLogOpen(true)}
       >

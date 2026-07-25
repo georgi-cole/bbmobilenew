@@ -16,6 +16,7 @@ export default function AudioStateSync() {
       socialPanelOpen: root.social.panelOpen,
       incomingInboxOpen: root.social.incomingInboxOpen,
       musicScene: root.ui.musicScene,
+      musicOn: root.settings.audio.musicOn,
     }),
     shallowEqual,
   );
@@ -28,8 +29,10 @@ export default function AudioStateSync() {
   }, []);
 
   const desiredMusic = useMemo(
-    () =>
-      resolveDesiredMusic(
+    () => {
+      if (!musicState.musicOn) return 'none';
+
+      return resolveDesiredMusic(
         {
           game: {
             phase: musicState.gamePhase,
@@ -58,7 +61,8 @@ export default function AudioStateSync() {
           },
         },
         hash,
-      ),
+      );
+    },
     [hash, musicState],
   );
 

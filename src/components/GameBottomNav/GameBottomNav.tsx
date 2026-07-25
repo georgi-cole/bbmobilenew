@@ -77,20 +77,33 @@ export default function GameBottomNav({
       <nav className={`game-bottom-nav nav-bar${refined ? ' game-bottom-nav--refined-architecture' : ''}`} aria-label="Main navigation">
         <img className="game-bottom-nav__shell" src={navBarSrc} alt="" aria-hidden="true" draggable={false} />
         {refined && moreOpen && createPortal(
-          <div className="game-bottom-nav__more-menu" id="game-navigation-more" role="menu" aria-label="More destinations">
-            <button type="button" role="menuitem" onClick={() => openDestination('rules')}>
-              <img src={`${BASE}/assets/updated_nav_fab_bar/rules_approved_final.svg`} alt="" aria-hidden="true" />
-              <span>Rules</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => openDestination('leaderboard')}>
-              <img src={`${BASE}/assets/updated_nav_fab_bar/leaderboard_approved_final.svg`} alt="" aria-hidden="true" />
-              <span>Board</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => openDestination('store')}>
-              <img src={`${BASE}/assets/icons/shop.svg`} alt="" aria-hidden="true" />
-              <span>Store</span>
-            </button>
-          </div>,
+          <>
+            <div
+              className="game-bottom-nav__more-backdrop"
+              role="presentation"
+              onPointerDown={() => setMoreOpen(false)}
+            />
+            <div
+              className="game-bottom-nav__more-menu"
+              id="game-navigation-more"
+              role="menu"
+              aria-label="More destinations"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <button type="button" role="menuitem" onClick={() => openDestination('rules')}>
+                <img src={`${BASE}/assets/updated_nav_fab_bar/rules_approved_final.svg`} alt="" aria-hidden="true" />
+                <span>Rules</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => openDestination('leaderboard')}>
+                <img src={`${BASE}/assets/updated_nav_fab_bar/leaderboard_approved_final.svg`} alt="" aria-hidden="true" />
+                <span>Board</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => openDestination('store')}>
+                <img src={`${BASE}/assets/icons/shop.svg`} alt="" aria-hidden="true" />
+                <span>Store</span>
+              </button>
+            </div>
+          </>,
           document.body,
         )}
         <div className="game-bottom-nav__items">
