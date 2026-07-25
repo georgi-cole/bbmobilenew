@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import SurvivorStandoutCard from '../SurvivorStandout/SurvivorStandoutCard'
+import SpotlightEvictionOverlay from '../Eviction/SpotlightEvictionOverlay'
 import styles from './HouseguestGrid.module.css'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
@@ -84,9 +86,9 @@ type Props = {
   layoutRevision?: number
   /** Optional alive/total chip shown beside the section heading. */
   occupancyLabel?: string
-  /** Active player whose roster tile is reversing the eviction treatment. */
+  /** Active player whose eviction cinematic is being played in reverse. */
   returningPlayerId?: string | null
-  /** Called after the roster-only return animation settles. */
+  /** Called after the reverse-eviction cinematic settles into the roster tile. */
   onReturnAnimationDone?: () => void
 }
 
@@ -135,16 +137,13 @@ export default function HouseguestGrid({
   const dispatch = useAppDispatch()
   const game = useAppSelector((s) => s.game)
   const challengeHistory = useAppSelector((s) => s.challenge?.history ?? [])
-
-  useEffect(() => {
-    if (!returningPlayerId || !onReturnAnimationDone) return undefined
-    const reducedMotion =
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const timer = window.setTimeout(onReturnAnimationDone, reducedMotion ? 250 : 1900)
-    return () => window.clearTimeout(timer)
-  }, [onReturnAnimationDone, returningPlayerId])
+  const returningPlayer = useMemo(
+    () =>
+      returningPlayerId
+        ? (game.players.find((player) => player.id === returningPlayerId) ?? null)
+        : null,
+    [game.players, returningPlayerId]
+  )
   const survivorReplacementTransition =
     game.modeSpecific?.kind === 'survival'
       ? (game.modeSpecific.replacementTransition ?? null)
@@ -301,82 +300,97 @@ export default function HouseguestGrid({
     .join(' ')
 
   return (
-    <section
-      ref={containerRef}
-      className={sectionClassName}
-      aria-labelledby="houseguests-heading"
-      data-compact-layout={effectiveCompactLayout}
-      data-roster-mode={rosterMode}
-      data-header-mode={headerMode}
-    >
-      <div key={headerSignal} className={styles.headerRow} aria-live="polite">
-        <h3 id="houseguests-heading" className={styles.header}>
-          {HOUSEMATES_SECTION_TITLE}
-          {showCountInHeader && (
-            <span className={styles.count}> ({renderedHouseguests.length})</span>
+    <>
+      <section
+        ref={containerRef}
+        className={sectionClassName}
+        aria-labelledby="houseguests-heading"
+        data-compact-layout={effectiveCompactLayout}
+        data-roster-mode={rosterMode}
+        data-header-mode={headerMode}
+      >
+        <div key={headerSignal} className={styles.headerRow} aria-live="polite">
+          <h3 id="houseguests-heading" className={styles.header}>
+            {HOUSEMATES_SECTION_TITLE}
+            {showCountInHeader && (
+              <span className={styles.count}> ({renderedHouseguests.length})</span>
+            )}
+            {!showCountInHeader && (
+              <span className="visually-hidden"> ({renderedHouseguests.length})</span>
+            )}
+          </h3>
+          {occupancyLabel && (
+            <StatusPill
+              variant="ghost"
+              label={occupancyLabel}
+              ariaLabel={`${occupancyLabel} housemates`}
+            />
           )}
-          {!showCountInHeader && (
-            <span className="visually-hidden"> ({renderedHouseguests.length})</span>
-          )}
-        </h3>
-        {occupancyLabel && (
-          <StatusPill
-            variant="ghost"
-            label={occupancyLabel}
-            ariaLabel={`${occupancyLabel} housemates`}
+        </div>
+
+        <p id="houseguests-interaction-instructions" className={styles.interactionInstructions}>
+          Tap a housemate to interact. Press and hold to preview their profile.
+        </p>
+
+        <ul
+          className={listClassName}
+          role="list"
+          data-roster-scroll={rosterMode === 'scroll' ? 'true' : undefined}
+        >
+          {renderedHouseguests.map((hg) => {
+            const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
+            return (
+              <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
+                <AvatarTile
+                  name={hg.name}
+                  avatarUrl={hg.avatarUrl}
+                  isEvicted={hg.isEvicted}
+                  isYou={hg.isYou}
+                  onClick={hg.onClick}
+                  roboStats={resolvedRoboStats}
+                  onHoldPreviewStart={hg.onHoldPreviewStart}
+                  onHoldPreviewEnd={hg.onHoldPreviewEnd}
+                  statuses={hg.statuses}
+                  finalRank={hg.finalRank}
+                  showPermanentBadge={hg.showPermanentBadge}
+                  layoutId={hg.layoutId}
+                  isEvicting={hg.isEvicting}
+                  nominationCeremonyState={hg.nominationCeremonyState}
+                  descriptionId="houseguests-interaction-instructions"
+                />
+              </li>
+            )
+          })}
+          {Array.from({ length: placeholderCount }).map((_, i) => (
+            <li key={`placeholder-${i}`} className={`${itemClassName} ${styles.hgTileInactive}`}>
+              <img
+                src={`${import.meta.env.BASE_URL}avatars/placeholder.png`}
+                alt=""
+                aria-hidden="true"
+                className={styles.hgPlaceholderImg}
+              />
+              <span className={styles.hgPlaceholderLabel}>Inactive</span>
+            </li>
+          ))}
+        </ul>
+        {survivorStandout && (
+          <SurvivorStandoutCard standout={survivorStandout} mode={survivorStandoutMode} />
+        )}
+      </section>
+
+      <AnimatePresence>
+        {returningPlayer && onReturnAnimationDone && (
+          <SpotlightEvictionOverlay
+            key={`battle-back-return-${returningPlayer.id}`}
+            evictee={returningPlayer}
+            contextLabel={`Season ${game.season} · Day ${game.week}`}
+            layoutId={`avatar-tile-${returningPlayer.id}`}
+            variant="return"
+            onDone={onReturnAnimationDone}
+            devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
           />
         )}
-      </div>
-
-      <p id="houseguests-interaction-instructions" className={styles.interactionInstructions}>
-        Tap a housemate to interact. Press and hold to preview their profile.
-      </p>
-
-      <ul
-        className={listClassName}
-        role="list"
-        data-roster-scroll={rosterMode === 'scroll' ? 'true' : undefined}
-      >
-        {renderedHouseguests.map((hg) => {
-          const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
-          return (
-            <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
-              <AvatarTile
-                name={hg.name}
-                avatarUrl={hg.avatarUrl}
-                isEvicted={hg.isEvicted}
-                isYou={hg.isYou}
-                onClick={hg.onClick}
-                roboStats={resolvedRoboStats}
-                onHoldPreviewStart={hg.onHoldPreviewStart}
-                onHoldPreviewEnd={hg.onHoldPreviewEnd}
-                statuses={hg.statuses}
-                finalRank={hg.finalRank}
-                showPermanentBadge={hg.showPermanentBadge}
-                layoutId={hg.layoutId}
-                isEvicting={hg.isEvicting}
-                isReturning={returningPlayerId === String(hg.id)}
-                nominationCeremonyState={hg.nominationCeremonyState}
-                descriptionId="houseguests-interaction-instructions"
-              />
-            </li>
-          )
-        })}
-        {Array.from({ length: placeholderCount }).map((_, i) => (
-          <li key={`placeholder-${i}`} className={`${itemClassName} ${styles.hgTileInactive}`}>
-            <img
-              src={`${import.meta.env.BASE_URL}avatars/placeholder.png`}
-              alt=""
-              aria-hidden="true"
-              className={styles.hgPlaceholderImg}
-            />
-            <span className={styles.hgPlaceholderLabel}>Inactive</span>
-          </li>
-        ))}
-      </ul>
-      {survivorStandout && (
-        <SurvivorStandoutCard standout={survivorStandout} mode={survivorStandoutMode} />
-      )}
-    </section>
+      </AnimatePresence>
+    </>
   )
 }
