@@ -99,6 +99,67 @@ jobs:
               raise RuntimeError(f'expected one delay-reset transform block, found {script.count(old_script)}')
           script = script.replace(old_script, new_script, 1)
 
+          # Remove the remaining references that lived outside the primary legacy-UI
+          # blocks: the second waiting-state expression and the old blank-TV fallback.
+          post_script = r"""
+game_screen_path = Path('src/screens/GameScreen/GameScreen.tsx')
+game_screen = game_screen_path.read_text(encoding='utf-8')
+
+game_screen = replace_once(
+    game_screen,
+    "  const socialRelationships = useAppSelector((s) => s.social.relationships)\n",
+    "",
+    'remove unused social relationships selector',
+)
+
+game_screen = replace_once(
+    game_screen,
+    "    showDoubleVoteOffer ||\n"
+    "    showDoubleVoteModal ||\n"
+    "    showLiveVoteModal ||\n"
+    "    showTieBreakModal ||\n",
+    "",
+    'remove legacy modals from awaitingHumanDecision',
+)
+
+game_screen = replace_once(
+    game_screen,
+    "  // Provides a meaningful holding message during states where no fresh TV event\n"
+    "  // is available: after dismissing the live_eviction announcement during\n"
+    "  // live_vote, and during the postVoteAnnouncementDelayActive grace period.\n",
+    "  // Provides a meaningful holding message while the live vote is waiting for\n"
+    "  // the human decision or for the remaining house votes to finish.\n",
+    'update viewport fallback documentation',
+)
+
+game_screen = replace_once(
+    game_screen,
+    "    if (postVoteAnnouncementDelayActive && game.pendingEviction) {\n"
+    "      return 'Please wait while the player says their goodbyes.'\n"
+    "    }\n",
+    "",
+    'remove obsolete goodbye fallback branch',
+)
+
+game_screen = replace_once(
+    game_screen,
+    "    game.phase,\n"
+    "    game.awaitingHumanVote,\n"
+    "    activeConfessionalDecision,\n"
+    "    postVoteAnnouncementDelayActive,\n"
+    "    game.pendingEviction,\n"
+    "    remoteMainTvHeadline,\n",
+    "    game.phase,\n"
+    "    game.awaitingHumanVote,\n"
+    "    activeConfessionalDecision,\n"
+    "    remoteMainTvHeadline,\n",
+    'remove obsolete viewport fallback dependencies',
+)
+
+game_screen_path.write_text(game_screen, encoding='utf-8')
+"""
+          script = f"{script}\n{post_script}"
+
           Path('/tmp/apply_eviction_cleanup.py').write_text(script + '\n', encoding='utf-8')
           PY
 
