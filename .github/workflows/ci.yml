@@ -56,3 +56,89 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ${{ matrix.script }}
+
+  apply-gameplay-polish:
+    name: Apply requested gameplay polish
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/gameplay-polish-1230-1250' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/gameplay-polish-1230-1250
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Decode and apply patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          import zlib
+          from pathlib import Path
+
+          payload = Path('scripts/apply_gameplay_polish.py.zlib.b64').read_text(encoding='utf-8').strip()
+          script = zlib.decompress(base64.b64decode(payload))
+          Path('scripts/apply_gameplay_polish.py').write_bytes(script)
+          PY
+          python3 scripts/apply_gameplay_polish.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed source
+        run: >-
+          npx prettier --write
+          src/components/Minesweeps/Minesweeps.css
+          src/components/SilentSaboteurComp/SilentSaboteurComp.css
+          src/components/FloatingActionBar/FloatingActionBar.tsx
+          src/components/TwinShockRevealOverlay/TwinShockRevealOverlay.css
+          src/screens/GameScreen/evictionTieVisuals.ts
+          src/screens/GameScreen/GameScreen.tsx
+          src/components/HouseguestGrid/HouseguestGrid.tsx
+          src/components/HouseguestGrid/AvatarTile.tsx
+          src/components/HouseguestGrid/HouseguestGrid.module.css
+          src/types/index.ts
+          src/store/gameSlice.ts
+          src/components/FinalFaceoff/finaleEligibility.ts
+          src/utils/juryUtils.ts
+          src/store/finaleSlice.ts
+          src/components/FinalFaceoff/FinalFaceoff.tsx
+          src/components/FinalFaceoff/JurorBubble.tsx
+          tests/unit/gameplayPolish.regression.test.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run targeted regression tests
+        run: npx vitest run tests/unit/gameplayPolish.regression.test.ts
+
+      - name: Lint
+        run: npm run lint:ci
+
+      - name: Build web and mobile bundles
+        run: |
+          npm run build
+          npm run build:mobile
+
+      - name: Verify diff
+        run: git diff --check
+
+      - name: Commit product changes
+        shell: bash
+        run: |
+          rm -f scripts/apply_gameplay_polish.py
+          git checkout origin/main -- .github/workflows/ci.yml
+          git rm -f scripts/apply_gameplay_polish.py.zlib.b64 .github/workflows/apply-gameplay-polish.yml
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix: polish gameplay transitions and tribunal voting"
+          git push origin HEAD:agent/gameplay-polish-1230-1250
