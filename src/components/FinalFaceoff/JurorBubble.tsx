@@ -10,23 +10,32 @@
  * - `isFlashing` triggers a brief highlight when the vote is attributed.
  * - `isPublic` applies special public-vote gold/global styling.
  */
-import type { Player } from '../../types';
-import type { JurorReveal } from '../../store/finaleSlice';
-import { PUBLIC_JUROR_ID } from '../../store/finaleSlice';
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import type { Player } from '../../types'
+import type { JurorReveal } from '../../store/finaleSlice'
+import { PUBLIC_JUROR_ID } from '../../store/finaleSlice'
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import { useAppSelector } from '../../store/hooks'
 
 interface Props {
-  juror: Player;
-  finalist: Player | undefined;
-  reveal: JurorReveal;
+  juror: Player
+  finalist: Player | undefined
+  reveal: JurorReveal
   /** When true the vote is shown. */
-  voteVisible?: boolean;
+  voteVisible?: boolean
   /** When true a flash/highlight ring fires to mark attribution. */
-  isFlashing?: boolean;
+  isFlashing?: boolean
 }
 
-export default function JurorBubble({ juror, finalist, reveal, voteVisible = true, isFlashing = false }: Props) {
-  const isPublic = reveal.jurorId === PUBLIC_JUROR_ID;
+export default function JurorBubble({
+  juror,
+  finalist,
+  reveal,
+  voteVisible = true,
+  isFlashing = false,
+}: Props) {
+  const isPublic = reveal.jurorId === PUBLIC_JUROR_ID
+  const publicVoteWeight = useAppSelector((state) => state.finale.publicVoteWeight ?? 1)
+  const voteWeight = isPublic ? publicVoteWeight : 1
 
   return (
     <div
@@ -34,23 +43,27 @@ export default function JurorBubble({ juror, finalist, reveal, voteVisible = tru
         'jb-bubble',
         isPublic ? 'jb-bubble--public' : '',
         isFlashing ? 'jb-bubble--flash' : '',
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       {isFlashing && <div className="jb-flash-ring" aria-hidden="true" />}
       <PlayerAvatar player={juror} size="sm" showRelationshipOutline={false} />
       <div className="jb-body">
         <span className="jb-name">
           {juror.name}
-          {isPublic && <span className="jb-public-badge">Public Vote</span>}
+          {isPublic && (
+            <span className="jb-public-badge">Public Vote{voteWeight === 2 ? ' ×2' : ''}</span>
+          )}
         </span>
 
         {/* Phase-2 vote reveal: "X cast a vote for Y" */}
         {voteVisible && finalist ? (
           <span
             className={`jb-vote-statement${isPublic ? ' jb-vote-statement--public' : ''}`}
-            aria-label={`${juror.name} cast a vote for ${finalist.name}`}
+            aria-label={`${juror.name} cast ${voteWeight === 2 ? 'two votes' : 'a vote'} for ${finalist.name}`}
           >
-            cast a vote for{' '}
+            cast {voteWeight === 2 ? 'two votes' : 'a vote'} for{' '}
             <span className="jb-vote-statement__finalist">
               <PlayerAvatar player={finalist} size="sm" showRelationshipOutline={false} />
               <strong>{finalist.name}</strong>
@@ -63,5 +76,5 @@ export default function JurorBubble({ juror, finalist, reveal, voteVisible = tru
         )}
       </div>
     </div>
-  );
+  )
 }

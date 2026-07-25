@@ -23,7 +23,11 @@
   top: calc(var(--twin-shock-top) - 60px);
   width: calc(var(--twin-shock-width) + 80px);
   height: calc(var(--twin-shock-height) + 120px);
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.22) 0, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.22) 0,
+    rgba(255, 255, 255, 0) 70%
+  );
   opacity: 0.35;
   filter: blur(12px);
   animation: twin-shock-flare 1600ms ease-in-out infinite alternate;
@@ -66,8 +70,7 @@
   place-items: center;
   overflow: hidden;
   border-radius: 10px;
-  background:
-    linear-gradient(180deg, rgba(18, 25, 39, 0.9), rgba(8, 13, 22, 0.86));
+  background: linear-gradient(180deg, rgba(18, 25, 39, 0.9), rgba(8, 13, 22, 0.86));
   border: 1px solid rgba(255, 255, 255, 0.1);
   transform-origin: center;
   box-shadow:
@@ -84,7 +87,9 @@
   opacity: 0;
   transform: scale(1);
   animation: none;
-  transition: opacity 420ms ease, transform 420ms ease;
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease;
 }
 
 .twin-shock-reveal--settled .twin-shock-reveal__shade,
@@ -173,13 +178,23 @@
 }
 
 @keyframes twin-shock-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes twin-shock-pulse {
-  from { transform: scale(0.99); opacity: 0.72; }
-  to { transform: scale(1.025); opacity: 1; }
+  from {
+    transform: scale(0.99);
+    opacity: 0.72;
+  }
+  to {
+    transform: scale(1.025);
+    opacity: 1;
+  }
 }
 
 @keyframes twin-shock-flare {
@@ -226,5 +241,52 @@
     animation-duration: 1ms;
     animation-iteration-count: 1;
     transition-duration: 1ms;
+  }
+}
+
+/* Issue #1241 — Ali-enters begins with the outgoing housemate already evicted. */
+.twin-shock-reveal--ali_enters .twin-shock-reveal__avatar-wrap {
+  position: relative;
+}
+
+.twin-shock-reveal--ali_enters .twin-shock-reveal__avatar-wrap::after {
+  content: '';
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    164deg,
+    transparent 42%,
+    rgba(108, 0, 12, 0.28) 43%,
+    rgba(255, 42, 58, 0.96) 47%,
+    rgba(161, 0, 20, 0.96) 53%,
+    rgba(255, 98, 106, 0.86) 56%,
+    transparent 57%
+  );
+  filter: drop-shadow(0 0 7px rgba(239, 35, 60, 0.64));
+  opacity: 1;
+  pointer-events: none;
+  transform: scale(1);
+  transition:
+    opacity 0.46s ease,
+    transform 0.64s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.twin-shock-reveal--ali_enters.twin-shock-reveal--intro .twin-shock-reveal__avatar--before,
+.twin-shock-reveal--ali_enters.twin-shock-reveal--transform .twin-shock-reveal__avatar--before {
+  filter: grayscale(1) saturate(0) contrast(1.08) brightness(0.68);
+  transform: scaleX(1.14) scaleY(0.84) rotate(-1.2deg);
+}
+
+.twin-shock-reveal--ali_enters.twin-shock-reveal--transform .twin-shock-reveal__avatar-wrap::after,
+.twin-shock-reveal--ali_enters.twin-shock-reveal--settle .twin-shock-reveal__avatar-wrap::after {
+  opacity: 0;
+  transform: scale(1.16) rotate(-2deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twin-shock-reveal--ali_enters .twin-shock-reveal__avatar-wrap::after {
+    transition: none;
   }
 }

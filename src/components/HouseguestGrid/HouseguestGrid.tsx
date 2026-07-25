@@ -84,6 +84,10 @@ type Props = {
   layoutRevision?: number
   /** Optional alive/total chip shown beside the section heading. */
   occupancyLabel?: string
+  /** Active player whose roster tile is reversing the eviction treatment. */
+  returningPlayerId?: string | null
+  /** Called after the roster-only return animation settles. */
+  onReturnAnimationDone?: () => void
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -99,7 +103,11 @@ function resolveSurvivorStandoutMode(options: {
   viewportWidth: number
   viewportHeight: number
 }): SurvivorStandoutMode {
-  if (options.rosterMode === 'scroll' || options.viewportHeight < 700 || options.viewportWidth < 360) {
+  if (
+    options.rosterMode === 'scroll' ||
+    options.viewportHeight < 700 ||
+    options.viewportWidth < 360
+  ) {
     return 'mini-chip'
   }
   if (options.viewportWidth >= 720) return 'full-card'
@@ -120,20 +128,32 @@ export default function HouseguestGrid({
   headerMode = 'tv-chip',
   layoutRevision = 0,
   occupancyLabel,
+  returningPlayerId = null,
+  onReturnAnimationDone,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
   const dispatch = useAppDispatch()
   const game = useAppSelector((s) => s.game)
   const challengeHistory = useAppSelector((s) => s.challenge?.history ?? [])
-  const survivorReplacementTransition = game.modeSpecific?.kind === 'survival'
-    ? game.modeSpecific.replacementTransition ?? null
-    : null
+
+  useEffect(() => {
+    if (!returningPlayerId || !onReturnAnimationDone) return undefined
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const timer = window.setTimeout(onReturnAnimationDone, reducedMotion ? 250 : 1900)
+    return () => window.clearTimeout(timer)
+  }, [onReturnAnimationDone, returningPlayerId])
+  const survivorReplacementTransition =
+    game.modeSpecific?.kind === 'survival'
+      ? (game.modeSpecific.replacementTransition ?? null)
+      : null
   const survivorRoboStatsById = useMemo(() => {
     const statsById = new Map<string, RoboStatsSummary>()
     if (game.mode !== 'survival') return statsById
-    const currentDay = game.modeSpecific?.kind === 'survival'
-      ? game.modeSpecific.currentDay
-      : game.week
+    const currentDay =
+      game.modeSpecific?.kind === 'survival' ? game.modeSpecific.currentDay : game.week
     game.players.forEach((player) => {
       if (!player.isRobo) return
       const entryDay = player.survivorEntryDay ?? 1
@@ -153,12 +173,14 @@ export default function HouseguestGrid({
     const outgoing = survivorReplacementTransition.outgoingPlayerSnapshot
     const incomingId = survivorReplacementTransition.incomingPlayerId
     const slot = survivorReplacementTransition.slot
-    const incomingIndex = houseguests.findIndex((houseguest) => String(houseguest.id) === incomingId)
+    const incomingIndex = houseguests.findIndex(
+      (houseguest) => String(houseguest.id) === incomingId
+    )
     const slotIndex = game.players.findIndex((player) => player.survivorSlot === slot)
     const targetIndex = incomingIndex >= 0 ? incomingIndex : slotIndex
     if (targetIndex < 0 || targetIndex >= houseguests.length) return houseguests
 
-    return houseguests.map((houseguest, index) => (
+    return houseguests.map((houseguest, index) =>
       index === targetIndex
         ? {
             id: outgoing.id,
@@ -179,17 +201,19 @@ export default function HouseguestGrid({
             showPermanentBadge: false,
           }
         : houseguest
-    ))
+    )
   }, [game.mode, game.players, game.week, houseguests, survivorReplacementTransition])
   const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
   const showSurvivorStandout = game.mode === 'survival' && overlaySelector === '.game-control-dock'
   const survivorStandout = useMemo(
     () => (showSurvivorStandout ? selectSurvivorStandout(game, challengeHistory) : null),
-    [challengeHistory, game, showSurvivorStandout],
+    [challengeHistory, game, showSurvivorStandout]
   )
   const visualViewport = typeof window === 'undefined' ? undefined : window.visualViewport
-  const viewportWidth = visualViewport?.width ?? (typeof window === 'undefined' ? 0 : window.innerWidth)
-  const viewportHeight = visualViewport?.height ?? (typeof window === 'undefined' ? 0 : window.innerHeight)
+  const viewportWidth =
+    visualViewport?.width ?? (typeof window === 'undefined' ? 0 : window.innerWidth)
+  const viewportHeight =
+    visualViewport?.height ?? (typeof window === 'undefined' ? 0 : window.innerHeight)
   const survivorStandoutMode = resolveSurvivorStandoutMode({
     compact,
     rosterMode,
@@ -201,7 +225,9 @@ export default function HouseguestGrid({
     if (survivorReplacementTransition === null) return undefined
     const remainingMs = Math.max(
       0,
-      survivorReplacementTransition.startedAt + survivorReplacementTransition.durationMs - Date.now(),
+      survivorReplacementTransition.startedAt +
+        survivorReplacementTransition.durationMs -
+        Date.now()
     )
     const timer = window.setTimeout(() => {
       dispatch(clearSurvivorReplacementTransition())
@@ -223,9 +249,10 @@ export default function HouseguestGrid({
 
       if (containerRef.current instanceof HTMLElement) {
         const listEl = containerRef.current.querySelector('ul[role="list"]')
-        listTop = listEl instanceof HTMLElement
-          ? listEl.getBoundingClientRect().top
-          : containerRef.current.getBoundingClientRect().top
+        listTop =
+          listEl instanceof HTMLElement
+            ? listEl.getBoundingClientRect().top
+            : containerRef.current.getBoundingClientRect().top
       } else {
         const headerEl = document.querySelector(headerSelector)
         if (headerEl instanceof HTMLElement) {
@@ -243,10 +270,7 @@ export default function HouseguestGrid({
         bottomBoundary = Math.min(bottomBoundary, overlayEl.getBoundingClientRect().top)
       }
 
-      const available = Math.max(
-        MIN_GRID_HEIGHT,
-        bottomBoundary - listTop - GRID_VERTICAL_MARGIN,
-      )
+      const available = Math.max(MIN_GRID_HEIGHT, bottomBoundary - listTop - GRID_VERTICAL_MARGIN)
       if (containerRef.current) {
         containerRef.current.style.setProperty('--grid-available-height', `${available}px`)
       }
@@ -288,11 +312,19 @@ export default function HouseguestGrid({
       <div key={headerSignal} className={styles.headerRow} aria-live="polite">
         <h3 id="houseguests-heading" className={styles.header}>
           {HOUSEMATES_SECTION_TITLE}
-          {showCountInHeader && <span className={styles.count}> ({renderedHouseguests.length})</span>}
-          {!showCountInHeader && <span className="visually-hidden"> ({renderedHouseguests.length})</span>}
+          {showCountInHeader && (
+            <span className={styles.count}> ({renderedHouseguests.length})</span>
+          )}
+          {!showCountInHeader && (
+            <span className="visually-hidden"> ({renderedHouseguests.length})</span>
+          )}
         </h3>
         {occupancyLabel && (
-          <StatusPill variant="ghost" label={occupancyLabel} ariaLabel={`${occupancyLabel} housemates`} />
+          <StatusPill
+            variant="ghost"
+            label={occupancyLabel}
+            ariaLabel={`${occupancyLabel} housemates`}
+          />
         )}
       </div>
 
@@ -323,6 +355,7 @@ export default function HouseguestGrid({
                 showPermanentBadge={hg.showPermanentBadge}
                 layoutId={hg.layoutId}
                 isEvicting={hg.isEvicting}
+                isReturning={returningPlayerId === String(hg.id)}
                 nominationCeremonyState={hg.nominationCeremonyState}
                 descriptionId="houseguests-interaction-instructions"
               />
