@@ -16,6 +16,7 @@ import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
 import { initAdBridge } from './services/ads/adsService'
 import { installE2EStateProbe } from './testSupport/e2eStateProbe'
 import App from './App.tsx'
+import './styles/gameOverResponsiveFixes.css'
 
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
 // early as possible so CSS selectors in _ios-standalone-fixes.css and
@@ -27,9 +28,11 @@ applyDisplayModeClasses()
 applyVisualFreezeState()
 
 // Native pinch zoom remains available; the preference only expands its range.
-const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
 if (viewportMeta) {
-  viewportMeta.content = buildViewportMetaContent(store.getState().settings.visual?.enableZoom ?? false);
+  viewportMeta.content = buildViewportMetaContent(
+    store.getState().settings.visual?.enableZoom ?? false
+  )
 }
 // Initialize the Social Engine with the Redux store so it can dispatch actions
 // and read state throughout the session.
@@ -51,47 +54,47 @@ if (import.meta.env.DEV) {
 // SoundManager is fully initialised (calls are no-ops until init resolves).
 declare global {
   interface Window {
-    _introhubMusicOn?: boolean;
-    _introhubSfxOn?: boolean;
-    toggleIntroHubMusic?: () => void;
-    toggleIntroHubSfx?: () => void;
+    _introhubMusicOn?: boolean
+    _introhubSfxOn?: boolean
+    toggleIntroHubMusic?: () => void
+    toggleIntroHubSfx?: () => void
   }
 }
-const MUSIC_STORAGE_KEY = 'introhub_music_on';
-const SFX_STORAGE_KEY   = 'introhub_sfx_on';
+const MUSIC_STORAGE_KEY = 'introhub_music_on'
+const SFX_STORAGE_KEY = 'introhub_sfx_on'
 
-const initAudio = store.getState().settings.audio;
+const initAudio = store.getState().settings.audio
 
 // Initialise audio runtime state from canonical Redux settings so that stale
 // intro-hub localStorage flags can never silently mute the game on startup.
-syncRuntimeAudioSettings(initAudio);
+syncRuntimeAudioSettings(initAudio)
 
 window.toggleIntroHubSfx = function () {
-  const nextSfxOn = !store.getState().settings.audio.sfxOn;
+  const nextSfxOn = !store.getState().settings.audio.sfxOn
   try {
-    localStorage.setItem(SFX_STORAGE_KEY, String(nextSfxOn));
+    localStorage.setItem(SFX_STORAGE_KEY, String(nextSfxOn))
   } catch (err) {
-    console.warn('[introHub] Failed to persist SFX toggle state:', err);
+    console.warn('[introHub] Failed to persist SFX toggle state:', err)
   }
-  console.debug('[introHub] toggleIntroHubSfx ->', nextSfxOn);
+  console.debug('[introHub] toggleIntroHubSfx ->', nextSfxOn)
   // Dispatch to Redux so the store subscriber syncs all SFX categories and
   // persists the new value — Redux is the canonical source of truth.
-  store.dispatch(setAudio({ sfxOn: nextSfxOn }));
-};
+  store.dispatch(setAudio({ sfxOn: nextSfxOn }))
+}
 
 window.toggleIntroHubMusic = function () {
-  const nextMusicOn = !store.getState().settings.audio.musicOn;
+  const nextMusicOn = !store.getState().settings.audio.musicOn
   try {
-    localStorage.setItem(MUSIC_STORAGE_KEY, String(nextMusicOn));
+    localStorage.setItem(MUSIC_STORAGE_KEY, String(nextMusicOn))
   } catch (err) {
-    console.warn('[introHub] Failed to persist music toggle state:', err);
+    console.warn('[introHub] Failed to persist music toggle state:', err)
   }
-  console.debug('[introHub] toggleIntroHubMusic ->', nextMusicOn);
-  store.dispatch(setAudio({ musicOn: nextMusicOn }));
-};
+  console.debug('[introHub] toggleIntroHubMusic ->', nextMusicOn)
+  store.dispatch(setAudio({ musicOn: nextMusicOn }))
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-  </StrictMode>,
+  </StrictMode>
 )
