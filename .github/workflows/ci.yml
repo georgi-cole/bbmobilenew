@@ -168,7 +168,26 @@ jobs:
           fi
 
       - name: Lint
-        run: npm run lint:ci
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          npm run lint:ci > /tmp/gameplay-polish-lint.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '### Gameplay polish lint failure'
+              echo
+              echo '```text'
+              tail -n 120 /tmp/gameplay-polish-lint.log
+              echo '```'
+            } > /tmp/gameplay-polish-lint-comment.md
+            gh issue comment 1257 --repo georgi-cole/bbmobilenew --body-file /tmp/gameplay-polish-lint-comment.md
+            cat /tmp/gameplay-polish-lint.log
+            exit "$status"
+          fi
 
       - name: Build web and mobile bundles
         run: |
