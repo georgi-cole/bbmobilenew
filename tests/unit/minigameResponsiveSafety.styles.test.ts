@@ -24,17 +24,22 @@ describe('minigame responsive safe-stage styles', () => {
     expect(getRule(css, '.minigame-rules-actions')).toContain('flex-wrap: wrap;');
   });
 
-  it('applies safe-stage padding to hosted legacy-style roots and close affordances', () => {
-    const css = readCss('src/components/MinigameHost/MinigameHost.css');
+  it('applies safe-stage padding to hosted roots and safe-area positioning to the utility dock', () => {
+    const hostCss = readCss('src/components/MinigameHost/MinigameHost.css');
+    const dockCss = readCss('src/components/MinigameUtilityDock/MinigameUtilityDock.css');
 
-    expect(css).toContain('.minigame-host-playing > .glass-bridge');
-    expect(css).toContain('.minigame-host-playing > .bb-blitz');
-    expect(css).toContain('var(--minigame-stage-top-padding)');
-    expect(css).toContain('var(--minigame-safe-padding-bottom)');
+    expect(hostCss).toContain('.minigame-host-playing > .glass-bridge');
+    expect(hostCss).toContain('.minigame-host-playing > .bb-blitz');
+    expect(hostCss).toContain('var(--minigame-stage-top-padding)');
+    expect(hostCss).toContain('var(--minigame-safe-padding-bottom)');
 
-    const closeRule = getRule(css, '.minigame-host-close-btn');
-    expect(closeRule).toContain('calc(var(--minigame-safe-top) + 12px)');
-    expect(closeRule).toContain('calc(var(--minigame-safe-right) + 14px)');
+    const dockRule = getRule(dockCss, '.minigame-utility-dock');
+    expect(dockRule).toContain('calc(var(--minigame-safe-top, 0px) + 10px)');
+    expect(dockRule).toContain('right: 0;');
+
+    const orbRule = getRule(dockCss, '.minigame-utility-dock__orb');
+    expect(orbRule).toContain('width: 44px;');
+    expect(orbRule).toContain('height: 44px;');
   });
 
   it('preserves safe padding on qtr overlays at normal and phone breakpoints', () => {
