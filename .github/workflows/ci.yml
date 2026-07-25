@@ -130,6 +130,8 @@ jobs:
           src/components/HouseguestGrid/HouseguestGrid.module.css
           src/types/index.ts
           src/store/gameSlice.ts
+          src/store/store.ts
+          src/store/tribunalEligibilityMiddleware.ts
           src/components/FinalFaceoff/finaleEligibility.ts
           src/utils/juryUtils.ts
           src/store/finaleSlice.ts
