@@ -31,13 +31,12 @@
 }
 
 .day-start-shock__backdrop::before {
-  background:
-    repeating-linear-gradient(
-      115deg,
-      transparent 0 26px,
-      rgba(255, 185, 76, 0.035) 26px 39px,
-      transparent 39px 65px
-    );
+  background: repeating-linear-gradient(
+    115deg,
+    transparent 0 26px,
+    rgba(255, 185, 76, 0.035) 26px 39px,
+    transparent 39px 65px
+  );
   opacity: 0.75;
 }
 
@@ -56,9 +55,7 @@
   border: 1px solid rgba(255, 121, 83, 0.44);
   border-radius: 26px;
   color: #fff7ef;
-  background:
-    linear-gradient(135deg, rgba(43, 10, 15, 0.98), rgba(8, 10, 20, 0.99) 54%),
-    #0a0b13;
+  background: linear-gradient(135deg, rgba(43, 10, 15, 0.98), rgba(8, 10, 20, 0.99) 54%), #0a0b13;
   box-shadow:
     0 34px 90px rgba(0, 0, 0, 0.78),
     0 0 0 1px rgba(255, 255, 255, 0.055) inset,
@@ -72,7 +69,14 @@
   z-index: 4;
   inset: 0 0 auto;
   height: 4px;
-  background: linear-gradient(90deg, transparent, #ff4d4d 20%, #ffd06b 50%, #ff4d4d 80%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ff4d4d 20%,
+    #ffd06b 50%,
+    #ff4d4d 80%,
+    transparent
+  );
   box-shadow: 0 0 22px rgba(255, 77, 77, 0.8);
 }
 
@@ -177,10 +181,7 @@
   height: 100%;
   object-fit: contain;
   object-position: center bottom;
-  filter:
-    drop-shadow(0 20px 22px rgba(0, 0, 0, 0.65))
-    saturate(0.88)
-    contrast(1.06);
+  filter: drop-shadow(0 20px 22px rgba(0, 0, 0, 0.65)) saturate(0.88) contrast(1.06);
 }
 
 .day-start-shock__stamp {
@@ -277,14 +278,22 @@
   letter-spacing: 0.045em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .day-start-shock__confirm::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.35) 48%, transparent 72%);
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.35) 48%,
+    transparent 72%
+  );
   transform: translateX(-120%);
 }
 
@@ -317,20 +326,43 @@
 }
 
 @keyframes day-start-shock-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(0.88); }
-  50% { opacity: 1; transform: scale(1.18); }
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
 }
 
 @keyframes day-start-shock-sweep {
-  from { transform: translateX(-120%); }
-  to { transform: translateX(120%); }
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
 }
 
 @keyframes day-start-shock-stamp {
-  0% { opacity: 0; transform: rotate(-8deg) scale(1.5); }
-  68% { opacity: 0; transform: rotate(-8deg) scale(1.5); }
-  84% { opacity: 1; transform: rotate(-8deg) scale(0.92); }
-  100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+  0% {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1.5);
+  }
+  68% {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1.5);
+  }
+  84% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
