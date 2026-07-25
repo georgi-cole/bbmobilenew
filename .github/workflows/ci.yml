@@ -113,6 +113,9 @@ jobs:
             exit "$status"
           fi
 
+      - name: Correct regression filesystem paths
+        run: python3 scripts/fix_gameplay_test_paths.py
+
       - name: Install dependencies
         run: npm ci
 
@@ -180,7 +183,7 @@ jobs:
         run: |
           rm -f scripts/apply_gameplay_polish.py
           git checkout origin/main -- .github/workflows/ci.yml
-          git rm -f scripts/apply_gameplay_polish.py.zlib.b64 .github/workflows/apply-gameplay-polish.yml
+          git rm -f scripts/apply_gameplay_polish.py.zlib.b64 .github/workflows/apply-gameplay-polish.yml scripts/fix_gameplay_test_paths.py
           git add -A
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
