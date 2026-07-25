@@ -71,6 +71,8 @@ type Props = {
    * The tile fades back in after a short delay matching the reverse animation.
    */
   isEvicting?: boolean
+  /** Runs the reverse-eviction treatment directly on this roster tile. */
+  isReturning?: boolean
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
   /** Shared instructions announced when this tile is interactive. */
   descriptionId?: string
@@ -81,7 +83,24 @@ function formatStat(value: number | null | undefined, options: { decimals?: numb
   return options.decimals != null ? value.toFixed(options.decimals) : String(value)
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, roboStats, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting, nominationCeremonyState, descriptionId }: Props) {
+export default function AvatarTile({
+  name,
+  avatarUrl,
+  isEvicted,
+  isYou,
+  onClick,
+  roboStats,
+  onHoldPreviewStart,
+  onHoldPreviewEnd,
+  statuses,
+  finalRank,
+  showPermanentBadge = true,
+  layoutId,
+  isEvicting,
+  isReturning = false,
+  nominationCeremonyState,
+  descriptionId,
+}: Props) {
   const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
@@ -122,7 +141,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
         window.clearTimeout(longPressTimeoutRef.current)
       }
     },
-    [],
+    []
   )
 
   function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
@@ -145,9 +164,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   }
 
   // Resolve badges: normalise statuses prop to a joined string then derive BadgeInfo[]
-  const statusString = Array.isArray(statuses)
-    ? statuses.join('+')
-    : (statuses ?? '')
+  const statusString = Array.isArray(statuses) ? statuses.join('+') : (statuses ?? '')
   const badges = getBadgesForPlayer(statusString, finalRank)
   const suppressSurvivalLeaderStats = isSurvivorRoboTile && statusString.split('+').includes('loh')
 
@@ -229,41 +246,75 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
 
   const isInteractive = Boolean(onClick ?? onHoldPreviewStart ?? isSurvivorRoboTile)
 
-  const statsSheet = statsOpen ? createPortal(
-    <div className={styles.roboStatsBackdrop} role="presentation" onClick={() => setStatsOpen(false)}>
-      <section
-        className={styles.roboStatsSheet}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${name} robo stats`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className={styles.roboStatsHandle} aria-hidden="true" />
-        <div className={styles.roboStatsHeader}>
-          <div>
-            <p className={styles.roboStatsEyebrow}>Synthetic Contestant</p>
-            <h2 className={styles.roboStatsName}>{name}</h2>
-          </div>
-          <button type="button" className={styles.roboStatsClose} onClick={() => setStatsOpen(false)} aria-label="Close stats">
-            ×
-          </button>
-        </div>
-        <dl className={styles.roboStatsGrid}>
-          <div><dt>Days in game</dt><dd>{formatStat(roboStats?.daysInGame)}</dd></div>
-          <div><dt>LOHs won</dt><dd>{formatStat(roboStats?.lohWins)}</dd></div>
-          <div><dt>POS won</dt><dd>{formatStat(roboStats?.posWins)}</dd></div>
-          <div><dt>Avg LOH rank</dt><dd>{formatStat(roboStats?.averageLohRank, { decimals: 1 })}</dd></div>
-          <div><dt>Avg POS rank</dt><dd>{formatStat(roboStats?.averagePosRank, { decimals: 1 })}</dd></div>
-        </dl>
-      </section>
-    </div>,
-    document.body,
-  ) : null
+  const statsSheet = statsOpen
+    ? createPortal(
+        <div
+          className={styles.roboStatsBackdrop}
+          role="presentation"
+          onClick={() => setStatsOpen(false)}
+        >
+          <section
+            className={styles.roboStatsSheet}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${name} robo stats`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.roboStatsHandle} aria-hidden="true" />
+            <div className={styles.roboStatsHeader}>
+              <div>
+                <p className={styles.roboStatsEyebrow}>Synthetic Contestant</p>
+                <h2 className={styles.roboStatsName}>{name}</h2>
+              </div>
+              <button
+                type="button"
+                className={styles.roboStatsClose}
+                onClick={() => setStatsOpen(false)}
+                aria-label="Close stats"
+              >
+                ×
+              </button>
+            </div>
+            <dl className={styles.roboStatsGrid}>
+              <div>
+                <dt>Days in game</dt>
+                <dd>{formatStat(roboStats?.daysInGame)}</dd>
+              </div>
+              <div>
+                <dt>LOHs won</dt>
+                <dd>{formatStat(roboStats?.lohWins)}</dd>
+              </div>
+              <div>
+                <dt>POS won</dt>
+                <dd>{formatStat(roboStats?.posWins)}</dd>
+              </div>
+              <div>
+                <dt>Avg LOH rank</dt>
+                <dd>{formatStat(roboStats?.averageLohRank, { decimals: 1 })}</dd>
+              </div>
+              <div>
+                <dt>Avg POS rank</dt>
+                <dd>{formatStat(roboStats?.averagePosRank, { decimals: 1 })}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>,
+        document.body
+      )
+    : null
 
   return (
     <>
       <div
-        className={[styles.tile, isEvicted ? styles.evicted : '', isInteractive ? styles.interactive : '', isPressing ? styles.pressing : ''].filter(Boolean).join(' ')}
+        className={[
+          styles.tile,
+          isEvicted ? styles.evicted : '',
+          isReturning ? styles.returning : '',
+          isInteractive ? styles.interactive : '',
+          isPressing ? styles.pressing : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         aria-label={ariaLabel}
         aria-describedby={isInteractive ? descriptionId : undefined}
         title={name}
@@ -280,7 +331,8 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
             ? (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  if (isSurvivorRoboTile && !isEvicted && !suppressSurvivalLeaderStats) setStatsOpen(true)
+                  if (isSurvivorRoboTile && !isEvicted && !suppressSurvivalLeaderStats)
+                    setStatsOpen(true)
                   if (onClick) onClick()
                 }
               }
@@ -291,7 +343,9 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           className={[
             styles.avatarWrap,
             nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
-          ].filter(Boolean).join(' ')}
+          ]
+            .filter(Boolean)
+            .join(' ')}
           layoutId={layoutId}
           data-nomination-ceremony-state={nominationCeremonyState}
           animate={
@@ -300,9 +354,13 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
             // animation which always have a layoutId, so this coupling is intentional.
             layoutId ? { opacity: isEvicting ? 0 : 1 } : undefined
           }
-          transition={layoutId ? {
-            opacity: isEvicting ? { duration: 0.1 } : { duration: 0.2, delay: 0.3 },
-          } : undefined}
+          transition={
+            layoutId
+              ? {
+                  opacity: isEvicting ? { duration: 0.1 } : { duration: 0.2, delay: 0.3 },
+                }
+              : undefined
+          }
         >
           <div className={styles.nameOverlay} aria-hidden="true">
             {name}
@@ -355,12 +413,12 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           )}
 
           {/* Evictee mark — paint brushstroke PNG overlay */}
-          {isEvicted && (
+          {(isEvicted || isReturning) && (
             <img
               src={`${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`}
               alt=""
               aria-hidden="true"
-              className={styles.cross}
+              className={`${styles.cross}${isReturning ? ` ${styles.returningCross}` : ''}`}
             />
           )}
         </motion.div>

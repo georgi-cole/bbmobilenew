@@ -4,7 +4,7 @@
  * All functions are pure (no side-effects) to keep them easily testable.
  */
 
-import { mulberry32 } from '../store/rng';
+import { mulberry32 } from '../store/rng'
 
 // ─── Jury composition ────────────────────────────────────────────────────────
 
@@ -14,15 +14,19 @@ import { mulberry32 } from '../store/rng';
  * e.g. 12 total, 7 jury → 3 pre-jury evictions.
  */
 export function nonJuryEvictionCount(totalPlayers: number, jurySize: number): number {
-  return Math.max(0, totalPlayers - 2 - jurySize);
+  return Math.max(0, totalPlayers - 2 - jurySize)
 }
 
 /**
  * Given the 0-based index of a player's eviction (how many players were
  * already evicted/jury when they left), decide whether they become a juror.
  */
-export function shouldBeJuror(evictionIndex: number, totalPlayers: number, jurySize: number): boolean {
-  return evictionIndex >= nonJuryEvictionCount(totalPlayers, jurySize);
+export function shouldBeJuror(
+  evictionIndex: number,
+  totalPlayers: number,
+  jurySize: number
+): boolean {
+  return evictionIndex >= nonJuryEvictionCount(totalPlayers, jurySize)
 }
 
 /**
@@ -34,11 +38,51 @@ export function shouldBeJuror(evictionIndex: number, totalPlayers: number, juryS
  * @returns              Possibly extended juror list with one extra member.
  */
 export function ensureOddJurors(jurorIds: string[], preJuryIds: string[]): string[] {
-  if (jurorIds.length % 2 === 1) return jurorIds;
+  if (jurorIds.length % 2 === 1) return jurorIds
   // Pick the most recently evicted pre-juror not already in the jury
   // (prevents duplicates when jury-return mechanic already promoted them).
-  const extra = [...preJuryIds].reverse().find((id) => !jurorIds.includes(id));
-  return extra ? [...jurorIds, extra] : jurorIds;
+  const extra = [...preJuryIds].reverse().find((id) => !jurorIds.includes(id))
+  return extra ? [...jurorIds, extra] : jurorIds
+}
+
+export type PublicVoteParityResolution = {
+  jurorIds: string[]
+  publicVoteWeight: 1 | 2
+}
+
+/**
+ * Keep the total finale vote weight odd when a public ballot is present.
+ *
+ * Prefer an even number of regular Tribunal members (normally eight), then add
+ * one public vote. If no eligible pre-Tribunal player can be promoted, the
+ * public ballot is explicitly worth two votes instead.
+ */
+export function resolvePublicVoteParity(
+  jurorIds: string[],
+  eligiblePreJuryIds: string[],
+  publicVoteEnabled: boolean
+): PublicVoteParityResolution {
+  if (!publicVoteEnabled) {
+    return {
+      jurorIds: ensureOddJurors(jurorIds, eligiblePreJuryIds),
+      publicVoteWeight: 1,
+    }
+  }
+
+  if (jurorIds.length % 2 === 0) {
+    return { jurorIds, publicVoteWeight: 1 }
+  }
+
+  const extra = [...eligiblePreJuryIds].reverse().find((id) => !jurorIds.includes(id))
+
+  if (extra) {
+    return {
+      jurorIds: [...jurorIds, extra],
+      publicVoteWeight: 1,
+    }
+  }
+
+  return { jurorIds, publicVoteWeight: 2 }
 }
 
 /**
@@ -47,7 +91,7 @@ export function ensureOddJurors(jurorIds: string[], preJuryIds: string[]): strin
  * Returns the player ID to promote to jury, or null if none eligible.
  */
 export function juryReturnCandidate(preJuryIds: string[]): string | null {
-  return preJuryIds.length > 0 ? preJuryIds[preJuryIds.length - 1] : null;
+  return preJuryIds.length > 0 ? preJuryIds[preJuryIds.length - 1] : null
 }
 
 // ─── Voting ──────────────────────────────────────────────────────────────────
@@ -57,12 +101,16 @@ export function juryReturnCandidate(preJuryIds: string[]): string | null {
  * @param votes  Record mapping jurorId → finalistId.
  * @returns      Record mapping finalistId → vote count.
  */
-export function tallyVotes(votes: Record<string, string>): Record<string, number> {
-  const tally: Record<string, number> = {};
-  for (const finalistId of Object.values(votes)) {
-    tally[finalistId] = (tally[finalistId] ?? 0) + 1;
+export function tallyVotes(
+  votes: Record<string, string>,
+  voteWeights: Record<string, number> = {}
+): Record<string, number> {
+  const tally: Record<string, number> = {}
+  for (const [jurorId, finalistId] of Object.entries(votes)) {
+    const weight = Math.max(1, Math.floor(voteWeights[jurorId] ?? 1))
+    tally[finalistId] = (tally[finalistId] ?? 0) + weight
   }
-  return tally;
+  return tally
 }
 
 /**
@@ -79,29 +127,29 @@ export function tallyVotes(votes: Record<string, string>): Record<string, number
 export function determineWinner(
   tally: Record<string, number>,
   finalistIds: string[],
-  seed: number,
+  seed: number
 ): string {
-  if (finalistIds.length < 2) return finalistIds[0] ?? '';
-  const [a, b] = finalistIds;
-  const aVotes = tally[a] ?? 0;
-  const bVotes = tally[b] ?? 0;
+  if (finalistIds.length < 2) return finalistIds[0] ?? ''
+  const [a, b] = finalistIds
+  const aVotes = tally[a] ?? 0
+  const bVotes = tally[b] ?? 0
 
-  if (aVotes !== bVotes) return aVotes > bVotes ? a : b;
+  if (aVotes !== bVotes) return aVotes > bVotes ? a : b
 
   // Tie: use seeded RNG (deterministic; UI may label this "America's Vote").
-  const rng = mulberry32(seed);
-  return rng() < 0.5 ? a : b;
+  const rng = mulberry32(seed)
+  return rng() < 0.5 ? a : b
 }
 
 // ─── AI juror voting ─────────────────────────────────────────────────────────
 
 /** Simple hash of a string to a 32-bit integer (for per-juror RNG derivation). */
 function hashStr(s: string): number {
-  let h = 0;
+  let h = 0
   for (let i = 0; i < s.length; i++) {
-    h = (Math.imul(31, h) + s.charCodeAt(i)) >>> 0;
+    h = (Math.imul(31, h) + s.charCodeAt(i)) >>> 0
   }
-  return h;
+  return h
 }
 
 /**
@@ -115,9 +163,9 @@ function hashStr(s: string): number {
  * @returns            The finalist ID the juror votes for.
  */
 export function aiJurorVote(jurorId: string, finalistIds: string[], seed: number): string {
-  if (finalistIds.length === 0) return '';
-  const rng = mulberry32((seed ^ hashStr(jurorId)) >>> 0);
-  return finalistIds[Math.floor(rng() * finalistIds.length)];
+  if (finalistIds.length === 0) return ''
+  const rng = mulberry32((seed ^ hashStr(jurorId)) >>> 0)
+  return finalistIds[Math.floor(rng() * finalistIds.length)]
 }
 
 // ─── Phrase pools ─────────────────────────────────────────────────────────────
@@ -129,15 +177,15 @@ export function aiJurorVote(jurorId: string, finalistIds: string[], seed: number
 export const JURY_LOCKED_LINES: string[] = [
   'I vote for the person who survived the chopping block so many times I lost count.',
   'My vote goes to the finalist who turned chaos into a strategy and never looked back.',
-  'I\'m casting my ballot for the player who was underestimated until it was far too late.',
+  "I'm casting my ballot for the player who was underestimated until it was far too late.",
   'I vote for the one who played this game entirely on their own terms.',
   'My jury vote belongs to the finalist who made the big move when it mattered most.',
-  'I vote for the person whose game I couldn\'t help but respect, even when it hurt me.',
-  'I\'m voting for the player who didn\'t just survive this house — they mastered it.',
+  "I vote for the person whose game I couldn't help but respect, even when it hurt me.",
+  "I'm voting for the player who didn't just survive this house — they mastered it.",
   'My vote goes to the finalist who showed me what it really means to want this.',
   'I vote for the person who adapted every single week and never once panicked.',
-  'I\'m casting my vote for the one who walked into this house with a plan and executed it.',
-];
+  "I'm casting my vote for the one who walked into this house with a plan and executed it.",
+]
 
 /** Variations shown when the public casts the final vote. */
 export const PUBLIC_JURY_VOTE_LINES: string[] = [
@@ -146,7 +194,7 @@ export const PUBLIC_JURY_VOTE_LINES: string[] = [
   'The public has delivered their vote for the player who made this season special.',
   'The public has weighed in for the finalist who made this season one to remember.',
   'The public has cast their vote for the person who made this season shine.',
-];
+]
 
 /** Plea templates used when POS holder asks nominees for their pleas at Final 4. */
 export const NOMINEE_PLEA_TEMPLATES: string[] = [
@@ -155,7 +203,7 @@ export const NOMINEE_PLEA_TEMPLATES: string[] = [
   "You know you can trust me more than anyone else on that block. I'm begging you to let me stay. 🙏",
   "I've fought too hard to go home now. Give me the chance to prove I deserve to be here.",
   "Everything I've done in this game has been for us. Please don't send me home now.",
-];
+]
 
 /** Banter templates per finalist — fill in {finalist} with the name. */
 export const JURY_BANTER_TEMPLATES = {
@@ -164,7 +212,7 @@ export const JURY_BANTER_TEMPLATES = {
     'You earned every single vote in this house.',
     'Your game was flawless — well done.',
     'You dominated socially and competitively.',
-    'Nobody saw you coming, and that\'s a great game.',
+    "Nobody saw you coming, and that's a great game.",
   ],
   critical: [
     'You let others do the heavy lifting.',
@@ -173,10 +221,10 @@ export const JURY_BANTER_TEMPLATES = {
     'You coasted to the end rather than competing.',
     'Close, but not quite the winner I envisioned.',
   ],
-};
+}
 
 /** Pick a random phrase from a pool using a deterministic RNG. */
 export function pickPhrase(pool: string[], seed: number, idx: number): string {
-  const rng = mulberry32((seed ^ idx) >>> 0);
-  return pool[Math.floor(rng() * pool.length)];
+  const rng = mulberry32((seed ^ idx) >>> 0)
+  return pool[Math.floor(rng() * pool.length)]
 }
