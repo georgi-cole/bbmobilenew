@@ -149,6 +149,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     ? statuses.join('+')
     : (statuses ?? '')
   const badges = getBadgesForPlayer(statusString, finalRank)
+  const suppressSurvivalLeaderStats = isSurvivorRoboTile && statusString.split('+').includes('loh')
 
   // Build aria-label suffix from badges for screen readers
   const badgeLabels = badges.map((b) => b.label).join(', ')
@@ -214,7 +215,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
       e.stopPropagation()
       return
     }
-    if (isSurvivorRoboTile && !isEvicted) {
+    if (isSurvivorRoboTile && !isEvicted && !suppressSurvivalLeaderStats) {
       setStatsOpen(true)
     }
     if (onClick) onClick()
@@ -279,7 +280,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
             ? (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  if (isSurvivorRoboTile && !isEvicted) setStatsOpen(true)
+                  if (isSurvivorRoboTile && !isEvicted && !suppressSurvivalLeaderStats) setStatsOpen(true)
                   if (onClick) onClick()
                 }
               }
