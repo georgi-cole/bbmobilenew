@@ -143,7 +143,26 @@ jobs:
         run: npm run typecheck
 
       - name: Run targeted regression tests
-        run: npx vitest run tests/unit/gameplayPolish.regression.test.ts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          npx vitest run tests/unit/gameplayPolish.regression.test.ts > /tmp/gameplay-polish-tests.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '### Gameplay polish regression failure'
+              echo
+              echo '```text'
+              tail -n 120 /tmp/gameplay-polish-tests.log
+              echo '```'
+            } > /tmp/gameplay-polish-tests-comment.md
+            gh issue comment 1257 --repo georgi-cole/bbmobilenew --body-file /tmp/gameplay-polish-tests-comment.md
+            cat /tmp/gameplay-polish-tests.log
+            exit "$status"
+          fi
 
       - name: Lint
         run: npm run lint:ci
