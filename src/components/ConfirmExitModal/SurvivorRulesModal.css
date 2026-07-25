@@ -221,6 +221,10 @@
   box-shadow: 0 -12px 24px rgba(3, 6, 14, 0.22);
 }
 
+.survivor-rules-modal__footer--reference {
+  justify-items: end;
+}
+
 .survivor-rules-modal__checkbox {
   display: inline-flex;
   align-items: center;
@@ -249,6 +253,11 @@
   justify-content: flex-end;
 }
 
+.survivor-rules-modal__actions--reference {
+  width: min(13rem, 100%);
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .survivor-rules-modal__btn {
   width: 100%;
   min-width: 0;
@@ -273,32 +282,99 @@
 @media (max-width: 640px) {
   .survivor-rules-modal__backdrop {
     padding:
-      calc(env(safe-area-inset-top, 0px) + 10px)
-      calc(env(safe-area-inset-right, 0px) + 10px)
-      calc(env(safe-area-inset-bottom, 0px) + 10px)
-      calc(env(safe-area-inset-left, 0px) + 10px);
+      calc(env(safe-area-inset-top, 0px) + 8px)
+      calc(env(safe-area-inset-right, 0px) + 8px)
+      calc(env(safe-area-inset-bottom, 0px) + 8px)
+      calc(env(safe-area-inset-left, 0px) + 8px);
   }
 
   .survivor-rules-modal__card {
     height: min(
-      calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px),
-      44rem
+      calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px),
+      42rem
     );
-    border-radius: 20px;
+    border-radius: 18px;
   }
 
-  .survivor-rules-modal__header,
-  .survivor-rules-modal__rules,
-  .survivor-rules-modal__footer {
-    padding-inline: 1rem;
+  .survivor-rules-modal__header {
+    padding: 0.82rem 0.85rem 0.65rem;
   }
 
-  .survivor-rules-modal__rule {
-    padding: 0.72rem 0.78rem;
+  .survivor-rules-modal__brand {
+    gap: 0.58rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .survivor-rules-modal__logo {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 10px;
+    font-size: 1.22rem;
+  }
+
+  .survivor-rules-modal__eyebrow {
+    font-size: 0.62rem;
+  }
+
+  .survivor-rules-modal__guide-label {
+    font-size: 0.57rem;
+    letter-spacing: 0.06em;
+  }
+
+  .survivor-rules-modal__title {
+    font-size: clamp(1.28rem, 6vw, 1.62rem);
+  }
+
+  .survivor-rules-modal__desc {
+    margin-top: 0.42rem;
+    font-size: 0.8rem;
+    line-height: 1.35;
   }
 
   .survivor-rules-modal__rules {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.48rem;
+    padding: 0 0.85rem 0.65rem;
+    scrollbar-gutter: auto;
+  }
+
+  .survivor-rules-modal__rule {
+    min-height: 0;
+    gap: 0.22rem;
+    padding: 0.55rem 0.58rem;
+    border-radius: 9px;
+  }
+
+  .survivor-rules-modal__rule-kicker {
+    padding: 0.08rem 0.36rem;
+    font-size: 0.54rem;
+  }
+
+  .survivor-rules-modal__rule-title {
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  .survivor-rules-modal__rule-desc {
+    margin-top: 0.1rem;
+    font-size: 0.7rem;
+    line-height: 1.32;
+  }
+
+  .survivor-rules-modal__footer {
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem 0.68rem;
+  }
+
+  .survivor-rules-modal__checkbox {
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border-radius: 10px;
+    font-size: 0.78rem;
+  }
+
+  .survivor-rules-modal__actions {
+    gap: 0.5rem;
   }
 
   .survivor-rules-modal__btn {
@@ -306,12 +382,16 @@
     min-width: 0;
   }
 
-  .survivor-rules-modal__checkbox {
-    width: 100%;
+  .survivor-rules-modal__btn.game-button {
+    min-height: 42px;
   }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 340px) {
+  .survivor-rules-modal__rules {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .survivor-rules-modal__actions {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -319,18 +399,27 @@
 
 @media (max-height: 700px) {
   .survivor-rules-modal__header {
-    padding-block: 0.85rem 0.7rem;
+    padding-block: 0.65rem 0.5rem;
   }
 
   .survivor-rules-modal__brand {
-    margin-bottom: 0.55rem;
+    margin-bottom: 0.38rem;
   }
 
   .survivor-rules-modal__desc {
-    margin-top: 0.5rem;
+    margin-top: 0.34rem;
+  }
+
+  .survivor-rules-modal__rules {
+    gap: 0.4rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .survivor-rules-modal__rule {
+    padding-block: 0.46rem;
   }
 
   .survivor-rules-modal__footer {
-    padding-block: 0.65rem 0.75rem;
+    padding-block: 0.48rem 0.58rem;
   }
 }
