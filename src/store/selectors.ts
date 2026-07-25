@@ -9,7 +9,7 @@ import { selectActiveConfessionalDecision } from './confessionalDecisionSelector
 import { getSocialModuleAvailability } from '../social/socialModuleAvailability';
 
 /**
- * True when the game is blocked on a human decision modal:
+ * True when the game is blocked on a human decision or a mandatory cinematic:
  * - human LOH nominations (nomination_results)
  * - POS use decision (pos_ceremony_results, human POS holder)
  * - POS save target (pos_ceremony_results, human POS holder chose to use it)
@@ -18,7 +18,7 @@ import { getSocialModuleAvailability } from '../social/socialModuleAvailability'
  * - doubleVote Big Eye offer (live_vote — must resolve before vote modal)
  * - voteDeduction Big Eye offer (eviction_results — must resolve before results dismiss)
  * - tie-break (eviction_results)
- * - Final 4 solo eviction vote (awaitingPovDecision set after plea sequence)
+ * - Final 4 plea / sole-vote / eviction cinematic
  * - Final 3 LOH eviction (awaitingFinal3Eviction)
  * - timed Democracia results reveal before play resumes
  */
@@ -29,14 +29,17 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
   return (
     Boolean(game.replacementNeeded) ||
     Boolean(game.awaitingNominations) ||
-      Boolean(game.awaitingPovDecision) ||
-      Boolean(game.awaitingPovSaveTarget) ||
-      Boolean(game.awaitingMissionImmunityOffer) ||
-      Boolean(game.awaitingHumanVote) ||
+    Boolean(game.awaitingPovDecision) ||
+    Boolean(game.awaitingPovSaveTarget) ||
+    Boolean(game.awaitingMissionImmunityOffer) ||
+    Boolean(game.awaitingHumanVote) ||
     Boolean(game.awaitingDoubleVoteOffer) ||
     Boolean(game.awaitingVoteDeductionPrompt) ||
     Boolean(game.awaitingTieBreak) ||
     Boolean(game.awaitingFinal3Eviction) ||
+    game.phase === 'final4_eviction' ||
+    Boolean(game.pendingEviction) ||
+    Boolean(game.dayStartShock) ||
     Boolean(sv?.awaitingHolderReplacement) ||
     Boolean(sv?.awaitingCoupReplacement1) ||
     Boolean(sv?.awaitingCoupReplacement2) ||
