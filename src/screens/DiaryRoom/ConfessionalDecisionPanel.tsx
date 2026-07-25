@@ -5,8 +5,8 @@
  * that have been rerouted into the Confessional.
  */
 
-import { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useState } from 'react'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   commitNominees,
   submitHumanVote,
@@ -23,24 +23,25 @@ import {
   submitDiamondReplacement,
   submitCoupReplacement,
   submitTieBreak,
+  submitPosTieBreak,
   submitDoubleEvictionTieBreak,
   selectAlivePlayers,
-} from '../../store/gameSlice';
-import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils';
-import type { ActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
-import type { Player } from '../../types';
-import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar';
-import { getConfessionalPowerName } from './confessionalDecisionPresentation';
-import './ConfessionalDecisionPanel.css';
+} from '../../store/gameSlice'
+import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils'
+import type { ActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
+import type { Player } from '../../types'
+import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
+import { getConfessionalPowerName } from './confessionalDecisionPresentation'
+import './ConfessionalDecisionPanel.css'
 
 interface DecisionPanelProps {
-  onDecisionCommitted?: (summary: string) => void;
+  onDecisionCommitted?: (summary: string) => void
 }
 
 function formatNameList(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? '';
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+  if (names.length <= 1) return names[0] ?? ''
+  if (names.length === 2) return `${names[0]} and ${names[1]}`
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
 }
 
 function PlayerRow({
@@ -51,12 +52,12 @@ function PlayerRow({
   label,
   disabled = false,
 }: {
-  player: Player;
-  selected: boolean;
-  onClick: () => void;
-  danger?: boolean;
-  label?: string;
-  disabled?: boolean;
+  player: Player
+  selected: boolean
+  onClick: () => void
+  danger?: boolean
+  label?: string
+  disabled?: boolean
 }) {
   return (
     <button
@@ -76,54 +77,54 @@ function PlayerRow({
       <span className="cdp-option__name">{player.name}</span>
       {label && <span className="cdp-option__tag">{label}</span>}
     </button>
-  );
+  )
 }
 
 function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((s) => s.game);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const isDoubleEviction = game.doubleEviction?.weekActive === true;
-  const required = isDoubleEviction ? 3 : 2;
-  const options = alivePlayers.filter((p) => p.id !== game.lohId);
-  const canUsePublicNomineeRule = (game.publicModeEnabled ?? false) && !isDoubleEviction;
-  const autoNomineeId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null;
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((s) => s.game)
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const isDoubleEviction = Boolean(game.doubleEviction?.weekActive)
+  const required = isDoubleEviction ? 3 : 2
+  const options = alivePlayers.filter((p) => p.id !== game.lohId)
+  const canUsePublicNomineeRule = (game.publicModeEnabled ?? false) && !isDoubleEviction
+  const autoNomineeId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
 
-  const [selected, setSelected] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [selected, setSelected] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
 
   function toggle(id: string) {
-    if (submitting || id === autoNomineeId) return;
+    if (submitting || id === autoNomineeId) return
     setSelected((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length < required) return [...prev, id];
-      return [...prev.slice(1), id];
-    });
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length < required) return [...prev, id]
+      return [...prev.slice(1), id]
+    })
   }
 
-  const canConfirm = selected.length === required;
+  const canConfirm = selected.length === required
 
   function handleConfirm() {
-    if (!canConfirm || submitting) return;
-    setSubmitting(true);
+    if (!canConfirm || submitting) return
+    setSubmitting(true)
     const selectedNames = selected
       .map((id) => options.find((player) => player.id === id)?.name)
-      .filter((name): name is string => Boolean(name));
+      .filter((name): name is string => Boolean(name))
     const autoNomineeName = autoNomineeId
-      ? options.find((player) => player.id === autoNomineeId)?.name ?? null
-      : null;
+      ? (options.find((player) => player.id === autoNomineeId)?.name ?? null)
+      : null
     const nominationSummary = autoNomineeName
       ? `I nominate ${formatNameList(selectedNames)}. ${autoNomineeName} is automatically added as the public auto-nominee.`
-      : `I nominate ${formatNameList(selectedNames)}.`;
-    onDecisionCommitted?.(nominationSummary);
-    dispatch(commitNominees(selected));
+      : `I nominate ${formatNameList(selectedNames)}.`
+    onDecisionCommitted?.(nominationSummary)
+    dispatch(commitNominees(selected))
   }
 
   return (
     <div className="cdp-shell" data-testid="confessional-decision-options">
       <div className="cdp-option-grid" role="group" aria-label="Nomination choices">
         {options.map((p) => {
-          const isAuto = p.id === autoNomineeId;
+          const isAuto = p.id === autoNomineeId
           return (
             <PlayerRow
               key={p.id}
@@ -133,7 +134,7 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
               label={isAuto ? 'Auto-Nominee' : undefined}
               disabled={submitting || isAuto}
             />
-          );
+          )
         })}
       </div>
       <p className="cdp-hint">
@@ -152,25 +153,25 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
         </button>
       )}
     </div>
-  );
+  )
 }
 
 function EvictionVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((s) => s.game);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((s) => s.game)
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   function handleSelect(id: string) {
-    if (submitting) return;
-    setSelectedId(id);
-    setSubmitting(true);
-    const name = options.find((player) => player.id === id)?.name ?? 'that player';
-    onDecisionCommitted?.(`I choose ${name}.`);
-    dispatch(submitHumanVote(id));
+    if (submitting) return
+    setSelectedId(id)
+    setSubmitting(true)
+    const name = options.find((player) => player.id === id)?.name ?? 'that player'
+    onDecisionCommitted?.(`I choose ${name}.`)
+    dispatch(submitHumanVote(id))
   }
 
   return (
@@ -188,25 +189,23 @@ function EvictionVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
 function DoubleVoteOfferPanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch()
+  const [choice, setChoice] = useState<'yes' | 'no' | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   function submitChoice(nextChoice: 'yes' | 'no') {
-    if (submitting) return;
-    setChoice(nextChoice);
-    setSubmitting(true);
+    if (submitting) return
+    setChoice(nextChoice)
+    setSubmitting(true)
     onDecisionCommitted?.(
-      nextChoice === 'yes'
-        ? 'I will use my Double Vote.'
-        : 'I will not use my Double Vote.',
-    );
-    if (nextChoice === 'yes') dispatch(activateDoubleVoteReward());
-    else dispatch(declineDoubleVoteReward());
+      nextChoice === 'yes' ? 'I will use my Double Vote.' : 'I will not use my Double Vote.'
+    )
+    if (nextChoice === 'yes') dispatch(activateDoubleVoteReward())
+    else dispatch(declineDoubleVoteReward())
   }
 
   return (
@@ -232,26 +231,26 @@ function DoubleVoteOfferPanel({ onDecisionCommitted }: DecisionPanelProps) {
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 function MissionImmunityOfferPanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const duration = useAppSelector((state) => state.game.secretMission?.reward?.durationDays ?? 1);
-  const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch()
+  const duration = useAppSelector((state) => state.game.secretMission?.reward?.durationDays ?? 1)
+  const [choice, setChoice] = useState<'yes' | 'no' | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   function submitChoice(nextChoice: 'yes' | 'no') {
-    if (submitting) return;
-    setChoice(nextChoice);
-    setSubmitting(true);
+    if (submitting) return
+    setChoice(nextChoice)
+    setSubmitting(true)
     onDecisionCommitted?.(
       nextChoice === 'yes'
         ? `I will use my ${duration}-day secret immunity now.`
-        : 'I will hold my secret immunity for later.',
-    );
-    if (nextChoice === 'yes') dispatch(activateMissionImmunityReward());
-    else dispatch(declineMissionImmunityReward());
+        : 'I will hold my secret immunity for later.'
+    )
+    if (nextChoice === 'yes') dispatch(activateMissionImmunityReward())
+    else dispatch(declineMissionImmunityReward())
   }
 
   return (
@@ -277,32 +276,32 @@ function MissionImmunityOfferPanel({ onDecisionCommitted }: DecisionPanelProps) 
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 function DoubleVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((s) => s.game);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((s) => s.game)
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
-  const [vote1, setVote1] = useState<string | null>(null);
-  const [vote2, setVote2] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [vote1, setVote1] = useState<string | null>(null)
+  const [vote2, setVote2] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const canConfirm = vote1 !== null && vote2 !== null;
+  const canConfirm = vote1 !== null && vote2 !== null
 
   function handleConfirm() {
-    if (!canConfirm || submitting || !vote1 || !vote2) return;
-    setSubmitting(true);
-    const vote1Name = options.find((player) => player.id === vote1)?.name ?? 'that nominee';
-    const vote2Name = options.find((player) => player.id === vote2)?.name ?? 'that nominee';
+    if (!canConfirm || submitting || !vote1 || !vote2) return
+    setSubmitting(true)
+    const vote1Name = options.find((player) => player.id === vote1)?.name ?? 'that nominee'
+    const vote2Name = options.find((player) => player.id === vote2)?.name ?? 'that nominee'
     onDecisionCommitted?.(
       vote1 === vote2
         ? `I cast both votes against ${vote1Name}.`
-        : `I cast my votes against ${formatNameList([vote1Name, vote2Name])}.`,
-    );
-    dispatch(submitHumanDoubleVote([vote1, vote2]));
+        : `I cast my votes against ${formatNameList([vote1Name, vote2Name])}.`
+    )
+    dispatch(submitHumanDoubleVote([vote1, vote2]))
   }
 
   return (
@@ -355,26 +354,24 @@ function DoubleVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
         </button>
       )}
     </div>
-  );
+  )
 }
 
 function PosDecisionPanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((s) => s.game);
-  const powerName = getConfessionalPowerName(game);
-  const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((s) => s.game)
+  const powerName = getConfessionalPowerName(game)
+  const [choice, setChoice] = useState<'yes' | 'no' | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   function submitChoice(nextChoice: 'yes' | 'no') {
-    if (submitting) return;
-    setChoice(nextChoice);
-    setSubmitting(true);
+    if (submitting) return
+    setChoice(nextChoice)
+    setSubmitting(true)
     onDecisionCommitted?.(
-      nextChoice === 'yes'
-        ? `I will use ${powerName}.`
-        : `I will not use ${powerName}.`,
-    );
-    dispatch(submitPovDecision(nextChoice === 'yes'));
+      nextChoice === 'yes' ? `I will use ${powerName}.` : `I will not use ${powerName}.`
+    )
+    dispatch(submitPovDecision(nextChoice === 'yes'))
   }
 
   return (
@@ -400,24 +397,24 @@ function PosDecisionPanel({ onDecisionCommitted }: DecisionPanelProps) {
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 function VipSecondUsePanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch()
+  const [choice, setChoice] = useState<'yes' | 'no' | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   function submitChoice(nextChoice: 'yes' | 'no') {
-    if (submitting) return;
-    setChoice(nextChoice);
-    setSubmitting(true);
+    if (submitting) return
+    setChoice(nextChoice)
+    setSubmitting(true)
     onDecisionCommitted?.(
       nextChoice === 'yes'
         ? 'I will use Double Trouble again.'
-        : 'I will not use Double Trouble again.',
-    );
-    dispatch(submitVipSecondUseDecision(nextChoice === 'yes'));
+        : 'I will not use Double Trouble again.'
+    )
+    dispatch(submitVipSecondUseDecision(nextChoice === 'yes'))
   }
 
   return (
@@ -443,26 +440,26 @@ function VipSecondUsePanel({ onDecisionCommitted }: DecisionPanelProps) {
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 function PosSaveTargetPanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((s) => s.game);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const isVipSecondSave = Boolean(game.specialVeto?.awaitingVipSecondSaveTarget);
-  const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((s) => s.game)
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const isVipSecondSave = Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
+  const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   function handleSelect(id: string) {
-    if (submitting) return;
-    setSelectedId(id);
-    setSubmitting(true);
-    const name = options.find((player) => player.id === id)?.name ?? 'that nominee';
-    onDecisionCommitted?.(`I save ${name}.`);
-    dispatch(isVipSecondSave ? submitVipSecondSaveTarget(id) : submitPovSaveTarget(id));
+    if (submitting) return
+    setSelectedId(id)
+    setSubmitting(true)
+    const name = options.find((player) => player.id === id)?.name ?? 'that nominee'
+    onDecisionCommitted?.(`I save ${name}.`)
+    dispatch(isVipSecondSave ? submitVipSecondSaveTarget(id) : submitPovSaveTarget(id))
   }
 
   return (
@@ -479,52 +476,49 @@ function PosSaveTargetPanel({ onDecisionCommitted }: DecisionPanelProps) {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
 function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((s) => s.game);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const isDiamond = Boolean(game.specialVeto?.awaitingHolderReplacement);
-  const isCoup1 = Boolean(game.specialVeto?.awaitingCoupReplacement1);
-  const isCoup2 = Boolean(game.specialVeto?.awaitingCoupReplacement2);
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((s) => s.game)
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const isDiamond = Boolean(game.specialVeto?.awaitingHolderReplacement)
+  const isCoup1 = Boolean(game.specialVeto?.awaitingCoupReplacement1)
+  const isCoup2 = Boolean(game.specialVeto?.awaitingCoupReplacement2)
 
   const replacementBaseOptions = alivePlayers.filter(
-    (p) =>
-      p.id !== game.lohId &&
-      p.id !== game.posWinnerId &&
-      !game.nomineeIds.includes(p.id),
-  );
-  const protectedIds = new Set(game.povProtectedIds ?? []);
-  const nonProtected = replacementBaseOptions.filter((p) => !protectedIds.has(p.id));
-  const standardOptions = nonProtected.length > 0 ? nonProtected : replacementBaseOptions;
+    (p) => p.id !== game.lohId && p.id !== game.posWinnerId && !game.nomineeIds.includes(p.id)
+  )
+  const protectedIds = new Set(game.povProtectedIds ?? [])
+  const nonProtected = replacementBaseOptions.filter((p) => !protectedIds.has(p.id))
+  const standardOptions = nonProtected.length > 0 ? nonProtected : replacementBaseOptions
 
   const coupBaseOptions = alivePlayers.filter(
     (p) =>
       p.id !== game.lohId &&
       p.id !== game.posWinnerId &&
       !game.nomineeIds.includes(p.id) &&
-      p.id !== game.specialVeto?.coupReplacement1Id,
-  );
-  const coupNonProtected = coupBaseOptions.filter((p) => !protectedIds.has(p.id));
-  const neededCount = isCoup1 ? 2 : 1;
-  const coupOptions = coupNonProtected.length >= neededCount ? coupNonProtected : coupBaseOptions;
+      p.id !== game.specialVeto?.coupReplacement1Id
+  )
+  const coupNonProtected = coupBaseOptions.filter((p) => !protectedIds.has(p.id))
+  const neededCount = isCoup1 ? 2 : 1
+  const coupOptions = coupNonProtected.length >= neededCount ? coupNonProtected : coupBaseOptions
 
-  const options = isDiamond ? standardOptions : isCoup1 || isCoup2 ? coupOptions : standardOptions;
+  const options = isDiamond ? standardOptions : isCoup1 || isCoup2 ? coupOptions : standardOptions
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   function handleSelect(id: string) {
-    if (submitting) return;
-    setSelectedId(id);
-    setSubmitting(true);
-    const name = options.find((player) => player.id === id)?.name ?? 'that player';
-    onDecisionCommitted?.(`I name ${name} as the backup nominee.`);
-    if (isDiamond) dispatch(submitDiamondReplacement(id));
-    else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(id));
-    else dispatch(setReplacementNominee(id));
+    if (submitting) return
+    setSelectedId(id)
+    setSubmitting(true)
+    const name = options.find((player) => player.id === id)?.name ?? 'that player'
+    onDecisionCommitted?.(`I name ${name} as the backup nominee.`)
+    if (isDiamond) dispatch(submitDiamondReplacement(id))
+    else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(id))
+    else dispatch(setReplacementNominee(id))
   }
 
   return (
@@ -541,55 +535,54 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
 function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((s) => s.game);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const tiedIds = game.tiedNomineeIds ?? game.nomineeIds;
-  const isDoubleEviction = game.doubleEviction?.weekActive === true;
-  const options = alivePlayers.filter((p) => tiedIds.includes(p.id));
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((s) => s.game)
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const tiedIds = game.tiedNomineeIds ?? game.nomineeIds
+  const isDoubleEviction = game.doubleEviction?.weekActive === true
+  const isPosTieBreak = game.awaitingPosTieBreak === true
+  const options = alivePlayers.filter((p) => tiedIds.includes(p.id))
 
   const multiSelectCount = isDoubleEviction
-    ? calculateRequiredDoubleEvictionSlots(
-      tiedIds.length,
-      Boolean(game.pendingEviction),
-    )
-    : 1;
-  const isMulti = isDoubleEviction && multiSelectCount > 1;
+    ? calculateRequiredDoubleEvictionSlots(tiedIds.length, Boolean(game.pendingEviction))
+    : 1
+  const isMulti = isDoubleEviction && multiSelectCount > 1
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
 
   function toggleMulti(id: string) {
-    if (submitting) return;
+    if (submitting) return
     setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length < multiSelectCount) return [...prev, id];
-      return [...prev.slice(1), id];
-    });
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length < multiSelectCount) return [...prev, id]
+      return [...prev.slice(1), id]
+    })
   }
 
   function handleSingle(id: string) {
-    if (submitting) return;
-    setSelectedId(id);
-    setSubmitting(true);
-    const name = options.find((player) => player.id === id)?.name ?? 'that nominee';
-    onDecisionCommitted?.(`I choose to eliminate ${name}.`);
-    dispatch(submitTieBreak(id));
+    if (submitting) return
+    setSelectedId(id)
+    setSubmitting(true)
+    const name = options.find((player) => player.id === id)?.name ?? 'that nominee'
+    onDecisionCommitted?.(`I choose to eliminate ${name}.`)
+    if (isPosTieBreak) dispatch(submitPosTieBreak(id))
+    else dispatch(submitTieBreak(id))
   }
 
   function handleConfirm() {
-    if (submitting || selectedIds.length !== multiSelectCount) return;
-    setSubmitting(true);
+    if (submitting || selectedIds.length !== multiSelectCount) return
+    setSubmitting(true)
     const names = selectedIds
       .map((id) => options.find((player) => player.id === id)?.name)
-      .filter((name): name is string => Boolean(name));
-    onDecisionCommitted?.(`I choose to eliminate ${formatNameList(names)}.`);
-    dispatch(submitDoubleEvictionTieBreak(selectedIds));
+      .filter((name): name is string => Boolean(name))
+    onDecisionCommitted?.(`I choose to eliminate ${formatNameList(names)}.`)
+    dispatch(submitDoubleEvictionTieBreak(selectedIds))
   }
 
   return (
@@ -601,8 +594,8 @@ function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
             player={p}
             selected={isMulti ? selectedIds.includes(p.id) : p.id === selectedId}
             onClick={() => {
-              if (isMulti) toggleMulti(p.id);
-              else handleSingle(p.id);
+              if (isMulti) toggleMulti(p.id)
+              else handleSingle(p.id)
             }}
             danger
             disabled={submitting}
@@ -629,37 +622,37 @@ function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
         </>
       )}
     </div>
-  );
+  )
 }
 
 interface Props {
-  decision: ActiveConfessionalDecision;
-  onDecisionCommitted?: (summary: string) => void;
+  decision: ActiveConfessionalDecision
+  onDecisionCommitted?: (summary: string) => void
 }
 
 export default function ConfessionalDecisionPanel({ decision, onDecisionCommitted }: Props) {
   switch (decision.type) {
     case 'nominations':
-      return <NominationsPanel onDecisionCommitted={onDecisionCommitted} />;
+      return <NominationsPanel onDecisionCommitted={onDecisionCommitted} />
     case 'eviction_vote':
-      return <EvictionVotePanel onDecisionCommitted={onDecisionCommitted} />;
+      return <EvictionVotePanel onDecisionCommitted={onDecisionCommitted} />
     case 'double_vote_offer':
-      return <DoubleVoteOfferPanel onDecisionCommitted={onDecisionCommitted} />;
+      return <DoubleVoteOfferPanel onDecisionCommitted={onDecisionCommitted} />
     case 'double_vote':
-      return <DoubleVotePanel onDecisionCommitted={onDecisionCommitted} />;
+      return <DoubleVotePanel onDecisionCommitted={onDecisionCommitted} />
     case 'mission_immunity_offer':
-      return <MissionImmunityOfferPanel onDecisionCommitted={onDecisionCommitted} />;
+      return <MissionImmunityOfferPanel onDecisionCommitted={onDecisionCommitted} />
     case 'pos_decision':
-      return <PosDecisionPanel onDecisionCommitted={onDecisionCommitted} />;
+      return <PosDecisionPanel onDecisionCommitted={onDecisionCommitted} />
     case 'vip_second_use':
-      return <VipSecondUsePanel onDecisionCommitted={onDecisionCommitted} />;
+      return <VipSecondUsePanel onDecisionCommitted={onDecisionCommitted} />
     case 'pos_save_target':
-      return <PosSaveTargetPanel onDecisionCommitted={onDecisionCommitted} />;
+      return <PosSaveTargetPanel onDecisionCommitted={onDecisionCommitted} />
     case 'replacement_nominee':
-      return <ReplacementNomineePanel onDecisionCommitted={onDecisionCommitted} />;
+      return <ReplacementNomineePanel onDecisionCommitted={onDecisionCommitted} />
     case 'tie_break':
-      return <TieBreakPanel onDecisionCommitted={onDecisionCommitted} />;
+      return <TieBreakPanel onDecisionCommitted={onDecisionCommitted} />
     default:
-      return null;
+      return null
   }
 }
