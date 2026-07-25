@@ -1,46 +1,74 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 
-import MinigameHost from '../../src/components/MinigameHost/MinigameHost';
-
 vi.mock('../../src/services/sound/SoundManager', () => ({
   SoundManager: { play: vi.fn() },
 }));
 
-const SIMPLE_COMPONENT_MOCKS = [
-  '../../src/components/ClosestWithoutGoingOverComp',
-  '../../src/components/HoldTheWallComp/HoldTheWallComp',
-  '../../src/components/BiographyBlitzComp/biography_blitz_game',
-  '../../src/components/FamousFiguresComp/FamousFiguresComp',
-  '../../src/components/SilentSaboteurComp/SilentSaboteurComp',
-  '../../src/components/MajorityRulesComp/MajorityRulesComp',
-  '../../src/components/GlassBridgeComp/GlassBridgeComp',
-  '../../src/minigames/crystalPathShattered/CrystalPathShatteredGame',
-  '../../src/components/BlackjackTournamentComp/BlackjackTournamentComp',
-  '../../src/components/RiskWheelComp/RiskWheelComp',
-  '../../src/components/WildcardWesternComp/WildcardWesternComp',
-  '../../src/components/CodeBreakerComp/CodeBreakerComp',
-  '../../src/components/TetrisComp/TetrisComp',
-  '../../src/components/TiltLabyrinthComp/TiltLabyrinthComp',
-  '../../src/components/HouseOfCardsComp/HouseOfCardsComp',
-  '../../src/components/MemoryColorsComp/MemoryColorsComp',
-  '../../src/components/TrapAuction/TrapAuction',
-  '../../src/components/ColorMatchComp/ColorMatchComp',
-] as const;
-
-for (const modulePath of SIMPLE_COMPONENT_MOCKS) {
-  vi.mock(modulePath, () => ({ default: () => <div data-testid="mock-react-game" /> }));
-}
-
+vi.mock('../../src/components/ClosestWithoutGoingOverComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/HoldTheWallComp/HoldTheWallComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/BiographyBlitzComp/biography_blitz_game', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/FamousFiguresComp/FamousFiguresComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/SilentSaboteurComp/SilentSaboteurComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/MajorityRulesComp/MajorityRulesComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/GlassBridgeComp/GlassBridgeComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/minigames/crystalPathShattered/CrystalPathShatteredGame', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/BlackjackTournamentComp/BlackjackTournamentComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/RiskWheelComp/RiskWheelComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/WildcardWesternComp/WildcardWesternComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/CodeBreakerComp/CodeBreakerComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/TetrisComp/TetrisComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/TiltLabyrinthComp/TiltLabyrinthComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/HouseOfCardsComp/HouseOfCardsComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/MemoryColorsComp/MemoryColorsComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/TrapAuction/TrapAuction', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
+vi.mock('../../src/components/ColorMatchComp/ColorMatchComp', () => ({
+  default: () => <div data-testid="mock-react-game" />,
+}));
 vi.mock('../../src/minigames/reactComponents', () => ({
   default: {
     Capitalization: () => <div data-testid="capitalization-game" />,
   },
 }));
-
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
   default: () => <div data-testid="legacy-game" />,
 }));
+
+import MinigameHost from '../../src/components/MinigameHost/MinigameHost';
 
 const GAME = {
   key: 'quickTap',
@@ -80,7 +108,7 @@ describe('MinigameHost utility dock and early-exit contract', () => {
   });
 
   afterEach(() => {
-    vi.runOnlyPendingTimers();
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
 
