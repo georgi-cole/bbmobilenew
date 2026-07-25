@@ -33,6 +33,20 @@ jobs:
           python <<'PY'
           from pathlib import Path
 
+          # The cleanup script intentionally uses exact-match guards. Distinguish the
+          # nominations declaration so its tie-panel replacement has one unique target.
+          panel_path = Path('src/screens/DiaryRoom/ConfessionalDecisionPanel.tsx')
+          panel = panel_path.read_text(encoding='utf-8')
+          declaration = '  const isDoubleEviction = game.doubleEviction?.weekActive === true;\n'
+          if panel.count(declaration) != 2:
+              raise RuntimeError(f'expected two isDoubleEviction declarations, found {panel.count(declaration)}')
+          panel = panel.replace(
+              declaration,
+              '  const isDoubleEviction = Boolean(game.doubleEviction?.weekActive);\n',
+              1,
+          )
+          panel_path.write_text(panel, encoding='utf-8')
+
           workflow = Path('.github/workflows/eviction-flow-cleanup.yml').read_text(encoding='utf-8')
           marker = "          python <<'PY'\n"
           start = workflow.index(marker) + len(marker)
