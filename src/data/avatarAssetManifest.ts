@@ -15,14 +15,13 @@ export const AVATAR_ASSET_FILES = [
 ] as const;
 
 export const FORMAL_CUTOUT_FILES = [
-  'Aria_formal.wp2', 'Ash_formal.wp2', 'Blue_formal.wp2', 'Dex_formal.wp2',
-  'Echo_formal.wp2', 'Finn_formal.wp2', 'Aria_formal.png', 'Ash_formal.png',
-  'Bea_formal.png', 'Blue_formal.png', 'Dex_formal.png', 'Echo_formal.png',
-  'Finn_formal.png', 'Ivy_formal.png', 'Jax_formal.png', 'Kai_formal.png',
-  'Kian_formal.png', 'Lia_formal.png', 'Lux_formal.png', 'Mimi_formal.png',
-  'Nico_formal.png', 'Noa_formal.png', 'Nova_formal.png', 'Pax_formal.png',
-  'Quinn_formal.png', 'Rae_formal.png', 'Remy_formal.png', 'Rey_formal.png',
-  'Rune_formal.png', 'Sol_formal.png', 'Vee_formal.png', 'Zed_formal.png',
+  'Aria_formal.png', 'Ash_formal.png', 'Bea_formal.png', 'Blue_formal.png',
+  'Dex_formal.png', 'Echo_formal.png', 'Finn_formal.png', 'Ivy_formal.png',
+  'Jax_formal.png', 'Kai_formal.png', 'Kian_formal.png', 'Lia_formal.png',
+  'Lux_formal.png', 'Mimi_formal.png', 'Nico_formal.png', 'Noa_formal.png',
+  'Nova_formal.png', 'Pax_formal.png', 'Quinn_formal.png', 'Rae_formal.png',
+  'Remy_formal.png', 'Rey_formal.png', 'Rune_formal.png', 'Sol_formal.png',
+  'Vee_formal.png', 'Zed_formal.png',
 ] as const;
 
 export const INFORMAL_CUTOUT_FILES = [
