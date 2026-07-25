@@ -82,6 +82,8 @@ export default function FloatingActionBar({
     isWaiting ? 'waiting-for-input' : 'ready',
   ].join(':')
   const advancedProgressRef = useRef<string | null>(null)
+  const battleBackAnnouncementActive =
+    game.battleBack?.active === true && game.battleBack.competitionActive !== true
 
   useEffect(() => {
     advancedProgressRef.current = null
@@ -279,7 +281,12 @@ export default function FloatingActionBar({
       return
     }
     if (advancedProgressRef.current === advanceProgressKey) {
-      dispatchPlayPressedEvent()
+      // Repeated presses are needed only while the local staged Back 2 the Game
+      // announcement owns progression. Once the competition opens, never emit a
+      // stale play event that can restart or flash that announcement sequence.
+      if (battleBackAnnouncementActive) {
+        dispatchPlayPressedEvent()
+      }
       return
     }
     advancedProgressRef.current = advanceProgressKey
@@ -288,6 +295,7 @@ export default function FloatingActionBar({
   }, [
     activeConfessionalDecisionKey,
     advanceProgressKey,
+    battleBackAnnouncementActive,
     dispatch,
     dispatchPlayPressedEvent,
     hasPendingConfessionalDecision,
