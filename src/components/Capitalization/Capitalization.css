@@ -3,11 +3,8 @@
   inset: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding:
-    calc(env(safe-area-inset-top, 0px) + 72px)
-    max(16px, env(safe-area-inset-right, 0px))
-    calc(env(safe-area-inset-bottom, 0px) + 24px)
-    max(16px, env(safe-area-inset-left, 0px));
+  padding: calc(env(safe-area-inset-top, 0px) + 72px) max(16px, env(safe-area-inset-right, 0px))
+    calc(env(safe-area-inset-bottom, 0px) + 24px) max(16px, env(safe-area-inset-left, 0px));
   background:
     linear-gradient(135deg, rgba(91, 214, 138, 0.12), transparent 34%),
     linear-gradient(160deg, #0c1214 0%, #141d1a 48%, #21191c 100%);
@@ -343,6 +340,17 @@
   gap: 14px;
 }
 
+.capitalization__winner-line {
+  padding: 14px 16px;
+  border: 1px solid rgba(243, 199, 95, 0.45);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(243, 199, 95, 0.18), rgba(91, 214, 138, 0.08));
+  color: #fff1ba;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
 .capitalization__scoreboard-copy p {
   margin: 8px 0 0;
   color: #b8c5bf;
@@ -449,7 +457,9 @@
 }
 
 .capitalization__standing-card--leader {
-  background: rgba(91, 214, 138, 0.08);
+  border-color: rgba(243, 199, 95, 0.42);
+  background: linear-gradient(135deg, rgba(243, 199, 95, 0.14), rgba(91, 214, 138, 0.07));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .capitalization__standing-card--human {

@@ -1,13 +1,13 @@
-import type { CompetitionSkillWeights, MinigameAiModel } from './types';
+import type { CompetitionSkillWeights, MinigameAiModel } from './types'
 
-const VOLATILITY_ENDURANCE = 0.2;
-const VOLATILITY_ENDURANCE_BALANCE = 0.25;
-const VOLATILITY_PHYSICAL = 0.3;
-const VOLATILITY_PUZZLE = 0.35;
-const VOLATILITY_PRECISION = 0.4;
-const VOLATILITY_TRIVIA = 0.45;
-const VOLATILITY_LUCK = 0.7;
-const VOLATILITY_HYBRID = 0.4;
+const VOLATILITY_ENDURANCE = 0.2
+const VOLATILITY_ENDURANCE_BALANCE = 0.25
+const VOLATILITY_PHYSICAL = 0.3
+const VOLATILITY_PUZZLE = 0.35
+const VOLATILITY_PRECISION = 0.4
+const VOLATILITY_TRIVIA = 0.45
+const VOLATILITY_LUCK = 0.7
+const VOLATILITY_HYBRID = 0.4
 
 const WEIGHTS_PHYSICAL_TAP: CompetitionSkillWeights = {
   physical: 0.5,
@@ -15,7 +15,7 @@ const WEIGHTS_PHYSICAL_TAP: CompetitionSkillWeights = {
   precision: 0.3,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 const WEIGHTS_PRECISION: CompetitionSkillWeights = {
   physical: 0.3,
@@ -23,7 +23,7 @@ const WEIGHTS_PRECISION: CompetitionSkillWeights = {
   precision: 0.4,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 const WEIGHTS_PRECISION_FOCUS: CompetitionSkillWeights = {
   physical: 0.2,
@@ -31,7 +31,7 @@ const WEIGHTS_PRECISION_FOCUS: CompetitionSkillWeights = {
   precision: 0.5,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 const WEIGHTS_MENTAL: CompetitionSkillWeights = {
   physical: 0,
@@ -39,7 +39,7 @@ const WEIGHTS_MENTAL: CompetitionSkillWeights = {
   precision: 0.2,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 const WEIGHTS_MENTAL_PRECISION: CompetitionSkillWeights = {
   physical: 0,
@@ -47,7 +47,7 @@ const WEIGHTS_MENTAL_PRECISION: CompetitionSkillWeights = {
   precision: 0.3,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 const WEIGHTS_ENDURANCE: CompetitionSkillWeights = {
   physical: 0.4,
@@ -55,7 +55,7 @@ const WEIGHTS_ENDURANCE: CompetitionSkillWeights = {
   precision: 0.3,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 const WEIGHTS_ENDURANCE_BALANCE: CompetitionSkillWeights = {
   physical: 0.3,
@@ -63,7 +63,7 @@ const WEIGHTS_ENDURANCE_BALANCE: CompetitionSkillWeights = {
   precision: 0.4,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 const WEIGHTS_LUCK: CompetitionSkillWeights = {
   physical: 0.05,
@@ -71,7 +71,7 @@ const WEIGHTS_LUCK: CompetitionSkillWeights = {
   precision: 0.1,
   nerve: 0.2,
   luck: 0.3,
-};
+}
 
 const WEIGHTS_HYBRID: CompetitionSkillWeights = {
   physical: 0.35,
@@ -79,7 +79,7 @@ const WEIGHTS_HYBRID: CompetitionSkillWeights = {
   precision: 0.25,
   nerve: 0.1,
   luck: 0.05,
-};
+}
 
 const WEIGHTS_TETRIS: CompetitionSkillWeights = {
   physical: 0.1,
@@ -87,7 +87,7 @@ const WEIGHTS_TETRIS: CompetitionSkillWeights = {
   precision: 0.4,
   nerve: 0.1,
   luck: 0,
-};
+}
 
 const WEIGHTS_MEMORY_SPEED: CompetitionSkillWeights = {
   physical: 0,
@@ -95,7 +95,7 @@ const WEIGHTS_MEMORY_SPEED: CompetitionSkillWeights = {
   precision: 0.4,
   nerve: 0.2,
   luck: 0,
-};
+}
 
 export const minigameAiRegistry: Record<string, MinigameAiModel> = {
   countHouse: {
@@ -182,12 +182,12 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     weights: WEIGHTS_MENTAL_PRECISION,
     minScore: 0,
     maxScore: 100,
-    tiebreakerMaxMs: 110_000,   // 5 rounds × 22 s max guess time = 110 s total
+    tiebreakerMaxMs: 110_000, // 5 rounds × 22 s max guess time = 110 s total
     scoreBuckets: [
       { minScore: 82, maxScore: 100, weight: 0.2 },
-      { minScore: 67, maxScore:  82, weight: 0.4 },
-      { minScore: 52, maxScore:  67, weight: 0.3 },
-      { minScore:  0, maxScore:  52, weight: 0.1 },
+      { minScore: 67, maxScore: 82, weight: 0.4 },
+      { minScore: 52, maxScore: 67, weight: 0.3 },
+      { minScore: 0, maxScore: 52, weight: 0.1 },
     ],
     notes:
       'Estimation (5-round redesign) — final metric is average accuracy 0–100. ' +
@@ -241,6 +241,11 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_ENDURANCE_BALANCE,
     weights: WEIGHTS_ENDURANCE_BALANCE,
+    minScore: 12,
+    maxScore: 92,
+    notes:
+      'Pressure Plank uses a dedicated survival band after the stability redesign; ' +
+      'scores map to roughly 14-110 seconds and idle play is no longer viable.',
   },
   rainBarrelBalance: {
     key: 'rainBarrelBalance',
@@ -276,7 +281,8 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     // 5 rounds × 25 s each = 125 000 ms maximum total elapsed time.
     // Used to generate a simulated elapsed-time tiebreaker for AI players.
     tiebreakerMaxMs: 125_000,
-    notes: 'Color Match — elimination-based accuracy duel. Fallback AI stays in a realistic 65–99% band.',
+    notes:
+      'Color Match — elimination-based accuracy duel. Fallback AI stays in a realistic 65–99% band.',
   },
   socialStrings: {
     key: 'socialStrings',
@@ -575,4 +581,4 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Battery Low simulates private Bank Offer charging booths; AI mixes risk ' +
       'tolerance, offer value, and rack luck.',
   },
-};
+}

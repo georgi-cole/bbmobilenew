@@ -1,4 +1,4 @@
-import type { Phase } from '../../types';
+import type { Phase } from '../../types'
 
 /**
  * Classic campaign competition map.
@@ -10,26 +10,26 @@ import type { Phase } from '../../types';
 
 export interface BracketBand {
   /** Human-readable label used by tests, diagnostics, and design reviews. */
-  label: string;
+  label: string
   /** Inclusive alive-housemate bounds. */
-  minPlayers: number;
-  maxPlayers: number;
+  minPlayers: number
+  maxPlayers: number
   /** Optional inclusive campaign-day bounds. */
-  minDay?: number;
-  maxDay?: number;
+  minDay?: number
+  maxDay?: number
   /** Optional exact phases, used to make the Final 3 trilogy escalate. */
-  phases?: Phase[];
-  loh: string[];
-  pos: string[];
+  phases?: Phase[]
+  loh: string[]
+  pos: string[]
 }
 
-export type BracketTemplate = BracketBand[];
+export type BracketTemplate = BracketBand[]
 
 export interface ClassicCampaignContext {
-  day: number;
-  playerCount: number;
-  compType: 'LOH' | 'POS';
-  phase?: Phase;
+  day: number
+  playerCount: number
+  compType: 'LOH' | 'POS'
+  phase?: Phase
 }
 
 /**
@@ -65,7 +65,7 @@ export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'bigSpender',
   'chainOfGreed',
   'batteryLow',
-] as const;
+] as const
 
 /** Per-game story prerequisites that apply in addition to the roster map. */
 export const CLASSIC_CAMPAIGN_GAME_MIN_DAY: Partial<
@@ -73,12 +73,12 @@ export const CLASSIC_CAMPAIGN_GAME_MIN_DAY: Partial<
 > = {
   // Social reads only feel earned after several days with the housemates.
   silentSaboteur: 4,
-};
+}
 
 export function getApprovedCompetitionGameKeys(
-  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE,
+  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE
 ): string[] {
-  return [...new Set(template.flatMap((band) => [...band.loh, ...band.pos]))];
+  return [...new Set(template.flatMap((band) => [...band.loh, ...band.pos]))]
 }
 
 /**
@@ -107,20 +107,21 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     label: '16-13 players',
     minPlayers: 13,
     maxPlayers: 16,
-    loh: [
-      'holdWall',
-      'memoryMatch',
-      'famousFigures',
-      'majorityRules',
-      'batteryLow',
-    ],
+    loh: ['holdWall', 'memoryMatch', 'famousFigures', 'majorityRules', 'batteryLow', 'trapAuction'],
     pos: ['quickTap', 'colorMatch', 'cardClash', 'hangman', 'dontGoOver', 'tiltLabyrinth'],
   },
   {
     label: '12-10 players',
     minPlayers: 10,
     maxPlayers: 12,
-    loh: ['memoryMatch', 'famousFigures', 'majorityRules', 'silentSaboteur', 'batteryLow'],
+    loh: [
+      'memoryMatch',
+      'famousFigures',
+      'majorityRules',
+      'silentSaboteur',
+      'batteryLow',
+      'trapAuction',
+    ],
     pos: [
       'quickTap',
       'colorMatch',
@@ -136,28 +137,46 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     label: '9-8 players',
     minPlayers: 8,
     maxPlayers: 9,
-    loh: ['snake', 'memoryMatch', 'famousFigures', 'silentSaboteur', 'batteryLow', 'chainOfGreed'],
-    pos: ['logicLocks', 'hangman', 'tiltLabyrinth', 'minesweeps', 'dontGoOver', 'bigSpender', 'threeDigitsQuiz', 'tetris'],
+    loh: [
+      'snake',
+      'memoryMatch',
+      'famousFigures',
+      'silentSaboteur',
+      'batteryLow',
+      'chainOfGreed',
+      'trapAuction',
+    ],
+    pos: [
+      'logicLocks',
+      'hangman',
+      'tiltLabyrinth',
+      'minesweeps',
+      'dontGoOver',
+      'bigSpender',
+      'threeDigitsQuiz',
+      'tetris',
+    ],
   },
   {
     label: '7-5 players',
     minPlayers: 5,
     maxPlayers: 7,
-    loh: [
-      'castleRescue',
-      'glass_bridge_brutal',
-      'chainOfGreed',
-      'trapAuction',
-      'silentSaboteur',
-      'batteryLow',
+    loh: ['castleRescue', 'glass_bridge_brutal', 'chainOfGreed', 'silentSaboteur', 'batteryLow'],
+    pos: [
+      'riskWheel',
+      'blackjackTournament',
+      'bigSpender',
+      'logicLocks',
+      'hangman',
+      'minesweeps',
+      'tetris',
     ],
-    pos: ['riskWheel', 'blackjackTournament', 'bigSpender', 'logicLocks', 'hangman', 'minesweeps', 'tetris'],
   },
   {
     label: '4 players',
     minPlayers: 4,
     maxPlayers: 4,
-    loh: ['crystal_path_shattered', 'chainOfGreed', 'batteryLow', 'trapAuction', 'holdWall'],
+    loh: ['crystal_path_shattered', 'chainOfGreed', 'batteryLow', 'holdWall'],
     pos: ['gridOfLuck', 'riskWheel', 'blackjackTournament', 'bigSpender', 'tetris'],
   },
   {
@@ -181,7 +200,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp3', 'final3_comp3_minigame'],
-    loh: ['crystal_path_shattered', 'chainOfGreed', 'wildcardWestern', 'trapAuction'],
+    loh: ['crystal_path_shattered', 'chainOfGreed', 'wildcardWestern'],
     pos: [],
   },
   {
@@ -199,27 +218,25 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'crystal_path_shattered',
       'chainOfGreed',
       'wildcardWestern',
-      'trapAuction',
     ],
     pos: [],
   },
-];
+]
 
 function matchesCampaignContext(band: BracketBand, context: ClassicCampaignContext): boolean {
-  if (context.playerCount < band.minPlayers || context.playerCount > band.maxPlayers) return false;
-  if (band.minDay !== undefined && context.day < band.minDay) return false;
-  if (band.maxDay !== undefined && context.day > band.maxDay) return false;
-  if (band.phases && (!context.phase || !band.phases.includes(context.phase))) return false;
-  return true;
+  if (context.playerCount < band.minPlayers || context.playerCount > band.maxPlayers) return false
+  if (band.minDay !== undefined && context.day < band.minDay) return false
+  if (band.maxDay !== undefined && context.day > band.maxDay) return false
+  if (band.phases && (!context.phase || !band.phases.includes(context.phase))) return false
+  return true
 }
 
 function applyGameStoryPrerequisites(pool: string[], day: number): string[] {
   return pool.filter((key) => {
-    const minDay = CLASSIC_CAMPAIGN_GAME_MIN_DAY[
-      key as (typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number]
-    ];
-    return minDay === undefined || day >= minDay;
-  });
+    const minDay =
+      CLASSIC_CAMPAIGN_GAME_MIN_DAY[key as (typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number]]
+    return minDay === undefined || day >= minDay
+  })
 }
 
 /**
@@ -229,32 +246,31 @@ function applyGameStoryPrerequisites(pool: string[], day: number): string[] {
  */
 export function getClassicCampaignPoolForContext(
   context: ClassicCampaignContext,
-  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE,
+  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE
 ): string[] {
   const matched = template
     .filter((band) => matchesCampaignContext(band, context))
     .sort((left, right) => {
       const specificity = (band: BracketBand) =>
-        (band.phases ? 100 : 0) +
-        (band.minDay !== undefined || band.maxDay !== undefined ? 10 : 0);
-      return specificity(right) - specificity(left);
-    })[0];
+        (band.phases ? 100 : 0) + (band.minDay !== undefined || band.maxDay !== undefined ? 10 : 0)
+      return specificity(right) - specificity(left)
+    })[0]
   if (matched) {
-    const pool = context.compType === 'POS' ? matched.pos : matched.loh;
-    return applyGameStoryPrerequisites(pool, context.day);
+    const pool = context.compType === 'POS' ? matched.pos : matched.loh
+    return applyGameStoryPrerequisites(pool, context.day)
   }
 
   if (context.playerCount > 16) {
     const widest = template.find(
-      (band) => band.minPlayers === 13 && band.maxPlayers === 16 && !band.minDay && !band.phases,
-    );
+      (band) => band.minPlayers === 13 && band.maxPlayers === 16 && !band.minDay && !band.phases
+    )
     if (widest) {
-      const pool = context.compType === 'POS' ? widest.pos : widest.loh;
-      return applyGameStoryPrerequisites(pool, context.day);
+      const pool = context.compType === 'POS' ? widest.pos : widest.loh
+      return applyGameStoryPrerequisites(pool, context.day)
     }
   }
 
-  return [];
+  return []
 }
 
 /**
@@ -265,11 +281,11 @@ export function getClassicCampaignPoolForContext(
 export function getBracketPoolForContext(
   playerCount: number,
   compType: 'LOH' | 'POS',
-  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE,
+  template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE
 ): string[] {
-  const genericTemplate = template.filter((band) => !band.minDay && !band.maxDay && !band.phases);
+  const genericTemplate = template.filter((band) => !band.minDay && !band.maxDay && !band.phases)
   return getClassicCampaignPoolForContext(
     { day: Number.MAX_SAFE_INTEGER, playerCount, compType },
-    genericTemplate,
-  );
+    genericTemplate
+  )
 }

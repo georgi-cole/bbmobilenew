@@ -2,8 +2,8 @@
 // Unified minigame registry ported from bbmobile/js/minigames/registry.js
 // Each entry includes metadata, scoring adapter, and module path for dynamic import.
 
-import { mulberry32 } from '../store/rng';
-import { DEFAULT_LANE_RACERS_DURATION_MS } from './laneRacers/constants';
+import { mulberry32 } from '../store/rng'
+import { DEFAULT_LANE_RACERS_DURATION_MS } from './laneRacers/constants'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,68 +13,69 @@ export type ScoringAdapterName =
   | 'timeToPoints'
   | 'lowerBetter'
   | 'binary'
-  | 'authoritative';
+  | 'authoritative'
 
-export type MetricKind = 'count' | 'time' | 'accuracy' | 'endurance' | 'hybrid' | 'points';
+export type MetricKind = 'count' | 'time' | 'accuracy' | 'endurance' | 'hybrid' | 'points'
 
-export type GameCategory = 'arcade' | 'endurance' | 'logic' | 'trivia';
+export type GameCategory = 'arcade' | 'endurance' | 'logic' | 'trivia'
 
 export interface GameRegistryEntry {
-  key: string;
-  title: string;
-  description: string;
+  key: string
+  title: string
+  description: string
   /** Bullet-point instructions shown in the Rules modal before the game. */
-  instructions: string[];
+  instructions: string[]
   /** Whether results for this game should be communicated as scores or placements/ranks. */
-  resultMode?: 'score' | 'placement';
-  metricKind: MetricKind;
-  metricLabel: string;
+  resultMode?: 'score' | 'placement'
+  metricKind: MetricKind
+  metricLabel: string
   /** Milliseconds before the game auto-ends (0 = unlimited / game controls its own end). */
-  timeLimitMs: number;
+  timeLimitMs: number
   /**
    * When true the game itself determines the authoritative winner
    * and the scoring adapter defers to game-reported winner.
    */
-  authoritative: boolean;
-  scoringAdapter: ScoringAdapterName;
-  scoringParams?: Record<string, number>;
+  authoritative: boolean
+  scoringAdapter: ScoringAdapterName
+  scoringParams?: Record<string, number>
   /**
    * 'react' for games implemented as React components; 'legacy' (default) for games
    * loaded via LegacyMinigameWrapper from a JS bundle.
    */
-  implementation?: 'react' | 'legacy';
+  implementation?: 'react' | 'legacy'
   /**
    * When implementation === 'react', identifies which React component to render.
    * MinigameHost uses this key to select the correct component.
    */
-  reactComponentKey?: string;
+  reactComponentKey?: string
   /** Path relative to src/minigames/legacy/, used for dynamic import. Only required when implementation !== 'react'. */
-  modulePath?: string;
+  modulePath?: string
   /** True for all games ported from bbmobile. */
-  legacy: boolean;
+  legacy: boolean
   /**
    * Relative weight for random selection (higher = picked more often).
    * All non-retired games default to 1; increase for popular games.
    */
-  weight: number;
-  category: GameCategory;
+  weight: number
+  category: GameCategory
   /** True if this entry should not be selected for new challenges. */
-  retired: boolean;
+  retired: boolean
   /** Optional safe participant-count bounds for random scheduling. */
-  minPlayers?: number;
-  maxPlayers?: number;
+  minPlayers?: number
+  maxPlayers?: number
   /** Key of the game that supersedes this one (for retired games). */
-  replacedBy?: string;
+  replacedBy?: string
 }
 
 export function supportsPlayerCount(game: GameRegistryEntry, playerCount: number): boolean {
-  return playerCount >= (game.minPlayers ?? 1) && playerCount <= (game.maxPlayers ?? Number.POSITIVE_INFINITY);
+  return (
+    playerCount >= (game.minPlayers ?? 1) &&
+    playerCount <= (game.maxPlayers ?? Number.POSITIVE_INFINITY)
+  )
 }
 
-export function isPlacementRankingGame(
-  game: Pick<GameRegistryEntry, 'resultMode'>,
-): boolean {
-  return game.resultMode === 'placement';
+export function isPlacementRankingGame(game: Pick<GameRegistryEntry, 'resultMode'>): boolean {
+  return game.resultMode === 'placement'
 }
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -127,7 +128,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   quickTap: {
     key: 'quickTap',
     title: 'Quick Tap Race',
-    description: 'Tap as fast as you can for 30 seconds! Special power-ups and debuffs appear mid-game.',
+    description:
+      'Tap as fast as you can for 30 seconds! Special power-ups and debuffs appear mid-game.',
     instructions: [
       'A 3-second countdown starts immediately — watch for "GO!" on-screen',
       'Tap the on-canvas button as fast as possible for 30 seconds',
@@ -152,7 +154,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   laneRacers: {
     key: 'laneRacers',
     title: 'Lane Racers',
-    description: 'A premium canvas lane sprint where rapid taps power your racer through boosters and mystery gifts.',
+    description:
+      'A premium canvas lane sprint where rapid taps power your racer through boosters and mystery gifts.',
     instructions: [
       'A broadcast-style countdown starts before the race goes live',
       'Tap rapidly in the lower zone or use the TAP button to build speed and momentum',
@@ -274,7 +277,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   estimationGame: {
     key: 'estimationGame',
     title: 'Estimation',
-    description: 'Five rounds of rapid estimation — count figures before they vanish, with mixed shapes in the final rounds',
+    description:
+      'Five rounds of rapid estimation — count figures before they vanish, with mixed shapes in the final rounds',
     instructions: [
       'Figures flash on screen briefly — count what the round asks you to count!',
       'When the board hides, enter your estimate before the timer runs out',
@@ -323,9 +327,9 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     key: 'biographyBlitz',
     title: 'Biography Blitz',
     description:
-      'Trivia competition — answer questions about player biographies. Wrong answer and you\'re out!',
+      "Trivia competition — answer questions about player biographies. Wrong answer and you're out!",
     instructions: [
-      'Each round a question about a player\'s biography is revealed.',
+      "Each round a question about a player's biography is revealed.",
       'Tap the correct answer before the timer runs out.',
       'Answer incorrectly and you are eliminated.',
       'Last player standing wins the prize.',
@@ -347,7 +351,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   famousFigures: {
     key: 'famousFigures',
     title: 'Famous Figures',
-    description: 'Identify famous historical figures from progressive clues. Fewer hints = higher score!',
+    description:
+      'Identify famous historical figures from progressive clues. Fewer hints = higher score!',
     instructions: [
       'A historical figure is hidden — guess who it is from clues.',
       'You start with one clue and can request up to 5 hints.',
@@ -452,10 +457,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     title: 'Pressure Plank',
     description: 'Keep your balance needle inside the safe zone as long as possible',
     instructions: [
-      'A balance needle shows how far you\'ve leaned left or right',
+      "A balance needle shows how far you've leaned left or right",
       'Tap LEFT or RIGHT to counteract drift and stay centred',
       'Periodic surges will push you off balance — react quickly!',
-      'The safe zone narrows over time — stay focused',
+      'The safe zone gradually narrows to about 4% of the full gauge',
+      'Outside the safe zone your stability drains and never regenerates',
+      'Touching either extreme edge causes an instant fall',
       'Last as long as possible without falling off the plank',
     ],
     metricKind: 'points',
@@ -852,7 +859,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   travelingDots: {
     key: 'travelingDots',
     title: 'Traveling Dots',
-    description: 'Plan the optimal route through all required nodes — collect bonuses and avoid hazards!',
+    description:
+      'Plan the optimal route through all required nodes — collect bonuses and avoid hazards!',
     instructions: [
       'Tap nodes one by one to build your route',
       'Visit ALL blue required nodes before tapping the purple Finish',
@@ -992,8 +1000,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   blackjackTournament: {
     key: 'blackjackTournament',
     title: 'Blackjack Tournament',
-    description:
-      'Blackjack duel tournament. Closest to 21 without busting wins.',
+    description: 'Blackjack duel tournament. Closest to 21 without busting wins.',
     instructions: [
       'League: play one blackjack duel against every opponent while AI league matches resolve in the background.',
       'A league win adds 1 point and a league loss removes 1 point. Scores may go below zero.',
@@ -1054,7 +1061,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Each player draws a secret numbered wildcard',
       'Lowest and highest cards face off in a showdown',
       'Be first to buzz and answer correctly to survive',
-      'Wrong answer or timeout and you\'re eliminated',
+      "Wrong answer or timeout and you're eliminated",
       'Choose who faces the next showdown — last player standing wins!',
     ],
     resultMode: 'placement',
@@ -1074,7 +1081,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   castleRescue: {
     key: 'castleRescue',
     title: 'Find Your Twin',
-    description: 'Run and jump through the castle, enter the correct pipes in order, and find your twin before time runs out!',
+    description:
+      'Run and jump through the castle, enter the correct pipes in order, and find your twin before time runs out!',
     instructions: [
       'Use Arrow Keys or WASD to run left/right, Up/Space to jump.',
       'Find the 3 correct pipes and enter them in order by pressing ↓.',
@@ -1199,12 +1207,14 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     weight: 2,
     category: 'logic',
     retired: false,
+    minPlayers: 8,
   },
 
   gridOfLuck: {
     key: 'gridOfLuck',
     title: 'Grid of Luck',
-    description: 'Open ritual boxes to gain LP, trigger chaos, and eliminate rivals in a cinematic chamber.',
+    description:
+      'Open ritual boxes to gain LP, trigger chaos, and eliminate rivals in a cinematic chamber.',
     instructions: [
       'Every player begins with 500 LP and takes turns opening one sealed box.',
       'Powers resolve immediately — if a power needs a target, choose a valid player before the ritual continues.',
@@ -1231,7 +1241,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   bigSpender: {
     key: 'bigSpender',
     title: 'Big Spender: Broke or Boom',
-    description: 'Open private wallets, spend down your Eyeoleans, and lock in before a bomb ruins the run.',
+    description:
+      'Open private wallets, spend down your Eyeoleans, and lock in before a bomb ruins the run.',
     instructions: [
       'Start each round with 1,200 Eyeoleans. Open wallets and finish as close to 0 as possible; bombs rank below every survivor.',
       'After 8 wallets you may Lock in. Rounds 1-3 remove one player and Round 4 selects the final two.',
@@ -1255,7 +1266,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   chainOfGreed: {
     key: 'chainOfGreed',
     title: 'Chain of Greed',
-    description: 'Build a shared higher-or-lower chain, bank the pressure points, and survive weakest-link eliminations.',
+    description:
+      'Build a shared higher-or-lower chain, bank the pressure points, and survive weakest-link eliminations.',
     instructions: [
       'Guess Higher or Lower to grow the shared chain from 50 up to 1300 influence.',
       'Bank secures only the current chain pot, keeps the same reference number, and resets the chain.',
@@ -1280,7 +1292,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   batteryLow: {
     key: 'batteryLow',
     title: 'Battery Low',
-    description: 'Choose a Reserve Battery, open a charging rack, and decide whether to lock the Bank Offer or risk your final charge.',
+    description:
+      'Choose a Reserve Battery, open a charging rack, and decide whether to lock the Bank Offer or risk your final charge.',
     instructions: [
       'Choose one numbered battery as your Reserve Battery. It stays sealed while the rack drains.',
       'Open the remaining batteries in rounds of 5, 4, 4, 3, 2, 1, and 1.',
@@ -1302,18 +1315,18 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'logic',
     retired: false,
   },
-};
+}
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 /** Return all game entries (including retired). */
 export function getAllGames(): GameRegistryEntry[] {
-  return Object.values(REGISTRY);
+  return Object.values(REGISTRY)
 }
 
 /** Return the entry for a specific game key, or undefined if not found. */
 export function getGame(key: string): GameRegistryEntry | undefined {
-  return REGISTRY[key];
+  return REGISTRY[key]
 }
 
 /**
@@ -1326,46 +1339,46 @@ export function getGame(key: string): GameRegistryEntry | undefined {
  */
 export function pickRandomGame(
   seed: number,
-  opts: { category?: GameCategory; excludeKeys?: string[] } = {},
+  opts: { category?: GameCategory; excludeKeys?: string[] } = {}
 ): GameRegistryEntry {
   const pool = getPoolByFilter({
     retired: false,
     category: opts.category,
     excludeKeys: opts.excludeKeys,
-  });
+  })
 
   if (pool.length === 0) {
     // Fallback: any non-retired game
-    const fallback = getAllGames().find((g) => !g.retired);
-    if (!fallback) throw new Error('[registry] No games available');
-    return fallback;
+    const fallback = getAllGames().find((g) => !g.retired)
+    if (!fallback) throw new Error('[registry] No games available')
+    return fallback
   }
 
   // Build a weighted array of keys
-  const weighted: GameRegistryEntry[] = [];
+  const weighted: GameRegistryEntry[] = []
   for (const entry of pool) {
     for (let i = 0; i < entry.weight; i++) {
-      weighted.push(entry);
+      weighted.push(entry)
     }
   }
 
-  const rng = mulberry32(seed >>> 0);
-  const idx = Math.floor(rng() * weighted.length);
-  return weighted[idx];
+  const rng = mulberry32(seed >>> 0)
+  const idx = Math.floor(rng() * weighted.length)
+  return weighted[idx]
 }
 
 /**
  * Return game entries matching the given filter criteria.
  */
 export function getPoolByFilter(filter: {
-  retired?: boolean;
-  category?: GameCategory;
-  excludeKeys?: string[];
+  retired?: boolean
+  category?: GameCategory
+  excludeKeys?: string[]
 }): GameRegistryEntry[] {
   return getAllGames().filter((g) => {
-    if (filter.retired !== undefined && g.retired !== filter.retired) return false;
-    if (filter.category && g.category !== filter.category) return false;
-    if (filter.excludeKeys?.includes(g.key)) return false;
-    return true;
-  });
+    if (filter.retired !== undefined && g.retired !== filter.retired) return false
+    if (filter.category && g.category !== filter.category) return false
+    if (filter.excludeKeys?.includes(g.key)) return false
+    return true
+  })
 }

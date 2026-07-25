@@ -11,12 +11,16 @@
   z-index: 500;
   overflow: hidden;
   box-sizing: border-box;
-  padding:
-    max(12px, calc(var(--minigame-safe-top, var(--safe-top, 0px)) + 12px))
+  padding: max(12px, calc(var(--minigame-safe-top, var(--safe-top, 0px)) + 12px))
     max(12px, calc(var(--minigame-safe-right, var(--safe-right, 0px)) + 12px))
     max(12px, calc(var(--minigame-safe-bottom, var(--safe-bottom, 0px)) + 12px))
     max(12px, calc(var(--minigame-safe-left, var(--safe-left, 0px)) + 12px));
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   color: #e2eeff;
 }
 
@@ -26,8 +30,12 @@
 }
 
 @keyframes pp-danger-pulse {
-  from { background-color: #1a0510; }
-  to   { background-color: #2a0820; }
+  from {
+    background-color: #1a0510;
+  }
+  to {
+    background-color: #2a0820;
+  }
 }
 
 .pp--warning {
@@ -35,8 +43,12 @@
 }
 
 @keyframes pp-warning-pulse {
-  from { background-color: #100f04; }
-  to   { background-color: #1e1b05; }
+  from {
+    background-color: #100f04;
+  }
+  to {
+    background-color: #1e1b05;
+  }
 }
 
 /* ── Card ────────────────────────────────────────────────────────────────── */
@@ -91,8 +103,14 @@
 }
 
 @keyframes pp-count-pop {
-  from { transform: scale(1.4); opacity: 0.4; }
-  to   { transform: scale(1);   opacity: 1; }
+  from {
+    transform: scale(1.4);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .pp__hint {
@@ -129,8 +147,14 @@
 }
 
 @keyframes pp-surge-pop {
-  from { transform: scale(0.8) translateY(-8px); opacity: 0; }
-  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+  from {
+    transform: scale(0.8) translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Timer */
@@ -165,6 +189,54 @@
 }
 
 /* ── Balance gauge ───────────────────────────────────────────────────────── */
+/* ── Irreversible stability meter ───────────────────────────────────────── */
+.pp__stability {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+}
+
+.pp__stability-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #9db8d3;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pp__stability-head strong {
+  color: #77e39b;
+  font-size: 0.9rem;
+}
+
+.pp__stability-track {
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.pp__stability-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #43c96f, #9cf4b8);
+  transition:
+    width 0.08s linear,
+    background 0.2s ease;
+}
+
+.pp__stability--danger .pp__stability-head strong {
+  color: #ff6d8e;
+}
+
+.pp__stability--danger .pp__stability-fill {
+  background: linear-gradient(90deg, #ff345e, #ff819c);
+}
+
 .pp__gauge {
   position: relative;
   width: 100%;
@@ -173,7 +245,9 @@
   border-radius: 30px;
   border: 2px solid rgba(137, 196, 255, 0.3);
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Safe zone band */
@@ -184,7 +258,9 @@
   background: rgba(80, 200, 120, 0.18);
   border-left: 2px solid rgba(80, 200, 120, 0.7);
   border-right: 2px solid rgba(80, 200, 120, 0.7);
-  transition: left 0.5s ease-out, width 0.5s ease-out;
+  transition:
+    left 0.5s ease-out,
+    width 0.5s ease-out;
   pointer-events: none;
 }
 
@@ -230,7 +306,10 @@
   border-radius: 3px;
   transform: translateX(-50%);
   box-shadow: 0 0 10px rgba(137, 196, 255, 0.8);
-  transition: left 0.04s linear, background 0.15s, box-shadow 0.15s;
+  transition:
+    left 0.04s linear,
+    background 0.15s,
+    box-shadow 0.15s;
   pointer-events: none;
 }
 
@@ -246,8 +325,12 @@
 }
 
 @keyframes pp-needle-throb {
-  from { transform: translateX(-50%) scaleY(0.9); }
-  to   { transform: translateX(-50%) scaleY(1.1); }
+  from {
+    transform: translateX(-50%) scaleY(0.9);
+  }
+  to {
+    transform: translateX(-50%) scaleY(1.1);
+  }
 }
 
 /* ── Zone label ──────────────────────────────────────────────────────────── */
@@ -280,8 +363,12 @@
 }
 
 @keyframes pp-label-danger {
-  from { transform: scale(1);    }
-  to   { transform: scale(1.06); }
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
 }
 
 /* ── Control buttons ─────────────────────────────────────────────────────── */
@@ -301,7 +388,10 @@
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
-  transition: transform 0.08s, background 0.1s, box-shadow 0.1s;
+  transition:
+    transform 0.08s,
+    background 0.1s,
+    box-shadow 0.1s;
   letter-spacing: 0.03em;
 }
 
@@ -312,7 +402,9 @@
 .pp__btn--left {
   background: linear-gradient(145deg, #1c3a5e, #152d4a);
   color: #89c4ff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .pp__btn--left:hover {
@@ -322,7 +414,9 @@
 .pp__btn--right {
   background: linear-gradient(145deg, #1c3a5e, #152d4a);
   color: #89c4ff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .pp__btn--right:hover {
@@ -431,7 +525,9 @@
   cursor: pointer;
   touch-action: manipulation;
   letter-spacing: 0.03em;
-  transition: transform 0.1s, background 0.15s;
+  transition:
+    transform 0.1s,
+    background 0.15s;
   box-shadow: 0 4px 14px rgba(50, 100, 200, 0.35);
 }
 
