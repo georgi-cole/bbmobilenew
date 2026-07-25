@@ -30,7 +30,7 @@ export function buildBattleBackFeedMessage(announcement: Announcement): string {
 
 export function advanceBattleBackAnnouncementStep(
   currentStep: number | null,
-  totalSteps = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.length,
+  totalSteps = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.length
 ): { nextStep: number | null; shouldOpenCompetition: boolean } {
   if (currentStep == null) {
     return { nextStep: null, shouldOpenCompetition: false }
@@ -50,18 +50,23 @@ export function isBattleBackReplayEligible(
   humanCandidateId: string | null,
   candidateIds: string[],
   retryCount: number,
-  retryLimit: number,
+  retryLimit: number
 ): boolean {
-  return !!winnerId &&
-    !!humanCandidateId &&
-    candidateIds.includes(humanCandidateId) &&
+  const humanParticipated =
+    humanCandidateId != null && candidateIds.includes(humanCandidateId)
+  const winnerParticipated = winnerId != null && candidateIds.includes(winnerId)
+
+  return (
+    humanParticipated &&
+    winnerParticipated &&
     winnerId !== humanCandidateId &&
     retryCount < retryLimit
+  )
 }
 
 export function shouldUseBattleBackMinigame(
   humanCandidateId: string | null,
-  candidateIds: string[],
+  candidateIds: string[]
 ): boolean {
   return !!humanCandidateId && candidateIds.includes(humanCandidateId)
 }
