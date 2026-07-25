@@ -1,0 +1,57 @@
+name: Temporary Battle Back Formatter
+
+on:
+  push:
+    branches:
+      - agent/fix-battle-back-return-flow
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temp-format-battle-back
+  cancel-in-progress: true
+
+jobs:
+  format:
+    if: ${{ !contains(github.event.head_commit.message, '[skip format]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-battle-back-return-flow
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format changed files
+        run: |
+          npx prettier --write \
+            src/components/Eviction/SpotlightEvictionOverlay.tsx \
+            src/components/FloatingActionBar/FloatingActionBar.tsx \
+            src/components/HouseguestGrid/HouseguestGrid.tsx \
+            src/screens/GameScreen/__tests__/battleBackFlow.test.ts \
+            src/screens/GameScreen/battleBackFlow.ts \
+            src/services/activityService.ts \
+            tests/activityService.test.ts \
+            tests/unit/battleBackReturnFlow.regression.test.ts
+      - name: Commit formatted output
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/components/Eviction/SpotlightEvictionOverlay.tsx \
+            src/components/FloatingActionBar/FloatingActionBar.tsx \
+            src/components/HouseguestGrid/HouseguestGrid.tsx \
+            src/screens/GameScreen/__tests__/battleBackFlow.test.ts \
+            src/screens/GameScreen/battleBackFlow.ts \
+            src/services/activityService.ts \
+            tests/activityService.test.ts \
+            tests/unit/battleBackReturnFlow.regression.test.ts
+          git commit -m "Format Battle Back fix [skip format]"
+          git push origin HEAD:agent/fix-battle-back-return-flow
