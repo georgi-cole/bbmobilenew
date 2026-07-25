@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useStore } from 'react-redux';
 import './NavBar.css';
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
+import SurvivorRulesModal from '../ConfirmExitModal/SurvivorRulesModal';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame } from '../../store/gameSlice';
 import { selectPendingChallenge } from '../../store/challengeSlice';
@@ -28,6 +29,7 @@ export default function NavBar() {
   // we key visibility off the run state that resetGame/hydrateGame now mark
   // active immediately.
   const isGameActive = useAppSelector((s) => s.game.status === 'active');
+  const gameMode = useAppSelector((s) => s.game.mode);
   const pendingChallenge = useAppSelector(selectPendingChallenge);
   const pendingMinigame = useAppSelector((s) => s.game.pendingMinigame);
   const humanPlayer = useAppSelector((s) => s.game.players.find((player) => player.isUser));
@@ -42,6 +44,7 @@ export default function NavBar() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [survivalRulesOpen, setSurvivalRulesOpen] = useState(false);
   const humanInPendingChallenge =
     Boolean(pendingChallenge && humanPlayer && pendingChallenge.participants.includes(humanPlayer.id));
   const humanInPendingMinigame =
@@ -68,6 +71,14 @@ export default function NavBar() {
     }
     setSaveError(false);
     setConfirmOpen(true);
+  }
+
+  function handleRulesClick() {
+    if (gameMode === 'survival') {
+      setSurvivalRulesOpen(true);
+      return;
+    }
+    navigate('/rules');
   }
 
   function saveActiveRun(): boolean {
@@ -130,7 +141,7 @@ export default function NavBar() {
       activeTab={getActiveTab()}
       disabled={isGameOverRoute}
       onHomeClick={handleHomeClick}
-      onRulesClick={() => navigate('/rules')}
+      onRulesClick={handleRulesClick}
       onSettingsClick={() => navigate('/settings')}
       onLeaderboardClick={() => navigate('/leaderboard')}
       onProfileClick={() => navigate('/profile', { state: { from: '/game' } })}
@@ -146,6 +157,11 @@ export default function NavBar() {
         onConfirm={canPersistActiveRun ? saveThenReturnHome : quitWithoutSaving}
         onSecondary={canPersistActiveRun ? quitWithoutSaving : undefined}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <SurvivorRulesModal
+        open={survivalRulesOpen}
+        variant="reference"
+        onCancel={() => setSurvivalRulesOpen(false)}
       />
     </GameBottomNav>
   );
