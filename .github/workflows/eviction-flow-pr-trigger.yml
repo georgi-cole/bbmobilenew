@@ -132,19 +132,45 @@ jobs:
           tests/integration/ceremony.fixes.test.tsx
           tests/integration/confessionalDecision.test.tsx
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Validate cleanup
+        shell: bash
+        run: |
+          set +e
+          : > /tmp/eviction-cleanup-output.txt
 
-      - name: Run focused eviction tests
-        run: >-
-          npx vitest run
-          tests/integration/ceremony.fixes.test.tsx
-          tests/integration/confessionalDecision.test.tsx
-          tests/integration/eviction.cinematic.test.tsx
-          tests/doubleEviction.flow.test.ts
+          echo '=== TYPECHECK ===' >> /tmp/eviction-cleanup-output.txt
+          npm run typecheck >> /tmp/eviction-cleanup-output.txt 2>&1
+          status=$?
 
-      - name: Lint
-        run: npm run lint:ci
+          if [ "$status" -eq 0 ]; then
+            echo '=== FOCUSED TESTS ===' >> /tmp/eviction-cleanup-output.txt
+            npx vitest run \
+              tests/integration/ceremony.fixes.test.tsx \
+              tests/integration/confessionalDecision.test.tsx \
+              tests/integration/eviction.cinematic.test.tsx \
+              tests/doubleEviction.flow.test.ts >> /tmp/eviction-cleanup-output.txt 2>&1
+            status=$?
+          fi
+
+          if [ "$status" -eq 0 ]; then
+            echo '=== LINT ===' >> /tmp/eviction-cleanup-output.txt
+            npm run lint:ci >> /tmp/eviction-cleanup-output.txt 2>&1
+            status=$?
+          fi
+
+          set -e
+          cat /tmp/eviction-cleanup-output.txt
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            mkdir -p scripts
+            cp /tmp/eviction-cleanup-output.txt scripts/eviction-cleanup-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add scripts/eviction-cleanup-error.txt
+            git commit -m "Capture eviction cleanup validation failure"
+            git push origin HEAD:agent/eviction-flow-cleanup
+            exit "$status"
+          fi
 
       - name: Commit cleanup
         shell: bash
