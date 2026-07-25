@@ -71,18 +71,22 @@ describe('House of Cards preliminary AI', () => {
       }).mistakes === 0) perfectRuns += 1;
     }
 
-    expect(perfectRuns / 5_000).toBeLessThan(0.02);
+    expect(perfectRuns / 5_000).toBeLessThan(0.01);
   });
 
-  it('keeps strong AI perfect runs below the maximum rate', () => {
-    let perfectRuns = 0;
-    for (let seed = 1; seed <= 5_000; seed += 1) {
-      if (simulateHouseOfCardsAiRound({
-        playerId: 'alex', round: 5, pairCount: 12, tournamentSeed: seed, sessionAbility: 80,
-      }).mistakes === 0) perfectRuns += 1;
-    }
+  it('keeps strong AI perfect runs uncommon in the final two elimination rounds', () => {
+    const perfectRunRate = (round: number, pairCount: number) => {
+      let perfectRuns = 0;
+      for (let seed = 1; seed <= 10_000; seed += 1) {
+        if (simulateHouseOfCardsAiRound({
+          playerId: 'alex', round, pairCount, tournamentSeed: seed, sessionAbility: 80,
+        }).mistakes === 0) perfectRuns += 1;
+      }
+      return perfectRuns / 10_000;
+    };
 
-    expect(perfectRuns / 5_000).toBeLessThan(0.08);
+    expect(perfectRunRate(3, 8)).toBeLessThan(0.04);
+    expect(perfectRunRate(4, 10)).toBeLessThan(0.03);
   });
 
   it('produces more mistakes on larger boards', () => {
