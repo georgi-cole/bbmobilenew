@@ -25,17 +25,19 @@ if "function sourceText(" not in text:
     text = text.replace(marker, helper + marker, 1)
 
 pattern = re.compile(
-    r"readFileSync\(\s*new URL\(\s*(['\"])(?P<path>\.\./\.\./[^'\"]+)\1\s*,\s*import\.meta\.url\s*\)\s*,\s*(['\"])utf8\3\s*\)",
+    r"readFileSync\(\s*new URL\(\s*(['\"])(?P<path>\.\./\.\./[^'\"]+)\1\s*,\s*import\.meta\.url\s*,?\s*\)\s*,\s*(['\"])utf8\3\s*,?\s*\)",
     re.DOTALL,
 )
 
 replacements = 0
+
 
 def replace_file_url(match: re.Match[str]) -> str:
     global replacements
     replacements += 1
     relative_path = match.group("path").removeprefix("../../")
     return f"sourceText('{relative_path}')"
+
 
 text = pattern.sub(replace_file_url, text)
 if replacements < 3:
