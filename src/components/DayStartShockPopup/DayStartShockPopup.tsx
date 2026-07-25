@@ -2,25 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { Player } from '../../types'
-import { findByName, getById } from '../../data/houseguests'
 import { resolveInformalCutoutCandidates } from '../../utils/avatar'
+import { getDayStartShockObjectPronoun } from './dayStartShockCopy'
 import './DayStartShockPopup.css'
 
 interface DayStartShockPopupProps {
   player: Player
   reason: string
   onConfirm: () => void
-}
-
-export function getDayStartShockObjectPronoun(
-  player: Pick<Player, 'id' | 'name'>
-): 'him' | 'her' | 'them' {
-  const profile = getById(player.id) ?? findByName(player.name)
-  const sex = profile?.sex?.trim().toLowerCase()
-
-  if (sex === 'female' || sex === 'woman') return 'her'
-  if (sex === 'male' || sex === 'man') return 'him'
-  return 'them'
 }
 
 /**
