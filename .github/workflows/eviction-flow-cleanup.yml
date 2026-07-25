@@ -1,0 +1,462 @@
+name: Eviction flow cleanup
+
+on:
+  push:
+    branches:
+      - agent/eviction-flow-cleanup
+
+permissions:
+  contents: write
+
+jobs:
+  apply-cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out cleanup branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/eviction-flow-cleanup
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply eviction flow cleanup
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f'{label}: expected 1 match, found {count}')
+              return text.replace(old, new, 1)
+
+          def sub_once(text: str, pattern: str, replacement: str, label: str) -> str:
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise RuntimeError(f'{label}: expected 1 match, found {count}')
+              return updated
+
+          # ------------------------------------------------------------------
+          # GameScreen: one verdict beat, no eviction ad, no duplicate vote UI.
+          # ------------------------------------------------------------------
+          game_screen_path = Path('src/screens/GameScreen/GameScreen.tsx')
+          game_screen = game_screen_path.read_text(encoding='utf-8')
+
+          for action_import in (
+              '  submitHumanVote,\n',
+              '  submitTieBreak,\n',
+              '  submitPosTieBreak,\n',
+              '  activateDoubleVoteReward,\n',
+              '  declineDoubleVoteReward,\n',
+              '  submitHumanDoubleVote,\n',
+          ):
+              game_screen = replace_once(
+                  game_screen,
+                  action_import,
+                  '',
+                  f'remove legacy GameScreen import {action_import.strip()}',
+              )
+
+          game_screen = replace_once(
+              game_screen,
+              'export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 5000',
+              'export const POST_VOTE_ANNOUNCEMENT_MS = 3600',
+              'rename and shorten post-vote announcement constant',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "  // Post-vote eviction message shown on the main TV\n"
+              "  // for 3 s after vote results dismiss and before the eviction animation plays.\n",
+              "  // Post-vote verdict shown on the main TV after the tally reveal.\n"
+              "  // Its dismissal hands directly to the eviction cinematic without exposing normal TV content.\n",
+              'update post-vote state comment',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              '  const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)\n',
+              '',
+              'remove obsolete second post-vote delay state',
+          )
+
+          game_screen = sub_once(
+              game_screen,
+              r"\n  // ── Human live eviction vote.*?\n  // ── Democracia vote modal",
+              "\n  // ── Democracia vote modal",
+              'remove duplicate in-house live vote and tie-break state',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "        showDoubleVoteOffer ||\n"
+              "        showDoubleVoteModal ||\n"
+              "        showLiveVoteModal ||\n"
+              "        showTieBreakModal ||\n",
+              '',
+              'remove legacy vote modal dock guards',
+          )
+
+          game_screen = sub_once(
+              game_screen,
+              r"\n        \{/\* ── PR 3: doubleVote Big Eye offer.*?\n        \{/\* ── Democracia vote modal",
+              "\n        {/* ── Democracia vote modal",
+              'remove duplicate in-house vote and tie-break JSX',
+          )
+
+          game_screen = sub_once(
+              game_screen,
+              r"\n        \{showTieBreakMultiSelectModal && \(.*?\n        \)\}\n",
+              "\n",
+              'remove duplicate double-elimination tie-break JSX',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "    // When there is a clear evictee, use the new post-eviction sequence:\n"
+              "    //   1. Dismiss vote results (eviction animation blocked by postVoteAnnouncement)\n"
+              "    //   2. Show the post-vote TV announcement for 3 s\n"
+              "    //   3. Wait an additional 3 s beat after it clears\n"
+              "    //   4. Eviction animation plays\n"
+              "    //   5. Confessional prompt shows after the animation (if eligible)\n",
+              "    // When there is a clear evictee, use one continuous broadcast sequence:\n"
+              "    //   1. Dismiss the tally reveal while the verdict announcement takes over.\n"
+              "    //   2. Hold the verdict briefly so the names and vote count can be read.\n"
+              "    //   3. Hand directly to the eviction cinematic with no second empty pause.\n"
+              "    //   4. Offer the Confessional vote breakdown after the cinematic when eligible.\n",
+              'update clear eviction sequence documentation',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              '      setPostVoteAnnouncementDelayActive(false)\n',
+              '',
+              'remove obsolete delay reset',
+          )
+          game_screen = game_screen.replace(
+              'POST_VOTE_ANNOUNCEMENT_DELAY_MS',
+              'POST_VOTE_ANNOUNCEMENT_MS',
+          )
+
+          game_screen = sub_once(
+              game_screen,
+              r"  const handlePostVoteAnnouncementDismiss = useCallback\(\(\) => \{\n"
+              r"    setPostVoteAnnouncement\(null\)\n"
+              r"    setPostVoteAnnouncementDelayActive\(true\)\n"
+              r"  \}, \[\]\)\n\n"
+              r"  useEffect\(\(\) => \{\n"
+              r"    if \(!postVoteAnnouncementDelayActive\) return\n"
+              r"    const id = window\.setTimeout\(\(\) => \{\n"
+              r"      setPostVoteAnnouncementDelayActive\(false\)\n"
+              r"    \}, POST_VOTE_ANNOUNCEMENT_MS\)\n"
+              r"    return \(\) => window\.clearTimeout\(id\)\n"
+              r"  \}, \[postVoteAnnouncementDelayActive\]\)",
+              "  const handlePostVoteAnnouncementDismiss = useCallback(() => {\n"
+              "    setPostVoteAnnouncement(null)\n"
+              "  }, [])",
+              'remove second post-vote delay effect',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              "  // Also blocked while the post-vote announcement or its follow-up pause is active.\n",
+              "  // Blocked only while the post-vote verdict announcement is active.\n",
+              'update eviction splash gate comment',
+          )
+          game_screen = replace_once(
+              game_screen,
+              '    !postVoteAnnouncementDelayActive &&\n',
+              '',
+              'remove second delay from eviction splash gate',
+          )
+
+          game_screen = replace_once(
+              game_screen,
+              '  const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)\n',
+              '  const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)\n'
+              '  const [resumeVoteResultsAfterDeduction, setResumeVoteResultsAfterDeduction] = useState(false)\n',
+              'add vote deduction resume state',
+          )
+
+          game_screen = sub_once(
+              game_screen,
+              r"  const handleVoteDeductionAccept = useCallback\(\(\) => \{.*?\n"
+              r"  const unlockVoteBreakdown = useCallback",
+              "  const handleVoteDeductionAccept = useCallback(() => {\n"
+              "    setShowVoteDeductionOffer(false)\n"
+              "    dispatch(activateVoteDeductionReward())\n"
+              "    setResumeVoteResultsAfterDeduction(true)\n"
+              "  }, [dispatch])\n\n"
+              "  const handleVoteDeductionDecline = useCallback(() => {\n"
+              "    setShowVoteDeductionOffer(false)\n"
+              "    dispatch(declineVoteDeduction())\n"
+              "    setResumeVoteResultsAfterDeduction(true)\n"
+              "  }, [dispatch])\n\n"
+              "  useEffect(() => {\n"
+              "    if (!resumeVoteResultsAfterDeduction || game.awaitingVoteDeductionPrompt) return\n"
+              "    setResumeVoteResultsAfterDeduction(false)\n"
+              "    handleVoteResultsDone()\n"
+              "  }, [game.awaitingVoteDeductionPrompt, handleVoteResultsDone, resumeVoteResultsAfterDeduction])\n\n"
+              "  const unlockVoteBreakdown = useCallback",
+              'route vote deduction through the standard result sequence',
+          )
+
+          game_screen = sub_once(
+              game_screen,
+              r"\n    // eviction_auto — after each eviction\n"
+              r"    if \(.*?\n"
+              r"    \}\n\n"
+              r"    // pos_decision_auto",
+              "\n\n    // pos_decision_auto",
+              'remove automatic eviction short break',
+          )
+
+          game_screen_path.write_text(game_screen, encoding='utf-8')
+
+          # ------------------------------------------------------------------
+          # Reducers: tie decisions queue the same pending-eviction cinematic.
+          # ------------------------------------------------------------------
+          game_slice_path = Path('src/store/gameSlice.ts')
+          game_slice = game_slice_path.read_text(encoding='utf-8')
+
+          game_slice = replace_once(
+              game_slice,
+              "     * Human LOH breaks a tied eviction vote by selecting the evictee.\n"
+              "     * Evicts the chosen nominee, clears `awaitingTieBreak`, and advances\n"
+              "     * directly to `week_end` (consistent with the finalizeFinal3Eviction pattern).\n",
+              "     * Human LOH breaks a tied eviction vote by selecting the evictee.\n"
+              "     * Clears the tie state and queues the same deferred eviction cinematic used\n"
+              "     * by a clear house vote. The phase advances only after the cinematic commits.\n",
+              'update human tie-break reducer documentation',
+          )
+
+          game_slice = replace_once(
+              game_slice,
+              "      // Push the week-end banner now: submitTieBreak jumps directly to week_end,\n"
+              "      // bypassing the advance() case 'week_end' branch that normally emits it.\n"
+              "      pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game')\n"
+              "      state.phase = 'week_end'\n",
+              "      // Keep the phase at eviction_results. GameScreen commits the eviction after\n"
+              "      // the cinematic, then advances exactly once into week_end.\n",
+              'stop human LOH tie-break from skipping ahead',
+          )
+
+          game_slice = replace_once(
+              game_slice,
+              "      // Push the week-end banner.\n"
+              "      pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game')\n"
+              "      state.phase = 'week_end'\n",
+              "      // Keep the phase at eviction_results. The shared cinematic completion\n"
+              "      // handler finalizes the eviction and advances to week_end.\n",
+              'stop POS tie-break from skipping ahead',
+          )
+
+          game_slice_path.write_text(game_slice, encoding='utf-8')
+
+          # ------------------------------------------------------------------
+          # Confessional: dispatch the POS-holder tie reducer on co-LOH days.
+          # ------------------------------------------------------------------
+          panel_path = Path('src/screens/DiaryRoom/ConfessionalDecisionPanel.tsx')
+          panel = panel_path.read_text(encoding='utf-8')
+          panel = replace_once(
+              panel,
+              '  submitTieBreak,\n',
+              '  submitTieBreak,\n  submitPosTieBreak,\n',
+              'import POS tie-break action',
+          )
+          panel = replace_once(
+              panel,
+              '  const isDoubleEviction = game.doubleEviction?.weekActive === true;\n',
+              '  const isDoubleEviction = game.doubleEviction?.weekActive === true;\n'
+              '  const isPosTieBreak = game.awaitingPosTieBreak === true;\n',
+              'derive POS tie-break mode',
+          )
+          panel = replace_once(
+              panel,
+              '    dispatch(submitTieBreak(id));\n',
+              '    if (isPosTieBreak) dispatch(submitPosTieBreak(id));\n'
+              '    else dispatch(submitTieBreak(id));\n',
+              'route Confessional tie choice to correct reducer',
+          )
+          panel_path.write_text(panel, encoding='utf-8')
+
+          presentation_path = Path('src/screens/DiaryRoom/confessionalDecisionPresentation.ts')
+          presentation = presentation_path.read_text(encoding='utf-8')
+          presentation = replace_once(
+              presentation,
+              "      prompt = multiSelectCount > 1\n"
+              "        ? `Choose the ${multiSelectCount} players you want to eliminate.`\n"
+              "        : 'Break the tie by choosing who you want to eliminate.';\n",
+              "      prompt = multiSelectCount > 1\n"
+              "        ? `Choose the ${multiSelectCount} players you want to eliminate.`\n"
+              "        : game.awaitingPosTieBreak\n"
+              "          ? 'As the Power of Safety holder, break the tie by choosing who you want to eliminate.'\n"
+              "          : 'Break the tie by choosing who you want to eliminate.';\n",
+              'clarify POS tie-break Confessional prompt',
+          )
+          presentation_path.write_text(presentation, encoding='utf-8')
+
+          # ------------------------------------------------------------------
+          # Tests: assert immediate cinematic handoff and correct POS routing.
+          # ------------------------------------------------------------------
+          ceremony_test_path = Path('tests/integration/ceremony.fixes.test.tsx')
+          ceremony_test = ceremony_test_path.read_text(encoding='utf-8')
+          ceremony_test = replace_once(
+              ceremony_test,
+              '  POST_VOTE_ANNOUNCEMENT_DELAY_MS,\n',
+              '',
+              'remove obsolete delay constant test import',
+          )
+          ceremony_test = replace_once(
+              ceremony_test,
+              "    // Dismiss the post-vote announcement on the main TV.\n"
+              "    await act(async () => {\n"
+              "      capturedOnExternalAnnouncementDismiss?.();\n"
+              "    });\n\n"
+              "    // The eviction animation starts only after the extra post-announcement delay.\n"
+              "    expect(screen.queryByTestId('eviction-overlay')).toBeNull();\n"
+              "    await act(async () => {\n"
+              "      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS - 1);\n"
+              "    });\n"
+              "    expect(screen.queryByTestId('eviction-overlay')).toBeNull();\n"
+              "    await act(async () => {\n"
+              "      vi.advanceTimersByTime(1);\n"
+              "    });\n"
+              "    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();\n",
+              "    // Dismissing the verdict hands directly to the eviction cinematic.\n"
+              "    await act(async () => {\n"
+              "      capturedOnExternalAnnouncementDismiss?.();\n"
+              "    });\n"
+              "    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();\n",
+              'update immediate cinematic handoff test',
+          )
+          ceremony_test, removed_timer_blocks = re.subn(
+              r"\n    await act\(async \(\) => \{\n"
+              r"      vi\.advanceTimersByTime\(POST_VOTE_ANNOUNCEMENT_DELAY_MS\);\n"
+              r"    \}\);",
+              '',
+              ceremony_test,
+          )
+          if removed_timer_blocks != 2:
+              raise RuntimeError(
+                  f'remove obsolete timer waits: expected 2 matches, found {removed_timer_blocks}'
+              )
+          ceremony_test_path.write_text(ceremony_test, encoding='utf-8')
+
+          confessional_test_path = Path('tests/integration/confessionalDecision.test.tsx')
+          confessional_test = confessional_test_path.read_text(encoding='utf-8')
+          confessional_test = replace_once(
+              confessional_test,
+              "import { act, render, screen } from '@testing-library/react';\n",
+              "import { act, fireEvent, render, screen } from '@testing-library/react';\n",
+              'add fireEvent test import',
+          )
+          confessional_test = replace_once(
+              confessional_test,
+              "import DiaryRoom from '../../src/screens/DiaryRoom/DiaryRoom';\n",
+              "import DiaryRoom from '../../src/screens/DiaryRoom/DiaryRoom';\n"
+              "import ConfessionalDecisionPanel from '../../src/screens/DiaryRoom/ConfessionalDecisionPanel';\n",
+              'import ConfessionalDecisionPanel for routing test',
+          )
+          confessional_test += """
+
+// ── Co-LOH Democracia tie routing ────────────────────────────────────────────
+
+describe('ConfessionalDecisionPanel — Democracia POS tie-break', () => {
+  it('uses the POS-holder reducer and leaves eviction_results for the cinematic', () => {
+    const players = buildPlayers();
+    players[0] = { ...players[0], status: 'pos' };
+    players[1] = { ...players[1], status: 'nominated' };
+    players[2] = { ...players[2], status: 'nominated' };
+
+    const store = makeStore({
+      phase: 'eviction_results',
+      players,
+      lohId: 'p4',
+      coLohIds: ['p4', 'p5'],
+      posWinnerId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      tiedNomineeIds: ['p2', 'p3'],
+      voteResults: null,
+      votes: { p6: 'p2', p7: 'p3' },
+      awaitingTieBreak: true,
+      awaitingPosTieBreak: true,
+    });
+
+    render(
+      <Provider store={store}>
+        <ConfessionalDecisionPanel
+          decision={{ type: 'tie_break', week: 2, phase: 'eviction_results' }}
+        />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Player 2/i }));
+
+    const game = store.getState().game;
+    expect(game.awaitingTieBreak).toBe(false);
+    expect(game.awaitingPosTieBreak).toBe(false);
+    expect(game.pendingEviction?.evicteeId).toBe('p2');
+    expect(game.pendingEviction?.evictionMessage).toContain('POS holder');
+    expect(game.phase).toBe('eviction_results');
+  });
+});
+"""
+          confessional_test_path.write_text(confessional_test, encoding='utf-8')
+
+          # Delete the unused pre-TV vote results implementation.
+          for legacy_path in (
+              Path('src/components/VoteResultsPopup/VoteResultsPopup.tsx'),
+              Path('src/components/VoteResultsPopup/VoteResultsPopup.css'),
+          ):
+              if not legacy_path.exists():
+                  raise RuntimeError(f'legacy vote results file missing: {legacy_path}')
+              legacy_path.unlink()
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed files
+        run: >-
+          npx prettier --write
+          src/screens/GameScreen/GameScreen.tsx
+          src/store/gameSlice.ts
+          src/screens/DiaryRoom/ConfessionalDecisionPanel.tsx
+          src/screens/DiaryRoom/confessionalDecisionPresentation.ts
+          tests/integration/ceremony.fixes.test.tsx
+          tests/integration/confessionalDecision.test.tsx
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run focused eviction tests
+        run: >-
+          npx vitest run
+          tests/integration/ceremony.fixes.test.tsx
+          tests/integration/confessionalDecision.test.tsx
+          tests/integration/eviction.cinematic.test.tsx
+          tests/doubleEviction.flow.test.ts
+
+      - name: Lint
+        run: npm run lint:ci
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          rm .github/workflows/eviction-flow-cleanup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix eviction flow sequencing"
+          git push origin HEAD:agent/eviction-flow-cleanup
