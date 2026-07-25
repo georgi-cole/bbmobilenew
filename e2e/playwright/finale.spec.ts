@@ -276,6 +276,15 @@ test.describe('Finale / Jury flow @release', () => {
         .sort()
     ).toEqual(roster.preJury.map((player) => player.id).sort())
 
+    const promotedJuror = roster.preJury.at(-1)
+    if (!promotedJuror) {
+      throw new Error('finale parity fixture needs an eligible pre-jury player')
+    }
+    const expectedRegularJurorIds = [
+      ...roster.jurors.map((player) => player.id),
+      promotedJuror.id,
+    ].sort()
+
     await page.getByRole('button', { name: '→ Force jury' }).click()
     await closeDebugPanelIfOpen(page)
 
@@ -287,11 +296,15 @@ test.describe('Finale / Jury flow @release', () => {
         return {
           finalists: [...state.finale.finalistIds].sort(),
           jurors: state.finale.jurorIds.filter((id) => id !== '__public__').sort(),
+          publicJurorEnabled: state.finale.publicJurorEnabled,
+          publicVoteWeight: state.finale.publicVoteWeight,
         }
       })
       .toEqual({
         finalists: roster.finalists.map((player) => player.id).sort(),
-        jurors: roster.jurors.map((player) => player.id).sort(),
+        jurors: expectedRegularJurorIds,
+        publicJurorEnabled: true,
+        publicVoteWeight: 1,
       })
 
     // Everything after the fixture uses the same controls a player sees.
