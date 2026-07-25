@@ -278,7 +278,10 @@ export default function FloatingActionBar({
       dispatchPlayPressedEvent()
       return
     }
-    if (advancedProgressRef.current === advanceProgressKey) return
+    if (advancedProgressRef.current === advanceProgressKey) {
+      dispatchPlayPressedEvent()
+      return
+    }
     advancedProgressRef.current = advanceProgressKey
     dispatch(advance())
     dispatchPlayPressedEvent()
