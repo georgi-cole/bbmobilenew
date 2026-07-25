@@ -22,12 +22,8 @@ interface DayStartShockPopupProps {
 export default function DayStartShockPopup({ player, reason, onConfirm }: DayStartShockPopupProps) {
   const prefersReducedMotion = useReducedMotion()
   const cutoutCandidates = useMemo(() => resolveInformalCutoutCandidates(player), [player])
-  const [cutoutIndex, setCutoutIndex] = useState(0)
+  const [failedCutouts, setFailedCutouts] = useState<ReadonlySet<string>>(() => new Set())
   const objectPronoun = getDayStartShockObjectPronoun(player)
-
-  useEffect(() => {
-    setCutoutIndex(0)
-  }, [player.id, player.name])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -39,7 +35,9 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
 
   if (typeof document === 'undefined') return null
 
-  const activeCutout = cutoutCandidates[Math.min(cutoutIndex, cutoutCandidates.length - 1)]
+  const activeCutout =
+    cutoutCandidates.find((candidate) => !failedCutouts.has(candidate)) ??
+    cutoutCandidates[cutoutCandidates.length - 1]
 
   return createPortal(
     <div className="day-start-shock" role="presentation" data-testid="day-start-shock-popup">
@@ -76,9 +74,8 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
                 src={activeCutout}
                 alt={player.name}
                 onError={() => {
-                  setCutoutIndex((current) =>
-                    current < cutoutCandidates.length - 1 ? current + 1 : current
-                  )
+                  if (!activeCutout) return
+                  setFailedCutouts((current) => new Set(current).add(activeCutout))
                 }}
               />
             </div>
