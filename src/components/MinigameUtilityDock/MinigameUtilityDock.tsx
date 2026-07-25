@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import './MinigameUtilityDock.css';
 
-export type MinigameUtilityPhase = 'rules' | 'countdown' | 'playing';
+export type MinigameUtilityPhase = 'rules' | 'countdown' | 'playing' | 'results';
 
 interface Props {
   phase: MinigameUtilityPhase;
@@ -50,7 +50,7 @@ export default function MinigameUtilityDock({
   onOpenRules,
   onRequestExit,
 }: Props) {
-  const rulesAvailable = phase !== 'rules';
+  const rulesAvailable = phase === 'countdown' || phase === 'playing';
 
   return (
     <>
@@ -58,8 +58,9 @@ export default function MinigameUtilityDock({
         <button
           type="button"
           className="minigame-utility-dock__backdrop"
-          aria-label="Close minigame menu"
+          aria-label="Dismiss minigame options"
           onClick={onCloseMenu}
+          tabIndex={-1}
         />
       )}
 
