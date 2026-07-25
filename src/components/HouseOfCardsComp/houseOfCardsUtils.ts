@@ -46,8 +46,8 @@ export function chooseHouseOfCardsAiPair(params: {
   // Final-round AI should resemble a capable human, not a perfect lookup table.
   // A revealed card can be stored in memory but temporarily inaccessible, and
   // even an accessible matching pair is not recalled with certainty.
-  const memoryAccessChance = 0.48 + normalizedSkill * 0.28;
-  const recallChance = 0.28 + normalizedSkill * 0.34;
+  const memoryAccessChance = 0.40 + normalizedSkill * 0.22;
+  const recallChance = 0.20 + normalizedSkill * 0.25;
   const accessibleRememberedIndexes = new Set(
     [...rememberedIndexes].filter(() => rng() < memoryAccessChance),
   );
