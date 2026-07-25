@@ -75,7 +75,9 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
                 alt={player.name}
                 onError={() => {
                   if (!activeCutout) return
-                  setFailedCutouts((current) => new Set(current).add(activeCutout))
+                  setFailedCutouts((current) =>
+                    current.has(activeCutout) ? current : new Set(current).add(activeCutout)
+                  )
                 }}
               />
             </div>
