@@ -184,6 +184,12 @@ export default function MinigameHost({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [utilityView]);
 
+  useEffect(() => {
+    if (phase === 'countdown' && utilityView !== null) {
+      setCountdown(3);
+    }
+  }, [phase, utilityView]);
+
   const handleRulesConfirm = useCallback(() => {
     setUtilityView(null);
     setCountdown(3);
@@ -214,10 +220,15 @@ export default function MinigameHost({
     return () => clearTimeout(t);
   }, [phase, countdown, skipCountdown, utilityView]);
 
+  // Keep the countdown SFX synchronized with the reset/paused visual countdown.
   useEffect(() => {
-    if (phase !== 'countdown' || skipCountdown) return;
+    if (phase !== 'countdown' || skipCountdown || utilityView !== null) {
+      SoundManager.stop(COUNTDOWN_TIMER_KEY);
+      return;
+    }
     void SoundManager.play(COUNTDOWN_TIMER_KEY);
-  }, [phase, skipCountdown]);
+    return () => SoundManager.stop(COUNTDOWN_TIMER_KEY);
+  }, [phase, skipCountdown, utilityView]);
 
   const handleComplete = useCallback((result: LegacyRawResult) => {
     setFinalValue(result.value);
