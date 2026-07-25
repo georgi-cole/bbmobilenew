@@ -79,7 +79,23 @@ jobs:
           script = '\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())
           Path('/tmp/apply_eviction_cleanup.py').write_text(script + '\n', encoding='utf-8')
           PY
-          python /tmp/apply_eviction_cleanup.py
+
+          set +e
+          python /tmp/apply_eviction_cleanup.py > /tmp/eviction-cleanup-output.txt 2>&1
+          status=$?
+          set -e
+          cat /tmp/eviction-cleanup-output.txt
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            mkdir -p scripts
+            cp /tmp/eviction-cleanup-output.txt scripts/eviction-cleanup-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add scripts/eviction-cleanup-error.txt
+            git commit -m "Capture eviction cleanup transform failure"
+            git push origin HEAD:agent/eviction-flow-cleanup
+            exit "$status"
+          fi
 
       - name: Install dependencies
         run: npm ci
@@ -114,6 +130,7 @@ jobs:
           rm .github/workflows/eviction-flow-cleanup.yml
           rm .github/workflows/eviction-flow-pr-trigger.yml
           rm -f scripts/.eviction-flow-trigger
+          rm -f scripts/eviction-cleanup-error.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
