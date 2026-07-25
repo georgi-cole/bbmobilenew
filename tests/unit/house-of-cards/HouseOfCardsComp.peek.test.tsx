@@ -120,4 +120,24 @@ describe('HouseOfCardsComp — five-round tournament', () => {
 
     expect(firstTurnMatches).toBeLessThan(25);
   });
+
+  it('does not turn a fully observed final board into near-perfect AI play', () => {
+    const board = buildHouseOfCardsBoard(2026, 12);
+    const rememberedIndexes = new Set(board.map((card) => card.index));
+    let matches = 0;
+
+    for (let seed = 1; seed <= 500; seed += 1) {
+      const pair = chooseHouseOfCardsAiPair({
+        board,
+        rememberedIndexes,
+        seed,
+        skill: 55,
+      });
+      expect(pair).not.toBeNull();
+      if (pair && board[pair[0]].symbol === board[pair[1]].symbol) matches += 1;
+    }
+
+    expect(matches / 500).toBeGreaterThan(0.25);
+    expect(matches / 500).toBeLessThan(0.60);
+  });
 });
