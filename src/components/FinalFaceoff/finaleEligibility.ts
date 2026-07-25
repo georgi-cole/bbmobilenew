@@ -1,5 +1,9 @@
 import type { Player } from '../../types'
 
+/**
+ * Extraordinary removals persist `tribunalEligible = false`; normal evictees
+ * remain eligible for Tribunal membership or parity promotion.
+ */
 export function isTribunalEligiblePlayer(player: Player): boolean {
   return player.tribunalEligible !== false
 }
