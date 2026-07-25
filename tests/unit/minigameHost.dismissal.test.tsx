@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 
 vi.mock('../../src/services/sound/SoundManager', () => ({
-  SoundManager: { play: vi.fn() },
+  SoundManager: { play: vi.fn(), stop: vi.fn() },
 }));
 
 vi.mock('../../src/components/ClosestWithoutGoingOverComp', () => ({
