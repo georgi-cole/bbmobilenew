@@ -1,7 +1,12 @@
-Traceback (most recent call last):
-  File "/tmp/apply_eviction_cleanup.py", line 107, in <module>
-    game_screen = replace_once(
-                  ^^^^^^^^^^^^^
-  File "/tmp/apply_eviction_cleanup.py", line 7, in replace_once
-    raise RuntimeError(f'{label}: expected 1 match, found {count}')
-RuntimeError: remove obsolete delay reset: expected 1 match, found 2
+=== TYPECHECK ===
+
+> bbmobilenew@1.0.0 typecheck
+> tsc -b
+
+src/screens/GameScreen/GameScreen.tsx(361,9): error TS6133: 'socialRelationships' is declared but its value is never read.
+src/screens/GameScreen/GameScreen.tsx(3210,5): error TS2304: Cannot find name 'showDoubleVoteOffer'.
+src/screens/GameScreen/GameScreen.tsx(3211,5): error TS2304: Cannot find name 'showDoubleVoteModal'.
+src/screens/GameScreen/GameScreen.tsx(3212,5): error TS2304: Cannot find name 'showLiveVoteModal'.
+src/screens/GameScreen/GameScreen.tsx(3213,5): error TS2304: Cannot find name 'showTieBreakModal'.
+src/screens/GameScreen/GameScreen.tsx(3249,9): error TS2304: Cannot find name 'postVoteAnnouncementDelayActive'.
+src/screens/GameScreen/GameScreen.tsx(3258,5): error TS2304: Cannot find name 'postVoteAnnouncementDelayActive'.
