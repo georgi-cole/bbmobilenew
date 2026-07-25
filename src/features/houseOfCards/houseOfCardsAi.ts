@@ -26,12 +26,27 @@ function hashId(value: string): number {
   return hash >>> 0;
 }
 
-function getPerfectRunChance(effectiveAbility: number): number {
-  if (effectiveAbility < 45) return 0.001;
-  if (effectiveAbility < 60) return 0.005;
-  if (effectiveAbility < 75) return 0.02;
-  if (effectiveAbility < 85) return 0.05;
-  return 0.08;
+function getPerfectRunChance(effectiveAbility: number, pairCount: number): number {
+  let baseChance: number;
+
+  if (effectiveAbility < 45) baseChance = 0.001;
+  else if (effectiveAbility < 60) baseChance = 0.005;
+  else if (effectiveAbility < 75) baseChance = 0.02;
+  else if (effectiveAbility < 85) baseChance = 0.05;
+  else baseChance = 0.08;
+
+  // A flawless run becomes substantially less plausible as the board grows.
+  // This especially tightens the final two elimination rounds (8 and 10 pairs)
+  // while still allowing an exceptional performance occasionally.
+  const boardMultiplier = pairCount >= 10
+    ? 0.35
+    : pairCount >= 8
+      ? 0.5
+      : pairCount >= 6
+        ? 0.75
+        : 1;
+
+  return baseChance * boardMultiplier;
 }
 
 export function createHouseOfCardsSessionAbility(
@@ -107,7 +122,7 @@ export function simulateHouseOfCardsAiRound(params: {
     Math.max(2, Math.round(pairCount * 1.5)),
   );
 
-  if (rng() < getPerfectRunChance(effectiveAbility)) {
+  if (rng() < getPerfectRunChance(effectiveAbility, pairCount)) {
     mistakes = 0;
   } else {
     mistakes = Math.max(1, mistakes);
