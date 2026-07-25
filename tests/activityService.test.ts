@@ -1,31 +1,12 @@
 /**
  * Unit tests for src/services/activityService.ts
  *
- * Covers channel routing predicates and the DR session summary builder:
- *  1.  isVisibleInMainLog — no channels (legacy): always visible.
- *  2.  isVisibleInMainLog — channels includes 'mainLog': visible.
- *  3.  isVisibleInMainLog — channels includes 'tv': visible (TV messages appear in log).
- *  4.  isVisibleInMainLog — channels is ['dr'] only: NOT visible.
- *  5.  isVisibleInMainLog — channels is ['recentActivity'] only: NOT visible.
- *  6.  isVisibleOnTv — no channels: always visible.
- *  7.  isVisibleOnTv — channels includes 'tv': visible.
- *  8.  isVisibleOnTv — channels includes 'mainLog': visible.
- *  9.  isVisibleOnTv — channels is ['dr'] only: NOT visible.
- * 10.  isVisibleInDr — no channels, type 'diary': visible (legacy confessional entries).
- * 11.  isVisibleInDr — no channels, type 'game': NOT visible.
- * 12.  isVisibleInDr — channels includes 'dr', source 'manual': visible.
- * 13.  isVisibleInDr — channels includes 'dr', source 'system': NOT visible.
- * 14.  isVisibleInDr — channels is ['mainLog'], source 'manual': NOT visible.
- * 15.  buildDrSessionSummary — formats concise one-line summary correctly.
- * 16.  buildDrSessionSummary — zero failures produces correct copy.
- * 17.  Social action entries with source 'manual' pass isVisibleInDr when channels includes 'dr'.
- * 18.  Social action entries with source 'system' do NOT pass isVisibleInDr.
- * 19.  buildDrSessionSummary — returns a single line when summarising a session.
- * 20.  TV close message is visible on TV and in main log but not in DR.
+ * Covers channel routing predicates and the DR session summary builder.
  */
 
 import { describe, it, expect } from 'vitest';
 import {
+  isBattleBackReturnResultEvent,
   isVisibleInMainLog,
   isVisibleOnTv,
   isVisibleInDr,
@@ -76,6 +57,27 @@ describe('isVisibleOnTv', () => {
 
   it('returns false when channels is ["dr"] only', () => {
     expect(isVisibleOnTv({ channels: ['dr'] })).toBe(false);
+  });
+
+  it('keeps the Battle Back winner result in the main log but out of TV announcement selection', () => {
+    const resultEvent = {
+      type: 'twist',
+      text: '🏆 Lia has won Back 2 the Game and returns to the game! 🔥',
+    };
+
+    expect(isBattleBackReturnResultEvent(resultEvent)).toBe(true);
+    expect(isVisibleOnTv(resultEvent)).toBe(false);
+    expect(isVisibleInMainLog(resultEvent)).toBe(true);
+  });
+
+  it('does not suppress the original Battle Back activation announcement', () => {
+    const activationEvent = {
+      type: 'twist',
+      text: '🔥 SHOCK: Back 2 the Game is here! Tribunal members will compete for a chance to return! 🏆',
+    };
+
+    expect(isBattleBackReturnResultEvent(activationEvent)).toBe(false);
+    expect(isVisibleOnTv(activationEvent)).toBe(true);
   });
 });
 
