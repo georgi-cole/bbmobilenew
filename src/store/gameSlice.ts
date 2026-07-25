@@ -2450,8 +2450,8 @@ const gameSlice = createSlice({
 
     /**
      * Human LOH breaks a tied eviction vote by selecting the evictee.
-     * Evicts the chosen nominee, clears `awaitingTieBreak`, and advances
-     * directly to `week_end` (consistent with the finalizeFinal3Eviction pattern).
+     * Clears the tie state and queues the same deferred eviction cinematic used
+     * by a clear house vote. The phase advances only after the cinematic commits.
      */
     submitTieBreak(state, action: PayloadAction<string>) {
       const nomineeId = action.payload
@@ -2499,10 +2499,8 @@ const gameSlice = createSlice({
         evicteeId: nomineeId,
         evictionMessage: `${lohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🗳️`,
       }
-      // Push the week-end banner now: submitTieBreak jumps directly to week_end,
-      // bypassing the advance() case 'week_end' branch that normally emits it.
-      pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game')
-      state.phase = 'week_end'
+      // Keep the phase at eviction_results. GameScreen commits the eviction after
+      // the cinematic, then advances exactly once into week_end.
     },
 
     submitDoubleEvictionTieBreak(state, action: PayloadAction<string[]>) {
@@ -2714,9 +2712,8 @@ const gameSlice = createSlice({
         evicteeId: nomineeId,
         evictionMessage: `${posHolder?.name ?? 'The POS holder'} breaks the tie as a special exception, voting to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🗳️`,
       }
-      // Push the week-end banner.
-      pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game')
-      state.phase = 'week_end'
+      // Keep the phase at eviction_results. The shared cinematic completion
+      // handler finalizes the eviction and advances to week_end.
     },
 
     /**

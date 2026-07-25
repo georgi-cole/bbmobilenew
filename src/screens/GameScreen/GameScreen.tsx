@@ -19,8 +19,6 @@ import {
   submitPovDecision,
   submitPovSaveTarget,
   setReplacementNominee,
-  submitHumanVote,
-  submitTieBreak,
   submitDoubleEvictionTieBreak,
   dismissDemocraciaResultDisplay,
   dismissVoteResults,
@@ -48,9 +46,6 @@ import {
   resumeAfterPublicFavorite,
   commitPublicSave,
   expireMissionReward,
-  activateDoubleVoteReward,
-  declineDoubleVoteReward,
-  submitHumanDoubleVote,
   activateVoteDeductionReward,
   declineVoteDeduction,
   tryActivateDemocracia,
@@ -58,7 +53,6 @@ import {
   submitDemocraciaVote,
   resolveDemocraciaPublicBreaker,
   submitCoLohNomination,
-  submitPosTieBreak,
   completeTwinShockRevealAnimation,
   resetGame,
 } from '../../store/gameSlice'
@@ -190,7 +184,7 @@ const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
-export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 5000
+export const POST_VOTE_ANNOUNCEMENT_MS = 3600
 export const POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS = 400
 const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
 const AI_TIE_STAGE_DELAY_MS = 3000
@@ -364,7 +358,6 @@ export default function GameScreen() {
   }, [store])
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
-  const socialRelationships = useAppSelector((s) => s.social.relationships)
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
   const settings = useAppSelector(selectSettings)
@@ -400,12 +393,11 @@ export default function GameScreen() {
   const [socialModuleUnavailableAnnouncement, setSocialModuleUnavailableAnnouncement] =
     useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
-  // Post-vote eviction message shown on the main TV
-  // for 3 s after vote results dismiss and before the eviction animation plays.
+  // Post-vote verdict shown on the main TV after the tally reveal.
+  // Its dismissal hands directly to the eviction cinematic without exposing normal TV content.
   const [postVoteAnnouncement, setPostVoteAnnouncement] = useState<Announcement | null>(null)
   const [showConfessionalTvPrompt, setShowConfessionalTvPrompt] = useState(false)
   const [confessionalPromptTriggered, setConfessionalPromptTriggered] = useState(false)
-  const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
   const [pendingPublicSaveResult, setPendingPublicSaveResult] =
     useState<PendingPublicSaveResult | null>(null)
   const [publicSaveCeremonyConsumedKey, setPublicSaveCeremonyConsumedKey] =
@@ -1891,88 +1883,6 @@ export default function GameScreen() {
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
-  // ── Human live eviction vote ──────────────────────────────────────────────
-  // Shown when the human player is an eligible voter during live_vote.
-  // Hidden when confessional routing is active (decision is in the DR).
-  const showLiveVoteModal =
-    game.phase === 'live_vote' &&
-    Boolean(game.awaitingHumanVote) &&
-    !game.humanDoubleVoteActive &&
-    !game.awaitingDoubleVoteOffer &&
-    humanPlayer !== undefined &&
-    !activeConfessionalDecision
-  const liveVoteOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
-
-  // ── PR 3: doubleVote Big Eye offer ────────────────────────────────────────
-  // Shown BEFORE the vote modal when the player has an eligible doubleVote
-  // reward. The player accepts (gets 2 vote slots) or declines (normal vote).
-  const showDoubleVoteOffer =
-    game.phase === 'live_vote' &&
-    Boolean(game.awaitingDoubleVoteOffer) &&
-    humanPlayer !== undefined &&
-    !activeConfessionalDecision
-
-  // ── PR 3: double vote 2-slot selection ───────────────────────────────────
-  // Shown when humanDoubleVoteActive — player must pick 2 nominees.
-  const showDoubleVoteModal =
-    game.phase === 'live_vote' &&
-    Boolean(game.awaitingHumanVote) &&
-    Boolean(game.humanDoubleVoteActive) &&
-    humanPlayer !== undefined &&
-    !game.awaitingDoubleVoteOffer && // offer resolved first
-    !activeConfessionalDecision
-
-  // Local state to track the first double-vote selection
-  const [doubleVoteFirst, setDoubleVoteFirst] = useState<string | null>(null)
-
-  // ── Human LOH tie-break ───────────────────────────────────────────────────
-  // Shown when the live vote ended in a tie and the human is LOH.
-  // Only shown after the vote results modal has been dismissed (voteResults cleared),
-  // so the house votes are always seen before the LOH is asked to break the tie.
-  // Not shown on co-LOH Democracia days (awaitingPosTieBreak) — that uses a separate modal.
-  const showTieBreakModal =
-    game.phase === 'eviction_results' &&
-    Boolean(game.awaitingTieBreak) &&
-    !game.awaitingPosTieBreak &&
-    humanIsHoH &&
-    !game.voteResults &&
-    !activeConfessionalDecision
-  const tieBreakOptions = alivePlayers.filter((p) =>
-    (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
-  )
-  const tieBreakPitches: Record<string, string> = humanPlayer
-    ? Object.fromEntries(
-        tieBreakOptions.map((nominee) => {
-          const outward = socialRelationships[humanPlayer.id]?.[nominee.id]?.affinity ?? 0
-          const inward = socialRelationships[nominee.id]?.[humanPlayer.id]?.affinity ?? 0
-          const relationship = Math.round((outward + inward) / 2)
-          return [nominee.id, buildTieBreakPitch(relationship, nominee.id, game.week)]
-        })
-      )
-    : {}
-
-  const doubleEvictionTieBreakSelectCount =
-    game.doubleEviction?.weekActive && game.awaitingTieBreak
-      ? calculateRequiredDoubleEvictionSlots(
-          (game.tiedNomineeIds ?? []).length,
-          Boolean(game.pendingEviction)
-        )
-      : 1
-  const showTieBreakMultiSelectModal =
-    showTieBreakModal &&
-    game.doubleEviction?.weekActive === true &&
-    doubleEvictionTieBreakSelectCount > 1
-
-  // ── Co-LOH Democracia POS-holder tie-break ────────────────────────────────
-  // On co-LOH Democracia days, the POS holder breaks the eviction tie.
-  const showPosTieBreakModal =
-    game.phase === 'eviction_results' &&
-    Boolean(game.awaitingTieBreak) &&
-    Boolean(game.awaitingPosTieBreak) &&
-    Boolean(humanIsPosHolder) &&
-    !game.voteResults &&
-    !activeConfessionalDecision
-
   // ── Democracia vote modal ─────────────────────────────────────────────────
   // Shown when the human player must cast a Democracia vote.
   const showDemocraciaVoteModal =
@@ -2055,6 +1965,7 @@ export default function GameScreen() {
   // PR 3: when a voteDeduction prompt is pending, show the offer first and
   // only dismiss results after the player decides.
   const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)
+  const [resumeVoteResultsAfterDeduction, setResumeVoteResultsAfterDeduction] = useState(false)
   const canOfferVoteBreakdown = useMemo(
     () =>
       game.phase === 'eviction_results' &&
@@ -2089,12 +2000,11 @@ export default function GameScreen() {
       return
     }
 
-    // When there is a clear evictee, use the new post-eviction sequence:
-    //   1. Dismiss vote results (eviction animation blocked by postVoteAnnouncement)
-    //   2. Show the post-vote TV announcement for 3 s
-    //   3. Wait an additional 3 s beat after it clears
-    //   4. Eviction animation plays
-    //   5. Confessional prompt shows after the animation (if eligible)
+    // When there is a clear evictee, use one continuous broadcast sequence:
+    //   1. Dismiss the tally reveal while the verdict announcement takes over.
+    //   2. Hold the verdict briefly so the names and vote count can be read.
+    //   3. Hand directly to the eviction cinematic with no second empty pause.
+    //   4. Offer the Confessional vote breakdown after the cinematic when eligible.
     const evicteeId = game.pendingEviction?.evicteeId
     const evictee = evicteeId ? (game.players.find((p) => p.id === evicteeId) ?? null) : null
     if (evictee && game.pendingEviction) {
@@ -2139,13 +2049,12 @@ export default function GameScreen() {
               publicModeEnabled: Boolean(game.publicModeEnabled),
             })
           : defaultAnnouncement
-      setPostVoteAnnouncementDelayActive(false)
       setPostVoteAnnouncement({
         key: 'eviction_vote_result',
         title: voteAnnouncement.title,
         subtitle: voteAnnouncement.subtitle,
         isLive: true,
-        autoDismissMs: POST_VOTE_ANNOUNCEMENT_DELAY_MS,
+        autoDismissMs: POST_VOTE_ANNOUNCEMENT_MS,
       })
       // Dismiss vote results only — eviction splash is gated on postVoteAnnouncement
       proceedAfterVoteResults()
@@ -2176,35 +2085,25 @@ export default function GameScreen() {
 
   const handlePostVoteAnnouncementDismiss = useCallback(() => {
     setPostVoteAnnouncement(null)
-    setPostVoteAnnouncementDelayActive(true)
   }, [])
-
-  useEffect(() => {
-    if (!postVoteAnnouncementDelayActive) return
-    const id = window.setTimeout(() => {
-      setPostVoteAnnouncementDelayActive(false)
-    }, POST_VOTE_ANNOUNCEMENT_DELAY_MS)
-    return () => window.clearTimeout(id)
-  }, [postVoteAnnouncementDelayActive])
 
   const handleVoteDeductionAccept = useCallback(() => {
     setShowVoteDeductionOffer(false)
     dispatch(activateVoteDeductionReward())
-    if (queueVoteBreakdownPrompt()) return
-    // Explicitly dismiss vote results so the eviction cinematic can take over.
-    // We do NOT use proceedAfterVoteResults() here because pendingEviction is
-    // always set at this point (the deduction flow only fires when there is a
-    // clear evictee), and calling advance() through that shared branch could
-    // skip the eviction animation entirely.
-    dispatch(dismissVoteResults())
-  }, [dispatch, queueVoteBreakdownPrompt])
+    setResumeVoteResultsAfterDeduction(true)
+  }, [dispatch])
 
   const handleVoteDeductionDecline = useCallback(() => {
     setShowVoteDeductionOffer(false)
     dispatch(declineVoteDeduction())
-    if (queueVoteBreakdownPrompt()) return
-    proceedAfterVoteResults()
-  }, [dispatch, proceedAfterVoteResults, queueVoteBreakdownPrompt])
+    setResumeVoteResultsAfterDeduction(true)
+  }, [dispatch])
+
+  useEffect(() => {
+    if (!resumeVoteResultsAfterDeduction || game.awaitingVoteDeductionPrompt) return
+    setResumeVoteResultsAfterDeduction(false)
+    handleVoteResultsDone()
+  }, [game.awaitingVoteDeductionPrompt, handleVoteResultsDone, resumeVoteResultsAfterDeduction])
 
   const unlockVoteBreakdown = useCallback(() => {
     const wasPostEviction = isPostEvictionConfessionalModeRef.current
@@ -2562,12 +2461,11 @@ export default function GameScreen() {
     : null
   // For normal evictions (not Final-4), show whenever pendingEviction is set.
   // For Final-4, show only during the 'splash' stage (after the announcement).
-  // Also blocked while the post-vote announcement or its follow-up pause is active.
+  // Blocked only while the post-vote verdict announcement is active.
   const showEvictionSplash =
     !showVoteResults &&
     !aiTiebreakStage &&
     !postVoteAnnouncement &&
-    !postVoteAnnouncementDelayActive &&
     !!game.pendingEviction &&
     !game.awaitingTieBreak &&
     (game.phase !== 'final4_eviction' || final4Stage === 'splash')
@@ -3017,19 +2915,6 @@ export default function GameScreen() {
 
     const state = storeRef.current.getState()
 
-    // eviction_auto — after each eviction
-    if (
-      currentPhase === 'eviction_results' &&
-      canShowAd('eviction_auto', state) &&
-      window.GameAds?.showInterstitial
-    ) {
-      queuePreAdAnnouncement(
-        'eviction_auto',
-        "Don't change the channel, a new Day is about to begin right after a short break."
-      )
-      return
-    }
-
     // pos_decision_auto — every other week just before POS holder announces
     // week is 1-indexed; even weeks = weeks 2, 4, 6, ...
     if (
@@ -3219,10 +3104,6 @@ export default function GameScreen() {
         showFinal4Chat ||
         showFinal4Modal ||
         showFinal4AnnounceChat ||
-        showDoubleVoteOffer ||
-        showDoubleVoteModal ||
-        showLiveVoteModal ||
-        showTieBreakModal ||
         showDemocraciaResults ||
         showFinal3Modal ||
         showFinal3Ceremony ||
@@ -3325,10 +3206,6 @@ export default function GameScreen() {
     showFinal4Chat ||
     showFinal4Modal ||
     showFinal4AnnounceChat ||
-    showDoubleVoteOffer ||
-    showDoubleVoteModal ||
-    showLiveVoteModal ||
-    showTieBreakModal ||
     showDemocraciaResults ||
     showFinal3Modal ||
     showFinal3Ceremony ||
@@ -3352,9 +3229,8 @@ export default function GameScreen() {
     spectatorLegacyActive
 
   // ── Viewport fallback message for blank-TV states ────────────────────────
-  // Provides a meaningful holding message during states where no fresh TV event
-  // is available: after dismissing the live_eviction announcement during
-  // live_vote, and during the postVoteAnnouncementDelayActive grace period.
+  // Provides a meaningful holding message while the live vote is waiting for
+  // the human decision or for the remaining house votes to finish.
   const tvViewportFallbackMessage = useMemo(() => {
     if (game.phase === 'live_vote') {
       if (game.awaitingHumanVote) {
@@ -3364,19 +3240,9 @@ export default function GameScreen() {
       }
       return 'Players are casting their votes.'
     }
-    if (postVoteAnnouncementDelayActive && game.pendingEviction) {
-      return 'Please wait while the player says their goodbyes.'
-    }
     // Fall back to the remote-config headline when no phase-specific message applies.
     return remoteMainTvHeadline ?? undefined
-  }, [
-    game.phase,
-    game.awaitingHumanVote,
-    activeConfessionalDecision,
-    postVoteAnnouncementDelayActive,
-    game.pendingEviction,
-    remoteMainTvHeadline,
-  ])
+  }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, remoteMainTvHeadline])
   function handlePublicMeterBlocked() {
     setPublicMeterUnavailableAnnouncement({
       key: 'public_meter_unavailable',
@@ -3759,83 +3625,6 @@ export default function GameScreen() {
           />
         )}
 
-        {/* ── PR 3: doubleVote Big Eye offer (before vote modal) ──────────── */}
-        {showDoubleVoteOffer && (
-          <TvBinaryDecisionModal
-            title="📺 The Big Eye — Secret Power"
-            subtitle={`${humanPlayer?.name}, you have a stored Double Vote power. Activate it now to cast two votes in this live elimination?`}
-            yesLabel="🗳️🗳️ Yes — use Double Vote"
-            noLabel="❌ No — cast a single vote"
-            onYes={() => dispatch(activateDoubleVoteReward())}
-            onNo={() => dispatch(declineDoubleVoteReward())}
-          />
-        )}
-
-        {/* ── PR 3: double vote first selection ───────────────────────────── */}
-        {showDoubleVoteModal && doubleVoteFirst === null && (
-          <TvDecisionModal
-            title="Double Vote — First Vote"
-            subtitle={`${humanPlayer?.name}, cast your FIRST vote to eliminate.`}
-            options={liveVoteOptions}
-            onSelect={(id) => setDoubleVoteFirst(id)}
-            danger
-            stingerMessage="FIRST VOTE CAST"
-          />
-        )}
-
-        {/* ── PR 3: double vote second selection ──────────────────────────── */}
-        {showDoubleVoteModal && doubleVoteFirst !== null && (
-          <TvDecisionModal
-            title="Double Vote — Second Vote"
-            subtitle={`${humanPlayer?.name}, cast your SECOND vote to eliminate. You may vote for the same person again.`}
-            options={liveVoteOptions}
-            onSelect={(id) => {
-              dispatch(submitHumanDoubleVote([doubleVoteFirst, id]))
-              setDoubleVoteFirst(null)
-            }}
-            danger
-            stingerMessage="DOUBLE VOTE RECORDED"
-          />
-        )}
-
-        {/* ── Human live eviction vote ─────────────────────────────────────── */}
-        {showLiveVoteModal && (
-          <TvDecisionModal
-            title="Live Elimination Vote"
-            subtitle={`${humanPlayer?.name}, cast your vote to eliminate one of the nominees.`}
-            options={liveVoteOptions}
-            onSelect={(id) => dispatch(submitHumanVote(id))}
-            danger
-            stingerMessage="VOTE RECORDED"
-          />
-        )}
-
-        {/* ── Human LOH tie-break ──────────────────────────────────────────── */}
-        {showTieBreakModal && !showTieBreakMultiSelectModal && (
-          <TvDecisionModal
-            title="Tie-Break — LOH Casts the Deciding Vote"
-            subtitle={`${humanPlayer?.name}, the vote is tied! As LOH, you must break the tie.`}
-            options={tieBreakOptions}
-            optionDescriptions={settings.gameUX.dramaMode ? tieBreakPitches : undefined}
-            onSelect={(id) => dispatch(submitTieBreak(id))}
-            danger
-            stingerMessage="TIE BREAKER CAST"
-          />
-        )}
-
-        {/* ── Co-LOH POS holder tie-break ──────────────────────────────────── */}
-        {showPosTieBreakModal && (
-          <TvDecisionModal
-            title="Tie-Break — POS Holder Casts the Deciding Vote"
-            subtitle={`${humanPlayer?.name}, the vote is tied! As POS holder, you break the tie as a special exception.`}
-            options={tieBreakOptions}
-            optionDescriptions={settings.gameUX.dramaMode ? tieBreakPitches : undefined}
-            onSelect={(id) => dispatch(submitPosTieBreak(id))}
-            danger
-            stingerMessage="TIE BREAKER CAST"
-          />
-        )}
-
         {/* ── Democracia vote modal ──────────────────────────────────────────── */}
         {showDemocraciaVoteModal && (
           <TvDecisionModal
@@ -3858,18 +3647,6 @@ export default function GameScreen() {
             }
             danger
             stingerMessage="NOMINATION LOCKED IN"
-          />
-        )}
-
-        {showTieBreakMultiSelectModal && (
-          <TvMultiSelectModal
-            title="Double Elimination Tie-Break"
-            subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} players to eliminate.`}
-            options={tieBreakOptions}
-            maxSelect={doubleEvictionTieBreakSelectCount}
-            onConfirm={(ids) => dispatch(submitDoubleEvictionTieBreak(ids))}
-            confirmLabel="Confirm Evictions"
-            stingerMessage="DOUBLE EVICTION DECIDED"
           />
         )}
 
