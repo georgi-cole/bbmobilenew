@@ -11,8 +11,8 @@ describe('getDayStartShockObjectPronoun', () => {
   })
 
   it('uses a neutral pronoun when no canonical profile exists', () => {
-    expect(
-      getDayStartShockObjectPronoun({ id: 'custom-player', name: 'Custom Player' })
-    ).toBe('them')
+    expect(getDayStartShockObjectPronoun({ id: 'custom-player', name: 'Custom Player' })).toBe(
+      'them'
+    )
   })
 })
