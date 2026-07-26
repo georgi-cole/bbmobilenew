@@ -24,15 +24,15 @@ jobs:
       - name: Capture typecheck output
         run: |
           set +e
-          npm run typecheck > .tmp-after-eye-typecheck.log 2>&1
+          npm run typecheck > .tmp-after-eye-typecheck.txt 2>&1
           status=$?
-          echo "" >> .tmp-after-eye-typecheck.log
-          echo "EXIT_CODE=$status" >> .tmp-after-eye-typecheck.log
+          echo "" >> .tmp-after-eye-typecheck.txt
+          echo "EXIT_CODE=$status" >> .tmp-after-eye-typecheck.txt
           exit 0
       - name: Commit diagnostics
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .tmp-after-eye-typecheck.log
+          git add .tmp-after-eye-typecheck.txt
           git commit -m "Capture After the Eye typecheck diagnostics"
           git push origin HEAD:agent/redesign-after-the-eye-tabloid
