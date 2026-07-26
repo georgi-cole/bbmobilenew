@@ -1,25 +1,19 @@
 // MODULE: src/components/MinigameRules/MinigameRules.tsx
-// Modal that displays rules for a minigame before play begins.
-// Shown by MinigameHost before the 3-second "Get Ready" countdown.
+// Shared rules modal shown before play and available again as an in-game reference.
 
 import type { GameRegistryEntry } from '../../minigames/registry';
 import './MinigameRules.css';
 
 interface Props {
   game: GameRegistryEntry;
-  /** Called when the player taps "Let's Go!" to start the game. */
+  /** Called when the player starts or returns to the competition. */
   onConfirm: () => void;
-  /**
-   * Optional callback for skipping the rules modal.
-   * When provided a "Skip rules" link is shown (used by debug controls).
-   */
+  /** Optional debug-only rules bypass. */
   onSkip?: () => void;
-  /**
-   * Optional callback for dismissing the challenge entirely.
-   * When provided an ✕ button is shown in the upper-right corner.
-   * The player is assigned 0 points automatically.
-   */
-  onDismiss?: () => void;
+  /** Custom primary-action label for intro/reference contexts. */
+  confirmLabel?: string;
+  /** Reference mode is used when the player reopens rules during a competition. */
+  mode?: 'intro' | 'reference';
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -36,32 +30,40 @@ function formatTime(ms: number): string {
   return `${Math.floor(s / 60)}m ${s % 60 > 0 ? `${s % 60}s` : ''}`.trim();
 }
 
-export default function MinigameRules({ game, onConfirm, onSkip, onDismiss }: Props) {
+export default function MinigameRules({
+  game,
+  onConfirm,
+  onSkip,
+  confirmLabel,
+  mode = 'intro',
+}: Props) {
   const emoji = CATEGORY_EMOJI[game.category] ?? '🎮';
+  const isReference = mode === 'reference';
+  const primaryLabel = confirmLabel ?? (isReference ? 'Return to game' : 'Start competition');
 
   return (
-    <div className="minigame-rules-overlay" role="dialog" aria-modal="true" aria-label={`${game.title} rules`}>
-      <div className="minigame-rules-modal">
-        {onDismiss && (
-          <button
-            className="minigame-rules-btn-dismiss"
-            onClick={onDismiss}
-            aria-label="Dismiss challenge (score 0)"
-            title="Dismiss — score 0 points"
-          >
-            ✕
-          </button>
-        )}
+    <div
+      className="minigame-rules-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${game.title} rules`}
+    >
+      <div className={`minigame-rules-modal ${isReference ? 'minigame-rules-modal--reference' : ''}`}>
+        <p className="minigame-rules-kicker">
+          {isReference ? 'Quick reference' : 'Competition briefing'}
+        </p>
         <h2 className="minigame-rules-title">
           {emoji} {game.title}
         </h2>
         <p className="minigame-rules-description">{game.description}</p>
 
-        <div className="minigame-rules-meta">
-          <span>⏱ {formatTime(game.timeLimitMs)}</span>
-          <span>📊 {game.metricLabel}</span>
-          <span>🏷️ {game.category}</span>
-        </div>
+        {!isReference && (
+          <div className="minigame-rules-meta">
+            <span>⏱ {formatTime(game.timeLimitMs)}</span>
+            <span>📊 {game.metricLabel}</span>
+            <span>🏷️ {game.category}</span>
+          </div>
+        )}
 
         <p className="minigame-rules-section-title">How to Play</p>
         <ul className="minigame-rules-list">
@@ -72,7 +74,7 @@ export default function MinigameRules({ game, onConfirm, onSkip, onDismiss }: Pr
 
         <div className="minigame-rules-actions">
           <button className="minigame-rules-btn-start" onClick={onConfirm} autoFocus>
-            Let&apos;s Go! 🚀
+            {primaryLabel}
           </button>
           {onSkip && (
             <button className="minigame-rules-btn-skip" onClick={onSkip}>
