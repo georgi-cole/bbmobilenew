@@ -39,3 +39,5 @@ jobs:
           git add src/components/IncomingInteractionsInbox
           git commit -m "Format incoming interaction files"
           git push origin HEAD:fix/incoming-interactions-encoding-layout
+
+# Synchronize the PR so the default-branch formatter runs.
