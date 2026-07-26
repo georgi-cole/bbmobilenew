@@ -19,6 +19,7 @@ import {
   recoverHouseOfDarknessHealth,
   type HouseOfDarknessCard,
 } from './houseOfDarknessUtils'
+import { getHouseOfDarknessAiAbility } from './houseOfDarknessAiBalance'
 import './HouseOfDarknessComp.css'
 
 interface ParticipantProp {
@@ -45,7 +46,8 @@ interface Props {
   onFinish?: (value: number, tiebreakerMs?: number, completion?: CompletionPayload) => void
 }
 
-type Phase = 'playing' | 'round_results' | 'death' | 'results'
+type Phase = 'playing' | 'round_transition' | 'round_results' | 'death' | 'results'
+type RoundTransition = 'bats' | 'web'
 type BoardStyle = CSSProperties & { '--hod-columns': number }
 type HealthStyle = CSSProperties & { '--hod-health': string }
 
@@ -170,12 +172,14 @@ export default function HouseOfDarknessComp({
   const [roundSummary, setRoundSummary] = useState<RoundSummary | null>(null)
   const [standings, setStandings] = useState<ContestantState[]>([])
   const [damageFlash, setDamageFlash] = useState<number | null>(null)
+  const [roundTransition, setRoundTransition] = useState<RoundTransition>('bats')
 
   const roundStartedAtRef = useRef(0)
   const roundStartingHealthRef = useRef(HOUSE_OF_DARKNESS_STARTING_HEALTH)
   const roundCompletedRef = useRef(false)
   const deathResolvedRef = useRef(false)
   const contestantsRef = useRef(contestants)
+  const transitionTimerRef = useRef<number | null>(null)
 
   const pairCount = getHouseOfDarknessPairCount(round)
   const playableCards = pairCount * 2
@@ -194,15 +198,45 @@ export default function HouseOfDarknessComp({
     contestantsRef.current = contestants
   }, [contestants])
 
+  useEffect(
+    () => () => {
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current)
+      }
+    },
+    []
+  )
+
+  const revealAfterTransition = useCallback(
+    (target: 'round_results' | 'results') => {
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current)
+      }
+      setRoundTransition(round % 2 === 1 ? 'bats' : 'web')
+      setLocked(true)
+      setPhase('round_transition')
+      transitionTimerRef.current = window.setTimeout(() => {
+        transitionTimerRef.current = null
+        setPhase(target)
+        if (target === 'results') playComplete()
+      }, 1350)
+    },
+    [playComplete, round]
+  )
+
   const finalizeTournament = useCallback(
-    (nextStates: Record<string, ContestantState>) => {
+    (nextStates: Record<string, ContestantState>, animate = true) => {
       const ranked = rankContestants(nextStates, resolvedIds)
       setContestants(nextStates)
       setStandings(ranked)
+      if (animate) {
+        revealAfterTransition('results')
+        return
+      }
       setPhase('results')
       playComplete()
     },
-    [playComplete, resolvedIds]
+    [playComplete, resolvedIds, revealAfterTransition]
   )
 
   const simulateAiRound = useCallback(
@@ -211,12 +245,17 @@ export default function HouseOfDarknessComp({
       simulatedRound: number
     ): { next: ContestantState; result: RoundResult } => {
       const simulatedPairCount = getHouseOfDarknessPairCount(simulatedRound)
+      const aiAbility = getHouseOfDarknessAiAbility({
+        baseAbility: aiProfiles[player.id]?.sessionAbility ?? 55,
+        round: simulatedRound,
+        health: player.health,
+      })
       const performance = simulateHouseOfCardsAiRound({
         playerId: player.id,
         round: simulatedRound,
         pairCount: simulatedPairCount,
         tournamentSeed: sessionSeed,
-        sessionAbility: aiProfiles[player.id]?.sessionAbility ?? 55,
+        sessionAbility: aiAbility,
       })
       const damageResolution = applyHouseOfDarknessMistakes({
         health: player.health,
@@ -282,7 +321,7 @@ export default function HouseOfDarknessComp({
         if (survivors.length <= 1) break
       }
 
-      finalizeTournament(nextStates)
+      finalizeTournament(nextStates, false)
     },
     [finalizeTournament, humanId, resolvedIds, round, simulateAiRound]
   )
@@ -356,7 +395,7 @@ export default function HouseOfDarknessComp({
 
     setContestants(nextStates)
     setRoundSummary({ round, results })
-    setPhase('round_results')
+    revealAfterTransition('round_results')
   }, [
     finalizeTournament,
     humanId,
@@ -365,6 +404,7 @@ export default function HouseOfDarknessComp({
     round,
     roundDamage,
     roundMistakes,
+    revealAfterTransition,
     simulateAiRound,
   ])
 
@@ -716,6 +756,45 @@ export default function HouseOfDarknessComp({
           ))}
         </div>
       </div>
+
+      {phase === 'round_transition' && (
+        <div
+          className={`hod-round-transition hod-round-transition--${roundTransition}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="hod-transition-curtain" aria-hidden="true">
+            {roundTransition === 'bats' ? (
+              <div className="hod-bat-swarm">
+                <span className="hod-bat" />
+                <span className="hod-bat" />
+                <span className="hod-bat" />
+                <span className="hod-bat" />
+                <span className="hod-bat" />
+                <span className="hod-bat" />
+                <span className="hod-bat" />
+              </div>
+            ) : (
+              <div className="hod-web-transition">
+                <span className="hod-transition-web" />
+                <span className="hod-transition-spider">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
+            )}
+          </div>
+          <strong>
+            {roundTransition === 'bats' ? 'The house changes shape' : 'The web tightens'}
+          </strong>
+        </div>
+      )}
 
       {damageFlash !== null && phase === 'playing' && (
         <div className="hod-damage-flash" aria-live="assertive">

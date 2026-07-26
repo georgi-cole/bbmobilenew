@@ -1150,3 +1150,321 @@
     background: #000;
   }
 }
+
+/* Round-complete creature wipes */
+.hod-root > .hod-round-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  color: #f7eadb;
+  background: rgba(2, 1, 4, 0.18);
+  animation: hod-transition-dim 1.35s ease both;
+}
+
+.hod-transition-curtain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.hod-round-transition > strong {
+  position: relative;
+  z-index: 4;
+  padding: 9px 15px;
+  border: 1px solid rgba(213, 173, 114, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 3, 10, 0.82);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.44);
+  font-size: clamp(0.72rem, 2.6vw, 0.9rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: hod-transition-caption 1.35s ease both;
+}
+
+.hod-bat-swarm {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 48%, rgba(92, 16, 49, 0.38), transparent 55%);
+}
+
+.hod-bat {
+  position: absolute;
+  left: -24%;
+  top: var(--hod-bat-top, 50%);
+  width: var(--hod-bat-size, 24px);
+  height: calc(var(--hod-bat-size, 24px) * 0.42);
+  border-radius: 45% 45% 58% 58%;
+  background: #050207;
+  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55));
+  animation: hod-bat-flight 1.18s var(--hod-bat-delay, 0s) cubic-bezier(0.2, 0.68, 0.28, 1) both;
+}
+
+.hod-bat::before,
+.hod-bat::after {
+  content: '';
+  position: absolute;
+  top: -24%;
+  width: 74%;
+  height: 150%;
+  background: #050207;
+  clip-path: polygon(100% 45%, 63% 4%, 48% 38%, 4% 14%, 31% 100%, 72% 72%);
+  animation: hod-bat-wing 0.16s ease-in-out infinite alternate;
+}
+
+.hod-bat::before {
+  right: 52%;
+}
+
+.hod-bat::after {
+  left: 52%;
+  transform: scaleX(-1);
+}
+
+.hod-bat:nth-child(1) {
+  --hod-bat-top: 15%;
+  --hod-bat-size: 24px;
+  --hod-bat-delay: 0.02s;
+}
+.hod-bat:nth-child(2) {
+  --hod-bat-top: 31%;
+  --hod-bat-size: 34px;
+  --hod-bat-delay: 0.11s;
+}
+.hod-bat:nth-child(3) {
+  --hod-bat-top: 47%;
+  --hod-bat-size: 54px;
+  --hod-bat-delay: 0.01s;
+}
+.hod-bat:nth-child(4) {
+  --hod-bat-top: 61%;
+  --hod-bat-size: 29px;
+  --hod-bat-delay: 0.18s;
+}
+.hod-bat:nth-child(5) {
+  --hod-bat-top: 77%;
+  --hod-bat-size: 43px;
+  --hod-bat-delay: 0.08s;
+}
+.hod-bat:nth-child(6) {
+  --hod-bat-top: 23%;
+  --hod-bat-size: 66px;
+  --hod-bat-delay: 0.23s;
+}
+.hod-bat:nth-child(7) {
+  --hod-bat-top: 69%;
+  --hod-bat-size: 78px;
+  --hod-bat-delay: 0.28s;
+}
+
+.hod-web-transition {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(54, 17, 63, 0.12), rgba(1, 0, 2, 0.74));
+}
+
+.hod-transition-web {
+  position: absolute;
+  width: min(132vw, 900px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(232, 224, 214, 0.7) 0 0.8deg,
+      transparent 0.8deg 15deg
+    ),
+    repeating-radial-gradient(
+      circle,
+      transparent 0 8%,
+      rgba(232, 224, 214, 0.56) 8.2% 8.7%,
+      transparent 8.9% 16%
+    );
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.18));
+  animation: hod-web-spread 1.28s ease-out both;
+}
+
+.hod-transition-spider {
+  position: absolute;
+  top: -19%;
+  left: 50%;
+  width: 28px;
+  height: 36px;
+  border-radius: 48% 48% 55% 55%;
+  background: #070308;
+  box-shadow:
+    0 -13px 0 -7px #070308,
+    0 0 12px rgba(0, 0, 0, 0.7);
+  animation: hod-spider-drop 1.25s 0.08s ease-in-out both;
+}
+
+.hod-transition-spider::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 80vh;
+  background: rgba(233, 227, 219, 0.66);
+  transform: translateX(-50%);
+}
+
+.hod-transition-spider i {
+  position: absolute;
+  top: 9px;
+  width: 25px;
+  height: 1px;
+  background: #070308;
+  transform-origin: center;
+}
+
+.hod-transition-spider i:nth-child(1) {
+  right: 15px;
+  transform: rotate(22deg);
+}
+.hod-transition-spider i:nth-child(2) {
+  right: 15px;
+  top: 15px;
+  transform: rotate(8deg);
+}
+.hod-transition-spider i:nth-child(3) {
+  right: 14px;
+  top: 22px;
+  transform: rotate(-10deg);
+}
+.hod-transition-spider i:nth-child(4) {
+  right: 13px;
+  top: 28px;
+  transform: rotate(-28deg);
+}
+.hod-transition-spider i:nth-child(5) {
+  left: 15px;
+  transform: rotate(-22deg);
+}
+.hod-transition-spider i:nth-child(6) {
+  left: 15px;
+  top: 15px;
+  transform: rotate(-8deg);
+}
+.hod-transition-spider i:nth-child(7) {
+  left: 14px;
+  top: 22px;
+  transform: rotate(10deg);
+}
+.hod-transition-spider i:nth-child(8) {
+  left: 13px;
+  top: 28px;
+  transform: rotate(28deg);
+}
+
+@keyframes hod-transition-dim {
+  0% {
+    background: rgba(2, 1, 4, 0);
+  }
+  42%,
+  72% {
+    background: rgba(2, 1, 4, 0.72);
+  }
+  100% {
+    background: rgba(2, 1, 4, 0.18);
+  }
+}
+
+@keyframes hod-transition-caption {
+  0%,
+  24% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  45%,
+  78% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5px) scale(1.02);
+  }
+}
+
+@keyframes hod-bat-flight {
+  0% {
+    opacity: 0;
+    translate: 0 24px;
+    scale: 0.72;
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 150vw -38px;
+    scale: 1.42;
+  }
+}
+
+@keyframes hod-bat-wing {
+  from {
+    rotate: -12deg;
+    scale: 1 0.72;
+  }
+  to {
+    rotate: 12deg;
+    scale: 1 1.08;
+  }
+}
+
+@keyframes hod-web-spread {
+  0% {
+    opacity: 0;
+    transform: scale(0.08) rotate(-18deg);
+  }
+  38%,
+  78% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08) rotate(8deg);
+  }
+}
+
+@keyframes hod-spider-drop {
+  0% {
+    opacity: 0;
+    translate: -50% 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  68% {
+    opacity: 1;
+    translate: -50% 53vh;
+  }
+  100% {
+    opacity: 0;
+    translate: -50% 78vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hod-round-transition,
+  .hod-round-transition > strong,
+  .hod-bat,
+  .hod-bat::before,
+  .hod-bat::after,
+  .hod-transition-web,
+  .hod-transition-spider {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
