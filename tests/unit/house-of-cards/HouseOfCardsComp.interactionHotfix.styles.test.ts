@@ -9,7 +9,9 @@ const css = fs.readFileSync(
 
 describe('House of Cards interaction hotfix styles', () => {
   it('keeps face-up cards rotated while hovered or focused', () => {
-    expect(css).toContain(".hoc-card[data-flipped='true']:hover .hoc-card-inner");
+    expect(css).toContain(
+      ".hoc-card[data-flipped='true']:hover .hoc-card-inner",
+    );
     expect(css).toContain('transform: rotateY(180deg)');
     expect(css).toContain('filter: none');
   });
