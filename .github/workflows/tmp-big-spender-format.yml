@@ -1,4 +1,4 @@
-name: Temporary Incoming Interactions formatter
+name: Temporary Big Spender formatter
 
 on:
   pull_request:
@@ -8,26 +8,27 @@ permissions:
   contents: write
 
 jobs:
-  format-incoming-interactions:
-    if: github.head_ref == 'fix/incoming-interactions-encoding-layout' && github.actor != 'github-actions[bot]'
+  format-big-spender:
+    if: github.head_ref == 'agent/big-spender-replenishing-wall' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/incoming-interactions-encoding-layout
+          ref: agent/big-spender-replenishing-wall
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Format incoming interaction files
+      - name: Format Big Spender files
         run: >-
           npx prettier --write
-          src/components/IncomingInteractionsInbox/IncomingInteractionIcon.tsx
-          src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx
-          src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.css
-          src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx
+          src/components/BigSpender/BigSpender.tsx
+          src/components/BigSpender/BigSpenderBoard.tsx
+          src/components/BigSpender/BigSpenderOverlays.tsx
+          src/components/BigSpender/BigSpenderReplenishing.tsx
+          src/components/BigSpender/BigSpenderWall.css
       - name: Commit formatting
         run: |
           if git diff --quiet; then
@@ -35,6 +36,6 @@ jobs:
           fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src/components/IncomingInteractionsInbox
-          git commit -m "Format incoming interaction files"
-          git push origin HEAD:fix/incoming-interactions-encoding-layout
+          git add src/components/BigSpender
+          git commit -m "Format replenishing Big Spender"
+          git push origin HEAD:agent/big-spender-replenishing-wall
