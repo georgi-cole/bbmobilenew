@@ -1,9 +1,12 @@
 name: House of Darkness refinement runner
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/house-of-darkness-fatigue-transitions
+      - main
+    types:
+      - opened
+      - synchronize
 
 permissions:
   contents: write
