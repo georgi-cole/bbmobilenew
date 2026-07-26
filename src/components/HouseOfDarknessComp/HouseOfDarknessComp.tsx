@@ -219,7 +219,7 @@ export default function HouseOfDarknessComp({
         transitionTimerRef.current = null
         setPhase(target)
         if (target === 'results') playComplete()
-      }, 1350)
+      }, 2600)
     },
     [playComplete, round]
   )

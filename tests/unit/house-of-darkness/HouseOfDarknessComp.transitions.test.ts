@@ -19,6 +19,13 @@ describe('House of Darkness round transitions', () => {
     expect(source).toContain('hod-web-transition')
   })
 
+  it('keeps the creature wipe visible long enough to read', () => {
+    expect(source).toContain('}, 2600)')
+    expect(css).toContain('animation: hod-transition-dim 2.6s')
+    expect(css).toContain('animation: hod-bat-flight 2.25s')
+    expect(css).toContain('animation: hod-web-spread 2.45s')
+  })
+
   it('provides creature animations and reduced-motion behavior', () => {
     expect(css).toContain('@keyframes hod-bat-flight')
     expect(css).toContain('@keyframes hod-web-spread')

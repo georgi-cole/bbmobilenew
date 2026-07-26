@@ -10,17 +10,17 @@ function clamp(value: number, minimum: number, maximum: number): number {
 
 /**
  * Adapts the original House of Cards AI profile for an accumulating survival run.
- * The top end is compressed so elite profiles remain fallible, then memory ability
- * decays each round and slips slightly faster when the contestant is badly wounded.
+ * Even elite profiles begin inside a human performance band, then memory decays
+ * steadily with round fatigue and slips further as lifespan pressure accumulates.
  */
 export function getHouseOfDarknessAiAbility({
   baseAbility,
   round,
   health,
 }: HouseOfDarknessAiAbilityParams): number {
-  const compressedAbility = 50 + (baseAbility - 55) * 0.55
-  const fatiguePenalty = Math.min(22, Math.max(0, round - 1) * 1.8)
-  const pressurePenalty = health < 55 ? Math.min(5, (55 - health) * 0.1) : 0
+  const compressedAbility = 43 + (baseAbility - 55) * 0.3
+  const fatiguePenalty = Math.min(34, Math.max(0, round - 1) * 2.6)
+  const pressurePenalty = health < 75 ? Math.min(8, (75 - health) * 0.14) : 0
 
-  return Math.round(clamp(compressedAbility - fatiguePenalty - pressurePenalty, 24, 68))
+  return Math.round(clamp(compressedAbility - fatiguePenalty - pressurePenalty, 18, 56))
 }
