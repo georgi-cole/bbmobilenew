@@ -1,0 +1,83 @@
+name: Temporary House of Cards theme order fix
+
+on:
+  push:
+    branches:
+      - agent/fix-house-of-cards-theme-order
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-house-of-cards-theme-order
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Move theme import beside component CSS
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main_path = Path('src/main.tsx')
+          main = main_path.read_text()
+          theme_import = "import './styles/houseOfCardsBrightTheme.css'\n"
+          if main.count(theme_import) != 1:
+              raise SystemExit(f'Expected one main theme import, found {main.count(theme_import)}')
+          main_path.write_text(main.replace(theme_import, '', 1))
+
+          component_path = Path('src/components/HouseOfCardsComp/HouseOfCardsComp.tsx')
+          component = component_path.read_text()
+          base_import = "import './HouseOfCardsComp.css';\n"
+          component_theme_import = "import '../../styles/houseOfCardsBrightTheme.css';\n"
+          if component_theme_import in component:
+              raise SystemExit('Component theme import already exists')
+          if component.count(base_import) != 1:
+              raise SystemExit(f'Expected one component CSS import, found {component.count(base_import)}')
+          component_path.write_text(component.replace(base_import, base_import + component_theme_import, 1))
+
+          test_path = Path('tests/unit/house-of-cards/HouseOfCardsComp.brightTheme.styles.test.ts')
+          test = test_path.read_text()
+          test = test.replace(
+              "const mainSource = fs.readFileSync(path.resolve(process.cwd(), 'src/main.tsx'), 'utf8')",
+              "const componentSource = fs.readFileSync(\n  path.resolve(process.cwd(), 'src/components/HouseOfCardsComp/HouseOfCardsComp.tsx'),\n  'utf8'\n)\nconst mainSource = fs.readFileSync(path.resolve(process.cwd(), 'src/main.tsx'), 'utf8')",
+              1,
+          )
+          old_test = """  it('loads after the interaction safeguard', () => {
+    expect(mainSource.indexOf(\"import './styles/houseOfCardsBrightTheme.css'\")).toBeGreaterThan(
+      mainSource.indexOf(\"import './styles/houseOfCardsInteractionFix.css'\")
+    )
+  })
+"""
+          new_test = """  it('loads directly after the component base stylesheet', () => {
+    expect(componentSource.indexOf(\"import '../../styles/houseOfCardsBrightTheme.css';\")).toBeGreaterThan(
+      componentSource.indexOf(\"import './HouseOfCardsComp.css';\")
+    )
+    expect(mainSource).not.toContain(\"import './styles/houseOfCardsBrightTheme.css'\")
+  })
+"""
+          if old_test not in test:
+              raise SystemExit('Expected old theme load-order test was not found')
+          test_path.write_text(test.replace(old_test, new_test, 1))
+          PY
+      - run: npx prettier --write src/main.tsx tests/unit/house-of-cards/HouseOfCardsComp.brightTheme.styles.test.ts
+      - run: npm run lint:ci
+      - run: npm run format:check
+      - run: npx vitest run tests/unit/house-of-cards/HouseOfCardsComp.brightTheme.styles.test.ts tests/unit/house-of-cards/HouseOfCardsComp.interactionHotfix.styles.test.ts
+      - name: Commit verified fix
+        run: |
+          rm -f .github/workflows/temporary-house-of-cards-theme-order.yml
+          rm -f .github/.trigger-house-of-cards-theme-order
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix House of Cards bright theme load order"
+          git push origin HEAD:agent/fix-house-of-cards-theme-order
