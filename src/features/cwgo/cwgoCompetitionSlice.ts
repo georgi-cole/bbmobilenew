@@ -9,10 +9,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
 import { CWGO_QUESTIONS } from './cwgoQuestions';
+import type { CwgoQuestion } from './cwgoQuestions';
 import {
-  generateAIGuess,
+  generateAIQuestionGuess,
   generateAIResponseTimeMs,
-  aiSkillRangeForDifficulty,
+  aiSkillForPlayer,
   computeWinnerClosestWithoutGoingOver,
   computeMassElimination,
   computeSortedResultsForReveal,
@@ -141,24 +142,33 @@ function fillAIGuesses(
   responseTimesMs: Record<string, number>,
   aliveIds: string[],
   humanIds: Set<string>,
-  answer: number,
+  question: CwgoQuestion,
   seed: number,
   round: number,
-  difficulty: number,
 ): { guesses: Record<string, number>; responseTimesMs: Record<string, number> } {
   const updated = { ...guesses };
   const updatedTimes = { ...responseTimesMs };
-  const skillRange = aiSkillRangeForDifficulty(difficulty);
   let aiSeed = (seed ^ (round * 0x5851f42d)) >>> 0;
   for (const id of aliveIds) {
     if (!humanIds.has(id) && updated[id] === undefined) {
-      // Derive a per-player skill from the seeded RNG, scaled into the band the
-      // question's difficulty allows (easy questions → weaker AI).
-      const aiSkill = skillRange.min + mulberry32(aiSeed ^ 0xa511e9b3)() * (skillRange.max - skillRange.min);
-      // Advance seed before generating the guess so skill and guess use independent RNG sequences.
+      // The contestant's knowledge trait is stable. Question difficulty now
+      // changes recall probability/uncertainty instead of replacing the person
+      // with a newly sampled weak or strong AI every round.
+      const aiSkill = aiSkillForPlayer(id);
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
-      updated[id] = generateAIGuess(answer, aiSkill, aiSeed);
-      updatedTimes[id] = generateAIResponseTimeMs(difficulty, seed, id, round);
+      const guess = generateAIQuestionGuess(question, aiSkill, aiSeed);
+      updated[id] = guess;
+      updatedTimes[id] = generateAIResponseTimeMs(
+        question.difficulty,
+        seed,
+        id,
+        round,
+        {
+          answerMode: question.answerMode,
+          knewAnswer: question.answerMode !== 'estimate' && guess === question.answer,
+          aiSkill,
+        },
+      );
       // Advance seed for next AI player
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
     }
@@ -258,10 +268,9 @@ const cwgoSlice = createSlice({
         state.responseTimesMs,
         state.aliveIds,
         humanSet,
-        question.answer,
+        question,
         state.seed,
         state.round,
-        question.difficulty,
       );
       state.guesses = filled.guesses;
       state.responseTimesMs = filled.responseTimesMs;
