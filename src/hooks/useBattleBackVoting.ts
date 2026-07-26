@@ -12,6 +12,10 @@
  */
 
 import { useReducer, useEffect, useRef, useCallback } from 'react';
+import {
+  calculatePublicVotingEliminationIntervalMs,
+  getPublicVotingAudioDurationMs,
+} from '../services/sound/publicVotingAudioTiming';
 
 export interface BattleBackVoteState {
   /** Current vote percentages keyed by candidate ID (0–100, sum ≈ 100). */
@@ -162,6 +166,43 @@ export function useBattleBackVoting({
 }: Options): BattleBackVoteState {
   const rngRef = useRef(mulberry32(seed));
   const surgeTargetRef = useRef<string | null>(surgeTargetId);
+  const [resolvedEliminationIntervalMs, setResolvedEliminationIntervalMs] = useReducer(
+    (_current: number, next: number) => next,
+    eliminationIntervalMs,
+  );
+
+  // Public Favorite uses this simulator inside `.pf-overlay`. Resolve the
+  // registered music duration at runtime and distribute all eliminations across
+  // the full track. The explicit fast-forward cadence (<1 s) remains an
+  // intentional user override rather than being re-synchronized.
+  useEffect(() => {
+    let cancelled = false;
+    const isPublicFavoriteVoting =
+      typeof document !== 'undefined' && document.querySelector('.pf-overlay') !== null;
+    const isFastForwardCadence = eliminationIntervalMs < 1000;
+
+    if (!isPublicFavoriteVoting || isFastForwardCadence) {
+      setResolvedEliminationIntervalMs(eliminationIntervalMs);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void getPublicVotingAudioDurationMs().then((durationMs) => {
+      if (cancelled) return;
+      setResolvedEliminationIntervalMs(
+        calculatePublicVotingEliminationIntervalMs(
+          durationMs,
+          candidates.length,
+          eliminationIntervalMs,
+        ),
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [candidates.length, eliminationIntervalMs]);
 
   // All mutable voting state in a single reducer so the reset effect only
   // needs one dispatch call (satisfies react-hooks/set-state-in-effect).
@@ -251,9 +292,9 @@ export function useBattleBackVoting({
 
   useEffect(() => {
     if (state.isComplete) return;
-    const id = setInterval(eliminateLowest, eliminationIntervalMs);
+    const id = setInterval(eliminateLowest, resolvedEliminationIntervalMs);
     return () => clearInterval(id);
-  }, [state.isComplete, eliminationIntervalMs, eliminateLowest]);
+  }, [state.isComplete, resolvedEliminationIntervalMs, eliminateLowest]);
 
   // ── Build votes map ──────────────────────────────────────────────────────
   const votes: Record<string, number> = {};
