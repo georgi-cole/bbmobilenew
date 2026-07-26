@@ -3,6 +3,7 @@
  * All functions are deterministic given a seeded RNG.
  */
 import { mulberry32 } from '../../store/rng';
+import type { CwgoAnswerMode, CwgoQuestion } from './cwgoQuestions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,38 +24,61 @@ export interface CwgoResult {
   responseTimeMs?: number;
 }
 
+export interface AIResponseTimeContext {
+  answerMode?: CwgoAnswerMode;
+  knewAnswer?: boolean;
+  aiSkill?: number;
+}
+
 // ─── AI Guess Generator ───────────────────────────────────────────────────────
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function hashString(value: string): number {
+  let hash = 0x811c9dc5 >>> 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+function normaliseGuess(value: number, question: Pick<CwgoQuestion, 'min' | 'max'>): number {
+  const min = question.min ?? 0;
+  const max = question.max ?? Number.MAX_SAFE_INTEGER;
+  return Math.round(clamp(value, min, max));
+}
+
 /**
- * Generate a deterministic AI guess for a CWGO round.
+ * Stable contestant knowledge trait derived from the player id.
+ * Difficulty is deliberately not included: the contestant stays the same person,
+ * while the question controls how likely that person is to know the answer.
+ */
+export function aiSkillForPlayer(playerId: string): number {
+  const rng = mulberry32((hashString(playerId) ^ 0x6a09e667) >>> 0);
+  return 0.2 + rng() * 0.75;
+}
+
+/**
+ * Generate a deterministic continuous estimate for a CWGO round.
  *
- * Strategy:
- *  - aiSkill ∈ [0, 1] (values outside this range are clamped). Higher skill →
- *    a tighter spread aimed just under the answer (a strong "closest without
- *    going over" competitor). Lower skill → a wide spread aimed well under the
- *    answer, so the guess is often far off or goes over.
- *  - Going over is always possible regardless of skill due to the random
- *    component.
- *  - Skill is derived per-round from the question difficulty (see
- *    {@link aiSkillRangeForDifficulty}); easy questions yield weak AI so a
- *    human who knows the answer wins ~95% of the time.
- *  - Uses mulberry32 seeded RNG so results are reproducible.
- *
- * @param answer  The true answer for the question.
- * @param aiSkill Skill level in [0, 1]. Values outside this range are clamped automatically. Default 0.5.
- * @param seed    Seed for the RNG.
+ * This is the correct model for questions where human answers naturally form a
+ * numerical distribution. It is intentionally not used for common-knowledge
+ * facts such as 365 days in a year or 1,000 metres in a kilometre.
  */
 export function generateAIGuess(answer: number, aiSkill: number, seed: number): number {
   const rng = mulberry32((seed ^ 0xdeadbeef) >>> 0);
 
   // Clamp skill to [0, 1]
-  const skill = Math.max(0, Math.min(1, aiSkill));
+  const skill = clamp(aiSkill, 0, 1);
 
   // High skill → tight spread; low skill → wide, sloppy spread.
   const spread = Math.max(1, answer * (0.02 + 0.45 * (1 - skill)));
 
   // Aim under the answer. A skilled AI sits just below it; a weak AI aims much
-  // lower (and, with the wide spread, frequently overshoots or lands far off).
+  // lower (and, with the wide spread, can still overshoot or land far off).
   const margin = answer * (0.02 + 0.2 * (1 - skill));
   const target = answer - margin;
 
@@ -64,25 +88,122 @@ export function generateAIGuess(answer: number, aiSkill: number, seed: number): 
   return Math.max(0, rawGuess);
 }
 
+function knowledgeProbability(question: CwgoQuestion, aiSkill: number): number {
+  const difficulty = clamp(Math.round(question.difficulty), 1, 5);
+  const skill = clamp(aiSkill, 0, 1);
+
+  if (question.answerMode === 'common_knowledge') {
+    // Common knowledge should produce many identical exact answers. Difficulty
+    // still matters, but even a weak contestant usually knows a very easy fact.
+    const baseByDifficulty = [0.985, 0.97, 0.94, 0.89, 0.82];
+    const base = baseByDifficulty[difficulty - 1];
+    return clamp(base + (1 - base) * skill * 0.8, 0, 0.999);
+  }
+
+  if (question.answerMode === 'exact_fact') {
+    // Learned facts have a genuine know/don't-know split. Stronger contestants
+    // retain a meaningful advantage, while harder questions reduce recall.
+    const baseByDifficulty = [0.9, 0.72, 0.52, 0.34, 0.18];
+    const base = baseByDifficulty[difficulty - 1];
+    return clamp(base + (1 - base) * (0.2 + skill * 0.65), 0, 0.985);
+  }
+
+  return 0;
+}
+
+function selectPlausibleMistake(
+  question: CwgoQuestion,
+  rng: () => number,
+): number {
+  const candidates = (question.plausibleMistakes ?? [])
+    .filter((value) => Number.isFinite(value) && value !== question.answer)
+    .map((value) => normaliseGuess(value, question));
+
+  if (candidates.length > 0) {
+    return candidates[Math.floor(rng() * candidates.length)];
+  }
+
+  // Defensive fallback for remotely supplied question banks that omit explicit
+  // mistakes. Keep the miss discrete and recognisable rather than inventing a
+  // random percentage such as 361 for a 365-day question.
+  const answer = question.answer;
+  const fallback = answer <= 10
+    ? answer + (rng() < 0.5 ? -1 : 1)
+    : rng() < 0.5
+      ? answer + (rng() < 0.5 ? -1 : 1)
+      : answer * (rng() < 0.5 ? 0.1 : 10);
+  return normaliseGuess(fallback, question);
+}
+
+function generateUnknownExactFactGuess(
+  question: CwgoQuestion,
+  aiSkill: number,
+  rng: () => number,
+): number {
+  // Most factual misses should be familiar confusions or near-neighbour values.
+  if ((question.plausibleMistakes?.length ?? 0) > 0 && rng() < 0.82) {
+    return selectPlausibleMistake(question, rng);
+  }
+
+  const skill = clamp(aiSkill, 0, 1);
+  const difficulty = clamp(question.difficulty, 1, 5);
+  const relativeSpread = 0.025 + 0.16 * (1 - skill) + 0.025 * (difficulty - 1);
+  const underBias = 0.025 + 0.075 * (1 - skill);
+  const multiplier = 1 - underBias + (rng() * 2 - 1) * relativeSpread;
+  return normaliseGuess(question.answer * multiplier, question);
+}
+
+/**
+ * Generate an answer using the question's human answer model.
+ *
+ * The decision order is:
+ *  1. Decide whether the contestant knows an exact answer.
+ *  2. If known, submit the exact value.
+ *  3. If unknown, use a discrete plausible mistake for common knowledge or a
+ *     related/nearby factual miss for learned facts.
+ *  4. Use continuous strategic estimation only for estimate-mode questions.
+ */
+export function generateAIQuestionGuess(
+  question: CwgoQuestion,
+  aiSkill: number,
+  seed: number,
+): number {
+  const rng = mulberry32((seed ^ 0x243f6a88) >>> 0);
+  const skill = clamp(aiSkill, 0, 1);
+
+  if (question.answerMode === 'common_knowledge') {
+    if (rng() < knowledgeProbability(question, skill)) {
+      return normaliseGuess(question.answer, question);
+    }
+    return selectPlausibleMistake(question, rng);
+  }
+
+  if (question.answerMode === 'exact_fact') {
+    if (rng() < knowledgeProbability(question, skill)) {
+      return normaliseGuess(question.answer, question);
+    }
+    return generateUnknownExactFactGuess(question, skill, rng);
+  }
+
+  // Difficult estimation questions widen uncertainty rather than making the AI
+  // mysteriously more intelligent. This reverses the old difficulty logic.
+  const difficultyPenalty = (clamp(question.difficulty, 1, 5) - 1) * 0.08;
+  const effectiveSkill = clamp(skill - difficultyPenalty, 0, 1);
+  return normaliseGuess(generateAIGuess(question.answer, effectiveSkill, seed), question);
+}
+
 // ─── AI Skill Calibration ─────────────────────────────────────────────────────
 
 /**
- * Map a question's 1–5 difficulty rating to an AI skill band (min/max in [0, 1]).
- *
- * Lower-difficulty ("easy") questions yield a weaker AI band so a human who
- * knows the answer wins the round ~95% of the time; higher-difficulty
- * ("hard") questions yield a stronger band so the AI is genuinely competitive.
- * The per-player skill is later sampled uniformly from the returned band.
- *
- * Buckets: difficulty 1 → easy, 2–3 → medium, 4–5 → hard.
- *
- * @param difficulty Question difficulty (1–5). Values outside the range are clamped.
+ * Legacy compatibility helper retained for callers outside CWGO.
+ * New CWGO logic uses a stable per-player skill and applies difficulty through
+ * knowledge probability and estimate uncertainty instead of resampling a new
+ * contestant intelligence band for every question.
  */
 export function aiSkillRangeForDifficulty(difficulty: number): { min: number; max: number } {
   const d = Math.max(1, Math.min(5, Math.round(difficulty)));
   switch (d) {
     case 1:
-      // Easy: AI plays loosely so a correct human almost always wins.
       return { min: 0, max: 0.15 };
     case 2:
       return { min: 0.1, max: 0.4 };
@@ -91,7 +212,6 @@ export function aiSkillRangeForDifficulty(difficulty: number): { min: number; ma
     case 4:
       return { min: 0.45, max: 0.85 };
     default:
-      // Hard: AI is sharp and competitive.
       return { min: 0.6, max: 1 };
   }
 }
@@ -106,23 +226,39 @@ export function generateAIResponseTimeMs(
   seed: number,
   playerId: string,
   round: number,
+  context?: AIResponseTimeContext,
 ): number {
   const d = Math.max(1, Math.min(5, Math.round(difficulty)));
-  let idHash = 2166136261;
-  for (let index = 0; index < playerId.length; index += 1) {
-    idHash ^= playerId.charCodeAt(index);
-    idHash = Math.imul(idHash, 16777619);
-  }
+  const idHash = hashString(playerId);
   const traitRng = mulberry32((idHash ^ 0x51f15e) >>> 0);
   const roundRng = mulberry32((seed ^ idHash ^ Math.imul(round + 1, 0x6d2b79f5)) >>> 0);
   const speedTrait = 0.78 + traitRng() * 0.48;
+
+  // Preserve the established timing distribution for legacy callers.
+  if (!context) {
+    const thinkingMs = (1_700 + d * 720 + roundRng() * (1_900 + d * 520)) * speedTrait;
+    return Math.round(Math.max(1_800, Math.min(13_500, thinkingMs)));
+  }
+
+  const skill = clamp(context.aiSkill ?? 0.5, 0, 1);
+  const skillSpeedModifier = 1.08 - skill * 0.2;
+
+  if (context.answerMode === 'common_knowledge' && context.knewAnswer) {
+    const readingAndRecallMs = 900 + d * 180 + roundRng() * (1_250 + d * 170);
+    return Math.round(clamp(readingAndRecallMs * speedTrait * skillSpeedModifier, 1_200, 6_500));
+  }
+
+  if (context.answerMode === 'exact_fact' && context.knewAnswer) {
+    const recallMs = 1_250 + d * 430 + roundRng() * (1_500 + d * 300);
+    return Math.round(clamp(recallMs * speedTrait * skillSpeedModifier, 1_500, 8_500));
+  }
+
   const thinkingMs = (1_700 + d * 720 + roundRng() * (1_900 + d * 520)) * speedTrait;
-  return Math.round(Math.max(1_800, Math.min(13_500, thinkingMs)));
+  return Math.round(clamp(thinkingMs * skillSpeedModifier, 1_800, 13_500));
 }
 
 /**
  * Map a question's 1–5 difficulty rating to a player-facing label.
- * Buckets match {@link aiSkillRangeForDifficulty}: 1 → Easy, 2–3 → Medium, 4–5 → Hard.
  */
 export function difficultyLabel(difficulty: number): 'Very Easy' | 'Easy' | 'Medium' | 'Hard' | 'Very Hard' {
   const d = Math.max(1, Math.min(5, Math.round(difficulty)));
@@ -182,11 +318,6 @@ export function computeWinnerClosestWithoutGoingOver(
  *  - If no one goes over, the furthest valid guess is eliminated. An exact tie
  *    eliminates only the slower player.
  *  - If all go over, nobody is eliminated and the question is redrawn.
- *
- * @param guesses  Array of guesses from all alive players.
- * @param answer   The true answer.
- * @param aliveIds The IDs of currently-alive players (for ordering).
- * @returns An object with `eliminated` and `surviving` player ID arrays.
  */
 export function computeMassElimination(
   guesses: CwgoGuessEntry[],
