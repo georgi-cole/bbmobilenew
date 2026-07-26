@@ -1,9 +1,9 @@
 name: Format Debug Artifact
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/minigame-utility-dock
+      - main
 
 permissions:
   contents: read
