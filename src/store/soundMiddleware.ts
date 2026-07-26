@@ -8,7 +8,7 @@
  *   - game/applyMinigameWinner → ui:confirm
  *   - game/skipMinigame        → ui:error
  *   - game/setPhase / game/forcePhase
- *                              → phase-driven music / SFX policy applied
+ *                              → phase-driven SFX policy applied
  *   - game/submitHumanVote     → ui:navigate (eviction vote)
  *   - game/submitPovSaveTarget → ui:confirm
  *   - game/activateBattleBack  → tv:battleback
@@ -25,8 +25,9 @@
  * This middleware is responsible only for one-shot SFX/stingers.
  *
  *   loh_results / pos_results       → tv:event
- *   pos_ceremony                    → tv:veto_ceremony
- *   live_vote                       → tv:voting_eviction
+ *   competition/rules/countdown     → no phase cue; MinigameHost owns countdown audio
+ *   pos_ceremony                    → no phase cue; ceremony background score only
+ *   live_vote                       → no phase cue; faux-TV tally owns elimination audio
  *   eviction_results / final4_eviction → (no audio — evicted SFX deferred to
  *                                        game/setEvictionOverlay, see below)
  *   game/setEvictionOverlay(id)     → player:evicted (one-shot, null→id transition
@@ -79,9 +80,6 @@ const NOMINATIONS_MUSIC_PHASES = new Set<string>([
 ]);
 
 /**
- * Phases where all phase music should be stopped (clean week boundary).
- */
-/**
  * The player id for which `player:evicted` was most recently played.
  * Used to guard against double-play in two scenarios:
  *   1. Final3Ceremony dispatches setEvictionOverlay(id) explicitly, then
@@ -112,28 +110,29 @@ function _isBattleBackReturn(
 }
 
 /**
- * Apply phase-driven music / SFX transitions.
+ * Apply phase-driven one-shot SFX transitions.
  * Called after the action has been committed so `newPhase` reflects the
- * updated game state.
+ * updated game state. Countdown, ceremony, and live-vote cues are intentionally
+ * owned by their mounted visual components rather than phase entry.
  */
 function _applyPhaseAudio(newPhase: string): void {
   if (LOH_MUSIC_PHASES.has(newPhase)) {
-    // Play the results stinger only on results screens, not on comp start
+    // Play the results stinger only on results screens, not on comp start.
     if (newPhase === 'loh_results' || newPhase === 'pos_results') {
       void SoundManager.play('tv:event');
     }
-  } else if (NOMINATIONS_MUSIC_PHASES.has(newPhase)) {
     return;
-  } else if (newPhase === 'pos_ceremony') {
-    // Play veto ceremony stinger once (on ceremony start only), then start veto loop
-    void SoundManager.play('tv:veto_ceremony');
-  } else if (newPhase === 'pos_ceremony_results') {
-    // Continue veto loop; do NOT replay the stinger
-    return;
-  } else if (newPhase === 'live_vote') {
-    // Voting ceremony stinger; keep any existing background music
-    void SoundManager.play('tv:voting_eviction');
   }
+
+  if (
+    NOMINATIONS_MUSIC_PHASES.has(newPhase) ||
+    newPhase === 'pos_ceremony' ||
+    newPhase === 'pos_ceremony_results' ||
+    newPhase === 'live_vote'
+  ) {
+    return;
+  }
+
   // eviction_results / final4_eviction: player:evicted is triggered by
   // game/setEvictionOverlay (when the cinematic overlay actually begins),
   // NOT on the phase transition, to avoid playing before the vote reveal ends.
@@ -151,12 +150,8 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     const result = next(action);
     const newPhase = (api.getState() as StateWithGame).game?.phase;
 
-    // Play minigame:start SFX when a competition begins
-    if (newPhase === 'loh_comp' || newPhase === 'pos_comp') {
-      void SoundManager.play('minigame:start');
-    }
-
-    // Apply phase-driven music / SFX policy
+    // Apply phase-driven one-shot SFX policy. MinigameHost owns the visual
+    // countdown and its dedicated timer sound, so competition entry is silent.
     _applyPhaseAudio(newPhase);
 
     return result;
@@ -167,7 +162,6 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     const newPhase = (action as { type: string; payload: string }).payload;
     const result = next(action);
 
-    // Apply phase-driven music / SFX policy
     _applyPhaseAudio(newPhase);
 
     return result;
