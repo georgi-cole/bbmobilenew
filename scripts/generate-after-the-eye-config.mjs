@@ -115,7 +115,9 @@ function parseSpecArray(filePath) {
 
   const scenarioArray = Object.values(module.exports).find(Array.isArray)
   if (!scenarioArray) {
-    throw new Error(`Could not locate the exported scenario array in ${path.relative(ROOT, filePath)}.`)
+    throw new Error(
+      `Could not locate the exported scenario array in ${path.relative(ROOT, filePath)}.`
+    )
   }
   return scenarioArray
 }
