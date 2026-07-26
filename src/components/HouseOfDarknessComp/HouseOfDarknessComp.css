@@ -1162,7 +1162,7 @@
   pointer-events: none;
   color: #f7eadb;
   background: rgba(2, 1, 4, 0.18);
-  animation: hod-transition-dim 1.35s ease both;
+  animation: hod-transition-dim 2.6s ease both;
 }
 
 .hod-transition-curtain {
@@ -1182,7 +1182,7 @@
   font-size: clamp(0.72rem, 2.6vw, 0.9rem);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  animation: hod-transition-caption 1.35s ease both;
+  animation: hod-transition-caption 2.6s ease both;
 }
 
 .hod-bat-swarm {
@@ -1198,9 +1198,9 @@
   width: var(--hod-bat-size, 24px);
   height: calc(var(--hod-bat-size, 24px) * 0.42);
   border-radius: 45% 45% 58% 58%;
-  background: #050207;
-  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55));
-  animation: hod-bat-flight 1.18s var(--hod-bat-delay, 0s) cubic-bezier(0.2, 0.68, 0.28, 1) both;
+  background: #160719;
+  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 6px rgba(213, 173, 114, 0.4));
+  animation: hod-bat-flight 2.25s var(--hod-bat-delay, 0s) cubic-bezier(0.2, 0.68, 0.28, 1) both;
 }
 
 .hod-bat::before,
@@ -1210,9 +1210,9 @@
   top: -24%;
   width: 74%;
   height: 150%;
-  background: #050207;
+  background: #160719;
   clip-path: polygon(100% 45%, 63% 4%, 48% 38%, 4% 14%, 31% 100%, 72% 72%);
-  animation: hod-bat-wing 0.16s ease-in-out infinite alternate;
+  animation: hod-bat-wing 0.22s ease-in-out infinite alternate;
 }
 
 .hod-bat::before {
@@ -1287,7 +1287,7 @@
       transparent 8.9% 16%
     );
   filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.18));
-  animation: hod-web-spread 1.28s ease-out both;
+  animation: hod-web-spread 2.45s ease-out both;
 }
 
 .hod-transition-spider {
@@ -1301,7 +1301,7 @@
   box-shadow:
     0 -13px 0 -7px #070308,
     0 0 12px rgba(0, 0, 0, 0.7);
-  animation: hod-spider-drop 1.25s 0.08s ease-in-out both;
+  animation: hod-spider-drop 2.35s 0.12s ease-in-out both;
 }
 
 .hod-transition-spider::before {
@@ -1367,9 +1367,9 @@
   0% {
     background: rgba(2, 1, 4, 0);
   }
-  42%,
-  72% {
-    background: rgba(2, 1, 4, 0.72);
+  24%,
+  84% {
+    background: rgba(2, 1, 4, 0.82);
   }
   100% {
     background: rgba(2, 1, 4, 0.18);
@@ -1378,12 +1378,12 @@
 
 @keyframes hod-transition-caption {
   0%,
-  24% {
+  14% {
     opacity: 0;
     transform: translateY(8px) scale(0.96);
   }
-  45%,
-  78% {
+  30%,
+  86% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
@@ -1399,10 +1399,10 @@
     translate: 0 24px;
     scale: 0.72;
   }
-  18% {
+  10% {
     opacity: 1;
   }
-  72% {
+  86% {
     opacity: 1;
   }
   100% {
@@ -1428,9 +1428,9 @@
     opacity: 0;
     transform: scale(0.08) rotate(-18deg);
   }
-  38%,
-  78% {
-    opacity: 0.82;
+  22%,
+  88% {
+    opacity: 0.94;
   }
   100% {
     opacity: 0;
@@ -1443,10 +1443,10 @@
     opacity: 0;
     translate: -50% 0;
   }
-  20% {
+  12% {
     opacity: 1;
   }
-  68% {
+  78% {
     opacity: 1;
     translate: -50% 53vh;
   }

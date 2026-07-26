@@ -22,7 +22,9 @@ describe('House of Darkness AI fatigue', () => {
   })
 
   it('caps AI ability inside a human survival range', () => {
-    expect(getHouseOfDarknessAiAbility({ baseAbility: 100, round: 1, health: 100 })).toBeLessThanOrEqual(56)
+    expect(
+      getHouseOfDarknessAiAbility({ baseAbility: 100, round: 1, health: 100 })
+    ).toBeLessThanOrEqual(56)
     expect(getHouseOfDarknessAiAbility({ baseAbility: 20, round: 20, health: 1 })).toBe(18)
   })
 })
