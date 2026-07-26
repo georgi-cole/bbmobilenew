@@ -155,7 +155,7 @@ export default function HouseOfDarknessComp({
   const [standings, setStandings] = useState<ContestantState[]>([]);
   const [damageFlash, setDamageFlash] = useState<number | null>(null);
 
-  const roundStartedAtRef = useRef(Date.now());
+  const roundStartedAtRef = useRef(0);
   const roundStartingHealthRef = useRef(HOUSE_OF_DARKNESS_STARTING_HEALTH);
   const roundCompletedRef = useRef(false);
   const deathResolvedRef = useRef(false);
@@ -168,6 +168,10 @@ export default function HouseOfDarknessComp({
   const humanState = contestants[humanId];
   const humanHealth = humanState?.health ?? 0;
   const { playFlip, playMatch, playMismatch, playComplete } = useHouseOfCardsAudio(phase === 'playing');
+
+  useEffect(() => {
+    roundStartedAtRef.current = Date.now();
+  }, []);
 
   const finalizeTournament = useCallback((nextStates: Record<string, ContestantState>) => {
     const ranked = rankContestants(nextStates, resolvedIds);
