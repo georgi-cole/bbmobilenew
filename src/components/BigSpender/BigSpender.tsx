@@ -22,8 +22,15 @@ import {
   type BigSpenderWallet,
 } from './bigSpenderLogic';
 import './BigSpender.css';
+import './BigSpenderModern.css';
 
 type BombDramaStage = 'impact' | 'cracked' | 'prompt' | null;
+
+type LatestReveal = {
+  roundNumber: number;
+  outcome: BigSpenderWallet['outcome'];
+  secondChance: boolean;
+};
 
 const BOMB_ICON = '\u{1F4A3}';
 const BOMB_IMPACT_MS = 760;
@@ -55,6 +62,22 @@ function getWalletResultLabel(wallet: BigSpenderWallet) {
 function getWalletAriaLabelForState(wallet: BigSpenderWallet, isSecondChancePick: boolean) {
   if (isSecondChancePick) return `Pick wallet ${wallet.boardSlotIndex + 1} as your Second Chance Wallet`;
   return getWalletAriaLabel(wallet);
+}
+
+function getBalanceZone(balance: number) {
+  if (balance === 0) return { label: 'Perfect landing', tone: 'perfect' };
+  if (balance <= 150) return { label: 'Red-hot range', tone: 'hot' };
+  if (balance <= 500) return { label: 'Competitive range', tone: 'competitive' };
+  if (balance <= 900) return { label: 'Still expensive', tone: 'high' };
+  return { label: 'Big spender territory', tone: 'very-high' };
+}
+
+function getLatestRevealText(reveal: LatestReveal | null) {
+  if (!reveal) return 'Choose a wallet to reveal its value.';
+  if (reveal.outcome.type === 'bomb') return 'Bomb found. The round is on the line.';
+  const amount = reveal.outcome.amount ?? 0;
+  if (amount < 0) return `${Math.abs(amount)} Eyeoleans removed.`;
+  return `${amount} Eyeoleans added back.`;
 }
 
 function chooseAiWallet(state: BigSpenderState, playerId: string, rng: () => number) {
@@ -90,6 +113,7 @@ export default function BigSpender(props: GenericMinigameProps) {
   const [showResults, setShowResults] = useState(false);
   const [fastForwarding, setFastForwarding] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [latestReveal, setLatestReveal] = useState<LatestReveal | null>(null);
   const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));
   const aiTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const broadcastQueueRef = useRef<string[]>([]);
@@ -103,7 +127,9 @@ export default function BigSpender(props: GenericMinigameProps) {
     [humanPlayer, state],
   );
   const ranking = useMemo(
-    () => state.status === 'completed' ? rankBigSpenderGame(state) : rankBigSpenderPlayers(state.players.filter((player) => state.activePlayerIds.includes(player.playerId))),
+    () => state.status === 'completed'
+      ? rankBigSpenderGame(state)
+      : rankBigSpenderPlayers(state.players.filter((player) => state.activePlayerIds.includes(player.playerId))),
     [state],
   );
   const winner = ranking[0] ?? null;
@@ -146,6 +172,13 @@ export default function BigSpender(props: GenericMinigameProps) {
     humanPlayer.walletsOpened >= BIG_SPENDER_CONFIG.minWalletsBeforeLock,
   );
   const walletsUntilLock = Math.max(0, BIG_SPENDER_CONFIG.minWalletsBeforeLock - (humanPlayer?.walletsOpened ?? 0));
+  const lockProgress = Math.min(
+    100,
+    Math.round(((humanPlayer?.walletsOpened ?? 0) / BIG_SPENDER_CONFIG.minWalletsBeforeLock) * 100),
+  );
+  const hiddenWalletCount = humanBoard.filter((wallet) => wallet.state === 'hidden').length;
+  const balanceZone = getBalanceZone(humanPlayer?.balance ?? BIG_SPENDER_CONFIG.startingBalance);
+  const displayedLatestReveal = latestReveal?.roundNumber === state.roundNumber ? latestReveal : null;
   const humanZeroFinished = humanPlayer?.status === 'zeroFinished';
   const humanZeroEvent = humanPlayer
     ? state.events.find((event) => event.type === 'playerZeroFinished' && event.playerId === humanPlayer.playerId)
@@ -189,7 +222,8 @@ export default function BigSpender(props: GenericMinigameProps) {
         setState((previous) => {
           const actor = previous.players.find((entry) => entry.playerId === player.playerId);
           if (!actor || actor.isHuman || actor.status !== 'active') return previous;
-          const shouldOpen = actor.walletsOpened < BIG_SPENDER_CONFIG.minWalletsBeforeLock || decideAiShouldOpen(actor.balance, aiRngRef.current);
+          const shouldOpen = actor.walletsOpened < BIG_SPENDER_CONFIG.minWalletsBeforeLock
+            || decideAiShouldOpen(actor.balance, aiRngRef.current);
           if (!shouldOpen) return lockBigSpenderPlayer(previous, actor.playerId);
           const wallet = chooseAiWallet(previous, actor.playerId, aiRngRef.current);
           if (!wallet) return lockBigSpenderPlayer(previous, actor.playerId);
@@ -286,6 +320,14 @@ export default function BigSpender(props: GenericMinigameProps) {
 
   const openWallet = (walletId: string) => {
     if (!humanPlayer || !canHumanOpen) return;
+    const wallet = humanBoard.find((entry) => entry.walletId === walletId);
+    if (wallet) {
+      setLatestReveal({
+        roundNumber: state.roundNumber,
+        outcome: wallet.outcome,
+        secondChance: humanSecondChancePending,
+      });
+    }
     setState((previous) => openBigSpenderWallet(
       previous,
       humanPlayer.playerId,
@@ -333,11 +375,11 @@ export default function BigSpender(props: GenericMinigameProps) {
 
   const statusMessage = (() => {
     if (fastForwarding) return 'Fast forwarding the house feed...';
-    if (humanFinishedWhileRunning) return 'You are done here. The house is still finishing this round.';
-    if (humanWaitingForFinaleTurn) return 'Finale board is shared. Waiting for the other finalist to pick.';
-    if (humanSecondChancePending) return 'Pick any closed wallet yourself.';
-    if (walletsUntilLock > 0) return `${walletsUntilLock} more wallet${walletsUntilLock === 1 ? '' : 's'} to unlock Lock in.`;
-    return isFinaleRound ? 'Finale turn is live.' : 'Lock in is ready.';
+    if (humanFinishedWhileRunning) return 'Your score is locked. The remaining players are still finishing.';
+    if (humanWaitingForFinaleTurn) return 'The finale board is shared. The other finalist is choosing.';
+    if (humanSecondChancePending) return 'Choose one closed wallet. This pick is mandatory.';
+    if (walletsUntilLock > 0) return `Open ${walletsUntilLock} more wallet${walletsUntilLock === 1 ? '' : 's'} before you can lock.`;
+    return isFinaleRound ? 'Your finale turn is live.' : 'You can lock now or keep pushing toward zero.';
   })();
 
   return (
@@ -347,99 +389,200 @@ export default function BigSpender(props: GenericMinigameProps) {
       zeroDramaVisible ? 'big-spender--zeroing' : '',
       humanSecondChancePending ? 'big-spender--second-chance' : '',
     ].join(' ')} data-testid="big-spender-game">
-      <section className="big-spender__status-panel" aria-live="polite">
-        <div>
-          <span className="big-spender__eyebrow">
-            {humanSecondChancePending ? 'Second chance' : isFinaleRound ? 'Round 5 finale' : `Round ${state.roundNumber}`}
+      <header className="big-spender__cockpit">
+        <div className="big-spender__title-lockup">
+          <span className="big-spender__round-chip">
+            {humanSecondChancePending ? 'Second chance' : isFinaleRound ? 'Round 5 · Finale' : `Round ${state.roundNumber}`}
           </span>
-          <strong>{humanPlayer ? `${humanPlayer.balance} Eyeoleans` : 'Results'}</strong>
-          {state.status === 'running' && (
-            <small className={humanFinishedWhileRunning || humanWaitingForFinaleTurn || fastForwarding ? 'big-spender__status-note--live' : ''}>
-              {statusMessage}
-              {(humanFinishedWhileRunning || humanWaitingForFinaleTurn || fastForwarding) && <span className="big-spender__status-loader" aria-hidden="true" />}
-            </small>
-          )}
-          {isFinaleRound && finalePlayers.length > 0 && (
-            <div className="big-spender__finalists" aria-label="Finalists">
-              {finalePlayers.map((player) => (
-                <span
-                  key={player.playerId}
-                  className={player.currentTurn ? 'big-spender__finalist big-spender__finalist--turn' : 'big-spender__finalist'}
-                >
-                  <strong>{player.displayName}</strong>
-                  <em>{player.balance} Eyeoleans</em>
-                </span>
-              ))}
-            </div>
-          )}
+          <div>
+            <strong>Big Spender</strong>
+            <span>Broke or Boom</span>
+          </div>
         </div>
-        {state.status === 'running' && humanFinishedWhileRunning && (
-          <button type="button" className="big-spender__action big-spender__action--lock" onClick={fastForwardHouse} disabled={fastForwarding}>
-            {fastForwarding ? 'Forwarding' : 'Fast forward'}
-          </button>
-        )}
         <button type="button" className="big-spender__info" onClick={() => setShowRules(true)} aria-label="Show rules">
           i
         </button>
-        {state.status === 'running' && !humanFinishedWhileRunning && (
-          <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanLock}>
-            Lock in
-          </button>
-        )}
+      </header>
+
+      <section className="big-spender__dashboard" aria-live="polite">
+        <article className={`big-spender__balance-card big-spender__balance-card--${balanceZone.tone}`}>
+          <span className="big-spender__metric-label">Your balance</span>
+          <strong>{humanPlayer ? humanPlayer.balance.toLocaleString('en-US') : '—'}</strong>
+          <small>{balanceZone.label} · Target 0</small>
+        </article>
+
+        <article className="big-spender__progress-card">
+          <div className="big-spender__progress-heading">
+            <span className="big-spender__metric-label">Lock requirement</span>
+            <strong>{Math.min(humanPlayer?.walletsOpened ?? 0, BIG_SPENDER_CONFIG.minWalletsBeforeLock)}/{BIG_SPENDER_CONFIG.minWalletsBeforeLock}</strong>
+          </div>
+          <div className="big-spender__progress-track" aria-label={`${lockProgress}% of required wallets opened`}>
+            <span style={{ width: `${lockProgress}%` }} />
+          </div>
+          <small>{hiddenWalletCount} wallets remain on this board</small>
+        </article>
       </section>
 
-      <main className="big-spender__table">
-        <section className="big-spender__board" aria-label="Wallet board">
-          {humanBoard.map((wallet) => {
-            const resultLabel = getWalletResultLabel(wallet);
-            const openedByLabel = getWalletOpenedByLabel(wallet);
-            return (
-              <button
-                key={wallet.walletId}
-                type="button"
-                className={[
-                  'big-spender__wallet',
-                  `big-spender__wallet--color-${wallet.generationColor}`,
-                  wallet.state === 'revealed' ? 'big-spender__wallet--revealed' : '',
-                  wallet.outcome.type === 'bomb' && wallet.state === 'revealed' ? 'big-spender__wallet--bomb' : '',
-                  humanSecondChancePending && wallet.state === 'hidden' ? 'big-spender__wallet--second-chance' : '',
-                ].join(' ')}
-                disabled={!canHumanOpen || wallet.state !== 'hidden'}
-                onClick={() => openWallet(wallet.walletId)}
-                aria-label={getWalletAriaLabelForState(wallet, humanSecondChancePending)}
-              >
-                <span className="big-spender__wallet-flap" aria-hidden="true" />
-                <span className="big-spender__wallet-id">{wallet.boardSlotIndex + 1}</span>
-                {resultLabel ? (
-                  <>
-                    <strong className="big-spender__wallet-result">{resultLabel}</strong>
-                    {openedByLabel && <span className="big-spender__wallet-opener">{openedByLabel}</span>}
-                  </>
-                ) : (
-                  <span className="big-spender__wallet-generation">{humanSecondChancePending ? 'Pick' : 'Tap'}</span>
-                )}
-              </button>
-            );
-          })}
-        </section>
+      <section className="big-spender__odds" aria-label="Wallet outcome odds">
+        <div>
+          <span>Typical wallet mix</span>
+          <small>Every choice stays hidden until opened</small>
+        </div>
+        <div className="big-spender__odds-bar" aria-hidden="true">
+          <span className="big-spender__odds-negative" style={{ width: '75%' }} />
+          <span className="big-spender__odds-positive" style={{ width: '20%' }} />
+          <span className="big-spender__odds-bomb" style={{ width: '5%' }} />
+        </div>
+        <div className="big-spender__odds-legend">
+          <span><i className="big-spender__legend-dot big-spender__legend-dot--negative" />75% subtract</span>
+          <span><i className="big-spender__legend-dot big-spender__legend-dot--positive" />20% add</span>
+          <span><i className="big-spender__legend-dot big-spender__legend-dot--bomb" />5% bomb</span>
+        </div>
+      </section>
 
+      {isFinaleRound && finalePlayers.length > 0 && (
+        <section className="big-spender__finalists" aria-label="Finalists">
+          {finalePlayers.map((player) => (
+            <span
+              key={player.playerId}
+              className={player.currentTurn ? 'big-spender__finalist big-spender__finalist--turn' : 'big-spender__finalist'}
+            >
+              <strong>{player.displayName}</strong>
+              <em>{player.balance.toLocaleString('en-US')} Eyeoleans</em>
+            </span>
+          ))}
+        </section>
+      )}
+
+      <main className="big-spender__table">
+        <section className="big-spender__board-shell">
+          <div className="big-spender__board-heading">
+            <div>
+              <span className="big-spender__metric-label">Wallet wall</span>
+              <strong>{humanSecondChancePending ? 'Choose your mandatory save' : 'Tap any closed wallet'}</strong>
+            </div>
+            <span>{humanPlayer?.walletsOpened ?? 0} opened</span>
+          </div>
+
+          <div className={[
+            'big-spender__latest-reveal',
+            displayedLatestReveal ? `big-spender__latest-reveal--${displayedLatestReveal.outcome.type}` : '',
+          ].join(' ')} aria-live="polite">
+            <span>{displayedLatestReveal?.secondChance ? 'Second Chance result' : 'Latest result'}</span>
+            <strong>
+              {!displayedLatestReveal
+                ? '—'
+                : displayedLatestReveal.outcome.type === 'bomb'
+                  ? BOMB_ICON
+                  : `${(displayedLatestReveal.outcome.amount ?? 0) > 0 ? '+' : ''}${displayedLatestReveal.outcome.amount ?? 0}`}
+            </strong>
+            <small>{getLatestRevealText(displayedLatestReveal)}</small>
+          </div>
+
+          <section className="big-spender__board" aria-label="Wallet board">
+            {humanBoard.map((wallet) => {
+              const resultLabel = getWalletResultLabel(wallet);
+              const openedByLabel = getWalletOpenedByLabel(wallet);
+              return (
+                <button
+                  key={wallet.walletId}
+                  type="button"
+                  className={[
+                    'big-spender__wallet',
+                    `big-spender__wallet--color-${wallet.generationColor}`,
+                    wallet.state === 'revealed' ? 'big-spender__wallet--revealed' : '',
+                    wallet.state === 'revealed' ? `big-spender__wallet--${wallet.outcome.type}` : '',
+                    wallet.outcome.type === 'bomb' && wallet.state === 'revealed' ? 'big-spender__wallet--bomb' : '',
+                    humanSecondChancePending && wallet.state === 'hidden' ? 'big-spender__wallet--second-chance' : '',
+                  ].join(' ')}
+                  disabled={!canHumanOpen || wallet.state !== 'hidden'}
+                  onClick={() => openWallet(wallet.walletId)}
+                  aria-label={getWalletAriaLabelForState(wallet, humanSecondChancePending)}
+                >
+                  <span className="big-spender__wallet-flap" aria-hidden="true" />
+                  <span className="big-spender__wallet-id">{String(wallet.boardSlotIndex + 1).padStart(2, '0')}</span>
+                  {resultLabel ? (
+                    <>
+                      <strong className="big-spender__wallet-result">{resultLabel}</strong>
+                      {openedByLabel && <span className="big-spender__wallet-opener">{openedByLabel}</span>}
+                    </>
+                  ) : (
+                    <span className="big-spender__wallet-generation">{humanSecondChancePending ? 'Pick' : 'Open'}</span>
+                  )}
+                </button>
+              );
+            })}
+          </section>
+        </section>
       </main>
 
       {!isFinaleRound && broadcasts.length > 0 && (
         <section className="big-spender__broadcasts" aria-label="House broadcasts" aria-live="polite">
+          <span className="big-spender__metric-label">House feed</span>
           {broadcasts.map((message) => (
             <p key={message}>{message}</p>
           ))}
         </section>
       )}
 
+      {state.status === 'running' && (
+        <footer className="big-spender__action-dock">
+          <div>
+            <span>{humanSecondChancePending ? 'Mandatory choice' : canHumanLock ? 'Decision unlocked' : 'Keep opening'}</span>
+            <small>{statusMessage}</small>
+          </div>
+          {humanFinishedWhileRunning ? (
+            <button type="button" className="big-spender__action big-spender__action--lock" onClick={fastForwardHouse} disabled={fastForwarding}>
+              {fastForwarding ? 'Forwarding…' : 'Fast forward'}
+            </button>
+          ) : humanWaitingForFinaleTurn ? (
+            <button type="button" className="big-spender__action big-spender__action--lock" disabled>
+              Waiting…
+            </button>
+          ) : (
+            <button type="button" className="big-spender__action big-spender__action--lock" onClick={lockHuman} disabled={!canHumanLock}>
+              {canHumanLock
+                ? `Lock ${humanPlayer?.balance.toLocaleString('en-US') ?? ''}`
+                : humanSecondChancePending
+                  ? 'Pick a wallet'
+                  : `Open ${walletsUntilLock} more`}
+            </button>
+          )}
+        </footer>
+      )}
+
       {showRules && (
         <div className="big-spender__overlay" role="dialog" aria-modal="true" aria-label="Big Spender rules">
           <div className="big-spender__modal big-spender__modal--rules">
             <span className="big-spender__eyebrow">Quick rules</span>
-            <h2>Broke or Boom</h2>
-            <p>Start at 1,200. Open at least 8 wallets, then lock in as close to 0 as you dare. Bombed players rank last.</p>
-            <p>Rounds 1–4 use private boards. The final two alternate on one shared board.</p>
+            <h2>Get as close to zero as you dare</h2>
+            <div className="big-spender__rules-grid">
+              <article>
+                <span>01</span>
+                <div><strong>Start at 1,200</strong><p>Negative wallets help. Positive wallets push you away from the target.</p></div>
+              </article>
+              <article>
+                <span>02</span>
+                <div><strong>Open at least 8</strong><p>After your eighth wallet, lock your balance or keep gambling for a better score.</p></div>
+              </article>
+              <article>
+                <span>03</span>
+                <div><strong>Zero is unbeatable</strong><p>Exact zero ranks first. Otherwise the lowest non-zero balance wins. Bombed players rank last.</p></div>
+              </article>
+              <article>
+                <span>04</span>
+                <div><strong>Survive four cuts</strong><p>Rounds 1–3 eliminate one player each. Round 4 cuts the field to the final two.</p></div>
+              </article>
+              <article>
+                <span>05</span>
+                <div><strong>Finale: one shared wall</strong><p>The finalists alternate picks. A bomb ends the finale immediately, and ad saves are disabled.</p></div>
+              </article>
+              <article>
+                <span>06</span>
+                <div><strong>Two bomb saves</strong><p>Before the finale, you may watch an ad twice per game. The mandatory Second Chance Wallet can still bomb.</p></div>
+              </article>
+            </div>
+            <p className="big-spender__rules-note">Tie-breakers: more wallets opened, then more negative wallets, then earlier finalization.</p>
             <button type="button" onClick={() => setShowRules(false)}>Got it</button>
           </div>
         </div>
@@ -494,10 +637,10 @@ export default function BigSpender(props: GenericMinigameProps) {
             </h2>
             <p>
               {humanEliminatedInSummary
-                ? 'The house keeps playing from here.'
+                ? 'The closest balances survive. The house keeps playing from here.'
                 : latestRoundResult.survivorPlayerIds.length <= BIG_SPENDER_CONFIG.roundFourFinalistCount
                   ? 'Two finalists remain for the shared-board finale.'
-                  : `${latestRoundResult.survivorPlayerIds.length} players move on.`}
+                  : `${latestRoundResult.survivorPlayerIds.length} players move on. Closest to zero leads the table.`}
             </p>
             <ol className="big-spender__ranking big-spender__ranking--round">
               {roundSummaryPlayers.map((player) => {
@@ -506,7 +649,9 @@ export default function BigSpender(props: GenericMinigameProps) {
                   <li key={player.playerId} className={eliminated ? 'big-spender__ranking-item--eliminated' : ''}>
                     <span>{player.rank}</span>
                     <strong>{player.displayName}</strong>
-                    <em>{eliminated ? 'Eliminated' : `${player.walletsOpened} wallets - ${getPlayerLabel(player)}`}</em>
+                    <em>
+                      {player.balance.toLocaleString('en-US')} Eyeoleans · {eliminated ? 'Eliminated' : `${player.walletsOpened} wallets · ${getPlayerLabel(player)}`}
+                    </em>
                   </li>
                 );
               })}
@@ -547,7 +692,7 @@ export default function BigSpender(props: GenericMinigameProps) {
                 >
                   <span>{RESULT_MEDALS[player.rank - 1] ?? player.rank}</span>
                   <strong>{player.displayName}</strong>
-                  <em>{player.balance} Eyeoleans - {getPlayerLabel(player)} - {player.walletsOpened} wallets</em>
+                  <em>{player.balance.toLocaleString('en-US')} Eyeoleans · {getPlayerLabel(player)} · {player.walletsOpened} wallets</em>
                 </li>
               ))}
             </ol>
