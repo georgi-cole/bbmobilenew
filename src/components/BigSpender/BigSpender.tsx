@@ -1,1 +1,1 @@
-export { default } from './BigSpenderReplenishing';
+export { default } from './BigSpenderReplenishing'

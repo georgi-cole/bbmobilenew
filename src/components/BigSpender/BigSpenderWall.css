@@ -36,16 +36,13 @@
   border-radius: inherit;
   background-repeat: no-repeat;
   background-size: 400% 400%;
-  background-position:
-    calc(var(--wallet-column) * 33.333%)
-    calc(var(--wallet-row) * 33.333%);
+  background-position: calc(var(--wallet-column) * 33.333%) calc(var(--wallet-row) * 33.333%);
   opacity: 0.8;
   pointer-events: none;
 }
 
 /* Art Deco vault seal: concentric rings, spokes and crosshair. */
-.big-spender__board--motif-vault
-  .big-spender__wallet:not(.big-spender__wallet--revealed)::before {
+.big-spender__board--motif-vault .big-spender__wallet:not(.big-spender__wallet--revealed)::before {
   background-image:
     radial-gradient(
       circle at 50% 50%,
@@ -107,8 +104,7 @@
     );
 }
 
-.big-spender__wallet:not(.big-spender__wallet--revealed)
-  .big-spender__wallet-id {
+.big-spender__wallet:not(.big-spender__wallet--revealed) .big-spender__wallet-id {
   grid-column: 1;
   grid-row: 1;
   place-self: center;
@@ -118,8 +114,7 @@
   text-shadow: 0 0.18rem 0.75rem rgba(0, 0, 0, 0.75);
 }
 
-.big-spender__wallet:not(.big-spender__wallet--revealed)
-  .big-spender__wallet-flap {
+.big-spender__wallet:not(.big-spender__wallet--revealed) .big-spender__wallet-flap {
   position: absolute;
   inset: 0.62rem auto auto 0.62rem;
   width: 0.8rem;
@@ -237,8 +232,7 @@
 }
 
 .big-spender__board--entering {
-  animation: big-spender-wall-enter 500ms cubic-bezier(0.2, 0.85, 0.25, 1)
-    both;
+  animation: big-spender-wall-enter 500ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
 }
 
 .big-spender__broadcasts {
