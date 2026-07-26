@@ -18,6 +18,7 @@ import { installE2EStateProbe } from './testSupport/e2eStateProbe'
 import App from './App.tsx'
 import './styles/gameOverResponsiveFixes.css'
 import './styles/houseOfCardsInteractionFix.css'
+import './styles/houseOfCardsBrightTheme.css'
 
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
 // early as possible so CSS selectors in _ios-standalone-fixes.css and
