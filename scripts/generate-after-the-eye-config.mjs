@@ -1,5 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import vm from 'node:vm'
+import ts from 'typescript'
 
 const ROOT = process.cwd()
 const SOURCE_DIR = path.join(ROOT, 'src/screens/GameOver')
@@ -75,13 +77,47 @@ const collectionFields = ['headlines', 'subheadlines', 'bodies', 'bulletPoints',
 
 function parseSpecArray(filePath) {
   const source = fs.readFileSync(filePath, 'utf8')
-  const equalsIndex = source.indexOf('=')
-  const startIndex = source.indexOf('[', equalsIndex)
-  const endIndex = source.lastIndexOf('];')
-  if (equalsIndex < 0 || startIndex < 0 || endIndex < 0) {
-    throw new Error(`Could not locate the scenario array in ${path.relative(ROOT, filePath)}.`)
+  const result = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+    },
+    fileName: filePath,
+    reportDiagnostics: true,
+  })
+  const diagnostics = (result.diagnostics ?? []).filter(
+    (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error
+  )
+  if (diagnostics.length > 0) {
+    const messages = diagnostics
+      .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
+      .join('\n')
+    throw new Error(`Could not compile ${path.relative(ROOT, filePath)}:\n${messages}`)
   }
-  return JSON.parse(source.slice(startIndex, endIndex + 1))
+
+  const module = { exports: {} }
+  vm.runInNewContext(
+    result.outputText,
+    {
+      module,
+      exports: module.exports,
+      require(specifier) {
+        throw new Error(
+          `Scenario source ${path.relative(ROOT, filePath)} cannot import runtime module ${specifier}.`
+        )
+      },
+    },
+    {
+      filename: filePath,
+      timeout: 1000,
+    }
+  )
+
+  const scenarioArray = Object.values(module.exports).find(Array.isArray)
+  if (!scenarioArray) {
+    throw new Error(`Could not locate the exported scenario array in ${path.relative(ROOT, filePath)}.`)
+  }
+  return scenarioArray
 }
 
 function lowerFirst(value) {
