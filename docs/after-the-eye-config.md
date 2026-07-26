@@ -1,26 +1,30 @@
 # After the Eye remote content
 
-The post-finale tabloid loads its editorial content from `public/config/afterTheEyeOutcomes.json`. In production that path can be replaced by a server-hosted file, or `VITE_AFTER_THE_EYE_CONFIG_URL` can point to another JSON endpoint.
+The post-finale tabloid requests `public/config/afterTheEyeOutcomes.json` by default. Web, Android, iOS, and local development builds generate that file automatically from the editable scenario databank in `src/screens/GameOver/afterTheEyeOutcomeScenarios1.ts` through `afterTheEyeOutcomeScenarios5.ts`, plus `afterTheEyeOutcomeLinkedScenarios.ts`.
+
+A deployed server can replace the generated JSON without rebuilding the app. To host it at another address, set `VITE_AFTER_THE_EYE_CONFIG_URL` to the JSON endpoint.
 
 Loading order is:
 
-1. Valid remote configuration.
-2. Last known valid configuration cached in the browser.
-3. The bundled fallback in `src/screens/GameOver/afterTheEyeOutcomes.json`.
+1. A valid remote configuration.
+2. The last known valid configuration cached in the browser.
+3. The bundled TypeScript fallback assembled by `afterTheEyeOutcomeConfig.ts`.
 
-A bad request or malformed edit cannot block the finale. The remote file is treated only as text data and is never rendered as HTML.
+A failed request or malformed edit cannot block the finale. Remote content is treated strictly as text data and is never injected as HTML.
 
-## Editing
+## Editing the databank
 
-Each individual scenario contains:
+Each compact source scenario contains:
 
 - `id`: stable unique identifier.
-- `category`: a key from `categories`.
+- `category`: a key from the supported categories.
 - `tone`: `excellent`, `good`, `neutral`, `bad`, or `tragic`.
 - `weight`: relative selection probability.
 - `cooldownGroup`: prevents near-duplicate stories in one issue.
-- `eligibility`: optional placement, season-tag, and relationship rules.
-- Multiple `headlines`, `subheadlines`, `bodies`, `bulletPoints`, and `twists`.
+- `eligibility`: optional season-tag and relationship rules.
+- Multiple `headlines`, three narrative `beats`, and multiple `twists`.
+
+The generator expands those beats into several subheadline and body structures, then writes the complete server JSON.
 
 Supported placeholders are:
 
@@ -28,10 +32,17 @@ Supported placeholders are:
 
 A scenario using `{allyName}`, `{rivalName}`, or `{romanticName}` must declare the matching `eligibility.requiresRelation`. `{partnerName}` is reserved for linked scenarios.
 
-After editing, keep the server and bundled copies synchronized and run:
+After editing the source databank, run:
 
 ```bash
+npm run generate:after-eye
 npm run validate:after-eye
 ```
 
-Already published season issues are persisted separately, so changing the databank affects newly generated issues only.
+The first command writes `public/config/afterTheEyeOutcomes.json`; the second checks IDs, categories, relationships, placeholders, weights, required text collections, and whether an existing generated file is current. Normal development and production builds run generation automatically.
+
+## Editing only the deployed server copy
+
+You may also edit the generated JSON directly on the server for fast copy changes. Keep `version` at `1`, retain valid scenario IDs, and do not introduce unsupported placeholders. The app validates the complete file before accepting it. When an edit is rejected, players receive the last known valid copy or the bundled fallback instead.
+
+Already published season issues are persisted independently, so changing the databank affects newly generated issues only and does not rewrite a completed season's established aftermath.
