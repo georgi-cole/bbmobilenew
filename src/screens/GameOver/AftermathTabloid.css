@@ -1,0 +1,672 @@
+/* After the Eye — a physical tabloid page, intentionally separate from the finale dashboard. */
+.gameover-prompt--aftermath .gameover-prompt__fineprint {
+  margin: 0.9rem 0 0;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.gameover-overlay .gameover-aftermath {
+  --aftermath-ink: #18130f;
+  --aftermath-muted: #665b50;
+  --aftermath-paper: #f2e7cf;
+  --aftermath-paper-light: #fbf4e4;
+  --aftermath-red: #8e1721;
+  --aftermath-deep-red: #4c0b12;
+  --aftermath-tone: #a56818;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  width: min(calc(100% - 12px), 790px);
+  max-height: calc(100dvh - 12px);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(255, 239, 207, 0.5);
+  border-radius: 14px 14px 5px 5px;
+  color: var(--aftermath-ink);
+  background: linear-gradient(180deg, #4c0b12 0 48px, #1d0c0d 48px 100%);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 48px color-mix(in srgb, var(--aftermath-tone) 20%, transparent);
+  animation: aftermath-edition-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gameover-overlay .gameover-aftermath--excellent {
+  --aftermath-tone: #b77713;
+}
+.gameover-overlay .gameover-aftermath--good {
+  --aftermath-tone: #47734c;
+}
+.gameover-overlay .gameover-aftermath--neutral {
+  --aftermath-tone: #6f655c;
+}
+.gameover-overlay .gameover-aftermath--bad {
+  --aftermath-tone: #a53b28;
+}
+.gameover-overlay .gameover-aftermath--tragic {
+  --aftermath-tone: #7d1724;
+}
+
+@keyframes aftermath-edition-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) rotate(-0.35deg) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
+.gameover-overlay .gameover-aftermath__topbar {
+  flex: 0 0 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 12px;
+  color: #fff6e5;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 6px),
+    linear-gradient(90deg, #3f080e, #6a111a 52%, #3f080e);
+  border-bottom: 1px solid rgba(255, 244, 219, 0.3);
+}
+
+.gameover-overlay .gameover-aftermath__edition,
+.gameover-overlay .gameover-aftermath__issue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 241, 212, 0.46);
+  border-radius: 2px;
+  color: #fff4dc;
+  background: rgba(0, 0, 0, 0.14);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.gameover-overlay .gameover-aftermath__masthead {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff8e8;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.1rem, 5vw, 1.75rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.gameover-overlay .gameover-aftermath__progress-rail {
+  flex: 0 0 3px;
+  height: 3px;
+  margin: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gameover-overlay .gameover-aftermath__progress-rail span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #f0cf91, #d34b42);
+  transition: width 320ms ease;
+}
+
+.gameover-overlay .gameover-aftermath__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 9px 9px 4px;
+  background:
+    radial-gradient(circle at 12% 4%, rgba(255, 246, 217, 0.1), transparent 24%),
+    linear-gradient(180deg, #1e0d0f, #090708);
+  scrollbar-width: thin;
+}
+
+.gameover-overlay .gameover-aftermath__paper {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: clamp(12px, 3vw, 22px);
+  border: 1px solid rgba(59, 39, 18, 0.35);
+  border-radius: 2px;
+  color: var(--aftermath-ink);
+  background:
+    radial-gradient(circle at 16% 8%, rgba(255, 255, 255, 0.72), transparent 26%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.38), transparent 36%), var(--aftermath-paper);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.36),
+    inset 0 0 42px rgba(97, 61, 24, 0.1);
+  transform: rotate(-0.08deg);
+}
+
+.gameover-overlay .gameover-aftermath__paper::before,
+.gameover-overlay .gameover-aftermath__paper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.gameover-overlay .gameover-aftermath__paper::before {
+  opacity: 0.24;
+  background:
+    repeating-radial-gradient(
+      circle at 0 0,
+      rgba(45, 25, 10, 0.22) 0 0.45px,
+      transparent 0.7px 3px
+    ),
+    repeating-linear-gradient(91deg, transparent 0 18px, rgba(65, 39, 16, 0.045) 18px 19px);
+  mix-blend-mode: multiply;
+}
+
+.gameover-overlay .gameover-aftermath__paper::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.48),
+    inset 0 0 46px rgba(75, 42, 15, 0.1);
+}
+
+.gameover-overlay .gameover-aftermath__newspaper-header {
+  padding-bottom: 8px;
+  border-bottom: 4px double var(--aftermath-ink);
+  text-align: center;
+}
+
+.gameover-overlay .gameover-aftermath__dateline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(24, 19, 15, 0.7);
+  color: var(--aftermath-muted);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__newspaper-header h2 {
+  margin: 4px 0 0;
+  color: #130e0b;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(2.4rem, 11vw, 5.8rem);
+  font-stretch: condensed;
+  font-weight: 950;
+  letter-spacing: -0.045em;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__newspaper-header p {
+  margin: 4px 0 0;
+  color: var(--aftermath-red);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(0.62rem, 2.2vw, 0.82rem);
+  font-style: italic;
+  font-weight: 700;
+}
+
+.gameover-overlay .gameover-aftermath__story-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  margin: 9px 0 0;
+  padding: 5px 0;
+  border-top: 1px solid rgba(24, 19, 15, 0.25);
+  border-bottom: 1px solid rgba(24, 19, 15, 0.55);
+  font-family: Arial, Helvetica, sans-serif;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__category {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--aftermath-red);
+  font-size: 0.63rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gameover-overlay .gameover-aftermath__badge,
+.gameover-overlay .gameover-aftermath__tone {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 1px;
+  font-size: 0.5rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.gameover-overlay .gameover-aftermath__badge {
+  color: #fff8e8;
+  background: var(--aftermath-red);
+  box-shadow: 1px 1px 0 #2b060a;
+  transform: rotate(-1.4deg);
+}
+
+.gameover-overlay .gameover-aftermath__tone,
+.gameover-overlay .gameover-aftermath__tone--good,
+.gameover-overlay .gameover-aftermath__tone--neutral,
+.gameover-overlay .gameover-aftermath__tone--bad,
+.gameover-overlay .gameover-aftermath__tone--tragic {
+  color: #fff9e9;
+  background: var(--aftermath-tone);
+}
+
+.gameover-overlay .gameover-aftermath__lead {
+  padding: 10px 0 9px;
+  border-bottom: 2px solid var(--aftermath-ink);
+}
+
+.gameover-overlay .gameover-aftermath__kicker {
+  margin: 0;
+  color: var(--aftermath-red);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__headline {
+  margin: 4px 0 5px;
+  overflow-wrap: anywhere;
+  color: #100c09;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(2.05rem, 9vw, 4.85rem);
+  font-stretch: condensed;
+  font-weight: 950;
+  letter-spacing: -0.035em;
+  line-height: 0.88;
+  text-wrap: balance;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__subheadline {
+  margin: 0;
+  color: #3b3028;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(0.9rem, 2.5vw, 1.08rem);
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.gameover-overlay .gameover-aftermath__story-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: clamp(11px, 2.5vw, 18px);
+  margin-top: 11px;
+}
+
+.gameover-overlay .gameover-aftermath__photo-panel,
+.gameover-overlay .gameover-aftermath__copy {
+  min-width: 0;
+}
+
+.gameover-overlay .gameover-aftermath__photo-frame {
+  position: relative;
+  overflow: hidden;
+  border: 5px solid #fff8e8;
+  border-radius: 0;
+  background: #c9bda8;
+  box-shadow:
+    0 0 0 1px rgba(32, 20, 10, 0.62),
+    4px 5px 0 rgba(70, 39, 16, 0.18);
+  transform: rotate(-0.65deg);
+}
+
+.gameover-overlay .gameover-aftermath__photo {
+  display: block;
+  width: 100%;
+  min-height: clamp(230px, 43dvh, 390px);
+  max-height: 430px;
+  border: 0;
+  border-radius: 0;
+  object-fit: cover;
+  object-position: center top;
+  filter: saturate(0.58) sepia(0.12) contrast(1.08) brightness(0.98);
+  animation: aftermath-photo-drift 7s ease-out both;
+}
+
+.gameover-overlay .gameover-aftermath__exclusive {
+  position: absolute;
+  top: 8px;
+  left: 7px;
+  padding: 5px 7px 4px;
+  border: 2px solid #fff7e2;
+  border-radius: 0;
+  color: #fff7e2;
+  background: rgba(123, 14, 24, 0.88);
+  box-shadow: 2px 2px 0 rgba(23, 8, 7, 0.5);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.55rem;
+  font-weight: 950;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+
+.gameover-overlay .gameover-aftermath__caption {
+  margin: 7px 0 0;
+  color: var(--aftermath-muted);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.67rem;
+  font-style: italic;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.gameover-overlay .gameover-aftermath__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: var(--aftermath-ink);
+}
+
+.gameover-overlay .gameover-aftermath__byline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(24, 19, 15, 0.35);
+  font-family: Arial, Helvetica, sans-serif;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__byline strong {
+  overflow-wrap: anywhere;
+  color: var(--aftermath-red);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+.gameover-overlay .gameover-aftermath__byline span {
+  flex: 0 0 auto;
+  color: var(--aftermath-muted);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.gameover-overlay .gameover-aftermath__body {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: #241c16;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(0.84rem, 2.15vw, 0.98rem);
+  line-height: 1.48;
+}
+
+.gameover-overlay .gameover-aftermath__body::first-letter {
+  float: left;
+  margin: 0.02em 0.08em 0 0;
+  color: var(--aftermath-red);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 3.05em;
+  font-weight: 900;
+  line-height: 0.78;
+}
+
+.gameover-overlay .gameover-aftermath__bullets {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 2px solid var(--aftermath-ink);
+  border-bottom: 2px solid var(--aftermath-ink);
+}
+
+.gameover-overlay .gameover-aftermath__bullets li {
+  position: relative;
+  padding: 7px 5px 7px 17px;
+  border: 0;
+  border-bottom: 1px solid rgba(24, 19, 15, 0.3);
+  border-radius: 0;
+  color: #2d231c;
+  background: transparent;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(0.68rem, 1.9vw, 0.8rem);
+  font-weight: 760;
+  line-height: 1.3;
+}
+
+.gameover-overlay .gameover-aftermath__bullets li:last-child {
+  border-bottom: 0;
+}
+
+.gameover-overlay .gameover-aftermath__bullets li::before {
+  content: '►';
+  position: absolute;
+  top: 7px;
+  left: 1px;
+  color: var(--aftermath-red);
+  font-size: 0.66rem;
+}
+
+.gameover-overlay .gameover-aftermath__twist {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px 9px 13px;
+  border: 2px solid var(--aftermath-red);
+  color: #fff8e7;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 5px),
+    var(--aftermath-deep-red);
+  box-shadow: 3px 3px 0 rgba(38, 17, 10, 0.22);
+  transform: rotate(0.4deg);
+}
+
+.gameover-overlay .gameover-aftermath__twist span {
+  color: #f2c67b;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.54rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__twist strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.gameover-overlay .gameover-aftermath__paper-footer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 13px;
+  padding-top: 6px;
+  border-top: 4px double var(--aftermath-ink);
+  color: var(--aftermath-muted);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.5rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__paper-footer span:last-child {
+  text-align: right;
+}
+
+.gameover-overlay .gameover-aftermath__contact-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(25px, 1fr));
+  gap: 4px;
+  width: 100%;
+  margin: 7px 0 2px;
+  overflow: visible;
+}
+
+.gameover-overlay .gameover-aftermath__contact-sheet button {
+  display: grid;
+  min-width: 0;
+  height: 25px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 239, 208, 0.18);
+  border-radius: 2px;
+  color: rgba(255, 244, 222, 0.56);
+  background: rgba(255, 255, 255, 0.045);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.55rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.gameover-overlay .gameover-aftermath__contact-sheet button.is-active {
+  border-color: #f2d090;
+  color: #28090c;
+  background: #f2d090;
+  box-shadow: 0 0 14px rgba(242, 208, 144, 0.24);
+}
+
+.gameover-overlay .gameover-aftermath__actions {
+  position: relative;
+  bottom: auto;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 8px 9px max(8px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 239, 208, 0.13);
+  background: linear-gradient(180deg, #180a0c, #090708);
+}
+
+.gameover-overlay .gameover-aftermath__actions .gameover-btn {
+  min-height: 39px;
+  border-radius: 3px;
+  font-size: 0.63rem;
+}
+
+.gameover-overlay .gameover-aftermath__actions .gameover-btn--primary {
+  color: #29080c;
+  background: linear-gradient(180deg, #f5d59d, #d8ad64);
+}
+
+.gameover-overlay .gameover-aftermath__actions .gameover-btn--ghost {
+  border-color: rgba(255, 239, 208, 0.22);
+  color: rgba(255, 246, 228, 0.76);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+@media (max-width: 560px) {
+  .gameover-overlay .gameover-aftermath {
+    width: calc(100% - 8px);
+    max-height: calc(100dvh - 8px);
+    border-radius: 10px 10px 3px 3px;
+  }
+
+  .gameover-overlay .gameover-aftermath__topbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .gameover-overlay .gameover-aftermath__edition,
+  .gameover-overlay .gameover-aftermath__issue {
+    padding-inline: 5px;
+    font-size: 0.46rem;
+  }
+
+  .gameover-overlay .gameover-aftermath__story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gameover-overlay .gameover-aftermath__photo {
+    min-height: clamp(215px, 35dvh, 300px);
+  }
+
+  .gameover-overlay .gameover-aftermath__photo-frame {
+    transform: rotate(-0.35deg);
+  }
+
+  .gameover-overlay .gameover-aftermath__body,
+  .gameover-overlay .gameover-aftermath__subheadline,
+  .gameover-overlay .gameover-aftermath__caption {
+    display: block;
+  }
+}
+
+@media (max-width: 390px) {
+  .gameover-overlay .gameover-aftermath__scroll {
+    padding: 6px 6px 3px;
+  }
+
+  .gameover-overlay .gameover-aftermath__paper {
+    padding: 10px;
+  }
+
+  .gameover-overlay .gameover-aftermath__story-meta {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .gameover-overlay .gameover-aftermath__tone {
+    display: none;
+  }
+
+  .gameover-overlay .gameover-aftermath__paper-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .gameover-overlay .gameover-aftermath__paper-footer span:last-child {
+    text-align: left;
+  }
+}
+
+@media (max-height: 700px) {
+  .gameover-overlay .gameover-aftermath__photo {
+    min-height: 190px;
+  }
+
+  .gameover-overlay .gameover-aftermath__subheadline,
+  .gameover-overlay .gameover-aftermath__caption {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gameover-overlay .gameover-aftermath,
+  .gameover-overlay .gameover-aftermath__photo,
+  .gameover-overlay .gameover-aftermath__flash {
+    animation: none;
+  }
+}
