@@ -39,3 +39,4 @@ jobs:
         with:
           name: formatted-cwgo-files
           path: formatted
+          retention-days: 1
