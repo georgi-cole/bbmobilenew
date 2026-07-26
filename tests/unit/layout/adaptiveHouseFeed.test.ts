@@ -22,10 +22,7 @@ function makeInput(overrides: Partial<ResponsiveGameLayoutInput> = {}): Responsi
   }
 }
 
-function readCssPx(
-  budget: ReturnType<typeof computeResponsiveGameLayout>,
-  name: string
-): number {
+function readCssPx(budget: ReturnType<typeof computeResponsiveGameLayout>, name: string): number {
   return Number.parseFloat((budget.cssVars as Record<string, string>)[name])
 }
 
