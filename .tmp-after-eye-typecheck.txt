@@ -2,6 +2,5 @@
 > bbmobilenew@1.0.0 typecheck
 > tsc -b
 
-vite.config.ts(3,19): error TS2307: Cannot find module '@vitejs/plugin-react' or its corresponding type declarations.
 
-EXIT_CODE=2
+EXIT_CODE=0
