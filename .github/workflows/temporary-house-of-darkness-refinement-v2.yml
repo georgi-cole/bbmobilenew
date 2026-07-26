@@ -25,7 +25,19 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: python scripts/temporary_patch_house_of_darkness_refinement.py
+      - name: Apply refinement without deleting runner files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          patcher = Path('scripts/temporary_patch_house_of_darkness_refinement.py')
+          source = patcher.read_text()
+          marker = '\nfor temporary_path in ('
+          if marker not in source:
+              raise SystemExit('Temporary cleanup marker was not found')
+          patcher.write_text(source.split(marker, 1)[0] + '\n')
+          PY
+          python scripts/temporary_patch_house_of_darkness_refinement.py
       - run: |
           npx prettier --write \
             src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx \
@@ -40,11 +52,15 @@ jobs:
             tests/unit/house-of-darkness/HouseOfDarknessComp.transitions.test.ts \
             tests/unit/house-of-darkness/HouseOfDarknessComp.test.tsx \
             tests/unit/house-of-darkness/houseOfDarknessUtils.test.ts
-      - run: |
-          rm -f .github/workflows/temporary-house-of-darkness-refinement-v2.yml
-          rm -f .github/.trigger-house-of-darkness-refinement-v2
+      - name: Commit validated production files
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add \
+            src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx \
+            src/components/HouseOfDarknessComp/HouseOfDarknessComp.css \
+            src/components/HouseOfDarknessComp/houseOfDarknessAiBalance.ts \
+            tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts \
+            tests/unit/house-of-darkness/HouseOfDarknessComp.transitions.test.ts
           git commit -m "Balance House of Darkness AI and add round transitions"
           git push origin HEAD:agent/house-of-darkness-fatigue-transitions
