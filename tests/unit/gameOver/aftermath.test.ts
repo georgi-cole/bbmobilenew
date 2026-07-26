@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SocialState } from '../../../src/social/types';
-import type { Player } from '../../../src/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SocialState } from '../../../src/social/types'
+import type { Player } from '../../../src/types'
 import {
   aftermathIssueStorageKey,
   buildAftermathIssue,
@@ -10,13 +10,13 @@ import {
   readPersistedAftermathIssue,
   resetAftermathConfigLoaderForTests,
   validateAftermathConfig,
-} from '../../../src/screens/GameOver/aftermath';
+} from '../../../src/screens/GameOver/aftermath'
 
 function makePlayer(
   id: string,
   name: string,
   finalRank: number,
-  overrides: Partial<Player> = {},
+  overrides: Partial<Player> = {}
 ): Player {
   return {
     id,
@@ -31,7 +31,7 @@ function makePlayer(
       timesNominated: Math.max(0, finalRank - 2),
     },
     ...overrides,
-  };
+  }
 }
 
 function makeCast(): Player[] {
@@ -48,7 +48,7 @@ function makeCast(): Player[] {
     makePlayer('sara', 'Sara', 10),
     makePlayer('alex', 'Alex', 11),
     makePlayer('maya', 'Maya', 12),
-  ];
+  ]
 }
 
 function makeSocialState(): SocialState {
@@ -82,43 +82,43 @@ function makeSocialState(): SocialState {
         },
       ],
     },
-  } as unknown as SocialState;
+  } as unknown as SocialState
 }
 
 beforeEach(() => {
-  localStorage.clear();
-  resetAftermathConfigLoaderForTests();
-});
+  localStorage.clear()
+  resetAftermathConfigLoaderForTests()
+})
 
 afterEach(() => {
-  vi.unstubAllGlobals();
-  resetAftermathConfigLoaderForTests();
-});
+  vi.unstubAllGlobals()
+  resetAftermathConfigLoaderForTests()
+})
 
 describe('After the Eye outcome databank', () => {
   it('ships a valid, varied databank with at least 100 unique individual scenarios', () => {
-    const config = getBundledAftermathConfig();
-    const validation = validateAftermathConfig(config);
-    const ids = config.scenarios.map((scenario) => scenario.id);
+    const config = getBundledAftermathConfig()
+    const validation = validateAftermathConfig(config)
+    const ids = config.scenarios.map((scenario) => scenario.id)
 
-    expect(validation.valid).toBe(true);
-    expect(config.scenarios.length).toBeGreaterThanOrEqual(100);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(Object.keys(config.categories).length).toBeGreaterThanOrEqual(15);
-    expect(config.linkedScenarios.length).toBeGreaterThanOrEqual(4);
-  });
+    expect(validation.valid).toBe(true)
+    expect(config.scenarios.length).toBeGreaterThanOrEqual(100)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(Object.keys(config.categories).length).toBeGreaterThanOrEqual(15)
+    expect(config.linkedScenarios.length).toBeGreaterThanOrEqual(4)
+  })
 
   it('generates deterministic, non-repetitive stories without leaking placeholders', () => {
-    const players = makeCast();
+    const players = makeCast()
     const options = {
       gameId: 'game-after-eye-test',
       week: 9,
       favoriteWinnerId: 'noa',
       social: makeSocialState(),
-    };
-    const first = buildAftermathIssue(players, 4, options);
-    const second = buildAftermathIssue(players, 4, options);
-    const individualStories = first.stories.filter((story) => !story.linkedEventId);
+    }
+    const first = buildAftermathIssue(players, 4, options)
+    const second = buildAftermathIssue(players, 4, options)
+    const individualStories = first.stories.filter((story) => !story.linkedEventId)
     const allCopy = first.stories
       .flatMap((story) => [
         story.headline,
@@ -127,82 +127,89 @@ describe('After the Eye outcome databank', () => {
         story.twist,
         ...story.bulletPoints,
       ])
-      .join(' ');
+      .join(' ')
 
-    expect(second.stories).toEqual(first.stories);
-    expect(first.stories).toHaveLength(players.length);
-    expect(new Set(individualStories.map((story) => story.scenarioId)).size)
-      .toBe(individualStories.length);
-    expect(allCopy).not.toMatch(/\{[A-Za-z][A-Za-z0-9]*\}/);
-    expect(allCopy).not.toMatch(/\b(undefined|null)\b/i);
-  });
+    expect(second.stories).toEqual(first.stories)
+    expect(first.stories).toHaveLength(players.length)
+    expect(new Set(individualStories.map((story) => story.scenarioId)).size).toBe(
+      individualStories.length
+    )
+    expect(allCopy).not.toMatch(/\{[A-Za-z][A-Za-z0-9]*\}/)
+    expect(allCopy).not.toMatch(/\b(undefined|null)\b/i)
+  })
 
   it('turns a real rivalry into a coherent paired tabloid event', () => {
     const issue = buildAftermathIssue(makeCast(), 4, {
       gameId: 'rivalry-linked-story',
       week: 9,
       social: makeSocialState(),
-    });
-    const liaStory = issue.stories.find((story) => story.playerId === 'lia');
-    const paxStory = issue.stories.find((story) => story.playerId === 'pax');
+    })
+    const liaStory = issue.stories.find((story) => story.playerId === 'lia')
+    const paxStory = issue.stories.find((story) => story.playerId === 'pax')
 
-    expect(liaStory?.linkedEventId).toBeTruthy();
-    expect(paxStory?.linkedEventId).toBe(liaStory?.linkedEventId);
-    expect(`${liaStory?.headline} ${liaStory?.body}`).toContain('Pax');
-    expect(`${paxStory?.headline} ${paxStory?.body}`).toContain('Lia');
-  });
+    expect(liaStory?.linkedEventId).toBeTruthy()
+    expect(paxStory?.linkedEventId).toBe(liaStory?.linkedEventId)
+    expect(`${liaStory?.headline} ${liaStory?.body}`).toContain('Pax')
+    expect(`${paxStory?.headline} ${paxStory?.body}`).toContain('Lia')
+  })
 
   it('persists a published issue so later config changes do not rewrite it', () => {
-    const key = aftermathIssueStorageKey('profile-1', 'game-1', 2);
-    const issue = buildAftermathIssue(makeCast(), 2, { gameId: 'game-1' });
-    const originalHeadline = issue.stories[0]?.headline;
+    const key = aftermathIssueStorageKey('profile-1', 'game-1', 2)
+    const issue = buildAftermathIssue(makeCast(), 2, { gameId: 'game-1' })
+    const originalHeadline = issue.stories[0]?.headline
 
-    persistAftermathIssue(key, issue);
-    const stored = readPersistedAftermathIssue(key);
-    const changedConfig = structuredClone(getBundledAftermathConfig());
-    changedConfig.scenarios[0]!.headlines = ['THIS SHOULD ONLY AFFECT A NEW ISSUE'];
-    buildAftermathIssue(makeCast(), 2, { gameId: 'game-1' }, changedConfig);
+    persistAftermathIssue(key, issue)
+    const stored = readPersistedAftermathIssue(key)
+    const changedConfig = structuredClone(getBundledAftermathConfig())
+    changedConfig.scenarios[0]!.headlines = ['THIS SHOULD ONLY AFFECT A NEW ISSUE']
+    buildAftermathIssue(makeCast(), 2, { gameId: 'game-1' }, changedConfig)
 
-    expect(stored?.stories[0]?.headline).toBe(originalHeadline);
-    expect(readPersistedAftermathIssue(key)).toEqual(issue);
-  });
+    expect(stored?.stories[0]?.headline).toBe(originalHeadline)
+    expect(readPersistedAftermathIssue(key)).toEqual(issue)
+  })
 
   it('rejects malformed remote content and falls back to the bundled databank', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ version: 999, scenarios: [] }),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ version: 999, scenarios: [] }),
+      })
+    )
 
-    const loaded = await loadAftermathConfig();
+    const loaded = await loadAftermathConfig()
 
-    expect(loaded).toBe(getBundledAftermathConfig());
-  });
+    expect(loaded).toBe(getBundledAftermathConfig())
+  })
 
   it('uses the last known valid remote config when the server is temporarily unavailable', async () => {
-    const remote = structuredClone(getBundledAftermathConfig());
-    remote.editorial.slogan = 'A remotely edited late-edition slogan';
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => remote,
-    }));
+    const remote = structuredClone(getBundledAftermathConfig())
+    remote.editorial.slogan = 'A remotely edited late-edition slogan'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => remote,
+      })
+    )
 
-    expect((await loadAftermathConfig()).editorial.slogan).toBe(remote.editorial.slogan);
+    expect((await loadAftermathConfig()).editorial.slogan).toBe(remote.editorial.slogan)
 
-    resetAftermathConfigLoaderForTests();
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    resetAftermathConfigLoaderForTests()
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
 
-    expect((await loadAftermathConfig()).editorial.slogan).toBe(remote.editorial.slogan);
-  });
+    expect((await loadAftermathConfig()).editorial.slogan).toBe(remote.editorial.slogan)
+  })
 
   it('reports unsupported placeholders before a bad config can reach the UI', () => {
-    const invalid = structuredClone(getBundledAftermathConfig());
-    invalid.scenarios[0]!.headlines = ['{name} Meets {unsupportedPerson}'];
+    const invalid = structuredClone(getBundledAftermathConfig())
+    invalid.scenarios[0]!.headlines = ['{name} Meets {unsupportedPerson}']
 
-    const validation = validateAftermathConfig(invalid);
+    const validation = validateAftermathConfig(invalid)
 
-    expect(validation.valid).toBe(false);
-    expect(validation.errors.join(' ')).toMatch(/unsupported placeholder/i);
-  });
-});
+    expect(validation.valid).toBe(false)
+    expect(validation.errors.join(' ')).toMatch(/unsupported placeholder/i)
+  })
+})

@@ -1,10 +1,130 @@
-import type { LinkedScenarioSpec } from './afterTheEyeOutcomeTypes';
+import type { LinkedScenarioSpec } from './afterTheEyeOutcomeTypes'
 
 export const AFTER_EYE_LINKED_SCENARIOS: LinkedScenarioSpec[] = [
-{"id":"linked_fake_romance_real","relation":"romantic","category":"romance","tone":"good","weight":1,"badge":"SECRET COUPLE","headlines":["{name} and {partnerName}: The Fake Romance That Became Real","PUBLICITY STUNT ENDS WITH SHARED KEYS"],"beats":["The first contract allowed exactly three hand-holding photographs.","A shared grocery receipt exposes the real relationship.","Both deny moving in while standing in the same kitchen."],"twists":["The fake couple accidentally becomes the season's longest relationship.","Their managers begin dating after months of crisis meetings."]},
-{"id":"linked_secret_wedding","relation":"romantic","category":"romance","tone":"excellent","weight":0.8,"badge":"MARRIED IN SECRET","headlines":["{name} and {partnerName} Wed Without Telling the Cast","THE CEREMONY HIDDEN FOR SIX MONTHS"],"beats":["No former housemate receives an invitation.","The cake contains a miniature replica of the house.","A legal form exposes the new surname."],"twists":["The marriage happened before the reunion special.","Their fiercest rival designed the invitations."]},
-{"id":"linked_rival_podcast","relation":"rival","category":"public_feud","tone":"bad","weight":1,"badge":"MIC WAR","headlines":["{name} and {partnerName} End Their Podcast During Episode One","TWENTY-THREE MINUTES TO TOTAL COLLAPSE"],"beats":["The sponsor asks to be removed before the episode ends.","The commercial break becomes the most downloaded clip.","Both announce solo podcasts within an hour."],"twists":["The failed podcast becomes more profitable than a successful one.","They reunite for a tour called 'Still Not Friends.'"]},
-{"id":"linked_enemy_business","relation":"rival","category":"strange_business","tone":"good","weight":0.8,"badge":"ENEMIES INC.","headlines":["{name} and {partnerName} Turn Mutual Hatred Into a Brand","THE FEUD NOW ACCEPTS CREDIT CARDS"],"beats":["The first debate sells out in eleven minutes.","Merchandise includes matching mugs that cannot face each other.","Both use the same accountant."],"twists":["They become closer while insisting the hatred is authentic.","The brand collapses the moment they genuinely reconcile."]},
-{"id":"linked_betrayal_memoir","relation":"betrayal","category":"betrayal","tone":"tragic","weight":1,"badge":"ALLIANCE EXPOSED","headlines":["{name} Publishes {partnerName}'s Private Messages","THE ALLIANCE ENDS IN FOOTNOTES"],"beats":["The leaked screenshots contain colour-coded strategy notes.","Both sides publish missing context.","The publisher quietly moves the book to fiction."],"twists":["The scandal sends the memoir to number one.","The pair reunites to negotiate film rights."]},
-{"id":"linked_alliance_reunion","relation":"ally","category":"betrayal","tone":"neutral","weight":0.8,"badge":"ALLIANCE REUNION","headlines":["{name} and {partnerName} Reunite — Then Split Before Dessert","THE FRIENDSHIP LASTS ONE LUNCH"],"beats":["The opening hug appears on three magazine covers.","Both claim the other invited the cameras.","Dessert is packed to go."],"twists":["They reconcile privately the following week.","The lunch photographs win a publicity award."]}
-];
+  {
+    id: 'linked_fake_romance_real',
+    relation: 'romantic',
+    category: 'romance',
+    tone: 'good',
+    weight: 1,
+    badge: 'SECRET COUPLE',
+    headlines: [
+      '{name} and {partnerName}: The Fake Romance That Became Real',
+      'PUBLICITY STUNT ENDS WITH SHARED KEYS',
+    ],
+    beats: [
+      'The first contract allowed exactly three hand-holding photographs.',
+      'A shared grocery receipt exposes the real relationship.',
+      'Both deny moving in while standing in the same kitchen.',
+    ],
+    twists: [
+      "The fake couple accidentally becomes the season's longest relationship.",
+      'Their managers begin dating after months of crisis meetings.',
+    ],
+  },
+  {
+    id: 'linked_secret_wedding',
+    relation: 'romantic',
+    category: 'romance',
+    tone: 'excellent',
+    weight: 0.8,
+    badge: 'MARRIED IN SECRET',
+    headlines: [
+      '{name} and {partnerName} Wed Without Telling the Cast',
+      'THE CEREMONY HIDDEN FOR SIX MONTHS',
+    ],
+    beats: [
+      'No former housemate receives an invitation.',
+      'The cake contains a miniature replica of the house.',
+      'A legal form exposes the new surname.',
+    ],
+    twists: [
+      'The marriage happened before the reunion special.',
+      'Their fiercest rival designed the invitations.',
+    ],
+  },
+  {
+    id: 'linked_rival_podcast',
+    relation: 'rival',
+    category: 'public_feud',
+    tone: 'bad',
+    weight: 1,
+    badge: 'MIC WAR',
+    headlines: [
+      '{name} and {partnerName} End Their Podcast During Episode One',
+      'TWENTY-THREE MINUTES TO TOTAL COLLAPSE',
+    ],
+    beats: [
+      'The sponsor asks to be removed before the episode ends.',
+      'The commercial break becomes the most downloaded clip.',
+      'Both announce solo podcasts within an hour.',
+    ],
+    twists: [
+      'The failed podcast becomes more profitable than a successful one.',
+      "They reunite for a tour called 'Still Not Friends.'",
+    ],
+  },
+  {
+    id: 'linked_enemy_business',
+    relation: 'rival',
+    category: 'strange_business',
+    tone: 'good',
+    weight: 0.8,
+    badge: 'ENEMIES INC.',
+    headlines: [
+      '{name} and {partnerName} Turn Mutual Hatred Into a Brand',
+      'THE FEUD NOW ACCEPTS CREDIT CARDS',
+    ],
+    beats: [
+      'The first debate sells out in eleven minutes.',
+      'Merchandise includes matching mugs that cannot face each other.',
+      'Both use the same accountant.',
+    ],
+    twists: [
+      'They become closer while insisting the hatred is authentic.',
+      'The brand collapses the moment they genuinely reconcile.',
+    ],
+  },
+  {
+    id: 'linked_betrayal_memoir',
+    relation: 'betrayal',
+    category: 'betrayal',
+    tone: 'tragic',
+    weight: 1,
+    badge: 'ALLIANCE EXPOSED',
+    headlines: [
+      "{name} Publishes {partnerName}'s Private Messages",
+      'THE ALLIANCE ENDS IN FOOTNOTES',
+    ],
+    beats: [
+      'The leaked screenshots contain colour-coded strategy notes.',
+      'Both sides publish missing context.',
+      'The publisher quietly moves the book to fiction.',
+    ],
+    twists: [
+      'The scandal sends the memoir to number one.',
+      'The pair reunites to negotiate film rights.',
+    ],
+  },
+  {
+    id: 'linked_alliance_reunion',
+    relation: 'ally',
+    category: 'betrayal',
+    tone: 'neutral',
+    weight: 0.8,
+    badge: 'ALLIANCE REUNION',
+    headlines: [
+      '{name} and {partnerName} Reunite — Then Split Before Dessert',
+      'THE FRIENDSHIP LASTS ONE LUNCH',
+    ],
+    beats: [
+      'The opening hug appears on three magazine covers.',
+      'Both claim the other invited the cameras.',
+      'Dessert is packed to go.',
+    ],
+    twists: [
+      'They reconcile privately the following week.',
+      'The lunch photographs win a publicity award.',
+    ],
+  },
+]

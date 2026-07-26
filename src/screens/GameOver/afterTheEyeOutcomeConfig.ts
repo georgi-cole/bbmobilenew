@@ -1,10 +1,10 @@
-import { AFTER_EYE_LINKED_SCENARIOS } from './afterTheEyeOutcomeLinkedScenarios';
-import { AFTER_EYE_SCENARIOS_1 } from './afterTheEyeOutcomeScenarios1';
-import { AFTER_EYE_SCENARIOS_2 } from './afterTheEyeOutcomeScenarios2';
-import { AFTER_EYE_SCENARIOS_3 } from './afterTheEyeOutcomeScenarios3';
-import { AFTER_EYE_SCENARIOS_4 } from './afterTheEyeOutcomeScenarios4';
-import { AFTER_EYE_SCENARIOS_5 } from './afterTheEyeOutcomeScenarios5';
-import type { BundledAftermathTone } from './afterTheEyeOutcomeTypes';
+import { AFTER_EYE_LINKED_SCENARIOS } from './afterTheEyeOutcomeLinkedScenarios'
+import { AFTER_EYE_SCENARIOS_1 } from './afterTheEyeOutcomeScenarios1'
+import { AFTER_EYE_SCENARIOS_2 } from './afterTheEyeOutcomeScenarios2'
+import { AFTER_EYE_SCENARIOS_3 } from './afterTheEyeOutcomeScenarios3'
+import { AFTER_EYE_SCENARIOS_4 } from './afterTheEyeOutcomeScenarios4'
+import { AFTER_EYE_SCENARIOS_5 } from './afterTheEyeOutcomeScenarios5'
+import type { BundledAftermathTone } from './afterTheEyeOutcomeTypes'
 
 const EDITORIAL = {
   publicationName: 'AFTER THE EYE',
@@ -18,7 +18,7 @@ const EDITORIAL = {
   photoCaption: 'Post-show sighting. Details remain gloriously disputed.',
   exclusiveLabel: 'EXCLUSIVE',
   loadingLabel: 'Printing the late edition…',
-};
+}
 
 const TONE_LABELS: Record<BundledAftermathTone, string> = {
   excellent: 'Spectacular',
@@ -26,7 +26,7 @@ const TONE_LABELS: Record<BundledAftermathTone, string> = {
   neutral: 'Strange',
   bad: 'Messy',
   tragic: 'Catastrophic',
-};
+}
 
 const CATEGORIES: Record<string, string> = {
   sudden_fame: 'Sudden Fame',
@@ -49,7 +49,7 @@ const CATEGORIES: Record<string, string> = {
   ordinary_life: 'Unexpectedly Ordinary',
   bizarre_misunderstanding: 'Bizarre Misunderstanding',
   absurd_success: 'Absurd Success',
-};
+}
 
 const SCENARIO_SPECS = [
   ...AFTER_EYE_SCENARIOS_1,
@@ -57,29 +57,29 @@ const SCENARIO_SPECS = [
   ...AFTER_EYE_SCENARIOS_3,
   ...AFTER_EYE_SCENARIOS_4,
   ...AFTER_EYE_SCENARIOS_5,
-];
+]
 
 function lowerFirst(value: string): string {
-  if (!value) return value;
-  return `${value.charAt(0).toLowerCase()}${value.slice(1)}`;
+  if (!value) return value
+  return `${value.charAt(0).toLowerCase()}${value.slice(1)}`
 }
 
 function expandBeats(beats: [string, string, string], index: number) {
-  const [setup, escalation, outcome] = beats;
+  const [setup, escalation, outcome] = beats
   const bodyVariants = [
     `${setup} ${escalation} ${outcome}`,
     `It begins when ${lowerFirst(setup)} Soon, ${lowerFirst(escalation)} In the end, ${lowerFirst(outcome)}`,
     `At first, ${lowerFirst(setup)} The situation escalates when ${lowerFirst(escalation)} By the final update, ${lowerFirst(outcome)}`,
     `Nobody expects the story to go this far. ${setup} Then ${lowerFirst(escalation)} Finally, ${lowerFirst(outcome)}`,
-  ];
+  ]
   return {
-    subheadlines: [
-      `${setup} ${outcome}`,
-      `${escalation} The ending becomes impossible to ignore.`,
+    subheadlines: [`${setup} ${outcome}`, `${escalation} The ending becomes impossible to ignore.`],
+    bodies: [
+      bodyVariants[index % bodyVariants.length],
+      bodyVariants[(index + 1) % bodyVariants.length],
     ],
-    bodies: [bodyVariants[index % bodyVariants.length], bodyVariants[(index + 1) % bodyVariants.length]],
     bulletPoints: [setup, escalation, outcome],
-  };
+  }
 }
 
 export function createBundledAfterTheEyeConfig() {
@@ -96,7 +96,7 @@ export function createBundledAfterTheEyeConfig() {
       ...spec,
       ...expandBeats(spec.beats, index + SCENARIO_SPECS.length),
     })).map(({ beats: _beats, ...scenario }) => scenario),
-  };
+  }
 }
 
-export const BUNDLED_AFTER_THE_EYE_CONFIG = createBundledAfterTheEyeConfig();
+export const BUNDLED_AFTER_THE_EYE_CONFIG = createBundledAfterTheEyeConfig()

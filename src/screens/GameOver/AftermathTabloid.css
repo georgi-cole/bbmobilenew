@@ -24,8 +24,7 @@
   border: 1px solid rgba(255, 239, 207, 0.5);
   border-radius: 14px 14px 5px 5px;
   color: var(--aftermath-ink);
-  background:
-    linear-gradient(180deg, #4c0b12 0 48px, #1d0c0d 48px 100%);
+  background: linear-gradient(180deg, #4c0b12 0 48px, #1d0c0d 48px 100%);
   box-shadow:
     0 32px 90px rgba(0, 0, 0, 0.72),
     0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -33,15 +32,31 @@
   animation: aftermath-edition-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.gameover-overlay .gameover-aftermath--excellent { --aftermath-tone: #b77713; }
-.gameover-overlay .gameover-aftermath--good { --aftermath-tone: #47734c; }
-.gameover-overlay .gameover-aftermath--neutral { --aftermath-tone: #6f655c; }
-.gameover-overlay .gameover-aftermath--bad { --aftermath-tone: #a53b28; }
-.gameover-overlay .gameover-aftermath--tragic { --aftermath-tone: #7d1724; }
+.gameover-overlay .gameover-aftermath--excellent {
+  --aftermath-tone: #b77713;
+}
+.gameover-overlay .gameover-aftermath--good {
+  --aftermath-tone: #47734c;
+}
+.gameover-overlay .gameover-aftermath--neutral {
+  --aftermath-tone: #6f655c;
+}
+.gameover-overlay .gameover-aftermath--bad {
+  --aftermath-tone: #a53b28;
+}
+.gameover-overlay .gameover-aftermath--tragic {
+  --aftermath-tone: #7d1724;
+}
 
 @keyframes aftermath-edition-enter {
-  from { opacity: 0; transform: translateY(20px) rotate(-0.35deg) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(20px) rotate(-0.35deg) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
 }
 
 .gameover-overlay .gameover-aftermath__topbar {
@@ -136,8 +151,7 @@
   color: var(--aftermath-ink);
   background:
     radial-gradient(circle at 16% 8%, rgba(255, 255, 255, 0.72), transparent 26%),
-    linear-gradient(155deg, rgba(255, 255, 255, 0.38), transparent 36%),
-    var(--aftermath-paper);
+    linear-gradient(155deg, rgba(255, 255, 255, 0.38), transparent 36%), var(--aftermath-paper);
   box-shadow:
     0 14px 30px rgba(0, 0, 0, 0.36),
     inset 0 0 42px rgba(97, 61, 24, 0.1);
@@ -156,7 +170,11 @@
 .gameover-overlay .gameover-aftermath__paper::before {
   opacity: 0.24;
   background:
-    repeating-radial-gradient(circle at 0 0, rgba(45, 25, 10, 0.22) 0 0.45px, transparent 0.7px 3px),
+    repeating-radial-gradient(
+      circle at 0 0,
+      rgba(45, 25, 10, 0.22) 0 0.45px,
+      transparent 0.7px 3px
+    ),
     repeating-linear-gradient(91deg, transparent 0 18px, rgba(65, 39, 16, 0.045) 18px 19px);
   mix-blend-mode: multiply;
 }
