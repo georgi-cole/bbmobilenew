@@ -26,6 +26,15 @@ function hasDebugQaAccess(locationLike: DebugLocationLike): boolean {
   );
 }
 
+function isRemoteQaSession(locationLike: DebugLocationLike): boolean {
+  if (isLocalDebugHost(locationLike.hostname)) return false;
+
+  return (
+    readQueryParam(locationLike.search, 'qa') === '1' ||
+    readQueryParam(locationLike.hash, 'qa') === '1'
+  );
+}
+
 export function isDebugAccessGranted(
   searchParams: URLSearchParams,
   hostname: string,
@@ -43,14 +52,20 @@ export function canAccessSpecialSettings(locationLike?: DebugLocationLike): bool
 }
 
 /**
- * detectDebugMode returns true when the app is running in a debug or e2e
- * context.
+ * detectDebugMode returns true only for execution contexts that should use
+ * debug gameplay shortcuts.
+ *
+ * Remote QA sessions retain access to the DebugPanel and special settings,
+ * but deliberately use the normal gameplay choreography. Treating a remote
+ * QA session as a gameplay-debug context skipped the Final 4 plea initializer
+ * and could leave the game stuck in final4_eviction with no pending action.
  *
  * Checks (in order):
  *   1. window.__E2E__ === true - set by Playwright / test harnesses
- *   2. debug=1 in the URL plus localhost or qa=1
+ *   2. local debug=1 sessions
  *
- * Returns false in SSR/non-browser environments and in normal production runs.
+ * Returns false in SSR/non-browser environments, normal production runs,
+ * and remote qa=1 sessions.
  */
 export function detectDebugMode(
   locationLike?: DebugLocationLike,
@@ -59,5 +74,6 @@ export function detectDebugMode(
   if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
 
   const resolvedLocation = locationLike ?? window.location;
+  if (isRemoteQaSession(resolvedLocation)) return false;
   return hasDebugQaAccess(resolvedLocation);
 }
