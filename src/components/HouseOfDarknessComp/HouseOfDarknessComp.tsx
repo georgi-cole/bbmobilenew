@@ -288,13 +288,6 @@ export default function HouseOfDarknessComp({
   )
 
   useEffect(() => {
-    if (phase !== 'playing' || humanHealth > 0) return
-    setLocked(true)
-    setFlippedIndices([])
-    setPhase('death')
-  }, [humanHealth, phase])
-
-  useEffect(() => {
     if (phase !== 'death' || deathResolvedRef.current) return
     deathResolvedRef.current = true
     void SoundManager.play('minigame:risk_wheel_666')
