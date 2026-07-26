@@ -1,4 +1,4 @@
-name: Temporary Big Spender formatter
+name: Temporary CWGO formatter
 
 on:
   pull_request:
@@ -8,27 +8,27 @@ permissions:
   contents: write
 
 jobs:
-  format-big-spender:
-    if: github.head_ref == 'agent/big-spender-replenishing-wall' && github.actor != 'github-actions[bot]'
+  format-cwgo:
+    if: github.head_ref == 'agent/cwgo-human-answer-logic' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/big-spender-replenishing-wall
+          ref: agent/cwgo-human-answer-logic
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Format Big Spender files
+      - name: Format CWGO files
         run: >-
           npx prettier --write
-          src/components/BigSpender/BigSpender.tsx
-          src/components/BigSpender/BigSpenderBoard.tsx
-          src/components/BigSpender/BigSpenderOverlays.tsx
-          src/components/BigSpender/BigSpenderReplenishing.tsx
-          src/components/BigSpender/BigSpenderWall.css
+          docs/content-and-configuration-hosting-audit.md
+          src/features/cwgo/cwgoCompetitionSlice.ts
+          src/features/cwgo/cwgoHelpers.ts
+          src/features/cwgo/cwgoQuestions.ts
+          tests/cwgo.ai-human-logic.test.ts
       - name: Commit formatting
         run: |
           if git diff --quiet; then
@@ -36,6 +36,6 @@ jobs:
           fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src/components/BigSpender
-          git commit -m "Format replenishing Big Spender"
-          git push origin HEAD:agent/big-spender-replenishing-wall
+          git add docs/content-and-configuration-hosting-audit.md src/features/cwgo tests/cwgo.ai-human-logic.test.ts
+          git commit -m "Format CWGO AI changes"
+          git push origin HEAD:agent/cwgo-human-answer-logic
