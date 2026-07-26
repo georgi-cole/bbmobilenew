@@ -14,6 +14,15 @@ describe('House of Cards interaction hotfix styles', () => {
     expect(css).toContain('filter: none')
   })
 
+  it('limits component hover motion to face-down cards', () => {
+    const componentCss = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/HouseOfCardsComp/HouseOfCardsComp.css'),
+      'utf8'
+    )
+    expect(componentCss).toContain(".hoc-card[data-flipped='false'][data-matched='false']")
+    expect(componentCss).not.toContain('.hoc-card:not(:disabled):hover .hoc-card-inner')
+  })
+
   it('restores vertical scrolling on the complete screen', () => {
     expect(css).toContain('.minigame-complete.hoc-complete')
     expect(css).toContain('overflow-y: auto')
