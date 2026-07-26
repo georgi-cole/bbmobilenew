@@ -1,16 +1,15 @@
 name: Temporary Incoming Interactions formatter
 
 on:
-  push:
-    branches:
-      - fix/incoming-interactions-encoding-layout
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   format-incoming-interactions:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'fix/incoming-interactions-encoding-layout' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,5 +38,3 @@ jobs:
           git add src/components/IncomingInteractionsInbox
           git commit -m "Format incoming interaction files"
           git push origin HEAD:fix/incoming-interactions-encoding-layout
-
-# Synchronize the PR so the default-branch formatter runs.
