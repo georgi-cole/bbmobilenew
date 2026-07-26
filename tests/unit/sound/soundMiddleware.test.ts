@@ -77,19 +77,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('soundMiddleware music-free phase policy', () => {
-  it('plays only the minigame start stinger for loh_comp', () => {
+describe('soundMiddleware visual-owned phase policy', () => {
+  it('keeps loh_comp silent so MinigameHost owns the countdown cue', () => {
     const { store, setNextPhase } = makeTestStore();
     setNextPhase('loh_comp');
 
     store.dispatch({ type: 'game/advance' });
 
-    expect(playMock).toHaveBeenCalledWith('minigame:start');
+    expect(playMock).not.toHaveBeenCalled();
     expect(requestBgmMock).not.toHaveBeenCalled();
     expect(releaseBgmMock).not.toHaveBeenCalled();
   });
 
-  it('plays only the event stinger for loh_results', () => {
+  it('still plays the generic event stinger for loh_results', () => {
     const { store, setNextPhase } = makeTestStore();
     setNextPhase('loh_results');
 
@@ -100,23 +100,23 @@ describe('soundMiddleware music-free phase policy', () => {
     expect(releaseBgmMock).not.toHaveBeenCalled();
   });
 
-  it('plays only the veto ceremony stinger for pos_ceremony', () => {
+  it('keeps the Safety ceremony phase free of the legacy winner stinger', () => {
     const { store, setNextPhase } = makeTestStore();
     setNextPhase('pos_ceremony');
 
     store.dispatch({ type: 'game/advance' });
 
-    expect(playMock).toHaveBeenCalledWith('tv:veto_ceremony');
+    expect(playMock).not.toHaveBeenCalled();
     expect(requestBgmMock).not.toHaveBeenCalled();
   });
 
-  it('plays only the voting stinger for live_vote', () => {
+  it('keeps live_vote silent until the faux-TV tally animation mounts', () => {
     const { store, setNextPhase } = makeTestStore();
     setNextPhase('live_vote');
 
     store.dispatch({ type: 'game/advance' });
 
-    expect(playMock).toHaveBeenCalledWith('tv:voting_eviction');
+    expect(playMock).not.toHaveBeenCalled();
     expect(requestBgmMock).not.toHaveBeenCalled();
     expect(releaseBgmMock).not.toHaveBeenCalled();
   });
