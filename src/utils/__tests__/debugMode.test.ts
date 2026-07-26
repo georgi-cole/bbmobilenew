@@ -18,7 +18,7 @@ describe('debugMode gating', () => {
     ).toBe(true);
   });
 
-  it('requires qa=1 on production hosts', () => {
+  it('keeps remote QA sessions on normal gameplay choreography', () => {
     expect(
       detectDebugMode({
         hostname: 'georgi-cole.github.io',
@@ -33,17 +33,17 @@ describe('debugMode gating', () => {
         search: '?debug=1&qa=1',
         hash: '',
       } as unknown as Location),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it('accepts hash-router qa flags', () => {
+  it('keeps hash-router remote QA sessions on normal gameplay choreography', () => {
     expect(
       detectDebugMode({
         hostname: 'georgi-cole.github.io',
         search: '',
         hash: '#/game?debug=1&qa=1',
       } as unknown as Location),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('opens the advanced settings route with the same qa debug hash flags', () => {
@@ -66,10 +66,30 @@ describe('debugMode gating', () => {
     ).toBe(false);
   });
 
-  it('treats localhost as an allowed debug host', () => {
+  it('treats localhost as an allowed gameplay debug host', () => {
     const searchParams = new URLSearchParams('debug=1');
 
     expect(isDebugAccessGranted(searchParams, 'localhost')).toBe(true);
     expect(isDebugAccessGranted(searchParams, 'georgi-cole.github.io')).toBe(false);
+    expect(
+      detectDebugMode({
+        hostname: 'localhost',
+        search: '?debug=1',
+        hash: '',
+      } as unknown as Location),
+    ).toBe(true);
+  });
+
+  it('still grants the remote QA panel and special-settings access', () => {
+    const searchParams = new URLSearchParams('debug=1&qa=1');
+
+    expect(isDebugAccessGranted(searchParams, 'georgi-cole.github.io')).toBe(true);
+    expect(
+      canAccessSpecialSettings({
+        hostname: 'georgi-cole.github.io',
+        search: '?debug=1&qa=1',
+        hash: '',
+      } as unknown as Location),
+    ).toBe(true);
   });
 });
