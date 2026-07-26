@@ -1,0 +1,41 @@
+name: Temporary CWGO Format
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/cwgo-human-answer-logic
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format changed files
+        run: |
+          npx prettier --write \
+            docs/content-and-configuration-hosting-audit.md \
+            src/features/cwgo/cwgoCompetitionSlice.ts \
+            src/features/cwgo/cwgoHelpers.ts \
+            src/features/cwgo/cwgoQuestions.ts \
+            tests/cwgo.ai-human-logic.test.ts
+      - name: Package formatted files
+        run: |
+          mkdir -p formatted/docs formatted/src/features/cwgo formatted/tests
+          cp docs/content-and-configuration-hosting-audit.md formatted/docs/
+          cp src/features/cwgo/cwgoCompetitionSlice.ts formatted/src/features/cwgo/
+          cp src/features/cwgo/cwgoHelpers.ts formatted/src/features/cwgo/
+          cp src/features/cwgo/cwgoQuestions.ts formatted/src/features/cwgo/
+          cp tests/cwgo.ai-human-logic.test.ts formatted/tests/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: formatted-cwgo-files
+          path: formatted
