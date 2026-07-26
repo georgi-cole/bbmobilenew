@@ -13,6 +13,7 @@ import { store } from './store/store'
 import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
 import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
+import { installAudioVisualSync } from './services/sound/audioVisualSync'
 import { initAdBridge } from './services/ads/adsService'
 import { installE2EStateProbe } from './testSupport/e2eStateProbe'
 import App from './App.tsx'
@@ -29,6 +30,10 @@ applyDisplayModeClasses()
 // Visual QA freeze mode is route-driven and lets Playwright load a stable
 // screenshot-friendly version of the app without waiting on animations.
 applyVisualFreezeState()
+
+// Bind one-shot ceremony cues to the visual animations they describe before
+// React mounts any phase overlays.
+installAudioVisualSync()
 
 // Native pinch zoom remains available; the preference only expands its range.
 const viewportMeta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
