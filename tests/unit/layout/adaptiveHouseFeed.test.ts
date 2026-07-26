@@ -24,7 +24,7 @@ function makeInput(overrides: Partial<ResponsiveGameLayoutInput> = {}): Responsi
 
 function readCssPx(
   budget: ReturnType<typeof computeResponsiveGameLayout>,
-  name: string,
+  name: string
 ): number {
   return Number.parseFloat((budget.cssVars as Record<string, string>)[name])
 }
@@ -42,7 +42,7 @@ describe('adaptive House Feed allocation', () => {
     const budget = computeResponsiveGameLayout(
       makeInput({
         stageHeight: 780,
-      }),
+      })
     )
 
     expect(budget.tvLogRows).toBe(2)
@@ -57,7 +57,7 @@ describe('adaptive House Feed allocation', () => {
         stageWidth: 430,
         stageHeight: 900,
         dockHeight: 74,
-      }),
+      })
     )
 
     expect(budget.tvLogRows).toBe(3)
@@ -73,7 +73,7 @@ describe('adaptive House Feed allocation', () => {
         stageHeight: 560,
         dockHeight: 62,
         inlineLogVisible: true,
-      }),
+      })
     )
 
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(1)
