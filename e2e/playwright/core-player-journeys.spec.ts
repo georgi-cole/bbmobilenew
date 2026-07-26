@@ -208,20 +208,30 @@ function hasCoreWeekDecision(game: Awaited<ReturnType<typeof readAppState>>['gam
 }
 
 async function resolveCompetitionThroughPlayerControls(page: Page, phase: string): Promise<void> {
-  const dismiss = page.getByRole('button', { name: 'Dismiss challenge (score 0)' })
+  const utilityMenu = page.getByRole('button', { name: 'Open minigame menu' })
   await expect
     .poll(
       async () => {
-        if (await dismiss.isVisible()) return true
+        if (await utilityMenu.isVisible()) return true
         return (await readAppState(page)).game.phase !== phase
       },
-      { message: `${phase} should present a human challenge or resolve its AI-only field` }
+      {
+        message: `${phase} should present a human challenge or resolve its AI-only field`,
+        timeout: SCREEN_TIMEOUT_MS,
+      }
     )
     .toBe(true)
 
-  if (!(await dismiss.isVisible())) return
+  if (!(await utilityMenu.isVisible())) return
 
-  await dismiss.click()
+  await utilityMenu.click()
+  const leaveCompetition = page.getByRole('menuitem', { name: /Leave competition/i })
+  await expect(leaveCompetition).toBeVisible()
+  await leaveCompetition.click()
+
+  const confirmExit = page.getByRole('button', { name: 'Exit with 0' })
+  await expect(confirmExit).toBeVisible()
+  await confirmExit.click()
   await expect(page.getByRole('heading', { name: 'Exited early' })).toBeVisible()
   const closeResults = page.getByRole('button', { name: 'Close results' })
   const continueWithResult = page.getByRole('button', { name: /Continue.*▶/ })
