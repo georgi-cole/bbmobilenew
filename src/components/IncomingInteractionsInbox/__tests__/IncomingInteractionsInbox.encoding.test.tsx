@@ -1,13 +1,13 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, within } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import gameReducer from '../../../store/gameSlice';
-import settingsReducer from '../../../store/settingsSlice';
+import { configureStore } from '@reduxjs/toolkit'
+import { render, screen, within } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import gameReducer from '../../../store/gameSlice'
+import settingsReducer from '../../../store/settingsSlice'
 import socialReducer, {
   openIncomingInbox,
   pushIncomingInteraction,
-} from '../../../social/socialSlice';
-import IncomingInteractionsInbox from '../IncomingInteractionsInbox';
+} from '../../../social/socialSlice'
+import IncomingInteractionsInbox from '../IncomingInteractionsInbox'
 
 function makeStore() {
   return configureStore({
@@ -16,21 +16,19 @@ function makeStore() {
       social: socialReducer,
       settings: settingsReducer,
     },
-  });
+  })
 }
 
 describe('IncomingInteractionsInbox encoding and icons', () => {
   it('renders stable SVG icons and no mojibake text', () => {
-    const store = makeStore();
-    const existingHousemate = store
-      .getState()
-      .game.players.find((player) => !player.isUser);
+    const store = makeStore()
+    const existingHousemate = store.getState().game.players.find((player) => !player.isUser)
 
     if (!existingHousemate) {
-      throw new Error('Expected a non-user player for test setup.');
+      throw new Error('Expected a non-user player for test setup.')
     }
 
-    store.dispatch(openIncomingInbox());
+    store.dispatch(openIncomingInbox())
     store.dispatch(
       pushIncomingInteraction({
         id: 'missing-player-deal',
@@ -43,8 +41,8 @@ describe('IncomingInteractionsInbox encoding and icons', () => {
         read: false,
         requiresResponse: true,
         resolved: false,
-      }),
-    );
+      })
+    )
     store.dispatch(
       pushIncomingInteraction({
         id: 'resolved-custom-label',
@@ -60,24 +58,24 @@ describe('IncomingInteractionsInbox encoding and icons', () => {
         resolvedAt: 100,
         resolvedWeek: 1,
         resolvedLabel: 'Accepted',
-      }),
-    );
+      })
+    )
 
     const { container } = render(
       <Provider store={store}>
         <IncomingInteractionsInbox />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    expect(screen.getByText('Incoming Interactions')).toBeInTheDocument();
-    expect(screen.getByTestId('incoming-icon-inbox')).toBeInTheDocument();
-    expect(screen.getByTestId('incoming-icon-deal_offer')).toBeInTheDocument();
-    expect(screen.getByTestId('incoming-icon-person')).toBeInTheDocument();
-    expect(screen.getByText('Resolved · Accepted')).toBeInTheDocument();
+    expect(screen.getByText('Incoming Interactions')).toBeInTheDocument()
+    expect(screen.getByTestId('incoming-icon-inbox')).toBeInTheDocument()
+    expect(screen.getByTestId('incoming-icon-deal_offer')).toBeInTheDocument()
+    expect(screen.getByTestId('incoming-icon-person')).toBeInTheDocument()
+    expect(screen.getByText('Resolved · Accepted')).toBeInTheDocument()
 
-    const closeButton = screen.getByRole('button', { name: 'Close inbox' });
-    expect(within(closeButton).getByTestId('incoming-icon-close')).toBeInTheDocument();
+    const closeButton = screen.getByRole('button', { name: 'Close inbox' })
+    expect(within(closeButton).getByTestId('incoming-icon-close')).toBeInTheDocument()
 
-    expect(container.textContent).not.toMatch(/ðŸ|âœ|âš|ï¸|�/u);
-  });
-});
+    expect(container.textContent).not.toMatch(/ðŸ|âœ|âš|ï¸|�/u)
+  })
+})
