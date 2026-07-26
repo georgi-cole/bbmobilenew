@@ -1,6 +1,9 @@
 name: Format incoming interaction changes
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - fix/incoming-interactions-encoding-layout
