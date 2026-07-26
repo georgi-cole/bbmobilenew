@@ -30,10 +30,7 @@ export function installAudioVisualSync(): void {
     // Live-elimination audio is legal only while the actual faux-TV tally board
     // is mounted. Calls made on phase entry or during its pre-tally beat are
     // deliberately rejected.
-    if (
-      key === 'tv:voting_eviction' &&
-      !document.querySelector(LIVE_VOTE_TALLY_SELECTOR)
-    ) {
+    if (key === 'tv:voting_eviction' && !document.querySelector(LIVE_VOTE_TALLY_SELECTOR)) {
       return
     }
 

@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  calculatePublicVotingEliminationIntervalMs,
-} from '../../../src/services/sound/publicVotingAudioTiming'
+import { calculatePublicVotingEliminationIntervalMs } from '../../../src/services/sound/publicVotingAudioTiming'
 
 describe('calculatePublicVotingEliminationIntervalMs', () => {
   it('spreads every elimination evenly across the complete music duration', () => {
