@@ -1,0 +1,89 @@
+name: Temporary House of Darkness human tuning
+
+on:
+  push:
+    branches:
+      - agent/tune-house-of-darkness-human-ai
+
+permissions:
+  contents: write
+
+jobs:
+  tune:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/tune-house-of-darkness-human-ai
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Slow and clarify creature transitions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          component_path = Path('src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx')
+          component = component_path.read_text()
+          old_timeout = '      }, 1350)'
+          new_timeout = '      }, 2600)'
+          if component.count(old_timeout) != 1:
+              raise SystemExit(f'Expected one 1350ms transition timeout, found {component.count(old_timeout)}')
+          component_path.write_text(component.replace(old_timeout, new_timeout, 1))
+
+          css_path = Path('src/components/HouseOfDarknessComp/HouseOfDarknessComp.css')
+          css = css_path.read_text()
+          replacements = {
+              'animation: hod-transition-dim 1.35s ease both;': 'animation: hod-transition-dim 2.6s ease both;',
+              'animation: hod-transition-caption 1.35s ease both;': 'animation: hod-transition-caption 2.6s ease both;',
+              'animation: hod-bat-flight 1.18s var(--hod-bat-delay, 0s) cubic-bezier(0.2, 0.68, 0.28, 1) both;': 'animation: hod-bat-flight 2.25s var(--hod-bat-delay, 0s) cubic-bezier(0.2, 0.68, 0.28, 1) both;',
+              'animation: hod-bat-wing 0.16s ease-in-out infinite alternate;': 'animation: hod-bat-wing 0.22s ease-in-out infinite alternate;',
+              'animation: hod-web-spread 1.28s ease-out both;': 'animation: hod-web-spread 2.45s ease-out both;',
+              'animation: hod-spider-drop 1.25s 0.08s ease-in-out both;': 'animation: hod-spider-drop 2.35s 0.12s ease-in-out both;',
+              '  42%,\n  72% {\n    background: rgba(2, 1, 4, 0.72);': '  24%,\n  84% {\n    background: rgba(2, 1, 4, 0.82);',
+              '  0%,\n  24% {\n    opacity: 0;\n    transform: translateY(8px) scale(0.96);': '  0%,\n  14% {\n    opacity: 0;\n    transform: translateY(8px) scale(0.96);',
+              '  45%,\n  78% {\n    opacity: 1;': '  30%,\n  86% {\n    opacity: 1;',
+              '  18% {\n    opacity: 1;\n  }\n  72% {\n    opacity: 1;': '  10% {\n    opacity: 1;\n  }\n  86% {\n    opacity: 1;',
+              '  38%,\n  78% {\n    opacity: 0.82;': '  22%,\n  88% {\n    opacity: 0.94;',
+              '  20% {\n    opacity: 1;\n  }\n  68% {\n    opacity: 1;': '  12% {\n    opacity: 1;\n  }\n  78% {\n    opacity: 1;',
+              '  background: #050207;\n  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55));': '  background: #160719;\n  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 6px rgba(213, 173, 114, 0.4));',
+          }
+          for old, new in replacements.items():
+              if css.count(old) != 1:
+                  raise SystemExit(f'Expected one CSS fragment but found {css.count(old)}: {old[:70]}')
+              css = css.replace(old, new, 1)
+
+          wing_background = '  background: #050207;\n  clip-path:'
+          if css.count(wing_background) != 1:
+              raise SystemExit(f'Expected one bat-wing background, found {css.count(wing_background)}')
+          css = css.replace(wing_background, '  background: #160719;\n  clip-path:', 1)
+          css_path.write_text(css)
+          PY
+      - run: |
+          npx prettier --write \
+            src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx \
+            src/components/HouseOfDarknessComp/HouseOfDarknessComp.css \
+            src/components/HouseOfDarknessComp/houseOfDarknessAiBalance.ts \
+            tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts \
+            tests/unit/house-of-darkness/HouseOfDarknessComp.transitions.test.ts
+      - run: npm run lint:ci
+      - run: npm run format:check
+      - run: |
+          npx vitest run \
+            tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts \
+            tests/unit/house-of-darkness/HouseOfDarknessComp.transitions.test.ts \
+            tests/unit/house-of-darkness/HouseOfDarknessComp.test.tsx \
+            tests/unit/house-of-darkness/houseOfDarknessUtils.test.ts
+      - name: Commit verified tuning
+        run: |
+          rm -f .github/workflows/temporary-house-of-darkness-human-tuning.yml
+          rm -f .github/.trigger-house-of-darkness-human-tuning
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Make House of Darkness slower and more human"
+          git push origin HEAD:agent/tune-house-of-darkness-human-ai
