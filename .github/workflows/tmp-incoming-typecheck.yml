@@ -1,0 +1,38 @@
+name: Temporary Incoming Interactions typecheck
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  capture-typecheck:
+    if: github.head_ref == 'fix/incoming-interactions-encoding-layout' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/incoming-interactions-encoding-layout
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture typecheck output
+        run: |
+          set +e
+          npm run typecheck > .tmp-incoming-typecheck.txt 2>&1
+          status=$?
+          echo "" >> .tmp-incoming-typecheck.txt
+          echo "EXIT_CODE=$status" >> .tmp-incoming-typecheck.txt
+          exit 0
+      - name: Commit diagnostics
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .tmp-incoming-typecheck.txt
+          git commit -m "Capture incoming interactions typecheck diagnostics"
+          git push origin HEAD:fix/incoming-interactions-encoding-layout
