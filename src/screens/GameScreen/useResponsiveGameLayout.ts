@@ -66,6 +66,10 @@ const MOBILE_TV_LOG_ROW_HEIGHT = 32
 const WIDE_TV_LOG_ROW_HEIGHT = 36
 const TV_CHROME_HEIGHT = 88
 const MAX_INLINE_TV_LOG_ROWS = 3
+const AUTO_TV_LOG_RESERVE = 12
+const PHONE_SMALL_MAX_TV_VIEWPORT_EXPANSION = 32
+const PHONE_MEDIUM_MAX_TV_VIEWPORT_EXPANSION = 48
+const PHONE_LARGE_MAX_TV_VIEWPORT_EXPANSION = 64
 const SHORT_ROSTER_MAX_PLAYERS = ROSTER_COLUMNS * 2
 const SURVIVOR_STANDOUT_GAP_ALLOWANCE = 10
 const SURVIVOR_FULL_STANDOUT_MIN_SPACE = 72
@@ -130,6 +134,23 @@ function getSurvivorStandoutHeight(mode: SurvivorStandoutLayoutMode) {
 
 function resolveAdaptiveTvLogRows(extraAfterFeature: number, rowHeight: number) {
   return clamp(1 + Math.floor(extraAfterFeature / rowHeight), 1, MAX_INLINE_TV_LOG_ROWS)
+}
+
+function resolveAutomaticTvLogRows(extraAfterFeature: number, rowHeight: number) {
+  const rowBudget = Math.max(0, extraAfterFeature - AUTO_TV_LOG_RESERVE)
+  return clamp(Math.floor(rowBudget / rowHeight), 0, MAX_INLINE_TV_LOG_ROWS)
+}
+
+function resolveTvViewportExpansionLimit(layoutSize: GameLayoutSize) {
+  switch (layoutSize) {
+    case 'phone-small':
+      return PHONE_SMALL_MAX_TV_VIEWPORT_EXPANSION
+    case 'phone-medium':
+      return PHONE_MEDIUM_MAX_TV_VIEWPORT_EXPANSION
+    case 'phone-large':
+    default:
+      return PHONE_LARGE_MAX_TV_VIEWPORT_EXPANSION
+  }
 }
 
 function buildDebugLabel(
@@ -227,8 +248,9 @@ export function computeResponsiveGameLayout(
     rosterRows * compactTileSize + (rosterRows - 1) * ROSTER_GAP + ROSTER_HEADER_HEIGHT
   const minTvViewportHeight =
     layoutSize === 'phone-small' ? 112 : layoutSize === 'phone-medium' ? 132 : 144
-  // Refined chrome moves history into an on-demand module. Reserve inline-log
-  // height only when rows are actually rendered, so the roster gets the space.
+  // The setting is an explicit force-on override. In the default state the
+  // layout engine starts from the Log-only minimum and adds 0–3 rows only when
+  // the measured surplus can contain them without crowding the roster.
   const tvLogRowHeight = viewportWidth <= 480 ? MOBILE_TV_LOG_ROW_HEIGHT : WIDE_TV_LOG_ROW_HEIGHT
   const minTvHeight = minTvViewportHeight + TV_CHROME_HEIGHT + (input.inlineLogVisible ? tvLogRowHeight : 0)
   const normalWithoutHeader = normalRosterHeight - ROSTER_HEADER_HEIGHT
@@ -273,10 +295,19 @@ export function computeResponsiveGameLayout(
   const extraAfterFeature = Math.max(0, extraAfterMandatory - featureReserve)
   const tvLogRows = input.inlineLogVisible
     ? resolveAdaptiveTvLogRows(extraAfterFeature, tvLogRowHeight)
-    : 0
-  const extraLogRows = Math.max(0, tvLogRows - 1)
-  const breathingRoom = clamp(extraAfterFeature - extraLogRows * tvLogRowHeight, 0, 20)
-  const tvHeight = minTvHeight + extraLogRows * tvLogRowHeight + breathingRoom
+    : resolveAutomaticTvLogRows(extraAfterFeature, tvLogRowHeight)
+  const baseLogRows = input.inlineLogVisible ? 1 : 0
+  const logRowsFromExtra = Math.max(0, tvLogRows - baseLogRows)
+  const remainingAfterLogRows = Math.max(
+    0,
+    extraAfterFeature - logRowsFromExtra * tvLogRowHeight
+  )
+  const breathingRoom = clamp(
+    remainingAfterLogRows,
+    0,
+    resolveTvViewportExpansionLimit(layoutSize)
+  )
+  const tvHeight = minTvHeight + logRowsFromExtra * tvLogRowHeight + breathingRoom
   const tvViewportHeight = minTvViewportHeight + breathingRoom
   const compactRoster = baseRosterMode === 'compact-small'
   const rosterMaxHeight = rosterMode === 'scroll'
