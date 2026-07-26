@@ -35,8 +35,7 @@
   border-radius: 22px 0 0 22px;
   color: rgba(247, 245, 255, 0.88);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 42%),
-    rgba(12, 14, 32, 0.68);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 42%), rgba(12, 14, 32, 0.68);
   box-shadow:
     0 8px 22px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -59,8 +58,7 @@
   color: #fff;
   border-color: rgba(216, 208, 255, 0.72);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.17), transparent 44%),
-    rgba(18, 20, 45, 0.9);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.17), transparent 44%), rgba(18, 20, 45, 0.9);
 }
 
 .minigame-utility-dock__orb svg {
@@ -96,8 +94,7 @@
   border: 1px solid rgba(193, 184, 255, 0.34);
   border-radius: 14px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 32%),
-    rgba(8, 10, 26, 0.92);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 32%), rgba(8, 10, 26, 0.92);
   box-shadow:
     0 14px 34px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -121,7 +118,9 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
 }
 
 .minigame-utility-dock__menu-item:hover,
@@ -178,8 +177,7 @@
   z-index: 9800;
   display: grid;
   place-items: center;
-  padding:
-    max(18px, var(--minigame-safe-padding-top, 18px))
+  padding: max(18px, var(--minigame-safe-padding-top, 18px))
     max(18px, var(--minigame-safe-padding-right, 18px))
     max(18px, var(--minigame-safe-padding-bottom, 18px))
     max(18px, var(--minigame-safe-padding-left, 18px));
