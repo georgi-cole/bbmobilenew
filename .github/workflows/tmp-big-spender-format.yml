@@ -1,16 +1,15 @@
 name: Temporary Big Spender formatter
 
 on:
-  push:
-    branches:
-      - agent/big-spender-replenishing-wall
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   format-big-spender:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'agent/big-spender-replenishing-wall' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
