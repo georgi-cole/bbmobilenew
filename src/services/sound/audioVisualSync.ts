@@ -1,7 +1,7 @@
 import { SoundManager } from './SoundManager';
 import { preloadPublicVotingAudioDuration } from './publicVotingAudioTiming';
 
-const LIVE_VOTE_TALLY_SELECTOR = '.avrm--tv';
+const LIVE_VOTE_TALLY_SELECTOR = '.avrm__tallies--tv';
 const TRIBUNAL_VERDICT_SELECTOR = '.fo-overlay--verdict';
 
 let installed = false;
@@ -27,8 +27,9 @@ export function installAudioVisualSync(): void {
     // currently points at the winner-reveal asset and must never be layered in.
     if (key === 'tv:veto_ceremony') return;
 
-    // Live-elimination audio is legal only while the faux-TV tally animation is
-    // mounted. Calls made on phase entry are deliberately rejected.
+    // Live-elimination audio is legal only while the actual faux-TV tally board
+    // is mounted. Calls made on phase entry or during its pre-tally beat are
+    // deliberately rejected.
     if (key === 'tv:voting_eviction' && !document.querySelector(LIVE_VOTE_TALLY_SELECTOR)) {
       return;
     }
