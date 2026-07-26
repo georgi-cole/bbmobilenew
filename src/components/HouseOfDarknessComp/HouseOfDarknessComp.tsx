@@ -43,7 +43,6 @@ interface Props {
 }
 
 type Phase = 'playing' | 'round_results' | 'death' | 'results';
-
 type BoardStyle = CSSProperties & { '--hod-columns': number };
 type HealthStyle = CSSProperties & { '--hod-health': string };
 
@@ -92,10 +91,7 @@ function buildInitialContestants(ids: string[]): Record<string, ContestantState>
   }]));
 }
 
-function rankContestants(
-  states: Record<string, ContestantState>,
-  participantOrder: string[],
-): ContestantState[] {
+function rankContestants(states: Record<string, ContestantState>, participantOrder: string[]): ContestantState[] {
   return Object.values(states).sort((first, second) => {
     if (first.alive !== second.alive) return first.alive ? -1 : 1;
     if (first.completedRounds !== second.completedRounds) return second.completedRounds - first.completedRounds;
@@ -108,16 +104,13 @@ function rankContestants(
 }
 
 function rawScoreFor(state: ContestantState): number {
-  return Math.max(
-    0,
-    Math.round(
-      (state.alive ? 1_000_000 : 0)
-      + state.completedRounds * 10_000
-      + state.health * 100
-      - state.totalDamage * 10
-      - state.totalMistakes,
-    ),
-  );
+  return Math.max(0, Math.round(
+    (state.alive ? 1_000_000 : 0)
+    + state.completedRounds * 10_000
+    + state.health * 100
+    - state.totalDamage * 10
+    - state.totalMistakes,
+  ));
 }
 
 export default function HouseOfDarknessComp({
@@ -257,6 +250,13 @@ export default function HouseOfDarknessComp({
   }, [finalizeTournament, humanId, resolvedIds, round, simulateAiRound]);
 
   useEffect(() => {
+    if (phase !== 'playing' || humanHealth > 0) return;
+    setLocked(true);
+    setFlippedIndices([]);
+    setPhase('death');
+  }, [humanHealth, phase]);
+
+  useEffect(() => {
     if (phase !== 'death' || deathResolvedRef.current) return;
     deathResolvedRef.current = true;
     void SoundManager.play('minigame:risk_wheel_666');
@@ -286,21 +286,14 @@ export default function HouseOfDarknessComp({
     if (!currentHuman?.alive) return;
 
     const elapsedMs = Math.max(1, Date.now() - roundStartedAtRef.current);
-    const healedHumanHealth = recoverHouseOfDarknessHealth(
-      currentHuman.health,
-      roundDamage,
-      true,
-    );
+    const healedHumanHealth = recoverHouseOfDarknessHealth(currentHuman.health, roundDamage, true);
     const humanNext: ContestantState = {
       ...currentHuman,
       health: healedHumanHealth,
       completedRounds: currentHuman.completedRounds + 1,
       totalTimeMs: currentHuman.totalTimeMs + elapsedMs,
     };
-    let nextStates: Record<string, ContestantState> = {
-      ...currentStates,
-      [humanId]: humanNext,
-    };
+    let nextStates: Record<string, ContestantState> = { ...currentStates, [humanId]: humanNext };
     const results: RoundResult[] = [{
       id: humanId,
       startingHealth: roundStartingHealthRef.current,
@@ -357,35 +350,30 @@ export default function HouseOfDarknessComp({
     }
 
     playMismatch();
-    const hit = getHouseOfDarknessMistakeDamage(
-      sessionSeed,
-      humanId,
-      round,
-      roundMistakes,
-    );
+    const hit = getHouseOfDarknessMistakeDamage(sessionSeed, humanId, round, roundMistakes);
     showDamageFlash(hit);
     setRoundMistakes((value) => value + 1);
     setRoundDamage((value) => value + hit);
-    let lethal = false;
-    setContestants((current) => {
-      const player = current[humanId];
-      if (!player) return current;
-      const nextHealth = clampHealth(player.health - hit);
-      lethal = nextHealth <= 0;
-      const next = {
-        ...current,
+
+    const currentPlayer = contestantsRef.current[humanId];
+    const nextHealth = clampHealth((currentPlayer?.health ?? 0) - hit);
+    const lethal = nextHealth <= 0;
+    if (currentPlayer) {
+      const nextContestants = {
+        ...contestantsRef.current,
         [humanId]: {
-          ...player,
+          ...currentPlayer,
           health: nextHealth,
           alive: !lethal,
           eliminatedRound: lethal ? round : null,
-          totalMistakes: player.totalMistakes + 1,
-          totalDamage: player.totalDamage + hit,
+          totalMistakes: currentPlayer.totalMistakes + 1,
+          totalDamage: currentPlayer.totalDamage + hit,
         },
       };
-      contestantsRef.current = next;
-      return next;
-    });
+      contestantsRef.current = nextContestants;
+      setContestants(nextContestants);
+    }
+
     setBoard((current) => current.map((card, index) =>
       index === firstIndex || index === secondIndex
         ? { ...card, isFlipped: true, isMismatch: true }
@@ -393,8 +381,9 @@ export default function HouseOfDarknessComp({
     ));
 
     if (lethal) {
-      setPhase('death');
+      setLocked(true);
       setFlippedIndices([]);
+      setPhase('death');
       return;
     }
 
@@ -448,15 +437,11 @@ export default function HouseOfDarknessComp({
   const finish = useCallback(() => {
     if (standings.length === 0) return;
     const rawResults = Object.fromEntries(standings.map((state) => [state.id, rawScoreFor(state)]));
-    onFinish?.(
-      rawResults[humanId] ?? 0,
-      undefined,
-      {
-        authoritativeWinnerId: standings[0]?.id ?? null,
-        rawValue: rawResults[humanId] ?? 0,
-        rawResults,
-      },
-    );
+    onFinish?.(rawResults[humanId] ?? 0, undefined, {
+      authoritativeWinnerId: standings[0]?.id ?? null,
+      rawValue: rawResults[humanId] ?? 0,
+      rawResults,
+    });
   }, [humanId, onFinish, standings]);
 
   if (phase === 'round_results' && roundSummary) {
