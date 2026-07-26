@@ -1,0 +1,48 @@
+name: Temporary House of Cards bright-theme validation
+
+on:
+  push:
+    branches:
+      - agent/bright-house-of-cards-theme
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/bright-house-of-cards-theme
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Format bright theme
+        run: |
+          npx prettier --write \
+            src/main.tsx \
+            src/styles/houseOfCardsBrightTheme.css \
+            tests/unit/house-of-cards/HouseOfCardsComp.brightTheme.styles.test.ts
+      - name: Validate theme safeguards
+        run: |
+          npm run lint:ci
+          npx vitest run \
+            tests/unit/house-of-cards/HouseOfCardsComp.brightTheme.styles.test.ts \
+            tests/unit/house-of-cards/HouseOfCardsComp.interactionHotfix.styles.test.ts
+      - name: Remove temporary workflow files
+        run: |
+          rm -f .github/workflows/temporary-house-of-cards-bright-format.yml
+          rm -f .github/.trigger-house-of-cards-bright-format
+      - name: Commit formatted theme
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Format and validate bright House of Cards theme"
+          git push origin HEAD:agent/bright-house-of-cards-theme
