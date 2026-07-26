@@ -12,9 +12,7 @@
 
   min-height: 100dvh;
   display: block;
-  padding:
-    calc(env(safe-area-inset-top, 0px) + 0.65rem)
-    0.65rem
+  padding: calc(env(safe-area-inset-top, 0px) + 0.65rem) 0.65rem
     calc(env(safe-area-inset-bottom, 0px) + 0.8rem);
   color: var(--bs-text);
   background:
@@ -98,7 +96,9 @@
   font-size: 1rem;
   font-weight: 900;
   cursor: pointer;
-  transition: background 150ms ease, transform 150ms ease;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
 }
 
 .big-spender__info:hover {
@@ -144,7 +144,7 @@
 }
 
 .big-spender__balance-card::after {
-  content: "";
+  content: '';
   position: absolute;
   width: 5.5rem;
   height: 5.5rem;
@@ -267,9 +267,15 @@
   height: 100%;
 }
 
-.big-spender__odds-negative { background: var(--bs-good); }
-.big-spender__odds-positive { background: var(--bs-bad); }
-.big-spender__odds-bomb { background: #f5c65e; }
+.big-spender__odds-negative {
+  background: var(--bs-good);
+}
+.big-spender__odds-positive {
+  background: var(--bs-bad);
+}
+.big-spender__odds-bomb {
+  background: #f5c65e;
+}
 
 .big-spender__odds-legend {
   display: flex;
@@ -292,9 +298,15 @@
   border-radius: 999px;
 }
 
-.big-spender__legend-dot--negative { background: var(--bs-good); }
-.big-spender__legend-dot--positive { background: var(--bs-bad); }
-.big-spender__legend-dot--bomb { background: #f5c65e; }
+.big-spender__legend-dot--negative {
+  background: var(--bs-good);
+}
+.big-spender__legend-dot--positive {
+  background: var(--bs-bad);
+}
+.big-spender__legend-dot--bomb {
+  background: #f5c65e;
+}
 
 .big-spender__finalists {
   margin-top: 0.5rem;
@@ -397,14 +409,18 @@
   background: rgba(99, 221, 176, 0.07);
 }
 
-.big-spender__latest-reveal--negative strong { color: var(--bs-good); }
+.big-spender__latest-reveal--negative strong {
+  color: var(--bs-good);
+}
 
 .big-spender__latest-reveal--positive {
   border-color: rgba(255, 138, 138, 0.24);
   background: rgba(255, 138, 138, 0.07);
 }
 
-.big-spender__latest-reveal--positive strong { color: #ffb0b0; }
+.big-spender__latest-reveal--positive strong {
+  color: #ffb0b0;
+}
 
 .big-spender__latest-reveal--bomb {
   border-color: rgba(245, 198, 94, 0.3);
@@ -434,11 +450,14 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 0.45rem 1rem rgba(0, 0, 0, 0.18);
-  transition: transform 150ms ease, border-color 150ms ease, filter 150ms ease;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    filter 150ms ease;
 }
 
 .big-spender__wallet::after {
-  content: "";
+  content: '';
   position: absolute;
   z-index: -1;
   width: 4.4rem;
@@ -516,12 +535,24 @@
   font-size: 0.56rem;
 }
 
-.big-spender__wallet--color-0 { background: linear-gradient(145deg, #172b30, #0c161d); }
-.big-spender__wallet--color-1 { background: linear-gradient(145deg, #1c263b, #0c1220); }
-.big-spender__wallet--color-2 { background: linear-gradient(145deg, #2b202f, #150e18); }
-.big-spender__wallet--color-3 { background: linear-gradient(145deg, #30281d, #171109); }
-.big-spender__wallet--color-4 { background: linear-gradient(145deg, #202d25, #0e1712); }
-.big-spender__wallet--color-5 { background: linear-gradient(145deg, #202a35, #0d141e); }
+.big-spender__wallet--color-0 {
+  background: linear-gradient(145deg, #172b30, #0c161d);
+}
+.big-spender__wallet--color-1 {
+  background: linear-gradient(145deg, #1c263b, #0c1220);
+}
+.big-spender__wallet--color-2 {
+  background: linear-gradient(145deg, #2b202f, #150e18);
+}
+.big-spender__wallet--color-3 {
+  background: linear-gradient(145deg, #30281d, #171109);
+}
+.big-spender__wallet--color-4 {
+  background: linear-gradient(145deg, #202d25, #0e1712);
+}
+.big-spender__wallet--color-5 {
+  background: linear-gradient(145deg, #202a35, #0d141e);
+}
 
 .big-spender__wallet--revealed {
   align-content: center;
@@ -643,9 +674,7 @@
 }
 
 .big-spender__overlay {
-  padding:
-    calc(env(safe-area-inset-top, 0px) + 0.85rem)
-    0.75rem
+  padding: calc(env(safe-area-inset-top, 0px) + 0.85rem) 0.75rem
     calc(env(safe-area-inset-bottom, 0px) + 0.85rem);
   background: rgba(2, 5, 10, 0.8);
   backdrop-filter: blur(8px);
@@ -817,7 +846,8 @@
 }
 
 @keyframes big-spender-modern-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
     filter: brightness(1);
   }
