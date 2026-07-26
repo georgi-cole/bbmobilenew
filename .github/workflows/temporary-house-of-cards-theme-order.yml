@@ -1,9 +1,12 @@
 name: Temporary House of Cards theme order fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/fix-house-of-cards-theme-order
+      - main
+    types:
+      - opened
+      - synchronize
 
 permissions:
   contents: write
@@ -72,12 +75,10 @@ jobs:
       - run: npm run lint:ci
       - run: npm run format:check
       - run: npx vitest run tests/unit/house-of-cards/HouseOfCardsComp.brightTheme.styles.test.ts tests/unit/house-of-cards/HouseOfCardsComp.interactionHotfix.styles.test.ts
-      - name: Commit verified fix
+      - name: Commit verified source fix
         run: |
-          rm -f .github/workflows/temporary-house-of-cards-theme-order.yml
-          rm -f .github/.trigger-house-of-cards-theme-order
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add src/main.tsx src/components/HouseOfCardsComp/HouseOfCardsComp.tsx tests/unit/house-of-cards/HouseOfCardsComp.brightTheme.styles.test.ts
           git commit -m "Fix House of Cards bright theme load order"
           git push origin HEAD:agent/fix-house-of-cards-theme-order
