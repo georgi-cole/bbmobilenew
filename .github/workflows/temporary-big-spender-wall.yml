@@ -1,0 +1,761 @@
+name: Temporary Big Spender wall updater
+
+on:
+  push:
+    branches:
+      - agent/big-spender-replenishing-wall
+
+permissions:
+  contents: write
+
+jobs:
+  apply-wall-update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/big-spender-replenishing-wall
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply replenishing wall design
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          component_path = Path('src/components/BigSpender/BigSpender.tsx')
+          css_path = Path('src/components/BigSpender/BigSpenderModern.css')
+          text = component_path.read_text()
+
+          def replace_once(old: str, new: str) -> None:
+              global text
+              if old not in text:
+                  raise SystemExit(f'Missing expected source block:\n{old[:180]}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "import { useEffect, useMemo, useRef, useState } from 'react';",
+              "import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';",
+          )
+
+          replace_once(
+              """type LatestReveal = {
+            roundNumber: number;
+            outcome: BigSpenderWallet['outcome'];
+            secondChance: boolean;
+          };""",
+              """type LatestReveal = {
+            roundNumber: number;
+            outcome: BigSpenderWallet['outcome'];
+            secondChance: boolean;
+            previousBalance: number;
+            nextBalance: number;
+          };
+
+          type WallTransitionStage = 'clearing' | 'entering' | null;
+          type WallMotif = 'vault' | 'diamond';""",
+          )
+
+          replace_once(
+              "const RESULT_MEDALS = ['1', '2', '3'] as const;",
+              """const RESULT_MEDALS = ['1', '2', '3'] as const;
+          const WALL_SIZE = 16;
+          const LATEST_REVEAL_MS = 2400;
+          const WALL_CLEAR_MS = 360;
+          const WALL_TRANSITION_MS = 860;""",
+          )
+
+          replace_once(
+              """function getLatestRevealText(reveal: LatestReveal | null) {
+            if (!reveal) return 'Choose a wallet to reveal its value.';
+            if (reveal.outcome.type === 'bomb') return 'Bomb found. The round is on the line.';
+            const amount = reveal.outcome.amount ?? 0;
+            if (amount < 0) return `${Math.abs(amount)} Eyeoleans removed.`;
+            return `${amount} Eyeoleans added back.`;
+          }""",
+              """function getLatestRevealText(reveal: LatestReveal | null) {
+            if (!reveal) return 'Choose a wallet to reveal its value.';
+            if (reveal.outcome.type === 'bomb') return 'Bomb found. The round is on the line.';
+            const amount = reveal.outcome.amount ?? 0;
+            if (amount < 0) return `${Math.abs(amount)} Eyeoleans removed.`;
+            return `${amount} Eyeoleans added back.`;
+          }
+
+          function getBalanceAfterOutcome(balance: number, outcome: BigSpenderWallet['outcome']) {
+            if (outcome.type === 'bomb') return balance;
+            return Math.max(0, balance + (outcome.amount ?? 0));
+          }""",
+          )
+
+          replace_once(
+              """function chooseAiWallet(state: BigSpenderState, playerId: string, rng: () => number) {
+            const available = getBigSpenderBoardForPlayer(state, playerId).filter((wallet) => wallet.state === 'hidden');
+            return available[Math.floor(rng() * available.length)] ?? available[0] ?? null;
+          }""",
+              """function chooseAiWallet(state: BigSpenderState, playerId: string, rng: () => number) {
+            const board = getBigSpenderBoardForPlayer(state, playerId);
+            const firstWall = board.slice(0, WALL_SIZE);
+            const activeWall = firstWall.some((wallet) => wallet.state === 'hidden')
+              ? firstWall
+              : board.slice(WALL_SIZE, WALL_SIZE * 2);
+            const available = activeWall.filter((wallet) => wallet.state === 'hidden');
+            return available[Math.floor(rng() * available.length)] ?? available[0] ?? null;
+          }""",
+          )
+
+          replace_once(
+              """  const [showRules, setShowRules] = useState(false);
+            const [latestReveal, setLatestReveal] = useState<LatestReveal | null>(null);
+            const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));""",
+              """  const [showRules, setShowRules] = useState(false);
+            const [latestReveal, setLatestReveal] = useState<LatestReveal | null>(null);
+            const [latestRevealVisible, setLatestRevealVisible] = useState(false);
+            const [wallView, setWallView] = useState(() => ({ roundNumber: state.roundNumber, index: 0 }));
+            const [wallTransitionStage, setWallTransitionStage] = useState<WallTransitionStage>(null);
+            const aiRngRef = useRef(mulberry32((seed ^ 0x5eedcafe) >>> 0));""",
+          )
+
+          replace_once(
+              """  const broadcastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+            const zeroDramaKeysRef = useRef(new Set<string>());""",
+              """  const broadcastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+            const zeroDramaKeysRef = useRef(new Set<string>());
+            const latestRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+            const wallTransitionTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);""",
+          )
+
+          replace_once(
+              """  const hiddenWalletCount = humanBoard.filter((wallet) => wallet.state === 'hidden').length;
+            const balanceZone = getBalanceZone(humanPlayer?.balance ?? BIG_SPENDER_CONFIG.startingBalance);
+            const displayedLatestReveal = latestReveal?.roundNumber === state.roundNumber ? latestReveal : null;""",
+              """  const hiddenWalletCount = humanBoard.filter((wallet) => wallet.state === 'hidden').length;
+            const effectiveWallIndex = wallView.roundNumber === state.roundNumber ? wallView.index : 0;
+            const firstWallWallets = humanBoard.slice(0, WALL_SIZE);
+            const firstWallExhausted = firstWallWallets.length === WALL_SIZE
+              && firstWallWallets.every((wallet) => wallet.state === 'revealed');
+            const hasFreshWall = humanBoard.slice(WALL_SIZE, WALL_SIZE * 2).some((wallet) => wallet.state === 'hidden');
+            const wallStartIndex = effectiveWallIndex * WALL_SIZE;
+            const visibleWallets = humanBoard.slice(wallStartIndex, wallStartIndex + WALL_SIZE);
+            const visibleWallOpened = visibleWallets.filter((wallet) => wallet.state === 'revealed').length;
+            const visibleWallClosed = visibleWallets.length - visibleWallOpened;
+            const firstWallMotif: WallMotif = state.roundNumber % 2 === 0 ? 'diamond' : 'vault';
+            const visibleWallMotif: WallMotif = effectiveWallIndex === 0
+              ? firstWallMotif
+              : firstWallMotif === 'vault' ? 'diamond' : 'vault';
+            const balanceZone = getBalanceZone(humanPlayer?.balance ?? BIG_SPENDER_CONFIG.startingBalance);
+            const displayedLatestReveal = latestRevealVisible && latestReveal?.roundNumber === state.roundNumber
+              ? latestReveal
+              : null;""",
+          )
+
+          replace_once(
+              """  const openWallet = (walletId: string) => {
+            if (!humanPlayer || !canHumanOpen) return;
+            const wallet = humanBoard.find((entry) => entry.walletId === walletId);
+            if (wallet) {
+              setLatestReveal({
+                roundNumber: state.roundNumber,
+                outcome: wallet.outcome,
+                secondChance: humanSecondChancePending,
+              });
+            }
+            setState((previous) => openBigSpenderWallet(
+              previous,
+              humanPlayer.playerId,
+              walletId,
+              humanSecondChancePending ? 'secondChance' : 'normal',
+            ));
+          };""",
+              """  useEffect(() => {
+            for (const timer of wallTransitionTimersRef.current) clearTimeout(timer);
+            wallTransitionTimersRef.current = [];
+            if (latestRevealTimerRef.current) clearTimeout(latestRevealTimerRef.current);
+            latestRevealTimerRef.current = null;
+            setWallView({ roundNumber: state.roundNumber, index: 0 });
+            setWallTransitionStage(null);
+            setLatestReveal(null);
+            setLatestRevealVisible(false);
+          }, [state.roundNumber]);
+
+          useEffect(() => {
+            if (
+              state.status !== 'running'
+              || !firstWallExhausted
+              || !hasFreshWall
+              || effectiveWallIndex !== 0
+              || wallTransitionStage !== null
+            ) return;
+
+            setWallTransitionStage('clearing');
+            const swapTimer = setTimeout(() => {
+              setWallView({ roundNumber: state.roundNumber, index: 1 });
+              setWallTransitionStage('entering');
+            }, WALL_CLEAR_MS);
+            const finishTimer = setTimeout(() => setWallTransitionStage(null), WALL_TRANSITION_MS);
+            wallTransitionTimersRef.current = [swapTimer, finishTimer];
+          }, [effectiveWallIndex, firstWallExhausted, hasFreshWall, state.roundNumber, state.status, wallTransitionStage]);
+
+          useEffect(() => {
+            return () => {
+              if (latestRevealTimerRef.current) clearTimeout(latestRevealTimerRef.current);
+              for (const timer of wallTransitionTimersRef.current) clearTimeout(timer);
+            };
+          }, []);
+
+          const openWallet = (walletId: string) => {
+            if (!humanPlayer || !canHumanOpen || wallTransitionStage !== null) return;
+            const wallet = visibleWallets.find((entry) => entry.walletId === walletId);
+            if (wallet) {
+              const previousBalance = humanPlayer.balance;
+              setLatestReveal({
+                roundNumber: state.roundNumber,
+                outcome: wallet.outcome,
+                secondChance: humanSecondChancePending,
+                previousBalance,
+                nextBalance: getBalanceAfterOutcome(previousBalance, wallet.outcome),
+              });
+              setLatestRevealVisible(true);
+              if (latestRevealTimerRef.current) clearTimeout(latestRevealTimerRef.current);
+              latestRevealTimerRef.current = setTimeout(() => setLatestRevealVisible(false), LATEST_REVEAL_MS);
+            }
+            setState((previous) => openBigSpenderWallet(
+              previous,
+              humanPlayer.playerId,
+              walletId,
+              humanSecondChancePending ? 'secondChance' : 'normal',
+            ));
+          };""",
+          )
+
+          old_board = """          <div className=\"big-spender__board-heading\">
+            <div>
+              <span className=\"big-spender__metric-label\">Wallet wall</span>
+              <strong>{humanSecondChancePending ? 'Choose your mandatory save' : 'Tap any closed wallet'}</strong>
+            </div>
+            <span>{humanPlayer?.walletsOpened ?? 0} opened</span>
+          </div>
+
+          <div className={[
+            'big-spender__latest-reveal',
+            displayedLatestReveal ? `big-spender__latest-reveal--${displayedLatestReveal.outcome.type}` : '',
+          ].join(' ')} aria-live=\"polite\">
+            <span>{displayedLatestReveal?.secondChance ? 'Second Chance result' : 'Latest result'}</span>
+            <strong>
+              {!displayedLatestReveal
+                ? '—'
+                : displayedLatestReveal.outcome.type === 'bomb'
+                  ? BOMB_ICON
+                  : `${(displayedLatestReveal.outcome.amount ?? 0) > 0 ? '+' : ''}${displayedLatestReveal.outcome.amount ?? 0}`}
+            </strong>
+            <small>{getLatestRevealText(displayedLatestReveal)}</small>
+          </div>
+
+          <section className=\"big-spender__board\" aria-label=\"Wallet board\">
+            {humanBoard.map((wallet) => {
+              const resultLabel = getWalletResultLabel(wallet);
+              const openedByLabel = getWalletOpenedByLabel(wallet);
+              return (
+                <button
+                  key={wallet.walletId}
+                  type=\"button\"
+                  className={[
+                    'big-spender__wallet',
+                    `big-spender__wallet--color-${wallet.generationColor}`,
+                    wallet.state === 'revealed' ? 'big-spender__wallet--revealed' : '',
+                    wallet.state === 'revealed' ? `big-spender__wallet--${wallet.outcome.type}` : '',
+                    wallet.outcome.type === 'bomb' && wallet.state === 'revealed' ? 'big-spender__wallet--bomb' : '',
+                    humanSecondChancePending && wallet.state === 'hidden' ? 'big-spender__wallet--second-chance' : '',
+                  ].join(' ')}
+                  disabled={!canHumanOpen || wallet.state !== 'hidden'}
+                  onClick={() => openWallet(wallet.walletId)}
+                  aria-label={getWalletAriaLabelForState(wallet, humanSecondChancePending)}
+                >
+                  <span className=\"big-spender__wallet-flap\" aria-hidden=\"true\" />
+                  <span className=\"big-spender__wallet-id\">{String(wallet.boardSlotIndex + 1).padStart(2, '0')}</span>
+                  {resultLabel ? (
+                    <>
+                      <strong className=\"big-spender__wallet-result\">{resultLabel}</strong>
+                      {openedByLabel && <span className=\"big-spender__wallet-opener\">{openedByLabel}</span>}
+                    </>
+                  ) : (
+                    <span className=\"big-spender__wallet-generation\">{humanSecondChancePending ? 'Pick' : 'Open'}</span>
+                  )}
+                </button>
+              );
+            })}
+          </section>"""
+
+          new_board = """          <div className=\"big-spender__board-heading\">
+            <div>
+              <span className=\"big-spender__metric-label\">
+                {effectiveWallIndex === 1 ? 'Fresh wallet wall' : 'Wallet wall'}
+              </span>
+              <strong>
+                {humanSecondChancePending
+                  ? 'Choose your mandatory save'
+                  : wallTransitionStage
+                    ? 'Replenishing the wall'
+                    : 'Tap any closed wallet'}
+              </strong>
+            </div>
+            <span>{visibleWallOpened} opened · {visibleWallClosed} closed</span>
+          </div>
+
+          {displayedLatestReveal && (
+            <div
+              className={[
+                'big-spender__latest-reveal',
+                `big-spender__latest-reveal--${displayedLatestReveal.outcome.type}`,
+              ].join(' ')}
+              aria-live=\"polite\"
+            >
+              <span>{displayedLatestReveal.secondChance ? 'Second Chance result' : 'Wallet result'}</span>
+              <strong>
+                {displayedLatestReveal.outcome.type === 'bomb'
+                  ? BOMB_ICON
+                  : `${(displayedLatestReveal.outcome.amount ?? 0) > 0 ? '+' : ''}${displayedLatestReveal.outcome.amount ?? 0}`}
+              </strong>
+              <small>
+                {getLatestRevealText(displayedLatestReveal)}
+                {displayedLatestReveal.outcome.type !== 'bomb' && (
+                  <em>
+                    {displayedLatestReveal.previousBalance.toLocaleString('en-US')} →{' '}
+                    {displayedLatestReveal.nextBalance.toLocaleString('en-US')}
+                  </em>
+                )}
+              </small>
+            </div>
+          )}
+
+          <div className=\"big-spender__board-stage\">
+            {wallTransitionStage && (
+              <div
+                className={`big-spender__wall-replenish big-spender__wall-replenish--${wallTransitionStage}`}
+                aria-live=\"polite\"
+              >
+                <strong>Wallet wall replenished</strong>
+                <span>Fresh wallets are sliding into place.</span>
+              </div>
+            )}
+
+            <section
+              className={[
+                'big-spender__board',
+                `big-spender__board--motif-${visibleWallMotif}`,
+                wallTransitionStage ? `big-spender__board--${wallTransitionStage}` : '',
+              ].join(' ')}
+              aria-label={`Wallet wall ${effectiveWallIndex + 1}`}
+            >
+              {visibleWallets.map((wallet, wallSlotIndex) => {
+                const resultLabel = getWalletResultLabel(wallet);
+                const openedByLabel = getWalletOpenedByLabel(wallet);
+                return (
+                  <button
+                    key={wallet.walletId}
+                    type=\"button\"
+                    className={[
+                      'big-spender__wallet',
+                      `big-spender__wallet--color-${wallet.generationColor}`,
+                      wallet.state === 'revealed' ? 'big-spender__wallet--revealed' : '',
+                      wallet.state === 'revealed' ? `big-spender__wallet--${wallet.outcome.type}` : '',
+                      resultLabel && resultLabel.length >= 4 ? 'big-spender__wallet--result-long' : '',
+                      wallet.outcome.type === 'bomb' && wallet.state === 'revealed' ? 'big-spender__wallet--bomb' : '',
+                      humanSecondChancePending && wallet.state === 'hidden' ? 'big-spender__wallet--second-chance' : '',
+                    ].join(' ')}
+                    style={{
+                      '--wallet-column': wallSlotIndex % 4,
+                      '--wallet-row': Math.floor(wallSlotIndex / 4),
+                    } as CSSProperties}
+                    disabled={!canHumanOpen || wallTransitionStage !== null || wallet.state !== 'hidden'}
+                    onClick={() => openWallet(wallet.walletId)}
+                    aria-label={getWalletAriaLabelForState(wallet, humanSecondChancePending)}
+                  >
+                    <span className=\"big-spender__wallet-flap\" aria-hidden=\"true\" />
+                    <span className=\"big-spender__wallet-id\">
+                      {String(wallet.boardSlotIndex + 1).padStart(2, '0')}
+                    </span>
+                    {resultLabel && (
+                      <>
+                        <strong className=\"big-spender__wallet-result\">{resultLabel}</strong>
+                        {openedByLabel && <span className=\"big-spender__wallet-opener\">{openedByLabel}</span>}
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </section>
+          </div>"""
+
+          replace_once(old_board, new_board)
+
+          replace_once(
+              """      {!isFinaleRound && broadcasts.length > 0 && (
+            <section className=\"big-spender__broadcasts\" aria-label=\"House broadcasts\" aria-live=\"polite\">
+              <span className=\"big-spender__metric-label\">House feed</span>
+              {broadcasts.map((message) => (
+                <p key={message}>{message}</p>
+              ))}
+            </section>
+          )}""",
+              """      {!isFinaleRound && broadcasts.length > 0 && (
+            <section className=\"big-spender__broadcasts\" aria-label=\"House broadcasts\" aria-live=\"polite\">
+              <span className=\"big-spender__metric-label\">House feed</span>
+              <p>{broadcasts[0]}</p>
+            </section>
+          )}""",
+          )
+
+          replace_once(
+              """              <article>
+                <span>06</span>
+                <div><strong>Two bomb saves</strong><p>Before the finale, you may watch an ad twice per game. The mandatory Second Chance Wallet can still bomb.</p></div>
+              </article>""",
+              """              <article>
+                <span>06</span>
+                <div><strong>Two bomb saves</strong><p>Before the finale, you may watch an ad twice per game. The mandatory Second Chance Wallet can still bomb.</p></div>
+              </article>
+              <article>
+                <span>07</span>
+                <div><strong>One automatic refill</strong><p>Sixteen wallets appear at a time. Clear the wall and the remaining sixteen slide in automatically.</p></div>
+              </article>""",
+          )
+
+          component_path.write_text(text)
+
+          css = css_path.read_text()
+          marker = '/* Big Spender replenishing 4x4 wall */'
+          if marker not in css:
+              css += r'''
+
+          /* Big Spender replenishing 4x4 wall */
+          .big-spender__board-stage {
+            position: relative;
+          }
+
+          .big-spender__board {
+            width: min(100%, 42rem);
+            max-width: 42rem;
+            margin-inline: auto;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-auto-rows: auto;
+            gap: clamp(0.48rem, 1.7vw, 0.72rem);
+          }
+
+          .big-spender__wallet {
+            aspect-ratio: 1 / 0.94;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+            place-items: center;
+            padding: 0.58rem;
+            border-radius: 1rem;
+          }
+
+          .big-spender__wallet > * {
+            position: relative;
+            z-index: 2;
+          }
+
+          .big-spender__wallet:not(.big-spender__wallet--revealed)::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            border-radius: inherit;
+            background-repeat: no-repeat;
+            background-size: 400% 400%;
+            background-position:
+              calc(var(--wallet-column) * 33.333%)
+              calc(var(--wallet-row) * 33.333%);
+            opacity: 0.8;
+            pointer-events: none;
+          }
+
+          .big-spender__board--motif-vault
+            .big-spender__wallet:not(.big-spender__wallet--revealed)::before {
+            background-image:
+              radial-gradient(
+                circle at 50% 50%,
+                transparent 0 14%,
+                rgba(236, 199, 116, 0.34) 14.5% 16%,
+                transparent 16.5% 27%,
+                rgba(236, 199, 116, 0.2) 27.5% 29%,
+                transparent 29.5% 100%
+              ),
+              repeating-conic-gradient(
+                from 0deg at 50% 50%,
+                rgba(236, 199, 116, 0.16) 0deg 1.5deg,
+                transparent 1.5deg 22.5deg
+              ),
+              linear-gradient(
+                90deg,
+                transparent 49.55%,
+                rgba(236, 199, 116, 0.12) 49.7% 50.3%,
+                transparent 50.45%
+              ),
+              linear-gradient(
+                0deg,
+                transparent 49.55%,
+                rgba(236, 199, 116, 0.12) 49.7% 50.3%,
+                transparent 50.45%
+              );
+          }
+
+          .big-spender__board--motif-diamond
+            .big-spender__wallet:not(.big-spender__wallet--revealed)::before {
+            background-image:
+              linear-gradient(
+                45deg,
+                transparent 31%,
+                rgba(215, 191, 142, 0.22) 31.5% 32.5%,
+                transparent 33% 67%,
+                rgba(215, 191, 142, 0.22) 67.5% 68.5%,
+                transparent 69%
+              ),
+              linear-gradient(
+                135deg,
+                transparent 31%,
+                rgba(215, 191, 142, 0.22) 31.5% 32.5%,
+                transparent 33% 67%,
+                rgba(215, 191, 142, 0.22) 67.5% 68.5%,
+                transparent 69%
+              ),
+              conic-gradient(
+                from 45deg at 50% 50%,
+                rgba(215, 191, 142, 0.04) 0 12.5%,
+                transparent 12.5% 25%,
+                rgba(215, 191, 142, 0.1) 25% 37.5%,
+                transparent 37.5% 50%,
+                rgba(215, 191, 142, 0.04) 50% 62.5%,
+                transparent 62.5% 75%,
+                rgba(215, 191, 142, 0.1) 75% 87.5%,
+                transparent 87.5% 100%
+              );
+          }
+
+          .big-spender__wallet:not(.big-spender__wallet--revealed) .big-spender__wallet-id {
+            grid-column: 1;
+            grid-row: 1;
+            place-self: center;
+            color: rgba(250, 245, 232, 0.92);
+            font-size: clamp(1.05rem, 4.6vw, 1.75rem);
+            letter-spacing: 0.04em;
+            text-shadow: 0 0.18rem 0.75rem rgba(0, 0, 0, 0.75);
+          }
+
+          .big-spender__wallet:not(.big-spender__wallet--revealed) .big-spender__wallet-flap {
+            position: absolute;
+            inset: 0.62rem auto auto 0.62rem;
+            width: 0.8rem;
+            height: 0.5rem;
+            opacity: 0.52;
+          }
+
+          .big-spender__wallet--revealed {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr auto;
+            place-items: center;
+            padding: 0.62rem;
+          }
+
+          .big-spender__wallet--revealed .big-spender__wallet-flap {
+            display: none;
+          }
+
+          .big-spender__wallet--revealed .big-spender__wallet-id {
+            position: absolute;
+            top: 0.46rem;
+            right: 0.52rem;
+            display: block;
+            color: rgba(238, 243, 250, 0.42);
+            font-size: 0.58rem;
+          }
+
+          .big-spender__wallet-result,
+          .big-spender__wallet--result-long .big-spender__wallet-result {
+            grid-column: 1;
+            grid-row: 1;
+            max-width: none;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: nowrap;
+            font-size: clamp(1.2rem, 5.2vw, 2rem);
+            letter-spacing: -0.04em;
+          }
+
+          .big-spender__wallet--result-long .big-spender__wallet-result {
+            font-size: clamp(1.05rem, 4.5vw, 1.72rem);
+          }
+
+          .big-spender__wallet-opener {
+            grid-column: 1;
+            grid-row: 2;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.55rem;
+          }
+
+          .big-spender__wallet-generation {
+            display: none;
+          }
+
+          .big-spender__latest-reveal {
+            min-height: 0;
+            margin-bottom: 0.62rem;
+            padding: 0.42rem 0.58rem;
+            animation: big-spender-result-strip-in 180ms ease-out both;
+          }
+
+          .big-spender__latest-reveal strong {
+            max-width: none;
+            overflow: visible;
+            text-overflow: clip;
+            font-size: clamp(1.12rem, 4vw, 1.55rem);
+          }
+
+          .big-spender__latest-reveal small {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+          }
+
+          .big-spender__latest-reveal small em {
+            color: rgba(235, 241, 251, 0.62);
+            font-style: normal;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+          }
+
+          .big-spender__wall-replenish {
+            position: absolute;
+            inset: 0;
+            z-index: 8;
+            display: grid;
+            place-content: center;
+            gap: 0.15rem;
+            border: 1px solid rgba(237, 204, 132, 0.22);
+            border-radius: 1rem;
+            color: #f7e4b3;
+            background: rgba(7, 12, 20, 0.9);
+            text-align: center;
+            pointer-events: none;
+          }
+
+          .big-spender__wall-replenish strong {
+            font-size: 0.9rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+
+          .big-spender__wall-replenish span {
+            color: rgba(229, 236, 248, 0.68);
+            font-size: 0.72rem;
+          }
+
+          .big-spender__board--clearing {
+            animation: big-spender-wall-clear 360ms ease-in both;
+          }
+
+          .big-spender__board--entering {
+            animation: big-spender-wall-enter 500ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+          }
+
+          .big-spender__broadcasts {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.48rem 0.62rem;
+          }
+
+          .big-spender__broadcasts .big-spender__metric-label {
+            flex: 0 0 auto;
+          }
+
+          .big-spender__broadcasts p {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          @media (min-width: 1100px) {
+            .big-spender__board {
+              width: 100%;
+              max-width: none;
+              grid-template-columns: repeat(8, minmax(0, 1fr));
+            }
+
+            .big-spender__wallet {
+              aspect-ratio: 1 / 1.02;
+            }
+          }
+
+          @media (max-width: 390px) {
+            .big-spender__board {
+              grid-template-columns: repeat(4, minmax(0, 1fr));
+              gap: 0.38rem;
+            }
+
+            .big-spender__wallet {
+              padding: 0.4rem;
+              border-radius: 0.78rem;
+            }
+
+            .big-spender__wallet-result,
+            .big-spender__wallet--result-long .big-spender__wallet-result {
+              font-size: clamp(0.96rem, 5vw, 1.25rem);
+            }
+          }
+
+          @keyframes big-spender-result-strip-in {
+            from {
+              opacity: 0;
+              transform: translateY(-0.18rem);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes big-spender-wall-clear {
+            to {
+              opacity: 0;
+              transform: scale(0.96);
+              filter: blur(0.18rem);
+            }
+          }
+
+          @keyframes big-spender-wall-enter {
+            from {
+              opacity: 0;
+              transform: translateY(0.8rem) scale(0.97);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+          '''
+              css_path.write_text(css)
+          PY
+          npx prettier --write src/components/BigSpender/BigSpender.tsx src/components/BigSpender/BigSpenderModern.css
+      - name: Validate TypeScript
+        run: npm run typecheck
+      - name: Commit generated update
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/components/BigSpender/BigSpender.tsx src/components/BigSpender/BigSpenderModern.css
+          git diff --cached --quiet && exit 0
+          git commit -m "Add replenishing Big Spender wallet wall"
+          git push origin HEAD:agent/big-spender-replenishing-wall
