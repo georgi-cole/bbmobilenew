@@ -23,7 +23,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Add AI fatigue and round transitions
+      - name: Add fatigue model and creature transitions
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -31,36 +31,42 @@ jobs:
           component_path = Path('src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx')
           source = component_path.read_text()
 
-          replacements = [
-              (
-                  "} from './houseOfDarknessUtils'\nimport './HouseOfDarknessComp.css'",
-                  "} from './houseOfDarknessUtils'\nimport { getHouseOfDarknessAiAbility } from './houseOfDarknessAiBalance'\nimport './HouseOfDarknessComp.css'",
-              ),
-              (
-                  "type Phase = 'playing' | 'round_results' | 'death' | 'results'",
-                  "type Phase = 'playing' | 'round_transition' | 'round_results' | 'death' | 'results'\ntype RoundTransition = 'bats' | 'web'",
-              ),
-              (
-                  "  const [damageFlash, setDamageFlash] = useState<number | null>(null)\n",
-                  "  const [damageFlash, setDamageFlash] = useState<number | null>(null)\n  const [roundTransition, setRoundTransition] = useState<RoundTransition>('bats')\n",
-              ),
-              (
-                  "  const contestantsRef = useRef(contestants)\n",
-                  "  const contestantsRef = useRef(contestants)\n  const transitionTimerRef = useRef<number | null>(null)\n",
-              ),
-          ]
-
-          for old, new in replacements:
+          def replace_once(old: str, new: str, label: str) -> None:
+              global source
+              if new in source:
+                  return
               if old not in source:
-                  raise SystemExit(f'Missing expected component anchor: {old[:80]}')
+                  raise SystemExit(f'Missing {label} anchor')
               source = source.replace(old, new, 1)
 
-          effects_anchor = """  useEffect(() => {
+          replace_once(
+              "} from './houseOfDarknessUtils'\nimport './HouseOfDarknessComp.css'",
+              "} from './houseOfDarknessUtils'\nimport { getHouseOfDarknessAiAbility } from './houseOfDarknessAiBalance'\nimport './HouseOfDarknessComp.css'",
+              'AI balance import',
+          )
+          replace_once(
+              "type Phase = 'playing' | 'round_results' | 'death' | 'results'",
+              "type Phase = 'playing' | 'round_transition' | 'round_results' | 'death' | 'results'\ntype RoundTransition = 'bats' | 'web'",
+              'phase type',
+          )
+          replace_once(
+              "  const [damageFlash, setDamageFlash] = useState<number | null>(null)\n",
+              "  const [damageFlash, setDamageFlash] = useState<number | null>(null)\n  const [roundTransition, setRoundTransition] = useState<RoundTransition>('bats')\n",
+              'transition state',
+          )
+          replace_once(
+              "  const contestantsRef = useRef(contestants)\n",
+              "  const contestantsRef = useRef(contestants)\n  const transitionTimerRef = useRef<number | null>(null)\n",
+              'transition timer ref',
+          )
+
+          sync_effect = """  useEffect(() => {
             contestantsRef.current = contestants
           }, [contestants])
-
           """
-          transition_logic = effects_anchor + """  useEffect(
+          transition_helpers = sync_effect + """
+
+          useEffect(
             () => () => {
               if (transitionTimerRef.current !== null) {
                 window.clearTimeout(transitionTimerRef.current)
@@ -85,11 +91,8 @@ jobs:
             },
             [playComplete, round]
           )
-
           """
-          if effects_anchor not in source:
-              raise SystemExit('Missing contestant ref effect anchor')
-          source = source.replace(effects_anchor, transition_logic, 1)
+          replace_once(sync_effect, transition_helpers, 'transition helpers')
 
           old_finalize = """  const finalizeTournament = useCallback(
             (nextStates: Record<string, ContestantState>) => {
@@ -117,113 +120,117 @@ jobs:
             [playComplete, resolvedIds, revealAfterTransition]
           )
           """
-          if old_finalize not in source:
-              raise SystemExit('Missing finalizeTournament block')
-          source = source.replace(old_finalize, new_finalize, 1)
+          replace_once(old_finalize, new_finalize, 'tournament finalizer')
 
-          performance_anchor = """      const simulatedPairCount = getHouseOfDarknessPairCount(simulatedRound)
+          old_performance = """      const simulatedPairCount = getHouseOfDarknessPairCount(simulatedRound)
                 const performance = simulateHouseOfCardsAiRound({
-          """
-          performance_replacement = """      const simulatedPairCount = getHouseOfDarknessPairCount(simulatedRound)
+          """.replace('                const performance', '      const performance')
+          new_performance = """      const simulatedPairCount = getHouseOfDarknessPairCount(simulatedRound)
                 const aiAbility = getHouseOfDarknessAiAbility({
                   baseAbility: aiProfiles[player.id]?.sessionAbility ?? 55,
                   round: simulatedRound,
                   health: player.health,
                 })
                 const performance = simulateHouseOfCardsAiRound({
-          """
-          if performance_anchor not in source:
-              raise SystemExit('Missing AI performance anchor')
-          source = source.replace(performance_anchor, performance_replacement, 1)
-
-          old_ability = "        sessionAbility: aiProfiles[player.id]?.sessionAbility ?? 55,"
-          if old_ability not in source:
-              raise SystemExit('Missing AI ability assignment')
-          source = source.replace(old_ability, '        sessionAbility: aiAbility,', 1)
-
-          death_finalize = '      finalizeTournament(nextStates)\n'
-          if death_finalize not in source:
-              raise SystemExit('Missing post-death tournament finalization')
-          source = source.replace(death_finalize, '      finalizeTournament(nextStates, false)\n', 1)
-
-          round_reveal = """    setContestants(nextStates)
-              setRoundSummary({ round, results })
-              setPhase('round_results')
-          """
-          round_transition = """    setContestants(nextStates)
-              setRoundSummary({ round, results })
-              revealAfterTransition('round_results')
-          """
-          if round_reveal not in source:
-              raise SystemExit('Missing round-results reveal block')
-          source = source.replace(round_reveal, round_transition, 1)
-
-          dependency_anchor = """    phase,
-            resolvedIds,
-          """
-          if dependency_anchor not in source:
-              raise SystemExit('Missing finishRound dependency anchor')
-          source = source.replace(
-              dependency_anchor,
-              """    phase,
-            resolvedIds,
-            revealAfterTransition,
-          """,
-              1,
+          """.replace('                const aiAbility', '      const aiAbility').replace(
+              '                const performance', '      const performance'
+          )
+          replace_once(old_performance, new_performance, 'AI performance setup')
+          replace_once(
+              '        sessionAbility: aiProfiles[player.id]?.sessionAbility ?? 55,',
+              '        sessionAbility: aiAbility,',
+              'AI session ability',
           )
 
-          overlay_anchor = """      {damageFlash !== null && phase === 'playing' && (
-          """
-          overlay = """      {phase === 'round_transition' && (
-                <div
-                  className={`hod-round-transition hod-round-transition--${roundTransition}`}
-                  role="status"
-                  aria-live="polite"
-                >
-                  <div className="hod-transition-curtain" aria-hidden="true">
-                    {roundTransition === 'bats' ? (
-                      <div className="hod-bat-swarm">
-                        <span className="hod-bat" />
-                        <span className="hod-bat" />
-                        <span className="hod-bat" />
-                        <span className="hod-bat" />
-                        <span className="hod-bat" />
-                        <span className="hod-bat" />
-                        <span className="hod-bat" />
-                      </div>
-                    ) : (
-                      <div className="hod-web-transition">
-                        <span className="hod-transition-web" />
-                        <span className="hod-transition-spider">
-                          <i />
-                          <i />
-                          <i />
-                          <i />
-                          <i />
-                          <i />
-                          <i />
-                          <i />
-                        </span>
-                      </div>
-                    )}
+          death_start = source.index('  const simulateAfterHumanDeath = useCallback(')
+          death_end = source.index('\n\n  useEffect(() => {', death_start)
+          death_block = source[death_start:death_end]
+          if 'finalizeTournament(nextStates, false)' not in death_block:
+              if 'finalizeTournament(nextStates)' not in death_block:
+                  raise SystemExit('Missing post-death finalization call')
+              death_block = death_block.replace(
+                  'finalizeTournament(nextStates)', 'finalizeTournament(nextStates, false)', 1
+              )
+              source = source[:death_start] + death_block + source[death_end:]
+
+          replace_once(
+              """    setContestants(nextStates)
+                setRoundSummary({ round, results })
+                setPhase('round_results')
+          """.replace('                setRoundSummary', '    setRoundSummary').replace(
+                  "                setPhase", "    setPhase"
+              ),
+              """    setContestants(nextStates)
+                setRoundSummary({ round, results })
+                revealAfterTransition('round_results')
+          """.replace('                setRoundSummary', '    setRoundSummary').replace(
+                  "                revealAfterTransition", "    revealAfterTransition"
+              ),
+              'round transition reveal',
+          )
+          replace_once(
+              """    roundMistakes,
+                simulateAiRound,
+              ])
+          """.replace('                simulateAiRound', '    simulateAiRound').replace('              ])', '  ])'),
+              """    roundMistakes,
+                revealAfterTransition,
+                simulateAiRound,
+              ])
+          """.replace('                revealAfterTransition', '    revealAfterTransition').replace(
+                  '                simulateAiRound', '    simulateAiRound'
+              ).replace('              ])', '  ])'),
+              'finish-round dependencies',
+          )
+
+          damage_anchor = "      {damageFlash !== null && phase === 'playing' && (\n"
+          transition_markup = """      {phase === 'round_transition' && (
+            <div
+              className={`hod-round-transition hod-round-transition--${roundTransition}`}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="hod-transition-curtain" aria-hidden="true">
+                {roundTransition === 'bats' ? (
+                  <div className="hod-bat-swarm">
+                    <span className="hod-bat" />
+                    <span className="hod-bat" />
+                    <span className="hod-bat" />
+                    <span className="hod-bat" />
+                    <span className="hod-bat" />
+                    <span className="hod-bat" />
+                    <span className="hod-bat" />
                   </div>
-                  <strong>
-                    {roundTransition === 'bats' ? 'The house changes shape' : 'The web tightens'}
-                  </strong>
-                </div>
-              )}
+                ) : (
+                  <div className="hod-web-transition">
+                    <span className="hod-transition-web" />
+                    <span className="hod-transition-spider">
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  </div>
+                )}
+              </div>
+              <strong>
+                {roundTransition === 'bats' ? 'The house changes shape' : 'The web tightens'}
+              </strong>
+            </div>
+          )}
 
-              {damageFlash !== null && phase === 'playing' && (
-          """
-          if overlay_anchor not in source:
-              raise SystemExit('Missing damage flash render anchor')
-          source = source.replace(overlay_anchor, overlay, 1)
-
+          """ + damage_anchor
+          replace_once(damage_anchor, transition_markup, 'transition markup')
           component_path.write_text(source)
 
           css_path = Path('src/components/HouseOfDarknessComp/HouseOfDarknessComp.css')
           css = css_path.read_text()
-          transition_css = r'''
+          if '/* Round-complete creature wipes */' not in css:
+              css += r'''
 
           /* Round-complete creature wipes */
           .hod-root > .hod-round-transition {
@@ -298,41 +305,13 @@ jobs:
             transform: scaleX(-1);
           }
 
-          .hod-bat:nth-child(1) {
-            --hod-bat-top: 15%;
-            --hod-bat-size: 24px;
-            --hod-bat-delay: 0.02s;
-          }
-          .hod-bat:nth-child(2) {
-            --hod-bat-top: 31%;
-            --hod-bat-size: 34px;
-            --hod-bat-delay: 0.11s;
-          }
-          .hod-bat:nth-child(3) {
-            --hod-bat-top: 47%;
-            --hod-bat-size: 54px;
-            --hod-bat-delay: 0.01s;
-          }
-          .hod-bat:nth-child(4) {
-            --hod-bat-top: 61%;
-            --hod-bat-size: 29px;
-            --hod-bat-delay: 0.18s;
-          }
-          .hod-bat:nth-child(5) {
-            --hod-bat-top: 77%;
-            --hod-bat-size: 43px;
-            --hod-bat-delay: 0.08s;
-          }
-          .hod-bat:nth-child(6) {
-            --hod-bat-top: 23%;
-            --hod-bat-size: 66px;
-            --hod-bat-delay: 0.23s;
-          }
-          .hod-bat:nth-child(7) {
-            --hod-bat-top: 69%;
-            --hod-bat-size: 78px;
-            --hod-bat-delay: 0.28s;
-          }
+          .hod-bat:nth-child(1) { --hod-bat-top: 15%; --hod-bat-size: 24px; --hod-bat-delay: 0.02s; }
+          .hod-bat:nth-child(2) { --hod-bat-top: 31%; --hod-bat-size: 34px; --hod-bat-delay: 0.11s; }
+          .hod-bat:nth-child(3) { --hod-bat-top: 47%; --hod-bat-size: 54px; --hod-bat-delay: 0.01s; }
+          .hod-bat:nth-child(4) { --hod-bat-top: 61%; --hod-bat-size: 29px; --hod-bat-delay: 0.18s; }
+          .hod-bat:nth-child(5) { --hod-bat-top: 77%; --hod-bat-size: 43px; --hod-bat-delay: 0.08s; }
+          .hod-bat:nth-child(6) { --hod-bat-top: 23%; --hod-bat-size: 66px; --hod-bat-delay: 0.23s; }
+          .hod-bat:nth-child(7) { --hod-bat-top: 69%; --hod-bat-size: 78px; --hod-bat-delay: 0.28s; }
 
           .hod-web-transition {
             position: absolute;
@@ -363,9 +342,7 @@ jobs:
             height: 36px;
             border-radius: 48% 48% 55% 55%;
             background: #070308;
-            box-shadow:
-              0 -13px 0 -7px #070308,
-              0 0 12px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 -13px 0 -7px #070308, 0 0 12px rgba(0, 0, 0, 0.7);
             animation: hod-spider-drop 1.25s 0.08s ease-in-out both;
           }
 
@@ -448,9 +425,38 @@ jobs:
             }
           }
           '''
-          if '/* Round-complete creature wipes */' in css:
-              raise SystemExit('Transition CSS already exists')
-          css_path.write_text(css + transition_css)
+              css_path.write_text(css)
+
+          transition_test = Path('tests/unit/house-of-darkness/HouseOfDarknessComp.transitions.test.ts')
+          transition_test.write_text("""import { describe, expect, it } from 'vitest'
+          import fs from 'node:fs'
+          import path from 'node:path'
+
+          const source = fs.readFileSync(
+            path.resolve(process.cwd(), 'src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx'),
+            'utf8'
+          )
+          const css = fs.readFileSync(
+            path.resolve(process.cwd(), 'src/components/HouseOfDarknessComp/HouseOfDarknessComp.css'),
+            'utf8'
+          )
+
+          describe('House of Darkness round transitions', () => {
+            it('alternates bat and web transitions by round', () => {
+              expect(source).toContain("type RoundTransition = 'bats' | 'web'")
+              expect(source).toContain("round % 2 === 1 ? 'bats' : 'web'")
+              expect(source).toContain('hod-bat-swarm')
+              expect(source).toContain('hod-web-transition')
+            })
+
+            it('provides creature animations and reduced-motion behavior', () => {
+              expect(css).toContain('@keyframes hod-bat-flight')
+              expect(css).toContain('@keyframes hod-web-spread')
+              expect(css).toContain('@keyframes hod-spider-drop')
+              expect(css).toContain('@media (prefers-reduced-motion: reduce)')
+            })
+          })
+          """)
           PY
       - name: Format changes
         run: |
@@ -458,12 +464,14 @@ jobs:
             src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx \
             src/components/HouseOfDarknessComp/HouseOfDarknessComp.css \
             src/components/HouseOfDarknessComp/houseOfDarknessAiBalance.ts \
-            tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts
-      - name: Validate focused behavior
+            tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts \
+            tests/unit/house-of-darkness/HouseOfDarknessComp.transitions.test.ts
+      - name: Validate refinement
         run: |
           npm run lint:ci
           npx vitest run \
             tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts \
+            tests/unit/house-of-darkness/HouseOfDarknessComp.transitions.test.ts \
             tests/unit/house-of-darkness/HouseOfDarknessComp.test.tsx \
             tests/unit/house-of-darkness/houseOfDarknessUtils.test.ts
       - name: Remove temporary workflow files
