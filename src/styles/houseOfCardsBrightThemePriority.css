@@ -1,0 +1,151 @@
+/* Cascade-proof layer for the bright House of Cards theme.
+   The #root prefix intentionally outranks component-local base selectors regardless of bundler CSS order. */
+
+#root .hoc-root {
+  color: #493b68;
+  background:
+    radial-gradient(circle at 8% 8%, rgba(255, 218, 92, 0.72), transparent 28%),
+    radial-gradient(circle at 92% 14%, rgba(255, 128, 187, 0.54), transparent 31%),
+    radial-gradient(circle at 16% 86%, rgba(87, 218, 205, 0.42), transparent 34%),
+    radial-gradient(circle at 88% 88%, rgba(142, 117, 255, 0.38), transparent 33%),
+    linear-gradient(145deg, #fff8d9 0%, #ffe8f4 34%, #e9f7ff 68%, #efe7ff 100%);
+}
+
+#root .hoc-root::before {
+  opacity: 0.58;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.72) 0 2px, transparent 2.5px) 0 0 / 34px 34px,
+    linear-gradient(112deg, transparent 0 38%, rgba(255, 255, 255, 0.44) 49%, transparent 61%);
+  mix-blend-mode: soft-light;
+}
+
+#root .hoc-root::after {
+  box-shadow:
+    inset 0 0 52px rgba(255, 255, 255, 0.34),
+    inset 0 -38px 68px rgba(109, 89, 175, 0.08);
+}
+
+#root .hoc-atmosphere::before {
+  background: rgba(255, 169, 200, 0.46);
+  opacity: 0.42;
+}
+
+#root .hoc-atmosphere::after {
+  background: rgba(93, 202, 228, 0.4);
+  opacity: 0.4;
+}
+
+#root .hoc-atmosphere span {
+  border-color: rgba(255, 255, 255, 0.54);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.54), transparent 48%),
+    linear-gradient(160deg, rgba(255, 118, 173, 0.16), rgba(104, 202, 237, 0.13));
+  box-shadow:
+    inset 0 0 0 5px rgba(255, 255, 255, 0.2),
+    0 18px 38px rgba(91, 74, 153, 0.08);
+}
+
+#root .hoc-game-heading strong {
+  color: #51416f;
+  text-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.9),
+    0 8px 18px rgba(107, 84, 168, 0.12);
+}
+
+#root .hoc-game-heading__kicker {
+  color: #b05b91;
+}
+
+#root .hoc-game-heading > span:last-child {
+  color: #756b91;
+}
+
+#root .hoc-board-wrap::before {
+  border-color: rgba(110, 91, 174, 0.14);
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 222, 90, 0.32), transparent 48%),
+    radial-gradient(ellipse at 50% 112%, rgba(110, 213, 218, 0.24), transparent 45%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 10px),
+    rgba(255, 255, 255, 0.46);
+  box-shadow:
+    inset 0 0 42px rgba(255, 255, 255, 0.72),
+    0 18px 38px rgba(96, 76, 159, 0.1);
+}
+
+#root .hoc-board-wrap::after {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #ff6ca8, #ffd15c, #57d0c6, #947dff, transparent);
+  box-shadow: 0 3px 14px rgba(255, 102, 161, 0.2);
+}
+
+#root .hoc-card {
+  filter: drop-shadow(0 9px 12px rgba(92, 73, 151, 0.18));
+}
+
+#root .hoc-card-face.hoc-card-back {
+  border-color: rgba(255, 255, 255, 0.8);
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.54), transparent 28%),
+    linear-gradient(145deg, #ff75ad 0%, #ffb04d 31%, #5ed3c7 66%, #8a78f5 100%);
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 255, 255, 0.44),
+    inset 0 0 0 5px rgba(91, 69, 148, 0.09),
+    0 11px 22px rgba(92, 72, 151, 0.16);
+}
+
+#root .hoc-card-back-pattern {
+  border-color: rgba(255, 255, 255, 0.42);
+  background:
+    linear-gradient(45deg, transparent 43%, rgba(255, 255, 255, 0.34) 44% 56%, transparent 57%),
+    linear-gradient(-45deg, transparent 43%, rgba(255, 255, 255, 0.24) 44% 56%, transparent 57%);
+  background-size: 16px 16px;
+  opacity: 0.84;
+}
+
+#root .hoc-card-eye {
+  fill: rgba(255, 255, 255, 0.28);
+  stroke: rgba(255, 255, 255, 0.92);
+  filter: drop-shadow(0 3px 7px rgba(77, 56, 130, 0.2));
+}
+
+#root .hoc-card-eye .hoc-card-eye-pupil {
+  fill: #684dc7;
+}
+
+#root .hoc-card-face.hoc-card-front {
+  border-color: rgba(103, 83, 165, 0.22);
+  color: #514269;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.96), transparent 48%),
+    linear-gradient(145deg, #fffef7 0%, #fff0f6 48%, #eefaff 100%);
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 255, 255, 0.74),
+    inset 0 0 22px rgba(136, 113, 212, 0.08),
+    0 9px 22px rgba(91, 72, 151, 0.13);
+}
+
+#root .hoc-card[data-matched='true'] .hoc-card-face.hoc-card-front {
+  border-color: rgba(45, 184, 137, 0.48);
+  background: linear-gradient(145deg, #ddfff0 0%, #c7f4dd 54%, #e8fff7 100%);
+}
+
+#root .hoc-card[data-mismatch='true'] .hoc-card-face.hoc-card-front {
+  border-color: rgba(255, 70, 112, 0.62);
+  background: linear-gradient(145deg, #ffe3eb, #ffcddc);
+}
+
+#root .hoc-complete {
+  color: #4f4169;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 217, 82, 0.52), transparent 37%),
+    radial-gradient(circle at 8% 84%, rgba(85, 211, 201, 0.3), transparent 36%),
+    radial-gradient(circle at 94% 84%, rgba(255, 120, 175, 0.28), transparent 36%),
+    linear-gradient(150deg, #fff8db, #ffeaf5 45%, #e9f8ff 100%);
+}
+
+#root .hoc-standing-row {
+  border-color: rgba(102, 83, 164, 0.13);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.68));
+  box-shadow: 0 9px 22px rgba(94, 74, 156, 0.09);
+}
