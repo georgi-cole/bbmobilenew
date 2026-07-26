@@ -1,0 +1,289 @@
+name: Temporary Big Spender density fix
+
+on:
+  push:
+    branches:
+      - agent/big-spender-density-fix
+
+permissions:
+  contents: write
+
+jobs:
+  apply-density-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/big-spender-density-fix
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply compact layout overrides
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/BigSpender/BigSpenderModern.css')
+          marker = '/* Big Spender compact follow-up */'
+          text = path.read_text()
+          if marker in text:
+              raise SystemExit(0)
+
+          overrides = r'''
+          /* Big Spender compact follow-up */
+          .big-spender__info,
+          .big-spender__progress-card,
+          .big-spender__odds {
+            display: none !important;
+          }
+
+          .big-spender__cockpit {
+            min-height: 2.9rem;
+            gap: 0.7rem;
+            padding: 0 4.8rem 0.45rem 0.1rem;
+          }
+
+          .big-spender__title-lockup > div {
+            display: flex;
+            align-items: baseline;
+            gap: 0.45rem;
+            white-space: nowrap;
+          }
+
+          .big-spender__title-lockup strong {
+            flex: 0 1 auto;
+            font-size: clamp(1.05rem, 3.8vw, 1.32rem);
+          }
+
+          .big-spender__title-lockup > div > span {
+            flex: 0 1 auto;
+            font-size: clamp(0.66rem, 2.2vw, 0.78rem);
+            letter-spacing: 0.05em;
+          }
+
+          .big-spender__title-lockup > div > span::before {
+            content: '·';
+            margin-right: 0.45rem;
+            color: rgba(242, 197, 102, 0.72);
+          }
+
+          .big-spender__dashboard {
+            display: block;
+          }
+
+          .big-spender__balance-card {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-rows: auto auto;
+            align-items: center;
+            gap: 0.02rem 0.9rem;
+            padding: 0.58rem 0.75rem;
+            border-radius: 0.9rem;
+          }
+
+          .big-spender__balance-card .big-spender__metric-label {
+            grid-column: 1;
+            grid-row: 1;
+          }
+
+          .big-spender__balance-card strong {
+            grid-column: 1;
+            grid-row: 2;
+            font-size: clamp(1.7rem, 6vw, 2.45rem);
+            line-height: 0.95;
+          }
+
+          .big-spender__balance-card small {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            min-width: 0;
+            justify-self: end;
+            text-align: right;
+          }
+
+          .big-spender__table {
+            margin-top: 0.45rem;
+          }
+
+          .big-spender__board-shell {
+            padding: 0.7rem;
+          }
+
+          .big-spender__board-heading {
+            align-items: end;
+            padding-bottom: 0.5rem;
+          }
+
+          .big-spender__latest-reveal {
+            min-height: 2.9rem;
+            margin-bottom: 0.65rem;
+            padding: 0.45rem 0.62rem;
+          }
+
+          .big-spender__latest-reveal strong {
+            min-width: 3.4rem;
+            max-width: 8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: clamp(1.05rem, 4.5vw, 1.5rem);
+          }
+
+          .big-spender__board {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-auto-rows: minmax(4.9rem, auto);
+            gap: 0.55rem;
+          }
+
+          .big-spender__wallet {
+            min-width: 0;
+            min-height: 4.9rem;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-rows: auto minmax(1.4rem, 1fr) auto;
+            align-items: center;
+            padding: 0.48rem 0.52rem;
+            border-radius: 0.9rem;
+          }
+
+          .big-spender__wallet-flap {
+            position: static;
+            grid-column: 1;
+            grid-row: 1;
+            width: 1.05rem;
+            height: 0.72rem;
+          }
+
+          .big-spender__wallet-id {
+            grid-column: 2;
+            grid-row: 1;
+            justify-self: end;
+            font-size: 0.67rem;
+            letter-spacing: 0.04em;
+          }
+
+          .big-spender__wallet-generation {
+            grid-column: 1 / 3;
+            grid-row: 3;
+            justify-self: start;
+            font-size: 0.56rem;
+            letter-spacing: 0.08em;
+          }
+
+          .big-spender__wallet-result {
+            grid-column: 1 / 3;
+            grid-row: 2;
+            align-self: center;
+            justify-self: center;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: clamp(0.82rem, 3.2vw, 1.12rem);
+          }
+
+          .big-spender__wallet-opener {
+            grid-column: 1 / 3;
+            grid-row: 3;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.53rem;
+          }
+
+          .big-spender__wallet--revealed {
+            justify-items: stretch;
+            align-content: stretch;
+          }
+
+          .big-spender__wallet--bomb .big-spender__wallet-result {
+            font-size: clamp(1.3rem, 5vw, 1.8rem);
+          }
+
+          .big-spender__action-dock {
+            padding: 0.52rem 0.58rem;
+          }
+
+          .big-spender__action-dock .big-spender__action:disabled {
+            display: none;
+          }
+
+          @media (min-width: 560px) {
+            .big-spender__board {
+              grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
+          }
+
+          @media (min-width: 900px) {
+            .big-spender__board {
+              grid-template-columns: repeat(6, minmax(0, 1fr));
+            }
+          }
+
+          @media (min-width: 1180px) {
+            .big-spender__board {
+              grid-template-columns: repeat(8, minmax(0, 1fr));
+            }
+          }
+
+          @media (max-width: 520px) {
+            .big-spender__cockpit {
+              gap: 0.5rem;
+              padding-right: 4.4rem;
+            }
+
+            .big-spender__balance-card {
+              grid-template-columns: 1fr;
+              grid-template-rows: auto auto auto;
+            }
+
+            .big-spender__balance-card .big-spender__metric-label,
+            .big-spender__balance-card strong,
+            .big-spender__balance-card small {
+              grid-column: 1;
+              grid-row: auto;
+            }
+
+            .big-spender__balance-card small {
+              justify-self: start;
+              margin-top: 0.2rem;
+              text-align: left;
+            }
+
+            .big-spender__board {
+              grid-auto-rows: minmax(4.65rem, auto);
+              gap: 0.44rem;
+            }
+
+            .big-spender__wallet {
+              min-height: 4.65rem;
+              padding: 0.42rem 0.44rem;
+            }
+          }
+
+          @media (max-width: 390px) {
+            .big-spender__board {
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+          }
+          '''
+
+          path.write_text(text.rstrip() + '\n\n' + overrides.strip() + '\n')
+          PY
+          npx prettier --write src/components/BigSpender/BigSpenderModern.css
+      - name: Commit compact layout
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/components/BigSpender/BigSpenderModern.css
+          git commit -m "Compact Big Spender layout"
+          git push origin HEAD:agent/big-spender-density-fix
