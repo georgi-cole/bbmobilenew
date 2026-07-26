@@ -108,9 +108,23 @@
   animation: hod-phantom 10s ease-in-out infinite alternate;
 }
 
-.hod-atmosphere span:nth-child(1) { top: 18%; left: -112px; transform: rotate(17deg); }
-.hod-atmosphere span:nth-child(2) { top: 46%; right: -118px; transform: rotate(-19deg); animation-delay: -4s; }
-.hod-atmosphere span:nth-child(3) { bottom: -178px; left: 43%; transform: rotate(8deg); animation-delay: -7s; }
+.hod-atmosphere span:nth-child(1) {
+  top: 18%;
+  left: -112px;
+  transform: rotate(17deg);
+}
+.hod-atmosphere span:nth-child(2) {
+  top: 46%;
+  right: -118px;
+  transform: rotate(-19deg);
+  animation-delay: -4s;
+}
+.hod-atmosphere span:nth-child(3) {
+  bottom: -178px;
+  left: 43%;
+  transform: rotate(8deg);
+  animation-delay: -7s;
+}
 
 .hod-heading {
   display: grid;
@@ -126,7 +140,12 @@
   grid-column: 1 / -1;
   height: 1px;
   margin-top: 7px;
-  background: linear-gradient(90deg, rgba(255, 42, 76, 0.72), rgba(213, 173, 114, 0.18), transparent 78%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 42, 76, 0.72),
+    rgba(213, 173, 114, 0.18),
+    transparent 78%
+  );
   box-shadow: 0 0 14px rgba(196, 19, 53, 0.26);
 }
 
@@ -158,9 +177,7 @@
   padding: 8px 10px 9px;
   border: 1px solid rgba(213, 173, 114, 0.14);
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent),
-    rgba(8, 4, 10, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent), rgba(8, 4, 10, 0.9);
   box-shadow:
     0 12px 30px rgba(0, 0, 0, 0.34),
     inset 0 1px rgba(255, 255, 255, 0.025);
@@ -200,8 +217,7 @@
   width: var(--hod-health);
   height: 100%;
   border-radius: inherit;
-  background:
-    linear-gradient(90deg, #6e091e, var(--hod-blood), #ff4d67);
+  background: linear-gradient(90deg, #6e091e, var(--hod-blood), #ff4d67);
   box-shadow:
     0 0 14px rgba(255, 45, 77, 0.44),
     inset 0 1px rgba(255, 255, 255, 0.28);
@@ -266,7 +282,9 @@
   scrollbar-width: none;
 }
 
-.hod-survivors::-webkit-scrollbar { display: none; }
+.hod-survivors::-webkit-scrollbar {
+  display: none;
+}
 
 .hod-survivor {
   flex: 0 0 auto;
@@ -363,10 +381,18 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.hod-card:nth-child(2n) { animation-delay: 32ms; }
-.hod-card:nth-child(3n) { animation-delay: 64ms; }
-.hod-card:nth-child(5n) { animation-delay: 96ms; }
-.hod-card:disabled { opacity: 1; }
+.hod-card:nth-child(2n) {
+  animation-delay: 32ms;
+}
+.hod-card:nth-child(3n) {
+  animation-delay: 64ms;
+}
+.hod-card:nth-child(5n) {
+  animation-delay: 96ms;
+}
+.hod-card:disabled {
+  opacity: 1;
+}
 
 .hod-card-inner {
   position: relative;
@@ -375,7 +401,9 @@
   height: 100%;
   border-radius: clamp(7px, 1.5vw, 12px);
   transform-style: preserve-3d;
-  transition: transform 0.38s cubic-bezier(0.2, 0.78, 0.2, 1), translate 0.18s ease;
+  transition:
+    transform 0.38s cubic-bezier(0.2, 0.78, 0.2, 1),
+    translate 0.18s ease;
 }
 
 .hod-card[data-flipped='true'] .hod-card-inner,
@@ -391,7 +419,9 @@
   translate: 0 -3px;
 }
 
-.hod-card:focus-visible { outline: none; }
+.hod-card:focus-visible {
+  outline: none;
+}
 .hod-card:focus-visible .hod-card-face {
   box-shadow:
     0 0 0 2px rgba(213, 173, 114, 0.76),
@@ -416,13 +446,23 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(130deg, rgba(255, 255, 255, 0.08), transparent 35%, transparent 70%, rgba(255, 255, 255, 0.02));
+  background: linear-gradient(
+    130deg,
+    rgba(255, 255, 255, 0.08),
+    transparent 35%,
+    transparent 70%,
+    rgba(255, 255, 255, 0.02)
+  );
 }
 
 .hod-card-back {
   border: 1px solid rgba(213, 173, 114, 0.25);
   background:
-    repeating-radial-gradient(circle at 50% 50%, rgba(213, 173, 114, 0.035) 0 1px, transparent 1px 8px),
+    repeating-radial-gradient(
+      circle at 50% 50%,
+      rgba(213, 173, 114, 0.035) 0 1px,
+      transparent 1px 8px
+    ),
     radial-gradient(circle at 50% 45%, rgba(198, 20, 54, 0.2), transparent 34%),
     linear-gradient(150deg, #220b17 0%, #0e0710 55%, #050306 100%);
   box-shadow:
@@ -529,7 +569,12 @@
   justify-content: center;
   gap: 4px;
   pointer-events: none;
-  background: radial-gradient(circle, rgba(255, 37, 70, 0.16), rgba(40, 0, 10, 0.32), transparent 68%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 37, 70, 0.16),
+    rgba(40, 0, 10, 0.32),
+    transparent 68%
+  );
   animation: hod-damage-overlay 0.54s ease-out both;
 }
 
@@ -572,9 +617,12 @@
 
 .hod-death::before {
   background:
-    linear-gradient(23deg, transparent 48%, rgba(255, 255, 255, 0.65) 49%, transparent 50%) 8% 15% / 42% 38% no-repeat,
-    linear-gradient(151deg, transparent 48%, rgba(255, 255, 255, 0.48) 49%, transparent 50%) 78% 18% / 48% 44% no-repeat,
-    linear-gradient(82deg, transparent 48%, rgba(255, 255, 255, 0.4) 49%, transparent 50%) 52% 75% / 48% 54% no-repeat;
+    linear-gradient(23deg, transparent 48%, rgba(255, 255, 255, 0.65) 49%, transparent 50%) 8% 15% /
+      42% 38% no-repeat,
+    linear-gradient(151deg, transparent 48%, rgba(255, 255, 255, 0.48) 49%, transparent 50%) 78%
+      18% / 48% 44% no-repeat,
+    linear-gradient(82deg, transparent 48%, rgba(255, 255, 255, 0.4) 49%, transparent 50%) 52% 75% /
+      48% 54% no-repeat;
   filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.42));
   animation: hod-crack-flash 0.48s ease-out both;
 }
@@ -604,12 +652,24 @@
   animation: hod-shard-split 0.72s 0.05s ease-out both;
 }
 
-.hod-death-cracks span:nth-child(1) { transform: rotate(12deg); }
-.hod-death-cracks span:nth-child(2) { transform: rotate(67deg); }
-.hod-death-cracks span:nth-child(3) { transform: rotate(121deg); }
-.hod-death-cracks span:nth-child(4) { transform: rotate(184deg); }
-.hod-death-cracks span:nth-child(5) { transform: rotate(238deg); }
-.hod-death-cracks span:nth-child(6) { transform: rotate(306deg); }
+.hod-death-cracks span:nth-child(1) {
+  transform: rotate(12deg);
+}
+.hod-death-cracks span:nth-child(2) {
+  transform: rotate(67deg);
+}
+.hod-death-cracks span:nth-child(3) {
+  transform: rotate(121deg);
+}
+.hod-death-cracks span:nth-child(4) {
+  transform: rotate(184deg);
+}
+.hod-death-cracks span:nth-child(5) {
+  transform: rotate(238deg);
+}
+.hod-death-cracks span:nth-child(6) {
+  transform: rotate(306deg);
+}
 
 .hod-void {
   position: absolute;
@@ -724,17 +784,17 @@
   border: 1px solid rgba(213, 173, 114, 0.11);
   border-radius: 13px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent),
-    rgba(10, 5, 12, 0.86);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent), rgba(10, 5, 12, 0.86);
   box-shadow: 0 9px 22px rgba(0, 0, 0, 0.22);
 }
 
-.hod-result-row--human { border-color: rgba(255, 50, 82, 0.36); }
+.hod-result-row--human {
+  border-color: rgba(255, 50, 82, 0.36);
+}
 .hod-result-row--winner {
   border-color: rgba(213, 173, 114, 0.42);
   background:
-    linear-gradient(90deg, rgba(213, 173, 114, 0.12), rgba(196, 19, 53, 0.05)),
-    rgba(10, 5, 12, 0.9);
+    linear-gradient(90deg, rgba(213, 173, 114, 0.12), rgba(196, 19, 53, 0.05)), rgba(10, 5, 12, 0.9);
 }
 
 .hod-result-row--dead {
@@ -783,7 +843,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.hod-result-row--dead > strong:last-child { color: #d45a6f; }
+.hod-result-row--dead > strong:last-child {
+  color: #d45a6f;
+}
 
 .hod-continue {
   min-width: 190px;
@@ -805,118 +867,258 @@
     inset 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.hod-continue:hover { filter: brightness(1.12); }
+.hod-continue:hover {
+  filter: brightness(1.12);
+}
 .hod-continue:focus-visible {
   outline: 3px solid rgba(213, 173, 114, 0.78);
   outline-offset: 3px;
 }
 
 @keyframes hod-light-sweep {
-  from { transform: translateX(-8%); opacity: 0.35; }
-  to { transform: translateX(8%); opacity: 0.72; }
+  from {
+    transform: translateX(-8%);
+    opacity: 0.35;
+  }
+  to {
+    transform: translateX(8%);
+    opacity: 0.72;
+  }
 }
 
 @keyframes hod-fog {
-  from { transform: translate3d(-4%, 2%, 0) scale(0.94); }
-  to { transform: translate3d(10%, -4%, 0) scale(1.08); }
+  from {
+    transform: translate3d(-4%, 2%, 0) scale(0.94);
+  }
+  to {
+    transform: translate3d(10%, -4%, 0) scale(1.08);
+  }
 }
 
 @keyframes hod-phantom {
-  from { translate: 0 0; opacity: 0.38; }
-  to { translate: 0 -16px; opacity: 0.76; }
+  from {
+    translate: 0 0;
+    opacity: 0.38;
+  }
+  to {
+    translate: 0 -16px;
+    opacity: 0.76;
+  }
 }
 
 @keyframes hod-card-arrive {
-  from { opacity: 0; transform: translateY(17px) scale(0.9) rotate(-1.8deg); }
-  to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+  from {
+    opacity: 0;
+    transform: translateY(17px) scale(0.9) rotate(-1.8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
 }
 
 @keyframes hod-sigil-watch {
-  0%, 100% { transform: scale(0.94) rotate(0deg); opacity: 0.72; }
-  50% { transform: scale(1.06) rotate(45deg); opacity: 1; }
+  0%,
+  100% {
+    transform: scale(0.94) rotate(0deg);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.06) rotate(45deg);
+    opacity: 1;
+  }
 }
 
 @keyframes hod-match {
-  0% { transform: scale(0.94); filter: brightness(1.6); }
-  65% { transform: scale(1.035); }
-  100% { transform: scale(1); filter: none; }
+  0% {
+    transform: scale(0.94);
+    filter: brightness(1.6);
+  }
+  65% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+    filter: none;
+  }
 }
 
 @keyframes hod-mismatch {
-  0%, 100% { transform: rotateY(180deg) translateX(0); }
-  22% { transform: rotateY(180deg) translateX(-6px) rotate(-1deg); }
-  48% { transform: rotateY(180deg) translateX(6px) rotate(1deg); }
-  74% { transform: rotateY(180deg) translateX(-3px); }
+  0%,
+  100% {
+    transform: rotateY(180deg) translateX(0);
+  }
+  22% {
+    transform: rotateY(180deg) translateX(-6px) rotate(-1deg);
+  }
+  48% {
+    transform: rotateY(180deg) translateX(6px) rotate(1deg);
+  }
+  74% {
+    transform: rotateY(180deg) translateX(-3px);
+  }
 }
 
 @keyframes hod-damage-overlay {
-  0% { opacity: 0; transform: scale(0.88); }
-  22% { opacity: 1; transform: scale(1.03); }
-  100% { opacity: 0; transform: scale(1.12); }
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
 }
 
 @keyframes hod-danger-breathe {
-  0%, 100% { box-shadow: inset 0 0 0 rgba(255, 0, 45, 0); }
-  50% { box-shadow: inset 0 0 44px rgba(190, 10, 44, 0.13); }
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 rgba(255, 0, 45, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 44px rgba(190, 10, 44, 0.13);
+  }
 }
 
 @keyframes hod-critical-breathe {
-  0%, 100% { box-shadow: inset 0 0 22px rgba(255, 0, 45, 0.08); }
-  50% { box-shadow: inset 0 0 76px rgba(220, 7, 47, 0.24); }
+  0%,
+  100% {
+    box-shadow: inset 0 0 22px rgba(255, 0, 45, 0.08);
+  }
+  50% {
+    box-shadow: inset 0 0 76px rgba(220, 7, 47, 0.24);
+  }
 }
 
 @keyframes hod-death-blackout {
-  0% { background: rgba(0, 0, 0, 0); }
-  16% { background: rgba(60, 0, 15, 0.28); }
-  100% { background: #000; }
+  0% {
+    background: rgba(0, 0, 0, 0);
+  }
+  16% {
+    background: rgba(60, 0, 15, 0.28);
+  }
+  100% {
+    background: #000;
+  }
 }
 
 @keyframes hod-crack-flash {
-  0% { opacity: 0; transform: scale(0.76); }
-  18% { opacity: 1; }
-  100% { opacity: 0.25; transform: scale(1.2); }
+  0% {
+    opacity: 0;
+    transform: scale(0.76);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.25;
+    transform: scale(1.2);
+  }
 }
 
 @keyframes hod-shard-split {
-  from { opacity: 0; height: 0; }
-  18% { opacity: 1; }
-  to { opacity: 0.35; height: 72vmax; }
+  from {
+    opacity: 0;
+    height: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+    height: 72vmax;
+  }
 }
 
 @keyframes hod-void-mouth {
-  0% { transform: scale(0.08) rotate(0deg); }
-  32% { transform: scale(0.26) rotate(90deg); }
-  100% { transform: scale(15) rotate(260deg); }
+  0% {
+    transform: scale(0.08) rotate(0deg);
+  }
+  32% {
+    transform: scale(0.26) rotate(90deg);
+  }
+  100% {
+    transform: scale(15) rotate(260deg);
+  }
 }
 
 @keyframes hod-void-consume {
-  from { transform: scale(0.03); }
-  to { transform: scale(4); }
+  from {
+    transform: scale(0.03);
+  }
+  to {
+    transform: scale(4);
+  }
 }
 
 @keyframes hod-death-message {
-  0% { opacity: 0; transform: scale(1.45); filter: blur(9px); }
-  22% { opacity: 1; filter: blur(0); }
-  70% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.58); filter: blur(4px); }
+  0% {
+    opacity: 0;
+    transform: scale(1.45);
+    filter: blur(9px);
+  }
+  22% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.58);
+    filter: blur(4px);
+  }
 }
 
 @media (max-width: 520px) {
-  .hod-root { gap: 7px; padding-inline: 8px; }
-  .hod-heading small { font-size: 0.62rem; }
-  .hod-survivor { min-width: 70px; }
-  .hod-board { padding-inline: 8px; }
-  .hod-result-row { align-items: flex-start; flex-wrap: wrap; }
-  .hod-result-row > strong:last-child { margin-left: auto; }
+  .hod-root {
+    gap: 7px;
+    padding-inline: 8px;
+  }
+  .hod-heading small {
+    font-size: 0.62rem;
+  }
+  .hod-survivor {
+    min-width: 70px;
+  }
+  .hod-board {
+    padding-inline: 8px;
+  }
+  .hod-result-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .hod-result-row > strong:last-child {
+    margin-left: auto;
+  }
 }
 
 @media (max-height: 720px) {
-  .hod-root { gap: 5px; padding-top: 7px; }
-  .hod-heading::after { margin-top: 4px; }
-  .hod-life-panel { padding-block: 6px; }
-  .hod-life-panel > small { display: none; }
-  .hod-survivors { padding-bottom: 2px; }
-  .hod-board-wrap { padding-top: 4px; }
+  .hod-root {
+    gap: 5px;
+    padding-top: 7px;
+  }
+  .hod-heading::after {
+    margin-top: 4px;
+  }
+  .hod-life-panel {
+    padding-block: 6px;
+  }
+  .hod-life-panel > small {
+    display: none;
+  }
+  .hod-survivors {
+    padding-bottom: 2px;
+  }
+  .hod-board-wrap {
+    padding-top: 4px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
