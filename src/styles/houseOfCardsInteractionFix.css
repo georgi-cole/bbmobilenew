@@ -1,0 +1,38 @@
+/* House of Cards post-redesign interaction fixes.
+   Scoped overrides keep the original game state and shared results shell intact. */
+
+/* Never apply a hover/focus filter to the 3D transform layer after a card is face-up.
+   Chromium can otherwise briefly composite the back face while the pointer remains over it. */
+.hoc-card[data-flipped='false'][data-matched='false']:not(:disabled):hover .hoc-card-inner,
+.hoc-card[data-flipped='false'][data-matched='false']:not(:disabled):focus-visible .hoc-card-inner {
+  translate: 0 -3px;
+  filter: brightness(1.08);
+}
+
+.hoc-card[data-flipped='true'] .hoc-card-inner,
+.hoc-card[data-matched='true'] .hoc-card-inner,
+.hoc-card[data-flipped='true']:hover .hoc-card-inner,
+.hoc-card[data-flipped='true']:focus-visible .hoc-card-inner,
+.hoc-card[data-matched='true']:hover .hoc-card-inner,
+.hoc-card[data-matched='true']:focus-visible .hoc-card-inner {
+  transform: rotateY(180deg);
+  translate: 0 0;
+  filter: none;
+}
+
+/* Restore the shared completion shell's vertical scrolling. The noir redesign
+   set overflow:hidden on this more specific class, masking content below the fold. */
+.minigame-complete.hoc-complete {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.minigame-complete.hoc-complete .minigame-placement-list {
+  flex: 0 0 auto;
+  overflow: visible;
+}
