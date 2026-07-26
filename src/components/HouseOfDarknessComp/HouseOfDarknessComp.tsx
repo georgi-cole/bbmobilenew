@@ -160,7 +160,6 @@ export default function HouseOfDarknessComp({
   const roundCompletedRef = useRef(false);
   const deathResolvedRef = useRef(false);
   const contestantsRef = useRef(contestants);
-  contestantsRef.current = contestants;
 
   const pairCount = getHouseOfDarknessPairCount(round);
   const playableCards = pairCount * 2;
@@ -172,6 +171,10 @@ export default function HouseOfDarknessComp({
   useEffect(() => {
     roundStartedAtRef.current = Date.now();
   }, []);
+
+  useEffect(() => {
+    contestantsRef.current = contestants;
+  }, [contestants]);
 
   const finalizeTournament = useCallback((nextStates: Record<string, ContestantState>) => {
     const ranked = rankContestants(nextStates, resolvedIds);
