@@ -1,16 +1,16 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from 'react'
 
-import './MinigameUtilityDock.css';
+import './MinigameUtilityDock.css'
 
-export type MinigameUtilityPhase = 'rules' | 'countdown' | 'playing' | 'results';
+export type MinigameUtilityPhase = 'rules' | 'countdown' | 'playing' | 'results'
 
 interface Props {
-  phase: MinigameUtilityPhase;
-  menuOpen: boolean;
-  onToggleMenu: () => void;
-  onCloseMenu: () => void;
-  onOpenRules: () => void;
-  onRequestExit: () => void;
+  phase: MinigameUtilityPhase
+  menuOpen: boolean
+  onToggleMenu: () => void
+  onCloseMenu: () => void
+  onOpenRules: () => void
+  onRequestExit: () => void
 }
 
 function EyeIcon(): ReactNode {
@@ -20,7 +20,7 @@ function EyeIcon(): ReactNode {
       <circle cx="12" cy="12" r="2.8" />
       <circle className="minigame-utility-dock__eye-glint" cx="13" cy="11" r="0.8" />
     </svg>
-  );
+  )
 }
 
 function RulesIcon(): ReactNode {
@@ -30,7 +30,7 @@ function RulesIcon(): ReactNode {
       <path d="M19 4.5h-5.9v15H17a2 2 0 0 0 2-2v-13Z" />
       <path d="M8 8h2.2M8 11h2.2M15.2 8H17M15.2 11H17" />
     </svg>
-  );
+  )
 }
 
 function ExitIcon(): ReactNode {
@@ -39,7 +39,7 @@ function ExitIcon(): ReactNode {
       <path d="M13 4.5H6.8A1.8 1.8 0 0 0 5 6.3v11.4a1.8 1.8 0 0 0 1.8 1.8H13" />
       <path d="M10.5 12h9M16.5 8.5 20 12l-3.5 3.5" />
     </svg>
-  );
+  )
 }
 
 export default function MinigameUtilityDock({
@@ -50,7 +50,7 @@ export default function MinigameUtilityDock({
   onOpenRules,
   onRequestExit,
 }: Props) {
-  const rulesAvailable = phase === 'countdown' || phase === 'playing';
+  const rulesAvailable = phase === 'countdown' || phase === 'playing'
 
   return (
     <>
@@ -79,7 +79,9 @@ export default function MinigameUtilityDock({
                 role="menuitem"
                 onClick={onOpenRules}
               >
-                <span className="minigame-utility-dock__menu-icon"><RulesIcon /></span>
+                <span className="minigame-utility-dock__menu-icon">
+                  <RulesIcon />
+                </span>
                 <span>
                   <strong>View rules</strong>
                   <small>Review how to play</small>
@@ -93,7 +95,9 @@ export default function MinigameUtilityDock({
               role="menuitem"
               onClick={onRequestExit}
             >
-              <span className="minigame-utility-dock__menu-icon"><ExitIcon /></span>
+              <span className="minigame-utility-dock__menu-icon">
+                <ExitIcon />
+              </span>
               <span>
                 <strong>Leave competition</strong>
                 <small>Record a score of 0</small>
@@ -114,5 +118,5 @@ export default function MinigameUtilityDock({
         </button>
       </div>
     </>
-  );
+  )
 }
