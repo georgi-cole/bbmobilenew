@@ -1,0 +1,3438 @@
+{
+  "version": 1,
+  "editorial": {
+    "publicationName": "AFTER THE EYE",
+    "slogan": "All the gossip the cameras missed",
+    "editionLabel": "Late Edition",
+    "sectionLabel": "What Happened Next?",
+    "price": "$2.99",
+    "issuePrefix": "ISSUE",
+    "intro": "The doors closed. The microphones came off. The real chaos had only just begun.",
+    "closingLine": "Every story is fictional post-season satire generated from the season you played.",
+    "photoCaption": "Post-show sighting. Details remain gloriously disputed.",
+    "exclusiveLabel": "EXCLUSIVE",
+    "loadingLabel": "Printing the late edition…"
+  },
+  "toneLabels": {
+    "excellent": "Spectacular",
+    "good": "Promising",
+    "neutral": "Strange",
+    "bad": "Messy",
+    "tragic": "Catastrophic"
+  },
+  "categories": {
+    "sudden_fame": "Sudden Fame",
+    "career_triumph": "Career Triumph",
+    "career_disaster": "Career Disaster",
+    "romance": "Romance",
+    "cheating_scandal": "Cheating Scandal",
+    "public_feud": "Public Feud",
+    "betrayal": "Betrayal",
+    "financial_success": "Financial Success",
+    "financial_ruin": "Financial Ruin",
+    "legal_trouble": "Legal Trouble",
+    "destructive_excess": "Fame & Excess",
+    "recovery_redemption": "Recovery & Redemption",
+    "strange_business": "Strange Business",
+    "social_media": "Social Media",
+    "reality_tv_obsession": "Reality-TV Obsession",
+    "conspiracy": "Conspiracy",
+    "disappearance": "Disappearance",
+    "ordinary_life": "Unexpectedly Ordinary",
+    "bizarre_misunderstanding": "Bizarre Misunderstanding",
+    "absurd_success": "Absurd Success"
+  },
+  "scenarios": [
+    {
+      "id": "sudden_fame_airport_icon",
+      "category": "sudden_fame",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "sudden_fame",
+      "badge": "OVERNIGHT ICON",
+      "eligibility": {
+        "tagsAny": [
+          "fan_favorite",
+          "public_favorite"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Causes Airport Chaos",
+        "Fans Mistake {name} for Global Royalty"
+      ],
+      "twists": [
+        "The famous quote was actually said by {rivalName}.",
+        "The airport later sells a commemorative snack named after {name}."
+      ],
+      "subheadlines": [
+        "{name} leaves the finale with one viral reaction clip and wakes up to a crowd at the airport. A luggage brand signs {object} before the suitcase even reaches baggage claim.",
+        "Security closes two entrances after fans begin chanting a quote {name} does not remember saying. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} leaves the finale with one viral reaction clip and wakes up to a crowd at the airport. Security closes two entrances after fans begin chanting a quote {name} does not remember saying. A luggage brand signs {object} before the suitcase even reaches baggage claim.",
+        "It begins when {name} leaves the finale with one viral reaction clip and wakes up to a crowd at the airport. Soon, security closes two entrances after fans begin chanting a quote {name} does not remember saying. In the end, a luggage brand signs {object} before the suitcase even reaches baggage claim."
+      ],
+      "bulletPoints": [
+        "{name} leaves the finale with one viral reaction clip and wakes up to a crowd at the airport.",
+        "Security closes two entrances after fans begin chanting a quote {name} does not remember saying.",
+        "A luggage brand signs {object} before the suitcase even reaches baggage claim."
+      ]
+    },
+    {
+      "id": "sudden_fame_breakfast_face",
+      "category": "sudden_fame",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "sudden_fame",
+      "badge": "FRONT-PAGE FACE",
+      "eligibility": {
+        "tagsAny": [
+          "fan_favorite",
+          "winner",
+          "runner_up"
+        ]
+      },
+      "headlines": [
+        "{name} Wins Breakfast Television",
+        "One Interview, Seven Contracts"
+      ],
+      "twists": [
+        "The robe becomes more famous than the winner.",
+        "{name} later buys the studio chair at auction."
+      ],
+      "subheadlines": [
+        "{name} appears on a morning show for six minutes and becomes the season's most copied expression. The host quietly admits the segment was supposed to be about someone else.",
+        "Brands compete to sponsor the mug, robe, and spoon visible during the interview. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} appears on a morning show for six minutes and becomes the season's most copied expression. Soon, brands compete to sponsor the mug, robe, and spoon visible during the interview. In the end, the host quietly admits the segment was supposed to be about someone else.",
+        "At first, {name} appears on a morning show for six minutes and becomes the season's most copied expression. The situation escalates when brands compete to sponsor the mug, robe, and spoon visible during the interview. By the final update, the host quietly admits the segment was supposed to be about someone else."
+      ],
+      "bulletPoints": [
+        "{name} appears on a morning show for six minutes and becomes the season's most copied expression.",
+        "Brands compete to sponsor the mug, robe, and spoon visible during the interview.",
+        "The host quietly admits the segment was supposed to be about someone else."
+      ]
+    },
+    {
+      "id": "sudden_fame_meme_empire",
+      "category": "sudden_fame",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "sudden_fame",
+      "badge": "MEME EMPIRE",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Face Takes Over the Internet",
+        "The Screenshot That Paid the Rent"
+      ],
+      "twists": [
+        "The original photographer asks for royalties.",
+        "The meme is later displayed in a small modern-art exhibition."
+      ],
+      "subheadlines": [
+        "A freeze-frame of {name} reacting to the finale becomes the universal answer to bad news. {name} licenses the meme and turns embarrassment into a very respectable income.",
+        "The image appears on billboards, birthday cakes, and one municipal warning sign. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, a freeze-frame of {name} reacting to the finale becomes the universal answer to bad news. The situation escalates when the image appears on billboards, birthday cakes, and one municipal warning sign. By the final update, {name} licenses the meme and turns embarrassment into a very respectable income.",
+        "Nobody expects the story to go this far. A freeze-frame of {name} reacting to the finale becomes the universal answer to bad news. Then the image appears on billboards, birthday cakes, and one municipal warning sign. Finally, {name} licenses the meme and turns embarrassment into a very respectable income."
+      ],
+      "bulletPoints": [
+        "A freeze-frame of {name} reacting to the finale becomes the universal answer to bad news.",
+        "The image appears on billboards, birthday cakes, and one municipal warning sign.",
+        "{name} licenses the meme and turns embarrassment into a very respectable income."
+      ]
+    },
+    {
+      "id": "sudden_fame_fake_entourage",
+      "category": "sudden_fame",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "sudden_fame",
+      "badge": "FAME FEVER",
+      "eligibility": {},
+      "headlines": [
+        "{name} Hires an Entourage of Twelve",
+        "Too Famous to Carry a Phone"
+      ],
+      "twists": [
+        "The vibe controller becomes the real celebrity.",
+        "{name} fires everyone through a group poll."
+      ],
+      "subheadlines": [
+        "{name} decides ordinary life is no longer compatible with the new level of fame. The entourage costs more per week than {name} actually earns.",
+        "A stylist, a spiritual adviser, two assistants, and a person described only as 'vibe control' begin following {object}. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} decides ordinary life is no longer compatible with the new level of fame. Then a stylist, a spiritual adviser, two assistants, and a person described only as 'vibe control' begin following {object}. Finally, the entourage costs more per week than {name} actually earns.",
+        "{name} decides ordinary life is no longer compatible with the new level of fame. A stylist, a spiritual adviser, two assistants, and a person described only as 'vibe control' begin following {object}. The entourage costs more per week than {name} actually earns."
+      ],
+      "bulletPoints": [
+        "{name} decides ordinary life is no longer compatible with the new level of fame.",
+        "A stylist, a spiritual adviser, two assistants, and a person described only as 'vibe control' begin following {object}.",
+        "The entourage costs more per week than {name} actually earns."
+      ]
+    },
+    {
+      "id": "sudden_fame_fan_stampede",
+      "category": "sudden_fame",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "sudden_fame",
+      "badge": "FAME NIGHTMARE",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Meet-and-Greet Goes Off the Rails",
+        "The Selfie Queue Nobody Could Stop"
+      ],
+      "twists": [
+        "The apron sells online for an absurd price.",
+        "The café rebrands the disaster as an annual festival."
+      ],
+      "subheadlines": [
+        "{name} announces a tiny café appearance and accidentally attracts a crowd the venue cannot hold. {name} escapes through the kitchen wearing an apron and refuses public brunches for months.",
+        "The coffee machine breaks, three fake managers appear, and a rival fan club claims the event was sabotaged. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} announces a tiny café appearance and accidentally attracts a crowd the venue cannot hold. The coffee machine breaks, three fake managers appear, and a rival fan club claims the event was sabotaged. {name} escapes through the kitchen wearing an apron and refuses public brunches for months.",
+        "It begins when {name} announces a tiny café appearance and accidentally attracts a crowd the venue cannot hold. Soon, the coffee machine breaks, three fake managers appear, and a rival fan club claims the event was sabotaged. In the end, {name} escapes through the kitchen wearing an apron and refuses public brunches for months."
+      ],
+      "bulletPoints": [
+        "{name} announces a tiny café appearance and accidentally attracts a crowd the venue cannot hold.",
+        "The coffee machine breaks, three fake managers appear, and a rival fan club claims the event was sabotaged.",
+        "{name} escapes through the kitchen wearing an apron and refuses public brunches for months."
+      ]
+    },
+    {
+      "id": "career_triumph_prime_time_host",
+      "category": "career_triumph",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "career_triumph",
+      "badge": "NEW PRIME-TIME STAR",
+      "eligibility": {
+        "tagsAny": [
+          "winner",
+          "runner_up",
+          "fan_favorite"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Steals the Show",
+        "From Housemate to Host"
+      ],
+      "twists": [
+        "{allyName} becomes the first recurring guest.",
+        "The original host asks to join as a correspondent."
+      ],
+      "subheadlines": [
+        "{name} is hired to present a late-night reality recap and immediately outshines the planned celebrity guest. Ratings climb whenever {name} ignores the teleprompter.",
+        "Producers expand the segment into a weekly show built around {possessive} dry reactions. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} is hired to present a late-night reality recap and immediately outshines the planned celebrity guest. Soon, producers expand the segment into a weekly show built around {possessive} dry reactions. In the end, ratings climb whenever {name} ignores the teleprompter.",
+        "At first, {name} is hired to present a late-night reality recap and immediately outshines the planned celebrity guest. The situation escalates when producers expand the segment into a weekly show built around {possessive} dry reactions. By the final update, ratings climb whenever {name} ignores the teleprompter."
+      ],
+      "bulletPoints": [
+        "{name} is hired to present a late-night reality recap and immediately outshines the planned celebrity guest.",
+        "Producers expand the segment into a weekly show built around {possessive} dry reactions.",
+        "Ratings climb whenever {name} ignores the teleprompter."
+      ]
+    },
+    {
+      "id": "career_triumph_luxury_designer",
+      "category": "career_triumph",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "career_triumph",
+      "badge": "LUXURY LAUNCH",
+      "eligibility": {
+        "tagsAny": [
+          "fan_favorite",
+          "public_favorite"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Turns House Style Into High Fashion",
+        "The Robe That Became a Runway"
+      ],
+      "twists": [
+        "The microphone coat wins a design prize.",
+        "{rivalName} is photographed wearing it."
+      ],
+      "subheadlines": [
+        "{name} launches a clothing line inspired by the most dramatic outfits from the season. Fashion critics call it ridiculous, then quietly request samples.",
+        "The first collection sells out despite including a coat with four decorative microphones. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} launches a clothing line inspired by the most dramatic outfits from the season. The situation escalates when the first collection sells out despite including a coat with four decorative microphones. By the final update, fashion critics call it ridiculous, then quietly request samples.",
+        "Nobody expects the story to go this far. {name} launches a clothing line inspired by the most dramatic outfits from the season. Then the first collection sells out despite including a coat with four decorative microphones. Finally, fashion critics call it ridiculous, then quietly request samples."
+      ],
+      "bulletPoints": [
+        "{name} launches a clothing line inspired by the most dramatic outfits from the season.",
+        "The first collection sells out despite including a coat with four decorative microphones.",
+        "Fashion critics call it ridiculous, then quietly request samples."
+      ]
+    },
+    {
+      "id": "career_triumph_documentary_voice",
+      "category": "career_triumph",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "career_triumph",
+      "badge": "SERIOUS CAREER",
+      "eligibility": {},
+      "headlines": [
+        "{name} Finds an Unexpected Calling",
+        "The Voice Nobody Knew They Needed"
+      ],
+      "twists": [
+        "A sleep app causes listeners to quote the finale in their dreams.",
+        "The documentary wins an award for sound."
+      ],
+      "subheadlines": [
+        "{name} records narration for a documentary as a favour and becomes known for a strangely calming voice. {name} earns more by saying 'meanwhile' than during the entire season.",
+        "Nature films, crime reconstructions, and sleep apps all begin requesting the same dramatic whisper. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} records narration for a documentary as a favour and becomes known for a strangely calming voice. Then nature films, crime reconstructions, and sleep apps all begin requesting the same dramatic whisper. Finally, {name} earns more by saying 'meanwhile' than during the entire season.",
+        "{name} records narration for a documentary as a favour and becomes known for a strangely calming voice. Nature films, crime reconstructions, and sleep apps all begin requesting the same dramatic whisper. {name} earns more by saying 'meanwhile' than during the entire season."
+      ],
+      "bulletPoints": [
+        "{name} records narration for a documentary as a favour and becomes known for a strangely calming voice.",
+        "Nature films, crime reconstructions, and sleep apps all begin requesting the same dramatic whisper.",
+        "{name} earns more by saying 'meanwhile' than during the entire season."
+      ]
+    },
+    {
+      "id": "career_triumph_restaurant_rescue",
+      "category": "career_triumph",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "career_triumph",
+      "badge": "SECOND ACT",
+      "eligibility": {},
+      "headlines": [
+        "{name} Saves a Failing Restaurant",
+        "Dinner, Drama, and a Full Booking List"
+      ],
+      "twists": [
+        "The famous soup came from a packet.",
+        "{name} never learns the recipe."
+      ],
+      "subheadlines": [
+        "{name} invests in a nearly empty neighbourhood restaurant after becoming obsessed with its soup. The restaurant survives and names the corner table after {name}.",
+        "A blunt social-media review brings queues around the block and forces the chef to add a 'no filming' rule. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} invests in a nearly empty neighbourhood restaurant after becoming obsessed with its soup. A blunt social-media review brings queues around the block and forces the chef to add a 'no filming' rule. The restaurant survives and names the corner table after {name}.",
+        "It begins when {name} invests in a nearly empty neighbourhood restaurant after becoming obsessed with its soup. Soon, a blunt social-media review brings queues around the block and forces the chef to add a 'no filming' rule. In the end, the restaurant survives and names the corner table after {name}."
+      ],
+      "bulletPoints": [
+        "{name} invests in a nearly empty neighbourhood restaurant after becoming obsessed with its soup.",
+        "A blunt social-media review brings queues around the block and forces the chef to add a 'no filming' rule.",
+        "The restaurant survives and names the corner table after {name}."
+      ]
+    },
+    {
+      "id": "career_triumph_weather_presenter",
+      "category": "career_triumph",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "career_triumph",
+      "badge": "UNLIKELY EXPERT",
+      "eligibility": {},
+      "headlines": [
+        "{name} Becomes the Nation's Favourite Weather Presenter",
+        "Forecast: Ninety Percent Drama"
+      ],
+      "twists": [
+        "A storm is named unofficially after {name}.",
+        "The forecast catchphrase becomes a ringtone."
+      ],
+      "subheadlines": [
+        "{name} fills in for a local weather presenter and delivers the forecast like an eviction ceremony. The station keeps {name}, although meteorologists remain visibly tired.",
+        "Viewers begin tuning in just to hear whether the rain has 'the votes to stay'. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} fills in for a local weather presenter and delivers the forecast like an eviction ceremony. Soon, viewers begin tuning in just to hear whether the rain has 'the votes to stay'. In the end, the station keeps {name}, although meteorologists remain visibly tired.",
+        "At first, {name} fills in for a local weather presenter and delivers the forecast like an eviction ceremony. The situation escalates when viewers begin tuning in just to hear whether the rain has 'the votes to stay'. By the final update, the station keeps {name}, although meteorologists remain visibly tired."
+      ],
+      "bulletPoints": [
+        "{name} fills in for a local weather presenter and delivers the forecast like an eviction ceremony.",
+        "Viewers begin tuning in just to hear whether the rain has 'the votes to stay'.",
+        "The station keeps {name}, although meteorologists remain visibly tired."
+      ]
+    },
+    {
+      "id": "career_disaster_memoir_fiction",
+      "category": "career_disaster",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "career_disaster",
+      "badge": "BOOK BOMBSHELL",
+      "eligibility": {
+        "tagsAny": [
+          "controversial",
+          "betrayal"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name}'s Memoir Contains Almost No Truth",
+        "The Tell-All That Told Too Much — Incorrectly"
+      ],
+      "twists": [
+        "{name} wins an award for imaginative writing.",
+        "{allyName} admits one chapter is accidentally accurate."
+      ],
+      "subheadlines": [
+        "{name} publishes a memoir promising every secret from the house. The publisher moves the book from biography to fiction without changing the cover.",
+        "Former housemates identify invented conversations, impossible dates, and an entire week that never happened. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} publishes a memoir promising every secret from the house. The situation escalates when former housemates identify invented conversations, impossible dates, and an entire week that never happened. By the final update, the publisher moves the book from biography to fiction without changing the cover.",
+        "Nobody expects the story to go this far. {name} publishes a memoir promising every secret from the house. Then former housemates identify invented conversations, impossible dates, and an entire week that never happened. Finally, the publisher moves the book from biography to fiction without changing the cover."
+      ],
+      "bulletPoints": [
+        "{name} publishes a memoir promising every secret from the house.",
+        "Former housemates identify invented conversations, impossible dates, and an entire week that never happened.",
+        "The publisher moves the book from biography to fiction without changing the cover."
+      ]
+    },
+    {
+      "id": "career_disaster_perfume_disaster",
+      "category": "career_disaster",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "career_disaster",
+      "badge": "SCENT SCANDAL",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Luxury Perfume Clears a Shopping Centre",
+        "Aroma of Ambition, Notes of Panic"
+      ],
+      "twists": [
+        "Collectors drive the recalled bottles to ridiculous prices.",
+        "The formula becomes an industrial cleaner."
+      ],
+      "subheadlines": [
+        "{name} launches a fragrance described as 'the smell of winning'. The product is recalled before the launch speech ends.",
+        "The first public spray triggers alarms, evacuates a boutique, and stains a marble display purple. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} launches a fragrance described as 'the smell of winning'. Then the first public spray triggers alarms, evacuates a boutique, and stains a marble display purple. Finally, the product is recalled before the launch speech ends.",
+        "{name} launches a fragrance described as 'the smell of winning'. The first public spray triggers alarms, evacuates a boutique, and stains a marble display purple. The product is recalled before the launch speech ends."
+      ],
+      "bulletPoints": [
+        "{name} launches a fragrance described as 'the smell of winning'.",
+        "The first public spray triggers alarms, evacuates a boutique, and stains a marble display purple.",
+        "The product is recalled before the launch speech ends."
+      ]
+    },
+    {
+      "id": "career_disaster_podcast_zero",
+      "category": "career_disaster",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "career_disaster",
+      "badge": "MICROPHONE MELTDOWN",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry",
+          "controversial"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name}'s Podcast Loses Its Guest Before Episode One",
+        "The Show That Ended During the Intro"
+      ],
+      "twists": [
+        "The explanation becomes the show's only hit.",
+        "{rivalName} launches a parody podcast the same afternoon."
+      ],
+      "subheadlines": [
+        "{name} announces a major interview podcast with dramatic lighting and no confirmed guests. Episode one is replaced by a forty-minute explanation of why episode one failed.",
+        "The first guest leaves after being introduced by the wrong name three times. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} announces a major interview podcast with dramatic lighting and no confirmed guests. The first guest leaves after being introduced by the wrong name three times. Episode one is replaced by a forty-minute explanation of why episode one failed.",
+        "It begins when {name} announces a major interview podcast with dramatic lighting and no confirmed guests. Soon, the first guest leaves after being introduced by the wrong name three times. In the end, episode one is replaced by a forty-minute explanation of why episode one failed."
+      ],
+      "bulletPoints": [
+        "{name} announces a major interview podcast with dramatic lighting and no confirmed guests.",
+        "The first guest leaves after being introduced by the wrong name three times.",
+        "Episode one is replaced by a forty-minute explanation of why episode one failed."
+      ]
+    },
+    {
+      "id": "career_disaster_acting_cut",
+      "category": "career_disaster",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "career_disaster",
+      "badge": "CUT FROM EVERYTHING",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Acting Debut Lasts Eleven Seconds",
+        "Hollywood Said Maybe — Then Edited"
+      ],
+      "twists": [
+        "The cough becomes a fan favourite.",
+        "The deleted scenes leak and are somehow worse."
+      ],
+      "subheadlines": [
+        "{name} lands a small role in a glossy drama and tells every interviewer it is a career-defining performance. {name} hosts a premiere party anyway and pauses the scene to point at the screen.",
+        "The final cut keeps only the back of {possessive} head and half a cough. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} lands a small role in a glossy drama and tells every interviewer it is a career-defining performance. Soon, the final cut keeps only the back of {possessive} head and half a cough. In the end, {name} hosts a premiere party anyway and pauses the scene to point at the screen.",
+        "At first, {name} lands a small role in a glossy drama and tells every interviewer it is a career-defining performance. The situation escalates when the final cut keeps only the back of {possessive} head and half a cough. By the final update, {name} hosts a premiere party anyway and pauses the scene to point at the screen."
+      ],
+      "bulletPoints": [
+        "{name} lands a small role in a glossy drama and tells every interviewer it is a career-defining performance.",
+        "The final cut keeps only the back of {possessive} head and half a cough.",
+        "{name} hosts a premiere party anyway and pauses the scene to point at the screen."
+      ]
+    },
+    {
+      "id": "career_disaster_motivational_tour",
+      "category": "career_disaster",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "career_disaster",
+      "badge": "INSPIRATION CRISIS",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Motivational Tour Needs Motivation",
+        "Believe in Yourself — Refunds Pending"
+      ],
+      "twists": [
+        "The audience's improvised speech goes viral.",
+        "{name} later sells a course on recovering from failed courses."
+      ],
+      "subheadlines": [
+        "{name} launches a seminar series about discipline, loyalty, and 'owning the room'. Three dates are cancelled and the remaining one is converted into a public apology.",
+        "The opening date starts late because {name} forgets the venue and the audience writes the speech themselves. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} launches a seminar series about discipline, loyalty, and 'owning the room'. The situation escalates when the opening date starts late because {name} forgets the venue and the audience writes the speech themselves. By the final update, three dates are cancelled and the remaining one is converted into a public apology.",
+        "Nobody expects the story to go this far. {name} launches a seminar series about discipline, loyalty, and 'owning the room'. Then the opening date starts late because {name} forgets the venue and the audience writes the speech themselves. Finally, three dates are cancelled and the remaining one is converted into a public apology."
+      ],
+      "bulletPoints": [
+        "{name} launches a seminar series about discipline, loyalty, and 'owning the room'.",
+        "The opening date starts late because {name} forgets the venue and the audience writes the speech themselves.",
+        "Three dates are cancelled and the remaining one is converted into a public apology."
+      ]
+    },
+    {
+      "id": "romance_fake_romance_real",
+      "category": "romance",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "romance",
+      "badge": "SECRET LOVE",
+      "eligibility": {
+        "tagsAny": [
+          "romance"
+        ],
+        "requiresRelation": "romantic"
+      },
+      "headlines": [
+        "{name}'s Fake Romance Becomes Alarmingly Real",
+        "Publicity Stunt Ends in Matching Keys"
+      ],
+      "twists": [
+        "The breakup announcement is cancelled.",
+        "They later insist the entire thing was 'always private'."
+      ],
+      "subheadlines": [
+        "{name} agrees to stage a romance with {romanticName} for magazine attention. Their management teams discover the relationship is genuine from a shared grocery receipt.",
+        "The pair begins arguing over whose turn it is to pretend, then quietly moves in together. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} agrees to stage a romance with {romanticName} for magazine attention. Then the pair begins arguing over whose turn it is to pretend, then quietly moves in together. Finally, their management teams discover the relationship is genuine from a shared grocery receipt.",
+        "{name} agrees to stage a romance with {romanticName} for magazine attention. The pair begins arguing over whose turn it is to pretend, then quietly moves in together. Their management teams discover the relationship is genuine from a shared grocery receipt."
+      ],
+      "bulletPoints": [
+        "{name} agrees to stage a romance with {romanticName} for magazine attention.",
+        "The pair begins arguing over whose turn it is to pretend, then quietly moves in together.",
+        "Their management teams discover the relationship is genuine from a shared grocery receipt."
+      ]
+    },
+    {
+      "id": "romance_rival_wedding",
+      "category": "romance",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "romance",
+      "badge": "WEDDING SHOCK",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Marries Into the Rival Camp",
+        "The Ceremony Nobody Saw Coming"
+      ],
+      "twists": [
+        "The cake contains a tiny replica of the house.",
+        "The marriage lasts longer than the rivalry."
+      ],
+      "subheadlines": [
+        "{name} begins dating a close relative of {rivalName} after an awkward reunion dinner. {rivalName} gives a speech that starts hostile and ends in tears.",
+        "The relationship advances so quickly that former enemies are seated at the same wedding table. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} begins dating a close relative of {rivalName} after an awkward reunion dinner. The relationship advances so quickly that former enemies are seated at the same wedding table. {rivalName} gives a speech that starts hostile and ends in tears.",
+        "It begins when {name} begins dating a close relative of {rivalName} after an awkward reunion dinner. Soon, the relationship advances so quickly that former enemies are seated at the same wedding table. In the end, {rivalName} gives a speech that starts hostile and ends in tears."
+      ],
+      "bulletPoints": [
+        "{name} begins dating a close relative of {rivalName} after an awkward reunion dinner.",
+        "The relationship advances so quickly that former enemies are seated at the same wedding table.",
+        "{rivalName} gives a speech that starts hostile and ends in tears."
+      ]
+    },
+    {
+      "id": "romance_engagement_sponsor",
+      "category": "romance",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "romance",
+      "badge": "LOVE FOR SALE",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Engagement Is Sponsored by Six Brands",
+        "The Ring Came With a Discount Code"
+      ],
+      "twists": [
+        "The sponsor extends the engagement for another month.",
+        "The wedding is cancelled but the content performs well."
+      ],
+      "subheadlines": [
+        "{name} announces an engagement through a twelve-slide advertisement. The couple spends the honeymoon filming product tutorials in separate rooms.",
+        "Fans spot three different ring boxes and a contract reflected in the champagne bucket. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} announces an engagement through a twelve-slide advertisement. Soon, fans spot three different ring boxes and a contract reflected in the champagne bucket. In the end, the couple spends the honeymoon filming product tutorials in separate rooms.",
+        "At first, {name} announces an engagement through a twelve-slide advertisement. The situation escalates when fans spot three different ring boxes and a contract reflected in the champagne bucket. By the final update, the couple spends the honeymoon filming product tutorials in separate rooms."
+      ],
+      "bulletPoints": [
+        "{name} announces an engagement through a twelve-slide advertisement.",
+        "Fans spot three different ring boxes and a contract reflected in the champagne bucket.",
+        "The couple spends the honeymoon filming product tutorials in separate rooms."
+      ]
+    },
+    {
+      "id": "romance_mystery_date",
+      "category": "romance",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "romance",
+      "badge": "MYSTERY COMPANION",
+      "eligibility": {},
+      "headlines": [
+        "{name} Is Seen With the Same Mystery Date Everywhere",
+        "Seven Sightings, Zero Confirmation"
+      ],
+      "twists": [
+        "The mystery date is a cousin helping with a move.",
+        "The toothbrush post was an advertisement."
+      ],
+      "subheadlines": [
+        "{name} is photographed leaving restaurants, cinemas, and a pet shop with an unidentified companion. {name} refuses to comment and posts a picture of two toothbrushes instead.",
+        "Every former housemate denies knowing the person while clearly knowing the person. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} is photographed leaving restaurants, cinemas, and a pet shop with an unidentified companion. The situation escalates when every former housemate denies knowing the person while clearly knowing the person. By the final update, {name} refuses to comment and posts a picture of two toothbrushes instead.",
+        "Nobody expects the story to go this far. {name} is photographed leaving restaurants, cinemas, and a pet shop with an unidentified companion. Then every former housemate denies knowing the person while clearly knowing the person. Finally, {name} refuses to comment and posts a picture of two toothbrushes instead."
+      ],
+      "bulletPoints": [
+        "{name} is photographed leaving restaurants, cinemas, and a pet shop with an unidentified companion.",
+        "Every former housemate denies knowing the person while clearly knowing the person.",
+        "{name} refuses to comment and posts a picture of two toothbrushes instead."
+      ]
+    },
+    {
+      "id": "romance_wedding_reveal",
+      "category": "romance",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "romance",
+      "badge": "ALTAR BOMBSHELL",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry",
+          "controversial"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name}'s Wedding Stops at the Objection",
+        "A Former Housemate Brings Receipts"
+      ],
+      "twists": [
+        "The screenshots belong to a different couple.",
+        "The reception continues without the wedding."
+      ],
+      "subheadlines": [
+        "{name} reaches the altar after a whirlwind public romance. The guests remain seated because nobody is certain whether the confrontation is part of the entertainment.",
+        "{rivalName} appears during the ceremony with screenshots suggesting the relationship began before another one ended. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} reaches the altar after a whirlwind public romance. Then {rivalName} appears during the ceremony with screenshots suggesting the relationship began before another one ended. Finally, the guests remain seated because nobody is certain whether the confrontation is part of the entertainment.",
+        "{name} reaches the altar after a whirlwind public romance. {rivalName} appears during the ceremony with screenshots suggesting the relationship began before another one ended. The guests remain seated because nobody is certain whether the confrontation is part of the entertainment."
+      ],
+      "bulletPoints": [
+        "{name} reaches the altar after a whirlwind public romance.",
+        "{rivalName} appears during the ceremony with screenshots suggesting the relationship began before another one ended.",
+        "The guests remain seated because nobody is certain whether the confrontation is part of the entertainment."
+      ]
+    },
+    {
+      "id": "cheating_scandal_hotel_lobby",
+      "category": "cheating_scandal",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "cheating_scandal",
+      "badge": "CAUGHT",
+      "eligibility": {
+        "tagsAny": [
+          "romance",
+          "controversial"
+        ],
+        "requiresRelation": "romantic"
+      },
+      "headlines": [
+        "{name} Is Caught in the Wrong Hotel Lobby",
+        "One Lift, Two Relationships, No Explanation"
+      ],
+      "twists": [
+        "The charity is registered the next day.",
+        "The trolley attendant becomes a key witness."
+      ],
+      "subheadlines": [
+        "{name} is photographed entering a hotel with {romanticName} while publicly dating someone else. Three contradictory statements appear before breakfast.",
+        "The pair claims they were discussing charity work at 2:14 a.m. beside a room-service trolley. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} is photographed entering a hotel with {romanticName} while publicly dating someone else. The pair claims they were discussing charity work at 2:14 a.m. beside a room-service trolley. Three contradictory statements appear before breakfast.",
+        "It begins when {name} is photographed entering a hotel with {romanticName} while publicly dating someone else. Soon, the pair claims they were discussing charity work at 2:14 a.m. beside a room-service trolley. In the end, three contradictory statements appear before breakfast."
+      ],
+      "bulletPoints": [
+        "{name} is photographed entering a hotel with {romanticName} while publicly dating someone else.",
+        "The pair claims they were discussing charity work at 2:14 a.m. beside a room-service trolley.",
+        "Three contradictory statements appear before breakfast."
+      ]
+    },
+    {
+      "id": "cheating_scandal_reunion_triangle",
+      "category": "cheating_scandal",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "cheating_scandal",
+      "badge": "TRIANGLE EXPLODES",
+      "eligibility": {
+        "tagsAny": [
+          "romance"
+        ],
+        "requiresRelation": "romantic"
+      },
+      "headlines": [
+        "{name}'s Reunion Flirtation Becomes a Three-Person Crisis",
+        "Old Sparks, New Partners, Live Cameras"
+      ],
+      "twists": [
+        "Both original couples swap partners.",
+        "The network orders a follow-up special."
+      ],
+      "subheadlines": [
+        "{name} reconnects with {romanticName} during a reunion special. The reunion receives record ratings and four separate apology videos.",
+        "Their current partners discover the private messages while the aftershow is still broadcasting. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} reconnects with {romanticName} during a reunion special. Soon, their current partners discover the private messages while the aftershow is still broadcasting. In the end, the reunion receives record ratings and four separate apology videos.",
+        "At first, {name} reconnects with {romanticName} during a reunion special. The situation escalates when their current partners discover the private messages while the aftershow is still broadcasting. By the final update, the reunion receives record ratings and four separate apology videos."
+      ],
+      "bulletPoints": [
+        "{name} reconnects with {romanticName} during a reunion special.",
+        "Their current partners discover the private messages while the aftershow is still broadcasting.",
+        "The reunion receives record ratings and four separate apology videos."
+      ]
+    },
+    {
+      "id": "cheating_scandal_wrong_caption",
+      "category": "cheating_scandal",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "cheating_scandal",
+      "badge": "POSTED BY MISTAKE",
+      "eligibility": {},
+      "headlines": [
+        "{name} Uploads the Wrong Anniversary Photo",
+        "The Caption Was Sweet. The Person Was Not the Partner."
+      ],
+      "twists": [
+        "The dessert becomes a trending search.",
+        "The assistant gets a better job."
+      ],
+      "subheadlines": [
+        "{name} posts a romantic anniversary tribute using a photo taken with somebody else. {name} blames an assistant who publicly denies having access to the account.",
+        "The image stays online for nine minutes, long enough for fans to identify the restaurant, date, and dessert. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} posts a romantic anniversary tribute using a photo taken with somebody else. The situation escalates when the image stays online for nine minutes, long enough for fans to identify the restaurant, date, and dessert. By the final update, {name} blames an assistant who publicly denies having access to the account.",
+        "Nobody expects the story to go this far. {name} posts a romantic anniversary tribute using a photo taken with somebody else. Then the image stays online for nine minutes, long enough for fans to identify the restaurant, date, and dessert. Finally, {name} blames an assistant who publicly denies having access to the account."
+      ],
+      "bulletPoints": [
+        "{name} posts a romantic anniversary tribute using a photo taken with somebody else.",
+        "The image stays online for nine minutes, long enough for fans to identify the restaurant, date, and dessert.",
+        "{name} blames an assistant who publicly denies having access to the account."
+      ]
+    },
+    {
+      "id": "cheating_scandal_double_booking",
+      "category": "cheating_scandal",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "cheating_scandal",
+      "badge": "DOUBLE-BOOKED LOVE",
+      "eligibility": {},
+      "headlines": [
+        "{name} Schedules Two Dates at the Same Restaurant",
+        "Table Seven Meets Table Nine"
+      ],
+      "twists": [
+        "The two dates become friends.",
+        "{name} is banned from making online reservations."
+      ],
+      "subheadlines": [
+        "{name} accidentally books overlapping dinners with two romantic interests. The restaurant livestreams nothing, but every customer somehow has footage.",
+        "A waiter notices identical flowers and seats the parties within direct view of each other. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} accidentally books overlapping dinners with two romantic interests. Then a waiter notices identical flowers and seats the parties within direct view of each other. Finally, the restaurant livestreams nothing, but every customer somehow has footage.",
+        "{name} accidentally books overlapping dinners with two romantic interests. A waiter notices identical flowers and seats the parties within direct view of each other. The restaurant livestreams nothing, but every customer somehow has footage."
+      ],
+      "bulletPoints": [
+        "{name} accidentally books overlapping dinners with two romantic interests.",
+        "A waiter notices identical flowers and seats the parties within direct view of each other.",
+        "The restaurant livestreams nothing, but every customer somehow has footage."
+      ]
+    },
+    {
+      "id": "cheating_scandal_fake_cheating",
+      "category": "cheating_scandal",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "cheating_scandal",
+      "badge": "SCANDAL THAT WASN'T",
+      "eligibility": {},
+      "headlines": [
+        "{name} Is Accused of Cheating on a Relationship That Never Existed",
+        "The Couple Denies Being a Couple"
+      ],
+      "twists": [
+        "All three sign the same management agency.",
+        "A documentary buys the rights to the confusion."
+      ],
+      "subheadlines": [
+        "{name} is linked to two people after months of deliberately vague publicity. The scandal collapses into a debate about whether staged dating counts as dating.",
+        "Both supposed partners deny any romance, then become offended that the public believed the other one. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} is linked to two people after months of deliberately vague publicity. Both supposed partners deny any romance, then become offended that the public believed the other one. The scandal collapses into a debate about whether staged dating counts as dating.",
+        "It begins when {name} is linked to two people after months of deliberately vague publicity. Soon, both supposed partners deny any romance, then become offended that the public believed the other one. In the end, the scandal collapses into a debate about whether staged dating counts as dating."
+      ],
+      "bulletPoints": [
+        "{name} is linked to two people after months of deliberately vague publicity.",
+        "Both supposed partners deny any romance, then become offended that the public believed the other one.",
+        "The scandal collapses into a debate about whether staged dating counts as dating."
+      ]
+    },
+    {
+      "id": "public_feud_podcast_feud",
+      "category": "public_feud",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "public_feud",
+      "badge": "MIC WAR",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} and {rivalName} Destroy a Podcast in Episode One",
+        "Former Rivals Last Twenty-Three Minutes"
+      ],
+      "twists": [
+        "The unaired break becomes the most downloaded clip.",
+        "They return for episode two to argue about episode one."
+      ],
+      "subheadlines": [
+        "{name} launches a reconciliation podcast with {rivalName}. The microphones stay on through a commercial break and the partnership ends live.",
+        "The opening pleasantries collapse when both bring different lists of topics the other promised not to mention. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} launches a reconciliation podcast with {rivalName}. Soon, the opening pleasantries collapse when both bring different lists of topics the other promised not to mention. In the end, the microphones stay on through a commercial break and the partnership ends live.",
+        "At first, {name} launches a reconciliation podcast with {rivalName}. The situation escalates when the opening pleasantries collapse when both bring different lists of topics the other promised not to mention. By the final update, the microphones stay on through a commercial break and the partnership ends live."
+      ],
+      "bulletPoints": [
+        "{name} launches a reconciliation podcast with {rivalName}.",
+        "The opening pleasantries collapse when both bring different lists of topics the other promised not to mention.",
+        "The microphones stay on through a commercial break and the partnership ends live."
+      ]
+    },
+    {
+      "id": "public_feud_lawsuit_song",
+      "category": "public_feud",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "public_feud",
+      "badge": "FEUD GOES MUSICAL",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Answers a Lawsuit With a Diss Track",
+        "Legal Team Begs for Silence"
+      ],
+      "twists": [
+        "The judge quotes the chorus.",
+        "{rivalName} releases an acoustic reply."
+      ],
+      "subheadlines": [
+        "{name} receives a formal complaint from {rivalName} and responds by recording a song. The track charts briefly while the case becomes much harder to defend.",
+        "The lyrics reveal more evidence than the opposing lawyers had requested. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} receives a formal complaint from {rivalName} and responds by recording a song. The situation escalates when the lyrics reveal more evidence than the opposing lawyers had requested. By the final update, the track charts briefly while the case becomes much harder to defend.",
+        "Nobody expects the story to go this far. {name} receives a formal complaint from {rivalName} and responds by recording a song. Then the lyrics reveal more evidence than the opposing lawyers had requested. Finally, the track charts briefly while the case becomes much harder to defend."
+      ],
+      "bulletPoints": [
+        "{name} receives a formal complaint from {rivalName} and responds by recording a song.",
+        "The lyrics reveal more evidence than the opposing lawyers had requested.",
+        "The track charts briefly while the case becomes much harder to defend."
+      ]
+    },
+    {
+      "id": "public_feud_petty_products",
+      "category": "public_feud",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "public_feud",
+      "badge": "PETTY BUSINESS",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Launches a Product Named After {rivalName}'s Worst Moment",
+        "The Feud Reaches the Gift Shop"
+      ],
+      "twists": [
+        "The products are manufactured in the same factory.",
+        "The rivals eventually merge the brands."
+      ],
+      "subheadlines": [
+        "{name} turns an old argument with {rivalName} into a novelty product. Both sides claim victory while accountants quietly celebrate.",
+        "Fans buy it as a joke until the rival launches a competing version with better packaging. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} turns an old argument with {rivalName} into a novelty product. Then fans buy it as a joke until the rival launches a competing version with better packaging. Finally, both sides claim victory while accountants quietly celebrate.",
+        "{name} turns an old argument with {rivalName} into a novelty product. Fans buy it as a joke until the rival launches a competing version with better packaging. Both sides claim victory while accountants quietly celebrate."
+      ],
+      "bulletPoints": [
+        "{name} turns an old argument with {rivalName} into a novelty product.",
+        "Fans buy it as a joke until the rival launches a competing version with better packaging.",
+        "Both sides claim victory while accountants quietly celebrate."
+      ]
+    },
+    {
+      "id": "public_feud_award_seating",
+      "category": "public_feud",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "public_feud",
+      "badge": "RED CARPET WAR",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Refuses a Seat Near {rivalName}",
+        "One Awards Show, Seventeen Seating Charts"
+      ],
+      "twists": [
+        "Neither wins an award.",
+        "The chairs are auctioned as a pair."
+      ],
+      "subheadlines": [
+        "{name} demands to be placed far from {rivalName} at a television awards ceremony. A chair movement becomes the night's most analysed footage.",
+        "Organisers redraw the room repeatedly until the two are accidentally placed back-to-back. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} demands to be placed far from {rivalName} at a television awards ceremony. Organisers redraw the room repeatedly until the two are accidentally placed back-to-back. A chair movement becomes the night's most analysed footage.",
+        "It begins when {name} demands to be placed far from {rivalName} at a television awards ceremony. Soon, organisers redraw the room repeatedly until the two are accidentally placed back-to-back. In the end, a chair movement becomes the night's most analysed footage."
+      ],
+      "bulletPoints": [
+        "{name} demands to be placed far from {rivalName} at a television awards ceremony.",
+        "Organisers redraw the room repeatedly until the two are accidentally placed back-to-back.",
+        "A chair movement becomes the night's most analysed footage."
+      ]
+    },
+    {
+      "id": "public_feud_feud_business",
+      "category": "public_feud",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "public_feud",
+      "badge": "ENEMIES CASH IN",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Turns the Feud Into a Business",
+        "Hate, But Make It Profitable"
+      ],
+      "twists": [
+        "They share an accountant.",
+        "The final show ends with a suspiciously friendly hug."
+      ],
+      "subheadlines": [
+        "{name} and {rivalName} agree to sell tickets to a public debate. The rivals earn enough money to postpone reconciliation indefinitely.",
+        "The event expands into a tour after audiences discover the insults are weirdly well rehearsed. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} and {rivalName} agree to sell tickets to a public debate. Soon, the event expands into a tour after audiences discover the insults are weirdly well rehearsed. In the end, the rivals earn enough money to postpone reconciliation indefinitely.",
+        "At first, {name} and {rivalName} agree to sell tickets to a public debate. The situation escalates when the event expands into a tour after audiences discover the insults are weirdly well rehearsed. By the final update, the rivals earn enough money to postpone reconciliation indefinitely."
+      ],
+      "bulletPoints": [
+        "{name} and {rivalName} agree to sell tickets to a public debate.",
+        "The event expands into a tour after audiences discover the insults are weirdly well rehearsed.",
+        "The rivals earn enough money to postpone reconciliation indefinitely."
+      ]
+    },
+    {
+      "id": "betrayal_memoir_exposes_ally",
+      "category": "betrayal",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "betrayal",
+      "badge": "BETRAYAL IN PRINT",
+      "eligibility": {
+        "tagsAny": [
+          "betrayal",
+          "alliance_broken"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Exposes {allyName} in a Tell-All",
+        "The Alliance Ends on Page Forty-Seven"
+      ],
+      "twists": [
+        "The messages were already public in a forgotten livestream.",
+        "The book dedication still thanks {allyName}."
+      ],
+      "subheadlines": [
+        "{name} publishes private messages from {allyName} while promoting a book about loyalty. The friendship collapses through footnotes and competing audiobook versions.",
+        "The leaked conversation reveals both had planned to blame the other if the season went badly. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} publishes private messages from {allyName} while promoting a book about loyalty. The situation escalates when the leaked conversation reveals both had planned to blame the other if the season went badly. By the final update, the friendship collapses through footnotes and competing audiobook versions.",
+        "Nobody expects the story to go this far. {name} publishes private messages from {allyName} while promoting a book about loyalty. Then the leaked conversation reveals both had planned to blame the other if the season went badly. Finally, the friendship collapses through footnotes and competing audiobook versions."
+      ],
+      "bulletPoints": [
+        "{name} publishes private messages from {allyName} while promoting a book about loyalty.",
+        "The leaked conversation reveals both had planned to blame the other if the season went badly.",
+        "The friendship collapses through footnotes and competing audiobook versions."
+      ]
+    },
+    {
+      "id": "betrayal_business_backstab",
+      "category": "betrayal",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "betrayal",
+      "badge": "PARTNERSHIP AMBUSH",
+      "eligibility": {
+        "tagsAny": [
+          "betrayal",
+          "alliance_broken"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Locks {allyName} Out of Their Own Launch",
+        "Best Friends, One Password"
+      ],
+      "twists": [
+        "The passwords were written on the launch cake.",
+        "The pair reunites solely to divide the profits."
+      ],
+      "subheadlines": [
+        "{name} starts a business with {allyName} and changes every account password hours before launch. The website sells out only because people think the chaos is performance art.",
+        "Customers watch the former allies fight through the brand's official support chat. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} starts a business with {allyName} and changes every account password hours before launch. Then customers watch the former allies fight through the brand's official support chat. Finally, the website sells out only because people think the chaos is performance art.",
+        "{name} starts a business with {allyName} and changes every account password hours before launch. Customers watch the former allies fight through the brand's official support chat. The website sells out only because people think the chaos is performance art."
+      ],
+      "bulletPoints": [
+        "{name} starts a business with {allyName} and changes every account password hours before launch.",
+        "Customers watch the former allies fight through the brand's official support chat.",
+        "The website sells out only because people think the chaos is performance art."
+      ]
+    },
+    {
+      "id": "betrayal_wedding_secret",
+      "category": "betrayal",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "betrayal",
+      "badge": "RECEPTION REVEAL",
+      "eligibility": {
+        "tagsAny": [
+          "betrayal",
+          "alliance_broken"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Reveals {allyName}'s Secret at the Wedding",
+        "The Toast That Ended a Friendship"
+      ],
+      "twists": [
+        "Half the guests already knew.",
+        "The videographer labels the clip 'best speech'."
+      ],
+      "subheadlines": [
+        "{name} is invited to give a warm wedding speech for {allyName}. Music starts early in an unsuccessful attempt to drown out the final sentence.",
+        "The toast drifts into an old house secret that nobody outside the cast was meant to know. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} is invited to give a warm wedding speech for {allyName}. The toast drifts into an old house secret that nobody outside the cast was meant to know. Music starts early in an unsuccessful attempt to drown out the final sentence.",
+        "It begins when {name} is invited to give a warm wedding speech for {allyName}. Soon, the toast drifts into an old house secret that nobody outside the cast was meant to know. In the end, music starts early in an unsuccessful attempt to drown out the final sentence."
+      ],
+      "bulletPoints": [
+        "{name} is invited to give a warm wedding speech for {allyName}.",
+        "The toast drifts into an old house secret that nobody outside the cast was meant to know.",
+        "Music starts early in an unsuccessful attempt to drown out the final sentence."
+      ]
+    },
+    {
+      "id": "betrayal_secret_groupchat",
+      "category": "betrayal",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "betrayal",
+      "badge": "GROUP CHAT LEAK",
+      "eligibility": {
+        "tagsAny": [
+          "alliance_broken",
+          "betrayal"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Leaks the Alliance Group Chat",
+        "Every Screenshot Has a Different Crop"
+      ],
+      "twists": [
+        "The most damaging message is about takeaway food.",
+        "{allyName} responds with the missing screenshots."
+      ],
+      "subheadlines": [
+        "{name} accidentally uploads a screen recording containing months of messages with {allyName}. The leak proves the alliance was both more loyal and more petty than anyone expected.",
+        "Fans analyse typing indicators, deleted messages, and a suspicious contact nickname. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} accidentally uploads a screen recording containing months of messages with {allyName}. Soon, fans analyse typing indicators, deleted messages, and a suspicious contact nickname. In the end, the leak proves the alliance was both more loyal and more petty than anyone expected.",
+        "At first, {name} accidentally uploads a screen recording containing months of messages with {allyName}. The situation escalates when fans analyse typing indicators, deleted messages, and a suspicious contact nickname. By the final update, the leak proves the alliance was both more loyal and more petty than anyone expected."
+      ],
+      "bulletPoints": [
+        "{name} accidentally uploads a screen recording containing months of messages with {allyName}.",
+        "Fans analyse typing indicators, deleted messages, and a suspicious contact nickname.",
+        "The leak proves the alliance was both more loyal and more petty than anyone expected."
+      ]
+    },
+    {
+      "id": "betrayal_betrayal_redemption",
+      "category": "betrayal",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "betrayal",
+      "badge": "FORGIVEN — AT A PRICE",
+      "eligibility": {
+        "tagsAny": [
+          "betrayal",
+          "alliance_broken"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Buys Back {allyName}'s Trust",
+        "The Most Expensive Apology of the Year"
+      ],
+      "twists": [
+        "The gift is a framed screenshot of the betrayal.",
+        "Their reunion special becomes a hit."
+      ],
+      "subheadlines": [
+        "{name} publicly admits betraying {allyName} and stages an apology with no sponsorships. The friendship resumes under a written agreement banning surprise interviews.",
+        "The sincerity shocks viewers until a giant wrapped gift is wheeled onto the set. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} publicly admits betraying {allyName} and stages an apology with no sponsorships. The situation escalates when the sincerity shocks viewers until a giant wrapped gift is wheeled onto the set. By the final update, the friendship resumes under a written agreement banning surprise interviews.",
+        "Nobody expects the story to go this far. {name} publicly admits betraying {allyName} and stages an apology with no sponsorships. Then the sincerity shocks viewers until a giant wrapped gift is wheeled onto the set. Finally, the friendship resumes under a written agreement banning surprise interviews."
+      ],
+      "bulletPoints": [
+        "{name} publicly admits betraying {allyName} and stages an apology with no sponsorships.",
+        "The sincerity shocks viewers until a giant wrapped gift is wheeled onto the set.",
+        "The friendship resumes under a written agreement banning surprise interviews."
+      ]
+    },
+    {
+      "id": "financial_success_boring_investment",
+      "category": "financial_success",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "financial_success",
+      "badge": "SECRET MILLIONAIRE",
+      "eligibility": {
+        "tagsAny": [
+          "low_profile",
+          "early_exit"
+        ]
+      },
+      "headlines": [
+        "{name} Quietly Makes a Fortune",
+        "No Yacht, No Speech, Just Compound Interest"
+      ],
+      "twists": [
+        "The company delivers half the cast's merchandise.",
+        "Nobody believes the fortune until tax records leak."
+      ],
+      "subheadlines": [
+        "{name} ignores the influencer circuit and invests the appearance money in an unglamorous logistics company. {name} becomes the richest housemate and continues wearing the same finale jacket.",
+        "The company expands while other cast members post sponsored candles. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} ignores the influencer circuit and invests the appearance money in an unglamorous logistics company. Then the company expands while other cast members post sponsored candles. Finally, {name} becomes the richest housemate and continues wearing the same finale jacket.",
+        "{name} ignores the influencer circuit and invests the appearance money in an unglamorous logistics company. The company expands while other cast members post sponsored candles. {name} becomes the richest housemate and continues wearing the same finale jacket."
+      ],
+      "bulletPoints": [
+        "{name} ignores the influencer circuit and invests the appearance money in an unglamorous logistics company.",
+        "The company expands while other cast members post sponsored candles.",
+        "{name} becomes the richest housemate and continues wearing the same finale jacket."
+      ]
+    },
+    {
+      "id": "financial_success_snack_empire",
+      "category": "financial_success",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "financial_success",
+      "badge": "SNACK TYCOON",
+      "eligibility": {
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name}'s Late-Night Snack Becomes an Empire",
+        "The Recipe Was Almost an Accident"
+      ],
+      "twists": [
+        "The least appealing flavour becomes the bestseller.",
+        "{rivalName} requests a royalty for suggesting the original snack."
+      ],
+      "subheadlines": [
+        "{name} recreates a strange snack eaten repeatedly in the house. The packaging uses a dramatic screenshot of {name} staring into the fridge.",
+        "A supermarket order turns the joke into a national product with five unnecessary flavours. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} recreates a strange snack eaten repeatedly in the house. A supermarket order turns the joke into a national product with five unnecessary flavours. The packaging uses a dramatic screenshot of {name} staring into the fridge.",
+        "It begins when {name} recreates a strange snack eaten repeatedly in the house. Soon, a supermarket order turns the joke into a national product with five unnecessary flavours. In the end, the packaging uses a dramatic screenshot of {name} staring into the fridge."
+      ],
+      "bulletPoints": [
+        "{name} recreates a strange snack eaten repeatedly in the house.",
+        "A supermarket order turns the joke into a national product with five unnecessary flavours.",
+        "The packaging uses a dramatic screenshot of {name} staring into the fridge."
+      ]
+    },
+    {
+      "id": "financial_success_appearance_fees",
+      "category": "financial_success",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "financial_success",
+      "badge": "BOOKED SOLID",
+      "eligibility": {},
+      "headlines": [
+        "{name} Perfects the Paid Appearance",
+        "Forty Minutes, One Selfie Wall, Excellent Invoice"
+      ],
+      "twists": [
+        "One venue hires a lookalike by mistake.",
+        "The schedule is later taught in a business seminar."
+      ],
+      "subheadlines": [
+        "{name} discovers that nightclub openings and shopping-centre appearances pay better than long interviews. {name} works less than everyone else and earns more than most.",
+        "A strict seven-minute speech and twelve-minute photo schedule becomes famous among event planners. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} discovers that nightclub openings and shopping-centre appearances pay better than long interviews. Soon, a strict seven-minute speech and twelve-minute photo schedule becomes famous among event planners. In the end, {name} works less than everyone else and earns more than most.",
+        "At first, {name} discovers that nightclub openings and shopping-centre appearances pay better than long interviews. The situation escalates when a strict seven-minute speech and twelve-minute photo schedule becomes famous among event planners. By the final update, {name} works less than everyone else and earns more than most."
+      ],
+      "bulletPoints": [
+        "{name} discovers that nightclub openings and shopping-centre appearances pay better than long interviews.",
+        "A strict seven-minute speech and twelve-minute photo schedule becomes famous among event planners.",
+        "{name} works less than everyone else and earns more than most."
+      ]
+    },
+    {
+      "id": "financial_success_auction_props",
+      "category": "financial_success",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "financial_success",
+      "badge": "HOUSE RELIC BONANZA",
+      "eligibility": {},
+      "headlines": [
+        "{name} Auctions Every Meaningless Souvenir",
+        "Fans Pay Thousands for a Bent Spoon"
+      ],
+      "twists": [
+        "The most expensive item is not from the house.",
+        "A museum requests the bent spoon."
+      ],
+      "subheadlines": [
+        "{name} saves ordinary objects associated with the season and sells them as authenticated memorabilia. The collection funds a comfortable new home.",
+        "Bidding escalates over a robe belt, a cracked mug, and a note nobody can read. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} saves ordinary objects associated with the season and sells them as authenticated memorabilia. The situation escalates when bidding escalates over a robe belt, a cracked mug, and a note nobody can read. By the final update, the collection funds a comfortable new home.",
+        "Nobody expects the story to go this far. {name} saves ordinary objects associated with the season and sells them as authenticated memorabilia. Then bidding escalates over a robe belt, a cracked mug, and a note nobody can read. Finally, the collection funds a comfortable new home."
+      ],
+      "bulletPoints": [
+        "{name} saves ordinary objects associated with the season and sells them as authenticated memorabilia.",
+        "Bidding escalates over a robe belt, a cracked mug, and a note nobody can read.",
+        "The collection funds a comfortable new home."
+      ]
+    },
+    {
+      "id": "financial_success_app_success",
+      "category": "financial_success",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "financial_success",
+      "badge": "TECH SURPRISE",
+      "eligibility": {},
+      "headlines": [
+        "{name} Launches an App That Actually Works",
+        "The Rare Celebrity Product With Customer Support"
+      ],
+      "twists": [
+        "The developer is a former fan account administrator.",
+        "The app is used to plan a rival's wedding."
+      ],
+      "subheadlines": [
+        "{name} funds a simple app based on organising group decisions. The app grows internationally while {name} refuses to explain the code.",
+        "Users praise it for solving arguments without requiring anyone to watch a motivational video. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} funds a simple app based on organising group decisions. Then users praise it for solving arguments without requiring anyone to watch a motivational video. Finally, the app grows internationally while {name} refuses to explain the code.",
+        "{name} funds a simple app based on organising group decisions. Users praise it for solving arguments without requiring anyone to watch a motivational video. The app grows internationally while {name} refuses to explain the code."
+      ],
+      "bulletPoints": [
+        "{name} funds a simple app based on organising group decisions.",
+        "Users praise it for solving arguments without requiring anyone to watch a motivational video.",
+        "The app grows internationally while {name} refuses to explain the code."
+      ]
+    },
+    {
+      "id": "financial_ruin_gold_bathtub",
+      "category": "financial_ruin",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "financial_ruin",
+      "badge": "FORTUNE DOWN THE DRAIN",
+      "eligibility": {
+        "tagsAny": [
+          "winner"
+        ]
+      },
+      "headlines": [
+        "{name} Buys a Gold Bathtub and Loses Everything",
+        "The Prize Money Never Reached Month Six"
+      ],
+      "twists": [
+        "The bathtub is only brass.",
+        "The cousin becomes a successful home-renovation influencer."
+      ],
+      "subheadlines": [
+        "{name} spends the winnings on a gold-plated bathroom, a rented tiger statue, and an apartment with no furniture. {name} sells the bathtub at a loss and moves in with a cousin.",
+        "Maintenance bills arrive before the first sponsored house tour is uploaded. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} spends the winnings on a gold-plated bathroom, a rented tiger statue, and an apartment with no furniture. Maintenance bills arrive before the first sponsored house tour is uploaded. {name} sells the bathtub at a loss and moves in with a cousin.",
+        "It begins when {name} spends the winnings on a gold-plated bathroom, a rented tiger statue, and an apartment with no furniture. Soon, maintenance bills arrive before the first sponsored house tour is uploaded. In the end, {name} sells the bathtub at a loss and moves in with a cousin."
+      ],
+      "bulletPoints": [
+        "{name} spends the winnings on a gold-plated bathroom, a rented tiger statue, and an apartment with no furniture.",
+        "Maintenance bills arrive before the first sponsored house tour is uploaded.",
+        "{name} sells the bathtub at a loss and moves in with a cousin."
+      ]
+    },
+    {
+      "id": "financial_ruin_fake_crypto",
+      "category": "financial_ruin",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "financial_ruin",
+      "badge": "INVESTMENT HORROR",
+      "eligibility": {},
+      "headlines": [
+        "{name} Backs a Coin Named After a Catchphrase",
+        "The Token Vanishes Before Breakfast"
+      ],
+      "twists": [
+        "The cape is found for sale online.",
+        "A forgotten small investment elsewhere covers the loss."
+      ],
+      "subheadlines": [
+        "{name} invests heavily in a cryptocurrency promoted by a stranger wearing a branded cape. {name} spends months insisting the collapse is a 'temporary narrative problem'.",
+        "The project website disappears the morning after a launch party. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} invests heavily in a cryptocurrency promoted by a stranger wearing a branded cape. Soon, the project website disappears the morning after a launch party. In the end, {name} spends months insisting the collapse is a 'temporary narrative problem'.",
+        "At first, {name} invests heavily in a cryptocurrency promoted by a stranger wearing a branded cape. The situation escalates when the project website disappears the morning after a launch party. By the final update, {name} spends months insisting the collapse is a 'temporary narrative problem'."
+      ],
+      "bulletPoints": [
+        "{name} invests heavily in a cryptocurrency promoted by a stranger wearing a branded cape.",
+        "The project website disappears the morning after a launch party.",
+        "{name} spends months insisting the collapse is a 'temporary narrative problem'."
+      ]
+    },
+    {
+      "id": "financial_ruin_empty_brand",
+      "category": "financial_ruin",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "financial_ruin",
+      "badge": "INVISIBLE INVENTORY",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Luxury Brand Sells Products That Do Not Exist",
+        "Beautiful Website, Completely Empty Warehouse"
+      ],
+      "twists": [
+        "The empty boxes become collector items.",
+        "{name} later sells a course about 'asset-light retail'."
+      ],
+      "subheadlines": [
+        "{name} launches a premium lifestyle company with cinematic advertisements and no confirmed manufacturer. Investigators discover the warehouse is a rented meeting room.",
+        "Customers receive tracking numbers that lead to a stock photo of a delivery van. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} launches a premium lifestyle company with cinematic advertisements and no confirmed manufacturer. The situation escalates when customers receive tracking numbers that lead to a stock photo of a delivery van. By the final update, investigators discover the warehouse is a rented meeting room.",
+        "Nobody expects the story to go this far. {name} launches a premium lifestyle company with cinematic advertisements and no confirmed manufacturer. Then customers receive tracking numbers that lead to a stock photo of a delivery van. Finally, investigators discover the warehouse is a rented meeting room."
+      ],
+      "bulletPoints": [
+        "{name} launches a premium lifestyle company with cinematic advertisements and no confirmed manufacturer.",
+        "Customers receive tracking numbers that lead to a stock photo of a delivery van.",
+        "Investigators discover the warehouse is a rented meeting room."
+      ]
+    },
+    {
+      "id": "financial_ruin_mansion_party",
+      "category": "financial_ruin",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "financial_ruin",
+      "badge": "MANSION MELTDOWN",
+      "eligibility": {},
+      "headlines": [
+        "{name} Rents a Mansion for One Night and Pays for a Year",
+        "The Party Clause Nobody Read"
+      ],
+      "twists": [
+        "The ice sculpture survives longer than the comeback.",
+        "The villa owner hires {name} to advertise the property."
+      ],
+      "subheadlines": [
+        "{name} stages a comeback party in an enormous villa. The footage looks luxurious until the invoices leak.",
+        "A contract error, damaged fountain, and imported ice sculpture create a bill larger than the entire event budget. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} stages a comeback party in an enormous villa. Then a contract error, damaged fountain, and imported ice sculpture create a bill larger than the entire event budget. Finally, the footage looks luxurious until the invoices leak.",
+        "{name} stages a comeback party in an enormous villa. A contract error, damaged fountain, and imported ice sculpture create a bill larger than the entire event budget. The footage looks luxurious until the invoices leak."
+      ],
+      "bulletPoints": [
+        "{name} stages a comeback party in an enormous villa.",
+        "A contract error, damaged fountain, and imported ice sculpture create a bill larger than the entire event budget.",
+        "The footage looks luxurious until the invoices leak."
+      ]
+    },
+    {
+      "id": "financial_ruin_manager_cousin",
+      "category": "financial_ruin",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "financial_ruin",
+      "badge": "FAMILY BUSINESS FAIL",
+      "eligibility": {},
+      "headlines": [
+        "{name} Hires an Unqualified Cousin as Manager",
+        "Love Is Free. Management Was Not."
+      ],
+      "twists": [
+        "The cousin signs a separate reality deal.",
+        "They reconcile after hiring an actual accountant."
+      ],
+      "subheadlines": [
+        "{name} places every booking, password, and payment account under a cousin's control. The family dispute unfolds through voice notes sent to journalists.",
+        "Three appearances are scheduled in different cities at the same hour. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} places every booking, password, and payment account under a cousin's control. Three appearances are scheduled in different cities at the same hour. The family dispute unfolds through voice notes sent to journalists.",
+        "It begins when {name} places every booking, password, and payment account under a cousin's control. Soon, three appearances are scheduled in different cities at the same hour. In the end, the family dispute unfolds through voice notes sent to journalists."
+      ],
+      "bulletPoints": [
+        "{name} places every booking, password, and payment account under a cousin's control.",
+        "Three appearances are scheduled in different cities at the same hour.",
+        "The family dispute unfolds through voice notes sent to journalists."
+      ]
+    },
+    {
+      "id": "legal_trouble_stolen_peacock",
+      "category": "legal_trouble",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "legal_trouble",
+      "badge": "ARRESTED WITH A PEACOCK",
+      "eligibility": {},
+      "headlines": [
+        "{name} Is Questioned Over a Missing Hotel Peacock",
+        "The Bird Was in the Back Seat"
+      ],
+      "twists": [
+        "The owner drops the complaint after receiving season tickets.",
+        "The peacock becomes an animal charity mascot."
+      ],
+      "subheadlines": [
+        "{name} leaves a promotional event with a decorative peacock that turns out to be real and privately owned. {name} claims it followed voluntarily and faces a very strange court hearing.",
+        "Traffic officers discover the bird calmly standing beside a gift bag. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} leaves a promotional event with a decorative peacock that turns out to be real and privately owned. Soon, traffic officers discover the bird calmly standing beside a gift bag. In the end, {name} claims it followed voluntarily and faces a very strange court hearing.",
+        "At first, {name} leaves a promotional event with a decorative peacock that turns out to be real and privately owned. The situation escalates when traffic officers discover the bird calmly standing beside a gift bag. By the final update, {name} claims it followed voluntarily and faces a very strange court hearing."
+      ],
+      "bulletPoints": [
+        "{name} leaves a promotional event with a decorative peacock that turns out to be real and privately owned.",
+        "Traffic officers discover the bird calmly standing beside a gift bag.",
+        "{name} claims it followed voluntarily and faces a very strange court hearing."
+      ]
+    },
+    {
+      "id": "legal_trouble_fake_charity",
+      "category": "legal_trouble",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "legal_trouble",
+      "badge": "CHARITY CHAOS",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Gala Has No Registered Charity",
+        "The Cheques Had Nowhere to Go"
+      ],
+      "twists": [
+        "A legitimate charity eventually receives everything.",
+        "The accountant becomes the public hero."
+      ],
+      "subheadlines": [
+        "{name} announces a glamorous fundraiser before completing any legal paperwork. Funds are frozen and {name} gives interviews from outside an accountant's office.",
+        "Donors discover the named organisation does not exist while the auction is still underway. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} announces a glamorous fundraiser before completing any legal paperwork. The situation escalates when donors discover the named organisation does not exist while the auction is still underway. By the final update, funds are frozen and {name} gives interviews from outside an accountant's office.",
+        "Nobody expects the story to go this far. {name} announces a glamorous fundraiser before completing any legal paperwork. Then donors discover the named organisation does not exist while the auction is still underway. Finally, funds are frozen and {name} gives interviews from outside an accountant's office."
+      ],
+      "bulletPoints": [
+        "{name} announces a glamorous fundraiser before completing any legal paperwork.",
+        "Donors discover the named organisation does not exist while the auction is still underway.",
+        "Funds are frozen and {name} gives interviews from outside an accountant's office."
+      ]
+    },
+    {
+      "id": "legal_trouble_paparazzi_chase",
+      "category": "legal_trouble",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "legal_trouble",
+      "badge": "CAMERA WAR",
+      "eligibility": {},
+      "headlines": [
+        "{name} Chases a Photographer Into a Fountain",
+        "The Picture Was Blurry. The Lawsuit Was Not."
+      ],
+      "twists": [
+        "The photographer's camera was not recording.",
+        "The fountain image wins photo of the year."
+      ],
+      "subheadlines": [
+        "{name} confronts a photographer after an unflattering street photo. Security footage turns the dispute into international comedy.",
+        "The pursuit crosses a hotel lobby and ends with both parties standing in a decorative fountain. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} confronts a photographer after an unflattering street photo. Then the pursuit crosses a hotel lobby and ends with both parties standing in a decorative fountain. Finally, security footage turns the dispute into international comedy.",
+        "{name} confronts a photographer after an unflattering street photo. The pursuit crosses a hotel lobby and ends with both parties standing in a decorative fountain. Security footage turns the dispute into international comedy."
+      ],
+      "bulletPoints": [
+        "{name} confronts a photographer after an unflattering street photo.",
+        "The pursuit crosses a hotel lobby and ends with both parties standing in a decorative fountain.",
+        "Security footage turns the dispute into international comedy."
+      ]
+    },
+    {
+      "id": "legal_trouble_forged_invite",
+      "category": "legal_trouble",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "legal_trouble",
+      "badge": "VIP FRAUD?",
+      "eligibility": {},
+      "headlines": [
+        "{name} Uses a Homemade VIP Pass",
+        "The Laminator That Reached Court"
+      ],
+      "twists": [
+        "The event later hires {name} for publicity.",
+        "The badge designer receives freelance offers."
+      ],
+      "subheadlines": [
+        "{name} creates a convincing event credential after being left off a guest list. A minor legal dispute follows and the homemade badge becomes evidence.",
+        "The pass works until {name} is asked why the sponsor logo is upside down. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} creates a convincing event credential after being left off a guest list. The pass works until {name} is asked why the sponsor logo is upside down. A minor legal dispute follows and the homemade badge becomes evidence.",
+        "It begins when {name} creates a convincing event credential after being left off a guest list. Soon, the pass works until {name} is asked why the sponsor logo is upside down. In the end, a minor legal dispute follows and the homemade badge becomes evidence."
+      ],
+      "bulletPoints": [
+        "{name} creates a convincing event credential after being left off a guest list.",
+        "The pass works until {name} is asked why the sponsor logo is upside down.",
+        "A minor legal dispute follows and the homemade badge becomes evidence."
+      ]
+    },
+    {
+      "id": "legal_trouble_noise_case",
+      "category": "legal_trouble",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "legal_trouble",
+      "badge": "NEIGHBOURS REVOLT",
+      "eligibility": {},
+      "headlines": [
+        "{name} Faces Court Over a Twelve-Hour Reunion Party",
+        "The Playlist Became Evidence"
+      ],
+      "twists": [
+        "The neighbour's timeline becomes a bestselling booklet.",
+        "The building votes to ban ring lights."
+      ],
+      "subheadlines": [
+        "{name} hosts a cast reunion in a residential building. The case ends with a fine and a legally binding quiet-hours agreement.",
+        "Neighbours document every song, argument, and balcony speech in precise chronological order. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} hosts a cast reunion in a residential building. Soon, neighbours document every song, argument, and balcony speech in precise chronological order. In the end, the case ends with a fine and a legally binding quiet-hours agreement.",
+        "At first, {name} hosts a cast reunion in a residential building. The situation escalates when neighbours document every song, argument, and balcony speech in precise chronological order. By the final update, the case ends with a fine and a legally binding quiet-hours agreement."
+      ],
+      "bulletPoints": [
+        "{name} hosts a cast reunion in a residential building.",
+        "Neighbours document every song, argument, and balcony speech in precise chronological order.",
+        "The case ends with a fine and a legally binding quiet-hours agreement."
+      ]
+    },
+    {
+      "id": "destructive_excess_champagne_month",
+      "category": "destructive_excess",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "destructive_excess",
+      "badge": "FAME COLLAPSE",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Champagne Month Ends in Rehab",
+        "The Party Never Stopped — Until It Did"
+      ],
+      "twists": [
+        "The comeback special is filmed without {possessive} permission by an overexcited cousin.",
+        "The first sober project becomes {name}'s biggest success."
+      ],
+      "subheadlines": [
+        "{name} tries to attend every launch, afterparty, and sponsored weekend offered after the finale. {name} steps away for treatment and later returns with a sober, tightly controlled interview.",
+        "Friends become alarmed as drinking replaces sleep and public appearances grow increasingly chaotic. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} tries to attend every launch, afterparty, and sponsored weekend offered after the finale. The situation escalates when friends become alarmed as drinking replaces sleep and public appearances grow increasingly chaotic. By the final update, {name} steps away for treatment and later returns with a sober, tightly controlled interview.",
+        "Nobody expects the story to go this far. {name} tries to attend every launch, afterparty, and sponsored weekend offered after the finale. Then friends become alarmed as drinking replaces sleep and public appearances grow increasingly chaotic. Finally, {name} steps away for treatment and later returns with a sober, tightly controlled interview."
+      ],
+      "bulletPoints": [
+        "{name} tries to attend every launch, afterparty, and sponsored weekend offered after the finale.",
+        "Friends become alarmed as drinking replaces sleep and public appearances grow increasingly chaotic.",
+        "{name} steps away for treatment and later returns with a sober, tightly controlled interview."
+      ]
+    },
+    {
+      "id": "destructive_excess_casino_week",
+      "category": "destructive_excess",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "destructive_excess",
+      "badge": "SEVEN-DAY SPIRAL",
+      "eligibility": {},
+      "headlines": [
+        "{name} Disappears Into a Casino for a Week",
+        "The Complimentary Suite Cost Everything"
+      ],
+      "twists": [
+        "The winning chip was in a forgotten coat pocket.",
+        "The casino bans the catchphrase, not {name}."
+      ],
+      "subheadlines": [
+        "{name} accepts a casino appearance and remains at the resort long after the contract ends. {name} leaves owing less money than rumoured but far more dignity.",
+        "A trail of room-service bills, borrowed sunglasses, and increasingly desperate roulette predictions follows. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} accepts a casino appearance and remains at the resort long after the contract ends. Then a trail of room-service bills, borrowed sunglasses, and increasingly desperate roulette predictions follows. Finally, {name} leaves owing less money than rumoured but far more dignity.",
+        "{name} accepts a casino appearance and remains at the resort long after the contract ends. A trail of room-service bills, borrowed sunglasses, and increasingly desperate roulette predictions follows. {name} leaves owing less money than rumoured but far more dignity."
+      ],
+      "bulletPoints": [
+        "{name} accepts a casino appearance and remains at the resort long after the contract ends.",
+        "A trail of room-service bills, borrowed sunglasses, and increasingly desperate roulette predictions follows.",
+        "{name} leaves owing less money than rumoured but far more dignity."
+      ]
+    },
+    {
+      "id": "destructive_excess_nightclub_residency",
+      "category": "destructive_excess",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "destructive_excess",
+      "badge": "PERMANENT GUEST",
+      "eligibility": {},
+      "headlines": [
+        "{name} Mistakes a Nightclub Booth for a Career",
+        "Thirty Nights, One Jacket"
+      ],
+      "twists": [
+        "The club eventually hires {name} as a host.",
+        "The jacket receives its own social-media account."
+      ],
+      "subheadlines": [
+        "{name} becomes a nightly fixture at the same club after one heavily photographed appearance. The bookings stop, but {name} continues arriving as if under contract.",
+        "Staff begin storing {possessive} preferred jacket and emergency interview lighting behind the bar. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} becomes a nightly fixture at the same club after one heavily photographed appearance. Staff begin storing {possessive} preferred jacket and emergency interview lighting behind the bar. The bookings stop, but {name} continues arriving as if under contract.",
+        "It begins when {name} becomes a nightly fixture at the same club after one heavily photographed appearance. Soon, staff begin storing {possessive} preferred jacket and emergency interview lighting behind the bar. In the end, the bookings stop, but {name} continues arriving as if under contract."
+      ],
+      "bulletPoints": [
+        "{name} becomes a nightly fixture at the same club after one heavily photographed appearance.",
+        "Staff begin storing {possessive} preferred jacket and emergency interview lighting behind the bar.",
+        "The bookings stop, but {name} continues arriving as if under contract."
+      ]
+    },
+    {
+      "id": "destructive_excess_wellness_cult",
+      "category": "destructive_excess",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "destructive_excess",
+      "badge": "WELLNESS BREAKDOWN",
+      "eligibility": {},
+      "headlines": [
+        "{name} Joins a Retreat That Forbids Phones and Questions",
+        "The Detox Lasted Until the Police Arrived"
+      ],
+      "twists": [
+        "Doctor Moon is a former cruise magician.",
+        "{name} later turns the experience into a sharp comedy special."
+      ],
+      "subheadlines": [
+        "{name} retreats from fame at an exclusive wellness compound led by a man called 'Doctor Moon'. Families intervene after {name} appears in a promotional video speaking entirely in slogans.",
+        "Participants surrender devices, bank cards, and the right to choose breakfast. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} retreats from fame at an exclusive wellness compound led by a man called 'Doctor Moon'. Soon, participants surrender devices, bank cards, and the right to choose breakfast. In the end, families intervene after {name} appears in a promotional video speaking entirely in slogans.",
+        "At first, {name} retreats from fame at an exclusive wellness compound led by a man called 'Doctor Moon'. The situation escalates when participants surrender devices, bank cards, and the right to choose breakfast. By the final update, families intervene after {name} appears in a promotional video speaking entirely in slogans."
+      ],
+      "bulletPoints": [
+        "{name} retreats from fame at an exclusive wellness compound led by a man called 'Doctor Moon'.",
+        "Participants surrender devices, bank cards, and the right to choose breakfast.",
+        "Families intervene after {name} appears in a promotional video speaking entirely in slogans."
+      ]
+    },
+    {
+      "id": "destructive_excess_shopping_spree",
+      "category": "destructive_excess",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "destructive_excess",
+      "badge": "DELIVERY MOUNTAIN",
+      "eligibility": {},
+      "headlines": [
+        "{name} Orders 214 Packages in One Weekend",
+        "The Lobby Could No Longer Open"
+      ],
+      "twists": [
+        "Return shipping costs more than the products.",
+        "A resale livestream unexpectedly becomes profitable."
+      ],
+      "subheadlines": [
+        "{name} attempts a complete luxury reinvention through late-night online shopping. The building manager stages an intervention beside the parcel lockers.",
+        "Boxes block the apartment entrance and reveal duplicates of the same sunglasses in nine colours. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} attempts a complete luxury reinvention through late-night online shopping. The situation escalates when boxes block the apartment entrance and reveal duplicates of the same sunglasses in nine colours. By the final update, the building manager stages an intervention beside the parcel lockers.",
+        "Nobody expects the story to go this far. {name} attempts a complete luxury reinvention through late-night online shopping. Then boxes block the apartment entrance and reveal duplicates of the same sunglasses in nine colours. Finally, the building manager stages an intervention beside the parcel lockers."
+      ],
+      "bulletPoints": [
+        "{name} attempts a complete luxury reinvention through late-night online shopping.",
+        "Boxes block the apartment entrance and reveal duplicates of the same sunglasses in nine colours.",
+        "The building manager stages an intervention beside the parcel lockers."
+      ]
+    },
+    {
+      "id": "recovery_redemption_sober_return",
+      "category": "recovery_redemption",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "recovery_redemption",
+      "badge": "HONEST COMEBACK",
+      "eligibility": {
+        "tagsAny": [
+          "controversial",
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Returns Without the Spin",
+        "No Filters, No Excuses, No Sponsored Apology"
+      ],
+      "twists": [
+        "{rivalName} is the first person waiting backstage.",
+        "The interview is nominated for an award."
+      ],
+      "subheadlines": [
+        "{name} disappears after a chaotic post-show period and later speaks openly about getting help. Viewers respond warmly and old rivals quietly send support.",
+        "The interview avoids dramatic music and contains the first direct apology of the entire cast. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} disappears after a chaotic post-show period and later speaks openly about getting help. Then the interview avoids dramatic music and contains the first direct apology of the entire cast. Finally, viewers respond warmly and old rivals quietly send support.",
+        "{name} disappears after a chaotic post-show period and later speaks openly about getting help. The interview avoids dramatic music and contains the first direct apology of the entire cast. Viewers respond warmly and old rivals quietly send support."
+      ],
+      "bulletPoints": [
+        "{name} disappears after a chaotic post-show period and later speaks openly about getting help.",
+        "The interview avoids dramatic music and contains the first direct apology of the entire cast.",
+        "Viewers respond warmly and old rivals quietly send support."
+      ]
+    },
+    {
+      "id": "recovery_redemption_debt_rebuild",
+      "category": "recovery_redemption",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "recovery_redemption",
+      "badge": "ZERO TO SOLVENT",
+      "eligibility": {},
+      "headlines": [
+        "{name} Pays Back Every Cent",
+        "The Comeback Spreadsheet Nobody Expected"
+      ],
+      "twists": [
+        "An accounting firm offers {name} a campaign.",
+        "The spreadsheet is framed at home."
+      ],
+      "subheadlines": [
+        "{name} loses most of the post-show money through bad deals. The final debt payment becomes more popular than the original victory.",
+        "Instead of launching another brand, {name} takes ordinary work and publishes monthly repayment updates. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} loses most of the post-show money through bad deals. Instead of launching another brand, {name} takes ordinary work and publishes monthly repayment updates. The final debt payment becomes more popular than the original victory.",
+        "It begins when {name} loses most of the post-show money through bad deals. Soon, instead of launching another brand, {name} takes ordinary work and publishes monthly repayment updates. In the end, the final debt payment becomes more popular than the original victory."
+      ],
+      "bulletPoints": [
+        "{name} loses most of the post-show money through bad deals.",
+        "Instead of launching another brand, {name} takes ordinary work and publishes monthly repayment updates.",
+        "The final debt payment becomes more popular than the original victory."
+      ]
+    },
+    {
+      "id": "recovery_redemption_enemy_apology",
+      "category": "recovery_redemption",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "recovery_redemption",
+      "badge": "FEUD ENDS",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Apologises to {rivalName} Without a Camera Crew",
+        "The Conversation Fans Never Saw"
+      ],
+      "twists": [
+        "The café owner kept the receipt.",
+        "Their fans continue fighting anyway."
+      ],
+      "subheadlines": [
+        "{name} contacts {rivalName} privately after years of public fighting. Months later both confirm the feud is over in matching one-sentence statements.",
+        "The pair meets in a quiet café and leaves without posting a single photograph. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} contacts {rivalName} privately after years of public fighting. Soon, the pair meets in a quiet café and leaves without posting a single photograph. In the end, months later both confirm the feud is over in matching one-sentence statements.",
+        "At first, {name} contacts {rivalName} privately after years of public fighting. The situation escalates when the pair meets in a quiet café and leaves without posting a single photograph. By the final update, months later both confirm the feud is over in matching one-sentence statements."
+      ],
+      "bulletPoints": [
+        "{name} contacts {rivalName} privately after years of public fighting.",
+        "The pair meets in a quiet café and leaves without posting a single photograph.",
+        "Months later both confirm the feud is over in matching one-sentence statements."
+      ]
+    },
+    {
+      "id": "recovery_redemption_charity_real",
+      "category": "recovery_redemption",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "recovery_redemption",
+      "badge": "REPUTATION RESCUE",
+      "eligibility": {},
+      "headlines": [
+        "{name} Builds the Charity Properly This Time",
+        "The Second Gala Has Receipts"
+      ],
+      "twists": [
+        "The accountant receives the loudest applause.",
+        "{name} refuses all photographs at the cheque presentation."
+      ],
+      "subheadlines": [
+        "{name} responds to an earlier fundraising scandal by hiring independent oversight. The event raises real money and denies tabloids the disaster they expected.",
+        "Every donation, invoice, and flower arrangement is published online. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} responds to an earlier fundraising scandal by hiring independent oversight. The situation escalates when every donation, invoice, and flower arrangement is published online. By the final update, the event raises real money and denies tabloids the disaster they expected.",
+        "Nobody expects the story to go this far. {name} responds to an earlier fundraising scandal by hiring independent oversight. Then every donation, invoice, and flower arrangement is published online. Finally, the event raises real money and denies tabloids the disaster they expected."
+      ],
+      "bulletPoints": [
+        "{name} responds to an earlier fundraising scandal by hiring independent oversight.",
+        "Every donation, invoice, and flower arrangement is published online.",
+        "The event raises real money and denies tabloids the disaster they expected."
+      ]
+    },
+    {
+      "id": "recovery_redemption_ordinary_reset",
+      "category": "recovery_redemption",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "recovery_redemption",
+      "badge": "QUIET RESET",
+      "eligibility": {},
+      "headlines": [
+        "{name} Leaves Fame and Comes Back Better",
+        "The Comeback Begins at a Local Bus Stop"
+      ],
+      "twists": [
+        "A bus driver becomes {name}'s most trusted adviser.",
+        "The eventual return is a small theatre show."
+      ],
+      "subheadlines": [
+        "{name} returns to ordinary routines after months of relentless publicity. The absence of spectacle slowly repairs {possessive} reputation.",
+        "Fans occasionally spot {object} commuting, shopping, and refusing to skip queues. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} returns to ordinary routines after months of relentless publicity. Then fans occasionally spot {object} commuting, shopping, and refusing to skip queues. Finally, the absence of spectacle slowly repairs {possessive} reputation.",
+        "{name} returns to ordinary routines after months of relentless publicity. Fans occasionally spot {object} commuting, shopping, and refusing to skip queues. The absence of spectacle slowly repairs {possessive} reputation."
+      ],
+      "bulletPoints": [
+        "{name} returns to ordinary routines after months of relentless publicity.",
+        "Fans occasionally spot {object} commuting, shopping, and refusing to skip queues.",
+        "The absence of spectacle slowly repairs {possessive} reputation."
+      ]
+    },
+    {
+      "id": "strange_business_breakup_planner",
+      "category": "strange_business",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "strange_business",
+      "badge": "BIZARRE BUSINESS",
+      "eligibility": {
+        "tagsAny": [
+          "romance"
+        ],
+        "requiresRelation": "romantic"
+      },
+      "headlines": [
+        "{name} Launches a Breakup Planning Agency",
+        "Flowers In, Shared Passwords Out"
+      ],
+      "twists": [
+        "{romanticName} designs the premium package.",
+        "One couple accidentally reconciles during the service."
+      ],
+      "subheadlines": [
+        "{name} starts a service that organises dignified separations. The company becomes disturbingly popular before Valentine's Day.",
+        "Clients receive scripts, key-return envelopes, and optional witnesses trained not to take sides. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} starts a service that organises dignified separations. Clients receive scripts, key-return envelopes, and optional witnesses trained not to take sides. The company becomes disturbingly popular before Valentine's Day.",
+        "It begins when {name} starts a service that organises dignified separations. Soon, clients receive scripts, key-return envelopes, and optional witnesses trained not to take sides. In the end, the company becomes disturbingly popular before Valentine's Day."
+      ],
+      "bulletPoints": [
+        "{name} starts a service that organises dignified separations.",
+        "Clients receive scripts, key-return envelopes, and optional witnesses trained not to take sides.",
+        "The company becomes disturbingly popular before Valentine's Day."
+      ]
+    },
+    {
+      "id": "strange_business_apology_writer",
+      "category": "strange_business",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "strange_business",
+      "badge": "SORRY SELLS",
+      "eligibility": {},
+      "headlines": [
+        "{name} Makes a Fortune Writing Celebrity Apologies",
+        "The Notes Sound Human for Once"
+      ],
+      "twists": [
+        "The typo becomes a trademark.",
+        "{name} refuses to apologise for the apology business."
+      ],
+      "subheadlines": [
+        "{name} quietly writes apology statements for scandal-prone public figures. The business is exposed when three celebrities use the same typo.",
+        "Clients praise the service for eliminating phrases such as 'if anyone was offended'. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} quietly writes apology statements for scandal-prone public figures. Soon, clients praise the service for eliminating phrases such as 'if anyone was offended'. In the end, the business is exposed when three celebrities use the same typo.",
+        "At first, {name} quietly writes apology statements for scandal-prone public figures. The situation escalates when clients praise the service for eliminating phrases such as 'if anyone was offended'. By the final update, the business is exposed when three celebrities use the same typo."
+      ],
+      "bulletPoints": [
+        "{name} quietly writes apology statements for scandal-prone public figures.",
+        "Clients praise the service for eliminating phrases such as 'if anyone was offended'.",
+        "The business is exposed when three celebrities use the same typo."
+      ]
+    },
+    {
+      "id": "strange_business_rent_a_rival",
+      "category": "strange_business",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "strange_business",
+      "badge": "ENEMY FOR HIRE",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Rents Professional Rivals to Boring Influencers",
+        "Every Career Needs a Villain"
+      ],
+      "twists": [
+        "{rivalName} joins as creative director.",
+        "The premium feud wins a marketing award."
+      ],
+      "subheadlines": [
+        "{name} builds an agency supplying harmless public feuds to people with no interesting scandals. The service works until two hired rivals genuinely dislike each other.",
+        "Packages include subtweets, award-show side-eye, and one carefully timed unfollow. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} builds an agency supplying harmless public feuds to people with no interesting scandals. The situation escalates when packages include subtweets, award-show side-eye, and one carefully timed unfollow. By the final update, the service works until two hired rivals genuinely dislike each other.",
+        "Nobody expects the story to go this far. {name} builds an agency supplying harmless public feuds to people with no interesting scandals. Then packages include subtweets, award-show side-eye, and one carefully timed unfollow. Finally, the service works until two hired rivals genuinely dislike each other."
+      ],
+      "bulletPoints": [
+        "{name} builds an agency supplying harmless public feuds to people with no interesting scandals.",
+        "Packages include subtweets, award-show side-eye, and one carefully timed unfollow.",
+        "The service works until two hired rivals genuinely dislike each other."
+      ]
+    },
+    {
+      "id": "strange_business_haunted_airbnb",
+      "category": "strange_business",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "strange_business",
+      "badge": "GHOST LISTING",
+      "eligibility": {},
+      "headlines": [
+        "{name} Opens a Haunted Rental With No Ghost",
+        "Guests Demand More Paranormal Activity"
+      ],
+      "twists": [
+        "A real historian makes the property successful.",
+        "The fake ghost asks for overtime."
+      ],
+      "subheadlines": [
+        "{name} markets an old house as a luxury haunted retreat. Staff begin manufacturing noises and accidentally convince themselves the place is cursed.",
+        "Visitors complain that the only frightening feature is the plumbing. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} markets an old house as a luxury haunted retreat. Then visitors complain that the only frightening feature is the plumbing. Finally, staff begin manufacturing noises and accidentally convince themselves the place is cursed.",
+        "{name} markets an old house as a luxury haunted retreat. Visitors complain that the only frightening feature is the plumbing. Staff begin manufacturing noises and accidentally convince themselves the place is cursed."
+      ],
+      "bulletPoints": [
+        "{name} markets an old house as a luxury haunted retreat.",
+        "Visitors complain that the only frightening feature is the plumbing.",
+        "Staff begin manufacturing noises and accidentally convince themselves the place is cursed."
+      ]
+    },
+    {
+      "id": "strange_business_queue_sitter",
+      "category": "strange_business",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "strange_business",
+      "badge": "TIME TYCOON",
+      "eligibility": {},
+      "headlines": [
+        "{name} Creates a Professional Queueing Company",
+        "Standing Still Becomes Big Business"
+      ],
+      "twists": [
+        "The longest queue is for {name}'s own service.",
+        "A rival firm starts cutting in line."
+      ],
+      "subheadlines": [
+        "{name} hires people to wait in lines for product launches and exclusive restaurants. The company develops uniforms, rankings, and an employee of the month.",
+        "Demand explodes when celebrities realise they can arrive precisely when cameras do. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} hires people to wait in lines for product launches and exclusive restaurants. Demand explodes when celebrities realise they can arrive precisely when cameras do. The company develops uniforms, rankings, and an employee of the month.",
+        "It begins when {name} hires people to wait in lines for product launches and exclusive restaurants. Soon, demand explodes when celebrities realise they can arrive precisely when cameras do. In the end, the company develops uniforms, rankings, and an employee of the month."
+      ],
+      "bulletPoints": [
+        "{name} hires people to wait in lines for product launches and exclusive restaurants.",
+        "Demand explodes when celebrities realise they can arrive precisely when cameras do.",
+        "The company develops uniforms, rankings, and an employee of the month."
+      ]
+    },
+    {
+      "id": "social_media_notes_app",
+      "category": "social_media",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "social_media",
+      "badge": "APOLOGY LOOP",
+      "eligibility": {},
+      "headlines": [
+        "{name} Posts Seven Apologies in One Day",
+        "Each Statement Corrects the Previous Statement"
+      ],
+      "twists": [
+        "The designer publishes a behind-the-scenes documentary.",
+        "The seventh apology is universally praised."
+      ],
+      "subheadlines": [
+        "{name} tries to resolve a minor misunderstanding with a carefully designed note. By evening the original scandal is forgotten and the apology process is the scandal.",
+        "Every edit introduces a new contradiction and a different font. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} tries to resolve a minor misunderstanding with a carefully designed note. Soon, every edit introduces a new contradiction and a different font. In the end, by evening the original scandal is forgotten and the apology process is the scandal.",
+        "At first, {name} tries to resolve a minor misunderstanding with a carefully designed note. The situation escalates when every edit introduces a new contradiction and a different font. By the final update, by evening the original scandal is forgotten and the apology process is the scandal."
+      ],
+      "bulletPoints": [
+        "{name} tries to resolve a minor misunderstanding with a carefully designed note.",
+        "Every edit introduces a new contradiction and a different font.",
+        "By evening the original scandal is forgotten and the apology process is the scandal."
+      ]
+    },
+    {
+      "id": "social_media_live_filter",
+      "category": "social_media",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "social_media",
+      "badge": "FILTER FAILURE",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Beauty Filter Switches Off Mid-Denial",
+        "The Face Was Real. The Product Was Not."
+      ],
+      "twists": [
+        "Sales increase anyway.",
+        "{name} later fronts an honesty campaign."
+      ],
+      "subheadlines": [
+        "{name} livestreams a forceful defence of a cosmetic sponsorship. The brand deletes the campaign and the clip reaches millions.",
+        "The filter fails while {name} is claiming no digital enhancement is being used. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} livestreams a forceful defence of a cosmetic sponsorship. The situation escalates when the filter fails while {name} is claiming no digital enhancement is being used. By the final update, the brand deletes the campaign and the clip reaches millions.",
+        "Nobody expects the story to go this far. {name} livestreams a forceful defence of a cosmetic sponsorship. Then the filter fails while {name} is claiming no digital enhancement is being used. Finally, the brand deletes the campaign and the clip reaches millions."
+      ],
+      "bulletPoints": [
+        "{name} livestreams a forceful defence of a cosmetic sponsorship.",
+        "The filter fails while {name} is claiming no digital enhancement is being used.",
+        "The brand deletes the campaign and the clip reaches millions."
+      ]
+    },
+    {
+      "id": "social_media_private_public",
+      "category": "social_media",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "social_media",
+      "badge": "CLOSE FRIENDS DISASTER",
+      "eligibility": {
+        "tagsAny": [
+          "betrayal",
+          "alliance_broken"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Posts the Private Rant Publicly",
+        "The Green Circle Was Not There"
+      ],
+      "twists": [
+        "The hairdresser gains thousands of followers.",
+        "{allyName} replies with a single punctuation mark."
+      ],
+      "subheadlines": [
+        "{name} records a harsh message intended for a tiny private audience. Deletions fail because fans subtitle the rant within minutes.",
+        "The clip appears publicly and names {allyName}, two producers, and an innocent hairdresser. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} records a harsh message intended for a tiny private audience. Then the clip appears publicly and names {allyName}, two producers, and an innocent hairdresser. Finally, deletions fail because fans subtitle the rant within minutes.",
+        "{name} records a harsh message intended for a tiny private audience. The clip appears publicly and names {allyName}, two producers, and an innocent hairdresser. Deletions fail because fans subtitle the rant within minutes."
+      ],
+      "bulletPoints": [
+        "{name} records a harsh message intended for a tiny private audience.",
+        "The clip appears publicly and names {allyName}, two producers, and an innocent hairdresser.",
+        "Deletions fail because fans subtitle the rant within minutes."
+      ]
+    },
+    {
+      "id": "social_media_account_hacked",
+      "category": "social_media",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "social_media",
+      "badge": "HACKED — MAYBE",
+      "eligibility": {},
+      "headlines": [
+        "{name} Blames a Hacker Who Has Excellent Grammar",
+        "The Mystery Poster Uses the Same Catchphrase"
+      ],
+      "twists": [
+        "The hacker books better interviews than {name}.",
+        "The account later thanks the hacker."
+      ],
+      "subheadlines": [
+        "{name} claims a controversial series of posts came from an intruder. The explanation remains unproven but strangely effective.",
+        "Cybersecurity experts note the supposed hacker uses {possessive} favourite emoji and promotes an upcoming appearance. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} claims a controversial series of posts came from an intruder. Cybersecurity experts note the supposed hacker uses {possessive} favourite emoji and promotes an upcoming appearance. The explanation remains unproven but strangely effective.",
+        "It begins when {name} claims a controversial series of posts came from an intruder. Soon, cybersecurity experts note the supposed hacker uses {possessive} favourite emoji and promotes an upcoming appearance. In the end, the explanation remains unproven but strangely effective."
+      ],
+      "bulletPoints": [
+        "{name} claims a controversial series of posts came from an intruder.",
+        "Cybersecurity experts note the supposed hacker uses {possessive} favourite emoji and promotes an upcoming appearance.",
+        "The explanation remains unproven but strangely effective."
+      ]
+    },
+    {
+      "id": "social_media_silence_strategy",
+      "category": "social_media",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "social_media",
+      "badge": "SILENCE WINS",
+      "eligibility": {
+        "tagsAny": [
+          "low_profile",
+          "early_exit"
+        ]
+      },
+      "headlines": [
+        "{name} Refuses to Post and Becomes More Famous",
+        "The Blank Feed Everyone Watches"
+      ],
+      "twists": [
+        "The first post is a picture of a chair.",
+        "The chair receives sponsorship offers."
+      ],
+      "subheadlines": [
+        "{name} deletes every social account after the finale. The refusal to perform online creates more mystique than constant content.",
+        "Fan pages treat each public sighting like a rare astronomical event. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} deletes every social account after the finale. Soon, fan pages treat each public sighting like a rare astronomical event. In the end, the refusal to perform online creates more mystique than constant content.",
+        "At first, {name} deletes every social account after the finale. The situation escalates when fan pages treat each public sighting like a rare astronomical event. By the final update, the refusal to perform online creates more mystique than constant content."
+      ],
+      "bulletPoints": [
+        "{name} deletes every social account after the finale.",
+        "Fan pages treat each public sighting like a rare astronomical event.",
+        "The refusal to perform online creates more mystique than constant content."
+      ]
+    },
+    {
+      "id": "reality_tv_obsession_six_shows",
+      "category": "reality_tv_obsession",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "reality_tv_obsession",
+      "badge": "REALITY RELAPSE",
+      "eligibility": {},
+      "headlines": [
+        "{name} Joins Six Reality Shows in One Year",
+        "No Format Is Safe"
+      ],
+      "twists": [
+        "One network accidentally crowns {name} twice.",
+        "The cooking show reveals unexpected talent."
+      ],
+      "subheadlines": [
+        "{name} accepts every television offer after the finale. Viewers lose track of which show {name} is currently being eliminated from.",
+        "Dating, cooking, survival, dance, and renovation programmes all feature the same dramatic entrance. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} accepts every television offer after the finale. The situation escalates when dating, cooking, survival, dance, and renovation programmes all feature the same dramatic entrance. By the final update, viewers lose track of which show {name} is currently being eliminated from.",
+        "Nobody expects the story to go this far. {name} accepts every television offer after the finale. Then dating, cooking, survival, dance, and renovation programmes all feature the same dramatic entrance. Finally, viewers lose track of which show {name} is currently being eliminated from."
+      ],
+      "bulletPoints": [
+        "{name} accepts every television offer after the finale.",
+        "Dating, cooking, survival, dance, and renovation programmes all feature the same dramatic entrance.",
+        "Viewers lose track of which show {name} is currently being eliminated from."
+      ]
+    },
+    {
+      "id": "reality_tv_obsession_self_produced_house",
+      "category": "reality_tv_obsession",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "reality_tv_obsession",
+      "badge": "THE HOUSE AT HOME",
+      "eligibility": {},
+      "headlines": [
+        "{name} Installs Cameras in the Apartment",
+        "Nobody Commissioned Season Two"
+      ],
+      "twists": [
+        "The landlord wins the public vote.",
+        "A small network buys the format as a comedy."
+      ],
+      "subheadlines": [
+        "{name} recreates the show experience at home and streams daily household routines. The audience shrinks to twelve loyal viewers and one concerned landlord.",
+        "Friends receive microphones at the door and visitors are asked to nominate someone before leaving. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} recreates the show experience at home and streams daily household routines. Then friends receive microphones at the door and visitors are asked to nominate someone before leaving. Finally, the audience shrinks to twelve loyal viewers and one concerned landlord.",
+        "{name} recreates the show experience at home and streams daily household routines. Friends receive microphones at the door and visitors are asked to nominate someone before leaving. The audience shrinks to twelve loyal viewers and one concerned landlord."
+      ],
+      "bulletPoints": [
+        "{name} recreates the show experience at home and streams daily household routines.",
+        "Friends receive microphones at the door and visitors are asked to nominate someone before leaving.",
+        "The audience shrinks to twelve loyal viewers and one concerned landlord."
+      ]
+    },
+    {
+      "id": "reality_tv_obsession_reunion_crasher",
+      "category": "reality_tv_obsession",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "reality_tv_obsession",
+      "badge": "UNINVITED RETURN",
+      "eligibility": {},
+      "headlines": [
+        "{name} Appears at Every Reunion — Even Other Shows",
+        "Security Knows the Outfit"
+      ],
+      "twists": [
+        "The reviews become popular.",
+        "{name} is accidentally invited to host one."
+      ],
+      "subheadlines": [
+        "{name} begins turning up at reunion specials for programmes never joined. A network finally offers a role reviewing reunions from outside the venue.",
+        "The same confident wave carries {object} past three red carpets before organisers compare guest lists. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} begins turning up at reunion specials for programmes never joined. The same confident wave carries {object} past three red carpets before organisers compare guest lists. A network finally offers a role reviewing reunions from outside the venue.",
+        "It begins when {name} begins turning up at reunion specials for programmes never joined. Soon, the same confident wave carries {object} past three red carpets before organisers compare guest lists. In the end, a network finally offers a role reviewing reunions from outside the venue."
+      ],
+      "bulletPoints": [
+        "{name} begins turning up at reunion specials for programmes never joined.",
+        "The same confident wave carries {object} past three red carpets before organisers compare guest lists.",
+        "A network finally offers a role reviewing reunions from outside the venue."
+      ]
+    },
+    {
+      "id": "reality_tv_obsession_audition_coach",
+      "category": "reality_tv_obsession",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "reality_tv_obsession",
+      "badge": "CASTING GURU",
+      "eligibility": {},
+      "headlines": [
+        "{name} Coaches Future Housemates to Cry on Cue",
+        "The Workshop Includes a Fake Eviction"
+      ],
+      "twists": [
+        "The best student refuses to credit {name}.",
+        "The fake eviction becomes too emotional."
+      ],
+      "subheadlines": [
+        "{name} opens an academy for reality-TV applicants. Casting producers publicly mock the school and privately recruit from it.",
+        "Students practise entrances, strategic silences, and looking shocked at information they already know. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} opens an academy for reality-TV applicants. Soon, students practise entrances, strategic silences, and looking shocked at information they already know. In the end, casting producers publicly mock the school and privately recruit from it.",
+        "At first, {name} opens an academy for reality-TV applicants. The situation escalates when students practise entrances, strategic silences, and looking shocked at information they already know. By the final update, casting producers publicly mock the school and privately recruit from it."
+      ],
+      "bulletPoints": [
+        "{name} opens an academy for reality-TV applicants.",
+        "Students practise entrances, strategic silences, and looking shocked at information they already know.",
+        "Casting producers publicly mock the school and privately recruit from it."
+      ]
+    },
+    {
+      "id": "reality_tv_obsession_producer_turn",
+      "category": "reality_tv_obsession",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "reality_tv_obsession",
+      "badge": "BEHIND THE CAMERA",
+      "eligibility": {
+        "tagsAny": [
+          "strategic",
+          "winner",
+          "late_game"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Becomes the Producer Everyone Fears",
+        "The Housemate Learns Where the Buttons Are"
+      ],
+      "twists": [
+        "The first contestant is {rivalName}.",
+        "The snack budget wins industry praise."
+      ],
+      "subheadlines": [
+        "{name} moves behind the scenes and develops a reputation for spotting manufactured drama instantly. The former housemate creates a hit format with fewer speeches and better snacks.",
+        "Contestants complain that every planned trick is anticipated before filming. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} moves behind the scenes and develops a reputation for spotting manufactured drama instantly. The situation escalates when contestants complain that every planned trick is anticipated before filming. By the final update, the former housemate creates a hit format with fewer speeches and better snacks.",
+        "Nobody expects the story to go this far. {name} moves behind the scenes and develops a reputation for spotting manufactured drama instantly. Then contestants complain that every planned trick is anticipated before filming. Finally, the former housemate creates a hit format with fewer speeches and better snacks."
+      ],
+      "bulletPoints": [
+        "{name} moves behind the scenes and develops a reputation for spotting manufactured drama instantly.",
+        "Contestants complain that every planned trick is anticipated before filming.",
+        "The former housemate creates a hit format with fewer speeches and better snacks."
+      ]
+    },
+    {
+      "id": "conspiracy_red_string_room",
+      "category": "conspiracy",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "conspiracy",
+      "badge": "CONSPIRACY HQ",
+      "eligibility": {},
+      "headlines": [
+        "{name} Covers an Entire Room in Red String",
+        "Every Eviction Leads to the Same Producer"
+      ],
+      "twists": [
+        "One tiny scheduling claim is actually correct.",
+        "The cushion is later sold at auction."
+      ],
+      "subheadlines": [
+        "{name} dedicates years to proving the season was manipulated. A livestream tour of the evidence room attracts both fans and fire inspectors.",
+        "Maps connect challenge results, breakfast choices, moon phases, and one suspiciously repeated cushion. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} dedicates years to proving the season was manipulated. Then maps connect challenge results, breakfast choices, moon phases, and one suspiciously repeated cushion. Finally, a livestream tour of the evidence room attracts both fans and fire inspectors.",
+        "{name} dedicates years to proving the season was manipulated. Maps connect challenge results, breakfast choices, moon phases, and one suspiciously repeated cushion. A livestream tour of the evidence room attracts both fans and fire inspectors."
+      ],
+      "bulletPoints": [
+        "{name} dedicates years to proving the season was manipulated.",
+        "Maps connect challenge results, breakfast choices, moon phases, and one suspiciously repeated cushion.",
+        "A livestream tour of the evidence room attracts both fans and fire inspectors."
+      ]
+    },
+    {
+      "id": "conspiracy_missing_day",
+      "category": "conspiracy",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "conspiracy",
+      "badge": "THE LOST DAY",
+      "eligibility": {
+        "tagsAny": [
+          "alliance_broken",
+          "low_profile"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Insists the Season Had a Secret Extra Day",
+        "Nobody Remembers Tuesday"
+      ],
+      "twists": [
+        "The carton appears in unused footage.",
+        "{allyName} reveals the diary entry was about laundry."
+      ],
+      "subheadlines": [
+        "{name} becomes convinced that one day of filming was erased. Former housemates disagree about the date but admit the milk is difficult to explain.",
+        "The theory rests on mismatched outfits, a missing carton of milk, and {allyName}'s vague diary entry. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} becomes convinced that one day of filming was erased. The theory rests on mismatched outfits, a missing carton of milk, and {allyName}'s vague diary entry. Former housemates disagree about the date but admit the milk is difficult to explain.",
+        "It begins when {name} becomes convinced that one day of filming was erased. Soon, the theory rests on mismatched outfits, a missing carton of milk, and {allyName}'s vague diary entry. In the end, former housemates disagree about the date but admit the milk is difficult to explain."
+      ],
+      "bulletPoints": [
+        "{name} becomes convinced that one day of filming was erased.",
+        "The theory rests on mismatched outfits, a missing carton of milk, and {allyName}'s vague diary entry.",
+        "Former housemates disagree about the date but admit the milk is difficult to explain."
+      ]
+    },
+    {
+      "id": "conspiracy_clone_theory",
+      "category": "conspiracy",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "conspiracy",
+      "badge": "DOUBLE TROUBLE",
+      "eligibility": {
+        "tagsAny": [
+          "twin_shock"
+        ]
+      },
+      "headlines": [
+        "{name} Claims a Housemate Was Replaced by a Double",
+        "The Ears Do Not Match, Says {name}"
+      ],
+      "twists": [
+        "Twin Shock makes the theory look less ridiculous.",
+        "{name} accidentally compares two photos of the same day."
+      ],
+      "subheadlines": [
+        "{name} publishes side-by-side images alleging a contestant was secretly substituted. Experts dismiss it while fans begin measuring everybody's ears.",
+        "The theory gains traction because the photographs use different lighting and opposite camera angles. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} publishes side-by-side images alleging a contestant was secretly substituted. Soon, the theory gains traction because the photographs use different lighting and opposite camera angles. In the end, experts dismiss it while fans begin measuring everybody's ears.",
+        "At first, {name} publishes side-by-side images alleging a contestant was secretly substituted. The situation escalates when the theory gains traction because the photographs use different lighting and opposite camera angles. By the final update, experts dismiss it while fans begin measuring everybody's ears."
+      ],
+      "bulletPoints": [
+        "{name} publishes side-by-side images alleging a contestant was secretly substituted.",
+        "The theory gains traction because the photographs use different lighting and opposite camera angles.",
+        "Experts dismiss it while fans begin measuring everybody's ears."
+      ]
+    },
+    {
+      "id": "conspiracy_jury_math",
+      "category": "conspiracy",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "conspiracy",
+      "badge": "VOTE MATHEMATICS",
+      "eligibility": {},
+      "headlines": [
+        "{name} Recounts the Tribunal Votes Every Night",
+        "The Numbers Still Add Up"
+      ],
+      "twists": [
+        "A maths channel reviews the model respectfully.",
+        "{name} later sells the spreadsheet as a game."
+      ],
+      "subheadlines": [
+        "{name} refuses to accept the finale result and develops increasingly elaborate vote models. The calculations prove the official result repeatedly, which only deepens the suspicion.",
+        "Spreadsheets account for seating order, envelope weight, and how long each juror blinked. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} refuses to accept the finale result and develops increasingly elaborate vote models. The situation escalates when spreadsheets account for seating order, envelope weight, and how long each juror blinked. By the final update, the calculations prove the official result repeatedly, which only deepens the suspicion.",
+        "Nobody expects the story to go this far. {name} refuses to accept the finale result and develops increasingly elaborate vote models. Then spreadsheets account for seating order, envelope weight, and how long each juror blinked. Finally, the calculations prove the official result repeatedly, which only deepens the suspicion."
+      ],
+      "bulletPoints": [
+        "{name} refuses to accept the finale result and develops increasingly elaborate vote models.",
+        "Spreadsheets account for seating order, envelope weight, and how long each juror blinked.",
+        "The calculations prove the official result repeatedly, which only deepens the suspicion."
+      ]
+    },
+    {
+      "id": "conspiracy_theory_podcast",
+      "category": "conspiracy",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "conspiracy",
+      "badge": "PARANOIA PAYS",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name}'s Conspiracy Podcast Becomes a Hit",
+        "Wrong About Everything, Excellent Production"
+      ],
+      "twists": [
+        "The final episode debunks the entire series.",
+        "{rivalName} becomes a recurring sceptic."
+      ],
+      "subheadlines": [
+        "{name} launches a weekly investigation into supposed hidden messages from the season. Listeners tune in as entertainment and advertisers follow.",
+        "The theories are absurd but the sound design, research notes, and cliffhangers are exceptional. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} launches a weekly investigation into supposed hidden messages from the season. Then the theories are absurd but the sound design, research notes, and cliffhangers are exceptional. Finally, listeners tune in as entertainment and advertisers follow.",
+        "{name} launches a weekly investigation into supposed hidden messages from the season. The theories are absurd but the sound design, research notes, and cliffhangers are exceptional. Listeners tune in as entertainment and advertisers follow."
+      ],
+      "bulletPoints": [
+        "{name} launches a weekly investigation into supposed hidden messages from the season.",
+        "The theories are absurd but the sound design, research notes, and cliffhangers are exceptional.",
+        "Listeners tune in as entertainment and advertisers follow."
+      ]
+    },
+    {
+      "id": "disappearance_vanish_bookshop",
+      "category": "disappearance",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "disappearance",
+      "badge": "FOUND!",
+      "eligibility": {},
+      "headlines": [
+        "{name} Vanishes — Then Turns Up Running a Bookshop",
+        "No Statement, Excellent Window Display"
+      ],
+      "twists": [
+        "The shop's bestseller is a memoir about disappearing.",
+        "Tourists make the quiet life less quiet."
+      ],
+      "subheadlines": [
+        "{name} stops attending events and deletes every account. {name} confirms nothing and offers a loyalty card.",
+        "Months later a fan recognises {object} arranging mystery novels in a quiet coastal shop. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} stops attending events and deletes every account. Months later a fan recognises {object} arranging mystery novels in a quiet coastal shop. {name} confirms nothing and offers a loyalty card.",
+        "It begins when {name} stops attending events and deletes every account. Soon, months later a fan recognises {object} arranging mystery novels in a quiet coastal shop. In the end, {name} confirms nothing and offers a loyalty card."
+      ],
+      "bulletPoints": [
+        "{name} stops attending events and deletes every account.",
+        "Months later a fan recognises {object} arranging mystery novels in a quiet coastal shop.",
+        "{name} confirms nothing and offers a loyalty card."
+      ]
+    },
+    {
+      "id": "disappearance_mystery_island",
+      "category": "disappearance",
+      "tone": "tragic",
+      "weight": 1,
+      "cooldownGroup": "disappearance",
+      "badge": "ISLAND MYSTERY",
+      "eligibility": {},
+      "headlines": [
+        "{name} Disappears After Boarding a Yacht",
+        "Seven Days Without a Signal"
+      ],
+      "twists": [
+        "The yacht had perfect Wi-Fi.",
+        "The silence was caused by a forgotten password."
+      ],
+      "subheadlines": [
+        "{name} joins a luxury brand trip and stops posting during rough weather. {name} returns furious that nobody appreciated the digital detox.",
+        "Rumours escalate from secret wedding to international arrest before the yacht reaches port. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} joins a luxury brand trip and stops posting during rough weather. Soon, rumours escalate from secret wedding to international arrest before the yacht reaches port. In the end, {name} returns furious that nobody appreciated the digital detox.",
+        "At first, {name} joins a luxury brand trip and stops posting during rough weather. The situation escalates when rumours escalate from secret wedding to international arrest before the yacht reaches port. By the final update, {name} returns furious that nobody appreciated the digital detox."
+      ],
+      "bulletPoints": [
+        "{name} joins a luxury brand trip and stops posting during rough weather.",
+        "Rumours escalate from secret wedding to international arrest before the yacht reaches port.",
+        "{name} returns furious that nobody appreciated the digital detox."
+      ]
+    },
+    {
+      "id": "disappearance_new_name",
+      "category": "disappearance",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "disappearance",
+      "badge": "NEW NAME, SAME COFFEE ORDER",
+      "eligibility": {},
+      "headlines": [
+        "{name} Starts Over Under a Different Name",
+        "The Barista Recognised the Order"
+      ],
+      "twists": [
+        "The barista protects the secret for a year.",
+        "The café names the drink after the alias."
+      ],
+      "subheadlines": [
+        "{name} leaves public life and begins working in another city under a shortened name. {name} asks for privacy and becomes a local legend instead.",
+        "The disguise survives until a former fan hears the exact same complicated coffee request. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} leaves public life and begins working in another city under a shortened name. The situation escalates when the disguise survives until a former fan hears the exact same complicated coffee request. By the final update, {name} asks for privacy and becomes a local legend instead.",
+        "Nobody expects the story to go this far. {name} leaves public life and begins working in another city under a shortened name. Then the disguise survives until a former fan hears the exact same complicated coffee request. Finally, {name} asks for privacy and becomes a local legend instead."
+      ],
+      "bulletPoints": [
+        "{name} leaves public life and begins working in another city under a shortened name.",
+        "The disguise survives until a former fan hears the exact same complicated coffee request.",
+        "{name} asks for privacy and becomes a local legend instead."
+      ]
+    },
+    {
+      "id": "disappearance_fake_kidnap",
+      "category": "disappearance",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "disappearance",
+      "badge": "KIDNAPPING HOAX?",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s 'Disappearance' Is Revealed as a Publicity Plan",
+        "The Ransom Note Included a Hashtag"
+      ],
+      "twists": [
+        "The product sells out.",
+        "The agency claims the hashtag was an intern's idea."
+      ],
+      "subheadlines": [
+        "{name} goes missing hours before a product launch. Police find {name} in a rented cabin reviewing media coverage.",
+        "A dramatic message appears online with perfect brand placement and a scheduled discount code. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} goes missing hours before a product launch. Then a dramatic message appears online with perfect brand placement and a scheduled discount code. Finally, police find {name} in a rented cabin reviewing media coverage.",
+        "{name} goes missing hours before a product launch. A dramatic message appears online with perfect brand placement and a scheduled discount code. Police find {name} in a rented cabin reviewing media coverage."
+      ],
+      "bulletPoints": [
+        "{name} goes missing hours before a product launch.",
+        "A dramatic message appears online with perfect brand placement and a scheduled discount code.",
+        "Police find {name} in a rented cabin reviewing media coverage."
+      ]
+    },
+    {
+      "id": "disappearance_monastery_retreat",
+      "category": "disappearance",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "disappearance",
+      "badge": "SILENT ERA",
+      "eligibility": {
+        "tagsAny": [
+          "controversial",
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Spends a Year at a Silent Retreat",
+        "The First Interview Lasts Four Minutes"
+      ],
+      "twists": [
+        "The first words are about compost.",
+        "{rivalName} attends the same retreat later."
+      ],
+      "subheadlines": [
+        "{name} withdraws from fame and joins a remote meditation community. The eventual return is calm, brief, and more compelling than any scandal.",
+        "Tabloids publish weekly speculation while {name} learns to garden and refuses all phones. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} withdraws from fame and joins a remote meditation community. Tabloids publish weekly speculation while {name} learns to garden and refuses all phones. The eventual return is calm, brief, and more compelling than any scandal.",
+        "It begins when {name} withdraws from fame and joins a remote meditation community. Soon, tabloids publish weekly speculation while {name} learns to garden and refuses all phones. In the end, the eventual return is calm, brief, and more compelling than any scandal."
+      ],
+      "bulletPoints": [
+        "{name} withdraws from fame and joins a remote meditation community.",
+        "Tabloids publish weekly speculation while {name} learns to garden and refuses all phones.",
+        "The eventual return is calm, brief, and more compelling than any scandal."
+      ]
+    },
+    {
+      "id": "ordinary_life_school_teacher",
+      "category": "ordinary_life",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "ordinary_life",
+      "badge": "NORMAL JOB SHOCK",
+      "eligibility": {},
+      "headlines": [
+        "{name} Becomes a School Teacher",
+        "The Classroom Has a Strict No-Catchphrase Rule"
+      ],
+      "twists": [
+        "The class votes on homework once and regrets it.",
+        "A former rival sends classroom supplies."
+      ],
+      "subheadlines": [
+        "{name} quietly retrains and begins teaching. {name} handles the attention, then returns to ordinary work.",
+        "Students discover the television past and spend one week asking strategic questions about lunch seating. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} quietly retrains and begins teaching. Soon, students discover the television past and spend one week asking strategic questions about lunch seating. In the end, {name} handles the attention, then returns to ordinary work.",
+        "At first, {name} quietly retrains and begins teaching. The situation escalates when students discover the television past and spend one week asking strategic questions about lunch seating. By the final update, {name} handles the attention, then returns to ordinary work."
+      ],
+      "bulletPoints": [
+        "{name} quietly retrains and begins teaching.",
+        "Students discover the television past and spend one week asking strategic questions about lunch seating.",
+        "{name} handles the attention, then returns to ordinary work."
+      ]
+    },
+    {
+      "id": "ordinary_life_hardware_store",
+      "category": "ordinary_life",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "ordinary_life",
+      "badge": "SPOTTED IN AISLE FOUR",
+      "eligibility": {},
+      "headlines": [
+        "{name} Works at a Hardware Store",
+        "Fame Meets Discount Paint"
+      ],
+      "twists": [
+        "The store's sales rise.",
+        "One fan travels across the country for a screwdriver recommendation."
+      ],
+      "subheadlines": [
+        "{name} returns to a previous job and becomes known for practical advice rather than drama. {name} remains polite and refuses to discuss the reunion beside power tools.",
+        "Customers occasionally request selfies while holding plumbing parts. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} returns to a previous job and becomes known for practical advice rather than drama. The situation escalates when customers occasionally request selfies while holding plumbing parts. By the final update, {name} remains polite and refuses to discuss the reunion beside power tools.",
+        "Nobody expects the story to go this far. {name} returns to a previous job and becomes known for practical advice rather than drama. Then customers occasionally request selfies while holding plumbing parts. Finally, {name} remains polite and refuses to discuss the reunion beside power tools."
+      ],
+      "bulletPoints": [
+        "{name} returns to a previous job and becomes known for practical advice rather than drama.",
+        "Customers occasionally request selfies while holding plumbing parts.",
+        "{name} remains polite and refuses to discuss the reunion beside power tools."
+      ]
+    },
+    {
+      "id": "ordinary_life_dog_walker",
+      "category": "ordinary_life",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "ordinary_life",
+      "badge": "PACK LEADER",
+      "eligibility": {},
+      "headlines": [
+        "{name} Builds a Quiet Dog-Walking Business",
+        "The Clients Never Ask About the Finale"
+      ],
+      "twists": [
+        "One dog becomes more famous than {name}.",
+        "The branded raincoats sell out."
+      ],
+      "subheadlines": [
+        "{name} swaps red carpets for early mornings and a growing pack of neighbourhood dogs. The business becomes stable, peaceful, and unexpectedly fashionable.",
+        "Former housemates discover {possessive} schedule is now harder to book than any television appearance. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} swaps red carpets for early mornings and a growing pack of neighbourhood dogs. Then former housemates discover {possessive} schedule is now harder to book than any television appearance. Finally, the business becomes stable, peaceful, and unexpectedly fashionable.",
+        "{name} swaps red carpets for early mornings and a growing pack of neighbourhood dogs. Former housemates discover {possessive} schedule is now harder to book than any television appearance. The business becomes stable, peaceful, and unexpectedly fashionable."
+      ],
+      "bulletPoints": [
+        "{name} swaps red carpets for early mornings and a growing pack of neighbourhood dogs.",
+        "Former housemates discover {possessive} schedule is now harder to book than any television appearance.",
+        "The business becomes stable, peaceful, and unexpectedly fashionable."
+      ]
+    },
+    {
+      "id": "ordinary_life_family_bakery",
+      "category": "ordinary_life",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "ordinary_life",
+      "badge": "FLOUR POWER",
+      "eligibility": {
+        "tagsAny": [
+          "alliance_broken",
+          "fan_favorite"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name} Returns to the Family Bakery",
+        "The Croissants Refuse Interviews"
+      ],
+      "twists": [
+        "A croissant is named after {allyName}.",
+        "The recipe remains secret."
+      ],
+      "subheadlines": [
+        "{name} leaves the celebrity circuit to work before sunrise. The bakery thrives without launching a single influencer candle.",
+        "Fans queue for pastries and receive firm instructions not to block regular customers. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} leaves the celebrity circuit to work before sunrise. Fans queue for pastries and receive firm instructions not to block regular customers. The bakery thrives without launching a single influencer candle.",
+        "It begins when {name} leaves the celebrity circuit to work before sunrise. Soon, fans queue for pastries and receive firm instructions not to block regular customers. In the end, the bakery thrives without launching a single influencer candle."
+      ],
+      "bulletPoints": [
+        "{name} leaves the celebrity circuit to work before sunrise.",
+        "Fans queue for pastries and receive firm instructions not to block regular customers.",
+        "The bakery thrives without launching a single influencer candle."
+      ]
+    },
+    {
+      "id": "ordinary_life_quiet_farmer",
+      "category": "ordinary_life",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "ordinary_life",
+      "badge": "COUNTRYSIDE WINNER",
+      "eligibility": {
+        "tagsAny": [
+          "low_profile",
+          "early_exit"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Buys a Small Farm and Wins at Life",
+        "No Cameras, Twelve Chickens, Excellent Sleep"
+      ],
+      "twists": [
+        "The chickens have names from the cast.",
+        "{rivalName} supplies one of the names."
+      ],
+      "subheadlines": [
+        "{name} invests modestly in land and vanishes from nightlife. The public decides this is the season's most enviable ending.",
+        "Occasional photographs show muddy boots, healthy vegetables, and an expression of genuine relief. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} invests modestly in land and vanishes from nightlife. Soon, occasional photographs show muddy boots, healthy vegetables, and an expression of genuine relief. In the end, the public decides this is the season's most enviable ending.",
+        "At first, {name} invests modestly in land and vanishes from nightlife. The situation escalates when occasional photographs show muddy boots, healthy vegetables, and an expression of genuine relief. By the final update, the public decides this is the season's most enviable ending."
+      ],
+      "bulletPoints": [
+        "{name} invests modestly in land and vanishes from nightlife.",
+        "Occasional photographs show muddy boots, healthy vegetables, and an expression of genuine relief.",
+        "The public decides this is the season's most enviable ending."
+      ]
+    },
+    {
+      "id": "bizarre_misunderstanding_royal_invite",
+      "category": "bizarre_misunderstanding",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "bizarre_misunderstanding",
+      "badge": "PALACE CONFUSION",
+      "eligibility": {},
+      "headlines": [
+        "{name} Is Mistaken for a Foreign Diplomat",
+        "The Name Card Was One Letter Off"
+      ],
+      "twists": [
+        "The actual diplomat applauds.",
+        "The hotel keeps the incorrect name card."
+      ],
+      "subheadlines": [
+        "{name} arrives at a hotel and is escorted into an official reception. The mistake is discovered only after {name} gives a short speech about teamwork.",
+        "Staff interpret {possessive} confident confusion as protocol. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} arrives at a hotel and is escorted into an official reception. The situation escalates when staff interpret {possessive} confident confusion as protocol. By the final update, the mistake is discovered only after {name} gives a short speech about teamwork.",
+        "Nobody expects the story to go this far. {name} arrives at a hotel and is escorted into an official reception. Then staff interpret {possessive} confident confusion as protocol. Finally, the mistake is discovered only after {name} gives a short speech about teamwork."
+      ],
+      "bulletPoints": [
+        "{name} arrives at a hotel and is escorted into an official reception.",
+        "Staff interpret {possessive} confident confusion as protocol.",
+        "The mistake is discovered only after {name} gives a short speech about teamwork."
+      ]
+    },
+    {
+      "id": "bizarre_misunderstanding_wrong_winner",
+      "category": "bizarre_misunderstanding",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "bizarre_misunderstanding",
+      "badge": "WINNER — OF SOMETHING ELSE",
+      "eligibility": {},
+      "headlines": [
+        "{name} Accepts an Award Meant for Another Person",
+        "The Speech Was Too Good to Interrupt"
+      ],
+      "twists": [
+        "Both leave with matching trophies.",
+        "The mistake creates a joint television project."
+      ],
+      "subheadlines": [
+        "{name} hears a similar name at an industry ceremony and walks onto the stage. The real recipient invites {name} to stay for photographs.",
+        "The acceptance speech receives a standing ovation before organisers check the envelope. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} hears a similar name at an industry ceremony and walks onto the stage. Then the acceptance speech receives a standing ovation before organisers check the envelope. Finally, the real recipient invites {name} to stay for photographs.",
+        "{name} hears a similar name at an industry ceremony and walks onto the stage. The acceptance speech receives a standing ovation before organisers check the envelope. The real recipient invites {name} to stay for photographs."
+      ],
+      "bulletPoints": [
+        "{name} hears a similar name at an industry ceremony and walks onto the stage.",
+        "The acceptance speech receives a standing ovation before organisers check the envelope.",
+        "The real recipient invites {name} to stay for photographs."
+      ]
+    },
+    {
+      "id": "bizarre_misunderstanding_funeral_launch",
+      "category": "bizarre_misunderstanding",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "bizarre_misunderstanding",
+      "badge": "WRONG VENUE",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Product Launch Interrupts a Memorial",
+        "Confetti Meets Complete Silence"
+      ],
+      "twists": [
+        "The families later accept a private donation.",
+        "The venue changes its signage."
+      ],
+      "subheadlines": [
+        "{name}'s team sends guests to the wrong hall in a large events complex. The launch is cancelled and every apology wisely avoids the word 'celebration'.",
+        "Music and branded balloons enter a solemn gathering next door. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name}'s team sends guests to the wrong hall in a large events complex. Music and branded balloons enter a solemn gathering next door. The launch is cancelled and every apology wisely avoids the word 'celebration'.",
+        "It begins when {name}'s team sends guests to the wrong hall in a large events complex. Soon, music and branded balloons enter a solemn gathering next door. In the end, the launch is cancelled and every apology wisely avoids the word 'celebration'."
+      ],
+      "bulletPoints": [
+        "{name}'s team sends guests to the wrong hall in a large events complex.",
+        "Music and branded balloons enter a solemn gathering next door.",
+        "The launch is cancelled and every apology wisely avoids the word 'celebration'."
+      ]
+    },
+    {
+      "id": "bizarre_misunderstanding_wax_museum",
+      "category": "bizarre_misunderstanding",
+      "tone": "neutral",
+      "weight": 1,
+      "cooldownGroup": "bizarre_misunderstanding",
+      "badge": "STATUE OR HOUSEMATE?",
+      "eligibility": {},
+      "headlines": [
+        "{name} Stands Still Beside a Wax Figure for Forty Minutes",
+        "Tourists Photograph the Wrong One"
+      ],
+      "twists": [
+        "The museum offers {name} a seasonal job.",
+        "The wax figure is more flattering."
+      ],
+      "subheadlines": [
+        "{name} visits a wax museum and becomes trapped by a growing crowd. Security eventually removes the actual wax figure by mistake.",
+        "Remaining motionless seems easier than explaining why the new statue is blinking. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} visits a wax museum and becomes trapped by a growing crowd. Soon, remaining motionless seems easier than explaining why the new statue is blinking. In the end, security eventually removes the actual wax figure by mistake.",
+        "At first, {name} visits a wax museum and becomes trapped by a growing crowd. The situation escalates when remaining motionless seems easier than explaining why the new statue is blinking. By the final update, security eventually removes the actual wax figure by mistake."
+      ],
+      "bulletPoints": [
+        "{name} visits a wax museum and becomes trapped by a growing crowd.",
+        "Remaining motionless seems easier than explaining why the new statue is blinking.",
+        "Security eventually removes the actual wax figure by mistake."
+      ]
+    },
+    {
+      "id": "bizarre_misunderstanding_airport_arrest",
+      "category": "bizarre_misunderstanding",
+      "tone": "bad",
+      "weight": 1,
+      "cooldownGroup": "bizarre_misunderstanding",
+      "badge": "SUITCASE MIX-UP",
+      "eligibility": {},
+      "headlines": [
+        "{name} Collects the Wrong Suitcase",
+        "Sequins, Cash, and a Very Nervous Magician"
+      ],
+      "twists": [
+        "The magician becomes a friend.",
+        "The dove refuses to leave {name}."
+      ],
+      "subheadlines": [
+        "{name} leaves an airport with luggage identical to {possessive} own. {name} spends hours explaining an outfit that is not even {possessive} size.",
+        "Customs later finds stage props, envelopes of cash, and a live dove belonging to a touring magician. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} leaves an airport with luggage identical to {possessive} own. The situation escalates when customs later finds stage props, envelopes of cash, and a live dove belonging to a touring magician. By the final update, {name} spends hours explaining an outfit that is not even {possessive} size.",
+        "Nobody expects the story to go this far. {name} leaves an airport with luggage identical to {possessive} own. Then customs later finds stage props, envelopes of cash, and a live dove belonging to a touring magician. Finally, {name} spends hours explaining an outfit that is not even {possessive} size."
+      ],
+      "bulletPoints": [
+        "{name} leaves an airport with luggage identical to {possessive} own.",
+        "Customs later finds stage props, envelopes of cash, and a live dove belonging to a touring magician.",
+        "{name} spends hours explaining an outfit that is not even {possessive} size."
+      ]
+    },
+    {
+      "id": "absurd_success_professional_reactor",
+      "category": "absurd_success",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "absurd_success",
+      "badge": "REACTION ROYALTY",
+      "eligibility": {},
+      "headlines": [
+        "{name} Is Paid to React to Other People Reacting",
+        "The Face Economy Is Booming"
+      ],
+      "twists": [
+        "Economists ask for advance access.",
+        "{name} never explains what the reaction means."
+      ],
+      "subheadlines": [
+        "{name} builds a career filming silent reactions to increasingly minor announcements. The expression becomes an unofficial market indicator.",
+        "Brands begin testing campaigns by watching whether one eyebrow moves. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} builds a career filming silent reactions to increasingly minor announcements. Then brands begin testing campaigns by watching whether one eyebrow moves. Finally, the expression becomes an unofficial market indicator.",
+        "{name} builds a career filming silent reactions to increasingly minor announcements. Brands begin testing campaigns by watching whether one eyebrow moves. The expression becomes an unofficial market indicator."
+      ],
+      "bulletPoints": [
+        "{name} builds a career filming silent reactions to increasingly minor announcements.",
+        "Brands begin testing campaigns by watching whether one eyebrow moves.",
+        "The expression becomes an unofficial market indicator."
+      ]
+    },
+    {
+      "id": "absurd_success_chair_brand",
+      "category": "absurd_success",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "absurd_success",
+      "badge": "FURNITURE ICON",
+      "eligibility": {
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Sells Out a Chair by Sitting in It Once",
+        "The Nation Wants the Finale Seat"
+      ],
+      "twists": [
+        "The chair is renamed 'The Evictee'.",
+        "A rival brand hires {rivalName} to stand up."
+      ],
+      "subheadlines": [
+        "{name} is photographed resting in an ordinary armchair. The manufacturer signs {name} despite having no campaign concept.",
+        "Fans identify the model and empty every warehouse within hours. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "{name} is photographed resting in an ordinary armchair. Fans identify the model and empty every warehouse within hours. The manufacturer signs {name} despite having no campaign concept.",
+        "It begins when {name} is photographed resting in an ordinary armchair. Soon, fans identify the model and empty every warehouse within hours. In the end, the manufacturer signs {name} despite having no campaign concept."
+      ],
+      "bulletPoints": [
+        "{name} is photographed resting in an ordinary armchair.",
+        "Fans identify the model and empty every warehouse within hours.",
+        "The manufacturer signs {name} despite having no campaign concept."
+      ]
+    },
+    {
+      "id": "absurd_success_pigeon_oracle",
+      "category": "absurd_success",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "absurd_success",
+      "badge": "BIRD BUSINESS",
+      "eligibility": {},
+      "headlines": [
+        "{name}'s Pigeon Predictions Beat the Experts",
+        "Peck Once for Yes"
+      ],
+      "twists": [
+        "The pigeon predicts {name}'s own cancellation incorrectly.",
+        "The documentary wins a festival prize."
+      ],
+      "subheadlines": [
+        "{name} posts a joke video in which a pigeon predicts television outcomes. {name} becomes manager to an animal that refuses all interviews.",
+        "The bird gets seven results right and attracts bookmakers, academics, and one documentary crew. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when {name} posts a joke video in which a pigeon predicts television outcomes. Soon, the bird gets seven results right and attracts bookmakers, academics, and one documentary crew. In the end, {name} becomes manager to an animal that refuses all interviews.",
+        "At first, {name} posts a joke video in which a pigeon predicts television outcomes. The situation escalates when the bird gets seven results right and attracts bookmakers, academics, and one documentary crew. By the final update, {name} becomes manager to an animal that refuses all interviews."
+      ],
+      "bulletPoints": [
+        "{name} posts a joke video in which a pigeon predicts television outcomes.",
+        "The bird gets seven results right and attracts bookmakers, academics, and one documentary crew.",
+        "{name} becomes manager to an animal that refuses all interviews."
+      ]
+    },
+    {
+      "id": "absurd_success_lost_phone_series",
+      "category": "absurd_success",
+      "tone": "excellent",
+      "weight": 1,
+      "cooldownGroup": "absurd_success",
+      "badge": "ACCIDENTAL MASTERPIECE",
+      "eligibility": {
+        "tagsAny": [
+          "alliance_broken",
+          "betrayal"
+        ],
+        "requiresRelation": "ally"
+      },
+      "headlines": [
+        "{name}'s Lost Phone Becomes a Hit Series",
+        "Twelve Voicemails, One Cultural Moment"
+      ],
+      "twists": [
+        "None of the best lines were spoken by {name}.",
+        "{allyName} receives an unexpected writing credit."
+      ],
+      "subheadlines": [
+        "{name} loses a phone containing chaotic voice notes about post-show life. Critics praise the result as raw social commentary.",
+        "The finder returns it, but a legal audio adaptation recreates the messages with actors. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, {name} loses a phone containing chaotic voice notes about post-show life. The situation escalates when the finder returns it, but a legal audio adaptation recreates the messages with actors. By the final update, critics praise the result as raw social commentary.",
+        "Nobody expects the story to go this far. {name} loses a phone containing chaotic voice notes about post-show life. Then the finder returns it, but a legal audio adaptation recreates the messages with actors. Finally, critics praise the result as raw social commentary."
+      ],
+      "bulletPoints": [
+        "{name} loses a phone containing chaotic voice notes about post-show life.",
+        "The finder returns it, but a legal audio adaptation recreates the messages with actors.",
+        "Critics praise the result as raw social commentary."
+      ]
+    },
+    {
+      "id": "absurd_success_silence_album",
+      "category": "absurd_success",
+      "tone": "good",
+      "weight": 1,
+      "cooldownGroup": "absurd_success",
+      "badge": "NUMBER-ONE SILENCE",
+      "eligibility": {
+        "tagsAny": [
+          "rivalry"
+        ],
+        "requiresRelation": "rival"
+      },
+      "headlines": [
+        "{name} Releases an Album With Almost No Singing",
+        "Forty-Two Minutes of Dramatic Pauses"
+      ],
+      "twists": [
+        "The deluxe edition contains even less.",
+        "{rivalName} accuses {name} of stealing a pause."
+      ],
+      "subheadlines": [
+        "{name} records a conceptual album built from breaths, door sounds, and one whispered catchphrase. The album reaches number one in a category nobody knew existed.",
+        "Listeners buy it as a joke, then critics describe the silence as 'brave'. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. {name} records a conceptual album built from breaths, door sounds, and one whispered catchphrase. Then listeners buy it as a joke, then critics describe the silence as 'brave'. Finally, the album reaches number one in a category nobody knew existed.",
+        "{name} records a conceptual album built from breaths, door sounds, and one whispered catchphrase. Listeners buy it as a joke, then critics describe the silence as 'brave'. The album reaches number one in a category nobody knew existed."
+      ],
+      "bulletPoints": [
+        "{name} records a conceptual album built from breaths, door sounds, and one whispered catchphrase.",
+        "Listeners buy it as a joke, then critics describe the silence as 'brave'.",
+        "The album reaches number one in a category nobody knew existed."
+      ]
+    }
+  ],
+  "linkedScenarios": [
+    {
+      "id": "linked_fake_romance_real",
+      "relation": "romantic",
+      "category": "romance",
+      "tone": "good",
+      "weight": 1,
+      "badge": "SECRET COUPLE",
+      "headlines": [
+        "{name} and {partnerName}: The Fake Romance That Became Real",
+        "PUBLICITY STUNT ENDS WITH SHARED KEYS"
+      ],
+      "twists": [
+        "The fake couple accidentally becomes the season's longest relationship.",
+        "Their managers begin dating after months of crisis meetings."
+      ],
+      "subheadlines": [
+        "The first contract allowed exactly three hand-holding photographs. Both deny moving in while standing in the same kitchen.",
+        "A shared grocery receipt exposes the real relationship. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "The first contract allowed exactly three hand-holding photographs. A shared grocery receipt exposes the real relationship. Both deny moving in while standing in the same kitchen.",
+        "It begins when the first contract allowed exactly three hand-holding photographs. Soon, a shared grocery receipt exposes the real relationship. In the end, both deny moving in while standing in the same kitchen."
+      ],
+      "bulletPoints": [
+        "The first contract allowed exactly three hand-holding photographs.",
+        "A shared grocery receipt exposes the real relationship.",
+        "Both deny moving in while standing in the same kitchen."
+      ]
+    },
+    {
+      "id": "linked_secret_wedding",
+      "relation": "romantic",
+      "category": "romance",
+      "tone": "excellent",
+      "weight": 0.8,
+      "badge": "MARRIED IN SECRET",
+      "headlines": [
+        "{name} and {partnerName} Wed Without Telling the Cast",
+        "THE CEREMONY HIDDEN FOR SIX MONTHS"
+      ],
+      "twists": [
+        "The marriage happened before the reunion special.",
+        "Their fiercest rival designed the invitations."
+      ],
+      "subheadlines": [
+        "No former housemate receives an invitation. A legal form exposes the new surname.",
+        "The cake contains a miniature replica of the house. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when no former housemate receives an invitation. Soon, the cake contains a miniature replica of the house. In the end, a legal form exposes the new surname.",
+        "At first, no former housemate receives an invitation. The situation escalates when the cake contains a miniature replica of the house. By the final update, a legal form exposes the new surname."
+      ],
+      "bulletPoints": [
+        "No former housemate receives an invitation.",
+        "The cake contains a miniature replica of the house.",
+        "A legal form exposes the new surname."
+      ]
+    },
+    {
+      "id": "linked_rival_podcast",
+      "relation": "rival",
+      "category": "public_feud",
+      "tone": "bad",
+      "weight": 1,
+      "badge": "MIC WAR",
+      "headlines": [
+        "{name} and {partnerName} End Their Podcast During Episode One",
+        "TWENTY-THREE MINUTES TO TOTAL COLLAPSE"
+      ],
+      "twists": [
+        "The failed podcast becomes more profitable than a successful one.",
+        "They reunite for a tour called 'Still Not Friends.'"
+      ],
+      "subheadlines": [
+        "The sponsor asks to be removed before the episode ends. Both announce solo podcasts within an hour.",
+        "The commercial break becomes the most downloaded clip. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "At first, the sponsor asks to be removed before the episode ends. The situation escalates when the commercial break becomes the most downloaded clip. By the final update, both announce solo podcasts within an hour.",
+        "Nobody expects the story to go this far. The sponsor asks to be removed before the episode ends. Then the commercial break becomes the most downloaded clip. Finally, both announce solo podcasts within an hour."
+      ],
+      "bulletPoints": [
+        "The sponsor asks to be removed before the episode ends.",
+        "The commercial break becomes the most downloaded clip.",
+        "Both announce solo podcasts within an hour."
+      ]
+    },
+    {
+      "id": "linked_enemy_business",
+      "relation": "rival",
+      "category": "strange_business",
+      "tone": "good",
+      "weight": 0.8,
+      "badge": "ENEMIES INC.",
+      "headlines": [
+        "{name} and {partnerName} Turn Mutual Hatred Into a Brand",
+        "THE FEUD NOW ACCEPTS CREDIT CARDS"
+      ],
+      "twists": [
+        "They become closer while insisting the hatred is authentic.",
+        "The brand collapses the moment they genuinely reconcile."
+      ],
+      "subheadlines": [
+        "The first debate sells out in eleven minutes. Both use the same accountant.",
+        "Merchandise includes matching mugs that cannot face each other. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "Nobody expects the story to go this far. The first debate sells out in eleven minutes. Then merchandise includes matching mugs that cannot face each other. Finally, both use the same accountant.",
+        "The first debate sells out in eleven minutes. Merchandise includes matching mugs that cannot face each other. Both use the same accountant."
+      ],
+      "bulletPoints": [
+        "The first debate sells out in eleven minutes.",
+        "Merchandise includes matching mugs that cannot face each other.",
+        "Both use the same accountant."
+      ]
+    },
+    {
+      "id": "linked_betrayal_memoir",
+      "relation": "betrayal",
+      "category": "betrayal",
+      "tone": "tragic",
+      "weight": 1,
+      "badge": "ALLIANCE EXPOSED",
+      "headlines": [
+        "{name} Publishes {partnerName}'s Private Messages",
+        "THE ALLIANCE ENDS IN FOOTNOTES"
+      ],
+      "twists": [
+        "The scandal sends the memoir to number one.",
+        "The pair reunites to negotiate film rights."
+      ],
+      "subheadlines": [
+        "The leaked screenshots contain colour-coded strategy notes. The publisher quietly moves the book to fiction.",
+        "Both sides publish missing context. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "The leaked screenshots contain colour-coded strategy notes. Both sides publish missing context. The publisher quietly moves the book to fiction.",
+        "It begins when the leaked screenshots contain colour-coded strategy notes. Soon, both sides publish missing context. In the end, the publisher quietly moves the book to fiction."
+      ],
+      "bulletPoints": [
+        "The leaked screenshots contain colour-coded strategy notes.",
+        "Both sides publish missing context.",
+        "The publisher quietly moves the book to fiction."
+      ]
+    },
+    {
+      "id": "linked_alliance_reunion",
+      "relation": "ally",
+      "category": "betrayal",
+      "tone": "neutral",
+      "weight": 0.8,
+      "badge": "ALLIANCE REUNION",
+      "headlines": [
+        "{name} and {partnerName} Reunite — Then Split Before Dessert",
+        "THE FRIENDSHIP LASTS ONE LUNCH"
+      ],
+      "twists": [
+        "They reconcile privately the following week.",
+        "The lunch photographs win a publicity award."
+      ],
+      "subheadlines": [
+        "The opening hug appears on three magazine covers. Dessert is packed to go.",
+        "Both claim the other invited the cameras. The ending becomes impossible to ignore."
+      ],
+      "bodies": [
+        "It begins when the opening hug appears on three magazine covers. Soon, both claim the other invited the cameras. In the end, dessert is packed to go.",
+        "At first, the opening hug appears on three magazine covers. The situation escalates when both claim the other invited the cameras. By the final update, dessert is packed to go."
+      ],
+      "bulletPoints": [
+        "The opening hug appears on three magazine covers.",
+        "Both claim the other invited the cameras.",
+        "Dessert is packed to go."
+      ]
+    }
+  ]
+}
