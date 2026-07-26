@@ -1,21 +1,30 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import RecapImage from '../../components/SeasonRecapCinematic/RecapImage';
-import { resolveAvatarCandidates } from '../../utils/avatar';
+import { buildSeasonRecapData } from '../../components/SeasonRecapCinematic/seasonRecapData';
+import type { PublicOpinionState } from '../../publicOpinion/types';
+import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
+import { computeLeaderboardScore, computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
+import { DEFAULT_WEIGHTS } from '../../scoring/weights';
+import { SoundManager } from '../../services/sound/SoundManager';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { resetGame, archiveSeason } from '../../store/gameSlice';
 import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
 import { savedStateKeyForProfile, clearSeasonSnapshot } from '../../store/saveStatePersistence';
-import type { Player } from '../../types';
 import type { SeasonArchive, PlayerSeasonSummary } from '../../store/seasonArchive';
-import { computeLeaderboardScore, computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
-import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
-import { DEFAULT_WEIGHTS } from '../../scoring/weights';
-import { SoundManager } from '../../services/sound/SoundManager';
-import { buildAftermathStories } from './aftermath';
-import { buildSeasonRecapData } from '../../components/SeasonRecapCinematic/seasonRecapData';
-import type { PublicOpinionState } from '../../publicOpinion/types';
+import type { Player } from '../../types';
+import { resolveAvatarCandidates } from '../../utils/avatar';
+import {
+  aftermathIssueStorageKey,
+  buildAftermathIssue,
+  getBundledAftermathConfig,
+  loadAftermathConfig,
+  persistAftermathIssue,
+  readPersistedAftermathIssue,
+  type AftermathIssue,
+} from './aftermath';
 import './GameOver.css';
+import './AftermathTabloid.css';
 
 const CAROUSEL_INTERVAL_MS = 5000;
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
@@ -94,10 +103,13 @@ export default function GameOver() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const players = useAppSelector((s) => s.game.players);
+  const gameId = useAppSelector((s) => s.game.gameId);
   const season = useAppSelector((s) => s.game.season);
   const week = useAppSelector((s) => s.game.week);
   const seasonArchives = useAppSelector((s) => s.game.seasonArchives ?? []);
   const favoriteWinnerId = useAppSelector((s) => s.game.favoritePlayer?.winnerId ?? null);
+  const social = useAppSelector((s) => s.game.social);
+  const history = useAppSelector((s) => s.game.history ?? []);
   const publicOpinion = useAppSelector((s) => s.publicOpinion);
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
@@ -106,15 +118,21 @@ export default function GameOver() {
   const [carouselSlide, setCarouselSlide] = useState(0);
   const [panel, setPanel] = useState<GameOverPanel>('results');
   const [storyIndex, setStoryIndex] = useState(0);
+  const [aftermathIssue, setAftermathIssue] = useState<AftermathIssue | null>(null);
+  const [isAftermathLoading, setIsAftermathLoading] = useState(false);
 
   const winner = players.find((p) => p.isWinner) ?? players.find((p) => p.finalRank === 1);
   const runnerUp = players.find((p) => p.finalRank === 2);
   const favoriteWinner = players.find((p) => p.id === favoriteWinnerId);
   const summaries = buildSummaries(players, favoriteWinnerId, week, publicOpinion);
-
   const seasonLeaderboard = computeSeasonLeaderboard(summaries, DEFAULT_WEIGHTS).slice(0, 5);
   const allTimeLeaderboard = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS).slice(0, 5);
-  const aftermathStories = useMemo(() => buildAftermathStories(players, season), [players, season]);
+  const issueStorageKey = useMemo(
+    () => aftermathIssueStorageKey(activeProfileId, gameId, season),
+    [activeProfileId, gameId, season],
+  );
+  const editorial = aftermathIssue?.editorial ?? getBundledAftermathConfig().editorial;
+  const aftermathStories = aftermathIssue?.stories ?? [];
   const activeStory = aftermathStories[storyIndex] ?? aftermathStories[0];
   const aftermathProgress = aftermathStories.length > 0
     ? ((storyIndex + 1) / aftermathStories.length) * 100
@@ -126,6 +144,11 @@ export default function GameOver() {
     }, CAROUSEL_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    setAftermathIssue(readPersistedAftermathIssue(issueStorageKey));
+    void loadAftermathConfig();
+  }, [issueStorageKey]);
 
   function archiveCompletedSeason() {
     if (!archivedRef.current) {
@@ -162,10 +185,37 @@ export default function GameOver() {
     setStoryIndex(0);
   }
 
-  function watchAd() {
+  async function watchAd() {
+    if (isAftermathLoading) return;
     SoundManager.unlockFromGesture();
-    setStoryIndex(0);
-    setPanel('aftermath');
+    setIsAftermathLoading(true);
+
+    try {
+      let issue = readPersistedAftermathIssue(issueStorageKey);
+      if (!issue) {
+        const config = await loadAftermathConfig();
+        issue = buildAftermathIssue(
+          players,
+          season,
+          {
+            gameId,
+            week,
+            favoriteWinnerId,
+            publicOpinion,
+            social,
+            history,
+          },
+          config,
+        );
+        persistAftermathIssue(issueStorageKey, issue);
+      }
+
+      setAftermathIssue(issue);
+      setStoryIndex(0);
+      setPanel('aftermath');
+    } finally {
+      setIsAftermathLoading(false);
+    }
   }
 
   function showPreviousStory() {
@@ -296,28 +346,42 @@ export default function GameOver() {
           <div className="gameover-overlay__scrim" onClick={panel === 'adPrompt' ? closeOverlay : undefined} />
 
           {panel === 'adPrompt' && (
-            <div className="gameover-prompt">
+            <div className="gameover-prompt gameover-prompt--aftermath">
               <p className="gameover-prompt__eyebrow">Aftermath Special</p>
-              <h2 className="gameover-prompt__title">Watch a quick ad to unlock the gossip reel.</h2>
-              <p className="gameover-prompt__body">
-                See what happened to the housemates after the finale. For testing, tapping Watch Ad simulates a completed ad.
+              <h2 className="gameover-prompt__title">The cameras stopped. The scandals did not.</h2>
+              <p className="gameover-prompt__body">{editorial.intro}</p>
+              <p className="gameover-prompt__fineprint">
+                Watch a quick ad to unlock this season&apos;s fictional tabloid edition.
               </p>
               <div className="gameover-prompt__actions">
-                <button className="gameover-btn gameover-btn--primary" onClick={watchAd} type="button">
-                  Watch Ad
+                <button
+                  className="gameover-btn gameover-btn--primary"
+                  onClick={() => void watchAd()}
+                  disabled={isAftermathLoading}
+                  type="button"
+                >
+                  {isAftermathLoading ? editorial.loadingLabel : 'Watch Ad'}
                 </button>
-                <button className="gameover-btn gameover-btn--ghost" onClick={closeOverlay} type="button">
+                <button
+                  className="gameover-btn gameover-btn--ghost"
+                  onClick={closeOverlay}
+                  disabled={isAftermathLoading}
+                  type="button"
+                >
                   Back
                 </button>
               </div>
             </div>
           )}
 
-          {panel === 'aftermath' && activeStory && (
+          {panel === 'aftermath' && activeStory && aftermathIssue && (
             <div key={activeStory.playerId} className={`gameover-aftermath gameover-aftermath--${activeStory.tone}`}>
               <div className="gameover-aftermath__topbar">
-                <span className="gameover-aftermath__edition">Late Edition</span>
-                <span className="gameover-aftermath__masthead">After the Eye</span>
+                <span className="gameover-aftermath__edition">{editorial.editionLabel}</span>
+                <span className="gameover-aftermath__masthead">{editorial.publicationName}</span>
+                <span className="gameover-aftermath__issue">
+                  {editorial.issuePrefix} {aftermathIssue.issueNumber}
+                </span>
               </div>
 
               <div className="gameover-aftermath__progress-rail" aria-hidden="true">
@@ -325,20 +389,27 @@ export default function GameOver() {
               </div>
 
               <div className="gameover-aftermath__scroll">
-                <div className="gameover-aftermath__meta">
-                  <div>
-                    <p className="gameover-aftermath__player">{activeStory.playerName}</p>
-                    <p className="gameover-aftermath__placement">{activeStory.placementLabel}</p>
-                  </div>
-                  <p className="gameover-aftermath__progress">
-                    {storyIndex + 1} / {aftermathStories.length}
-                  </p>
-                </div>
+                <article className="gameover-aftermath__paper">
+                  <header className="gameover-aftermath__newspaper-header">
+                    <div className="gameover-aftermath__dateline">
+                      <span>{aftermathIssue.dateLabel}</span>
+                      <span>{editorial.price}</span>
+                    </div>
+                    <h2>{editorial.publicationName}</h2>
+                    <p>{editorial.slogan}</p>
+                  </header>
 
-                <div className="gameover-aftermath__paper">
+                  <div className="gameover-aftermath__story-meta">
+                    <span className="gameover-aftermath__category">{activeStory.categoryLabel}</span>
+                    <span className="gameover-aftermath__badge">{activeStory.badge}</span>
+                    <span className={`gameover-aftermath__tone gameover-aftermath__tone--${activeStory.tone}`}>
+                      {activeStory.toneLabel}
+                    </span>
+                  </div>
+
                   <div className="gameover-aftermath__lead">
-                    <p className="gameover-aftermath__kicker">What happened next</p>
-                    <h2 className="gameover-aftermath__headline">{activeStory.headline}</h2>
+                    <p className="gameover-aftermath__kicker">{editorial.sectionLabel}</p>
+                    <h3 className="gameover-aftermath__headline">{activeStory.headline}</h3>
                     <p className="gameover-aftermath__subheadline">{activeStory.subheadline}</p>
                   </div>
 
@@ -350,31 +421,49 @@ export default function GameOver() {
                           sources={activeStory.imageSources}
                           alt={activeStory.playerName}
                         />
+                        <span className="gameover-aftermath__exclusive">{editorial.exclusiveLabel}</span>
                         <span className="gameover-aftermath__flash" aria-hidden="true" />
                       </div>
-                      <p className="gameover-aftermath__caption">Post-show sighting.</p>
+                      <p className="gameover-aftermath__caption">{activeStory.caption}</p>
                     </div>
 
                     <div className="gameover-aftermath__copy">
+                      <div className="gameover-aftermath__byline">
+                        <strong>{activeStory.playerName}</strong>
+                        <span>{activeStory.placementLabel}</span>
+                      </div>
+                      <p className="gameover-aftermath__body">{activeStory.body}</p>
                       <ul className="gameover-aftermath__bullets">
                         {activeStory.bulletPoints.map((bullet) => (
                           <li key={bullet}>{bullet}</li>
                         ))}
                       </ul>
-                      <p className="gameover-aftermath__body">{activeStory.body}</p>
+                      <aside className="gameover-aftermath__twist">
+                        <span>Final twist</span>
+                        <strong>{activeStory.twist}</strong>
+                      </aside>
                     </div>
                   </div>
-                </div>
+
+                  <footer className="gameover-aftermath__paper-footer">
+                    <span>{storyIndex + 1} of {aftermathStories.length}</span>
+                    <span>{editorial.closingLine}</span>
+                  </footer>
+                </article>
 
                 <div className="gameover-aftermath__contact-sheet" aria-label="Aftermath stories">
-                  {aftermathStories.slice(0, 8).map((story, index) => (
-                    <span
+                  {aftermathStories.map((story, index) => (
+                    <button
                       key={story.playerId}
                       className={index === storyIndex ? 'is-active' : ''}
+                      onClick={() => setStoryIndex(index)}
+                      aria-label={`Open ${story.playerName}'s aftermath story`}
+                      aria-current={index === storyIndex ? 'page' : undefined}
                       title={story.playerName}
+                      type="button"
                     >
                       {String(index + 1).padStart(2, '0')}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
