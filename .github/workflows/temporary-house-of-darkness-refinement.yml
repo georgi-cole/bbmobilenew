@@ -1,0 +1,479 @@
+name: Temporary House of Darkness refinement
+
+on:
+  push:
+    branches:
+      - agent/house-of-darkness-fatigue-transitions
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/house-of-darkness-fatigue-transitions
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Add AI fatigue and round transitions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          component_path = Path('src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx')
+          source = component_path.read_text()
+
+          replacements = [
+              (
+                  "} from './houseOfDarknessUtils'\nimport './HouseOfDarknessComp.css'",
+                  "} from './houseOfDarknessUtils'\nimport { getHouseOfDarknessAiAbility } from './houseOfDarknessAiBalance'\nimport './HouseOfDarknessComp.css'",
+              ),
+              (
+                  "type Phase = 'playing' | 'round_results' | 'death' | 'results'",
+                  "type Phase = 'playing' | 'round_transition' | 'round_results' | 'death' | 'results'\ntype RoundTransition = 'bats' | 'web'",
+              ),
+              (
+                  "  const [damageFlash, setDamageFlash] = useState<number | null>(null)\n",
+                  "  const [damageFlash, setDamageFlash] = useState<number | null>(null)\n  const [roundTransition, setRoundTransition] = useState<RoundTransition>('bats')\n",
+              ),
+              (
+                  "  const contestantsRef = useRef(contestants)\n",
+                  "  const contestantsRef = useRef(contestants)\n  const transitionTimerRef = useRef<number | null>(null)\n",
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in source:
+                  raise SystemExit(f'Missing expected component anchor: {old[:80]}')
+              source = source.replace(old, new, 1)
+
+          effects_anchor = """  useEffect(() => {
+            contestantsRef.current = contestants
+          }, [contestants])
+
+          """
+          transition_logic = effects_anchor + """  useEffect(
+            () => () => {
+              if (transitionTimerRef.current !== null) {
+                window.clearTimeout(transitionTimerRef.current)
+              }
+            },
+            []
+          )
+
+          const revealAfterTransition = useCallback(
+            (target: 'round_results' | 'results') => {
+              if (transitionTimerRef.current !== null) {
+                window.clearTimeout(transitionTimerRef.current)
+              }
+              setRoundTransition(round % 2 === 1 ? 'bats' : 'web')
+              setLocked(true)
+              setPhase('round_transition')
+              transitionTimerRef.current = window.setTimeout(() => {
+                transitionTimerRef.current = null
+                setPhase(target)
+                if (target === 'results') playComplete()
+              }, 1350)
+            },
+            [playComplete, round]
+          )
+
+          """
+          if effects_anchor not in source:
+              raise SystemExit('Missing contestant ref effect anchor')
+          source = source.replace(effects_anchor, transition_logic, 1)
+
+          old_finalize = """  const finalizeTournament = useCallback(
+            (nextStates: Record<string, ContestantState>) => {
+              const ranked = rankContestants(nextStates, resolvedIds)
+              setContestants(nextStates)
+              setStandings(ranked)
+              setPhase('results')
+              playComplete()
+            },
+            [playComplete, resolvedIds]
+          )
+          """
+          new_finalize = """  const finalizeTournament = useCallback(
+            (nextStates: Record<string, ContestantState>, animate = true) => {
+              const ranked = rankContestants(nextStates, resolvedIds)
+              setContestants(nextStates)
+              setStandings(ranked)
+              if (animate) {
+                revealAfterTransition('results')
+                return
+              }
+              setPhase('results')
+              playComplete()
+            },
+            [playComplete, resolvedIds, revealAfterTransition]
+          )
+          """
+          if old_finalize not in source:
+              raise SystemExit('Missing finalizeTournament block')
+          source = source.replace(old_finalize, new_finalize, 1)
+
+          performance_anchor = """      const simulatedPairCount = getHouseOfDarknessPairCount(simulatedRound)
+                const performance = simulateHouseOfCardsAiRound({
+          """
+          performance_replacement = """      const simulatedPairCount = getHouseOfDarknessPairCount(simulatedRound)
+                const aiAbility = getHouseOfDarknessAiAbility({
+                  baseAbility: aiProfiles[player.id]?.sessionAbility ?? 55,
+                  round: simulatedRound,
+                  health: player.health,
+                })
+                const performance = simulateHouseOfCardsAiRound({
+          """
+          if performance_anchor not in source:
+              raise SystemExit('Missing AI performance anchor')
+          source = source.replace(performance_anchor, performance_replacement, 1)
+
+          old_ability = "        sessionAbility: aiProfiles[player.id]?.sessionAbility ?? 55,"
+          if old_ability not in source:
+              raise SystemExit('Missing AI ability assignment')
+          source = source.replace(old_ability, '        sessionAbility: aiAbility,', 1)
+
+          death_finalize = '      finalizeTournament(nextStates)\n'
+          if death_finalize not in source:
+              raise SystemExit('Missing post-death tournament finalization')
+          source = source.replace(death_finalize, '      finalizeTournament(nextStates, false)\n', 1)
+
+          round_reveal = """    setContestants(nextStates)
+              setRoundSummary({ round, results })
+              setPhase('round_results')
+          """
+          round_transition = """    setContestants(nextStates)
+              setRoundSummary({ round, results })
+              revealAfterTransition('round_results')
+          """
+          if round_reveal not in source:
+              raise SystemExit('Missing round-results reveal block')
+          source = source.replace(round_reveal, round_transition, 1)
+
+          dependency_anchor = """    phase,
+            resolvedIds,
+          """
+          if dependency_anchor not in source:
+              raise SystemExit('Missing finishRound dependency anchor')
+          source = source.replace(
+              dependency_anchor,
+              """    phase,
+            resolvedIds,
+            revealAfterTransition,
+          """,
+              1,
+          )
+
+          overlay_anchor = """      {damageFlash !== null && phase === 'playing' && (
+          """
+          overlay = """      {phase === 'round_transition' && (
+                <div
+                  className={`hod-round-transition hod-round-transition--${roundTransition}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="hod-transition-curtain" aria-hidden="true">
+                    {roundTransition === 'bats' ? (
+                      <div className="hod-bat-swarm">
+                        <span className="hod-bat" />
+                        <span className="hod-bat" />
+                        <span className="hod-bat" />
+                        <span className="hod-bat" />
+                        <span className="hod-bat" />
+                        <span className="hod-bat" />
+                        <span className="hod-bat" />
+                      </div>
+                    ) : (
+                      <div className="hod-web-transition">
+                        <span className="hod-transition-web" />
+                        <span className="hod-transition-spider">
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <strong>
+                    {roundTransition === 'bats' ? 'The house changes shape' : 'The web tightens'}
+                  </strong>
+                </div>
+              )}
+
+              {damageFlash !== null && phase === 'playing' && (
+          """
+          if overlay_anchor not in source:
+              raise SystemExit('Missing damage flash render anchor')
+          source = source.replace(overlay_anchor, overlay, 1)
+
+          component_path.write_text(source)
+
+          css_path = Path('src/components/HouseOfDarknessComp/HouseOfDarknessComp.css')
+          css = css_path.read_text()
+          transition_css = r'''
+
+          /* Round-complete creature wipes */
+          .hod-root > .hod-round-transition {
+            position: absolute;
+            inset: 0;
+            z-index: 8;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            pointer-events: none;
+            color: #f7eadb;
+            background: rgba(2, 1, 4, 0.18);
+            animation: hod-transition-dim 1.35s ease both;
+          }
+
+          .hod-transition-curtain {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+          }
+
+          .hod-round-transition > strong {
+            position: relative;
+            z-index: 4;
+            padding: 9px 15px;
+            border: 1px solid rgba(213, 173, 114, 0.28);
+            border-radius: 999px;
+            background: rgba(8, 3, 10, 0.82);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.44);
+            font-size: clamp(0.72rem, 2.6vw, 0.9rem);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            animation: hod-transition-caption 1.35s ease both;
+          }
+
+          .hod-bat-swarm {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 48%, rgba(92, 16, 49, 0.38), transparent 55%);
+          }
+
+          .hod-bat {
+            position: absolute;
+            left: -24%;
+            top: var(--hod-bat-top, 50%);
+            width: var(--hod-bat-size, 24px);
+            height: calc(var(--hod-bat-size, 24px) * 0.42);
+            border-radius: 45% 45% 58% 58%;
+            background: #050207;
+            filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55));
+            animation: hod-bat-flight 1.18s var(--hod-bat-delay, 0s) cubic-bezier(0.2, 0.68, 0.28, 1) both;
+          }
+
+          .hod-bat::before,
+          .hod-bat::after {
+            content: '';
+            position: absolute;
+            top: -24%;
+            width: 74%;
+            height: 150%;
+            background: #050207;
+            clip-path: polygon(100% 45%, 63% 4%, 48% 38%, 4% 14%, 31% 100%, 72% 72%);
+            animation: hod-bat-wing 0.16s ease-in-out infinite alternate;
+          }
+
+          .hod-bat::before {
+            right: 52%;
+          }
+
+          .hod-bat::after {
+            left: 52%;
+            transform: scaleX(-1);
+          }
+
+          .hod-bat:nth-child(1) {
+            --hod-bat-top: 15%;
+            --hod-bat-size: 24px;
+            --hod-bat-delay: 0.02s;
+          }
+          .hod-bat:nth-child(2) {
+            --hod-bat-top: 31%;
+            --hod-bat-size: 34px;
+            --hod-bat-delay: 0.11s;
+          }
+          .hod-bat:nth-child(3) {
+            --hod-bat-top: 47%;
+            --hod-bat-size: 54px;
+            --hod-bat-delay: 0.01s;
+          }
+          .hod-bat:nth-child(4) {
+            --hod-bat-top: 61%;
+            --hod-bat-size: 29px;
+            --hod-bat-delay: 0.18s;
+          }
+          .hod-bat:nth-child(5) {
+            --hod-bat-top: 77%;
+            --hod-bat-size: 43px;
+            --hod-bat-delay: 0.08s;
+          }
+          .hod-bat:nth-child(6) {
+            --hod-bat-top: 23%;
+            --hod-bat-size: 66px;
+            --hod-bat-delay: 0.23s;
+          }
+          .hod-bat:nth-child(7) {
+            --hod-bat-top: 69%;
+            --hod-bat-size: 78px;
+            --hod-bat-delay: 0.28s;
+          }
+
+          .hod-web-transition {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(circle, rgba(54, 17, 63, 0.12), rgba(1, 0, 2, 0.74));
+          }
+
+          .hod-transition-web {
+            position: absolute;
+            width: min(132vw, 900px);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            opacity: 0;
+            background:
+              repeating-conic-gradient(from 0deg, rgba(232, 224, 214, 0.7) 0 0.8deg, transparent 0.8deg 15deg),
+              repeating-radial-gradient(circle, transparent 0 8%, rgba(232, 224, 214, 0.56) 8.2% 8.7%, transparent 8.9% 16%);
+            filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.18));
+            animation: hod-web-spread 1.28s ease-out both;
+          }
+
+          .hod-transition-spider {
+            position: absolute;
+            top: -19%;
+            left: 50%;
+            width: 28px;
+            height: 36px;
+            border-radius: 48% 48% 55% 55%;
+            background: #070308;
+            box-shadow:
+              0 -13px 0 -7px #070308,
+              0 0 12px rgba(0, 0, 0, 0.7);
+            animation: hod-spider-drop 1.25s 0.08s ease-in-out both;
+          }
+
+          .hod-transition-spider::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 100%;
+            width: 1px;
+            height: 80vh;
+            background: rgba(233, 227, 219, 0.66);
+            transform: translateX(-50%);
+          }
+
+          .hod-transition-spider i {
+            position: absolute;
+            top: 9px;
+            width: 25px;
+            height: 1px;
+            background: #070308;
+            transform-origin: center;
+          }
+
+          .hod-transition-spider i:nth-child(1) { right: 15px; transform: rotate(22deg); }
+          .hod-transition-spider i:nth-child(2) { right: 15px; top: 15px; transform: rotate(8deg); }
+          .hod-transition-spider i:nth-child(3) { right: 14px; top: 22px; transform: rotate(-10deg); }
+          .hod-transition-spider i:nth-child(4) { right: 13px; top: 28px; transform: rotate(-28deg); }
+          .hod-transition-spider i:nth-child(5) { left: 15px; transform: rotate(-22deg); }
+          .hod-transition-spider i:nth-child(6) { left: 15px; top: 15px; transform: rotate(-8deg); }
+          .hod-transition-spider i:nth-child(7) { left: 14px; top: 22px; transform: rotate(10deg); }
+          .hod-transition-spider i:nth-child(8) { left: 13px; top: 28px; transform: rotate(28deg); }
+
+          @keyframes hod-transition-dim {
+            0% { background: rgba(2, 1, 4, 0); }
+            42%, 72% { background: rgba(2, 1, 4, 0.72); }
+            100% { background: rgba(2, 1, 4, 0.18); }
+          }
+
+          @keyframes hod-transition-caption {
+            0%, 24% { opacity: 0; transform: translateY(8px) scale(0.96); }
+            45%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-5px) scale(1.02); }
+          }
+
+          @keyframes hod-bat-flight {
+            0% { opacity: 0; translate: 0 24px; scale: 0.72; }
+            18% { opacity: 1; }
+            72% { opacity: 1; }
+            100% { opacity: 0; translate: 150vw -38px; scale: 1.42; }
+          }
+
+          @keyframes hod-bat-wing {
+            from { rotate: -12deg; scale: 1 0.72; }
+            to { rotate: 12deg; scale: 1 1.08; }
+          }
+
+          @keyframes hod-web-spread {
+            0% { opacity: 0; transform: scale(0.08) rotate(-18deg); }
+            38%, 78% { opacity: 0.82; }
+            100% { opacity: 0; transform: scale(1.08) rotate(8deg); }
+          }
+
+          @keyframes hod-spider-drop {
+            0% { opacity: 0; translate: -50% 0; }
+            20% { opacity: 1; }
+            68% { opacity: 1; translate: -50% 53vh; }
+            100% { opacity: 0; translate: -50% 78vh; }
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .hod-round-transition,
+            .hod-round-transition > strong,
+            .hod-bat,
+            .hod-bat::before,
+            .hod-bat::after,
+            .hod-transition-web,
+            .hod-transition-spider {
+              animation-duration: 0.01ms !important;
+              animation-iteration-count: 1 !important;
+            }
+          }
+          '''
+          if '/* Round-complete creature wipes */' in css:
+              raise SystemExit('Transition CSS already exists')
+          css_path.write_text(css + transition_css)
+          PY
+      - name: Format changes
+        run: |
+          npx prettier --write \
+            src/components/HouseOfDarknessComp/HouseOfDarknessComp.tsx \
+            src/components/HouseOfDarknessComp/HouseOfDarknessComp.css \
+            src/components/HouseOfDarknessComp/houseOfDarknessAiBalance.ts \
+            tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts
+      - name: Validate focused behavior
+        run: |
+          npm run lint:ci
+          npx vitest run \
+            tests/unit/house-of-darkness/houseOfDarknessAiBalance.test.ts \
+            tests/unit/house-of-darkness/HouseOfDarknessComp.test.tsx \
+            tests/unit/house-of-darkness/houseOfDarknessUtils.test.ts
+      - name: Remove temporary workflow files
+        run: |
+          rm -f .github/workflows/temporary-house-of-darkness-refinement.yml
+          rm -f .github/.trigger-house-of-darkness-refinement
+      - name: Commit refinement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Balance House of Darkness AI and add round transitions"
+          git push origin HEAD:agent/house-of-darkness-fatigue-transitions
