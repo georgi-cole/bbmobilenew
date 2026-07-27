@@ -2,17 +2,13 @@ import { useState, useEffect, useCallback, useRef, type CSSProperties } from 're
 import type { Player } from '../../types'
 import { store } from '../../store/store'
 import { normalisePublicSaveVoteShares } from '../../publicOpinion/PublicSaveService'
-import {
-  completeDramaPublicSave,
-  resolveCurrentDramaPublicSave,
-} from '../../publicOpinion/DramaPublicSaveIntegration'
-import AudienceVerdictReveal from '../AudienceVerdictReveal/AudienceVerdictReveal'
+import { completeDramaPublicSave } from '../../publicOpinion/DramaPublicSaveIntegration'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
 import './PublicSaveReveal.css'
 
 export interface PublicSaveRevealProps {
   nominees: Player[]
-  /** Normal Mode receives raw approval values; this component converts them to vote shares. */
+  /** Raw approval values are converted to save-vote shares totalling exactly 100%. */
   approvals: Record<string, number>
   savedId: string
   onDone: () => void
@@ -154,9 +150,9 @@ function NormalPublicSaveReveal({
 }
 
 /**
- * Normal Mode deliberately keeps the established ten-second reveal and its
- * follow-up ceremony. Drama Mode replaces the entire sequence with the compact
- * Audience Verdict broadcast and commits the same underlying gameplay action.
+ * Public Save uses the established Normal Mode presentation in every mode.
+ * Drama Mode keeps its premium relationship and story consequences behind the
+ * scenes, but it no longer replaces the reveal with Audience Verdict UI.
  */
 export default function PublicSaveReveal({
   nominees,
@@ -165,34 +161,36 @@ export default function PublicSaveReveal({
   onDone,
 }: PublicSaveRevealProps) {
   const currentState = store.getState()
-  const publicModeEnabled = currentState.game.publicModeEnabled === true
-  const dramaModeEnabled = currentState.settings.gameUX.dramaMode === true && publicModeEnabled
+  const dramaModeEnabled =
+    currentState.settings.gameUX.dramaMode === true &&
+    currentState.game.publicModeEnabled === true
   const nomineeIds = nominees.map((nominee) => nominee.id)
+  const voteShares = normalisePublicSaveVoteShares(nomineeIds, approvals)
 
-  if (dramaModeEnabled) {
-    const outcome = resolveCurrentDramaPublicSave(nomineeIds)
-    if (outcome.savedId) {
-      return (
-        <AudienceVerdictReveal
-          nominees={nominees}
-          voteShares={outcome.voteShareByPlayerId}
-          savedId={outcome.savedId}
-          onDone={() => {
-            // The fallback protects the existing flow if Public Mode or Drama Mode
-            // is disabled while the reveal is already mounted.
-            if (!completeDramaPublicSave(nomineeIds, outcome)) onDone()
-          }}
-        />
+  const handleDone = () => {
+    // The established result announcement reads this same object. Mutating it
+    // preserves that flow while replacing absolute approval with vote shares.
+    Object.assign(approvals, voteShares)
+
+    if (dramaModeEnabled) {
+      const winningShare = voteShares[savedId] ?? 0
+      const runnerUpShare = Math.max(
+        0,
+        ...nomineeIds
+          .filter((nomineeId) => nomineeId !== savedId)
+          .map((nomineeId) => voteShares[nomineeId] ?? 0)
+      )
+      completeDramaPublicSave(
+        nomineeIds,
+        {
+          savedId,
+          winningShare,
+          winningMargin: Math.max(0, winningShare - runnerUpShare),
+        },
+        { commitGameplay: false }
       )
     }
-  }
 
-  const voteShares = normalisePublicSaveVoteShares(nomineeIds, approvals)
-  const handleNormalDone = () => {
-    // GameScreen's existing result announcement reads this same ephemeral object.
-    // Updating it here preserves the current flow while replacing absolute
-    // approval with a legitimate save-vote distribution totalling 100%.
-    Object.assign(approvals, voteShares)
     onDone()
   }
 
@@ -201,7 +199,7 @@ export default function PublicSaveReveal({
       nominees={nominees}
       voteShares={voteShares}
       savedId={savedId}
-      onDone={handleNormalDone}
+      onDone={handleDone}
     />
   )
 }
