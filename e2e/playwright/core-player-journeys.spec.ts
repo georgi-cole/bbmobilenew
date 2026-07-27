@@ -152,46 +152,52 @@ async function completeActiveConfessionalDecision(page: Page): Promise<void> {
   await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
   await advance.click()
 
-  const confessional = page
-    .getByRole('toolbar', { name: 'Game actions' })
-    .getByRole('button', { name: /^Confessional/ })
-  await expect(confessional).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-  await confessional.click()
-
-  const panel = page.getByTestId('confessional-decision-options')
+  const session = page.getByTestId('required-confessional-session')
+  await expect(session).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  const panel = page.getByTestId('required-confessional-decision')
   await expect(panel).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
 
   if (before.game.awaitingNominations) {
     const choices = panel.getByRole('group', { name: 'Nomination choices' }).getByRole('button')
     const confirm = panel.getByRole('button', { name: 'Confirm nominations' })
     const count = await choices.count()
-    for (let index = 0; index < count && !(await confirm.isVisible()); index += 1) {
+    for (let index = 0; index < count && !(await confirm.isEnabled()); index += 1) {
       const choice = choices.nth(index)
       if (await choice.isEnabled()) await choice.click()
     }
-    await expect(confirm).toBeVisible()
+    await expect(confirm).toBeEnabled()
     await confirm.click()
   } else if (before.game.awaitingPovDecision) {
-    await panel.getByRole('button', { name: /Do not use/ }).click()
+    await panel.getByRole('button', { name: /Leave nominations unchanged/ }).click()
+    const confirm = panel.getByRole('button', { name: 'Confirm power decision' })
+    await expect(confirm).toBeEnabled()
+    await confirm.click()
   } else if (before.game.replacementNeeded) {
-    await clickFirstEnabled(
-      panel.getByRole('group', { name: 'Replacement nominee choices' }).getByRole('button')
-    )
+    await clickFirstEnabled(panel.getByRole('group').getByRole('button'))
+    const confirm = panel.getByRole('button', { name: 'Confirm replacement' })
+    await expect(confirm).toBeEnabled()
+    await confirm.click()
   } else if (before.game.awaitingHumanVote) {
-    await clickFirstEnabled(
-      panel.getByRole('group', { name: 'Eviction vote choices' }).getByRole('button')
-    )
+    await clickFirstEnabled(panel.getByRole('group').getByRole('button'))
+    const confirm = panel.getByRole('button', { name: 'Seal eviction vote' })
+    await expect(confirm).toBeEnabled()
+    await confirm.click()
   } else if (before.game.awaitingTieBreak) {
-    await clickFirstEnabled(
-      panel.getByRole('group', { name: 'Tie-break choices' }).getByRole('button')
-    )
+    const choices = panel.getByRole('group').getByRole('button')
+    const confirm = panel.getByRole('button', {
+      name: /Seal deciding vote|Confirm eliminations/,
+    })
+    const count = await choices.count()
+    for (let index = 0; index < count && !(await confirm.isEnabled()); index += 1) {
+      const choice = choices.nth(index)
+      if (await choice.isEnabled()) await choice.click()
+    }
+    await expect(confirm).toBeEnabled()
+    await confirm.click()
   } else {
     throw new Error(`Unsupported Confessional decision in ${before.game.phase}.`)
   }
 
-  const back = page.getByRole('button', { name: 'Go back' })
-  await expect(back).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-  await back.click()
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
     timeout: SCREEN_TIMEOUT_MS,
   })
