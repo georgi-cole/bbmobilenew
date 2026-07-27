@@ -1,0 +1,40 @@
+name: Temporary Confessional lint report
+
+on:
+  push:
+    branches: [agent/confessional-flow-v2]
+
+permissions:
+  contents: write
+
+jobs:
+  report-confessional-lint:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/confessional-flow-v2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture lint diagnostics
+        run: |
+          npx eslint \
+            src/routes.tsx \
+            src/routes/ConfessionalFlowBridge.tsx \
+            src/screens/DiaryRoom/ConfessionalRoute.tsx \
+            src/screens/DiaryRoom/RequiredConfessionalDecision.tsx \
+            src/screens/DiaryRoom/RequiredConfessionalSession.tsx \
+            src/screens/DiaryRoom/requiredConfessionalPresentation.ts \
+            > confessional-lint-report.txt 2>&1 || true
+      - name: Commit report
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add confessional-lint-report.txt
+          git commit -m "Capture Confessional lint diagnostics"
+          git push origin HEAD:agent/confessional-flow-v2
