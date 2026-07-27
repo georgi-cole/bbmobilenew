@@ -35,6 +35,8 @@ export interface SettingsState {
   sim: {
     /** Enables the public-influence ruleset (3rd nominee + pre-veto public save). */
     publicMode: boolean;
+    /** Persistent entitlement bypass set only by hidden Advanced Settings. */
+    publicModeAdminOverride: boolean;
     enableJuryHouse: boolean;
     enableFanFavorite: boolean;
     enableTwists: boolean;
@@ -140,6 +142,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
   },
   sim: {
     publicMode: false,
+    publicModeAdminOverride: false,
     enableJuryHouse: false,
     enableFanFavorite: true,
     enableTwists: true,

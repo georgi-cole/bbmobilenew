@@ -1,4 +1,4 @@
-﻿import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit'
+import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit'
 import type { RootState, AppDispatch } from './store'
 import type {
   DemocraciaResultDisplay,
@@ -41,6 +41,7 @@ import type { SeasonArchive } from './seasonArchive'
 import { loadSeasonArchives } from './archivePersistence'
 import { resolveSkinAssetPathWithFallback } from '../utils/skinAssets'
 import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService'
+import { resolvePublicModeRuntimeEnabled } from '../publicOpinion/publicModeAccess'
 import {
   addDirection,
   resetDailyFeedBudget,
@@ -375,9 +376,12 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     lohSafetyAdvice: null,
     prevHohId: null,
     nomineeIds: [],
-    publicModeEnabled:
-      freshSettings.sim.publicMode === true &&
-      (hasCachedStoreAccess('publicMode') || import.meta.env.DEV || canAccessSpecialSettings()),
+    publicModeEnabled: resolvePublicModeRuntimeEnabled(freshSettings.sim.publicMode === true, {
+      hasStoreAccess: hasCachedStoreAccess('publicMode'),
+      adminOverride: freshSettings.sim.publicModeAdminOverride === true,
+      isDev: import.meta.env.DEV,
+      hasSpecialAccess: canAccessSpecialSettings(),
+    }),
     posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,

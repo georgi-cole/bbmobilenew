@@ -87,7 +87,7 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
       <MemoryRouter>
         <GameScreen />
       </MemoryRouter>
-    </Provider>,
+    </Provider>
   )
 }
 
@@ -102,7 +102,7 @@ describe('GameScreen public meter gating', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows the Home Hub prompt on the main TV without adding log entries when public mode is disabled', async () => {
+  it('shows a current-season explanation without resurrecting the legacy store prompt', async () => {
     const store = makeStore()
     const initialFeed = store.getState().game.tvFeed
     renderGameScreen(store)
@@ -117,8 +117,9 @@ describe('GameScreen public meter gating', () => {
     })
 
     expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
-      'If you want to activate public mode, go to the store in the home hub.',
+      'Public Mode is not active for this season. Enable it in Settings before starting a new season.'
     )
+    expect(screen.queryByText(/go to the store in the home hub/i)).toBeNull()
     expect(store.getState().game.tvFeed).toEqual(initialFeed)
   })
 
@@ -134,7 +135,7 @@ describe('GameScreen public meter gating', () => {
     })
 
     expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
-      'Everybody is currently waiting to vote or be voted, so no time for chit-chat now.',
+      'Everybody is currently waiting to vote or be voted, so no time for chit-chat now.'
     )
     expect(store.getState().game.tvFeed).toEqual(initialFeed)
 
@@ -149,7 +150,7 @@ describe('GameScreen public meter gating', () => {
     const baseGameState = gameReducer(undefined, { type: '@@INIT' })
     const store = makeStore({
       players: baseGameState.players.map((player) =>
-        player.isUser ? { ...player, status: 'evicted' } : player,
+        player.isUser ? { ...player, status: 'evicted' } : player
       ),
     })
     const initialFeed = store.getState().game.tvFeed
@@ -160,8 +161,8 @@ describe('GameScreen public meter gating', () => {
     expect(screen.getByRole('dialog', { name: 'Your season is over' })).toBeInTheDocument()
     expect(
       screen.getByText(
-        'You were eliminated before the Tribunal began, so you cannot return to the game or cast a finale vote.',
-      ),
+        'You were eliminated before the Tribunal began, so you cannot return to the game or cast a finale vote.'
+      )
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Social' })).toHaveAttribute('aria-disabled', 'true')
     expect(store.getState().game.tvFeed).toEqual(initialFeed)
