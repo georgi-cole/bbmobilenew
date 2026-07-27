@@ -37,9 +37,12 @@ describe('centralized minigame music configuration', () => {
     expect(resolveDesiredMusic(makeState(gameKey), '#/game')).toBe('challenge_group_1')
   })
 
-  it('does not route the track before the playing phase', () => {
-    expect(resolveDesiredMusic(makeState('bigSpender', 'countdown'), '#/game')).toBe('competition')
-  })
+  it.each(['rules', 'countdown', 'done'])(
+    'suppresses generic competition music during configured challenge phase %s',
+    (phase) => {
+      expect(resolveDesiredMusic(makeState('bigSpender', phase), '#/game')).toBe('none')
+    }
+  )
 
   it('stores the requested asset and lifecycle timings in one config', () => {
     const config = getMinigameMusicConfig('bigSpender')
