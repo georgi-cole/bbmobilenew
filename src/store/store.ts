@@ -39,6 +39,7 @@ import memoryColorsReducer from '../features/memoryColors/memoryColorsSlice'
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync'
 import publicOpinionReducer from '../publicOpinion/publicOpinionSlice'
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware'
+import { dramaPublicSaveMiddleware } from '../publicOpinion/dramaPublicSaveMiddleware'
 import adsReducer, { loadAdsState, saveAdsState } from './adsSlice'
 import { adsMiddleware } from './adsMiddleware'
 import remoteConfigReducer from '../remoteConfig/remoteConfigSlice'
@@ -90,6 +91,7 @@ export const store = configureStore({
       socialMiddleware,
       soundMiddleware,
       publicOpinionMiddleware,
+      dramaPublicSaveMiddleware,
       adsMiddleware,
       secretMissionMiddleware,
       gameDiagnosticsMiddleware

@@ -1,113 +1,69 @@
-/**
- * PublicSaveReveal — pre-veto public save ceremony overlay.
- *
- * Shows the 3 nominees as avatar cards with approval bars, then reveals
- * the nominee with the highest approval as saved by the public.
- *
- * Animation sequence:
- *   1. (entering) Backdrop fades in; nominee cards stagger-enter.
- *   2. (revealing) Bars sweep back and forth while approval values stay hidden.
- *   3. (saved) The true percentages appear; the top nominee is marked saved.
- *   4. (exiting) Everything fades out; onDone() is called.
- */
-
-import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
-import type { Player } from '../../types';
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import './PublicSaveReveal.css';
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react'
+import type { Player } from '../../types'
+import { store } from '../../store/store'
+import { normalisePublicSaveVoteShares } from '../../publicOpinion/PublicSaveService'
+import {
+  completeDramaPublicSave,
+  resolveCurrentDramaPublicSave,
+} from '../../publicOpinion/DramaPublicSaveIntegration'
+import AudienceVerdictReveal from '../AudienceVerdictReveal/AudienceVerdictReveal'
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import './PublicSaveReveal.css'
 
 export interface PublicSaveRevealProps {
-  nominees: Player[];
-  approvals: Record<string, number>;
-  savedId: string;
-  onDone: () => void;
+  nominees: Player[]
+  /** Normal Mode receives raw approval values; this component converts them to vote shares. */
+  approvals: Record<string, number>
+  savedId: string
+  onDone: () => void
 }
 
-type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting';
+type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting'
 
-const ENTER_TO_REVEAL_MS = 900;
-const REVEAL_VALUES_MS = 5000;
-const SHOW_SAVED_MS = 7600;
-const EXIT_MS = 9300;
-const DONE_MS = 10000;
-const MAX_APPROVAL_DISPLAY_PRECISION = 3;
-const DISPLAY_TIE_DELTA = 0.1;
+const ENTER_TO_REVEAL_MS = 900
+const REVEAL_VALUES_MS = 5000
+const SHOW_SAVED_MS = 7600
+const EXIT_MS = 9300
+const DONE_MS = 10000
 
-function formatApprovals(allApprovals: number[], savedIndex: number): string[] {
-  const displayApprovals = [...allApprovals];
-  const savedApproval = allApprovals[savedIndex];
-  const tiedSavedApprovalIndexes = allApprovals
-    .map((approval, index) => ({ approval, index }))
-    .filter(({ approval, index }) => index !== savedIndex && approval === savedApproval)
-    .map(({ index }) => index);
-
-  if (tiedSavedApprovalIndexes.length > 0) {
-    displayApprovals[savedIndex] = Math.min(100, savedApproval + DISPLAY_TIE_DELTA);
-    tiedSavedApprovalIndexes.forEach((index) => {
-      displayApprovals[index] = Math.max(0, allApprovals[index] - DISPLAY_TIE_DELTA);
-    });
-  }
-
-  const precisions = displayApprovals.map(() => 0);
-  const approvalIndexesByRoundedValue = new Map<string, number[]>();
-
-  displayApprovals.forEach((approval, index) => {
-    const roundedApproval = approval.toFixed(0);
-    approvalIndexesByRoundedValue.set(
-      roundedApproval,
-      [...(approvalIndexesByRoundedValue.get(roundedApproval) ?? []), index],
-    );
-  });
-
-  approvalIndexesByRoundedValue.forEach((indexes) => {
-    if (indexes.length <= 1) return;
-
-    for (let precision = 1; precision <= MAX_APPROVAL_DISPLAY_PRECISION; precision += 1) {
-      const formattedApprovals = indexes.map((index) => displayApprovals[index].toFixed(precision));
-      if (
-        new Set(formattedApprovals).size === indexes.length ||
-        precision === MAX_APPROVAL_DISPLAY_PRECISION
-      ) {
-        indexes.forEach((index) => {
-          precisions[index] = precision;
-        });
-        return;
-      }
-    }
-  });
-
-  return displayApprovals.map((approval, index) => `${approval.toFixed(precisions[index])}%`);
+function formatShare(value: number): string {
+  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`
 }
 
-export default function PublicSaveReveal({
+function NormalPublicSaveReveal({
   nominees,
-  approvals,
+  voteShares,
   savedId,
   onDone,
-}: PublicSaveRevealProps) {
-  const [phase, setPhase] = useState<AnimPhase>('entering');
-  const [valuesRevealed, setValuesRevealed] = useState(false);
-  const timersRef = useRef<number[]>([]);
-  const doneRef = useRef(false);
+}: {
+  nominees: Player[]
+  voteShares: Record<string, number>
+  savedId: string
+  onDone: () => void
+}) {
+  const [phase, setPhase] = useState<AnimPhase>('entering')
+  const [valuesRevealed, setValuesRevealed] = useState(false)
+  const timersRef = useRef<number[]>([])
+  const doneRef = useRef(false)
 
   const clearTimers = useCallback(() => {
-    timersRef.current.forEach((id) => window.clearTimeout(id));
-    timersRef.current = [];
-  }, []);
+    timersRef.current.forEach((id) => window.clearTimeout(id))
+    timersRef.current = []
+  }, [])
 
   const fireDone = useCallback(() => {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    clearTimers();
-    onDone();
-  }, [clearTimers, onDone]);
+    if (doneRef.current) return
+    doneRef.current = true
+    clearTimers()
+    onDone()
+  }, [clearTimers, onDone])
 
   useEffect(() => {
-    doneRef.current = false;
+    doneRef.current = false
 
     if (document.body.classList.contains('no-animations')) {
-      fireDone();
-      return;
+      fireDone()
+      return
     }
 
     timersRef.current = [
@@ -116,30 +72,17 @@ export default function PublicSaveReveal({
       window.setTimeout(() => setPhase('saved'), SHOW_SAVED_MS),
       window.setTimeout(() => setPhase('exiting'), EXIT_MS),
       window.setTimeout(() => fireDone(), DONE_MS),
-    ];
+    ]
 
-    return clearTimers;
-  }, [clearTimers, fireDone]);
-
-  const nomineeApprovals = nominees.map((player) => approvals[player.id] ?? 50);
-  const formattedApprovals = formatApprovals(
-    nomineeApprovals,
-    nominees.findIndex((player) => player.id === savedId),
-  );
-
-  const approvalLabel = (player: Player, formattedApproval: string) =>
-    `${player.name} approval: ${valuesRevealed ? formattedApproval : 'pending reveal'}`;
-
-  const approvalText = (formattedApproval: string) => (valuesRevealed ? formattedApproval : '?? %');
-
-  const barWidth = (approval: number) => `${Math.max(0, Math.min(100, approval))}%`;
+    return clearTimers
+  }, [clearTimers, fireDone])
 
   return (
     <div
       className={`psr psr--${phase}`}
       role="status"
       aria-live="assertive"
-      aria-label={`Public Save: ${nominees.find((n) => n.id === savedId)?.name ?? ''} is saved`}
+      aria-label={`Public Save: ${nominees.find((nominee) => nominee.id === savedId)?.name ?? ''} is saved`}
     >
       <div className="psr__panel">
         <div className="psr__heading">
@@ -150,23 +93,29 @@ export default function PublicSaveReveal({
         </div>
 
         <div className="psr__nominees">
-          {nominees.map((player, idx) => {
-            const isSaved = player.id === savedId;
-            const approval = approvals[player.id] ?? 50;
-            const formattedApproval = formattedApprovals[idx];
+          {nominees.map((player, index) => {
+            const isSaved = player.id === savedId
+            const voteShare = voteShares[player.id] ?? 0
+            const formattedShare = formatShare(voteShare)
             return (
               <div
                 key={player.id}
                 className={[
                   'psr__nominee',
-                  isSaved && (phase === 'saved' || phase === 'exiting') ? 'psr__nominee--saved' : '',
-                  !isSaved && (phase === 'saved' || phase === 'exiting') ? 'psr__nominee--nominated' : '',
-                ].filter(Boolean).join(' ')}
+                  isSaved && (phase === 'saved' || phase === 'exiting')
+                    ? 'psr__nominee--saved'
+                    : '',
+                  !isSaved && (phase === 'saved' || phase === 'exiting')
+                    ? 'psr__nominee--nominated'
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 style={
                   {
-                    '--stagger': idx,
-                    '--pending-width': `${32 + idx * 6}%`,
-                    '--pending-delay': `${idx * 140}ms`,
+                    '--stagger': index,
+                    '--pending-width': `${32 + index * 6}%`,
+                    '--pending-delay': `${index * 140}ms`,
                   } as CSSProperties
                 }
               >
@@ -176,28 +125,83 @@ export default function PublicSaveReveal({
                 <span className="psr__name">{player.name}</span>
                 <div className="psr__bar-track">
                   <div
-                    className={[
-                      'psr__bar-motion',
-                      !valuesRevealed ? 'psr__bar-motion--pending' : '',
-                    ].filter(Boolean).join(' ')}
+                    className={`psr__bar-motion${!valuesRevealed ? ' psr__bar-motion--pending' : ''}`}
                   >
                     <div
                       className="psr__bar-fill"
                       style={{
-                        width: phase === 'entering' ? '0%' : valuesRevealed ? barWidth(approval) : 'var(--pending-width)',
+                        width:
+                          phase === 'entering'
+                            ? '0%'
+                            : valuesRevealed
+                              ? `${voteShare}%`
+                              : 'var(--pending-width)',
                       }}
-                      aria-label={approvalLabel(player, formattedApproval)}
+                      aria-label={`${player.name} save vote: ${valuesRevealed ? formattedShare : 'pending reveal'}`}
                     />
                   </div>
                 </div>
                 <span className="psr__approval-value">
-                  {approvalText(formattedApproval)}
+                  {valuesRevealed ? formattedShare : '?? %'}
                 </span>
               </div>
-            );
+            )
           })}
         </div>
       </div>
     </div>
-  );
+  )
+}
+
+/**
+ * Normal Mode deliberately keeps the established ten-second reveal and its
+ * follow-up ceremony. Drama Mode replaces the entire sequence with the compact
+ * Audience Verdict broadcast and commits the same underlying gameplay action.
+ */
+export default function PublicSaveReveal({
+  nominees,
+  approvals,
+  savedId,
+  onDone,
+}: PublicSaveRevealProps) {
+  const currentState = store.getState()
+  const publicModeEnabled = currentState.game.publicModeEnabled === true
+  const dramaModeEnabled = currentState.settings.gameUX.dramaMode === true && publicModeEnabled
+  const nomineeIds = nominees.map((nominee) => nominee.id)
+
+  if (dramaModeEnabled) {
+    const outcome = resolveCurrentDramaPublicSave(nomineeIds)
+    if (outcome.savedId) {
+      return (
+        <AudienceVerdictReveal
+          nominees={nominees}
+          voteShares={outcome.voteShareByPlayerId}
+          savedId={outcome.savedId}
+          onDone={() => {
+            // The fallback protects the existing flow if Public Mode or Drama Mode
+            // is disabled while the reveal is already mounted.
+            if (!completeDramaPublicSave(nomineeIds, outcome)) onDone()
+          }}
+        />
+      )
+    }
+  }
+
+  const voteShares = normalisePublicSaveVoteShares(nomineeIds, approvals)
+  const handleNormalDone = () => {
+    // GameScreen's existing result announcement reads this same ephemeral object.
+    // Updating it here preserves the current flow while replacing absolute
+    // approval with a legitimate save-vote distribution totalling 100%.
+    Object.assign(approvals, voteShares)
+    onDone()
+  }
+
+  return (
+    <NormalPublicSaveReveal
+      nominees={nominees}
+      voteShares={voteShares}
+      savedId={savedId}
+      onDone={handleNormalDone}
+    />
+  )
 }
