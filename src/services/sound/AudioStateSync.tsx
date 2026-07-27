@@ -5,9 +5,11 @@ import { SoundManager } from './SoundManager';
 import { resolveDesiredMusic } from './resolveDesiredMusic';
 import type { MusicTrack } from './musicTracks';
 import {
+  getMinigameMusicConfig,
   getMinigameMusicConfigByTrack,
   MINIGAME_MUSIC_CONFIGS,
 } from './minigameMusicConfig';
+import { observeHostedMinigamePlaying } from './minigameHostPhaseObserver';
 
 const VOLUME_RAMP_STEP_MS = 50;
 
@@ -29,6 +31,7 @@ export default function AudioStateSync() {
     shallowEqual,
   );
   const [hash, setHash] = useState(() => window.location.hash);
+  const [hostedMinigamePlaying, setHostedMinigamePlaying] = useState(false);
   const previousDesiredRef = useRef<MusicTrack>('none');
   const latestDesiredRef = useRef<MusicTrack>('none');
   const fadeInTimerRef = useRef<number | null>(null);
@@ -47,7 +50,17 @@ export default function AudioStateSync() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const desiredMusic = useMemo(
+  useEffect(() => {
+    const configuredGame = getMinigameMusicConfig(musicState.pendingChallengeGameKey);
+    if (!configuredGame) {
+      setHostedMinigamePlaying(false);
+      return undefined;
+    }
+
+    return observeHostedMinigamePlaying(setHostedMinigamePlaying);
+  }, [musicState.pendingChallengeGameKey]);
+
+  const resolvedMusic = useMemo(
     () => {
       if (!musicState.musicOn) return 'none';
 
@@ -84,6 +97,21 @@ export default function AudioStateSync() {
     },
     [hash, musicState],
   );
+
+  const desiredMusic = useMemo<MusicTrack>(() => {
+    if (musicState.musicOn && hostedMinigamePlaying) {
+      const configuredTrack = getMinigameMusicConfig(
+        musicState.pendingChallengeGameKey,
+      )?.track;
+      if (configuredTrack) return configuredTrack;
+    }
+    return resolvedMusic;
+  }, [
+    hostedMinigamePlaying,
+    musicState.musicOn,
+    musicState.pendingChallengeGameKey,
+    resolvedMusic,
+  ]);
 
   useEffect(() => {
     latestDesiredRef.current = desiredMusic;
