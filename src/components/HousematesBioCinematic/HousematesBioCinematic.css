@@ -12,13 +12,18 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.hbc,
+.hbc * {
+  box-sizing: border-box;
+}
+
 .hbc::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 50;
   pointer-events: none;
-  border: clamp(6px, 0.8vw, 14px) solid rgba(255, 255, 255, 0.035);
+  border: clamp(5px, 0.8vw, 14px) solid rgba(255, 255, 255, 0.035);
   box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.42);
 }
 
@@ -37,6 +42,8 @@
 .hbc__scene-shell {
   position: absolute;
   inset: 0;
+  min-width: 0;
+  min-height: 0;
 }
 
 .hbc__scene-shell {
@@ -45,27 +52,29 @@
 
 .hbc__skip {
   position: absolute;
-  top: max(16px, calc(env(safe-area-inset-top, 0px) + 12px));
-  right: max(18px, calc(env(safe-area-inset-right, 0px) + 14px));
+  top: max(12px, calc(env(safe-area-inset-top, 0px) + 10px));
+  right: max(12px, calc(env(safe-area-inset-right, 0px) + 10px));
   z-index: 70;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 0 8px 0 16px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 7px 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.86);
-  background: rgba(5, 7, 13, 0.48);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(5, 7, 13, 0.62);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   font: inherit;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .hbc__skip span:last-child {
@@ -75,14 +84,14 @@
   height: 29px;
   border-radius: 50%;
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: 1.2rem;
+  background: rgba(255, 255, 255, 0.11);
+  font-size: 1.15rem;
   line-height: 1;
 }
 
 .hbc__skip:hover {
-  border-color: rgba(255, 255, 255, 0.34);
-  background: rgba(17, 20, 31, 0.7);
+  border-color: rgba(255, 255, 255, 0.36);
+  background: rgba(17, 20, 31, 0.78);
 }
 
 .hbc__skip:focus-visible {
@@ -96,13 +105,13 @@
   bottom: 0;
   left: 0;
   z-index: 80;
-  height: 3px;
+  height: max(3px, env(safe-area-inset-bottom, 0px));
   background: rgba(255, 255, 255, 0.1);
 }
 
 .hbc__progress > div {
   width: 100%;
-  height: 100%;
+  height: 3px;
   transform-origin: left center;
   background: linear-gradient(90deg, #b59aff, #fff, #69e2d2);
   box-shadow: 0 0 14px rgba(181, 154, 255, 0.72);
@@ -110,22 +119,32 @@
 
 .hbc-kicker {
   margin: 0;
-  color: rgba(255, 255, 255, 0.64);
-  font-size: clamp(0.68rem, 1.2vw, 0.9rem);
-  font-weight: 800;
-  letter-spacing: 0.28em;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: clamp(0.62rem, 1.8vmin, 0.9rem);
+  font-weight: 850;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
 }
 
-.hbc-intro {
+/* Intro and ending scenes intentionally share the same safe-area contract. */
+.hbc-intro,
+.hbc-ending {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  padding: max(28px, env(safe-area-inset-top, 0px)) 24px max(28px, env(safe-area-inset-bottom, 0px));
+  min-width: 0;
+  min-height: 0;
+  padding:
+    max(72px, calc(env(safe-area-inset-top, 0px) + 58px))
+    clamp(18px, 5vw, 56px)
+    max(48px, calc(env(safe-area-inset-bottom, 0px) + 36px));
   text-align: center;
+}
+
+.hbc-intro {
   background:
     linear-gradient(135deg, rgba(4, 7, 17, 0.65), rgba(2, 4, 8, 0.92)),
     url('/assets/housemate-bio-backgrounds/strategy-room.png') center / cover no-repeat;
@@ -147,9 +166,9 @@
 
 .hbc-intro h1 {
   max-width: 1000px;
-  margin: 18px 0 10px;
+  margin: clamp(12px, 2.2vh, 18px) 0 8px;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2.7rem, 8vw, 7.6rem);
+  font-size: clamp(2.55rem, 10vmin, 7.6rem);
   font-weight: 500;
   line-height: 0.92;
   letter-spacing: -0.055em;
@@ -160,22 +179,41 @@
 .hbc-intro__line {
   width: min(420px, 62vw);
   height: 1px;
-  margin: 22px 0 18px;
+  margin: clamp(16px, 3vh, 22px) 0 clamp(13px, 2.4vh, 18px);
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
 }
 
 .hbc-intro__sub {
+  max-width: 36rem;
   margin: 0;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: clamp(0.92rem, 1.8vw, 1.22rem);
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: clamp(0.86rem, 2.2vmin, 1.22rem);
+  font-weight: 520;
+  line-height: 1.4;
   letter-spacing: 0.025em;
+  text-wrap: balance;
 }
 
+/*
+ * Housemate cards use explicit grid regions instead of overlapping absolute
+ * panels. Phone portrait mode reserves the upper region for copy and the lower
+ * region for the full cutout. Wide screens switch to a two-column layout.
+ */
 .hbc-card {
   position: absolute;
   inset: 0;
+  display: grid;
+  grid-template-areas:
+    'copy'
+    'portrait';
+  grid-template-rows: minmax(0, 42%) minmax(0, 58%);
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
+  padding:
+    max(66px, calc(env(safe-area-inset-top, 0px) + 54px))
+    clamp(16px, 4vw, 42px)
+    max(10px, calc(env(safe-area-inset-bottom, 0px) + 4px));
   background: #070a10;
 }
 
@@ -184,7 +222,7 @@
   inset: -4%;
   background-position: var(--hbc-backdrop-position, center);
   background-size: cover;
-  filter: saturate(0.92) contrast(1.04);
+  filter: saturate(0.9) contrast(1.05) brightness(0.86);
   will-change: transform;
 }
 
@@ -192,190 +230,172 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(2, 4, 8, 0.18) 0%, transparent 36%, rgba(2, 4, 8, 0.87) 76%, #020408 100%),
-    linear-gradient(0deg, rgba(2, 3, 7, 0.78) 0%, transparent 45%, rgba(2, 3, 7, 0.3) 100%);
-}
-
-.hbc-card--reverse .hbc-card__grade {
-  transform: scaleX(-1);
+    linear-gradient(180deg, rgba(2, 4, 8, 0.46) 0%, rgba(2, 4, 8, 0.08) 42%, rgba(2, 4, 8, 0.78) 100%),
+    linear-gradient(90deg, rgba(2, 4, 8, 0.24), transparent 45%, rgba(2, 4, 8, 0.24));
 }
 
 .hbc-card__grade::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 28% 72%, color-mix(in srgb, var(--hbc-accent) 34%, transparent), transparent 28%);
+  background: radial-gradient(circle at 50% 76%, color-mix(in srgb, var(--hbc-accent) 38%, transparent), transparent 31%);
   mix-blend-mode: screen;
-  opacity: 0.35;
-}
-
-.hbc-card--reverse .hbc-card__grade::after {
-  transform: scaleX(-1);
+  opacity: 0.36;
 }
 
 .hbc-card__ordinal {
   position: absolute;
-  top: clamp(54px, 8vh, 94px);
-  left: clamp(20px, 3.4vw, 58px);
+  top: max(66px, calc(env(safe-area-inset-top, 0px) + 54px));
+  left: clamp(14px, 4vw, 58px);
   z-index: 2;
-  color: rgba(255, 255, 255, 0.08);
-  font-size: clamp(5rem, 15vw, 13rem);
+  color: rgba(255, 255, 255, 0.07);
+  font-size: clamp(4.4rem, 18vw, 9rem);
   font-weight: 900;
   line-height: 0.8;
   letter-spacing: -0.08em;
+  pointer-events: none;
 }
 
 .hbc-card--reverse .hbc-card__ordinal {
-  right: clamp(20px, 3.4vw, 58px);
+  right: clamp(14px, 4vw, 58px);
   left: auto;
 }
 
 .hbc-card__portrait-wrap {
-  position: absolute;
+  position: relative;
   z-index: 4;
-  bottom: -3%;
-  left: 1%;
-  width: min(48vw, 690px);
-  height: 94%;
+  grid-area: portrait;
+  align-self: stretch;
+  justify-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 calc(clamp(16px, 4vw, 42px) * -1) calc(max(10px, env(safe-area-inset-bottom, 0px)) * -1);
   pointer-events: none;
-}
-
-.hbc-card--reverse .hbc-card__portrait-wrap {
-  right: 1%;
-  left: auto;
 }
 
 .hbc-card__halo {
   position: absolute;
-  right: 7%;
-  bottom: 7%;
-  left: 7%;
-  height: 65%;
+  right: 8%;
+  bottom: 2%;
+  left: 8%;
+  height: 70%;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--hbc-accent) 46%, transparent), transparent 65%);
-  filter: blur(34px);
-  opacity: 0.68;
+  background: radial-gradient(circle, color-mix(in srgb, var(--hbc-accent) 48%, transparent), transparent 66%);
+  filter: blur(32px);
+  opacity: 0.72;
 }
 
 .hbc-card__portrait {
-  position: relative;
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: center bottom !important;
-  filter: drop-shadow(0 26px 35px rgba(0, 0, 0, 0.56));
+  object-position: center bottom;
+  filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.58));
   user-select: none;
 }
 
 .hbc-card__copy {
-  position: absolute;
+  position: relative;
   z-index: 7;
-  top: 50%;
-  right: clamp(26px, 5vw, 90px);
-  width: min(49vw, 720px);
-  transform: translateY(-48%);
-}
-
-.hbc-card--reverse .hbc-card__copy {
-  right: auto;
-  left: clamp(26px, 5vw, 90px);
+  grid-area: copy;
+  align-self: center;
+  justify-self: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .hbc-card__identity {
-  margin: 0 0 clamp(14px, 2.2vh, 24px);
-  padding-left: clamp(15px, 1.6vw, 24px);
+  max-width: 44rem;
+  margin: 0 0 clamp(8px, 1.5vh, 16px);
+  padding-left: clamp(11px, 2vw, 18px);
   border-left: 3px solid var(--hbc-accent);
 }
 
+.hbc-card--reverse .hbc-card__identity {
+  margin-left: auto;
+  padding-right: clamp(11px, 2vw, 18px);
+  padding-left: 0;
+  border-right: 3px solid var(--hbc-accent);
+  border-left: 0;
+  text-align: right;
+}
+
 .hbc-card__eyebrow {
-  margin: 0 0 6px;
+  margin: 0 0 5px;
   color: var(--hbc-accent);
-  font-size: clamp(0.62rem, 1vw, 0.82rem);
+  font-size: clamp(0.56rem, 2vw, 0.78rem);
   font-weight: 900;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .hbc-card__identity h2 {
   margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(3rem, 7.6vw, 7.6rem);
+  font-size: clamp(2.5rem, 12vw, 5.2rem);
   font-weight: 500;
-  line-height: 0.78;
-  letter-spacing: -0.07em;
-  text-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
+  line-height: 0.82;
+  letter-spacing: -0.065em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  text-shadow: 0 12px 36px rgba(0, 0, 0, 0.68);
 }
 
 .hbc-card__details {
-  max-width: 660px;
-  margin: clamp(12px, 1.8vh, 18px) 0 0;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: clamp(0.72rem, 1.15vw, 0.96rem);
-  font-weight: 700;
-  letter-spacing: 0.055em;
-  line-height: 1.35;
+  max-width: 40rem;
+  margin: clamp(8px, 1.2vh, 13px) 0 0;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: clamp(0.58rem, 2.15vw, 0.82rem);
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  line-height: 1.32;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.hbc-card--reverse .hbc-card__details {
+  margin-left: auto;
 }
 
 .hbc-bubble {
   position: relative;
-  max-width: 650px;
-  margin-top: clamp(10px, 1.8vh, 18px);
-  padding: clamp(12px, 1.7vw, 22px) clamp(14px, 2vw, 26px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 22px 22px 22px 5px;
-  color: rgba(255, 255, 255, 0.95);
-  background: rgba(7, 10, 18, 0.72);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(16px) saturate(1.1);
-  -webkit-backdrop-filter: blur(16px) saturate(1.1);
-  font-size: clamp(0.85rem, 1.4vw, 1.16rem);
+  max-width: 44rem;
+  margin-top: clamp(7px, 1.2vh, 13px);
+  padding: clamp(9px, 1.4vh, 15px) clamp(11px, 3vw, 20px);
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 17px 17px 17px 5px;
+  color: rgba(255, 255, 255, 0.96);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--hbc-accent) 16%, transparent), transparent 55%),
+    rgba(7, 10, 18, 0.84);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+  font-size: clamp(0.7rem, 2.45vw, 0.94rem);
   font-weight: 580;
-  line-height: 1.42;
+  line-height: 1.34;
+  overflow-wrap: anywhere;
   text-wrap: pretty;
 }
 
 .hbc-card--reverse .hbc-bubble {
-  border-radius: 22px 22px 5px 22px;
-}
-
-.hbc-bubble--intro {
-  width: fit-content;
-  border-color: color-mix(in srgb, var(--hbc-accent) 48%, transparent);
-}
-
-.hbc-bubble--dream {
-  margin-left: clamp(18px, 3vw, 54px);
-  background:
-    linear-gradient(115deg, color-mix(in srgb, var(--hbc-accent) 15%, transparent), transparent 55%),
-    rgba(7, 10, 18, 0.82);
-}
-
-.hbc-card--reverse .hbc-bubble--dream {
-  margin-right: clamp(18px, 3vw, 54px);
-  margin-left: 0;
+  margin-left: auto;
+  border-radius: 17px 17px 5px 17px;
+  text-align: right;
 }
 
 .hbc-bubble__label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   color: var(--hbc-accent);
   font-size: 0.64em;
   font-weight: 950;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-}
-
-.hbc-ending {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  padding: max(60px, env(safe-area-inset-top, 0px)) 24px max(50px, env(safe-area-inset-bottom, 0px));
-  text-align: center;
 }
 
 .hbc-ending--outro {
@@ -387,22 +407,22 @@
 .hbc-ending__eye {
   display: grid;
   place-items: center;
-  width: clamp(70px, 10vw, 114px);
-  height: clamp(70px, 10vw, 114px);
-  margin-bottom: 28px;
+  width: clamp(70px, 12vmin, 114px);
+  height: clamp(70px, 12vmin, 114px);
+  margin-bottom: clamp(18px, 3vh, 28px);
   border: 1px solid rgba(255, 255, 255, 0.26);
   border-radius: 50%;
   color: #d9d0ff;
   background: rgba(125, 94, 255, 0.16);
   box-shadow: 0 0 70px rgba(125, 94, 255, 0.42);
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: clamp(2rem, 5vmin, 3.2rem);
 }
 
 .hbc-ending--outro > p {
   max-width: 980px;
   margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2rem, 5.6vw, 5.3rem);
+  font-size: clamp(1.75rem, 7vmin, 5.3rem);
   font-weight: 500;
   line-height: 1.05;
   letter-spacing: -0.04em;
@@ -412,11 +432,13 @@
 
 .hbc-ending--outro > span {
   max-width: 620px;
-  margin-top: 24px;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: clamp(0.82rem, 1.5vw, 1.02rem);
+  margin-top: clamp(16px, 3vh, 24px);
+  color: rgba(255, 255, 255, 0.69);
+  font-size: clamp(0.76rem, 2vmin, 1.02rem);
   font-weight: 650;
-  letter-spacing: 0.035em;
+  line-height: 1.45;
+  letter-spacing: 0.025em;
+  text-wrap: balance;
 }
 
 .hbc-ending--credit {
@@ -426,35 +448,36 @@
 }
 
 .hbc-ending--credit h2 {
-  margin: 17px 0 2px;
+  margin: clamp(12px, 2.4vh, 17px) 0 2px;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(4.2rem, 12vw, 10rem);
+  font-size: clamp(3.7rem, 14vmin, 10rem);
   font-weight: 500;
   line-height: 0.88;
   letter-spacing: -0.07em;
+  overflow-wrap: anywhere;
 }
 
 .hbc-credit__artist {
   margin: 8px 0 0;
   color: #cbbaff;
-  font-size: clamp(1rem, 2.4vw, 1.55rem);
+  font-size: clamp(0.9rem, 3vmin, 1.55rem);
   font-weight: 850;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .hbc-credit__rule {
   width: 90px;
   height: 1px;
-  margin: 32px 0 18px;
+  margin: clamp(22px, 4vh, 32px) 0 18px;
   background: rgba(255, 255, 255, 0.35);
 }
 
 .hbc-ending--credit > span {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: clamp(0.62rem, 1.8vmin, 0.72rem);
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
@@ -466,7 +489,8 @@
   position: relative;
   z-index: 2;
   display: block;
-  width: min(68vw, 520px);
+  width: min(72vw, 520px);
+  max-width: 100%;
   max-height: 46vh;
   object-fit: contain;
   filter: drop-shadow(0 18px 48px rgba(110, 86, 255, 0.38));
@@ -485,9 +509,9 @@
   position: relative;
   z-index: 2;
   margin: 24px 0 0;
-  font-size: clamp(0.7rem, 1.2vw, 0.88rem);
+  font-size: clamp(0.62rem, 1.8vmin, 0.88rem);
   font-weight: 800;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
@@ -496,79 +520,128 @@
   to { transform: translate3d(2%, 1%, 0) scale(1.04); }
 }
 
-@media (orientation: portrait) {
-  .hbc-card__portrait-wrap {
-    bottom: -2%;
-    left: -8%;
-    width: 72vw;
-    height: 78%;
+/* Short phones get more copy space, but retain the full portrait region. */
+@media (max-height: 700px) and (orientation: portrait) {
+  .hbc-card {
+    grid-template-rows: minmax(0, 47%) minmax(0, 53%);
+    padding-top: max(58px, calc(env(safe-area-inset-top, 0px) + 48px));
   }
 
-  .hbc-card--reverse .hbc-card__portrait-wrap {
-    right: -8%;
-    left: auto;
-  }
-
-  .hbc-card__copy {
-    top: 47%;
-    right: 4vw;
-    width: 61vw;
-  }
-
-  .hbc-card--reverse .hbc-card__copy {
-    right: auto;
-    left: 4vw;
-  }
-
-  .hbc-card__identity h2 {
-    font-size: clamp(3.2rem, 17vw, 6.4rem);
-  }
-
-  .hbc-card__details {
-    font-size: clamp(0.58rem, 2.3vw, 0.78rem);
-  }
-
-  .hbc-bubble {
-    border-radius: 17px 17px 17px 4px;
-    font-size: clamp(0.73rem, 3.1vw, 0.96rem);
-    line-height: 1.34;
-  }
-
-  .hbc-card--reverse .hbc-bubble {
-    border-radius: 17px 17px 4px 17px;
-  }
-}
-
-@media (max-width: 520px) and (max-height: 760px) {
-  .hbc-card__copy {
-    top: 48%;
-    width: 64vw;
+  .hbc-card__ordinal {
+    top: max(58px, calc(env(safe-area-inset-top, 0px) + 48px));
+    font-size: clamp(3.7rem, 15vw, 6rem);
   }
 
   .hbc-card__identity {
-    margin-bottom: 9px;
+    margin-bottom: 6px;
   }
 
   .hbc-card__identity h2 {
-    font-size: clamp(2.9rem, 14vw, 4.6rem);
+    font-size: clamp(2.15rem, 10.5vw, 3.7rem);
   }
 
   .hbc-card__details {
-    margin-top: 8px;
+    margin-top: 6px;
+    font-size: clamp(0.52rem, 1.9vw, 0.68rem);
   }
 
   .hbc-bubble {
-    margin-top: 7px;
-    padding: 9px 11px;
-    font-size: clamp(0.67rem, 2.7vw, 0.82rem);
+    margin-top: 6px;
+    padding: 7px 9px;
+    font-size: clamp(0.62rem, 2.2vw, 0.78rem);
+    line-height: 1.28;
+  }
+}
+
+/* Wide and landscape layouts use two explicit columns with no overlap. */
+@media (orientation: landscape), (min-width: 760px) and (min-aspect-ratio: 4 / 5) {
+  .hbc-card {
+    grid-template-areas: 'portrait copy';
+    grid-template-columns: minmax(0, 48%) minmax(0, 52%);
+    grid-template-rows: minmax(0, 1fr);
+    gap: clamp(18px, 3vw, 54px);
+    padding:
+      max(62px, calc(env(safe-area-inset-top, 0px) + 48px))
+      max(24px, calc(env(safe-area-inset-right, 0px) + 24px))
+      max(18px, calc(env(safe-area-inset-bottom, 0px) + 12px))
+      max(24px, calc(env(safe-area-inset-left, 0px) + 24px));
   }
 
-  .hbc-bubble--dream {
-    margin-left: 10px;
+  .hbc-card--reverse {
+    grid-template-areas: 'copy portrait';
+    grid-template-columns: minmax(0, 52%) minmax(0, 48%);
   }
 
-  .hbc-card--reverse .hbc-bubble--dream {
-    margin-right: 10px;
+  .hbc-card__grade {
+    background:
+      linear-gradient(90deg, rgba(2, 4, 8, 0.12) 0%, transparent 34%, rgba(2, 4, 8, 0.84) 78%, #020408 100%),
+      linear-gradient(0deg, rgba(2, 3, 7, 0.7) 0%, transparent 45%, rgba(2, 3, 7, 0.28) 100%);
+  }
+
+  .hbc-card--reverse .hbc-card__grade {
+    transform: scaleX(-1);
+  }
+
+  .hbc-card__grade::after {
+    background: radial-gradient(circle at 27% 72%, color-mix(in srgb, var(--hbc-accent) 38%, transparent), transparent 29%);
+  }
+
+  .hbc-card--reverse .hbc-card__grade::after {
+    transform: scaleX(-1);
+  }
+
+  .hbc-card__portrait-wrap {
+    margin:
+      calc(max(62px, env(safe-area-inset-top, 0px)) * -0.18)
+      0
+      calc(max(18px, env(safe-area-inset-bottom, 0px)) * -1)
+      calc(max(24px, env(safe-area-inset-left, 0px)) * -1);
+  }
+
+  .hbc-card--reverse .hbc-card__portrait-wrap {
+    margin-right: calc(max(24px, env(safe-area-inset-right, 0px)) * -1);
+    margin-left: 0;
+  }
+
+  .hbc-card__copy {
+    align-self: center;
+    max-width: 720px;
+  }
+
+  .hbc-card--reverse .hbc-card__copy {
+    justify-self: end;
+  }
+
+  .hbc-card__identity h2 {
+    font-size: clamp(3rem, 7.1vw, 7.2rem);
+  }
+
+  .hbc-card__details {
+    font-size: clamp(0.68rem, 1.1vw, 0.96rem);
+  }
+
+  .hbc-bubble {
+    margin-top: clamp(10px, 1.8vh, 18px);
+    padding: clamp(12px, 1.7vw, 22px) clamp(14px, 2vw, 26px);
+    font-size: clamp(0.82rem, 1.32vw, 1.14rem);
+    line-height: 1.42;
+  }
+
+  .hbc-card__ordinal {
+    top: clamp(54px, 8vh, 94px);
+    font-size: clamp(5rem, 15vw, 13rem);
+  }
+}
+
+/* Very wide desktop/tablet canvases are capped so the composition does not drift apart. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .hbc-card {
+    grid-template-columns: minmax(420px, 48%) minmax(440px, 680px);
+    justify-content: center;
+  }
+
+  .hbc-card--reverse {
+    grid-template-columns: minmax(440px, 680px) minmax(420px, 48%);
   }
 }
 
@@ -582,98 +655,12 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-  }
-}
-
-/* Portrait-first phone composition: copy supports the housemate instead of
-   competing with or covering the body cutout. */
-@media (orientation: portrait) {
-  .hbc-card__portrait-wrap {
-    z-index: 6;
-    bottom: -4%;
-    left: -28%;
-    width: 96vw;
-    height: 100%;
+    scroll-behavior: auto !important;
   }
 
-  .hbc-card--reverse .hbc-card__portrait-wrap {
-    right: -28%;
-    left: auto;
-  }
-
-  .hbc-card__portrait {
-    transform: scale(1.16);
-    transform-origin: left bottom;
-  }
-
-  .hbc-card--reverse .hbc-card__portrait {
-    transform-origin: right bottom;
-  }
-
-  .hbc-card__copy {
-    z-index: 5;
-    top: 45%;
-    right: 2.5vw;
-    width: 45vw;
-    transform: translateY(-46%);
-  }
-
-  .hbc-card--reverse .hbc-card__copy {
-    right: auto;
-    left: 2.5vw;
-  }
-
-  .hbc-card__identity {
-    margin-bottom: 9px;
-    padding-left: 10px;
-  }
-
-  .hbc-card__identity h2 {
-    font-size: clamp(2.45rem, 10.5vw, 4.4rem);
-    line-height: 0.84;
-  }
-
-  .hbc-card__details {
-    margin-top: 8px;
-    font-size: clamp(0.52rem, 1.8vw, 0.68rem);
-  }
-
-  .hbc-bubble {
-    max-width: 100%;
-    margin-top: 7px;
-    padding: 9px 10px;
-    border-radius: 14px 14px 14px 4px;
-    font-size: clamp(0.61rem, 2.25vw, 0.78rem);
-    line-height: 1.34;
-  }
-
-  .hbc-bubble--dream,
-  .hbc-card--reverse .hbc-bubble--dream {
-    margin-right: 0;
-    margin-left: 0;
-  }
-}
-
-@media (max-width: 420px) and (orientation: portrait) {
-  .hbc-card__portrait-wrap {
-    left: -31%;
-    width: 100vw;
-    height: 100%;
-  }
-
-  .hbc-card--reverse .hbc-card__portrait-wrap {
-    right: -31%;
-    left: auto;
-  }
-
-  .hbc-card__portrait { transform: scale(1.2); }
-
-  .hbc-card__copy { width: 44vw; }
-
-  .hbc-bubble--intro {
-    display: block;
-    padding: 7px 9px;
-    font-size: clamp(0.56rem, 2.05vw, 0.68rem);
-    line-height: 1.24;
+  .hbc-card__backdrop,
+  .hbc-card__portrait,
+  .hbc-logo__glow {
+    transform: none !important;
   }
 }
