@@ -20,11 +20,11 @@ type PulseMetrics = {
   deltaY: number
 }
 
-const LINEUP_MS = 500
-const SETTLING_MS = 2200
-const RESULT_MS = 3400
-const EXIT_MS = 5400
-const DONE_MS = 6200
+const LINEUP_MS = 700
+const SETTLING_MS = 2800
+const RESULT_MS = 5000
+const EXIT_MS = 10000
+const DONE_MS = 10800
 const CLOSE_VOTE_MARGIN = 2
 
 function formatShare(value: number): string {
@@ -115,8 +115,8 @@ export default function AudienceVerdictReveal({
     clearTimers()
     setPhase('result')
     timersRef.current = [
-      window.setTimeout(() => setPhase('exiting'), 1500),
-      window.setTimeout(fireDone, 2100),
+      window.setTimeout(() => setPhase('exiting'), 4200),
+      window.setTimeout(fireDone, 5000),
     ]
   }, [clearTimers, fireDone, resultVisible])
 
@@ -178,13 +178,7 @@ export default function AudienceVerdictReveal({
         {phase === 'settling' && closeVote && (
           <div className="avr__close-call">TOO CLOSE TO CALL</div>
         )}
-
-        {resultVisible && savedPlayer && (
-          <div className="avr__lower-third" aria-live="assertive">
-            <strong>{savedPlayer.name.toUpperCase()} SAVED BY THE PUBLIC</strong>
-            <span>{formatShare(winningShare)} of the save vote</span>
-          </div>
-        )}
+        {/* The saved-player result is announced on the next TV screen so this vote panel stays readable. */}
       </div>
 
       {pulseMetrics &&

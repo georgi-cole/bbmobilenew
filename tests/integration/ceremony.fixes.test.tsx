@@ -340,10 +340,11 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
   })
 })
 
-describe('Ceremony fix: public save follow-up announcement', () => {
+describe('Ceremony fix: staged public save presentation', () => {
   beforeEach(() => {
     capturedOnExternalAnnouncementDismiss = null
     vi.useFakeTimers()
+    localStorage.clear()
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       x: 50,
       y: 100,
@@ -362,7 +363,7 @@ describe('Ceremony fix: public save follow-up announcement', () => {
     vi.restoreAllMocks()
   })
 
-  it('holds the public save result on screen before entering the POS announcement', async () => {
+  it('shows a separate concise TV result before the extraction ceremony', async () => {
     const players = makePlayers(6)
     players[2].status = 'nominated'
     players[3].status = 'nominated'
@@ -378,65 +379,67 @@ describe('Ceremony fix: public save follow-up announcement', () => {
 
     renderWithStore(store)
     await act(async () => {})
-
-    screen.getByTestId('public-save-reveal')
-    await act(async () => {
-      screen.getByText('Public save done').click()
-    })
+    await act(async () => screen.getByText('Public save done').click())
 
     expect(store.getState().game.phase).toBe('pre_veto_public_save')
-    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Public Save Result')
     expect(screen.getByTestId('external-announcement')).toHaveTextContent(
-      'Player 2 was saved with 50% of the public support.'
+      'Player 2 is saved by the public!'
     )
-    expect(screen.getByTestId('external-announcement')).toHaveTextContent(
-      'Player 3 and Player 4 are still in danger.'
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('50% of the save vote.')
+    expect(screen.queryByRole('status', { name: /public save ceremony/i })).toBeNull()
+
+    await act(async () => capturedOnExternalAnnouncementDismiss?.())
+
+    expect(store.getState().game.phase).toBe('pre_veto_public_save')
+    expect(screen.queryByTestId('external-announcement')).toBeNull()
+    expect(screen.getByRole('status').getAttribute('aria-label')).toBe(
+      'Public save ceremony: Player 2 is safe'
     )
+
+    await act(async () => vi.advanceTimersByTime(5350))
+    expect(store.getState().game.phase).toBe('pos_comp_announcement')
+  })
+
+  it('makes the nomination-badge extraction slow and visually explicit', async () => {
+    const players = makePlayers(6)
+    players[2].status = 'nominated'
+    players[3].status = 'nominated'
+    players[4].status = 'nominated'
+
+    const store = makeStore({
+      phase: 'pre_veto_public_save',
+      publicModeEnabled: true,
+      awaitingPublicSave: true,
+      nomineeIds: ['p2', 'p3', 'p4'],
+      players,
+    })
+
+    renderWithStore(store)
+    await act(async () => {})
+    await act(async () => fireEvent.click(screen.getByText('Public save done')))
+    expect(document.querySelector('.ceremony-overlay__extract-wash')).toBeNull()
 
     await act(async () => {
       capturedOnExternalAnnouncementDismiss?.()
     })
-
-    expect(store.getState().game.phase).toBe('pos_comp_announcement')
-  })
-
-  it('keeps the public-save ceremony to a green glow while extracting the nomination badge', async () => {
-    const players = makePlayers(6)
-    players[2].status = 'nominated'
-    players[3].status = 'nominated'
-    players[4].status = 'nominated'
-
-    const store = makeStore({
-      phase: 'pre_veto_public_save',
-      publicModeEnabled: true,
-      awaitingPublicSave: true,
-      nomineeIds: ['p2', 'p3', 'p4'],
-      players,
-    })
-
-    renderWithStore(store)
-    await act(async () => {})
-
     await act(async () => {
-      fireEvent.click(screen.getByText('Public save done'))
-    })
-    await act(async () => {
-      vi.advanceTimersByTime(700)
+      vi.advanceTimersByTime(1100)
     })
 
-    expect(screen.getByRole('status').getAttribute('aria-label')).toBe(
-      'Public save ceremony: Player 2 is safe'
-    )
     expect(
       document.querySelectorAll('.ceremony-overlay__glow[data-ceremony-tone="success"]')
     ).toHaveLength(1)
+    expect(document.querySelector('.ceremony-overlay__extract-wash')).toBeTruthy()
     expect(document.querySelector('.ceremony-overlay__dim')).toBeNull()
     expect(document.querySelector('.ceremony-overlay__caption')).toBeNull()
-    expect(screen.queryByText('Player 2 is safe!')).toBeNull()
-    expect(screen.queryByText('🗳️ Saved by the public')).toBeNull()
+    expect(screen.getByText('SAVED')).toBeTruthy()
     expect(
       document.querySelectorAll('.ceremony-overlay__badge[data-badge-motion="extract"]')
     ).toHaveLength(1)
+    expect(store.getState().game.phase).toBe('pre_veto_public_save')
+
+    await act(async () => vi.advanceTimersByTime(4250))
+    expect(store.getState().game.phase).toBe('pos_comp_announcement')
     expect(document.querySelectorAll('[title="Nominated"]')).toHaveLength(2)
   })
 })

@@ -21,10 +21,10 @@ export interface PublicSaveRevealProps {
 type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting'
 
 const ENTER_TO_REVEAL_MS = 900
-const REVEAL_VALUES_MS = 5000
-const SHOW_SAVED_MS = 7600
-const EXIT_MS = 9300
-const DONE_MS = 10000
+const REVEAL_VALUES_MS = 3600
+const SHOW_SAVED_MS = 9600
+const EXIT_MS = 12200
+const DONE_MS = 13000
 
 function formatShare(value: number): string {
   return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`

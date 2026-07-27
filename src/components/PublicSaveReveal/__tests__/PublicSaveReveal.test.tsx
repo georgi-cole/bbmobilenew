@@ -39,7 +39,7 @@ describe('PublicSaveReveal in Normal Mode', () => {
     document.body.classList.remove('no-animations')
   })
 
-  it('keeps vote shares hidden until the existing five-second reveal point', () => {
+  it('keeps vote shares hidden until the slower 3.6-second reveal point', () => {
     const expectedShares = normalisePublicSaveVoteShares(
       nominees.map((nominee) => nominee.id),
       rawApprovals
@@ -57,7 +57,7 @@ describe('PublicSaveReveal in Normal Mode', () => {
     expect(screen.getAllByText('?? %')).toHaveLength(3)
 
     act(() => {
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(3600)
     })
 
     expect(screen.queryByText('?? %')).toBeNull()
@@ -77,7 +77,7 @@ describe('PublicSaveReveal in Normal Mode', () => {
     )
 
     act(() => {
-      vi.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(3600)
     })
 
     expect(screen.getAllByText('40%')).toHaveLength(2)
@@ -85,7 +85,7 @@ describe('PublicSaveReveal in Normal Mode', () => {
     expect(screen.queryByText('39.9%')).toBeNull()
   })
 
-  it('preserves the current Normal Mode timing and saved-player treatment', () => {
+  it('holds the vote distribution long enough before the saved-player treatment', () => {
     const onDone = vi.fn()
     render(
       <PublicSaveReveal
@@ -97,12 +97,12 @@ describe('PublicSaveReveal in Normal Mode', () => {
     )
 
     act(() => {
-      vi.advanceTimersByTime(7600)
+      vi.advanceTimersByTime(9600)
     })
     expect(document.querySelector('.psr__nominee--saved')).toBeTruthy()
 
     act(() => {
-      vi.advanceTimersByTime(2399)
+      vi.advanceTimersByTime(3399)
     })
     expect(onDone).not.toHaveBeenCalled()
 
@@ -121,7 +121,7 @@ describe('PublicSaveReveal in Normal Mode', () => {
     )
 
     act(() => {
-      vi.advanceTimersByTime(10000)
+      vi.advanceTimersByTime(13000)
     })
 
     expect(onDone).toHaveBeenCalledTimes(1)
