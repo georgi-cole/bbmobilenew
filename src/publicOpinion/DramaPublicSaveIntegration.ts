@@ -166,6 +166,9 @@ export function completeDramaPublicSave(
         return { belief, relationshipDelta }
       })
     const threatBeliefs = threatEffects.map((effect) => effect.belief)
+    // Capture any optional inbox reaction before the temporary relationship
+    // modifier is applied, so the copy reflects the established relationship.
+    const interaction = buildContextualInteraction(outcome.savedId, outcome)
 
     store.dispatch(
       replaceDramaNetwork({
@@ -191,7 +194,6 @@ export function completeDramaPublicSave(
       )
     })
 
-    const interaction = buildContextualInteraction(outcome.savedId, outcome)
     if (interaction) store.dispatch(pushIncomingInteraction(interaction))
   }
 
