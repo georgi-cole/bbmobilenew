@@ -414,6 +414,12 @@ export function applyDramaActionEffect(
   ) {
     return network
   }
+  if (
+    isPublicDramaAction(input.actionId) &&
+    !getPublicDramaActionAvailability(network, input.week).available
+  ) {
+    return network
+  }
   if (input.actionId === 'proposeAlliance')
     upsertAlliance(network, input.actorId, input.targetId, input.week, 'proposal')
   if (input.actionId === 'break_alliance') {

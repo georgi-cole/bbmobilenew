@@ -132,9 +132,7 @@ describe('shared public Drama pacing', () => {
 
     expect(next.events).toHaveLength(0)
     expect(next.arcs).toHaveLength(0)
-    expect(next.pacing.publicEventsThisWeek).toBe(
-      DRAMA_MODE_CONFIG.pacing.maxPublicEventsPerWeek
-    )
+    expect(next.pacing.publicEventsThisWeek).toBe(DRAMA_MODE_CONFIG.pacing.maxPublicEventsPerWeek)
   })
 })
 
@@ -160,17 +158,14 @@ describe('declarative incoming-interaction validity', () => {
 
   it('invalidates subject-dependent gossip when its subject leaves the house', () => {
     expect(
-      isIncomingInteractionInvalidated(
-        interaction('generic_gossip', { subjectId: 'rae' }),
-        {
-          phase: 'social_2',
-          players: [
-            { id: 'user', status: 'active', isUser: true },
-            { id: 'finn', status: 'active' },
-            { id: 'rae', status: 'jury' },
-          ],
-        }
-      )
+      isIncomingInteractionInvalidated(interaction('generic_gossip', { subjectId: 'rae' }), {
+        phase: 'social_2',
+        players: [
+          { id: 'user', status: 'active', isUser: true },
+          { id: 'finn', status: 'active' },
+          { id: 'rae', status: 'jury' },
+        ],
+      })
     ).toBe(true)
   })
 
