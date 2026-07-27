@@ -1,0 +1,343 @@
+/* Professional, data-driven season recap additions.
+ * Imported after the legacy archive stylesheet so these rules form one clear
+ * final layer without changing unrelated finale components. */
+
+.src-skip-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.src-overlay--reduced-motion .src-particles,
+.src-overlay--reduced-motion .src-archive-lines {
+  display: none;
+}
+
+.src-overlay--reduced-motion .src-overlay-bg,
+.src-overlay--reduced-motion .src-photoshoot__image,
+.src-overlay--reduced-motion .src-highlight-photo img {
+  animation: none !important;
+  transform: none !important;
+}
+
+/* ── Actual roster overview ─────────────────────────────────────────────── */
+.src-scene--cast-overview {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(14px, 2.4vh, 24px);
+  padding:
+    max(76px, calc(env(safe-area-inset-top, 0px) + 62px))
+    clamp(14px, 4vw, 32px)
+    max(28px, calc(env(safe-area-inset-bottom, 0px) + 22px));
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(233, 196, 127, 0.13), transparent 28%),
+    linear-gradient(180deg, rgba(3, 4, 7, 0.18), rgba(3, 4, 7, 0.74));
+}
+
+.src-cast-heading {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  text-align: center;
+}
+
+.src-cast-heading p,
+.src-cast-heading span {
+  margin: 0;
+}
+
+.src-cast-heading p {
+  color: var(--src-gold);
+  font-size: clamp(0.56rem, 2.2vw, 0.78rem);
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.src-cast-heading h2 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.7rem, 13vw, 6.8rem);
+  font-weight: 500;
+  line-height: 0.84;
+  letter-spacing: -0.065em;
+  text-wrap: balance;
+}
+
+.src-cast-heading span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: clamp(0.7rem, 2.5vw, 0.92rem);
+  font-weight: 650;
+}
+
+.src-cast-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
+  gap: clamp(6px, 1.4vw, 12px);
+  width: min(100%, 760px);
+  min-height: 0;
+  margin: 0 auto;
+}
+
+.src-cast-card {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(5px, 1.4vw, 9px) 3px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px 13px 5px 5px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(3, 4, 7, 0.66)),
+    rgba(3, 4, 7, 0.5);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.src-cast-card__avatar {
+  display: grid;
+  align-self: stretch;
+  width: min(100%, 66px);
+  min-height: 0;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(233, 196, 127, 0.24);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.07);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.45rem;
+}
+
+.src-cast-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.src-cast-card > span {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: clamp(0.5rem, 1.9vw, 0.7rem);
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Truthful season headline ───────────────────────────────────────────── */
+.src-scene--actual-highlight {
+  display: grid;
+  grid-template-areas:
+    'copy'
+    'portrait';
+  grid-template-rows: minmax(0, 43%) minmax(0, 57%);
+  min-width: 0;
+  min-height: 0;
+  padding:
+    max(76px, calc(env(safe-area-inset-top, 0px) + 62px))
+    clamp(18px, 5vw, 42px)
+    max(18px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.src-actual-highlight__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 50% 72%, rgba(184, 167, 255, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(3, 4, 7, 0.18), rgba(3, 4, 7, 0.86)),
+    url('/assets/cinematic-backgrounds/season-archive-gallery.webp') center / cover no-repeat;
+  filter: saturate(0.76) contrast(1.06) brightness(0.7);
+}
+
+.src-actual-highlight__backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.36), transparent 36%, rgba(0, 0, 0, 0.52)),
+    radial-gradient(circle at center, transparent 38%, rgba(0, 0, 0, 0.42));
+}
+
+.src-actual-highlight__portrait {
+  position: relative;
+  z-index: 1;
+  grid-area: portrait;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 -18px -24px;
+  overflow: visible;
+}
+
+.src-actual-highlight__cutout {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.58));
+}
+
+.src-actual-highlight__copy {
+  position: relative;
+  z-index: 3;
+  grid-area: copy;
+  align-self: center;
+  min-width: 0;
+  max-width: 42rem;
+}
+
+.src-actual-highlight__copy p,
+.src-actual-highlight__copy h2,
+.src-actual-highlight__copy span {
+  margin: 0;
+}
+
+.src-actual-highlight__copy p {
+  color: var(--src-gold);
+  font-size: clamp(0.56rem, 2.2vw, 0.76rem);
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.src-actual-highlight__copy h2 {
+  margin-top: 7px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(3rem, 14vw, 6.4rem);
+  font-weight: 500;
+  line-height: 0.82;
+  letter-spacing: -0.07em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.src-actual-highlight__copy span {
+  display: block;
+  max-width: 34rem;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: clamp(0.76rem, 2.8vw, 1rem);
+  font-weight: 620;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.src-actual-highlight__copy strong {
+  display: inline-flex;
+  margin-top: 14px;
+  padding: 7px 10px;
+  border: 1px solid rgba(233, 196, 127, 0.38);
+  border-radius: 999px;
+  color: var(--src-gold);
+  background: rgba(3, 4, 7, 0.58);
+  backdrop-filter: blur(12px);
+  font-size: clamp(0.56rem, 2vw, 0.72rem);
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Ensure the award copy remains legible when system font scaling is high. */
+.src-category-header,
+.src-category-plaque {
+  overflow-wrap: anywhere;
+}
+
+@media (max-height: 700px) {
+  .src-scene--cast-overview {
+    gap: 8px;
+    padding-top: max(66px, calc(env(safe-area-inset-top, 0px) + 54px));
+    padding-bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  }
+
+  .src-cast-heading h2 {
+    font-size: clamp(2.25rem, 10vw, 4.4rem);
+  }
+
+  .src-cast-heading span {
+    display: none;
+  }
+
+  .src-cast-grid {
+    gap: 5px;
+  }
+
+  .src-cast-card {
+    padding: 4px 2px 3px;
+  }
+
+  .src-cast-card__avatar {
+    width: min(100%, 50px);
+  }
+
+  .src-scene--actual-highlight {
+    grid-template-rows: minmax(0, 48%) minmax(0, 52%);
+    padding-top: max(64px, calc(env(safe-area-inset-top, 0px) + 52px));
+  }
+
+  .src-actual-highlight__copy h2 {
+    font-size: clamp(2.5rem, 11vw, 4.2rem);
+  }
+
+  .src-actual-highlight__copy span {
+    font-size: clamp(0.68rem, 2.4vw, 0.84rem);
+    line-height: 1.32;
+  }
+}
+
+@media (min-width: 700px) {
+  .src-cast-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .src-cast-card__avatar {
+    width: min(100%, 82px);
+  }
+
+  .src-scene--actual-highlight {
+    grid-template-areas: 'portrait copy';
+    grid-template-columns: minmax(0, 48%) minmax(0, 52%);
+    grid-template-rows: minmax(0, 1fr);
+    gap: clamp(18px, 4vw, 58px);
+  }
+
+  .src-actual-highlight__portrait {
+    margin: -20px 0 -34px -32px;
+  }
+
+  .src-actual-highlight__copy {
+    align-self: center;
+    justify-self: start;
+  }
+
+  .src-actual-highlight__copy h2 {
+    font-size: clamp(3.8rem, 8vw, 7rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .src-cast-card,
+  .src-actual-highlight__portrait,
+  .src-actual-highlight__copy {
+    transform: none !important;
+  }
+}
