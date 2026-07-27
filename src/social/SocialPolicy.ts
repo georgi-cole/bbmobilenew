@@ -1,144 +1,232 @@
 /**
- * SocialPolicy — action selection and outcome delta computation.
- *
- * Public API:
- *   chooseActionFor(playerId, context)                          → action id
- *   chooseTargetsFor(playerId, actionId, context)               → targetId[]
- *   computeOutcomeDelta(actionId, actorId, targetId, outcome)   → number
- *   computeOutcomeScore(actionId, actorId, targetId, mode, rels?) → number [-1..+1]
- *   evaluateOutcome(params)                                     → OutcomeResult
+ * SocialPolicy — action selection, target selection and outcome evaluation.
  */
 
 import { socialConfig } from './socialConfig';
 import { normalizeAffinity } from './affinityUtils';
 import { hasAllianceBetween } from './socialAlliance';
-import type { PolicyContext, RelationshipsMap } from './types';
+import { getSocialPersonality } from './socialPersonalityBank';
+import { getSocialRuntimeConfig } from './socialRuntimeConfig';
+import type { PolicyContext, RelationshipsMap, SocialActionLogEntry } from './types';
 
 // ── Evaluator configuration ───────────────────────────────────────────────
 
-/**
- * Score thresholds that map a numeric score to a label.
- * Tune these values to adjust how outcomes feel to players.
- */
 export const OUTCOME_THRESHOLDS = {
-  /** score <= bad   → 'Bad'     */
   bad: -0.25,
-  /** score <  unmoved → 'Unmoved' */
   unmoved: 0.05,
-  /** score <  good  → 'Good', else 'Great' */
   good: 0.3,
 } as const;
 
-/**
- * Maximum RNG jitter added in 'execute' mode to mimic legacy variance.
- * Set to 0 to make execution fully deterministic as well.
- */
-const JITTER_MAGNITUDE = 0.08;
-
-/** Weight applied to existing affinity when computing actorBias. */
-const ACTOR_BIAS_WEIGHT = 0.1;
-
-// ── Evaluator types ───────────────────────────────────────────────────────
-
 export type OutcomeLabel = 'Bad' | 'Unmoved' | 'Good' | 'Great';
 
-/** Full outcome result returned by evaluateOutcome. */
 export interface OutcomeResult {
-  /** Normalised score in [-1, +1]. */
   score: number;
-  /** Human-readable outcome label. */
   label: OutcomeLabel;
-  /** Absolute magnitude of the score. */
   magnitude: number;
-  /** Optional narrative description of the outcome. */
   narrative?: string;
 }
 
-/** Parameters for evaluateOutcome. */
 export interface EvaluateOutcomeParams {
   actionId: string;
   actorId: string;
-  /** One or more target player ids. Score is averaged across all targets. */
   targetIds: string | string[];
   mode: 'preview' | 'execute';
-  /** The action outcome — affects the base score (failure uses smaller deltas). Defaults to 'success'. */
   outcome?: 'success' | 'failure';
-  /** Optional relationship graph for actor/target bias calculation. */
   relationships?: RelationshipsMap;
+  /** Optional seeded RNG used by execution and deterministic simulations. */
+  random?: () => number;
 }
 
-/**
- * Deterministic weighted-random action selection for an AI player.
- * Uses the game seed (when provided) mixed with the player id to
- * produce a per-player, per-phase stable choice.
- */
-export function chooseActionFor(playerId: string, context: PolicyContext): string {
-  const weights = socialConfig.actionWeights;
-  const entries = Object.entries(weights);
-  if (entries.length === 0) return 'idle';
+interface RichPolicyContext extends PolicyContext {
+  phase?: string;
+  decisionIndex?: number;
+  recentActions?: readonly SocialActionLogEntry[];
+  availableActionIds?: readonly string[];
+}
 
-  // Mix game seed with a simple sum of the player id char codes for per-player variance
-  const idSum = playerId.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  let rng = (((context.seed ?? 0) ^ idSum) >>> 0);
-  rng = ((rng * 1664525 + 1013904223) >>> 0);
-
-  const total = entries.reduce((sum, [, w]) => sum + w, 0);
-  let pick = (rng / 0xffffffff) * total;
-  for (const [action, weight] of entries) {
-    pick -= weight;
-    if (pick <= 0) return action;
+function hashUnit(seed: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
   }
-  return entries[entries.length - 1][0];
+  return (Math.abs(hash) % 1_000_003) / 1_000_003;
+}
+
+function seededTie(seed: string): number {
+  return hashUnit(seed) * 0.0001;
+}
+
+function recentCount(
+  context: RichPolicyContext,
+  actorId: string,
+  actionId?: string,
+  targetId?: string,
+): number {
+  return (context.recentActions ?? []).filter(
+    (entry) =>
+      entry.actorId === actorId &&
+      (context.week === undefined || entry.week === context.week) &&
+      (!actionId || entry.actionId === actionId) &&
+      (!targetId || entry.targetId === targetId),
+  ).length;
 }
 
 /**
- * Return eligible target player ids for a given action.
- * Friendly actions (ally, protect) prefer known allies; aggressive actions
- * (betray, nominate) prefer known enemies. Falls back to the first eligible
- * player when no matching relationship is found.
+ * Contextual weighted selection for Normal Mode. It remains deterministic for
+ * the same state, but includes week, phase, actor role, relationships,
+ * personality and recent repetition instead of locking each actor to one
+ * action for the whole season.
  */
+export function chooseActionFor(playerId: string, rawContext: PolicyContext): string {
+  const context = rawContext as RichPolicyContext;
+  const configuredWeights = socialConfig.actionWeights;
+  const configuredEntries = Object.entries(configuredWeights);
+  if (configuredEntries.length === 0) return 'idle';
+
+  const runtime = getSocialRuntimeConfig();
+  const allowed = context.availableActionIds
+    ? new Set(context.availableActionIds)
+    : null;
+  const actor = context.players.find((player) => player.id === playerId);
+  const actorStatus = actor?.status ?? '';
+  const personality = getSocialPersonality(playerId);
+  const relationships = context.relationships[playerId] ?? {};
+  const affinities = Object.values(relationships).map((entry) => normalizeAffinity(entry.affinity));
+  const strongest = affinities.length > 0 ? Math.max(...affinities) : 0;
+  const weakest = affinities.length > 0 ? Math.min(...affinities) : 0;
+  const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
+
+  const candidates = configuredEntries
+    .filter(([actionId]) => !allowed || allowed.has(actionId))
+    .map(([actionId, authoredWeight]) => {
+      let utility = runtime.ai.basicActionWeights[actionId] ?? authoredWeight;
+      const repeats = recentCount(context, playerId, actionId);
+
+      if (friendlyActions.includes(actionId)) {
+        utility *= 0.65 + personality.warmth * 0.55 + Math.max(0, strongest) * 0.8;
+      }
+      if (aggressiveActions.includes(actionId)) {
+        utility *=
+          0.45 +
+          personality.assertiveness * 0.35 +
+          personality.riskTolerance * 0.35 +
+          Math.max(0, -weakest) * 0.9;
+      }
+      if (actionId === 'whisper' || actionId === 'rumor' || actionId === 'share_intel') {
+        utility *= 0.55 + personality.gossipPropensity * 0.75;
+      }
+      if (actionId === 'proposeAlliance' || actionId === 'ally') {
+        utility *= strongest >= 0.15 ? 1 + personality.loyalty * 0.4 : 0.15;
+      }
+      if (actionId === 'idle') {
+        utility *= 1.1 - personality.socialEnergy * 0.75;
+      }
+
+      if (actorStatus.includes('nominated')) {
+        if (actionId === 'ask_use_safety' || actionId === 'protect') utility *= 2.2;
+        if (actionId === 'reassure' || actionId === 'compliment') utility *= 1.25;
+      }
+      if (actorStatus.includes('loh')) {
+        if (actionId === 'nominate') utility *= 2.4;
+        if (actionId === 'whisper' || actionId === 'protect') utility *= 1.35;
+      }
+      if (actorStatus.includes('pos')) {
+        if (actionId === 'protect' || actionId === 'whisper') utility *= 1.45;
+      }
+
+      utility /= 1 + repeats * runtime.ai.repetitionPenalty;
+      utility +=
+        hashUnit(
+          `${context.seed ?? 0}:${context.week ?? 0}:${context.phase ?? ''}:${playerId}:${actionId}`,
+        ) * runtime.ai.noveltyWeight;
+      return { actionId, utility: Math.max(0, utility) };
+    })
+    .filter((candidate) => candidate.utility > 0);
+
+  if (candidates.length === 0) return 'idle';
+  const total = candidates.reduce((sum, candidate) => sum + candidate.utility, 0);
+  if (total <= 0) return 'idle';
+
+  const roll =
+    hashUnit(
+      `${context.seed ?? 0}:${context.week ?? 0}:${context.phase ?? ''}:${context.decisionIndex ?? 0}:${playerId}`,
+    ) * total;
+  let remaining = roll;
+  for (const candidate of candidates) {
+    remaining -= candidate.utility;
+    if (remaining <= 0) return candidate.actionId;
+  }
+  return candidates[candidates.length - 1]?.actionId ?? 'idle';
+}
+
+function roleValue(status: string): number {
+  let value = 0;
+  if (status.includes('loh')) value += 0.28;
+  if (status.includes('pos')) value += 0.18;
+  if (status.includes('nominated')) value += 0.14;
+  return value;
+}
+
+function sortedByScore<T extends { id: string }>(
+  items: T[],
+  score: (item: T) => number,
+  seed: string,
+): T[] {
+  return [...items].sort(
+    (left, right) =>
+      score(right) - score(left) ||
+      seededTie(`${seed}:${right.id}`) - seededTie(`${seed}:${left.id}`) ||
+      left.id.localeCompare(right.id),
+  );
+}
+
+/** Return plausible target player IDs for a given action. */
 export function chooseTargetsFor(
   playerId: string,
   actionId: string,
-  context: PolicyContext,
+  rawContext: PolicyContext,
 ): string[] {
+  const context = rawContext as RichPolicyContext;
   const { players, relationships } = context;
   const eligible = players.filter(
-    (p) => p.id !== playerId && p.status !== 'evicted' && p.status !== 'jury',
+    (player) =>
+      player.id !== playerId && player.status !== 'evicted' && player.status !== 'jury',
   );
   if (eligible.length === 0) return [];
 
   if (actionId === 'ask_use_safety') {
-    const posHolder = eligible.find((p) => p.status.includes('pos'));
+    const posHolder = eligible.find((player) => player.status.includes('pos'));
     if (!posHolder) return [];
+    if (posHolder.status.includes('nominated')) return [posHolder.id, posHolder.id];
 
-    if (posHolder.status.includes('nominated')) {
-      return [posHolder.id, posHolder.id];
-    }
-
-    const actor = players.find((p) => p.id === playerId);
-    if (actor?.status.includes('nominated')) {
-      return [posHolder.id, playerId];
-    }
+    const actor = players.find((player) => player.id === playerId);
+    if (actor?.status.includes('nominated')) return [posHolder.id, playerId];
 
     const nomineePool = players.filter(
-      (p) => p.id !== posHolder.id && p.status.includes('nominated'),
+      (player) => player.id !== posHolder.id && player.status.includes('nominated'),
     );
-    if (nomineePool.length === 0) {
-      return [];
-    }
-
+    if (nomineePool.length === 0) return [];
     const posHolderRels = relationships[posHolder.id] ?? {};
-    const preferredNominee = [...nomineePool].sort(
-      (a, b) => (posHolderRels[b.id]?.affinity ?? 0) - (posHolderRels[a.id]?.affinity ?? 0),
+    const preferredNominee = sortedByScore(
+      nomineePool,
+      (player) => normalizeAffinity(posHolderRels[player.id]?.affinity ?? 0),
+      `${context.seed ?? 0}:safety:${posHolder.id}`,
     )[0];
-
-    return [posHolder.id, preferredNominee.id];
+    return preferredNominee ? [posHolder.id, preferredNominee.id] : [];
   }
 
   const { allyThreshold, enemyThreshold } = socialConfig.relationshipThresholds;
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
   const rels = relationships[playerId] ?? {};
+  const actorStatus = players.find((player) => player.id === playerId)?.status ?? '';
+  const seed = `${context.seed ?? 0}:${context.week ?? 0}:${context.phase ?? ''}:${playerId}:${actionId}`;
+  const repeatPenalty = getSocialRuntimeConfig().ai.repetitionPenalty;
+
+  const relationshipScore = (targetId: string) =>
+    normalizeAffinity(rels[targetId]?.affinity ?? 0);
+  const novelty = (targetId: string) =>
+    1 / (1 + recentCount(context, playerId, actionId, targetId) * repeatPenalty);
 
   if (actionId === 'betray') {
     const strainedAlliances = eligible.filter((player) => {
@@ -152,46 +240,68 @@ export function chooseTargetsFor(
       const tags = new Set([...(outward?.tags ?? []), ...(inward?.tags ?? [])]);
       return minAffinity < 0.2 || ['distrust', 'target', 'rivalry'].some((tag) => tags.has(tag));
     });
-    return strainedAlliances.length > 0 ? [strainedAlliances[0].id] : [];
+    const target = sortedByScore(
+      strainedAlliances,
+      (player) => -relationshipScore(player.id) + roleValue(player.status) + novelty(player.id),
+      seed,
+    )[0];
+    return target ? [target.id] : [];
   }
 
   if (actionId === 'ally' || actionId === 'proposeAlliance') {
-    const prospects = eligible
-      .filter((player) => !hasAllianceBetween(relationships, playerId, player.id))
-      .sort((left, right) =>
-        normalizeAffinity(rels[right.id]?.affinity ?? 0) -
-        normalizeAffinity(rels[left.id]?.affinity ?? 0));
-    const actorStatus = players.find((player) => player.id === playerId)?.status ?? '';
+    const prospects = eligible.filter(
+      (player) => !hasAllianceBetween(relationships, playerId, player.id),
+    );
     const credible = prospects.filter((player) => {
-      const affinity = normalizeAffinity(rels[player.id]?.affinity ?? 0);
-      const strategicPressure = /loh|hoh|pos|pov|nominated/i.test(`${actorStatus} ${player.status}`);
+      const affinity = relationshipScore(player.id);
+      const strategicPressure = /loh|hoh|pos|pov|nominated/i.test(
+        `${actorStatus} ${player.status}`,
+      );
       return affinity >= allyThreshold || (affinity >= 0.15 && strategicPressure);
     });
-    return credible.length > 0 ? [credible[0].id] : [];
+    const target = sortedByScore(
+      credible,
+      (player) => relationshipScore(player.id) + roleValue(player.status) + novelty(player.id),
+      seed,
+    )[0];
+    return target ? [target.id] : [];
   }
 
   if (friendlyActions.includes(actionId)) {
     const allies = eligible.filter(
-      (p) => normalizeAffinity(rels[p.id]?.affinity ?? 0) >= allyThreshold,
+      (player) => relationshipScore(player.id) >= allyThreshold,
     );
-    return allies.length > 0 ? [allies[0].id] : [eligible[0].id];
+    const pool = allies.length > 0 ? allies : eligible;
+    const target = sortedByScore(
+      pool,
+      (player) => relationshipScore(player.id) + roleValue(player.status) * 0.35 + novelty(player.id),
+      seed,
+    )[0];
+    return target ? [target.id] : [];
   }
 
   if (aggressiveActions.includes(actionId)) {
     const enemies = eligible.filter(
-      (p) => normalizeAffinity(rels[p.id]?.affinity ?? 0) <= enemyThreshold,
+      (player) => relationshipScore(player.id) <= enemyThreshold,
     );
-    return enemies.length > 0 ? [enemies[0].id] : [eligible[0].id];
+    const pool = enemies.length > 0 ? enemies : eligible;
+    const target = sortedByScore(
+      pool,
+      (player) => -relationshipScore(player.id) + roleValue(player.status) + novelty(player.id),
+      seed,
+    )[0];
+    return target ? [target.id] : [];
   }
 
-  return [eligible[0].id];
+  const target = sortedByScore(
+    eligible,
+    (player) => roleValue(player.status) + novelty(player.id),
+    seed,
+  )[0];
+  return target ? [target.id] : [];
 }
 
-/**
- * Compute the affinity delta resulting from an action's outcome.
- * Positive for friendly actions, negative for aggressive ones.
- * Returns 0 for unknown actions.
- */
+/** Compute the display-scale affinity delta for an action outcome. */
 export function computeOutcomeDelta(
   actionId: string,
   _actorId: string,
@@ -210,11 +320,6 @@ export function computeOutcomeDelta(
   return 0;
 }
 
-// ── Outcome evaluator ─────────────────────────────────────────────────────
-
-/**
- * Map a numeric score to a human-readable label using OUTCOME_THRESHOLDS.
- */
 function scoreToLabel(score: number): OutcomeLabel {
   if (score <= OUTCOME_THRESHOLDS.bad) return 'Bad';
   if (score < OUTCOME_THRESHOLDS.unmoved) return 'Unmoved';
@@ -222,18 +327,14 @@ function scoreToLabel(score: number): OutcomeLabel {
   return 'Great';
 }
 
-/**
- * Compute a normalised outcome score in [-1, +1] for a single actor→target action.
- *
- * Deterministic in 'preview' mode — same inputs always yield the same score.
- * In 'execute' mode a small configurable RNG jitter is added to mimic legacy
- * variance. Pass the current relationship graph for a richer actor/target bias.
- * The `outcome` parameter ('success' | 'failure') controls which delta is used
- * as the base score so score, delta, and label stay consistent.
- *
- * NOTE: uses `socialConfig.scoreDeltas` (small [-1,+1]-scale values) — NOT the
- * display-scale `affinityDeltas` — so the quality label stays meaningful.
- */
+function outcomeAffinity(value: number): number {
+  // Older tests and pre-normalisation callers sometimes supplied [-1, 1]
+  // values directly. Preserve that contract while correctly normalising the
+  // real display-scale relationship values used by production.
+  return Math.abs(value) <= 2 ? value : normalizeAffinity(value);
+}
+
+/** Compute a normalised outcome score in [-1, +1]. */
 export function computeOutcomeScore(
   actionId: string,
   actorId: string,
@@ -241,47 +342,61 @@ export function computeOutcomeScore(
   mode: 'preview' | 'execute',
   relationships?: RelationshipsMap,
   outcome: 'success' | 'failure' = 'success',
+  random: () => number = Math.random,
 ): number {
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
   const deltas = socialConfig.scoreDeltas;
+  const runtime = getSocialRuntimeConfig();
 
-  // Base effect derived from action category and outcome.
   const baseScore: number = friendlyActions.includes(actionId)
-    ? outcome === 'success' ? deltas.friendlySuccess : deltas.friendlyFailure
+    ? outcome === 'success'
+      ? deltas.friendlySuccess
+      : deltas.friendlyFailure
     : aggressiveActions.includes(actionId)
-      ? outcome === 'success' ? deltas.aggressiveSuccess : deltas.aggressiveFailure
+      ? outcome === 'success'
+        ? deltas.aggressiveSuccess
+        : deltas.aggressiveFailure
       : 0;
 
-  // Actor bias: scale by existing affinity from actor toward target.
   const existingAffinity = relationships?.[actorId]?.[targetId]?.affinity ?? 0;
-  const actorBias = existingAffinity * ACTOR_BIAS_WEIGHT;
+  const actorBias =
+    outcomeAffinity(existingAffinity) * runtime.ai.outcomeAffinityBiasWeight;
 
   let score = Math.max(-1, Math.min(1, baseScore + actorBias));
-
-  // In execute mode add small RNG jitter to mimic legacy variance.
   if (mode === 'execute') {
-    const jitter = (Math.random() * 2 - 1) * JITTER_MAGNITUDE;
+    const jitter = (random() * 2 - 1) * runtime.ai.outcomeJitterMagnitude;
     score = Math.max(-1, Math.min(1, score + jitter));
   }
 
   return score;
 }
 
-/**
- * Perform a full outcome evaluation for one or more targets.
- * In 'execute' mode a small RNG jitter is applied (configurable via JITTER_MAGNITUDE).
- * In 'preview' mode the result is fully deterministic.
- *
- * Returns an OutcomeResult with score (averaged across targets), label, and magnitude.
- */
+/** Perform a full outcome evaluation for one or more targets. */
 export function evaluateOutcome(params: EvaluateOutcomeParams): OutcomeResult {
-  const { actionId, actorId, targetIds, mode, outcome = 'success', relationships } = params;
+  const {
+    actionId,
+    actorId,
+    targetIds,
+    mode,
+    outcome = 'success',
+    relationships,
+    random,
+  } = params;
   const targets = Array.isArray(targetIds) ? targetIds : [targetIds];
+  if (targets.length === 0) return { score: 0, label: 'Unmoved', magnitude: 0 };
 
-  const scores = targets.map((t) =>
-    computeOutcomeScore(actionId, actorId, t, mode, relationships, outcome),
+  const scores = targets.map((targetId) =>
+    computeOutcomeScore(
+      actionId,
+      actorId,
+      targetId,
+      mode,
+      relationships,
+      outcome,
+      random,
+    ),
   );
-  const score = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  const score = scores.reduce((sum, value) => sum + value, 0) / scores.length;
   const label = scoreToLabel(score);
   const magnitude = Math.abs(score);
 
