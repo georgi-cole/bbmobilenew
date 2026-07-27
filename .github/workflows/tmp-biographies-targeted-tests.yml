@@ -16,7 +16,22 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run biography cinematic tests
-        run: >-
-          npx vitest run
-          tests/unit/housematesBioResponsiveStyles.test.ts
-          src/components/HousematesBioCinematic/__tests__/housematesBioData.test.ts
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npx vitest run \
+            tests/unit/housematesBioResponsiveStyles.test.ts \
+            src/components/HousematesBioCinematic/__tests__/housematesBioData.test.ts \
+            2>&1 | tee biography-tests.log
+      - name: Upload biography test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: biography-test-diagnostics
+          path: biography-tests.log
+          if-no-files-found: error
+      - name: Propagate test failure
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
