@@ -10,13 +10,19 @@
  *    never surface a broken fetch error just because the server route is gone.
  *  - Return null on any failure so callers fall back gracefully.
  *
- * SECURITY NOTE: Remote config is treated as pure data.  No field is ever
- * executed as code.  URL fields are validated to only allow http/https.
+ * SECURITY NOTE: Remote config is treated as pure data. No field is ever
+ * executed as code. URL fields are validated to only allow http/https.
  */
 
-import type { RemoteConfig, RemoteOperations, RemotePlayerOverride, RemoteRollout } from './remoteConfigTypes';
+import type {
+  RemoteConfig,
+  RemoteOperations,
+  RemotePlayerOverride,
+  RemoteRollout,
+} from './remoteConfigTypes';
 import type { CompSelectionMode } from '../components/compSelectionUtils';
 import { apiUrl } from '../utils/apiBase';
+import { sanitiseSocialRuntimeOverride } from '../social/socialRuntimeConfig';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,7 +37,9 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
  * Relative endpoints are only fetched in dev, where the Vite proxy exists.
  */
 export const DEFAULT_REMOTE_CONFIG_URL: string =
-  (typeof import.meta !== 'undefined' && (import.meta as { env?: { VITE_REMOTE_CONFIG_URL?: string } }).env?.VITE_REMOTE_CONFIG_URL) ||
+  (typeof import.meta !== 'undefined' &&
+    (import.meta as { env?: { VITE_REMOTE_CONFIG_URL?: string } }).env
+      ?.VITE_REMOTE_CONFIG_URL) ||
   apiUrl('/api/live-config');
 
 const FETCH_TIMEOUT_MS = 8000;
@@ -198,7 +206,9 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
     const weeklyGameKey = safeStr(ch.weeklyGameKey);
     if (weeklyGameKey) config.challenge.weeklyGameKey = weeklyGameKey;
     if (Array.isArray(ch.weeklyGameKeys)) {
-      const keys = ch.weeklyGameKeys.filter((k): k is string => typeof k === 'string' && k.length > 0);
+      const keys = ch.weeklyGameKeys.filter(
+        (k): k is string => typeof k === 'string' && k.length > 0,
+      );
       if (keys.length > 0) config.challenge.weeklyGameKeys = keys;
     }
     if (Object.keys(config.challenge).length === 0) delete config.challenge;
@@ -212,12 +222,20 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
     if (overrides.length > 0) config.players = overrides;
   }
 
+  // social: pure-data rules and content overlays with a bundled fallback.
+  const social = sanitiseSocialRuntimeOverride(r.social);
+  if (social && Object.keys(social).length > 0) config.social = social;
+
   // operations: gradual UI rollout, kill switches and privacy-safe telemetry.
   if (r.operations && typeof r.operations === 'object' && !Array.isArray(r.operations)) {
     const ops = r.operations as Record<string, unknown>;
     config.operations = {};
 
-    if (ops.killSwitches && typeof ops.killSwitches === 'object' && !Array.isArray(ops.killSwitches)) {
+    if (
+      ops.killSwitches &&
+      typeof ops.killSwitches === 'object' &&
+      !Array.isArray(ops.killSwitches)
+    ) {
       const kills = ops.killSwitches as Record<string, unknown>;
       if (typeof kills.refinedGameChrome === 'boolean') {
         config.operations.killSwitches = { refinedGameChrome: kills.refinedGameChrome };
@@ -235,7 +253,9 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
         if (percentage !== undefined) rollout.percentage = percentage;
         const salt = safeStr(value.salt);
         if (salt) rollout.salt = salt;
-        if (Object.keys(rollout).length > 0) config.operations.rollouts = { refinedGameChrome: rollout };
+        if (Object.keys(rollout).length > 0) {
+          config.operations.rollouts = { refinedGameChrome: rollout };
+        }
       }
     }
 
