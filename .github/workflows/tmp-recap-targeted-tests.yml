@@ -1,0 +1,22 @@
+name: Temporary season recap targeted tests
+
+on:
+  pull_request:
+    types: [synchronize]
+
+jobs:
+  recap-targeted-tests:
+    if: github.head_ref == 'agent/cinematic-season-recap-professionalization'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run season recap tests
+        run: >-
+          npx vitest run
+          tests/seasonRecapCinematic.test.tsx
+          tests/finalFaceoff.publicVote.test.tsx
