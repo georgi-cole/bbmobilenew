@@ -11,6 +11,7 @@
  */
 
 import type { CompSelectionMode } from '../components/compSelectionUtils';
+import type { SocialRuntimeOverride } from '../social/socialRuntimeConfig';
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
@@ -151,6 +152,11 @@ export interface RemoteConfig {
    * Only entries matching a known houseguest id are applied.
    */
   players?: RemotePlayerOverride[];
+  /**
+   * Versioned, pure-data Social/Drama rules and copy overrides. Invalid values
+   * are discarded before this object reaches the simulation.
+   */
+  social?: SocialRuntimeOverride;
   /** Release controls for gradual UI rollout, rollback and product measurement. */
   operations?: RemoteOperations;
 }
