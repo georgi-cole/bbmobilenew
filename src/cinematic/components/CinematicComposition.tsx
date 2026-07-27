@@ -12,7 +12,11 @@ import {
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three';
 import { CinematicCamera } from '../camera/CinematicCamera';
 import { City } from '../city/City';
-import { CINEMATIC_AUDIO, CINEMATIC_CONFIG } from '../config/cinematicConfig';
+import {
+  CINEMATIC_AUDIO,
+  CINEMATIC_CONFIG,
+  type CreditCard,
+} from '../config/cinematicConfig';
 import { getCinematicQuality } from '../config/cinematicQuality';
 import { CreditsOverlay } from '../credits/CreditsOverlay';
 import { Atmosphere } from '../effects/Atmosphere';
@@ -78,6 +82,7 @@ const CinematicThunder = () => {
     </>
   );
 };
+
 const LightningOverlay = ({
   frame,
   opacity,
@@ -153,12 +158,15 @@ const LightningOverlay = ({
     </AbsoluteFill>
   );
 };
-type CinematicCompositionProps = {
+
+export type CinematicCompositionProps = {
   audioMode?: 'embedded' | 'external';
+  credits?: readonly CreditCard[];
 };
 
 export const CinematicComposition = ({
   audioMode = 'embedded',
+  credits,
 }: CinematicCompositionProps) => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
@@ -207,7 +215,7 @@ export const CinematicComposition = ({
         aria-hidden="true"
       />
       <div className="big-eye-cinematic__vignette" aria-hidden="true" />
-      <CreditsOverlay frame={frame} state={state} />
+      <CreditsOverlay frame={frame} state={state} credits={credits} />
       <AbsoluteFill
         style={{
           backgroundColor: '#02030a',
