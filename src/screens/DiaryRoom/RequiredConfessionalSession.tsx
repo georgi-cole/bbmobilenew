@@ -9,7 +9,6 @@ import './RequiredConfessionalSession.css'
 
 interface Props {
   decision: ActiveConfessionalDecision | null
-  lastDecisionType: ActiveConfessionalDecision['type'] | null
   onReturnToGame: (returnCue: string) => void
 }
 
@@ -18,17 +17,16 @@ const SURVIVAL_ENTRY_MS = 300
 const CLASSIC_RETURN_MS = 1050
 const SURVIVAL_RETURN_MS = 560
 
-export default function RequiredConfessionalSession({
-  decision,
-  lastDecisionType,
-  onReturnToGame,
-}: Props) {
+export default function RequiredConfessionalSession({ decision, onReturnToGame }: Props) {
   const game = useAppSelector((state) => state.game)
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const survival = game.mode === 'survival'
   const [entryActive, setEntryActive] = useState(true)
   const [lastCommitSummary, setLastCommitSummary] = useState<string | null>(null)
   const [lastReturnCue, setLastReturnCue] = useState('game')
+  const [lastDecisionType, setLastDecisionType] = useState<
+    ActiveConfessionalDecision['type'] | null
+  >(decision?.type ?? null)
   const navigationBlocker = useBlocker(decision !== null)
 
   const presentation = useMemo(
@@ -127,6 +125,7 @@ export default function RequiredConfessionalSession({
               onDecisionCommitted={(summary) => {
                 setLastCommitSummary(summary)
                 setLastReturnCue(presentation.returnCue)
+                setLastDecisionType(decision.type)
               }}
             />
           </>
