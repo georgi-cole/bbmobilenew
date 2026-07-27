@@ -1,0 +1,37 @@
+name: Temporary format PR 1286
+
+on:
+  push:
+    branches:
+      - agent/fix-advanced-public-mode-toggle
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-advanced-public-mode-toggle
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Format target file
+        run: npx prettier --write src/components/VipEntitlementSync/VipEntitlementSync.tsx
+      - name: Commit formatted file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/VipEntitlementSync/VipEntitlementSync.tsx
+          if git diff --cached --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git commit -m "Apply Prettier formatting"
+          git push
