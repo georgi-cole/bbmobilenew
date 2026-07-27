@@ -26,14 +26,7 @@ export default function VipEntitlementSync() {
     if (!isVipActive && theme !== 'midnight') {
       dispatch(setDisplay({ themePreset: 'midnight' }))
     }
-  }, [
-    dispatch,
-    hasTribunalHouse,
-    isVipActive,
-    storeState.status,
-    theme,
-    tribunalHouse,
-  ])
+  }, [dispatch, hasTribunalHouse, isVipActive, storeState.status, theme, tribunalHouse])
 
   return null
 }
