@@ -1,0 +1,26 @@
+name: Agent source export
+
+on:
+  pull_request:
+    branches:
+      - agent/game-flow-refactor-export-base
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pull request source
+        uses: actions/checkout@v4
+
+      - name: Package repository source
+        run: zip -qr source-export.zip . -x '.git/*' 'source-export.zip'
+
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-export
+          path: source-export.zip
+          retention-days: 1
