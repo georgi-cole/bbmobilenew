@@ -5,6 +5,7 @@ import {
   resolvePublicSaveNominee,
 } from '../../../src/publicOpinion/PublicSaveService';
 import { resolveDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveService';
+import { shouldUseDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveIntegration';
 import type {
   PlayerPublicProfile,
   PublicFeedEntry,
@@ -117,5 +118,12 @@ describe('public save vote shares', () => {
     });
 
     expect(result.savedId).toBe('a');
+  });
+
+  it('requires both Drama Mode and Public Mode for premium consequences', () => {
+    expect(shouldUseDramaPublicSave(true, true)).toBe(true);
+    expect(shouldUseDramaPublicSave(false, true)).toBe(false);
+    expect(shouldUseDramaPublicSave(true, false)).toBe(false);
+    expect(shouldUseDramaPublicSave(false, false)).toBe(false);
   });
 });
