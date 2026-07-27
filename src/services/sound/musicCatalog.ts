@@ -1,4 +1,4 @@
-import { SOUNDS_BASE, type SoundEntry } from './sounds';
+import { SOUNDS_BASE, type SoundEntry } from './sounds'
 
 /**
  * Stable semantic track identifiers used by the resolver and SoundManager.
@@ -20,10 +20,10 @@ export const MUSIC_TRACK_IDS = [
   'jury_voting',
   'public_voting',
   'final_modal',
-] as const;
+] as const
 
-export type CatalogMusicTrack = (typeof MUSIC_TRACK_IDS)[number];
-export type MusicTrackFallback = CatalogMusicTrack | 'none';
+export type CatalogMusicTrack = (typeof MUSIC_TRACK_IDS)[number]
+export type MusicTrackFallback = CatalogMusicTrack | 'none'
 export type MusicTrackTag =
   | 'ambient'
   | 'competition'
@@ -31,18 +31,18 @@ export type MusicTrackTag =
   | 'minigame'
   | 'social'
   | 'spectator'
-  | 'finale';
+  | 'finale'
 
 export interface MusicTrackDefinition {
-  displayName: string;
-  soundKey: string;
-  fallbackTrack: MusicTrackFallback;
-  tags: readonly MusicTrackTag[];
+  displayName: string
+  soundKey: string
+  fallbackTrack: MusicTrackFallback
+  tags: readonly MusicTrackTag[]
   /**
    * Optional registry entry for tracks that are not part of the legacy static
    * SOUND_REGISTRY. AudioStateSync registers these entries during app startup.
    */
-  dynamicSound?: SoundEntry;
+  dynamicSound?: SoundEntry
 }
 
 export const MUSIC_CATALOG: Readonly<Record<CatalogMusicTrack, MusicTrackDefinition>> = {
@@ -138,21 +138,21 @@ export const MUSIC_CATALOG: Readonly<Record<CatalogMusicTrack, MusicTrackDefinit
     fallbackTrack: 'jury_voting',
     tags: ['ambient', 'finale'],
   },
-};
+}
 
 export function getMusicTrackDefinition(track: CatalogMusicTrack): MusicTrackDefinition {
-  return MUSIC_CATALOG[track];
+  return MUSIC_CATALOG[track]
 }
 
 export function getDynamicMusicSoundEntries(): SoundEntry[] {
   return MUSIC_TRACK_IDS.flatMap((track) => {
-    const dynamicSound = MUSIC_CATALOG[track].dynamicSound;
-    return dynamicSound ? [dynamicSound] : [];
-  });
+    const dynamicSound = MUSIC_CATALOG[track].dynamicSound
+    return dynamicSound ? [dynamicSound] : []
+  })
 }
 
 export function getMusicFallbackTrack(track: CatalogMusicTrack): MusicTrackFallback {
-  return MUSIC_CATALOG[track].fallbackTrack;
+  return MUSIC_CATALOG[track].fallbackTrack
 }
 
 /**
@@ -160,15 +160,15 @@ export function getMusicFallbackTrack(track: CatalogMusicTrack): MusicTrackFallb
  * SoundManager does not consume it yet; the Music Manager and audit layer do.
  */
 export function getMusicFallbackChain(track: CatalogMusicTrack): MusicTrackFallback[] {
-  const chain: MusicTrackFallback[] = [];
-  const seen = new Set<CatalogMusicTrack>();
-  let current: MusicTrackFallback = track;
+  const chain: MusicTrackFallback[] = []
+  const seen = new Set<CatalogMusicTrack>()
+  let current: MusicTrackFallback = track
 
   while (current !== 'none' && !seen.has(current)) {
-    seen.add(current);
-    current = getMusicFallbackTrack(current);
-    chain.push(current);
+    seen.add(current)
+    current = getMusicFallbackTrack(current)
+    chain.push(current)
   }
 
-  return chain;
+  return chain
 }
