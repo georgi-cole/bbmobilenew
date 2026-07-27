@@ -1,5 +1,6 @@
 name: Apply drama public save implementation
 
+# One-shot branch workflow. It removes itself after a validated implementation commit.
 on:
   push:
     branches:
