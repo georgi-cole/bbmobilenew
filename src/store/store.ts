@@ -39,6 +39,7 @@ import memoryColorsReducer from '../features/memoryColors/memoryColorsSlice'
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync'
 import publicOpinionReducer from '../publicOpinion/publicOpinionSlice'
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware'
+import { dramaPublicSaveMiddleware } from '../publicOpinion/dramaPublicSaveMiddleware'
 import adsReducer, { loadAdsState, saveAdsState } from './adsSlice'
 import { adsMiddleware } from './adsMiddleware'
 import remoteConfigReducer from '../remoteConfig/remoteConfigSlice'
@@ -90,6 +91,7 @@ export const store = configureStore({
       socialMiddleware,
       soundMiddleware,
       publicOpinionMiddleware,
+      dramaPublicSaveMiddleware,
       adsMiddleware,
       secretMissionMiddleware,
       gameDiagnosticsMiddleware
@@ -119,7 +121,7 @@ let prevAds = store.getState().ads
 let prevVip = store.getState().vip
 // Persist active mode runs whenever the game slice changes.
 let prevGame = store.getState().game
-let prevFinale = store.getState().finale
+let prevFinale = store.getState().finalle
 let prevSocial = store.getState().social
 let prevPublicOpinion = store.getState().publicOpinion
 let prevChallenge = store.getState().challenge
@@ -219,33 +221,3 @@ store.subscribe(() => {
     prevArchiveProfileId = archivesProfileId
   }
 })
-
-// Android may reclaim a background WebView without another Redux action. Force
-// the latest serializable campaign state to storage as soon as the app hides.
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') return
-    const current = store.getState()
-    const activeProfileId = current.profiles.activeProfileId
-    if (current.profiles.isGuest || !activeProfileId || !hasMeaningfulGameProgress(current.game))
-      return
-    saveRunSnapshot(activeProfileId, {
-      version: 1,
-      profileId: activeProfileId,
-      savedAt: new Date().toISOString(),
-      game: { ...current.game, lastPlayedAt: Date.now() },
-      finale: current.finale,
-      social: current.social,
-      publicOpinion: current.publicOpinion,
-      challenge: current.challenge,
-    })
-  })
-}
-
-export type RootState = ReturnType<typeof store.getState>
-export type AppDispatch = typeof store.dispatch
-
-if (import.meta.env.DEV) {
-  // @ts-expect-error – intentionally attaching store for dev debugging
-  window.store = store
-}
