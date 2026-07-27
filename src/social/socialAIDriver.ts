@@ -11,7 +11,6 @@ import { chooseActionFor, chooseTargetsFor } from './SocialPolicy'
 import { canAfford, executeAction, executeGroupAction, getActionById } from './SocialManeuvers'
 import { resolveActionTargetMode } from './socialActions'
 import { isAISocialActionVisible } from './socialActionCatalog'
-import { isAISocialActionVisible } from './socialActionCatalog'
 import { normalizeActionCosts } from './smExecNormalize'
 import { socialConfig } from './socialConfig'
 import {
