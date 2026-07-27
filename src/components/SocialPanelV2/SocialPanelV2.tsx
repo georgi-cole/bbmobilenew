@@ -639,20 +639,24 @@ export default function SocialPanelV2() {
             <span className="sp2-energy-chip" aria-live="polite" aria-label={`Energy: ${energy}`}>
               ⚡ {energy}
             </span>
-            <span
-              className="sp2-resource-chip sp2-resource-chip--influence"
-              aria-live="polite"
-              aria-label={`Influence: ${influence}`}
-            >
-              🤝 {influence}
-            </span>
-            <span
-              className="sp2-resource-chip sp2-resource-chip--info"
-              aria-live="polite"
-              aria-label={`Info: ${info}`}
-            >
-              💡 {info}
-            </span>
+            {dramaMode && (
+              <>
+                <span
+                  className="sp2-resource-chip sp2-resource-chip--influence"
+                  aria-live="polite"
+                  aria-label={`Influence: ${influence}`}
+                >
+                  🤝 {influence}
+                </span>
+                <span
+                  className="sp2-resource-chip sp2-resource-chip--info"
+                  aria-live="polite"
+                  aria-label={`Info: ${info}`}
+                >
+                  💡 {info}
+                </span>
+              </>
+            )}
           </div>
           <button
             className="sp2-header__close"

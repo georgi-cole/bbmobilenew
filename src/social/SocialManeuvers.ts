@@ -691,9 +691,8 @@ export function executeAction(
     }
   }
 
-  const scaledYields = options?.waiveCosts
-    ? { influence: 0, info: 0 }
-    : normalizeActionYields(action)
+  const scaledYields =
+    options?.waiveCosts || !dramaMode ? { influence: 0, info: 0 } : normalizeActionYields(action)
   const random = options?.random ?? Math.random
   const priorRepeats = countPriorRepeatedActions(
     getPersistentSocialHistory(state.social as SocialStateWithHistory),
@@ -827,11 +826,7 @@ export function executeAction(
     actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred
   const relationshipDelta = formingAlliance
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - existingAffinity)
-    : actionId === 'proposeAlliance' && outcome === 'success'
-      ? delta
-      : dramaMode
-        ? delta * 2
-        : delta
+    : delta
   const reciprocalAllianceDelta = formingAlliance
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - recipientTrust)
     : delta
@@ -1261,11 +1256,9 @@ export function executeGroupAction(
     _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }))
   }
 
-  const effect = getSocialResourceEffect(
-    action,
-    anyBackfire ? 'backfire' : outcome,
-    targetIds.length
-  )
+  const effect = dramaMode
+    ? getSocialResourceEffect(action, anyBackfire ? 'backfire' : outcome, targetIds.length)
+    : { influence: 0, info: 0 }
   const appliedEffect = {
     influence: clampResourceAdjustment(effect.influence, currentInfluence - costs.influence),
     info: clampResourceAdjustment(effect.info, currentInfo - costs.info),

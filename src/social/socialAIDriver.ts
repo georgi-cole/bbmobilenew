@@ -10,6 +10,7 @@
 import { chooseActionFor, chooseTargetsFor } from './SocialPolicy'
 import { canAfford, executeAction, executeGroupAction, getActionById } from './SocialManeuvers'
 import { resolveActionTargetMode } from './socialActions'
+import { isAISocialActionVisible } from './socialActionCatalog'
 import { normalizeActionCosts } from './smExecNormalize'
 import { socialConfig } from './socialConfig'
 import {
@@ -392,6 +393,9 @@ function candidateForPlayer(
       phase: state.game.phase,
       decisionIndex: _tickCount * 5 + attempt,
       recentActions: history,
+      availableActionIds: Object.keys(socialConfig.actionWeights).filter((candidateId) =>
+        isAISocialActionVisible(candidateId, dramaMode ? 'drama' : 'normal')
+      ),
     } as Parameters<typeof chooseActionFor>[1])
   if (actionId === 'idle') return null
 

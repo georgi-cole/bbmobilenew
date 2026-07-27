@@ -676,6 +676,14 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         }
       }
     ).payload
+    const stateBeforeRelationshipUpdate = api.getState() as StateWithGame
+    const hadAllianceBefore =
+      payload.tags?.includes('alliance') === true &&
+      hasAllianceBetween(
+        stateBeforeRelationshipUpdate.social?.relationships ?? {},
+        payload.source,
+        payload.target
+      )
     const result = next(action)
     if (
       isDramaModeEnabled(api as unknown as MiddlewareAPI) &&
@@ -746,12 +754,14 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     // they are the root cause of influence/energy inflation when many AI players
     // target the human player with 'ally' actions each phase.
     if (payload.tags && payload.actionSource !== 'system') {
-      if (payload.tags.includes('alliance')) {
-        // New alliance formed: both parties get +2 energy and +200 influence pts.
+      if (payload.tags.includes('alliance') && !hadAllianceBefore) {
+        // Reward only the actual transition into a new alliance.
         grantEnergy(api as unknown as MiddlewareAPI, payload.source, 2)
         grantEnergy(api as unknown as MiddlewareAPI, payload.target, 2)
-        grantInfluence(api as unknown as MiddlewareAPI, payload.source, 200)
-        grantInfluence(api as unknown as MiddlewareAPI, payload.target, 200)
+        if (isDramaModeEnabled(api as unknown as MiddlewareAPI)) {
+          grantInfluence(api as unknown as MiddlewareAPI, payload.source, 200)
+          grantInfluence(api as unknown as MiddlewareAPI, payload.target, 200)
+        }
       } else if (payload.tags.includes('betrayal')) {
         // Broke alliance: actor loses 3 energy.
         grantEnergy(api as unknown as MiddlewareAPI, payload.source, -3)

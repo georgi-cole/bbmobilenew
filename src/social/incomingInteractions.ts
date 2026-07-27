@@ -340,7 +340,11 @@ function applyIncomingChoiceConsequences({
     )
   }
 
-  if (canAwardIntel(interaction) && (responseType === 'positive' || responseType === 'neutral')) {
+  if (
+    dramaMode &&
+    canAwardIntel(interaction) &&
+    (responseType === 'positive' || responseType === 'neutral')
+  ) {
     dispatch(applyInfoDelta({ playerId: humanPlayer.id, delta: 1 }))
   }
 
