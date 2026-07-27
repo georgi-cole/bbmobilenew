@@ -39,5 +39,3 @@ jobs:
           git add src/components/BigSpender
           git commit -m "Format replenishing Big Spender"
           git push origin HEAD:agent/big-spender-replenishing-wall
-
-# Temporary CWGO validation trigger
