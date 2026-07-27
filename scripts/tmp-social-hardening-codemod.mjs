@@ -50,13 +50,12 @@ edit('src/social/SocialManeuvers.ts', (original) => {
     ? getSocialResourceEffect(action, anyBackfire ? 'backfire' : outcome, targetIds.length)
     : { influence: 0, info: 0 }`
   )
-  const accidentalContextRandom = `    game: rootState.game,
-    relationships: state.social.relationships,
-    random,
-  })`
   source = replaceIfPresent(
     source,
-    accidentalContextRandom,
+    `    game: rootState.game,
+    relationships: state.social.relationships,
+    random,
+  })`,
     `    game: rootState.game,
     relationships: state.social.relationships,
   })`
@@ -156,13 +155,17 @@ edit('src/social/socialMiddleware.ts', (original) => {
 })
 
 edit('src/social/socialAIDriver.ts', (original) => {
-  let source = original
-  source = replaceIfPresent(
-    source,
-    `import { resolveActionTargetMode } from './socialActions'`,
-    `import { resolveActionTargetMode } from './socialActions'
-import { isAISocialActionVisible } from './socialActionCatalog'`
+  let source = original.replace(
+    `import { isAISocialActionVisible } from './socialActionCatalog'\nimport { isAISocialActionVisible } from './socialActionCatalog'`,
+    `import { isAISocialActionVisible } from './socialActionCatalog'`
   )
+  if (!source.includes(`import { isAISocialActionVisible } from './socialActionCatalog'`)) {
+    source = replaceIfPresent(
+      source,
+      `import { resolveActionTargetMode } from './socialActions'`,
+      `import { resolveActionTargetMode } from './socialActions'\nimport { isAISocialActionVisible } from './socialActionCatalog'`
+    )
+  }
   source = replaceIfPresent(
     source,
     `      recentActions: history,
