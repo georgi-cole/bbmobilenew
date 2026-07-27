@@ -1,17 +1,17 @@
-import type { SoundEntry } from './sounds';
-import type { MusicTrack } from './musicTracks';
+import type { SoundEntry } from './sounds'
+import type { MusicTrack } from './musicTracks'
 
 export interface MinigameMusicConfig {
-  track: MusicTrack;
-  sound: SoundEntry;
-  gameKeys: readonly string[];
-  fadeInMs: number;
+  track: MusicTrack
+  sound: SoundEntry
+  gameKeys: readonly string[]
+  fadeInMs: number
   /** Keep the track playing while the winner badge animation and sting complete. */
-  postGameHoldMs: number;
-  fadeOutMs: number;
+  postGameHoldMs: number
+  fadeOutMs: number
 }
 
-const soundsBase = `${import.meta.env.BASE_URL ?? '/'}assets/sounds/`;
+const soundsBase = `${import.meta.env.BASE_URL ?? '/'}assets/sounds/`
 
 export const MINIGAME_MUSIC_CONFIGS: readonly MinigameMusicConfig[] = [
   {
@@ -29,17 +29,17 @@ export const MINIGAME_MUSIC_CONFIGS: readonly MinigameMusicConfig[] = [
     postGameHoldMs: 2800,
     fadeOutMs: 2000,
   },
-] as const;
+] as const
 
 export function getMinigameMusicConfig(
-  gameKey: string | null | undefined,
+  gameKey: string | null | undefined
 ): MinigameMusicConfig | undefined {
-  if (!gameKey) return undefined;
-  return MINIGAME_MUSIC_CONFIGS.find((config) => config.gameKeys.includes(gameKey));
+  if (!gameKey) return undefined
+  return MINIGAME_MUSIC_CONFIGS.find((config) => config.gameKeys.includes(gameKey))
 }
 
 export function getMinigameMusicConfigByTrack(
-  track: MusicTrack,
+  track: MusicTrack
 ): MinigameMusicConfig | undefined {
-  return MINIGAME_MUSIC_CONFIGS.find((config) => config.track === track);
+  return MINIGAME_MUSIC_CONFIGS.find((config) => config.track === track)
 }
