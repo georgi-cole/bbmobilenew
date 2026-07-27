@@ -1,0 +1,29 @@
+name: Temporary CWGO validation
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  test-cwgo:
+    if: github.head_ref == 'agent/cwgo-human-answer-logic'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/cwgo-human-answer-logic
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run CWGO tests
+        run: >-
+          npx vitest run
+          tests/cwgo.helpers.test.ts
+          tests/cwgo.slice.test.ts
+          tests/cwgo.ai-human-logic.test.ts
