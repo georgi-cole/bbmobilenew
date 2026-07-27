@@ -1,11 +1,23 @@
 import type { Middleware } from '@reduxjs/toolkit';
-import { replaceDramaNetwork } from '../social/socialSlice';
+import { replaceDramaNetwork, updateRelationship } from '../social/socialSlice';
 import { normalizeDramaSocialNetwork } from '../social/dramaModeEngine';
-import type { DramaSocialNetwork } from '../social/types';
+import type { DramaBelief, DramaSocialNetwork } from '../social/types';
 
 interface StateWithDramaPublicSave {
   game?: { week?: number };
   social?: { dramaNetwork?: DramaSocialNetwork };
+}
+
+function isExpiredPublicSaveThreat(belief: DramaBelief, currentWeek: number): boolean {
+  return (
+    belief.kind === 'strategic_threat' &&
+    belief.sourceId.startsWith('public-save-') &&
+    belief.createdWeek < currentWeek
+  );
+}
+
+export function getPublicSaveThreatRestoreDelta(belief: DramaBelief): number {
+  return belief.sentiment > 0 ? -2 : 4;
 }
 
 export function pruneExpiredPublicSaveThreatBeliefs(
@@ -14,12 +26,7 @@ export function pruneExpiredPublicSaveThreatBeliefs(
 ): DramaSocialNetwork {
   const normalized = normalizeDramaSocialNetwork(network);
   const beliefs = normalized.beliefs.filter(
-    (belief) =>
-      !(
-        belief.kind === 'strategic_threat' &&
-        belief.sourceId.startsWith('public-save-') &&
-        belief.createdWeek < currentWeek
-      ),
+    (belief) => !isExpiredPublicSaveThreat(belief, currentWeek),
   );
 
   if (beliefs.length === normalized.beliefs.length) return normalized;
@@ -28,8 +35,8 @@ export function pruneExpiredPublicSaveThreatBeliefs(
 
 /**
  * Public Save threat perception lasts for the remainder of the current day.
- * The middleware also cleans stale beliefs after save hydration, so disabling
- * Public Mode or resuming a later day cannot leave premium modifiers behind.
+ * The middleware removes the temporary beliefs and reverses their exact
+ * relationship bias on the next day, including after save hydration.
  */
 export const dramaPublicSaveMiddleware: Middleware = (api) => (next) => (action) => {
   const result = next(action);
@@ -47,10 +54,24 @@ export const dramaPublicSaveMiddleware: Middleware = (api) => (next) => (action)
   const currentWeek = state.game?.week ?? 1;
   if (!network) return result;
 
-  const pruned = pruneExpiredPublicSaveThreatBeliefs(network, currentWeek);
-  if (pruned.beliefs.length !== network.beliefs.length) {
-    api.dispatch(replaceDramaNetwork(pruned));
-  }
+  const expiredBeliefs = network.beliefs.filter((belief) =>
+    isExpiredPublicSaveThreat(belief, currentWeek),
+  );
+  if (expiredBeliefs.length === 0) return result;
+
+  // Remove the ledger first so the relationship-restoration actions cannot
+  // recursively rediscover and restore the same temporary effect.
+  api.dispatch(replaceDramaNetwork(pruneExpiredPublicSaveThreatBeliefs(network, currentWeek)));
+  expiredBeliefs.forEach((belief) => {
+    api.dispatch(
+      updateRelationship({
+        source: belief.holderId,
+        target: belief.subjectId,
+        delta: getPublicSaveThreatRestoreDelta(belief),
+        actionSource: 'system',
+      }),
+    );
+  });
 
   return result;
 };
