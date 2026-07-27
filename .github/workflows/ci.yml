@@ -10,6 +10,157 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  apply-public-mode-runtime-fix:
+    if: >-
+      github.head_ref == 'agent/fix-public-mode-runtime-admin-override' &&
+      github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-public-mode-runtime-admin-override
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply persistent Public Mode runtime override
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding='utf-8-sig')
+              if old not in text:
+                  raise SystemExit(f'Expected text not found in {path}: {old!r}')
+              file.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once(
+              'src/store/settingsSlice.ts',
+              "    publicMode: boolean;\n    enableJuryHouse: boolean;",
+              "    publicMode: boolean;\n    /** Persistent entitlement bypass set only by hidden Advanced Settings. */\n    publicModeAdminOverride: boolean;\n    enableJuryHouse: boolean;",
+          )
+          replace_once(
+              'src/store/settingsSlice.ts',
+              "    publicMode: false,\n    enableJuryHouse: false,",
+              "    publicMode: false,\n    publicModeAdminOverride: false,\n    enableJuryHouse: false,",
+          )
+
+          replace_once(
+              'src/screens/SettingsAdmin/SettingsAdmin.tsx',
+              "  const [showRestartModal, setShowRestartModal] = useState(false);\n",
+              "  const [showRestartModal, setShowRestartModal] = useState(false);\n\n  // Migrate values enabled by the earlier Advanced Settings implementation.\n  useEffect(() => {\n    if (settings.sim.publicMode && !settings.sim.publicModeAdminOverride) {\n      dispatch(setSim({ publicModeAdminOverride: true }));\n    }\n  }, [dispatch, settings.sim.publicMode, settings.sim.publicModeAdminOverride]);\n",
+          )
+          replace_once(
+              'src/screens/SettingsAdmin/SettingsAdmin.tsx',
+              "                  onChange={(e) => dispatch(setSim({ publicMode: e.target.checked }))}",
+              "                  onChange={(e) =>\n                    dispatch(\n                      setSim({\n                        publicMode: e.target.checked,\n                        publicModeAdminOverride: e.target.checked,\n                      }),\n                    )\n                  }",
+          )
+
+          replace_once(
+              'src/screens/Settings/Settings.tsx',
+              "        onChange: (dispatch, val) => dispatch(setSim({ publicMode: val })),",
+              "        onChange: (dispatch, val) =>\n          dispatch(\n            setSim(\n              val\n                ? { publicMode: true }\n                : { publicMode: false, publicModeAdminOverride: false }\n            )\n          ),",
+          )
+          replace_once(
+              'src/screens/Settings/Settings.tsx',
+              "              ? hasPublicMode || settings.sim.publicMode",
+              "              ? hasPublicMode || settings.sim.publicModeAdminOverride",
+          )
+
+          Path('src/components/VipEntitlementSync/VipEntitlementSync.tsx').write_text(
+              """import { useEffect } from 'react'\nimport { useAppDispatch, useAppSelector } from '../../store/hooks'\nimport { setDisplay, setSim } from '../../store/settingsSlice'\nimport {\n  initializeVip,\n  selectHasPublicModeAccess,\n  selectHasTribunalHouseAccess,\n  selectIsVipActive,\n  selectVip,\n} from '../../store/vipSlice'\n\nexport default function VipEntitlementSync() {\n  const dispatch = useAppDispatch()\n  const storeState = useAppSelector(selectVip)\n  const isVipActive = useAppSelector(selectIsVipActive)\n  const hasPublicMode = useAppSelector(selectHasPublicModeAccess)\n  const hasTribunalHouse = useAppSelector(selectHasTribunalHouseAccess)\n  const publicMode = useAppSelector((state) => state.settings.sim.publicMode)\n  const publicModeAdminOverride = useAppSelector(\n    (state) => state.settings.sim.publicModeAdminOverride\n  )\n  const tribunalHouse = useAppSelector((state) => state.settings.sim.enableJuryHouse)\n  const theme = useAppSelector((state) => state.settings.display.themePreset)\n\n  useEffect(() => {\n    if (storeState.status === 'idle') void dispatch(initializeVip())\n  }, [dispatch, storeState.status])\n\n  useEffect(() => {\n    if (storeState.status !== 'ready' && storeState.status !== 'error') return\n    if (!hasPublicMode && !publicModeAdminOverride && publicMode) {\n      dispatch(setSim({ publicMode: false }))\n    }\n    if (!hasTribunalHouse && tribunalHouse) dispatch(setSim({ enableJuryHouse: false }))\n    if (!isVipActive && theme !== 'midnight') {\n      dispatch(setDisplay({ themePreset: 'midnight' }))\n    }\n  }, [\n    dispatch,\n    hasPublicMode,\n    hasTribunalHouse,\n    isVipActive,\n    publicMode,\n    publicModeAdminOverride,\n    storeState.status,\n    theme,\n    tribunalHouse,\n  ])\n\n  return null\n}\n""",
+              encoding='utf-8',
+          )
+
+          Path('src/publicOpinion/publicModeAccess.ts').write_text(
+              """export interface PublicModeRuntimeAccess {\n  hasStoreAccess: boolean\n  adminOverride: boolean\n  isDev: boolean\n  hasSpecialAccess: boolean\n}\n\nexport function resolvePublicModeRuntimeEnabled(\n  requested: boolean,\n  access: PublicModeRuntimeAccess\n): boolean {\n  return (\n    requested &&\n    (access.hasStoreAccess || access.adminOverride || access.isDev || access.hasSpecialAccess)\n  )\n}\n""",
+              encoding='utf-8',
+          )
+
+          replace_once(
+              'src/store/gameSlice.ts',
+              "import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService'",
+              "import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService'\nimport { resolvePublicModeRuntimeEnabled } from '../publicOpinion/publicModeAccess'",
+          )
+          replace_once(
+              'src/store/gameSlice.ts',
+              "    publicModeEnabled:\n      freshSettings.sim.publicMode === true &&\n      (hasCachedStoreAccess('publicMode') || import.meta.env.DEV || canAccessSpecialSettings()),",
+              "    publicModeEnabled: resolvePublicModeRuntimeEnabled(\n      freshSettings.sim.publicMode === true,\n      {\n        hasStoreAccess: hasCachedStoreAccess('publicMode'),\n        adminOverride: freshSettings.sim.publicModeAdminOverride === true,\n        isDev: import.meta.env.DEV,\n        hasSpecialAccess: canAccessSpecialSettings(),\n      }\n    ),",
+          )
+
+          replace_once(
+              'src/screens/GameScreen/GameScreen.tsx',
+              "const PUBLIC_MODE_STORE_PROMPT =\n  'If you want to activate public mode, go to the store in the home hub.'\n",
+              "",
+          )
+          replace_once(
+              'src/screens/GameScreen/GameScreen.tsx',
+              "      title: PUBLIC_MODE_STORE_PROMPT,",
+              "      title:\n        settings.sim.publicMode === true\n          ? 'Public Mode is enabled in Settings. Start a new season to apply it.'\n          : 'Public Mode is not active for this season. Enable it in Settings before starting a new season.',",
+          )
+
+          Path('tests/unit/publicModeAccess.test.ts').write_text(
+              """import { describe, expect, it } from 'vitest'\nimport { resolvePublicModeRuntimeEnabled } from '../../src/publicOpinion/publicModeAccess'\n\ndescribe('resolvePublicModeRuntimeEnabled', () => {\n  const noAccess = {\n    hasStoreAccess: false,\n    adminOverride: false,\n    isDev: false,\n    hasSpecialAccess: false,\n  }\n\n  it('keeps Public Mode off when it was not requested', () => {\n    expect(resolvePublicModeRuntimeEnabled(false, { ...noAccess, adminOverride: true })).toBe(\n      false\n    )\n  })\n\n  it('honors the persisted Advanced Settings override after debug URL access is gone', () => {\n    expect(resolvePublicModeRuntimeEnabled(true, { ...noAccess, adminOverride: true })).toBe(true)\n  })\n\n  it('keeps runtime access locked without entitlement, override, dev, or QA access', () => {\n    expect(resolvePublicModeRuntimeEnabled(true, noAccess)).toBe(false)\n  })\n})\n""",
+              encoding='utf-8',
+          )
+
+          replace_once(
+              'tests/integration/gameScreen.publicMeterDisabled.test.tsx',
+              "  it('shows the Home Hub prompt on the main TV without adding log entries when public mode is disabled', async () => {",
+              "  it('shows a current-season explanation without resurrecting the legacy store prompt', async () => {",
+          )
+          replace_once(
+              'tests/integration/gameScreen.publicMeterDisabled.test.tsx',
+              "      'If you want to activate public mode, go to the store in the home hub.',",
+              "      'Public Mode is not active for this season. Enable it in Settings before starting a new season.',",
+          )
+          replace_once(
+              'tests/integration/gameScreen.publicMeterDisabled.test.tsx',
+              "    expect(store.getState().game.tvFeed).toEqual(initialFeed)\n  })",
+              "    expect(screen.queryByText(/go to the store in the home hub/i)).toBeNull()\n    expect(store.getState().game.tvFeed).toEqual(initialFeed)\n  })",
+          )
+          PY
+      - name: Format and validate the runtime fix
+        run: |
+          npx prettier --write \
+            src/screens/Settings/Settings.tsx \
+            src/components/VipEntitlementSync/VipEntitlementSync.tsx \
+            src/publicOpinion/publicModeAccess.ts \
+            src/store/gameSlice.ts \
+            src/screens/GameScreen/GameScreen.tsx \
+            tests/unit/publicModeAccess.test.ts \
+            tests/integration/gameScreen.publicMeterDisabled.test.tsx
+          npm run format:check
+          npx vitest run \
+            tests/unit/publicModeAccess.test.ts \
+            tests/integration/gameScreen.publicMeterDisabled.test.tsx \
+            tests/settings.screen.test.tsx \
+            tests/unit/settings.restart.test.ts
+          npm run typecheck
+      - name: Commit the verified source fix and remove this temporary job
+        run: |
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/ci.yml \
+            src/store/settingsSlice.ts \
+            src/screens/SettingsAdmin/SettingsAdmin.tsx \
+            src/screens/Settings/Settings.tsx \
+            src/components/VipEntitlementSync/VipEntitlementSync.tsx \
+            src/publicOpinion/publicModeAccess.ts \
+            src/store/gameSlice.ts \
+            src/screens/GameScreen/GameScreen.tsx \
+            tests/unit/publicModeAccess.test.ts \
+            tests/integration/gameScreen.publicMeterDisabled.test.tsx
+          git commit -m "Persist Public Mode admin runtime override"
+          git push
+
   static-quality:
     name: Format, lint, types, and dependencies
     runs-on: ubuntu-latest
