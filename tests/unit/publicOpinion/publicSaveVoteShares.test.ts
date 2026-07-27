@@ -6,7 +6,10 @@ import {
 } from '../../../src/publicOpinion/PublicSaveService';
 import { resolveDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveService';
 import { shouldUseDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveIntegration';
-import { pruneExpiredPublicSaveThreatBeliefs } from '../../../src/publicOpinion/dramaPublicSaveMiddleware';
+import {
+  getPublicSaveThreatRestoreDelta,
+  pruneExpiredPublicSaveThreatBeliefs,
+} from '../../../src/publicOpinion/dramaPublicSaveMiddleware';
 import { createInitialDramaSocialNetwork } from '../../../src/social/dramaModeEngine';
 import type {
   PlayerPublicProfile,
@@ -159,5 +162,21 @@ describe('public save vote shares', () => {
     expect(pruneExpiredPublicSaveThreatBeliefs(network, 4).beliefs).toHaveLength(2);
     const nextDay = pruneExpiredPublicSaveThreatBeliefs(network, 5);
     expect(nextDay.beliefs.map((belief) => belief.id)).toEqual(['normal-threat']);
+  });
+
+  it('reverses the exact ally or threat relationship bias on expiry', () => {
+    const base = {
+      id: 'public-threat',
+      holderId: 'a',
+      subjectId: 'b',
+      kind: 'strategic_threat' as const,
+      confidence: 0.68,
+      sourceId: 'public-save-4-b',
+      createdWeek: 4,
+      lastUpdatedWeek: 4,
+    };
+
+    expect(getPublicSaveThreatRestoreDelta({ ...base, sentiment: -0.12 })).toBe(4);
+    expect(getPublicSaveThreatRestoreDelta({ ...base, sentiment: 0.08 })).toBe(-2);
   });
 });
