@@ -7,6 +7,7 @@ import type { DramaSocialNetwork, RelationshipsMap } from './types'
 interface SocialExecutionState {
   game?: {
     phase?: string
+    week?: number
     dramaSocialMode?: boolean
     players?: Array<{ id: string; status: string; isUser?: boolean }>
   }
@@ -56,6 +57,7 @@ export function validateSocialExecution(
     targetIds,
     subjectId: selection.subjectId,
     phase: state.game?.phase,
+    week: state.game?.week,
     players,
     actorStatus,
     primaryTargetStatus,
