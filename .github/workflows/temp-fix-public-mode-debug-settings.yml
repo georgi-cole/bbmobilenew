@@ -1,3 +1,4 @@
+# Temporary branch-only workflow; remove after the patch commit is created.
 name: Temporary Public Mode debug settings fix
 
 on:
