@@ -1,3 +1,3 @@
 Temporary bootstrap marker for the isolated game-flow orchestration refactor. This file will be removed before the final pull request targets main.
 
-Workspace export refresh: installed dependencies included.
+Workspace export refresh: installed dependencies package-only retry.
