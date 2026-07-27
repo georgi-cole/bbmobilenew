@@ -38,8 +38,6 @@ export function getMinigameMusicConfig(
   return MINIGAME_MUSIC_CONFIGS.find((config) => config.gameKeys.includes(gameKey))
 }
 
-export function getMinigameMusicConfigByTrack(
-  track: MusicTrack
-): MinigameMusicConfig | undefined {
+export function getMinigameMusicConfigByTrack(track: MusicTrack): MinigameMusicConfig | undefined {
   return MINIGAME_MUSIC_CONFIGS.find((config) => config.track === track)
 }
