@@ -307,7 +307,7 @@ export function getModePhaseSelection(
   config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG
 ): MusicSelection | undefined {
   const modeOverride = config.modePhaseOverrides[mode]?.[phase as Phase]
-  if (modeOverride) return modeOverride
+  if (modeOverride && modeOverride.kind !== 'inherit') return modeOverride
   return config.phaseMusic[phase as Phase]
 }
 
