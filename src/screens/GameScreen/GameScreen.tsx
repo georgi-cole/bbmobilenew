@@ -1,67 +1,23 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
   applyMinigameWinner,
-  applyF3MinigameWinner,
-  updateGamePRs,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
-  finalizePendingEviction,
-  confirmDayStartShock,
-  setEvictionOverlay,
   selectAlivePlayers,
   selectF3Part3PredictedWinnerId,
   selectF3Part2PredictedWinnerId,
-  commitNominees,
   submitPovDecision,
-  submitPovSaveTarget,
-  setReplacementNominee,
-  submitDoubleEvictionTieBreak,
-  dismissDemocraciaResultDisplay,
-  dismissVoteResults,
-  aiReplacementRendered,
-  advance,
-  completeBattleBack,
-  dismissBattleBack,
-  tryActivateBattleBack,
-  tryActivatePendingForcedBattleBack,
-  tryActivateDayStartShock,
-  tryActivatePendingForcedDayStartShock,
-  tryActivateSecretMission,
-  openBattleBackCompetition,
-  tryActivateDoubleEviction,
-  tryActivatePendingForcedDoubleEviction,
-  tryActivateSpecialVeto,
-  tryActivatePendingForcedSpecialVeto,
-  submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
-  submitVipSecondSaveTarget,
-  resolveFavoritePlayerWinner,
-  awardFavoritePrize,
-  openFavoritePlayerVoting,
-  resumeAfterPublicFavorite,
-  commitPublicSave,
-  expireMissionReward,
-  activateVoteDeductionReward,
-  declineVoteDeduction,
-  tryActivateDemocracia,
-  tryActivatePendingForcedDemocracia,
   submitDemocraciaVote,
-  resolveDemocraciaPublicBreaker,
   submitCoLohNomination,
-  completeTwinShockRevealAnimation,
   resetGame,
 } from '../../store/gameSlice'
-import {
-  startChallenge,
-  selectPendingChallenge,
-  completeChallenge,
-  type PendingChallenge,
-} from '../../store/challengeSlice'
+import { completeChallenge, type PendingChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
 import { setEnergyBankEntry } from '../../social/socialSlice'
 import { useNavigate, useSearchParams } from 'react-router'
@@ -85,16 +41,13 @@ import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
 import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
-import { isPlacementRankingGame } from '../../minigames/registry'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
 import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
-import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
 import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
 import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
-import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import IncomingInteractionsInbox from '../../components/IncomingInteractionsInbox/IncomingInteractionsInbox'
@@ -102,35 +55,17 @@ import SurvivorAchievementCelebration from '../../components/SurvivorAchievement
 import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/featureFlags'
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import SpectatorView from '../../components/ui/SpectatorView'
-import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import Capitalization from '../../components/Capitalization/Capitalization'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { getProfilePhotoAvatarId, resolveAvatar } from '../../utils/avatar'
-import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
-import { detectDebugMode } from '../../utils/debugMode'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
-import type { Player, Phase } from '../../types'
-import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
-import {
-  getCompetitionSeasonState,
-  getDefaultCompetitionProfile,
-  getMinigameAiModel,
-  simulateMinigameAiScore,
-} from '../../ai/competition'
-import {
-  buildDoubleEvictionTieResolutionMessage,
-  calculateRequiredDoubleEvictionSlots,
-  formatDoubleEvictionNameList,
-} from '../../features/twists/doubleEvictionTieUtils'
-import { mulberry32 } from '../../store/rng'
+import type { Player } from '../../types'
 import { isSurvivorRunTerminal } from '../../modes/survivorRun'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
 import TwinShockRevealOverlay from '../../components/TwinShockRevealOverlay/TwinShockRevealOverlay'
 import TwinShockIntroCinematic from '../../components/TwinShockIntroCinematic/TwinShockIntroCinematic'
-import { rankPublicEvictionTieNominees } from '../../publicOpinion/PublicEvictionTieService'
-import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
 import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
@@ -155,42 +90,29 @@ import {
   DISLIKED_MAX_APPROVAL,
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
-import { usePersistedGameScreenKey, usePersistedPromptDate } from './gameScreenPersistence'
+import { usePersistedPromptDate } from './gameScreenPersistence'
 import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import { useResponsiveGameLayout } from './useResponsiveGameLayout'
 import { getCeremonyTileRect } from './ceremonyTileMeasurement'
 import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome'
-import {
-  BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
-  advanceBattleBackAnnouncementStep,
-  buildBattleBackFeedMessage,
-  isBattleBackReplayEligible,
-  shouldUseBattleBackMinigame,
-} from './battleBackFlow'
 
-import { getOutcomeVisibleEvicteeIds, hasUnresolvedTopVoteTie } from './evictionTieVisuals'
-import {
-  buildEvictionVoteBreakdownPlayerNamesById,
-  buildEvictionVoteBreakdownRows,
-  isEvictionVoteBreakdownActive,
-  loadEvictionVoteBreakdownUnlock,
-  saveEvictionVoteBreakdownUnlock,
-} from '../../features/evictionVoteBreakdownStorage'
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
-import { shouldShowGameControlDock } from './gameScreenUiGuards'
+import { useCompetitionFlow } from './flows/useCompetitionFlow'
+import { coordinateGameFlows } from './flows/gameFlowCoordinator'
+import { useEndgameFlow } from './flows/useEndgameFlow'
+import { useEvictionFlow } from './flows/useEvictionFlow'
+import { useLohFlow } from './flows/useLohFlow'
+import { useSafetyFlow } from './flows/useSafetyFlow'
+import { BATTLE_BACK_RETRY_LIMIT, useTwistFlow } from './flows/useTwistFlow'
+export {
+  POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS,
+  POST_VOTE_ANNOUNCEMENT_MS,
+} from './flows/useEvictionFlow'
 import './GameScreen.css'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
-const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
-export const POST_VOTE_ANNOUNCEMENT_MS = 3600
-export const POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS = 400
-const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
-const AI_TIE_STAGE_DELAY_MS = 3000
-const AI_TIE_DECIDING_DELAY_MS = 3000
-const AI_TIE_DECISION_DELAY_MS = 3000
-const AI_TIE_RESULT_DELAY_MS = 3000
 const CONFESSIONAL_TV_PROMPT_MESSAGE =
   'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
 const PUBLIC_MODE_STORE_PROMPT =
@@ -229,104 +151,6 @@ function buildAiOnlyChallengeRawResults(challenge: PendingChallenge) {
   }))
 }
 
-type PendingPublicSaveResult = {
-  savedId: string
-  supportPercent?: number
-}
-
-type AiTiebreakStage = 'tie' | 'deciding' | 'decision' | 'result'
-
-type VoteBreakdownSnapshot = {
-  votes: Record<string, string>
-  nomineeIds: string[]
-  evicteeId: string | null
-  week: number
-  phase: Phase
-}
-
-type AiTiebreakContext = {
-  lohName: string
-  evictee: Player
-  resultTitle: string
-}
-
-const BATTLE_BACK_RETRY_LIMIT = 3
-
-function buildDoubleEvictionPostVoteAnnouncement(options: {
-  voteResults: Record<string, number>
-  pendingEvictionId: string
-  pendingSecondEvictionId: string | null
-  lohName: string
-  players: Player[]
-  publicModeEnabled: boolean
-}): { title: string; subtitle: string } {
-  const {
-    voteResults,
-    pendingEvictionId,
-    pendingSecondEvictionId,
-    lohName,
-    players,
-    publicModeEnabled,
-  } = options
-  const firstEvictee = players.find((player) => player.id === pendingEvictionId) ?? null
-  const secondEvictee = pendingSecondEvictionId
-    ? (players.find((player) => player.id === pendingSecondEvictionId) ?? null)
-    : null
-
-  if (!firstEvictee || !secondEvictee) {
-    return {
-      title: 'Double Elimination Results',
-      subtitle: `${firstEvictee?.name ?? 'The evictee'}, please say your goodbyes and leave through the Confessional's special exit.`,
-    }
-  }
-
-  const boundaryVoteCount = voteResults[secondEvictee.id] ?? 0
-  const nomineeIds = Object.keys(voteResults)
-  const guaranteedIds = nomineeIds.filter((id) => (voteResults[id] ?? 0) > boundaryVoteCount)
-  const tiedBoundaryIds = nomineeIds.filter((id) => (voteResults[id] ?? 0) === boundaryVoteCount)
-  const remainingBoundarySlots = Math.max(0, 2 - guaranteedIds.length)
-  const ambiguousBoundaryTie =
-    tiedBoundaryIds.length > remainingBoundarySlots && remainingBoundarySlots > 0
-  const eliminatedNames = formatDoubleEvictionNameList([firstEvictee.name, secondEvictee.name])
-  const goodbyes = `${eliminatedNames}, please say your goodbyes and leave through the Confessional's special exit.`
-
-  if (!ambiguousBoundaryTie) {
-    return {
-      title: 'Double Elimination Results',
-      subtitle: goodbyes,
-    }
-  }
-
-  const tiedNames = tiedBoundaryIds
-    .map((id) => players.find((player) => player.id === id)?.name)
-    .filter((name): name is string => Boolean(name))
-
-  if (guaranteedIds.length > 0) {
-    return {
-      title: 'Double Elimination Results',
-      subtitle: `${firstEvictee.name} is the first player eliminated tonight. ${buildDoubleEvictionTieResolutionMessage(
-        {
-          deciderName: lohName,
-          tiedNames,
-          selectedNames: [secondEvictee.name],
-          publicModeEnabled,
-          secondEvictionOnly: true,
-        }
-      )} ${goodbyes}`,
-    }
-  }
-
-  return {
-    title: 'Double Elimination Results',
-    subtitle: `${buildDoubleEvictionTieResolutionMessage({
-      deciderName: lohName,
-      tiedNames,
-      selectedNames: [firstEvictee.name, secondEvictee.name],
-      publicModeEnabled,
-    })} ${goodbyes}`,
-  }
-}
-
 /**
  * GameScreen — main gameplay view.
  *
@@ -353,6 +177,7 @@ export default function GameScreen() {
   const gameScreenRef = useRef<HTMLDivElement | null>(null)
   const refinedGameChrome = useRefinedGameChrome()
   const storeRef = useRef(store)
+  const isMountedRef = useRef(true)
   useEffect(() => {
     storeRef.current = store
   }, [store])
@@ -370,7 +195,6 @@ export default function GameScreen() {
     (s: RootState): Record<string, PlayerPublicProfile> =>
       s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES
   )
-  const pendingChallenge = useAppSelector(selectPendingChallenge)
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
@@ -382,9 +206,6 @@ export default function GameScreen() {
   // ── Ad prompt visibility state ─────────────────────────────────────────
   const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
   const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false)
-  const [showVoteBreakdownPrompt, setShowVoteBreakdownPrompt] = useState(false)
-  const [postEvictionVoteBreakdown, setPostEvictionVoteBreakdown] =
-    useState<VoteBreakdownSnapshot | null>(null)
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
@@ -393,54 +214,41 @@ export default function GameScreen() {
   const [socialModuleUnavailableAnnouncement, setSocialModuleUnavailableAnnouncement] =
     useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
-  // Post-vote verdict shown on the main TV after the tally reveal.
-  // Its dismissal hands directly to the eviction cinematic without exposing normal TV content.
-  const [postVoteAnnouncement, setPostVoteAnnouncement] = useState<Announcement | null>(null)
-  const [showConfessionalTvPrompt, setShowConfessionalTvPrompt] = useState(false)
-  const [confessionalPromptTriggered, setConfessionalPromptTriggered] = useState(false)
-  const [pendingPublicSaveResult, setPendingPublicSaveResult] =
-    useState<PendingPublicSaveResult | null>(null)
-  const [publicSaveCeremonyConsumedKey, setPublicSaveCeremonyConsumedKey] =
-    usePersistedGameScreenKey('public-save-ceremony', `${game.gameId}:${game.season}`)
-  const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
-  const [activeAiTiebreakContext, setActiveAiTiebreakContext] = useState<AiTiebreakContext | null>(
-    null
-  )
-  // When true, the confessional prompt is shown after the eviction animation
-  // instead of inline with the vote results (post-eviction mode).
-  const isPostEvictionConfessionalModeRef = useRef(false)
-  // Snapshot of vote data captured at handleVoteResultsDone time for use in
-  // unlockVoteBreakdown when game state may have already advanced.
-  const postEvictionVoteSnapshotRef = useRef<VoteBreakdownSnapshot | null>(null)
-  const autoRevealOwnEvictionVotesRef = useRef(false)
-  const isMountedRef = useRef(true)
-  const postEvictionVoteBreakdownPromptTimerRef = useRef<ReturnType<
-    typeof window.setTimeout
-  > | null>(null)
   const activeConfessionalDecisionKey = activeConfessionalDecision
     ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
     : null
+  const [storedConfessionalPrompt, setStoredConfessionalPrompt] = useState<{
+    decisionKey: string | null
+    triggered: boolean
+    visible: boolean
+  }>(() => ({ decisionKey: activeConfessionalDecisionKey, triggered: false, visible: false }))
+  const confessionalPrompt =
+    storedConfessionalPrompt.decisionKey === activeConfessionalDecisionKey
+      ? storedConfessionalPrompt
+      : { decisionKey: activeConfessionalDecisionKey, triggered: false, visible: false }
+  const dismissConfessionalTvPrompt = useCallback(() => {
+    setStoredConfessionalPrompt((current) => ({
+      decisionKey: activeConfessionalDecisionKey,
+      triggered: current.decisionKey === activeConfessionalDecisionKey ? current.triggered : false,
+      visible: false,
+    }))
+  }, [activeConfessionalDecisionKey])
 
   useEffect(() => {
     return () => {
       isMountedRef.current = false
-      if (postEvictionVoteBreakdownPromptTimerRef.current != null) {
-        window.clearTimeout(postEvictionVoteBreakdownPromptTimerRef.current)
-        postEvictionVoteBreakdownPromptTimerRef.current = null
-      }
     }
   }, [])
 
   useEffect(() => {
-    if (!activeConfessionalDecisionKey) {
-      setConfessionalPromptTriggered(false)
-      setShowConfessionalTvPrompt(false)
-      return
-    }
+    if (!activeConfessionalDecisionKey) return
 
     const handlePlayPressed = () => {
-      setConfessionalPromptTriggered(true)
-      setShowConfessionalTvPrompt(true)
+      setStoredConfessionalPrompt({
+        decisionKey: activeConfessionalDecisionKey,
+        triggered: true,
+        visible: true,
+      })
     }
 
     window.addEventListener('ui:playPressed', handlePlayPressed)
@@ -467,7 +275,7 @@ export default function GameScreen() {
     navigate('/', { replace: true })
   }, [clearEliminatedRun, dispatch, navigate])
   const confessionalTvAnnouncement =
-    confessionalPromptTriggered && showConfessionalTvPrompt
+    confessionalPrompt.triggered && confessionalPrompt.visible
       ? {
           key: 'confessional_required',
           title: 'Confessional Required',
@@ -488,69 +296,65 @@ export default function GameScreen() {
   const getTileRect = useCallback((playerId: string): DOMRect | null => {
     return getCeremonyTileRect(playerId)
   }, [])
-  const twinShockReveal = game.twinShock?.pendingRevealAnimation ?? null
-  const twinShockSequenceKey = twinShockReveal
-    ? `${game.season}-${game.week}-${twinShockReveal.type}-${twinShockReveal.type === 'combined' ? twinShockReveal.playerId : twinShockReveal.incomingPlayerId}`
-    : null
-  const [completedTwinShockIntroKey, setCompletedTwinShockIntroKey] = useState<string | null>(null)
-  const handleTwinShockIntroDone = useCallback(() => {
-    if (twinShockSequenceKey) setCompletedTwinShockIntroKey(twinShockSequenceKey)
-  }, [twinShockSequenceKey])
-  const handleTwinShockRevealDone = useCallback(() => {
-    dispatch(completeTwinShockRevealAnimation())
-  }, [dispatch])
+  const {
+    humanIsHoH,
+    aliveIds,
+    hohCompParticipants,
+    humanIsOutgoingHoh,
+    showOutgoingHohWarning,
+    setOutgoingHohWarningDismissedWeek,
+    advanceHohCeremonyEligible,
+    handleAdvanceHohCeremonyDone,
+    showHumanNomAnim,
+    showNomAnim,
+    showNominationDangerSignals,
+    nominationDangerLockedId,
+    nomAnimPlayers,
+    lohCeremonyTileId,
+    shouldShowNominationCeremony,
+    showNominationsModal,
+    nomineeOptions,
+    autoNomineeLabel,
+    handleCommitNominees,
+    handleNomAnimDone,
+    handleAiNomAnimDone,
+    nominationLabels,
+    canUsePublicNomineeRule,
+    isDebugMode,
+    isQaMode,
+    handleDevPlayNomAnim,
+    humanCoLohId,
+    showCoLohNominationModal,
+    coLohNomOptions,
+  } = useLohFlow({
+    game,
+    alivePlayers,
+    humanPlayer,
+    activeConfessionalDecision,
+    searchParams,
+    dispatch,
+  })
 
-  // ── CeremonyOverlay — deferred LOH / POS winner commit ─────────────────
-  // When MinigameHost reports a winner, we show the CeremonyOverlay with a
-  // spotlight cutout over the winner's tile and a badge (👑/🛡️) that
-  // flies from screen centre to the tile.  Only after the animation completes
-  // do we dispatch applyMinigameWinner.  When DOMRects are unavailable
-  // (tests / headless) the overlay fires onDone immediately so the store
-  // mutation still happens — just without the visual.
-  //
-  // pendingWinnerDispatchRef stores the deferred thunk so handleCeremonyDone
-  // can call it without stale-closure issues.
-  const [pendingWinnerCeremony, setPendingWinnerCeremony] = useState<{
-    winnerId: string
-    tiles: CeremonyTile[]
-    caption: string
-    subtitle?: string
-    ariaLabel: string
-    /** Optional live-measure callback for viewport-tracking during zoom/scroll. */
-    measureA?: () => DOMRect | null
-  } | null>(null)
-  const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
-
-  const handleWinnerCeremonyDone = useCallback(() => {
-    pendingWinnerDispatchRef.current?.()
-    pendingWinnerDispatchRef.current = null
-    setPendingWinnerCeremony(null)
-  }, [])
-
-  // ── Advance-picked LOH winner ceremony (outgoing LOH bypass) ──────────
-  // When the human is the outgoing LOH, no MinigameHost challenge runs.
-  // advance() picks the winner randomly → phase becomes loh_results with
-  // lohId set, but no CeremonyOverlay was shown.  Detect this and fire
-  // a spotlight ceremony so the winner reveal is still animated.
-  const [advanceHohConsumedKey, setAdvanceHohConsumedKey] = usePersistedGameScreenKey(
-    'advance-hoh-ceremony',
-    game.season
-  )
-
-  const advanceHohKey = useMemo(() => {
-    if (game.phase !== 'loh_results' || !game.lohId) return ''
-    // Only trigger when the human was the outgoing LOH (prevHohId === human id)
-    // and the winner ceremony was NOT already shown by MinigameHost.
-    if (!game.prevHohId || game.prevHohId !== humanPlayer?.id) return ''
-    return `w${game.week}-hoh-${game.lohId}`
-  }, [game.phase, game.lohId, game.week, game.prevHohId, humanPlayer?.id])
-
-  const showAdvanceHohCeremony =
-    advanceHohKey !== '' && advanceHohKey !== advanceHohConsumedKey && !pendingWinnerCeremony
-
-  const handleAdvanceHohCeremonyDone = useCallback(() => {
-    setAdvanceHohConsumedKey(advanceHohKey)
-  }, [advanceHohKey, setAdvanceHohConsumedKey])
+  const {
+    pendingChallenge,
+    pendingWinnerCeremony,
+    handleWinnerCeremonyDone,
+    handleChallengeDone,
+    spectatorLegacyPayload,
+    spectatorLegacyActive,
+    handleSpectatorLegacyDone,
+  } = useCompetitionFlow({
+    game,
+    humanPlayer,
+    aliveIds,
+    hohCompParticipants,
+    humanIsOutgoingHoh,
+    spectatorReactEnabled,
+    spectatorMode: settings.gameUX.spectatorMode,
+    getTileRect,
+    dispatch,
+  })
+  const showAdvanceHohCeremony = advanceHohCeremonyEligible && pendingWinnerCeremony == null
 
   // ── Track last report ID so re-renders don't trigger duplicate effects ────
   // Social summaries are posted exclusively to the Diary Room via
@@ -562,219 +366,6 @@ export default function GameScreen() {
       prevReportIdRef.current = lastSocialReport.id
     }
   }, [lastSocialReport])
-
-  // ── Auto-start challenge on competition phase transitions ─────────────────
-  // The challenge system (startChallenge / MinigameHost) is the sole owner of
-  // game selection for LOH and POS competitions. It picks a random game from
-  // the registry, pre-computes AI scores appropriate for that game's metric kind,
-  // and handles the rules modal → countdown → game → results flow.
-  //
-  // LOH eligibility rule: the outgoing LOH (prevHohId) cannot compete in the
-  // next week's LOH competition. They are excluded from the participant list.
-  // When the human player is the outgoing LOH, no challenge is started at all
-  // (the winner is determined randomly via advance() instead).
-  const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers])
-  const hohCompParticipants = useMemo(() => {
-    if (game.phase !== 'loh_comp' || !game.prevHohId) return aliveIds
-    return aliveIds.filter((id) => id !== game.prevHohId)
-  }, [game.phase, game.prevHohId, aliveIds])
-
-  const humanIsOutgoingHoh =
-    game.phase === 'loh_comp' && !!game.prevHohId && game.prevHohId === humanPlayer?.id
-
-  // Warning modal state: shown once per week when the human is the outgoing LOH.
-  // Tracks which week the warning was dismissed so it resets automatically each week.
-  const [outgoingHohWarningDismissedWeek, setOutgoingHohWarningDismissedWeek] = useState<
-    number | null
-  >(null)
-  const showOutgoingHohWarning = humanIsOutgoingHoh && outgoingHohWarningDismissedWeek !== game.week
-
-  useEffect(() => {
-    const isCompPhase = game.phase === 'loh_comp' || game.phase === 'pos_comp'
-    // Do not start a challenge when the human player is the outgoing LOH —
-    // they are ineligible to compete; advance() will pick a winner randomly.
-    // Also skip when a CeremonyOverlay is pending (challenge result already
-    // captured; avoid launching a second challenge while the old one is animating).
-    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerCeremony) {
-      // Use the LOH-eligibility-filtered list only for LOH comps; POS is unrestricted.
-      const participants = game.phase === 'loh_comp' ? hohCompParticipants : aliveIds
-      const derivedPrizeType = game.phase === 'pos_comp' ? 'POS' : 'LOH'
-      dispatch(startChallenge(game.seed, participants, { prizeType: derivedPrizeType }))
-    }
-  }, [
-    game.phase,
-    pendingChallenge,
-    hohCompParticipants,
-    aliveIds,
-    game.seed,
-    dispatch,
-    humanIsOutgoingHoh,
-    pendingWinnerCeremony,
-  ])
-
-  // ── Auto-start challenge for Final 3 minigame phases ─────────────────────
-  // When advance() sets phase to final3_comp*_minigame (because a human is
-  // participating), start the challenge system so MinigameHost renders.
-  const isF3MinigamePhase =
-    game.phase === 'final3_comp1_minigame' ||
-    game.phase === 'final3_comp2_minigame' ||
-    game.phase === 'final3_comp3_minigame'
-
-  useEffect(() => {
-    const inF3Minigame =
-      game.phase === 'final3_comp1_minigame' ||
-      game.phase === 'final3_comp2_minigame' ||
-      game.phase === 'final3_comp3_minigame'
-    if (inF3Minigame && !pendingChallenge && game.minigameContext) {
-      dispatch(startChallenge(game.minigameContext.seed, game.minigameContext.participants))
-    }
-  }, [game.phase, pendingChallenge, game.minigameContext, dispatch])
-
-  // ── Final 3 Part 3 Spectator Mode ─────────────────────────────────────────
-  // When the human is NOT the Part-1 or Part-2 finalist, they watch the final
-  // battle as a spectator. SpectatorView mounts and plays through the cinematic
-  // sequence; advance() is dispatched only after onDone fires so the game engine
-  // computes the winner (sets game.lohId) after the spectacle completes.
-  const [spectatorF3Active, setSpectatorF3Active] = useState(false)
-  const [spectatorF3CompetitorIds, setSpectatorF3CompetitorIds] = useState<string[]>([])
-  const spectatorF3AdvancedRef = useRef(false)
-
-  const isF3Part3SpectatorPhase =
-    game.phase === 'final3_comp3' &&
-    !!humanPlayer &&
-    humanPlayer.id !== game.f3Part1WinnerId &&
-    humanPlayer.id !== game.f3Part2WinnerId
-
-  // Enter spectator mode on phase arrival. The ref is checked FIRST to prevent
-  // a race where a rapid re-render could activate the overlay a second time.
-  // advance() is NOT dispatched here; SpectatorView.onDone drives it instead.
-  useEffect(() => {
-    if (
-      isF3Part3SpectatorPhase &&
-      !spectatorF3AdvancedRef.current &&
-      spectatorReactEnabled &&
-      settings.gameUX.spectatorMode
-    ) {
-      spectatorF3AdvancedRef.current = true
-      const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
-      setSpectatorF3CompetitorIds(finalists)
-      setSpectatorF3Active(true)
-      // DO NOT call advance() here; SpectatorView will call onDone which dispatches advance()
-    }
-    // `spectatorF3AdvancedRef` is a ref (not reactive) used for deduplication.
-    // `dispatch` and `advance` are stable. `spectatorReactEnabled` and
-    // `settings.gameUX.spectatorMode` are included so that if either flag flips
-    // while already at final3_comp3 the effect can re-evaluate and activate.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isF3Part3SpectatorPhase, spectatorReactEnabled, settings.gameUX.spectatorMode])
-
-  const handleSpectatorF3Done = useCallback(() => {
-    setSpectatorF3Active(false)
-    spectatorF3AdvancedRef.current = false
-    dispatch(advance())
-  }, [dispatch])
-
-  // ── Final 3 Part 2 Spectator Mode ─────────────────────────────────────────
-  // When the human WON Part 1 they sit out Part 2 (the two Part-1 losers
-  // compete). SpectatorView plays through the cinematic; advance() is deferred
-  // to onDone so the engine picks the Part-2 winner after the overlay finishes.
-  const [spectatorF3Part2Active, setSpectatorF3Part2Active] = useState(false)
-  const [spectatorF3Part2CompetitorIds, setSpectatorF3Part2CompetitorIds] = useState<string[]>([])
-  const spectatorF3Part2AdvancedRef = useRef(false)
-
-  const isF3Part2SpectatorPhase =
-    game.phase === 'final3_comp2' && !!humanPlayer && humanPlayer.id === game.f3Part1WinnerId
-
-  useEffect(() => {
-    if (
-      isF3Part2SpectatorPhase &&
-      !spectatorF3Part2AdvancedRef.current &&
-      spectatorReactEnabled &&
-      settings.gameUX.spectatorMode
-    ) {
-      spectatorF3Part2AdvancedRef.current = true
-      const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
-      const losers = alive.filter((p) => p.id !== game.f3Part1WinnerId).map((p) => p.id)
-      setSpectatorF3Part2CompetitorIds(losers)
-      setSpectatorF3Part2Active(true)
-    }
-    // `spectatorF3Part2AdvancedRef` is a ref used for deduplication — not reactive.
-    // `game.players` and `game.f3Part1WinnerId` are guaranteed stable at the moment
-    // `isF3Part2SpectatorPhase` becomes true (they're the values that caused it to
-    // flip). The dedup ref ensures the body only runs once per phase entry, so
-    // there is no staleness risk. `spectatorReactEnabled` and
-    // `settings.gameUX.spectatorMode` are included so re-evaluation happens if
-    // either flag is toggled while the phase is already active.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isF3Part2SpectatorPhase, spectatorReactEnabled, settings.gameUX.spectatorMode])
-
-  const handleSpectatorF3Part2Done = useCallback(() => {
-    setSpectatorF3Part2Active(false)
-    spectatorF3Part2AdvancedRef.current = false
-    dispatch(advance())
-  }, [dispatch])
-
-  // ── Legacy 'spectator:show' event listener ─────────────────────────────────
-  // The legacySpectatorAdapter dispatches this event when window.Spectator.show()
-  // is called by legacy minigame code. The full event payload (variant, minigameId,
-  // winnerId) is stored in state so repeated events update the mounted overlay.
-  const [spectatorLegacyPayload, setSpectatorLegacyPayload] = useState<{
-    competitorIds: string[]
-    variant?: SpectatorVariant
-    minigameId?: string
-    winnerId?: string
-  } | null>(null)
-  const spectatorLegacyActive = spectatorLegacyPayload !== null
-
-  // Keep a ref to the current players list so the event handler always validates
-  // against up-to-date player IDs without needing to re-register on every change.
-  const playersRef = useRef(game.players)
-  useEffect(() => {
-    playersRef.current = game.players
-  }, [game.players])
-
-  // Keep a ref to spectatorMode so the event handler reads the current value
-  // without needing to re-register on every settings change.
-  const spectatorModeRef = useRef(settings.gameUX.spectatorMode)
-  useEffect(() => {
-    spectatorModeRef.current = settings.gameUX.spectatorMode
-  }, [settings.gameUX.spectatorMode])
-
-  useEffect(() => {
-    if (!spectatorReactEnabled) return
-    function handleSpectatorShow(e: Event) {
-      if (!spectatorModeRef.current) return
-      const detail = (
-        e as CustomEvent<{
-          competitorIds?: string[]
-          variant?: string
-          minigameId?: string
-          winnerId?: string
-        }>
-      ).detail
-      const rawIds = detail?.competitorIds ?? []
-      // Validate IDs against the current players list (via ref to avoid stale closure).
-      const validIds = rawIds.filter((id) => playersRef.current.some((p) => p.id === id))
-      if (!validIds.length) return
-      const variant = (['holdwall', 'trivia', 'maze'] as SpectatorVariant[]).includes(
-        detail?.variant as SpectatorVariant
-      )
-        ? (detail.variant as SpectatorVariant)
-        : undefined
-      setSpectatorLegacyPayload({
-        competitorIds: validIds,
-        variant,
-        minigameId: detail?.minigameId ?? undefined,
-        winnerId: detail?.winnerId ?? undefined,
-      })
-    }
-    window.addEventListener('spectator:show', handleSpectatorShow)
-    return () => window.removeEventListener('spectator:show', handleSpectatorShow)
-  }, [spectatorReactEnabled]) // re-registers if the feature flag is toggled; players accessed via ref above
-
-  const handleSpectatorLegacyDone = useCallback(() => {
-    setSpectatorLegacyPayload(null)
-  }, [])
 
   function handleAvatarSelect(player: Player) {
     setPreviewPlayer(null)
@@ -861,1932 +452,166 @@ export default function GameScreen() {
     }
   }
 
-  // ── Human LOH replacement picker ─────────────────────────────────────────
-  // Shown when a nominee auto-saved themselves and the human LOH must pick a
-  // replacement. The Continue button is hidden while this modal is open.
-  // (showReplacementModal is defined below after pendingReplacementCeremony.)
-  const replacementNeeded = game.replacementNeeded === true
-  const humanIsHoH = humanPlayer && game.lohId === humanPlayer.id
-
-  const replacementBaseOptions = alivePlayers.filter(
-    (p) => p.id !== game.lohId && p.id !== game.posWinnerId && !game.nomineeIds.includes(p.id)
-  )
-  const replacementOptions = (() => {
-    const protectedIds = new Set(game.povProtectedIds ?? [])
-    const nonProtected = replacementBaseOptions.filter((player) => !protectedIds.has(player.id))
-    return nonProtected.length > 0 ? nonProtected : replacementBaseOptions
-  })()
-
-  // ── Nomination animation state ────────────────────────────────────────────
-  // pendingNominees holds the player IDs while the animation plays.
-  //
-  // This state is driven by TWO sources:
-  //   1. Human LOH: handleCommitNominees() is called from TvMultiSelectModal's
-  //      onConfirm after the stinger finishes.  commitNominees is dispatched in
-  //      handleNomAnimDone — AFTER the animation completes.
-  //   2. AI LOH: a useEffect detects when nomination_results commits nominees to
-  //      the store without awaitingNominations (AI flow) and triggers the same
-  //      animation.  commitNominees is a no-op in this path (already committed).
-  //
-  // A ref mirrors the state so handleNomAnimDone always reads the current IDs
-  // regardless of stale closures after several seconds of animation.
-  //
-  // Two animation sources are unified here:
-  //   • Human LOH  — pendingNominees is set by handleCommitNominees; store
-  //     mutation is deferred to handleNomAnimDone.
-  //   • AI LOH     — nominees are already in game.nomineeIds; the animation
-  //     is gated by showAiNomAnim (computed, no setState-in-effect).
-  //     handleAiNomAnimDone just marks the key as consumed (no store dispatch).
-  //
-  // aiNomAnimConsumedKey tracks which "week-nominee-key" was most recently
-  // consumed by the AI animation path so it doesn't replay.  It is also
-  // pre-set by handleCommitNominees to prevent double-animation when the
-  // human LOH's commitNominees call lands and nomineeIds becomes non-empty.
-
-  // ── Double Eviction activation on nominations phase entry ────────────────
-  // Fire tryActivateDoubleEviction when the game enters nominations, and also
-  // when a queued debug shock changes while already on that phase. The thunk
-  // checks eligibility and probability, then dispatches activateDoubleEviction()
-  // which pushes the TV overlay event.
-  const doubleEvictionActivationKeyRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (game.phase !== 'nominations') return
-    const activationKey = `${game.week}:${game.pendingForcedShock?.type ?? 'none'}:${game.pendingForcedShock?.earliestWeek ?? 'none'}`
-    if (doubleEvictionActivationKeyRef.current === activationKey) return
-    doubleEvictionActivationKeyRef.current = activationKey
-    if (dispatch(tryActivatePendingForcedDoubleEviction())) return
-    dispatch(tryActivateDoubleEviction())
-  }, [
-    game.phase,
-    game.week,
-    game.pendingForcedShock?.type,
-    game.pendingForcedShock?.earliestWeek,
-    dispatch,
-  ])
-
-  // ── Special Veto activation on POS-results entry ─────────────────────────
-  // Fire tryActivateSpecialVeto when the game enters pos_results, and also when
-  // a queued debug shock changes while already on that phase. The thunk checks
-  // eligibility and probability, then dispatches activateSpecialVeto() which
-  // pushes the TV overlay event.
-  const specialVetoActivationKeyRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (game.phase !== 'pos_results') return
-    const activationKey = `${game.week}:${game.pendingForcedShock?.type ?? 'none'}:${game.pendingForcedShock?.earliestWeek ?? 'none'}`
-    if (specialVetoActivationKeyRef.current === activationKey) return
-    specialVetoActivationKeyRef.current = activationKey
-    if (dispatch(tryActivatePendingForcedSpecialVeto())) return
-    dispatch(tryActivateSpecialVeto())
-  }, [
-    game.phase,
-    game.week,
-    game.pendingForcedShock?.type,
-    game.pendingForcedShock?.earliestWeek,
-    dispatch,
-  ])
-
-  // ── Secret Mission activation on week-start entry ───────────────────────
-  // Fire tryActivateSecretMission once per day when the game enters week_start.
-  // The thunk centralizes the daily chance table, testing override, and
-  // one-per-season guard.
-  const weekStartActivationWeekRef = useRef<number | null>(null)
-  const weekStartActivationResolvedRef = useRef(false)
-  useEffect(() => {
-    if (game.phase !== 'week_start') return
-    if (game.pendingEviction || game.dayStartShock) return
-    if (weekStartActivationWeekRef.current !== game.week) {
-      weekStartActivationWeekRef.current = game.week
-      weekStartActivationResolvedRef.current = false
-    }
-    if (weekStartActivationResolvedRef.current) return
-
-    if (dispatch(tryActivatePendingForcedDayStartShock())) {
-      weekStartActivationResolvedRef.current = true
-      return
-    }
-    if (dispatch(tryActivateDayStartShock())) {
-      weekStartActivationResolvedRef.current = true
-      return
-    }
-    if (dispatch(tryActivateSecretMission())) {
-      weekStartActivationResolvedRef.current = true
-    }
-  }, [
-    game.dayStartShock,
-    game.pendingEviction,
-    game.pendingForcedShock?.earliestWeek,
-    game.pendingForcedShock?.type,
-    game.phase,
-    game.week,
-    dispatch,
-  ])
-
-  // ── Democracia activation on loh_comp_announcement entry ─────────────────
-  // Fire tryActivatePendingForcedDemocracia (debug) or tryActivateDemocracia
-  // (auto-rule) when the game enters loh_comp_announcement. The thunk checks
-  // day/alive-count eligibility, preventing double-activation within a day.
-  const democraciaActivationKeyRef = useRef<string | null>(null)
-  useLayoutEffect(() => {
-    if (game.phase !== 'loh_comp_announcement') return
-    const activationKey = `${game.week}:${game.pendingForcedShock?.type ?? 'none'}:${game.pendingForcedShock?.earliestWeek ?? 'none'}`
-    if (democraciaActivationKeyRef.current === activationKey) return
-    democraciaActivationKeyRef.current = activationKey
-    if (dispatch(tryActivatePendingForcedDemocracia())) return
-    dispatch(tryActivateDemocracia())
-  }, [
-    game.phase,
-    game.week,
-    game.pendingForcedShock?.type,
-    game.pendingForcedShock?.earliestWeek,
-    dispatch,
-  ])
-
-  // ── Democracia public-breaker resolution ─────────────────────────────────
-  // When a final ballotage tie occurs in public mode, awaitingPublicBreaker is
-  // set. Reuse the shared public-pick resolver so approval ties are broken
-  // deterministically the same way as other public-opinion flows.
-  useEffect(() => {
-    if (!game.democracia?.awaitingPublicBreaker) return
-    const candidateIds = game.democracia.candidateIds
-    if (candidateIds.length === 0) return
-    const { savedId: winnerId } = resolvePublicSaveNominee({
-      nomineeIds: candidateIds,
-      profiles: publicOpinionProfiles,
-    })
-    if (!winnerId) {
-      if (import.meta.env.DEV) {
-        console.warn('[democracia] public tie-break resolver returned no winner', {
-          candidateIds,
-        })
-      }
-      return
-    }
-    dispatch(resolveDemocraciaPublicBreaker({ winnerId }))
-  }, [
-    game.democracia?.awaitingPublicBreaker,
-    game.democracia?.candidateIds,
-    publicOpinionProfiles,
-    dispatch,
-  ])
-
-  const democraciaAwaitingVoteRef = useRef(Boolean(game.democracia?.awaitingHumanVote))
-  useEffect(() => {
-    const wasAwaitingVote = democraciaAwaitingVoteRef.current
-    const isAwaitingVote = Boolean(game.democracia?.awaitingHumanVote)
-    democraciaAwaitingVoteRef.current = isAwaitingVote
-    if (game.phase !== 'democracia_vote') return
-    if (!wasAwaitingVote || isAwaitingVote) return
-    dispatch(advance())
-  }, [dispatch, game.democracia?.awaitingHumanVote, game.phase])
-
-  // ── Secret Mission Final 4 expiry (PR 2) ──────────────────────────────────
-  // When the game reaches final4_eviction, expire any stored eligible reward
-  // because powers can only be used BEFORE Final 4 week.
-  // Track the season seed so the ref resets correctly if a new game starts
-  // without unmounting GameScreen.
-  const final4ExpiryFiredRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (game.phase !== 'final4_eviction') return
-    if (final4ExpiryFiredRef.current === game.seed) return
-    final4ExpiryFiredRef.current = game.seed
-    dispatch(expireMissionReward())
-  }, [game.phase, game.seed, dispatch])
-
-  const [pendingNominees, setPendingNominees] = useState<string[]>([])
-  const pendingNomineesRef = useRef<string[]>([])
-  const aiNomAnimPersistenceScope =
-    'gameId' in game && game.gameId != null
-      ? String(game.gameId)
-      : 'season' in game && game.season != null
-        ? String(game.season)
-        : String(game.seed)
-  const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = usePersistedGameScreenKey(
-    'ai-nomination-ceremony',
-    aiNomAnimPersistenceScope
-  )
-  useEffect(() => {
-    pendingNomineesRef.current = pendingNominees
-  }, [pendingNominees])
-
-  // AI LOH animation: computed directly from game state — no setState-in-effect.
-  const aiNomKey =
-    game.phase === 'nomination_results' && game.nomineeIds.length > 0 && !game.awaitingNominations
-      ? `w${game.week}-${[...game.nomineeIds].sort().join(',')}`
-      : ''
-
-  const showHumanNomAnim = pendingNominees.length > 0
-  const showAiNomAnim = aiNomKey !== '' && aiNomKey !== aiNomAnimConsumedKey && !showHumanNomAnim
-  const showNomAnim = showHumanNomAnim || showAiNomAnim
-  const showNominationDangerSignals =
-    game.phase === 'nomination_results' && Boolean(game.awaitingNominations) && !showNomAnim
-  const canUsePublicNomineeRule =
-    game.publicModeEnabled === true && game.doubleEviction?.weekActive !== true
-  const nominationDangerLockedId =
-    showNominationDangerSignals && canUsePublicNomineeRule
-      ? (game.lastHohCompFinisherId ?? null)
-      : null
-
-  const nomAnimPlayers = useMemo(() => {
-    if (showHumanNomAnim) {
-      const base = pendingNominees
-        .map((id) => game.players.find((p) => p.id === id))
-        .filter(Boolean) as Player[]
-      // When Public mode is active and this is not a Double Eviction, include the auto-third nominee.
-      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
-      if (autoId && !pendingNominees.includes(autoId)) {
-        const autoPlayer = game.players.find((p) => p.id === autoId)
-        if (autoPlayer) return [...base, autoPlayer]
-      }
-      return base
-    }
-    return game.nomineeIds
-      .map((id) => game.players.find((p) => p.id === id))
-      .filter(Boolean) as Player[]
-  }, [
-    showHumanNomAnim,
-    pendingNominees,
-    game.players,
-    canUsePublicNomineeRule,
-    game.lastHohCompFinisherId,
-    game.nomineeIds,
-  ])
-
-  // Build CeremonyOverlay tiles for nominations: ❓ badges fly to nominee tiles.
-  // Tile rects are resolved lazily by the CeremonyOverlay via getTileRect
-  // so we pass a resolver function rather than pre-computed rects (avoids
-  // calling document.querySelector during the render phase before DOM is committed).
-  const nomCeremonyTileIds = showNomAnim ? nomAnimPlayers.map((p) => p.id) : []
-  const lohCeremonyTileId =
-    showNomAnim && game.lohId && game.players.some((p) => p.id === game.lohId) ? game.lohId : null
-  const shouldShowNominationCeremony =
-    showNomAnim && nomCeremonyTileIds.length > 0 && lohCeremonyTileId != null
-
-  // ── Human LOH nomination flow (single multi-select modal) ────────────────
-  // Shown when the human LOH must pick their two nominees simultaneously.
-  // Hidden while the nomination animation is playing to prevent stacking.
-  // Also hidden when confessional routing is active (decision is in the DR).
-  const showNominationsModal =
-    game.phase === 'nomination_results' &&
-    Boolean(game.awaitingNominations) &&
-    humanIsHoH &&
-    !showNomAnim &&
-    !activeConfessionalDecision
-
-  const nomineeOptions = alivePlayers.filter((p) => p.id !== game.lohId)
-
-  // Compact label for the forced auto-nominee option in the nomination picker.
-  // 'survival' comps show "First out"; scored/unknown comps show "Lowest Score".
-  const autoNomineeLabel =
-    canUsePublicNomineeRule && game.lastHohCompFinisherType === 'survival'
-      ? 'First out'
-      : 'Lowest Score'
-
-  // Human LOH confirmed nominees: pre-consume the AI key so the AI animation
-  // path does not fire a second animation once commitNominees lands.
-  const handleCommitNominees = useCallback(
-    (ids: string[]) => {
-      const currentUserIsHoh = !!humanIsHoH
-      console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh, screen: 'GameScreen' })
-      // Pre-consume the exact key that commitNominees will produce.
-      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
-      const fullIds = autoId && !ids.includes(autoId) ? [...ids, autoId] : ids
-      setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
-      setPendingNominees(ids)
-    },
-    [
-      humanIsHoH,
-      game.week,
-      canUsePublicNomineeRule,
-      game.lastHohCompFinisherId,
-      setAiNomAnimConsumedKey,
-    ]
-  )
-
-  const handleNomAnimDone = useCallback(() => {
-    const ids = pendingNomineesRef.current
-    setPendingNominees([])
-    // commitNominees is a no-op when awaitingNominations is false (AI LOH path).
-    dispatch(commitNominees(ids))
-  }, [dispatch])
-
-  // AI LOH onDone: mark this key consumed so the animation doesn't replay.
-  const handleAiNomAnimDone = useCallback(() => {
-    setAiNomAnimConsumedKey(aiNomKey)
-  }, [aiNomKey, setAiNomAnimConsumedKey])
-
-  // ── Nomination labels (LOH Nominee / Last in LOH Comp) ───────────────────
-  // Used by the nomination ceremony overlay to show role pills on each nominee tile.
-  const nominationLabels: Record<string, string> = useMemo(() => {
-    const labels: Record<string, string> = {}
-
-    // While the human LOH animation is playing, the reducer hasn't committed
-    // nominationContext yet, so derive the pills from the pending picks.
-    if (showHumanNomAnim && pendingNominees.length > 0) {
-      pendingNominees.forEach((id) => {
-        labels[id] = 'LOH Nominee'
-      })
-      if (
-        canUsePublicNomineeRule &&
-        game.lastHohCompFinisherId &&
-        !pendingNominees.includes(game.lastHohCompFinisherId)
-      ) {
-        labels[game.lastHohCompFinisherId] = 'Last in LOH Comp'
-      }
-      return labels
-    }
-
-    const ctx = game.nominationContext
-    if (!ctx) return labels
-    ctx.hohNomineeIds.forEach((id) => {
-      labels[id] = 'LOH Nominee'
-    })
-    if (ctx.autoNomineeId && !ctx.hohNomineeIds.includes(ctx.autoNomineeId)) {
-      labels[ctx.autoNomineeId] = 'Last in LOH Comp'
-    }
-    return labels
-  }, [
-    showHumanNomAnim,
-    pendingNominees,
-    canUsePublicNomineeRule,
-    game.lastHohCompFinisherId,
-    game.nominationContext,
-  ])
-
-  // ── Pre-veto public save phase ───────────────────────────────────────────
-  const showPublicSaveReveal =
-    isPublicModeEnabled(game.mode) &&
-    game.phase === 'pre_veto_public_save' &&
-    Boolean(game.awaitingPublicSave) &&
-    game.nomineeIds.length === 3 &&
-    !pendingPublicSaveResult
-
-  // Approval values for display in PublicSaveReveal
-  const publicSaveApprovals = useMemo(() => {
-    const out: Record<string, number> = {}
-    game.nomineeIds.forEach((id) => {
-      out[id] = publicOpinionProfiles[id]?.approval ?? 50
-    })
-    return out
-  }, [game.nomineeIds, publicOpinionProfiles])
-
-  // Compute who would be saved; memoised to avoid recalculating on every render.
-  const publicSaveWinnerId = useMemo(() => {
-    if (!showPublicSaveReveal) return null
-    const result = resolvePublicSaveNominee({
-      nomineeIds: game.nomineeIds,
-      profiles: publicOpinionProfiles,
-    })
-    return result.savedId || null
-  }, [showPublicSaveReveal, game.nomineeIds, publicOpinionProfiles])
-
-  const publicSaveResultAnnouncement = useMemo<Announcement | null>(() => {
-    if (!pendingPublicSaveResult) return null
-    const savedPlayer = game.players.find((player) => player.id === pendingPublicSaveResult.savedId)
-    if (!savedPlayer) return null
-    const remainingNomineeNames = game.nomineeIds
-      .filter((id) => id !== pendingPublicSaveResult.savedId)
-      .map((id) => game.players.find((player) => player.id === id)?.name)
-      .filter((name): name is string => Boolean(name))
-    const subtitle =
-      pendingPublicSaveResult.supportPercent != null && remainingNomineeNames.length === 2
-        ? `${savedPlayer.name} was saved with ${Math.round(pendingPublicSaveResult.supportPercent)}% of the public support. ${remainingNomineeNames.join(' and ')} are still in danger.`
-        : remainingNomineeNames.length === 2
-          ? `${savedPlayer.name} was saved by the public. ${remainingNomineeNames.join(' and ')} are still in danger.`
-          : `${savedPlayer.name} was saved by the public.`
-    return {
-      key: 'public_save_result',
-      title: 'Public Save Result',
-      subtitle,
-      isLive: true,
-      autoDismissMs: PUBLIC_SAVE_RESULT_DELAY_MS,
-    }
-  }, [game.nomineeIds, game.players, pendingPublicSaveResult])
-  const publicSaveCeremonyKey = pendingPublicSaveResult
-    ? `w${game.week}-public-save-${pendingPublicSaveResult.savedId}`
-    : ''
-  const showPublicSaveCeremony =
-    isPublicModeEnabled(game.mode) &&
-    publicSaveCeremonyKey !== '' &&
-    publicSaveCeremonyKey !== publicSaveCeremonyConsumedKey
-
-  const handlePublicSaveDone = useCallback(() => {
-    if (!publicSaveWinnerId) return
-    setPendingPublicSaveResult({
-      savedId: publicSaveWinnerId,
-      supportPercent: publicSaveApprovals[publicSaveWinnerId],
-    })
-  }, [publicSaveApprovals, publicSaveWinnerId])
-
-  const handlePublicSaveResultDismiss = useCallback(() => {
-    if (!pendingPublicSaveResult) return
-    dispatch(commitPublicSave(pendingPublicSaveResult))
-    setPendingPublicSaveResult(null)
-  }, [dispatch, pendingPublicSaveResult])
-  const handlePublicSaveCeremonyDone = useCallback(() => {
-    if (!publicSaveCeremonyKey) return
-    setPublicSaveCeremonyConsumedKey(publicSaveCeremonyKey)
-  }, [publicSaveCeremonyKey, setPublicSaveCeremonyConsumedKey])
-
-  const publicSaveNominees = useMemo(
-    () =>
-      game.nomineeIds
-        .map((id) => game.players.find((p) => p.id === id))
-        .filter((p): p is Player => p != null),
-    [game.nomineeIds, game.players]
-  )
-
-  // ── Dev: manually trigger nomination animation ────────────────────────────
-  // Only visible in development builds for easy QA verification.
-  const isDebugMode = detectDebugMode()
-  const isQaMode = searchParams.get('qa') === '1' && isDebugMode
-  const handleDevPlayNomAnim = useCallback(() => {
-    const eligible = alivePlayers.filter((p) => !p.isUser)
-    const devNominees = eligible.slice(0, 2).map((p) => p.id)
-    if (devNominees.length === 2) {
-      console.log('DEV: Play Nomination Animation', devNominees)
-      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
-      const fullIds =
-        autoId && !devNominees.includes(autoId) ? [...devNominees, autoId] : devNominees
-      setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
-      setPendingNominees(devNominees)
-    }
-  }, [
-    alivePlayers,
-    canUsePublicNomineeRule,
-    game.lastHohCompFinisherId,
-    game.week,
-    setAiNomAnimConsumedKey,
-    setPendingNominees,
-  ])
-
-  // ── Human POS holder decision (use veto or not) ──────────────────────────
-  const humanIsPosHolder = humanPlayer && game.posWinnerId === humanPlayer.id
-  const activeSpecialVeto = game.specialVeto?.activeType ?? null
-  const specialVetoName =
-    activeSpecialVeto === 'vip'
-      ? 'Double Trouble'
-      : activeSpecialVeto === 'diamond'
-        ? 'Halo Exchange'
-        : activeSpecialVeto === 'coup'
-          ? 'Detox'
-          : activeSpecialVeto === 'spotlight'
-            ? 'Force Majeure'
-            : null
-  const showPovDecisionModal =
-    game.phase === 'pos_ceremony_results' &&
-    Boolean(game.awaitingPovDecision) &&
-    humanIsPosHolder &&
-    !activeConfessionalDecision
-
-  // ── Human POS holder picks who to save ───────────────────────────────────
-  // Defers submitPovSaveTarget dispatch until the save ceremony animation
-  // plays, showing the 🛡️ badge landing on the saved nominee's tile.
-  const [pendingSaveCeremony, setPendingSaveCeremony] = useState<{
-    tiles: CeremonyTile[]
-    resolveTiles: () => CeremonyTile[]
-    caption: string
-    subtitle?: string
-    savedId: string
-  } | null>(null)
-  const pendingSaveDispatchRef = useRef<(() => void) | null>(null)
-
-  const handleSaveCeremonyDone = useCallback(() => {
-    pendingSaveDispatchRef.current?.()
-    pendingSaveDispatchRef.current = null
-    setPendingSaveCeremony(null)
-  }, [])
-
-  const handlePovSaveTarget = useCallback(
-    (id: string) => {
-      const savedPlayer = game.players.find((p) => p.id === id)
-      const savedRect = getTileRect(id)
-      const holderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
-      const isVipSecondSave = Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
-      const submitSaveAction = isVipSecondSave
-        ? submitVipSecondSaveTarget(id)
-        : submitPovSaveTarget(id)
-      const saveSubtitle = isVipSecondSave
-        ? '👑 Double Trouble used again'
-        : activeSpecialVeto === 'diamond'
-          ? '😇 Halo Exchange used'
-          : activeSpecialVeto === 'spotlight'
-            ? '✨ Force Majeure used'
-            : activeSpecialVeto === 'vip'
-              ? '👑 Double Trouble used'
-              : '🛡️ Power used'
-
-      if (!savedPlayer || !savedRect) {
-        // Headless fallback: commit immediately.
-        dispatch(submitSaveAction)
-        return
-      }
-
-      console.log('POV_SAVE_ANIM_STARTED', { savedId: id, screen: 'GameScreen' })
-      const sourceIsDistinctHolder =
-        holderRect != null && game.posWinnerId != null && game.posWinnerId !== id
-      const tiles: CeremonyTile[] = [
-        ...(sourceIsDistinctHolder
-          ? [
-              {
-                rect: holderRect,
-                glowTone: 'gold' as const,
-              },
-            ]
-          : []),
-        {
-          rect: savedRect,
-          badge: '🛡️',
-          badgeStart: sourceIsDistinctHolder ? holderRect : 'center',
-          badgeLabel: `${savedPlayer.name} saved by veto`,
-          glowTone: 'success' as const,
-        },
-      ]
-      const resolveTiles = (): CeremonyTile[] => {
-        const currentSavedRect = getTileRect(id)
-        const currentHolderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
-        const currentSourceIsDistinctHolder =
-          currentHolderRect != null && game.posWinnerId != null && game.posWinnerId !== id
-
-        return [
-          ...(currentSourceIsDistinctHolder
-            ? [
-                {
-                  rect: currentHolderRect,
-                  glowTone: 'gold' as const,
-                },
-              ]
-            : []),
-          {
-            rect: currentSavedRect,
-            badge: 'ðŸ›¡ï¸',
-            badgeStart:
-              currentSourceIsDistinctHolder && currentHolderRect ? currentHolderRect : 'center',
-            badgeLabel: `${savedPlayer.name} saved by veto`,
-            glowTone: 'success' as const,
-          },
-        ]
-      }
-
-      pendingSaveDispatchRef.current = () => dispatch(submitSaveAction)
-      setPendingSaveCeremony({
-        tiles,
-        resolveTiles,
-        caption: `${savedPlayer.name} has been saved!`,
-        subtitle: saveSubtitle,
-        savedId: id,
-      })
-    },
-    [
-      dispatch,
-      game.players,
-      game.specialVeto?.awaitingVipSecondSaveTarget,
-      activeSpecialVeto,
-      getTileRect,
-      game.posWinnerId,
-    ]
-  )
-
-  // Hide the save modal while the save ceremony is playing.
-  const isAwaitingAnySave =
-    Boolean(game.awaitingPovSaveTarget) || Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
-  const showPovSaveModal =
-    game.phase === 'pos_ceremony_results' &&
-    isAwaitingAnySave &&
-    humanIsPosHolder &&
-    !pendingSaveCeremony &&
-    !activeConfessionalDecision
-  const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
-
-  const showVipSecondUseModal =
-    game.phase === 'pos_ceremony_results' &&
-    Boolean(game.specialVeto?.awaitingVipSecondUseDecision) &&
-    humanIsPosHolder &&
-    !activeConfessionalDecision
-
-  const showDiamondReplacementModal =
-    game.phase === 'pos_ceremony_results' &&
-    Boolean(game.specialVeto?.awaitingHolderReplacement) &&
-    humanIsPosHolder &&
-    !activeConfessionalDecision
-
-  const showCoupReplacementModal =
-    game.phase === 'pos_ceremony_results' &&
-    Boolean(
-      game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2
-    ) &&
-    humanIsPosHolder &&
-    !activeConfessionalDecision
-
-  // ── Replacement nominee ceremony animation ─────────────────────────────
-  // When the human LOH picks a replacement nominee via TvDecisionModal,
-  // we defer the setReplacementNominee dispatch until the CeremonyOverlay
-  // animation completes.  The badge (❓) flies from the saved nominee's
-  // tile to the replacement nominee's tile.
-  const [pendingReplacementCeremony, setPendingReplacementCeremony] = useState<{
-    tiles: CeremonyTile[]
-    resolveTiles: () => CeremonyTile[]
-    caption: string
-    subtitle?: string
-    replacementId: string
-  } | null>(null)
-  const pendingReplacementDispatchRef = useRef<(() => void) | null>(null)
-
-  const handleReplacementCeremonyDone = useCallback(() => {
-    pendingReplacementDispatchRef.current?.()
-    pendingReplacementDispatchRef.current = null
-    setPendingReplacementCeremony(null)
-  }, [])
-
-  const startReplacementCeremony = useCallback(
-    (id: string, onCommit: () => void) => {
-      const replacementPlayer = game.players.find((p) => p.id === id)
-      const replacementRect = getTileRect(id)
-      const sourceId = game.specialVeto?.activeType === 'diamond' ? game.posWinnerId : game.lohId
-      const sourceRect = sourceId ? getTileRect(sourceId) : null
-      const sourceIsDistinct = sourceRect != null && sourceId != null && sourceId !== id
-      const replacementSubtitle =
-        game.specialVeto?.activeType === 'diamond'
-          ? '😇 Halo Exchange names the backup nominee'
-          : activeSpecialVeto === 'spotlight'
-            ? '✨ Force Majeure names the backup nominee'
-            : activeSpecialVeto === 'vip'
-              ? '👑 Double Trouble changes the block'
-              : '🎯 Nominations are set'
-
-      if (!replacementPlayer || !replacementRect) {
-        onCommit()
-        return
-      }
-
-      console.log('REPLACEMENT_NOM_ANIM_STARTED', {
-        replacementId: id,
-        sourceId,
-        screen: 'GameScreen',
-      })
-
-      const tiles: CeremonyTile[] = [
-        ...(sourceIsDistinct
-          ? [
-              {
-                rect: sourceRect,
-                glowTone: 'gold' as const,
-              },
-            ]
-          : []),
-        {
-          rect: replacementRect,
-          badge: '❓',
-          badgeImageSrc: NOMINATION_BADGE_SRC,
-          badgeStart: sourceIsDistinct ? sourceRect : 'center',
-          badgeLabel: `${replacementPlayer.name} named backup nominee`,
-          glowTone: 'danger' as const,
-        },
-      ]
-      const resolveTiles = (): CeremonyTile[] => {
-        const currentReplacementRect = getTileRect(id)
-        const currentSourceRect = sourceId ? getTileRect(sourceId) : null
-        const currentSourceIsDistinct =
-          currentSourceRect != null && sourceId != null && sourceId !== id
-
-        return [
-          ...(currentSourceIsDistinct
-            ? [
-                {
-                  rect: currentSourceRect,
-                  glowTone: 'gold' as const,
-                },
-              ]
-            : []),
-          {
-            rect: currentReplacementRect,
-            badge: 'â“',
-            badgeImageSrc: NOMINATION_BADGE_SRC,
-            badgeStart: currentSourceIsDistinct && currentSourceRect ? currentSourceRect : 'center',
-            badgeLabel: `${replacementPlayer.name} named backup nominee`,
-            glowTone: 'danger' as const,
-          },
-        ]
-      }
-
-      pendingReplacementDispatchRef.current = onCommit
-      setPendingReplacementCeremony({
-        tiles,
-        resolveTiles,
-        caption: `${replacementPlayer.name} is the backup nominee!`,
-        subtitle: replacementSubtitle,
-        replacementId: id,
-      })
-    },
-    [
-      game.players,
-      getTileRect,
-      game.specialVeto?.activeType,
-      game.posWinnerId,
-      game.lohId,
-      activeSpecialVeto,
-    ]
-  )
-
-  const handleReplacementNominee = useCallback(
-    (id: string) => {
-      // Only animate when the veto was actually used (povSavedId is set).
-      // If not, commit immediately without animation.
-      if (!game.povSavedId) {
-        // Headless/no-veto fallback: commit immediately.
-        dispatch(setReplacementNominee(id))
-        return
-      }
-      startReplacementCeremony(id, () => dispatch(setReplacementNominee(id)))
-    },
-    [dispatch, game.povSavedId, startReplacementCeremony]
-  )
-  const handleDiamondReplacementNominee = useCallback(
-    (id: string) => {
-      startReplacementCeremony(id, () => dispatch(submitDiamondReplacement(id)))
-    },
-    [dispatch, startReplacementCeremony]
-  )
-
-  // Hide the replacement modal while the replacement animation is playing.
-  // Also hidden when confessional routing is active.
-  const showReplacementModal =
-    replacementNeeded && humanIsHoH && !pendingReplacementCeremony && !activeConfessionalDecision
-  const holderReplacementOptions = replacementOptions
-  const coupBaseOptions = alivePlayers.filter(
-    (p) =>
-      p.id !== game.lohId &&
-      p.id !== game.posWinnerId &&
-      !game.nomineeIds.includes(p.id) &&
-      p.id !== game.specialVeto?.coupReplacement1Id
-  )
-  const coupReplacementOptions = (() => {
-    const protectedIds = new Set(game.povProtectedIds ?? [])
-    const nonProtected = coupBaseOptions.filter((player) => !protectedIds.has(player.id))
-    const neededCount = game.specialVeto?.awaitingCoupReplacement1 ? 2 : 1
-    return nonProtected.length >= neededCount ? nonProtected : coupBaseOptions
-  })()
-
-  // ── AI replacement nominee animation ───────────────────────────────────
-  // When an AI LOH picks a replacement nominee, the store already has the
-  // replacement committed. We detect this and show an animation.
-  const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = usePersistedGameScreenKey(
-    'ai-replacement-ceremony',
-    game.gameId ?? `season-${game.season}`
-  )
-
-  const aiReplacementKey = useMemo(() => {
-    // Only trigger on pos_ceremony_results phase when nominees just changed (replacement happened)
-    // and no human decision is pending.
-    if (game.phase !== 'pos_ceremony_results') return ''
-    if (game.replacementNeeded) return '' // human LOH hasn't picked yet
-    if (game.awaitingPovDecision || game.awaitingPovSaveTarget) return ''
-    // Gate on the veto actually being used: if no player was saved, skip animation.
-    if (!game.povSavedId) return ''
-    // Wait until the staged replacement flow is complete (step 0 = replacement committed).
-    if (game.aiReplacementStep) return ''
-    // If the AI LOH handled it, nomineeIds was updated in the same advance() call
-    // and no awaiting flags are set. Use a key based on week + nomineeIds.
-    const lohPlayer = game.players.find((p) => p.id === game.lohId)
-    if (lohPlayer?.isUser) return '' // human LOH handles this differently
-    return `w${game.week}-repl-${[...game.nomineeIds].sort().join(',')}`
-  }, [
-    game.phase,
-    game.week,
-    game.nomineeIds,
-    game.replacementNeeded,
-    game.awaitingPovDecision,
-    game.awaitingPovSaveTarget,
-    game.lohId,
-    game.players,
-    game.povSavedId,
-    game.aiReplacementStep,
-  ])
-
-  const showAiReplacementAnim =
-    aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
-  const activeReplacementAnimationTargetId =
-    showAiReplacementAnim && game.nomineeIds.length > 0
-      ? game.nomineeIds[game.nomineeIds.length - 1]
-      : null
-
-  // Acknowledge the step-1 "LOH must name a replacement" announcement so advance() can
-  // proceed to step 2. Fires when the step-1 handler has run (aiReplacementStep reaches 2).
-  useEffect(() => {
-    if (game.aiReplacementStep === 2) {
-      dispatch(aiReplacementRendered())
-    }
-  }, [game.aiReplacementStep, dispatch])
-
-  const handleAiReplacementDone = useCallback(() => {
-    setAiReplacementConsumedKey(aiReplacementKey)
-  }, [aiReplacementKey, setAiReplacementConsumedKey])
-
-  // ── Final 4 cinematic flow ───────────────────────────────────────────────────
-  // Stage machine drives the full Final 4 eviction sequence:
-  //   idle         → not yet started (or reset after leaving final4/final3)
-  //   pleas        → plea ChatOverlay (all players; blocks FAB)
-  //   decision     → TvDecisionModal (human POS only; blocks FAB)
-  //   announcement → eviction announcement ChatOverlay (blocks FAB)
-  //   splash       → EvictionSplash animation (blocks FAB)
-  //   done         → complete; FAB visible so user can advance to final3 comps
-  type Final4Stage = 'idle' | 'pleas' | 'decision' | 'announcement' | 'splash' | 'done'
-  const [final4Stage, setFinal4Stage] = useState<Final4Stage>('idle')
-  const [final4PleaLines, setFinal4PleaLines] = useState<ChatLine[]>([])
-  const [final4AnnounceLines, setFinal4AnnounceLines] = useState<ChatLine[]>([])
-  const [final4DecisionReady, setFinal4DecisionReady] = useState(false)
-  const final4DecisionTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
-
-  // Reset all Final 4 state when the game leaves the final4/final3 region
-  // (e.g. game reset, debug jump to a different phase).
-  useEffect(() => {
-    if (game.phase === 'final4_eviction' || game.phase === 'final3') return
-    if (final4Stage === 'idle') return
-    const id = window.setTimeout(() => {
-      setFinal4Stage('idle')
-      setFinal4PleaLines([])
-      setFinal4AnnounceLines([])
-    }, 0)
-    return () => window.clearTimeout(id)
-  }, [game.phase, final4Stage])
-
-  // Enter final4_eviction → build enriched plea lines and start the overlay.
-  // For human POS: also dispatch advance() now so plea events are emitted to
-  // tvFeed and awaitingPovDecision is set before the decision modal appears.
-  // In debug mode the plea cinematic is skipped; advance() is called by the FAB.
-  useEffect(() => {
-    if (isDebugMode) return
-    if (game.phase !== 'final4_eviction' || final4Stage !== 'idle') return
-    const povHolder = alivePlayers.find((p) => p.id === game.posWinnerId)
-    const nominees = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
-    if (!povHolder || nominees.length === 0) return
-    const lines: ChatLine[] = [
-      {
-        id: 'f4-intro',
-        role: 'host',
-        text: `${povHolder.name} holds the sole vote to eliminate. Nominees, it's time to make your pleas. 🎤`,
-      },
-      ...nominees.flatMap((nominee, idx): ChatLine[] => [
-        {
-          id: `f4-prompt-${nominee.id}`,
-          role: 'pos',
-          player: povHolder,
-          text: `${nominee.name}, the floor is yours. Make your case.`,
-        },
-        {
-          id: `f4-plea-${nominee.id}`,
-          role: 'nominee',
-          player: nominee,
-          text: pickPhrase(NOMINEE_PLEA_TEMPLATES, game.seed, idx),
-        },
-        {
-          id: `f4-thanks-${nominee.id}`,
-          role: 'pos',
-          player: povHolder,
-          text:
-            idx < nominees.length - 1
-              ? `Thank you, ${nominee.name}.`
-              : `Thank you both. I'll take a moment to think. 🤔`,
-        },
-      ]),
-      {
-        id: 'f4-thinking',
-        role: 'pov-thinking',
-        player: povHolder,
-        text: '• • •',
-      },
-    ]
-    setFinal4PleaLines(lines)
-    setFinal4Stage('pleas')
-    if (humanIsPosHolder) {
-      dispatch(advance())
-    }
-  }, [
-    isDebugMode,
-    game.phase,
-    final4Stage,
-    alivePlayers,
-    game.posWinnerId,
-    game.nomineeIds,
-    game.seed,
+  const {
+    replacementOptions,
     humanIsPosHolder,
-    dispatch,
-  ])
-
-  // Plea overlay complete:
-  //   human POS → show decision modal
-  //   AI POS    → dispatch advance() (AI evicts; phase transitions to final3)
-  const handleFinal4PleaComplete = useCallback(() => {
-    if (humanIsPosHolder) {
-      setFinal4Stage('decision')
-    } else {
-      dispatch(advance())
-      // Stage transitions to 'announcement' via effect below once phase === 'final3'
-    }
-  }, [humanIsPosHolder, dispatch])
-
-  // Debug mode: auto-commit pendingEviction when in final4_eviction phase and
-  // final4Stage is still 'idle' (plea cinematic was skipped). This replaces the
-  // eviction-splash flow and transitions the game directly to final3.
-  useEffect(() => {
-    if (!isDebugMode) return
-    if (game.phase !== 'final4_eviction') return
-    if (final4Stage !== 'idle') return
-    if (!game.pendingEviction?.evicteeId) return
-    dispatch(finalizePendingEviction(game.pendingEviction.evicteeId))
-  }, [isDebugMode, game.phase, game.pendingEviction?.evicteeId, final4Stage, dispatch])
-
-  // Detect eviction: pendingEviction was set while in pleas/decision stage.
-  // With the deferred-commit approach, the phase stays at final4_eviction until
-  // finalizePendingEviction runs (after the overlay). Build eviction announcement
-  // lines from pendingEviction and move to the announcement stage.
-  useEffect(() => {
-    if (!game.pendingEviction) return
-    if (game.phase !== 'final4_eviction') return
-    if (final4Stage !== 'pleas' && final4Stage !== 'decision') return
-    const evicted = game.players.find((p) => p.id === game.pendingEviction?.evicteeId)
-    if (!evicted) {
-      setFinal4Stage('done')
-      return
-    }
-    const povHolder = game.players.find((p) => p.id === game.posWinnerId)
-    setFinal4AnnounceLines([
-      {
-        id: 'f4-evict-decision',
-        role: 'pos',
-        player: povHolder,
-        text: `I vote to evict… ${evicted.name}. 🗳️`,
-      },
-      {
-        id: 'f4-evict-bb',
-        role: 'host',
-        text: `${evicted.name}, by a vote of 1 to 0, you have been eliminated from The Big Eye house. Please take a moment to say your goodbyes. 👋`,
-      },
-    ])
-    setFinal4Stage('announcement')
-  }, [game.pendingEviction, game.phase, final4Stage, game.players, game.posWinnerId])
-
-  const handleFinal4AnnounceComplete = useCallback(() => {
-    setFinal4Stage('splash')
-  }, [])
-
-  // Orchestrate 3-second delay before the Final-4 decision modal appears for
-  // the human POS holder after the plea ChatOverlay completes. Clears and resets
-  // when the phase or stage conditions are no longer met.
-  useEffect(() => {
-    const conditionsMet =
-      game.phase === 'final4_eviction' &&
-      Boolean(humanIsPosHolder) &&
-      Boolean(game.awaitingPovDecision) &&
-      final4Stage === 'decision'
-
-    if (!conditionsMet) {
-      if (final4DecisionTimerRef.current !== null) {
-        window.clearTimeout(final4DecisionTimerRef.current)
-        final4DecisionTimerRef.current = null
-      }
-      setFinal4DecisionReady(false)
-      return
-    }
-
-    if (final4DecisionTimerRef.current !== null) return
-
-    final4DecisionTimerRef.current = window.setTimeout(() => {
-      setFinal4DecisionReady(true)
-    }, 3000)
-  }, [game.phase, humanIsPosHolder, game.awaitingPovDecision, final4Stage])
-
-  // If the FAB center button is pressed while the 3-second delay is running,
-  // cancel the timer and open the decision modal immediately.
-  useEffect(() => {
-    const handlePlayPressed = () => {
-      if (final4DecisionTimerRef.current !== null) {
-        window.clearTimeout(final4DecisionTimerRef.current)
-        final4DecisionTimerRef.current = null
-        setFinal4DecisionReady(true)
-      }
-    }
-    window.addEventListener('ui:playPressed', handlePlayPressed)
-    return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
-  }, [])
-
-  const showFinal4Chat = game.phase === 'final4_eviction' && final4Stage === 'pleas'
-  const showFinal4Modal =
-    game.phase === 'final4_eviction' &&
-    Boolean(game.awaitingPovDecision) &&
-    Boolean(humanIsPosHolder) &&
-    ((final4Stage === 'decision' && final4DecisionReady) || (isDebugMode && final4Stage === 'idle'))
-  // Announcement: show during final4_eviction (pending commit) OR after final3 transition.
-  const showFinal4AnnounceChat =
-    (game.phase === 'final4_eviction' || game.phase === 'final3') && final4Stage === 'announcement'
-  // Splash is driven by showEvictionSplash (pendingEviction + final4Stage === 'splash')
-  // defined in the Eviction Splash section below.
-
-  const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
-
-  // ── Democracia vote modal ─────────────────────────────────────────────────
-  // Shown when the human player must cast a Democracia vote.
-  const showDemocraciaVoteModal =
-    game.phase === 'democracia_vote' &&
-    Boolean(game.democracia?.awaitingHumanVote) &&
-    !game.democracia?.resultDisplay &&
-    humanPlayer != null &&
-    Boolean(game.democracia?.eligibleVoterIds?.includes(humanPlayer.id))
-  const democraciaVoteOptions = alivePlayers.filter(
-    (p) => (game.democracia?.candidateIds ?? []).includes(p.id) && p.id !== humanPlayer?.id
-  )
-
-  // ── Co-LOH nomination modal ───────────────────────────────────────────────
-  // Shown when the human co-LOH must pick their nomination.
-  const humanCoLohId =
-    humanPlayer && (game.coLohIds ?? []).includes(humanPlayer.id) ? humanPlayer.id : null
-  const showCoLohNominationModal =
-    Boolean(game.awaitingCoLohNomination) && humanCoLohId != null && !activeConfessionalDecision
-  const coLohNomOptions = alivePlayers.filter(
-    (p) => !(game.coLohIds ?? []).includes(p.id) && !game.nomineeIds.includes(p.id)
-  )
-
-  // ── Final 3 human Final LOH eviction ─────────────────────────────────────
-  // Shown when phase is final3_decision and the human player is the Final LOH.
-  const humanIsFinalHoh = humanPlayer && game.lohId === humanPlayer.id
-  const showFinal3Modal =
-    game.awaitingFinal3Eviction === true && game.phase === 'final3_decision' && humanIsFinalHoh
-
-  const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
-
-  const democraciaResultDisplay = game.democracia?.resultDisplay ?? null
-  const showDemocraciaResults = democraciaResultDisplay !== null
-  const democraciaResultsParticipants = useMemo(
-    () =>
-      (democraciaResultDisplay?.participantIds ?? [])
-        .map((id) => {
-          const player = game.players.find((entry) => entry.id === id)
-          if (!player) return null
-          return {
-            player,
-            voteCount: democraciaResultDisplay?.voteCountsByCandidateId[id] ?? 0,
-          }
-        })
-        .filter((entry): entry is { player: Player; voteCount: number } => entry !== null),
-    [democraciaResultDisplay, game.players]
-  )
-  const handleDemocraciaResultsDone = useCallback(() => {
-    dispatch(dismissDemocraciaResultDisplay())
-    if (game.phase === 'democracia_results') {
-      dispatch(advance())
-    }
-  }, [dispatch, game.phase])
-
-  // ── Vote Results Popup ────────────────────────────────────────────────────
-  // Show vote results whenever they are available, including during a tie-break
-  // wait so the house votes are always revealed before the LOH is prompted.
-  const showVoteResults = Boolean(game.voteResults)
-  const voteResultsTallies = showVoteResults
-    ? game.players
-        .filter((p) => game.voteResults && p.id in game.voteResults)
-        .map((p) => ({ nominee: p, voteCount: game.voteResults![p.id] ?? 0 }))
-    : []
-  const voteResultsEvicteeIds = useMemo(
-    () =>
-      getOutcomeVisibleEvicteeIds({
-        voteResults: game.voteResults,
-        pendingEvictionId: game.pendingEviction?.evicteeId,
-        pendingSecondEvictionId: game.doubleEviction?.pendingSecondEviction?.evicteeId,
-      }),
-    [
-      game.doubleEviction?.pendingSecondEviction?.evicteeId,
-      game.pendingEviction?.evicteeId,
-      game.voteResults,
-    ]
-  )
-  // After dismissing vote results: show the eviction splash if one is pending,
-  // otherwise advance the game phase directly.
-  // When a tie-break is still pending (awaitingTieBreak), do not advance — the
-  // tie-break modal will appear once voteResults has been cleared.
-  // PR 3: when a voteDeduction prompt is pending, show the offer first and
-  // only dismiss results after the player decides.
-  const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)
-  const [resumeVoteResultsAfterDeduction, setResumeVoteResultsAfterDeduction] = useState(false)
-  const canOfferVoteBreakdown = useMemo(
-    () =>
-      game.phase === 'eviction_results' &&
-      Boolean(game.pendingEviction?.evicteeId) &&
-      Object.keys(game.votes ?? {}).length > 0,
-    [game.pendingEviction?.evicteeId, game.phase, game.votes]
-  )
-
-  const hasActiveVoteBreakdownUnlock = useCallback(() => {
-    const unlock = loadEvictionVoteBreakdownUnlock()
-    return isEvictionVoteBreakdownActive(unlock, game.week, game.phase)
-  }, [game.phase, game.week])
-
-  const queueVoteBreakdownPrompt = useCallback(() => {
-    if (!canOfferVoteBreakdown || hasActiveVoteBreakdownUnlock()) return false
-    setShowVoteBreakdownPrompt(true)
-    return true
-  }, [canOfferVoteBreakdown, hasActiveVoteBreakdownUnlock])
-
-  const proceedAfterVoteResults = useCallback(() => {
-    dispatch(dismissVoteResults())
-    if (!game.pendingEviction && !game.awaitingTieBreak) {
-      dispatch(advance())
-    }
-  }, [dispatch, game.pendingEviction, game.awaitingTieBreak])
-
-  const handleVoteResultsDone = useCallback(() => {
-    if (game.awaitingVoteDeductionPrompt) {
-      // Show voteDeduction offer before dismissing results (results popup stays
-      // visible beneath the offer overlay so the player can see their situation).
-      setShowVoteDeductionOffer(true)
-      return
-    }
-
-    // When there is a clear evictee, use one continuous broadcast sequence:
-    //   1. Dismiss the tally reveal while the verdict announcement takes over.
-    //   2. Hold the verdict briefly so the names and vote count can be read.
-    //   3. Hand directly to the eviction cinematic with no second empty pause.
-    //   4. Offer the Confessional vote breakdown after the cinematic when eligible.
-    const evicteeId = game.pendingEviction?.evicteeId
-    const evictee = evicteeId ? (game.players.find((p) => p.id === evicteeId) ?? null) : null
-    if (evictee && game.pendingEviction) {
-      // Decide whether to offer the confessional breakdown after the animation.
-      if (canOfferVoteBreakdown && !hasActiveVoteBreakdownUnlock()) {
-        isPostEvictionConfessionalModeRef.current = true
-        autoRevealOwnEvictionVotesRef.current = evictee.isUser === true
-        // Snapshot vote data now before any state changes.
-        postEvictionVoteSnapshotRef.current = {
-          votes: { ...(game.votes ?? {}) },
-          nomineeIds: [...game.nomineeIds],
-          evicteeId: game.pendingEviction.evicteeId,
-          week: game.week,
-          phase: game.phase,
-        }
-      }
-
-      const secondPendingEvictionId = game.doubleEviction?.pendingSecondEviction?.evicteeId ?? null
-      const lohName = game.players.find((player) => player.id === game.lohId)?.name ?? 'The LOH'
-      const defaultAnnouncement = (() => {
-        const evicteeVotes = game.voteResults?.[evictee.id] ?? 0
-        const hasTwoNominees = Object.keys(game.voteResults ?? {}).length === 2
-        const otherVotes = Object.entries(game.voteResults ?? {}).reduce(
-          (s, [id, count]) => (id !== evictee.id ? s + count : s),
-          0
-        )
-        return {
-          title: hasTwoNominees
-            ? `By a vote of ${evicteeVotes} to ${otherVotes}`
-            : `With ${evicteeVotes} vote${evicteeVotes === 1 ? '' : 's'}`,
-          subtitle: `${evictee.name}, please say your goodbyes and leave through the Confessional's special exit.`,
-        }
-      })()
-      const voteAnnouncement =
-        game.doubleEviction?.weekActive && game.voteResults && secondPendingEvictionId
-          ? buildDoubleEvictionPostVoteAnnouncement({
-              voteResults: game.voteResults,
-              pendingEvictionId: game.pendingEviction.evicteeId,
-              pendingSecondEvictionId: secondPendingEvictionId,
-              lohName,
-              players: game.players,
-              publicModeEnabled: Boolean(game.publicModeEnabled),
-            })
-          : defaultAnnouncement
-      setPostVoteAnnouncement({
-        key: 'eviction_vote_result',
-        title: voteAnnouncement.title,
-        subtitle: voteAnnouncement.subtitle,
-        isLive: true,
-        autoDismissMs: POST_VOTE_ANNOUNCEMENT_MS,
-      })
-      // Dismiss vote results only — eviction splash is gated on postVoteAnnouncement
-      proceedAfterVoteResults()
-      return
-    }
-
-    // No clear evictee (tie or edge case): fall back to the original inline flow.
-    if (queueVoteBreakdownPrompt()) return
-    proceedAfterVoteResults()
-  }, [
-    canOfferVoteBreakdown,
-    game.doubleEviction?.pendingSecondEviction?.evicteeId,
-    game.doubleEviction?.weekActive,
-    game.awaitingVoteDeductionPrompt,
-    game.lohId,
-    game.nomineeIds,
-    game.pendingEviction,
-    game.phase,
-    game.players,
-    game.publicModeEnabled,
-    game.votes,
-    game.voteResults,
-    game.week,
-    hasActiveVoteBreakdownUnlock,
-    proceedAfterVoteResults,
-    queueVoteBreakdownPrompt,
-  ])
-
-  const handlePostVoteAnnouncementDismiss = useCallback(() => {
-    setPostVoteAnnouncement(null)
-  }, [])
-
-  const handleVoteDeductionAccept = useCallback(() => {
-    setShowVoteDeductionOffer(false)
-    dispatch(activateVoteDeductionReward())
-    setResumeVoteResultsAfterDeduction(true)
-  }, [dispatch])
-
-  const handleVoteDeductionDecline = useCallback(() => {
-    setShowVoteDeductionOffer(false)
-    dispatch(declineVoteDeduction())
-    setResumeVoteResultsAfterDeduction(true)
-  }, [dispatch])
-
-  useEffect(() => {
-    if (!resumeVoteResultsAfterDeduction || game.awaitingVoteDeductionPrompt) return
-    setResumeVoteResultsAfterDeduction(false)
-    handleVoteResultsDone()
-  }, [game.awaitingVoteDeductionPrompt, handleVoteResultsDone, resumeVoteResultsAfterDeduction])
-
-  const unlockVoteBreakdown = useCallback(() => {
-    const wasPostEviction = isPostEvictionConfessionalModeRef.current
-    // In post-eviction mode the game has already advanced (pendingEviction is null,
-    // phase may be week_end). Use the snapshot captured at vote-results dismiss time
-    // to save the correct week/phase and per-voter vote data.
-    const snapshot = postEvictionVoteSnapshotRef.current ?? {
-      week: game.week,
-      phase: game.phase,
-      votes: { ...(game.votes ?? {}) },
-      nomineeIds: [...game.nomineeIds],
-      evicteeId: game.pendingEviction?.evicteeId ?? null,
-    }
-    Object.entries(snapshot.votes).forEach(([voterId, targetId]) => {
-      const voterName = game.players.find((player) => player.id === voterId)?.name ?? voterId
-      const targetName = game.players.find((player) => player.id === targetId)?.name ?? targetId
-      dispatch(
-        addTvEvent({
-          text: `${voterName} voted to eliminate ${targetName}.`,
-          type: 'vote',
-          source: 'system',
-          channels: ['mainLog'],
-        })
-      )
-    })
-    if (wasPostEviction && humanPlayerEliminated) {
-      setPostEvictionVoteBreakdown(snapshot)
-    } else {
-      saveEvictionVoteBreakdownUnlock({
-        week: snapshot.week,
-        phase: snapshot.phase,
-        votes: snapshot.votes,
-        nomineeIds: snapshot.nomineeIds,
-        evicteeId: snapshot.evicteeId,
-        status: 'available',
-      })
-      dispatch(
-        addTvEvent({
-          text: 'Go to the Confessional before the day is over.',
-          type: 'game',
-        })
-      )
-    }
-    postEvictionVoteSnapshotRef.current = null
-    isPostEvictionConfessionalModeRef.current = false
-    setShowVoteBreakdownPrompt(false)
-    setAdPending(false)
-    if (!wasPostEviction) {
-      // Only advance in the classic inline flow; in post-eviction mode the game
-      // has already moved past eviction_results.
-      proceedAfterVoteResults()
-    }
-  }, [
-    dispatch,
-    game.nomineeIds,
-    game.pendingEviction?.evicteeId,
-    game.phase,
-    game.players,
-    game.votes,
-    game.week,
-    humanPlayerEliminated,
-    proceedAfterVoteResults,
-  ])
-
-  const postEvictionVoteBreakdownPlayerNamesById = useMemo(
-    () => buildEvictionVoteBreakdownPlayerNamesById(game.players),
-    [game.players]
-  )
-  const postEvictionVoteBreakdownRows = useMemo(
-    () =>
-      postEvictionVoteBreakdown
-        ? buildEvictionVoteBreakdownRows(
-            postEvictionVoteBreakdown.votes,
-            postEvictionVoteBreakdownPlayerNamesById
-          )
-        : [],
-    [postEvictionVoteBreakdown, postEvictionVoteBreakdownPlayerNamesById]
-  )
-
-  useEffect(() => {
-    if (!showVoteResults) {
-      setShowVoteBreakdownPrompt(false)
-      setAdPending(false)
-    }
-  }, [showVoteResults])
-
-  // For AI tiebreak: pass evictee=null to the modal so it surfaces the tie banner
-  // and calls onTiebreakerRequired, giving us the hook to run choreography.
-  // Condition: vote tallies have equal max counts AND AI already picked (pendingEviction set)
-  // AND the human is NOT the LOH.
-  const voteResultsEvictee = useMemo(() => {
-    if (!game.voteResults || hasUnresolvedTopVoteTie(game.voteResults)) return null
-
-    // If we have an explicit eviction decision, use that as the source of truth
-    // — UNLESS this is an AI tiebreak where we want the modal to show the tie
-    // banner first and call onTiebreakerRequired.
-    if (game.pendingEviction) {
-      if (!humanIsHoH && game.awaitingTieBreak) {
-        // Check whether the tallies are actually tied (AI tiebreak case).
-        let maxVotes = -1
-        let topCount = 0
-        for (const count of Object.values(game.voteResults)) {
-          if (count > maxVotes) {
-            maxVotes = count
-            topCount = 1
-          } else if (count === maxVotes) topCount++
-        }
-        if (topCount > 1) {
-          // AI tiebreak — pass null so the modal shows the tie banner.
-          return null
-        }
-      }
-      return game.players.find((p) => p.id === game.pendingEviction?.evicteeId) ?? null
-    }
-
-    let maxVotes = -1
-    let evicteeIds: string[] = []
-    for (const [id, count] of Object.entries(game.voteResults)) {
-      if (count > maxVotes) {
-        maxVotes = count
-        evicteeIds = [id]
-      } else if (count === maxVotes) {
-        evicteeIds.push(id)
-      }
-    }
-
-    // If there's a tie for max votes, we can't determine a single evictee from tallies alone.
-    if (evicteeIds.length !== 1) return null
-
-    return game.players.find((p) => p.id === evicteeIds[0]) ?? null
-  }, [game.voteResults, game.pendingEviction, game.players, game.awaitingTieBreak, humanIsHoH])
-
-  const aiTiebreakContext = useMemo<AiTiebreakContext | null>(() => {
-    if (humanIsHoH || !game.voteResults || !game.pendingEviction?.evicteeId) return null
-    let maxVotes = -1
-    let topCount = 0
-    for (const count of Object.values(game.voteResults)) {
-      if (count > maxVotes) {
-        maxVotes = count
-        topCount = 1
-      } else if (count === maxVotes) {
-        topCount += 1
-      }
-    }
-    if (topCount < 2) return null
-
-    const lohName = game.players.find((player) => player.id === game.lohId)?.name ?? 'The LOH'
-    const evictee =
-      game.players.find((player) => player.id === game.pendingEviction?.evicteeId) ?? null
-    if (!evictee) return null
-
-    const evicteeVotes = game.voteResults[evictee.id] ?? 0
-    const hasTwoNominees = Object.keys(game.voteResults).length === 2
-    const otherVotes = Object.entries(game.voteResults).reduce(
-      (sum, [id, count]) => (id !== evictee.id ? sum + count : sum),
-      0
-    )
-    // The LOH's tie-break choice acts like the deciding extra vote for the evictee.
-    return {
-      lohName,
-      evictee,
-      resultTitle: hasTwoNominees
-        ? `By a vote of ${evicteeVotes + 1} to ${otherVotes}`
-        : `With ${evicteeVotes + 1} vote${evicteeVotes + 1 === 1 ? '' : 's'}`,
-    }
-  }, [game.lohId, game.pendingEviction?.evicteeId, game.players, game.voteResults, humanIsHoH])
-
-  const aiTiebreakAnnouncement = useMemo<Announcement | null>(() => {
-    if (!aiTiebreakStage || !activeAiTiebreakContext) return null
-    if (aiTiebreakStage === 'tie') {
-      return {
-        key: 'loh_tiebreak_tie',
-        title: 'It’s a Tie!',
-        subtitle: `${activeAiTiebreakContext.lohName} must break the tie.`,
-        isLive: true,
-        autoDismissMs: AI_TIE_STAGE_DELAY_MS,
-      }
-    }
-    if (aiTiebreakStage === 'deciding') {
-      return {
-        key: 'loh_tiebreak_deciding',
-        title: `${activeAiTiebreakContext.lohName} is making a decision…`,
-        subtitle: 'Please wait while the LOH decides who to evict.',
-        isLive: true,
-        autoDismissMs: AI_TIE_DECIDING_DELAY_MS,
-      }
-    }
-    if (aiTiebreakStage === 'decision') {
-      return {
-        key: 'loh_tiebreak_decision',
-        title: `The LOH chose to evict ${activeAiTiebreakContext.evictee.name}.`,
-        subtitle: '',
-        isLive: true,
-        autoDismissMs: AI_TIE_DECISION_DELAY_MS,
-      }
-    }
-    return {
-      key: 'loh_tiebreak_result',
-      title: activeAiTiebreakContext.resultTitle,
-      subtitle: `${activeAiTiebreakContext.evictee.name}, you have been eliminated from The Big Eye house.`,
-      isLive: true,
-      autoDismissMs: AI_TIE_RESULT_DELAY_MS,
-    }
-  }, [activeAiTiebreakContext, aiTiebreakStage])
-
-  const handleTiebreakerRequired = useCallback(
-    (tiedIds: string[]) => {
-      console.log('TIE_BREAK_STARTED', { tiedIds, hohIsHuman: !!humanIsHoH, screen: 'GameScreen' })
-      if (!humanIsHoH) {
-        if (!aiTiebreakContext) {
-          // If we cannot build the AI tie-break context, still dismiss the vote
-          // results flow so the UI does not remain stuck in the tied state.
-          handleVoteResultsDone()
-          return
-        }
-        setActiveAiTiebreakContext(aiTiebreakContext)
-        dispatch(dismissVoteResults())
-        setAiTiebreakStage('tie')
-      } else {
-        // Human LOH: dismiss the vote results modal — showTieBreakModal will appear.
-        handleVoteResultsDone()
-      }
-    },
-    [aiTiebreakContext, dispatch, humanIsHoH, handleVoteResultsDone]
-  )
-
-  const handleAiTiebreakAnnouncementDismiss = useCallback(() => {
-    if (aiTiebreakStage === 'tie') {
-      setAiTiebreakStage('deciding')
-      return
-    }
-    if (aiTiebreakStage === 'deciding') {
-      setAiTiebreakStage('decision')
-      return
-    }
-    if (aiTiebreakStage === 'decision') {
-      setAiTiebreakStage('result')
-      return
-    }
-    setAiTiebreakStage(null)
-    setActiveAiTiebreakContext(null)
-  }, [aiTiebreakStage])
-
-  const publicEvictionTiebreak = useMemo(() => {
-    if (
-      !showVoteResults ||
-      !game.publicModeEnabled ||
-      !game.doubleEviction?.weekActive ||
-      !game.awaitingTieBreak
-    ) {
-      return null
-    }
-
-    const tiedIds = game.tiedNomineeIds ?? []
-    if (tiedIds.length < 2) return null
-
-    const tiedNominees = tiedIds
-      .map((id) => {
-        const nominee = game.players.find((player) => player.id === id)
-        if (!nominee) return null
-        return {
-          nominee,
-          approval: publicOpinionProfiles[id]?.approval ?? 50,
-        }
-      })
-      .filter((entry): entry is { nominee: Player; approval: number } => entry !== null)
-
-    if (tiedNominees.length < 2) return null
-
-    const rankedIds = rankPublicEvictionTieNominees({
-      nomineeIds: tiedNominees.map((entry) => entry.nominee.id),
-      profiles: publicOpinionProfiles,
-    })
-    const evicteeCount = calculateRequiredDoubleEvictionSlots(
-      tiedNominees.length,
-      Boolean(game.pendingEviction)
-    )
-    const evicteeIds = rankedIds.slice(0, evicteeCount)
-
-    if (evicteeIds.length !== evicteeCount) return null
-
-    return {
-      tiedNominees,
-      evicteeIds,
-    }
-  }, [
-    game.awaitingTieBreak,
-    game.doubleEviction?.weekActive,
-    game.pendingEviction,
-    game.players,
-    game.publicModeEnabled,
-    game.tiedNomineeIds,
-    publicOpinionProfiles,
-    showVoteResults,
-  ])
-
-  const handlePublicEvictionTiebreakResolved = useCallback(
-    (evicteeIds: string[]) => {
-      if (evicteeIds.length === 0) return
-      dispatch(submitDoubleEvictionTieBreak(evicteeIds))
-    },
-    [dispatch]
-  )
-
-  const aiDoubleEvictionTieBreakChoiceIds = useMemo(() => {
-    if (
-      !game.awaitingTieBreak ||
-      !game.doubleEviction?.weekActive ||
-      humanIsHoH ||
-      game.publicModeEnabled
-    ) {
-      return []
-    }
-    const tiedIds = game.tiedNomineeIds ?? []
-    if (tiedIds.length === 0) return []
-    const aiRng = mulberry32((game.seed ^ 0xdeadbeef) >>> 0)
-    const tieBreakRanks = Object.fromEntries(tiedIds.map((id) => [id, aiRng()]))
-    const rankedIds = [...tiedIds].sort((a, b) => (tieBreakRanks[b] ?? 0) - (tieBreakRanks[a] ?? 0))
-    const selectionCount = calculateRequiredDoubleEvictionSlots(
-      tiedIds.length,
-      Boolean(game.pendingEviction)
-    )
-    return rankedIds.slice(0, selectionCount)
-  }, [
-    game.awaitingTieBreak,
-    game.doubleEviction?.weekActive,
-    game.pendingEviction,
-    game.publicModeEnabled,
-    game.seed,
-    game.tiedNomineeIds,
+    activeSpecialVeto,
+    specialVetoName,
+    showPovDecisionModal,
+    pendingSaveCeremony,
+    handleSaveCeremonyDone,
+    handlePovSaveTarget,
+    showPovSaveModal,
+    povSaveOptions,
+    showVipSecondUseModal,
+    showDiamondReplacementModal,
+    showCoupReplacementModal,
+    pendingReplacementCeremony,
+    handleReplacementCeremonyDone,
+    handleReplacementNominee,
+    handleDiamondReplacementNominee,
+    showReplacementModal,
+    holderReplacementOptions,
+    coupReplacementOptions,
+    showAiReplacementAnim,
+    activeReplacementAnimationTargetId,
+    handleAiReplacementDone,
+  } = useSafetyFlow({
+    game,
+    alivePlayers,
+    humanPlayer,
     humanIsHoH,
-  ])
-
-  const showAiSecondTieBreakOverlay =
-    game.phase === 'eviction_results' &&
-    Boolean(game.awaitingTieBreak) &&
-    !humanIsHoH &&
-    !game.publicModeEnabled &&
-    !game.voteResults
-
-  useEffect(() => {
-    if (!showAiSecondTieBreakOverlay || aiDoubleEvictionTieBreakChoiceIds.length === 0) return
-    const id = window.setTimeout(() => {
-      dispatch(submitDoubleEvictionTieBreak(aiDoubleEvictionTieBreakChoiceIds))
-    }, 3000)
-    return () => window.clearTimeout(id)
-  }, [aiDoubleEvictionTieBreakChoiceIds, dispatch, showAiSecondTieBreakOverlay])
-
-  // ── Eviction cinematic (pendingEviction-driven) ───────────────────────────
-  // Normal evictions: triggered by pendingEviction being set in advance().
-  // Final-4 evictions: also driven by pendingEviction (set by finalizeFinal4Eviction
-  // or the AI path in advance()), but only shown after the announcement ChatOverlay.
-  const pendingEvictionPlayer = game.pendingEviction
-    ? (game.players.find((p) => p.id === game.pendingEviction?.evicteeId) ?? null)
-    : null
-  // For normal evictions (not Final-4), show whenever pendingEviction is set.
-  // For Final-4, show only during the 'splash' stage (after the announcement).
-  // Blocked only while the post-vote verdict announcement is active.
-  const showEvictionSplash =
-    !showVoteResults &&
-    !aiTiebreakStage &&
-    !postVoteAnnouncement &&
-    !!game.pendingEviction &&
-    !game.awaitingTieBreak &&
-    (game.phase !== 'final4_eviction' || final4Stage === 'splash')
-
-  // After the eviction cinematic completes, commit the pending eviction then
-  // attempt Back 2 the Game activation (normal evictions only) or advance the Final-4
-  // local state machine. Also show the confessional prompt if it was queued.
-  const handleEvictionSplashDone = useCallback(() => {
-    const evicteeId = game.pendingEviction?.evicteeId
-    if (!evicteeId) return
-    const hasQueuedSecondEviction = Boolean(game.doubleEviction?.pendingSecondEviction)
-    // Clear the overlay flag so AvatarTile returns to normal after the cinematic.
-    dispatch(setEvictionOverlay(null))
-    // Capture the phase before dispatch since finalizePendingEviction may change it.
-    const isFinal4 = game.phase === 'final4_eviction'
-    dispatch(finalizePendingEviction(evicteeId))
-    if (isFinal4) {
-      // Final-4: advance the local stage machine; no battle back check needed.
-      setFinal4Stage('done')
-    } else if (hasQueuedSecondEviction) {
-      // Keep the second double-eviction cinematic in the same flow so it gets
-      // its own overlay mount and eviction stinger before the week advances.
-    } else {
-      const activated =
-        dispatch(tryActivatePendingForcedBattleBack()) || dispatch(tryActivateBattleBack())
-      if (!activated) {
-        dispatch(advance())
-      }
-    }
-    // Show the confessional breakdown prompt if it was flagged during vote-results
-    // dismissal (post-eviction confessional mode).
-    if (isPostEvictionConfessionalModeRef.current) {
-      if (autoRevealOwnEvictionVotesRef.current && postEvictionVoteSnapshotRef.current) {
-        setPostEvictionVoteBreakdown(postEvictionVoteSnapshotRef.current)
-        postEvictionVoteSnapshotRef.current = null
-        autoRevealOwnEvictionVotesRef.current = false
-        isPostEvictionConfessionalModeRef.current = false
-        return
-      }
-      if (postEvictionVoteBreakdownPromptTimerRef.current != null) {
-        window.clearTimeout(postEvictionVoteBreakdownPromptTimerRef.current)
-        postEvictionVoteBreakdownPromptTimerRef.current = null
-      }
-      postEvictionVoteBreakdownPromptTimerRef.current = window.setTimeout(() => {
-        postEvictionVoteBreakdownPromptTimerRef.current = null
-        if (!isMountedRef.current) return
-        setShowVoteBreakdownPrompt(true)
-      }, POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
-    }
-  }, [
+    activeConfessionalDecision,
+    getTileRect,
     dispatch,
-    game.doubleEviction?.pendingSecondEviction,
-    game.pendingEviction,
-    game.phase,
+  })
+  const {
+    spectatorF3Active,
+    spectatorF3CompetitorIds,
+    handleSpectatorF3Done,
+    spectatorF3Part2Active,
+    spectatorF3Part2CompetitorIds,
+    handleSpectatorF3Part2Done,
+    final4Stage,
     setFinal4Stage,
-  ])
+    final4PleaLines,
+    final4AnnounceLines,
+    showFinal4Chat,
+    showFinal4Modal,
+    showFinal4AnnounceChat,
+    final4Options,
+    handleFinal4PleaComplete,
+    handleFinal4AnnounceComplete,
+    showFinal3Modal,
+    final3Options,
+    handleEnterJuryVote,
+    handleSpyJury,
+  } = useEndgameFlow({
+    game,
+    alivePlayers,
+    humanPlayer,
+    humanIsPosHolder,
+    isDebugMode,
+    spectatorReactEnabled,
+    spectatorMode: settings.gameUX.spectatorMode,
+    dispatch,
+  })
 
-  const handleDayStartShockConfirm = useCallback(() => {
-    dispatch(confirmDayStartShock())
-  }, [dispatch])
-
-  const dayStartShock = game.dayStartShock
-  const dayStartShockPlayer = useMemo(() => {
-    if (!dayStartShock) return null
-    return game.players.find((player) => player.id === dayStartShock.targetId) ?? null
-  }, [dayStartShock, game.players])
-
-  const battleBack = game.battleBack
-  const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
-  const [battleBackAttemptIndex, setBattleBackAttemptIndex] = useState(0)
-  const [battleBackAnnouncementStep, setBattleBackAnnouncementStep] = useState<number | null>(null)
-  const [battleBackRetryCount, setBattleBackRetryCount] = useState(0)
-  const [battleBackRetryOfferWinnerId, setBattleBackRetryOfferWinnerId] = useState<string | null>(
-    null
-  )
-  const battleBackAnnouncementStepRef = useRef<number | null>(null)
-  // Only show the full-screen overlay once competitionActive is true.
-  // When battleBack.active && !competitionActive, the TV filler shows the
-  // twist announcement; the overlay opens ~5 s later via the effect below.
-  const showBattleBack = battleBack?.active === true && battleBack?.competitionActive === true
-  const battleBackAttemptSeed = useMemo(
-    // Step each retry through a large odd offset so the seeded Back 2 the Game
-    // simulation produces a fresh bracket/minigame sequence per replay.
-    () => (game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0,
-    [battleBackAttemptIndex, game.seed]
-  )
-  const battleBackCandidates = useMemo(
-    () =>
-      battleBack?.active
-        ? game.players.filter(
-            (p) =>
-              (battleBack?.candidates ?? []).includes(p.id) &&
-              (p.status === 'jury' || p.status === 'evicted')
-          )
-        : [],
-    [battleBack?.active, battleBack?.candidates, game.players]
-  )
-  const battleBackCandidateIds = useMemo(
-    () => battleBackCandidates.map((player) => player.id),
-    [battleBackCandidates]
-  )
-  const humanBattleBackCandidateId = useMemo(() => {
-    if (!humanPlayer?.id) return null
-    return battleBackCandidateIds.includes(humanPlayer.id) ? humanPlayer.id : null
-  }, [battleBackCandidateIds, humanPlayer?.id])
-  const useBattleBackMinigame = useMemo(
-    () => shouldUseBattleBackMinigame(humanBattleBackCandidateId, battleBackCandidateIds),
-    [battleBackCandidateIds, humanBattleBackCandidateId]
-  )
-  const capitalizationAiModel = useMemo(() => getMinigameAiModel('capitalization'), [])
-  const battleBackCapitalizationParticipants = useMemo(
-    () =>
-      battleBackCandidates.map((player, index) => ({
-        id: player.id,
-        name: player.name,
-        isHuman: !!player.isUser,
-        avatar: player.avatar,
-        precomputedScore: player.isUser
-          ? 0
-          : simulateMinigameAiScore({
-              gameKey: 'capitalization',
-              minigameModel: capitalizationAiModel,
-              seed: battleBackAttemptSeed,
-              playerId: player.id,
-              participantIndex: index,
-              profile: player.competitionProfile ?? getDefaultCompetitionProfile(),
-              seasonState: getCompetitionSeasonState(
-                game.competitionSeasonStateByPlayerId,
-                player.id
-              ),
-            }),
-        previousPR: player.stats?.gamePRs?.capitalization ?? null,
-      })),
-    [
-      battleBackAttemptSeed,
-      battleBackCandidates,
-      capitalizationAiModel,
-      game.competitionSeasonStateByPlayerId,
-    ]
-  )
-  const showBattleBackOverlay =
-    showBattleBack && battleBackCandidates.length > 0 && !battleBackRetryOfferWinnerId
-
-  // Pre-compute the deterministic Back 2 the Game winner and spectator variant so
-  // the SpectatorView reveal always matches the store write.
-  const battleBackWinnerId = useMemo(() => {
-    if (!showBattleBackOverlay || useBattleBackMinigame || battleBackCandidates.length === 0)
-      return undefined
-    return simulateBattleBackCompetition(battleBackCandidateIds, battleBackAttemptSeed).winnerId
-  }, [
+  const {
+    twinShockReveal,
+    twinShockSequenceKey,
+    completedTwinShockIntroKey,
+    handleTwinShockIntroDone,
+    handleTwinShockRevealDone,
+    pendingPublicSaveResult,
+    showPublicSaveReveal,
+    publicSaveApprovals,
+    publicSaveWinnerId,
+    publicSaveResultAnnouncement,
+    showPublicSaveCeremony,
+    handlePublicSaveDone,
+    handlePublicSaveResultDismiss,
+    handlePublicSaveCeremonyDone,
+    publicSaveNominees,
+    showDemocraciaVoteModal,
+    democraciaVoteOptions,
+    democraciaResultDisplay,
+    showDemocraciaResults,
+    democraciaResultsParticipants,
+    handleDemocraciaResultsDone,
+    dayStartShock,
+    dayStartShockPlayer,
+    handleDayStartShockConfirm,
+    battleBackReturnId,
+    battleBackAttemptIndex,
     battleBackAttemptSeed,
     battleBackCandidateIds,
-    battleBackCandidates.length,
+    battleBackCapitalizationParticipants,
+    showBattleBack,
     showBattleBackOverlay,
+    battleBackWinnerId,
+    battleBackVariant,
     useBattleBackMinigame,
-  ])
+    battleBackRetryCount,
+    battleBackRetryOfferWinnerId,
+    battleBackRetryOfferWinner,
+    showBattleBackReturn,
+    handleBattleBackComplete,
+    handleBattleBackRetryGranted,
+    handleBattleBackRetryDeclined,
+    handleBattleBackReturnDone,
+    favoritePlayer,
+    showFavoriteVoting,
+    handleFavoriteComplete,
+  } = useTwistFlow({
+    game,
+    alivePlayers,
+    humanPlayer,
+    publicOpinionProfiles,
+    dispatch,
+  })
 
-  const battleBackRetryOfferWinner = useMemo(
-    () =>
-      battleBackRetryOfferWinnerId
-        ? (game.players.find((player) => player.id === battleBackRetryOfferWinnerId) ?? null)
-        : null,
-    [battleBackRetryOfferWinnerId, game.players]
-  )
-  const showBattleBackReturn = battleBackReturnId !== null
+  const {
+    showVoteBreakdownPrompt,
+    voteBreakdownPromptIsPostEviction,
+    handleVoteBreakdownSkip,
+    postEvictionVoteBreakdown,
+    setPostEvictionVoteBreakdown,
+    postVoteAnnouncement,
+    aiTiebreakStage,
+    showVoteResults,
+    handleVoteResultsDone,
+    voteResultsTallies,
+    voteResultsEvicteeIds,
+    showVoteDeductionOffer,
+    handleVoteDeductionAccept,
+    handleVoteDeductionDecline,
+    unlockVoteBreakdown,
+    postEvictionVoteBreakdownRows,
+    voteResultsEvictee,
+    aiTiebreakAnnouncement,
+    handleTiebreakerRequired,
+    handleAiTiebreakAnnouncementDismiss,
+    publicEvictionTiebreak,
+    handlePublicEvictionTiebreakResolved,
+    showAiSecondTieBreakOverlay,
+    pendingEvictionPlayer,
+    showEvictionSplash,
+    handleEvictionSplashDone,
+    handlePostVoteAnnouncementDismiss,
+  } = useEvictionFlow({
+    game,
+    humanPlayerEliminated,
+    humanIsHoH,
+    final4Stage,
+    setFinal4Stage,
+    publicOpinionProfiles,
+    isMountedRef,
+    setAdPending,
+    dispatch,
+  })
 
-  const battleBackVariant = useMemo((): SpectatorVariant => {
-    const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze']
-    const rng = mulberry32((battleBackAttemptSeed ^ 0xdeadbeef) >>> 0)
-    return variants[Math.floor(rng() * variants.length)]
-  }, [battleBackAttemptSeed])
-
-  useEffect(() => {
-    if (battleBack?.active) {
-      setBattleBackAttemptIndex(0)
-      setBattleBackRetryCount(0)
-      setBattleBackRetryOfferWinnerId(null)
-      return
-    }
-    setBattleBackRetryOfferWinnerId(null)
-  }, [battleBack?.active, battleBack?.weekDecided])
-
-  useEffect(() => {
-    if (battleBack?.active && !battleBack.competitionActive) {
-      setBattleBackAnnouncementStep(0)
-      return
-    }
-    setBattleBackAnnouncementStep(null)
-  }, [battleBack?.active, battleBack?.competitionActive, battleBack?.weekDecided])
-
-  useEffect(() => {
-    battleBackAnnouncementStepRef.current = battleBackAnnouncementStep
-  }, [battleBackAnnouncementStep])
-
-  const handleBattleBackAnnouncementPlay = useCallback(() => {
-    if (!battleBack?.active || battleBack.competitionActive) return
-
-    const currentStep = battleBackAnnouncementStepRef.current
-    if (currentStep == null) return
-    const announcement = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[currentStep]
-
-    const { nextStep, shouldOpenCompetition } = advanceBattleBackAnnouncementStep(currentStep)
-
-    if (announcement) {
-      dispatch(
-        addTvEvent({
-          text: buildBattleBackFeedMessage(announcement),
-          type: 'game',
-        })
-      )
-    }
-    setBattleBackAnnouncementStep(nextStep)
-    if (shouldOpenCompetition) {
-      dispatch(openBattleBackCompetition())
-    }
-  }, [battleBack?.active, battleBack?.competitionActive, dispatch])
-
-  useEffect(() => {
-    if (!battleBack?.active || battleBack.competitionActive) return
-
-    window.addEventListener('ui:playPressed', handleBattleBackAnnouncementPlay)
-    return () => window.removeEventListener('ui:playPressed', handleBattleBackAnnouncementPlay)
-  }, [battleBack?.active, battleBack?.competitionActive, handleBattleBackAnnouncementPlay])
-
-  // Safety net: if battleBack is active but there are no valid tribunal (jury) candidates
-  // — e.g. state was loaded with stale/corrupted candidates — auto-dismiss so the game
-  // does not get permanently stuck with advance() blocked and no overlay rendered.
-  useEffect(() => {
-    if (!battleBack?.active) return
-    if (battleBackCandidates.length > 0) return
-    dispatch(dismissBattleBack())
-    dispatch(advance())
-  }, [battleBack?.active, battleBackCandidates.length, dispatch])
-
-  // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
-  // Back 2 the Game completion before showing the return overlay. storeRef is intentionally
-  // omitted from deps because refs are stable and shouldn't re-create this callback.
-  const finalizeBattleBackOutcome = useCallback(
-    (winnerId?: string | null) => {
-      if (!winnerId) {
-        dispatch(dismissBattleBack())
-        dispatch(advance())
-        return
-      }
-
-      dispatch(completeBattleBack(winnerId))
-      const updatedBattleBack = storeRef.current.getState().game.battleBack
-
-      if (updatedBattleBack?.active === false && updatedBattleBack.winnerId === winnerId) {
-        setBattleBackReturnId(winnerId)
-        return
-      }
-
-      dispatch(dismissBattleBack())
-      dispatch(advance())
-    },
-    [dispatch]
-  )
-
-  const handleBattleBackComplete = useCallback(
-    (winnerId?: string | null) => {
-      const resolvedWinnerId = winnerId ?? battleBackWinnerId
-
-      if (!resolvedWinnerId) {
-        finalizeBattleBackOutcome()
-        return
-      }
-
-      const canReplayBattleBack = isBattleBackReplayEligible(
-        resolvedWinnerId,
-        humanPlayer?.id ?? null,
-        battleBack?.candidates ?? [],
-        battleBackRetryCount,
-        BATTLE_BACK_RETRY_LIMIT
-      )
-
-      if (canReplayBattleBack) {
-        setBattleBackRetryOfferWinnerId(resolvedWinnerId)
-        return
-      }
-
-      finalizeBattleBackOutcome(resolvedWinnerId)
-    },
-    [
-      battleBack?.candidates,
-      battleBackRetryCount,
-      battleBackWinnerId,
-      finalizeBattleBackOutcome,
-      humanPlayer?.id,
-    ]
-  )
-
-  const handleBattleBackReturnDone = useCallback(() => {
-    setBattleBackReturnId(null)
-    dispatch(advance())
-  }, [dispatch])
-
-  // ── Public's Favorite Player twist ───────────────────────────────────────
-  // Shown during the explicit season finale flow: the finale controller
-  // yields to the existing TV announcement + voting overlay, then resumes the
-  // finale sequence once the winner reveal is dismissed.
-  const favoritePlayer = game.favoritePlayer
-  const showFavoriteVoting =
-    favoritePlayer?.active === true && favoritePlayer.votingStarted === true
-
-  // Auto-open the voting overlay after the TV announcement has had time
-  // to display (~5 s, matching the 4.5 s auto-dismiss + a small buffer).
-  useEffect(() => {
-    if (!favoritePlayer?.active || favoritePlayer.votingStarted) return
-    const id = setTimeout(() => dispatch(openFavoritePlayerVoting()), 5000)
-    return () => clearTimeout(id)
-  }, [dispatch, favoritePlayer?.active, favoritePlayer?.votingStarted])
-
-  const handleFavoriteComplete = useCallback(
-    (winnerId: string) => {
-      dispatch(resolveFavoritePlayerWinner(winnerId))
-      dispatch(awardFavoritePrize())
-      dispatch(resumeAfterPublicFavorite({ winnerId }))
-    },
-    [dispatch]
-  )
+  // Flow-specific orchestration is owned by the dedicated controllers above.
 
   const handleFavoriteAudienceSurgeRequest = useCallback(
     (playerId: string) => {
@@ -2868,9 +693,9 @@ export default function GameScreen() {
     if (!pendingChallenge) return false
     const prizeType = pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH')
     if (prizeType !== 'LOH' && prizeType !== 'POS') return false
-    const state = storeRef.current.getState()
+    const state = store.getState()
     return canShowAd('competition_retry', state, { isFinal3Week })
-  }, [pendingChallenge, game.phase, isFinal3Week])
+  }, [pendingChallenge, game.phase, isFinal3Week, store])
   const [lastDislikedPromptDate, setLastDislikedPromptDate] = usePersistedPromptDate(
     'public_meter_disliked_boost'
   )
@@ -2907,6 +732,7 @@ export default function GameScreen() {
     showInterstitial(placement, state, dispatch)
   }, [dispatch])
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Preserve established synchronous ad-prompt timing during the orchestration extraction. */
   useEffect(() => {
     const prevPhase = prevPhaseRef.current
     const currentPhase = game.phase
@@ -3056,6 +882,7 @@ export default function GameScreen() {
     userApproval,
   ])
 
+  /* eslint-enable react-hooks/set-state-in-effect */
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel whenever the human player is alive and the game is in
   // a non-vote interaction window. Blocked during live_vote and eviction phases
@@ -3077,156 +904,99 @@ export default function GameScreen() {
   const isSocialPhase = SOCIAL_INTERACTION_PHASES.has(game.phase)
   const showSocialPanel = isSocialPhase && !!humanPlayer && isSocialModeEnabled(game.mode)
 
-  // Hide Continue button while waiting for any human-only decision modal.
-  // Also hide during VoteResultsPopup / EvictionSplash so the phase cannot
-  // be advanced under those full-screen overlays.
-  // Keep this in sync with the conditions that control human decision modals above.
+  // The individual controllers publish presentation signals; this coordinator
+  // provides one canonical answer for dock visibility and active flow priority.
   const showWinnerCeremony = pendingWinnerCeremony !== null
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
   const showSaveCeremony = pendingSaveCeremony !== null
-  // Final-3 ceremony: shown when awaitingFinal3Plea is set (AI LOH won Part 3 via spectator).
   const showFinal3Ceremony =
     game.awaitingFinal3Plea === true && game.phase === 'final3_decision' && !!game.lohId
   const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game)
-  const showGameControlDock = shouldShowGameControlDock(
-    game.status === 'active',
-    [
-      Boolean(
-        showOutgoingHohWarning ||
-        showReplacementModal ||
-        showNominationsModal ||
-        showNomAnim ||
-        showPublicSaveReveal ||
-        showReplacementCeremony ||
-        showSaveCeremony ||
-        showPovDecisionModal ||
-        showPovSaveModal ||
-        showFinal4Chat ||
-        showFinal4Modal ||
-        showFinal4AnnounceChat ||
-        showDemocraciaResults ||
-        showFinal3Modal ||
-        showFinal3Ceremony ||
-        game.phase === 'jury_announcement' ||
-        game.phase === 'jury_cinematic' ||
-        showVoteResults ||
-        showVoteDeductionOffer ||
-        showEvictionSplash ||
-        showBattleBackReturn ||
-        showBattleBack ||
-        showFavoriteVoting ||
-        (game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true) ||
-        showMinigameHost ||
-        showWinnerCeremony ||
-        showAdvanceHohCeremony ||
-        showQuickTapRace ||
-        showBullseyeBlitz ||
-        showTravelingDots ||
-        aiTiebreakStage !== null ||
-        spectatorF3Active ||
-        spectatorLegacyActive
-      ),
-      Boolean(postEvictionVoteBreakdown !== null),
-      Boolean(showEnergyRechargePrompt),
-      Boolean(showDislikedBoostPrompt),
-      Boolean(showBattleBackOverlay),
-      Boolean(showBattleBackReturn),
-      Boolean(showFavoriteVoting),
-      Boolean(showMinigameHost),
-      Boolean(showPressurePlank),
-      Boolean(showBullseyeBlitz),
-      Boolean(showTravelingDots),
-      Boolean(showLaneRacers),
-      Boolean(showQuickTapRace),
-      Boolean(showWinnerCeremony),
-      Boolean(showAdvanceHohCeremony),
-      Boolean(showPublicSaveReveal),
-      Boolean(showPublicSaveCeremony),
-      Boolean(showDemocraciaResults),
-      Boolean(showFinal4Modal),
-      Boolean(showFinal4AnnounceChat),
-      Boolean(showFinal3Modal),
-      Boolean(showFinal3Ceremony),
-      Boolean(showVoteBreakdownPrompt),
-      Boolean(battleBackRetryOfferWinnerId),
-      Boolean(preAdAnnouncement),
-      Boolean(socialModuleUnavailableAnnouncement),
-      Boolean(publicMeterUnavailableAnnouncement),
-      Boolean(spectatorF3Active),
-      Boolean(spectatorF3Part2Active),
-      Boolean(spectatorLegacyActive),
-      Boolean(socialSummaryOpen),
-    ],
-    survivorTerminalActive
-  )
+  const favoriteAnnouncementPending =
+    game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true
 
-  // ── Jury reveal overlay ───────────────────────────────────────────────────
-  // JuryPhaseRevealOverlay handles its own animation sequence (no-animations
-  // and prefers-reduced-motion fast-paths are handled inside the component).
-  // The no-animations fast-path below advances both jury_announcement and
-  // jury_cinematic directly — bypassing the overlay — when body.no-animations
-  // is set, and also guards jury_cinematic if it is entered directly (e.g.
-  // after a store rehydration).
-  useEffect(() => {
-    const noAnimations =
-      typeof document !== 'undefined' &&
-      !!document.body &&
-      document.body.classList.contains('no-animations')
-    if (!noAnimations) return
-    if (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') {
-      dispatch(advance())
-    }
-  }, [game.phase, dispatch])
-
-  /** Advance jury_announcement → jury_cinematic → jury in one step. No-op in any other phase. */
-  const handleEnterJuryVote = useCallback(() => {
-    if (game.phase !== 'jury_announcement' && game.phase !== 'jury_cinematic') return
-    if (game.phase === 'jury_announcement') {
-      dispatch(advance()) // jury_announcement → jury_cinematic
-    }
-    dispatch(advance()) // jury_cinematic → jury
-  }, [dispatch, game.phase])
-
-  const handleSpyJury = useCallback(() => {
-    if (import.meta.env.DEV) {
-      console.log('[jury-phase] Spy Jury tapped — Jury House module coming soon')
-    }
-  }, [])
-
-  const awaitingHumanDecision =
-    showOutgoingHohWarning ||
-    showReplacementModal ||
-    showNominationsModal ||
-    showNomAnim ||
-    showPublicSaveReveal ||
-    showReplacementCeremony ||
-    showSaveCeremony ||
-    showPovDecisionModal ||
-    showPovSaveModal ||
-    showFinal4Chat ||
-    showFinal4Modal ||
-    showFinal4AnnounceChat ||
-    showDemocraciaResults ||
-    showFinal3Modal ||
-    showFinal3Ceremony ||
-    game.phase === 'jury_announcement' ||
-    game.phase === 'jury_cinematic' ||
-    showVoteResults ||
-    showVoteDeductionOffer ||
-    showEvictionSplash ||
-    showBattleBackReturn ||
-    showBattleBack ||
-    showFavoriteVoting ||
-    (game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true) ||
-    showMinigameHost ||
-    showWinnerCeremony ||
-    showAdvanceHohCeremony ||
-    showQuickTapRace ||
-    showBullseyeBlitz ||
-    showTravelingDots ||
-    aiTiebreakStage !== null ||
-    spectatorF3Active ||
-    spectatorLegacyActive
+  const flowCoordination = coordinateGameFlows({
+    hasStartedGame: game.status === 'active',
+    allowControlsWhenInactive: survivorTerminalActive,
+    flows: {
+      loh: {
+        awaitingDecision: [
+          showOutgoingHohWarning,
+          showNominationsModal,
+          showNomAnim,
+          showAdvanceHohCeremony,
+        ],
+      },
+      safety: {
+        awaitingDecision: [
+          showReplacementModal,
+          showReplacementCeremony,
+          showSaveCeremony,
+          showPovDecisionModal,
+          showPovSaveModal,
+        ],
+      },
+      competition: {
+        awaitingDecision: [
+          showMinigameHost,
+          showWinnerCeremony,
+          showQuickTapRace,
+          showBullseyeBlitz,
+          showTravelingDots,
+          spectatorLegacyActive,
+        ],
+        blocksControls: [showPressurePlank, showLaneRacers],
+      },
+      twist: {
+        awaitingDecision: [
+          showPublicSaveReveal,
+          showDemocraciaResults,
+          showBattleBackReturn,
+          showBattleBack,
+          showFavoriteVoting,
+          favoriteAnnouncementPending,
+        ],
+        blocksControls: [
+          showPublicSaveCeremony,
+          showBattleBackOverlay,
+          battleBackRetryOfferWinnerId !== null,
+        ],
+      },
+      eviction: {
+        awaitingDecision: [
+          showVoteResults,
+          showVoteDeductionOffer,
+          showEvictionSplash,
+          aiTiebreakStage !== null,
+        ],
+        blocksControls: [showVoteBreakdownPrompt, postEvictionVoteBreakdown !== null],
+      },
+      endgame: {
+        awaitingDecision: [
+          showFinal4Chat,
+          showFinal4Modal,
+          showFinal4AnnounceChat,
+          showFinal3Modal,
+          showFinal3Ceremony,
+          game.phase === 'jury_announcement',
+          game.phase === 'jury_cinematic',
+          spectatorF3Active,
+        ],
+        blocksControls: [spectatorF3Part2Active],
+      },
+      presentation: {
+        blocksControls: [
+          showEnergyRechargePrompt,
+          showDislikedBoostPrompt,
+          preAdAnnouncement !== null,
+          socialModuleUnavailableAnnouncement !== null,
+          publicMeterUnavailableAnnouncement !== null,
+          socialSummaryOpen,
+        ],
+      },
+    },
+  })
+  const { showGameControlDock, awaitingHumanDecision } = flowCoordination
 
   // ── Viewport fallback message for blank-TV states ────────────────────────
   // Provides a meaningful holding message while the live vote is waiting for
@@ -3292,6 +1062,7 @@ export default function GameScreen() {
         data-roster-mode={responsiveGameLayout.rosterMode}
         data-roster-header={responsiveGameLayout.rosterHeaderMode}
         data-layout-revision={responsiveGameLayout.revision}
+        data-active-flow={flowCoordination.activeFlow ?? undefined}
       >
         {showPublicSaveReveal && publicSaveWinnerId ? (
           <TvZone
@@ -3302,7 +1073,7 @@ export default function GameScreen() {
             }}
             onPublicSaveDone={handlePublicSaveDone}
             priorityAnnouncement={confessionalTvAnnouncement}
-            onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
+            onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
               socialModuleUnavailableAnnouncement ??
               publicMeterUnavailableAnnouncement ??
@@ -3329,7 +1100,7 @@ export default function GameScreen() {
               onDone: handleDemocraciaResultsDone,
             }}
             priorityAnnouncement={confessionalTvAnnouncement}
-            onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
+            onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
               socialModuleUnavailableAnnouncement ??
               publicMeterUnavailableAnnouncement ??
@@ -3358,7 +1129,7 @@ export default function GameScreen() {
               onDone: handleVoteResultsDone,
             }}
             priorityAnnouncement={confessionalTvAnnouncement}
-            onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
+            onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
               socialModuleUnavailableAnnouncement ??
               publicMeterUnavailableAnnouncement ??
@@ -3378,7 +1149,7 @@ export default function GameScreen() {
         ) : (
           <TvZone
             priorityAnnouncement={confessionalTvAnnouncement}
-            onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
+            onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
               socialModuleUnavailableAnnouncement ??
               publicMeterUnavailableAnnouncement ??
@@ -3756,260 +1527,7 @@ export default function GameScreen() {
                 previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
               }
             })}
-            onDone={(rawValue, partial, reactCompletion) => {
-              // Capture challenge fields now — completeChallenge() will clear
-              // pendingChallenge from Redux, but this closure still holds it.
-              const capturedParticipants = pendingChallenge.participants
-              const capturedGameKey = pendingChallenge.game.key
-              // prizeType was recorded at challenge-start and is reliable even
-              // after the phase advances (feature thunks can transition
-              // loh_comp → loh_results before this callback fires).
-              // For backward compatibility with older saves where prizeType may be
-              // missing, fall back to deriving from the current game.phase using
-              // the same logic as MinigameHost gameOptions.
-              const capturedPrizeType =
-                pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH')
-
-              // Build raw results for all challenge participants using pre-computed
-              // AI scores (appropriate for the selected game's metric kind).
-              const rankingOnlyGame = isPlacementRankingGame(pendingChallenge.game)
-              const rawResults =
-                partial && rankingOnlyGame
-                  ? capturedParticipants
-                      .map((id) => ({
-                        playerId: id,
-                        sortValue:
-                          id === humanPlayer?.id
-                            ? EXITED_PLAYER_SORT_VALUE
-                            : (pendingChallenge.aiScores[id] ?? 0),
-                      }))
-                      .sort((a, b) => b.sortValue - a.sortValue)
-                      .map((entry, index, ordered) => ({
-                        playerId: entry.playerId,
-                        rawValue: ordered.length - index,
-                      }))
-                  : capturedParticipants.map((id) => ({
-                      playerId: id,
-                      rawValue:
-                        reactCompletion?.rawResults?.[id] ??
-                        (id === humanPlayer?.id
-                          ? rawValue
-                          : (pendingChallenge.aiScores[id] ?? rawValue)),
-                      // Forward time-based tiebreaker: human's comes from the minigame
-                      // (via reactCompletion.tiebreakerMs); AI tiebreakers are pre-simulated
-                      // in startChallenge and stored alongside aiScores.
-                      ...(id === humanPlayer?.id
-                        ? reactCompletion?.tiebreakerMs != null
-                          ? { tiebreaker: reactCompletion.tiebreakerMs }
-                          : {}
-                        : pendingChallenge.aiTiebreakers?.[id] != null
-                          ? { tiebreaker: pendingChallenge.aiTiebreakers[id] }
-                          : {}),
-                    }))
-              const explicitWinnerId =
-                reactCompletion?.authoritativeWinnerId != null &&
-                capturedParticipants.includes(reactCompletion.authoritativeWinnerId)
-                  ? reactCompletion.authoritativeWinnerId
-                  : null
-              const explicitLastPlaceId =
-                reactCompletion?.authoritativeLastPlaceId != null &&
-                capturedParticipants.includes(reactCompletion.authoritativeLastPlaceId) &&
-                reactCompletion.authoritativeLastPlaceId !== explicitWinnerId
-                  ? reactCompletion.authoritativeLastPlaceId
-                  : null
-
-              if (import.meta.env.DEV) {
-                console.log('[LOH_CROWN] MinigameHost onDone — challenge completion', {
-                  capturedGameKey,
-                  capturedParticipants,
-                  rawValue: rawResults.find((r) => r.playerId === humanPlayer?.id)?.rawValue,
-                  rawResults,
-                  reactCompletion,
-                  explicitWinnerId,
-                  partial,
-                  pendingChallengeAiScores: pendingChallenge.aiScores,
-                })
-              }
-
-              const scoreWinnerId = dispatch(
-                completeChallenge(rawResults, {
-                  authoritativeWinnerId: explicitWinnerId,
-                  partial: partial === true,
-                })
-              ) as string | null
-
-              if (import.meta.env.DEV) {
-                console.log('[LOH_CROWN] completeChallenge returned scoreWinnerId', {
-                  scoreWinnerId,
-                  capturedGameKey,
-                })
-              }
-              // Only record personal records for valid (non-early-exit) completions.
-              // A partial=true exit uses rawValue=0 for the human and would
-              // incorrectly set a "best" 0-score for lowerBetter games.
-              if (!partial) {
-                dispatch(
-                  updateGamePRs({
-                    gameKey: capturedGameKey,
-                    scores: Object.fromEntries(
-                      rawResults.map((r) => [r.playerId, Math.round(r.rawValue)])
-                    ),
-                    lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
-                  })
-                )
-              }
-
-              // ── Final 3 minigame completion ──────────────────────────────────
-              // Apply the winner to the Final 3 part (no ceremony overlay for F3 parts).
-              if (isF3MinigamePhase) {
-                dispatch(applyF3MinigameWinner(scoreWinnerId ?? capturedParticipants[0]))
-                return
-              }
-
-              // ── LOH / POS completion (ceremony overlay) ──────────────────────
-              // Use prize type captured at challenge-start; game.phase may have
-              // already advanced if a feature thunk (e.g. resolveHoldTheWallOutcome,
-              // resolveGlassBridgeOutcome) applied the winner synchronously before
-              // this callback fires.
-              const isHohComp = capturedPrizeType === 'LOH'
-              const winSymbol = isHohComp ? '👑' : '🛡️'
-              const winLabel = isHohComp ? 'Leader of the House' : 'Power of Safety'
-
-              // Prefer the canonical winner already committed to the store by the
-              // game's feature thunk.  storeRef gives the live Redux state — not
-              // the React-render closure — so same-event dispatches (e.g. the
-              // "Claim Prize" button that calls resolveCompetitionOutcome() and
-              // onComplete() in the same handler) are also captured correctly.
-              const liveState = storeRef.current.getState()
-              const featureAppliedWinner = isHohComp
-                ? liveState.game.lohId
-                : liveState.game.posWinnerId
-              const finalWinnerId =
-                explicitWinnerId ??
-                (featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner)
-                  ? featureAppliedWinner
-                  : (scoreWinnerId ?? capturedParticipants[0]))
-
-              if (import.meta.env.DEV) {
-                console.log('[LOH_CROWN] winner resolution in GameScreen', {
-                  capturedGameKey,
-                  capturedPrizeType,
-                  capturedParticipants,
-                  rawResults,
-                  explicitWinnerId,
-                  featureAppliedWinner,
-                  scoreWinnerId,
-                  finalWinnerId,
-                  fallbackWasCapturedParticipants0:
-                    !explicitWinnerId && !featureAppliedWinner && !scoreWinnerId,
-                  liveHohId: liveState.game.lohId,
-                  livePhase: liveState.game.phase,
-                })
-              }
-
-              // Compute the last-place finisher for this competition.
-              // For LOH: also used by applyMinigameWinner for the third-nominee rule
-              // (the worst LOH finisher becomes an eligible third nominee).
-              // For POS: needed by adsMiddleware to detect competition_retry eligibility.
-              // Note: for feature-managed games (holdTheWall, glassBridge, etc.)
-              // the feature thunk has already called applyMinigameWinner with its own lastPlaceId,
-              // so the idempotency guard will skip this call.
-              const compLastPlaceId = (() => {
-                if (partial && humanPlayer?.id && capturedParticipants.includes(humanPlayer.id)) {
-                  if (import.meta.env.DEV) {
-                    console.log(
-                      '[ads] competition_retry last place forced to human due to early exit',
-                      {
-                        humanId: humanPlayer.id,
-                        capturedGameKey,
-                        capturedPrizeType,
-                      }
-                    )
-                  }
-                  return humanPlayer.id
-                }
-                if (explicitLastPlaceId) return explicitLastPlaceId
-                const ranked = computeScores(
-                  pendingChallenge.game.scoringAdapter,
-                  rawResults,
-                  pendingChallenge.game.scoringParams ?? {}
-                )
-                // ranked is sorted best → worst (highest canonical score first).
-                // Reverse to find the last non-winner (worst finisher).
-                const lastNonWinner = [...ranked]
-                  .reverse()
-                  .find((r) => r.playerId !== finalWinnerId)
-                return lastNonWinner?.playerId ?? null
-              })()
-
-              if (partial) {
-                dispatch(
-                  applyMinigameWinner({
-                    winnerId: finalWinnerId,
-                    lastPlaceId: compLastPlaceId,
-                    skipSeasonUpdate: true,
-                  })
-                )
-                return
-              }
-
-              const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null
-              const sourceDomRect = getTileRect(finalWinnerId)
-
-              if (!winnerPlayer || !sourceDomRect) {
-                // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
-                dispatch(
-                  applyMinigameWinner({
-                    winnerId: finalWinnerId,
-                    lastPlaceId: compLastPlaceId,
-                    skipSeasonUpdate: true,
-                  })
-                )
-                return
-              }
-              // Defer the store mutation until after the CeremonyOverlay completes.
-              if (import.meta.env.DEV) {
-                console.log('[LOH_CROWN] LOH_CROWN_ANIM_STARTED', {
-                  winnerId: finalWinnerId,
-                  label: winLabel,
-                  screen: 'GameScreen',
-                  storeHohId: liveState.game.lohId,
-                  phase: liveState.game.phase,
-                  capturedGameKey,
-                })
-              } else {
-                console.log('LOH_CROWN_ANIM_STARTED', {
-                  winnerId: finalWinnerId,
-                  label: winLabel,
-                  screen: 'GameScreen',
-                })
-              }
-              const tiles: CeremonyTile[] = [
-                {
-                  rect: sourceDomRect,
-                  badge: winSymbol,
-                  badgeImageSrc: isHohComp ? LOH_BADGE_SRC : undefined,
-                  badgeStart: 'center',
-                  badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
-                },
-              ]
-              pendingWinnerDispatchRef.current = () =>
-                dispatch(
-                  applyMinigameWinner({
-                    winnerId: finalWinnerId,
-                    lastPlaceId: compLastPlaceId,
-                    skipSeasonUpdate: true,
-                  })
-                )
-              setPendingWinnerCeremony({
-                winnerId: finalWinnerId,
-                tiles,
-                caption: `${winnerPlayer.name} wins ${winLabel}!`,
-                subtitle: winSymbol,
-                ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
-                measureA: () => getTileRect(finalWinnerId),
-              })
-            }}
+            onDone={handleChallengeDone}
           />
         )}
 
@@ -4310,7 +1828,7 @@ export default function GameScreen() {
             icon="🗳️"
             title="Peek Behind the Curtain?"
             description={
-              isPostEvictionConfessionalModeRef.current
+              voteBreakdownPromptIsPostEviction
                 ? 'Watch a short ad to unlock the vote reveal showing who voted for whom after this live eviction.'
                 : 'Watch a short ad to unlock the Confessional reveal showing who voted for whom after this live eviction.'
             }
@@ -4332,16 +1850,7 @@ export default function GameScreen() {
                 unlockVoteBreakdown()
               }
             }}
-            onSkip={() => {
-              const wasPostEviction = isPostEvictionConfessionalModeRef.current
-              postEvictionVoteSnapshotRef.current = null
-              isPostEvictionConfessionalModeRef.current = false
-              setShowVoteBreakdownPrompt(false)
-              setAdPending(false)
-              if (!wasPostEviction) {
-                proceedAfterVoteResults()
-              }
-            }}
+            onSkip={handleVoteBreakdownSkip}
             pending={adPending}
           />
         )}
@@ -4473,9 +1982,7 @@ export default function GameScreen() {
               if (adPending) return
               setAdPending(true)
               const restartBattleBack = () => {
-                setBattleBackRetryOfferWinnerId(null)
-                setBattleBackRetryCount((current) => current + 1)
-                setBattleBackAttemptIndex((current) => current + 1)
+                handleBattleBackRetryGranted()
                 setAdPending(false)
               }
               const state = storeRef.current.getState()
@@ -4495,11 +2002,7 @@ export default function GameScreen() {
                 setAdPending(false)
               }
             }}
-            onSkip={() => {
-              const winnerId = battleBackRetryOfferWinnerId
-              setBattleBackRetryOfferWinnerId(null)
-              finalizeBattleBackOutcome(winnerId)
-            }}
+            onSkip={handleBattleBackRetryDeclined}
             pending={adPending}
           />
         )}
