@@ -1,0 +1,41 @@
+name: Temporary biographies formatter
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  format-biographies:
+    if: github.head_ref == 'agent/cinematic-bios-responsive-hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format biography cinematic files
+        run: |
+          npx prettier --write \
+            src/components/HousematesBioCinematic/HousematesBioCinematic.css \
+            tests/unit/housematesBioResponsiveStyles.test.ts
+      - name: Commit formatting changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/components/HousematesBioCinematic/HousematesBioCinematic.css \
+            tests/unit/housematesBioResponsiveStyles.test.ts
+          git commit -m "Format biography cinematic files"
+          git push
