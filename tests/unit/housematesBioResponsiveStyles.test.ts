@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// Keep the responsive layout contract executable without requiring a browser screenshot runner.
+// Vitest transforms import.meta.url, so resolve this repository fixture from the checked-out root.
 const CSS = readFileSync(
-  new URL(
-    '../../src/components/HousematesBioCinematic/HousematesBioCinematic.css',
-    import.meta.url
+  resolve(
+    process.cwd(),
+    'src/components/HousematesBioCinematic/HousematesBioCinematic.css'
   ),
   'utf8'
 )
