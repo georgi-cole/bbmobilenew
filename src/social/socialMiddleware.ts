@@ -57,6 +57,8 @@ import { advanceDramaNetwork, normalizeDramaSocialNetwork } from './dramaModeEng
 import { seedWeekRelationships } from './weekSocialSeed';
 import { DEFAULT_ENERGY, HUMAN_SOCIAL_ALLOWANCE } from './constants';
 import { BETRAYAL_TAG, hasAllianceBetween } from './socialAlliance';
+import { getEffectiveSocialMode } from './socialMode';
+import { getFamilyGroupId } from './socialRuntimeConfig';
 import {
   evaluateSocialCommitmentsForAction,
   voidOverdueSocialCommitments,
@@ -81,12 +83,17 @@ interface GameState {
   pendingEviction?: { evicteeId: string; evictionMessage: string } | null;
   doubleEviction?: { weekActive?: boolean };
   specialVeto?: { activeType?: string | null };
+  dramaSocialMode?: boolean;
   players: Array<{ id: string; name?: string; status: string; isUser?: boolean }>;
 }
 
 interface StateWithGame {
   game: GameState;
   settings?: { gameUX?: { dramaMode?: boolean } };
+  vip?: {
+    isActive?: boolean;
+    entitlements?: { dramaMode?: boolean };
+  };
   social?: {
     energyBank?: Record<string, number>;
     relationships?: import('./types').RelationshipsMap;
@@ -102,7 +109,7 @@ type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknow
 /** Advance the premium story graph once per phase and feed consequences back into gameplay. */
 function runDramaPhase(api: MiddlewareAPI, phase: string): void {
   const state = api.getState() as StateWithGame;
-  if (state.settings?.gameUX?.dramaMode !== true || !state.game) return;
+  if (getEffectiveSocialMode(state) !== 'drama' || !state.game) return;
   const result = advanceDramaNetwork({
     network: normalizeDramaSocialNetwork(state.social?.dramaNetwork),
     players: (state.game.players ?? []).map((player) => ({
@@ -139,7 +146,7 @@ function runDramaPhase(api: MiddlewareAPI, phase: string): void {
 
 /** Seed week-start background affinities, then snapshot relationships as baseline. */
 function isDramaModeEnabled(api: MiddlewareAPI): boolean {
-  return (api.getState() as StateWithGame).settings?.gameUX?.dramaMode === true;
+  return getEffectiveSocialMode(api.getState() as StateWithGame) === 'drama';
 }
 
 function handleWeekStart(api: MiddlewareAPI): void {
@@ -309,7 +316,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   if (type === 'social/recordSocialAction') {
     const result = next(action);
     const state = api.getState() as StateWithGame;
-    if (state.settings?.gameUX?.dramaMode === true) {
+    if (getEffectiveSocialMode(state) === 'drama') {
       const entry = (action as unknown as { payload: { entry: SocialActionLogEntry } }).payload
         .entry;
       const actorName =
@@ -519,7 +526,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const prevPhase = prevState.game?.phase;
     api.dispatch({
       type: 'game/setDramaSocialMode',
-      payload: prevState.settings?.gameUX?.dramaMode === true,
+      payload: getEffectiveSocialMode(prevState) === 'drama',
     });
     const prevHohId = prevState.game?.lohId ?? null;
     const prevPovId = prevState.game?.posWinnerId ?? null;
@@ -533,7 +540,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     if (
       newPhase === 'nomination_results' &&
-      afterState.settings?.gameUX?.dramaMode === true &&
+      getEffectiveSocialMode(afterState) === 'drama' &&
       afterState.game?.lohId
     ) {
       const lohId = afterState.game.lohId;
@@ -611,8 +618,20 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       const aliveIds = new Set(state.game.players
         .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
         .map((player) => player.id));
-      const sourceTwinId = payload.source === 'lia' ? 'ali' : payload.source === 'ali' ? 'lia' : null;
-      const targetTwinId = payload.target === 'lia' ? 'ali' : payload.target === 'ali' ? 'lia' : null;
+      const familyMate = (playerId: string) => {
+        const groupId = getFamilyGroupId(playerId);
+        if (!groupId) return null;
+        return (
+          state.game.players.find(
+            (player) =>
+              player.id !== playerId &&
+              aliveIds.has(player.id) &&
+              getFamilyGroupId(player.id) === groupId,
+          )?.id ?? null
+        );
+      };
+      const sourceTwinId = familyMate(payload.source);
+      const targetTwinId = familyMate(payload.target);
       const echoDelta = Math.round(payload.delta * twinEchoFactor(payload.source, payload.target, state.game.week));
       if (echoDelta !== 0 && sourceTwinId && aliveIds.has(sourceTwinId) && payload.target !== sourceTwinId) {
         api.dispatch({
@@ -695,7 +714,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     if (winner?.isUser) {
       const restoredEnergy =
-        prevState.settings?.gameUX?.dramaMode === true
+        getEffectiveSocialMode(prevState) === 'drama'
           ? HUMAN_SOCIAL_ALLOWANCE
           : DEFAULT_ENERGY;
       api.dispatch(setEnergyBankEntry({ playerId: winnerId, value: restoredEnergy }));

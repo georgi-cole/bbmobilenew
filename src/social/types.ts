@@ -330,8 +330,12 @@ export interface SocialState {
   infoBank: SocialEnergyBank;
   relationships: RelationshipsMap;
   lastReport?: SocialPhaseReport | null;
-  /** Append-only log of social actions executed this session. */
+  /** Actions executed during the currently open Social panel session. */
   sessionLogs: SocialActionLogEntry[];
+  /** Bounded gameplay history retained after the panel closes. */
+  actionHistory?: SocialActionLogEntry[];
+  /** Schema version used by backward-compatible social save migration. */
+  socialStateVersion?: number;
   /** Incoming social interactions awaiting the player. */
   incomingInteractions: IncomingInteraction[];
   /** Decision log entries for incoming interaction scheduling/debugging. */

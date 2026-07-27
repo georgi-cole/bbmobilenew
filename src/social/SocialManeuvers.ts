@@ -38,6 +38,11 @@ import {
 } from './socialAlliance';
 import type { SocialActionLogEntry, SocialState } from './types';
 import { getSocialResourceEffect } from './socialResourceEconomy';
+import { getEffectiveSocialMode } from './socialMode';
+import {
+  getPersistentSocialHistory,
+  type SocialStateWithHistory,
+} from './socialHistory';
 
 // ── Internal store reference ──────────────────────────────────────────────
 
@@ -58,7 +63,8 @@ type PartialSocialState = {
   influenceBank?: Record<string, number>;
   infoBank?: Record<string, number>;
   relationships: SocialState['relationships'];
-  sessionLogs: unknown[];
+  sessionLogs: SocialActionLogEntry[];
+  actionHistory?: SocialActionLogEntry[];
 };
 
 interface ManeuverPlayer {
@@ -74,11 +80,17 @@ interface ManeuverGameState {
   phase?: string;
   lohId?: string | null;
   nomineeIds?: string[];
+  dramaSocialMode?: boolean;
 }
 
 
 interface StateForManeuvers {
+  game?: ManeuverGameState;
   settings?: { gameUX?: { dramaMode?: boolean } };
+  vip?: {
+    isActive?: boolean;
+    entitlements?: { dramaMode?: boolean };
+  };
   social: PartialSocialState;
 }
 
@@ -461,7 +473,7 @@ export function getAvailableActions(
 ): SocialActionDefinition[] {
   const resolvedState = state ?? (_store?.getState() as StateForManeuvers | null);
   const socialState = resolvedState?.social;
-  const dramaMode = resolvedState?.settings?.gameUX?.dramaMode === true;
+  const dramaMode = getEffectiveSocialMode(resolvedState ?? {}) === 'drama';
   return SOCIAL_ACTIONS.filter((action) => {
     if (!canAfford(actorId, normalizeActionCosts(action, 0, dramaMode), state)) {
       return false;
@@ -605,9 +617,13 @@ export function executeAction(
     social: SocialState;
     game?: ManeuverGameState;
     settings?: { gameUX?: { dramaMode?: boolean } };
+    vip?: {
+      isActive?: boolean;
+      entitlements?: { dramaMode?: boolean };
+    };
   };
 
-  const dramaMode = state.settings?.gameUX?.dramaMode === true;
+  const dramaMode = getEffectiveSocialMode(state) === 'drama';
   const normalizedCosts = normalizeActionCosts(action, 0, dramaMode);
   const costs = options?.waiveCosts
     ? { energy: 0, influence: 0, info: 0 }
@@ -615,7 +631,7 @@ export function executeAction(
         ...normalizedCosts,
         energy: options?.energyCostOverride ?? normalizedCosts.energy,
       };
-  if (action.dramaOnly && state.settings?.gameUX?.dramaMode !== true) {
+  if (action.dramaOnly && !dramaMode) {
     return {
       success: false,
       delta: 0,
@@ -640,31 +656,28 @@ export function executeAction(
     };
   }
 
-  if (dramaMode) {
-    const eligibility = evaluateSocialActionEligibility({
-      action,
-      actorId,
-      targetIds:
-        action.targetMode === 'none' || action.needsTargets === false ? [] : [targetId],
-      subjectId: options?.subjectId,
-      phase: state.game?.phase,
-      players: state.game?.players,
-      relationships: state.social.relationships,
-      dramaNetwork: state.social.dramaNetwork,
-      dramaMode: true,
-      requireCompleteSelection: true,
-      allowAIOnly: true,
-    });
-    if (!eligibility.eligible) {
-      return {
-        success: false,
-        delta: 0,
-        newEnergy: currentEnergy,
-        summary: eligibility.reason,
-        score: 0,
-        label: 'Unavailable',
-      };
-    }
+  const eligibility = evaluateSocialActionEligibility({
+    action,
+    actorId,
+    targetIds: resolveActionTargetMode(action, dramaMode) === 'none' ? [] : [targetId],
+    subjectId: options?.subjectId,
+    phase: state.game?.phase,
+    players: state.game?.players,
+    relationships: state.social.relationships,
+    dramaNetwork: state.social.dramaNetwork,
+    dramaMode,
+    requireCompleteSelection: true,
+    allowAIOnly: true,
+  });
+  if (!eligibility.eligible) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: eligibility.reason,
+      score: 0,
+      label: 'Unavailable',
+    };
   }
 
   if (!canAfford(actorId, costs)) {
@@ -682,7 +695,7 @@ export function executeAction(
     ? { influence: 0, info: 0 }
     : normalizeActionYields(action);
   const random = options?.random ?? Math.random;
-  const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
+  const priorRepeats = countPriorRepeatedActions(getPersistentSocialHistory(state.social as SocialStateWithHistory), actorId, targetId, actionId);
   const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
   const recipientTrust = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0;
   const rootState = _store.getState() as {
@@ -821,6 +834,7 @@ export function executeAction(
     mode,
     outcome,
     relationships: state.social.relationships,
+    random,
   });
   const finalScore = didBackfire ? -Math.abs(outcomeResult.score) : outcomeResult.score;
   const finalLabel = didBackfire ? scoreToLabel(finalScore) : outcomeResult.label;
@@ -1062,6 +1076,7 @@ export function executeAction(
     recipientTrust,
     game: rootState.game,
     relationships: state.social.relationships,
+    random,
   });
   const standardSummary = contextualSummary ?? (actionId === 'ask_loh_target' && priorLohAsks >= 3
     ? `${lohName} shut the conversation down after being asked repeatedly.`
@@ -1141,8 +1156,12 @@ export function executeGroupAction(
     social: SocialState;
     game?: ManeuverGameState;
     settings?: { gameUX?: { dramaMode?: boolean } };
+    vip?: {
+      isActive?: boolean;
+      entitlements?: { dramaMode?: boolean };
+    };
   };
-  const dramaMode = state.settings?.gameUX?.dramaMode === true;
+  const dramaMode = getEffectiveSocialMode(state) === 'drama';
   if (resolveActionTargetMode(action, dramaMode) !== 'multi') return unavailable('This is not a group action');
   const eligibility = evaluateSocialActionEligibility({
     action,
@@ -1152,7 +1171,7 @@ export function executeGroupAction(
     players: state.game?.players,
     relationships: state.social.relationships,
     dramaNetwork: state.social.dramaNetwork,
-    dramaMode: state.settings?.gameUX?.dramaMode === true,
+    dramaMode,
     requireCompleteSelection: true,
     allowAIOnly: true,
   });
@@ -1175,7 +1194,7 @@ export function executeGroupAction(
   let anyBackfire = false;
   for (const targetId of targetIds) {
     const repeats = countPriorRepeatedActions(
-      state.social.sessionLogs,
+      getPersistentSocialHistory(state.social as SocialStateWithHistory),
       actorId,
       targetId,
       actionId,
@@ -1198,6 +1217,7 @@ export function executeGroupAction(
     mode: options?.previewOnly ? 'preview' : 'execute',
     outcome,
     relationships: state.social.relationships,
+    random,
   });
   const finalScore = anyBackfire ? -Math.abs(scoreResult.score) : scoreResult.score;
   const finalLabel = anyBackfire ? scoreToLabel(finalScore) : scoreResult.label;

@@ -1,5 +1,6 @@
 import { normalizeAffinity } from './affinityUtils'
 import { DRAMA_DIALOGUE_BANK, DRAMA_MODE_CONFIG, pickDramaCopy } from './dramaModeConfig'
+import { areSocialFamilyMembers } from './socialRuntimeConfig'
 import type {
   DramaArc,
   DramaArcStage,
@@ -157,11 +158,8 @@ function names(text: string, players: DramaPlayer[], ids: string[]): string {
 function relation(relationships: RelationshipsMap, a: string, b: string) {
   return normalizeAffinity(relationships[a]?.[b]?.affinity ?? 0)
 }
-function isTwinPair(players: DramaPlayer[], a: string, b: string) {
-  const pair = new Set(
-    [a, b].map((id) => (players.find((player) => player.id === id)?.name ?? id).toLowerCase())
-  )
-  return pair.has('lia') && pair.has('ali')
+function isTwinPair(_players: DramaPlayer[], a: string, b: string) {
+  return areSocialFamilyMembers(a, b)
 }
 function stageFor(intensity: number): DramaArcStage {
   if (intensity >= DRAMA_MODE_CONFIG.arcs.climaxIntensity) return 'climax'
@@ -183,8 +181,16 @@ function upsertBelief(
   const id = `${holderId}:${subjectId}:${kind}`
   const existing = network.beliefs.find((belief) => belief.id === id)
   if (existing) {
-    existing.confidence = clamp(Math.max(existing.confidence, confidence), 0, 1)
-    existing.sentiment = clamp(existing.sentiment + sentiment, -1, 1)
+    const reinforces =
+      existing.sentiment === 0 || sentiment === 0 || Math.sign(existing.sentiment) === Math.sign(sentiment)
+    existing.confidence = clamp(
+      reinforces
+        ? existing.confidence * 0.65 + confidence * 0.35
+        : existing.confidence - confidence * 0.45,
+      0,
+      1
+    )
+    existing.sentiment = clamp(existing.sentiment * 0.65 + sentiment, -1, 1)
     existing.lastUpdatedWeek = week
     existing.sourceId = sourceId
     return
@@ -304,12 +310,14 @@ function discoverSecretArc(
   network: DramaSocialNetwork,
   spyId: string,
   week: number,
-  phase: string
+  phase: string,
+  targetId?: string
 ) {
   const arc = network.arcs.find(
     (entry) =>
       entry.status === 'active' &&
       !entry.public &&
+      (!targetId || entry.participantIds.includes(targetId)) &&
       ['romance', 'bromance'].includes(entry.type) &&
       !entry.participantIds.includes(spyId) &&
       !(entry.discoveredByIds ?? []).includes(spyId)
@@ -376,16 +384,18 @@ function makeRumour(
     sourceChain: [actorId],
   }
   network.rumours.push(rumour)
-  upsertBelief(
-    network,
-    listenerId,
-    subjectId,
-    kind === 'targeting' ? 'strategic_threat' : 'secretive',
-    rumour.listeners[0].confidence,
-    -0.2,
-    actorId,
-    week
-  )
+  if (rumour.listeners[0].believed) {
+    upsertBelief(
+      network,
+      listenerId,
+      subjectId,
+      kind === 'targeting' ? 'strategic_threat' : 'secretive',
+      rumour.listeners[0].confidence,
+      -0.2,
+      actorId,
+      week
+    )
+  }
 }
 
 export function applyDramaActionEffect(
@@ -497,7 +507,7 @@ export function applyDramaActionEffect(
     }
   }
   if (input.actionId === 'snoop_around')
-    discoverSecretArc(network, input.actorId, input.week, input.phase)
+    discoverSecretArc(network, input.actorId, input.week, input.phase, input.targetId)
   if (input.actionId === 'ride_or_die') {
     startOrAdvanceArc(network, 'bromance', input.actorId, input.targetId, input.week, 34)
     upsertBelief(
@@ -708,7 +718,10 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
       arc.stage = 'resolved'
       arc.status = 'resolved'
     }
-    if (arc.stage === 'established' || arc.stage === 'climax') {
+    if (
+      arc.stage !== previousStage &&
+      (arc.stage === 'established' || arc.stage === 'climax')
+    ) {
       const positive = arc.type === 'romance' || arc.type === 'bromance'
       effects.push(
         {
@@ -845,8 +858,19 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
         rumour.subjectId,
         ...rumour.listeners.map((l) => l.playerId),
       ])
-      const listenerId = [...activeIds].find((id) => !heard.has(id))
       const source = rumour.listeners.at(-1)
+      const listenerId = source
+        ? [...activeIds]
+            .filter((id) => !heard.has(id))
+            .sort(
+              (left, right) =>
+                relation(input.relationships, right, source.playerId) -
+                  relation(input.relationships, left, source.playerId) +
+                relation(input.relationships, left, rumour.subjectId) * 0.35 -
+                  relation(input.relationships, right, rumour.subjectId) * 0.35 ||
+                hash(`${rumour.id}:${right}`) - hash(`${rumour.id}:${left}`)
+            )[0]
+        : undefined
       if (listenerId && source) {
         const confidence = clamp(
           source.confidence +
@@ -900,6 +924,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
   }
 
   for (const alliance of network.alliances.filter((entry) => entry.status === 'active')) {
+    if (alliance.lastUpdatedWeek >= input.week) continue
     const [a, b] = alliance.participantIds
     const mutual = (relation(input.relationships, a, b) + relation(input.relationships, b, a)) / 2
     for (const playerId of alliance.participantIds) {
@@ -923,7 +948,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
       }
     }
     alliance.lastUpdatedWeek = input.week
-    if (Math.max(...Object.values(alliance.loyaltyByPlayer)) < 28) alliance.status = 'strained'
+    if (Math.min(...Object.values(alliance.loyaltyByPlayer)) < 28) alliance.status = 'strained'
   }
 
   const canSpy =

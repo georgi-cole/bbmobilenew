@@ -2,7 +2,6 @@
 > bbmobilenew@1.0.0 typecheck
 > tsc -b
 
-src/social/socialExecutionGuard.ts(54,5): error TS2322: Type 'string | undefined' is not assignable to type 'PlayerStatus | null | undefined'.
-  Type 'string' is not assignable to type 'PlayerStatus | null | undefined'.
+src/social/SocialManeuvers.ts(1079,5): error TS2353: Object literal may only specify known properties, and 'random' does not exist in type '{ actionId: string; actorId: string; targetId: string; subjectId?: string | undefined; recipientTrust: number; game?: { players?: { id: string; name?: string | undefined; status: string; }[] | undefined; nomineeIds?: string[] | undefined; nominationContext?: { ...; } | ... 1 more ... | undefined; } | undefined; rela...'.
 
 TYPECHECK_EXIT_CODE=2

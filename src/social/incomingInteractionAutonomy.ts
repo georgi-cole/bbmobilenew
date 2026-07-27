@@ -35,6 +35,11 @@ import {
   pickVariantText,
 } from './interactionVariantBank';
 import { getNamedInteractionText } from './namedInteractionBank';
+import { createIncomingInteraction } from './incomingInteractionFactory';
+import { createDeterministicSocialRandom } from './socialExecutionGuard';
+import { getSocialPersonality } from './socialPersonalityBank';
+import { getEffectiveSocialMode } from './socialMode';
+import { getRemoteScenarioLines } from './socialRuntimeConfig';
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -85,6 +90,10 @@ export interface AutonomyStore {
     settings?: {
       gameUX?: { dramaMode?: boolean };
     };
+    vip?: {
+      isActive?: boolean;
+      entitlements?: { dramaMode?: boolean };
+    };
     social?: {
       incomingInteractions?: IncomingInteraction[];
       scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
@@ -92,10 +101,13 @@ export interface AutonomyStore {
       relationships?: RelationshipsMap;
       socialMemory?: SocialMemoryMap;
       sessionLogs?: SocialActionLogEntry[];
+      actionHistory?: SocialActionLogEntry[];
     };
     game?: {
       players?: AutonomyPlayer[];
       week?: number;
+      seed?: number;
+      dramaSocialMode?: boolean;
       lohId?: string | null;
       nomineeIds?: string[];
       posWinnerId?: string | null;
@@ -200,8 +212,7 @@ interface InteractionTextContext {
 }
 
 function getPersonalityFactor(actorId: string): number {
-  const tuning = socialConfig.incomingInteractionAutonomyTuning;
-  return tuning.personalityFactors[actorId] ?? tuning.defaultPersonalityFactor;
+  return getSocialPersonality(actorId).socialEnergy;
 }
 
 function getPhaseUrgency(phase: string): number {
@@ -983,6 +994,17 @@ function generateInteractionText(
   );
 
 
+  const remoteTemplates = getRemoteScenarioLines(plan.scenarioKey);
+  if (remoteTemplates?.length) {
+    const template =
+      remoteTemplates[Math.floor(rng() * remoteTemplates.length)] ?? remoteTemplates[0];
+    return {
+      text: renderInteractionTemplate(template, textContext),
+      variantFamilyId: `remote_${plan.scenarioKey}`,
+      variantId: `remote_${plan.scenarioKey}:${remoteTemplates.indexOf(template)}`,
+    };
+  }
+
   // Use the rich variant bank when families are available for this scenario.
   const variantFamilies = SCENARIO_VARIANT_POOLS[plan.scenarioKey];
   if (dramaMode && variantFamilies && variantFamilies.length > 0) {
@@ -1021,9 +1043,6 @@ export { INCOMING_INTERACTION_PHASE_ORDER };
 
 export const ELIGIBLE_PHASES = INCOMING_INTERACTION_ELIGIBLE_PHASES;
 
-function interactionTypeRequiresResponse(type: IncomingInteractionType): boolean {
-  return type === 'alliance_proposal' || type === 'deal_offer' || type === 'nomination_plea';
-}
 
 export function scheduleIncomingInteractionsForPhase(
   phase: string,
@@ -1038,7 +1057,7 @@ export function scheduleIncomingInteractionsForPhase(
   }
 
   const state = store.getState();
-  const dramaMode = state.settings?.gameUX?.dramaMode === true;
+  const dramaMode = getEffectiveSocialMode(state) === 'drama';
   const socialState = state.social;
   if (!socialState) {
     if (socialConfig.verbose) {
@@ -1079,7 +1098,7 @@ export function scheduleIncomingInteractionsForPhase(
     relationships,
     socialMemory,
     players,
-    dramaMode: contextOverride?.dramaMode ?? state.settings?.gameUX?.dramaMode === true,
+    dramaMode: contextOverride?.dramaMode ?? dramaMode,
     lohId: contextOverride?.lohId ?? gameState?.lohId ?? null,
     nomineeIds: contextOverride?.nomineeIds ?? gameState?.nomineeIds ?? [],
     posWinnerId: contextOverride?.posWinnerId ?? gameState?.posWinnerId ?? null,
@@ -1097,14 +1116,16 @@ export function scheduleIncomingInteractionsForPhase(
       contextOverride?.lastHohCompFinisherId ?? gameState?.lastHohCompFinisherId ?? null,
     playerSocialActionCount:
       contextOverride?.playerSocialActionCount ??
-      (socialState.sessionLogs ?? []).filter(
+      (socialState.actionHistory ?? socialState.sessionLogs ?? []).filter(
         (entry) =>
           entry.actorId === playerId &&
           entry.source === 'manual' &&
           entry.outcome === 'success' &&
           entry.week === week,
       ).length,
-    random: contextOverride?.random,
+    random:
+      contextOverride?.random ??
+      createDeterministicSocialRandom([gameState?.seed ?? 0, week, phase, playerId]),
   };
 
   const scheduledQueue = socialState.scheduledIncomingInteractions ?? [];
@@ -1224,27 +1245,22 @@ export function scheduleIncomingInteractionsForPhase(
             `${actor.id}:${playerId}:${week}:${phase}:${textResult.variantId}`,
           )
         : textResult.text;
-    const interaction: IncomingInteraction = {
+    const interaction = createIncomingInteraction({
       id: generateInteractionId(),
       fromId: actor.id,
       type: plan.type,
       text: interactionText,
+      week,
+      phase,
+      mode: dramaMode ? 'drama' : 'normal',
       payload: {
         scenarioKey: plan.scenarioKey,
         variantFamilyId: textResult.variantFamilyId,
         variantId: textResult.variantId,
-        phase,
         actorStatus: actor.status,
         subjectId: subject?.id,
-        dramaMode,
       },
-      createdAt: Date.now(),
-      createdWeek: week,
-      expiresAtWeek: week + 1,
-      read: false,
-      requiresResponse: interactionTypeRequiresResponse(plan.type),
-      resolved: false,
-    };
+    });
 
     const priority = getIncomingInteractionPriority(plan.type);
     logIncomingInteractionDecision(store.dispatch, {
