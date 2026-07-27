@@ -9,6 +9,7 @@ export type MusicTrack =
   | 'glass_bridge'
   | 'quick_tap'
   | 'wildcard_western'
+  | 'challenge_group_1'
   | 'season_recap'
   | 'jury_voting'
   | 'public_voting'
@@ -24,6 +25,7 @@ export const MUSIC_TRACK_SOUND_KEYS: Readonly<Record<Exclude<MusicTrack, 'none'>
   glass_bridge: 'music:gb_main',
   quick_tap: 'music:quicktap_main',
   wildcard_western: 'music:wildcard_western_main',
+  challenge_group_1: 'music:challenge_group_1',
   season_recap: 'music:season_recap',
   jury_voting: 'music:jury_voting_bg',
   public_voting: 'music:public_voting',
@@ -41,6 +43,7 @@ const SOUND_KEY_TO_TRACK: Readonly<Record<string, MusicTrack>> = {
   'music:gb_main': 'glass_bridge',
   'music:quicktap_main': 'quick_tap',
   'music:wildcard_western_main': 'wildcard_western',
+  'music:challenge_group_1': 'challenge_group_1',
   'music:season_recap': 'season_recap',
   'music:jury_voting_bg': 'jury_voting',
   'music:public_voting': 'public_voting',
