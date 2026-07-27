@@ -22,22 +22,22 @@
  */
 
 /** Broad groupings that can be independently enabled/muted/volumed. */
-export type SoundCategory = 'ui' | 'tv' | 'player' | 'minigame' | 'music';
+export type SoundCategory = 'ui' | 'tv' | 'player' | 'minigame' | 'music'
 
 /** A single entry in the SOUND_REGISTRY. */
 export interface SoundEntry {
   /** Unique semantic key, e.g. "ui:navigate". */
-  key: string;
+  key: string
   /** Logical category for batch enable/volume control. */
-  category: SoundCategory;
+  category: SoundCategory
   /** Resolved URL (absolute, respecting the app base path). */
-  src: string;
+  src: string
   /** Whether to preload the asset on init. */
-  preload: boolean;
+  preload: boolean
   /** Howler-compatible volume override (0–1). Default: 1. */
-  volume?: number;
+  volume?: number
   /** Loop flag (used for music tracks). */
-  loop?: boolean;
+  loop?: boolean
 }
 
 /**
@@ -52,8 +52,8 @@ export interface SoundEntry {
  *   base = '/'            → SOUNDS_BASE = '/assets/sounds/'
  *   base = '/bbmobilenew/' → SOUNDS_BASE = '/bbmobilenew/assets/sounds/'
  */
-const _viteBase: string = import.meta.env.BASE_URL ?? '/';
-export const SOUNDS_BASE = `${_viteBase}assets/sounds/`;
+const _viteBase: string = import.meta.env.BASE_URL ?? '/'
+export const SOUNDS_BASE = `${_viteBase}assets/sounds/`
 
 /**
  * SOUND_REGISTRY — canonical map of all sound keys.
@@ -374,7 +374,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'music:social_module': {
     key: 'music:social_module',
     category: 'music',
-    src: `${SOUNDS_BASE}Social_module.mp3`,
+    src: `${SOUNDS_BASE}social_module.mp3`,
     preload: false,
     volume: 0.5,
     loop: true,
@@ -517,7 +517,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'music:veto_phase': {
     key: 'music:veto_phase',
     category: 'music',
-    src: `${SOUNDS_BASE}Power_of_safety_comp.mp3`,
+    src: `${SOUNDS_BASE}Power_of_safety.mp3`,
     preload: false,
     volume: 0.85,
     loop: true,
@@ -667,7 +667,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 0.85,
   },
-};
+}
 
 /**
  * FILENAME_ALIAS_MAP — maps bare filename stems (without extension) to their
@@ -683,23 +683,23 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
  */
 export const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = {
   // Legacy / non-prefix filenames → canonical key
-  live_vote:                                             'tv:live_vote',
-  nominations_horror:                                    'music:nominations_horror',
-  nominations_main:                                      'music:nominations_main',
-  veto_ceremony:                                         'tv:veto_ceremony',
-  veto_phase:                                            'music:veto_phase',
-  voting_for_eviction_user_and_housguests:               'tv:voting_eviction',
+  live_vote: 'tv:live_vote',
+  nominations_horror: 'music:nominations_horror',
+  nominations_main: 'music:nominations_main',
+  veto_ceremony: 'tv:veto_ceremony',
+  veto_phase: 'music:veto_phase',
+  voting_for_eviction_user_and_housguests: 'tv:voting_eviction',
   // Alternate / previously-used capitalised filenames (resolve safely)
-  Social_module:                                         'music:social_module',
-  Hoh_competition_and_general_competition:               'music:hoh_comp_general',
+  Social_module: 'music:social_module',
+  Hoh_competition_and_general_competition: 'music:hoh_comp_general',
   // Wildcard Western — non-prefix filename that doesn't auto-derive
-  western_new_round:                                     'ui:western_new_round',
+  western_new_round: 'ui:western_new_round',
   // Tribunal / Finale phase — capitalised filenames in tribunal_phase/
-  season_recap_music:                                    'music:season_recap',
-  Jury_voting_backgound_music:                           'music:jury_voting_bg',
-  Jury_each_vote_reveal_sound:                           'ui:tribunal_vote_reveal',
+  season_recap_music: 'music:season_recap',
+  Jury_voting_backgound_music: 'music:jury_voting_bg',
+  Jury_each_vote_reveal_sound: 'ui:tribunal_vote_reveal',
   // Note: "Final_modal_winner_play once" stem has a space, must use bracket notation
-};
+}
 
 /**
  * resolveKey — resolves a filename stem OR an already-canonical key to the
@@ -719,20 +719,21 @@ export function resolveKey(input: string): string | null {
   // properties (e.g. "toString", "hasOwnProperty" itself would match with `in`).
 
   // 1. Already a canonical key?
-  if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, input)) return input;
+  if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, input)) return input
 
   // 2. Alias map lookup (bare stem, no extension)
-  const stem = input.replace(/\.mp3$/i, '');
-  if (Object.prototype.hasOwnProperty.call(FILENAME_ALIAS_MAP, stem)) return FILENAME_ALIAS_MAP[stem];
+  const stem = input.replace(/\.mp3$/i, '')
+  if (Object.prototype.hasOwnProperty.call(FILENAME_ALIAS_MAP, stem))
+    return FILENAME_ALIAS_MAP[stem]
 
   // 3. Auto-derive: prefix_rest → prefix:rest
-  const PREFIXES = ['ui', 'tv', 'player', 'minigame', 'music'] as const;
+  const PREFIXES = ['ui', 'tv', 'player', 'minigame', 'music'] as const
   for (const p of PREFIXES) {
     if (stem.startsWith(`${p}_`)) {
-      const candidate = `${p}:${stem.slice(p.length + 1)}`;
-      if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, candidate)) return candidate;
+      const candidate = `${p}:${stem.slice(p.length + 1)}`
+      if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, candidate)) return candidate
     }
   }
 
-  return null;
+  return null
 }
