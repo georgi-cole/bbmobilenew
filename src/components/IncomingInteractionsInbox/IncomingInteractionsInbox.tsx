@@ -1,13 +1,12 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   closeIncomingInbox,
-  markAllIncomingInteractionsRead,
+  markIncomingInteractionRead,
   selectDramaNetwork,
   selectIncomingInboxOpen,
   selectIncomingInteractions,
   selectSocialCommitments,
-  selectUnreadIncomingInteractionCount,
 } from '../../social/socialSlice'
 import { getIncomingInteractionPriority } from '../../social/incomingInteractionScheduler'
 import {
@@ -15,19 +14,24 @@ import {
   respondToIncomingInteraction,
 } from '../../social/incomingInteractions'
 import {
-  getSocialModuleAvailability,
-  logBlockedSocialModuleOpen,
-} from '../../social/socialModuleAvailability'
-import {
   getIncomingInteractionResponseLabel,
   getIncomingInteractionResponseOptions,
   getIncomingInteractionTone,
 } from '../../social/incomingInteractionPresentation'
 import {
+  getSocialModuleAvailability,
+  logBlockedSocialModuleOpen,
+} from '../../social/socialModuleAvailability'
+import {
   getSocialCommitmentDueCopy,
   getSocialCommitmentLabel,
   getSocialCredibility,
 } from '../../social/socialCommitments'
+import { getInteractionSocialMode } from '../../social/socialMode'
+import {
+  getIncomingInteractionResponsePolicy,
+  type IncomingInteractionResponsePolicy,
+} from '../../social/socialRuntimeConfig'
 import type {
   IncomingInteraction,
   IncomingInteractionPriority,
@@ -54,14 +58,8 @@ const PRIORITY_LABELS: Record<IncomingInteractionPriority, string> = {
 }
 
 function formatResponseLabel(interaction: IncomingInteraction): string {
-  if (interaction.resolvedLabel) {
-    return `Resolved · ${interaction.resolvedLabel}`
-  }
-
-  if (!interaction.resolvedWith) {
-    return 'Resolved'
-  }
-
+  if (interaction.resolvedLabel) return `Resolved · ${interaction.resolvedLabel}`
+  if (!interaction.resolvedWith) return 'Resolved'
   return `Resolved · ${getIncomingInteractionResponseLabel(
     interaction.type,
     interaction.resolvedWith
@@ -69,35 +67,30 @@ function formatResponseLabel(interaction: IncomingInteraction): string {
 }
 
 function isExpiringThisWeek(interaction: IncomingInteraction, currentWeek: number): boolean {
-  if (interaction.resolved) return false
-  return interaction.expiresAtWeek <= currentWeek
+  return !interaction.resolved && interaction.expiresAtWeek <= currentWeek
 }
 
 function getExpiryLabel(
   interaction: IncomingInteraction,
   currentWeek: number,
-  priority: IncomingInteractionPriority
+  priority: IncomingInteractionPriority,
+  policy: IncomingInteractionResponsePolicy
 ): string | null {
-  if (interaction.resolved) return null
-
-  if (!isExpiringThisWeek(interaction, currentWeek)) {
-    return null
-  }
-
-  if (!interaction.requiresResponse) {
-    return 'Expires this week'
-  }
-
+  if (interaction.resolved || !isExpiringThisWeek(interaction, currentWeek)) return null
+  if (policy === 'readOnly') return null
+  if (policy === 'optional') return 'Optional · closes this week'
   return priority === 'high' ? 'Urgent this week' : 'Needs response this week'
 }
 
 interface InteractionItemProps {
   interaction: IncomingInteraction
   priority: IncomingInteractionPriority
+  policy: IncomingInteractionResponsePolicy
   showActions: boolean
   showExpiry: boolean
   playerById: Map<string, Player>
   currentWeek: number
+  onRead: (interactionId: string) => void
   onRespond: (
     interactionId: string,
     responseType: IncomingInteractionResponseType,
@@ -107,34 +100,59 @@ interface InteractionItemProps {
   socialMemory: SocialMemoryMap
   humanId: string
   commitment?: SocialCommitment
-  dramaMode: boolean
+  interactionDramaMode: boolean
 }
 
 function InteractionItem({
   interaction,
   priority,
+  policy,
   showActions,
   showExpiry,
   playerById,
   currentWeek,
+  onRead,
   onRespond,
   relationships,
   socialMemory,
   humanId,
   commitment,
-  dramaMode,
+  interactionDramaMode,
 }: InteractionItemProps) {
+  const itemRef = useRef<HTMLDivElement>(null)
   const fromPlayer = playerById.get(interaction.fromId)
   const fromName = fromPlayer?.name ?? interaction.fromId
   const typeLabel = getIncomingInteractionTypeLabel(interaction.type)
   const isUnread = !interaction.read && !interaction.resolved
-  const isUrgent = isExpiringThisWeek(interaction, currentWeek)
-  const expiryLabel = showExpiry ? getExpiryLabel(interaction, currentWeek, priority) : null
-  const shouldShowActions = showActions && !interaction.resolved
+  const isUrgent = policy === 'required' && isExpiringThisWeek(interaction, currentWeek)
+  const expiryLabel = showExpiry
+    ? getExpiryLabel(interaction, currentWeek, priority, policy)
+    : null
+  const shouldShowActions = showActions && policy !== 'readOnly' && !interaction.resolved
+
+  useEffect(() => {
+    if (!isUnread || !itemRef.current) return
+    const element = itemRef.current
+    if (typeof IntersectionObserver === 'undefined') {
+      onRead(interaction.id)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.55)) {
+          onRead(interaction.id)
+          observer.disconnect()
+        }
+      },
+      { threshold: [0.55] }
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [interaction.id, isUnread, onRead])
 
   const tone = useMemo(
     () =>
-      dramaMode
+      interactionDramaMode
         ? getIncomingInteractionTone({
             interaction,
             relationships,
@@ -143,28 +161,37 @@ function InteractionItem({
             isUrgent,
           })
         : undefined,
-    [dramaMode, interaction, relationships, socialMemory, humanId, isUrgent]
+    [interactionDramaMode, interaction, relationships, socialMemory, humanId, isUrgent]
   )
 
   const responseOptions = useMemo(
     () =>
       shouldShowActions
-        ? getIncomingInteractionResponseOptions(interaction.type, interaction, tone, dramaMode)
+        ? getIncomingInteractionResponseOptions(
+            interaction.type,
+            interaction,
+            tone,
+            interactionDramaMode
+          )
         : [],
-    [shouldShowActions, interaction, tone, dramaMode]
+    [shouldShowActions, interaction, tone, interactionDramaMode]
   )
 
   const resolvedLabel = interaction.resolved
     ? formatResponseLabel(interaction)
     : isUnread
       ? 'New'
-      : null
-
-  const expiryClass = expiryLabel && priority === 'high' ? ' inbox-item__expiry--urgent' : ''
+      : policy === 'readOnly'
+        ? 'Update'
+        : null
+  const expiryClass = expiryLabel && policy === 'required' && priority === 'high'
+    ? ' inbox-item__expiry--urgent'
+    : ''
 
   return (
     <div
-      className={`inbox-item inbox-item--priority-${priority}${
+      ref={itemRef}
+      className={`inbox-item inbox-item--priority-${priority} inbox-item--policy-${policy}${
         isUnread ? ' inbox-item--unread' : ''
       }${interaction.resolved ? ' inbox-item--resolved' : ''}`}
       role="listitem"
@@ -186,7 +213,7 @@ function InteractionItem({
         <div className="inbox-item__title">
           <div className="inbox-item__from-row">
             <span className="inbox-item__from">{fromName}</span>
-            {priority === 'high' && (
+            {priority === 'high' && policy === 'required' && (
               <span className={`inbox-item__priority inbox-item__priority--${priority}`}>
                 {PRIORITY_LABELS[priority]}
               </span>
@@ -224,7 +251,7 @@ function InteractionItem({
         </p>
       )}
 
-      {dramaMode && commitment && (
+      {interactionDramaMode && commitment && (
         <div className={`inbox-item__promise inbox-item__promise--${commitment.status}`}>
           <strong>
             {commitment.status === 'pending' ? 'Promise active' : `Promise ${commitment.status}`}
@@ -237,18 +264,22 @@ function InteractionItem({
       )}
 
       {shouldShowActions && (
-        <div className={`inbox-item__actions${dramaMode ? ' inbox-item__actions--drama' : ''}`}>
+        <div
+          className={`inbox-item__actions${
+            interactionDramaMode ? ' inbox-item__actions--drama' : ''
+          }`}
+        >
           {responseOptions.map((option) => (
             <button
               key={`${interaction.id}-${option.responseType}`}
               type="button"
               aria-label={option.label}
-              title={option.description}
               data-response-type={option.responseType}
               className={`inbox-action inbox-action--${option.style}`}
               onClick={() => onRespond(interaction.id, option.responseType, option.label)}
             >
               <span>{option.label}</span>
+              {option.description && <small>{option.description}</small>}
             </button>
           ))}
         </div>
@@ -262,18 +293,18 @@ export default function IncomingInteractionsInbox() {
   const game = useAppSelector((state) => state.game)
   const open = useAppSelector(selectIncomingInboxOpen)
   const interactions = useAppSelector(selectIncomingInteractions)
-  const unreadCount = useAppSelector(selectUnreadIncomingInteractionCount)
   const relationships = useAppSelector((state) => state.social?.relationships ?? {})
   const socialMemory = useAppSelector((state) => state.social?.socialMemory ?? {})
   const commitments = useAppSelector(selectSocialCommitments)
   const dramaNetwork = useAppSelector(selectDramaNetwork)
-  const dramaMode = useAppSelector((state) => state.settings?.gameUX?.dramaMode === true)
+  const settings = useAppSelector((state) => state.settings)
+  const vip = useAppSelector((state) => state.vip)
+  const globalDramaMode = useAppSelector((state) => state.settings?.gameUX?.dramaMode === true)
 
   const players = game.players
   const currentWeek = game.week ?? 1
   const humanPlayer = players.find((player) => player.isUser)
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game])
-
   const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players])
 
   const interactionEntries = useMemo(
@@ -281,42 +312,44 @@ export default function IncomingInteractionsInbox() {
       interactions.map((interaction) => ({
         interaction,
         priority: getIncomingInteractionPriority(interaction.type),
+        policy: getIncomingInteractionResponsePolicy(interaction),
       })),
     [interactions]
   )
 
   const sortedInteractions = useMemo(
     () =>
-      [...interactionEntries].sort((a, b) => {
-        const resolvedDiff = Number(a.interaction.resolved) - Number(b.interaction.resolved)
+      [...interactionEntries].sort((left, right) => {
+        const resolvedDiff = Number(left.interaction.resolved) - Number(right.interaction.resolved)
         if (resolvedDiff !== 0) return resolvedDiff
-
-        const priorityDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
+        const policyOrder = { required: 0, optional: 1, readOnly: 2 }
+        const policyDiff = policyOrder[left.policy] - policyOrder[right.policy]
+        if (policyDiff !== 0) return policyDiff
+        const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority]
         if (priorityDiff !== 0) return priorityDiff
-
-        const expiryDiff = a.interaction.expiresAtWeek - b.interaction.expiresAtWeek
+        const expiryDiff = left.interaction.expiresAtWeek - right.interaction.expiresAtWeek
         if (expiryDiff !== 0) return expiryDiff
-
-        return b.interaction.createdAt - a.interaction.createdAt
+        return right.interaction.createdAt - left.interaction.createdAt
       }),
     [interactionEntries]
   )
 
-  const pendingInteractions = useMemo(
+  const pending = useMemo(
     () => sortedInteractions.filter((entry) => !entry.interaction.resolved),
     [sortedInteractions]
   )
-
-  const needsResponseInteractions = useMemo(
-    () => pendingInteractions.filter((entry) => entry.interaction.requiresResponse),
-    [pendingInteractions]
+  const requiredInteractions = useMemo(
+    () => pending.filter((entry) => entry.policy === 'required'),
+    [pending]
   )
-
-  const updateInteractions = useMemo(
-    () => pendingInteractions.filter((entry) => !entry.interaction.requiresResponse),
-    [pendingInteractions]
+  const optionalInteractions = useMemo(
+    () => pending.filter((entry) => entry.policy === 'optional'),
+    [pending]
   )
-
+  const readOnlyInteractions = useMemo(
+    () => pending.filter((entry) => entry.policy === 'readOnly'),
+    [pending]
+  )
   const resolvedInteractions = useMemo(
     () =>
       sortedInteractions.filter(
@@ -324,15 +357,13 @@ export default function IncomingInteractionsInbox() {
       ),
     [sortedInteractions, currentWeek]
   )
-
   const urgentCount = useMemo(
     () =>
-      pendingInteractions.filter(
+      requiredInteractions.filter(
         (entry) => entry.priority === 'high' || isExpiringThisWeek(entry.interaction, currentWeek)
       ).length,
-    [pendingInteractions, currentWeek]
+    [requiredInteractions, currentWeek]
   )
-
   const pendingCommitments = useMemo(
     () => commitments.filter((commitment) => commitment.status === 'pending'),
     [commitments]
@@ -340,30 +371,31 @@ export default function IncomingInteractionsInbox() {
 
   const credibility = useMemo(() => {
     const base = getSocialCredibility(commitments)
-    if (!dramaMode || !humanPlayer) return base
-
+    if (!globalDramaMode || !humanPlayer) return base
     const houseBeliefs = dramaNetwork.beliefs.filter(
       (belief) => belief.subjectId === humanPlayer.id && belief.holderId !== humanPlayer.id
     )
     if (houseBeliefs.length === 0) return base
-
     const weight = houseBeliefs.reduce((sum, belief) => sum + belief.confidence, 0) || 1
     const signal =
-      houseBeliefs.reduce((sum, belief) => sum + belief.sentiment * belief.confidence, 0) / weight
+      houseBeliefs.reduce(
+        (sum, belief) => sum + belief.sentiment * belief.confidence,
+        0
+      ) / weight
     const score = Math.max(0, Math.min(100, Math.round(base.score + signal * 35)))
-
     return {
       ...base,
       score,
       label: score >= 70 ? 'Trusted' : score <= 35 ? 'Questioned' : 'Mixed',
     }
-  }, [commitments, dramaMode, dramaNetwork.beliefs, humanPlayer])
+  }, [commitments, globalDramaMode, dramaNetwork.beliefs, humanPlayer])
 
   const headerSummary =
-    pendingInteractions.length === 0
+    pending.length === 0
       ? 'All caught up'
-      : `${pendingInteractions.length} pending${urgentCount > 0 ? ` • ${urgentCount} urgent` : ''}`
-
+      : `${requiredInteractions.length} decisions${
+          urgentCount > 0 ? ` • ${urgentCount} urgent` : ''
+        }${optionalInteractions.length > 0 ? ` • ${optionalInteractions.length} conversations` : ''}`
   const credibilityCopy =
     credibility.kept + credibility.broken === 0
       ? 'Your reputation · no promises judged yet'
@@ -371,7 +403,6 @@ export default function IncomingInteractionsInbox() {
 
   useEffect(() => {
     if (!open || socialModuleAvailability.canOpen) return
-
     logBlockedSocialModuleOpen(
       'Incoming social module',
       socialModuleAvailability,
@@ -380,63 +411,52 @@ export default function IncomingInteractionsInbox() {
     dispatch(closeIncomingInbox())
   }, [dispatch, open, socialModuleAvailability])
 
-  useEffect(() => {
-    if (open && unreadCount > 0) {
-      dispatch(markAllIncomingInteractionsRead())
-    }
-  }, [open, unreadCount, dispatch])
-
-  if (!open || !socialModuleAvailability.canOpen || !humanPlayer) {
-    return null
-  }
+  if (!open || !socialModuleAvailability.canOpen || !humanPlayer) return null
 
   const renderInteraction = (
     interaction: IncomingInteraction,
     priority: IncomingInteractionPriority,
+    policy: IncomingInteractionResponsePolicy,
     showActions: boolean,
     showExpiry: boolean
-  ) => (
-    <InteractionItem
-      key={interaction.id}
-      interaction={interaction}
-      priority={priority}
-      showActions={showActions}
-      showExpiry={showExpiry}
-      playerById={playerById}
-      currentWeek={currentWeek}
-      onRespond={(interactionId, responseType, responseLabel) =>
-        dispatch(
-          respondToIncomingInteraction({
-            interactionId,
-            responseType,
-            responseLabel,
-          })
-        )
-      }
-      relationships={relationships}
-      socialMemory={socialMemory}
-      humanId={humanPlayer.id}
-      commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
-      dramaMode={dramaMode}
-    />
-  )
+  ) => {
+    const interactionDramaMode =
+      getInteractionSocialMode(interaction, { game, settings, vip }) === 'drama'
+    return (
+      <InteractionItem
+        key={interaction.id}
+        interaction={interaction}
+        priority={priority}
+        policy={policy}
+        showActions={showActions}
+        showExpiry={showExpiry}
+        playerById={playerById}
+        currentWeek={currentWeek}
+        onRead={(interactionId) => dispatch(markIncomingInteractionRead(interactionId))}
+        onRespond={(interactionId, responseType, responseLabel) =>
+          dispatch(
+            respondToIncomingInteraction({ interactionId, responseType, responseLabel })
+          )
+        }
+        relationships={relationships}
+        socialMemory={socialMemory}
+        humanId={humanPlayer.id}
+        commitment={commitments.find((entry) => entry.interactionId === interaction.id)}
+        interactionDramaMode={interactionDramaMode}
+      />
+    )
+  }
 
   return (
-    <div
-      className="inbox-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Incoming interactions"
-    >
-      <div className="inbox-panel">
+    <div className="inbox-backdrop" role="dialog" aria-modal="true" aria-label="Incoming interactions">
+      <div className={`inbox-panel${globalDramaMode ? ' inbox-panel--drama' : ''}`}>
         <header className="inbox-header">
           <div className="inbox-header__top">
             <div className="inbox-header__title">
               <IncomingInteractionIcon name="inbox" className="inbox-header__title-icon" />
               <span className="inbox-header__title-text">Incoming Interactions</span>
-              {dramaMode && <span className="inbox-header__mode">Drama</span>}
+              {globalDramaMode && <span className="inbox-header__mode">Drama</span>}
             </div>
-
             <button
               className="inbox-header__close"
               type="button"
@@ -446,14 +466,15 @@ export default function IncomingInteractionsInbox() {
               <IncomingInteractionIcon name="close" />
             </button>
           </div>
-
           <div className="inbox-header__meta">
-            <span
-              className="inbox-header__credibility"
-              title="Your promise-keeping reputation. It changes only when a promise is later kept or broken."
-            >
-              {credibilityCopy}
-            </span>
+            {globalDramaMode && (
+              <span
+                className="inbox-header__credibility"
+                title="Promise-keeping reputation, adjusted by what the house currently believes."
+              >
+                {credibilityCopy}
+              </span>
+            )}
             <span className="inbox-header__summary">{headerSummary}</span>
           </div>
         </header>
@@ -463,60 +484,71 @@ export default function IncomingInteractionsInbox() {
             <div className="inbox-empty">No incoming interactions yet.</div>
           ) : (
             <div className="inbox-sections">
-              {dramaMode && pendingCommitments.length > 0 && (
-                <section
-                  className="inbox-section inbox-section--promises"
-                  aria-label="Active Promises"
-                >
-                  <h3 className="inbox-section__title inbox-section__title--promises">
-                    Active Promises
-                  </h3>
+              {globalDramaMode && pendingCommitments.length > 0 && (
+                <details className="inbox-section inbox-section--promises">
+                  <summary className="inbox-section__title inbox-section__title--promises">
+                    Active Promises · {pendingCommitments.length}
+                  </summary>
                   <div className="inbox-promises">
                     {pendingCommitments.map((commitment) => (
                       <div className="inbox-promise" key={commitment.id}>
                         <strong>{getSocialCommitmentLabel(commitment.kind)}</strong>
                         <span>
-                          {playerById.get(commitment.beneficiaryId)?.name ??
-                            commitment.beneficiaryId}
+                          {playerById.get(commitment.beneficiaryId)?.name ?? commitment.beneficiaryId}
                           {' · '}
                           {getSocialCommitmentDueCopy(commitment.kind)}
                         </span>
                       </div>
                     ))}
                   </div>
-                </section>
+                </details>
               )}
 
-              {needsResponseInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Needs Response">
-                  <h3 className="inbox-section__title">Needs Response</h3>
+              {requiredInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="Needs Decision">
+                  <h3 className="inbox-section__title">Needs Decision</h3>
                   <div className="inbox-section__list" role="list">
-                    {needsResponseInteractions.map(({ interaction, priority }) =>
-                      renderInteraction(interaction, priority, true, true)
+                    {requiredInteractions.map(({ interaction, priority, policy }) =>
+                      renderInteraction(interaction, priority, policy, true, true)
                     )}
                   </div>
                 </section>
               )}
 
-              {updateInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Updates">
-                  <h3 className="inbox-section__title inbox-section__title--updates">Updates</h3>
+              {optionalInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="Conversations">
+                  <h3 className="inbox-section__title inbox-section__title--updates">
+                    Conversations
+                  </h3>
                   <div className="inbox-section__list" role="list">
-                    {updateInteractions.map(({ interaction, priority }) =>
-                      renderInteraction(interaction, priority, true, true)
+                    {optionalInteractions.map(({ interaction, priority, policy }) =>
+                      renderInteraction(interaction, priority, policy, true, true)
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {readOnlyInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="House Updates">
+                  <h3 className="inbox-section__title inbox-section__title--updates">
+                    House Updates
+                  </h3>
+                  <div className="inbox-section__list" role="list">
+                    {readOnlyInteractions.map(({ interaction, priority, policy }) =>
+                      renderInteraction(interaction, priority, policy, false, false)
                     )}
                   </div>
                 </section>
               )}
 
               {resolvedInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Resolved Today">
+                <section className="inbox-section" aria-label="Resolved This Week">
                   <h3 className="inbox-section__title inbox-section__title--resolved">
-                    Resolved Today
+                    Resolved This Week
                   </h3>
                   <div className="inbox-section__list" role="list">
-                    {resolvedInteractions.map(({ interaction, priority }) =>
-                      renderInteraction(interaction, priority, false, false)
+                    {resolvedInteractions.map(({ interaction, priority, policy }) =>
+                      renderInteraction(interaction, priority, policy, false, false)
                     )}
                   </div>
                 </section>
