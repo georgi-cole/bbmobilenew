@@ -1,6 +1,7 @@
 import type { PlayerStatus } from '../types'
-import { resolveActionTargetMode } from './socialActions'
+import { getPublicDramaActionAvailability, isPublicDramaAction } from './dramaPacing'
 import type { SocialActionDefinition, SubjectPool } from './socialActions'
+import { resolveActionTargetMode } from './socialActions'
 import type { DramaSocialNetwork, RelationshipsMap } from './types'
 
 export interface ActionEligibilityPlayer {
@@ -14,6 +15,7 @@ export interface SocialActionEligibilityContext {
   targetIds?: readonly string[]
   subjectId?: string
   phase?: string
+  week?: number
   players?: readonly ActionEligibilityPlayer[]
   primaryTargetStatus?: PlayerStatus | null
   actorStatus?: PlayerStatus | null
@@ -80,7 +82,11 @@ function isValidSubject(
       )
     }
     case 'voters':
-      return !isNominee(subject.status) && subject.status !== 'loh' && subject.status !== 'loh+pos'
+      return (
+        !isNominee(subject.status) &&
+        subject.status !== 'loh' &&
+        subject.status !== 'loh+pos'
+      )
     case 'houseguests':
     default:
       return true
@@ -93,6 +99,7 @@ export function evaluateSocialActionEligibility({
   targetIds = [],
   subjectId,
   phase,
+  week,
   players = [],
   primaryTargetStatus,
   actorStatus,
@@ -104,6 +111,12 @@ export function evaluateSocialActionEligibility({
 }: SocialActionEligibilityContext): SocialActionEligibilityResult {
   if (action.aiOnly && !allowAIOnly) return unavailable('AI-only action')
   if (action.dramaOnly && !dramaMode) return unavailable('Drama Mode required')
+
+  if (dramaMode && isPublicDramaAction(action.id)) {
+    const pacing = getPublicDramaActionAvailability(dramaNetwork, week)
+    if (!pacing.available) return unavailable(pacing.reason)
+  }
+
   const allowedPhases = dramaMode
     ? (action.dramaAllowedPhases ?? action.allowedPhases)
     : action.allowedPhases
@@ -119,10 +132,10 @@ export function evaluateSocialActionEligibility({
     if (targetMode === 'multi') {
       const minimum = Math.max(2, action.minTargets ?? 2)
       if (targets.length < minimum) {
-        return unavailable('Select at least ' + minimum + ' housemates')
+        return unavailable(`Select at least ${minimum} housemates`)
       }
       if (action.maxTargets !== undefined && targets.length > action.maxTargets) {
-        return unavailable('Select no more than ' + action.maxTargets + ' housemates')
+        return unavailable(`Select no more than ${action.maxTargets} housemates`)
       }
     } else if (targets.length !== 1) {
       return unavailable('Select one housemate')
@@ -171,7 +184,9 @@ export function evaluateSocialActionEligibility({
           )
         : [primaryTargetStatus]
     if (
-      statuses.some((status) => !status || !requiredTargetStatus.includes(status as PlayerStatus))
+      statuses.some(
+        (status) => !status || !requiredTargetStatus.includes(status as PlayerStatus)
+      )
     ) {
       return unavailable('This action requires a different role holder')
     }
@@ -183,12 +198,8 @@ export function evaluateSocialActionEligibility({
   const excludedRelationshipTags = dramaMode
     ? (action.dramaExcludedRelationshipTags ?? action.excludedRelationshipTags)
     : action.excludedRelationshipTags
-  const minAffinity = dramaMode
-    ? (action.dramaMinAffinity ?? action.minAffinity)
-    : action.minAffinity
-  const maxAffinity = dramaMode
-    ? (action.dramaMaxAffinity ?? action.maxAffinity)
-    : action.maxAffinity
+  const minAffinity = dramaMode ? (action.dramaMinAffinity ?? action.minAffinity) : action.minAffinity
+  const maxAffinity = dramaMode ? (action.dramaMaxAffinity ?? action.maxAffinity) : action.maxAffinity
   const needsRelationshipContext =
     Boolean(requiredRelationshipTags) ||
     Boolean(excludedRelationshipTags) ||
@@ -207,7 +218,10 @@ export function evaluateSocialActionEligibility({
       if (maxAffinity !== undefined && affinity > maxAffinity) {
         return unavailable(`Only available while the relationship is ${maxAffinity}% or lower`)
       }
-      if (requiredRelationshipTags && !requiredRelationshipTags.some((tag) => tags.has(tag))) {
+      if (
+        requiredRelationshipTags &&
+        !requiredRelationshipTags.some((tag) => tags.has(tag))
+      ) {
         return unavailable('The required relationship is not active')
       }
       if (excludedRelationshipTags?.some((tag) => tags.has(tag))) {
@@ -236,14 +250,21 @@ export function evaluateSocialActionEligibility({
           arc.participantIds.includes(actorId) &&
           arc.participantIds.includes(targetId)
       )
-      if (action.excludedArcTypes?.some((type) => pairArcs.some((arc) => arc.type === type))) {
+      if (
+        action.excludedArcTypes?.some((type) =>
+          pairArcs.some((arc) => arc.type === type)
+        )
+      ) {
         return unavailable('That story is already active')
       }
       const activeArc = pairArcs
-        .filter((arc) => !action.requiredArcTypes || action.requiredArcTypes.includes(arc.type))
-        .sort((a, b) => b.lastAdvancedWeek - a.lastAdvancedWeek)[0]
-      if (action.requiredArcTypes && !activeArc)
+        .filter(
+          (arc) => !action.requiredArcTypes || action.requiredArcTypes.includes(arc.type)
+        )
+        .sort((left, right) => right.lastAdvancedWeek - left.lastAdvancedWeek)[0]
+      if (action.requiredArcTypes && !activeArc) {
         return unavailable('The required story is not active')
+      }
       if (
         action.requiredArcStages &&
         !action.requiredArcStages.includes(activeArc?.stage ?? 'resolved')
