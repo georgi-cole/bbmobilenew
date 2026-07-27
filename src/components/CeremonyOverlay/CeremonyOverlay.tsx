@@ -77,11 +77,13 @@ export interface CeremonyOverlayProps {
 /** Badge animation phases with timing (ms from overlay mount) */
 const APPEAR_DELAY = 200;
 const APPEAR_DURATION = 450;
-const FLY_DELAY = APPEAR_DELAY + APPEAR_DURATION; // 650
 const FLY_DURATION = 500;
-const LAND_DELAY = FLY_DELAY + FLY_DURATION; // 1150
 const LAND_DURATION = 350;
-const HOLD_DELAY = LAND_DELAY + LAND_DURATION; // 1500
+const EXTRACT_APPEAR_DELAY = 350;
+const EXTRACT_APPEAR_DURATION = 700;
+const EXTRACT_FLY_DURATION = 1800;
+const EXTRACT_LAND_DURATION = 450;
+const EXTRACT_MIN_DURATION = 5000;
 const COMPACT_LABEL_BREAKPOINT = '(max-width: 560px)';
 const COMPACT_TILE_LABELS: Record<string, string> = {
   'LOH Nominee': 'NOMINEE',
@@ -105,7 +107,7 @@ const LABEL_VERTICAL_OFFSET_STEP = 28;
 const LABEL_VERTICAL_OFFSET_MAX = 56;
 // Extraction motion lifts the badge just above the tile without jumping into
 // the TV chrome near the top edge on compact mobile layouts.
-const BADGE_EXTRACT_Y_OFFSET = 28;
+const BADGE_EXTRACT_Y_OFFSET = 72;
 const BADGE_EXTRACT_MIN_TOP = 12;
 // Safe small-screen fallback dimensions for non-browser/SSR rendering paths.
 const SSR_VIEWPORT_WIDTH = 390;
@@ -218,6 +220,21 @@ export default function CeremonyOverlay({
     (t) => t.rect != null && (t.rect.width > 0 || t.rect.height > 0),
   );
   const hasValidTiles = validTiles.length > 0;
+  const hasExtractMotion = validTiles.some((tile) => tile.badgeMotion === 'extract');
+  const appearDelay = hasExtractMotion ? EXTRACT_APPEAR_DELAY : APPEAR_DELAY;
+  const appearDuration = hasExtractMotion ? EXTRACT_APPEAR_DURATION : APPEAR_DURATION;
+  const flyDelay = appearDelay + appearDuration;
+  const flyDuration = hasExtractMotion ? EXTRACT_FLY_DURATION : FLY_DURATION;
+  const landDelay = flyDelay + flyDuration;
+  const landDuration = hasExtractMotion ? EXTRACT_LAND_DURATION : LAND_DURATION;
+  const holdDelay = landDelay + landDuration;
+  const effectiveDurationMs = hasExtractMotion
+    ? Math.max(durationMs, EXTRACT_MIN_DURATION)
+    : durationMs;
+  const badgeTimingStyle = {
+    '--ceremony-badge-appear-duration': `${appearDuration}ms`,
+    '--ceremony-badge-flight-duration': `${flyDuration}ms`,
+  } as React.CSSProperties;
   // Track whether we're still waiting for resolveTiles to run
   const pendingResolve = resolveTiles != null && resolvedTiles === null;
 
@@ -251,20 +268,20 @@ export default function CeremonyOverlay({
     }
 
     // Badge animation timeline
-    addTimer(() => setBadgePhase('appearing'), APPEAR_DELAY);
-    addTimer(() => setBadgePhase('flying'), FLY_DELAY);
-    addTimer(() => setBadgePhase('landed'), LAND_DELAY);
-    addTimer(() => setBadgePhase('holding'), HOLD_DELAY);
+    addTimer(() => setBadgePhase('appearing'), appearDelay);
+    addTimer(() => setBadgePhase('flying'), flyDelay);
+    addTimer(() => setBadgePhase('landed'), landDelay);
+    addTimer(() => setBadgePhase('holding'), holdDelay);
 
     // Exit sequence
     addTimer(() => {
       setVisible(false);
       addTimer(onDone, 350);
-    }, durationMs);
+    }, effectiveDurationMs);
 
     return clearTimers;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasValidTiles, durationMs, pendingResolve]);
+  }, [hasValidTiles, effectiveDurationMs, pendingResolve, appearDelay, flyDelay, landDelay, holdDelay]);
 
   // Compute cutout rects for the SVG mask
   const cutouts = validTiles.map((t) => {
@@ -345,10 +362,11 @@ export default function CeremonyOverlay({
 
   const labelLayouts = useMemo(() => {
     return validTiles.reduce<LabelLayout[]>((layouts, tile, i) => {
-      if (!tile.label) return layouts;
+      const label = tile.label ?? (tile.badgeMotion === 'extract' ? 'SAVED' : undefined);
+      if (!label) return layouts;
 
       const cutout = cutouts[i];
-      const displayLabel = getDisplayTileLabel(tile.label, useCompactTileLabels);
+      const displayLabel = getDisplayTileLabel(label, useCompactTileLabels);
       const estimatedWidth = calculateLabelWidth(displayLabel, useCompactTileLabels);
       const clampedLeft = Math.min(
         Math.max(cutout.x + (cutout.w / 2), estimatedWidth / 2 + LABEL_EDGE_MARGIN),
@@ -408,6 +426,8 @@ export default function CeremonyOverlay({
         aria-live="assertive"
         aria-label={ariaLabel ?? caption}
       >
+        {hasExtractMotion && <div className="ceremony-overlay__extract-wash" aria-hidden="true" />}
+
         {/* SVG dim layer with mask cutouts */}
         {showDim && (
           <div className="ceremony-overlay__dim">
@@ -486,6 +506,7 @@ export default function CeremonyOverlay({
             className={`ceremony-overlay__badge ${getBadgeClass(badgePhase)}`}
             style={{
               ...getBadgeStyle(i),
+              ...badgeTimingStyle,
               zIndex: 8701,
               position: 'fixed',
             }}

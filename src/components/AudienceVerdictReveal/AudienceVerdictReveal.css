@@ -182,12 +182,13 @@
   top: var(--avr-pulse-y);
   z-index: 9000;
   color: #8fc6ff;
-  font-size: 1.25rem;
+  font-size: 1.85rem;
   line-height: 1;
   pointer-events: none;
-  filter: drop-shadow(0 0 8px rgba(128, 190, 255, 0.88));
-  transform: translate(-50%, -50%) scale(0.55);
-  animation: avrExtract 1.05s cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+  filter: drop-shadow(0 0 12px rgba(128, 190, 255, 1))
+    drop-shadow(0 0 24px rgba(95, 150, 255, 0.72));
+  transform: translate(-50%, -50%) scale(0.72);
+  animation: avrExtract 2.2s cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
 }
 
 @keyframes avrSignal {
@@ -212,15 +213,18 @@
 
 @keyframes avrExtract {
   0% {
-    transform: translate(-50%, -50%) scale(0.55);
+    transform: translate(-50%, -50%) scale(0.72);
     opacity: 0;
   }
-  15% {
+  12% {
+    opacity: 1;
+  }
+  72% {
     opacity: 1;
   }
   100% {
     transform: translate(calc(-50% + var(--avr-pulse-dx)), calc(-50% + var(--avr-pulse-dy)))
-      scale(1.35);
+      scale(1.65);
     opacity: 0;
   }
 }
