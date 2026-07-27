@@ -1,0 +1,8 @@
+
+> bbmobilenew@1.0.0 typecheck
+> tsc -b
+
+src/social/socialAIDriver.ts(13,10): error TS2300: Duplicate identifier 'isAISocialActionVisible'.
+src/social/socialAIDriver.ts(14,10): error TS2300: Duplicate identifier 'isAISocialActionVisible'.
+
+TYPECHECK_EXIT_CODE=2

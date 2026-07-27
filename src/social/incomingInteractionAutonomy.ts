@@ -9,32 +9,33 @@
  * engagement scoring, contextual scenario routing, and delivery dedupe.
  */
 
-import { normalizeAffinity } from './affinityUtils';
-import { socialConfig } from './socialConfig';
-import { scheduleIncomingInteraction } from './socialSlice';
+import { normalizeAffinity } from './affinityUtils'
+import { socialConfig } from './socialConfig'
+import { scheduleIncomingInteraction } from './socialSlice'
 import {
   computeSocialMemoryAffinityBias,
   computeSocialMemoryIntensity,
   computeTrustMomentumNormalized,
-} from './socialMemory';
+} from './socialMemory'
 import {
   INCOMING_INTERACTION_ELIGIBLE_PHASES,
   INCOMING_INTERACTION_PHASE_ORDER,
-} from './incomingInteractionPhases';
+} from './incomingInteractionPhases'
 import {
   assignDeliverySlot,
   buildDeliverySlotCounts,
   buildPendingIncomingInteractions,
   getInteractionDedupeReason,
   getIncomingInteractionPriority,
-} from './incomingInteractionScheduler';
-import { logIncomingInteractionDecision } from './incomingInteractionLogging';
-import {
-  SCENARIO_VARIANT_POOLS,
-  getVoiceProfile,
-  pickVariantText,
-} from './interactionVariantBank';
-import { getNamedInteractionText } from './namedInteractionBank';
+} from './incomingInteractionScheduler'
+import { logIncomingInteractionDecision } from './incomingInteractionLogging'
+import { SCENARIO_VARIANT_POOLS, getVoiceProfile, pickVariantText } from './interactionVariantBank'
+import { getNamedInteractionText } from './namedInteractionBank'
+import { createIncomingInteraction } from './incomingInteractionFactory'
+import { createDeterministicSocialRandom } from './socialExecutionGuard'
+import { getSocialPersonality } from './socialPersonalityBank'
+import { getEffectiveSocialMode } from './socialMode'
+import { getRemoteScenarioLines } from './socialRuntimeConfig'
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -44,70 +45,77 @@ import type {
   SocialActionLogEntry,
   SocialMemoryEntry,
   SocialMemoryMap,
-} from './types';
+} from './types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface AutonomyPlayer {
-  id: string;
-  name?: string;
-  status: string;
-  isUser?: boolean;
+  id: string
+  name?: string
+  status: string
+  isUser?: boolean
 }
 
 export interface AutonomyContext {
-  phase: string;
-  week: number;
-  relationships: RelationshipsMap;
-  socialMemory?: SocialMemoryMap;
-  players: AutonomyPlayer[];
-  lohId?: string | null;
-  nomineeIds?: string[];
-  posWinnerId?: string | null;
-  povSavedId?: string | null;
-  prevHohId?: string | null;
-  votes?: Record<string, string>;
-  recentEvicteeId?: string | null;
-  pendingEvictionId?: string | null;
-  isDoubleEviction?: boolean;
-  specialVeto?: string | null;
-  lastHohCompFinisherId?: string | null;
-  playerSocialActionCount?: number;
-  dramaMode?: boolean;
+  phase: string
+  week: number
+  relationships: RelationshipsMap
+  socialMemory?: SocialMemoryMap
+  players: AutonomyPlayer[]
+  lohId?: string | null
+  nomineeIds?: string[]
+  posWinnerId?: string | null
+  povSavedId?: string | null
+  prevHohId?: string | null
+  votes?: Record<string, string>
+  recentEvicteeId?: string | null
+  pendingEvictionId?: string | null
+  isDoubleEviction?: boolean
+  specialVeto?: string | null
+  lastHohCompFinisherId?: string | null
+  playerSocialActionCount?: number
+  dramaMode?: boolean
   /** Seeded random function (returns value in [0,1)). Defaults to Math.random. */
-  random?: () => number;
+  random?: () => number
 }
 
 /** Minimal Redux-like store interface required by the autonomy scheduler. */
 export interface AutonomyStore {
-  dispatch: (action: unknown) => unknown;
+  dispatch: (action: unknown) => unknown
   getState: () => {
     settings?: {
-      gameUX?: { dramaMode?: boolean };
-    };
+      gameUX?: { dramaMode?: boolean }
+    }
+    vip?: {
+      isActive?: boolean
+      entitlements?: { dramaMode?: boolean }
+    }
     social?: {
-      incomingInteractions?: IncomingInteraction[];
-      scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
-      incomingInteractionDelivery?: IncomingInteractionDeliveryState;
-      relationships?: RelationshipsMap;
-      socialMemory?: SocialMemoryMap;
-      sessionLogs?: SocialActionLogEntry[];
-    };
+      incomingInteractions?: IncomingInteraction[]
+      scheduledIncomingInteractions?: ScheduledIncomingInteraction[]
+      incomingInteractionDelivery?: IncomingInteractionDeliveryState
+      relationships?: RelationshipsMap
+      socialMemory?: SocialMemoryMap
+      sessionLogs?: SocialActionLogEntry[]
+      actionHistory?: SocialActionLogEntry[]
+    }
     game?: {
-      players?: AutonomyPlayer[];
-      week?: number;
-      lohId?: string | null;
-      nomineeIds?: string[];
-      posWinnerId?: string | null;
-      povSavedId?: string | null;
-      prevHohId?: string | null;
-      votes?: Record<string, string>;
-      pendingEviction?: { evicteeId: string } | null;
-      doubleEviction?: { weekActive?: boolean };
-      specialVeto?: { activeType?: string | null };
-      lastHohCompFinisherId?: string | null;
-    };
-  };
+      players?: AutonomyPlayer[]
+      week?: number
+      seed?: number
+      dramaSocialMode?: boolean
+      lohId?: string | null
+      nomineeIds?: string[]
+      posWinnerId?: string | null
+      povSavedId?: string | null
+      prevHohId?: string | null
+      votes?: Record<string, string>
+      pendingEviction?: { evicteeId: string } | null
+      doubleEviction?: { weekActive?: boolean }
+      specialVeto?: { activeType?: string | null }
+      lastHohCompFinisherId?: string | null
+    }
+  }
 }
 
 type InteractionScenarioKey =
@@ -139,11 +147,11 @@ type InteractionScenarioKey =
   | 'targeted_snark'
   | 'alliance_reassurance'
   | 'generic_gossip'
-  | 'generic_check_in';
+  | 'generic_check_in'
 
 interface InteractionPlan {
-  type: IncomingInteractionType;
-  scenarioKey: InteractionScenarioKey;
+  type: IncomingInteractionType
+  scenarioKey: InteractionScenarioKey
 }
 
 const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
@@ -154,100 +162,105 @@ const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
   'nominee_confronts_loh',
   'replacement_nominee_reacts_to_loh',
   'live_vote_pitch',
-]);
+])
 
 function isCriticalEventScenario(plan: InteractionPlan | null | undefined): boolean {
-  return Boolean(plan && CRITICAL_EVENT_SCENARIOS.has(plan.scenarioKey));
+  return Boolean(plan && CRITICAL_EVENT_SCENARIOS.has(plan.scenarioKey))
 }
 
 interface RelationshipSignals {
-  affinity: number;
-  tags: Set<string>;
-  memoryEntry?: SocialMemoryEntry;
-  gratitudeRatio: number;
-  resentmentRatio: number;
-  neglectRatio: number;
-  trustMomentum: number;
-  isStrongAlly: boolean;
-  isMildAlly: boolean;
-  isStrongEnemy: boolean;
-  isMildEnemy: boolean;
+  affinity: number
+  tags: Set<string>
+  memoryEntry?: SocialMemoryEntry
+  gratitudeRatio: number
+  resentmentRatio: number
+  neglectRatio: number
+  trustMomentum: number
+  isStrongAlly: boolean
+  isMildAlly: boolean
+  isStrongEnemy: boolean
+  isMildEnemy: boolean
 }
 
 interface ActorConstraints {
-  actor: AutonomyPlayer;
-  playerId: string;
-  playerEntry?: AutonomyPlayer;
-  actorIsNominee: boolean;
-  actorIsCurrentHoh: boolean;
-  actorHasSafetyPower: boolean;
-  playerIsHoh: boolean;
-  playerHasSafetyPower: boolean;
-  playerIsNominee: boolean;
-  playerFinishedLastLohComp: boolean;
-  actorWasSaved: boolean;
-  actorIsPendingEvictee: boolean;
-  actorSurvivedCurrentVote: boolean;
+  actor: AutonomyPlayer
+  playerId: string
+  playerEntry?: AutonomyPlayer
+  actorIsNominee: boolean
+  actorIsCurrentHoh: boolean
+  actorHasSafetyPower: boolean
+  playerIsHoh: boolean
+  playerHasSafetyPower: boolean
+  playerIsNominee: boolean
+  playerFinishedLastLohComp: boolean
+  actorWasSaved: boolean
+  actorIsPendingEvictee: boolean
+  actorSurvivedCurrentVote: boolean
 }
 
 interface InteractionTextContext {
-  actorName: string;
-  playerName: string;
-  hohName: string;
-  posName: string;
-  nomineesLabel: string;
-  specialVeto: string;
+  actorName: string
+  playerName: string
+  hohName: string
+  posName: string
+  nomineesLabel: string
+  specialVeto: string
 }
 
 function getPersonalityFactor(actorId: string): number {
-  const tuning = socialConfig.incomingInteractionAutonomyTuning;
-  return tuning.personalityFactors[actorId] ?? tuning.defaultPersonalityFactor;
+  return getSocialPersonality(actorId).socialEnergy
 }
 
 function getPhaseUrgency(phase: string): number {
-  const tuning = socialConfig.incomingInteractionAutonomyTuning;
-  return tuning.phaseUrgency[phase] ?? tuning.defaultPhaseUrgency;
+  const tuning = socialConfig.incomingInteractionAutonomyTuning
+  return tuning.phaseUrgency[phase] ?? tuning.defaultPhaseUrgency
 }
 
 function getEventPressure(phase: string): number {
-  const tuning = socialConfig.incomingInteractionAutonomyTuning;
-  return tuning.phaseEventPressure[phase] ?? 0;
+  const tuning = socialConfig.incomingInteractionAutonomyTuning
+  return tuning.phaseEventPressure[phase] ?? 0
 }
 
 function getPlayerById(context: AutonomyContext, playerId: string): AutonomyPlayer | undefined {
-  return context.players.find((player) => player.id === playerId);
+  return context.players.find((player) => player.id === playerId)
 }
 
-function getPlayerName(context: AutonomyContext, playerId: string | null | undefined, fallback: string): string {
-  if (!playerId) return fallback;
-  return getPlayerById(context, playerId)?.name ?? playerId;
+function getPlayerName(
+  context: AutonomyContext,
+  playerId: string | null | undefined,
+  fallback: string
+): string {
+  if (!playerId) return fallback
+  return getPlayerById(context, playerId)?.name ?? playerId
 }
 
 function formatNameList(names: string[]): string {
-  if (names.length === 0) return 'the block';
-  if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+  if (names.length === 0) return 'the block'
+  if (names.length === 1) return names[0]
+  if (names.length === 2) return `${names[0]} and ${names[1]}`
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
 }
 
 function buildRelationshipSignals(
   actorId: string,
   playerId: string,
-  context: AutonomyContext,
+  context: AutonomyContext
 ): RelationshipSignals {
-  const actorRels = context.relationships[actorId] ?? {};
-  const relEntry = actorRels[playerId];
-  const baseAffinity = relEntry ? normalizeAffinity(relEntry.affinity) : 0;
-  const memoryEntry = context.socialMemory?.[actorId]?.[playerId];
-  const memoryBias = computeSocialMemoryAffinityBias(memoryEntry);
-  const affinity = Math.max(-1, Math.min(1, baseAffinity + memoryBias));
-  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds;
-  const memoryCaps = socialConfig.socialMemoryConfig.caps;
+  const actorRels = context.relationships[actorId] ?? {}
+  const relEntry = actorRels[playerId]
+  const baseAffinity = relEntry ? normalizeAffinity(relEntry.affinity) : 0
+  const memoryEntry = context.socialMemory?.[actorId]?.[playerId]
+  const memoryBias = computeSocialMemoryAffinityBias(memoryEntry)
+  const affinity = Math.max(-1, Math.min(1, baseAffinity + memoryBias))
+  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds
+  const memoryCaps = socialConfig.socialMemoryConfig.caps
 
-  const gratitudeRatio = memoryCaps.gratitude > 0 ? (memoryEntry?.gratitude ?? 0) / memoryCaps.gratitude : 0;
-  const resentmentRatio = memoryCaps.resentment > 0 ? (memoryEntry?.resentment ?? 0) / memoryCaps.resentment : 0;
-  const neglectRatio = memoryCaps.neglect > 0 ? (memoryEntry?.neglect ?? 0) / memoryCaps.neglect : 0;
-  const trustMomentum = computeTrustMomentumNormalized(memoryEntry);
+  const gratitudeRatio =
+    memoryCaps.gratitude > 0 ? (memoryEntry?.gratitude ?? 0) / memoryCaps.gratitude : 0
+  const resentmentRatio =
+    memoryCaps.resentment > 0 ? (memoryEntry?.resentment ?? 0) / memoryCaps.resentment : 0
+  const neglectRatio = memoryCaps.neglect > 0 ? (memoryEntry?.neglect ?? 0) / memoryCaps.neglect : 0
+  const trustMomentum = computeTrustMomentumNormalized(memoryEntry)
 
   return {
     affinity,
@@ -261,35 +274,37 @@ function buildRelationshipSignals(
     isMildAlly: affinity >= thresholds.mildAlly,
     isStrongEnemy: affinity <= thresholds.strongEnemy,
     isMildEnemy: affinity <= thresholds.mildEnemy,
-  };
+  }
 }
 
 function buildActorConstraints(
   actorId: string,
   playerId: string,
-  context: AutonomyContext,
+  context: AutonomyContext
 ): ActorConstraints | null {
-  const actor = getPlayerById(context, actorId);
-  if (!actor) return null;
-  const playerEntry = getPlayerById(context, playerId);
-  const nomineeIds = context.nomineeIds ?? [];
+  const actor = getPlayerById(context, actorId)
+  if (!actor) return null
+  const playerEntry = getPlayerById(context, playerId)
+  const nomineeIds = context.nomineeIds ?? []
   const safetyIsLive =
     context.phase === 'pos_results' ||
     context.phase === 'pos_ceremony' ||
-    context.phase === 'pos_ceremony_results';
-  const actorIsNominee = nomineeIds.includes(actor.id) || actor.status.includes('nominated');
-  const actorIsCurrentHoh = context.lohId === actor.id || actor.status.includes('loh');
-  const actorHasSafetyPower = safetyIsLive &&
-    (context.posWinnerId === actor.id || actor.status.includes('pos'));
-  const playerIsHoh = context.lohId === playerId || playerEntry?.status.includes('loh') === true;
-  const playerHasSafetyPower = safetyIsLive &&
-    (context.posWinnerId === playerId || playerEntry?.status.includes('pos') === true);
-  const playerIsNominee = nomineeIds.includes(playerId) || playerEntry?.status.includes('nominated') === true;
-  const playerFinishedLastLohComp = context.lastHohCompFinisherId === playerId;
-  const actorWasSaved = context.povSavedId === actor.id;
-  const actorIsPendingEvictee = context.pendingEvictionId === actor.id;
+    context.phase === 'pos_ceremony_results'
+  const actorIsNominee = nomineeIds.includes(actor.id) || actor.status.includes('nominated')
+  const actorIsCurrentHoh = context.lohId === actor.id || actor.status.includes('loh')
+  const actorHasSafetyPower =
+    safetyIsLive && (context.posWinnerId === actor.id || actor.status.includes('pos'))
+  const playerIsHoh = context.lohId === playerId || playerEntry?.status.includes('loh') === true
+  const playerHasSafetyPower =
+    safetyIsLive &&
+    (context.posWinnerId === playerId || playerEntry?.status.includes('pos') === true)
+  const playerIsNominee =
+    nomineeIds.includes(playerId) || playerEntry?.status.includes('nominated') === true
+  const playerFinishedLastLohComp = context.lastHohCompFinisherId === playerId
+  const actorWasSaved = context.povSavedId === actor.id
+  const actorIsPendingEvictee = context.pendingEvictionId === actor.id
   const actorSurvivedCurrentVote =
-    context.phase === 'eviction_results' && actorIsNominee && !actorIsPendingEvictee;
+    context.phase === 'eviction_results' && actorIsNominee && !actorIsPendingEvictee
 
   return {
     actor,
@@ -305,41 +320,47 @@ function buildActorConstraints(
     actorWasSaved,
     actorIsPendingEvictee,
     actorSurvivedCurrentVote,
-  };
+  }
 }
 
 function canSendInteractionType(
   type: IncomingInteractionType,
   constraints: ActorConstraints,
-  signals: RelationshipSignals,
+  signals: RelationshipSignals
 ): boolean {
   switch (type) {
     case 'nomination_plea':
-      return constraints.actorIsNominee && (constraints.playerIsHoh || constraints.playerHasSafetyPower);
+      return (
+        constraints.actorIsNominee && (constraints.playerIsHoh || constraints.playerHasSafetyPower)
+      )
     case 'deal_offer':
-      return !constraints.actorIsCurrentHoh;
+      return !constraints.actorIsCurrentHoh
     case 'alliance_proposal':
-      return !signals.tags.has('alliance') && signals.affinity > 0;
+      return !signals.tags.has('alliance') && signals.affinity > 0
     case 'snide_remark':
-      return !signals.tags.has('alliance') && !constraints.actorSurvivedCurrentVote;
+      return !signals.tags.has('alliance') && !constraints.actorSurvivedCurrentVote
     case 'warning':
-      return !signals.tags.has('alliance') && !constraints.actorSurvivedCurrentVote && !(constraints.actorIsCurrentHoh && constraints.playerHasSafetyPower);
+      return (
+        !signals.tags.has('alliance') &&
+        !constraints.actorSurvivedCurrentVote &&
+        !(constraints.actorIsCurrentHoh && constraints.playerHasSafetyPower)
+      )
     case 'compliment':
-      return !signals.tags.has('betrayal') || constraints.actorSurvivedCurrentVote;
+      return !signals.tags.has('betrayal') || constraints.actorSurvivedCurrentVote
     default:
-      return true;
+      return true
   }
 }
 
 function fallbackInteractionPlan(
   phase: string,
   constraints: ActorConstraints,
-  signals: RelationshipSignals,
+  signals: RelationshipSignals
 ): InteractionPlan | null {
-  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds;
-  if (constraints.actorIsPendingEvictee) return null;
+  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds
+  if (constraints.actorIsPendingEvictee) return null
   if (constraints.actorSurvivedCurrentVote) {
-    return { type: 'compliment', scenarioKey: 'survivor_gratitude' };
+    return { type: 'compliment', scenarioKey: 'survivor_gratitude' }
   }
   if (
     signals.tags.has('betrayal') ||
@@ -348,43 +369,46 @@ function fallbackInteractionPlan(
     return {
       type: signals.isStrongEnemy ? 'snide_remark' : 'warning',
       scenarioKey: 'betrayal_warning',
-    };
+    }
   }
   if (signals.neglectRatio >= thresholds.neglectHigh && !signals.tags.has('alliance')) {
-    return { type: 'warning', scenarioKey: 'ignored_warning' };
+    return { type: 'warning', scenarioKey: 'ignored_warning' }
   }
   if (signals.tags.has('target')) {
     return {
       type: signals.isStrongEnemy ? 'snide_remark' : 'gossip',
       scenarioKey: 'targeted_snark',
-    };
+    }
   }
   if (signals.tags.has('alliance')) {
     return {
       type: signals.isStrongAlly ? 'compliment' : 'check_in',
       scenarioKey: 'alliance_reassurance',
-    };
+    }
   }
-  if ((phase === 'week_start' || phase === 'social_1' || phase === 'social_2') && signals.isMildAlly) {
-    return { type: 'check_in', scenarioKey: 'week_start_ally_check_in' };
+  if (
+    (phase === 'week_start' || phase === 'social_1' || phase === 'social_2') &&
+    signals.isMildAlly
+  ) {
+    return { type: 'check_in', scenarioKey: 'week_start_ally_check_in' }
   }
   if (signals.isStrongEnemy || signals.isMildEnemy) {
-    return { type: 'gossip', scenarioKey: 'generic_gossip' };
+    return { type: 'gossip', scenarioKey: 'generic_gossip' }
   }
-  return null;
+  return null
 }
 
 function resolveIncomingInteractionPlan(
   actorId: string,
   playerId: string,
-  context: AutonomyContext,
+  context: AutonomyContext
 ): InteractionPlan | null {
-  const constraints = buildActorConstraints(actorId, playerId, context);
-  if (!constraints || constraints.actorIsPendingEvictee) return null;
+  const constraints = buildActorConstraints(actorId, playerId, context)
+  if (!constraints || constraints.actorIsPendingEvictee) return null
 
-  const signals = buildRelationshipSignals(actorId, playerId, context);
-  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds;
-  let plan: InteractionPlan | null = null;
+  const signals = buildRelationshipSignals(actorId, playerId, context)
+  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds
+  let plan: InteractionPlan | null = null
 
   if (
     context.dramaMode &&
@@ -393,31 +417,31 @@ function resolveIncomingInteractionPlan(
     constraints.playerIsHoh &&
     !constraints.actorIsNominee
   ) {
-    plan = { type: 'deal_offer', scenarioKey: 'safety_holder_consults_loh' };
+    plan = { type: 'deal_offer', scenarioKey: 'safety_holder_consults_loh' }
   } else if (
     context.phase === 'pos_results' &&
     constraints.playerHasSafetyPower &&
     !constraints.actorIsNominee &&
     (signals.isMildAlly || signals.tags.has('alliance'))
   ) {
-    plan = { type: 'compliment', scenarioKey: 'safety_win_congratulations' };
+    plan = { type: 'compliment', scenarioKey: 'safety_win_congratulations' }
   } else if (context.phase === 'nomination_results' && constraints.playerIsNominee) {
     if (signals.isMildAlly || signals.tags.has('alliance')) {
-      plan = { type: 'check_in', scenarioKey: 'player_nominated_support' };
+      plan = { type: 'check_in', scenarioKey: 'player_nominated_support' }
     } else if (signals.isMildEnemy || signals.tags.has('target') || signals.tags.has('betrayal')) {
       plan = {
         type: signals.isStrongEnemy ? 'snide_remark' : 'warning',
         scenarioKey: 'player_nominated_tension',
-      };
+      }
     }
   } else if (
     (context.phase === 'loh_results' || context.phase === 'social_1') &&
     constraints.playerFinishedLastLohComp
   ) {
     if (signals.isMildAlly || signals.tags.has('alliance')) {
-      plan = { type: 'check_in', scenarioKey: 'competition_low_finish_support' };
+      plan = { type: 'check_in', scenarioKey: 'competition_low_finish_support' }
     } else if (signals.isMildEnemy) {
-      plan = { type: 'snide_remark', scenarioKey: 'competition_low_finish_taunt' };
+      plan = { type: 'snide_remark', scenarioKey: 'competition_low_finish_taunt' }
     }
   } else if (
     context.phase === 'social_2' &&
@@ -427,22 +451,28 @@ function resolveIncomingInteractionPlan(
     plan = {
       type: signals.isMildAlly ? 'compliment' : 'warning',
       scenarioKey: 'social_momentum_notice',
-    };
+    }
   } else if (context.phase === 'eviction_results' && constraints.actorSurvivedCurrentVote) {
-    if (!signals.tags.has('alliance') && signals.affinity >= thresholds.allianceProposalMinAffinity) {
-      plan = { type: 'alliance_proposal', scenarioKey: 'survivor_gratitude' };
+    if (
+      !signals.tags.has('alliance') &&
+      signals.affinity >= thresholds.allianceProposalMinAffinity
+    ) {
+      plan = { type: 'alliance_proposal', scenarioKey: 'survivor_gratitude' }
     } else {
-      plan = { type: 'compliment', scenarioKey: 'survivor_gratitude' };
+      plan = { type: 'compliment', scenarioKey: 'survivor_gratitude' }
     }
   } else if (
     context.phase === 'pos_ceremony_results' &&
     constraints.actorWasSaved &&
     (constraints.playerIsHoh || constraints.playerHasSafetyPower)
   ) {
-    if (!signals.tags.has('alliance') && signals.affinity >= thresholds.allianceProposalMinAffinity) {
-      plan = { type: 'alliance_proposal', scenarioKey: 'post_veto_gratitude' };
+    if (
+      !signals.tags.has('alliance') &&
+      signals.affinity >= thresholds.allianceProposalMinAffinity
+    ) {
+      plan = { type: 'alliance_proposal', scenarioKey: 'post_veto_gratitude' }
     } else {
-      plan = { type: 'compliment', scenarioKey: 'post_veto_gratitude' };
+      plan = { type: 'compliment', scenarioKey: 'post_veto_gratitude' }
     }
   } else if (
     constraints.actorIsNominee &&
@@ -452,13 +482,13 @@ function resolveIncomingInteractionPlan(
     plan = {
       type: signals.isMildEnemy ? 'check_in' : 'deal_offer',
       scenarioKey: 'nominee_veto_pitch',
-    };
+    }
   } else if (
     constraints.actorIsNominee &&
     context.phase === 'nominations' &&
     constraints.playerIsHoh
   ) {
-    plan = { type: 'nomination_plea', scenarioKey: 'nominee_hoh_plea' };
+    plan = { type: 'nomination_plea', scenarioKey: 'nominee_hoh_plea' }
   } else if (
     constraints.actorIsNominee &&
     (context.phase === 'social_2' || context.phase === 'live_vote')
@@ -466,9 +496,11 @@ function resolveIncomingInteractionPlan(
     plan = {
       type: context.phase === 'live_vote' ? 'deal_offer' : 'check_in',
       scenarioKey: context.phase === 'live_vote' ? 'live_vote_pitch' : 'nominee_campaign',
-    };
+    }
   } else if (
-    (context.phase === 'social_1' || context.phase === 'nominations' || context.phase === 'loh_results') &&
+    (context.phase === 'social_1' ||
+      context.phase === 'nominations' ||
+      context.phase === 'loh_results') &&
     constraints.playerIsHoh &&
     !constraints.actorIsNominee &&
     !constraints.actorIsCurrentHoh
@@ -477,64 +509,69 @@ function resolveIncomingInteractionPlan(
       plan = {
         type: signals.tags.has('alliance') ? 'check_in' : 'compliment',
         scenarioKey: 'hoh_safety_request',
-      };
+      }
     } else {
-      plan = { type: 'deal_offer', scenarioKey: 'hoh_safety_request' };
+      plan = { type: 'deal_offer', scenarioKey: 'hoh_safety_request' }
     }
   } else if (context.phase === 'nomination_results' && constraints.actorIsNominee) {
     if (context.dramaMode && constraints.playerIsHoh) {
-      plan = signals.isMildEnemy || signals.tags.has('betrayal')
-        ? { type: 'warning', scenarioKey: 'nominee_confronts_loh' }
-        : { type: 'check_in', scenarioKey: 'nominee_understands_loh' };
+      plan =
+        signals.isMildEnemy || signals.tags.has('betrayal')
+          ? { type: 'warning', scenarioKey: 'nominee_confronts_loh' }
+          : { type: 'check_in', scenarioKey: 'nominee_understands_loh' }
     } else {
-      plan = { type: 'check_in', scenarioKey: 'nomination_aftershock' };
+      plan = { type: 'check_in', scenarioKey: 'nomination_aftershock' }
     }
   } else if (context.phase === 'pos_ceremony_results' && constraints.actorIsNominee) {
     if (context.dramaMode && constraints.playerIsHoh) {
       plan = {
         type: signals.isMildEnemy ? 'warning' : 'check_in',
         scenarioKey: 'replacement_nominee_reacts_to_loh',
-      };
+      }
     } else {
-      plan = { type: 'check_in', scenarioKey: 'post_veto_campaign' };
+      plan = { type: 'check_in', scenarioKey: 'post_veto_campaign' }
     }
   } else if (context.phase === 'loh_results' && constraints.playerIsHoh) {
     if (signals.isStrongAlly || signals.tags.has('alliance')) {
-      plan = { type: 'compliment', scenarioKey: 'hoh_congratulations' };
-    } else if (signals.tags.has('betrayal') || signals.isStrongEnemy || signals.tags.has('target')) {
+      plan = { type: 'compliment', scenarioKey: 'hoh_congratulations' }
+    } else if (
+      signals.tags.has('betrayal') ||
+      signals.isStrongEnemy ||
+      signals.tags.has('target')
+    ) {
       plan = {
         type: signals.isStrongEnemy ? 'warning' : 'gossip',
         scenarioKey: 'betrayal_warning',
-      };
+      }
     }
   } else if (
     (context.phase === 'week_start' || context.phase === 'social_1') &&
     !signals.tags.has('alliance') &&
     signals.isStrongAlly
   ) {
-    plan = { type: 'alliance_proposal', scenarioKey: 'week_start_alliance_lock' };
+    plan = { type: 'alliance_proposal', scenarioKey: 'week_start_alliance_lock' }
   }
 
   if (!plan) {
-    plan = fallbackInteractionPlan(context.phase, constraints, signals);
+    plan = fallbackInteractionPlan(context.phase, constraints, signals)
   }
-  if (!plan) return null;
+  if (!plan) return null
   if (canSendInteractionType(plan.type, constraints, signals)) {
-    return plan;
+    return plan
   }
 
-  const fallback = fallbackInteractionPlan(context.phase, constraints, signals);
+  const fallback = fallbackInteractionPlan(context.phase, constraints, signals)
   if (fallback && canSendInteractionType(fallback.type, constraints, signals)) {
-    return fallback;
+    return fallback
   }
 
   if (signals.tags.has('alliance')) {
-    return { type: 'check_in', scenarioKey: 'alliance_reassurance' };
+    return { type: 'check_in', scenarioKey: 'alliance_reassurance' }
   }
   if (signals.isStrongEnemy) {
-    return { type: 'gossip', scenarioKey: 'generic_gossip' };
+    return { type: 'gossip', scenarioKey: 'generic_gossip' }
   }
-  return null;
+  return null
 }
 
 /**
@@ -544,44 +581,44 @@ function resolveIncomingInteractionPlan(
 export function chooseIncomingInteractionType(
   actorId: string,
   playerId: string,
-  context: AutonomyContext,
+  context: AutonomyContext
 ): IncomingInteractionType {
-  return resolveIncomingInteractionPlan(actorId, playerId, context)?.type ?? 'check_in';
+  return resolveIncomingInteractionPlan(actorId, playerId, context)?.type ?? 'check_in'
 }
 
 function computeRecencyPenalty(
   actorId: string,
   pendingInteractions: IncomingInteraction[],
   currentWeek: number,
-  cooldownTicks: number,
+  cooldownTicks: number
 ): number {
   const lastFromActor = pendingInteractions
     .filter((interaction) => interaction.fromId === actorId)
-    .sort((left, right) => right.createdAt - left.createdAt)[0];
+    .sort((left, right) => right.createdAt - left.createdAt)[0]
 
-  if (!lastFromActor) return 0;
+  if (!lastFromActor) return 0
 
-  const weeksSince = currentWeek - lastFromActor.createdWeek;
-  if (weeksSince >= cooldownTicks) return 0;
-  return 1 - weeksSince / cooldownTicks;
+  const weeksSince = currentWeek - lastFromActor.createdWeek
+  if (weeksSince >= cooldownTicks) return 0
+  return 1 - weeksSince / cooldownTicks
 }
 
 export function computeIncomingInteractionEngagementScore(
   actorId: string,
   playerId: string,
   context: AutonomyContext,
-  pendingInteractions: IncomingInteraction[] = [],
+  pendingInteractions: IncomingInteraction[] = []
 ): number {
-  const cfg = socialConfig.incomingInteractionConfig;
-  const w = cfg.weights;
-  const signals = buildRelationshipSignals(actorId, playerId, context);
+  const cfg = socialConfig.incomingInteractionConfig
+  const w = cfg.weights
+  const signals = buildRelationshipSignals(actorId, playerId, context)
 
-  const relationshipIntensity = Math.abs(signals.affinity);
-  const strategicUrgency = getPhaseUrgency(context.phase);
-  const personality = getPersonalityFactor(actorId);
-  const eventPressure = getEventPressure(context.phase);
-  const memoryIntensity = computeSocialMemoryIntensity(signals.memoryEntry);
-  const trustMomentum = signals.trustMomentum;
+  const relationshipIntensity = Math.abs(signals.affinity)
+  const strategicUrgency = getPhaseUrgency(context.phase)
+  const personality = getPersonalityFactor(actorId)
+  const eventPressure = getEventPressure(context.phase)
+  const memoryIntensity = computeSocialMemoryIntensity(signals.memoryEntry)
+  const trustMomentum = signals.trustMomentum
 
   const baseScore =
     w.relationshipIntensity * relationshipIntensity +
@@ -589,89 +626,88 @@ export function computeIncomingInteractionEngagementScore(
     w.personality * personality +
     w.eventPressure * eventPressure +
     (w.memoryIntensity ?? 0) * memoryIntensity +
-    (w.trustMomentum ?? 0) * trustMomentum;
+    (w.trustMomentum ?? 0) * trustMomentum
 
   const recencyPenalty = computeRecencyPenalty(
     actorId,
     pendingInteractions,
     context.week,
-    cfg.cooldownTicks,
-  );
-  const penalised = baseScore * (1 - recencyPenalty);
+    cfg.cooldownTicks
+  )
+  const penalised = baseScore * (1 - recencyPenalty)
 
-  const rng = context.random ?? Math.random;
-  const jitter = (rng() * 2 - 1) * cfg.randomVariance;
+  const rng = context.random ?? Math.random
+  const jitter = (rng() * 2 - 1) * cfg.randomVariance
 
-  return Math.max(0, penalised + jitter);
+  return Math.max(0, penalised + jitter)
 }
 
 export interface IncomingInteractionEnqueueDecision {
-  allowed: boolean;
-  reason: string;
-  plan?: InteractionPlan;
-  score?: number;
-  globalActive?: number;
-  perAiActive?: number;
-  recencyPenalty?: number;
+  allowed: boolean
+  reason: string
+  plan?: InteractionPlan
+  score?: number
+  globalActive?: number
+  perAiActive?: number
+  recencyPenalty?: number
 }
 
 export function evaluateIncomingInteractionEnqueueDecision(
   actorId: string,
   playerId: string,
   context: AutonomyContext,
-  pendingInteractions: IncomingInteraction[],
+  pendingInteractions: IncomingInteraction[]
 ): IncomingInteractionEnqueueDecision {
-  const cfg = socialConfig.incomingInteractionConfig;
-  const constraints = buildActorConstraints(actorId, playerId, context);
+  const cfg = socialConfig.incomingInteractionConfig
+  const constraints = buildActorConstraints(actorId, playerId, context)
 
   if (!constraints) {
-    return { allowed: false, reason: 'blocked_missing_actor' };
+    return { allowed: false, reason: 'blocked_missing_actor' }
   }
   if (constraints.actorIsPendingEvictee) {
-    return { allowed: false, reason: 'blocked_pending_eviction' };
+    return { allowed: false, reason: 'blocked_pending_eviction' }
   }
 
-  const globalActive = pendingInteractions.filter((interaction) => !interaction.resolved).length;
-  const maxActive = context.dramaMode ? cfg.maxActive : 4;
+  const globalActive = pendingInteractions.filter((interaction) => !interaction.resolved).length
+  const maxActive = context.dramaMode ? cfg.maxActive : 4
   if (globalActive >= maxActive) {
     if (socialConfig.verbose) {
       console.debug(
-        `[autonomy] skip ${actorId}: global active cap reached (${globalActive}/${maxActive})`,
-      );
+        `[autonomy] skip ${actorId}: global active cap reached (${globalActive}/${maxActive})`
+      )
     }
-    return { allowed: false, reason: 'blocked_by_global_cap', globalActive };
+    return { allowed: false, reason: 'blocked_by_global_cap', globalActive }
   }
 
   const perAiActive = pendingInteractions.filter(
-    (interaction) => interaction.fromId === actorId && !interaction.resolved,
-  ).length;
+    (interaction) => interaction.fromId === actorId && !interaction.resolved
+  ).length
   if (perAiActive >= cfg.maxPerAI) {
     if (socialConfig.verbose) {
       console.debug(
-        `[autonomy] skip ${actorId}: per-AI cap reached (${perAiActive}/${cfg.maxPerAI})`,
-      );
+        `[autonomy] skip ${actorId}: per-AI cap reached (${perAiActive}/${cfg.maxPerAI})`
+      )
     }
-    return { allowed: false, reason: 'blocked_by_actor_cap', perAiActive };
+    return { allowed: false, reason: 'blocked_by_actor_cap', perAiActive }
   }
 
-  const plan = resolveIncomingInteractionPlan(actorId, playerId, context);
+  const plan = resolveIncomingInteractionPlan(actorId, playerId, context)
   if (!plan) {
-    return { allowed: false, reason: 'blocked_by_context_rules' };
+    return { allowed: false, reason: 'blocked_by_context_rules' }
   }
 
   const recencyPenalty = computeRecencyPenalty(
     actorId,
     pendingInteractions,
     context.week,
-    cfg.cooldownTicks,
-  );
+    cfg.cooldownTicks
+  )
   if (recencyPenalty >= 1 && !(context.dramaMode && isCriticalEventScenario(plan))) {
     if (socialConfig.verbose) {
-      console.debug(`[autonomy] skip ${actorId}: on cooldown (recencyPenalty=${recencyPenalty})`);
+      console.debug(`[autonomy] skip ${actorId}: on cooldown (recencyPenalty=${recencyPenalty})`)
     }
-    return { allowed: false, reason: 'blocked_by_cooldown', recencyPenalty };
+    return { allowed: false, reason: 'blocked_by_cooldown', recencyPenalty }
   }
-
 
   const eventDrivenScenarios = new Set<InteractionScenarioKey>([
     'nomination_aftershock',
@@ -691,41 +727,43 @@ export function evaluateIncomingInteractionEnqueueDecision(
     'safety_win_congratulations',
     'competition_low_finish_support',
     'competition_low_finish_taunt',
-  ]);
+  ])
   const baseScore = computeIncomingInteractionEngagementScore(
     actorId,
     playerId,
     context,
-    pendingInteractions,
-  );
-  const score = baseScore + (context.dramaMode && isCriticalEventScenario(plan) ? 0.9 : eventDrivenScenarios.has(plan.scenarioKey) ? 0.2 : 0);
+    pendingInteractions
+  )
+  const score =
+    baseScore +
+    (context.dramaMode && isCriticalEventScenario(plan)
+      ? 0.9
+      : eventDrivenScenarios.has(plan.scenarioKey)
+        ? 0.2
+        : 0)
   if (score < cfg.scoreThreshold) {
     if (socialConfig.verbose) {
       console.debug(
-        `[autonomy] skip ${actorId}: score ${score.toFixed(3)} below threshold ${cfg.scoreThreshold}`,
-      );
+        `[autonomy] skip ${actorId}: score ${score.toFixed(3)} below threshold ${cfg.scoreThreshold}`
+      )
     }
-    return { allowed: false, reason: 'blocked_by_score_threshold', score };
+    return { allowed: false, reason: 'blocked_by_score_threshold', score }
   }
 
   if (socialConfig.verbose) {
-    console.debug(`[autonomy] enqueue ${actorId}: score=${score.toFixed(3)}`);
+    console.debug(`[autonomy] enqueue ${actorId}: score=${score.toFixed(3)}`)
   }
-  return { allowed: true, reason: 'eligible', plan, score };
+  return { allowed: true, reason: 'eligible', plan, score }
 }
 
 export function shouldEnqueueInteraction(
   actorId: string,
   playerId: string,
   context: AutonomyContext,
-  pendingInteractions: IncomingInteraction[],
+  pendingInteractions: IncomingInteraction[]
 ): boolean {
-  return evaluateIncomingInteractionEnqueueDecision(
-    actorId,
-    playerId,
-    context,
-    pendingInteractions,
-  ).allowed;
+  return evaluateIncomingInteractionEnqueueDecision(actorId, playerId, context, pendingInteractions)
+    .allowed
 }
 
 const SCENARIO_TEMPLATES: Record<InteractionScenarioKey, string[]> = {
@@ -874,19 +912,23 @@ const SCENARIO_TEMPLATES: Record<InteractionScenarioKey, string[]> = {
     'Just checking in. This week feels different already.',
     'I figured it was worth touching base for a second.',
   ],
-};
+}
 
 function buildInteractionTextContext(
   actorId: string,
   playerId: string,
-  context: AutonomyContext,
+  context: AutonomyContext
 ): InteractionTextContext {
-  const actorName = getPlayerName(context, actorId, actorId);
-  const playerName = getPlayerName(context, playerId, 'you');
-  const hohName = getPlayerName(context, context.lohId, 'the LOH');
-  const posName = getPlayerName(context, context.posWinnerId, 'the Safety holder');
-  const nomineeNames = (context.nomineeIds ?? []).map((nomineeId) => getPlayerName(context, nomineeId, nomineeId));
-  const specialVeto = context.specialVeto ? context.specialVeto.replace(/_/g, ' ') : 'the Power of Safety';
+  const actorName = getPlayerName(context, actorId, actorId)
+  const playerName = getPlayerName(context, playerId, 'you')
+  const hohName = getPlayerName(context, context.lohId, 'the LOH')
+  const posName = getPlayerName(context, context.posWinnerId, 'the Safety holder')
+  const nomineeNames = (context.nomineeIds ?? []).map((nomineeId) =>
+    getPlayerName(context, nomineeId, nomineeId)
+  )
+  const specialVeto = context.specialVeto
+    ? context.specialVeto.replace(/_/g, ' ')
+    : 'the Power of Safety'
 
   return {
     actorName,
@@ -895,7 +937,7 @@ function buildInteractionTextContext(
     posName,
     nomineesLabel: formatNameList(nomineeNames),
     specialVeto,
-  };
+  }
 }
 
 /** Pick a concrete third party for gossip/warnings instead of vague “people” talk. */
@@ -903,21 +945,23 @@ function selectInteractionSubject(
   actorId: string,
   playerId: string,
   type: IncomingInteractionType,
-  context: AutonomyContext,
+  context: AutonomyContext
 ): AutonomyPlayer | undefined {
-  if (type !== 'gossip' && type !== 'warning') return undefined;
+  if (type !== 'gossip' && type !== 'warning') return undefined
   const candidates = context.players.filter(
     (candidate) =>
       candidate.id !== actorId &&
       candidate.id !== playerId &&
       candidate.status !== 'evicted' &&
-      candidate.status !== 'jury',
-  );
+      candidate.status !== 'jury'
+  )
   return candidates.sort((left, right) => {
-    const leftAffinity = normalizeAffinity(context.relationships[actorId]?.[left.id]?.affinity ?? 0);
-    const rightAffinity = normalizeAffinity(context.relationships[actorId]?.[right.id]?.affinity ?? 0);
-    return leftAffinity - rightAffinity || left.id.localeCompare(right.id);
-  })[0];
+    const leftAffinity = normalizeAffinity(context.relationships[actorId]?.[left.id]?.affinity ?? 0)
+    const rightAffinity = normalizeAffinity(
+      context.relationships[actorId]?.[right.id]?.affinity ?? 0
+    )
+    return leftAffinity - rightAffinity || left.id.localeCompare(right.id)
+  })[0]
 }
 
 function renderInteractionTemplate(template: string, textContext: InteractionTextContext): string {
@@ -927,7 +971,7 @@ function renderInteractionTemplate(template: string, textContext: InteractionTex
     .replace(/\{hoh\}/g, textContext.hohName)
     .replace(/\{pos\}/g, textContext.posName)
     .replace(/\{nominees\}/g, textContext.nomineesLabel)
-    .replace(/\{specialVeto\}/g, textContext.specialVeto);
+    .replace(/\{specialVeto\}/g, textContext.specialVeto)
 }
 
 function generateInteractionText(
@@ -937,149 +981,155 @@ function generateInteractionText(
   context: AutonomyContext,
   pendingInteractions: IncomingInteraction[] = [],
   rng: () => number = Math.random,
-  dramaMode = false,
+  dramaMode = false
 ): { text: string; variantFamilyId: string; variantId: string } {
   // Build context for token replacement.
-  const textContext = buildInteractionTextContext(actorId, playerId, context);
+  const textContext = buildInteractionTextContext(actorId, playerId, context)
 
   // Determine how many times this actor has already contacted the player
   // (unresolved interactions) so follow-up families can be preferred.
   const priorFromActor = pendingInteractions.filter(
-    (interaction) => interaction.fromId === actorId && !interaction.resolved,
-  ).length;
+    (interaction) => interaction.fromId === actorId && !interaction.resolved
+  ).length
 
   // Collect variant family IDs recently used by this actor → player pair so
   // the selection logic can avoid them. Only consider interactions within the
   // configured family-cooldown window to prevent unbounded growth.
   const familyRecencyWindowWeeks = Math.max(
     0,
-    socialConfig.incomingInteractionDeliveryConfig.dedupe.familyCooldownWeeks ?? 0,
-  );
-  const recentFamilyCutoffWeek = context.week - familyRecencyWindowWeeks;
+    socialConfig.incomingInteractionDeliveryConfig.dedupe.familyCooldownWeeks ?? 0
+  )
+  const recentFamilyCutoffWeek = context.week - familyRecencyWindowWeeks
   const recentFamilyIds = new Set<string>(
     pendingInteractions
       .filter(
         (interaction) =>
           interaction.fromId === actorId &&
           typeof interaction.createdWeek === 'number' &&
-          interaction.createdWeek >= recentFamilyCutoffWeek,
+          interaction.createdWeek >= recentFamilyCutoffWeek
       )
       .map((interaction) => interaction.payload?.variantFamilyId as string | undefined)
-      .filter((id): id is string => typeof id === 'string'),
-  );
+      .filter((id): id is string => typeof id === 'string')
+  )
   const lineRecencyWindowWeeks = Math.max(
     familyRecencyWindowWeeks,
-    socialConfig.incomingInteractionDeliveryConfig.dedupe.lineCooldownWeeks ?? 0,
-  );
-  const recentLineCutoffWeek = context.week - lineRecencyWindowWeeks;
+    socialConfig.incomingInteractionDeliveryConfig.dedupe.lineCooldownWeeks ?? 0
+  )
+  const recentLineCutoffWeek = context.week - lineRecencyWindowWeeks
   const recentVariantIds = new Set<string>(
     pendingInteractions
       .filter(
         (interaction) =>
-          interaction.fromId === actorId && interaction.createdWeek >= recentLineCutoffWeek,
+          interaction.fromId === actorId && interaction.createdWeek >= recentLineCutoffWeek
       )
       .map((interaction) => interaction.payload?.variantId as string | undefined)
-      .filter((id): id is string => typeof id === 'string'),
-  );
+      .filter((id): id is string => typeof id === 'string')
+  )
 
+  const remoteTemplates = getRemoteScenarioLines(plan.scenarioKey)
+  if (remoteTemplates?.length) {
+    const template =
+      remoteTemplates[Math.floor(rng() * remoteTemplates.length)] ?? remoteTemplates[0]
+    return {
+      text: renderInteractionTemplate(template, textContext),
+      variantFamilyId: `remote_${plan.scenarioKey}`,
+      variantId: `remote_${plan.scenarioKey}:${remoteTemplates.indexOf(template)}`,
+    }
+  }
 
   // Use the rich variant bank when families are available for this scenario.
-  const variantFamilies = SCENARIO_VARIANT_POOLS[plan.scenarioKey];
+  const variantFamilies = SCENARIO_VARIANT_POOLS[plan.scenarioKey]
   if (dramaMode && variantFamilies && variantFamilies.length > 0) {
-    const voiceProfile = getVoiceProfile(actorId);
+    const voiceProfile = getVoiceProfile(actorId)
     const { text, familyId, variantId } = pickVariantText(
       variantFamilies,
       voiceProfile,
       recentFamilyIds,
       priorFromActor,
       rng,
-      recentVariantIds,
-    );
+      recentVariantIds
+    )
     return {
       text: renderInteractionTemplate(text, textContext),
       variantFamilyId: familyId,
       variantId,
-    };
+    }
   }
 
   // Fallback: use the legacy flat template array.
-  const templates = SCENARIO_TEMPLATES[plan.scenarioKey] ?? SCENARIO_TEMPLATES.generic_check_in;
-  const template = templates[Math.floor(rng() * templates.length)] ?? 'We need to talk.';
+  const templates = SCENARIO_TEMPLATES[plan.scenarioKey] ?? SCENARIO_TEMPLATES.generic_check_in
+  const template = templates[Math.floor(rng() * templates.length)] ?? 'We need to talk.'
   return {
     text: renderInteractionTemplate(template, textContext),
     variantFamilyId: `legacy_${plan.scenarioKey}`,
     variantId: `legacy_${plan.scenarioKey}:${templates.indexOf(template)}`,
-  };
+  }
 }
 
-let _idCounter = 0;
+let _idCounter = 0
 function generateInteractionId(): string {
-  return `ai-int-${Date.now()}-${++_idCounter}`;
+  return `ai-int-${Date.now()}-${++_idCounter}`
 }
 
-export { INCOMING_INTERACTION_PHASE_ORDER };
+export { INCOMING_INTERACTION_PHASE_ORDER }
 
-export const ELIGIBLE_PHASES = INCOMING_INTERACTION_ELIGIBLE_PHASES;
-
-function interactionTypeRequiresResponse(type: IncomingInteractionType): boolean {
-  return type === 'alliance_proposal' || type === 'deal_offer' || type === 'nomination_plea';
-}
+export const ELIGIBLE_PHASES = INCOMING_INTERACTION_ELIGIBLE_PHASES
 
 export function scheduleIncomingInteractionsForPhase(
   phase: string,
   store: AutonomyStore,
-  contextOverride?: Partial<AutonomyContext>,
+  contextOverride?: Partial<AutonomyContext>
 ): void {
   if (!ELIGIBLE_PHASES.has(phase)) {
     if (socialConfig.verbose) {
-      console.debug(`[autonomy] phase '${phase}' is not an eligible scheduling phase – skipping`);
+      console.debug(`[autonomy] phase '${phase}' is not an eligible scheduling phase – skipping`)
     }
-    return;
+    return
   }
 
-  const state = store.getState();
-  const dramaMode = state.settings?.gameUX?.dramaMode === true;
-  const socialState = state.social;
+  const state = store.getState()
+  const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const socialState = state.social
   if (!socialState) {
     if (socialConfig.verbose) {
-      console.debug('[autonomy] no social state – skipping');
+      console.debug('[autonomy] no social state – skipping')
     }
-    return;
+    return
   }
 
-  const gameState = state.game;
-  const players: AutonomyPlayer[] = contextOverride?.players ?? gameState?.players ?? [];
-  const week: number = contextOverride?.week ?? (gameState?.week ?? 1);
+  const gameState = state.game
+  const players: AutonomyPlayer[] = contextOverride?.players ?? gameState?.players ?? []
+  const week: number = contextOverride?.week ?? gameState?.week ?? 1
   const relationships: RelationshipsMap =
-    contextOverride?.relationships ?? socialState.relationships ?? {};
+    contextOverride?.relationships ?? socialState.relationships ?? {}
   const socialMemory: SocialMemoryMap =
-    contextOverride?.socialMemory ?? socialState.socialMemory ?? {};
+    contextOverride?.socialMemory ?? socialState.socialMemory ?? {}
 
-  const playerEntry = players.find((player) => player.isUser);
+  const playerEntry = players.find((player) => player.isUser)
   if (!playerEntry) {
     if (socialConfig.verbose) {
-      console.debug('[autonomy] no player found – skipping');
+      console.debug('[autonomy] no player found – skipping')
     }
-    return;
+    return
   }
 
   if (playerEntry.status === 'evicted' || playerEntry.status === 'jury') {
     if (socialConfig.verbose) {
       console.debug(
-        `[autonomy] player '${playerEntry.id}' is ${playerEntry.status} – skipping incoming interactions`,
-      );
+        `[autonomy] player '${playerEntry.id}' is ${playerEntry.status} – skipping incoming interactions`
+      )
     }
-    return;
+    return
   }
 
-  const playerId = playerEntry.id;
+  const playerId = playerEntry.id
   const context: AutonomyContext = {
     phase,
     week,
     relationships,
     socialMemory,
     players,
-    dramaMode: contextOverride?.dramaMode ?? state.settings?.gameUX?.dramaMode === true,
+    dramaMode: contextOverride?.dramaMode ?? dramaMode,
     lohId: contextOverride?.lohId ?? gameState?.lohId ?? null,
     nomineeIds: contextOverride?.nomineeIds ?? gameState?.nomineeIds ?? [],
     posWinnerId: contextOverride?.posWinnerId ?? gameState?.posWinnerId ?? null,
@@ -1091,44 +1141,47 @@ export function scheduleIncomingInteractionsForPhase(
     pendingEvictionId:
       contextOverride?.pendingEvictionId ?? gameState?.pendingEviction?.evicteeId ?? null,
     isDoubleEviction:
-      contextOverride?.isDoubleEviction ?? (gameState?.doubleEviction?.weekActive === true),
+      contextOverride?.isDoubleEviction ?? gameState?.doubleEviction?.weekActive === true,
     specialVeto: contextOverride?.specialVeto ?? gameState?.specialVeto?.activeType ?? null,
     lastHohCompFinisherId:
       contextOverride?.lastHohCompFinisherId ?? gameState?.lastHohCompFinisherId ?? null,
     playerSocialActionCount:
       contextOverride?.playerSocialActionCount ??
-      (socialState.sessionLogs ?? []).filter(
+      (socialState.actionHistory ?? socialState.sessionLogs ?? []).filter(
         (entry) =>
           entry.actorId === playerId &&
           entry.source === 'manual' &&
           entry.outcome === 'success' &&
-          entry.week === week,
+          entry.week === week
       ).length,
-    random: contextOverride?.random,
-  };
+    random:
+      contextOverride?.random ??
+      createDeterministicSocialRandom([gameState?.seed ?? 0, week, phase, playerId]),
+  }
 
-  const scheduledQueue = socialState.scheduledIncomingInteractions ?? [];
+  const scheduledQueue = socialState.scheduledIncomingInteractions ?? []
   const pendingInteractions: IncomingInteraction[] = buildPendingIncomingInteractions(
     socialState.incomingInteractions ?? [],
-    scheduledQueue,
-  );
+    scheduledQueue
+  )
   const deliveredThisPhase = socialState.incomingInteractionDelivery
     ? socialState.incomingInteractionDelivery.lastDeliveryPhase === phase &&
       socialState.incomingInteractionDelivery.lastDeliveryWeek === week
       ? socialState.incomingInteractionDelivery.deliveredThisPhase
       : 0
-    : 0;
-  const slotCounts = buildDeliverySlotCounts(scheduledQueue, phase, week, deliveredThisPhase);
-  const visibleActiveCount = (socialState.incomingInteractions ?? []).filter((interaction) => !interaction.resolved)
-    .length;
+    : 0
+  const slotCounts = buildDeliverySlotCounts(scheduledQueue, phase, week, deliveredThisPhase)
+  const visibleActiveCount = (socialState.incomingInteractions ?? []).filter(
+    (interaction) => !interaction.resolved
+  ).length
 
   const aiActors = players.filter(
     (player) =>
       !player.isUser &&
       player.status !== 'evicted' &&
       player.status !== 'jury' &&
-      player.id !== playerId,
-  );
+      player.id !== playerId
+  )
 
   const rankedDecisions = aiActors
     .map((actor) => ({
@@ -1137,33 +1190,33 @@ export function scheduleIncomingInteractionsForPhase(
         actor.id,
         playerId,
         context,
-        pendingInteractions,
+        pendingInteractions
       ),
     }))
-    .sort((left, right) => (right.decision.score ?? -1) - (left.decision.score ?? -1));
+    .sort((left, right) => (right.decision.score ?? -1) - (left.decision.score ?? -1))
   const alreadyCreatedThisWeek = pendingInteractions.filter(
-    (interaction) => interaction.createdWeek === week,
-  ).length;
+    (interaction) => interaction.createdWeek === week
+  ).length
   const criticalDecisionCount = rankedDecisions.filter(
     (entry) =>
-      context.dramaMode &&
-      entry.decision.allowed &&
-      isCriticalEventScenario(entry.decision.plan),
-  ).length;
-  const checkpointBudget = criticalDecisionCount > 0
-    ? Math.max(
-        socialConfig.incomingInteractionConfig.maxGeneratedPerCheckpoint,
-        Math.min(3, criticalDecisionCount),
-      )
-    : socialConfig.incomingInteractionConfig.maxGeneratedPerCheckpoint;
+      context.dramaMode && entry.decision.allowed && isCriticalEventScenario(entry.decision.plan)
+  ).length
+  const checkpointBudget =
+    criticalDecisionCount > 0
+      ? Math.max(
+          socialConfig.incomingInteractionConfig.maxGeneratedPerCheckpoint,
+          Math.min(3, criticalDecisionCount)
+        )
+      : socialConfig.incomingInteractionConfig.maxGeneratedPerCheckpoint
   const generationBudget = Math.max(
     0,
     Math.min(
       checkpointBudget,
-      (context.dramaMode ? socialConfig.incomingInteractionConfig.maxPerWeek : 3) - alreadyCreatedThisWeek,
-    ),
-  );
-  let generatedThisCheckpoint = 0;
+      (context.dramaMode ? socialConfig.incomingInteractionConfig.maxPerWeek : 3) -
+        alreadyCreatedThisWeek
+    )
+  )
+  let generatedThisCheckpoint = 0
 
   for (const { actor, decision } of rankedDecisions) {
     if (!decision.allowed) {
@@ -1174,23 +1227,24 @@ export function scheduleIncomingInteractionsForPhase(
         week,
         phase,
         detail: decision.score !== undefined ? `score=${decision.score.toFixed(3)}` : undefined,
-      });
-      continue;
+      })
+      continue
     }
 
     if (generatedThisCheckpoint >= generationBudget) {
       logIncomingInteractionDecision(store.dispatch, {
         stage: 'generation',
-        reason: generationBudget === 0 ? 'blocked_by_weekly_budget' : 'blocked_by_checkpoint_budget',
+        reason:
+          generationBudget === 0 ? 'blocked_by_weekly_budget' : 'blocked_by_checkpoint_budget',
         actorId: actor.id,
         week,
         phase,
         detail: decision.score !== undefined ? `score=${decision.score.toFixed(3)}` : undefined,
-      });
-      continue;
+      })
+      continue
     }
 
-    const plan = decision.plan;
+    const plan = decision.plan
     if (!plan) {
       logIncomingInteractionDecision(store.dispatch, {
         stage: 'generation',
@@ -1198,8 +1252,8 @@ export function scheduleIncomingInteractionsForPhase(
         actorId: actor.id,
         week,
         phase,
-      });
-      continue;
+      })
+      continue
     }
 
     const textResult = generateInteractionText(
@@ -1209,44 +1263,39 @@ export function scheduleIncomingInteractionsForPhase(
       context,
       pendingInteractions,
       context.random,
-      dramaMode,
-    );
+      dramaMode
+    )
     const subject = dramaMode
       ? selectInteractionSubject(actor.id, playerId, plan.type, context)
-      : undefined;
-    const subjectName = subject?.name ?? subject?.id;
+      : undefined
+    const subjectName = subject?.name ?? subject?.id
     const interactionText =
       subjectName && (plan.type === 'gossip' || plan.type === 'warning')
         ? getNamedInteractionText(
             plan.scenarioKey,
             plan.type,
             subjectName,
-            `${actor.id}:${playerId}:${week}:${phase}:${textResult.variantId}`,
+            `${actor.id}:${playerId}:${week}:${phase}:${textResult.variantId}`
           )
-        : textResult.text;
-    const interaction: IncomingInteraction = {
+        : textResult.text
+    const interaction = createIncomingInteraction({
       id: generateInteractionId(),
       fromId: actor.id,
       type: plan.type,
       text: interactionText,
+      week,
+      phase,
+      mode: dramaMode ? 'drama' : 'normal',
       payload: {
         scenarioKey: plan.scenarioKey,
         variantFamilyId: textResult.variantFamilyId,
         variantId: textResult.variantId,
-        phase,
         actorStatus: actor.status,
         subjectId: subject?.id,
-        dramaMode,
       },
-      createdAt: Date.now(),
-      createdWeek: week,
-      expiresAtWeek: week + 1,
-      read: false,
-      requiresResponse: interactionTypeRequiresResponse(plan.type),
-      resolved: false,
-    };
+    })
 
-    const priority = getIncomingInteractionPriority(plan.type);
+    const priority = getIncomingInteractionPriority(plan.type)
     logIncomingInteractionDecision(store.dispatch, {
       stage: 'generation',
       reason: 'generated',
@@ -1260,13 +1309,13 @@ export function scheduleIncomingInteractionsForPhase(
         decision.score !== undefined
           ? `score=${decision.score.toFixed(3)};scenario=${plan.scenarioKey}`
           : `scenario=${plan.scenarioKey}`,
-    });
+    })
     const dedupeReason = getInteractionDedupeReason({
       interaction,
       priority,
       pendingInteractions,
       week,
-    });
+    })
     if (dedupeReason) {
       logIncomingInteractionDecision(store.dispatch, {
         stage: 'deduped',
@@ -1277,8 +1326,8 @@ export function scheduleIncomingInteractionsForPhase(
         priority,
         week,
         phase,
-      });
-      continue;
+      })
+      continue
     }
 
     const slot = assignDeliverySlot({
@@ -1287,12 +1336,12 @@ export function scheduleIncomingInteractionsForPhase(
       priority,
       slotCounts,
       visibleActiveCount,
-    });
+    })
     if (!slot) {
       const dropReason =
         visibleActiveCount >= socialConfig.incomingInteractionDeliveryConfig.maxActiveVisible
           ? 'blocked_by_visible_cap'
-          : 'blocked_by_delivery_cap';
+          : 'blocked_by_delivery_cap'
       logIncomingInteractionDecision(store.dispatch, {
         stage: 'dropped',
         reason: dropReason,
@@ -1302,8 +1351,8 @@ export function scheduleIncomingInteractionsForPhase(
         priority,
         week,
         phase,
-      });
-      continue;
+      })
+      continue
     }
 
     logIncomingInteractionDecision(store.dispatch, {
@@ -1321,7 +1370,7 @@ export function scheduleIncomingInteractionsForPhase(
       scheduledForWeek: slot.scheduledForWeek,
       scheduledForPhase: slot.scheduledForPhase,
       detail: `${slot.deliveryReason ?? 'unknown'};scenario=${plan.scenarioKey}`,
-    });
+    })
 
     store.dispatch(
       scheduleIncomingInteraction({
@@ -1331,10 +1380,10 @@ export function scheduleIncomingInteractionsForPhase(
         scheduledForWeek: slot.scheduledForWeek,
         scheduledForPhase: slot.scheduledForPhase,
         deliveryReason: slot.deliveryReason,
-      }),
-    );
+      })
+    )
 
-    pendingInteractions.unshift(interaction);
-    generatedThisCheckpoint += 1;
+    pendingInteractions.unshift(interaction)
+    generatedThisCheckpoint += 1
   }
 }

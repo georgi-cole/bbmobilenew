@@ -1,6 +1,7 @@
 import type { PlayerStatus } from '../types'
-import { resolveActionTargetMode } from './socialActions'
+import { getPublicDramaActionAvailability, isPublicDramaAction } from './dramaPacing'
 import type { SocialActionDefinition, SubjectPool } from './socialActions'
+import { resolveActionTargetMode } from './socialActions'
 import type { DramaSocialNetwork, RelationshipsMap } from './types'
 
 export interface ActionEligibilityPlayer {
@@ -14,6 +15,7 @@ export interface SocialActionEligibilityContext {
   targetIds?: readonly string[]
   subjectId?: string
   phase?: string
+  week?: number
   players?: readonly ActionEligibilityPlayer[]
   primaryTargetStatus?: PlayerStatus | null
   actorStatus?: PlayerStatus | null
@@ -93,6 +95,7 @@ export function evaluateSocialActionEligibility({
   targetIds = [],
   subjectId,
   phase,
+  week,
   players = [],
   primaryTargetStatus,
   actorStatus,
@@ -104,6 +107,12 @@ export function evaluateSocialActionEligibility({
 }: SocialActionEligibilityContext): SocialActionEligibilityResult {
   if (action.aiOnly && !allowAIOnly) return unavailable('AI-only action')
   if (action.dramaOnly && !dramaMode) return unavailable('Drama Mode required')
+
+  if (dramaMode && isPublicDramaAction(action.id)) {
+    const pacing = getPublicDramaActionAvailability(dramaNetwork, week)
+    if (!pacing.available) return unavailable(pacing.reason)
+  }
+
   const allowedPhases = dramaMode
     ? (action.dramaAllowedPhases ?? action.allowedPhases)
     : action.allowedPhases
@@ -119,10 +128,10 @@ export function evaluateSocialActionEligibility({
     if (targetMode === 'multi') {
       const minimum = Math.max(2, action.minTargets ?? 2)
       if (targets.length < minimum) {
-        return unavailable('Select at least ' + minimum + ' housemates')
+        return unavailable(`Select at least ${minimum} housemates`)
       }
       if (action.maxTargets !== undefined && targets.length > action.maxTargets) {
-        return unavailable('Select no more than ' + action.maxTargets + ' housemates')
+        return unavailable(`Select no more than ${action.maxTargets} housemates`)
       }
     } else if (targets.length !== 1) {
       return unavailable('Select one housemate')
@@ -241,9 +250,10 @@ export function evaluateSocialActionEligibility({
       }
       const activeArc = pairArcs
         .filter((arc) => !action.requiredArcTypes || action.requiredArcTypes.includes(arc.type))
-        .sort((a, b) => b.lastAdvancedWeek - a.lastAdvancedWeek)[0]
-      if (action.requiredArcTypes && !activeArc)
+        .sort((left, right) => right.lastAdvancedWeek - left.lastAdvancedWeek)[0]
+      if (action.requiredArcTypes && !activeArc) {
         return unavailable('The required story is not active')
+      }
       if (
         action.requiredArcStages &&
         !action.requiredArcStages.includes(activeArc?.stage ?? 'resolved')

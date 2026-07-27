@@ -1,82 +1,36 @@
-﻿import { useRef } from 'react';
-import { SOCIAL_ACTIONS } from '../../social/socialActions';
-import { normalizeActionCosts } from '../../social/smExecNormalize';
-import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility';
-import ActionCard from './ActionCard';
-import type { Player, PlayerStatus } from '../../types';
-import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types';
+﻿import { useRef } from 'react'
+import { SOCIAL_ACTIONS } from '../../social/socialActions'
+import { isHumanSocialActionVisible } from '../../social/socialActionCatalog'
+import { normalizeActionCosts } from '../../social/smExecNormalize'
+import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility'
+import ActionCard from './ActionCard'
+import type { Player, PlayerStatus } from '../../types'
+import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
 
 export interface ActionGridProps {
-  /** Called with the action id when a card is clicked/activated. */
-  onActionClick?: (actionId: string) => void;
-  /** Called with the action id when a card's Preview button is clicked. */
-  onPreview?: (actionId: string) => void;
-  /** Set of action ids that are currently disabled. */
-  disabledIds?: ReadonlySet<string>;
-  /** Id of the currently selected action. */
-  selectedId?: string | null;
-  /**
-   * Ids of the currently selected target players. When provided, the
-   * PreviewPopup shows per-target affinity deltas for the hovered/focused action.
-   */
-  selectedTargetIds?: ReadonlySet<string>;
-  /**
-   * Player roster used to resolve target ids to display names in the preview.
-   * Optional — if omitted, target ids are shown as-is.
-   */
-  players?: readonly Player[];
-  /**
-   * Id of the acting player (human). Passed to computeOutcomeScore so each
-   * delta is computed with the real actor context rather than an empty string.
-   */
-  actorId?: string;
-  /**
-   * Actor's current energy. When provided, actions are sorted so affordable
-   * ones appear first; unavailable actions are dimmed with a reason badge.
-   * When omitted, actions render in their canonical order with no availability
-   * overlay (backwards-compatible with tests that don't supply energy).
-   */
-  actorEnergy?: number;
-  /** Actor's current influence (integer pts ×100). Used for multi-resource affordability. */
-  actorInfluence?: number;
-  /** Actor's current info (integer pts ×100). Used for multi-resource affordability. */
-  actorInfo?: number;
-  /**
-   * Current relationship graph. When provided, preview scores include the
-   * actor→target affinity bias so previews match execution-time scores.
-   */
-  relationships?: RelationshipsMap;
-  /**
-   * Status of the currently selected primary target (e.g. 'loh', 'pos', 'active').
-   * When provided, actions with a `requiredTargetStatus` are hidden unless
-   * the target's status matches one of the required values.
-   * When omitted (no target selected), role-gated actions are hidden.
-   */
-  primaryTargetStatus?: PlayerStatus | null;
-  /** Premium catalog and context gates. */
-  dramaMode?: boolean;
-  currentPhase?: string;
-  dramaNetwork?: DramaSocialNetwork;
-  hiddenActionIds?: ReadonlySet<string>;
-  /** Live energy prices keyed by action id. */
-  energyCostOverrides?: Readonly<Record<string, number>>;
+  onActionClick?: (actionId: string) => void
+  onPreview?: (actionId: string) => void
+  disabledIds?: ReadonlySet<string>
+  selectedId?: string | null
+  selectedTargetIds?: ReadonlySet<string>
+  players?: readonly Player[]
+  actorId?: string
+  actorEnergy?: number
+  actorInfluence?: number
+  actorInfo?: number
+  relationships?: RelationshipsMap
+  primaryTargetStatus?: PlayerStatus | null
+  dramaMode?: boolean
+  currentPhase?: string
+  dramaNetwork?: DramaSocialNetwork
+  hiddenActionIds?: ReadonlySet<string>
+  energyCostOverrides?: Readonly<Record<string, number>>
 }
 
 /**
- * ActionGrid — horizontally scrollable row of ActionCard components.
- *
- * Reads the canonical SOCIAL_ACTIONS list and renders one card per action.
- * Disabled/selected state is controlled by the parent via props so this
- * component stays pure and easy to test.
- *
- * Keyboard navigation:
- *   ArrowLeft / ArrowRight — moves focus between non-disabled action cards.
- *   Enter / Space          — activates the focused card (handled by ActionCard).
- *
- * Preview:
- *   Hovering or focusing a card sets previewActionId; an inline PreviewPopup
- *   appears below the grid showing per-target affinity deltas (success outcome).
- *   Mouse leaving the grid or focus moving outside clears the preview.
+ * Stable action catalogue. Normal Mode exposes the compact core toolkit; Drama
+ * Mode exposes the complete non-AI catalogue. Affordability changes styling and
+ * feedback rather than card position, preserving muscle memory.
  */
 export default function ActionGrid({
   onActionClick,
@@ -97,60 +51,53 @@ export default function ActionGrid({
   hiddenActionIds = new Set(),
   energyCostOverrides,
 }: ActionGridProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
     const cards = Array.from(
-      containerRef.current?.querySelectorAll<HTMLElement>('[data-action-id][tabindex="0"]') ?? [],
-    );
-    if (cards.length === 0) return;
-    // Resolve the active card via closest() so nested elements (e.g. Preview
-    // button inside a card) also work correctly.
+      containerRef.current?.querySelectorAll<HTMLElement>('[data-action-id][tabindex="0"]') ?? []
+    )
+    if (cards.length === 0) return
     const activeCard = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
-      '[data-action-id]',
-    );
-    const idx = activeCard ? cards.indexOf(activeCard) : -1;
+      '[data-action-id]'
+    )
+    const index = activeCard ? cards.indexOf(activeCard) : -1
     const next =
-      idx === -1
-        ? e.key === 'ArrowRight'
+      index === -1
+        ? event.key === 'ArrowRight'
           ? 0
           : cards.length - 1
-        : e.key === 'ArrowRight'
-          ? Math.min(idx + 1, cards.length - 1)
-          : Math.max(idx - 1, 0);
-    cards[next]?.focus();
+        : event.key === 'ArrowRight'
+          ? Math.min(index + 1, cards.length - 1)
+          : Math.max(index - 1, 0)
+    cards[next]?.focus()
   }
 
-  // Sort actions when actorEnergy is provided: affordable (all resources) first,
-  // then unaffordable. Within each group, preserve canonical order.
-  //
-  // When actorInfluence/actorInfo are omitted (undefined), those resource axes are
-  // treated as unconstrained (Infinity), so energy-only callers do not accidentally
-  // mark influence/info-cost actions as unaffordable.
   const actorResources = {
     energy: actorEnergy ?? 0,
     influence: actorInfluence ?? Infinity,
     info: actorInfo ?? Infinity,
-  };
+  }
 
   function isActionAffordable(costs: { energy: number; influence: number; info: number }): boolean {
     return (
       costs.energy <= actorResources.energy &&
       costs.influence <= actorResources.influence &&
       costs.info <= actorResources.info
-    );
+    )
   }
 
   function getActionCosts(action: (typeof SOCIAL_ACTIONS)[number]) {
-    const costs = normalizeActionCosts(action, selectedTargetIds?.size, dramaMode);
-    const energyOverride = energyCostOverrides?.[action.id];
-    return energyOverride === undefined ? costs : { ...costs, energy: energyOverride };
+    const costs = normalizeActionCosts(action, selectedTargetIds?.size, dramaMode)
+    const energyOverride = energyCostOverrides?.[action.id]
+    return energyOverride === undefined ? costs : { ...costs, energy: energyOverride }
   }
 
   function isContextEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
     return (
+      isHumanSocialActionVisible(action, dramaMode ? 'drama' : 'normal') &&
       !hiddenActionIds.has(action.id) &&
       evaluateSocialActionEligibility({
         action,
@@ -163,67 +110,51 @@ export default function ActionGrid({
         dramaNetwork,
         dramaMode,
       }).eligible
-    );
+    )
   }
 
-  const sortedActions =
-    actorEnergy !== undefined
-      ? [...SOCIAL_ACTIONS].filter(isContextEligible).sort((a, b) => {
-          const aAffordable = isActionAffordable(getActionCosts(a));
-          const bAffordable = isActionAffordable(getActionCosts(b));
-          if (aAffordable === bAffordable) return 0;
-          return aAffordable ? -1 : 1;
-        })
-      : SOCIAL_ACTIONS.filter(isContextEligible);
+  const visibleActions = SOCIAL_ACTIONS.filter(isContextEligible)
 
-  /** Returns an availability reason string, or empty string if the action is affordable. */
   function getAvailabilityReason(costs: {
-    energy: number;
-    influence: number;
-    info: number;
+    energy: number
+    influence: number
+    info: number
   }): string {
-    if (actorEnergy === undefined) return '';
+    if (actorEnergy === undefined) return ''
     if (costs.energy > actorResources.energy) {
-      return `Need ⚡${costs.energy} (have ${actorResources.energy})`;
+      return `Need ⚡${costs.energy} (have ${actorResources.energy})`
     }
     if (costs.influence > actorResources.influence) {
-      return `Need 🤝${costs.influence} (have ${actorResources.influence})`;
+      return `Need 🤝${costs.influence} (have ${actorResources.influence})`
     }
     if (costs.info > actorResources.info) {
-      return `Need 💡${costs.info} (have ${actorResources.info})`;
+      return `Need 💡${costs.info} (have ${actorResources.info})`
     }
-    return '';
+    return ''
   }
 
   return (
-    <>
-      <div
-        ref={containerRef}
-        className="sp2-action-grid"
-        role="group"
-        onKeyDown={handleKeyDown}
-      >
-        {sortedActions.map((action) => {
-          const costs = getActionCosts(action);
-          const availabilityReason = getAvailabilityReason(costs);
-          const isDisabled = disabledIds.has(action.id);
-          const isAvailable = actorEnergy !== undefined && !availabilityReason;
-          return (
-            <ActionCard
-              key={action.id}
-              action={action}
-              costs={costs}
-              selected={selectedId === action.id}
-              disabled={isDisabled}
-              availabilityReason={availabilityReason}
-              available={actorEnergy !== undefined ? isAvailable : undefined}
-              onClick={onActionClick}
-              onPreview={onPreview}
-              costOverride={costs}
-            />
-          );
-        })}
-      </div>
-    </>
-  );
+    <div ref={containerRef} className="sp2-action-grid" role="group" onKeyDown={handleKeyDown}>
+      {visibleActions.map((action) => {
+        const costs = getActionCosts(action)
+        const availabilityReason = getAvailabilityReason(costs)
+        const isDisabled = disabledIds.has(action.id)
+        const isAvailable = actorEnergy !== undefined && isActionAffordable(costs)
+        return (
+          <ActionCard
+            key={action.id}
+            action={action}
+            costs={costs}
+            selected={selectedId === action.id}
+            disabled={isDisabled}
+            availabilityReason={availabilityReason}
+            available={actorEnergy !== undefined ? isAvailable : undefined}
+            onClick={onActionClick}
+            onPreview={onPreview}
+            costOverride={costs}
+          />
+        )
+      })}
+    </div>
+  )
 }

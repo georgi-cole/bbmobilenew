@@ -216,7 +216,7 @@ export default function Settings() {
       case 'toggle': {
         const hasAccess =
           item.id === 'dramaMode'
-            ? hasDramaMode || settings.gameUX.dramaMode
+            ? hasDramaMode
             : item.id === 'publicMode'
               ? hasPublicMode || settings.sim.publicModeAdminOverride
               : item.id === 'tribunalHouse'

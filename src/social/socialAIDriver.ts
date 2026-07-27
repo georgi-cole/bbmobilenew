@@ -1,42 +1,35 @@
 ﻿/**
- * socialAIDriver — conservative, budget-aware driver that ticks at a
- * configurable interval and triggers AI social actions.
+ * socialAIDriver — budget-aware social decision loop for AI housemates.
  *
- * Public API:
- *   setStore(store)   — wire Redux store (called from SocialEngine.init)
- *   start()           — begin ticking; calls SocialPolicy + SocialManeuvers
- *   stop()            — cancel ticking immediately
- *   getStatus()       — returns { running, tickCount, actionsExecuted }
- *
- * Behaviour:
- *   • On start(), iterates non-human active players, chooses actions via
- *     SocialPolicy, executes via SocialManeuvers.executeAction, and repeats
- *     every tickIntervalMs until all AI budgets are exhausted or the safety
- *     MAX_TICKS guard fires.
- *   • Skips 'idle' to avoid zero-cost loops.
- *   • Respects socialConfig.allowOverspend: when false, stops as soon as all
- *     budgets are exhausted.
- *
- * Debug: window.__smAutoDriver exposes { start, stop, getStatus } in browsers.
+ * Normal Mode uses the compact utility policy. Drama Mode first asks the
+ * persistent story engine for a candidate, then falls back to the same legal,
+ * contextual policy. Every candidate is validated through the shared execution
+ * contract before resources or relationships can change.
  */
 
-import { chooseActionFor, chooseTargetsFor } from './SocialPolicy';
-import { executeAction, getActionById, canAfford } from './SocialManeuvers';
-import { normalizeActionCosts } from './smExecNormalize';
-import { socialConfig } from './socialConfig';
+import { chooseActionFor, chooseTargetsFor } from './SocialPolicy'
+import { canAfford, executeAction, executeGroupAction, getActionById } from './SocialManeuvers'
+import { resolveActionTargetMode } from './socialActions'
+import { isAISocialActionVisible } from './socialActionCatalog'
+import { normalizeActionCosts } from './smExecNormalize'
+import { socialConfig } from './socialConfig'
 import {
   applyEnergyDelta,
-  applyInfluenceDelta,
   applyInfoDelta,
+  applyInfluenceDelta,
   scheduleIncomingInteraction,
-} from './socialSlice';
+} from './socialSlice'
 import {
   assignDeliverySlot,
   buildDeliverySlotCounts,
   buildPendingIncomingInteractions,
   getInteractionDedupeReason,
   getIncomingInteractionPriority,
-} from './incomingInteractionScheduler';
+} from './incomingInteractionScheduler'
+import { createIncomingInteraction } from './incomingInteractionFactory'
+import { createDeterministicSocialRandom, validateSocialExecution } from './socialExecutionGuard'
+import { getPersistentSocialHistory, type SocialStateWithHistory } from './socialHistory'
+import { getEffectiveSocialMode } from './socialMode'
 import type {
   DramaSocialNetwork,
   IncomingInteraction,
@@ -46,114 +39,126 @@ import type {
   ScheduledIncomingInteraction,
   SocialActionLogEntry,
   SocialMemoryMap,
-} from './types';
-import { chooseDramaAIMove, normalizeDramaSocialNetwork } from './dramaModeEngine';
-
-// ── Internal state ────────────────────────────────────────────────────────
+} from './types'
+import { normalizeDramaSocialNetwork } from './dramaModeEngine'
+import { chooseUtilityDramaAIMove } from './dramaAIPolicy'
 
 interface StoreAPI {
-  dispatch: (action: unknown) => unknown;
-  getState: () => unknown;
+  dispatch: (action: unknown) => unknown
+  getState: () => unknown
+}
+
+interface DriverPlayer {
+  id: string
+  name: string
+  status: string
+  isUser?: boolean
 }
 
 interface DriverState {
   game: {
-    players: Array<{ id: string; name: string; status: string; isUser?: boolean }>;
-    seed: number;
-    week: number;
-    phase: string;
-    lohId?: string | null;
-    posWinnerId?: string | null;
-    nomineeIds?: string[];
-    povProtectedIds?: string[];
-  };
+    players: DriverPlayer[]
+    seed: number
+    week: number
+    phase: string
+    dramaSocialMode?: boolean
+    lohId?: string | null
+    posWinnerId?: string | null
+    nomineeIds?: string[]
+    povProtectedIds?: string[]
+  }
   social: {
-    energyBank: Record<string, number>;
-    influenceBank: Record<string, number>;
-    infoBank: Record<string, number>;
-    relationships: RelationshipsMap;
-    socialMemory: SocialMemoryMap;
-    dramaNetwork: DramaSocialNetwork;
-    sessionLogs: SocialActionLogEntry[];
-    incomingInteractions?: IncomingInteraction[];
-    scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
-    incomingInteractionDelivery?: IncomingInteractionDeliveryState;
-  };
-  settings?: { gameUX?: { dramaMode?: boolean } };
+    energyBank: Record<string, number>
+    influenceBank: Record<string, number>
+    infoBank: Record<string, number>
+    relationships: RelationshipsMap
+    socialMemory: SocialMemoryMap
+    dramaNetwork: DramaSocialNetwork
+    sessionLogs: SocialActionLogEntry[]
+    actionHistory?: SocialActionLogEntry[]
+    incomingInteractions?: IncomingInteraction[]
+    scheduledIncomingInteractions?: ScheduledIncomingInteraction[]
+    incomingInteractionDelivery?: IncomingInteractionDeliveryState
+  }
+  settings?: { gameUX?: { dramaMode?: boolean } }
+  vip?: {
+    isActive?: boolean
+    entitlements?: { dramaMode?: boolean }
+  }
 }
 
-const MAX_TICKS = () => socialConfig.maxTicksPerPhase;
+type HumanRouteResult = 'not_applicable' | 'scheduled' | 'deferred' | 'blocked'
 
-let _store: StoreAPI | null = null;
-let _timer: ReturnType<typeof setInterval> | null = null;
-let _running = false;
-let _tickCount = 0;
-let _actionsExecuted = 0;
+interface CandidateMove {
+  actionId: string
+  targetIds: string[]
+  subjectId?: string
+  reason: string
+}
 
-// ── Public API ────────────────────────────────────────────────────────────
+const MAX_TICKS = () => socialConfig.maxTicksPerPhase
 
-/** Wire the Redux store. Called once from SocialEngine.init(). */
+let _store: StoreAPI | null = null
+let _timer: ReturnType<typeof setInterval> | null = null
+let _running = false
+let _tickCount = 0
+let _actionsExecuted = 0
+
 export function setStore(store: StoreAPI): void {
-  _store = store;
+  _store = store
 }
 
-/**
- * Begin the AI action loop.
- * No-ops if the store is not wired, already running, or no AI players have
- * a positive budget.
- */
 export function start(): void {
-  if (!_store || _running) return;
+  if (!_store || _running) return
 
-  const state = _store.getState() as DriverState;
-  const aiPlayers = _aiPlayers(state);
-  const budgets = state.social?.energyBank ?? {};
-  const hasActiveBudgets = aiPlayers.some((p) => (budgets[p.id] ?? 0) > 0);
-  if (!hasActiveBudgets) return;
+  const state = _store.getState() as DriverState
+  const aiPlayers = getAIPlayers(state)
+  const budgets = state.social?.energyBank ?? {}
+  if (!aiPlayers.some((player) => (budgets[player.id] ?? 0) > 0)) return
 
-  _running = true;
-  _tickCount = 0;
-  _actionsExecuted = 0;
+  _running = true
+  _tickCount = 0
+  _actionsExecuted = 0
 
   if (socialConfig.verbose) {
     console.debug(
       '[socialAIDriver] started – AI players:',
-      aiPlayers.map((p) => p.id),
-    );
+      aiPlayers.map((player) => player.id)
+    )
   }
 
-  _timer = setInterval(_tick, socialConfig.tickIntervalMs);
+  _timer = setInterval(tick, socialConfig.tickIntervalMs)
 }
 
-/** Cancel the AI action loop immediately. */
 export function stop(): void {
-  _running = false;
-  _clearTimer();
+  _running = false
+  clearTimer()
 
   if (socialConfig.verbose) {
-    console.debug(`[socialAIDriver] stopped – ticks: ${_tickCount}, actions: ${_actionsExecuted}`);
+    console.debug(`[socialAIDriver] stopped – ticks: ${_tickCount}, actions: ${_actionsExecuted}`)
   }
 }
 
-/** Return a snapshot of driver status. */
-export function getStatus(): { running: boolean; tickCount: number; actionsExecuted: number } {
-  return { running: _running, tickCount: _tickCount, actionsExecuted: _actionsExecuted };
+export function getStatus(): {
+  running: boolean
+  tickCount: number
+  actionsExecuted: number
+} {
+  return { running: _running, tickCount: _tickCount, actionsExecuted: _actionsExecuted }
 }
 
-export const socialAIDriver = { setStore, start, stop, getStatus };
+export const socialAIDriver = { setStore, start, stop, getStatus }
 
-// ── Internal helpers ──────────────────────────────────────────────────────
-
-function _aiPlayers(state: DriverState) {
+function getAIPlayers(state: DriverState): DriverPlayer[] {
   return (state.game?.players ?? []).filter(
-    (p) => !p.isUser && p.status !== 'evicted' && p.status !== 'jury',
-  );
+    (player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+  )
 }
 
-function _clearTimer(): void {
+function clearTimer(): void {
   if (_timer !== null) {
-    clearInterval(_timer);
-    _timer = null;
+    clearInterval(_timer)
+    _timer = null
   }
 }
 
@@ -169,224 +174,379 @@ const HUMAN_FACING_ACTION_TYPES: Partial<Record<string, IncomingInteractionType>
   startFight: 'snide_remark',
   ask_use_safety: 'deal_offer',
   nominate: 'warning',
-};
-
-const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
-  ally: ['I think our games fit together. I want to make this official—are you in?', 'The house is splitting, and I would rather have you beside me. Want to work together?'],
-  proposeAlliance: ['I trust what we have been building. Are you ready to call it an alliance?', 'I see a real path for us if we commit now. Are you in?'],
-  compliment: ['You handled the pressure well today. I wanted you to hear that directly from me.', 'The way you carried yourself today stood out—in a good way.'],
-  protect: ['I may be able to keep heat off you this week, but I need to know we are working together.', 'Your name is vulnerable. I can help, if we can trust each other.'],
-  whisper: ['I heard something privately that could change how you read this week.', 'There is a quiet conversation happening that you should know about.'],
-  share_intel: ['I have information that could matter to your next move.', 'I learned something useful, but I need to know what you will do with it.'],
-  rumor: ['Your name is coming up more than you may realize. I thought you deserved a warning.', 'The tone changes when you leave the room. Be careful who you trust.'],
-  confront: ['We need to clear the air about how you have been moving.', 'Something between us is not adding up, and I want a direct answer.'],
-  startFight: ['I am done pretending everything between us is fine.', 'You crossed a line with me, and I am not letting it slide.'],
-  ask_use_safety: ['Before the Safety decision, I need to know whether you would use it to help me.', 'You hold Safety, and that makes this conversation urgent: would you save me?'],
-  nominate: ['I am considering putting your name in danger this week. Give me a reason not to.', 'Your name is part of my plan right now, and I wanted to hear what you would say.'],
-};
-
-function _pickHumanFacingText(actionId: string, actorId: string, week: number): string {
-  const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? ['I wanted to talk to you directly.'];
-  const seed = [...actorId].reduce((total, char) => total + char.charCodeAt(0), week);
-  return variants[seed % variants.length];
 }
 
-function _routeHumanFacingAction(
+const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
+  ally: [
+    'I think our games fit together. I want to make this official—are you in?',
+    'The house is splitting, and I would rather have you beside me. Want to work together?',
+  ],
+  proposeAlliance: [
+    'I trust what we have been building. Are you ready to call it an alliance?',
+    'I see a real path for us if we commit now. Are you in?',
+  ],
+  compliment: [
+    'You handled the pressure well today. I wanted you to hear that directly from me.',
+    'The way you carried yourself today stood out—in a good way.',
+  ],
+  protect: [
+    'I may be able to keep heat off you this week, but I need to know we are working together.',
+    'Your name is vulnerable. I can help, if we can trust each other.',
+  ],
+  whisper: [
+    'I heard something privately that could change how you read this week.',
+    'There is a quiet conversation happening that you should know about.',
+  ],
+  share_intel: [
+    'I have information that could matter to your next move.',
+    'I learned something useful, but I need to know what you will do with it.',
+  ],
+  rumor: [
+    'Your name is coming up more than you may realize. I thought you deserved a warning.',
+    'The tone changes when you leave the room. Be careful who you trust.',
+  ],
+  confront: [
+    'We need to clear the air about how you have been moving.',
+    'Something between us is not adding up, and I want a direct answer.',
+  ],
+  startFight: [
+    'I am done pretending everything between us is fine.',
+    'You crossed a line with me, and I am not letting it slide.',
+  ],
+  ask_use_safety: [
+    'Before the Safety decision, I need to know whether you would use it to help me.',
+    'You hold Safety, and that makes this conversation urgent: would you save me?',
+  ],
+  nominate: [
+    'I am considering putting your name in danger this week. Give me a reason not to.',
+    'Your name is part of my plan right now, and I wanted to hear what you would say.',
+  ],
+}
+
+function pickHumanFacingText(
+  actionId: string,
+  actorId: string,
+  week: number,
+  phase: string
+): string {
+  const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? ['I wanted to talk to you directly.']
+  const random = createDeterministicSocialRandom([actorId, actionId, week, phase])
+  return variants[Math.floor(random() * variants.length)] ?? variants[0]
+}
+
+function routeHumanFacingAction(
   actorId: string,
   actionId: string,
-  costs: { energy: number; influence: number; info: number },
-): boolean {
-  if (!_store) return false;
-  const type = HUMAN_FACING_ACTION_TYPES[actionId];
-  if (!type) return false;
+  subjectId: string | undefined,
+  costs: { energy: number; influence: number; info: number }
+): HumanRouteResult {
+  if (!_store) return 'blocked'
+  const type = HUMAN_FACING_ACTION_TYPES[actionId]
+  if (!type) return 'not_applicable'
 
-  const current = _store.getState() as DriverState;
-  const human = current.game.players.find((player) => player.isUser);
-  if (actionId === 'nominate' && human) {
-    const isProtected = current.game.posWinnerId === human.id
-      || current.game.povProtectedIds?.includes(human.id)
-      || human.status.includes('pos');
-    const relationship = current.social.relationships[actorId]?.[human.id];
-    const isTrustedAlly = (relationship?.affinity ?? 0) >= 30
-      || relationship?.tags.includes('alliance') === true;
-    if (isProtected || current.game.lohId !== actorId || isTrustedAlly) return true;
+  const current = _store.getState() as DriverState
+  const human = current.game.players.find((player) => player.isUser)
+  if (!human) return 'blocked'
+
+  if (actionId === 'nominate') {
+    const isProtected =
+      current.game.posWinnerId === human.id ||
+      current.game.povProtectedIds?.includes(human.id) ||
+      human.status.includes('pos')
+    const relationship = current.social.relationships[actorId]?.[human.id]
+    const isTrustedAlly =
+      (relationship?.affinity ?? 0) >= 30 || relationship?.tags.includes('alliance') === true
+    if (isProtected || current.game.lohId !== actorId || isTrustedAlly) return 'blocked'
   }
-  const now = Date.now();
-  const week = current.game.week ?? 1;
-  const phase = current.game.phase;
-  const scheduled = current.social.scheduledIncomingInteractions ?? [];
+
+  const now = Date.now()
+  const week = current.game.week ?? 1
+  const phase = current.game.phase
+  const scheduled = current.social.scheduledIncomingInteractions ?? []
   const pending = buildPendingIncomingInteractions(
     current.social.incomingInteractions ?? [],
-    scheduled,
-  );
+    scheduled
+  )
   const directContactsThisWeek = pending.filter(
-    (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social',
-  ).length;
+    (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social'
+  ).length
   if (
     directContactsThisWeek >= 1 ||
-    pending.filter((entry) => entry.createdWeek === week).length >= socialConfig.incomingInteractionConfig.maxPerWeek
-  ) return true;
+    pending.filter((entry) => entry.createdWeek === week).length >=
+      socialConfig.incomingInteractionConfig.maxPerWeek
+  ) {
+    return 'deferred'
+  }
 
-  const interaction: IncomingInteraction = {
+  const mode = getEffectiveSocialMode(current)
+  const interaction = createIncomingInteraction({
     id: `ai-action-${actionId}-${actorId}-${now}`,
     fromId: actorId,
     type,
-    text: _pickHumanFacingText(actionId, actorId, week),
+    text: pickHumanFacingText(actionId, actorId, week, phase),
+    week,
+    phase,
+    mode,
     payload: {
       originActionId: actionId,
       scenarioKey: `background_${actionId}`,
       variantFamilyId: `background_${actionId}`,
-      phase,
       source: 'background_social',
+      ...(subjectId ? { subjectId } : {}),
     },
-    createdAt: now,
-    createdWeek: week,
-    expiresAtWeek: week + 1,
-    read: false,
-    requiresResponse: true,
-    resolved: false,
-  };
-  const priority = getIncomingInteractionPriority(type);
-  if (getInteractionDedupeReason({ interaction, priority, pendingInteractions: pending, week })) {
-    return true;
+  })
+  const priority = getIncomingInteractionPriority(type)
+  if (
+    getInteractionDedupeReason({
+      interaction,
+      priority,
+      pendingInteractions: pending,
+      week,
+    })
+  ) {
+    return 'deferred'
   }
+
   const deliveredThisPhase =
     current.social.incomingInteractionDelivery?.lastDeliveryPhase === phase &&
     current.social.incomingInteractionDelivery?.lastDeliveryWeek === week
       ? current.social.incomingInteractionDelivery.deliveredThisPhase
-      : 0;
+      : 0
   const slot = assignDeliverySlot({
     phase,
     week,
     priority,
     slotCounts: buildDeliverySlotCounts(scheduled, phase, week, deliveredThisPhase),
-    visibleActiveCount: (current.social.incomingInteractions ?? []).filter((entry) => !entry.resolved).length,
-  });
-  if (!slot) return true;
+    visibleActiveCount: (current.social.incomingInteractions ?? []).filter(
+      (entry) => !entry.resolved
+    ).length,
+  })
+  if (!slot) return 'deferred'
 
-  _store.dispatch(applyEnergyDelta({ playerId: actorId, delta: -costs.energy }));
+  _store.dispatch(applyEnergyDelta({ playerId: actorId, delta: -costs.energy }))
   if (costs.influence > 0) {
-    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }));
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }))
   }
   if (costs.info > 0) {
-    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }));
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }))
   }
-  _store.dispatch(scheduleIncomingInteraction({
-    interaction,
-    priority,
-    scheduledAt: now,
-    scheduledForWeek: slot.scheduledForWeek,
-    scheduledForPhase: slot.scheduledForPhase,
-    deliveryReason: slot.deliveryReason,
-  }));
-  return true;
+  _store.dispatch(
+    scheduleIncomingInteraction({
+      interaction,
+      priority,
+      scheduledAt: now,
+      scheduledForWeek: slot.scheduledForWeek,
+      scheduledForPhase: slot.scheduledForPhase,
+      deliveryReason: slot.deliveryReason,
+    })
+  )
+  return 'scheduled'
 }
 
-function _tick(): void {
-  if (!_store || !_running) {
-    _clearTimer();
-    return;
-  }
+function groupTargets(state: DriverState, actorId: string, maximum = 3): string[] {
+  return state.game.players
+    .filter(
+      (player) => player.id !== actorId && player.status !== 'evicted' && player.status !== 'jury'
+    )
+    .sort(
+      (left, right) =>
+        (state.social.relationships[actorId]?.[right.id]?.affinity ?? 0) -
+          (state.social.relationships[actorId]?.[left.id]?.affinity ?? 0) ||
+        left.id.localeCompare(right.id)
+    )
+    .slice(0, maximum)
+    .map((player) => player.id)
+}
 
-  _tickCount++;
-
-  const state = _store.getState() as DriverState;
-  const players = state.game?.players ?? [];
-  const aiPlayers = _aiPlayers(state);
-  const budgets = state.social?.energyBank ?? {};
-
-  // Safety guard
-  if (_tickCount >= MAX_TICKS()) {
-    stop();
-    return;
-  }
-
-  // Stop if all budgets exhausted (when allowOverspend is false)
-  if (!socialConfig.allowOverspend && !aiPlayers.some((p) => (budgets[p.id] ?? 0) > 0)) {
-    stop();
-    return;
-  }
-
-  const context = {
-    players,
-    relationships: state.social?.relationships ?? {},
-    week: state.game?.week ?? 0,
-    seed: state.game?.seed ?? 0,
-  };
-
-  // One action per AI player per tick (conservative)
-  for (const player of aiPlayers) {
-    if ((budgets[player.id] ?? 0) <= 0) continue;
-
-    const dramaMove = state.settings?.gameUX?.dramaMode
-      ? chooseDramaAIMove({
+function candidateForPlayer(
+  state: DriverState,
+  player: DriverPlayer,
+  attempt: number
+): CandidateMove | null {
+  const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const history = getPersistentSocialHistory(state.social as SocialStateWithHistory)
+  const dramaMove =
+    dramaMode && attempt === 0
+      ? chooseUtilityDramaAIMove({
           actorId: player.id,
-          players,
-          relationships: state.social?.relationships ?? {},
-          memory: state.social?.socialMemory ?? {},
-          network: normalizeDramaSocialNetwork(state.social?.dramaNetwork),
-          recentActions: state.social?.sessionLogs ?? [],
-          week: state.game?.week ?? 0,
-          phase: state.game?.phase ?? '',
-          seed: state.game?.seed ?? 0,
+          players: state.game.players,
+          relationships: state.social.relationships,
+          memory: state.social.socialMemory,
+          network: normalizeDramaSocialNetwork(state.social.dramaNetwork),
+          recentActions: history,
+          week: state.game.week ?? 0,
+          phase: state.game.phase ?? '',
+          seed: state.game.seed ?? 0,
           tick: _tickCount,
-          lohId: state.game?.lohId,
-          posWinnerId: state.game?.posWinnerId,
-          nomineeIds: state.game?.nomineeIds,
+          lohId: state.game.lohId,
+          posWinnerId: state.game.posWinnerId,
+          nomineeIds: state.game.nomineeIds,
         })
-      : null;
-    const actionId = dramaMove?.actionId ?? chooseActionFor(player.id, context);
-    if (actionId === 'idle') continue;
+      : null
 
-    // Check full affordability (energy + influence + info) before attempting
-    const actionDef = getActionById(actionId);
-    if (!actionDef) continue;
-    if (!canAfford(player.id, normalizeActionCosts(actionDef, 0, Boolean(dramaMove)))) continue;
+  const actionId =
+    dramaMove?.actionId ??
+    chooseActionFor(player.id, {
+      players: state.game.players,
+      relationships: state.social.relationships,
+      week: state.game.week,
+      seed: state.game.seed,
+      phase: state.game.phase,
+      decisionIndex: _tickCount * 5 + attempt,
+      recentActions: history,
+      availableActionIds: Object.keys(socialConfig.actionWeights).filter((candidateId) =>
+        isAISocialActionVisible(candidateId, dramaMode ? 'drama' : 'normal')
+      ),
+    } as Parameters<typeof chooseActionFor>[1])
+  if (actionId === 'idle') return null
 
-    const targets = dramaMove
-      ? [dramaMove.targetId, dramaMove.subjectId].filter((id): id is string => Boolean(id))
-      : chooseTargetsFor(player.id, actionId, context);
-    if (targets.length === 0) continue;
+  const action = getActionById(actionId)
+  if (!action) return null
+  const mode = resolveActionTargetMode(action, dramaMode)
+  let targetIds: string[] = []
+  let subjectId: string | undefined
 
-    const [targetId, subjectId] = targets;
-    const targetPlayer = players.find((candidate) => candidate.id === targetId);
-    if (
-      targetPlayer?.isUser &&
-      _routeHumanFacingAction(player.id, actionId, normalizeActionCosts(actionDef))
-    ) {
-      _actionsExecuted++;
-      continue;
-    }
-    const result = executeAction(player.id, targetId, actionId, {
-      source: 'system',
-      subjectId,
-    });
-    if (result.success) {
-      _actionsExecuted++;
-      if (socialConfig.verbose) {
-        console.debug(
-          `[socialAIDriver] ${player.id} → ${actionId} on ${targetId} ` +
-            `(energy: ${result.newEnergy}, delta: ${result.delta})`,
-        );
-      }
-    }
+  if (mode === 'none') {
+    targetIds = []
+  } else if (mode === 'multi') {
+    targetIds = groupTargets(state, player.id, action.maxTargets ?? 3)
+  } else if (dramaMove) {
+    targetIds = [dramaMove.targetId]
+    subjectId = dramaMove.subjectId
+  } else {
+    const selected = chooseTargetsFor(player.id, actionId, {
+      players: state.game.players,
+      relationships: state.social.relationships,
+      week: state.game.week,
+      seed: state.game.seed,
+      phase: state.game.phase,
+      decisionIndex: _tickCount * 5 + attempt,
+      recentActions: history,
+    } as Parameters<typeof chooseTargetsFor>[2])
+    targetIds = selected.length > 0 ? [selected[0]] : []
+    subjectId = selected[1]
   }
 
-  // After the tick, re-read budgets and stop if exhausted (when allowOverspend is false)
-  if (!socialConfig.allowOverspend) {
-    const updatedBudgets = (_store.getState() as DriverState).social?.energyBank ?? {};
-    if (!aiPlayers.some((p) => (updatedBudgets[p.id] ?? 0) > 0)) {
-      stop();
-    }
+  const eligibility = validateSocialExecution(state, {
+    action,
+    actorId: player.id,
+    targetIds,
+    subjectId,
+    requireCompleteSelection: true,
+    allowAIOnly: true,
+  })
+  if (!eligibility.eligible) return null
+
+  const costs = normalizeActionCosts(action, targetIds.length, dramaMode)
+  if (!canAfford(player.id, costs)) return null
+
+  return {
+    actionId,
+    targetIds,
+    subjectId,
+    reason: dramaMove?.reason ?? `contextual policy attempt ${attempt + 1}`,
   }
 }
 
-// ── Debug export ──────────────────────────────────────────────────────────
+function executeCandidate(
+  state: DriverState,
+  player: DriverPlayer,
+  candidate: CandidateMove
+): boolean {
+  const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const action = getActionById(candidate.actionId)
+  if (!action) return false
+  const mode = resolveActionTargetMode(action, dramaMode)
+  const costs = normalizeActionCosts(action, candidate.targetIds.length, dramaMode)
+  const primaryTargetId = candidate.targetIds[0]
+  const primaryTarget = state.game.players.find((target) => target.id === primaryTargetId)
+
+  if (primaryTarget?.isUser && mode !== 'multi') {
+    const route = routeHumanFacingAction(player.id, candidate.actionId, candidate.subjectId, costs)
+    if (route === 'scheduled') return true
+    if (route === 'blocked' || route === 'deferred') return false
+  }
+
+  const random = createDeterministicSocialRandom([
+    state.game.seed,
+    state.game.week,
+    state.game.phase,
+    _tickCount,
+    player.id,
+    candidate.actionId,
+    candidate.targetIds.join(','),
+  ])
+
+  const result =
+    mode === 'multi'
+      ? executeGroupAction(player.id, candidate.targetIds, candidate.actionId, {
+          source: 'system',
+          random,
+        })
+      : executeAction(
+          player.id,
+          mode === 'none' ? player.id : primaryTargetId,
+          candidate.actionId,
+          {
+            source: 'system',
+            subjectId: candidate.subjectId,
+            random,
+          }
+        )
+
+  if (result.success && socialConfig.verbose) {
+    console.debug(
+      `[socialAIDriver] ${player.id} → ${candidate.actionId} on ${
+        primaryTargetId ?? player.id
+      } (${candidate.reason}; energy: ${result.newEnergy}; delta: ${result.delta})`
+    )
+  }
+  return result.success
+}
+
+function tick(): void {
+  if (!_store || !_running) {
+    clearTimer()
+    return
+  }
+
+  _tickCount += 1
+  const state = _store.getState() as DriverState
+  const aiPlayers = getAIPlayers(state)
+  const budgets = state.social?.energyBank ?? {}
+
+  if (_tickCount >= MAX_TICKS()) {
+    stop()
+    return
+  }
+  if (!socialConfig.allowOverspend && !aiPlayers.some((player) => (budgets[player.id] ?? 0) > 0)) {
+    stop()
+    return
+  }
+
+  for (const player of aiPlayers) {
+    if ((budgets[player.id] ?? 0) <= 0) continue
+
+    let executed = false
+    for (let attempt = 0; attempt < 4 && !executed; attempt += 1) {
+      const freshState = _store.getState() as DriverState
+      const candidate = candidateForPlayer(freshState, player, attempt)
+      if (!candidate) continue
+      executed = executeCandidate(freshState, player, candidate)
+    }
+    if (executed) _actionsExecuted += 1
+  }
+
+  if (!socialConfig.allowOverspend) {
+    const updatedBudgets = (_store.getState() as DriverState).social?.energyBank ?? {}
+    if (!aiPlayers.some((player) => (updatedBudgets[player.id] ?? 0) > 0)) stop()
+  }
+}
 
 if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>)['__smAutoDriver'] = {
+  ;(window as unknown as Record<string, unknown>)['__smAutoDriver'] = {
     start,
     stop,
     getStatus,
-  };
+  }
 }

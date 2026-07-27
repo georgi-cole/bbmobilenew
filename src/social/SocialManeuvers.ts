@@ -11,39 +11,37 @@
  * Debug: window.__socialManeuvers exposes the full public API in browsers.
  */
 
-import { getSocialOutcomeCopy, type SocialOutcomeKind } from './socialOutcomeCopy';
-import { SOCIAL_ACTIONS, resolveActionTargetMode } from './socialActions';
-import type { SocialActionDefinition } from './socialActions';
-import { evaluateSocialActionEligibility } from './socialActionEligibility';
-import { socialConfig } from './socialConfig';
-import { normalizeAffinity } from './affinityUtils';
-import {
-  normalizeActionCost,
-  normalizeActionCosts,
-  normalizeActionYields,
-} from './smExecNormalize';
-import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
-import { computeOutcomeDelta, evaluateOutcome, OUTCOME_THRESHOLDS } from './SocialPolicy';
+import { getSocialOutcomeCopy, type SocialOutcomeKind } from './socialOutcomeCopy'
+import { SOCIAL_ACTIONS, resolveActionTargetMode } from './socialActions'
+import type { SocialActionDefinition } from './socialActions'
+import { evaluateSocialActionEligibility } from './socialActionEligibility'
+import { socialConfig } from './socialConfig'
+import { normalizeAffinity } from './affinityUtils'
+import { normalizeActionCost, normalizeActionCosts, normalizeActionYields } from './smExecNormalize'
+import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank'
+import { computeOutcomeDelta, evaluateOutcome, OUTCOME_THRESHOLDS } from './SocialPolicy'
 import {
   recordSocialAction,
   updateRelationship,
   applyInfluenceDelta,
   applyInfoDelta,
-} from './socialSlice';
+} from './socialSlice'
 import {
   ALLIANCE_TAG,
   BETRAYAL_TAG,
   MIN_ALLIANCE_AFFINITY,
   hasAllianceBetween,
-} from './socialAlliance';
-import type { SocialActionLogEntry, SocialState } from './types';
-import { getSocialResourceEffect } from './socialResourceEconomy';
+} from './socialAlliance'
+import type { SocialActionLogEntry, SocialState } from './types'
+import { getSocialResourceEffect } from './socialResourceEconomy'
+import { getEffectiveSocialMode } from './socialMode'
+import { getPersistentSocialHistory, type SocialStateWithHistory } from './socialHistory'
 
 // ── Internal store reference ──────────────────────────────────────────────
 
 interface StoreAPI {
-  dispatch: (action: unknown) => unknown;
-  getState: () => unknown;
+  dispatch: (action: unknown) => unknown
+  getState: () => unknown
 }
 
 /**
@@ -54,63 +52,69 @@ interface StoreAPI {
  * multi-resource support (absent banks are treated as empty / all zeros).
  */
 type PartialSocialState = {
-  energyBank: Record<string, number>;
-  influenceBank?: Record<string, number>;
-  infoBank?: Record<string, number>;
-  relationships: SocialState['relationships'];
-  sessionLogs: unknown[];
-};
+  energyBank: Record<string, number>
+  influenceBank?: Record<string, number>
+  infoBank?: Record<string, number>
+  relationships: SocialState['relationships']
+  sessionLogs: SocialActionLogEntry[]
+  actionHistory?: SocialActionLogEntry[]
+}
 
 interface ManeuverPlayer {
-  id: string;
-  name: string;
-  status: string;
-  isUser?: boolean;
+  id: string
+  name: string
+  status: string
+  isUser?: boolean
 }
 
 interface ManeuverGameState {
-  players: ManeuverPlayer[];
-  week?: number;
-  phase?: string;
-  lohId?: string | null;
-  nomineeIds?: string[];
+  players: ManeuverPlayer[]
+  week?: number
+  phase?: string
+  lohId?: string | null
+  nomineeIds?: string[]
+  dramaSocialMode?: boolean
 }
-
 
 interface StateForManeuvers {
-  settings?: { gameUX?: { dramaMode?: boolean } };
-  social: PartialSocialState;
+  game?: ManeuverGameState
+  settings?: { gameUX?: { dramaMode?: boolean } }
+  vip?: {
+    isActive?: boolean
+    entitlements?: { dramaMode?: boolean }
+  }
+  social: PartialSocialState
 }
 
-let _store: StoreAPI | null = null;
-const FIRST_POSITIVE_MIN_DELTA = 1;
-const FIRST_POSITIVE_MAX_DELTA = 5;
-const REPEATED_POSITIVE_MIN_DELTA = 1;
-const REPEATED_POSITIVE_MAX_DELTA = 3;
-const REPEATED_BACKFIRE_DELTA = -5;
-const REPETITION_BACKFIRE_THRESHOLD = 2;
-const REPETITION_BACKFIRE_CHANCE = 0.5;
-const ALLIANCE_REJECTION_DELTA = -6;
-const ALLIANCE_GASLIGHT_DELTA = -10;
-const ALLIANCE_BETRAYAL_DELTA = -8;
-const ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD = 0;
+let _store: StoreAPI | null = null
+const FIRST_POSITIVE_MIN_DELTA = 1
+const FIRST_POSITIVE_MAX_DELTA = 5
+const REPEATED_POSITIVE_MIN_DELTA = 1
+const REPEATED_POSITIVE_MAX_DELTA = 3
+const REPEATED_BACKFIRE_DELTA = -5
+const REPETITION_BACKFIRE_THRESHOLD = 2
+const REPETITION_BACKFIRE_CHANCE = 0.5
+const ALLIANCE_REJECTION_DELTA = -6
+const ALLIANCE_GASLIGHT_DELTA = -10
+const ALLIANCE_BETRAYAL_DELTA = -8
+const ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD = 0
 
 function countPriorRepeatedActions(
   logs: SocialActionLogEntry[],
   actorId: string,
   targetId: string,
-  actionId: string,
+  actionId: string
 ): number {
   return logs.filter(
     (entry) =>
-      entry.actorId === actorId && entry.targetId === targetId && entry.actionId === actionId,
-  ).length;
+      entry.actorId === actorId && entry.targetId === targetId && entry.actionId === actionId
+  ).length
 }
 
 function buildSnoopNarrative(
   social: SocialState,
   actorId: string,
-  players: ManeuverPlayer[],
+  players: ManeuverPlayer[]
 ): string {
   const secret = social.dramaNetwork.arcs.find(
     (arc) =>
@@ -118,18 +122,18 @@ function buildSnoopNarrative(
       !arc.public &&
       (arc.type === 'romance' || arc.type === 'bromance') &&
       !arc.participantIds.includes(actorId) &&
-      !(arc.discoveredByIds ?? []).includes(actorId),
-  );
+      !(arc.discoveredByIds ?? []).includes(actorId)
+  )
   if (!secret) {
-    return 'You checked the hallway, storage room and whisper chain, but found no usable lead this time.';
+    return 'You checked the hallway, storage room and whisper chain, but found no usable lead this time.'
   }
   const names = secret.participantIds.map(
-    (id) => players.find((player) => player.id === id)?.name ?? 'another housemate',
-  );
+    (id) => players.find((player) => player.id === id)?.name ?? 'another housemate'
+  )
   if (secret.type === 'romance') {
-    return `You caught ${names[0]} and ${names[1]} slipping away together after lights-out. Their secret romance is now yours to keep, trade or expose.`;
+    return `You caught ${names[0]} and ${names[1]} slipping away together after lights-out. Their secret romance is now yours to keep, trade or expose.`
   }
-  return `You overheard ${names[0]} and ${names[1]} making a private loyalty pact. You now know their bromance is more strategic than it looks.`;
+  return `You overheard ${names[0]} and ${names[1]} making a private loyalty pact. You now know their bromance is more strategic than it looks.`
 }
 
 function buildLohTargetNarrative(
@@ -137,54 +141,54 @@ function buildLohTargetNarrative(
   game: ManeuverGameState | undefined,
   actorId: string,
   lohId: string,
-  priorRepeats: number,
+  priorRepeats: number
 ): string {
-  const lohName = game?.players.find((player) => player.id === lohId)?.name ?? 'The LOH';
+  const lohName = game?.players.find((player) => player.id === lohId)?.name ?? 'The LOH'
   if (priorRepeats >= 2) {
-    return `${lohName}: "I have answered this already. Stop pressing me."`;
+    return `${lohName}: "I have answered this already. Stop pressing me."`
   }
   if (priorRepeats === 1) {
-    return `${lohName}: "My answer has not changed. Watch what happens at the ceremony."`;
+    return `${lohName}: "My answer has not changed. Watch what happens at the ceremony."`
   }
-  const nominees = new Set(game?.nomineeIds ?? []);
+  const nominees = new Set(game?.nomineeIds ?? [])
   const candidates = (game?.players ?? [])
     .filter(
       (player) =>
         player.id !== lohId &&
         player.status !== 'evicted' &&
         player.status !== 'jury' &&
-        !nominees.has(player.id),
+        !nominees.has(player.id)
     )
     .sort(
       (a, b) =>
         (social.relationships[lohId]?.[a.id]?.affinity ?? 0) -
-        (social.relationships[lohId]?.[b.id]?.affinity ?? 0),
-    );
-  const likelyTarget = candidates[0];
+        (social.relationships[lohId]?.[b.id]?.affinity ?? 0)
+    )
+  const likelyTarget = candidates[0]
   if (!likelyTarget || likelyTarget.id === actorId) {
-    return `${lohName}: "I am still weighing my options. I am not giving you a name yet."`;
+    return `${lohName}: "I am still weighing my options. I am not giving you a name yet."`
   }
   if (nominees.size > 0) {
-    return `${lohName}: "If safety changes my nominations, ${likelyTarget.name} is my current backup plan."`;
+    return `${lohName}: "If safety changes my nominations, ${likelyTarget.name} is my current backup plan."`
   }
-  return `${lohName}: "Right now, ${likelyTarget.name} is the person I am watching most closely."`;
+  return `${lohName}: "Right now, ${likelyTarget.name} is the person I am watching most closely."`
 }
 
 function isRepeatSensitiveAction(
   action: SocialActionDefinition,
   delta: number,
-  yields: { influence: number; info: number },
+  yields: { influence: number; info: number }
 ): boolean {
   if (action.targetMode === 'none' || action.needsTargets === false) {
-    return false;
+    return false
   }
 
-  return delta > 0 || yields.influence > 0 || yields.info > 0;
+  return delta > 0 || yields.influence > 0 || yields.info > 0
 }
 
 function randomIntegerInclusive(min: number, max: number, random: () => number): number {
-  const normalized = Math.max(0, Math.min(0.999999999, random()));
-  return min + Math.floor(normalized * (max - min + 1));
+  const normalized = Math.max(0, Math.min(0.999999999, random()))
+  return min + Math.floor(normalized * (max - min + 1))
 }
 
 /**
@@ -195,13 +199,13 @@ function randomIntegerInclusive(min: number, max: number, random: () => number):
  */
 export function computeRepeatedPositiveDelta(
   priorRepeats: number,
-  random: () => number = Math.random,
+  random: () => number = Math.random
 ): { delta: number; didBackfire: boolean } {
   if (priorRepeats <= 0) {
     return {
       delta: randomIntegerInclusive(FIRST_POSITIVE_MIN_DELTA, FIRST_POSITIVE_MAX_DELTA, random),
       didBackfire: false,
-    };
+    }
   }
 
   if (priorRepeats === 1) {
@@ -209,125 +213,128 @@ export function computeRepeatedPositiveDelta(
       delta: randomIntegerInclusive(
         REPEATED_POSITIVE_MIN_DELTA,
         REPEATED_POSITIVE_MAX_DELTA,
-        random,
+        random
       ),
       didBackfire: false,
-    };
+    }
   }
 
   if (random() < REPETITION_BACKFIRE_CHANCE) {
-    return { delta: REPEATED_BACKFIRE_DELTA, didBackfire: true };
+    return { delta: REPEATED_BACKFIRE_DELTA, didBackfire: true }
   }
 
   return {
     delta: randomIntegerInclusive(REPEATED_POSITIVE_MIN_DELTA, REPEATED_POSITIVE_MAX_DELTA, random),
     didBackfire: false,
-  };
+  }
 }
 
 function scoreToLabel(score: number): 'Bad' | 'Unmoved' | 'Good' | 'Great' {
-  if (score <= OUTCOME_THRESHOLDS.bad) return 'Bad';
-  if (score < OUTCOME_THRESHOLDS.unmoved) return 'Unmoved';
-  if (score < OUTCOME_THRESHOLDS.good) return 'Good';
-  return 'Great';
+  if (score <= OUTCOME_THRESHOLDS.bad) return 'Bad'
+  if (score < OUTCOME_THRESHOLDS.unmoved) return 'Unmoved'
+  if (score < OUTCOME_THRESHOLDS.good) return 'Good'
+  return 'Great'
 }
 
 function clampResourceAdjustment(delta: number, availableBalance: number): number {
-  return delta < 0 ? -Math.min(Math.abs(delta), availableBalance) : delta;
+  return delta < 0 ? -Math.min(Math.abs(delta), availableBalance) : delta
 }
 
 function getAdvancedAllianceAcceptChance(
   proposerAffinity: number,
   recipientTrust: number,
   priorRepeats: number,
-  context: { proposerIsLoh: boolean; proposerHasSafety: boolean; recipientIsNominated: boolean },
+  context: { proposerIsLoh: boolean; proposerHasSafety: boolean; recipientIsNominated: boolean }
 ): number {
-  const proposer = normalizeAffinity(proposerAffinity);
-  const recipient = normalizeAffinity(recipientTrust);
-  const mutual = (proposer + recipient) / 2;
-  if (Math.min(proposer, recipient) <= -0.35) return 0.02;
-  const relationshipChance = mutual >= socialConfig.relationshipThresholds.allyThreshold
-    ? 0.82 + mutual * 0.12
-    : 0.08 + Math.max(0, mutual) * 0.85;
-  const leverageBonus = (context.proposerIsLoh ? 0.28 : 0)
-    + (context.proposerHasSafety ? 0.08 : 0)
-    + (context.recipientIsNominated ? 0.14 : 0);
-  const hostilityCap = Math.min(proposer, recipient) < -0.1 ? 0.22 : 0.95;
+  const proposer = normalizeAffinity(proposerAffinity)
+  const recipient = normalizeAffinity(recipientTrust)
+  const mutual = (proposer + recipient) / 2
+  if (Math.min(proposer, recipient) <= -0.35) return 0.02
+  const relationshipChance =
+    mutual >= socialConfig.relationshipThresholds.allyThreshold
+      ? 0.82 + mutual * 0.12
+      : 0.08 + Math.max(0, mutual) * 0.85
+  const leverageBonus =
+    (context.proposerIsLoh ? 0.28 : 0) +
+    (context.proposerHasSafety ? 0.08 : 0) +
+    (context.recipientIsNominated ? 0.14 : 0)
+  const hostilityCap = Math.min(proposer, recipient) < -0.1 ? 0.22 : 0.95
   return Math.max(
     0.02,
-    Math.min(hostilityCap, relationshipChance + leverageBonus - priorRepeats * 0.14),
-  );
+    Math.min(hostilityCap, relationshipChance + leverageBonus - priorRepeats * 0.14)
+  )
 }
 
 function getStandardAllianceAcceptChance(affinity: number, priorRepeats: number): number {
-  const normalizedAffinity = normalizeAffinity(affinity);
+  const normalizedAffinity = normalizeAffinity(affinity)
   const baseChance =
     normalizedAffinity >= socialConfig.relationshipThresholds.allyThreshold
       ? 0.9
-      : 0.5 + normalizedAffinity * 0.45;
-  return Math.max(0.08, Math.min(0.96, baseChance - priorRepeats * 0.12));
+      : 0.5 + normalizedAffinity * 0.45
+  return Math.max(0.08, Math.min(0.96, baseChance - priorRepeats * 0.12))
 }
-
 
 function getAdvancedAllianceFailureDelta(
   gaslightOccurred: boolean,
   proposerAffinity: number,
-  recipientTrust: number,
+  recipientTrust: number
 ): number {
-  if (gaslightOccurred) return ALLIANCE_GASLIGHT_DELTA;
-  const mutual = (normalizeAffinity(proposerAffinity) + normalizeAffinity(recipientTrust)) / 2;
-  if (mutual >= 0.2) return -2;
-  if (mutual >= 0) return -4;
-  return ALLIANCE_REJECTION_DELTA;
+  if (gaslightOccurred) return ALLIANCE_GASLIGHT_DELTA
+  const mutual = (normalizeAffinity(proposerAffinity) + normalizeAffinity(recipientTrust)) / 2
+  if (mutual >= 0.2) return -2
+  if (mutual >= 0) return -4
+  return ALLIANCE_REJECTION_DELTA
 }
 
 function getStandardAllianceFailureDelta(gaslightOccurred: boolean): number {
-  return gaslightOccurred ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA;
+  return gaslightOccurred ? ALLIANCE_GASLIGHT_DELTA : ALLIANCE_REJECTION_DELTA
 }
 function getAllianceBetrayalChance(affinity: number): number {
-  const normalizedAffinity = normalizeAffinity(affinity);
-  if (normalizedAffinity < -0.15) return 0.35;
-  if (normalizedAffinity < 0.2) return 0.16;
-  return 0.04;
+  const normalizedAffinity = normalizeAffinity(affinity)
+  if (normalizedAffinity < -0.15) return 0.35
+  if (normalizedAffinity < 0.2) return 0.16
+  return 0.04
 }
 
 function getLohTargetPlan(
-  game: {
-    players?: Array<{ id: string; name?: string; status: string }>;
-    nomineeIds?: string[];
-  } | undefined,
+  game:
+    | {
+        players?: Array<{ id: string; name?: string; status: string }>
+        nomineeIds?: string[]
+      }
+    | undefined,
   relationships: SocialState['relationships'],
-  lohId: string,
+  lohId: string
 ): {
-  targetId: string;
-  targetName: string;
-  isBackdoor: boolean;
-  currentTargetId: string | null;
-  backupTargetId: string | null;
+  targetId: string
+  targetName: string
+  isBackdoor: boolean
+  currentTargetId: string | null
+  backupTargetId: string | null
 } | null {
   const players = (game?.players ?? []).filter(
-    (player) => player.id !== lohId && player.status !== 'evicted' && player.status !== 'jury',
-  );
-  if (players.length === 0) return null;
-  const score = (playerId: string) => relationships[lohId]?.[playerId]?.affinity ?? 0;
+    (player) => player.id !== lohId && player.status !== 'evicted' && player.status !== 'jury'
+  )
+  if (players.length === 0) return null
+  const score = (playerId: string) => relationships[lohId]?.[playerId]?.affinity ?? 0
   const lowest = (pool: typeof players) =>
-    [...pool].sort((left, right) => score(left.id) - score(right.id))[0];
-  const nomineeIds = new Set(game?.nomineeIds ?? []);
-  const nominees = players.filter((player) => nomineeIds.has(player.id));
-  const nonNominees = players.filter((player) => !nomineeIds.has(player.id));
-  const nomineeTarget = nominees.length > 0 ? lowest(nominees) : null;
-  const backdoorTarget = nonNominees.length > 0 ? lowest(nonNominees) : null;
-  const isBackdoor = !!nomineeTarget && !!backdoorTarget &&
-    score(backdoorTarget.id) <= score(nomineeTarget.id) - 12;
-  const currentTarget = nomineeTarget ?? lowest(players);
-  const target = isBackdoor ? backdoorTarget! : currentTarget;
+    [...pool].sort((left, right) => score(left.id) - score(right.id))[0]
+  const nomineeIds = new Set(game?.nomineeIds ?? [])
+  const nominees = players.filter((player) => nomineeIds.has(player.id))
+  const nonNominees = players.filter((player) => !nomineeIds.has(player.id))
+  const nomineeTarget = nominees.length > 0 ? lowest(nominees) : null
+  const backdoorTarget = nonNominees.length > 0 ? lowest(nonNominees) : null
+  const isBackdoor =
+    !!nomineeTarget && !!backdoorTarget && score(backdoorTarget.id) <= score(nomineeTarget.id) - 12
+  const currentTarget = nomineeTarget ?? lowest(players)
+  const target = isBackdoor ? backdoorTarget! : currentTarget
   return {
     targetId: target.id,
     targetName: target.name ?? target.id,
     isBackdoor,
     currentTargetId: currentTarget?.id ?? null,
     backupTargetId: backdoorTarget?.id ?? null,
-  };
+  }
 }
 
 function getContextualActionSummary({
@@ -339,51 +346,56 @@ function getContextualActionSummary({
   game,
   relationships,
 }: {
-  actionId: string;
-  actorId: string;
-  targetId: string;
-  subjectId?: string;
-  recipientTrust: number;
+  actionId: string
+  actorId: string
+  targetId: string
+  subjectId?: string
+  recipientTrust: number
   game?: {
-    players?: Array<{ id: string; name?: string; status: string }>;
-    nomineeIds?: string[];
-    nominationContext?: { autoNomineeId: string | null } | null;
-  };
-  relationships: SocialState['relationships'];
+    players?: Array<{ id: string; name?: string; status: string }>
+    nomineeIds?: string[]
+    nominationContext?: { autoNomineeId: string | null } | null
+  }
+  relationships: SocialState['relationships']
 }): string | null {
-  const name = (id: string | undefined) => game?.players?.find((player) => player.id === id)?.name ?? id ?? 'that player';
+  const name = (id: string | undefined) =>
+    game?.players?.find((player) => player.id === id)?.name ?? id ?? 'that player'
   if (actionId === 'ask_why_nominated') {
-    const lohName = name(targetId);
+    const lohName = name(targetId)
     if (game?.nominationContext?.autoNomineeId === actorId) {
-      return `${lohName} explained that you entered danger automatically after the competition, not as their personal nominee.`;
+      return `${lohName} explained that you entered danger automatically after the competition, not as their personal nominee.`
     }
-    if (recipientTrust >= 30) return `${lohName} said they respect you, but your competition potential made you too dangerous to leave comfortable.`;
-    if (recipientTrust < 0) return `${lohName} admitted they do not trust your position and wanted to force you to show your hand.`;
-    return `${lohName} said they needed options and believed you were connected enough to survive without becoming an immediate enemy.`;
+    if (recipientTrust >= 30)
+      return `${lohName} said they respect you, but your competition potential made you too dangerous to leave comfortable.`
+    if (recipientTrust < 0)
+      return `${lohName} admitted they do not trust your position and wanted to force you to show your hand.`
+    return `${lohName} said they needed options and believed you were connected enough to survive without becoming an immediate enemy.`
   }
   if (actionId === 'ask_safety_plan') {
-    const holderName = name(targetId);
-    const holder = game?.players?.find((player) => player.id === targetId);
-    if (holder?.status.includes('nominated')) return `${holderName} said they have no real choice: they intend to use Safety on themselves.`;
-    if (recipientTrust < 25) return `${holderName} stayed vague and said everyone would learn the decision at the ceremony.`;
+    const holderName = name(targetId)
+    const holder = game?.players?.find((player) => player.id === targetId)
+    if (holder?.status.includes('nominated'))
+      return `${holderName} said they have no real choice: they intend to use Safety on themselves.`
+    if (recipientTrust < 25)
+      return `${holderName} stayed vague and said everyone would learn the decision at the ceremony.`
     const nominee = (game?.nomineeIds ?? [])
       .map((id) => ({ id, affinity: relationships[targetId]?.[id]?.affinity ?? 0 }))
-      .sort((left, right) => right.affinity - left.affinity)[0];
+      .sort((left, right) => right.affinity - left.affinity)[0]
     return nominee
       ? `${holderName} trusted you enough to say they are leaning toward using Safety on ${name(nominee.id)}.`
-      : `${holderName} said they are currently leaning toward leaving the nominations unchanged.`;
+      : `${holderName} said they are currently leaning toward leaving the nominations unchanged.`
   }
   if (actionId === 'ask_use_safety') {
     return recipientTrust >= 20
       ? `${name(targetId)} said they would seriously consider using Safety on ${name(subjectId)} but made no promise.`
-      : `${name(targetId)} listened to the request about ${name(subjectId)} and refused to reveal the decision.`;
+      : `${name(targetId)} listened to the request about ${name(subjectId)} and refused to reveal the decision.`
   }
   if (actionId === 'ask_hold_safety') {
     return recipientTrust >= 20
       ? `${name(targetId)} acknowledged the LOH's request to leave nominations unchanged, while keeping the final decision.`
-      : `${name(targetId)} rejected the pressure and said the Safety decision belongs to them alone.`;
+      : `${name(targetId)} rejected the pressure and said the Safety decision belongs to them alone.`
   }
-  return null;
+  return null
 }
 
 function getOutcomeVerb({
@@ -392,16 +404,16 @@ function getOutcomeVerb({
   didBackfire,
   outcome,
 }: {
-  betrayalOccurred: boolean;
-  gaslightOccurred: boolean;
-  didBackfire: boolean;
-  outcome: 'success' | 'failure';
+  betrayalOccurred: boolean
+  gaslightOccurred: boolean
+  didBackfire: boolean
+  outcome: 'success' | 'failure'
 }): string {
-  if (betrayalOccurred) return 'was accepted, but they may be playing both sides';
-  if (gaslightOccurred) return 'made things worse';
-  if (didBackfire) return 'backfired';
-  if (outcome === 'failure') return 'failed';
-  return 'succeeded';
+  if (betrayalOccurred) return 'was accepted, but they may be playing both sides'
+  if (gaslightOccurred) return 'made things worse'
+  if (didBackfire) return 'backfired'
+  if (outcome === 'failure') return 'failed'
+  return 'succeeded'
 }
 
 /**
@@ -409,15 +421,15 @@ function getOutcomeVerb({
  * Should be called once at bootstrap, typically from SocialEngine.init().
  */
 export function initManeuvers(store: StoreAPI): void {
-  _store = store;
-  initEnergyBank(store);
+  _store = store
+  initEnergyBank(store)
 }
 
 // ── Action lookup ─────────────────────────────────────────────────────────
 
 /** Return the action definition for the given id, or undefined if not found. */
 export function getActionById(id: string): SocialActionDefinition | undefined {
-  return SOCIAL_ACTIONS.find((a) => a.id === id);
+  return SOCIAL_ACTIONS.find((a) => a.id === id)
 }
 
 // ── Availability & cost ───────────────────────────────────────────────────
@@ -430,24 +442,24 @@ export function getActionById(id: string): SocialActionDefinition | undefined {
 export function canAfford(
   actorId: string,
   costs: { energy: number; influence: number; info: number },
-  state?: StateForManeuvers,
+  state?: StateForManeuvers
 ): boolean {
-  let energy: number;
-  let influence: number;
-  let info: number;
+  let energy: number
+  let influence: number
+  let info: number
 
   if (state) {
-    energy = state.social.energyBank[actorId] ?? 0;
-    influence = state.social.influenceBank?.[actorId] ?? 0;
-    info = state.social.infoBank?.[actorId] ?? 0;
+    energy = state.social.energyBank[actorId] ?? 0
+    influence = state.social.influenceBank?.[actorId] ?? 0
+    info = state.social.infoBank?.[actorId] ?? 0
   } else {
-    const s = _store?.getState() as { social: SocialState } | null;
-    energy = s?.social.energyBank[actorId] ?? 0;
-    influence = s?.social.influenceBank?.[actorId] ?? 0;
-    info = s?.social.infoBank?.[actorId] ?? 0;
+    const s = _store?.getState() as { social: SocialState } | null
+    energy = s?.social.energyBank[actorId] ?? 0
+    influence = s?.social.influenceBank?.[actorId] ?? 0
+    info = s?.social.infoBank?.[actorId] ?? 0
   }
 
-  return energy >= costs.energy && influence >= costs.influence && info >= costs.info;
+  return energy >= costs.energy && influence >= costs.influence && info >= costs.info
 }
 
 /**
@@ -457,14 +469,14 @@ export function canAfford(
 export function getAvailableActions(
   actorId: string,
   state?: StateForManeuvers,
-  targetId?: string,
+  targetId?: string
 ): SocialActionDefinition[] {
-  const resolvedState = state ?? (_store?.getState() as StateForManeuvers | null);
-  const socialState = resolvedState?.social;
-  const dramaMode = resolvedState?.settings?.gameUX?.dramaMode === true;
+  const resolvedState = state ?? (_store?.getState() as StateForManeuvers | null)
+  const socialState = resolvedState?.social
+  const dramaMode = getEffectiveSocialMode(resolvedState ?? {}) === 'drama'
   return SOCIAL_ACTIONS.filter((action) => {
     if (!canAfford(actorId, normalizeActionCosts(action, 0, dramaMode), state)) {
-      return false;
+      return false
     }
     if (
       targetId &&
@@ -472,10 +484,10 @@ export function getAvailableActions(
       socialState &&
       hasAllianceBetween(socialState.relationships, actorId, targetId)
     ) {
-      return false;
+      return false
     }
-    return true;
-  });
+    return true
+  })
 }
 
 /**
@@ -488,9 +500,9 @@ export function computeActionCost(
   _targetId: string,
   _state?: StateForManeuvers,
   targetCount = 0,
-  dramaMode = false,
+  dramaMode = false
 ): number {
-  return normalizeActionCost(action, targetCount, dramaMode);
+  return normalizeActionCost(action, targetCount, dramaMode)
 }
 
 /** Return the complete multi-resource price for an action. */
@@ -500,27 +512,27 @@ export function computeActionCosts(
   _targetId: string,
   _state?: StateForManeuvers,
   targetCount = 0,
-  dramaMode = false,
+  dramaMode = false
 ): { energy: number; influence: number; info: number } {
-  return normalizeActionCosts(action, targetCount, dramaMode);
+  return normalizeActionCosts(action, targetCount, dramaMode)
 }
 
 // ── Execution ─────────────────────────────────────────────────────────────
 
 export interface ExecuteActionOptions {
   /** Override the outcome instead of defaulting to 'success'. */
-  outcome?: 'success' | 'failure';
+  outcome?: 'success' | 'failure'
   /**
    * When true, the action is simulated but no state changes are dispatched.
    * Returns the outcome result without mutating energy, relationships, or logs.
    */
-  previewOnly?: boolean;
+  previewOnly?: boolean
   /**
    * Origin of the action for activity routing.
    * Set to 'manual' for human-player actions and 'system' for AI/background actions.
    * Defaults to 'system' when omitted so un-tagged callers are treated conservatively.
    */
-  source?: 'manual' | 'system';
+  source?: 'manual' | 'system'
   /**
    * Optional contextual subject for primaryPlusSubject actions.
    * Represents the person being talked *about* (as opposed to targetId, which is
@@ -528,32 +540,32 @@ export interface ExecuteActionOptions {
    * When provided and the action succeeds, a lightweight tag is applied to the
    * primary target → subject relationship to reflect the conversation.
    */
-  subjectId?: string;
+  subjectId?: string
   /** Optional RNG override for deterministic simulations and tests. */
-  random?: () => number;
+  random?: () => number
   /** Apply the action to another group member without charging the group cost again. */
-  waiveCosts?: boolean;
+  waiveCosts?: boolean
   /** Override the energy portion of the cost for dynamically priced actions. */
-  energyCostOverride?: number;
+  energyCostOverride?: number
   /** Override the complete price when a UI batches several targets atomically. */
-  costOverride?: { energy: number; influence: number; info: number };
+  costOverride?: { energy: number; influence: number; info: number }
 }
 
 export interface ExecuteActionResult {
   /** False when the actor lacks energy or the action is unknown. */
-  success: boolean;
+  success: boolean
   /** Affinity delta applied to the source→target relationship. */
-  delta: number;
+  delta: number
   /** Actor's energy after the action (unchanged on failure). */
-  newEnergy: number;
+  newEnergy: number
   /** Human-readable summary of the outcome for UI display. */
-  summary: string;
+  summary: string
   /** Normalised outcome score in [-1, +1] from the SocialPolicy evaluator. */
-  score: number;
+  score: number
   /** Human-readable outcome label (e.g. 'Good', 'Bad'). */
   /** Per-recipient deltas for an atomic multi-target action. */
-  targetDeltas?: Record<string, number>;
-  label: string;
+  targetDeltas?: Record<string, number>
+  label: string
 }
 
 /**
@@ -575,7 +587,7 @@ export function executeAction(
   actorId: string,
   targetId: string,
   actionId: string,
-  options?: ExecuteActionOptions,
+  options?: ExecuteActionOptions
 ): ExecuteActionResult {
   if (!_store) {
     return {
@@ -585,10 +597,10 @@ export function executeAction(
       summary: 'Store not initialised',
       score: 0,
       label: 'Unmoved',
-    };
+    }
   }
 
-  const action = getActionById(actionId);
+  const action = getActionById(actionId)
   if (!action) {
     return {
       success: false,
@@ -597,25 +609,29 @@ export function executeAction(
       summary: 'Unknown action',
       score: 0,
       label: 'Unmoved',
-    };
+    }
   }
 
-  const currentEnergy = SocialEnergyBank.get(actorId);
+  const currentEnergy = SocialEnergyBank.get(actorId)
   const state = _store.getState() as {
-    social: SocialState;
-    game?: ManeuverGameState;
-    settings?: { gameUX?: { dramaMode?: boolean } };
-  };
+    social: SocialState
+    game?: ManeuverGameState
+    settings?: { gameUX?: { dramaMode?: boolean } }
+    vip?: {
+      isActive?: boolean
+      entitlements?: { dramaMode?: boolean }
+    }
+  }
 
-  const dramaMode = state.settings?.gameUX?.dramaMode === true;
-  const normalizedCosts = normalizeActionCosts(action, 0, dramaMode);
+  const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const normalizedCosts = normalizeActionCosts(action, 0, dramaMode)
   const costs = options?.waiveCosts
     ? { energy: 0, influence: 0, info: 0 }
-    : options?.costOverride ?? {
+    : (options?.costOverride ?? {
         ...normalizedCosts,
         energy: options?.energyCostOverride ?? normalizedCosts.energy,
-      };
-  if (action.dramaOnly && state.settings?.gameUX?.dramaMode !== true) {
+      })
+  if (action.dramaOnly && !dramaMode) {
     return {
       success: false,
       delta: 0,
@@ -623,7 +639,7 @@ export function executeAction(
       summary: 'Drama Mode required',
       score: 0,
       label: 'Unavailable',
-    };
+    }
   }
 
   if (
@@ -637,33 +653,30 @@ export function executeAction(
       summary: 'Already allied',
       score: 0,
       label: 'Unmoved',
-    };
+    }
   }
 
-  if (dramaMode) {
-    const eligibility = evaluateSocialActionEligibility({
-      action,
-      actorId,
-      targetIds:
-        action.targetMode === 'none' || action.needsTargets === false ? [] : [targetId],
-      subjectId: options?.subjectId,
-      phase: state.game?.phase,
-      players: state.game?.players,
-      relationships: state.social.relationships,
-      dramaNetwork: state.social.dramaNetwork,
-      dramaMode: true,
-      requireCompleteSelection: true,
-      allowAIOnly: true,
-    });
-    if (!eligibility.eligible) {
-      return {
-        success: false,
-        delta: 0,
-        newEnergy: currentEnergy,
-        summary: eligibility.reason,
-        score: 0,
-        label: 'Unavailable',
-      };
+  const eligibility = evaluateSocialActionEligibility({
+    action,
+    actorId,
+    targetIds: resolveActionTargetMode(action, dramaMode) === 'none' ? [] : [targetId],
+    subjectId: options?.subjectId,
+    phase: state.game?.phase,
+    players: state.game?.players,
+    relationships: state.social.relationships,
+    dramaNetwork: state.social.dramaNetwork,
+    dramaMode,
+    requireCompleteSelection: true,
+    allowAIOnly: true,
+  })
+  if (!eligibility.eligible) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: eligibility.reason,
+      score: 0,
+      label: 'Unavailable',
     }
   }
 
@@ -675,116 +688,123 @@ export function executeAction(
       summary: 'Insufficient resources',
       score: 0,
       label: 'Unmoved',
-    };
+    }
   }
 
-  const scaledYields = options?.waiveCosts
-    ? { influence: 0, info: 0 }
-    : normalizeActionYields(action);
-  const random = options?.random ?? Math.random;
-  const priorRepeats = countPriorRepeatedActions(state.social.sessionLogs, actorId, targetId, actionId);
-  const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0;
-  const recipientTrust = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0;
+  const scaledYields =
+    options?.waiveCosts || !dramaMode ? { influence: 0, info: 0 } : normalizeActionYields(action)
+  const random = options?.random ?? Math.random
+  const priorRepeats = countPriorRepeatedActions(
+    getPersistentSocialHistory(state.social as SocialStateWithHistory),
+    actorId,
+    targetId,
+    actionId
+  )
+  const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0
+  const recipientTrust = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0
   const rootState = _store.getState() as {
-    social: SocialState;
-    settings?: { gameUX?: { dramaMode?: boolean } };
+    social: SocialState
+    settings?: { gameUX?: { dramaMode?: boolean } }
     game?: {
-      week?: number;
-      lohId?: string | null;
-      posWinnerId?: string | null;
-      players?: Array<{ id: string; name?: string; status: string }>;
-      nomineeIds?: string[];
-      nominationContext?: { autoNomineeId: string | null } | null;
+      week?: number
+      lohId?: string | null
+      posWinnerId?: string | null
+      players?: Array<{ id: string; name?: string; status: string }>
+      nomineeIds?: string[]
+      nominationContext?: { autoNomineeId: string | null } | null
       lohSocialPlan?: {
-        week: number;
-        lohId: string;
-        currentTargetId: string | null;
-        backupTargetId: string | null;
-        askCountsByPlayerId: Record<string, number>;
-      } | null;
-    };
-  };
-  const freshLohTargetPlan = actionId === 'ask_loh_target'
-    ? getLohTargetPlan(rootState.game, state.social.relationships, targetId)
-    : null;
-  const savedLohPlan = rootState.game?.lohSocialPlan;
-  const existingLohPlan = savedLohPlan
-    && savedLohPlan.week === rootState.game?.week
-    && savedLohPlan.lohId === targetId
-    ? savedLohPlan
-    : null;
+        week: number
+        lohId: string
+        currentTargetId: string | null
+        backupTargetId: string | null
+        askCountsByPlayerId: Record<string, number>
+      } | null
+    }
+  }
+  const freshLohTargetPlan =
+    actionId === 'ask_loh_target'
+      ? getLohTargetPlan(rootState.game, state.social.relationships, targetId)
+      : null
+  const savedLohPlan = rootState.game?.lohSocialPlan
+  const existingLohPlan =
+    savedLohPlan && savedLohPlan.week === rootState.game?.week && savedLohPlan.lohId === targetId
+      ? savedLohPlan
+      : null
   const lohPlanState = freshLohTargetPlan
-    ? existingLohPlan ?? {
+    ? (existingLohPlan ?? {
         week: rootState.game?.week ?? 0,
         lohId: targetId,
         currentTargetId: freshLohTargetPlan.currentTargetId,
         backupTargetId: freshLohTargetPlan.backupTargetId,
         askCountsByPlayerId: {},
-      }
-    : null;
-  const priorLohAsks = lohPlanState?.askCountsByPlayerId[actorId] ?? 0;
+      })
+    : null
+  const priorLohAsks = lohPlanState?.askCountsByPlayerId[actorId] ?? 0
   const lohDisclosureId = lohPlanState
     ? priorLohAsks % 2 === 1 && lohPlanState.currentTargetId
       ? lohPlanState.currentTargetId
-      : lohPlanState.backupTargetId ?? lohPlanState.currentTargetId
-    : null;
-  const lohDisclosurePlayer = rootState.game?.players?.find((player) => player.id === lohDisclosureId);
+      : (lohPlanState.backupTargetId ?? lohPlanState.currentTargetId)
+    : null
+  const lohDisclosurePlayer = rootState.game?.players?.find(
+    (player) => player.id === lohDisclosureId
+  )
   // The LOH may share another name as misdirection, but should not casually tell
   // a player that *they* are the current or backup target.
   const lohWillDisclose =
     !!lohDisclosureId &&
     (!dramaMode || lohDisclosureId !== actorId) &&
     recipientTrust >= 0 &&
-    priorLohAsks < 2;
-  const lohTargetPlan = lohWillDisclose && lohDisclosureId
-    ? {
-        targetId: lohDisclosureId,
-        targetName: lohDisclosurePlayer?.name ?? lohDisclosureId,
-        isBackdoor: lohDisclosureId === lohPlanState?.backupTargetId,
-      }
-    : null;
-  let outcome = options?.outcome ?? 'success';
-  let betrayalOccurred = false;
-  let gaslightOccurred = false;
+    priorLohAsks < 2
+  const lohTargetPlan =
+    lohWillDisclose && lohDisclosureId
+      ? {
+          targetId: lohDisclosureId,
+          targetName: lohDisclosurePlayer?.name ?? lohDisclosureId,
+          isBackdoor: lohDisclosureId === lohPlanState?.backupTargetId,
+        }
+      : null
+  let outcome = options?.outcome ?? 'success'
+  let betrayalOccurred = false
+  let gaslightOccurred = false
   if (actionId === 'proposeAlliance' && !options?.outcome) {
-    const recipientPlayer = rootState.game?.players?.find((player) => player.id === targetId);
+    const recipientPlayer = rootState.game?.players?.find((player) => player.id === targetId)
     const acceptChance = dramaMode
       ? getAdvancedAllianceAcceptChance(existingAffinity, recipientTrust, priorRepeats, {
           proposerIsLoh: rootState.game?.lohId === actorId,
           proposerHasSafety: rootState.game?.posWinnerId === actorId,
           recipientIsNominated: recipientPlayer?.status.includes('nominated') ?? false,
         })
-      : getStandardAllianceAcceptChance(existingAffinity, priorRepeats);
-    const accepted = random() < acceptChance;
+      : getStandardAllianceAcceptChance(existingAffinity, priorRepeats)
+    const accepted = random() < acceptChance
     if (accepted && dramaMode && random() < getAllianceBetrayalChance(recipientTrust)) {
-      betrayalOccurred = true;
+      betrayalOccurred = true
     }
     if (!accepted) {
-      outcome = 'failure';
-      gaslightOccurred =
-        existingAffinity < ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD && priorRepeats > 0;
+      outcome = 'failure'
+      gaslightOccurred = existingAffinity < ALLIANCE_GASLIGHT_AFFINITY_THRESHOLD && priorRepeats > 0
     }
   }
   if (actionId === 'ask_use_safety' && !options?.outcome) {
-    const beneficiaryId = options?.subjectId ?? actorId;
-    const recipientView = state.social.relationships[targetId]?.[beneficiaryId];
-    const tags = new Set(recipientView?.tags ?? []);
-    let acceptanceChance = 0.3 + normalizeAffinity(recipientView?.affinity ?? 0) * 0.5;
-    if (tags.has('alliance')) acceptanceChance += 0.25;
-    if (tags.has('romance') || tags.has('bromance')) acceptanceChance += 0.18;
-    if (tags.has('protection') || tags.has('safety_promise')) acceptanceChance += 0.12;
-    if (tags.has('betrayal')) acceptanceChance = 0.02;
-    else if (tags.has('target') || tags.has('rivalry')) acceptanceChance = Math.min(0.08, acceptanceChance);
-    if (random() >= Math.max(0.02, Math.min(0.94, acceptanceChance))) outcome = 'failure';
+    const beneficiaryId = options?.subjectId ?? actorId
+    const recipientView = state.social.relationships[targetId]?.[beneficiaryId]
+    const tags = new Set(recipientView?.tags ?? [])
+    let acceptanceChance = 0.3 + normalizeAffinity(recipientView?.affinity ?? 0) * 0.5
+    if (tags.has('alliance')) acceptanceChance += 0.25
+    if (tags.has('romance') || tags.has('bromance')) acceptanceChance += 0.18
+    if (tags.has('protection') || tags.has('safety_promise')) acceptanceChance += 0.12
+    if (tags.has('betrayal')) acceptanceChance = 0.02
+    else if (tags.has('target') || tags.has('rivalry'))
+      acceptanceChance = Math.min(0.08, acceptanceChance)
+    if (random() >= Math.max(0.02, Math.min(0.94, acceptanceChance))) outcome = 'failure'
   }
   const baseDelta =
     actionId === 'proposeAlliance' && outcome === 'failure'
       ? dramaMode
         ? getAdvancedAllianceFailureDelta(gaslightOccurred, existingAffinity, recipientTrust)
         : getStandardAllianceFailureDelta(gaslightOccurred)
-      : computeOutcomeDelta(actionId, actorId, targetId, outcome);
+      : computeOutcomeDelta(actionId, actorId, targetId, outcome)
   const repeatSensitive =
-    outcome === 'success' && isRepeatSensitiveAction(action, baseDelta, scaledYields);
+    outcome === 'success' && isRepeatSensitiveAction(action, baseDelta, scaledYields)
   const repeatedPositive =
     repeatSensitive && baseDelta > 0
       ? computeRepeatedPositiveDelta(priorRepeats, random)
@@ -794,26 +814,25 @@ export function executeAction(
             repeatSensitive &&
             priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
             random() < REPETITION_BACKFIRE_CHANCE,
-        };
-  const didBackfire = repeatedPositive.didBackfire;
-  const delta = actionId === 'ask_loh_target' && priorLohAsks >= 2
-    ? -Math.min(4, priorLohAsks)
-    : actionId === 'ask_loh_target' && !lohWillDisclose
-      ? 0
-      : repeatedPositive.delta;
+        }
+  const didBackfire = repeatedPositive.didBackfire
+  const delta =
+    actionId === 'ask_loh_target' && priorLohAsks >= 2
+      ? -Math.min(4, priorLohAsks)
+      : actionId === 'ask_loh_target' && !lohWillDisclose
+        ? 0
+        : repeatedPositive.delta
   const formingAlliance =
-    actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred;
+    actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred
   const relationshipDelta = formingAlliance
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - existingAffinity)
-    : actionId === 'proposeAlliance' && outcome === 'success'
-      ? delta
-      : dramaMode ? delta * 2 : delta;
+    : delta
   const reciprocalAllianceDelta = formingAlliance
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - recipientTrust)
-    : delta;
+    : delta
 
   // Evaluate outcome score and label using the SocialPolicy evaluator.
-  const mode = options?.previewOnly ? 'preview' : 'execute';
+  const mode = options?.previewOnly ? 'preview' : 'execute'
   const outcomeResult = evaluateOutcome({
     actionId,
     actorId,
@@ -821,17 +840,18 @@ export function executeAction(
     mode,
     outcome,
     relationships: state.social.relationships,
-  });
-  const finalScore = didBackfire ? -Math.abs(outcomeResult.score) : outcomeResult.score;
-  const finalLabel = didBackfire ? scoreToLabel(finalScore) : outcomeResult.label;
+    random,
+  })
+  const finalScore = didBackfire ? -Math.abs(outcomeResult.score) : outcomeResult.score
+  const finalLabel = didBackfire ? scoreToLabel(finalScore) : outcomeResult.label
 
   // previewOnly: return outcome without mutating state.
   if (options?.previewOnly) {
-    const previewSign = relationshipDelta > 0 ? '+' : '';
+    const previewSign = relationshipDelta > 0 ? '+' : ''
     const previewSummary =
       relationshipDelta !== 0
         ? `${action.title} preview (${previewSign}${relationshipDelta} affinity)`
-        : `${action.title} preview`;
+        : `${action.title} preview`
     return {
       success: true,
       delta: relationshipDelta,
@@ -839,7 +859,7 @@ export function executeAction(
       summary: previewSummary,
       score: finalScore,
       label: finalLabel,
-    };
+    }
   }
 
   if (actionId === 'ask_loh_target' && lohPlanState) {
@@ -852,22 +872,22 @@ export function executeAction(
           [actorId]: priorLohAsks + 1,
         },
       },
-    });
+    })
   }
 
   // Deduct all resources
-  const newEnergy = SocialEnergyBank.add(actorId, -costs.energy);
-  const currentInfluence = state.social.influenceBank[actorId] ?? 0;
-  const influenceSpend = Math.min(costs.influence, currentInfluence);
-  const postSpendInfluenceBalance = currentInfluence - influenceSpend;
+  const newEnergy = SocialEnergyBank.add(actorId, -costs.energy)
+  const currentInfluence = state.social.influenceBank[actorId] ?? 0
+  const influenceSpend = Math.min(costs.influence, currentInfluence)
+  const postSpendInfluenceBalance = currentInfluence - influenceSpend
   if (influenceSpend > 0) {
-    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -influenceSpend }));
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -influenceSpend }))
   }
-  const currentInfo = state.social.infoBank[actorId] ?? 0;
-  const infoSpend = Math.min(costs.info, currentInfo);
-  const postSpendInfoBalance = currentInfo - infoSpend;
+  const currentInfo = state.social.infoBank[actorId] ?? 0
+  const infoSpend = Math.min(costs.info, currentInfo)
+  const postSpendInfoBalance = currentInfo - infoSpend
   if (infoSpend > 0) {
-    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -infoSpend }));
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -infoSpend }))
   }
 
   // Apply outcome-sensitive gains or losses after paying the action costs.
@@ -878,35 +898,35 @@ export function executeAction(
           influence: didBackfire ? -scaledYields.influence : scaledYields.influence,
           info: didBackfire ? -scaledYields.info : scaledYields.info,
         }
-      : { influence: 0, info: 0 };
-  const appliedYields = { influence: 0, info: 0 };
-    if (resourceEffect.influence !== 0) {
-      const appliedInfluenceDelta = clampResourceAdjustment(
-        resourceEffect.influence,
-        postSpendInfluenceBalance,
-      );
-      if (appliedInfluenceDelta !== 0) {
-        _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: appliedInfluenceDelta }));
-      }
-      appliedYields.influence = appliedInfluenceDelta;
+      : { influence: 0, info: 0 }
+  const appliedYields = { influence: 0, info: 0 }
+  if (resourceEffect.influence !== 0) {
+    const appliedInfluenceDelta = clampResourceAdjustment(
+      resourceEffect.influence,
+      postSpendInfluenceBalance
+    )
+    if (appliedInfluenceDelta !== 0) {
+      _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: appliedInfluenceDelta }))
     }
-    if (resourceEffect.info !== 0) {
-      const appliedInfoDelta = clampResourceAdjustment(resourceEffect.info, postSpendInfoBalance);
-      if (appliedInfoDelta !== 0) {
-        _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedInfoDelta }));
-      }
-      appliedYields.info = appliedInfoDelta;
+    appliedYields.influence = appliedInfluenceDelta
+  }
+  if (resourceEffect.info !== 0) {
+    const appliedInfoDelta = clampResourceAdjustment(resourceEffect.info, postSpendInfoBalance)
+    if (appliedInfoDelta !== 0) {
+      _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedInfoDelta }))
     }
+    appliedYields.info = appliedInfoDelta
+  }
 
   // Read balances after all mutations
-  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } };
+  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } }
   const balancesAfter = {
     energy: stateAfter.social.energyBank[actorId] ?? 0,
     influence: stateAfter.social.influenceBank[actorId] ?? 0,
     info: stateAfter.social.infoBank[actorId] ?? 0,
-  };
+  }
 
-  const subjectId = options?.subjectId ?? lohTargetPlan?.targetId;
+  const subjectId = options?.subjectId ?? lohTargetPlan?.targetId
 
   const narrative =
     outcome !== 'success'
@@ -915,7 +935,7 @@ export function executeAction(
         ? buildSnoopNarrative(state.social, actorId, state.game?.players ?? [])
         : actionId === 'ask_loh_target'
           ? buildLohTargetNarrative(state.social, state.game, actorId, targetId, priorRepeats)
-          : undefined;
+          : undefined
 
   const entry: SocialActionLogEntry = {
     actionId,
@@ -927,8 +947,8 @@ export function executeAction(
       ? {
           context: {
             lohPlanType: lohTargetPlan.isBackdoor
-              ? 'backup_plan' as const
-              : 'current_target' as const,
+              ? ('backup_plan' as const)
+              : ('current_target' as const),
           },
         }
       : {}),
@@ -943,12 +963,12 @@ export function executeAction(
     score: finalScore,
     label: finalLabel,
     source: options?.source ?? 'system',
-  };
+  }
   if (appliedYields.influence !== 0 || appliedYields.info !== 0) {
     entry.yieldsApplied = {
       ...(appliedYields.influence !== 0 ? { influence: appliedYields.influence } : {}),
       ...(appliedYields.info !== 0 ? { info: appliedYields.info } : {}),
-    };
+    }
   }
 
   const relationshipTags =
@@ -956,7 +976,7 @@ export function executeAction(
     action.outcomeTag &&
     !(actionId === 'proposeAlliance' && betrayalOccurred)
       ? [action.outcomeTag]
-      : undefined;
+      : undefined
 
   _store.dispatch(
     updateRelationship({
@@ -965,8 +985,8 @@ export function executeAction(
       delta: relationshipDelta,
       tags: relationshipTags,
       actionSource: options?.source ?? 'system',
-    }),
-  );
+    })
+  )
 
   if (actionId === 'proposeAlliance' && outcome === 'success') {
     if (betrayalOccurred) {
@@ -977,8 +997,8 @@ export function executeAction(
           delta: ALLIANCE_BETRAYAL_DELTA,
           tags: [BETRAYAL_TAG],
           actionSource: options?.source ?? 'system',
-        }),
-      );
+        })
+      )
     } else {
       _store.dispatch(
         updateRelationship({
@@ -987,8 +1007,8 @@ export function executeAction(
           delta: reciprocalAllianceDelta,
           tags: [ALLIANCE_TAG],
           actionSource: 'system',
-        }),
-      );
+        })
+      )
     }
   }
 
@@ -1000,8 +1020,8 @@ export function executeAction(
         delta: -5,
         tags: [BETRAYAL_TAG],
         actionSource: options?.source ?? 'system',
-      }),
-    );
+      })
+    )
   }
 
   if (actionId === 'end_romance' && outcome === 'success') {
@@ -1012,8 +1032,8 @@ export function executeAction(
         delta: -5,
         tags: ['ex'],
         actionSource: options?.source ?? 'system',
-      }),
-    );
+      })
+    )
   }
 
   // For primaryPlusSubject actions: apply a lightweight contextual tag from the
@@ -1032,12 +1052,12 @@ export function executeAction(
         delta: 0,
         tags: relationshipTags,
         actionSource: options?.source ?? 'system',
-      }),
-    );
+      })
+    )
   }
 
   if (actionId === 'ask_use_safety' && outcome === 'success') {
-    const beneficiaryId = subjectId ?? actorId;
+    const beneficiaryId = subjectId ?? actorId
     _store.dispatch(
       updateRelationship({
         source: targetId,
@@ -1045,15 +1065,16 @@ export function executeAction(
         delta: 0,
         tags: ['safety_promise'],
         actionSource: 'system',
-      }),
-    );
+      })
+    )
   }
 
-  _store.dispatch(recordSocialAction({ entry }));
+  _store.dispatch(recordSocialAction({ entry }))
 
-  const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome });
-  const sign = relationshipDelta > 0 ? '+' : '';
-  const lohName = rootState.game?.players?.find((player) => player.id === targetId)?.name ?? 'The LOH';
+  const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome })
+  const sign = relationshipDelta > 0 ? '+' : ''
+  const lohName =
+    rootState.game?.players?.find((player) => player.id === targetId)?.name ?? 'The LOH'
   const contextualSummary = getContextualActionSummary({
     actionId,
     actorId,
@@ -1062,20 +1083,22 @@ export function executeAction(
     recipientTrust,
     game: rootState.game,
     relationships: state.social.relationships,
-  });
-  const standardSummary = contextualSummary ?? (actionId === 'ask_loh_target' && priorLohAsks >= 3
-    ? `${lohName} shut the conversation down after being asked repeatedly.`
-    : actionId === 'ask_loh_target' && priorLohAsks === 2
-      ? `${lohName} said they had already answered and became annoyed by the pressure.`
-      : actionId === 'ask_loh_target' && !lohTargetPlan
-        ? `${lohName} kept their plan deliberately vague.`
-      : lohTargetPlan && outcome === 'success'
-        ? lohTargetPlan.isBackdoor
-          ? `${lohTargetPlan.targetName} is the LOH's backup plan if the nominations change.`
-          : `${lohTargetPlan.targetName} is the LOH's current target.`
-        : relationshipDelta !== 0
-          ? `${action.title} ${verb} (${sign}${relationshipDelta} relationship)`
-          : `${action.title} ${verb}`);
+  })
+  const standardSummary =
+    contextualSummary ??
+    (actionId === 'ask_loh_target' && priorLohAsks >= 3
+      ? `${lohName} shut the conversation down after being asked repeatedly.`
+      : actionId === 'ask_loh_target' && priorLohAsks === 2
+        ? `${lohName} said they had already answered and became annoyed by the pressure.`
+        : actionId === 'ask_loh_target' && !lohTargetPlan
+          ? `${lohName} kept their plan deliberately vague.`
+          : lohTargetPlan && outcome === 'success'
+            ? lohTargetPlan.isBackdoor
+              ? `${lohTargetPlan.targetName} is the LOH's backup plan if the nominations change.`
+              : `${lohTargetPlan.targetName} is the LOH's current target.`
+            : relationshipDelta !== 0
+              ? `${action.title} ${verb} (${sign}${relationshipDelta} relationship)`
+              : `${action.title} ${verb}`)
 
   if (dramaMode) {
     const outcomeKind: SocialOutcomeKind = betrayalOccurred
@@ -1084,7 +1107,7 @@ export function executeAction(
         ? 'gaslight'
         : didBackfire
           ? 'backfire'
-          : outcome;
+          : outcome
     return {
       success: true,
       delta: relationshipDelta,
@@ -1100,7 +1123,7 @@ export function executeAction(
         }),
       score: finalScore,
       label: finalLabel,
-    };
+    }
   }
   return {
     success: true,
@@ -1109,7 +1132,7 @@ export function executeAction(
     summary: narrative ?? standardSummary,
     score: finalScore,
     label: finalLabel,
-  };
+  }
 }
 
 /**
@@ -1120,9 +1143,9 @@ export function executeGroupAction(
   actorId: string,
   rawTargetIds: readonly string[],
   actionId: string,
-  options?: ExecuteActionOptions,
+  options?: ExecuteActionOptions
 ): ExecuteActionResult {
-  const currentEnergy = SocialEnergyBank.get(actorId);
+  const currentEnergy = SocialEnergyBank.get(actorId)
   const unavailable = (summary: string): ExecuteActionResult => ({
     success: false,
     delta: 0,
@@ -1130,20 +1153,25 @@ export function executeGroupAction(
     summary,
     score: 0,
     label: 'Unavailable',
-  });
-  if (!_store) return unavailable('Store not initialised');
+  })
+  if (!_store) return unavailable('Store not initialised')
 
-  const action = getActionById(actionId);
-  if (!action) return unavailable('Unknown action');
+  const action = getActionById(actionId)
+  if (!action) return unavailable('Unknown action')
 
-  const targetIds = [...new Set(rawTargetIds)].filter((id) => id && id !== actorId);
+  const targetIds = [...new Set(rawTargetIds)].filter((id) => id && id !== actorId)
   const state = _store.getState() as {
-    social: SocialState;
-    game?: ManeuverGameState;
-    settings?: { gameUX?: { dramaMode?: boolean } };
-  };
-  const dramaMode = state.settings?.gameUX?.dramaMode === true;
-  if (resolveActionTargetMode(action, dramaMode) !== 'multi') return unavailable('This is not a group action');
+    social: SocialState
+    game?: ManeuverGameState
+    settings?: { gameUX?: { dramaMode?: boolean } }
+    vip?: {
+      isActive?: boolean
+      entitlements?: { dramaMode?: boolean }
+    }
+  }
+  const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  if (resolveActionTargetMode(action, dramaMode) !== 'multi')
+    return unavailable('This is not a group action')
   const eligibility = evaluateSocialActionEligibility({
     action,
     actorId,
@@ -1152,45 +1180,48 @@ export function executeGroupAction(
     players: state.game?.players,
     relationships: state.social.relationships,
     dramaNetwork: state.social.dramaNetwork,
-    dramaMode: state.settings?.gameUX?.dramaMode === true,
+    dramaMode,
     requireCompleteSelection: true,
     allowAIOnly: true,
-  });
-  if (!eligibility.eligible) return unavailable(eligibility.reason);
+  })
+  if (!eligibility.eligible) return unavailable(eligibility.reason)
 
-  const costs = normalizeActionCosts(action, targetIds.length, dramaMode);
+  const costs = normalizeActionCosts(action, targetIds.length, dramaMode)
   if (!canAfford(actorId, costs)) {
     return {
       ...unavailable(
-        'Not enough resources: Group Chat needs ' + costs.energy + ' energy for ' +
-          targetIds.length + ' housemates.',
+        'Not enough resources: Group Chat needs ' +
+          costs.energy +
+          ' energy for ' +
+          targetIds.length +
+          ' housemates.'
       ),
       label: 'Unmoved',
-    };
+    }
   }
 
-  const random = options?.random ?? Math.random;
-  const outcome = options?.outcome ?? 'success';
-  const targetDeltas: Record<string, number> = {};
-  let anyBackfire = false;
+  const random = options?.random ?? Math.random
+  const outcome = options?.outcome ?? 'success'
+  const targetDeltas: Record<string, number> = {}
+  let anyBackfire = false
   for (const targetId of targetIds) {
     const repeats = countPriorRepeatedActions(
-      state.social.sessionLogs,
+      getPersistentSocialHistory(state.social as SocialStateWithHistory),
       actorId,
       targetId,
-      actionId,
-    );
-    const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, outcome);
+      actionId
+    )
+    const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, outcome)
     const repeated =
       outcome === 'success' && baseDelta > 0
         ? computeRepeatedPositiveDelta(repeats, random)
-        : { delta: baseDelta, didBackfire: false };
-    targetDeltas[targetId] = repeated.delta;
-    anyBackfire ||= repeated.didBackfire;
+        : { delta: baseDelta, didBackfire: false }
+    targetDeltas[targetId] = repeated.delta
+    anyBackfire ||= repeated.didBackfire
   }
 
-  const deltas = Object.values(targetDeltas);
-  const averageDelta = Math.round(deltas.reduce((sum, value) => sum + value, 0) / deltas.length);
+  const deltas = Object.values(targetDeltas)
+  const averageDelta = Math.round(deltas.reduce((sum, value) => sum + value, 0) / deltas.length)
   const scoreResult = evaluateOutcome({
     actionId,
     actorId,
@@ -1198,9 +1229,10 @@ export function executeGroupAction(
     mode: options?.previewOnly ? 'preview' : 'execute',
     outcome,
     relationships: state.social.relationships,
-  });
-  const finalScore = anyBackfire ? -Math.abs(scoreResult.score) : scoreResult.score;
-  const finalLabel = anyBackfire ? scoreToLabel(finalScore) : scoreResult.label;
+    random,
+  })
+  const finalScore = anyBackfire ? -Math.abs(scoreResult.score) : scoreResult.score
+  const finalLabel = anyBackfire ? scoreToLabel(finalScore) : scoreResult.label
 
   if (options?.previewOnly) {
     return {
@@ -1211,33 +1243,31 @@ export function executeGroupAction(
       summary: 'Group Chat preview for ' + targetIds.length + ' housemates',
       score: finalScore,
       label: finalLabel,
-    };
+    }
   }
 
-  const newEnergy = SocialEnergyBank.add(actorId, -costs.energy);
-  const currentInfluence = state.social.influenceBank[actorId] ?? 0;
-  const currentInfo = state.social.infoBank[actorId] ?? 0;
+  const newEnergy = SocialEnergyBank.add(actorId, -costs.energy)
+  const currentInfluence = state.social.influenceBank[actorId] ?? 0
+  const currentInfo = state.social.infoBank[actorId] ?? 0
   if (costs.influence > 0) {
-    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }));
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }))
   }
   if (costs.info > 0) {
-    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }));
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }))
   }
 
-  const effect = getSocialResourceEffect(
-    action,
-    anyBackfire ? 'backfire' : outcome,
-    targetIds.length,
-  );
+  const effect = dramaMode
+    ? getSocialResourceEffect(action, anyBackfire ? 'backfire' : outcome, targetIds.length)
+    : { influence: 0, info: 0 }
   const appliedEffect = {
     influence: clampResourceAdjustment(effect.influence, currentInfluence - costs.influence),
     info: clampResourceAdjustment(effect.info, currentInfo - costs.info),
-  };
+  }
   if (appliedEffect.influence !== 0) {
-    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: appliedEffect.influence }));
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: appliedEffect.influence }))
   }
   if (appliedEffect.info !== 0) {
-    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedEffect.info }));
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: appliedEffect.info }))
   }
 
   for (const targetId of targetIds) {
@@ -1247,11 +1277,11 @@ export function executeGroupAction(
         target: targetId,
         delta: targetDeltas[targetId],
         actionSource: options?.source ?? 'system',
-      }),
-    );
+      })
+    )
   }
 
-  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } };
+  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } }
   const entry: SocialActionLogEntry = {
     actionId,
     actorId,
@@ -1273,15 +1303,16 @@ export function executeGroupAction(
       ...(appliedEffect.info !== 0 ? { info: appliedEffect.info } : {}),
     },
     narrative:
-      'You brought ' + targetIds.length +
+      'You brought ' +
+      targetIds.length +
       ' housemates into one conversation; each reacted according to your history with them.',
     timestamp: Date.now(),
     week: stateAfter.game?.week,
     score: finalScore,
     label: finalLabel,
     source: options?.source ?? 'system',
-  };
-  _store.dispatch(recordSocialAction({ entry }));
+  }
+  _store.dispatch(recordSocialAction({ entry }))
 
   return {
     success: true,
@@ -1292,7 +1323,7 @@ export function executeGroupAction(
       'Group Chat reached ' + targetIds.length + ' housemates for ' + costs.energy + ' energy.',
     score: finalScore,
     label: finalLabel,
-  };
+  }
 }
 // ── Named export for convenience ──────────────────────────────────────────
 
@@ -1304,12 +1335,12 @@ export const SocialManeuvers = {
   computeActionCosts,
   executeAction,
   executeGroupAction,
-};
+}
 
 // ── Debug export ──────────────────────────────────────────────────────────
 
 if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>)['__socialManeuvers'] = {
+  ;(window as unknown as Record<string, unknown>)['__socialManeuvers'] = {
     getActionById,
     getAvailableActions,
     canAfford,
@@ -1317,5 +1348,5 @@ if (typeof window !== 'undefined') {
     computeActionCosts,
     executeAction,
     executeGroupAction,
-  };
+  }
 }

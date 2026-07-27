@@ -10,17 +10,18 @@
  * fails entirely.
  */
 
-import type { CompSelectionMode } from '../components/compSelectionUtils';
+import type { CompSelectionMode } from '../components/compSelectionUtils'
+import type { SocialRuntimeOverride } from '../social/socialRuntimeConfig'
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
 export interface RemoteTheme {
   /** Override --color-accent CSS variable (any valid CSS color string). */
-  accent?: string;
+  accent?: string
   /** Override --color-accent-2 CSS variable. */
-  accent2?: string;
+  accent2?: string
   /** Override --color-bg CSS variable. */
-  background?: string;
+  background?: string
 }
 
 // ─── IntroHub ─────────────────────────────────────────────────────────────────
@@ -30,14 +31,14 @@ export interface RemoteIntroHub {
    * Absolute URL of an image to use as the HomeHub background.
    * Must begin with http:// or https://.
    */
-  backgroundImageUrl?: string;
+  backgroundImageUrl?: string
   /**
    * Opacity (0–1) of a dark overlay placed over the remote background image.
    * Defaults to 0 (no overlay) when not specified.
    */
-  overlayOpacity?: number;
+  overlayOpacity?: number
   /** Optional headline text shown on the HomeHub (reserved for future use). */
-  headline?: string;
+  headline?: string
 }
 
 // ─── Music ────────────────────────────────────────────────────────────────────
@@ -48,13 +49,13 @@ export interface RemoteMusic {
    * Must begin with http:// or https://.
    * Retained for backward-compatible config parsing but ignored at runtime.
    */
-  introTrackUrl?: string;
+  introTrackUrl?: string
   /**
    * Remote URL for the main in-game background music loop.
    * Must begin with http:// or https://.
    * When set, is registered as music:remote_main and can be referenced by key.
    */
-  mainTrackUrl?: string;
+  mainTrackUrl?: string
 }
 
 // ─── Main TV ──────────────────────────────────────────────────────────────────
@@ -64,9 +65,9 @@ export interface RemoteMainTv {
    * Headline text shown in the main TV viewport when no live event is active.
    * Falls back to the built-in welcome message when absent.
    */
-  headline?: string;
+  headline?: string
   /** Optional secondary line (reserved for future expansion). */
-  subtext?: string;
+  subtext?: string
 }
 
 // ─── Challenge scheduling ─────────────────────────────────────────────────────
@@ -78,18 +79,18 @@ export interface RemoteChallenge {
    * (e.g. 'arcade-only', 'single-game', 'user-selection', 'random-games', …).
    * When absent, the player's own settings are used as normal.
    */
-  weeklyMode?: CompSelectionMode;
+  weeklyMode?: CompSelectionMode
   /**
    * Specific game key to force when weeklyMode is 'single-game'.
    * Must be a known registry key (e.g. 'quickTapRace').
    * Ignored when weeklyMode is not 'single-game'.
    */
-  weeklyGameKey?: string;
+  weeklyGameKey?: string
   /**
    * Pool of game keys to draw from when weeklyMode is 'user-selection'.
    * Ignored when weeklyMode is not 'user-selection'.
    */
-  weeklyGameKeys?: string[];
+  weeklyGameKeys?: string[]
 }
 
 // ─── Player overrides ─────────────────────────────────────────────────────────
@@ -99,58 +100,63 @@ export interface RemotePlayerOverride {
    * Stable houseguest id (lower-case slug, e.g. 'finn').
    * Must match a known id in src/data/houseguests.ts.
    */
-  id: string;
+  id: string
   /**
    * Replacement avatar image URL.
    * Must begin with http:// or https://.
    */
-  avatarUrl?: string;
+  avatarUrl?: string
   /** Override display name. Plain text only — no HTML. */
-  name?: string;
+  name?: string
   /** Override bio / story text. Plain text only — no HTML. */
-  bio?: string;
+  bio?: string
 }
 
 export interface RemoteRollout {
   /** Master switch for this presentation experiment. Defaults to false. */
-  enabled?: boolean;
+  enabled?: boolean
   /** Stable percentage of installs assigned to the treatment, from 0 to 100. */
-  percentage?: number;
+  percentage?: number
   /** Change the salt to create a fresh assignment without identifying players. */
-  salt?: string;
+  salt?: string
 }
 
 export interface RemoteOperations {
   /** Emergency switches always win over rollout configuration. */
   killSwitches?: {
-    refinedGameChrome?: boolean;
-  };
+    refinedGameChrome?: boolean
+  }
   rollouts?: {
-    refinedGameChrome?: RemoteRollout;
-  };
+    refinedGameChrome?: RemoteRollout
+  }
   telemetry?: {
-    enabled?: boolean;
-    samplePercentage?: number;
+    enabled?: boolean
+    samplePercentage?: number
     /** Optional HTTPS collector for privacy-safe product events. */
-    endpointUrl?: string;
-  };
+    endpointUrl?: string
+  }
 }
 
 // ─── Root config ─────────────────────────────────────────────────────────────
 
 export interface RemoteConfig {
   season?: {
-    theme?: RemoteTheme;
-    introHub?: RemoteIntroHub;
-    music?: RemoteMusic;
-    mainTv?: RemoteMainTv;
-  };
-  challenge?: RemoteChallenge;
+    theme?: RemoteTheme
+    introHub?: RemoteIntroHub
+    music?: RemoteMusic
+    mainTv?: RemoteMainTv
+  }
+  challenge?: RemoteChallenge
   /**
    * Overrides for individual AI houseguest profiles.
    * Only entries matching a known houseguest id are applied.
    */
-  players?: RemotePlayerOverride[];
+  players?: RemotePlayerOverride[]
+  /**
+   * Versioned, pure-data Social/Drama rules and copy overrides. Invalid values
+   * are discarded before this object reaches the simulation.
+   */
+  social?: SocialRuntimeOverride
   /** Release controls for gradual UI rollout, rollback and product measurement. */
-  operations?: RemoteOperations;
+  operations?: RemoteOperations
 }

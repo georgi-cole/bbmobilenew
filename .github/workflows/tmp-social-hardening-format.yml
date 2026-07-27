@@ -1,0 +1,61 @@
+name: Temporary Social hardening formatter
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  format-social-hardening:
+    if: github.head_ref == 'agent/social-premium-hardening' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/social-premium-hardening
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply guarded Social codemods
+        run: |
+          node scripts/tmp-social-hardening-codemod.mjs
+          node scripts/tmp-social-pacing-codemod.mjs
+      - name: Format changed Social files
+        shell: bash
+        run: |
+          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx' '*.css' '*.json' '*.yml' '*.mjs')
+          if (( ${#files[@]} > 0 )); then
+            npx prettier --write "${files[@]}"
+          fi
+      - name: Capture TypeScript diagnostics
+        shell: bash
+        run: |
+          mkdir -p docs
+          set +e
+          npm run typecheck > docs/.social-hardening-typecheck.txt 2>&1
+          status=$?
+          set -e
+          if (( status == 0 )); then
+            rm -f docs/.social-hardening-typecheck.txt
+          else
+            printf '\nTYPECHECK_EXIT_CODE=%s\n' "$status" >> docs/.social-hardening-typecheck.txt
+          fi
+      - name: Commit codemod, formatter output and diagnostics
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src server scripts .github/workflows/tmp-social-hardening-format.yml
+          if [[ -f docs/.social-hardening-typecheck.txt ]]; then
+            git add docs/.social-hardening-typecheck.txt
+          fi
+          git commit -m "Apply, format and diagnose Social hardening"
+          git push origin HEAD:agent/social-premium-hardening

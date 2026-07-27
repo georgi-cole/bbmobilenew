@@ -5,192 +5,188 @@
  *   SocialEngine.init(store)        — called once at app bootstrap
  *   SocialEngine.startPhase(name)   — called when entering social_1 / social_2
  *   SocialEngine.endPhase(name)     — called when leaving a social phase
- *
- * Debug helpers (available in DevTools console when window.store is set):
- *   SocialEngine.getBudgets()
- *   SocialEngine.getLastReport()
- *   SocialEngine.isPhaseActive()
  */
 
-import type { SocialPhaseReport } from './types';
-import { socialConfig } from './socialConfig';
-import {
-  DEFAULT_ENERGY,
-  HUMAN_SOCIAL_ALLOWANCE,
-  MAX_HUMAN_SOCIAL_ENERGY,
-} from './constants';
-import { engineReady, engineComplete, setLastReport } from './socialSlice';
-import { initInfluence, update as influenceUpdate } from './SocialInfluence';
-import { initManeuvers } from './SocialManeuvers';
-import { socialAIDriver } from './socialAIDriver';
-import { dispatchSocialSummary } from './SocialSummaryBridge';
+import type { SocialPhaseReport } from './types'
+import { socialConfig } from './socialConfig'
+import { engineReady, engineComplete, setLastReport } from './socialSlice'
+import { initInfluence, update as influenceUpdate } from './SocialInfluence'
+import { initManeuvers } from './SocialManeuvers'
+import { socialAIDriver } from './socialAIDriver'
+import { dispatchSocialSummary } from './SocialSummaryBridge'
+import { getEffectiveSocialMode } from './socialMode'
+import { getSocialModeConfig } from './socialRuntimeConfig'
 
 interface StoreAPI {
-  dispatch: (action: unknown) => unknown;
-  getState: () => unknown;
+  dispatch: (action: unknown) => unknown
+  getState: () => unknown
 }
 
 interface GameSlice {
   game: {
-    players: Array<{ id: string; status: string; isUser?: boolean }>;
-    seed: number;
-    week: number;
-  };
-  social?: { energyBank?: Record<string, number> };
+    players: Array<{ id: string; status: string; isUser?: boolean }>
+    seed: number
+    week: number
+    dramaSocialMode?: boolean
+  }
+  social?: { energyBank?: Record<string, number> }
   settings?: {
-    gameUX?: { dramaMode?: boolean };
-  };
+    gameUX?: { dramaMode?: boolean }
+  }
+  vip?: {
+    isActive?: boolean
+    entitlements?: { dramaMode?: boolean }
+  }
 }
 
-let _store: StoreAPI | null = null;
-const _budgets = new Map<string, number>();
-let _activePhase: string | null = null;
-let _lastReport: SocialPhaseReport | null = null;
+let _store: StoreAPI | null = null
+const _budgets = new Map<string, number>()
+let _activePhase: string | null = null
+let _lastReport: SocialPhaseReport | null = null
 
 /** Provide the Redux store API so the engine can dispatch actions and read state. */
 function init(store: StoreAPI): void {
-  socialAIDriver.stop();
-  _activePhase = null;
-  _budgets.clear();
-  _lastReport = null;
-  _store = store;
-  initInfluence(store);
-  initManeuvers(store);
-  socialAIDriver.setStore(store);
+  socialAIDriver.stop()
+  _activePhase = null
+  _budgets.clear()
+  _lastReport = null
+  _store = store
+  initInfluence(store)
+  initManeuvers(store)
+  socialAIDriver.setStore(store)
 }
 
-/**
- * Compute per-player energy budgets for AI players and dispatch `social/engineReady`.
- * Reads `state.game.players` and `state.game.seed`.
- */
+/** Compute per-player energy budgets and dispatch `social/engineReady`. */
 function startPhase(phaseName: string): void {
-  if (!_store) return;
-  if (_activePhase === phaseName) return;
+  if (!_store) return
+  if (_activePhase === phaseName) return
 
-  const state = _store.getState() as GameSlice;
-  const players = state.game?.players ?? [];
-  const dramaMode = state.settings?.gameUX?.dramaMode === true;
-  const seed = state.game?.seed ?? 0;
-  const carriedEnergy = state.social?.energyBank ?? {};
-  const grantsWeeklyBatch = phaseName === 'social_1';
+  const state = _store.getState() as GameSlice
+  const players = state.game?.players ?? []
+  const mode = getEffectiveSocialMode(state)
+  const modeConfig = getSocialModeConfig(mode)
+  const seed = state.game?.seed ?? 0
+  const carriedEnergy = state.social?.energyBank ?? {}
+  const grantsWeeklyBatch = phaseName === 'social_1'
 
-  _budgets.clear();
-  _activePhase = phaseName;
+  _budgets.clear()
+  _activePhase = phaseName
 
-  const { targetSpendPctRange, minActionsPerPlayer, maxActionsPerPlayer } = socialConfig;
-
-  // Only compute budgets for non-evicted, non-jury AI players
+  const { targetSpendPctRange, minActionsPerPlayer, maxActionsPerPlayer } = socialConfig
   const aiPlayers = players.filter(
-    (p) => !p.isUser && p.status !== 'evicted' && p.status !== 'jury',
-  );
+    (player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+  )
 
-  // Deterministic budget computation using a standard linear-congruential PRNG
-  // (Numerical Recipes LCG: multiplier 1664525, increment 1013904223) seeded by
-  // the game seed, matching BBMobile's approach for reproducibility.
-  let rng = seed >>> 0;
+  // Deterministic budget computation using a standard linear-congruential PRNG.
+  let rng = seed >>> 0
   for (const player of aiPlayers) {
-    rng = ((rng * 1664525 + 1013904223) >>> 0);
+    rng = (rng * 1664525 + 1013904223) >>> 0
     const pct =
       targetSpendPctRange[0] +
-      (rng / 0xffffffff) * (targetSpendPctRange[1] - targetSpendPctRange[0]);
+      (rng / 0xffffffff) * (targetSpendPctRange[1] - targetSpendPctRange[0])
     const actions =
-      minActionsPerPlayer + Math.round(pct * (maxActionsPerPlayer - minActionsPerPlayer));
-    const phaseBudget = Math.round(DEFAULT_ENERGY * pct + actions);
-    _budgets.set(player.id, (carriedEnergy[player.id] ?? 0) + (grantsWeeklyBatch ? phaseBudget : 0));
+      minActionsPerPlayer + Math.round(pct * (maxActionsPerPlayer - minActionsPerPlayer))
+    const phaseBudget = Math.round(modeConfig.weeklyEnergy * pct + actions)
+    const carried = Math.max(0, carriedEnergy[player.id] ?? 0)
+    const next = !grantsWeeklyBatch
+      ? carried
+      : modeConfig.carryOver
+        ? Math.min(modeConfig.energyCap, carried + phaseBudget)
+        : Math.min(modeConfig.energyCap, phaseBudget)
+    _budgets.set(player.id, next)
   }
 
-  const budgets: Record<string, number> = {};
-  _budgets.forEach((v, k) => {
-    budgets[k] = v;
-  });
+  const budgets: Record<string, number> = {}
+  _budgets.forEach((value, key) => {
+    budgets[key] = value
+  })
 
-  // Normal Mode retains the original reset-to-5 economy. Drama Mode adds ten,
-  // carries unused energy forward, and caps the bank at three allowances.
   const humanPlayer = players.find(
-    (p) => p.isUser && p.status !== 'evicted' && p.status !== 'jury',
-  );
+    (player) => player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+  )
   if (humanPlayer) {
-    const carried = Math.max(0, carriedEnergy[humanPlayer.id] ?? 0);
-    const allowance = dramaMode ? HUMAN_SOCIAL_ALLOWANCE : DEFAULT_ENERGY;
-    const nextEnergy = carried + (grantsWeeklyBatch ? allowance : 0);
-    const humanBudget = dramaMode
-      ? Math.min(MAX_HUMAN_SOCIAL_ENERGY, nextEnergy)
-      : nextEnergy;
-    _budgets.set(humanPlayer.id, humanBudget);
-    budgets[humanPlayer.id] = humanBudget;
+    const carried = Math.max(0, carriedEnergy[humanPlayer.id] ?? 0)
+    const humanBudget = !grantsWeeklyBatch
+      ? carried
+      : modeConfig.carryOver
+        ? Math.min(modeConfig.energyCap, carried + modeConfig.weeklyEnergy)
+        : modeConfig.weeklyEnergy
+    _budgets.set(humanPlayer.id, humanBudget)
+    budgets[humanPlayer.id] = humanBudget
   }
 
-  _store.dispatch(engineReady({ budgets }));
+  _store.dispatch(engineReady({ budgets }))
 
-  // Start the AI action driver if any AI players have a positive budget.
-  const hasAIBudgets = aiPlayers.length > 0 && aiPlayers.some((p) => (budgets[p.id] ?? 0) > 0);
+  const hasAIBudgets = aiPlayers.some((player) => (budgets[player.id] ?? 0) > 0)
   if (hasAIBudgets) {
-    socialAIDriver.start();
+    socialAIDriver.start()
   }
 }
 
 /**
- * Finalize the social phase: stop the AI driver, generate a `SocialPhaseReport`,
- * compute per-player influence weights, dispatch `social/engineComplete`, persist
- * the report via `social/setLastReport`, and persist the summary to the Diary Room
- * via `game/addSocialSummary`.
+ * Finalize the social phase: stop the AI driver, compute decision weights,
+ * persist one report and route its summary to the Diary Room.
  */
 function endPhase(phaseName: string): void {
-  if (!_store) return;
+  if (!_store) return
 
-  // Stop the AI driver if it is still running.
-  socialAIDriver.stop();
+  socialAIDriver.stop()
 
-  const state = _store.getState() as GameSlice;
-  const week = state.game?.week ?? 0;
-  const players = state.game?.players ?? [];
+  const state = _store.getState() as GameSlice
+  const week = state.game?.week ?? 0
+  const players = state.game?.players ?? []
   const activePlayers = players
-    .filter((p) => p.status !== 'evicted' && p.status !== 'jury')
-    .map((p) => p.id);
+    .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+    .map((player) => player.id)
 
-  // Compute influence weights for each AI participant before clearing budgets
-  const aiParticipants = Array.from(_budgets.keys());
+  const aiParticipants = players
+    .filter(
+      (player) =>
+        !player.isUser &&
+        player.status !== 'evicted' &&
+        player.status !== 'jury' &&
+        _budgets.has(player.id)
+    )
+    .map((player) => player.id)
   for (const actorId of aiParticipants) {
-    const eligibleTargets = activePlayers.filter((id) => id !== actorId);
-    influenceUpdate(actorId, 'nomination', eligibleTargets);
+    const eligibleTargets = activePlayers.filter((id) => id !== actorId)
+    influenceUpdate(actorId, 'nomination', eligibleTargets)
   }
 
   const report: SocialPhaseReport = {
     id: `${phaseName}_w${week}_${Date.now()}`,
     week,
-    summary: `Social phase ${phaseName} completed. ${_budgets.size} AI players participated.`,
+    summary: `Social phase ${phaseName} completed. ${aiParticipants.length} AI players participated.`,
     players: activePlayers,
     timestamp: Date.now(),
-  };
+  }
 
-  _lastReport = report;
-  _activePhase = null;
-  _budgets.clear();
+  _lastReport = report
+  _activePhase = null
+  _budgets.clear()
 
-  _store.dispatch(engineComplete());
-  _store.dispatch(setLastReport(report));
-
-  // Persist the summary to the Diary Room (not the TV feed).
-  dispatchSocialSummary(_store, report.summary, week);
+  _store.dispatch(engineComplete())
+  _store.dispatch(setLastReport(report))
+  dispatchSocialSummary(_store, report.summary, week)
 }
 
 /** Returns a snapshot of current per-player energy budgets. */
 function getBudgets(): Record<string, number> {
-  const result: Record<string, number> = {};
-  _budgets.forEach((v, k) => {
-    result[k] = v;
-  });
-  return result;
+  const result: Record<string, number> = {}
+  _budgets.forEach((value, key) => {
+    result[key] = value
+  })
+  return result
 }
 
-/** True while a social phase is active (between startPhase and endPhase). */
+/** True while a social phase is active. */
 function isPhaseActive(): boolean {
-  return _activePhase !== null;
+  return _activePhase !== null
 }
 
 /** Returns the report produced at the end of the most recent social phase. */
 function getLastReport(): SocialPhaseReport | null {
-  return _lastReport;
+  return _lastReport
 }
 
 export const SocialEngine = {
@@ -200,4 +196,4 @@ export const SocialEngine = {
   getBudgets,
   isPhaseActive,
   getLastReport,
-};
+}

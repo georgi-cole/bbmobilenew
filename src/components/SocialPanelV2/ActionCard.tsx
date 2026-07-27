@@ -1,51 +1,36 @@
-import { useRef, useState } from 'react';
-import type { SocialActionDefinition } from '../../social/socialActions';
-import { normalizeActionCosts } from '../../social/smExecNormalize';
-import './ActionCard.css';
+import { useRef, useState } from 'react'
+import type { SocialActionDefinition } from '../../social/socialActions'
+import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
+import { normalizeActionCosts } from '../../social/smExecNormalize'
+import './ActionCard.css'
 
 export interface ActionCardProps {
-  action: SocialActionDefinition;
+  action: SocialActionDefinition
   /** Optional short description shown below the title. */
-  description?: string;
+  description?: string
   /** Resolved dynamic costs, used by multi-target actions. */
-  costs?: { energy: number; influence: number; info: number };
+  costs?: { energy: number; influence: number; info: number }
   /** Whether this card is currently selected. */
-  selected?: boolean;
+  selected?: boolean
   /** When true the card is non-interactive and shows an overlay. */
-  disabled?: boolean;
+  disabled?: boolean
   /** Message shown in the disabled overlay. */
-  disabledMessage?: string;
-  /**
-   * When non-empty, shows a dimmed availability-reason overlay and dims the card.
-   * Takes precedence over disabledMessage when both are set.
-   */
-  availabilityReason?: string;
-  /**
-   * When true, renders a green accent border (action is affordable/available).
-   * When false AND action category is 'aggressive', renders a red accent border.
-   */
-  available?: boolean;
+  disabledMessage?: string
+  /** Affordability or contextual availability reason. */
+  availabilityReason?: string
+  /** Whether the action is presently affordable. */
+  available?: boolean
   /** Called with the action id when the card is activated. */
-  onClick?: (actionId: string) => void;
-  /** Called with the action id when the "Preview" button is clicked. */
-  onPreview?: (actionId: string) => void;
-  /**
-   * Called with the action id when the card is hovered (mouseenter) or receives
-   * keyboard focus. Used by ActionGrid to drive the inline PreviewPopup without
-   * changing the existing `onPreview` / Preview-button semantics.
-   */
-  onHoverFocus?: (actionId: string) => void;
+  onClick?: (actionId: string) => void
+  /** Called with the action id when the Preview button is clicked. */
+  onPreview?: (actionId: string) => void
+  /** Called when a card is hovered or focused. */
+  onHoverFocus?: (actionId: string) => void
   /** Optional live cost used by dynamically priced actions such as Group Chat. */
-  costOverride?: { energy: number; influence: number; info: number };
+  costOverride?: { energy: number; influence: number; info: number }
 }
 
-/**
- * ActionCard — renders a single social action with title, cost chips, and
- * an optional disabled-state overlay.
- *
- * Accessible: the card itself carries role="button" with tabIndex / aria-disabled
- * so keyboard and screen-reader users can interact with it.
- */
+/** Accessible social action card with validated content-bank presentation. */
 export default function ActionCard({
   action,
   costs,
@@ -60,71 +45,69 @@ export default function ActionCard({
   onHoverFocus,
   costOverride,
 }: ActionCardProps) {
-  const { id, title, category, availabilityHint } = action;
+  const { id, category, availabilityHint } = action
+  const presentation = getSocialActionPresentation(action)
+  const title = presentation.title
+  const resolvedDescription = description ?? presentation.description
+  const icon = presentation.icon
 
-  // Use normalizeActionCosts to get integer-scaled values (influence/info ×100)
-  // so chip values are consistent with the bank values shown in the header.
-  const { energy: energyCost, influence: influenceCost, info: infoCost } =
-    costs ?? costOverride ?? normalizeActionCosts(action);
+  const {
+    energy: energyCost,
+    influence: influenceCost,
+    info: infoCost,
+  } = costs ?? costOverride ?? normalizeActionCosts(action)
 
-  // A card is effectively non-interactive when the explicit `disabled` prop is
-  // set. The `availabilityReason` provides a visual dimming hint but keeps the
-  // card clickable — the domain-level energy check enforces the real gate.
-  const isDisabled = disabled;
-  const showTooltip = disabled || !!availabilityReason;
-  const tooltipMessage = availabilityReason || disabledMessage;
+  const isDisabled = disabled
+  const showTooltip = disabled || Boolean(availabilityReason)
+  const tooltipMessage = availabilityReason || disabledMessage
 
-  // Long-press support: show tooltip after 600 ms on touch devices.
-  const [longPressActive, setLongPressActive] = useState(false);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [longPressActive, setLongPressActive] = useState(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleTouchStart() {
-    if (!showTooltip) return;
+    if (!showTooltip) return
     longPressTimer.current = setTimeout(() => {
-      setLongPressActive(true);
-      dismissTimer.current = setTimeout(() => setLongPressActive(false), 1800);
-    }, 600);
+      setLongPressActive(true)
+      dismissTimer.current = setTimeout(() => setLongPressActive(false), 1800)
+    }, 600)
   }
 
   function handleTouchEnd() {
     if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
     }
   }
 
   function handleActivate() {
-    if (!isDisabled) onClick?.(id);
+    if (!isDisabled) onClick?.(id)
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleActivate();
+  function handleKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      handleActivate()
     }
   }
 
-  // Accent border class: green when available, red when aggressive/risky.
   const accentClass =
     available === true
       ? 'ac-card--available'
       : available === false && category === 'aggressive'
         ? 'ac-card--risky'
-        : '';
+        : ''
 
   const classNames = [
     'ac-card',
     selected ? 'ac-card--selected' : '',
     isDisabled ? 'ac-card--disabled' : '',
-    // Dim unavailable (unaffordable) cards even though they remain clickable.
     !isDisabled && availabilityReason ? 'ac-card--unavailable' : '',
     accentClass,
-    // Long-press tooltip open (mobile)
     longPressActive ? 'ac-card--tooltip-open' : '',
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(' ')
 
   return (
     <div
@@ -135,11 +118,11 @@ export default function ActionCard({
       aria-pressed={selected}
       onClick={handleActivate}
       onKeyDown={handleKeyDown}
-      onPointerEnter={(e) => {
-        if (!isDisabled && e.pointerType === 'mouse') onHoverFocus?.(id);
+      onPointerEnter={(event) => {
+        if (!isDisabled && event.pointerType === 'mouse') onHoverFocus?.(id)
       }}
-      onFocus={(e) => {
-        if (!isDisabled && e.currentTarget.matches(':focus-visible')) onHoverFocus?.(id);
+      onFocus={(event) => {
+        if (!isDisabled && event.currentTarget.matches(':focus-visible')) onHoverFocus?.(id)
       }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -147,7 +130,11 @@ export default function ActionCard({
       data-action-id={id}
     >
       <div className="ac-card__header">
-        {action.icon && <span className="ac-card__icon" aria-hidden="true">{action.icon}</span>}
+        {icon && (
+          <span className="ac-card__icon" aria-hidden="true">
+            {icon}
+          </span>
+        )}
         <span className="ac-card__title">{title}</span>
       </div>
 
@@ -158,7 +145,10 @@ export default function ActionCard({
           </span>
         )}
         {influenceCost > 0 && (
-          <span className="ac-chip ac-chip--influence" aria-label={`Influence cost: ${influenceCost}`}>
+          <span
+            className="ac-chip ac-chip--influence"
+            aria-label={`Influence cost: ${influenceCost}`}
+          >
             🤝 {influenceCost}
           </span>
         )}
@@ -174,9 +164,7 @@ export default function ActionCard({
         )}
       </div>
 
-      {(description ?? action.description) && (
-        <span className="ac-card__description">{description ?? action.description}</span>
-      )}
+      {resolvedDescription && <span className="ac-card__description">{resolvedDescription}</span>}
 
       {availabilityHint && (
         <span className="ac-badge" aria-label={`Requirement: ${availabilityHint}`}>
@@ -190,21 +178,20 @@ export default function ActionCard({
           type="button"
           tabIndex={isDisabled ? -1 : 0}
           aria-label={`Preview ${title}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!isDisabled) onPreview(id);
+          onClick={(event) => {
+            event.stopPropagation()
+            if (!isDisabled) onPreview(id)
           }}
         >
           Preview
         </button>
       )}
 
-      {/* Tooltip shown on hover (desktop) or long-press (mobile). Hidden by default — no overlay. */}
       {showTooltip && (
         <div className="ac-card__tooltip" aria-hidden="true">
           {tooltipMessage}
         </div>
       )}
     </div>
-  );
+  )
 }
