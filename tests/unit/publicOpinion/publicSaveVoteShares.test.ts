@@ -6,6 +6,8 @@ import {
 } from '../../../src/publicOpinion/PublicSaveService';
 import { resolveDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveService';
 import { shouldUseDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveIntegration';
+import { pruneExpiredPublicSaveThreatBeliefs } from '../../../src/publicOpinion/dramaPublicSaveMiddleware';
+import { createInitialDramaSocialNetwork } from '../../../src/social/dramaModeEngine';
 import type {
   PlayerPublicProfile,
   PublicFeedEntry,
@@ -125,5 +127,37 @@ describe('public save vote shares', () => {
     expect(shouldUseDramaPublicSave(false, true)).toBe(false);
     expect(shouldUseDramaPublicSave(true, false)).toBe(false);
     expect(shouldUseDramaPublicSave(false, false)).toBe(false);
+  });
+
+  it('keeps the public-threat belief for the save day and expires it next day', () => {
+    const network = createInitialDramaSocialNetwork();
+    network.beliefs.push(
+      {
+        id: 'public-threat-4-a-b',
+        holderId: 'a',
+        subjectId: 'b',
+        kind: 'strategic_threat',
+        confidence: 0.68,
+        sentiment: -0.12,
+        sourceId: 'public-save-4-b',
+        createdWeek: 4,
+        lastUpdatedWeek: 4,
+      },
+      {
+        id: 'normal-threat',
+        holderId: 'c',
+        subjectId: 'b',
+        kind: 'strategic_threat',
+        confidence: 0.5,
+        sentiment: -0.1,
+        sourceId: 'rumour-c-b',
+        createdWeek: 3,
+        lastUpdatedWeek: 3,
+      },
+    );
+
+    expect(pruneExpiredPublicSaveThreatBeliefs(network, 4).beliefs).toHaveLength(2);
+    const nextDay = pruneExpiredPublicSaveThreatBeliefs(network, 5);
+    expect(nextDay.beliefs.map((belief) => belief.id)).toEqual(['normal-threat']);
   });
 });
