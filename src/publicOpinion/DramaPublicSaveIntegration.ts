@@ -13,6 +13,15 @@ const PUBLIC_SAVE_ALLY_AFFINITY = 25
 const PUBLIC_SAVE_ALLY_DELTA = 2
 const PUBLIC_SAVE_THREAT_DELTA = -4
 
+type DramaPublicSaveOutcome = Pick<
+  DramaPublicSaveResult,
+  'savedId' | 'winningShare' | 'winningMargin'
+>
+
+export interface CompleteDramaPublicSaveOptions {
+  commitGameplay?: boolean
+}
+
 export function shouldUseDramaPublicSave(
   dramaModeEnabled: boolean,
   publicModeEnabled: boolean
@@ -32,7 +41,7 @@ export function resolveCurrentDramaPublicSave(nomineeIds: string[]): DramaPublic
 
 function buildContextualInteraction(
   savedId: string,
-  outcome: DramaPublicSaveResult
+  outcome: DramaPublicSaveOutcome
 ): IncomingInteraction | null {
   const state = store.getState()
   const players = state.game.players.filter(
@@ -99,13 +108,15 @@ function buildContextualInteraction(
 }
 
 /**
- * Record the premium story consequences and commit the shared gameplay save.
- * Returns false when either Drama Mode or Public Mode is unavailable, allowing
- * the caller to fall back to the established Normal Mode completion path.
+ * Record the premium story consequences and optionally commit the shared
+ * gameplay save. Normal presentation can defer the commit until its established
+ * result announcement finishes, while the legacy premium completion path keeps
+ * the default immediate commit.
  */
 export function completeDramaPublicSave(
   nomineeIds: string[],
-  outcome: DramaPublicSaveResult
+  outcome: DramaPublicSaveOutcome,
+  options: CompleteDramaPublicSaveOptions = {}
 ): boolean {
   const state = store.getState()
   if (
@@ -197,11 +208,13 @@ export function completeDramaPublicSave(
     if (interaction) store.dispatch(pushIncomingInteraction(interaction))
   }
 
-  store.dispatch(
-    commitPublicSave({
-      savedId: outcome.savedId,
-      supportPercent: outcome.winningShare,
-    })
-  )
+  if (options.commitGameplay !== false) {
+    store.dispatch(
+      commitPublicSave({
+        savedId: outcome.savedId,
+        supportPercent: outcome.winningShare,
+      })
+    )
+  }
   return true
 }
