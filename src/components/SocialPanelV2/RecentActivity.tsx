@@ -1,114 +1,101 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { useAppSelector } from '../../store/hooks';
-import { selectSessionLogs } from '../../social/socialSlice';
-import { getActionById } from '../../social/SocialManeuvers';
-import { getSocialNarrative } from './socialNarratives';
-import type { Player } from '../../types';
-import './RecentActivity.css';
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAppSelector } from '../../store/hooks'
+import { selectSessionLogs } from '../../social/socialSlice'
+import { getActionById } from '../../social/SocialManeuvers'
+import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
+import { getSocialNarrative } from './socialNarratives'
+import type { Player } from '../../types'
+import './RecentActivity.css'
 
 export interface RecentActivityProps {
-  /**
-   * Player roster used to resolve target ids to display names.
-   * Optional — if omitted, target ids are shown as-is.
-   */
-  players?: readonly Player[];
-  /** Maximum number of entries to display. Defaults to 6. */
-  maxEntries?: number;
-  /** Enables the richer reality-show narrative copy. */
-  dramaMode?: boolean;
+  players?: readonly Player[]
+  maxEntries?: number
+  dramaMode?: boolean
 }
 
-/** Map a delta value to ✓/✗/– icon. */
-function getResultIcon(entry: { delta: number }): string {
-  if (entry.delta > 0) return '✓';
-  if (entry.delta < 0) return '✗';
-  return '–';
+function getOutcomeIcon(entry: { outcome: 'success' | 'failure' }): string {
+  return entry.outcome === 'success' ? '✓' : '✗'
 }
 
-/** CSS modifier for the icon based on outcome. */
-function getResultClass(entry: { delta: number }): string {
-  if (entry.delta > 0) return 'positive';
-  if (entry.delta < 0) return 'negative';
-  return 'neutral';
+function getOutcomeClass(entry: { outcome: 'success' | 'failure' }): 'positive' | 'negative' {
+  return entry.outcome === 'success' ? 'positive' : 'negative'
 }
 
-/** Format a Unix timestamp as a relative "X ago" string. */
+function getRelationshipClass(delta: number): 'positive' | 'negative' | 'neutral' {
+  if (delta > 0) return 'positive'
+  if (delta < 0) return 'negative'
+  return 'neutral'
+}
+
 function getRelativeTime(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.floor(minutes / 60)}h ago`;
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000))
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  return `${Math.floor(minutes / 60)}h ago`
 }
 
 /**
- * RecentActivity — shows the last N social actions executed this session.
- *
- * Reads `state.social.sessionLogs` and displays each entry with:
- * timestamp (relative), action title, result label, numeric delta, and target name.
- *
- * A "Clear" button resets the visible list client-side without mutating domain logs.
+ * Shows panel-session actions. Technical outcome and relationship direction are
+ * intentionally separate: a successful confrontation may correctly damage a
+ * relationship without being presented as a failed action.
  */
-export default function RecentActivity({ players, maxEntries = 6, dramaMode = false }: RecentActivityProps) {
-  const sessionLogs = useAppSelector(selectSessionLogs);
-  // Client-side clear: track the watermark timestamp; only show entries after it.
-  const [clearedBefore, setClearedBefore] = useState(0);
-  const listRef = useRef<HTMLUListElement>(null);
-  // Track keys of newly added entries for the highlight animation.
-  const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(new Set());
-  // Track the latest entry timestamp seen so new entries are detected even when
-  // maxEntries is at capacity (array length doesn't change in that case).
-  const prevNewestTimestampRef = useRef(0);
+export default function RecentActivity({
+  players,
+  maxEntries = 6,
+  dramaMode = false,
+}: RecentActivityProps) {
+  const sessionLogs = useAppSelector(selectSessionLogs)
+  const [clearedBefore, setClearedBefore] = useState(0)
+  const listRef = useRef<HTMLUListElement>(null)
+  const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(new Set())
+  const prevNewestTimestampRef = useRef(0)
 
-  const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
-
+  const playerById = useMemo(
+    () => new Map(players?.map((player) => [player.id, player]) ?? []),
+    [players]
+  )
   const visibleLogs = useMemo(
     () =>
       sessionLogs
-        .filter((e) => e.timestamp > clearedBefore && e.source !== 'system')
+        .filter((entry) => entry.timestamp > clearedBefore && entry.source !== 'system')
         .slice(-maxEntries),
-    [sessionLogs, clearedBefore, maxEntries],
-  );
+    [sessionLogs, clearedBefore, maxEntries]
+  )
 
-  // Auto-scroll to the newest entry whenever the visible list changes.
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [visibleLogs.length]);
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+  }, [visibleLogs.length])
 
-  // Highlight newly added entries briefly.
   useEffect(() => {
-    const newestTimestamp = visibleLogs.length > 0 ? visibleLogs[visibleLogs.length - 1].timestamp : 0;
+    const newestTimestamp = visibleLogs.at(-1)?.timestamp ?? 0
     if (newestTimestamp > prevNewestTimestampRef.current) {
-      const newKeys = new Set<string>();
-      for (const e of visibleLogs) {
-        if (e.timestamp > prevNewestTimestampRef.current) {
-          newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}-${e.subjectId ?? ''}`);
+      const newKeys = new Set<string>()
+      for (const entry of visibleLogs) {
+        if (entry.timestamp > prevNewestTimestampRef.current) {
+          newKeys.add(
+            `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`
+          )
         }
       }
-      prevNewestTimestampRef.current = newestTimestamp;
+      prevNewestTimestampRef.current = newestTimestamp
       const addTimer = setTimeout(() => {
-        setHighlightedKeys((prev) => new Set([...prev, ...newKeys]));
-      }, 0);
+        setHighlightedKeys((previous) => new Set([...previous, ...newKeys]))
+      }, 0)
       const removeTimer = setTimeout(() => {
-        setHighlightedKeys((prev) => {
-          const next = new Set(prev);
-          newKeys.forEach((k) => next.delete(k));
-          return next;
-        });
-      }, 1200);
+        setHighlightedKeys((previous) => {
+          const next = new Set(previous)
+          newKeys.forEach((key) => next.delete(key))
+          return next
+        })
+      }, 1200)
       return () => {
-        clearTimeout(addTimer);
-        clearTimeout(removeTimer);
-      };
+        clearTimeout(addTimer)
+        clearTimeout(removeTimer)
+      }
     }
-    prevNewestTimestampRef.current = newestTimestamp;
-  }, [visibleLogs]);
-
-  function handleClear() {
-    setClearedBefore(Date.now());
-  }
+    prevNewestTimestampRef.current = newestTimestamp
+  }, [visibleLogs])
 
   return (
     <div className="ra-container" aria-label="Recent Activity">
@@ -119,7 +106,7 @@ export default function RecentActivity({ players, maxEntries = 6, dramaMode = fa
             className="ra-clear-btn"
             type="button"
             aria-label="Clear recent activity"
-            onClick={handleClear}
+            onClick={() => setClearedBefore(Date.now())}
           >
             Clear
           </button>
@@ -131,34 +118,34 @@ export default function RecentActivity({ players, maxEntries = 6, dramaMode = fa
       ) : (
         <ul className="ra-list" ref={listRef} aria-label="Recent actions">
           {visibleLogs.map((entry) => {
-            const action = getActionById(entry.actionId);
-            const actionTitle = action?.title ?? entry.actionId.replace(/_/g, ' ');
-            const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
+            const action = getActionById(entry.actionId)
+            const actionTitle = action
+              ? getSocialActionPresentation(action).title
+              : entry.actionId.replace(/_/g, ' ')
+            const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId
             const targetNames = (entry.targetIds ?? [entry.targetId]).map(
-              (targetId) => playerById.get(targetId)?.name ?? targetId,
-            );
-            const audienceName = targetNames.join(', ');
-            // For primaryPlusSubject actions, show the subject in the narrative
-            // since the subject is the person being talked *about*.
+              (targetId) => playerById.get(targetId)?.name ?? targetId
+            )
+            const audienceName = targetNames.join(', ')
             const subjectName = entry.subjectId
-              ? playerById.get(entry.subjectId)?.name ?? entry.subjectId
-              : null;
+              ? (playerById.get(entry.subjectId)?.name ?? entry.subjectId)
+              : null
             const narrativeContext = subjectName
               ? `${targetName} about ${subjectName}`
-              : audienceName;
-            const icon = getResultIcon(entry);
-            const resultClass = getResultClass(entry);
-            const sign = entry.delta > 0 ? '+' : '';
-            const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
+              : audienceName
+            const outcomeClass = getOutcomeClass(entry)
+            const relationshipClass = getRelationshipClass(entry.delta)
+            const deltaText =
+              entry.delta === 0 ? '' : `${entry.delta > 0 ? '+' : ''}${entry.delta}`
             const narrative =
               entry.narrative ??
               (entry.actionId === 'ask_loh_target' && subjectName
                 ? entry.context?.lohPlanType === 'backup_plan'
-                  ? `${targetName} told you ${subjectName} is their backup plan if the nominations change.`
+                  ? `${targetName} told you ${subjectName} is their backup plan if nominations change.`
                   : `${targetName} told you ${subjectName} is their current target.`
                 : dramaMode
                   ? getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp)
-                  : 'You targeted ' + narrativeContext + '.');
+                  : `You targeted ${narrativeContext}.`)
             const resourceParts = dramaMode
               ? [
                   entry.yieldsApplied?.influence
@@ -168,36 +155,45 @@ export default function RecentActivity({ players, maxEntries = 6, dramaMode = fa
                     ? `Intel ${entry.yieldsApplied.info > 0 ? '+' : ''}${entry.yieldsApplied.info}`
                     : null,
                 ].filter(Boolean)
-              : [];
-            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`;
-            const isNew = highlightedKeys.has(key);
+              : []
+            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${entry.subjectId ?? ''}`
+
             return (
-              <li key={key} className={`ra-entry${isNew ? ' ra-entry--new' : ''}`}>
-                <span className={`ra-entry__icon ra-entry__icon--${resultClass}`} aria-hidden="true">
-                  {icon}
+              <li
+                key={key}
+                className={`ra-entry${highlightedKeys.has(key) ? ' ra-entry--new' : ''}`}
+              >
+                <span
+                  className={`ra-entry__icon ra-entry__icon--${outcomeClass}`}
+                  aria-label={entry.outcome === 'success' ? 'Action succeeded' : 'Action failed'}
+                >
+                  {getOutcomeIcon(entry)}
                 </span>
                 <span className="ra-entry__body">
-                  <span className="ra-entry__action-tag">{actionTitle}</span>
+                  <span className="ra-entry__action-tag">
+                    {actionTitle} · {entry.outcome === 'success' ? 'Succeeded' : 'Failed'}
+                  </span>
                   <span className="ra-entry__narrative">{narrative}</span>
                   {deltaText && (
-                    <span className={`ra-entry__delta ra-entry__delta--${resultClass}`}>
+                    <span className={`ra-entry__delta ra-entry__delta--${relationshipClass}`}>
                       Relationship {deltaText}
                     </span>
                   )}
                   {resourceParts.length > 0 && (
-                    <span className="ra-entry__resources">
-                      {resourceParts.join(' | ')}
-                    </span>
+                    <span className="ra-entry__resources">{resourceParts.join(' | ')}</span>
                   )}
                 </span>
-                <span className="ra-entry__time" aria-label={`Time: ${getRelativeTime(entry.timestamp)}`}>
+                <span
+                  className="ra-entry__time"
+                  aria-label={`Time: ${getRelativeTime(entry.timestamp)}`}
+                >
                   {getRelativeTime(entry.timestamp)}
                 </span>
               </li>
-            );
+            )
           })}
         </ul>
       )}
     </div>
-  );
+  )
 }
