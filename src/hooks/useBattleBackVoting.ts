@@ -1,116 +1,130 @@
 /**
- * useBattleBackVoting — real-time Battle Back voting simulator.
+ * useBattleBackVoting — deterministic live public-vote simulator.
  *
- * Simulates a live public vote for the Jury Return / Battle Back twist.
- * Vote percentages drift smoothly between updates, and the lowest-ranked
- * candidate is eliminated every `eliminationIntervalMs` (default 3500ms).
- * When one candidate remains they are declared the winner.
- *
- * Provides an adapter-hook shape so a real backend can be substituted later:
- * swap out the `useEffect` internals for a WebSocket/SSE subscription while
- * keeping the same returned interface.
+ * The board can receive authoritative target percentages derived from the
+ * season's Public Opinion state. Live values move around those targets, while
+ * eliminations follow the target ranking so visual noise cannot randomly
+ * replace the season's actual public favorite.
  */
-
-import { useReducer, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import {
   calculatePublicVotingEliminationIntervalMs,
   getPublicVotingAudioDurationMs,
 } from '../services/sound/publicVotingAudioTiming';
 
 export interface BattleBackVoteState {
-  /** Current vote percentages keyed by candidate ID (0–100, sum ≈ 100). */
   votes: Record<string, number>;
-  /** IDs eliminated so far, in elimination order. */
   eliminated: string[];
-  /** ID of the winning candidate; null while voting is in progress. */
   winnerId: string | null;
-  /** True once a winner has been determined. */
   isComplete: boolean;
 }
 
 interface Options {
-  /** Candidates competing in the Battle Back (juror IDs). */
   candidates: string[];
-  /** Seeded RNG seed for reproducible initial percentages. */
   seed: number;
-  /** Interval between eliminations in ms. Default: 3500. */
   eliminationIntervalMs?: number;
-  /** Tick interval for percentage drift in ms. Default: 400. */
   tickIntervalMs?: number;
-  /** Strength of each drift tick. Lower values create calmer vote swings. */
   driftAmount?: number;
-  /** Optional temporary momentum boost for a single active candidate. */
+  /** Optional display targets; values are normalized and need not sum to 100. */
+  targetPercentages?: Record<string, number>;
+  /** Optional generic momentum bias. Public Favorite keeps this unset. */
   surgeTargetId?: string | null;
 }
 
-/** Mulberry32 PRNG (inline copy so this hook has no circular imports). */
 function mulberry32(seed: number): () => number {
-  let s = seed >>> 0;
-  return function next(): number {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  let state = seed >>> 0;
+  return function next() {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = Math.imul(state ^ (state >>> 15), 1 | state);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 0x1_0000_0000;
   };
 }
 
-/**
- * Scale `values` proportionally so they sum to 100 and are non-negative
- * integers, using the largest-remainder method to distribute rounding error.
- */
 function toIntPercentages(values: number[]): number[] {
   if (values.length === 0) return [];
-  const total = values.reduce((a, b) => a + b, 0) || 1;
-  const scaled = values.map((v) => (v / total) * 100);
+  if (values.length === 1) return [100];
+
+  const safeValues = values.map((value) =>
+    Number.isFinite(value) ? Math.max(0.001, value) : 0.001,
+  );
+  const total = safeValues.reduce((sum, value) => sum + value, 0) || 1;
+  const scaled = safeValues.map((value) => (value / total) * 100);
   const floored = scaled.map(Math.floor);
-  const remainder = 100 - floored.reduce((a, b) => a + b, 0);
-  const fracs = scaled.map((v, i) => ({ i, frac: v - Math.floor(v) }));
-  fracs.sort((a, b) => b.frac - a.frac);
-  fracs.slice(0, remainder).forEach(({ i }) => { floored[i]++; });
+  let remainder = 100 - floored.reduce((sum, value) => sum + value, 0);
+  const order = scaled
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort(
+      (left, right) => right.fraction - left.fraction || left.index - right.index,
+    );
+
+  let cursor = 0;
+  while (remainder > 0 && order.length > 0) {
+    floored[order[cursor % order.length].index] += 1;
+    remainder -= 1;
+    cursor += 1;
+  }
   return floored;
 }
 
-/** Distribute 100 points randomly among `count` buckets using the given RNG. */
 function randomPercentages(rng: () => number, count: number): number[] {
   if (count === 0) return [];
   if (count === 1) return [100];
-  const raw = Array.from({ length: count }, () => rng() + 0.1);
-  return toIntPercentages(raw);
+  return toIntPercentages(Array.from({ length: count }, () => rng() + 0.25));
 }
 
-/** Drift percentages by ±drift each tick, keeping all values ≥ 1 and sum = 100. */
+function normalizedTargets(
+  candidates: string[],
+  targets?: Record<string, number>,
+): number[] | null {
+  if (!targets) return null;
+  const values = candidates.map((candidate) => targets[candidate]);
+  if (values.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
+    return null;
+  }
+  return toIntPercentages(values as number[]);
+}
+
+function initializeAroundTargets(targets: number[], rng: () => number): number[] {
+  return toIntPercentages(
+    targets.map((target) => Math.max(0.5, target + (rng() - 0.5) * 7)),
+  );
+}
+
 function driftPercentages(
   current: number[],
   rng: () => number,
   drift: number,
+  targets: number[] | null,
   surgeIndex: number | null = null,
 ): number[] {
   if (current.length <= 1) return current;
-  const deltas = current.map(() => (rng() - 0.5) * drift * 2);
-  const next = current.map((v, i) => Math.max(1, v + deltas[i]));
+
+  const next = current.map((value, index) => {
+    const targetPull = targets ? (targets[index] - value) * 0.18 : 0;
+    const noise = (rng() - 0.5) * drift * 2;
+    return Math.max(0.5, value + targetPull + noise);
+  });
 
   if (surgeIndex !== null && surgeIndex >= 0 && surgeIndex < next.length) {
-    const availableHeadroom = Math.max(0, 100 - current[surgeIndex]);
-    const momentumShift = Math.min(0.75, 0.25 + availableHeadroom * 0.003);
+    const momentumShift = 0.45;
     const donorTotal = next.reduce(
-      (sum, value, index) => (index === surgeIndex ? sum : sum + Math.max(0, value - 1)),
+      (sum, value, index) =>
+        index === surgeIndex ? sum : sum + Math.max(0, value - 0.5),
       0,
     );
-
     if (donorTotal > 0) {
       next[surgeIndex] += momentumShift;
       for (let index = 0; index < next.length; index += 1) {
         if (index === surgeIndex) continue;
-        const donorWeight = Math.max(0, next[index] - 1) / donorTotal;
-        next[index] = Math.max(1, next[index] - momentumShift * donorWeight);
+        const donorWeight = Math.max(0, next[index] - 0.5) / donorTotal;
+        next[index] = Math.max(0.5, next[index] - momentumShift * donorWeight);
       }
     }
   }
 
   return toIntPercentages(next);
 }
-
-// ── Internal reducer ─────────────────────────────────────────────────────────
 
 type VotingState = {
   active: string[];
@@ -121,14 +135,20 @@ type VotingState = {
 };
 
 type VotingAction =
-  | { type: 'reset'; active: string[]; pcts: number[] }
+  | { type: 'reset'; state: VotingState }
   | { type: 'drift'; pcts: number[] }
-  | { type: 'eliminate'; remaining: string[]; pcts: number[]; lowestId: string; winnerId: string | null };
+  | {
+      type: 'eliminate';
+      remaining: string[];
+      pcts: number[];
+      lowestId: string;
+      winnerId: string | null;
+    };
 
 function votingReducer(state: VotingState, action: VotingAction): VotingState {
   switch (action.type) {
     case 'reset':
-      return { active: action.active, pcts: action.pcts, eliminated: [], winnerId: null, isComplete: false };
+      return action.state;
     case 'drift':
       return { ...state, pcts: action.pcts };
     case 'eliminate':
@@ -143,18 +163,36 @@ function votingReducer(state: VotingState, action: VotingAction): VotingState {
   }
 }
 
-function makeInitialState(candidateList: string[], rngSeed: number): VotingState {
+function makeInitialState(
+  candidateList: string[],
+  rngSeed: number,
+  targets?: Record<string, number>,
+): VotingState {
+  if (candidateList.length === 0) {
+    return { active: [], pcts: [], eliminated: [], winnerId: null, isComplete: true };
+  }
+  if (candidateList.length === 1) {
+    return {
+      active: [...candidateList],
+      pcts: [100],
+      eliminated: [],
+      winnerId: candidateList[0],
+      isComplete: true,
+    };
+  }
+
   const rng = mulberry32(rngSeed);
+  const targetValues = normalizedTargets(candidateList, targets);
   return {
     active: [...candidateList],
-    pcts: randomPercentages(rng, candidateList.length),
+    pcts: targetValues
+      ? initializeAroundTargets(targetValues, rng)
+      : randomPercentages(rng, candidateList.length),
     eliminated: [],
     winnerId: null,
     isComplete: false,
   };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function useBattleBackVoting({
   candidates,
@@ -162,19 +200,19 @@ export function useBattleBackVoting({
   eliminationIntervalMs = 3500,
   tickIntervalMs = 400,
   driftAmount = 5,
+  targetPercentages,
   surgeTargetId = null,
 }: Options): BattleBackVoteState {
   const rngRef = useRef(mulberry32(seed));
   const surgeTargetRef = useRef<string | null>(surgeTargetId);
+  const targetPercentagesRef = useRef<Record<string, number> | undefined>(
+    targetPercentages,
+  );
   const [resolvedEliminationIntervalMs, setResolvedEliminationIntervalMs] = useReducer(
     (_current: number, next: number) => next,
     eliminationIntervalMs,
   );
 
-  // Public Favorite uses this simulator inside `.pf-overlay`. Resolve the
-  // registered music duration at runtime and distribute all eliminations across
-  // the full track. The explicit fast-forward cadence (<1 s) remains an
-  // intentional user override rather than being re-synchronized.
   useEffect(() => {
     let cancelled = false;
     const isPublicFavoriteVoting =
@@ -204,102 +242,122 @@ export function useBattleBackVoting({
     };
   }, [candidates.length, eliminationIntervalMs]);
 
-  // All mutable voting state in a single reducer so the reset effect only
-  // needs one dispatch call (satisfies react-hooks/set-state-in-effect).
   const [state, dispatch] = useReducer(
     votingReducer,
     undefined,
-    () => makeInitialState(candidates, seed),
+    () => makeInitialState(candidates, seed, targetPercentages),
   );
 
-  // Stable refs so interval callbacks always see fresh state without
-  // creating new intervals.
   const activeRef = useRef(state.active);
   const pctsRef = useRef(state.pcts);
   const eliminatedRef = useRef(state.eliminated);
-  useEffect(() => { activeRef.current = state.active; }, [state.active]);
-  useEffect(() => { pctsRef.current = state.pcts; }, [state.pcts]);
-  useEffect(() => { eliminatedRef.current = state.eliminated; }, [state.eliminated]);
-  useEffect(() => { surgeTargetRef.current = surgeTargetId; }, [surgeTargetId]);
-
-  // Reset simulation and re-seed RNG when seed or candidates change.
-  // Single dispatch satisfies react-hooks/set-state-in-effect.
   useEffect(() => {
-    const nextActive = [...candidates];
-    const baseRng = mulberry32(seed);
-    const initialPcts = randomPercentages(baseRng, candidates.length);
+    activeRef.current = state.active;
+  }, [state.active]);
+  useEffect(() => {
+    pctsRef.current = state.pcts;
+  }, [state.pcts]);
+  useEffect(() => {
+    eliminatedRef.current = state.eliminated;
+  }, [state.eliminated]);
+  useEffect(() => {
+    surgeTargetRef.current = surgeTargetId;
+  }, [surgeTargetId]);
+  useEffect(() => {
+    targetPercentagesRef.current = targetPercentages;
+  }, [targetPercentages]);
 
+  useEffect(() => {
+    const nextState = makeInitialState(candidates, seed, targetPercentages);
     rngRef.current = mulberry32((seed ^ 0x5a7d3c1e) >>> 0);
-
-    // Ensure interval callbacks see the reset state immediately
-    activeRef.current = nextActive;
-    pctsRef.current = initialPcts;
+    activeRef.current = nextState.active;
+    pctsRef.current = nextState.pcts;
     eliminatedRef.current = [];
+    targetPercentagesRef.current = targetPercentages;
+    dispatch({ type: 'reset', state: nextState });
+  }, [seed, candidates, targetPercentages]);
 
-    dispatch({ type: 'reset', active: nextActive, pcts: initialPcts });
-  }, [seed, candidates]);
-
-  // ── Percentage drift tick ───────────────────────────────────────────────
   useEffect(() => {
     if (state.isComplete) return;
-    const id = setInterval(() => {
+    const id = window.setInterval(() => {
+      const active = activeRef.current;
+      const targetValues = normalizedTargets(active, targetPercentagesRef.current);
       const currentSurgeId = surgeTargetRef.current;
-      const currentSurgeIndex = currentSurgeId ? activeRef.current.indexOf(currentSurgeId) : -1;
-      dispatch({
-        type: 'drift',
-        // Keep the same interval loop and only bias the active player's drift so
-        // countdowns/eliminations stay on the existing cadence.
-        pcts: driftPercentages(
-          pctsRef.current,
-          rngRef.current,
-          driftAmount,
-          currentSurgeIndex >= 0 ? currentSurgeIndex : null,
-        ),
-      });
+      const currentSurgeIndex = currentSurgeId ? active.indexOf(currentSurgeId) : -1;
+      const next = driftPercentages(
+        pctsRef.current,
+        rngRef.current,
+        driftAmount,
+        targetValues,
+        currentSurgeIndex >= 0 ? currentSurgeIndex : null,
+      );
+      pctsRef.current = next;
+      dispatch({ type: 'drift', pcts: next });
     }, tickIntervalMs);
-    return () => clearInterval(id);
+    return () => window.clearInterval(id);
   }, [state.isComplete, tickIntervalMs, driftAmount]);
 
-  // ── Elimination tick ─────────────────────────────────────────────────────
   const eliminateLowest = useCallback(() => {
-    const cur = activeRef.current;
-    const curPcts = pctsRef.current;
-    if (cur.length <= 1) return;
+    const currentCandidates = activeRef.current;
+    const currentPercentages = pctsRef.current;
+    if (currentCandidates.length <= 1) return;
 
-    // Find index of lowest percentage
-    let lowestIdx = 0;
-    for (let i = 1; i < curPcts.length; i++) {
-      if (curPcts[i] < curPcts[lowestIdx]) lowestIdx = i;
+    const targets = targetPercentagesRef.current;
+    let lowestIndex = 0;
+    for (let index = 1; index < currentCandidates.length; index += 1) {
+      const candidateTarget = targets?.[currentCandidates[index]];
+      const currentLowestTarget = targets?.[currentCandidates[lowestIndex]];
+      const hasTargets =
+        typeof candidateTarget === 'number' && typeof currentLowestTarget === 'number';
+      if (
+        (hasTargets && candidateTarget < currentLowestTarget) ||
+        (hasTargets &&
+          candidateTarget === currentLowestTarget &&
+          currentPercentages[index] < currentPercentages[lowestIndex]) ||
+        (!hasTargets && currentPercentages[index] < currentPercentages[lowestIndex])
+      ) {
+        lowestIndex = index;
+      }
     }
-    const lowestId = cur[lowestIdx];
-    const remaining = cur.filter((_, i) => i !== lowestIdx);
-    const remainingPcts = curPcts.filter((_, i) => i !== lowestIdx);
 
-    // Redistribute eliminated candidate's votes
-    const freed = curPcts[lowestIdx];
-    const total = remainingPcts.reduce((a, b) => a + b, 0) || 1;
-    const bumped = remainingPcts.map((v) => v + (v / total) * freed);
-    const newPcts = toIntPercentages(bumped);
+    const lowestId = currentCandidates[lowestIndex];
+    const remaining = currentCandidates.filter((_, index) => index !== lowestIndex);
+    const remainingPercentages = currentPercentages.filter(
+      (_, index) => index !== lowestIndex,
+    );
+    const redistributed = toIntPercentages(remainingPercentages);
+    const winnerId = remaining.length === 1 ? remaining[0] : null;
 
+    activeRef.current = remaining;
+    pctsRef.current = redistributed;
+    eliminatedRef.current = [...eliminatedRef.current, lowestId];
     dispatch({
       type: 'eliminate',
       remaining,
-      pcts: newPcts,
+      pcts: redistributed,
       lowestId,
-      winnerId: remaining.length === 1 ? remaining[0] : null,
+      winnerId,
     });
   }, []);
 
   useEffect(() => {
     if (state.isComplete) return;
-    const id = setInterval(eliminateLowest, resolvedEliminationIntervalMs);
-    return () => clearInterval(id);
+    const id = window.setInterval(eliminateLowest, resolvedEliminationIntervalMs);
+    return () => window.clearInterval(id);
   }, [state.isComplete, resolvedEliminationIntervalMs, eliminateLowest]);
 
-  // ── Build votes map ──────────────────────────────────────────────────────
   const votes: Record<string, number> = {};
-  state.active.forEach((id, i) => { votes[id] = state.pcts[i] ?? 0; });
-  state.eliminated.forEach((id) => { votes[id] = 0; });
+  state.active.forEach((id, index) => {
+    votes[id] = state.pcts[index] ?? 0;
+  });
+  state.eliminated.forEach((id) => {
+    votes[id] = 0;
+  });
 
-  return { votes, eliminated: state.eliminated, winnerId: state.winnerId, isComplete: state.isComplete };
+  return {
+    votes,
+    eliminated: state.eliminated,
+    winnerId: state.winnerId,
+    isComplete: state.isComplete,
+  };
 }
