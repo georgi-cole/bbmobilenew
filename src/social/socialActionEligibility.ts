@@ -82,11 +82,7 @@ function isValidSubject(
       )
     }
     case 'voters':
-      return (
-        !isNominee(subject.status) &&
-        subject.status !== 'loh' &&
-        subject.status !== 'loh+pos'
-      )
+      return !isNominee(subject.status) && subject.status !== 'loh' && subject.status !== 'loh+pos'
     case 'houseguests':
     default:
       return true
@@ -184,9 +180,7 @@ export function evaluateSocialActionEligibility({
           )
         : [primaryTargetStatus]
     if (
-      statuses.some(
-        (status) => !status || !requiredTargetStatus.includes(status as PlayerStatus)
-      )
+      statuses.some((status) => !status || !requiredTargetStatus.includes(status as PlayerStatus))
     ) {
       return unavailable('This action requires a different role holder')
     }
@@ -198,8 +192,12 @@ export function evaluateSocialActionEligibility({
   const excludedRelationshipTags = dramaMode
     ? (action.dramaExcludedRelationshipTags ?? action.excludedRelationshipTags)
     : action.excludedRelationshipTags
-  const minAffinity = dramaMode ? (action.dramaMinAffinity ?? action.minAffinity) : action.minAffinity
-  const maxAffinity = dramaMode ? (action.dramaMaxAffinity ?? action.maxAffinity) : action.maxAffinity
+  const minAffinity = dramaMode
+    ? (action.dramaMinAffinity ?? action.minAffinity)
+    : action.minAffinity
+  const maxAffinity = dramaMode
+    ? (action.dramaMaxAffinity ?? action.maxAffinity)
+    : action.maxAffinity
   const needsRelationshipContext =
     Boolean(requiredRelationshipTags) ||
     Boolean(excludedRelationshipTags) ||
@@ -218,10 +216,7 @@ export function evaluateSocialActionEligibility({
       if (maxAffinity !== undefined && affinity > maxAffinity) {
         return unavailable(`Only available while the relationship is ${maxAffinity}% or lower`)
       }
-      if (
-        requiredRelationshipTags &&
-        !requiredRelationshipTags.some((tag) => tags.has(tag))
-      ) {
+      if (requiredRelationshipTags && !requiredRelationshipTags.some((tag) => tags.has(tag))) {
         return unavailable('The required relationship is not active')
       }
       if (excludedRelationshipTags?.some((tag) => tags.has(tag))) {
@@ -250,17 +245,11 @@ export function evaluateSocialActionEligibility({
           arc.participantIds.includes(actorId) &&
           arc.participantIds.includes(targetId)
       )
-      if (
-        action.excludedArcTypes?.some((type) =>
-          pairArcs.some((arc) => arc.type === type)
-        )
-      ) {
+      if (action.excludedArcTypes?.some((type) => pairArcs.some((arc) => arc.type === type))) {
         return unavailable('That story is already active')
       }
       const activeArc = pairArcs
-        .filter(
-          (arc) => !action.requiredArcTypes || action.requiredArcTypes.includes(arc.type)
-        )
+        .filter((arc) => !action.requiredArcTypes || action.requiredArcTypes.includes(arc.type))
         .sort((left, right) => right.lastAdvancedWeek - left.lastAdvancedWeek)[0]
       if (action.requiredArcTypes && !activeArc) {
         return unavailable('The required story is not active')

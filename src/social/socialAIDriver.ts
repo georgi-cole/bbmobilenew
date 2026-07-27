@@ -40,7 +40,8 @@ import type {
   SocialActionLogEntry,
   SocialMemoryMap,
 } from './types'
-import { chooseDramaAIMove, normalizeDramaSocialNetwork } from './dramaModeEngine'
+import { normalizeDramaSocialNetwork } from './dramaModeEngine'
+import { chooseUtilityDramaAIMove } from './dramaAIPolicy'
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown
@@ -366,7 +367,7 @@ function candidateForPlayer(
   const history = getPersistentSocialHistory(state.social as SocialStateWithHistory)
   const dramaMove =
     dramaMode && attempt === 0
-      ? chooseDramaAIMove({
+      ? chooseUtilityDramaAIMove({
           actorId: player.id,
           players: state.game.players,
           relationships: state.social.relationships,

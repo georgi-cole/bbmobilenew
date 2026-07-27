@@ -1,6 +1,7 @@
 import { normalizeAffinity } from './affinityUtils'
 import { DRAMA_DIALOGUE_BANK, DRAMA_MODE_CONFIG, pickDramaCopy } from './dramaModeConfig'
 import { areSocialFamilyMembers } from './socialRuntimeConfig'
+import { getPublicDramaActionAvailability, isPublicDramaAction } from './dramaPacing'
 import type {
   DramaArc,
   DramaArcStage,
@@ -407,6 +408,12 @@ export function applyDramaActionEffect(
   const network = clone(current)
   const subject = input.subjectId ?? input.targetId
   if (input.success === false) return network
+  if (
+    isPublicDramaAction(input.actionId) &&
+    !getPublicDramaActionAvailability(network, input.week).available
+  ) {
+    return network
+  }
   if (input.actionId === 'proposeAlliance')
     upsertAlliance(network, input.actorId, input.targetId, input.week, 'proposal')
   if (input.actionId === 'break_alliance') {

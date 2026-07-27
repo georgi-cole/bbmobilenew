@@ -38,9 +38,7 @@ function isEvictedOrGone(player: InteractionValidityPlayer | null): boolean {
 
 function isNominee(game: InteractionValidityGameState, playerId: string): boolean {
   const player = getPlayer(game, playerId)
-  return (
-    (game.nomineeIds ?? []).includes(playerId) || player?.status.includes('nominated') === true
-  )
+  return (game.nomineeIds ?? []).includes(playerId) || player?.status.includes('nominated') === true
 }
 
 function holdsSafety(game: InteractionValidityGameState, playerId: string): boolean {

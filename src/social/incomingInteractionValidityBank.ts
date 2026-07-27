@@ -12,10 +12,7 @@ export interface IncomingInteractionValidityRule {
  * Pure-data validity rules keyed by scenario. These can be moved to validated
  * live config later without changing the evaluator or message components.
  */
-export const INCOMING_INTERACTION_VALIDITY_BANK: Record<
-  string,
-  IncomingInteractionValidityRule
-> = {
+export const INCOMING_INTERACTION_VALIDITY_BANK: Record<string, IncomingInteractionValidityRule> = {
   nominee_veto_pitch: {
     senderMustBeNominee: true,
     humanMustHoldSafety: true,
