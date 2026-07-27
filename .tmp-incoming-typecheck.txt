@@ -1,0 +1,6 @@
+
+> bbmobilenew@1.0.0 typecheck
+> tsc -b
+
+
+EXIT_CODE=0
