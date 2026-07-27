@@ -3,28 +3,28 @@ import {
   CINEMATIC_CREDITS,
   type CreditCard,
   type CreditTextStyle,
-} from '../config/cinematicConfig';
+} from '../config/cinematicConfig'
 
 export interface CreditsContentDocument {
-  version: 1;
-  cards: readonly CreditCard[];
+  version: 1
+  cards: readonly CreditCard[]
 }
 
 export interface CreditsContentLoadResult {
-  cards: readonly CreditCard[];
-  source: 'runtime' | 'fallback';
-  url: string;
-  reason?: string;
+  cards: readonly CreditCard[]
+  source: 'runtime' | 'fallback'
+  url: string
+  reason?: string
 }
 
 interface CreditsRuntimeWindow extends Window {
-  __BIG_EYE_CREDITS_URL__?: string;
+  __BIG_EYE_CREDITS_URL__?: string
 }
 
 interface LoadCreditsContentOptions {
-  signal?: AbortSignal;
-  fetchImpl?: typeof fetch;
-  url?: string;
+  signal?: AbortSignal
+  fetchImpl?: typeof fetch
+  url?: string
 }
 
 const CREDIT_STYLES = new Set<CreditTextStyle>([
@@ -38,32 +38,32 @@ const CREDIT_STYLES = new Set<CreditTextStyle>([
   'legal',
   'closing-title',
   'closing-subtitle',
-]);
+])
 
-const MAX_LINE_LENGTH = 240;
-const MAX_CARD_COUNT = 40;
-const MAX_LINES_PER_CARD = 8;
+const MAX_LINE_LENGTH = 240
+const MAX_CARD_COUNT = 40
+const MAX_LINES_PER_CARD = 8
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isFiniteNonNegative(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
 }
 
 function normalizeLine(value: unknown): CreditCard['lines'][number] | null {
-  if (!isRecord(value)) return null;
-  const text = typeof value.text === 'string' ? value.text.trim() : '';
-  const style = value.style;
-  if (!text || text.length > MAX_LINE_LENGTH || typeof style !== 'string') return null;
-  if (!CREDIT_STYLES.has(style as CreditTextStyle)) return null;
+  if (!isRecord(value)) return null
+  const text = typeof value.text === 'string' ? value.text.trim() : ''
+  const style = value.style
+  if (!text || text.length > MAX_LINE_LENGTH || typeof style !== 'string') return null
+  if (!CREDIT_STYLES.has(style as CreditTextStyle)) return null
 
   return {
     text,
     style: style as CreditTextStyle,
     ...(value.gapBefore === true ? { gapBefore: true } : {}),
-  };
+  }
 }
 
 /**
@@ -72,58 +72,60 @@ function normalizeLine(value: unknown): CreditCard['lines'][number] | null {
  * a partial configuration can never leave the cinematic with blank cards.
  */
 export function parseCreditsContent(value: unknown): readonly CreditCard[] | null {
-  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.cards)) return null;
-  if (value.cards.length === 0 || value.cards.length > MAX_CARD_COUNT) return null;
+  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.cards)) return null
+  if (value.cards.length === 0 || value.cards.length > MAX_CARD_COUNT) return null
 
-  const durationSeconds = CINEMATIC_CONFIG.durationInFrames / CINEMATIC_CONFIG.fps;
-  const ids = new Set<string>();
-  let previousEnd = 0;
-  const cards: CreditCard[] = [];
+  const durationSeconds = CINEMATIC_CONFIG.durationInFrames / CINEMATIC_CONFIG.fps
+  const ids = new Set<string>()
+  let previousEnd = 0
+  const cards: CreditCard[] = []
 
   for (const rawCard of value.cards) {
-    if (!isRecord(rawCard)) return null;
+    if (!isRecord(rawCard)) return null
 
-    const id = typeof rawCard.id === 'string' ? rawCard.id.trim() : '';
-    const fromSecond = rawCard.fromSecond;
-    const toSecond = rawCard.toSecond;
-    const rawLines = rawCard.lines;
+    const id = typeof rawCard.id === 'string' ? rawCard.id.trim() : ''
+    const fromSecond = rawCard.fromSecond
+    const toSecond = rawCard.toSecond
+    const rawLines = rawCard.lines
 
-    if (!id || ids.has(id)) return null;
-    if (!isFiniteNonNegative(fromSecond) || !isFiniteNonNegative(toSecond)) return null;
-    if (toSecond <= fromSecond || toSecond > durationSeconds || fromSecond < previousEnd) return null;
-    if (!Array.isArray(rawLines) || rawLines.length === 0 || rawLines.length > MAX_LINES_PER_CARD) return null;
+    if (!id || ids.has(id)) return null
+    if (!isFiniteNonNegative(fromSecond) || !isFiniteNonNegative(toSecond)) return null
+    if (toSecond <= fromSecond || toSecond > durationSeconds || fromSecond < previousEnd)
+      return null
+    if (!Array.isArray(rawLines) || rawLines.length === 0 || rawLines.length > MAX_LINES_PER_CARD)
+      return null
 
-    const lines = rawLines.map(normalizeLine);
-    if (lines.some((line) => line === null)) return null;
+    const lines = rawLines.map(normalizeLine)
+    if (lines.some((line) => line === null)) return null
 
-    ids.add(id);
-    previousEnd = toSecond;
+    ids.add(id)
+    previousEnd = toSecond
     cards.push({
       id,
       fromSecond,
       toSecond,
       lines: lines as CreditCard['lines'],
-    });
+    })
   }
 
-  return cards;
+  return cards
 }
 
 export function resolveCreditsContentUrl(): string {
-  if (typeof document === 'undefined') return 'config/credits.json';
+  if (typeof document === 'undefined') return 'config/credits.json'
 
-  const runtimeUrl = (window as CreditsRuntimeWindow).__BIG_EYE_CREDITS_URL__?.trim();
-  if (runtimeUrl) return runtimeUrl;
+  const runtimeUrl = (window as CreditsRuntimeWindow).__BIG_EYE_CREDITS_URL__?.trim()
+  if (runtimeUrl) return runtimeUrl
 
   const metaUrl = document
     .querySelector<HTMLMetaElement>('meta[name="big-eye-credits-url"]')
-    ?.content.trim();
-  if (metaUrl) return metaUrl;
+    ?.content.trim()
+  if (metaUrl) return metaUrl
 
   const base = import.meta.env.BASE_URL.endsWith('/')
     ? import.meta.env.BASE_URL
-    : `${import.meta.env.BASE_URL}/`;
-  return `${base}config/credits.json`;
+    : `${import.meta.env.BASE_URL}/`
+  return `${base}config/credits.json`
 }
 
 export async function loadCreditsContent({
@@ -137,7 +139,7 @@ export async function loadCreditsContent({
       source: 'fallback',
       url,
       reason: 'Fetch API unavailable',
-    };
+    }
   }
 
   try {
@@ -145,33 +147,33 @@ export async function loadCreditsContent({
       cache: 'no-store',
       credentials: 'same-origin',
       signal,
-    });
+    })
     if (!response.ok) {
       return {
         cards: CINEMATIC_CREDITS,
         source: 'fallback',
         url,
         reason: `HTTP ${response.status}`,
-      };
+      }
     }
 
-    const parsed = parseCreditsContent(await response.json());
+    const parsed = parseCreditsContent(await response.json())
     if (!parsed) {
       return {
         cards: CINEMATIC_CREDITS,
         source: 'fallback',
         url,
         reason: 'Invalid credits content document',
-      };
+      }
     }
 
-    return { cards: parsed, source: 'runtime', url };
+    return { cards: parsed, source: 'runtime', url }
   } catch (error) {
     return {
       cards: CINEMATIC_CREDITS,
       source: 'fallback',
       url,
       reason: error instanceof Error ? error.message : 'Credits content request failed',
-    };
+    }
   }
 }
