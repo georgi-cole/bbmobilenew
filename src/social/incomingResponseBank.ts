@@ -1,3 +1,4 @@
+import { getRemoteResponseSet } from './socialRuntimeConfig'
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
@@ -7,6 +8,8 @@ import type {
 export interface IncomingResponseChoice {
   label: string
   responseType: IncomingInteractionResponseType
+  description?: string
+  style?: 'positive' | 'neutral' | 'negative' | 'dismiss'
 }
 
 type ResponseSet = IncomingResponseChoice[]
@@ -152,6 +155,14 @@ export function getDramaResponseBlueprint(
     typeof scenario === 'string' ? `scenario:${scenario}` : '',
     `type:${type}`,
   ].filter(Boolean)
+
+  // Validated live-config content wins, while the local bank remains the
+  // offline fallback and keeps old saves deterministic.
+  for (const key of keys) {
+    const remote = getRemoteResponseSet(key)
+    if (remote?.length) return remote.map((choice) => ({ ...choice }))
+  }
+
   const key = keys.find((candidate) => DRAMA_RESPONSE_BANK[candidate]?.length)
   if (!key) return null
   const pool = DRAMA_RESPONSE_BANK[key]
