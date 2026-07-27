@@ -20,109 +20,107 @@
  *   />
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import './CeremonyOverlay.css';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import './CeremonyOverlay.css'
 
 export interface CeremonyTile {
   /** Bounding rect of the target tile. null = skip this tile. */
-  rect: DOMRect | null;
+  rect: DOMRect | null
   /** Badge emoji to animate onto this tile (e.g. '👑', '🛡️', '❓'). */
-  badge?: string;
+  badge?: string
   /** Optional badge image source rendered instead of badge text. */
-  badgeImageSrc?: string;
+  badgeImageSrc?: string
   /** Optional role/context label shown as a pill above the spotlighted tile. */
-  label?: string;
+  label?: string
   /** Optional glow tone for the spotlight ring. */
-  glowTone?: 'gold' | 'danger' | 'warning' | 'success';
+  glowTone?: 'gold' | 'danger' | 'warning' | 'success'
   /**
    * Where the badge starts before flying to the tile:
    *   'center' — screen centre (default for winner badges)
    *   DOMRect  — another tile's rect (for badge transfers)
    */
-  badgeStart?: 'center' | DOMRect;
+  badgeStart?: 'center' | DOMRect
   /** Optional ARIA label for the badge */
-  badgeLabel?: string;
+  badgeLabel?: string
   /** Optional badge motion style. Defaults to landing onto the tile. */
-  badgeMotion?: 'land' | 'extract';
+  badgeMotion?: 'land' | 'extract'
 }
 
 export interface CeremonyOverlayProps {
   /** Tiles to spotlight (1–3 tiles) */
-  tiles: CeremonyTile[];
+  tiles: CeremonyTile[]
   /** Caption text shown below the spotlighted tiles */
-  caption: string;
+  caption: string
   /** Optional subtitle below caption */
-  subtitle?: string;
+  subtitle?: string
   /** Called when animation completes (or immediately when rects missing) */
-  onDone: () => void;
+  onDone: () => void
   /** Total visible duration in ms before exit begins (default 2800) */
-  durationMs?: number;
+  durationMs?: number
   /** ARIA label for the overlay */
-  ariaLabel?: string;
+  ariaLabel?: string
   /** When false, skips rendering the dim cutout layer. Defaults to true. */
-  showDim?: boolean;
+  showDim?: boolean
   /** When false, skips rendering the caption/subtitle block. Defaults to true. */
-  showCaption?: boolean;
+  showCaption?: boolean
   /**
    * Optional callback to resolve tile rects lazily (after DOM commit).
    * When provided, called once on mount and the returned tiles replace
    * the `tiles` prop.  Useful when tile DOM elements aren't available
    * during the render phase (e.g. first paint).
    */
-  resolveTiles?: () => CeremonyTile[];
+  resolveTiles?: () => CeremonyTile[]
   /** Changes when the surrounding layout budget changes and tile rects should be refreshed. */
-  layoutSignal?: string | number;
+  layoutSignal?: string | number
 }
 
 /** Badge animation phases with timing (ms from overlay mount) */
-const APPEAR_DELAY = 200;
-const APPEAR_DURATION = 450;
-const FLY_DURATION = 500;
-const LAND_DURATION = 350;
-const EXTRACT_APPEAR_DELAY = 350;
-const EXTRACT_APPEAR_DURATION = 700;
-const EXTRACT_FLY_DURATION = 1800;
-const EXTRACT_LAND_DURATION = 450;
-const EXTRACT_MIN_DURATION = 5000;
-const COMPACT_LABEL_BREAKPOINT = '(max-width: 560px)';
+const APPEAR_DELAY = 200
+const APPEAR_DURATION = 450
+const FLY_DELAY = APPEAR_DELAY + APPEAR_DURATION // 650
+const FLY_DURATION = 500
+const LAND_DELAY = FLY_DELAY + FLY_DURATION // 1150
+const LAND_DURATION = 350
+const HOLD_DELAY = LAND_DELAY + LAND_DURATION // 1500
+const COMPACT_LABEL_BREAKPOINT = '(max-width: 560px)'
 const COMPACT_TILE_LABELS: Record<string, string> = {
   'LOH Nominee': 'NOMINEE',
   'Last in LOH Comp': 'LAST PLACE',
-};
+}
 // Keep a small viewport margin so pills never clip against the screen edge.
-const LABEL_EDGE_MARGIN = 12;
+const LABEL_EDGE_MARGIN = 12
 // Default vertical anchor for pills positioned just above a spotlight cutout.
-const LABEL_BASE_TOP = 30;
+const LABEL_BASE_TOP = 30
 // Minimum pill widths keep short labels visually balanced.
-const MIN_COMPACT_LABEL_WIDTH = 78;
-const MIN_FULL_LABEL_WIDTH = 96;
+const MIN_COMPACT_LABEL_WIDTH = 78
+const MIN_FULL_LABEL_WIDTH = 96
 // Approximate character widths used only for collision estimation.
-const COMPACT_LABEL_CHAR_WIDTH = 7;
-const FULL_LABEL_CHAR_WIDTH = 7.8;
-const LABEL_WIDTH_PADDING = 26;
-const LABEL_HEIGHT = 24;
+const COMPACT_LABEL_CHAR_WIDTH = 7
+const FULL_LABEL_CHAR_WIDTH = 7.8
+const LABEL_WIDTH_PADDING = 26
+const LABEL_HEIGHT = 24
 // Near the top edge, pills can only stack downward without clipping.
-const LABEL_STACKED_THRESHOLD = 18;
-const LABEL_VERTICAL_OFFSET_STEP = 28;
-const LABEL_VERTICAL_OFFSET_MAX = 56;
+const LABEL_STACKED_THRESHOLD = 18
+const LABEL_VERTICAL_OFFSET_STEP = 28
+const LABEL_VERTICAL_OFFSET_MAX = 56
 // Extraction motion lifts the badge just above the tile without jumping into
 // the TV chrome near the top edge on compact mobile layouts.
-const BADGE_EXTRACT_Y_OFFSET = 72;
-const BADGE_EXTRACT_MIN_TOP = 12;
+const BADGE_EXTRACT_Y_OFFSET = 28
+const BADGE_EXTRACT_MIN_TOP = 12
 // Safe small-screen fallback dimensions for non-browser/SSR rendering paths.
-const SSR_VIEWPORT_WIDTH = 390;
-const SSR_VIEWPORT_HEIGHT = 844;
+const SSR_VIEWPORT_WIDTH = 390
+const SSR_VIEWPORT_HEIGHT = 844
 
 interface LabelLayout {
-  key: string;
-  label: string;
-  left: number;
-  top: number;
+  key: string
+  label: string
+  left: number
+  top: number
 }
 
 function getDisplayTileLabel(label: string, useCompactTileLabels: boolean): string {
-  if (!useCompactTileLabels) return label;
-  return COMPACT_TILE_LABELS[label] ?? label;
+  if (!useCompactTileLabels) return label
+  return COMPACT_TILE_LABELS[label] ?? label
 }
 
 function labelRectsOverlap(
@@ -134,34 +132,34 @@ function labelRectsOverlap(
   topB: number,
   widthB: number,
   heightB: number,
-  gap = 8,
+  gap = 8
 ): boolean {
   // leftA/leftB are center x-coordinates because pills are positioned with
   // translateX(-50%) in CSS.
-  const aLeft = leftA - widthA / 2;
-  const aRight = leftA + widthA / 2;
-  const bLeft = leftB - widthB / 2;
-  const bRight = leftB + widthB / 2;
-  const horizontalOverlap = aLeft < bRight + gap && aRight + gap > bLeft;
-  const verticalOverlap = topA < topB + heightB + gap && topA + heightA + gap > topB;
-  return horizontalOverlap && verticalOverlap;
+  const aLeft = leftA - widthA / 2
+  const aRight = leftA + widthA / 2
+  const bLeft = leftB - widthB / 2
+  const bRight = leftB + widthB / 2
+  const horizontalOverlap = aLeft < bRight + gap && aRight + gap > bLeft
+  const verticalOverlap = topA < topB + heightB + gap && topA + heightA + gap > topB
+  return horizontalOverlap && verticalOverlap
 }
 
 function calculateLabelWidth(label: string, useCompactTileLabels: boolean): number {
-  const minWidth = useCompactTileLabels ? MIN_COMPACT_LABEL_WIDTH : MIN_FULL_LABEL_WIDTH;
-  const charWidth = useCompactTileLabels ? COMPACT_LABEL_CHAR_WIDTH : FULL_LABEL_CHAR_WIDTH;
-  return Math.max(minWidth, label.length * charWidth + LABEL_WIDTH_PADDING);
+  const minWidth = useCompactTileLabels ? MIN_COMPACT_LABEL_WIDTH : MIN_FULL_LABEL_WIDTH
+  const charWidth = useCompactTileLabels ? COMPACT_LABEL_CHAR_WIDTH : FULL_LABEL_CHAR_WIDTH
+  return Math.max(minWidth, label.length * charWidth + LABEL_WIDTH_PADDING)
 }
 
 function isTileBadgeOrigin(badgeStart: CeremonyTile['badgeStart']): badgeStart is DOMRect {
-  return badgeStart != null && badgeStart !== 'center';
+  return badgeStart != null && badgeStart !== 'center'
 }
 
-type BadgePhase = 'hidden' | 'appearing' | 'flying' | 'landed' | 'holding';
+type BadgePhase = 'hidden' | 'appearing' | 'flying' | 'landed' | 'holding'
 
 /** Cutout padding (px) around each tile rect */
-const CUTOUT_PAD = 6;
-const CUTOUT_RADIUS = 10;
+const CUTOUT_PAD = 6
+const CUTOUT_RADIUS = 10
 
 export default function CeremonyOverlay({
   tiles: tilesProp,
@@ -175,220 +173,203 @@ export default function CeremonyOverlay({
   resolveTiles,
   layoutSignal,
 }: CeremonyOverlayProps) {
-  const [visible, setVisible] = useState(true);
-  const [badgePhase, setBadgePhase] = useState<BadgePhase>('hidden');
-  const timersRef = useRef<number[]>([]);
+  const [visible, setVisible] = useState(true)
+  const [badgePhase, setBadgePhase] = useState<BadgePhase>('hidden')
+  const timersRef = useRef<number[]>([])
 
   // Lazily resolve tiles: if resolveTiles is provided, use it on mount
   // (after DOM commit) to get accurate DOMRects. Otherwise use tilesProp.
   const [resolvedTiles, setResolvedTiles] = useState<CeremonyTile[] | null>(
-    resolveTiles ? null : tilesProp,
-  );
+    resolveTiles ? null : tilesProp
+  )
   const [useCompactTileLabels, setUseCompactTileLabels] = useState(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-    return window.matchMedia(COMPACT_LABEL_BREAKPOINT).matches;
-  });
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+    return window.matchMedia(COMPACT_LABEL_BREAKPOINT).matches
+  })
 
-  const tiles = resolvedTiles ?? tilesProp;
+  const tiles = resolvedTiles ?? tilesProp
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined
 
-    const mediaQuery = window.matchMedia(COMPACT_LABEL_BREAKPOINT);
+    const mediaQuery = window.matchMedia(COMPACT_LABEL_BREAKPOINT)
     const handleChange = (event: MediaQueryListEvent | MediaQueryList) => {
-      setUseCompactTileLabels(event.matches);
-    };
+      setUseCompactTileLabels(event.matches)
+    }
 
-    handleChange(mediaQuery);
+    handleChange(mediaQuery)
     if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
+      mediaQuery.addEventListener('change', handleChange)
     } else if (typeof mediaQuery.addListener === 'function') {
-      mediaQuery.addListener(handleChange);
+      mediaQuery.addListener(handleChange)
     }
 
     return () => {
       if (typeof mediaQuery.removeEventListener === 'function') {
-        mediaQuery.removeEventListener('change', handleChange);
+        mediaQuery.removeEventListener('change', handleChange)
       } else if (typeof mediaQuery.removeListener === 'function') {
-        mediaQuery.removeListener(handleChange);
+        mediaQuery.removeListener(handleChange)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Validate: at least one tile with a non-zero rect
-  const validTiles = tiles.filter(
-    (t) => t.rect != null && (t.rect.width > 0 || t.rect.height > 0),
-  );
-  const hasValidTiles = validTiles.length > 0;
-  const hasExtractMotion = validTiles.some((tile) => tile.badgeMotion === 'extract');
-  const appearDelay = hasExtractMotion ? EXTRACT_APPEAR_DELAY : APPEAR_DELAY;
-  const appearDuration = hasExtractMotion ? EXTRACT_APPEAR_DURATION : APPEAR_DURATION;
-  const flyDelay = appearDelay + appearDuration;
-  const flyDuration = hasExtractMotion ? EXTRACT_FLY_DURATION : FLY_DURATION;
-  const landDelay = flyDelay + flyDuration;
-  const landDuration = hasExtractMotion ? EXTRACT_LAND_DURATION : LAND_DURATION;
-  const holdDelay = landDelay + landDuration;
-  const effectiveDurationMs = hasExtractMotion
-    ? Math.max(durationMs, EXTRACT_MIN_DURATION)
-    : durationMs;
-  const badgeTimingStyle = {
-    '--ceremony-badge-appear-duration': `${appearDuration}ms`,
-    '--ceremony-badge-flight-duration': `${flyDuration}ms`,
-  } as React.CSSProperties;
+  const validTiles = tiles.filter((t) => t.rect != null && (t.rect.width > 0 || t.rect.height > 0))
+  const hasValidTiles = validTiles.length > 0
   // Track whether we're still waiting for resolveTiles to run
-  const pendingResolve = resolveTiles != null && resolvedTiles === null;
+  const pendingResolve = resolveTiles != null && resolvedTiles === null
 
   const clearTimers = useCallback(() => {
-    timersRef.current.forEach((id) => window.clearTimeout(id));
-    timersRef.current = [];
-  }, []);
+    timersRef.current.forEach((id) => window.clearTimeout(id))
+    timersRef.current = []
+  }, [])
 
   const addTimer = useCallback((fn: () => void, ms: number) => {
-    const id = window.setTimeout(fn, ms);
-    timersRef.current.push(id);
-    return id;
-  }, []);
+    const id = window.setTimeout(fn, ms)
+    timersRef.current.push(id)
+    return id
+  }, [])
 
   // Resolve tiles lazily and refresh them when the measured layout changes.
   useEffect(() => {
     if (resolveTiles) {
-      setResolvedTiles(resolveTiles());
+      setResolvedTiles(resolveTiles())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutSignal]);
+  }, [layoutSignal])
 
   // Headless fallback: fire onDone immediately
   useEffect(() => {
     // Wait for tiles to be resolved before starting animation.
-    if (pendingResolve) return;
+    if (pendingResolve) return
 
     if (!hasValidTiles) {
-      onDone();
-      return;
+      onDone()
+      return
     }
 
     // Badge animation timeline
-    addTimer(() => setBadgePhase('appearing'), appearDelay);
-    addTimer(() => setBadgePhase('flying'), flyDelay);
-    addTimer(() => setBadgePhase('landed'), landDelay);
-    addTimer(() => setBadgePhase('holding'), holdDelay);
+    addTimer(() => setBadgePhase('appearing'), APPEAR_DELAY)
+    addTimer(() => setBadgePhase('flying'), FLY_DELAY)
+    addTimer(() => setBadgePhase('landed'), LAND_DELAY)
+    addTimer(() => setBadgePhase('holding'), HOLD_DELAY)
 
     // Exit sequence
     addTimer(() => {
-      setVisible(false);
-      addTimer(onDone, 350);
-    }, effectiveDurationMs);
+      setVisible(false)
+      addTimer(onDone, 350)
+    }, durationMs)
 
-    return clearTimers;
+    return clearTimers
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasValidTiles, effectiveDurationMs, pendingResolve, appearDelay, flyDelay, landDelay, holdDelay]);
+  }, [hasValidTiles, durationMs, pendingResolve])
 
   // Compute cutout rects for the SVG mask
   const cutouts = validTiles.map((t) => {
-    const r = t.rect!;
+    const r = t.rect!
     return {
       x: r.left - CUTOUT_PAD,
       y: r.top - CUTOUT_PAD,
       w: r.width + CUTOUT_PAD * 2,
       h: r.height + CUTOUT_PAD * 2,
-    };
-  });
+    }
+  })
 
-  const viewportWidth = typeof window === 'undefined' ? SSR_VIEWPORT_WIDTH : window.innerWidth;
-  const viewportHeight = typeof window === 'undefined' ? SSR_VIEWPORT_HEIGHT : window.innerHeight;
+  const viewportWidth = typeof window === 'undefined' ? SSR_VIEWPORT_WIDTH : window.innerWidth
+  const viewportHeight = typeof window === 'undefined' ? SSR_VIEWPORT_HEIGHT : window.innerHeight
 
   // Caption placement: below the lowest cutout
-  const maxBottom = cutouts.length > 0 ? Math.max(...cutouts.map((c) => c.y + c.h)) : 0;
-  const captionTop = Math.min(maxBottom + 16, viewportHeight - 80);
+  const maxBottom = cutouts.length > 0 ? Math.max(...cutouts.map((c) => c.y + c.h)) : 0
+  const captionTop = Math.min(maxBottom + 16, viewportHeight - 80)
 
   // Badge start/target positions
   const badgePositions = validTiles.map((t) => {
-    const r = t.rect!;
+    const r = t.rect!
     // Left-side anchor: align with .badgeStack { top: 4px; left: 4px } in AvatarTile.
     // Badge uses transform translate(-50%, -100%), so targetX = badge center x,
     // targetY = badge bottom y. Permanent badge center ≈ tile.left+14, bottom ≈ tile.top+24.
-    const targetX = r.left + 14;
-    const targetY = r.top + 24;
+    const targetX = r.left + 14
+    const targetY = r.top + 24
 
-    let startX: number;
-    let startY: number;
-    let endY = targetY;
+    let startX: number
+    let startY: number
+    let endY = targetY
 
     if (t.badgeMotion === 'extract') {
-      startX = targetX;
-      startY = targetY;
-      endY = Math.max(BADGE_EXTRACT_MIN_TOP, targetY - BADGE_EXTRACT_Y_OFFSET);
+      startX = targetX
+      startY = targetY
+      endY = Math.max(BADGE_EXTRACT_MIN_TOP, targetY - BADGE_EXTRACT_Y_OFFSET)
     } else if (t.badgeStart && t.badgeStart !== 'center' && 'left' in t.badgeStart) {
       // Transfer from another tile
-      startX = t.badgeStart.left + t.badgeStart.width / 2;
-      startY = t.badgeStart.top;
+      startX = t.badgeStart.left + t.badgeStart.width / 2
+      startY = t.badgeStart.top
     } else {
       // Centre of viewport
-      startX = viewportWidth / 2;
-      startY = viewportHeight / 2;
+      startX = viewportWidth / 2
+      startY = viewportHeight / 2
     }
-    return { startX, startY, targetX, targetY, endY };
-  });
+    return { startX, startY, targetX, targetY, endY }
+  })
 
   // Badge current position based on phase
   const getBadgeStyle = (idx: number): React.CSSProperties => {
-    const pos = badgePositions[idx];
-    const badgeMotion = validTiles[idx]?.badgeMotion ?? 'land';
+    const pos = badgePositions[idx]
+    const badgeMotion = validTiles[idx]?.badgeMotion ?? 'land'
     switch (badgePhase) {
       case 'hidden':
-        return { left: pos.startX, top: pos.startY, opacity: 0 };
+        return { left: pos.startX, top: pos.startY, opacity: 0 }
       case 'appearing':
-        return { left: pos.startX, top: pos.startY };
+        return { left: pos.startX, top: pos.startY }
       case 'flying':
         if (badgeMotion === 'extract') {
-          return { left: pos.targetX, top: pos.endY };
+          return { left: pos.targetX, top: pos.endY }
         }
-        return { left: pos.targetX, top: pos.targetY };
+        return { left: pos.targetX, top: pos.targetY }
       case 'landed':
       case 'holding':
         if (badgeMotion === 'extract') {
-          return { left: pos.targetX, top: pos.endY };
+          return { left: pos.targetX, top: pos.endY }
         }
-        return { left: pos.targetX, top: pos.targetY };
+        return { left: pos.targetX, top: pos.targetY }
       default:
-        return { left: pos.startX, top: pos.startY };
+        return { left: pos.startX, top: pos.startY }
     }
-  };
+  }
 
   const getBadgeClass = (phase: BadgePhase) => {
-    if (phase === 'hidden') return '';
-    return `ceremony-overlay__badge--${phase}`;
-  };
+    if (phase === 'hidden') return ''
+    return `ceremony-overlay__badge--${phase}`
+  }
 
   const labelLayouts = useMemo(() => {
     return validTiles.reduce<LabelLayout[]>((layouts, tile, i) => {
-      const label = tile.label ?? (tile.badgeMotion === 'extract' ? 'SAVED' : undefined);
-      if (!label) return layouts;
+      if (!tile.label) return layouts
 
-      const cutout = cutouts[i];
-      const displayLabel = getDisplayTileLabel(label, useCompactTileLabels);
-      const estimatedWidth = calculateLabelWidth(displayLabel, useCompactTileLabels);
+      const cutout = cutouts[i]
+      const displayLabel = getDisplayTileLabel(tile.label, useCompactTileLabels)
+      const estimatedWidth = calculateLabelWidth(displayLabel, useCompactTileLabels)
       const clampedLeft = Math.min(
-        Math.max(cutout.x + (cutout.w / 2), estimatedWidth / 2 + LABEL_EDGE_MARGIN),
-        viewportWidth - estimatedWidth / 2 - LABEL_EDGE_MARGIN,
-      );
-      const baseTop = Math.max(cutout.y - LABEL_BASE_TOP, LABEL_EDGE_MARGIN);
+        Math.max(cutout.x + cutout.w / 2, estimatedWidth / 2 + LABEL_EDGE_MARGIN),
+        viewportWidth - estimatedWidth / 2 - LABEL_EDGE_MARGIN
+      )
+      const baseTop = Math.max(cutout.y - LABEL_BASE_TOP, LABEL_EDGE_MARGIN)
       // If the base position is already near the top viewport edge, only move
       // downward to avoid clipping the pill off-screen. Otherwise allow both
       // upward and downward staggering to resolve collisions.
-      const offsets = baseTop <= LABEL_STACKED_THRESHOLD
-        ? [0, LABEL_VERTICAL_OFFSET_STEP, LABEL_VERTICAL_OFFSET_MAX]
-        : [
-            0,
-            -LABEL_VERTICAL_OFFSET_STEP,
-            LABEL_VERTICAL_OFFSET_STEP,
-            -LABEL_VERTICAL_OFFSET_MAX,
-            LABEL_VERTICAL_OFFSET_MAX,
-          ];
+      const offsets =
+        baseTop <= LABEL_STACKED_THRESHOLD
+          ? [0, LABEL_VERTICAL_OFFSET_STEP, LABEL_VERTICAL_OFFSET_MAX]
+          : [
+              0,
+              -LABEL_VERTICAL_OFFSET_STEP,
+              LABEL_VERTICAL_OFFSET_STEP,
+              -LABEL_VERTICAL_OFFSET_MAX,
+              LABEL_VERTICAL_OFFSET_MAX,
+            ]
 
-      let placedTop = baseTop;
+      let placedTop = baseTop
       for (const offset of offsets) {
-        const candidateTop = Math.max(LABEL_EDGE_MARGIN, baseTop + offset);
+        const candidateTop = Math.max(LABEL_EDGE_MARGIN, baseTop + offset)
         const collides = layouts.some((layout) =>
           labelRectsOverlap(
             clampedLeft,
@@ -398,11 +379,12 @@ export default function CeremonyOverlay({
             layout.left,
             layout.top,
             calculateLabelWidth(layout.label, useCompactTileLabels),
-            LABEL_HEIGHT,
-          ));
+            LABEL_HEIGHT
+          )
+        )
         if (!collides) {
-          placedTop = candidateTop;
-          break;
+          placedTop = candidateTop
+          break
         }
       }
 
@@ -411,12 +393,12 @@ export default function CeremonyOverlay({
         label: displayLabel,
         left: clampedLeft,
         top: placedTop,
-      });
-      return layouts;
-    }, []);
-  }, [cutouts, useCompactTileLabels, validTiles, viewportWidth]);
+      })
+      return layouts
+    }, [])
+  }, [cutouts, useCompactTileLabels, validTiles, viewportWidth])
 
-  if (pendingResolve || !hasValidTiles) return null;
+  if (pendingResolve || !hasValidTiles) return null
 
   return (
     <>
@@ -426,8 +408,6 @@ export default function CeremonyOverlay({
         aria-live="assertive"
         aria-label={ariaLabel ?? caption}
       >
-        {hasExtractMotion && <div className="ceremony-overlay__extract-wash" aria-hidden="true" />}
-
         {/* SVG dim layer with mask cutouts */}
         {showDim && (
           <div className="ceremony-overlay__dim">
@@ -499,14 +479,13 @@ export default function CeremonyOverlay({
 
       {/* Animated badges — placed outside the dim container so they render above the mask */}
       {validTiles.map((t, i) => {
-        if (!t.badge) return null;
+        if (!t.badge) return null
         return (
           <div
             key={i}
             className={`ceremony-overlay__badge ${getBadgeClass(badgePhase)}`}
             style={{
               ...getBadgeStyle(i),
-              ...badgeTimingStyle,
               zIndex: 8701,
               position: 'fixed',
             }}
@@ -526,8 +505,8 @@ export default function CeremonyOverlay({
               t.badge
             )}
           </div>
-        );
+        )
       })}
     </>
-  );
+  )
 }

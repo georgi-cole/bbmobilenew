@@ -50,7 +50,7 @@ import {
 } from '../battleBackFlow'
 import { usePersistedGameScreenKey } from '../gameScreenPersistence'
 
-const PUBLIC_SAVE_RESULT_DELAY_MS = 6500
+const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
 const EMPTY_PLAYER_IDS: string[] = []
 export const BATTLE_BACK_RETRY_LIMIT = 3
 
@@ -218,9 +218,6 @@ export function useTwistFlow({
   // ── Pre-veto public save ─────────────────────────────────────────────────
   const [pendingPublicSaveResult, setPendingPublicSaveResult] =
     useState<PendingPublicSaveResult | null>(null)
-  const [publicSavePresentationStage, setPublicSavePresentationStage] = useState<
-    'announcement' | 'ceremony'
-  >('announcement')
   const [publicSaveCeremonyConsumedKey, setPublicSaveCeremonyConsumedKey] =
     usePersistedGameScreenKey('public-save-ceremony', `${game.gameId}:${game.season}`)
 
@@ -249,34 +246,38 @@ export function useTwistFlow({
   }, [showPublicSaveReveal, game.nomineeIds, publicOpinionProfiles])
 
   const publicSaveResultAnnouncement = useMemo<Announcement | null>(() => {
-    if (!pendingPublicSaveResult || publicSavePresentationStage !== 'announcement') return null
+    if (!pendingPublicSaveResult) return null
     const savedPlayer = game.players.find((player) => player.id === pendingPublicSaveResult.savedId)
     if (!savedPlayer) return null
+    const remainingNomineeNames = game.nomineeIds
+      .filter((id) => id !== pendingPublicSaveResult.savedId)
+      .map((id) => game.players.find((player) => player.id === id)?.name)
+      .filter((name): name is string => Boolean(name))
     const subtitle =
-      pendingPublicSaveResult.supportPercent != null
-        ? `${Math.round(pendingPublicSaveResult.supportPercent)}% of the save vote. Their nomination is now being removed.`
-        : 'The public has removed their nomination.'
+      pendingPublicSaveResult.supportPercent != null && remainingNomineeNames.length === 2
+        ? `${savedPlayer.name} was saved with ${Math.round(pendingPublicSaveResult.supportPercent)}% of the public support. ${remainingNomineeNames.join(' and ')} are still in danger.`
+        : remainingNomineeNames.length === 2
+          ? `${savedPlayer.name} was saved by the public. ${remainingNomineeNames.join(' and ')} are still in danger.`
+          : `${savedPlayer.name} was saved by the public.`
     return {
       key: 'public_save_result',
-      title: `${savedPlayer.name} is saved by the public!`,
+      title: 'Public Save Result',
       subtitle,
       isLive: true,
       autoDismissMs: PUBLIC_SAVE_RESULT_DELAY_MS,
     }
-  }, [game.players, pendingPublicSaveResult, publicSavePresentationStage])
+  }, [game.nomineeIds, game.players, pendingPublicSaveResult])
 
   const publicSaveCeremonyKey = pendingPublicSaveResult
     ? `w${game.week}-public-save-${pendingPublicSaveResult.savedId}`
     : ''
   const showPublicSaveCeremony =
     isPublicModeEnabled(game.mode) &&
-    publicSavePresentationStage === 'ceremony' &&
     publicSaveCeremonyKey !== '' &&
     publicSaveCeremonyKey !== publicSaveCeremonyConsumedKey
 
   const handlePublicSaveDone = useCallback(() => {
     if (!publicSaveWinnerId) return
-    setPublicSavePresentationStage('announcement')
     setPendingPublicSaveResult({
       savedId: publicSaveWinnerId,
       supportPercent: publicSaveApprovals[publicSaveWinnerId],
@@ -285,16 +286,14 @@ export function useTwistFlow({
 
   const handlePublicSaveResultDismiss = useCallback(() => {
     if (!pendingPublicSaveResult) return
-    setPublicSavePresentationStage('ceremony')
-  }, [pendingPublicSaveResult])
+    dispatch(commitPublicSave(pendingPublicSaveResult))
+    setPendingPublicSaveResult(null)
+  }, [dispatch, pendingPublicSaveResult])
 
   const handlePublicSaveCeremonyDone = useCallback(() => {
-    if (!pendingPublicSaveResult || !publicSaveCeremonyKey) return
-    dispatch(commitPublicSave(pendingPublicSaveResult))
+    if (!publicSaveCeremonyKey) return
     setPublicSaveCeremonyConsumedKey(publicSaveCeremonyKey)
-    setPendingPublicSaveResult(null)
-    setPublicSavePresentationStage('announcement')
-  }, [dispatch, pendingPublicSaveResult, publicSaveCeremonyKey, setPublicSaveCeremonyConsumedKey])
+  }, [publicSaveCeremonyKey, setPublicSaveCeremonyConsumedKey])
 
   const publicSaveNominees = useMemo(
     () =>
