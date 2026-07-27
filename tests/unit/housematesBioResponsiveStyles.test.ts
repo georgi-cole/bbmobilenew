@@ -32,5 +32,6 @@ describe('Housemates biography responsive layout contract', () => {
     expect(CSS).toContain('@media (max-height: 700px) and (orientation: portrait)')
     expect(CSS).toContain('@media (orientation: landscape)')
     expect(CSS).toContain('grid-template-rows: minmax(0, 47%) minmax(0, 53%)')
+    expect(CSS).not.toContain('* -')
   })
 })
