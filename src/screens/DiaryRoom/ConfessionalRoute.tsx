@@ -30,12 +30,7 @@ export default function ConfessionalRoute() {
   }
 
   if (requiredSessionActive) {
-    return (
-      <RequiredConfessionalSession
-        decision={focusedDecision}
-        onReturnToGame={returnToGame}
-      />
-    )
+    return <RequiredConfessionalSession decision={focusedDecision} onReturnToGame={returnToGame} />
   }
 
   return <DiaryRoom />
