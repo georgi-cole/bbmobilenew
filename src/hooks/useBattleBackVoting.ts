@@ -189,6 +189,36 @@ function makeInitialState(
   }
 }
 
+function decodeCandidates(signature: string): string[] {
+  try {
+    const parsed = JSON.parse(signature)
+    return Array.isArray(parsed) && parsed.every((value) => typeof value === 'string')
+      ? parsed
+      : []
+  } catch {
+    return []
+  }
+}
+
+function decodeTargets(signature: string): Record<string, number> | undefined {
+  if (!signature) return undefined
+  try {
+    const parsed = JSON.parse(signature)
+    if (!Array.isArray(parsed)) return undefined
+    const entries = parsed.filter(
+      (entry): entry is [string, number] =>
+        Array.isArray(entry) &&
+        entry.length === 2 &&
+        typeof entry[0] === 'string' &&
+        typeof entry[1] === 'number' &&
+        Number.isFinite(entry[1])
+    )
+    return Object.fromEntries(entries)
+  } catch {
+    return undefined
+  }
+}
+
 export function useBattleBackVoting({
   candidates,
   seed,
@@ -198,6 +228,10 @@ export function useBattleBackVoting({
   targetPercentages,
   surgeTargetId = null,
 }: Options): BattleBackVoteState {
+  const candidatesSignature = JSON.stringify(candidates)
+  const targetsSignature = targetPercentages
+    ? JSON.stringify(candidates.map((candidate) => [candidate, targetPercentages[candidate]]))
+    : ''
   const rngRef = useRef(mulberry32(seed))
   const surgeTargetRef = useRef<string | null>(surgeTargetId)
   const targetPercentagesRef = useRef<Record<string, number> | undefined>(targetPercentages)
@@ -259,14 +293,16 @@ export function useBattleBackVoting({
   }, [targetPercentages])
 
   useEffect(() => {
-    const nextState = makeInitialState(candidates, seed, targetPercentages)
+    const candidateSnapshot = decodeCandidates(candidatesSignature)
+    const targetSnapshot = decodeTargets(targetsSignature)
+    const nextState = makeInitialState(candidateSnapshot, seed, targetSnapshot)
     rngRef.current = mulberry32((seed ^ 0x5a7d3c1e) >>> 0)
     activeRef.current = nextState.active
     pctsRef.current = nextState.pcts
     eliminatedRef.current = []
-    targetPercentagesRef.current = targetPercentages
+    targetPercentagesRef.current = targetSnapshot
     dispatch({ type: 'reset', state: nextState })
-  }, [seed, candidates, targetPercentages])
+  }, [seed, candidatesSignature, targetsSignature])
 
   useEffect(() => {
     if (state.isComplete) return
