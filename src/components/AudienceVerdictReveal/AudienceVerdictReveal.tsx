@@ -58,9 +58,13 @@ export default function AudienceVerdictReveal({
   useEffect(() => {
     doneRef.current = false
     if (document.body.classList.contains('no-animations')) {
-      setPhase('result')
-      const timer = window.setTimeout(fireDone, 0)
-      return () => window.clearTimeout(timer)
+      timersRef.current = [
+        window.setTimeout(() => {
+          setPhase('result')
+          fireDone()
+        }, 0),
+      ]
+      return clearTimers
     }
 
     timersRef.current = [
