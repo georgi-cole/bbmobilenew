@@ -8,6 +8,13 @@ import { normalizeDramaSocialNetwork } from '../social/dramaModeEngine';
 import type { DramaBelief, DramaHouseEvent, IncomingInteraction } from '../social/types';
 import { resolveDramaPublicSave, type DramaPublicSaveResult } from './DramaPublicSaveService';
 
+export function shouldUseDramaPublicSave(
+  dramaModeEnabled: boolean,
+  publicModeEnabled: boolean,
+): boolean {
+  return dramaModeEnabled && publicModeEnabled;
+}
+
 export function resolveCurrentDramaPublicSave(nomineeIds: string[]): DramaPublicSaveResult {
   const state = store.getState();
   return resolveDramaPublicSave({
@@ -97,8 +104,10 @@ export function completeDramaPublicSave(
 ): boolean {
   const state = store.getState();
   if (
-    state.settings.gameUX.dramaMode !== true ||
-    state.game.publicModeEnabled !== true ||
+    !shouldUseDramaPublicSave(
+      state.settings.gameUX.dramaMode === true,
+      state.game.publicModeEnabled === true,
+    ) ||
     !outcome.savedId
   ) {
     return false;
