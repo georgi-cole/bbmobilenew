@@ -15,7 +15,12 @@ vi.mock('../src/utils/restartApp', () => ({
   restartApp: vi.fn(),
 }))
 
-function makeStore(vipActive = false, publicModeOwned = false, tribunalHouseOwned = false, dramaModeOwned = false) {
+function makeStore(
+  vipActive = false,
+  publicModeOwned = false,
+  tribunalHouseOwned = false,
+  dramaModeOwned = false
+) {
   const store = configureStore({
     reducer: {
       game: gameReducer,
@@ -55,7 +60,9 @@ function renderSettings(
   dramaModeActive = false
 ) {
   const store = makeStore(vipActive, publicModeOwned, tribunalHouseOwned, dramaModeOwned)
-  if (dramaModeActive) store.dispatch(setGameUX({ dramaMode: true }))
+  if (dramaModeActive) {
+    store.dispatch(setGameUX({ dramaMode: true, dramaModeAdminOverride: true }))
+  }
   render(
     <Provider store={store}>
       <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
@@ -165,6 +172,17 @@ describe('Settings screen', () => {
     expect(screen.queryByLabelText(/compact roster layout/i)).toBeNull()
   })
 
+  it('persists a Drama Mode admin override from Advanced Settings', async () => {
+    const { store } = renderSettingsAdmin()
+
+    fireEvent.click(screen.getByRole('tab', { name: /game ux/i }))
+    const dramaModeToggle = await screen.findByLabelText(/toggle drama mode/i)
+    fireEvent.click(dramaModeToggle)
+
+    expect(store.getState().settings.gameUX.dramaMode).toBe(true)
+    expect(store.getState().settings.gameUX.dramaModeAdminOverride).toBe(true)
+  })
+
   it('shows Public Mode in normal Settings as a store-gated toggle', async () => {
     const { store } = renderSettings()
 
@@ -223,6 +241,7 @@ describe('Settings screen', () => {
     fireEvent.click(dramaModeToggle)
 
     expect(store.getState().settings.gameUX.dramaMode).toBe(false)
+    expect(store.getState().settings.gameUX.dramaModeAdminOverride).toBe(false)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 

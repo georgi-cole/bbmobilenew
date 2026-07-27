@@ -26,7 +26,7 @@ describe('Social premium hardening', () => {
     setRemoteSocialRuntimeConfig(null)
   })
 
-  it('requires entitlement and locks to an existing season ruleset snapshot', () => {
+  it('requires entitlement or an admin override and locks normal users to the season snapshot', () => {
     expect(
       getEffectiveSocialMode({
         settings: { gameUX: { dramaMode: true } },
@@ -41,6 +41,16 @@ describe('Social premium hardening', () => {
         vip: { entitlements: { dramaMode: true } },
       })
     ).toBe('normal')
+
+    expect(
+      getEffectiveSocialMode({
+        game: { dramaSocialMode: false },
+        settings: {
+          gameUX: { dramaMode: true, dramaModeAdminOverride: true },
+        },
+        vip: { isActive: false, entitlements: { dramaMode: false } },
+      })
+    ).toBe('drama')
 
     expect(
       getEffectiveSocialMode({

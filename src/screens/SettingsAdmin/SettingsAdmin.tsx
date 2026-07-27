@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { buildViewportMetaContent } from '../../components/layout/viewportMeta';
-import { useNavigate } from 'react-router';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useState, useEffect, useCallback } from 'react'
+import { buildViewportMetaContent } from '../../components/layout/viewportMeta'
+import { useNavigate } from 'react-router'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   selectSettings,
   setAudio,
@@ -10,82 +10,90 @@ import {
   setSim,
   setVisual,
   type ThemePreset,
-} from '../../store/settingsSlice';
-import CompSelection from '../../components/CompSelection';
-import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
-import { getAllGames, type GameCategory } from '../../minigames/registry';
-import { restartApp } from '../../utils/restartApp';
-import { APP_VERSION } from '../../appVersion';
-import './SettingsAdmin.css';
+} from '../../store/settingsSlice'
+import CompSelection from '../../components/CompSelection'
+import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils'
+import { getAllGames, type GameCategory } from '../../minigames/registry'
+import { restartApp } from '../../utils/restartApp'
+import { APP_VERSION } from '../../appVersion'
+import './SettingsAdmin.css'
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
-function registryCategoryToCompCategory(
-  category: GameCategory,
-): CompGame['category'] {
+function registryCategoryToCompCategory(category: GameCategory): CompGame['category'] {
   switch (category) {
-    case 'arcade':    return 'physical';
-    case 'endurance': return 'endurance';
-    case 'logic':     return 'mental';
-    case 'trivia':    return 'mental';
+    case 'arcade':
+      return 'physical'
+    case 'endurance':
+      return 'endurance'
+    case 'logic':
+      return 'mental'
+    case 'trivia':
+      return 'mental'
   }
 }
 
 const REGISTRY_CATEGORY_ICONS: Record<GameCategory, string> = {
-  arcade:    '🕹️',
+  arcade: '🕹️',
   endurance: '⏱️',
-  logic:     '🧩',
-  trivia:    '❓',
-};
+  logic: '🧩',
+  trivia: '❓',
+}
 
 /** Builds the CompGame list from the in-repo minigame registry. */
 function buildCompGamesFromRegistry(): CompGame[] {
   return getAllGames()
     .filter((g) => !g.retired)
     .map((g) => ({
-      id:       g.key,
-      name:     g.title,
-      icon:     REGISTRY_CATEGORY_ICONS[g.category],
+      id: g.key,
+      name: g.title,
+      icon: REGISTRY_CATEGORY_ICONS[g.category],
       category: registryCategoryToCompCategory(g.category),
-      enabled:  true,
-    }));
+      enabled: true,
+    }))
 }
 
-type Tab = 'audio' | 'display' | 'gameux' | 'about';
+type Tab = 'audio' | 'display' | 'gameux' | 'about'
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'audio',   label: '🔊 Audio'    },
-  { id: 'display', label: '🎨 Display'  },
-  { id: 'gameux',  label: '🎮 Game UX'  },
-  { id: 'about',   label: 'ℹ️ About'    },
-];
+  { id: 'audio', label: '🔊 Audio' },
+  { id: 'display', label: '🎨 Display' },
+  { id: 'gameux', label: '🎮 Game UX' },
+  { id: 'about', label: 'ℹ️ About' },
+]
 
 const THEME_PRESETS: { id: ThemePreset; label: string; swatch: string }[] = [
   { id: 'midnight', label: 'Midnight', swatch: '#6366f1' },
-  { id: 'neon',     label: 'Neon',     swatch: '#22d3ee' },
-  { id: 'sunset',   label: 'Sunset',   swatch: '#f97316' },
-  { id: 'ocean',    label: 'Ocean',    swatch: '#0ea5e9' },
-];
+  { id: 'neon', label: 'Neon', swatch: '#22d3ee' },
+  { id: 'sunset', label: 'Sunset', swatch: '#f97316' },
+  { id: 'ocean', label: 'Ocean', swatch: '#0ea5e9' },
+]
 
 export default function SettingsAdmin() {
-  const [activeTab, setActiveTab] = useState<Tab>('audio');
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const settings = useAppSelector(selectSettings);
-  const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
-  const [showRestartModal, setShowRestartModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('audio')
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const settings = useAppSelector(selectSettings)
+  const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize))
+  const [showRestartModal, setShowRestartModal] = useState(false)
 
-  // Migrate values enabled by the earlier Advanced Settings implementation.
+  // Migrate values enabled by earlier Advanced Settings implementations.
   useEffect(() => {
-    if (settings.sim.publicMode && !settings.sim.publicModeAdminOverride) {
-      dispatch(setSim({ publicModeAdminOverride: true }));
+    if (settings.gameUX.dramaMode && !settings.gameUX.dramaModeAdminOverride) {
+      dispatch(setGameUX({ dramaModeAdminOverride: true }))
     }
-  }, [dispatch, settings.sim.publicMode, settings.sim.publicModeAdminOverride]);
+    if (settings.sim.publicMode && !settings.sim.publicModeAdminOverride) {
+      dispatch(setSim({ publicModeAdminOverride: true }))
+    }
+  }, [
+    dispatch,
+    settings.gameUX.dramaMode,
+    settings.gameUX.dramaModeAdminOverride,
+    settings.sim.publicMode,
+    settings.sim.publicModeAdminOverride,
+  ])
 
   // Stable fetchGames callback for CompSelection — builds list from registry once.
-  const fetchGames = useCallback(
-    () => Promise.resolve(buildCompGamesFromRegistry()),
-    [],
-  );
+  const fetchGames = useCallback(() => Promise.resolve(buildCompGamesFromRegistry()), [])
 
   // Persist comp selection changes immediately via setGameUX.
   const handleCompSelectionChange = useCallback(
@@ -93,11 +101,11 @@ export default function SettingsAdmin() {
       const mergedCompSelection = {
         ...settings.gameUX.compSelection,
         ...payload,
-      };
-      dispatch(setGameUX({ compSelection: mergedCompSelection }));
+      }
+      dispatch(setGameUX({ compSelection: mergedCompSelection }))
     },
-    [dispatch, settings.gameUX.compSelection],
-  );
+    [dispatch, settings.gameUX.compSelection]
+  )
 
   /**
    * Commit any pending cast-size input to Redux and return the committed value.
@@ -105,48 +113,42 @@ export default function SettingsAdmin() {
    * numeric input for changes to be detected or applied.
    */
   const commitCastSizeInput = (): number => {
-    const parsed = parseInt(castSizeInput, 10);
-    const clamped = isNaN(parsed)
-      ? settings.gameUX.castSize
-      : Math.min(16, Math.max(4, parsed));
-    setCastSizeInput(String(clamped));
+    const parsed = parseInt(castSizeInput, 10)
+    const clamped = isNaN(parsed) ? settings.gameUX.castSize : Math.min(16, Math.max(4, parsed))
+    setCastSizeInput(String(clamped))
     if (clamped !== settings.gameUX.castSize) {
-      dispatch(setGameUX({ castSize: clamped }));
+      dispatch(setGameUX({ castSize: clamped }))
     }
-    return clamped;
-  };
+    return clamped
+  }
 
   const handleSave = () => {
-    commitCastSizeInput();
-    setShowRestartModal(true);
-  };
+    commitCastSizeInput()
+    setShowRestartModal(true)
+  }
 
   const handleRestartNow = () => {
-    setShowRestartModal(false);
-    restartApp('#/game');
-  };
+    setShowRestartModal(false)
+    restartApp('#/game')
+  }
 
   const handleNotNow = () => {
-    setShowRestartModal(false);
-  };
+    setShowRestartModal(false)
+  }
 
   // Keep the viewport meta tag in sync with the enableZoom setting.
-  const enableZoom = settings.visual?.enableZoom ?? false;
+  const enableZoom = settings.visual?.enableZoom ?? false
   useEffect(() => {
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
     if (meta) {
-      meta.content = buildViewportMetaContent(enableZoom);
+      meta.content = buildViewportMetaContent(enableZoom)
     }
-  }, [enableZoom]);
+  }, [enableZoom])
 
   return (
     <div className="settings-screen">
       <header className="settings-screen__header">
-        <button
-          className="settings-screen__back"
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-        >
+        <button className="settings-screen__back" onClick={() => navigate(-1)} aria-label="Go back">
           ←
         </button>
         <h1 className="settings-screen__title">⚙️ Settings</h1>
@@ -169,7 +171,6 @@ export default function SettingsAdmin() {
 
       {/* Tab panels */}
       <div className="settings-content" role="tabpanel">
-
         {/* ── Audio ─────────────────────────────────────────────────────── */}
         {activeTab === 'audio' && (
           <section className="settings-section">
@@ -353,7 +354,14 @@ export default function SettingsAdmin() {
                   type="checkbox"
                   className="settings-toggle"
                   checked={settings.gameUX.dramaMode}
-                  onChange={(e) => dispatch(setGameUX({ dramaMode: e.target.checked }))}
+                  onChange={(e) =>
+                    dispatch(
+                      setGameUX({
+                        dramaMode: e.target.checked,
+                        dramaModeAdminOverride: e.target.checked,
+                      })
+                    )
+                  }
                   aria-label="Toggle drama mode"
                 />
               </div>
@@ -374,16 +382,16 @@ export default function SettingsAdmin() {
                       setSim({
                         publicMode: e.target.checked,
                         publicModeAdminOverride: e.target.checked,
-                      }),
+                      })
                     )
                   }
                   aria-label="Toggle public mode"
                 />
               </div>
               <p className="settings-helper-text">
-                Off uses the original 2-nominee rules. On enables the public-influence mode:
-                a 3rd nominee is auto-added in normal weeks and the public saves one nominee
-                before veto. Takes effect next season (requires restart to apply to the current run).
+                Off uses the original 2-nominee rules. On enables the public-influence mode: a 3rd
+                nominee is auto-added in normal weeks and the public saves one nominee before veto.
+                Takes effect next season (requires restart to apply to the current run).
               </p>
             </div>
 
@@ -410,13 +418,12 @@ export default function SettingsAdmin() {
                   max={100}
                   step={5}
                   value={settings.sim.battleBackChance ?? 30}
-                  onChange={(e) =>
-                    dispatch(setSim({ battleBackChance: Number(e.target.value) }))
-                  }
+                  onChange={(e) => dispatch(setSim({ battleBackChance: Number(e.target.value) }))}
                   aria-label="Back 2 the Game chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Probability that a Tribunal Return twist activates after each eligible eviction (requires Twists on).
+                  Probability that a Tribunal Return twist activates after each eligible eviction
+                  (requires Twists on).
                 </p>
               </div>
             )}
@@ -439,7 +446,8 @@ export default function SettingsAdmin() {
                   aria-label="Double Elimination chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Per-week chance that a Double Elimination activates (mid-season only, after 5 evictions and above final 5). Up to 2 per season.
+                  Per-week chance that a Double Elimination activates (mid-season only, after 5
+                  evictions and above final 5). Up to 2 per season.
                 </p>
               </div>
             )}
@@ -462,7 +470,9 @@ export default function SettingsAdmin() {
                   aria-label="Special Safety chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Per-week chance (checked during POS results, after 5 evictions, with 6+ players and no Double Elimination) for a season-limited special safety power to activate. Only one special safety may occur per season.
+                  Per-week chance (checked during POS results, after 5 evictions, with 6+ players
+                  and no Double Elimination) for a season-limited special safety power to activate.
+                  Only one special safety may occur per season.
                 </p>
               </div>
             )}
@@ -485,7 +495,8 @@ export default function SettingsAdmin() {
                   aria-label="Morning Shock chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Chance that a Day 3+ morning shock removes an active housemate before the LOH comp starts. Only fires when more than 4 housemates are still alive.
+                  Chance that a Day 3+ morning shock removes an active housemate before the LOH comp
+                  starts. Only fires when more than 4 housemates are still alive.
                 </p>
               </div>
             )}
@@ -531,7 +542,10 @@ export default function SettingsAdmin() {
                  This slider is for development & QA use only.
                  Remove or hide behind a build flag before shipping to live players.
                  ──────────────────────────────────────────────────────────── */}
-            <p className="settings-section__heading" style={{ marginTop: '1.25rem', color: '#f97316' }}>
+            <p
+              className="settings-section__heading"
+              style={{ marginTop: '1.25rem', color: '#f97316' }}
+            >
               🧪 Testing / Debug
             </p>
             <div className="settings-row settings-row--col">
@@ -549,15 +563,15 @@ export default function SettingsAdmin() {
                 step={1}
                 value={settings.sim.secretMissionTriggerOverride ?? -1}
                 onChange={(e) => {
-                  const v = Number(e.target.value);
-                  dispatch(setSim({ secretMissionTriggerOverride: v < 0 ? null : v }));
+                  const v = Number(e.target.value)
+                  dispatch(setSim({ secretMissionTriggerOverride: v < 0 ? null : v }))
                 }}
                 aria-label="Secret mission trigger override (debug)"
               />
               <p className="settings-helper-text" style={{ color: '#f97316' }}>
-                DEBUG ONLY. Set to 100 to guarantee a trigger on Day 5; set to 0 to prevent
-                any trigger. Slide to the left-most position to restore default chances.
-                Remove this slider before shipping to live players.
+                DEBUG ONLY. Set to 100 to guarantee a trigger on Day 5; set to 0 to prevent any
+                trigger. Slide to the left-most position to restore default chances. Remove this
+                slider before shipping to live players.
               </p>
             </div>
             <div className="settings-row settings-row--col">
@@ -575,14 +589,14 @@ export default function SettingsAdmin() {
                 step={1}
                 value={settings.sim.secretMissionTriggerWeekOverride ?? 0}
                 onChange={(e) => {
-                  const v = Number(e.target.value);
-                  dispatch(setSim({ secretMissionTriggerWeekOverride: v <= 0 ? null : v }));
+                  const v = Number(e.target.value)
+                  dispatch(setSim({ secretMissionTriggerWeekOverride: v <= 0 ? null : v }))
                 }}
                 aria-label="Secret mission force week (debug)"
               />
               <p className="settings-helper-text" style={{ color: '#f97316' }}>
-                DEBUG ONLY. Force the secret mission to trigger on an exact week_start.
-                Set to 0 to disable. When set, this takes precedence over the chance slider above.
+                DEBUG ONLY. Force the secret mission to trigger on an exact week_start. Set to 0 to
+                disable. When set, this takes precedence over the chance slider above.
               </p>
             </div>
 
@@ -609,9 +623,7 @@ export default function SettingsAdmin() {
             </div>
 
             <div className="settings-row settings-row--col">
-              <label className="settings-row__label">
-                Houseguests
-              </label>
+              <label className="settings-row__label">Houseguests</label>
               <input
                 type="number"
                 className="settings-number"
@@ -620,10 +632,12 @@ export default function SettingsAdmin() {
                 value={castSizeInput}
                 onChange={(e) => setCastSizeInput(e.target.value)}
                 onBlur={() => {
-                  const parsed = parseInt(castSizeInput, 10);
-                  const clamped = isNaN(parsed) ? settings.gameUX.castSize : Math.min(16, Math.max(4, parsed));
-                  setCastSizeInput(String(clamped));
-                  dispatch(setGameUX({ castSize: clamped }));
+                  const parsed = parseInt(castSizeInput, 10)
+                  const clamped = isNaN(parsed)
+                    ? settings.gameUX.castSize
+                    : Math.min(16, Math.max(4, parsed))
+                  setCastSizeInput(String(clamped))
+                  dispatch(setGameUX({ castSize: clamped }))
                 }}
                 aria-label="Cast size"
               />
@@ -641,10 +655,7 @@ export default function SettingsAdmin() {
             />
 
             <div className="settings-actions">
-              <button
-                className="settings-actions__save-btn"
-                onClick={handleSave}
-              >
+              <button className="settings-actions__save-btn" onClick={handleSave}>
                 Save
               </button>
             </div>
@@ -654,15 +665,14 @@ export default function SettingsAdmin() {
         {/* ── About ─────────────────────────────────────────────────────── */}
         {activeTab === 'about' && (
           <section className="settings-section settings-section--about">
-            <div className="settings-about__hero" aria-hidden="true">📺</div>
+            <div className="settings-about__hero" aria-hidden="true">
+              📺
+            </div>
             <h2 className="settings-about__name">The Big Eye</h2>
             <p className="settings-about__version">Version {APP_VERSION}</p>
             <p className="settings-about__tagline">AI Edition — React + TypeScript + Vite</p>
 
-            <button
-              className="settings-about__credits-btn"
-              onClick={() => navigate('/credits')}
-            >
+            <button className="settings-about__credits-btn" onClick={() => navigate('/credits')}>
               🎬 View Credits
             </button>
           </section>
@@ -699,5 +709,5 @@ export default function SettingsAdmin() {
         </div>
       )}
     </div>
-  );
+  )
 }

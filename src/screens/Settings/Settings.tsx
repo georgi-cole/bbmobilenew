@@ -126,7 +126,12 @@ const SECTIONS: SettingSection[] = [
         gated: true,
         lockedFeature: 'Drama Mode',
         get: (s) => s.gameUX.dramaMode,
-        onChange: (dispatch, val) => dispatch(setGameUX({ dramaMode: val })),
+        onChange: (dispatch, val) =>
+          dispatch(
+            setGameUX(
+              val ? { dramaMode: true } : { dramaMode: false, dramaModeAdminOverride: false }
+            )
+          ),
       },
       {
         type: 'toggle',
@@ -216,7 +221,7 @@ export default function Settings() {
       case 'toggle': {
         const hasAccess =
           item.id === 'dramaMode'
-            ? hasDramaMode
+            ? hasDramaMode || settings.gameUX.dramaModeAdminOverride
             : item.id === 'publicMode'
               ? hasPublicMode || settings.sim.publicModeAdminOverride
               : item.id === 'tribunalHouse'

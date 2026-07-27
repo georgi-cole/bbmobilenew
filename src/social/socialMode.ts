@@ -8,6 +8,7 @@ interface SocialModeState {
   settings?: {
     gameUX?: {
       dramaMode?: boolean
+      dramaModeAdminOverride?: boolean
     }
   }
   vip?: {
@@ -26,13 +27,15 @@ interface SocialModeState {
  * historical settings-only behavior.
  */
 export function getEffectiveSocialMode(state: SocialModeState): SocialMode {
-  const selected =
-    state.game?.dramaSocialMode !== undefined
+  const adminOverride = state.settings?.gameUX?.dramaModeAdminOverride === true
+  const selected = adminOverride
+    ? state.settings?.gameUX?.dramaMode === true
+    : state.game?.dramaSocialMode !== undefined
       ? state.game.dramaSocialMode
       : state.settings?.gameUX?.dramaMode === true
   if (!selected) return 'normal'
 
-  if (state.vip === undefined) return 'drama'
+  if (adminOverride || state.vip === undefined) return 'drama'
   const entitled = state.vip.isActive === true || state.vip.entitlements?.dramaMode === true
   return entitled ? 'drama' : 'normal'
 }
