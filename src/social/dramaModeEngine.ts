@@ -182,7 +182,9 @@ function upsertBelief(
   const existing = network.beliefs.find((belief) => belief.id === id)
   if (existing) {
     const reinforces =
-      existing.sentiment === 0 || sentiment === 0 || Math.sign(existing.sentiment) === Math.sign(sentiment)
+      existing.sentiment === 0 ||
+      sentiment === 0 ||
+      Math.sign(existing.sentiment) === Math.sign(sentiment)
     existing.confidence = clamp(
       reinforces
         ? existing.confidence * 0.65 + confidence * 0.35
@@ -718,10 +720,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
       arc.stage = 'resolved'
       arc.status = 'resolved'
     }
-    if (
-      arc.stage !== previousStage &&
-      (arc.stage === 'established' || arc.stage === 'climax')
-    ) {
+    if (arc.stage !== previousStage && (arc.stage === 'established' || arc.stage === 'climax')) {
       const positive = arc.type === 'romance' || arc.type === 'bromance'
       effects.push(
         {
@@ -866,7 +865,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
               (left, right) =>
                 relation(input.relationships, right, source.playerId) -
                   relation(input.relationships, left, source.playerId) +
-                relation(input.relationships, left, rumour.subjectId) * 0.35 -
+                  relation(input.relationships, left, rumour.subjectId) * 0.35 -
                   relation(input.relationships, right, rumour.subjectId) * 0.35 ||
                 hash(`${rumour.id}:${right}`) - hash(`${rumour.id}:${left}`)
             )[0]
