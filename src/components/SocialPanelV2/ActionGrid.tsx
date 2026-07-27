@@ -1,5 +1,6 @@
 ﻿import { useRef } from 'react'
 import { SOCIAL_ACTIONS } from '../../social/socialActions'
+import { isHumanSocialActionVisible } from '../../social/socialActionCatalog'
 import { normalizeActionCosts } from '../../social/smExecNormalize'
 import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility'
 import ActionCard from './ActionCard'
@@ -27,8 +28,9 @@ export interface ActionGridProps {
 }
 
 /**
- * Stable action catalogue. Affordability changes styling and feedback, not card
- * placement, so users can build muscle memory across targets and weeks.
+ * Stable action catalogue. Normal Mode exposes the compact core toolkit; Drama
+ * Mode exposes the complete non-AI catalogue. Affordability changes styling and
+ * feedback rather than card position, preserving muscle memory.
  */
 export default function ActionGrid({
   onActionClick,
@@ -95,6 +97,7 @@ export default function ActionGrid({
 
   function isContextEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
     return (
+      isHumanSocialActionVisible(action, dramaMode ? 'drama' : 'normal') &&
       !hiddenActionIds.has(action.id) &&
       evaluateSocialActionEligibility({
         action,
@@ -110,8 +113,6 @@ export default function ActionGrid({
     )
   }
 
-  // Preserve canonical catalogue order. Context-ineligible and AI-only actions
-  // remain filtered, but resource changes never make visible cards jump around.
   const visibleActions = SOCIAL_ACTIONS.filter(isContextEligible)
 
   function getAvailabilityReason(costs: {
