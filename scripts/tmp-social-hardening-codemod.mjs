@@ -60,6 +60,7 @@ edit('src/social/SocialManeuvers.ts', (original) => {
     `    game: rootState.game,
     relationships: state.social.relationships,
   })`
+  )
   return source
 })
 
