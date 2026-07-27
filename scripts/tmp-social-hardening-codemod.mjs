@@ -168,6 +168,12 @@ edit('src/social/socialAIDriver.ts', (original) => {
   }
   source = replaceIfPresent(
     source,
+    `import { chooseDramaAIMove, normalizeDramaSocialNetwork } from './dramaModeEngine'`,
+    `import { normalizeDramaSocialNetwork } from './dramaModeEngine'\nimport { chooseUtilityDramaAIMove } from './dramaAIPolicy'`
+  )
+  source = replaceIfPresent(source, `? chooseDramaAIMove({`, `? chooseUtilityDramaAIMove({`)
+  source = replaceIfPresent(
+    source,
     `      recentActions: history,
     } as Parameters<typeof chooseActionFor>[1])`,
     `      recentActions: history,
