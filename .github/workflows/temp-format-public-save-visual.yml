@@ -1,0 +1,42 @@
+name: Temporary Public Save visual formatter
+
+on:
+  push:
+    branches:
+      - agent/use-normal-public-save-visual
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/use-normal-public-save-visual
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply repository formatting
+        run: |
+          npx prettier --write \
+            src/components/PublicSaveReveal/PublicSaveReveal.tsx \
+            src/components/PublicSaveReveal/__tests__/PublicSaveReveal.test.tsx \
+            src/publicOpinion/DramaPublicSaveIntegration.ts
+      - name: Verify focused behavior
+        run: |
+          npx vitest run src/components/PublicSaveReveal/__tests__/PublicSaveReveal.test.tsx
+          npm run typecheck
+      - name: Commit formatted source
+        run: |
+          rm -f .github/workflows/temp-format-public-save-visual.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Format and verify normal Public Save visual"
+          git push origin HEAD:agent/use-normal-public-save-visual
