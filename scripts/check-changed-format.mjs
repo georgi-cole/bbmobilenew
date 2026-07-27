@@ -73,7 +73,11 @@ for (const file of files) {
 
   if (baseSource == null) {
     checked.push(file)
-    if (!currentClean) violations.push(file)
+    if (!currentClean) {
+      console.error(`--- Expected Prettier output for ${file} ---`)
+      console.error(await prettier.format(currentSource, options))
+      violations.push(file)
+    }
     continue
   }
 
@@ -84,7 +88,11 @@ for (const file of files) {
   }
 
   checked.push(file)
-  if (!currentClean) violations.push(file)
+  if (!currentClean) {
+    console.error(`--- Expected Prettier output for ${file} ---`)
+    console.error(await prettier.format(currentSource, options))
+    violations.push(file)
+  }
 }
 
 console.log(`Strictly checked: ${checked.length}`)
