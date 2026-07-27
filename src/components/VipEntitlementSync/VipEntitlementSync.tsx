@@ -22,10 +22,6 @@ export default function VipEntitlementSync() {
 
   useEffect(() => {
     if (storeState.status !== 'ready' && storeState.status !== 'error') return
-
-    // Public Mode is deliberately not force-disabled here. Its normal Settings
-    // control remains entitlement-gated, while the hidden Advanced Settings
-    // screen can enable it for development and debug runs.
     if (!hasTribunalHouse && tribunalHouse) dispatch(setSim({ enableJuryHouse: false }))
     if (!isVipActive && theme !== 'midnight') {
       dispatch(setDisplay({ themePreset: 'midnight' }))
