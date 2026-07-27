@@ -1,0 +1,73 @@
+name: Apply drama public save implementation
+
+on:
+  push:
+    branches:
+      - agent/drama-public-save
+    paths:
+      - .github/workflows/agent-apply-drama-public-save.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/drama-public-save
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply implementation
+        run: python tools/agent/apply_drama_public_save.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed files
+        run: |
+          npx prettier --write \
+            src/publicOpinion/PublicSaveService.ts \
+            src/publicOpinion/DramaPublicSaveService.ts \
+            src/components/AudienceVerdictReveal/AudienceVerdictReveal.tsx \
+            src/components/AudienceVerdictReveal/AudienceVerdictReveal.css \
+            src/components/AudienceVerdictReveal/__tests__/AudienceVerdictReveal.test.tsx \
+            src/components/PublicSaveReveal/PublicSaveReveal.tsx \
+            src/components/PublicSaveReveal/__tests__/PublicSaveReveal.test.tsx \
+            src/components/ui/TvZone.tsx \
+            src/screens/GameScreen/GameScreen.tsx \
+            src/social/socialSlice.ts \
+            src/social/socialMiddleware.ts \
+            src/store/gameSlice.ts \
+            tests/unit/publicOpinion/publicSaveVoteShares.test.ts
+
+      - name: Validate implementation
+        run: |
+          npm run typecheck
+          npx vitest run \
+            src/components/PublicSaveReveal/__tests__/PublicSaveReveal.test.tsx \
+            src/components/AudienceVerdictReveal/__tests__/AudienceVerdictReveal.test.tsx \
+            tests/unit/publicOpinion/publicSaveVoteShares.test.ts
+
+      - name: Remove one-shot tooling
+        run: |
+          rm -f tools/agent/apply_drama_public_save.py
+          rm -f .github/workflows/agent-apply-drama-public-save.yml
+          rmdir tools/agent 2>/dev/null || true
+
+      - name: Commit implementation
+        run: |
+          git config user.name "OpenAI Agent"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Implement Drama Mode public save"
+          git push origin agent/drama-public-save
