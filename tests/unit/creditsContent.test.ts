@@ -58,7 +58,6 @@ describe('runtime credits content', () => {
     meta.content = 'https://config.example/meta-credits.json'
     document.head.append(meta)
     expect(resolveCreditsContentUrl()).toBe('https://config.example/meta-credits.json')
-
     ;(window as Window & { __BIG_EYE_CREDITS_URL__?: string }).__BIG_EYE_CREDITS_URL__ =
       'https://config.example/runtime-credits.json'
     expect(resolveCreditsContentUrl()).toBe('https://config.example/runtime-credits.json')
