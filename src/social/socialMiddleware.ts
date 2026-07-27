@@ -89,7 +89,7 @@ interface GameState {
 
 interface StateWithGame {
   game: GameState
-  settings?: { gameUX?: { dramaMode?: boolean } }
+  settings?: { gameUX?: { dramaMode?: boolean; dramaModeAdminOverride?: boolean } }
   vip?: {
     isActive?: boolean
     entitlements?: { dramaMode?: boolean }
