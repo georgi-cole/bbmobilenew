@@ -3,10 +3,15 @@ import { store } from '../store/store';
 import {
   pushIncomingInteraction,
   replaceDramaNetwork,
+  updateRelationship,
 } from '../social/socialSlice';
 import { normalizeDramaSocialNetwork } from '../social/dramaModeEngine';
 import type { DramaBelief, DramaHouseEvent, IncomingInteraction } from '../social/types';
 import { resolveDramaPublicSave, type DramaPublicSaveResult } from './DramaPublicSaveService';
+
+const PUBLIC_SAVE_ALLY_AFFINITY = 25;
+const PUBLIC_SAVE_ALLY_DELTA = 2;
+const PUBLIC_SAVE_THREAT_DELTA = -4;
 
 export function shouldUseDramaPublicSave(
   dramaModeEnabled: boolean,
@@ -130,31 +135,41 @@ export function completeDramaPublicSave(
       title: 'Audience Verdict',
       text: `${savedPlayer.name} was saved by the public with ${outcome.winningShare}% of the vote.`,
       detail: `Winning margin: ${outcome.winningMargin} percentage points.`,
-      consequence: 'Public support temporarily raises strategic threat perception.',
+      consequence:
+        'Allies become slightly more protective while other players read the saved nominee as a larger strategic threat until the next day.',
       public: true,
       severity: 'major',
       createdAt: Date.now(),
     };
 
-    const activeObserverIds = state.game.players
+    const threatEffects = state.game.players
       .filter(
         (player) =>
           player.id !== outcome.savedId &&
           player.status !== 'evicted' &&
           player.status !== 'jury',
       )
-      .map((player) => player.id);
-    const threatBeliefs: DramaBelief[] = activeObserverIds.map((holderId) => ({
-      id: `public-threat-${state.game.week}-${holderId}-${outcome.savedId}`,
-      holderId,
-      subjectId: outcome.savedId,
-      kind: 'strategic_threat',
-      confidence: 0.68,
-      sentiment: -0.12,
-      sourceId: eventId,
-      createdWeek: state.game.week,
-      lastUpdatedWeek: state.game.week,
-    }));
+      .map((player) => {
+        const affinity = state.social.relationships[player.id]?.[outcome.savedId]?.affinity ?? 0;
+        const relationshipDelta =
+          affinity >= PUBLIC_SAVE_ALLY_AFFINITY
+            ? PUBLIC_SAVE_ALLY_DELTA
+            : PUBLIC_SAVE_THREAT_DELTA;
+        const belief: DramaBelief = {
+          id: `public-threat-${state.game.week}-${player.id}-${outcome.savedId}`,
+          holderId: player.id,
+          subjectId: outcome.savedId,
+          kind: 'strategic_threat',
+          confidence: 0.68,
+          // The expiry middleware uses the sign to restore the exact temporary delta.
+          sentiment: relationshipDelta > 0 ? 0.08 : -0.12,
+          sourceId: eventId,
+          createdWeek: state.game.week,
+          lastUpdatedWeek: state.game.week,
+        };
+        return { belief, relationshipDelta };
+      });
+    const threatBeliefs = threatEffects.map((effect) => effect.belief);
 
     store.dispatch(
       replaceDramaNetwork({
@@ -169,6 +184,17 @@ export function completeDramaPublicSave(
         ],
       }),
     );
+
+    threatEffects.forEach(({ belief, relationshipDelta }) => {
+      store.dispatch(
+        updateRelationship({
+          source: belief.holderId,
+          target: belief.subjectId,
+          delta: relationshipDelta,
+          actionSource: 'system',
+        }),
+      );
+    });
 
     const interaction = buildContextualInteraction(outcome.savedId, outcome);
     if (interaction) store.dispatch(pushIncomingInteraction(interaction));
