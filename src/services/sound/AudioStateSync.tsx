@@ -53,10 +53,7 @@ export default function AudioStateSync() {
 
   useEffect(() => {
     const configuredGame = getMinigameMusicConfig(musicState.pendingChallengeGameKey);
-    if (!configuredGame) {
-      setHostedMinigamePlaying(false);
-      return undefined;
-    }
+    if (!configuredGame) return undefined;
 
     return observeHostedMinigamePlaying(setHostedMinigamePlaying);
   }, [musicState.pendingChallengeGameKey]);
