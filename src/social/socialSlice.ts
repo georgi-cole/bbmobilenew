@@ -24,7 +24,6 @@ import {
 import {
   ALLIANCE_TAG,
   enforceRelationshipTagAffinity,
-  normalizeRelationshipsForTags,
   tagsAfterAllianceDecay,
 } from './socialAlliance';
 import {
@@ -35,13 +34,32 @@ import {
   type DramaIncomingResponseEffect,
 } from './dramaModeEngine';
 import type { DramaSocialNetwork } from './types';
+import {
+  appendPersistentSocialHistory,
+  getPersistentSocialHistory,
+  type SocialStateWithHistory,
+} from './socialHistory';
+import { clampSocialResource, migrateSocialState } from './socialStateMigration';
+import { getIncomingInteractionResponsePolicy } from './socialRuntimeConfig';
+
+function clampBank(
+  budgets: Record<string, number>,
+  kind: 'energy' | 'influence' | 'info',
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(budgets).map(([playerId, value]) => [
+      playerId,
+      clampSocialResource(value, kind),
+    ]),
+  );
+}
 
 const socialSlice = createSlice({
   name: 'social',
   initialState: SOCIAL_INITIAL_STATE,
   reducers: {
     engineReady(state, action: PayloadAction<{ budgets: Record<string, number> }>) {
-      state.energyBank = action.payload.budgets;
+      state.energyBank = clampBank(action.payload.budgets, 'energy');
     },
     /** Signals the engine has finished a phase; report is written via setLastReport. */
     engineComplete() {},
@@ -65,34 +83,59 @@ const socialSlice = createSlice({
     },
     /** Set a player's energy bank value directly. */
     setEnergyBankEntry(state, action: PayloadAction<{ playerId: string; value: number }>) {
-      state.energyBank[action.payload.playerId] = action.payload.value;
+      state.energyBank[action.payload.playerId] = clampSocialResource(
+        action.payload.value,
+        'energy',
+      );
     },
-    /** Add a delta to a player's energy bank (can be negative to deduct). */
+    /** Add a delta to a player's energy bank and preserve resource invariants. */
     applyEnergyDelta(state, action: PayloadAction<{ playerId: string; delta: number }>) {
       const current = state.energyBank[action.payload.playerId] ?? 0;
-      state.energyBank[action.payload.playerId] = current + action.payload.delta;
+      state.energyBank[action.payload.playerId] = clampSocialResource(
+        current + action.payload.delta,
+        'energy',
+      );
     },
     /** Set a player's influence bank value directly. */
     setInfluenceBankEntry(state, action: PayloadAction<{ playerId: string; value: number }>) {
-      state.influenceBank[action.payload.playerId] = action.payload.value;
+      state.influenceBank[action.payload.playerId] = clampSocialResource(
+        action.payload.value,
+        'influence',
+      );
     },
-    /** Add a delta to a player's influence bank (can be negative to deduct). */
+    /** Add a delta to a player's influence bank and preserve resource invariants. */
     applyInfluenceDelta(state, action: PayloadAction<{ playerId: string; delta: number }>) {
       const current = state.influenceBank[action.payload.playerId] ?? 0;
-      state.influenceBank[action.payload.playerId] = current + action.payload.delta;
+      state.influenceBank[action.payload.playerId] = clampSocialResource(
+        current + action.payload.delta,
+        'influence',
+      );
     },
     /** Set a player's info bank value directly. */
     setInfoBankEntry(state, action: PayloadAction<{ playerId: string; value: number }>) {
-      state.infoBank[action.payload.playerId] = action.payload.value;
+      state.infoBank[action.payload.playerId] = clampSocialResource(
+        action.payload.value,
+        'info',
+      );
     },
-    /** Add a delta to a player's info bank (can be negative to deduct). */
+    /** Add a delta to a player's info bank and preserve resource invariants. */
     applyInfoDelta(state, action: PayloadAction<{ playerId: string; delta: number }>) {
       const current = state.infoBank[action.payload.playerId] ?? 0;
-      state.infoBank[action.payload.playerId] = current + action.payload.delta;
+      state.infoBank[action.payload.playerId] = clampSocialResource(
+        current + action.payload.delta,
+        'info',
+      );
     },
-    /** Append a social action log entry to sessionLogs. */
+    /**
+     * Append to the current panel session and to a bounded persistent history.
+     * Closing the panel may clear sessionLogs without erasing AI memory.
+     */
     recordSocialAction(state, action: PayloadAction<{ entry: SocialActionLogEntry }>) {
       state.sessionLogs.push(action.payload.entry);
+      appendPersistentSocialHistory(
+        state as unknown as SocialStateWithHistory,
+        action.payload.entry,
+      );
     },
     replaceDramaNetwork(state, action: PayloadAction<DramaSocialNetwork>) {
       state.dramaNetwork = normalizeDramaSocialNetwork(action.payload);
@@ -167,7 +210,7 @@ const socialSlice = createSlice({
         entry.read = true;
       }
     },
-    /** Mark all incoming interactions as read. */
+    /** Mark all incoming interactions as read. Retained for save and test compatibility. */
     markAllIncomingInteractionsRead(state) {
       state.incomingInteractions.forEach((interaction) => {
         interaction.read = true;
@@ -185,7 +228,14 @@ const socialSlice = createSlice({
         resolvedWeek?: number;
       }>,
     ) {
-      const { interactionId, resolvedWith, resolvedLabel, outcomeText, resolvedAt, resolvedWeek } = action.payload;
+      const {
+        interactionId,
+        resolvedWith,
+        resolvedLabel,
+        outcomeText,
+        resolvedAt,
+        resolvedWeek,
+      } = action.payload;
       const entry = state.incomingInteractions.find(
         (interaction) => interaction.id === interactionId,
       );
@@ -201,7 +251,11 @@ const socialSlice = createSlice({
     /** Convenience helper for dismissing an interaction. */
     dismissIncomingInteraction(
       state,
-      action: PayloadAction<{ interactionId: string; resolvedAt?: number; resolvedWeek?: number }>,
+      action: PayloadAction<{
+        interactionId: string;
+        resolvedAt?: number;
+        resolvedWeek?: number;
+      }>,
     ) {
       const entry = state.incomingInteractions.find(
         (interaction) => interaction.id === action.payload.interactionId,
@@ -247,9 +301,6 @@ const socialSlice = createSlice({
      * - Zeroes out energy, influence, and info banks.
      * - Dismisses all unresolved incoming interactions.
      * - Clears all scheduled incoming interactions.
-     *
-     * Called by socialMiddleware when `game/finalizePendingEviction` or
-     * `game/selfEvict` targets the user player.
      */
     drainEvictedPlayerSocial(
       state,
@@ -258,12 +309,10 @@ const socialSlice = createSlice({
       const { playerId, week, timestamp } = action.payload;
       const now = timestamp ?? Date.now();
 
-      // Zero out all resource banks.
       state.energyBank[playerId] = 0;
       state.influenceBank[playerId] = 0;
       state.infoBank[playerId] = 0;
 
-      // Dismiss all unresolved incoming interactions.
       for (const interaction of state.incomingInteractions) {
         if (!interaction.resolved) {
           interaction.resolved = true;
@@ -274,17 +323,11 @@ const socialSlice = createSlice({
         }
       }
 
-      // Clear all scheduled incoming interactions.
       state.scheduledIncomingInteractions = [];
-
-      // Ensure social UI panels are fully closed for an evicted player.
-      // Without this, the inbox or social panel could remain visible if open
-      // at the moment of eviction, and panelOpen=true would cause the panel to
-      // reopen on the next FAB press without the user deliberately reopening it.
       state.panelOpen = false;
       state.incomingInboxOpen = false;
     },
-    /** Resolve expired interactions when the week transitions. */
+    /** Resolve expired interactions according to their authored response policy. */
     resolveExpiredIncomingInteractionsForWeek(
       state,
       action: PayloadAction<{ week: number; resolvedAt?: number }>,
@@ -297,7 +340,10 @@ const socialSlice = createSlice({
           interaction.read = true;
           interaction.resolvedAt = resolvedTimestamp;
           interaction.resolvedWeek = week;
-          interaction.resolvedWith = 'ignore';
+          interaction.resolvedWith =
+            getIncomingInteractionResponsePolicy(interaction) === 'required'
+              ? 'ignore'
+              : 'dismiss';
         }
       });
     },
@@ -314,31 +360,31 @@ const socialSlice = createSlice({
       }>,
     ) {
       const { source, target, delta, tags } = action.payload;
+      const safeDelta = Number.isFinite(delta) ? delta : 0;
       const preserveIncomingAlliance = tags?.includes(ALLIANCE_TAG) ?? false;
       if (!state.relationships[source]) {
         state.relationships[source] = {};
       }
       const rel = state.relationships[source][target];
       if (rel) {
-        rel.affinity += delta;
+        rel.affinity = Math.max(-100, Math.min(100, rel.affinity + safeDelta));
         if (tags) {
           rel.tags = Array.from(new Set([...rel.tags, ...tags]));
         }
         rel.tags = tagsAfterAllianceDecay(rel.tags, rel.affinity, preserveIncomingAlliance);
-        if (delta === 0 && tags && tags.length > 0) {
+        if (safeDelta === 0 && tags && tags.length > 0) {
           rel.affinity = enforceRelationshipTagAffinity(rel.affinity, rel.tags);
         }
       } else {
-        // Avoid creating zero-information relationships (no affinity change, no tags).
-        if (delta === 0 && (!tags || tags.length === 0)) {
+        if (safeDelta === 0 && (!tags || tags.length === 0)) {
           return;
         }
         const relationshipTags = tags ?? [];
         state.relationships[source][target] = {
           affinity:
-            delta === 0
-              ? enforceRelationshipTagAffinity(delta, relationshipTags)
-              : delta,
+            safeDelta === 0
+              ? enforceRelationshipTagAffinity(safeDelta, relationshipTags)
+              : Math.max(-100, Math.min(100, safeDelta)),
           tags: relationshipTags,
         };
       }
@@ -354,7 +400,6 @@ const socialSlice = createSlice({
       }>,
     ) {
       const { actorId, targetId, deltas, event } = action.payload;
-      // Avoid creating zero-information social memory entries (no deltas, no event).
       if (!event && !hasSocialMemoryDelta(deltas)) {
         return;
       }
@@ -409,7 +454,7 @@ const socialSlice = createSlice({
       entry.resolvedWeek = action.payload.resolvedWeek;
       entry.resolutionReason = action.payload.resolutionReason;
     },
-    /** Manually open the social panel (e.g. via the FAB 💬 button). */
+    /** Manually open the social panel (e.g. via the FAB button). */
     openSocialPanel(state) {
       state.panelOpen = true;
     },
@@ -425,15 +470,11 @@ const socialSlice = createSlice({
     closeIncomingInbox(state) {
       state.incomingInboxOpen = false;
     },
-    /** Clear all session log entries (e.g. after exporting to Diary Room). */
+    /** Clear only panel-session entries; persistent actionHistory is retained. */
     clearSessionLogs(state) {
       state.sessionLogs = [];
     },
-    /**
-     * Snapshot current relationship affinities into weekStartRelSnapshot.
-     * Called at the start of each week so the week-over-week trend arrow can
-     * compare current affinities against the baseline captured here.
-     */
+    /** Snapshot current relationship affinities into weekStartRelSnapshot. */
     snapshotWeekRelationships(state) {
       const snapshot: Record<string, Record<string, number>> = {};
       for (const [actorId, targets] of Object.entries(state.relationships)) {
@@ -445,17 +486,9 @@ const socialSlice = createSlice({
       state.weekStartRelSnapshot = snapshot;
     },
 
-    /**
-     * Restore a previously saved social state (manual save/resume).
-     * Replaces the entire social slice with the snapshot.
-     */
+    /** Restore and migrate a previously saved social state. */
     hydrateSocial(_state, action: PayloadAction<SocialState>) {
-      return {
-        ...action.payload,
-        relationships: normalizeRelationshipsForTags(action.payload.relationships),
-        commitments: action.payload.commitments ?? [],
-        dramaNetwork: normalizeDramaSocialNetwork(action.payload.dramaNetwork),
-      };
+      return migrateSocialState(action.payload);
     },
   },
 });
@@ -506,7 +539,8 @@ export default socialSlice.reducer;
 export const selectSocialBudgets = (state: { social: SocialState }) => state.social?.energyBank;
 /** Alias for selectSocialBudgets – prefer this name in SocialManeuvers contexts. */
 export const selectEnergyBank = (state: { social: SocialState }) => state.social?.energyBank;
-export const selectInfluenceBank = (state: { social: SocialState }) => state.social?.influenceBank;
+export const selectInfluenceBank = (state: { social: SocialState }) =>
+  state.social?.influenceBank;
 export const selectInfoBank = (state: { social: SocialState }) => state.social?.infoBank;
 export const selectLastSocialReport = (state: { social: SocialState }) =>
   state.social?.lastReport ?? null;
@@ -514,6 +548,8 @@ export const selectInfluenceWeights = (state: { social: SocialState }) =>
   state.social?.influenceWeights;
 export const selectSessionLogs = (state: { social: SocialState }) =>
   state.social?.sessionLogs as SocialState['sessionLogs'];
+export const selectPersistentSocialHistory = (state: { social: SocialState }) =>
+  getPersistentSocialHistory(state.social as SocialStateWithHistory);
 export const selectSocialPanelOpen = (state: { social: SocialState }) =>
   state.social?.panelOpen ?? false;
 export const selectSocialMemory = (state: { social: SocialState }) =>
