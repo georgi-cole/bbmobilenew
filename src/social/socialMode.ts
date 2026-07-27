@@ -28,16 +28,21 @@ interface SocialModeState {
  */
 export function getEffectiveSocialMode(state: SocialModeState): SocialMode {
   const adminOverride = state.settings?.gameUX?.dramaModeAdminOverride === true
-  const selected = adminOverride
-    ? state.settings?.gameUX?.dramaMode === true
-    : state.game?.dramaSocialMode !== undefined
-      ? state.game.dramaSocialMode
-      : state.settings?.gameUX?.dramaMode === true
-  if (!selected) return 'normal'
+  const settingEnabled = state.settings?.gameUX?.dramaMode === true
+  if (adminOverride) return settingEnabled ? 'drama' : 'normal'
 
-  if (adminOverride || state.vip === undefined) return 'drama'
+  if (state.vip === undefined) {
+    const selected =
+      state.game?.dramaSocialMode !== undefined ? state.game.dramaSocialMode : settingEnabled
+    return selected ? 'drama' : 'normal'
+  }
+
   const entitled = state.vip.isActive === true || state.vip.entitlements?.dramaMode === true
-  return entitled ? 'drama' : 'normal'
+  if (!entitled) return 'normal'
+
+  // A newly purchased Drama entitlement activates immediately in the running game.
+  // The season snapshot remains a fallback for existing Drama seasons.
+  return settingEnabled || state.game?.dramaSocialMode === true ? 'drama' : 'normal'
 }
 
 export function isDramaModeEffective(state: SocialModeState): boolean {
