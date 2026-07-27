@@ -4,10 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 // Vitest transforms import.meta.url, so resolve this repository fixture from the checked-out root.
 const CSS = readFileSync(
-  resolve(
-    process.cwd(),
-    'src/components/HousematesBioCinematic/HousematesBioCinematic.css'
-  ),
+  resolve(process.cwd(), 'src/components/HousematesBioCinematic/HousematesBioCinematic.css'),
   'utf8'
 )
 
