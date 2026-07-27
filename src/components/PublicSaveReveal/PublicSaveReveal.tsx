@@ -162,8 +162,7 @@ export default function PublicSaveReveal({
 }: PublicSaveRevealProps) {
   const currentState = store.getState()
   const dramaModeEnabled =
-    currentState.settings.gameUX.dramaMode === true &&
-    currentState.game.publicModeEnabled === true
+    currentState.settings.gameUX.dramaMode === true && currentState.game.publicModeEnabled === true
   const nomineeIds = nominees.map((nominee) => nominee.id)
   const voteShares = normalisePublicSaveVoteShares(nomineeIds, approvals)
 

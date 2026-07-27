@@ -166,7 +166,10 @@ describe('PublicSaveReveal', () => {
 
     expect(screen.queryByText('?? %')).toBeNull()
     expect(
-      screen.getAllByText(/%$/).map((element) => element.textContent).filter(Boolean)
+      screen
+        .getAllByText(/%$/)
+        .map((element) => element.textContent)
+        .filter(Boolean)
     ).toHaveLength(3)
   })
 })
