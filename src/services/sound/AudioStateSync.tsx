@@ -105,6 +105,10 @@ export default function AudioStateSync() {
       )?.track;
       if (configuredTrack) return configuredTrack;
     }
+
+    // For configured challenges, resolvedMusic is deliberately `none` before
+    // gameplay. This prevents the generic competition track from sharing the
+    // channel with, or bleeding into, the configured minigame track.
     return resolvedMusic;
   }, [
     hostedMinigamePlaying,
