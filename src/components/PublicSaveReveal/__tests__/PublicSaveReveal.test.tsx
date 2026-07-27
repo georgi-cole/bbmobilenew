@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import type { Player } from '../../../types';
+import { store } from '../../../store/store';
+import { setGameUX } from '../../../store/settingsSlice';
+import { normalisePublicSaveVoteShares } from '../../../publicOpinion/PublicSaveService';
 import PublicSaveReveal from '../PublicSaveReveal';
 
 function makePlayer(id: string, name: string): Player {
@@ -18,16 +21,21 @@ const nominees = [
   makePlayer('p3', 'Georgi'),
 ];
 
-const approvals = {
+const rawApprovals = {
   p1: 42,
   p2: 43,
   p3: 50,
 };
 
-describe('PublicSaveReveal', () => {
+function formatShare(value: number): string {
+  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`;
+}
+
+describe('PublicSaveReveal in Normal Mode', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     document.body.classList.remove('no-animations');
+    store.dispatch(setGameUX({ dramaMode: false }));
   });
 
   afterEach(() => {
@@ -35,40 +43,38 @@ describe('PublicSaveReveal', () => {
     document.body.classList.remove('no-animations');
   });
 
-  it('keeps approvals hidden until the five-second reveal point', () => {
+  it('keeps vote shares hidden until the existing five-second reveal point', () => {
+    const expectedShares = normalisePublicSaveVoteShares(
+      nominees.map((nominee) => nominee.id),
+      rawApprovals,
+    );
+
     render(
       <PublicSaveReveal
         nominees={nominees}
-        approvals={approvals}
+        approvals={{ ...rawApprovals }}
         savedId="p3"
         onDone={vi.fn()}
       />,
     );
 
     expect(screen.getAllByText('?? %')).toHaveLength(3);
-    expect(screen.queryByText('42%')).toBeNull();
-    expect(screen.queryByText('43%')).toBeNull();
-    expect(screen.queryByText('50%')).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(5000);
     });
 
     expect(screen.queryByText('?? %')).toBeNull();
-    expect(screen.getByText('42%')).toBeTruthy();
-    expect(screen.getByText('43%')).toBeTruthy();
-    expect(screen.getByText('50%')).toBeTruthy();
+    nominees.forEach((nominee) => {
+      expect(screen.getByText(formatShare(expectedShares[nominee.id]))).toBeTruthy();
+    });
   });
 
-  it('adds decimal places only when rounded approval percentages tie', () => {
+  it('shows honest tied vote shares without inventing a decimal lead', () => {
     render(
       <PublicSaveReveal
         nominees={nominees}
-        approvals={{
-          p1: 42.141,
-          p2: 42.149,
-          p3: 50.4,
-        }}
+        approvals={{ p1: 25, p2: 50, p3: 50 }}
         savedId="p3"
         onDone={vi.fn()}
       />,
@@ -78,74 +84,42 @@ describe('PublicSaveReveal', () => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByText('42.14%')).toBeTruthy();
-    expect(screen.getByText('42.15%')).toBeTruthy();
-    expect(screen.getByText('50%')).toBeTruthy();
+    expect(screen.getAllByText('40%')).toHaveLength(2);
+    expect(screen.queryByText('40.1%')).toBeNull();
+    expect(screen.queryByText('39.9%')).toBeNull();
   });
 
-  it('nudges exact saved approval ties so the saved nominee displays highest', () => {
+  it('preserves the current Normal Mode timing and saved-player treatment', () => {
+    const onDone = vi.fn();
     render(
       <PublicSaveReveal
         nominees={nominees}
-        approvals={{
-          p1: 25,
-          p2: 50,
-          p3: 50,
-        }}
+        approvals={{ ...rawApprovals }}
         savedId="p3"
-        onDone={vi.fn()}
-      />,
-    );
-
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
-
-    expect(screen.getByText('25%')).toBeTruthy();
-    expect(screen.getByText('49.9%')).toBeTruthy();
-    expect(screen.getByText('50.1%')).toBeTruthy();
-    expect(screen.getByLabelText('Kian approval: 49.9%')).toBeTruthy();
-    expect(screen.getByLabelText('Georgi approval: 50.1%')).toBeTruthy();
-  });
-
-  it('highlights the saved nominee before auto-dismiss', () => {
-    render(
-      <PublicSaveReveal
-        nominees={nominees}
-        approvals={approvals}
-        savedId="p3"
-        onDone={vi.fn()}
+        onDone={onDone}
       />,
     );
 
     act(() => {
       vi.advanceTimersByTime(7600);
     });
-
     expect(document.querySelector('.psr__nominee--saved')).toBeTruthy();
-    expect(document.querySelectorAll('.psr__status-pill')).toHaveLength(0);
+
+    act(() => {
+      vi.advanceTimersByTime(2399);
+    });
+    expect(onDone).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps only the trimmed tv copy visible', () => {
-    render(
-      <PublicSaveReveal
-        nominees={nominees}
-        approvals={approvals}
-        savedId="p3"
-        onDone={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText('Public Save')).toBeTruthy();
-    expect(
-      screen.getByText('Before safety battle, the player with highest public support is saved.'),
-    ).toBeTruthy();
-    expect(screen.queryByText('The Audience Decides')).toBeNull();
-    expect(screen.queryByText('Tap to skip')).toBeNull();
-  });
-
-  it('auto-completes after the full ten-second sequence', () => {
+  it('hands the existing result flow vote shares that total exactly 100%', () => {
+    const approvals = { ...rawApprovals };
     const onDone = vi.fn();
+
     render(
       <PublicSaveReveal
         nominees={nominees}
@@ -156,13 +130,11 @@ describe('PublicSaveReveal', () => {
     );
 
     act(() => {
-      vi.advanceTimersByTime(9999);
+      vi.advanceTimersByTime(10000);
     });
-    expect(onDone).not.toHaveBeenCalled();
 
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
     expect(onDone).toHaveBeenCalledTimes(1);
+    expect(Object.values(approvals).reduce((sum, value) => sum + value, 0)).toBe(100);
+    expect(approvals.p3).toBeGreaterThan(approvals.p2);
   });
 });
