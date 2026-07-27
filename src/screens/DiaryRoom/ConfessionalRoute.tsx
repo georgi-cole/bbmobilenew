@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import { useAppSelector } from '../../store/hooks'
@@ -10,9 +10,6 @@ export default function ConfessionalRoute() {
   const activeDecision = useAppSelector(selectActiveConfessionalDecision)
   const focusedDecision = activeDecision?.type === 'twin_shock' ? null : activeDecision
   const [requiredSessionActive, setRequiredSessionActive] = useState(focusedDecision !== null)
-  const lastDecisionTypeRef = useRef(focusedDecision?.type ?? null)
-
-  if (focusedDecision) lastDecisionTypeRef.current = focusedDecision.type
 
   const returnToGame = useCallback(
     (returnCue: string) => {
@@ -22,7 +19,6 @@ export default function ConfessionalRoute() {
         state: {
           resumedFromConfessional: true,
           returnCue,
-          decisionType: lastDecisionTypeRef.current,
         },
       })
     },
@@ -37,7 +33,6 @@ export default function ConfessionalRoute() {
     return (
       <RequiredConfessionalSession
         decision={focusedDecision}
-        lastDecisionType={lastDecisionTypeRef.current}
         onReturnToGame={returnToGame}
       />
     )
