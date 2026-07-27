@@ -1,0 +1,37 @@
+name: Temporary Social compact correction
+
+on:
+  push:
+    branches: [fix/social-compact-premium-resources]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-social-compact-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/social-compact-premium-resources
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply guarded correction
+        run: node scripts/tmp-social-compact-fix.mjs
+      - name: Format changed files
+        run: npx prettier --write src/components/SocialPanelV2/SocialPanelV2.tsx src/components/SocialPanelV2/SocialPanelV2.css src/screens/Store/Store.tsx src/social/socialMode.ts
+      - name: Validate types
+        run: npm run typecheck
+      - name: Commit correction
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/components/SocialPanelV2/SocialPanelV2.tsx src/components/SocialPanelV2/SocialPanelV2.css src/screens/Store/Store.tsx src/social/socialMode.ts
+          git commit -m "Restore compact Social UI and premium resource affordance"
+          git push origin HEAD:fix/social-compact-premium-resources
