@@ -1,0 +1,15 @@
+
+> bbmobilenew@1.0.0 typecheck
+> tsc -b
+
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(22,1): error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(23,3): error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(70,5): error TS2304: Cannot find name 'expect'.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(71,5): error TS2304: Cannot find name 'expect'.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(72,5): error TS2304: Cannot find name 'expect'.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(73,5): error TS2304: Cannot find name 'expect'.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(74,5): error TS2304: Cannot find name 'expect'.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(77,5): error TS2304: Cannot find name 'expect'.
+src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.encoding.test.tsx(79,5): error TS2304: Cannot find name 'expect'.
+
+EXIT_CODE=2
