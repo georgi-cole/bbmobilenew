@@ -1,0 +1,99 @@
+name: Temporary Confessional E2E updater
+
+on:
+  push:
+    branches: [agent/confessional-flow-v2]
+
+permissions:
+  contents: write
+
+jobs:
+  update-confessional-journey:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/confessional-flow-v2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Update Confessional player journey
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('e2e/playwright/core-player-journeys.spec.ts')
+          source = path.read_text()
+          start = source.index('async function completeActiveConfessionalDecision(page: Page): Promise<void> {')
+          end = source.index('\nfunction hasCoreWeekDecision', start)
+          replacement = '''async function completeActiveConfessionalDecision(page: Page): Promise<void> {
+            const before = await readAppState(page)
+            const advance = page.getByRole('button', { name: 'Advance to next phase' })
+            await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+            await advance.click()
+
+            const session = page.getByTestId('required-confessional-session')
+            await expect(session).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+            const panel = page.getByTestId('required-confessional-decision')
+            await expect(panel).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+
+            if (before.game.awaitingNominations) {
+              const choices = panel.getByRole('group', { name: 'Nomination choices' }).getByRole('button')
+              const confirm = panel.getByRole('button', { name: 'Confirm nominations' })
+              const count = await choices.count()
+              for (let index = 0; index < count && !(await confirm.isEnabled()); index += 1) {
+                const choice = choices.nth(index)
+                if (await choice.isEnabled()) await choice.click()
+              }
+              await expect(confirm).toBeEnabled()
+              await confirm.click()
+            } else if (before.game.awaitingPovDecision) {
+              await panel.getByRole('button', { name: /Leave nominations unchanged/ }).click()
+              const confirm = panel.getByRole('button', { name: 'Confirm power decision' })
+              await expect(confirm).toBeEnabled()
+              await confirm.click()
+            } else if (before.game.replacementNeeded) {
+              await clickFirstEnabled(panel.getByRole('group').getByRole('button'))
+              const confirm = panel.getByRole('button', { name: 'Confirm replacement' })
+              await expect(confirm).toBeEnabled()
+              await confirm.click()
+            } else if (before.game.awaitingHumanVote) {
+              await clickFirstEnabled(panel.getByRole('group').getByRole('button'))
+              const confirm = panel.getByRole('button', { name: 'Seal eviction vote' })
+              await expect(confirm).toBeEnabled()
+              await confirm.click()
+            } else if (before.game.awaitingTieBreak) {
+              const choices = panel.getByRole('group').getByRole('button')
+              const confirm = panel.getByRole('button', {
+                name: /Seal deciding vote|Confirm eliminations/,
+              })
+              const count = await choices.count()
+              for (let index = 0; index < count && !(await confirm.isEnabled()); index += 1) {
+                const choice = choices.nth(index)
+                if (await choice.isEnabled()) await choice.click()
+              }
+              await expect(confirm).toBeEnabled()
+              await confirm.click()
+            } else {
+              throw new Error(`Unsupported Confessional decision in ${before.game.phase}.`)
+            }
+
+            await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
+              timeout: SCREEN_TIMEOUT_MS,
+            })
+          }
+          '''
+          path.write_text(source[:start] + replacement + source[end:])
+          PY
+          npx prettier --write e2e/playwright/core-player-journeys.spec.ts
+      - name: Commit journey update
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add e2e/playwright/core-player-journeys.spec.ts
+          git commit -m "Update core journey for focused Confessional flow"
+          git push origin HEAD:agent/confessional-flow-v2
