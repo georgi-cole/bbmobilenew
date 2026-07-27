@@ -2,9 +2,9 @@
  * smExecNormalize — cost normalization helpers for SocialManeuvers.
  *
  * Normal Mode deliberately uses one visible resource: Energy. Drama Mode may
- * additionally spend Influence and Intel. The authored action definitions stay
- * backward-compatible, while this boundary ensures Normal cannot accidentally
- * depend on hidden premium currencies.
+ * additionally spend Influence and Intel. Runtime callers pass their effective
+ * mode explicitly. The standalone helper retains its legacy multi-resource
+ * default for compatibility with existing utilities and tests.
  */
 
 import { resolveActionTargetMode } from './socialActions'
@@ -57,7 +57,7 @@ function toScaledIntPts(value: number, scale: number): number {
 export function normalizeActionCosts(
   action: SocialActionDefinition,
   targetCount = 0,
-  dramaMode = false
+  dramaMode = true
 ): {
   energy: number
   influence: number
