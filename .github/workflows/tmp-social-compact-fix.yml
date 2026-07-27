@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-social-compact-fix:
+  repair-social-audio-paths:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -21,17 +21,33 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Apply guarded correction
-        run: node scripts/tmp-social-compact-fix.mjs
-      - name: Format changed files
-        run: npx prettier --write src/components/SocialPanelV2/SocialPanelV2.tsx src/components/SocialPanelV2/SocialPanelV2.css src/screens/Store/Store.tsx src/social/socialMode.ts
-      - name: Validate types
-        run: npm run typecheck
-      - name: Commit correction
+      - name: Repair stale sound registry paths
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/services/sound/sounds.ts')
+          source = path.read_text(encoding='utf-8')
+          replacements = {
+              "${SOUNDS_BASE}Social_module.mp3": "${SOUNDS_BASE}social_module.mp3",
+              "${SOUNDS_BASE}Power_of_safety_comp.mp3": "${SOUNDS_BASE}Power_of_safety.mp3",
+          }
+          for old, new in replacements.items():
+              if old not in source:
+                  raise SystemExit(f'Missing expected registry path: {old}')
+              source = source.replace(old, new, 1)
+          path.write_text(source, encoding='utf-8')
+          PY
+      - name: Format and validate
+        run: |
+          npx prettier --write src/services/sound/sounds.ts
+          npm run typecheck
+      - name: Commit registry repair
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src/components/SocialPanelV2/SocialPanelV2.tsx src/components/SocialPanelV2/SocialPanelV2.css src/screens/Store/Store.tsx src/social/socialMode.ts
-          git commit -m "Restore compact Social UI and premium resource affordance"
+          git add src/services/sound/sounds.ts
+          git commit -m "Fix Social and Safety music registry paths"
           git push origin HEAD:fix/social-compact-premium-resources
