@@ -1,25 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest'
 import {
   buildPublicSaveVoteShares,
   normalisePublicSaveVoteShares,
   resolvePublicSaveNominee,
-} from '../../../src/publicOpinion/PublicSaveService';
-import { resolveDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveService';
-import { shouldUseDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveIntegration';
+} from '../../../src/publicOpinion/PublicSaveService'
+import { resolveDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveService'
+import { shouldUseDramaPublicSave } from '../../../src/publicOpinion/DramaPublicSaveIntegration'
 import {
   getPublicSaveThreatRestoreDelta,
   pruneExpiredPublicSaveThreatBeliefs,
-} from '../../../src/publicOpinion/dramaPublicSaveMiddleware';
-import { createInitialDramaSocialNetwork } from '../../../src/social/dramaModeEngine';
-import type {
-  PlayerPublicProfile,
-  PublicFeedEntry,
-} from '../../../src/publicOpinion/types';
+} from '../../../src/publicOpinion/dramaPublicSaveMiddleware'
+import { createInitialDramaSocialNetwork } from '../../../src/social/dramaModeEngine'
+import type { PlayerPublicProfile, PublicFeedEntry } from '../../../src/publicOpinion/types'
 
 function profile(
   playerId: string,
   approval: number,
-  previousApproval = approval,
+  previousApproval = approval
 ): PlayerPublicProfile {
   return {
     playerId,
@@ -28,49 +25,46 @@ function profile(
     seasonApprovals: [previousApproval, approval],
     completedDirectionCount: 0,
     cumulativePositiveDelta: 0,
-  };
+  }
 }
 
 describe('public save vote shares', () => {
   it('normalises arbitrary scores to exactly 100.0%', () => {
-    const shares = normalisePublicSaveVoteShares(
-      ['a', 'b', 'c'],
-      { a: 61, b: 47, c: 39 },
-    );
+    const shares = normalisePublicSaveVoteShares(['a', 'b', 'c'], { a: 61, b: 47, c: 39 })
 
-    expect(Object.values(shares).reduce((sum, value) => sum + value, 0)).toBe(100);
-    expect(shares.a).toBeGreaterThan(shares.b);
-    expect(shares.b).toBeGreaterThan(shares.c);
-  });
+    expect(Object.values(shares).reduce((sum, value) => sum + value, 0)).toBe(100)
+    expect(shares.a).toBeGreaterThan(shares.b)
+    expect(shares.b).toBeGreaterThan(shares.c)
+  })
 
   it('preserves the established Normal Mode winner and tie-break rules', () => {
     const profiles = {
       a: profile('a', 70),
       b: profile('b', 50),
       c: profile('c', 30),
-    };
+    }
 
     const shares = buildPublicSaveVoteShares({
       nomineeIds: ['a', 'b', 'c'],
       profiles,
-    });
+    })
     const result = resolvePublicSaveNominee({
       nomineeIds: ['a', 'b', 'c'],
       profiles,
-    });
+    })
 
-    expect(result.savedId).toBe('a');
-    expect(result.voteShareByPlayerId).toEqual(shares);
-    expect(result.winningShare).toBe(shares.a);
-    expect(Object.values(shares).reduce((sum, value) => sum + value, 0)).toBe(100);
-  });
+    expect(result.savedId).toBe('a')
+    expect(result.voteShareByPlayerId).toEqual(shares)
+    expect(result.winningShare).toBe(shares.a)
+    expect(Object.values(shares).reduce((sum, value) => sum + value, 0)).toBe(100)
+  })
 
   it('lets visible momentum and storyline change a close Drama Mode ballot', () => {
     const profiles = {
       a: profile('a', 60, 60),
       b: profile('b', 58, 48),
       c: profile('c', 45, 45),
-    };
+    }
     const feed: PublicFeedEntry[] = [
       {
         id: 'headline-b',
@@ -81,28 +75,28 @@ describe('public save vote shares', () => {
         timestamp: 1,
         isHeadline: true,
       },
-    ];
+    ]
 
     const result = resolveDramaPublicSave({
       nomineeIds: ['a', 'b', 'c'],
       profiles,
       feed,
       week: 4,
-    });
+    })
 
-    expect(result.savedId).toBe('b');
-    expect(result.decisiveReason).not.toBe('tiebreak');
-    expect(
-      Object.values(result.voteShareByPlayerId).reduce((sum, value) => sum + value, 0),
-    ).toBe(100);
-  });
+    expect(result.savedId).toBe('b')
+    expect(result.decisiveReason).not.toBe('tiebreak')
+    expect(Object.values(result.voteShareByPlayerId).reduce((sum, value) => sum + value, 0)).toBe(
+      100
+    )
+  })
 
   it('ignores storyline entries from other days', () => {
     const profiles = {
       a: profile('a', 60, 60),
       b: profile('b', 58, 58),
       c: profile('c', 45, 45),
-    };
+    }
     const oldFeed: PublicFeedEntry[] = [
       {
         id: 'old-headline-b',
@@ -113,27 +107,27 @@ describe('public save vote shares', () => {
         timestamp: 1,
         isHeadline: true,
       },
-    ];
+    ]
 
     const result = resolveDramaPublicSave({
       nomineeIds: ['a', 'b', 'c'],
       profiles,
       feed: oldFeed,
       week: 4,
-    });
+    })
 
-    expect(result.savedId).toBe('a');
-  });
+    expect(result.savedId).toBe('a')
+  })
 
   it('requires both Drama Mode and Public Mode for premium consequences', () => {
-    expect(shouldUseDramaPublicSave(true, true)).toBe(true);
-    expect(shouldUseDramaPublicSave(false, true)).toBe(false);
-    expect(shouldUseDramaPublicSave(true, false)).toBe(false);
-    expect(shouldUseDramaPublicSave(false, false)).toBe(false);
-  });
+    expect(shouldUseDramaPublicSave(true, true)).toBe(true)
+    expect(shouldUseDramaPublicSave(false, true)).toBe(false)
+    expect(shouldUseDramaPublicSave(true, false)).toBe(false)
+    expect(shouldUseDramaPublicSave(false, false)).toBe(false)
+  })
 
   it('keeps the public-threat belief for the save day and expires it next day', () => {
-    const network = createInitialDramaSocialNetwork();
+    const network = createInitialDramaSocialNetwork()
     network.beliefs.push(
       {
         id: 'public-threat-4-a-b',
@@ -156,13 +150,13 @@ describe('public save vote shares', () => {
         sourceId: 'rumour-c-b',
         createdWeek: 3,
         lastUpdatedWeek: 3,
-      },
-    );
+      }
+    )
 
-    expect(pruneExpiredPublicSaveThreatBeliefs(network, 4).beliefs).toHaveLength(2);
-    const nextDay = pruneExpiredPublicSaveThreatBeliefs(network, 5);
-    expect(nextDay.beliefs.map((belief) => belief.id)).toEqual(['normal-threat']);
-  });
+    expect(pruneExpiredPublicSaveThreatBeliefs(network, 4).beliefs).toHaveLength(2)
+    const nextDay = pruneExpiredPublicSaveThreatBeliefs(network, 5)
+    expect(nextDay.beliefs.map((belief) => belief.id)).toEqual(['normal-threat'])
+  })
 
   it('reverses the exact ally or threat relationship bias on expiry', () => {
     const base = {
@@ -174,9 +168,9 @@ describe('public save vote shares', () => {
       sourceId: 'public-save-4-b',
       createdWeek: 4,
       lastUpdatedWeek: 4,
-    };
+    }
 
-    expect(getPublicSaveThreatRestoreDelta({ ...base, sentiment: -0.12 })).toBe(4);
-    expect(getPublicSaveThreatRestoreDelta({ ...base, sentiment: 0.08 })).toBe(-2);
-  });
-});
+    expect(getPublicSaveThreatRestoreDelta({ ...base, sentiment: -0.12 })).toBe(4)
+    expect(getPublicSaveThreatRestoreDelta({ ...base, sentiment: 0.08 })).toBe(-2)
+  })
+})

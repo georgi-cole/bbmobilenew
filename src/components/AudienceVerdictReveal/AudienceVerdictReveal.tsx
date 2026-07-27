@@ -1,41 +1,34 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
-import { createPortal } from 'react-dom';
-import type { Player } from '../../types';
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import './AudienceVerdictReveal.css';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import type { Player } from '../../types'
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import './AudienceVerdictReveal.css'
 
 export interface AudienceVerdictRevealProps {
-  nominees: Player[];
-  voteShares: Record<string, number>;
-  savedId: string;
-  onDone: () => void;
+  nominees: Player[]
+  voteShares: Record<string, number>
+  savedId: string
+  onDone: () => void
 }
 
-type VerdictPhase = 'interrupt' | 'lineup' | 'settling' | 'result' | 'exiting';
+type VerdictPhase = 'interrupt' | 'lineup' | 'settling' | 'result' | 'exiting'
 
 type PulseMetrics = {
-  startX: number;
-  startY: number;
-  deltaX: number;
-  deltaY: number;
-};
+  startX: number
+  startY: number
+  deltaX: number
+  deltaY: number
+}
 
-const LINEUP_MS = 500;
-const SETTLING_MS = 2200;
-const RESULT_MS = 3400;
-const EXIT_MS = 5400;
-const DONE_MS = 6200;
-const CLOSE_VOTE_MARGIN = 2;
+const LINEUP_MS = 500
+const SETTLING_MS = 2200
+const RESULT_MS = 3400
+const EXIT_MS = 5400
+const DONE_MS = 6200
+const CLOSE_VOTE_MARGIN = 2
 
 function formatShare(value: number): string {
-  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`;
+  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`
 }
 
 export default function AudienceVerdictReveal({
@@ -44,30 +37,30 @@ export default function AudienceVerdictReveal({
   savedId,
   onDone,
 }: AudienceVerdictRevealProps) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const timersRef = useRef<number[]>([]);
-  const doneRef = useRef(false);
-  const [phase, setPhase] = useState<VerdictPhase>('interrupt');
-  const [pulseMetrics, setPulseMetrics] = useState<PulseMetrics | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const timersRef = useRef<number[]>([])
+  const doneRef = useRef(false)
+  const [phase, setPhase] = useState<VerdictPhase>('interrupt')
+  const [pulseMetrics, setPulseMetrics] = useState<PulseMetrics | null>(null)
 
   const clearTimers = useCallback(() => {
-    timersRef.current.forEach((timer) => window.clearTimeout(timer));
-    timersRef.current = [];
-  }, []);
+    timersRef.current.forEach((timer) => window.clearTimeout(timer))
+    timersRef.current = []
+  }, [])
 
   const fireDone = useCallback(() => {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    clearTimers();
-    onDone();
-  }, [clearTimers, onDone]);
+    if (doneRef.current) return
+    doneRef.current = true
+    clearTimers()
+    onDone()
+  }, [clearTimers, onDone])
 
   useEffect(() => {
-    doneRef.current = false;
+    doneRef.current = false
     if (document.body.classList.contains('no-animations')) {
-      setPhase('result');
-      const timer = window.setTimeout(fireDone, 0);
-      return () => window.clearTimeout(timer);
+      setPhase('result')
+      const timer = window.setTimeout(fireDone, 0)
+      return () => window.clearTimeout(timer)
     }
 
     timersRef.current = [
@@ -76,52 +69,52 @@ export default function AudienceVerdictReveal({
       window.setTimeout(() => setPhase('result'), RESULT_MS),
       window.setTimeout(() => setPhase('exiting'), EXIT_MS),
       window.setTimeout(fireDone, DONE_MS),
-    ];
-    return clearTimers;
-  }, [clearTimers, fireDone]);
+    ]
+    return clearTimers
+  }, [clearTimers, fireDone])
 
   const ranked = useMemo(
     () =>
       [...nominees].sort(
         (left, right) =>
           (voteShares[right.id] ?? 0) - (voteShares[left.id] ?? 0) ||
-          left.id.localeCompare(right.id),
+          left.id.localeCompare(right.id)
       ),
-    [nominees, voteShares],
-  );
-  const savedPlayer = nominees.find((player) => player.id === savedId);
-  const runnerUp = ranked.find((player) => player.id !== savedId);
-  const winningShare = voteShares[savedId] ?? 0;
-  const runnerUpShare = runnerUp ? voteShares[runnerUp.id] ?? 0 : 0;
-  const closeVote = winningShare - runnerUpShare <= CLOSE_VOTE_MARGIN;
-  const resultVisible = phase === 'result' || phase === 'exiting';
+    [nominees, voteShares]
+  )
+  const savedPlayer = nominees.find((player) => player.id === savedId)
+  const runnerUp = ranked.find((player) => player.id !== savedId)
+  const winningShare = voteShares[savedId] ?? 0
+  const runnerUpShare = runnerUp ? (voteShares[runnerUp.id] ?? 0) : 0
+  const closeVote = winningShare - runnerUpShare <= CLOSE_VOTE_MARGIN
+  const resultVisible = phase === 'result' || phase === 'exiting'
 
   useEffect(() => {
-    if (!resultVisible || !rootRef.current) return;
-    const target = document.querySelector<HTMLElement>(`[data-player-id="${savedId}"]`);
-    if (!target) return;
+    if (!resultVisible || !rootRef.current) return
+    const target = document.querySelector<HTMLElement>(`[data-player-id="${savedId}"]`)
+    if (!target) return
 
-    const sourceRect = rootRef.current.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const startX = sourceRect.left + sourceRect.width / 2;
-    const startY = sourceRect.top + sourceRect.height / 2;
+    const sourceRect = rootRef.current.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    const startX = sourceRect.left + sourceRect.width / 2
+    const startY = sourceRect.top + sourceRect.height / 2
     setPulseMetrics({
       startX,
       startY,
       deltaX: targetRect.left + targetRect.width / 2 - startX,
       deltaY: targetRect.top + targetRect.height / 2 - startY,
-    });
-  }, [resultVisible, savedId]);
+    })
+  }, [resultVisible, savedId])
 
   const skipToResult = useCallback(() => {
-    if (resultVisible || doneRef.current) return;
-    clearTimers();
-    setPhase('result');
+    if (resultVisible || doneRef.current) return
+    clearTimers()
+    setPhase('result')
     timersRef.current = [
       window.setTimeout(() => setPhase('exiting'), 1500),
       window.setTimeout(fireDone, 2100),
-    ];
-  }, [clearTimers, fireDone, resultVisible]);
+    ]
+  }, [clearTimers, fireDone, resultVisible])
 
   return (
     <>
@@ -134,8 +127,8 @@ export default function AudienceVerdictReveal({
         onClick={skipToResult}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            skipToResult();
+            event.preventDefault()
+            skipToResult()
           }
         }}
       >
@@ -147,7 +140,7 @@ export default function AudienceVerdictReveal({
 
         <div className="avr__lineup">
           {nominees.map((player) => {
-            const isSaved = player.id === savedId;
+            const isSaved = player.id === savedId
             return (
               <div
                 key={player.id}
@@ -163,7 +156,7 @@ export default function AudienceVerdictReveal({
                     : '—'}
                 </span>
               </div>
-            );
+            )
           })}
         </div>
 
@@ -207,8 +200,8 @@ export default function AudienceVerdictReveal({
           >
             ◉
           </span>,
-          document.body,
+          document.body
         )}
     </>
-  );
+  )
 }

@@ -1,33 +1,33 @@
-import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
-import type { Player } from '../../types';
-import { store } from '../../store/store';
-import { normalisePublicSaveVoteShares } from '../../publicOpinion/PublicSaveService';
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react'
+import type { Player } from '../../types'
+import { store } from '../../store/store'
+import { normalisePublicSaveVoteShares } from '../../publicOpinion/PublicSaveService'
 import {
   completeDramaPublicSave,
   resolveCurrentDramaPublicSave,
-} from '../../publicOpinion/DramaPublicSaveIntegration';
-import AudienceVerdictReveal from '../AudienceVerdictReveal/AudienceVerdictReveal';
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import './PublicSaveReveal.css';
+} from '../../publicOpinion/DramaPublicSaveIntegration'
+import AudienceVerdictReveal from '../AudienceVerdictReveal/AudienceVerdictReveal'
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import './PublicSaveReveal.css'
 
 export interface PublicSaveRevealProps {
-  nominees: Player[];
+  nominees: Player[]
   /** Normal Mode receives raw approval values; this component converts them to vote shares. */
-  approvals: Record<string, number>;
-  savedId: string;
-  onDone: () => void;
+  approvals: Record<string, number>
+  savedId: string
+  onDone: () => void
 }
 
-type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting';
+type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting'
 
-const ENTER_TO_REVEAL_MS = 900;
-const REVEAL_VALUES_MS = 5000;
-const SHOW_SAVED_MS = 7600;
-const EXIT_MS = 9300;
-const DONE_MS = 10000;
+const ENTER_TO_REVEAL_MS = 900
+const REVEAL_VALUES_MS = 5000
+const SHOW_SAVED_MS = 7600
+const EXIT_MS = 9300
+const DONE_MS = 10000
 
 function formatShare(value: number): string {
-  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`;
+  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`
 }
 
 function NormalPublicSaveReveal({
@@ -36,34 +36,34 @@ function NormalPublicSaveReveal({
   savedId,
   onDone,
 }: {
-  nominees: Player[];
-  voteShares: Record<string, number>;
-  savedId: string;
-  onDone: () => void;
+  nominees: Player[]
+  voteShares: Record<string, number>
+  savedId: string
+  onDone: () => void
 }) {
-  const [phase, setPhase] = useState<AnimPhase>('entering');
-  const [valuesRevealed, setValuesRevealed] = useState(false);
-  const timersRef = useRef<number[]>([]);
-  const doneRef = useRef(false);
+  const [phase, setPhase] = useState<AnimPhase>('entering')
+  const [valuesRevealed, setValuesRevealed] = useState(false)
+  const timersRef = useRef<number[]>([])
+  const doneRef = useRef(false)
 
   const clearTimers = useCallback(() => {
-    timersRef.current.forEach((id) => window.clearTimeout(id));
-    timersRef.current = [];
-  }, []);
+    timersRef.current.forEach((id) => window.clearTimeout(id))
+    timersRef.current = []
+  }, [])
 
   const fireDone = useCallback(() => {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    clearTimers();
-    onDone();
-  }, [clearTimers, onDone]);
+    if (doneRef.current) return
+    doneRef.current = true
+    clearTimers()
+    onDone()
+  }, [clearTimers, onDone])
 
   useEffect(() => {
-    doneRef.current = false;
+    doneRef.current = false
 
     if (document.body.classList.contains('no-animations')) {
-      fireDone();
-      return;
+      fireDone()
+      return
     }
 
     timersRef.current = [
@@ -72,10 +72,10 @@ function NormalPublicSaveReveal({
       window.setTimeout(() => setPhase('saved'), SHOW_SAVED_MS),
       window.setTimeout(() => setPhase('exiting'), EXIT_MS),
       window.setTimeout(() => fireDone(), DONE_MS),
-    ];
+    ]
 
-    return clearTimers;
-  }, [clearTimers, fireDone]);
+    return clearTimers
+  }, [clearTimers, fireDone])
 
   return (
     <div
@@ -94,9 +94,9 @@ function NormalPublicSaveReveal({
 
         <div className="psr__nominees">
           {nominees.map((player, index) => {
-            const isSaved = player.id === savedId;
-            const voteShare = voteShares[player.id] ?? 0;
-            const formattedShare = formatShare(voteShare);
+            const isSaved = player.id === savedId
+            const voteShare = voteShares[player.id] ?? 0
+            const formattedShare = formatShare(voteShare)
             return (
               <div
                 key={player.id}
@@ -145,12 +145,12 @@ function NormalPublicSaveReveal({
                   {valuesRevealed ? formattedShare : '?? %'}
                 </span>
               </div>
-            );
+            )
           })}
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -164,14 +164,13 @@ export default function PublicSaveReveal({
   savedId,
   onDone,
 }: PublicSaveRevealProps) {
-  const currentState = store.getState();
-  const publicModeEnabled = currentState.game.publicModeEnabled === true;
-  const dramaModeEnabled =
-    currentState.settings.gameUX.dramaMode === true && publicModeEnabled;
-  const nomineeIds = nominees.map((nominee) => nominee.id);
+  const currentState = store.getState()
+  const publicModeEnabled = currentState.game.publicModeEnabled === true
+  const dramaModeEnabled = currentState.settings.gameUX.dramaMode === true && publicModeEnabled
+  const nomineeIds = nominees.map((nominee) => nominee.id)
 
   if (dramaModeEnabled) {
-    const outcome = resolveCurrentDramaPublicSave(nomineeIds);
+    const outcome = resolveCurrentDramaPublicSave(nomineeIds)
     if (outcome.savedId) {
       return (
         <AudienceVerdictReveal
@@ -181,21 +180,21 @@ export default function PublicSaveReveal({
           onDone={() => {
             // The fallback protects the existing flow if Public Mode or Drama Mode
             // is disabled while the reveal is already mounted.
-            if (!completeDramaPublicSave(nomineeIds, outcome)) onDone();
+            if (!completeDramaPublicSave(nomineeIds, outcome)) onDone()
           }}
         />
-      );
+      )
     }
   }
 
-  const voteShares = normalisePublicSaveVoteShares(nomineeIds, approvals);
+  const voteShares = normalisePublicSaveVoteShares(nomineeIds, approvals)
   const handleNormalDone = () => {
     // GameScreen's existing result announcement reads this same ephemeral object.
     // Updating it here preserves the current flow while replacing absolute
     // approval with a legitimate save-vote distribution totalling 100%.
-    Object.assign(approvals, voteShares);
-    onDone();
-  };
+    Object.assign(approvals, voteShares)
+    onDone()
+  }
 
   return (
     <NormalPublicSaveReveal
@@ -204,5 +203,5 @@ export default function PublicSaveReveal({
       savedId={savedId}
       onDone={handleNormalDone}
     />
-  );
+  )
 }
