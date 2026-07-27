@@ -2,6 +2,7 @@
 > bbmobilenew@1.0.0 typecheck
 > tsc -b
 
-src/social/SocialManeuvers.ts(1079,5): error TS2353: Object literal may only specify known properties, and 'random' does not exist in type '{ actionId: string; actorId: string; targetId: string; subjectId?: string | undefined; recipientTrust: number; game?: { players?: { id: string; name?: string | undefined; status: string; }[] | undefined; nomineeIds?: string[] | undefined; nominationContext?: { ...; } | ... 1 more ... | undefined; } | undefined; rela...'.
+src/social/socialAIDriver.ts(13,10): error TS2300: Duplicate identifier 'isAISocialActionVisible'.
+src/social/socialAIDriver.ts(14,10): error TS2300: Duplicate identifier 'isAISocialActionVisible'.
 
 TYPECHECK_EXIT_CODE=2
