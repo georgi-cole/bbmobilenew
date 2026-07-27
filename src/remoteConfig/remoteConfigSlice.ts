@@ -19,6 +19,7 @@ import type { RemoteConfig } from './remoteConfigTypes';
 import { fetchRemoteConfig, loadCachedRemoteConfig } from './remoteConfigService';
 import { SoundManager } from '../services/sound/SoundManager';
 import { setRemotePlayerOverrides } from '../utils/avatar';
+import { setRemoteSocialRuntimeConfig } from '../social/socialRuntimeConfig';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -31,14 +32,12 @@ export interface RemoteConfigState {
 }
 
 const _initialConfig = loadCachedRemoteConfig();
-// Apply cached player overrides synchronously at module init so the first
-// render already has the correct avatar URLs, matching the same pattern used
-// to pre-populate initialState.config.  This is intentionally a module-level
-// side effect — it mirrors setRemotePlayerOverrides() called in the thunk
-// but runs before any async fetch completes.
+// Apply cached overrides synchronously at module init so the first render and
+// the first social-engine tick use one coherent validated ruleset.
 if (_initialConfig?.players) {
   setRemotePlayerOverrides(_initialConfig.players);
 }
+setRemoteSocialRuntimeConfig(_initialConfig?.social ?? null);
 
 const initialState: RemoteConfigState = {
   // Initialise from cache synchronously so the app has content on first render
@@ -56,6 +55,7 @@ const initialState: RemoteConfigState = {
  * Side-effects (outside Redux):
  *  - Registers any remote audio tracks in SoundManager.registerDynamic so they
  *    are playable by key without touching the static SOUND_REGISTRY.
+ *  - Applies validated player and social pure-data overlays atomically.
  */
 export const loadRemoteConfig = createAsyncThunk<RemoteConfig | null>(
   'remoteConfig/load',
@@ -74,8 +74,9 @@ export const loadRemoteConfig = createAsyncThunk<RemoteConfig | null>(
       });
     }
 
-    // Apply player avatar overrides to the module-level registry in avatar.ts.
+    // Apply validated module-level registries used outside React rendering.
     setRemotePlayerOverrides(config?.players ?? []);
+    setRemoteSocialRuntimeConfig(config?.social ?? null);
 
     return config;
   },
@@ -90,6 +91,8 @@ const remoteConfigSlice = createSlice({
       state.config = action.payload;
       state.fetchedAt = Date.now();
       state.status = 'ok';
+      setRemotePlayerOverrides(action.payload?.players ?? []);
+      setRemoteSocialRuntimeConfig(action.payload?.social ?? null);
     },
   },
   extraReducers: (builder) => {
