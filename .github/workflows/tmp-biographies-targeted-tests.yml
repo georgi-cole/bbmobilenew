@@ -1,0 +1,22 @@
+name: Temporary biographies targeted tests
+
+on:
+  pull_request:
+    types: [synchronize]
+
+jobs:
+  biographies-targeted-tests:
+    if: github.head_ref == 'agent/cinematic-bios-responsive-hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run biography cinematic tests
+        run: >-
+          npx vitest run
+          tests/unit/housematesBioResponsiveStyles.test.ts
+          src/components/HousematesBioCinematic/__tests__/housematesBioData.test.ts
