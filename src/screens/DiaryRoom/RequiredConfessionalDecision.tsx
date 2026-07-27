@@ -41,7 +41,14 @@ interface PlayerCardProps {
   tag?: string
 }
 
-function PlayerCard({ player, selected, onSelect, danger = false, disabled = false, tag }: PlayerCardProps) {
+function PlayerCard({
+  player,
+  selected,
+  onSelect,
+  danger = false,
+  disabled = false,
+  tag,
+}: PlayerCardProps) {
   return (
     <button
       className={`rcd-player${selected ? ' rcd-player--selected' : ''}${danger ? ' rcd-player--danger' : ''}`}
@@ -114,7 +121,9 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const required = isDoubleEviction ? 3 : 2
   const options = alivePlayers.filter((player) => player.id !== game.lohId)
   const autoNomineeId =
-    game.publicModeEnabled === true && !isDoubleEviction ? (game.lastHohCompFinisherId ?? null) : null
+    game.publicModeEnabled === true && !isDoubleEviction
+      ? (game.lastHohCompFinisherId ?? null)
+      : null
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [committing, setCommitting] = useState(false)
 
@@ -273,7 +282,9 @@ function BinaryDecision({
           disabled={committing}
           onClick={() => setChoice(true)}
         >
-          <span className="rcd-binary__mark" aria-hidden="true">✓</span>
+          <span className="rcd-binary__mark" aria-hidden="true">
+            ✓
+          </span>
           <strong>{yesLabel}</strong>
         </button>
         <button
@@ -283,7 +294,9 @@ function BinaryDecision({
           disabled={committing}
           onClick={() => setChoice(false)}
         >
-          <span className="rcd-binary__mark" aria-hidden="true">—</span>
+          <span className="rcd-binary__mark" aria-hidden="true">
+            —
+          </span>
           <strong>{noLabel}</strong>
         </button>
       </div>
@@ -347,7 +360,9 @@ function MissionImmunityDecision({ presentation, onDecisionCommitted }: Omit<Pro
       noReview="Hold secret immunity for later"
       onCommit={(choice) => {
         dispatch(choice ? activateMissionImmunityReward() : declineMissionImmunityReward())
-        onDecisionCommitted(choice ? 'Activated secret immunity.' : 'Saved secret immunity for later.')
+        onDecisionCommitted(
+          choice ? 'Activated secret immunity.' : 'Saved secret immunity for later.'
+        )
       }}
     />
   )
@@ -393,7 +408,9 @@ function VipSecondUseDecision({ presentation, onDecisionCommitted }: Omit<Props,
       noReview="Do not use the power again"
       onCommit={(choice) => {
         dispatch(submitVipSecondUseDecision(choice))
-        onDecisionCommitted(choice ? 'Activated Double Trouble again.' : 'Ended the Double Trouble sequence.')
+        onDecisionCommitted(
+          choice ? 'Activated Double Trouble again.' : 'Ended the Double Trouble sequence.'
+        )
       }}
     />
   )
@@ -455,7 +472,9 @@ function ReplacementDecision({ presentation, onDecisionCommitted }: Omit<Props, 
       presentation={presentation}
       reviewPrefix="Name as replacement:"
       danger
-      tagForPlayer={(player) => (protectedIds.has(player.id) ? 'Protection override fallback' : undefined)}
+      tagForPlayer={(player) =>
+        protectedIds.has(player.id) ? 'Protection override fallback' : undefined
+      }
       onCommit={(player) => {
         if (isDiamond) dispatch(submitDiamondReplacement(player.id))
         else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(player.id))
@@ -522,7 +541,9 @@ function DoubleVoteDecision({ presentation, onDecisionCommitted }: Omit<Props, '
         </div>
       </section>
       <ConfirmTray
-        review={ready ? `${first.name} · ${second.name}` : !first ? 'Choose Vote 1' : 'Choose Vote 2'}
+        review={
+          ready ? `${first.name} · ${second.name}` : !first ? 'Choose Vote 1' : 'Choose Vote 2'
+        }
         consequence={presentation.consequence}
         confirmLabel={presentation.confirmLabel}
         disabled={!ready}
@@ -566,7 +587,9 @@ function TieBreakDecision({ presentation, onDecisionCommitted }: Omit<Props, 'de
     if (isMulti) dispatch(submitDoubleEvictionTieBreak(selectedIds))
     else if (game.awaitingPosTieBreak) dispatch(submitPosTieBreak(selectedIds[0]))
     else dispatch(submitTieBreak(selectedIds[0]))
-    onDecisionCommitted(`Chose to eliminate ${formatNameList(selectedPlayers.map((player) => player.name))}.`)
+    onDecisionCommitted(
+      `Chose to eliminate ${formatNameList(selectedPlayers.map((player) => player.name))}.`
+    )
   }
 
   return (
@@ -584,7 +607,11 @@ function TieBreakDecision({ presentation, onDecisionCommitted }: Omit<Props, 'de
         ))}
       </div>
       <ConfirmTray
-        review={ready ? formatNameList(selectedPlayers.map((player) => player.name)) : `Choose ${required - selectedPlayers.length} more`}
+        review={
+          ready
+            ? formatNameList(selectedPlayers.map((player) => player.name))
+            : `Choose ${required - selectedPlayers.length} more`
+        }
         consequence={presentation.consequence}
         confirmLabel={presentation.confirmLabel}
         disabled={!ready}
@@ -603,25 +630,61 @@ export default function RequiredConfessionalDecision({
 }: Props) {
   switch (decision.type) {
     case 'nominations':
-      return <NominationsDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <NominationsDecision
+          presentation={presentation}
+          onDecisionCommitted={onDecisionCommitted}
+        />
+      )
     case 'eviction_vote':
-      return <EvictionVoteDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <EvictionVoteDecision
+          presentation={presentation}
+          onDecisionCommitted={onDecisionCommitted}
+        />
+      )
     case 'double_vote_offer':
-      return <DoubleVoteOfferDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <DoubleVoteOfferDecision
+          presentation={presentation}
+          onDecisionCommitted={onDecisionCommitted}
+        />
+      )
     case 'double_vote':
-      return <DoubleVoteDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <DoubleVoteDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      )
     case 'mission_immunity_offer':
-      return <MissionImmunityDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <MissionImmunityDecision
+          presentation={presentation}
+          onDecisionCommitted={onDecisionCommitted}
+        />
+      )
     case 'pos_decision':
       return <PosDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
     case 'vip_second_use':
-      return <VipSecondUseDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <VipSecondUseDecision
+          presentation={presentation}
+          onDecisionCommitted={onDecisionCommitted}
+        />
+      )
     case 'pos_save_target':
-      return <SaveTargetDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <SaveTargetDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      )
     case 'replacement_nominee':
-      return <ReplacementDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <ReplacementDecision
+          presentation={presentation}
+          onDecisionCommitted={onDecisionCommitted}
+        />
+      )
     case 'tie_break':
-      return <TieBreakDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      return (
+        <TieBreakDecision presentation={presentation} onDecisionCommitted={onDecisionCommitted} />
+      )
     default:
       return null
   }

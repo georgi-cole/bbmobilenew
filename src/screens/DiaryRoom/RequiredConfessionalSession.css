@@ -14,8 +14,7 @@
 .required-confessional--survival {
   background:
     linear-gradient(180deg, rgba(35, 53, 64, 0.72), transparent 26%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px),
-    #071014;
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px), #071014;
 }
 
 .required-confessional__entry {
@@ -31,8 +30,7 @@
   text-align: center;
   color: #f7f2ff;
   background:
-    radial-gradient(circle at center, rgba(168, 85, 247, 0.28), rgba(10, 7, 18, 0.96) 58%),
-    #090711;
+    radial-gradient(circle at center, rgba(168, 85, 247, 0.28), rgba(10, 7, 18, 0.96) 58%), #090711;
   animation: required-confessional-entry 620ms ease forwards;
 }
 
@@ -69,8 +67,13 @@
 }
 
 @keyframes required-confessional-entry {
-  0%, 65% { opacity: 1; }
-  100% { opacity: 0; }
+  0%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .required-confessional__header {
@@ -275,7 +278,10 @@
   background: rgba(255, 255, 255, 0.045);
   text-align: left;
   cursor: pointer;
-  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
 }
 
 .rcd-player:hover:not(:disabled) {

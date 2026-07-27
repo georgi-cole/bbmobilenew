@@ -81,7 +81,10 @@ export default function RequiredConfessionalSession({
           <span className="required-confessional__privacy">● PRIVATE · DECISION REQUIRED</span>
           <h1>{survival ? 'Survival Confessional' : 'The Confessional'}</h1>
         </div>
-        <div className="required-confessional__lock" aria-label="Exit locked until the decision is complete">
+        <div
+          className="required-confessional__lock"
+          aria-label="Exit locked until the decision is complete"
+        >
           <span aria-hidden="true">▣</span>
           Locked
         </div>
@@ -90,12 +93,16 @@ export default function RequiredConfessionalSession({
       <section className="required-confessional__stage" aria-live="polite">
         {decision && presentation ? (
           <>
-            <div className={`required-confessional__brief required-confessional__brief--${presentation.tone}`}>
+            <div
+              className={`required-confessional__brief required-confessional__brief--${presentation.tone}`}
+            >
               <div className="required-confessional__brief-topline">
                 <span>{presentation.eyebrow}</span>
                 {presentation.stepLabel && <strong>{presentation.stepLabel}</strong>}
               </div>
-              <div className="required-confessional__eye" aria-hidden="true">◉</div>
+              <div className="required-confessional__eye" aria-hidden="true">
+                ◉
+              </div>
               <h2>{presentation.title}</h2>
               <p>{presentation.prompt}</p>
               <div className="required-confessional__privacy-note">
@@ -125,7 +132,9 @@ export default function RequiredConfessionalSession({
           </>
         ) : (
           <div className="required-confessional__complete" role="status">
-            <div className="required-confessional__seal" aria-hidden="true">✓</div>
+            <div className="required-confessional__seal" aria-hidden="true">
+              ✓
+            </div>
             <span>{survival ? `DAY ${game.week}` : 'THE BIG EYE'}</span>
             <h2>{completedTitle}</h2>
             <p>{lastCommitSummary ?? completedCopy}</p>

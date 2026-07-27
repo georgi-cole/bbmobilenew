@@ -34,7 +34,9 @@ export function getRequiredConfessionalPresentation(
   game: GameState
 ): RequiredConfessionalPresentation {
   const survival = game.mode === 'survival'
-  const dayLabel = survival ? `SURVIVAL PROTOCOL · DAY ${decision.week}` : `PRIVATE CEREMONY · DAY ${decision.week}`
+  const dayLabel = survival
+    ? `SURVIVAL PROTOCOL · DAY ${decision.week}`
+    : `PRIVATE CEREMONY · DAY ${decision.week}`
   const powerName = getConfessionalPowerName(game)
   const tiedIds = game.tiedNomineeIds ?? game.nomineeIds
   const key = buildKey(decision, game)
@@ -105,7 +107,8 @@ export function getRequiredConfessionalPresentation(
         eyebrow: dayLabel,
         title: 'Secret Immunity',
         prompt: `You hold ${duration}-day secret immunity. Decide whether to activate it now.`,
-        consequence: 'Activating it changes the Safety Ceremony immediately. Saving it keeps the reward available until expiry.',
+        consequence:
+          'Activating it changes the Safety Ceremony immediately. Saving it keeps the reward available until expiry.',
         confirmLabel: 'Confirm immunity decision',
         confirmation: 'Your immunity decision is recorded.',
         tone: 'power',
@@ -118,7 +121,8 @@ export function getRequiredConfessionalPresentation(
         eyebrow: dayLabel,
         title: `${powerName} Decision`,
         prompt: `Decide whether to use ${powerName} during this ceremony.`,
-        consequence: 'If you activate the power, you will continue directly to the required target selections.',
+        consequence:
+          'If you activate the power, you will continue directly to the required target selections.',
         confirmLabel: 'Confirm power decision',
         confirmation: `${powerName} decision recorded.`,
         stepLabel: 'Safety decision · Step 1',
@@ -131,7 +135,8 @@ export function getRequiredConfessionalPresentation(
         eyebrow: dayLabel,
         title: 'Double Trouble · Second Use',
         prompt: 'Decide whether to activate Double Trouble a second time in this ceremony.',
-        consequence: 'Activating it will require you to save another nominee before the ceremony can continue.',
+        consequence:
+          'Activating it will require you to save another nominee before the ceremony can continue.',
         confirmLabel: 'Confirm second-use decision',
         confirmation: 'Your second-use decision is recorded.',
         stepLabel: 'Safety decision · Continue',
@@ -186,7 +191,8 @@ export function getRequiredConfessionalPresentation(
             : game.awaitingPosTieBreak
               ? 'As the Power of Safety holder, you must break the tie and choose who is eliminated.'
               : 'The house vote is tied. Choose the nominee whose game will end.',
-        consequence: 'Your decision directly determines the elimination result and cannot be changed.',
+        consequence:
+          'Your decision directly determines the elimination result and cannot be changed.',
         confirmLabel: required > 1 ? 'Confirm eliminations' : 'Seal deciding vote',
         confirmation: 'The tie-break decision is sealed.',
         tone: 'danger',
