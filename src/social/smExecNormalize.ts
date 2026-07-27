@@ -10,11 +10,7 @@
 import { resolveActionTargetMode } from './socialActions'
 import type { SocialActionDefinition } from './socialActions'
 
-type CostValue =
-  | number
-  | { energy?: number; influence?: number; info?: number }
-  | undefined
-  | null
+type CostValue = number | { energy?: number; influence?: number; info?: number } | undefined | null
 
 export function normalizeCost(value: CostValue): number {
   if (value === undefined || value === null) return 1
@@ -43,10 +39,7 @@ export function normalizeActionCost(
   return Math.max(base, Math.max(0, targetCount) * action.energyPerTarget)
 }
 
-export function normalizeAuxCost(
-  value: CostValue,
-  field: 'influence' | 'info'
-): number {
+export function normalizeAuxCost(value: CostValue, field: 'influence' | 'info'): number {
   if (value === undefined || value === null || typeof value === 'number') return 0
   const candidate = value[field]
   return typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0

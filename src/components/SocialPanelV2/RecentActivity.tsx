@@ -135,8 +135,7 @@ export default function RecentActivity({
               : audienceName
             const outcomeClass = getOutcomeClass(entry)
             const relationshipClass = getRelationshipClass(entry.delta)
-            const deltaText =
-              entry.delta === 0 ? '' : `${entry.delta > 0 ? '+' : ''}${entry.delta}`
+            const deltaText = entry.delta === 0 ? '' : `${entry.delta > 0 ? '+' : ''}${entry.delta}`
             const narrative =
               entry.narrative ??
               (entry.actionId === 'ask_loh_target' && subjectName
