@@ -24,9 +24,7 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: clamp(14px, 2.4vh, 24px);
-  padding:
-    max(76px, calc(env(safe-area-inset-top, 0px) + 62px))
-    clamp(14px, 4vw, 32px)
+  padding: max(76px, calc(env(safe-area-inset-top, 0px) + 62px)) clamp(14px, 4vw, 32px)
     max(28px, calc(env(safe-area-inset-bottom, 0px) + 22px));
   overflow: hidden;
   background:
@@ -96,8 +94,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 13px 13px 5px 5px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(3, 4, 7, 0.66)),
-    rgba(3, 4, 7, 0.5);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(3, 4, 7, 0.66)), rgba(3, 4, 7, 0.5);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
   overflow: hidden;
 }
@@ -148,9 +145,7 @@
   grid-template-rows: minmax(0, 43%) minmax(0, 57%);
   min-width: 0;
   min-height: 0;
-  padding:
-    max(76px, calc(env(safe-area-inset-top, 0px) + 62px))
-    clamp(18px, 5vw, 42px)
+  padding: max(76px, calc(env(safe-area-inset-top, 0px) + 62px)) clamp(18px, 5vw, 42px)
     max(18px, calc(env(safe-area-inset-bottom, 0px) + 12px));
   overflow: hidden;
   isolation: isolate;

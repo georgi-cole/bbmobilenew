@@ -1,35 +1,32 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion';
-import type { Player } from '../../types';
-import type { PublicOpinionState } from '../../publicOpinion/types';
-import { resolveAvatarCandidates } from '../../utils/avatar';
-import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
-import EvictionLadder from './EvictionLadder';
+import type { CSSProperties, ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion'
+import type { Player } from '../../types'
+import type { PublicOpinionState } from '../../publicOpinion/types'
+import { resolveAvatarCandidates } from '../../utils/avatar'
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage'
+import EvictionLadder from './EvictionLadder'
 import {
   buildSeasonRecapData,
   deriveEvictionFallbackPlacement,
   type AwardCategory,
-} from './seasonRecapData';
-import {
-  buildSeasonRecapHighlights,
-  type SeasonRecapHighlight,
-} from './seasonRecapHighlights';
-import type { EvictionLadderEntry } from './evictionLadderModel';
+} from './seasonRecapData'
+import { buildSeasonRecapHighlights, type SeasonRecapHighlight } from './seasonRecapHighlights'
+import type { EvictionLadderEntry } from './evictionLadderModel'
 import {
   buildSeasonRecapTimeline,
   RECAP_EXIT_FADE_MS,
   type RecapTimelineScene,
-} from './seasonRecapTimeline';
-import './SeasonRecapCinematic.css';
-import './SeasonRecapProfessional.css';
+} from './seasonRecapTimeline'
+import './SeasonRecapCinematic.css'
+import './SeasonRecapProfessional.css'
 
 export interface SeasonRecapProps {
-  season: number;
-  week: number;
-  players: Player[];
-  publicOpinion?: PublicOpinionState | null;
-  onComplete: () => void;
+  season: number
+  week: number
+  players: Player[]
+  publicOpinion?: PublicOpinionState | null
+  onComplete: () => void
 }
 
 const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
@@ -38,34 +35,29 @@ const INTRO_COPY: Record<string, { line: string; lines?: string[] }> = {
     line: 'BUT BEFORE THE FINAL WORD…',
     lines: ['BUT BEFORE', 'THE FINAL WORD…'],
   },
-};
+}
 
-const LADDER_ARCHIVE_LIMIT = 6;
-const FINALISTS_RANK_OFFSET = 2;
-const DICEBEAR_HOST = 'api.dicebear.com';
-const URL_PARSE_BASE = 'https://bbmobilenew.local';
+const LADDER_ARCHIVE_LIMIT = 6
+const FINALISTS_RANK_OFFSET = 2
+const DICEBEAR_HOST = 'api.dicebear.com'
+const URL_PARSE_BASE = 'https://bbmobilenew.local'
 
 function isDicebearAvatar(candidate: string): boolean {
   try {
-    return new URL(candidate, URL_PARSE_BASE).hostname === DICEBEAR_HOST;
+    return new URL(candidate, URL_PARSE_BASE).hostname === DICEBEAR_HOST
   } catch {
-    return false;
+    return false
   }
 }
 
 function resolveRecapAvatarUrl(player: Player): string | undefined {
-  const candidates = resolveAvatarCandidates(player);
-  return candidates.find((candidate) => !isDicebearAvatar(candidate)) ?? candidates[0];
+  const candidates = resolveAvatarCandidates(player)
+  return candidates.find((candidate) => !isDicebearAvatar(candidate)) ?? candidates[0]
 }
 
 function toEvictionLadderEntry(player: Player, fallbackPlacement: number): EvictionLadderEntry {
-  const rank = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement;
-  const status =
-    player.isWinner || rank === 1
-      ? 'winner'
-      : rank <= 3
-        ? 'finalist'
-        : 'evicted';
+  const rank = player.seasonPlacement ?? player.finalRank ?? fallbackPlacement
+  const status = player.isWinner || rank === 1 ? 'winner' : rank <= 3 ? 'finalist' : 'evicted'
 
   return {
     id: player.id,
@@ -73,16 +65,10 @@ function toEvictionLadderEntry(player: Player, fallbackPlacement: number): Evict
     rank,
     avatarUrl: resolveRecapAvatarUrl(player),
     status,
-  };
+  }
 }
 
-function SceneFrame({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+function SceneFrame({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <motion.section
       className={['src-scene', className].filter(Boolean).join(' ')}
@@ -93,12 +79,12 @@ function SceneFrame({
     >
       {children}
     </motion.section>
-  );
+  )
 }
 
 function IntroScene({ scene }: { scene: RecapTimelineScene }) {
-  const copy = INTRO_COPY[scene.id];
-  if (!copy) return null;
+  const copy = INTRO_COPY[scene.id]
+  if (!copy) return null
 
   return (
     <SceneFrame className={`src-scene--intro src-scene--${scene.id}`}>
@@ -134,13 +120,13 @@ function IntroScene({ scene }: { scene: RecapTimelineScene }) {
         <div className="src-intro-rule" aria-hidden="true" />
       </div>
     </SceneFrame>
-  );
+  )
 }
 
 function RecapAvatar({ player }: { player: Player }) {
-  const sources = useMemo(() => resolveAvatarCandidates(player), [player]);
-  const [sourceIndex, setSourceIndex] = useState(0);
-  const source = sources[sourceIndex];
+  const sources = useMemo(() => resolveAvatarCandidates(player), [player])
+  const [sourceIndex, setSourceIndex] = useState(0)
+  const source = sources[sourceIndex]
 
   return (
     <div className="src-cast-card__avatar">
@@ -156,7 +142,7 @@ function RecapAvatar({ player }: { player: Player }) {
         <span aria-hidden="true">{player.name.slice(0, 1).toUpperCase()}</span>
       )}
     </div>
-  );
+  )
 }
 
 function CastOverviewScene({
@@ -164,31 +150,31 @@ function CastOverviewScene({
   week,
   players,
 }: {
-  season: number;
-  week: number;
-  players: Player[];
+  season: number
+  week: number
+  players: Player[]
 }) {
   const orderedPlayers = useMemo(
     () =>
       [...players].sort((left, right) => {
         const leftFinalist =
-          left.status === 'active' || left.status === 'loh' || left.status === 'pos';
+          left.status === 'active' || left.status === 'loh' || left.status === 'pos'
         const rightFinalist =
-          right.status === 'active' || right.status === 'loh' || right.status === 'pos';
-        if (leftFinalist !== rightFinalist) return leftFinalist ? -1 : 1;
-        const leftPlacement =
-          left.seasonPlacement ?? left.finalRank ?? Number.MAX_SAFE_INTEGER;
-        const rightPlacement =
-          right.seasonPlacement ?? right.finalRank ?? Number.MAX_SAFE_INTEGER;
-        return leftPlacement - rightPlacement || left.name.localeCompare(right.name);
+          right.status === 'active' || right.status === 'loh' || right.status === 'pos'
+        if (leftFinalist !== rightFinalist) return leftFinalist ? -1 : 1
+        const leftPlacement = left.seasonPlacement ?? left.finalRank ?? Number.MAX_SAFE_INTEGER
+        const rightPlacement = right.seasonPlacement ?? right.finalRank ?? Number.MAX_SAFE_INTEGER
+        return leftPlacement - rightPlacement || left.name.localeCompare(right.name)
       }),
-    [players],
-  );
+    [players]
+  )
 
   return (
     <SceneFrame className="src-scene--cast-overview">
       <div className="src-cast-heading">
-        <p>Season {season} · Through week {week}</p>
+        <p>
+          Season {season} · Through week {week}
+        </p>
         <h2>The Housemates</h2>
         <span>{players.length} stories entered the house.</span>
       </div>
@@ -211,7 +197,7 @@ function CastOverviewScene({
         ))}
       </div>
     </SceneFrame>
-  );
+  )
 }
 
 function HighlightMomentScene({ highlight }: { highlight: SeasonRecapHighlight }) {
@@ -243,14 +229,12 @@ function HighlightMomentScene({ highlight }: { highlight: SeasonRecapHighlight }
         <strong>{highlight.stamp}</strong>
       </motion.div>
     </SceneFrame>
-  );
+  )
 }
 
 function CategoryScene({ category }: { category: AwardCategory }) {
   return (
-    <SceneFrame
-      className={`src-scene--category src-scene--category-${category.visualVariant}`}
-    >
+    <SceneFrame className={`src-scene--category src-scene--category-${category.visualVariant}`}>
       <div
         className="src-category-bg"
         aria-hidden="true"
@@ -325,7 +309,7 @@ function CategoryScene({ category }: { category: AwardCategory }) {
         <span className="src-category-plaque__stat">{category.winnerStat}</span>
       </motion.div>
     </SceneFrame>
-  );
+  )
 }
 
 function LadderIntroScene({ archivePlayers }: { archivePlayers: Player[] }) {
@@ -343,7 +327,7 @@ function LadderIntroScene({ archivePlayers }: { archivePlayers: Player[] }) {
         <h2 className="src-ladder-copy__title">ONE BY ONE…</h2>
       </div>
     </SceneFrame>
-  );
+  )
 }
 
 function LadderWaveScene({
@@ -351,19 +335,19 @@ function LadderWaveScene({
   ladder,
   caption,
 }: {
-  players: Player[];
-  ladder: Player[];
-  caption: string;
+  players: Player[]
+  ladder: Player[]
+  caption: string
 }) {
-  const ladderIndexesById = new Map(ladder.map((player, index) => [player.id, index]));
+  const ladderIndexesById = new Map(ladder.map((player, index) => [player.id, index]))
   const entries = players.map((player) => {
-    const ladderIndex = ladderIndexesById.get(player.id);
+    const ladderIndex = ladderIndexesById.get(player.id)
     const fallbackPlacement =
       ladderIndex != null
         ? deriveEvictionFallbackPlacement(ladder.length, ladderIndex)
-        : players.length + FINALISTS_RANK_OFFSET;
-    return toEvictionLadderEntry(player, fallbackPlacement);
-  });
+        : players.length + FINALISTS_RANK_OFFSET
+    return toEvictionLadderEntry(player, fallbackPlacement)
+  })
 
   return (
     <SceneFrame className="src-scene--ladder-wave">
@@ -375,7 +359,7 @@ function LadderWaveScene({
         stepDelayMs={330}
       />
     </SceneFrame>
-  );
+  )
 }
 
 function MomentOfTruthScene({ finalists }: { finalists: Player[] }) {
@@ -403,7 +387,7 @@ function MomentOfTruthScene({ finalists }: { finalists: Player[] }) {
         ))}
       </div>
     </SceneFrame>
-  );
+  )
 }
 
 export default function SeasonRecapCinematic({
@@ -413,94 +397,91 @@ export default function SeasonRecapCinematic({
   publicOpinion,
   onComplete,
 }: SeasonRecapProps) {
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = useReducedMotion()
   const noAnimations =
-    typeof document !== 'undefined' && document.body.classList.contains('no-animations');
-  const reducedMotion = Boolean(prefersReducedMotion || noAnimations);
+    typeof document !== 'undefined' && document.body.classList.contains('no-animations')
+  const reducedMotion = Boolean(prefersReducedMotion || noAnimations)
 
   const recapData = useMemo(
     () => buildSeasonRecapData(players, week, publicOpinion),
-    [players, publicOpinion, week],
-  );
+    [players, publicOpinion, week]
+  )
   const highlights = useMemo(
     () => buildSeasonRecapHighlights(players, publicOpinion, 3),
-    [players, publicOpinion],
-  );
+    [players, publicOpinion]
+  )
   const timeline = useMemo(
     () =>
       buildSeasonRecapTimeline(
         recapData.categories.map((category) => category.id),
         recapData.evictionWaves.length,
-        highlights.length,
+        highlights.length
       ),
-    [highlights.length, recapData.categories, recapData.evictionWaves.length],
-  );
+    [highlights.length, recapData.categories, recapData.evictionWaves.length]
+  )
 
-  const [sceneIndex, setSceneIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
-  const didFinishRef = useRef(false);
-  const finishTimeoutRef = useRef<number | null>(null);
-  const skipButtonRef = useRef<HTMLButtonElement | null>(null);
-  const onCompleteRef = useRef(onComplete);
+  const [sceneIndex, setSceneIndex] = useState(0)
+  const [visible, setVisible] = useState(true)
+  const didFinishRef = useRef(false)
+  const finishTimeoutRef = useRef<number | null>(null)
+  const skipButtonRef = useRef<HTMLButtonElement | null>(null)
+  const onCompleteRef = useRef(onComplete)
 
   useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   const finish = useCallback(() => {
-    if (didFinishRef.current) return;
-    didFinishRef.current = true;
-    setVisible(false);
+    if (didFinishRef.current) return
+    didFinishRef.current = true
+    setVisible(false)
     finishTimeoutRef.current = window.setTimeout(
       () => onCompleteRef.current(),
-      reducedMotion ? 0 : RECAP_EXIT_FADE_MS,
-    );
-  }, [reducedMotion]);
+      reducedMotion ? 0 : RECAP_EXIT_FADE_MS
+    )
+  }, [reducedMotion])
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    skipButtonRef.current?.focus();
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    skipButtonRef.current?.focus()
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') finish();
-    };
-    window.addEventListener('keydown', onKeyDown);
+      if (event.key === 'Escape') finish()
+    }
+    window.addEventListener('keydown', onKeyDown)
 
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      if (finishTimeoutRef.current != null) window.clearTimeout(finishTimeoutRef.current);
-    };
-  }, [finish]);
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      if (finishTimeoutRef.current != null) window.clearTimeout(finishTimeoutRef.current)
+    }
+  }, [finish])
 
   useEffect(() => {
     if (sceneIndex >= timeline.length) {
-      const timer = window.setTimeout(() => finish(), 0);
-      return () => window.clearTimeout(timer);
+      const timer = window.setTimeout(() => finish(), 0)
+      return () => window.clearTimeout(timer)
     }
 
     const timer = window.setTimeout(() => {
-      setSceneIndex((current) => current + 1);
-    }, timeline[sceneIndex].durationMs);
-    return () => window.clearTimeout(timer);
-  }, [finish, sceneIndex, timeline]);
+      setSceneIndex((current) => current + 1)
+    }, timeline[sceneIndex].durationMs)
+    return () => window.clearTimeout(timer)
+  }, [finish, sceneIndex, timeline])
 
-  const currentScene = timeline[sceneIndex];
+  const currentScene = timeline[sceneIndex]
   const activeCategory =
     currentScene?.kind === 'category'
       ? recapData.categories.find((category) => category.id === currentScene.categoryId)
-      : null;
+      : null
   const activeWave =
     currentScene?.kind === 'ladder_wave'
       ? recapData.evictionWaves[currentScene.ladderWaveIndex ?? 0]
-      : null;
+      : null
   const activeHighlight =
-    currentScene?.kind === 'highlight_moment'
-      ? highlights[currentScene.highlightIndex ?? 0]
-      : null;
-  const sceneProgress =
-    timeline.length > 0 ? Math.min(1, (sceneIndex + 1) / timeline.length) : 0;
+    currentScene?.kind === 'highlight_moment' ? highlights[currentScene.highlightIndex ?? 0] : null
+  const sceneProgress = timeline.length > 0 ? Math.min(1, (sceneIndex + 1) / timeline.length) : 0
   const chapterLabel =
     currentScene?.kind === 'category'
       ? 'Season honors'
@@ -512,7 +493,7 @@ export default function SeasonRecapCinematic({
             ? 'Season headlines'
             : currentScene?.kind === 'cast_overview'
               ? 'The housemates'
-              : 'Season archive';
+              : 'Season archive'
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'never'}>
@@ -599,5 +580,5 @@ export default function SeasonRecapCinematic({
         </AnimatePresence>
       </motion.div>
     </MotionConfig>
-  );
+  )
 }
