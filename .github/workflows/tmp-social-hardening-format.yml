@@ -21,8 +21,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Apply guarded Social codemod
-        run: node scripts/tmp-social-hardening-codemod.mjs
+      - name: Apply guarded Social codemods
+        run: |
+          node scripts/tmp-social-hardening-codemod.mjs
+          node scripts/tmp-social-pacing-codemod.mjs
       - name: Format changed Social files
         shell: bash
         run: |
