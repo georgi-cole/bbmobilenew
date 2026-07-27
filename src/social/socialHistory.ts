@@ -9,14 +9,14 @@ export type SocialStateWithHistory = SocialState & {
 }
 
 export function getPersistentSocialHistory(
-  state: Pick<SocialState, 'sessionLogs'> & { actionHistory?: SocialActionLogEntry[] },
+  state: Pick<SocialState, 'sessionLogs'> & { actionHistory?: SocialActionLogEntry[] }
 ): SocialActionLogEntry[] {
   return state.actionHistory ?? state.sessionLogs ?? []
 }
 
 export function appendPersistentSocialHistory(
   state: SocialStateWithHistory,
-  entry: SocialActionLogEntry,
+  entry: SocialActionLogEntry
 ): void {
   const limit = getSocialRuntimeConfig().history.maxActionHistory
   const history = state.actionHistory ?? []

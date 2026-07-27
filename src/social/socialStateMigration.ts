@@ -23,10 +23,7 @@ export function clampSocialResource(value: unknown, kind: SocialResourceKind): n
   return Math.max(0, Math.min(getSocialResourceCap(kind), finiteOrZero(value)))
 }
 
-function sanitiseBank(
-  raw: unknown,
-  kind: SocialResourceKind,
-): Record<string, number> {
+function sanitiseBank(raw: unknown, kind: SocialResourceKind): Record<string, number> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const result: Record<string, number> = {}
   for (const [playerId, value] of Object.entries(raw as Record<string, unknown>)) {
@@ -97,13 +94,11 @@ export function migrateSocialState(raw: SocialState): SocialState {
       ...(input.incomingInteractionDelivery ?? {}),
       deliveredThisPhase: Math.max(
         0,
-        Math.round(finiteOrZero(input.incomingInteractionDelivery?.deliveredThisPhase)),
+        Math.round(finiteOrZero(input.incomingInteractionDelivery?.deliveredThisPhase))
       ),
     },
     socialMemory:
-      input.socialMemory && typeof input.socialMemory === 'object'
-        ? input.socialMemory
-        : {},
+      input.socialMemory && typeof input.socialMemory === 'object' ? input.socialMemory : {},
     commitments: Array.isArray(input.commitments) ? input.commitments : [],
     dramaNetwork: normalizeDramaSocialNetwork(input.dramaNetwork),
     influenceWeights:

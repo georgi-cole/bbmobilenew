@@ -26,7 +26,7 @@ export interface IncomingInteractionFactoryInput {
  */
 export function normalizeIncomingInteractionContract(
   interaction: IncomingInteraction,
-  fallbackMode: SocialMode = 'normal',
+  fallbackMode: SocialMode = 'normal'
 ): IncomingInteraction {
   const runtime = getSocialRuntimeConfig()
   const authoredMode = interaction.payload?.modeAtCreation
@@ -64,7 +64,7 @@ export function normalizeIncomingInteractionContract(
  * policy needed for deterministic response and expiry handling.
  */
 export function createIncomingInteraction(
-  input: IncomingInteractionFactoryInput,
+  input: IncomingInteractionFactoryInput
 ): IncomingInteraction {
   const draft: IncomingInteraction = {
     id: input.id,

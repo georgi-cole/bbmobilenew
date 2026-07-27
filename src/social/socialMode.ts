@@ -44,7 +44,7 @@ export function isDramaModeEffective(state: SocialModeState): boolean {
 /** Pending conversations remain on the ruleset under which they were authored. */
 export function getInteractionSocialMode(
   interaction: Pick<IncomingInteraction, 'payload'>,
-  state: SocialModeState,
+  state: SocialModeState
 ): SocialMode {
   const authoredMode = interaction.payload?.modeAtCreation
   if (authoredMode === 'normal' || authoredMode === 'drama') return authoredMode

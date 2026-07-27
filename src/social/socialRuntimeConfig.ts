@@ -197,11 +197,7 @@ function safeString(value: unknown, maxLength = 240): string | undefined {
   return trimmed.length > 0 && trimmed.length <= maxLength ? trimmed : undefined
 }
 
-function safeNumber(
-  value: unknown,
-  min: number,
-  max: number,
-): number | undefined {
+function safeNumber(value: unknown, min: number, max: number): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
   return Math.max(min, Math.min(max, value))
 }
@@ -212,7 +208,8 @@ function safeInteger(value: unknown, min: number, max: number): number | undefin
 }
 
 function sanitisePolicy(value: unknown): IncomingInteractionResponsePolicy | undefined {
-  return typeof value === 'string' && RESPONSE_POLICIES.has(value as IncomingInteractionResponsePolicy)
+  return typeof value === 'string' &&
+    RESPONSE_POLICIES.has(value as IncomingInteractionResponsePolicy)
     ? (value as IncomingInteractionResponsePolicy)
     : undefined
 }
@@ -220,7 +217,7 @@ function sanitisePolicy(value: unknown): IncomingInteractionResponsePolicy | und
 function sanitiseStringMap(
   value: unknown,
   maxEntries: number,
-  maxValueLength: number,
+  maxValueLength: number
 ): Record<string, string> | undefined {
   if (!isRecord(value)) return undefined
   const output: Record<string, string> = {}
@@ -248,7 +245,7 @@ function sanitiseScenarioLines(value: unknown): Record<string, string[]> | undef
 }
 
 function sanitiseActionPresentation(
-  value: unknown,
+  value: unknown
 ): Record<string, SocialActionPresentationOverride> | undefined {
   if (!isRecord(value)) return undefined
   const output: Record<string, SocialActionPresentationOverride> = {}
@@ -268,7 +265,7 @@ function sanitiseActionPresentation(
 }
 
 function sanitiseResponseSets(
-  value: unknown,
+  value: unknown
 ): Record<string, SocialResponseChoiceOverride[]> | undefined {
   if (!isRecord(value)) return undefined
   const output: Record<string, SocialResponseChoiceOverride[]> = {}
@@ -294,7 +291,10 @@ function sanitiseResponseSets(
       const description = safeString(rawChoice.description, 180)
       const style = rawChoice.style
       if (description) choice.description = description
-      if (typeof style === 'string' && RESPONSE_STYLES.has(style as NonNullable<typeof choice.style>)) {
+      if (
+        typeof style === 'string' &&
+        RESPONSE_STYLES.has(style as NonNullable<typeof choice.style>)
+      ) {
         choice.style = style as NonNullable<typeof choice.style>
       }
       choices.push(choice)
@@ -344,7 +344,8 @@ export function sanitiseSocialRuntimeOverride(raw: unknown): SocialRuntimeOverri
     const outcomeJitterMagnitude = safeNumber(raw.ai.outcomeJitterMagnitude, 0, 0.3)
     const repetitionPenalty = safeNumber(raw.ai.repetitionPenalty, 0, 1)
     const noveltyWeight = safeNumber(raw.ai.noveltyWeight, 0, 1)
-    if (outcomeAffinityBiasWeight !== undefined) ai.outcomeAffinityBiasWeight = outcomeAffinityBiasWeight
+    if (outcomeAffinityBiasWeight !== undefined)
+      ai.outcomeAffinityBiasWeight = outcomeAffinityBiasWeight
     if (outcomeJitterMagnitude !== undefined) ai.outcomeJitterMagnitude = outcomeJitterMagnitude
     if (repetitionPenalty !== undefined) ai.repetitionPenalty = repetitionPenalty
     if (noveltyWeight !== undefined) ai.noveltyWeight = noveltyWeight
@@ -363,7 +364,8 @@ export function sanitiseSocialRuntimeOverride(raw: unknown): SocialRuntimeOverri
   if (isRecord(raw.incoming)) {
     const incoming: NonNullable<SocialRuntimeOverride['incoming']> = {}
     if (isRecord(raw.incoming.defaultPolicies)) {
-      const policies: Partial<Record<IncomingInteractionType, IncomingInteractionResponsePolicy>> = {}
+      const policies: Partial<Record<IncomingInteractionType, IncomingInteractionResponsePolicy>> =
+        {}
       for (const [type, value] of Object.entries(raw.incoming.defaultPolicies)) {
         const policy = sanitisePolicy(value)
         if (policy && type in DEFAULT_RESPONSE_POLICIES) {
@@ -374,7 +376,10 @@ export function sanitiseSocialRuntimeOverride(raw: unknown): SocialRuntimeOverri
     }
     if (isRecord(raw.incoming.scenarioPolicies)) {
       const policies: Record<string, IncomingInteractionResponsePolicy> = {}
-      for (const [rawKey, rawValue] of Object.entries(raw.incoming.scenarioPolicies).slice(0, 160)) {
+      for (const [rawKey, rawValue] of Object.entries(raw.incoming.scenarioPolicies).slice(
+        0,
+        160
+      )) {
         const key = safeString(rawKey, 80)
         const policy = sanitisePolicy(rawValue)
         if (key && policy) policies[key] = policy
@@ -498,10 +503,13 @@ export function getRemoteResponseSet(key: string): readonly SocialResponseChoice
 }
 
 export function getIncomingInteractionResponsePolicy(
-  interaction: Pick<IncomingInteraction, 'type' | 'payload' | 'requiresResponse'>,
+  interaction: Pick<IncomingInteraction, 'type' | 'payload' | 'requiresResponse'>
 ): IncomingInteractionResponsePolicy {
   const explicit = interaction.payload?.responsePolicy
-  if (typeof explicit === 'string' && RESPONSE_POLICIES.has(explicit as IncomingInteractionResponsePolicy)) {
+  if (
+    typeof explicit === 'string' &&
+    RESPONSE_POLICIES.has(explicit as IncomingInteractionResponsePolicy)
+  ) {
     return explicit as IncomingInteractionResponsePolicy
   }
   const scenario = interaction.payload?.scenarioKey

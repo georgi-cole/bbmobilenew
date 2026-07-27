@@ -36,11 +36,11 @@ export interface SocialExecutionSelection {
  */
 export function validateSocialExecution(
   state: SocialExecutionState,
-  selection: SocialExecutionSelection,
+  selection: SocialExecutionSelection
 ) {
   const dramaMode = getEffectiveSocialMode(state) === 'drama'
   const targetMode = resolveActionTargetMode(selection.action, dramaMode)
-  const targetIds = targetMode === 'none' ? [] : selection.targetIds ?? []
+  const targetIds = targetMode === 'none' ? [] : (selection.targetIds ?? [])
   const players = state.game?.players ?? []
   const actorStatus = players.find((player) => player.id === selection.actorId)?.status
 
@@ -65,12 +65,15 @@ export function validateSocialExecution(
 }
 
 export function createDeterministicSocialRandom(seedParts: readonly unknown[]): () => number {
-  let state = seedParts
-    .map((part) => String(part ?? ''))
-    .join('|')
-    .split('')
-    .reduce((hash, character) => (Math.imul(hash, 31) + character.charCodeAt(0)) | 0, 0x9e3779b9)
-    >>> 0
+  let state =
+    seedParts
+      .map((part) => String(part ?? ''))
+      .join('|')
+      .split('')
+      .reduce(
+        (hash, character) => (Math.imul(hash, 31) + character.charCodeAt(0)) | 0,
+        0x9e3779b9
+      ) >>> 0
 
   return () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0

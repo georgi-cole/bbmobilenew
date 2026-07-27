@@ -125,9 +125,7 @@ function InteractionItem({
   const typeLabel = getIncomingInteractionTypeLabel(interaction.type)
   const isUnread = !interaction.read && !interaction.resolved
   const isUrgent = policy === 'required' && isExpiringThisWeek(interaction, currentWeek)
-  const expiryLabel = showExpiry
-    ? getExpiryLabel(interaction, currentWeek, priority, policy)
-    : null
+  const expiryLabel = showExpiry ? getExpiryLabel(interaction, currentWeek, priority, policy) : null
   const shouldShowActions = showActions && policy !== 'readOnly' && !interaction.resolved
 
   useEffect(() => {
@@ -184,9 +182,8 @@ function InteractionItem({
       : policy === 'readOnly'
         ? 'Update'
         : null
-  const expiryClass = expiryLabel && policy === 'required' && priority === 'high'
-    ? ' inbox-item__expiry--urgent'
-    : ''
+  const expiryClass =
+    expiryLabel && policy === 'required' && priority === 'high' ? ' inbox-item__expiry--urgent' : ''
 
   return (
     <div
@@ -378,10 +375,7 @@ export default function IncomingInteractionsInbox() {
     if (houseBeliefs.length === 0) return base
     const weight = houseBeliefs.reduce((sum, belief) => sum + belief.confidence, 0) || 1
     const signal =
-      houseBeliefs.reduce(
-        (sum, belief) => sum + belief.sentiment * belief.confidence,
-        0
-      ) / weight
+      houseBeliefs.reduce((sum, belief) => sum + belief.sentiment * belief.confidence, 0) / weight
     const score = Math.max(0, Math.min(100, Math.round(base.score + signal * 35)))
     return {
       ...base,
@@ -434,9 +428,7 @@ export default function IncomingInteractionsInbox() {
         currentWeek={currentWeek}
         onRead={(interactionId) => dispatch(markIncomingInteractionRead(interactionId))}
         onRespond={(interactionId, responseType, responseLabel) =>
-          dispatch(
-            respondToIncomingInteraction({ interactionId, responseType, responseLabel })
-          )
+          dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))
         }
         relationships={relationships}
         socialMemory={socialMemory}
@@ -448,7 +440,12 @@ export default function IncomingInteractionsInbox() {
   }
 
   return (
-    <div className="inbox-backdrop" role="dialog" aria-modal="true" aria-label="Incoming interactions">
+    <div
+      className="inbox-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Incoming interactions"
+    >
       <div className={`inbox-panel${globalDramaMode ? ' inbox-panel--drama' : ''}`}>
         <header className="inbox-header">
           <div className="inbox-header__top">
@@ -494,7 +491,8 @@ export default function IncomingInteractionsInbox() {
                       <div className="inbox-promise" key={commitment.id}>
                         <strong>{getSocialCommitmentLabel(commitment.kind)}</strong>
                         <span>
-                          {playerById.get(commitment.beneficiaryId)?.name ?? commitment.beneficiaryId}
+                          {playerById.get(commitment.beneficiaryId)?.name ??
+                            commitment.beneficiaryId}
                           {' · '}
                           {getSocialCommitmentDueCopy(commitment.kind)}
                         </span>

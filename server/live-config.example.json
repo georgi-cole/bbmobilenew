@@ -75,9 +75,7 @@
     "content": {
       "_comment": "These examples can be edited without rebuilding the app. Unknown IDs are harmless.",
       "scenarioLines": {
-        "week_start_ally_check_in": [
-          "Fresh week. I wanted to make sure you and I are still solid."
-        ]
+        "week_start_ally_check_in": ["Fresh week. I wanted to make sure you and I are still solid."]
       },
       "actionPresentation": {
         "compliment": {

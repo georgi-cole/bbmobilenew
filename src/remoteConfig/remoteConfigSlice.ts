@@ -13,31 +13,31 @@
  * a cached value loaded by the service layer.
  */
 
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import type { RootState } from '../store/store';
-import type { RemoteConfig } from './remoteConfigTypes';
-import { fetchRemoteConfig, loadCachedRemoteConfig } from './remoteConfigService';
-import { SoundManager } from '../services/sound/SoundManager';
-import { setRemotePlayerOverrides } from '../utils/avatar';
-import { setRemoteSocialRuntimeConfig } from '../social/socialRuntimeConfig';
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit'
+import type { RootState } from '../store/store'
+import type { RemoteConfig } from './remoteConfigTypes'
+import { fetchRemoteConfig, loadCachedRemoteConfig } from './remoteConfigService'
+import { SoundManager } from '../services/sound/SoundManager'
+import { setRemotePlayerOverrides } from '../utils/avatar'
+import { setRemoteSocialRuntimeConfig } from '../social/socialRuntimeConfig'
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-export type RemoteConfigStatus = 'idle' | 'loading' | 'ok' | 'error';
+export type RemoteConfigStatus = 'idle' | 'loading' | 'ok' | 'error'
 
 export interface RemoteConfigState {
-  config: RemoteConfig | null;
-  status: RemoteConfigStatus;
-  fetchedAt: number | null;
+  config: RemoteConfig | null
+  status: RemoteConfigStatus
+  fetchedAt: number | null
 }
 
-const _initialConfig = loadCachedRemoteConfig();
+const _initialConfig = loadCachedRemoteConfig()
 // Apply cached overrides synchronously at module init so the first render and
 // the first social-engine tick use one coherent validated ruleset.
 if (_initialConfig?.players) {
-  setRemotePlayerOverrides(_initialConfig.players);
+  setRemotePlayerOverrides(_initialConfig.players)
 }
-setRemoteSocialRuntimeConfig(_initialConfig?.social ?? null);
+setRemoteSocialRuntimeConfig(_initialConfig?.social ?? null)
 
 const initialState: RemoteConfigState = {
   // Initialise from cache synchronously so the app has content on first render
@@ -45,7 +45,7 @@ const initialState: RemoteConfigState = {
   config: _initialConfig,
   status: 'idle',
   fetchedAt: null,
-};
+}
 
 // ─── Async thunk ──────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ const initialState: RemoteConfigState = {
 export const loadRemoteConfig = createAsyncThunk<RemoteConfig | null>(
   'remoteConfig/load',
   async () => {
-    const config = await fetchRemoteConfig();
+    const config = await fetchRemoteConfig()
 
     // Register remote music tracks so they can be requested by key.
     if (config?.season?.music?.mainTrackUrl) {
@@ -71,16 +71,16 @@ export const loadRemoteConfig = createAsyncThunk<RemoteConfig | null>(
         preload: false,
         volume: 0.5,
         loop: true,
-      });
+      })
     }
 
     // Apply validated module-level registries used outside React rendering.
-    setRemotePlayerOverrides(config?.players ?? []);
-    setRemoteSocialRuntimeConfig(config?.social ?? null);
+    setRemotePlayerOverrides(config?.players ?? [])
+    setRemoteSocialRuntimeConfig(config?.social ?? null)
 
-    return config;
-  },
-);
+    return config
+  }
+)
 
 const remoteConfigSlice = createSlice({
   name: 'remoteConfig',
@@ -88,52 +88,51 @@ const remoteConfigSlice = createSlice({
   reducers: {
     /** Directly set the remote config (useful for testing). */
     setRemoteConfig(state, action: PayloadAction<RemoteConfig | null>) {
-      state.config = action.payload;
-      state.fetchedAt = Date.now();
-      state.status = 'ok';
-      setRemotePlayerOverrides(action.payload?.players ?? []);
-      setRemoteSocialRuntimeConfig(action.payload?.social ?? null);
+      state.config = action.payload
+      state.fetchedAt = Date.now()
+      state.status = 'ok'
+      setRemotePlayerOverrides(action.payload?.players ?? [])
+      setRemoteSocialRuntimeConfig(action.payload?.social ?? null)
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(loadRemoteConfig.pending, (state) => {
-        state.status = 'loading';
+        state.status = 'loading'
       })
       .addCase(loadRemoteConfig.fulfilled, (state, action) => {
-        state.config = action.payload;
-        state.fetchedAt = Date.now();
+        state.config = action.payload
+        state.fetchedAt = Date.now()
         // Remote config is optional. A fulfilled load with null payload means
         // "no remote config available", not a hard app error.
-        state.status = 'ok';
+        state.status = 'ok'
       })
       .addCase(loadRemoteConfig.rejected, (state) => {
-        state.status = 'error';
-      });
+        state.status = 'error'
+      })
   },
-});
+})
 
-export const { setRemoteConfig } = remoteConfigSlice.actions;
+export const { setRemoteConfig } = remoteConfigSlice.actions
 
-export default remoteConfigSlice.reducer;
+export default remoteConfigSlice.reducer
 
 // ─── Selectors ────────────────────────────────────────────────────────────────
 
-export const selectRemoteConfig = (s: RootState) => s.remoteConfig?.config ?? null;
-export const selectRemoteConfigStatus = (s: RootState) => s.remoteConfig?.status ?? 'idle';
+export const selectRemoteConfig = (s: RootState) => s.remoteConfig?.config ?? null
+export const selectRemoteConfigStatus = (s: RootState) => s.remoteConfig?.status ?? 'idle'
 
 /** Returns the headline text for the main TV viewport fallback, if any. */
 export const selectRemoteMainTvHeadline = (s: RootState) =>
-  s.remoteConfig?.config?.season?.mainTv?.headline ?? null;
+  s.remoteConfig?.config?.season?.mainTv?.headline ?? null
 
 /** Returns the remote intro-hub background image URL, or null. */
 export const selectRemoteIntroHubBg = (s: RootState) =>
-  s.remoteConfig?.config?.season?.introHub?.backgroundImageUrl ?? null;
+  s.remoteConfig?.config?.season?.introHub?.backgroundImageUrl ?? null
 
 /** Returns the remote intro-hub overlay opacity (0–1), or null. */
 export const selectRemoteIntroHubOverlay = (s: RootState) =>
-  s.remoteConfig?.config?.season?.introHub?.overlayOpacity ?? null;
+  s.remoteConfig?.config?.season?.introHub?.overlayOpacity ?? null
 
 /** Returns the player overrides array, or an empty array. */
-export const selectRemotePlayerOverrides = (s: RootState) =>
-  s.remoteConfig?.config?.players ?? [];
+export const selectRemotePlayerOverrides = (s: RootState) => s.remoteConfig?.config?.players ?? []

@@ -1,12 +1,12 @@
-﻿import { addTvEvent } from '../store/gameSlice';
-import { getIncomingInteractionTone } from './incomingInteractionPresentation';
+﻿import { addTvEvent } from '../store/gameSlice'
+import { getIncomingInteractionTone } from './incomingInteractionPresentation'
 import {
   getIncomingResponseLogCopy,
   getIncomingResponseRelationshipDelta,
-} from './incomingResponseEffects';
-import type { AppDispatch, RootState } from '../store/store';
-import { socialConfig } from './socialConfig';
-import { logIncomingInteractionDecision } from './incomingInteractionLogging';
+} from './incomingResponseEffects'
+import type { AppDispatch, RootState } from '../store/store'
+import { socialConfig } from './socialConfig'
+import { logIncomingInteractionDecision } from './incomingInteractionLogging'
 import {
   addSocialCommitment,
   applyDramaIncomingResponse,
@@ -16,21 +16,18 @@ import {
   resolveIncomingInteraction,
   updateRelationship,
   updateSocialMemory,
-} from './socialSlice';
-import { createCommitmentFromInteraction } from './socialCommitments';
-import { isIncomingInteractionInvalidated } from './incomingInteractionValidity';
-import {
-  buildSocialMemoryDeltaForResponse,
-  buildSocialMemoryEvent,
-} from './socialMemory';
-import { ALLIANCE_TAG, MIN_ALLIANCE_AFFINITY } from './socialAlliance';
-import { getInteractionSocialMode } from './socialMode';
-import { getIncomingInteractionResponsePolicy } from './socialRuntimeConfig';
+} from './socialSlice'
+import { createCommitmentFromInteraction } from './socialCommitments'
+import { isIncomingInteractionInvalidated } from './incomingInteractionValidity'
+import { buildSocialMemoryDeltaForResponse, buildSocialMemoryEvent } from './socialMemory'
+import { ALLIANCE_TAG, MIN_ALLIANCE_AFFINITY } from './socialAlliance'
+import { getInteractionSocialMode } from './socialMode'
+import { getIncomingInteractionResponsePolicy } from './socialRuntimeConfig'
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
   IncomingInteractionType,
-} from './types';
+} from './types'
 
 const TYPE_LABELS: Record<IncomingInteractionType, string> = {
   compliment: 'compliment',
@@ -42,7 +39,7 @@ const TYPE_LABELS: Record<IncomingInteractionType, string> = {
   check_in: 'check-in',
   snide_remark: 'snide remark',
   other: 'message',
-};
+}
 
 const RESPONSE_VERBS: Record<IncomingInteractionResponseType, string> = {
   positive: 'encouraged',
@@ -52,7 +49,7 @@ const RESPONSE_VERBS: Record<IncomingInteractionResponseType, string> = {
   decline: 'declined',
   dismiss: 'dismissed',
   ignore: 'ignored',
-};
+}
 
 const IGNORED_INTERACTION_SUMMARY_LABELS: Record<
   IncomingInteractionType,
@@ -67,7 +64,7 @@ const IGNORED_INTERACTION_SUMMARY_LABELS: Record<
   check_in: { singular: 'check-in', plural: 'check-ins' },
   snide_remark: { singular: 'snide remark', plural: 'snide remarks' },
   other: { singular: 'message', plural: 'messages' },
-};
+}
 
 const IGNORED_INTERACTION_TYPE_PRIORITY: Record<IncomingInteractionType, number> = {
   deal_offer: 0,
@@ -79,75 +76,74 @@ const IGNORED_INTERACTION_TYPE_PRIORITY: Record<IncomingInteractionType, number>
   compliment: 6,
   snide_remark: 7,
   other: 8,
-};
+}
 
-const DEFAULT_IGNORED_INTERACTION_LABEL = 'messages';
+const DEFAULT_IGNORED_INTERACTION_LABEL = 'messages'
 
-type ResolutionSource = 'player' | 'expiry';
+type ResolutionSource = 'player' | 'expiry'
 
 export function getIncomingInteractionTypeLabel(type: IncomingInteractionType): string {
-  return TYPE_LABELS[type];
+  return TYPE_LABELS[type]
 }
 
 function formatList(items: string[]): string {
-  if (items.length === 0) return DEFAULT_IGNORED_INTERACTION_LABEL;
-  if (items.length === 1) return items[0];
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  if (items.length === 0) return DEFAULT_IGNORED_INTERACTION_LABEL
+  if (items.length === 1) return items[0]
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
 }
 
 function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteraction[]): string {
-  const counts = new Map<IncomingInteractionType, number>();
+  const counts = new Map<IncomingInteractionType, number>()
   interactions.forEach((interaction) => {
-    counts.set(interaction.type, (counts.get(interaction.type) ?? 0) + 1);
-  });
-  const uniqueSenderCount = new Set(interactions.map((interaction) => interaction.fromId)).size;
+    counts.set(interaction.type, (counts.get(interaction.type) ?? 0) + 1)
+  })
+  const uniqueSenderCount = new Set(interactions.map((interaction) => interaction.fromId)).size
   const typeFragments = Array.from(counts.entries())
     .sort(
       ([leftType], [rightType]) =>
-        IGNORED_INTERACTION_TYPE_PRIORITY[leftType] -
-        IGNORED_INTERACTION_TYPE_PRIORITY[rightType],
+        IGNORED_INTERACTION_TYPE_PRIORITY[leftType] - IGNORED_INTERACTION_TYPE_PRIORITY[rightType]
     )
     .map(([type, count]) => {
-      const labels = IGNORED_INTERACTION_SUMMARY_LABELS[type];
-      return count === 1 ? labels.singular : labels.plural;
-    });
+      const labels = IGNORED_INTERACTION_SUMMARY_LABELS[type]
+      return count === 1 ? labels.singular : labels.plural
+    })
 
   if (uniqueSenderCount === 1) {
-    return `One player's ${formatList(typeFragments)} required an answer and went unanswered last week.`;
+    return `One player's ${formatList(typeFragments)} required an answer and went unanswered last week.`
   }
 
-  return `Several players' ${formatList(typeFragments)} required answers and went unanswered last week.`;
+  return `Several players' ${formatList(typeFragments)} required answers and went unanswered last week.`
 }
 
 function getResponseDelta(
   responseType: IncomingInteractionResponseType,
   interaction: IncomingInteraction,
-  dramaMode: boolean,
+  dramaMode: boolean
 ): number {
   if (dramaMode && interaction.payload?.scenarioKey === 'safety_holder_consults_loh') {
-    if (responseType === 'accept' || responseType === 'decline') return 3;
-    if (responseType === 'neutral') return 1;
-    if (responseType === 'dismiss' || responseType === 'ignore') return -2;
+    if (responseType === 'accept' || responseType === 'decline') return 3
+    if (responseType === 'neutral') return 1
+    if (responseType === 'dismiss' || responseType === 'ignore') return -2
   }
-  return socialConfig.incomingInteractionAffinityDeltas[responseType] ?? 0;
+  return socialConfig.incomingInteractionAffinityDeltas[responseType] ?? 0
 }
 
 function buildResponseLogText(
   interaction: IncomingInteraction,
   responseType: IncomingInteractionResponseType,
   fromName: string,
-  dramaMode: boolean,
+  dramaMode: boolean
 ): string {
   if (dramaMode) {
-    return getIncomingResponseLogCopy(interaction.id, responseType, fromName);
+    return getIncomingResponseLogCopy(interaction.id, responseType, fromName)
   }
-  const typeLabel = getIncomingInteractionTypeLabel(interaction.type);
+  const typeLabel = getIncomingInteractionTypeLabel(interaction.type)
   if (responseType === 'ignore') {
-    return `You left ${fromName}'s ${typeLabel} unanswered.`;
+    return `You left ${fromName}'s ${typeLabel} unanswered.`
   }
-  const verb = RESPONSE_VERBS[responseType] ?? 'responded to';
-  return `You ${verb} ${fromName}'s ${typeLabel}.`;
+  const verb = RESPONSE_VERBS[responseType] ?? 'responded to'
+  return `You ${verb} ${fromName}'s ${typeLabel}.`
 }
 
 function buildResponseOutcomeText(
@@ -155,53 +151,53 @@ function buildResponseOutcomeText(
   responseType: IncomingInteractionResponseType,
   responseLabel: string | undefined,
   fromName: string,
-  subjectName?: string,
+  subjectName?: string
 ): string {
-  const choiceLead = responseLabel ? `Your choice, “${responseLabel},” was clear. ` : '';
+  const choiceLead = responseLabel ? `Your choice, “${responseLabel},” was clear. ` : ''
   if (interaction.type === 'alliance_proposal') {
     if (responseType === 'accept') {
-      return `${choiceLead}The pact with ${fromName} is active now. Loyalty will be tested by votes, nominations and Safety decisions.`;
+      return `${choiceLead}The pact with ${fromName} is active now. Loyalty will be tested by votes, nominations and Safety decisions.`
     }
     if (responseType === 'neutral') {
-      return `${choiceLead}${fromName} leaves without a deal and will decide whether your hesitation was caution or rejection.`;
+      return `${choiceLead}${fromName} leaves without a deal and will decide whether your hesitation was caution or rejection.`
     }
-    return `${choiceLead}${fromName} understands there is no alliance. That closed door may shape their next move.`;
+    return `${choiceLead}${fromName} understands there is no alliance. That closed door may shape their next move.`
   }
   if (interaction.type === 'gossip' || interaction.type === 'warning') {
     if (responseType === 'positive') {
-      return `${choiceLead}${fromName} trusts you with the full story: ${interaction.text}`;
+      return `${choiceLead}${fromName} trusts you with the full story: ${interaction.text}`
     }
     if (responseType === 'neutral') {
-      return `${choiceLead}${fromName} leaves the information with you: ${interaction.text}`;
+      return `${choiceLead}${fromName} leaves the information with you: ${interaction.text}`
     }
     if (subjectName) {
-      return `${choiceLead}You challenge ${fromName}'s story about ${subjectName}. The claim remains unconfirmed.`;
+      return `${choiceLead}You challenge ${fromName}'s story about ${subjectName}. The claim remains unconfirmed.`
     }
-    return `${choiceLead}You challenge ${fromName}'s story. The claim remains unconfirmed.`;
+    return `${choiceLead}You challenge ${fromName}'s story. The claim remains unconfirmed.`
   }
   if (interaction.type === 'nomination_plea') {
     if (responseType === 'positive' || responseType === 'accept') {
-      return `${choiceLead}${fromName} leaves believing you may support them. The game will compare that expectation with what you actually do.`;
+      return `${choiceLead}${fromName} leaves believing you may support them. The game will compare that expectation with what you actually do.`
     }
     if (responseType === 'neutral') {
-      return `${choiceLead}${fromName} got a hearing but no promise, so they keep campaigning elsewhere.`;
+      return `${choiceLead}${fromName} got a hearing but no promise, so they keep campaigning elsewhere.`
     }
-    return `${choiceLead}${fromName} knows your support is unlikely and may redirect their campaign against you.`;
+    return `${choiceLead}${fromName} knows your support is unlikely and may redirect their campaign against you.`
   }
   if (responseType === 'positive' || responseType === 'accept') {
-    return `${choiceLead}${fromName} takes your response as genuine, and the connection improves immediately.`;
+    return `${choiceLead}${fromName} takes your response as genuine, and the connection improves immediately.`
   }
   if (responseType === 'neutral') {
-    return `${choiceLead}${fromName} accepts the measured response but leaves without assuming closeness or loyalty.`;
+    return `${choiceLead}${fromName} accepts the measured response but leaves without assuming closeness or loyalty.`
   }
-  return `${choiceLead}${fromName} takes your response as distance. The social cost has already reached your relationship.`;
+  return `${choiceLead}${fromName} takes your response as distance. The social cost has already reached your relationship.`
 }
 
 function canAwardIntel(interaction: IncomingInteraction): boolean {
-  if (interaction.type !== 'gossip' && interaction.type !== 'warning') return false;
-  if (interaction.payload?.truth === 'false') return false;
-  if (interaction.payload?.evidence === 'none') return false;
-  return true;
+  if (interaction.type !== 'gossip' && interaction.type !== 'warning') return false
+  if (interaction.payload?.truth === 'false') return false
+  if (interaction.payload?.evidence === 'none') return false
+  return true
 }
 
 function applyIncomingChoiceConsequences({
@@ -213,35 +209,33 @@ function applyIncomingChoiceConsequences({
   source,
   resolvedAt,
 }: {
-  dispatch: AppDispatch;
-  state: RootState;
-  interaction: IncomingInteraction;
-  responseType: IncomingInteractionResponseType;
-  responseLabel?: string;
-  source: ResolutionSource;
-  resolvedAt: number;
+  dispatch: AppDispatch
+  state: RootState
+  interaction: IncomingInteraction
+  responseType: IncomingInteractionResponseType
+  responseLabel?: string
+  source: ResolutionSource
+  resolvedAt: number
 }): { outcomeText: string; logText: string } | null {
-  const humanPlayer = state.game.players.find((player) => player.isUser);
-  if (!humanPlayer) return null;
+  const humanPlayer = state.game.players.find((player) => player.isUser)
+  if (!humanPlayer) return null
 
-  const dramaMode = getInteractionSocialMode(interaction, state) === 'drama';
-  const currentWeek = state.game.week ?? 1;
-  const fromPlayer = state.game.players.find((player) => player.id === interaction.fromId);
-  const fromName = fromPlayer?.name ?? interaction.fromId;
+  const dramaMode = getInteractionSocialMode(interaction, state) === 'drama'
+  const currentWeek = state.game.week ?? 1
+  const fromPlayer = state.game.players.find((player) => player.id === interaction.fromId)
+  const fromName = fromPlayer?.name ?? interaction.fromId
   const subjectId =
-    typeof interaction.payload?.subjectId === 'string'
-      ? interaction.payload.subjectId
-      : undefined;
+    typeof interaction.payload?.subjectId === 'string' ? interaction.payload.subjectId : undefined
   const subjectName = subjectId
     ? state.game.players.find((player) => player.id === subjectId)?.name
-    : undefined;
+    : undefined
   const outcomeText = buildResponseOutcomeText(
     interaction,
     responseType,
     responseLabel,
     fromName,
-    subjectName,
-  );
+    subjectName
+  )
 
   if (dramaMode) {
     dispatch(
@@ -251,8 +245,8 @@ function applyIncomingChoiceConsequences({
         responseType,
         interactionType: interaction.type,
         week: currentWeek,
-      }),
-    );
+      })
+    )
   }
 
   // Promises are part of the premium causal simulation, not Normal Mode.
@@ -262,11 +256,11 @@ function applyIncomingChoiceConsequences({
       responseType,
       promisorId: humanPlayer.id,
       week: currentWeek,
-    });
-    if (commitment) dispatch(addSocialCommitment(commitment));
+    })
+    if (commitment) dispatch(addSocialCommitment(commitment))
   }
 
-  const baseDelta = getResponseDelta(responseType, interaction, dramaMode);
+  const baseDelta = getResponseDelta(responseType, interaction, dramaMode)
   const responseTone = dramaMode
     ? getIncomingInteractionTone({
         interaction,
@@ -275,29 +269,24 @@ function applyIncomingChoiceConsequences({
         humanId: humanPlayer.id,
         isUrgent: interaction.expiresAtWeek <= currentWeek,
       })
-    : undefined;
+    : undefined
   const delta =
     dramaMode && interaction.payload?.scenarioKey !== 'safety_holder_consults_loh'
-      ? getIncomingResponseRelationshipDelta(
-          interaction.type,
-          responseType,
-          responseTone,
-        )
-      : baseDelta;
-  const acceptedAlliance =
-    interaction.type === 'alliance_proposal' && responseType === 'accept';
+      ? getIncomingResponseRelationshipDelta(interaction.type, responseType, responseTone)
+      : baseDelta
+  const acceptedAlliance = interaction.type === 'alliance_proposal' && responseType === 'accept'
 
   if (delta !== 0 && interaction.fromId !== humanPlayer.id) {
     const fromAffinity =
-      state.social.relationships[interaction.fromId]?.[humanPlayer.id]?.affinity ?? 0;
+      state.social.relationships[interaction.fromId]?.[humanPlayer.id]?.affinity ?? 0
     const humanAffinity =
-      state.social.relationships[humanPlayer.id]?.[interaction.fromId]?.affinity ?? 0;
+      state.social.relationships[humanPlayer.id]?.[interaction.fromId]?.affinity ?? 0
     const fromDelta = acceptedAlliance
       ? Math.max(delta, MIN_ALLIANCE_AFFINITY - fromAffinity)
-      : delta;
+      : delta
     const humanDelta = acceptedAlliance
       ? Math.max(delta, MIN_ALLIANCE_AFFINITY - humanAffinity)
-      : delta;
+      : delta
     dispatch(
       updateRelationship({
         source: interaction.fromId,
@@ -305,8 +294,8 @@ function applyIncomingChoiceConsequences({
         delta: fromDelta,
         tags: acceptedAlliance ? [ALLIANCE_TAG] : undefined,
         actionSource: source === 'player' ? 'manual' : 'system',
-      }),
-    );
+      })
+    )
     if (acceptedAlliance) {
       dispatch(
         updateRelationship({
@@ -315,14 +304,13 @@ function applyIncomingChoiceConsequences({
           delta: humanDelta,
           tags: [ALLIANCE_TAG],
           actionSource: 'system',
-        }),
-      );
+        })
+      )
     }
   }
 
   if (dramaMode && interaction.payload?.scenarioKey === 'safety_holder_consults_loh') {
-    const advice =
-      responseType === 'accept' ? 'use' : responseType === 'decline' ? 'hold' : 'free';
+    const advice = responseType === 'accept' ? 'use' : responseType === 'decline' ? 'hold' : 'free'
     dispatch({
       type: 'game/setLohSafetyAdvice',
       payload: {
@@ -331,7 +319,7 @@ function applyIncomingChoiceConsequences({
         holderId: interaction.fromId,
         advice,
       },
-    });
+    })
   }
 
   if (interaction.fromId !== humanPlayer.id) {
@@ -346,23 +334,20 @@ function applyIncomingChoiceConsequences({
           interaction.fromId,
           humanPlayer.id,
           currentWeek,
-          resolvedAt,
+          resolvedAt
         ),
-      }),
-    );
+      })
+    )
   }
 
-  if (
-    canAwardIntel(interaction) &&
-    (responseType === 'positive' || responseType === 'neutral')
-  ) {
-    dispatch(applyInfoDelta({ playerId: humanPlayer.id, delta: 1 }));
+  if (canAwardIntel(interaction) && (responseType === 'positive' || responseType === 'neutral')) {
+    dispatch(applyInfoDelta({ playerId: humanPlayer.id, delta: 1 }))
   }
 
   return {
     outcomeText,
     logText: buildResponseLogText(interaction, responseType, fromName, dramaMode),
-  };
+  }
 }
 
 export function respondToIncomingInteraction({
@@ -370,20 +355,20 @@ export function respondToIncomingInteraction({
   responseType,
   responseLabel,
 }: {
-  interactionId: string;
-  responseType: IncomingInteractionResponseType;
-  responseLabel?: string;
+  interactionId: string
+  responseType: IncomingInteractionResponseType
+  responseLabel?: string
 }) {
   return (dispatch: AppDispatch, getState: () => RootState): void => {
-    const state = getState();
+    const state = getState()
     const interaction = state.social.incomingInteractions.find(
-      (entry) => entry.id === interactionId,
-    );
-    if (!interaction || interaction.resolved) return;
-    if (getIncomingInteractionResponsePolicy(interaction) === 'readOnly') return;
+      (entry) => entry.id === interactionId
+    )
+    if (!interaction || interaction.resolved) return
+    if (getIncomingInteractionResponsePolicy(interaction) === 'readOnly') return
 
-    const currentWeek = state.game.week ?? 1;
-    const resolvedAt = Date.now();
+    const currentWeek = state.game.week ?? 1
+    const resolvedAt = Date.now()
 
     if (isIncomingInteractionInvalidated(interaction, state.game)) {
       dispatch(
@@ -391,9 +376,9 @@ export function respondToIncomingInteraction({
           interactionId,
           resolvedAt,
           resolvedWeek: currentWeek,
-        }),
-      );
-      return;
+        })
+      )
+      return
     }
 
     const result = applyIncomingChoiceConsequences({
@@ -404,8 +389,8 @@ export function respondToIncomingInteraction({
       responseLabel,
       source: 'player',
       resolvedAt,
-    });
-    if (!result) return;
+    })
+    if (!result) return
 
     dispatch(
       resolveIncomingInteraction({
@@ -415,17 +400,17 @@ export function respondToIncomingInteraction({
         outcomeText: result.outcomeText,
         resolvedAt,
         resolvedWeek: currentWeek,
-      }),
-    );
+      })
+    )
     dispatch(
       addTvEvent({
         text: `${result.logText} ${result.outcomeText}`,
         type: 'social',
         source: 'manual',
         channels: ['mainLog', 'dr'],
-      }),
-    );
-  };
+      })
+    )
+  }
 }
 
 /**
@@ -434,19 +419,19 @@ export function respondToIncomingInteraction({
  */
 export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
   return (dispatch: AppDispatch, getState: () => RootState): void => {
-    const state = getState();
+    const state = getState()
     const interactions = state.social.incomingInteractions.filter(
-      (entry) => !entry.resolved && entry.expiresAtWeek < week,
-    );
-    if (interactions.length === 0) return;
+      (entry) => !entry.resolved && entry.expiresAtWeek < week
+    )
+    if (interactions.length === 0) return
 
-    const resolvedAt = Date.now();
+    const resolvedAt = Date.now()
     const required = interactions.filter(
-      (interaction) => getIncomingInteractionResponsePolicy(interaction) === 'required',
-    );
+      (interaction) => getIncomingInteractionResponsePolicy(interaction) === 'required'
+    )
 
     for (const interaction of interactions) {
-      const isRequired = required.includes(interaction);
+      const isRequired = required.includes(interaction)
       logIncomingInteractionDecision(dispatch, {
         stage: 'auto_resolution',
         reason: isRequired ? 'auto_resolved_ignored' : 'auto_resolved_no_response_required',
@@ -455,7 +440,7 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
         type: interaction.type,
         week,
         detail: 'week_end',
-      });
+      })
 
       if (isRequired) {
         applyIncomingChoiceConsequences({
@@ -465,7 +450,7 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
           responseType: 'ignore',
           source: 'expiry',
           resolvedAt,
-        });
+        })
       }
     }
 
@@ -476,10 +461,10 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
           type: 'social',
           source: 'system',
           channels: ['tv', 'mainLog'],
-        }),
-      );
+        })
+      )
     }
 
-    dispatch(resolveExpiredIncomingInteractionsForWeek({ week, resolvedAt }));
-  };
+    dispatch(resolveExpiredIncomingInteractionsForWeek({ week, resolvedAt }))
+  }
 }
