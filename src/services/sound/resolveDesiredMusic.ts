@@ -106,6 +106,11 @@ function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
       return 'quick_tap';
     case 'wildcardWestern':
       return 'wildcard_western';
+    case 'bigSpender':
+    case 'snake':
+    case 'castleRescue':
+    case 'batteryLow':
+      return 'challenge_group_1';
     default:
       return 'none';
   }
