@@ -8,12 +8,7 @@
  */
 
 import { chooseActionFor, chooseTargetsFor } from './SocialPolicy'
-import {
-  canAfford,
-  executeAction,
-  executeGroupAction,
-  getActionById,
-} from './SocialManeuvers'
+import { canAfford, executeAction, executeGroupAction, getActionById } from './SocialManeuvers'
 import { resolveActionTargetMode } from './socialActions'
 import { normalizeActionCosts } from './smExecNormalize'
 import { socialConfig } from './socialConfig'
@@ -31,10 +26,7 @@ import {
   getIncomingInteractionPriority,
 } from './incomingInteractionScheduler'
 import { createIncomingInteraction } from './incomingInteractionFactory'
-import {
-  createDeterministicSocialRandom,
-  validateSocialExecution,
-} from './socialExecutionGuard'
+import { createDeterministicSocialRandom, validateSocialExecution } from './socialExecutionGuard'
 import { getPersistentSocialHistory, type SocialStateWithHistory } from './socialHistory'
 import { getEffectiveSocialMode } from './socialMode'
 import type {
@@ -141,9 +133,7 @@ export function stop(): void {
   clearTimer()
 
   if (socialConfig.verbose) {
-    console.debug(
-      `[socialAIDriver] stopped – ticks: ${_tickCount}, actions: ${_actionsExecuted}`
-    )
+    console.debug(`[socialAIDriver] stopped – ticks: ${_tickCount}, actions: ${_actionsExecuted}`)
   }
 }
 
@@ -159,8 +149,7 @@ export const socialAIDriver = { setStore, start, stop, getStatus }
 
 function getAIPlayers(state: DriverState): DriverPlayer[] {
   return (state.game?.players ?? []).filter(
-    (player) =>
-      !player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+    (player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury'
   )
 }
 
@@ -238,9 +227,7 @@ function pickHumanFacingText(
   week: number,
   phase: string
 ): string {
-  const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? [
-    'I wanted to talk to you directly.',
-  ]
+  const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? ['I wanted to talk to you directly.']
   const random = createDeterministicSocialRandom([actorId, actionId, week, phase])
   return variants[Math.floor(random() * variants.length)] ?? variants[0]
 }
@@ -266,8 +253,7 @@ function routeHumanFacingAction(
       human.status.includes('pos')
     const relationship = current.social.relationships[actorId]?.[human.id]
     const isTrustedAlly =
-      (relationship?.affinity ?? 0) >= 30 ||
-      relationship?.tags.includes('alliance') === true
+      (relationship?.affinity ?? 0) >= 30 || relationship?.tags.includes('alliance') === true
     if (isProtected || current.game.lohId !== actorId || isTrustedAlly) return 'blocked'
   }
 
@@ -280,8 +266,7 @@ function routeHumanFacingAction(
     scheduled
   )
   const directContactsThisWeek = pending.filter(
-    (entry) =>
-      entry.createdWeek === week && entry.payload?.source === 'background_social'
+    (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social'
   ).length
   if (
     directContactsThisWeek >= 1 ||
@@ -338,9 +323,7 @@ function routeHumanFacingAction(
 
   _store.dispatch(applyEnergyDelta({ playerId: actorId, delta: -costs.energy }))
   if (costs.influence > 0) {
-    _store.dispatch(
-      applyInfluenceDelta({ playerId: actorId, delta: -costs.influence })
-    )
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }))
   }
   if (costs.info > 0) {
     _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }))
@@ -358,17 +341,10 @@ function routeHumanFacingAction(
   return 'scheduled'
 }
 
-function groupTargets(
-  state: DriverState,
-  actorId: string,
-  maximum = 3
-): string[] {
+function groupTargets(state: DriverState, actorId: string, maximum = 3): string[] {
   return state.game.players
     .filter(
-      (player) =>
-        player.id !== actorId &&
-        player.status !== 'evicted' &&
-        player.status !== 'jury'
+      (player) => player.id !== actorId && player.status !== 'evicted' && player.status !== 'jury'
     )
     .sort(
       (left, right) =>
@@ -478,17 +454,10 @@ function executeCandidate(
   const mode = resolveActionTargetMode(action, dramaMode)
   const costs = normalizeActionCosts(action, candidate.targetIds.length, dramaMode)
   const primaryTargetId = candidate.targetIds[0]
-  const primaryTarget = state.game.players.find(
-    (target) => target.id === primaryTargetId
-  )
+  const primaryTarget = state.game.players.find((target) => target.id === primaryTargetId)
 
   if (primaryTarget?.isUser && mode !== 'multi') {
-    const route = routeHumanFacingAction(
-      player.id,
-      candidate.actionId,
-      candidate.subjectId,
-      costs
-    )
+    const route = routeHumanFacingAction(player.id, candidate.actionId, candidate.subjectId, costs)
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
   }
@@ -545,10 +514,7 @@ function tick(): void {
     stop()
     return
   }
-  if (
-    !socialConfig.allowOverspend &&
-    !aiPlayers.some((player) => (budgets[player.id] ?? 0) > 0)
-  ) {
+  if (!socialConfig.allowOverspend && !aiPlayers.some((player) => (budgets[player.id] ?? 0) > 0)) {
     stop()
     return
   }
