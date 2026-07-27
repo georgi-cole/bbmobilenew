@@ -3,7 +3,6 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setDisplay, setSim } from '../../store/settingsSlice'
 import {
   initializeVip,
-  selectHasPublicModeAccess,
   selectHasTribunalHouseAccess,
   selectIsVipActive,
   selectVip,
@@ -13,9 +12,7 @@ export default function VipEntitlementSync() {
   const dispatch = useAppDispatch()
   const storeState = useAppSelector(selectVip)
   const isVipActive = useAppSelector(selectIsVipActive)
-  const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
   const hasTribunalHouse = useAppSelector(selectHasTribunalHouseAccess)
-  const publicMode = useAppSelector((state) => state.settings.sim.publicMode)
   const tribunalHouse = useAppSelector((state) => state.settings.sim.enableJuryHouse)
   const theme = useAppSelector((state) => state.settings.display.themePreset)
 
@@ -25,17 +22,18 @@ export default function VipEntitlementSync() {
 
   useEffect(() => {
     if (storeState.status !== 'ready' && storeState.status !== 'error') return
-    if (!hasPublicMode && publicMode) dispatch(setSim({ publicMode: false }))
+
+    // Public Mode is deliberately not force-disabled here. Its normal Settings
+    // control remains entitlement-gated, while the hidden Advanced Settings
+    // screen can enable it for development and debug runs.
     if (!hasTribunalHouse && tribunalHouse) dispatch(setSim({ enableJuryHouse: false }))
     if (!isVipActive && theme !== 'midnight') {
       dispatch(setDisplay({ themePreset: 'midnight' }))
     }
   }, [
     dispatch,
-    hasPublicMode,
     hasTribunalHouse,
     isVipActive,
-    publicMode,
     storeState.status,
     theme,
     tribunalHouse,
