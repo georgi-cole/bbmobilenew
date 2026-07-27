@@ -115,8 +115,6 @@ const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 const CONFESSIONAL_TV_PROMPT_MESSAGE =
   'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
-const PUBLIC_MODE_STORE_PROMPT =
-  'If you want to activate public mode, go to the store in the home hub.'
 const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
 
 // Exported only as a pure regression-test seam; it does not participate in Fast Refresh state.
@@ -1016,7 +1014,10 @@ export default function GameScreen() {
   function handlePublicMeterBlocked() {
     setPublicMeterUnavailableAnnouncement({
       key: 'public_meter_unavailable',
-      title: PUBLIC_MODE_STORE_PROMPT,
+      title:
+        settings.sim.publicMode === true
+          ? 'Public Mode is enabled in Settings. Start a new season to apply it.'
+          : 'Public Mode is not active for this season. Enable it in Settings before starting a new season.',
       subtitle: '',
       isLive: false,
       autoDismissMs: 3500,

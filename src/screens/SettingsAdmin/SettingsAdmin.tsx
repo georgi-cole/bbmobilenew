@@ -74,6 +74,13 @@ export default function SettingsAdmin() {
   const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
   const [showRestartModal, setShowRestartModal] = useState(false);
 
+  // Migrate values enabled by the earlier Advanced Settings implementation.
+  useEffect(() => {
+    if (settings.sim.publicMode && !settings.sim.publicModeAdminOverride) {
+      dispatch(setSim({ publicModeAdminOverride: true }));
+    }
+  }, [dispatch, settings.sim.publicMode, settings.sim.publicModeAdminOverride]);
+
   // Stable fetchGames callback for CompSelection — builds list from registry once.
   const fetchGames = useCallback(
     () => Promise.resolve(buildCompGamesFromRegistry()),
@@ -362,7 +369,14 @@ export default function SettingsAdmin() {
                   type="checkbox"
                   className="settings-toggle"
                   checked={settings.sim.publicMode}
-                  onChange={(e) => dispatch(setSim({ publicMode: e.target.checked }))}
+                  onChange={(e) =>
+                    dispatch(
+                      setSim({
+                        publicMode: e.target.checked,
+                        publicModeAdminOverride: e.target.checked,
+                      }),
+                    )
+                  }
                   aria-label="Toggle public mode"
                 />
               </div>

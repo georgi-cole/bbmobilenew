@@ -136,7 +136,12 @@ const SECTIONS: SettingSection[] = [
         gated: true,
         lockedFeature: 'Public Mode',
         get: (s) => s.sim.publicMode,
-        onChange: (dispatch, val) => dispatch(setSim({ publicMode: val })),
+        onChange: (dispatch, val) =>
+          dispatch(
+            setSim(
+              val ? { publicMode: true } : { publicMode: false, publicModeAdminOverride: false }
+            )
+          ),
       },
       {
         type: 'toggle',
@@ -213,7 +218,7 @@ export default function Settings() {
           item.id === 'dramaMode'
             ? hasDramaMode || settings.gameUX.dramaMode
             : item.id === 'publicMode'
-              ? hasPublicMode || settings.sim.publicMode
+              ? hasPublicMode || settings.sim.publicModeAdminOverride
               : item.id === 'tribunalHouse'
                 ? hasTribunalHouse
                 : true
