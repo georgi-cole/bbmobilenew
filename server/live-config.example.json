@@ -33,6 +33,90 @@
     "_comment3": "weeklyGameKeys is used when weeklyMode is user-selection",
     "weeklyGameKeys": ["quickTapRace", "bullseyeBlitz", "colorMatch"]
   },
+  "social": {
+    "_comment": "Pure-data Social and Drama overrides. Algorithms and executable rules remain bundled in the app.",
+    "schemaVersion": 1,
+    "revision": "2026-07-27.1",
+    "economy": {
+      "normal": {
+        "weeklyEnergy": 5,
+        "energyCap": 5
+      },
+      "drama": {
+        "weeklyEnergy": 10,
+        "energyCap": 30
+      },
+      "influenceCap": 10000,
+      "infoCap": 10000
+    },
+    "history": {
+      "maxActionHistory": 500
+    },
+    "ai": {
+      "outcomeAffinityBiasWeight": 0.2,
+      "outcomeJitterMagnitude": 0.08,
+      "repetitionPenalty": 0.28,
+      "noveltyWeight": 0.12,
+      "basicActionWeights": {
+        "compliment": 3,
+        "whisper": 2,
+        "reassure": 2,
+        "confront": 1
+      }
+    },
+    "incoming": {
+      "_comment": "Policies: required, optional, readOnly.",
+      "scenarioPolicies": {
+        "nominee_hoh_plea": "required",
+        "live_vote_pitch": "required",
+        "hoh_congratulations": "readOnly"
+      }
+    },
+    "content": {
+      "_comment": "These examples can be edited without rebuilding the app. Unknown IDs are harmless.",
+      "scenarioLines": {
+        "week_start_ally_check_in": [
+          "Fresh week. I wanted to make sure you and I are still solid."
+        ]
+      },
+      "actionPresentation": {
+        "compliment": {
+          "title": "Build Rapport",
+          "description": "Offer sincere praise and strengthen the connection.",
+          "icon": "✨"
+        }
+      },
+      "responseSets": {
+        "scenario:live_vote_pitch": [
+          {
+            "label": "Promise your vote",
+            "responseType": "accept",
+            "description": "Creates a vote-to-keep promise.",
+            "style": "positive"
+          },
+          {
+            "label": "Keep options open",
+            "responseType": "neutral",
+            "style": "neutral"
+          },
+          {
+            "label": "Refuse clearly",
+            "responseType": "decline",
+            "style": "negative"
+          },
+          {
+            "label": "End the talk",
+            "responseType": "dismiss",
+            "style": "dismiss"
+          }
+        ]
+      }
+    },
+    "familyGroups": {
+      "lia": "twin-lia-ali",
+      "ali": "twin-lia-ali"
+    }
+  },
   "players": [
     {
       "_comment": "Override an AI houseguest's avatar and profile text.",
