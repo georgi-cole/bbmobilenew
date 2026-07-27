@@ -57,7 +57,7 @@ type FloatingActionBarProps = {
  * - Right side: Public Meter hook + Diary Room shortcut.
  */
 export default function FloatingActionBar({
-  onPublicMeterBlocked: _onPublicMeterBlocked,
+  onPublicMeterBlocked,
   onSocialModuleBlocked,
 }: FloatingActionBarProps) {
   const dispatch = useAppDispatch()
@@ -312,8 +312,12 @@ export default function FloatingActionBar({
   }, [completeConfessionalSpotlight, confessionalSpotlightEligible, navigate])
 
   const handlePublicMeterClick = useCallback(() => {
-    navigate(resolvePublicMeterDestination(game.publicModeEnabled === true, publicRequestCount))
-  }, [game.publicModeEnabled, navigate, publicRequestCount])
+    if (game.publicModeEnabled !== true) {
+      onPublicMeterBlocked?.()
+      return
+    }
+    navigate(resolvePublicMeterDestination(true, publicRequestCount))
+  }, [game.publicModeEnabled, navigate, onPublicMeterBlocked, publicRequestCount])
 
   const handleStartNewSurvivor = useCallback(() => {
     if (!isGuest && activeProfileId) {
