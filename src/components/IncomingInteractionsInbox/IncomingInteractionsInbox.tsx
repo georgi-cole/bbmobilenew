@@ -362,7 +362,7 @@ export default function IncomingInteractionsInbox() {
   const headerSummary =
     pendingInteractions.length === 0
       ? 'All caught up'
-      : `${pendingInteractions.length} pending${urgentCount > 0 ? ` · ${urgentCount} urgent` : ''}`
+      : `${pendingInteractions.length} pending${urgentCount > 0 ? ` • ${urgentCount} urgent` : ''}`
 
   const credibilityCopy =
     credibility.kept + credibility.broken === 0
