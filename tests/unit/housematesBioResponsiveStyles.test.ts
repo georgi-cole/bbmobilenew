@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+// Keep the responsive layout contract executable without requiring a browser screenshot runner.
 const CSS = readFileSync(
   new URL(
     '../../src/components/HousematesBioCinematic/HousematesBioCinematic.css',
