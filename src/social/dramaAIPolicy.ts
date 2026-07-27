@@ -29,11 +29,7 @@ function hashUnit(seed: string): number {
   return (Math.abs(hash) % 1_000_003) / 1_000_003
 }
 
-function repeatedThisWeek(
-  input: DramaAIMoveInput,
-  actionId: string,
-  targetId: string
-): number {
+function repeatedThisWeek(input: DramaAIMoveInput, actionId: string, targetId: string): number {
   return (input.recentActions ?? []).filter(
     (entry) =>
       entry.actorId === input.actorId &&
@@ -81,9 +77,7 @@ function weightedChoice(
     0.12,
     0.52 - personality.strategicCalculation * 0.3 + personality.emotionalReactivity * 0.12
   )
-  const weights = top.map((candidate) =>
-    Math.exp((candidate.utility - maxUtility) / temperature)
-  )
+  const weights = top.map((candidate) => Math.exp((candidate.utility - maxUtility) / temperature))
   const total = weights.reduce((sum, weight) => sum + weight, 0)
   let roll =
     hashUnit(
@@ -104,9 +98,7 @@ function weightedChoice(
 export function chooseUtilityDramaAIMove(input: DramaAIMoveInput): DramaAIMove | null {
   const alive = input.players.filter(
     (player) =>
-      player.id !== input.actorId &&
-      player.status !== 'evicted' &&
-      player.status !== 'jury'
+      player.id !== input.actorId && player.status !== 'evicted' && player.status !== 'jury'
   )
   if (alive.length === 0) return null
 
@@ -137,14 +129,10 @@ export function chooseUtilityDramaAIMove(input: DramaAIMoveInput): DramaAIMove |
           reason: `repairing a ${arc.type} before it hardens`,
           motive: 'repair',
           utility:
-            0.5 +
-            personality.forgiveness * 0.65 +
-            Math.max(0, affinity) * 0.25 -
-            intensity * 0.28,
+            0.5 + personality.forgiveness * 0.65 + Math.max(0, affinity) * 0.25 - intensity * 0.28,
         })
       }
-      const publicConflict =
-        arc.intensity >= 80 && personality.publicConflictComfort >= 0.42
+      const publicConflict = arc.intensity >= 80 && personality.publicConflictComfort >= 0.42
       addCandidate(candidates, input, {
         actionId: publicConflict ? 'public_callout' : 'confront',
         targetId: otherId,
@@ -193,11 +181,7 @@ export function chooseUtilityDramaAIMove(input: DramaAIMoveInput): DramaAIMove |
         subjectId: rival.id,
         reason: 'loyal partnership becoming strategically useful',
         motive: 'loyalty',
-        utility:
-          0.56 +
-          intensity * 0.46 +
-          personality.loyalty * 0.38 +
-          Math.max(0, affinity) * 0.3,
+        utility: 0.56 + intensity * 0.46 + personality.loyalty * 0.38 + Math.max(0, affinity) * 0.3,
       })
     }
   }
@@ -212,7 +196,8 @@ export function chooseUtilityDramaAIMove(input: DramaAIMoveInput): DramaAIMove |
     const confidentListener = rumour.listeners.find(
       (listener) => listener.playerId === input.actorId
     )
-    const confidence = confidentListener?.confidence ?? (rumour.originatorId === input.actorId ? 0.7 : 0.45)
+    const confidence =
+      confidentListener?.confidence ?? (rumour.originatorId === input.actorId ? 0.7 : 0.45)
     const expose =
       rumour.listeners.length >= 3 &&
       confidence >= 0.55 &&
@@ -221,21 +206,21 @@ export function chooseUtilityDramaAIMove(input: DramaAIMoveInput): DramaAIMove |
       actionId: expose ? 'expose_secret' : 'trade_secrets',
       targetId: expose ? rumour.subjectId : closest.id,
       subjectId: rumour.subjectId,
-      reason: expose ? 'turning credible intel into a public move' : 'trading known intel privately',
+      reason: expose
+        ? 'turning credible intel into a public move'
+        : 'trading known intel privately',
       motive: 'intel',
       utility:
         0.4 +
         confidence * 0.42 +
         personality.gossipPropensity * 0.32 +
-        (expose ? personality.publicConflictComfort * 0.24 : personality.strategicCalculation * 0.2),
+        (expose
+          ? personality.publicConflictComfort * 0.24
+          : personality.strategicCalculation * 0.2),
     })
   }
 
-  if (
-    nominees.has(input.actorId) &&
-    input.posWinnerId &&
-    input.posWinnerId !== input.actorId
-  ) {
+  if (nominees.has(input.actorId) && input.posWinnerId && input.posWinnerId !== input.actorId) {
     addCandidate(candidates, input, {
       actionId: 'ask_use_safety',
       targetId: input.posWinnerId,

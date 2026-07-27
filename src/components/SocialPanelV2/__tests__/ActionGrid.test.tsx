@@ -8,8 +8,8 @@ import ActionGrid from '../ActionGrid'
 const NORMAL_ACTIONS = SOCIAL_ACTIONS.filter((action) =>
   isHumanSocialActionVisible(action, 'normal')
 )
-const DEFAULT_NORMAL_ACTIONS = NORMAL_ACTIONS.filter((action) =>
-  evaluateSocialActionEligibility({ action, dramaMode: false }).eligible
+const DEFAULT_NORMAL_ACTIONS = NORMAL_ACTIONS.filter(
+  (action) => evaluateSocialActionEligibility({ action, dramaMode: false }).eligible
 )
 
 function renderedActionIds(): string[] {
@@ -109,10 +109,7 @@ describe('ActionGrid catalogue rendering', () => {
       selectedTargetIds: new Set(['lia']),
     }
     const { rerender } = render(
-      <ActionGrid
-        {...props}
-        relationships={{ human: { lia: { affinity: 40, tags: [] } } }}
-      />
+      <ActionGrid {...props} relationships={{ human: { lia: { affinity: 40, tags: [] } } }} />
     )
     expect(screen.queryByText('Betray Ally')).not.toBeInTheDocument()
 
@@ -153,9 +150,7 @@ describe('ActionGrid interaction and accessibility', () => {
   it('applies disabled and selected semantics', () => {
     const first = DEFAULT_NORMAL_ACTIONS[0]
     const second = DEFAULT_NORMAL_ACTIONS[1]
-    render(
-      <ActionGrid disabledIds={new Set([first.id])} selectedId={second.id} />
-    )
+    render(<ActionGrid disabledIds={new Set([first.id])} selectedId={second.id} />)
 
     expect(actionCard(first.title)).toHaveAttribute('aria-disabled', 'true')
     expect(actionCard(second.title)).toHaveAttribute('aria-pressed', 'true')
