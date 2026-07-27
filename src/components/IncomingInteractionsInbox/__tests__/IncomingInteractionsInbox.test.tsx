@@ -1,59 +1,56 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import gameReducer, { setPhase } from '../../../store/gameSlice';
-import settingsReducer, { setGameUX } from '../../../store/settingsSlice';
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import { configureStore } from '@reduxjs/toolkit'
+import gameReducer, { setPhase } from '../../../store/gameSlice'
+import settingsReducer, { setGameUX } from '../../../store/settingsSlice'
 import socialReducer, {
   openIncomingInbox,
   pushIncomingInteraction,
   updateRelationship,
   updateSocialMemory,
-} from '../../../social/socialSlice';
-import IncomingInteractionsInbox from '../IncomingInteractionsInbox';
-import { socialMiddleware } from '../../../social/socialMiddleware';
-import { hasAllianceBetween } from '../../../social/socialAlliance';
+} from '../../../social/socialSlice'
+import IncomingInteractionsInbox from '../IncomingInteractionsInbox'
+import { socialMiddleware } from '../../../social/socialMiddleware'
+import { hasAllianceBetween } from '../../../social/socialAlliance'
 
 function makeStore() {
   return configureStore({
     reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
-  });
+  })
 }
 
 function makeStoreWithSocialMiddleware() {
   return configureStore({
     reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
-  });
+  })
 }
 
 function renderInbox(store: ReturnType<typeof makeStore>) {
   return render(
     <Provider store={store}>
       <IncomingInteractionsInbox />
-    </Provider>,
-  );
+    </Provider>
+  )
 }
 
 function getNonUserPlayer(store: ReturnType<typeof makeStore>) {
-  const player = store.getState().game.players.find((p) => !p.isUser);
-  if (!player) {
-    throw new Error('Expected a non-user player for test setup.');
-  }
-  return player;
+  const player = store.getState().game.players.find((candidate) => !candidate.isUser)
+  if (!player) throw new Error('Expected a non-user player for test setup.')
+  return player
 }
 
 describe('IncomingInteractionsInbox', () => {
   it('creates a store with a non-user player', () => {
-    const store = makeStore();
-    const player = getNonUserPlayer(store);
-    expect(player.isUser).not.toBe(true);
-  });
+    const store = makeStore()
+    expect(getNonUserPlayer(store).isUser).not.toBe(true)
+  })
 
-  it('sorts, groups, and summarizes interactions while marking them read', async () => {
-    const store = makeStore();
-    store.dispatch(openIncomingInbox());
-    const otherId = getNonUserPlayer(store).id;
+  it('sorts decisions, conversations, updates and weekly history while reading visible items', async () => {
+    const store = makeStore()
+    store.dispatch(openIncomingInbox())
+    const otherId = getNonUserPlayer(store).id
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-low-later',
@@ -66,8 +63,8 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: false,
         resolved: false,
-      }),
-    );
+      })
+    )
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-medium-soon',
@@ -80,8 +77,8 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: false,
         resolved: false,
-      }),
-    );
+      })
+    )
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-high-later',
@@ -94,8 +91,8 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: true,
         resolved: false,
-      }),
-    );
+      })
+    )
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-high-soon',
@@ -108,8 +105,23 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: true,
         resolved: false,
-      }),
-    );
+      })
+    )
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'interaction-readonly',
+        fromId: otherId,
+        type: 'compliment',
+        text: 'House update.',
+        payload: { responsePolicy: 'readOnly' },
+        createdAt: 185,
+        createdWeek: 1,
+        expiresAtWeek: 1,
+        read: false,
+        requiresResponse: false,
+        resolved: false,
+      })
+    )
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-resolved',
@@ -125,44 +137,49 @@ describe('IncomingInteractionsInbox', () => {
         resolvedAt: 190,
         resolvedWeek: 1,
         resolvedWith: 'positive',
-      }),
-    );
+      })
+    )
 
-    renderInbox(store);
+    renderInbox(store)
 
-    expect(screen.getByText('4 pending • 3 urgent')).toBeInTheDocument();
+    expect(screen.getByText('2 decisions • 2 urgent • 2 conversations')).toBeInTheDocument()
 
-    const needsSection = screen.getByLabelText('Needs Response');
-    const needsItems = within(needsSection).getAllByRole('listitem');
-    expect(needsItems).toHaveLength(2);
-    expect(needsItems[0].textContent).toContain('High soon.');
-    expect(needsItems[1].textContent).toContain('High later.');
+    const needsSection = screen.getByLabelText('Needs Decision')
+    const needsItems = within(needsSection).getAllByRole('listitem')
+    expect(needsItems).toHaveLength(2)
+    expect(needsItems[0].textContent).toContain('High soon.')
+    expect(needsItems[1].textContent).toContain('High later.')
+    expect(within(needsSection).getByText('Urgent this week')).toBeInTheDocument()
 
-    expect(within(needsSection).getByText('Urgent this week')).toBeInTheDocument();
+    const conversationsSection = screen.getByLabelText('Conversations')
+    const conversationItems = within(conversationsSection).getAllByRole('listitem')
+    expect(conversationItems).toHaveLength(2)
+    expect(conversationItems[0].textContent).toContain('Medium soon.')
+    expect(conversationItems[1].textContent).toContain('Low later.')
+    expect(
+      within(conversationsSection).getByText('Optional · closes this week')
+    ).toBeInTheDocument()
 
-    const updatesSection = screen.getByLabelText('Updates');
-    const updatesItems = within(updatesSection).getAllByRole('listitem');
-    expect(updatesItems).toHaveLength(2);
-    expect(updatesItems[0].textContent).toContain('Medium soon.');
-    expect(updatesItems[1].textContent).toContain('Low later.');
-    expect(within(updatesSection).getByText('Expires this week')).toBeInTheDocument();
+    const updatesSection = screen.getByLabelText('House Updates')
+    expect(within(updatesSection).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(updatesSection).queryByRole('button')).not.toBeInTheDocument()
 
-    const resolvedSection = screen.getByLabelText('Resolved Today');
-    const resolvedItems = within(resolvedSection).getAllByRole('listitem');
-    expect(resolvedItems).toHaveLength(1);
-    expect(resolvedItems[0].textContent).toContain('Resolved note.');
-    expect(resolvedItems[0].className).toContain('inbox-item--resolved');
+    const resolvedSection = screen.getByLabelText('Resolved This Week')
+    const resolvedItems = within(resolvedSection).getAllByRole('listitem')
+    expect(resolvedItems).toHaveLength(1)
+    expect(resolvedItems[0].textContent).toContain('Resolved note.')
+    expect(resolvedItems[0].className).toContain('inbox-item--resolved')
 
     await waitFor(() => {
-      const state = store.getState().social.incomingInteractions;
-      expect(state.every((entry) => entry.read)).toBe(true);
-    });
-  });
+      const state = store.getState().social.incomingInteractions
+      expect(state.every((entry) => entry.read)).toBe(true)
+    })
+  })
 
   it('responds to an interaction from the inbox', () => {
-    const store = makeStore();
-    store.dispatch(openIncomingInbox());
-    const otherPlayer = getNonUserPlayer(store);
+    const store = makeStore()
+    store.dispatch(openIncomingInbox())
+    const otherPlayer = getNonUserPlayer(store)
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-3',
@@ -175,26 +192,25 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: true,
         resolved: false,
-      }),
-    );
+      })
+    )
 
-    renderInbox(store);
-
-    fireEvent.click(document.querySelector('[data-response-type="positive"]')!);
+    renderInbox(store)
+    fireEvent.click(document.querySelector('[data-response-type="positive"]')!)
 
     const entry = store
       .getState()
-      .social.incomingInteractions.find((i) => i.id === 'interaction-3');
-    expect(entry?.resolved).toBe(true);
-    expect(entry?.resolvedWith).toBe('positive');
-    expect(store.getState().game.tvFeed[0]?.text).toMatch(/encouraged/i);
-  });
+      .social.incomingInteractions.find((interaction) => interaction.id === 'interaction-3')
+    expect(entry?.resolved).toBe(true)
+    expect(entry?.resolvedWith).toBe('positive')
+    expect(store.getState().game.tvFeed[0]?.text).toMatch(/encouraged/i)
+  })
 
-  it('marks both players as allies when accepting an alliance proposal', () => {
-    const store = makeStoreWithSocialMiddleware();
-    store.dispatch(openIncomingInbox());
-    const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
-    const otherPlayer = getNonUserPlayer(store);
+  it('forms a reciprocal alliance once without premium currency in Normal Mode', () => {
+    const store = makeStoreWithSocialMiddleware()
+    store.dispatch(openIncomingInbox())
+    const humanId = store.getState().game.players.find((player) => player.isUser)!.id
+    const otherPlayer = getNonUserPlayer(store)
     store.dispatch(
       pushIncomingInteraction({
         id: 'alliance-proposal',
@@ -207,42 +223,41 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: true,
         resolved: false,
-      }),
-    );
+      })
+    )
 
-    renderInbox(store);
+    renderInbox(store)
+    fireEvent.click(document.querySelector('[data-response-type="accept"]')!)
 
-    fireEvent.click(document.querySelector('[data-response-type="accept"]')!);
+    const socialState = store.getState().social
+    expect(socialState.relationships[otherPlayer.id]?.[humanId]?.tags).toContain('alliance')
+    expect(socialState.relationships[humanId]?.[otherPlayer.id]?.tags).toContain('alliance')
+    expect(hasAllianceBetween(socialState.relationships, humanId, otherPlayer.id)).toBe(true)
+    expect(socialState.energyBank[humanId]).toBe(2)
+    expect(socialState.energyBank[otherPlayer.id]).toBe(2)
+    expect(socialState.influenceBank[humanId] ?? 0).toBe(0)
+    expect(socialState.influenceBank[otherPlayer.id] ?? 0).toBe(0)
+  })
 
-    const socialState = store.getState().social;
-    expect(socialState.relationships[otherPlayer.id]?.[humanId]?.tags).toContain('alliance');
-    expect(socialState.relationships[humanId]?.[otherPlayer.id]?.tags).toContain('alliance');
-    expect(hasAllianceBetween(socialState.relationships, humanId, otherPlayer.id)).toBe(true);
-    expect(socialState.energyBank[humanId]).toBe(2);
-    expect(socialState.energyBank[otherPlayer.id]).toBe(2);
-    expect(socialState.influenceBank[humanId]).toBe(200);
-    expect(socialState.influenceBank[otherPlayer.id]).toBe(200);
-  });
-
-  it('renders contextual responses and tone labels', () => {
-    const store = makeStore();
-    store.dispatch(setGameUX({ dramaMode: true }));
-    store.dispatch(openIncomingInbox());
-    const otherId = getNonUserPlayer(store).id;
+  it('renders contextual responses, tone labels, and visible choice consequences', () => {
+    const store = makeStore()
+    store.dispatch(setGameUX({ dramaMode: true }))
+    store.dispatch(openIncomingInbox())
+    const otherId = getNonUserPlayer(store).id
     store.dispatch(
       updateRelationship({
         source: otherId,
         target: 'user',
         delta: -60,
-      }),
-    );
+      })
+    )
     store.dispatch(
       updateSocialMemory({
         actorId: otherId,
         targetId: 'user',
         deltas: { resentment: 8 },
-      }),
-    );
+      })
+    )
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-tone',
@@ -255,44 +270,40 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: true,
         resolved: false,
-      }),
-    );
+      })
+    )
 
-    renderInbox(store);
+    renderInbox(store)
 
-    expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument();
-    expect(screen.getByText(/Bitter/)).toBeInTheDocument();
-    const negativeResponse = document.querySelector('[data-response-type="negative"]');
-    expect(negativeResponse).toHaveAttribute(
-      'title', 'Sets a clear boundary and damages trust.',
-    );
-    expect(screen.queryByText(/Sets a clear boundary and damages trust/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Why now')).not.toBeInTheDocument();
-    expect(screen.queryByText('What it means')).not.toBeInTheDocument();
-  });
+    expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument()
+    expect(screen.getByText(/Bitter/)).toBeInTheDocument()
+    expect(screen.getByText(/Sets a clear boundary and damages trust/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Why now')).not.toBeInTheDocument()
+    expect(screen.queryByText('What it means')).not.toBeInTheDocument()
+  })
 
   it('closes and logs the reason when the phase changes to eviction results', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const store = makeStore();
-    store.dispatch(openIncomingInbox());
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const store = makeStore()
+    store.dispatch(openIncomingInbox())
 
-    renderInbox(store);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    renderInbox(store)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     act(() => {
-      store.dispatch(setPhase('eviction_results'));
-    });
+      store.dispatch(setPhase('eviction_results'))
+    })
 
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(store.getState().social.incomingInboxOpen).toBe(false);
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(store.getState().social.incomingInboxOpen).toBe(false)
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        'Incoming social module did not open: Social modules are blocked during the eviction_results phase.',
+        'Incoming social module did not open: Social modules are blocked during the eviction_results phase.'
       ),
-      expect.objectContaining({ phase: 'eviction_results' }),
-    );
+      expect.objectContaining({ phase: 'eviction_results' })
+    )
 
-    warnSpy.mockRestore();
-  });
-});
+    warnSpy.mockRestore()
+  })
+})
