@@ -1,0 +1,40 @@
+name: Temporary fix music inherit
+
+on:
+  push:
+    branches:
+      - agent/music-manager-foundations
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/music-manager-foundations
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply inheritance fix
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/services/sound/musicConfig.ts')
+          source = path.read_text()
+          old = """  const modeOverride = config.modePhaseOverrides[mode]?.[phase as Phase]\n  if (modeOverride) return modeOverride\n  return config.phaseMusic[phase as Phase]\n"""
+          new = """  const modeOverride = config.modePhaseOverrides[mode]?.[phase as Phase]\n  if (modeOverride && modeOverride.kind !== 'inherit') return modeOverride\n  return config.phaseMusic[phase as Phase]\n"""
+          if old not in source:
+              raise SystemExit('Expected inheritance block not found')
+          path.write_text(source.replace(old, new))
+      - name: Format and commit
+        shell: bash
+        run: |
+          npx --yes prettier@3.8.1 --config .prettierrc --write src/services/sound/musicConfig.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/services/sound/musicConfig.ts
+          git commit -m "Fix mode music inheritance semantics"
+          git push origin HEAD:agent/music-manager-foundations
