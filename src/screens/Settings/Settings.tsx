@@ -213,7 +213,7 @@ export default function Settings() {
           item.id === 'dramaMode'
             ? hasDramaMode || settings.gameUX.dramaMode
             : item.id === 'publicMode'
-              ? hasPublicMode
+              ? hasPublicMode || settings.sim.publicMode
               : item.id === 'tribunalHouse'
                 ? hasTribunalHouse
                 : true
