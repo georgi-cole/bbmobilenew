@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   clearSessionLogs,
@@ -97,6 +98,7 @@ function getSubjectCandidates(
 
 export default function SocialPanelV2() {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const game = useAppSelector((state) => state.game)
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
@@ -609,19 +611,7 @@ export default function SocialPanelV2() {
         )
       : []
 
-  const actionTitle = selectedAction ? getSocialActionPresentation(selectedAction).title : null
-  const executeCopy = !actionTitle
-    ? 'Execute'
-    : targetMode === 'multi'
-      ? `${actionTitle} · ${selectedTargetCount} selected`
-      : targetMode === 'none'
-        ? actionTitle
-        : effectivePrimaryTargetId
-          ? `${actionTitle} · ${
-              game.players.find((player) => player.id === effectivePrimaryTargetId)?.name ??
-              'target'
-            }`
-          : 'Select a target'
+  const executeCopy = 'Execute'
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -639,24 +629,44 @@ export default function SocialPanelV2() {
             <span className="sp2-energy-chip" aria-live="polite" aria-label={`Energy: ${energy}`}>
               ⚡ {energy}
             </span>
-            {dramaMode && (
-              <>
-                <span
-                  className="sp2-resource-chip sp2-resource-chip--influence"
-                  aria-live="polite"
-                  aria-label={`Influence: ${influence}`}
-                >
-                  🤝 {influence}
-                </span>
-                <span
-                  className="sp2-resource-chip sp2-resource-chip--info"
-                  aria-live="polite"
-                  aria-label={`Info: ${info}`}
-                >
-                  💡 {info}
-                </span>
-              </>
-            )}
+            <button
+              type="button"
+              className={`sp2-resource-chip sp2-resource-chip--influence${
+                dramaMode ? '' : ' sp2-resource-chip--locked'
+              }`}
+              aria-live="polite"
+              aria-label={
+                dramaMode
+                  ? `Influence: ${influence}`
+                  : 'Influence is available with Drama Mode. Open store.'
+              }
+              title={dramaMode ? 'Influence' : 'Unlock Influence with Drama Mode'}
+              onClick={() => {
+                if (!dramaMode) navigate('/store')
+              }}
+            >
+              🤝 {influence}
+              {!dramaMode && ' 🔒'}
+            </button>
+            <button
+              type="button"
+              className={`sp2-resource-chip sp2-resource-chip--info${
+                dramaMode ? '' : ' sp2-resource-chip--locked'
+              }`}
+              aria-live="polite"
+              aria-label={
+                dramaMode
+                  ? `Info: ${info}`
+                  : 'Information is available with Drama Mode. Open store.'
+              }
+              title={dramaMode ? 'Information' : 'Unlock Information with Drama Mode'}
+              onClick={() => {
+                if (!dramaMode) navigate('/store')
+              }}
+            >
+              💡 {info}
+              {!dramaMode && ' 🔒'}
+            </button>
           </div>
           <button
             className="sp2-header__close"

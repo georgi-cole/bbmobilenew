@@ -4,6 +4,7 @@ import StoreProductIcon from '../../components/StoreProductModal/StoreProductIco
 import StoreProductModal from '../../components/StoreProductModal/StoreProductModal'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { initializeVip, purchaseStoreItem, restoreVip, selectVip } from '../../store/vipSlice'
+import { setGameUX } from '../../store/settingsSlice'
 import {
   STANDALONE_PRODUCT_KEYS,
   getStoreProductDefinition,
@@ -60,7 +61,10 @@ export default function Store() {
       const result = await dispatch(purchaseStoreItem(productKey))
       if (purchaseStoreItem.fulfilled.match(result)) {
         const definition = getStoreProductDefinition(productKey)
-        setNotice(`${definition.title} is now permanently unlocked.`)
+        if (productKey === 'dramaMode' || productKey === 'vip') {
+          dispatch(setGameUX({ dramaMode: true }))
+        }
+        setNotice(`${definition.title} is now permanently unlocked and active.`)
       } else if (purchaseStoreItem.rejected.match(result)) {
         setModalError(result.payload ?? 'The purchase could not be completed.')
       }
