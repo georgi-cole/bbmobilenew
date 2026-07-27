@@ -121,7 +121,7 @@ let prevAds = store.getState().ads
 let prevVip = store.getState().vip
 // Persist active mode runs whenever the game slice changes.
 let prevGame = store.getState().game
-let prevFinale = store.getState().finalle
+let prevFinale = store.getState().finale
 let prevSocial = store.getState().social
 let prevPublicOpinion = store.getState().publicOpinion
 let prevChallenge = store.getState().challenge
