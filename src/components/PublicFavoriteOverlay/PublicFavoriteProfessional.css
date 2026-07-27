@@ -18,9 +18,7 @@
   height: 100dvh;
   max-height: 100dvh;
   gap: clamp(7px, 1.2vh, 12px);
-  padding:
-    max(10px, calc(env(safe-area-inset-top, 0px) + 7px))
-    clamp(8px, 2.4vw, 16px)
+  padding: max(10px, calc(env(safe-area-inset-top, 0px) + 7px)) clamp(8px, 2.4vw, 16px)
     max(10px, calc(env(safe-area-inset-bottom, 0px) + 7px));
 }
 
@@ -94,8 +92,7 @@
   padding: clamp(7px, 1.4vw, 11px);
   border-radius: 1.15rem;
   background:
-    linear-gradient(145deg, rgba(8, 6, 18, 0.84), rgba(5, 4, 12, 0.94)),
-    rgba(5, 4, 12, 0.88);
+    linear-gradient(145deg, rgba(8, 6, 18, 0.84), rgba(5, 4, 12, 0.94)), rgba(5, 4, 12, 0.88);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }

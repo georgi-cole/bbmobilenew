@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { buildPublicFavoriteForecast } from '../../src/components/PublicFavoriteOverlay/publicFavoriteOutcome';
-import type { PublicOpinionState } from '../../src/publicOpinion/types';
-import type { Player } from '../../src/types';
+import { describe, expect, it } from 'vitest'
+import { buildPublicFavoriteForecast } from '../../src/components/PublicFavoriteOverlay/publicFavoriteOutcome'
+import type { PublicOpinionState } from '../../src/publicOpinion/types'
+import type { Player } from '../../src/types'
 
 const CANDIDATES: Player[] = [
   {
@@ -25,7 +25,7 @@ const CANDIDATES: Player[] = [
     status: 'evicted',
     stats: { lohWins: 0, posWins: 1, timesNominated: 4 },
   },
-];
+]
 
 const PUBLIC_OPINION: PublicOpinionState = {
   profiles: {
@@ -69,40 +69,34 @@ const PUBLIC_OPINION: PublicOpinionState = {
   lastUpdatedWeek: 8,
   feedPostsThisDay: 1,
   currentFeedDay: 8,
-};
+}
 
 describe('buildPublicFavoriteForecast', () => {
   it('makes the season-long public favorite authoritative across seeds', () => {
     for (const seed of [1, 2, 3, 999, 0xffffffff]) {
-      const forecast = buildPublicFavoriteForecast(CANDIDATES, PUBLIC_OPINION, seed);
-      expect(forecast.winnerId).toBe('favorite');
-      expect(forecast.targetPercentages.favorite).toBeGreaterThan(
-        forecast.targetPercentages.middle,
-      );
-      expect(forecast.targetPercentages.middle).toBeGreaterThan(
-        forecast.targetPercentages.low,
-      );
+      const forecast = buildPublicFavoriteForecast(CANDIDATES, PUBLIC_OPINION, seed)
+      expect(forecast.winnerId).toBe('favorite')
+      expect(forecast.targetPercentages.favorite).toBeGreaterThan(forecast.targetPercentages.middle)
+      expect(forecast.targetPercentages.middle).toBeGreaterThan(forecast.targetPercentages.low)
     }
-  });
+  })
 
   it('is deterministic and produces a complete 100-percent board', () => {
-    const first = buildPublicFavoriteForecast(CANDIDATES, PUBLIC_OPINION, 41);
-    const second = buildPublicFavoriteForecast(CANDIDATES, PUBLIC_OPINION, 41);
-    expect(second).toEqual(first);
-    expect(
-      Object.values(first.targetPercentages).reduce((sum, value) => sum + value, 0),
-    ).toBe(100);
-  });
+    const first = buildPublicFavoriteForecast(CANDIDATES, PUBLIC_OPINION, 41)
+    const second = buildPublicFavoriteForecast(CANDIDATES, PUBLIC_OPINION, 41)
+    expect(second).toEqual(first)
+    expect(Object.values(first.targetPercentages).reduce((sum, value) => sum + value, 0)).toBe(100)
+  })
 
   it('handles empty and single-candidate pools explicitly', () => {
     expect(buildPublicFavoriteForecast([], PUBLIC_OPINION, 1)).toEqual({
       entries: [],
       targetPercentages: {},
       winnerId: null,
-    });
+    })
 
-    const single = buildPublicFavoriteForecast([CANDIDATES[0]], PUBLIC_OPINION, 1);
-    expect(single.winnerId).toBe('low');
-    expect(single.targetPercentages).toEqual({ low: 100 });
-  });
-});
+    const single = buildPublicFavoriteForecast([CANDIDATES[0]], PUBLIC_OPINION, 1)
+    expect(single.winnerId).toBe('low')
+    expect(single.targetPercentages).toEqual({ low: 100 })
+  })
+})
