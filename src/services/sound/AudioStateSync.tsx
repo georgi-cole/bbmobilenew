@@ -5,9 +5,11 @@ import { SoundManager } from './SoundManager';
 import { resolveDesiredMusic } from './resolveDesiredMusic';
 import type { MusicTrack } from './musicTracks';
 import {
+  getMinigameMusicConfig,
   getMinigameMusicConfigByTrack,
   MINIGAME_MUSIC_CONFIGS,
 } from './minigameMusicConfig';
+import { observeHostedMinigamePlaying } from './minigameHostPhaseObserver';
 
 const VOLUME_RAMP_STEP_MS = 50;
 
@@ -29,8 +31,10 @@ export default function AudioStateSync() {
     shallowEqual,
   );
   const [hash, setHash] = useState(() => window.location.hash);
+  const [hostedMinigamePlaying, setHostedMinigamePlaying] = useState(false);
   const previousDesiredRef = useRef<MusicTrack>('none');
   const latestDesiredRef = useRef<MusicTrack>('none');
+  const heldConfiguredTrackRef = useRef<MusicTrack | null>(null);
   const fadeInTimerRef = useRef<number | null>(null);
   const postGameTimerRef = useRef<number | null>(null);
   const transitionTokenRef = useRef(0);
@@ -47,7 +51,14 @@ export default function AudioStateSync() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const desiredMusic = useMemo(
+  useEffect(() => {
+    const configuredGame = getMinigameMusicConfig(musicState.pendingChallengeGameKey);
+    if (!configuredGame) return undefined;
+
+    return observeHostedMinigamePlaying(setHostedMinigamePlaying);
+  }, [musicState.pendingChallengeGameKey]);
+
+  const resolvedMusic = useMemo(
     () => {
       if (!musicState.musicOn) return 'none';
 
@@ -85,11 +96,38 @@ export default function AudioStateSync() {
     [hash, musicState],
   );
 
+  const desiredMusic = useMemo<MusicTrack>(() => {
+    if (musicState.musicOn && hostedMinigamePlaying) {
+      const configuredTrack = getMinigameMusicConfig(
+        musicState.pendingChallengeGameKey,
+      )?.track;
+      if (configuredTrack) return configuredTrack;
+    }
+
+    // For configured challenges, resolvedMusic is deliberately `none` before
+    // gameplay. This prevents the generic competition track from sharing the
+    // channel with, or bleeding into, the configured minigame track.
+    return resolvedMusic;
+  }, [
+    hostedMinigamePlaying,
+    musicState.musicOn,
+    musicState.pendingChallengeGameKey,
+    resolvedMusic,
+  ]);
+
   useEffect(() => {
     latestDesiredRef.current = desiredMusic;
+    const enteringConfig = getMinigameMusicConfigByTrack(desiredMusic);
+
+    // Once a configured track begins its winner-badge hold/fade, later resolver
+    // updates are only remembered as the eventual fallback. They must not stop
+    // the hold, cancel the fade, or start generic competition music underneath.
+    if (musicState.musicOn && heldConfiguredTrackRef.current && !enteringConfig) {
+      return;
+    }
+
     const previousDesired = previousDesiredRef.current;
     previousDesiredRef.current = desiredMusic;
-    const enteringConfig = getMinigameMusicConfigByTrack(desiredMusic);
     const leavingConfig = getMinigameMusicConfigByTrack(previousDesired);
     const transitionToken = ++transitionTokenRef.current;
 
@@ -110,6 +148,7 @@ export default function AudioStateSync() {
 
     if (!musicState.musicOn) {
       clearPostGameTimer();
+      heldConfiguredTrackRef.current = null;
       SoundManager.setMusicVolume(musicState.musicVolume);
       void SoundManager.setDesiredMusic('none', `resolver:${hash || '#/'}`);
       return;
@@ -117,6 +156,7 @@ export default function AudioStateSync() {
 
     if (enteringConfig) {
       clearPostGameTimer();
+      heldConfiguredTrackRef.current = null;
 
       if (previousDesired === desiredMusic) {
         SoundManager.setMusicVolume(musicState.musicVolume);
@@ -139,13 +179,16 @@ export default function AudioStateSync() {
 
     if (leavingConfig) {
       clearPostGameTimer();
+      heldConfiguredTrackRef.current = previousDesired;
       postGameTimerRef.current = window.setTimeout(() => {
         postGameTimerRef.current = null;
         void SoundManager.fadeOutMusic(leavingConfig.fadeOutMs).then(() => {
-          SoundManager.setMusicVolume(musicState.musicVolume);
           if (transitionTokenRef.current !== transitionToken) return;
+          heldConfiguredTrackRef.current = null;
+          SoundManager.setMusicVolume(musicState.musicVolume);
           const nextTrack = latestDesiredRef.current;
           if (getMinigameMusicConfigByTrack(nextTrack)) return;
+          previousDesiredRef.current = nextTrack;
           void SoundManager.setDesiredMusic(nextTrack, `minigame-config:complete:${previousDesired}`);
         });
       }, leavingConfig.postGameHoldMs);
@@ -160,6 +203,7 @@ export default function AudioStateSync() {
   useEffect(
     () => () => {
       transitionTokenRef.current += 1;
+      heldConfiguredTrackRef.current = null;
       if (fadeInTimerRef.current != null) window.clearInterval(fadeInTimerRef.current);
       if (postGameTimerRef.current != null) window.clearTimeout(postGameTimerRef.current);
     },

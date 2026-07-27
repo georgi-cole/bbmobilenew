@@ -33,13 +33,19 @@ function makeState(gameKey: string, phase = 'playing'): MusicResolverState {
 }
 
 describe('centralized minigame music configuration', () => {
-  it.each(GROUP_GAME_KEYS)('routes %s to challenge group 1 music while playing', (gameKey) => {
-    expect(resolveDesiredMusic(makeState(gameKey), '#/game')).toBe('challenge_group_1')
-  })
+  it.each(GROUP_GAME_KEYS)(
+    'routes %s exclusively to challenge group 1 while playing',
+    (gameKey) => {
+      expect(resolveDesiredMusic(makeState(gameKey), '#/game')).toBe('challenge_group_1')
+    }
+  )
 
-  it('does not route the track before the playing phase', () => {
-    expect(resolveDesiredMusic(makeState('bigSpender', 'countdown'), '#/game')).toBe('competition')
-  })
+  it.each(['rules', 'countdown', 'done'])(
+    'suppresses generic competition music during configured challenge phase %s',
+    (phase) => {
+      expect(resolveDesiredMusic(makeState('bigSpender', phase), '#/game')).toBe('none')
+    }
+  )
 
   it('stores the requested asset and lifecycle timings in one config', () => {
     const config = getMinigameMusicConfig('bigSpender')

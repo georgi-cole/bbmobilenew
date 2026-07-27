@@ -6,11 +6,12 @@
  *  1. MusicScene override (ui.musicScene) — covers finale acts and cinematic scenes.
  *  2. seasonFinale.phase === 'seasonComplete'.
  *  3. `#/game-over` route.
- *  4. Active minigame (challenge.pending.phase === 'playing') — per-game track.
- *  5. Spectator mode active.
- *  6. Social module open.
- *  7. Game phase.
- *  8. Fallback — 'none' (silence).
+ *  4. Configured minigame ownership — silence before gameplay, configured track while playing.
+ *  5. Other active minigames — per-game track.
+ *  6. Spectator mode active.
+ *  7. Social module open.
+ *  8. Game phase.
+ *  9. Fallback — 'none' (silence).
  */
 import type { RootState } from '../../store/store';
 import type { MusicTrack } from './musicTracks';
@@ -58,9 +59,6 @@ function isGameOverHash(hash: string): boolean {
 }
 
 function trackForMinigame(gameKey: string | null | undefined): MusicTrack {
-  const configuredTrack = getMinigameMusicConfig(gameKey)?.track;
-  if (configuredTrack) return configuredTrack;
-
   switch (gameKey) {
     case 'riskWheel':
       return 'risk_wheel';
@@ -88,9 +86,15 @@ export function resolveDesiredMusic(
   if (state.game.seasonFinale?.phase === 'seasonComplete') return 'final_modal';
   if (isGameOverHash(hash)) return 'final_modal';
 
+  const pendingChallenge = state.challenge.pending;
+  const configuredMinigame = getMinigameMusicConfig(pendingChallenge?.game?.key);
+  if (configuredMinigame) {
+    return pendingChallenge?.phase === 'playing' ? configuredMinigame.track : 'none';
+  }
+
   const minigameTrack =
-    state.challenge.pending?.phase === 'playing'
-      ? trackForMinigame(state.challenge.pending.game?.key)
+    pendingChallenge?.phase === 'playing'
+      ? trackForMinigame(pendingChallenge.game?.key)
       : 'none';
   if (minigameTrack !== 'none') return minigameTrack;
 
