@@ -18,7 +18,10 @@ export default function ConfessionalFlowBridge({ children }: Props) {
   useEffect(() => {
     if (!activeDecisionKey || location.pathname === '/diary-room') return undefined
 
-    const openRequiredConfessional = () => {
+    const openRequiredConfessional = (event: Event) => {
+      // This capture listener owns Play while a required decision is pending.
+      // Prevent GameScreen's legacy TV-prompt listener from adding an extra step.
+      event.stopImmediatePropagation()
       navigate('/diary-room', {
         state: {
           requiredConfessional: true,
@@ -28,8 +31,9 @@ export default function ConfessionalFlowBridge({ children }: Props) {
       })
     }
 
-    window.addEventListener('ui:playPressed', openRequiredConfessional)
-    return () => window.removeEventListener('ui:playPressed', openRequiredConfessional)
+    window.addEventListener('ui:playPressed', openRequiredConfessional, { capture: true })
+    return () =>
+      window.removeEventListener('ui:playPressed', openRequiredConfessional, { capture: true })
   }, [activeDecisionKey, location.pathname, navigate])
 
   return children
