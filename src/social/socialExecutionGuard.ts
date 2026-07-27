@@ -1,3 +1,4 @@
+import type { PlayerStatus } from '../types'
 import { evaluateSocialActionEligibility } from './socialActionEligibility'
 import { resolveActionTargetMode, type SocialActionDefinition } from './socialActions'
 import { getEffectiveSocialMode } from './socialMode'
@@ -42,7 +43,12 @@ export function validateSocialExecution(
   const targetMode = resolveActionTargetMode(selection.action, dramaMode)
   const targetIds = targetMode === 'none' ? [] : (selection.targetIds ?? [])
   const players = state.game?.players ?? []
-  const actorStatus = players.find((player) => player.id === selection.actorId)?.status
+  const actorStatus = players.find((player) => player.id === selection.actorId)?.status as
+    | PlayerStatus
+    | undefined
+  const primaryTargetStatus = targetIds.length
+    ? (players.find((player) => player.id === targetIds[0])?.status as PlayerStatus | undefined)
+    : null
 
   return evaluateSocialActionEligibility({
     action: selection.action,
@@ -52,10 +58,7 @@ export function validateSocialExecution(
     phase: state.game?.phase,
     players,
     actorStatus,
-    primaryTargetStatus:
-      targetIds.length > 0
-        ? (players.find((player) => player.id === targetIds[0])?.status as never)
-        : null,
+    primaryTargetStatus,
     relationships: state.social?.relationships,
     dramaNetwork: state.social?.dramaNetwork,
     dramaMode,
