@@ -27,7 +27,7 @@ function formatShare(value: number): string {
   return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`
 }
 
-describe('PublicSaveReveal in Normal Mode', () => {
+describe('PublicSaveReveal', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     document.body.classList.remove('no-animations')
@@ -36,6 +36,7 @@ describe('PublicSaveReveal in Normal Mode', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
     document.body.classList.remove('no-animations')
   })
 
@@ -85,7 +86,7 @@ describe('PublicSaveReveal in Normal Mode', () => {
     expect(screen.queryByText('39.9%')).toBeNull()
   })
 
-  it('preserves the current Normal Mode timing and saved-player treatment', () => {
+  it('preserves the original timing and saved-player treatment', () => {
     const onDone = vi.fn()
     render(
       <PublicSaveReveal
@@ -127,5 +128,48 @@ describe('PublicSaveReveal in Normal Mode', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(Object.values(approvals).reduce((sum, value) => sum + value, 0)).toBe(100)
     expect(approvals.p3).toBeGreaterThan(approvals.p2)
+  })
+
+  it('uses the original Normal Mode visual when Drama Mode is enabled', () => {
+    const currentState = store.getState()
+    vi.spyOn(store, 'getState').mockReturnValue({
+      ...currentState,
+      game: {
+        ...currentState.game,
+        publicModeEnabled: true,
+      },
+      settings: {
+        ...currentState.settings,
+        gameUX: {
+          ...currentState.settings.gameUX,
+          dramaMode: true,
+        },
+      },
+    })
+
+    render(
+      <PublicSaveReveal
+        nominees={nominees}
+        approvals={{ ...rawApprovals }}
+        savedId="p3"
+        onDone={vi.fn()}
+      />
+    )
+
+    expect(document.querySelector('.psr')).toBeTruthy()
+    expect(document.querySelector('.avr')).toBeNull()
+    expect(screen.getAllByText('?? %')).toHaveLength(3)
+
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+
+    expect(screen.queryByText('?? %')).toBeNull()
+    expect(
+      screen
+        .getAllByText(/%$/)
+        .map((element) => element.textContent)
+        .filter(Boolean)
+    ).toHaveLength(3)
   })
 })
