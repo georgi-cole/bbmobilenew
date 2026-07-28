@@ -28,26 +28,23 @@ jobs:
           from pathlib import Path
           path = Path('e2e/playwright/finale.spec.ts')
           source = path.read_text()
-          old = """    await expect(recap).toBeVisible({ timeout: 10_000 })
-          await recap
-            .getByRole('button', { name: 'Skip recap' })
-          """
-          new = """    await expect(recap).toBeVisible({ timeout: 10_000 })
-          await expect(recap.getByText('The housemates who made the season.')).toBeVisible({
-            timeout: 15_000,
-          })
-          await expect(recap.locator('.src-broadcast-photoshoot')).toBeVisible()
-          await expect(recap.locator('.src-cast-grid')).toHaveCount(0)
-          await page.screenshot({
-            path: 'test-results/season-recap-photoshoot-mobile.png',
-            fullPage: false,
-          })
-          await recap
-            .getByRole('button', { name: 'Skip recap' })
-          """
-          if old not in source:
+          marker = "    await expect(recap).toBeVisible({ timeout: 10_000 })\n"
+          insertion = (
+              "    await expect(recap.getByText('The housemates who made the season.')).toBeVisible({\n"
+              "      timeout: 15_000,\n"
+              "    })\n"
+              "    await expect(recap.locator('.src-broadcast-photoshoot')).toBeVisible()\n"
+              "    await expect(recap.locator('.src-cast-grid')).toHaveCount(0)\n"
+              "    await page.screenshot({\n"
+              "      path: 'test-results/season-recap-photoshoot-mobile.png',\n"
+              "      fullPage: false,\n"
+              "    })\n"
+          )
+          if marker not in source:
               raise SystemExit('Finale recap insertion point was not found')
-          path.write_text(source.replace(old, new))
+          if insertion not in source:
+              source = source.replace(marker, marker + insertion, 1)
+          path.write_text(source)
       - run: npx prettier --write e2e/playwright/finale.spec.ts
       - name: Commit journey and remove temporary workflow
         shell: bash
