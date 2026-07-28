@@ -35,13 +35,76 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Repair nested source-template escapes
+      - name: Repair and harden one-time migration source
         shell: python
         run: |
           from pathlib import Path
+
           target = Path('scripts/migrate-audio-assets.mjs')
           text = target.read_text()
           text = text.replace('\\\\`', '\\`').replace('\\\\${', '\\${')
+
+          needle = """    }
+          }
+
+          for (const [alias, target] of Object.entries(filenameAliases)) {
+          """
+          replacement = """    }
+
+              if (catalogForFile.length === 0 && registryForFile.length === 0) {
+                const destinationStem = slugify(
+                  path.basename(newRelative, path.extname(newRelative))
+                )
+                if (isMusic) {
+                  let trackId = destinationStem
+                  let suffix = 2
+                  while (
+                    bindings.some(
+                      (binding) => binding.trackId === trackId || binding.key === `music:${trackId}`
+                    )
+                  ) {
+                    trackId = `${destinationStem}_${suffix}`
+                    suffix += 1
+                  }
+                  bindings.push({
+                    path: newRelative,
+                    key: `music:${trackId}`,
+                    category: 'music',
+                    trackId,
+                    displayName: titleFromSlug(trackId),
+                    fallbackTrack: trackId === 'competition' ? 'none' : 'competition',
+                    tags: ['ambient'],
+                    preload: false,
+                    volume: 0.5,
+                    loop: true,
+                  })
+                } else {
+                  const prefixed = /^(ui|tv|player|minigame)_(.+)$/.exec(destinationStem)
+                  const category = prefixed?.[1] ?? 'minigame'
+                  const rest = prefixed?.[2] ?? destinationStem
+                  let key = `${category}:${rest}`
+                  let suffix = 2
+                  while (bindings.some((binding) => binding.key === key)) {
+                    key = `${category}:${rest}_${suffix}`
+                    suffix += 1
+                  }
+                  bindings.push({
+                    path: newRelative,
+                    key,
+                    category,
+                    preload: false,
+                    volume: 1,
+                    loop: false,
+                  })
+                }
+              }
+            }
+
+            for (const [alias, target] of Object.entries(filenameAliases)) {
+          """
+          if needle not in text:
+            raise SystemExit('Could not locate unbound-audio insertion marker')
+          text = text.replace(needle, replacement, 1)
           target.write_text(text)
           Path('AUDIO_MIGRATION_DIAGNOSTIC.txt').unlink(missing_ok=True)
 
