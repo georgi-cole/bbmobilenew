@@ -1,0 +1,128 @@
+name: Temporary fix Public Favorite empty feature
+
+on:
+  push:
+    branches:
+      - agent/fix-public-favorite-finale
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-public-favorite-finale
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Guarantee a visible feature stage and simplify intro controls
+        shell: python
+        run: |
+          from pathlib import Path
+
+          component_path = Path('src/components/PublicFavoriteOverlay/PublicFavoriteOverlay.tsx')
+          component = component_path.read_text()
+
+          anchor = '  const featuredSpotlight = forcedSpotlight ?? naturalSpotlight\n'
+          replacement = '''  const featuredSpotlight = forcedSpotlight ?? naturalSpotlight
+          const fallbackFeaturePlayer = orderedFinalists[0] ?? activePlayers[0] ?? null
+          const featurePlayer = featuredSpotlight?.item.player ?? fallbackFeaturePlayer
+          const featureFact = featuredSpotlight?.fact ?? (
+            featurePlayer
+              ? `${featurePlayer.name} remains in the running as the audience closes in on its final choice.`
+              : ''
+          )
+          '''
+          if anchor not in component:
+              raise SystemExit('Featured spotlight anchor was not found')
+          component = component.replace(anchor, replacement, 1)
+
+          button_start = component.find('            <button\n              ref={fastForwardButtonRef}')
+          if button_start < 0:
+              raise SystemExit('Fast-forward button was not found')
+          button_end_marker = '            </button>'
+          button_end = component.find(button_end_marker, button_start)
+          if button_end < 0:
+              raise SystemExit('Fast-forward button end was not found')
+          button_end += len(button_end_marker)
+          button = component[button_start:button_end]
+          wrapped_button = "            {phase !== 'intro' && (\n" + button.replace('            ', '              ', 1) + "\n            )}"
+          component = component[:button_start] + wrapped_button + component[button_end:]
+
+          component = component.replace(
+              "          {phase === 'feature' && featuredSpotlight && (\n",
+              "          {phase === 'feature' && featurePlayer && (\n",
+              1,
+          )
+          component = component.replace(
+              "              key={`feature-${featuredSpotlight.item.player.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}\n",
+              "              key={`feature-${featurePlayer.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}\n",
+              1,
+          )
+          component = component.replace(
+              "              player={featuredSpotlight.item.player}\n              fact={featuredSpotlight.fact}\n",
+              "              player={featurePlayer}\n              fact={featureFact}\n",
+              1,
+          )
+          component = component.replace(
+              "              spotlightActive={viewerSpotlight?.playerId === featuredSpotlight.item.player.id}\n",
+              "              spotlightActive={viewerSpotlight?.playerId === featurePlayer.id}\n",
+              1,
+          )
+          component = component.replace(
+              "              spotlightAvailable={canActivateSpotlight}\n",
+              "              spotlightAvailable={canActivateSpotlight && featuredSpotlight !== null}\n",
+              1,
+          )
+          component_path.write_text(component)
+
+          finale_path = Path('e2e/playwright/finale.spec.ts')
+          finale = finale_path.read_text()
+          old_capture = '''    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({
+            timeout: 5_000,
+          })
+          await page.screenshot({
+            path: 'test-results/public-favorite-feature-mobile.png',
+            fullPage: false,
+          })
+          '''
+          new_capture = '''    const favoriteFeature = favoriteVote.locator('.pf-cinematic__feature')
+          await expect(favoriteFeature).toBeVisible({ timeout: 5_000 })
+          await expect(favoriteFeature.locator('.pf-cinematic__feature-copy h2')).toBeVisible()
+          await expect
+            .poll(() =>
+              favoriteFeature
+                .locator('.pf-cinematic__feature-cutout')
+                .evaluate((image) => (image as HTMLImageElement).naturalWidth)
+            )
+            .toBeGreaterThan(0)
+          await page.waitForTimeout(750)
+          await page.screenshot({
+            path: 'test-results/public-favorite-feature-mobile.png',
+            fullPage: false,
+          })
+          '''
+          if old_capture not in finale:
+              raise SystemExit('Current Public Favorite capture block was not found')
+          finale_path.write_text(finale.replace(old_capture, new_capture, 1))
+      - run: >-
+          npx prettier --write
+          src/components/PublicFavoriteOverlay/PublicFavoriteOverlay.tsx
+          e2e/playwright/finale.spec.ts
+      - name: Commit fix and remove temporary workflows
+        shell: bash
+        run: |
+          rm -f .github/workflows/tmp-fix-public-favorite-empty-feature.yml
+          rm -f .github/workflows/tmp-polish-public-favorite-capture.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Fix empty Public Favorite feature stage"
+          git push origin HEAD:agent/fix-public-favorite-finale
