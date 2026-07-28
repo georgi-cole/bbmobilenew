@@ -23,13 +23,25 @@ jobs:
       - run: npm ci
       - name: Apply focused follow-up
         run: node scripts/tmp-social-liveliness-followup.mjs
-      - name: Format changed files
+      - name: Format complete PR diff
         shell: bash
         run: |
-          mapfile -t files < <(git diff --name-only -- '*.ts' '*.tsx' '*.css' '*.json')
+          git fetch origin main --depth=1
+          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx' '*.css' '*.json')
           if (( ${#files[@]} > 0 )); then
             npx prettier --write "${files[@]}"
           fi
+      - name: Run focused Social regression tests
+        run: >-
+          npx vitest run
+          src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx
+          src/components/HousePulse/__tests__/HousePulse.test.tsx
+          src/social/__tests__/socialLivelinessRestoration.test.ts
+          src/social/__tests__/socialModuleAvailability.test.ts
+          src/social/__tests__/socialPremiumHardening.test.ts
+          tests/social/socialCommitments.unit.test.ts
+          tests/social/incomingInteractionScheduler.unit.test.ts
+          tests/unit/publicOpinion/publicOpinionMiddleware.test.ts
       - name: Capture TypeScript diagnostics
         shell: bash
         run: |
