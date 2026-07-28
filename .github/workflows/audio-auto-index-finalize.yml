@@ -171,7 +171,8 @@ jobs:
             tests/unit/sound/resolveDesiredMusic.test.ts \
             tests/unit/sound/minigameMusicConfig.test.ts
 
-      - name: Ensure the migration adds no full-suite failures above current main
+      - name: Compare full-suite failures with current main
+        id: full_suite
         shell: bash
         run: |
           set -euo pipefail
@@ -205,11 +206,31 @@ jobs:
           if [ -s AUDIO_TEST_DELTA.txt ]; then
             echo 'The audio migration introduced additional full-suite failures:'
             cat AUDIO_TEST_DELTA.txt
-            exit 1
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
+          else
+            rm AUDIO_TEST_DELTA.txt
+            echo 'No additional full-suite failures above the recorded current-main baseline.'
+            echo 'failed=false' >> "$GITHUB_OUTPUT"
           fi
+          exit 0
 
-          rm AUDIO_TEST_DELTA.txt
-          echo 'No additional full-suite failures above the recorded current-main baseline.'
+      - name: Commit additional full-suite failure delta
+        if: steps.full_suite.outputs.failed == 'true'
+        shell: bash
+        run: |
+          cp AUDIO_TEST_DELTA.txt /tmp/AUDIO_TEST_DELTA.txt
+          git reset --hard HEAD
+          git clean -fd
+          cp /tmp/AUDIO_TEST_DELTA.txt AUDIO_TEST_DELTA.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AUDIO_TEST_DELTA.txt
+          git commit -m 'Capture audio migration full-suite delta'
+          git push origin HEAD:refs/heads/agent/audio-auto-index-migration
+
+      - name: Stop after additional full-suite failures
+        if: steps.full_suite.outputs.failed == 'true'
+        run: exit 1
 
       - name: Web production build
         run: npm run build
