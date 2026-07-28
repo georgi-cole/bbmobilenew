@@ -47,7 +47,12 @@ edit('src/screens/PublicMeter/PublicMeter.tsx', (original) => {
   source = replaceIfPresent(
     source,
     `Approval now changes through recorded competitions, nominations, saves, evictions,\n                public requests and visible social play — not hidden daily random drift.`,
-    `Only broadcast-visible events and confirmed public moments move this meter; quiet time\n                alone does not change it.`
+    `Routine phase changes do not create hidden swings; every change is tied to a recorded\n                public reaction below.`
+  )
+  source = replaceIfPresent(
+    source,
+    `Only broadcast-visible events and confirmed public moments move this meter; quiet time\n                alone does not change it.`,
+    `Routine phase changes do not create hidden swings; every change is tied to a recorded\n                public reaction below.`
   )
   source = replaceIfPresent(
     source,
@@ -56,6 +61,22 @@ edit('src/screens/PublicMeter/PublicMeter.tsx', (original) => {
   )
   return source
 })
+
+edit('src/social/socialStoryStream.ts', (source) =>
+  replaceIfPresent(
+    source,
+    `      (entry.week ?? currentWeek) >= Math.max(1, currentWeek - 1)`,
+    `      (entry.week ?? currentWeek) === currentWeek`
+  )
+)
+
+edit('src/components/HousePulse/HousePulse.tsx', (source) =>
+  replaceIfPresent(
+    source,
+    `{beat.severity === 'major' ? 'House-wide' : 'Observed'}`,
+    `{beat.severity === 'major' ? 'Major shift' : 'Observed'}`
+  )
+)
 
 edit('server/live-config.example.json', (source) =>
   source.replace(`"hoh_congratulations": "readOnly"`, `"hoh_congratulations": "optional"`)
