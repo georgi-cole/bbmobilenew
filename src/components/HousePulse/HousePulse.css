@@ -214,3 +214,48 @@
     max-height: 90vh;
   }
 }
+
+/* Causal story stream */
+.house-pulse__card--bond {
+  border-left-color: #ff7ab6;
+}
+.house-pulse__card--strategy {
+  border-left-color: #7dd3fc;
+}
+.house-pulse__card--conflict,
+.house-pulse__card--public {
+  border-left-color: #fb7185;
+}
+.house-pulse__card--repair {
+  border-left-color: #6ee7b7;
+}
+.house-pulse__card--quiet {
+  opacity: 0.9;
+}
+.house-pulse__card--major {
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.2), rgba(255, 255, 255, 0.045));
+}
+
+@media (max-width: 560px) {
+  .house-pulse__sheet {
+    max-height: 88dvh;
+  }
+  .house-pulse__header {
+    padding: 14px 14px 10px;
+  }
+  .house-pulse__header h2 {
+    font-size: 21px;
+  }
+  .house-pulse__stats,
+  .house-pulse__tabs {
+    padding-inline: 14px;
+  }
+  .house-pulse__content {
+    padding: 10px 12px 20px;
+    gap: 8px;
+  }
+  .house-pulse__card {
+    padding: 10px 11px;
+    border-radius: 11px;
+  }
+}

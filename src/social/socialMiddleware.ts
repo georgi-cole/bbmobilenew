@@ -355,6 +355,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         })
       )
       if (
+        entry.source !== 'manual' &&
         entry.outcome === 'success' &&
         (entry.actionId === 'expose_secret' || entry.actionId === 'public_callout')
       ) {

@@ -14,10 +14,12 @@ import {
   selectIsWaitingForInput,
   selectConfessionalAlertCount,
   selectHumanCanUseSocialModules,
+  selectHumanCanUseIncomingSocialModule,
 } from '../../store/selectors'
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import {
   getBlockedSocialModuleAnnouncementMessage,
+  getIncomingSocialModuleAvailability,
   getSocialModuleAvailability,
   logBlockedSocialModuleOpen,
   type SocialModuleAvailability,
@@ -67,6 +69,7 @@ export default function FloatingActionBar({
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount)
   const confessionalAlertCount = useAppSelector(selectConfessionalAlertCount)
   const canUseSocialModules = useAppSelector(selectHumanCanUseSocialModules)
+  const canUseIncomingSocialModule = useAppSelector(selectHumanCanUseIncomingSocialModule)
   const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
@@ -103,7 +106,12 @@ export default function FloatingActionBar({
     [directions, humanPlayer]
   )
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game])
+  const incomingSocialModuleAvailability = useMemo(
+    () => getIncomingSocialModuleAvailability(game),
+    [game]
+  )
   const socialModulesUnavailable = !canUseSocialModules
+  const incomingSocialModuleUnavailable = !canUseIncomingSocialModule
   const survivorDay = getSurvivorCurrentDay(game)
   const bestSurvivorRecord = useMemo(
     () =>
@@ -217,11 +225,11 @@ export default function FloatingActionBar({
       )
       if (isSurvivorMode) {
         showSurvivorBlockedMessage(
-          getBlockedSocialModuleAnnouncementMessage(socialModuleAvailability)
+          getBlockedSocialModuleAnnouncementMessage(incomingSocialModuleAvailability)
         )
         return
       }
-      onSocialModuleBlocked?.(socialModuleAvailability)
+      onSocialModuleBlocked?.(incomingSocialModuleAvailability)
       return
     }
     dispatch(openSocialPanel())
@@ -235,10 +243,10 @@ export default function FloatingActionBar({
   ])
 
   const handleIncomingRequestsClick = useCallback(() => {
-    if (!canUseSocialModules) {
+    if (!canUseIncomingSocialModule) {
       logBlockedSocialModuleOpen(
         'Incoming social module',
-        socialModuleAvailability,
+        incomingSocialModuleAvailability,
         'FloatingActionBar incoming requests button'
       )
       if (isSurvivorMode) {
@@ -252,12 +260,12 @@ export default function FloatingActionBar({
     }
     dispatch(openIncomingInbox())
   }, [
-    canUseSocialModules,
+    canUseIncomingSocialModule,
     dispatch,
+    incomingSocialModuleAvailability,
     isSurvivorMode,
     onSocialModuleBlocked,
     showSurvivorBlockedMessage,
-    socialModuleAvailability,
   ])
 
   const dispatchPlayPressedEvent = useCallback(() => {
@@ -422,12 +430,12 @@ export default function FloatingActionBar({
         disabled={survivorTerminalActive}
         primaryDisabled={primaryDisabled}
         socialDisabled={socialModulesUnavailable}
-        incomingRequestsDisabled={socialModulesUnavailable}
+        incomingRequestsDisabled={incomingSocialModuleUnavailable}
         publicMeterDisabled={game.publicModeEnabled !== true}
         chatBadgeCount={!socialModulesUnavailable && humanEnergy !== null ? humanEnergy : undefined}
         chatFlash={!socialModulesUnavailable && isFlashing}
         incomingRequestsBadgeCount={
-          !socialModulesUnavailable && pendingCount > 0 ? pendingCount : undefined
+          !incomingSocialModuleUnavailable && pendingCount > 0 ? pendingCount : undefined
         }
         publicMeterBadgeCount={
           game.publicModeEnabled === true && publicRequestCount > 0 ? publicRequestCount : undefined

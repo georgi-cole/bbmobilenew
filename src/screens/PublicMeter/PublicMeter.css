@@ -509,3 +509,43 @@
     align-items: flex-start;
   }
 }
+
+/* Explainable approval movement */
+.public-meter__explain {
+  margin-top: 0.65rem;
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.public-meter__explain summary {
+  padding: 0.55rem 0.65rem;
+  color: rgba(226, 232, 240, 0.86);
+  font-size: 0.72rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.public-meter__explain-body {
+  padding: 0 0.65rem 0.65rem;
+  display: grid;
+  gap: 0.45rem;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.public-meter__explain-body p {
+  margin: 0;
+}
+
+.public-meter__cause-list {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.public-meter__cause-list span {
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+}

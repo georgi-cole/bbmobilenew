@@ -17,7 +17,10 @@ import {
   updateRelationship,
   updateSocialMemory,
 } from './socialSlice'
-import { createCommitmentFromInteraction } from './socialCommitments'
+import {
+  createCommitmentFromInteraction,
+  getCommitmentKindForInteraction,
+} from './socialCommitments'
 import { isIncomingInteractionInvalidated } from './incomingInteractionValidity'
 import { buildSocialMemoryDeltaForResponse, buildSocialMemoryEvent } from './socialMemory'
 import { ALLIANCE_TAG, MIN_ALLIANCE_AFFINITY } from './socialAlliance'
@@ -149,48 +152,38 @@ function buildResponseLogText(
 function buildResponseOutcomeText(
   interaction: IncomingInteraction,
   responseType: IncomingInteractionResponseType,
-  responseLabel: string | undefined,
   fromName: string,
   subjectName?: string
-): string {
-  const choiceLead = responseLabel ? `Your choice, “${responseLabel},” was clear. ` : ''
-  if (interaction.type === 'alliance_proposal') {
-    if (responseType === 'accept') {
-      return `${choiceLead}The pact with ${fromName} is active now. Loyalty will be tested by votes, nominations and Safety decisions.`
-    }
-    if (responseType === 'neutral') {
-      return `${choiceLead}${fromName} leaves without a deal and will decide whether your hesitation was caution or rejection.`
-    }
-    return `${choiceLead}${fromName} understands there is no alliance. That closed door may shape their next move.`
+): string | undefined {
+  if (interaction.type === 'alliance_proposal' && responseType === 'accept') {
+    return `The alliance with ${fromName} is now active. Later votes and nominations will show whether it holds.`
   }
+
+  const scenarioKey = interaction.payload?.scenarioKey
+  if (scenarioKey === 'safety_holder_consults_loh') {
+    if (responseType === 'accept') return `${fromName} now knows you want Safety used.`
+    if (responseType === 'decline') return `${fromName} now knows you want Safety held.`
+    if (responseType === 'neutral') return `You left the Safety decision to ${fromName}.`
+    return undefined
+  }
+
+  const commitmentKind = getCommitmentKindForInteraction(interaction)
+  if (commitmentKind && (responseType === 'positive' || responseType === 'accept')) {
+    return `You made a promise to ${fromName}. The related game decision will judge whether you keep it.`
+  }
+
   if (interaction.type === 'gossip' || interaction.type === 'warning') {
-    if (responseType === 'positive') {
-      return `${choiceLead}${fromName} trusts you with the full story: ${interaction.text}`
+    if (responseType === 'positive' || responseType === 'neutral') {
+      return subjectName
+        ? `You now have an unconfirmed lead involving ${subjectName}.`
+        : 'You chose to keep the claim in mind, but it remains unconfirmed.'
     }
-    if (responseType === 'neutral') {
-      return `${choiceLead}${fromName} leaves the information with you: ${interaction.text}`
-    }
-    if (subjectName) {
-      return `${choiceLead}You challenge ${fromName}'s story about ${subjectName}. The claim remains unconfirmed.`
-    }
-    return `${choiceLead}You challenge ${fromName}'s story. The claim remains unconfirmed.`
   }
-  if (interaction.type === 'nomination_plea') {
-    if (responseType === 'positive' || responseType === 'accept') {
-      return `${choiceLead}${fromName} leaves believing you may support them. The game will compare that expectation with what you actually do.`
-    }
-    if (responseType === 'neutral') {
-      return `${choiceLead}${fromName} got a hearing but no promise, so they keep campaigning elsewhere.`
-    }
-    return `${choiceLead}${fromName} knows your support is unlikely and may redirect their campaign against you.`
-  }
-  if (responseType === 'positive' || responseType === 'accept') {
-    return `${choiceLead}${fromName} takes your response as genuine, and the connection improves immediately.`
-  }
-  if (responseType === 'neutral') {
-    return `${choiceLead}${fromName} accepts the measured response but leaves without assuming closeness or loyalty.`
-  }
-  return `${choiceLead}${fromName} takes your response as distance. The social cost has already reached your relationship.`
+
+  // Ordinary warmth, rejection and dismissal already have an immediate visible
+  // relationship effect. Repeating the selected button as a second paragraph
+  // adds noise rather than a new event.
+  return undefined
 }
 
 function canAwardIntel(interaction: IncomingInteraction): boolean {
@@ -216,7 +209,7 @@ function applyIncomingChoiceConsequences({
   responseLabel?: string
   source: ResolutionSource
   resolvedAt: number
-}): { outcomeText: string; logText: string } | null {
+}): { outcomeText?: string; logText: string } | null {
   const humanPlayer = state.game.players.find((player) => player.isUser)
   if (!humanPlayer) return null
 
@@ -229,13 +222,7 @@ function applyIncomingChoiceConsequences({
   const subjectName = subjectId
     ? state.game.players.find((player) => player.id === subjectId)?.name
     : undefined
-  const outcomeText = buildResponseOutcomeText(
-    interaction,
-    responseType,
-    responseLabel,
-    fromName,
-    subjectName
-  )
+  const outcomeText = buildResponseOutcomeText(interaction, responseType, fromName, subjectName)
 
   if (dramaMode) {
     dispatch(
@@ -408,7 +395,7 @@ export function respondToIncomingInteraction({
     )
     dispatch(
       addTvEvent({
-        text: `${result.logText} ${result.outcomeText}`,
+        text: result.outcomeText ?? result.logText,
         type: 'social',
         source: 'manual',
         channels: ['mainLog', 'dr'],
