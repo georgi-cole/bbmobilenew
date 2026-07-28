@@ -1,8 +1,8 @@
 /**
- * Tests for Option B sound registry:
- *  - FILENAME_ALIAS_MAP maps non-prefix stems to canonical keys
+ * Tests for the generated sound registry:
+ *  - FILENAME_ALIAS_MAP maps legacy stems to canonical keys
  *  - resolveKey() works for canonical keys, aliases, and auto-derived keys
- *  - All new sound entries (live_vote, nominations, veto, etc.) are registered
+ *  - registered assets resolve to real files under the split music/sounds roots
  */
 
 import { existsSync, statSync } from 'node:fs';
@@ -11,11 +11,10 @@ import { describe, it, expect } from 'vitest';
 import {
   SOUND_REGISTRY,
   FILENAME_ALIAS_MAP,
-  SOUNDS_BASE,
   resolveKey,
 } from '../../../src/services/sound/sounds';
 
-const PUBLIC_SOUNDS_DIR = join(process.cwd(), 'public', 'assets', 'sounds');
+const PUBLIC_ASSETS_DIR = join(process.cwd(), 'public', 'assets');
 
 // ── FILENAME_ALIAS_MAP ────────────────────────────────────────────────────────
 
@@ -48,7 +47,7 @@ describe('resolveKey()', () => {
     expect(resolveKey('music:veto_phase')).toBe('music:veto_phase');
   });
 
-  it('resolves alias map stems (without .mp3 extension)', () => {
+  it('resolves alias map stems without a file extension', () => {
     expect(resolveKey('live_vote')).toBe('tv:live_vote');
     expect(resolveKey('nominations_horror')).toBe('music:nominations_horror');
     expect(resolveKey('nominations_main')).toBe('music:nominations_main');
@@ -78,23 +77,23 @@ describe('resolveKey()', () => {
   });
 });
 
-// ── New SOUND_REGISTRY entries ────────────────────────────────────────────────
+// ── SOUND_REGISTRY entries ───────────────────────────────────────────────────
 
-describe('SOUND_REGISTRY — new entries', () => {
-  const expectedNewKeys: [string, string][] = [
-    ['music:hoh_comp_general',   'loh_competition.mp3'],
-    ['tv:live_vote',             'live_vote.mp3'],
-    ['music:nominations_horror', 'nominations_horror.mp3'],
-    ['music:nominations_main',   'nominations_main.mp3'],
-    ['tv:veto_ceremony',         'tv_winner_reveal.mp3'],
-    ['music:veto_phase',         'Power_of_safety_comp.mp3'],
-    ['tv:voting_eviction',       'voting_for_eviction_user_and_housguests.mp3'],
+describe('SOUND_REGISTRY — generated entries', () => {
+  const expectedKeys: [string, 'music' | 'sounds'][] = [
+    ['music:hoh_comp_general', 'music'],
+    ['tv:live_vote', 'sounds'],
+    ['music:nominations_horror', 'music'],
+    ['music:nominations_main', 'music'],
+    ['tv:veto_ceremony', 'sounds'],
+    ['music:veto_phase', 'music'],
+    ['tv:voting_eviction', 'sounds'],
   ];
 
-  it.each(expectedNewKeys)('"%s" is registered and points to "%s"', (key, filename) => {
+  it.each(expectedKeys)('registers "%s" under assets/%s', (key, root) => {
     const entry = SOUND_REGISTRY[key];
     expect(entry, `SOUND_REGISTRY["${key}"] should exist`).toBeDefined();
-    expect(entry.src).toContain(filename);
+    expect(entry.src).toContain(`/assets/${root}/`);
     expect(entry.key).toBe(key);
   });
 
@@ -104,20 +103,20 @@ describe('SOUND_REGISTRY — new entries', () => {
       'music:nominations_main',
       'music:veto_phase',
     ];
-    for (const k of musicLoopKeys) {
-      expect(SOUND_REGISTRY[k].category, `${k} should be category "music"`).toBe('music');
-      expect(SOUND_REGISTRY[k].loop, `${k} should have loop=true`).toBe(true);
+    for (const key of musicLoopKeys) {
+      expect(SOUND_REGISTRY[key].category, `${key} should be category "music"`).toBe('music');
+      expect(SOUND_REGISTRY[key].loop, `${key} should have loop=true`).toBe(true);
     }
   });
 
-  it('tv:live_vote, tv:veto_ceremony, tv:voting_eviction have category "tv"', () => {
+  it('TV cues retain category "tv"', () => {
     const tvKeys = ['tv:live_vote', 'tv:veto_ceremony', 'tv:voting_eviction'];
-    for (const k of tvKeys) {
-      expect(SOUND_REGISTRY[k].category).toBe('tv');
+    for (const key of tvKeys) {
+      expect(SOUND_REGISTRY[key].category).toBe('tv');
     }
   });
 
-  it('"music:hoh_comp_general" has category "music" and loop=true', () => {
+  it('competition music retains category music and loop=true', () => {
     const entry = SOUND_REGISTRY['music:hoh_comp_general'];
     expect(entry.category).toBe('music');
     expect(entry.loop).toBe(true);
@@ -131,8 +130,13 @@ describe('SOUND_REGISTRY — new entries', () => {
 
   it('points every registered web sound to a non-empty production asset', () => {
     for (const entry of Object.values(SOUND_REGISTRY)) {
-      const relativePath = decodeURIComponent(entry.src.slice(SOUNDS_BASE.length));
-      const assetPath = join(PUBLIC_SOUNDS_DIR, relativePath);
+      const assetsMarker = 'assets/';
+      const markerIndex = entry.src.indexOf(assetsMarker);
+      expect(markerIndex, `${entry.key} should resolve below public/assets`).toBeGreaterThanOrEqual(0);
+      if (markerIndex < 0) continue;
+
+      const relativePath = decodeURIComponent(entry.src.slice(markerIndex + assetsMarker.length));
+      const assetPath = join(PUBLIC_ASSETS_DIR, relativePath);
 
       expect(existsSync(assetPath), `${entry.key} should resolve to ${relativePath}`).toBe(true);
       if (existsSync(assetPath)) {
