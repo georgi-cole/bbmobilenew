@@ -5,7 +5,6 @@ import publicOpinionReducer, {
   initializeProfiles,
   addDirection,
   setProfileApprovals,
-  setProfileApprovals,
 } from '../../../src/publicOpinion/publicOpinionSlice'
 import { publicOpinionMiddleware } from '../../../src/publicOpinion/publicOpinionMiddleware'
 import type { PublicDirection } from '../../../src/publicOpinion/types'

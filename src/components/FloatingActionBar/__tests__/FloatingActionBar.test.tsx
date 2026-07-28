@@ -184,14 +184,15 @@ describe('FloatingActionBar – social energy badge', () => {
     expect(socialButton.querySelector('.dock-hit-area__badge')).toBeNull()
   })
 
-  it('shows 99+ badge when energy exceeds 99', () => {
+  it('clamps the social energy badge to the supported cap', () => {
     const store = makeStore()
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id
     act(() => {
       store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 150 }))
     })
     renderFAB(store)
-    expect(screen.getByText('99+')).toBeDefined()
+    expect(screen.getByText('30')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Social (30)' })).toBeDefined()
   })
 
   it('ARIA label on social button includes energy value', () => {
