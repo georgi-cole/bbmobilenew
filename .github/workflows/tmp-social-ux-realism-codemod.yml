@@ -27,7 +27,7 @@ jobs:
         run: |
           mkdir -p docs
           set +e
-          node scripts/tmp-social-ux-realism-codemod.mjs > docs/.social-ux-codemod.txt 2>&1
+          python3 scripts/tmp-social-ux-realism-codemod.py > docs/.social-ux-codemod.txt 2>&1
           status=$?
           set -e
           if (( status == 0 )); then
