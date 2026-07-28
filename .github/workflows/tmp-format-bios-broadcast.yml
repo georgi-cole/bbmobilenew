@@ -1,0 +1,41 @@
+name: Temporary format biography broadcast fix
+
+on:
+  push:
+    branches:
+      - agent/fix-bios-broadcast-hero
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-bios-broadcast-hero
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format biography files
+        run: >-
+          npx prettier --write
+          src/components/HousematesBioCinematic/HousematesBioCinematic.css
+          tests/unit/housematesBioResponsiveStyles.test.ts
+      - name: Commit formatted files and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/tmp-format-bios-broadcast.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Format biography broadcast fix"
+          git push origin HEAD:agent/fix-bios-broadcast-hero
