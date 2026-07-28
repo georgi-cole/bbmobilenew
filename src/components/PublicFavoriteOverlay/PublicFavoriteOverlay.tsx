@@ -328,7 +328,10 @@ export default function PublicFavoriteOverlay({
     if (player) {
       setEliminationMoment(player)
       if (eliminationTimeoutRef.current != null) window.clearTimeout(eliminationTimeoutRef.current)
-      eliminationTimeoutRef.current = window.setTimeout(() => setEliminationMoment(null), ELIMINATION_HOLD_MS)
+      eliminationTimeoutRef.current = window.setTimeout(
+        () => setEliminationMoment(null),
+        ELIMINATION_HOLD_MS
+      )
     }
     previousEliminatedCountRef.current = eliminated.length
   }, [candidatesById, eliminated])
@@ -341,14 +344,16 @@ export default function PublicFavoriteOverlay({
     () =>
       [...activePlayers].sort(
         (left, right) =>
-          (forecast.targetPercentages[right.id] ?? 0) -
-          (forecast.targetPercentages[left.id] ?? 0)
+          (forecast.targetPercentages[right.id] ?? 0) - (forecast.targetPercentages[left.id] ?? 0)
       ),
     [activePlayers, forecast.targetPercentages]
   )
   const allSpotlightItems = useMemo(() => buildHouseguestSpotlightItems(candidates), [candidates])
   const activeSpotlightItems = useMemo(
-    () => allSpotlightItems.filter((item) => activePlayers.some((player) => player.id === item.player.id)),
+    () =>
+      allSpotlightItems.filter((item) =>
+        activePlayers.some((player) => player.id === item.player.id)
+      ),
     [activePlayers, allSpotlightItems]
   )
   const naturalSpotlight = useMemo(
@@ -360,7 +365,9 @@ export default function PublicFavoriteOverlay({
     const item = activeSpotlightItems.find(
       (candidate) => candidate.player.id === viewerSpotlight.playerId
     )
-    return item ? { item, fact: item.facts[0] ?? `${item.player.name} remains in the public vote.` } : null
+    return item
+      ? { item, fact: item.facts[0] ?? `${item.player.name} remains in the public vote.` }
+      : null
   }, [activeSpotlightItems, viewerSpotlight])
   const featuredSpotlight = forcedSpotlight ?? naturalSpotlight
 
@@ -381,7 +388,14 @@ export default function PublicFavoriteOverlay({
       getSpotlightRotationDelayMs(naturalSpotlight.fact)
     )
     return () => window.clearTimeout(timer)
-  }, [activePlayers.length, eliminationMoment, introDone, isComplete, naturalSpotlight, viewerSpotlight])
+  }, [
+    activePlayers.length,
+    eliminationMoment,
+    introDone,
+    isComplete,
+    naturalSpotlight,
+    viewerSpotlight,
+  ])
 
   const canActivateSpotlight =
     introDone &&
@@ -422,7 +436,13 @@ export default function PublicFavoriteOverlay({
       requestLockedRef.current = false
       if (mountedRef.current) setSpotlightPending(false)
     }
-  }, [canActivateSpotlight, featuredSpotlight, onAudienceSurgeRequest, spotlightPending, spotlightUsed])
+  }, [
+    canActivateSpotlight,
+    featuredSpotlight,
+    onAudienceSurgeRequest,
+    spotlightPending,
+    spotlightUsed,
+  ])
 
   const handleFastForward = useCallback(() => {
     if (fastForwarding || isComplete || spotlightPending) return
@@ -498,13 +518,21 @@ export default function PublicFavoriteOverlay({
             />
           )}
           {phase === 'elimination' && eliminationMoment && (
-            <EliminationStage key={`elimination-${eliminationMoment.id}`} player={eliminationMoment} />
+            <EliminationStage
+              key={`elimination-${eliminationMoment.id}`}
+              player={eliminationMoment}
+            />
           )}
           {phase === 'final_two' && (
             <FinalTwoStage key="final-two" finalists={orderedFinalists.slice(0, 2)} />
           )}
           {phase === 'final_reveal' && (
-            <FinalReveal key="winner" winner={winner} awardAmount={awardAmount} onClose={handleClose} />
+            <FinalReveal
+              key="winner"
+              winner={winner}
+              awardAmount={awardAmount}
+              onClose={handleClose}
+            />
           )}
         </AnimatePresence>
       </div>

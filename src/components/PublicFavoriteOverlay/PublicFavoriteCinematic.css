@@ -42,7 +42,13 @@
 .pf-cinematic__vignette {
   z-index: 40;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 22%, transparent 72%, rgba(0, 0, 0, 0.62)),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.32),
+      transparent 22%,
+      transparent 72%,
+      rgba(0, 0, 0, 0.62)
+    ),
     radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.5));
   box-shadow: inset 0 0 96px rgba(0, 0, 0, 0.46);
 }
@@ -498,7 +504,11 @@
   aspect-ratio: 1;
   transform: translateX(-50%);
   opacity: 0.22;
-  background: repeating-conic-gradient(from -4deg, rgba(248, 218, 139, 0.23) 0 3deg, transparent 3deg 11deg);
+  background: repeating-conic-gradient(
+    from -4deg,
+    rgba(248, 218, 139, 0.23) 0 3deg,
+    transparent 3deg 11deg
+  );
   mask-image: radial-gradient(circle, #000 0 16%, transparent 65%);
   -webkit-mask-image: radial-gradient(circle, #000 0 16%, transparent 65%);
 }
@@ -520,8 +530,7 @@
   object-position: center bottom;
   transform: translateX(-15vw) scale(1.04);
   transform-origin: center bottom;
-  filter:
-    drop-shadow(0 28px 44px rgba(0, 0, 0, 0.64))
+  filter: drop-shadow(0 28px 44px rgba(0, 0, 0, 0.64))
     drop-shadow(0 0 28px rgba(230, 190, 93, 0.18));
 }
 
