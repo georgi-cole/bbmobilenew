@@ -1,0 +1,328 @@
+/* Final release layer for the Public Favorite broadcast. It deliberately
+ * reduces permanent panels and expensive effects while keeping the existing
+ * component tokens available to other test and preview surfaces. */
+
+.pf-overlay {
+  overflow: hidden;
+  background: #030208;
+}
+
+.pf-overlay,
+.pf-overlay * {
+  box-sizing: border-box;
+}
+
+.pf-overlay__stage {
+  width: min(100%, 54rem);
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  gap: clamp(7px, 1.2vh, 12px);
+  padding: max(10px, calc(env(safe-area-inset-top, 0px) + 7px)) clamp(8px, 2.4vw, 16px)
+    max(10px, calc(env(safe-area-inset-bottom, 0px) + 7px));
+}
+
+.pf-overlay__speed-controls {
+  top: max(10px, calc(env(safe-area-inset-top, 0px) + 8px));
+  right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
+}
+
+.pf-overlay__skip,
+.pf-overlay__fast-forward {
+  min-height: 42px;
+  padding: 0 12px;
+  border-color: rgba(255, 255, 255, 0.2);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  touch-action: manipulation;
+}
+
+.pf-overlay__skip:focus-visible,
+.pf-overlay__fast-forward:focus-visible,
+.pf-overlay__rank-card:focus-visible,
+.pf-overlay__surge-cta:focus-visible,
+.pf-overlay__winner-cta:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.pf-overlay__announcement-slot {
+  min-height: clamp(5.4rem, 12vh, 6.4rem);
+  padding-right: min(13.5rem, 43vw);
+}
+
+.pf-overlay__header {
+  justify-content: center;
+  min-height: 100%;
+  padding: 0.68rem 0.82rem;
+  border-radius: 1rem;
+  background: rgba(5, 4, 13, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.pf-overlay__header-copy {
+  gap: 0.75rem;
+}
+
+.pf-overlay__title {
+  font-size: clamp(1.45rem, 6.4vw, 2.55rem);
+  line-height: 0.9;
+}
+
+.pf-overlay__status {
+  max-width: 44%;
+  font-size: clamp(0.6rem, 2vw, 0.74rem);
+  line-height: 1.3;
+}
+
+.pf-overlay__elimination {
+  min-height: 100%;
+  justify-content: center;
+  padding: 0.7rem 0.9rem;
+  border-radius: 1rem;
+}
+
+.pf-overlay__broadcast {
+  gap: clamp(6px, 1vh, 10px);
+}
+
+.pf-overlay__board-shell {
+  gap: clamp(5px, 0.9vh, 9px);
+  padding: clamp(7px, 1.4vw, 11px);
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(145deg, rgba(8, 6, 18, 0.84), rgba(5, 4, 12, 0.94)), rgba(5, 4, 12, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.pf-overlay__spotlight {
+  min-height: clamp(7.8rem, 20vh, 10rem);
+  grid-template-columns: minmax(0, 1fr) clamp(6.5rem, 22vw, 9.25rem);
+  gap: 0.7rem;
+  padding: 0.65rem 0.72rem;
+  border-radius: 0.95rem;
+}
+
+.pf-overlay__spotlight::after,
+.pf-overlay__surge-panel::after,
+.pf-overlay__winner-stage::after {
+  animation-duration: 8s;
+  opacity: 0.55;
+}
+
+.pf-overlay__leader-name {
+  font-size: clamp(1.5rem, 6.5vw, 2.7rem);
+}
+
+.pf-overlay__spotlight-fact {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: clamp(0.7rem, 2.4vw, 0.84rem);
+  line-height: 1.32;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.pf-overlay__leader-portrait-wrap {
+  min-width: 0;
+}
+
+.pf-overlay__leader-avatar--portrait {
+  width: min(100%, 8.5rem);
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.pf-overlay__portrait-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.pf-overlay__board {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pf-overlay__board-header {
+  min-height: 1.4rem;
+  padding-inline: 0.2rem;
+}
+
+.pf-overlay__board-header > span,
+.pf-overlay__remaining-note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+
+.pf-overlay__board-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(4px, 0.75vh, 7px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.pf-overlay__rank-card {
+  flex: 1 1 0;
+  min-height: 3.15rem;
+  max-height: 4rem;
+  gap: clamp(0.42rem, 1.7vw, 0.65rem);
+  padding: 0.48rem 0.58rem 0.48rem 0.72rem;
+  border-radius: 0.78rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pf-overlay__rank-card .pf-overlay__portrait {
+  width: clamp(2.05rem, 7vw, 2.55rem);
+  height: clamp(2.05rem, 7vw, 2.55rem);
+}
+
+.pf-overlay__rank-name {
+  font-size: clamp(0.78rem, 2.9vw, 0.95rem);
+}
+
+.pf-overlay__percent-value {
+  font-size: clamp(0.84rem, 3vw, 1rem);
+}
+
+.pf-overlay__accent-rail {
+  height: 0.38rem;
+}
+
+.pf-overlay__remaining-note {
+  padding: 2px 0.25rem 0;
+  text-align: center;
+}
+
+.pf-overlay__surge-panel {
+  padding: 0.62rem;
+  border-radius: 0.95rem;
+}
+
+.pf-overlay__surge-copy {
+  margin-bottom: 0.42rem;
+}
+
+.pf-overlay__surge-description {
+  margin: 0;
+  font-size: clamp(0.64rem, 2.25vw, 0.78rem);
+  line-height: 1.3;
+}
+
+.pf-overlay__surge-cta,
+.pf-overlay__winner-cta {
+  min-height: 44px;
+  padding: 0.68rem 0.9rem;
+  font-size: 0.76rem;
+  touch-action: manipulation;
+}
+
+.pf-overlay__intro {
+  inset: 0;
+  border-radius: 1.15rem;
+}
+
+.pf-overlay__winner-stage {
+  margin-top: max(48px, calc(env(safe-area-inset-top, 0px) + 40px));
+  margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  padding: clamp(1rem, 4vw, 2rem);
+  border-radius: 1.4rem;
+}
+
+.pf-overlay__winner-avatar-wrap {
+  width: min(48vw, 13rem);
+  height: min(48vw, 13rem);
+}
+
+.pf-overlay__headline {
+  font-size: clamp(2.5rem, 13vw, 5.5rem);
+}
+
+@media (max-height: 700px) {
+  .pf-overlay__stage {
+    gap: 5px;
+  }
+
+  .pf-overlay__announcement-slot {
+    min-height: 4.7rem;
+  }
+
+  .pf-overlay__header-topline {
+    display: none;
+  }
+
+  .pf-overlay__spotlight {
+    min-height: 6.8rem;
+  }
+
+  .pf-overlay__spotlight-fact {
+    -webkit-line-clamp: 2;
+  }
+
+  .pf-overlay__rank-card {
+    min-height: 2.75rem;
+  }
+
+  .pf-overlay__surge-description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@media (max-width: 420px) {
+  .pf-overlay__announcement-slot {
+    padding-right: 10.2rem;
+  }
+
+  .pf-overlay__spotlight {
+    grid-template-columns: minmax(0, 1fr) 6.8rem;
+  }
+
+  .pf-overlay__rank-card {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+  }
+
+  .pf-overlay__rank-tail {
+    grid-column: auto;
+    align-items: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-overlay *,
+  .pf-overlay *::before,
+  .pf-overlay *::after,
+  .pf-overlay--reduced-motion *,
+  .pf-overlay--reduced-motion *::before,
+  .pf-overlay--reduced-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .pf-overlay__studio,
+  .pf-overlay__scanlines {
+    animation: none !important;
+  }
+}

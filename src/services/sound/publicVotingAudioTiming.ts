@@ -3,7 +3,8 @@ import { SOUND_REGISTRY } from './sounds'
 const PUBLIC_VOTING_SOUND_KEY = 'music:public_voting'
 const AUDIO_METADATA_TIMEOUT_MS = 5000
 const MIN_VALID_DURATION_MS = 1000
-const MIN_ELIMINATION_INTERVAL_MS = 250
+const MIN_ELIMINATION_INTERVAL_MS = 650
+export const PUBLIC_VOTING_REVEAL_RESERVE_MS = 7500
 
 let cachedSource: string | null = null
 let cachedDurationPromise: Promise<number | null> | null = null
@@ -42,12 +43,6 @@ function readAudioDurationMs(src: string): Promise<number | null> {
   })
 }
 
-/**
- * Reads the duration of the sound currently registered for the public-vote
- * sequence. The cache is keyed by the registry source, so replacing or
- * redirecting the music asset automatically changes the next app session's
- * timing without another hard-coded duration update.
- */
 export function getPublicVotingAudioDurationMs(): Promise<number | null> {
   const source = SOUND_REGISTRY[PUBLIC_VOTING_SOUND_KEY]?.src
   if (!source) return Promise.resolve(null)
@@ -71,14 +66,14 @@ export function preloadPublicVotingAudioDuration(): void {
 }
 
 /**
- * Spaces every elimination evenly across the full music file. The final
- * elimination — which determines the winner — therefore lands at the end of
- * the track regardless of candidate count or a later replacement audio file.
+ * Spaces eliminations inside the voting section of the soundtrack and reserves
+ * the closing musical phrase for the final-two tension and winner reveal.
  */
 export function calculatePublicVotingEliminationIntervalMs(
   audioDurationMs: number | null,
   candidateCount: number,
-  fallbackIntervalMs: number
+  fallbackIntervalMs: number,
+  revealReserveMs = PUBLIC_VOTING_REVEAL_RESERVE_MS
 ): number {
   if (
     audioDurationMs === null ||
@@ -90,5 +85,10 @@ export function calculatePublicVotingEliminationIntervalMs(
   }
 
   const eliminationCount = candidateCount - 1
-  return Math.max(MIN_ELIMINATION_INTERVAL_MS, Math.round(audioDurationMs / eliminationCount))
+  const boundedReserve = Math.min(
+    Math.max(0, revealReserveMs),
+    Math.max(0, audioDurationMs - eliminationCount * MIN_ELIMINATION_INTERVAL_MS)
+  )
+  const votingWindowMs = audioDurationMs - boundedReserve
+  return Math.max(MIN_ELIMINATION_INTERVAL_MS, Math.round(votingWindowMs / eliminationCount))
 }

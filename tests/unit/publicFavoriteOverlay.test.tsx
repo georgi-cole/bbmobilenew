@@ -1,14 +1,53 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import PublicFavoriteOverlay from '../../src/components/PublicFavoriteOverlay/PublicFavoriteOverlay';
-import type { Player } from '../../src/types';
-import { useBattleBackVoting } from '../../src/hooks/useBattleBackVoting';
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import PublicFavoriteOverlay from '../../src/components/PublicFavoriteOverlay/PublicFavoriteOverlay'
+import { useBattleBackVoting } from '../../src/hooks/useBattleBackVoting'
+import type { PublicOpinionState } from '../../src/publicOpinion/types'
+import type { Player } from '../../src/types'
+
+const publicOpinionMock = vi.hoisted(() => ({
+  state: null as PublicOpinionState | null,
+}))
+
+vi.mock('../../src/store/hooks', () => ({
+  useAppSelector: () => publicOpinionMock.state,
+}))
 
 vi.mock('../../src/hooks/useBattleBackVoting', () => ({
   useBattleBackVoting: vi.fn(),
-}));
+}))
 
-const mockedUseBattleBackVoting = vi.mocked(useBattleBackVoting);
+vi.mock('framer-motion', async () => {
+  const React = await import('react')
+  const motion = new Proxy(
+    {},
+    {
+      get:
+        (_target, tag: string) =>
+        ({
+          children,
+          initial: _initial,
+          animate: _animate,
+          exit: _exit,
+          transition: _transition,
+          layout: _layout,
+          ...props
+        }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) =>
+          React.createElement(tag, props, children),
+    }
+  )
+
+  return {
+    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    MotionConfig: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    motion,
+    useReducedMotion: () => false,
+  }
+})
+
+const mockedUseBattleBackVoting = vi.mocked(useBattleBackVoting)
 
 const PLAYERS: Player[] = [
   {
@@ -16,405 +55,172 @@ const PLAYERS: Player[] = [
     name: 'Jordan',
     avatar: '🧑',
     status: 'evicted',
-    isUser: false,
+    stats: { lohWins: 0, posWins: 0, timesNominated: 2 },
   },
   {
     id: 'p2',
     name: 'Taylor',
     avatar: '🧑',
     status: 'evicted',
-    isUser: false,
+    stats: { lohWins: 2, posWins: 1, timesNominated: 1 },
   },
   {
     id: 'p3',
     name: 'Morgan',
     avatar: '🧑',
     status: 'evicted',
-    isUser: false,
+    stats: { lohWins: 1, posWins: 0, timesNominated: 3 },
   },
-];
+]
+
+const PUBLIC_OPINION: PublicOpinionState = {
+  profiles: {
+    p1: {
+      playerId: 'p1',
+      approval: 32,
+      previousApproval: 35,
+      seasonApprovals: [50, 42, 35, 32],
+      completedDirectionCount: 0,
+      cumulativePositiveDelta: 3,
+    },
+    p2: {
+      playerId: 'p2',
+      approval: 84,
+      previousApproval: 76,
+      seasonApprovals: [52, 64, 76, 84],
+      completedDirectionCount: 3,
+      cumulativePositiveDelta: 34,
+    },
+    p3: {
+      playerId: 'p3',
+      approval: 57,
+      previousApproval: 59,
+      seasonApprovals: [50, 61, 59, 57],
+      completedDirectionCount: 1,
+      cumulativePositiveDelta: 13,
+    },
+  },
+  directions: [],
+  feed: [],
+  lastUpdatedWeek: 10,
+  feedPostsThisDay: 0,
+  currentFeedDay: 10,
+}
+
+function votingState(overrides: Partial<ReturnType<typeof useBattleBackVoting>> = {}) {
+  return {
+    votes: { p1: 28, p2: 44, p3: 28 },
+    eliminated: [],
+    winnerId: null,
+    isComplete: false,
+    ...overrides,
+  }
+}
 
 describe('PublicFavoriteOverlay', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-  });
+    vi.useFakeTimers()
+    publicOpinionMock.state = PUBLIC_OPINION
+    mockedUseBattleBackVoting.mockReturnValue(votingState())
+  })
 
   afterEach(() => {
-    vi.useRealTimers();
-    vi.clearAllMocks();
-  });
+    document.body.style.overflow = ''
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
 
-  it('renders the broadcast header and audience surge panel during voting', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 41, p2: 34, p3: 25 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
+  it('passes a public-opinion forecast into the live voting simulator', () => {
+    render(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
 
+    const options = mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]
+    expect(options?.targetPercentages?.p2).toBeGreaterThan(options?.targetPercentages?.p3 ?? 0)
+    expect(options?.targetPercentages?.p3).toBeGreaterThan(options?.targetPercentages?.p1 ?? 0)
+    expect(options).not.toHaveProperty('surgeTargetId')
+  })
+
+  it('makes the rewarded Viewer Spotlight explicitly cosmetic', async () => {
+    const onAudienceSurgeRequest = vi.fn().mockResolvedValue(true)
     render(
       <PublicFavoriteOverlay
         candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    expect(screen.getAllByText(/live public vote/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/public favorite player/i)).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1700);
-    });
-
-    expect(screen.getByText(/audience surge/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /watch to boost jordan/i })).toBeInTheDocument();
-    expect(screen.getByText(/results board/i)).toBeInTheDocument();
-    const surgeList = screen.getByRole('list', { name: /eligible players for audience surge/i });
-    expect(within(surgeList).getAllByRole('listitem')).toHaveLength(3);
-    expect(screen.queryByText(/live audience percentages update in real time/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/one player wins the grand prize/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/america/i)).not.toBeInTheDocument();
-  });
-
-  it('shows a skip control during the intro and lets the user select a boost target immediately', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 41, p2: 34, p3: 25 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: /skip animation/i })).toBeInTheDocument();
-
-    const surgeList = screen.getByRole('list', { name: /eligible players for audience surge/i });
-    const taylorChip = within(surgeList).getByRole('button', { name: /taylor/i });
-
-    expect(taylorChip).toBeEnabled();
-    fireEvent.click(taylorChip);
-    expect(screen.getByRole('button', { name: /watch to boost taylor/i })).toBeDisabled();
-
-    fireEvent.click(screen.getByRole('button', { name: /skip animation/i }));
-
-    expect(screen.queryByRole('button', { name: /skip animation/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /watch to boost taylor/i })).toBeEnabled();
-  });
-
-  it('offers a fast-forward control that accelerates the remaining vote', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 41, p2: 34, p3: 25 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    const fastForward = screen.getByRole('button', { name: /fast forward public favorite vote/i });
-    expect(fastForward).toBeEnabled();
-
-    fireEvent.click(fastForward);
-
-    expect(screen.getByRole('button', { name: /fast forward public favorite vote/i })).toBeDisabled();
-    expect(screen.getByText('Forwarding')).toBeInTheDocument();
-    expect(mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]).toMatchObject({
-      eliminationIntervalMs: 260,
-      tickIntervalMs: 120,
-    });
-  });
-
-  it('requests audience surge only once and shows the active state', async () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 38, p2: 35, p3: 27 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    const onAudienceSurgeRequest = vi.fn().mockResolvedValue(true);
-
-    render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
+        seed={41}
         onComplete={vi.fn()}
         onAudienceSurgeRequest={onAudienceSurgeRequest}
-      />,
-    );
-
-    act(() => {
-      vi.advanceTimersByTime(1700);
-    });
-
-    const cta = screen.getByRole('button', { name: /watch to boost jordan/i });
+      />
+    )
 
     await act(async () => {
-      fireEvent.click(cta);
-      fireEvent.click(cta);
-    });
+      await vi.advanceTimersByTimeAsync(2_100)
+    })
 
-    expect(onAudienceSurgeRequest).toHaveBeenCalledTimes(1);
-    expect(onAudienceSurgeRequest).toHaveBeenCalledWith('p1');
-    expect(screen.getAllByText(/audience surge active/i).length).toBeGreaterThan(0);
-  });
+    const board = screen.getByRole('region', { name: 'Public vote ranking board' })
+    fireEvent.click(within(board).getByRole('button', { name: /Taylor, rank 1, 44%/i }))
+    expect(screen.getByText(/This does not change the official result/i)).toBeInTheDocument()
 
-  it('shows the polished winner reveal with the prize amount', () => {
+    const cta = screen.getByRole('button', { name: /Watch to Spotlight Taylor/i })
+    await act(async () => {
+      fireEvent.click(cta)
+      fireEvent.click(cta)
+    })
+
+    expect(onAudienceSurgeRequest).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: /Viewer Spotlight Active/i })).toBeDisabled()
+    expect(mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]).not.toHaveProperty('surgeTargetId')
+  })
+
+  it('uses a readable fast-forward cadence instead of 260 ms eliminations', () => {
+    render(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fast forward public favorite vote' }))
+
+    expect(mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]).toMatchObject({
+      eliminationIntervalMs: 850,
+      tickIntervalMs: 300,
+    })
+    expect(screen.getByText('Forwarding')).toBeInTheDocument()
+  })
+
+  it('renders the authoritative winner reveal and completes only once', () => {
+    const onComplete = vi.fn()
+    mockedUseBattleBackVoting.mockReturnValue(
+      votingState({
+        votes: { p1: 0, p2: 100, p3: 0 },
+        eliminated: ['p1', 'p3'],
+        winnerId: 'p2',
+        isComplete: true,
+      })
+    )
+
+    render(
+      <PublicFavoriteOverlay
+        candidates={PLAYERS}
+        seed={41}
+        awardAmount={25_000}
+        onComplete={onComplete}
+      />
+    )
+
+    expect(screen.getByText('Taylor')).toBeInTheDocument()
+    expect(screen.getByText('Wins 25,000 Eyeoleans!')).toBeInTheDocument()
+    const continueButton = screen.getByRole('button', { name: 'Continue' })
+    fireEvent.click(continueButton)
+    fireEvent.click(continueButton)
+    expect(onComplete).toHaveBeenCalledTimes(1)
+    expect(onComplete).toHaveBeenCalledWith('p2')
+  })
+
+  it('falls through directly to the reveal when one candidate is already complete', () => {
     mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 62, p2: 38, p3: 0 },
-      eliminated: ['p3', 'p2'],
-      winnerId: 'p1',
+      votes: { p2: 100 },
+      eliminated: [],
+      winnerId: 'p2',
       isComplete: true,
-    });
+    })
 
-    render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        awardAmount={25000}
-        onComplete={vi.fn()}
-      />,
-    );
+    render(<PublicFavoriteOverlay candidates={[PLAYERS[1]]} seed={41} onComplete={vi.fn()} />)
 
-    expect(screen.getByText(/final reveal/i)).toBeInTheDocument();
-    expect(screen.getByText("Public's Favorite Player")).toBeInTheDocument();
-    expect(screen.getByText('Wins 25,000 Eyeoleans!')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
-  });
-
-  it('replaces percentage text cleanly when vote totals update', () => {
-    mockedUseBattleBackVoting
-      .mockReturnValueOnce({
-        votes: { p1: 41, p2: 34, p3: 25 },
-        eliminated: [],
-        winnerId: null,
-        isComplete: false,
-      })
-      .mockReturnValueOnce({
-        votes: { p1: 39, p2: 36, p3: 25 },
-        eliminated: [],
-        winnerId: null,
-        isComplete: false,
-      });
-
-    const { rerender } = render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    rerender(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={2}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    const resultsBoard = screen.getByRole('region', { name: /public vote ranking board/i });
-
-    expect(within(resultsBoard).getByRole('button', { name: /jordan, rank 1, 39%/i })).toBeInTheDocument();
-    expect(within(resultsBoard).queryByText('41%')).not.toBeInTheDocument();
-    expect(within(resultsBoard).queryByText('34%')).not.toBeInTheDocument();
-  });
-
-  it('keeps the houseguest spotlight decoupled from vote ranking changes', () => {
-    mockedUseBattleBackVoting
-      .mockReturnValueOnce({
-        votes: { p1: 10, p2: 70, p3: 20 },
-        eliminated: [],
-        winnerId: null,
-        isComplete: false,
-      })
-      .mockReturnValueOnce({
-        votes: { p1: 5, p2: 15, p3: 80 },
-        eliminated: [],
-        winnerId: null,
-        isComplete: false,
-      });
-
-    const { rerender } = render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
-    expect(within(spotlight).queryByText(/current front-runner/i)).not.toBeInTheDocument();
-
-    rerender(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={2}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /morgan, rank 1, 80%/i })).toBeInTheDocument();
-  });
-
-  it('rotates the spotlight on its own calm timer and skips eliminated candidates', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 10, p2: 70, p3: 20 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    let spotlight = screen.getByTestId('housemate-spotlight');
-    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(4499);
-    });
-    spotlight = screen.getByTestId('housemate-spotlight');
-    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1501);
-    });
-    spotlight = screen.getByTestId('housemate-spotlight');
-    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
-  });
-
-  it('holds the current spotlight through an elimination, then skips eliminated candidates', () => {
-    let votingState = {
-      votes: { p1: 10, p2: 70, p3: 20 },
-      eliminated: [] as string[],
-      winnerId: null,
-      isComplete: false,
-    };
-    mockedUseBattleBackVoting.mockImplementation(() => votingState);
-
-    const { rerender } = render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    let spotlight = screen.getByTestId('housemate-spotlight');
-    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(3500);
-    });
-
-    votingState = {
-      votes: { p1: 0, p2: 62, p3: 38 },
-      eliminated: ['p1'],
-      winnerId: null,
-      isComplete: false,
-    };
-
-    rerender(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={2}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    spotlight = screen.getByTestId('housemate-spotlight');
-    expect(within(spotlight).getByRole('heading', { name: 'Jordan' })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(2500);
-    });
-
-    spotlight = screen.getByTestId('housemate-spotlight');
-    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
-  });
-
-  it('removes vote-eliminated players from the spotlight pool and marks the final two', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { p1: 0, p2: 55, p3: 45 },
-      eliminated: ['p1'],
-      winnerId: null,
-      isComplete: false,
-    });
-
-    render(
-      <PublicFavoriteOverlay
-        candidates={PLAYERS}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    const spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByText(/final two: Taylor vs Morgan/i)).toBeInTheDocument();
-    expect(within(spotlight).getByRole('heading', { name: 'Taylor' })).toBeInTheDocument();
-    expect(within(spotlight).queryByRole('heading', { name: 'Jordan' })).not.toBeInTheDocument();
-  });
-
-  it('uses a different biography fact when the spotlight pool cycles back', () => {
-    mockedUseBattleBackVoting.mockReturnValue({
-      votes: { finn: 34, mimi: 33, rae: 33 },
-      eliminated: [],
-      winnerId: null,
-      isComplete: false,
-    });
-    const profilePlayers: Player[] = [
-      { id: 'finn', name: 'Finn', avatar: '🧑', status: 'active' },
-      { id: 'mimi', name: 'Mimi', avatar: '🧑', status: 'active' },
-      { id: 'rae', name: 'Rae', avatar: '🧑', status: 'active' },
-    ];
-
-    render(
-      <PublicFavoriteOverlay
-        candidates={profilePlayers}
-        seed={1}
-        onComplete={vi.fn()}
-      />,
-    );
-
-    let spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    const firstFinnFact = within(spotlight).getByText(/marine architect/i).textContent;
-
-    // Advance one spotlight beat at a time so React can commit each rotation
-    // and schedule the next biography timer.
-    act(() => {
-      vi.advanceTimersByTime(6000);
-    });
-    act(() => {
-      vi.advanceTimersByTime(6000);
-    });
-    act(() => {
-      vi.advanceTimersByTime(6000);
-    });
-
-    spotlight = screen.getByRole('region', { name: /houseguest spotlight/i });
-    expect(within(spotlight).getByRole('heading', { name: 'Finn' })).toBeInTheDocument();
-    expect(spotlight.textContent).not.toContain(firstFinnFact);
-  });
-});
+    expect(screen.getByText('FINAL REVEAL')).toBeInTheDocument()
+    expect(screen.getByText('Taylor')).toBeInTheDocument()
+  })
+})
