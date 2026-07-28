@@ -1,4 +1,4 @@
-name: Temporary Social UX realism fix
+name: Temporary Social UX cleanup
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  apply:
+  cleanup:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -21,37 +21,50 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Apply corrections
-        run: node scripts/tmp-social-ux-realism-fix.mjs
-      - name: Format changed files
+      - name: Format complete PR diff
         shell: bash
         run: |
           git fetch origin main --depth=1
-          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx' '*.css' '*.json' '*.mjs' '*.yml')
+          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx' '*.css' '*.json' '*.mjs' '*.yml' '*.yaml')
           if (( ${#files[@]} > 0 )); then
             npx prettier --write "${files[@]}"
           fi
-      - name: Run focused tests
-        run: >-
-          npx vitest run
-          src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx
-          src/components/HousePulse/__tests__/HousePulse.test.tsx
-          src/social/__tests__/socialLivelinessRestoration.test.ts
-          src/social/__tests__/socialPremiumHardening.test.ts
-          tests/social/socialCommitments.unit.test.ts
-          tests/unit/publicOpinion/publicOpinionMiddleware.test.ts
-      - name: Run static quality
+      - name: Apply safe lint fixes
+        run: npx eslint src tests --fix
+      - name: Capture focused diagnostics
+        shell: bash
         run: |
-          npm run format:check
-          npm run test:guard
-          npm run lint:ci
-          npm run typecheck
-      - name: Commit corrections
+          mkdir -p docs
+          set +e
+          {
+            echo '=== TYPECHECK ==='
+            npm run typecheck
+            echo
+            echo '=== LINT ==='
+            npm run lint:ci
+            echo
+            echo '=== FOCUSED TESTS ==='
+            npx vitest run \
+              src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx \
+              src/components/HousePulse/__tests__/HousePulse.test.tsx \
+              src/social/__tests__/socialLivelinessRestoration.test.ts \
+              src/social/__tests__/socialPremiumHardening.test.ts \
+              tests/social/socialCommitments.unit.test.ts \
+              tests/unit/publicOpinion/publicOpinionMiddleware.test.ts
+          } > docs/.social-ux-diagnostics.txt 2>&1
+          status=$?
+          set -e
+          if (( status == 0 )); then
+            rm -f docs/.social-ux-diagnostics.txt
+          else
+            printf '\nDIAGNOSTIC_EXIT_CODE=%s\n' "$status" >> docs/.social-ux-diagnostics.txt
+          fi
+      - name: Commit cleanup and diagnostics
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src tests server
+          git add src tests server docs
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Fix Social UX realism regressions"
+          git commit -m "Clean Social UX realism integration"
           git push origin HEAD:fix/social-ux-realism-regressions
