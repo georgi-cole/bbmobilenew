@@ -1,15 +1,15 @@
 name: Temporary Social UX cleanup
 
 on:
-  push:
-    branches: [fix/social-ux-realism-regressions]
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   cleanup:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'fix/social-ux-realism-regressions' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,8 +47,10 @@ jobs:
             npx vitest run \
               src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx \
               src/components/HousePulse/__tests__/HousePulse.test.tsx \
+              src/social/__tests__/incomingInteractionAutonomy.test.ts \
               src/social/__tests__/socialLivelinessRestoration.test.ts \
               src/social/__tests__/socialPremiumHardening.test.ts \
+              src/publicOpinion/__tests__/AudiencePulseService.test.ts \
               tests/social/socialCommitments.unit.test.ts \
               tests/unit/publicOpinion/publicOpinionMiddleware.test.ts
           } > docs/.social-ux-diagnostics.txt 2>&1
