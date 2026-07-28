@@ -63,6 +63,11 @@ jobs:
               '  minigameProfiles?: readonly MinigameMusicProfile[]\n',
               '  minigameProfiles?: MinigameMusicProfile[]\n',
           )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              '    gameKeys: CHALLENGE_GROUP_1_GAME_KEYS,\n',
+              '    gameKeys: [...CHALLENGE_GROUP_1_GAME_KEYS],\n',
+          )
           Path('MUSIC_MANAGER_CI_DIAGNOSTIC.txt').unlink(missing_ok=True)
           Path('MUSIC_MANAGER_LINT_DIAGNOSTIC.txt').unlink(missing_ok=True)
 
