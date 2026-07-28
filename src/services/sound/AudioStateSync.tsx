@@ -15,7 +15,6 @@ import {
   type MusicTrackAssetOverride,
 } from './musicCatalog'
 import { buildEffectiveMusicConfig, mergeMusicTrackAssets } from './musicRuntimeConfig'
-import { observeHostedMinigamePlaying } from './minigameHostPhaseObserver'
 
 const VOLUME_RAMP_STEP_MS = 50
 
@@ -75,10 +74,6 @@ export default function AudioStateSync() {
     shallowEqual
   )
   const [hash, setHash] = useState(() => window.location.hash)
-  const [hostedMinigameState, setHostedMinigameState] = useState<{
-    gameKey: string | null
-    playing: boolean
-  }>({ gameKey: null, playing: false })
   const previousDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
   const latestDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
   const heldConfiguredCueRef = useRef<ResolvedMusicCue | null>(null)
@@ -121,20 +116,6 @@ export default function AudioStateSync() {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  useEffect(() => {
-    const profile = getMinigameMusicProfile(
-      musicState.pendingChallengeGameKey,
-      musicState.gameMode,
-      effectiveConfig
-    )
-    if (!profile?.transition?.managedLifecycle) return undefined
-
-    const gameKey = musicState.pendingChallengeGameKey
-    return observeHostedMinigamePlaying((playing) => {
-      setHostedMinigameState({ gameKey, playing })
-    })
-  }, [effectiveConfig, musicState.gameMode, musicState.pendingChallengeGameKey])
-
   const resolverState = useMemo<MusicResolverState>(
     () => ({
       game: {
@@ -176,49 +157,13 @@ export default function AudioStateSync() {
         musicState.gameMode,
         effectiveConfig
       ),
-    [
-      effectiveConfig,
-      hash,
-      musicState.gameMode,
-      musicState.pendingChallengeGameKey,
-    ]
+    [effectiveConfig, hash, musicState.gameMode, musicState.pendingChallengeGameKey]
   )
 
-  const resolvedCue = useMemo<ResolvedMusicCue>(() => {
+  const desiredCue = useMemo<ResolvedMusicCue>(() => {
     if (!musicState.musicOn) return createSilentCue('settings.music-off')
     return resolveCue(resolverState)
   }, [musicState.musicOn, resolveCue, resolverState])
-
-  const desiredCue = useMemo<ResolvedMusicCue>(() => {
-    if (
-      musicState.musicOn &&
-      hostedMinigameState.playing &&
-      hostedMinigameState.gameKey === musicState.pendingChallengeGameKey &&
-      resolverState.challenge.pending
-    ) {
-      return resolveCue({
-        ...resolverState,
-        challenge: {
-          pending: {
-            ...resolverState.challenge.pending,
-            phase: 'playing',
-          },
-        },
-      })
-    }
-
-    // The shared host still owns its visual lifecycle locally. Until that phase
-    // is promoted into Redux, the semantic resolver receives a playing-stage
-    // override from the compatibility observer above.
-    return resolvedCue
-  }, [
-    hostedMinigameState,
-    musicState.musicOn,
-    musicState.pendingChallengeGameKey,
-    resolvedCue,
-    resolveCue,
-    resolverState,
-  ])
 
   useEffect(() => {
     latestDesiredRef.current = desiredCue

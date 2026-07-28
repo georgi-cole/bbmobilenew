@@ -744,6 +744,7 @@ class _SoundManager {
     el.addEventListener(
       'error',
       () => {
+        if (this._isStaleMusicAttempt(playbackToken, el, key)) return
         if (!this._failedKeys.has(key)) {
           const code = el.error?.code ?? 'unknown'
           console.error(
@@ -774,6 +775,7 @@ class _SoundManager {
       }
       _bgmLog('playing', desiredTrack, entry.src)
     } catch (err) {
+      if (this._isStaleMusicAttempt(playbackToken, el, key)) return
       const domErr = err as DOMException
       if (domErr.name === 'NotAllowedError') {
         _audioLog(`blocked ${desiredTrack}`)
@@ -879,7 +881,7 @@ class _SoundManager {
   }
 
   private _recoverFromMusicFailure(key: string, el: HTMLAudioElement): void {
-    if (this._musicKey !== key) return
+    if (this._musicKey !== key || this._musicEl !== el) return
     this._musicPlaybackToken += 1
     el.pause()
     _resetAudioTime(el)
@@ -887,6 +889,12 @@ class _SoundManager {
     this._musicKey = null
     this._playingMusicTrack = 'none'
     void this.syncMusic()
+  }
+
+  private _isStaleMusicAttempt(playbackToken: number, el: HTMLAudioElement, key: string): boolean {
+    return (
+      this._musicPlaybackToken !== playbackToken || this._musicEl !== el || this._musicKey !== key
+    )
   }
 
   private _isStaleMusicPlayback(playbackToken: number, el: HTMLAudioElement, key: string): boolean {

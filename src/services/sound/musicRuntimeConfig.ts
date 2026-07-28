@@ -17,7 +17,7 @@ export function buildEffectiveMusicConfig(
 export function selectEffectiveMusicConfig(state: RootState): MusicConfigDocument {
   return buildEffectiveMusicConfig(
     state.remoteConfig?.config?.season?.music?.assignments,
-    state.settings.audio.musicConfigOverrides
+    state.settings?.audio?.musicConfigOverrides
   )
 }
 
@@ -49,6 +49,6 @@ export function mergeMusicTrackAssets(
 export function selectEffectiveMusicTrackAssets(state: RootState): MusicTrackAssetOverride[] {
   return mergeMusicTrackAssets(
     state.remoteConfig?.config?.season?.music,
-    state.settings.audio.musicTrackAssets
+    state.settings?.audio?.musicTrackAssets ?? []
   )
 }

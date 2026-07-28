@@ -9,10 +9,7 @@
 import type { Middleware } from '@reduxjs/toolkit'
 import type { RootState } from './store'
 import { SoundManager } from '../services/sound/SoundManager'
-import {
-  resolveAudioEventCue,
-  type AudioEventId,
-} from '../services/sound/musicConfig'
+import { resolveAudioEventCue, type AudioEventId } from '../services/sound/musicConfig'
 import { selectEffectiveMusicConfig } from '../services/sound/musicRuntimeConfig'
 
 interface BattleBackInfo {
@@ -20,12 +17,7 @@ interface BattleBackInfo {
   winnerId: string | null
 }
 
-const LOH_MUSIC_PHASES = new Set<string>([
-  'loh_comp',
-  'loh_results',
-  'pos_comp',
-  'pos_results',
-])
+const LOH_MUSIC_PHASES = new Set<string>(['loh_comp', 'loh_results', 'pos_comp', 'pos_results'])
 
 const PASSIVE_PHASES = new Set<string>([
   'nominations',
@@ -48,8 +40,11 @@ function isBattleBackReturn(
 function playConfiguredEvent(eventId: AudioEventId, state: RootState): void {
   const cue = resolveAudioEventCue(eventId, selectEffectiveMusicConfig(state))
   if (!cue.soundKey) return
-  const options = cue.volume === undefined ? undefined : { volume: cue.volume }
-  void SoundManager.play(cue.soundKey, options)
+  if (cue.volume === undefined) {
+    void SoundManager.play(cue.soundKey)
+  } else {
+    void SoundManager.play(cue.soundKey, { volume: cue.volume })
+  }
 }
 
 /** Phase entry owns only the competition-results stinger; mounted visuals own the rest. */

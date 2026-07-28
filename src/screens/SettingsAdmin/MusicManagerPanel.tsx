@@ -18,7 +18,6 @@ import {
   getModePhaseSelection,
   resolveAudioEventCue,
   resolveMusicCue,
-  type AudioEventCue,
   type AudioEventId,
   type MusicConfigMode,
   type MusicConfigOverrides,
@@ -139,9 +138,7 @@ function SourceBadge({ source }: { source: 'local' | 'server' | 'default' }) {
 export default function MusicManagerPanel() {
   const dispatch = useAppDispatch()
   const settings = useAppSelector(selectSettings)
-  const remoteMusic = useAppSelector(
-    (state) => state.remoteConfig?.config?.season?.music ?? null
-  )
+  const remoteMusic = useAppSelector((state) => state.remoteConfig?.config?.season?.music ?? null)
   const [section, setSection] = useState<ManagerSection>('phases')
   const [mode, setMode] = useState<EditableMode>('classic')
   const [stage, setStage] = useState<MusicMinigameStage>('playing')
@@ -187,8 +184,7 @@ export default function MusicManagerPanel() {
     const query = search.trim().toLowerCase()
     if (!query) return activeGames
     return activeGames.filter(
-      (game) =>
-        game.title.toLowerCase().includes(query) || game.key.toLowerCase().includes(query)
+      (game) => game.title.toLowerCase().includes(query) || game.key.toLowerCase().includes(query)
     )
   }, [activeGames, search])
 
@@ -396,8 +392,8 @@ export default function MusicManagerPanel() {
           <p className="music-manager__eyebrow">Advanced audio direction</p>
           <h2 className="music-manager__title">Music Manager</h2>
           <p className="music-manager__description">
-            Assign background music by mode, phase, minigame stage and event. Local settings override
-            validated server configuration; missing or failed assets fall back safely.
+            Assign background music by mode, phase, minigame stage and event. Local settings
+            override validated server configuration; missing or failed assets fall back safely.
           </p>
         </div>
         <div
@@ -463,7 +459,10 @@ export default function MusicManagerPanel() {
         <div className="music-manager__list">
           <div className="music-manager__section-copy">
             <h3>{mode === 'classic' ? 'Classic' : 'Survival'} phase score</h3>
-            <p>Default removes the local override. Inherit explicitly bypasses a server mode override.</p>
+            <p>
+              Default removes the local override. Inherit explicitly bypasses a server mode
+              override.
+            </p>
           </div>
           {(Object.keys(DEFAULT_PHASE_MUSIC_POLICY) as Phase[]).map((phase) => {
             const local = localOverrides.modePhaseOverrides?.[mode]?.[phase]
@@ -484,7 +483,9 @@ export default function MusicManagerPanel() {
                     onChange={(value) => updatePhase(phase, value)}
                     ariaLabel={`Music for ${titleFromKey(phase)}`}
                   />
-                  <span className="music-manager__resolved">Effective: {selectionLabel(effective)}</span>
+                  <span className="music-manager__resolved">
+                    Effective: {selectionLabel(effective)}
+                  </span>
                 </div>
               </article>
             )
@@ -539,7 +540,9 @@ export default function MusicManagerPanel() {
                 <div className="music-manager__row-main">
                   <div>
                     <strong>{game.title}</strong>
-                    <code>{game.key} · {game.category}</code>
+                    <code>
+                      {game.key} · {game.category}
+                    </code>
                   </div>
                   <SourceBadge source={local ? 'local' : remote ? 'server' : 'default'} />
                 </div>
@@ -550,7 +553,8 @@ export default function MusicManagerPanel() {
                     ariaLabel={`${stage} music for ${game.title}`}
                   />
                   <span className="music-manager__resolved">
-                    Effective: {cue.track === 'none' ? 'Silence' : MUSIC_CATALOG[cue.track].displayName}
+                    Effective:{' '}
+                    {cue.track === 'none' ? 'Silence' : MUSIC_CATALOG[cue.track].displayName}
                   </span>
                 </div>
               </article>
@@ -563,13 +567,15 @@ export default function MusicManagerPanel() {
         <div className="music-manager__list">
           <div className="music-manager__section-copy">
             <h3>One-shot event cues</h3>
-            <p>These stingers remain separate from background music and may be disabled individually.</p>
+            <p>
+              These stingers remain separate from background music and may be disabled individually.
+            </p>
           </div>
           {AUDIO_EVENT_IDS.map((eventId) => {
             const local = localOverrides.eventSounds?.[eventId]
             const remote = remoteOverrides?.eventSounds?.[eventId]
             const effective = resolveAudioEventCue(eventId, effectiveConfig)
-            const value = local === undefined ? 'default' : local.soundKey ?? 'disabled'
+            const value = local === undefined ? 'default' : (local.soundKey ?? 'disabled')
             return (
               <article className="music-manager__row" key={eventId}>
                 <div className="music-manager__row-main">
@@ -625,7 +631,9 @@ export default function MusicManagerPanel() {
         <div className="music-manager__list">
           <div className="music-manager__section-copy">
             <h3>Semantic track catalog</h3>
-            <p>Custom URLs fall back to the bundled track, then to the declared semantic fallback.</p>
+            <p>
+              Custom URLs fall back to the bundled track, then to the declared semantic fallback.
+            </p>
           </div>
           {MUSIC_TRACK_IDS.map((track) => {
             const definition = MUSIC_CATALOG[track]
@@ -640,7 +648,9 @@ export default function MusicManagerPanel() {
                 <div className="music-manager__row-main">
                   <div>
                     <strong>{definition.displayName}</strong>
-                    <code>{track} · fallback: {definition.fallbackTrack}</code>
+                    <code>
+                      {track} · fallback: {definition.fallbackTrack}
+                    </code>
                   </div>
                   <SourceBadge source={source} />
                 </div>
@@ -683,10 +693,14 @@ export default function MusicManagerPanel() {
         <div className="music-manager__data">
           <div className="music-manager__section-copy">
             <h3>Import and export</h3>
-            <p>Only local overrides are exported. Imported data is sanitized before it reaches Redux.</p>
+            <p>
+              Only local overrides are exported. Imported data is sanitized before it reaches Redux.
+            </p>
           </div>
           <div className="music-manager__data-actions">
-            <button type="button" onClick={copyExport}>Copy export</button>
+            <button type="button" onClick={copyExport}>
+              Copy export
+            </button>
             <button type="button" className="music-manager__danger" onClick={resetLocal}>
               Reset local overrides
             </button>
