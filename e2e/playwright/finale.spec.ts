@@ -313,6 +313,16 @@ test.describe('Finale / Jury flow @release', () => {
       .evaluate((button) => (button as HTMLButtonElement).click())
     const recap = page.getByRole('dialog', { name: 'Season recap cinematic' })
     await expect(recap).toBeVisible({ timeout: 10_000 })
+    await expect(recap.getByText('The housemates who made the season.')).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(recap.locator('.src-broadcast-photoshoot')).toBeVisible()
+    await expect(recap.locator('.src-cast-grid')).toHaveCount(0)
+    await page.waitForTimeout(850)
+    await page.screenshot({
+      path: 'test-results/season-recap-photoshoot-mobile.png',
+      fullPage: false,
+    })
     await recap
       .getByRole('button', { name: 'Skip recap' })
       .evaluate((button) => (button as HTMLButtonElement).click())
