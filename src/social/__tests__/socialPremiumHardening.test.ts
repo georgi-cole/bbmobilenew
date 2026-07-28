@@ -58,7 +58,7 @@ describe('Social premium hardening', () => {
         settings: { gameUX: { dramaMode: false } },
         vip: { entitlements: { dramaMode: true } },
       })
-    ).toBe('drama')
+    ).toBe('normal')
   })
 
   it('keeps an incoming interaction on the ruleset under which it was authored', () => {

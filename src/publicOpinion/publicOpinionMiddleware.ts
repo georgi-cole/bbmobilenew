@@ -20,6 +20,7 @@ import {
   type ReactionDelta,
 } from './EventDrivenReactionService'
 import type { PublicDirection } from './types'
+import { computeAudiencePulse } from './AudiencePulseService'
 
 interface GameState {
   phase: string
@@ -85,6 +86,7 @@ interface StateWithGame {
       source?: 'manual' | 'system'
       week?: number
     }>
+    actionHistory?: import('../social/types').SocialActionLogEntry[]
   }
 }
 
@@ -593,6 +595,23 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
       if (newPhase === 'week_start') {
         store.dispatch(resetDailyFeedBudget({ week }))
+
+        const audiencePulse = computeAudiencePulse({
+          players: game.players ?? [],
+          actionHistory: nextState.social?.actionHistory ?? [],
+          week: Math.max(1, week - 1),
+        })
+        for (const reaction of audiencePulse) {
+          store.dispatch(
+            updateApproval({
+              playerId: reaction.playerId,
+              delta: reaction.delta,
+              reason: reaction.reason,
+              week,
+              addToFeed: true,
+            })
+          )
+        }
 
         // Approval now moves through recorded game events. At very low levels a
         // small, visible audience-reconsideration beat prevents a save from being

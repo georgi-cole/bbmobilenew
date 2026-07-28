@@ -1,4 +1,5 @@
 import { addTvEvent } from '../store/gameSlice'
+import { updateApproval } from '../publicOpinion/publicOpinionSlice'
 import { socialConfig } from './socialConfig'
 import {
   applyInfluenceDelta,
@@ -116,8 +117,11 @@ export function getSocialCredibility(commitments: SocialCommitment[]): {
   judged: number
   confidence: number
 } {
-  const kept = commitments.filter((entry) => entry.status === 'kept').length
-  const broken = commitments.filter((entry) => entry.status === 'broken').length
+  // House credibility can only use promises whose outcome other housemates
+  // can observe directly. Private eviction votes belong to Public Approval.
+  const observableCommitments = commitments.filter((entry) => entry.kind !== 'vote_to_keep')
+  const kept = observableCommitments.filter((entry) => entry.status === 'kept').length
+  const broken = observableCommitments.filter((entry) => entry.status === 'broken').length
   const judged = kept + broken
   // A Beta(2,2) prior prevents one decision from turning reliability into 0 or 100.
   const score = Math.round(((kept + 2) / (judged + 4)) * 100)
@@ -145,7 +149,8 @@ function resolvePromise(
   store: CommitmentStore,
   commitment: SocialCommitment,
   kept: boolean,
-  reason: string
+  reason: string,
+  options: { privateVote?: boolean; suppressPublicReaction?: boolean } = {}
 ): void {
   const state = store.getState()
   const week = state.game.week ?? commitment.dueWeek
@@ -162,53 +167,67 @@ function resolvePromise(
       resolutionReason: reason,
     })
   )
-  store.dispatch(
-    updateRelationship({
-      source: commitment.beneficiaryId,
-      target: commitment.promisorId,
-      delta: tuning.affinityDelta[outcome],
-      tags: kept ? undefined : ['broken_promise'],
-      actionSource: 'system',
-    })
-  )
-  store.dispatch(
-    updateSocialMemory({
-      actorId: commitment.beneficiaryId,
-      targetId: commitment.promisorId,
-      deltas: tuning.memoryDelta[outcome],
-      event: {
-        type: `${outcome}_promise_${commitment.kind}`,
+  if (!options.privateVote) {
+    store.dispatch(
+      updateRelationship({
+        source: commitment.beneficiaryId,
+        target: commitment.promisorId,
+        delta: tuning.affinityDelta[outcome],
+        tags: kept ? undefined : ['broken_promise'],
+        actionSource: 'system',
+      })
+    )
+    store.dispatch(
+      updateSocialMemory({
         actorId: commitment.beneficiaryId,
         targetId: commitment.promisorId,
-        week,
-        timestamp: now,
-      },
-    })
-  )
+        deltas: tuning.memoryDelta[outcome],
+        event: {
+          type: `${outcome}_promise_${commitment.kind}`,
+          actorId: commitment.beneficiaryId,
+          targetId: commitment.promisorId,
+          week,
+          timestamp: now,
+        },
+      })
+    )
 
-  const currentInfluence = state.social.influenceBank?.[commitment.promisorId] ?? 0
-  const desiredInfluenceDelta = tuning.influenceDelta[outcome]
-  const influenceDelta =
-    desiredInfluenceDelta < 0
-      ? Math.max(desiredInfluenceDelta, -currentInfluence)
-      : desiredInfluenceDelta
-  if (influenceDelta !== 0) {
-    store.dispatch(applyInfluenceDelta({ playerId: commitment.promisorId, delta: influenceDelta }))
+    const currentInfluence = state.social.influenceBank?.[commitment.promisorId] ?? 0
+    const desiredInfluenceDelta = tuning.influenceDelta[outcome]
+    const influenceDelta =
+      desiredInfluenceDelta < 0
+        ? Math.max(desiredInfluenceDelta, -currentInfluence)
+        : desiredInfluenceDelta
+    if (influenceDelta !== 0) {
+      store.dispatch(
+        applyInfluenceDelta({ playerId: commitment.promisorId, delta: influenceDelta })
+      )
+    }
+  } else if (!options.suppressPublicReaction) {
+    store.dispatch(
+      updateApproval({
+        playerId: commitment.promisorId,
+        delta: kept ? 1 : -1,
+        reason: kept ? 'vote_promise_kept' : 'vote_promise_broken',
+        week,
+        addToFeed: true,
+      })
+    )
   }
 
-  const beneficiary = playerName(state, commitment.beneficiaryId)
-  store.dispatch(
-    addTvEvent({
-      text: kept
-        ? `You kept your word to ${beneficiary}. Your credibility in the house grew.`
-        : `You broke your promise to ${beneficiary}. They will remember it.`,
-      type: 'social',
-      source: 'system',
-      // The promise outcome is already explained in the inbox; keep a
-      // persistent log without replaying the same message on the faux TV.
-      channels: ['mainLog', 'dr'],
-    })
-  )
+  if (!options.privateVote) {
+    const beneficiary = playerName(state, commitment.beneficiaryId)
+    store.dispatch(
+      addTvEvent({
+        text: kept
+          ? `${beneficiary} saw you keep your word.`
+          : `${beneficiary} saw you break your promise and will remember it.`,
+        type: 'social',
+        source: 'system',
+        channels: ['mainLog', 'dr'],
+      })
+    )
+  }
 }
 
 function pendingForAction(state: CommitmentState, kind: SocialCommitmentKind): SocialCommitment[] {
@@ -260,9 +279,25 @@ export function evaluateSocialCommitmentsForAction(
   }
 
   if (actionType === 'game/submitHumanVote' && typeof payload === 'string') {
-    for (const commitment of pendingForAction(state, 'vote_to_keep')) {
+    const votePromises = pendingForAction(state, 'vote_to_keep')
+    const conflicting = new Set(votePromises.map((entry) => entry.beneficiaryId)).size > 1
+    for (const commitment of votePromises) {
       const kept = payload !== commitment.beneficiaryId
-      resolvePromise(store, commitment, kept, kept ? 'voted_to_keep' : 'voted_against_promise')
+      resolvePromise(store, commitment, kept, kept ? 'voted_to_keep' : 'voted_against_promise', {
+        privateVote: true,
+        suppressPublicReaction: conflicting,
+      })
+    }
+    if (conflicting && votePromises[0]) {
+      store.dispatch(
+        updateApproval({
+          playerId: votePromises[0].promisorId,
+          delta: -3,
+          reason: 'conflicting_vote_promises',
+          week: state.game.week ?? votePromises[0].dueWeek,
+          addToFeed: true,
+        })
+      )
     }
     return
   }
@@ -274,7 +309,8 @@ export function evaluateSocialCommitmentsForAction(
         store,
         commitment,
         kept,
-        kept ? 'double_vote_kept_them_safe' : 'double_vote_targeted_them'
+        kept ? 'double_vote_kept_them_safe' : 'double_vote_targeted_them',
+        { privateVote: true }
       )
     }
   }

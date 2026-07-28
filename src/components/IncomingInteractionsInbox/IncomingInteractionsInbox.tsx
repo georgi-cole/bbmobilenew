@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   closeIncomingInbox,
@@ -27,7 +27,7 @@ import {
   getSocialCommitmentLabel,
   getSocialCredibility,
 } from '../../social/socialCommitments'
-import { getEffectiveSocialMode, getInteractionSocialMode } from '../../social/socialMode'
+import { getEffectiveSocialMode } from '../../social/socialMode'
 import {
   getIncomingInteractionResponsePolicy,
   type IncomingInteractionResponsePolicy,
@@ -45,12 +45,6 @@ import type { Player } from '../../types'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
 import IncomingInteractionIcon from './IncomingInteractionIcon'
 import './IncomingInteractionsInbox.css'
-
-const PRIORITY_ORDER: Record<IncomingInteractionPriority, number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-}
 
 function formatResponseLabel(interaction: IncomingInteraction): string {
   if (interaction.resolvedLabel) return `Resolved · ${interaction.resolvedLabel}`
@@ -338,6 +332,7 @@ export default function IncomingInteractionsInbox() {
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
   const globalDramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
+  const [recentlyResolvedIds, setRecentlyResolvedIds] = useState<Set<string>>(() => new Set())
 
   const players = game.players
   const currentWeek = game.week ?? 1
@@ -357,37 +352,33 @@ export default function IncomingInteractionsInbox() {
 
   const sortedInteractions = useMemo(
     () =>
-      [...interactionEntries].sort((left, right) => {
-        const resolvedDiff = Number(left.interaction.resolved) - Number(right.interaction.resolved)
-        if (resolvedDiff !== 0) return resolvedDiff
-        const policyOrder = { required: 0, optional: 1, readOnly: 2 }
-        const policyDiff = policyOrder[left.policy] - policyOrder[right.policy]
-        if (policyDiff !== 0) return policyDiff
-        const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority]
-        if (priorityDiff !== 0) return priorityDiff
-        return right.interaction.createdAt - left.interaction.createdAt
-      }),
+      [...interactionEntries].sort(
+        (left, right) =>
+          left.interaction.createdAt - right.interaction.createdAt ||
+          left.interaction.id.localeCompare(right.interaction.id)
+      ),
     [interactionEntries]
   )
-
-  const pending = useMemo(
+  const openInteractions = useMemo(
     () => sortedInteractions.filter((entry) => !entry.interaction.resolved),
     [sortedInteractions]
   )
-  const needsResponseInteractions = useMemo(
-    () => pending.filter((entry) => entry.policy === 'required'),
-    [pending]
-  )
-  const updateInteractions = useMemo(
-    () => pending.filter((entry) => entry.policy !== 'required'),
-    [pending]
+  const visibleConversationInteractions = useMemo(
+    () =>
+      sortedInteractions.filter(
+        (entry) => !entry.interaction.resolved || recentlyResolvedIds.has(entry.interaction.id)
+      ),
+    [sortedInteractions, recentlyResolvedIds]
   )
   const resolvedInteractions = useMemo(
     () =>
       sortedInteractions.filter(
-        (entry) => entry.interaction.resolved && entry.interaction.resolvedWeek === currentWeek
+        (entry) =>
+          entry.interaction.resolved &&
+          !recentlyResolvedIds.has(entry.interaction.id) &&
+          entry.interaction.resolvedWeek === currentWeek
       ),
-    [sortedInteractions, currentWeek]
+    [sortedInteractions, currentWeek, recentlyResolvedIds]
   )
   const pendingCommitments = useMemo(
     () => commitments.filter((commitment) => commitment.status === 'pending'),
@@ -410,9 +401,9 @@ export default function IncomingInteractionsInbox() {
   )
 
   const headerSummary =
-    pending.length === 0
+    openInteractions.length === 0
       ? 'All caught up'
-      : `${needsResponseInteractions.length} to answer · ${updateInteractions.length} updates`
+      : `${openInteractions.length} open conversation${openInteractions.length === 1 ? '' : 's'}`
 
   useEffect(() => {
     if (!open || socialModuleAvailability.canOpen) return
@@ -432,8 +423,7 @@ export default function IncomingInteractionsInbox() {
     policy: IncomingInteractionResponsePolicy,
     showActions: boolean
   ) => {
-    const interactionDramaMode =
-      getInteractionSocialMode(interaction, { game, settings, vip }) === 'drama'
+    const interactionDramaMode = globalDramaMode
     return (
       <InteractionItem
         key={interaction.id}
@@ -444,9 +434,14 @@ export default function IncomingInteractionsInbox() {
         playerById={playerById}
         currentWeek={currentWeek}
         onRead={(interactionId) => dispatch(markIncomingInteractionRead(interactionId))}
-        onRespond={(interactionId, responseType, responseLabel) =>
+        onRespond={(interactionId, responseType, responseLabel) => {
+          setRecentlyResolvedIds((current) => {
+            const nextIds = new Set(current)
+            nextIds.add(interactionId)
+            return nextIds
+          })
           dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))
-        }
+        }}
         relationships={relationships}
         socialMemory={socialMemory}
         humanId={humanPlayer.id}
@@ -475,7 +470,10 @@ export default function IncomingInteractionsInbox() {
               className="inbox-header__close"
               type="button"
               aria-label="Close inbox"
-              onClick={() => dispatch(closeIncomingInbox())}
+              onClick={() => {
+                setRecentlyResolvedIds(new Set())
+                dispatch(closeIncomingInbox())
+              }}
             >
               <IncomingInteractionIcon name="close" />
             </button>
@@ -543,23 +541,12 @@ export default function IncomingInteractionsInbox() {
                 </details>
               )}
 
-              {needsResponseInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Needs Response">
-                  <h3 className="inbox-section__title">Needs Response</h3>
+              {visibleConversationInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="Messages">
+                  <h3 className="inbox-section__title">Messages</h3>
                   <div className="inbox-section__list" role="list">
-                    {needsResponseInteractions.map(({ interaction, priority, policy }) =>
-                      renderInteraction(interaction, priority, policy, true)
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {updateInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Updates">
-                  <h3 className="inbox-section__title inbox-section__title--updates">Updates</h3>
-                  <div className="inbox-section__list" role="list">
-                    {updateInteractions.map(({ interaction, priority, policy }) =>
-                      renderInteraction(interaction, priority, policy, policy === 'optional')
+                    {visibleConversationInteractions.map(({ interaction, priority, policy }) =>
+                      renderInteraction(interaction, priority, policy, !interaction.resolved)
                     )}
                   </div>
                 </section>

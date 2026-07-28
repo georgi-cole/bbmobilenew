@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SocialManeuvers — core API for executing social actions during a phase.
  *
  * Public API:
@@ -354,6 +354,7 @@ function getContextualActionSummary({
   game?: {
     players?: Array<{ id: string; name?: string; status: string }>
     nomineeIds?: string[]
+    lohId?: string | null
     nominationContext?: { autoNomineeId: string | null } | null
   }
   relationships: SocialState['relationships']
@@ -376,13 +377,18 @@ function getContextualActionSummary({
     const holder = game?.players?.find((player) => player.id === targetId)
     if (holder?.status.includes('nominated'))
       return `${holderName} said they have no real choice: they intend to use Safety on themselves.`
-    if (recipientTrust < 25)
+    const actor = game?.players?.find((player) => player.id === actorId)
+    const actorIsHoh = game?.lohId === actorId || actor?.status.includes('loh') === true
+    const disclosureThreshold = actorIsHoh ? -5 : 25
+    if (recipientTrust < disclosureThreshold)
       return `${holderName} stayed vague and said everyone would learn the decision at the ceremony.`
     const nominee = (game?.nomineeIds ?? [])
       .map((id) => ({ id, affinity: relationships[targetId]?.[id]?.affinity ?? 0 }))
       .sort((left, right) => right.affinity - left.affinity)[0]
     return nominee
-      ? `${holderName} trusted you enough to say they are leaning toward using Safety on ${name(nominee.id)}.`
+      ? actorIsHoh
+        ? `${holderName} said they are leaning toward using Safety on ${name(nominee.id)}.`
+        : `${holderName} trusted you enough to say they are leaning toward using Safety on ${name(nominee.id)}.`
       : `${holderName} said they are currently leaning toward leaving the nominations unchanged.`
   }
   if (actionId === 'ask_use_safety') {

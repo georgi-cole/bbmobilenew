@@ -127,7 +127,7 @@ export default function HousePulse({
           <div>
             <span className="house-pulse__eyebrow">Drama Mode</span>
             <h2>House Pulse</h2>
-            <p>A causal stream of relationships, strategy and information you could know.</p>
+            <p>The stories, tensions and whispers shaping the house.</p>
           </div>
           <button type="button" onClick={() => setOpen(false)} aria-label="Close House Pulse">
             &times;
@@ -139,7 +139,7 @@ export default function HousePulse({
             <strong>{activeStories}</strong> storylines
           </span>
           <span>
-            <strong>{storyBeats.length}</strong> recent shifts
+            <strong>{storyBeats.length}</strong> house stories
           </span>
           <span>
             <strong>
@@ -174,7 +174,7 @@ export default function HousePulse({
                     <span>
                       Day {beat.week} · {PHASE_LABEL[beat.phase] ?? beat.phase.replaceAll('_', ' ')}
                     </span>
-                    <em>{beat.severity === 'major' ? 'Major shift' : 'Observed'}</em>
+                    <em>{beat.severity === 'major' ? 'Major' : 'House read'}</em>
                   </div>
                   <h3>{beat.title}</h3>
                   <p>{beat.text}</p>

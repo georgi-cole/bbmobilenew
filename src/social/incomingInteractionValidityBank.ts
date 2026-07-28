@@ -1,5 +1,6 @@
 export interface IncomingInteractionValidityRule {
   senderMustBeNominee?: boolean
+  senderMustBeHoh?: boolean
   senderMustHoldSafety?: boolean
   humanMustBeHoh?: boolean
   humanMustHoldSafety?: boolean
@@ -47,6 +48,10 @@ export const INCOMING_INTERACTION_VALIDITY_BANK: Record<string, IncomingInteract
   safety_holder_consults_loh: {
     senderMustHoldSafety: true,
     humanMustBeHoh: true,
+  },
+  loh_consults_safety_holder: {
+    senderMustBeHoh: true,
+    humanMustHoldSafety: true,
   },
   nominee_understands_loh: {
     senderMustBeNominee: true,
