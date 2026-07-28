@@ -6,6 +6,10 @@ const source = readFileSync(
   resolve(process.cwd(), 'src/components/PublicFavoriteOverlay/PublicFavoriteOverlay.tsx'),
   'utf8'
 )
+const finaleJourney = readFileSync(
+  resolve(process.cwd(), 'e2e/playwright/finale.spec.ts'),
+  'utf8'
+)
 
 describe('Public Favorite finale presentation contract', () => {
   it('does not restore the standings dashboard', () => {
@@ -28,6 +32,11 @@ describe('Public Favorite finale presentation contract', () => {
     expect(source).toContain('fallbackFeaturePlayer')
     expect(source).toContain("phase === 'feature' && featurePlayer")
     expect(source).toContain("phase !== 'intro'")
+  })
+
+  it('keeps the real mobile journey race-safe when the intro auto-advances', () => {
+    expect(finaleJourney).toContain("const skipFavoriteIntro = favoriteVote.getByRole('button', { name: 'Skip intro' })")
+    expect(finaleJourney).toContain('if (await skipFavoriteIntro.isVisible())')
   })
 
   it('retains the authoritative forecast while keeping Viewer Spotlight cosmetic', () => {
