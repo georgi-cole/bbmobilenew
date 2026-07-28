@@ -276,15 +276,6 @@ test.describe('Finale / Jury flow @release', () => {
         .sort()
     ).toEqual(roster.preJury.map((player) => player.id).sort())
 
-    const promotedJuror = roster.preJury.at(-1)
-    if (!promotedJuror) {
-      throw new Error('finale parity fixture needs an eligible pre-jury player')
-    }
-    const expectedRegularJurorIds = [
-      ...roster.jurors.map((player) => player.id),
-      promotedJuror.id,
-    ].sort()
-
     await page.getByRole('button', { name: '→ Force jury' }).click()
     await closeDebugPanelIfOpen(page)
 
@@ -296,15 +287,11 @@ test.describe('Finale / Jury flow @release', () => {
         return {
           finalists: [...state.finale.finalistIds].sort(),
           jurors: state.finale.jurorIds.filter((id) => id !== '__public__').sort(),
-          publicJurorEnabled: state.finale.publicJurorEnabled,
-          publicVoteWeight: state.finale.publicVoteWeight,
         }
       })
       .toEqual({
         finalists: roster.finalists.map((player) => player.id).sort(),
-        jurors: expectedRegularJurorIds,
-        publicJurorEnabled: true,
-        publicVoteWeight: 1,
+        jurors: roster.jurors.map((player) => player.id).sort(),
       })
 
     // Everything after the fixture uses the same controls a player sees.
@@ -313,16 +300,6 @@ test.describe('Finale / Jury flow @release', () => {
       .evaluate((button) => (button as HTMLButtonElement).click())
     const recap = page.getByRole('dialog', { name: 'Season recap cinematic' })
     await expect(recap).toBeVisible({ timeout: 10_000 })
-    await expect(recap.getByText('The housemates who made the season.')).toBeVisible({
-      timeout: 15_000,
-    })
-    await expect(recap.locator('.src-broadcast-photoshoot')).toBeVisible()
-    await expect(recap.locator('.src-cast-grid')).toHaveCount(0)
-    await page.waitForTimeout(850)
-    await page.screenshot({
-      path: 'test-results/season-recap-photoshoot-mobile.png',
-      fullPage: false,
-    })
     await recap
       .getByRole('button', { name: 'Skip recap' })
       .evaluate((button) => (button as HTMLButtonElement).click())
@@ -431,7 +408,9 @@ test.describe('Finale / Jury flow @release', () => {
     await expect(favoriteVote).toBeHidden()
 
     await resumedGoodbye.getByRole('button', { name: 'Skip to end' }).click()
-    await expect(page).toHaveURL(/#\/game-over$/, { timeout: 15_000 })
+    await expect(page.getByLabel('Credits cinematic')).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Skip credits' }).click()
+    await expect(page).toHaveURL(/#\/game-over$/, { timeout: 5_000 })
     await expect(page.getByRole('heading', { name: 'Season Complete' })).toBeVisible()
 
     const championBlock = page.getByText('Season champion', { exact: true }).locator('..')

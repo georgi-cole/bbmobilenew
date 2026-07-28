@@ -71,14 +71,15 @@ export default function Credits({ autoPlay = false, onComplete }: CreditsProps) 
       if (!needsStart || renderFailed) return
 
       setNeedsStart(false)
-      playerRef.current?.seekTo(0)
-      playerRef.current?.play(event)
+      const player = playerRef.current
+      player?.seekTo(0)
+      void Promise.resolve(player?.play(event)).catch((error) => {
+        console.warn('[Credits] Visual playback was blocked.', error)
+        setNeedsStart(true)
+      })
 
       void startCreditsSoundtrackFromGesture().catch((error) => {
         console.warn('[Credits] Soundtrack playback was blocked.', error)
-        playerRef.current?.pause()
-        playerRef.current?.seekTo(0)
-        setNeedsStart(true)
       })
     },
     [needsStart, renderFailed]

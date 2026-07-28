@@ -202,6 +202,26 @@ describe('Credits', () => {
     expect(screen.queryByRole('button', { name: 'Tap to start credits' })).not.toBeInTheDocument()
   })
 
+  it('continues visual playback when the soundtrack is blocked', async () => {
+    soundtrackMock.isPlaying.mockReturnValue(false)
+    soundtrackMock.start.mockRejectedValueOnce(new Error('Audio playback blocked'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    renderCredits()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tap to start credits' }))
+
+    await waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(
+        '[Credits] Soundtrack playback was blocked.',
+        expect.any(Error)
+      )
+    })
+    expect(playerMock.play).toHaveBeenCalled()
+    expect(playerMock.pause).not.toHaveBeenCalled()
+
+    warn.mockRestore()
+  })
+
   it('passes the runtime-loaded credit cards into the composition', async () => {
     renderCredits()
 
