@@ -1,15 +1,16 @@
 name: Temporary polish recap photoshoot
 
 on:
-  pull_request:
-    types: [synchronize]
+  push:
+    branches:
+      - agent/fix-season-recap-broadcast-story
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.head_ref == 'agent/fix-season-recap-broadcast-story' && github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,51 +30,51 @@ jobs:
           component_path = Path('src/components/SeasonRecapCinematic/SeasonRecapCinematic.tsx')
           component = component_path.read_text()
           old_effect = """  useEffect(() => {
-    if (reducedMotion) return
-    const timer = window.setTimeout(() => setActivePhoto(1), 3_350)
-    return () => window.clearTimeout(timer)
-  }, [reducedMotion])
-"""
+            if (reducedMotion) return
+            const timer = window.setTimeout(() => setActivePhoto(1), 3_350)
+            return () => window.clearTimeout(timer)
+          }, [reducedMotion])
+          """
           new_effect = """  useEffect(() => {
-    const timer = window.setTimeout(() => setActivePhoto(1), reducedMotion ? 3_600 : 3_350)
-    return () => window.clearTimeout(timer)
-  }, [reducedMotion])
-"""
+            const timer = window.setTimeout(() => setActivePhoto(1), reducedMotion ? 3_600 : 3_350)
+            return () => window.clearTimeout(timer)
+          }, [reducedMotion])
+          """
           old_media = """        {reducedMotion ? (
-          <div className="src-broadcast-photoshoot__reduced-grid">
-            {photos.map((photo) => (
-              <img key={photo.src} src={photo.src} alt={photo.alt} />
-            ))}
-          </div>
-        ) : (
-          <AnimatePresence mode="wait" initial={false}>
+            <div className="src-broadcast-photoshoot__reduced-grid">
+              {photos.map((photo) => (
+                <img key={photo.src} src={photo.src} alt={photo.alt} />
+              ))}
+            </div>
+          ) : (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.img
+                key={photos[activePhoto]?.src}
+                src={photos[activePhoto]?.src}
+                alt={photos[activePhoto]?.alt}
+                initial={{ opacity: 0, scale: 1.035 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.985 }}
+                transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </AnimatePresence>
+          )}
+          """
+          new_media = """        <AnimatePresence mode="wait" initial={false}>
             <motion.img
               key={photos[activePhoto]?.src}
               src={photos[activePhoto]?.src}
               alt={photos[activePhoto]?.alt}
-              initial={{ opacity: 0, scale: 1.035 }}
+              initial={{ opacity: 0, scale: reducedMotion ? 1 : 1.035 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.985 }}
-              transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+              exit={{ opacity: 0, scale: reducedMotion ? 1 : 0.985 }}
+              transition={{
+                duration: reducedMotion ? 0 : 0.72,
+                ease: [0.22, 1, 0.36, 1],
+              }}
             />
           </AnimatePresence>
-        )}
-"""
-          new_media = """        <AnimatePresence mode="wait" initial={false}>
-          <motion.img
-            key={photos[activePhoto]?.src}
-            src={photos[activePhoto]?.src}
-            alt={photos[activePhoto]?.alt}
-            initial={{ opacity: 0, scale: reducedMotion ? 1 : 1.035 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: reducedMotion ? 1 : 0.985 }}
-            transition={{
-              duration: reducedMotion ? 0 : 0.72,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-          />
-        </AnimatePresence>
-"""
+          """
           if old_effect not in component or old_media not in component:
               raise SystemExit('Recap photoshoot blocks were not found')
           component = component.replace(old_effect, new_effect, 1).replace(old_media, new_media, 1)
