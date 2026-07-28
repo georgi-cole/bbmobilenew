@@ -45,41 +45,82 @@ jobs:
             npx prettier --write "${files[@]}"
           fi
 
-      - name: Apply safe ESLint fixes
-        run: npx eslint . --fix
-
-      - name: Validate lint and capture readable diagnostics
-        id: lint
+      - name: Apply safe ESLint fixes without hiding residual errors
         shell: bash
         run: |
           set +e
-          npm run lint:ci > /tmp/music-manager-lint.log 2>&1
-          status=$?
-          cat /tmp/music-manager-lint.log
-          if [ "$status" -ne 0 ]; then
-            cp /tmp/music-manager-lint.log MUSIC_MANAGER_LINT_DIAGNOSTIC.txt
-            echo "failed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "failed=false" >> "$GITHUB_OUTPUT"
-          fi
+          npx eslint . --fix
           exit 0
 
-      - name: Commit diagnostic when lint remains unresolved
-        if: steps.lint.outputs.failed == 'true'
+      - name: Capture formatting, lint, type, and build diagnostics
+        id: validate
+        shell: bash
+        run: |
+          set +e
+
+          npm run format:check > /tmp/music-manager-format.log 2>&1
+          format_status=$?
+
+          npm run lint:ci > /tmp/music-manager-lint.log 2>&1
+          lint_status=$?
+
+          npm run typecheck > /tmp/music-manager-typecheck.log 2>&1
+          type_status=$?
+
+          npm run build > /tmp/music-manager-build.log 2>&1
+          build_status=$?
+
+          npm run build:mobile > /tmp/music-manager-mobile-build.log 2>&1
+          mobile_status=$?
+
+          {
+            echo 'MUSIC MANAGER CI DIAGNOSTIC'
+            echo "format_status=$format_status"
+            echo "lint_status=$lint_status"
+            echo "typecheck_status=$type_status"
+            echo "build_status=$build_status"
+            echo "mobile_build_status=$mobile_status"
+            echo
+            echo '===== FORMAT ====='
+            cat /tmp/music-manager-format.log
+            echo
+            echo '===== LINT ====='
+            cat /tmp/music-manager-lint.log
+            echo
+            echo '===== TYPECHECK ====='
+            cat /tmp/music-manager-typecheck.log
+            echo
+            echo '===== WEB BUILD ====='
+            cat /tmp/music-manager-build.log
+            echo
+            echo '===== MOBILE BUILD ====='
+            cat /tmp/music-manager-mobile-build.log
+          } | tee MUSIC_MANAGER_CI_DIAGNOSTIC.txt
+
+          if [ "$format_status" -ne 0 ] || [ "$lint_status" -ne 0 ] || [ "$type_status" -ne 0 ] || [ "$build_status" -ne 0 ] || [ "$mobile_status" -ne 0 ]; then
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
+          else
+            rm -f MUSIC_MANAGER_CI_DIAGNOSTIC.txt MUSIC_MANAGER_LINT_DIAGNOSTIC.txt
+            echo 'failed=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Commit formatting and readable diagnostics
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Apply Music Manager formatting and capture lint diagnostics"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Format Music Manager changes and capture CI diagnostics"
           git push origin HEAD:refs/heads/agent/music-manager-runtime-ui
 
-      - name: Stop after lint diagnostic
-        if: steps.lint.outputs.failed == 'true'
+      - name: Stop after unresolved validation
+        if: steps.validate.outputs.failed == 'true'
         run: exit 1
-
-      - name: Typecheck
-        run: npm run typecheck
 
       - name: Run focused sound regressions
         run: |
@@ -92,19 +133,16 @@ jobs:
             tests/unit/sound/resolveDesiredMusic.test.ts \
             tests/unit/sound/minigameMusicConfig.test.ts
 
-      - name: Production build
-        run: npm run build
-
-      - name: Commit validated cleanup and remove this workflow
+      - name: Remove temporary cleanup workflow after successful validation
         shell: bash
         run: |
           git rm .github/workflows/music-manager-cleanup.yml
-          rm -f MUSIC_MANAGER_LINT_DIAGNOSTIC.txt
+          rm -f MUSIC_MANAGER_CI_DIAGNOSTIC.txt MUSIC_MANAGER_LINT_DIAGNOSTIC.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Format and validate Music Manager implementation"
+          git commit -m "Complete Music Manager CI cleanup"
           git push origin HEAD:refs/heads/agent/music-manager-runtime-ui
