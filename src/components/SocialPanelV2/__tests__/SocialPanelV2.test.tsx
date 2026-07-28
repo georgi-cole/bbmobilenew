@@ -29,6 +29,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup, within } from '@testing-library/react'
 import { Provider } from 'react-redux'
+import { MemoryRouter } from 'react-router'
 import { configureStore } from '@reduxjs/toolkit'
 import settingsReducer from '../../../store/settingsSlice'
 import gameReducer, { setPhase } from '../../../store/gameSlice'
@@ -113,9 +114,11 @@ function makeStore(overrides?: {
 
 function renderPanel(store: ReturnType<typeof makeStore>) {
   return render(
-    <Provider store={store}>
-      <SocialPanelV2 />
-    </Provider>
+    <MemoryRouter>
+      <Provider store={store}>
+        <SocialPanelV2 />
+      </Provider>
+    </MemoryRouter>
   )
 }
 
