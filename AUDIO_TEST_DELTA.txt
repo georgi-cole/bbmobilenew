@@ -1,0 +1,7 @@
+tests/unit/glass-bridge/useGlassBridgeAudio.test.ts > useGlassBridgeAudio > sound registry src paths use SOUNDS_BASE for production-safe URL resolution
+tests/unit/riskWheel/useRiskWheelAudio.test.ts > useRiskWheelAudio > sound registry src paths use SOUNDS_BASE and point into the Risk_wheel subfolder
+tests/unit/sound/registry.test.ts > SOUND_REGISTRY — new entries > "music:hoh_comp_general" is registered and points to "loh_competition.mp3"
+tests/unit/sound/registry.test.ts > SOUND_REGISTRY — new entries > "music:nominations_main" is registered and points to "nominations_main.mp3"
+tests/unit/sound/registry.test.ts > SOUND_REGISTRY — new entries > "tv:voting_eviction" is registered and points to "voting_for_eviction_user_and_housguests.mp3"
+tests/unit/sound/registry.test.ts > SOUND_REGISTRY — new entries > points every registered web sound to a non-empty production asset
+tests/unit/wildcard-western/useWildcardWesternAudio.test.ts > useWildcardWesternAudio > sound registry src paths use SOUNDS_BASE and point into the wildcard western subfolder
