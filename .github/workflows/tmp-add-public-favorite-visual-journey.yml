@@ -1,0 +1,60 @@
+name: Temporary add Public Favorite visual journey
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'agent/fix-public-favorite-finale' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-public-favorite-finale
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Add real finale screenshot assertions
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('e2e/playwright/finale.spec.ts')
+          source = path.read_text()
+          old = """    await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
+    await favoriteVote.getByRole('button', { name: 'Fast forward public favorite vote' }).click()
+"""
+          new = """    await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
+    await expect(favoriteVote.getByText('The public has made its choice.')).toBeVisible()
+    await expect(favoriteVote.locator('.pf-overlay__board')).toHaveCount(0)
+    await page.screenshot({
+      path: 'test-results/public-favorite-intro-mobile.png',
+      fullPage: false,
+    })
+    await favoriteVote.getByRole('button', { name: 'Skip intro' }).click()
+    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({ timeout: 5_000 })
+    await page.screenshot({
+      path: 'test-results/public-favorite-feature-mobile.png',
+      fullPage: false,
+    })
+    await favoriteVote.getByRole('button', { name: 'Fast forward public favorite vote' }).click()
+"""
+          if old not in source:
+              raise SystemExit('Public Favorite insertion point was not found')
+          path.write_text(source.replace(old, new))
+      - run: npx prettier --write e2e/playwright/finale.spec.ts
+      - name: Commit journey and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/tmp-add-public-favorite-visual-journey.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Add Public Favorite visual journey"
+          git push origin HEAD:agent/fix-public-favorite-finale
