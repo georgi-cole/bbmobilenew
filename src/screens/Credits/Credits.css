@@ -1,73 +1,87 @@
 .credits-container {
   position: fixed;
   inset: 0;
+  z-index: 1000;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  background: #02030a;
   overflow: hidden;
-  z-index: 1000;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(66, 92, 158, 0.22), transparent 34%),
+    radial-gradient(circle at 50% 82%, rgba(95, 55, 143, 0.18), transparent 34%), #02030a;
+  isolation: isolate;
 }
 
-.credits-end-guard {
-  position: fixed;
-  inset: 0;
-  z-index: 4;
-  background: #02030a;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 220ms ease;
-}
-
-.credits-end-guard.is-visible {
-  opacity: 1;
-}
-
-.credits-end-guard.is-instant {
-  transition: none;
+.credits-container,
+.credits-container * {
+  box-sizing: border-box;
 }
 
 .credits-stage {
   position: relative;
+  display: grid;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  display: grid;
   place-items: center;
   overflow: hidden;
-  background: #02030a;
-  touch-action: manipulation;
-  outline: none;
-  cursor: pointer;
+  background: transparent;
 }
 
 .credits-webgl {
+  position: relative;
   width: min(100vw, calc(100dvh * 9 / 16));
   height: min(100dvh, calc(100vw * 16 / 9));
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #02030a;
-  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+  box-shadow: 0 0 90px rgba(0, 0, 0, 0.54);
+  font-family:
+    'Montserrat',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
-.credits-webgl > div {
+.credits-webgl::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 1px solid rgba(216, 242, 255, 0.08);
+  pointer-events: none;
+}
+
+.credits-webgl > div:not(.credits-fallback) {
   width: 100% !important;
   height: 100% !important;
 }
+
 .credits-start-prompt {
   position: absolute;
   inset: 0;
+  z-index: 3;
   display: grid;
+  width: 100%;
+  height: 100%;
   place-content: center;
   gap: 0.35rem;
-  text-align: center;
+  padding: 1rem;
+  border: 0;
   color: #f1fbff;
-  background: rgba(2, 3, 10, 0.34);
-  backdrop-filter: blur(4px);
-  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+  background: rgba(2, 3, 10, 0.46);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-family:
+    'Montserrat',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  text-align: center;
   text-shadow: 0 0 22px rgba(95, 218, 255, 0.5);
+  cursor: pointer;
+  touch-action: manipulation;
   animation: credits-prompt-in 280ms ease both;
-  pointer-events: none;
 }
 
 .credits-start-prompt strong {
@@ -84,7 +98,157 @@
   text-transform: uppercase;
 }
 
+.credits-start-prompt:focus-visible,
+.credits-exit:focus-visible {
+  outline: 3px solid #f1fbff;
+  outline-offset: 3px;
+}
+
+.credits-exit {
+  position: fixed;
+  top: max(12px, calc(env(safe-area-inset-top, 0px) + 10px));
+  right: max(12px, calc(env(safe-area-inset-right, 0px) + 10px));
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 7px 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(2, 5, 14, 0.62);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font:
+    800 0.68rem/1 'Montserrat',
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.credits-exit span:last-child {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.credits-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: #effbff;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(93, 231, 255, 0.16), transparent 28%),
+    linear-gradient(180deg, #071027, #02030a 72%);
+  font-family:
+    'Montserrat',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  text-align: center;
+}
+
+.credits-fallback__eye {
+  display: grid;
+  width: 78px;
+  height: 78px;
+  margin-bottom: 0.45rem;
+  place-items: center;
+  border: 1px solid rgba(210, 247, 255, 0.36);
+  border-radius: 50%;
+  color: #dff8ff;
+  background: rgba(93, 231, 255, 0.08);
+  box-shadow: 0 0 48px rgba(93, 231, 255, 0.2);
+  font-size: 2.2rem;
+}
+
+.credits-fallback strong {
+  max-width: 18rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.025em;
+}
+
+.credits-fallback span {
+  color: rgba(210, 233, 239, 0.65);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.credits-end-guard {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  background: #02030a;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.credits-end-guard.is-visible {
+  opacity: 1;
+}
+
+.credits-end-guard.is-instant {
+  transition: none;
+}
+
 @keyframes credits-prompt-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (min-aspect-ratio: 4 / 3) {
+  .credits-container::before,
+  .credits-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: calc((100vw - min(100vw, calc(100dvh * 9 / 16))) / 2);
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(2, 3, 10, 0.94), rgba(2, 3, 10, 0.2)),
+      repeating-linear-gradient(90deg, transparent 0 22px, rgba(154, 225, 255, 0.025) 23px 24px);
+  }
+
+  .credits-container::before {
+    left: 0;
+  }
+  .credits-container::after {
+    right: 0;
+    transform: scaleX(-1);
+  }
+
+  .credits-webgl {
+    border-radius: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .credits-start-prompt,
+  .credits-end-guard {
+    animation: none;
+    transition: none;
+  }
 }

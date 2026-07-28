@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "cards": [
+    {
+      "id": "thank-you",
+      "fromSecond": 0,
+      "toSecond": 3.15,
+      "lines": [{ "text": "Thank you for playing", "style": "title" }]
+    },
+    {
+      "id": "created-by",
+      "fromSecond": 3.15,
+      "toSecond": 6.3,
+      "lines": [
+        { "text": "Created by", "style": "label" },
+        { "text": "Georgi Cole", "style": "name", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "art-direction",
+      "fromSecond": 6.3,
+      "toSecond": 9.45,
+      "lines": [
+        { "text": "Art Direction", "style": "label" },
+        { "text": "I.C.O LTD.", "style": "name", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "game-design",
+      "fromSecond": 9.45,
+      "toSecond": 12.6,
+      "lines": [
+        { "text": "Game Design", "style": "label" },
+        { "text": "Georgi Cole", "style": "name", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "music-title",
+      "fromSecond": 12.6,
+      "toSecond": 17.1,
+      "lines": [
+        { "text": "Music", "style": "label" },
+        { "text": "“Move Into Me”", "style": "music-title", "gapBefore": true },
+        { "text": "The Red Collective · Indigoe · JQ", "style": "body" }
+      ]
+    },
+    {
+      "id": "album",
+      "fromSecond": 17.1,
+      "toSecond": 24.3,
+      "lines": [
+        { "text": "From the album", "style": "small" },
+        { "text": "Crushed Velvet", "style": "italic", "gapBefore": true },
+        { "text": "Audiosocket Records", "style": "small", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "music-producers",
+      "fromSecond": 24.3,
+      "toSecond": 28.8,
+      "lines": [
+        { "text": "Music producers", "style": "label" },
+        { "text": "Joshua Ryan Collopy", "style": "name", "gapBefore": true },
+        { "text": "James Andrew Quick", "style": "name" }
+      ]
+    },
+    {
+      "id": "thanks-rado",
+      "fromSecond": 28.8,
+      "toSecond": 31.5,
+      "lines": [
+        { "text": "Special Thanks", "style": "label" },
+        { "text": "Ana-Luna Nieves", "style": "name", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "thanks-candy",
+      "fromSecond": 31.5,
+      "toSecond": 34.2,
+      "lines": [
+        { "text": "Special Thanks", "style": "label" },
+        { "text": "Candy Albert", "style": "name", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "thanks-atiste",
+      "fromSecond": 34.2,
+      "toSecond": 36.9,
+      "lines": [
+        { "text": "Special Thanks", "style": "label" },
+        { "text": "Atiste House", "style": "name", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "thanks-braun",
+      "fromSecond": 36.9,
+      "toSecond": 39.6,
+      "lines": [
+        { "text": "Special Thanks", "style": "label" },
+        { "text": "BBraun EMEA", "style": "name", "gapBefore": true }
+      ]
+    },
+    {
+      "id": "disclaimer",
+      "fromSecond": 39.6,
+      "toSecond": 43.2,
+      "lines": [
+        {
+          "text": "Any resemblance to actual persons or events is purely coincidental.",
+          "style": "legal"
+        }
+      ]
+    },
+    {
+      "id": "closing",
+      "fromSecond": 43.2,
+      "toSecond": 48,
+      "lines": [
+        { "text": "The Big eye is still scanning...", "style": "closing-title" },
+        { "text": "More is coming soon", "style": "closing-subtitle", "gapBefore": true }
+      ]
+    }
+  ]
+}
