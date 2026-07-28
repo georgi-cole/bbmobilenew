@@ -46,20 +46,25 @@ jobs:
           Path('AUDIO_MIGRATION_DIAGNOSTIC.txt').unlink(missing_ok=True)
 
       - name: Validate migration scripts
-        id: syntax
+        run: |
+          node --check scripts/generate-audio-manifest.mjs
+          node --check scripts/migrate-audio-assets.mjs
+
+      - name: Migrate and index all audio assets
+        id: migrate
         shell: bash
         run: |
           set +e
-          {
-            node --check scripts/generate-audio-manifest.mjs
-            first=$?
-            node --check scripts/migrate-audio-assets.mjs
-            second=$?
-            echo "generate_status=$first"
-            echo "migration_status=$second"
-          } > AUDIO_MIGRATION_DIAGNOSTIC.txt 2>&1
+          node scripts/migrate-audio-assets.mjs > AUDIO_MIGRATION_DIAGNOSTIC.txt 2>&1
+          migration_status=$?
+          if [ "$migration_status" -eq 0 ]; then
+            node scripts/generate-audio-manifest.mjs >> AUDIO_MIGRATION_DIAGNOSTIC.txt 2>&1
+            generator_status=$?
+          else
+            generator_status=99
+          fi
           cat AUDIO_MIGRATION_DIAGNOSTIC.txt
-          if [ "$first" -ne 0 ] || [ "$second" -ne 0 ]; then
+          if [ "$migration_status" -ne 0 ] || [ "$generator_status" -ne 0 ]; then
             echo 'failed=true' >> "$GITHUB_OUTPUT"
           else
             rm AUDIO_MIGRATION_DIAGNOSTIC.txt
@@ -67,24 +72,21 @@ jobs:
           fi
           exit 0
 
-      - name: Commit syntax diagnostic
-        if: steps.syntax.outputs.failed == 'true'
+      - name: Commit migration diagnostic
+        if: steps.migrate.outputs.failed == 'true'
         shell: bash
         run: |
+          git reset --hard HEAD
+          git clean -fd
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Capture audio migration syntax diagnostic'
+          git add AUDIO_MIGRATION_DIAGNOSTIC.txt
+          git commit -m 'Capture audio migration runtime diagnostic'
           git push origin HEAD:refs/heads/agent/audio-auto-index-migration
 
-      - name: Stop after syntax failure
-        if: steps.syntax.outputs.failed == 'true'
+      - name: Stop after migration failure
+        if: steps.migrate.outputs.failed == 'true'
         run: exit 1
-
-      - name: Migrate and index all audio assets
-        run: |
-          node scripts/migrate-audio-assets.mjs
-          node scripts/generate-audio-manifest.mjs
 
       - name: Format migrated source and configuration
         run: |
