@@ -36,6 +36,7 @@ describe('Public Favorite finale presentation contract', () => {
       "const skipFavoriteIntro = favoriteVote.getByRole('button', { name: 'Skip intro' })"
     )
     expect(finaleJourney).toContain('if (await skipFavoriteIntro.isVisible())')
+    expect(finaleJourney).toContain('skipFavoriteIntro.click()')
   })
 
   it('retains the authoritative forecast while keeping Viewer Spotlight cosmetic', () => {
