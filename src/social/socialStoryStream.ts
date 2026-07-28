@@ -84,7 +84,7 @@ function pairKey(left: string, right: string): string {
 function averageMutualAffinity(
   relationships: Record<string, Record<string, number | { affinity: number }>>,
   left: string,
-  right: string,
+  right: string
 ): number {
   const leftValue = relationships[left]?.[right]
   const rightValue = relationships[right]?.[left]
@@ -108,7 +108,7 @@ function arcDescription(arc: DramaArc, first: string, second: string): string {
 function eventToBeat(
   event: DramaHouseEvent,
   network: DramaSocialNetwork,
-  nameOf: (id: string) => string,
+  nameOf: (id: string) => string
 ): ScoredBeat {
   const first = nameOf(event.participantIds[0] ?? '')
   const second = nameOf(event.participantIds[1] ?? '')
@@ -121,7 +121,8 @@ function eventToBeat(
   if (event.type === 'confrontation') {
     kind = 'conflict'
     title = `${first} and ${second} finally snapped`
-    text = 'A disagreement that had stayed private is now forcing the rest of the house to choose sides.'
+    text =
+      'A disagreement that had stayed private is now forcing the rest of the house to choose sides.'
   } else if (event.type === 'reconciliation') {
     kind = 'repair'
     title = `${first} and ${second} called a truce`
@@ -189,7 +190,7 @@ function buildActionBeats({
     (entry) =>
       entry.source === 'system' &&
       entry.actorId !== entry.targetId &&
-      (entry.week ?? currentWeek) === currentWeek,
+      (entry.week ?? currentWeek) === currentWeek
   )
   const byActor = new Map<string, SocialActionLogEntry[]>()
   const byPair = new Map<string, SocialActionLogEntry[]>()
@@ -204,9 +205,11 @@ function buildActionBeats({
   for (const [actorId, entries] of byActor) {
     const targets = [...new Set(entries.map((entry) => entry.targetId))]
     if (entries.length < 3 || targets.length < 3) continue
-    const positive = entries.filter((entry) => entry.outcome === 'success' && entry.delta > 0).length
+    const positive = entries.filter(
+      (entry) => entry.outcome === 'success' && entry.delta > 0
+    ).length
     const negative = entries.filter(
-      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId),
+      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId)
     ).length
     const strategic = entries.filter((entry) => STRATEGY_ACTIONS.has(entry.actionId)).length
     const latest = [...entries].sort((left, right) => right.timestamp - left.timestamp)[0]
@@ -255,11 +258,13 @@ function buildActionBeats({
     const shift = current - baseline
     const latest = [...entries].sort((left, right) => right.timestamp - left.timestamp)[0]
     const visibleConflict = entries.some(
-      (entry) => PUBLIC_ACTIONS.has(entry.actionId) && CONFLICT_ACTIONS.has(entry.actionId),
+      (entry) => PUBLIC_ACTIONS.has(entry.actionId) && CONFLICT_ACTIONS.has(entry.actionId)
     )
-    const positive = entries.filter((entry) => entry.outcome === 'success' && entry.delta > 0).length
+    const positive = entries.filter(
+      (entry) => entry.outcome === 'success' && entry.delta > 0
+    ).length
     const negative = entries.filter(
-      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId),
+      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId)
     ).length
     const repairs = entries.filter((entry) => REPAIR_ACTIONS.has(entry.actionId)).length
     const strategy = entries.filter((entry) => STRATEGY_ACTIONS.has(entry.actionId)).length
@@ -275,7 +280,11 @@ function buildActionBeats({
       tags.has('rivalry') ||
       tags.has('betrayal')
     if (!majorPairSignal) continue
-    if ((clusteredActors.has(leftId) || clusteredActors.has(rightId)) && !visibleConflict && Math.abs(shift) < 12) {
+    if (
+      (clusteredActors.has(leftId) || clusteredActors.has(rightId)) &&
+      !visibleConflict &&
+      Math.abs(shift) < 12
+    ) {
       continue
     }
     const leftName = leftId === humanId ? 'You' : nameOf(leftId)
@@ -284,9 +293,17 @@ function buildActionBeats({
     let title = ''
     let text = ''
     let score = 0
-    if (visibleConflict || negative >= 2 || shift <= -8 || tags.has('rivalry') || tags.has('betrayal')) {
+    if (
+      visibleConflict ||
+      negative >= 2 ||
+      shift <= -8 ||
+      tags.has('rivalry') ||
+      tags.has('betrayal')
+    ) {
       kind = 'conflict'
-      title = visibleConflict ? `${leftName} and ${rightName} finally snapped` : 'Trust is sliding fast'
+      title = visibleConflict
+        ? `${leftName} and ${rightName} finally snapped`
+        : 'Trust is sliding fast'
       text = visibleConflict
         ? 'Their private tension reached the rest of the house, and people are beginning to choose sides.'
         : `${leftName} and ${rightName} have grown colder after a pattern of strained exchanges.`
@@ -338,13 +355,13 @@ export function buildSocialStoryStream({
   maxBeats = 5,
 }: BuildSocialStoryStreamInput): SocialStoryBeat[] {
   const playerById = new Map(players.map((player) => [player.id, player]))
-  const nameOf = (id: string) => playerById.get(id)?.name ?? id || 'Someone'
+  const nameOf = (id: string) => (playerById.get(id)?.name ?? id) || 'Someone'
   const knownEvents = network.events.filter(
     (event) =>
       event.week === currentWeek &&
       (event.public ||
         event.participantIds.includes(humanId) ||
-        (event.type === 'discovery' && event.participantIds[0] === humanId)),
+        (event.type === 'discovery' && event.participantIds[0] === humanId))
   )
   const candidates = [
     ...knownEvents.map((event) => eventToBeat(event, network, nameOf)),
@@ -369,10 +386,7 @@ export function buildSocialStoryStream({
     }
   }
   return [...deduped.values()]
-    .sort(
-      (left, right) =>
-        right.score - left.score || right.beat.createdAt - left.beat.createdAt,
-    )
+    .sort((left, right) => right.score - left.score || right.beat.createdAt - left.beat.createdAt)
     .slice(0, Math.max(1, Math.min(5, maxBeats)))
     .map((entry) => entry.beat)
 }

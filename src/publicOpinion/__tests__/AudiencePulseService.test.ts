@@ -11,10 +11,54 @@ describe('audience pulse and explicit requests', () => {
       ],
       week: 2,
       actionHistory: [
-        { actionId: 'compliment', actorId: 'lia', targetId: 'echo', cost: 1, delta: 4, outcome: 'success', newEnergy: 2, timestamp: 1, week: 2, source: 'system' },
-        { actionId: 'reassure', actorId: 'lia', targetId: 'echo', cost: 1, delta: 4, outcome: 'success', newEnergy: 1, timestamp: 2, week: 2, source: 'system' },
-        { actionId: 'confront', actorId: 'echo', targetId: 'lia', cost: 1, delta: -5, outcome: 'success', newEnergy: 1, timestamp: 3, week: 2, source: 'system' },
-        { actionId: 'startFight', actorId: 'echo', targetId: 'lia', cost: 1, delta: -5, outcome: 'success', newEnergy: 0, timestamp: 4, week: 2, source: 'system' },
+        {
+          actionId: 'compliment',
+          actorId: 'lia',
+          targetId: 'echo',
+          cost: 1,
+          delta: 4,
+          outcome: 'success',
+          newEnergy: 2,
+          timestamp: 1,
+          week: 2,
+          source: 'system',
+        },
+        {
+          actionId: 'reassure',
+          actorId: 'lia',
+          targetId: 'echo',
+          cost: 1,
+          delta: 4,
+          outcome: 'success',
+          newEnergy: 1,
+          timestamp: 2,
+          week: 2,
+          source: 'system',
+        },
+        {
+          actionId: 'confront',
+          actorId: 'echo',
+          targetId: 'lia',
+          cost: 1,
+          delta: -5,
+          outcome: 'success',
+          newEnergy: 1,
+          timestamp: 3,
+          week: 2,
+          source: 'system',
+        },
+        {
+          actionId: 'startFight',
+          actorId: 'echo',
+          targetId: 'lia',
+          cost: 1,
+          delta: -5,
+          outcome: 'success',
+          newEnergy: 0,
+          timestamp: 4,
+          week: 2,
+          source: 'system',
+        },
       ],
     })
     expect(reactions.find((entry) => entry.playerId === 'lia')?.delta).toBeGreaterThan(0)
@@ -23,13 +67,18 @@ describe('audience pulse and explicit requests', () => {
 
   it('gives influence-LOH requests a concrete nomination target', () => {
     const players = [
-      { id: 'user', name: 'You', status: 'active', isUser: true },
-      { id: 'lia', name: 'Lia', status: 'active', isUser: false },
-      { id: 'echo', name: 'Echo', status: 'active', isUser: false },
-      { id: 'rae', name: 'Rae', status: 'active', isUser: false },
+      { id: 'user', name: 'You', avatar: '🧑', status: 'active', isUser: true },
+      { id: 'lia', name: 'Lia', avatar: '👩', status: 'active', isUser: false },
+      { id: 'echo', name: 'Echo', avatar: '🧑', status: 'active', isUser: false },
+      { id: 'rae', name: 'Rae', avatar: '👩', status: 'active', isUser: false },
     ] as const
     const directions = Array.from({ length: 30 }, (_, offset) =>
-      generateDirectionsForCycle({ players: [...players], week: offset + 1, seed: offset + 11, count: 4 }),
+      generateDirectionsForCycle({
+        players: [...players],
+        week: offset + 1,
+        seed: offset + 11,
+        count: 4,
+      })
     ).flat()
     const influence = directions.find((direction) => direction.type === 'influence_hoh')
     expect(influence?.targetPlayerId).toBeTruthy()

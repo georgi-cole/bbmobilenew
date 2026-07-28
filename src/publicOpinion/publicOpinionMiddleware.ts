@@ -598,7 +598,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
         const audiencePulse = computeAudiencePulse({
           players: game.players ?? [],
-          actionHistory: nextState.social?.actionHistory ?? nextState.social?.sessionLogs ?? [],
+          actionHistory: nextState.social?.actionHistory ?? [],
           week: Math.max(1, week - 1),
         })
         for (const reaction of audiencePulse) {
@@ -609,7 +609,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
               reason: reaction.reason,
               week,
               addToFeed: true,
-            }),
+            })
           )
         }
 

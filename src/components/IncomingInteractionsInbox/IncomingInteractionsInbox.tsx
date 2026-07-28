@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   closeIncomingInbox,
@@ -332,7 +332,7 @@ export default function IncomingInteractionsInbox() {
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
   const globalDramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
-  const [recentlyResolvedIds, setRecentlyResolvedIds] = useState<Set<string>>(() => new Set())
+  const recentlyResolvedIdsRef = useRef<Set<string>>(new Set())
 
   const players = game.players
   const currentWeek = game.week ?? 1
@@ -355,30 +355,31 @@ export default function IncomingInteractionsInbox() {
       [...interactionEntries].sort(
         (left, right) =>
           left.interaction.createdAt - right.interaction.createdAt ||
-          left.interaction.id.localeCompare(right.interaction.id),
+          left.interaction.id.localeCompare(right.interaction.id)
       ),
-    [interactionEntries],
+    [interactionEntries]
   )
   const openInteractions = useMemo(
     () => sortedInteractions.filter((entry) => !entry.interaction.resolved),
-    [sortedInteractions],
+    [sortedInteractions]
   )
   const visibleConversationInteractions = useMemo(
     () =>
       sortedInteractions.filter(
-        (entry) => !entry.interaction.resolved || recentlyResolvedIds.has(entry.interaction.id),
+        (entry) =>
+          !entry.interaction.resolved || recentlyResolvedIdsRef.current.has(entry.interaction.id)
       ),
-    [recentlyResolvedIds, sortedInteractions],
+    [sortedInteractions]
   )
   const resolvedInteractions = useMemo(
     () =>
       sortedInteractions.filter(
         (entry) =>
           entry.interaction.resolved &&
-          !recentlyResolvedIds.has(entry.interaction.id) &&
-          entry.interaction.resolvedWeek === currentWeek,
+          !recentlyResolvedIdsRef.current.has(entry.interaction.id) &&
+          entry.interaction.resolvedWeek === currentWeek
       ),
-    [sortedInteractions, recentlyResolvedIds, currentWeek],
+    [sortedInteractions, currentWeek]
   )
   const pendingCommitments = useMemo(
     () => commitments.filter((commitment) => commitment.status === 'pending'),
@@ -406,16 +407,13 @@ export default function IncomingInteractionsInbox() {
       : `${openInteractions.length} open conversation${openInteractions.length === 1 ? '' : 's'}`
 
   useEffect(() => {
-    if (!open) setRecentlyResolvedIds(new Set())
-  }, [open])
-
-  useEffect(() => {
     if (!open || socialModuleAvailability.canOpen) return
     logBlockedSocialModuleOpen(
       'Incoming social module',
       socialModuleAvailability,
       'IncomingInteractionsInbox visibility guard'
     )
+    recentlyResolvedIdsRef.current.clear()
     dispatch(closeIncomingInbox())
   }, [dispatch, open, socialModuleAvailability])
 
@@ -439,11 +437,7 @@ export default function IncomingInteractionsInbox() {
         currentWeek={currentWeek}
         onRead={(interactionId) => dispatch(markIncomingInteractionRead(interactionId))}
         onRespond={(interactionId, responseType, responseLabel) => {
-          setRecentlyResolvedIds((current) => {
-            const next = new Set(current)
-            next.add(interactionId)
-            return next
-          })
+          recentlyResolvedIdsRef.current.add(interactionId)
           dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))
         }}
         relationships={relationships}
@@ -474,7 +468,10 @@ export default function IncomingInteractionsInbox() {
               className="inbox-header__close"
               type="button"
               aria-label="Close inbox"
-              onClick={() => dispatch(closeIncomingInbox())}
+              onClick={() => {
+                recentlyResolvedIdsRef.current.clear()
+                dispatch(closeIncomingInbox())
+              }}
             >
               <IncomingInteractionIcon name="close" />
             </button>
@@ -547,7 +544,7 @@ export default function IncomingInteractionsInbox() {
                   <h3 className="inbox-section__title">Messages</h3>
                   <div className="inbox-section__list" role="list">
                     {visibleConversationInteractions.map(({ interaction, priority, policy }) =>
-                      renderInteraction(interaction, priority, policy, !interaction.resolved),
+                      renderInteraction(interaction, priority, policy, !interaction.resolved)
                     )}
                   </div>
                 </section>
