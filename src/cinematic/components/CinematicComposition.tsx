@@ -165,7 +165,11 @@ export const CinematicComposition = ({
   const grainFrame = quality === 'high' ? frame : Math.floor(frame / 6) * 6
 
   return (
-    <AbsoluteFill className="big-eye-cinematic" data-cinematic-quality={quality}>
+    <AbsoluteFill
+      className="big-eye-cinematic"
+      data-cinematic-quality={quality}
+      data-cinematic-renderer={performanceMode ? 'adaptive-dom' : 'webgl'}
+    >
       {audioMode === 'embedded' && <CinematicSoundtrack />}
       <CinematicThunder />
 
