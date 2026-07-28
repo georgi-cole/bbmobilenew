@@ -22,8 +22,24 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Apply focused Social corrections
-        run: node scripts/tmp-social-ux-realism-codemod.mjs
+        id: codemod
+        shell: bash
+        run: |
+          mkdir -p docs
+          set +e
+          node scripts/tmp-social-ux-realism-codemod.mjs > docs/.social-ux-codemod.txt 2>&1
+          status=$?
+          set -e
+          if (( status == 0 )); then
+            rm -f docs/.social-ux-codemod.txt
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            printf '\nCODEMOD_EXIT_CODE=%s\n' "$status" >> docs/.social-ux-codemod.txt
+            git reset --hard HEAD
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Format changed production and test files
+        if: steps.codemod.outputs.ok == 'true'
         shell: bash
         run: |
           git fetch origin main --depth=1
@@ -32,6 +48,7 @@ jobs:
             npx prettier --write "${files[@]}"
           fi
       - name: Targeted Social and public-opinion tests
+        if: steps.codemod.outputs.ok == 'true'
         run: >-
           npx vitest run
           src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx
@@ -42,16 +59,17 @@ jobs:
           src/publicOpinion/__tests__/AudiencePulseService.test.ts
           tests/unit/publicOpinion/publicOpinionMiddleware.test.ts
       - name: Static validation
+        if: steps.codemod.outputs.ok == 'true'
         run: |
           npm run typecheck
           npm run lint:ci
           npm run format:check
-      - name: Commit implementation
+      - name: Commit implementation or diagnostics
         shell: bash
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src tests server
+          git add src tests server docs
           git commit -m "Fix Social UX, role logic, and audience simulation"
           git push origin HEAD:fix/social-ux-realism-regressions
