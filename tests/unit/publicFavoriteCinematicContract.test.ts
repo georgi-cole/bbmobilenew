@@ -11,6 +11,7 @@ describe('Public Favorite finale presentation contract', () => {
   it('does not restore the standings dashboard', () => {
     expect(source).not.toContain('VoteRankingBoard')
     expect(source).not.toContain('TrendMarker')
+    expect(source).not.toContain('pf-overlay__board')
     expect(source).not.toContain('percent-value')
     expect(source).not.toContain('accent-rail')
     expect(source).not.toContain('Next result in')
