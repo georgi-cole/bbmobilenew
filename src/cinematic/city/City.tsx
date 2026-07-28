@@ -376,4 +376,41 @@ const Roads = ({ state }: { state: TimelineState }) => {
           <meshPhysicalMaterial color="#161e2c" roughness={0.7 - state.wetness * 0.36} metalness={0.24 + state.wetness * 0.32} clearcoat={state.wetness * 0.7} />
         </mesh>
       ))}
-      {CITY_LAYOUT.intersections.map((z) => (÷¾ú¶‰žËkºwµçI½ÁÌ…ÌìÉ•‘¥ÑÌüèÉÉ…äñì¥èÍÑÉ¥¹œôøôðÕ¹‘•™¥¹•ì4(€€€€€•áÁ•Ð¡¥¹ÁÕÑAÉ½ÁÌü¹É•‘¥ÑÌü¹lÁtü¹¥¤¹Ñ½	” ÉÕ¹Ñ¥µ”µÁÉ½‘Õ•Èœ¤ì4(€€€ô¤ì4(4(€€€•áÁ•Ð¡ÍÉ••¸¹•Ñ	å1…‰•±Q•áÐ ]•‰0É•‘¥ÑÌ¥¹•µ…Ñ¥Œœ¤¤¹Ñ½!…Ù•ÑÑÉ¥‰ÕÑ” 4(€€€€€€‘…Ñ„µ½¹Ñ•¹ÐµÍ½ÕÉ”œ°4(€€€€€€ÉÕ¹Ñ¥µ”œ°4(€€€€¤ì4(€ô¤ì4(4(€¥Ð •á¥ÑÌÝ¡•¸Í…Á”¥ÌÁÉ•ÍÍ•œ°€ ¤€ôøì4(€€€Ù¤¹ÕÍ•…­•Q¥µ•ÉÌ ¤ì4(€€€É•¹‘•ÉÉ•‘¥ÑÌ ¤ì4(4(€€€…Ð  ¤€ôøì4(€€€€€™¥É•Ù•¹Ð¹­•å½Ý¸¡Ý¥¹‘½Ü°ì­•äè€Í…Á”œô¤ì4(€€€€€Ù¤¹…‘Ù…¹•Q¥µ•ÉÍ	åQ¥µ”¡a%Q}}5L¤ì4(€€€ô¤ì4(4(€€€•áÁ•Ð¡Á±…å•É5½¬¹Á…ÕÍ”¤¹Ñ½!…Ù•	••¹…±±• ¤ì4(€€€•áÁ•Ð¡ÍÉ••¸¹•Ñ	åQ•áÐ !½µ”ÍÉ••¸œ¤¤¹Ñ½	•%¹Q¡•½Õµ•¹Ð ¤ì4(€ô¤ì4(4(€¥Ð É•ÑÕÉ¹Ì¡½µ”…™Ñ•ÈÑ¡”]•‰0½µÁ½Í¥Ñ¥½¸™¥¹¥Í¡•Ìœ°€ ¤€ôøì4(€€€Ù¤¹ÕÍ•…­•Q¥µ•ÉÌ ¤ì4(€€€É•¹‘•ÉÉ•‘¥ÑÌ ¤ì4(4(€€€…Ð  ¤€ôøì4(€€€€€Á±…å•É5½¬¹•µ¥Ñ¹‘• ¤ì4(€€€ô¤ì4(4(€€€•áÁ•Ð¡Á±…å•É5½¬¹Á…ÕÍ”¤¹Ñ½!…Ù•	••¹…±±• ¤ì4(€€€•áÁ•Ð¡ÍÉ••¸¹•Ñ	åQ•ÍÑ% É•‘¥ÑÌµ•¹µÕ…Éœ¤¤¹Ñ½!…Ù•±…ÍÌ ¥ÌµÙ¥Í¥‰±”œ°€¥Ìµ¥¹ÍÑ…¹Ðœ¤ì4(4(€€€…Ð  ¤€ôøì4(€€€€€Ù¤¹…‘Ù…¹•Q¥µ•ÉÍ	åQ¥µ”¡a%Q}}5L¤ì4(€€€ô¤ì4(4(€€€•áÁ•Ð¡ÍÉ••¸¹•Ñ	åQ•áÐ !½µ”ÍÉ••¸œ¤¤¹Ñ½	•%¹Q¡•½Õµ•¹Ð ¤ì4(€ô¤ì4)ô¤ì4(
+      {CITY_LAYOUT.intersections.map((z) => (
+        <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, z]}>
+          <planeGeometry args={[145, 15]} />
+          <meshPhysicalMaterial color="#080d16" roughness={0.86 - state.wetness * 0.55} metalness={state.wetness * 0.42} />
+        </mesh>
+      ))}
+      <InstancedBoxes instances={CITY_LAYOUT.roadMarks} material="mark" opacity={0.42 + state.wetness * 0.25} />
+      <InstancedBoxes instances={CITY_LAYOUT.reflectionStreaks} material="reflection" opacity={state.wetness * state.vehicleLightIntensity * 0.4} />
+    </group>
+  );
+};
+
+export const City = ({ frame, state, quality }: CityProps) => {
+  // The coast reveals from the distant horizon forward while the city eases
+  // below the camera. Opaque, depth-tested coast pixels replace the city
+  // spatially instead of cross-fading two complete scenes.
+  if (state.cityExitProgress >= 0.82) return null;
+  const exitDrop = Math.pow(state.cityExitProgress, 2.35) * 320;
+
+  return (
+  <group position={[0, -exitDrop, 0]}>
+    <mesh position={[0, -0.38, -145]}>
+      <boxGeometry args={[420, 0.7, 700]} />
+      <meshStandardMaterial color="#070b15" roughness={0.92} metalness={0.12} />
+    </mesh>
+    <Roads state={state} />
+    <InstancedBoxes instances={CITY_LAYOUT.distantBuildings} material="distant" />
+    <InstancedBoxes instances={CITY_LAYOUT.buildings} material="building" />
+    <InstancedBoxes instances={RETAIL_PODIUMS} material="building" />
+    <InstancedBoxes instances={CITY_LAYOUT.roofDetails} material="roof" />
+    <BuildingWindows frame={frame} intensity={state.windowIntensity} quality={quality} />
+    <Storefronts frame={frame} state={state} />
+    <StreetFurniture state={state} />
+    <UmbrellaPedestrians frame={frame} state={state} quality={quality} />
+    <VehicleTraffic frame={frame} state={state} />
+  </group>
+  );
+};
