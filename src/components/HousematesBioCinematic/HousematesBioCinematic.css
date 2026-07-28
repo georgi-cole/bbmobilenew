@@ -42,8 +42,7 @@
   z-index: -1;
   background:
     radial-gradient(circle at 20% 34%, rgba(99, 89, 255, 0.2), transparent 29%),
-    radial-gradient(circle at 80% 65%, rgba(0, 219, 190, 0.1), transparent 31%),
-    #03050a;
+    radial-gradient(circle at 80% 65%, rgba(0, 219, 190, 0.1), transparent 31%), #03050a;
   animation: hbc-ambient-drift 16s ease-in-out infinite alternate;
 }
 
@@ -225,8 +224,20 @@
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(180deg, rgba(2, 4, 8, 0.3) 0%, transparent 30%, rgba(2, 4, 8, 0.18) 62%, rgba(2, 4, 8, 0.7) 100%),
-    linear-gradient(90deg, rgba(2, 4, 8, 0.08) 0%, transparent 42%, rgba(2, 4, 8, 0.82) 84%, #020408 100%);
+    linear-gradient(
+      180deg,
+      rgba(2, 4, 8, 0.3) 0%,
+      transparent 30%,
+      rgba(2, 4, 8, 0.18) 62%,
+      rgba(2, 4, 8, 0.7) 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(2, 4, 8, 0.08) 0%,
+      transparent 42%,
+      rgba(2, 4, 8, 0.82) 84%,
+      #020408 100%
+    );
 }
 
 .hbc-card--reverse .hbc-card__grade {
@@ -394,7 +405,11 @@
   border-radius: 16px 16px 16px 5px;
   color: rgba(255, 255, 255, 0.92);
   background:
-    linear-gradient(115deg, color-mix(in srgb, var(--hbc-accent) 13%, transparent), transparent 56%),
+    linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--hbc-accent) 13%, transparent),
+      transparent 56%
+    ),
     rgba(5, 8, 15, 0.72);
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(13px) saturate(1.05);
