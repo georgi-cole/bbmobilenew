@@ -29,12 +29,12 @@ const MOCK_JURORS: Player[] = [
 ];
 
 const MOCK_ALL_PLAYERS: Player[] = [
-  { id: 'p1', name: 'Alice', avatar: '👩', status: 'evicted' },
-  { id: 'p2', name: 'Bob', avatar: '🧑', status: 'evicted' },
-  { id: 'p3', name: 'Carol', avatar: '👩', status: 'jury' },
-  { id: 'p4', name: 'Dave', avatar: '🧑', status: 'jury' },
-  { id: 'p5', name: 'Eve', avatar: '👩', status: 'active' },
-  { id: 'p6', name: 'Frank', avatar: '🧑', status: 'active' },
+  { id: 'finn', name: 'Finn', avatar: '🧑', status: 'evicted' },
+  { id: 'mimi', name: 'Mimi', avatar: '👩', status: 'evicted' },
+  { id: 'rae', name: 'Rae', avatar: '👩', status: 'jury' },
+  { id: 'nova', name: 'Nova', avatar: '🧑', status: 'jury' },
+  { id: 'kai', name: 'Kai', avatar: '🧑', status: 'active' },
+  { id: 'zed', name: 'Zed', avatar: '🧑', status: 'active' },
 ];
 
 const BASE = import.meta.env.BASE_URL;
@@ -62,9 +62,14 @@ type TwinScenario = 'exposed' | 'secretKept';
 type ActiveOverlay = 'none' | 'battleBack' | 'publicFavorite' | 'twinShock' | 'twinShockAvatar';
 
 export default function TwistsTestPage() {
+  const phonePreview = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('phonePreview') === 'true';
   const [seed, setSeed] = useState(42);
   const [awardAmount, setAwardAmount] = useState(25000);
-  const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>('none');
+  const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(() => (
+    new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('preview') === 'public-favorite'
+      ? 'publicFavorite'
+      : 'none'
+  ));
   const [twinScenario, setTwinScenario] = useState<TwinScenario>('exposed');
   const [lastResult, setLastResult] = useState<string | null>(null);
   // Seed frozen at the moment the overlay is opened so that changing the
@@ -111,6 +116,12 @@ export default function TwistsTestPage() {
       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
         Manual QA page for Back 2 the Game, Public's Favorite, and both Twin Shock outcomes.
       </p>
+      <a
+        href="#/phone-preview"
+        style={{ display: 'inline-flex', marginBottom: '1.5rem', color: '#f4cf7f', fontSize: '0.85rem', fontWeight: 800 }}
+      >
+        Open Public Favorite in a phone simulator
+      </a>
 
       {/* Controls */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -213,7 +224,7 @@ export default function TwistsTestPage() {
           candidates={MOCK_ALL_PLAYERS}
           seed={seed}
           awardAmount={awardAmount}
-          eliminationIntervalMs={3500}
+          eliminationIntervalMs={phonePreview ? 5600 : 3500}
           onComplete={handleFavoriteComplete}
         />
       )}

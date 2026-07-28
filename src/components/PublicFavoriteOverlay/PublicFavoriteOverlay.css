@@ -1117,3 +1117,354 @@
     animation: none;
   }
 }
+
+/* Reality-TV balance: the board remains live, but commentary owns the moment. */
+.pf-overlay__spotlight {
+  min-height: clamp(11.5rem, 37vw, 14.5rem);
+  grid-template-columns: minmax(0, 1fr) clamp(8.6rem, 31vw, 12.5rem);
+  align-items: stretch;
+  overflow: hidden;
+  border-color: rgba(249, 204, 113, 0.28);
+  background:
+    radial-gradient(circle at 78% 45%, rgba(247, 188, 92, 0.17), transparent 30%),
+    linear-gradient(108deg, rgba(11, 8, 27, 0.98) 0 54%, rgba(55, 22, 66, 0.76));
+}
+
+.pf-overlay__spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(114deg, transparent 0 42%, rgba(255, 255, 255, 0.07) 43% 44%, transparent 45%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 48%);
+  pointer-events: none;
+}
+
+.pf-overlay__leader-copy {
+  position: relative;
+  z-index: 2;
+  justify-content: center;
+  gap: 0.38rem;
+}
+
+.pf-overlay__leader-kicker {
+  color: #f4cf7f;
+  font-size: 0.61rem;
+  letter-spacing: 0.17em;
+}
+
+.pf-overlay__leader-name {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 9vw, 4rem);
+  line-height: 0.82;
+  text-shadow: 0 14px 35px rgba(0, 0, 0, 0.48);
+}
+
+.pf-overlay__commentary-copy,
+.pf-overlay__moment-stat,
+.pf-overlay__spotlight-context {
+  margin: 0;
+}
+
+.pf-overlay__spotlight-context {
+  margin-top: 0.16rem;
+  color: #f4cf7f;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.pf-overlay__commentary-copy {
+  max-width: 28rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(0.85rem, 2.8vw, 1.05rem);
+  font-style: italic;
+  line-height: 1.28;
+}
+
+.pf-overlay__moment-stat {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.12rem;
+  padding: 0.28rem 0.52rem;
+  border: 1px solid rgba(248, 207, 128, 0.32);
+  border-radius: 999px;
+  color: #f7d589;
+  background: rgba(3, 3, 10, 0.3);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pf-overlay__moment-stat strong {
+  color: #fff;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+}
+
+.pf-overlay__spotlight-fact {
+  position: relative;
+  z-index: 2;
+  max-width: 31rem;
+  margin-top: 0.15rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pf-overlay__leader-portrait-wrap {
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  width: auto;
+  aspect-ratio: auto;
+}
+
+.pf-overlay__leader-glow {
+  width: 132%;
+  height: 132%;
+  background: radial-gradient(circle, rgba(249, 207, 119, 0.32), rgba(130, 87, 217, 0.16) 52%, transparent 74%);
+}
+
+.pf-overlay__leader-avatar--portrait {
+  width: min(122%, 13rem);
+  height: auto;
+  max-height: 112%;
+  aspect-ratio: 0.83;
+  border-color: rgba(249, 207, 119, 0.58);
+  border-radius: 47% 47% 18% 18% / 37% 37% 16% 16%;
+  object-fit: cover;
+  object-position: center 17%;
+  box-shadow: 0 24px 38px rgba(0, 0, 0, 0.48), 0 0 42px rgba(249, 207, 119, 0.2);
+}
+
+.pf-overlay__board-header {
+  align-items: baseline;
+  padding: 0.12rem 0.12rem 0.28rem;
+}
+
+.pf-overlay__board-title {
+  color: #fff;
+  font-size: 0.69rem;
+  letter-spacing: 0.14em;
+}
+
+.pf-overlay__board-meta {
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pf-overlay__rank-card {
+  overflow: hidden;
+}
+
+.pf-overlay__rank-card--leader {
+  border-color: rgba(249, 207, 119, 0.42);
+  background: linear-gradient(90deg, rgba(241, 184, 75, 0.19), rgba(133, 92, 230, 0.12));
+}
+
+.pf-overlay__rank-tag {
+  color: #f7d589;
+  background: rgba(241, 184, 75, 0.12);
+}
+
+.pf-overlay__surge-panel {
+  border-color: rgba(249, 207, 119, 0.2);
+  background: linear-gradient(120deg, rgba(13, 9, 24, 0.94), rgba(25, 15, 40, 0.9));
+}
+
+.pf-overlay__surge-kicker {
+  color: #f4cf7f;
+}
+
+.pf-overlay__surge-cta {
+  background: linear-gradient(90deg, #8f78e8, #e5b95e);
+}
+
+/* A personal prediction gives the audience a reason to stay through the final cut. */
+.pf-overlay__your-call {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem 0.75rem;
+  padding: 0.72rem;
+  border: 1px solid rgba(249, 207, 119, 0.28);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(247, 190, 89, 0.14), transparent 36%),
+    linear-gradient(120deg, rgba(18, 10, 32, 0.95), rgba(12, 9, 24, 0.94));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
+}
+
+.pf-overlay__your-call::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(112deg, transparent 22%, rgba(255, 255, 255, 0.06) 50%, transparent 78%);
+  transform: translateX(-130%);
+  animation: pfSweep 5.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.pf-overlay__your-call-copy,
+.pf-overlay__your-call-options,
+.pf-overlay__your-call-cta,
+.pf-overlay__your-call-change {
+  position: relative;
+  z-index: 1;
+}
+
+.pf-overlay__your-call-kicker,
+.pf-overlay__your-call-title,
+.pf-overlay__your-call-description {
+  margin: 0;
+}
+
+.pf-overlay__your-call-kicker {
+  color: #f4cf7f;
+  font-size: 0.61rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pf-overlay__your-call-title {
+  margin-top: 0.08rem;
+  color: #fff;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.pf-overlay__your-call-description {
+  margin-top: 0.22rem;
+  color: rgba(255, 255, 255, 0.61);
+  font-size: 0.72rem;
+  line-height: 1.28;
+}
+
+.pf-overlay__your-call-options {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.12rem;
+}
+
+.pf-overlay__your-call-option {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: max-content;
+  padding: 0.36rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.pf-overlay__your-call-option .pf-overlay__portrait--chip {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.pf-overlay__your-call-option--selected {
+  border-color: rgba(249, 207, 119, 0.66);
+  background: rgba(249, 207, 119, 0.13);
+  color: #fff;
+}
+
+.pf-overlay__your-call-cta,
+.pf-overlay__your-call-change {
+  min-height: 38px;
+  border: 1px solid rgba(249, 207, 119, 0.34);
+  border-radius: 0.75rem;
+  color: #17101f;
+  background: linear-gradient(90deg, #f4cf7f, #dca2ff);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 24px rgba(182, 116, 239, 0.2);
+}
+
+.pf-overlay__your-call-cta {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.pf-overlay__your-call-change {
+  align-self: center;
+  padding: 0.5rem 0.6rem;
+  color: #f7d589;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+}
+
+.pf-overlay__called-winner {
+  margin: -0.15rem 0 0;
+  padding: 0.33rem 0.7rem;
+  border: 1px solid rgba(249, 207, 119, 0.5);
+  border-radius: 999px;
+  color: #f7d589;
+  background: rgba(249, 207, 119, 0.13);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 720px) {
+  .pf-overlay__stage {
+    width: min(100%, 72rem);
+  }
+
+  .pf-overlay__broadcast {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(15.5rem, 0.36fr);
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .pf-overlay__board-shell {
+    min-height: 0;
+  }
+
+  .pf-overlay__footer {
+    align-self: end;
+  }
+
+  .pf-overlay__surge-panel {
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .pf-overlay__your-call {
+    height: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-height: 700px) {
+  .pf-overlay__spotlight {
+    min-height: 9rem;
+  }
+
+  .pf-overlay__commentary-copy {
+    font-size: 0.78rem;
+  }
+
+  .pf-overlay__moment-stat {
+    display: none;
+  }
+}

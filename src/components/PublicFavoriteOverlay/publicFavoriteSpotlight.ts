@@ -9,6 +9,7 @@ export interface HouseguestSpotlightItem {
 
 const SPOTLIGHT_ROTATION_MIN_MS = 4500;
 const SPOTLIGHT_ROTATION_MAX_MS = 6000;
+const SPOTLIGHT_STORY_WORD_LIMIT = 34;
 
 function cleanText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
@@ -24,10 +25,41 @@ function splitSentences(value: string): string[] {
 function buildStoryFacts(profile: Houseguest): string[] {
   const sentences = splitSentences(profile.story);
   const facts: string[] = [];
+  let currentBeat: string[] = [];
+  let currentWordCount = 0;
 
-  for (let index = 0; index < sentences.length; index += 2) {
-    const fact = sentences.slice(index, index + 2).join(' ');
-    if (fact) facts.push(fact);
+  for (const sentence of sentences) {
+    const sentenceWords = sentence.split(/\s+/).filter(Boolean);
+    const sentenceWordCount = sentenceWords.length;
+
+    if (sentenceWordCount > SPOTLIGHT_STORY_WORD_LIMIT) {
+      if (currentBeat.length > 0) {
+        facts.push(currentBeat.join(' '));
+        currentBeat = [];
+        currentWordCount = 0;
+      }
+
+      for (let index = 0; index < sentenceWords.length; index += SPOTLIGHT_STORY_WORD_LIMIT) {
+        facts.push(sentenceWords.slice(index, index + SPOTLIGHT_STORY_WORD_LIMIT).join(' '));
+      }
+      continue;
+    }
+
+    if (
+      currentBeat.length > 0 &&
+      currentWordCount + sentenceWordCount > SPOTLIGHT_STORY_WORD_LIMIT
+    ) {
+      facts.push(currentBeat.join(' '));
+      currentBeat = [];
+      currentWordCount = 0;
+    }
+
+    currentBeat.push(sentence);
+    currentWordCount += sentenceWordCount;
+  }
+
+  if (currentBeat.length > 0) {
+    facts.push(currentBeat.join(' '));
   }
 
   return facts;
@@ -67,11 +99,14 @@ export function buildHouseguestSpotlightItems(candidates: Player[]): HouseguestS
     if (!profile) {
       return {
         player,
-        facts: [`${player.name} is still in the house, adding another layer to the live vote story.`],
+        facts: [`No extended biography is available for ${player.name}.`],
       };
     }
 
-    const facts = [...buildProfileFacts(profile), ...buildStoryFacts(profile)]
+    // The spotlight is a chance to hear the contestant's actual story, not a
+    // manufactured voting narrative. Keep the extended biography first and
+    // use profile details as later, shorter beats.
+    const facts = [...buildStoryFacts(profile), ...buildProfileFacts(profile)]
       .map(cleanText)
       .filter(Boolean);
 

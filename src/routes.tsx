@@ -51,6 +51,9 @@ const twistsQaEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_QA_RO
 const TwistsTestPage = twistsQaEnabled
   ? lazy(() => import('./screens/TwistsTestPage/TwistsTestPage'))
   : null
+const PhonePreviewPage = twistsQaEnabled
+  ? lazy(() => import('./screens/PhonePreviewPage/PhonePreviewPage'))
+  : null
 
 // Dev-only CWGO competition test page.
 const CwgoTestPage = import.meta.env.DEV
@@ -141,6 +144,18 @@ export const router = createHashRouter([
               element: (
                 <Suspense fallback={null}>
                   <TwistsTestPage />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+      ...(twistsQaEnabled && PhonePreviewPage != null
+        ? [
+            {
+              path: 'phone-preview',
+              element: (
+                <Suspense fallback={null}>
+                  <PhonePreviewPage />
                 </Suspense>
               ),
             },

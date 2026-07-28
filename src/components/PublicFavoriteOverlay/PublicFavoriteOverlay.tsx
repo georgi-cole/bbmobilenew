@@ -62,6 +62,12 @@ function countdown(ms: number): number {
   return Math.max(0, Math.ceil(ms / 1000))
 }
 
+function formatRevealCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`
+}
+
 function voteTrend(previousRank: number, rank: number): VoteTrend {
   if (previousRank > rank) return 'up'
   if (previousRank < rank) return 'down'
@@ -187,9 +193,11 @@ function VoteRankingBoard({
 function HousemateSpotlight({
   spotlight,
   finalTwoNames,
+  revealCountdown,
 }: {
   spotlight: ReturnType<typeof selectSpotlightItem>
   finalTwoNames: string | null
+  revealCountdown: number
 }) {
   if (!spotlight) return null
   const { player } = spotlight.item
@@ -216,6 +224,13 @@ function HousemateSpotlight({
         >
           {spotlight.fact}
         </motion.p>
+        <p
+          className="pf-overlay__moment-stat"
+          aria-label={`Final reveal in ${formatRevealCountdown(revealCountdown)}`}
+        >
+          <span>Final reveal in</span>
+          <strong>{formatRevealCountdown(revealCountdown)}</strong>
+        </p>
       </div>
       <div className="pf-overlay__leader-portrait-wrap">
         <div className="pf-overlay__leader-glow" aria-hidden="true" />
@@ -513,6 +528,10 @@ export default function PublicFavoriteOverlay({
           : canActivateSpotlight
             ? `Viewer Spotlight closes in ${spotlightWindowRemaining}s`
             : `Next result in ${countdown(nextShiftAt - nowMs)}s`
+  const revealCountdown = countdown(
+    Math.max(0, nextShiftAt - nowMs) +
+      Math.max(0, activePlayers.length - 2) * effectiveEliminationIntervalMs
+  )
 
   const handleSkipIntro = useCallback(() => {
     const remaining = Math.max(0, INTRO_MS - elapsedMs)
@@ -646,7 +665,11 @@ export default function PublicFavoriteOverlay({
           {!isComplete ? (
             <div className="pf-overlay__broadcast">
               <div className={`pf-overlay__board-shell pf-overlay__board-shell--${phase}`}>
-                <HousemateSpotlight spotlight={spotlight} finalTwoNames={finalTwoNames} />
+                <HousemateSpotlight
+                  spotlight={spotlight}
+                  finalTwoNames={finalTwoNames}
+                  revealCountdown={revealCountdown}
+                />
                 <VoteRankingBoard
                   entries={voteEntries}
                   candidatesById={candidatesById}
