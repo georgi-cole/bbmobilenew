@@ -1,0 +1,405 @@
+
+[1m[46m RUN [49m[22m [36mv4.1.2 [39m[90m/home/runner/work/bbmobilenew/bbmobilenew[39m
+
+ [32m✓[39m tests/unit/sound/resolveDesiredMusic.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+[90mstdout[2m | tests/unit/sound/queue.test.ts
+[22m[39m[SoundManager] debug helpers on window.__audioDebug (alias: __bbAudio)
+  __audioDebug.listKeys()     — list all registered sound keys
+  __audioDebug.play(key)      — manually play a sound
+  __audioDebug.playMusic(key) — start music
+  __audioDebug.unlockFromGesture() — unlock audio now
+  __audioDebug.enableAll()    — enable all categories
+  __audioDebug.dump()         — print engine state
+
+[90mstdout[2m | tests/unit/sound/soundMiddleware.test.ts
+[22m[39m[SoundManager] debug helpers on window.__audioDebug (alias: __bbAudio)
+  __audioDebug.listKeys()     — list all registered sound keys
+  __audioDebug.play(key)      — manually play a sound
+  __audioDebug.playMusic(key) — start music
+  __audioDebug.unlockFromGesture() — unlock audio now
+  __audioDebug.enableAll()    — enable all categories
+  __audioDebug.dump()         — print engine state
+
+ [32m✓[39m tests/unit/sound/musicConfigAudit.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mstores only the latest desired music while locked and starts it after unlock
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mstores only the latest desired music while locked and starts it after unlock
+[22m[39m[audio] desired -> risk_wheel reason=minigame
+[audio:bgm] requested | track="risk_wheel" | src="/assets/music/risk_wheel.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mstores only the latest desired music while locked and starts it after unlock
+[22m[39m[audio] unlock
+[audio:bgm] sync | track="risk_wheel" | src="/assets/music/risk_wheel.mp3"
+[audio] play risk_wheel
+[audio:bgm] loading | track="risk_wheel" | src="/assets/music/risk_wheel.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mstores only the latest desired music while locked and starts it after unlock
+[22m[39m[audio:bgm] playing | track="risk_wheel" | src="/assets/music/risk_wheel.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mpanicStopAllMusic hard-stops the active track and clears references
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mpanicStopAllMusic hard-stops the active track and clears references
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mpanicStopAllMusic hard-stops the active track and clears references
+[22m[39m[audio] stop competition
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mpanicStopAllMusic does NOT clear _desiredMusicTrack (syncMusic can restart)
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mpanicStopAllMusic does NOT clear _desiredMusicTrack (syncMusic can restart)
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mpanicStopAllMusic does NOT clear _desiredMusicTrack (syncMusic can restart)
+[22m[39m[audio] stop competition
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mstopAllMusic clears _desiredMusicTrack so syncMusic cannot restart stale music
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mstopAllMusic clears _desiredMusicTrack so syncMusic cannot restart stale music
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mafter stopAllMusic, syncMusic does not restart the previous track
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mafter stopAllMusic, syncMusic does not restart the previous track
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mignores stale async playback from an older sync token
+[22m[39m[audio] desired -> competition reason=first
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+[audio] desired -> nominations reason=second
+[audio:bgm] requested | track="nominations" | src="/assets/music/nominations.mp3"
+[audio:bgm] sync | track="nominations" | src="/assets/music/nominations.mp3"
+[audio] play nominations
+[audio:bgm] loading | track="nominations" | src="/assets/music/nominations.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mignores stale async playback from an older sync token
+[22m[39m[audio] stale ignored competition
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mignores stale async playback from an older sync token
+[22m[39m[audio:bgm] playing | track="nominations" | src="/assets/music/nominations.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mis idempotent when syncMusic runs without a desired-track change
+[22m[39m[audio] desired -> competition reason=initial
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mis idempotent when syncMusic runs without a desired-track change
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mcreates music elements with preload disabled so tracks load on demand
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mcreates music elements with preload disabled so tracks load on demand
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mprimes one reusable music element on unlock and reuses it for delayed phase music
+[22m[39m[audio] unlock
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mprimes one reusable music element on unlock and reuses it for delayed phase music
+[22m[39m[audio] desired -> competition reason=phase-after-route
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mprimes one reusable music element on unlock and reuses it for delayed phase music
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mreuses the same unlocked music element across phase changes
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mreuses the same unlocked music element across phase changes
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mreuses the same unlocked music element across phase changes
+[22m[39m[audio] desired -> jury_voting reason=finale:revealVotes
+[audio:bgm] requested | track="jury_voting" | src="/assets/music/jury_voting.mp3"
+[audio:bgm] sync | track="jury_voting" | src="/assets/music/jury_voting.mp3"
+[audio] play jury_voting
+[audio:bgm] loading | track="jury_voting" | src="/assets/music/jury_voting.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mreuses the same unlocked music element across phase changes
+[22m[39m[audio:bgm] playing | track="jury_voting" | src="/assets/music/jury_voting.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mdoes not mark SFX failed when mobile priming play is rejected
+[22m[39m[audio] unlock
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mhonours finale music loop metadata for public voting and the final modal
+[22m[39m[audio] desired -> public_voting reason=finale:publicFavorite
+[audio:bgm] requested | track="public_voting" | src="/assets/music/public_voting.mp3"
+[audio:bgm] sync | track="public_voting" | src="/assets/music/public_voting.mp3"
+[audio] play public_voting
+[audio:bgm] loading | track="public_voting" | src="/assets/music/public_voting.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mhonours finale music loop metadata for public voting and the final modal
+[22m[39m[audio:bgm] playing | track="public_voting" | src="/assets/music/public_voting.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mhonours finale music loop metadata for public voting and the final modal
+[22m[39m[audio] desired -> final_modal reason=route:game-over
+[audio:bgm] requested | track="final_modal" | src="/assets/music/final_modal.mp3"
+[audio:bgm] sync | track="final_modal" | src="/assets/music/final_modal.mp3"
+[audio] play final_modal
+[audio:bgm] loading | track="final_modal" | src="/assets/music/final_modal.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mhonours finale music loop metadata for public voting and the final modal
+[22m[39m[audio:bgm] playing | track="final_modal" | src="/assets/music/final_modal.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mfalls back to the bundled asset when a semantic track override fails
+[22m[39m[audio] desired -> competition reason=remote-override
+[audio:bgm] requested | track="competition" | src="https://example.com/competition.mp3"
+[audio:bgm] sync | track="competition" | src="https://example.com/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="https://example.com/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mfalls back to the bundled asset when a semantic track override fails
+[22m[39m[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mfalls back to the bundled asset when a semantic track override fails
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mretries only the current desired track after a blocked play on the next gesture
+[22m[39m[audio] desired -> competition reason=initial
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mretries only the current desired track after a blocked play on the next gesture
+[22m[39m[audio] blocked competition
+[SoundManager] unlockOnUserGesture() — arming unlock listeners
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mretries only the current desired track after a blocked play on the next gesture
+[22m[39m[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager music state machine[2m > [22m[2mretries only the current desired track after a blocked play on the next gesture
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mrequestBgm logs a warning and routes to setDesiredMusic
+[22m[39m[audio] desired -> competition reason=legacy-requestBgm:phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mrequestBgm preserves the remote main music mapping
+[22m[39m[audio] desired -> competition reason=legacy-requestBgm:phase
+[audio:bgm] requested | track="competition" | src="https://example.com/main.mp3"
+
+[90mstderr[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mrequestBgm preserves the remote main music mapping
+[22m[39m[audio] legacy requestBgm("music:remote_main", "phase")
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mreleaseBgm logs a warning and clears the desired track
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mreleaseBgm logs a warning and clears the desired track
+[22m[39m[audio] desired -> none reason=legacy-releaseBgm:phase
+[audio:bgm] requested | track="none" | src="(none)"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mplay() before unlock queues a single SFX marker
+[22m[39m[SoundManager] play("ui:confirm") queued — not yet unlocked
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mmultiple play() calls before unlock collapse to one SFX marker
+[22m[39m[SoundManager] play("ui:confirm") queued — not yet unlocked
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mmultiple play() calls before unlock collapse to one SFX marker
+[22m[39m[SoundManager] play("ui:navigate") queued — not yet unlocked
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager legacy wrappers and SFX queue[2m > [22m[2mmultiple play() calls before unlock collapse to one SFX marker
+[22m[39m[SoundManager] play("ui:error") queued — not yet unlocked
+
+ [32m✓[39m tests/unit/sound/soundMiddleware.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager init + unlock listeners[2m > [22m[2minit() marks the manager initialised and binds lifecycle listeners
+[22m[39m[SoundManager] init() — registry has [33m62[39m keys
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager init + unlock listeners[2m > [22m[2munlockOnUserGesture registers document listeners
+[22m[39m[SoundManager] unlockOnUserGesture() — arming unlock listeners
+[audio] unlock
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager SFX dedup window[2m > [22m[2mdrops a duplicate play() for the same key within the dedup window
+[22m[39m[SoundManager] play("ui:confirm") deduped (20ms < 40ms)
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager unlockFromGesture idempotency[2m > [22m[2mdoes not panic-stop or restart the current track on repeat gestures
+[22m[39m[audio] desired -> competition reason=initial
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager unlockFromGesture idempotency[2m > [22m[2mdoes not panic-stop or restart the current track on repeat gestures
+[22m[39m[audio] unlock
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager unlockFromGesture idempotency[2m > [22m[2mdoes not panic-stop or restart the current track on repeat gestures
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mresolves immediately and clears state when no music is playing
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mclears _desiredMusicTrack immediately before the fade completes
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mclears _desiredMusicTrack immediately before the fade completes
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mfades volume to zero then stops the element
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mfades volume to zero then stops the element
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mfades volume to zero then stops the element
+[22m[39m[audio] fade-out competition over 400ms
+[audio:bgm] fading-out | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mafter fadeOutMusic, syncMusic does not restart the previous track
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mafter fadeOutMusic, syncMusic does not restart the previous track
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager fadeOutMusic[2m > [22m[2mafter fadeOutMusic, syncMusic does not restart the previous track
+[22m[39m[audio] fade-out competition over 400ms
+[audio:bgm] fading-out | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+Not implemented: HTMLMediaElement's pause() method
+Not implemented: HTMLMediaElement's pause() method
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager BGM debug logging[2m > [22m[2mlogs [audio:bgm] fading-out with track and src when fadeOutMusic is called
+[22m[39m[audio] desired -> competition reason=phase
+[audio:bgm] requested | track="competition" | src="/assets/music/competition.mp3"
+[audio:bgm] sync | track="competition" | src="/assets/music/competition.mp3"
+[audio] play competition
+[audio:bgm] loading | track="competition" | src="/assets/music/competition.mp3"
+
+[90mstdout[2m | tests/unit/sound/queue.test.ts[2m > [22m[2mSoundManager BGM debug logging[2m > [22m[2mlogs [audio:bgm] fading-out with track and src when fadeOutMusic is called
+[22m[39m[audio:bgm] playing | track="competition" | src="/assets/music/competition.mp3"
+
+Not implemented: HTMLMediaElement's pause() method
+ [32m✓[39m tests/unit/sound/queue.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 78[2mms[22m[39m
+ [31m❯[39m tests/unit/sound/audioAutoIndex.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 13[2mms[22m[39m
+     [32m✓[39m keeps background music and short sounds in separate asset roots[32m 4[2mms[22m[39m
+     [32m✓[39m generates unique semantic keys and music track ids[32m 1[2mms[22m[39m
+     [32m✓[39m registers every generated music track in the Music Manager catalog[32m 1[2mms[22m[39m
+[31m     [31m×[31m uses the canonical Risk Wheel spin key and preserves the legacy alias[39m[32m 6[2mms[22m[39m
+     [32m✓[39m does not silently lose indexed files[32m 0[2mms[22m[39m
+ [31m❯[39m tests/unit/sound/minigameMusicConfig.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 10[2mms[22m[39m
+     [32m✓[39m routes bigSpender exclusively to challenge group 1 while playing[32m 2[2mms[22m[39m
+     [32m✓[39m routes snake exclusively to challenge group 1 while playing[32m 0[2mms[22m[39m
+     [32m✓[39m routes castleRescue exclusively to challenge group 1 while playing[32m 0[2mms[22m[39m
+     [32m✓[39m routes batteryLow exclusively to challenge group 1 while playing[32m 0[2mms[22m[39m
+     [32m✓[39m suppresses generic competition music during configured challenge phase rules[32m 0[2mms[22m[39m
+     [32m✓[39m suppresses generic competition music during configured challenge phase countdown[32m 0[2mms[22m[39m
+     [32m✓[39m suppresses generic competition music during configured challenge phase done[32m 0[2mms[22m[39m
+[31m     [31m×[31m stores the requested asset and lifecycle timings in one config[39m[32m 4[2mms[22m[39m
+     [32m✓[39m leaves unrelated minigames on their existing audio routes[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/sound/musicRuntimeConfig.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/unit/sound/musicConfigSanitizer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/unit/sound/audioAutoIndex.test.ts[2m > [22mgenerated audio asset index[2m > [22muses the canonical Risk Wheel spin key and preserves the legacy alias
+[31m[1mAssertionError[22m: expected undefined to be 'minigame:risk_wheel_spin' // Object.is equality[39m
+
+[32m- Expected:[39m
+"minigame:risk_wheel_spin"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m tests/unit/sound/audioAutoIndex.test.ts:[2m38:63[22m[39m
+    [90m 36|[39m   it('uses the canonical Risk Wheel spin key and preserves the legacy …
+    [90m 37|[39m     [34mexpect[39m([33mSOUND_REGISTRY[39m[[32m'minigame:risk_wheel_spin'[39m])[33m.[39m[34mtoBeDefined[39m()
+    [90m 38|[39m     expect(GENERATED_KEY_ALIASES['minigame:risk_wheel_spin']).toBe('mi…
+    [90m   |[39m                                                               [31m^[39m
+    [90m 39|[39m     expect(resolveKey('risk_wheel_spin.mp3')).toBe('minigame:risk_whee…
+    [90m 40|[39m     expect(resolveKey('minigame:risk_wheel_spin')).toBe('minigame:risk…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/unit/sound/minigameMusicConfig.test.ts[2m > [22mcentralized minigame music configuration[2m > [22mstores the requested asset and lifecycle timings in one config
+[31m[1mAssertionError[22m: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string[39m
+[36m [2m❯[22m tests/unit/sound/minigameMusicConfig.test.ts:[2m52:31[22m[39m
+    [90m 50|[39m   it('stores the requested asset and lifecycle timings in one config',…
+    [90m 51|[39m     [35mconst[39m config [33m=[39m [34mgetMinigameMusicConfig[39m([32m'bigSpender'[39m)
+    [90m 52|[39m     expect(config?.sound.src).toContain('assets/music/challenge_group_…
+    [90m   |[39m                               [31m^[39m
+    [90m 53|[39m     [34mexpect[39m(config[33m?.[39msound[33m.[39mloop)[33m.[39m[34mtoBe[39m([35mtrue[39m)
+    [90m 54|[39m     [34mexpect[39m(config[33m?.[39mfadeInMs)[33m.[39m[34mtoBe[39m([34m500[39m)
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (8)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m78 passed[39m[22m[90m (80)[39m
+[2m   Start at [22m 17:35:25
+[2m   Duration [22m 1.99s[2m (transform 582ms, setup 529ms, import 790ms, tests 150ms, environment 5.08s)[22m
+
+
+::error file=/home/runner/work/bbmobilenew/bbmobilenew/tests/unit/sound/audioAutoIndex.test.ts,title=tests/unit/sound/audioAutoIndex.test.ts > generated audio asset index > uses the canonical Risk Wheel spin key and preserves the legacy alias,line=38,column=63::AssertionError: expected undefined to be 'minigame:risk_wheel_spin' // Object.is equality%0A%0A- Expected:%0A"minigame:risk_wheel_spin"%0A%0A+ Received:%0Aundefined%0A%0A ❯ tests/unit/sound/audioAutoIndex.test.ts:38:63%0A%0A
+
+::error file=/home/runner/work/bbmobilenew/bbmobilenew/tests/unit/sound/minigameMusicConfig.test.ts,title=tests/unit/sound/minigameMusicConfig.test.ts > centralized minigame music configuration > stores the requested asset and lifecycle timings in one config,line=52,column=31::AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string%0A ❯ tests/unit/sound/minigameMusicConfig.test.ts:52:31%0A%0A
