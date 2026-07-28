@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useWildcardWesternAudio } from '../../../src/hooks/useWildcardWesternAudio';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
-import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds';
+import { SOUND_REGISTRY } from '../../../src/services/sound/sounds';
 
 describe('useWildcardWesternAudio', () => {
   beforeEach(() => {
@@ -60,9 +60,10 @@ describe('useWildcardWesternAudio', () => {
     expect(SOUND_REGISTRY['ui:western_new_round']).toBeDefined();
   });
 
-  it('sound registry src paths use SOUNDS_BASE and point into the wildcard western subfolder', () => {
-    const wwKeys = [
-      'music:wildcard_western_main',
+  it('routes Wildcard Western music through assets/music and cues through assets/sounds', () => {
+    expect(SOUND_REGISTRY['music:wildcard_western_main'].src).toContain('/assets/music/');
+
+    const effectKeys = [
       'ui:wildcard_select',
       'ui:wildcard_draw',
       'player:wildcard_eliminated',
@@ -70,10 +71,10 @@ describe('useWildcardWesternAudio', () => {
       'ui:wildcard_continue',
       'ui:western_new_round',
     ] as const;
-    for (const key of wwKeys) {
-      const entry = SOUND_REGISTRY[key];
-      expect(entry.src.startsWith(SOUNDS_BASE), `${key} src should start with SOUNDS_BASE`).toBe(true);
-      expect(entry.src.includes('wildcard western/'), `${key} src should reference the wildcard western subfolder`).toBe(true);
+    for (const key of effectKeys) {
+      expect(SOUND_REGISTRY[key].src, `${key} should use the short-sound root`).toContain(
+        '/assets/sounds/',
+      );
     }
   });
 
