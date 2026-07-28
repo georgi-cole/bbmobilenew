@@ -59,10 +59,7 @@ export default function LightweightCinematicWorld({
 
   return (
     <AbsoluteFill className="light-cinematic" style={worldStyle} aria-hidden="true">
-      <div
-        className="light-cinematic__stars"
-        style={{ opacity: state.starsOpacity * 0.82 }}
-      />
+      <div className="light-cinematic__stars" style={{ opacity: state.starsOpacity * 0.82 }} />
 
       <div
         className="light-cinematic__clouds light-cinematic__clouds--far"
