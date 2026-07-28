@@ -379,6 +379,20 @@ test.describe('Finale / Jury flow @release', () => {
       name: "Public's Favorite Player overlay",
     })
     await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
+    await expect(favoriteVote.getByText('The public has made its choice.')).toBeVisible()
+    await expect(favoriteVote.locator('.pf-overlay__board')).toHaveCount(0)
+    await page.screenshot({
+      path: 'test-results/public-favorite-intro-mobile.png',
+      fullPage: false,
+    })
+    await favoriteVote.getByRole('button', { name: 'Skip intro' }).click()
+    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({
+      timeout: 5_000,
+    })
+    await page.screenshot({
+      path: 'test-results/public-favorite-feature-mobile.png',
+      fullPage: false,
+    })
     await favoriteVote.getByRole('button', { name: 'Fast forward public favorite vote' }).click()
     const favoriteContinue = favoriteVote.getByRole('button', { name: 'Continue' })
     await expect(favoriteContinue).toBeVisible({ timeout: 15_000 })
