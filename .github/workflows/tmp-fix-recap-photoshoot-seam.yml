@@ -1,0 +1,110 @@
+name: Temporary fix recap photoshoot seam
+
+on:
+  push:
+    branches:
+      - agent/fix-season-recap-broadcast-story
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-season-recap-broadcast-story
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Replace split collage with a single full-screen photoshoot
+        shell: python
+        run: |
+          from pathlib import Path
+
+          component_path = Path('src/components/SeasonRecapCinematic/SeasonRecapCinematic.tsx')
+          component = component_path.read_text()
+
+          old_effect = '''  useEffect(() => {
+            if (reducedMotion) return
+            const timer = window.setTimeout(() => setActivePhoto(1), 3_350)
+            return () => window.clearTimeout(timer)
+          }, [reducedMotion])
+          '''
+          new_effect = '''  useEffect(() => {
+            const timer = window.setTimeout(() => setActivePhoto(1), reducedMotion ? 3_600 : 3_350)
+            return () => window.clearTimeout(timer)
+          }, [reducedMotion])
+          '''
+          if old_effect not in component:
+              raise SystemExit('Current photoshoot timer block was not found')
+          component = component.replace(old_effect, new_effect, 1)
+
+          media_start = component.find('        {reducedMotion ? (')
+          wash_marker = '        <div className="src-broadcast-photoshoot__wash" aria-hidden="true" />'
+          media_end = component.find(wash_marker, media_start)
+          if media_start < 0 or media_end < 0:
+              raise SystemExit('Current split photoshoot media block was not found')
+          replacement = '''        <AnimatePresence mode="wait" initial={false}>
+            <motion.img
+              key={photos[activePhoto]?.src}
+              src={photos[activePhoto]?.src}
+              alt={photos[activePhoto]?.alt}
+              initial={{ opacity: 0, scale: reducedMotion ? 1 : 1.025 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: reducedMotion ? 1 : 0.99 }}
+              transition={{
+                duration: reducedMotion ? 0 : 0.62,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            />
+          </AnimatePresence>
+          '''
+          component = component[:media_start] + replacement + component[media_end:]
+          component_path.write_text(component)
+
+          css_path = Path('src/components/SeasonRecapCinematic/SeasonRecapBroadcast.css')
+          css = css_path.read_text()
+          css = css.replace('  object-position: center 18%;', '  object-position: center 20%;', 1)
+          css = css.replace('  max-width: 760px;', '  max-width: 520px;', 1)
+          css = css.replace('  font-size: clamp(2.55rem, 11.5vw, 6.4rem);', '  font-size: clamp(1.9rem, 8vw, 4.5rem);', 1)
+          reduced_grid = '''.src-broadcast-photoshoot__reduced-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+            height: 100%;
+          }
+
+          '''
+          css = css.replace(reduced_grid, '', 1)
+          css_path.write_text(css)
+
+          finale_path = Path('e2e/playwright/finale.spec.ts')
+          finale = finale_path.read_text()
+          marker = "    await expect(recap.locator('.src-cast-grid')).toHaveCount(0)\n"
+          if marker not in finale:
+              raise SystemExit('Recap visual assertion marker was not found')
+          wait = "    await page.waitForTimeout(850)\n"
+          if wait not in finale:
+              finale = finale.replace(marker, marker + wait, 1)
+          finale_path.write_text(finale)
+      - run: >-
+          npx prettier --write
+          src/components/SeasonRecapCinematic/SeasonRecapCinematic.tsx
+          src/components/SeasonRecapCinematic/SeasonRecapBroadcast.css
+          e2e/playwright/finale.spec.ts
+      - name: Commit fix and remove temporary workflows
+        shell: bash
+        run: |
+          rm -f .github/workflows/tmp-fix-recap-photoshoot-seam.yml
+          rm -f .github/workflows/tmp-polish-recap-photoshoot.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Fix recap photoshoot seam and hierarchy"
+          git push origin HEAD:agent/fix-season-recap-broadcast-story
