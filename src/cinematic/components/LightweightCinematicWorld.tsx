@@ -88,7 +88,7 @@ export default function LightweightCinematicWorld({
           transform: `translate3d(0, ${state.cityExitProgress * 44}%, 0)`,
         }}
       >
-        <div className="light-cinematic__skyline">
+        <div className="light-cinematic__skyline" style={{ position: 'absolute' }}>
           {BUILDINGS.map((building, index) => (
             <div
               key={`${building.left}-${building.height}`}
@@ -110,7 +110,7 @@ export default function LightweightCinematicWorld({
             </div>
           ))}
         </div>
-        <div className="light-cinematic__road">
+        <div className="light-cinematic__road" style={{ position: 'absolute' }}>
           <span
             style={{
               opacity: clamp01(state.vehicleLightIntensity * 0.52),
@@ -120,7 +120,7 @@ export default function LightweightCinematicWorld({
         </div>
         <div
           className="light-cinematic__wet-glow"
-          style={{ opacity: state.wetness * 0.56 }}
+          style={{ position: 'absolute', opacity: state.wetness * 0.56 }}
         />
       </div>
 
@@ -134,6 +134,7 @@ export default function LightweightCinematicWorld({
         <div
           className="light-cinematic__sun"
           style={{
+            position: 'absolute',
             left: `${sunLeft}%`,
             top: `${sunTop}%`,
             opacity: clamp01(state.sunRevealProgress * state.sunIntensity * 1.18),
@@ -144,13 +145,17 @@ export default function LightweightCinematicWorld({
         <div
           className="light-cinematic__ocean"
           style={{
+            position: 'absolute',
             backgroundPosition: `0 ${sampledFrame * 0.12}px`,
             filter: `brightness(${1 - state.sunsetProgress * 0.45}) saturate(${1 + state.goldenHourProgress * 0.28})`,
           }}
         />
         <div
           className="light-cinematic__shore"
-          style={{ filter: `brightness(${1 - state.sunsetProgress * 0.38})` }}
+          style={{
+            position: 'absolute',
+            filter: `brightness(${1 - state.sunsetProgress * 0.38})`,
+          }}
         />
       </div>
 
