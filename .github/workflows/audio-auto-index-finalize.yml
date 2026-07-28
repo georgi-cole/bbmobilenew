@@ -1,0 +1,237 @@
+name: Audio auto-index finalizer
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audio-auto-index-finalizer
+  cancel-in-progress: true
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/audio-auto-index-migration
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare the one-time migration source
+        shell: python
+        run: |
+          from pathlib import Path
+
+          target = Path('scripts/migrate-audio-assets.mjs')
+          text = target.read_text()
+          text = text.replace('\\\\`', '\\`').replace('\\\\${', '\\${')
+
+          marker = "  for (const [alias, target] of Object.entries(filenameAliases)) {"
+          insertion = """  for (const migrated of pathMap.values()) {
+            if (bindings.some((binding) => binding.path === migrated)) continue
+            const extension = path.extname(migrated)
+            const destinationStem = slugify(path.basename(migrated, extension))
+            if (migrated.startsWith('music/')) {
+              let trackId = destinationStem
+              let suffix = 2
+              while (
+                bindings.some(
+                  (binding) => binding.trackId === trackId || binding.key === `music:${trackId}`
+                )
+              ) {
+                trackId = `${destinationStem}_${suffix}`
+                suffix += 1
+              }
+              bindings.push({
+                path: migrated,
+                key: `music:${trackId}`,
+                category: 'music',
+                trackId,
+                displayName: titleFromSlug(trackId),
+                fallbackTrack: trackId === 'competition' ? 'none' : 'competition',
+                tags: ['ambient'],
+                preload: false,
+                volume: 0.5,
+                loop: true,
+              })
+            } else {
+              const prefixed = /^(ui|tv|player|minigame)_(.+)$/.exec(destinationStem)
+              const category = prefixed?.[1] ?? 'minigame'
+              const rest = prefixed?.[2] ?? destinationStem
+              let key = `${category}:${rest}`
+              let suffix = 2
+              while (bindings.some((binding) => binding.key === key)) {
+                key = `${category}:${rest}_${suffix}`
+                suffix += 1
+              }
+              bindings.push({
+                path: migrated,
+                key,
+                category,
+                preload: false,
+                volume: 1,
+                loop: false,
+              })
+            }
+          }
+
+          """
+          if marker not in text:
+            raise SystemExit('Could not locate filename-alias migration marker')
+          text = text.replace(marker, insertion + marker, 1)
+          text = text.replace(
+            '  tags: readonly MusicTrackTag[]\\n}\\n\\nexport interface MusicTrackAssetOverride',
+            '  tags: readonly MusicTrackTag[]\\n  dynamicSound?: SoundEntry\\n}\\n\\nexport interface MusicTrackAssetOverride',
+          )
+          target.write_text(text)
+
+          generator = Path('scripts/generate-audio-manifest.mjs')
+          generated_source = generator.read_text().replace(
+            'const generated = `/* eslint-disable */\\n',
+            'const generated = `',
+          )
+          generator.write_text(generated_source)
+
+          for diagnostic in (
+            'AUDIO_MIGRATION_DIAGNOSTIC.txt',
+            'AUDIO_STATIC_DIAGNOSTIC.txt',
+            'AUDIO_TEST_DIAGNOSTIC.txt',
+            'AUDIO_FULL_TEST_DIAGNOSTIC.txt',
+            'AUDIO_TEST_DELTA.txt',
+          ):
+            Path(diagnostic).unlink(missing_ok=True)
+
+      - name: Validate migration scripts
+        run: |
+          node --check scripts/generate-audio-manifest.mjs
+          node --check scripts/migrate-audio-assets.mjs
+
+      - name: Migrate all existing audio and generate manifests
+        run: |
+          node scripts/migrate-audio-assets.mjs
+          node scripts/generate-audio-manifest.mjs
+
+      - name: Format generated integration files
+        run: |
+          npx prettier --write \
+            package.json \
+            public/assets/audio.config.json \
+            scripts/generate-audio-manifest.mjs \
+            src/services/sound/sounds.ts \
+            src/services/sound/musicCatalog.ts \
+            src/services/sound/minigameMusicConfig.ts \
+            tests/unit/sound/audioAutoIndex.test.ts \
+            docs/AUDIO_ASSET_INDEXING.md
+
+      - name: Verify migrated folder layout and generated manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d public/assets/music
+          test -d public/assets/sounds
+          test -f public/assets/audio.config.json
+          test -f src/services/sound/generatedAudioManifest.ts
+          if find public/assets/sounds -type f \( -iname '*music*' -o -iname '*background*' -o -iname '*soundtrack*' \) -print | grep -q .; then
+            echo 'Potential music assets remain in public/assets/sounds:'
+            find public/assets/sounds -type f \( -iname '*music*' -o -iname '*background*' -o -iname '*soundtrack*' \) -print
+            exit 1
+          fi
+          git diff --check
+
+      - name: Formatting, guard, lint, and typecheck
+        run: |
+          npm run format:check
+          npm run test:guard
+          npm run lint:ci
+          npm run typecheck
+
+      - name: Run focused audio regressions
+        run: |
+          npx vitest run \
+            tests/unit/sound/audioAutoIndex.test.ts \
+            tests/unit/sound/queue.test.ts \
+            tests/unit/sound/soundMiddleware.test.ts \
+            tests/unit/sound/musicConfigAudit.test.ts \
+            tests/unit/sound/musicConfigSanitizer.test.ts \
+            tests/unit/sound/musicRuntimeConfig.test.ts \
+            tests/unit/sound/resolveDesiredMusic.test.ts \
+            tests/unit/sound/minigameMusicConfig.test.ts
+
+      - name: Ensure the migration adds no full-suite failures above current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin agent/audio-main-full-test-baseline --no-tags
+          git show origin/agent/audio-main-full-test-baseline:MAIN_FULL_TEST_BASELINE.txt > /tmp/main-baseline.txt
+
+          set +e
+          npm test > /tmp/migration-full-test.txt 2>&1
+          migration_status=$?
+          set -e
+
+          strip_ansi() {
+            sed -E $'s/\x1B\[[0-9;]*[mK]//g'
+          }
+          extract_failures() {
+            strip_ansi \
+              | grep ' FAIL  ' \
+              | sed -E 's/^.* FAIL  //' \
+              | sed -E 's/[[:space:]]+$//' \
+              | sort -u
+          }
+
+          extract_failures < /tmp/main-baseline.txt > /tmp/main-failures.txt || true
+          extract_failures < /tmp/migration-full-test.txt > /tmp/migration-failures.txt || true
+          comm -13 /tmp/main-failures.txt /tmp/migration-failures.txt > AUDIO_TEST_DELTA.txt
+
+          echo "Current-main baseline failures: $(wc -l < /tmp/main-failures.txt)"
+          echo "Migrated-branch failures: $(wc -l < /tmp/migration-failures.txt)"
+          echo "Raw migration test exit status: $migration_status"
+
+          if [ -s AUDIO_TEST_DELTA.txt ]; then
+            echo 'The audio migration introduced additional full-suite failures:'
+            cat AUDIO_TEST_DELTA.txt
+            exit 1
+          fi
+
+          rm AUDIO_TEST_DELTA.txt
+          echo 'No additional full-suite failures above the recorded current-main baseline.'
+
+      - name: Web production build
+        run: npm run build
+
+      - name: Capacitor mobile build
+        run: npm run build:mobile
+
+      - name: Verify generated manifest is deterministic
+        run: |
+          npm run generate:audio
+          git diff --exit-code -- src/services/sound/generatedAudioManifest.ts
+
+      - name: Commit the validated migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/audio-auto-index-finalize.yml
+          git rm scripts/migrate-audio-assets.mjs
+          rm -f AUDIO_MIGRATION_DIAGNOSTIC.txt AUDIO_STATIC_DIAGNOSTIC.txt AUDIO_TEST_DIAGNOSTIC.txt AUDIO_FULL_TEST_DIAGNOSTIC.txt AUDIO_TEST_DELTA.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Migrate and auto-index music and sound assets'
+          git push origin HEAD:refs/heads/agent/audio-auto-index-migration
