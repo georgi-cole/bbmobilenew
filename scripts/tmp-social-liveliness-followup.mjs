@@ -69,6 +69,14 @@ edit('src/components/FloatingActionBar/__tests__/FloatingActionBar.test.tsx', (s
   )
 )
 
+edit('src/components/SocialPanelV2/__tests__/SocialPanelV2.test.tsx', (source) =>
+  replaceIfPresent(
+    source,
+    `Outgoing social module did not open: Social modules are blocked during the live_vote phase.`,
+    `Outgoing social module did not open: Outgoing social actions are blocked during the live_vote phase.`
+  )
+)
+
 edit('tests/unit/publicOpinion/publicOpinionMiddleware.test.ts', (original) => {
   let source = original
   source = replaceIfPresent(
