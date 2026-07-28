@@ -59,5 +59,25 @@ test.describe('Housemate biographies @core-journey', () => {
       path: 'test-results/housemates-biography-aria-mobile.png',
       fullPage: false,
     })
+
+    await page.setViewportSize({ width: 915, height: 412 })
+    await page.waitForTimeout(300)
+
+    const landscapePortraitBox = await portraitWrap.boundingBox()
+    const landscapeCopyBox = await copy.boundingBox()
+    if (!landscapePortraitBox || !landscapeCopyBox) {
+      throw new Error('Landscape biography measurements are unavailable')
+    }
+
+    expect(landscapePortraitBox.width).toBeGreaterThan(915 * 0.42)
+    expect(landscapePortraitBox.height).toBeGreaterThan(412 * 0.72)
+    expect(landscapePortraitBox.y + landscapePortraitBox.height).toBeLessThanOrEqual(412 - 8)
+    expect(landscapeCopyBox.x).toBeGreaterThan(915 * 0.5)
+    expect(landscapeCopyBox.x + landscapeCopyBox.width).toBeLessThanOrEqual(915 - 20)
+
+    await page.screenshot({
+      path: 'test-results/housemates-biography-aria-landscape.png',
+      fullPage: false,
+    })
   })
 })
