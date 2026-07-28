@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: music-manager-validation-cleanup
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   clean-and-validate:
@@ -30,6 +30,41 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Apply identified Music Manager source fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              if old not in text:
+                  raise SystemExit(f'marker not found in {path}: {old!r}')
+              target.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'src/screens/SettingsAdmin/MusicManagerPanel.tsx',
+              '  type MusicTrackAssetOverride,\n',
+              '',
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              '  modes: readonly MusicConfigMode[]\n',
+              '  modes: MusicConfigMode[]\n',
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              '  gameKeys: readonly string[]\n',
+              '  gameKeys: string[]\n',
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              '  minigameProfiles?: readonly MinigameMusicProfile[]\n',
+              '  minigameProfiles?: MinigameMusicProfile[]\n',
+          )
+          Path('MUSIC_MANAGER_CI_DIAGNOSTIC.txt').unlink(missing_ok=True)
+          Path('MUSIC_MANAGER_LINT_DIAGNOSTIC.txt').unlink(missing_ok=True)
 
       - name: Format every PR-changed supported file
         shell: bash
@@ -106,7 +141,7 @@ jobs:
 
           exit 0
 
-      - name: Commit formatting and readable diagnostics
+      - name: Commit source fixes, formatting, and readable diagnostics
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -115,7 +150,7 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Format Music Manager changes and capture CI diagnostics"
+          git commit -m "Fix Music Manager CI type compatibility"
           git push origin HEAD:refs/heads/agent/music-manager-runtime-ui
 
       - name: Stop after unresolved validation
