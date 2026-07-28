@@ -1,3 +1,4 @@
+# One-shot formatter; removed after it formats the branch.
 name: Temporary format biography CI
 
 on:
