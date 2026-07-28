@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGlassBridgeAudio } from '../../../src/hooks/useGlassBridgeAudio';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
-import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds';
+import { SOUND_REGISTRY } from '../../../src/services/sound/sounds';
 
 describe('useGlassBridgeAudio', () => {
   beforeEach(() => {
@@ -54,20 +54,22 @@ describe('useGlassBridgeAudio', () => {
     expect(SOUND_REGISTRY['minigame:gb_new_turn']).toBeDefined();
   });
 
-  it('sound registry src paths use SOUNDS_BASE for production-safe URL resolution', () => {
-    const gbKeys = [
-      'music:gb_main',
-      'music:gb_main',
+  it('routes background music through assets/music and effects through assets/sounds', () => {
+    expect(SOUND_REGISTRY['music:gb_main'].src).toContain('/assets/music/');
+
+    const effectKeys = [
       'minigame:gb_safe_step',
       'minigame:gb_death',
       'minigame:gb_winner',
       'minigame:gb_new_turn',
+      'ui:navigate',
+      'tv:event',
+      'ui:confirm',
     ] as const;
-    for (const key of gbKeys) {
-      expect(SOUND_REGISTRY[key].src.startsWith(SOUNDS_BASE)).toBe(true);
+    for (const key of effectKeys) {
+      expect(SOUND_REGISTRY[key].src, `${key} should use the short-sound root`).toContain(
+        '/assets/sounds/',
+      );
     }
-    expect(SOUND_REGISTRY['ui:navigate'].src.startsWith(SOUNDS_BASE)).toBe(true);
-    expect(SOUND_REGISTRY['tv:event'].src.startsWith(SOUNDS_BASE)).toBe(true);
-    expect(SOUND_REGISTRY['ui:confirm'].src.startsWith(SOUNDS_BASE)).toBe(true);
   });
 });
