@@ -37,6 +37,7 @@ jobs:
           src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx
           src/components/HousePulse/__tests__/HousePulse.test.tsx
           src/components/FloatingActionBar/__tests__/FloatingActionBar.test.tsx
+          src/components/SocialPanelV2/__tests__/SocialPanelV2.test.tsx
           src/social/__tests__/socialLivelinessRestoration.test.ts
           src/social/__tests__/socialModuleAvailability.test.ts
           src/social/__tests__/socialPremiumHardening.test.ts
