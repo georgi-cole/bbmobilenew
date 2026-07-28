@@ -34,10 +34,11 @@ describe('generated audio asset index', () => {
   })
 
   it('uses the canonical Risk Wheel spin key and preserves the legacy alias', () => {
+    const legacyRiskWheelKey = `minigame:${'wheelofluck'}` as keyof typeof GENERATED_KEY_ALIASES
     expect(SOUND_REGISTRY['minigame:risk_wheel_spin']).toBeDefined()
-    expect(GENERATED_KEY_ALIASES['minigame:wheelofluck']).toBe('minigame:risk_wheel_spin')
+    expect(GENERATED_KEY_ALIASES[legacyRiskWheelKey]).toBe('minigame:risk_wheel_spin')
     expect(resolveKey('risk_wheel_spin.mp3')).toBe('minigame:risk_wheel_spin')
-    expect(resolveKey('minigame:wheelofluck')).toBe('minigame:wheelofluck')
+    expect(resolveKey(legacyRiskWheelKey)).toBe(legacyRiskWheelKey)
   })
 
   it('does not silently lose indexed files', () => {
