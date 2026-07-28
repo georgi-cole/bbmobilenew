@@ -19,7 +19,7 @@ import {
   getIncomingInteractionTone,
 } from '../../social/incomingInteractionPresentation'
 import {
-  getSocialModuleAvailability,
+  getIncomingSocialModuleAvailability,
   logBlockedSocialModuleOpen,
 } from '../../social/socialModuleAvailability'
 import {
@@ -27,12 +27,13 @@ import {
   getSocialCommitmentLabel,
   getSocialCredibility,
 } from '../../social/socialCommitments'
-import { getInteractionSocialMode } from '../../social/socialMode'
+import { getEffectiveSocialMode, getInteractionSocialMode } from '../../social/socialMode'
 import {
   getIncomingInteractionResponsePolicy,
   type IncomingInteractionResponsePolicy,
 } from '../../social/socialRuntimeConfig'
 import type {
+  DramaBelief,
   IncomingInteraction,
   IncomingInteractionPriority,
   IncomingInteractionResponseType,
@@ -51,12 +52,6 @@ const PRIORITY_ORDER: Record<IncomingInteractionPriority, number> = {
   low: 2,
 }
 
-const PRIORITY_LABELS: Record<IncomingInteractionPriority, string> = {
-  high: 'Important',
-  medium: 'Priority',
-  low: 'Low stakes',
-}
-
 function formatResponseLabel(interaction: IncomingInteraction): string {
   if (interaction.resolvedLabel) return `Resolved · ${interaction.resolvedLabel}`
   if (!interaction.resolvedWith) return 'Resolved'
@@ -73,13 +68,80 @@ function isExpiringThisWeek(interaction: IncomingInteraction, currentWeek: numbe
 function getExpiryLabel(
   interaction: IncomingInteraction,
   currentWeek: number,
-  priority: IncomingInteractionPriority,
   policy: IncomingInteractionResponsePolicy
 ): string | null {
-  if (interaction.resolved || !isExpiringThisWeek(interaction, currentWeek)) return null
-  if (policy === 'readOnly') return null
-  if (policy === 'optional') return 'Optional · closes this week'
-  return priority === 'high' ? 'Urgent this week' : 'Needs response this week'
+  if (
+    interaction.resolved ||
+    policy !== 'required' ||
+    !isExpiringThisWeek(interaction, currentWeek)
+  ) {
+    return null
+  }
+  return 'Answer this week'
+}
+
+function getHouseRead(
+  beliefs: readonly DramaBelief[],
+  humanId: string
+): { label: string; explanation: string } {
+  const relevant = beliefs.filter(
+    (belief) => belief.subjectId === humanId && belief.holderId !== humanId
+  )
+  if (relevant.length === 0) {
+    return {
+      label: 'Still forming',
+      explanation: 'The house has not settled on a clear read of you yet.',
+    }
+  }
+  const weight = relevant.reduce((sum, belief) => sum + belief.confidence, 0) || 1
+  const sentiment =
+    relevant.reduce((sum, belief) => sum + belief.sentiment * belief.confidence, 0) / weight
+
+  if (sentiment >= 0.28) {
+    return {
+      label: 'Mostly positive',
+      explanation: 'The strongest current beliefs about you lean loyal or dependable.',
+    }
+  }
+  if (sentiment <= -0.28) {
+    return {
+      label: 'Under suspicion',
+      explanation:
+        'Recent choices, rumours or broken expectations are making the house more cautious around you.',
+    }
+  }
+  return {
+    label: 'Mixed',
+    explanation: 'Different housemates currently read your game in different ways.',
+  }
+}
+
+function formatResolutionReason(reason?: string): string {
+  switch (reason) {
+    case 'protected_at_nominations':
+      return 'You kept them off the block.'
+    case 'nominated_after_promise':
+      return 'They were nominated after you promised protection.'
+    case 'saved_with_safety':
+    case 'protected_by_multi_save':
+      return 'You used Safety to protect them.'
+    case 'declined_to_use_safety':
+      return 'You chose not to use Safety.'
+    case 'saved_someone_else':
+      return 'You used Safety on somebody else.'
+    case 'voted_to_keep':
+    case 'double_vote_kept_them_safe':
+      return 'Your vote matched the promise.'
+    case 'voted_against_promise':
+    case 'double_vote_targeted_them':
+      return 'Your vote went against the promise.'
+    case 'decision_window_passed':
+      return 'The decision window closed without a valid test.'
+    default:
+      return reason
+        ? reason.replaceAll('_', ' ')
+        : 'The promise was judged by a later game decision.'
+  }
 }
 
 interface InteractionItemProps {
@@ -87,7 +149,6 @@ interface InteractionItemProps {
   priority: IncomingInteractionPriority
   policy: IncomingInteractionResponsePolicy
   showActions: boolean
-  showExpiry: boolean
   playerById: Map<string, Player>
   currentWeek: number
   onRead: (interactionId: string) => void
@@ -108,7 +169,6 @@ function InteractionItem({
   priority,
   policy,
   showActions,
-  showExpiry,
   playerById,
   currentWeek,
   onRead,
@@ -125,7 +185,7 @@ function InteractionItem({
   const typeLabel = getIncomingInteractionTypeLabel(interaction.type)
   const isUnread = !interaction.read && !interaction.resolved
   const isUrgent = policy === 'required' && isExpiringThisWeek(interaction, currentWeek)
-  const expiryLabel = showExpiry ? getExpiryLabel(interaction, currentWeek, priority, policy) : null
+  const expiryLabel = getExpiryLabel(interaction, currentWeek, policy)
   const shouldShowActions = showActions && policy !== 'readOnly' && !interaction.resolved
 
   useEffect(() => {
@@ -182,8 +242,6 @@ function InteractionItem({
       : policy === 'readOnly'
         ? 'Update'
         : null
-  const expiryClass =
-    expiryLabel && policy === 'required' && priority === 'high' ? ' inbox-item__expiry--urgent' : ''
 
   return (
     <div
@@ -211,24 +269,21 @@ function InteractionItem({
           <div className="inbox-item__from-row">
             <span className="inbox-item__from">{fromName}</span>
             {priority === 'high' && policy === 'required' && (
-              <span className={`inbox-item__priority inbox-item__priority--${priority}`}>
-                {PRIORITY_LABELS[priority]}
-              </span>
+              <span className="inbox-item__priority inbox-item__priority--high">Important</span>
             )}
           </div>
-
           <div className="inbox-item__type-row">
             <span className="inbox-item__type-icon">
               <IncomingInteractionIcon name={interaction.type} />
             </span>
             <span className="inbox-item__type">{typeLabel}</span>
-            {tone && (
-              <span className="inbox-item__tone" aria-label={`Tone: ${tone}`}>
-                {tone}
-              </span>
+            {interactionDramaMode && policy === 'required' && tone && (
+              <span className="inbox-item__tone">{tone}</span>
             )}
             {expiryLabel && (
-              <span className={`inbox-item__expiry${expiryClass}`}>{expiryLabel}</span>
+              <span className="inbox-item__expiry inbox-item__expiry--urgent">
+                {expiryLabel}
+              </span>
             )}
           </div>
         </div>
@@ -242,11 +297,7 @@ function InteractionItem({
 
       <p className="inbox-item__text">{interaction.text}</p>
 
-      {interaction.outcomeText && (
-        <p className="inbox-item__outcome">
-          <strong>What happened:</strong> {interaction.outcomeText}
-        </p>
-      )}
+      {interaction.outcomeText && <p className="inbox-item__outcome">{interaction.outcomeText}</p>}
 
       {interactionDramaMode && commitment && (
         <div className={`inbox-item__promise inbox-item__promise--${commitment.status}`}>
@@ -254,18 +305,11 @@ function InteractionItem({
             {commitment.status === 'pending' ? 'Promise active' : `Promise ${commitment.status}`}
           </strong>
           <span>{getSocialCommitmentLabel(commitment.kind)}</span>
-          {commitment.status === 'pending' && (
-            <small>{getSocialCommitmentDueCopy(commitment.kind)}</small>
-          )}
         </div>
       )}
 
       {shouldShowActions && (
-        <div
-          className={`inbox-item__actions${
-            interactionDramaMode ? ' inbox-item__actions--drama' : ''
-          }`}
-        >
+        <div className="inbox-item__actions">
           {responseOptions.map((option) => (
             <button
               key={`${interaction.id}-${option.responseType}`}
@@ -275,8 +319,7 @@ function InteractionItem({
               className={`inbox-action inbox-action--${option.style}`}
               onClick={() => onRespond(interaction.id, option.responseType, option.label)}
             >
-              <span>{option.label}</span>
-              {option.description && <small>{option.description}</small>}
+              {option.label}
             </button>
           ))}
         </div>
@@ -296,12 +339,15 @@ export default function IncomingInteractionsInbox() {
   const dramaNetwork = useAppSelector(selectDramaNetwork)
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
-  const globalDramaMode = useAppSelector((state) => state.settings?.gameUX?.dramaMode === true)
+  const globalDramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
 
   const players = game.players
   const currentWeek = game.week ?? 1
   const humanPlayer = players.find((player) => player.isUser)
-  const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game])
+  const socialModuleAvailability = useMemo(
+    () => getIncomingSocialModuleAvailability(game),
+    [game]
+  )
   const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players])
 
   const interactionEntries = useMemo(
@@ -324,8 +370,6 @@ export default function IncomingInteractionsInbox() {
         if (policyDiff !== 0) return policyDiff
         const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority]
         if (priorityDiff !== 0) return priorityDiff
-        const expiryDiff = left.interaction.expiresAtWeek - right.interaction.expiresAtWeek
-        if (expiryDiff !== 0) return expiryDiff
         return right.interaction.createdAt - left.interaction.createdAt
       }),
     [interactionEntries]
@@ -335,16 +379,12 @@ export default function IncomingInteractionsInbox() {
     () => sortedInteractions.filter((entry) => !entry.interaction.resolved),
     [sortedInteractions]
   )
-  const requiredInteractions = useMemo(
+  const needsResponseInteractions = useMemo(
     () => pending.filter((entry) => entry.policy === 'required'),
     [pending]
   )
-  const optionalInteractions = useMemo(
-    () => pending.filter((entry) => entry.policy === 'optional'),
-    [pending]
-  )
-  const readOnlyInteractions = useMemo(
-    () => pending.filter((entry) => entry.policy === 'readOnly'),
+  const updateInteractions = useMemo(
+    () => pending.filter((entry) => entry.policy !== 'required'),
     [pending]
   )
   const resolvedInteractions = useMemo(
@@ -354,46 +394,30 @@ export default function IncomingInteractionsInbox() {
       ),
     [sortedInteractions, currentWeek]
   )
-  const urgentCount = useMemo(
-    () =>
-      requiredInteractions.filter(
-        (entry) => entry.priority === 'high' || isExpiringThisWeek(entry.interaction, currentWeek)
-      ).length,
-    [requiredInteractions, currentWeek]
-  )
   const pendingCommitments = useMemo(
     () => commitments.filter((commitment) => commitment.status === 'pending'),
     [commitments]
   )
-
-  const credibility = useMemo(() => {
-    const base = getSocialCredibility(commitments)
-    if (!globalDramaMode || !humanPlayer) return base
-    const houseBeliefs = dramaNetwork.beliefs.filter(
-      (belief) => belief.subjectId === humanPlayer.id && belief.holderId !== humanPlayer.id
-    )
-    if (houseBeliefs.length === 0) return base
-    const weight = houseBeliefs.reduce((sum, belief) => sum + belief.confidence, 0) || 1
-    const signal =
-      houseBeliefs.reduce((sum, belief) => sum + belief.sentiment * belief.confidence, 0) / weight
-    const score = Math.max(0, Math.min(100, Math.round(base.score + signal * 35)))
-    return {
-      ...base,
-      score,
-      label: score >= 70 ? 'Trusted' : score <= 35 ? 'Questioned' : 'Mixed',
-    }
-  }, [commitments, globalDramaMode, dramaNetwork.beliefs, humanPlayer])
+  const judgedCommitments = useMemo(
+    () =>
+      commitments
+        .filter((commitment) => commitment.status === 'kept' || commitment.status === 'broken')
+        .sort(
+          (left, right) =>
+            (right.resolvedWeek ?? right.createdWeek) - (left.resolvedWeek ?? left.createdWeek)
+        ),
+    [commitments]
+  )
+  const credibility = useMemo(() => getSocialCredibility(commitments), [commitments])
+  const houseRead = useMemo(
+    () => (humanPlayer ? getHouseRead(dramaNetwork.beliefs, humanPlayer.id) : null),
+    [dramaNetwork.beliefs, humanPlayer]
+  )
 
   const headerSummary =
     pending.length === 0
       ? 'All caught up'
-      : `${requiredInteractions.length} decisions${
-          urgentCount > 0 ? ` • ${urgentCount} urgent` : ''
-        }${optionalInteractions.length > 0 ? ` • ${optionalInteractions.length} conversations` : ''}`
-  const credibilityCopy =
-    credibility.kept + credibility.broken === 0
-      ? 'Your reputation · no promises judged yet'
-      : `Your reputation ${credibility.score}% · ${credibility.label}`
+      : `${needsResponseInteractions.length} to answer · ${updateInteractions.length} updates`
 
   useEffect(() => {
     if (!open || socialModuleAvailability.canOpen) return
@@ -411,8 +435,7 @@ export default function IncomingInteractionsInbox() {
     interaction: IncomingInteraction,
     priority: IncomingInteractionPriority,
     policy: IncomingInteractionResponsePolicy,
-    showActions: boolean,
-    showExpiry: boolean
+    showActions: boolean
   ) => {
     const interactionDramaMode =
       getInteractionSocialMode(interaction, { game, settings, vip }) === 'drama'
@@ -423,7 +446,6 @@ export default function IncomingInteractionsInbox() {
         priority={priority}
         policy={policy}
         showActions={showActions}
-        showExpiry={showExpiry}
         playerById={playerById}
         currentWeek={currentWeek}
         onRead={(interactionId) => dispatch(markIncomingInteractionRead(interactionId))}
@@ -463,14 +485,38 @@ export default function IncomingInteractionsInbox() {
               <IncomingInteractionIcon name="close" />
             </button>
           </div>
+
           <div className="inbox-header__meta">
             {globalDramaMode && (
-              <span
-                className="inbox-header__credibility"
-                title="Promise-keeping reputation, adjusted by what the house currently believes."
-              >
-                {credibilityCopy}
-              </span>
+              <details className="inbox-header__reputation">
+                <summary>
+                  {credibility.kept + credibility.broken === 0
+                    ? 'Promise reliability · unproven'
+                    : `Promise reliability ${credibility.score}% · ${credibility.label}`}
+                </summary>
+                <div className="inbox-header__reputation-body">
+                  <p>
+                    <strong>{credibility.kept}</strong> kept · <strong>{credibility.broken}</strong>{' '}
+                    broken
+                  </p>
+                  <p>
+                    Reliability changes only when a promise reaches the decision it referred to. It
+                    improves by making fewer promises and keeping the next ones you do make.
+                  </p>
+                  {houseRead && (
+                    <p>
+                      <strong>House read: {houseRead.label}.</strong> {houseRead.explanation}
+                    </p>
+                  )}
+                  {judgedCommitments.slice(0, 3).map((commitment) => (
+                    <p key={commitment.id} className="inbox-header__reputation-event">
+                      {commitment.status === 'kept' ? '✓' : '✕'}{' '}
+                      {getSocialCommitmentLabel(commitment.kind)} ·{' '}
+                      {formatResolutionReason(commitment.resolutionReason)}
+                    </p>
+                  ))}
+                </div>
+              </details>
             )}
             <span className="inbox-header__summary">{headerSummary}</span>
           </div>
@@ -484,7 +530,7 @@ export default function IncomingInteractionsInbox() {
               {globalDramaMode && pendingCommitments.length > 0 && (
                 <details className="inbox-section inbox-section--promises">
                   <summary className="inbox-section__title inbox-section__title--promises">
-                    Active Promises · {pendingCommitments.length}
+                    Active promises · {pendingCommitments.length}
                   </summary>
                   <div className="inbox-promises">
                     {pendingCommitments.map((commitment) => (
@@ -502,54 +548,39 @@ export default function IncomingInteractionsInbox() {
                 </details>
               )}
 
-              {requiredInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Needs Decision">
-                  <h3 className="inbox-section__title">Needs Decision</h3>
+              {needsResponseInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="Needs Response">
+                  <h3 className="inbox-section__title">Needs Response</h3>
                   <div className="inbox-section__list" role="list">
-                    {requiredInteractions.map(({ interaction, priority, policy }) =>
-                      renderInteraction(interaction, priority, policy, true, true)
+                    {needsResponseInteractions.map(({ interaction, priority, policy }) =>
+                      renderInteraction(interaction, priority, policy, true)
                     )}
                   </div>
                 </section>
               )}
 
-              {optionalInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Conversations">
-                  <h3 className="inbox-section__title inbox-section__title--updates">
-                    Conversations
-                  </h3>
+              {updateInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="Updates">
+                  <h3 className="inbox-section__title inbox-section__title--updates">Updates</h3>
                   <div className="inbox-section__list" role="list">
-                    {optionalInteractions.map(({ interaction, priority, policy }) =>
-                      renderInteraction(interaction, priority, policy, true, true)
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {readOnlyInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="House Updates">
-                  <h3 className="inbox-section__title inbox-section__title--updates">
-                    House Updates
-                  </h3>
-                  <div className="inbox-section__list" role="list">
-                    {readOnlyInteractions.map(({ interaction, priority, policy }) =>
-                      renderInteraction(interaction, priority, policy, false, false)
+                    {updateInteractions.map(({ interaction, priority, policy }) =>
+                      renderInteraction(interaction, priority, policy, policy === 'optional')
                     )}
                   </div>
                 </section>
               )}
 
               {resolvedInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Resolved This Week">
-                  <h3 className="inbox-section__title inbox-section__title--resolved">
-                    Resolved This Week
-                  </h3>
+                <details className="inbox-section inbox-section--history">
+                  <summary className="inbox-section__title inbox-section__title--resolved">
+                    History · {resolvedInteractions.length}
+                  </summary>
                   <div className="inbox-section__list" role="list">
                     {resolvedInteractions.map(({ interaction, priority, policy }) =>
-                      renderInteraction(interaction, priority, policy, false, false)
+                      renderInteraction(interaction, priority, policy, false)
                     )}
                   </div>
-                </section>
+                </details>
               )}
             </div>
           )}
