@@ -5,6 +5,7 @@ import {
   test,
 } from './support/test'
 
+// Broadcast QA covers both portrait and landscape geometry on the real overlay.
 test.describe('Housemate biographies @core-journey', () => {
   test('keeps the first housemate full-height with compact side copy', async ({ page }) => {
     await page.addInitScript(() => {
