@@ -1,4 +1,4 @@
-import { expect, test } from './support/test'
+import { closeDebugPanelIfOpen, expect, test } from './support/test'
 
 test.describe('Credits cinematic @core-journey', () => {
   test('uses the smooth adaptive renderer on a real mobile viewport', async ({ page }) => {
@@ -14,6 +14,7 @@ test.describe('Credits cinematic @core-journey', () => {
     })
 
     await page.goto('./#/credits')
+    await closeDebugPanelIfOpen(page)
 
     const start = page.getByRole('button', { name: 'Tap to start credits' })
     if (await start.isVisible()) {
