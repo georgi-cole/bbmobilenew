@@ -6,10 +6,7 @@ const source = readFileSync(
   resolve(process.cwd(), 'src/components/PublicFavoriteOverlay/PublicFavoriteOverlay.tsx'),
   'utf8'
 )
-const finaleJourney = readFileSync(
-  resolve(process.cwd(), 'e2e/playwright/finale.spec.ts'),
-  'utf8'
-)
+const finaleJourney = readFileSync(resolve(process.cwd(), 'e2e/playwright/finale.spec.ts'), 'utf8')
 
 describe('Public Favorite finale presentation contract', () => {
   it('does not restore the standings dashboard', () => {
