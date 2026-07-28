@@ -113,6 +113,7 @@ jobs:
 
           Path('AUDIO_MIGRATION_DIAGNOSTIC.txt').unlink(missing_ok=True)
           Path('AUDIO_STATIC_DIAGNOSTIC.txt').unlink(missing_ok=True)
+          Path('AUDIO_TEST_DIAGNOSTIC.txt').unlink(missing_ok=True)
 
       - name: Validate migration scripts
         run: |
@@ -228,8 +229,11 @@ jobs:
         if: steps.static.outputs.failed == 'true'
         run: exit 1
 
-      - name: Focused audio regressions
+      - name: Capture focused audio regressions
+        id: focused
+        shell: bash
         run: |
+          set +e
           npx vitest run \
             tests/unit/sound/audioAutoIndex.test.ts \
             tests/unit/sound/queue.test.ts \
@@ -238,7 +242,35 @@ jobs:
             tests/unit/sound/musicConfigSanitizer.test.ts \
             tests/unit/sound/musicRuntimeConfig.test.ts \
             tests/unit/sound/resolveDesiredMusic.test.ts \
-            tests/unit/sound/minigameMusicConfig.test.ts
+            tests/unit/sound/minigameMusicConfig.test.ts \
+            > AUDIO_TEST_DIAGNOSTIC.txt 2>&1
+          status=$?
+          cat AUDIO_TEST_DIAGNOSTIC.txt
+          if [ "$status" -ne 0 ]; then
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
+          else
+            rm AUDIO_TEST_DIAGNOSTIC.txt
+            echo 'failed=false' >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Commit focused regression diagnostic
+        if: steps.focused.outputs.failed == 'true'
+        shell: bash
+        run: |
+          cp AUDIO_TEST_DIAGNOSTIC.txt /tmp/AUDIO_TEST_DIAGNOSTIC.txt
+          git reset --hard HEAD
+          git clean -fd
+          cp /tmp/AUDIO_TEST_DIAGNOSTIC.txt AUDIO_TEST_DIAGNOSTIC.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AUDIO_TEST_DIAGNOSTIC.txt
+          git commit -m 'Capture focused audio regression diagnostic'
+          git push origin HEAD:refs/heads/agent/audio-auto-index-migration
+
+      - name: Stop after focused regression failure
+        if: steps.focused.outputs.failed == 'true'
+        run: exit 1
 
       - name: Full test suite
         run: npm test
@@ -260,7 +292,7 @@ jobs:
           set -euo pipefail
           git rm .github/workflows/audio-auto-index-migration.yml
           git rm scripts/migrate-audio-assets.mjs
-          rm -f AUDIO_MIGRATION_DIAGNOSTIC.txt AUDIO_STATIC_DIAGNOSTIC.txt
+          rm -f AUDIO_MIGRATION_DIAGNOSTIC.txt AUDIO_STATIC_DIAGNOSTIC.txt AUDIO_TEST_DIAGNOSTIC.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
