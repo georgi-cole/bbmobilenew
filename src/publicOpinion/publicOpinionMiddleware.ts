@@ -436,9 +436,9 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       if (human?.id === actorId && entry.source === 'manual') {
         const score = typeof entry.score === 'number' ? entry.score : 0
         const approvalDelta =
-          outcome === 'success' && score >= 0.55
+          outcome === 'success' && (score >= 0.25 || delta >= 4)
             ? publicOpinionConfig.socialImpact.highQualityInteraction
-            : outcome === 'failure' || score <= -0.25
+            : outcome === 'failure' && (score <= -0.3 || delta < 0)
               ? publicOpinionConfig.socialImpact.poorInteraction
               : 0
         if (approvalDelta !== 0) {

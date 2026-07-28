@@ -355,8 +355,8 @@ export default function PublicMeter() {
             <summary>Why it moved · how to recover</summary>
             <div className="public-meter__explain-body">
               <p>
-                Approval now changes through recorded competitions, nominations, saves, evictions,
-                public requests and visible social play — not hidden daily random drift.
+                Only broadcast-visible events and confirmed public moments move this meter; quiet
+                time alone does not change it.
               </p>
               {userFeed.length > 0 ? (
                 <div className="public-meter__cause-list">
@@ -392,7 +392,7 @@ export default function PublicMeter() {
           <div className="public-meter__section-heading">
             <h2 className="public-meter__section-title">Public Rankings</h2>
             <span className="public-meter__section-caption">
-              Check below what's your approval in the outside world.
+              See how every remaining housemate is landing with the outside world.
             </span>
           </div>
           <div className="ranking-list">

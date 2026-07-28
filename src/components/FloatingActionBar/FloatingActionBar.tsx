@@ -225,11 +225,11 @@ export default function FloatingActionBar({
       )
       if (isSurvivorMode) {
         showSurvivorBlockedMessage(
-          getBlockedSocialModuleAnnouncementMessage(incomingSocialModuleAvailability)
+          getBlockedSocialModuleAnnouncementMessage(socialModuleAvailability)
         )
         return
       }
-      onSocialModuleBlocked?.(incomingSocialModuleAvailability)
+      onSocialModuleBlocked?.(socialModuleAvailability)
       return
     }
     dispatch(openSocialPanel())
@@ -251,11 +251,11 @@ export default function FloatingActionBar({
       )
       if (isSurvivorMode) {
         showSurvivorBlockedMessage(
-          getBlockedSocialModuleAnnouncementMessage(socialModuleAvailability)
+          getBlockedSocialModuleAnnouncementMessage(incomingSocialModuleAvailability)
         )
         return
       }
-      onSocialModuleBlocked?.(socialModuleAvailability)
+      onSocialModuleBlocked?.(incomingSocialModuleAvailability)
       return
     }
     dispatch(openIncomingInbox())

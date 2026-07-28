@@ -2,7 +2,6 @@
 > bbmobilenew@1.0.0 typecheck
 > tsc -b
 
-src/components/HousePulse/__tests__/HousePulse.test.tsx(57,13): error TS2739: Type '{ network: DramaSocialNetwork; players: Player[]; humanId: string; }' is missing the following properties from type 'HousePulseProps': actionHistory, relationships, weekStartRelSnapshot, currentWeek
 src/social/incomingInteractions.ts(201,3): error TS6133: 'responseLabel' is declared but its value is never read.
 
 TYPECHECK_EXIT_CODE=2
