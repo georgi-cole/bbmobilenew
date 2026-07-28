@@ -51,6 +51,10 @@ The first non-inherited assignment wins:
 - `silence` stops resolution and deliberately returns no BGM;
 - an absent local assignment leaves the server or bundled layer unchanged.
 
+## Redux state compatibility
+
+Bundled policy documents may expose read-only collections, but server and local override documents are normalized into mutable, serializable data before they enter Redux. This keeps the configuration compatible with Immer drafts without weakening the read-only contract of the shipped defaults.
+
 ## Asset fallback
 
 When a remote or local URL fails to load or decode, `SoundManager` does not permanently silence the phase. It attempts:
