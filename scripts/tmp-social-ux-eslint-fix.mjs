@@ -10,39 +10,21 @@ function edit(path, transform) {
 
 edit('src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx', (source) => {
   let next = source
-  next = next.replace(
-    `import { useEffect, useMemo, useRef } from 'react'`,
-    `import { useEffect, useMemo, useRef, useState } from 'react'`
-  )
-  next = next.replace(
-    `  const recentlyResolvedIdsRef = useRef<Set<string>>(new Set())`,
-    `  const [recentlyResolvedIds, setRecentlyResolvedIds] = useState<Set<string>>(() => new Set())`
-  )
-  next = next.replaceAll('recentlyResolvedIdsRef.current.has(', 'recentlyResolvedIds.has(')
-  next = next.replace(
-    `    recentlyResolvedIdsRef.current.clear()\n    dispatch(closeIncomingInbox())`,
-    `    setRecentlyResolvedIds(new Set())\n    dispatch(closeIncomingInbox())`
-  )
-  next = next.replace(
-    `                recentlyResolvedIdsRef.current.clear()\n                dispatch(closeIncomingInbox())`,
-    `                setRecentlyResolvedIds(new Set())\n                dispatch(closeIncomingInbox())`
-  )
-  next = next.replace(
-    `          recentlyResolvedIdsRef.current.add(interactionId)\n          dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))`,
-    `          setRecentlyResolvedIds((current) => {\n            const nextIds = new Set(current)\n            nextIds.add(interactionId)\n            return nextIds\n          })\n          dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))`
-  )
-  return next
-})
 
-edit('src/social/incomingInteractions.ts', (source) => {
-  let next = source
   next = next.replace(
-    `function getResponseDelta(\n  responseType: IncomingInteractionResponseType,\n  interaction: IncomingInteraction,\n  dramaMode: boolean\n): number {`,
-    `function getResponseDelta(\n  responseType: IncomingInteractionResponseType,\n  interaction: IncomingInteraction\n): number {`
+    `    [sortedInteractions]\n  )\n  const resolvedInteractions = useMemo(`,
+    `    [sortedInteractions, recentlyResolvedIds]\n  )\n  const resolvedInteractions = useMemo(`
   )
-  next = next.replaceAll(
-    'getResponseDelta(responseType, interaction, dramaMode)',
-    'getResponseDelta(responseType, interaction)'
+
+  next = next.replace(
+    `    [sortedInteractions, currentWeek]\n  )\n  const pendingCommitments = useMemo(`,
+    `    [sortedInteractions, currentWeek, recentlyResolvedIds]\n  )\n  const pendingCommitments = useMemo(`
   )
+
+  next = next.replace(
+    `    setRecentlyResolvedIds(new Set())\n    dispatch(closeIncomingInbox())\n  }, [dispatch, open, socialModuleAvailability])`,
+    `    dispatch(closeIncomingInbox())\n  }, [dispatch, open, socialModuleAvailability])`
+  )
+
   return next
 })
