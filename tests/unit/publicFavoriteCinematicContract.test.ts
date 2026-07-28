@@ -35,7 +35,9 @@ describe('Public Favorite finale presentation contract', () => {
   })
 
   it('keeps the real mobile journey race-safe when the intro auto-advances', () => {
-    expect(finaleJourney).toContain("const skipFavoriteIntro = favoriteVote.getByRole('button', { name: 'Skip intro' })")
+    expect(finaleJourney).toContain(
+      "const skipFavoriteIntro = favoriteVote.getByRole('button', { name: 'Skip intro' })"
+    )
     expect(finaleJourney).toContain('if (await skipFavoriteIntro.isVisible())')
   })
 
