@@ -19,7 +19,6 @@ import { Atmosphere } from '../effects/Atmosphere'
 import { FinalCoast } from '../environment/FinalCoast'
 import { CinematicLighting } from '../lighting/CinematicLighting'
 import { getTimelineState } from '../timeline/timeline'
-import LightweightCinematicWorld from './LightweightCinematicWorld'
 import { OptionalAssetLayer } from './OptionalAssetLayer'
 import './cinematic.css'
 
@@ -161,54 +160,49 @@ export const CinematicComposition = ({
   const { isPlayer } = getRemotionEnvironment()
   const state = getTimelineState(frame)
   const quality = useMemo(() => getCinematicQuality(isPlayer), [isPlayer])
-  const performanceMode = quality === 'performance'
   const grainFrame = quality === 'high' ? frame : Math.floor(frame / 6) * 6
 
   return (
     <AbsoluteFill
       className="big-eye-cinematic"
       data-cinematic-quality={quality}
-      data-cinematic-renderer={performanceMode ? 'adaptive-dom' : 'webgl'}
+      data-cinematic-renderer="webgl"
     >
       {audioMode === 'embedded' && <CinematicSoundtrack />}
       <CinematicThunder />
 
-      {performanceMode ? (
-        <LightweightCinematicWorld frame={frame} state={state} />
-      ) : (
-        <ThreeCanvas
-          width={width}
-          height={height}
-          dpr={quality === 'high' ? 1 : 0.82}
-          camera={{
-            fov: CINEMATIC_CONFIG.camera.fov,
-            near: CINEMATIC_CONFIG.camera.near,
-            far: CINEMATIC_CONFIG.camera.far,
-            position: [...CINEMATIC_CONFIG.camera.positionPoints[0]],
-          }}
-          gl={{
-            alpha: false,
-            antialias: quality === 'high',
-            powerPreference: 'high-performance',
-            preserveDrawingBuffer: !isPlayer,
-          }}
-          onCreated={({ gl }) => {
-            gl.toneMapping = ACESFilmicToneMapping
-            gl.toneMappingExposure = 1.08
-            gl.outputColorSpace = SRGBColorSpace
-          }}
-        >
-          <fog attach="fog" args={[state.fogColor, state.fogNear, state.fogFar]} />
-          <Atmosphere frame={state.frame} state={state} quality={quality} />
-          <CinematicLighting state={state} quality={quality} />
-          <City frame={state.frame} state={state} quality={quality} />
-          <FinalCoast frame={state.frame} state={state} />
-          <CinematicCamera frame={state.frame} progress={state.progress} />
-        </ThreeCanvas>
-      )}
+      <ThreeCanvas
+        width={width}
+        height={height}
+        dpr={quality === 'high' ? 1 : 0.82}
+        camera={{
+          fov: CINEMATIC_CONFIG.camera.fov,
+          near: CINEMATIC_CONFIG.camera.near,
+          far: CINEMATIC_CONFIG.camera.far,
+          position: [...CINEMATIC_CONFIG.camera.positionPoints[0]],
+        }}
+        gl={{
+          alpha: false,
+          antialias: quality === 'high',
+          powerPreference: 'high-performance',
+          preserveDrawingBuffer: !isPlayer,
+        }}
+        onCreated={({ gl }) => {
+          gl.toneMapping = ACESFilmicToneMapping
+          gl.toneMappingExposure = 1.08
+          gl.outputColorSpace = SRGBColorSpace
+        }}
+      >
+        <fog attach="fog" args={[state.fogColor, state.fogNear, state.fogFar]} />
+        <Atmosphere frame={state.frame} state={state} quality={quality} />
+        <CinematicLighting state={state} quality={quality} />
+        <City frame={state.frame} state={state} quality={quality} />
+        <FinalCoast frame={state.frame} state={state} />
+        <CinematicCamera frame={state.frame} progress={state.progress} />
+      </ThreeCanvas>
 
-      {!performanceMode && <LightningOverlay frame={state.frame} opacity={state.lightningBolt} />}
-      {!performanceMode && <OptionalAssetLayer state={state} />}
+      <LightningOverlay frame={state.frame} opacity={state.lightningBolt} />
+      <OptionalAssetLayer state={state} />
       <div
         className="big-eye-cinematic__grain"
         style={{ backgroundPosition: `${grainFrame % 7}px ${grainFrame % 11}px` }}

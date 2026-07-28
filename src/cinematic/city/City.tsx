@@ -94,7 +94,7 @@ const BuildingWindows = ({ frame, intensity, quality }: { frame: number; intensi
     () => CITY_LAYOUT.windows.filter((window) => !(Math.abs(window.position[0]) < 35 && window.position[1] < 9.2)),
     [],
   );
-  const sampledFrame = quality === 'balanced' ? Math.floor(frame / 2) * 2 : frame;
+  const sampledFrame = quality === 'high' ? frame : Math.floor(frame / 2) * 2;
   const warmPalette = useMemo(() => [
     new Color('#fffdf1'),
     new Color('#fff4c7'),
@@ -376,41 +376,4 @@ const Roads = ({ state }: { state: TimelineState }) => {
           <meshPhysicalMaterial color="#161e2c" roughness={0.7 - state.wetness * 0.36} metalness={0.24 + state.wetness * 0.32} clearcoat={state.wetness * 0.7} />
         </mesh>
       ))}
-      {CITY_LAYOUT.intersections.map((z) => (
-        <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, z]}>
-          <planeGeometry args={[145, 15]} />
-          <meshPhysicalMaterial color="#080d16" roughness={0.86 - state.wetness * 0.55} metalness={state.wetness * 0.42} />
-        </mesh>
-      ))}
-      <InstancedBoxes instances={CITY_LAYOUT.roadMarks} material="mark" opacity={0.42 + state.wetness * 0.25} />
-      <InstancedBoxes instances={CITY_LAYOUT.reflectionStreaks} material="reflection" opacity={state.wetness * state.vehicleLightIntensity * 0.4} />
-    </group>
-  );
-};
-
-export const City = ({ frame, state, quality }: CityProps) => {
-  // The coast reveals from the distant horizon forward while the city eases
-  // below the camera. Opaque, depth-tested coast pixels replace the city
-  // spatially instead of cross-fading two complete scenes.
-  if (state.cityExitProgress >= 0.82) return null;
-  const exitDrop = Math.pow(state.cityExitProgress, 2.35) * 320;
-
-  return (
-  <group position={[0, -exitDrop, 0]}>
-    <mesh position={[0, -0.38, -145]}>
-      <boxGeometry args={[420, 0.7, 700]} />
-      <meshStandardMaterial color="#070b15" roughness={0.92} metalness={0.12} />
-    </mesh>
-    <Roads state={state} />
-    <InstancedBoxes instances={CITY_LAYOUT.distantBuildings} material="distant" />
-    <InstancedBoxes instances={CITY_LAYOUT.buildings} material="building" />
-    <InstancedBoxes instances={RETAIL_PODIUMS} material="building" />
-    <InstancedBoxes instances={CITY_LAYOUT.roofDetails} material="roof" />
-    <BuildingWindows frame={frame} intensity={state.windowIntensity} quality={quality} />
-    <Storefronts frame={frame} state={state} />
-    <StreetFurniture state={state} />
-    <UmbrellaPedestrians frame={frame} state={state} quality={quality} />
-    <VehicleTraffic frame={frame} state={state} />
-  </group>
-  );
-};
+      {CITY_LAYOUT.intersections.map((z) => (๗พ๚ถหkบwต็Iฝมฬ…ฬ์ษ•‘ฅัฬü่ษษ…ไ๑์ฅ่อัษฅน๔๘๔๐ีน‘•ฅน•์4(€€€€€•แม•ะกฅนมีัAษฝมฬüนษ•‘ฅัฬüนlมtüนฅคนัฝ	” ษีนัฅต”ตมษฝ‘ี•ศค์4(€€€๔ค์4(4(€€€•แม•ะกอษ••ธน•ั	ๅ1…•ฑQ•แะ ]•0ษ•‘ฅัฬฅน•ต…ัฅคคนัฝ!…ู•ััษฅีั” 4(€€€€€€‘…ัตฝนั•นะตอฝีษ”ฐ4(€€€€€€ษีนัฅต”ฐ4(€€€€ค์4(€๔ค์4(4(€ฅะ •แฅัฬÝก•ธอ…ม”ฅฬมษ•ออ•ฐ€ ค€๔๘์4(€€€ูคนีอ•…ญ•Qฅต•ษฬ ค์4(€€€ษ•น‘•ษษ•‘ฅัฬ ค์4(4(€€€…ะ  ค€๔๘์4(€€€€€ฅษ•ู•นะนญ•ๅฝÝธกÝฅน‘ฝÜฐ์ญ•ไ่€อ…ม”๔ค์4(€€€€€ูคน…‘ู…น•Qฅต•ษอ	ๅQฅต”กa%Q}}5Lค์4(€€€๔ค์4(4(€€€•แม•ะกมฑ…ๅ•ษ5ฝฌนม…ีอ”คนัฝ!…ู•	••น…ฑฑ• ค์4(€€€•แม•ะกอษ••ธน•ั	ๅQ•แะ !ฝต”อษ••ธคคนัฝ	•%นQก•ฝีต•นะ ค์4(€๔ค์4(4(€ฅะ ษ•ัีษนฬกฝต”…ั•ศัก”]•0ฝตมฝอฅัฅฝธฅนฅอก•ฬฐ€ ค€๔๘์4(€€€ูคนีอ•…ญ•Qฅต•ษฬ ค์4(€€€ษ•น‘•ษษ•‘ฅัฬ ค์4(4(€€€…ะ  ค€๔๘์4(€€€€€มฑ…ๅ•ษ5ฝฌน•ตฅัน‘• ค์4(€€€๔ค์4(4(€€€•แม•ะกมฑ…ๅ•ษ5ฝฌนม…ีอ”คนัฝ!…ู•	••น…ฑฑ• ค์4(€€€•แม•ะกอษ••ธน•ั	ๅQ•อั% ษ•‘ฅัฬต•นตี…ษคคนัฝ!…ู•ฑ…อฬ ฅฬตูฅอฅฑ”ฐ€ฅฬตฅนอั…นะค์4(4(€€€…ะ  ค€๔๘์4(€€€€€ูคน…‘ู…น•Qฅต•ษอ	ๅQฅต”กa%Q}}5Lค์4(€€€๔ค์4(4(€€€•แม•ะกอษ••ธน•ั	ๅQ•แะ !ฝต”อษ••ธคคนัฝ	•%นQก•ฝีต•นะ ค์4(€๔ค์4)๔ค์4(
