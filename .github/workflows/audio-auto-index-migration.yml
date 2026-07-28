@@ -97,7 +97,20 @@ jobs:
           if marker not in text:
             raise SystemExit('Could not locate filename-alias migration marker')
           text = text.replace(marker, insertion + marker, 1)
+          text = text.replace(
+            '  tags: readonly MusicTrackTag[]\\n}\\n\\nexport interface MusicTrackAssetOverride',
+            '  tags: readonly MusicTrackTag[]\\n  dynamicSound?: SoundEntry\\n}\\n\\nexport interface MusicTrackAssetOverride',
+          )
           target.write_text(text)
+
+          generator = Path('scripts/generate-audio-manifest.mjs')
+          generated_source = generator.read_text()
+          generated_source = generated_source.replace(
+            'const generated = `/* eslint-disable */\\n',
+            'const generated = `',
+          )
+          generator.write_text(generated_source)
+
           Path('AUDIO_MIGRATION_DIAGNOSTIC.txt').unlink(missing_ok=True)
           Path('AUDIO_STATIC_DIAGNOSTIC.txt').unlink(missing_ok=True)
 
