@@ -385,7 +385,10 @@ test.describe('Finale / Jury flow @release', () => {
       path: 'test-results/public-favorite-intro-mobile.png',
       fullPage: false,
     })
-    await favoriteVote.getByRole('button', { name: 'Skip intro' }).click()
+    const skipFavoriteIntro = favoriteVote.getByRole('button', { name: 'Skip intro' })
+    if (await skipFavoriteIntro.isVisible()) {
+      await skipFavoriteIntro.click()
+    }
     const favoriteFeature = favoriteVote.locator('.pf-cinematic__feature')
     await expect(favoriteFeature).toBeVisible({ timeout: 5_000 })
     await expect(favoriteFeature.locator('.pf-cinematic__feature-copy h2')).toBeVisible()
