@@ -1,6 +1,8 @@
 import type { GameCategory } from '../../minigames/registry'
+import { SOUND_REGISTRY } from './sounds'
 import { MUSIC_CATALOG, MUSIC_TRACK_IDS, type CatalogMusicTrack } from './musicCatalog'
 import {
+  AUDIO_EVENT_IDS,
   DEFAULT_MUSIC_CONFIG,
   DEFAULT_PHASE_MUSIC_POLICY,
   DEFAULT_SCENE_MUSIC_POLICY,
@@ -103,6 +105,52 @@ function auditProfile(
   }
 }
 
+function auditEventSounds(
+  config: MusicConfigDocument,
+  issues: MusicConfigAuditIssue[]
+): void {
+  for (const eventId of AUDIO_EVENT_IDS) {
+    const cue = config.eventSounds[eventId]
+    const path = `eventSounds.${eventId}`
+    if (!cue) {
+      issues.push({
+        code: 'missing-event-cue',
+        message: `Missing semantic event cue for ${eventId}.`,
+        path,
+      })
+      continue
+    }
+
+    if (cue.soundKey !== null) {
+      const entry = SOUND_REGISTRY[cue.soundKey]
+      if (!entry) {
+        issues.push({
+          code: 'unknown-event-sound',
+          message: `Event ${eventId} references unknown sound key ${cue.soundKey}.`,
+          path: `${path}.soundKey`,
+        })
+      } else if (entry.category === 'music') {
+        issues.push({
+          code: 'music-used-as-event-sound',
+          message: `Event ${eventId} must use a one-shot sound, not ${cue.soundKey}.`,
+          path: `${path}.soundKey`,
+        })
+      }
+    }
+
+    if (
+      cue.volume !== undefined &&
+      (!Number.isFinite(cue.volume) || cue.volume < 0 || cue.volume > 1)
+    ) {
+      issues.push({
+        code: 'invalid-event-volume',
+        message: `Event ${eventId} volume must be between 0 and 1.`,
+        path: `${path}.volume`,
+      })
+    }
+  }
+}
+
 export function auditMusicConfig(
   config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG,
   activeMinigames: readonly AuditableMinigame[] = []
@@ -182,6 +230,17 @@ export function auditMusicConfig(
       auditSelection(selection, `modePhaseOverrides.${mode}.${phase}`, issues)
     }
   }
+  for (const mode of ['any', 'classic', 'survival'] as const) {
+    for (const [gameKey, stages] of Object.entries(config.minigameAssignments[mode] ?? {})) {
+      for (const [stage, selection] of Object.entries(stages)) {
+        auditSelection(
+          selection,
+          `minigameAssignments.${mode}.${gameKey}.${stage}`,
+          issues
+        )
+      }
+    }
+  }
   for (const category of ['arcade', 'endurance', 'logic', 'trivia'] as const) {
     auditSelection(
       config.minigameCategoryMusic[category],
@@ -192,6 +251,7 @@ export function auditMusicConfig(
   for (const [contextName, selection] of Object.entries(config.contextMusic)) {
     auditSelection(selection, `contextMusic.${contextName}`, issues)
   }
+  auditEventSounds(config, issues)
 
   const profileIds = new Set<string>()
   config.minigameProfiles.forEach((profile, index) => {

@@ -33,6 +33,49 @@ export interface MinigameMusicProfile {
   transition?: MusicTransitionPolicy
 }
 
+export type MinigameStageAssignments = Partial<
+  Record<MusicMinigameStage, MusicSelection>
+>
+export type MinigameAssignmentMap = Readonly<Record<string, MinigameStageAssignments>>
+export type ModeMinigameAssignments = Readonly<
+  Record<MusicConfigMode, MinigameAssignmentMap>
+>
+
+export const AUDIO_EVENT_IDS = [
+  'competition.results',
+  'minigame.results',
+  'minigame.winner',
+  'minigame.skipped',
+  'eviction.vote-cast',
+  'safety.decision',
+  'twist.battle-back',
+  'eviction.reveal',
+  'tribunal.vote',
+  'finale.winner',
+] as const
+
+export type AudioEventId = (typeof AUDIO_EVENT_IDS)[number]
+
+export const AUDIO_EVENT_LABELS: Readonly<Record<AudioEventId, string>> = {
+  'competition.results': 'Competition results',
+  'minigame.results': 'Minigame results',
+  'minigame.winner': 'Minigame winner applied',
+  'minigame.skipped': 'Minigame skipped',
+  'eviction.vote-cast': 'Eviction vote cast',
+  'safety.decision': 'Safety decision submitted',
+  'twist.battle-back': 'Back 2 the Game activated',
+  'eviction.reveal': 'Eviction reveal begins',
+  'tribunal.vote': 'Tribunal vote cast',
+  'finale.winner': 'Finale winner reveal',
+}
+
+export interface AudioEventCue {
+  /** Null explicitly disables this event cue. */
+  soundKey: string | null
+  /** Optional per-event volume override. The category master still applies. */
+  volume?: number
+}
+
 export interface MusicContextPolicy {
   spectator: MusicSelection
   social: MusicSelection
@@ -47,7 +90,10 @@ export interface MusicConfigDocument {
   modePhaseOverrides: Readonly<Record<GameMode, Partial<Record<Phase, MusicSelection>>>>
   sceneMusic: Readonly<Record<MusicScene, MusicSelection>>
   minigameProfiles: readonly MinigameMusicProfile[]
+  /** Lightweight exact game/stage overrides used by server and admin UI. */
+  minigameAssignments: ModeMinigameAssignments
   minigameCategoryMusic: Readonly<Record<GameCategory, MusicSelection>>
+  eventSounds: Readonly<Record<AudioEventId, AudioEventCue>>
   contextMusic: Readonly<MusicContextPolicy>
 }
 
@@ -56,7 +102,11 @@ export interface MusicConfigOverrides {
   modePhaseOverrides?: Partial<Record<GameMode, Partial<Record<Phase, MusicSelection>>>>
   sceneMusic?: Partial<Record<MusicScene, MusicSelection>>
   minigameProfiles?: readonly MinigameMusicProfile[]
+  minigameAssignments?: Partial<
+    Record<MusicConfigMode, Record<string, MinigameStageAssignments>>
+  >
   minigameCategoryMusic?: Partial<Record<GameCategory, MusicSelection>>
+  eventSounds?: Partial<Record<AudioEventId, AudioEventCue>>
   contextMusic?: Partial<MusicContextPolicy>
 }
 
@@ -220,6 +270,25 @@ export const DEFAULT_MINIGAME_CATEGORY_MUSIC: Readonly<Record<GameCategory, Musi
   trivia: INHERIT_MUSIC,
 }
 
+export const DEFAULT_EVENT_SOUND_POLICY: Readonly<Record<AudioEventId, AudioEventCue>> = {
+  'competition.results': { soundKey: 'tv:event' },
+  'minigame.results': { soundKey: 'minigame:results' },
+  'minigame.winner': { soundKey: 'ui:confirm' },
+  'minigame.skipped': { soundKey: 'ui:error' },
+  'eviction.vote-cast': { soundKey: 'ui:navigate' },
+  'safety.decision': { soundKey: 'ui:confirm' },
+  'twist.battle-back': { soundKey: 'tv:battleback' },
+  'eviction.reveal': { soundKey: 'player:evicted' },
+  'tribunal.vote': { soundKey: 'ui:jury_vote' },
+  'finale.winner': { soundKey: 'tv:winner_reveal' },
+}
+
+const EMPTY_MINIGAME_ASSIGNMENTS: ModeMinigameAssignments = {
+  any: {},
+  classic: {},
+  survival: {},
+}
+
 export const DEFAULT_MUSIC_CONFIG: MusicConfigDocument = {
   version: 1,
   phaseMusic: DEFAULT_PHASE_MUSIC_POLICY,
@@ -229,7 +298,9 @@ export const DEFAULT_MUSIC_CONFIG: MusicConfigDocument = {
   },
   sceneMusic: DEFAULT_SCENE_MUSIC_POLICY,
   minigameProfiles: DEFAULT_MINIGAME_MUSIC_PROFILES,
+  minigameAssignments: EMPTY_MINIGAME_ASSIGNMENTS,
   minigameCategoryMusic: DEFAULT_MINIGAME_CATEGORY_MUSIC,
+  eventSounds: DEFAULT_EVENT_SOUND_POLICY,
   contextMusic: {
     spectator: musicTrack('spectator'),
     social: musicTrack('social'),
@@ -239,11 +310,79 @@ export const DEFAULT_MUSIC_CONFIG: MusicConfigDocument = {
   },
 }
 
+function mergeMinigameAssignmentMap(
+  base: MinigameAssignmentMap = {},
+  overlay: Record<string, MinigameStageAssignments> = {}
+): Record<string, MinigameStageAssignments> {
+  const merged: Record<string, MinigameStageAssignments> = { ...base }
+  for (const [gameKey, stages] of Object.entries(overlay)) {
+    merged[gameKey] = {
+      ...(base[gameKey] ?? {}),
+      ...stages,
+    }
+  }
+  return merged
+}
+
+function mergeModeMinigameAssignments(
+  base: Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>> = {},
+  overlay: Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>> = {}
+): Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>> {
+  return {
+    any: mergeMinigameAssignmentMap(base.any, overlay.any),
+    classic: mergeMinigameAssignmentMap(base.classic, overlay.classic),
+    survival: mergeMinigameAssignmentMap(base.survival, overlay.survival),
+  }
+}
+
+/** Merge precedence is left to right. Arrays are replaced, maps are layered. */
+export function mergeMusicConfigOverrides(
+  ...layers: Array<MusicConfigOverrides | null | undefined>
+): MusicConfigOverrides {
+  let merged: MusicConfigOverrides = {}
+
+  for (const layer of layers) {
+    if (!layer) continue
+    merged = {
+      phaseMusic: { ...(merged.phaseMusic ?? {}), ...(layer.phaseMusic ?? {}) },
+      modePhaseOverrides: {
+        classic: {
+          ...(merged.modePhaseOverrides?.classic ?? {}),
+          ...(layer.modePhaseOverrides?.classic ?? {}),
+        },
+        survival: {
+          ...(merged.modePhaseOverrides?.survival ?? {}),
+          ...(layer.modePhaseOverrides?.survival ?? {}),
+        },
+      },
+      sceneMusic: { ...(merged.sceneMusic ?? {}), ...(layer.sceneMusic ?? {}) },
+      minigameProfiles: layer.minigameProfiles ?? merged.minigameProfiles,
+      minigameAssignments: mergeModeMinigameAssignments(
+        merged.minigameAssignments,
+        layer.minigameAssignments
+      ),
+      minigameCategoryMusic: {
+        ...(merged.minigameCategoryMusic ?? {}),
+        ...(layer.minigameCategoryMusic ?? {}),
+      },
+      eventSounds: { ...(merged.eventSounds ?? {}), ...(layer.eventSounds ?? {}) },
+      contextMusic: { ...(merged.contextMusic ?? {}), ...(layer.contextMusic ?? {}) },
+    }
+  }
+
+  return merged
+}
+
 /**
  * Builds a complete, JSON-serializable configuration from local, admin, or
  * remote overrides without mutating the shipped defaults.
  */
 export function createMusicConfig(overrides: MusicConfigOverrides = {}): MusicConfigDocument {
+  const minigameAssignments = mergeModeMinigameAssignments(
+    DEFAULT_MUSIC_CONFIG.minigameAssignments,
+    overrides.minigameAssignments
+  )
+
   return {
     version: 1,
     phaseMusic: {
@@ -265,15 +404,31 @@ export function createMusicConfig(overrides: MusicConfigOverrides = {}): MusicCo
       ...(overrides.sceneMusic ?? {}),
     },
     minigameProfiles: overrides.minigameProfiles ?? DEFAULT_MUSIC_CONFIG.minigameProfiles,
+    minigameAssignments: {
+      any: minigameAssignments.any ?? {},
+      classic: minigameAssignments.classic ?? {},
+      survival: minigameAssignments.survival ?? {},
+    },
     minigameCategoryMusic: {
       ...DEFAULT_MUSIC_CONFIG.minigameCategoryMusic,
       ...(overrides.minigameCategoryMusic ?? {}),
+    },
+    eventSounds: {
+      ...DEFAULT_MUSIC_CONFIG.eventSounds,
+      ...(overrides.eventSounds ?? {}),
     },
     contextMusic: {
       ...DEFAULT_MUSIC_CONFIG.contextMusic,
       ...(overrides.contextMusic ?? {}),
     },
   }
+}
+
+export function createEffectiveMusicConfig(
+  remoteOverrides?: MusicConfigOverrides | null,
+  localOverrides?: MusicConfigOverrides | null
+): MusicConfigDocument {
+  return createMusicConfig(mergeMusicConfigOverrides(remoteOverrides, localOverrides))
 }
 
 function modeMatches(profileModes: readonly MusicConfigMode[], mode: GameMode): boolean {
@@ -311,15 +466,52 @@ export function getModePhaseSelection(
   return config.phaseMusic[phase as Phase]
 }
 
+export function getDirectMinigameSelection(
+  gameKey: string,
+  mode: GameMode,
+  stage: string | null | undefined,
+  config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG
+): Array<{ selection: MusicSelection; assignmentId: string }> {
+  if (!stage) return []
+  const typedStage = stage as MusicMinigameStage
+  const results: Array<{ selection: MusicSelection; assignmentId: string }> = []
+  const modeSelection = config.minigameAssignments[mode]?.[gameKey]?.[typedStage]
+  if (modeSelection) {
+    results.push({
+      selection: modeSelection,
+      assignmentId: `minigame-assignment.${mode}.${gameKey}.${stage}`,
+    })
+  }
+  const sharedSelection = config.minigameAssignments.any?.[gameKey]?.[typedStage]
+  if (sharedSelection) {
+    results.push({
+      selection: sharedSelection,
+      assignmentId: `minigame-assignment.any.${gameKey}.${stage}`,
+    })
+  }
+  return results
+}
+
 export function hasDeclaredMinigamePolicy(
   gameKey: string,
   category: GameCategory,
   config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG
 ): boolean {
+  const hasDirectAssignment = (['any', 'classic', 'survival'] as const).some(
+    (mode) => config.minigameAssignments[mode]?.[gameKey] !== undefined
+  )
   return (
+    hasDirectAssignment ||
     config.minigameProfiles.some((profile) => profile.gameKeys.includes(gameKey)) ||
     config.minigameCategoryMusic[category] !== undefined
   )
+}
+
+export function resolveAudioEventCue(
+  eventId: AudioEventId,
+  config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG
+): AudioEventCue {
+  return config.eventSounds[eventId]
 }
 
 function isGameOverHash(hash: string): boolean {
@@ -379,6 +571,16 @@ export function resolveMusicCue(
 
   const minigame = context.minigame
   if (minigame?.gameKey) {
+    for (const direct of getDirectMinigameSelection(
+      minigame.gameKey,
+      context.mode,
+      minigame.stage,
+      config
+    )) {
+      const directCue = resolveSelection(direct.selection, direct.assignmentId, 'minigame')
+      if (directCue) return directCue
+    }
+
     const profile = getMinigameMusicProfile(minigame.gameKey, context.mode, config)
     if (profile) {
       const profileCue = resolveSelection(

@@ -3,8 +3,18 @@ import { shallowEqual, useSelector } from 'react-redux'
 import type { RootState } from '../../store/store'
 import { SoundManager } from './SoundManager'
 import { resolveDesiredMusicCue, type MusicResolverState } from './resolveDesiredMusic'
-import { SILENT_MUSIC, getMinigameMusicProfile, type ResolvedMusicCue } from './musicConfig'
-import { getDynamicMusicSoundEntries } from './musicCatalog'
+import {
+  SILENT_MUSIC,
+  getMinigameMusicProfile,
+  type MusicConfigDocument,
+  type ResolvedMusicCue,
+} from './musicConfig'
+import {
+  createMusicTrackOverrideSound,
+  getDynamicMusicSoundEntries,
+  type MusicTrackAssetOverride,
+} from './musicCatalog'
+import { buildEffectiveMusicConfig, mergeMusicTrackAssets } from './musicRuntimeConfig'
 import { observeHostedMinigamePlaying } from './minigameHostPhaseObserver'
 
 const VOLUME_RAMP_STEP_MS = 50
@@ -31,6 +41,17 @@ function cueReason(cue: ResolvedMusicCue): string {
   return `${cue.source}:${cue.assignmentId}`
 }
 
+function enrichMinigameTransition(
+  cue: ResolvedMusicCue,
+  gameKey: string | null,
+  mode: 'classic' | 'survival',
+  config: MusicConfigDocument
+): ResolvedMusicCue {
+  if (cue.source !== 'minigame' || cue.transition || !gameKey) return cue
+  const transition = getMinigameMusicProfile(gameKey, mode, config)?.transition
+  return transition ? { ...cue, transition } : cue
+}
+
 export default function AudioStateSync() {
   const musicState = useSelector(
     (root: RootState) => ({
@@ -47,6 +68,9 @@ export default function AudioStateSync() {
       musicScene: root.ui.musicScene,
       musicOn: root.settings.audio.musicOn,
       musicVolume: root.settings.audio.musicVolume,
+      localMusicOverrides: root.settings.audio.musicConfigOverrides,
+      localMusicTrackAssets: root.settings.audio.musicTrackAssets,
+      remoteMusic: root.remoteConfig?.config?.season?.music ?? null,
     }),
     shallowEqual
   )
@@ -62,11 +86,34 @@ export default function AudioStateSync() {
   const postGameTimerRef = useRef<number | null>(null)
   const transitionTokenRef = useRef(0)
 
+  const effectiveConfig = useMemo(
+    () =>
+      buildEffectiveMusicConfig(
+        musicState.remoteMusic?.assignments,
+        musicState.localMusicOverrides
+      ),
+    [musicState.localMusicOverrides, musicState.remoteMusic?.assignments]
+  )
+
+  const effectiveTrackAssets = useMemo<MusicTrackAssetOverride[]>(
+    () => mergeMusicTrackAssets(musicState.remoteMusic, musicState.localMusicTrackAssets),
+    [musicState.localMusicTrackAssets, musicState.remoteMusic]
+  )
+
   useEffect(() => {
     for (const sound of getDynamicMusicSoundEntries()) {
       SoundManager.registerDynamic(sound)
     }
   }, [])
+
+  useEffect(() => {
+    SoundManager.setMusicTrackOverrides(
+      effectiveTrackAssets.map((asset) => ({
+        track: asset.track,
+        sound: createMusicTrackOverrideSound(asset),
+      }))
+    )
+  }, [effectiveTrackAssets])
 
   useEffect(() => {
     const onHashChange = () => setHash(window.location.hash)
@@ -75,14 +122,18 @@ export default function AudioStateSync() {
   }, [])
 
   useEffect(() => {
-    const profile = getMinigameMusicProfile(musicState.pendingChallengeGameKey, musicState.gameMode)
+    const profile = getMinigameMusicProfile(
+      musicState.pendingChallengeGameKey,
+      musicState.gameMode,
+      effectiveConfig
+    )
     if (!profile?.transition?.managedLifecycle) return undefined
 
     const gameKey = musicState.pendingChallengeGameKey
     return observeHostedMinigamePlaying((playing) => {
       setHostedMinigameState({ gameKey, playing })
     })
-  }, [musicState.gameMode, musicState.pendingChallengeGameKey])
+  }, [effectiveConfig, musicState.gameMode, musicState.pendingChallengeGameKey])
 
   const resolverState = useMemo<MusicResolverState>(
     () => ({
@@ -117,10 +168,26 @@ export default function AudioStateSync() {
     [musicState]
   )
 
+  const resolveCue = useMemo(
+    () => (state: MusicResolverState) =>
+      enrichMinigameTransition(
+        resolveDesiredMusicCue(state, hash, effectiveConfig),
+        musicState.pendingChallengeGameKey,
+        musicState.gameMode,
+        effectiveConfig
+      ),
+    [
+      effectiveConfig,
+      hash,
+      musicState.gameMode,
+      musicState.pendingChallengeGameKey,
+    ]
+  )
+
   const resolvedCue = useMemo<ResolvedMusicCue>(() => {
     if (!musicState.musicOn) return createSilentCue('settings.music-off')
-    return resolveDesiredMusicCue(resolverState, hash)
-  }, [hash, musicState.musicOn, resolverState])
+    return resolveCue(resolverState)
+  }, [musicState.musicOn, resolveCue, resolverState])
 
   const desiredCue = useMemo<ResolvedMusicCue>(() => {
     if (
@@ -129,18 +196,15 @@ export default function AudioStateSync() {
       hostedMinigameState.gameKey === musicState.pendingChallengeGameKey &&
       resolverState.challenge.pending
     ) {
-      return resolveDesiredMusicCue(
-        {
-          ...resolverState,
-          challenge: {
-            pending: {
-              ...resolverState.challenge.pending,
-              phase: 'playing',
-            },
+      return resolveCue({
+        ...resolverState,
+        challenge: {
+          pending: {
+            ...resolverState.challenge.pending,
+            phase: 'playing',
           },
         },
-        hash
-      )
+      })
     }
 
     // The shared host still owns its visual lifecycle locally. Until that phase
@@ -148,11 +212,11 @@ export default function AudioStateSync() {
     // override from the compatibility observer above.
     return resolvedCue
   }, [
-    hash,
     hostedMinigameState,
     musicState.musicOn,
     musicState.pendingChallengeGameKey,
     resolvedCue,
+    resolveCue,
     resolverState,
   ])
 

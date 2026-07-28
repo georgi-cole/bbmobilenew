@@ -12,8 +12,10 @@
 
 import type { CompSelectionMode } from '../components/compSelectionUtils'
 import type { SocialRuntimeOverride } from '../social/socialRuntimeConfig'
+import type { MusicConfigOverrides } from '../services/sound/musicConfig'
+import type { MusicTrackAssetOverride } from '../services/sound/musicCatalog'
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────────────────
 
 export interface RemoteTheme {
   /** Override --color-accent CSS variable (any valid CSS color string). */
@@ -24,7 +26,7 @@ export interface RemoteTheme {
   background?: string
 }
 
-// ─── IntroHub ─────────────────────────────────────────────────────────────────
+// ── IntroHub ──────────────────────────────────────────────────────────────────
 
 export interface RemoteIntroHub {
   /**
@@ -41,7 +43,7 @@ export interface RemoteIntroHub {
   headline?: string
 }
 
-// ─── Music ────────────────────────────────────────────────────────────────────
+// ── Music ─────────────────────────────────────────────────────────────────────
 
 export interface RemoteMusic {
   /**
@@ -51,14 +53,20 @@ export interface RemoteMusic {
    */
   introTrackUrl?: string
   /**
-   * Remote URL for the main in-game background music loop.
-   * Must begin with http:// or https://.
-   * When set, is registered as music:remote_main and can be referenced by key.
+   * Legacy remote URL for the main competition loop. New configurations should
+   * use tracks[{ track: 'competition', src: 'https://…' }].
    */
   mainTrackUrl?: string
+  /** Validated semantic track URL overrides. */
+  tracks?: MusicTrackAssetOverride[]
+  /**
+   * Validated pure-data assignment/event overrides. The runtime layers these
+   * above bundled defaults and below local Advanced Settings overrides.
+   */
+  assignments?: MusicConfigOverrides
 }
 
-// ─── Main TV ──────────────────────────────────────────────────────────────────
+// ── Main TV ───────────────────────────────────────────────────────────────────
 
 export interface RemoteMainTv {
   /**
@@ -70,7 +78,7 @@ export interface RemoteMainTv {
   subtext?: string
 }
 
-// ─── Challenge scheduling ─────────────────────────────────────────────────────
+// ── Challenge scheduling ──────────────────────────────────────────────────────
 
 export interface RemoteChallenge {
   /**
@@ -93,7 +101,7 @@ export interface RemoteChallenge {
   weeklyGameKeys?: string[]
 }
 
-// ─── Player overrides ─────────────────────────────────────────────────────────
+// ── Player overrides ──────────────────────────────────────────────────────────
 
 export interface RemotePlayerOverride {
   /**
@@ -137,7 +145,7 @@ export interface RemoteOperations {
   }
 }
 
-// ─── Root config ─────────────────────────────────────────────────────────────
+// ── Root config ───────────────────────────────────────────────────────────────
 
 export interface RemoteConfig {
   season?: {

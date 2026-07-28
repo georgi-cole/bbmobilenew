@@ -1,4 +1,4 @@
-import { SOUNDS_BASE, type SoundEntry } from './sounds'
+import { SOUND_REGISTRY, SOUNDS_BASE, type SoundEntry } from './sounds'
 
 /**
  * Stable semantic track identifiers used by the resolver and SoundManager.
@@ -43,6 +43,14 @@ export interface MusicTrackDefinition {
    * SOUND_REGISTRY. AudioStateSync registers these entries during app startup.
    */
   dynamicSound?: SoundEntry
+}
+
+export interface MusicTrackAssetOverride {
+  track: CatalogMusicTrack
+  /** Absolute http(s) URL after validation, or a bundled app-relative URL locally. */
+  src: string
+  volume?: number
+  loop?: boolean
 }
 
 export const MUSIC_CATALOG: Readonly<Record<CatalogMusicTrack, MusicTrackDefinition>> = {
@@ -140,8 +148,17 @@ export const MUSIC_CATALOG: Readonly<Record<CatalogMusicTrack, MusicTrackDefinit
   },
 }
 
+export function isCatalogMusicTrack(value: unknown): value is CatalogMusicTrack {
+  return typeof value === 'string' && MUSIC_TRACK_IDS.includes(value as CatalogMusicTrack)
+}
+
 export function getMusicTrackDefinition(track: CatalogMusicTrack): MusicTrackDefinition {
   return MUSIC_CATALOG[track]
+}
+
+export function getMusicTrackSoundEntry(track: CatalogMusicTrack): SoundEntry | undefined {
+  const definition = MUSIC_CATALOG[track]
+  return definition.dynamicSound ?? SOUND_REGISTRY[definition.soundKey]
 }
 
 export function getDynamicMusicSoundEntries(): SoundEntry[] {
@@ -151,14 +168,23 @@ export function getDynamicMusicSoundEntries(): SoundEntry[] {
   })
 }
 
+export function createMusicTrackOverrideSound(asset: MusicTrackAssetOverride): SoundEntry {
+  const fallbackEntry = getMusicTrackSoundEntry(asset.track)
+  return {
+    key: `music:override:${asset.track}`,
+    category: 'music',
+    src: asset.src,
+    preload: false,
+    volume: asset.volume ?? fallbackEntry?.volume ?? 0.5,
+    loop: asset.loop ?? fallbackEntry?.loop ?? true,
+  }
+}
+
 export function getMusicFallbackTrack(track: CatalogMusicTrack): MusicTrackFallback {
   return MUSIC_CATALOG[track].fallbackTrack
 }
 
-/**
- * Returns the configured asset-fallback chain without repeating tracks.
- * SoundManager does not consume it yet; the Music Manager and audit layer do.
- */
+/** Returns the configured asset-fallback chain without repeating tracks. */
 export function getMusicFallbackChain(track: CatalogMusicTrack): MusicTrackFallback[] {
   const chain: MusicTrackFallback[] = []
   const seen = new Set<CatalogMusicTrack>()
