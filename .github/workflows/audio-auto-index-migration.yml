@@ -99,6 +99,7 @@ jobs:
           text = text.replace(marker, insertion + marker, 1)
           target.write_text(text)
           Path('AUDIO_MIGRATION_DIAGNOSTIC.txt').unlink(missing_ok=True)
+          Path('AUDIO_STATIC_DIAGNOSTIC.txt').unlink(missing_ok=True)
 
       - name: Validate migration scripts
         run: |
@@ -170,11 +171,49 @@ jobs:
           test -f src/services/sound/generatedAudioManifest.ts
           git diff --check
 
-      - name: Lint
-        run: npm run lint:ci
+      - name: Capture lint and type diagnostics
+        id: static
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '===== LINT ====='
+            npm run lint:ci
+            lint_status=$?
+            echo
+            echo '===== TYPECHECK ====='
+            npm run typecheck
+            type_status=$?
+            echo
+            echo "lint_status=$lint_status"
+            echo "typecheck_status=$type_status"
+          } > AUDIO_STATIC_DIAGNOSTIC.txt 2>&1
+          cat AUDIO_STATIC_DIAGNOSTIC.txt
+          if [ "$lint_status" -ne 0 ] || [ "$type_status" -ne 0 ]; then
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
+          else
+            rm AUDIO_STATIC_DIAGNOSTIC.txt
+            echo 'failed=false' >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Commit static diagnostic
+        if: steps.static.outputs.failed == 'true'
+        shell: bash
+        run: |
+          cp AUDIO_STATIC_DIAGNOSTIC.txt /tmp/AUDIO_STATIC_DIAGNOSTIC.txt
+          git reset --hard HEAD
+          git clean -fd
+          cp /tmp/AUDIO_STATIC_DIAGNOSTIC.txt AUDIO_STATIC_DIAGNOSTIC.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AUDIO_STATIC_DIAGNOSTIC.txt
+          git commit -m 'Capture generated audio static diagnostic'
+          git push origin HEAD:refs/heads/agent/audio-auto-index-migration
+
+      - name: Stop after static failure
+        if: steps.static.outputs.failed == 'true'
+        run: exit 1
 
       - name: Focused audio regressions
         run: |
@@ -208,7 +247,7 @@ jobs:
           set -euo pipefail
           git rm .github/workflows/audio-auto-index-migration.yml
           git rm scripts/migrate-audio-assets.mjs
-          rm -f AUDIO_MIGRATION_DIAGNOSTIC.txt
+          rm -f AUDIO_MIGRATION_DIAGNOSTIC.txt AUDIO_STATIC_DIAGNOSTIC.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
