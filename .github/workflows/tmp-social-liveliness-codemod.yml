@@ -1,15 +1,15 @@
 name: Temporary Social liveliness codemod
 
 on:
-  push:
-    branches: [fix/social-liveliness-causal-story]
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'fix/social-liveliness-causal-story' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
