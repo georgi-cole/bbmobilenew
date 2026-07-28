@@ -1,0 +1,42 @@
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx
+  369:9  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx:369:9
+  367 |     () =>
+  368 |       sortedInteractions.filter(
+> 369 |         (entry) =>
+      |         ^^^^^^^^^^
+> 370 |           !entry.interaction.resolved || recentlyResolvedIdsRef.current.has(entry.interaction.id)
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  371 |       ),
+  372 |     [sortedInteractions]
+  373 |   )                                                                                                                                                            react-hooks/refs
+  377:9  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx:377:9
+  375 |     () =>
+  376 |       sortedInteractions.filter(
+> 377 |         (entry) =>
+      |         ^^^^^^^^^^
+> 378 |           entry.interaction.resolved &&
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 379 |           !recentlyResolvedIdsRef.current.has(entry.interaction.id) &&
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 380 |           entry.interaction.resolvedWeek === currentWeek
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  381 |       ),
+  382 |     [sortedInteractions, currentWeek]
+  383 |   )  react-hooks/refs
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/social/incomingInteractions.ts
+  125:3  error  'dramaMode' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 3 problems (3 errors, 0 warnings)
+
+
+ESLINT_EXIT_CODE=1
