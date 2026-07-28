@@ -1,4 +1,5 @@
 # One-shot corrective workflow; removes itself after success.
+# Hardened trigger revision.
 name: Temporary fix Public Favorite empty feature
 
 on:
