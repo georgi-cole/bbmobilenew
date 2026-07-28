@@ -1,0 +1,98 @@
+name: Temporary polish Public Favorite capture
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'agent/fix-public-favorite-finale' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-public-favorite-finale
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Simplify intro controls and wait for real feature content
+        shell: python
+        run: |
+          from pathlib import Path
+
+          component_path = Path('src/components/PublicFavoriteOverlay/PublicFavoriteOverlay.tsx')
+          component = component_path.read_text()
+          old_controls = """            <button
+              ref={fastForwardButtonRef}
+              type="button"
+              onClick={handleFastForward}
+              disabled={fastForwarding || spotlightPending}
+              aria-label="Fast forward public favorite vote"
+            >
+              {fastForwarding ? 'Forwarding' : 'Fast forward'}
+            </button>
+"""
+          new_controls = """            {phase !== 'intro' && (
+              <button
+                ref={fastForwardButtonRef}
+                type="button"
+                onClick={handleFastForward}
+                disabled={fastForwarding || spotlightPending}
+                aria-label="Fast forward public favorite vote"
+              >
+                {fastForwarding ? 'Forwarding' : 'Fast forward'}
+              </button>
+            )}
+"""
+          if old_controls not in component:
+              raise SystemExit('Public Favorite controls block was not found')
+          component_path.write_text(component.replace(old_controls, new_controls, 1))
+
+          finale_path = Path('e2e/playwright/finale.spec.ts')
+          finale = finale_path.read_text()
+          old_capture = """    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({
+      timeout: 5_000,
+    })
+    await page.screenshot({
+      path: 'test-results/public-favorite-feature-mobile.png',
+      fullPage: false,
+    })
+"""
+          new_capture = """    const favoriteFeature = favoriteVote.locator('.pf-cinematic__feature')
+    await expect(favoriteFeature).toBeVisible({ timeout: 5_000 })
+    await expect(favoriteFeature.locator('.pf-cinematic__feature-copy h2')).toBeVisible()
+    await expect
+      .poll(() =>
+        favoriteFeature
+          .locator('.pf-cinematic__feature-cutout')
+          .evaluate((image) => (image as HTMLImageElement).naturalWidth)
+      )
+      .toBeGreaterThan(0)
+    await page.waitForTimeout(750)
+    await page.screenshot({
+      path: 'test-results/public-favorite-feature-mobile.png',
+      fullPage: false,
+    })
+"""
+          if old_capture not in finale:
+              raise SystemExit('Public Favorite capture block was not found')
+          finale_path.write_text(finale.replace(old_capture, new_capture, 1))
+      - run: >-
+          npx prettier --write
+          src/components/PublicFavoriteOverlay/PublicFavoriteOverlay.tsx
+          e2e/playwright/finale.spec.ts
+      - name: Commit polish and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/tmp-polish-public-favorite-capture.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Polish Public Favorite reveal capture"
+          git push origin HEAD:agent/fix-public-favorite-finale
