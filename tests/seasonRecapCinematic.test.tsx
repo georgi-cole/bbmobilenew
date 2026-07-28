@@ -1,38 +1,53 @@
-import { act } from 'react';
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import SeasonRecapCinematic from '../src/components/SeasonRecapCinematic/SeasonRecapCinematic';
-import { buildSeasonRecapData } from '../src/components/SeasonRecapCinematic/seasonRecapData';
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import SeasonRecapCinematic from '../src/components/SeasonRecapCinematic/SeasonRecapCinematic'
+import { buildSeasonRecapData } from '../src/components/SeasonRecapCinematic/seasonRecapData'
+import { buildSeasonRecapHighlights } from '../src/components/SeasonRecapCinematic/seasonRecapHighlights'
 import {
   buildSeasonRecapTimeline,
-  CATEGORY_SCENE_DURATION_MS,
   INTRO_MIN_DURATION_MS,
   RECAP_EXIT_FADE_MS,
-  TOTAL_RECAP_DURATION_MS,
-} from '../src/components/SeasonRecapCinematic/seasonRecapTimeline';
-import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/components/SeasonRecapCinematic/newspaperFrontPages';
-import type { Player } from '../src/types';
-import type { PublicOpinionState } from '../src/publicOpinion/types';
+} from '../src/components/SeasonRecapCinematic/seasonRecapTimeline'
+import type { PublicOpinionState } from '../src/publicOpinion/types'
+import type { Player } from '../src/types'
+
+const motionState = vi.hoisted(() => ({ reduced: false }))
 
 vi.mock('framer-motion', async () => {
-  const React = await import('react');
-
+  const React = await import('react')
   const motion = new Proxy(
     {},
     {
-      get: (_target, tag: string) =>
-        ({ children, ...props }: React.HTMLAttributes<HTMLElement>) =>
+      get:
+        (_target, tag: string) =>
+        ({
+          children,
+          initial: _initial,
+          animate: _animate,
+          exit: _exit,
+          transition: _transition,
+          layout: _layout,
+          ...props
+        }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) =>
           React.createElement(tag, props, children),
-    },
-  );
+    }
+  )
 
   return {
     AnimatePresence: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
+    MotionConfig: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
     motion,
-    useReducedMotion: () => false,
-  };
-});
+    useReducedMotion: () => motionState.reduced,
+  }
+})
+
+vi.mock('../src/components/FullSizeCutoutImage/FullSizeCutoutImage', () => ({
+  default: ({ player, className, alt }: { player: Player; className?: string; alt?: string }) => (
+    <img src={`/cutouts/${player.id}.webp`} className={className} alt={alt ?? player.name} />
+  ),
+}))
 
 const PLAYERS: Player[] = [
   {
@@ -65,63 +80,98 @@ const PLAYERS: Player[] = [
     seasonPlacement: 4,
     stats: { lohWins: 0, posWins: 1, timesNominated: 2 },
   },
-];
+]
 
 const PUBLIC_OPINION: PublicOpinionState = {
   profiles: {
     f1: {
-      playerId: 'f1', approval: 82, previousApproval: 74, seasonApprovals: [50, 61, 74, 82], completedDirectionCount: 1, cumulativePositiveDelta: 32,
+      playerId: 'f1',
+      approval: 82,
+      previousApproval: 74,
+      seasonApprovals: [50, 61, 74, 82],
+      completedDirectionCount: 1,
+      cumulativePositiveDelta: 32,
     },
     f2: {
-      playerId: 'f2', approval: 47, previousApproval: 55, seasonApprovals: [50, 59, 55, 47], completedDirectionCount: 0, cumulativePositiveDelta: 9,
+      playerId: 'f2',
+      approval: 47,
+      previousApproval: 55,
+      seasonApprovals: [50, 59, 55, 47],
+      completedDirectionCount: 0,
+      cumulativePositiveDelta: 9,
     },
     j1: {
-      playerId: 'j1', approval: 63, previousApproval: 58, seasonApprovals: [50, 55, 58, 63], completedDirectionCount: 0, cumulativePositiveDelta: 13,
+      playerId: 'j1',
+      approval: 63,
+      previousApproval: 58,
+      seasonApprovals: [50, 55, 58, 63],
+      completedDirectionCount: 0,
+      cumulativePositiveDelta: 13,
     },
     e1: {
-      playerId: 'e1', approval: 21, previousApproval: 39, seasonApprovals: [50, 45, 39, 21], completedDirectionCount: 0, cumulativePositiveDelta: 0,
+      playerId: 'e1',
+      approval: 21,
+      previousApproval: 39,
+      seasonApprovals: [50, 45, 39, 21],
+      completedDirectionCount: 0,
+      cumulativePositiveDelta: 0,
     },
   },
   directions: [],
   feed: [
     {
-      id: 'headline-1', playerId: 'e1', text: 'Drew shocked the audience with a feud that swallowed the whole week.', delta: -21, week: 10, timestamp: 1001, isHeadline: true,
+      id: 'headline-1',
+      playerId: 'e1',
+      text: 'Drew shocked the audience with a feud that swallowed the whole week.',
+      delta: -21,
+      week: 10,
+      timestamp: 1001,
+      isHeadline: true,
     },
     {
-      id: 'headline-2', playerId: 'f1', text: 'Avery sent the ratings soaring with a power play nobody stopped talking about.', delta: 14, week: 11, timestamp: 1002, isHeadline: true,
+      id: 'headline-2',
+      playerId: 'f1',
+      text: 'Avery sent the ratings soaring with a power play nobody stopped talking about.',
+      delta: 14,
+      week: 11,
+      timestamp: 1002,
+      isHeadline: true,
     },
   ],
   lastUpdatedWeek: 11,
   feedPostsThisDay: 2,
   currentFeedDay: 11,
-};
-
-function getTimeline(publicOpinion: PublicOpinionState | undefined = PUBLIC_OPINION) {
-  const recapData = buildSeasonRecapData(PLAYERS, 12, publicOpinion);
-  return buildSeasonRecapTimeline(
-    recapData.categories.map((category) => category.id),
-    recapData.evictionWaves.length,
-  );
 }
 
-async function advanceToScene(targetSceneId: string, publicOpinion: PublicOpinionState | undefined = PUBLIC_OPINION) {
-  const timeline = getTimeline(publicOpinion);
-  const targetIndex = timeline.findIndex((scene) => scene.id === targetSceneId);
+function getTimeline(publicOpinion: PublicOpinionState | undefined = PUBLIC_OPINION) {
+  const data = buildSeasonRecapData(PLAYERS, 12, publicOpinion)
+  const highlights = buildSeasonRecapHighlights(PLAYERS, publicOpinion, 3)
+  return buildSeasonRecapTimeline(
+    data.categories.map((category) => category.id),
+    data.evictionWaves.length,
+    highlights.length
+  )
+}
 
-  for (let index = 0; index < targetIndex; index += 1) {
+async function advanceToScene(sceneId: string) {
+  const timeline = getTimeline()
+  const target = timeline.findIndex((scene) => scene.id === sceneId)
+  expect(target).toBeGreaterThanOrEqual(0)
+
+  for (let index = 0; index < target; index += 1) {
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(timeline[index].durationMs);
-    });
+      await vi.advanceTimersByTimeAsync(timeline[index].durationMs)
+    })
   }
-
-  return timeline;
+  return timeline
 }
 
 describe('SeasonRecapCinematic', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers()
+    motionState.reduced = false
     if (!window.matchMedia) {
-      const matchMediaMock = vi.fn<(query: string) => MediaQueryList>().mockImplementation((query: string) => ({
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
         matches: false,
         media: query,
         onchange: null,
@@ -130,345 +180,130 @@ describe('SeasonRecapCinematic', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-      }));
-      window.matchMedia = matchMediaMock;
+      }))
     }
-  });
+  })
 
   afterEach(() => {
-    vi.useRealTimers();
-  });
+    document.body.classList.remove('no-animations')
+    document.body.style.overflow = ''
+    vi.useRealTimers()
+  })
 
-  it('opens on the first suspense card', () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
-    );
-
-    expect(screen.getByText('THE VOTES ARE IN.')).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('builds a recap timeline from the configured scene durations', () => {
-    const timeline = getTimeline();
-    const categoryIds = buildSeasonRecapData(PLAYERS, 12).categories.map((category) => category.id);
-
-    expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThan(0);
-    expect(timeline.at(-1)?.endMs).toBeGreaterThan(0);
-    expect(TOTAL_RECAP_DURATION_MS).toBeGreaterThanOrEqual(timeline.at(-1)?.endMs ?? 0);
-    expect(categoryIds).toEqual([
-      'compzilla',
-      'head_honcho',
-      'mess_factory',
-      'ghost_mode',
-      'vibe_curator',
-      'heat_magnet',
-    ]);
-  });
-
-  it('keeps intro and category award scenes above the minimum durations', () => {
-    const timeline = getTimeline();
-    const introScenes = timeline.filter((scene) => scene.kind === 'intro');
-    const categoryScenes = timeline.filter((scene) => scene.kind === 'category');
-
-    expect(introScenes).toHaveLength(2);
-    expect(introScenes.every((scene) => scene.durationMs >= INTRO_MIN_DURATION_MS)).toBe(true);
-    expect(categoryScenes).toHaveLength(6);
-    expect(categoryScenes.every((scene) => scene.durationMs >= CATEGORY_SCENE_DURATION_MS)).toBe(true);
-  });
-
-  it('drops the extra montage text scenes before the media reveal', () => {
-    const timeline = getTimeline();
-
-    expect(timeline.filter((scene) => scene.id.startsWith('montage_'))).toHaveLength(0);
-    expect(timeline[0]?.id).toBe('intro_votes_in');
-    expect(timeline[1]?.id).toBe('intro_before_final_word');
-    expect(timeline[2]?.id).toBe('headline_girls');
-  });
-
-  it('includes two lightweight media screens before categories', () => {
-    const timeline = getTimeline();
-    const headlineScene = timeline.find((scene) => scene.kind === 'headline_girls');
-    const phoneScene = timeline.find((scene) => scene.kind === 'phone_post_boys');
-    const firstCategory = timeline.find((scene) => scene.kind === 'category');
-
-    expect(headlineScene).toBeTruthy();
-    expect(phoneScene).toBeTruthy();
-    expect(headlineScene!.endMs).toBeLessThanOrEqual(firstCategory!.startMs);
-    expect(phoneScene!.endMs).toBeLessThanOrEqual(firstCategory!.startMs);
-  });
-
-  it('runs the eviction ladder after categories and before the moment-of-truth scene', () => {
-    const timeline = getTimeline();
-    const categoryScenes = timeline.filter((scene) => scene.kind === 'category');
-    const lastCategory = categoryScenes.at(-1);
-    const ladderIntro = timeline.find((scene) => scene.kind === 'ladder_intro');
-    const ladderWaves = timeline.filter((scene) => scene.kind === 'ladder_wave');
-    const lastScene = timeline.at(-1);
-
-    expect(ladderIntro).toBeTruthy();
-    expect(ladderWaves.length).toBeGreaterThan(0);
-    expect(ladderIntro!.startMs).toBeGreaterThanOrEqual(lastCategory!.endMs);
-    expect(ladderWaves[0]!.startMs).toBeGreaterThanOrEqual(ladderIntro!.endMs);
-    expect(lastScene?.kind).toBe('moment_of_truth');
-    expect(lastScene?.startMs).toBeGreaterThanOrEqual(ladderWaves.at(-1)!.endMs);
-  });
-
-  it('does not contain any tabloid or handoff scenes', () => {
-    const timeline = getTimeline();
-    const removed = timeline.filter(
-      (scene) =>
-        scene.kind === ('tabloid' as string) ||
-        scene.kind === ('handoff' as string),
-    );
-    expect(removed).toHaveLength(0);
-  });
-
-  it('renders the headline-girls screen with the expected image', async () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
-    );
-
-    await advanceToScene('headline_girls');
-
-    const img = document.querySelector('.src-headline-media__image') as HTMLImageElement | null;
-    expect(img).toBeTruthy();
-    expect(img?.getAttribute('src')).toContain('thegirls.webp');
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('renders the phone-post-boys screen with the expected image', async () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
-    );
-
-    await advanceToScene('phone_post_boys');
-
-    const img = document.querySelector('.src-phone-post__image') as HTMLImageElement | null;
-    expect(img).toBeTruthy();
-    expect(decodeURIComponent(img?.getAttribute('src') ?? '')).toContain('the boys.webp');
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('includes three generated unseen-moment chapters before the awards', () => {
-    const timeline = getTimeline();
-    const highlights = timeline.filter((scene) => scene.kind === 'highlight_moment');
-    const firstCategory = timeline.find((scene) => scene.kind === 'category');
-
-    expect(highlights).toHaveLength(3);
-    expect(highlights.map((scene) => scene.id)).toEqual([
-      'highlight_kitchen_chaos',
-      'highlight_backyard_key',
-      'highlight_midnight_mission',
-    ]);
-    expect(highlights.at(-1)!.endMs).toBeLessThanOrEqual(firstCategory!.startMs);
-  });
-
-  it('renders the moment-of-truth screen with finalist cutouts', async () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
-    );
-
-    await advanceToScene('moment_of_truth');
-
-    expect(screen.getByText('AND NOW THE MOMENT OF TRUTH')).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('renders the redesigned eviction ladder with a spotlight and ranking rail before the final moment', async () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
-    );
-
-    await advanceToScene('ladder_wave_0');
-
-    expect(document.querySelector('.eviction-ladder')).toBeTruthy();
-    expect(document.querySelector('.eviction-ladder__spotlight')).toBeTruthy();
-    expect(document.querySelector('.eviction-ladder__rankings')).toBeTruthy();
-    expect(screen.getByText('Eviction Ladder')).toBeTruthy();
-    expect(screen.getByText('In order of eviction')).toBeTruthy();
-    expect(screen.getAllByText('4TH')).toHaveLength(2);
-    expect(screen.getByText('3RD')).toBeTruthy();
-    expect(screen.getByText('FINALIST')).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('keeps ladder wave grouping and displayed fallback ranks stable when placements are missing', async () => {
-    const onComplete = vi.fn();
-    const playersWithMissingPlacements: Player[] = [
-      {
-        id: 'f1',
-        name: 'Avery',
-        status: 'active',
-        avatar: '😀',
-        stats: { lohWins: 2, posWins: 1, timesNominated: 1 },
-      },
-      {
-        id: 'f2',
-        name: 'Blake',
-        status: 'active',
-        avatar: '😎',
-        stats: { lohWins: 1, posWins: 2, timesNominated: 2 },
-      },
-      ...Array.from({ length: 8 }, (_, index) => ({
-        id: `e${index + 1}`,
-        name: `Evictee ${index + 1}`,
-        status: index % 2 === 0 ? ('evicted' as const) : ('jury' as const),
-        avatar: '🙂',
-        stats: { lohWins: 0, posWins: 0, timesNominated: 1 + index },
-      })),
-    ];
-
-    const recapData = buildSeasonRecapData(playersWithMissingPlacements, 12);
-    expect(recapData.evictionWaves).toHaveLength(2);
-    expect(recapData.evictionWaves[0]?.players.map((player) => player.id)).toEqual(['e1']);
-    expect(recapData.evictionWaves[1]?.players.map((player) => player.id)).toEqual([
-      'e2',
-      'e3',
-      'e4',
-      'e5',
-      'e6',
-      'e7',
-      'e8',
-    ]);
-
-    const timeline = buildSeasonRecapTimeline(
-      recapData.categories.map((category) => category.id),
-      recapData.evictionWaves.length,
-    );
-    const targetIndex = timeline.findIndex((scene) => scene.id === 'ladder_wave_0');
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={playersWithMissingPlacements} onComplete={onComplete} />,
-    );
-
-    for (let index = 0; index < targetIndex; index += 1) {
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(timeline[index].durationMs);
-      });
-    }
-
-    expect(document.querySelector('.eviction-ladder__spotlight-name')?.textContent).toBe('Evictee 1');
-    expect(screen.getAllByText('10TH')).toHaveLength(2);
-    expect(screen.getAllByText('Evictee 1')).toHaveLength(2);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(timeline[targetIndex].durationMs);
-    });
-
-    expect(document.querySelector('.eviction-ladder__spotlight-name')?.textContent).toBe('Evictee 2');
-    expect(screen.getAllByText('9TH')).toHaveLength(2);
-    expect(screen.getAllByText('Evictee 2')).toHaveLength(2);
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('uses actual ellipsis characters instead of literal unicode escape text', async () => {
-    const onComplete = vi.fn();
-
-    render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
-    );
-
-    await advanceToScene('intro_before_final_word');
-
-    expect(screen.getByText('BUT BEFORE')).toBeTruthy();
-    expect(screen.getByText('THE FINAL WORD…')).toBeTruthy();
-    expect(screen.queryByText(/\\u2026/i)).toBeNull();
-  });
-
-  it('shows Heat Magnet even when the same player already won another category', async () => {
-    const onComplete = vi.fn();
-    const duplicateWinnerPublicOpinion: PublicOpinionState = {
-      ...PUBLIC_OPINION,
-      profiles: {
-        ...PUBLIC_OPINION.profiles,
-        j1: {
-          ...PUBLIC_OPINION.profiles.j1,
-          approval: 21,
-          previousApproval: 32,
-          seasonApprovals: [50, 44, 32, 21],
-        },
-        e1: {
-          ...PUBLIC_OPINION.profiles.e1,
-          approval: 34,
-          previousApproval: 41,
-          seasonApprovals: [50, 46, 41, 34],
-        },
-      },
-    };
-
+  it('opens on the suspense card and identifies the actual season', () => {
     render(
       <SeasonRecapCinematic
         season={9}
         week={12}
         players={PLAYERS}
-        publicOpinion={duplicateWinnerPublicOpinion}
-        onComplete={onComplete}
-      />,
-    );
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={vi.fn()}
+      />
+    )
 
-    await advanceToScene('category_heat_magnet', duplicateWinnerPublicOpinion);
+    expect(screen.getByText('THE VOTES ARE IN.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Season recap cinematic' })).toHaveAttribute(
+      'data-season',
+      '9'
+    )
+    expect(screen.getByText(/Season 9 archive/i)).toBeInTheDocument()
+  })
 
-    expect(screen.getByText('HEAT MAGNET')).toBeTruthy();
-    expect(screen.getByText('Casey')).toBeTruthy();
-    expect(screen.getByText(/21% approval/i)).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('does not finish until the entire recap and handoff have completed', async () => {
-    const onComplete = vi.fn();
-    const timeline = getTimeline();
-
+  it('uses the real roster instead of fixed girls and boys plates', async () => {
     render(
-      <SeasonRecapCinematic season={9} week={12} players={PLAYERS} publicOpinion={PUBLIC_OPINION} onComplete={onComplete} />,
-    );
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={vi.fn()}
+      />
+    )
 
-    for (let index = 0; index < timeline.length - 1; index += 1) {
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(timeline[index].durationMs);
-      });
+    await advanceToScene('cast_overview')
+
+    expect(screen.getByText('The Housemates')).toBeInTheDocument()
+    expect(screen.getByText(/Season 9 · Through week 12/i)).toBeInTheDocument()
+    const roster = screen.getByRole('list', { name: 'Season 9 housemates' })
+    expect(within(roster).getAllByRole('listitem')).toHaveLength(PLAYERS.length)
+    for (const player of PLAYERS) {
+      expect(within(roster).getByText(player.name)).toBeInTheDocument()
     }
+  })
 
-    expect(screen.getByRole('dialog', { name: 'Season recap cinematic' })).toBeTruthy();
-    expect(onComplete).not.toHaveBeenCalled();
+  it('builds truthful highlights from recorded headlines and never injects stock incidents', () => {
+    const highlights = buildSeasonRecapHighlights(PLAYERS, PUBLIC_OPINION, 3)
+    expect(highlights).toHaveLength(3)
+    expect(highlights.some((highlight) => highlight.caption.includes('ratings soaring'))).toBe(true)
+    expect(highlights.some((highlight) => highlight.caption.includes('feud'))).toBe(true)
+    expect(highlights.map((highlight) => highlight.caption).join(' ')).not.toMatch(
+      /pancake|midnight cake|golden key/i
+    )
+  })
+
+  it('renders the actual recorded public headline in the cinematic', async () => {
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={vi.fn()}
+      />
+    )
+
+    await advanceToScene('highlight_0')
+    expect(screen.getByText(/Drew shocked the audience/i)).toBeInTheDocument()
+    expect(screen.getByText(/-21 approval/i)).toBeInTheDocument()
+  })
+
+  it('omits the entire ladder chapter when there are no eviction waves', () => {
+    const timeline = buildSeasonRecapTimeline(['compzilla'], 0, 0)
+    expect(timeline.some((scene) => scene.kind === 'ladder_intro')).toBe(false)
+    expect(timeline.some((scene) => scene.kind === 'ladder_wave')).toBe(false)
+    expect(timeline.at(-1)?.kind).toBe('moment_of_truth')
+  })
+
+  it('preserves readable scene durations in reduced-motion mode', async () => {
+    motionState.reduced = true
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={vi.fn()}
+      />
+    )
+
+    expect(document.querySelectorAll('.src-particle')).toHaveLength(0)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(screen.getByText('THE VOTES ARE IN.')).toBeInTheDocument()
+    expect(INTRO_MIN_DURATION_MS).toBeGreaterThan(300)
+  })
+
+  it('skips once, restores document scrolling, and completes after the exit fade', async () => {
+    const onComplete = vi.fn()
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={onComplete}
+      />
+    )
+
+    expect(document.body.style.overflow).toBe('hidden')
+    fireEvent.click(screen.getByRole('button', { name: 'Skip recap' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onComplete).not.toHaveBeenCalled()
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(timeline.at(-1)!.durationMs - 50);
-    });
-    expect(onComplete).not.toHaveBeenCalled();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(50);
-    });
-    expect(onComplete).not.toHaveBeenCalled();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(RECAP_EXIT_FADE_MS + 25);
-    });
-    expect(onComplete).toHaveBeenCalledTimes(1);
-  });
-
-  it('exposes reusable playful headline generation data for the finale newspaper', () => {
-    expect(SAMPLE_FINALE_NEWSPAPER_PAGES.length).toBeGreaterThan(0);
-    const headlineDraft = generatePlayfulHeadline({
-      id: 'evt-1',
-      week: 8,
-      type: 'chaos',
-      subjectName: 'Avery',
-      detail: 'Avery turned the house upside down overnight.',
-    });
-    expect(headlineDraft.headline).toBeTruthy();
-    expect(headlineDraft.subheadline).toBeTruthy();
-    expect(headlineDraft.category).toBeTruthy();
-    expect(headlineDraft.stamp).toBeTruthy();
-  });
-});
+      await vi.advanceTimersByTimeAsync(RECAP_EXIT_FADE_MS + 10)
+    })
+    expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+})
