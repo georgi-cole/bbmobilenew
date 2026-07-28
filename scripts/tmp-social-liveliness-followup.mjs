@@ -90,24 +90,47 @@ edit('server/live-config.example.json', (source) =>
   source.replace(`"hoh_congratulations": "readOnly"`, `"hoh_congratulations": "optional"`)
 )
 
-edit('src/components/FloatingActionBar/__tests__/FloatingActionBar.test.tsx', (source) =>
-  replaceRegexIfPresent(
+edit('src/components/FloatingActionBar/__tests__/FloatingActionBar.test.tsx', (original) => {
+  let source = original
+  source = replaceRegexIfPresent(
     source,
     /  it\('logs the blocking reason and keeps both modules closed during live vote', \(\) => \{[\s\S]*?\n  \}\);\n/,
     `  it('blocks outgoing actions but keeps incoming vote pitches accessible during live vote', () => {\n    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});\n    const store = makeStore(true, { phase: 'live_vote' });\n    renderFAB(store);\n\n    act(() => {\n      screen.getByRole('button', { name: 'Social' }).click();\n      screen.getByRole('button', { name: 'Incoming requests' }).click();\n    });\n\n    expect(store.getState().social.panelOpen).toBe(false);\n    expect(store.getState().social.incomingInboxOpen).toBe(true);\n    expect(warnSpy).toHaveBeenCalledTimes(1);\n    expect(warnSpy).toHaveBeenCalledWith(\n      expect.stringContaining(\n        'Outgoing social module did not open: Outgoing social actions are blocked during the live_vote phase.',\n      ),\n      expect.objectContaining({ phase: 'live_vote', moduleKind: 'outgoing' }),\n    );\n\n    warnSpy.mockRestore();\n  });\n`
   )
-)
+  source = replaceRegexIfPresent(
+    source,
+    /  it\('shows 99\+ badge when energy exceeds 99', \(\) => \{[\s\S]*?\n  \}\);/,
+    `  it('clamps impossible stored energy to the configured Drama cap', () => {\n    const store = makeStore();\n    const humanId = store.getState().game.players.find((p) => p.isUser)!.id;\n    act(() => {\n      store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 150 }));\n    });\n    renderFAB(store);\n    expect(screen.getByText('30')).toBeDefined();\n    expect(screen.getByRole('button', { name: 'Social (30)' })).toBeDefined();\n  });`
+  )
+  return source
+})
 
-edit('src/components/SocialPanelV2/__tests__/SocialPanelV2.test.tsx', (source) =>
-  replaceIfPresent(
+edit('src/components/SocialPanelV2/__tests__/SocialPanelV2.test.tsx', (original) => {
+  let source = original
+  source = replaceIfPresent(
+    source,
+    `import { Provider } from 'react-redux'`,
+    `import { Provider } from 'react-redux'\nimport { MemoryRouter } from 'react-router'`
+  )
+  source = replaceIfPresent(
+    source,
+    `    <Provider store={store}>\n      <SocialPanelV2 />\n    </Provider>`,
+    `    <MemoryRouter>\n      <Provider store={store}>\n        <SocialPanelV2 />\n      </Provider>\n    </MemoryRouter>`
+  )
+  source = replaceIfPresent(
     source,
     `Outgoing social module did not open: Social modules are blocked during the live_vote phase.`,
     `Outgoing social module did not open: Outgoing social actions are blocked during the live_vote phase.`
   )
-)
+  return source
+})
 
 edit('tests/unit/publicOpinion/publicOpinionMiddleware.test.ts', (original) => {
   let source = original
+  source = source.replace(
+    `  setProfileApprovals,\n  setProfileApprovals,`,
+    `  setProfileApprovals,`
+  )
   source = replaceIfPresent(
     source,
     `  initializeProfiles,\n  addDirection,`,
