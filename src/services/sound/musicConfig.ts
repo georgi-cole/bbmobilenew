@@ -26,8 +26,8 @@ export interface MusicTransitionPolicy {
 
 export interface MinigameMusicProfile {
   id: string
-  modes: readonly MusicConfigMode[]
-  gameKeys: readonly string[]
+  modes: MusicConfigMode[]
+  gameKeys: string[]
   stages: Partial<Record<MusicMinigameStage, MusicSelection>>
   defaultSelection: MusicSelection
   transition?: MusicTransitionPolicy
@@ -97,7 +97,7 @@ export interface MusicConfigOverrides {
   phaseMusic?: Partial<Record<Phase, MusicSelection>>
   modePhaseOverrides?: Partial<Record<GameMode, Partial<Record<Phase, MusicSelection>>>>
   sceneMusic?: Partial<Record<MusicScene, MusicSelection>>
-  minigameProfiles?: readonly MinigameMusicProfile[]
+  minigameProfiles?: MinigameMusicProfile[]
   minigameAssignments?: Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>>
   minigameCategoryMusic?: Partial<Record<GameCategory, MusicSelection>>
   eventSounds?: Partial<Record<AudioEventId, AudioEventCue>>
@@ -207,7 +207,7 @@ export const DEFAULT_MINIGAME_MUSIC_PROFILES: readonly MinigameMusicProfile[] = 
   {
     id: 'minigame.challenge-group-1',
     modes: ['any'],
-    gameKeys: CHALLENGE_GROUP_1_GAME_KEYS,
+    gameKeys: [...CHALLENGE_GROUP_1_GAME_KEYS],
     stages: {
       rules: SILENT_MUSIC,
       countdown: SILENT_MUSIC,

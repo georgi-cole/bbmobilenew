@@ -29,7 +29,6 @@ import {
   MUSIC_TRACK_IDS,
   getMusicTrackSoundEntry,
   type CatalogMusicTrack,
-  type MusicTrackAssetOverride,
 } from '../../services/sound/musicCatalog'
 import { auditMusicConfig } from '../../services/sound/musicConfigAudit'
 import {
