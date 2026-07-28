@@ -1,214 +1,262 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { shallowEqual, useSelector } from 'react-redux';
-import type { RootState } from '../../store/store';
-import { SoundManager } from './SoundManager';
-import { resolveDesiredMusic } from './resolveDesiredMusic';
-import type { MusicTrack } from './musicTracks';
-import {
-  getMinigameMusicConfig,
-  getMinigameMusicConfigByTrack,
-  MINIGAME_MUSIC_CONFIGS,
-} from './minigameMusicConfig';
-import { observeHostedMinigamePlaying } from './minigameHostPhaseObserver';
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { shallowEqual, useSelector } from 'react-redux'
+import type { RootState } from '../../store/store'
+import { SoundManager } from './SoundManager'
+import { resolveDesiredMusicCue, type MusicResolverState } from './resolveDesiredMusic'
+import { SILENT_MUSIC, getMinigameMusicProfile, type ResolvedMusicCue } from './musicConfig'
+import { getDynamicMusicSoundEntries } from './musicCatalog'
+import { observeHostedMinigamePlaying } from './minigameHostPhaseObserver'
 
-const VOLUME_RAMP_STEP_MS = 50;
+const VOLUME_RAMP_STEP_MS = 50
+
+function createSilentCue(assignmentId: string): ResolvedMusicCue {
+  return {
+    track: 'none',
+    selection: SILENT_MUSIC,
+    assignmentId,
+    source: 'fallback',
+    inheritedAssignments: [],
+  }
+}
+
+function isManagedMinigameCue(cue: ResolvedMusicCue): boolean {
+  return (
+    cue.source === 'minigame' &&
+    cue.selection.kind === 'track' &&
+    cue.transition?.managedLifecycle === true
+  )
+}
+
+function cueReason(cue: ResolvedMusicCue): string {
+  return `${cue.source}:${cue.assignmentId}`
+}
 
 export default function AudioStateSync() {
   const musicState = useSelector(
     (root: RootState) => ({
       gamePhase: root.game.phase,
       gameId: root.game.gameId,
+      gameMode: root.game.mode ?? 'classic',
       spectatorActive: root.game.spectatorActive,
       seasonFinalePhase: root.game.seasonFinale?.phase ?? null,
       pendingChallengePhase: root.challenge.pending?.phase ?? null,
       pendingChallengeGameKey: root.challenge.pending?.game?.key ?? null,
+      pendingChallengeGameCategory: root.challenge.pending?.game?.category ?? null,
       socialPanelOpen: root.social.panelOpen,
       incomingInboxOpen: root.social.incomingInboxOpen,
       musicScene: root.ui.musicScene,
       musicOn: root.settings.audio.musicOn,
       musicVolume: root.settings.audio.musicVolume,
     }),
-    shallowEqual,
-  );
-  const [hash, setHash] = useState(() => window.location.hash);
-  const [hostedMinigamePlaying, setHostedMinigamePlaying] = useState(false);
-  const previousDesiredRef = useRef<MusicTrack>('none');
-  const latestDesiredRef = useRef<MusicTrack>('none');
-  const heldConfiguredTrackRef = useRef<MusicTrack | null>(null);
-  const fadeInTimerRef = useRef<number | null>(null);
-  const postGameTimerRef = useRef<number | null>(null);
-  const transitionTokenRef = useRef(0);
+    shallowEqual
+  )
+  const [hash, setHash] = useState(() => window.location.hash)
+  const [hostedMinigameState, setHostedMinigameState] = useState<{
+    gameKey: string | null
+    playing: boolean
+  }>({ gameKey: null, playing: false })
+  const previousDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
+  const latestDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
+  const heldConfiguredCueRef = useRef<ResolvedMusicCue | null>(null)
+  const fadeInTimerRef = useRef<number | null>(null)
+  const postGameTimerRef = useRef<number | null>(null)
+  const transitionTokenRef = useRef(0)
 
   useEffect(() => {
-    for (const config of MINIGAME_MUSIC_CONFIGS) {
-      SoundManager.registerDynamic(config.sound);
+    for (const sound of getDynamicMusicSoundEntries()) {
+      SoundManager.registerDynamic(sound)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+    const onHashChange = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   useEffect(() => {
-    const configuredGame = getMinigameMusicConfig(musicState.pendingChallengeGameKey);
-    if (!configuredGame) return undefined;
+    const profile = getMinigameMusicProfile(musicState.pendingChallengeGameKey, musicState.gameMode)
+    if (!profile?.transition?.managedLifecycle) return undefined
 
-    return observeHostedMinigamePlaying(setHostedMinigamePlaying);
-  }, [musicState.pendingChallengeGameKey]);
+    const gameKey = musicState.pendingChallengeGameKey
+    return observeHostedMinigamePlaying((playing) => {
+      setHostedMinigameState({ gameKey, playing })
+    })
+  }, [musicState.gameMode, musicState.pendingChallengeGameKey])
 
-  const resolvedMusic = useMemo(
-    () => {
-      if (!musicState.musicOn) return 'none';
+  const resolverState = useMemo<MusicResolverState>(
+    () => ({
+      game: {
+        phase: musicState.gamePhase,
+        gameId: musicState.gameId,
+        mode: musicState.gameMode,
+        spectatorActive: musicState.spectatorActive,
+        seasonFinale:
+          musicState.seasonFinalePhase != null ? { phase: musicState.seasonFinalePhase } : null,
+      },
+      challenge: {
+        pending:
+          musicState.pendingChallengePhase !== null
+            ? {
+                phase: musicState.pendingChallengePhase,
+                game: {
+                  key: musicState.pendingChallengeGameKey,
+                  category: musicState.pendingChallengeGameCategory,
+                },
+              }
+            : null,
+      },
+      social: {
+        panelOpen: musicState.socialPanelOpen,
+        incomingInboxOpen: musicState.incomingInboxOpen,
+      },
+      ui: {
+        musicScene: musicState.musicScene,
+      },
+    }),
+    [musicState]
+  )
 
-      return resolveDesiredMusic(
+  const resolvedCue = useMemo<ResolvedMusicCue>(() => {
+    if (!musicState.musicOn) return createSilentCue('settings.music-off')
+    return resolveDesiredMusicCue(resolverState, hash)
+  }, [hash, musicState.musicOn, resolverState])
+
+  const desiredCue = useMemo<ResolvedMusicCue>(() => {
+    if (
+      musicState.musicOn &&
+      hostedMinigameState.playing &&
+      hostedMinigameState.gameKey === musicState.pendingChallengeGameKey &&
+      resolverState.challenge.pending
+    ) {
+      return resolveDesiredMusicCue(
         {
-          game: {
-            phase: musicState.gamePhase,
-            gameId: musicState.gameId,
-            spectatorActive: musicState.spectatorActive,
-            seasonFinale:
-              musicState.seasonFinalePhase != null
-                ? { phase: musicState.seasonFinalePhase }
-                : null,
-          },
+          ...resolverState,
           challenge: {
-            pending:
-              musicState.pendingChallengePhase !== null
-                ? {
-                    phase: musicState.pendingChallengePhase,
-                    game: { key: musicState.pendingChallengeGameKey },
-                  }
-                : null,
-          },
-          social: {
-            panelOpen: musicState.socialPanelOpen,
-            incomingInboxOpen: musicState.incomingInboxOpen,
-          },
-          ui: {
-            musicScene: musicState.musicScene,
+            pending: {
+              ...resolverState.challenge.pending,
+              phase: 'playing',
+            },
           },
         },
-        hash,
-      );
-    },
-    [hash, musicState],
-  );
-
-  const desiredMusic = useMemo<MusicTrack>(() => {
-    if (musicState.musicOn && hostedMinigamePlaying) {
-      const configuredTrack = getMinigameMusicConfig(
-        musicState.pendingChallengeGameKey,
-      )?.track;
-      if (configuredTrack) return configuredTrack;
+        hash
+      )
     }
 
-    // For configured challenges, resolvedMusic is deliberately `none` before
-    // gameplay. This prevents the generic competition track from sharing the
-    // channel with, or bleeding into, the configured minigame track.
-    return resolvedMusic;
+    // The shared host still owns its visual lifecycle locally. Until that phase
+    // is promoted into Redux, the semantic resolver receives a playing-stage
+    // override from the compatibility observer above.
+    return resolvedCue
   }, [
-    hostedMinigamePlaying,
+    hash,
+    hostedMinigameState,
     musicState.musicOn,
     musicState.pendingChallengeGameKey,
-    resolvedMusic,
-  ]);
+    resolvedCue,
+    resolverState,
+  ])
 
   useEffect(() => {
-    latestDesiredRef.current = desiredMusic;
-    const enteringConfig = getMinigameMusicConfigByTrack(desiredMusic);
+    latestDesiredRef.current = desiredCue
+    const enteringManagedCue = isManagedMinigameCue(desiredCue)
 
-    // Once a configured track begins its winner-badge hold/fade, later resolver
-    // updates are only remembered as the eventual fallback. They must not stop
-    // the hold, cancel the fade, or start generic competition music underneath.
-    if (musicState.musicOn && heldConfiguredTrackRef.current && !enteringConfig) {
-      return;
+    // Once a managed track begins its winner-badge hold/fade, later resolver
+    // updates are remembered as the eventual fallback but cannot interrupt it.
+    if (musicState.musicOn && heldConfiguredCueRef.current && !enteringManagedCue) {
+      return
     }
 
-    const previousDesired = previousDesiredRef.current;
-    previousDesiredRef.current = desiredMusic;
-    const leavingConfig = getMinigameMusicConfigByTrack(previousDesired);
-    const transitionToken = ++transitionTokenRef.current;
+    const previousCue = previousDesiredRef.current
+    previousDesiredRef.current = desiredCue
+    const leavingManagedCue = isManagedMinigameCue(previousCue)
+    const transitionToken = ++transitionTokenRef.current
 
     const clearFadeIn = () => {
       if (fadeInTimerRef.current != null) {
-        window.clearInterval(fadeInTimerRef.current);
-        fadeInTimerRef.current = null;
+        window.clearInterval(fadeInTimerRef.current)
+        fadeInTimerRef.current = null
       }
-    };
+    }
     const clearPostGameTimer = () => {
       if (postGameTimerRef.current != null) {
-        window.clearTimeout(postGameTimerRef.current);
-        postGameTimerRef.current = null;
+        window.clearTimeout(postGameTimerRef.current)
+        postGameTimerRef.current = null
       }
-    };
+    }
 
-    clearFadeIn();
+    clearFadeIn()
 
     if (!musicState.musicOn) {
-      clearPostGameTimer();
-      heldConfiguredTrackRef.current = null;
-      SoundManager.setMusicVolume(musicState.musicVolume);
-      void SoundManager.setDesiredMusic('none', `resolver:${hash || '#/'}`);
-      return;
+      clearPostGameTimer()
+      heldConfiguredCueRef.current = null
+      SoundManager.setMusicVolume(musicState.musicVolume)
+      void SoundManager.setDesiredMusic('none', cueReason(desiredCue))
+      return
     }
 
-    if (enteringConfig) {
-      clearPostGameTimer();
-      heldConfiguredTrackRef.current = null;
+    if (enteringManagedCue && desiredCue.transition) {
+      clearPostGameTimer()
+      heldConfiguredCueRef.current = null
 
-      if (previousDesired === desiredMusic) {
-        SoundManager.setMusicVolume(musicState.musicVolume);
-        return;
+      if (
+        previousCue.track === desiredCue.track &&
+        previousCue.assignmentId === desiredCue.assignmentId
+      ) {
+        SoundManager.setMusicVolume(musicState.musicVolume)
+        return
       }
 
-      SoundManager.setMusicVolume(0);
-      void SoundManager.setDesiredMusic(desiredMusic, `minigame-config:start:${desiredMusic}`).then(() => {
-        if (transitionTokenRef.current !== transitionToken) return;
-        const steps = Math.max(1, Math.ceil(enteringConfig.fadeInMs / VOLUME_RAMP_STEP_MS));
-        let step = 0;
+      SoundManager.setMusicVolume(0)
+      void SoundManager.setDesiredMusic(desiredCue.track, cueReason(desiredCue)).then(() => {
+        if (transitionTokenRef.current !== transitionToken) return
+        if (desiredCue.transition!.fadeInMs <= 0) {
+          SoundManager.setMusicVolume(musicState.musicVolume)
+          return
+        }
+
+        const steps = Math.max(1, Math.ceil(desiredCue.transition!.fadeInMs / VOLUME_RAMP_STEP_MS))
+        let step = 0
         fadeInTimerRef.current = window.setInterval(() => {
-          step += 1;
-          SoundManager.setMusicVolume(musicState.musicVolume * Math.min(1, step / steps));
-          if (step >= steps) clearFadeIn();
-        }, VOLUME_RAMP_STEP_MS);
-      });
-      return;
+          step += 1
+          SoundManager.setMusicVolume(musicState.musicVolume * Math.min(1, step / steps))
+          if (step >= steps) clearFadeIn()
+        }, VOLUME_RAMP_STEP_MS)
+      })
+      return
     }
 
-    if (leavingConfig) {
-      clearPostGameTimer();
-      heldConfiguredTrackRef.current = previousDesired;
+    if (leavingManagedCue && previousCue.transition) {
+      clearPostGameTimer()
+      heldConfiguredCueRef.current = previousCue
       postGameTimerRef.current = window.setTimeout(() => {
-        postGameTimerRef.current = null;
-        void SoundManager.fadeOutMusic(leavingConfig.fadeOutMs).then(() => {
-          if (transitionTokenRef.current !== transitionToken) return;
-          heldConfiguredTrackRef.current = null;
-          SoundManager.setMusicVolume(musicState.musicVolume);
-          const nextTrack = latestDesiredRef.current;
-          if (getMinigameMusicConfigByTrack(nextTrack)) return;
-          previousDesiredRef.current = nextTrack;
-          void SoundManager.setDesiredMusic(nextTrack, `minigame-config:complete:${previousDesired}`);
-        });
-      }, leavingConfig.postGameHoldMs);
-      return;
+        postGameTimerRef.current = null
+        void SoundManager.fadeOutMusic(previousCue.transition!.fadeOutMs).then(() => {
+          if (transitionTokenRef.current !== transitionToken) return
+          heldConfiguredCueRef.current = null
+          SoundManager.setMusicVolume(musicState.musicVolume)
+          const nextCue = latestDesiredRef.current
+          if (isManagedMinigameCue(nextCue)) return
+          previousDesiredRef.current = nextCue
+          void SoundManager.setDesiredMusic(nextCue.track, cueReason(nextCue))
+        })
+      }, previousCue.transition.postGameHoldMs)
+      return
     }
 
-    clearPostGameTimer();
-    SoundManager.setMusicVolume(musicState.musicVolume);
-    void SoundManager.setDesiredMusic(desiredMusic, `resolver:${hash || '#/'}`);
-  }, [desiredMusic, hash, musicState.musicOn, musicState.musicVolume]);
+    clearPostGameTimer()
+    SoundManager.setMusicVolume(musicState.musicVolume)
+    void SoundManager.setDesiredMusic(desiredCue.track, cueReason(desiredCue))
+  }, [desiredCue, musicState.musicOn, musicState.musicVolume])
 
   useEffect(
     () => () => {
-      transitionTokenRef.current += 1;
-      heldConfiguredTrackRef.current = null;
-      if (fadeInTimerRef.current != null) window.clearInterval(fadeInTimerRef.current);
-      if (postGameTimerRef.current != null) window.clearTimeout(postGameTimerRef.current);
+      transitionTokenRef.current += 1
+      heldConfiguredCueRef.current = null
+      if (fadeInTimerRef.current != null) window.clearInterval(fadeInTimerRef.current)
+      if (postGameTimerRef.current != null) window.clearTimeout(postGameTimerRef.current)
     },
-    [],
-  );
+    []
+  )
 
-  return null;
+  return null
 }
