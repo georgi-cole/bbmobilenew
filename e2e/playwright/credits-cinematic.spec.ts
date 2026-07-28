@@ -18,7 +18,7 @@ test.describe('Credits cinematic @core-journey', () => {
 
     const start = page.getByRole('button', { name: 'Tap to start credits' })
     if (await start.isVisible()) {
-      await start.click()
+      await start.evaluate((button) => (button as HTMLButtonElement).click())
     }
 
     const cinematic = page.locator('.big-eye-cinematic')

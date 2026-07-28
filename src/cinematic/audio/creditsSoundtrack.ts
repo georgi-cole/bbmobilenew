@@ -73,9 +73,13 @@ export const startCreditsSoundtrackFromGesture = (): Promise<void> => {
   }
 
   const playback = audio.play();
-  void playback.then(() => {
-    volumeAnimationFrame = window.requestAnimationFrame(updateSoundtrackVolume);
-  });
+  void playback
+    .then(() => {
+      volumeAnimationFrame = window.requestAnimationFrame(updateSoundtrackVolume);
+    })
+    .catch(() => {
+      // The caller handles playback failures; this branch prevents a duplicate unhandled rejection.
+    });
   return playback;
 };
 
