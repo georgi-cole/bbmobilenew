@@ -14,9 +14,7 @@ describe('housemate biography talent-first contract', () => {
   })
 
   it('protects feet from the physical screen edge and keeps the cutout height-driven', () => {
-    expect(css).toContain(
-      'bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 10px))'
-    )
+    expect(css).toContain('bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 10px))')
     expect(css).toContain('object-fit: contain')
     expect(css).toContain('transform-origin: center bottom')
   })
