@@ -71,10 +71,14 @@ describe('HousePulse', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'stories' }))
     expect(screen.getByText('You and Lia')).toBeInTheDocument()
-    expect(screen.getByText(/Repeated moments are turning into a real storyline/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Repeated moments are turning into a real storyline/)
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'intel' }))
-    expect(screen.getByText('Lia heard Kai testing your name as a backup plan.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Lia heard Kai testing your name as a backup plan.')
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close House Pulse' }))
     expect(screen.queryByRole('dialog', { name: 'House Pulse' })).toBeNull()

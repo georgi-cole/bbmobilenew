@@ -6,13 +6,7 @@ import type {
   SocialActionLogEntry,
 } from './types'
 
-export type SocialStoryBeatKind =
-  | 'bond'
-  | 'strategy'
-  | 'conflict'
-  | 'repair'
-  | 'intel'
-  | 'public'
+export type SocialStoryBeatKind = 'bond' | 'strategy' | 'conflict' | 'repair' | 'intel' | 'public'
 
 export interface SocialStoryBeat {
   id: string
@@ -207,7 +201,7 @@ function buildActionBeats({
     (entry) =>
       entry.source === 'system' &&
       entry.actorId !== entry.targetId &&
-      (entry.week ?? currentWeek) >= Math.max(1, currentWeek - 1)
+      (entry.week ?? currentWeek) === currentWeek
   )
   const groups = new Map<string, SocialActionLogEntry[]>()
 
@@ -229,15 +223,25 @@ function buildActionBeats({
     const latest = [...entries].sort((left, right) => right.timestamp - left.timestamp)[0]
     const visibleAction = entries.some((entry) => PUBLIC_ACTIONS.has(entry.actionId))
     const involvesHuman = leftId === humanId || rightId === humanId
-    const positiveCount = entries.filter((entry) => entry.delta > 0 && entry.outcome === 'success').length
-    const negativeCount = entries.filter((entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId)).length
+    const positiveCount = entries.filter(
+      (entry) => entry.delta > 0 && entry.outcome === 'success'
+    ).length
+    const negativeCount = entries.filter(
+      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId)
+    ).length
     const hasStrategy = entries.some((entry) => STRATEGY_ACTIONS.has(entry.actionId))
     const hasRepair = entries.some((entry) => REPAIR_ACTIONS.has(entry.actionId))
 
     // Private one-off exchanges between two NPCs stay private. Repetition, a
     // visible confrontation, or a material relationship shift makes the beat
     // observable enough to belong in House Pulse.
-    if (!involvesHuman && !visibleAction && positiveCount < 2 && negativeCount < 2 && Math.abs(shift) < 7) {
+    if (
+      !involvesHuman &&
+      !visibleAction &&
+      positiveCount < 2 &&
+      negativeCount < 2 &&
+      Math.abs(shift) < 7
+    ) {
       continue
     }
 

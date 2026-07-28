@@ -2,11 +2,7 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Player } from '../../types'
 import { buildSocialStoryStream } from '../../social/socialStoryStream'
-import type {
-  DramaSocialNetwork,
-  RelationshipsMap,
-  SocialActionLogEntry,
-} from '../../social/types'
+import type { DramaSocialNetwork, RelationshipsMap, SocialActionLogEntry } from '../../social/types'
 import './HousePulse.css'
 
 type PulseTab = 'stream' | 'stories' | 'intel'
@@ -113,15 +109,7 @@ export default function HousePulse({
         humanId,
         currentWeek,
       }),
-    [
-      actionHistory,
-      currentWeek,
-      humanId,
-      network,
-      players,
-      relationships,
-      weekStartRelSnapshot,
-    ]
+    [actionHistory, currentWeek, humanId, network, players, relationships, weekStartRelSnapshot]
   )
   const activeStories = knownArcs.filter((arc) => arc.status === 'active').length
   const latest = storyBeats[0]
@@ -186,7 +174,7 @@ export default function HousePulse({
                     <span>
                       Day {beat.week} · {PHASE_LABEL[beat.phase] ?? beat.phase.replaceAll('_', ' ')}
                     </span>
-                    <em>{beat.severity === 'major' ? 'House-wide' : 'Observed'}</em>
+                    <em>{beat.severity === 'major' ? 'Major shift' : 'Observed'}</em>
                   </div>
                   <h3>{beat.title}</h3>
                   <p>{beat.text}</p>

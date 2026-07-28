@@ -198,7 +198,6 @@ function applyIncomingChoiceConsequences({
   state,
   interaction,
   responseType,
-  responseLabel,
   source,
   resolvedAt,
 }: {

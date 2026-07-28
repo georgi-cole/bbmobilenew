@@ -86,11 +86,7 @@ export function getSocialModuleAvailability(
     }
   }
 
-  if (
-    moduleKind === 'outgoing' &&
-    phase &&
-    OUTGOING_SOCIAL_BLOCKED_PHASES.has(phase)
-  ) {
+  if (moduleKind === 'outgoing' && phase && OUTGOING_SOCIAL_BLOCKED_PHASES.has(phase)) {
     return {
       canOpen: false,
       reason: `Outgoing social actions are blocked during the ${phase} phase.`,

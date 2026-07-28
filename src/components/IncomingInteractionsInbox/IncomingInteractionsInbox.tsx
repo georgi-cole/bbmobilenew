@@ -281,9 +281,7 @@ function InteractionItem({
               <span className="inbox-item__tone">{tone}</span>
             )}
             {expiryLabel && (
-              <span className="inbox-item__expiry inbox-item__expiry--urgent">
-                {expiryLabel}
-              </span>
+              <span className="inbox-item__expiry inbox-item__expiry--urgent">{expiryLabel}</span>
             )}
           </div>
         </div>
@@ -344,10 +342,7 @@ export default function IncomingInteractionsInbox() {
   const players = game.players
   const currentWeek = game.week ?? 1
   const humanPlayer = players.find((player) => player.isUser)
-  const socialModuleAvailability = useMemo(
-    () => getIncomingSocialModuleAvailability(game),
-    [game]
-  )
+  const socialModuleAvailability = useMemo(() => getIncomingSocialModuleAvailability(game), [game])
   const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players])
 
   const interactionEntries = useMemo(

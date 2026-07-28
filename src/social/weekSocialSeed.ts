@@ -101,9 +101,7 @@ export function getRelationshipContinuityDelta(entry?: SocialMemoryEntry): numbe
   if (!entry) return 0
   const positive = entry.gratitude * 0.7 + Math.max(0, entry.trustMomentum) * 1.1
   const negative =
-    entry.resentment * 0.8 +
-    entry.neglect * 0.55 +
-    Math.max(0, -entry.trustMomentum) * 1.1
+    entry.resentment * 0.8 + entry.neglect * 0.55 + Math.max(0, -entry.trustMomentum) * 1.1
   const signal = positive - negative
   if (Math.abs(signal) < 2.5) return 0
   return Math.max(-2, Math.min(2, Math.round(signal / 4)))
@@ -125,9 +123,7 @@ export function seedWeekRelationships(store: StoreAPI): void {
   const relationships = state.social?.relationships ?? {}
   const socialMemory = state.social?.socialMemory ?? {}
 
-  const active = players.filter(
-    (player) => player.status !== 'evicted' && player.status !== 'jury'
-  )
+  const active = players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
   if (active.length < 2) return
 
   if (week === 1) {
