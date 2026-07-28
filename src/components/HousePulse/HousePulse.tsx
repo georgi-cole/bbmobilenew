@@ -1,17 +1,26 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Player } from '../../types'
-import type { DramaSocialNetwork } from '../../social/types'
-import { DRAMA_DIALOGUE_BANK, pickDramaCopy } from '../../social/dramaModeConfig'
+import { buildSocialStoryStream } from '../../social/socialStoryStream'
+import type {
+  DramaSocialNetwork,
+  RelationshipsMap,
+  SocialActionLogEntry,
+} from '../../social/types'
 import './HousePulse.css'
 
-type PulseTab = 'stories' | 'intel' | 'history'
+type PulseTab = 'stream' | 'stories' | 'intel'
 
 interface HousePulseProps {
   network: DramaSocialNetwork
   players: readonly Player[]
   humanId: string
+  actionHistory: readonly SocialActionLogEntry[]
+  relationships: RelationshipsMap
+  weekStartRelSnapshot: Record<string, Record<string, number>>
+  currentWeek: number
 }
+
 const RUMOUR_LABEL: Record<string, string> = {
   secret_alliance: 'Secret pact',
   secret_romance: 'Secret romance',
@@ -24,33 +33,55 @@ const PHASE_LABEL: Record<string, string> = {
   week_start: 'Start of the day',
   loh_results: 'After the LOH competition',
   social_1: 'Before nominations',
+  nominations: 'At nominations',
   nomination_results: 'After nominations',
-  pos_results: 'After the safety competition',
-  pos_ceremony_results: 'After the safety ceremony',
+  pos_results: 'After the Safety competition',
+  pos_ceremony_results: 'After the Safety ceremony',
   social_2: 'Before the vote',
   live_vote: 'During the vote',
   eviction_results: 'After the eviction',
-}
-
-function fillDramaLine(line: string, source: string, subject: string): string {
-  return line
-    .replaceAll('{a}', source)
-    .replaceAll('{b}', subject)
-    .replaceAll('{source}', source)
-    .replaceAll('{subject}', subject)
+  social: 'During house life',
 }
 
 const ARC_LABEL = {
   romance: 'Romance',
-  bromance: 'Bromance',
+  bromance: 'Close bond',
   rivalry: 'Rivalry',
   betrayal: 'Betrayal',
 } as const
 
-export default function HousePulse({ network, players, humanId }: HousePulseProps) {
+function arcStageCopy(stage: string): string {
+  switch (stage) {
+    case 'spark':
+      return 'A first pattern is emerging.'
+    case 'building':
+      return 'Repeated moments are turning into a real storyline.'
+    case 'established':
+      return 'The connection is now part of how the house reads them.'
+    case 'strained':
+      return 'Recent events have put the relationship under visible pressure.'
+    case 'climax':
+      return 'The storyline has reached a decisive point.'
+    case 'resolved':
+      return 'The storyline has reached an outcome.'
+    default:
+      return 'The relationship is still developing.'
+  }
+}
+
+export default function HousePulse({
+  network,
+  players,
+  humanId,
+  actionHistory,
+  relationships,
+  weekStartRelSnapshot,
+  currentWeek,
+}: HousePulseProps) {
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<PulseTab>('stories')
+  const [tab, setTab] = useState<PulseTab>('stream')
   const playerName = (id: string) => players.find((player) => player.id === id)?.name ?? 'Unknown'
+
   const knownArcs = useMemo(
     () =>
       network.arcs.filter(
@@ -71,21 +102,29 @@ export default function HousePulse({ network, players, humanId }: HousePulseProp
       ),
     [humanId, network.rumours]
   )
-  const knownEvents = useMemo(
+  const storyBeats = useMemo(
     () =>
-      [...network.events]
-        .filter(
-          (event) =>
-            event.public ||
-            (event.type === 'discovery'
-              ? event.participantIds[0] === humanId
-              : event.participantIds.includes(humanId))
-        )
-        .reverse(),
-    [humanId, network.events]
+      buildSocialStoryStream({
+        network,
+        actionHistory,
+        relationships,
+        weekStartRelSnapshot,
+        players,
+        humanId,
+        currentWeek,
+      }),
+    [
+      actionHistory,
+      currentWeek,
+      humanId,
+      network,
+      players,
+      relationships,
+      weekStartRelSnapshot,
+    ]
   )
-  const latest = knownEvents[0]
   const activeStories = knownArcs.filter((arc) => arc.status === 'active').length
+  const latest = storyBeats[0]
 
   const modal = open ? (
     <div className="house-pulse__overlay" role="presentation" onMouseDown={() => setOpen(false)}>
@@ -100,31 +139,30 @@ export default function HousePulse({ network, players, humanId }: HousePulseProp
           <div>
             <span className="house-pulse__eyebrow">Drama Mode</span>
             <h2>House Pulse</h2>
-            <p>Stories, secrets and consequences you actually know.</p>
+            <p>A causal stream of relationships, strategy and information you could know.</p>
           </div>
           <button type="button" onClick={() => setOpen(false)} aria-label="Close House Pulse">
             &times;
           </button>
         </header>
+
         <div className="house-pulse__stats">
           <span>
-            <strong>{activeStories}</strong> active stories
+            <strong>{activeStories}</strong> storylines
+          </span>
+          <span>
+            <strong>{storyBeats.length}</strong> recent shifts
           </span>
           <span>
             <strong>
               {knownRumours.filter((rumour) => rumour.status === 'circulating').length}
             </strong>{' '}
-            known rumours
-          </span>
-          <span>
-            <strong>
-              {knownEvents.filter((event) => event.public && event.severity === 'major').length}
-            </strong>{' '}
-            shocks
+            known claims
           </span>
         </div>
+
         <nav className="house-pulse__tabs" aria-label="House Pulse sections">
-          {(['stories', 'intel', 'history'] as PulseTab[]).map((item) => (
+          {(['stream', 'stories', 'intel'] as PulseTab[]).map((item) => (
             <button
               key={item}
               type="button"
@@ -135,74 +173,103 @@ export default function HousePulse({ network, players, humanId }: HousePulseProp
             </button>
           ))}
         </nav>
+
         <div className="house-pulse__content">
+          {tab === 'stream' &&
+            (storyBeats.length ? (
+              storyBeats.map((beat) => (
+                <article
+                  className={`house-pulse__card house-pulse__card--${beat.kind} house-pulse__card--${beat.severity}`}
+                  key={beat.id}
+                >
+                  <div className="house-pulse__card-top">
+                    <span>
+                      Day {beat.week} · {PHASE_LABEL[beat.phase] ?? beat.phase.replaceAll('_', ' ')}
+                    </span>
+                    <em>{beat.severity === 'major' ? 'House-wide' : 'Observed'}</em>
+                  </div>
+                  <h3>{beat.title}</h3>
+                  <p>{beat.text}</p>
+                </article>
+              ))
+            ) : (
+              <p className="house-pulse__empty">
+                The house is still reading the room. Visible patterns will appear here as actions
+                repeat or consequences land.
+              </p>
+            ))}
+
           {tab === 'stories' &&
             (knownArcs.length ? (
-              knownArcs.map((arc) => {
-                const first =
-                  arc.participantIds[0] === humanId ? 'You' : playerName(arc.participantIds[0])
-                const second =
-                  arc.participantIds[1] === humanId ? 'you' : playerName(arc.participantIds[1])
-                const story = fillDramaLine(
-                  pickDramaCopy(DRAMA_DIALOGUE_BANK.arc[arc.type][arc.stage], arc.id),
-                  first,
-                  second
-                )
-                return (
-                  <article
-                    className={`house-pulse__card house-pulse__card--${arc.type}`}
-                    key={arc.id}
-                  >
-                    <div className="house-pulse__card-top">
-                      <span>{ARC_LABEL[arc.type]}</span>
-                      <em>
-                        {arc.public
-                          ? 'Public'
-                          : arc.participantIds.includes(humanId)
-                            ? 'Your story'
-                            : 'You discovered this'}
-                      </em>
-                    </div>
-                    <h3>
-                      {first} and {second}
-                    </h3>
-                    <p>{story}</p>
-                  </article>
-                )
-              })
+              knownArcs
+                .slice()
+                .sort((left, right) => right.lastAdvancedWeek - left.lastAdvancedWeek)
+                .map((arc) => {
+                  const first =
+                    arc.participantIds[0] === humanId ? 'You' : playerName(arc.participantIds[0])
+                  const second =
+                    arc.participantIds[1] === humanId ? 'you' : playerName(arc.participantIds[1])
+                  return (
+                    <article
+                      className={`house-pulse__card house-pulse__card--${arc.type}`}
+                      key={arc.id}
+                    >
+                      <div className="house-pulse__card-top">
+                        <span>{ARC_LABEL[arc.type]}</span>
+                        <em>
+                          {arc.public
+                            ? 'Public'
+                            : arc.participantIds.includes(humanId)
+                              ? 'Your story'
+                              : 'Discovered'}
+                        </em>
+                      </div>
+                      <h3>
+                        {first} and {second}
+                      </h3>
+                      <p>{arcStageCopy(arc.stage)}</p>
+                      <small>
+                        Began Day {arc.startedWeek} · last changed Day {arc.lastAdvancedWeek}
+                      </small>
+                    </article>
+                  )
+                })
             ) : (
-              <p className="house-pulse__empty">No story has reached your radar yet.</p>
+              <p className="house-pulse__empty">No continuing storyline has reached your radar.</p>
             ))}
+
           {tab === 'intel' &&
             (knownRumours.length ? (
               knownRumours.map((rumour) => {
                 const chain = (rumour.sourceChain ?? [rumour.originatorId]).map(playerName)
-                const source = playerName(rumour.originatorId)
                 const subject = playerName(rumour.subjectId)
-                const isGeneric =
-                  !rumour.claim ||
-                  rumour.claim.startsWith('A private game detail') ||
-                  rumour.claim.startsWith('A private promise may not match')
-                const claim = isGeneric
-                  ? fillDramaLine(
-                      pickDramaCopy(DRAMA_DIALOGUE_BANK.rumour[rumour.kind], rumour.id),
-                      source,
-                      subject
-                    )
-                  : (rumour.claim ?? '').replaceAll(' ? ', ', ')
+                const source = playerName(rumour.originatorId)
+                const reliability =
+                  rumour.evidence === 'confirmed'
+                    ? 'Confirmed'
+                    : rumour.evidence === 'credible'
+                      ? 'Credible'
+                      : rumour.evidence === 'weak'
+                        ? 'Weak evidence'
+                        : 'Unconfirmed'
+                const claim =
+                  rumour.claim && !rumour.claim.startsWith('A private')
+                    ? rumour.claim.replaceAll(' ? ', ', ')
+                    : `${source} is circulating a ${RUMOUR_LABEL[rumour.kind]?.toLowerCase() ?? 'claim'} involving ${subject}.`
                 const trail =
                   rumour.originatorId === humanId
                     ? chain.length > 1
-                      ? `You started this story. It has since passed through ${chain.slice(1).join(', ')}.`
-                      : 'You started this story, but it has not travelled yet.'
+                      ? `You started this. It has passed through ${chain.slice(1).join(', ')}.`
+                      : 'You started this, but it has not travelled yet.'
                     : chain.length > 1
-                      ? `You heard this through ${chain[chain.length - 1]}. It began with ${chain[0]}.`
-                      : `You heard this directly from ${chain[0]}.`
+                      ? `You heard it through ${chain[chain.length - 1]}; it began with ${chain[0]}.`
+                      : `You heard it directly from ${chain[0]}.`
+
                 return (
                   <article className="house-pulse__card house-pulse__card--intel" key={rumour.id}>
                     <div className="house-pulse__card-top">
                       <span>{RUMOUR_LABEL[rumour.kind] ?? 'House intel'}</span>
-                      <em>{rumour.status === 'exposed' ? 'Public' : 'Unconfirmed'}</em>
+                      <em>{reliability}</em>
                     </div>
                     <h3>{subject}</h3>
                     <p>{claim}</p>
@@ -211,34 +278,7 @@ export default function HousePulse({ network, players, humanId }: HousePulseProp
                 )
               })
             ) : (
-              <p className="house-pulse__empty">You have not learned any live rumours.</p>
-            ))}
-          {tab === 'history' &&
-            (knownEvents.length ? (
-              knownEvents.map((event) => (
-                <article
-                  className={`house-pulse__card house-pulse__card--${event.severity}`}
-                  key={event.id}
-                >
-                  <div className="house-pulse__card-top">
-                    <span>
-                      Day {event.week} -{' '}
-                      {PHASE_LABEL[event.phase] ?? event.phase.replaceAll('_', ' ')}
-                    </span>
-                    <em>{event.public ? 'House-wide' : 'Private'}</em>
-                  </div>
-                  <h3>{event.title ?? event.type.replaceAll('_', ' ')}</h3>
-                  <p>{event.text.replaceAll(' ? ', ', ')}</p>
-                  {event.detail && <small>{event.detail.replaceAll(' ? ', ', ')}</small>}
-                  {event.consequence && (
-                    <strong className="house-pulse__fallout">Fallout: {event.consequence}</strong>
-                  )}
-                </article>
-              ))
-            ) : (
-              <p className="house-pulse__empty">
-                Nothing important has happened on your radar yet.
-              </p>
+              <p className="house-pulse__empty">You have not learned any current house intel.</p>
             ))}
         </div>
       </section>
@@ -248,14 +288,14 @@ export default function HousePulse({ network, players, humanId }: HousePulseProp
   return (
     <>
       <button type="button" className="house-pulse__summary" onClick={() => setOpen(true)}>
-        <span className="house-pulse__mark">{'\u25C9'}</span>
+        <span className="house-pulse__mark">◉</span>
         <span>
           <strong>House Pulse</strong>
           <small>
-            {activeStories} stories / {knownRumours.length} intel
+            {activeStories} stories · {storyBeats.length} shifts
           </small>
         </span>
-        <em>{latest?.title ?? latest?.text ?? 'The house is still reading the room.'}</em>
+        <em>{latest?.text ?? 'The house is still reading the room.'}</em>
         <b>Open</b>
       </button>
       {modal && createPortal(modal, document.body)}
