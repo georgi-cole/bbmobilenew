@@ -1,5 +1,4 @@
 # One-shot corrective workflow; removes itself after success.
-# Trigger revision 2.
 name: Temporary fix Public Favorite empty feature
 
 on:
@@ -32,6 +31,9 @@ jobs:
           component = component_path.read_text()
 
           anchor = '  const featuredSpotlight = forcedSpotlight ?? naturalSpotlight\n'
+          anchor_at = component.find(anchor)
+          if anchor_at < 0:
+              raise SystemExit('Featured spotlight anchor was not found')
           replacement = '''  const featuredSpotlight = forcedSpotlight ?? naturalSpotlight
           const fallbackFeaturePlayer = orderedFinalists[0] ?? activePlayers[0] ?? null
           const featurePlayer = featuredSpotlight?.item.player ?? fallbackFeaturePlayer
@@ -41,9 +43,7 @@ jobs:
               : ''
           )
           '''
-          if anchor not in component:
-              raise SystemExit('Featured spotlight anchor was not found')
-          component = component.replace(anchor, replacement, 1)
+          component = component[:anchor_at] + replacement + component[anchor_at + len(anchor):]
 
           button_start = component.find('            <button\n              ref={fastForwardButtonRef}')
           if button_start < 0:
@@ -57,43 +57,41 @@ jobs:
           wrapped_button = "            {phase !== 'intro' && (\n" + button.replace('            ', '              ', 1) + "\n            )}"
           component = component[:button_start] + wrapped_button + component[button_end:]
 
-          component = component.replace(
-              "          {phase === 'feature' && featuredSpotlight && (\n",
-              "          {phase === 'feature' && featurePlayer && (\n",
-              1,
-          )
-          component = component.replace(
-              "              key={`feature-${featuredSpotlight.item.player.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}\n",
-              "              key={`feature-${featurePlayer.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}\n",
-              1,
-          )
-          component = component.replace(
-              "              player={featuredSpotlight.item.player}\n              fact={featuredSpotlight.fact}\n",
-              "              player={featurePlayer}\n              fact={featureFact}\n",
-              1,
-          )
-          component = component.replace(
-              "              spotlightActive={viewerSpotlight?.playerId === featuredSpotlight.item.player.id}\n",
-              "              spotlightActive={viewerSpotlight?.playerId === featurePlayer.id}\n",
-              1,
-          )
-          component = component.replace(
-              "              spotlightAvailable={canActivateSpotlight}\n",
-              "              spotlightAvailable={canActivateSpotlight && featuredSpotlight !== null}\n",
-              1,
-          )
+          replacements = [
+              (
+                  "          {phase === 'feature' && featuredSpotlight && (\n",
+                  "          {phase === 'feature' && featurePlayer && (\n",
+              ),
+              (
+                  "              key={`feature-${featuredSpotlight.item.player.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}\n",
+                  "              key={`feature-${featurePlayer.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}\n",
+              ),
+              (
+                  "              player={featuredSpotlight.item.player}\n              fact={featuredSpotlight.fact}\n",
+                  "              player={featurePlayer}\n              fact={featureFact}\n",
+              ),
+              (
+                  "              spotlightActive={viewerSpotlight?.playerId === featuredSpotlight.item.player.id}\n",
+                  "              spotlightActive={viewerSpotlight?.playerId === featurePlayer.id}\n",
+              ),
+              (
+                  "              spotlightAvailable={canActivateSpotlight}\n",
+                  "              spotlightAvailable={canActivateSpotlight && featuredSpotlight !== null}\n",
+              ),
+          ]
+          for old, new in replacements:
+              if old not in component:
+                  raise SystemExit(f'Public Favorite render anchor was not found: {old.strip()}')
+              component = component.replace(old, new, 1)
           component_path.write_text(component)
 
           finale_path = Path('e2e/playwright/finale.spec.ts')
           finale = finale_path.read_text()
-          old_capture = '''    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({
-            timeout: 5_000,
-          })
-          await page.screenshot({
-            path: 'test-results/public-favorite-feature-mobile.png',
-            fullPage: false,
-          })
-          '''
+          capture_start = finale.find("    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible(")
+          fast_forward = "    await favoriteVote.getByRole('button', { name: 'Fast forward public favorite vote' }).click()\n"
+          capture_end = finale.find(fast_forward, capture_start)
+          if capture_start < 0 or capture_end < 0:
+              raise SystemExit('Public Favorite capture boundaries were not found')
           new_capture = '''    const favoriteFeature = favoriteVote.locator('.pf-cinematic__feature')
           await expect(favoriteFeature).toBeVisible({ timeout: 5_000 })
           await expect(favoriteFeature.locator('.pf-cinematic__feature-copy h2')).toBeVisible()
@@ -110,9 +108,8 @@ jobs:
             fullPage: false,
           })
           '''
-          if old_capture not in finale:
-              raise SystemExit('Current Public Favorite capture block was not found')
-          finale_path.write_text(finale.replace(old_capture, new_capture, 1))
+          finale = finale[:capture_start] + new_capture + finale[capture_end:]
+          finale_path.write_text(finale)
       - run: >-
           npx prettier --write
           src/components/PublicFavoriteOverlay/PublicFavoriteOverlay.tsx
