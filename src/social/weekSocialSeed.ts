@@ -1,150 +1,161 @@
 /**
- * weekSocialSeed — seeds background social relationships at the start of each week.
+ * weekSocialSeed — initializes new relationships and consolidates recent social memory.
  *
- * Runs when the game transitions to `week_start`.  For every ordered pair of
- * **active** (non-evicted, non-jury) players it dispatches `updateRelationship`
- * with a small seeded-random affinity adjustment.  This creates the organic,
- * non-zero relationship web the user sees in the social panel, without
- * cluttering sessionLogs or Diary Room entries.
- *
- * Eviction rule: only players whose status is neither 'evicted' nor 'jury'
- * participate.  Once a houseguest is evicted they are permanently excluded —
- * no in-game player generates interactions with them and they generate none
- * themselves, in this week or any subsequent week.
- *
- * Design notes:
- *  - If a relationship pair already exists the delta is small (±3), so
- *    existing history is preserved and only gently drifts.
- *  - If a pair has never interacted a larger seed delta (-12–25) is applied so
- *    week-1 relationships start at a meaningful non-zero value, and can begin slightly negative.
- *  - All deltas use the display-scale (0–100), matching `affinityDeltas`.
- *  - Uses a deterministic LCG seeded by `game.seed XOR week` for reproducibility.
- *  - Time complexity: O(n²) in the number of active players.  For a standard
- *    Big Brother season (≤16 houseguests, shrinking each week as players are
- *    evicted) the worst-case is 240 dispatches (16 × 15) — acceptable and
- *    expected to shrink weekly as the cast is reduced.
+ * New pairs receive a deterministic starting chemistry value. Existing pairs no
+ * longer drift randomly every week: gratitude, resentment, neglect and trust
+ * momentum produce a small bounded continuity adjustment instead. Meaningful
+ * game events already change relationships when they happen, so this weekly pass
+ * only represents emotions settling between days rather than replaying the event.
  */
 
-import { updateRelationship } from './socialSlice';
-import HOUSEGUESTS from '../data/houseguests';
+import { updateRelationship } from './socialSlice'
+import HOUSEGUESTS from '../data/houseguests'
+import type { SocialMemoryEntry, SocialMemoryMap } from './types'
 
 interface StoreAPI {
-  dispatch: (action: unknown) => unknown;
-  getState: () => unknown;
+  dispatch: (action: unknown) => unknown
+  getState: () => unknown
 }
 
 interface SeedState {
   game: {
-    players: Array<{ id: string; status: string; isUser?: boolean }>;
-    seed: number;
-    week: number;
-  };
+    players: Array<{ id: string; status: string; isUser?: boolean }>
+    seed: number
+    week: number
+    dramaSocialMode?: boolean
+  }
   social: {
-    relationships: Record<string, Record<string, { affinity: number; tags: string[] }>>;
-  };
+    relationships: Record<string, Record<string, { affinity: number; tags: string[] }>>
+    socialMemory?: SocialMemoryMap
+  }
   settings?: {
-    gameUX?: { dramaMode?: boolean };
-  };
+    gameUX?: { dramaMode?: boolean }
+  }
 }
 
-/**
- * Simple LCG pseudo-random number generator.
- * Returns a function that yields the next value in [0, 1) each call.
- */
 function makeLcg(seed: number): () => number {
-  let s = seed >>> 0;
+  let state = seed >>> 0
   return () => {
-    s = ((s * 1664525 + 1013904223) >>> 0);
-    return s / 0x100000000;
-  };
+    state = (state * 1664525 + 1013904223) >>> 0
+    return state / 0x1_0000_0000
+  }
 }
 
-const HOUSEGUEST_PROFILE_BY_ID = Object.fromEntries(HOUSEGUESTS.map((houseguest) => [houseguest.id, houseguest]));
+const HOUSEGUEST_PROFILE_BY_ID = Object.fromEntries(
+  HOUSEGUESTS.map((houseguest) => [houseguest.id, houseguest])
+)
 
 function seedStaticRelationshipChemistry(store: StoreAPI, activePlayerIds: string[]): void {
-  const activeIds = new Set(activePlayerIds);
+  const activeIds = new Set(activePlayerIds)
   for (const actorId of activePlayerIds) {
-    const profile = HOUSEGUEST_PROFILE_BY_ID[actorId];
-    if (!profile) continue;
+    const profile = HOUSEGUEST_PROFILE_BY_ID[actorId]
+    if (!profile) continue
     profile.allies.forEach((targetId) => {
-      if (!activeIds.has(targetId)) return;
-      // Profile hints are latent chemistry, not pre-formed deals.
-      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: 8 }));
-    });
+      if (!activeIds.has(targetId)) return
+      store.dispatch(
+        updateRelationship({ source: actorId, target: targetId, delta: 8, actionSource: 'system' })
+      )
+    })
     profile.enemies.forEach((targetId) => {
-      if (!activeIds.has(targetId)) return;
-      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: -8 }));
-    });
+      if (!activeIds.has(targetId)) return
+      store.dispatch(
+        updateRelationship({ source: actorId, target: targetId, delta: -8, actionSource: 'system' })
+      )
+    })
   }
 }
 
 function seedStaticRelationshipTags(store: StoreAPI, activePlayerIds: string[]): void {
-  const activeIds = new Set(activePlayerIds);
+  const activeIds = new Set(activePlayerIds)
   for (const actorId of activePlayerIds) {
-    const profile = HOUSEGUEST_PROFILE_BY_ID[actorId];
-    if (!profile) continue;
+    const profile = HOUSEGUEST_PROFILE_BY_ID[actorId]
+    if (!profile) continue
     profile.allies.forEach((targetId) => {
-      if (!activeIds.has(targetId)) return;
-      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: 0, tags: ['alliance'] }));
-    });
+      if (!activeIds.has(targetId)) return
+      store.dispatch(
+        updateRelationship({
+          source: actorId,
+          target: targetId,
+          delta: 0,
+          tags: ['alliance'],
+          actionSource: 'system',
+        })
+      )
+    })
     profile.enemies.forEach((targetId) => {
-      if (!activeIds.has(targetId)) return;
-      store.dispatch(updateRelationship({ source: actorId, target: targetId, delta: 0, tags: ['target'] }));
-    });
+      if (!activeIds.has(targetId)) return
+      store.dispatch(
+        updateRelationship({
+          source: actorId,
+          target: targetId,
+          delta: 0,
+          tags: ['target'],
+          actionSource: 'system',
+        })
+      )
+    })
   }
 }
+
+export function getRelationshipContinuityDelta(entry?: SocialMemoryEntry): number {
+  if (!entry) return 0
+  const positive = entry.gratitude * 0.7 + Math.max(0, entry.trustMomentum) * 1.1
+  const negative =
+    entry.resentment * 0.8 + entry.neglect * 0.55 + Math.max(0, -entry.trustMomentum) * 1.1
+  const signal = positive - negative
+  if (Math.abs(signal) < 2.5) return 0
+  return Math.max(-2, Math.min(2, Math.round(signal / 4)))
+}
+
 /**
  * Seed or refresh relationships at week start.
  *
- * Called from socialMiddleware when transitioning into `week_start`.
+ * - Week 1 keeps the established roster chemistry behavior.
+ * - Brand-new pairs receive deterministic chemistry between -12 and +25.
+ * - Existing pairs receive at most ±2 from remembered treatment, never an
+ *   unexplained random swing.
  */
 export function seedWeekRelationships(store: StoreAPI): void {
-  const state = store.getState() as SeedState;
-  const players = state.game?.players ?? [];
-  const week = state.game?.week ?? 1;
-  const gameSeed = state.game?.seed ?? 0;
-  const relationships = state.social?.relationships ?? {};
+  const state = store.getState() as SeedState
+  const players = state.game?.players ?? []
+  const week = state.game?.week ?? 1
+  const gameSeed = state.game?.seed ?? 0
+  const relationships = state.social?.relationships ?? {}
+  const socialMemory = state.social?.socialMemory ?? {}
 
-  // Only non-evicted, non-jury players participate.  Evicted houseguests are
-  // permanently excluded: once a player's status becomes 'evicted' or 'jury'
-  // they never generate — or receive — background interactions again.
-  const active = players.filter(
-    (p) => p.status !== 'evicted' && p.status !== 'jury',
-  );
-
-  if (active.length < 2) return;
+  const active = players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+  if (active.length < 2) return
 
   if (week === 1) {
-    const activeIds = active.map((player) => player.id);
-    if (state.settings?.gameUX?.dramaMode === true) {
-      seedStaticRelationshipChemistry(store, activeIds);
+    const activeIds = active.map((player) => player.id)
+    if (state.settings?.gameUX?.dramaMode === true || state.game.dramaSocialMode === true) {
+      seedStaticRelationshipChemistry(store, activeIds)
     } else {
-      seedStaticRelationshipTags(store, activeIds);
+      seedStaticRelationshipTags(store, activeIds)
     }
   }
 
-  // Mix game seed with week number for per-week variation.
-  const rng = makeLcg(gameSeed ^ (week * 2654435761));
+  const rng = makeLcg(gameSeed ^ (week * 2654435761))
 
-  for (let i = 0; i < active.length; i++) {
-    for (let j = 0; j < active.length; j++) {
-      if (i === j) continue;
-      const actor = active[i];
-      const target = active[j];
-      const existing = relationships[actor.id]?.[target.id];
-      const r = rng();
-
-      let delta: number;
-      if (!existing) {
-        // New pair: seed a meaningful starting affinity between -12 and +25.
-        delta = Math.round(-12 + r * 37);
-      } else {
-        // Existing pair: apply a small weekly drift of ±3.
-        delta = Math.round(-3 + r * 6);
-      }
+  for (let actorIndex = 0; actorIndex < active.length; actorIndex += 1) {
+    for (let targetIndex = 0; targetIndex < active.length; targetIndex += 1) {
+      if (actorIndex === targetIndex) continue
+      const actor = active[actorIndex]
+      const target = active[targetIndex]
+      const existing = relationships[actor.id]?.[target.id]
+      const delta = existing
+        ? getRelationshipContinuityDelta(socialMemory[actor.id]?.[target.id])
+        : Math.round(-12 + rng() * 37)
 
       if (delta !== 0) {
-        store.dispatch(updateRelationship({ source: actor.id, target: target.id, delta }));
+        store.dispatch(
+          updateRelationship({
+            source: actor.id,
+            target: target.id,
+            delta,
+            actionSource: 'system',
+          })
+        )
       }
     }
   }

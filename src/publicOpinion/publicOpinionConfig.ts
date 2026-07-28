@@ -48,18 +48,31 @@ export const publicOpinionConfig = {
   headlineEventsPerDayMin: 2,
   headlineEventsPerDayMax: 3,
   headlineSeverityBands: {
-    mild:     { minMag: 3,  maxMag: 8  },
-    dramatic: { minMag: 9,  maxMag: 18 },
+    mild: { minMag: 3, maxMag: 8 },
+    dramatic: { minMag: 9, maxMag: 18 },
     shocking: { minMag: 19, maxMag: 30 },
   },
   /** Cumulative weights for mild / dramatic / shocking severity (should sum to 1.0). */
-  headlineSeverityWeights: { mild: 0.50, dramatic: 0.35, shocking: 0.15 },
+  headlineSeverityWeights: { mild: 0.5, dramatic: 0.35, shocking: 0.15 },
   /**
    * Background drift applied to players who did NOT receive a headline event.
    * The daily drift is a uniformly random non-zero integer with magnitude in
    * [1, backgroundDriftMax], with a randomly chosen sign.
    */
   backgroundDriftMax: 8,
+  /**
+   * Transparent, bounded recovery at very low approval. This prevents a bad
+   * opening stretch from becoming permanent while still requiring real actions
+   * for a substantial comeback. The recovery is always shown in the feed.
+   */
+  lowApprovalRecovery: {
+    criticalThreshold: 10,
+    criticalDelta: 3,
+    lowThreshold: 25,
+    lowDelta: 2,
+    softThreshold: 35,
+    softDelta: 1,
+  },
   /**
    * Threshold (0–100) at which a mission is considered complete
    * via partial-progress accumulation.
@@ -77,7 +90,7 @@ export const publicOpinionConfig = {
    * Approval deltas continue to apply even when the budget is exhausted;
    * only the feed card is suppressed.
    */
-  feedBudgetPerDay: 3,
+  feedBudgetPerDay: 6,
 
   /**
    * Advisory priority level for each event type (higher = more important).
@@ -168,4 +181,4 @@ export const publicOpinionConfig = {
     /** Boost for the saved player when POS or public-save is used. */
     savedPlayerBoost: 2,
   },
-} as const;
+} as const

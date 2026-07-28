@@ -69,7 +69,7 @@
       "scenarioPolicies": {
         "nominee_hoh_plea": "required",
         "live_vote_pitch": "required",
-        "hoh_congratulations": "readOnly"
+        "hoh_congratulations": "optional"
       }
     },
     "content": {

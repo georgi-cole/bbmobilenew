@@ -104,7 +104,8 @@ function generatedProfile(playerId: string): SocialPersonality {
     gossipPropensity: 0.1 + hashUnit(playerId, 6) * 0.85,
     riskTolerance: 0.15 + hashUnit(playerId, 7) * 0.8,
     forgiveness: 0.15 + hashUnit(playerId, 8) * 0.8,
-    socialEnergy: 0.2 + hashUnit(playerId, 9) * 0.75,
+    // Custom contestants should vary, but never become effectively silent.
+    socialEnergy: 0.4 + hashUnit(playerId, 9) * 0.5,
     deceptionComfort: 0.1 + hashUnit(playerId, 10) * 0.85,
     publicConflictComfort: 0.1 + hashUnit(playerId, 11) * 0.85,
   }

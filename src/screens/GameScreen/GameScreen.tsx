@@ -17,7 +17,11 @@ import {
   submitCoLohNomination,
   resetGame,
 } from '../../store/gameSlice'
-import { completeChallenge, type PendingChallenge } from '../../store/challengeSlice'
+import {
+  completeChallenge,
+  setPendingPhase,
+  type PendingChallenge,
+} from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
 import { setEnergyBankEntry } from '../../social/socialSlice'
 import { useNavigate, useSearchParams } from 'react-router'
@@ -40,7 +44,7 @@ import PressurePlank from '../../components/PressurePlank/PressurePlank'
 import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
 import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
-import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
+import type { HostPhase, MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
@@ -171,6 +175,10 @@ export default function GameScreen() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const handleMinigameHostPhaseChange = useCallback(
+    (hostPhase: HostPhase) => dispatch(setPendingPhase(hostPhase)),
+    [dispatch]
+  )
   const store = useStore<RootState>()
   const gameScreenRef = useRef<HTMLDivElement | null>(null)
   const refinedGameChrome = useRefinedGameChrome()
@@ -1491,6 +1499,7 @@ export default function GameScreen() {
               // Fall back to deriving from current game.phase for backward compatibility.
               prizeType: pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH'),
             }}
+            onPhaseChange={handleMinigameHostPhaseChange}
             competitionRetry={{
               enabled: competitionRetryInResultsEnabled,
               pending: adPending,

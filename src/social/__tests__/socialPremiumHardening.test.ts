@@ -26,7 +26,7 @@ describe('Social premium hardening', () => {
     setRemoteSocialRuntimeConfig(null)
   })
 
-  it('requires entitlement or an admin override and locks normal users to the season snapshot', () => {
+  it('requires entitlement or admin access and activates a new purchase immediately', () => {
     expect(
       getEffectiveSocialMode({
         settings: { gameUX: { dramaMode: true } },
@@ -40,7 +40,7 @@ describe('Social premium hardening', () => {
         settings: { gameUX: { dramaMode: true } },
         vip: { entitlements: { dramaMode: true } },
       })
-    ).toBe('normal')
+    ).toBe('drama')
 
     expect(
       getEffectiveSocialMode({
@@ -82,7 +82,7 @@ describe('Social premium hardening', () => {
     expect(interaction.payload?.modeAtCreation).toBe('drama')
   })
 
-  it('distinguishes required, optional and read-only conversations with legacy fallback', () => {
+  it('keeps congratulations optional while preserving explicit read-only updates', () => {
     const required = createIncomingInteraction({
       id: 'required',
       fromId: 'finn',
@@ -92,8 +92,8 @@ describe('Social premium hardening', () => {
       phase: 'social_1',
       mode: 'normal',
     })
-    const readOnly = createIncomingInteraction({
-      id: 'update',
+    const congratulations = createIncomingInteraction({
+      id: 'congratulations',
       fromId: 'finn',
       type: 'compliment',
       text: 'Good job.',
@@ -102,11 +102,24 @@ describe('Social premium hardening', () => {
       mode: 'normal',
       payload: { scenarioKey: 'hoh_congratulations' },
     })
+    const readOnly = createIncomingInteraction({
+      id: 'read-only',
+      fromId: 'finn',
+      type: 'other',
+      text: 'The house moved on.',
+      week: 1,
+      phase: 'week_start',
+      mode: 'normal',
+      responsePolicy: 'readOnly',
+    })
 
     expect(getIncomingInteractionResponsePolicy(required)).toBe('required')
     expect(required.requiresResponse).toBe(true)
+    expect(getIncomingInteractionResponsePolicy(congratulations)).toBe('optional')
+    expect(congratulations.requiresResponse).toBe(false)
     expect(getIncomingInteractionResponsePolicy(readOnly)).toBe('readOnly')
     expect(readOnly.requiresResponse).toBe(false)
+    expect(readOnly.expiresAtWeek).toBe(1)
     expect(
       getIncomingInteractionResponsePolicy({
         type: 'check_in',

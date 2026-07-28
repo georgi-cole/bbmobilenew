@@ -5,98 +5,106 @@
 // Uses the existing gameSlice actions (launchMinigame, completeMinigame, etc.)
 // and the new minigame registry / scoring modules.
 
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { RootState, AppDispatch } from './store';
-import { mulberry32 } from './rng';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import type { RootState, AppDispatch } from './store'
+import { mulberry32 } from './rng'
 import {
   getCompetitionSeasonState,
   getDefaultCompetitionProfile,
   getMinigameAiModelForGame,
   simulateMinigameAiScore,
-} from '../ai/competition';
-import { selectNextCompetitionGame } from '../ai/competition/scheduling';
+} from '../ai/competition'
+import { selectNextCompetitionGame } from '../ai/competition/scheduling'
+import { getClassicCampaignPoolForContext } from '../ai/competition/bracketTemplate'
+import { applyCompetitionSeasonUpdate, hydrateGame, selectAlivePlayers } from './gameSlice'
 import {
-  getClassicCampaignPoolForContext,
-} from '../ai/competition/bracketTemplate';
-import { applyCompetitionSeasonUpdate, hydrateGame, selectAlivePlayers } from './gameSlice';
-import { pickRandomGame, getGame, getPoolByFilter, supportsPlayerCount } from '../minigames/registry';
-import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
-import { computeScores } from '../minigames/scoring';
-import type { RawResult } from '../minigames/scoring';
-import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice';
-import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock';
+  pickRandomGame,
+  getGame,
+  getPoolByFilter,
+  supportsPlayerCount,
+} from '../minigames/registry'
+import type { GameRegistryEntry, GameCategory } from '../minigames/registry'
+import { computeScores } from '../minigames/scoring'
+import type { RawResult } from '../minigames/scoring'
+import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice'
+import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Simple DJB2 string hash, returns an unsigned 32-bit integer. */
 function hashStringU32(s: string): number {
-  let h = 5381;
+  let h = 5381
   for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    h = ((h << 5) + h + s.charCodeAt(i)) >>> 0
   }
-  return h;
+  return h
 }
 
-function shouldForceTwinShockHintGame(state: RootState, prizeType?: CwgoPrizeType | string): boolean {
-  const game = state.game;
-  const isLohChallenge = prizeType === 'LOH' || (prizeType == null && game.phase === 'loh_comp');
-  return isLohChallenge
-    && game.week === 5
-    && game.twinShockResolution == null
-    && game.players.some((player) => player.id === TWIN_SHOCK_LIA_ID && player.status === 'active');
+function shouldForceTwinShockHintGame(
+  state: RootState,
+  prizeType?: CwgoPrizeType | string
+): boolean {
+  const game = state.game
+  const isLohChallenge = prizeType === 'LOH' || (prizeType == null && game.phase === 'loh_comp')
+  return (
+    isLohChallenge &&
+    game.week === 5 &&
+    game.twinShockResolution == null &&
+    game.players.some((player) => player.id === TWIN_SHOCK_LIA_ID && player.status === 'active')
+  )
 }
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface ChallengeRun {
-  id: string;
-  gameKey: string;
-  seed: number;
-  participants: string[];
+  id: string
+  gameKey: string
+  seed: number
+  participants: string[]
   /** Per-player raw values keyed by player ID. */
-  rawScores: Record<string, number>;
+  rawScores: Record<string, number>
   /** Per-player canonical higher-is-better scores used for ranking; usually 0-1000, but unbounded raw games may exceed it. */
-  canonicalScores: Record<string, number>;
-  winnerId: string;
-  timestamp: number;
+  canonicalScores: Record<string, number>
+  winnerId: string
+  timestamp: number
   /** Whether the winner was determined by the game authoritatively. */
-  authoritative: boolean;
+  authoritative: boolean
   /** True when the human dismissed the challenge before it completed. */
-  partial?: boolean;
+  partial?: boolean
 }
 
 export interface ChallengeState {
   /** Currently pending challenge (shown to UI). */
-  pending: PendingChallenge | null;
+  pending: PendingChallenge | null
   /** Telemetry log of completed runs (for reproducibility). */
-  history: ChallengeRun[];
+  history: ChallengeRun[]
   /** Monotonically-increasing nonce used to differentiate per-invocation seeds. */
-  nextNonce: number;
+  nextNonce: number
   /** Debug overrides. */
   debug: {
-    forceGameKey?: string;
-    forceSeed?: number;
-    skipRules?: boolean;
-    fastForwardCountdown?: boolean;
-  };
+    forceGameKey?: string
+    forceSeed?: number
+    skipRules?: boolean
+    fastForwardCountdown?: boolean
+  }
 }
 
 export interface PendingChallenge {
   /** Unique ID for this challenge invocation. */
-  id: string;
-  game: GameRegistryEntry;
-  seed: number;
-  participants: string[];
-  phase: 'rules' | 'countdown' | 'playing' | 'done';
+  id: string
+  game: GameRegistryEntry
+  seed: number
+  participants: string[]
+  phase: 'rules' | 'countdown' | 'playing' | 'results' | 'done'
   /** Pre-simulated deterministic scores for every non-human participant. */
-  aiScores: Record<string, number>;
+  aiScores: Record<string, number>
   /**
    * Pre-simulated tiebreaker times (ms) for non-human participants.
    * Only populated for games whose AI model defines `tiebreakerMaxMs`.
    * Lower value = faster = better rank when canonical scores are equal.
    */
-  aiTiebreakers?: Record<string, number>;
+  aiTiebreakers?: Record<string, number>
   /** Prize type captured at challenge creation (LOH or POS). */
-  prizeType?: CwgoPrizeType | string;
+  prizeType?: CwgoPrizeType | string
 }
 
 const initialState: ChallengeState = {
@@ -104,11 +112,11 @@ const initialState: ChallengeState = {
   history: [],
   nextNonce: 1,
   debug: {},
-};
+}
 
-const LATE_SEASON_PLAYER_THRESHOLD = 6;
+const LATE_SEASON_PLAYER_THRESHOLD = 6
 // Keep a modest history buffer in case the scheduler window expands.
-const RECENT_HISTORY_LIMIT = 10;
+const RECENT_HISTORY_LIMIT = 10
 
 // ─── Slice ───────────────────────────────────────────────────────────────────
 
@@ -117,40 +125,38 @@ const challengeSlice = createSlice({
   initialState,
   reducers: {
     setPendingChallenge(state, action: PayloadAction<PendingChallenge | null>) {
-      state.pending = action.payload;
+      state.pending = action.payload
     },
 
     setPendingPhase(state, action: PayloadAction<PendingChallenge['phase']>) {
-      if (state.pending) state.pending.phase = action.payload;
+      if (state.pending) state.pending.phase = action.payload
     },
 
     incrementNonce(state) {
-      state.nextNonce = ((state.nextNonce + 1) >>> 0) || 1;
+      state.nextNonce = (state.nextNonce + 1) >>> 0 || 1
     },
 
     recordRun(state, action: PayloadAction<ChallengeRun>) {
       // Keep at most 50 runs for telemetry.
-      state.history = [action.payload, ...state.history].slice(0, 50);
+      state.history = [action.payload, ...state.history].slice(0, 50)
     },
 
     setDebugOverrides(state, action: PayloadAction<ChallengeState['debug']>) {
-      state.debug = { ...state.debug, ...action.payload };
+      state.debug = { ...state.debug, ...action.payload }
     },
 
     clearDebugOverrides(state) {
-      state.debug = {};
+      state.debug = {}
     },
     hydrateChallenge(_state, action: PayloadAction<ChallengeState>) {
-      const restored = action.payload;
+      const restored = action.payload
       return {
         ...restored,
-        pending: restored.pending
-          ? { ...restored.pending, phase: 'rules' as const }
-          : null,
-      };
+        pending: restored.pending ? { ...restored.pending, phase: 'rules' as const } : null,
+      }
     },
   },
-});
+})
 
 export const {
   setPendingChallenge,
@@ -160,15 +166,15 @@ export const {
   setDebugOverrides,
   clearDebugOverrides,
   hydrateChallenge,
-} = challengeSlice.actions;
+} = challengeSlice.actions
 
-export default challengeSlice.reducer;
+export default challengeSlice.reducer
 
 // ─── Selectors ────────────────────────────────────────────────────────────────
 
-export const selectPendingChallenge = (s: RootState) => s.challenge?.pending ?? null;
-export const selectChallengeHistory = (s: RootState) => s.challenge?.history ?? [];
-export const selectChallengeDebug = (s: RootState) => s.challenge?.debug ?? {};
+export const selectPendingChallenge = (s: RootState) => s.challenge?.pending ?? null
+export const selectChallengeHistory = (s: RootState) => s.challenge?.history ?? []
+export const selectChallengeDebug = (s: RootState) => s.challenge?.debug ?? {}
 
 // ─── Thunks ───────────────────────────────────────────────────────────────────
 
@@ -189,91 +195,102 @@ export const startChallenge =
   (
     seed: number,
     participants: string[],
-    opts: { category?: GameCategory; excludeKeys?: string[]; forceGameKey?: string; prizeType?: CwgoPrizeType | string } = {},
+    opts: {
+      category?: GameCategory
+      excludeKeys?: string[]
+      forceGameKey?: string
+      prizeType?: CwgoPrizeType | string
+    } = {}
   ) =>
   (dispatch: AppDispatch, getState: () => RootState): GameRegistryEntry => {
-    const state = getState();
-    const debugState = state.challenge?.debug ?? {};
+    const state = getState()
+    const debugState = state.challenge?.debug ?? {}
 
     // Resolve which game to use.
-    const forceKey = opts.forceGameKey ?? debugState.forceGameKey;
-    const forceSeed = debugState.forceSeed;
-    const gameSeed = forceSeed !== undefined ? forceSeed : seed;
-    const nextNonce = state.challenge?.nextNonce ?? 1;
+    const forceKey = opts.forceGameKey ?? debugState.forceGameKey
+    const forceSeed = debugState.forceSeed
+    const gameSeed = forceSeed !== undefined ? forceSeed : seed
+    const nextNonce = state.challenge?.nextNonce ?? 1
     // Vary game selection by both run and invocation. Using only the season
     // seed made every Survival run follow the same apparent playlist.
-    const selectionSeed = forceSeed !== undefined
-      ? gameSeed
-      : deriveSeed(
-          (gameSeed ^ nextNonce) >>> 0,
-          `${state.game.runId ?? state.game.gameId ?? 'game'}:${nextNonce}`,
-        );
+    const selectionSeed =
+      forceSeed !== undefined
+        ? gameSeed
+        : deriveSeed(
+            (gameSeed ^ nextNonce) >>> 0,
+            `${state.game.runId ?? state.game.gameId ?? 'game'}:${nextNonce}`
+          )
 
-    const allHistoryGameKeys = (state.challenge?.history ?? []).map((run) => run.gameKey);
-    const historyGameKeys = allHistoryGameKeys.slice(0, RECENT_HISTORY_LIMIT);
+    const allHistoryGameKeys = (state.challenge?.history ?? []).map((run) => run.gameKey)
+    const historyGameKeys = allHistoryGameKeys.slice(0, RECENT_HISTORY_LIMIT)
     // Late-season bias is based on active competitors (jury members no longer play comps).
-    const activeCompetitorCount = selectAlivePlayers(state).length;
-    const scheduledPlayerCount = participants.length || activeCompetitorCount;
-    const eligibleForRoster = (game: GameRegistryEntry) => supportsPlayerCount(game, scheduledPlayerCount);
+    const activeCompetitorCount = selectAlivePlayers(state).length
+    const scheduledPlayerCount = participants.length || activeCompetitorCount
+    const eligibleForRoster = (game: GameRegistryEntry) =>
+      supportsPlayerCount(game, scheduledPlayerCount)
     const lateSeasonBias =
-      activeCompetitorCount > 0 && activeCompetitorCount <= LATE_SEASON_PLAYER_THRESHOLD;
+      activeCompetitorCount > 0 && activeCompetitorCount <= LATE_SEASON_PLAYER_THRESHOLD
     const selectFromPool = (pool: GameRegistryEntry[]) =>
       selectNextCompetitionGame({
         seed: selectionSeed,
         games: pool,
         recentGameKeys: historyGameKeys,
         lateSeasonBias,
-      });
+      })
     const pickFromRegistry = (category?: GameCategory, excludeKeys?: string[]) => {
-      const pool = getPoolByFilter({ retired: false, category, excludeKeys }).filter(eligibleForRoster);
-      if (pool.length > 0) return selectFromPool(pool);
-      return pickRandomGame(gameSeed, { category, excludeKeys });
-    };
+      const pool = getPoolByFilter({ retired: false, category, excludeKeys }).filter(
+        eligibleForRoster
+      )
+      if (pool.length > 0) return selectFromPool(pool)
+      return pickRandomGame(gameSeed, { category, excludeKeys })
+    }
     const pickSurvivorGame = (category?: GameCategory, excludeKeys?: string[]) => {
-      const modeSpecific = state.game.modeSpecific?.kind === 'survival'
-        ? state.game.modeSpecific
-        : null;
-      if (!modeSpecific) return pickFromRegistry(category, excludeKeys);
+      const modeSpecific =
+        state.game.modeSpecific?.kind === 'survival' ? state.game.modeSpecific : null
+      if (!modeSpecific) return pickFromRegistry(category, excludeKeys)
 
       // Survivor has its own free-form rotation. The curated Classic campaign
       // map must not constrain it; only retirement, roster safety, explicit
       // exclusions, and an optional category filter apply.
-      const availablePool = getPoolByFilter({ retired: false, excludeKeys })
-        .filter(eligibleForRoster);
+      const availablePool = getPoolByFilter({ retired: false, excludeKeys }).filter(
+        eligibleForRoster
+      )
       const pool = category
         ? availablePool.filter((game) => game.category === category)
-        : availablePool;
-      const selectionPool = pool.length > 0 ? pool : availablePool;
+        : availablePool
+      const selectionPool = pool.length > 0 ? pool : availablePool
       if (selectionPool.length === 0) {
-        throw new Error('[challengeSlice] No non-retired Survival games are available');
+        throw new Error('[challengeSlice] No non-retired Survival games are available')
       }
 
-      const usedKeys = modeSpecific.competitionRotation.usedKeys ?? [];
-      const used = new Set(usedKeys);
-      let available = selectionPool.filter((game) => !used.has(game.key));
-      let nextUsedKeys = usedKeys;
-      let nextRound = modeSpecific.competitionRotation.round ?? 1;
+      const usedKeys = modeSpecific.competitionRotation.usedKeys ?? []
+      const used = new Set(usedKeys)
+      let available = selectionPool.filter((game) => !used.has(game.key))
+      let nextUsedKeys = usedKeys
+      let nextRound = modeSpecific.competitionRotation.round ?? 1
 
       if (available.length === 0) {
-        available = selectionPool;
-        nextUsedKeys = [];
-        nextRound += 1;
+        available = selectionPool
+        nextUsedKeys = []
+        nextRound += 1
       }
 
-      const selected = selectFromPool(available);
-      dispatch(hydrateGame({
-        ...state.game,
-        modeSpecific: {
-          ...modeSpecific,
-          competitionRotation: {
-            usedKeys: [...nextUsedKeys, selected.key],
-            round: nextRound,
+      const selected = selectFromPool(available)
+      dispatch(
+        hydrateGame({
+          ...state.game,
+          modeSpecific: {
+            ...modeSpecific,
+            competitionRotation: {
+              usedKeys: [...nextUsedKeys, selected.key],
+              round: nextRound,
+            },
           },
-        },
-        lastPlayedAt: Date.now(),
-      }));
-      return selected;
-    };
+          lastPlayedAt: Date.now(),
+        })
+      )
+      return selected
+    }
     const getBracketTemplatePool = (excludeKeys?: string[]) => {
       const isFinal3Competition =
         state.game.phase === 'final3_comp1' ||
@@ -281,97 +298,102 @@ export const startChallenge =
         state.game.phase === 'final3_comp2' ||
         state.game.phase === 'final3_comp2_minigame' ||
         state.game.phase === 'final3_comp3' ||
-        state.game.phase === 'final3_comp3_minigame';
+        state.game.phase === 'final3_comp3_minigame'
       const bracketCompType =
         opts.prizeType === 'LOH' || opts.prizeType === 'POS'
           ? opts.prizeType
           : isFinal3Competition
             ? 'LOH'
-            : undefined;
-      if (!bracketCompType) return [];
+            : undefined
+      if (!bracketCompType) return []
 
       const bracketPlayerCount =
-        activeCompetitorCount > 0 ? activeCompetitorCount : participants.length;
+        activeCompetitorCount > 0 ? activeCompetitorCount : participants.length
       const bracketKeys = getClassicCampaignPoolForContext({
         day: state.game.week,
         playerCount: bracketPlayerCount,
         compType: bracketCompType,
         phase: state.game.phase,
-      });
-      if (bracketKeys.length === 0) return [];
+      })
+      if (bracketKeys.length === 0) return []
 
-      const excluded = new Set(excludeKeys ?? []);
+      const excluded = new Set(excludeKeys ?? [])
       return bracketKeys
         .map((k) => getGame(k))
-        .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && !excluded.has(g.key) && eligibleForRoster(g));
-    };
+        .filter(
+          (g): g is GameRegistryEntry =>
+            g !== undefined && !g.retired && !excluded.has(g.key) && eligibleForRoster(g)
+        )
+    }
 
-    let gameEntry: GameRegistryEntry;
+    let gameEntry: GameRegistryEntry
     if (forceKey) {
-      const found = getGame(forceKey);
-      if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`);
-      gameEntry = found;
+      const found = getGame(forceKey)
+      if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`)
+      gameEntry = found
     } else if (state.game.mode === 'survival') {
-      gameEntry = pickSurvivorGame(opts.category, opts.excludeKeys);
+      gameEntry = pickSurvivorGame(opts.category, opts.excludeKeys)
     } else {
       // Remote live-config weekly mode takes priority over user settings.
-      const remoteChallenge = state.remoteConfig?.config?.challenge;
+      const remoteChallenge = state.remoteConfig?.config?.challenge
       // Consult the saved Comp Selection setting as a fallback.
-      const compSel = state.settings?.gameUX?.compSelection;
-      const mode = remoteChallenge?.weeklyMode ?? compSel?.mode ?? 'unique';
+      const compSel = state.settings?.gameUX?.compSelection
+      const mode = remoteChallenge?.weeklyMode ?? compSel?.mode ?? 'unique'
 
       switch (mode) {
         case 'single-game': {
           // Remote key takes priority over the user's selectedGameId.
-          const key = remoteChallenge?.weeklyGameKey ?? compSel?.selectedGameId;
-          const found = key ? getGame(key) : undefined;
+          const key = remoteChallenge?.weeklyGameKey ?? compSel?.selectedGameId
+          const found = key ? getGame(key) : undefined
           if (found && eligibleForRoster(found)) {
-            gameEntry = found;
+            gameEntry = found
           } else {
             // Unknown or missing key — fall back to random selection.
-            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
           }
-          break;
+          break
         }
 
         case 'user-selection': {
           // Remote weeklyGameKeys pool takes priority over the user's selectedGameIds.
-          const keys = remoteChallenge?.weeklyGameKeys ?? compSel?.selectedGameIds ?? [];
+          const keys = remoteChallenge?.weeklyGameKeys ?? compSel?.selectedGameIds ?? []
           const pool = keys
             .map((k) => getGame(k))
-            .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired && eligibleForRoster(g));
+            .filter(
+              (g): g is GameRegistryEntry => g !== undefined && !g.retired && eligibleForRoster(g)
+            )
           if (pool.length > 0) {
-            gameEntry = selectFromPool(pool);
+            gameEntry = selectFromPool(pool)
           } else {
-            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
           }
-          break;
+          break
         }
 
         case 'arcade-only':
-          gameEntry = pickFromRegistry('arcade', opts.excludeKeys);
-          break;
+          gameEntry = pickFromRegistry('arcade', opts.excludeKeys)
+          break
 
         case 'trivia-only':
-          gameEntry = pickFromRegistry('trivia', opts.excludeKeys);
-          break;
+          gameEntry = pickFromRegistry('trivia', opts.excludeKeys)
+          break
 
         case 'endurance-only':
-          gameEntry = pickFromRegistry('endurance', opts.excludeKeys);
-          break;
+          gameEntry = pickFromRegistry('endurance', opts.excludeKeys)
+          break
 
         case 'logic-only':
-          gameEntry = pickFromRegistry('logic', opts.excludeKeys);
-          break;
+          gameEntry = pickFromRegistry('logic', opts.excludeKeys)
+          break
 
         case 'retired': {
-          const retiredPool = getPoolByFilter({ retired: true });
+          const retiredPool = getPoolByFilter({ retired: true })
           if (retiredPool.length > 0) {
-            gameEntry = selectFromPool(retiredPool);
+            gameEntry = selectFromPool(retiredPool)
           } else {
-            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
           }
-          break;
+          break
         }
 
         case 'misc': {
@@ -381,98 +403,107 @@ export const startChallenge =
           // back to the standard scheduler-based selection via pickFromRegistry.
           // Future registry expansions that add uncategorised entries should filter
           // them here with getPoolByFilter instead of using the scheduler.
-          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
-          break;
+          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
+          break
         }
 
         case 'unique': {
-          const recentKeys = new Set(historyGameKeys);
-          const seasonUsedKeys = new Set(allHistoryGameKeys);
-          const bracketPool = getBracketTemplatePool(opts.excludeKeys);
+          const recentKeys = new Set(historyGameKeys)
+          const seasonUsedKeys = new Set(allHistoryGameKeys)
+          const bracketPool = getBracketTemplatePool(opts.excludeKeys)
           // Classic campaign selection is without replacement across both LOH
           // and POS. Only repeat after every game in the current eligible pool
           // has already appeared this season.
-          const uniqueBracketPool = bracketPool.filter((game) => !seasonUsedKeys.has(game.key));
+          const uniqueBracketPool = bracketPool.filter((game) => !seasonUsedKeys.has(game.key))
           if (uniqueBracketPool.length > 0) {
-            gameEntry = selectFromPool(uniqueBracketPool);
-            break;
+            gameEntry = selectFromPool(uniqueBracketPool)
+            break
           }
           if (bracketPool.length > 0) {
-            gameEntry = selectFromPool(bracketPool);
-            break;
+            gameEntry = selectFromPool(bracketPool)
+            break
           }
 
-          const exclude = Array.from(new Set([...recentKeys, ...(opts.excludeKeys ?? [])]));
+          const exclude = Array.from(new Set([...recentKeys, ...(opts.excludeKeys ?? [])]))
           const uniquePool = getPoolByFilter({
             retired: false,
             category: opts.category,
             excludeKeys: exclude,
-          }).filter(eligibleForRoster);
+          }).filter(eligibleForRoster)
           if (uniquePool.length > 0) {
-            gameEntry = selectFromPool(uniquePool);
+            gameEntry = selectFromPool(uniquePool)
           } else {
-            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
           }
-          break;
+          break
         }
 
         case 'bracket-template': {
-          const bracketPool = getBracketTemplatePool(opts.excludeKeys);
+          const bracketPool = getBracketTemplatePool(opts.excludeKeys)
           if (bracketPool.length > 0) {
-            const seasonUsedKeys = new Set(allHistoryGameKeys);
-            const unusedPool = bracketPool.filter((game) => !seasonUsedKeys.has(game.key));
-            gameEntry = selectFromPool(unusedPool.length > 0 ? unusedPool : bracketPool);
-            break;
+            const seasonUsedKeys = new Set(allHistoryGameKeys)
+            const unusedPool = bracketPool.filter((game) => !seasonUsedKeys.has(game.key))
+            gameEntry = selectFromPool(unusedPool.length > 0 ? unusedPool : bracketPool)
+            break
           }
-          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
-          break;
+          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
+          break
         }
 
         case 'random-games':
         default:
-          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
-          break;
+          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
+          break
       }
     }
 
     if (shouldForceTwinShockHintGame(state, opts.prizeType)) {
-      const twinHintGame = getGame('castleRescue');
-      if (twinHintGame) gameEntry = twinHintGame;
+      const twinHintGame = getGame('castleRescue')
+      if (twinHintGame) gameEntry = twinHintGame
     }
     // Derive a per-challenge seed from the base seed + game key hash.
-    const challengeSeed = deriveSeed(gameSeed, gameEntry.key);
+    const challengeSeed = deriveSeed(gameSeed, gameEntry.key)
 
     // Derive a per-invocation seed so repeated challenges with the same base
     // seed (same week) still get varied question order / AI behaviour.
     // debug.forceSeed bypasses this for reproducibility.
-    const perChallengeSeed = forceSeed !== undefined
-      ? challengeSeed
-      : ((mulberry32((challengeSeed ^ nextNonce) >>> 0)() * 0x100000000) >>> 0);
-    dispatch(incrementNonce());
+    const perChallengeSeed =
+      forceSeed !== undefined
+        ? challengeSeed
+        : (mulberry32((challengeSeed ^ nextNonce) >>> 0)() * 0x100000000) >>> 0
+    dispatch(incrementNonce())
 
-    const latestState = getState();
-    const gameState = latestState.game;
-    const resolvedParticipants = gameState.mode === 'survival'
-      ? selectAlivePlayers(latestState)
-        .slice(0, gameState.modeSpecific?.kind === 'survival' ? gameState.modeSpecific.startingCastSize : 8)
-        .map((player) => player.id)
-      : participants;
+    const latestState = getState()
+    const gameState = latestState.game
+    const resolvedParticipants =
+      gameState.mode === 'survival'
+        ? selectAlivePlayers(latestState)
+            .slice(
+              0,
+              gameState.modeSpecific?.kind === 'survival'
+                ? gameState.modeSpecific.startingCastSize
+                : 8
+            )
+            .map((player) => player.id)
+        : participants
 
-    const isLohChallenge = opts.prizeType === 'LOH' || (opts.prizeType == null && gameState.phase === 'loh_comp');
+    const isLohChallenge =
+      opts.prizeType === 'LOH' || (opts.prizeType == null && gameState.phase === 'loh_comp')
     const eligibleParticipants =
       isLohChallenge && gameState.prevHohId
         ? resolvedParticipants.filter((id) => id !== gameState.prevHohId)
-        : resolvedParticipants;
-    const finalParticipants = eligibleParticipants.length > 0 ? eligibleParticipants : resolvedParticipants;
+        : resolvedParticipants
+    const finalParticipants =
+      eligibleParticipants.length > 0 ? eligibleParticipants : resolvedParticipants
 
     // Pre-compute AI scores for all non-human participants.
-    const humanId = gameState?.players?.find((p) => p.isUser)?.id;
-    const aiScores: Record<string, number> = {};
-    const minigameModel = getMinigameAiModelForGame(gameEntry);
-    const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined;
+    const humanId = gameState?.players?.find((p) => p.isUser)?.id
+    const aiScores: Record<string, number> = {}
+    const minigameModel = getMinigameAiModelForGame(gameEntry)
+    const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined
     finalParticipants.forEach((pid, index) => {
       if (pid !== humanId) {
-        const player = gameState?.players?.find((p) => p.id === pid);
+        const player = gameState?.players?.find((p) => p.id === pid)
         aiScores[pid] = simulateMinigameAiScore({
           gameKey: gameEntry.key,
           minigameModel,
@@ -480,39 +511,40 @@ export const startChallenge =
           playerId: pid,
           participantIndex: index,
           profile: player?.competitionProfile ?? getDefaultCompetitionProfile(),
-          seasonState: getCompetitionSeasonState(
-            gameState?.competitionSeasonStateByPlayerId,
-            pid,
-          ),
+          seasonState: getCompetitionSeasonState(gameState?.competitionSeasonStateByPlayerId, pid),
           timeLimitMs,
           timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
-        });
+        })
       }
-    });
+    })
 
     // Pre-compute AI tiebreakers for games whose model defines tiebreakerMaxMs.
     // Better score → shorter simulated elapsed time; includes minor RNG jitter.
-    let aiTiebreakers: Record<string, number> | undefined;
+    let aiTiebreakers: Record<string, number> | undefined
     if (typeof minigameModel.tiebreakerMaxMs === 'number' && minigameModel.tiebreakerMaxMs > 0) {
-      const minScore = minigameModel.minScore ?? 0;
-      const maxScore = minigameModel.maxScore ?? 100;
-      const scoreRange = Math.max(1, maxScore - minScore);
-      const maxMs = minigameModel.tiebreakerMaxMs;
-      aiTiebreakers = {};
+      const minScore = minigameModel.minScore ?? 0
+      const maxScore = minigameModel.maxScore ?? 100
+      const scoreRange = Math.max(1, maxScore - minScore)
+      const maxMs = minigameModel.tiebreakerMaxMs
+      aiTiebreakers = {}
       finalParticipants.forEach((pid) => {
-        if (pid === humanId || aiScores[pid] == null) return;
+        if (pid === humanId || aiScores[pid] == null) return
         // Seed the jitter RNG differently from the score RNG by XOR-ing a fixed salt.
-        const rng = mulberry32(((perChallengeSeed >>> 0) ^ (hashStringU32(pid) ^ 0xbeef_cafe)) >>> 0);
-        const normalizedScore = Math.max(0, Math.min(1, (aiScores[pid] - minScore) / scoreRange));
+        const rng = mulberry32(
+          ((perChallengeSeed >>> 0) ^ (hashStringU32(pid) ^ 0xbeef_cafe)) >>> 0
+        )
+        const normalizedScore = Math.max(0, Math.min(1, (aiScores[pid] - minScore) / scoreRange))
         // jitter in [-0.1, +0.1] of maxMs
-        const jitter = (rng() - 0.5) * 0.2 * maxMs;
+        const jitter = (rng() - 0.5) * 0.2 * maxMs
         // Better score → fraction closer to 0.15 (fast); worse score → closer to 0.95 (slow)
-        const fraction = 0.15 + (1 - normalizedScore) * 0.8;
-        aiTiebreakers![pid] = Math.round(Math.max(maxMs * 0.05, Math.min(maxMs * 0.99, fraction * maxMs + jitter)));
-      });
+        const fraction = 0.15 + (1 - normalizedScore) * 0.8
+        aiTiebreakers![pid] = Math.round(
+          Math.max(maxMs * 0.05, Math.min(maxMs * 0.99, fraction * maxMs + jitter))
+        )
+      })
     }
 
-    const id = `challenge-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const id = `challenge-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const pending: PendingChallenge = {
       id,
       game: gameEntry,
@@ -522,11 +554,11 @@ export const startChallenge =
       aiScores,
       aiTiebreakers,
       prizeType: opts.prizeType,
-    };
+    }
 
-    dispatch(setPendingChallenge(pending));
-    return gameEntry;
-  };
+    dispatch(setPendingChallenge(pending))
+    return gameEntry
+  }
 
 /**
  * Complete the current challenge with the raw results from each participant.
@@ -538,32 +570,31 @@ export const completeChallenge =
   (
     rawResults: RawResult[],
     options?: {
-      authoritativeWinnerId?: string | null;
-      partial?: boolean;
-    },
+      authoritativeWinnerId?: string | null
+      partial?: boolean
+    }
   ) =>
   (dispatch: AppDispatch, getState: () => RootState): string | null => {
-    const state = getState();
-    const pending = state.challenge?.pending;
-    if (!pending) return null;
+    const state = getState()
+    const pending = state.challenge?.pending
+    if (!pending) return null
 
-    const { game, seed, participants } = pending;
+    const { game, seed, participants } = pending
 
-    const ranked = computeScores(game.scoringAdapter, rawResults, game.scoringParams ?? {});
+    const ranked = computeScores(game.scoringAdapter, rawResults, game.scoringParams ?? {})
 
-    const canonicalScores: Record<string, number> = {};
-    for (const r of ranked) canonicalScores[r.playerId] = r.score;
+    const canonicalScores: Record<string, number> = {}
+    for (const r of ranked) canonicalScores[r.playerId] = r.score
 
     // Guard: prefer a winner with a positive canonical score. If all scored <= 0,
     // fall back to the first ranked entry, then the first participant.
-    const positiveWinner = ranked.find((r) => r.score > 0);
-    const winner = positiveWinner ?? ranked[0];
+    const positiveWinner = ranked.find((r) => r.score > 0)
+    const winner = positiveWinner ?? ranked[0]
     const explicitWinnerId =
-      options?.authoritativeWinnerId &&
-      participants.includes(options.authoritativeWinnerId)
+      options?.authoritativeWinnerId && participants.includes(options.authoritativeWinnerId)
         ? options.authoritativeWinnerId
-        : null;
-    const winnerId = explicitWinnerId ?? winner?.playerId ?? participants[0] ?? '';
+        : null
+    const winnerId = explicitWinnerId ?? winner?.playerId ?? participants[0] ?? ''
 
     const run: ChallengeRun = {
       id: pending.id,
@@ -576,9 +607,9 @@ export const completeChallenge =
       timestamp: Date.now(),
       authoritative: explicitWinnerId !== null || winner?.authoritativeWinner === true,
       partial: options?.partial === true,
-    };
+    }
 
-    dispatch(recordRun(run));
+    dispatch(recordRun(run))
     if (explicitWinnerId) {
       // An authoritative React minigame winner may not align with the generic
       // challenge-score ranking, so apply only the winner boost here and avoid
@@ -588,8 +619,8 @@ export const completeChallenge =
           participants,
           winnerId,
           includePlacementBonuses: false,
-        }),
-      );
+        })
+      )
     } else {
       dispatch(
         applyCompetitionSeasonUpdate({
@@ -597,21 +628,21 @@ export const completeChallenge =
           scores: canonicalScores,
           winnerId,
           includePlacementBonuses: true,
-        }),
-      );
+        })
+      )
     }
-    dispatch(setPendingChallenge(null));
+    dispatch(setPendingChallenge(null))
 
-    return winnerId;
-  };
+    return winnerId
+  }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Derive a deterministic seed from a base seed and a string key. */
 function deriveSeed(base: number, key: string): number {
-  let hash = base;
+  let hash = base
   for (let i = 0; i < key.length; i++) {
-    hash = (Math.imul(hash ^ key.charCodeAt(i), 0x9e3779b9) >>> 0);
+    hash = Math.imul(hash ^ key.charCodeAt(i), 0x9e3779b9) >>> 0
   }
-  return mulberry32(hash)() * 0x100000000 >>> 0;
+  return (mulberry32(hash)() * 0x100000000) >>> 0
 }

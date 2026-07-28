@@ -9,6 +9,7 @@ export interface SeasonRecapHighlight {
   stamp: string
   player: Player
   importance: number
+  storyType: 'audience-love' | 'audience-shock' | 'competition' | 'survival'
 }
 
 function totalCompetitionWins(player: Player): number {
@@ -17,12 +18,6 @@ function totalCompetitionWins(player: Player): number {
 
 function nominationCount(player: Player): number {
   return player.stats?.timesNominated ?? 0
-}
-
-function conciseStamp(delta: number): string {
-  if (delta > 0) return `+${Math.round(delta)} approval`
-  if (delta < 0) return `${Math.round(delta)} approval`
-  return 'Audience headline'
 }
 
 function buildPublicOpinionHighlights(
@@ -37,13 +32,18 @@ function buildPublicOpinionHighlights(
       const player = playersById.get(item.playerId)
       if (!player) return null
       const delta = typeof item.delta === 'number' && Number.isFinite(item.delta) ? item.delta : 0
+      const positive = delta >= 0
+
       return {
         id: `public-${item.id}`,
-        eyebrow: `Week ${Math.max(1, Math.round(item.week))} · Public reaction`,
-        title: player.name,
+        eyebrow: positive ? 'The audience leaned in' : 'The mood in the house shifted',
+        title: positive
+          ? `${player.name} became part of the season.`
+          : `${player.name} changed the conversation.`,
         caption: item.text.trim(),
-        stamp: conciseStamp(delta),
+        stamp: positive ? 'A crowd-favorite moment' : 'A moment nobody ignored',
         player,
+        storyType: positive ? 'audience-love' : 'audience-shock',
         importance: Math.abs(delta) * 100 + (item.timestamp ?? 0) / 1_000_000_000_000,
       }
     })
@@ -59,11 +59,12 @@ function buildStatHighlights(players: Player[]): SeasonRecapHighlight[] {
     if (wins > 0) {
       highlights.push({
         id: `wins-${player.id}`,
-        eyebrow: 'Competition record',
-        title: player.name,
-        caption: `${player.name} recorded ${wins} competition ${wins === 1 ? 'win' : 'wins'} during the season.`,
-        stamp: `${wins} ${wins === 1 ? 'win' : 'wins'}`,
+        eyebrow: 'When the pressure rose',
+        title: `${player.name} kept finding another gear.`,
+        caption: 'Again and again, the biggest moments seemed to bring out their best game.',
+        stamp: 'The competitor story',
         player,
+        storyType: 'competition',
         importance: wins * 100 + 20,
       })
     }
@@ -71,11 +72,13 @@ function buildStatHighlights(players: Player[]): SeasonRecapHighlight[] {
     if (nominations > 0) {
       highlights.push({
         id: `nominations-${player.id}`,
-        eyebrow: 'Season record',
-        title: player.name,
-        caption: `${player.name} faced nomination ${nominations} ${nominations === 1 ? 'time' : 'times'} before the final decision.`,
-        stamp: `${nominations} ${nominations === 1 ? 'nomination' : 'nominations'}`,
+        eyebrow: 'The block never finished the story',
+        title: `${player.name} refused to disappear.`,
+        caption:
+          'Every time the season pushed them toward the door, they found a reason to stay in the story.',
+        stamp: 'The survival story',
         player,
+        storyType: 'survival',
         importance: nominations * 45,
       })
     }
@@ -85,14 +88,13 @@ function buildStatHighlights(players: Player[]): SeasonRecapHighlight[] {
 }
 
 /**
- * Builds truthful recap chapters from events already recorded by the season.
- * Public headlines are preferred; statistical records fill only missing slots.
- * No synthetic incident or pre-authored story is introduced here.
+ * Selects a small editorial montage from recorded season material. Raw deltas,
+ * vote values, and stat counts are intentionally kept out of viewer-facing copy.
  */
 export function buildSeasonRecapHighlights(
   players: Player[],
   publicOpinion?: PublicOpinionState | null,
-  limit = 3
+  limit = 2
 ): SeasonRecapHighlight[] {
   if (limit <= 0 || players.length === 0) return []
 
@@ -103,14 +105,14 @@ export function buildSeasonRecapHighlights(
   ].sort((left, right) => right.importance - left.importance || left.id.localeCompare(right.id))
 
   const selected: SeasonRecapHighlight[] = []
-  const usedIds = new Set<string>()
-  const usedCaptions = new Set<string>()
+  const usedPlayerIds = new Set<string>()
+  const usedStoryTypes = new Set<SeasonRecapHighlight['storyType']>()
 
   for (const candidate of candidates) {
     if (selected.length >= limit) break
-    if (usedIds.has(candidate.id) || usedCaptions.has(candidate.caption)) continue
-    usedIds.add(candidate.id)
-    usedCaptions.add(candidate.caption)
+    if (usedPlayerIds.has(candidate.player.id) || usedStoryTypes.has(candidate.storyType)) continue
+    usedPlayerIds.add(candidate.player.id)
+    usedStoryTypes.add(candidate.storyType)
     selected.push(candidate)
   }
 

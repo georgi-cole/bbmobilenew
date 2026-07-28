@@ -147,10 +147,10 @@ export const DEFAULT_SOCIAL_RUNTIME_CONFIG: SocialRuntimeConfig = {
       live_vote_pitch: 'required',
       hoh_safety_request: 'required',
       nomination_aftershock: 'optional',
-      post_veto_gratitude: 'readOnly',
-      survivor_gratitude: 'readOnly',
-      safety_win_congratulations: 'readOnly',
-      hoh_congratulations: 'readOnly',
+      post_veto_gratitude: 'optional',
+      survivor_gratitude: 'optional',
+      safety_win_congratulations: 'optional',
+      hoh_congratulations: 'optional',
     },
   },
   content: {
@@ -519,6 +519,13 @@ export function getIncomingInteractionResponsePolicy(
   // Backward compatibility for saves created before responsePolicy existed.
   if (interaction.requiresResponse) return 'required'
   return runtimeConfig.incoming.defaultPolicies[interaction.type] ?? 'optional'
+}
+
+/** Read-only house notes never consume actionable conversation capacity. */
+export function isIncomingInteractionActionable(
+  interaction: Pick<IncomingInteraction, 'type' | 'payload' | 'requiresResponse'>
+): boolean {
+  return getIncomingInteractionResponsePolicy(interaction) !== 'readOnly'
 }
 
 export function getFamilyGroupId(playerId: string): string | null {

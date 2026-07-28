@@ -1,6 +1,12 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import type { RootState } from './store'
 import type { CompSelectionPayload } from '../components/compSelectionUtils'
+import type { MusicConfigOverrides } from '../services/sound/musicConfig'
+import type { MusicTrackAssetOverride } from '../services/sound/musicCatalog'
+import {
+  sanitiseMusicConfigOverrides,
+  sanitiseMusicTrackAssetOverrides,
+} from '../services/sound/musicConfigSanitizer'
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1'
 
@@ -12,6 +18,10 @@ export interface SettingsState {
     sfxOn: boolean
     musicVolume: number // 0–1
     sfxVolume: number // 0–1
+    /** Local Advanced Settings layer. Bundled defaults and server config remain separate. */
+    musicConfigOverrides: MusicConfigOverrides
+    /** Optional local URL overrides for semantic tracks. */
+    musicTrackAssets: MusicTrackAssetOverride[]
   }
   display: {
     themePreset: ThemePreset
@@ -101,6 +111,15 @@ function normalizeCompSelection(
   return merged
 }
 
+function normalizeAudio(audio?: Partial<SettingsState['audio']>): SettingsState['audio'] {
+  return {
+    ...DEFAULT_SETTINGS.audio,
+    ...(audio ?? {}),
+    musicConfigOverrides: sanitiseMusicConfigOverrides(audio?.musicConfigOverrides),
+    musicTrackAssets: sanitiseMusicTrackAssetOverrides(audio?.musicTrackAssets),
+  }
+}
+
 function normalizeGameUX(gameUX?: Partial<SettingsState['gameUX']>): SettingsState['gameUX'] {
   const legacyCompactRosterLayout = (gameUX as { compactRosterLayout?: unknown } | undefined)
     ?.compactRosterLayout
@@ -118,6 +137,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
     sfxOn: true,
     musicVolume: 0.7,
     sfxVolume: 0.8,
+    musicConfigOverrides: {},
+    musicTrackAssets: [],
   },
   display: {
     themePreset: 'midnight',
@@ -189,7 +210,7 @@ export function loadSettings(): SettingsState {
       : {}
     const mergedSim = { ...DEFAULT_SETTINGS.sim, ...normalizedSim }
     return {
-      audio: { ...DEFAULT_SETTINGS.audio, ...parsed.audio },
+      audio: normalizeAudio(parsed.audio),
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
       gameUX: mergedGameUX,
       sim: mergedSim,
@@ -223,7 +244,26 @@ const settingsSlice = createSlice({
   initialState: DEFAULT_SETTINGS,
   reducers: {
     setAudio(state, action: PayloadAction<Partial<SettingsState['audio']>>) {
-      Object.assign(state.audio, action.payload)
+      const { musicConfigOverrides, musicTrackAssets, ...scalarAudio } = action.payload
+      Object.assign(state.audio, scalarAudio)
+      if (musicConfigOverrides !== undefined) {
+        state.audio.musicConfigOverrides = sanitiseMusicConfigOverrides(musicConfigOverrides)
+      }
+      if (musicTrackAssets !== undefined) {
+        state.audio.musicTrackAssets = sanitiseMusicTrackAssetOverrides(musicTrackAssets)
+      }
+    },
+    setMusicConfigOverrides(state, action: PayloadAction<MusicConfigOverrides>) {
+      state.audio.musicConfigOverrides = sanitiseMusicConfigOverrides(action.payload)
+    },
+    resetMusicConfigOverrides(state) {
+      state.audio.musicConfigOverrides = {}
+    },
+    setMusicTrackAssets(state, action: PayloadAction<MusicTrackAssetOverride[]>) {
+      state.audio.musicTrackAssets = sanitiseMusicTrackAssetOverrides(action.payload)
+    },
+    resetMusicTrackAssets(state) {
+      state.audio.musicTrackAssets = []
     },
     setDisplay(state, action: PayloadAction<Partial<SettingsState['display']>>) {
       Object.assign(state.display, action.payload)
@@ -245,7 +285,7 @@ const settingsSlice = createSlice({
     },
     importSettings(_state, action: PayloadAction<SettingsState>) {
       return {
-        audio: { ...DEFAULT_SETTINGS.audio, ...action.payload.audio },
+        audio: normalizeAudio(action.payload.audio),
         display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },
         gameUX: normalizeGameUX(action.payload.gameUX),
         sim: { ...DEFAULT_SETTINGS.sim, ...action.payload.sim },
@@ -255,8 +295,19 @@ const settingsSlice = createSlice({
   },
 })
 
-export const { setAudio, setDisplay, setGameUX, setSim, setVisual, resetSettings, importSettings } =
-  settingsSlice.actions
+export const {
+  setAudio,
+  setMusicConfigOverrides,
+  resetMusicConfigOverrides,
+  setMusicTrackAssets,
+  resetMusicTrackAssets,
+  setDisplay,
+  setGameUX,
+  setSim,
+  setVisual,
+  resetSettings,
+  importSettings,
+} = settingsSlice.actions
 
 export const selectSettings = (state: RootState) => state.settings
 

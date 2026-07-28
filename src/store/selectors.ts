@@ -6,7 +6,10 @@
 import { createSelector } from '@reduxjs/toolkit'
 import type { RootState } from './store'
 import { selectActiveConfessionalDecision } from './confessionalDecisionSelectors'
-import { getSocialModuleAvailability } from '../social/socialModuleAvailability'
+import {
+  getIncomingSocialModuleAvailability,
+  getSocialModuleAvailability,
+} from '../social/socialModuleAvailability'
 
 /**
  * True when the game is blocked on a human decision or a mandatory cinematic:
@@ -96,6 +99,15 @@ export const selectHumanIsActive = (state: RootState): boolean => {
 /** True when the human player is in the house and the current phase permits social modules. */
 export const selectHumanCanUseSocialModules = (state: RootState): boolean =>
   getSocialModuleAvailability(state.game).canOpen
+
+/** Incoming messages stay available during vote and result windows. */
+export const selectHumanCanUseIncomingSocialModule = (state: RootState): boolean =>
+  getIncomingSocialModuleAvailability(state.game).canOpen
+
+export const selectIncomingSocialModuleAvailability = createSelector(
+  [(state: RootState) => state.game],
+  (game) => getIncomingSocialModuleAvailability(game)
+)
 
 /** Debug metadata explaining why a social module can or cannot open. */
 export const selectSocialModuleAvailability = createSelector(

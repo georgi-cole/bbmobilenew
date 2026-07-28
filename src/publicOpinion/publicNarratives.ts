@@ -95,8 +95,8 @@ const NARRATIVE_VARIANTS = {
     'A viral clip dropped and the crowd reaction has been overwhelmingly warm.',
     'Fan accounts are going wild. The support this week has been genuinely extraordinary.',
     'The viewers latched onto that moment and sent approval through the roof.',
-    'A crowd-pleasing move just became the season\'s most-discussed beat.',
-    'Redemption arcs are the internet\'s favorite thing right now, and this one is no exception.',
+    "A crowd-pleasing move just became the season's most-discussed beat.",
+    "Redemption arcs are the internet's favorite thing right now, and this one is no exception.",
     'The public has spoken and it is extremely loud in the right direction.',
     'Underdog energy is magnetic, and the audience just proved it with a massive swell of support.',
     'That wholesome exchange made the highlight reel and fans are absolutely here for it.',
@@ -123,8 +123,23 @@ const NARRATIVE_VARIANTS = {
     'A bombshell just dropped and the reaction threads are moving at light speed.',
     'That moment will be dissected for weeks. The audience cannot look away.',
     'The entire fan base seems to be picking sides and neither camp is quiet about it.',
-    'A wildcard play just reshuffled the public\'s entire read on this season.',
+    "A wildcard play just reshuffled the public's entire read on this season.",
     'Nobody expected that energy and the internet rewarded the surprise with full attention.',
+  ],
+  high_quality_social_play: [
+    'A composed social move made the player look more connected and in control.',
+    'Viewers responded well to a relationship-building move that felt genuine.',
+    'A strong social read translated into a modest gain with the audience.',
+  ],
+  poor_social_play: [
+    'A social move landed awkwardly and cost a little public confidence.',
+    'Viewers read that exchange as forced rather than convincing.',
+    'The interaction did not land, and the audience noticed the misread.',
+  ],
+  audience_reconsideration: [
+    'After a rough stretch, part of the audience is beginning to reconsider.',
+    'The initial backlash is cooling and a small recovery is taking hold.',
+    'A few viewers are giving this storyline another chance.',
   ],
   generic_positive: [
     'The audience is warming up a little more than expected.',
@@ -143,9 +158,9 @@ const NARRATIVE_VARIANTS = {
     'The mood stayed mostly steady on that one.',
     'Viewers noticed it, but they did not exactly gasp.',
   ],
-} as const;
+} as const
 
-type NarrativeKey = keyof typeof NARRATIVE_VARIANTS;
+type NarrativeKey = keyof typeof NARRATIVE_VARIANTS
 
 const REASON_ALIASES: Record<string, NarrativeKey> = {
   hoh_win: 'hoh_win',
@@ -167,33 +182,36 @@ const REASON_ALIASES: Record<string, NarrativeKey> = {
   headline_positive: 'headline_positive',
   headline_negative: 'headline_negative',
   headline_drama: 'headline_drama',
-};
+  high_quality_social_play: 'high_quality_social_play',
+  poor_social_play: 'poor_social_play',
+  audience_reconsideration: 'audience_reconsideration',
+}
 
 function hashString(text: string): number {
-  let hash = 0;
+  let hash = 0
   for (let charIndex = 0; charIndex < text.length; charIndex += 1) {
-    hash = (hash * 31 + text.charCodeAt(charIndex)) | 0;
+    hash = (hash * 31 + text.charCodeAt(charIndex)) | 0
   }
-  return Math.abs(hash);
+  return Math.abs(hash)
 }
 
 function resolveNarrativeKey(reason: string, delta: number): NarrativeKey {
-  const aliased = REASON_ALIASES[reason];
-  if (aliased) return aliased;
-  if (delta > 0) return 'generic_positive';
-  if (delta < 0) return 'generic_negative';
-  return 'generic_neutral';
+  const aliased = REASON_ALIASES[reason]
+  if (aliased) return aliased
+  if (delta > 0) return 'generic_positive'
+  if (delta < 0) return 'generic_negative'
+  return 'generic_neutral'
 }
 
 export function createPublicNarrative(params: {
-  reason: string;
-  playerId: string;
-  delta: number;
-  week: number;
+  reason: string
+  playerId: string
+  delta: number
+  week: number
 }): string {
-  const { reason, playerId, delta, week } = params;
-  const key = resolveNarrativeKey(reason, delta);
-  const variants = NARRATIVE_VARIANTS[key];
-  const variantIndex = hashString(`${reason}:${playerId}:${week}:${delta}`) % variants.length;
-  return variants[variantIndex];
+  const { reason, playerId, delta, week } = params
+  const key = resolveNarrativeKey(reason, delta)
+  const variants = NARRATIVE_VARIANTS[key]
+  const variantIndex = hashString(`${reason}:${playerId}:${week}:${delta}`) % variants.length
+  return variants[variantIndex]
 }

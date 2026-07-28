@@ -1,7 +1,6 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SeasonRecapCinematic from '../src/components/SeasonRecapCinematic/SeasonRecapCinematic'
-import { buildSeasonRecapData } from '../src/components/SeasonRecapCinematic/seasonRecapData'
 import { buildSeasonRecapHighlights } from '../src/components/SeasonRecapCinematic/seasonRecapHighlights'
 import {
   buildSeasonRecapTimeline,
@@ -26,7 +25,6 @@ vi.mock('framer-motion', async () => {
           animate: _animate,
           exit: _exit,
           transition: _transition,
-          layout: _layout,
           ...props
         }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) =>
           React.createElement(tag, props, children),
@@ -143,14 +141,8 @@ const PUBLIC_OPINION: PublicOpinionState = {
   currentFeedDay: 11,
 }
 
-function getTimeline(publicOpinion: PublicOpinionState | undefined = PUBLIC_OPINION) {
-  const data = buildSeasonRecapData(PLAYERS, 12, publicOpinion)
-  const highlights = buildSeasonRecapHighlights(PLAYERS, publicOpinion, 3)
-  return buildSeasonRecapTimeline(
-    data.categories.map((category) => category.id),
-    data.evictionWaves.length,
-    highlights.length
-  )
+function getTimeline() {
+  return buildSeasonRecapTimeline(3, 1, 2)
 }
 
 async function advanceToScene(sceneId: string) {
@@ -163,25 +155,12 @@ async function advanceToScene(sceneId: string) {
       await vi.advanceTimersByTimeAsync(timeline[index].durationMs)
     })
   }
-  return timeline
 }
 
-describe('SeasonRecapCinematic', () => {
+describe('SeasonRecapCinematic broadcast redesign', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     motionState.reduced = false
-    if (!window.matchMedia) {
-      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }))
-    }
   })
 
   afterEach(() => {
@@ -190,7 +169,7 @@ describe('SeasonRecapCinematic', () => {
     vi.useRealTimers()
   })
 
-  it('opens on the suspense card and identifies the actual season', () => {
+  it('opens as a finale broadcast and identifies the actual season', () => {
     render(
       <SeasonRecapCinematic
         season={9}
@@ -202,14 +181,12 @@ describe('SeasonRecapCinematic', () => {
     )
 
     expect(screen.getByText('THE VOTES ARE IN.')).toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'Season recap cinematic' })).toHaveAttribute(
-      'data-season',
-      '9'
-    )
-    expect(screen.getByText(/Season 9 archive/i)).toBeInTheDocument()
+    expect(screen.getByText('Season 9')).toBeInTheDocument()
+    expect(screen.getByText('Finale')).toBeInTheDocument()
+    expect(screen.queryByText(/01 \/ 14/i)).not.toBeInTheDocument()
   })
 
-  it('uses the real roster instead of fixed girls and boys plates', async () => {
+  it('restores the full-screen season photoshoot instead of an avatar wall', async () => {
     render(
       <SeasonRecapCinematic
         season={9}
@@ -220,28 +197,28 @@ describe('SeasonRecapCinematic', () => {
       />
     )
 
-    await advanceToScene('cast_overview')
+    await advanceToScene('photoshoot')
 
-    expect(screen.getByText('The Housemates')).toBeInTheDocument()
-    expect(screen.getByText(/Season 9 · Through week 12/i)).toBeInTheDocument()
-    const roster = screen.getByRole('list', { name: 'Season 9 housemates' })
-    expect(within(roster).getAllByRole('listitem')).toHaveLength(PLAYERS.length)
-    for (const player of PLAYERS) {
-      expect(within(roster).getByText(player.name)).toBeInTheDocument()
-    }
+    const photo = screen.getByAltText('Season housemates photoshoot')
+    expect(photo.getAttribute('src')).toContain('thegirls.webp')
+    expect(screen.getByText('The housemates who made the season.')).toBeInTheDocument()
+    expect(document.querySelector('.src-cast-grid')).toBeNull()
   })
 
-  it('builds truthful highlights from recorded headlines and never injects stock incidents', () => {
-    const highlights = buildSeasonRecapHighlights(PLAYERS, PUBLIC_OPINION, 3)
-    expect(highlights).toHaveLength(3)
-    expect(highlights.some((highlight) => highlight.caption.includes('ratings soaring'))).toBe(true)
-    expect(highlights.some((highlight) => highlight.caption.includes('feud'))).toBe(true)
-    expect(highlights.map((highlight) => highlight.caption).join(' ')).not.toMatch(
-      /pancake|midnight cake|golden key/i
-    )
+  it('turns recorded data into distinct editorial stories without raw deltas or counts', () => {
+    const highlights = buildSeasonRecapHighlights(PLAYERS, PUBLIC_OPINION, 2)
+    expect(highlights).toHaveLength(2)
+    expect(new Set(highlights.map((highlight) => highlight.player.id)).size).toBe(2)
+    expect(new Set(highlights.map((highlight) => highlight.storyType)).size).toBe(2)
+
+    const presentation = highlights
+      .flatMap((highlight) => [highlight.eyebrow, highlight.title, highlight.stamp])
+      .join(' ')
+    expect(presentation).not.toMatch(/[+-]\d/)
+    expect(presentation).not.toMatch(/\bapproval\b|\bwins?\b|\bnominations?\b/i)
   })
 
-  it('renders the actual recorded public headline in the cinematic', async () => {
+  it('presents honors as character moments rather than stat cards', async () => {
     render(
       <SeasonRecapCinematic
         season={9}
@@ -252,19 +229,35 @@ describe('SeasonRecapCinematic', () => {
       />
     )
 
-    await advanceToScene('highlight_0')
-    expect(screen.getByText(/Drew shocked the audience/i)).toBeInTheDocument()
-    expect(screen.getByText(/-21 approval/i)).toBeInTheDocument()
+    await advanceToScene('honor_0')
+
+    expect(screen.getByText('The Season Favorite')).toBeInTheDocument()
+    expect(screen.getByText('Avery')).toBeInTheDocument()
+    expect(screen.queryByText(/82% approval/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('🏆')).not.toBeInTheDocument()
   })
 
-  it('omits the entire ladder chapter when there are no eviction waves', () => {
-    const timeline = buildSeasonRecapTimeline(['compzilla'], 0, 0)
-    expect(timeline.some((scene) => scene.kind === 'ladder_intro')).toBe(false)
-    expect(timeline.some((scene) => scene.kind === 'ladder_wave')).toBe(false)
-    expect(timeline.at(-1)?.kind).toBe('moment_of_truth')
+  it('replaces the ranking ladder with a cinematic farewell lineup', async () => {
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={vi.fn()}
+      />
+    )
+
+    await advanceToScene('farewell_0')
+
+    expect(screen.getByText('The final goodbyes.')).toBeInTheDocument()
+    expect(screen.getByText('Casey')).toBeInTheDocument()
+    expect(screen.getByText('Drew')).toBeInTheDocument()
+    expect(document.querySelector('.eviction-ladder')).toBeNull()
+    expect(screen.queryByText(/3RD|4TH|FINALIST/i)).not.toBeInTheDocument()
   })
 
-  it('preserves readable scene durations in reduced-motion mode', async () => {
+  it('keeps full reading time in reduced-motion mode', async () => {
     motionState.reduced = true
     render(
       <SeasonRecapCinematic
@@ -276,7 +269,6 @@ describe('SeasonRecapCinematic', () => {
       />
     )
 
-    expect(document.querySelectorAll('.src-particle')).toHaveLength(0)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -284,7 +276,7 @@ describe('SeasonRecapCinematic', () => {
     expect(INTRO_MIN_DURATION_MS).toBeGreaterThan(300)
   })
 
-  it('skips once, restores document scrolling, and completes after the exit fade', async () => {
+  it('skips once and restores the page after the exit fade', async () => {
     const onComplete = vi.fn()
     render(
       <SeasonRecapCinematic
@@ -299,7 +291,6 @@ describe('SeasonRecapCinematic', () => {
     expect(document.body.style.overflow).toBe('hidden')
     fireEvent.click(screen.getByRole('button', { name: 'Skip recap' }))
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(onComplete).not.toHaveBeenCalled()
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(RECAP_EXIT_FADE_MS + 10)
