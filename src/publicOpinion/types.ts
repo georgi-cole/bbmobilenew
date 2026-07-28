@@ -24,6 +24,8 @@ export interface PublicDirection {
   type: DirectionType;
   playerId: string;
   relatedPlayerId?: string;
+  /** Explicit subject of a target-based public request. Optional for old saves. */
+  targetPlayerId?: string;
   description: string;
   status: DirectionStatus;
   createdWeek: number;

@@ -18,7 +18,6 @@ export interface SocialStoryBeat {
   phase: string
   severity: 'quiet' | 'notable' | 'major'
   createdAt: number
-  /** Stable key used to collapse multiple records describing the same story beat. */
   dedupeKey: string
 }
 
@@ -38,6 +37,11 @@ export interface BuildSocialStoryStreamInput {
   maxBeats?: number
 }
 
+interface ScoredBeat {
+  beat: SocialStoryBeat
+  score: number
+}
+
 const PUBLIC_ACTIONS = new Set([
   'group_chat',
   'startFight',
@@ -49,7 +53,6 @@ const PUBLIC_ACTIONS = new Set([
   'break_bromance',
   'end_romance',
 ])
-
 const CONFLICT_ACTIONS = new Set([
   'betray',
   'nominate',
@@ -64,7 +67,6 @@ const CONFLICT_ACTIONS = new Set([
   'break_bromance',
   'end_romance',
 ])
-
 const REPAIR_ACTIONS = new Set(['apologize', 'repair_bond', 'reassure'])
 const STRATEGY_ACTIONS = new Set([
   'ally',
@@ -82,7 +84,7 @@ function pairKey(left: string, right: string): string {
 function averageMutualAffinity(
   relationships: Record<string, Record<string, number | { affinity: number }>>,
   left: string,
-  right: string
+  right: string,
 ): number {
   const leftValue = relationships[left]?.[right]
   const rightValue = relationships[right]?.[left]
@@ -91,96 +93,82 @@ function averageMutualAffinity(
   return (leftAffinity + rightAffinity) / 2
 }
 
-function arcDescription(arc: DramaArc, leftName: string, rightName: string): string {
-  const pair = `${leftName} and ${rightName}`
-  switch (arc.type) {
-    case 'romance':
-      return arc.stage === 'strained'
-        ? `${pair} are no longer hiding that something between them is off.`
-        : `${pair} keep finding reasons to spend time together, and the chemistry is becoming harder to miss.`
-    case 'bromance':
-      return `${pair} are increasingly moving through the house as a dependable pair.`
-    case 'rivalry':
-      return `${pair} are reading each other as direct competition, and ordinary exchanges now carry an edge.`
-    case 'betrayal':
-      return `${pair} are still dealing with a move that changed how much they trust one another.`
+function arcDescription(arc: DramaArc, first: string, second: string): string {
+  const pair = `${first} and ${second}`
+  if (arc.type === 'romance') {
+    return arc.stage === 'strained'
+      ? `${pair} can no longer hide that something between them is off.`
+      : `${pair} keep finding reasons to disappear together, and the house is starting to notice.`
   }
+  if (arc.type === 'bromance') return `${pair} are moving through the house like a dependable unit.`
+  if (arc.type === 'rivalry') return `${pair} now treat even ordinary conversations like a contest.`
+  return `${pair} are still living with the fallout of a move that changed their trust.`
 }
 
 function eventToBeat(
   event: DramaHouseEvent,
   network: DramaSocialNetwork,
-  nameOf: (playerId: string) => string
-): SocialStoryBeat {
-  const names = event.participantIds.map(nameOf)
-  const first = names[0] ?? 'Someone'
-  const second = names[1] ?? 'another housemate'
-  const relatedArc = event.relatedArcId
-    ? network.arcs.find((arc) => arc.id === event.relatedArcId)
+  nameOf: (id: string) => string,
+): ScoredBeat {
+  const first = nameOf(event.participantIds[0] ?? '')
+  const second = nameOf(event.participantIds[1] ?? '')
+  const arc = event.relatedArcId
+    ? network.arcs.find((candidate) => candidate.id === event.relatedArcId)
     : undefined
-
   let kind: SocialStoryBeatKind = event.public ? 'public' : 'strategy'
-  let title = event.title ?? 'House shift'
+  let title = event.title ?? 'The house shifted'
   let text = event.text
-
-  switch (event.type) {
-    case 'confrontation':
-      kind = 'conflict'
-      title = 'Tension became visible'
-      text = `${first} and ${second} stopped keeping their disagreement beneath the surface.`
-      break
-    case 'reconciliation':
-      kind = 'repair'
-      title = 'A relationship started repairing'
-      text = `${first} and ${second} made a visible effort to move past recent tension.`
-      break
-    case 'alliance_beat':
-      kind = 'strategy'
-      title = 'A strategic pair is taking shape'
-      text = `${first} and ${second} are coordinating often enough for the rest of the house to notice.`
-      break
-    case 'exposure':
-      kind = 'public'
-      title = 'Private information went public'
-      text = `${first} brought a hidden story involving ${second} into the open.`
-      break
-    case 'rumour_spread':
-      kind = 'intel'
-      title = 'A story is travelling'
-      text = `A claim involving ${second} has moved beyond its original source and is beginning to affect how people read the house.`
-      break
-    case 'discovery':
-      kind = 'intel'
-      title = 'New information surfaced'
-      text = `${first} noticed a connection or plan that had previously stayed out of view.`
-      break
-    case 'arc_beat':
-      if (relatedArc) {
-        kind = relatedArc.type === 'rivalry' || relatedArc.type === 'betrayal' ? 'conflict' : 'bond'
-        title =
-          relatedArc.type === 'romance'
-            ? 'Chemistry is developing'
-            : relatedArc.type === 'bromance'
-              ? 'A close pair is forming'
-              : relatedArc.type === 'rivalry'
-                ? 'A rivalry is intensifying'
-                : 'Trust is under pressure'
-        text = arcDescription(relatedArc, first, second)
-      }
-      break
+  if (event.type === 'confrontation') {
+    kind = 'conflict'
+    title = `${first} and ${second} finally snapped`
+    text = 'A disagreement that had stayed private is now forcing the rest of the house to choose sides.'
+  } else if (event.type === 'reconciliation') {
+    kind = 'repair'
+    title = `${first} and ${second} called a truce`
+    text = 'They made a visible effort to stop the tension from controlling their games.'
+  } else if (event.type === 'alliance_beat') {
+    kind = 'strategy'
+    title = 'A voting pair is taking shape'
+    text = `${first} and ${second} are coordinating often enough that the house has started counting them together.`
+  } else if (event.type === 'exposure') {
+    kind = 'public'
+    title = 'A private story just went public'
+    text = `${first} dragged information involving ${second} into the open, and the fallout is only beginning.`
+  } else if (event.type === 'rumour_spread') {
+    kind = 'intel'
+    title = 'One story is spreading fast'
+    text = `A claim involving ${second} has escaped its original conversation and is changing how people read the house.`
+  } else if (event.type === 'discovery') {
+    kind = 'intel'
+    title = 'New information surfaced'
+    text = event.text || `${first} noticed a plan involving ${second} that had stayed hidden.`
+  } else if (event.type === 'arc_beat' && arc) {
+    kind = arc.type === 'rivalry' || arc.type === 'betrayal' ? 'conflict' : 'bond'
+    title =
+      arc.type === 'romance'
+        ? 'Chemistry is becoming obvious'
+        : arc.type === 'bromance'
+          ? 'A close pair is forming'
+          : arc.type === 'rivalry'
+            ? 'A rivalry is taking over'
+            : 'Trust is cracking'
+    text = arcDescription(arc, first, second)
   }
-
+  const severityScore = event.severity === 'major' ? 100 : event.severity === 'notable' ? 70 : 45
   return {
-    id: `event:${event.id}`,
-    kind,
-    title,
-    text,
-    participantIds: event.participantIds,
-    week: event.week,
-    phase: event.phase,
-    severity: event.severity,
-    createdAt: event.createdAt,
-    dedupeKey: `${pairKey(event.participantIds[0] ?? event.id, event.participantIds[1] ?? event.id)}:${kind}:${event.week}`,
+    score: severityScore,
+    beat: {
+      id: `event:${event.id}`,
+      kind,
+      title,
+      text,
+      participantIds: event.participantIds,
+      week: event.week,
+      phase: event.phase,
+      severity: event.severity,
+      createdAt: event.createdAt,
+      dedupeKey: `pair:${pairKey(event.participantIds[0] ?? event.id, event.participantIds[1] ?? event.id)}:${event.week}`,
+    },
   }
 }
 
@@ -195,107 +183,150 @@ function buildActionBeats({
   BuildSocialStoryStreamInput,
   'actionHistory' | 'relationships' | 'weekStartRelSnapshot' | 'humanId' | 'currentWeek'
 > & {
-  nameOf: (playerId: string) => string
-}): SocialStoryBeat[] {
+  nameOf: (id: string) => string
+}): ScoredBeat[] {
   const recent = actionHistory.filter(
     (entry) =>
       entry.source === 'system' &&
       entry.actorId !== entry.targetId &&
-      (entry.week ?? currentWeek) === currentWeek
+      (entry.week ?? currentWeek) === currentWeek,
   )
-  const groups = new Map<string, SocialActionLogEntry[]>()
-
+  const byActor = new Map<string, SocialActionLogEntry[]>()
+  const byPair = new Map<string, SocialActionLogEntry[]>()
   for (const entry of recent) {
+    byActor.set(entry.actorId, [...(byActor.get(entry.actorId) ?? []), entry])
     const key = pairKey(entry.actorId, entry.targetId)
-    const group = groups.get(key) ?? []
-    group.push(entry)
-    groups.set(key, group)
+    byPair.set(key, [...(byPair.get(key) ?? []), entry])
   }
 
-  const beats: SocialStoryBeat[] = []
-  for (const [key, entries] of groups) {
+  const beats: ScoredBeat[] = []
+  const clusteredActors = new Set<string>()
+  for (const [actorId, entries] of byActor) {
+    const targets = [...new Set(entries.map((entry) => entry.targetId))]
+    if (entries.length < 3 || targets.length < 3) continue
+    const positive = entries.filter((entry) => entry.outcome === 'success' && entry.delta > 0).length
+    const negative = entries.filter(
+      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId),
+    ).length
+    const strategic = entries.filter((entry) => STRATEGY_ACTIONS.has(entry.actionId)).length
+    const latest = [...entries].sort((left, right) => right.timestamp - left.timestamp)[0]
+    const targetNames = targets.slice(0, 3).map((id) => (id === humanId ? 'you' : nameOf(id)))
+    const actorName = actorId === humanId ? 'You' : nameOf(actorId)
+    let kind: SocialStoryBeatKind | null = null
+    let title = ''
+    let text = ''
+    if (negative >= 3 && negative >= positive) {
+      kind = 'conflict'
+      title = `${actorName} is burning bridges`
+      text = `Tension followed ${actorName} through conversations with ${targetNames.join(', ')}. The pattern is becoming part of their reputation.`
+    } else if (strategic >= 2) {
+      kind = 'strategy'
+      title = `${actorName} is quietly building numbers`
+      text = `${actorName} spent the day comparing plans with ${targetNames.join(', ')}. It looks less like socialising and more like preparation.`
+    } else if (positive >= 3) {
+      kind = 'bond'
+      title = `${actorName} is working the room`
+      text = `${actorName} made a deliberate effort with ${targetNames.join(', ')}. The house is noticing how many doors are opening.`
+    }
+    if (!kind) continue
+    clusteredActors.add(actorId)
+    beats.push({
+      score: 78 + Math.min(12, entries.length),
+      beat: {
+        id: `actor:${actorId}:${currentWeek}:${kind}`,
+        kind,
+        title,
+        text,
+        participantIds: [actorId, ...targets.slice(0, 3)],
+        week: currentWeek,
+        phase: 'social',
+        severity: 'notable',
+        createdAt: latest?.timestamp ?? 0,
+        dedupeKey: `actor:${actorId}:${currentWeek}`,
+      },
+    })
+  }
+
+  for (const [key, entries] of byPair) {
     const [leftId, rightId] = key.split('|')
     if (!leftId || !rightId) continue
-
     const current = averageMutualAffinity(relationships, leftId, rightId)
     const baseline = averageMutualAffinity(weekStartRelSnapshot, leftId, rightId)
     const shift = current - baseline
     const latest = [...entries].sort((left, right) => right.timestamp - left.timestamp)[0]
-    const visibleAction = entries.some((entry) => PUBLIC_ACTIONS.has(entry.actionId))
-    const involvesHuman = leftId === humanId || rightId === humanId
-    const positiveCount = entries.filter(
-      (entry) => entry.delta > 0 && entry.outcome === 'success'
+    const visibleConflict = entries.some(
+      (entry) => PUBLIC_ACTIONS.has(entry.actionId) && CONFLICT_ACTIONS.has(entry.actionId),
+    )
+    const positive = entries.filter((entry) => entry.outcome === 'success' && entry.delta > 0).length
+    const negative = entries.filter(
+      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId),
     ).length
-    const negativeCount = entries.filter(
-      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId)
-    ).length
-    const hasStrategy = entries.some((entry) => STRATEGY_ACTIONS.has(entry.actionId))
-    const hasRepair = entries.some((entry) => REPAIR_ACTIONS.has(entry.actionId))
-
-    // Private one-off exchanges between two NPCs stay private. Repetition, a
-    // visible confrontation, or a material relationship shift makes the beat
-    // observable enough to belong in House Pulse.
-    if (
-      !involvesHuman &&
-      !visibleAction &&
-      positiveCount < 2 &&
-      negativeCount < 2 &&
-      Math.abs(shift) < 7
-    ) {
-      continue
-    }
-
-    const leftName = leftId === humanId ? 'You' : nameOf(leftId)
-    const rightName = rightId === humanId ? 'you' : nameOf(rightId)
+    const repairs = entries.filter((entry) => REPAIR_ACTIONS.has(entry.actionId)).length
+    const strategy = entries.filter((entry) => STRATEGY_ACTIONS.has(entry.actionId)).length
     const tags = new Set([
       ...(relationships[leftId]?.[rightId]?.tags ?? []),
       ...(relationships[rightId]?.[leftId]?.tags ?? []),
     ])
-
-    let kind: SocialStoryBeatKind = 'bond'
-    let title = 'A bond is becoming visible'
-    let text = `${leftName} and ${rightName} have repeatedly sought each other out, and the relationship is moving closer.`
-    let severity: SocialStoryBeat['severity'] = Math.abs(shift) >= 12 ? 'notable' : 'quiet'
-
-    if (hasRepair && shift >= 0) {
-      kind = 'repair'
-      title = 'A relationship is repairing'
-      text = `${leftName} and ${rightName} appear to be rebuilding after earlier tension instead of letting it keep escalating.`
-    } else if (negativeCount > 0 || shift <= -7 || tags.has('rivalry') || tags.has('betrayal')) {
-      kind = 'conflict'
-      title = visibleAction ? 'Tension broke into the open' : 'A relationship is deteriorating'
-      text = visibleAction
-        ? `${leftName} and ${rightName} are no longer containing their disagreement to private conversations.`
-        : `${leftName} and ${rightName} have grown noticeably colder after several strained interactions.`
-      severity = visibleAction || shift <= -12 ? 'notable' : 'quiet'
-    } else if (hasStrategy || tags.has('alliance') || tags.has('protection')) {
-      kind = 'strategy'
-      title = tags.has('alliance') ? 'A pair is moving together' : 'Strategic trust is building'
-      text = `${leftName} and ${rightName} are coordinating often enough that their game interests now look connected.`
+    const majorPairSignal =
+      visibleConflict ||
+      Math.abs(shift) >= 10 ||
+      entries.length >= 3 ||
+      tags.has('alliance') ||
+      tags.has('rivalry') ||
+      tags.has('betrayal')
+    if (!majorPairSignal) continue
+    if ((clusteredActors.has(leftId) || clusteredActors.has(rightId)) && !visibleConflict && Math.abs(shift) < 12) {
+      continue
     }
-
+    const leftName = leftId === humanId ? 'You' : nameOf(leftId)
+    const rightName = rightId === humanId ? 'you' : nameOf(rightId)
+    let kind: SocialStoryBeatKind | null = null
+    let title = ''
+    let text = ''
+    let score = 0
+    if (visibleConflict || negative >= 2 || shift <= -8 || tags.has('rivalry') || tags.has('betrayal')) {
+      kind = 'conflict'
+      title = visibleConflict ? `${leftName} and ${rightName} finally snapped` : 'Trust is sliding fast'
+      text = visibleConflict
+        ? 'Their private tension reached the rest of the house, and people are beginning to choose sides.'
+        : `${leftName} and ${rightName} have grown colder after a pattern of strained exchanges.`
+      score = 72 + Math.min(20, Math.abs(shift) + negative * 3)
+    } else if (baseline <= -5 && shift >= 6 && (repairs > 0 || positive >= 2)) {
+      kind = 'repair'
+      title = `${leftName} and ${rightName} may be calling a truce`
+      text = 'A relationship that looked damaged is showing the first signs of a real repair.'
+      score = 66 + Math.min(18, shift)
+    } else if (strategy >= 2 || tags.has('alliance') || tags.has('protection')) {
+      kind = 'strategy'
+      title = 'A pair is starting to move together'
+      text = `${leftName} and ${rightName} are coordinating often enough that their interests now look connected.`
+      score = 68 + Math.min(16, shift + strategy * 3)
+    } else if (positive >= 3 || shift >= 10) {
+      kind = 'bond'
+      title = 'A new bond is becoming hard to miss'
+      text = `${leftName} and ${rightName} keep seeking each other out, and the connection now looks deliberate.`
+      score = 62 + Math.min(18, shift + positive * 2)
+    }
+    if (!kind) continue
     beats.push({
-      id: `activity:${key}:${latest?.week ?? currentWeek}:${kind}`,
-      kind,
-      title,
-      text,
-      participantIds: [leftId, rightId],
-      week: latest?.week ?? currentWeek,
-      phase: 'social',
-      severity,
-      createdAt: latest?.timestamp ?? 0,
-      dedupeKey: `${key}:${kind}:${latest?.week ?? currentWeek}`,
+      score,
+      beat: {
+        id: `pair:${key}:${currentWeek}:${kind}`,
+        kind,
+        title,
+        text,
+        participantIds: [leftId, rightId],
+        week: currentWeek,
+        phase: 'social',
+        severity: score >= 86 ? 'major' : score >= 68 ? 'notable' : 'quiet',
+        createdAt: latest?.timestamp ?? 0,
+        dedupeKey: `pair:${key}:${currentWeek}`,
+      },
     })
   }
-
   return beats
 }
 
-/**
- * Project existing deterministic state into a coherent, player-knowable stream.
- * Nothing is persisted here: save compatibility stays unchanged and the stream
- * cannot invent facts that are absent from actions, relationships or Drama events.
- */
 export function buildSocialStoryStream({
   network,
   actionHistory,
@@ -304,34 +335,44 @@ export function buildSocialStoryStream({
   players,
   humanId,
   currentWeek,
-  maxBeats = 14,
+  maxBeats = 5,
 }: BuildSocialStoryStreamInput): SocialStoryBeat[] {
   const playerById = new Map(players.map((player) => [player.id, player]))
-  const nameOf = (playerId: string) => playerById.get(playerId)?.name ?? playerId
-
+  const nameOf = (id: string) => playerById.get(id)?.name ?? id || 'Someone'
   const knownEvents = network.events.filter(
     (event) =>
-      event.public ||
-      event.participantIds.includes(humanId) ||
-      (event.type === 'discovery' && event.participantIds[0] === humanId)
+      event.week === currentWeek &&
+      (event.public ||
+        event.participantIds.includes(humanId) ||
+        (event.type === 'discovery' && event.participantIds[0] === humanId)),
   )
-  const eventBeats = knownEvents.map((event) => eventToBeat(event, network, nameOf))
-  const actionBeats = buildActionBeats({
-    actionHistory,
-    relationships,
-    weekStartRelSnapshot,
-    humanId,
-    currentWeek,
-    nameOf,
-  })
-
-  const byStory = new Map<string, SocialStoryBeat>()
-  for (const beat of [...actionBeats, ...eventBeats]) {
-    const existing = byStory.get(beat.dedupeKey)
-    if (!existing || beat.createdAt >= existing.createdAt) byStory.set(beat.dedupeKey, beat)
+  const candidates = [
+    ...knownEvents.map((event) => eventToBeat(event, network, nameOf)),
+    ...buildActionBeats({
+      actionHistory,
+      relationships,
+      weekStartRelSnapshot,
+      humanId,
+      currentWeek,
+      nameOf,
+    }),
+  ]
+  const deduped = new Map<string, ScoredBeat>()
+  for (const candidate of candidates) {
+    const existing = deduped.get(candidate.beat.dedupeKey)
+    if (
+      !existing ||
+      candidate.score > existing.score ||
+      (candidate.score === existing.score && candidate.beat.createdAt > existing.beat.createdAt)
+    ) {
+      deduped.set(candidate.beat.dedupeKey, candidate)
+    }
   }
-
-  return [...byStory.values()]
-    .sort((left, right) => right.week - left.week || right.createdAt - left.createdAt)
-    .slice(0, Math.max(1, maxBeats))
+  return [...deduped.values()]
+    .sort(
+      (left, right) =>
+        right.score - left.score || right.beat.createdAt - left.beat.createdAt,
+    )
+    .slice(0, Math.max(1, Math.min(5, maxBeats)))
+    .map((entry) => entry.beat)
 }

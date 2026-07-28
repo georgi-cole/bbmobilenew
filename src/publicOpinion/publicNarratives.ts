@@ -136,6 +136,35 @@ const NARRATIVE_VARIANTS = {
     'Viewers read that exchange as forced rather than convincing.',
     'The interaction did not land, and the audience noticed the misread.',
   ],
+  audience_social_warmth: [
+    'Viewers are warming to the way this housemate is connecting without forcing it.',
+    'A run of genuine conversations is quietly winning people over.',
+    'The audience is responding to a social game that feels natural rather than rehearsed.',
+  ],
+  audience_strategy: [
+    'Viewers are starting to respect how calmly this housemate is building numbers.',
+    'A few subtle strategic conversations made this game look sharper today.',
+    'The audience noticed a social move that created options without creating noise.',
+  ],
+  audience_conflict_fatigue: [
+    'The constant tension is starting to feel exhausting rather than entertaining.',
+    'Viewers are losing patience with a pattern of unnecessary conflict.',
+    'Another strained exchange made the social game look harder than it needed to be.',
+  ],
+  audience_social_overexposure: [
+    'Being in every conversation is starting to look less social and more frantic.',
+    'Viewers noticed the overplaying today, and the impression was not flattering.',
+    'Too many visible moves at once made the strategy look nervous.',
+  ],
+  vote_promise_kept: [
+    'Viewers saw the vote match the promise, and the consistency earned a little respect.',
+  ],
+  vote_promise_broken: [
+    'The broadcast exposed a promise that did not match the vote.',
+  ],
+  conflicting_vote_promises: [
+    'Viewers caught the same vote being promised to both nominees. The contradiction did not go unnoticed.',
+  ],
   audience_reconsideration: [
     'After a rough stretch, part of the audience is beginning to reconsider.',
     'The initial backlash is cooling and a small recovery is taking hold.',
@@ -184,6 +213,13 @@ const REASON_ALIASES: Record<string, NarrativeKey> = {
   headline_drama: 'headline_drama',
   high_quality_social_play: 'high_quality_social_play',
   poor_social_play: 'poor_social_play',
+  audience_social_warmth: 'audience_social_warmth',
+  audience_strategy: 'audience_strategy',
+  audience_conflict_fatigue: 'audience_conflict_fatigue',
+  audience_social_overexposure: 'audience_social_overexposure',
+  vote_promise_kept: 'vote_promise_kept',
+  vote_promise_broken: 'vote_promise_broken',
+  conflicting_vote_promises: 'conflicting_vote_promises',
   audience_reconsideration: 'audience_reconsideration',
 }
 

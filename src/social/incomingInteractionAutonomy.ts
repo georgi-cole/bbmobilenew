@@ -1,4 +1,4 @@
-﻿/**
+/**
  * incomingInteractionAutonomy – AI-driven scheduling of incoming interactions.
  *
  * Algorithm overview
@@ -125,6 +125,7 @@ type InteractionScenarioKey =
   | 'hoh_congratulations'
   | 'safety_win_congratulations'
   | 'safety_holder_consults_loh'
+  | 'loh_consults_safety_holder'
   | 'player_nominated_support'
   | 'player_nominated_tension'
   | 'competition_low_finish_support'
@@ -158,6 +159,7 @@ const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
   'nominee_hoh_plea',
   'nominee_veto_pitch',
   'safety_holder_consults_loh',
+  'loh_consults_safety_holder',
   'nominee_understands_loh',
   'nominee_confronts_loh',
   'replacement_nominee_reacts_to_loh',
@@ -411,7 +413,12 @@ function resolveIncomingInteractionPlan(
   let plan: InteractionPlan | null = null
 
   if (
-    context.dramaMode &&
+    context.phase === 'pos_results' &&
+    constraints.actorIsCurrentHoh &&
+    constraints.playerHasSafetyPower
+  ) {
+    plan = { type: 'deal_offer', scenarioKey: 'loh_consults_safety_holder' }
+  } else if (
     context.phase === 'pos_results' &&
     constraints.actorHasSafetyPower &&
     constraints.playerIsHoh &&
@@ -800,6 +807,11 @@ const SCENARIO_TEMPLATES: Record<InteractionScenarioKey, string[]> = {
     'That Safety win was huge, {player}. You earned some breathing room.',
     'You came through when it mattered. Congratulations on winning Safety.',
     'Strong performance. Holding Safety changes the whole week for you.',
+  ],
+  loh_consults_safety_holder: [
+    'You hold Safety, and I need to prepare for the ceremony. Where are you leaning?',
+    'Before the ceremony, I need an honest read: are you saving someone or leaving the block alone?',
+    'Your Safety decision controls my backup plan. Tell me what you are considering.',
   ],
   safety_holder_consults_loh: [
     'I won Safety, and before the ceremony I want your read: should I use it or keep the nominations the same?',
@@ -1302,6 +1314,10 @@ export function scheduleIncomingInteractionsForPhase(
         variantId: textResult.variantId,
         actorStatus: actor.status,
         subjectId: subject?.id,
+        nomineeIds: context.nomineeIds ?? [],
+        nomineeNames: (context.nomineeIds ?? []).map((nomineeId) =>
+          getPlayerName(context, nomineeId, nomineeId),
+        ),
       },
     })
 

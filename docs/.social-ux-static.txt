@@ -1,0 +1,65 @@
+
+> bbmobilenew@1.0.0 typecheck
+> tsc -b
+
+src/publicOpinion/__tests__/AudiencePulseService.test.ts(32,46): error TS2322: Type '{ readonly id: "user"; readonly name: "You"; readonly status: "active"; readonly isUser: true; } | { readonly id: "lia"; readonly name: "Lia"; readonly status: "active"; readonly isUser: false; } | { ...; } | { ...; }' is not assignable to type 'Player'.
+  Property 'avatar' is missing in type '{ readonly id: "user"; readonly name: "You"; readonly status: "active"; readonly isUser: true; }' but required in type 'Player'.
+src/publicOpinion/publicOpinionMiddleware.ts(601,11): error TS2322: Type '{ actorId?: string | undefined; source?: "manual" | "system" | undefined; week?: number | undefined; }[]' is not assignable to type 'readonly SocialActionLogEntry[]'.
+  Type '{ actorId?: string | undefined; source?: "manual" | "system" | undefined; week?: number | undefined; }' is missing the following properties from type 'SocialActionLogEntry': actionId, targetId, cost, delta, and 3 more.
+src/social/incomingInteractionPresentation.ts(38,7): error TS6133: 'RESPONSE_STYLE_BY_TYPE' is declared but its value is never read.
+src/social/socialStoryStream.ts(341,34): error TS5076: '??' and '||' operations cannot be mixed without parentheses.
+
+> bbmobilenew@1.0.0 lint:ci
+> eslint . --max-warnings=0
+
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx
+  409:16  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx:409:16
+  407 |
+  408 |   useEffect(() => {
+> 409 |     if (!open) setRecentlyResolvedIds(new Set())
+      |                ^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  410 |   }, [open])
+  411 |
+  412 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/social/incomingInteractionPresentation.ts
+  38:7  error  'RESPONSE_STYLE_BY_TYPE' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 2 problems (2 errors, 0 warnings)
+
+
+> bbmobilenew@1.0.0 format:check
+> node scripts/check-changed-format.mjs
+
+Formatting transition base: HEAD^ (8e282dace28c)
+Auditing 24 changed Prettier-supported file(s).
+Strictly checked: 20
+Legacy-format exceptions already dirty at merge base: 4
+  legacy: src/publicOpinion/PublicDirectionService.ts
+  legacy: src/publicOpinion/types.ts
+  legacy: src/social/incomingInteractionPresentation.ts
+  legacy: src/social/socialActions.ts
+Changed-file formatting regressions:
+  src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.css
+  src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx
+  src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx
+  src/publicOpinion/AudiencePulseService.ts
+  src/publicOpinion/__tests__/AudiencePulseService.test.ts
+  src/publicOpinion/publicNarratives.ts
+  src/publicOpinion/publicOpinionMiddleware.ts
+  src/screens/PublicMeter/PublicMeter.tsx
+  src/social/incomingInteractionAutonomy.ts
+  src/social/incomingInteractions.ts
+  src/social/socialCommitments.ts
+  src/social/socialStoryStream.ts
+
+STATIC_EXIT_CODE=1

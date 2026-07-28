@@ -40,9 +40,12 @@ export function getEffectiveSocialMode(state: SocialModeState): SocialMode {
   const entitled = state.vip.isActive === true || state.vip.entitlements?.dramaMode === true
   if (!entitled) return 'normal'
 
-  // A newly purchased Drama entitlement activates immediately in the running game.
-  // The season snapshot remains a fallback for existing Drama seasons.
-  return settingEnabled || state.game?.dramaSocialMode === true ? 'drama' : 'normal'
+  // The current toggle is authoritative for presentation and future interactions.
+  // A purchase enables the toggle immediately; turning it off must also take effect immediately.
+  if (state.settings?.gameUX?.dramaMode !== undefined) {
+    return settingEnabled ? 'drama' : 'normal'
+  }
+  return state.game?.dramaSocialMode === true ? 'drama' : 'normal'
 }
 
 export function isDramaModeEffective(state: SocialModeState): boolean {

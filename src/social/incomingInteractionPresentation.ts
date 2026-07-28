@@ -270,6 +270,25 @@ function getStableVariantIndex(interaction: IncomingInteraction, tone: IncomingI
   return Math.abs(hash) % count;
 }
 
+function getSafetyPlanBlueprint(interaction: IncomingInteraction): ResponseBlueprint | null {
+  const scenarioKey = interaction.payload?.scenarioKey
+  if (scenarioKey !== 'safety_holder_consults_loh' && scenarioKey !== 'loh_consults_safety_holder') {
+    return null
+  }
+  const rawNames = interaction.payload?.nomineeNames
+  const nomineeNames = Array.isArray(rawNames)
+    ? rawNames.filter((name): name is string => typeof name === 'string').slice(0, 2)
+    : []
+  const first = nomineeNames[0] ?? 'Nominee 1'
+  const second = nomineeNames[1] ?? 'Nominee 2'
+  return [
+    { label: `Save ${first}`, responseType: 'accept' },
+    { label: `Save ${second}`, responseType: 'decline' },
+    { label: 'Save nobody', responseType: 'negative' },
+    { label: 'Not decided', responseType: 'neutral' },
+  ]
+}
+
 function getResponseBlueprints(
   type: IncomingInteractionType,
   interaction?: IncomingInteraction,
@@ -277,6 +296,9 @@ function getResponseBlueprints(
   dramaMode = false,
 ): ResponseBlueprint {
   if (!interaction) return RESPONSE_OPTIONS_BY_TYPE[type];
+
+  const safetyPlan = getSafetyPlanBlueprint(interaction);
+  if (safetyPlan) return safetyPlan;
 
   const scenarioKey = interaction.payload?.scenarioKey;
   const configuredResponses = getStoryBibleResponseSet(
@@ -384,7 +406,7 @@ export function getIncomingInteractionResponseOptions(
   const commitmentKind = interaction ? getCommitmentKindForInteraction(interaction) : null;
   return options.map((option) => ({
     ...option,
-    style: RESPONSE_STYLE_BY_TYPE[option.responseType] ?? 'neutral',
+    style: 'neutral' as const,
     ...(commitmentKind ? getCommitmentResponsePresentation(commitmentKind, option.responseType) : {
       description: getDefaultResponseDescription(option.responseType),
     }),

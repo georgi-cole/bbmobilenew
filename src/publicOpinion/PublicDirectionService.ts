@@ -37,6 +37,7 @@ function buildDescription(
   type: DirectionType,
   playerName: string,
   relatedName?: string,
+  targetName?: string,
 ): string {
   switch (type) {
     case 'get_closer':
@@ -66,7 +67,7 @@ function buildDescription(
     case 'flip_vote':
       return `${playerName}, flip your vote and shake up the house!`;
     case 'influence_hoh':
-      return `Influence the LOH${relatedName ? ` (${relatedName})` : ''} to nominate your target`;
+      return `Convince the LOH to nominate ${targetName ?? 'a specific housemate'}`;
     case 'break_alliance':
       return `Break up your alliance with ${relatedName ?? 'an ally'}`;
     case 'reinforce_alliance':
@@ -113,6 +114,8 @@ export function generateDirectionsForCycle(params: {
 
     let relatedPlayerId: string | undefined;
     let relatedName: string | undefined;
+    let targetPlayerId: string | undefined;
+    let targetName: string | undefined;
 
     if (!isSolo && activePlayers.length > 1) {
       const others = (dirType === 'apologize' || dirType === 'repair_relationship')
@@ -123,12 +126,26 @@ export function generateDirectionsForCycle(params: {
       relatedName = related.name;
     }
 
+    if (dirType === 'influence_hoh') {
+      const targetCandidates = activePlayers.filter(
+        (candidate) => candidate.id !== player.id && candidate.id !== relatedPlayerId,
+      );
+      const fallbackCandidates = activePlayers.filter((candidate) => candidate.id !== player.id);
+      const targetPool = targetCandidates.length > 0 ? targetCandidates : fallbackCandidates;
+      if (targetPool.length > 0) {
+        const target = seededPick(rng, targetPool);
+        targetPlayerId = target.id;
+        targetName = target.name;
+      }
+    }
+
     const direction: PublicDirection = {
       id: `dir-${week}-${player.id}-${dirType}-${Math.floor(rng() * 10000)}`,
       type: dirType,
       playerId: player.id,
       relatedPlayerId,
-      description: buildDescription(dirType, player.name, relatedName),
+      targetPlayerId,
+      description: buildDescription(dirType, player.name, relatedName, targetName),
       status: 'active',
       createdWeek: week,
       expiresAtWeek: week + 1,

@@ -42,7 +42,7 @@ function getNonUserPlayer(store: ReturnType<typeof makeStore>) {
 }
 
 describe('IncomingInteractionsInbox', () => {
-  it('uses compact Needs Response, Updates and collapsed History sections', async () => {
+  it('uses one chronological message stream and collapsed History', async () => {
     const store = makeStore()
     store.dispatch(openIncomingInbox())
     const otherId = getNonUserPlayer(store).id
@@ -138,21 +138,16 @@ describe('IncomingInteractionsInbox', () => {
 
     renderInbox(store)
 
-    expect(screen.getByText('2 to answer · 3 updates')).toBeInTheDocument()
+    expect(screen.getByText('5 open conversations')).toBeInTheDocument()
 
-    const needsSection = screen.getByLabelText('Needs Response')
-    const needsItems = within(needsSection).getAllByRole('listitem')
-    expect(needsItems).toHaveLength(2)
-    expect(needsItems[0].textContent).toContain('High soon.')
-    expect(needsItems[1].textContent).toContain('High later.')
-    expect(within(needsSection).getAllByText('Answer this week')).toHaveLength(1)
-
-    const updatesSection = screen.getByLabelText('Updates')
-    const updateItems = within(updatesSection).getAllByRole('listitem')
-    expect(updateItems).toHaveLength(3)
-    expect(updateItems[0].textContent).toContain('Medium soon.')
-    expect(updateItems[1].textContent).toContain('Low later.')
-    expect(updateItems[2].textContent).toContain('House update.')
+    const messagesSection = screen.getByLabelText('Messages')
+    const messageItems = within(messagesSection).getAllByRole('listitem')
+    expect(messageItems).toHaveLength(5)
+    expect(messageItems[0].textContent).toContain('Low later.')
+    expect(messageItems[1].textContent).toContain('Medium soon.')
+    expect(messageItems[2].textContent).toContain('High later.')
+    expect(messageItems[3].textContent).toContain('High soon.')
+    expect(messageItems[4].textContent).toContain('House update.')
 
     const readOnlyItem = screen.getByText('House update.').closest('[role="listitem"]')
     expect(readOnlyItem).not.toBeNull()
@@ -193,8 +188,32 @@ describe('IncomingInteractionsInbox', () => {
       .social.incomingInteractions.find((interaction) => interaction.id === 'interaction-3')
     expect(entry?.resolved).toBe(true)
     expect(entry?.resolvedWith).toBe('positive')
-    expect(entry?.outcomeText).toMatch(/unconfirmed/i)
+    expect(entry?.outcomeText).toMatch(/unconfirmed|registered|changed how/i)
     expect(entry?.outcomeText).not.toMatch(/your choice/i)
+  })
+
+  it('keeps an answered check-in visible with a concrete outcome', () => {
+    const store = makeStore()
+    store.dispatch(openIncomingInbox())
+    const other = getNonUserPlayer(store)
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'public-save-check-in',
+        fromId: other.id,
+        type: 'check_in',
+        text: 'That public save changed the temperature in the house. We should talk.',
+        createdAt: 310,
+        createdWeek: 1,
+        expiresAtWeek: 2,
+        read: false,
+        requiresResponse: false,
+        resolved: false,
+      }),
+    )
+    renderInbox(store)
+    fireEvent.click(screen.getByRole('button', { name: /honest|open up|let them in/i }))
+    expect(screen.getByText(/took your honesty seriously|appreciated the openness/i)).toBeInTheDocument()
+    expect(screen.getByText(/public save changed the temperature/i)).toBeInTheDocument()
   })
 
   it('forms a reciprocal alliance once without premium currency in Normal Mode', () => {
@@ -266,7 +285,9 @@ describe('IncomingInteractionsInbox', () => {
 
     renderInbox(store)
 
-    expect(document.querySelectorAll('.inbox-action')).toHaveLength(4)
+    const actions = [...document.querySelectorAll('.inbox-action')]
+    expect(actions).toHaveLength(4)
+    expect(new Set(actions.map((element) => element.className))).toHaveLength(1)
     expect(document.querySelector('.inbox-action small')).toBeNull()
     expect(screen.queryByText(/Sets a clear boundary and damages trust/i)).not.toBeInTheDocument()
   })

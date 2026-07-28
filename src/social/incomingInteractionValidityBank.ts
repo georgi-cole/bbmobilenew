@@ -48,6 +48,9 @@ export const INCOMING_INTERACTION_VALIDITY_BANK: Record<string, IncomingInteract
     senderMustHoldSafety: true,
     humanMustBeHoh: true,
   },
+  loh_consults_safety_holder: {
+    humanMustHoldSafety: true,
+  },
   nominee_understands_loh: {
     senderMustBeNominee: true,
     humanMustBeHoh: true,

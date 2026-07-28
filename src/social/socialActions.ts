@@ -1,4 +1,4 @@
-﻿import { DRAMA_SOCIAL_ACTIONS } from './dramaModeConfig';
+import { DRAMA_SOCIAL_ACTIONS } from './dramaModeConfig';
 
 /**
  * Social action definitions for the SocialManeuvers subsystem.
@@ -454,6 +454,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'safety_intel',
     availabilityHint: 'Available while Safety is still undecided',
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
+    allowedPhases: ['pos_results', 'pos_ceremony'],
   },
   {
     id: 'ask_hold_safety',
@@ -467,7 +468,9 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     successWeight: 1,
     outcomeTag: 'safety_request',
     availabilityHint: 'LOH only, before Safety is used',
+    requiredActorStatus: ['loh', 'loh+pos'],
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
+    allowedPhases: ['pos_results', 'pos_ceremony'],
   },
   {
     id: 'ask_why_nominated',

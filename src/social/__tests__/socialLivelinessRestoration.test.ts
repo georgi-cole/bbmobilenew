@@ -81,33 +81,37 @@ describe('Social liveliness restoration', () => {
     ).toBeLessThan(0)
   })
 
-  it('turns repeated observable NPC behaviour into one coherent story beat', () => {
+  it('compresses one socially active NPC into one engaging house story', () => {
     const stream = buildSocialStoryStream({
       network: createInitialDramaSocialNetwork(),
-      actionHistory: [action(100), action(200)],
+      actionHistory: [
+        action(100, { targetId: 'kai' }),
+        action(200, { targetId: 'rae' }),
+        action(300, { targetId: 'sol' }),
+      ],
       relationships: {
-        lia: { kai: { affinity: 10, tags: [] } },
-        kai: { lia: { affinity: 10, tags: [] } },
+        lia: {
+          kai: { affinity: 8, tags: [] },
+          rae: { affinity: 8, tags: [] },
+          sol: { affinity: 8, tags: [] },
+        },
       },
-      weekStartRelSnapshot: {
-        lia: { kai: 0 },
-        kai: { lia: 0 },
-      },
+      weekStartRelSnapshot: { lia: { kai: 0, rae: 0, sol: 0 } },
       players: [
         { id: 'human', name: 'You' },
         { id: 'lia', name: 'Lia' },
         { id: 'kai', name: 'Kai' },
+        { id: 'rae', name: 'Rae' },
+        { id: 'sol', name: 'Sol' },
       ],
       humanId: 'human',
       currentWeek: 2,
     })
 
     expect(stream).toHaveLength(1)
-    expect(stream[0]).toMatchObject({
-      kind: 'bond',
-      participantIds: ['kai', 'lia'],
-    })
-    expect(stream[0].text).toMatch(/repeatedly sought each other out/i)
+    expect(stream[0]).toMatchObject({ kind: 'bond' })
+    expect(stream[0].title).toMatch(/working the room/i)
+    expect(stream[0].text).toMatch(/Kai, Rae, Sol/i)
   })
 
   it('does not expose an isolated private NPC exchange as omniscient narration', () => {
