@@ -1,7 +1,0 @@
-
-> bbmobilenew@1.0.0 typecheck
-> tsc -b
-
-src/social/incomingInteractions.ts(201,3): error TS6133: 'responseLabel' is declared but its value is never read.
-
-TYPECHECK_EXIT_CODE=2

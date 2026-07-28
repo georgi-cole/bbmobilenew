@@ -396,7 +396,12 @@ edit('src/social/socialMiddleware.ts', (source) =>
 
 edit('src/publicOpinion/publicOpinionConfig.ts', (original) => {
   let source = original
-  source = replaceRequired(source, `  feedBudgetPerDay: 3,`, `  feedBudgetPerDay: 6,`, 'public feed budget')
+  source = replaceRequired(
+    source,
+    `  feedBudgetPerDay: 3,`,
+    `  feedBudgetPerDay: 6,`,
+    'public feed budget'
+  )
   if (!source.includes('lowApprovalRecovery')) {
     source = replaceRequired(
       source,
@@ -410,7 +415,10 @@ edit('src/publicOpinion/publicOpinionConfig.ts', (original) => {
 
 edit('src/publicOpinion/publicOpinionMiddleware.ts', (original) => {
   let source = original
-  source = source.replace(`import { generateDailyPublicUpdate } from './PublicHeadlineService';\n`, '')
+  source = source.replace(
+    `import { generateDailyPublicUpdate } from './PublicHeadlineService';\n`,
+    ''
+  )
   source = replaceRequired(
     source,
     `            addToFeed: false,`,
@@ -465,7 +473,10 @@ edit('src/screens/PublicMeter/PublicMeter.tsx', (original) => {
     `          </div>\n          <details className="public-meter__explain">\n            <summary>Why it moved · how to recover</summary>\n            <div className="public-meter__explain-body">\n              <p>\n                Approval now changes through recorded competitions, nominations, saves, evictions,\n                public requests and visible social play — not hidden daily random drift.\n              </p>\n              {userFeed.length > 0 ? (\n                <div className="public-meter__cause-list">\n                  {userFeed.map((entry) => (\n                    <span key={entry.id}>\n                      <strong className={entry.delta >= 0 ? 'trend--up' : 'trend--down'}>\n                        {entry.delta >= 0 ? '+' : ''}{entry.delta}\n                      </strong>{' '}\n                      {entry.text}\n                    </span>\n                  ))}\n                </div>\n              ) : (\n                <p>No recorded public event has moved your rating yet.</p>\n              )}\n              <p>\n                <strong>Recovery:</strong>{' '}\n                {userActiveDirections.length > 0\n                  ? \`Complete an active request: \${userActiveDirections\n                      .slice(0, 2)\n                      .map((direction) => direction.description)\n                      .join(' · ')}\`\n                  : 'Strong competition results, protecting a liked player and convincing social moves can rebuild support.'}\n              </p>\n            </div>\n          </details>\n        </div>\n      )}\n\n      {activeTab === 'overview' && (`,
     'PublicMeter explanation panel'
   )
-  source = source.replace('Your every action has reprecussions.', 'Your visible choices shape the audience reaction.')
+  source = source.replace(
+    'Your every action has reprecussions.',
+    'Your visible choices shape the audience reaction.'
+  )
   return source
 })
 
