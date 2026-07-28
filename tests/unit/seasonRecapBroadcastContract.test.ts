@@ -19,6 +19,12 @@ describe('season recap broadcast contract', () => {
     expect(source).not.toContain('RecapAvatar')
   })
 
+  it('uses one full-screen photoshoot at a time instead of a split collage', () => {
+    expect(source).not.toContain('src-broadcast-photoshoot__reduced-grid')
+    expect(source).toContain('reducedMotion ? 3_600 : 3_350')
+    expect(source).toContain('<AnimatePresence mode="wait" initial={false}>')
+  })
+
   it('does not expose the technical eviction ladder or archive dashboard', () => {
     expect(source).not.toContain("from './EvictionLadder'")
     expect(source).not.toContain('src-archive-progress')
