@@ -19,10 +19,10 @@ test.describe('Housemate biographies @core-journey', () => {
     })
 
     await page.goto('./')
-    await closeDebugPanelIfOpen(page)
     const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
     await expect(mainMenu).toBeVisible({ timeout: 30_000 })
     await dismissPermissionPromptIfPresent(page)
+    await closeDebugPanelIfOpen(page)
 
     await mainMenu.getByRole('button', { name: 'Play', exact: true }).click()
     const playMenu = page.getByRole('navigation', { name: 'Play menu' })
