@@ -593,3 +593,122 @@
     transition: none !important;
   }
 }
+
+/* Compact conversation restoration */
+.inbox-header {
+  gap: 0.35rem;
+  padding: 0.48rem 0.62rem 0.52rem;
+}
+
+.inbox-header__close {
+  flex-basis: 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.inbox-header__meta {
+  gap: 0.45rem;
+}
+
+.inbox-header__reputation {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.inbox-header__reputation summary {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid rgba(139, 92, 246, 0.34);
+  border-radius: 999px;
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.12);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.inbox-header__reputation-body {
+  margin-top: 0.38rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: 9px;
+  display: grid;
+  gap: 0.3rem;
+  color: rgba(226, 232, 240, 0.78);
+  background: rgba(15, 23, 42, 0.8);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.inbox-header__reputation-body p {
+  margin: 0;
+}
+
+.inbox-header__reputation-event {
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.inbox-list {
+  padding: 0.42rem 0.48rem calc(0.62rem + env(safe-area-inset-bottom));
+}
+
+.inbox-sections {
+  gap: 0.58rem;
+}
+
+.inbox-section,
+.inbox-section__list {
+  gap: 0.34rem;
+}
+
+.inbox-section--history > summary,
+.inbox-section--promises > summary {
+  cursor: pointer;
+}
+
+.inbox-section--history[open] > summary,
+.inbox-section--promises[open] > summary {
+  margin-bottom: 0.34rem;
+}
+
+.inbox-item {
+  padding: 0.5rem 0.55rem;
+  gap: 0.34rem;
+  border-radius: 10px;
+}
+
+.inbox-item__text {
+  font-size: 0.8rem;
+  line-height: 1.34;
+}
+
+.inbox-item__outcome {
+  margin: 0;
+  padding: 0.35rem 0.48rem;
+  font-size: 0.66rem;
+}
+
+.inbox-item__actions,
+.inbox-item__actions--drama {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+.inbox-action {
+  min-height: 40px;
+  padding: 0.32rem 0.2rem;
+  border: 0;
+  border-radius: 999px;
+  align-items: center;
+  text-align: center;
+  font-size: 0.64rem;
+  line-height: 1.12;
+}
+
+@media (max-width: 350px) {
+  .inbox-item__actions,
+  .inbox-item__actions--drama {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

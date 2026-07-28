@@ -84,5 +84,14 @@ export function createIncomingInteraction(
     resolved: false,
   }
 
-  return normalizeIncomingInteractionContract(draft, input.mode)
+  const normalized = normalizeIncomingInteractionContract(draft, input.mode)
+  // Passive house notes close at the next week boundary and never linger long
+  // enough to crowd out conversations. Explicit expiries remain authoritative.
+  if (
+    input.expiresAtWeek === undefined &&
+    getIncomingInteractionResponsePolicy(normalized) === 'readOnly'
+  ) {
+    normalized.expiresAtWeek = input.week
+  }
+  return normalized
 }

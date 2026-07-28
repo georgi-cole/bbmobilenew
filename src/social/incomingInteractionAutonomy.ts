@@ -35,7 +35,7 @@ import { createIncomingInteraction } from './incomingInteractionFactory'
 import { createDeterministicSocialRandom } from './socialExecutionGuard'
 import { getSocialPersonality } from './socialPersonalityBank'
 import { getEffectiveSocialMode } from './socialMode'
-import { getRemoteScenarioLines } from './socialRuntimeConfig'
+import { getRemoteScenarioLines, isIncomingInteractionActionable } from './socialRuntimeConfig'
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -593,14 +593,18 @@ function computeRecencyPenalty(
   cooldownTicks: number
 ): number {
   const lastFromActor = pendingInteractions
-    .filter((interaction) => interaction.fromId === actorId)
+    .filter(
+      (interaction) =>
+        interaction.fromId === actorId && isIncomingInteractionActionable(interaction)
+    )
     .sort((left, right) => right.createdAt - left.createdAt)[0]
 
-  if (!lastFromActor) return 0
-
+  if (!lastFromActor || cooldownTicks <= 0) return 0
   const weeksSince = currentWeek - lastFromActor.createdWeek
   if (weeksSince >= cooldownTicks) return 0
-  return 1 - weeksSince / cooldownTicks
+  // A same-week follow-up is possible when context is strong, but its utility is
+  // substantially reduced. Per-actor and scenario dedupe still cap repetition.
+  return weeksSince <= 0 ? 0.55 : 0.25
 }
 
 export function computeIncomingInteractionEngagementScore(
@@ -668,7 +672,9 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_pending_eviction' }
   }
 
-  const globalActive = pendingInteractions.filter((interaction) => !interaction.resolved).length
+  const globalActive = pendingInteractions.filter(
+    (interaction) => !interaction.resolved && isIncomingInteractionActionable(interaction)
+  ).length
   const maxActive = context.dramaMode ? cfg.maxActive : 4
   if (globalActive >= maxActive) {
     if (socialConfig.verbose) {
@@ -680,7 +686,10 @@ export function evaluateIncomingInteractionEnqueueDecision(
   }
 
   const perAiActive = pendingInteractions.filter(
-    (interaction) => interaction.fromId === actorId && !interaction.resolved
+    (interaction) =>
+      interaction.fromId === actorId &&
+      !interaction.resolved &&
+      isIncomingInteractionActionable(interaction)
   ).length
   if (perAiActive >= cfg.maxPerAI) {
     if (socialConfig.verbose) {
@@ -1172,7 +1181,7 @@ export function scheduleIncomingInteractionsForPhase(
     : 0
   const slotCounts = buildDeliverySlotCounts(scheduledQueue, phase, week, deliveredThisPhase)
   const visibleActiveCount = (socialState.incomingInteractions ?? []).filter(
-    (interaction) => !interaction.resolved
+    (interaction) => !interaction.resolved && isIncomingInteractionActionable(interaction)
   ).length
 
   const aiActors = players.filter(
@@ -1195,7 +1204,8 @@ export function scheduleIncomingInteractionsForPhase(
     }))
     .sort((left, right) => (right.decision.score ?? -1) - (left.decision.score ?? -1))
   const alreadyCreatedThisWeek = pendingInteractions.filter(
-    (interaction) => interaction.createdWeek === week
+    (interaction) =>
+      interaction.createdWeek === week && isIncomingInteractionActionable(interaction)
   ).length
   const criticalDecisionCount = rankedDecisions.filter(
     (entry) =>
@@ -1212,7 +1222,7 @@ export function scheduleIncomingInteractionsForPhase(
     0,
     Math.min(
       checkpointBudget,
-      (context.dramaMode ? socialConfig.incomingInteractionConfig.maxPerWeek : 3) -
+      (context.dramaMode ? socialConfig.incomingInteractionConfig.maxPerWeek : 4) -
         alreadyCreatedThisWeek
     )
   )

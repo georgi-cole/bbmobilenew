@@ -1,4 +1,4 @@
-import type { IncomingInteractionPriority, IncomingInteractionType } from './types';
+import type { IncomingInteractionPriority, IncomingInteractionType } from './types'
 
 /** Config for the Social Engine budget computation, adapted from BBMobile defaults. */
 export const socialConfig = {
@@ -151,12 +151,12 @@ export const socialConfig = {
    * randomVariance  – maximum ±fraction of random jitter added to each score.
    */
   incomingInteractionConfig: {
-    maxPerWeek: 5,
-    maxGeneratedPerCheckpoint: 1,
-    maxActive: 6,
-    maxPerAI: 1,
-    cooldownTicks: 2,
-    scoreThreshold: 0.3,
+    maxPerWeek: 6,
+    maxGeneratedPerCheckpoint: 2,
+    maxActive: 8,
+    maxPerAI: 2,
+    cooldownTicks: 1,
+    scoreThreshold: 0.26,
     weights: {
       relationshipIntensity: 0.25,
       strategicUrgency: 0.5,
@@ -242,9 +242,9 @@ export const socialConfig = {
   // ── Incoming Interaction Delivery ─────────────────────────────────────────
   incomingInteractionDeliveryConfig: {
     /** Maximum unresolved interactions visible in the inbox at once. */
-    maxActiveVisible: 2,
+    maxActiveVisible: 4,
     /** Maximum interactions delivered per phase checkpoint. */
-    maxDeliveredPerPhase: 1,
+    maxDeliveredPerPhase: 2,
     /** Phase offsets applied when scheduling by priority. */
     priorityOffsets: {
       high: 0,
@@ -339,4 +339,4 @@ export const socialConfig = {
       broken: { resentment: 5, trustMomentum: -4 },
     },
   },
-};
+}

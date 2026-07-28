@@ -8,13 +8,14 @@ import {
   selectEnergyBank,
   selectInfluenceBank,
   selectInfoBank,
+  selectPersistentSocialHistory,
   selectSessionLogs,
   selectSocialPanelOpen,
   selectWeekStartRelSnapshot,
 } from '../../social/socialSlice'
 import { addTvEvent } from '../../store/gameSlice'
 import { SocialManeuvers } from '../../social/SocialManeuvers'
-import { getSocialNarrative, TV_SOCIAL_CLOSE_MESSAGES } from './socialNarratives'
+import { getSocialNarrative } from './socialNarratives'
 import { buildDrSessionSummary } from '../../services/activityService'
 import {
   getSocialModuleAvailability,
@@ -46,11 +47,6 @@ function formatPlayerNames(names: string[]): string {
   if (names.length <= 1) return names[0] ?? 'the house'
   if (names.length === 2) return `${names[0]} and ${names[1]}`
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
-}
-
-function selectSocialCloseMessage(random: () => number = Math.random): string {
-  const index = Math.floor(random() * TV_SOCIAL_CLOSE_MESSAGES.length)
-  return TV_SOCIAL_CLOSE_MESSAGES[index]
 }
 
 function getSubjectCandidates(
@@ -108,6 +104,7 @@ export default function SocialPanelV2() {
   const infoBank = useAppSelector(selectInfoBank)
   const socialPanelOpen = useAppSelector(selectSocialPanelOpen)
   const sessionLogs = useAppSelector(selectSessionLogs)
+  const actionHistory = useAppSelector(selectPersistentSocialHistory)
   const relationships = socialState?.relationships
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot)
   const dramaNetwork = useAppSelector(selectDramaNetwork)
@@ -175,13 +172,6 @@ export default function SocialPanelV2() {
           type: 'diary',
           source: 'manual',
           channels: ['dr'],
-        })
-      )
-      dispatch(
-        addTvEvent({
-          text: selectSocialCloseMessage(),
-          type: 'social',
-          channels: ['tv'],
         })
       )
     }
@@ -679,7 +669,15 @@ export default function SocialPanelV2() {
         </header>
 
         {dramaMode && (
-          <HousePulse network={dramaNetwork} players={game.players} humanId={humanPlayer.id} />
+          <HousePulse
+            network={dramaNetwork}
+            players={game.players}
+            humanId={humanPlayer.id}
+            actionHistory={actionHistory}
+            relationships={relationships ?? {}}
+            weekStartRelSnapshot={weekStartRelSnapshot}
+            currentWeek={game.week}
+          />
         )}
 
         <div id="sp2-body" className="sp2-body">

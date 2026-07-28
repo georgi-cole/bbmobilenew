@@ -11,7 +11,7 @@ const players = [
 ] as Player[]
 
 describe('HousePulse', () => {
-  it('presents the stories, concrete intel, and history known to the player', () => {
+  it('presents a causal stream, continuing stories and concrete intel known to the player', () => {
     const network = createInitialDramaSocialNetwork()
     network.arcs.push({
       id: 'romance:human~lia:2',
@@ -54,16 +54,31 @@ describe('HousePulse', () => {
       createdAt: 20,
     })
 
-    render(<HousePulse network={network} players={players} humanId="human" />)
+    render(
+      <HousePulse
+        network={network}
+        players={players}
+        humanId="human"
+        actionHistory={[]}
+        relationships={{}}
+        weekStartRelSnapshot={{}}
+        currentWeek={2}
+      />
+    )
+
     fireEvent.click(screen.getByRole('button', { name: /house pulse/i }))
-    expect(screen.getByText('You and Lia')).toBeDefined()
+    expect(screen.getByText('New information surfaced')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'stories' }))
+    expect(screen.getByText('You and Lia')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Repeated moments are turning into a real storyline/)
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'intel' }))
-    expect(screen.getByText('Lia heard Kai testing your name as a backup plan.')).toBeDefined()
-
-    fireEvent.click(screen.getByRole('button', { name: 'history' }))
-    expect(screen.getAllByText('A plan surfaced')).toHaveLength(2)
-    expect(screen.getByText('Fallout: Trust shifted.')).toBeDefined()
+    expect(
+      screen.getByText('Lia heard Kai testing your name as a backup plan.')
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close House Pulse' }))
     expect(screen.queryByRole('dialog', { name: 'House Pulse' })).toBeNull()

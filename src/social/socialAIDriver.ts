@@ -30,6 +30,7 @@ import { createIncomingInteraction } from './incomingInteractionFactory'
 import { createDeterministicSocialRandom, validateSocialExecution } from './socialExecutionGuard'
 import { getPersistentSocialHistory, type SocialStateWithHistory } from './socialHistory'
 import { getEffectiveSocialMode } from './socialMode'
+import { isIncomingInteractionActionable } from './socialRuntimeConfig'
 import type {
   DramaSocialNetwork,
   IncomingInteraction,
@@ -271,7 +272,7 @@ function routeHumanFacingAction(
     (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social'
   ).length
   if (
-    directContactsThisWeek >= 1 ||
+    directContactsThisWeek >= 2 ||
     pending.filter((entry) => entry.createdWeek === week).length >=
       socialConfig.incomingInteractionConfig.maxPerWeek
   ) {
@@ -318,7 +319,7 @@ function routeHumanFacingAction(
     priority,
     slotCounts: buildDeliverySlotCounts(scheduled, phase, week, deliveredThisPhase),
     visibleActiveCount: (current.social.incomingInteractions ?? []).filter(
-      (entry) => !entry.resolved
+      (entry) => !entry.resolved && isIncomingInteractionActionable(entry)
     ).length,
   })
   if (!slot) return 'deferred'
