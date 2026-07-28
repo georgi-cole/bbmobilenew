@@ -36,9 +36,40 @@ jobs:
         run: npm ci
 
       - name: Validate migration scripts
+        id: syntax
+        shell: bash
         run: |
-          node --check scripts/generate-audio-manifest.mjs
-          node --check scripts/migrate-audio-assets.mjs
+          set +e
+          {
+            node --check scripts/generate-audio-manifest.mjs
+            first=$?
+            node --check scripts/migrate-audio-assets.mjs
+            second=$?
+            echo "generate_status=$first"
+            echo "migration_status=$second"
+          } > AUDIO_MIGRATION_DIAGNOSTIC.txt 2>&1
+          cat AUDIO_MIGRATION_DIAGNOSTIC.txt
+          if [ "$first" -ne 0 ] || [ "$second" -ne 0 ]; then
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
+          else
+            rm AUDIO_MIGRATION_DIAGNOSTIC.txt
+            echo 'failed=false' >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Commit syntax diagnostic
+        if: steps.syntax.outputs.failed == 'true'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AUDIO_MIGRATION_DIAGNOSTIC.txt
+          git commit -m 'Capture audio migration syntax diagnostic'
+          git push origin HEAD:refs/heads/agent/audio-auto-index-migration
+
+      - name: Stop after syntax failure
+        if: steps.syntax.outputs.failed == 'true'
+        run: exit 1
 
       - name: Migrate and index all audio assets
         run: |
@@ -108,6 +139,7 @@ jobs:
           set -euo pipefail
           git rm .github/workflows/audio-auto-index-migration.yml
           git rm scripts/migrate-audio-assets.mjs
+          rm -f AUDIO_MIGRATION_DIAGNOSTIC.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
