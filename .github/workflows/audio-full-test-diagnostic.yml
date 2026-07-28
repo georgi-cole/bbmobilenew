@@ -1,9 +1,6 @@
 name: Audio full-test diagnostic
 
 on:
-  push:
-    branches:
-      - agent/audio-auto-index-migration
   pull_request:
     branches:
       - main
@@ -13,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: audio-full-test-diagnostic
+  group: audio-full-test-diagnostic-pr
   cancel-in-progress: true
 
 jobs:
