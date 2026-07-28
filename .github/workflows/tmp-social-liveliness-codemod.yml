@@ -1,4 +1,4 @@
-name: Temporary Social liveliness codemod
+name: Temporary Social liveliness cleanup
 
 on:
   pull_request:
@@ -21,65 +21,35 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Apply focused follow-up
+      - name: Apply residual corrections
         run: node scripts/tmp-social-liveliness-followup.mjs
-      - name: Format complete PR diff
+      - name: Remove temporary diagnostic artifacts
+        run: rm -f docs/.social-liveliness-tests.txt docs/.social-liveliness-typecheck.txt
+      - name: Format every Prettier-supported file changed by the PR
         shell: bash
         run: |
           git fetch origin main --depth=1
-          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx' '*.css' '*.json')
+          mapfile -t files < <(
+            git diff --name-only origin/main...HEAD |
+              grep -E '\.(cjs|mjs|js|jsx|ts|tsx|json|jsonc|css|scss|less|md|mdx|html|yml|yaml|graphql|gql)$' || true
+          )
           if (( ${#files[@]} > 0 )); then
             npx prettier --write "${files[@]}"
           fi
-      - name: Capture focused Social regression diagnostics
+      - name: Verify the required static-quality gate
         shell: bash
         run: |
-          mkdir -p docs
-          set +e
-          npx vitest run \
-            src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx \
-            src/components/HousePulse/__tests__/HousePulse.test.tsx \
-            src/components/FloatingActionBar/__tests__/FloatingActionBar.test.tsx \
-            src/components/SocialPanelV2/__tests__/SocialPanelV2.test.tsx \
-            src/social/__tests__/socialLivelinessRestoration.test.ts \
-            src/social/__tests__/socialModuleAvailability.test.ts \
-            src/social/__tests__/socialPremiumHardening.test.ts \
-            tests/social/socialCommitments.unit.test.ts \
-            tests/social/incomingInteractionScheduler.unit.test.ts \
-            tests/unit/publicOpinion/publicOpinionMiddleware.test.ts \
-            > docs/.social-liveliness-tests.txt 2>&1
-          status=$?
-          set -e
-          if (( status == 0 )); then
-            rm -f docs/.social-liveliness-tests.txt
-          else
-            printf '\nTEST_EXIT_CODE=%s\n' "$status" >> docs/.social-liveliness-tests.txt
-          fi
-      - name: Capture TypeScript diagnostics
-        shell: bash
-        run: |
-          mkdir -p docs
-          set +e
-          npm run typecheck > docs/.social-liveliness-typecheck.txt 2>&1
-          status=$?
-          set -e
-          if (( status == 0 )); then
-            rm -f docs/.social-liveliness-typecheck.txt
-          else
-            printf '\nTYPECHECK_EXIT_CODE=%s\n' "$status" >> docs/.social-liveliness-typecheck.txt
-          fi
-      - name: Commit correction and diagnostics
+          npm run format:check
+          npm run test:guard
+          npm run lint:ci
+          npm run typecheck
+          npm audit --omit=dev --audit-level=high
+      - name: Commit clean corrections
         shell: bash
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src server tests
-          if [[ -f docs/.social-liveliness-tests.txt ]]; then
-            git add docs/.social-liveliness-tests.txt
-          fi
-          if [[ -f docs/.social-liveliness-typecheck.txt ]]; then
-            git add docs/.social-liveliness-typecheck.txt
-          fi
-          git commit -m "Refine Social liveliness restoration"
+          git add -A
+          git commit -m "Pass Social restoration quality checks"
           git push origin HEAD:fix/social-liveliness-causal-story
