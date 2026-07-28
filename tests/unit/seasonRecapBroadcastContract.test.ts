@@ -22,6 +22,7 @@ describe('season recap broadcast contract', () => {
   it('does not expose the technical eviction ladder or archive dashboard', () => {
     expect(source).not.toContain("from './EvictionLadder'")
     expect(source).not.toContain('src-archive-progress')
+    expect(source).not.toContain('src-archive-header')
     expect(source).not.toContain('sceneProgress')
     expect(source).not.toContain('seasonPlacement')
   })
