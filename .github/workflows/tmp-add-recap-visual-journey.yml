@@ -1,3 +1,4 @@
+# One-shot patch; removed by its own successful run.
 name: Temporary add recap visual journey
 
 on:
@@ -28,22 +29,22 @@ jobs:
           path = Path('e2e/playwright/finale.spec.ts')
           source = path.read_text()
           old = """    await expect(recap).toBeVisible({ timeout: 10_000 })
-    await recap
-      .getByRole('button', { name: 'Skip recap' })
-"""
+          await recap
+            .getByRole('button', { name: 'Skip recap' })
+          """
           new = """    await expect(recap).toBeVisible({ timeout: 10_000 })
-    await expect(recap.getByText('The housemates who made the season.')).toBeVisible({
-      timeout: 15_000,
-    })
-    await expect(recap.locator('.src-broadcast-photoshoot')).toBeVisible()
-    await expect(recap.locator('.src-cast-grid')).toHaveCount(0)
-    await page.screenshot({
-      path: 'test-results/season-recap-photoshoot-mobile.png',
-      fullPage: false,
-    })
-    await recap
-      .getByRole('button', { name: 'Skip recap' })
-"""
+          await expect(recap.getByText('The housemates who made the season.')).toBeVisible({
+            timeout: 15_000,
+          })
+          await expect(recap.locator('.src-broadcast-photoshoot')).toBeVisible()
+          await expect(recap.locator('.src-cast-grid')).toHaveCount(0)
+          await page.screenshot({
+            path: 'test-results/season-recap-photoshoot-mobile.png',
+            fullPage: false,
+          })
+          await recap
+            .getByRole('button', { name: 'Skip recap' })
+          """
           if old not in source:
               raise SystemExit('Finale recap insertion point was not found')
           path.write_text(source.replace(old, new))
