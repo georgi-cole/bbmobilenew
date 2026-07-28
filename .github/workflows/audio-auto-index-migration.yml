@@ -1,0 +1,112 @@
+name: Audio auto-index migration
+
+on:
+  push:
+    branches:
+      - agent/audio-auto-index-migration
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audio-auto-index-migration
+  cancel-in-progress: true
+
+jobs:
+  migrate-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/audio-auto-index-migration
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate migration scripts
+        run: |
+          node --check scripts/generate-audio-manifest.mjs
+          node --check scripts/migrate-audio-assets.mjs
+
+      - name: Migrate and index all audio assets
+        run: |
+          node scripts/migrate-audio-assets.mjs
+          node scripts/generate-audio-manifest.mjs
+
+      - name: Format migrated source and configuration
+        run: |
+          npx prettier --write \
+            package.json \
+            public/assets/audio.config.json \
+            scripts/generate-audio-manifest.mjs \
+            src/services/sound/sounds.ts \
+            src/services/sound/musicCatalog.ts \
+            tests/unit/sound/audioAutoIndex.test.ts \
+            docs/AUDIO_ASSET_INDEXING.md
+
+      - name: Verify migration layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d public/assets/music
+          test -d public/assets/sounds
+          if find public/assets/sounds -type f \( -iname '*music*' -o -iname '*background*' -o -iname '*soundtrack*' \) -print | grep -q .; then
+            echo 'Potential music-named files remain in sounds:'
+            find public/assets/sounds -type f \( -iname '*music*' -o -iname '*background*' -o -iname '*soundtrack*' \) -print
+            exit 1
+          fi
+          test -f src/services/sound/generatedAudioManifest.ts
+          git diff --check
+
+      - name: Lint
+        run: npm run lint:ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Focused audio regressions
+        run: |
+          npx vitest run \
+            tests/unit/sound/audioAutoIndex.test.ts \
+            tests/unit/sound/queue.test.ts \
+            tests/unit/sound/soundMiddleware.test.ts \
+            tests/unit/sound/musicConfigAudit.test.ts \
+            tests/unit/sound/musicConfigSanitizer.test.ts \
+            tests/unit/sound/musicRuntimeConfig.test.ts \
+            tests/unit/sound/resolveDesiredMusic.test.ts \
+            tests/unit/sound/minigameMusicConfig.test.ts
+
+      - name: Full test suite
+        run: npm test
+
+      - name: Web production build
+        run: npm run build
+
+      - name: Capacitor mobile build
+        run: npm run build:mobile
+
+      - name: Verify generated manifest is stable
+        run: |
+          npm run generate:audio
+          git diff --exit-code -- src/services/sound/generatedAudioManifest.ts
+
+      - name: Commit validated migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/audio-auto-index-migration.yml
+          git rm scripts/migrate-audio-assets.mjs
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Migrate and auto-index music and sound assets'
+          git push origin HEAD:refs/heads/agent/audio-auto-index-migration
