@@ -41,7 +41,13 @@
 .src-broadcast-overlay__vignette {
   z-index: 40;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.28), transparent 18%, transparent 76%, rgba(0, 0, 0, 0.58)),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.28),
+      transparent 18%,
+      transparent 76%,
+      rgba(0, 0, 0, 0.58)
+    ),
     radial-gradient(circle at center, transparent 44%, rgba(0, 0, 0, 0.46));
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4);
 }
@@ -251,7 +257,12 @@
 .src-broadcast-highlight__light {
   position: absolute;
   inset: 0;
-  background: linear-gradient(125deg, transparent 0 48%, rgba(255, 255, 255, 0.035) 49% 50%, transparent 51%);
+  background: linear-gradient(
+    125deg,
+    transparent 0 48%,
+    rgba(255, 255, 255, 0.035) 49% 50%,
+    transparent 51%
+  );
   pointer-events: none;
 }
 
@@ -454,7 +465,11 @@
   position: absolute;
   inset: 0;
   opacity: 0.17;
-  background-image: repeating-radial-gradient(circle at 0 0, transparent 0 4px, rgba(255, 255, 255, 0.08) 5px);
+  background-image: repeating-radial-gradient(
+    circle at 0 0,
+    transparent 0 4px,
+    rgba(255, 255, 255, 0.08) 5px
+  );
   background-size: 13px 13px;
   mix-blend-mode: soft-light;
 }

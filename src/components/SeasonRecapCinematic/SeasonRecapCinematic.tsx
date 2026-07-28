@@ -163,7 +163,9 @@ function PhotoshootScene({
         <div className="src-broadcast-photoshoot__wash" aria-hidden="true" />
       </div>
       <div className="src-broadcast-photoshoot__copy">
-        <p>Season {season} · Week {week}</p>
+        <p>
+          Season {season} · Week {week}
+        </p>
         <h2>The housemates who made the season.</h2>
       </div>
     </SceneFrame>
@@ -172,7 +174,9 @@ function PhotoshootScene({
 
 function HighlightScene({ highlight }: { highlight: SeasonRecapHighlight }) {
   return (
-    <SceneFrame className={`src-broadcast-highlight src-broadcast-highlight--${highlight.storyType}`}>
+    <SceneFrame
+      className={`src-broadcast-highlight src-broadcast-highlight--${highlight.storyType}`}
+    >
       <div className="src-broadcast-highlight__light" aria-hidden="true" />
       <motion.div
         className="src-broadcast-highlight__portrait"
@@ -429,8 +433,7 @@ export default function SeasonRecapCinematic({
   const currentScene = timeline[sceneIndex]
   const activeHighlight =
     currentScene?.kind === 'highlight_moment' ? highlights[currentScene.highlightIndex ?? 0] : null
-  const activeHonor =
-    currentScene?.kind === 'honor' ? honors[currentScene.honorIndex ?? 0] : null
+  const activeHonor = currentScene?.kind === 'honor' ? honors[currentScene.honorIndex ?? 0] : null
   const activeFarewell =
     currentScene?.kind === 'farewell' ? farewellGroups[currentScene.farewellIndex ?? 0] : null
 

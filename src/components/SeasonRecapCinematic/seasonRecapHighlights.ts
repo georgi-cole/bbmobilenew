@@ -74,7 +74,8 @@ function buildStatHighlights(players: Player[]): SeasonRecapHighlight[] {
         id: `nominations-${player.id}`,
         eyebrow: 'The block never finished the story',
         title: `${player.name} refused to disappear.`,
-        caption: 'Every time the season pushed them toward the door, they found a reason to stay in the story.',
+        caption:
+          'Every time the season pushed them toward the door, they found a reason to stay in the story.',
         stamp: 'The survival story',
         player,
         storyType: 'survival',
