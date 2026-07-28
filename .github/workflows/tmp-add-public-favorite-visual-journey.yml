@@ -1,3 +1,4 @@
+# One-shot patch; removed by its own successful run.
 name: Temporary add Public Favorite visual journey
 
 on:
@@ -27,27 +28,28 @@ jobs:
           from pathlib import Path
           path = Path('e2e/playwright/finale.spec.ts')
           source = path.read_text()
-          old = """    await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
-    await favoriteVote.getByRole('button', { name: 'Fast forward public favorite vote' }).click()
-"""
-          new = """    await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
-    await expect(favoriteVote.getByText('The public has made its choice.')).toBeVisible()
-    await expect(favoriteVote.locator('.pf-overlay__board')).toHaveCount(0)
-    await page.screenshot({
-      path: 'test-results/public-favorite-intro-mobile.png',
-      fullPage: false,
-    })
-    await favoriteVote.getByRole('button', { name: 'Skip intro' }).click()
-    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({ timeout: 5_000 })
-    await page.screenshot({
-      path: 'test-results/public-favorite-feature-mobile.png',
-      fullPage: false,
-    })
-    await favoriteVote.getByRole('button', { name: 'Fast forward public favorite vote' }).click()
-"""
-          if old not in source:
+          marker = "    await expect(favoriteVote).toBeVisible({ timeout: 15_000 })\n"
+          insertion = (
+              "    await expect(favoriteVote.getByText('The public has made its choice.')).toBeVisible()\n"
+              "    await expect(favoriteVote.locator('.pf-overlay__board')).toHaveCount(0)\n"
+              "    await page.screenshot({\n"
+              "      path: 'test-results/public-favorite-intro-mobile.png',\n"
+              "      fullPage: false,\n"
+              "    })\n"
+              "    await favoriteVote.getByRole('button', { name: 'Skip intro' }).click()\n"
+              "    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({\n"
+              "      timeout: 5_000,\n"
+              "    })\n"
+              "    await page.screenshot({\n"
+              "      path: 'test-results/public-favorite-feature-mobile.png',\n"
+              "      fullPage: false,\n"
+              "    })\n"
+          )
+          if marker not in source:
               raise SystemExit('Public Favorite insertion point was not found')
-          path.write_text(source.replace(old, new))
+          if insertion not in source:
+              source = source.replace(marker, marker + insertion, 1)
+          path.write_text(source)
       - run: npx prettier --write e2e/playwright/finale.spec.ts
       - name: Commit journey and remove temporary workflow
         shell: bash
