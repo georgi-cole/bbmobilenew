@@ -121,8 +121,7 @@ function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteracti
 
 function getResponseDelta(
   responseType: IncomingInteractionResponseType,
-  interaction: IncomingInteraction,
-  dramaMode: boolean
+  interaction: IncomingInteraction
 ): number {
   const scenarioKey = interaction.payload?.scenarioKey
   if (
@@ -338,7 +337,7 @@ function applyIncomingChoiceConsequences({
     if (commitment) dispatch(addSocialCommitment(commitment))
   }
 
-  const baseDelta = getResponseDelta(responseType, interaction, dramaMode)
+  const baseDelta = getResponseDelta(responseType, interaction)
   const responseTone = dramaMode
     ? getIncomingInteractionTone({
         interaction,

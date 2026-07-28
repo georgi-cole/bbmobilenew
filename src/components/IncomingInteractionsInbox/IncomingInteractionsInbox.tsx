@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   closeIncomingInbox,
@@ -332,7 +332,7 @@ export default function IncomingInteractionsInbox() {
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
   const globalDramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
-  const recentlyResolvedIdsRef = useRef<Set<string>>(new Set())
+  const [recentlyResolvedIds, setRecentlyResolvedIds] = useState<Set<string>>(() => new Set())
 
   const players = game.players
   const currentWeek = game.week ?? 1
@@ -367,7 +367,7 @@ export default function IncomingInteractionsInbox() {
     () =>
       sortedInteractions.filter(
         (entry) =>
-          !entry.interaction.resolved || recentlyResolvedIdsRef.current.has(entry.interaction.id)
+          !entry.interaction.resolved || recentlyResolvedIds.has(entry.interaction.id)
       ),
     [sortedInteractions]
   )
@@ -376,7 +376,7 @@ export default function IncomingInteractionsInbox() {
       sortedInteractions.filter(
         (entry) =>
           entry.interaction.resolved &&
-          !recentlyResolvedIdsRef.current.has(entry.interaction.id) &&
+          !recentlyResolvedIds.has(entry.interaction.id) &&
           entry.interaction.resolvedWeek === currentWeek
       ),
     [sortedInteractions, currentWeek]
@@ -413,7 +413,7 @@ export default function IncomingInteractionsInbox() {
       socialModuleAvailability,
       'IncomingInteractionsInbox visibility guard'
     )
-    recentlyResolvedIdsRef.current.clear()
+    setRecentlyResolvedIds(new Set())
     dispatch(closeIncomingInbox())
   }, [dispatch, open, socialModuleAvailability])
 
@@ -437,7 +437,11 @@ export default function IncomingInteractionsInbox() {
         currentWeek={currentWeek}
         onRead={(interactionId) => dispatch(markIncomingInteractionRead(interactionId))}
         onRespond={(interactionId, responseType, responseLabel) => {
-          recentlyResolvedIdsRef.current.add(interactionId)
+          setRecentlyResolvedIds((current) => {
+            const nextIds = new Set(current)
+            nextIds.add(interactionId)
+            return nextIds
+          })
           dispatch(respondToIncomingInteraction({ interactionId, responseType, responseLabel }))
         }}
         relationships={relationships}
@@ -469,7 +473,7 @@ export default function IncomingInteractionsInbox() {
               type="button"
               aria-label="Close inbox"
               onClick={() => {
-                recentlyResolvedIdsRef.current.clear()
+                setRecentlyResolvedIds(new Set())
                 dispatch(closeIncomingInbox())
               }}
             >
