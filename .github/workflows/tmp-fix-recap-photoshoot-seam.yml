@@ -1,5 +1,4 @@
 # One-shot corrective workflow; removes itself after success.
-# Trigger revision 2.
 name: Temporary fix recap photoshoot seam
 
 on:
@@ -31,26 +30,24 @@ jobs:
           component_path = Path('src/components/SeasonRecapCinematic/SeasonRecapCinematic.tsx')
           component = component_path.read_text()
 
-          old_effect = '''  useEffect(() => {
-            if (reducedMotion) return
-            const timer = window.setTimeout(() => setActivePhoto(1), 3_350)
-            return () => window.clearTimeout(timer)
-          }, [reducedMotion])
-          '''
+          effect_start = component.find('  useEffect(() => {\n    if (reducedMotion) return\n    const timer = window.setTimeout(() => setActivePhoto(1), 3_350)')
+          effect_end_marker = '  }, [reducedMotion])\n'
+          effect_end = component.find(effect_end_marker, effect_start)
+          if effect_start < 0 or effect_end < 0:
+              raise SystemExit('Photoshoot timer boundaries were not found')
+          effect_end += len(effect_end_marker)
           new_effect = '''  useEffect(() => {
             const timer = window.setTimeout(() => setActivePhoto(1), reducedMotion ? 3_600 : 3_350)
             return () => window.clearTimeout(timer)
           }, [reducedMotion])
           '''
-          if old_effect not in component:
-              raise SystemExit('Current photoshoot timer block was not found')
-          component = component.replace(old_effect, new_effect, 1)
+          component = component[:effect_start] + new_effect + component[effect_end:]
 
           media_start = component.find('        {reducedMotion ? (')
           wash_marker = '        <div className="src-broadcast-photoshoot__wash" aria-hidden="true" />'
           media_end = component.find(wash_marker, media_start)
           if media_start < 0 or media_end < 0:
-              raise SystemExit('Current split photoshoot media block was not found')
+              raise SystemExit('Split photoshoot media boundaries were not found')
           replacement = '''        <AnimatePresence mode="wait" initial={false}>
             <motion.img
               key={photos[activePhoto]?.src}
@@ -71,18 +68,21 @@ jobs:
 
           css_path = Path('src/components/SeasonRecapCinematic/SeasonRecapBroadcast.css')
           css = css_path.read_text()
-          css = css.replace('  object-position: center 18%;', '  object-position: center 20%;', 1)
-          css = css.replace('  max-width: 760px;', '  max-width: 520px;', 1)
-          css = css.replace('  font-size: clamp(2.55rem, 11.5vw, 6.4rem);', '  font-size: clamp(1.9rem, 8vw, 4.5rem);', 1)
-          reduced_grid = '''.src-broadcast-photoshoot__reduced-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            width: 100%;
-            height: 100%;
-          }
-
-          '''
-          css = css.replace(reduced_grid, '', 1)
+          required_css = [
+              ('  object-position: center 18%;', '  object-position: center 20%;'),
+              ('  max-width: 760px;', '  max-width: 520px;'),
+              ('  font-size: clamp(2.55rem, 11.5vw, 6.4rem);', '  font-size: clamp(1.9rem, 8vw, 4.5rem);'),
+          ]
+          for old, new in required_css:
+              if old not in css:
+                  raise SystemExit(f'Recap CSS anchor was not found: {old}')
+              css = css.replace(old, new, 1)
+          grid_start = css.find('.src-broadcast-photoshoot__reduced-grid {')
+          if grid_start >= 0:
+              grid_end = css.find('\n}\n', grid_start)
+              if grid_end < 0:
+                  raise SystemExit('Reduced grid CSS end was not found')
+              css = css[:grid_start] + css[grid_end + 3:]
           css_path.write_text(css)
 
           finale_path = Path('e2e/playwright/finale.spec.ts')
