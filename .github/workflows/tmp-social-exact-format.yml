@@ -1,0 +1,61 @@
+name: Temporary exact Social formatter
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.head_ref == 'fix/social-ux-realism-regressions' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/social-ux-realism-regressions
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format exact changed files
+        run: >-
+          npx prettier --write
+          src/components/HousePulse/HousePulse.tsx
+          src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.css
+          src/components/IncomingInteractionsInbox/IncomingInteractionsInbox.tsx
+          src/components/IncomingInteractionsInbox/__tests__/IncomingInteractionsInbox.test.tsx
+          src/publicOpinion/AudiencePulseService.ts
+          src/publicOpinion/PublicDirectionService.ts
+          src/publicOpinion/__tests__/AudiencePulseService.test.ts
+          src/publicOpinion/publicNarratives.ts
+          src/publicOpinion/publicOpinionMiddleware.ts
+          src/publicOpinion/types.ts
+          src/screens/PublicMeter/PublicMeter.tsx
+          src/social/SocialManeuvers.ts
+          src/social/__tests__/incomingInteractionAutonomy.test.ts
+          src/social/__tests__/socialLivelinessRestoration.test.ts
+          src/social/__tests__/socialPremiumHardening.test.ts
+          src/social/incomingInteractionAutonomy.ts
+          src/social/incomingInteractionPresentation.ts
+          src/social/incomingInteractionValidity.ts
+          src/social/incomingInteractionValidityBank.ts
+          src/social/incomingInteractions.ts
+          src/social/socialActions.ts
+          src/social/socialCommitments.ts
+          src/social/socialMode.ts
+          src/social/socialStoryStream.ts
+          tests/social/socialCommitments.unit.test.ts
+      - name: Commit exact formatting
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src tests
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Format exact Social correction files"
+          git pull --rebase origin fix/social-ux-realism-regressions
+          git push origin HEAD:fix/social-ux-realism-regressions
