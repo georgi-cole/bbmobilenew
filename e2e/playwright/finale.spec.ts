@@ -318,6 +318,7 @@ test.describe('Finale / Jury flow @release', () => {
     })
     await expect(recap.locator('.src-broadcast-photoshoot')).toBeVisible()
     await expect(recap.locator('.src-cast-grid')).toHaveCount(0)
+    await page.waitForTimeout(850)
     await page.screenshot({
       path: 'test-results/season-recap-photoshoot-mobile.png',
       fullPage: false,

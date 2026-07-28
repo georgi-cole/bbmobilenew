@@ -177,7 +177,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 18%;
+  object-position: center 20%;
 }
 
 .src-broadcast-photoshoot__wash {
@@ -194,7 +194,7 @@
   bottom: max(38px, calc(env(safe-area-inset-bottom, 0px) + 28px));
   left: clamp(18px, 5vw, 46px);
   z-index: 4;
-  max-width: 760px;
+  max-width: 520px;
 }
 
 .src-broadcast-photoshoot__copy p,
@@ -213,19 +213,12 @@
 .src-broadcast-photoshoot__copy h2 {
   margin-top: 7px;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2.55rem, 11.5vw, 6.4rem);
+  font-size: clamp(1.9rem, 8vw, 4.5rem);
   font-weight: 500;
   line-height: 0.88;
   letter-spacing: -0.055em;
   text-wrap: balance;
   text-shadow: 0 12px 40px rgba(0, 0, 0, 0.72);
-}
-
-.src-broadcast-photoshoot__reduced-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: 100%;
-  height: 100%;
 }
 
 /* Editorial season story */

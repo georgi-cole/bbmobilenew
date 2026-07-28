@@ -133,33 +133,27 @@ function PhotoshootScene({
   ]
 
   useEffect(() => {
-    if (reducedMotion) return
-    const timer = window.setTimeout(() => setActivePhoto(1), 3_350)
+    const timer = window.setTimeout(() => setActivePhoto(1), reducedMotion ? 3_600 : 3_350)
     return () => window.clearTimeout(timer)
   }, [reducedMotion])
 
   return (
     <SceneFrame className="src-broadcast-photoshoot">
       <div className="src-broadcast-photoshoot__frame">
-        {reducedMotion ? (
-          <div className="src-broadcast-photoshoot__reduced-grid">
-            {photos.map((photo) => (
-              <img key={photo.src} src={photo.src} alt={photo.alt} />
-            ))}
-          </div>
-        ) : (
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.img
-              key={photos[activePhoto]?.src}
-              src={photos[activePhoto]?.src}
-              alt={photos[activePhoto]?.alt}
-              initial={{ opacity: 0, scale: 1.035 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.985 }}
-              transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-            />
-          </AnimatePresence>
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.img
+            key={photos[activePhoto]?.src}
+            src={photos[activePhoto]?.src}
+            alt={photos[activePhoto]?.alt}
+            initial={{ opacity: 0, scale: reducedMotion ? 1 : 1.025 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: reducedMotion ? 1 : 0.99 }}
+            transition={{
+              duration: reducedMotion ? 0 : 0.62,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          />
+        </AnimatePresence>
         <div className="src-broadcast-photoshoot__wash" aria-hidden="true" />
       </div>
       <div className="src-broadcast-photoshoot__copy">
