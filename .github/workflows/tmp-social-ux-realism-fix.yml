@@ -29,8 +29,19 @@ jobs:
           if (( ${#files[@]} > 0 )); then
             npx prettier --write "${files[@]}"
           fi
-      - name: Apply safe lint fixes
-        run: npx eslint src tests --fix
+      - name: Apply safe lint fixes and capture output
+        shell: bash
+        run: |
+          mkdir -p docs
+          set +e
+          npx eslint src tests --fix > docs/.social-ux-eslint.txt 2>&1
+          status=$?
+          set -e
+          if (( status == 0 )); then
+            rm -f docs/.social-ux-eslint.txt
+          else
+            printf '\nESLINT_EXIT_CODE=%s\n' "$status" >> docs/.social-ux-eslint.txt
+          fi
       - name: Capture focused diagnostics
         shell: bash
         run: |
