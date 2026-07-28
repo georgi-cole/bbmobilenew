@@ -48,7 +48,7 @@ export function computeAudiencePulse({
   const activeIds = new Set(
     players
       .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
-      .map((player) => player.id),
+      .map((player) => player.id)
   )
   const byActor = new Map<string, SocialActionLogEntry[]>()
   for (const entry of actionHistory) {
@@ -59,17 +59,18 @@ export function computeAudiencePulse({
   const scored: Array<AudiencePulseReaction & { strength: number }> = []
   for (const [playerId, entries] of byActor) {
     const warmth = entries.filter(
-      (entry) => entry.outcome === 'success' && entry.delta > 0 && WARM_ACTIONS.has(entry.actionId),
+      (entry) => entry.outcome === 'success' && entry.delta > 0 && WARM_ACTIONS.has(entry.actionId)
     ).length
     const strategy = entries.filter(
-      (entry) => entry.outcome === 'success' && STRATEGY_ACTIONS.has(entry.actionId),
+      (entry) => entry.outcome === 'success' && STRATEGY_ACTIONS.has(entry.actionId)
     ).length
     const conflict = entries.filter(
-      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId),
+      (entry) => entry.delta < 0 || CONFLICT_ACTIONS.has(entry.actionId)
     ).length
     const failures = entries.filter((entry) => entry.outcome === 'failure').length
     const overexposed = entries.length >= 8
-    const score = warmth * 0.7 + strategy * 0.5 - conflict * 0.75 - failures * 0.35 - (overexposed ? 0.8 : 0)
+    const score =
+      warmth * 0.7 + strategy * 0.5 - conflict * 0.75 - failures * 0.35 - (overexposed ? 0.8 : 0)
     if (Math.abs(score) < 0.75) continue
     const delta = Math.max(-2, Math.min(2, Math.round(score)))
     if (delta === 0) continue
@@ -82,7 +83,9 @@ export function computeAudiencePulse({
   }
 
   return scored
-    .sort((left, right) => right.strength - left.strength || left.playerId.localeCompare(right.playerId))
+    .sort(
+      (left, right) => right.strength - left.strength || left.playerId.localeCompare(right.playerId)
+    )
     .slice(0, Math.max(0, maxReactions))
     .map(({ strength: _strength, ...reaction }) => reaction)
 }

@@ -366,8 +366,7 @@ export default function IncomingInteractionsInbox() {
   const visibleConversationInteractions = useMemo(
     () =>
       sortedInteractions.filter(
-        (entry) =>
-          !entry.interaction.resolved || recentlyResolvedIds.has(entry.interaction.id)
+        (entry) => !entry.interaction.resolved || recentlyResolvedIds.has(entry.interaction.id)
       ),
     [sortedInteractions, recentlyResolvedIds]
   )

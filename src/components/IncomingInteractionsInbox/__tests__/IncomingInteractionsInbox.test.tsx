@@ -208,11 +208,13 @@ describe('IncomingInteractionsInbox', () => {
         read: false,
         requiresResponse: false,
         resolved: false,
-      }),
+      })
     )
     renderInbox(store)
     fireEvent.click(screen.getByRole('button', { name: /honest|open up|let them in/i }))
-    expect(screen.getByText(/took your honesty seriously|appreciated the openness/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/took your honesty seriously|appreciated the openness/i)
+    ).toBeInTheDocument()
     expect(screen.getByText(/public save changed the temperature/i)).toBeInTheDocument()
   })
 

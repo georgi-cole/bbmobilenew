@@ -159,9 +159,7 @@ const NARRATIVE_VARIANTS = {
   vote_promise_kept: [
     'Viewers saw the vote match the promise, and the consistency earned a little respect.',
   ],
-  vote_promise_broken: [
-    'The broadcast exposed a promise that did not match the vote.',
-  ],
+  vote_promise_broken: ['The broadcast exposed a promise that did not match the vote.'],
   conflicting_vote_promises: [
     'Viewers caught the same vote being promised to both nominees. The contradiction did not go unnoticed.',
   ],
