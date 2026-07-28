@@ -15,13 +15,14 @@ import {
   type MusicSelection,
   type MusicTransitionPolicy,
 } from './musicConfig'
-import {
-  isCatalogMusicTrack,
-  type MusicTrackAssetOverride,
-} from './musicCatalog'
+import { isCatalogMusicTrack, type MusicTrackAssetOverride } from './musicCatalog'
 import { SOUND_REGISTRY } from './sounds'
 
-const MUSIC_CONFIG_MODES = ['any', 'classic', 'survival'] as const satisfies readonly MusicConfigMode[]
+const MUSIC_CONFIG_MODES = [
+  'any',
+  'classic',
+  'survival',
+] as const satisfies readonly MusicConfigMode[]
 const MINIGAME_STAGES = [
   'rules',
   'countdown',
@@ -29,7 +30,12 @@ const MINIGAME_STAGES = [
   'results',
   'done',
 ] as const satisfies readonly MusicMinigameStage[]
-const GAME_CATEGORIES = ['arcade', 'endurance', 'logic', 'trivia'] as const satisfies readonly GameCategory[]
+const GAME_CATEGORIES = [
+  'arcade',
+  'endurance',
+  'logic',
+  'trivia',
+] as const satisfies readonly GameCategory[]
 const CONTEXT_KEYS = ['spectator', 'social', 'seasonComplete', 'gameOver', 'fallback'] as const
 const PHASES = new Set(Object.keys(DEFAULT_PHASE_MUSIC_POLICY) as Phase[])
 const SCENES = new Set(Object.keys(DEFAULT_SCENE_MUSIC_POLICY) as MusicScene[])
@@ -127,8 +133,7 @@ function sanitiseProfile(raw: unknown): MinigameMusicProfile | null {
         new Set(
           raw.modes.filter(
             (value): value is MusicConfigMode =>
-              typeof value === 'string' &&
-              MUSIC_CONFIG_MODES.includes(value as MusicConfigMode)
+              typeof value === 'string' && MUSIC_CONFIG_MODES.includes(value as MusicConfigMode)
           )
         )
       )

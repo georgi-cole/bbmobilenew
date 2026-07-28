@@ -1,0 +1,173 @@
+MUSIC MANAGER CI DIAGNOSTIC
+format_status=0
+lint_status=1
+typecheck_status=2
+build_status=2
+mobile_build_status=2
+
+===== FORMAT =====
+
+> bbmobilenew@1.0.0 format:check
+> node scripts/check-changed-format.mjs
+
+Formatting transition base: origin/main (63a2967d2b6e)
+Auditing 22 changed Prettier-supported file(s).
+Strictly checked: 17
+Legacy-format exceptions already dirty at merge base: 5
+  legacy: src/components/MinigameHost/MinigameHost.tsx
+  legacy: src/services/sound/SoundManager.ts
+  legacy: src/store/challengeSlice.ts
+  legacy: src/store/soundMiddleware.ts
+  legacy: tests/unit/sound/queue.test.ts
+Changed-file formatting transition gate passed.
+
+===== LINT =====
+
+> bbmobilenew@1.0.0 lint:ci
+> eslint . --max-warnings=0
+
+
+/home/runner/work/bbmobilenew/bbmobilenew/src/screens/SettingsAdmin/MusicManagerPanel.tsx
+  32:8  error  'MusicTrackAssetOverride' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+
+
+===== TYPECHECK =====
+
+> bbmobilenew@1.0.0 typecheck
+> tsc -b
+
+src/remoteConfig/remoteConfigSlice.ts(91,7): error TS2322: Type 'RemoteConfig | null' is not assignable to type 'WritableNonArrayDraft<RemoteConfig> | null'.
+  Type 'RemoteConfig' is not assignable to type 'WritableNonArrayDraft<RemoteConfig>'.
+    Types of property 'season' are incompatible.
+      Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; } | undefined' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }> | undefined'.
+        Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }>'.
+          Types of property 'music' are incompatible.
+            Type 'RemoteMusic | undefined' is not assignable to type 'WritableNonArrayDraft<RemoteMusic> | undefined'.
+              Type 'RemoteMusic' is not assignable to type 'WritableNonArrayDraft<RemoteMusic>'.
+                Types of property 'assignments' are incompatible.
+                  Type 'MusicConfigOverrides | undefined' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides> | undefined'.
+                    Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+                      Types of property 'minigameProfiles' are incompatible.
+                        Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+                          The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/remoteConfig/remoteConfigSlice.ts(104,9): error TS2322: Type 'RemoteConfig | null' is not assignable to type 'WritableNonArrayDraft<RemoteConfig> | null'.
+  Type 'RemoteConfig' is not assignable to type 'WritableNonArrayDraft<RemoteConfig>'.
+    Types of property 'season' are incompatible.
+      Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; } | undefined' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }> | undefined'.
+        Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }>'.
+          Types of property 'music' are incompatible.
+            Type 'RemoteMusic | undefined' is not assignable to type 'WritableNonArrayDraft<RemoteMusic> | undefined'.
+              Type 'RemoteMusic' is not assignable to type 'WritableNonArrayDraft<RemoteMusic>'.
+                Types of property 'assignments' are incompatible.
+                  Type 'MusicConfigOverrides | undefined' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides> | undefined'.
+                    Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+                      Types of property 'minigameProfiles' are incompatible.
+                        Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+                          The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/screens/SettingsAdmin/MusicManagerPanel.tsx(32,8): error TS6133: 'MusicTrackAssetOverride' is declared but its value is never read.
+src/store/settingsSlice.ts(250,9): error TS2322: Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+  Types of property 'minigameProfiles' are incompatible.
+    Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+      The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/store/settingsSlice.ts(257,7): error TS2322: Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+  Types of property 'minigameProfiles' are incompatible.
+    Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+      The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+
+===== WEB BUILD =====
+
+> bbmobilenew@1.0.0 build
+> npm run generate:after-eye && tsc -b && vite build && npm run check:production-debug-globals
+
+
+> bbmobilenew@1.0.0 generate:after-eye
+> node scripts/generate-after-the-eye-config.mjs
+
+After the Eye config is valid: 100 individual scenarios, 6 linked scenarios, 20 categories.
+src/remoteConfig/remoteConfigSlice.ts(91,7): error TS2322: Type 'RemoteConfig | null' is not assignable to type 'WritableNonArrayDraft<RemoteConfig> | null'.
+  Type 'RemoteConfig' is not assignable to type 'WritableNonArrayDraft<RemoteConfig>'.
+    Types of property 'season' are incompatible.
+      Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; } | undefined' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }> | undefined'.
+        Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }>'.
+          Types of property 'music' are incompatible.
+            Type 'RemoteMusic | undefined' is not assignable to type 'WritableNonArrayDraft<RemoteMusic> | undefined'.
+              Type 'RemoteMusic' is not assignable to type 'WritableNonArrayDraft<RemoteMusic>'.
+                Types of property 'assignments' are incompatible.
+                  Type 'MusicConfigOverrides | undefined' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides> | undefined'.
+                    Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+                      Types of property 'minigameProfiles' are incompatible.
+                        Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+                          The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/remoteConfig/remoteConfigSlice.ts(104,9): error TS2322: Type 'RemoteConfig | null' is not assignable to type 'WritableNonArrayDraft<RemoteConfig> | null'.
+  Type 'RemoteConfig' is not assignable to type 'WritableNonArrayDraft<RemoteConfig>'.
+    Types of property 'season' are incompatible.
+      Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; } | undefined' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }> | undefined'.
+        Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }>'.
+          Types of property 'music' are incompatible.
+            Type 'RemoteMusic | undefined' is not assignable to type 'WritableNonArrayDraft<RemoteMusic> | undefined'.
+              Type 'RemoteMusic' is not assignable to type 'WritableNonArrayDraft<RemoteMusic>'.
+                Types of property 'assignments' are incompatible.
+                  Type 'MusicConfigOverrides | undefined' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides> | undefined'.
+                    Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+                      Types of property 'minigameProfiles' are incompatible.
+                        Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+                          The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/screens/SettingsAdmin/MusicManagerPanel.tsx(32,8): error TS6133: 'MusicTrackAssetOverride' is declared but its value is never read.
+src/store/settingsSlice.ts(250,9): error TS2322: Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+  Types of property 'minigameProfiles' are incompatible.
+    Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+      The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/store/settingsSlice.ts(257,7): error TS2322: Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+  Types of property 'minigameProfiles' are incompatible.
+    Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+      The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+
+===== MOBILE BUILD =====
+
+> bbmobilenew@1.0.0 build:mobile
+> npm run generate:after-eye && tsc -b && vite build --mode capacitor && npm run check:production-debug-globals
+
+
+> bbmobilenew@1.0.0 generate:after-eye
+> node scripts/generate-after-the-eye-config.mjs
+
+After the Eye config is valid: 100 individual scenarios, 6 linked scenarios, 20 categories.
+src/remoteConfig/remoteConfigSlice.ts(91,7): error TS2322: Type 'RemoteConfig | null' is not assignable to type 'WritableNonArrayDraft<RemoteConfig> | null'.
+  Type 'RemoteConfig' is not assignable to type 'WritableNonArrayDraft<RemoteConfig>'.
+    Types of property 'season' are incompatible.
+      Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; } | undefined' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }> | undefined'.
+        Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }>'.
+          Types of property 'music' are incompatible.
+            Type 'RemoteMusic | undefined' is not assignable to type 'WritableNonArrayDraft<RemoteMusic> | undefined'.
+              Type 'RemoteMusic' is not assignable to type 'WritableNonArrayDraft<RemoteMusic>'.
+                Types of property 'assignments' are incompatible.
+                  Type 'MusicConfigOverrides | undefined' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides> | undefined'.
+                    Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+                      Types of property 'minigameProfiles' are incompatible.
+                        Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+                          The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/remoteConfig/remoteConfigSlice.ts(104,9): error TS2322: Type 'RemoteConfig | null' is not assignable to type 'WritableNonArrayDraft<RemoteConfig> | null'.
+  Type 'RemoteConfig' is not assignable to type 'WritableNonArrayDraft<RemoteConfig>'.
+    Types of property 'season' are incompatible.
+      Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; } | undefined' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }> | undefined'.
+        Type '{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }' is not assignable to type 'WritableNonArrayDraft<{ theme?: RemoteTheme | undefined; introHub?: RemoteIntroHub | undefined; music?: RemoteMusic | undefined; mainTv?: RemoteMainTv | undefined; }>'.
+          Types of property 'music' are incompatible.
+            Type 'RemoteMusic | undefined' is not assignable to type 'WritableNonArrayDraft<RemoteMusic> | undefined'.
+              Type 'RemoteMusic' is not assignable to type 'WritableNonArrayDraft<RemoteMusic>'.
+                Types of property 'assignments' are incompatible.
+                  Type 'MusicConfigOverrides | undefined' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides> | undefined'.
+                    Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+                      Types of property 'minigameProfiles' are incompatible.
+                        Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+                          The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/screens/SettingsAdmin/MusicManagerPanel.tsx(32,8): error TS6133: 'MusicTrackAssetOverride' is declared but its value is never read.
+src/store/settingsSlice.ts(250,9): error TS2322: Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+  Types of property 'minigameProfiles' are incompatible.
+    Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+      The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.
+src/store/settingsSlice.ts(257,7): error TS2322: Type 'MusicConfigOverrides' is not assignable to type 'WritableNonArrayDraft<MusicConfigOverrides>'.
+  Types of property 'minigameProfiles' are incompatible.
+    Type 'readonly MinigameMusicProfile[] | undefined' is not assignable to type 'WritableNonArrayDraft<MinigameMusicProfile>[] | undefined'.
+      The type 'readonly MinigameMusicProfile[]' is 'readonly' and cannot be assigned to the mutable type 'WritableNonArrayDraft<MinigameMusicProfile>[]'.

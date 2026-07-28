@@ -14,7 +14,11 @@
   border: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--color-line));
   border-radius: 14px;
   background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--color-accent) 18%, transparent), transparent 46%),
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--color-accent) 18%, transparent),
+      transparent 46%
+    ),
     var(--color-card);
 }
 

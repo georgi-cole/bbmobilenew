@@ -105,10 +105,7 @@ function auditProfile(
   }
 }
 
-function auditEventSounds(
-  config: MusicConfigDocument,
-  issues: MusicConfigAuditIssue[]
-): void {
+function auditEventSounds(config: MusicConfigDocument, issues: MusicConfigAuditIssue[]): void {
   for (const eventId of AUDIO_EVENT_IDS) {
     const cue = config.eventSounds[eventId]
     const path = `eventSounds.${eventId}`
@@ -233,11 +230,7 @@ export function auditMusicConfig(
   for (const mode of ['any', 'classic', 'survival'] as const) {
     for (const [gameKey, stages] of Object.entries(config.minigameAssignments[mode] ?? {})) {
       for (const [stage, selection] of Object.entries(stages)) {
-        auditSelection(
-          selection,
-          `minigameAssignments.${mode}.${gameKey}.${stage}`,
-          issues
-        )
+        auditSelection(selection, `minigameAssignments.${mode}.${gameKey}.${stage}`, issues)
       }
     }
   }

@@ -33,13 +33,9 @@ export interface MinigameMusicProfile {
   transition?: MusicTransitionPolicy
 }
 
-export type MinigameStageAssignments = Partial<
-  Record<MusicMinigameStage, MusicSelection>
->
+export type MinigameStageAssignments = Partial<Record<MusicMinigameStage, MusicSelection>>
 export type MinigameAssignmentMap = Readonly<Record<string, MinigameStageAssignments>>
-export type ModeMinigameAssignments = Readonly<
-  Record<MusicConfigMode, MinigameAssignmentMap>
->
+export type ModeMinigameAssignments = Readonly<Record<MusicConfigMode, MinigameAssignmentMap>>
 
 export const AUDIO_EVENT_IDS = [
   'competition.results',
@@ -102,9 +98,7 @@ export interface MusicConfigOverrides {
   modePhaseOverrides?: Partial<Record<GameMode, Partial<Record<Phase, MusicSelection>>>>
   sceneMusic?: Partial<Record<MusicScene, MusicSelection>>
   minigameProfiles?: readonly MinigameMusicProfile[]
-  minigameAssignments?: Partial<
-    Record<MusicConfigMode, Record<string, MinigameStageAssignments>>
-  >
+  minigameAssignments?: Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>>
   minigameCategoryMusic?: Partial<Record<GameCategory, MusicSelection>>
   eventSounds?: Partial<Record<AudioEventId, AudioEventCue>>
   contextMusic?: Partial<MusicContextPolicy>
