@@ -124,8 +124,16 @@ function getResponseDelta(
   interaction: IncomingInteraction,
   dramaMode: boolean
 ): number {
-  if (dramaMode && interaction.payload?.scenarioKey === 'safety_holder_consults_loh') {
-    if (responseType === 'accept' || responseType === 'decline') return 3
+  const scenarioKey = interaction.payload?.scenarioKey
+  if (
+    scenarioKey === 'safety_holder_consults_loh' ||
+    scenarioKey === 'loh_consults_safety_holder'
+  ) {
+    // These four buttons describe a plan, not moral approval. Any concrete
+    // answer builds a little trust; uncertainty is neutral and dismissal hurts.
+    if (responseType === 'accept' || responseType === 'decline' || responseType === 'negative') {
+      return 2
+    }
     if (responseType === 'neutral') return 1
     if (responseType === 'dismiss' || responseType === 'ignore') return -2
   }
@@ -151,7 +159,7 @@ function buildResponseLogText(
 
 function getDeclaredSafetyChoice(
   interaction: IncomingInteraction,
-  responseLabel?: string,
+  responseLabel?: string
 ): { targetName?: string; targetId?: string; kind: 'save' | 'none' | 'undecided' } {
   const label = responseLabel ?? ''
   if (/save nobody/i.test(label)) return { kind: 'none' }
@@ -175,7 +183,7 @@ function buildOrdinaryResponseOutcome(
   interaction: IncomingInteraction,
   responseType: IncomingInteractionResponseType,
   fromName: string,
-  responseLabel?: string,
+  responseLabel?: string
 ): string {
   const honestAnswer = /truth|honest|open up|let them in/i.test(responseLabel ?? '')
   if (interaction.type === 'check_in') {
@@ -194,20 +202,27 @@ function buildOrdinaryResponseOutcome(
     return `${fromName} let the conversation end, but the abrupt exit did not go unnoticed.`
   }
   if (interaction.type === 'compliment') {
-    if (responseType === 'positive' || responseType === 'accept') return `${fromName} felt the warmth was returned.`
+    if (responseType === 'positive' || responseType === 'accept')
+      return `${fromName} felt the warmth was returned.`
     if (responseType === 'neutral') return `${fromName} took the restrained reaction in stride.`
     return `${fromName} left feeling that the compliment had not landed.`
   }
   if (interaction.type === 'snide_remark') {
-    if (responseType === 'positive') return `You defused the jab, leaving ${fromName} with little room to escalate.`
-    if (responseType === 'neutral') return `${fromName} got no visible reaction and backed off for now.`
-    if (responseType === 'negative') return `The exchange with ${fromName} sharpened into open tension.`
+    if (responseType === 'positive')
+      return `You defused the jab, leaving ${fromName} with little room to escalate.`
+    if (responseType === 'neutral')
+      return `${fromName} got no visible reaction and backed off for now.`
+    if (responseType === 'negative')
+      return `The exchange with ${fromName} sharpened into open tension.`
     return `You walked away, and ${fromName} was left to decide whether silence meant restraint or contempt.`
   }
   if (interaction.type === 'nomination_plea' || interaction.type === 'deal_offer') {
-    if (responseType === 'neutral') return `${fromName} left without a guarantee and will keep looking for certainty elsewhere.`
-    if (responseType === 'negative' || responseType === 'decline') return `${fromName} understood that they could not count on you.`
-    if (responseType === 'dismiss') return `${fromName} left the conversation frustrated by the lack of an answer.`
+    if (responseType === 'neutral')
+      return `${fromName} left without a guarantee and will keep looking for certainty elsewhere.`
+    if (responseType === 'negative' || responseType === 'decline')
+      return `${fromName} understood that they could not count on you.`
+    if (responseType === 'dismiss')
+      return `${fromName} left the conversation frustrated by the lack of an answer.`
   }
   return `${fromName} registered your response, and the exchange changed how they read you.`
 }
@@ -217,7 +232,7 @@ function buildResponseOutcomeText(
   responseType: IncomingInteractionResponseType,
   fromName: string,
   subjectName?: string,
-  responseLabel?: string,
+  responseLabel?: string
 ): string | undefined {
   if (interaction.type === 'alliance_proposal' && responseType === 'accept') {
     return `The alliance with ${fromName} is now active. Later votes and nominations will show whether it holds.`
@@ -226,13 +241,16 @@ function buildResponseOutcomeText(
   const scenarioKey = interaction.payload?.scenarioKey
   if (scenarioKey === 'safety_holder_consults_loh') {
     const choice = getDeclaredSafetyChoice(interaction, responseLabel)
-    if (choice.kind === 'save') return `${fromName} now knows you prefer Safety used on ${choice.targetName}.`
-    if (choice.kind === 'none') return `${fromName} now knows you prefer the nominations left unchanged.`
+    if (choice.kind === 'save')
+      return `${fromName} now knows you prefer Safety used on ${choice.targetName}.`
+    if (choice.kind === 'none')
+      return `${fromName} now knows you prefer the nominations left unchanged.`
     return `You told ${fromName} that the final Safety decision is theirs.`
   }
   if (scenarioKey === 'loh_consults_safety_holder') {
     const choice = getDeclaredSafetyChoice(interaction, responseLabel)
-    if (choice.kind === 'save') return `${fromName} knows you are leaning toward saving ${choice.targetName} and will prepare a possible replacement.`
+    if (choice.kind === 'save')
+      return `${fromName} knows you are leaning toward saving ${choice.targetName} and will prepare a possible replacement.`
     if (choice.kind === 'none') return `${fromName} expects the nominations to remain unchanged.`
     return `${fromName} knows you have not committed to a Safety plan yet.`
   }
@@ -294,7 +312,7 @@ function applyIncomingChoiceConsequences({
     responseType,
     fromName,
     subjectName,
-    responseLabel,
+    responseLabel
   )
 
   if (dramaMode) {

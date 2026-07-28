@@ -336,7 +336,9 @@ function canSendInteractionType(
         constraints.actorIsNominee && (constraints.playerIsHoh || constraints.playerHasSafetyPower)
       )
     case 'deal_offer':
-      return !constraints.actorIsCurrentHoh
+      // The current LOH may initiate one specific strategic consultation when
+      // the human holds Safety; ordinary HOH deal offers remain blocked.
+      return !constraints.actorIsCurrentHoh || constraints.playerHasSafetyPower
     case 'alliance_proposal':
       return !signals.tags.has('alliance') && signals.affinity > 0
     case 'snide_remark':
@@ -1316,7 +1318,7 @@ export function scheduleIncomingInteractionsForPhase(
         subjectId: subject?.id,
         nomineeIds: context.nomineeIds ?? [],
         nomineeNames: (context.nomineeIds ?? []).map((nomineeId) =>
-          getPlayerName(context, nomineeId, nomineeId),
+          getPlayerName(context, nomineeId, nomineeId)
         ),
       },
     })

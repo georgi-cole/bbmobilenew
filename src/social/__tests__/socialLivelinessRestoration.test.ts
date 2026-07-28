@@ -9,7 +9,7 @@ function commitment(status: SocialCommitment['status']): SocialCommitment {
   return {
     id: `promise-${status}`,
     interactionId: `interaction-${status}`,
-    kind: 'vote_to_keep',
+    kind: 'protect_from_nomination',
     promisorId: 'human',
     beneficiaryId: 'lia',
     createdWeek: 2,

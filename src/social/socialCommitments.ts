@@ -117,8 +117,11 @@ export function getSocialCredibility(commitments: SocialCommitment[]): {
   judged: number
   confidence: number
 } {
-  const kept = commitments.filter((entry) => entry.status === 'kept').length
-  const broken = commitments.filter((entry) => entry.status === 'broken').length
+  // House credibility can only use promises whose outcome other housemates
+  // can observe directly. Private eviction votes belong to Public Approval.
+  const observableCommitments = commitments.filter((entry) => entry.kind !== 'vote_to_keep')
+  const kept = observableCommitments.filter((entry) => entry.status === 'kept').length
+  const broken = observableCommitments.filter((entry) => entry.status === 'broken').length
   const judged = kept + broken
   // A Beta(2,2) prior prevents one decision from turning reliability into 0 or 100.
   const score = Math.round(((kept + 2) / (judged + 4)) * 100)
@@ -147,7 +150,7 @@ function resolvePromise(
   commitment: SocialCommitment,
   kept: boolean,
   reason: string,
-  options: { privateVote?: boolean; suppressPublicReaction?: boolean } = {},
+  options: { privateVote?: boolean; suppressPublicReaction?: boolean } = {}
 ): void {
   const state = store.getState()
   const week = state.game.week ?? commitment.dueWeek
@@ -172,7 +175,7 @@ function resolvePromise(
         delta: tuning.affinityDelta[outcome],
         tags: kept ? undefined : ['broken_promise'],
         actionSource: 'system',
-      }),
+      })
     )
     store.dispatch(
       updateSocialMemory({
@@ -186,7 +189,7 @@ function resolvePromise(
           week,
           timestamp: now,
         },
-      }),
+      })
     )
 
     const currentInfluence = state.social.influenceBank?.[commitment.promisorId] ?? 0
@@ -196,7 +199,9 @@ function resolvePromise(
         ? Math.max(desiredInfluenceDelta, -currentInfluence)
         : desiredInfluenceDelta
     if (influenceDelta !== 0) {
-      store.dispatch(applyInfluenceDelta({ playerId: commitment.promisorId, delta: influenceDelta }))
+      store.dispatch(
+        applyInfluenceDelta({ playerId: commitment.promisorId, delta: influenceDelta })
+      )
     }
   } else if (!options.suppressPublicReaction) {
     store.dispatch(
@@ -206,7 +211,7 @@ function resolvePromise(
         reason: kept ? 'vote_promise_kept' : 'vote_promise_broken',
         week,
         addToFeed: true,
-      }),
+      })
     )
   }
 
@@ -220,7 +225,7 @@ function resolvePromise(
         type: 'social',
         source: 'system',
         channels: ['mainLog', 'dr'],
-      }),
+      })
     )
   }
 }
@@ -278,13 +283,10 @@ export function evaluateSocialCommitmentsForAction(
     const conflicting = new Set(votePromises.map((entry) => entry.beneficiaryId)).size > 1
     for (const commitment of votePromises) {
       const kept = payload !== commitment.beneficiaryId
-      resolvePromise(
-        store,
-        commitment,
-        kept,
-        kept ? 'voted_to_keep' : 'voted_against_promise',
-        { privateVote: true, suppressPublicReaction: conflicting },
-      )
+      resolvePromise(store, commitment, kept, kept ? 'voted_to_keep' : 'voted_against_promise', {
+        privateVote: true,
+        suppressPublicReaction: conflicting,
+      })
     }
     if (conflicting && votePromises[0]) {
       store.dispatch(
@@ -294,7 +296,7 @@ export function evaluateSocialCommitmentsForAction(
           reason: 'conflicting_vote_promises',
           week: state.game.week ?? votePromises[0].dueWeek,
           addToFeed: true,
-        }),
+        })
       )
     }
     return
@@ -308,7 +310,7 @@ export function evaluateSocialCommitmentsForAction(
         commitment,
         kept,
         kept ? 'double_vote_kept_them_safe' : 'double_vote_targeted_them',
-        { privateVote: true },
+        { privateVote: true }
       )
     }
   }

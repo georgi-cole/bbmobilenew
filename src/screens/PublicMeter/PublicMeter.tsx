@@ -120,27 +120,34 @@ function stableTargetIndex(seed: string, length: number): number {
   return Math.abs(hash) % Math.max(1, length)
 }
 
-function getDirectionDescription(direction: PublicDirection, players: readonly Player[]): string {
+function getDirectionDescription(
+  direction: PublicDirection,
+  players: readonly Player[],
+  currentLohId?: string | null
+): string {
   if (direction.type !== 'influence_hoh') return direction.description
   const activeCandidates = players.filter(
     (player) =>
       player.status !== 'evicted' &&
       player.status !== 'jury' &&
       player.id !== direction.playerId &&
-      player.id !== direction.relatedPlayerId,
+      player.id !== direction.relatedPlayerId
   )
   const fallbackTarget =
     activeCandidates[stableTargetIndex(direction.id, activeCandidates.length)] ??
     players.find(
       (player) =>
-        player.status !== 'evicted' &&
-        player.status !== 'jury' &&
-        player.id !== direction.playerId,
+        player.status !== 'evicted' && player.status !== 'jury' && player.id !== direction.playerId
     )
   const target = players.find((player) => player.id === direction.targetPlayerId) ?? fallbackTarget
+  const loh =
+    players.find((player) => player.id === direction.relatedPlayerId) ??
+    players.find((player) => player.id === currentLohId) ??
+    players.find((player) => player.status.includes('loh'))
+  const lohName = loh?.name ?? 'the LOH'
   return target
-    ? `Convince the LOH to nominate ${target.name}.`
-    : 'Convince the LOH to nominate a specific housemate.'
+    ? `Convince ${lohName} to nominate ${target.name}.`
+    : `Convince ${lohName} to nominate a specific housemate.`
 }
 
 function PublicMeterAvatar({
@@ -403,7 +410,7 @@ export default function PublicMeter() {
               <p className="public-meter__next-opportunity">
                 <strong>Next opportunity:</strong>{' '}
                 {userActiveDirections.length > 0
-                  ? getDirectionDescription(userActiveDirections[0], game.players)
+                  ? getDirectionDescription(userActiveDirections[0], game.players, game.lohId)
                   : 'A strong competition, a smart save or a memorable social move.'}
               </p>
             </div>
@@ -527,7 +534,7 @@ export default function PublicMeter() {
                               </span>
                             </div>
                             <p className="direction-card__description">
-                              {getDirectionDescription(direction, game.players)}
+                              {getDirectionDescription(direction, game.players, game.lohId)}
                             </p>
                             <div className="direction-card__meta">
                               <span>{getDirectionWindowLabel(direction)}</span>

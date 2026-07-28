@@ -136,9 +136,10 @@ describe('social commitments', () => {
     expect(social().socialMemory.lia?.user?.gratitude ?? 0).toBe(0)
     expect(social().influenceBank.user).toBe(200)
     expect(getSocialCredibility(social().commitments)).toMatchObject({
-      score: 60,
-      label: 'Early read',
-      kept: 1,
+      score: 50,
+      label: 'Unproven',
+      kept: 0,
+      broken: 0,
     })
   })
 })

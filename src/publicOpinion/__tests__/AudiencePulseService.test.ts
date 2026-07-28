@@ -68,7 +68,7 @@ describe('audience pulse and explicit requests', () => {
   it('gives influence-LOH requests a concrete nomination target', () => {
     const players = [
       { id: 'user', name: 'You', avatar: '🧑', status: 'active', isUser: true },
-      { id: 'lia', name: 'Lia', avatar: '👩', status: 'active', isUser: false },
+      { id: 'lia', name: 'Lia', avatar: '👩', status: 'loh', isUser: false },
       { id: 'echo', name: 'Echo', avatar: '🧑', status: 'active', isUser: false },
       { id: 'rae', name: 'Rae', avatar: '👩', status: 'active', isUser: false },
     ] as const
@@ -82,6 +82,6 @@ describe('audience pulse and explicit requests', () => {
     ).flat()
     const influence = directions.find((direction) => direction.type === 'influence_hoh')
     expect(influence?.targetPlayerId).toBeTruthy()
-    expect(influence?.description).toMatch(/nominate (?!your target)/i)
+    expect(influence?.description).toMatch(/Convince .+ to nominate .+/i)
   })
 })

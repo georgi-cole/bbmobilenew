@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest'
 import {
   ELIGIBLE_PHASES,
   chooseIncomingInteractionType,
   scheduleIncomingInteractionsForPhase,
   type AutonomyContext,
   type AutonomyStore,
-} from '../incomingInteractionAutonomy';
-import { getInteractionDedupeReason } from '../incomingInteractionScheduler';
-import type { IncomingInteraction, ScheduledIncomingInteraction } from '../types';
+} from '../incomingInteractionAutonomy'
+import { getInteractionDedupeReason } from '../incomingInteractionScheduler'
+import type { IncomingInteraction, ScheduledIncomingInteraction } from '../types'
 
 function buildContext(overrides: Partial<AutonomyContext> = {}): AutonomyContext {
   return {
@@ -29,12 +29,10 @@ function buildContext(overrides: Partial<AutonomyContext> = {}): AutonomyContext
     nomineeIds: [],
     votes: {},
     ...overrides,
-  };
+  }
 }
 
-function makeInteraction(
-  overrides: Partial<IncomingInteraction> = {},
-): IncomingInteraction {
+function makeInteraction(overrides: Partial<IncomingInteraction> = {}): IncomingInteraction {
   return {
     id: 'i-1',
     fromId: 'ally',
@@ -48,24 +46,24 @@ function makeInteraction(
     requiresResponse: false,
     resolved: false,
     ...overrides,
-  };
+  }
 }
 
 function buildStore(context: AutonomyContext): AutonomyStore & {
-  actions: unknown[];
+  actions: unknown[]
   social: {
-    incomingInteractions: IncomingInteraction[];
-    scheduledIncomingInteractions: ScheduledIncomingInteraction[];
+    incomingInteractions: IncomingInteraction[]
+    scheduledIncomingInteractions: ScheduledIncomingInteraction[]
     incomingInteractionDelivery: {
-      lastDeliveryPhase: string | null;
-      lastDeliveryWeek: number | null;
-      deliveredThisPhase: number;
-    };
-    relationships: AutonomyContext['relationships'];
-    socialMemory: NonNullable<AutonomyContext['socialMemory']>;
-  };
+      lastDeliveryPhase: string | null
+      lastDeliveryWeek: number | null
+      deliveredThisPhase: number
+    }
+    relationships: AutonomyContext['relationships']
+    socialMemory: NonNullable<AutonomyContext['socialMemory']>
+  }
 } {
-  const actions: unknown[] = [];
+  const actions: unknown[] = []
   const social = {
     incomingInteractions: [] as IncomingInteraction[],
     scheduledIncomingInteractions: [] as ScheduledIncomingInteraction[],
@@ -76,13 +74,13 @@ function buildStore(context: AutonomyContext): AutonomyStore & {
     },
     relationships: context.relationships,
     socialMemory: context.socialMemory ?? {},
-  };
+  }
 
   return {
     actions,
     social,
     dispatch(action: unknown) {
-      actions.push(action);
+      actions.push(action)
       if (
         typeof action === 'object' &&
         action !== null &&
@@ -91,10 +89,10 @@ function buildStore(context: AutonomyContext): AutonomyStore & {
         (action as { type?: string }).type === 'social/scheduleIncomingInteraction'
       ) {
         social.scheduledIncomingInteractions.push(
-          (action as { payload: ScheduledIncomingInteraction }).payload,
-        );
+          (action as { payload: ScheduledIncomingInteraction }).payload
+        )
       }
-      return action;
+      return action
     },
     getState() {
       return {
@@ -114,9 +112,9 @@ function buildStore(context: AutonomyContext): AutonomyStore & {
           doubleEviction: { weekActive: context.isDoubleEviction === true },
           specialVeto: { activeType: context.specialVeto ?? null },
         },
-      };
+      }
     },
-  };
+  }
 }
 
 describe('incomingInteractionAutonomy thematic routing', () => {
@@ -125,10 +123,10 @@ describe('incomingInteractionAutonomy thematic routing', () => {
       phase: 'nominations',
       lohId: 'user',
       nomineeIds: ['nominee'],
-    });
+    })
 
-    expect(chooseIncomingInteractionType('nominee', 'user', context)).toBe('nomination_plea');
-  });
+    expect(chooseIncomingInteractionType('nominee', 'user', context)).toBe('nomination_plea')
+  })
 
   it('lets a nominee react directly to the human LOH after nominations are revealed', () => {
     const context = buildContext({
@@ -136,17 +134,17 @@ describe('incomingInteractionAutonomy thematic routing', () => {
       lohId: 'user',
       nomineeIds: ['nominee'],
       random: () => 0,
-    });
-    const store = buildStore(context);
+    })
+    const store = buildStore(context)
 
-    scheduleIncomingInteractionsForPhase('nomination_results', store, context);
+    scheduleIncomingInteractionsForPhase('nomination_results', store, context)
 
     const interaction = store.social.scheduledIncomingInteractions.find(
-      (entry) => entry.interaction.fromId === 'nominee',
-    )?.interaction;
-    expect(interaction?.type).toBe('check_in');
-    expect(interaction?.payload?.scenarioKey).toBe('nominee_understands_loh');
-  });
+      (entry) => entry.interaction.fromId === 'nominee'
+    )?.interaction
+    expect(interaction?.type).toBe('check_in')
+    expect(interaction?.payload?.scenarioKey).toBe('nominee_understands_loh')
+  })
 
   it('routes nominees to deal offers when the player holds veto power', () => {
     const context = buildContext({
@@ -157,10 +155,10 @@ describe('incomingInteractionAutonomy thematic routing', () => {
       ],
       nomineeIds: ['nominee'],
       posWinnerId: 'user',
-    });
+    })
 
-    expect(chooseIncomingInteractionType('nominee', 'user', context)).toBe('deal_offer');
-  });
+    expect(chooseIncomingInteractionType('nominee', 'user', context)).toBe('deal_offer')
+  })
 
   it('has an AI Safety winner consult the human LOH before the ceremony', () => {
     const context = buildContext({
@@ -173,15 +171,42 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         { id: 'holder', name: 'Holder', status: 'pos' },
       ],
       random: () => 0,
-    });
-    const store = buildStore(context);
+    })
+    const store = buildStore(context)
 
-    scheduleIncomingInteractionsForPhase('pos_results', store, context);
+    scheduleIncomingInteractionsForPhase('pos_results', store, context)
 
-    const interaction = store.social.scheduledIncomingInteractions[0]?.interaction;
-    expect(interaction?.type).toBe('deal_offer');
-    expect(interaction?.payload?.scenarioKey).toBe('safety_holder_consults_loh');
-  });
+    const interaction = store.social.scheduledIncomingInteractions[0]?.interaction
+    expect(interaction?.type).toBe('deal_offer')
+    expect(interaction?.payload?.scenarioKey).toBe('safety_holder_consults_loh')
+  })
+  it('has the AI LOH consult a human Safety holder with the real nominees', () => {
+    const context = buildContext({
+      phase: 'pos_results',
+      lohId: 'loh',
+      posWinnerId: 'user',
+      nomineeIds: ['nomineeA', 'nomineeB'],
+      relationships: { loh: { user: { affinity: 5, tags: [] } } },
+      players: [
+        { id: 'user', name: 'You', status: 'pos', isUser: true },
+        { id: 'loh', name: 'Leader', status: 'loh' },
+        { id: 'nomineeA', name: 'Nominee A', status: 'nominated' },
+        { id: 'nomineeB', name: 'Nominee B', status: 'nominated' },
+      ],
+      random: () => 0,
+    })
+    const store = buildStore(context)
+
+    scheduleIncomingInteractionsForPhase('pos_results', store, context)
+
+    const consultation = store.social.scheduledIncomingInteractions.find(
+      (entry) => entry.interaction.fromId === 'loh'
+    )?.interaction
+    expect(consultation?.type).toBe('deal_offer')
+    expect(consultation?.payload?.scenarioKey).toBe('loh_consults_safety_holder')
+    expect(consultation?.payload?.nomineeNames).toEqual(['Nominee A', 'Nominee B'])
+  })
+
   it('queues both nominee pitches when the human holds Safety, while delivery remains paced', () => {
     const context = buildContext({
       phase: 'pos_results',
@@ -197,16 +222,17 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         { id: 'nomineeB', name: 'Nominee B', status: 'nominated' },
       ],
       random: () => 0,
-    });
-    const store = buildStore(context);
+    })
+    const store = buildStore(context)
 
-    scheduleIncomingInteractionsForPhase('pos_results', store, context);
+    scheduleIncomingInteractionsForPhase('pos_results', store, context)
 
-    const scheduled = store.social.scheduledIncomingInteractions;
-    expect(scheduled).toHaveLength(2);
-    expect(scheduled.every((entry) => entry.interaction.payload?.scenarioKey === 'nominee_veto_pitch')).toBe(true);
-  });
-
+    const scheduled = store.social.scheduledIncomingInteractions
+    expect(scheduled).toHaveLength(2)
+    expect(
+      scheduled.every((entry) => entry.interaction.payload?.scenarioKey === 'nominee_veto_pitch')
+    ).toBe(true)
+  })
 
   it('keeps alliance-tagged relationships from turning hostile', () => {
     const context = buildContext({
@@ -219,18 +245,18 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         { id: 'user', name: 'You', status: 'loh', isUser: true },
         { id: 'ally', name: 'Ally', status: 'active' },
       ],
-    });
+    })
 
-    expect(chooseIncomingInteractionType('ally', 'user', context)).not.toBe('warning');
-    expect(chooseIncomingInteractionType('ally', 'user', context)).not.toBe('snide_remark');
-  });
+    expect(chooseIncomingInteractionType('ally', 'user', context)).not.toBe('warning')
+    expect(chooseIncomingInteractionType('ally', 'user', context)).not.toBe('snide_remark')
+  })
 
   it('adds the new thematic phases to eligible scheduling', () => {
-    expect(ELIGIBLE_PHASES.has('social_1')).toBe(true);
-    expect(ELIGIBLE_PHASES.has('nomination_results')).toBe(true);
-    expect(ELIGIBLE_PHASES.has('pos_ceremony_results')).toBe(true);
-    expect(ELIGIBLE_PHASES.has('social_2')).toBe(true);
-  });
+    expect(ELIGIBLE_PHASES.has('social_1')).toBe(true)
+    expect(ELIGIBLE_PHASES.has('nomination_results')).toBe(true)
+    expect(ELIGIBLE_PHASES.has('pos_ceremony_results')).toBe(true)
+    expect(ELIGIBLE_PHASES.has('social_2')).toBe(true)
+  })
 
   it('dedupes repeated scenarios from the same actor in the same phase', () => {
     const pending = [
@@ -239,7 +265,7 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         type: 'nomination_plea',
         payload: { scenarioKey: 'nominee_hoh_plea', phase: 'nominations' },
       }),
-    ];
+    ]
 
     const dedupeReason = getInteractionDedupeReason({
       interaction: makeInteraction({
@@ -251,10 +277,10 @@ describe('incomingInteractionAutonomy thematic routing', () => {
       priority: 'high',
       pendingInteractions: pending,
       week: 2,
-    });
+    })
 
-    expect(dedupeReason).toBe('deduped_same_scenario');
-  });
+    expect(dedupeReason).toBe('deduped_same_scenario')
+  })
 
   it('dedupes interactions from the same actor that reuse the same variant family within the cooldown window', () => {
     // Use different interaction types so the sameTypeCooldownWeeks check does not
@@ -264,9 +290,13 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         fromId: 'ally',
         type: 'compliment',
         createdWeek: 2,
-        payload: { scenarioKey: 'generic_check_in', phase: 'week_start', variantFamilyId: 'gci_casual' },
+        payload: {
+          scenarioKey: 'generic_check_in',
+          phase: 'week_start',
+          variantFamilyId: 'gci_casual',
+        },
       }),
-    ];
+    ]
 
     const dedupeReason = getInteractionDedupeReason({
       interaction: makeInteraction({
@@ -274,15 +304,19 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         fromId: 'ally',
         type: 'check_in',
         createdWeek: 2,
-        payload: { scenarioKey: 'generic_check_in', phase: 'social_1', variantFamilyId: 'gci_casual' },
+        payload: {
+          scenarioKey: 'generic_check_in',
+          phase: 'social_1',
+          variantFamilyId: 'gci_casual',
+        },
       }),
       priority: 'medium',
       pendingInteractions: pending,
       week: 2,
-    });
+    })
 
-    expect(dedupeReason).toBe('deduped_same_family');
-  });
+    expect(dedupeReason).toBe('deduped_same_family')
+  })
 
   it('does not dedupe the same variant family when outside the cooldown window', () => {
     const pending = [
@@ -290,9 +324,13 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         fromId: 'ally',
         type: 'compliment',
         createdWeek: 1,
-        payload: { scenarioKey: 'generic_check_in', phase: 'week_start', variantFamilyId: 'gci_casual' },
+        payload: {
+          scenarioKey: 'generic_check_in',
+          phase: 'week_start',
+          variantFamilyId: 'gci_casual',
+        },
       }),
-    ];
+    ]
 
     // familyCooldownWeeks defaults to 1; createdWeek=1, current week=3 → 2 weeks apart → outside window
     const dedupeReason = getInteractionDedupeReason({
@@ -301,15 +339,19 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         fromId: 'ally',
         type: 'check_in',
         createdWeek: 3,
-        payload: { scenarioKey: 'generic_check_in', phase: 'social_1', variantFamilyId: 'gci_casual' },
+        payload: {
+          scenarioKey: 'generic_check_in',
+          phase: 'social_1',
+          variantFamilyId: 'gci_casual',
+        },
       }),
       priority: 'medium',
       pendingInteractions: pending,
       week: 3,
-    });
+    })
 
-    expect(dedupeReason).toBeNull();
-  });
+    expect(dedupeReason).toBeNull()
+  })
 
   it('schedules contextual text and payload for HOH pleas', () => {
     const context = buildContext({
@@ -321,17 +363,17 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         { id: 'nominee', name: 'Rae', status: 'nominated' },
       ],
       random: () => 0,
-    });
-    const store = buildStore(context);
+    })
+    const store = buildStore(context)
 
-    scheduleIncomingInteractionsForPhase('nominations', store, context);
+    scheduleIncomingInteractionsForPhase('nominations', store, context)
 
-    expect(store.social.scheduledIncomingInteractions).toHaveLength(1);
-    const interaction = store.social.scheduledIncomingInteractions[0]?.interaction;
-    expect(interaction?.type).toBe('nomination_plea');
-    expect(interaction?.payload?.scenarioKey).toBe('nominee_hoh_plea');
-    expect(interaction?.text).toContain('Jordan');
-  });
+    expect(store.social.scheduledIncomingInteractions).toHaveLength(1)
+    const interaction = store.social.scheduledIncomingInteractions[0]?.interaction
+    expect(interaction?.type).toBe('nomination_plea')
+    expect(interaction?.payload?.scenarioKey).toBe('nominee_hoh_plea')
+    expect(interaction?.text).toContain('Jordan')
+  })
 
   it('does not manufacture generic check-ins for neutral players without a trigger', () => {
     const context = buildContext({
@@ -342,13 +384,13 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         { id: 'neutral', name: 'Neutral', status: 'active' },
       ],
       random: () => 0,
-    });
-    const store = buildStore(context);
+    })
+    const store = buildStore(context)
 
-    scheduleIncomingInteractionsForPhase('week_start', store, context);
+    scheduleIncomingInteractionsForPhase('week_start', store, context)
 
-    expect(store.social.scheduledIncomingInteractions).toHaveLength(0);
-  });
+    expect(store.social.scheduledIncomingInteractions).toHaveLength(0)
+  })
 
   it('creates only the highest-ranked contact at a single checkpoint', () => {
     const context = buildContext({
@@ -363,12 +405,12 @@ describe('incomingInteractionAutonomy thematic routing', () => {
         { id: 'ally', name: 'Ally', status: 'active' },
       ],
       random: () => 0,
-    });
-    const store = buildStore(context);
+    })
+    const store = buildStore(context)
 
-    scheduleIncomingInteractionsForPhase('week_start', store, context);
+    scheduleIncomingInteractionsForPhase('week_start', store, context)
 
-    expect(store.social.scheduledIncomingInteractions).toHaveLength(1);
-    expect(store.social.scheduledIncomingInteractions[0]?.interaction.fromId).toBe('closeAlly');
-  });
-});
+    expect(store.social.scheduledIncomingInteractions).toHaveLength(1)
+    expect(store.social.scheduledIncomingInteractions[0]?.interaction.fromId).toBe('closeAlly')
+  })
+})
