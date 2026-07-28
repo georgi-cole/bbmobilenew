@@ -1,4 +1,5 @@
 # One-shot corrective workflow; removes itself after success.
+# Trigger revision 2.
 name: Temporary fix Public Favorite empty feature
 
 on:
