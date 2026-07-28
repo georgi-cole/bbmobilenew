@@ -21,34 +21,40 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Apply focused Social corrections
-        id: codemod
+      - name: Apply validation follow-up
+        id: followup
         shell: bash
         run: |
           mkdir -p docs
           set +e
-          python3 scripts/tmp-social-ux-realism-codemod.py > docs/.social-ux-codemod.txt 2>&1
+          python3 scripts/tmp-social-ux-followup.py > docs/.social-ux-followup.txt 2>&1
           status=$?
           set -e
           if (( status == 0 )); then
-            rm -f docs/.social-ux-codemod.txt
+            rm -f docs/.social-ux-followup.txt
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
-            printf '\nCODEMOD_EXIT_CODE=%s\n' "$status" >> docs/.social-ux-codemod.txt
+            printf '\nFOLLOWUP_EXIT_CODE=%s\n' "$status" >> docs/.social-ux-followup.txt
             git reset --hard HEAD
             echo "ok=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Format changed production and test files
-        if: steps.codemod.outputs.ok == 'true'
+      - name: Format every changed file
+        if: steps.followup.outputs.ok == 'true'
         shell: bash
         run: |
           git fetch origin main --depth=1
-          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx' '*.css' '*.json' '*.mjs' '*.yml' '*.yaml')
+          mapfile -t files < <(
+            {
+              git diff --name-only origin/main...HEAD
+              git diff --name-only
+              git ls-files --others --exclude-standard
+            } | sort -u | grep -E '\.(ts|tsx|css|json|mjs|yml|yaml)$' || true
+          )
           if (( ${#files[@]} > 0 )); then
             npx prettier --write "${files[@]}"
           fi
       - name: Capture targeted test diagnostics
-        if: steps.codemod.outputs.ok == 'true'
+        if: steps.followup.outputs.ok == 'true'
         shell: bash
         run: |
           set +e
@@ -69,7 +75,7 @@ jobs:
             printf '\nTEST_EXIT_CODE=%s\n' "$status" >> docs/.social-ux-tests.txt
           fi
       - name: Capture static diagnostics
-        if: steps.codemod.outputs.ok == 'true'
+        if: steps.followup.outputs.ok == 'true'
         shell: bash
         run: |
           set +e
@@ -92,5 +98,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src tests server docs
-          git commit -m "Fix Social UX, role logic, and audience simulation"
+          git commit -m "Resolve Social UX validation issues"
           git push origin HEAD:fix/social-ux-realism-regressions
