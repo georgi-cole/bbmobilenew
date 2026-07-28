@@ -1,4 +1,9 @@
-import { dismissPermissionPromptIfPresent, expect, test } from './support/test'
+import {
+  closeDebugPanelIfOpen,
+  dismissPermissionPromptIfPresent,
+  expect,
+  test,
+} from './support/test'
 
 test.describe('Housemate biographies @core-journey', () => {
   test('keeps the first housemate full-height with compact side copy', async ({ page }) => {
@@ -14,6 +19,7 @@ test.describe('Housemate biographies @core-journey', () => {
     })
 
     await page.goto('./')
+    await closeDebugPanelIfOpen(page)
     const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
     await expect(mainMenu).toBeVisible({ timeout: 30_000 })
     await dismissPermissionPromptIfPresent(page)
