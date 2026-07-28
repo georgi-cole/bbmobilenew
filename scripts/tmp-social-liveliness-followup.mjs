@@ -78,6 +78,14 @@ edit('src/components/HousePulse/HousePulse.tsx', (source) =>
   )
 )
 
+edit('src/social/incomingInteractions.ts', (source) =>
+  replaceIfPresent(
+    source,
+    `  interaction,\n  responseType,\n  responseLabel,\n  source,`,
+    `  interaction,\n  responseType,\n  source,`
+  )
+)
+
 edit('server/live-config.example.json', (source) =>
   source.replace(`"hoh_congratulations": "readOnly"`, `"hoh_congratulations": "optional"`)
 )
