@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
-import { Provider } from 'react-redux'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { configureStore } from '@reduxjs/toolkit'
+import { Provider } from 'react-redux'
+import { describe, expect, it } from 'vitest'
 import gameReducer, { setPhase } from '../../../store/gameSlice'
 import settingsReducer, { setGameUX } from '../../../store/settingsSlice'
 import socialReducer, {
@@ -10,9 +10,9 @@ import socialReducer, {
   updateRelationship,
   updateSocialMemory,
 } from '../../../social/socialSlice'
-import IncomingInteractionsInbox from '../IncomingInteractionsInbox'
 import { socialMiddleware } from '../../../social/socialMiddleware'
 import { hasAllianceBetween } from '../../../social/socialAlliance'
+import IncomingInteractionsInbox from '../IncomingInteractionsInbox'
 
 function makeStore() {
   return configureStore({
@@ -42,15 +42,11 @@ function getNonUserPlayer(store: ReturnType<typeof makeStore>) {
 }
 
 describe('IncomingInteractionsInbox', () => {
-  it('creates a store with a non-user player', () => {
-    const store = makeStore()
-    expect(getNonUserPlayer(store).isUser).not.toBe(true)
-  })
-
-  it('sorts decisions, conversations, updates and weekly history while reading visible items', async () => {
+  it('uses compact Needs Response, Updates and collapsed History sections', async () => {
     const store = makeStore()
     store.dispatch(openIncomingInbox())
     const otherId = getNonUserPlayer(store).id
+
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-low-later',
@@ -142,41 +138,35 @@ describe('IncomingInteractionsInbox', () => {
 
     renderInbox(store)
 
-    expect(screen.getByText('2 decisions • 2 urgent • 2 conversations')).toBeInTheDocument()
+    expect(screen.getByText('2 to answer · 3 updates')).toBeInTheDocument()
 
-    const needsSection = screen.getByLabelText('Needs Decision')
+    const needsSection = screen.getByLabelText('Needs Response')
     const needsItems = within(needsSection).getAllByRole('listitem')
     expect(needsItems).toHaveLength(2)
     expect(needsItems[0].textContent).toContain('High soon.')
     expect(needsItems[1].textContent).toContain('High later.')
-    expect(within(needsSection).getByText('Urgent this week')).toBeInTheDocument()
+    expect(within(needsSection).getAllByText('Answer this week')).toHaveLength(1)
 
-    const conversationsSection = screen.getByLabelText('Conversations')
-    const conversationItems = within(conversationsSection).getAllByRole('listitem')
-    expect(conversationItems).toHaveLength(2)
-    expect(conversationItems[0].textContent).toContain('Medium soon.')
-    expect(conversationItems[1].textContent).toContain('Low later.')
-    expect(
-      within(conversationsSection).getByText('Optional · closes this week')
-    ).toBeInTheDocument()
+    const updatesSection = screen.getByLabelText('Updates')
+    const updateItems = within(updatesSection).getAllByRole('listitem')
+    expect(updateItems).toHaveLength(3)
+    expect(updateItems[0].textContent).toContain('Medium soon.')
+    expect(updateItems[1].textContent).toContain('Low later.')
+    expect(updateItems[2].textContent).toContain('House update.')
 
-    const updatesSection = screen.getByLabelText('House Updates')
-    expect(within(updatesSection).getAllByRole('listitem')).toHaveLength(1)
-    expect(within(updatesSection).queryByRole('button')).not.toBeInTheDocument()
+    const readOnlyItem = screen.getByText('House update.').closest('[role="listitem"]')
+    expect(readOnlyItem).not.toBeNull()
+    expect(within(readOnlyItem as HTMLElement).queryByRole('button')).not.toBeInTheDocument()
 
-    const resolvedSection = screen.getByLabelText('Resolved This Week')
-    const resolvedItems = within(resolvedSection).getAllByRole('listitem')
-    expect(resolvedItems).toHaveLength(1)
-    expect(resolvedItems[0].textContent).toContain('Resolved note.')
-    expect(resolvedItems[0].className).toContain('inbox-item--resolved')
+    fireEvent.click(screen.getByText('History · 1'))
+    expect(screen.getByText('Resolved note.')).toBeInTheDocument()
 
     await waitFor(() => {
-      const state = store.getState().social.incomingInteractions
-      expect(state.every((entry) => entry.read)).toBe(true)
+      expect(store.getState().social.incomingInteractions.every((entry) => entry.read)).toBe(true)
     })
   })
 
-  it('responds to an interaction from the inbox', () => {
+  it('responds without parroting the selected button as a second explanation', () => {
     const store = makeStore()
     store.dispatch(openIncomingInbox())
     const otherPlayer = getNonUserPlayer(store)
@@ -203,7 +193,8 @@ describe('IncomingInteractionsInbox', () => {
       .social.incomingInteractions.find((interaction) => interaction.id === 'interaction-3')
     expect(entry?.resolved).toBe(true)
     expect(entry?.resolvedWith).toBe('positive')
-    expect(store.getState().game.tvFeed[0]?.text).toMatch(/encouraged/i)
+    expect(entry?.outcomeText).toMatch(/unconfirmed/i)
+    expect(entry?.outcomeText).not.toMatch(/your choice/i)
   })
 
   it('forms a reciprocal alliance once without premium currency in Normal Mode', () => {
@@ -239,9 +230,9 @@ describe('IncomingInteractionsInbox', () => {
     expect(socialState.influenceBank[otherPlayer.id] ?? 0).toBe(0)
   })
 
-  it('renders contextual responses, tone labels, and visible choice consequences', () => {
+  it('keeps contextual choices compact with no permanent descriptions beneath them', () => {
     const store = makeStore()
-    store.dispatch(setGameUX({ dramaMode: true }))
+    store.dispatch(setGameUX({ dramaMode: true, dramaModeAdminOverride: true }))
     store.dispatch(openIncomingInbox())
     const otherId = getNonUserPlayer(store).id
     store.dispatch(
@@ -268,23 +259,19 @@ describe('IncomingInteractionsInbox', () => {
         createdWeek: 1,
         expiresAtWeek: 1,
         read: false,
-        requiresResponse: true,
+        requiresResponse: false,
         resolved: false,
       })
     )
 
     renderInbox(store)
 
-    expect(document.querySelector('[data-response-type="negative"]')).toBeInTheDocument()
-    expect(screen.getByText(/Bitter/)).toBeInTheDocument()
-    expect(screen.getByText(/Sets a clear boundary and damages trust/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Context' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Why now')).not.toBeInTheDocument()
-    expect(screen.queryByText('What it means')).not.toBeInTheDocument()
+    expect(document.querySelectorAll('.inbox-action')).toHaveLength(4)
+    expect(document.querySelector('.inbox-action small')).toBeNull()
+    expect(screen.queryByText(/Sets a clear boundary and damages trust/i)).not.toBeInTheDocument()
   })
 
-  it('closes and logs the reason when the phase changes to eviction results', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('stays available during eviction results so reactions are not stranded', () => {
     const store = makeStore()
     store.dispatch(openIncomingInbox())
 
@@ -295,15 +282,7 @@ describe('IncomingInteractionsInbox', () => {
       store.dispatch(setPhase('eviction_results'))
     })
 
-    expect(screen.queryByRole('dialog')).toBeNull()
-    expect(store.getState().social.incomingInboxOpen).toBe(false)
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Incoming social module did not open: Social modules are blocked during the eviction_results phase.'
-      ),
-      expect.objectContaining({ phase: 'eviction_results' })
-    )
-
-    warnSpy.mockRestore()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(store.getState().social.incomingInboxOpen).toBe(true)
   })
 })
