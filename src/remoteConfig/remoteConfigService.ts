@@ -23,6 +23,10 @@ import type {
 import type { CompSelectionMode } from '../components/compSelectionUtils'
 import { apiUrl } from '../utils/apiBase'
 import { sanitiseSocialRuntimeOverride } from '../social/socialRuntimeConfig'
+import {
+  sanitiseMusicConfigOverrides,
+  sanitiseMusicTrackAssetOverrides,
+} from '../services/sound/musicConfigSanitizer'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -176,6 +180,12 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
       }
       if (isSafeUrl(m.mainTrackUrl)) {
         config.season.music.mainTrackUrl = m.mainTrackUrl as string
+      }
+      const tracks = sanitiseMusicTrackAssetOverrides(m.tracks)
+      if (tracks.length > 0) config.season.music.tracks = tracks
+      const assignments = sanitiseMusicConfigOverrides(m.assignments)
+      if (Object.keys(assignments).length > 0) {
+        config.season.music.assignments = assignments
       }
       if (Object.keys(config.season.music).length === 0) delete config.season.music
     }
