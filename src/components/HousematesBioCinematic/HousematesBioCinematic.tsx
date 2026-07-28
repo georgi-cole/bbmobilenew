@@ -1,37 +1,31 @@
-import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { SoundManager } from '../../services/sound/SoundManager';
+import type { CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { SoundManager } from '../../services/sound/SoundManager'
 import {
   createCinematicAudio,
   type CinematicAudioController,
-} from '../../services/sound/cinematicAudio';
-import {
-  HOUSEMATES_BIO_CARDS,
-  type HousematesBioCard,
-} from './housematesBioData';
-import {
-  getHousematesBioScene,
-  HOUSEMATES_BIO_DURATION_MS,
-} from './housematesBioTimeline';
-import './HousematesBioCinematic.css';
+} from '../../services/sound/cinematicAudio'
+import { HOUSEMATES_BIO_CARDS, type HousematesBioCard } from './housematesBioData'
+import { getHousematesBioScene, HOUSEMATES_BIO_DURATION_MS } from './housematesBioTimeline'
+import './HousematesBioCinematic.css'
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 interface IntroHubAudioWindow extends Window {
-  _introhubMusicOn?: boolean;
+  _introhubMusicOn?: boolean
 }
 
 function asset(path: string): string {
-  return `${BASE}${path}`;
+  return `${BASE}${path}`
 }
 
 function portraitSrc(card: HousematesBioCard): string {
-  return asset(`/assets/Informal_attires/${card.portraitFile}`);
+  return asset(`/assets/Informal_attires/${card.portraitFile}`)
 }
 
 function backdropSrc(card: HousematesBioCard): string {
-  return asset(`/assets/housemate-bio-backgrounds/${card.backdrop}.png`);
+  return asset(`/assets/housemate-bio-backgrounds/${card.backdrop}.png`)
 }
 
 function IntroScene() {
@@ -74,15 +68,15 @@ function IntroScene() {
         22 lives. One house. One life-changing prize.
       </motion.p>
     </motion.section>
-  );
+  )
 }
 
 function HousemateScene({ card, index }: { card: HousematesBioCard; index: number }) {
-  const isEven = index % 2 === 0;
+  const isEven = index % 2 === 0
   const style = {
     '--hbc-accent': card.accent,
     '--hbc-backdrop-position': `${36 + (index % 5) * 7}% center`,
-  } as CSSProperties;
+  } as CSSProperties
 
   return (
     <motion.section
@@ -117,7 +111,7 @@ function HousemateScene({ card, index }: { card: HousematesBioCard; index: numbe
           className="hbc-card__portrait"
           src={portraitSrc(card)}
           alt={card.fullName}
-          style={{ objectPosition: card.portraitPosition ?? 'center 12%' }}
+          style={{ objectPosition: card.portraitPosition ?? 'center bottom' }}
           draggable={false}
         />
       </motion.div>
@@ -149,7 +143,7 @@ function HousemateScene({ card, index }: { card: HousematesBioCard; index: numbe
         </motion.div>
       </div>
     </motion.section>
-  );
+  )
 }
 
 function OutroScene() {
@@ -185,7 +179,7 @@ function OutroScene() {
         Open Housemates in the IntroHub to discover every full biography.
       </motion.span>
     </motion.section>
-  );
+  )
 }
 
 function CreditScene() {
@@ -203,7 +197,7 @@ function CreditScene() {
       <div className="hbc-credit__rule" aria-hidden="true" />
       <span>Housemates biography cinematic</span>
     </motion.section>
-  );
+  )
 }
 
 function LogoScene() {
@@ -236,101 +230,99 @@ function LogoScene() {
         The house is ready.
       </motion.p>
     </motion.section>
-  );
+  )
 }
 
 export interface HousematesBioCinematicProps {
-  onComplete: () => void;
+  onComplete: () => void
 }
 
 export default function HousematesBioCinematic({ onComplete }: HousematesBioCinematicProps) {
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const prefersReducedMotion = useReducedMotion();
-  const onCompleteRef = useRef(onComplete);
-  const completedRef = useRef(false);
-  const audioRef = useRef<CinematicAudioController | null>(null);
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const prefersReducedMotion = useReducedMotion()
+  const onCompleteRef = useRef(onComplete)
+  const completedRef = useRef(false)
+  const audioRef = useRef<CinematicAudioController | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
-  const scene = useMemo(() => getHousematesBioScene(elapsedMs), [elapsedMs]);
-  const progress = Math.min(1, elapsedMs / HOUSEMATES_BIO_DURATION_MS);
-  const preloadFromIndex = scene.kind === 'housemate'
-    ? scene.index
-    : scene.kind === 'intro'
-      ? -1
-      : HOUSEMATES_BIO_CARDS.length;
+  const scene = useMemo(() => getHousematesBioScene(elapsedMs), [elapsedMs])
+  const progress = Math.min(1, elapsedMs / HOUSEMATES_BIO_DURATION_MS)
+  const preloadFromIndex =
+    scene.kind === 'housemate'
+      ? scene.index
+      : scene.kind === 'intro'
+        ? -1
+        : HOUSEMATES_BIO_CARDS.length
 
   const finish = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    audioRef.current?.fadeOutAndStop(550);
-    onCompleteRef.current();
-  }, []);
+    if (completedRef.current) return
+    completedRef.current = true
+    audioRef.current?.fadeOutAndStop(550)
+    onCompleteRef.current()
+  }, [])
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    closeButtonRef.current?.focus();
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeButtonRef.current?.focus()
 
-    SoundManager.panicStopAllMusic();
-    const audio = createCinematicAudio(asset('/assets/sounds/HousematesBio.mp4'), 0.78);
-    audioRef.current = audio;
+    SoundManager.panicStopAllMusic()
+    const audio = createCinematicAudio(asset('/assets/sounds/HousematesBio.mp4'), 0.78)
+    audioRef.current = audio
     if ((window as IntroHubAudioWindow)._introhubMusicOn !== false) {
-      audio.play();
+      audio.play()
     }
 
-    const startedAt = performance.now();
+    const startedAt = performance.now()
     const interval = window.setInterval(() => {
-      const nextElapsed = performance.now() - startedAt;
-      setElapsedMs(Math.min(HOUSEMATES_BIO_DURATION_MS, nextElapsed));
+      const nextElapsed = performance.now() - startedAt
+      setElapsedMs(Math.min(HOUSEMATES_BIO_DURATION_MS, nextElapsed))
       if (nextElapsed >= HOUSEMATES_BIO_DURATION_MS) {
-        window.clearInterval(interval);
-        finish();
+        window.clearInterval(interval)
+        finish()
       }
-    }, 80);
+    }, 80)
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') finish();
-    };
-    window.addEventListener('keydown', handleKeyDown);
+      if (event.key === 'Escape') finish()
+    }
+    window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      audio.dispose();
-      audioRef.current = null;
-      void SoundManager.syncMusic();
-    };
-  }, [finish]);
+      window.clearInterval(interval)
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+      audio.dispose()
+      audioRef.current = null
+      void SoundManager.syncMusic()
+    }
+  }, [finish])
 
   useEffect(() => {
     // Keep the next few cuts ready without downloading the full cinematic in
     // one burst. Repeated professional settings naturally reuse browser cache.
-    const upcomingCards = HOUSEMATES_BIO_CARDS.slice(
-      preloadFromIndex + 1,
-      preloadFromIndex + 4,
-    );
-    const sources = new Set<string>();
+    const upcomingCards = HOUSEMATES_BIO_CARDS.slice(preloadFromIndex + 1, preloadFromIndex + 4)
+    const sources = new Set<string>()
     upcomingCards.forEach((card) => {
-      sources.add(portraitSrc(card));
-      sources.add(backdropSrc(card));
-    });
+      sources.add(portraitSrc(card))
+      sources.add(backdropSrc(card))
+    })
     sources.forEach((src) => {
-      const image = new Image();
-      image.decoding = 'async';
-      image.src = src;
-    });
-  }, [preloadFromIndex]);
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = src
+    })
+  }, [preloadFromIndex])
 
   useEffect(() => {
     if (scene.kind === 'logo') {
-      audioRef.current?.fadeOutAndStop(3_600);
+      audioRef.current?.fadeOutAndStop(3_600)
     }
-  }, [scene.kind]);
+  }, [scene.kind])
 
   return (
     <div
@@ -352,7 +344,10 @@ export default function HousematesBioCinematic({ onComplete }: HousematesBioCine
       </button>
 
       <div className="hbc__progress" aria-hidden="true">
-        <motion.div animate={{ scaleX: progress }} transition={{ duration: 0.08, ease: 'linear' }} />
+        <motion.div
+          animate={{ scaleX: progress }}
+          transition={{ duration: 0.08, ease: 'linear' }}
+        />
       </div>
 
       <main className="hbc__stage" aria-live="polite">
@@ -366,9 +361,7 @@ export default function HousematesBioCinematic({ onComplete }: HousematesBioCine
             transition={{ duration: 0.34 }}
           >
             {scene.kind === 'intro' && <IntroScene />}
-            {scene.kind === 'housemate' && (
-              <HousemateScene card={scene.card} index={scene.index} />
-            )}
+            {scene.kind === 'housemate' && <HousemateScene card={scene.card} index={scene.index} />}
             {scene.kind === 'outro' && <OutroScene />}
             {scene.kind === 'credit' && <CreditScene />}
             {scene.kind === 'logo' && <LogoScene />}
@@ -376,5 +369,5 @@ export default function HousematesBioCinematic({ onComplete }: HousematesBioCine
         </AnimatePresence>
       </main>
     </div>
-  );
+  )
 }
