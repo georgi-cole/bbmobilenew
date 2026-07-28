@@ -24,6 +24,12 @@ describe('Public Favorite finale presentation contract', () => {
     expect(source).toContain('FinalReveal')
   })
 
+  it('never leaves the feature phase empty and keeps fast-forward out of the intro', () => {
+    expect(source).toContain('fallbackFeaturePlayer')
+    expect(source).toContain("phase === 'feature' && featurePlayer")
+    expect(source).toContain("phase !== 'intro'")
+  })
+
   it('retains the authoritative forecast while keeping Viewer Spotlight cosmetic', () => {
     expect(source).toContain('targetPercentages: forecast.targetPercentages')
     expect(source).not.toContain('surgeTargetId')
