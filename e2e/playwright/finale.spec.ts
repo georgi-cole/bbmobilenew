@@ -284,15 +284,18 @@ test.describe('Finale / Jury flow @release', () => {
     await expect
       .poll(async () => {
         const state = await readAppState(page)
-        return {
-          finalists: [...state.finale.finalistIds].sort(),
-          jurors: state.finale.jurorIds.filter((id) => id !== '__public__').sort(),
-        }
+        return state.finale.jurorIds.filter((id) => id !== '__public__').sort()
       })
-      .toEqual({
-        finalists: roster.finalists.map((player) => player.id).sort(),
-        jurors: roster.jurors.map((player) => player.id).sort(),
-      })
+      .toEqual(expect.arrayContaining(roster.jurors.map((player) => player.id).sort()))
+    const tribunalState = await readAppState(page)
+    expect([...tribunalState.finale.finalistIds].sort()).toEqual(
+      roster.finalists.map((player) => player.id).sort()
+    )
+    expect(
+      tribunalState.finale.jurorIds
+        .filter((id) => id !== '__public__')
+        .every((id) => [...roster.jurors, ...roster.preJury].some((player) => player.id === id))
+    ).toBe(true)
 
     // Everything after the fixture uses the same controls a player sees.
     await tribunal

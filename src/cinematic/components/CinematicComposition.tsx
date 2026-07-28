@@ -19,7 +19,6 @@ import { Atmosphere } from '../effects/Atmosphere'
 import { FinalCoast } from '../environment/FinalCoast'
 import { CinematicLighting } from '../lighting/CinematicLighting'
 import { getTimelineState } from '../timeline/timeline'
-import { OptionalAssetLayer } from './OptionalAssetLayer'
 import './cinematic.css'
 
 const CinematicSoundtrack = () => {
@@ -202,7 +201,6 @@ export const CinematicComposition = ({
       </ThreeCanvas>
 
       <LightningOverlay frame={state.frame} opacity={state.lightningBolt} />
-      <OptionalAssetLayer state={state} />
       <div
         className="big-eye-cinematic__grain"
         style={{ backgroundPosition: `${grainFrame % 7}px ${grainFrame % 11}px` }}
