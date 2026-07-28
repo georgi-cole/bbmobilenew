@@ -76,8 +76,10 @@ jobs:
         if: steps.migrate.outputs.failed == 'true'
         shell: bash
         run: |
+          cp AUDIO_MIGRATION_DIAGNOSTIC.txt /tmp/AUDIO_MIGRATION_DIAGNOSTIC.txt
           git reset --hard HEAD
           git clean -fd
+          cp /tmp/AUDIO_MIGRATION_DIAGNOSTIC.txt AUDIO_MIGRATION_DIAGNOSTIC.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add AUDIO_MIGRATION_DIAGNOSTIC.txt
