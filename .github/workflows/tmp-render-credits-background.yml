@@ -36,7 +36,8 @@ jobs:
             --pixel-format=yuv420p \
             --image-format=png \
             --color-space=bt709 \
-            --concurrency=2 2>&1 | tee renders/credits-background-render.log
+            --gl=angle \
+            --concurrency=1 2>&1 | tee renders/credits-background-render.log
           ffmpeg -y \
             -i renders/credits-background-source.mp4 \
             -vf scale=720:1280:flags=lanczos \
