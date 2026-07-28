@@ -370,6 +370,13 @@ export default function PublicFavoriteOverlay({
       : null
   }, [activeSpotlightItems, viewerSpotlight])
   const featuredSpotlight = forcedSpotlight ?? naturalSpotlight
+  const fallbackFeaturePlayer = orderedFinalists[0] ?? activePlayers[0] ?? null
+  const featurePlayer = featuredSpotlight?.item.player ?? fallbackFeaturePlayer
+  const featureFact =
+    featuredSpotlight?.fact ??
+    (featurePlayer
+      ? `${featurePlayer.name} remains in the running as the audience closes in on its final choice.`
+      : '')
 
   useEffect(() => {
     if (
@@ -491,28 +498,30 @@ export default function PublicFavoriteOverlay({
                 Skip intro
               </button>
             )}
-            <button
-              ref={fastForwardButtonRef}
-              type="button"
-              onClick={handleFastForward}
-              disabled={fastForwarding || spotlightPending}
-              aria-label="Fast forward public favorite vote"
-            >
-              {fastForwarding ? 'Forwarding' : 'Fast forward'}
-            </button>
+            {phase !== 'intro' && (
+              <button
+                ref={fastForwardButtonRef}
+                type="button"
+                onClick={handleFastForward}
+                disabled={fastForwarding || spotlightPending}
+                aria-label="Fast forward public favorite vote"
+              >
+                {fastForwarding ? 'Forwarding' : 'Fast forward'}
+              </button>
+            )}
           </div>
         )}
 
         <AnimatePresence mode="wait" initial={false}>
           {phase === 'intro' && <IntroStage key="intro" />}
-          {phase === 'feature' && featuredSpotlight && (
+          {phase === 'feature' && featurePlayer && (
             <FeatureStage
-              key={`feature-${featuredSpotlight.item.player.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}
-              player={featuredSpotlight.item.player}
-              fact={featuredSpotlight.fact}
+              key={`feature-${featurePlayer.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}
+              player={featurePlayer}
+              fact={featureFact}
               remaining={activePlayers.length}
-              spotlightActive={viewerSpotlight?.playerId === featuredSpotlight.item.player.id}
-              spotlightAvailable={canActivateSpotlight}
+              spotlightActive={viewerSpotlight?.playerId === featurePlayer.id}
+              spotlightAvailable={canActivateSpotlight && featuredSpotlight !== null}
               spotlightPending={spotlightPending}
               onSpotlight={handleSpotlight}
             />

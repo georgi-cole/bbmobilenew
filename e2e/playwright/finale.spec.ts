@@ -386,9 +386,17 @@ test.describe('Finale / Jury flow @release', () => {
       fullPage: false,
     })
     await favoriteVote.getByRole('button', { name: 'Skip intro' }).click()
-    await expect(favoriteVote.locator('.pf-cinematic__feature')).toBeVisible({
-      timeout: 5_000,
-    })
+    const favoriteFeature = favoriteVote.locator('.pf-cinematic__feature')
+    await expect(favoriteFeature).toBeVisible({ timeout: 5_000 })
+    await expect(favoriteFeature.locator('.pf-cinematic__feature-copy h2')).toBeVisible()
+    await expect
+      .poll(() =>
+        favoriteFeature
+          .locator('.pf-cinematic__feature-cutout')
+          .evaluate((image) => (image as HTMLImageElement).naturalWidth)
+      )
+      .toBeGreaterThan(0)
+    await page.waitForTimeout(750)
     await page.screenshot({
       path: 'test-results/public-favorite-feature-mobile.png',
       fullPage: false,
