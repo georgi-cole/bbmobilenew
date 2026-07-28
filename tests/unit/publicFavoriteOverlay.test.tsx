@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PublicFavoriteOverlay from '../../src/components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import { useBattleBackVoting } from '../../src/hooks/useBattleBackVoting'
@@ -17,6 +17,12 @@ vi.mock('../../src/hooks/useBattleBackVoting', () => ({
   useBattleBackVoting: vi.fn(),
 }))
 
+vi.mock('../../src/components/FullSizeCutoutImage/FullSizeCutoutImage', () => ({
+  default: ({ player, className, alt }: { player: Player; className?: string; alt?: string }) => (
+    <img src={`/cutouts/${player.id}.webp`} className={className} alt={alt ?? player.name} />
+  ),
+}))
+
 vi.mock('framer-motion', async () => {
   const React = await import('react')
   const motion = new Proxy(
@@ -30,7 +36,6 @@ vi.mock('framer-motion', async () => {
           animate: _animate,
           exit: _exit,
           transition: _transition,
-          layout: _layout,
           ...props
         }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) =>
           React.createElement(tag, props, children),
@@ -117,7 +122,7 @@ function votingState(overrides: Partial<ReturnType<typeof useBattleBackVoting>> 
   }
 }
 
-describe('PublicFavoriteOverlay', () => {
+describe('PublicFavoriteOverlay cinematic redesign', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     publicOpinionMock.state = PUBLIC_OPINION
@@ -130,7 +135,7 @@ describe('PublicFavoriteOverlay', () => {
     vi.clearAllMocks()
   })
 
-  it('passes a public-opinion forecast into the live voting simulator', () => {
+  it('keeps the public-opinion forecast authoritative underneath the cinematic', () => {
     render(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
 
     const options = mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]
@@ -139,7 +144,24 @@ describe('PublicFavoriteOverlay', () => {
     expect(options).not.toHaveProperty('surgeTargetId')
   })
 
-  it('makes the rewarded Viewer Spotlight explicitly cosmetic', async () => {
+  it('opens with a broadcast sting and then one full-screen housemate story', async () => {
+    render(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
+
+    expect(screen.getByText('The public has made its choice.')).toBeInTheDocument()
+    expect(screen.queryByText(/Live standings/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/44%/i)).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_250)
+    })
+
+    expect(screen.getByText('Jordan')).toBeInTheDocument()
+    expect(screen.getByText('3 housemates remain in the public vote')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: /ranking board/i })).not.toBeInTheDocument()
+    expect(document.querySelector('.pf-overlay__rank-card')).toBeNull()
+  })
+
+  it('keeps rewarded Viewer Spotlight cosmetic and attached to the current hero', async () => {
     const onAudienceSurgeRequest = vi.fn().mockResolvedValue(true)
     render(
       <PublicFavoriteOverlay
@@ -151,37 +173,78 @@ describe('PublicFavoriteOverlay', () => {
     )
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_100)
+      await vi.advanceTimersByTimeAsync(2_250)
     })
 
-    const board = screen.getByRole('region', { name: 'Public vote ranking board' })
-    fireEvent.click(within(board).getByRole('button', { name: /Taylor, rank 1, 44%/i }))
-    expect(screen.getByText(/This does not change the official result/i)).toBeInTheDocument()
-
-    const cta = screen.getByRole('button', { name: /Watch to Spotlight Taylor/i })
+    const cta = screen.getByRole('button', { name: 'Spotlight Jordan' })
     await act(async () => {
       fireEvent.click(cta)
       fireEvent.click(cta)
     })
 
     expect(onAudienceSurgeRequest).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: /Viewer Spotlight Active/i })).toBeDisabled()
+    expect(onAudienceSurgeRequest).toHaveBeenCalledWith('p1')
+    expect(screen.getByText('Viewer Spotlight')).toBeInTheDocument()
     expect(mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]).not.toHaveProperty('surgeTargetId')
   })
 
-  it('uses a readable fast-forward cadence instead of 260 ms eliminations', () => {
+  it('uses a readable compressed cadence without exposing technical countdowns', () => {
     render(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Fast forward public favorite vote' }))
 
     expect(mockedUseBattleBackVoting.mock.calls.at(-1)?.[0]).toMatchObject({
-      eliminationIntervalMs: 850,
-      tickIntervalMs: 300,
+      eliminationIntervalMs: 900,
+      tickIntervalMs: 350,
     })
     expect(screen.getByText('Forwarding')).toBeInTheDocument()
+    expect(screen.queryByText(/Next result in/i)).not.toBeInTheDocument()
   })
 
-  it('renders the authoritative winner reveal and completes only once', () => {
+  it('uses the whole screen for one elimination instead of rearranging a dashboard', async () => {
+    let current = votingState()
+    mockedUseBattleBackVoting.mockImplementation(() => current)
+
+    const { rerender } = render(
+      <PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />
+    )
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_250)
+    })
+
+    current = votingState({
+      votes: { p1: 0, p2: 58, p3: 42 },
+      eliminated: ['p1'],
+    })
+    rerender(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
+
+    expect(screen.getByText('The public says goodbye to')).toBeInTheDocument()
+    expect(screen.getByText('Jordan')).toBeInTheDocument()
+    expect(document.querySelector('.pf-overlay__board')).toBeNull()
+  })
+
+  it('presents the final two as a clean split-screen reveal', async () => {
+    mockedUseBattleBackVoting.mockReturnValue(
+      votingState({
+        votes: { p1: 0, p2: 57, p3: 43 },
+        eliminated: ['p1'],
+      })
+    )
+
+    render(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_250)
+    })
+
+    expect(screen.getByText('THE FINAL TWO')).toBeInTheDocument()
+    expect(screen.getByText('Taylor')).toBeInTheDocument()
+    expect(screen.getByText('Morgan')).toBeInTheDocument()
+    expect(screen.queryByText(/57%|43%/)).not.toBeInTheDocument()
+  })
+
+  it('turns the winner into the visual dessert and completes once', () => {
     const onComplete = vi.fn()
     mockedUseBattleBackVoting.mockReturnValue(
       votingState({
@@ -201,8 +264,9 @@ describe('PublicFavoriteOverlay', () => {
       />
     )
 
+    expect(screen.getByText("PUBLIC'S FAVORITE PLAYER")).toBeInTheDocument()
     expect(screen.getByText('Taylor')).toBeInTheDocument()
-    expect(screen.getByText('Wins 25,000 Eyeoleans!')).toBeInTheDocument()
+    expect(screen.getByText('Wins 25,000 Eyeoleans')).toBeInTheDocument()
     const continueButton = screen.getByRole('button', { name: 'Continue' })
     fireEvent.click(continueButton)
     fireEvent.click(continueButton)
@@ -220,7 +284,7 @@ describe('PublicFavoriteOverlay', () => {
 
     render(<PublicFavoriteOverlay candidates={[PLAYERS[1]]} seed={41} onComplete={vi.fn()} />)
 
-    expect(screen.getByText('FINAL REVEAL')).toBeInTheDocument()
+    expect(screen.getByText("PUBLIC'S FAVORITE PLAYER")).toBeInTheDocument()
     expect(screen.getByText('Taylor')).toBeInTheDocument()
   })
 })
