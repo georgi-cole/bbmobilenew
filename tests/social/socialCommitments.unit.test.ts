@@ -115,7 +115,7 @@ describe('social commitments', () => {
     })
   })
 
-  it('rewards a vote promise that the player actually keeps', () => {
+  it('keeps a private vote promise out of house relationships', () => {
     const { store, social } = makeStore(['lia', 'nova'])
     const voteInteraction = interaction({
       type: 'deal_offer',
@@ -132,13 +132,14 @@ describe('social commitments', () => {
     evaluateSocialCommitmentsForAction(store, 'game/submitHumanVote', 'nova')
 
     expect(social().commitments[0]?.status).toBe('kept')
-    expect(social().relationships.lia?.user?.affinity).toBe(9)
-    expect(social().socialMemory.lia?.user?.gratitude).toBe(4)
-    expect(social().influenceBank.user).toBe(300)
+    expect(social().relationships.lia?.user?.affinity ?? 0).toBe(0)
+    expect(social().socialMemory.lia?.user?.gratitude ?? 0).toBe(0)
+    expect(social().influenceBank.user).toBe(200)
     expect(getSocialCredibility(social().commitments)).toMatchObject({
-      score: 60,
-      label: 'Early read',
-      kept: 1,
+      score: 50,
+      label: 'Unproven',
+      kept: 0,
+      broken: 0,
     })
   })
 })

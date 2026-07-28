@@ -1,4 +1,4 @@
-﻿import { DRAMA_SOCIAL_ACTIONS } from './dramaModeConfig';
+import { DRAMA_SOCIAL_ACTIONS } from './dramaModeConfig'
 
 /**
  * Social action definitions for the SocialManeuvers subsystem.
@@ -21,10 +21,10 @@
  * from the banked resources above.
  */
 
-import type { PlayerStatus } from '../types';
-import type { DramaArcStage, DramaArcType } from './types';
+import type { PlayerStatus } from '../types'
+import type { DramaArcStage, DramaArcType } from './types'
 
-export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance';
+export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance'
 
 /**
  * Semantic role of a social action.
@@ -42,7 +42,7 @@ export type SocialActionKind =
   | 'intel_gain'
   | 'intel_spend'
   | 'political_spend'
-  | 'aggressive';
+  | 'aggressive'
 
 /**
  * How many targets an action requires or supports.
@@ -52,7 +52,7 @@ export type SocialActionKind =
  *                           (e.g. "Pitch Target to LOH about X")
  *  - 'multi'              — multiple target players supported (e.g. group actions)
  */
-export type TargetMode = 'none' | 'primary' | 'primaryPlusSubject' | 'multi';
+export type TargetMode = 'none' | 'primary' | 'primaryPlusSubject' | 'multi'
 
 /**
  * Hint for the UI about what kind of players are valid subject candidates for
@@ -63,30 +63,30 @@ export type TargetMode = 'none' | 'primary' | 'primaryPlusSubject' | 'multi';
  *  - 'allies'       — players with positive affinity toward the actor
  *  - 'voters'       — alive non-human players who can vote this week
  */
-export type SubjectPool = 'houseguests' | 'nominees' | 'non_nominees' | 'allies' | 'voters';
+export type SubjectPool = 'houseguests' | 'nominees' | 'non_nominees' | 'allies' | 'voters'
 
 export interface SocialActionDefinition {
-  id: string;
-  title: string;
+  id: string
+  title: string
   /**
    * UI metadata category for display and filtering purposes.
    * Note: this field does NOT affect SocialPolicy outcome computation —
    * the actual delta behaviour is driven by the id lists in
    * `socialConfig.actionCategories.friendlyActions` / `aggressiveActions`.
    */
-  category: ActionCategory;
+  category: ActionCategory
   /**
    * Semantic role of this action in the resource economy.
    * Used for action-catalog documentation and future AI weighting.
    * Does not gate execution — see `baseCost` and `yields` for runtime behaviour.
    */
-  kind?: SocialActionKind;
+  kind?: SocialActionKind
   /**
    * Energy cost as a plain number or a multi-resource cost-shape object.
    * Influence costs are authored in whole influence units (2.0 → cost 20);
    * info costs remain in the legacy bank-point scale (2.0 → cost 200).
    */
-  baseCost: number | { energy?: number; influence?: number; info?: number };
+  baseCost: number | { energy?: number; influence?: number; info?: number }
   /**
    * Optional resource yields granted to the actor on a successful execution.
    * Influence yields remain authored in legacy fractional bank units
@@ -94,53 +94,53 @@ export interface SocialActionDefinition {
    * positive deltas.
    */
   /** Optional Drama Mode override; Normal Mode always uses baseCost. */
-  dramaCost?: number | { energy?: number; influence?: number; info?: number };
+  dramaCost?: number | { energy?: number; influence?: number; info?: number }
   /** Optional Drama Mode target-shape override. */
-  dramaTargetMode?: TargetMode;
-  yields?: { influence?: number; info?: number };
+  dramaTargetMode?: TargetMode
+  yields?: { influence?: number; info?: number }
   /** Emoji icon shown on the action card. */
-  icon?: string;
+  icon?: string
   /** Short description shown on the action card below the title. */
-  description?: string;
+  description?: string
   /** Optional weight hint for future AI probability weighting. */
-  successWeight?: number;
+  successWeight?: number
   /** Tag applied to relationship entries when this action fires (e.g. 'betrayal'). */
-  outcomeTag?: string;
+  outcomeTag?: string
   /**
    * When false the action does not require a target player to be selected.
    * Defaults to true (most actions target another player).
    */
-  needsTargets?: boolean;
+  needsTargets?: boolean
   /**
    * Optional short hint displayed as a requirement badge on the action card
    * (e.g. "Requires 20% affinity"). Pure UI metadata — does not gate execution.
    */
-  availabilityHint?: string;
+  availabilityHint?: string
   /**
    * How many targets this action requires or supports.
    * Defaults to 'primary' when needsTargets !== false, else 'none'.
    * See TargetMode type for full documentation.
    */
-  targetMode?: TargetMode;
+  targetMode?: TargetMode
   /**
    * When true, this action is used by the AI engine only and should not appear
    * in the human-player action grid. Keeps the AI policy catalog intact while
    * avoiding duplicate / confusing entries in the player UI.
    */
-  aiOnly?: boolean;
+  aiOnly?: boolean
   /**
    * For primaryPlusSubject actions: hint about what pool of players is valid
    * as the contextual subject. Used by the UI to generate candidate chips.
    */
-  subjectPool?: SubjectPool;
+  subjectPool?: SubjectPool
   /** Minimum number of distinct targets required by a multi-target action. */
-  minTargets?: number;
+  minTargets?: number
   /** Optional hard limit for a multi-target action. */
-  maxTargets?: number;
+  maxTargets?: number
   /** Dynamic energy charged per selected target (baseCost remains the floor). */
-  energyPerTarget?: number;
+  energyPerTarget?: number
   /** Allow the acting player to be chosen as the contextual subject. */
-  allowActorAsSubject?: boolean;
+  allowActorAsSubject?: boolean
   /**
    * When set, this action is only available when the selected primary target
    * has one of the listed statuses.  For example, `['loh', 'loh+pos']` means
@@ -148,39 +148,41 @@ export interface SocialActionDefinition {
    * Omit (or set to undefined) for actions that are available regardless of
    * the target's status.
    */
-  requiredTargetStatus?: readonly PlayerStatus[];
+  requiredTargetStatus?: readonly PlayerStatus[]
   // Only actors currently holding one of these roles may use the action.
   /** Drama-only contextual gates. Base fields above preserve Normal Mode rules. */
-  dramaAllowedPhases?: readonly string[];
-  dramaRequiredActorStatus?: readonly PlayerStatus[];
-  dramaRequiredTargetStatus?: readonly PlayerStatus[];
-  dramaRequiredRelationshipTags?: readonly string[];
-  dramaExcludedRelationshipTags?: readonly string[];
-  dramaMinAffinity?: number;
-  dramaMaxAffinity?: number;
-  requiredActorStatus?: readonly PlayerStatus[];
+  dramaAllowedPhases?: readonly string[]
+  dramaRequiredActorStatus?: readonly PlayerStatus[]
+  dramaRequiredTargetStatus?: readonly PlayerStatus[]
+  dramaRequiredRelationshipTags?: readonly string[]
+  dramaExcludedRelationshipTags?: readonly string[]
+  dramaMinAffinity?: number
+  dramaMaxAffinity?: number
+  requiredActorStatus?: readonly PlayerStatus[]
   /** Only available while the premium Drama Mode simulation is enabled. */
-  dramaOnly?: boolean;
-  allowedPhases?: readonly string[];
-  requiredRelationshipTags?: readonly string[];
-  excludedRelationshipTags?: readonly string[];
-  minAffinity?: number;
-  maxAffinity?: number;
-  requiredArcTypes?: readonly DramaArcType[];
-  excludedArcTypes?: readonly DramaArcType[];
-  requiredArcStages?: readonly DramaArcStage[];
-  requiredArcPublic?: boolean;
-  requiresKnownSecret?: boolean;
+  dramaOnly?: boolean
+  allowedPhases?: readonly string[]
+  requiredRelationshipTags?: readonly string[]
+  excludedRelationshipTags?: readonly string[]
+  minAffinity?: number
+  maxAffinity?: number
+  requiredArcTypes?: readonly DramaArcType[]
+  excludedArcTypes?: readonly DramaArcType[]
+  requiredArcStages?: readonly DramaArcStage[]
+  requiredArcPublic?: boolean
+  requiresKnownSecret?: boolean
 }
 
 /** Resolve the target shape without leaking Drama Mode behavior into Normal Mode. */
 export function resolveActionTargetMode(
   action: SocialActionDefinition,
-  dramaMode = false,
+  dramaMode = false
 ): TargetMode {
-  return (dramaMode ? action.dramaTargetMode : undefined) ??
+  return (
+    (dramaMode ? action.dramaTargetMode : undefined) ??
     action.targetMode ??
-    (action.needsTargets === false ? 'none' : 'primary');
+    (action.needsTargets === false ? 'none' : 'primary')
+  )
 }
 
 /** Canonical list of social actions available in the game. */
@@ -421,7 +423,13 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Requires LOH or POS holder',
     yields: { influence: 0.04 },
     requiredTargetStatus: ['loh', 'loh+pos', 'pos', 'nominated+pos'],
-    dramaAllowedPhases: ['nomination_results', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony'],
+    dramaAllowedPhases: [
+      'nomination_results',
+      'pos_comp_announcement',
+      'pos_comp',
+      'pos_results',
+      'pos_ceremony',
+    ],
   },
   {
     id: 'ask_use_safety',
@@ -439,7 +447,14 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'protection',
     availabilityHint: 'Talk to POS about a nominee',
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
-    dramaAllowedPhases: ['social_1', 'nomination_results', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony'],
+    dramaAllowedPhases: [
+      'social_1',
+      'nomination_results',
+      'pos_comp_announcement',
+      'pos_comp',
+      'pos_results',
+      'pos_ceremony',
+    ],
   },
   {
     id: 'ask_safety_plan',
@@ -454,6 +469,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'safety_intel',
     availabilityHint: 'Available while Safety is still undecided',
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
+    allowedPhases: ['pos_results', 'pos_ceremony'],
   },
   {
     id: 'ask_hold_safety',
@@ -467,7 +483,9 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     successWeight: 1,
     outcomeTag: 'safety_request',
     availabilityHint: 'LOH only, before Safety is used',
+    requiredActorStatus: ['loh', 'loh+pos'],
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
+    allowedPhases: ['pos_results', 'pos_ceremony'],
   },
   {
     id: 'ask_why_nominated',
@@ -590,4 +608,4 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     needsTargets: false,
     successWeight: 1,
   },
-];
+]

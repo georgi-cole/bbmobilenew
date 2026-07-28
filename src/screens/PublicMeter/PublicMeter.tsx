@@ -112,6 +112,44 @@ function formatStatus(status: PublicDirection['status']): string {
   return status.charAt(0).toUpperCase() + status.slice(1)
 }
 
+function stableTargetIndex(seed: string, length: number): number {
+  let hash = 0
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (Math.imul(hash, 31) + seed.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash) % Math.max(1, length)
+}
+
+function getDirectionDescription(
+  direction: PublicDirection,
+  players: readonly Player[],
+  currentLohId?: string | null
+): string {
+  if (direction.type !== 'influence_hoh') return direction.description
+  const activeCandidates = players.filter(
+    (player) =>
+      player.status !== 'evicted' &&
+      player.status !== 'jury' &&
+      player.id !== direction.playerId &&
+      player.id !== direction.relatedPlayerId
+  )
+  const fallbackTarget =
+    activeCandidates[stableTargetIndex(direction.id, activeCandidates.length)] ??
+    players.find(
+      (player) =>
+        player.status !== 'evicted' && player.status !== 'jury' && player.id !== direction.playerId
+    )
+  const target = players.find((player) => player.id === direction.targetPlayerId) ?? fallbackTarget
+  const loh =
+    players.find((player) => player.id === direction.relatedPlayerId) ??
+    players.find((player) => player.id === currentLohId) ??
+    players.find((player) => player.status.includes('loh'))
+  const lohName = loh?.name ?? 'the LOH'
+  return target
+    ? `Convince ${lohName} to nominate ${target.name}.`
+    : `Convince ${lohName} to nominate a specific housemate.`
+}
+
 function PublicMeterAvatar({
   player,
   inactive = false,
@@ -352,15 +390,11 @@ export default function PublicMeter() {
             <span className="approval-bar__band">{getApprovalBand(userProfile.approval)}</span>
           </div>
           <details className="public-meter__explain">
-            <summary>Why it moved · how to recover</summary>
+            <summary>What changed</summary>
             <div className="public-meter__explain-body">
-              <p>
-                Only broadcast-visible events and confirmed public moments move this meter; quiet
-                time alone does not change it.
-              </p>
               {userFeed.length > 0 ? (
                 <div className="public-meter__cause-list">
-                  {userFeed.map((entry) => (
+                  {userFeed.slice(0, 3).map((entry) => (
                     <span key={entry.id}>
                       <strong className={entry.delta >= 0 ? 'trend--up' : 'trend--down'}>
                         {entry.delta >= 0 ? '+' : ''}
@@ -371,16 +405,13 @@ export default function PublicMeter() {
                   ))}
                 </div>
               ) : (
-                <p>No recorded public event has moved your rating yet.</p>
+                <p>The audience has not changed its mind about you yet.</p>
               )}
-              <p>
-                <strong>Recovery:</strong>{' '}
+              <p className="public-meter__next-opportunity">
+                <strong>Next opportunity:</strong>{' '}
                 {userActiveDirections.length > 0
-                  ? `Complete an active request: ${userActiveDirections
-                      .slice(0, 2)
-                      .map((direction) => direction.description)
-                      .join(' · ')}`
-                  : 'Strong competition results, protecting a liked player and convincing social moves can rebuild support.'}
+                  ? getDirectionDescription(userActiveDirections[0], game.players, game.lohId)
+                  : 'A strong competition, a smart save or a memorable social move.'}
               </p>
             </div>
           </details>
@@ -502,7 +533,9 @@ export default function PublicMeter() {
                                 {formatStatus(direction.status)}
                               </span>
                             </div>
-                            <p className="direction-card__description">{direction.description}</p>
+                            <p className="direction-card__description">
+                              {getDirectionDescription(direction, game.players, game.lohId)}
+                            </p>
                             <div className="direction-card__meta">
                               <span>{getDirectionWindowLabel(direction)}</span>
                               <span className={directionSignal.className}>

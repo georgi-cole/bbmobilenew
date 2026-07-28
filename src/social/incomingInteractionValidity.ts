@@ -79,6 +79,10 @@ function violatesDeclarativeRule(
   ) {
     return true
   }
+  if (rule.senderMustBeHoh) {
+    const sender = getPlayer(game, interaction.fromId)
+    if (game.lohId !== interaction.fromId && sender?.status.includes('loh') !== true) return true
+  }
   if (rule.senderMustHoldSafety && !holdsSafety(game, interaction.fromId)) return true
   if (rule.humanMustBeHoh && !isHumanHoh(game)) return true
   if (rule.humanMustHoldSafety && !isHumanVetoActionable(game)) return true
