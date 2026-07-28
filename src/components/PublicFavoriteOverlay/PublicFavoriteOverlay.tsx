@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion'
+import { useBattleBackVoting } from '../../hooks/useBattleBackVoting'
 import { selectPublicOpinion } from '../../publicOpinion'
 import { useAppSelector } from '../../store/hooks'
 import type { Player } from '../../types'
-import { useBattleBackVoting } from '../../hooks/useBattleBackVoting'
-import { resolveAvatarCandidates } from '../../utils/avatar'
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage'
 import {
   buildHouseguestSpotlightItems,
   getActiveSpotlightPlayers,
@@ -12,8 +12,7 @@ import {
   selectSpotlightItem,
 } from './publicFavoriteSpotlight'
 import { buildPublicFavoriteForecast } from './publicFavoriteOutcome'
-import './PublicFavoriteOverlay.css'
-import './PublicFavoriteProfessional.css'
+import './PublicFavoriteCinematic.css'
 
 interface Props {
   candidates: Player[]
@@ -24,252 +23,174 @@ interface Props {
   onAudienceSurgeRequest?: (playerId: string) => Promise<boolean> | boolean
 }
 
-type VoteTrend = 'up' | 'down' | 'stable'
-type PublicVotePhase = 'intro' | 'live_results' | 'elimination' | 'final_two' | 'final_reveal'
-
-interface SpotlightState {
+interface ViewerSpotlightState {
   playerId: string
-  endsAt: number
 }
 
-interface VoteEntry {
-  playerId: string
-  name: string
-  percent: number
-  rank: number
-  previousRank: number
-  trend: VoteTrend
-  isLeader: boolean
-  isSpotlighted: boolean
-}
+type PublicVotePhase = 'intro' | 'feature' | 'elimination' | 'final_two' | 'final_reveal'
 
 const ELIMINATION_INTERVAL_MS = 4800
 const VOTE_TICK_INTERVAL_MS = 1000
-const INTRO_MS = 1600
-const CLOCK_INTERVAL_MS = 500
-const SPOTLIGHT_SELECTION_WINDOW_MS = 7000
+const INTRO_MS = 2200
 const SPOTLIGHT_DURATION_MS = 7000
-const ELIMINATION_HOLD_MS = 1200
-const FAST_FORWARD_ELIMINATION_INTERVAL_MS = 850
-const FAST_FORWARD_TICK_INTERVAL_MS = 300
-const MAX_VISIBLE_RANKS = 8
+const ELIMINATION_HOLD_MS = 1650
+const FAST_FORWARD_ELIMINATION_INTERVAL_MS = 900
+const FAST_FORWARD_TICK_INTERVAL_MS = 350
 
 function formatEyeoleans(amount: number): string {
   return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(amount)} Eyeoleans`
 }
 
-function countdown(ms: number): number {
-  return Math.max(0, Math.ceil(ms / 1000))
-}
-
-function voteTrend(previousRank: number, rank: number): VoteTrend {
-  if (previousRank > rank) return 'up'
-  if (previousRank < rank) return 'down'
-  return 'stable'
-}
-
-function PlayerPortrait({ player, className = '' }: { player: Player; className?: string }) {
-  const sources = useMemo(() => resolveAvatarCandidates(player), [player])
-  const [sourceIndex, setSourceIndex] = useState(0)
-  const source = sources[sourceIndex]
-
-  return (
-    <div className={`pf-overlay__portrait ${className}`.trim()}>
-      {source ? (
-        <img
-          src={source}
-          alt={player.name}
-          className="pf-overlay__avatar-img"
-          loading="eager"
-          decoding="async"
-          onError={() => setSourceIndex((index) => index + 1)}
-        />
-      ) : (
-        <span className="pf-overlay__portrait-fallback" aria-hidden="true">
-          {player.name.slice(0, 1).toUpperCase()}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function TrendMarker({ entry }: { entry: VoteEntry }) {
-  const symbol = entry.trend === 'up' ? '▲' : entry.trend === 'down' ? '▼' : '•'
-  const label =
-    entry.trend === 'up'
-      ? `Up from rank ${entry.previousRank}`
-      : entry.trend === 'down'
-        ? `Down from rank ${entry.previousRank}`
-        : `Holding at rank ${entry.rank}`
-
-  return (
-    <span
-      className={`pf-overlay__trend pf-overlay__trend--${entry.trend}`}
-      title={label}
-      aria-label={label}
-    >
-      {symbol}
-    </span>
-  )
-}
-
-function VoteRankingBoard({
-  entries,
-  candidatesById,
-  selectedPlayerId,
-  onSelect,
-}: {
-  entries: VoteEntry[]
-  candidatesById: Record<string, Player>
-  selectedPlayerId: string | null
-  onSelect: (playerId: string) => void
-}) {
-  const visibleEntries = entries.slice(0, MAX_VISIBLE_RANKS)
-  const hiddenCount = Math.max(0, entries.length - visibleEntries.length)
-
-  return (
-    <section className="pf-overlay__board" aria-label="Public vote ranking board">
-      <div className="pf-overlay__board-header">
-        <p className="pf-overlay__board-title">Live standings</p>
-        <span>{entries.length} remaining</span>
-      </div>
-      <div className="pf-overlay__board-list">
-        {visibleEntries.map((entry) => {
-          const player = candidatesById[entry.playerId]
-          if (!player) return null
-          return (
-            <motion.button
-              key={entry.playerId}
-              type="button"
-              className={`pf-overlay__rank-card${entry.isLeader ? ' pf-overlay__rank-card--leader' : ''}${entry.isSpotlighted ? ' pf-overlay__rank-card--surge' : ''}${selectedPlayerId === entry.playerId ? ' pf-overlay__rank-card--selected' : ''}`}
-              onClick={() => onSelect(entry.playerId)}
-              aria-label={`${entry.name}, rank ${entry.rank}, ${entry.percent}%`}
-              layout
-              transition={{ layout: { duration: 0.32, ease: 'easeOut' } }}
-            >
-              <span className="pf-overlay__rank-number">#{entry.rank}</span>
-              <PlayerPortrait player={player} />
-              <div className="pf-overlay__rank-copy">
-                <div className="pf-overlay__rank-name-row">
-                  <span className="pf-overlay__rank-name">{entry.name}</span>
-                  <TrendMarker entry={entry} />
-                </div>
-                <div className="pf-overlay__accent-rail" aria-hidden="true">
-                  <span className="pf-overlay__accent-track" />
-                  <motion.span
-                    className="pf-overlay__accent-fill"
-                    animate={{ width: `${Math.max(4, entry.percent)}%` }}
-                    transition={{ duration: 0.45, ease: 'easeOut' }}
-                  />
-                </div>
-              </div>
-              <div className="pf-overlay__rank-tail">
-                <span className="pf-overlay__percent-value">{entry.percent}%</span>
-                {entry.isSpotlighted ? (
-                  <span className="pf-overlay__rank-tag">Spotlight</span>
-                ) : entry.isLeader ? (
-                  <span className="pf-overlay__rank-tag">Live lead</span>
-                ) : null}
-              </div>
-            </motion.button>
-          )
-        })}
-      </div>
-      {hiddenCount > 0 && (
-        <p className="pf-overlay__remaining-note">
-          +{hiddenCount} housemates remain below the live cut.
-        </p>
-      )}
-    </section>
-  )
-}
-
-function HousemateSpotlight({
-  spotlight,
-  finalTwoNames,
-}: {
-  spotlight: ReturnType<typeof selectSpotlightItem>
-  finalTwoNames: string | null
-}) {
-  if (!spotlight) return null
-  const { player } = spotlight.item
-
+function IntroStage() {
   return (
     <motion.section
-      className="pf-overlay__spotlight"
-      role="region"
-      aria-label="Houseguest Spotlight"
-      data-testid="housemate-spotlight"
-      layout
+      className="pf-cinematic__scene pf-cinematic__intro"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.52 }}
     >
-      <div className="pf-overlay__leader-copy">
-        <p className="pf-overlay__leader-kicker">
-          {finalTwoNames ? `Final two · ${finalTwoNames}` : 'Housemate file'}
-        </p>
-        <h3 className="pf-overlay__leader-name">{player.name}</h3>
-        <motion.p
-          key={`${player.id}-${spotlight.fact}`}
-          className="pf-overlay__spotlight-fact"
-          initial={{ opacity: 0, y: 7 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.28 }}
-        >
-          {spotlight.fact}
-        </motion.p>
+      <div className="pf-cinematic__eye" aria-hidden="true">
+        <span />
       </div>
-      <div className="pf-overlay__leader-portrait-wrap">
-        <div className="pf-overlay__leader-glow" aria-hidden="true" />
-        <PlayerPortrait
+      <p>LIVE FINALE</p>
+      <h2>The public has made its choice.</h2>
+      <span className="pf-cinematic__intro-rule" aria-hidden="true" />
+    </motion.section>
+  )
+}
+
+function FeatureStage({
+  player,
+  fact,
+  remaining,
+  spotlightActive,
+  spotlightAvailable,
+  spotlightPending,
+  onSpotlight,
+}: {
+  player: Player
+  fact: string
+  remaining: number
+  spotlightActive: boolean
+  spotlightAvailable: boolean
+  spotlightPending: boolean
+  onSpotlight: () => void
+}) {
+  return (
+    <motion.section
+      key={player.id}
+      className={`pf-cinematic__scene pf-cinematic__feature${spotlightActive ? ' pf-cinematic__feature--spotlight' : ''}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.58 }}
+    >
+      <div className="pf-cinematic__feature-light" aria-hidden="true" />
+      <motion.div
+        className="pf-cinematic__feature-portrait"
+        initial={{ opacity: 0, x: -22, scale: 1.025 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <FullSizeCutoutImage
           player={player}
-          className="pf-overlay__leader-avatar pf-overlay__leader-avatar--portrait"
+          alt={player.name}
+          className="pf-cinematic__feature-cutout"
+          loading="eager"
         />
+      </motion.div>
+      <motion.div
+        className="pf-cinematic__feature-copy"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.52, delay: 0.3 }}
+      >
+        <p>{remaining} housemates remain in the public vote</p>
+        <h2>{player.name}</h2>
+        <blockquote>{fact}</blockquote>
+        {spotlightActive && <span>Viewer Spotlight</span>}
+      </motion.div>
+
+      {spotlightAvailable && (
+        <button
+          type="button"
+          className="pf-cinematic__spotlight-cta"
+          onClick={onSpotlight}
+          disabled={spotlightPending}
+        >
+          {spotlightPending ? 'Connecting…' : `Spotlight ${player.name}`}
+        </button>
+      )}
+    </motion.section>
+  )
+}
+
+function EliminationStage({ player }: { player: Player }) {
+  return (
+    <motion.section
+      className="pf-cinematic__scene pf-cinematic__elimination"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.36 }}
+      aria-live="polite"
+    >
+      <div className="pf-cinematic__elimination-rim" aria-hidden="true" />
+      <motion.div
+        className="pf-cinematic__elimination-portrait"
+        initial={{ opacity: 0, scale: 1.04 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.52 }}
+      >
+        <FullSizeCutoutImage
+          player={player}
+          alt={player.name}
+          className="pf-cinematic__elimination-cutout"
+          loading="eager"
+        />
+      </motion.div>
+      <div className="pf-cinematic__elimination-copy">
+        <p>The public says goodbye to</p>
+        <h2>{player.name}</h2>
       </div>
     </motion.section>
   )
 }
 
-function ViewerSpotlightPanel({
-  selectedPlayer,
-  activeSpotlight,
-  used,
-  pending,
-  canActivate,
-  onActivate,
-}: {
-  selectedPlayer: Player | null
-  activeSpotlight: SpotlightState | null
-  used: boolean
-  pending: boolean
-  canActivate: boolean
-  onActivate: () => void
-}) {
+function FinalTwoStage({ finalists }: { finalists: Player[] }) {
   return (
-    <footer className="pf-overlay__footer">
-      <section className="pf-overlay__surge-panel" aria-label="Viewer Spotlight">
-        <div className="pf-overlay__surge-copy">
-          <p className="pf-overlay__surge-kicker">Viewer Spotlight</p>
-          <p className="pf-overlay__surge-description">
-            {activeSpotlight && selectedPlayer
-              ? `${selectedPlayer.name} is featured on the broadcast. Official vote totals are unchanged.`
-              : 'Select a housemate on the board, then watch to feature them. This does not change the official result.'}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="pf-overlay__surge-cta"
-          onClick={onActivate}
-          disabled={!selectedPlayer || !canActivate || pending}
-        >
-          {pending
-            ? 'Connecting…'
-            : activeSpotlight
-              ? 'Viewer Spotlight Active'
-              : used
-                ? 'Viewer Spotlight Used'
-                : `Watch to Spotlight${selectedPlayer ? ` ${selectedPlayer.name}` : ''}`}
-        </button>
-      </section>
-    </footer>
+    <motion.section
+      className="pf-cinematic__scene pf-cinematic__final-two"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.58 }}
+    >
+      <div className="pf-cinematic__final-two-copy">
+        <p>THE FINAL TWO</p>
+        <h2>One last decision belongs to the audience.</h2>
+      </div>
+      <div className="pf-cinematic__final-two-stage">
+        {finalists.map((player, index) => (
+          <motion.div
+            key={player.id}
+            className="pf-cinematic__finalist"
+            initial={{ opacity: 0, x: index === 0 ? -28 : 28 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, delay: 0.16 + index * 0.17 }}
+          >
+            <FullSizeCutoutImage
+              player={player}
+              alt={player.name}
+              className="pf-cinematic__finalist-cutout"
+              loading="eager"
+            />
+            <span>{player.name}</span>
+          </motion.div>
+        ))}
+      </div>
+    </motion.section>
   )
 }
 
@@ -283,34 +204,47 @@ function FinalReveal({
   onClose: () => void
 }) {
   return (
-    <motion.div
-      className="pf-overlay__winner-stage"
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+    <motion.section
+      className="pf-cinematic__scene pf-cinematic__winner"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.62 }}
     >
-      <span className="pf-overlay__winner-badge">FINAL REVEAL</span>
-      <p className="pf-overlay__eyebrow">Public&apos;s Favorite Player</p>
-      <div className="pf-overlay__winner-avatar-wrap">
-        <div className="pf-overlay__winner-glow" aria-hidden="true" />
+      <div className="pf-cinematic__winner-rays" aria-hidden="true" />
+      <motion.div
+        className="pf-cinematic__winner-portrait"
+        initial={{ opacity: 0, y: 28, scale: 1.035 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.82, ease: [0.22, 1, 0.36, 1] }}
+      >
         {winner ? (
-          <PlayerPortrait
+          <FullSizeCutoutImage
             player={winner}
-            className="pf-overlay__winner-avatar pf-overlay__winner-avatar--portrait"
+            alt={winner.name}
+            className="pf-cinematic__winner-cutout"
+            loading="eager"
           />
         ) : (
-          <span className="pf-overlay__winner-fallback" aria-hidden="true">
-            🏆
+          <span className="pf-cinematic__winner-fallback" aria-hidden="true">
+            ◉
           </span>
         )}
-      </div>
-      <h2 className="pf-overlay__headline">{winner?.name ?? 'Result unavailable'}</h2>
-      {winner && <p className="pf-overlay__winner-prize">Wins {formatEyeoleans(awardAmount)}!</p>}
-      <p className="pf-overlay__sub">The season-long audience record has spoken.</p>
-      <button type="button" className="pf-overlay__winner-cta" onClick={onClose} disabled={!winner}>
-        Continue
-      </button>
-    </motion.div>
+      </motion.div>
+      <motion.div
+        className="pf-cinematic__winner-copy"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.56, delay: 0.46 }}
+      >
+        <p>PUBLIC&apos;S FAVORITE PLAYER</p>
+        <h2>{winner?.name ?? 'Result unavailable'}</h2>
+        {winner && <strong>Wins {formatEyeoleans(awardAmount)}</strong>}
+        <span>The audience chose the housemate they will remember.</span>
+        <button type="button" onClick={onClose} disabled={!winner}>
+          Continue
+        </button>
+      </motion.div>
+    </motion.section>
   )
 }
 
@@ -334,33 +268,26 @@ export default function PublicFavoriteOverlay({
     [candidates]
   )
 
-  const [nowMs, setNowMs] = useState(() => Date.now())
-  const [mountedAt] = useState(() => Date.now())
-  const [introSkipBoostMs, setIntroSkipBoostMs] = useState(0)
+  const [introDone, setIntroDone] = useState(false)
   const [fastForwarding, setFastForwarding] = useState(false)
-  const [nextShiftAt, setNextShiftAt] = useState(() => Date.now() + eliminationIntervalMs)
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(candidates[0]?.id ?? null)
   const [spotlightPending, setSpotlightPending] = useState(false)
   const [spotlightUsed, setSpotlightUsed] = useState(false)
-  const [activeSpotlight, setActiveSpotlight] = useState<SpotlightState | null>(null)
-  const [eliminationMoment, setEliminationMoment] = useState<{
-    player: Player
-    startedAt: number
-  } | null>(null)
+  const [viewerSpotlight, setViewerSpotlight] = useState<ViewerSpotlightState | null>(null)
+  const [eliminationMoment, setEliminationMoment] = useState<Player | null>(null)
   const [spotlightRotation, setSpotlightRotation] = useState(0)
-  const previousRanksRef = useRef<Record<string, number>>({})
   const previousEliminatedCountRef = useRef(0)
-  const eliminatedIdsRef = useRef<Set<string>>(new Set())
   const completionFiredRef = useRef(false)
   const requestLockedRef = useRef(false)
   const mountedRef = useRef(true)
+  const eliminationTimeoutRef = useRef<number | null>(null)
+  const viewerSpotlightTimeoutRef = useRef<number | null>(null)
   const fastForwardButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const effectiveEliminationIntervalMs = fastForwarding
     ? Math.min(eliminationIntervalMs, FAST_FORWARD_ELIMINATION_INTERVAL_MS)
     : eliminationIntervalMs
 
-  const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
+  const { eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
     seed,
     eliminationIntervalMs: effectiveEliminationIntervalMs,
@@ -377,162 +304,97 @@ export default function PublicFavoriteOverlay({
     return () => {
       mountedRef.current = false
       document.body.style.overflow = previousOverflow
+      if (eliminationTimeoutRef.current != null) window.clearTimeout(eliminationTimeoutRef.current)
+      if (viewerSpotlightTimeoutRef.current != null) {
+        window.clearTimeout(viewerSpotlightTimeoutRef.current)
+      }
     }
   }, [])
 
   useEffect(() => {
-    if (isComplete) return
-    const id = window.setInterval(() => setNowMs(Date.now()), CLOCK_INTERVAL_MS)
-    return () => window.clearInterval(id)
-  }, [isComplete])
-
-  useEffect(() => {
-    if (isComplete) return
-    setNextShiftAt(Date.now() + effectiveEliminationIntervalMs)
-  }, [effectiveEliminationIntervalMs, eliminated.length, isComplete])
+    if (introDone || isComplete) return
+    const timer = window.setTimeout(() => setIntroDone(true), INTRO_MS)
+    return () => window.clearTimeout(timer)
+  }, [introDone, isComplete])
 
   useEffect(() => {
     if (eliminated.length <= previousEliminatedCountRef.current) {
       previousEliminatedCountRef.current = eliminated.length
       return
     }
+
     const eliminatedId = eliminated.at(-1)
     const player = eliminatedId ? candidatesById[eliminatedId] : undefined
-    if (player) setEliminationMoment({ player, startedAt: Date.now() })
+    if (player) {
+      setEliminationMoment(player)
+      if (eliminationTimeoutRef.current != null) window.clearTimeout(eliminationTimeoutRef.current)
+      eliminationTimeoutRef.current = window.setTimeout(() => setEliminationMoment(null), ELIMINATION_HOLD_MS)
+    }
     previousEliminatedCountRef.current = eliminated.length
   }, [candidatesById, eliminated])
-
-  useEffect(() => {
-    if (!activeSpotlight) return
-    if (activeSpotlight.endsAt <= nowMs || eliminated.includes(activeSpotlight.playerId)) {
-      setActiveSpotlight(null)
-    }
-  }, [activeSpotlight, eliminated, nowMs])
 
   const activePlayers = useMemo(
     () => getActiveSpotlightPlayers(candidates, eliminated),
     [candidates, eliminated]
   )
-  eliminatedIdsRef.current = new Set(eliminated)
+  const orderedFinalists = useMemo(
+    () =>
+      [...activePlayers].sort(
+        (left, right) =>
+          (forecast.targetPercentages[right.id] ?? 0) -
+          (forecast.targetPercentages[left.id] ?? 0)
+      ),
+    [activePlayers, forecast.targetPercentages]
+  )
+  const allSpotlightItems = useMemo(() => buildHouseguestSpotlightItems(candidates), [candidates])
+  const activeSpotlightItems = useMemo(
+    () => allSpotlightItems.filter((item) => activePlayers.some((player) => player.id === item.player.id)),
+    [activePlayers, allSpotlightItems]
+  )
+  const naturalSpotlight = useMemo(
+    () => selectSpotlightItem(activeSpotlightItems, spotlightRotation),
+    [activeSpotlightItems, spotlightRotation]
+  )
+  const forcedSpotlight = useMemo(() => {
+    if (!viewerSpotlight) return null
+    const item = activeSpotlightItems.find(
+      (candidate) => candidate.player.id === viewerSpotlight.playerId
+    )
+    return item ? { item, fact: item.facts[0] ?? `${item.player.name} remains in the public vote.` } : null
+  }, [activeSpotlightItems, viewerSpotlight])
+  const featuredSpotlight = forcedSpotlight ?? naturalSpotlight
 
   useEffect(() => {
-    const firstActiveId = activePlayers[0]?.id ?? null
-    if (!firstActiveId) {
-      setSelectedPlayerId(null)
+    if (
+      !introDone ||
+      isComplete ||
+      eliminationMoment ||
+      activePlayers.length <= 2 ||
+      viewerSpotlight ||
+      !naturalSpotlight
+    ) {
       return
     }
-    if (!selectedPlayerId || eliminated.includes(selectedPlayerId)) {
-      setSelectedPlayerId(firstActiveId)
-    }
-  }, [activePlayers, eliminated, selectedPlayerId])
 
-  const spotlightItems = useMemo(() => buildHouseguestSpotlightItems(candidates), [candidates])
-  const spotlight = useMemo(
-    () => selectSpotlightItem(spotlightItems, spotlightRotation),
-    [spotlightItems, spotlightRotation]
-  )
-
-  useEffect(() => {
-    if (isComplete || !spotlight) return
-    const id = window.setTimeout(() => {
-      setSpotlightRotation((rotation) => {
-        for (let offset = 1; offset <= spotlightItems.length; offset += 1) {
-          const nextRotation = rotation + offset
-          const nextPlayerId = selectSpotlightItem(spotlightItems, nextRotation)?.item.player.id
-          if (nextPlayerId && !eliminatedIdsRef.current.has(nextPlayerId)) {
-            return nextRotation
-          }
-        }
-        return rotation
-      })
-    }, getSpotlightRotationDelayMs(spotlight.fact))
-    return () => window.clearTimeout(id)
-  }, [isComplete, spotlight, spotlightItems])
-
-  const rankedPlayers = useMemo(
-    () => [...activePlayers].sort((left, right) => (votes[right.id] ?? 0) - (votes[left.id] ?? 0)),
-    [activePlayers, votes]
-  )
-  const voteEntries = useMemo<VoteEntry[]>(
-    () =>
-      rankedPlayers.map((player, index) => {
-        const rank = index + 1
-        const previousRank = previousRanksRef.current[player.id] ?? rank
-        return {
-          playerId: player.id,
-          name: player.name,
-          percent: votes[player.id] ?? 0,
-          rank,
-          previousRank,
-          trend: voteTrend(previousRank, rank),
-          isLeader: rank === 1,
-          isSpotlighted: activeSpotlight?.playerId === player.id,
-        }
-      }),
-    [activeSpotlight?.playerId, rankedPlayers, votes]
-  )
-
-  useEffect(() => {
-    previousRanksRef.current = Object.fromEntries(
-      rankedPlayers.map((player, index) => [player.id, index + 1])
+    const timer = window.setTimeout(
+      () => setSpotlightRotation((rotation) => rotation + 1),
+      getSpotlightRotationDelayMs(naturalSpotlight.fact)
     )
-  }, [rankedPlayers])
+    return () => window.clearTimeout(timer)
+  }, [activePlayers.length, eliminationMoment, introDone, isComplete, naturalSpotlight, viewerSpotlight])
 
-  const elapsedMs = nowMs - mountedAt + introSkipBoostMs
-  const eliminationActive =
-    eliminationMoment && nowMs - eliminationMoment.startedAt < ELIMINATION_HOLD_MS
-      ? eliminationMoment
-      : null
-  const finalTwoNames =
-    activePlayers.length === 2 ? `${activePlayers[0].name} vs ${activePlayers[1].name}` : null
-  const selectedPlayer = selectedPlayerId ? (candidatesById[selectedPlayerId] ?? null) : null
-  const spotlightWindowRemaining = countdown(INTRO_MS + SPOTLIGHT_SELECTION_WINDOW_MS - elapsedMs)
   const canActivateSpotlight =
+    introDone &&
+    eliminated.length === 0 &&
     !isComplete &&
     !spotlightUsed &&
     !spotlightPending &&
-    elapsedMs >= INTRO_MS &&
-    elapsedMs < INTRO_MS + SPOTLIGHT_SELECTION_WINDOW_MS
-  const phase: PublicVotePhase = isComplete
-    ? 'final_reveal'
-    : elapsedMs < INTRO_MS
-      ? 'intro'
-      : eliminationActive
-        ? 'elimination'
-        : activePlayers.length === 2
-          ? 'final_two'
-          : 'live_results'
-
-  const statusLine =
-    phase === 'intro'
-      ? 'Audience record is being verified'
-      : phase === 'elimination'
-        ? 'Standings paused for elimination'
-        : phase === 'final_two'
-          ? 'The final two are locked'
-          : canActivateSpotlight
-            ? `Viewer Spotlight closes in ${spotlightWindowRemaining}s`
-            : `Next result in ${countdown(nextShiftAt - nowMs)}s`
-
-  const handleSkipIntro = useCallback(() => {
-    const remaining = Math.max(0, INTRO_MS - elapsedMs)
-    if (remaining <= 0) return
-    setIntroSkipBoostMs((current) => current + remaining)
-    setNowMs(Date.now())
-  }, [elapsedMs])
-
-  const handleFastForward = useCallback(() => {
-    if (fastForwarding || isComplete || spotlightPending) return
-    const remaining = Math.max(0, INTRO_MS - elapsedMs)
-    if (remaining > 0) setIntroSkipBoostMs((current) => current + remaining)
-    setFastForwarding(true)
-    setNextShiftAt(Date.now() + FAST_FORWARD_ELIMINATION_INTERVAL_MS)
-    setNowMs(Date.now())
-  }, [elapsedMs, fastForwarding, isComplete, spotlightPending])
+    featuredSpotlight !== null
 
   const handleSpotlight = useCallback(async () => {
+    const playerId = featuredSpotlight?.item.player.id
     if (
-      !selectedPlayerId ||
+      !playerId ||
       !canActivateSpotlight ||
       requestLockedRef.current ||
       spotlightPending ||
@@ -545,27 +407,28 @@ export default function PublicFavoriteOverlay({
     setSpotlightPending(true)
     try {
       const granted = await Promise.resolve(
-        onAudienceSurgeRequest ? onAudienceSurgeRequest(selectedPlayerId) : true
+        onAudienceSurgeRequest ? onAudienceSurgeRequest(playerId) : true
       )
       if (!mountedRef.current || !granted) return
       setSpotlightUsed(true)
-      setActiveSpotlight({
-        playerId: selectedPlayerId,
-        endsAt: Date.now() + SPOTLIGHT_DURATION_MS,
-      })
+      setViewerSpotlight({ playerId })
+      viewerSpotlightTimeoutRef.current = window.setTimeout(
+        () => setViewerSpotlight(null),
+        SPOTLIGHT_DURATION_MS
+      )
     } catch {
-      // A dismissed or unavailable rewarded placement leaves the option unused.
+      // Dismissal or an unavailable rewarded placement leaves the option unused.
     } finally {
       requestLockedRef.current = false
       if (mountedRef.current) setSpotlightPending(false)
     }
-  }, [
-    canActivateSpotlight,
-    onAudienceSurgeRequest,
-    selectedPlayerId,
-    spotlightPending,
-    spotlightUsed,
-  ])
+  }, [canActivateSpotlight, featuredSpotlight, onAudienceSurgeRequest, spotlightPending, spotlightUsed])
+
+  const handleFastForward = useCallback(() => {
+    if (fastForwarding || isComplete || spotlightPending) return
+    setIntroDone(true)
+    setFastForwarding(true)
+  }, [fastForwarding, isComplete, spotlightPending])
 
   const resolvedWinnerId = winnerId ?? (isComplete ? forecast.winnerId : null)
   const winner = resolvedWinnerId ? candidatesById[resolvedWinnerId] : undefined
@@ -575,114 +438,75 @@ export default function PublicFavoriteOverlay({
     onComplete(resolvedWinnerId)
   }, [onComplete, resolvedWinnerId])
 
+  const phase: PublicVotePhase = isComplete
+    ? 'final_reveal'
+    : !introDone
+      ? 'intro'
+      : eliminationMoment
+        ? 'elimination'
+        : activePlayers.length === 2
+          ? 'final_two'
+          : 'feature'
+
   return (
     <MotionConfig reducedMotion={prefersReducedMotion ? 'always' : 'never'}>
       <div
-        className={`pf-overlay${prefersReducedMotion ? ' pf-overlay--reduced-motion' : ''}`}
+        className={`pf-overlay pf-cinematic${prefersReducedMotion ? ' pf-cinematic--reduced-motion' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label="Public's Favorite Player overlay"
+        data-phase={phase}
       >
-        <div className="pf-overlay__dim" aria-hidden="true" />
-        <div className="pf-overlay__studio" aria-hidden="true" />
-        <div className="pf-overlay__scanlines" aria-hidden="true" />
-        <div className="pf-overlay__stage">
-          {!isComplete && (
-            <div className="pf-overlay__speed-controls" aria-label="Public vote playback controls">
-              {phase === 'intro' && (
-                <button type="button" className="pf-overlay__skip" onClick={handleSkipIntro}>
-                  Skip intro
-                </button>
-              )}
-              <button
-                ref={fastForwardButtonRef}
-                type="button"
-                className={`pf-overlay__fast-forward${fastForwarding ? ' is-active' : ''}`}
-                onClick={handleFastForward}
-                disabled={fastForwarding || spotlightPending}
-                aria-label="Fast forward public favorite vote"
-              >
-                <span aria-hidden="true">»</span>
-                {fastForwarding ? 'Forwarding' : 'Fast forward'}
-              </button>
-            </div>
-          )}
-
-          {!isComplete && (
-            <div className="pf-overlay__announcement-slot" aria-live="polite">
-              <AnimatePresence mode="wait" initial={false}>
-                {eliminationActive ? (
-                  <motion.div
-                    key={eliminationActive.player.id}
-                    className="pf-overlay__elimination"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                  >
-                    <span className="pf-overlay__elimination-label">Audience cut</span>
-                    <strong className="pf-overlay__elimination-name">
-                      {eliminationActive.player.name}
-                    </strong>
-                    <span className="pf-overlay__elimination-copy">leaves the public vote.</span>
-                  </motion.div>
-                ) : (
-                  <header key="header" className="pf-overlay__header">
-                    <div className="pf-overlay__header-topline">
-                      <span className="pf-overlay__live-badge">
-                        <span className="pf-overlay__live-dot" /> LIVE
-                      </span>
-                      <p className="pf-overlay__subtitle">Season-long public vote</p>
-                    </div>
-                    <div className="pf-overlay__header-copy">
-                      <h2 className="pf-overlay__title">Public Favorite Player</h2>
-                      <p className="pf-overlay__status">{statusLine}</p>
-                    </div>
-                  </header>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {!isComplete ? (
-            <div className="pf-overlay__broadcast">
-              <div className={`pf-overlay__board-shell pf-overlay__board-shell--${phase}`}>
-                <HousemateSpotlight spotlight={spotlight} finalTwoNames={finalTwoNames} />
-                <VoteRankingBoard
-                  entries={voteEntries}
-                  candidatesById={candidatesById}
-                  selectedPlayerId={selectedPlayerId}
-                  onSelect={setSelectedPlayerId}
-                />
-              </div>
-              <ViewerSpotlightPanel
-                selectedPlayer={selectedPlayer}
-                activeSpotlight={activeSpotlight}
-                used={spotlightUsed}
-                pending={spotlightPending}
-                canActivate={canActivateSpotlight}
-                onActivate={handleSpotlight}
-              />
-              <AnimatePresence>
-                {phase === 'intro' && (
-                  <motion.div
-                    className="pf-overlay__intro"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <span className="pf-overlay__intro-live">LIVE</span>
-                    <p className="pf-overlay__intro-title">Public Favorite Vote</p>
-                    <p className="pf-overlay__intro-subtitle">
-                      Season-long audience records are being verified.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <FinalReveal winner={winner} awardAmount={awardAmount} onClose={handleClose} />
-          )}
+        <div className="pf-cinematic__background" aria-hidden="true" />
+        <div className="pf-cinematic__vignette" aria-hidden="true" />
+        <div className="pf-cinematic__live-bug" aria-hidden="true">
+          <span>LIVE</span>
+          <strong>Public Vote</strong>
         </div>
+
+        {!isComplete && (
+          <div className="pf-cinematic__controls">
+            {phase === 'intro' && (
+              <button type="button" onClick={() => setIntroDone(true)}>
+                Skip intro
+              </button>
+            )}
+            <button
+              ref={fastForwardButtonRef}
+              type="button"
+              onClick={handleFastForward}
+              disabled={fastForwarding || spotlightPending}
+              aria-label="Fast forward public favorite vote"
+            >
+              {fastForwarding ? 'Forwarding' : 'Fast forward'}
+            </button>
+          </div>
+        )}
+
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === 'intro' && <IntroStage key="intro" />}
+          {phase === 'feature' && featuredSpotlight && (
+            <FeatureStage
+              key={`feature-${featuredSpotlight.item.player.id}-${viewerSpotlight?.playerId ?? spotlightRotation}`}
+              player={featuredSpotlight.item.player}
+              fact={featuredSpotlight.fact}
+              remaining={activePlayers.length}
+              spotlightActive={viewerSpotlight?.playerId === featuredSpotlight.item.player.id}
+              spotlightAvailable={canActivateSpotlight}
+              spotlightPending={spotlightPending}
+              onSpotlight={handleSpotlight}
+            />
+          )}
+          {phase === 'elimination' && eliminationMoment && (
+            <EliminationStage key={`elimination-${eliminationMoment.id}`} player={eliminationMoment} />
+          )}
+          {phase === 'final_two' && (
+            <FinalTwoStage key="final-two" finalists={orderedFinalists.slice(0, 2)} />
+          )}
+          {phase === 'final_reveal' && (
+            <FinalReveal key="winner" winner={winner} awardAmount={awardAmount} onClose={handleClose} />
+          )}
+        </AnimatePresence>
       </div>
     </MotionConfig>
   )
