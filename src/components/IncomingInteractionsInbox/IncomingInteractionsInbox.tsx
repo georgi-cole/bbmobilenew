@@ -369,7 +369,7 @@ export default function IncomingInteractionsInbox() {
         (entry) =>
           !entry.interaction.resolved || recentlyResolvedIds.has(entry.interaction.id)
       ),
-    [sortedInteractions]
+    [sortedInteractions, recentlyResolvedIds]
   )
   const resolvedInteractions = useMemo(
     () =>
@@ -379,7 +379,7 @@ export default function IncomingInteractionsInbox() {
           !recentlyResolvedIds.has(entry.interaction.id) &&
           entry.interaction.resolvedWeek === currentWeek
       ),
-    [sortedInteractions, currentWeek]
+    [sortedInteractions, currentWeek, recentlyResolvedIds]
   )
   const pendingCommitments = useMemo(
     () => commitments.filter((commitment) => commitment.status === 'pending'),
@@ -413,7 +413,6 @@ export default function IncomingInteractionsInbox() {
       socialModuleAvailability,
       'IncomingInteractionsInbox visibility guard'
     )
-    setRecentlyResolvedIds(new Set())
     dispatch(closeIncomingInbox())
   }, [dispatch, open, socialModuleAvailability])
 
