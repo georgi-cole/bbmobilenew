@@ -61,6 +61,14 @@ edit('server/live-config.example.json', (source) =>
   source.replace(`"hoh_congratulations": "readOnly"`, `"hoh_congratulations": "optional"`)
 )
 
+edit('src/components/FloatingActionBar/__tests__/FloatingActionBar.test.tsx', (source) =>
+  replaceRegexIfPresent(
+    source,
+    /  it\('logs the blocking reason and keeps both modules closed during live vote', \(\) => \{[\s\S]*?\n  \}\);\n/,
+    `  it('blocks outgoing actions but keeps incoming vote pitches accessible during live vote', () => {\n    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});\n    const store = makeStore(true, { phase: 'live_vote' });\n    renderFAB(store);\n\n    act(() => {\n      screen.getByRole('button', { name: 'Social' }).click();\n      screen.getByRole('button', { name: 'Incoming requests' }).click();\n    });\n\n    expect(store.getState().social.panelOpen).toBe(false);\n    expect(store.getState().social.incomingInboxOpen).toBe(true);\n    expect(warnSpy).toHaveBeenCalledTimes(1);\n    expect(warnSpy).toHaveBeenCalledWith(\n      expect.stringContaining(\n        'Outgoing social module did not open: Outgoing social actions are blocked during the live_vote phase.',\n      ),\n      expect.objectContaining({ phase: 'live_vote', moduleKind: 'outgoing' }),\n    );\n\n    warnSpy.mockRestore();\n  });\n`
+  )
+)
+
 edit('tests/unit/publicOpinion/publicOpinionMiddleware.test.ts', (original) => {
   let source = original
   source = replaceIfPresent(
