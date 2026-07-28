@@ -1,0 +1,51 @@
+name: Audio main full-test baseline
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/audio-main-full-test-baseline
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run untouched main suite
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          npm test > /tmp/main-full-test.log 2>&1
+          status=$?
+          {
+            echo 'CURRENT MAIN FULL TEST BASELINE'
+            echo
+            sed -n '/Failed Tests/,$p' /tmp/main-full-test.log
+          } > MAIN_FULL_TEST_BASELINE.txt
+          if [ ! -s MAIN_FULL_TEST_BASELINE.txt ]; then
+            tail -n 500 /tmp/main-full-test.log > MAIN_FULL_TEST_BASELINE.txt
+          fi
+          cat MAIN_FULL_TEST_BASELINE.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Commit baseline
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add MAIN_FULL_TEST_BASELINE.txt
+          git commit -m 'Record current main full-test baseline'
+          git push origin HEAD:refs/heads/agent/audio-main-full-test-baseline
