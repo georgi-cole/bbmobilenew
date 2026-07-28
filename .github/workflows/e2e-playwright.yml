@@ -30,7 +30,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run real player core journeys without retries
-        run: npx playwright test --grep @core-journey --project=${{ matrix.project }}
+        run: npx playwright test --grep @core-journey --project=${{ matrix.project }} --workers=1
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
