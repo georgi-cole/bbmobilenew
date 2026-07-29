@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Provider } from 'react-redux'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import { configureStore } from '@reduxjs/toolkit'
 import { describe, expect, it, vi } from 'vitest'
 import SeasonFinaleOverlay from '../src/components/SeasonFinale/SeasonFinaleOverlay'
@@ -23,6 +23,10 @@ vi.mock('../src/screens/Credits/Credits', () => ({
     </button>
   ),
 }))
+
+function RouteProbe() {
+  return <output data-testid="finale-route">{useLocation().pathname}</output>
+}
 
 function makeStore() {
   const baseGame = gameReducer(undefined, { type: '@@INIT' })
@@ -62,6 +66,7 @@ describe('SeasonFinaleOverlay credits handoff', () => {
       <Provider store={store}>
         <MemoryRouter>
           <SeasonFinaleOverlay />
+          <RouteProbe />
         </MemoryRouter>
       </Provider>
     )
@@ -76,6 +81,7 @@ describe('SeasonFinaleOverlay credits handoff', () => {
 
     await waitFor(() => {
       expect(store.getState().game.seasonFinale?.phase).toBe('seasonComplete')
+      expect(screen.getByTestId('finale-route')).toHaveTextContent('/game-over')
     })
   })
 })
