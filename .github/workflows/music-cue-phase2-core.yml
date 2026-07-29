@@ -1,0 +1,1214 @@
+name: Music Cue Phase 2 core
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: music-cue-phase2-core
+  cancel-in-progress: true
+
+jobs:
+  implement:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/music-cue-editor-phase2
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Implement cue runtime and minigame variants
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def write(path: str, content: str) -> None:
+              target = Path(path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(content)
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              if old not in text:
+                  raise SystemExit(f'Could not locate replacement in {path}: {old[:120]!r}')
+              target.write_text(text.replace(old, new, 1))
+
+          write('src/services/sound/musicCue.ts', r'''import type { CatalogMusicTrack } from './musicCatalog'
+
+export const MUSIC_EFFECT_PRESETS = [
+  'none',
+  'muffled',
+  'radio',
+  'tension',
+  'final_round',
+  'dream',
+] as const
+
+export type MusicEffectPreset = (typeof MUSIC_EFFECT_PRESETS)[number]
+
+export const MUSIC_RESTART_POLICIES = ['restart', 'resume', 'continue'] as const
+export type MusicRestartPolicy = (typeof MUSIC_RESTART_POLICIES)[number]
+
+export interface MusicCueDefinition {
+  id: string
+  displayName: string
+  track: CatalogMusicTrack
+  startAtSec: number
+  endAtSec?: number
+  loop: boolean
+  loopStartSec?: number
+  loopEndSec?: number
+  /** Relative cue gain. The track and user master volumes still apply. */
+  volume: number
+  fadeInMs: number
+  fadeOutMs: number
+  crossfadeMs: number
+  restartPolicy: MusicRestartPolicy
+  effectPreset: MusicEffectPreset
+  fallbackCueId?: string
+}
+
+export function createDefaultMusicCue(
+  track: CatalogMusicTrack,
+  loop = true
+): MusicCueDefinition {
+  return {
+    id: `track:${track}`,
+    displayName: `${track.replace(/_/g, ' ')} — full track`,
+    track,
+    startAtSec: 0,
+    loop,
+    volume: 1,
+    fadeInMs: 0,
+    fadeOutMs: 0,
+    crossfadeMs: 0,
+    restartPolicy: 'continue',
+    effectPreset: 'none',
+  }
+}
+
+export function musicCueSignature(cue: MusicCueDefinition, assetKey = ''): string {
+  return [
+    assetKey,
+    cue.id,
+    cue.track,
+    cue.startAtSec,
+    cue.endAtSec ?? '',
+    cue.loop,
+    cue.loopStartSec ?? '',
+    cue.loopEndSec ?? '',
+    cue.volume,
+    cue.fadeInMs,
+    cue.fadeOutMs,
+    cue.crossfadeMs,
+    cue.restartPolicy,
+    cue.effectPreset,
+  ].join('|')
+}
+
+export function isAdvancedMusicCue(cue: MusicCueDefinition | undefined): boolean {
+  if (!cue) return false
+  return (
+    cue.startAtSec > 0 ||
+    cue.endAtSec !== undefined ||
+    cue.loopStartSec !== undefined ||
+    cue.loopEndSec !== undefined ||
+    cue.volume !== 1 ||
+    cue.fadeInMs > 0 ||
+    cue.fadeOutMs > 0 ||
+    cue.crossfadeMs > 0 ||
+    cue.restartPolicy !== 'continue' ||
+    cue.effectPreset !== 'none'
+  )
+}
+
+export interface MusicCueValidationIssue {
+  code: string
+  message: string
+}
+
+export function validateMusicCueDefinition(cue: MusicCueDefinition): MusicCueValidationIssue[] {
+  const issues: MusicCueValidationIssue[] = []
+  const finiteNonNegative = (value: number) => Number.isFinite(value) && value >= 0
+
+  if (!cue.id.trim()) issues.push({ code: 'missing-id', message: 'Cue id is required.' })
+  if (!cue.displayName.trim()) {
+    issues.push({ code: 'missing-name', message: 'Cue display name is required.' })
+  }
+  if (!finiteNonNegative(cue.startAtSec)) {
+    issues.push({ code: 'invalid-start', message: 'Start time must be a non-negative number.' })
+  }
+  if (cue.endAtSec !== undefined && (!finiteNonNegative(cue.endAtSec) || cue.endAtSec <= cue.startAtSec)) {
+    issues.push({ code: 'invalid-end', message: 'End time must be later than the start time.' })
+  }
+  const boundaryEnd = cue.endAtSec
+  if (cue.loopStartSec !== undefined && cue.loopStartSec < cue.startAtSec) {
+    issues.push({ code: 'invalid-loop-start', message: 'Loop start cannot precede the cue start.' })
+  }
+  if (cue.loopEndSec !== undefined) {
+    const loopStart = cue.loopStartSec ?? cue.startAtSec
+    if (cue.loopEndSec <= loopStart) {
+      issues.push({ code: 'invalid-loop-end', message: 'Loop end must be later than loop start.' })
+    }
+    if (boundaryEnd !== undefined && cue.loopEndSec > boundaryEnd) {
+      issues.push({ code: 'loop-outside-cue', message: 'Loop end cannot exceed the cue end.' })
+    }
+  }
+  if (!Number.isFinite(cue.volume) || cue.volume < 0 || cue.volume > 1) {
+    issues.push({ code: 'invalid-volume', message: 'Cue volume must be between 0 and 1.' })
+  }
+  for (const [name, value] of [
+    ['fadeInMs', cue.fadeInMs],
+    ['fadeOutMs', cue.fadeOutMs],
+    ['crossfadeMs', cue.crossfadeMs],
+  ] as const) {
+    if (!finiteNonNegative(value)) {
+      issues.push({ code: `invalid-${name}`, message: `${name} must be non-negative.` })
+    }
+  }
+  if (cue.endAtSec !== undefined) {
+    const durationMs = (cue.endAtSec - cue.startAtSec) * 1000
+    if (cue.fadeInMs + cue.fadeOutMs > durationMs) {
+      issues.push({
+        code: 'fades-exceed-duration',
+        message: 'Combined fade durations exceed the playable cue segment.',
+      })
+    }
+    if (cue.crossfadeMs > durationMs) {
+      issues.push({
+        code: 'crossfade-exceeds-duration',
+        message: 'Crossfade duration exceeds the playable cue segment.',
+      })
+    }
+  }
+  return issues
+}
+''')
+
+          write('src/services/sound/minigameMusicVariant.ts', r'''import type { MusicMinigameVariant } from './musicConfig'
+
+export const MINIGAME_MUSIC_VARIANT_EVENT = 'bb:minigame-music-variant'
+
+export interface MinigameMusicVariantDetail {
+  variant: MusicMinigameVariant
+  gameKey?: string
+}
+
+export function publishMinigameMusicVariant(
+  variant: MusicMinigameVariant,
+  gameKey?: string
+): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(
+    new CustomEvent<MinigameMusicVariantDetail>(MINIGAME_MUSIC_VARIANT_EVENT, {
+      detail: { variant, ...(gameKey ? { gameKey } : {}) },
+    })
+  )
+}
+''')
+
+          write('src/services/sound/MusicCueEngine.ts', r'''import {
+  musicCueSignature,
+  type MusicCueDefinition,
+  type MusicEffectPreset,
+} from './musicCue'
+import type { CatalogMusicTrack } from './musicTracks'
+
+export interface MusicCueAsset {
+  key: string
+  track: CatalogMusicTrack
+  src: string
+  volume: number
+  loop: boolean
+}
+
+interface EffectGraph {
+  source: MediaElementAudioSourceNode
+  filter: BiquadFilterNode
+}
+
+interface CueDeck {
+  element: HTMLAudioElement
+  asset: MusicCueAsset
+  cue: MusicCueDefinition
+  signature: string
+  mixGain: number
+  boundaryHandled: boolean
+  cleanup: () => void
+}
+
+export interface MusicCueEngineHooks {
+  onEnded?: (signature: string) => void
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function resetTime(element: HTMLAudioElement, time = 0): void {
+  try {
+    element.currentTime = Math.max(0, time)
+  } catch {
+    // Mobile WebViews can reject seeking before metadata is available.
+  }
+}
+
+export class MusicCueEngine {
+  private _active: CueDeck | null = null
+  private _standby: CueDeck | null = null
+  private _masterVolume = 1
+  private _resumePositions = new Map<string, number>()
+  private _completedSignature: string | null = null
+  private _audioContext: AudioContext | null = null
+  private _effectGraphs = new WeakMap<HTMLAudioElement, EffectGraph>()
+
+  constructor(private readonly _hooks: MusicCueEngineHooks = {}) {}
+
+  get currentElement(): HTMLAudioElement | null {
+    return this._active?.element ?? null
+  }
+
+  get currentKey(): string | null {
+    return this._active?.asset.key ?? null
+  }
+
+  get currentTrack(): CatalogMusicTrack | null {
+    return this._active?.asset.track ?? null
+  }
+
+  get currentSignature(): string | null {
+    return this._active?.signature ?? null
+  }
+
+  get completedSignature(): string | null {
+    return this._completedSignature
+  }
+
+  clearCompleted(): void {
+    this._completedSignature = null
+  }
+
+  setMasterVolume(value: number): void {
+    this._masterVolume = clamp01(value)
+    if (this._active) this._applyDeckVolume(this._active)
+    if (this._standby) this._applyDeckVolume(this._standby)
+  }
+
+  async play(asset: MusicCueAsset, cue: MusicCueDefinition): Promise<void> {
+    const signature = musicCueSignature(cue, asset.key)
+    if (this._active?.signature === signature) {
+      if (cue.restartPolicy === 'restart') {
+        resetTime(this._active.element, cue.startAtSec)
+        await this._active.element.play()
+      }
+      this._applyDeckVolume(this._active)
+      return
+    }
+
+    if (this._completedSignature === signature) return
+    this._completedSignature = null
+
+    const incoming = this._createDeck(asset, cue, signature)
+    const outgoing = this._active
+    this._standby = incoming
+
+    const resumeAt =
+      cue.restartPolicy === 'resume'
+        ? (this._resumePositions.get(cue.id) ?? cue.startAtSec)
+        : cue.startAtSec
+    resetTime(incoming.element, resumeAt)
+
+    const transitionMs = outgoing ? cue.crossfadeMs : cue.fadeInMs
+    incoming.mixGain = transitionMs > 0 ? 0 : 1
+    this._applyDeckVolume(incoming)
+
+    try {
+      await incoming.element.play()
+      await this._applyEffect(incoming.element, cue.effectPreset)
+    } catch (error) {
+      incoming.cleanup()
+      incoming.element.pause()
+      this._standby = null
+      throw error
+    }
+
+    this._active = incoming
+    this._standby = null
+
+    if (outgoing && cue.crossfadeMs > 0) {
+      await Promise.all([
+        this._fadeDeck(outgoing, 0, cue.crossfadeMs),
+        this._fadeDeck(incoming, 1, cue.crossfadeMs),
+      ])
+      this._stopDeck(outgoing)
+    } else {
+      if (outgoing) this._stopDeck(outgoing)
+      if (cue.fadeInMs > 0) await this._fadeDeck(incoming, 1, cue.fadeInMs)
+    }
+  }
+
+  async fadeOut(durationMs: number): Promise<void> {
+    const deck = this._active
+    if (!deck) return
+    await this._fadeDeck(deck, 0, durationMs)
+    this._stopDeck(deck)
+    if (this._active === deck) this._active = null
+  }
+
+  stop(): void {
+    if (this._active) this._stopDeck(this._active)
+    if (this._standby) this._stopDeck(this._standby)
+    this._active = null
+    this._standby = null
+  }
+
+  private _createDeck(
+    asset: MusicCueAsset,
+    cue: MusicCueDefinition,
+    signature: string
+  ): CueDeck {
+    const element = document.createElement('audio')
+    element.src = asset.src
+    element.preload = 'auto'
+    element.loop = cue.loop && cue.endAtSec === undefined && cue.loopEndSec === undefined
+    element.muted = false
+
+    const deck: CueDeck = {
+      element,
+      asset,
+      cue,
+      signature,
+      mixGain: 1,
+      boundaryHandled: false,
+      cleanup: () => {},
+    }
+
+    const onTimeUpdate = () => this._handleBoundary(deck)
+    const onEnded = () => this._handleNaturalEnd(deck)
+    element.addEventListener('timeupdate', onTimeUpdate)
+    element.addEventListener('ended', onEnded)
+    deck.cleanup = () => {
+      element.removeEventListener('timeupdate', onTimeUpdate)
+      element.removeEventListener('ended', onEnded)
+    }
+    this._applyDeckVolume(deck)
+    return deck
+  }
+
+  private _handleBoundary(deck: CueDeck): void {
+    if (deck !== this._active && deck !== this._standby) return
+    const boundary = deck.cue.loopEndSec ?? deck.cue.endAtSec
+    if (boundary === undefined || deck.element.currentTime < boundary - 0.025) return
+
+    if (deck.cue.loop) {
+      deck.boundaryHandled = false
+      resetTime(deck.element, deck.cue.loopStartSec ?? deck.cue.startAtSec)
+      void deck.element.play().catch(() => {})
+      return
+    }
+    this._finishDeck(deck)
+  }
+
+  private _handleNaturalEnd(deck: CueDeck): void {
+    if (deck.cue.loop) {
+      resetTime(deck.element, deck.cue.loopStartSec ?? deck.cue.startAtSec)
+      void deck.element.play().catch(() => {})
+      return
+    }
+    this._finishDeck(deck)
+  }
+
+  private _finishDeck(deck: CueDeck): void {
+    if (deck.boundaryHandled) return
+    deck.boundaryHandled = true
+    this._completedSignature = deck.signature
+    void this._fadeDeck(deck, 0, deck.cue.fadeOutMs).then(() => {
+      this._stopDeck(deck)
+      if (this._active === deck) this._active = null
+      if (this._standby === deck) this._standby = null
+      this._hooks.onEnded?.(deck.signature)
+    })
+  }
+
+  private _stopDeck(deck: CueDeck): void {
+    if (deck.cue.restartPolicy === 'resume') {
+      this._resumePositions.set(deck.cue.id, deck.element.currentTime)
+    }
+    deck.cleanup()
+    deck.element.pause()
+    resetTime(deck.element, deck.cue.startAtSec)
+  }
+
+  private _applyDeckVolume(deck: CueDeck): void {
+    deck.element.volume = clamp01(
+      deck.asset.volume * deck.cue.volume * this._masterVolume * deck.mixGain
+    )
+  }
+
+  private async _fadeDeck(deck: CueDeck, target: number, durationMs: number): Promise<void> {
+    const start = deck.mixGain
+    if (durationMs <= 0 || start === target) {
+      deck.mixGain = target
+      this._applyDeckVolume(deck)
+      return
+    }
+
+    const steps = Math.max(1, Math.ceil(durationMs / 40))
+    await new Promise<void>((resolve) => {
+      let step = 0
+      const timer = window.setInterval(() => {
+        step += 1
+        deck.mixGain = start + (target - start) * Math.min(1, step / steps)
+        this._applyDeckVolume(deck)
+        if (step >= steps) {
+          window.clearInterval(timer)
+          resolve()
+        }
+      }, Math.max(16, Math.floor(durationMs / steps)))
+    })
+  }
+
+  private async _applyEffect(
+    element: HTMLAudioElement,
+    preset: MusicEffectPreset
+  ): Promise<void> {
+    const media = element as HTMLAudioElement & { preservesPitch?: boolean }
+    media.playbackRate = preset === 'final_round' ? 1.03 : preset === 'dream' ? 0.96 : 1
+    if ('preservesPitch' in media) media.preservesPitch = true
+    if (preset === 'none') return
+
+    const AudioContextCtor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextCtor) return
+
+    try {
+      const context = this._audioContext ?? new AudioContextCtor()
+      this._audioContext = context
+      if (context.state !== 'running') await context.resume()
+      if (context.state !== 'running') return
+
+      let graph = this._effectGraphs.get(element)
+      if (!graph) {
+        const source = context.createMediaElementSource(element)
+        const filter = context.createBiquadFilter()
+        source.connect(filter)
+        filter.connect(context.destination)
+        graph = { source, filter }
+        this._effectGraphs.set(element, graph)
+      }
+
+      const filter = graph.filter
+      filter.gain.value = 0
+      filter.Q.value = 0.7
+      if (preset === 'muffled') {
+        filter.type = 'lowpass'
+        filter.frequency.value = 900
+      } else if (preset === 'radio') {
+        filter.type = 'bandpass'
+        filter.frequency.value = 1800
+        filter.Q.value = 1.2
+      } else if (preset === 'tension') {
+        filter.type = 'lowshelf'
+        filter.frequency.value = 180
+        filter.gain.value = 3
+      } else if (preset === 'final_round') {
+        filter.type = 'highshelf'
+        filter.frequency.value = 2500
+        filter.gain.value = 4
+      } else {
+        filter.type = 'lowpass'
+        filter.frequency.value = 5200
+      }
+    } catch {
+      // DSP is an enhancement. Unsupported or blocked WebAudio falls back cleanly.
+    }
+  }
+}
+''')
+
+          # musicConfig.ts: cue model + variants + resolver support.
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "import type { MusicTrack } from './musicTracks'\n",
+              "import type { MusicTrack } from './musicTracks'\nimport { getMusicTrackSoundEntry } from './musicCatalog'\nimport { createDefaultMusicCue, type MusicCueDefinition } from './musicCue'\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "export type MusicMinigameStage = 'rules' | 'countdown' | 'playing' | 'results' | 'done'\n",
+              "export type MusicMinigameStage = 'rules' | 'countdown' | 'playing' | 'results' | 'done'\nexport const MUSIC_MINIGAME_VARIANTS = [\n  'normal',\n  'intense',\n  'final_round',\n  'sudden_death',\n  'overtime',\n  'victory_lap',\n] as const\nexport type MusicMinigameVariant = (typeof MUSIC_MINIGAME_VARIANTS)[number]\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "  | { kind: 'track'; track: NonSilentMusicTrack }\n",
+              "  | { kind: 'track'; track: NonSilentMusicTrack; cueId?: string }\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "export type ModeMinigameAssignments = Readonly<Record<MusicConfigMode, MinigameAssignmentMap>>\n",
+              "export type ModeMinigameAssignments = Readonly<Record<MusicConfigMode, MinigameAssignmentMap>>\nexport type MinigameVariantSelections = Partial<Record<MusicMinigameVariant, MusicSelection>>\nexport type MinigameStageVariantAssignments = Partial<\n  Record<MusicMinigameStage, MinigameVariantSelections>\n>\nexport type ModeMinigameVariantAssignments = Readonly<\n  Record<MusicConfigMode, Readonly<Record<string, MinigameStageVariantAssignments>>>\n>\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "  minigameAssignments: ModeMinigameAssignments\n",
+              "  minigameAssignments: ModeMinigameAssignments\n  minigameVariantAssignments: ModeMinigameVariantAssignments\n  musicCues: Readonly<Record<string, MusicCueDefinition>>\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "  minigameAssignments?: Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>>\n",
+              "  minigameAssignments?: Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>>\n  minigameVariantAssignments?: Partial<\n    Record<MusicConfigMode, Record<string, MinigameStageVariantAssignments>>\n  >\n  musicCues?: Record<string, MusicCueDefinition>\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "    stage?: MusicMinigameStage | string | null\n",
+              "    stage?: MusicMinigameStage | string | null\n    variant?: MusicMinigameVariant | string | null\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "  transition?: MusicTransitionPolicy\n}\n",
+              "  transition?: MusicTransitionPolicy\n  playbackCue?: MusicCueDefinition\n}\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "export function musicTrack(track: NonSilentMusicTrack): MusicSelection {\n  return { kind: 'track', track }\n}\n",
+              "export function musicTrack(track: NonSilentMusicTrack, cueId?: string): MusicSelection {\n  return { kind: 'track', track, ...(cueId ? { cueId } : {}) }\n}\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "const EMPTY_MINIGAME_ASSIGNMENTS: ModeMinigameAssignments = {\n  any: {},\n  classic: {},\n  survival: {},\n}\n",
+              "const EMPTY_MINIGAME_ASSIGNMENTS: ModeMinigameAssignments = {\n  any: {},\n  classic: {},\n  survival: {},\n}\n\nconst EMPTY_MINIGAME_VARIANT_ASSIGNMENTS: ModeMinigameVariantAssignments = {\n  any: {},\n  classic: {},\n  survival: {},\n}\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "  minigameAssignments: EMPTY_MINIGAME_ASSIGNMENTS,\n",
+              "  minigameAssignments: EMPTY_MINIGAME_ASSIGNMENTS,\n  minigameVariantAssignments: EMPTY_MINIGAME_VARIANT_ASSIGNMENTS,\n  musicCues: {},\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "      minigameAssignments: mergeModeMinigameAssignments(\n        merged.minigameAssignments,\n        layer.minigameAssignments\n      ),\n",
+              "      minigameAssignments: mergeModeMinigameAssignments(\n        merged.minigameAssignments,\n        layer.minigameAssignments\n      ),\n      minigameVariantAssignments: {\n        any: {\n          ...(merged.minigameVariantAssignments?.any ?? {}),\n          ...(layer.minigameVariantAssignments?.any ?? {}),\n        },\n        classic: {\n          ...(merged.minigameVariantAssignments?.classic ?? {}),\n          ...(layer.minigameVariantAssignments?.classic ?? {}),\n        },\n        survival: {\n          ...(merged.minigameVariantAssignments?.survival ?? {}),\n          ...(layer.minigameVariantAssignments?.survival ?? {}),\n        },\n      },\n      musicCues: { ...(merged.musicCues ?? {}), ...(layer.musicCues ?? {}) },\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "    minigameAssignments: {\n      any: minigameAssignments.any ?? {},\n      classic: minigameAssignments.classic ?? {},\n      survival: minigameAssignments.survival ?? {},\n    },\n",
+              "    minigameAssignments: {\n      any: minigameAssignments.any ?? {},\n      classic: minigameAssignments.classic ?? {},\n      survival: minigameAssignments.survival ?? {},\n    },\n    minigameVariantAssignments: {\n      any: overrides.minigameVariantAssignments?.any ?? {},\n      classic: overrides.minigameVariantAssignments?.classic ?? {},\n      survival: overrides.minigameVariantAssignments?.survival ?? {},\n    },\n    musicCues: { ...(overrides.musicCues ?? {}) },\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "export function getDirectMinigameSelection(\n  gameKey: string,\n  mode: GameMode,\n  stage: string | null | undefined,\n  config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG\n): Array<{ selection: MusicSelection; assignmentId: string }> {\n",
+              "export function getDirectMinigameSelection(\n  gameKey: string,\n  mode: GameMode,\n  stage: string | null | undefined,\n  variant: MusicMinigameVariant | string | null | undefined = 'normal',\n  config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG\n): Array<{ selection: MusicSelection; assignmentId: string }> {\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "  const results: Array<{ selection: MusicSelection; assignmentId: string }> = []\n  const modeSelection = config.minigameAssignments[mode]?.[gameKey]?.[typedStage]\n",
+              "  const results: Array<{ selection: MusicSelection; assignmentId: string }> = []\n  const typedVariant = MUSIC_MINIGAME_VARIANTS.includes(variant as MusicMinigameVariant)\n    ? (variant as MusicMinigameVariant)\n    : 'normal'\n  if (typedVariant !== 'normal') {\n    const modeVariant =\n      config.minigameVariantAssignments[mode]?.[gameKey]?.[typedStage]?.[typedVariant]\n    if (modeVariant) {\n      results.push({\n        selection: modeVariant,\n        assignmentId: `minigame-variant.${mode}.${gameKey}.${stage}.${typedVariant}`,\n      })\n    }\n    const sharedVariant =\n      config.minigameVariantAssignments.any?.[gameKey]?.[typedStage]?.[typedVariant]\n    if (sharedVariant) {\n      results.push({\n        selection: sharedVariant,\n        assignmentId: `minigame-variant.any.${gameKey}.${stage}.${typedVariant}`,\n      })\n    }\n  }\n  const modeSelection = config.minigameAssignments[mode]?.[gameKey]?.[typedStage]\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "    hasDirectAssignment ||\n",
+              "    hasDirectAssignment ||\n    (['any', 'classic', 'survival'] as const).some(\n      (mode) => config.minigameVariantAssignments[mode]?.[gameKey] !== undefined\n    ) ||\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "    transition?: MusicTransitionPolicy\n  ): ResolvedMusicCue | null => {\n",
+              "    transition?: MusicTransitionPolicy\n  ): ResolvedMusicCue | null => {\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "    return {\n      track: selectionToTrack(selection),\n      selection,\n      assignmentId,\n      source,\n      inheritedAssignments: [...inheritedAssignments],\n      ...(transition ? { transition } : {}),\n    }\n",
+              "    const track = selectionToTrack(selection)\n    const configuredCue =\n      selection.kind === 'track' && selection.cueId\n        ? config.musicCues[selection.cueId]\n        : selection.kind === 'track'\n          ? config.musicCues[`track:${selection.track}`]\n          : undefined\n    const playbackCue =\n      selection.kind === 'track'\n        ? configuredCue?.track === selection.track\n          ? configuredCue\n          : createDefaultMusicCue(\n              selection.track,\n              getMusicTrackSoundEntry(selection.track)?.loop ?? true\n            )\n        : undefined\n    return {\n      track,\n      selection,\n      assignmentId,\n      source,\n      inheritedAssignments: [...inheritedAssignments],\n      ...(transition ? { transition } : {}),\n      ...(playbackCue ? { playbackCue } : {}),\n    }\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfig.ts',
+              "      minigame.stage,\n      config\n",
+              "      minigame.stage,\n      minigame.variant,\n      config\n",
+          )
+
+          # resolveDesiredMusic adapter carries the variant.
+          replace_once(
+              'src/services/sound/resolveDesiredMusic.ts',
+              "  type MusicConfigDocument,\n  type ResolvedMusicCue,\n",
+              "  type MusicConfigDocument,\n  type MusicMinigameVariant,\n  type ResolvedMusicCue,\n",
+          )
+          replace_once(
+              'src/services/sound/resolveDesiredMusic.ts',
+              "      phase?: string | null\n",
+              "      phase?: string | null\n      musicVariant?: MusicMinigameVariant | null\n",
+          )
+          replace_once(
+              'src/services/sound/resolveDesiredMusic.ts',
+              "            stage: pendingChallenge.phase ?? null,\n",
+              "            stage: pendingChallenge.phase ?? null,\n            variant: pendingChallenge.musicVariant ?? 'normal',\n",
+          )
+
+          # Sanitizer supports cue ids, cue definitions, and variant assignments.
+          replace_once(
+              'src/services/sound/musicConfigSanitizer.ts',
+              "  type MusicMinigameStage,\n",
+              "  MUSIC_MINIGAME_VARIANTS,\n  type MinigameStageVariantAssignments,\n  type MusicMinigameStage,\n  type MusicMinigameVariant,\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfigSanitizer.ts',
+              "import { isCatalogMusicTrack, type MusicTrackAssetOverride } from './musicCatalog'\n",
+              "import { isCatalogMusicTrack, type MusicTrackAssetOverride } from './musicCatalog'\nimport {\n  MUSIC_EFFECT_PRESETS,\n  MUSIC_RESTART_POLICIES,\n  createDefaultMusicCue,\n  type MusicCueDefinition,\n} from './musicCue'\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfigSanitizer.ts',
+              "const MAX_TRANSITION_MS = 60_000\n",
+              "const MAX_TRANSITION_MS = 60_000\nconst MAX_CUE_SECONDS = 6 * 60 * 60\n",
+          )
+          replace_once(
+              'src/services/sound/musicConfigSanitizer.ts',
+              "  if (raw.kind === 'track' && isCatalogMusicTrack(raw.track)) {\n    return { kind: 'track', track: raw.track }\n  }\n",
+              "  if (raw.kind === 'track' && isCatalogMusicTrack(raw.track)) {\n    const cueId = safeString(raw.cueId)\n    return { kind: 'track', track: raw.track, ...(cueId ? { cueId } : {}) }\n  }\n",
+          )
+          insert_point = "function sanitiseEventCue(raw: unknown): AudioEventCue | undefined {"
+          target = Path('src/services/sound/musicConfigSanitizer.ts')
+          text = target.read_text()
+          if insert_point not in text:
+              raise SystemExit('Could not locate cue sanitizer insertion point')
+          cue_helpers = r'''function safeCueSeconds(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  return Math.max(0, Math.min(MAX_CUE_SECONDS, value))
+}
+
+function sanitiseMusicCue(raw: unknown, id: string): MusicCueDefinition | undefined {
+  if (!isRecord(raw) || !isCatalogMusicTrack(raw.track)) return undefined
+  const defaults = createDefaultMusicCue(raw.track)
+  const displayName = safeString(raw.displayName, 160) ?? defaults.displayName
+  const startAtSec = safeCueSeconds(raw.startAtSec) ?? defaults.startAtSec
+  const endAtSec = safeCueSeconds(raw.endAtSec)
+  const loopStartSec = safeCueSeconds(raw.loopStartSec)
+  const loopEndSec = safeCueSeconds(raw.loopEndSec)
+  const volume = safeUnitInterval(raw.volume) ?? defaults.volume
+  const fadeInMs = safeDuration(raw.fadeInMs) ?? defaults.fadeInMs
+  const fadeOutMs = safeDuration(raw.fadeOutMs) ?? defaults.fadeOutMs
+  const crossfadeMs = safeDuration(raw.crossfadeMs) ?? defaults.crossfadeMs
+  const loop = typeof raw.loop === 'boolean' ? raw.loop : defaults.loop
+  const restartPolicy = MUSIC_RESTART_POLICIES.includes(
+    raw.restartPolicy as (typeof MUSIC_RESTART_POLICIES)[number]
+  )
+    ? (raw.restartPolicy as MusicCueDefinition['restartPolicy'])
+    : defaults.restartPolicy
+  const effectPreset = MUSIC_EFFECT_PRESETS.includes(
+    raw.effectPreset as (typeof MUSIC_EFFECT_PRESETS)[number]
+  )
+    ? (raw.effectPreset as MusicCueDefinition['effectPreset'])
+    : defaults.effectPreset
+  const fallbackCueId = safeString(raw.fallbackCueId)
+
+  if (endAtSec !== undefined && endAtSec <= startAtSec) return undefined
+  if (loopStartSec !== undefined && loopStartSec < startAtSec) return undefined
+  if (loopEndSec !== undefined && loopEndSec <= (loopStartSec ?? startAtSec)) return undefined
+  if (endAtSec !== undefined && loopEndSec !== undefined && loopEndSec > endAtSec) return undefined
+
+  return {
+    id,
+    displayName,
+    track: raw.track,
+    startAtSec,
+    ...(endAtSec !== undefined ? { endAtSec } : {}),
+    loop,
+    ...(loopStartSec !== undefined ? { loopStartSec } : {}),
+    ...(loopEndSec !== undefined ? { loopEndSec } : {}),
+    volume,
+    fadeInMs,
+    fadeOutMs,
+    crossfadeMs,
+    restartPolicy,
+    effectPreset,
+    ...(fallbackCueId ? { fallbackCueId } : {}),
+  }
+}
+
+function sanitiseVariantStageAssignments(
+  raw: unknown
+): MinigameStageVariantAssignments | undefined {
+  if (!isRecord(raw)) return undefined
+  const result: MinigameStageVariantAssignments = {}
+  for (const stage of MINIGAME_STAGES) {
+    const rawStage = raw[stage]
+    if (!isRecord(rawStage)) continue
+    const variants: Partial<Record<MusicMinigameVariant, MusicSelection>> = {}
+    for (const variant of MUSIC_MINIGAME_VARIANTS) {
+      if (variant === 'normal') continue
+      const selection = sanitiseMusicSelection(rawStage[variant])
+      if (selection) variants[variant] = selection
+    }
+    if (Object.keys(variants).length > 0) result[stage] = variants
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
+'''
+          target.write_text(text.replace(insert_point, cue_helpers + insert_point, 1))
+          replace_once(
+              'src/services/sound/musicConfigSanitizer.ts',
+              "  if (isRecord(raw.minigameCategoryMusic)) {\n",
+              "  if (isRecord(raw.minigameVariantAssignments)) {\n    const assignments: NonNullable<MusicConfigOverrides['minigameVariantAssignments']> = {}\n    for (const mode of MUSIC_CONFIG_MODES) {\n      const rawMode = raw.minigameVariantAssignments[mode]\n      if (!isRecord(rawMode)) continue\n      const games: Record<string, MinigameStageVariantAssignments> = {}\n      for (const [gameKey, value] of Object.entries(rawMode)) {\n        if (!isSafeObjectKey(gameKey)) continue\n        const stages = sanitiseVariantStageAssignments(value)\n        if (stages) games[gameKey] = stages\n      }\n      if (Object.keys(games).length > 0) assignments[mode] = games\n    }\n    if (Object.keys(assignments).length > 0) result.minigameVariantAssignments = assignments\n  }\n\n  if (isRecord(raw.musicCues)) {\n    const cues: Record<string, MusicCueDefinition> = {}\n    for (const [cueId, value] of Object.entries(raw.musicCues)) {\n      if (!isSafeObjectKey(cueId)) continue\n      const cue = sanitiseMusicCue(value, cueId)\n      if (cue) cues[cueId] = cue\n    }\n    if (Object.keys(cues).length > 0) result.musicCues = cues\n  }\n\n  if (isRecord(raw.minigameCategoryMusic)) {\n",
+          )
+
+          # Challenge state owns the normalized variant.
+          replace_once(
+              'src/store/challengeSlice.ts',
+              "import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock'\n",
+              "import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock'\nimport type { MusicMinigameVariant } from '../services/sound/musicConfig'\n",
+          )
+          replace_once(
+              'src/store/challengeSlice.ts',
+              "  phase: 'rules' | 'countdown' | 'playing' | 'results' | 'done'\n",
+              "  phase: 'rules' | 'countdown' | 'playing' | 'results' | 'done'\n  musicVariant?: MusicMinigameVariant\n",
+          )
+          replace_once(
+              'src/store/challengeSlice.ts',
+              "    setPendingPhase(state, action: PayloadAction<PendingChallenge['phase']>) {\n      if (state.pending) state.pending.phase = action.payload\n    },\n",
+              "    setPendingPhase(state, action: PayloadAction<PendingChallenge['phase']>) {\n      if (state.pending) {\n        state.pending.phase = action.payload\n        if (action.payload !== 'playing') state.pending.musicVariant = 'normal'\n      }\n    },\n\n    setPendingMusicVariant(state, action: PayloadAction<MusicMinigameVariant>) {\n      if (state.pending) state.pending.musicVariant = action.payload\n    },\n",
+          )
+          replace_once(
+              'src/store/challengeSlice.ts',
+              "        pending: restored.pending ? { ...restored.pending, phase: 'rules' as const } : null,\n",
+              "        pending: restored.pending\n          ? { ...restored.pending, phase: 'rules' as const, musicVariant: 'normal' as const }\n          : null,\n",
+          )
+          replace_once(
+              'src/store/challengeSlice.ts',
+              "  setPendingPhase,\n",
+              "  setPendingPhase,\n  setPendingMusicVariant,\n",
+          )
+          replace_once(
+              'src/store/challengeSlice.ts',
+              "      phase: 'rules',\n      aiScores,\n",
+              "      phase: 'rules',\n      musicVariant: 'normal',\n      aiScores,\n",
+          )
+
+          # Host listens for semantic variant events and reports them centrally.
+          replace_once(
+              'src/components/MinigameHost/MinigameHost.tsx',
+              "import { SoundManager } from '../../services/sound/SoundManager'\n",
+              "import { SoundManager } from '../../services/sound/SoundManager'\nimport {\n  MINIGAME_MUSIC_VARIANT_EVENT,\n  type MinigameMusicVariantDetail,\n} from '../../services/sound/minigameMusicVariant'\nimport type { MusicMinigameVariant } from '../../services/sound/musicConfig'\n",
+          )
+          replace_once(
+              'src/components/MinigameHost/MinigameHost.tsx',
+              "  onPhaseChange?: (phase: HostPhase) => void\n",
+              "  onPhaseChange?: (phase: HostPhase) => void\n  onMusicVariantChange?: (variant: MusicMinigameVariant) => void\n",
+          )
+          replace_once(
+              'src/components/MinigameHost/MinigameHost.tsx',
+              "  onPhaseChange,\n  skipRules = false,\n",
+              "  onPhaseChange,\n  onMusicVariantChange,\n  skipRules = false,\n",
+          )
+          replace_once(
+              'src/components/MinigameHost/MinigameHost.tsx',
+              "  useEffect(() => {\n    onPhaseChange?.(phase)\n  }, [onPhaseChange, phase])\n",
+              "  useEffect(() => {\n    onPhaseChange?.(phase)\n    if (phase !== 'playing') onMusicVariantChange?.('normal')\n  }, [onMusicVariantChange, onPhaseChange, phase])\n\n  useEffect(() => {\n    if (phase !== 'playing') return\n    const handleVariant = (event: Event) => {\n      const detail = (event as CustomEvent<MinigameMusicVariantDetail>).detail\n      if (!detail || (detail.gameKey && detail.gameKey !== game.key)) return\n      onMusicVariantChange?.(detail.variant)\n    }\n    window.addEventListener(MINIGAME_MUSIC_VARIANT_EVENT, handleVariant)\n    return () => window.removeEventListener(MINIGAME_MUSIC_VARIANT_EVENT, handleVariant)\n  }, [game.key, onMusicVariantChange, phase])\n",
+          )
+
+          # GameScreen routes the host signal into Redux.
+          replace_once(
+              'src/screens/GameScreen/GameScreen.tsx',
+              "  setPendingPhase,\n  type PendingChallenge,\n",
+              "  setPendingMusicVariant,\n  setPendingPhase,\n  type PendingChallenge,\n",
+          )
+          replace_once(
+              'src/screens/GameScreen/GameScreen.tsx',
+              "import type { HostPhase, MinigameParticipant } from '../../components/MinigameHost/MinigameHost'\n",
+              "import type { HostPhase, MinigameParticipant } from '../../components/MinigameHost/MinigameHost'\nimport type { MusicMinigameVariant } from '../../services/sound/musicConfig'\n",
+          )
+          replace_once(
+              'src/screens/GameScreen/GameScreen.tsx',
+              "  const handleMinigameHostPhaseChange = useCallback(\n    (hostPhase: HostPhase) => dispatch(setPendingPhase(hostPhase)),\n    [dispatch]\n  )\n",
+              "  const handleMinigameHostPhaseChange = useCallback(\n    (hostPhase: HostPhase) => dispatch(setPendingPhase(hostPhase)),\n    [dispatch]\n  )\n  const handleMinigameMusicVariantChange = useCallback(\n    (variant: MusicMinigameVariant) => dispatch(setPendingMusicVariant(variant)),\n    [dispatch]\n  )\n",
+          )
+          replace_once(
+              'src/screens/GameScreen/GameScreen.tsx',
+              "            onPhaseChange={handleMinigameHostPhaseChange}\n",
+              "            onPhaseChange={handleMinigameHostPhaseChange}\n            onMusicVariantChange={handleMinigameMusicVariantChange}\n",
+          )
+
+          # Risk Wheel publishes a real final-round/victory-lap semantic signal.
+          replace_once(
+              'src/components/RiskWheelComp/RiskWheelComp.tsx',
+              "import { useRiskWheelAudio } from '../../hooks/useRiskWheelAudio';\n",
+              "import { useRiskWheelAudio } from '../../hooks/useRiskWheelAudio';\nimport { publishMinigameMusicVariant } from '../../services/sound/minigameMusicVariant';\n",
+          )
+          replace_once(
+              'src/components/RiskWheelComp/RiskWheelComp.tsx',
+              "  const stopWheelSoundRef = useRef(stopWheelSound);\n  useEffect(() => { stopWheelSoundRef.current = stopWheelSound; }, [stopWheelSound]);\n",
+              "  const stopWheelSoundRef = useRef(stopWheelSound);\n  useEffect(() => { stopWheelSoundRef.current = stopWheelSound; }, [stopWheelSound]);\n\n  useEffect(() => {\n    if (standalone || !rw || rw.phase === 'idle') return;\n    const finalRound =\n      rw.round >= getRoundCap(rw.initialPlayerCount) || rw.activePlayerIds.length <= 2;\n    publishMinigameMusicVariant(\n      rw.phase === 'complete' ? 'victory_lap' : finalRound ? 'final_round' : 'normal',\n      'riskWheel',\n    );\n  }, [rw, standalone]);\n",
+          )
+
+          # AudioStateSync carries variants and uses the cue-aware API.
+          replace_once(
+              'src/services/sound/AudioStateSync.tsx',
+              "  type MusicConfigDocument,\n  type ResolvedMusicCue,\n",
+              "  type MusicConfigDocument,\n  type ResolvedMusicCue,\n",
+          )
+          replace_once(
+              'src/services/sound/AudioStateSync.tsx',
+              "       pendingChallengePhase: root.challenge.pending?.phase ?? null,\n",
+              "       pendingChallengePhase: root.challenge.pending?.phase ?? null,\n       pendingChallengeVariant: root.challenge.pending?.musicVariant ?? 'normal',\n",
+          )
+          replace_once(
+              'src/services/sound/AudioStateSync.tsx',
+              "                 phase: musicState.pendingChallengePhase,\n                 game: {\n",
+              "                 phase: musicState.pendingChallengePhase,\n                 musicVariant: musicState.pendingChallengeVariant,\n                 game: {\n",
+          )
+          text = Path('src/services/sound/AudioStateSync.tsx').read_text()
+          text = text.replace(
+              "SoundManager.setDesiredMusic(desiredCue.track, cueReason(desiredCue))",
+              "SoundManager.setDesiredMusicCue(desiredCue, cueReason(desiredCue))",
+          )
+          text = text.replace(
+              "SoundManager.setDesiredMusic(nextCue.track, cueReason(nextCue))",
+              "SoundManager.setDesiredMusicCue(nextCue, cueReason(nextCue))",
+          )
+          Path('src/services/sound/AudioStateSync.tsx').write_text(text)
+
+          # SoundManager delegates only advanced cues to the two-deck engine; legacy/default behavior remains unchanged.
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "import { NATIVE_SFX_MAP } from '../../platform/cordova/nativeSfxMap'\n",
+              "import { NATIVE_SFX_MAP } from '../../platform/cordova/nativeSfxMap'\nimport { MusicCueEngine } from './MusicCueEngine'\nimport { isAdvancedMusicCue, musicCueSignature } from './musicCue'\nimport type { MusicCueDefinition } from './musicCue'\nimport type { ResolvedMusicCue } from './musicConfig'\n",
+          )
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "  private _musicVolume = 1\n",
+              "  private _musicVolume = 1\n  private _desiredResolvedCue: ResolvedMusicCue | null = null\n  private _desiredAdvancedCueSignature: string | null = null\n  private _cueEngine = new MusicCueEngine({\n    onEnded: (signature) => {\n      if (this._desiredAdvancedCueSignature !== signature) return\n      this._musicEl = null\n      this._musicKey = null\n      this._playingMusicTrack = 'none'\n    },\n  })\n",
+          )
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "  async setDesiredMusic(track: MusicTrack, reason?: string): Promise<void> {\n",
+              "  async setDesiredMusicCue(cue: ResolvedMusicCue, reason?: string): Promise<void> {\n    const playbackCue = cue.playbackCue\n    if (!playbackCue || !isAdvancedMusicCue(playbackCue)) {\n      this._desiredResolvedCue = null\n      this._desiredAdvancedCueSignature = null\n      this._cueEngine.stop()\n      return this.setDesiredMusic(cue.track, reason)\n    }\n\n    this._desiredResolvedCue = cue\n    this._desiredMusicTrack = cue.track\n    this._desiredMusicReason = reason ?? null\n    const candidate = this._resolveMusicCandidate(cue.track)\n    const signature = musicCueSignature(playbackCue, candidate?.key ?? '')\n    if (this._desiredAdvancedCueSignature !== signature) this._cueEngine.clearCompleted()\n    this._desiredAdvancedCueSignature = signature\n    await this.syncMusic()\n  }\n\n  async setDesiredMusic(track: MusicTrack, reason?: string): Promise<void> {\n    this._desiredResolvedCue = null\n    this._desiredAdvancedCueSignature = null\n",
+          )
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "    if (this._isMusicSynced(candidate.key)) {\n",
+              "    const advancedCue = this._desiredResolvedCue?.playbackCue\n    if (advancedCue && isAdvancedMusicCue(advancedCue)) {\n      const signature = musicCueSignature(advancedCue, candidate.key)\n      if (\n        this._cueEngine.currentSignature === signature ||\n        this._cueEngine.completedSignature === signature\n      ) {\n        this._musicEl = this._cueEngine.currentElement\n        this._musicKey = this._cueEngine.currentKey\n        this._playingMusicTrack = this._cueEngine.currentTrack ?? 'none'\n        this._cueEngine.setMasterVolume(this._musicVolume)\n        return\n      }\n      const playbackToken = ++this._musicPlaybackToken\n      await this._doPlayAdvancedMusic(candidate, advancedCue, playbackToken)\n      return\n    }\n\n    this._cueEngine.stop()\n    if (this._isMusicSynced(candidate.key)) {\n",
+          )
+          insert_point = "  /** Stop the currently-playing music track (legacy — prefer releaseBgm). */"
+          target = Path('src/services/sound/SoundManager.ts')
+          text = target.read_text()
+          if insert_point not in text:
+              raise SystemExit('Could not locate advanced playback insertion point')
+          advanced_method = r'''  private async _doPlayAdvancedMusic(
+    candidate: ResolvedMusicCandidate,
+    cue: MusicCueDefinition,
+    playbackToken: number
+  ): Promise<void> {
+    const entry = this._getEntry(candidate.key)
+    if (!entry || this._failedKeys.has(candidate.key)) {
+      if (entry == null) this._failedKeys.add(candidate.key)
+      void this.syncMusic()
+      return
+    }
+
+    try {
+      await this._cueEngine.play(
+        {
+          key: candidate.key,
+          track: candidate.track,
+          src: entry.src,
+          volume: entry.volume ?? 1,
+          loop: entry.loop ?? true,
+        },
+        cue
+      )
+      if (
+        playbackToken !== this._musicPlaybackToken ||
+        this._desiredAdvancedCueSignature !== musicCueSignature(cue, candidate.key)
+      ) {
+        this._cueEngine.stop()
+        return
+      }
+      this._cueEngine.setMasterVolume(this._musicVolume)
+      this._musicEl = this._cueEngine.currentElement
+      this._musicKey = candidate.key
+      this._playingMusicTrack = candidate.track
+      _bgmLog('playing-cue', candidate.track, entry.src)
+    } catch (error) {
+      if (playbackToken !== this._musicPlaybackToken) return
+      console.error(`[SoundManager] advanced music cue failed "${candidate.key}":`, error)
+      this._failedKeys.add(candidate.key)
+      this._cueEngine.stop()
+      this._musicEl = null
+      this._musicKey = null
+      this._playingMusicTrack = 'none'
+      void this.syncMusic()
+    }
+  }
+
+'''
+          target.write_text(text.replace(insert_point, advanced_method + insert_point, 1))
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "    this._desiredMusicReason = null\n    this._currentBgmOwner = null\n",
+              "    this._desiredMusicReason = null\n    this._desiredResolvedCue = null\n    this._desiredAdvancedCueSignature = null\n    this._cueEngine.stop()\n    this._currentBgmOwner = null\n",
+          )
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "    const el = this._musicEl\n",
+              "    if (this._cueEngine.currentElement) {\n      this._desiredResolvedCue = null\n      this._desiredAdvancedCueSignature = null\n      await this._cueEngine.fadeOut(durationMs)\n      this._musicEl = null\n      this._musicKey = null\n      this._playingMusicTrack = 'none'\n      return\n    }\n\n    const el = this._musicEl\n",
+          )
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "    this._musicVolume = Math.max(0, Math.min(1, value))\n",
+              "    this._musicVolume = Math.max(0, Math.min(1, value))\n    this._cueEngine.setMasterVolume(this._musicVolume)\n",
+          )
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "  private _stopCurrentMusic(retainElement = false): void {\n    if (this._musicEl) {\n",
+              "  private _stopCurrentMusic(retainElement = false): void {\n    if (this._cueEngine.currentElement) this._cueEngine.stop()\n    if (this._musicEl) {\n",
+          )
+          replace_once(
+              'src/services/sound/SoundManager.ts',
+              "  private _applyLiveMusicVolume(): void {\n    if (!this._musicEl || !this._musicKey) return\n",
+              "  private _applyLiveMusicVolume(): void {\n    if (this._cueEngine.currentElement) {\n      this._cueEngine.setMasterVolume(this._musicVolume)\n      return\n    }\n    if (!this._musicEl || !this._musicKey) return\n",
+          )
+
+          # Core tests.
+          write('tests/unit/sound/musicCue.test.ts', r'''import { describe, expect, it } from 'vitest'
+import {
+  createDefaultMusicCue,
+  isAdvancedMusicCue,
+  musicCueSignature,
+  validateMusicCueDefinition,
+} from '../../../src/services/sound/musicCue'
+
+ describe('music cue definitions', () => {
+  it('creates a backward-compatible full-track cue', () => {
+    const cue = createDefaultMusicCue('competition', true)
+    expect(cue.startAtSec).toBe(0)
+    expect(cue.loop).toBe(true)
+    expect(cue.effectPreset).toBe('none')
+    expect(isAdvancedMusicCue(cue)).toBe(false)
+  })
+
+  it('detects advanced segment and transition controls', () => {
+    const cue = { ...createDefaultMusicCue('competition'), startAtSec: 12, crossfadeMs: 900 }
+    expect(isAdvancedMusicCue(cue)).toBe(true)
+    expect(musicCueSignature(cue, 'music:competition')).toContain('music:competition')
+  })
+
+  it('rejects invalid cue boundaries', () => {
+    const cue = { ...createDefaultMusicCue('competition'), startAtSec: 20, endAtSec: 10 }
+    expect(validateMusicCueDefinition(cue).map((issue) => issue.code)).toContain('invalid-end')
+  })
+})
+''')
+
+          write('tests/unit/sound/musicCueResolver.test.ts', r'''import { describe, expect, it } from 'vitest'
+import {
+  createMusicConfig,
+  musicTrack,
+  resolveMusicCue,
+} from '../../../src/services/sound/musicConfig'
+import { createDefaultMusicCue } from '../../../src/services/sound/musicCue'
+
+const baseContext = {
+  mode: 'classic' as const,
+  gamePhase: 'loh_comp',
+  routeHash: '#/game',
+  musicScene: 'none' as const,
+  spectatorActive: false,
+  socialOpen: false,
+}
+
+describe('music cue resolver variants', () => {
+  it('resolves a final-round cue ahead of the normal playing assignment', () => {
+    const finalCue = {
+      ...createDefaultMusicCue('risk_wheel'),
+      id: 'risk-wheel-final',
+      displayName: 'Risk Wheel Final',
+      startAtSec: 42,
+      crossfadeMs: 800,
+      effectPreset: 'final_round' as const,
+    }
+    const config = createMusicConfig({
+      musicCues: { [finalCue.id]: finalCue },
+      minigameAssignments: {
+        classic: { riskWheel: { playing: musicTrack('risk_wheel') } },
+      },
+      minigameVariantAssignments: {
+        classic: {
+          riskWheel: {
+            playing: { final_round: musicTrack('risk_wheel', finalCue.id) },
+          },
+        },
+      },
+    })
+
+    const resolved = resolveMusicCue(
+      {
+        ...baseContext,
+        minigame: {
+          gameKey: 'riskWheel',
+          category: 'arcade',
+          stage: 'playing',
+          variant: 'final_round',
+        },
+      },
+      config
+    )
+
+    expect(resolved.assignmentId).toContain('minigame-variant.classic.riskWheel.playing.final_round')
+    expect(resolved.playbackCue?.id).toBe(finalCue.id)
+    expect(resolved.playbackCue?.startAtSec).toBe(42)
+  })
+})
+''')
+
+          write('tests/unit/sound/MusicCueEngine.test.ts', r'''import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MusicCueEngine } from '../../../src/services/sound/MusicCueEngine'
+import { createDefaultMusicCue } from '../../../src/services/sound/musicCue'
+
+beforeEach(() => {
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+})
+
+afterEach(() => vi.restoreAllMocks())
+
+describe('MusicCueEngine', () => {
+  it('starts at the configured segment and loops inside its cue boundary', async () => {
+    const engine = new MusicCueEngine()
+    const cue = {
+      ...createDefaultMusicCue('competition'),
+      id: 'segment',
+      startAtSec: 10,
+      endAtSec: 20,
+      loop: true,
+      loopStartSec: 12,
+      loopEndSec: 18,
+    }
+
+    await engine.play(
+      {
+        key: 'music:test',
+        track: 'competition',
+        src: '/test.mp3',
+        volume: 0.5,
+        loop: true,
+      },
+      cue
+    )
+
+    const element = engine.currentElement!
+    expect(element.currentTime).toBe(10)
+    element.currentTime = 18
+    element.dispatchEvent(new Event('timeupdate'))
+    expect(element.currentTime).toBe(12)
+  })
+
+  it('uses a second deck for a configured crossfade', async () => {
+    vi.useFakeTimers()
+    const engine = new MusicCueEngine()
+    const asset = {
+      key: 'music:test',
+      track: 'competition' as const,
+      src: '/test.mp3',
+      volume: 1,
+      loop: true,
+    }
+    await engine.play(asset, { ...createDefaultMusicCue('competition'), id: 'a' })
+    const first = engine.currentElement
+    const pending = engine.play(asset, {
+      ...createDefaultMusicCue('competition'),
+      id: 'b',
+      startAtSec: 30,
+      crossfadeMs: 200,
+    })
+    await vi.runAllTimersAsync()
+    await pending
+    expect(engine.currentElement).not.toBe(first)
+    vi.useRealTimers()
+  })
+})
+''')
+
+          write('docs/MUSIC_CUE_PHASE2.md', r'''# Music Cue Phase 2
+
+The runtime now distinguishes an audio **asset**, a reusable **cue**, and a gameplay **assignment**.
+
+A cue can select a segment of a track, define an internal loop, apply cue-relative volume, fade in/out, crossfade to another cue, choose restart/resume/continue behavior, and request a safe effect preset. Unsupported WebAudio effects degrade to clean playback.
+
+Minigames publish semantic variants (`normal`, `intense`, `final_round`, `sudden_death`, `overtime`, `victory_lap`) through `MinigameHost`; Redux remains the source of truth. Risk Wheel publishes `final_round` automatically when it reaches its final field/round and `victory_lap` on completion.
+
+Existing whole-track assignments remain backward compatible and continue through the original single-element path. The two-deck engine activates only for advanced cues.
+''')
+
+      - name: Format changed files
+        run: |
+          npx prettier --write \
+            src/services/sound/musicCue.ts \
+            src/services/sound/MusicCueEngine.ts \
+            src/services/sound/minigameMusicVariant.ts \
+            src/services/sound/musicConfig.ts \
+            src/services/sound/musicConfigSanitizer.ts \
+            src/services/sound/resolveDesiredMusic.ts \
+            src/services/sound/AudioStateSync.tsx \
+            src/services/sound/SoundManager.ts \
+            src/store/challengeSlice.ts \
+            src/components/MinigameHost/MinigameHost.tsx \
+            src/screens/GameScreen/GameScreen.tsx \
+            src/components/RiskWheelComp/RiskWheelComp.tsx \
+            tests/unit/sound/musicCue.test.ts \
+            tests/unit/sound/musicCueResolver.test.ts \
+            tests/unit/sound/MusicCueEngine.test.ts \
+            docs/MUSIC_CUE_PHASE2.md
+
+      - name: Validate core
+        run: |
+          npm run test:guard
+          npm run lint:ci
+          npm run typecheck
+          npx vitest run \
+            tests/unit/sound/musicCue.test.ts \
+            tests/unit/sound/musicCueResolver.test.ts \
+            tests/unit/sound/MusicCueEngine.test.ts \
+            tests/unit/sound/resolveDesiredMusic.test.ts \
+            tests/unit/sound/musicConfigSanitizer.test.ts \
+            tests/unit/sound/musicConfigAudit.test.ts \
+            tests/unit/sound/queue.test.ts
+          npm run build
+          npm run build:mobile
+
+      - name: Commit validated core
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/services/sound/musicCue.ts \
+            src/services/sound/MusicCueEngine.ts \
+            src/services/sound/minigameMusicVariant.ts \
+            src/services/sound/musicConfig.ts \
+            src/services/sound/musicConfigSanitizer.ts \
+            src/services/sound/resolveDesiredMusic.ts \
+            src/services/sound/AudioStateSync.tsx \
+            src/services/sound/SoundManager.ts \
+            src/store/challengeSlice.ts \
+            src/components/MinigameHost/MinigameHost.tsx \
+            src/screens/GameScreen/GameScreen.tsx \
+            src/components/RiskWheelComp/RiskWheelComp.tsx \
+            tests/unit/sound/musicCue.test.ts \
+            tests/unit/sound/musicCueResolver.test.ts \
+            tests/unit/sound/MusicCueEngine.test.ts \
+            docs/MUSIC_CUE_PHASE2.md
+          git commit -m 'Add advanced music cues and minigame variants'
+          git push origin HEAD:refs/heads/agent/music-cue-editor-phase2
