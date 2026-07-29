@@ -108,6 +108,49 @@ jobs:
           source = source.replace(strict_helper, tolerant_helper, 1)
           exec(compile(source, 'music-cue-phase2-implementation', 'exec'))
 
+      - name: Repair Phase 2 core contracts
+        shell: python
+        run: |
+          from pathlib import Path
+
+          engine = Path('src/services/sound/MusicCueEngine.ts')
+          engine_text = engine.read_text()
+          old_constructor = "  constructor(private readonly _hooks: MusicCueEngineHooks = {}) {}\n"
+          new_constructor = "  private readonly _hooks: MusicCueEngineHooks\n\n  constructor(hooks: MusicCueEngineHooks = {}) {\n    this._hooks = hooks\n  }\n"
+          if old_constructor not in engine_text:
+              raise SystemExit('Could not locate MusicCueEngine constructor parameter property')
+          engine.write_text(engine_text.replace(old_constructor, new_constructor, 1))
+
+          config = Path('src/services/sound/musicConfig.ts')
+          config_text = config.read_text()
+          profile_misplacement = (
+              "  transition?: MusicTransitionPolicy\n"
+              "  playbackCue?: MusicCueDefinition\n"
+              "}\n\nexport interface AudioEventCue"
+          )
+          if profile_misplacement in config_text:
+              config_text = config_text.replace(
+                  profile_misplacement,
+                  "  transition?: MusicTransitionPolicy\n}\n\nexport interface AudioEventCue",
+                  1,
+              )
+          resolved_block = (
+              "  inheritedAssignments: readonly string[]\n"
+              "  transition?: MusicTransitionPolicy\n"
+              "}\n\nexport const INHERIT_MUSIC"
+          )
+          if resolved_block not in config_text:
+              raise SystemExit('Could not locate ResolvedMusicCue contract')
+          config_text = config_text.replace(
+              resolved_block,
+              "  inheritedAssignments: readonly string[]\n"
+              "  transition?: MusicTransitionPolicy\n"
+              "  playbackCue?: MusicCueDefinition\n"
+              "}\n\nexport const INHERIT_MUSIC",
+              1,
+          )
+          config.write_text(config_text)
+
       - name: Format Phase 2 core
         run: |
           npx prettier --write \
