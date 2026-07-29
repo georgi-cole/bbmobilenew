@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialDramaSocialNetwork } from '../dramaModeEngine'
 import { getSocialCredibility } from '../socialCommitments'
+import socialReducer, { applyRealityAmbientRelationship } from '../socialSlice'
 import { buildSocialStoryStream } from '../socialStoryStream'
-import { getRelationshipContinuityDelta } from '../weekSocialSeed'
+import { getAmbientRelationshipDelta, getRelationshipContinuityDelta } from '../weekSocialSeed'
 import type { SocialActionLogEntry, SocialCommitment } from '../types'
 
 function commitment(status: SocialCommitment['status']): SocialCommitment {
@@ -59,7 +60,7 @@ describe('Social liveliness restoration', () => {
     })
   })
 
-  it('lets remembered treatment settle relationships without unexplained random drift', () => {
+  it('combines remembered treatment with small ambient house-life shifts', () => {
     expect(getRelationshipContinuityDelta()).toBe(0)
     expect(
       getRelationshipContinuityDelta({
@@ -79,6 +80,29 @@ describe('Social liveliness restoration', () => {
         recentEvents: [],
       })
     ).toBeLessThan(0)
+    expect(getAmbientRelationshipDelta(0.01)).toBe(-2)
+    expect(getAmbientRelationshipDelta(0.5)).toBe(0)
+    expect(getAmbientRelationshipDelta(0.99)).toBe(2)
+    expect(getAmbientRelationshipDelta(0.6, { humanInvolved: true, week: 2 })).toBe(1)
+  })
+
+  it('turns a negative background shift into visible relationship tension', () => {
+    const initial = socialReducer(undefined, { type: 'init' })
+    const next = socialReducer(
+      initial,
+      applyRealityAmbientRelationship({
+        sourceId: 'lia',
+        targetId: 'kai',
+        socialDelta: -2,
+        day: 2,
+        phase: 'week_start',
+      })
+    )
+    const edge = next.reality.relationships.lia.kai
+
+    expect(edge.resentment).toBeGreaterThan(0)
+    expect(edge.suspicion).toBeGreaterThan(0)
+    expect(edge.perceivedThreat).toBeGreaterThan(0)
   })
 
   it('compresses one socially active NPC into one engaging house story', () => {
@@ -136,5 +160,46 @@ describe('Social liveliness restoration', () => {
     })
 
     expect(stream).toHaveLength(0)
+  })
+
+  it('groups a repeated conflict pattern around one person into one varied house read', () => {
+    const network = createInitialDramaSocialNetwork()
+    for (const [index, counterpart] of ['kai', 'rae', 'sol', 'ivy'].entries()) {
+      network.events.push({
+        id: `fight-${index}`,
+        type: 'confrontation',
+        title: 'Argument',
+        text: 'Argument',
+        detail: 'Argument',
+        consequence: 'Tension rose.',
+        participantIds: ['lia', counterpart],
+        week: 2,
+        phase: 'social_1',
+        public: true,
+        severity: 'major',
+        createdAt: 100 + index,
+      })
+    }
+
+    const stream = buildSocialStoryStream({
+      network,
+      actionHistory: [],
+      relationships: {},
+      weekStartRelSnapshot: {},
+      players: [
+        { id: 'human', name: 'You' },
+        { id: 'lia', name: 'Lia' },
+        { id: 'kai', name: 'Kai' },
+        { id: 'rae', name: 'Rae' },
+        { id: 'sol', name: 'Sol' },
+        { id: 'ivy', name: 'Ivy' },
+      ],
+      humanId: 'human',
+      currentWeek: 2,
+    })
+
+    expect(stream).toHaveLength(1)
+    expect(stream[0].title).toMatch(/Lia is at the center/i)
+    expect(stream[0].text).toMatch(/Kai, Rae, Sol, Ivy/i)
   })
 })

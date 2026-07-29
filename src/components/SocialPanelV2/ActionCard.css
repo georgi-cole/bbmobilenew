@@ -11,7 +11,8 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   padding: 0.65rem 0.75rem;
-  min-width: 9rem;
+  width: 100%;
+  min-width: 0;
   min-height: 6rem;
   cursor: pointer;
   transition:
@@ -20,6 +21,31 @@
     transform 0.1s ease;
   user-select: none;
   outline: none;
+}
+
+@media (max-width: 699px) {
+  .ac-card {
+    min-height: 0;
+    padding: 0.68rem 0.75rem;
+    touch-action: manipulation;
+  }
+
+  .ac-card__title,
+  .ac-card__description,
+  .ac-badge {
+    overflow-wrap: anywhere;
+  }
+
+  .ac-card__tooltip {
+    position: static;
+    width: 100%;
+    max-width: none;
+    transform: none;
+  }
+
+  .ac-card__tooltip::after {
+    display: none;
+  }
 }
 
 .ac-card:hover:not(.ac-card--disabled) {
@@ -39,9 +65,15 @@
 
 /* ── Selected state ────────────────────────────────────────────────────────── */
 @keyframes ac-selected-outline {
-  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
-  60%  { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
-  100% { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6);
+  }
+  60% {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
 }
 
 .ac-card--selected {
@@ -54,6 +86,26 @@
 .ac-card--disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* Visible preview: a paid action is discoverable in Classic but opens the
+ * upgrade path instead of entering the action-selection flow. */
+.ac-card--premium-locked {
+  border-color: rgba(251, 191, 36, 0.32);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.07), rgba(99, 102, 241, 0.08));
+  opacity: 0.78;
+}
+
+.ac-card--premium-locked:hover {
+  border-color: rgba(251, 191, 36, 0.7);
+  opacity: 0.94;
+}
+
+.ac-card--premium-locked:active {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(99, 102, 241, 0.18));
+  border-color: rgba(251, 191, 36, 0.9);
+  opacity: 1;
+  transform: scale(0.98);
 }
 
 /* Unavailable (unaffordable) — dimmed but still clickable */
@@ -127,6 +179,42 @@
   line-height: 1.2;
 }
 
+.ac-card__premium-badge {
+  position: absolute;
+  top: -0.58rem;
+  right: -0.48rem;
+  display: block;
+  width: 1.62rem;
+  height: 1.62rem;
+  filter: drop-shadow(0 0.15rem 0.26rem rgba(10, 7, 28, 0.6));
+  transform: rotate(5deg);
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease;
+  z-index: 2;
+}
+
+.ac-card__premium-badge .store-product-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  stroke: #d9b86c;
+  stroke-width: 2.2;
+}
+
+.ac-card__premium-badge .store-product-icon__surface {
+  fill: rgba(32, 24, 66, 0.96);
+}
+
+.ac-card__premium-badge .store-product-icon__core {
+  fill: #f0dda4;
+}
+
+.ac-card--premium-locked:hover .ac-card__premium-badge {
+  filter: drop-shadow(0 0 0.34rem rgba(185, 167, 255, 0.78));
+  transform: rotate(0deg) scale(1.07);
+}
+
 /* ── Description ────────────────────────────────────────────────────────────  */
 .ac-card__description {
   font-size: 0.72rem;
@@ -181,7 +269,9 @@
   cursor: pointer;
   font-size: 0.7rem;
   padding: 0.15rem 0.4rem;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .ac-card__preview-btn:hover {

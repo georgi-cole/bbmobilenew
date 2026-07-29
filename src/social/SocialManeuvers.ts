@@ -74,6 +74,14 @@ interface ManeuverGameState {
   lohId?: string | null
   nomineeIds?: string[]
   dramaSocialMode?: boolean
+  lohSocialPlan?: {
+    week: number
+    lohId: string
+    currentTargetId: string | null
+    backupTargetId: string | null
+    askCountsByPlayerId: Record<string, number>
+    disclosedTargetByPlayerId?: Record<string, string>
+  } | null
 }
 
 interface StateForManeuvers {
@@ -91,9 +99,8 @@ const FIRST_POSITIVE_MIN_DELTA = 1
 const FIRST_POSITIVE_MAX_DELTA = 5
 const REPEATED_POSITIVE_MIN_DELTA = 1
 const REPEATED_POSITIVE_MAX_DELTA = 3
-const REPEATED_BACKFIRE_DELTA = -5
-const REPETITION_BACKFIRE_THRESHOLD = 2
-const REPETITION_BACKFIRE_CHANCE = 0.5
+const PHASE_REPETITION_SUCCESS_CHANCES = [0.8, 0.5, 0.25] as const
+const INFORMATION_REPETITION_SUCCESS_CHANCES = [1, 0.75, 0.3] as const
 const ALLIANCE_REJECTION_DELTA = -6
 const ALLIANCE_GASLIGHT_DELTA = -10
 const ALLIANCE_BETRAYAL_DELTA = -8
@@ -103,11 +110,17 @@ function countPriorRepeatedActions(
   logs: SocialActionLogEntry[],
   actorId: string,
   targetId: string,
-  actionId: string
+  actionId: string,
+  week?: number,
+  phase?: string
 ): number {
   return logs.filter(
     (entry) =>
-      entry.actorId === actorId && entry.targetId === targetId && entry.actionId === actionId
+      entry.actorId === actorId &&
+      entry.targetId === targetId &&
+      entry.actionId === actionId &&
+      entry.week === week &&
+      entry.phase === phase
   ).length
 }
 
@@ -174,16 +187,21 @@ function buildLohTargetNarrative(
   return `${lohName}: "Right now, ${likelyTarget.name} is the person I am watching most closely."`
 }
 
-function isRepeatSensitiveAction(
+function getRepetitionSuccessChances(
   action: SocialActionDefinition,
   delta: number,
   yields: { influence: number; info: number }
-): boolean {
+): readonly number[] | null {
   if (action.targetMode === 'none' || action.needsTargets === false) {
-    return false
+    return null
   }
-
-  return delta > 0 || yields.influence > 0 || yields.info > 0
+  if (action.kind === 'intel_gain' && (yields.info > 0 || delta > 0)) {
+    return INFORMATION_REPETITION_SUCCESS_CHANCES
+  }
+  if (action.kind === 'rapport' && (delta > 0 || yields.influence > 0)) {
+    return PHASE_REPETITION_SUCCESS_CHANCES
+  }
+  return null
 }
 
 function randomIntegerInclusive(min: number, max: number, random: () => number): number {
@@ -199,32 +217,29 @@ function randomIntegerInclusive(min: number, max: number, random: () => number):
  */
 export function computeRepeatedPositiveDelta(
   priorRepeats: number,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  successChances: readonly number[] = PHASE_REPETITION_SUCCESS_CHANCES
 ): { delta: number; didBackfire: boolean } {
+  const successChance = successChances[priorRepeats] ?? 0.02
+  if (random() >= successChance) {
+    return {
+      delta: priorRepeats <= 0 ? 0 : priorRepeats === 1 ? -1 : priorRepeats === 2 ? -3 : -5,
+      didBackfire: priorRepeats > 0,
+    }
+  }
   if (priorRepeats <= 0) {
     return {
       delta: randomIntegerInclusive(FIRST_POSITIVE_MIN_DELTA, FIRST_POSITIVE_MAX_DELTA, random),
       didBackfire: false,
     }
   }
-
-  if (priorRepeats === 1) {
-    return {
-      delta: randomIntegerInclusive(
-        REPEATED_POSITIVE_MIN_DELTA,
-        REPEATED_POSITIVE_MAX_DELTA,
-        random
-      ),
-      didBackfire: false,
-    }
-  }
-
-  if (random() < REPETITION_BACKFIRE_CHANCE) {
-    return { delta: REPEATED_BACKFIRE_DELTA, didBackfire: true }
-  }
-
   return {
-    delta: randomIntegerInclusive(REPEATED_POSITIVE_MIN_DELTA, REPEATED_POSITIVE_MAX_DELTA, random),
+    delta:
+      priorRepeats === 1
+        ? randomIntegerInclusive(REPEATED_POSITIVE_MIN_DELTA, REPEATED_POSITIVE_MAX_DELTA, random)
+        : priorRepeats === 2
+          ? randomIntegerInclusive(1, 2, random)
+          : 1,
     didBackfire: false,
   }
 }
@@ -555,6 +570,8 @@ export interface ExecuteActionOptions {
   energyCostOverride?: number
   /** Override the complete price when a UI batches several targets atomically. */
   costOverride?: { energy: number; influence: number; info: number }
+  /** Reality orchestration already resolved the phase-scoped repetition roll. */
+  repetitionAlreadyResolved?: boolean
 }
 
 export interface ExecuteActionResult {
@@ -642,7 +659,7 @@ export function executeAction(
       success: false,
       delta: 0,
       newEnergy: currentEnergy,
-      summary: 'Drama Mode required',
+      summary: 'Reality Mode required',
       score: 0,
       label: 'Unavailable',
     }
@@ -697,14 +714,17 @@ export function executeAction(
     }
   }
 
-  const scaledYields =
-    options?.waiveCosts || !dramaMode ? { influence: 0, info: 0 } : normalizeActionYields(action)
+  const scaledYields = options?.waiveCosts
+    ? { influence: 0, info: 0 }
+    : normalizeActionYields(action)
   const random = options?.random ?? Math.random
   const priorRepeats = countPriorRepeatedActions(
     getPersistentSocialHistory(state.social as SocialStateWithHistory),
     actorId,
     targetId,
-    actionId
+    actionId,
+    state.game?.week,
+    state.game?.phase
   )
   const existingAffinity = state.social.relationships[actorId]?.[targetId]?.affinity ?? 0
   const recipientTrust = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0
@@ -713,6 +733,7 @@ export function executeAction(
     settings?: { gameUX?: { dramaMode?: boolean } }
     game?: {
       week?: number
+      phase?: string
       lohId?: string | null
       posWinnerId?: string | null
       players?: Array<{ id: string; name?: string; status: string }>
@@ -724,6 +745,7 @@ export function executeAction(
         currentTargetId: string | null
         backupTargetId: string | null
         askCountsByPlayerId: Record<string, number>
+        disclosedTargetByPlayerId?: Record<string, string>
       } | null
     }
   }
@@ -743,13 +765,20 @@ export function executeAction(
         currentTargetId: freshLohTargetPlan.currentTargetId,
         backupTargetId: freshLohTargetPlan.backupTargetId,
         askCountsByPlayerId: {},
+        disclosedTargetByPlayerId: {},
       })
     : null
   const priorLohAsks = lohPlanState?.askCountsByPlayerId[actorId] ?? 0
+  const finalBlockLocked = ['pos_ceremony_results', 'social_2', 'live_vote'].includes(
+    rootState.game?.phase ?? ''
+  )
+  const safetyAdviceOpen = ['pos_results', 'pos_ceremony'].includes(rootState.game?.phase ?? '')
   const lohDisclosureId = lohPlanState
-    ? priorLohAsks % 2 === 1 && lohPlanState.currentTargetId
+    ? finalBlockLocked
       ? lohPlanState.currentTargetId
-      : (lohPlanState.backupTargetId ?? lohPlanState.currentTargetId)
+      : priorLohAsks % 2 === 1 && lohPlanState.currentTargetId
+        ? lohPlanState.currentTargetId
+        : (lohPlanState.backupTargetId ?? lohPlanState.currentTargetId)
     : null
   const lohDisclosurePlayer = rootState.game?.players?.find(
     (player) => player.id === lohDisclosureId
@@ -809,25 +838,44 @@ export function executeAction(
         ? getAdvancedAllianceFailureDelta(gaslightOccurred, existingAffinity, recipientTrust)
         : getStandardAllianceFailureDelta(gaslightOccurred)
       : computeOutcomeDelta(actionId, actorId, targetId, outcome)
-  const repeatSensitive =
-    outcome === 'success' && isRepeatSensitiveAction(action, baseDelta, scaledYields)
-  const repeatedPositive =
-    repeatSensitive && baseDelta > 0
-      ? computeRepeatedPositiveDelta(priorRepeats, random)
-      : {
-          delta: baseDelta,
-          didBackfire:
-            repeatSensitive &&
-            priorRepeats >= REPETITION_BACKFIRE_THRESHOLD &&
-            random() < REPETITION_BACKFIRE_CHANCE,
+  const repetitionSuccessChances =
+    outcome === 'success' ? getRepetitionSuccessChances(action, baseDelta, scaledYields) : null
+  const repeatSensitive = repetitionSuccessChances !== null
+  const repetitionResolution = repetitionSuccessChances
+    ? options?.repetitionAlreadyResolved
+      ? {
+          delta:
+            baseDelta > 0
+              ? priorRepeats <= 0
+                ? randomIntegerInclusive(FIRST_POSITIVE_MIN_DELTA, FIRST_POSITIVE_MAX_DELTA, random)
+                : priorRepeats === 1
+                  ? randomIntegerInclusive(
+                      REPEATED_POSITIVE_MIN_DELTA,
+                      REPEATED_POSITIVE_MAX_DELTA,
+                      random
+                    )
+                  : priorRepeats === 2
+                    ? randomIntegerInclusive(1, 2, random)
+                    : 1
+              : 1,
+          didBackfire: false,
         }
-  const didBackfire = repeatedPositive.didBackfire
+      : computeRepeatedPositiveDelta(priorRepeats, random, repetitionSuccessChances)
+    : {
+        delta: baseDelta,
+        didBackfire: false,
+      }
+  const didBackfire = repetitionResolution.didBackfire
+  const repetitionMissed =
+    repeatSensitive && !options?.repetitionAlreadyResolved && repetitionResolution.delta <= 0
   const delta =
     actionId === 'ask_loh_target' && priorLohAsks >= 2
       ? -Math.min(4, priorLohAsks)
       : actionId === 'ask_loh_target' && !lohWillDisclose
         ? 0
-        : repeatedPositive.delta
+        : baseDelta > 0
+          ? repetitionResolution.delta
+          : baseDelta
   const formingAlliance =
     actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred
   const relationshipDelta = formingAlliance
@@ -877,6 +925,23 @@ export function executeAction(
           ...lohPlanState.askCountsByPlayerId,
           [actorId]: priorLohAsks + 1,
         },
+        disclosedTargetByPlayerId: lohDisclosureId
+          ? {
+              ...(lohPlanState.disclosedTargetByPlayerId ?? {}),
+              [actorId]: lohDisclosureId,
+            }
+          : lohPlanState.disclosedTargetByPlayerId,
+      },
+    })
+  }
+  if (actionId === 'ask_hold_safety' && rootState.game?.lohId === actorId) {
+    _store.dispatch({
+      type: 'game/setLohSafetyAdvice',
+      payload: {
+        week: rootState.game.week ?? 0,
+        lohId: actorId,
+        holderId: targetId,
+        advice: 'hold',
       },
     })
   }
@@ -898,11 +963,18 @@ export function executeAction(
 
   // Apply outcome-sensitive gains or losses after paying the action costs.
   const resourceEffect = dramaMode
-    ? getSocialResourceEffect(action, didBackfire ? 'backfire' : outcome)
+    ? getSocialResourceEffect(
+        action,
+        didBackfire ? 'backfire' : repetitionMissed ? 'failure' : outcome
+      )
     : outcome === 'success'
       ? {
-          influence: didBackfire ? -scaledYields.influence : scaledYields.influence,
-          info: didBackfire ? -scaledYields.info : scaledYields.info,
+          influence: didBackfire
+            ? -scaledYields.influence
+            : repetitionMissed
+              ? 0
+              : scaledYields.influence,
+          info: didBackfire ? -scaledYields.info : repetitionMissed ? 0 : scaledYields.info,
         }
       : { influence: 0, info: 0 }
   const appliedYields = { influence: 0, info: 0 }
@@ -925,7 +997,10 @@ export function executeAction(
   }
 
   // Read balances after all mutations
-  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } }
+  const stateAfter = _store.getState() as {
+    social: SocialState
+    game?: { week?: number; phase?: string }
+  }
   const balancesAfter = {
     energy: stateAfter.social.energyBank[actorId] ?? 0,
     influence: stateAfter.social.influenceBank[actorId] ?? 0,
@@ -939,7 +1014,7 @@ export function executeAction(
       ? undefined
       : actionId === 'snoop_around'
         ? buildSnoopNarrative(state.social, actorId, state.game?.players ?? [])
-        : actionId === 'ask_loh_target'
+        : actionId === 'ask_loh_target' && !safetyAdviceOpen
           ? buildLohTargetNarrative(state.social, state.game, actorId, targetId, priorRepeats)
           : undefined
 
@@ -966,6 +1041,7 @@ export function executeAction(
     balancesAfter,
     timestamp: Date.now(),
     week: stateAfter.game?.week,
+    phase: stateAfter.game?.phase,
     score: finalScore,
     label: finalLabel,
     source: options?.source ?? 'system',
@@ -1012,7 +1088,10 @@ export function executeAction(
           target: actorId,
           delta: reciprocalAllianceDelta,
           tags: [ALLIANCE_TAG],
-          actionSource: 'system',
+          // Preserve the initiating source so middleware can reward the exact
+          // reciprocal transition once, while AI/system proposals remain free
+          // from human resource bonuses.
+          actionSource: options?.source ?? 'system',
         })
       )
     }
@@ -1099,9 +1178,23 @@ export function executeAction(
         : actionId === 'ask_loh_target' && !lohTargetPlan
           ? `${lohName} kept their plan deliberately vague.`
           : lohTargetPlan && outcome === 'success'
-            ? lohTargetPlan.isBackdoor
-              ? `${lohTargetPlan.targetName} is the LOH's backup plan if the nominations change.`
-              : `${lohTargetPlan.targetName} is the LOH's current target.`
+            ? safetyAdviceOpen && rootState.game?.posWinnerId === actorId
+              ? lohTargetPlan.isBackdoor
+                ? `${lohName} advised using Safety on ${
+                    rootState.game.nomineeIds
+                      ?.filter((nomineeId) => nomineeId !== lohPlanState?.currentTargetId)
+                      .map(
+                        (nomineeId) =>
+                          rootState.game?.players?.find((player) => player.id === nomineeId)
+                            ?.name ?? nomineeId
+                      )[0] ?? 'the other nominee'
+                  } so ${lohTargetPlan.targetName} can become the replacement.`
+                : `${lohName} advised leaving the nominations unchanged; ${lohTargetPlan.targetName} is who they want out.`
+              : finalBlockLocked
+                ? `${lohTargetPlan.targetName} is who the LOH wants out now.`
+                : lohTargetPlan.isBackdoor
+                  ? `${lohTargetPlan.targetName} is the LOH's backup plan if the nominations change.`
+                  : `${lohTargetPlan.targetName} is the LOH's current target.`
             : relationshipDelta !== 0
               ? `${action.title} ${verb} (${sign}${relationshipDelta} relationship)`
               : `${action.title} ${verb}`)
@@ -1215,7 +1308,9 @@ export function executeGroupAction(
       getPersistentSocialHistory(state.social as SocialStateWithHistory),
       actorId,
       targetId,
-      actionId
+      actionId,
+      state.game?.week,
+      state.game?.phase
     )
     const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, outcome)
     const repeated =
@@ -1262,9 +1357,11 @@ export function executeGroupAction(
     _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }))
   }
 
-  const effect = dramaMode
-    ? getSocialResourceEffect(action, anyBackfire ? 'backfire' : outcome, targetIds.length)
-    : { influence: 0, info: 0 }
+  const effect = getSocialResourceEffect(
+    action,
+    anyBackfire ? 'backfire' : outcome,
+    targetIds.length
+  )
   const appliedEffect = {
     influence: clampResourceAdjustment(effect.influence, currentInfluence - costs.influence),
     info: clampResourceAdjustment(effect.info, currentInfo - costs.info),
@@ -1287,7 +1384,10 @@ export function executeGroupAction(
     )
   }
 
-  const stateAfter = _store.getState() as { social: SocialState; game?: { week?: number } }
+  const stateAfter = _store.getState() as {
+    social: SocialState
+    game?: { week?: number; phase?: string }
+  }
   const entry: SocialActionLogEntry = {
     actionId,
     actorId,
@@ -1314,6 +1414,7 @@ export function executeGroupAction(
       ' housemates into one conversation; each reacted according to your history with them.',
     timestamp: Date.now(),
     week: stateAfter.game?.week,
+    phase: stateAfter.game?.phase,
     score: finalScore,
     label: finalLabel,
     source: options?.source ?? 'system',

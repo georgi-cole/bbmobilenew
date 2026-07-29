@@ -146,9 +146,12 @@ describe('event delta – new alliance formed (+2 energy, +200 influence)', () =
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 3 }));
     store.dispatch(setEnergyBankEntry({ playerId: 'p2', value: 3 }));
 
-    // Dispatch an updateRelationship with 'alliance' tag
+    // A formal alliance becomes active only after both directed sides exist.
     store.dispatch(
-      updateRelationship({ source: 'p1', target: 'p2', delta: 5, tags: ['alliance'] }),
+      updateRelationship({ source: 'p1', target: 'p2', delta: 10, tags: ['alliance'] }),
+    );
+    store.dispatch(
+      updateRelationship({ source: 'p2', target: 'p1', delta: 10, tags: ['alliance'] }),
     );
 
     expect(selectEnergyBank(store.getState())['p1']).toBe(5); // 3 + 2

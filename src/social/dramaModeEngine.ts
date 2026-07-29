@@ -2,6 +2,11 @@ import { normalizeAffinity } from './affinityUtils'
 import { DRAMA_DIALOGUE_BANK, DRAMA_MODE_CONFIG, pickDramaCopy } from './dramaModeConfig'
 import { areSocialFamilyMembers } from './socialRuntimeConfig'
 import { getPublicDramaActionAvailability, isPublicDramaAction } from './dramaPacing'
+import {
+  DEFAULT_REALITY_MODE_PRESET,
+  REALITY_PRESET_TUNING,
+  type RealityModePreset,
+} from '../modes/realityMode'
 import type {
   DramaArc,
   DramaArcStage,
@@ -35,6 +40,7 @@ export interface DramaAdvanceInput {
   week: number
   phase: string
   seed: number
+  preset?: RealityModePreset
 }
 export interface DramaAdvanceResult {
   network: DramaSocialNetwork
@@ -387,18 +393,19 @@ function makeRumour(
     sourceChain: [actorId],
   }
   network.rumours.push(rumour)
-  if (rumour.listeners[0].believed) {
-    upsertBelief(
-      network,
-      listenerId,
-      subjectId,
-      kind === 'targeting' ? 'strategic_threat' : 'secretive',
-      rumour.listeners[0].confidence,
-      -0.2,
-      actorId,
-      week
-    )
-  }
+  // Hearing a claim always creates a belief record. `believed` describes
+  // whether it currently clears the listener's confidence threshold; the
+  // lower-confidence representation remains available for later evidence.
+  upsertBelief(
+    network,
+    listenerId,
+    subjectId,
+    kind === 'targeting' ? 'strategic_threat' : 'secretive',
+    rumour.listeners[0].confidence,
+    rumour.listeners[0].believed ? -0.2 : -0.08,
+    actorId,
+    week
+  )
 }
 
 export function applyDramaActionEffect(
@@ -691,6 +698,7 @@ export function applyDramaIncomingResponseEffect(
 
 export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResult {
   const network = clone(input.network)
+  const tuning = REALITY_PRESET_TUNING[input.preset ?? DEFAULT_REALITY_MODE_PRESET]
   const effects: DramaRelationshipEffect[] = []
   const phaseKey = `${input.week}:${input.phase}`
   if (network.pacing.lastProcessedPhase === phaseKey)
@@ -726,7 +734,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
         : mutual < 0
           ? 12
           : -18
-    arc.intensity = clamp(arc.intensity + direction)
+    arc.intensity = clamp(arc.intensity + Math.round(direction * tuning.arcIntensityMultiplier))
     arc.stage = direction < 0 ? 'strained' : stageFor(arc.intensity)
     arc.lastAdvancedWeek = input.week
     if (arc.intensity <= 12) {
@@ -758,9 +766,8 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
       )
       const canGoPublic =
         arc.stage === 'climax' &&
-        network.pacing.publicEventsThisWeek < DRAMA_MODE_CONFIG.pacing.maxPublicEventsPerWeek &&
-        input.week - network.pacing.lastPublicEventWeek >=
-          DRAMA_MODE_CONFIG.pacing.publicEventCooldownWeeks
+        network.pacing.publicEventsThisWeek < tuning.maxPublicEventsPerWeek &&
+        input.week - network.pacing.lastPublicEventWeek >= tuning.publicEventCooldownWeeks
       addEvent(network, {
         type: arc.type === 'betrayal' || arc.type === 'rivalry' ? 'confrontation' : 'arc_beat',
         week: input.week,
@@ -799,8 +806,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
   const canStart =
     input.week >= DRAMA_MODE_CONFIG.pacing.minArcStartWeek &&
     network.pacing.arcsStartedThisWeek < DRAMA_MODE_CONFIG.pacing.maxNewArcsPerWeek &&
-    network.arcs.filter((a) => a.status === 'active').length <
-      DRAMA_MODE_CONFIG.pacing.maxActiveArcs
+    network.arcs.filter((a) => a.status === 'active').length < tuning.maxActiveArcs
   if (canStart && input.phase === 'social_2') {
     const ids = [...activeIds].sort()
     let candidate: { a: string; b: string; type: DramaArcType; score: number } | null = null
@@ -859,7 +865,7 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
 
   if (
     ['social_1', 'social_2'].includes(input.phase) &&
-    network.pacing.rumourHopsThisWeek < DRAMA_MODE_CONFIG.pacing.maxRumourHopsPerWeek
+    network.pacing.rumourHopsThisWeek < tuning.maxRumourHopsPerWeek
   ) {
     const rumour = network.rumours.find(
       (entry) => entry.status === 'circulating' && entry.listeners.length > 0

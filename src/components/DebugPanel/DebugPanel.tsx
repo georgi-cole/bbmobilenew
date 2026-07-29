@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -35,7 +35,9 @@ import { socialConfig } from '../../social/socialConfig';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
 import SurvivorDebugControls from './SurvivorDebugControls';
-import { isDebugAccessGranted } from '../../utils/debugMode';
+import DebugDiagnostics from './DebugDiagnostics';
+import SimulationDebugControls from './SimulationDebugControls';
+import { isDebugAccessGranted, persistDebugAccess } from '../../utils/debugMode';
 import type { ForcedShockType, Phase } from '../../types';
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
 import './DebugPanel.css';
@@ -161,6 +163,12 @@ export default function DebugPanel() {
   const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true;
   const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname);
 
+  useEffect(() => {
+    if (searchParams.get('debug') === '1' && searchParams.get('qa') === '1') {
+      persistDebugAccess();
+    }
+  }, [searchParams]);
+
   if (!isDebug) return null;
 
   return <DebugPanelContent searchParams={searchParams} />;
@@ -181,6 +189,21 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
   const [selectedStatusPlayer, setSelectedStatusPlayer] = useState('');
   const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
   const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        setIsOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
+
+  const jumpToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const alive = game.players.filter(
     (p) => p.status !== 'evicted' && p.status !== 'jury',
@@ -293,7 +316,7 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
       {isOpen && (
         <aside className="dbg-panel" aria-label="Debug Panel">
           <header className="dbg-panel__header">
-            <span>🐛 Debug Panel</span>
+            <span>QA Control Center</span>
             <button
               className="dbg-panel__close"
               onClick={() => setIsOpen(false)}
@@ -303,9 +326,24 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
             </button>
           </header>
 
+          <nav className="dbg-panel__nav" aria-label="Debug categories">
+            {[
+              ['dbg-overview', 'Overview'],
+              ['dbg-season', 'Season'],
+              ['dbg-social', 'Social'],
+              ['dbg-minigames', 'Games'],
+              ['dbg-finale', 'Finale'],
+              ['dbg-tools', 'Tools'],
+            ].map(([id, label]) => (
+              <button key={id} type="button" onClick={() => jumpToSection(id)}>
+                {label}
+              </button>
+            ))}
+          </nav>
+
           <div className="dbg-panel__body">
             {/* ── Inspector ── */}
-            <section className="dbg-section">
+            <section className="dbg-section" id="dbg-overview">
               <h3 className="dbg-section__title">Inspector</h3>
               <dl className="dbg-grid">
                 <dt>Day</dt>             <dd>{game.week}</dd>
@@ -334,7 +372,7 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
             </section>
 
             {/* ── Controls ── */}
-            <section className="dbg-section">
+            <section className="dbg-section" id="dbg-season">
               <h3 className="dbg-section__title">Controls</h3>
 
               <div className="dbg-row">
@@ -654,8 +692,10 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
               </div>
             </section>
 
+            <SimulationDebugControls />
+
             {/* ── Incoming Interaction Debugging ── */}
-            <section className="dbg-section">
+            <section className="dbg-section" id="dbg-social">
               <h3 className="dbg-section__title">Incoming Interactions</h3>
               <div className="dbg-row">
                 <button
@@ -716,13 +756,16 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
             </section>
 
             {/* ── Finale Debug Controls ── */}
-            <FinaleDebugControls />
+            <div id="dbg-finale"><FinaleDebugControls /></div>
 
             {/* ── Minigame Debug Controls ── */}
-            <MinigameDebugControls />
+            <div id="dbg-minigames"><MinigameDebugControls /></div>
 
             {/* ── Survivor Debug Controls ── */}
             <SurvivorDebugControls />
+
+            {/* ── Diagnostics, snapshots and centralized QA navigation ── */}
+            <div id="dbg-tools"><DebugDiagnostics /></div>
           </div>
         </aside>
       )}

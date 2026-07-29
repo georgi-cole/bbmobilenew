@@ -172,11 +172,11 @@ describe('Settings screen', () => {
     expect(screen.queryByLabelText(/compact roster layout/i)).toBeNull()
   })
 
-  it('persists a Drama Mode admin override from Advanced Settings', async () => {
+  it('persists a Reality Mode admin override from Advanced Settings', async () => {
     const { store } = renderSettingsAdmin()
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }))
-    const dramaModeToggle = await screen.findByLabelText(/toggle drama mode/i)
+    const dramaModeToggle = await screen.findByLabelText(/toggle reality mode/i)
     fireEvent.click(dramaModeToggle)
 
     expect(store.getState().settings.gameUX.dramaMode).toBe(true)
@@ -221,21 +221,21 @@ describe('Settings screen', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('gates Drama Mode for standard users', () => {
+  it('gates Reality Mode for standard users', () => {
     const { store } = renderSettings()
-    const dramaModeToggle = screen.getByLabelText(/toggle drama mode/i)
+    const dramaModeToggle = screen.getByLabelText(/toggle reality mode/i)
 
     fireEvent.click(dramaModeToggle)
 
     expect(store.getState().settings.gameUX.dramaMode).toBe(false)
     expect(
-      screen.getByText(/drama mode is available as a permanent one-time purchase/i)
+      screen.getByText(/reality mode is available as a permanent one-time purchase/i)
     ).toBeTruthy()
   })
 
-  it('shows and allows disabling Drama Mode when debug settings enabled it', () => {
+  it('shows and allows disabling Reality Mode when debug settings enabled it', () => {
     const { store } = renderSettings(['/settings'], false, false, false, false, true)
-    const dramaModeToggle = screen.getByLabelText(/toggle drama mode/i) as HTMLInputElement
+    const dramaModeToggle = screen.getByLabelText(/toggle reality mode/i) as HTMLInputElement
 
     expect(dramaModeToggle.checked).toBe(true)
     fireEvent.click(dramaModeToggle)
@@ -245,13 +245,44 @@ describe('Settings screen', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('allows a standalone Drama Mode owner to enable it without VIP', () => {
+  it('allows a standalone Reality Mode owner to enable it without VIP', () => {
     const { store } = renderSettings(['/settings'], false, false, false, true)
 
-    fireEvent.click(screen.getByLabelText(/toggle drama mode/i))
+    fireEvent.click(screen.getByLabelText(/toggle reality mode/i))
 
     expect(store.getState().settings.gameUX.dramaMode).toBe(true)
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('shows Reality details only when the owned mode is turned on', () => {
+    const { store } = renderSettings(['/settings'], false, false, false, true)
+
+    expect(screen.queryByLabelText(/reality style/i)).toBeNull()
+    expect(screen.queryByLabelText(/romance storylines/i)).toBeNull()
+
+    fireEvent.click(screen.getByLabelText(/toggle reality mode/i))
+
+    const preset = screen.getByLabelText(/reality style/i) as HTMLSelectElement
+    expect(preset.value).toBe('tv')
+    expect(screen.getByLabelText(/romance storylines/i)).toBeTruthy()
+    expect(Array.from(preset.options).find((option) => option.value === 'adult')?.disabled).toBe(
+      true
+    )
+
+    fireEvent.change(preset, { target: { value: 'casual' } })
+    expect(store.getState().settings.gameUX.realityModePreset).toBe('casual')
+  })
+
+  it('lets Advanced Settings manage Reality details while the mode is off', async () => {
+    renderSettingsAdmin()
+    fireEvent.click(screen.getByRole('tab', { name: /game ux/i }))
+
+    const preset = (await screen.findByLabelText(/reality style/i)) as HTMLSelectElement
+    expect(preset.value).toBe('tv')
+    expect(Array.from(preset.options).find((option) => option.value === 'adult')?.disabled).toBe(
+      true
+    )
+    expect(screen.getByLabelText(/romance storylines/i)).toBeTruthy()
   })
 
   it('gates Tribunal House for standard users', () => {

@@ -5,6 +5,8 @@
  */
 
 import { mulberry32 } from '../store/rng'
+import type { RealityDomainState } from '../social/reality'
+import { computeRealityJuryEvaluation, realityJuryEvaluationScore } from '../social/reality'
 
 // ─── Jury composition ────────────────────────────────────────────────────────
 
@@ -162,9 +164,64 @@ function hashStr(s: string): number {
  * @param seed         Game RNG seed.
  * @returns            The finalist ID the juror votes for.
  */
-export function aiJurorVote(jurorId: string, finalistIds: string[], seed: number): string {
+export function realityJurorScorecard(
+  jurorId: string,
+  finalistIds: string[],
+  reality: RealityDomainState | undefined
+): Record<string, number> | undefined {
+  if (!reality || finalistIds.length === 0) return undefined
+  const hasEvidence = finalistIds.some((finalistId) => {
+    const edge = reality.relationships[jurorId]?.[finalistId]
+    return (
+      Boolean(
+        reality.juryEvaluations.find(
+          (entry) => entry.jurorId === jurorId && entry.finalistId === finalistId
+        )
+      ) ||
+      Boolean(
+        reality.events.find(
+          (event) =>
+            event.juryEligible &&
+            (event.actorId === finalistId || event.targetIds.includes(finalistId))
+        )
+      ) ||
+      Boolean(
+        edge &&
+        (edge.familiarity > 0 ||
+          edge.positiveAnchorEventIds.length > 0 ||
+          edge.negativeAnchorEventIds.length > 0)
+      )
+    )
+  })
+  if (!hasEvidence) return undefined
+  return Object.fromEntries(
+    finalistIds.map((finalistId) => {
+      const evaluation = computeRealityJuryEvaluation(reality, jurorId, finalistId, false)
+      return [finalistId, realityJuryEvaluationScore(evaluation)]
+    })
+  )
+}
+
+export function aiJurorVote(
+  jurorId: string,
+  finalistIds: string[],
+  seed: number,
+  reality?: RealityDomainState,
+  scorecard?: Record<string, number>
+): string {
   if (finalistIds.length === 0) return ''
   const rng = mulberry32((seed ^ hashStr(jurorId)) >>> 0)
+  const scores = scorecard ?? realityJurorScorecard(jurorId, finalistIds, reality)
+  if (scores) {
+    return [...finalistIds]
+      .map((finalistId) => ({
+        finalistId,
+        score: (scores[finalistId] ?? 0) + (rng() - 0.5) * 3,
+      }))
+      .sort(
+        (left, right) => right.score - left.score || left.finalistId.localeCompare(right.finalistId)
+      )[0].finalistId
+  }
   return finalistIds[Math.floor(rng() * finalistIds.length)]
 }
 

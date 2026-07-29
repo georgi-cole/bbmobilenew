@@ -48,6 +48,9 @@ import {
 } from '../../bb/secretMission'
 import { classifyTwinShockAnswer, resolveTwinShockTurn } from '../../bb/twinShock'
 import { applyInfluenceDelta } from '../../social/socialSlice'
+import { getEffectiveSocialMode } from '../../social/socialMode'
+import RealityLedger from '../../components/RealityLedger/RealityLedger'
+import StoreProductIcon from '../../components/StoreProductModal/StoreProductIcon'
 import {
   createInitialBigEyeState,
   generateBigBrotherReply,
@@ -477,6 +480,8 @@ export default function DiaryRoom() {
   const dispatch = useAppDispatch()
   const gameState = useAppSelector((s) => s.game)
   const socialRelationships = useAppSelector((s) => s.social.relationships)
+  const realityDomain = useAppSelector((s) => s.social.reality)
+  const realityReadEnabled = useAppSelector((s) => getEffectiveSocialMode(s) === 'drama')
   const phase = useAppSelector((s) => s.game.phase)
   const seed = useAppSelector((s) => s.game.seed)
   const userPlayer = useAppSelector((s) => s.game.players.find((p) => p.isUser))
@@ -1279,6 +1284,36 @@ export default function DiaryRoom() {
               <p className="diary-room__prompt">
                 "You are now in the Confessional. No one can hear you. Speak freely."
               </p>
+              {userPlayer && realityReadEnabled && (
+                <details className="diary-room__reality-recap">
+                  <summary>Your private game read</summary>
+                  <RealityLedger
+                    reality={realityDomain}
+                    players={players}
+                    humanId={userPlayer.id}
+                  />
+                </details>
+              )}
+              {userPlayer && !realityReadEnabled && (
+                <section
+                  className="diary-room__reality-recap diary-room__reality-recap--locked"
+                  aria-label="Private game read locked"
+                >
+                  <span
+                    className="diary-room__reality-recap-badge"
+                    aria-label="Reality Mode required"
+                  >
+                    <StoreProductIcon name="vip" />
+                  </span>
+                  <div>
+                    <strong>Your private game read</strong>
+                    <small>Unlock Reality Mode to see what is really shifting around you.</small>
+                  </div>
+                  <button type="button" onClick={() => navigate('/store')}>
+                    Unlock
+                  </button>
+                </section>
+              )}
               {ticTacToeActive && (
                 <div className="diary-room__mini-game-card" role="status" aria-live="polite">
                   <div className="diary-room__mini-game-copy">

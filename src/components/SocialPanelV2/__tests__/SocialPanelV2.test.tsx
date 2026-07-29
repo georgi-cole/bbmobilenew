@@ -810,7 +810,7 @@ describe('LOH target question integration', () => {
     renderPanel(store)
 
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(loh.name, 'i') })[0])
-    fireEvent.click(screen.getByRole('button', { name: /Ask LOH Target/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Ask LOH Plan/i }))
     const execute = screen.getByRole('button', { name: 'Execute' })
     expect(execute).toBeEnabled()
     fireEvent.click(execute)

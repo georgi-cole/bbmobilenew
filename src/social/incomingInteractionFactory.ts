@@ -5,6 +5,7 @@ import {
   type SocialMode,
 } from './socialRuntimeConfig'
 import type { IncomingInteraction, IncomingInteractionType } from './types'
+import { deriveIncomingDeadline, getIncomingDeadline } from './incomingInteractionDeadline'
 
 export interface IncomingInteractionFactoryInput {
   id: string
@@ -15,6 +16,8 @@ export interface IncomingInteractionFactoryInput {
   phase: string
   mode: SocialMode
   expiresAtWeek?: number
+  createdAt?: number
+  deadlinePhase?: string
   payload?: Record<string, unknown>
   responsePolicy?: IncomingInteractionResponsePolicy
 }
@@ -37,9 +40,28 @@ export function normalizeIncomingInteractionContract(
         ? 'drama'
         : fallbackMode
   const responsePolicy = getIncomingInteractionResponsePolicy(interaction)
+  const isLegacyClock = interaction.createdDay === undefined && interaction.deadline === undefined
+  const deadline = isLegacyClock
+    ? getIncomingDeadline(interaction)
+    : (interaction.deadline ??
+      deriveIncomingDeadline({
+        day: interaction.createdDay ?? interaction.createdWeek,
+        phase:
+          interaction.createdPhase ??
+          (typeof interaction.payload?.phase === 'string' ? interaction.payload.phase : 'social_1'),
+        type: interaction.type,
+        payload: interaction.payload,
+        required: responsePolicy === 'required',
+      }) ??
+      getIncomingDeadline(interaction))
 
   return {
     ...interaction,
+    createdDay: interaction.createdDay ?? interaction.createdWeek,
+    createdPhase:
+      interaction.createdPhase ??
+      (typeof interaction.payload?.phase === 'string' ? interaction.payload.phase : 'social_1'),
+    deadline,
     payload: {
       ...interaction.payload,
       modeAtCreation: mode,
@@ -66,6 +88,15 @@ export function normalizeIncomingInteractionContract(
 export function createIncomingInteraction(
   input: IncomingInteractionFactoryInput
 ): IncomingInteraction {
+  const stableTimestamp =
+    input.week * 1_000_000 +
+    (Math.abs(
+      [...input.id].reduce(
+        (hash, character) => (Math.imul(hash, 31) + character.charCodeAt(0)) | 0,
+        0
+      )
+    ) %
+      1_000_000)
   const draft: IncomingInteraction = {
     id: input.id,
     fromId: input.fromId,
@@ -74,11 +105,14 @@ export function createIncomingInteraction(
     payload: {
       ...input.payload,
       phase: input.phase,
+      ...(input.deadlinePhase ? { deadlinePhase: input.deadlinePhase } : {}),
       ...(input.responsePolicy ? { responsePolicy: input.responsePolicy } : {}),
     },
-    createdAt: Date.now(),
+    createdAt: input.createdAt ?? stableTimestamp,
     createdWeek: input.week,
     expiresAtWeek: input.expiresAtWeek ?? input.week + 1,
+    createdDay: input.week,
+    createdPhase: input.phase,
     read: false,
     requiresResponse: false,
     resolved: false,

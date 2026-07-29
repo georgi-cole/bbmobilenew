@@ -24,7 +24,7 @@ export const classicModeConfig: GameModeConfig = {
 
 export const survivorModeConfig: GameModeConfig = {
   publicModeEnabled: false,
-  socialModeEnabled: false,
+  socialModeEnabled: true,
   competitionsEnabled: true,
   nominationEvictionEnabled: true,
   infiniteDaysEnabled: true,

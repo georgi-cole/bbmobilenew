@@ -16,6 +16,14 @@ vi.mock('../MinigameDebugControls', () => ({
   default: () => null,
 }))
 
+vi.mock('../SimulationDebugControls', () => ({
+  default: () => null,
+}))
+
+vi.mock('../DebugDiagnostics', () => ({
+  default: () => null,
+}))
+
 function makeStore() {
   return configureStore({
     reducer: {

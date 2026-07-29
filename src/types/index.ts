@@ -565,6 +565,23 @@ export interface GameState {
     currentTargetId: string | null
     backupTargetId: string | null
     askCountsByPlayerId: Record<string, number>
+    /** Last target name actually disclosed to each asker this week. */
+    disclosedTargetByPlayerId?: Record<string, string>
+  } | null
+  /**
+   * The original nomination ceremony is remembered separately from the live
+   * block so Safety changes do not erase who initially put whom in danger.
+   */
+  currentWeekNominationRecord?: {
+    week: number
+    lohId: string
+    nomineeIds: string[]
+  } | null
+  /** Previous week's original nominations, used as one moderate strategic memory. */
+  lastWeekNominationRecord?: {
+    week: number
+    lohId: string
+    nomineeIds: string[]
   } | null
   /** Advice a human LOH gave the current AI Safety holder before the ceremony. */
   lohSafetyAdvice?: {

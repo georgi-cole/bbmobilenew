@@ -15,7 +15,7 @@
  *
  * Event delta rules:
  *   LOH win               → +5  energy to winner
- *   POS win               → +3  energy to winner
+ *   POS win               → +6  energy to winner
  *   Survived nomination   → +4  energy to remaining nominees (entering live_vote)
  *   New alliance formed   → +2  energy + influence +200 to both parties
  *   Saved by POS          → +2  energy to saved player
@@ -35,10 +35,16 @@ import {
   invalidateIncomingInteractions,
   applyDramaAction,
   replaceDramaNetwork,
+  recordRealityActualVote,
+  recordRealityCeremony,
   setEnergyBankEntry,
   updateRelationship,
+  initializeRealitySimulation,
 } from './socialSlice'
-import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions'
+import {
+  autoResolveExpiredIncomingInteractionsForClock,
+  autoResolveExpiredIncomingInteractionsForWeek,
+} from './incomingInteractions'
 import {
   scheduleIncomingInteractionsForPhase,
   ELIGIBLE_PHASES,
@@ -56,6 +62,7 @@ import type {
 import { advanceDramaNetwork, normalizeDramaSocialNetwork } from './dramaModeEngine'
 import { seedWeekRelationships } from './weekSocialSeed'
 import { DEFAULT_ENERGY, HUMAN_SOCIAL_ALLOWANCE } from './constants'
+import { getProfileRealityAgeEligibility, resolveRealityModePreset } from '../modes/realityMode'
 import { BETRAYAL_TAG, hasAllianceBetween } from './socialAlliance'
 import { getEffectiveSocialMode } from './socialMode'
 import { getFamilyGroupId } from './socialRuntimeConfig'
@@ -64,14 +71,20 @@ import {
   voidOverdueSocialCommitments,
   type CommitmentStore,
 } from './socialCommitments'
+import { deriveRealitySimulationSeed, type RealitySimulationState } from './realitySimulation'
+import { getRealityModeAdapter, type RealityCeremonyKind } from './reality'
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2'])
 
 const PHASE_SET_ACTIONS = new Set(['game/setPhase', 'game/forcePhase'])
 
 interface GameState {
+  gameId: string
+  seed: number
   phase: string
   week: number
+  mode?: 'classic' | 'survival'
+  publicModeEnabled?: boolean
   lohId: string | null
   prevHohId: string | null
   posWinnerId: string | null
@@ -89,7 +102,14 @@ interface GameState {
 
 interface StateWithGame {
   game: GameState
-  settings?: { gameUX?: { dramaMode?: boolean; dramaModeAdminOverride?: boolean } }
+  settings?: {
+    gameUX?: {
+      dramaMode?: boolean
+      dramaModeAdminOverride?: boolean
+      realityModePreset?: import('../modes/realityMode').RealityModePreset
+    }
+  }
+  profiles?: import('../store/profilesSlice').ProfilesState
   vip?: {
     isActive?: boolean
     entitlements?: { dramaMode?: boolean }
@@ -101,10 +121,35 @@ interface StateWithGame {
     scheduledIncomingInteractions?: ScheduledIncomingInteraction[]
     dramaNetwork?: DramaSocialNetwork
     socialMemory?: SocialMemoryMap
+    realitySimulation?: RealitySimulationState
+    reality?: import('./reality').RealityDomainState
   }
 }
 
 type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown }
+
+const REALITY_SEEDING_ACTIONS = new Set([
+  'game/advance',
+  'game/setPhase',
+  'game/forcePhase',
+  'social/recordSocialAction',
+])
+
+function ensureRealitySimulationSeed(api: MiddlewareAPI, force = false): void {
+  const state = api.getState() as StateWithGame
+  if (
+    getEffectiveSocialMode(state) !== 'drama' ||
+    !state.game ||
+    (!force && state.social?.realitySimulation?.rng)
+  )
+    return
+  api.dispatch(
+    initializeRealitySimulation({
+      seed: deriveRealitySimulationSeed(state.game.seed ?? 0, state.game.gameId ?? ''),
+      force,
+    })
+  )
+}
 
 /** Advance the premium story graph once per phase and feed consequences back into gameplay. */
 function runDramaPhase(api: MiddlewareAPI, phase: string): void {
@@ -120,6 +165,10 @@ function runDramaPhase(api: MiddlewareAPI, phase: string): void {
     week: state.game.week ?? 1,
     phase,
     seed: (state.game as GameState & { seed?: number }).seed ?? 0,
+    preset: resolveRealityModePreset(
+      state.settings?.gameUX?.realityModePreset,
+      getProfileRealityAgeEligibility(state.profiles)
+    ),
   })
   api.dispatch(replaceDramaNetwork(result.network))
   result.relationshipEffects.forEach((effect) =>
@@ -266,6 +315,36 @@ function applySafetyRelationshipConsequences(
   }
 }
 
+function applyReplacementNomineeConsequences(
+  api: MiddlewareAPI,
+  replacementIds: readonly string[],
+  lohId: string | null,
+  holderId: string | null
+): void {
+  if (!isDramaModeEnabled(api) || replacementIds.length === 0) return
+  for (const replacementId of replacementIds) {
+    if (lohId) {
+      recordCeremony(api, 'NOMINATIONS_LOCKED', {
+        actorId: lohId,
+        targetIds: [replacementId],
+        reason: 'A replacement nominee was put on the block after Safety was used.',
+        tags: ['replacement_nominee'],
+      })
+    }
+    if (holderId && holderId !== replacementId && holderId !== lohId) {
+      api.dispatch(
+        updateRelationship({
+          source: replacementId,
+          target: holderId,
+          delta: -4,
+          tags: ['safety_fallout'],
+          actionSource: 'system',
+        })
+      )
+    }
+  }
+}
+
 function twinEchoFactor(source: string, target: string, week: number): number {
   const value = `${source}|${target}|${week}`
     .split('')
@@ -291,7 +370,7 @@ function applyPovBonus(
   newPovId: string | null
 ): void {
   if (newPovId && newPovId !== prevPovId) {
-    grantEnergy(api, newPovId, 3)
+    grantEnergy(api, newPovId, 6)
   }
 }
 
@@ -324,12 +403,127 @@ function syncInvalidIncomingInteractions(api: MiddlewareAPI): void {
   )
 }
 
+function activeRealityWitnessIds(state: StateWithGame): string[] {
+  return state.game.players
+    .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+    .map((player) => player.id)
+}
+
+function recordCeremony(
+  api: MiddlewareAPI,
+  kind: RealityCeremonyKind,
+  input: {
+    actorId?: string | null
+    targetIds?: string[]
+    reason?: string
+    tags?: string[]
+  } = {}
+): void {
+  const state = api.getState() as StateWithGame
+  if (getEffectiveSocialMode(state) !== 'drama' || !state.social?.reality) return
+  const mode = getRealityModeAdapter(state.game.mode, state.game.publicModeEnabled === true)
+  api.dispatch(
+    recordRealityCeremony({
+      kind,
+      day: state.game.week ?? 1,
+      phase: state.game.phase,
+      actorId: input.actorId ?? undefined,
+      targetIds: input.targetIds ?? [],
+      witnessIds: activeRealityWitnessIds(state),
+      reason: input.reason,
+      tags: input.tags,
+      publicEligible: mode.publicConsequencesEnabled,
+    })
+  )
+}
+
+function recordActualVotes(api: MiddlewareAPI): void {
+  const state = api.getState() as StateWithGame
+  if (getEffectiveSocialMode(state) !== 'drama') return
+  const votes = state.game.votes ?? {}
+  if (!state.social?.reality || Object.keys(votes).length === 0) return
+  recordCeremony(api, 'VOTES_REVEALED', {
+    targetIds: [...new Set(Object.values(votes))],
+    reason: 'The house vote was locked and revealed.',
+  })
+  const afterCeremony = api.getState() as StateWithGame
+  const eventId =
+    [...(afterCeremony.social?.reality?.events ?? [])]
+      .reverse()
+      .find(
+        (event) => event.day === afterCeremony.game.week && event.type === 'CEREMONY_VOTES_REVEALED'
+      )?.id ?? `vote:${afterCeremony.game.week}`
+  for (const [actorId, targetId] of Object.entries(votes)) {
+    api.dispatch(
+      recordRealityActualVote({
+        actorId,
+        targetId,
+        day: afterCeremony.game.week ?? 1,
+        phase: afterCeremony.game.phase,
+        eventId,
+      })
+    )
+  }
+}
+
+function recordPhaseCeremony(
+  api: MiddlewareAPI,
+  previousPhase: string | undefined,
+  nextPhase: string | undefined
+): void {
+  if (!nextPhase || previousPhase === nextPhase) return
+  const state = api.getState() as StateWithGame
+  if (getEffectiveSocialMode(state) !== 'drama') return
+  if (nextPhase === 'loh_results' && state.game.lohId) {
+    recordCeremony(api, 'POWER_WON', {
+      actorId: state.game.lohId,
+      reason: 'Leader of the House power was won.',
+      tags: ['loh'],
+    })
+  }
+  if (nextPhase === 'pos_results' && state.game.posWinnerId) {
+    recordCeremony(api, 'POWER_WON', {
+      actorId: state.game.posWinnerId,
+      reason: 'Power of Safety was won.',
+      tags: ['safety'],
+    })
+  }
+  if (nextPhase === 'nomination_results' && state.game.lohId && state.game.nomineeIds.length > 0) {
+    recordCeremony(api, 'NOMINATIONS_LOCKED', {
+      actorId: state.game.lohId,
+      targetIds: state.game.nomineeIds,
+      reason: 'The nominations were made official.',
+    })
+  }
+  if (previousPhase === 'pos_ceremony_results') {
+    const savedId = state.game.povSavedId ?? null
+    recordCeremony(api, savedId ? 'SAFETY_USED' : 'SAFETY_DECLINED', {
+      actorId: state.game.posWinnerId,
+      targetIds: savedId ? [savedId] : state.game.nomineeIds,
+      reason: savedId
+        ? 'The Power of Safety changed the nominations.'
+        : 'The Power of Safety was not used.',
+    })
+  }
+  if (nextPhase === 'eviction_results') recordActualVotes(api)
+}
+
 export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   if (typeof action !== 'object' || action === null || !('type' in action)) {
     return next(action)
   }
 
   const { type } = action as { type: string }
+
+  if (type === 'game/resetGame') {
+    const result = next(action)
+    ensureRealitySimulationSeed(api as unknown as MiddlewareAPI, true)
+    return result
+  }
+
+  if (REALITY_SEEDING_ACTIONS.has(type)) {
+    ensureRealitySimulationSeed(api as unknown as MiddlewareAPI)
+  }
 
   if (type === 'social/recordSocialAction') {
     const result = next(action)
@@ -387,6 +581,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     }
 
     const result = next(action)
+    if (prevPhase !== nextPhase) {
+      const day = (api.getState() as StateWithGame).game?.week ?? 1
+      api.dispatch(autoResolveExpiredIncomingInteractionsForClock(day, nextPhase) as never)
+      recordPhaseCeremony(api as unknown as MiddlewareAPI, prevPhase, nextPhase)
+    }
 
     if (nextPhase === 'week_start' && prevPhase !== 'week_start') {
       handleWeekStart(api as unknown as MiddlewareAPI)
@@ -495,12 +694,42 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         saveId,
         prevNominees
       )
+      recordCeremony(api as unknown as MiddlewareAPI, 'SAFETY_USED', {
+        actorId: prevState.game?.posWinnerId ?? null,
+        targetIds: [saveId],
+        reason: 'The Power of Safety changed the nominations.',
+      })
+      const replacementIds = afterNominees.filter((id) => !prevNominees.includes(id))
+      applyReplacementNomineeConsequences(
+        api as unknown as MiddlewareAPI,
+        replacementIds,
+        prevState.game?.lohId ?? null,
+        prevState.game?.posWinnerId ?? null
+      )
     }
 
     evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type, saveId)
 
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI)
 
+    return result
+  }
+
+  if (type === 'game/setReplacementNominee') {
+    const prevState = api.getState() as StateWithGame
+    const prevNominees = prevState.game?.nomineeIds ?? []
+    const result = next(action)
+    const afterState = api.getState() as StateWithGame
+    const replacementIds = (afterState.game?.nomineeIds ?? []).filter(
+      (id) => !prevNominees.includes(id)
+    )
+    applyReplacementNomineeConsequences(
+      api as unknown as MiddlewareAPI,
+      replacementIds,
+      afterState.game?.lohId ?? null,
+      afterState.game?.posWinnerId ?? null
+    )
+    syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI)
     return result
   }
 
@@ -515,6 +744,14 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         null,
         prevState.game?.nomineeIds ?? []
       )
+      const afterState = api.getState() as StateWithGame
+      if (!afterState.game.awaitingPovSaveTarget) {
+        recordCeremony(api as unknown as MiddlewareAPI, 'SAFETY_DECLINED', {
+          actorId: prevState.game?.posWinnerId ?? null,
+          targetIds: prevState.game?.nomineeIds ?? [],
+          reason: 'The Power of Safety was not used.',
+        })
+      }
     }
     evaluateSocialCommitmentsForAction(
       api as unknown as CommitmentStore,
@@ -526,7 +763,21 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   }
 
   if (type === 'game/submitHumanVote' || type === 'game/submitHumanDoubleVote') {
+    const before = api.getState() as StateWithGame
+    const humanId = before.game.players.find((player) => player.isUser)?.id
     const result = next(action)
+    const targetId = (action as unknown as { payload: unknown }).payload
+    if (humanId && typeof targetId === 'string') {
+      api.dispatch(
+        recordRealityActualVote({
+          actorId: humanId,
+          targetId,
+          day: before.game.week ?? 1,
+          phase: before.game.phase,
+          eventId: `vote:${before.game.week}:${humanId}`,
+        })
+      )
+    }
     evaluateSocialCommitmentsForAction(
       api as unknown as CommitmentStore,
       type,
@@ -556,6 +807,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     const afterState = api.getState() as StateWithGame
     const newPhase = afterState.game?.phase
+    recordPhaseCeremony(api as unknown as MiddlewareAPI, prevPhase, newPhase)
 
     if (
       newPhase === 'nomination_results' &&
@@ -615,6 +867,12 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     // Social engine lifecycle
     if (prevPhase !== newPhase) {
+      api.dispatch(
+        autoResolveExpiredIncomingInteractionsForClock(
+          afterState.game?.week ?? 1,
+          newPhase
+        ) as never
+      )
       if (SOCIAL_PHASES.has(prevPhase)) {
         SocialEngine.endPhase(prevPhase)
       }
@@ -686,6 +944,13 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         payload.target
       )
     const result = next(action)
+    const hasAllianceAfter =
+      payload.tags?.includes('alliance') === true &&
+      hasAllianceBetween(
+        (api.getState() as StateWithGame).social?.relationships ?? {},
+        payload.source,
+        payload.target
+      )
     if (
       isDramaModeEnabled(api as unknown as MiddlewareAPI) &&
       !payload.twinPropagation &&
@@ -755,14 +1020,12 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     // they are the root cause of influence/energy inflation when many AI players
     // target the human player with 'ally' actions each phase.
     if (payload.tags && payload.actionSource !== 'system') {
-      if (payload.tags.includes('alliance') && !hadAllianceBefore) {
+      if (payload.tags.includes('alliance') && !hadAllianceBefore && hasAllianceAfter) {
         // Reward only the actual transition into a new alliance.
         grantEnergy(api as unknown as MiddlewareAPI, payload.source, 2)
         grantEnergy(api as unknown as MiddlewareAPI, payload.target, 2)
-        if (isDramaModeEnabled(api as unknown as MiddlewareAPI)) {
-          grantInfluence(api as unknown as MiddlewareAPI, payload.source, 200)
-          grantInfluence(api as unknown as MiddlewareAPI, payload.target, 200)
-        }
+        grantInfluence(api as unknown as MiddlewareAPI, payload.source, 200)
+        grantInfluence(api as unknown as MiddlewareAPI, payload.target, 200)
       } else if (payload.tags.includes('betrayal')) {
         // Broke alliance: actor loses 3 energy.
         grantEnergy(api as unknown as MiddlewareAPI, payload.source, -3)
@@ -780,6 +1043,14 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const week = prevState.game?.week
 
     const result = next(action)
+    recordCeremony(api as unknown as MiddlewareAPI, 'EVICTION', {
+      targetIds: [evicteeId],
+      reason:
+        type === 'game/selfEvict'
+          ? 'A contestant left the game.'
+          : 'The house vote resulted in an eviction.',
+      tags: type === 'game/selfEvict' ? ['self_eviction'] : [],
+    })
 
     // Only drain for the human/user player — AI players manage their own state.
     if (evictee?.isUser) {
@@ -799,8 +1070,19 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     type === 'social/hydrateSocial'
   ) {
     const result = next(action)
+    if (type === 'social/hydrateSocial') {
+      ensureRealitySimulationSeed(api as unknown as MiddlewareAPI)
+    }
     if (type === 'game/finalizeNominations' || type === 'game/commitNominees') {
       evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type)
+      const state = api.getState() as StateWithGame
+      if (state.game.lohId && state.game.nomineeIds.length > 0) {
+        recordCeremony(api as unknown as MiddlewareAPI, 'NOMINATIONS_LOCKED', {
+          actorId: state.game.lohId,
+          targetIds: state.game.nomineeIds,
+          reason: 'The nominations were made official.',
+        })
+      }
     }
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI)
     return result

@@ -17,7 +17,11 @@ import {
   applyEnergyDelta,
   applyInfoDelta,
   applyInfluenceDelta,
+  recordSocialAction,
+  replaceRealityDomain,
+  replaceRealitySimulation,
   scheduleIncomingInteraction,
+  updateRelationship,
 } from './socialSlice'
 import {
   assignDeliverySlot,
@@ -41,6 +45,20 @@ import type {
   SocialActionLogEntry,
   SocialMemoryMap,
 } from './types'
+import type { RealityDomainState } from './reality'
+import {
+  REALITY_ACTION_BY_ID,
+  projectRealityAffinity,
+  runRealityOpportunity,
+  type RealityActorSnapshot,
+  type RealityContext,
+} from './reality'
+import { getRealityModeAdapter } from './reality'
+import {
+  createInitialRealitySimulationState,
+  deriveRealitySimulationSeed,
+  type RealitySimulationState,
+} from './realitySimulation'
 import { normalizeDramaSocialNetwork } from './dramaModeEngine'
 import { chooseUtilityDramaAIMove } from './dramaAIPolicy'
 
@@ -62,6 +80,8 @@ interface DriverState {
     seed: number
     week: number
     phase: string
+    mode?: 'classic' | 'survival'
+    publicModeEnabled?: boolean
     dramaSocialMode?: boolean
     lohId?: string | null
     posWinnerId?: string | null
@@ -80,15 +100,167 @@ interface DriverState {
     incomingInteractions?: IncomingInteraction[]
     scheduledIncomingInteractions?: ScheduledIncomingInteraction[]
     incomingInteractionDelivery?: IncomingInteractionDeliveryState
+    reality: RealityDomainState
+    realitySimulation: RealitySimulationState
   }
-  settings?: { gameUX?: { dramaMode?: boolean } }
+  settings?: { gameUX?: { dramaMode?: boolean; romanceStorylines?: boolean } }
   vip?: {
     isActive?: boolean
     entitlements?: { dramaMode?: boolean }
   }
 }
 
-type HumanRouteResult = 'not_applicable' | 'scheduled' | 'deferred' | 'blocked'
+function buildRealityActors(state: DriverState): Record<string, RealityActorSnapshot> {
+  return Object.fromEntries(
+    state.game.players.map((actor) => {
+      const roles = [actor.status]
+      if (state.game.lohId === actor.id && !roles.includes('loh')) roles.push('loh')
+      if (state.game.posWinnerId === actor.id && !roles.includes('pos')) roles.push('pos')
+      return [
+        actor.id,
+        {
+          id: actor.id,
+          isHuman: actor.isUser === true,
+          active: actor.status !== 'evicted' && actor.status !== 'jury',
+          roles,
+          resources: {
+            energy: state.social.energyBank[actor.id] ?? 0,
+            influence: state.social.influenceBank[actor.id] ?? 0,
+            info: state.social.infoBank[actor.id] ?? 0,
+          },
+        },
+      ]
+    })
+  )
+}
+
+function buildRealityContext(state: DriverState): RealityContext {
+  const actors = buildRealityActors(state)
+  const mode = getRealityModeAdapter(state.game.mode, state.game.publicModeEnabled === true)
+  return {
+    day: state.game.week ?? 1,
+    phase: state.game.phase ?? 'social_1',
+    gameMode: mode.gameMode,
+    socialIntensity: getEffectiveSocialMode(state) === 'drama' ? 'REALITY' : 'NORMAL',
+    audienceMode: mode.audienceMode,
+    feedPerspective: 'PLAYER_LIMITED',
+    activeActorIds: Object.values(actors)
+      .filter((actor) => actor.active)
+      .map((actor) => actor.id),
+    rolesByActor: Object.fromEntries(Object.values(actors).map((actor) => [actor.id, actor.roles])),
+    atRiskActorIds: [...(state.game.nomineeIds ?? [])],
+    powerHolderIds: [state.game.lohId, state.game.posWinnerId].filter((id): id is string =>
+      Boolean(id)
+    ),
+    romanceEnabled: state.settings?.gameUX?.romanceStorylines !== false,
+  }
+}
+
+function executeRealityCandidate(
+  state: DriverState,
+  player: DriverPlayer,
+  candidate: CandidateMove
+): boolean {
+  if (!_store) return false
+  const contract = REALITY_ACTION_BY_ID.get(candidate.actionId)
+  if (!contract || !state.social.realitySimulation.rng) return false
+  const action = getActionById(candidate.actionId)
+  if (!action) return false
+  const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const mode = resolveActionTargetMode(action, dramaMode)
+  const direction = mode === 'none' ? 'SELF' : mode === 'multi' ? 'GROUP' : 'AI_TO_AI'
+  const beforeAffinities = Object.fromEntries(
+    candidate.targetIds.map((targetId) => [
+      targetId,
+      projectRealityAffinity(state.social.reality.relationships[player.id]?.[targetId]),
+    ])
+  )
+  const result = runRealityOpportunity({
+    domain: state.social.reality,
+    simulation: state.social.realitySimulation,
+    opportunity: {
+      actorId: player.id,
+      direction,
+      context: buildRealityContext(state),
+      actors: buildRealityActors(state),
+      candidates: [
+        {
+          action: contract,
+          targetIds: candidate.targetIds,
+          subjectId: candidate.subjectId,
+        },
+      ],
+    },
+  })
+  if (!result.event) {
+    _store.dispatch(replaceRealityDomain(result.domain))
+    _store.dispatch(replaceRealitySimulation(result.simulation))
+    return false
+  }
+  const costs = normalizeActionCosts(action, candidate.targetIds.length, dramaMode)
+  _store.dispatch(applyEnergyDelta({ playerId: player.id, delta: -costs.energy }))
+  if (costs.influence > 0) {
+    _store.dispatch(applyInfluenceDelta({ playerId: player.id, delta: -costs.influence }))
+  }
+  if (costs.info > 0) {
+    _store.dispatch(applyInfoDelta({ playerId: player.id, delta: -costs.info }))
+  }
+  const compatibilityDeltas = Object.fromEntries(
+    candidate.targetIds.map((targetId) => [
+      targetId,
+      projectRealityAffinity(result.domain.relationships[player.id]?.[targetId]) -
+        (beforeAffinities[targetId] ?? 0),
+    ])
+  )
+  for (const [targetId, compatibilityDelta] of Object.entries(compatibilityDeltas)) {
+    _store.dispatch(
+      updateRelationship({
+        source: player.id,
+        target: targetId,
+        delta: compatibilityDelta,
+        actionSource: 'system',
+      })
+    )
+  }
+  const deltas = Object.values(compatibilityDeltas)
+  const compatibilityDelta =
+    deltas.reduce((sum, delta) => sum + delta, 0) / Math.max(1, deltas.length)
+  const primaryTargetId = candidate.targetIds[0] ?? player.id
+  const latestState = _store.getState() as DriverState
+  _store.dispatch(
+    recordSocialAction({
+      entry: {
+        actionId: candidate.actionId,
+        actorId: player.id,
+        targetId: primaryTargetId,
+        targetIds: candidate.targetIds,
+        ...(candidate.subjectId ? { subjectId: candidate.subjectId } : {}),
+        cost: costs.energy,
+        costs,
+        delta: compatibilityDelta,
+        outcome: result.event.outcome === 'FAILURE' ? 'failure' : 'success',
+        newEnergy: latestState.social.energyBank[player.id] ?? 0,
+        balancesAfter: {
+          energy: latestState.social.energyBank[player.id] ?? 0,
+          influence: latestState.social.influenceBank[player.id] ?? 0,
+          info: latestState.social.infoBank[player.id] ?? 0,
+        },
+        timestamp: (state.game.week ?? 1) * 1_000_000 + result.event.sequence,
+        week: state.game.week,
+        source: 'system',
+        score: result.score?.total,
+        label: result.response?.kind ?? 'Resolved',
+      },
+    })
+  )
+  // Replace after compatibility dispatches so the v3 causal outcome remains
+  // authoritative instead of receiving a second legacy projection.
+  _store.dispatch(replaceRealityDomain(result.domain))
+  _store.dispatch(replaceRealitySimulation(result.simulation))
+  return true
+}
+
+type HumanRouteResult = 'scheduled' | 'deferred' | 'blocked'
 
 interface CandidateMove {
   actionId: string
@@ -175,6 +347,7 @@ const HUMAN_FACING_ACTION_TYPES: Partial<Record<string, IncomingInteractionType>
   startFight: 'snide_remark',
   ask_use_safety: 'deal_offer',
   nominate: 'warning',
+  group_chat: 'other',
 }
 
 const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
@@ -222,6 +395,10 @@ const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
     'I am considering putting your name in danger this week. Give me a reason not to.',
     'Your name is part of my plan right now, and I wanted to hear what you would say.',
   ],
+  group_chat: [
+    'A few of us are comparing notes. You can join in, observe, challenge the plan, or keep your distance.',
+    'There is a group conversation forming right now. How visible do you want to be in it?',
+  ],
 }
 
 function pickHumanFacingText(
@@ -239,11 +416,11 @@ function routeHumanFacingAction(
   actorId: string,
   actionId: string,
   subjectId: string | undefined,
-  costs: { energy: number; influence: number; info: number }
+  costs: { energy: number; influence: number; info: number },
+  sceneTargetIds?: string[]
 ): HumanRouteResult {
   if (!_store) return 'blocked'
-  const type = HUMAN_FACING_ACTION_TYPES[actionId]
-  if (!type) return 'not_applicable'
+  const type = HUMAN_FACING_ACTION_TYPES[actionId] ?? 'other'
 
   const current = _store.getState() as DriverState
   const human = current.game.players.find((player) => player.isUser)
@@ -260,9 +437,10 @@ function routeHumanFacingAction(
     if (isProtected || current.game.lohId !== actorId || isTrustedAlly) return 'blocked'
   }
 
-  const now = Date.now()
   const week = current.game.week ?? 1
   const phase = current.game.phase
+  const deterministicSequence = current.social.reality.nextSequence
+  const now = week * 1_000_000 + deterministicSequence
   const scheduled = current.social.scheduledIncomingInteractions ?? []
   const pending = buildPendingIncomingInteractions(
     current.social.incomingInteractions ?? [],
@@ -281,7 +459,7 @@ function routeHumanFacingAction(
 
   const mode = getEffectiveSocialMode(current)
   const interaction = createIncomingInteraction({
-    id: `ai-action-${actionId}-${actorId}-${now}`,
+    id: `ai-action-${actionId}-${actorId}-${deterministicSequence}`,
     fromId: actorId,
     type,
     text: pickHumanFacingText(actionId, actorId, week, phase),
@@ -293,6 +471,7 @@ function routeHumanFacingAction(
       scenarioKey: `background_${actionId}`,
       variantFamilyId: `background_${actionId}`,
       source: 'background_social',
+      ...(actionId === 'group_chat' ? { groupScene: true } : {}),
       ...(subjectId ? { subjectId } : {}),
     },
   })
@@ -323,6 +502,32 @@ function routeHumanFacingAction(
     ).length,
   })
   if (!slot) return 'deferred'
+
+  let simulation = current.social.realitySimulation
+  if (!simulation.rng) {
+    simulation = createInitialRealitySimulationState(
+      deriveRealitySimulationSeed(current.game.seed ?? 0, `social:${current.game.week}`)
+    )
+  }
+  const contract = REALITY_ACTION_BY_ID.get(actionId)
+  if (!contract) return 'blocked'
+  const targetIds = sceneTargetIds?.length ? sceneTargetIds : [human.id]
+  const realityResult = runRealityOpportunity({
+    domain: current.social.reality,
+    simulation,
+    opportunity: {
+      actorId,
+      direction: targetIds.length > 1 ? 'GROUP' : 'AI_TO_HUMAN',
+      context: buildRealityContext(current),
+      actors: buildRealityActors(current),
+      candidates: [{ action: contract, targetIds, subjectId }],
+    },
+  })
+  if (!realityResult.interaction || realityResult.event) return 'blocked'
+  interaction.payload ??= {}
+  interaction.payload.realityInteractionId = realityResult.interaction.id
+  _store.dispatch(replaceRealityDomain(realityResult.domain))
+  _store.dispatch(replaceRealitySimulation(realityResult.simulation))
 
   _store.dispatch(applyEnergyDelta({ playerId: actorId, delta: -costs.energy }))
   if (costs.influence > 0) {
@@ -463,46 +668,50 @@ function executeCandidate(
   const primaryTarget = state.game.players.find((target) => target.id === primaryTargetId)
 
   if (primaryTarget?.isUser && mode !== 'multi') {
-    const route = routeHumanFacingAction(player.id, candidate.actionId, candidate.subjectId, costs)
+    const route = routeHumanFacingAction(
+      player.id,
+      candidate.actionId,
+      candidate.subjectId,
+      costs,
+      [primaryTarget.id]
+    )
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
   }
 
-  const random = createDeterministicSocialRandom([
-    state.game.seed,
-    state.game.week,
-    state.game.phase,
-    _tickCount,
-    player.id,
-    candidate.actionId,
-    candidate.targetIds.join(','),
-  ])
-
-  const result =
-    mode === 'multi'
-      ? executeGroupAction(player.id, candidate.targetIds, candidate.actionId, {
-          source: 'system',
-          random,
-        })
-      : executeAction(
-          player.id,
-          mode === 'none' ? player.id : primaryTargetId,
-          candidate.actionId,
-          {
-            source: 'system',
-            subjectId: candidate.subjectId,
-            random,
-          }
-        )
-
-  if (result.success && socialConfig.verbose) {
-    console.debug(
-      `[socialAIDriver] ${player.id} → ${candidate.actionId} on ${
-        primaryTargetId ?? player.id
-      } (${candidate.reason}; energy: ${result.newEnergy}; delta: ${result.delta})`
+  if (
+    mode === 'multi' &&
+    candidate.targetIds.some(
+      (targetId) => state.game.players.find((target) => target.id === targetId)?.isUser
     )
+  ) {
+    const route = routeHumanFacingAction(
+      player.id,
+      candidate.actionId,
+      candidate.subjectId,
+      costs,
+      candidate.targetIds
+    )
+    if (route === 'scheduled') return true
+    if (route === 'blocked' || route === 'deferred') return false
   }
-  return result.success
+
+  if (dramaMode) return executeRealityCandidate(state, player, candidate)
+
+  if (mode === 'multi') {
+    return executeGroupAction(player.id, candidate.targetIds, candidate.actionId, {
+      source: 'system',
+    }).success
+  }
+  return executeAction(
+    player.id,
+    mode === 'none' ? player.id : primaryTargetId,
+    candidate.actionId,
+    {
+      source: 'system',
+      subjectId: candidate.subjectId,
+    }
+  ).success
 }
 
 function tick(): void {

@@ -2,14 +2,26 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { isHumanSocialActionVisible } from '../../../social/socialActionCatalog'
 import { evaluateSocialActionEligibility } from '../../../social/socialActionEligibility'
-import { SOCIAL_ACTIONS } from '../../../social/socialActions'
+import { isRealityExclusiveAction, SOCIAL_ACTIONS } from '../../../social/socialActions'
 import ActionGrid from '../ActionGrid'
 
 const NORMAL_ACTIONS = SOCIAL_ACTIONS.filter((action) =>
   isHumanSocialActionVisible(action, 'normal')
 )
 const DEFAULT_NORMAL_ACTIONS = NORMAL_ACTIONS.filter(
-  (action) => evaluateSocialActionEligibility({ action, dramaMode: false }).eligible
+  (action) =>
+    !isRealityExclusiveAction(action) &&
+    evaluateSocialActionEligibility({ action, dramaMode: false }).eligible
+)
+const LOCKED_REALITY_ACTIONS = SOCIAL_ACTIONS.filter(
+  (action) =>
+    !action.aiOnly &&
+    isRealityExclusiveAction(action) &&
+    evaluateSocialActionEligibility({
+      action,
+      dramaMode: false,
+      ignoreRealityModeGate: true,
+    }).eligible
 )
 
 function renderedActionIds(): string[] {
@@ -27,23 +39,28 @@ function actionCard(title: string): HTMLElement {
 }
 
 describe('ActionGrid catalogue rendering', () => {
-  it('renders the compact Normal catalogue in canonical order', () => {
+  it('keeps the Classic catalogue playable while appending locked Reality previews', () => {
     render(<ActionGrid />)
 
-    expect(renderedActionIds()).toEqual(DEFAULT_NORMAL_ACTIONS.map((action) => action.id))
+    expect(renderedActionIds()).toEqual([
+      ...DEFAULT_NORMAL_ACTIONS.map((action) => action.id),
+      ...LOCKED_REALITY_ACTIONS.map((action) => action.id),
+    ])
     for (const action of DEFAULT_NORMAL_ACTIONS) {
       expect(screen.getByText(action.title)).toBeInTheDocument()
     }
   })
 
-  it('keeps premium actions out of Normal Mode', () => {
+  it('shows only contextually relevant Reality previews in Classic', () => {
     render(<ActionGrid selectedTargetIds={new Set(['lia'])} actorId="human" />)
 
-    expect(screen.queryByText('Spread Rumor')).not.toBeInTheDocument()
-    expect(screen.queryByText('Start Fight')).not.toBeInTheDocument()
-    expect(screen.queryByText('Share Intel')).not.toBeInTheDocument()
+    expect(screen.getByText('Spread Rumor')).toBeInTheDocument()
+    expect(screen.getByText('Start Fight')).toBeInTheDocument()
+    expect(screen.getByText('Share Intel')).toBeInTheDocument()
     expect(screen.queryByText('Test the Spark')).not.toBeInTheDocument()
-    expect(screen.queryByText('Plant a Lie')).not.toBeInTheDocument()
+    expect(screen.queryByText('Go Public')).not.toBeInTheDocument()
+    expect(screen.getByText('Plant a Lie')).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Reality Mode action').length).toBeGreaterThan(0)
   })
 
   it('reveals the complete contextual catalogue in Drama Mode', () => {
@@ -68,9 +85,9 @@ describe('ActionGrid catalogue rendering', () => {
     expect(screen.getByText('Plant a Lie')).toBeInTheDocument()
   })
 
-  it('hides role-gated actions until a compatible target is selected', () => {
+  it('shows role-gated Reality previews only with a compatible target', () => {
     const { rerender } = render(<ActionGrid />)
-    expect(screen.queryByText('Ask LOH Target')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ask LOH Plan')).not.toBeInTheDocument()
     expect(screen.queryByText('Ask to Use Safety')).not.toBeInTheDocument()
 
     rerender(
@@ -81,7 +98,7 @@ describe('ActionGrid catalogue rendering', () => {
         selectedTargetIds={new Set(['leader'])}
       />
     )
-    expect(screen.getByText('Ask LOH Target')).toBeInTheDocument()
+    expect(screen.getByText('Ask LOH Plan')).toBeInTheDocument()
 
     rerender(
       <ActionGrid
@@ -134,6 +151,17 @@ describe('ActionGrid interaction and accessibility', () => {
     const first = DEFAULT_NORMAL_ACTIONS[0]
     fireEvent.click(actionCard(first.title))
     expect(onActionClick).toHaveBeenCalledWith(first.id)
+  })
+
+  it('opens the upgrade path instead of selecting a locked Reality action', () => {
+    const onActionClick = vi.fn()
+    const onPremiumLockedClick = vi.fn()
+    render(<ActionGrid onActionClick={onActionClick} onPremiumLockedClick={onPremiumLockedClick} />)
+
+    fireEvent.click(actionCard('Spread Rumor'))
+
+    expect(onPremiumLockedClick).toHaveBeenCalledWith('rumor')
+    expect(onActionClick).not.toHaveBeenCalled()
   })
 
   it('calls onPreview without also selecting the action', () => {
@@ -215,7 +243,7 @@ describe('ActionGrid stable placement and affordability', () => {
     expect(screen.queryByText(/Need 💡/)).not.toBeInTheDocument()
   })
 
-  it('hides Propose Alliance for an already allied target', () => {
+  it('hides Propose Alliance once that Classic relationship is already allied', () => {
     render(
       <ActionGrid
         actorId="user"

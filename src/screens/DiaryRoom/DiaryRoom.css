@@ -1682,3 +1682,82 @@
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
+.diary-room__reality-recap {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 14px;
+  background: rgba(8, 18, 31, 0.72);
+}
+
+.diary-room__reality-recap > summary {
+  cursor: pointer;
+  color: #dff5ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.diary-room__reality-recap[open] > summary {
+  margin-bottom: 12px;
+}
+
+.diary-room__reality-recap--locked {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding-right: 10px;
+  border-color: rgba(217, 184, 108, 0.28);
+  background: linear-gradient(135deg, rgba(217, 184, 108, 0.09), rgba(8, 18, 31, 0.78));
+}
+
+.diary-room__reality-recap--locked strong {
+  display: block;
+  color: #f0dda4;
+  font-size: 12px;
+}
+
+.diary-room__reality-recap--locked small {
+  display: block;
+  margin-top: 3px;
+  color: #a99db5;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.diary-room__reality-recap--locked button {
+  min-height: 28px;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid rgba(240, 221, 164, 0.42);
+  border-radius: 8px;
+  color: #1a142b;
+  background: linear-gradient(135deg, #f0dda4, #d6aa54);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.diary-room__reality-recap-badge {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.35rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  color: #d9b86c;
+  filter: drop-shadow(0 0.14rem 0.24rem rgba(8, 10, 23, 0.58));
+}
+
+.diary-room__reality-recap-badge .store-product-icon {
+  width: 100%;
+  height: 100%;
+  stroke-width: 2.2;
+}
+
+.diary-room__reality-recap-badge .store-product-icon__surface {
+  fill: rgba(32, 24, 66, 0.96);
+  opacity: 1;
+}
+
+.diary-room__reality-recap-badge .store-product-icon__core {
+  fill: #f0dda4;
+}

@@ -151,9 +151,11 @@ export const socialConfig = {
    * randomVariance  – maximum ±fraction of random jitter added to each score.
    */
   incomingInteractionConfig: {
-    maxPerWeek: 6,
-    maxGeneratedPerCheckpoint: 2,
-    maxActive: 8,
+    maxPerWeek: 10,
+    maxGeneratedPerCheckpoint: 3,
+    maxActive: 12,
+    /** Major strategic conversations may occupy this many unresolved queue slots. */
+    maxMajorActive: 5,
     maxPerAI: 2,
     cooldownTicks: 1,
     scoreThreshold: 0.26,
@@ -241,8 +243,10 @@ export const socialConfig = {
 
   // ── Incoming Interaction Delivery ─────────────────────────────────────────
   incomingInteractionDeliveryConfig: {
-    /** Maximum unresolved interactions visible in the inbox at once. */
+    /** Maximum unresolved routine interactions visible in the inbox at once. */
     maxActiveVisible: 4,
+    /** High-priority strategic interactions may extend the visible inbox to this limit. */
+    maxMajorActiveVisible: 5,
     /** Maximum interactions delivered per phase checkpoint. */
     maxDeliveredPerPhase: 2,
     /** Phase offsets applied when scheduling by priority. */

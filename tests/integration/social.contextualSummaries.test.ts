@@ -22,11 +22,13 @@ function makeContextStore({
   holderStatus = 'active',
   nomineeIds = ['nominee-1', 'nominee-2'],
   autoNomineeId = null,
+  actorIsLoh = false,
 }: {
   trust?: number
   holderStatus?: string
   nomineeIds?: string[]
   autoNomineeId?: string | null
+  actorIsLoh?: boolean
 } = {}) {
   const initialGame = gameReducer(undefined, { type: '@@test/init' })
   const store = configureStore({
@@ -34,13 +36,16 @@ function makeContextStore({
     preloadedState: {
       game: {
         ...initialGame,
-        players: basePlayers.map((player) =>
-          player.id === 'holder'
-            ? { ...player, status: holderStatus === 'nominated' ? 'nominated+pos' : 'loh+pos' }
-            : player
-        ),
+        players: basePlayers.map((player) => {
+          if (player.id === 'actor' && actorIsLoh) return { ...player, status: 'loh' }
+          if (player.id !== 'holder') return player
+          return {
+            ...player,
+            status: actorIsLoh ? 'pos' : holderStatus === 'nominated' ? 'nominated+pos' : 'loh+pos',
+          }
+        }),
         nomineeIds,
-        lohId: 'holder',
+        lohId: actorIsLoh ? 'actor' : 'holder',
         posWinnerId: 'holder',
         phase: 'pos_results',
         nominationContext: { autoNomineeId },
@@ -103,13 +108,13 @@ describe('context-aware social conversation summaries', () => {
   })
 
   it('distinguishes trusted and guarded Safety requests at the rule boundary', () => {
-    makeContextStore({ trust: 20 })
+    makeContextStore({ trust: 20, actorIsLoh: true })
     expect(run('ask_use_safety', 'nominee-1').summary).toContain(
       'seriously consider using Safety on Nico'
     )
     expect(run('ask_hold_safety').summary).toContain("acknowledged the LOH's request")
 
-    makeContextStore({ trust: 19 })
+    makeContextStore({ trust: 19, actorIsLoh: true })
     expect(run('ask_use_safety', 'nominee-1').summary).toContain('refused to reveal the decision')
     expect(run('ask_hold_safety').summary).toContain('belongs to them alone')
   })

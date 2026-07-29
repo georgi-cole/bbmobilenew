@@ -1,4 +1,5 @@
 const LOCAL_DEBUG_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+export const DEBUG_ACCESS_STORAGE_KEY = 'bbmobilenew:qa-debug-access';
 
 type DebugLocationLike = Pick<Location, 'hostname' | 'search' | 'hash'>;
 
@@ -10,6 +11,33 @@ function readQueryParam(fragment: string, key: string): string | null {
 
 function isLocalDebugHost(hostname: string): boolean {
   return LOCAL_DEBUG_HOSTS.has(hostname);
+}
+
+function readPersistedDebugAccess(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(DEBUG_ACCESS_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function persistDebugAccess(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DEBUG_ACCESS_STORAGE_KEY, '1');
+  } catch {
+    // Debug access still works for the current URL when storage is unavailable.
+  }
+}
+
+export function revokeDebugAccess(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(DEBUG_ACCESS_STORAGE_KEY);
+  } catch {
+    // Best effort. Callers reload after revoking so URL gating is re-evaluated.
+  }
 }
 
 function hasDebugQaAccess(locationLike: DebugLocationLike): boolean {
@@ -39,8 +67,10 @@ export function isDebugAccessGranted(
   searchParams: URLSearchParams,
   hostname: string,
 ): boolean {
-  if (searchParams.get('debug') !== '1') return false;
-  return isLocalDebugHost(hostname) || searchParams.get('qa') === '1';
+  const requested =
+    searchParams.get('debug') === '1' &&
+    (isLocalDebugHost(hostname) || searchParams.get('qa') === '1');
+  return requested || readPersistedDebugAccess();
 }
 
 export function canAccessSpecialSettings(locationLike?: DebugLocationLike): boolean {
@@ -48,7 +78,7 @@ export function canAccessSpecialSettings(locationLike?: DebugLocationLike): bool
   if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
 
   const resolvedLocation = locationLike ?? window.location;
-  return hasDebugQaAccess(resolvedLocation);
+  return hasDebugQaAccess(resolvedLocation) || readPersistedDebugAccess();
 }
 
 /**

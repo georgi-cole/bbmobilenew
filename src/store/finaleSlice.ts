@@ -12,6 +12,7 @@ import type { RootState, AppDispatch } from './store'
 import { mulberry32, seededPickN } from './rng'
 import { resolvePublicJuryVote } from '../publicOpinion/PublicFinalVoteService'
 import type { PlayerPublicProfile } from '../publicOpinion/types'
+import type { RealityDomainState } from '../social/reality'
 import {
   aiJurorVote,
   tallyVotes,
@@ -20,6 +21,7 @@ import {
   pickPhrase,
   JURY_LOCKED_LINES,
   PUBLIC_JURY_VOTE_LINES,
+  realityJurorScorecard,
 } from '../utils/juryUtils'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -74,6 +76,8 @@ export interface FinaleState {
   publicVotedFor: string | null
   /** Explicit public ballot weight used by both resolver and reveal UI. */
   publicVoteWeight: 1 | 2
+  /** Compact, history-derived scores used to keep jury rerolls grounded in the season. */
+  juryScorecards: Record<string, Record<string, number>>
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -94,6 +98,7 @@ const initialState: FinaleState = {
   publicJurorEnabled: false,
   publicVotedFor: null,
   publicVoteWeight: 1,
+  juryScorecards: {},
 }
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
@@ -123,6 +128,8 @@ const finaleSlice = createSlice({
         }
         /** Optional public approval profiles to enable the public juror vote. */
         publicApprovalProfiles?: Record<string, PlayerPublicProfile>
+        /** Reality history used to ground AI juror decisions in the actual season. */
+        reality?: RealityDomainState
       }>
     ) {
       if (state.hasStarted) return // idempotency guard
@@ -135,6 +142,7 @@ const finaleSlice = createSlice({
         seed,
         cfg,
         publicApprovalProfiles,
+        reality,
       } = action.payload
 
       // ── Resolve public ballot before composing the Tribunal ──────────────
@@ -174,9 +182,12 @@ const finaleSlice = createSlice({
 
       // ── Pre-compute AI votes ──────────────────────────────────────────────
       const votes: Record<string, string> = {}
+      const juryScorecards: Record<string, Record<string, number>> = {}
       for (const jId of effectiveJurorIds) {
         if (humanPlayerIds.includes(jId)) continue // human votes when input arrives
-        votes[jId] = aiJurorVote(jId, finalistIds, seed)
+        const scorecard = realityJurorScorecard(jId, finalistIds, reality)
+        if (scorecard) juryScorecards[jId] = scorecard
+        votes[jId] = aiJurorVote(jId, finalistIds, seed, reality, scorecard)
       }
 
       // ── Public juror vote ─────────────────────────────────────────────────
@@ -202,6 +213,7 @@ const finaleSlice = createSlice({
       state.publicJurorEnabled = publicJurorEnabled
       state.publicVotedFor = publicVotedFor
       state.publicVoteWeight = publicVoteWeight
+      state.juryScorecards = juryScorecards
     },
 
     /**
@@ -304,7 +316,13 @@ const finaleSlice = createSlice({
       for (const jId of state.revealOrder) {
         if (jId === PUBLIC_JUROR_ID) continue // public vote unchanged
         if (humanPlayerIds.includes(jId)) continue
-        state.votes[jId] = aiJurorVote(jId, state.finalistIds, seed)
+        state.votes[jId] = aiJurorVote(
+          jId,
+          state.finalistIds,
+          seed,
+          undefined,
+          state.juryScorecards[jId]
+        )
       }
       state.revealedCount = 0
       state.winnerId = null
@@ -333,6 +351,7 @@ const finaleSlice = createSlice({
       return {
         ...action.payload,
         publicVoteWeight: action.payload.publicVoteWeight ?? 1,
+        juryScorecards: action.payload.juryScorecards ?? {},
       }
     },
   },
@@ -412,7 +431,18 @@ export const skipAllJurorsThunk =
     // Pre-fill AI fallback votes for any unvoted human jurors
     for (const jurorId of state.revealOrder) {
       if (humanPlayerIds.includes(jurorId) && !state.votes[jurorId]) {
-        dispatch(castVote({ jurorId, finalistId: aiJurorVote(jurorId, state.finalistIds, seed) }))
+        dispatch(
+          castVote({
+            jurorId,
+            finalistId: aiJurorVote(
+              jurorId,
+              state.finalistIds,
+              seed,
+              getState().social.reality,
+              state.juryScorecards[jurorId]
+            ),
+          })
+        )
       }
     }
 

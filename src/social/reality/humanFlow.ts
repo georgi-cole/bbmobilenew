@@ -1,0 +1,303 @@
+import type { AppDispatch, RootState } from '../../store/store'
+import type { ExecuteActionResult } from '../SocialManeuvers'
+import { executeAction, executeGroupAction, getActionById } from '../SocialManeuvers'
+import { replaceRealityDomain, replaceRealitySimulation } from '../socialSlice'
+import { getEffectiveSocialMode } from '../socialMode'
+import { resolveActionTargetMode } from '../socialActions'
+import {
+  createInitialRealitySimulationState,
+  deriveRealitySimulationSeed,
+} from '../realitySimulation'
+import { REALITY_ACTION_BY_ID, type RealityActorSnapshot } from './actionContract'
+import { runRealityOpportunity } from './orchestrator'
+import { getRealityModeAdapter } from './modeAdapters'
+import { applyRealityRelationshipChange } from './relationships'
+import type { RealityContext } from './types'
+
+export interface HumanRealityActionInput {
+  actorId: string
+  targetId: string
+  targetIds?: string[]
+  actionId: string
+  subjectId?: string
+  costOverride?: { energy: number; influence: number; info: number }
+}
+
+const PHASE_REPETITION_SUCCESS_CHANCES = [0.8, 0.5, 0.25] as const
+const INFORMATION_REPETITION_SUCCESS_CHANCES = [1, 0.75, 0.3] as const
+
+function getHumanRepetitionSuccessChances(actionId: string): readonly number[] | null {
+  const legacyAction = getActionById(actionId)
+  if (legacyAction?.kind === 'intel_gain' && legacyAction.targetMode !== 'none') {
+    return INFORMATION_REPETITION_SUCCESS_CHANCES
+  }
+  const contract = REALITY_ACTION_BY_ID.get(actionId)
+  if (
+    contract?.purposes.includes('BOND') &&
+    !contract.purposes.includes('COMMITMENT') &&
+    !contract.purposes.includes('ROMANCE')
+  ) {
+    return PHASE_REPETITION_SUCCESS_CHANCES
+  }
+  return null
+}
+
+function getPhaseRepetitionChance(
+  state: RootState,
+  input: HumanRealityActionInput
+): number | undefined {
+  const successChances = getHumanRepetitionSuccessChances(input.actionId)
+  if (!successChances) return undefined
+  const priorAttempts = (state.social.actionHistory ?? []).filter(
+    (entry) =>
+      entry.actorId === input.actorId &&
+      entry.targetId === input.targetId &&
+      entry.actionId === input.actionId &&
+      entry.week === state.game.week &&
+      entry.phase === state.game.phase
+  ).length
+  return successChances[priorAttempts] ?? 0.02
+}
+
+function isDangerWarningDiscovered(state: RootState, input: HumanRealityActionInput): boolean {
+  const source = [
+    state.game.seed,
+    state.game.week,
+    state.game.lohId,
+    input.actorId,
+    input.targetId,
+    input.actionId,
+  ].join('|')
+  let hash = 0x811c9dc5
+  for (const character of source) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0) / 0x1_0000_0000 < 0.35
+}
+
+function buildActors(state: RootState): Record<string, RealityActorSnapshot> {
+  return Object.fromEntries(
+    state.game.players.map((player) => {
+      const roles = [player.status]
+      if (state.game.lohId === player.id && !roles.includes('loh')) roles.push('loh')
+      if (state.game.posWinnerId === player.id && !roles.includes('pos')) roles.push('pos')
+      return [
+        player.id,
+        {
+          id: player.id,
+          isHuman: player.isUser === true,
+          active: player.status !== 'evicted' && player.status !== 'jury',
+          roles,
+          resources: {
+            energy: state.social.energyBank[player.id] ?? 0,
+            influence: state.social.influenceBank[player.id] ?? 0,
+            info: state.social.infoBank[player.id] ?? 0,
+          },
+        },
+      ]
+    })
+  )
+}
+
+function buildContext(state: RootState): RealityContext {
+  const actors = buildActors(state)
+  const mode = getRealityModeAdapter(state.game.mode, state.game.publicModeEnabled === true)
+  return {
+    day: state.game.week ?? 1,
+    phase: state.game.phase,
+    gameMode: mode.gameMode,
+    socialIntensity: getEffectiveSocialMode(state) === 'drama' ? 'REALITY' : 'NORMAL',
+    audienceMode: mode.audienceMode,
+    feedPerspective: 'PLAYER_LIMITED',
+    activeActorIds: Object.values(actors)
+      .filter((actor) => actor.active)
+      .map((actor) => actor.id),
+    rolesByActor: Object.fromEntries(Object.values(actors).map((actor) => [actor.id, actor.roles])),
+    atRiskActorIds: [...(state.game.nomineeIds ?? [])],
+    powerHolderIds: [state.game.lohId, state.game.posWinnerId].filter((id): id is string =>
+      Boolean(id)
+    ),
+    romanceEnabled: state.settings.gameUX.romanceStorylines,
+  }
+}
+
+function result(
+  success: boolean,
+  summary: string,
+  newEnergy: number,
+  delta = 0,
+  label = success ? 'Resolved' : 'Unavailable',
+  score = 0
+): ExecuteActionResult {
+  return { success, summary, newEnergy, delta, label, score }
+}
+
+export function executeHumanRealityAction(input: HumanRealityActionInput) {
+  return (dispatch: AppDispatch, getState: () => RootState): ExecuteActionResult => {
+    const state = getState()
+    const action = getActionById(input.actionId)
+    const energy = state.social.energyBank[input.actorId] ?? 0
+    const targetIds = input.targetIds ?? [input.targetId]
+    if (!action) return result(false, 'Unknown action', energy)
+
+    // Classic is a complete, independent social ruleset. It must never create
+    // premium Reality events, causal memories, or simulation traces.
+    if (getEffectiveSocialMode(state) !== 'drama') {
+      const mode = resolveActionTargetMode(action, false)
+      if (mode === 'multi') {
+        return executeGroupAction(input.actorId, targetIds, input.actionId, {
+          source: 'manual',
+          costOverride: input.costOverride,
+        })
+      }
+      return executeAction(
+        input.actorId,
+        mode === 'none' ? input.actorId : input.targetId,
+        input.actionId,
+        {
+          source: 'manual',
+          subjectId: input.subjectId,
+          costOverride: input.costOverride,
+        }
+      )
+    }
+
+    const contract = REALITY_ACTION_BY_ID.get(input.actionId)
+    if (!contract) return result(false, 'Unknown action', energy)
+    const direction =
+      targetIds.length === 0 ? 'SELF' : targetIds.length > 1 ? 'GROUP' : 'HUMAN_TO_AI'
+    let simulation = state.social.realitySimulation
+    if (!simulation.rng) {
+      simulation = createInitialRealitySimulationState(
+        deriveRealitySimulationSeed(state.game.seed ?? 0, state.game.gameId ?? '')
+      )
+    }
+    const orchestration = runRealityOpportunity({
+      domain: state.social.reality,
+      simulation,
+      opportunity: {
+        actorId: input.actorId,
+        direction,
+        context: buildContext(state),
+        actors: buildActors(state),
+        candidates: [
+          {
+            action: contract,
+            targetIds,
+            subjectId: input.subjectId,
+            acceptanceChanceOverride: getPhaseRepetitionChance(state, input),
+          },
+        ],
+      },
+    })
+    if (!orchestration.event) {
+      dispatch(replaceRealityDomain(orchestration.domain))
+      dispatch(replaceRealitySimulation(orchestration.simulation))
+      const reason =
+        orchestration.response?.kind === 'COUNTER'
+          ? 'They made a counteroffer.'
+          : orchestration.selectedActionId
+            ? 'They were not ready to resolve that conversation.'
+            : orchestration.simulation.trace.at(-1)?.reason === 'no_eligible_candidate'
+              ? 'That action is not valid in this situation.'
+              : 'No action was selected.'
+      return result(false, reason, energy, 0, orchestration.response?.kind ?? 'Unavailable')
+    }
+    const succeeded = orchestration.event.outcome !== 'FAILURE'
+    const dangerWarningDiscovered =
+      succeeded &&
+      input.actionId === 'warn_about_danger' &&
+      Boolean(state.game.lohId) &&
+      state.game.lohId !== input.actorId &&
+      isDangerWarningDiscovered(state, input)
+    if (dangerWarningDiscovered && state.game.lohId) {
+      applyRealityRelationshipChange(orchestration.domain, {
+        sourceId: state.game.lohId,
+        targetId: input.actorId,
+        deltas: { trust: -7, warmth: -4, suspicion: 9, resentment: 4, familiarity: 2 },
+        day: state.game.week,
+        phase: state.game.phase,
+        eventId: `warning-discovered:${state.game.week}:${input.actorId}:${input.targetId}`,
+        anchor: 'negative',
+      })
+    }
+    const actionTargetMode = resolveActionTargetMode(
+      action,
+      buildContext(state).socialIntensity === 'REALITY'
+    )
+    const compatibility =
+      direction === 'GROUP' && actionTargetMode === 'multi'
+        ? executeGroupAction(input.actorId, targetIds, input.actionId, {
+            source: 'manual',
+            outcome: succeeded ? 'success' : 'failure',
+            costOverride: input.costOverride ?? contract.costs[buildContext(state).socialIntensity],
+          })
+        : direction === 'GROUP'
+          ? targetIds
+              .map((targetId, index) =>
+                executeAction(input.actorId, targetId, input.actionId, {
+                  source: 'manual',
+                  subjectId: input.subjectId,
+                  outcome: succeeded ? 'success' : 'failure',
+                  repetitionAlreadyResolved: true,
+                  waiveCosts: index > 0,
+                  costOverride:
+                    index === 0
+                      ? (input.costOverride ?? contract.costs[buildContext(state).socialIntensity])
+                      : { energy: 0, influence: 0, info: 0 },
+                })
+              )
+              .reduce<ExecuteActionResult>(
+                (combined, entry, index) => ({
+                  success: combined.success || entry.success,
+                  summary:
+                    index === targetIds.length - 1
+                      ? `Reached ${targetIds.length} housemates.`
+                      : combined.summary,
+                  newEnergy: entry.newEnergy,
+                  delta: (combined.delta * index + entry.delta) / Math.max(1, index + 1),
+                  label: orchestration.response?.kind ?? entry.label,
+                  score: (combined.score * index + entry.score) / Math.max(1, index + 1),
+                  targetDeltas: {
+                    ...(combined.targetDeltas ?? {}),
+                    [targetIds[index]]: entry.delta,
+                  },
+                }),
+                result(false, '', energy)
+              )
+          : executeAction(
+              input.actorId,
+              direction === 'SELF' ? input.actorId : input.targetId,
+              input.actionId,
+              {
+                source: 'manual',
+                subjectId: input.subjectId,
+                outcome: succeeded ? 'success' : 'failure',
+                repetitionAlreadyResolved: true,
+                costOverride:
+                  input.costOverride ?? contract.costs[buildContext(state).socialIntensity],
+              }
+            )
+    // Legacy execution preserves specialized ceremony copy and existing game
+    // adapters. Restore the causal v3 world afterward so its directed result
+    // is not counted a second time by the compatibility relationship write.
+    dispatch(replaceRealityDomain(orchestration.domain))
+    dispatch(replaceRealitySimulation(orchestration.simulation))
+    return {
+      ...compatibility,
+      summary:
+        input.actionId === 'warn_about_danger' && succeeded
+          ? dangerWarningDiscovered
+            ? `${
+                state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+              } appreciated the warning, but the LOH found out you leaked the plan.`
+            : `${
+                state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+              } appreciated the warning and kept your source private.`
+          : compatibility.summary,
+      label: orchestration.response?.kind ?? compatibility.label,
+      score: orchestration.score?.total ?? compatibility.score,
+    }
+  }
+}

@@ -7,6 +7,11 @@ import {
   sanitiseMusicConfigOverrides,
   sanitiseMusicTrackAssetOverrides,
 } from '../services/sound/musicConfigSanitizer'
+import {
+  DEFAULT_REALITY_MODE_PRESET,
+  normalizeRealityModePreset,
+  type RealityModePreset,
+} from '../modes/realityMode'
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1'
 
@@ -38,6 +43,10 @@ export interface SettingsState {
     spectatorMode: boolean
     /** Enables richer, context-driven social simulation and reactions. */
     dramaMode: boolean
+    /** Controls the intensity and pacing of Reality Mode. */
+    realityModePreset: RealityModePreset
+    /** Allows mutual romance storylines while Reality Mode is active. */
+    romanceStorylines: boolean
     /** Persistent entitlement bypass set only by hidden Advanced Settings. */
     dramaModeAdminOverride: boolean
     castSize: number
@@ -124,6 +133,7 @@ function normalizeGameUX(gameUX?: Partial<SettingsState['gameUX']>): SettingsSta
   const legacyCompactRosterLayout = (gameUX as { compactRosterLayout?: unknown } | undefined)
     ?.compactRosterLayout
   const merged = { ...DEFAULT_SETTINGS.gameUX, ...(gameUX ?? {}) }
+  merged.realityModePreset = normalizeRealityModePreset(gameUX?.realityModePreset)
   merged.compSelection = normalizeCompSelection(gameUX?.compSelection)
   if (legacyCompactRosterLayout === 'small') {
     merged.compactRoster = true
@@ -154,6 +164,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
     animations: true,
     spectatorMode: true,
     dramaMode: false,
+    realityModePreset: DEFAULT_REALITY_MODE_PRESET,
+    romanceStorylines: true,
     dramaModeAdminOverride: false,
     castSize: 16,
     compSelection: {

@@ -120,6 +120,18 @@ describe('generateDailyPublicUpdate', () => {
     }
   });
 
+  it('does not invent relationships or accusations without a grounded public event', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const result = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed });
+      for (const event of result.headlineEvents) {
+        const otherNames = PLAYERS.filter((player) => player.id !== event.playerId).map(
+          (player) => player.name,
+        );
+        expect(otherNames.some((name) => event.text.includes(name))).toBe(false);
+      }
+    }
+  });
+
   it('headline count varies between min and max across different seeds', () => {
     const counts = new Set<number>();
     for (let seed = 0; seed < 50; seed++) {

@@ -17,6 +17,11 @@ import type { CompGame, CompSelectionPayload } from '../../components/compSelect
 import { getAllGames, type GameCategory } from '../../minigames/registry'
 import { restartApp } from '../../utils/restartApp'
 import { APP_VERSION } from '../../appVersion'
+import {
+  REALITY_MODE_PRESETS,
+  getProfileRealityAgeEligibility,
+  type RealityModePreset,
+} from '../../modes/realityMode'
 import './SettingsAdmin.css'
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
@@ -75,6 +80,9 @@ export default function SettingsAdmin() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const settings = useAppSelector(selectSettings)
+  const realityAgeEligibility = useAppSelector((state) =>
+    getProfileRealityAgeEligibility(state.profiles)
+  )
   const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize))
   const [showRestartModal, setShowRestartModal] = useState(false)
 
@@ -86,10 +94,15 @@ export default function SettingsAdmin() {
     if (settings.sim.publicMode && !settings.sim.publicModeAdminOverride) {
       dispatch(setSim({ publicModeAdminOverride: true }))
     }
+    if (settings.gameUX.realityModePreset === 'adult' && realityAgeEligibility !== 'adult') {
+      dispatch(setGameUX({ realityModePreset: 'tv' }))
+    }
   }, [
     dispatch,
     settings.gameUX.dramaMode,
     settings.gameUX.dramaModeAdminOverride,
+    settings.gameUX.realityModePreset,
+    realityAgeEligibility,
     settings.sim.publicMode,
     settings.sim.publicModeAdminOverride,
   ])
@@ -354,7 +367,7 @@ export default function SettingsAdmin() {
 
             <div className="settings-row settings-row--col">
               <div className="settings-row settings-row--nested">
-                <label className="settings-row__label">Drama Mode</label>
+                <label className="settings-row__label">Reality Mode</label>
                 <input
                   type="checkbox"
                   className="settings-toggle"
@@ -367,13 +380,68 @@ export default function SettingsAdmin() {
                       })
                     )
                   }
-                  aria-label="Toggle drama mode"
+                  aria-label="Toggle Reality Mode"
                 />
               </div>
               <p className="settings-helper-text">
                 Unlocks richer alliances, grudges, pleas, betrayals, and strategic reactions.
               </p>
             </div>
+
+            <>
+              <div className="settings-row settings-row--col">
+                <div className="settings-row settings-row--nested">
+                  <label className="settings-row__label" htmlFor="admin-reality-preset">
+                    Reality style
+                  </label>
+                  <select
+                    id="admin-reality-preset"
+                    className="settings-select"
+                    value={settings.gameUX.realityModePreset}
+                    onChange={(event) =>
+                      dispatch(
+                        setGameUX({
+                          realityModePreset: event.target.value as RealityModePreset,
+                        })
+                      )
+                    }
+                  >
+                    {REALITY_MODE_PRESETS.map((preset) => (
+                      <option
+                        key={preset.value}
+                        value={preset.value}
+                        disabled={preset.value === 'adult' && realityAgeEligibility !== 'adult'}
+                      >
+                        {preset.label}
+                        {preset.value === 'adult' && realityAgeEligibility !== 'adult'
+                          ? ' · Requires profile age 18+'
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="settings-helper-text">
+                  {
+                    REALITY_MODE_PRESETS.find(
+                      (preset) => preset.value === settings.gameUX.realityModePreset
+                    )?.description
+                  }
+                </p>
+              </div>
+
+              <div className="settings-row">
+                <label className="settings-row__label">Romance storylines</label>
+                <input
+                  type="checkbox"
+                  className="settings-toggle"
+                  checked={settings.gameUX.romanceStorylines}
+                  onChange={(event) =>
+                    dispatch(setGameUX({ romanceStorylines: event.target.checked }))
+                  }
+                  aria-label="Toggle romance storylines"
+                />
+              </div>
+            </>
 
             <div className="settings-row settings-row--col">
               <div className="settings-row">

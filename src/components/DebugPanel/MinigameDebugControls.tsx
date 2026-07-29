@@ -43,10 +43,8 @@ export default function MinigameDebugControls() {
   };
 
   return (
-    <section style={{ borderTop: '1px solid #333', marginTop: 12, paddingTop: 12 }}>
-      <strong style={{ fontSize: '0.75rem', color: '#e94560', textTransform: 'uppercase' }}>
-        🎮 Minigame Debug
-      </strong>
+    <section className="dbg-section">
+      <h3 className="dbg-section__title">Minigames</h3>
 
       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {/* Force game key */}

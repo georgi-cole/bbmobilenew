@@ -186,6 +186,12 @@ const RESPONSE_OPTION_VARIANTS_BY_TYPE: Partial<
 }
 
 const SCENARIO_RESPONSE_OPTIONS: Record<string, ResponseBlueprint> = {
+  background_group_chat: [
+    { label: 'Join the talk', responseType: 'accept' },
+    { label: 'Observe quietly', responseType: 'neutral' },
+    { label: 'Intervene', responseType: 'negative' },
+    { label: 'Lay low', responseType: 'dismiss' },
+  ],
   generic_gossip: [
     { label: 'Ask source', responseType: 'positive' },
     { label: 'Listen', responseType: 'neutral' },
@@ -282,7 +288,10 @@ function getSafetyPlanBlueprint(interaction: IncomingInteraction): ResponseBluep
     { label: `Save ${first}`, responseType: 'accept' },
     { label: `Save ${second}`, responseType: 'decline' },
     { label: 'Save nobody', responseType: 'negative' },
-    { label: 'Not decided', responseType: 'neutral' },
+    {
+      label: scenarioKey === 'loh_consults_safety_holder' ? 'Your advice?' : 'Your call',
+      responseType: 'neutral',
+    },
   ]
 }
 
