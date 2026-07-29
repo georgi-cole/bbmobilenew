@@ -24,3 +24,109 @@ jobs:
 
       - name: Run lint
         run: npm run lint:ci
+
+  music-cue-phase2-core:
+    if: github.head_ref == 'agent/music-cue-editor-phase2' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/music-cue-editor-phase2
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply Phase 2 core implementation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/music-cue-phase2-core.yml').read_text().splitlines()
+          step_name = '      - name: Implement cue runtime and minigame variants'
+          start = workflow.index(step_name)
+          run_line = next(
+              index for index in range(start + 1, len(workflow))
+              if workflow[index] == '        run: |'
+          )
+          end = next(
+              index for index in range(run_line + 1, len(workflow))
+              if workflow[index].startswith('      - name: ')
+          )
+          prefix = '          '
+          source = '\n'.join(
+              line[len(prefix):] if line.startswith(prefix) else line
+              for line in workflow[run_line + 1:end]
+          )
+          exec(compile(source, 'music-cue-phase2-implementation', 'exec'))
+
+      - name: Format Phase 2 core
+        run: |
+          npx prettier --write \
+            src/services/sound/musicCue.ts \
+            src/services/sound/MusicCueEngine.ts \
+            src/services/sound/minigameMusicVariant.ts \
+            src/services/sound/musicConfig.ts \
+            src/services/sound/musicConfigSanitizer.ts \
+            src/services/sound/resolveDesiredMusic.ts \
+            src/services/sound/AudioStateSync.tsx \
+            src/services/sound/SoundManager.ts \
+            src/store/challengeSlice.ts \
+            src/components/MinigameHost/MinigameHost.tsx \
+            src/screens/GameScreen/GameScreen.tsx \
+            src/components/RiskWheelComp/RiskWheelComp.tsx \
+            tests/unit/sound/musicCue.test.ts \
+            tests/unit/sound/musicCueResolver.test.ts \
+            tests/unit/sound/MusicCueEngine.test.ts \
+            docs/MUSIC_CUE_PHASE2.md
+
+      - name: Validate Phase 2 core
+        run: |
+          npm run test:guard
+          npm run lint:ci
+          npm run typecheck
+          npx vitest run \
+            tests/unit/sound/musicCue.test.ts \
+            tests/unit/sound/musicCueResolver.test.ts \
+            tests/unit/sound/MusicCueEngine.test.ts \
+            tests/unit/sound/resolveDesiredMusic.test.ts \
+            tests/unit/sound/musicConfigSanitizer.test.ts \
+            tests/unit/sound/musicConfigAudit.test.ts \
+            tests/unit/sound/queue.test.ts
+          npm run build
+          npm run build:mobile
+
+      - name: Commit validated Phase 2 core
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/services/sound/musicCue.ts \
+            src/services/sound/MusicCueEngine.ts \
+            src/services/sound/minigameMusicVariant.ts \
+            src/services/sound/musicConfig.ts \
+            src/services/sound/musicConfigSanitizer.ts \
+            src/services/sound/resolveDesiredMusic.ts \
+            src/services/sound/AudioStateSync.tsx \
+            src/services/sound/SoundManager.ts \
+            src/store/challengeSlice.ts \
+            src/components/MinigameHost/MinigameHost.tsx \
+            src/screens/GameScreen/GameScreen.tsx \
+            src/components/RiskWheelComp/RiskWheelComp.tsx \
+            tests/unit/sound/musicCue.test.ts \
+            tests/unit/sound/musicCueResolver.test.ts \
+            tests/unit/sound/MusicCueEngine.test.ts \
+            docs/MUSIC_CUE_PHASE2.md
+          git commit -m 'Add advanced music cues and minigame variants'
+          git push origin HEAD:refs/heads/agent/music-cue-editor-phase2
