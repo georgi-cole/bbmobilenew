@@ -61,3 +61,33 @@ test_text = test.read_text().replace(
     1,
 )
 test.write_text(test_text)
+
+editor_test = Path('tests/unit/sound/MusicCueEditor.test.tsx')
+editor_test.write_text(
+    editor_test.read_text().replace(
+        "name: 'Competition Cue'",
+        "name: 'General Competition Cue'",
+        1,
+    )
+)
+
+engine = Path('src/services/sound/MusicCueEngine.ts')
+engine_text = engine.read_text()
+old_fade = "      if (cue.fadeInMs > 0) await this._fadeDeck(incoming, 1, cue.fadeInMs)\n"
+new_fade = "      if (transitionMs > 0) await this._fadeDeck(incoming, 1, transitionMs)\n"
+if old_fade not in engine_text:
+    raise SystemExit('Could not locate incoming cue fade duration')
+engine.write_text(engine_text.replace(old_fade, new_fade, 1))
+
+engine_test = Path('tests/unit/sound/MusicCueEngine.test.ts')
+engine_test_text = engine_test.read_text()
+engine_test_text = engine_test_text.replace(
+    '''    await Promise.resolve()
+    expect(engine.currentElement?.volume).toBe(0)
+    await vi.runAllTimersAsync()
+''',
+    '''    await vi.runAllTimersAsync()
+''',
+    1,
+)
+engine_test.write_text(engine_test_text)
