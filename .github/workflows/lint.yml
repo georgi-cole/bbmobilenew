@@ -47,7 +47,9 @@ jobs:
         run: npm ci
 
       - name: Apply hardening fixes
-        run: python scripts/harden-music-cue-phase2.py
+        run: |
+          python scripts/harden-music-cue-phase2.py
+          python scripts/harden-music-cue-phase2-lint.py
 
       - name: Format hardening changes
         run: |
@@ -60,6 +62,7 @@ jobs:
             src/services/sound/MusicCueEngine.ts \
             src/services/sound/SoundManager.ts \
             src/services/sound/AudioStateSync.tsx \
+            src/services/sound/musicCueTransitions.ts \
             src/components/MinigameHost/MinigameHost.tsx \
             src/components/RiskWheelComp/RiskWheelComp.tsx \
             tests/unit/sound/MusicCueEditor.test.tsx \
@@ -104,6 +107,7 @@ jobs:
             src/services/sound/MusicCueEngine.ts \
             src/services/sound/SoundManager.ts \
             src/services/sound/AudioStateSync.tsx \
+            src/services/sound/musicCueTransitions.ts \
             src/components/MinigameHost/MinigameHost.tsx \
             src/components/RiskWheelComp/RiskWheelComp.tsx \
             tests/unit/sound/MusicCueEditor.test.tsx \
