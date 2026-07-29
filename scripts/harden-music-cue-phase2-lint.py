@@ -1,0 +1,59 @@
+from pathlib import Path
+
+sync = Path('src/services/sound/AudioStateSync.tsx')
+text = sync.read_text()
+text = text.replace("import { musicCueSignature } from './musicCue'\n", '', 1)
+start = text.index('export function hasSameResolvedPlayback(')
+end = text.index('\nexport default function AudioStateSync()', start)
+text = text[:start] + "import {\n  hasSameResolvedPlayback,\n  shouldCrossfadeManagedMinigameCue,\n} from './musicCueTransitions'\n" + text[end:]
+sync.write_text(text)
+
+Path('src/services/sound/musicCueTransitions.ts').write_text(
+    '''import type { ResolvedMusicCue } from './musicConfig'
+import { musicCueSignature } from './musicCue'
+
+function isManagedMinigameCue(cue: ResolvedMusicCue): boolean {
+  return (
+    cue.source === 'minigame' &&
+    cue.selection.kind === 'track' &&
+    cue.transition?.managedLifecycle === true
+  )
+}
+
+export function hasSameResolvedPlayback(
+  previousCue: ResolvedMusicCue,
+  nextCue: ResolvedMusicCue
+): boolean {
+  if (
+    previousCue.track !== nextCue.track ||
+    previousCue.assignmentId !== nextCue.assignmentId
+  ) {
+    return false
+  }
+  const previousSignature = previousCue.playbackCue
+    ? musicCueSignature(previousCue.playbackCue)
+    : ''
+  const nextSignature = nextCue.playbackCue ? musicCueSignature(nextCue.playbackCue) : ''
+  return previousSignature === nextSignature
+}
+
+export function shouldCrossfadeManagedMinigameCue(
+  previousCue: ResolvedMusicCue,
+  nextCue: ResolvedMusicCue
+): boolean {
+  return (
+    isManagedMinigameCue(previousCue) &&
+    isManagedMinigameCue(nextCue) &&
+    !hasSameResolvedPlayback(previousCue, nextCue)
+  )
+}
+'''
+)
+
+test = Path('tests/unit/sound/AudioStateSyncCueTransitions.test.ts')
+test_text = test.read_text().replace(
+    "} from '../../../src/services/sound/AudioStateSync'",
+    "} from '../../../src/services/sound/musicCueTransitions'",
+    1,
+)
+test.write_text(test_text)
