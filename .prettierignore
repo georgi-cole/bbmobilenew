@@ -14,3 +14,4 @@ store-assets
 public/assets/glossy_dock/integration_notes.css
 public/assets/updated_nav_fab_bar/integration_notes.css
 public/config/afterTheEyeOutcomes.json
+src/services/sound/generatedAudioManifest.ts

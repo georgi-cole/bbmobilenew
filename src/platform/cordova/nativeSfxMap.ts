@@ -35,7 +35,7 @@ export const NATIVE_SFX_CONFIG: Record<NativeSfxKey, { path: string; volume: num
   ui_jury_vote: { path: 'assets/sounds/ui_jury_vote.mp3', volume: 0.7 },
   tv_public_favorite: { path: 'assets/sounds/tv_public_favorite.mp3', volume: 0.9 },
   minigame_results: {
-    path: 'assets/sounds/Risk_wheel/minigame_risk_wheel_round_results.mp3',
+    path: 'assets/sounds/minigame_risk_wheel_scoreboard.mp3',
     volume: 0.85,
   },
 } as const

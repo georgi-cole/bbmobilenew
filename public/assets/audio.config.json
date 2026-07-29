@@ -1,0 +1,548 @@
+{
+  "version": 1,
+  "featureAliases": [
+    "risk_wheel",
+    "quick_tap",
+    "glass_bridge",
+    "crystal_path",
+    "wildcard_western",
+    "battery_low",
+    "big_spender",
+    "snake",
+    "castle_rescue",
+    "memory_match",
+    "lane_racers"
+  ],
+  "bindings": [
+    {
+      "path": "sounds/minigame_all_3_seconds_timer.mp3",
+      "key": "minigame:all_3_seconds_timer",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/cinematic_thunder.wav",
+      "key": "minigame:cinematic_thunder",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_gb_death.mp3",
+      "key": "minigame:gb_death",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_gb_new_turn.mp3",
+      "key": "minigame:gb_new_turn",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.85,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_gb_safe_step.mp3",
+      "key": "minigame:gb_safe_step",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_gb_winner.mp3",
+      "key": "minigame:gb_winner",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/move_into_me_alternative.mp3",
+      "key": "minigame:move_into_me_alternative",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_quicktap_booster.mp3",
+      "key": "minigame:quicktap_booster",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_quicktap_half_tap.mp3",
+      "key": "minigame:quicktap_half_tap",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_quicktap_tap.mp3",
+      "key": "minigame:quicktap_tap",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.8,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_scoreboard.mp3",
+      "key": "minigame:results",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.85,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_666.mp3",
+      "key": "minigame:risk_wheel_666",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_bad.mp3",
+      "key": "minigame:risk_wheel_bad",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.95,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_bankrupt_or_skip.mp3",
+      "key": "minigame:risk_wheel_bankrupt_or_skip",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_good.mp3",
+      "key": "minigame:risk_wheel_good",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.95,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_scoreboard.mp3",
+      "key": "minigame:risk_wheel_scoreboard",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_spin.mp3",
+      "key": "minigame:risk_wheel_spin",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": true
+    },
+    {
+      "path": "sounds/minigame_risk_wheel_winner.mp3",
+      "key": "minigame:risk_wheel_winner",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/social_module_original.mp3",
+      "key": "minigame:social_module_original",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_all_3_seconds_timer.mp3",
+      "key": "minigame:start",
+      "category": "minigame",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/minigame_wildcard_winner.mp3",
+      "key": "minigame:wildcard_winner",
+      "category": "minigame",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "music/challenge_group_1.mp3",
+      "key": "music:challenge_group_1",
+      "category": "music",
+      "trackId": "challenge_group_1",
+      "displayName": "Challenge Group 1",
+      "fallbackTrack": "competition",
+      "tags": ["competition", "minigame"],
+      "preload": false,
+      "volume": 0.4,
+      "loop": true
+    },
+    {
+      "path": "music/final_modal.mp3",
+      "key": "music:final_modal",
+      "category": "music",
+      "trackId": "final_modal",
+      "displayName": "Final Results",
+      "fallbackTrack": "jury_voting",
+      "tags": ["ambient", "finale"],
+      "preload": false,
+      "volume": 0.7,
+      "loop": true
+    },
+    {
+      "path": "music/glass_bridge.mp3",
+      "key": "music:gb_main",
+      "category": "music",
+      "trackId": "glass_bridge",
+      "displayName": "Crystal Path",
+      "fallbackTrack": "competition",
+      "tags": ["competition", "minigame"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "music/competition.mp3",
+      "key": "music:hoh_comp_general",
+      "category": "music",
+      "trackId": "competition",
+      "displayName": "General Competition",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "competition"],
+      "preload": false,
+      "volume": 0.6,
+      "loop": true
+    },
+    {
+      "path": "music/jury_voting.mp3",
+      "key": "music:jury_voting_bg",
+      "category": "music",
+      "trackId": "jury_voting",
+      "displayName": "Tribunal Voting",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "finale"],
+      "preload": false,
+      "volume": 0.6,
+      "loop": true
+    },
+    {
+      "path": "music/nominations_horror.mp3",
+      "key": "music:nominations_horror",
+      "category": "music",
+      "preload": false,
+      "volume": 0.9,
+      "loop": true
+    },
+    {
+      "path": "music/nominations.mp3",
+      "key": "music:nominations_main",
+      "category": "music",
+      "trackId": "nominations",
+      "displayName": "Nominations",
+      "fallbackTrack": "competition",
+      "tags": ["ambient", "ceremony"],
+      "preload": false,
+      "volume": 0.9,
+      "loop": true
+    },
+    {
+      "path": "music/public_voting.mp3",
+      "key": "music:public_voting",
+      "category": "music",
+      "trackId": "public_voting",
+      "displayName": "Public Voting",
+      "fallbackTrack": "jury_voting",
+      "tags": ["ceremony", "finale"],
+      "preload": false,
+      "volume": 0.6,
+      "loop": false
+    },
+    {
+      "path": "music/quick_tap.mp3",
+      "key": "music:quicktap_main",
+      "category": "music",
+      "trackId": "quick_tap",
+      "displayName": "Quick Tap Family",
+      "fallbackTrack": "competition",
+      "tags": ["competition", "minigame"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "music/risk_wheel.mp3",
+      "key": "music:risk_wheel_loop",
+      "category": "music",
+      "trackId": "risk_wheel",
+      "displayName": "Risk Wheel",
+      "fallbackTrack": "competition",
+      "tags": ["competition", "minigame"],
+      "preload": false,
+      "volume": 0.4,
+      "loop": true
+    },
+    {
+      "path": "music/season_recap.mp3",
+      "key": "music:season_recap",
+      "category": "music",
+      "trackId": "season_recap",
+      "displayName": "Season Recap",
+      "fallbackTrack": "jury_voting",
+      "tags": ["ambient", "finale"],
+      "preload": false,
+      "volume": 0.7,
+      "loop": true
+    },
+    {
+      "path": "music/social.mp3",
+      "key": "music:social_module",
+      "category": "music",
+      "trackId": "social",
+      "displayName": "Social Module",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "social"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "music/competition.mp3",
+      "key": "music:spectator_loop",
+      "category": "music",
+      "trackId": "spectator",
+      "displayName": "Spectator",
+      "fallbackTrack": "competition",
+      "tags": ["ambient", "spectator"],
+      "preload": false,
+      "volume": 0.4,
+      "loop": true
+    },
+    {
+      "path": "music/veto.mp3",
+      "key": "music:veto_phase",
+      "category": "music",
+      "trackId": "veto",
+      "displayName": "Safety Ceremony",
+      "fallbackTrack": "competition",
+      "tags": ["ambient", "ceremony"],
+      "preload": false,
+      "volume": 0.85,
+      "loop": true
+    },
+    {
+      "path": "music/wildcard_western.mp3",
+      "key": "music:wildcard_western_main",
+      "category": "music",
+      "trackId": "wildcard_western",
+      "displayName": "Wildcard Western",
+      "fallbackTrack": "competition",
+      "tags": ["competition", "minigame"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "sounds/player_evicted.mp3",
+      "key": "player:evicted",
+      "category": "player",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/player_wildcard_eliminated.mp3",
+      "key": "player:wildcard_eliminated",
+      "category": "player",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_battleback.mp3",
+      "key": "tv:battleback",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_winner_reveal.mp3",
+      "key": "tv:event",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.8,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_finale_winner_stinger.mp3",
+      "key": "tv:finale_winner_stinger",
+      "category": "tv",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_live_vote.mp3",
+      "key": "tv:live_vote",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.85,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_winner_reveal.mp3",
+      "key": "tv:public_favorite",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_winner_reveal.mp3",
+      "key": "tv:veto_ceremony",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.85,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_voting_eviction.mp3",
+      "key": "tv:voting_eviction",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/tv_winner_reveal.mp3",
+      "key": "tv:winner_reveal",
+      "category": "tv",
+      "preload": false,
+      "volume": 1,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_confirm.mp3",
+      "key": "ui:confirm",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.7,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_navigate.mp3",
+      "key": "ui:error",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.6,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_jury_vote.mp3",
+      "key": "ui:jury_vote",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.7,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_navigate.mp3",
+      "key": "ui:navigate",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.6,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_risk_wheel_click.mp3",
+      "key": "ui:risk_wheel_click",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.7,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_risk_wheel_stop_and_bank.mp3",
+      "key": "ui:risk_wheel_stop_and_bank",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_jury_vote.mp3",
+      "key": "ui:tribunal_vote_reveal",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.85,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_western_new_round.mp3",
+      "key": "ui:western_new_round",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.85,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_wildcard_continue.mp3",
+      "key": "ui:wildcard_continue",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.8,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_wildcard_draw.mp3",
+      "key": "ui:wildcard_draw",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.9,
+      "loop": false
+    },
+    {
+      "path": "sounds/ui_wildcard_select.mp3",
+      "key": "ui:wildcard_select",
+      "category": "ui",
+      "preload": false,
+      "volume": 0.8,
+      "loop": false
+    }
+  ],
+  "keyAliases": {
+    "minigame:wheelofluck": "minigame:risk_wheel_spin",
+    "music:finale_winner_stinger": "tv:finale_winner_stinger"
+  },
+  "filenameAliases": {
+    "live_vote": "tv:live_vote",
+    "nominations_horror": "music:nominations_horror",
+    "nominations_main": "music:nominations_main",
+    "veto_ceremony": "tv:veto_ceremony",
+    "veto_phase": "music:veto_phase",
+    "voting_for_eviction_user_and_housguests": "tv:voting_eviction",
+    "Social_module": "music:social_module",
+    "Hoh_competition_and_general_competition": "music:hoh_comp_general",
+    "western_new_round": "ui:western_new_round",
+    "season_recap_music": "music:season_recap",
+    "Jury_voting_backgound_music": "music:jury_voting_bg",
+    "Jury_each_vote_reveal_sound": "ui:tribunal_vote_reveal"
+  }
+}

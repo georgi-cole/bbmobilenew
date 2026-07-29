@@ -1,1 +1,0 @@
-tests/unit/sound/registry.test.ts > SOUND_REGISTRY — generated entries > points every registered web sound to a non-empty production asset

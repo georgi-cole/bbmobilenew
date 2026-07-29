@@ -63,7 +63,8 @@ async function readConfig() {
     }
     return {
       bindings: Array.isArray(parsed.bindings) ? parsed.bindings : [],
-      keyAliases: parsed.keyAliases && typeof parsed.keyAliases === 'object' ? parsed.keyAliases : {},
+      keyAliases:
+        parsed.keyAliases && typeof parsed.keyAliases === 'object' ? parsed.keyAliases : {},
       filenameAliases:
         parsed.filenameAliases && typeof parsed.filenameAliases === 'object'
           ? parsed.filenameAliases
@@ -90,10 +91,18 @@ function inferSoundCategory(stem, featureAliases) {
   if (feature) return { category: 'minigame', rest: stem }
 
   const tokens = new Set(stem.split('_'))
-  if (['click', 'tap', 'select', 'confirm', 'cancel', 'continue', 'back', 'draw', 'button'].some((t) => tokens.has(t))) {
+  if (
+    ['click', 'tap', 'select', 'confirm', 'cancel', 'continue', 'back', 'draw', 'button'].some(
+      (t) => tokens.has(t)
+    )
+  ) {
     return { category: 'ui', rest: stem }
   }
-  if (['vote', 'reveal', 'ceremony', 'announcement', 'winner', 'sting', 'stinger'].some((t) => tokens.has(t))) {
+  if (
+    ['vote', 'reveal', 'ceremony', 'announcement', 'winner', 'sting', 'stinger'].some((t) =>
+      tokens.has(t)
+    )
+  ) {
     return { category: 'tv', rest: stem }
   }
   if (['evicted', 'eliminated', 'death', 'player'].some((t) => tokens.has(t))) {
@@ -111,9 +120,15 @@ function inferMusicTags(trackId) {
     tags.push('finale')
     if (tokens.has('public') || tokens.has('ceremony')) tags.push('ceremony')
     else tags.push('ambient')
-  } else if (['nomination', 'nominations', 'veto', 'safety', 'ceremony'].some((t) => tokens.has(t))) {
+  } else if (
+    ['nomination', 'nominations', 'veto', 'safety', 'ceremony'].some((t) => tokens.has(t))
+  ) {
     tags.push('ceremony', 'ambient')
-  } else if (['game', 'minigame', 'challenge', 'wheel', 'bridge', 'tap', 'competition'].some((t) => tokens.has(t))) {
+  } else if (
+    ['game', 'minigame', 'challenge', 'wheel', 'bridge', 'tap', 'competition'].some((t) =>
+      tokens.has(t)
+    )
+  ) {
     tags.push('competition', 'minigame')
   } else {
     tags.push('ambient')
@@ -124,10 +139,12 @@ function inferMusicTags(trackId) {
 function validateBinding(raw, knownPaths) {
   if (!raw || typeof raw !== 'object') throw new Error('Every audio binding must be an object')
   const relativePath = normalizeSlashes(String(raw.path ?? '')).replace(/^\/+/, '')
-  if (!knownPaths.has(relativePath)) throw new Error(`Audio binding references missing file: ${relativePath}`)
+  if (!knownPaths.has(relativePath))
+    throw new Error(`Audio binding references missing file: ${relativePath}`)
   const key = String(raw.key ?? '').trim()
   const category = String(raw.category ?? '').trim()
-  if (!key || !key.includes(':')) throw new Error(`Audio binding for ${relativePath} has invalid key`)
+  if (!key || !key.includes(':'))
+    throw new Error(`Audio binding for ${relativePath} has invalid key`)
   if (![...SOUND_CATEGORIES, 'music'].includes(category)) {
     throw new Error(`Audio binding ${key} has invalid category ${category}`)
   }
@@ -151,8 +168,11 @@ function validateBinding(raw, knownPaths) {
     if (!trackId) throw new Error(`Music binding ${key} has no valid trackId`)
     binding.trackId = trackId
     binding.displayName = String(raw.displayName ?? titleFromSlug(trackId)).trim()
-    binding.fallbackTrack = raw.fallbackTrack === 'none' ? 'none' : slugify(String(raw.fallbackTrack ?? 'competition'))
-    binding.tags = Array.isArray(raw.tags) ? [...new Set(raw.tags.map(slugify).filter(Boolean))] : inferMusicTags(trackId)
+    binding.fallbackTrack =
+      raw.fallbackTrack === 'none' ? 'none' : slugify(String(raw.fallbackTrack ?? 'competition'))
+    binding.tags = Array.isArray(raw.tags)
+      ? [...new Set(raw.tags.map(slugify).filter(Boolean))]
+      : inferMusicTags(trackId)
   }
   return binding
 }
@@ -222,14 +242,18 @@ async function main() {
     })
   }
 
-  bindings.sort((left, right) => left.key.localeCompare(right.key) || left.relativePath.localeCompare(right.relativePath))
+  bindings.sort(
+    (left, right) =>
+      left.key.localeCompare(right.key) || left.relativePath.localeCompare(right.relativePath)
+  )
   const keys = new Set()
   const trackIds = new Set()
   for (const binding of bindings) {
     if (keys.has(binding.key)) throw new Error(`Duplicate generated sound key: ${binding.key}`)
     keys.add(binding.key)
     if (binding.category === 'music') {
-      if (trackIds.has(binding.trackId)) throw new Error(`Duplicate generated music track id: ${binding.trackId}`)
+      if (trackIds.has(binding.trackId))
+        throw new Error(`Duplicate generated music track id: ${binding.trackId}`)
       trackIds.add(binding.trackId)
     }
   }
@@ -241,12 +265,18 @@ async function main() {
   }
   for (const binding of bindings.filter((entry) => entry.category === 'music')) {
     if (binding.fallbackTrack !== 'none' && !trackIds.has(binding.fallbackTrack)) {
-      throw new Error(`Music track ${binding.trackId} falls back to missing track ${binding.fallbackTrack}`)
+      throw new Error(
+        `Music track ${binding.trackId} falls back to missing track ${binding.fallbackTrack}`
+      )
     }
   }
 
   const musicBindings = bindings.filter((entry) => entry.category === 'music')
-  const generated = `// AUTO-GENERATED by scripts/generate-audio-manifest.mjs. Do not edit manually.\n\nexport const GENERATED_AUDIO_ASSETS = ${JSON.stringify(bindings, null, 2)} as const\n\nexport const GENERATED_MUSIC_TRACK_IDS = ${JSON.stringify(musicBindings.map((entry) => entry.trackId), null, 2)} as const\n\nexport const GENERATED_MUSIC_TRACKS = ${JSON.stringify(
+  const generated = `// AUTO-GENERATED by scripts/generate-audio-manifest.mjs. Do not edit manually.\n\nexport const GENERATED_AUDIO_ASSETS = ${JSON.stringify(bindings, null, 2)} as const\n\nexport const GENERATED_MUSIC_TRACK_IDS = ${JSON.stringify(
+    musicBindings.map((entry) => entry.trackId),
+    null,
+    2
+  )} as const\n\nexport const GENERATED_MUSIC_TRACKS = ${JSON.stringify(
     Object.fromEntries(
       musicBindings.map((entry) => [
         entry.trackId,

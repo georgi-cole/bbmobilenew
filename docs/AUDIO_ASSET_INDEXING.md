@@ -13,11 +13,11 @@ The filename stem becomes the semantic Music Manager track id and display label 
 
 Examples:
 
-| File | Generated track id | Display label |
-| --- | --- | --- |
+| File                             | Generated track id     | Display label        |
+| -------------------------------- | ---------------------- | -------------------- |
 | `music/confessional_ambient.mp3` | `confessional_ambient` | Confessional Ambient |
-| `music/nomination_tension.mp3` | `nomination_tension` | Nomination Tension |
-| `music/risk_wheel_main.mp3` | `risk_wheel_main` | Risk Wheel Main |
+| `music/nomination_tension.mp3`   | `nomination_tension`   | Nomination Tension   |
+| `music/risk_wheel_main.mp3`      | `risk_wheel_main`      | Risk Wheel Main      |
 
 Music defaults to looping at volume `0.5`. New tracks fall back to `competition` when that track exists. Use `audio.config.json` for a different fallback, volume, loop policy, display name or tags.
 
@@ -31,11 +31,11 @@ Recognized categories are `ui`, `tv`, `player` and `minigame`.
 
 Examples:
 
-| File | Generated sound key |
-| --- | --- |
-| `sounds/ui_confirm.mp3` | `ui:confirm` |
-| `sounds/tv_winner_reveal.mp3` | `tv:winner_reveal` |
-| `sounds/player_evicted.mp3` | `player:evicted` |
+| File                                  | Generated sound key        |
+| ------------------------------------- | -------------------------- |
+| `sounds/ui_confirm.mp3`               | `ui:confirm`               |
+| `sounds/tv_winner_reveal.mp3`         | `tv:winner_reveal`         |
+| `sounds/player_evicted.mp3`           | `player:evicted`           |
 | `sounds/minigame_risk_wheel_spin.mp3` | `minigame:risk_wheel_spin` |
 
 An unprefixed filename that begins with a known feature name is treated as a minigame cue. Therefore `sounds/risk_wheel_spin.mp3` also becomes `minigame:risk_wheel_spin`. Prefixes are still recommended because they make intent explicit and avoid warnings.

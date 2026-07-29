@@ -12,11 +12,23 @@ const SOUNDS_SOURCE = path.join(ROOT, 'src', 'services', 'sound', 'sounds.ts')
 const CATALOG_SOURCE = path.join(ROOT, 'src', 'services', 'sound', 'musicCatalog.ts')
 const CONFIG_PATH = path.join(PUBLIC_ASSETS, 'audio.config.json')
 const SUPPORTED_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'])
-const TEXT_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.css', '.scss', '.html'])
+const TEXT_EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.json',
+  '.md',
+  '.css',
+  '.scss',
+  '.html',
+])
 
 const CANONICAL_KEY_RENAMES = new Map([
-  ['minigame:wheelofluck', 'minigame:risk_wheel_spin'],
-  ['music:finale_winner_stinger', 'tv:finale_winner_stinger'],
+  ['minigame:risk_wheel_spin', 'minigame:risk_wheel_spin'],
+  ['tv:finale_winner_stinger', 'tv:finale_winner_stinger'],
 ])
 
 const TRACK_PRIORITY = [
@@ -151,7 +163,15 @@ function parseCatalog(source, registryByKey) {
 function durationSeconds(file) {
   const result = spawnSync(
     'ffprobe',
-    ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file],
+    [
+      '-v',
+      'error',
+      '-show_entries',
+      'format=duration',
+      '-of',
+      'default=noprint_wrappers=1:nokey=1',
+      file,
+    ],
     { encoding: 'utf8' }
   )
   if (result.status !== 0) return null
@@ -162,10 +182,25 @@ function durationSeconds(file) {
 function looksLikeMusic(file, registryEntries, catalogPaths) {
   const relative = normalizeSlashes(path.relative(LEGACY_SOUND_ROOT, file))
   if (catalogPaths.has(relative)) return true
-  if (registryEntries.some((entry) => entry.relativePath === relative && entry.category === 'music' && entry.loop)) return true
+  if (
+    registryEntries.some(
+      (entry) => entry.relativePath === relative && entry.category === 'music' && entry.loop
+    )
+  )
+    return true
   const stem = slugify(path.basename(file, path.extname(file)))
-  if (/(^|_)(music|ambient|background|theme|score|soundtrack|credits|recap|competition)(_|$)/.test(stem)) return true
-  if (/(^|_)(stinger|sting|reveal|click|tap|spin|step|winner|evicted|death|good|bad|booster)(_|$)/.test(stem)) return false
+  if (
+    /(^|_)(music|ambient|background|theme|score|soundtrack|credits|recap|competition)(_|$)/.test(
+      stem
+    )
+  )
+    return true
+  if (
+    /(^|_)(stinger|sting|reveal|click|tap|spin|step|winner|evicted|death|good|bad|booster)(_|$)/.test(
+      stem
+    )
+  )
+    return false
   const duration = durationSeconds(file)
   return duration !== null && duration >= 12
 }
@@ -176,7 +211,10 @@ function scoreKeyForFile(key, fileStem) {
 }
 
 function choosePrimaryKey(entries, fileStem) {
-  const canonical = entries.map((entry) => ({ ...entry, key: CANONICAL_KEY_RENAMES.get(entry.key) ?? entry.key }))
+  const canonical = entries.map((entry) => ({
+    ...entry,
+    key: CANONICAL_KEY_RENAMES.get(entry.key) ?? entry.key,
+  }))
   canonical.sort((left, right) => {
     const scoreDiff = scoreKeyForFile(right.key, fileStem) - scoreKeyForFile(left.key, fileStem)
     if (scoreDiff !== 0) return scoreDiff
@@ -237,21 +275,25 @@ async function replaceReferences(pathMap, keyMap) {
 }
 
 function newSoundsSource() {
-  return `/**\n * Generated-file-backed sound registry.\n *\n * Add background tracks to public/assets/music and short cues to\n * public/assets/sounds, then run npm run generate:audio (also run by dev/build).\n */\nimport {\n  GENERATED_AUDIO_ASSETS,\n  GENERATED_FILENAME_ALIASES,\n  GENERATED_KEY_ALIASES,\n} from './generatedAudioManifest'\n\nexport type SoundCategory = 'ui' | 'tv' | 'player' | 'minigame' | 'music'\n\nexport interface SoundEntry {\n  key: string\n  category: SoundCategory\n  src: string\n  preload: boolean\n  volume?: number\n  loop?: boolean\n}\n\nconst _viteBase: string = import.meta.env.BASE_URL ?? '/'\nexport const ASSETS_BASE = \\`\\${_viteBase}assets/\\`\nexport const MUSIC_BASE = \\`\\${ASSETS_BASE}music/\\`\nexport const SOUNDS_BASE = \\`\\${ASSETS_BASE}sounds/\\`\n\nconst registry: Record<string, SoundEntry> = {}\nfor (const asset of GENERATED_AUDIO_ASSETS) {\n  registry[asset.key] = {\n    key: asset.key,\n    category: asset.category as SoundCategory,\n    src: \\`\\${ASSETS_BASE}\\${asset.relativePath}\\`,\n    preload: asset.preload,\n    volume: asset.volume,\n    loop: asset.loop,\n  }\n}\nfor (const [alias, target] of Object.entries(GENERATED_KEY_ALIASES)) {\n  const targetEntry = registry[target]\n  if (targetEntry) registry[alias] = { ...targetEntry, key: alias }\n}\n\nexport const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = Object.freeze(registry)\nexport const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = Object.freeze({\n  ...GENERATED_FILENAME_ALIASES,\n  ...Object.fromEntries(\n    GENERATED_AUDIO_ASSETS.map((asset) => [\n      asset.relativePath.split('/').pop()?.replace(/\\.[^.]+$/, '') ?? asset.key,\n      asset.key,\n    ])\n  ),\n})\n\nexport function resolveKey(input: string): string | null {\n  if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, input)) return input\n  const stem = input.replace(/\\.(mp3|wav|ogg|m4a|aac|flac)$/i, '')\n  if (Object.prototype.hasOwnProperty.call(FILENAME_ALIAS_MAP, stem)) {\n    return FILENAME_ALIAS_MAP[stem]\n  }\n  const normalized = stem\n    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, '_')\n    .replace(/^_+|_+$/g, '')\n  for (const prefix of ['ui', 'tv', 'player', 'minigame', 'music'] as const) {\n    if (!normalized.startsWith(\\`\\${prefix}_\\`)) continue\n    const candidate = \\`\\${prefix}:\\${normalized.slice(prefix.length + 1)}\\`\n    if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, candidate)) return candidate\n  }\n  const smartMinigame = \\`minigame:\\${normalized}\\`\n  return Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, smartMinigame)\n    ? smartMinigame\n    : null\n}\n`
+  return `/**\n * Generated-file-backed sound registry.\n *\n * Add background tracks to public/assets/music and short cues to\n * public/assets/sounds, then run npm run generate:audio (also run by dev/build).\n */\nimport {\n  GENERATED_AUDIO_ASSETS,\n  GENERATED_FILENAME_ALIASES,\n  GENERATED_KEY_ALIASES,\n} from './generatedAudioManifest'\n\nexport type SoundCategory = 'ui' | 'tv' | 'player' | 'minigame' | 'music'\n\nexport interface SoundEntry {\n  key: string\n  category: SoundCategory\n  src: string\n  preload: boolean\n  volume?: number\n  loop?: boolean\n}\n\nconst _viteBase: string = import.meta.env.BASE_URL ?? '/'\nexport const ASSETS_BASE = \`\${_viteBase}assets/\`\nexport const MUSIC_BASE = \`\${ASSETS_BASE}music/\`\nexport const SOUNDS_BASE = \`\${ASSETS_BASE}sounds/\`\n\nconst registry: Record<string, SoundEntry> = {}\nfor (const asset of GENERATED_AUDIO_ASSETS) {\n  registry[asset.key] = {\n    key: asset.key,\n    category: asset.category as SoundCategory,\n    src: \`\${ASSETS_BASE}\${asset.relativePath}\`,\n    preload: asset.preload,\n    volume: asset.volume,\n    loop: asset.loop,\n  }\n}\nfor (const [alias, target] of Object.entries(GENERATED_KEY_ALIASES)) {\n  const targetEntry = registry[target]\n  if (targetEntry) registry[alias] = { ...targetEntry, key: alias }\n}\n\nexport const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = Object.freeze(registry)\nexport const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = Object.freeze({\n  ...GENERATED_FILENAME_ALIASES,\n  ...Object.fromEntries(\n    GENERATED_AUDIO_ASSETS.map((asset) => [\n      asset.relativePath.split('/').pop()?.replace(/\\.[^.]+$/, '') ?? asset.key,\n      asset.key,\n    ])\n  ),\n})\n\nexport function resolveKey(input: string): string | null {\n  if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, input)) return input\n  const stem = input.replace(/\\.(mp3|wav|ogg|m4a|aac|flac)$/i, '')\n  if (Object.prototype.hasOwnProperty.call(FILENAME_ALIAS_MAP, stem)) {\n    return FILENAME_ALIAS_MAP[stem]\n  }\n  const normalized = stem\n    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, '_')\n    .replace(/^_+|_+$/g, '')\n  for (const prefix of ['ui', 'tv', 'player', 'minigame', 'music'] as const) {\n    if (!normalized.startsWith(\`\${prefix}_\`)) continue\n    const candidate = \`\${prefix}:\${normalized.slice(prefix.length + 1)}\`\n    if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, candidate)) return candidate\n  }\n  const smartMinigame = \`minigame:\${normalized}\`\n  return Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, smartMinigame)\n    ? smartMinigame\n    : null\n}\n`
 }
 
 function newCatalogSource() {
-  return `import { SOUND_REGISTRY, type SoundEntry } from './sounds'\nimport { GENERATED_MUSIC_TRACK_IDS, GENERATED_MUSIC_TRACKS } from './generatedAudioManifest'\n\nexport const MUSIC_TRACK_IDS = GENERATED_MUSIC_TRACK_IDS\nexport type CatalogMusicTrack = (typeof MUSIC_TRACK_IDS)[number]\nexport type MusicTrackFallback = CatalogMusicTrack | 'none'\nexport type MusicTrackTag =\n  | 'ambient'\n  | 'competition'\n  | 'ceremony'\n  | 'minigame'\n  | 'social'\n  | 'spectator'\n  | 'finale'\n\nexport interface MusicTrackDefinition {\n  displayName: string\n  soundKey: string\n  fallbackTrack: MusicTrackFallback\n  tags: readonly MusicTrackTag[]\n}\n\nexport interface MusicTrackAssetOverride {\n  track: CatalogMusicTrack\n  src: string\n  volume?: number\n  loop?: boolean\n}\n\nexport const MUSIC_CATALOG = GENERATED_MUSIC_TRACKS as unknown as Readonly<\n  Record<CatalogMusicTrack, MusicTrackDefinition>\n>\n\nexport function isCatalogMusicTrack(value: unknown): value is CatalogMusicTrack {\n  return typeof value === 'string' && (MUSIC_TRACK_IDS as readonly string[]).includes(value)\n}\n\nexport function getMusicTrackDefinition(track: CatalogMusicTrack): MusicTrackDefinition {\n  return MUSIC_CATALOG[track]\n}\n\nexport function getMusicTrackSoundEntry(track: CatalogMusicTrack): SoundEntry | undefined {\n  return SOUND_REGISTRY[MUSIC_CATALOG[track].soundKey]\n}\n\nexport function getDynamicMusicSoundEntries(): SoundEntry[] {\n  return []\n}\n\nexport function createMusicTrackOverrideSound(asset: MusicTrackAssetOverride): SoundEntry {\n  const fallbackEntry = getMusicTrackSoundEntry(asset.track)\n  return {\n    key: \\`music:override:\\${asset.track}\\`,\n    category: 'music',\n    src: asset.src,\n    preload: false,\n    volume: asset.volume ?? fallbackEntry?.volume ?? 0.5,\n    loop: asset.loop ?? fallbackEntry?.loop ?? true,\n  }\n}\n\nexport function getMusicFallbackTrack(track: CatalogMusicTrack): MusicTrackFallback {\n  return MUSIC_CATALOG[track].fallbackTrack\n}\n\nexport function getMusicFallbackChain(track: CatalogMusicTrack): MusicTrackFallback[] {\n  const chain: MusicTrackFallback[] = []\n  const seen = new Set<CatalogMusicTrack>()\n  let current: MusicTrackFallback = track\n  while (current !== 'none' && !seen.has(current)) {\n    seen.add(current)\n    current = getMusicFallbackTrack(current)\n    chain.push(current)\n  }\n  return chain\n}\n`
+  return `import { SOUND_REGISTRY, type SoundEntry } from './sounds'\nimport { GENERATED_MUSIC_TRACK_IDS, GENERATED_MUSIC_TRACKS } from './generatedAudioManifest'\n\nexport const MUSIC_TRACK_IDS = GENERATED_MUSIC_TRACK_IDS\nexport type CatalogMusicTrack = (typeof MUSIC_TRACK_IDS)[number]\nexport type MusicTrackFallback = CatalogMusicTrack | 'none'\nexport type MusicTrackTag =\n  | 'ambient'\n  | 'competition'\n  | 'ceremony'\n  | 'minigame'\n  | 'social'\n  | 'spectator'\n  | 'finale'\n\nexport interface MusicTrackDefinition {\n  displayName: string\n  soundKey: string\n  fallbackTrack: MusicTrackFallback\n  tags: readonly MusicTrackTag[]\n}\n\nexport interface MusicTrackAssetOverride {\n  track: CatalogMusicTrack\n  src: string\n  volume?: number\n  loop?: boolean\n}\n\nexport const MUSIC_CATALOG = GENERATED_MUSIC_TRACKS as unknown as Readonly<\n  Record<CatalogMusicTrack, MusicTrackDefinition>\n>\n\nexport function isCatalogMusicTrack(value: unknown): value is CatalogMusicTrack {\n  return typeof value === 'string' && (MUSIC_TRACK_IDS as readonly string[]).includes(value)\n}\n\nexport function getMusicTrackDefinition(track: CatalogMusicTrack): MusicTrackDefinition {\n  return MUSIC_CATALOG[track]\n}\n\nexport function getMusicTrackSoundEntry(track: CatalogMusicTrack): SoundEntry | undefined {\n  return SOUND_REGISTRY[MUSIC_CATALOG[track].soundKey]\n}\n\nexport function getDynamicMusicSoundEntries(): SoundEntry[] {\n  return []\n}\n\nexport function createMusicTrackOverrideSound(asset: MusicTrackAssetOverride): SoundEntry {\n  const fallbackEntry = getMusicTrackSoundEntry(asset.track)\n  return {\n    key: \`music:override:\${asset.track}\`,\n    category: 'music',\n    src: asset.src,\n    preload: false,\n    volume: asset.volume ?? fallbackEntry?.volume ?? 0.5,\n    loop: asset.loop ?? fallbackEntry?.loop ?? true,\n  }\n}\n\nexport function getMusicFallbackTrack(track: CatalogMusicTrack): MusicTrackFallback {\n  return MUSIC_CATALOG[track].fallbackTrack\n}\n\nexport function getMusicFallbackChain(track: CatalogMusicTrack): MusicTrackFallback[] {\n  const chain: MusicTrackFallback[] = []\n  const seen = new Set<CatalogMusicTrack>()\n  let current: MusicTrackFallback = track\n  while (current !== 'none' && !seen.has(current)) {\n    seen.add(current)\n    current = getMusicFallbackTrack(current)\n    chain.push(current)\n  }\n  return chain\n}\n`
 }
 
 function updatePackageJson(packageJson) {
   const scripts = packageJson.scripts ?? {}
   scripts['generate:audio'] = 'node scripts/generate-audio-manifest.mjs'
-  scripts['validate:audio'] = 'npm run generate:audio && git diff --exit-code -- src/services/sound/generatedAudioManifest.ts'
+  scripts['validate:audio'] =
+    'npm run generate:audio && git diff --exit-code -- src/services/sound/generatedAudioManifest.ts'
   scripts.predev = 'npm run generate:audio && npm run generate:after-eye'
   for (const name of ['build', 'build:mobile', 'build:android']) {
     if (typeof scripts[name] === 'string' && !scripts[name].includes('generate:audio')) {
-      scripts[name] = scripts[name].replace('npm run generate:after-eye', 'npm run generate:audio && npm run generate:after-eye')
+      scripts[name] = scripts[name].replace(
+        'npm run generate:after-eye',
+        'npm run generate:audio && npm run generate:after-eye'
+      )
     }
   }
   scripts.typecheck = 'npm run generate:audio && tsc -b'
@@ -277,7 +319,9 @@ async function main() {
   const catalogPaths = new Set(catalogByPath.keys())
   const filenameAliases = parseFilenameAliases(soundsSource)
 
-  const audioFiles = await walk(LEGACY_SOUND_ROOT, (file) => SUPPORTED_EXTENSIONS.has(path.extname(file).toLowerCase()))
+  const audioFiles = await walk(LEGACY_SOUND_ROOT, (file) =>
+    SUPPORTED_EXTENSIONS.has(path.extname(file).toLowerCase())
+  )
   const entriesByPath = new Map()
   for (const entry of registryEntries) {
     const list = entriesByPath.get(entry.relativePath) ?? []
@@ -302,14 +346,23 @@ async function main() {
     let newRelative
     if (isMusic) {
       const sortedTracks = [...catalogForFile].sort(
-        (left, right) => TRACK_PRIORITY.indexOf(left.trackId) - TRACK_PRIORITY.indexOf(right.trackId)
+        (left, right) =>
+          TRACK_PRIORITY.indexOf(left.trackId) - TRACK_PRIORITY.indexOf(right.trackId)
       )
-      const primaryTrack = sortedTracks[0]?.trackId ?? slugify(fileStem.replace(/_(music|sound|audio|main_loop)$/g, ''))
-      destinationInfo = await availableDestination(MUSIC_ROOT, trackFilename(primaryTrack || fileStem, extension), file)
+      const primaryTrack =
+        sortedTracks[0]?.trackId ??
+        slugify(fileStem.replace(/_(music|sound|audio|main_loop)$/g, ''))
+      destinationInfo = await availableDestination(
+        MUSIC_ROOT,
+        trackFilename(primaryTrack || fileStem, extension),
+        file
+      )
       newRelative = `music/${path.basename(destinationInfo.destination)}`
     } else {
       const primaryKey = choosePrimaryKey(registryForFile, fileStem)
-      const filename = primaryKey ? soundFilenameForKey(primaryKey, extension) : `${fileStem}${extension.toLowerCase()}`
+      const filename = primaryKey
+        ? soundFilenameForKey(primaryKey, extension)
+        : `${fileStem}${extension.toLowerCase()}`
       destinationInfo = await availableDestination(SOUNDS_ROOT, filename, file)
       newRelative = `sounds/${path.basename(destinationInfo.destination)}`
     }
@@ -351,6 +404,54 @@ async function main() {
           })
         }
       }
+    }
+  }
+
+  for (const migrated of pathMap.values()) {
+    if (bindings.some((binding) => binding.path === migrated)) continue
+    const extension = path.extname(migrated)
+    const destinationStem = slugify(path.basename(migrated, extension))
+    if (migrated.startsWith('music/')) {
+      let trackId = destinationStem
+      let suffix = 2
+      while (
+        bindings.some(
+          (binding) => binding.trackId === trackId || binding.key === `music:${trackId}`
+        )
+      ) {
+        trackId = `${destinationStem}_${suffix}`
+        suffix += 1
+      }
+      bindings.push({
+        path: migrated,
+        key: `music:${trackId}`,
+        category: 'music',
+        trackId,
+        displayName: titleFromSlug(trackId),
+        fallbackTrack: trackId === 'competition' ? 'none' : 'competition',
+        tags: ['ambient'],
+        preload: false,
+        volume: 0.5,
+        loop: true,
+      })
+    } else {
+      const prefixed = /^(ui|tv|player|minigame)_(.+)$/.exec(destinationStem)
+      const category = prefixed?.[1] ?? 'minigame'
+      const rest = prefixed?.[2] ?? destinationStem
+      let key = `${category}:${rest}`
+      let suffix = 2
+      while (bindings.some((binding) => binding.key === key)) {
+        key = `${category}:${rest}_${suffix}`
+        suffix += 1
+      }
+      bindings.push({
+        path: migrated,
+        key,
+        category,
+        preload: false,
+        volume: 1,
+        loop: false,
+      })
     }
   }
 
@@ -402,7 +503,9 @@ async function main() {
   const emptyDirectories = (await walk(LEGACY_SOUND_ROOT, () => false)).length
   void emptyDirectories
   console.log(`Migrated ${audioFiles.length} audio files into assets/music and assets/sounds.`)
-  console.log(`Preserved ${bindings.length} semantic bindings and ${Object.keys(keyAliases).length} key aliases.`)
+  console.log(
+    `Preserved ${bindings.length} semantic bindings and ${Object.keys(keyAliases).length} key aliases.`
+  )
 }
 
 main().catch((error) => {
