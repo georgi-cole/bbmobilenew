@@ -201,8 +201,6 @@ function sanitiseMusicCue(raw: unknown, id: string): MusicCueDefinition | undefi
   )
     ? (raw.effectPreset as MusicCueDefinition['effectPreset'])
     : defaults.effectPreset
-  const fallbackCueId = safeString(raw.fallbackCueId)
-
   if (endAtSec !== undefined && endAtSec <= startAtSec) return undefined
   if (loopStartSec !== undefined && loopStartSec < startAtSec) return undefined
   if (loopEndSec !== undefined && loopEndSec <= (loopStartSec ?? startAtSec)) return undefined
@@ -223,7 +221,6 @@ function sanitiseMusicCue(raw: unknown, id: string): MusicCueDefinition | undefi
     crossfadeMs,
     restartPolicy,
     effectPreset,
-    ...(fallbackCueId ? { fallbackCueId } : {}),
   }
 }
 

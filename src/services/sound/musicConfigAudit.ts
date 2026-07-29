@@ -166,27 +166,6 @@ function auditMusicCueLibrary(config: MusicConfigDocument, issues: MusicConfigAu
         path,
       })
     }
-    if (cue.fallbackCueId && !config.musicCues[cue.fallbackCueId]) {
-      issues.push({
-        code: 'missing-fallback-cue',
-        message: `Cue ${cueId} falls back to missing cue ${cue.fallbackCueId}.`,
-        path: `${path}.fallbackCueId`,
-      })
-    }
-    const seen = new Set<string>([cueId])
-    let fallback = cue.fallbackCueId
-    while (fallback) {
-      if (seen.has(fallback)) {
-        issues.push({
-          code: 'cue-fallback-cycle',
-          message: `Cue fallback chain for ${cueId} contains a cycle at ${fallback}.`,
-          path: `${path}.fallbackCueId`,
-        })
-        break
-      }
-      seen.add(fallback)
-      fallback = config.musicCues[fallback]?.fallbackCueId
-    }
   }
 
   const visit = (value: unknown, path: string): void => {

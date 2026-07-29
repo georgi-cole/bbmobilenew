@@ -28,13 +28,22 @@ export interface MusicCueEngineHooks {
   onEnded?: (signature: string) => void
 }
 
+export interface MusicCuePlayOptions {
+  /** Fade used when the outgoing deck is owned by the legacy music path. */
+  entryFadeMs?: number
+}
+
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
 }
 
 function resetTime(element: HTMLAudioElement, time = 0): void {
   try {
-    element.currentTime = Math.max(0, time)
+    const maximum =
+      Number.isFinite(element.duration) && element.duration > 0
+        ? Math.max(0, element.duration - 0.01)
+        : Number.POSITIVE_INFINITY
+    element.currentTime = Math.min(maximum, Math.max(0, time))
   } catch {
     // Mobile WebViews can reject seeking before metadata is available.
   }
@@ -71,6 +80,10 @@ export class MusicCueEngine {
     return this._active?.signature ?? null
   }
 
+  get currentCue(): MusicCueDefinition | null {
+    return this._active?.cue ?? null
+  }
+
   get completedSignature(): string | null {
     return this._completedSignature
   }
@@ -85,7 +98,11 @@ export class MusicCueEngine {
     if (this._standby) this._applyDeckVolume(this._standby)
   }
 
-  async play(asset: MusicCueAsset, cue: MusicCueDefinition): Promise<void> {
+  async play(
+    asset: MusicCueAsset,
+    cue: MusicCueDefinition,
+    options: MusicCuePlayOptions = {}
+  ): Promise<void> {
     const signature = musicCueSignature(cue, asset.key)
     if (this._active?.signature === signature) {
       if (cue.restartPolicy === 'restart') {
@@ -99,17 +116,16 @@ export class MusicCueEngine {
     if (this._completedSignature === signature) return
     this._completedSignature = null
 
-    const incoming = this._createDeck(asset, cue, signature)
-    const outgoing = this._active
-    this._standby = incoming
-
     const resumeAt =
       cue.restartPolicy === 'resume'
         ? (this._resumePositions.get(cue.id) ?? cue.startAtSec)
         : cue.startAtSec
+    const incoming = this._createDeck(asset, cue, signature, resumeAt)
+    const outgoing = this._active
+    this._standby = incoming
     resetTime(incoming.element, resumeAt)
 
-    const transitionMs = outgoing ? cue.crossfadeMs : cue.fadeInMs
+    const transitionMs = outgoing ? cue.crossfadeMs : (options.entryFadeMs ?? cue.fadeInMs)
     incoming.mixGain = transitionMs > 0 ? 0 : 1
     this._applyDeckVolume(incoming)
 
@@ -134,7 +150,7 @@ export class MusicCueEngine {
       this._stopDeck(outgoing)
     } else {
       if (outgoing) this._stopDeck(outgoing)
-      if (cue.fadeInMs > 0) await this._fadeDeck(incoming, 1, cue.fadeInMs)
+      if (transitionMs > 0) await this._fadeDeck(incoming, 1, transitionMs)
     }
   }
 
@@ -153,11 +169,17 @@ export class MusicCueEngine {
     this._standby = null
   }
 
-  private _createDeck(asset: MusicCueAsset, cue: MusicCueDefinition, signature: string): CueDeck {
+  private _createDeck(
+    asset: MusicCueAsset,
+    cue: MusicCueDefinition,
+    signature: string,
+    initialTime: number
+  ): CueDeck {
     const element = document.createElement('audio')
     element.src = asset.src
     element.preload = 'auto'
-    element.loop = cue.loop && cue.endAtSec === undefined && cue.loopEndSec === undefined
+    element.loop =
+      cue.loop && cue.startAtSec === 0 && cue.endAtSec === undefined && cue.loopEndSec === undefined
     element.muted = false
 
     const deck: CueDeck = {
@@ -170,11 +192,14 @@ export class MusicCueEngine {
       cleanup: () => {},
     }
 
+    const onLoadedMetadata = () => resetTime(element, initialTime)
     const onTimeUpdate = () => this._handleBoundary(deck)
     const onEnded = () => this._handleNaturalEnd(deck)
+    element.addEventListener('loadedmetadata', onLoadedMetadata)
     element.addEventListener('timeupdate', onTimeUpdate)
     element.addEventListener('ended', onEnded)
     deck.cleanup = () => {
+      element.removeEventListener('loadedmetadata', onLoadedMetadata)
       element.removeEventListener('timeupdate', onTimeUpdate)
       element.removeEventListener('ended', onEnded)
     }

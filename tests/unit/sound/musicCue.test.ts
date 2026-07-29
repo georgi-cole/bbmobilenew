@@ -12,7 +12,9 @@ describe('music cue definitions', () => {
     expect(cue.startAtSec).toBe(0)
     expect(cue.loop).toBe(true)
     expect(cue.effectPreset).toBe('none')
-    expect(isAdvancedMusicCue(cue)).toBe(false)
+    expect(isAdvancedMusicCue(cue, true)).toBe(false)
+    expect(isAdvancedMusicCue({ ...cue, loop: false }, true)).toBe(true)
+    expect(isAdvancedMusicCue({ ...cue, loop: true }, false)).toBe(true)
   })
 
   it('detects advanced segment and transition controls', () => {

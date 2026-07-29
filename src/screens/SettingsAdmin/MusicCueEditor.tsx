@@ -76,19 +76,22 @@ export default function MusicCueEditor({
   const transitionTimerRef = useRef<number | null>(null)
 
   const engine = () => {
-    engineRef.current ??= new MusicCueEngine()
+    engineRef.current ??= new MusicCueEngine({ onEnded: () => setPreviewing(false) })
     return engineRef.current
   }
 
+  const draftId = draft?.id
   useEffect(() => {
-    if (!selectedCueId && cueIds[0]) setSelectedCueId(cueIds[0])
-    if (selectedCueId && !effectiveCues[selectedCueId]) {
+    if (!selectedCueId && cueIds[0] && !draftId) setSelectedCueId(cueIds[0])
+    if (selectedCueId && !effectiveCues[selectedCueId] && draftId !== selectedCueId) {
       setSelectedCueId(cueIds[0] ?? '')
     }
-  }, [cueIds, effectiveCues, selectedCueId])
+  }, [cueIds, draftId, effectiveCues, selectedCueId])
 
   useEffect(() => {
-    setDraft(selectedCueId ? (effectiveCues[selectedCueId] ?? null) : null)
+    const savedCue = selectedCueId ? effectiveCues[selectedCueId] : undefined
+    if (savedCue) setDraft(savedCue)
+    else if (!selectedCueId) setDraft(null)
   }, [effectiveCues, selectedCueId])
 
   const draftTrack = draft?.track
@@ -126,7 +129,8 @@ export default function MusicCueEditor({
   }
 
   const createCue = () => {
-    const id = nextCueId(newTrack, effectiveCues)
+    const occupiedCues = draft ? { ...effectiveCues, [draft.id]: draft } : effectiveCues
+    const id = nextCueId(newTrack, occupiedCues)
     const cue = {
       ...createDefaultMusicCue(newTrack, getMusicTrackSoundEntry(newTrack)?.loop ?? true),
       id,
@@ -163,7 +167,7 @@ export default function MusicCueEditor({
 
   const duplicateCue = () => {
     if (!draft) return
-    const id = nextCueId(draft.track, effectiveCues)
+    const id = nextCueId(draft.track, { ...effectiveCues, [draft.id]: draft })
     setDraft({ ...draft, id, displayName: `${draft.displayName} Copy` })
     setSelectedCueId(id)
   }
@@ -534,24 +538,6 @@ export default function MusicCueEditor({
                       {preset.replace('_', ' ')}
                     </option>
                   ))}
-                </select>
-              </label>
-              <label>
-                <span>Fallback cue</span>
-                <select
-                  value={draft.fallbackCueId ?? ''}
-                  onChange={(event) =>
-                    patchDraft({ fallbackCueId: event.target.value || undefined })
-                  }
-                >
-                  <option value="">None</option>
-                  {cueIds
-                    .filter((id) => id !== draft.id)
-                    .map((id) => (
-                      <option key={id} value={id}>
-                        {effectiveCues[id].displayName}
-                      </option>
-                    ))}
                 </select>
               </label>
             </div>

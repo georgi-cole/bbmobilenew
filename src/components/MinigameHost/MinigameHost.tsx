@@ -187,7 +187,6 @@ export default function MinigameHost({
   }, [onMusicVariantChange, onPhaseChange, phase])
 
   useEffect(() => {
-    if (phase !== 'playing') return
     const handleVariant = (event: Event) => {
       const detail = (event as CustomEvent<MinigameMusicVariantDetail>).detail
       if (!detail || (detail.gameKey && detail.gameKey !== game.key)) return
@@ -195,7 +194,7 @@ export default function MinigameHost({
     }
     window.addEventListener(MINIGAME_MUSIC_VARIANT_EVENT, handleVariant)
     return () => window.removeEventListener(MINIGAME_MUSIC_VARIANT_EVENT, handleVariant)
-  }, [game.key, onMusicVariantChange, phase])
+  }, [game.key, onMusicVariantChange])
 
   useEffect(() => {
     if (phase === 'results') setUtilityView(null)

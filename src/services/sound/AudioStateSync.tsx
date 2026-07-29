@@ -40,6 +40,8 @@ function cueReason(cue: ResolvedMusicCue): string {
   return `${cue.source}:${cue.assignmentId}`
 }
 
+import { hasSameResolvedPlayback, shouldCrossfadeManagedMinigameCue } from './musicCueTransitions'
+
 function enrichMinigameTransition(
   cue: ResolvedMusicCue,
   gameKey: string | null,
@@ -209,11 +211,17 @@ export default function AudioStateSync() {
       clearPostGameTimer()
       heldConfiguredCueRef.current = null
 
+      if (hasSameResolvedPlayback(previousCue, desiredCue)) {
+        SoundManager.setMusicVolume(musicState.musicVolume)
+        return
+      }
+
       if (
-        previousCue.track === desiredCue.track &&
-        previousCue.assignmentId === desiredCue.assignmentId
+        shouldCrossfadeManagedMinigameCue(previousCue, desiredCue) ||
+        (desiredCue.playbackCue?.fadeInMs ?? 0) > 0
       ) {
         SoundManager.setMusicVolume(musicState.musicVolume)
+        void SoundManager.setDesiredMusicCue(desiredCue, cueReason(desiredCue))
         return
       }
 
@@ -241,7 +249,10 @@ export default function AudioStateSync() {
       heldConfiguredCueRef.current = previousCue
       postGameTimerRef.current = window.setTimeout(() => {
         postGameTimerRef.current = null
-        void SoundManager.fadeOutMusic(previousCue.transition!.fadeOutMs).then(() => {
+        const configuredFadeOut = previousCue.playbackCue?.fadeOutMs ?? 0
+        const fadeOutMs =
+          configuredFadeOut > 0 ? configuredFadeOut : previousCue.transition!.fadeOutMs
+        void SoundManager.fadeOutMusic(fadeOutMs).then(() => {
           if (transitionTokenRef.current !== transitionToken) return
           heldConfiguredCueRef.current = null
           SoundManager.setMusicVolume(musicState.musicVolume)

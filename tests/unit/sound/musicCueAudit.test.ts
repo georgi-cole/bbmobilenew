@@ -4,25 +4,20 @@ import { createMusicConfig, musicTrack } from '../../../src/services/sound/music
 import { createDefaultMusicCue } from '../../../src/services/sound/musicCue'
 
 describe('music cue configuration audit', () => {
-  it('reports invalid fallback cycles and missing assignment cues', () => {
-    const first = {
+  it('reports invalid cue definitions and missing assignment cues', () => {
+    const broken = {
       ...createDefaultMusicCue('competition'),
-      id: 'first',
-      displayName: 'First',
-      fallbackCueId: 'second',
-    }
-    const second = {
-      ...createDefaultMusicCue('competition'),
-      id: 'second',
-      displayName: 'Second',
-      fallbackCueId: 'first',
+      id: 'broken',
+      displayName: 'Broken',
+      startAtSec: 20,
+      endAtSec: 10,
     }
     const config = createMusicConfig({
-      musicCues: { first, second },
+      musicCues: { broken },
       phaseMusic: { loh_comp: musicTrack('competition', 'missing') },
     })
     const codes = auditMusicConfig(config).map((issue) => issue.code)
-    expect(codes).toContain('cue-fallback-cycle')
+    expect(codes).toContain('invalid-cue-invalid-end')
     expect(codes).toContain('missing-assignment-cue')
   })
 })

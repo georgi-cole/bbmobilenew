@@ -30,7 +30,6 @@ export interface MusicCueDefinition {
   crossfadeMs: number
   restartPolicy: MusicRestartPolicy
   effectPreset: MusicEffectPreset
-  fallbackCueId?: string
 }
 
 export function createDefaultMusicCue(track: CatalogMusicTrack, loop = true): MusicCueDefinition {
@@ -68,13 +67,17 @@ export function musicCueSignature(cue: MusicCueDefinition, assetKey = ''): strin
   ].join('|')
 }
 
-export function isAdvancedMusicCue(cue: MusicCueDefinition | undefined): boolean {
+export function isAdvancedMusicCue(
+  cue: MusicCueDefinition | undefined,
+  defaultLoop = true
+): boolean {
   if (!cue) return false
   return (
     cue.startAtSec > 0 ||
     cue.endAtSec !== undefined ||
     cue.loopStartSec !== undefined ||
     cue.loopEndSec !== undefined ||
+    cue.loop !== defaultLoop ||
     cue.volume !== 1 ||
     cue.fadeInMs > 0 ||
     cue.fadeOutMs > 0 ||

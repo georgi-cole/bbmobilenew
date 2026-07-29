@@ -42,7 +42,6 @@ export interface MinigameMusicProfile {
   stages: Partial<Record<MusicMinigameStage, MusicSelection>>
   defaultSelection: MusicSelection
   transition?: MusicTransitionPolicy
-  playbackCue?: MusicCueDefinition
 }
 
 export type MinigameStageAssignments = Partial<Record<MusicMinigameStage, MusicSelection>>

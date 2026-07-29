@@ -35,6 +35,9 @@ describe('MusicCueEngine', () => {
 
     const element = engine.currentElement!
     expect(element.currentTime).toBe(10)
+    element.currentTime = 0
+    element.dispatchEvent(new Event('loadedmetadata'))
+    expect(element.currentTime).toBe(10)
     element.currentTime = 18
     element.dispatchEvent(new Event('timeupdate'))
     expect(element.currentTime).toBe(12)
@@ -61,6 +64,20 @@ describe('MusicCueEngine', () => {
     await vi.runAllTimersAsync()
     await pending
     expect(engine.currentElement).not.toBe(first)
+    vi.useRealTimers()
+  })
+
+  it('uses an external entry fade when crossing from legacy music', async () => {
+    vi.useFakeTimers()
+    const engine = new MusicCueEngine()
+    const pending = engine.play(
+      { key: 'music:test', track: 'competition', src: '/test.mp3', volume: 1, loop: true },
+      { ...createDefaultMusicCue('competition'), id: 'external', startAtSec: 20 },
+      { entryFadeMs: 200 }
+    )
+    await vi.runAllTimersAsync()
+    await pending
+    expect(engine.currentElement?.volume).toBe(1)
     vi.useRealTimers()
   })
 })

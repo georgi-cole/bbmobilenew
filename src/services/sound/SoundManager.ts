@@ -501,17 +501,25 @@ class _SoundManager {
 
   async setDesiredMusicCue(cue: ResolvedMusicCue, reason?: string): Promise<void> {
     const playbackCue = cue.playbackCue
-    if (!playbackCue || !isAdvancedMusicCue(playbackCue)) {
+    const candidate = cue.track === 'none' ? null : this._resolveMusicCandidate(cue.track)
+    const defaultLoop = candidate ? (this._getEntry(candidate.key)?.loop ?? true) : true
+    if (!playbackCue || !isAdvancedMusicCue(playbackCue, defaultLoop)) {
+      const transitionToken = ++this._musicPlaybackToken
+      const outgoingCue = this._cueEngine.currentCue
+      if (this._cueEngine.currentElement) {
+        await this._cueEngine.fadeOut(outgoingCue?.fadeOutMs ?? 0)
+        if (transitionToken !== this._musicPlaybackToken) return
+      } else {
+        this._cueEngine.stop()
+      }
       this._desiredResolvedCue = null
       this._desiredAdvancedCueSignature = null
-      this._cueEngine.stop()
       return this.setDesiredMusic(cue.track, reason)
     }
 
     this._desiredResolvedCue = cue
     this._desiredMusicTrack = cue.track
     this._desiredMusicReason = reason ?? null
-    const candidate = this._resolveMusicCandidate(cue.track)
     const signature = musicCueSignature(playbackCue, candidate?.key ?? '')
     if (this._desiredAdvancedCueSignature !== signature) this._cueEngine.clearCompleted()
     this._desiredAdvancedCueSignature = signature
@@ -553,7 +561,8 @@ class _SoundManager {
       return
     }
     const advancedCue = this._desiredResolvedCue?.playbackCue
-    if (advancedCue && isAdvancedMusicCue(advancedCue)) {
+    const candidateEntry = this._getEntry(candidate.key)
+    if (advancedCue && isAdvancedMusicCue(advancedCue, candidateEntry?.loop ?? true)) {
       const signature = musicCueSignature(advancedCue, candidate.key)
       if (
         this._cueEngine.currentSignature === signature ||
@@ -881,8 +890,12 @@ class _SoundManager {
       return
     }
 
+    const outgoingLegacy =
+      this._musicEl && this._musicEl !== this._cueEngine.currentElement ? this._musicEl : null
+    if (outgoingLegacy && cue.crossfadeMs <= 0) this._stopExternalMusicElement(outgoingLegacy)
+
     try {
-      await this._cueEngine.play(
+      const playIncoming = this._cueEngine.play(
         {
           key: candidate.key,
           track: candidate.track,
@@ -890,8 +903,17 @@ class _SoundManager {
           volume: entry.volume ?? 1,
           loop: entry.loop ?? true,
         },
-        cue
+        cue,
+        outgoingLegacy && cue.crossfadeMs > 0 ? { entryFadeMs: cue.crossfadeMs } : {}
       )
+      if (outgoingLegacy && cue.crossfadeMs > 0) {
+        await Promise.all([
+          playIncoming,
+          this._fadeExternalMusicElement(outgoingLegacy, cue.crossfadeMs),
+        ])
+      } else {
+        await playIncoming
+      }
       if (
         playbackToken !== this._musicPlaybackToken ||
         this._desiredAdvancedCueSignature !== musicCueSignature(cue, candidate.key)
@@ -913,6 +935,44 @@ class _SoundManager {
       this._musicKey = null
       this._playingMusicTrack = 'none'
       void this.syncMusic()
+    }
+  }
+
+  private async _fadeExternalMusicElement(
+    element: HTMLAudioElement,
+    durationMs: number
+  ): Promise<void> {
+    if (durationMs <= 0) {
+      this._stopExternalMusicElement(element)
+      return
+    }
+    const startVolume = element.volume
+    const steps = Math.max(1, Math.ceil(durationMs / 40))
+    await new Promise<void>((resolve) => {
+      let step = 0
+      const timer = window.setInterval(
+        () => {
+          step += 1
+          element.volume = Math.max(0, startVolume * (1 - step / steps))
+          if (step >= steps) {
+            window.clearInterval(timer)
+            resolve()
+          }
+        },
+        Math.max(16, Math.floor(durationMs / steps))
+      )
+    })
+    this._stopExternalMusicElement(element)
+  }
+
+  private _stopExternalMusicElement(element: HTMLAudioElement): void {
+    element.pause()
+    _resetAudioTime(element)
+    _liveMusicElements.delete(element)
+    if (this._musicEl === element) {
+      this._musicEl = null
+      this._musicKey = null
+      this._playingMusicTrack = 'none'
     }
   }
 

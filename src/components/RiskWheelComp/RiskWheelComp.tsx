@@ -317,15 +317,28 @@ export default function RiskWheelComp({
     stopWheelSoundRef.current = stopWheelSound
   }, [stopWheelSound])
 
+  const riskWheelPhase = rw?.phase
+  const riskWheelRound = rw?.round
+  const riskWheelInitialCount = rw?.initialPlayerCount
+  const riskWheelActiveCount = rw?.activePlayerIds.length
   useEffect(() => {
-    if (standalone || !rw || rw.phase === 'idle') return
+    if (
+      standalone ||
+      !riskWheelPhase ||
+      riskWheelPhase === 'idle' ||
+      riskWheelRound == null ||
+      riskWheelInitialCount == null ||
+      riskWheelActiveCount == null
+    ) {
+      return
+    }
     const finalRound =
-      rw.round >= getRoundCap(rw.initialPlayerCount) || rw.activePlayerIds.length <= 2
+      riskWheelRound >= getRoundCap(riskWheelInitialCount) || riskWheelActiveCount <= 2
     publishMinigameMusicVariant(
-      rw.phase === 'complete' ? 'victory_lap' : finalRound ? 'final_round' : 'normal',
+      riskWheelPhase === 'complete' ? 'victory_lap' : finalRound ? 'final_round' : 'normal',
       'riskWheel'
     )
-  }, [rw, standalone])
+  }, [riskWheelActiveCount, riskWheelInitialCount, riskWheelPhase, riskWheelRound, standalone])
 
   // Wheel rotation state
   const [wheelAngle, setWheelAngle] = useState(0)
