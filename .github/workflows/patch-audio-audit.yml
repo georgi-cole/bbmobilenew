@@ -1,0 +1,88 @@
+name: Patch registry-backed music audit
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: patch-registry-backed-music-audit
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/audio-auto-index-migration
+          fetch-depth: 0
+
+      - name: Replace legacy dynamicSound audit
+        shell: python
+        run: |
+          from pathlib import Path
+
+          target = Path('src/services/sound/musicConfigAudit.ts')
+          text = target.read_text()
+          text = text.replace(
+            "import { MUSIC_CATALOG, MUSIC_TRACK_IDS, type CatalogMusicTrack } from './musicCatalog'",
+            "import {\n  getMusicTrackSoundEntry,\n  MUSIC_CATALOG,\n  MUSIC_TRACK_IDS,\n  type CatalogMusicTrack,\n} from './musicCatalog'",
+            1,
+          )
+          old = """    if (definition.dynamicSound && definition.dynamicSound.key !== definition.soundKey) {
+      issues.push({
+        code: 'dynamic-sound-key-mismatch',
+        message: `Dynamic sound key for ${track} does not match its catalog sound key.`,
+        path: `catalog.${track}.dynamicSound.key`,
+      })
+    }
+"""
+          new = """    const soundEntry = getMusicTrackSoundEntry(track)
+    if (!soundEntry) {
+      issues.push({
+        code: 'missing-track-sound',
+        message: `Music track ${track} references missing sound key ${definition.soundKey}.`,
+        path: `catalog.${track}.soundKey`,
+      })
+    } else if (soundEntry.key !== definition.soundKey) {
+      issues.push({
+        code: 'track-sound-key-mismatch',
+        message: `Resolved sound key for ${track} does not match its catalog sound key.`,
+        path: `catalog.${track}.soundKey`,
+      })
+    }
+"""
+          if old not in text:
+            raise SystemExit('Could not locate legacy dynamicSound audit block')
+          target.write_text(text.replace(old, new, 1))
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate audit patch
+        run: |
+          npx prettier --write src/services/sound/musicConfigAudit.ts
+          npm run lint:ci
+          npm run typecheck
+          npx vitest run tests/unit/sound/musicConfigAudit.test.ts
+
+      - name: Commit audit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/services/sound/musicConfigAudit.ts
+          git commit -m 'Audit generated music tracks through the sound registry'
+          git push origin HEAD:refs/heads/agent/audio-auto-index-migration
